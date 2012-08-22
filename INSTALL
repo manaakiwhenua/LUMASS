@@ -20,32 +20,32 @@ required 3rd party software libraries / packages
 LUMASS relies on a number of other open source software libraries, which are
 required (except rasdaman/PostgreSQL) to successfully build LUMASS. 
 
-Qt 			version > 4.6; (core, gui, and XML components)
+Qt                      version > 4.6; (core, gui, and XML components)
 
-GDAL 			see launchpad repository: unbuntu-gis-unstable 
-     			<https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable>
+GDAL                    see launchpad repository: unbuntu-gis-unstable 
+                        <https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable>
 
-Orfeo Toolbox 		see launchpad repository: unbuntu-gis-unstable 
-     			<https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable>
+Orfeo Toolbox           see launchpad repository: unbuntu-gis-unstable 
+                        <https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable>
 
-VTK 			ubuntu/debian package (version >= 5.8); requires VTK 
-			support Qt (VTK_USE_QT) and Qt Charts (VTK_USE_QTCHARTS)
-			when compiled from source
+VTK                     ubuntu/debian package (version >= 5.8); requires VTK 
+                        support Qt (VTK_USE_QT) and Qt Charts (VTK_USE_QTCHARTS)
+                        when compiled from source
 
-rasdaman		this package is optional and only useful, if you intend
-			to use the LUMASS modelling framework; if you're only 
-			interested in spatial optimisation, you don't need this 
-			package; see rasdaman.org for download, compilation and
-			installation details as well as for rasdaman features
+rasdaman                this package is optional and only useful, if you intend
+                        to use the LUMASS modelling framework; if you're only 
+                        interested in spatial optimisation, you don't need this 
+                        package; see rasdaman.org for download, compilation and
+                        installation details as well as for rasdaman features
 
-PostgreSQL        	only required when rasdaman is going to be used with the
-			modelling framework 
+PostgreSQL              only required when rasdaman is going to be used with the
+                        modelling framework 
 			
 lp_solve /
-liblpsolve55-dev 	required for LUMASS' optimisation component 
+liblpsolve55-dev        required for LUMASS' optimisation component 
 
 cmake/
-cmake-curses-gui  	build system packages used to compile LUMASS (s. below)
+cmake-curses-gui        build system packages used to compile LUMASS (s. below)
 
 
 

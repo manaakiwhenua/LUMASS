@@ -1,0 +1,141 @@
+ /****************************************************************************** 
+ * Created by Alexander Herzig 
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ *
+ * This file is part of 'LUMASS', which is free software: you can redistribute
+ * it and/or modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the License, 
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************/
+/*
+ * NMModelViewWidget.h
+ *
+ *  Created on: 20/06/2012
+ *      Author: alex
+ */
+
+#ifndef NMMODELVIEWWIDGET_H_
+#define NMMODELVIEWWIDGET_H_
+
+#include "nmlog.h"
+#include <string>
+#include <iostream>
+
+#include <qwidget.h>
+#include <QMenu>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QDragMoveEvent>
+#include <QGraphicsView>
+
+#include "NMProcessComponentItem.h"
+#include "NMComponentLinkItem.h"
+#include "NMAggregateComponentItem.h"
+#include "NMModelComponent.h"
+#include "NMModelScene.h"
+#include "NMModelController.h"
+#include "NMEditModelComponentDialog.h"
+
+#ifdef BUILD_RASSUPPORT
+  #include "NMRasdamanConnectorWrapper.h"
+#endif
+  
+class NMComponentLinkItem;
+
+class NMModelViewWidget: public QWidget
+{
+	Q_OBJECT
+
+public:
+	NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
+	virtual ~NMModelViewWidget();
+
+//	QString createComponent(const QString& processComp);
+
+public slots:
+
+	void callEditComponentDialog(const QString &);
+	void linkProcessComponents(NMComponentLinkItem* link);
+	void createProcessComponent(NMProcessComponentItem* procItem,
+			const QString& procName, QPointF scenePos);
+	void createAggregateComponent();
+	void ungroupComponents();
+
+	void editRootComponent();
+	void compProcChanged();
+
+	void executeModel(void);
+	void loadModel(void);
+	void saveModel(void);
+
+	void zoomIn(void);
+	void zoomOut(void);
+
+	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
+			QGraphicsItem* item);
+
+signals:
+	void linkToolToggled(bool);
+	void selToolToggled(bool);
+	void moveToolToggled(bool);
+
+protected:
+	void dragEnterEvent(QDragEnterEvent* event);
+	void dragMoveEvent(QDragMoveEvent* event);
+	void dropEvent(QDropEvent* event);
+
+protected slots:
+	void removeObjFromOpenEditsList(QObject* obj);
+	void deleteItem();
+	void deleteLinkComponentItem(NMComponentLinkItem* linkItem);
+	void deleteProcessComponentItem(NMProcessComponentItem* procItem);
+	void deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem);
+	void deleteEmptyComponent(NMModelComponent* comp);
+	int shareLevel(QList<QGraphicsItem*> list);
+	NMModelComponent* componentFromItem(QGraphicsItem* item);
+	QString getComponentItemTitle(QGraphicsItem* item);
+	void saveItems();
+	void loadItems();
+
+	//void saveProcCompItem(NMProcessComponentItem* item, QDataStream& data,
+	//		QString fnXml, bool xmlAppend);
+	//void saveAggrCompItem(NMAggregateComponentItem* item, QDataStream& data,
+	//		QString fnXml, QStringList* writenItems,
+	//		QList<NMComponentLinkItem*>* writtenLinks, bool xmlAppend);
+	void getSubComps(NMModelComponent* comp, QStringList& subs);
+
+private:
+	void initItemContextMenu();
+
+	QGraphicsView* mModelView;
+	NMModelScene* mModelScene;
+	QMenu* mItemContextMenu;
+
+	QPointF mLastScenePos;
+	QGraphicsItem* mLastItem;
+	NMModelController* mModelController;
+
+#ifdef BUILD_RASSUPPORT	
+	NMRasdamanConnectorWrapper* mRasConn;
+#endif
+	
+	NMModelComponent* mRootComponent;
+
+	QMap<NMModelComponent*,
+		NMEditModelComponentDialog*> mOpenEditors;
+
+	QMap<QString, QAction*> mActionMap;
+
+	string ctx;
+
+};
+
+#endif /* NMMODELVIEWWIDGET_H_ */

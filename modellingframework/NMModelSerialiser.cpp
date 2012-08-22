@@ -1,0 +1,694 @@
+ /****************************************************************************** 
+ * Created by Alexander Herzig 
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ *
+ * This file is part of 'LUMASS', which is free software: you can redistribute
+ * it and/or modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the License, 
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************/
+/*
+ * NMModelSerialiser.roocpp
+ *
+ *  Created on: 7/06/2012
+ *      Author: alex
+ */
+
+#include <string>
+#include <iostream>
+#include <QDebug>
+#include <QFile>
+#include <QMetaObject>
+#include <QMetaProperty>
+#include <QList>
+#include <QStringList>
+
+#include "NMModelSerialiser.h"
+#include "NMModelComponentFactory.h"
+#include "NMProcessFactory.h"
+
+
+NMModelSerialiser::NMModelSerialiser(QObject* parent)
+{
+	this->setParent(parent);
+	this->ctx = this->metaObject()->className();
+#ifdef BUILD_RASSUPPORT
+	this->mRasconn = 0;
+#endif	
+}
+
+NMModelSerialiser::~NMModelSerialiser()
+{
+}
+
+NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
+		//QMap<QString, NMModelComponent*>& repo,
+		NMModelController* controller
+#ifdef BUILD_RASSUPPORT		
+		,
+		NMRasdamanConnectorWrapper& rasWrapper
+#endif
+)
+
+{
+	NMDebugCtx(ctx, << "...");
+
+	NMModelComponent* mainComp = 0;
+#ifdef BUILD_RASSUPPORT	
+	this->mRasconn = &rasWrapper;
+#endif
+	QMap<QString, QString> nameRegister;
+
+	QFile* file = new QFile(fileName);
+	if (!file->open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
+				<< "'!");
+		NMDebugCtx(ctx, << "done!");
+		return 0;
+	}
+
+	QDomDocument doc;
+	if (!doc.setContent(file))
+	{
+		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
+				<< "'!");
+		NMDebugCtx(ctx, << "done!");
+		return 0;
+	}
+
+	QDomElement modelElem = doc.documentElement();
+	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
+
+	int ind = nmlog::nmindent;
+
+	QDomElement compElem = modelElem.firstChildElement("ModelComponent");
+	for (; !compElem.isNull(); compElem = compElem.nextSiblingElement("ModelComponent"))
+	{
+		// todo: check, whether we need to
+		// create a new model component object
+		NMModelComponent* comp = NMModelComponentFactory::instance().createModelComponent(
+				"NMModelComponent");
+		comp->setParent(controller);
+		QString compName = compElem.attribute("name");
+		if (compName.isEmpty())
+		{
+			delete comp;
+			NMErr(ctx, << "detected unnamed component!");
+			NMDebugCtx(ctx, << "done!");
+			return 0;
+		}
+		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
+
+		// add new component to the model controller and make sure it has a unique name
+		// map 'loaded' and finally assigned name for establishing host-child relationship
+		// further down
+		comp->setObjectName(compName);
+		//repo.insert(compName, comp);
+		QString finalName = controller->addComponent(comp, 0);
+		if (finalName.compare(compName) != 0)
+			comp->setObjectName(finalName);
+		nameRegister.insert(compName, finalName);
+
+		if (mainComp == 0)
+			mainComp = comp;
+
+		QDomElement propElem = compElem.firstChildElement("Property");
+		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
+		{
+			// we can only deal with the HostComponent after we've parsed everything
+			if (propElem.attribute("name").compare("HostComponent") == 0)
+				continue;
+
+			QVariant value = this->extractPropertyValue(propElem);
+			bool suc = comp->setProperty(propElem.attribute("name").toStdString().c_str(), value);
+
+			NMDebugInd(ind+2, << "setting " << propElem.attribute("name").toStdString()
+					<< "=" << value.toString().toStdString()
+					<< " - " << suc << endl);
+		}
+
+		QDomElement procElem = compElem.firstChildElement("Process");
+		if (!procElem.isNull())
+		{
+			NMProcess* proc = 0;
+			QString procName = procElem.attribute("name");
+			if (!procName.isEmpty())
+			{
+				NMDebugInd(ind+2, << "setting process '" << procName.toStdString()
+						<< "'" << endl);
+
+				proc = NMProcessFactory::instance().createProcess(procName);
+				proc->setParent(comp);
+				proc->setObjectName(procName);
+
+				QDomElement procPropElem = procElem.firstChildElement("Property");
+				for (; !procPropElem.isNull(); procPropElem = procPropElem.nextSiblingElement("Property"))
+				{
+					QVariant value = this->extractPropertyValue(procPropElem);
+					bool suc = proc->setProperty(procPropElem.attribute("name").toStdString().c_str(), value);
+
+					NMDebugInd(ind+3, << "setting " << procPropElem.attribute("name").toStdString()
+							<< "=" << value.toString().toStdString()
+							<< " - " << suc << endl);
+				}
+			}
+			comp->setProcess(proc);
+		}
+	}
+
+	// now iterate over all ModelComponents again and establish subcomponents linkage
+	compElem = modelElem.firstChildElement("ModelComponent");
+	for (; !compElem.isNull(); compElem = compElem.nextSiblingElement("ModelComponent"))
+	{
+		QString itCompName = compElem.attribute("name");
+		if (itCompName.isEmpty())
+			continue;
+
+		NMModelComponent* itComp = 0;
+		//itComp = repo.find(itCompName).value();
+		QString finalName = nameRegister[itCompName];
+		itComp = controller->getComponent(finalName);
+		if (itComp == 0)
+			continue;
+
+		NMDebugAI(<< "adding '" << finalName.toStdString() << "' to its host component" << endl);
+		QDomElement propElem = compElem.firstChildElement("Property");
+		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
+		{
+			if (propElem.attribute("name").compare("HostComponent") != 0)
+				continue;
+
+			QDomElement hostCompElem = propElem.firstChildElement("component_name");
+			//NMModelComponent* prevHost = 0;
+			NMModelComponent* hostComp = 0;
+			//QString hostName = nameRegister[hostCompElem.text()];
+			//if (repo.find(hostCompElem.text()) != repo.end())
+
+			//prevHost = itComp->getHostComponent();
+			//if (prevHost != 0)
+			//	prevHost->removeModelComponent(itComp->objectName());
+
+			// we either set the found host component or root as a host
+			//if (controller->getComponent(hostName) != 0)
+			//{
+			//	//hostComp = repo.find(hostCompElem.text()).value();
+			//	hostComp = controller->getComponent(hostName);
+			//	itComp->setHostComponent(hostComp);
+			//}
+			//else
+			if (nameRegister.find(hostCompElem.text()) == nameRegister.end() ||
+				hostCompElem.text().compare("root") == 0)
+			{
+				hostComp = controller->getComponent("root");
+				if (hostComp != 0)
+				{
+					hostComp->addModelComponent(itComp);
+					//itComp->setHostComponent(hostComp);
+				}
+				else
+				{
+					NMErr(ctx, << "couldn't get the root model component from "
+							<< "the model controller!");
+				}
+			}
+		}
+
+
+		NMDebugAI(<< "setting subcomponents for '" << itCompName.toStdString() << "'" << endl);
+		QDomElement subcompElem = compElem.firstChildElement("Subcomponents");
+		if (!subcompElem.isNull())
+		{
+			QStringList lst = subcompElem.text().split(" ", QString::SkipEmptyParts);
+			for (unsigned int i=0; i < lst.size(); ++i)
+			{
+				NMModelComponent* sub = 0;
+				if (nameRegister.find(lst.at(i)) != nameRegister.end())
+				{
+					QString finalName = nameRegister[lst.at(i)];
+					//sub = repo.find(lst.at(i)).value();
+					sub = controller->getComponent(finalName);
+					if (sub != 0)
+					{
+						itComp->addModelComponent(sub);
+					}
+				}
+			}
+		}
+	}
+
+
+	NMDebugCtx(ctx, << "done!");
+	return mainComp;
+}
+
+
+QVariant
+NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
+{
+	QVariant value;
+	bool bok;
+
+	QDomNode valueNode = propElem.firstChild();
+	if (valueNode.isNull() || !valueNode.isElement())
+		return value;
+
+	if (valueNode.nodeName() == "string")
+	{
+		value = QVariant::fromValue(valueNode.toElement().text());
+	}
+	else if (valueNode.nodeName() == "stringlist")
+	{
+		QStringList lst;
+		QDomNodeList nodeList = valueNode.childNodes();
+		for (unsigned int i = 0; i < nodeList.count(); ++i)
+			lst << nodeList.at(i).toElement().text();
+		value = QVariant::fromValue(lst);
+	}
+	else if (valueNode.nodeName() == "list_stringlist")
+	{
+		QList<QStringList> lsl;
+		QDomNodeList nodeList = valueNode.childNodes();
+		for (unsigned int i = 0; i < nodeList.count(); ++i)
+		{
+			QStringList lst;
+			QDomNodeList innerList = nodeList.at(i).childNodes();
+			for (unsigned int ii = 0; ii < innerList.count(); ++ii)
+				lst << innerList.at(ii).toElement().text();
+			lsl.push_back(lst);
+		}
+		value = QVariant::fromValue(lsl);
+	}
+	else if (valueNode.nodeName() == "list_list_stringlist")
+	{
+		QList<QList<QStringList> > llsl;
+		QDomNodeList outerList = valueNode.childNodes();
+		for (unsigned int i = 0; i < outerList.count(); ++i)
+		{
+			QList<QStringList> lsl;
+			QDomNodeList innerList = outerList.at(i).childNodes();
+			for (unsigned int ii = 0; ii < outerList.count(); ++ii)
+			{
+				QStringList lst;
+				QDomNodeList stringList = innerList.at(ii).childNodes();
+				for (unsigned int iii = 0; iii < stringList.count(); ++iii)
+					lst << stringList.at(iii).toElement().text();
+				lsl.push_back(lst);
+			}
+			llsl.push_back(lsl);
+		}
+		value = QVariant::fromValue(llsl);
+	}
+	else if (valueNode.nodeName() == "component_type")
+	{
+		NMItkDataObjectWrapper::NMComponentType type =
+				NMItkDataObjectWrapper::getComponentTypeFromString(valueNode.toElement().text());
+		value = QVariant::fromValue(type);
+	}
+#ifdef BUILD_RASSUPPORT	
+	else if (valueNode.nodeName() == "rasdaman_connection")
+	{
+		QString val = valueNode.toElement().text();
+		if (val.compare("yes", Qt::CaseInsensitive) == 0 ||
+			val.compare("1") == 0)
+		{
+			if (this->mRasconn->getConnector() != 0)
+			{
+				value = QVariant::fromValue(this->mRasconn);
+			}
+			else
+			{
+				value.setValue<NMRasdamanConnectorWrapper*>(0);
+				NMErr(ctx, << "rasdaman connector requested, but non available!");
+			}
+		}
+		else
+		{
+			value.setValue<NMRasdamanConnectorWrapper*>(0);
+		}
+	}
+#endif	
+	else if (valueNode.nodeName() == "uchar" ||
+			 valueNode.nodeName() == "ushort"
+			)
+	{
+		unsigned short v = valueNode.toElement().text().toUShort(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+	else if (valueNode.nodeName() == "char" ||
+			 valueNode.nodeName() == "short"
+			)
+	{
+		short v = valueNode.toElement().text().toShort(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+	else if (valueNode.nodeName() == "uint")
+	{
+		unsigned int v = valueNode.toElement().text().toUInt(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+	else if (valueNode.nodeName() == "int")
+	{
+		int v = valueNode.toElement().text().toInt(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+	else if (valueNode.nodeName() == "ulong")
+	{
+		unsigned long v = valueNode.toElement().text().toULong(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+	else if (valueNode.nodeName() == "long")
+	{
+		long v = valueNode.toElement().text().toLong(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+	else if (valueNode.nodeName() == "float")
+	{
+		float v = valueNode.toElement().text().toFloat(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+	else if (valueNode.nodeName() == "double")
+	{
+		double v = valueNode.toElement().text().toDouble(&bok);
+		if (bok)
+			value = QVariant::fromValue(v);
+	}
+
+	return value;
+}
+
+void
+NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
+		QString fileName, unsigned int indent, bool appendmode)
+{
+	NMDebugCtx(ctx, << "...");
+
+	QFile file(fileName);
+	if (!file.open(QIODevice::ReadWrite | QIODevice::Text))
+	{
+		NMErr(ctx, << "unable to create file '" << fileName.toStdString()
+				<< "'!");
+		NMDebugCtx(ctx, << "done!");
+		return;
+	}
+
+	// if the file is empty, then we're obviously not in appendmode!
+	if (file.size() == 0)
+		appendmode = false;
+
+	// if we're appending a model component, we read the file's content
+	// into the doc object and erase the file's contents; if we're not
+	// overwriting the entire file, we're not reading its content but
+	// only erasing it
+	QDomDocument doc;
+	if (appendmode)
+	{
+		if (!doc.setContent(&file))
+		{
+			NMErr(ctx, << "failed reading document structure from '"
+					<< fileName.toStdString() << "'!");
+			NMDebugCtx(ctx, << "done!");
+			return;
+		}
+	}
+	else
+	{
+		QDomElement modElem = doc.createElement("Model");
+		modElem.setAttribute("description", "the one and only model element");
+		doc.appendChild(modElem);
+	}
+	file.write("");
+	file.close();
+	file.open(QIODevice::WriteOnly | QIODevice::Text);
+
+	// we've got to have exactly one root tag element enclosing all sub
+	// model components, that's what we call 'Model' here
+
+	this->serialiseComponent(comp, doc);
+
+	QTextStream out(&file);
+	out << doc.toString(indent);
+	file.close();
+
+	NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
+		QDomDocument& doc)
+{
+	NMDebugCtx(ctx, << "...");
+
+	if (comp == 0)
+	{
+		NMErr(ctx, << "cannot serialise NULL component!");
+		return;
+	}
+	NMDebugAI(<< "serialising '" << comp->objectName().toStdString() << endl);
+	QDomElement rootElem = doc.documentElement();
+	QDomElement compElem = doc.createElement("ModelComponent");
+	compElem.setAttribute("name", comp->objectName());
+	rootElem.appendChild(compElem);
+
+	// serialise component's properties first
+	const QMetaObject* meta = comp->metaObject();
+	unsigned int nprop = meta->propertyCount();
+	for (unsigned int p=0; p < nprop; ++p)
+	{
+		QMetaProperty property = meta->property(p);
+		QDomElement propElem = doc.createElement("Property");
+		propElem.setAttribute("name", property.name());
+		compElem.appendChild(propElem);
+
+		QVariant v = comp->property(property.name());
+		QDomElement valueElem = this->createValueElement(doc, v);
+		propElem.appendChild(valueElem);
+	}
+
+	// serialise either a reference to subcomponents or
+	// the one and only process object
+
+	// go through the component chain and serialise each component
+	if (comp->getProcess() == 0)
+	{
+		QStringList strCompChain;
+		NMModelComponent* sc = comp->getInternalStartComponent();
+		while (sc != 0)
+		{
+			//this->serialiseComponent(sc, doc);
+			strCompChain << sc->objectName();
+			sc = comp->getNextInternalComponent();
+		}
+
+		QDomElement subComps = doc.createElement("Subcomponents");
+		compElem.appendChild(subComps);
+
+		QDomNode subList = doc.createTextNode(strCompChain.join(" "));
+		subComps.appendChild(subList);
+	}
+	// serialise NMProcess
+	else
+	{
+		NMProcess* proc = comp->getProcess();
+		const QMetaObject* procMeta = proc->metaObject();
+
+		QDomElement procElem = doc.createElement("Process");
+		procElem.setAttribute("name", procMeta->className());
+		compElem.appendChild(procElem);
+
+		unsigned int nprocprops = procMeta->propertyCount();
+		for (unsigned int pp=0; pp < nprocprops; ++pp)
+		{
+			QMetaProperty procProp = procMeta->property(pp);
+			QDomElement procPropElem = doc.createElement("Property");
+			procPropElem.setAttribute("name", procProp.name());
+			procElem.appendChild(procPropElem);
+
+			QVariant v = proc->property(procProp.name());
+			QDomElement valueElem = this->createValueElement(doc, v);
+			procPropElem.appendChild(valueElem);
+		}
+	}
+
+	NMDebugCtx(ctx, << "done!");
+}
+
+QDomElement NMModelSerialiser::createValueElement(QDomDocument& doc,
+		QVariant& dataValue)
+{
+	QDomElement valueElement;
+	QDomNode valueElementChild;
+
+	if (QString(dataValue.typeName()).compare("QString") == 0)
+	{
+		valueElement = doc.createElement("string");
+		valueElementChild = doc.createTextNode(dataValue.toString());
+		valueElement.appendChild(valueElementChild);
+	}
+	else if (QString(dataValue.typeName()).compare("QStringList") == 0)
+	{
+		valueElement = doc.createElement("stringlist");
+		QStringList sl = dataValue.value<QStringList>();
+		for (unsigned int s=0; s < sl.size(); ++s)
+		{
+			QVariant str = sl.at(s);
+			QDomElement childElem = this->createValueElement(doc, str);
+			valueElement.appendChild(childElem);
+		}
+	}
+	else if (QString(dataValue.typeName()).compare("QList<QStringList>") == 0)
+	{
+		valueElement = doc.createElement("list_stringlist");
+		QList<QStringList> lst = dataValue.value<QList<QStringList> >();
+		for (unsigned int l=0; l < lst.size(); ++l)
+		{
+			QVariant sl = QVariant::fromValue(lst.at(l));
+			QDomElement childElem = this->createValueElement(doc, sl);
+			valueElement.appendChild(childElem);
+		}
+	}
+	else if (QString(dataValue.typeName()).compare("QList<QList<QStringList> >") == 0)
+	{
+		valueElement = doc.createElement("list_list_stringlist");
+		QList<QList<QStringList> > llsl = dataValue.value<QList<QList<QStringList> > >();
+		for (unsigned int l=0; l < llsl.size(); ++l)
+		{
+			QVariant lsl = QVariant::fromValue(llsl.at(l));
+			QDomElement childElement = this->createValueElement(doc, lsl);
+			valueElement.appendChild(childElement);
+		}
+	}
+	else if (QString(dataValue.typeName()).compare("NMItkDataObjectWrapper::NMComponentType") == 0)
+	{
+		valueElement = doc.createElement("component_type");
+		QString stype = NMItkDataObjectWrapper::getComponentTypeString(
+				dataValue.value<NMItkDataObjectWrapper::NMComponentType>());
+		valueElementChild = doc.createTextNode(stype);
+		valueElement.appendChild(valueElementChild);
+	}
+#ifdef BUILD_RASSUPPORT	
+	else if (QString(dataValue.typeName()).compare("NMRasdamanConnectorWrapper*") == 0)
+	{
+		valueElement = doc.createElement("rasdaman_connection");
+		NMRasdamanConnectorWrapper* rr = dataValue.value<NMRasdamanConnectorWrapper*>();
+		if (rr != 0)
+		{
+			if (rr->getConnector() == 0)
+				valueElementChild = doc.createTextNode("no");
+			else
+				valueElementChild = doc.createTextNode("yes");
+		}
+		else
+			valueElementChild = doc.createTextNode("no");
+		valueElement.appendChild(valueElementChild);
+	}
+#endif	
+	else if (QString(dataValue.typeName()).compare("NMModelComponent*") == 0)
+	{
+		valueElement = doc.createElement("component_name");
+		NMModelComponent* comp = dataValue.value<NMModelComponent*>();
+		if (comp != 0)
+			valueElementChild = doc.createTextNode(comp->objectName());
+		else
+			valueElementChild = doc.createTextNode("");
+		valueElement.appendChild(valueElementChild);
+	}
+	else if (QString(dataValue.typeName()).compare("bool") == 0)
+	{
+		valueElement = doc.createElement("bool");
+		if (dataValue.toBool() == true)
+			valueElementChild = doc.createTextNode("true");
+		else
+			valueElementChild = doc.createTextNode("false");
+		valueElement.appendChild(valueElementChild);
+	}
+	else if (QString(dataValue.typeName()).compare("uchar") == 0 ||
+			 QString(dataValue.typeName()).compare("char") == 0 ||
+			 QString(dataValue.typeName()).compare("uint") == 0 ||
+			 QString(dataValue.typeName()).compare("int") == 0 ||
+			 QString(dataValue.typeName()).compare("ushort") == 0 ||
+			 QString(dataValue.typeName()).compare("short") == 0 ||
+			 QString(dataValue.typeName()).compare("ulong") == 0 ||
+			 QString(dataValue.typeName()).compare("long") == 0 ||
+			 QString(dataValue.typeName()).compare("float") == 0 ||
+			 QString(dataValue.typeName()).compare("double") == 0
+			)
+	{
+		valueElement = doc.createElement(dataValue.typeName());
+		valueElementChild = doc.createTextNode(dataValue.toString());
+		valueElement.appendChild(valueElementChild);
+	}
+	return valueElement;
+}
+
+//void NMModelSerialiser::serialiseModel(QMap<QString, NMModelComponent*>& repo,
+//		QString fileName)
+//{
+//
+//}
+
+//const QString
+//NMModelSerialiser::getXmlTypeNameFromPropertyType(QString propType)
+//{
+//	QString xmlType;
+//
+//	if (propType.compare("QString"))
+//		xmlType = "string";
+//	else if (propType.compare("QStringList"))
+//		xmlType = "stringlist";
+//	else if (propType.compare("QList<QStringList>"))
+//		xmlType = "list_stringlist";
+//	else if (propType.compare("QList<QList<QStringList> >"))
+//		xmlType = "list_list_stringlist";
+//	else if (propType.compare("NMItkDataObjectWrapper::NMComponentType"))
+//		xmlType = "component_type";
+//	else if (propType.compare("NMRasdamanConnectorWrapper*"))
+//		xmlType = "rasdaman_connection";
+//	else if (propType.compare("bool"))
+//		xmlType = "bool";
+//	else if (propType.compare("uchar"))
+//		xmlType = "unsigned_char";
+//	else if (propType.compare("char"))
+//		xmlType = "char";
+//	else if (propType.compare("uint"))
+//		xmlType = "unsigned_int";
+//	else if (propType.compare("int"))
+//		xmlType = "int";
+//	else if (propType.compare("ushort"))
+//		xmlType = "unsigned_short";
+//	else if (propType.compare("short"))
+//		xmlType = "short";
+//	else if (propType.compare("ulong"))
+//		xmlType = "unsigned_long";
+//	else if (propType.compare("long"))
+//		xmlType = "long";
+//	else if (propType.compare("float"))
+//		xmlType = "float";
+//	else if (propType.compare("double"))
+//		xmlType = "double";
+//	else
+//		xmlType = propType;
+//
+//	return xmlType;
+//}
+
+
+
+
+
+

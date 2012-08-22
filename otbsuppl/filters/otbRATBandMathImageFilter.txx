@@ -1,0 +1,473 @@
+ /****************************************************************************** 
+ * Created by Alexander Herzig 
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ *
+ * This file is part of 'LUMASS', which is free software: you can redistribute
+ * it and/or modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the License, 
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************/
+/*=========================================================================
+
+  Program:   ORFEO Toolbox
+  Language:  C++
+  Date:      $Date$
+  Version:   $Revision$
+
+
+  Copyright (c) Centre National d'Etudes Spatiales. All rights reserved.
+  See OTBCopyright.txt for details.
+
+  Some parts of this code are derived from ITK. See ITKCopyright.txt
+  for details.
+
+
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notices for more information.
+
+=========================================================================*/
+#ifndef __otbRATBandMathImageFilter_txx
+#define __otbRATBandMathImageFilter_txx
+#include "otbRATBandMathImageFilter.h"
+
+#include "itkImageRegionIterator.h"
+#include "itkImageRegionConstIterator.h"
+#include "itkNumericTraits.h"
+#include "itkProgressReporter.h"
+#include "otbMacro.h"
+#include "itkMacro.h"
+#include "otbAttributeTable.h"
+
+#include <iostream>
+#include <string>
+
+namespace otb
+{
+
+/** Constructor */
+template <class TImage>
+RATBandMathImageFilter<TImage>
+::RATBandMathImageFilter()
+{
+  //This number will be incremented each time an image
+  //is added over the one minimumrequired
+  this->SetNumberOfRequiredInputs( 1 );
+  this->InPlaceOff();
+
+  m_UnderflowCount = 0;
+  m_OverflowCount = 0;
+  m_ThreadUnderflow.SetSize(1);
+  m_ThreadOverflow.SetSize(1);
+}
+
+/** Destructor */
+template <class TImage>
+RATBandMathImageFilter<TImage>
+::~RATBandMathImageFilter()
+{
+}
+
+template <class TImage>
+void RATBandMathImageFilter<TImage>
+::PrintSelf(std::ostream& os, itk::Indent indent) const
+{
+  Superclass::PrintSelf(os, indent);
+
+  os << indent << "Expression: "      << m_Expression                  << std::endl;
+  os << indent << "Computed values follow:"                            << std::endl;
+  os << indent << "UnderflowCount: "  << m_UnderflowCount              << std::endl;
+  os << indent << "OverflowCount: "   << m_OverflowCount               << std::endl;
+  os << indent << "itk::NumericTraits<PixelType>::NonpositiveMin()  :  " 
+               << itk::NumericTraits<PixelType>::NonpositiveMin()      << std::endl;
+  os << indent << "itk::NumericTraits<PixelType>::max()  :             " 
+         << itk::NumericTraits<PixelType>::max()                 << std::endl;
+}
+
+template<class TImage>
+void RATBandMathImageFilter<TImage>
+::SetNthAttributeTable(unsigned int idx, AttributeTable::Pointer tab,
+		std::vector<std::string> vAttrNames	)
+{
+	// exclude invalid settings
+	if (this->GetNumberOfInputs() > idx+1 || idx < 0 || tab.IsNull())
+		return;
+
+	this->m_VAttrTypes.resize(this->GetNumberOfInputs());
+	this->m_VAttrTypes[idx].resize(vAttrNames.size());
+
+	unsigned int i;
+	for (unsigned int c=0; c < vAttrNames.size(); c++)
+	{
+		i = tab->ColumnExists(vAttrNames[c]);
+		if (i >= 0)
+			this->m_VAttrTypes[idx][c] = tab->GetColumnType(i);
+		else
+			return;
+	}
+
+	m_VRAT.resize(this->GetNumberOfInputs());
+	m_VRAT[idx] = tab;
+
+	m_VTabAttr.resize(this->GetNumberOfInputs());
+	m_VTabAttr[idx] = vAttrNames;
+
+	this->Modified();
+}
+
+template<class TImage>
+AttributeTable::Pointer RATBandMathImageFilter<TImage>
+::GetNthAttributeTable(unsigned int idx)
+{
+	if (idx < 0 || idx >= m_VRAT.size())
+		return 0;
+
+	return m_VRAT[idx];
+}
+
+template<class TImage>
+std::vector<std::string> RATBandMathImageFilter<TImage>
+::GetNthTableAttributes(unsigned int idx)
+{
+	if (idx < 0 || idx >= m_VTabAttr.size())
+	{
+		std::vector<std::string> ret;
+		return ret;
+	}
+
+	return m_VTabAttr[idx];
+}
+
+
+template <class TImage>
+void RATBandMathImageFilter<TImage>
+::SetNthInput(unsigned int idx, const ImageType * image)
+{  
+  this->SetInput(idx, const_cast<TImage *>( image ));
+  unsigned int nbInput = idx+1;//this->GetNumberOfInputs();
+  m_VVarName.resize(nbInput+4);
+  std::ostringstream varName; 
+  varName << "b" << nbInput;
+  m_VVarName[idx] = varName.str();
+  
+  m_VVarName[idx+1] = "idxX";
+  m_VVarName[idx+2] = "idxY";
+  m_VVarName[idx+3] = "idxPhyX";
+  m_VVarName[idx+4] = "idxPhyY"; 
+
+}
+
+template <class TImage>
+void RATBandMathImageFilter<TImage>
+::SetNthInput(unsigned int idx, const ImageType * image, const std::string& varName)
+{
+  this->SetInput(idx, const_cast<TImage *>( image ));
+  m_VVarName.resize(this->GetNumberOfInputs()+4);
+  m_VVarName[idx] = varName;
+  
+  m_VVarName[idx+1] = "idxX";
+  m_VVarName[idx+2] = "idxY";
+  m_VVarName[idx+3] = "idxPhyX";
+  m_VVarName[idx+4] = "idxPhyY"; 
+}
+
+template <class TImage>
+void RATBandMathImageFilter<TImage>
+::SetNthInputName(unsigned int idx, const std::string& varName)
+{
+  m_VVarName[idx] = varName;
+}
+
+template <typename TImage>
+TImage * RATBandMathImageFilter<TImage>
+::GetNthInput(unsigned int idx)
+{
+  return const_cast<TImage *>(this->GetInput(idx));
+}
+
+template< typename TImage >
+void RATBandMathImageFilter<TImage>
+::SetExpression(const std::string& expression)
+{
+  if (m_Expression != expression)
+    m_Expression = expression;
+  this->Modified();
+}
+
+template< typename TImage >
+std::string RATBandMathImageFilter<TImage>
+::GetExpression() const
+{
+  return m_Expression;
+}
+
+template< typename TImage >
+std::string RATBandMathImageFilter<TImage>
+::GetNthInputName(unsigned int idx) const
+{
+  return m_VVarName.at(idx);
+}
+
+template< typename TImage >
+void RATBandMathImageFilter<TImage>
+::BeforeThreadedGenerateData()
+{
+  typename std::vector<ParserType::Pointer>::iterator        itParser;
+  typename std::vector< std::vector<PixelType> >::iterator   itVImage;
+  unsigned int nbThreads = this->GetNumberOfThreads();
+  unsigned int nbInputImages = this->GetNumberOfInputs();
+  unsigned int nbAccessIndex = 4; //to give access to image and physical index 
+  unsigned int i, j;
+  unsigned int inputSize[2];
+  std::vector< std::string > tmpIdxVarNames;
+
+  tmpIdxVarNames.resize(nbAccessIndex);
+  tmpIdxVarNames.at(0) = "idxX";
+  tmpIdxVarNames.at(1) = "idxY";
+  tmpIdxVarNames.at(2) = "idxPhyX";
+  tmpIdxVarNames.at(3) = "idxPhyY";
+
+  // Check if input image dimensions matches
+  inputSize[0] = this->GetNthInput(0)->GetLargestPossibleRegion().GetSize(0);
+  inputSize[1] = this->GetNthInput(0)->GetLargestPossibleRegion().GetSize(1);
+
+  for(unsigned int p = 1; p < nbInputImages; p++)
+    {
+    if((inputSize[0] != this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(0))
+       || (inputSize[1] != this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(1)))
+      {
+      itkExceptionMacro(<< "Input images must have the same dimensions." << std::endl
+                        << "band #1 is [" << inputSize[0] << ";" << inputSize[1] << "]" << std::endl
+                        << "band #" << p+1 << " is [" 
+                        << this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(0) << ";" 
+                        << this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(1) << "]");
+      }
+    }
+
+  // Store images specs
+  m_Spacing = this->GetNthInput(0)->GetSpacing();
+  m_Origin = this->GetNthInput(0)->GetOrigin();
+
+  // Allocate and initialize the thread temporaries
+  m_ThreadUnderflow.SetSize(nbThreads);
+  m_ThreadUnderflow.Fill(0);
+  m_ThreadOverflow.SetSize(nbThreads);
+  m_ThreadOverflow.Fill(0);
+  m_VParser.resize(nbThreads);
+  m_AImage.resize(nbThreads);
+  m_NbVar = nbInputImages+nbAccessIndex;
+  m_VVarName.resize(m_NbVar);
+  
+  // attribute table support
+  m_VAttrValues.resize(nbThreads);
+
+  for(itParser = m_VParser.begin(); itParser < m_VParser.end(); ++itParser)
+  {
+    *itParser = ParserType::New();
+  }
+
+  for(i = 0; i < nbThreads; i++)
+  {
+    m_AImage.at(i).resize(m_NbVar);
+    m_VAttrValues.at(i).resize(nbInputImages);
+    m_VParser.at(i)->SetExpr(m_Expression);
+
+    // debug
+    std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
+    std::cout << "no. of vars: " << m_NbVar << std::endl;
+    std::cout << "parser expression: " << m_VParser[i]->GetExpr() << std::endl << std::endl;
+  
+    std::cout << "image loop ----------------------------------------------" << std::endl << std::endl;
+    for(j=0; j < nbInputImages; j++)
+    {
+      m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
+      std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img #" << j << std::endl;
+
+      //attribute table support
+      if (m_VRAT.size() > 0)
+      {
+    	  if (&m_VRAT[j] != 0)
+    	  {
+			  m_VAttrValues[i][j].resize(m_VTabAttr[j].size());
+			  std::string bname = this->GetNthInputName(j) + "__";
+			  for (unsigned int c = 0; c < m_VTabAttr[j].size(); c++)
+			  {
+				  std::string vname = bname + m_VTabAttr[j][c];
+
+				  std::cout << "Parser #" << i << ": define var: " << vname << " for img #" << j << std::endl;
+
+				  m_VParser[i]->DefineVar(vname, &(m_VAttrValues[i][j][c]));
+			  }
+    	  }
+      }
+
+    }
+    std::cout << std::endl;
+
+    std::cout << "image idx loop ----------------------------------------------" << std::endl << std::endl;
+    for(j=nbInputImages; j < nbInputImages+nbAccessIndex; j++)
+    {
+      m_VVarName.at(j) = tmpIdxVarNames.at(j-nbInputImages);
+      std::cout << "set varname for img#" << j << " to " << m_VVarName[j] << std::endl;
+      m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
+      std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img-idx #" << j << std::endl;
+    }
+    std::cout << std::endl;
+  }
+}
+
+template< typename TImage >
+void RATBandMathImageFilter<TImage>
+::AfterThreadedGenerateData()
+{
+  unsigned int nbThreads = this->GetNumberOfThreads();
+  unsigned int i;
+  
+  m_UnderflowCount = 0;
+  m_OverflowCount = 0;
+
+  // Accumulate counts for each thread
+  for(i = 0; i < nbThreads; i++)
+    {
+    m_UnderflowCount += m_ThreadUnderflow[i];
+    m_OverflowCount += m_ThreadOverflow[i];
+    }
+
+  if((m_UnderflowCount != 0) || (m_OverflowCount!=0))
+    otbWarningMacro(<< std::endl 
+        << "The Following Parsed Expression  :  "
+        << this->GetExpression()                                 << std::endl
+        << "Generated " << m_UnderflowCount << " Underflow(s) " 
+        << "And " << m_OverflowCount        << " Overflow(s) "   << std::endl
+        << "The Parsed Expression, The Inputs And The Output "  
+        << "Type May Be Incompatible !");        
+}
+
+template< typename TImage >
+void RATBandMathImageFilter<TImage>
+::ThreadedGenerateData(const ImageRegionType& outputRegionForThread,
+           int threadId)
+{
+  double value; 
+  unsigned int j;
+  unsigned int nbInputImages = this->GetNumberOfInputs();
+  
+  typedef itk::ImageRegionConstIterator<TImage> ImageRegionConstIteratorType;
+  
+  /** Attribute table support */
+  // create a vector indicating valid attribute table pointers
+  std::vector<bool> vTabAvail;
+  vTabAvail.resize(nbInputImages);
+  for (unsigned int ii=0; ii < nbInputImages; ii++)
+  {
+	  if (m_VRAT.size() > 0)
+	  {
+		  if (&m_VRAT[ii] != 0)
+		  {
+			  if (m_VRAT[ii].IsNotNull())
+				  vTabAvail[ii] = true;
+		  }
+	  }
+	  else
+		  vTabAvail[ii] = false;
+  }
+
+  std::vector< ImageRegionConstIteratorType > Vit;
+  Vit.resize(nbInputImages);
+  for(j=0; j < nbInputImages; j++)
+    {
+    Vit[j] = ImageRegionConstIteratorType (this->GetNthInput(j), outputRegionForThread);
+    }
+  
+  itk::ImageRegionIterator<TImage> ot (this->GetOutput(), outputRegionForThread);
+  
+  // support progress methods/callbacks
+  itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
+
+  while(!Vit.at(0).IsAtEnd())
+    {
+    for(j=0; j < nbInputImages; j++)
+    {
+      m_AImage.at(threadId).at(j) = static_cast<double>(Vit.at(j).Get());
+
+      // raster attribute table support ......................................................................
+      if (vTabAvail[j])
+      {
+    	  for (unsigned int c=0; c < m_VTabAttr[j].size(); c++)
+    	  {
+			  switch(m_VAttrTypes[j][c])
+			  {
+			  case AttributeTable::ATTYPE_DOUBLE:
+				  m_VAttrValues[threadId][j][c] = static_cast<double>(m_VRAT[j]->GetDblValue(m_VTabAttr[j][c], Vit[j].Get()));
+				  break;
+			  case AttributeTable::ATTYPE_INT:
+				  m_VAttrValues[threadId][j][c] = static_cast<double>(m_VRAT[j]->GetIntValue(m_VTabAttr[j][c], Vit[j].Get()));
+				  break;
+			  }
+    	  }
+      }
+      // .......................................................................................................
+
+    }
+    
+    // Image Indexes
+    for(j=0; j < 2; j++)
+      {
+      m_AImage.at(threadId).at(nbInputImages+j)   = static_cast<double>(Vit.at(0).GetIndex()[j]);
+      }
+    for(j=0; j < 2; j++)
+      {
+      m_AImage.at(threadId).at(nbInputImages+2+j) = static_cast<double>(m_Origin[j])
+        +static_cast<double>(Vit.at(0).GetIndex()[j]) * static_cast<double>(m_Spacing[j]) ;
+      }
+
+    try
+      {
+      value = m_VParser.at(threadId)->Eval();
+      }
+    catch(itk::ExceptionObject& err)
+      {
+      itkExceptionMacro(<< err);
+      }
+    
+    // Case value is equal to -inf or inferior to the minimum value
+    // allowed by the pixelType cast
+    if (value < double(itk::NumericTraits<PixelType>::NonpositiveMin()))
+      {
+      ot.Set(itk::NumericTraits<PixelType>::NonpositiveMin());
+      m_ThreadUnderflow[threadId]++;
+      }
+    // Case value is equal to inf or superior to the maximum value
+    // allowed by the pixelType cast
+    else if (value > double(itk::NumericTraits<PixelType>::max()))
+      {
+      ot.Set(itk::NumericTraits<PixelType>::max());
+      m_ThreadOverflow[threadId]++;
+      }
+    else
+      {
+      ot.Set(static_cast<PixelType>(value));
+      }
+
+    for(j=0; j < nbInputImages; j++)
+      {
+      ++(Vit.at(j));
+      }
+
+    ++ot;
+
+    progress.CompletedPixel();
+    }
+}
+
+}// end namespace otb
+
+#endif

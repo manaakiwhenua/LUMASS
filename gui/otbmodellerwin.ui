@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OtbModellerWin</class>
+ <widget class="QMainWindow" name="OtbModellerWin">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>559</width>
+    <height>484</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>LUMASS</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QVTKWidget" name="qvtkWidget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="cursor">
+       <cursorShape>ArrowCursor</cursorShape>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>559</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuObject">
+    <property name="title">
+     <string>Object</string>
+    </property>
+    <addaction name="actionLoad_VTK_PolyData"/>
+    <addaction name="separator"/>
+    <addaction name="actionSaveAsVTKPolyData"/>
+    <addaction name="actionSaveAsVectorLayerOGR"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoad_Layer"/>
+    <addaction name="actionLoad_Vector_Layer"/>
+    <addaction name="actionImport_3D_Point_Set"/>
+    <addaction name="separator"/>
+    <addaction name="actionImportODBC"/>
+    <addaction name="separator"/>
+    <addaction name="actionRemoveAllObjects"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menu3D_Vis">
+    <property name="title">
+     <string>Map</string>
+    </property>
+    <addaction name="actionFullExtent"/>
+    <addaction name="separator"/>
+    <addaction name="actionToggle3DSimpleMode"/>
+    <addaction name="actionToggle3DStereoMode"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menuMOSO">
+    <property name="title">
+     <string>Analysis</string>
+    </property>
+    <addaction name="actionMOSO"/>
+    <addaction name="separator"/>
+    <addaction name="actionTest"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="actionComponents_View"/>
+    <addaction name="actionModel_View"/>
+   </widget>
+   <addaction name="menuObject"/>
+   <addaction name="menuMOSO"/>
+   <addaction name="menu3D_Vis"/>
+   <addaction name="menuView"/>
+  </widget>
+  <widget class="QToolBar" name="mainToolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="sizeGripEnabled">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QDockWidget" name="componentsWidget">
+   <property name="floating">
+    <bool>false</bool>
+   </property>
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::AllDockWidgetAreas</set>
+   </property>
+   <property name="windowTitle">
+    <string>Model Components</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="ModelComponentList" name="modelCompList">
+        <property name="font">
+         <font>
+          <family>AlArabiya</family>
+         </font>
+        </property>
+        <property name="mouseTracking">
+         <bool>true</bool>
+        </property>
+        <property name="editTriggers">
+         <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+        </property>
+        <property name="tabKeyNavigation">
+         <bool>true</bool>
+        </property>
+        <property name="dragEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="dragDropOverwriteMode">
+         <bool>false</bool>
+        </property>
+        <property name="dragDropMode">
+         <enum>QAbstractItemView::DragOnly</enum>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>false</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::MultiSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
+       </widget>
+       <widget class="NMProcCompList" name="processComponents">
+        <property name="mouseTracking">
+         <bool>false</bool>
+        </property>
+        <item>
+         <property name="text">
+          <string>ImageReader</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>ImageWriter</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>NeighbourCounter</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>MapAlgebra</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>RandomImage</string>
+         </property>
+        </item>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="modelViewDock">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="acceptDrops">
+    <bool>true</bool>
+   </property>
+   <property name="floating">
+    <bool>false</bool>
+   </property>
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <property name="windowTitle">
+    <string>Model View</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>559</width>
+      <height>130</height>
+     </size>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_4">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetMaximumSize</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="mouseTracking">
+        <bool>true</bool>
+       </property>
+       <property name="acceptDrops">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="layerInfoDock">
+   <property name="windowTitle">
+    <string>Layer Info</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3">
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QTableWidget" name="layerInfoTable">
+       <property name="columnCount">
+        <number>0</number>
+       </property>
+       <attribute name="verticalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="verticalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <action name="actionLoad_Layer">
+   <property name="text">
+    <string>Import Image Layer ...</string>
+   </property>
+  </action>
+  <action name="actionImport_3D_Point_Set">
+   <property name="text">
+    <string>Import 3D Point Set ...</string>
+   </property>
+  </action>
+  <action name="actionToggle3DStereoMode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>3D Stereo View</string>
+   </property>
+  </action>
+  <action name="actionLoad_VTK_PolyData">
+   <property name="text">
+    <string>Load VTK PolyData ...</string>
+   </property>
+  </action>
+  <action name="actionLoad_Vector_Layer">
+   <property name="text">
+    <string>Import Vector Layer ...</string>
+   </property>
+  </action>
+  <action name="actionToggle3DSimpleMode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>3D View</string>
+   </property>
+  </action>
+  <action name="actionMOSO">
+   <property name="text">
+    <string>MOSO ...</string>
+   </property>
+  </action>
+  <action name="actionComponents_View">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Show Model Components</string>
+   </property>
+  </action>
+  <action name="actionModel_View">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Show Model View</string>
+   </property>
+  </action>
+  <action name="actionRemoveAllObjects">
+   <property name="text">
+    <string>Remove All Objects!</string>
+   </property>
+  </action>
+  <action name="actionFullExtent">
+   <property name="text">
+    <string>Full Extent</string>
+   </property>
+  </action>
+  <action name="actionSaveAsVTKPolyData">
+   <property name="text">
+    <string>Save As VTK PolyData ...</string>
+   </property>
+  </action>
+  <action name="actionMapUniqueValues">
+   <property name="text">
+    <string>Map Unique Values ...</string>
+   </property>
+  </action>
+  <action name="actionTest">
+   <property name="text">
+    <string>test</string>
+   </property>
+  </action>
+  <action name="actionFieldCalculator">
+   <property name="text">
+    <string>Field Calculator ...</string>
+   </property>
+  </action>
+  <action name="actionImportODBC">
+   <property name="text">
+    <string>Import Table (ODBC) ...</string>
+   </property>
+   <property name="toolTip">
+    <string>Import ODBC Data Base Table</string>
+   </property>
+  </action>
+  <action name="actionSaveAsVectorLayerOGR">
+   <property name="text">
+    <string>Save As Vector Layer (OGR) ...</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>ModelComponentList</class>
+   <extends>QListWidget</extends>
+   <header>modelcomponentlist.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QVTKWidget</class>
+   <extends>QWidget</extends>
+   <header>QVTKWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>NMProcCompList</class>
+   <extends>QListWidget</extends>
+   <header>NMProcCompList.h</header>
+  </customwidget>
+  <customwidget>
+   <class>NMModelViewWidget</class>
+   <extends>QWidget</extends>
+   <header>NMModelViewWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

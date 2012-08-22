@@ -1,0 +1,92 @@
+###############################################
+# created by Alexander Herzig
+# Copyright 2010, 2011, 2012 Landcare Research New Zealand Ltd 
+#
+# Purpose: This is a commented 'LUMASS optimisation settings file'
+#          explaining the most important features 
+#
+
+#LUMASS Optimization Settings
+
+<PROBLEM>
+DVTYPE=DVTYPE_CONTINUOUS
+CRITERION_LAYER=escri_2
+LAND_USE_FIELD=Agribase_1
+AREA_FIELD=Areah
+<PROBLEM_END>
+
+<CRITERIA>
+# number of land use options (i.e. allocated resource)
+NUM_OPTIONS=2
+#
+# land use identifiers can be arbitrarily chosen but must not contain 
+# whitespace, tab, or endline characters etc.
+#OPTIONS=<land use 1> [ <land use 2> ] [ <land use 3> ] ... 
+OPTIONS=Dairy Forestry
+#
+# the criterion identifier can be arbitraily chosen but must not contain
+# any whitespace, tab, or newline characters
+#CRI_X=<criterion> <criterion performance for land use 1> [ <criterion performance for land use 2> ] ...
+CRI_1=Nleach DNLrelN FNLrelN
+#
+#
+#EVAL_1=<criterion> <rel performance for lu 1> [ <rel performance for lu 2> ] ...
+#EVAL_1=Nleach DNLrel FNLrel
+<CRITERIA_END>
+
+<OBJECTIVES>
+# aggregation method parameter: < WSUM | "any other string" >
+AGGR_METHOD=WSUM
+#
+# criterion is one of the specified criterions in the CRITERIA section 
+# (i.e. CRI_X=<criterion> )
+# if more than one criterion is subject to optimisation, the sum of all
+# specified weights must equal one!
+#OBJ_X=< minimise | maximise > <criterion> <weight>
+OBJ_1=minimise Nleach 1
+<OBJECTIVES_END>
+
+<AREAL_CONSTRAINTS>
+# areal constraints for resource allocation
+# - each given constraint applies to a single resource (land use)
+# - the area share can be given in different units, e.g. percent of total, 
+#   map units, etc.
+#   -> map units refer to the units used within the specified area field 
+#      (cf. section PROBLEM)
+#   -> percent_of_selected is interpreted as percent_of_total, if no 
+#      selection actually exists
+#   -> percent_of_zone refers to the maximum available area available to the 
+#      specified resource (land use) in terms of the specified zone field
+# - zoning is non-exclusive, i.e. to restrict a resource to a particular zone
+#   the resource has to be excluded from all other zones explicitly
+#
+# AREAL_CONS_X=<land use>[:<ZoneField>] < >= | <= | = > <area share> < map_units | percent_of_total | percent_of_selected | percent_of_zone >
+# 
+# EXAMPLES 
+AREAL_CONS_1=Dairy:Luzones >= 25 percent_of_zone
+AREAL_CONS_2=Dairy:InvLuzones = 0 percent_of_zone
+AREAL_CONS_3=Forestry >= 18 percent_of_total
+<AREAL_CONS_END>
+
+<OBJECTIVE_CONSTRAINTS>
+<OBJECTIVE_CONS_END>
+
+# criteria constraints are only allowed for land use options 
+# accounted for in the optimisation procedure; all spcified
+# performance measures have to be given per spatial unit
+# (e.g t/ha, mm/m2, etc.), whereas the spatial unit has to
+# be the same as the area values in 'AREA_FIELD'
+<CRITERIA_CONSTRAINTS>
+#
+#CRI_CONS_x=<label> <land use | "total" > < performance indicator field for LU1> [ <performance indicator field for LU2> ... ] < <= | = | >= > <criterion cap> 
+#
+CRI_CONS_1=GrossMargin Dairy DGMrelha >= 527799150.554
+CRI_CONS_2=GrossMargin Forestry FGMrelha >= 86758995.576
+#
+# if an overall total (over all land uses) cap for a criterion is
+# required 'total' has to be specified as land use and a list of 
+# fields holding the appropriate performance indicators; the order
+# of the fields has to match the order of the land use options 
+# specified with OPTIONS (s. above)
+# CRI_CONS_3=NitrogenLeaching total DNLrelha FNLrelha ... <= value
+<CRITERIA_CONS_END>

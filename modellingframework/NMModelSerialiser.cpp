@@ -50,7 +50,6 @@ NMModelSerialiser::~NMModelSerialiser()
 }
 
 NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
-		//QMap<QString, NMModelComponent*>& repo,
 		NMModelController* controller
 #ifdef BUILD_RASSUPPORT		
 		,
@@ -93,11 +92,7 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 	QDomElement compElem = modelElem.firstChildElement("ModelComponent");
 	for (; !compElem.isNull(); compElem = compElem.nextSiblingElement("ModelComponent"))
 	{
-		// todo: check, whether we need to
-		// create a new model component object
-		NMModelComponent* comp = NMModelComponentFactory::instance().createModelComponent(
-				"NMModelComponent");
-		comp->setParent(controller);
+		NMModelComponent* comp = 0;
 		QString compName = compElem.attribute("name");
 		if (compName.isEmpty())
 		{
@@ -106,18 +101,28 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 			NMDebugCtx(ctx, << "done!");
 			return 0;
 		}
+		else if (compName.compare("root") == 0)
+		{
+			comp = controller->getComponent("root");
+			nameRegister.insert("root", "root");
+		}
+		else
+		{
+			comp = NMModelComponentFactory::instance().createModelComponent(
+					"NMModelComponent");
+			comp->setParent(controller);
+
+			// add new component to the model controller and make sure it has a unique name
+			// map 'loaded' and finally assigned name for establishing host-child relationship
+			// further down
+			comp->setObjectName(compName);
+			QString finalName = controller->addComponent(comp, 0);
+			if (finalName.compare(compName) != 0)
+				comp->setObjectName(finalName);
+			nameRegister.insert(compName, finalName);
+		}
+
 		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
-
-		// add new component to the model controller and make sure it has a unique name
-		// map 'loaded' and finally assigned name for establishing host-child relationship
-		// further down
-		comp->setObjectName(compName);
-		//repo.insert(compName, comp);
-		QString finalName = controller->addComponent(comp, 0);
-		if (finalName.compare(compName) != 0)
-			comp->setObjectName(finalName);
-		nameRegister.insert(compName, finalName);
-
 		if (mainComp == 0)
 			mainComp = comp;
 
@@ -174,7 +179,6 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 			continue;
 
 		NMModelComponent* itComp = 0;
-		//itComp = repo.find(itCompName).value();
 		QString finalName = nameRegister[itCompName];
 		itComp = controller->getComponent(finalName);
 		if (itComp == 0)
@@ -188,31 +192,18 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 				continue;
 
 			QDomElement hostCompElem = propElem.firstChildElement("component_name");
-			//NMModelComponent* prevHost = 0;
 			NMModelComponent* hostComp = 0;
-			//QString hostName = nameRegister[hostCompElem.text()];
-			//if (repo.find(hostCompElem.text()) != repo.end())
-
-			//prevHost = itComp->getHostComponent();
-			//if (prevHost != 0)
-			//	prevHost->removeModelComponent(itComp->objectName());
-
-			// we either set the found host component or root as a host
-			//if (controller->getComponent(hostName) != 0)
-			//{
-			//	//hostComp = repo.find(hostCompElem.text()).value();
-			//	hostComp = controller->getComponent(hostName);
-			//	itComp->setHostComponent(hostComp);
-			//}
-			//else
-			if (nameRegister.find(hostCompElem.text()) == nameRegister.end() ||
-				hostCompElem.text().compare("root") == 0)
+			if ((nameRegister.find(hostCompElem.text()) == nameRegister.end() ||
+				 (hostCompElem.text().compare("root") == 0  &&
+				  nameRegister.find("root") == nameRegister.end())
+				 )                                                                   &&
+				itComp->objectName().compare("root") != 0
+			   )
 			{
 				hostComp = controller->getComponent("root");
 				if (hostComp != 0)
 				{
 					hostComp->addModelComponent(itComp);
-					//itComp->setHostComponent(hostComp);
 				}
 				else
 				{
@@ -234,7 +225,6 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 				if (nameRegister.find(lst.at(i)) != nameRegister.end())
 				{
 					QString finalName = nameRegister[lst.at(i)];
-					//sub = repo.find(lst.at(i)).value();
 					sub = controller->getComponent(finalName);
 					if (sub != 0)
 					{
@@ -428,6 +418,8 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 	}
 	else
 	{
+		// we've got to have exactly one root tag element enclosing all sub
+		// model components, that's what we call 'Model' here
 		QDomElement modElem = doc.createElement("Model");
 		modElem.setAttribute("description", "the one and only model element");
 		doc.appendChild(modElem);
@@ -435,9 +427,6 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 	file.write("");
 	file.close();
 	file.open(QIODevice::WriteOnly | QIODevice::Text);
-
-	// we've got to have exactly one root tag element enclosing all sub
-	// model components, that's what we call 'Model' here
 
 	this->serialiseComponent(comp, doc);
 

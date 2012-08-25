@@ -36,37 +36,6 @@ NMModelController::~NMModelController()
 {
 }
 
-//bool NMModelController::loadModelFromFile(const QString& fileName,
-//		NMRasdamanConnectorWrapper& rasWrapper)
-//{
-//	QMapIterator<QString, NMModelComponent*> it(this->mComponentMap);
-//	while(it.hasNext())
-//	{
-//		NMModelComponent* comp = it.next().value();
-//		comp->destroySubComponents(this->mComponentMap);
-//	}
-//	this->mComponentMap.clear();
-//
-//
-//	NMModelSerialiser s;
-//	this->mRootComponent = s.parseComponent(fileName, this->mComponentMap, rasWrapper);
-//
-//	if (this->mRootComponent != 0)
-//		return true;
-//	else
-//		return false;
-//}
-//
-//void NMModelController::saveModel(const QString& fileName)
-//{
-//	NMModelComponent* root = this->identifyRootComponent();
-//	if (root == 0)
-//		return;
-//
-//	NMModelSerialiser s;
-//	s.serialiseComponent(root, fileName, 4);
-//}
-
 NMModelComponent* NMModelController::identifyRootComponent(void)
 {
 	NMDebugCtx(ctx, << "...");

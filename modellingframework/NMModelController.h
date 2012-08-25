@@ -59,11 +59,6 @@ public:
 	const QMap<QString, NMModelComponent*>& getRepository(void)
 			{return this->mComponentMap;}
 
-//	bool loadModelFromFile(const QString& fileName,
-//			NMRasdamanConnectorWrapper& rasWrapper);
-//	void saveModel(const QString& fileName);
-
-
 protected:
 	QMap<QString, NMModelComponent*> mComponentMap;
 	NMModelComponent* mRootComponent;

@@ -423,17 +423,20 @@ void NMModelViewWidget::saveItems(void)
 	// we save either all selected items, the item under the mouse pointer
 	// or all items of the scene
 	QList<QGraphicsItem*> items = this->mModelScene->selectedItems();
-	if (items.isEmpty())// && items.count() == 0)
+	QStringList savecomps;
+	if (items.isEmpty())
 	{
-		if (!this->mModelScene->items().isEmpty()) // .count() > 0)
+		if (!this->mModelScene->items().isEmpty())
+		{
 			items.append(this->mModelScene->items());
+			savecomps.push_back("root");
+		}
 	}
 
 	if (items.count() == 0)
 		return;
 
 	// create a list of all components to be saved
-	QStringList savecomps;
 	foreach(QGraphicsItem* item, items)
 	{
 		NMModelComponent* comp = this->componentFromItem(item);
@@ -507,6 +510,16 @@ void NMModelViewWidget::saveItems(void)
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;
 		NMComponentLinkItem* li;
+
+		// we treat root differently, because it hasn't got an item
+		// associated with it
+		if (itemName.compare("root") == 0)
+		{
+			comp = this->mModelController->getComponent("root");
+			xmlS.serialiseComponent(comp, fnLmx, 4, false);
+			continue;
+		}
+
 		switch (item->type())
 		{
 		case NMProcessComponentItem::Type:
@@ -568,26 +581,6 @@ void NMModelViewWidget::saveItems(void)
 			lmv << *ai;
 			break;
 
-		//case NMComponentLinkItem::Type:
-		//	// we're only writing those links, whose
-		//	// source and target components are
-		//	// part of this component
-		//	li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
-		//	if (li != 0 && !writtenLinks.contains(li))
-		//	{
-		//		writtenLinks.push_back(li);
-		//		NMProcessComponentItem* src = li->sourceItem();
-		//		NMProcessComponentItem* tar = li->targetItem();
-		//		if (savecomps.contains(src->getTitle()) &&
-		//			savecomps.contains(tar->getTitle()))
-		//		{
-		//			lmv << (qint32)NMComponentLinkItem::Type;
-		//			lmv << *li;
-		//		}
-		//	}
-        //
-		//	break;
-
 		default:
 			break;
 		}
@@ -597,96 +590,6 @@ void NMModelViewWidget::saveItems(void)
 
 	NMDebugCtx(ctx, << "done!");
 }
-
-
-//void NMModelViewWidget::saveAggrCompItem(NMAggregateComponentItem* item, QDataStream& data,
-//		QString fnXml, QStringList* writtenItems,
-//		QList<NMComponentLinkItem*>* writtenLinks, bool xmlAppend)
-//{
-//	NMModelComponent* comp = this->mModelController->getComponent(item->getTitle());
-//	if (comp == 0)
-//	{
-//		NMErr(ctx, << "couldn't write '" << item->getTitle().toStdString() << "' - skip it!");
-//		return;
-//	}
-//	NMModelSerialiser serialiser;
-//	serialiser.serialiseComponent(comp, fnXml, 4, xmlAppend);
-//	data << (qint32)NMAggregateComponentItem::Type;
-//	data << *item;
-//
-//	QList<QGraphicsItem*> kids = item->childItems();
-//	foreach(QGraphicsItem* kid, kids)
-//	{
-//		NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(kid);
-//		NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(kid);
-//		if (pi != 0)
-//		{
-//			if (!writtenItems->contains(pi->getTitle()))
-//			{
-//				NMDebugAI(<< "writing '" << pi->getTitle().toStdString() << "' ..." << endl);
-//				NMDebugAI(<< "already written '" << writtenItems->join(" ").toStdString() << "'" << endl);
-//				writtenItems->push_back(pi->getTitle());
-//				this->saveProcCompItem(pi, data, fnXml, true);
-//
-//				QList<NMComponentLinkItem*> inputLinks;
-//				foreach(NMComponentLinkItem* link, inputLinks)
-//				{
-//					if (!writtenLinks->contains(link))
-//					{
-//						writtenLinks->push_back(link);
-//						if (item->containsComponent(link->sourceItem()->getTitle()) &&
-//							item->containsComponent(link->targetItem()->getTitle()))
-//						{
-//							data << (qint32)NMComponentLinkItem::Type;
-//							data << *link;
-//						}
-//					}
-//				}
-//
-//				QList<NMComponentLinkItem*> outputLinks;
-//				foreach(NMComponentLinkItem* link, outputLinks)
-//				{
-//					if (!writtenLinks->contains(link))
-//					{
-//						writtenLinks->push_back(link);
-//						if (item->containsComponent(link->sourceItem()->getTitle()) &&
-//							item->containsComponent(link->targetItem()->getTitle()))
-//						{
-//							data << (qint32)NMComponentLinkItem::Type;
-//							data << *link;
-//						}
-//					}
-//				}
-//			}
-//		}
-//		else if (ai != 0)
-//		{
-//			if (!writtenItems->contains(ai->getTitle()))
-//			{
-//				NMDebugAI(<< "writing '" << ai->getTitle().toStdString() << "' ..." << endl);
-//				NMDebugAI(<< "already written '" << writtenItems->join(" ").toStdString() << "'" << endl);
-//				writtenItems->push_back(ai->getTitle());
-//				this->saveAggrCompItem(ai, data, fnXml, writtenItems,
-//						writtenLinks, true);
-//			}
-//		}
-//	}
-//}
-//
-//void NMModelViewWidget::saveProcCompItem(NMProcessComponentItem* item, QDataStream& data,
-//		QString fnXml, bool xmlAppend)
-//{
-//	NMModelComponent* comp = this->mModelController->getComponent(item->getTitle());
-//	if (comp == 0)
-//	{
-//		NMErr(ctx, << "couldn't write '" << item->getTitle().toStdString() << "' - skip it!");
-//		return;
-//	}
-//	NMModelSerialiser serialiser;
-//	serialiser.serialiseComponent(comp, fnXml, 4, xmlAppend);
-//	data << (qint32)NMProcessComponentItem::Type;
-//	data << *item;
-//}
 
 void NMModelViewWidget::loadItems(void)
 {

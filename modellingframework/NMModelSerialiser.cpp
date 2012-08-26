@@ -96,7 +96,6 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 		QString compName = compElem.attribute("name");
 		if (compName.isEmpty())
 		{
-			delete comp;
 			NMErr(ctx, << "detected unnamed component!");
 			NMDebugCtx(ctx, << "done!");
 			return 0;
@@ -113,8 +112,6 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 			comp->setParent(controller);
 
 			// add new component to the model controller and make sure it has a unique name
-			// map 'loaded' and finally assigned name for establishing host-child relationship
-			// further down
 			comp->setObjectName(compName);
 			QString finalName = controller->addComponent(comp, 0);
 			if (finalName.compare(compName) != 0)
@@ -234,6 +231,19 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 			}
 		}
 	}
+
+	// ------------------------------------------------------
+	// a bit of debug code
+	QMap<QString, NMModelComponent*>& repo =
+			const_cast<QMap<QString, NMModelComponent*>& >(controller->getRepository());
+
+	NMDebug(<< endl);
+	NMDebugAI(<< "Model controller's contents after import ..." << endl);
+	foreach(NMModelComponent* cmp, repo.values())
+	{
+		NMDebugAI(<< cmp->objectName().toStdString() << endl);
+	}
+	// ------------------------------------------------------
 
 
 	NMDebugCtx(ctx, << "done!");

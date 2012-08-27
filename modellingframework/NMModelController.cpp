@@ -79,21 +79,40 @@ NMModelController::execute()
 QString NMModelController::addComponent(NMModelComponent* comp,
 		NMModelComponent* host)
 {
+	NMDebugCtx(ctx, << "...");
+
+	if (comp != 0 && host != 0)
+	{
+		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to '"
+			     << host->objectName().toStdString() << "' ..." << endl);
+	}
+	else if (comp != 0)
+	{
+		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to 'root"
+			     << "' ..." << endl);
+	}
+
 	if (this->mComponentMap.values().contains(comp))
 	{
 		NMErr(ctx, << "model component already present in repository!");
+		NMDebugCtx(ctx, << "done!");
 		return "failed";
 	}
+
 
 	QString cname = comp->objectName();
 	QString tname = cname;
 	unsigned int cnt = 1;
+	NMDebugAI(<< "checking names ..." << endl);
+	NMDebugAI(<< tname.toStdString() << endl);
 	while (this->mComponentMap.keys().contains(tname))
 	{
 		tname = QString(tr("%1%2")).arg(cname).arg(cnt);
+		NMDebugAI(<< tname.toStdString() << endl);
 		++cnt;
 	}
 
+	NMDebugAI(<< "insert comp as '" << tname.toStdString() << "'" << endl);
 	comp->setObjectName(tname);
 	this->mComponentMap.insert(tname, comp);
 	comp->setParent(this);
@@ -107,6 +126,7 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 		}
 	}
 
+	NMDebugCtx(ctx, << "done!");
 	return tname;
 }
 

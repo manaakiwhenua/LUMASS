@@ -49,7 +49,7 @@ NMModelSerialiser::~NMModelSerialiser()
 {
 }
 
-NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
+QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		NMModelController* controller
 #ifdef BUILD_RASSUPPORT		
 		,
@@ -60,10 +60,12 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 {
 	NMDebugCtx(ctx, << "...");
 
-	NMModelComponent* mainComp = 0;
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = &rasWrapper;
 #endif
+
+	// register maps parsed model component names to final model names
+	// as registered with model controller
 	QMap<QString, QString> nameRegister;
 
 	QFile* file = new QFile(fileName);
@@ -72,7 +74,7 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
 				<< "'!");
 		NMDebugCtx(ctx, << "done!");
-		return 0;
+		return nameRegister;
 	}
 
 	QDomDocument doc;
@@ -81,7 +83,7 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
 				<< "'!");
 		NMDebugCtx(ctx, << "done!");
-		return 0;
+		return nameRegister;
 	}
 
 	QDomElement modelElem = doc.documentElement();
@@ -98,7 +100,7 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 		{
 			NMErr(ctx, << "detected unnamed component!");
 			NMDebugCtx(ctx, << "done!");
-			return 0;
+			return nameRegister;
 		}
 		else if (compName.compare("root") == 0)
 		{
@@ -120,8 +122,6 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 		}
 
 		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
-		if (mainComp == 0)
-			mainComp = comp;
 
 		QDomElement propElem = compElem.firstChildElement("Property");
 		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
@@ -130,8 +130,14 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 			if (propElem.attribute("name").compare("HostComponent") == 0)
 				continue;
 
-			QVariant value = this->extractPropertyValue(propElem);
-			bool suc = comp->setProperty(propElem.attribute("name").toStdString().c_str(), value);
+			QVariant value;
+			bool suc = false;
+			value = this->extractPropertyValue(propElem);
+
+			// get object name from name register to avoid doubly named components
+			if (propElem.attribute("name").compare("objectName") == 0)
+				value = QVariant(nameRegister.value(value.toString()));
+			suc = comp->setProperty(propElem.attribute("name").toStdString().c_str(), value);
 
 			NMDebugInd(ind+2, << "setting " << propElem.attribute("name").toStdString()
 					<< "=" << value.toString().toStdString()
@@ -247,7 +253,7 @@ NMModelComponent* NMModelSerialiser::parseComponent(QString fileName,
 
 
 	NMDebugCtx(ctx, << "done!");
-	return mainComp;
+	return nameRegister;
 }
 
 

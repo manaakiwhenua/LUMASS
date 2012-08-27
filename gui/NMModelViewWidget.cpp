@@ -602,12 +602,13 @@ void NMModelViewWidget::loadItems(void)
 	QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
 
 	// read the data model
+	QMap<QString, QString> nameRegister;
 	NMModelSerialiser xmlS;
 
 #ifdef BUILD_RASSUPPORT	
-	xmlS.parseComponent(fnLmx, this->mModelController, *this->mRasConn);
+	nameRegister = xmlS.parseComponent(fnLmx, this->mModelController, *this->mRasConn);
 #else
-        xmlS.parseComponent(fnLmx, this->mModelController);
+    nameRegister = xmlS.parseComponent(fnLmx, this->mModelController);
 #endif
 
 	QFile fileLmv(fnLmv);
@@ -639,6 +640,7 @@ void NMModelViewWidget::loadItems(void)
 				{
 					pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
+					pi->setTitle(nameRegister.value(pi->getTitle()));
 					this->mModelScene->addItem(pi);
 				}
 				break;
@@ -653,7 +655,7 @@ void NMModelViewWidget::loadItems(void)
 					qint32 nkids;
 					lmv >> title >> pos >> color >> nkids;
 
-					ai->setTitle(title);
+					ai->setTitle(nameRegister.value(title));
 					ai->setPos(pos);
 					ai->setColor(color);
 
@@ -707,6 +709,9 @@ void NMModelViewWidget::loadItems(void)
 					QString srcName, tarName;
 					lmv >> srcIdx >> srcName >> tarIdx >> tarName;
 
+					srcName = nameRegister.value(srcName);
+					tarName = nameRegister.value(tarName);
+
 					NMProcessComponentItem* si =
 							qgraphicsitem_cast<NMProcessComponentItem*>(
 								this->mModelScene->getComponentItem(srcName));
@@ -741,6 +746,8 @@ void NMModelViewWidget::loadItems(void)
 					QColor color;
 					qint32 nkids;
 					lmv >> title >> pos >> color >> nkids;
+
+					title = nameRegister.value(title);
 					ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
 							this->mModelScene->getComponentItem(title));
 
@@ -753,6 +760,8 @@ void NMModelViewWidget::loadItems(void)
 					{
 						QString kname;
 						lmv >> kname;
+
+						kname = nameRegister.value(kname);
 						ipi = qgraphicsitem_cast<NMProcessComponentItem*>(
 								this->mModelScene->getComponentItem(kname));
 						iai = qgraphicsitem_cast<NMAggregateComponentItem*>(

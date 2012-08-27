@@ -656,63 +656,67 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
-#ifdef BUILD_RASSUPPORT	
-	std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
-	if (this->mpRasconn == 0)
-		this->mpRasconn = new RasdamanConnector(connfile);
 
-	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-	rio->setRasdamanConnector(this->mpRasconn);
 
-	typedef otb::Image<unsigned char, 2> InputImgType;
-	typedef otb::Image<unsigned char, 3> OutputImgType;
 
-	typedef otb::RasdamanImageReader<InputImgType> ReaderType;
-	ReaderType::Pointer reader = ReaderType::New();
-	reader->SetImageIO(rio);
-	reader->SetFileName("landuse");
 
-	typedef otb::Image2DToCubeSliceFilter<InputImgType, OutputImgType> FilterType;
-	FilterType::Pointer filter = FilterType::New();
-	filter->SetInput(reader->GetOutput());
-
-	otb::RasdamanImageIO::Pointer rio2 = otb::RasdamanImageIO::New();
-	rio2->setRasdamanConnector(this->mpRasconn);
-
-	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
-	WriterType::Pointer writer = WriterType::New();
-	writer->SetInput(filter->GetOutput());
-	writer->SetFileName("lucube");
-	writer->SetImageIO(rio2);
-
-	for(int i=6; i < 8; ++i)
-	{
-		//filter->Modified();
-
-		filter->SetZSpacing(1.0);
-		filter->SetZLevel(i);
-		filter->SetZOrigin(i);
-		filter->UpdateLargestPossibleRegion();
-
-//		NMDebugAI(<< "otbmodellerwin loop: zlevel " << filter->GetZLevel() << endl);
-//		NMDebugAI(<< "otbmodellerwin loop: zorigin " << filter->GetZOrigin() << endl);
+//#ifdef BUILD_RASSUPPORT
+//	std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
+//	if (this->mpRasconn == 0)
+//		this->mpRasconn = new RasdamanConnector(connfile);
 //
-//		NMDebugAI(<< "lpr ..." << endl);
-//		filter->GetOutput()->
-//				GetLargestPossibleRegion().Print(std::cout, itk::Indent(4));
-//		NMDebugAI(<< "br ... " << endl);
-//		filter->GetOutput()->
-//				GetBufferedRegion().Print(std::cout, itk::Indent(4));
-//		NMDebugAI(<< "rr ..." << endl);
-//		filter->GetOutput()->
-//				GetRequestedRegion().Print(std::cout, itk::Indent(4));
-
-		writer->Update();
-	}
-
-	//++this->mLevelCounter;
-
-#endif
+//	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+//	rio->setRasdamanConnector(this->mpRasconn);
+//
+//	typedef otb::Image<unsigned char, 2> InputImgType;
+//	typedef otb::Image<unsigned char, 3> OutputImgType;
+//
+//	typedef otb::RasdamanImageReader<InputImgType> ReaderType;
+//	ReaderType::Pointer reader = ReaderType::New();
+//	reader->SetImageIO(rio);
+//	reader->SetFileName("landuse");
+//
+//	typedef otb::Image2DToCubeSliceFilter<InputImgType, OutputImgType> FilterType;
+//	FilterType::Pointer filter = FilterType::New();
+//	filter->SetInput(reader->GetOutput());
+//
+//	otb::RasdamanImageIO::Pointer rio2 = otb::RasdamanImageIO::New();
+//	rio2->setRasdamanConnector(this->mpRasconn);
+//
+//	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
+//	WriterType::Pointer writer = WriterType::New();
+//	writer->SetInput(filter->GetOutput());
+//	writer->SetFileName("lucube");
+//	writer->SetImageIO(rio2);
+//
+//	for(int i=6; i < 8; ++i)
+//	{
+//		//filter->Modified();
+//
+//		filter->SetZSpacing(1.0);
+//		filter->SetZLevel(i);
+//		filter->SetZOrigin(i);
+//		filter->UpdateLargestPossibleRegion();
+//
+////		NMDebugAI(<< "otbmodellerwin loop: zlevel " << filter->GetZLevel() << endl);
+////		NMDebugAI(<< "otbmodellerwin loop: zorigin " << filter->GetZOrigin() << endl);
+////
+////		NMDebugAI(<< "lpr ..." << endl);
+////		filter->GetOutput()->
+////				GetLargestPossibleRegion().Print(std::cout, itk::Indent(4));
+////		NMDebugAI(<< "br ... " << endl);
+////		filter->GetOutput()->
+////				GetBufferedRegion().Print(std::cout, itk::Indent(4));
+////		NMDebugAI(<< "rr ..." << endl);
+////		filter->GetOutput()->
+////				GetRequestedRegion().Print(std::cout, itk::Indent(4));
+//
+//		writer->Update();
+//	}
+//
+//	//++this->mLevelCounter;
+//
+//#endif
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 

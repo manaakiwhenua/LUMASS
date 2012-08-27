@@ -657,7 +657,29 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	QString ts = "hallo5";
+	QString ts2 = "comp323";
+	QString ts3 = "c_4omp1323";
 
+	QRegExp re("[0-9]{0,4}$");
+
+	QString e1, e2, e3;
+	if (re.indexIn(ts) > 0)
+		e1 = re.capturedTexts().at(0);
+
+	if (re.indexIn(ts2) > 0)
+		e2 = re.capturedTexts().at(0);
+
+	if (re.indexIn(ts3) > 0)
+		e3 = re.capturedTexts().at(0);
+
+
+	bool bok;
+	long n1 = e1.toLong(&bok);
+	long n2 = e2.toLong(&bok);
+	long n3 = e3.toLong(&bok);
+
+	NMDebugAI(<< n1 << " | " << n2 << " | " << n3 << endl);
 
 
 //#ifdef BUILD_RASSUPPORT

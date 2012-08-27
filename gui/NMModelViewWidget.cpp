@@ -88,7 +88,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 #endif	
 
 	mModelScene = new NMModelScene(this);
-	mModelScene->setSceneRect(-300,-300,600,600);
+	mModelScene->setSceneRect(-3000,-3000,6000,6000);
 	mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	connect(this, SIGNAL(linkToolToggled(bool)), mModelScene,
 			SLOT(toggleLinkToolButton(bool)));

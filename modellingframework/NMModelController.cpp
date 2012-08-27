@@ -99,17 +99,32 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 		return "failed";
 	}
 
-
+	QRegExp re("[0-9]{0,4}$");
 	QString cname = comp->objectName();
 	QString tname = cname;
-	unsigned int cnt = 1;
+	QString numstr;
+	unsigned long cnt = 1;
+	bool bok;
 	NMDebugAI(<< "checking names ..." << endl);
 	NMDebugAI(<< tname.toStdString() << endl);
 	while (this->mComponentMap.keys().contains(tname))
 	{
+		if (re.indexIn(tname) > 0)
+		{
+			numstr = re.capturedTexts().at(0);
+			cnt = numstr.toLong(&bok);
+			if (bok)
+			{
+				if (cname.endsWith(numstr))
+					cname = cname.left(cname.size() - numstr.size());
+				++cnt;
+			}
+			else
+				cnt = 1;
+		}
+
 		tname = QString(tr("%1%2")).arg(cname).arg(cnt);
 		NMDebugAI(<< tname.toStdString() << endl);
-		++cnt;
 	}
 
 	NMDebugAI(<< "insert comp as '" << tname.toStdString() << "'" << endl);

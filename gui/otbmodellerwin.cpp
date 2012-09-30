@@ -115,7 +115,7 @@
 
 // rasdaman
 #ifdef BUILD_RASSUPPORT
-  #include "RasdamanConnector.h"
+  #include "RasdamanConnector.hh"
   #include "otbRasdamanImageReader.h"
   #include "otbRasdamanImageIO.h"
   #include "otbRasdamanImageIOFactory.h"

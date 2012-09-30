@@ -45,7 +45,7 @@
 #ifdef BUILD_RASSUPPORT
  #include "NMRasdamanConnectorWrapper.h"
  #include "otbRasdamanImageIO.h"
- #include "RasdamanConnector.h"
+ #include "RasdamanConnector.hh"
 #endif
 
 class NMStreamingImageFileWriterWrapper: public NMProcess

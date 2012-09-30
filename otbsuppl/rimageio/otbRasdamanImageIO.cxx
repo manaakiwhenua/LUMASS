@@ -709,14 +709,15 @@ void RasdamanImageIO::WriteImageInformation()
 	double stats_stddev = -1;
 	string RATName = "";
 
-	this->m_Helper->writeNMMetadata(collname, oid, epsgcode, crsname,
-			minx, maxx, miny, maxy, minz, maxz, csx, csy, csz, pixeltype,
-			stats_min, stats_max, stats_mean, stats_stddev, RATName);
+//	this->m_Helper->writeNMMetadata(collname, oid, epsgcode, crsname,
+//			minx, maxx, miny, maxy, minz, maxz, csx, csy, csz, pixeltype,
+//			stats_min, stats_max, stats_mean, stats_stddev, RATName);
 
-	this->m_Helper->writePSMetadata(collname, crsname, rtype,
+	this->m_Helper->writePSMetadata(oid, collname, crsname, rtype,
+			pixeltype,
 			this->GetNumberOfComponents(),
 			minx, maxx,
-			miny, maxy, minz, maxz, xpix, ypix, zpix);
+			miny, maxy, minz, maxz);
 
 	// write RAT
 	for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)

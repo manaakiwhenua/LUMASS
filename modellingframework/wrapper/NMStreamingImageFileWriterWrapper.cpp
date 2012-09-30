@@ -32,7 +32,7 @@
 #include "otbStreamingRATImageFileWriter.h"
 
 #ifdef BUILD_RASSUPPORT
-	#include "RasdamanConnector.h"
+	#include "RasdamanConnector.hh"
 	#include "otbRasdamanImageIO.h"
 #endif
 

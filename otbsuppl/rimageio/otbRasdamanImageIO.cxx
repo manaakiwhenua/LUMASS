@@ -693,7 +693,13 @@ void RasdamanImageIO::WriteImageInformation()
 	itk::ExposeMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey,
 			crsname);
 	if (crsname.empty())
-		crsname = "CRS:1";
+	{
+		std::stringstream tmp;
+		tmp << "http://kahlua.eecs.jacobs-university.de:8080/def/crs/OGC/0.1/Image"
+			<< ndim << "D";
+		crsname = tmp.str();
+	}
+
 
 	string collname = this->m_collname;
 	long oid = this->m_oids[0];
@@ -713,7 +719,11 @@ void RasdamanImageIO::WriteImageInformation()
 //			minx, maxx, miny, maxy, minz, maxz, csx, csy, csz, pixeltype,
 //			stats_min, stats_max, stats_mean, stats_stddev, RATName);
 
-	this->m_Helper->writePSMetadata(oid, collname, crsname, rtype,
+
+	std::stringstream covname;
+	covname << collname << "_" << oid;
+	this->m_Helper->writePSMetadata(oid, collname, covname.str(),
+			crsname, rtype,
 			pixeltype,
 			this->GetNumberOfComponents(),
 			minx, maxx,

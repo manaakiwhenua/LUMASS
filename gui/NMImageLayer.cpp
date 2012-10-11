@@ -30,6 +30,8 @@
 #include "vtkImageData.h"
 #include "vtkImageSlice.h"
 #include "vtkImageResliceMapper.h"
+#include "vtkImageProperty.h"
+#include "vtkLookupTable.h"
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -297,6 +299,27 @@ void NMImageLayer::setFileName(QString filename)
 
 	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
 	a->SetMapper(m);
+
+	// experimental
+	vtkSmartPointer<vtkImageProperty> ip =
+			vtkSmartPointer<vtkImageProperty>::New();
+//	ip->SetColorWindow(2000);
+//	ip->SetColorLevel(1000);
+//	ip->SetAmbient(0.0);
+//	ip->SetDiffuse(1.0);
+//	ip->SetOpacity(1.0);
+//	ip->SetInterpolationTypeToLinear();
+
+	vtkSmartPointer<vtkLookupTable> lt = vtkSmartPointer<vtkLookupTable>::New();
+	lt->SetRampToSQRT();
+	lt->SetRange(0, 255);
+	lt->SetNumberOfTableValues(42);
+	lt->Build();
+	ip->SetLookupTable(lt);
+
+	a->SetProperty(ip);
+
+	// experimental end
 
 	this->mRenderer->AddViewProp(a);
 

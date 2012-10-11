@@ -21,6 +21,8 @@
 
 #include "NMitkPixelTraits.h"
 
+#include "itkRGBPixel.h"
+
 namespace itk
 {
 
@@ -78,6 +80,18 @@ NMVTKImageExport<TInputImage>::NMVTKImageExport()
     {
     m_ScalarTypeName = "signed char";
     }
+  else if(typeid(ScalarType) == typeid(itk::RGBPixel<unsigned char>))
+  {
+	m_ScalarTypeName = "unsigned char";
+  }
+  else if(typeid(ScalarType) == typeid(itk::RGBPixel<float>))
+  {
+	m_ScalarTypeName = "float";
+  }
+  else if(typeid(ScalarType) == typeid(itk::RGBPixel<double>))
+  {
+	m_ScalarTypeName = "double";
+  }
   else
     {
     itkExceptionMacro(<<"Type currently not supported");

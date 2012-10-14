@@ -35,6 +35,7 @@
 #include "itkDataObject.h"
 #include "otbImage.h"
 #include "vtkImageData.h"
+#include "vtkImageProperty.h"
 #include "itkImageIOBase.h"
 
 #ifdef BUILD_RASSUPPORT
@@ -81,6 +82,7 @@ public:
 		{return this->mReader;}
 
 	bool isRasLayer(void) {return this->mReader->isRasMode();};
+	int mapUniqueValues(QString fieldName);
 
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(void);
@@ -99,6 +101,7 @@ protected:
 	std::vector<otb::AttributeTable::Pointer> mRATVec;
 
 	itk::DataObject::Pointer mImage;
+	vtkSmartPointer<vtkImageProperty> mImgProp;
 	itk::ImageIOBase::IOComponentType mComponentType;
 	unsigned int mNumDimensions;
 	unsigned int mNumBands;

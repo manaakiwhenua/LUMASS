@@ -116,6 +116,8 @@ public:
 	double getLegendItemLowerValue(int legendRow);
 	bool getLegendItemRange(int legendRow, double* range);
 
+	virtual int mapUniqueValues(QString fieldName)=0;
+
 public slots:
 	// call this function whenever you've changed the
 	// layer's data set and wish other objects get

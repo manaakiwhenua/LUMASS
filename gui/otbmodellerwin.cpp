@@ -38,6 +38,7 @@
 #include "NMModelComponent.h"
 
 #ifdef BUILD_RASSUPPORT
+  #include "raslib/error.hh"
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 
@@ -1962,27 +1963,39 @@ void OtbModellerWin::loadImageLayer()
 		return;
 
 #ifdef BUILD_RASSUPPORT
-	std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
-	if (this->mpRasconn == 0)
-		this->mpRasconn = new RasdamanConnector(connfile);
+	try
+	{
+
+		std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
+		if (this->mpRasconn == 0)
+			this->mpRasconn = new RasdamanConnector(connfile);
 #endif
 
-	NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
+		NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
 
-	QFileInfo finfo(fileName);
-	QString layerName = finfo.baseName();
+		QFileInfo finfo(fileName);
+		QString layerName = finfo.baseName();
 
-	vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
-	NMImageLayer* layer = new NMImageLayer(renWin);
+		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
+		NMImageLayer* layer = new NMImageLayer(renWin);
 
 #ifdef BUILD_RASSUPPORT
-	layer->setRasdamanConnector(this->mpRasconn);
-#endif	
-	layer->setObjectName(layerName);
-	layer->setFileName(fileName);
-	layer->setVisible(true);
-	this->ui->modelCompList->addLayer(layer);
+		layer->setRasdamanConnector(this->mpRasconn);
+#endif
+		layer->setObjectName(layerName);
+		layer->setFileName(fileName);
+		layer->setVisible(true);
+		this->ui->modelCompList->addLayer(layer);
+#ifdef BUILD_RASSUPPORT
+	}
+	catch(r_Error& re)
+	{
+		NMErr(ctxOtbModellerWin, << re.what());
+		NMDebugCtx(ctxOtbModellerWin, << "done!");
+	}
+#endif
 
+	NMDebugCtx(ctxOtbModellerWin, << "done!");
 //	int nlayers = this->ui->qvtkWidget->GetRenderWindow()->GetNumberOfLayers();
 //	this->ui->qvtkWidget->GetRenderWindow()->SetNumberOfLayers(nlayers+1);
 //	int numren = this->ui->qvtkWidget->GetRenderWindow()->GetRenderers()->GetNumberOfItems();

@@ -525,7 +525,7 @@ QString NMImageReader::getFileName(void)
 	return this->mFileName;
 }
 
-bool NMImageReader::initialise()
+bool NMImageReader::initialise() throw (r_Error)
 {
 	NMDebugCtx(ctxNMImageReader, << "...");
 
@@ -548,8 +548,17 @@ bool NMImageReader::initialise()
 	{
 		NMDebugAI(<< "rasmode!" << endl);
 		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-		rio->setRasdamanConnector(this->mRasconn);
-		this->mItkImgIOBase = rio;
+
+		try
+		{
+			rio->setRasdamanConnector(this->mRasconn);
+			this->mItkImgIOBase = rio;
+		}
+		catch (r_Error& re)
+		{
+			NMDebugCtx(ctxNMImageReader, << "done!");
+			throw(re);
+		}
 	}
 #endif	
 

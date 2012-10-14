@@ -19,6 +19,9 @@
 
 #include "modelcomponentlist.h"
 #include "otbmodellerwin.h"
+#include "NMImageLayer.h"
+#include "otbAttributeTable.h"
+
 #include <QDrag>
 #include <QMimeData>
 #include <QApplication>
@@ -37,6 +40,7 @@
 #include <QInputDialog>
 
 #include "vtkDataSetAttributes.h"
+
 
 
 #include "QVTKWidget.h"
@@ -525,31 +529,63 @@ void ModelComponentList::mapUniqueValues()
 	// get the current layer
 	QModelIndex idx = this->currentIndex();
 	NMLayer* l = (NMLayer*)idx.internalPointer();
-	if (l->getLayerType() != NMLayer::NM_VECTOR_LAYER)
-		return;
 
-	NMVectorLayer* vL = qobject_cast<NMVectorLayer*>(l);
+	NMVectorLayer* vL = 0;
+	NMImageLayer* iL = 0;
+	vtkDataSet* ds = 0;
 
-	// make a list of available attributes
-	vtkDataSet* ds = const_cast<vtkDataSet*>(vL->getDataSet());
-	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-
-	int numFields = dsAttr->GetNumberOfArrays();
 
 	QStringList sFields;
-	for (int f=0; f < numFields; f++)
+	if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
 	{
-		vtkAbstractArray* aa = dsAttr->GetAbstractArray(f);
-		if (strcmp(aa->GetName(), "nm_hole") == 0 ||
-			strcmp(aa->GetName(), "nm_sel") == 0)
-			continue;
+		vL = qobject_cast<NMVectorLayer*>(l);
+		// ToDo:: this probably works for any feature type -> check!
+		if (vL->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+			ds = const_cast<vtkDataSet*>(vL->getDataSet());
 
-		if (aa->GetDataType() == VTK_DOUBLE ||
-			aa->GetDataType() == VTK_FLOAT)
-			continue;
+		vtkDataSetAttributes* dsAttr = 0;
+		if (ds != 0)
+			dsAttr = ds->GetAttributes(vtkDataSet::CELL);
+		else
+			return;
 
-		sFields.append(QString(dsAttr->GetArrayName(f)));
+		int numFields = dsAttr->GetNumberOfArrays();
+
+		for (int f=0; f < numFields; f++)
+		{
+			vtkAbstractArray* aa = dsAttr->GetAbstractArray(f);
+			if (strcmp(aa->GetName(), "nm_hole") == 0 ||
+				strcmp(aa->GetName(), "nm_sel") == 0)
+				continue;
+
+			if (aa->GetDataType() == VTK_DOUBLE ||
+				aa->GetDataType() == VTK_FLOAT)
+				continue;
+
+			sFields.append(QString(dsAttr->GetArrayName(f)));
+		}
 	}
+	else if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+	{
+		iL = qobject_cast<NMImageLayer*>(l);
+		otb::AttributeTable::Pointer rat = iL->getRasterAttributeTable(1);
+		if (rat.IsNull())
+			return;
+
+		for (unsigned int c=0; c < rat->GetNumCols(); ++c)
+		{
+			if (rat->GetColumnType(c) == otb::AttributeTable::ATTYPE_INT ||
+			    rat->GetColumnType(c) == otb::AttributeTable::ATTYPE_STRING)
+			{
+				sFields.append(QString(rat->GetColumnName(c).c_str()));
+			}
+		}
+	}
+	else
+	{
+		return;
+	}
+
 
 	bool bOk = false;
 	QString theField = QInputDialog::getItem(this,
@@ -559,5 +595,8 @@ void ModelComponentList::mapUniqueValues()
 	if (!bOk)
 		return;
 
-	vL->mapUniqueValues(theField);
+	if (vL != 0)
+		vL->mapUniqueValues(theField);
+	else if (iL != 0)
+		iL->mapUniqueValues(theField);
 }

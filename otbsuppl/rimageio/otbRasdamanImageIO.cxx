@@ -1003,21 +1003,19 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 			band > this->m_oids.size())
 		return 0;
 
-	// check, whether we've got rasgeo support (a nm_meta table) at all
-	if (!this->m_Helper->isNMMetaAvailable())
-		return 0;
+//	// check, whether we've got rasgeo support (a nm_meta table) at all
+//	if (!this->m_Helper->isNMMetaAvailable())
+//		return 0;
 
 	// get and check connection to the data base
-	const PGconn* conn = this->m_Rasconn->getRasConnection();
+	const PGconn* conn = this->m_Rasconn->getPetaConnection();
 	if (conn == 0)
 		return 0;
 
 	// ------------------- query table name ---------------------------
 	std::stringstream query;
 	PGresult* res;
-	query << "select attrtable_name from nm_meta where coll_name = '"
-			<< this->m_collname
-			<< "' and img_id = " << this->m_oids[band-1];
+	query << "select attrtable_name from ps_rasgeo where oid = " << this->m_oids[band-1];
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQntuples(res) < 1)
 	{

@@ -24,8 +24,13 @@
 
 #include <NMLayer.h>
 
+#include <QTime>
+
+#include "vtkMapper.h"
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
+#include "vtkDataSetAttributes.h"
+
 
 NMLayer::NMLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
@@ -457,3 +462,4 @@ void NMLayer::updateSelectionData(void)
 {
 	// subclass to implement
 }
+

@@ -24,6 +24,8 @@
 
 #include <NMImageLayer.h>
 
+#include <QTime>
+
 #include "itkImageRegion.h"
 #include "itkPoint.h"
 
@@ -32,6 +34,7 @@
 #include "vtkImageResliceMapper.h"
 #include "vtkImageProperty.h"
 #include "vtkLookupTable.h"
+#include "vtkMath.h"
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -149,6 +152,8 @@ void NMImageLayer::createTableView(void)
 void NMImageLayer::updateAttributeTable()
 {
 	// for now we're operating only on the table of the first band
+	if (this->mRATVec.size() == 0)
+		return;
 	otb::AttributeTable* otbtab = this->mRATVec.at(0);
 	unsigned int nrows = otbtab->GetNumRows();
 	unsigned int ncols = otbtab->GetNumCols();
@@ -301,23 +306,16 @@ void NMImageLayer::setFileName(QString filename)
 	a->SetMapper(m);
 
 	// experimental
-	vtkSmartPointer<vtkImageProperty> ip =
-			vtkSmartPointer<vtkImageProperty>::New();
-//	ip->SetColorWindow(2000);
-//	ip->SetColorLevel(1000);
-//	ip->SetAmbient(0.0);
-//	ip->SetDiffuse(1.0);
-//	ip->SetOpacity(1.0);
-//	ip->SetInterpolationTypeToLinear();
+	mImgProp = vtkSmartPointer<vtkImageProperty>::New();
 
-	vtkSmartPointer<vtkLookupTable> lt = vtkSmartPointer<vtkLookupTable>::New();
-	lt->SetRampToSQRT();
-	lt->SetRange(0, 255);
-	lt->SetNumberOfTableValues(42);
-	lt->Build();
-	ip->SetLookupTable(lt);
+//	vtkSmartPointer<vtkLookupTable> lt = vtkSmartPointer<vtkLookupTable>::New();
+//	lt->SetRampToSQRT();
+//	lt->SetRange(0, 255);
+//	lt->SetNumberOfTableValues(42);
+//	lt->Build();
+//	ip->SetLookupTable(lt);
 
-	a->SetProperty(ip);
+	a->SetProperty(mImgProp);
 
 	// experimental end
 
@@ -493,4 +491,141 @@ void NMImageLayer::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputIm
 	this->setImage(inputImg);
 }
 
+int NMImageLayer::mapUniqueValues(QString fieldName)
+{
+	NMDebugCtx(ctxNMImageLayer, << "...");
 
+	if (this->mRATVec.size() == 0)
+	{
+		NMDebugAI(<< "sorry, don't have an attribute table!");
+		return 0;
+	}
+
+	// make a list of available attributes
+	otb::AttributeTable::Pointer tab = this->mRATVec.at(0);
+	int idxField = tab->ColumnExists(fieldName.toStdString());
+	if (idxField < 0)
+	{
+		NMErr(ctxNMImageLayer, << "the specified attribute does not exist!");
+		return 0;
+	}
+
+	// let's find out about the attribute
+	// if we've got doubles, we refuse to map unique values ->
+	// doesn't make sense, does it?
+	bool bNum = true;
+	if (tab->GetColumnType(idxField) == otb::AttributeTable::ATTYPE_STRING)
+	{
+		bNum = false;
+	}
+	else if (tab->GetColumnType(idxField) != otb::AttributeTable::ATTYPE_INT)
+	{
+		NMDebugAI( << "oh no, not with doubles!" << endl);
+		return 0;
+	}
+
+	// we create a new look-up table and set the number of entries we need
+	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
+	clrtab->Allocate(tab->GetNumRows());
+	clrtab->SetNumberOfColors(tab->GetNumRows());
+
+	// let's create a new legend info table
+	this->resetLegendInfo();
+
+
+	// we iterate over the number of tuples in the user specified attribute array
+	// and assign each unique categorical value its own (hopefully unique)
+	// random colour, which is then inserted into the layer's lookup table; we further
+	// specify a default name for each colour and put it together with the
+	// chosen colour into a LengendInfo-Table, which basically holds the legend
+	// category to display; for linking attribute values to table-info and lookup-table
+	// indices, we fill the HashMap mHashValueIndices (s. Header file for further descr.)
+	bool bConvOk;
+	int clrCount = 0, val;
+	std::string fn = fieldName.toStdString();
+	QString sVal;
+	vtkMath::RandomSeed(QTime::currentTime().msec());
+	for (int t=0; t < tab->GetNumRows(); ++t)
+	{
+		if (bNum)
+		{
+			int val = tab->GetIntValue(fn, t);
+			sVal = QString(tr("%1")).arg(val);
+		}
+		else
+		{
+			sVal = QString(tab->GetStrValue(fn, t).c_str());
+		}
+
+		QHash<QString, QVector<int> >::iterator it = this->mHashValueIndices.find(sVal);
+		if (it == this->mHashValueIndices.end())
+		{
+			// add the key value pair to the hash map
+			QVector<int> idxVec;
+			idxVec.append(clrCount);
+			this->mHashValueIndices.insert(sVal, idxVec);
+
+			// add a new row to the legend_info table
+			vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
+
+			// add the value to the index map
+			double lowup[2];
+			lowup[0] = val;
+			lowup[1] = val;
+
+			vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
+					this->mLegendInfo->GetColumnByName("range"));
+			lowupAbstrAr->SetTuple(newidx, lowup);
+
+			// generate a random triple of uchar values
+			double rgba[4];
+			for (int i=0; i < 3; i++)
+				rgba[i] = vtkMath::Random();
+			rgba[3] = 1;
+
+			// add the color spec to the colour map
+			vtkDoubleArray* rgbaAr = vtkDoubleArray::SafeDownCast(
+					this->mLegendInfo->GetColumnByName("rgba"));
+			rgbaAr->SetTuple(newidx, rgba);
+
+			// add the name (sVal) to the name column of the legendinfo table
+			vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
+					this->mLegendInfo->GetColumnByName("name"));
+			nameAr->SetValue(newidx, sVal.toStdString().c_str());
+
+			// add the color spec to the mapper's color table
+			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
+//					<< " " << rgba[1] << " " << rgba[2] << endl);
+
+			clrCount++;
+		}
+		else
+		{
+			// add the index to the index map
+			int tabInfoIdx = this->mHashValueIndices.find(sVal).value()[0];
+			this->mHashValueIndices.find(sVal).value().append(t);
+
+			// add the colour to the real color table
+			vtkDoubleArray* dblAr = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
+			double tmprgba[4];
+			dblAr->GetTuple(tabInfoIdx, tmprgba);
+
+			clrtab->SetTableValue(t, tmprgba[0], tmprgba[1], tmprgba[2]);
+		}
+	}
+
+	// get the mapper and look whats possible
+//	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
+	//mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
+//	mapper->SetLookupTable(clrtab);
+//	mapper->UseLookupTableScalarRangeOn();
+
+	this->mImgProp->SetLookupTable(clrtab);
+
+	emit visibilityChanged(this);
+	emit legendChanged(this);
+
+	NMDebugCtx(ctxNMImageLayer, << "done!");
+	return 1;
+}

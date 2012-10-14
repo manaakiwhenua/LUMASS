@@ -527,7 +527,7 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	// we create a new look-up table and set the number of entries we need
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	clrtab->Allocate(tab->GetNumRows());
-	clrtab->SetNumberOfColors(tab->GetNumRows());
+	clrtab->SetNumberOfTableValues(tab->GetNumRows());
 
 	// let's create a new legend info table
 	this->resetLegendInfo();
@@ -621,7 +621,12 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 //	mapper->SetLookupTable(clrtab);
 //	mapper->UseLookupTableScalarRangeOn();
 
+//	clrtab->SetNumberOfColors(clrCount);
+//	clrtab->Build();
+
 	this->mImgProp->SetLookupTable(clrtab);
+//	this->mImgProp->UseLookupTableScalarRangeOn();
+
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);

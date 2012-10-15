@@ -313,14 +313,7 @@ void NMImageLayer::setFileName(QString filename)
 
 	// experimental
 	mImgProp = vtkSmartPointer<vtkImageProperty>::New();
-
-//	vtkSmartPointer<vtkLookupTable> lt = vtkSmartPointer<vtkLookupTable>::New();
-//	lt->SetRampToSQRT();
-//	lt->SetRange(0, 255);
-//	lt->SetNumberOfTableValues(42);
-//	lt->Build();
-//	ip->SetLookupTable(lt);
-
+	mImgProp->SetInterpolationTypeToNearest();
 	a->SetProperty(mImgProp);
 
 	// experimental end

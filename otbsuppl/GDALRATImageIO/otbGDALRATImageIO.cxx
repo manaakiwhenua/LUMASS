@@ -1733,13 +1733,21 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	otbTab->SetBandNumber(iBand);
 	otbTab->SetImgFileName(this->GetFileName());
 
-	int ncols = rat->GetColumnCount();
+	otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 	int nrows = rat->GetRowCount();
+	int ncols = rat->GetColumnCount();
+
+	// add number of rows to table
+//	for (int z=0; z < nrows; ++z)
+//	{
+//		otbTab->AddRow();
+//		otbTab->SetValue(0, z, z);
+//	}
 
 	// copy table
 	::GDALRATFieldType gdaltype;
 	AttributeTable::TableColumnType otbtabtype;
-	for (int c = 0; c < ncols; c++)
+	for (int c=0; c < ncols; ++c)
 	{
 		gdaltype = rat->GetTypeOfCol(c);
 		std::string colname = rat->GetNameOfCol(c);
@@ -1759,12 +1767,13 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 		}
 		otbTab->AddColumn(colname, otbtabtype);
 
-		for (int r = 0; r < nrows; r++)
+		for (int r=0; r < nrows; ++r)
 		{
-			// rows have only to be added once since AttributeTable::AddColumn() takes care of
-			// the actual number of rows!
-			if (c == 0)
+			if (c==0)
+			{
 				otbTab->AddRow();
+				otbTab->SetValue("rowidx", r, r);
+			}
 
 			switch (gdaltype)
 			{
@@ -1778,7 +1787,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 				otbTab->SetValue(colname, r, rat->GetValueAsString(r, c));
 				break;
 			default:
-				return 0;
+				continue;
 			}
 		}
 	}

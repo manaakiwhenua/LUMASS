@@ -311,10 +311,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     // create the render window
     vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
-    renwin->SetMultiSamples(0);
-    renwin->SetLineSmoothing(0);
-    renwin->SetPolygonSmoothing(0);
-    renwin->SetPointSmoothing(0);
 
     // set the number of allowed layers in the window
     renwin->SetNumberOfLayers(2);

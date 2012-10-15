@@ -351,10 +351,14 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 	int clrCount = 0, val;
 	QString sVal;
 	vtkMath::RandomSeed(QTime::currentTime().msec());
+	double rgba[4];
 	for (int t=0; t < anAr->GetNumberOfTuples(); ++t)
 	{
-//		if (hole->GetValue(t))
-//			continue;
+		if (hole->GetValue(t))
+		{
+			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+			continue;
+		}
 
 		if (bNum)
 		{
@@ -387,7 +391,6 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 			lowupAbstrAr->SetTuple(newidx, lowup);
 
 			// generate a random triple of uchar values
-			double rgba[4];
 			for (int i=0; i < 3; i++)
 				rgba[i] = vtkMath::Random();
 			rgba[3] = 1;
@@ -417,18 +420,16 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 
 			// add the colour to the real color table
 			vtkDoubleArray* dblAr = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
-			double tmprgba[4];
-			dblAr->GetTuple(tabInfoIdx, tmprgba);
+			//double tmprgba[4];
+			dblAr->GetTuple(tabInfoIdx, rgba);
 
-			clrtab->SetTableValue(t, tmprgba[0], tmprgba[1], tmprgba[2]);
+			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
 		}
 	}
 
 	// get the mapper and look whats possible
 	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
-	//mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
 	mapper->SetLookupTable(clrtab);
-//	mapper->UseLookupTableScalarRangeOn();
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);
@@ -474,13 +475,8 @@ void NMVectorLayer::mapSingleSymbol()
 		// add the new cell index to the hash map
 		idxVec.append(l);
 
-		//if (hole->GetValue(l))
-		//	clrtab->SetTableValue(l, 0,1,0,1);
-		//else
-			clrtab->SetTableValue(l, rgba[0], rgba[1], rgba[2]);
+		clrtab->SetTableValue(l, rgba[0], rgba[1], rgba[2]);
 	}
-
-//	clrtab->SetTableValue(0, rgba[0], rgba[1], rgba[2]);
 
 	// fill hash map
 	vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);

@@ -551,13 +551,13 @@ void NMVectorLayer::createTableView(void)
 
 }
 
-void NMVectorLayer::updateAttributeTable(void)
+int NMVectorLayer::updateAttributeTable(void)
 {
 	NMDebugCtx(ctxNMVectorLayer, << "...");
 
 	vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 	if (dsa == 0 || dsa->GetNumberOfArrays() == 0)
-		return;
+		return 0;
 
 	vtkSmartPointer<vtkTable> rawtab = vtkSmartPointer<vtkTable>::New();
 	rawtab->SetRowData(dsa);
@@ -593,6 +593,7 @@ void NMVectorLayer::updateAttributeTable(void)
 	emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
+	return 1;
 }
 
 const vtkTable* NMVectorLayer::getTable(void)

@@ -109,7 +109,7 @@ protected:
 	void fetchRATs(void);
 
 protected slots:
-	void updateAttributeTable(void);
+	int updateAttributeTable(void);
 };
 
 #endif // ifndef NMIMAGELAYER_H_

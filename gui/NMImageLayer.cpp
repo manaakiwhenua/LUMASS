@@ -122,7 +122,7 @@ NMImageLayer::~NMImageLayer()
 
 void NMImageLayer::createTableView(void)
 {
-	if (this->mRATVec.size() == 0)
+	if (this->mRATVec.size() < 1)
 		return;
 
 	if (this->mTableView != 0)
@@ -130,7 +130,9 @@ void NMImageLayer::createTableView(void)
 		delete this->mTableView;
 	}
 
-	this->updateAttributeTable();
+	if (!this->updateAttributeTable())
+		return;
+
 
 	// for debug only
 	this->mAttributeTable->Print(std::cout);
@@ -149,12 +151,15 @@ void NMImageLayer::createTableView(void)
 
 }
 
-void NMImageLayer::updateAttributeTable()
+int NMImageLayer::updateAttributeTable()
 {
 	// for now we're operating only on the table of the first band
-	if (this->mRATVec.size() == 0)
-		return;
-	otb::AttributeTable* otbtab = this->mRATVec.at(0);
+	if (this->mRATVec.size() < 1)
+		return 0;
+	otb::AttributeTable::Pointer otbtab = this->mRATVec.at(0);
+	if (otbtab.IsNull())
+		return 0;
+
 	unsigned int nrows = otbtab->GetNumRows();
 	unsigned int ncols = otbtab->GetNumCols();
 
@@ -263,6 +268,7 @@ void NMImageLayer::updateAttributeTable()
 	emit attributeTableChanged(this->mAttributeTable);
 	emit legendChanged(this);
 
+	return 1;
 }
 
 void NMImageLayer::setFileName(QString filename)

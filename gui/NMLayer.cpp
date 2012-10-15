@@ -380,10 +380,11 @@ void NMLayer::createTableView(void)
 	// implemented in subclasses
 }
 
-void NMLayer::updateAttributeTable(void)
+int NMLayer::updateAttributeTable(void)
 {
 	// attribute table from changes in data set
 	// subclasses to implement
+	return 0;
 }
 
 void NMLayer::updateDataSet(QStringList& slAlteredColumns,

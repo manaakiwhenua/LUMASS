@@ -192,7 +192,7 @@ protected:
 	virtual void removeFromMap(void);
 
 protected slots:
-	virtual void updateAttributeTable(void);
+	virtual int updateAttributeTable(void);
 	virtual void updateDataSet(QStringList& slAlteredColumns,
 			QStringList& slDeletedColumns);
 	virtual void updateSelectionData();

@@ -471,14 +471,13 @@ void NMVectorLayer::mapSingleSymbol()
 	// fill colour look-up table for mapper
 	for (long l=0; l < ncells; ++l)
 	{
-//		if (hole->GetValue(l))
-//			continue;
-
 		// add the new cell index to the hash map
 		idxVec.append(l);
 
-		// add the color spec to the mapper's color table
-		clrtab->SetTableValue(l, rgba[0], rgba[1], rgba[2]);
+		//if (hole->GetValue(l))
+		//	clrtab->SetTableValue(l, 0,1,0,1);
+		//else
+			clrtab->SetTableValue(l, rgba[0], rgba[1], rgba[2]);
 	}
 
 //	clrtab->SetTableValue(0, rgba[0], rgba[1], rgba[2]);

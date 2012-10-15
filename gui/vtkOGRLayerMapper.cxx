@@ -26,6 +26,7 @@
 #include "vtkCommand.h"
 #include "vtkDataArray.h"
 #include "vtkFloatArray.h"
+#include "vtkLongArray.h"
 #include "vtkMatrix4x4.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLRenderer.h"
@@ -1898,7 +1899,9 @@ void vtkOGRLayerMapper::DrawGLUTessPolys(vtkPolyData* data)
 	vtkPoints* pts = data->GetPoints();
 	vtkCellArray* ca = data->GetPolys();
 
-	vtkAbstractArray* absAr = data->GetAttributes(vtkDataSet::CELL)->GetAbstractAttribute(vtkDataSetAttributes::SCALARS);
+	vtkDataSetAttributes* dsAttr = data->GetAttributes(vtkDataSet::CELL);
+	vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(
+			dsAttr->GetArray("nm_hole"));
 
 	vtkIdType *ptIds = ca->GetPointer();
 	vtkIdType ncells = ca->GetNumberOfCells();
@@ -1921,13 +1924,26 @@ void vtkOGRLayerMapper::DrawGLUTessPolys(vtkPolyData* data)
 	gluTessCallback(tess, GLU_TESS_ERROR, (void (*)())&vtkOGRLayerMapper::errorGLU);
 
     // set glu tesselation properties
-	gluTessProperty(tess, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_POSITIVE);
-	//    gluTessNormal(tess, 0,0,1); // --> somehow compromises proper display
-								      //     of polys with holes
+	gluTessProperty(tess, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ODD);
+
+	bool bInPoly = false;
+	vtkLookupTable* lut = (vtkLookupTable*)this->GetLookupTable();
 	for (cc=0; cc < ncells; cc++)
 	{
-		gluTessBeginPolygon(tess, 0);
-		gluTessBeginContour(tess);
+		if (lut)
+			lut->GetTableValue(cc, tRGBA);
+
+		if (!bInPoly)
+		{
+			bInPoly = true;
+			gluTessBeginPolygon(tess, 0);
+			gluTessBeginContour(tess);
+		}
+		else
+		{
+			gluTessBeginContour(tess);
+		}
+
 		npts = *ptIds;
 		ptIds++;
 		//NMDebugInd(1, << cc << " - " << npts << " verts ..." << endl);
@@ -1944,10 +1960,9 @@ void vtkOGRLayerMapper::DrawGLUTessPolys(vtkPolyData* data)
 				data[co] = tCoor[co];
 
 			// add the color to the data array
-			vtkLookupTable* lut = (vtkLookupTable*)this->GetLookupTable();
 			if (lut)
 			{
-				lut->GetTableValue(cc, tRGBA);
+				//lut->GetTableValue(cc, tRGBA);
 				data[3] = tRGBA[0];
 				data[4] = tRGBA[1];
 				data[5] = tRGBA[2];
@@ -1959,8 +1974,17 @@ void vtkOGRLayerMapper::DrawGLUTessPolys(vtkPolyData* data)
 			ptIds++;
 		}
 		//NMDebug(<< endl);
-		gluTessEndContour(tess);
-		gluTessEndPolygon(tess);
+
+		if (cc < ncells-1 && hole->GetValue(cc+1))
+		{
+			gluTessEndContour(tess);
+		}
+		else
+		{
+			bInPoly = false;
+			gluTessEndContour(tess);
+			gluTessEndPolygon(tess);
+		}
 	}
 
 	// delete the tesselator

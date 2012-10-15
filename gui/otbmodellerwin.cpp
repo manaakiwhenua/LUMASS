@@ -318,8 +318,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	// set-up the background renderer
 	this->mBkgRenderer = vtkSmartPointer<vtkRenderer>::New();
 	this->mBkgRenderer->SetLayer(0);
-//	this->mBkgRenderer->SetBackground(0.5,0.5,0.5);
-	this->mBkgRenderer->SetBackground(0,0,0);
+	this->mBkgRenderer->SetBackground(0.5,0.5,0.5);
+//	this->mBkgRenderer->SetBackground(0,0,0);
 	renwin->AddRenderer(this->mBkgRenderer);
 
     // set the render window

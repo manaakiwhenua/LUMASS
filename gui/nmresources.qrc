@@ -7,5 +7,7 @@
 	<file alias="move-icon.png">resources/transform-move.png</file>
 	<file alias="zoom-in-icon.png">resources/zoom-in-3.png</file>
 	<file alias="zoom-out-icon.png">resources/zoom-out-3.png</file>
+        <file alias="vector_layer.png">resources/vector_layer.png</file>
+        <file alias="image_layer.png">resources/image_layer.png</file>
 </qresource>
 </RCC>

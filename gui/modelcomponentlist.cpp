@@ -38,6 +38,10 @@
 #include <QStandardItemModel>
 #include <QModelIndex>
 #include <QInputDialog>
+#include <QPainter>
+#include <QPixmap>
+#include <QSize>
+#include <QImage>
 
 #include "vtkDataSetAttributes.h"
 
@@ -409,9 +413,57 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
         return;
 
     QModelIndex idx = this->indexAt(dragStartPosition);
+    if (!idx.isValid())
+    	return;
+
+    NMLayer* tl = 0;
+    tl = this->mLayerModel->getItemLayer(idx.row());
+
+    int srcpos = -1;
+    int tarpos = -1;
+
+    if (tl)
+    	srcpos = tl->getLayerPos();
+
+    // still in the source window??
+    QModelIndex targetidx = this->indexAt(event->pos());
+    QString targetPosStr;
+    if (targetidx.parent().isValid())
+    {
+     	tl = this->mLayerModel->getItemLayer(targetidx.parent().row());
+    	if (tl)
+    		tarpos = tl->getLayerPos();
+    }
+    else
+    {
+    	tl = this->mLayerModel->getItemLayer(targetidx.row());
+    	if (tl)
+    		tarpos = tl->getLayerPos();
+    }
+
+    NMDebugAI(<< "srcpos: " << srcpos << " | tarpos: " << tarpos << endl);
+
+
+
+
     QString layerName = idx.data(Qt::DisplayRole).toString();
+    QIcon layerIcon = idx.data(Qt::DecorationRole).value<QIcon>();
+
+    QSize dragImageSize(32,32);
+    QImage dragImage(dragImageSize, QImage::Format_ARGB32_Premultiplied);
+
+    QPainter dragPainter(&dragImage);
+    dragPainter.setCompositionMode(QPainter::CompositionMode_Source);
+    dragPainter.fillRect(dragImage.rect(), Qt::transparent);
+    dragPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    dragPainter.drawPixmap(0,0,32,32, layerIcon.pixmap(dragImageSize));
+    //dragPainter.drawText()
+
+    dragPainter.end();
 
 	QDrag *drag = new QDrag(this);
+	drag->setPixmap(QPixmap::fromImage(dragImage));
+
 	QMimeData *mimeData = new QMimeData;
     mimeData->setText(layerName.toAscii());
     drag->setMimeData(mimeData);

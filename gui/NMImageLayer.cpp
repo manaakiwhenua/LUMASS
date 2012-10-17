@@ -113,6 +113,8 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 	this->mNumBands = 0;
 	this->mNumDimensions = 0;
 	this->mComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+
+	this->mLayerIcon = QIcon(":image_layer.png");
 }
 
 NMImageLayer::~NMImageLayer()

@@ -63,6 +63,8 @@ NMVectorLayer::NMVectorLayer(vtkRenderWindow* renWin,
 	this->mContour = 0;
 	this->mContourMapper = 0;
 	this->mContourActor = 0;
+
+	this->mLayerIcon = QIcon(":vector_layer.png");
 }
 
 NMVectorLayer::~NMVectorLayer()

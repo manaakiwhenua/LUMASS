@@ -100,6 +100,9 @@ public:
 	bool isVectorLayer(void);
 	bool isImageLayer(void);
 
+	QIcon getLayerIcon(void)
+		{return this->mLayerIcon;};
+
 	bool isVisible(void);
 	virtual void setVisible(bool visible);
 	bool isSelectable(void);
@@ -178,6 +181,8 @@ protected:
 	 */
 	vtkSmartPointer<vtkTable> mLegendInfo;
 
+
+	QIcon mLayerIcon;
 	QString mFileName;
 	bool mIsVisible;
 	bool mIsSelectable;

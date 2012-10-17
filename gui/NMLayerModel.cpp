@@ -130,7 +130,8 @@ Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const
     {
     	// checkboxes (selctability and visibility)
 //    	if (index.column() < 2)
-    		flags |= Qt::ItemIsUserCheckable | Qt::ItemIsEditable | Qt::ItemIsSelectable;
+    		flags |= Qt::ItemIsUserCheckable | Qt::ItemIsEditable |
+    				 Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
 //    	else
 //    		flags |= Qt::ItemIsDragEnabled | Qt::ItemIsSelectable;
     }
@@ -248,9 +249,14 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			retVar = l->isVisible() ? Qt::Checked : Qt::Unchecked;
 			break;
 		case Qt::FontRole:
+			{
 			QFont font;
 			l->hasChanged() ? font.setItalic(true) : font.setItalic(false);
 			retVar = font;
+			}
+			break;
+		case Qt::DecorationRole:
+			retVar = l->getLayerIcon();
 			break;
 		}
 

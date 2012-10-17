@@ -156,93 +156,14 @@ NMLayer* ModelComponentList::getSelectedLayer()
 	return l;
 }
 
-
-/*int ModelComponentList::changeLayerPos(QString layerName, int newpos)
+int ModelComponentList::changeLayerPos(int oldpos, int newpos)
 {
-	int ret = -1;
+	this->mLayerModel->changeItemLayerPos(oldpos, newpos);
+	// update the map display window
+	this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+	return oldpos;
+}
 
-	// paramter meaning
-	// layerName: name of the layer to be moved
-	// newpos: 0-based index of the tree position with the uppermost layer
-	// 			having an index of 0 and the bottom layer of (number of layers)-1
-
-
-	// NOTE NOTE NOTE NOTE NOTE
-	// the position returned by the layer itself refers to its renderer position
-	// within the renderer stack of the rendering window; since we've got a
-	// background renderer for various reasons, the position the layer returns
-	// is 1-based, whereas newpos and ModelComponentList::getLayer(int) refer
-	// to a 0-based index!!!!
-	//
-	// newpos = newpos + 1 (in the layer's world)
-
-	// that's why we are introducing a new var
-	int oldpos = -9;
-	int oldRenPos = -9;
-	int newRenPos = this->toLayerStackIndex(newpos) + 1;
-
-	NMDebugAI( << "initial situation: " << endl);
-	NMDebugAI( << "newpos: " << newpos << " oldpos: " << oldpos << " oldRenPos: " << oldRenPos <<
-			" newRenPos: " << newRenPos << endl);
-
-	// get hold of the layer
-	NMLayer* l = this->getLayer(layerName);
-	if (l == 0)
-		return ret;
-
-	// check whether newpos lies within  the bounds
-	int nlayers = this->getLayerCount();
-	if (newpos < 0 || newpos >= nlayers)
-		return ret;
-
-	// check, whether we've got a new position at all
-	oldRenPos = l->getLayerPos();
-	oldpos = this->toTreeModelRow(oldRenPos) - 1;
-	if (oldpos == newpos)
-		return oldpos;
-
-	// alright, let's move the layer
-	QMap<int, QSharedPointer<NMLayer> >::iterator it = this->mLayers.begin();
-	int itpos;
-
-	// new postion is higher up in the stack
-	if (newRenPos > oldRenPos)
-	{
-		// newpos is further up in the stack -> move other layers down
-		for (; it != this->mLayers.end(); it++)
-		{
-			itpos = it.value()->getLayerPos();
-			if (itpos > oldRenPos && itpos <= newRenPos)
-				it.value()->setLayerPos(itpos - 1);
-		}
-	}
-	// new position is further down in the stack
-	else
-	{
-		// move other layers up
-		for (; it != this->mLayers.end(); it++)
-		{
-			itpos = it.value()->getLayerPos();
-			if (itpos < oldRenPos && itpos >= newRenPos)
-				it.value()->setLayerPos(itpos + 1);
-		}
-	}
-
-	// 1-based position in renderer stack
-	l->setLayerPos(newRenPos);
-	ret = newpos;
-
-	QVTKWidget* qvtk = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
-	qvtk->update();
-
-	// 0-based  position in tree widget
-	QTreeWidgetItem* item = this->takeTopLevelItem(oldpos);
-	this->insertTopLevelItem(newpos, item);
-
-	// need to check consistency
-
-	return ret;
-}*/
 
 bool ModelComponentList::removeLayer(QString layerName)
 {
@@ -570,7 +491,9 @@ void ModelComponentList::mapUniqueValues()
 		iL = qobject_cast<NMImageLayer*>(l);
 		otb::AttributeTable::Pointer rat = iL->getRasterAttributeTable(1);
 		if (rat.IsNull())
+		{
 			return;
+		}
 
 		for (unsigned int c=0; c < rat->GetNumCols(); ++c)
 		{

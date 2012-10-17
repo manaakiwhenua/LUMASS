@@ -659,88 +659,17 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	QString ts = "hallo5";
-	QString ts2 = "comp323";
-	QString ts3 = "c_4omp1323";
+	NMLayer* l = this->ui->modelCompList->getSelectedLayer();
+	if (l == 0)
+		return;
 
-	QRegExp re("[0-9]{0,4}$");
+	int nlayers = this->ui->modelCompList->getLayerCount();
 
-	QString e1, e2, e3;
-	if (re.indexIn(ts) > 0)
-		e1 = re.capturedTexts().at(0);
+	int oldpos = l->getLayerPos();
 
-	if (re.indexIn(ts2) > 0)
-		e2 = re.capturedTexts().at(0);
+	if (oldpos + 1 <= nlayers-1)
+		this->ui->modelCompList->changeLayerPos(oldpos, oldpos + 1);
 
-	if (re.indexIn(ts3) > 0)
-		e3 = re.capturedTexts().at(0);
-
-
-	bool bok;
-	long n1 = e1.toLong(&bok);
-	long n2 = e2.toLong(&bok);
-	long n3 = e3.toLong(&bok);
-
-	NMDebugAI(<< n1 << " | " << n2 << " | " << n3 << endl);
-
-
-//#ifdef BUILD_RASSUPPORT
-//	std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
-//	if (this->mpRasconn == 0)
-//		this->mpRasconn = new RasdamanConnector(connfile);
-//
-//	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-//	rio->setRasdamanConnector(this->mpRasconn);
-//
-//	typedef otb::Image<unsigned char, 2> InputImgType;
-//	typedef otb::Image<unsigned char, 3> OutputImgType;
-//
-//	typedef otb::RasdamanImageReader<InputImgType> ReaderType;
-//	ReaderType::Pointer reader = ReaderType::New();
-//	reader->SetImageIO(rio);
-//	reader->SetFileName("landuse");
-//
-//	typedef otb::Image2DToCubeSliceFilter<InputImgType, OutputImgType> FilterType;
-//	FilterType::Pointer filter = FilterType::New();
-//	filter->SetInput(reader->GetOutput());
-//
-//	otb::RasdamanImageIO::Pointer rio2 = otb::RasdamanImageIO::New();
-//	rio2->setRasdamanConnector(this->mpRasconn);
-//
-//	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
-//	WriterType::Pointer writer = WriterType::New();
-//	writer->SetInput(filter->GetOutput());
-//	writer->SetFileName("lucube");
-//	writer->SetImageIO(rio2);
-//
-//	for(int i=6; i < 8; ++i)
-//	{
-//		//filter->Modified();
-//
-//		filter->SetZSpacing(1.0);
-//		filter->SetZLevel(i);
-//		filter->SetZOrigin(i);
-//		filter->UpdateLargestPossibleRegion();
-//
-////		NMDebugAI(<< "otbmodellerwin loop: zlevel " << filter->GetZLevel() << endl);
-////		NMDebugAI(<< "otbmodellerwin loop: zorigin " << filter->GetZOrigin() << endl);
-////
-////		NMDebugAI(<< "lpr ..." << endl);
-////		filter->GetOutput()->
-////				GetLargestPossibleRegion().Print(std::cout, itk::Indent(4));
-////		NMDebugAI(<< "br ... " << endl);
-////		filter->GetOutput()->
-////				GetBufferedRegion().Print(std::cout, itk::Indent(4));
-////		NMDebugAI(<< "rr ..." << endl);
-////		filter->GetOutput()->
-////				GetRequestedRegion().Print(std::cout, itk::Indent(4));
-//
-//		writer->Update();
-//	}
-//
-//	//++this->mLevelCounter;
-//
-//#endif
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 

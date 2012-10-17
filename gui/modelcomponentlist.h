@@ -67,11 +67,10 @@ public:
     // -> map extent (in coordinate units)
     const double* getMapBBox(void);
 
-    // move layer to newpos position in the layer stack
-    // returns the layers old position or -1 if the
-    // layer could not be moved to position newpos
-    // or if the given layer is no member of the layer stack
-//    int changeLayerPos(QString layerName, int newpos);
+    // moves layer from to oldpos to newpos position
+    // in the layer stack
+    // returns the layers old position
+    int changeLayerPos(int oldpos, int newpos);
 
 public slots:
 	void zoomToLayer();

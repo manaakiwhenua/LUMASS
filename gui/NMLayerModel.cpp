@@ -38,6 +38,63 @@ NMLayerModel::~NMLayerModel()
 {
 }
 
+int NMLayerModel::pileItemLayer(NMLayer* layer)
+{
+//	NMDebugCtx(ctxNMLayerModel, << "...");
+
+	if (layer == 0)
+	{
+		NMDebugInd(1, << "oops, received NULL layer!" << endl);
+//		NMDebugCtx(ctxNMLayerModel, << "done!");
+		return 0;
+	}
+
+	// how many layers do we have
+	int nLayers = this->mLayers.size();
+
+	int stackindex = nLayers == 0 ? 0 : nLayers-1;
+	int treeidx = this->toTreeModelRow(stackindex);
+	QSharedPointer<NMLayer> pL(layer);
+	pL->setLayerPos(nLayers);
+
+	// update the layer model ---------------------------------------
+	this->layoutAboutToBeChanged();
+
+	this->mLayers.insert(nLayers, pL);
+
+	emit layoutChanged();
+
+//	NMDebugCtx(ctxNMLayerModel, << "done!");
+	return 1;
+}
+
+int NMLayerModel::changeItemLayerPos(int oldpos, int newpos)
+{
+	if (oldpos == newpos ||
+		oldpos < 0 || oldpos > this->rowCount(QModelIndex())-1 ||
+		newpos < 0 || newpos > this->rowCount(QModelIndex())-1    )
+		return oldpos;
+
+	int srctreepos = this->toTreeModelRow(oldpos);
+	int desttreepos = this->toTreeModelRow(newpos);
+
+	QSharedPointer<NMLayer> pL = this->mLayers.at(srctreepos);
+	this->mLayers.removeAt(srctreepos);
+
+	this->layoutAboutToBeChanged();
+
+	this->removeRow(srctreepos);
+	this->mLayers.insert(desttreepos, pL);
+
+	emit layoutChanged();
+
+	// update each layer's position within the layer stack
+	for (int i=0; i < this->mLayers.size(); ++i)
+		this->mLayers[i]->setLayerPos(i);
+
+	return oldpos;
+}
+
 void NMLayerModel::removeLayer(NMLayer* layer)
 {
 //	NMDebugCtx(ctxNMLayerModel, << "...");
@@ -311,35 +368,7 @@ int NMLayerModel::getItemLayerCount()
 	return this->mLayers.size();
 }
 
-int NMLayerModel::pileItemLayer(NMLayer* layer)
-{
-//	NMDebugCtx(ctxNMLayerModel, << "...");
 
-	if (layer == 0)
-	{
-		NMDebugInd(1, << "oops, received NULL layer!" << endl);
-		NMDebugCtx(ctxNMLayerModel, << "done!");
-		return 0;
-	}
-
-	// how many layers do we have
-	int nLayers = this->mLayers.size();
-
-	int stackindex = nLayers == 0 ? 0 : nLayers-1;
-	int treeidx = this->toTreeModelRow(stackindex);
-	QSharedPointer<NMLayer> pL(layer);
-	pL->setLayerPos(nLayers);
-
-	// update the layer model ---------------------------------------
-	this->layoutAboutToBeChanged();
-
-	this->mLayers.insert(nLayers, pL);
-
-	emit layoutChanged();
-
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
-	return 1;
-}
 
 int NMLayerModel::toTreeModelRow(int stackIndex)
 {

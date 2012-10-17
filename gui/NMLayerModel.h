@@ -69,7 +69,8 @@ public:
 private:
 
 	// the map holding the actual layer objects
-	// note that the index 0 denotes the layer
+	// note that the index 0 denotes the first layer
+	// in the list
 	QList<QSharedPointer<NMLayer > > mLayers;
 
 	/* conversion from tree model rows into layerStack

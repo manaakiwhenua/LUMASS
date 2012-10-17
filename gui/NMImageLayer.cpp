@@ -311,12 +311,9 @@ void NMImageLayer::setFileName(QString filename)
 	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
 	a->SetMapper(m);
 
-	// experimental
 	mImgProp = vtkSmartPointer<vtkImageProperty>::New();
 	mImgProp->SetInterpolationTypeToNearest();
 	a->SetProperty(mImgProp);
-
-	// experimental end
 
 	this->mRenderer->AddViewProp(a);
 
@@ -352,6 +349,10 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 
 	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
 	a->SetMapper(m);
+
+	mImgProp = vtkSmartPointer<vtkImageProperty>::New();
+	mImgProp->SetInterpolationTypeToNearest();
+	a->SetProperty(mImgProp);
 
 	this->mRenderer->AddViewProp(a);
 

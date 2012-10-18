@@ -36,6 +36,7 @@
 #include <QMap>
 #include <QSharedPointer>
 #include <QDrag>
+#include <QPaintEvent>
 
 #include "NMLayer.h"
 #include "NMLayerModel.h"

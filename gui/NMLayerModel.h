@@ -73,13 +73,6 @@ public:
 //	QMimeData* mimeData(const QModelIndexList& indexes) const;
 //	bool removeRows(int row, int count, const QModelIndex& parent=QModelIndex());
 
-private:
-
-	// the map holding the actual layer objects
-	// note that the index 0 denotes the first layer
-	// in the list
-	QList<QSharedPointer<NMLayer > > mLayers;
-
 	/* conversion from tree model rows into layerStack
 	 * indices
 	 *
@@ -94,6 +87,13 @@ private:
 	 */
 	int toLayerStackIndex(int treePos);
 	int toTreeModelRow(int stackIndex);
+
+private:
+
+	// the map holding the actual layer objects
+	// note that the index 0 denotes the first layer
+	// in the list
+	QList<QSharedPointer<NMLayer > > mLayers;
 
 	// creates a colour Icon representing the value at table entry
 	// at index idx

@@ -75,10 +75,46 @@ int NMLayerModel::changeItemLayerPos(int oldpos, int newpos)
 		newpos < 0 || newpos > this->rowCount(QModelIndex())-1    )
 		return oldpos;
 
-	this->layoutAboutToBeChanged();
+	emit layoutAboutToBeChanged();
+
+	//int treepos;
+	//NMDebugAI(<< "BEFORE BEFORE BEFORE" << endl);
+	//NMDebugAI(<< "tree\tlayer\t\tstack" << endl);
+	//for (int i=0; i < this->mLayers.size(); ++i)
+	//{
+	//	treepos = this->toTreeModelRow(i);
+	//	std::string ln = this->mLayers.at(i)->objectName().toStdString();
+	//	NMDebugAI( << treepos << "\t" << ln << "  \t" << i << endl);
+	//}
+
 	QSharedPointer<NMLayer> pL = this->mLayers.takeAt(oldpos);
+
+	//NMDebugAI(<< "FISRT STEP FIRST STEP FIRST STEP" << endl);
+	//NMDebugAI(<< "tree\tlayer\t\tstack" << endl);
+	//for (int i=0; i < this->mLayers.size(); ++i)
+	//{
+	//	treepos = this->toTreeModelRow(i);
+	//	std::string ln = this->mLayers.at(i)->objectName().toStdString();
+	//	NMDebugAI( << treepos << "\t" << ln << "  \t" << i << endl);
+	//}
+
 	this->mLayers.insert(newpos, pL);
+
+	//NMDebugAI(<< "SECOND STEP SECOND STEP SECOND STEP" << endl);
+	//NMDebugAI(<< "tree\tlayer\t\tstack" << endl);
+	//for (int i=0; i < this->mLayers.size(); ++i)
+	//{
+	//	treepos = this->toTreeModelRow(i);
+	//	std::string ln = this->mLayers.at(i)->objectName().toStdString();
+	//	NMDebugAI( << treepos << "\t" << ln << "  \t" << i << endl);
+	//}
+
 	emit layoutChanged();
+
+	// update each layer's position within the layer stack
+	for (int i=0; i < this->mLayers.size(); ++i)
+		this->mLayers[i]->setLayerPos(i);
+
 
 	return oldpos;
 }
@@ -195,8 +231,6 @@ QModelIndex NMLayerModel::index(int row, int column, const QModelIndex& parent) 
 bool NMLayerModel::setData(const QModelIndex& index,
 		const QVariant& value, int role)
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
-
 	// leave when we are dealing with legend items
 	if (!index.parent().isValid())
 	{
@@ -209,17 +243,13 @@ bool NMLayerModel::setData(const QModelIndex& index,
 
 	emit dataChanged(index, index);
 
-//	NMDebugCtx(ctxNMLayerModel, << "done!"	<< endl);
 	return true;
 }
 
 QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
-
 	if (!index.isValid())
 	{
-//		NMDebugCtx(ctxNMLayerModel, << "done!");
 		return QVariant();
 	}
 
@@ -290,18 +320,17 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 
 	}
 
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return retVar;
 }
 
 QIcon NMLayerModel::createLegendIcon(NMLayer* layer, int legendRow)
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
+	//	NMDebugCtx(ctxNMLayerModel, << "...");
 
 	double rgba[4];
 	if (!layer->getLegendColour(legendRow, rgba))
 	{
-//		NMDebugCtx(ctxNMLayerModel, << "done!");
+		//		NMDebugCtx(ctxNMLayerModel, << "done!");
 		return QIcon();
 	}
 
@@ -313,19 +342,16 @@ QIcon NMLayerModel::createLegendIcon(NMLayer* layer, int legendRow)
 
 	QIcon icon(pix);
 
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
+	//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return icon;
 }
 
 int NMLayerModel::rowCount(const QModelIndex& parent) const
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
-
 	int ret = this->mLayers.size();
 
 	if (!parent.isValid())
 	{
-//		NMDebugCtx(ctxNMLayerModel, << "done!");
 		return ret;
 	}
 
@@ -339,7 +365,6 @@ int NMLayerModel::rowCount(const QModelIndex& parent) const
 
 	ret = l->getLegendItemCount();
 
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return ret;
 }
 
@@ -355,7 +380,7 @@ int NMLayerModel::columnCount(const QModelIndex& parent) const
 
 QModelIndex NMLayerModel::parent(const QModelIndex& index) const
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
+	//	NMDebugCtx(ctxNMLayerModel, << "...");
 
 	QModelIndex parentIdx;
 
@@ -370,7 +395,7 @@ QModelIndex NMLayerModel::parent(const QModelIndex& index) const
 		parentIdx = this->createIndex(row, 0, (void*)l);
 	}
 
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
+	//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return parentIdx;
 }
 

@@ -42,6 +42,7 @@
 #include <QPixmap>
 #include <QSize>
 #include <QImage>
+#include <QHeaderView>
 
 #include "vtkDataSetAttributes.h"
 #include "QVTKWidget.h"
@@ -60,8 +61,6 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->setUniformRowHeights(true);
 
 	this->setSelectionBehavior(QAbstractItemView::SelectRows);
-//	this->setDragEnabled(true);
-//	this->setDropIndicatorShown(true);
 
 	this->viewport()->setAcceptDrops(true);
 	this->viewport()->installEventFilter(this);
@@ -168,7 +167,35 @@ NMLayer* ModelComponentList::getSelectedLayer()
 
 int ModelComponentList::changeLayerPos(int oldpos, int newpos)
 {
+	// save the collapsed state of all layers
+	QList<bool> collapsed;
+	for (unsigned int r=0; r < this->mLayerModel->rowCount(QModelIndex()); ++r)
+	{
+		if (this->isExpanded(this->mLayerModel->index(r, 0, QModelIndex())))
+			collapsed.push_back(false);
+		else
+			collapsed.push_back(true);
+	}
+
+	// swap places in collapsed list
+	int oldtree = this->mLayerModel->toTreeModelRow(oldpos);
+	int newtree = this->mLayerModel->toTreeModelRow(newpos);
+	bool tc = collapsed.takeAt(oldtree);
+	collapsed.insert(newtree, tc);
+
+	// now swap layer places
 	this->mLayerModel->changeItemLayerPos(oldpos, newpos);
+
+	// reinstate layer's expansion setting
+	for (unsigned int r=0; r < this->mLayerModel->rowCount(QModelIndex()); ++r)
+	{
+		QModelIndex id = this->mLayerModel->index(r, 0, QModelIndex());
+		if (collapsed.at(r))
+			this->collapse(id);
+		else
+			this->expand(id);
+	}
+
 	// update the map display window
 	this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
 	return oldpos;
@@ -336,7 +363,7 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 	{
 		NMLayer* l = (NMLayer*)idx.internalPointer();
 		int nleg = l->getLegendItemCount();
-		NMDebugAI(<< l->objectName().toStdString() << " has " << nleg << " items .." << endl);
+		//NMDebugAI(<< l->objectName().toStdString() << " has " << nleg << " items .." << endl);
 
 		if (this->isExpanded(idx))
 			this->collapse(idx);
@@ -374,11 +401,18 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 
 		if (event->button() == Qt::LeftButton)
 		{
-			this->mLayerModel->setData(idx, QVariant(), Qt::CheckStateRole);
-			this->dragStartPosition = event->pos();
-			int col = idx.column();
-			int row = idx.row();
+			QRect vrect = visualRect(idx);
+			int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
+			QRect rect = QRect(
+					header()->sectionViewportPosition(0) + itemIndentation,
+					vrect.y(), style()->pixelMetric(QStyle::PM_IndicatorWidth),
+					vrect.height());
+			if (rect.contains(event->pos()))
+			{
+				this->mLayerModel->setData(idx, QVariant(), Qt::CheckStateRole);
+			}
 
+			this->dragStartPosition = event->pos();
 			this->processSelection(true);
 		}
 		else if (event->button() == Qt::RightButton)
@@ -389,8 +423,6 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 			this->mMenu->exec();
 		}
 	}
-
-
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -555,6 +587,11 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
 
 void ModelComponentList::dragMoveEvent(QDragMoveEvent* event)
 {
+	QModelIndex id = this->indexAt(event->pos());
+	if (!id.isValid() || id.parent().isValid())
+		return;
+
+
 	event->acceptProposedAction();
 }
 

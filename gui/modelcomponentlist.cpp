@@ -44,10 +44,9 @@
 #include <QImage>
 
 #include "vtkDataSetAttributes.h"
-
-
-
 #include "QVTKWidget.h"
+
+const std::string ModelComponentList::ctx = "ModelComponentList";
 
 ModelComponentList::ModelComponentList(QWidget *parent)
        :QTreeView(parent)
@@ -57,9 +56,16 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	// set the general column count for this control
 	this->setHeaderHidden(true);
-	this->setSelectionBehavior(QAbstractItemView::SelectRows);
 	this->setExpandsOnDoubleClick(true);
 	this->setUniformRowHeights(true);
+
+	this->setSelectionBehavior(QAbstractItemView::SelectRows);
+//	this->setDragEnabled(true);
+//	this->setDropIndicatorShown(true);
+
+	this->viewport()->setAcceptDrops(true);
+	this->viewport()->installEventFilter(this);
+
 	this->reset();
 
 	// init the popup menu
@@ -107,12 +113,12 @@ ModelComponentList::~ModelComponentList()
 
 void ModelComponentList::openAttributeTable()
 {
-//	NMDebugCtx(ctxModelComponentList, << "...");
+//	NMDebugCtx(ctx, << "...");
 
 	NMLayer* l = (NMLayer*)this->currentIndex().internalPointer();
 	l->showAttributeTable();
 
-//	NMDebugCtx(ctxModelComponentList, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::saveLayerChanges()
@@ -181,7 +187,7 @@ bool ModelComponentList::removeLayer(QString layerName)
 
 void ModelComponentList::removeLayer(NMLayer* layer)
 {
-	NMDebugCtx(ctxModelComponentList, << "...");
+	NMDebugCtx(ctx, << "...");
 
 	// remove layer from the model (which updates as well the layer position
 	// hold by each layer in the layer stack)
@@ -190,7 +196,7 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 	// update the map display window
 	this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
 
-	NMDebugCtx(ctxModelComponentList, << "done!");
+	NMDebugCtx(ctx, << "done!");
 }
 
 
@@ -210,13 +216,13 @@ void ModelComponentList::updateMapWin(const NMLayer* layer)
 
 void ModelComponentList::addLayer(NMLayer* layer)
 {
-	NMDebugCtx(ctxModelComponentList, << "...");
+	NMDebugCtx(ctx, << "...");
 
 	// TODO: check this
 	if (layer == 0 || layer->getRenderer() == 0)
 	{
 		NMDebugAI(<< "invalid layer!" << endl);
-		NMDebugCtx(ctxModelComponentList, << "done!");
+		NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -259,12 +265,12 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	qvtk->update();
 
 	this->reset();
-	NMDebugCtx(ctxModelComponentList, << "done!");
+	NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::recalcMapBBox(void)
 {
-	NMDebugCtx(ctxModelComponentList, << "...");
+	NMDebugCtx(ctx, << "...");
 
 	int i;
 	double* mb = this->mFullMapExt;
@@ -289,7 +295,7 @@ void ModelComponentList::recalcMapBBox(void)
 						"'s box ..." << endl);
 	}
 
-	NMDebugCtx(ctxModelComponentList, << "done!");
+	NMDebugCtx(ctx, << "done!");
 }
 
 
@@ -317,12 +323,12 @@ const double* ModelComponentList::getMapBBox(void)
 
 void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 {
-	NMDebugCtx(ctxModelComponentList, << "...")
+	NMDebugCtx(ctx, << "...")
 
 	QModelIndex idx = this->indexAt(event->pos());
 	if (!idx.isValid())
 	{
-		NMDebugCtx(ctxModelComponentList, << "done!")
+		NMDebugCtx(ctx, << "done!")
 		return;
 	}
 
@@ -338,12 +344,19 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 			this->expand(idx);
 	}
 
-	NMDebugCtx(ctxModelComponentList, << "done!")
+	NMDebugCtx(ctx, << "done!")
 }
+
+//bool ModelComponentList::eventFilter(QObject* obj, QEvent* event)
+//{
+//
+//
+//	return false;
+//}
 
 void ModelComponentList::mousePressEvent(QMouseEvent *event)
 {
-    NMDebugCtx(ctxModelComponentList, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	int x = event->pos().x();
 	int y = event->pos().y();
@@ -351,15 +364,17 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 	QModelIndex idx = this->indexAt(event->pos());
 	if (!idx.isValid())
 	{
-		NMDebugCtx(ctxModelComponentList, << "done!")
+		NMDebugCtx(ctx, << "done!")
 		return;
 	}
 
 	if (!idx.parent().isValid())
 	{
 		this->setCurrentIndex(idx);
+
 		if (event->button() == Qt::LeftButton)
 		{
+			this->mLayerModel->setData(idx, QVariant(), Qt::CheckStateRole);
 			this->dragStartPosition = event->pos();
 			int col = idx.column();
 			int row = idx.row();
@@ -375,7 +390,9 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		}
 	}
 
-    NMDebugCtx(ctxModelComponentList, << "done!");
+
+
+    NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::processSelection(bool toggle)
@@ -406,6 +423,8 @@ void ModelComponentList::processSelection(bool toggle)
 
 void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
 {
+	//NMDebugCtx(ctx, << "...");
+
     if (!(event->buttons() & Qt::LeftButton))
         return;
     if ((event->pos() - dragStartPosition).manhattanLength()
@@ -415,36 +434,6 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
     QModelIndex idx = this->indexAt(dragStartPosition);
     if (!idx.isValid())
     	return;
-
-    NMLayer* tl = 0;
-    tl = this->mLayerModel->getItemLayer(idx.row());
-
-    int srcpos = -1;
-    int tarpos = -1;
-
-    if (tl)
-    	srcpos = tl->getLayerPos();
-
-    // still in the source window??
-    QModelIndex targetidx = this->indexAt(event->pos());
-    QString targetPosStr;
-    if (targetidx.parent().isValid())
-    {
-     	tl = this->mLayerModel->getItemLayer(targetidx.parent().row());
-    	if (tl)
-    		tarpos = tl->getLayerPos();
-    }
-    else
-    {
-    	tl = this->mLayerModel->getItemLayer(targetidx.row());
-    	if (tl)
-    		tarpos = tl->getLayerPos();
-    }
-
-    NMDebugAI(<< "srcpos: " << srcpos << " | tarpos: " << tarpos << endl);
-
-
-
 
     QString layerName = idx.data(Qt::DisplayRole).toString();
     QIcon layerIcon = idx.data(Qt::DecorationRole).value<QIcon>();
@@ -457,19 +446,116 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
     dragPainter.fillRect(dragImage.rect(), Qt::transparent);
     dragPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     dragPainter.drawPixmap(0,0,32,32, layerIcon.pixmap(dragImageSize));
-    //dragPainter.drawText()
-
     dragPainter.end();
 
-	QDrag *drag = new QDrag(this);
-	drag->setPixmap(QPixmap::fromImage(dragImage));
+
+    QDrag* drag = new QDrag(this);
+    drag->setPixmap(QPixmap::fromImage(dragImage));
+    drag->setDragCursor(QPixmap(":move-icon.png"), Qt::CopyAction);
+
 
 	QMimeData *mimeData = new QMimeData;
     mimeData->setText(layerName.toAscii());
     drag->setMimeData(mimeData);
-    Qt::DropAction dropAction =
-                drag->exec(Qt::CopyAction, Qt::CopyAction);
+    drag->exec(Qt::CopyAction, Qt::CopyAction);
 
+    //NMDebugCtx(ctx, << "done!");
+}
+
+void ModelComponentList::mouseReleaseEvent(QMouseEvent* event)
+{
+//	NMDebugCtx(ctx, << "...");
+//
+//	QModelIndex srcidx = this->indexAt(this->dragStartPosition);
+//	if (!srcidx.isValid())
+//	{
+//		NMDebugAI(<< "invalid src index!" << endl);
+//		NMDebugCtx(ctx, << "done!");
+//		return;
+//	}
+//
+//	QString srcLayerName = srcidx.data(Qt::DisplayRole).toString();
+//	NMDebugAI(<< "drag started at layer: " << srcLayerName.toStdString() << std::endl);
+//
+//	NMLayer* srcLayer = this->getLayer(srcLayerName);
+//	if (srcLayer == 0)
+//	{
+//		NMDebugAI(<< "couldn't fetch source layer!" << endl);
+//		NMDebugCtx(ctx, << "done!");
+//		return;
+//	}
+//	int srcpos = srcLayer->getLayerPos();
+//
+//	QModelIndex taridx = this->indexAt(event->pos());
+//	if (!taridx.isValid())
+//	{
+//		NMDebugAI(<< "invalid target index!" << endl);
+//		NMDebugCtx(ctx, << "done!");
+//		return;
+//	}
+//
+//	QString tarLayerName = taridx.data(Qt::DisplayRole).toString();
+//	NMDebugAI(<< "drag ends at layer: " << tarLayerName.toStdString() << std::endl);
+//
+//	NMLayer* tarLayer = this->getLayer(tarLayerName);
+//	if (tarLayer == 0)
+//	{
+//		NMDebugAI(<< "couldn't get fetch target layer!" << endl);
+//		NMDebugCtx(ctx, << "done!");
+//		return;
+//	}
+//	int tarpos = tarLayer->getLayerPos();
+//
+//	this->changeLayerPos(srcpos, tarpos);
+//
+//	NMDebugCtx(ctx, << "done!");
+}
+
+void ModelComponentList::dropEvent(QDropEvent* event)
+{
+	NMDebugCtx(ctx, << "...");
+
+	QModelIndex destidx = this->indexAt(event->pos());
+	if (!destidx.isValid() || destidx.parent().isValid())
+	{
+		NMDebugAI(<< "no valid drop pos!" << endl);
+		NMDebugCtx(ctx, << "done!");
+		return;
+	}
+
+	NMLayer* dl = (NMLayer*)destidx.internalPointer();
+	if (dl == 0)
+		return;
+	int destpos = dl->getLayerPos();
+	NMDebugAI(<< "dest pos: " << destpos << endl);
+
+	QModelIndex srcidx = this->indexAt(this->dragStartPosition);
+	NMLayer* sl = (NMLayer*)srcidx.internalPointer();
+	if (sl == 0)
+		return;
+	int srcpos = sl->getLayerPos();
+	NMDebugAI(<< "src pos: " << srcpos << endl);
+
+	this->changeLayerPos(srcpos, destpos);
+
+	NMDebugCtx(ctx, << "done!");
+	event->acceptProposedAction();
+}
+
+
+void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
+{
+	if (event->mimeData()->hasFormat("text/plain"))
+	{
+		QString layer = event->mimeData()->text();
+		if (this->getLayer(layer) != 0)
+			event->acceptProposedAction();
+	}
+}
+
+void ModelComponentList::dragMoveEvent(QDragMoveEvent* event)
+{
+	event->acceptProposedAction();
 }
 
 void ModelComponentList::zoomToLayer()

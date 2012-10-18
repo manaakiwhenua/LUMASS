@@ -19,7 +19,7 @@
 #define MODELCOMPONENTLIST_H
 
 #include "nmlog.h"
-#define ctxModelComponentList "ModelComponentList"
+//#define ctxModelComponentList "ModelComponentList"
 
 #include <vector>
 
@@ -28,11 +28,14 @@
 #include <QTreeView>
 #include <QStandardItemModel>
 #include <QMouseEvent>
+#include <QDragMoveEvent>
+#include <QDragEnterEvent>
 #include <QChildEvent>
 #include <QActionEvent>
 #include <QPoint>
 #include <QMap>
 #include <QSharedPointer>
+#include <QDrag>
 
 #include "NMLayer.h"
 #include "NMLayerModel.h"
@@ -86,10 +89,11 @@ private slots:
 
 private:
 
-    double mFullMapExt[6];
+	double mFullMapExt[6];
     NMLayerModel* mLayerModel;
     QPoint dragStartPosition;
     QMenu* mMenu;
+
 
     void removeLayer(NMLayer* layer);
 
@@ -100,9 +104,16 @@ private:
    	// mouse handlers
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent* event);
     void mouseDoubleClickEvent(QMouseEvent* event);
+    void dragMoveEvent(QDragMoveEvent* event);
+    void dragEnterEvent(QDragEnterEvent* event);
+    void dropEvent(QDropEvent* event);
+    //bool eventFilter(QObject* obj, QEvent* event);
 
 	void processSelection(bool toggle);
+
+	static const std::string ctx;
 
 };
 

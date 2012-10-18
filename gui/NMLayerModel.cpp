@@ -75,25 +75,32 @@ int NMLayerModel::changeItemLayerPos(int oldpos, int newpos)
 		newpos < 0 || newpos > this->rowCount(QModelIndex())-1    )
 		return oldpos;
 
-	int srctreepos = this->toTreeModelRow(oldpos);
-	int desttreepos = this->toTreeModelRow(newpos);
-
-	QSharedPointer<NMLayer> pL = this->mLayers.at(srctreepos);
-	this->mLayers.removeAt(srctreepos);
-
 	this->layoutAboutToBeChanged();
-
-	this->removeRow(srctreepos);
-	this->mLayers.insert(desttreepos, pL);
-
+	QSharedPointer<NMLayer> pL = this->mLayers.takeAt(oldpos);
+	this->mLayers.insert(newpos, pL);
 	emit layoutChanged();
-
-	// update each layer's position within the layer stack
-	for (int i=0; i < this->mLayers.size(); ++i)
-		this->mLayers[i]->setLayerPos(i);
 
 	return oldpos;
 }
+
+//bool NMLayerModel::removeRows(int row, int count, const QModelIndex& parent)
+//{
+//	bool ret = false;
+//
+//	if (!parent.isValid())
+//	{
+//		int layerpos = this->toLayerStackIndex(row);
+//		this->layoutAboutToBeChanged();
+//
+//		this->mLayers.removeAt(layerpos);
+//		this->removeRow(row);
+//
+//		emit layoutChanged();
+//		ret = true;
+//	}
+//
+//	return ret;
+//}
 
 void NMLayerModel::removeLayer(NMLayer* layer)
 {
@@ -131,7 +138,8 @@ Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const
     	// checkboxes (selctability and visibility)
 //    	if (index.column() < 2)
     		flags |= Qt::ItemIsUserCheckable | Qt::ItemIsEditable |
-    				 Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
+    				 Qt::ItemIsSelectable | Qt::ItemIsDragEnabled |
+    				 Qt::ItemIsDropEnabled;
 //    	else
 //    		flags |= Qt::ItemIsDragEnabled | Qt::ItemIsSelectable;
     }
@@ -140,6 +148,26 @@ Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const
 //    NMDebugCtx(ctxNMLayerModel, << "done!");
     return flags;
 }
+
+//QStringList NMLayerModel::mimeTypes(void) const
+//{
+//	QStringList types;
+//	types << "text/plain";
+//	return types;
+//}
+//
+//QMimeData* NMLayerModel::mimeData(const QModelIndexList& indexes) const
+//{
+//	QMimeData* mimeData = new QMimeData();
+//
+//	const QModelIndex& idx = indexes.at(0);
+//	if (idx.isValid() && !idx.parent().isValid())
+//	{
+//		mimeData->setText(idx.data(Qt::DisplayRole).toString());
+//	}
+//
+//	return mimeData;
+//}
 
 QModelIndex NMLayerModel::index(int row, int column, const QModelIndex& parent) const
 {

@@ -132,6 +132,9 @@
         <property name="mouseTracking">
          <bool>true</bool>
         </property>
+        <property name="acceptDrops">
+         <bool>false</bool>
+        </property>
         <property name="editTriggers">
          <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
         </property>
@@ -142,13 +145,13 @@
          <bool>false</bool>
         </property>
         <property name="dragEnabled">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="dragDropOverwriteMode">
          <bool>false</bool>
         </property>
         <property name="dragDropMode">
-         <enum>QAbstractItemView::DragOnly</enum>
+         <enum>QAbstractItemView::NoDragDrop</enum>
         </property>
         <property name="alternatingRowColors">
          <bool>false</bool>

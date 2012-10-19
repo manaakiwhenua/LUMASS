@@ -125,18 +125,18 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	btnExec->setText(tr("Execute"));
 	btnExec->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-	QPushButton* btnLoad = new QPushButton();
-	btnLoad->setText(tr("Load"));
-	btnLoad->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-	QPushButton* btnSave = new QPushButton();
-	btnSave->setText(tr("Save"));
-	btnSave->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+//	QPushButton* btnLoad = new QPushButton();
+//	btnLoad->setText(tr("Load"));
+//	btnLoad->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+//
+//	QPushButton* btnSave = new QPushButton();
+//	btnSave->setText(tr("Save"));
+//	btnSave->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
 	QHBoxLayout* boxLayout = new QHBoxLayout();
 	boxLayout->setAlignment(Qt::AlignRight | Qt::AlignBottom);
-	boxLayout->addWidget(btnLoad);
-	boxLayout->addWidget(btnSave);
+//	boxLayout->addWidget(btnLoad);
+//	boxLayout->addWidget(btnSave);
 	boxLayout->addWidget(btnExec);
 
 	QVBoxLayout* gridLayout = new QVBoxLayout();
@@ -147,8 +147,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
 	// connect buttons
 	connect(btnExec, SIGNAL(clicked()), this, SLOT(executeModel()));
-	connect(btnLoad, SIGNAL(clicked()), this, SLOT(loadModel()));
-	connect(btnSave, SIGNAL(clicked()), this, SLOT(saveModel()));
+//	connect(btnLoad, SIGNAL(clicked()), this, SLOT(loadModel()));
+//	connect(btnSave, SIGNAL(clicked()), this, SLOT(saveModel()));
 
 	this->initItemContextMenu();
 
@@ -916,23 +916,48 @@ void NMModelViewWidget::deleteItem()
 {
 	NMDebugCtx(ctx, << "...");
 
-	QList<QGraphicsItem*> delList;
+	NMProcessComponentItem* procItem;
+	NMAggregateComponentItem* aggrItem;
+	NMComponentLinkItem* linkItem;
+
+	//QList<QGraphicsItem*> delList;
+	QList<NMComponentLinkItem*> delLinkList;
+	QStringList delList;
 	if (this->mModelScene->selectedItems().count())
-		delList = this->mModelScene->selectedItems();
-	else if (this->mLastItem != 0)
-		delList.push_back(this->mLastItem);
-
-
-	QListIterator<QGraphicsItem*> it(delList);
-	while(it.hasNext())
 	{
-		QGraphicsItem* item = it.next();
+		foreach(QGraphicsItem* gi, this->mModelScene->selectedItems())
+		{
+			procItem = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+			aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+			linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
+
+			if (procItem != 0)
+				delList.push_back(procItem->getTitle());
+			else if (aggrItem != 0)
+				delList.push_back(aggrItem->getTitle());
+			else if (linkItem != 0)
+				delLinkList.push_back(linkItem);
+		}
+	}
+	//else if (this->mLastItem != 0)
+	//	delList.push_back(this->mLastItem);
+
+
+	QStringListIterator sit(delList);
+	while(sit.hasNext())
+	{
+		const QString& name = sit.next();
+		QGraphicsItem* item = this->mModelScene->getComponentItem(name);
+		if (item == 0 || this->mModelController->getComponent(name) == 0)
+		{
+			NMDebugAI(<< "can't find any reference to '" << name.toStdString()
+					  << "' anymore. Let's move on!" << endl);
+			continue;
+		}
+
 		NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
-		NMComponentLinkItem* linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(item);
-
-		if (item == 0)
-			return;
+		//NMComponentLinkItem* linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(item);
 
 		NMModelComponent* pcomp = 0;
 		if (procItem != 0)
@@ -949,11 +974,12 @@ void NMModelViewWidget::deleteItem()
 			this->removeObjFromOpenEditsList(pcomp);
 			this->deleteAggregateComponentItem(aggrItem);
 		}
-		else if (linkItem != 0)
-		{
-			this->deleteLinkComponentItem(linkItem);
-		}
+		//else if (linkItem != 0)
+		//{
+		//	this->deleteLinkComponentItem(linkItem);
+		//}
 	}
+
 
 	mModelScene->invalidate();
 	NMDebugCtx(ctx, << "done!");

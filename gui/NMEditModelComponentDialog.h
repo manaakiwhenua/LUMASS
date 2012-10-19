@@ -74,7 +74,7 @@ private:
     QObject* mObj;
     NMModelComponent* comp;
     NMProcess* proc;
-    std::string ctx;
+    static const std::string ctx;
     Ui::compEditor ui;
     
 #ifdef BUILD_RASSUPPORT

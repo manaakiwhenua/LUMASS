@@ -24,10 +24,11 @@
 #include <limits>
 
 
+const std::string NMEditModelComponentDialog::ctx = "NMEditModelComponentDialog";
+
 NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
     : QWidget(parent), mObj(0), comp(0), proc(0)
 {
-	ctx = "NMEditModelComponentDialog";
 	ui.setupUi(this);
 
 #ifdef BUILD_RASSUPPORT
@@ -326,6 +327,11 @@ void NMEditModelComponentDialog::createPropertyEdit(const QMetaProperty& propert
 
 		if (!value.isNull())
 			prop->setValue(value);
+
+		if (prop->propertyName().compare("ProcessName") == 0 ||
+			prop->propertyName().compare("ComponentName") == 0)
+			prop->setEnabled(false);
+
 		prop->setToolTip(QString(tr("type: %1")).arg(value.typeName()));
 
 		ui.propBrowser->setFactoryForManager(manager, editor);

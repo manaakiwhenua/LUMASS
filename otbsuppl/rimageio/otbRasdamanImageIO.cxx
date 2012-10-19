@@ -276,18 +276,18 @@ void RasdamanImageIO::ReadImageInformation()
 	this->SetFileTypeToBinary();
 	this->SetComponentType(this->getOTBComponentType(this->m_rtype));
 
-	if (!this->m_Helper->isNMMetaAvailable())
-	{
-		NMDebugAI(<< "no geospatial meta data available!" << std::endl);
-		NMDebugCtx(__rio, << "done!");
-	}
+	//if (!this->m_Helper->isNMMetaAvailable())
+	//{
+	//	NMDebugAI(<< "no geospatial meta data available!" << std::endl);
+	//	NMDebugCtx(__rio, << "done!");
+	//}
 
 	// --------------------------------------------------------------
 	// set meta data
 	itk::MetaDataDictionary& dict = this->GetMetaDataDictionary();
 
 	// crs
-	std::string crs_descr = this->m_Helper->getNMMetaCrsName(this->m_oids[0]);
+	std::string crs_descr = this->m_Helper->getCRSURIfromWKT("CRS:1", (unsigned int)m_sdom.dimension());
 	itk::EncapsulateMetaData< std::string > (dict, MetaDataKey::ProjectionRefKey, crs_descr);
 
 	// LowerLeft

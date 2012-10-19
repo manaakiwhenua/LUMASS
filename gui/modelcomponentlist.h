@@ -94,7 +94,7 @@ private:
     NMLayerModel* mLayerModel;
     QPoint dragStartPosition;
     QMenu* mMenu;
-
+    QModelIndex mIndicatorIdx;
 
     void removeLayer(NMLayer* layer);
 
@@ -102,7 +102,7 @@ private:
    	void unionMapBBox(const double* box);
    	void recalcMapBBox();
 
-   	// mouse handlers
+   	// event handlers
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent* event);
@@ -110,7 +110,8 @@ private:
     void dragMoveEvent(QDragMoveEvent* event);
     void dragEnterEvent(QDragEnterEvent* event);
     void dropEvent(QDropEvent* event);
-    //bool eventFilter(QObject* obj, QEvent* event);
+    void paintEvent(QPaintEvent* event);
+
 
 	void processSelection(bool toggle);
 

@@ -66,13 +66,6 @@ public:
 	Qt::ItemFlags flags(const QModelIndex& index) const;
 	bool setData(const QModelIndex& index, const QVariant& value, int role=Qt::EditRole);
 
-	// extended functionality
-//	Qt::DropActions supportedDropActions(void) const
-//		{return Qt::CopyAction | Qt::MoveAction;};
-//	QStringList mimeTypes() const;
-//	QMimeData* mimeData(const QModelIndexList& indexes) const;
-//	bool removeRows(int row, int count, const QModelIndex& parent=QModelIndex());
-
 	/* conversion from tree model rows into layerStack
 	 * indices
 	 *

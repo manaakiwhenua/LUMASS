@@ -29,9 +29,6 @@
 
 NMLayerModel::NMLayerModel(QObject* parent)
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
-
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
 }
 
 NMLayerModel::~NMLayerModel()
@@ -40,12 +37,12 @@ NMLayerModel::~NMLayerModel()
 
 int NMLayerModel::pileItemLayer(NMLayer* layer)
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
+	//	NMDebugCtx(ctxNMLayerModel, << "...");
 
 	if (layer == 0)
 	{
 		NMDebugInd(1, << "oops, received NULL layer!" << endl);
-//		NMDebugCtx(ctxNMLayerModel, << "done!");
+		//		NMDebugCtx(ctxNMLayerModel, << "done!");
 		return 0;
 	}
 
@@ -64,7 +61,7 @@ int NMLayerModel::pileItemLayer(NMLayer* layer)
 
 	emit layoutChanged();
 
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
+	//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return 1;
 }
 
@@ -119,28 +116,9 @@ int NMLayerModel::changeItemLayerPos(int oldpos, int newpos)
 	return oldpos;
 }
 
-//bool NMLayerModel::removeRows(int row, int count, const QModelIndex& parent)
-//{
-//	bool ret = false;
-//
-//	if (!parent.isValid())
-//	{
-//		int layerpos = this->toLayerStackIndex(row);
-//		this->layoutAboutToBeChanged();
-//
-//		this->mLayers.removeAt(layerpos);
-//		this->removeRow(row);
-//
-//		emit layoutChanged();
-//		ret = true;
-//	}
-//
-//	return ret;
-//}
-
 void NMLayerModel::removeLayer(NMLayer* layer)
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
+	//	NMDebugCtx(ctxNMLayerModel, << "...");
 
 	// get the stack position of this layer
 	int layerPos = layer->getLayerPos();
@@ -159,55 +137,28 @@ void NMLayerModel::removeLayer(NMLayer* layer)
 	for (int i=0; i < this->mLayers.size(); ++i)
 		this->mLayers[i]->setLayerPos(i);
 
-//	NMDebugCtx(ctxNMLayerModel, << "done!");
+	//	NMDebugCtx(ctxNMLayerModel, << "done!");
 }
 
 Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
-
     Qt::ItemFlags flags = Qt::ItemIsEnabled;
 
     // top level items (i.e. layer entries)
     if (index.internalPointer() != 0)
     {
     	// checkboxes (selctability and visibility)
-//    	if (index.column() < 2)
-    		flags |= Qt::ItemIsUserCheckable | Qt::ItemIsEditable |
+   		flags |= Qt::ItemIsUserCheckable | Qt::ItemIsEditable |
     				 Qt::ItemIsSelectable | Qt::ItemIsDragEnabled |
     				 Qt::ItemIsDropEnabled;
-//    	else
-//    		flags |= Qt::ItemIsDragEnabled | Qt::ItemIsSelectable;
     }
 
-
-//    NMDebugCtx(ctxNMLayerModel, << "done!");
     return flags;
 }
 
-//QStringList NMLayerModel::mimeTypes(void) const
-//{
-//	QStringList types;
-//	types << "text/plain";
-//	return types;
-//}
-//
-//QMimeData* NMLayerModel::mimeData(const QModelIndexList& indexes) const
-//{
-//	QMimeData* mimeData = new QMimeData();
-//
-//	const QModelIndex& idx = indexes.at(0);
-//	if (idx.isValid() && !idx.parent().isValid())
-//	{
-//		mimeData->setText(idx.data(Qt::DisplayRole).toString());
-//	}
-//
-//	return mimeData;
-//}
-
 QModelIndex NMLayerModel::index(int row, int column, const QModelIndex& parent) const
 {
-//	NMDebugCtx(ctxNMLayerModel, << "...");
+	//	NMDebugCtx(ctxNMLayerModel, << "...");
 
 	QModelIndex idx;
 
@@ -224,7 +175,7 @@ QModelIndex NMLayerModel::index(int row, int column, const QModelIndex& parent) 
     	idx = createIndex(row, column, parent.row());
     }
 
-//    NMDebugCtx(ctxNMLayerModel, << "done!");
+    //    NMDebugCtx(ctxNMLayerModel, << "done!");
     return idx;
 }
 

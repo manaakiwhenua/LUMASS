@@ -494,62 +494,15 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
     //NMDebugCtx(ctx, << "done!");
 }
 
-void ModelComponentList::mouseReleaseEvent(QMouseEvent* event)
-{
-//	NMDebugCtx(ctx, << "...");
-//
-//	QModelIndex srcidx = this->indexAt(this->dragStartPosition);
-//	if (!srcidx.isValid())
-//	{
-//		NMDebugAI(<< "invalid src index!" << endl);
-//		NMDebugCtx(ctx, << "done!");
-//		return;
-//	}
-//
-//	QString srcLayerName = srcidx.data(Qt::DisplayRole).toString();
-//	NMDebugAI(<< "drag started at layer: " << srcLayerName.toStdString() << std::endl);
-//
-//	NMLayer* srcLayer = this->getLayer(srcLayerName);
-//	if (srcLayer == 0)
-//	{
-//		NMDebugAI(<< "couldn't fetch source layer!" << endl);
-//		NMDebugCtx(ctx, << "done!");
-//		return;
-//	}
-//	int srcpos = srcLayer->getLayerPos();
-//
-//	QModelIndex taridx = this->indexAt(event->pos());
-//	if (!taridx.isValid())
-//	{
-//		NMDebugAI(<< "invalid target index!" << endl);
-//		NMDebugCtx(ctx, << "done!");
-//		return;
-//	}
-//
-//	QString tarLayerName = taridx.data(Qt::DisplayRole).toString();
-//	NMDebugAI(<< "drag ends at layer: " << tarLayerName.toStdString() << std::endl);
-//
-//	NMLayer* tarLayer = this->getLayer(tarLayerName);
-//	if (tarLayer == 0)
-//	{
-//		NMDebugAI(<< "couldn't get fetch target layer!" << endl);
-//		NMDebugCtx(ctx, << "done!");
-//		return;
-//	}
-//	int tarpos = tarLayer->getLayerPos();
-//
-//	this->changeLayerPos(srcpos, tarpos);
-//
-//	NMDebugCtx(ctx, << "done!");
-}
-
 void ModelComponentList::dropEvent(QDropEvent* event)
 {
-	NMDebugCtx(ctx, << "...");
+	//NMDebugCtx(ctx, << "...");
 
 	QModelIndex destidx = this->indexAt(event->pos());
 	if (!destidx.isValid() || destidx.parent().isValid())
 	{
+		this->mIndicatorIdx = QModelIndex();
+
 		NMDebugAI(<< "no valid drop pos!" << endl);
 		NMDebugCtx(ctx, << "done!");
 		return;
@@ -559,18 +512,21 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 	if (dl == 0)
 		return;
 	int destpos = dl->getLayerPos();
-	NMDebugAI(<< "dest pos: " << destpos << endl);
+	//NMDebugAI(<< "dest pos: " << destpos << endl);
 
 	QModelIndex srcidx = this->indexAt(this->dragStartPosition);
 	NMLayer* sl = (NMLayer*)srcidx.internalPointer();
 	if (sl == 0)
 		return;
 	int srcpos = sl->getLayerPos();
-	NMDebugAI(<< "src pos: " << srcpos << endl);
+	//NMDebugAI(<< "src pos: " << srcpos << endl);
 
 	this->changeLayerPos(srcpos, destpos);
 
-	NMDebugCtx(ctx, << "done!");
+	// stop drawing the indicator
+	this->mIndicatorIdx = QModelIndex();
+
+	//NMDebugCtx(ctx, << "done!");
 	event->acceptProposedAction();
 }
 
@@ -589,10 +545,83 @@ void ModelComponentList::dragMoveEvent(QDragMoveEvent* event)
 {
 	QModelIndex id = this->indexAt(event->pos());
 	if (!id.isValid() || id.parent().isValid())
+	{
+		this->mIndicatorIdx = QModelIndex();
 		return;
+	}
 
+	//QModelIndex oid = this->indexAt(this->dragStartPosition);
+	//if (oid == id)
+	//	return;
 
+	this->mIndicatorIdx = id;
+	this->viewport()->update();
 	event->acceptProposedAction();
+}
+
+void ModelComponentList::mouseReleaseEvent(QMouseEvent* event)
+{
+
+}
+
+void ModelComponentList::paintEvent(QPaintEvent* event)
+{
+	// do all normal painting first
+	QTreeView::paintEvent(event);
+
+	// add an indicator rectangle, if applicable
+	if (this->mIndicatorIdx.isValid())
+	{
+		QPainter painter(this->viewport());
+
+		QString text = this->mLayerModel->data(this->mIndicatorIdx, Qt::DisplayRole).toString();
+		QFont font = this->mLayerModel->data(this->mIndicatorIdx, Qt::FontRole).value<QFont>();
+
+		QRect vrect = visualRect(this->mIndicatorIdx);
+		int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
+		int checkboxwidth = style()->pixelMetric(QStyle::PM_IndicatorWidth);
+
+		painter.setFont(font);
+		QFontMetrics fm = painter.fontMetrics();
+		int textwidth = fm.width(text);
+		int iconwidth = vrect.width() - itemIndentation - textwidth - checkboxwidth;
+
+		QRect rect = QRect(
+				header()->sectionViewportPosition(0) + itemIndentation,
+				vrect.y(),
+				vrect.width(),// - itemIndentation,
+				//checkboxwidth + iconwidth + textwidth,
+				vrect.height());
+
+		QImage img(rect.size(), QImage::Format_ARGB32_Premultiplied);
+		img.fill(0);
+	    QPainter dragPainter(&img);
+
+	    QLinearGradient bw(0,0,0,img.rect().height()*0.5);
+	    bw.setSpread(QGradient::ReflectSpread);
+	    bw.setColorAt(0, QColor(0,0,200));
+	    bw.setColorAt(0.8, QColor(255,255,255));
+	    bw.setColorAt(1, QColor(255,255,255));
+	    dragPainter.fillRect(img.rect(), bw);
+	    dragPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+
+	    QLinearGradient fade(0,0,0,img.rect().height()*0.5);
+	    fade.setSpread(QGradient::ReflectSpread);
+	    fade.setColorAt(0, QColor(0,0,0,127));
+	    fade.setColorAt(1, QColor(0,0,0,0));
+	    dragPainter.fillRect(img.rect(), fade);
+
+		//painter.setPen(Qt::red);
+		//painter.drawRect(rect);
+		//painter.setCompositionMode(QPainter::CompositionMode_Overlay);
+		//painter.fillRect(rect, QBrush(QColor(255,0,0,80)));
+		//painter.setOpacity(0.2);
+
+	    painter.setRenderHint(QPainter::Antialiasing, true);
+		painter.setPen(QPen(QBrush(QColor(0,0,200,127)), 3));
+		painter.drawImage(rect, img);
+		painter.drawRoundedRect(rect, 5,5);
+	}
 }
 
 void ModelComponentList::zoomToLayer()

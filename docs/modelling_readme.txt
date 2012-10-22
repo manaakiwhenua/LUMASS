@@ -17,10 +17,17 @@ HOW TO USE THE LUMASS MODELLING FRAMEWORK
 1. PRINCIPLES
 ===========================================
 
-The modelling framework is built upon the ITK image
-processing pipeline. The working horses, i.e. all available
-algorithms are implemented as itk::ProcessObjects. 
+1.1 Data and algorithms
 
+The modelling framework is built upon the ITK/OTB image
+processing pipeline. It consists of two fundamental
+components: data and algorithms. The algorithms  are
+working on the data to produce new data, which,
+in turn, can feed into other algorithms. Many data
+objects and algorithms, connected via their in-/output
+relationships, constitutes the ITK/OTB processing pipeline.
+
+1.2 
 
 
 ===========================================

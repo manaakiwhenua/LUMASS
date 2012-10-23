@@ -50,7 +50,7 @@ class NMProcess : public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents NOTIFY NMProcessChanged)
-
+	Q_PROPERTY(AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
 //	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMComponentType READ getNMComponentType WRITE setNMComponentType NOTIFY NMProcessChanged)
 	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMInputComponentType READ getInputNMComponentType WRITE setInputNMComponentType NOTIFY NMProcessChanged)
 	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMOutputComponentType READ getOutputNMComponentType WRITE setOutputNMComponentType NOTIFY NMProcessChanged)
@@ -59,7 +59,28 @@ class NMProcess : public QObject
 	Q_PROPERTY(unsigned int InputNumBands READ getInputNumBands WRITE setInputNumBands NOTIFY NMProcessChanged)
 	Q_PROPERTY(unsigned int OutputNumBands READ getOutputNumBands WRITE setOutputNumBands NOTIFY NMProcessChanged)
 
+
+	Q_ENUMS(AdvanceParameter)
+
 public:
+	/*! Defines the supported ways of parameter supply to a process component upon
+	 *  repetitive execution:\newline
+	 *  NM_USE_UP
+	 *  takes a new parameter from the list each time the process
+	 *  is executed; the process re-uses the last parameter if the process is
+	 *  executed again after all parameters have been used
+	 *	NM_CYCLE
+	 *	takes a new parameter from the list each time the process
+	 *	is executed; after the last parameter was used, it starts at the beginning
+	 *	of the list again
+	 *	NM_SYNC_WITH_HOST:
+	 *	the parameter to be taken from the list is synchronised with
+	 *	with the iteration steps of the host components, i.e. the iteration steps
+	 *	determines the index of the parameter list from which to take the next parameter
+	 *
+	 *	The default setting is NM_SYNC_WITH_HOST
+	 */
+	enum AdvanceParameter {NM_USE_UP=0, NM_CYCLE, NM_SYNC_WITH_HOST};
 
 	NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
 //	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
@@ -67,6 +88,7 @@ public:
 	NMPropertyGetSet(OutputNumDimensions  , unsigned int                           )
 	NMPropertyGetSet(InputNumBands        , unsigned int                           )
 	NMPropertyGetSet(OutputNumBands	      , unsigned int                           )
+	NMPropertyGetSet(ParameterHandling	  , AdvanceParameter                       )
 
 	NMItkDataObjectWrapper::NMComponentType getInputNMComponentType();
     NMItkDataObjectWrapper::NMComponentType getOutputNMComponentType();
@@ -95,8 +117,8 @@ public:
     void setInput (NMItkDataObjectWrapper* img)
     		{this->setNthInput(0, img);}
     virtual NMItkDataObjectWrapper* getOutput(void) = 0;
-    void update(void)
-    	{this->mOtbProcess->Update();}
+    void update(void);
+    void reset(void);
 
 	virtual void instantiateObject(void) = 0;
 	bool isInitialised(void)
@@ -121,6 +143,7 @@ protected:
 	NMProcess(QObject *parent=0);
 
 	bool mbIsInitialised;
+	unsigned int mParamPos;
     QList<QStringList> mInputComponents;
 	itk::ProcessObject::Pointer mOtbProcess;
 	itk::DataObject::Pointer mOutputImg;
@@ -132,6 +155,7 @@ protected:
 	unsigned int mOutputNumBands;
 	unsigned int mInputNumDimensions;
 	unsigned int mOutputNumDimensions;
+	AdvanceParameter mParameterHandling;
 
 	/*! \brief Stores the parameter index. Needs to be set to 0 in constructor */
 //	unsigned int mParameterPos;
@@ -154,6 +178,7 @@ protected:
 
 Q_DECLARE_METATYPE(QList<QStringList>)
 Q_DECLARE_METATYPE(QList<QList<QStringList> >)
+Q_DECLARE_METATYPE(NMProcess::AdvanceParameter);
 
 
 #endif /* NMProcess_H_ */

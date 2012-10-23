@@ -37,6 +37,8 @@ NMProcess::NMProcess(QObject *parent)
 	this->mInputNumBands = 1;
 	this->mOutputNumBands = 1;
 	this->mbIsInitialised = false;
+	this->mParameterHandling = NM_SYNC_WITH_HOST;
+	this->mParamPos = 0;
 }
 
 NMProcess::~NMProcess()
@@ -86,8 +88,47 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 		return;
 	}
 
-	if (step > this->mInputComponents.size()-1)
-		step = 0;
+	// set the step parameter according to the ParameterHandling mode set for this process
+	switch(this->mParameterHandling)
+	{
+	case NM_USE_UP:
+		if (this->mParamPos < this->mInputComponents.size())
+		{
+			step = this->mParamPos;
+			++this->mParamPos;
+		}
+		else if (this->mParamPos >= this->mInputComponents.size())
+		{
+			this->mParamPos = this->mInputComponents.size()-1;
+			step = this->mParamPos;
+		}
+		break;
+	case NM_CYCLE:
+		if (this->mParamPos < this->mInputComponents.size())
+		{
+			step = this->mParamPos;
+			++this->mParamPos;
+		}
+		else if (this->mParamPos >= this->mInputComponents.size())
+		{
+			step = 0;
+			this->mParamPos = 1;
+		}
+		break;
+	case NM_SYNC_WITH_HOST:
+		if (step < this->mInputComponents.size())
+		{
+			this->mParamPos = step;
+		}
+		else
+		{
+			step = 0;
+			this->mParamPos = 0;
+			NMErr(ctxNMProcess, << "mParamPos and host's step out of sync!! Set step / mParamPos = 0");
+		}
+
+		break;
+	}
 
 	NMModelComponent* parentComp = qobject_cast<NMModelComponent*>(this->parent());
 	QString targetName = parentComp->objectName();
@@ -171,6 +212,22 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 itk::ImageIOBase::IOComponentType NMProcess::getInputComponentType(void)
 {
     return this->mInputComponentType;
+}
+
+void NMProcess::reset(void)
+{
+	this->mParamPos = 0;
+	this->mbIsInitialised = false;
+}
+
+void NMProcess::update(void)
+{
+	if (this->mbIsInitialised)
+		this->mOtbProcess->Update();
+	else
+	{
+		NMErr(ctxNMProcess, << "Update couldn't be called because the process is not initialised!");
+	}
 }
 
 NMItkDataObjectWrapper::NMComponentType NMProcess::getInputNMComponentType()

@@ -184,6 +184,8 @@ void NMEditModelComponentDialog::createPropertyEdit(const QMetaProperty& propert
 		   << "uint" << "int" << "ulong" << "long"
 		   << "float" << "double" << "unknown";
 
+	QStringList parammodes;
+	parammodes << "NM_USE_UP" << "NM_CYCLE" << "NM_SYNC_WITH_HOST";
 
 	QtVariantPropertyManager* manager = new QtVariantPropertyManager();
 	QtVariantProperty* prop;
@@ -313,6 +315,14 @@ void NMEditModelComponentDialog::createPropertyEdit(const QMetaProperty& propert
 		value = QVariant::fromValue(bracedList);
 		prop = manager->addProperty(QVariant::StringList, propName);
 	}
+	else if (QString("AdvanceParameter").compare(property.typeName()) == 0)
+	{
+		propType = QtVariantPropertyManager::enumTypeId();
+		//propName = QString("Input Parameter Handling");
+		prop = manager->addProperty(propType, propName);
+		prop->setAttribute("enumNames", parammodes);
+		value = obj->property(property.name()).toInt(&bok);
+	}
 	else
 	{
 		NMDebug(<< "standard ");
@@ -393,6 +403,9 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 		   << "uint" << "int" << "ulong" << "long"
 		   << "float" << "double" << "unknown";
 
+	QStringList parammodes;
+	parammodes << "NM_USE_UP" << "NM_CYCLE" << "NM_SYNC_WITH_HOST";
+
 	QtVariantPropertyManager* manager =
 			qobject_cast<QtVariantPropertyManager*>(prop->propertyManager());
 	if (manager == 0)
@@ -464,6 +477,13 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 		NMItkDataObjectWrapper::NMComponentType type =
 				NMItkDataObjectWrapper::getComponentTypeFromString(ctypes.at(value.toInt(&bok)));
 		updatedValue = QVariant::fromValue(type);
+	}
+	else if (QString("ParameterHandling").compare(prop->propertyName()) == 0)
+	{
+		int v = value.toInt(&bok);
+		NMProcess::AdvanceParameter ap = (NMProcess::AdvanceParameter)v;
+		NMDebugAI(<< "ParameterHandling: dlg value = " << v << " | casted value: " << ap << endl);
+		updatedValue = QVariant::fromValue(ap);
 	}
 	else if (QString("QStringList").compare(value.typeName()) == 0)
 	{

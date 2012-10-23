@@ -436,6 +436,7 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mOutputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mFileName = "";
 	this->mbRasMode = false;
+	this->mFilePos = 0;
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
@@ -798,8 +799,47 @@ void
 NMImageReader::linkParameters(unsigned int step,
 		const QMap<QString, NMModelComponent*>& repo)
 {
-	if (step > this->mFileNames.size()-1)
-		step = 0;
+	// set the step parameter according to the ParameterHandling mode set for this process
+	switch(this->mParameterHandling)
+	{
+	case NM_USE_UP:
+		if (this->mFilePos < this->mFileNames.size())
+		{
+			step = this->mFilePos;
+			++this->mFilePos;
+		}
+		else if (this->mFilePos >= this->mFileNames.size())
+		{
+			this->mFilePos = this->mFileNames.size()-1;
+			step = this->mFilePos;
+		}
+		break;
+	case NM_CYCLE:
+		if (this->mFilePos < this->mFileNames.size())
+		{
+			step = this->mFilePos;
+			++this->mFilePos;
+		}
+		else if (this->mFilePos >= this->mFileNames.size())
+		{
+			step = 0;
+			this->mFilePos = 1;
+		}
+		break;
+	case NM_SYNC_WITH_HOST:
+		if (step < this->mInputComponents.size())
+		{
+			this->mFilePos = step;
+		}
+		else
+		{
+			step = 0;
+			this->mFilePos = 0;
+			NMErr(ctxNMProcess, << "mFilePos and host's step out of sync!! Set mFilePos = 0");
+		}
+		break;
+	}
+
 
 	if (this->mFileNames.size() > 0)
 	{

@@ -36,6 +36,7 @@
 #include "NMItkDataObjectWrapper.h"
 #include "NMOtbAttributeTableWrapper.h"
 #include "NMModelComponent.h"
+#include "NMProcess.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "raslib/error.hh"
@@ -234,6 +235,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	qRegisterMetaType< QList< QStringList> >();
 	qRegisterMetaType< QList< QList< QStringList > > >();
 	qRegisterMetaType< NMItkDataObjectWrapper::NMComponentType >();
+	//qRegisterMetaType< NMProcess::AdvanceParameter >();
 #ifdef BUILD_RASSUPPORT	
 	qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif

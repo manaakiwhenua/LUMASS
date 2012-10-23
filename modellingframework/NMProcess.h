@@ -49,6 +49,7 @@ class NMModelComponent;
 class NMProcess : public QObject
 {
 	Q_OBJECT
+	Q_ENUMS(AdvanceParameter)
 	Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents NOTIFY NMProcessChanged)
 	Q_PROPERTY(AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
 //	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMComponentType READ getNMComponentType WRITE setNMComponentType NOTIFY NMProcessChanged)
@@ -59,8 +60,6 @@ class NMProcess : public QObject
 	Q_PROPERTY(unsigned int InputNumBands READ getInputNumBands WRITE setInputNumBands NOTIFY NMProcessChanged)
 	Q_PROPERTY(unsigned int OutputNumBands READ getOutputNumBands WRITE setOutputNumBands NOTIFY NMProcessChanged)
 
-
-	Q_ENUMS(AdvanceParameter)
 
 public:
 	/*! Defines the supported ways of parameter supply to a process component upon
@@ -80,7 +79,7 @@ public:
 	 *
 	 *	The default setting is NM_SYNC_WITH_HOST
 	 */
-	enum AdvanceParameter {NM_USE_UP=0, NM_CYCLE, NM_SYNC_WITH_HOST};
+	typedef enum AdvanceParameter {NM_USE_UP, NM_CYCLE, NM_SYNC_WITH_HOST};
 
 	NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
 //	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
@@ -88,7 +87,7 @@ public:
 	NMPropertyGetSet(OutputNumDimensions  , unsigned int                           )
 	NMPropertyGetSet(InputNumBands        , unsigned int                           )
 	NMPropertyGetSet(OutputNumBands	      , unsigned int                           )
-	NMPropertyGetSet(ParameterHandling	  , AdvanceParameter                       )
+	NMPropertyGetSet(ParameterHandling	  , AdvanceParameter            )
 
 	NMItkDataObjectWrapper::NMComponentType getInputNMComponentType();
     NMItkDataObjectWrapper::NMComponentType getOutputNMComponentType();
@@ -178,7 +177,7 @@ protected:
 
 Q_DECLARE_METATYPE(QList<QStringList>)
 Q_DECLARE_METATYPE(QList<QList<QStringList> >)
-Q_DECLARE_METATYPE(NMProcess::AdvanceParameter);
+Q_DECLARE_METATYPE(NMProcess::AdvanceParameter)
 
 
 #endif /* NMProcess_H_ */

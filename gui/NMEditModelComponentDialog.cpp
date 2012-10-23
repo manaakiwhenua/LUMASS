@@ -321,7 +321,9 @@ void NMEditModelComponentDialog::createPropertyEdit(const QMetaProperty& propert
 		//propName = QString("Input Parameter Handling");
 		prop = manager->addProperty(propType, propName);
 		prop->setAttribute("enumNames", parammodes);
-		value = obj->property(property.name()).toInt(&bok);
+		value = QVariant(obj->property(property.name()).toInt(&bok));
+		NMDebugAI(<< "prop2ctrl: ParameterHandling = "
+				<< value.toInt(&bok) << endl);
 	}
 	else
 	{
@@ -481,8 +483,15 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 	else if (QString("ParameterHandling").compare(prop->propertyName()) == 0)
 	{
 		int v = value.toInt(&bok);
-		NMProcess::AdvanceParameter ap = (NMProcess::AdvanceParameter)v;
-		NMDebugAI(<< "ParameterHandling: dlg value = " << v << " | casted value: " << ap << endl);
+		NMProcess::AdvanceParameter ap;
+		switch(v)
+		{
+			case 0: ap = NMProcess::NM_USE_UP; break;
+			case 1: ap = NMProcess::NM_CYCLE; break;
+			case 2: ap = NMProcess::NM_SYNC_WITH_HOST; break;
+		}
+
+		//NMDebugAI(<< "ParameterHandling: dlg value = " << v << " | casted value: " << ap << endl);
 		updatedValue = QVariant::fromValue(ap);
 	}
 	else if (QString("QStringList").compare(value.typeName()) == 0)

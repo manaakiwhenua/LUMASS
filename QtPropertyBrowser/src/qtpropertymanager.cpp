@@ -1807,7 +1807,7 @@ QStringList QtStringListPropertyManager::StringToStringList(const QString& strin
 		else
 		{
 			if (curLevel == 0)
-				s += QString(c).simplified();
+				s += c; //QString(c).simplified();
 		}
 
 //		dbg = "";

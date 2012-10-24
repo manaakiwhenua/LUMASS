@@ -146,6 +146,8 @@ NMNeighbourhoodCountingWrapper::NMNeighbourhoodCountingWrapper(QObject* parent)
 
 	this->mInputComponentType = itk::ImageIOBase::SHORT;
 	this->mOutputComponentType = itk::ImageIOBase::SHORT;
+	this->mParameterHandling = NMProcess::NM_USE_UP;
+	this->mParamPos = 0;
 }
 
 NMNeighbourhoodCountingWrapper::~NMNeighbourhoodCountingWrapper()

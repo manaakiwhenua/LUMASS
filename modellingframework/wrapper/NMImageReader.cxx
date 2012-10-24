@@ -440,6 +440,7 @@ NMImageReader::NMImageReader(QObject * parent)
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
+	this->mParameterHandling = NMProcess::NM_USE_UP;
 #endif	
 	
 }

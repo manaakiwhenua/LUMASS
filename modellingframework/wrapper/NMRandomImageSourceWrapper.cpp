@@ -164,6 +164,8 @@ NMRandomImageSourceWrapper::NMRandomImageSourceWrapper(QObject* parent)
 	this->mOutputNumDimensions = 2;
 	this->mInputNumBands = 1;
 	this->mOutputNumBands = 1;
+	this->mParameterHandling = NMProcess::NM_USE_UP;
+	this->mParamPos = 0;
 }
 
 NMRandomImageSourceWrapper::~NMRandomImageSourceWrapper()

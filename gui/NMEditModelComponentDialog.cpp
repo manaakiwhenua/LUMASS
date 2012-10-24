@@ -233,12 +233,22 @@ void NMEditModelComponentDialog::createPropertyEdit(const QMetaProperty& propert
 		QString curPropValStr = NMItkDataObjectWrapper::getComponentTypeString(
 				obj->property(property.name())
 				.value<NMItkDataObjectWrapper::NMComponentType>());
-		NMDebug(<< "current value = " << curPropValStr.toStdString() << std::endl);
+		NMDebug(<< "current value = " << curPropValStr.toStdString());
 		for (unsigned int p=0; p < ctypes.size(); ++p)
 		{
 			if (ctypes.at(p).compare(curPropValStr) == 0)
 				value = QVariant(p);
 		}
+	}
+	else if (QString("NMProcess::AdvanceParameter").compare(property.typeName()) == 0)
+	{
+		propType = QtVariantPropertyManager::enumTypeId();
+		prop = manager->addProperty(propType, propName);
+		prop->setAttribute("enumNames", parammodes);
+		NMProcess::AdvanceParameter ap =
+				obj->property(property.name()).value<NMProcess::AdvanceParameter>();
+		value = QVariant(ap);
+		NMDebug(<< "current value = " << ap);
 	}
 #ifdef BUILD_RASSUPPORT
 	else if (QString("NMRasdamanConnectorWrapper*")
@@ -314,16 +324,6 @@ void NMEditModelComponentDialog::createPropertyEdit(const QMetaProperty& propert
 
 		value = QVariant::fromValue(bracedList);
 		prop = manager->addProperty(QVariant::StringList, propName);
-	}
-	else if (QString("AdvanceParameter").compare(property.typeName()) == 0)
-	{
-		propType = QtVariantPropertyManager::enumTypeId();
-		//propName = QString("Input Parameter Handling");
-		prop = manager->addProperty(propType, propName);
-		prop->setAttribute("enumNames", parammodes);
-		value = QVariant(obj->property(property.name()).toInt(&bok));
-		NMDebugAI(<< "prop2ctrl: ParameterHandling = "
-				<< value.toInt(&bok) << endl);
 	}
 	else
 	{
@@ -490,9 +490,7 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 			case 1: ap = NMProcess::NM_CYCLE; break;
 			case 2: ap = NMProcess::NM_SYNC_WITH_HOST; break;
 		}
-
-		//NMDebugAI(<< "ParameterHandling: dlg value = " << v << " | casted value: " << ap << endl);
-		updatedValue = QVariant::fromValue(ap);
+		updatedValue.setValue<NMProcess::AdvanceParameter>(ap);// = QVariant::fromValue(ap);
 	}
 	else if (QString("QStringList").compare(value.typeName()) == 0)
 	{

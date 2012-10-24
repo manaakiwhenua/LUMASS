@@ -319,6 +319,18 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 				NMItkDataObjectWrapper::getComponentTypeFromString(valueNode.toElement().text());
 		value = QVariant::fromValue(type);
 	}
+	else if (valueNode.nodeName() == "advance_parameter")
+	{
+		NMProcess::AdvanceParameter ap;
+		QString t = valueNode.toElement().text();
+		if (t.compare("NM_USE_UP") == 0)
+			ap = NMProcess::NM_USE_UP;
+		else if (t.compare("NM_CYCLE") == 0)
+			ap = NMProcess::NM_CYCLE;
+		else if (t.compare("NM_SYNC_WITH_HOST") == 0)
+			ap = NMProcess::NM_SYNC_WITH_HOST;
+		value = QVariant::fromValue(ap);
+	}
 #ifdef BUILD_RASSUPPORT	
 	else if (valueNode.nodeName() == "rasdaman_connection")
 	{
@@ -583,6 +595,22 @@ QDomElement NMModelSerialiser::createValueElement(QDomDocument& doc,
 		valueElement = doc.createElement("component_type");
 		QString stype = NMItkDataObjectWrapper::getComponentTypeString(
 				dataValue.value<NMItkDataObjectWrapper::NMComponentType>());
+		valueElementChild = doc.createTextNode(stype);
+		valueElement.appendChild(valueElementChild);
+	}
+	else if (QString(dataValue.typeName()).compare("NMProcess::AdvanceParameter") == 0)
+	{
+		valueElement = doc.createElement("advance_parameter");
+
+		QString stype;
+		bool bok;
+		int v = dataValue.toInt(&bok);
+		switch(v)
+		{
+		case 0: stype = "NM_USE_UP"; break;
+		case 1: stype = "NM_CYCLE"; break;
+		case 2: stype = "NM_SYNC_WITH_HOST"; break;
+		}
 		valueElementChild = doc.createTextNode(stype);
 		valueElement.appendChild(valueElementChild);
 	}

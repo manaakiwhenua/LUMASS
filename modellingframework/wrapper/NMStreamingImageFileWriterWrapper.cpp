@@ -176,6 +176,8 @@ NMStreamingImageFileWriterWrapper
 	this->mOutputNumDimensions = 2;
 #ifdef BUILD_RASSUPPORT
 	this->mRasConnector = 0;
+	this->mParameterHandling = NMProcess::NM_USE_UP;
+	this->mParamPos = 0;
 #endif
 }
 

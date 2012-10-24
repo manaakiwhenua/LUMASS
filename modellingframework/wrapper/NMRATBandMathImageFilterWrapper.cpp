@@ -141,6 +141,8 @@ NMRATBandMathImageFilterWrapper::NMRATBandMathImageFilterWrapper(QObject* parent
 	this->mOutputNumDimensions = 2;
 	this->mInputNumBands = 1;
 	this->mOutputNumBands = 1;
+	this->mParamPos = 0;
+	this->mParameterHandling = NMProcess::NM_USE_UP;
 }
 
 NMRATBandMathImageFilterWrapper::~NMRATBandMathImageFilterWrapper(void)

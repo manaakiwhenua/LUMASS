@@ -235,7 +235,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	qRegisterMetaType< QList< QStringList> >();
 	qRegisterMetaType< QList< QList< QStringList > > >();
 	qRegisterMetaType< NMItkDataObjectWrapper::NMComponentType >();
-	//qRegisterMetaType< NMProcess::AdvanceParameter >();
+	qRegisterMetaType< NMProcess::AdvanceParameter >();
 #ifdef BUILD_RASSUPPORT	
 	qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif
@@ -661,17 +661,40 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	NMLayer* l = this->ui->modelCompList->getSelectedLayer();
-	if (l == 0)
-		return;
+	NMImageReader* ir = new NMImageReader(this);
 
-	int nlayers = this->ui->modelCompList->getLayerCount();
+	const QMetaObject* mo = ir->metaObject();
+	QMetaProperty mp;
+	NMDebugAI(<< "properties of object ..." << endl << endl);
+	for (int i=0; i < mo->propertyCount(); ++i)
+	{
+		mp = mo->property(i);
+		qDebug() << mp.name() << " (" << mp.typeName() << ")";
+	}
 
-	int oldpos = l->getLayerPos();
 
-	if (oldpos + 1 <= nlayers-1)
-		this->ui->modelCompList->changeLayerPos(oldpos, oldpos + 1);
+	QVariant v = QVariant(ir->property("ParameterHandling"));
+	bool bok;
+	string s = v.typeName();
+	NMProcess::AdvanceParameter ap = v.value<NMProcess::AdvanceParameter>();
+	NMDebugAI( << "initial prop type: " << s << endl);
+	NMDebugAI( << "initial prop value: " << ap << endl);
 
+	NMDebugAI( << "setting new value to #NM_CYCLE - at least we try ..." << endl);
+
+	QVariant nv;// = QVariant::fromValue(NMProcess::NM_CYCLE);
+	nv.setValue<NMProcess::AdvanceParameter>(NMProcess::NM_CYCLE);
+
+	ir->setProperty("ParameterHandling", nv);
+
+	v = QVariant(ir->property("ParameterHandling"));
+	s = v.typeName();
+	ap = v.value<NMProcess::AdvanceParameter>();
+	NMDebugAI( << "new prop type: " << s << endl);
+	NMDebugAI( << "new prop value: " << ap << endl);
+
+
+	delete ir;
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 

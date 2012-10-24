@@ -51,7 +51,7 @@ class NMProcess : public QObject
 	Q_OBJECT
 	Q_ENUMS(AdvanceParameter)
 	Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents NOTIFY NMProcessChanged)
-	Q_PROPERTY(AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
+	Q_PROPERTY(NMProcess::AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
 //	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMComponentType READ getNMComponentType WRITE setNMComponentType NOTIFY NMProcessChanged)
 	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMInputComponentType READ getInputNMComponentType WRITE setInputNMComponentType NOTIFY NMProcessChanged)
 	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMOutputComponentType READ getOutputNMComponentType WRITE setOutputNMComponentType NOTIFY NMProcessChanged)
@@ -79,7 +79,7 @@ public:
 	 *
 	 *	The default setting is NM_SYNC_WITH_HOST
 	 */
-	typedef enum AdvanceParameter {NM_USE_UP, NM_CYCLE, NM_SYNC_WITH_HOST};
+	enum AdvanceParameter {NM_USE_UP=0, NM_CYCLE, NM_SYNC_WITH_HOST};
 
 	NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
 //	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
@@ -87,7 +87,7 @@ public:
 	NMPropertyGetSet(OutputNumDimensions  , unsigned int                           )
 	NMPropertyGetSet(InputNumBands        , unsigned int                           )
 	NMPropertyGetSet(OutputNumBands	      , unsigned int                           )
-	NMPropertyGetSet(ParameterHandling	  , AdvanceParameter            )
+	NMPropertyGetSet(ParameterHandling	  , NMProcess::AdvanceParameter            )
 
 	NMItkDataObjectWrapper::NMComponentType getInputNMComponentType();
     NMItkDataObjectWrapper::NMComponentType getOutputNMComponentType();
@@ -154,7 +154,7 @@ protected:
 	unsigned int mOutputNumBands;
 	unsigned int mInputNumDimensions;
 	unsigned int mOutputNumDimensions;
-	AdvanceParameter mParameterHandling;
+	NMProcess::AdvanceParameter mParameterHandling;
 
 	/*! \brief Stores the parameter index. Needs to be set to 0 in constructor */
 //	unsigned int mParameterPos;

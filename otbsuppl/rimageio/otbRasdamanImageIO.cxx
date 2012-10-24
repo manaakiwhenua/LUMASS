@@ -105,7 +105,8 @@ void RasdamanImageIO::SetFileName(const char* filename)
 	NMDebugCtx(__rio, << "...");
 	if (this->m_bCanRead || this->m_bCanWrite)
 	{
-		NMDebugAI(<< "file name is set and we've checked accessibility already!"
+		NMDebugAI(<< "file name '" << filename
+				<< "' is set and we've checked accessibility already!"
 				<< std::endl);
 		NMDebugCtx(__rio, << "done!");
 		return;

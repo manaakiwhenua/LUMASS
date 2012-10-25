@@ -124,7 +124,7 @@ function(git_date _date)
 		ERROR_QUIET
 		OUTPUT_STRIP_TRAILING_WHITESPACE)
 	if(NOT res2 EQUAL 0)
-		set(out2 "\"???\"")
+		set(out2 "???")
 	endif()
 	
 	set(${_date} "${out2}" PARENT_SCOPE)	    

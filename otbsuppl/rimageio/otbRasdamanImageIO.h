@@ -43,8 +43,8 @@
 
 #include "otbAttributeTable.h"
 #include "itkImageIOBase.h"
-#include "RasdamanHelper2.hh"
-#include "RasdamanConnector.hh"
+#include "RasdamanHelper2.h"
+#include "RasdamanConnector.h"
 #include "rasdaman.hh"
 
 

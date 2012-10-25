@@ -7,8 +7,8 @@ INCLUDE_DIRECTORIES(
 	${rimageio_SOURCE_DIR}/../../shared
 	${RASDAMAN_INCLUDE_DIR}
 	${RASDAMAN_INCLUDE_DIR}/raslib
-    ${RASDAMAN_SOURCE_DIR}
 	${RASDAMAN_SOURCE_DIR}/applications/rasgeo
+	${RASDAMAN_SOURCE_DIR}
 	${OTB_INCLUDE_DIRS}
 	${GDALRATImageIO_SOURCE_DIR}
 )
@@ -25,7 +25,7 @@ LIST(APPEND RASLIBS clientcomm rasodmg conversion
 	netpbm jpeg png tiff crypto network m z)
 
 # flags for the rasdaman library (i.e. for initiating the explicit template instantiation)
-ADD_DEFINITIONS(-DLINUX -DEARLY_TEMPLATE -DONCRB -g
+ADD_DEFINITIONS(-DLINUX -DEARLY_TEMPLATE -DONCRB -g 
 		-DCOMPDATE -DRMANVERSION -DBASEDBSTRING
 		-DORFEOMAN)
 
@@ -36,8 +36,8 @@ endif (RMANDEBUG)
 
 
 ADD_LIBRARY(RasImageIO SHARED 
-	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanHelper2.cc
-	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanConnector.cc
+	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanHelper2.cxx
+	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanConnector.cxx
 	${rimageio_SOURCE_DIR}/otbRasdamanImageIO.cxx
 	${rimageio_SOURCE_DIR}/otbRasdamanImageIOFactory.cxx
 	${rimageio_SOURCE_DIR}/otbRasdamanImageReader.txx
@@ -45,8 +45,8 @@ ADD_LIBRARY(RasImageIO SHARED
 TARGET_LINK_LIBRARIES(RasImageIO ${RASLIBS} ${PostgreSQL_LIBRARIES} OTBCommon OTBIO)	
 
 FILE(GLOB RIO_HEADER  
-	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanHelper2.hh
-	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanConnector.hh
+	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanHelper2.h
+	${RASDAMAN_SOURCE_DIR}/applications/rasgeo/RasdamanConnector.h
 	${rimageio_SOURCE_DIR}/.h
 	${rimageio_SOURCE_DIR}/.hh
 )

@@ -45,7 +45,7 @@
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageReader.h"
-  #include "RasdamanConnector.hh"
+  #include "RasdamanConnector.h"
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 

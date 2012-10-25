@@ -38,10 +38,10 @@
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 
-#ifdef BUILD_RASSUPPORT
-  #include "raslib/error.hh"
-  #include "NMRasdamanConnectorWrapper.h"
-#endif
+//#ifdef BUILD_RASSUPPORT
+//  #include "raslib/error.hh"
+//  #include "NMRasdamanConnectorWrapper.h"
+//#endif
 
 #include "NMRATBandMathImageFilterWrapper.h"
 #include "NMStreamingImageFileWriterWrapper.h"
@@ -117,7 +117,7 @@
 
 // rasdaman
 #ifdef BUILD_RASSUPPORT
-  #include "RasdamanConnector.hh"
+  #include "RasdamanConnector.h"
   #include "otbRasdamanImageReader.h"
   #include "otbRasdamanImageIO.h"
   #include "otbRasdamanImageIOFactory.h"

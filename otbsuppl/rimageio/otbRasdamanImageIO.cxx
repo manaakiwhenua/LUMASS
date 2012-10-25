@@ -105,8 +105,7 @@ void RasdamanImageIO::SetFileName(const char* filename)
 	NMDebugCtx(__rio, << "...");
 	if (this->m_bCanRead || this->m_bCanWrite)
 	{
-		NMDebugAI(<< "file name '" << filename
-				<< "' is set and we've checked accessibility already!"
+		NMDebugAI(<< "file name is set and we've checked accessibility already!"
 				<< std::endl);
 		NMDebugCtx(__rio, << "done!");
 		return;
@@ -277,18 +276,18 @@ void RasdamanImageIO::ReadImageInformation()
 	this->SetFileTypeToBinary();
 	this->SetComponentType(this->getOTBComponentType(this->m_rtype));
 
-	//if (!this->m_Helper->isNMMetaAvailable())
-	//{
-	//	NMDebugAI(<< "no geospatial meta data available!" << std::endl);
-	//	NMDebugCtx(__rio, << "done!");
-	//}
+	if (!this->m_Helper->isNMMetaAvailable())
+	{
+		NMDebugAI(<< "no geospatial meta data available!" << std::endl);
+		NMDebugCtx(__rio, << "done!");
+	}
 
 	// --------------------------------------------------------------
 	// set meta data
 	itk::MetaDataDictionary& dict = this->GetMetaDataDictionary();
 
 	// crs
-	std::string crs_descr = this->m_Helper->getCRSURIfromWKT("CRS:1", (unsigned int)m_sdom.dimension());
+	std::string crs_descr = this->m_Helper->getNMMetaCrsName(this->m_oids[0]);
 	itk::EncapsulateMetaData< std::string > (dict, MetaDataKey::ProjectionRefKey, crs_descr);
 
 	// LowerLeft
@@ -694,13 +693,7 @@ void RasdamanImageIO::WriteImageInformation()
 	itk::ExposeMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey,
 			crsname);
 	if (crsname.empty())
-	{
-		std::stringstream tmp;
-		tmp << "http://kahlua.eecs.jacobs-university.de:8080/def/crs/OGC/0.1/Image"
-			<< ndim << "D";
-		crsname = tmp.str();
-	}
-
+		crsname = "CRS:1";
 
 	string collname = this->m_collname;
 	long oid = this->m_oids[0];
@@ -716,19 +709,14 @@ void RasdamanImageIO::WriteImageInformation()
 	double stats_stddev = -1;
 	string RATName = "";
 
-//	this->m_Helper->writeNMMetadata(collname, oid, epsgcode, crsname,
-//			minx, maxx, miny, maxy, minz, maxz, csx, csy, csz, pixeltype,
-//			stats_min, stats_max, stats_mean, stats_stddev, RATName);
+	this->m_Helper->writeNMMetadata(collname, oid, epsgcode, crsname,
+			minx, maxx, miny, maxy, minz, maxz, csx, csy, csz, pixeltype,
+			stats_min, stats_max, stats_mean, stats_stddev, RATName);
 
-
-	std::stringstream covname;
-	covname << collname << "_" << oid;
-	this->m_Helper->writePSMetadata(oid, collname, covname.str(),
-			crsname, rtype,
-			pixeltype,
+	this->m_Helper->writePSMetadata(collname, crsname, rtype,
 			this->GetNumberOfComponents(),
 			minx, maxx,
-			miny, maxy, minz, maxz);
+			miny, maxy, minz, maxz, xpix, ypix, zpix);
 
 	// write RAT
 	for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
@@ -1004,19 +992,21 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 			band > this->m_oids.size())
 		return 0;
 
-//	// check, whether we've got rasgeo support (a nm_meta table) at all
-//	if (!this->m_Helper->isNMMetaAvailable())
-//		return 0;
+	// check, whether we've got rasgeo support (a nm_meta table) at all
+	if (!this->m_Helper->isNMMetaAvailable())
+		return 0;
 
 	// get and check connection to the data base
-	const PGconn* conn = this->m_Rasconn->getPetaConnection();
+	const PGconn* conn = this->m_Rasconn->getRasConnection();
 	if (conn == 0)
 		return 0;
 
 	// ------------------- query table name ---------------------------
 	std::stringstream query;
 	PGresult* res;
-	query << "select attrtable_name from ps_rasgeo where oid = " << this->m_oids[band-1];
+	query << "select attrtable_name from nm_meta where coll_name = '"
+			<< this->m_collname
+			<< "' and img_id = " << this->m_oids[band-1];
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQntuples(res) < 1)
 	{

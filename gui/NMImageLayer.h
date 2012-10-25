@@ -39,7 +39,7 @@
 #include "itkImageIOBase.h"
 
 #ifdef BUILD_RASSUPPORT
-  #include "RasdamanConnector.hh"
+  #include "RasdamanConnector.h"
 #endif
 
 class NMImageLayer: public NMLayer

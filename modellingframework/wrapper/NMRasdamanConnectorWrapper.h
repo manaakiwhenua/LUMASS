@@ -30,7 +30,7 @@
 #include <qobject.h>
 #include <QMetaType>
 
-#include "RasdamanConnector.hh"
+#include "RasdamanConnector.h"
 
 class NMRasdamanConnectorWrapper: public QObject
 {

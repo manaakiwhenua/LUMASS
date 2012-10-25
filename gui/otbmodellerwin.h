@@ -44,9 +44,14 @@
 #include "vtkCellPicker.h"
 #include "NMLayer.h"
 
+// rasdaman
 #ifdef BUILD_RASSUPPORT
-  #include "RasdamanConnector.hh"
+  #include "RasdamanConnector.h"
+  #include "otbRasdamanImageReader.h"
+  #include "otbRasdamanImageIO.h"
+  #include "otbRasdamanImageIOFactory.h"
 #endif
+
 
 class vtkRenderer;
 class vtkEventQtSlotConnect;

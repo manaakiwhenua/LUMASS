@@ -115,13 +115,6 @@
 #include "itkImageIOBase.h"
 #include "otbImage2DToCubeSliceFilter.h"
 
-// rasdaman
-#ifdef BUILD_RASSUPPORT
-  #include "RasdamanConnector.h"
-  #include "otbRasdamanImageReader.h"
-  #include "otbRasdamanImageIO.h"
-  #include "otbRasdamanImageIOFactory.h"
-#endif
 
 
 // VTK
@@ -377,6 +370,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionTest, SIGNAL(triggered()), this, SLOT(test()));
     connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
     connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
+    connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
+
 
     // QVTKWidget Events---------------------------------------------------------
     this->m_vtkConns = vtkSmartPointer<vtkEventQtSlotConnect>::New();
@@ -434,6 +429,31 @@ OtbModellerWin::getRasdamanConnector(void)
 	return this->mpRasconn;
 }
 #endif
+
+void OtbModellerWin::aboutLUMASS(void)
+{
+	QString vinfo = QString("Version %1.%2.%3 - %4\nlast updated %5").arg(_lumass_version_major)
+												  .arg(_lumass_version_minor)
+												  .arg(_lumass_version_revision)
+												  .arg(_lumass_commit_hash)
+												  .arg(_lumass_commit_date);
+
+	QString title = tr("About LUMASS");
+	stringstream textstr;
+	textstr << "LUMASS - The Land-Use Management Support System" << endl
+			<< vinfo.toStdString() << endl
+			<< "Developed by Alexander Herzig" << endl
+			<< "Copyright 2012 Landcare Research New Zealand Ltd" << endl
+			<< "www.landcareresearch.co.nz" << endl << endl
+			<< "LUMASS is free software and licenced under the GPL v3." << endl
+			<< "Contact: herziga@landcareresearch.co.nz" << endl
+			<< "Code: http://code.scenzgrid.org/index.php/p/lumass/" << endl
+			<< "User group: https://groups.google.com/forum/#!forum/lumass-users" << endl;
+
+	QString text(textstr.str().c_str());
+	QMessageBox::about(this, title, text);
+
+}
 
 void OtbModellerWin::importODBC(void)
 {

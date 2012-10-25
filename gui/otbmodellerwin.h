@@ -42,7 +42,10 @@
 #include "vtkOrientationMarkerWidget.h"
 #include "vtkSmartPointer.h"
 #include "vtkCellPicker.h"
+
+#include "LUMASSConfig.h"
 #include "NMLayer.h"
+
 
 // rasdaman
 #ifdef BUILD_RASSUPPORT
@@ -97,6 +100,7 @@ public slots:
 	void saveAsVectorLayerOGR();
 	void updateLayerInfo(NMLayer* l, long cellId);
 	void importODBC();
+	void aboutLUMASS();
 
 protected:
 //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);

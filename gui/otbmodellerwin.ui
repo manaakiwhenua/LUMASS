@@ -82,10 +82,17 @@
     <addaction name="actionComponents_View"/>
     <addaction name="actionModel_View"/>
    </widget>
+   <widget class="QMenu" name="menuAbout">
+    <property name="title">
+     <string>About</string>
+    </property>
+    <addaction name="actionLUMASS"/>
+   </widget>
    <addaction name="menuObject"/>
    <addaction name="menuMOSO"/>
    <addaction name="menu3D_Vis"/>
    <addaction name="menuView"/>
+   <addaction name="menuAbout"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -385,6 +392,11 @@
   <action name="actionSaveAsVectorLayerOGR">
    <property name="text">
     <string>Save As Vector Layer (OGR) ...</string>
+   </property>
+  </action>
+  <action name="actionLUMASS">
+   <property name="text">
+    <string>LUMASS</string>
    </property>
   </action>
  </widget>

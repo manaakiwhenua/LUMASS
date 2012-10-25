@@ -3,6 +3,7 @@ PROJECT(gui)
 
 INCLUDE_DIRECTORIES(
 	${opt_SOURCE_DIR}
+	${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
 	${gui_SOURCE_DIR}/../QtPropertyBrowser/src
 	${gui_SOURCE_DIR}/../otbsuppl/GDALRATImageIO

@@ -2,14 +2,15 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-PROJECT(lumass)
-INCLUDE_REGULAR_EXPRESSION("^.*$")
-
 cmake_minimum_required(VERSION 2.6)
 cmake_policy(SET CMP0003 NEW)
 
+PROJECT(lumass)
+
+INCLUDE_REGULAR_EXPRESSION("^.*$")
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules")
-          
+INCLUDE(GetGitRevisionDescription)
+
 # set some paths for binary output and install
 SET(EXECUTABLE_OUTPUT_PATH ${lumass_BINARY_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
@@ -19,6 +20,21 @@ IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 		CACHE PATH "LUMASS installation directory" FORCE)
 ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
+#==================================================================
+# LUMASS VERSION AND REVISION 
+#==================================================================
+
+SET(LUMASS_VERSION_MAJOR 0)
+SET(LUMASS_VERSION_MINOR 8)
+SET(LUMASS_VERSION_REVISION 1)
+get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+git_date(LUMASS_COMMIT_DATE)
+
+configure_file("${CMAKE_SOURCE_DIR}/LUMASSConfig.h.in"
+               "${lumass_BINARY_DIR}/LUMASSConfig.h" @ONLY)
+               
+message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}"
+               " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")               
 
 #==================================================================
 # THE DEFAULT BUILD TYPE - credits to http://vtk.org/gitweb?p=VTK.git;a=blob;f=CMakeLists.txt;h=a57fd66ef333fc26bf74fe658c88c3c634f54c3a;hb=HEAD#l12 

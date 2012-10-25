@@ -117,14 +117,14 @@ endfunction()
 
 # added by Alexander Herzig #
 function(git_date _date)
-	execute_process(COMMAND "${GIT_EXECUTABLE}" show -s --format="%cd"
+	execute_process(COMMAND "${GIT_EXECUTABLE}" show -s --format=%cd
 		WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 		RESULT_VARIABLE res2
 		OUTPUT_VARIABLE out2
 		ERROR_QUIET
 		OUTPUT_STRIP_TRAILING_WHITESPACE)
 	if(NOT res2 EQUAL 0)
-		set(out2 "${out2}-${res}-NOTFOUND")
+		set(out2 "\"???\"")
 	endif()
 	
 	set(${_date} "${out2}" PARENT_SCOPE)	    

@@ -109,9 +109,11 @@
 #include "otbAttributeTable.h"
 #include "otbStreamingRATImageFileWriter.h"
 #include "otbImageFileWriter.h"
+#include "otbImageFileReader.h"
 #include "itkExtractImageFilter.h"
 #include "itkObjectFactoryBase.h"
-
+#include "itkDanielssonCostDistanceMapImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
 #include "itkImageIOBase.h"
 #include "otbImage2DToCubeSliceFilter.h"
 
@@ -681,40 +683,39 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	NMImageReader* ir = new NMImageReader(this);
+	string in = "/home/alex/garage/img/distinsmall.tiff";
+	string out = "/home/alex/garage/img/distmap.tiff";
+	string vmap = "/home/alex/garage/img/vmap.tiff";
 
-	const QMetaObject* mo = ir->metaObject();
-	QMetaProperty mp;
-	NMDebugAI(<< "properties of object ..." << endl << endl);
-	for (int i=0; i < mo->propertyCount(); ++i)
-	{
-		mp = mo->property(i);
-		qDebug() << mp.name() << " (" << mp.typeName() << ")";
-	}
+	typedef otb::Image<unsigned char, 2> InputImgType;
+	typedef otb::Image<unsigned short, 2> OutputImgType;
 
+	typedef otb::ImageFileReader<InputImgType> ReaderType;
+	ReaderType::Pointer reader = ReaderType::New();
+	reader->SetFileName(in.c_str());
 
-	QVariant v = QVariant(ir->property("ParameterHandling"));
-	bool bok;
-	string s = v.typeName();
-	NMProcess::AdvanceParameter ap = v.value<NMProcess::AdvanceParameter>();
-	NMDebugAI( << "initial prop type: " << s << endl);
-	NMDebugAI( << "initial prop value: " << ap << endl);
+	typedef otb::ImageFileWriter<OutputImgType> WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetFileName(out.c_str());
 
-	NMDebugAI( << "setting new value to #NM_CYCLE - at least we try ..." << endl);
+	typedef itk::DanielssonCostDistanceMapImageFilter<InputImgType, OutputImgType> DistanceFilterType;
+	DistanceFilterType::Pointer distfilter = DistanceFilterType::New();
 
-	QVariant nv;// = QVariant::fromValue(NMProcess::NM_CYCLE);
-	nv.setValue<NMProcess::AdvanceParameter>(NMProcess::NM_CYCLE);
+	typedef itk::RescaleIntensityImageFilter<OutputImgType, OutputImgType> ScaleFilterType;
+	ScaleFilterType::Pointer scalefilter = ScaleFilterType::New();
 
-	ir->setProperty("ParameterHandling", nv);
+	distfilter->SetInput(reader->GetOutput());
+	writer->SetInput(distfilter->GetOutput(0));
 
-	v = QVariant(ir->property("ParameterHandling"));
-	s = v.typeName();
-	ap = v.value<NMProcess::AdvanceParameter>();
-	NMDebugAI( << "new prop type: " << s << endl);
-	NMDebugAI( << "new prop value: " << ap << endl);
+	distfilter->SetInputIsBinary(true);
+	writer->Update();
 
+//	writer->SetInput(distfilter->GetVoronoiMap());
+//	scalefilter->SetInput(distfilter->GetVoronoiMap());
+//	writer->SetInput(scalefilter->GetOutput());
+//	writer->SetFileName(vmap.c_str());
+//	writer->Update();
 
-	delete ir;
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 

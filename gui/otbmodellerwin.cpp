@@ -683,7 +683,7 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	string in = "/home/alex/garage/img/distinsmall.tiff";
+	string in = "/home/alex/garage/img/dinsmall.tiff";
 	string out = "/home/alex/garage/img/distmap.tiff";
 	string vmap = "/home/alex/garage/img/vmap.tiff";
 
@@ -708,6 +708,7 @@ void OtbModellerWin::test()
 	writer->SetInput(distfilter->GetOutput(0));
 
 	distfilter->SetInputIsBinary(true);
+	distfilter->SetUseImageSpacing(true);
 	writer->Update();
 
 //	writer->SetInput(distfilter->GetVoronoiMap());
@@ -1059,7 +1060,9 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 			for (int c=0; c < img->GetNumberOfScalarComponents(); ++c)
 				cvs << img->GetScalarComponentAsDouble(ijk[0], ijk[1], ijk[2], c) << " ";
 
-			pixval = QString("Pixel Value: %1").arg(cvs.str().c_str());
+			pixval = QString("Value at Pixel %1, %2, %3: %4").
+					arg(ijk[0]).arg(ijk[1]).arg(ijk[2]).
+					arg(cvs.str().c_str());
 		}
 	}
 	this->mPixelValLabel->setText(pixval);

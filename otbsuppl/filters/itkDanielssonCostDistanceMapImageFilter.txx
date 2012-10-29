@@ -311,23 +311,23 @@ DanielssonCostDistanceMapImageFilter<TInputImage, TOutputImage>
   OffsetType offsetValueHere  = components->GetPixel( here  );
   OffsetType offsetValueThere = components->GetPixel( there ) + offset;
 
-	//  unsigned int k=0;
-	//  NMDebugAI(<< "index here: ");
-	//  for (k=0; k < InputImageDimension; ++k)
-	//	  NMDebug(<< here[k] << " ");
-	//  NMDebug(<< " | offset value: ");
-	//  for (k=0; k < InputImageDimension; ++k)
-	//	  NMDebug(<< offsetValueHere[k] << " ");
-	//  NMDebug(<< endl);
-	//
-	//
-	//  NMDebugAI(<< "index there: ");
-	//  for (k=0; k < InputImageDimension; ++k)
-	//	  NMDebug(<< there[k] << " ");
-	//  NMDebug(<< " | offset value: ");
-	//  for (k=0; k < InputImageDimension; ++k)
-	//	  NMDebug(<< offsetValueThere[k] << " ");
-	//  NMDebug(<< endl);
+	  unsigned int k=0;
+	  NMDebugAI(<< "index here: ");
+	  for (k=0; k < InputImageDimension; ++k)
+		  NMDebug(<< here[k] << " ");
+	  NMDebug(<< " | offset value: ");
+	  for (k=0; k < InputImageDimension; ++k)
+		  NMDebug(<< offsetValueHere[k] << " ");
+	  NMDebug(<< endl);
+
+
+	  NMDebugAI(<< "index there: ");
+	  for (k=0; k < InputImageDimension; ++k)
+		  NMDebug(<< there[k] << " ");
+	  NMDebug(<< " | offset value: ");
+	  for (k=0; k < InputImageDimension; ++k)
+		  NMDebug(<< offsetValueThere[k] << " ");
+	  NMDebug(<< endl);
 
 
   typename InputImageType::SpacingType spacing = Self::GetInput()->GetSpacing();
@@ -348,14 +348,17 @@ DanielssonCostDistanceMapImageFilter<TInputImage, TOutputImage>
 
     norm1 += v1 * v1;
     norm2 += v2 * v2;
-	//    NMDebugAI(<< "#" << i << ": v1: " << v1
-	//    		              <<  " v2: " << v2 << endl);
+	    NMDebugAI(<< "#" << i << ": v1: " << v1
+	    		              <<  " v2: " << v2 << endl);
     }
   
+  NMDebugAI(<< "norm1: " << norm1 << " norm2: " << norm2 << endl);
   if( norm1 > norm2 ) 
     {
     components->GetPixel( here ) = offsetValueThere;
     }
+
+  NMDebug(<< endl);
 
 }
 

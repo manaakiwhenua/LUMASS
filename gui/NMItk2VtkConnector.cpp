@@ -41,6 +41,8 @@ public:
 	typedef otb::Image< PixelType, ImageDimension > ImgType;
 	typedef itk::NMVTKImageExport< ImgType >	    ExporterType;
 	typedef typename ExporterType::Pointer	        ExporterTypePointer;
+	typedef typename ImgType::SpacingType			ImgSpacing;
+	typedef typename ImgType::PointType				ImgOrigin;
 
 //	typedef otb::VectorImage< PixelType, ImageDimension > VecImgType;
 //	typedef itk::NMVTKImageExport< VecImgType >		      VecExporterType;
@@ -49,6 +51,7 @@ public:
 	static void connectPipeline(
 			itk::VTKImageExportBase::Pointer& vtkImgExp,
 			vtkSmartPointer<vtkImageImport>& vtkImgImp,
+			vtkSmartPointer<vtkImageChangeInformation>& vtkImgTranslate,
 			itk::DataObject::Pointer& imgObj,
 			unsigned int numBands)
 	{
@@ -74,7 +77,17 @@ public:
 			vtkImgImp->SetWholeExtentCallback(vtkExp->GetWholeExtentCallback());
 	//		vtkImgImp->SetReleaseDataFlag(1);
 
-			// keep references to the exporter
+//			const ImgSpacing& spacing = img->GetSpacing();
+//			const ImgOrigin& origin = img->GetOrigin();
+//			double neworigin[3] = {0,0,0};
+//			for (unsigned int d=0; d < ImageDimension; ++d)
+//				neworigin[d] = origin[d] - spacing[d] / 2.0;
+//
+//			//vtkImgTranslate->SetInput(vtkImgImp->GetOutput());
+//			vtkImgTranslate->SetInputConnection(vtkImgImp->GetOutputPort());
+//			vtkImgTranslate->SetOutputOrigin(neworigin);
+//
+//			// keep references to the exporter
 			vtkImgExp = vtkExp;
 		}
 //		else
@@ -113,12 +126,17 @@ public:
 	{ \
 	case 3: \
 		PipelineConnector< PixelType, 3 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mInputImg, \
+			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgTranslate, this->mInputImg, \
+			this->mInputNumBands); \
+		break; \
+	case 1: \
+		PipelineConnector< PixelType, 1 >::connectPipeline( \
+			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgTranslate, this->mInputImg, \
 			this->mInputNumBands); \
 		break; \
 	default: \
 		PipelineConnector< PixelType, 2 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mInputImg, \
+			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgTranslate, this->mInputImg, \
 			this->mInputNumBands); \
 	} \
 }
@@ -144,7 +162,9 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 	this->mInputNumBands = imgWrapper->getNumBands();
 
 	this->mVtkImgImp = vtkSmartPointer<vtkImageImport>::New();
+	this->mVtkImgTranslate = vtkSmartPointer<vtkImageChangeInformation>::New();
 
+	bool connect = true;
 	switch(this->mInputComponentType)
 	{
 	case itk::ImageIOBase::UCHAR:
@@ -183,17 +203,20 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 		this->mInputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 		break;
 	}
+
 	NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
 }
 
 vtkImageData * NMItk2VtkConnector::getVtkImage()
 {
 	return this->mVtkImgImp->GetOutput();
+//	return this->mVtkImgTranslate->GetOutput();
 }
 
 vtkAlgorithmOutput * NMItk2VtkConnector::getVtkAlgorithmOutput()
 {
 	return this->mVtkImgImp->GetOutputPort();
+//	return this->mVtkImgTranslate->GetOutputPort();
 }
 
 void NMItk2VtkConnector::instantiateObject(void)

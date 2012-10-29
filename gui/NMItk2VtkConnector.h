@@ -39,6 +39,8 @@
 #include "itkImageIOBase.h"
 #include "itkImageBase.h"
 #include "itkVTKImageExportBase.h"
+#include "vtkImageTranslateExtent.h"
+#include "vtkImageChangeInformation.h"
 
 class NMItk2VtkConnector : public NMProcess
 {
@@ -63,7 +65,9 @@ private:
 //	itk::ImageIOBase::IOComponentType mItkComponentType;
 //	itk::DataObject* mItkImgObj;
 	vtkSmartPointer<vtkImageImport> mVtkImgImp;
+	vtkSmartPointer<vtkImageChangeInformation> mVtkImgTranslate;
 	itk::VTKImageExportBase::Pointer mVtkImgExp;
+
 
 //	unsigned int mNumDimensions;
 //	unsigned int mNumBands;

@@ -236,9 +236,12 @@ double* NMVTKImageExport<TInputImage>::OriginCallback()
 
   const typename TInputImage::PointType& origin = input->GetOrigin();
 
+  // we've got to account for the different origin settings in VTK/ITK (ie corner vs centre)
+  const typename TInputImage::SpacingType& spacing = input->GetSpacing();
+
   unsigned int i=0;
   // Fill in the known portion of the origin.
-  for(;i < InputImageDimension;++i)
+  for(;i < InputImageDimension;++i)						// part added by alex: - static_cast ...
     {
     m_DataOrigin[i] = static_cast<double>(origin[i]);
     }

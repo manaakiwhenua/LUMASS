@@ -1047,6 +1047,14 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	vtkImageData* img = vtkImageData::SafeDownCast(
 			const_cast<vtkDataSet*>(l->getDataSet()));
 
+	// we tweak the world coordinates a little bit to
+	// generate the illusion as if we had pixel-centered
+	// coordinates in vtk as well
+	double spacing[3];
+	img->GetSpacing(spacing);
+	for (unsigned int d=0; d<3; ++d)
+		wPt[d] += spacing[d] / 2.0;
+
 	QString pixval = "";
 	if (img != 0)
 	{
@@ -1058,7 +1066,9 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 		if (a != 0)
 		{
 			for (int c=0; c < img->GetNumberOfScalarComponents(); ++c)
+			{
 				cvs << img->GetScalarComponentAsDouble(ijk[0], ijk[1], ijk[2], c) << " ";
+			}
 
 			pixval = QString("Value at Pixel %1, %2, %3: %4").
 					arg(ijk[0]).arg(ijk[1]).arg(ijk[2]).

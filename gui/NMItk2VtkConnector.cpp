@@ -51,7 +51,7 @@ public:
 	static void connectPipeline(
 			itk::VTKImageExportBase::Pointer& vtkImgExp,
 			vtkSmartPointer<vtkImageImport>& vtkImgImp,
-			vtkSmartPointer<vtkImageChangeInformation>& vtkImgTranslate,
+			vtkSmartPointer<vtkImageChangeInformation>& vtkImgChangeInfo,
 			itk::DataObject::Pointer& imgObj,
 			unsigned int numBands)
 	{
@@ -75,19 +75,27 @@ public:
 			vtkImgImp->SetUpdateDataCallback(vtkExp->GetUpdateDataCallback());
 			vtkImgImp->SetUpdateInformationCallback(vtkExp->GetUpdateInformationCallback());
 			vtkImgImp->SetWholeExtentCallback(vtkExp->GetWholeExtentCallback());
-	//		vtkImgImp->SetReleaseDataFlag(1);
+			//vtkImgImp->SetReleaseDataFlag(1);
 
-//			const ImgSpacing& spacing = img->GetSpacing();
-//			const ImgOrigin& origin = img->GetOrigin();
-//			double neworigin[3] = {0,0,0};
-//			for (unsigned int d=0; d < ImageDimension; ++d)
-//				neworigin[d] = origin[d] - spacing[d] / 2.0;
-//
-//			//vtkImgTranslate->SetInput(vtkImgImp->GetOutput());
-//			vtkImgTranslate->SetInputConnection(vtkImgImp->GetOutputPort());
-//			vtkImgTranslate->SetOutputOrigin(neworigin);
-//
-//			// keep references to the exporter
+			// we shift the origin of the vtk image by half a pixel length in each
+			// dimension, since vtk uses corner/edge-based coordinates
+			// whereas itk/otb are using pixel-centered coordinates
+			img->UpdateOutputInformation();
+			const ImgSpacing& spacing = img->GetSpacing();
+			const ImgOrigin& origin = img->GetOrigin();
+			double neworigin[3] = {0,0,0};
+			double newspacing[3] = {0,0,0};
+			for (unsigned int d=0; d < ImageDimension; ++d)
+			{
+				neworigin[d] = origin[d] + (spacing[d] / 2.0);
+				newspacing[d] = spacing[d];
+			}
+
+			vtkImgChangeInfo->SetInputConnection(vtkImgImp->GetOutputPort());
+			vtkImgChangeInfo->SetOutputOrigin(neworigin);
+			vtkImgChangeInfo->SetOutputSpacing(newspacing);
+
+			// keep references to the exporter
 			vtkImgExp = vtkExp;
 		}
 //		else
@@ -126,17 +134,17 @@ public:
 	{ \
 	case 3: \
 		PipelineConnector< PixelType, 3 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgTranslate, this->mInputImg, \
+			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
 			this->mInputNumBands); \
 		break; \
 	case 1: \
 		PipelineConnector< PixelType, 1 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgTranslate, this->mInputImg, \
+			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
 			this->mInputNumBands); \
 		break; \
 	default: \
 		PipelineConnector< PixelType, 2 >::connectPipeline( \
-			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgTranslate, this->mInputImg, \
+			this->mVtkImgExp, this->mVtkImgImp, this->mVtkImgChangeInfo, this->mInputImg, \
 			this->mInputNumBands); \
 	} \
 }
@@ -162,7 +170,7 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 	this->mInputNumBands = imgWrapper->getNumBands();
 
 	this->mVtkImgImp = vtkSmartPointer<vtkImageImport>::New();
-	this->mVtkImgTranslate = vtkSmartPointer<vtkImageChangeInformation>::New();
+	this->mVtkImgChangeInfo = vtkSmartPointer<vtkImageChangeInformation>::New();
 
 	bool connect = true;
 	switch(this->mInputComponentType)
@@ -209,14 +217,14 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 
 vtkImageData * NMItk2VtkConnector::getVtkImage()
 {
-	return this->mVtkImgImp->GetOutput();
-//	return this->mVtkImgTranslate->GetOutput();
+//	return this->mVtkImgImp->GetOutput();
+	return this->mVtkImgChangeInfo->GetOutput();
 }
 
 vtkAlgorithmOutput * NMItk2VtkConnector::getVtkAlgorithmOutput()
 {
-	return this->mVtkImgImp->GetOutputPort();
-//	return this->mVtkImgTranslate->GetOutputPort();
+//	return this->mVtkImgImp->GetOutputPort();
+	return this->mVtkImgChangeInfo->GetOutputPort();
 }
 
 void NMItk2VtkConnector::instantiateObject(void)

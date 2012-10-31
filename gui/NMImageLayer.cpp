@@ -309,6 +309,30 @@ void NMImageLayer::setFileName(QString filename)
 
 	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+	m->SetBorder(1);
+
+
+	// adjust origin
+	double ori[3], spc[3];
+	vtkImageData* img = vtkImageData::SafeDownCast(this->mPipeconn->getVtkImage());
+	img->GetOrigin(ori);
+	img->GetSpacing(spc);
+
+	NMDebugAI( << "old bnd: ");
+	for (int i=0; i<3; ++i)
+		NMDebug(<< ori[i] << " ");
+	NMDebug(<< endl);
+
+	//ori[0] += spc[0] / 2.0;
+	//ori[1] -= spc[1] / 2.0;
+    //
+	//img->SetOrigin(ori);
+	//img->GetOrigin(ori);
+    //
+	//NMDebugAI( << "new bnd: ");
+	//for (int i=0; i<3; ++i)
+	//	NMDebug(<< ori[i] << " ");
+	//NMDebug(<< endl);
 
 	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
 	a->SetMapper(m);

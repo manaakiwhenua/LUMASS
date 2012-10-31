@@ -55,6 +55,8 @@
 		typedef otb::Image< PixelType, ImageDimension > ImgType;
 		typedef otb::RasdamanImageReader< ImgType > 	ReaderType;
 		typedef typename ReaderType::Pointer			ReaderTypePointer;
+		typedef typename ImgType::PointType				ImgOriginType;
+		typedef typename ImgType::SpacingType			ImgSpacingType;
 
 		typedef otb::VectorImage< PixelType, ImageDimension > 		VecImgType;
 		typedef otb::RasdamanImageReader< VecImgType > 				VecReaderType;
@@ -85,6 +87,22 @@
 			{
 				ReaderType *r = dynamic_cast<ReaderType*>(readerProcObj.GetPointer());
 				//r->Update();
+
+//				r->GenerateOutputInformation();
+//				ImgType* i = r->GetOutput();
+//				const ImgOriginType& ori = i->GetOrigin();
+//				const ImgSpacingType& spc = i->GetSpacing();
+//
+//				stringstream o;
+//				stringstream s;
+//				for (unsigned int d=0; d<ImageDimension; ++d)
+//				{
+//					o << ori[d] << " ";
+//					s << spc[d] << " ";
+//				}
+//				NMDebugAI(<< "read origin & spacing ... " << endl);
+//				NMDebugAI(<< o.str() << " | " << s.str() << endl);
+
 				img = r->GetOutput();
 			}
 			else

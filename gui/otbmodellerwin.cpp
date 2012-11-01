@@ -1979,6 +1979,8 @@ void OtbModellerWin::loadImageLayer()
 	}
 	catch(r_Error& re)
 	{
+		this->mpRasconn->disconnect();
+		this->mpRasconn->connect();
 		NMErr(ctxOtbModellerWin, << re.what());
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
 	}

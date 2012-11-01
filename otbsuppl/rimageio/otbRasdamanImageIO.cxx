@@ -136,7 +136,8 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 	if ((this->m_prevImageSpec == this->m_ImageSpec) &&
 		 this->m_ImageSpec.find("_last_") == string::npos &&  this->m_bCanRead)
 	{
-		NMDebugAI(<< "we know already we can!" << std::endl);
+		NMDebugAI(<< "checked '" << filename << "' already and we believe "
+				  << "we can read it!" << std::endl);
 		NMDebugCtx(__rio, << "done!");
 		return true;
 	}             
@@ -994,12 +995,22 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 
 	// check, whether we've got rasgeo support (a nm_meta table) at all
 	if (!this->m_Helper->isNMMetaAvailable())
+	{
+		NMDebugAI(<< "there doesn't seem to be nm_meta support "
+				  << "for this rasdaman data base!" << endl);
+		NMDebugCtx(__rio, << "done!");
 		return 0;
+	}
+
 
 	// get and check connection to the data base
 	const PGconn* conn = this->m_Rasconn->getRasConnection();
 	if (conn == 0)
+	{
+		NMErr(__rio, << "No connection to rasdaman data base!");
+		NMDebugCtx(__rio, << "done!");
 		return 0;
+	}
 
 	// ------------------- query table name ---------------------------
 	std::stringstream query;
@@ -1010,12 +1021,14 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQntuples(res) < 1)
 	{
+		NMDebugAI(<< "this band hasn't got an associated attribute table!" << endl);
+		NMDebugCtx(__rio, << "done!");
 		return 0;
 	}
 	std::string ratName = PQgetvalue(res, 0, 0);
 	PQclear(res);
 
-	NMDebugAI(<< "found table '" << ratName << "' ... " << endl);
+	//NMDebugAI(<< "found table '" << ratName << "' ... " << endl);
 
 	//-------------------- query table structure ----------------------
 	// CREDITS TO michaelb on 'http://bytes.com/topic/postgresql/answers/692471-how-get-column-names-table'

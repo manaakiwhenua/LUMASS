@@ -58,7 +58,7 @@ public:
 	unsigned int getNumBands(void)
 			{return this->mNumBands;};
 
-	void setFileName(QString filename);
+	bool setFileName(QString filename);
 
 #ifdef BUILD_RASSUPPORT	
 	void setRasdamanConnector(RasdamanConnector* rasconn)
@@ -67,6 +67,7 @@ public:
 
 	const vtkDataSet* getDataSet(void);
 
+	void world2pixel(double world[3], int pixel[3]);
 	void getBBox(double bbox[6]);
 	otb::AttributeTable* getRasterAttributeTable(int band);
 

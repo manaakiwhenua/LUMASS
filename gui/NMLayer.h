@@ -69,8 +69,8 @@ public:
 		NM_SEL_CLEAR};
 
 	virtual void setDataSet(vtkDataSet* dataset);
-	virtual void setFileName(QString filename)
-		{this->mFileName = filename;};
+	virtual bool setFileName(QString filename)
+		{this->mFileName = filename; return true;};
 	QString getFileName() {return this->mFileName;};
 	virtual const vtkDataSet* getDataSet(void)=0;
 

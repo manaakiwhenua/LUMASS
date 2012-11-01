@@ -215,6 +215,7 @@
 #include "vtkArrayCalculator.h"
 #include "vtkFunctionParser.h"
 #include "vtkImageFlip.h"
+#include "vtkMath.h"
 
 OtbModellerWin::OtbModellerWin(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::OtbModellerWin)
@@ -683,6 +684,84 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	// update the pixel value label, if we've got an image layer selected
+	NMLayer *l = this->ui->modelCompList->getSelectedLayer();
+	if (l == 0)
+		return;
+
+	if (l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+		return;
+
+	vtkImageData* img = vtkImageData::SafeDownCast(
+			const_cast<vtkDataSet*>(l->getDataSet()));
+
+	// we tweak the world coordinates a little bit to
+	// generate the illusion as if we had pixel-centered
+	// coordinates in vtk as well
+	unsigned int d=0;
+	double spacing[3];
+	double origin[3];
+	int extent[6];
+	int dims[3];
+	img->GetSpacing(spacing);
+	img->GetOrigin(origin);
+	img->GetExtent(extent);
+	img->GetDimensions(dims);
+
+	NMDebugAI( << "origin: ");
+	for (d=0; d<3; ++d)
+		NMDebug(<< origin[d] << " ");
+	NMDebug(<< endl);
+
+	NMDebugAI( << "spacing: ");
+	for (d=0; d<3; ++d)
+		NMDebug(<< spacing[d] << " ");
+	NMDebug(<< endl);
+
+	NMDebugAI( << "dimensions: ");
+	for (d=0; d<3; ++d)
+		NMDebug(<< dims[d] << " ");
+	NMDebug(<< endl);
+
+	NMDebugAI( << "extent: ");
+	for (d=0; d<6; ++d)
+		NMDebug(<< extent[d] << " ");
+	NMDebug(<< endl);
+
+	double bnd[6];
+	for (d=0; d<3; ++d)
+	{
+		bnd[d*2] = origin[d];
+		bnd[d*2+1] = origin[d] + dims[d] * spacing[d];
+	}
+	std::cout.precision(8);
+	NMDebugAI( << "bnd (x,y,z): ");
+	for (d=0; d<6; ++d)
+		NMDebug(<< bnd[d] << " ");
+	NMDebug(<< endl);
+
+	NMDebugAI(<< "#points: " << img->GetNumberOfPoints()
+			 << " #cells: " << img->GetNumberOfCells() << endl);
+
+
+	for (int z=0; z<dims[2]; ++z)
+	{
+		for (int y=0; y<dims[1]; ++y)
+		{
+			for (int x=0; x<dims[0]; ++x)
+			{
+				unsigned char* pixel = static_cast<unsigned char*>(img->GetScalarPointer(x,y,z));
+				NMDebug(<< (int)pixel[0] << "  ");
+			}
+			NMDebug(<< endl);
+		}
+		NMDebug(<< endl);
+	}
+
+
+	NMDebugCtx(ctxOtbModellerWin, << "...");
+// OTHER STUFF //////////////////////////////////////////////////////////////////////////
+	return;
 	string in = "/home/alex/garage/img/dinsmall.tiff";
 	string out = "/home/alex/garage/img/distmap.tiff";
 	string vmap = "/home/alex/garage/img/vmap.tiff";
@@ -887,21 +966,22 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		vtkImageData *img = vtkImageData::SafeDownCast(
 				const_cast<vtkDataSet*>(l->getDataSet()));
 
-		if (img != 0)
-		{
-			int ijk[3];
-			double pc[3];
+		if (img == 0)
+			return;
 
-			int a = img->ComputeStructuredCoordinates(wPt, ijk, pc);
-			if (a != 0)
-			{
-				cellId = (vtkIdType)img->GetScalarComponentAsDouble(ijk[0], ijk[1], ijk[2], 0);
-			}
+		int did[3] = {-1,-1,-1};
+		il->world2pixel(wPt, did);
+		for (unsigned int d=0; d < 3; ++d)
+		{
+			if (did[d] < 0)
+				return;
 		}
+
+		cellId = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
 	}
 
 	// populate layer info table with currently picked cell
-	if (cellId > 0)
+	if (cellId >= 0)
 		this->updateLayerInfo(l, cellId);
 }
 
@@ -1047,34 +1127,32 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	vtkImageData* img = vtkImageData::SafeDownCast(
 			const_cast<vtkDataSet*>(l->getDataSet()));
 
-	// we tweak the world coordinates a little bit to
-	// generate the illusion as if we had pixel-centered
-	// coordinates in vtk as well
-	double spacing[3];
-	img->GetSpacing(spacing);
-	for (unsigned int d=0; d<3; ++d)
-		wPt[d] += spacing[d] / 2.0;
+	if (img == 0)
+		return;
 
+	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
 	QString pixval = "";
-	if (img != 0)
+	int did[3] = {-1,-1,-1};
+	il->world2pixel(wPt, did);
+	for (unsigned int d=0; d < 3; ++d)
 	{
-		int ijk[3];
-		double pc[3];
-
-		std::stringstream cvs;
-		int a = img->ComputeStructuredCoordinates(wPt, ijk, pc);
-		if (a != 0)
+		if (did[d] < 0)
 		{
-			for (int c=0; c < img->GetNumberOfScalarComponents(); ++c)
-			{
-				cvs << img->GetScalarComponentAsDouble(ijk[0], ijk[1], ijk[2], c) << " ";
-			}
-
-			pixval = QString("Value at Pixel %1, %2, %3: %4").
-					arg(ijk[0]).arg(ijk[1]).arg(ijk[2]).
-					arg(cvs.str().c_str());
+			this->mPixelValLabel->setText(pixval);
+			return;
 		}
 	}
+
+	stringstream cvs;
+	for (unsigned int d=0; d < img->GetNumberOfScalarComponents(); ++d)
+	{
+		cvs << img->GetScalarComponentAsDouble(did[0], did[1], did[2], d)
+				<< " ";
+	}
+	pixval = QString(" | Pixel (%1, %2, %3) = %4").
+				arg(did[0]).arg(did[1]).arg(did[2]).
+				arg(cvs.str().c_str());
+
 	this->mPixelValLabel->setText(pixval);
 
 }
@@ -1972,9 +2050,13 @@ void OtbModellerWin::loadImageLayer()
 		layer->setRasdamanConnector(this->mpRasconn);
 #endif
 		layer->setObjectName(layerName);
-		layer->setFileName(fileName);
-		layer->setVisible(true);
-		this->ui->modelCompList->addLayer(layer);
+		if (layer->setFileName(fileName))
+		{
+			layer->setVisible(true);
+			this->ui->modelCompList->addLayer(layer);
+		}
+		else
+			delete layer;
 #ifdef BUILD_RASSUPPORT
 	}
 	catch(r_Error& re)

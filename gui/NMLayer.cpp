@@ -90,6 +90,7 @@ NMLayer::~NMLayer()
 
 	if (this->mRenderer != 0)
 	{
+
 		this->removeFromMap();
 	}
 
@@ -237,13 +238,14 @@ void NMLayer::removeFromMap(void)
 {
 	if (this->mActor != 0)
 	{
+		this->mActor->SetVisibility(0);
 		if (this->mRenderer != 0)
+		{
 			this->mRenderer->RemoveActor(this->mActor);
+			if (this->mRenderWindow != 0)
+				this->mRenderWindow->RemoveRenderer(this->mRenderer);
+		}
 	}
-
-	// now  remove the renderer from the render window
-	this->mActor->SetVisibility(0);
-	this->mRenderWindow->RemoveRenderer(this->mRenderer);
 }
 
 void NMLayer::setDataSet(vtkDataSet* dataset)

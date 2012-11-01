@@ -119,7 +119,76 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 NMImageLayer::~NMImageLayer()
 {
+	if (this->mReader)
+		delete this->mReader;
+	if (this->mPipeconn)
+		delete this->mPipeconn;
+}
 
+void NMImageLayer::world2pixel(double world[3], int pixel[3])
+{
+	vtkImageData* img = vtkImageData::SafeDownCast(
+			const_cast<vtkDataSet*>(this->getDataSet()));
+
+	if (img == 0)
+		return;
+
+	// we tweak the world coordinates a little bit to
+	// generate the illusion as if we had pixel-centered
+	// coordinates in vtk as well
+	unsigned int d=0;
+	double spacing[3];
+	double origin[3];
+	int dims[3];
+	double bnd[6];
+	double err[3];
+	img->GetSpacing(spacing);
+	img->GetOrigin(origin);
+	img->GetDimensions(dims);
+
+	// adjust coordinates & calc bnd
+	for (d=0; d<3; ++d)
+	{
+		// account for 'pixel corner coordinate' vs.
+		// 'pixel centre coordinate' philosophy of
+		// vtk vs itk
+		world[d] += spacing[d] / 2.0;
+
+		// account for origin is 'upper left' as for itk
+		// vs. 'lower left' as for vtk
+		if (d == 1)
+		{
+			bnd[d*2+1] = origin[d];
+			bnd[d*2] = origin[d] + dims[d] * spacing[d];
+		}
+		else
+		{
+			bnd[d*2] = origin[d];
+			bnd[d*2+1] = origin[d] + dims[d] * spacing[d];
+		}
+
+		// set the 'pointing accuracy' to 1 percent of
+		// pixel width for each dimension
+		err[d] = spacing[d] * 0.001;
+	}
+
+	// check, whether the user point is within the
+	// image boundary
+	if (vtkMath::PointIsWithinBounds(world, bnd, err))
+	{
+		// calculate the image/pixel coordindates
+		for (d = 0; d < 3; ++d)
+		{
+			// init value
+			pixel[d] = 0;
+
+			if (dims[d] > 1)
+				pixel[d] = ::abs((int)(world[d] - origin[d]) / spacing[d]);
+
+			if (pixel[d] > dims[d]-1)
+				pixel[d] = 0;
+		}
+	}
 }
 
 void NMImageLayer::createTableView(void)
@@ -273,14 +342,15 @@ int NMImageLayer::updateAttributeTable()
 	return 1;
 }
 
-void NMImageLayer::setFileName(QString filename)
+bool NMImageLayer::setFileName(QString filename)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
 
 	if (filename.isEmpty() || filename.isNull())
 	{
+		NMErr(ctxNMImageLayer, << "invalid filename!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
-		return;
+		return false;
 	}
 
 	// TODO: find a more unambiguous way of determining
@@ -296,13 +366,21 @@ void NMImageLayer::setFileName(QString filename)
 	{
 		NMErr(ctxNMImageLayer, << "couldn't read the image!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
-		return;
+		return false;
 	}
 
 	// let's store some meta data, in case someone needs it
 	this->mComponentType = this->mReader->getOutputComponentType();
 	this->mNumBands = this->mReader->getOutputNumBands();
 	this->mNumDimensions = this->mReader->getOutputNumDimensions();
+
+	if (this->mNumBands != 1)
+	{
+		NMErr(ctxNMImageLayer, << "we currently only support single band images!");
+		NMDebugCtx(ctxNMImageLayer, << "done!");
+		return false;
+	}
+
 
 	// concatenate the pipeline
 	this->mPipeconn->setInput(this->mReader->getOutput());
@@ -311,28 +389,11 @@ void NMImageLayer::setFileName(QString filename)
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
 	m->SetBorder(1);
 
-
 	// adjust origin
 	double ori[3], spc[3];
 	vtkImageData* img = vtkImageData::SafeDownCast(this->mPipeconn->getVtkImage());
 	img->GetOrigin(ori);
 	img->GetSpacing(spc);
-
-	NMDebugAI( << "old bnd: ");
-	for (int i=0; i<3; ++i)
-		NMDebug(<< ori[i] << " ");
-	NMDebug(<< endl);
-
-	//ori[0] += spc[0] / 2.0;
-	//ori[1] -= spc[1] / 2.0;
-    //
-	//img->SetOrigin(ori);
-	//img->GetOrigin(ori);
-    //
-	//NMDebugAI( << "new bnd: ");
-	//for (int i=0; i<3; ++i)
-	//	NMDebug(<< ori[i] << " ");
-	//NMDebug(<< endl);
 
 	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
 	a->SetMapper(m);
@@ -355,6 +416,7 @@ void NMImageLayer::setFileName(QString filename)
 	this->mImage = 0;
 
 	NMDebugCtx(ctxNMImageLayer, << "done!");
+	return true;
 }
 
 void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)

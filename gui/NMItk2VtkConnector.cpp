@@ -43,6 +43,7 @@ public:
 	typedef typename ExporterType::Pointer	        ExporterTypePointer;
 	typedef typename ImgType::SpacingType			ImgSpacing;
 	typedef typename ImgType::PointType				ImgOrigin;
+	typedef typename ImgType::SizeType				ImgSize;
 
 //	typedef otb::VectorImage< PixelType, ImageDimension > VecImgType;
 //	typedef itk::NMVTKImageExport< VecImgType >		      VecExporterType;
@@ -81,15 +82,27 @@ public:
 			// dimension, since vtk uses corner/edge-based coordinates
 			// whereas itk/otb are using pixel-centered coordinates
 			img->UpdateOutputInformation();
+			const ImgSize& size = img->GetRequestedRegion().GetSize();
 			const ImgSpacing& spacing = img->GetSpacing();
 			const ImgOrigin& origin = img->GetOrigin();
 			double neworigin[3] = {0,0,0};
 			double newspacing[3] = {0,0,0};
+
+			std::cout.precision(9);
+			NMDebugAI(<< "VTK image origin: ");
 			for (unsigned int d=0; d < ImageDimension; ++d)
 			{
-				neworigin[d] = origin[d] + (spacing[d] / 2.0);
 				newspacing[d] = spacing[d];
+				if (d==1)
+					neworigin[d] = origin[d];// - (spacing[d] / 2.0);
+				else
+					neworigin[d] = origin[d] + (spacing[d] / 2.0);
+
+				NMDebug( << origin[d] << " ");
 			}
+			NMDebug(<< endl);
+
+
 
 			vtkImgChangeInfo->SetInputConnection(vtkImgImp->GetOutputPort());
 			vtkImgChangeInfo->SetOutputOrigin(neworigin);

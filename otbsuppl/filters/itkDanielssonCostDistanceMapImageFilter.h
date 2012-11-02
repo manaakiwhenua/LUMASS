@@ -17,6 +17,7 @@
 #ifndef __itkDanielssonCostDistanceMapImageFilter_h
 #define __itkDanielssonCostDistanceMapImageFilter_h
 
+#include <map>
 #include <itkImageToImageFilter.h>
 #include <itkImageRegionIteratorWithIndex.h>
 
@@ -141,6 +142,11 @@ public:
   /** Set On/Off whether spacing is used. */
   itkBooleanMacro( UseImageSpacing );
 
+  //itkSetMacro( Categories, std::unordered_map<unsigned int, double>);
+
+  void SetCategories(const std::vector<double>& cats)
+  	  {this->m_Categories = cats;};
+
 //  /** Set whether to compute the voronoi map or not. */
 //  itkBooleanMacro( ComputeVoronoi );
 //
@@ -159,7 +165,7 @@ public:
    * Each object should be labeled by a number (larger than 0), 
    * so the map has a value for each pixel corresponding to the label 
    * of the closest object.  */
-  OutputImageType * GetVoronoiMap(void);
+  //OutputImageType * GetVoronoiMap(void);
 
   /** Get Distance map image.  The distance map is shown as a gray
    * value image depending on the pixel type of the output image.
@@ -172,7 +178,9 @@ public:
   OutputImageType * GetDistanceMap(void);
 
   /** Get vector field of distances. */
-  VectorImageType * GetVectorDistanceMap(void);
+  //VectorImageType * GetVectorDistanceMap(void);
+
+  void EnlargeOutputRequestedRegion(DataObject* data);
 
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
@@ -202,16 +210,18 @@ protected:
   void PrepareData();  
 
   /**  Compute Voronoi Map. */
-  void ComputeVoronoiMap();  
+ // void ComputeVoronoiMap();
 
-  /** Update distance map locally.  Used by GenerateData(). */
-  void UpdateLocalDistance(VectorImageType*,
-                           const IndexType&,
-                           const OffsetType&);
+ // /** Update distance map locally.  Used by GenerateData(). */
+ // void UpdateLocalDistance(VectorImageType*,
+ //                          const IndexType&,
+ //                          const OffsetType&);
 
 private:   
   DanielssonCostDistanceMapImageFilter(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
+
+  std::vector<double> m_Categories;
 
   bool                  m_SquaredDistance;
   bool                  m_InputIsBinary;

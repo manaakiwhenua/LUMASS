@@ -20,8 +20,9 @@
 #include <string>
 #include <sstream>
 #include <iostream>
-#include "math.h"
 #include <list>
+#include <map>
+#include "math.h"
 
 // NM stuff
 #include "nmlog.h"
@@ -684,117 +685,36 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	// update the pixel value label, if we've got an image layer selected
-	NMLayer *l = this->ui->modelCompList->getSelectedLayer();
-	if (l == 0)
+	QString fileName = QInputDialog::getText(this, "Image Name/Path", "");
+	if (fileName.isNull())
 		return;
 
-	if (l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-		return;
-
-	vtkImageData* img = vtkImageData::SafeDownCast(
-			const_cast<vtkDataSet*>(l->getDataSet()));
-
-	// we tweak the world coordinates a little bit to
-	// generate the illusion as if we had pixel-centered
-	// coordinates in vtk as well
-	unsigned int d=0;
-	double spacing[3];
-	double origin[3];
-	int extent[6];
-	int dims[3];
-	img->GetSpacing(spacing);
-	img->GetOrigin(origin);
-	img->GetExtent(extent);
-	img->GetDimensions(dims);
-
-	NMDebugAI( << "origin: ");
-	for (d=0; d<3; ++d)
-		NMDebug(<< origin[d] << " ");
-	NMDebug(<< endl);
-
-	NMDebugAI( << "spacing: ");
-	for (d=0; d<3; ++d)
-		NMDebug(<< spacing[d] << " ");
-	NMDebug(<< endl);
-
-	NMDebugAI( << "dimensions: ");
-	for (d=0; d<3; ++d)
-		NMDebug(<< dims[d] << " ");
-	NMDebug(<< endl);
-
-	NMDebugAI( << "extent: ");
-	for (d=0; d<6; ++d)
-		NMDebug(<< extent[d] << " ");
-	NMDebug(<< endl);
-
-	double bnd[6];
-	for (d=0; d<3; ++d)
-	{
-		bnd[d*2] = origin[d];
-		bnd[d*2+1] = origin[d] + dims[d] * spacing[d];
-	}
-	std::cout.precision(8);
-	NMDebugAI( << "bnd (x,y,z): ");
-	for (d=0; d<6; ++d)
-		NMDebug(<< bnd[d] << " ");
-	NMDebug(<< endl);
-
-	NMDebugAI(<< "#points: " << img->GetNumberOfPoints()
-			 << " #cells: " << img->GetNumberOfCells() << endl);
-
-
-	for (int z=0; z<dims[2]; ++z)
-	{
-		for (int y=0; y<dims[1]; ++y)
-		{
-			for (int x=0; x<dims[0]; ++x)
-			{
-				unsigned char* pixel = static_cast<unsigned char*>(img->GetScalarPointer(x,y,z));
-				NMDebug(<< (int)pixel[0] << "  ");
-			}
-			NMDebug(<< endl);
-		}
-		NMDebug(<< endl);
-	}
-
-
-	NMDebugCtx(ctxOtbModellerWin, << "...");
-// OTHER STUFF //////////////////////////////////////////////////////////////////////////
-	return;
-	string in = "/home/alex/garage/img/dinsmall.tiff";
+////	string in = "/home/alex/garage/img/t1.img";
+//	string in = "/home/alex/garage/img/tsmall.img";
 	string out = "/home/alex/garage/img/distmap.tiff";
-	string vmap = "/home/alex/garage/img/vmap.tiff";
+	//string vmap = "/home/alex/garage/img/vmap.tiff";
+
+	std::vector<double> cats;
+	cats.push_back(43.0);
 
 	typedef otb::Image<unsigned char, 2> InputImgType;
-	typedef otb::Image<unsigned short, 2> OutputImgType;
+	typedef otb::Image<float, 2> OutputImgType;
 
 	typedef otb::ImageFileReader<InputImgType> ReaderType;
 	ReaderType::Pointer reader = ReaderType::New();
-	reader->SetFileName(in.c_str());
+	reader->SetFileName(fileName.toStdString().c_str());
 
-	typedef otb::ImageFileWriter<OutputImgType> WriterType;
+	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
 	WriterType::Pointer writer = WriterType::New();
 	writer->SetFileName(out.c_str());
 
 	typedef itk::DanielssonCostDistanceMapImageFilter<InputImgType, OutputImgType> DistanceFilterType;
 	DistanceFilterType::Pointer distfilter = DistanceFilterType::New();
-
-	typedef itk::RescaleIntensityImageFilter<OutputImgType, OutputImgType> ScaleFilterType;
-	ScaleFilterType::Pointer scalefilter = ScaleFilterType::New();
+	distfilter->SetCategories(cats);
 
 	distfilter->SetInput(reader->GetOutput());
 	writer->SetInput(distfilter->GetOutput(0));
-
-	distfilter->SetInputIsBinary(true);
-	distfilter->SetUseImageSpacing(true);
 	writer->Update();
-
-//	writer->SetInput(distfilter->GetVoronoiMap());
-//	scalefilter->SetInput(distfilter->GetVoronoiMap());
-//	writer->SetInput(scalefilter->GetOutput());
-//	writer->SetFileName(vmap.c_str());
-//	writer->Update();
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

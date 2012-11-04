@@ -97,14 +97,14 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 //    this->ProcessObject::GetOutput(2) );
 //}
 
-template <class TInputImage,class TOutputImage>
-void
-DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
-::EnlargeOutputRequestedRegion(DataObject* data)
-{
-	Superclass::EnlargeOutputRequestedRegion(data);
-	data->SetRequestedRegionToLargestPossibleRegion();
-}
+//template <class TInputImage,class TOutputImage>
+//void
+//DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
+//::EnlargeOutputRequestedRegion(DataObject* data)
+//{
+//	Superclass::EnlargeOutputRequestedRegion(data);
+//	data->SetRequestedRegionToLargestPossibleRegion();
+//}
 
 /**
  *  Prepare data for computation
@@ -133,6 +133,8 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	typename OutputImageType::RegionType region =
 			distanceMap->GetRequestedRegion();
 
+	region.Print(std::cout, itk::Indent(2));
+
 	// find the largest of the image dimensions
 	typename TInputImage::SizeType size = region.GetSize();
 	unsigned int maxLength = 0;
@@ -144,10 +146,11 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 		}
 	}
 
-	double maxDist = std::numeric_limits<typename OutputImageType::PixelType>::max();
+	typename OutputImageType::PixelType maxDist =
+			std::numeric_limits<typename OutputImageType::PixelType>::max();
 
-	ImageRegionConstIterator<TInputImage> it(inputImage, region);
-	ImageRegionIterator<TOutputImage> ot(distanceMap, region);
+	ImageRegionConstIteratorIndex<TInputImage> it(inputImage, region);
+	ImageRegionIteratorIndex<TOutputImage> ot(distanceMap, region);
 
 	it.GoToBegin();
 	ot.GoToBegin();
@@ -166,7 +169,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	{
 		for (unsigned int e=0; e < this->m_Categories.size(); ++e)
 		{
-			if (static_cast<typename InputImageType::PixelType>(it.Get()) == this->m_Categories[e])
+			if (it.Get() == this->m_Categories[e])
 			{
 				bobj = true;
 				break;
@@ -176,7 +179,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 		if (bobj)
 			ot.Set(static_cast<typename OutputImageType::PixelType>(0));
 		else
-			ot.Set(static_cast<typename OutputImageType::PixelType>(maxDist));
+			ot.Set(maxDist);
 
 		bobj = false;
 		++it;
@@ -326,92 +329,84 @@ void
 DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 ::GenerateData() 
 {
+	NMDebugCtx(ctx, << "...");
 
-  this->PrepareData();
+	this->PrepareData();
 
-//  // Specify images and regions.
-//
-//  OutputImagePointer    voronoiMap             =  this->GetVoronoiMap();
-//  VectorImagePointer    distanceComponents     =  this->GetVectorDistanceMap();
-//
-//  typename InputImageType::RegionType region  = voronoiMap->GetRequestedRegion();
-//
-//  itkDebugMacro (<< "Region to process: " << region);
-//
-//  // Instantiate reflective iterator
-//
-//  ReflectiveImageRegionConstIterator< VectorImageType >
-//    it( distanceComponents, region );
-//  typename VectorImageType::OffsetType voffset;
-//  for(unsigned int dim=0; dim <VectorImageType::ImageDimension; dim++)
-//    {
-//    if (region.GetSize()[dim] > 1)
-//      {
-//      voffset[dim] = 1;
-//      }
-//    else
-//      {
-//      voffset[dim] = 0;
-//      }
-//    }
-//  it.SetBeginOffset(voffset);
-//  it.SetEndOffset(voffset);
-//
-//  it.GoToBegin();
-//
-//  // Support progress methods/callbacks.
-//
-//  // Each pixel is visited 2^InputImageDimension times, and the number
-//  // of visits per pixel needs to be computed for progress reporting.
-//  unsigned long visitsPerPixel = (1 << InputImageDimension);
-//  unsigned long updateVisits, i=0;
-//  updateVisits = region.GetNumberOfPixels() * visitsPerPixel / 10;
-//  if ( updateVisits < 1 )
-//    {
-//    updateVisits = 1;
-//    }
-//  const float updatePeriod = static_cast<float>(updateVisits) * 10.0;
-//
-//  // Process image.
-//
-//  OffsetType  offset;
-//  offset.Fill( 0 );
-//
-//  itkDebugMacro(<< "GenerateData: Computing distance transform");
-//  while( !it.IsAtEnd() )
-//    {
-//
-//    if ( !(i % updateVisits ) )
-//      {
-//      this->UpdateProgress( (float) i / updatePeriod );
-//      }
-//
-//    IndexType here = it.GetIndex();
-//    for(unsigned int dim=0; dim <VectorImageType::ImageDimension; dim++)
-//      {
-//      if (region.GetSize()[dim] <= 1)
-//        {
-//        continue;
-//        }
-//      if( it.IsReflected(dim) )
-//        {
-//        offset[dim]++;
-//        UpdateLocalDistance( distanceComponents, here, offset );
-//        offset[dim]=0;
-//        }
-//      else
-//        {
-//        offset[dim]--;
-//        UpdateLocalDistance( distanceComponents, here, offset );
-//        offset[dim]=0;
-//        }
-//      }
-//    ++it;
-//    ++i;
-//    }
-  
+	// Specify images and regions.
 
-  //this->ComputeVoronoiMap();
+	OutputImagePointer distanceMap = this->GetDistanceMap();
+	typename InputImageType::RegionType region =
+			distanceMap->GetRequestedRegion();
+
+	// Instantiate reflective iterator
+	ReflectiveImageRegionConstIterator<VectorImageType> it(distanceMap,
+			region);
+	typename OutputImageType::OffsetType ooffset;
+	for (unsigned int dim = 0; dim < OutputImageType::ImageDimension; dim++)
+	{
+		if (region.GetSize()[dim] > 1)
+		{
+			ooffset[dim] = 1;
+		}
+		else
+		{
+			ooffset[dim] = 0;
+		}
+	}
+	it.SetBeginOffset(ooffset);
+	it.SetEndOffset(ooffset);
+
+	it.GoToBegin();
+
+	// Support progress methods/callbacks.
+
+	// Each pixel is visited 2^InputImageDimension times, and the number
+	// of visits per pixel needs to be computed for progress reporting.
+	unsigned long visitsPerPixel = (1 << InputImageDimension);
+	unsigned long updateVisits, i = 0;
+	updateVisits = region.GetNumberOfPixels() * visitsPerPixel / 10;
+	if (updateVisits < 1)
+	{
+		updateVisits = 1;
+	}
+	const float updatePeriod = static_cast<float>(updateVisits) * 10.0;
+
+	// Process image.
+	NMDebugAI(<< "computing distances from objects ...")
+	while (!it.IsAtEnd())
+	{
+
+		if (!(i % updateVisits))
+		{
+			this->UpdateProgress((float) i / updatePeriod);
+		}
+
+		IndexType here = it.GetIndex();
+		for (unsigned int dim = 0; dim < VectorImageType::ImageDimension; dim++)
+		{
+			if (region.GetSize()[dim] <= 1)
+			{
+				continue;
+			}
+			if (it.IsReflected(dim))
+			{
+				offset[dim]++;
+				UpdateLocalDistance(distanceComponents, here, offset);
+				offset[dim] = 0;
+			}
+			else
+			{
+				offset[dim]--;
+				UpdateLocalDistance(distanceComponents, here, offset);
+				offset[dim] = 0;
+			}
+		}
+		++it;
+		++i;
+	}
+
+	NMDebugCtx(ctx, << "done!");
 
 } // end GenerateData()
 

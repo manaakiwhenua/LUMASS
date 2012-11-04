@@ -691,13 +691,13 @@ void OtbModellerWin::test()
 
 ////	string in = "/home/alex/garage/img/t1.img";
 //	string in = "/home/alex/garage/img/tsmall.img";
-	string out = "/home/alex/garage/img/distmap.tiff";
+	string out = "/home/alex/garage/img/dm.tiff";
 	//string vmap = "/home/alex/garage/img/vmap.tiff";
 
 	std::vector<double> cats;
 	cats.push_back(43.0);
 
-	typedef otb::Image<unsigned char, 2> InputImgType;
+	typedef otb::Image<unsigned short, 2> InputImgType;
 	typedef otb::Image<float, 2> OutputImgType;
 
 	typedef otb::ImageFileReader<InputImgType> ReaderType;
@@ -1069,7 +1069,7 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 		cvs << img->GetScalarComponentAsDouble(did[0], did[1], did[2], d)
 				<< " ";
 	}
-	pixval = QString(" | Pixel (%1, %2, %3) = %4").
+	pixval = QString(" Pixel (%1, %2, %3) = %4").
 				arg(did[0]).arg(did[1]).arg(did[2]).
 				arg(cvs.str().c_str());
 

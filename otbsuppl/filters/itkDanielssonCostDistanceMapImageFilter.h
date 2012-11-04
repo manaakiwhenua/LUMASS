@@ -180,7 +180,7 @@ public:
   /** Get vector field of distances. */
   //VectorImageType * GetVectorDistanceMap(void);
 
-  void EnlargeOutputRequestedRegion(DataObject* data);
+  //void EnlargeOutputRequestedRegion(DataObject* data);
 
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */

@@ -25,7 +25,9 @@
 
 #include "itkDanielssonCostDistanceMapImageFilter.h"
 #include "itkReflectiveImageRegionConstIterator.h"
+#include "itkReflectiveImageRegionIterator.h"
 #include "itkImageRegionConstIteratorWithIndex.h"
+#include "itkImageRegionConstIterator.h"
 #include "itkConstNeighborhoodIterator.h"
 #include "itkNeighborhoodIterator.h"
 
@@ -149,8 +151,8 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	typename OutputImageType::PixelType maxDist =
 			std::numeric_limits<typename OutputImageType::PixelType>::max();
 
-	ImageRegionConstIteratorIndex<TInputImage> it(inputImage, region);
-	ImageRegionIteratorIndex<TOutputImage> ot(distanceMap, region);
+	ImageRegionConstIterator<TInputImage> it(inputImage, region);
+	ImageRegionIterator<TOutputImage> ot(distanceMap, region);
 
 	it.GoToBegin();
 	ot.GoToBegin();
@@ -340,18 +342,18 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 			distanceMap->GetRequestedRegion();
 
 	// Instantiate reflective iterator
-	ReflectiveImageRegionConstIterator<VectorImageType> it(distanceMap,
+	ReflectiveImageRegionIterator<OutputImageType> it(distanceMap,
 			region);
 	typename OutputImageType::OffsetType ooffset;
 	for (unsigned int dim = 0; dim < OutputImageType::ImageDimension; dim++)
 	{
-		if (region.GetSize()[dim] > 1)
+		//if (region.GetSize()[dim] > 1)
+		//{
+		//	ooffset[dim] = 1;
+		//}
+		//else
 		{
-			ooffset[dim] = 1;
-		}
-		else
-		{
-			ooffset[dim] = 0;
+			ooffset[dim] = 1; // was 0
 		}
 	}
 	it.SetBeginOffset(ooffset);
@@ -372,38 +374,58 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	}
 	const float updatePeriod = static_cast<float>(updateVisits) * 10.0;
 
+	typename OutputImageType::PixelType val;
+	float prog =0;
+
 	// Process image.
-	NMDebugAI(<< "computing distances from objects ...")
+	NMDebugAI(<< "computing distances from objects ..." << endl);
 	while (!it.IsAtEnd())
 	{
 
-		if (!(i % updateVisits))
-		{
-			this->UpdateProgress((float) i / updatePeriod);
-		}
+		//if (!(i % updateVisits))
+		//{
+		//	prog = (float) i / updatePeriod;
+		//	this->UpdateProgress(prog);
+		//}
 
 		IndexType here = it.GetIndex();
-		for (unsigned int dim = 0; dim < VectorImageType::ImageDimension; dim++)
+		//for (unsigned int dim = 0; dim < OutputImageType::ImageDimension; dim++)
+		//{
+		//	//if (region.GetSize()[dim] <= 1)
+		//	//{
+		//	//	continue;
+		//	//}
+		//	if (it.IsReflected(dim))
+		//	{
+		//		//offset[dim]++;
+		//		//UpdateLocalDistance(distanceComponents, here, offset);
+		//		//offset[dim] = 0;
+		//		val = static_cast<typename OutputImageType::PixelType>(i);
+		//	}
+		//	else
+		//	{
+		//		//offset[dim]--;
+		//		//UpdateLocalDistance(distanceComponents, here, offset);
+		//		//offset[dim] = 0;
+		//		val = static_cast<typename OutputImageType::PixelType>(-i);
+		//	}
+        //
+		//}
+		NMDebug(<< here[0] << "," << here[1] << "=");
+		if (it.Get())
 		{
-			if (region.GetSize()[dim] <= 1)
-			{
-				continue;
-			}
-			if (it.IsReflected(dim))
-			{
-				offset[dim]++;
-				UpdateLocalDistance(distanceComponents, here, offset);
-				offset[dim] = 0;
-			}
-			else
-			{
-				offset[dim]--;
-				UpdateLocalDistance(distanceComponents, here, offset);
-				offset[dim] = 0;
-			}
+			val = static_cast<typename OutputImageType::PixelType>(i);
+			NMDebug(<< val << endl);
+			it.Set(val);
+			++i;
+		}
+		else
+		{
+			val = static_cast<typename OutputImageType::PixelType>(i);
+			NMDebug(<< endl);
 		}
 		++it;
-		++i;
+
 	}
 
 	NMDebugCtx(ctx, << "done!");

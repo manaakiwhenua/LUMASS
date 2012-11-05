@@ -695,7 +695,8 @@ void OtbModellerWin::test()
 	//string vmap = "/home/alex/garage/img/vmap.tiff";
 
 	std::vector<double> cats;
-	cats.push_back(43.0);
+	cats.push_back(20);
+	cats.push_back(45);
 
 	typedef otb::Image<unsigned short, 2> InputImgType;
 	typedef otb::Image<float, 2> OutputImgType;

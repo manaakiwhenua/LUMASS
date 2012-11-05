@@ -181,7 +181,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 		if (bobj)
 			ot.Set(static_cast<typename OutputImageType::PixelType>(0));
 		else
-			ot.Set(maxDist);
+			ot.Set(-1);
 
 		bobj = false;
 		++it;
@@ -347,19 +347,17 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	typename OutputImageType::OffsetType ooffset;
 	for (unsigned int dim = 0; dim < OutputImageType::ImageDimension; dim++)
 	{
-		//if (region.GetSize()[dim] > 1)
-		//{
-		//	ooffset[dim] = 1;
-		//}
-		//else
+		if (region.GetSize()[dim] > 1)
 		{
-			ooffset[dim] = 1; // was 0
+			ooffset[dim] = 1;
+		}
+		else
+		{
+			ooffset[dim] = 0;
 		}
 	}
 	it.SetBeginOffset(ooffset);
 	it.SetEndOffset(ooffset);
-
-	it.GoToBegin();
 
 	// Support progress methods/callbacks.
 
@@ -377,55 +375,62 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	typename OutputImageType::PixelType val;
 	float prog =0;
 
+
+	/*  offset map of neighbourhood pixels
+	 *  0 1 2
+	 *  3 4 5
+	 *  6 7 8
+	 */
+	typedef itk::NeighborhoodIterator<OutputImageType> KernelIterType;
+	typename KernelIterType::RadiusType radius;
+	radius.Fill(1);
+	KernelIterType nit(radius, distanceMap, distanceMap->GetRequestedRegion());
+
+	typename OutputImageType::PixelType inPixel[3];
+
 	// Process image.
 	NMDebugAI(<< "computing distances from objects ..." << endl);
+	it.GoToBegin();
+	nit.GoToBegin();
 	while (!it.IsAtEnd())
 	{
-
-		//if (!(i % updateVisits))
-		//{
-		//	prog = (float) i / updatePeriod;
-		//	this->UpdateProgress(prog);
-		//}
-
 		IndexType here = it.GetIndex();
-		//for (unsigned int dim = 0; dim < OutputImageType::ImageDimension; dim++)
-		//{
-		//	//if (region.GetSize()[dim] <= 1)
-		//	//{
-		//	//	continue;
-		//	//}
-		//	if (it.IsReflected(dim))
-		//	{
-		//		//offset[dim]++;
-		//		//UpdateLocalDistance(distanceComponents, here, offset);
-		//		//offset[dim] = 0;
-		//		val = static_cast<typename OutputImageType::PixelType>(i);
-		//	}
-		//	else
-		//	{
-		//		//offset[dim]--;
-		//		//UpdateLocalDistance(distanceComponents, here, offset);
-		//		//offset[dim] = 0;
-		//		val = static_cast<typename OutputImageType::PixelType>(-i);
-		//	}
-        //
-		//}
-		NMDebug(<< here[0] << "," << here[1] << "=");
-		if (it.Get())
+		NMDebug(<< here[0] << "," << here[1] << ": ");
+		for (unsigned int p=0; p<8; ++p)
+			NMDebug( << nit.GetPixel(p) << " ");
+		NMDebug(<< endl);
+
+		if (it.Get() == 0)
 		{
-			val = static_cast<typename OutputImageType::PixelType>(i);
-			NMDebug(<< val << endl);
-			it.Set(val);
-			++i;
+			++it;
+			if (it.IsReflected(1))
+				--nit;
+			else
+				++nit;
+			continue;
+		}
+
+		// progress the neighbourhood iterator
+		if (it.IsReflected(1))
+		{
+			--nit;
 		}
 		else
 		{
-			val = static_cast<typename OutputImageType::PixelType>(i);
-			NMDebug(<< endl);
-		}
-		++it;
+			if (it.IsReflected(0))
+			{
+				inPixel[0] = nit.GetPixel(0);
+				inPixel[1] = nit.GetPixel(1);
+				inPiexle[2]	= nit.GetPixel(2);
+			}
+			else
+			{
 
+			}
+			++nit;
+		}
+
+		++it;
 	}
 
 	NMDebugCtx(ctx, << "done!");

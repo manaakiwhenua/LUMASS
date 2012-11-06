@@ -50,8 +50,8 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 //  OutputImagePointer voronoiMap = OutputImageType::New();
 //  this->SetNthOutput( 1, voronoiMap.GetPointer() );
 //
-//  VectorImagePointer distanceVectors = VectorImageType::New();
-//  this->SetNthOutput( 2, distanceVectors.GetPointer() );
+  VectorImagePointer distanceVectors = VectorImageType::New();
+  this->SetNthOutput( 1, distanceVectors.GetPointer() );
 
   m_SquaredDistance     = false;
   m_InputIsBinary       = false;
@@ -120,17 +120,23 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 
 	InputImagePointer inputImage =
 			dynamic_cast<const TInputImage *>(ProcessObject::GetInput(0));
+	VectorImagePointer offImg = dynamic_cast<VectorImageType *>(ProcessObject::GetOutput(1));
 
 	OutputImagePointer distanceMap = this->GetDistanceMap();
 
 	distanceMap->SetLargestPossibleRegion(
 			inputImage->GetLargestPossibleRegion());
+	offImg->SetLargestPossibleRegion(
+			inputImage->GetLargestPossibleRegion());
 
 	distanceMap->SetRequestedRegion(inputImage->GetRequestedRegion());
+	offImg->SetRequestedRegion(inputImage->GetRequestedRegion());
 
 	distanceMap->SetBufferedRegion(inputImage->GetBufferedRegion());
+	offImg->SetBufferedRegion(inputImage->GetBufferedRegion());
 
 	distanceMap->Allocate();
+	offImg->Allocate();
 
 	typename OutputImageType::RegionType region =
 			distanceMap->GetRequestedRegion();
@@ -153,9 +159,17 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 
 	ImageRegionConstIterator<TInputImage> it(inputImage, region);
 	ImageRegionIterator<TOutputImage> ot(distanceMap, region);
+	ImageRegionIterator<VectorImageType> vt(offImg, region);
+
 
 	it.GoToBegin();
 	ot.GoToBegin();
+	vt.GoToBegin();
+
+	typename VectorImageType::PixelType maxoffVec;
+	maxoffVec.Fill(itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max());
+	typename VectorImageType::PixelType zerooffVec;
+	zerooffVec.Fill(0.0);
 
 	// looking for those objects
 	NMDebugAI( << "looking for categories: ");
@@ -179,13 +193,25 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 		}
 
 		if (bobj)
+		{
 			ot.Set(static_cast<typename OutputImageType::PixelType>(0));
+			vt.Set(zerooffVec);
+		}
+		else if (this->m_Categories.size() == 0 && it.Get() > 0)
+		{
+			ot.Set(static_cast<typename OutputImageType::PixelType>(0));
+			vt.Set(zerooffVec);
+		}
 		else
-			ot.Set(-1);
+		{
+			ot.Set(itk::NumericTraits<typename OutputImageType::PixelType>::max());
+			vt.Set(maxoffVec);
+		}
 
 		bobj = false;
 		++it;
 		++ot;
+		++vt;
 	}
 
 	NMDebugCtx(ctx, << "done!");
@@ -321,6 +347,54 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 //  NMDebug(<< endl);
 //
 //}
+template <class TInputImage, class TOutputImage>
+void
+DanielssonCostDistanceMapImageFilter<TInputImage, TOutputImage>
+::GenerateInputRequestedRegion() throw (itk::InvalidRequestedRegionError)
+{
+  // call the superclass' implementation of this method
+  Superclass::GenerateInputRequestedRegion();
+
+  // get pointers to the input and output
+  typename Superclass::InputImagePointer inputPtr =
+    const_cast< TInputImage * >( this->GetInput() );
+  typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
+
+  if ( !inputPtr || !outputPtr )
+    {
+    return;
+    }
+
+  // get a copy of the input requested region (should equal the output
+  // requested region)
+  typename TInputImage::RegionType inputRequestedRegion;
+  inputRequestedRegion = inputPtr->GetRequestedRegion();
+
+  // pad the input requested region by the operator radius
+  inputRequestedRegion.PadByRadius( 1 );
+
+  // crop the input requested region at the input's largest possible region
+  if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
+    {
+    inputPtr->SetRequestedRegion( inputRequestedRegion );
+    return;
+    }
+  else
+    {
+    // Couldn't crop the region (requested region is outside the largest
+    // possible region).  Throw an exception.
+
+    // store what we tried to request (prior to trying to crop)
+    inputPtr->SetRequestedRegion( inputRequestedRegion );
+
+    // build an exception
+    itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
+    e.SetLocation(ITK_LOCATION);
+    e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
+    e.SetDataObject(inputPtr);
+    throw e;
+    }
+}
 
 
 /**
@@ -338,8 +412,11 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	// Specify images and regions.
 
 	OutputImagePointer distanceMap = this->GetDistanceMap();
+	VectorImagePointer offImg = dynamic_cast<VectorImageType*>(this->GetOutput(1));
+
 	typename InputImageType::RegionType region =
 			distanceMap->GetRequestedRegion();
+
 
 	// Instantiate reflective iterator
 	ReflectiveImageRegionIterator<OutputImageType> it(distanceMap,
@@ -349,7 +426,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	{
 		if (region.GetSize()[dim] > 1)
 		{
-			ooffset[dim] = 1;
+			ooffset[dim] = 0;
 		}
 		else
 		{
@@ -372,63 +449,129 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	}
 	const float updatePeriod = static_cast<float>(updateVisits) * 10.0;
 
+	unsigned char nidx[3];
+	std::vector<OffsetType> noff;
+	noff.resize(3);
+	OffsetType o1={{0,0}}, o2={{0,0}}, o3={{0,0}};
+	noff[0] = o1; noff[1] = o2; noff[2] = o3;
+
+	typename VectorImageType::PixelType::ValueType minDist =
+			itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max();
+	typename VectorImageType::PixelType::ValueType neighbour;
+	typename VectorImageType::PixelType::ValueType neighbour2;
+	typename VectorImageType::PixelType neighbourVec;
+	typename VectorImageType::PixelType vecbuf[3];
+	typename VectorImageType::PixelType::ValueType tmpDist;
 	typename OutputImageType::PixelType val;
+	typename OutputImageType::PixelType cost;
 	float prog =0;
-
-
-	/*  offset map of neighbourhood pixels
-	 *  0 1 2
-	 *  3 4 5
-	 *  6 7 8
-	 */
-	typedef itk::NeighborhoodIterator<OutputImageType> KernelIterType;
-	typename KernelIterType::RadiusType radius;
-	radius.Fill(1);
-	KernelIterType nit(radius, distanceMap, distanceMap->GetRequestedRegion());
-
-	typename OutputImageType::PixelType inPixel[3];
 
 	// Process image.
 	NMDebugAI(<< "computing distances from objects ..." << endl);
 	it.GoToBegin();
-	nit.GoToBegin();
 	while (!it.IsAtEnd())
 	{
-		IndexType here = it.GetIndex();
-		NMDebug(<< here[0] << "," << here[1] << ": ");
-		for (unsigned int p=0; p<8; ++p)
-			NMDebug( << nit.GetPixel(p) << " ");
-		NMDebug(<< endl);
-
 		if (it.Get() == 0)
 		{
 			++it;
-			if (it.IsReflected(1))
-				--nit;
-			else
-				++nit;
 			continue;
 		}
 
-		// progress the neighbourhood iterator
+		// get the cost for the central pixel
+		// ToDo:  to be replaced with cost value from further input image
+		cost = 1.0;
+
+		// define neighbouring input pixel indices of x
+		/*  index map of neighbourhood pixels
+		 *  0 1 2
+		 *  3 x 5
+		 *  6 7 8
+		 */
+
+		// upwards
 		if (it.IsReflected(1))
 		{
-			--nit;
-		}
-		else
-		{
+			// right to left
 			if (it.IsReflected(0))
 			{
-				inPixel[0] = nit.GetPixel(0);
-				inPixel[1] = nit.GetPixel(1);
-				inPiexle[2]	= nit.GetPixel(2);
+				noff[0][0] = 1; noff[0][1] = 0; nidx[0] = 5;
+				noff[1][0] = 0; noff[1][1] = 1; nidx[1] = 7;
+				noff[2][0] = 1; noff[2][1] = 1; nidx[2] = 8;
+			}
+			// left to right
+			else
+			{
+				noff[0][0] = -1; noff[0][1] = 0; nidx[0] = 3;
+				noff[1][0] = -1; noff[1][1] = 1; nidx[1] = 6;
+				noff[2][0] =  0; noff[2][1] = 1; nidx[2] = 7;
+			}
+		}
+		// downwards
+		else
+		{
+			// right to left
+			if (it.IsReflected(0))
+			{
+				noff[0][0] = 0; noff[0][1] = -1; nidx[0] = 1;
+				noff[1][0] = 1; noff[1][1] = -1; nidx[1] = 2;
+				noff[2][0] = 1; noff[2][1] =  0; nidx[2] = 5;
+			}
+			// left to right
+			else
+			{
+				noff[0][0] = -1; noff[0][1] = -1; nidx[0] = 0;
+				noff[1][0] =  0; noff[1][1] = -1; nidx[1] = 1;
+				noff[2][0] = -1; noff[2][1] =  0; nidx[2] = 3;
+			}
+		}
+
+		// calc the actual distance value from
+		// sourrounding pixels
+		IndexType here = it.GetIndex();
+		unsigned char si = 0;
+		minDist = itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max();
+		for (unsigned char c=0; c < 3; ++c)
+		{
+			neighbourVec = offImg->GetPixel(here + noff[c]);
+			neighbour2 = (neighbourVec[0] * neighbourVec[0]) + (neighbourVec[1] * neighbourVec[1]);
+			vecbuf[c] = neighbourVec;
+			if (!region.IsInside(here + noff[c]))// || (neighbour < 0))
+			{
+				tmpDist = itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max();
 			}
 			else
 			{
-
+				tmpDist = (nidx[c] % 2) == 0 ?
+								neighbour2 + (cost * 1.414214) :
+								neighbour2 + cost;
 			}
-			++nit;
+
+			if (tmpDist < minDist)
+			{
+				si = c;
+				minDist = tmpDist;
+			}
 		}
+		minDist = vnl_math_sqr(minDist);
+		if (static_cast<typename VectorImageType::PixelType::ValueType>(minDist) < it.Get())
+		{
+			it.Set(static_cast<typename OutputImageType::PixelType>(minDist));
+			offImg->GetPixel(here) = vecbuf[si];
+		}
+
+		// DEBUG
+		//NMDebug(<< here[0] << "," << here[1] << ": ")
+		//for (int i=0; i<3; ++i)
+		//{   if (region.IsInside(here + noff[i]))
+		//	{
+		//		NMDebug(<< distanceMap->GetPixel(here + noff[i]) << " ");
+		//	}
+		//	else
+		//	{
+		//		NMDebug(<< "nil" << " ");
+		//	}
+		//}
+		//NMDebug(<< endl);
 
 		++it;
 	}

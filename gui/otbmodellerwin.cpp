@@ -114,6 +114,7 @@
 #include "itkExtractImageFilter.h"
 #include "itkObjectFactoryBase.h"
 #include "itkDanielssonCostDistanceMapImageFilter.h"
+#include "itkDanielssonDistanceMapImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkImageIOBase.h"
 #include "otbImage2DToCubeSliceFilter.h"
@@ -691,7 +692,7 @@ void OtbModellerWin::test()
 
 ////	string in = "/home/alex/garage/img/t1.img";
 //	string in = "/home/alex/garage/img/tsmall.img";
-	string out = "/home/alex/garage/img/dm.tiff";
+	string out = "/home/alex/garage/img/dm2.tiff";
 	//string vmap = "/home/alex/garage/img/vmap.tiff";
 
 	std::vector<double> cats;

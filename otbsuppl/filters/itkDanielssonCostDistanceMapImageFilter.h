@@ -98,8 +98,10 @@ public:
   itkStaticConstMacro(OutputImageDimension, unsigned int,
                       TOutputImage::ImageDimension);
 
+  typedef itk::Vector<float, itkGetStaticConstMacro(InputImageDimension)> PixelType;
+
   /** Pointer Type for the vector distance image */
-  typedef Image< OffsetType,
+  typedef typename Image< PixelType,
                  itkGetStaticConstMacro(InputImageDimension)> VectorImageType;
 
   /** Pointer Type for input image. */
@@ -176,6 +178,8 @@ public:
    * object (if there is more than one object the closest object is
    * considered). */
   OutputImageType * GetDistanceMap(void);
+
+  virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
 
   /** Get vector field of distances. */
   //VectorImageType * GetVectorDistanceMap(void);

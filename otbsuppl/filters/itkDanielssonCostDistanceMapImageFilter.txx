@@ -42,7 +42,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 ::DanielssonCostDistanceMapImageFilter()
 {
 
-  this->SetNumberOfRequiredOutputs( 1 );
+  this->SetNumberOfRequiredOutputs( 2 );
 
   OutputImagePointer distanceMap = OutputImageType::New();
   this->SetNthOutput( 0, distanceMap.GetPointer() );
@@ -50,8 +50,9 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 //  OutputImagePointer voronoiMap = OutputImageType::New();
 //  this->SetNthOutput( 1, voronoiMap.GetPointer() );
 //
-  VectorImagePointer distanceVectors = VectorImageType::New();
-  this->SetNthOutput( 1, distanceVectors.GetPointer() );
+  this->m_OffsetImage = VectorImageType::New();
+//  VectorImagePointer distanceVectors = VectorImageType::New();
+//  this->SetNthOutput( 1, distanceVectors.GetPointer() );
 
   m_SquaredDistance     = false;
   m_InputIsBinary       = false;
@@ -120,7 +121,8 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 
 	InputImagePointer inputImage =
 			dynamic_cast<const TInputImage *>(ProcessObject::GetInput(0));
-	VectorImagePointer offImg = dynamic_cast<VectorImageType *>(ProcessObject::GetOutput(1));
+	VectorImagePointer offImg = this->m_OffsetImage;
+//			dynamic_cast< VectorImageType *>(this->GetOutput(1));
 
 	OutputImagePointer distanceMap = this->GetDistanceMap();
 
@@ -412,7 +414,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	// Specify images and regions.
 
 	OutputImagePointer distanceMap = this->GetDistanceMap();
-	VectorImagePointer offImg = dynamic_cast<VectorImageType*>(this->GetOutput(1));
+	VectorImagePointer offImg = this->m_OffsetImage;//dynamic_cast<VectorImageType*>(this->GetOutput(1));
 
 	typename InputImageType::RegionType region =
 			distanceMap->GetRequestedRegion();
@@ -458,11 +460,11 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	typename VectorImageType::PixelType::ValueType minDist =
 			itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max();
 	typename VectorImageType::PixelType::ValueType neighbour;
-	typename VectorImageType::PixelType::ValueType neighbour2;
+	typename VectorImageType::PixelType::ValueType disthere2;
 	typename VectorImageType::PixelType neighbourVec;
 	typename VectorImageType::PixelType vecbuf[3];
 	typename VectorImageType::PixelType::ValueType tmpDist;
-	typename OutputImageType::PixelType val;
+	typename VectorImageType::PixelType distVecHere;
 	typename OutputImageType::PixelType cost;
 	float prog =0;
 
@@ -494,16 +496,16 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 			// right to left
 			if (it.IsReflected(0))
 			{
-				noff[0][0] = 1; noff[0][1] = 0; nidx[0] = 5;
-				noff[1][0] = 0; noff[1][1] = 1; nidx[1] = 7;
-				noff[2][0] = 1; noff[2][1] = 1; nidx[2] = 8;
+				noff[0][0] = 1; noff[0][1] = 0; nidx[0] = 0; // idx 5
+				noff[1][0] = 0; noff[1][1] = 1; nidx[1] = 0; // idx 7
+				noff[2][0] = 1; noff[2][1] = 1; nidx[2] = 1; // idx 8
 			}
 			// left to right
 			else
 			{
-				noff[0][0] = -1; noff[0][1] = 0; nidx[0] = 3;
-				noff[1][0] = -1; noff[1][1] = 1; nidx[1] = 6;
-				noff[2][0] =  0; noff[2][1] = 1; nidx[2] = 7;
+				noff[0][0] = -1; noff[0][1] = 0; nidx[0] = 0; // idx 3
+				noff[1][0] = -1; noff[1][1] = 1; nidx[1] = 0; // idx 6
+				noff[2][0] =  0; noff[2][1] = 1; nidx[2] = 1; // idx 7
 			}
 		}
 		// downwards
@@ -512,16 +514,16 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 			// right to left
 			if (it.IsReflected(0))
 			{
-				noff[0][0] = 0; noff[0][1] = -1; nidx[0] = 1;
-				noff[1][0] = 1; noff[1][1] = -1; nidx[1] = 2;
-				noff[2][0] = 1; noff[2][1] =  0; nidx[2] = 5;
+				noff[0][0] = 0; noff[0][1] = -1; nidx[0] = 0; // idx 1
+				noff[1][0] = 1; noff[1][1] = -1; nidx[1] = 1; // idx 2
+				noff[2][0] = 1; noff[2][1] =  0; nidx[2] = 0; // idx 5
 			}
 			// left to right
 			else
 			{
-				noff[0][0] = -1; noff[0][1] = -1; nidx[0] = 0;
-				noff[1][0] =  0; noff[1][1] = -1; nidx[1] = 1;
-				noff[2][0] = -1; noff[2][1] =  0; nidx[2] = 3;
+				noff[0][0] = -1; noff[0][1] = -1; nidx[0] = 1; // idx 0
+				noff[1][0] =  0; noff[1][1] = -1; nidx[1] = 0; // idx 1
+				noff[2][0] = -1; noff[2][1] =  0; nidx[2] = 0; // idx 3
 			}
 		}
 
@@ -533,17 +535,19 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 		for (unsigned char c=0; c < 3; ++c)
 		{
 			neighbourVec = offImg->GetPixel(here + noff[c]);
-			neighbour2 = (neighbourVec[0] * neighbourVec[0]) + (neighbourVec[1] * neighbourVec[1]);
-			vecbuf[c] = neighbourVec;
+			//neighbour2 = (neighbourVec[0] * neighbourVec[0]) + (neighbourVec[1] * neighbourVec[1]);
+			//vecbuf[c] = neighbourVec;
 			if (!region.IsInside(here + noff[c]))// || (neighbour < 0))
 			{
 				tmpDist = itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max();
 			}
 			else
 			{
-				tmpDist = (nidx[c] % 2) == 0 ?
-								neighbour2 + (cost * 1.414214) :
-								neighbour2 + cost;
+				for (unsigned int d=0; d < InputImageDimension; ++d)
+					neighbourVec[d] += vnl_math_abs(noff[c][d]);
+
+				vecbuf[c] = neighbourVec;
+				tmpDist = (neighbourVec[0] * neighbourVec[0]) + (neighbourVec[1] * neighbourVec[1]);
 			}
 
 			if (tmpDist < minDist)
@@ -552,9 +556,12 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 				minDist = tmpDist;
 			}
 		}
-		minDist = vnl_math_sqr(minDist);
-		if (static_cast<typename VectorImageType::PixelType::ValueType>(minDist) < it.Get())
+
+		distVecHere = offImg->GetPixel(here);
+		disthere2 = (distVecHere[0] * distVecHere[0]) + (distVecHere[1] * distVecHere[1]);
+		if (minDist < disthere2)
 		{
+			minDist = ::sqrt(minDist);
 			it.Set(static_cast<typename OutputImageType::PixelType>(minDist));
 			offImg->GetPixel(here) = vecbuf[si];
 		}

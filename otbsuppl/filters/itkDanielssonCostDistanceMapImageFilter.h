@@ -98,11 +98,10 @@ public:
   itkStaticConstMacro(OutputImageDimension, unsigned int,
                       TOutputImage::ImageDimension);
 
-  typedef itk::Vector<float, itkGetStaticConstMacro(InputImageDimension)> PixelType;
+  typedef itk::Vector<float, InputImageDimension> VecPixelType;
 
   /** Pointer Type for the vector distance image */
-  typedef typename Image< PixelType,
-                 itkGetStaticConstMacro(InputImageDimension)> VectorImageType;
+  typedef Image< VecPixelType, InputImageDimension > VectorImageType;
 
   /** Pointer Type for input image. */
   typedef typename InputImageType::ConstPointer InputImagePointer;
@@ -226,6 +225,8 @@ private:
   void operator=(const Self&); //purposely not implemented
 
   std::vector<double> m_Categories;
+
+  VectorImagePointer m_OffsetImage;
 
   bool                  m_SquaredDistance;
   bool                  m_InputIsBinary;

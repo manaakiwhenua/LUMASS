@@ -690,21 +690,33 @@ void OtbModellerWin::test()
 	if (fileName.isNull())
 		return;
 
-////	string in = "/home/alex/garage/img/t1.img";
-//	string in = "/home/alex/garage/img/tsmall.img";
+	QString catString = QInputDialog::getText(this, "Categories", "20 45");
+
 	string out = "/home/alex/garage/img/dm2.tiff";
-	//string vmap = "/home/alex/garage/img/vmap.tiff";
 
 	std::vector<double> cats;
-	cats.push_back(20);
-	cats.push_back(45);
+
+	if (!catString.isNull())
+	{
+		QStringList sCats = catString.split(" ");
+		foreach(QString s, sCats)
+		{
+			cats.push_back(::atof(s.toStdString().c_str()));
+		}
+	}
 
 	typedef otb::Image<unsigned short, 2> InputImgType;
 	typedef otb::Image<float, 2> OutputImgType;
 
-	typedef otb::ImageFileReader<InputImgType> ReaderType;
+	otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+	gio->SetRATSupport(true);
+
+	typedef otb::GDALRATImageFileReader<InputImgType> ReaderType;
 	ReaderType::Pointer reader = ReaderType::New();
+	reader->SetImageIO(gio);
 	reader->SetFileName(fileName.toStdString().c_str());
+
+
 
 	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
 	WriterType::Pointer writer = WriterType::New();

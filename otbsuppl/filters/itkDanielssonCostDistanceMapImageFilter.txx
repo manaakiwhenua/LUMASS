@@ -42,7 +42,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 ::DanielssonCostDistanceMapImageFilter()
 {
 
-  this->SetNumberOfRequiredOutputs( 2 );
+  this->SetNumberOfRequiredOutputs( 1 );
 
   OutputImagePointer distanceMap = OutputImageType::New();
   this->SetNthOutput( 0, distanceMap.GetPointer() );
@@ -119,10 +119,8 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 {
 	NMDebugCtx(ctx, << "...");
 
-	InputImagePointer inputImage =
-			dynamic_cast<const TInputImage *>(ProcessObject::GetInput(0));
+	InputImagePointer inputImage = const_cast< TInputImage *>(this->GetInput(0));
 	VectorImagePointer offImg = this->m_OffsetImage;
-//			dynamic_cast< VectorImageType *>(this->GetOutput(1));
 
 	OutputImagePointer distanceMap = this->GetDistanceMap();
 
@@ -140,21 +138,11 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	distanceMap->Allocate();
 	offImg->Allocate();
 
-	typename OutputImageType::RegionType region =
-			distanceMap->GetRequestedRegion();
+	typename InputImageType::RegionType region =
+			inputImage->GetRequestedRegion();
 
 	region.Print(std::cout, itk::Indent(2));
 
-	// find the largest of the image dimensions
-	typename TInputImage::SizeType size = region.GetSize();
-	unsigned int maxLength = 0;
-	for (unsigned int dim = 0; dim < TInputImage::ImageDimension; dim++)
-	{
-		if (maxLength < size[dim])
-		{
-			maxLength = size[dim];
-		}
-	}
 
 	typename OutputImageType::PixelType maxDist =
 			std::numeric_limits<typename OutputImageType::PixelType>::max();
@@ -169,7 +157,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	vt.GoToBegin();
 
 	typename VectorImageType::PixelType maxoffVec;
-	maxoffVec.Fill(itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max());
+	maxoffVec.Fill(itk::NumericTraits<typename OutputImageType::PixelType>::max());
 	typename VectorImageType::PixelType zerooffVec;
 	zerooffVec.Fill(0.0);
 
@@ -185,10 +173,14 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	bool bobj = false;
 	while (!ot.IsAtEnd())
 	{
+		NMDebug( << it.Get() << " ");
 		for (unsigned int e=0; e < this->m_Categories.size(); ++e)
 		{
-			if (it.Get() == this->m_Categories[e])
+			if (static_cast<double>(it.Get()) == this->m_Categories[e])
 			{
+				IndexType here = ot.GetIndex();
+				NMDebugAI(<< here[0] << "," << here[1] << "=" << this->m_Categories[e]
+				          << " -> ");
 				bobj = true;
 				break;
 			}
@@ -198,6 +190,8 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 		{
 			ot.Set(static_cast<typename OutputImageType::PixelType>(0));
 			vt.Set(zerooffVec);
+
+			NMDebug( << "ot=" << ot.Get() << endl);
 		}
 		else if (this->m_Categories.size() == 0 && it.Get() > 0)
 		{
@@ -349,53 +343,65 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 //  NMDebug(<< endl);
 //
 //}
+
+
 template <class TInputImage, class TOutputImage>
 void
 DanielssonCostDistanceMapImageFilter<TInputImage, TOutputImage>
-::GenerateInputRequestedRegion() throw (itk::InvalidRequestedRegionError)
+::EnlargeOutputRequestedRegion(DataObject* output) //throw (itk::InvalidRequestedRegionError)
 {
-  // call the superclass' implementation of this method
-  Superclass::GenerateInputRequestedRegion();
+	// call the superclass' implementation of this method
+	//Superclass::GenerateInputRequestedRegion();
 
-  // get pointers to the input and output
-  typename Superclass::InputImagePointer inputPtr =
-    const_cast< TInputImage * >( this->GetInput() );
-  typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
+	// get pointers to the input and output
+	OutputImageType* outputImage = dynamic_cast< TOutputImage *>(output);
 
-  if ( !inputPtr || !outputPtr )
-    {
-    return;
-    }
 
-  // get a copy of the input requested region (should equal the output
-  // requested region)
-  typename TInputImage::RegionType inputRequestedRegion;
-  inputRequestedRegion = inputPtr->GetRequestedRegion();
+	if (outputImage == 0)
+	{
+		return;
+	}
 
-  // pad the input requested region by the operator radius
-  inputRequestedRegion.PadByRadius( 1 );
+	outputImage->SetRequestedRegionToLargestPossibleRegion();
 
-  // crop the input requested region at the input's largest possible region
-  if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
-    {
-    inputPtr->SetRequestedRegion( inputRequestedRegion );
-    return;
-    }
-  else
-    {
-    // Couldn't crop the region (requested region is outside the largest
-    // possible region).  Throw an exception.
+	//RegionType lpr = outputImage->GetLargestPossibleRegion();
+	//RegionType rr = outputImage->GetRequestedRegion();
+    //
+	//NMDebugAI( << "the 'original' output requested region ..." << endl);
+	//rr.Print(std::cout, itk::Indent(2));
+    //
+	//// make sure that the requested region covers the whole width of the largest possible
+	//// region
+	//rr.SetSize(0, lpr.GetSize()[0]);
+	//rr.SetIndex(0, lpr.GetIndex()[0]);
+    //
+	//NMDebugAI( << "the 'enlarged' output requested region ..." << endl);
+	//rr.Print(std::cout, itk::Indent(2));
+    //
+	//outputImage->SetRequestedRegion(rr);
 
-    // store what we tried to request (prior to trying to crop)
-    inputPtr->SetRequestedRegion( inputRequestedRegion );
-
-    // build an exception
-    itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
-    e.SetLocation(ITK_LOCATION);
-    e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
-    e.SetDataObject(inputPtr);
-    throw e;
-    }
+	//// crop the input requested region at the input's largest possible region
+	//if (inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()))
+	//{
+	//	inputPtr->SetRequestedRegion(inputRequestedRegion);
+	//	return;
+	//}
+	//else
+	//{
+	//	// Couldn't crop the region (requested region is outside the largest
+	//	// possible region).  Throw an exception.
+    //
+	//	// store what we tried to request (prior to trying to crop)
+	//	inputPtr->SetRequestedRegion(inputRequestedRegion);
+    //
+	//	// build an exception
+	//	itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
+	//	e.SetLocation(ITK_LOCATION);
+	//	e.SetDescription(
+	//			"Requested region is (at least partially) outside the largest possible region.");
+	//	e.SetDataObject(inputPtr);
+	//	throw e;
+	//}
 }
 
 
@@ -410,6 +416,7 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	NMDebugCtx(ctx, << "...");
 
 	this->PrepareData();
+	return;
 
 	// Specify images and regions.
 
@@ -451,7 +458,6 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 	}
 	const float updatePeriod = static_cast<float>(updateVisits) * 10.0;
 
-	unsigned char nidx[3];
 	std::vector<OffsetType> noff;
 	noff.resize(3);
 	OffsetType o1={{0,0}}, o2={{0,0}}, o3={{0,0}};
@@ -496,16 +502,16 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 			// right to left
 			if (it.IsReflected(0))
 			{
-				noff[0][0] = 1; noff[0][1] = 0; nidx[0] = 0; // idx 5
-				noff[1][0] = 0; noff[1][1] = 1; nidx[1] = 0; // idx 7
-				noff[2][0] = 1; noff[2][1] = 1; nidx[2] = 1; // idx 8
+				noff[0][0] = 1; noff[0][1] = 0; // idx 5
+				noff[1][0] = 0; noff[1][1] = 1; // idx 7
+				noff[2][0] = 1; noff[2][1] = 1; // idx 8
 			}
 			// left to right
 			else
 			{
-				noff[0][0] = -1; noff[0][1] = 0; nidx[0] = 0; // idx 3
-				noff[1][0] = -1; noff[1][1] = 1; nidx[1] = 0; // idx 6
-				noff[2][0] =  0; noff[2][1] = 1; nidx[2] = 1; // idx 7
+				noff[0][0] = -1; noff[0][1] = 0; // idx 3
+				noff[1][0] = -1; noff[1][1] = 1; // idx 6
+				noff[2][0] =  0; noff[2][1] = 1; // idx 7
 			}
 		}
 		// downwards
@@ -514,56 +520,56 @@ DanielssonCostDistanceMapImageFilter<TInputImage,TOutputImage>
 			// right to left
 			if (it.IsReflected(0))
 			{
-				noff[0][0] = 0; noff[0][1] = -1; nidx[0] = 0; // idx 1
-				noff[1][0] = 1; noff[1][1] = -1; nidx[1] = 1; // idx 2
-				noff[2][0] = 1; noff[2][1] =  0; nidx[2] = 0; // idx 5
+				noff[0][0] = 0; noff[0][1] = -1; // idx 1
+				noff[1][0] = 1; noff[1][1] = -1; // idx 2
+				noff[2][0] = 1; noff[2][1] =  0; // idx 5
 			}
 			// left to right
 			else
 			{
-				noff[0][0] = -1; noff[0][1] = -1; nidx[0] = 1; // idx 0
-				noff[1][0] =  0; noff[1][1] = -1; nidx[1] = 0; // idx 1
-				noff[2][0] = -1; noff[2][1] =  0; nidx[2] = 0; // idx 3
+				noff[0][0] = -1; noff[0][1] = -1; // idx 0
+				noff[1][0] =  0; noff[1][1] = -1; // idx 1
+				noff[2][0] = -1; noff[2][1] =  0; // idx 3
 			}
 		}
 
 		// calc the actual distance value from
 		// sourrounding pixels
 		IndexType here = it.GetIndex();
-		unsigned char si = 0;
+		unsigned char si = 9;
+		unsigned char bNeighbour = 0;
 		minDist = itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max();
 		for (unsigned char c=0; c < 3; ++c)
 		{
-			neighbourVec = offImg->GetPixel(here + noff[c]);
-			//neighbour2 = (neighbourVec[0] * neighbourVec[0]) + (neighbourVec[1] * neighbourVec[1]);
-			//vecbuf[c] = neighbourVec;
-			if (!region.IsInside(here + noff[c]))// || (neighbour < 0))
+			if (region.IsInside(here + noff[c]))
 			{
-				tmpDist = itk::NumericTraits<typename VectorImageType::PixelType::ValueType>::max();
-			}
-			else
-			{
+				neighbourVec = offImg->GetPixel(here + noff[c]);
 				for (unsigned int d=0; d < InputImageDimension; ++d)
 					neighbourVec[d] += vnl_math_abs(noff[c][d]);
 
 				vecbuf[c] = neighbourVec;
 				tmpDist = (neighbourVec[0] * neighbourVec[0]) + (neighbourVec[1] * neighbourVec[1]);
-			}
+				bNeighbour = 1;
 
-			if (tmpDist < minDist)
-			{
-				si = c;
-				minDist = tmpDist;
+
+				if (tmpDist < minDist)
+				{
+					si = c;
+					minDist = tmpDist;
+				}
 			}
 		}
 
-		distVecHere = offImg->GetPixel(here);
-		disthere2 = (distVecHere[0] * distVecHere[0]) + (distVecHere[1] * distVecHere[1]);
-		if (minDist < disthere2)
+		if (bNeighbour)
 		{
-			minDist = ::sqrt(minDist);
-			it.Set(static_cast<typename OutputImageType::PixelType>(minDist));
-			offImg->GetPixel(here) = vecbuf[si];
+			distVecHere = offImg->GetPixel(here);
+			disthere2 = (distVecHere[0] * distVecHere[0]) + (distVecHere[1] * distVecHere[1]);
+			if (minDist < disthere2)
+			{
+				minDist = ::sqrt(minDist);
+				it.Set(static_cast<typename OutputImageType::PixelType>(minDist));
+				offImg->GetPixel(here) = vecbuf[si];
+			}
 		}
 
 		// DEBUG

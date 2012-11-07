@@ -104,7 +104,7 @@ public:
   typedef Image< VecPixelType, InputImageDimension > VectorImageType;
 
   /** Pointer Type for input image. */
-  typedef typename InputImageType::ConstPointer InputImagePointer;
+  typedef typename InputImageType::Pointer InputImagePointer;
 
   /** Pointer Type for the output image. */
   typedef typename OutputImageType::Pointer OutputImagePointer;
@@ -178,7 +178,7 @@ public:
    * considered). */
   OutputImageType * GetDistanceMap(void);
 
-  virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
+  virtual void EnlargeOutputRequestedRegion(DataObject* output);// throw(itk::InvalidRequestedRegionError);
 
   /** Get vector field of distances. */
   //VectorImageType * GetVectorDistanceMap(void);

@@ -148,42 +148,15 @@ public:
   void SetCategories(const std::vector<double>& cats)
   	  {this->m_Categories = cats;};
 
-//  /** Set whether to compute the voronoi map or not. */
-//  itkBooleanMacro( ComputeVoronoi );
-//
-//  /** Get whether the voronoi map is to be computed. */
-//  itkGetConstReferenceMacro( ComputeVoronoi, bool );
-
-  ///** Set whether to compute the vector distance map or not. */
-  //itkBooleanMacro( ComputeVectorDistance );
-  //
-  ///** Get whether the vector distance map is to be computed. */
-  //itkGetConstReferenceMacro( ComputeVectorDistance, bool );
-
-
-  /** Get Voronoi Map
-   * This map shows for each pixel what object is closest to it. 
-   * Each object should be labeled by a number (larger than 0), 
-   * so the map has a value for each pixel corresponding to the label 
-   * of the closest object.  */
-  //OutputImageType * GetVoronoiMap(void);
-
-  /** Get Distance map image.  The distance map is shown as a gray
-   * value image depending on the pixel type of the output image.
-   * Regarding the source image, background should be dark (gray value
-   * = 0) and object should have a gray value larger than 0.  The
-   * minimal distance is calculated on the object frontier, and the
-   * output image gives for each pixel its minimal distance from the
-   * object (if there is more than one object the closest object is
-   * considered). */
+  /** Get Distance map image. */
   OutputImageType * GetDistanceMap(void);
 
-  virtual void EnlargeOutputRequestedRegion(DataObject* output);// throw(itk::InvalidRequestedRegionError);
+  //virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
 
   /** Get vector field of distances. */
   //VectorImageType * GetVectorDistanceMap(void);
 
-  //void EnlargeOutputRequestedRegion(DataObject* data);
+  void EnlargeOutputRequestedRegion(DataObject* data);
 
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */

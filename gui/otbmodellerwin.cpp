@@ -708,17 +708,17 @@ void OtbModellerWin::test()
 	typedef otb::Image<unsigned short, 2> InputImgType;
 	typedef otb::Image<float, 2> OutputImgType;
 
-	otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
-	gio->SetRATSupport(true);
+	//otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+	//gio->SetRATSupport(true);
 
-	typedef otb::GDALRATImageFileReader<InputImgType> ReaderType;
+	typedef otb::ImageFileReader<InputImgType> ReaderType;
 	ReaderType::Pointer reader = ReaderType::New();
-	reader->SetImageIO(gio);
+	//reader->SetImageIO(gio);
 	reader->SetFileName(fileName.toStdString().c_str());
 
 
 
-	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
+	typedef otb::ImageFileWriter<OutputImgType> WriterType;
 	WriterType::Pointer writer = WriterType::New();
 	writer->SetFileName(out.c_str());
 

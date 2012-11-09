@@ -684,6 +684,21 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 
 void OtbModellerWin::test()
 {
+//	unsigned int a = 4;
+//	unsigned int b = 5;
+//
+//	if ((int)(a-b) < 0)
+//	{
+//		NMDebug(<< "yep calc is right" << endl);
+//	}
+//	else
+//	{
+//		NMDebug(<< "nope - need signed types or casting" << endl);
+//	}
+//
+//	return;
+
+
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
 	QString fileName = QInputDialog::getText(this, "Image Name/Path", "");

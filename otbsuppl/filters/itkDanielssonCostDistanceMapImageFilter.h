@@ -112,6 +112,8 @@ public:
   /** Pointer Type for the vector distance image. */
   typedef typename VectorImageType::Pointer VectorImagePointer;
 
+  typedef typename OutputImageType::PixelType OutPixelType;
+
   /** Set if the distance should be squared. */
   itkSetMacro( SquaredDistance, bool );
 
@@ -151,12 +153,11 @@ public:
   /** Get Distance map image. */
   OutputImageType * GetDistanceMap(void);
 
-  //virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
-
   /** Get vector field of distances. */
   //VectorImageType * GetVectorDistanceMap(void);
 
   void EnlargeOutputRequestedRegion(DataObject* data);
+
 
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
@@ -184,6 +185,15 @@ protected:
 
   /** Prepare data. */
   void PrepareData();  
+
+  void calcPixelDistance(OutPixelType* obuf,
+		                 VecPixelType* vbuf,
+		                 int noff[3][2],
+		                 int col,
+		                 int row,
+		                 int ncols,
+		                 int nrows,
+		                 unsigned int buflen);
 
   /**  Compute Voronoi Map. */
  // void ComputeVoronoiMap();

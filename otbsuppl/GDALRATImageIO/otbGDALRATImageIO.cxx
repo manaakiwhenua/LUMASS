@@ -374,99 +374,13 @@ void GDALRATImageIO::Read(void* buffer)
   int lFirstColumn = this->GetIORegion().GetIndex()[0]; // [1... ]
 
   GDALDataset* dataset = m_Dataset->GetDataSet();
+  if (dataset == 0)
+  {
+	  this->InternalReadImageInformation();
+  }
 
-  // This special case is due to the fact the CINT/CLONG types
-  // do not exists in ITK. In this case we only report the first band
-  // TODO This should be fixed
-  /*if (GDALDataTypeIsComplex(m_PxType->pixType)
-      && (m_PxType->pixType != GDT_CFloat32)
-      && (m_PxType->pixType != GDT_CFloat64))
-    {
-    int pixelOffset = m_BytePerPixel * m_NbBands;
-    int lineOffset  = m_BytePerPixel * m_NbBands * lNbColumns;
-    int bandOffset  = m_BytePerPixel;
-    int nbBands     = m_NbBands;
 
-    int nbPixelToRead = lNbColumns *  lNbLines;
-    std::streamoff nbBytes = static_cast<std::streamoff>(m_NbBands) * static_cast<std::streamoff>(nbPixelToRead) * static_cast<std::streamoff>(m_BytePerPixel);
-    unsigned char *pBufferTemp = new unsigned char[static_cast<unsigned int>(nbBytes)];
-
-    // keep it for the moment
-    otbMsgDevMacro(<< "Parameters RasterIO (case CInt and CShort):"
-                   << "\n indX = " << lFirstColumn
-                   << "\n indY = " << lFirstLine
-                   << "\n sizeX = " << lNbColumns
-                   << "\n sizeY = " << lNbLines
-                   << "\n GDAL Data Type = " << GDALGetDataTypeName(m_PxType->pixType)
-                   << "\n pixelOffset = " << pixelOffset
-                   << "\n lineOffset = " << lineOffset
-                   << "\n bandOffset = " << bandOffset);
-
-    CPLErr lCrGdal = m_Dataset->GetDataSet()->RasterIO(GF_Read,
-                                                       lFirstColumn,
-                                                       lFirstLine,
-                                                       lNbColumns,
-                                                       lNbLines,
-                                                       pBufferTemp, //p, // pData
-                                                       lNbColumns,
-                                                       lNbLines,
-                                                       m_PxType->pixType,
-                                                       nbBands,
-                                                       // We want to read all bands
-                                                       NULL,
-                                                       pixelOffset,
-                                                       lineOffset,
-                                                       bandOffset);
-    // Check for gdal error
-    if (lCrGdal == CE_Failure)
-      {
-      itkExceptionMacro(<< "Error while reading image (GDAL format) " << m_FileName );
-      delete[] pBufferTemp;
-      return;
-      }
-    //std::cout << "RAW BUFFER:" <<std::endl;
-    //printDataBuffer(pBufferTemp, m_PxType->pixType, m_NbBands, lNbColumns*lNbLines);
-
-    // Convert the buffer to GDT_Float64 type
-    typedef std::complex<float>           RealType;
-    typedef double                         ScalarRealType;
-
-    if (m_PxType->pixType == GDT_CInt32)
-      {
-      //std::cout << "Convert input File from GDT_CInt32 to GDT_CFloat32" << std::endl;
-      typedef std::complex<int>              ComplexIntType;
-
-      for (unsigned int itPxl = 0; itPxl < (unsigned int) (nbPixelToRead * m_NbBands); itPxl++)
-        {
-        ComplexIntType pxlValue = *(static_cast<ComplexIntType*>( static_cast<void*>(pBufferTemp)) + itPxl );
-
-        RealType    pxlValueReal( static_cast<ScalarRealType>(pxlValue.real()), static_cast<ScalarRealType>(pxlValue.imag()) );
-
-        memcpy((void*) (&(p[itPxl*sizeof(RealType)])), (const void*) (&(pxlValueReal)), (size_t) (sizeof(RealType)));
-        }
-      }
-    else if (m_PxType->pixType == GDT_CInt16)
-      {
-      //std::cout << "Convert input File from GDT_CInt16 to GDT_CFloat32" << std::endl;
-      typedef std::complex<short>            ComplexShortType;
-
-      for (unsigned int itPxl = 0; itPxl < (unsigned int) (nbPixelToRead * m_NbBands); itPxl++)
-        {
-        ComplexShortType pxlValue = *(static_cast<ComplexShortType*>( static_cast<void*>(pBufferTemp)) + itPxl );
-
-        RealType    pxlValueReal( static_cast<ScalarRealType>(pxlValue.real()), static_cast<ScalarRealType>(pxlValue.imag()) );
-
-        memcpy((void*) (&(p[itPxl*sizeof(RealType)])), (const void*) (&(pxlValueReal)), (size_t) (sizeof(RealType)));
-        }
-      }
-    //std::cout << "CONVERTED BUFFER:" <<std::endl;
-    //printDataBuffer(p, GDT_CFloat64, m_NbBands, lNbColumns*lNbLines);
-    delete[] pBufferTemp;
-    }
-
-  // In the indexed case, one has to retrieve the index image and the
-  // color table, and translate p to a 4 components color values buffer
-  else*/ if (m_IsIndexed)
+  if (m_IsIndexed)
     {
     // TODO: This is a very special case and seems to be working only
     // for unsigned char pixels. There might be a gdal method to do

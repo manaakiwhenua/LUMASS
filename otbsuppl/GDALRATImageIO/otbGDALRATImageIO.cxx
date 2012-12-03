@@ -49,14 +49,7 @@
 #include "itkRGBAPixel.h"
 #include "itkTimeProbe.h"
 
-/* GDAL Libraries */
-#include "gdal.h"
-#include "gdal_priv.h"
-#include "cpl_string.h"
-#include "cpl_conv.h"
-#include "ogr_spatialref.h"
-#include "ogr_srs_api.h"
-#include "gdal_rat.h"
+const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
 
 namespace otb
 {
@@ -135,6 +128,18 @@ public:
     return m_Dataset;
     }
 
+  void CloseDataSet(void)
+  {
+	  if (m_Dataset)
+	  {
+		  GDALClose(m_Dataset);
+		  m_Dataset = 0;
+	  }
+  }
+
+  //void SetDataSet(GDALDataset* dataset)
+  //	  {	m_Dataset = dataset;}
+
 protected :
   GDALDatasetWrapper()
    : m_Dataset(NULL)
@@ -184,6 +189,22 @@ public:
       }
     return datasetWrapper;
   }
+
+
+  // Open the file for reading and writing (ie update mode) returns a smart dataset pointer
+  GDALDatasetWrapper::Pointer Update( std::string filename ) const
+  {
+    GDALDatasetWrapper::Pointer datasetWrapper;
+    GDALDatasetH dataset = GDALOpen(filename.c_str(), GA_Update);
+
+    if (dataset != NULL)
+      {
+      datasetWrapper = GDALDatasetWrapper::New();
+      datasetWrapper->m_Dataset = static_cast<GDALDataset*>(dataset);
+      }
+    return datasetWrapper;
+  }
+
 
   // Open the new  file for writing and returns a smart dataset pointer
   GDALDatasetWrapper::Pointer Create( std::string driverShortName, std::string filename,
@@ -280,6 +301,9 @@ GDALRATImageIO::GDALRATImageIO()
   //m_poDataset   = NULL;
 
   m_RATSupport = false;
+  m_ImageUpdateMode = false;
+  m_UseForcedLPR = false;
+  m_UseUpdateRegion = false;
   m_NbBands = 0;
   m_FlagWriteImageInformation = true;
 
@@ -320,6 +344,14 @@ void GDALRATImageIO::PrintSelf(std::ostream& os, itk::Indent indent) const
 // Read a 3D image (or event more bands)... not implemented yet
 void GDALRATImageIO::ReadVolume(void*)
 {
+}
+
+void GDALRATImageIO::CloseDataset(void)
+{
+	if (m_Dataset.IsNotNull())
+	{
+		m_Dataset->CloseDataSet();
+	}
 }
 
 // Read image with GDAL
@@ -532,6 +564,10 @@ void GDALRATImageIO::Read(void* buffer)
       }
     //printDataBuffer(p, m_PxType->pixType, m_NbBands, lNbColumns*lNbLines);
     }
+
+   // let's close the GDALDataset now, it could be that we want to write on
+   // it further down the track
+  m_Dataset->CloseDataSet();
 }
 
 bool GDALRATImageIO::GetSubDatasetInfo(std::vector<std::string> &names, std::vector<std::string> &desc)
@@ -588,6 +624,17 @@ void GDALRATImageIO::ReadImageInformation()
 
 void GDALRATImageIO::InternalReadImageInformation()
 {
+  // do we have a valid dataset wrapper and a valid
+  // GDALDataset ?
+  if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+  {
+	  if (!this->CanReadFile(m_FileName.c_str()))
+	  {
+		  itkExceptionMacro(<< "We can't actually read file "
+				  << m_FileName);
+	  }
+  }
+
   // Detecting if we are in the case of an image with subdatasets
   // example: hdf Modis data
   // in this situation, we are going to change the filename to the
@@ -1186,114 +1233,190 @@ bool GDALRATImageIO::CanStreamWrite()
 
 void GDALRATImageIO::Write(const void* buffer)
 {
-  // Check if we have to write the image information
-  if (m_FlagWriteImageInformation == true)
-    {
-    this->InternalWriteImageInformation(buffer);
-    m_FlagWriteImageInformation = false;
-    }
+	//NMDebugCtx(ctx, << "...");
+	// we're only really updating, when we've written the imageinformation
+	// at least once
+	GDALDataset* pDs = 0;
+	if (m_ImageUpdateMode && m_CanStreamWrite)
+	{
+		pDs = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+		if (pDs != 0)
+		{
+			GDALClose(pDs);
+			// in case we've worked on the data set in non-update mode before
+			m_Dataset->CloseDataSet();
+			m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
+					m_FileName);
+			pDs = m_Dataset->GetDataSet();
+			//NMDebugAI(<< "opened " << m_FileName.c_str() << " in update mode!" << std::endl);
+			otbDebugMacro(<< "opened '" << m_FileName << "' in update mode.");
 
-  // Check if conversion succeed
-  if (buffer == NULL)
-    {
-    itkExceptionMacro(<< "GDAL : Bad alloc");
-    return;
-    }
+			// being in update mode may mean that we're not aware of some essential
+			// metadata we need later on for the RasterIO call, so we read from the
+			// just read image ...
+			m_NbBands = pDs->GetRasterCount();
+		    m_PxType->pixType = pDs->GetRasterBand(1)->GetRasterDataType();
+			m_BytePerPixel = GDALGetDataTypeSize(m_PxType->pixType) / 8;
+ 	        m_Dimensions[0] = pDs->GetRasterXSize();
+			m_Dimensions[1] = pDs->GetRasterYSize();
+		}
+		else
+		{
+			itkWarningMacro(
+					<< "GDAL: couldn't open '" << m_FileName << "' in update mode. We now create/overwrite the file!");
+		}
+	}
+	else if (m_ImageUpdateMode && !m_CanStreamWrite)
+	{
+		itkExceptionMacro(
+				<< "GDAL: file (format) cannot be used in update mode!")
+	}
 
-  // Compute offset and size
-  unsigned int lNbLines = this->GetIORegion().GetSize()[1];
-  unsigned int lNbColumns = this->GetIORegion().GetSize()[0];
-  int lFirstLine = this->GetIORegion().GetIndex()[1]; // [1... ]
-  int lFirstColumn = this->GetIORegion().GetIndex()[0]; // [1... ]
+	// Check if we have to write the image information
+	if (m_FlagWriteImageInformation == true && pDs == 0)
+	{
+		this->InternalWriteImageInformation(buffer);
+		m_FlagWriteImageInformation = false;
+	}
 
-  // Particular case: checking that the written region is the same size
-  // of the entire image
-  // starting at offset 0 (when no streaming)
-  if ((lNbLines == m_Dimensions[1]) && (lNbColumns == m_Dimensions[0]))
-    {
-    lFirstLine = 0;
-    lFirstColumn = 0;
-    }
+	// Check if conversion succeed
+	if (buffer == NULL)
+	{
+		itkExceptionMacro(<< "GDAL : Bad alloc");
+		//NMDebugCtx(ctx, << "done!");
+		return;
+	}
 
-  // Convert buffer from void * to unsigned char *
-  //unsigned char *p = static_cast<unsigned char*>( const_cast<void *>(buffer));
-  //printDataBuffer(p,  m_PxType->pixType, m_NbBands, 10*2); // Buffer incorrect
+	// Compute offset and size
+	unsigned int lNbLines = this->GetIORegion().GetSize()[1];
+	unsigned int lNbColumns = this->GetIORegion().GetSize()[0];
+	int lFirstLine = this->GetIORegion().GetIndex()[1]; // [1... ]
+	int lFirstColumn = this->GetIORegion().GetIndex()[0]; // [1... ]
 
-  // If driver supports streaming
-  if (m_CanStreamWrite)
-    {
+	// adjust overall image dimensions (ie largest possible region) when we've set
+	// the forced largest possible region
+	if (m_UseForcedLPR)
+	{
+		for (unsigned int d=0; d < this->GetNumberOfDimensions(); ++d)
+		{
+			m_Dimensions[d] = m_ForcedLPR.GetSize()[d];
+		}
+	}
 
-    otbMsgDevMacro(<< "RasterIO Write requested region : " << this->GetIORegion() <<
-                 "\n, lNbColumns =" << lNbColumns <<
-                 "\n, lNbLines =" << lNbLines <<
-                 "\n, m_PxType =" << GDALGetDataTypeName(m_PxType->pixType) <<
-                 "\n, m_NbBands =" << m_NbBands <<
-                 "\n, m_BytePerPixel ="<< m_BytePerPixel <<
-                 "\n, Pixel offset =" << m_BytePerPixel * m_NbBands <<  // is nbComp * BytePerPixel
-                 "\n, Line offset =" << m_BytePerPixel * m_NbBands * lNbColumns << // is pixelOffset * nbColumns
-                 "\n, Band offset =" <<  m_BytePerPixel) //  is BytePerPixel
+	// Particular case: checking that the written region is the same size
+	// of the entire image
+	// starting at offset 0 (when no streaming)
+	if ((lNbLines == m_Dimensions[1]) && (lNbColumns == m_Dimensions[0]) && !m_ImageUpdateMode)
+	{
+		lFirstLine = 0;
+		lFirstColumn = 0;
+	}
 
-                 itk::TimeProbe chrono;
-    chrono.Start();
-    CPLErr lCrGdal = m_Dataset->GetDataSet()->RasterIO(GF_Write,
-                                                       lFirstColumn,
-                                                       lFirstLine,
-                                                       lNbColumns,
-                                                       lNbLines,
-                                                       const_cast<void *>(buffer),
-                                                       lNbColumns,
-                                                       lNbLines,
-                                                       m_PxType->pixType,
-                                                       m_NbBands,
-                                                       // We want to write all bands
-                                                       NULL,
-                                                       // Pixel offset
-                                                       // is nbComp * BytePerPixel
-                                                       m_BytePerPixel * m_NbBands,
-                                                       // Line offset
-                                                       // is pixelOffset * nbColumns
-                                                       m_BytePerPixel * m_NbBands * lNbColumns,
-                                                       // Band offset is BytePerPixel
-                                                       m_BytePerPixel);
-    chrono.Stop();
-    otbMsgDevMacro(<< "RasterIO Write took " << chrono.GetTotal() << " sec")
+	// Convert buffer from void * to unsigned char *
+	//unsigned char *p = static_cast<unsigned char*>( const_cast<void *>(buffer));
+	//printDataBuffer(p,  m_PxType->pixType, m_NbBands, 10*2); // Buffer incorrect
 
-    // Check if writing succeed
-    if (lCrGdal == CE_Failure)
-      {
-      itkExceptionMacro(<< "Error while writing image (GDAL format) " << m_FileName.c_str() << ".");
-      }
-    // Flush dataset cache
-    m_Dataset->GetDataSet()->FlushCache();
-    }
-  else
-    {
-    // We only wrote data to the memory dataset
-    // Now write it to the real file with CreateCopy()
-    std::string gdalDriverShortName = FilenameToGdalDriverShortName(m_FileName);
-    std::string realFileName = GetGdalWriteImageFileName(gdalDriverShortName, m_FileName);
+	// If driver supports streaming
+	if (m_CanStreamWrite)
+	{
 
-    GDALDriver* driver = GDALDriverManagerWrapper::GetInstance().GetDriverByName(gdalDriverShortName);
-    if (driver == NULL)
-      {
-      itkExceptionMacro(<< "Unable to instantiate driver " << gdalDriverShortName << " to write " << m_FileName);
-      }
+		otbMsgDevMacro(<< "RasterIO Write requested region : " << this->GetIORegion() <<
+				"\n, lNbColumns =" << lNbColumns <<
+				"\n, lNbLines =" << lNbLines <<
+				"\n, m_PxType =" << GDALGetDataTypeName(m_PxType->pixType) <<
+				"\n, m_NbBands =" << m_NbBands <<
+				"\n, m_BytePerPixel ="<< m_BytePerPixel <<
+				"\n, Pixel offset =" << m_BytePerPixel * m_NbBands << // is nbComp * BytePerPixel
+				"\n, Line offset =" << m_BytePerPixel * m_NbBands * lNbColumns <<// is pixelOffset * nbColumns
+				"\n, Band offset =" << m_BytePerPixel)//  is BytePerPixel
 
-    // If JPEG, set the JPEG compression quality to 95.
-    char * option[2];
-    option[0] = NULL;
-    option[1] = NULL;
-    // If JPEG, set the image quality
-    if( gdalDriverShortName.compare("JPEG") == 0 )
-      {
-      option[0] = const_cast<char *>("QUALITY=95");
- 
-      }
-    
-    GDALDataset* hOutputDS = driver->CreateCopy( realFileName.c_str(), m_Dataset->GetDataSet(), FALSE,
-                                                 option, NULL, NULL );
-    GDALClose(hOutputDS);
-    }
+		itk::TimeProbe chrono;
+
+		//NMDebugAI(<< "PARAMETERS for GDAL RasterIO ... " << std::endl);
+		//NMDebugAI(<< "IO start col: "<< lFirstColumn << " row: " << lFirstLine << std::endl);
+		//NMDebugAI(<< "IO width:" << lNbColumns << " height: " << lNbLines << std::endl);
+		//NMDebugAI(<< "image width: " << m_Dimensions[0] << " image height: " << m_Dimensions[1] << std::endl);
+		//NMDebugAI(<< "no bands: " << m_NbBands << " of type: " << GDALGetDataTypeName(m_PxType->pixType)
+		//		<< " of " << m_BytePerPixel << " bytes" << std::endl);
+
+		chrono.Start();
+		CPLErr lCrGdal = m_Dataset->GetDataSet()->RasterIO(GF_Write,
+							lFirstColumn,
+							lFirstLine,
+							lNbColumns,
+							lNbLines,
+							const_cast<void *>(buffer),
+							lNbColumns,
+							lNbLines,
+							m_PxType->pixType,
+							m_NbBands,
+							// We want to write all bands
+							NULL,
+							// Pixel offset
+							// is nbComp * BytePerPixel
+							m_BytePerPixel * m_NbBands,
+							// Line offset
+							// is pixelOffset * nbColumns
+							m_BytePerPixel * m_NbBands * lNbColumns,
+							// Band offset is BytePerPixel
+							m_BytePerPixel);
+		chrono.Stop();
+		otbMsgDevMacro(<< "RasterIO Write took " << chrono.GetTotal() << " sec")
+
+		// Check if writing succeed
+		if (lCrGdal == CE_Failure)
+		{
+			itkExceptionMacro(
+					<< "Error while writing image (GDAL format) " << m_FileName.c_str() << ".");
+		}
+
+		// In update mode, we better close the GDAL data set (and with it the wrapper)
+		// to avoid unpredictable behaviour of some drivers; in stream write mode, we
+		// just flush the dataset cache though
+		if (m_ImageUpdateMode)
+		{
+			m_Dataset->CloseDataSet();
+		}
+		else
+		{
+			m_Dataset->GetDataSet()->FlushCache();
+		}
+	}
+	else
+	{
+		// We only wrote data to the memory dataset
+		// Now write it to the real file with CreateCopy()
+		std::string gdalDriverShortName = FilenameToGdalDriverShortName(
+				m_FileName);
+		std::string realFileName = GetGdalWriteImageFileName(
+				gdalDriverShortName, m_FileName);
+
+		GDALDriver* driver =
+				GDALDriverManagerWrapper::GetInstance().GetDriverByName(
+						gdalDriverShortName);
+		if (driver == NULL)
+		{
+			itkExceptionMacro(
+					<< "Unable to instantiate driver " << gdalDriverShortName << " to write " << m_FileName);
+		}
+
+		// If JPEG, set the JPEG compression quality to 95.
+		char * option[2];
+		option[0] = NULL;
+		option[1] = NULL;
+		// If JPEG, set the image quality
+		if (gdalDriverShortName.compare("JPEG") == 0)
+		{
+			option[0] = const_cast<char *>("QUALITY=95");
+
+		}
+
+		GDALDataset* hOutputDS = driver->CreateCopy(realFileName.c_str(),
+				m_Dataset->GetDataSet(), FALSE, option, NULL, NULL);
+		GDALClose(hOutputDS);
+	}
+
+	//NMDebugCtx(ctx, << "done!");
 }
 
 /** TODO : Methode WriteImageInformation non implementee */
@@ -1301,11 +1424,45 @@ void GDALRATImageIO::WriteImageInformation()
 {
 }
 
+void GDALRATImageIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
+{
+	this->m_ForcedLPR = forcedLPR;
+	this->m_UseForcedLPR = true;
+	//this->m_FlagWriteImageInformation = true;
+}
+
+void GDALRATImageIO::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
+{
+	//NMDebugCtx(ctx, << "...");
+
+	//NMDebugAI(<< "forced LPR .... " << std::endl);
+	//m_ForcedLPR.Print(std::cout, itk::Indent(nmlog::nmindent+4));
+	//NMDebugAI(<< "update region .... " << std::endl);
+	//updateRegion.Print(std::cout, itk::Indent(nmlog::nmindent+4));
+
+	// check, whether the update region is contained within the
+	// forced lpr
+	if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLPR.GetSize()[0] &&
+		(updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLPR.GetSize()[1]     )
+	{
+		this->m_UpdateRegion = updateRegion;
+		this->m_UseUpdateRegion = true;
+	}
+	else
+	{
+		itkWarningMacro(<< "The provided update region does not fit into the set forced largest possible region!");
+		this->m_UseUpdateRegion = false;
+	}
+
+	//NMDebugCtx(ctx, << "done!");
+}
+
 void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 {
   char **     papszOptions = NULL;
   std::string driverShortName;
   m_NbBands = this->GetNumberOfComponents();
+  //this->Get
 
   if ((m_Dimensions[0] == 0) && (m_Dimensions[1] == 0))
     {
@@ -1420,6 +1577,16 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       << "GDAL Writing failed : the image file name '" << m_FileName.c_str() << "' is not recognized by GDAL.");
     }
 
+
+  unsigned int totalRegionCols = m_Dimensions[0];
+  unsigned int totalRegionLines = m_Dimensions[1];
+  if (m_UseForcedLPR)
+  {
+	  totalRegionCols = m_ForcedLPR.GetSize()[0];
+	  totalRegionLines = m_ForcedLPR.GetSize()[1];
+  }
+
+
   if (m_CanStreamWrite)
     {
 
@@ -1451,7 +1618,8 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     m_Dataset = GDALDriverManagerWrapper::GetInstance().Create(
                      driverShortName,
                      GetGdalWriteImageFileName(driverShortName, m_FileName),
-                     m_Dimensions[0], m_Dimensions[1],
+                     totalRegionCols, totalRegionLines,
+                     //m_Dimensions[0], m_Dimensions[1],
                      m_NbBands, m_PxType->pixType,
                      papszOptions);
     }
@@ -1464,8 +1632,10 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     std::ostringstream stream;
     stream << "MEM:::"
            <<  "DATAPOINTER=" << (unsigned long)(buffer) << ","
-           <<  "PIXELS=" << m_Dimensions[0] << ","
-           <<  "LINES=" << m_Dimensions[1] << ","
+           //<<  "PIXELS=" << m_Dimensions[0] << ","
+           //<<  "LINES=" << m_Dimensions[1] << ","
+           <<  "PIXELS=" << totalRegionCols << ","
+           <<  "LINES=" << totalRegionLines << ","
            <<  "BANDS=" << m_NbBands << ","
            <<  "DATATYPE=" << GDALGetDataTypeName(m_PxType->pixType) << ","
            <<  "PIXELOFFSET=" << m_BytePerPixel * m_NbBands << ","

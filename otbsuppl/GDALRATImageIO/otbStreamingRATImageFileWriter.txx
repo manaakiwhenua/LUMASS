@@ -36,6 +36,8 @@
 #ifndef __otbStreamingRATImageFileWriter_txx
 #define __otbStreamingRATImageFileWriter_txx
 
+#include "nmlog.h"
+
 #include "otbStreamingRATImageFileWriter.h"
 #include "itkImageFileWriter.h"
 
@@ -43,6 +45,7 @@
 
 #include "itkImageRegionMultidimensionalSplitter.h"
 #include "otbImageIOFactory.h"
+#include "otbGDALRATImageIO.h"
 
 #include "itkMetaDataObject.h"
 #include "otbImageKeywordlist.h"
@@ -57,6 +60,9 @@
 #include "otbTileDimensionTiledStreamingManager.h"
 #include "otbRAMDrivenTiledStreamingManager.h"
 
+
+template<class TInputImage>
+const std::string otb::StreamingRATImageFileWriter<TInputImage>::ctx = "StreamingRATImageFileWriter";
 
 namespace otb
 {
@@ -77,6 +83,9 @@ StreamingRATImageFileWriter<TInputImage>
   this->SetAutomaticTiledStreaming();
 
   m_RATHaveBeenWritten = false;
+  m_UseForcedLPR = false;
+  m_UseUpdateRegion = false;
+  m_UpdateMode = false;
 }
 
 /**
@@ -348,8 +357,30 @@ StreamingRATImageFileWriter<TInputImage>
 template<class TInputImage>
 void
 StreamingRATImageFileWriter<TInputImage>
+::EnlargeOutputRequestedRegion(itk::DataObject* output)
+{
+	Superclass::EnlargeOutputRequestedRegion(output);
+	OutputImageType* out = static_cast<OutputImageType*>(output);
+
+	if (m_UpdateMode && m_UseForcedLPR)
+	{
+		itk::ImageRegion<TInputImage::ImageDimension> outr;
+		for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
+		{
+			outr.SetIndex(d, m_ForcedLargestPossibleRegion.GetIndex()[d]);
+			outr.SetSize(d, m_ForcedLargestPossibleRegion.GetSize()[d]);
+		}
+		out->SetLargestPossibleRegion(outr);
+	}
+}
+
+
+template<class TInputImage>
+void
+StreamingRATImageFileWriter<TInputImage>
 ::GenerateInputRequestedRegion()
  {
+	//NMDebugCtx(ctx, << "...");
   Superclass::GenerateInputRequestedRegion();
 
   InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
@@ -359,12 +390,54 @@ StreamingRATImageFileWriter<TInputImage>
     return;
     }
   typename InputImageType::RegionType lregion = inputPtr->GetLargestPossibleRegion();
+
+  //NMDebugAI(<< "input lpr before resetting ... " << endl);
+  //lregion.Print(std::cout, itk::Indent(nmlog::nmindent));
+
   typename InputImageType::SizeType rsize;
   rsize.Fill(0);
   lregion.SetSize(rsize);
 
+  //NMDebugAI(<< "input lpr after resetting ... " << endl);
+  //lregion.Print(std::cout, itk::Indent(nmlog::nmindent));
+
   inputPtr->SetRequestedRegion(lregion);
+
+	//NMDebugCtx(ctx, << "done!");
 }
+
+template<class TInputImage>
+void
+StreamingRATImageFileWriter<TInputImage>
+::SetForcedLargestPossibleRegion(const itk::ImageIORegion& forcedReg)
+{
+	if (m_ForcedLargestPossibleRegion != forcedReg)
+	{
+		m_ForcedLargestPossibleRegion = forcedReg;
+		this->m_UseForcedLPR = true;
+		this->Modified();
+	}
+}
+
+template<class TInputImage>
+void
+StreamingRATImageFileWriter<TInputImage>
+::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
+{
+	if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLargestPossibleRegion.GetSize()[0] &&
+		(updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLargestPossibleRegion.GetSize()[1]     )
+	{
+		this->m_UpdateRegion = updateRegion;
+		this->m_UseUpdateRegion = true;
+		this->Modified();
+	}
+	else
+	{
+		itkWarningMacro(<< "The provided update region does not fit into the set forced largest possible region!");
+		this->m_UseUpdateRegion = false;
+	}
+}
+
 
 /**
  *
@@ -374,6 +447,8 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::UpdateOutputData(itk::DataObject *itkNotUsed(output))
 {
+	//NMDebugCtx(ctx, << "...");
+
   unsigned int idx;
   /**
    * prevent chasing our tail
@@ -411,7 +486,8 @@ StreamingRATImageFileWriter<TInputImage>
    * Allocate the output buffer.
    */
   OutputImagePointer    outputPtr = this->GetOutput(0);
-  OutputImageRegionType outputRegion = outputPtr->GetLargestPossibleRegion();
+  OutputImageRegionType outputRegion = this->GetOutput(0)->GetLargestPossibleRegion();
+
 
   /** Prepare ImageIO  : create ImageFactory */
 
@@ -420,6 +496,11 @@ StreamingRATImageFileWriter<TInputImage>
     // Make sure that we can write the file given the name
     itkExceptionMacro(<< "No filename was specified");
     }
+
+  if (m_ImageIO.IsNotNull())
+  {
+	  m_ImageIO->SetFileName(m_FileName.c_str());
+  }
 
   if (m_ImageIO.IsNull())   //try creating via factory
     {
@@ -466,6 +547,30 @@ StreamingRATImageFileWriter<TInputImage>
     throw e;
     }
   /** End of Prepare ImageIO  : create ImageFactory */
+
+
+  /** set writer and imageIO output information */
+  GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIO.GetPointer());
+  if (gio != 0 && m_UpdateMode)
+  {
+	  gio->SetImageUpdateMode(true);
+  }
+
+  if (gio != 0 && m_UseForcedLPR)
+  {
+	  gio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+  }
+
+  // in case the user specified an explicit update region for exteranlly controlled
+  // streaming, we set this as the outputRegion to allow of streaming over this region
+  if (m_UpdateMode && m_UseUpdateRegion)
+  {
+	  for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
+	  {
+		  outputRegion.SetIndex(d, m_UpdateRegion.GetIndex()[d]);
+		  outputRegion.SetSize(d, m_UpdateRegion.GetSize()[d]);
+	  }
+  }
 
   /**
    * Grab the input
@@ -533,7 +638,11 @@ StreamingRATImageFileWriter<TInputImage>
   /** Create Image file */
   // Setup the image IO for writing.
   //
-  m_ImageIO->SetFileName(m_FileName.c_str());
+  //NMDebugAI(<< "Image information for ImageIO ..." << endl);
+  //NMDebugAI(<< "  origin: " << origin[0] << ", " << origin[1] << endl);
+  //NMDebugAI(<< "  spacing: " << spacing[0] << ", " << spacing[1] << endl);
+  //NMDebugAI(<< "  region ... " << endl);
+  //outputRegion.Print(std::cout, itk::Indent(nmlog::nmindent + 4));
 
   m_ImageIO->WriteImageInformation();
 
@@ -606,6 +715,8 @@ StreamingRATImageFileWriter<TInputImage>
 
   // Mark that we are no longer updating the data in this filter
   this->m_Updating = false;
+
+	//NMDebugCtx(ctx, << "done!");
 
 }
 

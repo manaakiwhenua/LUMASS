@@ -240,6 +240,34 @@ public:
   itkSetObjectMacro(InputRAT, AttributeTable);
 
 
+  /** Indicate whether the writer should be used in 'update' mode for
+   *  allowing externally driven streaming as well as updating
+   *  parts of existing images
+   */
+  itkSetMacro(UpdateMode, bool);
+  itkGetMacro(UpdateMode, bool);
+  itkBooleanMacro(UpdateMode);
+
+  /** Specifiy a user specified largest possible region to be written as
+   *  part of the image information; this is primarily meant for initialising
+   *  a partly empty image, which is going to be updated subsequently
+   *  by repetitive calls of this writer class (i.e. allows for external
+   *  'streaming logic' which becomes necessary when certain algorithms
+   *  have to work repetitively on large images)
+   */
+   //itkSetObjectMacro(ForceLargestPossibleRegion, itk::Region);
+  void SetForcedLargestPossibleRegion(const itk::ImageIORegion& forcedReg);
+
+  /** specify the update region valid for the current call of this writer
+   *  class; NOTE: this is supposed to be used in conjunction of the
+   *  SetForcedLargestPossilbeRegion method to initiate externally streamed
+   *  writing
+   */
+  void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
+
+  void EnlargeOutputRequestedRegion(itk::DataObject* output);
+
+
 protected:
   StreamingRATImageFileWriter();
   virtual ~StreamingRATImageFileWriter();
@@ -299,8 +327,17 @@ private:
 
   StreamingManagerPointerType m_StreamingManager;
 
+
+  itk::ImageIORegion m_UpdateRegion;
+  itk::ImageIORegion m_ForcedLargestPossibleRegion;
+  bool m_UseForcedLPR;
+  bool m_UseUpdateRegion;
+  bool m_UpdateMode;
+
   AttributeTable::Pointer m_InputRAT;
   bool m_RATHaveBeenWritten;
+
+  static const std::string ctx;
 };
 
 } // end namespace otb

@@ -42,7 +42,17 @@
 /* ITK Libraries */
 #include "itkImageIOBase.h"
 
+#include "nmlog.h"
 #include "otbAttributeTable.h"
+
+/* GDAL Libraries */
+#include "gdal.h"
+#include "gdal_priv.h"
+#include "cpl_string.h"
+#include "cpl_conv.h"
+#include "ogr_spatialref.h"
+#include "ogr_srs_api.h"
+#include "gdal_rat.h"
 
 namespace otb
 {
@@ -95,6 +105,18 @@ public:
   /** Set/Get the IO mode (i.e. RAT support on or off) */
   itkSetMacro(RATSupport, bool);
   itkGetMacro(RATSupport, bool);
+
+  /** Set/Get whether files should be opened in update mode
+   *  rather than being overridden */
+  itkSetMacro(ImageUpdateMode, bool);
+  itkGetMacro(ImageUpdateMode, bool);
+
+  /** surrounding region specs */
+  void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
+  void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
+
+  /** close the gdal data set incase it is still open */
+  void CloseDataset(void);
 
   /*-------- This part of the interface deals with reading data. ------ */
 
@@ -171,6 +193,15 @@ protected:
   /** indicates whether RAT support is switched on or not */
   bool m_RATSupport;
 
+  /** are existing images being opened in update or (overwrite) mode?*/
+  bool m_ImageUpdateMode;
+
+  /** force a largest possible region */
+  itk::ImageIORegion m_UpdateRegion;
+  itk::ImageIORegion m_ForcedLPR;
+  bool m_UseForcedLPR;
+  bool m_UseUpdateRegion;
+
 
 private:
   GDALRATImageIO(const Self &); //purposely not implemented
@@ -203,6 +234,8 @@ private:
   /** Whether the pixel type (otb side, not gdal side) is Vector
    * this information has to be provided by the reader */
   bool m_IsVectorImage;
+
+  static const std::string ctx;
 
 };
 

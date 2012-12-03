@@ -1,5 +1,5 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
+ /*****************************r*************************************************
+ * Created by Alexander Herzig ue
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -24,6 +24,11 @@
 #include <map>
 #include "math.h"
 
+// GDAL support
+#include "gdal.h"
+#include "gdal_priv.h"
+
+
 // NM stuff
 #include "nmlog.h"
 #include "NMLayer.h"
@@ -39,10 +44,6 @@
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 
-//#ifdef BUILD_RASSUPPORT
-//  #include "raslib/error.hh"
-//  #include "NMRasdamanConnectorWrapper.h"
-//#endif
 
 #include "NMRATBandMathImageFilterWrapper.h"
 #include "NMStreamingImageFileWriterWrapper.h"
@@ -99,11 +100,13 @@
 // orfeo
 //#include "ImageReader.h"
 //#include "ImageDataWrapper.h"
+#include "itkTimeProbe.h"
 #include "itkIndent.h"
 #include "otbGDALRATImageFileReader.h"
 #include "otbImage.h"
 #include "itkShiftScaleImageFilter.h"
 #include "itkCastImageFilter.h"
+#include "itkPasteImageFilter.h"
 #include "otbBandMathImageFilter.h"
 #include "otbRATBandMathImageFilter.h"
 #include "itkVTKImageExport.h"
@@ -113,7 +116,7 @@
 #include "otbImageFileReader.h"
 #include "itkExtractImageFilter.h"
 #include "itkObjectFactoryBase.h"
-#include "itkDanielssonCostDistanceMapImageFilter.h"
+#include "itkNMCostDistanceBufferImageFilter.h"
 #include "itkDanielssonDistanceMapImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkImageIOBase.h"
@@ -684,31 +687,28 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 
 void OtbModellerWin::test()
 {
-//	unsigned int a = 4;
-//	unsigned int b = 5;
-//
-//	if ((int)(a-b) < 0)
-//	{
-//		NMDebug(<< "yep calc is right" << endl);
-//	}
-//	else
-//	{
-//		NMDebug(<< "nope - need signed types or casting" << endl);
-//	}
-//
-//	return;
-
-
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	QString fileName = QInputDialog::getText(this, "Image Name/Path", "");
+	QString wdir = "/home/alex/garage/img/";
+
+	QString fileName = QInputDialog::getText(this, "Categories Image", "");
 	if (fileName.isNull())
 		return;
+	//QString fileName = QString("tsmall.tiff");
+	fileName = QString("%1%2").arg(wdir).arg(fileName);
 
-	QString catString = QInputDialog::getText(this, "Categories", "20 45");
+	QString costFN = QInputDialog::getText(this, "Cost Image", "");
 
-	string out = "/home/alex/garage/img/dm2.tiff";
+	QString catString = QInputDialog::getText(this, "Categories", "20 45",
+			QLineEdit::Normal, "43");
+	//QString catString = "43";
 
+	QString smaxDist = QInputDialog::getText(this, "MaxDistance", "-1 | 50",
+			QLineEdit::Normal, "-1");
+	double md = ::atof(smaxDist.toStdString().c_str());
+	//double md = -1;
+
+	string out = "/home/alex/garage/img/dm.img";
 	std::vector<double> cats;
 
 	if (!catString.isNull())
@@ -720,30 +720,225 @@ void OtbModellerWin::test()
 		}
 	}
 
-	typedef otb::Image<unsigned short, 2> InputImgType;
-	typedef otb::Image<float, 2> OutputImgType;
+	typedef otb::Image<int, 2> InputImgType;
+	typedef otb::Image<double, 2> OutputImgType;
 
-	//otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
-	//gio->SetRATSupport(true);
+	typedef itk::NMCostDistanceBufferImageFilter<InputImgType, OutputImgType> DistanceFilterType;
+	DistanceFilterType::Pointer distfilter = DistanceFilterType::New();
 
+//	otb::GDALRATImageIO::Pointer inrio = otb::GDALRATImageIO::New();
+//	inrio->SetRATSupport(true);
 	typedef otb::ImageFileReader<InputImgType> ReaderType;
 	ReaderType::Pointer reader = ReaderType::New();
-	//reader->SetImageIO(gio);
 	reader->SetFileName(fileName.toStdString().c_str());
+//	reader->SetImageIO(inrio);
 
+	ReaderType::Pointer costreader = ReaderType::New();
 
+	otb::GDALRATImageIO::Pointer tmpOutGIO = otb::GDALRATImageIO::New();
+	typedef otb::ImageFileReader<typename DistanceFilterType::OutputImageType> TmpOutReaderType;
+	TmpOutReaderType::Pointer tmpOutReader = TmpOutReaderType::New();
+	tmpOutReader->SetImageIO(tmpOutGIO);
 
-	typedef otb::ImageFileWriter<OutputImgType> WriterType;
+	otb::GDALRATImageIO::Pointer outgio = otb::GDALRATImageIO::New();
+	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
 	WriterType::Pointer writer = WriterType::New();
 	writer->SetFileName(out.c_str());
+	writer->SetNumberOfDivisionsStrippedStreaming(1);
+	writer->SetImageIO(static_cast<itk::ImageIOBase*>(outgio));
 
-	typedef itk::DanielssonCostDistanceMapImageFilter<InputImgType, OutputImgType> DistanceFilterType;
-	DistanceFilterType::Pointer distfilter = DistanceFilterType::New();
-	distfilter->SetCategories(cats);
+	// let's get an idea about the size of the image to process
+	reader->GetOutput()->UpdateOutputInformation();
+	InputImgType::RegionType lpr = reader->GetOutput()->GetLargestPossibleRegion();
+	InputImgType::RegionType pr;
+	InputImgType::SpacingType inputSpacing = reader->GetOutput()->GetSpacing();
+	InputImgType::PointType inputOrigin = reader->GetOutput()->GetOrigin();
+	pr.SetSize(0, lpr.GetSize()[0]);
+	pr.SetIndex(0, 0);
+	itk::ImageIORegion lprio(2);
+	lprio.SetSize(0, lpr.GetSize()[0]);
+	lprio.SetSize(1, lpr.GetSize()[1]);
+	lprio.SetIndex(0, lpr.GetIndex()[0]);
+	lprio.SetIndex(1, lpr.GetIndex()[1]);
 
+	writer->SetForcedLargestPossibleRegion(lprio);
+
+	//typedef itk::ImageIORegionAdaptor<2> IORegAdaptor;
+	itk::ImageIORegion ior(2);
+	ior.SetSize(0, lpr.GetSize()[0]);
+	ior.SetIndex(0, 0);
+	int nrows = lpr.GetSize()[1];
+
+	// calc memory cost for image and derive iteration parameters
+	int memmax = 64 * 1024 * 1024;
+	int rowcost = lpr.GetSize()[0] * sizeof(float) * 5;
+	int chunksize = memmax / rowcost;
+	bool bRAM = false;
+	//if (chunksize > nrows)
+	{
+		bRAM = true;
+	}
+	if (chunksize < 3)
+		chunksize = 3;
+    unsigned long niter = chunksize == 0 ? nrows : nrows / (chunksize-1);
+    unsigned long rest = nrows - (niter * (chunksize-1));
+    while (rest > 0 && rest < 2)
+    {
+    	--chunksize;
+    	niter = nrows / (chunksize-1);
+    	rest = nrows - (niter * (chunksize - 1));
+    }
+    if (chunksize < 2)
+    {
+    	NMErr(ctxOtbModellerWin, << "Ever thought of calculating this by hand?? It's not even two rows!!");
+    	NMDebugCtx(ctxOtbModellerWin, << "done!");
+    	return;
+    }
+
+    long startrow = lpr.GetIndex()[1];
+    unsigned long endrow = startrow + chunksize - 1;
+    unsigned long rowstoread = chunksize;
+
+    NMDebugAI(<< "Iteration params ..." << endl);
+    NMDebugAI(<< "  chunksize=" << chunksize
+    		  << "  niter=" << niter
+    		  << "  rest=" << rest << endl);
+
+    //const piepeline connections // and filter settings
 	distfilter->SetInput(reader->GetOutput());
-	writer->SetInput(distfilter->GetOutput(0));
-	writer->Update();
+	if (!costFN.isNull())
+	{
+		costFN = QString("%1%2").arg(wdir).arg(costFN);
+		costreader->SetFileName(costFN.toStdString().c_str());
+		distfilter->SetInput(1, costreader->GetOutput());
+	}
+	distfilter->SetCategories(cats);
+	if (md > 0)
+		distfilter->SetMaxDistance(md);
+
+	//distfilter->UseImageSpacingOn();
+	//distfilter->CreateBufferOn();
+	//distfilter->SetBufferZoneIndicator(1);
+
+	/* ================================================================== */
+	/* just check the single-run algorithm */
+
+		if (bRAM)
+		{
+			writer->SetInput(distfilter->GetOutput());
+
+			itk::TimeProbe chrono;
+			chrono.Start();
+			writer->Update();
+			chrono.Stop();
+			NMDebugAI(<< "==> this took " << chrono.GetMean()
+					<< " time units " << endl);
+			NMDebugCtx(ctxOtbModellerWin, << "done!");
+			return;
+		}
+	/* ================================================================== */
+
+
+    distfilter->resetExecCounter();
+    distfilter->SetProcessDownward(true);
+    // iterate over the regions (chunks of rows)
+    // to get the job done
+    for (int iter=0; iter <= niter; ++iter)
+    {
+    	NMDebugAI(<< "  startrow=" << startrow << "  endrow=" << endrow
+    			<< "  rowstoread=" << rowstoread << "  rest=" << rest << endl);
+
+    	pr.SetIndex(1, startrow);
+    	ior.SetIndex(1, startrow);
+		pr.SetSize(1, rowstoread);
+		ior.SetSize(1, rowstoread);
+
+    	if (iter >= 1)
+    	{
+    		writer->SetUpdateMode(true);
+
+    		tmpOutReader->SetFileName(out.c_str());
+    		tmpOutReader->SetImageIO(tmpOutGIO);
+    		tmpOutReader->GetOutput()->SetRequestedRegion(pr);
+    		tmpOutReader->Update();
+
+    		OutputImgType::Pointer tout = tmpOutReader->GetOutput();
+    		tout->DisconnectPipeline();
+
+    		distfilter->GraftOutput(tout);
+    	}
+
+    	// set the largest possible and requested regions
+    	distfilter->GetOutput()->SetRequestedRegion(pr);
+    	distfilter->Update();
+
+    	OutputImgType::Pointer di = distfilter->GetOutput();
+    	di->DisconnectPipeline();
+
+    	writer->SetInput(di);
+    	writer->SetUpdateRegion(ior);
+    	writer->Update();
+
+   		// need to close the datasets explicitly this time,
+   		// since they're not closed for re-reading in non
+   		// update mode
+   		if (iter == 0)
+   		{
+   			outgio->CloseDataset();
+   		}
+
+ 		startrow = endrow;
+ 		endrow = startrow + chunksize - 1;
+ 		endrow = endrow > nrows-1 ? nrows-1 : endrow;
+ 		rowstoread = endrow - startrow + 1;
+    }
+
+
+    NMDebugAI(<< "!!! GET UP !!!" << endl);
+
+    // ---------------------------------------------------------------
+    // get up!
+    distfilter->SetProcessDownward(false);
+    distfilter->SetProcessUpward(true);
+    startrow = nrows - chunksize;
+    endrow = nrows - 1;
+    rowstoread = chunksize;
+    for (int iter=0; iter <= niter; ++iter)
+    {
+    	NMDebugAI(<< "startrow=" << startrow << " endrow=" << endrow
+    			<< " rowstoread=" << rowstoread << " rest=" << rest << endl);
+
+    	pr.SetIndex(1, startrow);
+   		pr.SetSize(1, rowstoread);
+    	ior.SetIndex(1, startrow);
+   		ior.SetSize(1, rowstoread);
+
+		tmpOutReader->SetFileName(out.c_str());
+		tmpOutReader->SetImageIO(tmpOutGIO);
+		tmpOutReader->GetOutput()->SetRequestedRegion(pr);
+		tmpOutReader->Update();
+
+		OutputImgType::Pointer tout = tmpOutReader->GetOutput();
+		tout->DisconnectPipeline();
+
+		distfilter->GraftOutput(tout);
+
+    	// set the largest possible and requested regions
+    	distfilter->GetOutput()->SetRequestedRegion(pr);
+    	distfilter->Update();
+
+    	OutputImgType::Pointer di = distfilter->GetOutput();
+    	di->DisconnectPipeline();
+
+    	writer->SetInput(di);
+    	writer->SetUpdateRegion(ior);
+    	writer->Update();
+
+        endrow = startrow;
+        startrow = endrow - chunksize + 1;
+        startrow = startrow < 0 ? 0 : startrow;
+        rowstoread = endrow - startrow + 1;
+    }
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

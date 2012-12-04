@@ -176,14 +176,14 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3])
 	// image boundary
 	if (vtkMath::PointIsWithinBounds(world, bnd, err))
 	{
-		// calculate the image/pixel coordindates
+		// calculate the image/pixel coordinates
 		for (d = 0; d < 3; ++d)
 		{
 			// init value
 			pixel[d] = 0;
 
 			if (dims[d] > 1)
-				pixel[d] = ::abs((int)(world[d] - origin[d]) / spacing[d]);
+				pixel[d] = ::abs((int)((world[d] - origin[d]) / spacing[d]));
 
 			if (pixel[d] > dims[d]-1)
 				pixel[d] = 0;

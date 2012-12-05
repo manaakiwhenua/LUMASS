@@ -185,6 +185,7 @@ protected:
 
   void calcPixelDistance(OutPixelType* obuf,
 		                 InPixelType* ibuf,
+		                 InPixelType* cbuf,
 		                 double* colDist,
 		                 double* rowDist,
 		                 int** noff,
@@ -197,12 +198,10 @@ protected:
 			             OutPixelType& maxDist,
 		                 SpacingType& spacing);
 
-   void writeProximityValue(OutPixelType* obuf,
-		  	  	  	  	   OutPixelType& userDist,
-		  	  	  	  	   int& col,
-		  	  	  	  	   int& row,
-		  	  	  	  	   int& ncols,
-		  	  	  	  	   int& nrows);
+   void writeBufferZoneValue(OutPixelType* obuf,
+		  	  	  	  	     OutPixelType& userDist,
+		  	  	  	  	     int& row,
+		  	  	  	  	     int& ncols);
 
 private:   
   NMCostDistanceBufferImageFilter(const Self&);
@@ -223,7 +222,6 @@ private:
 
   OutputImagePointer m_TempOutput;
 
-  int m_DebugCounter;
   int m_NumExec;
   int m_UpwardCounter;
   bool m_CreateBuffer;
@@ -278,6 +276,7 @@ inline void
 NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 ::calcPixelDistance(OutPixelType* obuf,
 		            InPixelType* ibuf,
+		            InPixelType* cbuf,
 		            double* colDist,
 		            double* rowDist,
 		            int** noff,
@@ -342,30 +341,47 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 			if (x == -9)
 				continue;
 
-			y = rowDist[dnidx];
-
-			// make sure we only work on pixel inside the buffer
-			switch(c)
+			if (cbuf)
 			{
-			case 0: // diagonal
-				x += spacing[0];
-				y += spacing[1];
-				break;
-
-			case 1: // y-direction
-				y += spacing[1];
-				break;
-
-			case 2: // x-direction
-				x += spacing[0];
-				break;
-
-			default:
-				continue;
-				break;
+				if (c)
+				{
+					tmpDist = cbuf[cidx]
+					          + obuf[(col + noff[c][0])
+								     + ((row + noff[c][1]) * ncols)];
+				}
+				else
+				{
+					tmpDist = (cbuf[cidx] * 1.414214)
+								+ obuf[(col + noff[c][0])
+								       + ((row + noff[c][1]) * ncols)];
+				}
 			}
+			else
+			{
+				y = rowDist[dnidx];
+				// make sure we only work on pixel inside the buffer
+				switch(c)
+				{
+				case 0: // diagonal
+					x += spacing[0];
+					y += spacing[1];
+					break;
 
-			tmpDist = (x * x) + (y * y);
+				case 1: // y-direction
+					y += spacing[1];
+					break;
+
+				case 2: // x-direction
+					x += spacing[0];
+					break;
+
+				default:
+					continue;
+					break;
+				}
+
+				tmpDist = (x * x) + (y * y);
+			}
 
 			// we're only interested in the minimum distance to the
 			// source object
@@ -377,11 +393,19 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 				ch = c;
 			}
 		}
-		if (ch != -9 && minDist < (obuf[cidx] * obuf[cidx]))
+		if (ch != -9)
 		{
-			obuf[cidx] = vcl_sqrt(minDist);
-			colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
-			rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
+			if (cbuf)
+			{
+				if (minDist < obuf[cidx])
+					obuf[cidx] = minDist;
+			}
+			else if (minDist < (obuf[cidx] * obuf[cidx]))
+			{
+				obuf[cidx] = vcl_sqrt(minDist);
+				colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
+				rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
+			}
 		}
 	}
 }
@@ -390,30 +414,26 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 template <class TInputImage,class TOutputImage>
 inline void
 NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
-::writeProximityValue(OutPixelType* obuf,
-					  OutPixelType& userDist,
-			          int& col,
-			          int& row,
-			          int& ncols,
-			          int& nrows)
+::writeBufferZoneValue(OutPixelType* obuf,
+					   OutPixelType& userDist,
+					   int& row,
+			           int& ncols)
 {
-	if (obuf[col + row*ncols] && (obuf[col + row*ncols] <= userDist))
+	for (int c=0; c < ncols; ++c)
 	{
-		if (this->m_CreateBuffer)
+		if (obuf[c + row * ncols] <= userDist)
 		{
-			obuf[col + row*ncols] =
-				static_cast<OutPixelType>(this->m_BufferZoneIndicator);
+			if (m_BufferZoneIndicator)
+			{
+				if (obuf[c + row * ncols])
+					obuf[c + row * ncols] = m_BufferZoneIndicator;
+
+			}
+			else
+			{
+				obuf[c + row * ncols] = 0; //itk::NumericTraits<OutPixelType>::Zero;
+			}
 		}
-		else
-		{
-			obuf[col + row*ncols] =
-				static_cast<OutPixelType>(vcl_sqrt(
-						static_cast<double>(obuf[col + row*ncols])));
-		}
-	}
-	else
-	{
-		obuf[col + row*ncols] = static_cast<OutPixelType>(this->m_MaxDistance);
 	}
 }
 

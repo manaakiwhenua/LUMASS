@@ -52,10 +52,9 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
   m_colDist = 0;
   m_Categories = 0;
   m_NumCategories = 0;
-  m_DebugCounter = 0;
   m_NumExec = 1;
   m_UpwardCounter = 1;
-  m_BufferZoneIndicator = 1;
+  m_BufferZoneIndicator = 0;
   m_CreateBuffer = false;
   m_UseImageSpacing = false;
   m_ProcessDownward = false;
@@ -259,8 +258,8 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 
 	// we square the max distance, since we only compare squared distances
 	// in the  calc distance function
-	OutPixelType maxDist = this->m_MaxDistance * this->m_MaxDistance;
-	//OutPixelType userDist = itk::NumericTraits<OutPixelType>::max();
+	OutPixelType maxDist = itk::NumericTraits<OutPixelType>::max();
+	OutPixelType userDist = this->m_MaxDistance;
 
 	int ncols = region.GetSize()[0];
 	int nrows = region.GetSize()[1];
@@ -340,12 +339,12 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 		{
 			binit = true;
 			bleftright = true;
-			calcPixelDistance(obuf, ibuf, colDist, rowDist, odr, bleftright, binit,
+			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, odr, bleftright, binit,
 							row, ncols, nrows, bufrow,
 							maxDist, spacing);
 			binit = false;
 			bleftright = false;
-			calcPixelDistance(obuf, ibuf, colDist, rowDist, odl, bleftright, binit,
+			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, odl, bleftright, binit,
 						    row, ncols, nrows, bufrow,
 							maxDist, spacing);
 
@@ -373,16 +372,19 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 		for (; row >= 0; --row)
 		{
 			bleftright = true;
-			calcPixelDistance(obuf, ibuf, colDist, rowDist, our, bleftright, binit,
+			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, our, bleftright, binit,
 							row, ncols, nrows, bufrow,
 							maxDist, spacing);
 			bleftright = false;
-			calcPixelDistance(obuf, ibuf, colDist, rowDist, oul, bleftright, binit,
+			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, oul, bleftright, binit,
 						 	row, ncols, nrows, bufrow,
 							maxDist, spacing);
 
 			memcpy((void*)(colDist+ncols+2), (void*)colDist, (ncols+2)*sizeof(double));
 			memcpy((void*)(rowDist+ncols+2), (void*)rowDist, (ncols+2)*sizeof(double));
+
+			if (this->m_CreateBuffer)
+				this->writeBufferZoneValue(obuf, userDist, row, ncols);
 		}
 		++this->m_UpwardCounter;
     }

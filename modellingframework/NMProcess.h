@@ -62,7 +62,7 @@ class NMProcess : public QObject
 
 
 public:
-	/*! Defines the supported ways of parameter supply to a process component upon
+	/*! Defines the supported ways of (input) parameter supply to a process component upon
 	 *  repetitive execution:\newline
 	 *  NM_USE_UP
 	 *  takes a new parameter from the list each time the process
@@ -116,7 +116,7 @@ public:
     void setInput (NMItkDataObjectWrapper* img)
     		{this->setNthInput(0, img);}
     virtual NMItkDataObjectWrapper* getOutput(void) = 0;
-    void update(void);
+    virtual void update(void);
     void reset(void);
 
 	virtual void instantiateObject(void) = 0;

@@ -28,6 +28,7 @@
 #include "NMStreamingImageFileWriterWrapper.h"
 #include "NMNeighbourhoodCountingWrapper.h"
 #include "NMRandomImageSourceWrapper.h"
+#include "NMCostDistanceBufferImageWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -67,6 +68,10 @@ NMProcess* NMProcessFactory::createProcess(QString procClass)
 	else if (procClass.compare("NMRandomImageSourceWrapper") == 0)
 	{
 		return new NMRandomImageSourceWrapper(this);
+	}
+	else if (procClass.compare("NMCostDistanceBufferImageWrapper") == 0)
+	{
+		return new NMCostDistanceBufferImageWrapper(this);
 	}
 	else
 		return 0;

@@ -1190,6 +1190,8 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		proc = NMProcessFactory::instance().createProcess("NMNeighbourhoodCountingWrapper");
 	else if (procName.compare("RandomImage") == 0)
 			proc = NMProcessFactory::instance().createProcess("NMRandomImageSourceWrapper");
+	else if (procName.compare("CostDistanceBuffer") == 0)
+			proc = NMProcessFactory::instance().createProcess("NMCostDistanceBufferImageWrapper");
 
 	if (proc == 0)
 	{

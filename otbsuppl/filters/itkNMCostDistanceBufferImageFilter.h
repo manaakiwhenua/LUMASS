@@ -21,11 +21,14 @@
  *
  * ITK: itkDanielssonDistanceMapImageFilter
  *
+ *
  * Eastman JR: PUSHBROOM ALGORITHMS FOR CALCULATING DISTANCES IN RASTER GRIDS.
  * http://http://mapcontext.com/autocarto/proceedings/auto-carto-9/pdf/pushbroom-algorithms-for-calculating-distances-in-raster-grids.pdf
  * (accessed Nov 2012)
  *
- *
+ * Warmerdam F: gdalproximity.cpp
+ * http://trac.osgeo.org/gdal/browser/trunk/gdal/alg/gdalproximity.cpp
+ * (accessed Nov 2012)
  *
  */
 
@@ -137,11 +140,8 @@ public:
   itkBooleanMacro( CreateBuffer );
 
   /** reset the number of execution */
-  void resetExecCounter(void)
-  	  {
-	    this->m_NumExec = 1;
-  	    this->m_UpwardCounter = 1;
-  	  }
+  void resetExecCounter(void);
+
 
   /** Get Distance map image. */
   OutputImageType * GetDistanceMap(void);
@@ -196,6 +196,7 @@ protected:
 		                 int& nrows,
 		                 int& bufrow,
 			             OutPixelType& maxDist,
+			             OutPixelType& userDist,
 		                 SpacingType& spacing);
 
    void writeBufferZoneValue(OutPixelType* obuf,
@@ -287,6 +288,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 	                int& nrows,
 	                int& bufrow,
 	                OutPixelType& maxDist,
+	                OutPixelType& userDist,
 	                SpacingType& spacing)
 {
 	int col;
@@ -400,6 +402,21 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 				if (minDist < obuf[cidx])
 					obuf[cidx] = minDist;
 			}
+			else if (this->m_CreateBuffer)
+			{
+				if (vcl_sqrt(minDist) <= userDist)
+				{
+					obuf[cidx] = this->m_BufferZoneIndicator;
+					colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
+					rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
+				}
+				else if (minDist < (obuf[cidx] * obuf[cidx]))
+				{
+					obuf[cidx] = vcl_sqrt(minDist);
+					colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
+					rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
+				}
+			}
 			else if (minDist < (obuf[cidx] * obuf[cidx]))
 			{
 				obuf[cidx] = vcl_sqrt(minDist);
@@ -427,7 +444,6 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 			{
 				if (obuf[c + row * ncols])
 					obuf[c + row * ncols] = m_BufferZoneIndicator;
-
 			}
 			else
 			{

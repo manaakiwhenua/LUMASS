@@ -104,6 +104,19 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 		m_Categories[i] = cats.at(i);
 }
 
+/**
+ *  Reset the filter for processing a new image
+ *
+ */
+template <class TInputImage,class TOutputImage>
+void
+NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
+::resetExecCounter(void)
+{
+  this->m_NumExec = 1;
+  this->m_UpwardCounter = 1;
+}
+
 
 /**
  *  Return the distance map Image pointer
@@ -341,12 +354,12 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 			bleftright = true;
 			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, odr, bleftright, binit,
 							row, ncols, nrows, bufrow,
-							maxDist, spacing);
+							maxDist, userDist, spacing);
 			binit = false;
 			bleftright = false;
 			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, odl, bleftright, binit,
 						    row, ncols, nrows, bufrow,
-							maxDist, spacing);
+							maxDist, userDist, spacing);
 
 			memcpy((void*)colDist, (void*)(colDist+ncols+2), (ncols+2)*sizeof(double));
 			memcpy((void*)rowDist, (void*)(rowDist+ncols+2), (ncols+2)*sizeof(double));
@@ -374,17 +387,17 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 			bleftright = true;
 			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, our, bleftright, binit,
 							row, ncols, nrows, bufrow,
-							maxDist, spacing);
+							maxDist, userDist, spacing);
 			bleftright = false;
 			calcPixelDistance(obuf, ibuf, cbuf, colDist, rowDist, oul, bleftright, binit,
 						 	row, ncols, nrows, bufrow,
-							maxDist, spacing);
+							maxDist, userDist, spacing);
 
 			memcpy((void*)(colDist+ncols+2), (void*)colDist, (ncols+2)*sizeof(double));
 			memcpy((void*)(rowDist+ncols+2), (void*)rowDist, (ncols+2)*sizeof(double));
 
-			if (this->m_CreateBuffer)
-				this->writeBufferZoneValue(obuf, userDist, row, ncols);
+			//if (this->m_CreateBuffer)
+			//	this->writeBufferZoneValue(obuf, userDist, row, ncols);
 		}
 		++this->m_UpwardCounter;
     }

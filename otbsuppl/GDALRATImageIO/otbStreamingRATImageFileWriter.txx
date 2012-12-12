@@ -61,8 +61,8 @@
 #include "otbRAMDrivenTiledStreamingManager.h"
 
 
-template<class TInputImage>
-const std::string otb::StreamingRATImageFileWriter<TInputImage>::ctx = "StreamingRATImageFileWriter";
+//template<class TInputImage>
+//const std::string otb::StreamingRATImageFileWriter<TInputImage>::ctx = "StreamingRATImageFileWriter";
 
 namespace otb
 {
@@ -86,6 +86,8 @@ StreamingRATImageFileWriter<TInputImage>
   m_UseForcedLPR = false;
   m_UseUpdateRegion = false;
   m_UpdateMode = false;
+
+  //this->ctx = "StreamingRATImageFileWriter";
 }
 
 /**

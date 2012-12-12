@@ -121,6 +121,9 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkImageIOBase.h"
 #include "otbImage2DToCubeSliceFilter.h"
+#include "otbMetaDataKey.h"
+#include "itkMetaDataObject.h"
+#include "itkSignedMaurerDistanceMapImageFilter.h"
 
 
 
@@ -726,12 +729,15 @@ void OtbModellerWin::test()
 	typedef itk::NMCostDistanceBufferImageFilter<InputImgType, OutputImgType> DistanceFilterType;
 	DistanceFilterType::Pointer distfilter = DistanceFilterType::New();
 
-//	otb::GDALRATImageIO::Pointer inrio = otb::GDALRATImageIO::New();
-//	inrio->SetRATSupport(true);
+	typedef itk::SignedMaurerDistanceMapImageFilter<InputImgType, OutputImgType> MaurerType;
+	MaurerType::Pointer maurer = MaurerType::New();
+
+	otb::GDALRATImageIO::Pointer inrio = otb::GDALRATImageIO::New();
+	inrio->SetRATSupport(true);
 	typedef otb::ImageFileReader<InputImgType> ReaderType;
 	ReaderType::Pointer reader = ReaderType::New();
 	reader->SetFileName(fileName.toStdString().c_str());
-//	reader->SetImageIO(inrio);
+	reader->SetImageIO(inrio);
 
 	ReaderType::Pointer costreader = ReaderType::New();
 
@@ -742,10 +748,27 @@ void OtbModellerWin::test()
 
 	otb::GDALRATImageIO::Pointer outgio = otb::GDALRATImageIO::New();
 	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
+	//typedef otb::ImageFileWriter<OutputImgType> WriterType;
 	WriterType::Pointer writer = WriterType::New();
 	writer->SetFileName(out.c_str());
 	writer->SetNumberOfDivisionsStrippedStreaming(1);
 	writer->SetImageIO(static_cast<itk::ImageIOBase*>(outgio));
+
+	/* EXPERIMENTS WITH SIMILAR FILTER FROM ITK ------------------------- */
+	//maurer->SetInput(reader->GetOutput());
+	//maurer->SetSquaredDistance(false);
+	//writer->SetInput(maurer->GetOutput());
+    //
+	//itk::TimeProbe chrono;
+	//chrono.Start();
+	//writer->Update();
+	//chrono.Stop();
+	//NMDebugAI(<< "==> this took " << chrono.GetMean()
+	//		<< " time units " << endl);
+    //
+	//NMDebugCtx(ctxOtbModellerWin, << "done!");
+	//return;
+
 
 	// let's get an idea about the size of the image to process
 	reader->GetOutput()->UpdateOutputInformation();
@@ -770,8 +793,8 @@ void OtbModellerWin::test()
 	int nrows = lpr.GetSize()[1];
 
 	// calc memory cost for image and derive iteration parameters
-	int memmax = 64 * 1024 * 1024;
-	int rowcost = lpr.GetSize()[0] * sizeof(float) * 5;
+	int memmax = 256 * 1024 * 1024;
+	int rowcost = lpr.GetSize()[0] * sizeof(double) * 5;
 	int chunksize = memmax / rowcost;
 	bool bRAM = false;
 	//if (chunksize > nrows)
@@ -818,7 +841,7 @@ void OtbModellerWin::test()
 
 	//distfilter->UseImageSpacingOn();
 	//distfilter->CreateBufferOn();
-	//distfilter->SetBufferZoneIndicator(1);
+	//distfilter->SetBufferZoneIndicator(100);
 
 	/* ================================================================== */
 	/* just check the single-run algorithm */
@@ -1253,7 +1276,7 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 
 	// update label
 	QString s = QString("Map Location - X: %1 Y: %2"). // Z: %3").
-	arg(wPt[0], 0, 'f', 2).arg(wPt[1], 0, 'f', 2); //.arg(wPt[3],0,'f',2);
+	arg(wPt[0], 0, 'f', 5).arg(wPt[1], 0, 'f', 5); //.arg(wPt[3],0,'f',2);
 
 	this->m_coordLabel->setText(s);
 

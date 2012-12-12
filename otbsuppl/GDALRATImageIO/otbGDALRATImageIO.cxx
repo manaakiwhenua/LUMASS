@@ -49,7 +49,7 @@
 #include "itkRGBAPixel.h"
 #include "itkTimeProbe.h"
 
-const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
+//const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
 
 namespace otb
 {
@@ -312,6 +312,8 @@ GDALRATImageIO::GDALRATImageIO()
   m_IsVectorImage = false;
 
   m_PxType = new GDALDataTypeWrapper;
+
+  ctx = "GDALRATImageIO";
 }
 
 GDALRATImageIO::~GDALRATImageIO()

@@ -176,6 +176,11 @@
         </property>
         <item>
          <property name="text">
+          <string>CostDistanceBuffer</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>ImageReader</string>
          </property>
         </item>

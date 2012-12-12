@@ -235,7 +235,7 @@ private:
    * this information has to be provided by the reader */
   bool m_IsVectorImage;
 
-  static const std::string ctx;
+  std::string ctx;
 
 };
 

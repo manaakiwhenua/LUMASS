@@ -337,7 +337,7 @@ private:
   AttributeTable::Pointer m_InputRAT;
   bool m_RATHaveBeenWritten;
 
-  static const std::string ctx;
+  //std::string ctx;
 };
 
 } // end namespace otb

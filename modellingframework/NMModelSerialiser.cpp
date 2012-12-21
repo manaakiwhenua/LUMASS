@@ -406,6 +406,16 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 		if (bok)
 			value = QVariant::fromValue(v);
 	}
+	else if (valueNode.nodeName() == "bool")
+	{
+		QString vstr = valueNode.toElement().text();
+		bool v;
+		if (vstr.compare("true") == 0)
+			v = true;
+		else
+			v = false;
+		value = QVariant::fromValue(v);
+	}
 
 	return value;
 }

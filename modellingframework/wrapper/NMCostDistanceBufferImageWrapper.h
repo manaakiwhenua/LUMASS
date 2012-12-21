@@ -33,13 +33,18 @@
 
 #include "NMProcess.h"
 
+#ifdef BUILD_RASSUPPORT
+	#include "RasdamanConnector.h"
+	#include "NMRasdamanConnectorWrapper.h"
+#endif
+
 template<class InPixelType, unsigned int Dimension>
 class NMCostDistanceBufferImageWrapper_Internal;
 
 class NMCostDistanceBufferImageWrapper: public NMProcess
 {
 	Q_OBJECT
-	Q_PROPERTY(int MemoryMax READ getMemoryMax WRITE setMemoryMax)
+	//Q_PROPERTY(int MemoryMax READ getMemoryMax WRITE setMemoryMax)
 	Q_PROPERTY(QStringList InputImageFileName READ getInputImageFileName WRITE setInputImageFileName)
 	Q_PROPERTY(QStringList CostImageFileName READ getCostImageFileName WRITE setCostImageFileName)
 	Q_PROPERTY(QStringList OutputImageFileName READ getOutputImageFileName WRITE setOutputImageFileName)
@@ -48,10 +53,13 @@ class NMCostDistanceBufferImageWrapper: public NMProcess
 	Q_PROPERTY(bool UseImageSpacing READ getUseImageSpacing WRITE setUseImageSpacing)
 	Q_PROPERTY(bool CreateBuffer READ getCreateBuffer WRITE setCreateBuffer)
 	Q_PROPERTY(QStringList BufferZoneIndicator READ getBufferZoneIndicator WRITE setBufferZoneIndicator)
+#ifdef BUILD_RASSUPPORT
+	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
+#endif
 
 
 public:
-	NMPropertyGetSet( MemoryMax, int )
+	//NMPropertyGetSet( MemoryMax, int )
 	NMPropertyGetSet( ObjectValueList, QList<QStringList> )
 	NMPropertyGetSet( MaxDistance, QStringList )
 	NMPropertyGetSet( UseImageSpacing, bool )
@@ -60,6 +68,10 @@ public:
 	NMPropertyGetSet( InputImageFileName, QStringList)
 	NMPropertyGetSet( OutputImageFileName, QStringList)
 	NMPropertyGetSet( CostImageFileName, QStringList)
+#ifdef BUILD_RASSUPPORT
+	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*)
+#endif
+
 
 signals:
 
@@ -77,6 +89,10 @@ public:
 	void setNthInput(unsigned int numInput,
 			NMItkDataObjectWrapper* imgWrapper);
 
+#ifdef BUILD_RASSUPPORT
+	void setRasdamanConnector(RasdamanConnector * rasconn);
+#endif
+
 	void update(void);
 
 protected:
@@ -90,8 +106,14 @@ protected:
 	QStringList mOutputImageFileName;
 	QStringList mCostImageFileName;
 	QList<QStringList> mObjectValueList;
-
 	int mCurrentStep;
+
+#ifdef BUILD_RASSUPPORT
+	NMRasdamanConnectorWrapper* mRasConnector;
+	RasdamanConnector * mRasconn;
+#endif
+	bool mbRasMode;
+
 
 	void linkParameters(unsigned int step,
 			const QMap<QString, NMModelComponent*>& repo);

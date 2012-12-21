@@ -1,5 +1,5 @@
-/******************************************************************************
- * Created by Alexander Herzig
+/****************************t**************************************************
+ * Created by Alexander Herzigd
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -39,6 +39,7 @@
 #include "otbGDALRATImageIO.h"
 #include "itkNMCostDistanceBufferImageFilter.h"
 #include "otbStreamingRATImageFileWriter.h"
+#include "otbRasdamanImageReader.h"
 #include "otbImageFileWriter.h"
 #include "otbImageFileReader.h"
 #include "itkImageIOBase.h"
@@ -57,6 +58,12 @@ public:
 
 	typedef otb::ImageFileReader<InputImgType> ReaderType;
 	typedef otb::ImageFileReader<typename DistanceFilterType::OutputImageType> TmpOutReaderType;
+
+#ifdef BUILD_RASSUPPORT
+	typedef otb::RasdamanImageReader<InputImgType> RasReaderType;
+	typedef otb::RasdamanImageReader<typename DistanceFilterType::OutputImageType> RasOutReaderType;
+#endif
+
 	typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
@@ -169,14 +176,21 @@ public:
 			NMErr(ctx, << "Please provide an input image file name!");
 			return;
 		}
+		bool bInRas = false;
+		if (!fileName.contains('.'))
+			bInRas = true;
 
 		pos = p->mParamPos;
 		QString costFN;
+		bool bCostRas = false;
 		if (p->mCostImageFileName.size())
 		{
 			if (pos >= p->mCostImageFileName.size())
 				pos = 0;
 			costFN = p->mCostImageFileName.at(pos);
+
+			if (!costFN.contains('.'))
+				bCostRas = true;
 		}
 
 		pos = p->mParamPos;
@@ -197,34 +211,112 @@ public:
 			NMErr(ctx, << "Please provide an output image file name!");
 			return;
 		}
+		bool bOutRas = false;
+		if (!out.contains('.'))
+			bOutRas = true;
+
+
+		RasdamanConnector* rcon = 0;
+		if (bOutRas || bInRas || bCostRas)
+		{
+			if (p->mRasConnector == 0)
+			{
+				NMErr(ctx, << "no valid RasdamanConnector object!");
+				return;
+			}
+			else
+			{
+				rcon = const_cast<RasdamanConnector*>(
+						p->mRasConnector->getConnector());
+			}
+		}
+
+
+#ifdef BUILD_RASSUPPORT
+		typename RasReaderType::Pointer rasreader;
+		typename RasReaderType::Pointer rascostreader;
+		typename RasOutReaderType::Pointer rasoutreader;
+#endif
+
 
 		// instantiate readers and writers
-		otb::GDALRATImageIO::Pointer inrio = otb::GDALRATImageIO::New();
-		inrio->SetRATSupport(true);
-		typename ReaderType::Pointer reader = ReaderType::New();
-		reader->SetFileName(fileName.toStdString().c_str());
-		reader->SetImageIO(inrio);
+		otb::GDALRATImageIO::Pointer inrio;
+		typename ReaderType::Pointer reader;
+		if (bInRas)
+		{
+#ifdef BUILD_RASSUPPORT
+			rasreader = RasReaderType::New();
+			rasreader->SetRasdamanConnector(rcon);
+			rasreader->SetFileName(fileName.toStdString().c_str());
+#endif
+		}
+		else
+		{
+			reader = ReaderType::New();
+			inrio = otb::GDALRATImageIO::New();
+			inrio->SetRATSupport(true);
+			reader->SetFileName(fileName.toStdString().c_str());
+			reader->SetImageIO(inrio);
+		}
 
-		typename ReaderType::Pointer costreader = ReaderType::New();
 
-		otb::GDALRATImageIO::Pointer tmpOutGIO = otb::GDALRATImageIO::New();
-		typedef otb::ImageFileReader<typename DistanceFilterType::OutputImageType> TmpOutReaderType;
-		typename TmpOutReaderType::Pointer tmpOutReader = TmpOutReaderType::New();
-		tmpOutReader->SetImageIO(tmpOutGIO);
 
-		otb::GDALRATImageIO::Pointer outgio = otb::GDALRATImageIO::New();
+		typename TmpOutReaderType::Pointer tmpOutReader;// = TmpOutReaderType::New();
+		otb::GDALRATImageIO::Pointer tmpOutGIO;
+		if (bOutRas)
+		{
+#ifdef BUILD_RASSUPPORT
+			rasoutreader = RasOutReaderType::New();
+			rasoutreader->SetRasdamanConnector(rcon);
+#endif
+		}
+		else
+		{
+			tmpOutReader = TmpOutReaderType::New();
+			tmpOutGIO = otb::GDALRATImageIO::New();
+			tmpOutReader->SetImageIO(tmpOutGIO);
+		}
+
+
 		typedef otb::StreamingRATImageFileWriter<OutputImgType> WriterType;
 		typename WriterType::Pointer writer = WriterType::New();
 		writer->SetFileName(out.toStdString().c_str());
+		otb::GDALRATImageIO::Pointer outgio;
+		if (bOutRas)
+		{
+#ifdef BUILD_RASSUPPORT
+			writer->SetRasdamanConnector(rcon);
+			writer->SetFileName(out.toStdString().c_str());
+#endif
+			;
+		}
+		else
+		{
+			outgio = otb::GDALRATImageIO::New();
+			writer->SetImageIO(outgio);
+		}
 		writer->SetNumberOfDivisionsStrippedStreaming(1);
-		writer->SetImageIO(static_cast<itk::ImageIOBase*>(outgio));
+
 
 		// let's get an idea about the size of the image to process
-		reader->GetOutput()->UpdateOutputInformation();
-		typename InputImgType::RegionType lpr = reader->GetOutput()->GetLargestPossibleRegion();
+		typename InputImgType::RegionType lpr;
 		typename InputImgType::RegionType pr;
-		typename InputImgType::SpacingType inputSpacing = reader->GetOutput()->GetSpacing();
-		typename InputImgType::PointType inputOrigin = reader->GetOutput()->GetOrigin();
+		typename InputImgType::SpacingType inputSpacing;
+		typename InputImgType::PointType inputOrigin;
+		if (bInRas)
+		{
+			rasreader->GetOutput()->UpdateOutputInformation();
+			lpr          = rasreader->GetOutput()->GetLargestPossibleRegion();
+			inputSpacing = rasreader->GetOutput()->GetSpacing();
+			inputOrigin  = rasreader->GetOutput()->GetOrigin();
+		}
+		else
+		{
+			reader->GetOutput()->UpdateOutputInformation();
+			lpr          = reader->GetOutput()->GetLargestPossibleRegion();
+			inputSpacing = reader->GetOutput()->GetSpacing();
+			inputOrigin  = reader->GetOutput()->GetOrigin();
+		}
 		pr.SetSize(0, lpr.GetSize()[0]);
 		pr.SetIndex(0, 0);
 		itk::ImageIORegion lprio(2);
@@ -277,11 +369,29 @@ public:
 	    		  << "  rest=" << rest << endl);
 
 	    //const piepeline connections // and filter settings
-		distfilter->SetInput(reader->GetOutput());
+		if (bInRas)
+			distfilter->SetInput(rasreader->GetOutput());
+		else
+			distfilter->SetInput(reader->GetOutput());
+
+		typename ReaderType::Pointer costreader;
 		if (!costFN.isNull())
 		{
-			costreader->SetFileName(costFN.toStdString().c_str());
-			distfilter->SetInput(1, costreader->GetOutput());
+			if (bCostRas)
+			{
+#ifdef BUILD_RASSUPPORT
+				rascostreader = RasReaderType::New();
+				rascostreader->SetRasdamanConnector(rcon);
+				rascostreader->SetFileName(costFN.toStdString().c_str());
+				distfilter->SetInput(1, rascostreader->GetOutput());
+#endif
+			}
+			else
+			{
+				costreader = ReaderType::New();
+				costreader->SetFileName(costFN.toStdString().c_str());
+				distfilter->SetInput(1, costreader->GetOutput());
+			}
 		}
 
 		/* ================================================================== */
@@ -307,6 +417,7 @@ public:
 	    distfilter->SetProcessDownward(true);
 	    // iterate over the regions (chunks of rows)
 	    // to get the job done
+	    QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
 	    for (int iter=0; iter <= niter; ++iter)
 	    {
 	    	NMDebugAI(<< "  startrow=" << startrow << "  endrow=" << endrow
@@ -319,17 +430,31 @@ public:
 
 	    	if (iter >= 1)
 	    	{
-	    		writer->SetUpdateMode(true);
+	    		OutputImgType::Pointer tout;
+    			if (!bOutRas)
+	    		{
+	    			tmpOutReader->SetFileName(out.toStdString().c_str());
+    				tmpOutReader->SetImageIO(tmpOutGIO);
+    				tmpOutReader->GetOutput()->SetRequestedRegion(pr);
+    	    		tmpOutReader->Update();
 
-	    		tmpOutReader->SetFileName(out.toStdString().c_str());
-	    		tmpOutReader->SetImageIO(tmpOutGIO);
-	    		tmpOutReader->GetOutput()->SetRequestedRegion(pr);
-	    		tmpOutReader->Update();
+    	    		tout = tmpOutReader->GetOutput();
 
-	    		OutputImgType::Pointer tout = tmpOutReader->GetOutput();
+    	    		//writer->SetFileName(out.toStdString().c_str());
+	    		}
+    			else
+    			{
+    				rasoutreader->SetFileName(nfn.toStdString().c_str());
+    				rasoutreader->GetOutput()->SetRequestedRegion(pr);
+    				rasoutreader->Update();
+
+    				tout = rasoutreader->GetOutput();
+    				writer->SetFileName(nfn.toStdString().c_str());
+    			}
 	    		tout->DisconnectPipeline();
-
 	    		distfilter->GraftOutput(tout);
+
+	    		writer->SetUpdateMode(true);
 	    	}
 
 	    	// set the largest possible and requested regions
@@ -347,8 +472,8 @@ public:
 	   		// since they're not closed for re-reading in non
 	   		// update mode
 	   		if (iter == 0)
-	   		{
-	   			outgio->CloseDataset();
+	   		{	if (!bOutRas)
+	   				outgio->CloseDataset();
 	   		}
 
 	 		startrow = endrow;
@@ -356,7 +481,6 @@ public:
 	 		endrow = endrow > nrows-1 ? nrows-1 : endrow;
 	 		rowstoread = endrow - startrow + 1;
 	    }
-
 
 	    NMDebugAI(<< "!!! GET UP !!!" << endl);
 
@@ -377,14 +501,27 @@ public:
 	    	ior.SetIndex(1, startrow);
 	   		ior.SetSize(1, rowstoread);
 
-			tmpOutReader->SetFileName(out.toStdString().c_str());
-			tmpOutReader->SetImageIO(tmpOutGIO);
-			tmpOutReader->GetOutput()->SetRequestedRegion(pr);
-			tmpOutReader->Update();
+    		OutputImgType::Pointer tout;
+			if (!bOutRas)
+    		{
+    			tmpOutReader->SetFileName(out.toStdString().c_str());
+				tmpOutReader->SetImageIO(tmpOutGIO);
+				tmpOutReader->GetOutput()->SetRequestedRegion(pr);
+	    		tmpOutReader->Update();
 
-			OutputImgType::Pointer tout = tmpOutReader->GetOutput();
+	    		tout = tmpOutReader->GetOutput();
+    		}
+			else
+			{
+				QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
+				rasoutreader->SetFileName(nfn.toStdString().c_str());
+				rasoutreader->GetOutput()->SetRequestedRegion(pr);
+				rasoutreader->Update();
+
+				tout = rasoutreader->GetOutput();
+			}
+
 			tout->DisconnectPipeline();
-
 			distfilter->GraftOutput(tout);
 
 	    	// set the largest possible and requested regions
@@ -421,7 +558,7 @@ LinkInputTypeInternalParametersWrap( NMCostDistanceBufferImageWrapper, NMCostDis
 //const std::string NMCostDistanceBufferImageWrapper::ctx	= "NMCostDistanceBufferImageWrapper";
 
 NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* parent)
-	: mMemoryMax(256), mUseImageSpacing(true),
+	: mMemoryMax(32), mUseImageSpacing(true),
 	  mCreateBuffer(false)
 {
 	this->setParent(parent);
@@ -429,11 +566,26 @@ NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* pare
 	this->mOutputComponentType = itk::ImageIOBase::DOUBLE;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 	this->mParamPos = 0;
+	this->mbRasMode = false;
+#ifdef BUILD_RASSUPPORT
+	this->mRasconn = 0;
+	this->mRasConnector = 0;
+#endif
+
 }
 
 NMCostDistanceBufferImageWrapper::~NMCostDistanceBufferImageWrapper()
 {
 }
+
+#ifdef BUILD_RASSUPPORT
+void
+NMCostDistanceBufferImageWrapper::setRasdamanConnector(RasdamanConnector * rasconn)
+{
+	this->mRasconn = rasconn;
+}
+#endif
+
 
 void
 NMCostDistanceBufferImageWrapper::update(void)

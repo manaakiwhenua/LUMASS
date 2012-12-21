@@ -455,10 +455,10 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mFileName = "";
 	this->mbRasMode = false;
 	this->mFilePos = 0;
+	this->mParameterHandling = NMProcess::NM_USE_UP;
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
-	this->mParameterHandling = NMProcess::NM_USE_UP;
 #endif	
 	
 }

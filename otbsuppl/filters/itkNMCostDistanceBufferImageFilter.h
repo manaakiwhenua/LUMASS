@@ -199,11 +199,6 @@ protected:
 			             OutPixelType& userDist,
 		                 SpacingType& spacing);
 
-   void writeBufferZoneValue(OutPixelType* obuf,
-		  	  	  	  	     OutPixelType& userDist,
-		  	  	  	  	     int& row,
-		  	  	  	  	     int& ncols);
-
 private:   
   NMCostDistanceBufferImageFilter(const Self&);
   void operator=(const Self&);
@@ -315,6 +310,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 	for (; col != end; col += step)
 	{
 		int cidx = col + row * ncols;
+		int bidx = (col + 1 + (bufrow * (ncols + 2)));
 
 		// we only call this when we visit the
 		// pixel for the first time
@@ -422,32 +418,6 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 				obuf[cidx] = vcl_sqrt(minDist);
 				colDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][0];
 				rowDist[col + 1 + (bufrow * (ncols + 2))] = voff[ch][1];
-			}
-		}
-	}
-}
-
-
-template <class TInputImage,class TOutputImage>
-inline void
-NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
-::writeBufferZoneValue(OutPixelType* obuf,
-					   OutPixelType& userDist,
-					   int& row,
-			           int& ncols)
-{
-	for (int c=0; c < ncols; ++c)
-	{
-		if (obuf[c + row * ncols] <= userDist)
-		{
-			if (m_BufferZoneIndicator)
-			{
-				if (obuf[c + row * ncols])
-					obuf[c + row * ncols] = m_BufferZoneIndicator;
-			}
-			else
-			{
-				obuf[c + row * ncols] = 0; //itk::NumericTraits<OutPixelType>::Zero;
 			}
 		}
 	}

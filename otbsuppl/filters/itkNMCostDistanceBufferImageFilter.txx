@@ -209,10 +209,6 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 	if (!m_ProcessDownward && !m_ProcessUpward)
 		bBiDir = true;
 
-	//NMDebugAI(<< "NumExec=" << this->m_NumExec << " | downward="
-	//		  << this->m_ProcessDownward << " | upward="
-	//		  << this->m_ProcessUpward << endl);
-
 	InputImagePointer inImg = const_cast<InputImageType*>(this->GetInput(0));
 	OutputImagePointer distanceMap = this->GetDistanceMap();
 	distanceMap->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
@@ -223,14 +219,6 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 		distanceMap->SetBufferedRegion(inImg->GetRequestedRegion());
 		distanceMap->Allocate();
 	}
-	//else
-	//{
-	//	distanceMap = this->GetDistanceMap();
-	//	distanceMap->SetOrigin(inImg->GetOrigin());
-	//	distanceMap->SetSpacing(inImg->GetSpacing());
-	//	distanceMap->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
-	//	distanceMap->SetRequestedRegion(inImg->GetRequestedRegion());
-	//}
 
 	InputImagePointer costImg;
 	if (this->GetNumberOfInputs() == 2)
@@ -325,7 +313,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 	odl[0][0] = 1; odl[0][1] = -1; // idx 2
     odl[2][0] = 1; odl[2][1] =  0; // idx 5
 
-    //int oul[3][2];
+    //int oul[3][2];/home/alex/garage/img/
     oul[2][0] = 1; oul[2][1] = 0; // idx 5
     oul[1][0] = 0; oul[1][1] = 1; // idx 7
     oul[0][0] = 1; oul[0][1] = 1; // idx 8
@@ -378,6 +366,13 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 				colDist[i] = -9;
 				rowDist[i] = -9;
 			}
+			for (int i=1; i < ncols; ++i)
+			{
+				colDist[i] = maxDist;
+				rowDist[i] = maxDist;
+			}
+			colDist[0] = -9; colDist[ncols+1] = -9;
+			rowDist[0] = -9; rowDist[ncols+1] = -9;
 		}
 
 		bufrow = 0;
@@ -396,8 +391,11 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 			memcpy((void*)(colDist+ncols+2), (void*)colDist, (ncols+2)*sizeof(double));
 			memcpy((void*)(rowDist+ncols+2), (void*)rowDist, (ncols+2)*sizeof(double));
 
-			//if (this->m_CreateBuffer)
-			//	this->writeBufferZoneValue(obuf, userDist, row, ncols);
+			for (int rr=1; rr < (ncols+1); ++rr)
+			{
+				colDist[rr] = maxDist;
+				rowDist[rr] = maxDist;
+			}
 		}
 		++this->m_UpwardCounter;
     }

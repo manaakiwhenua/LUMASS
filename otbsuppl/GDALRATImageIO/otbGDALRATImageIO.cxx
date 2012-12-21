@@ -49,7 +49,7 @@
 #include "itkRGBAPixel.h"
 #include "itkTimeProbe.h"
 
-//const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
+const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
 
 namespace otb
 {
@@ -303,7 +303,7 @@ GDALRATImageIO::GDALRATImageIO()
   m_RATSupport = false;
   m_ImageUpdateMode = false;
   m_UseForcedLPR = false;
-  m_UseUpdateRegion = false;
+  //m_UseUpdateRegion = false;
   m_NbBands = 0;
   m_FlagWriteImageInformation = true;
 
@@ -313,7 +313,7 @@ GDALRATImageIO::GDALRATImageIO()
 
   m_PxType = new GDALDataTypeWrapper;
 
-  ctx = "GDALRATImageIO";
+  //ctx = "GDALRATImageIO";
 }
 
 GDALRATImageIO::~GDALRATImageIO()
@@ -1347,31 +1347,31 @@ void GDALRATImageIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
 	//this->m_FlagWriteImageInformation = true;
 }
 
-void GDALRATImageIO::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
-{
-	//NMDebugCtx(ctx, << "...");
-
-	//NMDebugAI(<< "forced LPR .... " << std::endl);
-	//m_ForcedLPR.Print(std::cout, itk::Indent(nmlog::nmindent+4));
-	//NMDebugAI(<< "update region .... " << std::endl);
-	//updateRegion.Print(std::cout, itk::Indent(nmlog::nmindent+4));
-
-	// check, whether the update region is contained within the
-	// forced lpr
-	if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLPR.GetSize()[0] &&
-		(updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLPR.GetSize()[1]     )
-	{
-		this->m_UpdateRegion = updateRegion;
-		this->m_UseUpdateRegion = true;
-	}
-	else
-	{
-		itkWarningMacro(<< "The provided update region does not fit into the set forced largest possible region!");
-		this->m_UseUpdateRegion = false;
-	}
-
-	//NMDebugCtx(ctx, << "done!");
-}
+//void GDALRATImageIO::SetUpdateRegion(const itk::ImageIORegion& updateRegion)
+//{
+//	//NMDebugCtx(ctx, << "...");
+//
+//	//NMDebugAI(<< "forced LPR .... " << std::endl);
+//	//m_ForcedLPR.Print(std::cout, itk::Indent(nmlog::nmindent+4));
+//	//NMDebugAI(<< "update region .... " << std::endl);
+//	//updateRegion.Print(std::cout, itk::Indent(nmlog::nmindent+4));
+//
+//	// check, whether the update region is contained within the
+//	// forced lpr
+//	if ((updateRegion.GetIndex()[0] + updateRegion.GetSize()[0]) <= m_ForcedLPR.GetSize()[0] &&
+//		(updateRegion.GetIndex()[1] + updateRegion.GetSize()[1]) <= m_ForcedLPR.GetSize()[1]     )
+//	{
+//		this->m_UpdateRegion = updateRegion;
+//		this->m_UseUpdateRegion = true;
+//	}
+//	else
+//	{
+//		itkWarningMacro(<< "The provided update region does not fit into the set forced largest possible region!");
+//		this->m_UseUpdateRegion = false;
+//	}
+//
+//	//NMDebugCtx(ctx, << "done!");
+//}
 
 void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 {

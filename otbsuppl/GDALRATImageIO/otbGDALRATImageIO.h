@@ -113,7 +113,7 @@ public:
 
   /** surrounding region specs */
   void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
-  void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
+ // void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
 
   /** close the gdal data set incase it is still open */
   void CloseDataset(void);
@@ -197,10 +197,10 @@ protected:
   bool m_ImageUpdateMode;
 
   /** force a largest possible region */
-  itk::ImageIORegion m_UpdateRegion;
+  //itk::ImageIORegion m_UpdateRegion;
   itk::ImageIORegion m_ForcedLPR;
   bool m_UseForcedLPR;
-  bool m_UseUpdateRegion;
+  //bool m_UseUpdateRegion;
 
 
 private:
@@ -235,7 +235,7 @@ private:
    * this information has to be provided by the reader */
   bool m_IsVectorImage;
 
-  std::string ctx;
+  static const std::string ctx;
 
 };
 

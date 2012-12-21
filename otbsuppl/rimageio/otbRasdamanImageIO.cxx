@@ -19,8 +19,6 @@
 	name: otbRasdamanImageIO.cxx
 	author:
 	date: 
-	version: 0.5.0
-	
 	purpose: read and write rasdaman image files
 	
 */
@@ -44,6 +42,8 @@
 #include "otbSystem.h"
 #include "itkMetaDataObject.h"
 #include "otbMetaDataKey.h"
+
+
 
 namespace otb
 {
@@ -82,6 +82,9 @@ RasdamanImageIO::RasdamanImageIO(void)
 	this->m_CollectionTypeName = "";
 	this->m_ImageTypeName = "";
 	
+	m_UseForcedLPR = false;
+	m_ImageUpdateMode = false;
+
 	// the only supported extension is none ''
 	this->AddSupportedReadExtension("");
 	this->AddSupportedWriteExtension("");
@@ -121,6 +124,34 @@ void RasdamanImageIO::SetFileName(const char* filename)
 	NMDebugCtx(__rio, << "done!");
 }
 
+void
+RasdamanImageIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
+{
+	this->m_ForcedLPR = forcedLPR;
+	this->m_UseForcedLPR = true;
+}
+
+double
+RasdamanImageIO::getOIDFromCollIndex(void)
+{
+	// in case we've specified a position/index within the collection rather than
+	// an explicit oid, retrieve the corresponding oid and set it
+	double theoid = -1;
+	std::vector<double> availoids = this->m_Helper->getImageOIDs(this->m_collname);
+	if ((!this->m_collstrindex.empty() || this->m_collnumindex >=0) &&
+			availoids.size() > 0)
+	{
+		if (this->m_collstrindex == "first")
+			theoid = availoids.at(0);
+		else if (this->m_collstrindex == "last")
+			theoid = availoids.at(availoids.size()-1);
+		else if (this->m_collnumindex >=0 && this->m_collnumindex < availoids.size())
+			theoid = availoids.at(this->m_collnumindex);
+	}
+
+	return theoid;
+}
+
 bool RasdamanImageIO::CanReadFile(const char* filename)
 {
 	NMDebugCtx(__rio, << "...");
@@ -142,7 +173,7 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 		return true;
 	}             
 
-	// test for multiband image just by testing for collection
+	// test for multi-band image just by testing for collection
 	// containing images
 	itk::ExceptionObject eo(__FILE__, __LINE__);
 
@@ -150,19 +181,7 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 	{
 		// in case we've specified a position/index within the collection rather than
 		// an explicit oid, retrieve the corresponding oid and set it
-		double theoid = -1;
-		std::vector<double> availoids = this->m_Helper->getImageOIDs(this->m_collname);
-		if ((!this->m_collstrindex.empty() || this->m_collnumindex >=0) &&
-				availoids.size() > 0)
-		{
-			if (this->m_collstrindex == "first")
-				theoid = availoids.at(0);
-			else if (this->m_collstrindex == "last")
-				theoid = availoids.at(availoids.size()-1);
-			else if (this->m_collnumindex >=0 && this->m_collnumindex < availoids.size())
-				theoid = availoids.at(this->m_collnumindex);
-		}
-
+		double theoid = this->getOIDFromCollIndex();
 		if (theoid >= 0)
 			this->m_oids.push_back(theoid);
 		else
@@ -481,6 +500,7 @@ void RasdamanImageIO::Read(void* buffer)
 	}
 	bandbuf = 0;
 
+
 	NMDebugCtx(__rio, << "done!");
 }
 
@@ -512,6 +532,22 @@ bool RasdamanImageIO::CanWriteFile(const char* filename)
 		return false;
 	}
 
+	// when we're in update mode, we have to check, whether the specified
+	// image is available in the db at all!
+	if (this->m_ImageUpdateMode)
+	{
+		double theoid = this->getOIDFromCollIndex();
+		if (theoid == -1)
+		{
+			this->m_bCanWrite = false;
+			NMDebugAI(<< "specified local OID invalid!" << std::endl);
+			return false;
+		}
+		this->m_oids.clear();
+		this->m_oids.push_back(theoid);
+		this->m_bUpdateImage = true;
+	}
+
 	//TODO: check whether we've got enough info to check for the dimensionality
 	// of the image (-> restrict to 3D)
 
@@ -524,6 +560,125 @@ void RasdamanImageIO::setRasdamanTypeNames(string colltypename, string imagetype
 {
 	this->m_CollectionTypeName = colltypename;
 	this->m_ImageTypeName = imagetypename;
+}
+
+
+double
+RasdamanImageIO::insertForcedLPRDummyImage()//const std::string& collname, r_Minterval& sdom)
+{
+	NMDebugCtx(__rio, << "...");
+
+	double oid = -1;
+
+	r_Minterval adom(2);
+	r_Point ashift(2);
+
+	r_Minterval fdom(2);
+	r_Point fshift(2);
+	for (int d=0; d < this->m_NumberOfDimensions; ++d)
+	{
+		adom << r_Sinterval(0,0);
+		ashift << (r_Long)0;
+		fdom << r_Sinterval(0, 0);
+		fshift << (r_Long)(this->m_ForcedLPR.GetSize(d)-1);
+	}
+
+	NMDebugAI(<< "let's have a dummy image with a forced LPR ..." << endl);
+
+	int pixelsize = this->GetComponentSize() * this->GetNumberOfComponents();
+	r_Ref<r_GMarray> dimg;
+	dimg = new (this->m_ImageTypeName.c_str()) r_GMarray(fdom, pixelsize);
+
+	NMDebugAI(<< "let's have the first initial pixel here ... " << endl);
+	NMDebugAI(<< "shift: " << ashift.get_string_representation() << endl);
+	NMDebugAI(<< "sdom:  " << adom.get_string_representation() << endl << endl);
+
+
+	oid = this->m_Helper->insertImage(this->m_collname, 0,
+			ashift, adom, true, this->m_ImageTypeName);
+
+	dimg->r_deactivate();
+
+	NMDebugAI(<< "... the second pixel, to build-up the desired LPR, we put here ... " << endl);
+	NMDebugAI(<< "shift: " << fshift.get_string_representation() << endl);
+	NMDebugAI(<< "sdom:  " << fdom.get_string_representation() << endl << endl);
+
+	this->m_Helper->updateImage(this->m_collname, oid, (char*)dimg.get_memory_ptr(),
+			fshift, fdom, true, this->m_ImageTypeName);
+
+
+
+
+//	double oid = -1;
+//	r_Transaction ta;
+//
+//	// get type information about the collection
+//	r_Type::r_Type_Id tid = this->m_Helper->getBaseTypeId(collname);
+//	NMDebugAI(<< "collection's pixel base type: " << this->m_Helper->getDataTypeString(tid) << endl);
+//
+//	// get the number of elements (in case we've got a struct type)
+//	unsigned int nelem = this->m_Helper->getBaseTypeElementCount(collname);
+//
+//	// get a list of oids available prior to inserting the new image
+//	//std::vector<double> preoids = this->m_Helper->getImageOIDs(collname);
+//
+//	// format the spatial domain string
+//	std::string qstr = "insert into $1 values marray x in ";
+//	std::stringstream sdomstr;
+//	sdomstr << sdom.get_string_representation();
+//	//for (int d = 0; d < sdom.dimension(); d++)
+//	//{
+//	//	sdomstr << shift[d] << ":" << shift[d];
+//	//	if (d == sdom.dimension()-1)
+//	//		sdomstr << "]";
+//	//	else
+//	//		sdomstr << ",";
+//	//}
+//	qstr += sdomstr.str();
+//
+//	// format the values string depending on the nubmer of elements
+//	// of the base type
+//	string numconst = this->m_Helper->getNumConstChar(tid);
+//	NMDebugAI(<< "numeric constant is: " << numconst << endl);
+//	if (nelem == 1)
+//	{
+//		qstr += " values 0" + numconst;
+//	}
+//	else // struct type
+//	{
+//		qstr += " values {";
+//		for (int e=0; e < nelem; ++e)
+//		{
+//			qstr += "0" + numconst;
+//			if (e < nelem -1)
+//				qstr += ", ";
+//			else
+//				qstr += "}";
+//		}
+//	}
+//
+//	NMDebugAI( << "dummy grid query: " << qstr << std::endl);
+//
+//	try
+//	{
+//		ta.begin(r_Transaction::read_write);
+//		r_OQL_Query qins(qstr.c_str());
+//		qins << collname.c_str();
+//		r_oql_execute(qins);
+//		ta.commit();
+//
+//		vector<double> oids = this->m_Helper->getImageOIDs(collname);
+//		oid = oids.at(oids.size()-1);
+//	}
+//	catch(r_Error& re)
+//	{
+//		oid = -1;
+//		ta.abort();
+//		throw re;
+//	}
+
+	NMDebugCtx(__rio, << "done!");
+	return oid;
 }
                                   
 void RasdamanImageIO::WriteImageInformation()
@@ -540,7 +695,7 @@ void RasdamanImageIO::WriteImageInformation()
 	}
 
 
-	// get some basic info about the imge
+	// get some basic info about the image
 	r_Type::r_Type_Id rtype = this->getRasdamanComponentType(this->GetComponentType());
 	int nelem = this->GetNumberOfComponents();
 	int ndim = this->GetNumberOfDimensions();
@@ -597,13 +752,23 @@ void RasdamanImageIO::WriteImageInformation()
 			sdom << r_Sinterval(0,0);
 		}
 
+		NMDebugAI(<< "creating image ... " << endl);
+		double oid = -1;
+
 		NMDebugAI(<< "initial spatial image configuration ..." << endl);
 		NMDebugAI(<< "shift: " << shift.get_string_representation() << endl);
-		NMDebugAI(<< "sdom:  " << sdom.get_string_representation() << endl << endl);
+		if (this->m_UseForcedLPR)
+		{
+			oid = this->insertForcedLPRDummyImage();
+		}
+		else
+		{
+			NMDebugAI(<< "sdom:  " << sdom.get_string_representation() << endl << endl);
 
-		NMDebugAI(<< "creating image ... " << endl);
-		double oid = this->m_Helper->insertImage(this->m_collname, 0, shift, sdom, true,
-				this->m_ImageTypeName);
+			oid = this->m_Helper->insertImage(this->m_collname, 0, shift, sdom, true,
+					this->m_ImageTypeName);
+		}
+
 		if (oid != -1)
 		{
 			NMDebugAI(<< "image #" << oid << " inserted into '" << this->m_collname << "'" << endl);
@@ -634,6 +799,15 @@ void RasdamanImageIO::WriteImageInformation()
 	int xpix = this->m_Dimensions[0];
 	int ypix = this->m_Dimensions[1];
 	int zpix = ndim == 3 ? this->m_Dimensions[2] : 0;
+
+	if (!this->m_bUpdateImage && this->m_UseForcedLPR)
+	{
+		xpix = this->m_ForcedLPR.GetSize(0);
+		ypix = this->m_ForcedLPR.GetSize(1);
+		if (ndim == 3)
+			zpix = this->m_ForcedLPR.GetSize(2);
+	}
+
 	double maxx = minx + csx * xpix;
 	double miny = maxy - csy * ypix;
 	double maxz = ndim == 3 ? minz + csz * zpix : numeric_limits<double>::max();
@@ -955,9 +1129,9 @@ void RasdamanImageIO::Write(const void* buffer)
 		return;
 	}
 
-	NMDebugAI(<< "IORegion ..." << std::endl);
-	itk::ImageIORegion ioRegion = this->GetIORegion();
-	ioRegion.Print(std::cout, itk::Indent(4));
+	//NMDebugAI(<< "IORegion ..." << std::endl);
+	//itk::ImageIORegion ioRegion = this->GetIORegion();
+	//ioRegion.Print(std::cout, itk::Indent(4));
 
 	r_Minterval sdom = r_Minterval(this->GetNumberOfDimensions());
 	r_Point seqShift = r_Point(this->GetNumberOfDimensions());
@@ -1255,33 +1429,35 @@ RasdamanImageIO::getRasdamanComponentType(itk::ImageIOBase::IOComponentType otbt
 
 	switch (otbtype)
 	{
-		case itk::ImageIOBase::UCHAR:
-			rtype = r_Type::CHAR;
-			break;
-		case itk::ImageIOBase::ULONG:
-			rtype = r_Type::ULONG;
-			break;
-	  case itk::ImageIOBase::USHORT:
-			rtype = r_Type::USHORT;
-			break;
-		case itk::ImageIOBase::LONG:
-			rtype = r_Type::LONG;
-			break;
-	  case itk::ImageIOBase::SHORT:
-			rtype = r_Type::SHORT;
-			break;
-	  case itk::ImageIOBase::CHAR:
-		  rtype = r_Type::OCTET;
-			break;
-	  case itk::ImageIOBase::DOUBLE:
-		  rtype = r_Type::DOUBLE;
-			break;
-	  case itk::ImageIOBase::FLOAT:
-			rtype = r_Type::FLOAT;
-			break;
-		default:
-			rtype = r_Type::UNKNOWNTYPE;
-			break;
+	case itk::ImageIOBase::UCHAR:
+		rtype = r_Type::CHAR;
+		break;
+	case itk::ImageIOBase::UINT:
+	case itk::ImageIOBase::ULONG:
+		rtype = r_Type::ULONG;
+		break;
+	case itk::ImageIOBase::USHORT:
+		rtype = r_Type::USHORT;
+		break;
+	case itk::ImageIOBase::INT:
+	case itk::ImageIOBase::LONG:
+		rtype = r_Type::LONG;
+		break;
+	case itk::ImageIOBase::SHORT:
+		rtype = r_Type::SHORT;
+		break;
+	case itk::ImageIOBase::CHAR:
+		rtype = r_Type::OCTET;
+		break;
+	case itk::ImageIOBase::DOUBLE:
+		rtype = r_Type::DOUBLE;
+		break;
+	case itk::ImageIOBase::FLOAT:
+		rtype = r_Type::FLOAT;
+		break;
+	default:
+		rtype = r_Type::UNKNOWNTYPE;
+		break;
 	}
 
 	return rtype;

@@ -83,6 +83,10 @@ public:
 	
 	/*! Sets a valid RasdamanConnector instance */
 	void setRasdamanConnector(RasdamanConnector* rasconn);
+	RasdamanConnector* getRasdamanConnector(void)
+	{
+		return this->m_Rasconn;
+	}
 
 	/* the collection and image type names have to be specified
 	 * to write composite pixel type images into the data base;
@@ -91,6 +95,11 @@ public:
 	 * however, this is not required for writing 'flat' pixels
  	 */
 	void setRasdamanTypeNames(string colltypename, string imagetypename);
+
+	itkSetMacro(ImageUpdateMode, bool);
+	itkGetMacro(ImageUpdateMode, bool);
+
+	void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
 
 	/* set image id of image to be updated*/
 	//void setImageID(double oid) {this->m_oids.push_back(oid);};
@@ -105,22 +114,36 @@ protected:
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
 private:
-  RasdamanImageIO(const Self&); //purposely not implemented
-  void operator=(const Self&); //purposely not implemented	
+  	RasdamanImageIO(const Self&); //purposely not implemented
+  	void operator=(const Self&); //purposely not implemented
 	
 	bool parseImageSpec(const std::string imagespec);
 	itk::ImageIOBase::IOComponentType getOTBComponentType(
 			r_Type::r_Type_Id rtype);
-
+	double getOIDFromCollIndex(void);
 	r_Type::r_Type_Id getRasdamanComponentType(itk::ImageIOBase::IOComponentType otbtype);
-
 	void WriteRAT(otb::AttributeTable* tab, double _oid);
+	double insertForcedLPRDummyImage();
+			//const std::string& collname,
+			//r_Minterval& sdom);
   
 	bool m_bCanRead;
 	bool m_bCanWrite;
 	bool m_bCollImageAvail;
+	// this var is for internal use and indicates the
+	// second stage of the creation of a new image
+	// file in the collection
 	bool m_bUpdateImage;
+
+	// this var indicates whether an already available image
+	// should be update in which case the user has to provide
+	// and oid or _first_ | _<index>_ | _last_ to specify
+	// which of the images in the collection should be updated
+	bool m_ImageUpdateMode;
 	
+	itk::ImageIORegion m_ForcedLPR;
+	bool m_UseForcedLPR;
+
 	bool m_bWasWriteCalled;
 	bool m_bImageInfoNeedsToBeWritten;
 

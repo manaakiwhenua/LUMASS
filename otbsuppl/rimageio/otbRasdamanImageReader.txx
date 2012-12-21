@@ -225,6 +225,14 @@ RasdamanImageReader<TOutputImage>
   }
 }
 
+template <class TOutputImage>
+void
+RasdamanImageReader<TOutputImage>
+::SetRasdamanConnector(RasdamanConnector* rascon)
+ {
+	this->mRasconn = rascon;
+ }
+
 
 template <class TOutputImage>
 void
@@ -241,24 +249,28 @@ RasdamanImageReader<TOutputImage>
   if ( this->m_FileName == "" )
   {
     throw itk::ImageFileReaderException(__FILE__, __LINE__, "FileName must be specified");
+    return;
   }
-
-  // Find real image file name
-  // !!!!  Update FileName
-  std::string lFileName;
-  bool found = GetGdalReadImageFileName(this->m_FileName,lFileName);
-  if ( found == false )
-  {
-    otbMsgDebugMacro( <<"Filename was NOT unknowed. May be reconize by a Image factory ! ");
-  }
-  // Update FileName
-  this->m_FileName = lFileName;
 
   std::string lFileNameOssimKeywordlist = this->m_FileName;
 
-  if ( this->m_UserSpecifiedImageIO == false ) //try creating via factory
+  if ( !this->m_UserSpecifiedImageIO )
   {
-    this->m_ImageIO = ImageIOFactory::CreateImageIO( this->m_FileName.c_str(), itk::ImageIOFactory::ReadMode );
+    if (!this->mRasconn)
+    {
+		this->Print( std::cerr );
+		itk::ImageFileReaderException e(__FILE__, __LINE__);
+		itk::OStringStream msg;
+		msg << " How inconvenient, someone forgot to set the RasdamanConnector object!" << std::endl;
+		msg << " We can't do anything without it!!" << std::endl;
+		e.SetDescription(msg.str().c_str());
+		throw e;
+		return;
+    }
+
+    otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+    rio->setRasdamanConnector(this->mRasconn);
+    this->m_ImageIO = rio;
   }
 
   if ( this->m_ImageIO.IsNull() )
@@ -266,43 +278,12 @@ RasdamanImageReader<TOutputImage>
     this->Print( std::cerr );
     itk::ImageFileReaderException e(__FILE__, __LINE__);
     itk::OStringStream msg;
-    msg << " Could not create IO object for file "
-    << this->m_FileName.c_str() << std::endl;
-    msg << "  Tried to create one of the following:" << std::endl;
-    std::list<itk::LightObject::Pointer> allobjects =
-      itk::ObjectFactoryBase::CreateAllInstance("itkImageIOBase");
-    for (std::list<itk::LightObject::Pointer>::iterator i = allobjects.begin();
-         i != allobjects.end(); ++i)
-    {
-      itk::ImageIOBase* io = dynamic_cast<itk::ImageIOBase*>(i->GetPointer());
-      msg << "    " << io->GetNameOfClass() << std::endl;
-    }
-    msg << "  You probably failed to set a file suffix, or" << std::endl;
-    msg << "    set the suffix to an unsupported type." << std::endl;
+    msg << " Mmmh, odd ... The user specified IO seems to be NULL!";
+    msg << " Why would someone do this??" << std::endl;
     e.SetDescription(msg.str().c_str());
     throw e;
     return;
   }
-
-  // Special actions for the gdal image IO
-  if (strcmp(this->m_ImageIO->GetNameOfClass(), "GDALImageIO") == 0)
-    {
-    typename GDALImageIO::Pointer imageIO = dynamic_cast<GDALImageIO*>(this->GetImageIO());
-
-    // Hint the IO whether the OTB image type takes complex pixels
-    // this will determine the strategy to fill up a vector image
-    OutputImagePixelType dummy;
-    imageIO->SetIsComplex(PixelIsComplex(dummy));
-
-    // VectorImage ??
-    if (strcmp(output->GetNameOfClass(), "VectorImage") == 0)
-      imageIO->SetIsVectorImage(true);
-    else
-      imageIO->SetIsVectorImage(false);
-
-    // Pass the dataset number (used for hdf files for example)
-    imageIO->SetDatasetNumber(m_DatasetNumber);
-    }
 
 
   // Got to allocate space for the image. Determine the characteristics of
@@ -310,9 +291,7 @@ RasdamanImageReader<TOutputImage>
   //
   this->m_ImageIO->SetFileName(this->m_FileName.c_str());
   this->m_ImageIO->ReadImageInformation();
-  // Initialisation du nombre de Composante par pixel
-// THOMAS ceci n'est pas dans ITK !!
-//  output->SetNumberOfComponentsPerPixel(this->m_ImageIO->GetNumberOfComponents());
+
 
   SizeType dimSize;
   double spacing[ TOutputImage::ImageDimension ];
@@ -371,17 +350,6 @@ RasdamanImageReader<TOutputImage>
   // Update otb Keywordlist
   ImageKeywordlist otb_kwl = ReadGeometry(lFileNameOssimKeywordlist);
 
-  // Pass the depth parameter from the tilemap around
-  if (strcmp(this->m_ImageIO->GetNameOfClass(), "TileMapImageIO") == 0)
-    {
-    typename TileMapImageIO::Pointer imageIO = dynamic_cast<TileMapImageIO*>(this->GetImageIO());
-    std::ostringstream depth;
-    depth << imageIO->GetDepth();
-    otb_kwl.AddKey("depth", depth.str());
-    }
-
-  otbMsgDevMacro(<< otb_kwl);
-
   // Update itk MetaData Dictionary
   itk::MetaDataDictionary& dict = this->m_ImageIO->GetMetaDataDictionary();
 
@@ -390,30 +358,6 @@ RasdamanImageReader<TOutputImage>
     {
       itk::EncapsulateMetaData<ImageKeywordlist>(dict,
                                                  MetaDataKey::OSSIMKeywordlistKey, otb_kwl);
-    }
-  else
-    {
-    //
-    // For image with world file, we have a non-null GeoTransform, an empty kwl, but no projection ref.
-    // Decision made here : if the keywordlist is empty, and the geotransform is not the identity,
-    // then assume the file is in WGS84
-    //
-    std::string projRef;
-    itk::ExposeMetaData(dict, MetaDataKey::ProjectionRefKey, projRef);
-
-    const double Epsilon = 1.0E-12;
-    if ( projRef.empty()
-         && vcl_abs(origin[0]) > Epsilon
-         && vcl_abs(origin[1]) > Epsilon
-         && vcl_abs(spacing[0] - 1) > Epsilon
-         && vcl_abs(spacing[1] - 1) > Epsilon)
-      {
-      std::string wgs84ProjRef =
-              "GEOGCS[\"GCS_WGS_1984\", DATUM[\"D_WGS_1984\", SPHEROID[\"WGS_1984\", 6378137, 298.257223563]],"
-              "PRIMEM[\"Greenwich\", 0], UNIT[\"Degree\", 0.017453292519943295]]";
-
-      itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey, wgs84ProjRef);
-      }
     }
  
   //Copy MetaDataDictionary from instantiated reader to output image.
@@ -455,66 +399,66 @@ RasdamanImageReader< TOutputImage >
 	return rio->getRasterAttributeTable(band);
 }
 
-template <class TOutputImage>
-bool
-RasdamanImageReader<TOutputImage>
-::GetGdalReadImageFileName( const std::string & filename, std::string & GdalFileName )
-{
-  std::vector<std::string> listFileSearch;
-  listFileSearch.push_back("DAT_01.001");
-  listFileSearch.push_back("dat_01.001");// RADARSAT or SAR_ERS2
-  listFileSearch.push_back("IMAGERY.TIF");
-  listFileSearch.push_back("imagery.tif");//For format SPOT5TIF
-// Not recognised as a supported file format by GDAL.
-//        listFileSearch.push_back("IMAGERY.BIL");listFileSearch.push_back("imagery.bil");//For format SPOT5BIL
-  listFileSearch.push_back("IMAG_01.DAT");
-  listFileSearch.push_back("imag_01.dat");//For format SPOT4
-
-  std::string str_FileName;
-  bool fic_trouve(false);
-
-  // Si c'est un repertoire, on regarde le contenu pour voir si c'est pas du RADARSAT, ERS
-  std::vector<std::string> listFileFind;
-  listFileFind = System::Readdir(filename);
-  if ( listFileFind.empty() == false )
-  {
-    unsigned int cpt(0);
-    while ( (cpt < listFileFind.size()) && (fic_trouve==false) )
-    {
-      str_FileName = std::string(listFileFind[cpt]);
-      for (unsigned int i = 0; i < listFileSearch.size(); ++i)
-      {
-        if (str_FileName.compare(listFileSearch[i]) == 0)
-        {
-          GdalFileName = std::string(filename)+str_FileName;//listFileSearch[i];
-          fic_trouve=true;
-        }
-      }
-      cpt++;
-    }
-  }
-  else
-  {
-    std::string strFileName(filename);
-
-    std::string extension = System::GetExtension(strFileName);
-    if ( (extension=="HDR") || (extension=="hdr") )
-    {
-      //Supprime l'extension
-      GdalFileName = System::GetRootName(strFileName);
-    }
-
-    else
-    {
-      // Sinon le filename est le nom du fichier a ouvrir
-      GdalFileName = std::string(filename);
-    }
-    fic_trouve=true;
-  }
-  otbMsgDevMacro(<<"lFileNameGdal : "<<GdalFileName.c_str());
-  otbMsgDevMacro(<<"fic_trouve : "<<fic_trouve);
-  return( fic_trouve );
-}
+//template <class TOutputImage>
+//bool
+//RasdamanImageReader<TOutputImage>
+//::GetGdalReadImageFileName( const std::string & filename, std::string & GdalFileName )
+//{
+//  std::vector<std::string> listFileSearch;
+//  listFileSearch.push_back("DAT_01.001");
+//  listFileSearch.push_back("dat_01.001");// RADARSAT or SAR_ERS2
+//  listFileSearch.push_back("IMAGERY.TIF");
+//  listFileSearch.push_back("imagery.tif");//For format SPOT5TIF
+//// Not recognised as a supported file format by GDAL.
+////        listFileSearch.push_back("IMAGERY.BIL");listFileSearch.push_back("imagery.bil");//For format SPOT5BIL
+//  listFileSearch.push_back("IMAG_01.DAT");
+//  listFileSearch.push_back("imag_01.dat");//For format SPOT4
+//
+//  std::string str_FileName;
+//  bool fic_trouve(false);
+//
+//  // Si c'est un repertoire, on regarde le contenu pour voir si c'est pas du RADARSAT, ERS
+//  std::vector<std::string> listFileFind;
+//  listFileFind = System::Readdir(filename);
+//  if ( listFileFind.empty() == false )
+//  {
+//    unsigned int cpt(0);
+//    while ( (cpt < listFileFind.size()) && (fic_trouve==false) )
+//    {
+//      str_FileName = std::string(listFileFind[cpt]);
+//      for (unsigned int i = 0; i < listFileSearch.size(); ++i)
+//      {
+//        if (str_FileName.compare(listFileSearch[i]) == 0)
+//        {
+//          GdalFileName = std::string(filename)+str_FileName;//listFileSearch[i];
+//          fic_trouve=true;
+//        }
+//      }
+//      cpt++;
+//    }
+//  }
+//  else
+//  {
+//    std::string strFileName(filename);
+//
+//    std::string extension = System::GetExtension(strFileName);
+//    if ( (extension=="HDR") || (extension=="hdr") )
+//    {
+//      //Supprime l'extension
+//      GdalFileName = System::GetRootName(strFileName);
+//    }
+//
+//    else
+//    {
+//      // Sinon le filename est le nom du fichier a ouvrir
+//      GdalFileName = std::string(filename);
+//    }
+//    fic_trouve=true;
+//  }
+//  otbMsgDevMacro(<<"lFileNameGdal : "<<GdalFileName.c_str());
+//  otbMsgDevMacro(<<"fic_trouve : "<<fic_trouve);
+//  return( fic_trouve );
+//}
 
 
 } //namespace otb

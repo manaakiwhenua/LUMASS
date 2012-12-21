@@ -46,6 +46,7 @@
 
 #include "otbImageFileReader.h"
 #include "otbAttributeTable.h"
+#include "RasdamanConnector.h"
 
 namespace otb
 {
@@ -102,15 +103,21 @@ public:
   /** get the RAT from the reader*/
   otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 
+  /** set the rasdaman connector object */
+  void SetRasdamanConnector(RasdamanConnector* rascon);
+
 
 protected:
   RasdamanImageReader();
   virtual ~RasdamanImageReader();
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
-  unsigned int m_DatasetNumber;
+  //unsigned int m_DatasetNumber;
 
 private:
+
+  	  RasdamanConnector* mRasconn;
+
   /** Test whether the given filename exist and it is readable,
       this is intended to be called before attempting to use
       ImageIO classes for actually reading the file. If the file
@@ -121,13 +128,13 @@ private:
   /** Generate the filename (for GDALImageI for example). If filename is a directory, look if is a
     * CEOS product (file "DAT...") In this case, the GdalFileName contain the open image file.
     */
-  bool GetGdalReadImageFileName( const std::string & filename, std::string & GdalFileName );
+  //bool GetGdalReadImageFileName( const std::string & filename, std::string & GdalFileName );
 
   RasdamanImageReader(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
 
   std::string m_ExceptionMessage;
-  CurlHelperInterface::Pointer m_Curl;
+  //CurlHelperInterface::Pointer m_Curl;
 
 };
 

@@ -47,6 +47,9 @@
 #include "otbImageIOFactory.h"
 #include "otbGDALRATImageIO.h"
 
+
+#include "otbRasdamanImageIO.h"
+
 #include "itkMetaDataObject.h"
 #include "otbImageKeywordlist.h"
 #include "otbMetaDataKey.h"
@@ -61,11 +64,12 @@
 #include "otbRAMDrivenTiledStreamingManager.h"
 
 
+namespace otb
+{
+
 //template<class TInputImage>
 //const std::string otb::StreamingRATImageFileWriter<TInputImage>::ctx = "StreamingRATImageFileWriter";
 
-namespace otb
-{
 
 /**
  *
@@ -86,8 +90,7 @@ StreamingRATImageFileWriter<TInputImage>
   m_UseForcedLPR = false;
   m_UseUpdateRegion = false;
   m_UpdateMode = false;
-
-  //this->ctx = "StreamingRATImageFileWriter";
+  this->mRasconn = 0;
 }
 
 /**
@@ -440,6 +443,24 @@ StreamingRATImageFileWriter<TInputImage>
 	}
 }
 
+template<class TInputImage>
+void StreamingRATImageFileWriter<TInputImage>
+::SetRasdamanConnector(RasdamanConnector* rascon)
+ {
+	if (rascon)
+	{
+		this->mRasconn = rascon;
+		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+		rio->setRasdamanConnector(rascon);
+		this->m_ImageIO = rio;
+	}
+	else
+	{
+		this->mRasconn = 0;
+		this->m_ImageIO = NULL;
+	}
+ }
+
 
 /**
  *
@@ -553,18 +574,28 @@ StreamingRATImageFileWriter<TInputImage>
 
   /** set writer and imageIO output information */
   GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIO.GetPointer());
-  if (gio != 0 && m_UpdateMode)
+  RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(m_ImageIO.GetPointer());
+  if (m_UpdateMode)
   {
-	  gio->SetImageUpdateMode(true);
+	  if (gio != 0)
+		  gio->SetImageUpdateMode(true);
+	  else if (rio != 0)
+		  rio->SetImageUpdateMode(true);
   }
 
-  if (gio != 0 && m_UseForcedLPR)
+  /* in case we want to make the image bigger than the we've currently data for
+   * (e.g. for externally driven sequential writing with intertwined reading),
+   */
+  if (m_UseForcedLPR)
   {
-	  gio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+	  if (gio != 0)
+		  gio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+	  else if (rio != 0)
+		  rio->SetForcedLPR(m_ForcedLargestPossibleRegion);
   }
 
-  // in case the user specified an explicit update region for exteranlly controlled
-  // streaming, we set this as the outputRegion to allow of streaming over this region
+  // in case the user specified an explicit update region for externally controlled
+  // streaming, we set this as the outputRegion to allow for streaming over this region
   if (m_UpdateMode && m_UseUpdateRegion)
   {
 	  for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)

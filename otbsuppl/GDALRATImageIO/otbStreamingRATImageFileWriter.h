@@ -201,7 +201,8 @@ public:
   virtual void SetFileName(std::string filename)
   {
     m_FileName = filename;
-    m_ImageIO = NULL;
+    if (this->mRasconn == 0)
+    	m_ImageIO = NULL;
     this->Modified();
   }
 
@@ -247,6 +248,14 @@ public:
   itkSetMacro(UpdateMode, bool);
   itkGetMacro(UpdateMode, bool);
   itkBooleanMacro(UpdateMode);
+
+  /** introduce a rasdaman mode to run this writer explicitly with
+   *  with an RasdamanImageIO; this seems to be a dirty hack and violates
+   *  somehow the generica nature of this writer, but otherwise rasdaman
+   *  collections names (which don't come with a file extension)
+   *  are always doomed to be invlaid file names and an exception is thrown
+   */
+  void SetRasdamanConnector(RasdamanConnector* rascon);
 
   /** Specifiy a user specified largest possible region to be written as
    *  part of the image information; this is primarily meant for initialising
@@ -334,10 +343,12 @@ private:
   bool m_UseUpdateRegion;
   bool m_UpdateMode;
 
+  RasdamanConnector* mRasconn;
+
   AttributeTable::Pointer m_InputRAT;
   bool m_RATHaveBeenWritten;
 
-  //std::string ctx;
+  //static const std::string ctx;
 };
 
 } // end namespace otb

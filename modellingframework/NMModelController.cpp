@@ -25,18 +25,77 @@
 #include "NMModelController.h"
 #include "NMModelSerialiser.h"
 
+#include <QFuture>
+#include <QtConcurrentRun>
+
 NMModelController::NMModelController(QObject* parent)
+	: mRunningModelComponent(0), mbModelIsRunning(false),
+	  mRootComponent(0), mbAbortionRequested(false)
 {
 	this->setParent(parent);
 	this->ctx = "NMModelController";
-	this->mRootComponent = 0;
 }
 
 NMModelController::~NMModelController()
 {
 }
 
-NMModelComponent* NMModelController::identifyRootComponent(void)
+NMModelController*
+NMModelController::getInstance(void)
+{
+	static NMModelController controller;
+	return &controller;
+}
+
+bool
+NMModelController::isModelRunning(void)
+{
+	return this->mbModelIsRunning;
+}
+
+void
+NMModelController::reportExecutionStopped(const QString & compName)
+{
+	NMModelComponent* comp = this->getComponent(compName);
+	if (comp != 0)
+	{
+		this->mRunningModelComponent = 0;
+		this->mbModelIsRunning = false;
+		emit signalIsControllerBusy(false);
+	}
+}
+
+void
+NMModelController::reportExecutionStarted(const QString & compName)
+{
+	NMModelComponent* comp = this->getComponent(compName);
+	if (comp != 0)
+	{
+		this->mRunningModelComponent = comp;
+		this->mbModelIsRunning = true;
+		emit signalIsControllerBusy(true);
+	}
+}
+
+void
+NMModelController::abortModel(void)
+{
+	NMDebugCtx(ctx, << "...");
+	if (this->mbModelIsRunning)
+	{
+		NMProcess* proc = this->mRunningModelComponent->getProcess();
+		if (proc != 0)
+		{
+			proc->abortExecution();
+		}
+		this->mbAbortionRequested = true;
+	}
+	NMDebugCtx(ctx, << "done!");
+}
+
+
+NMModelComponent*
+NMModelController::identifyRootComponent(void)
 {
 	NMDebugCtx(ctx, << "...");
 
@@ -64,17 +123,62 @@ NMModelComponent* NMModelController::identifyRootComponent(void)
 }
 
 void
-NMModelController::execute()
+NMModelController::executeModel(const QString& compName)
 {
+	NMDebugCtx(ctx, << "...");
+
+	if (this->mbModelIsRunning)
+	{
+		NMDebugAI(<< "There is already a model running! "
+				<< "Be patient and try later!" << endl);
+		NMDebugCtx(ctx, << "done!");
+		return;
+	}
+
 	this->mRootComponent = this->identifyRootComponent();
 	if (this->mRootComponent == 0)
 	{
 		NMErr(ctx, << "couldn't find a root component!");
 		return;
 	}
-//	this->mRootComponent->initialiseComponents();
+
+	NMDebugAI(<< "running model on thread: "
+			<< this->thread()->currentThreadId() << endl);
+
+	this->mbModelIsRunning = true;
+	this->mbAbortionRequested = false;
 	this->mRootComponent->update(this->mComponentMap);
+
+	NMDebugCtx(ctx, << "done!");
 }
+
+//void
+//NMModelController::execute()
+//{
+//	NMDebugCtx(ctx, << "...");
+//	this->mRootComponent = this->identifyRootComponent();
+//	if (this->mRootComponent == 0)
+//	{
+//		NMErr(ctx, << "couldn't find a root component!");
+//		return;
+//	}
+////	this->mRootComponent->initialiseComponents();
+//
+//	NMDebugAI(<< "running model on thread: "
+//			<< this->thread()->currentThreadId() << endl);
+//
+//	this->mRootComponent->update(this->mComponentMap);
+//
+//	//QtConcurrent::run(this->mRootComponent, &NMModelComponent::update,
+//	//		this->mComponentMap);
+//
+//	//NMDebugAI(<< "start modelling thread from thread " <<
+//	//		this->currentThreadId() << endl);
+//
+//
+//	//this->start();
+//	NMDebugCtx(ctx, << "done!");
+//}
 
 QString NMModelController::addComponent(NMModelComponent* comp,
 		NMModelComponent* host)
@@ -128,9 +232,12 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 	}
 
 	NMDebugAI(<< "insert comp as '" << tname.toStdString() << "'" << endl);
+	comp->setParent(0);
+	comp->moveToThread(this->thread());
 	comp->setObjectName(tname);
-	this->mComponentMap.insert(tname, comp);
 	comp->setParent(this);
+
+	this->mComponentMap.insert(tname, comp);
 
 	// check, whether we've go a valid host
 	if (host != 0)

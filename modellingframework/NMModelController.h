@@ -30,6 +30,8 @@
 #include "NMModelSerialiser.h"
  
 #include <qobject.h>
+#include <QThread>
+#include <QMutex>
 #include <QMap>
 #include <QString>
 
@@ -40,15 +42,28 @@
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 
+/*! \brief NMModelController is responsible for managing
+ *         all NMModelComponents.
+ *
+ *   (Currently) NMModelController is implemented as Singleton
+ *   to keep track of and manage a model's components
+ *   (i.e. process components and aggregate components).
+ *   The model controller lives in a separate thread and moves
+ *   any new components being added to its component repository
+ *   to the thread its running in. Also, it becomes the parent
+ *   of each component it looks after (i.e. which is referenced in its
+ *   repository).
+ *
+ *   \see NMModelComponent, NMProcess, NMAggregateComponentItem,
+ *   NMProcessComponentItem
+ *
+ */
+
 class NMModelController: public QObject
 {
 	Q_OBJECT
 
 public:
-	NMModelController(QObject* parent=0);
-	virtual ~NMModelController();
-
-	void execute(void);
 	NMModelComponent* getComponent(const QString& name);
 	QString addComponent(NMModelComponent* comp,
 			NMModelComponent* host=0);
@@ -59,14 +74,68 @@ public:
 	const QMap<QString, NMModelComponent*>& getRepository(void)
 			{return this->mComponentMap;}
 
+	static NMModelController* getInstance(void);
+
+public slots:
+
+	/*! Requests the execution of the named component. */
+	void executeModel(const QString& compName);
+
+	/*! Indicates whether any of the process components
+	 *         controlled by this controller is currently
+	 *         being executed or not.
+	 */
+	bool isModelRunning(void);
+
+	/*! These *Stopped and *Started slots are usually connected
+	 *         to a NMProcess's signalExecutionStarted/Stopped signals
+	 *         to inform the controller about which model is currently
+	 *         being executed or not.
+	 */
+	void reportExecutionStopped(const QString & compNamde);
+
+	/*! These *Stopped and *Started slots are usually connected
+	 *         to a NMProcess's signalExecutionStarted/Stopped signals
+	 *         to inform the controller about which model is currently
+	 *         being executed or not.
+	 */
+	void reportExecutionStarted(const QString & compName);
+
+	/*! Sets NMProcess::mAbortExecution and NMModelController::mbAbortionRequested
+	 *  to true; the process object then either aborts the process execution
+	 *  or not and if so, it signals it back to the model controller
+	 *  (cf. NMModelController::reportExecutionStopped()). The member
+	 *  mbAbortionRequested is periodically checked within the update
+	 *  iteration loop of a model component and the component breaks out of
+	 *  the loop if an abortion is requested.
+	 */
+	void abortModel(void);
+
+	/*! Indicates whether a model's update iteration loop should be
+	 *  terminated.*/
+	bool isModelAbortionRequested(void)
+		{return this->mbAbortionRequested;}
+
+	signals:
+	/*! Signals whether any of the process components controlled
+	 *  by this controller is currently running or not */
+	void signalIsControllerBusy(bool);
+
 protected:
+	NMModelController(QObject* parent=0);
+	virtual ~NMModelController();
+
 	QMap<QString, NMModelComponent*> mComponentMap;
 	NMModelComponent* mRootComponent;
 
+	NMModelComponent* mRunningModelComponent;
+	bool mbModelIsRunning;
+	bool mbAbortionRequested;
+
+	NMModelController* mModelController;
 
 private:
 	std::string ctx;
-
 
 };
 

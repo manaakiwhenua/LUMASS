@@ -16,6 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 #include "NMModelComponent.h"
+#include "NMModelController.h"
 
 #include <string>
 #include <iostream>
@@ -39,6 +40,7 @@ NMModelComponent::NMModelComponent(const NMModelComponent& modelComp)
 	NMModelComponent& comp = const_cast<NMModelComponent&>(modelComp);
 	NMDebugAI(<< "copying '" << comp.objectName().toStdString() << "'" << std::endl);
 
+	this->moveToThread(comp.thread());
 	this->setParent(comp.parent());
 	this->mTimeLevel = comp.getTimeLevel();
 	this->setObjectName(comp.objectName());
@@ -73,6 +75,8 @@ void NMModelComponent::setProcess(NMProcess* proc)
 	this->mProcess = proc;
 	this->mProcessChainPointer = 0;
 	this->mProcessChainStart = 0;
+	proc->setParent(0);
+	proc->moveToThread(this->thread());
 	proc->setParent(this);
 
 	NMDebugCtx(ctxNMModelComponent, << "done!");
@@ -96,10 +100,6 @@ int NMModelComponent::countComponents(void)
 }
 
 
-/**
- * - adds a filter at  the end of this component's pipeline
- * \param  filter
- */
 void NMModelComponent::addModelComponent(NMModelComponent* comp)
 {
 	NMDebugCtx(ctxNMModelComponent, << "...");
@@ -148,11 +148,8 @@ void NMModelComponent::addModelComponent(NMModelComponent* comp)
 	NMDebugCtx(ctxNMModelComponent, << "done!");
 }
 
-/**
- * \param  filter
- * \param  previousFilter
- */
-void NMModelComponent::insertModelComponent(NMModelComponent* insertComp, QString previousComp)
+void NMModelComponent::insertModelComponent(NMModelComponent* insertComp,
+		const QString& previousComp)
 {
 	if (this->mProcess != 0)
 		return;
@@ -204,11 +201,7 @@ void NMModelComponent::insertModelComponent(NMModelComponent* insertComp, QStrin
 }
 
 
-/**
- * \return NMFilter*
- * \param  filterName
- */
-NMModelComponent* NMModelComponent::findModelComponent(QString compName)
+NMModelComponent* NMModelComponent::findModelComponent(const QString& compName)
 {
 	NMModelComponent* curComp = this->getInternalStartComponent();
 	while (curComp != 0)
@@ -222,10 +215,7 @@ NMModelComponent* NMModelComponent::findModelComponent(QString compName)
 }
 
 
-/**
- * \param  filterName
- */
-NMModelComponent* NMModelComponent::removeModelComponent(QString compName)
+NMModelComponent* NMModelComponent::removeModelComponent(const QString& compName)
 {
 	NMDebugCtx(ctx, << "...");
 
@@ -299,9 +289,6 @@ void NMModelComponent::destroySubComponents(QMap<QString, NMModelComponent*>& re
 	this->setInternalStartComponent(0);
 }
 
-/**
- * \param  inputComponent
- */
 void NMModelComponent::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg)
 {
 	if (this->mProcess != 0)
@@ -409,9 +396,6 @@ NMProcess* NMModelComponent::getEndOfTimeLevel(void)
 	return proc;
 }
 
-/**
- * \return NMModelComponent*
- */
 NMItkDataObjectWrapper* NMModelComponent::getOutput()
 {
 	// check, whether we've got a 'single' process component
@@ -548,6 +532,24 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	NMDebugCtx(ctxNMModelComponent, << "...");
 	NMDebugAI(<< "--- " << this->objectName().toStdString() << " ---" << std::endl);
 
+	// check, whether we're supposed to run at all
+	NMModelController* controller = qobject_cast<NMModelController*>(this->parent());
+	if (controller != 0)
+	{
+		if (controller->isModelAbortionRequested())
+		{
+			NMDebugAI(<< "The user elected to abort model execution, so we break out here!" << endl);
+			NMDebugCtx(ctxNMModelComponent, << "done!");
+			return;
+		}
+	}
+	else
+	{
+		NMErr(ctxNMModelComponent,
+				<< "We'd better quit here - there's no controller in charge!" << endl);
+		NMDebugCtx(ctxNMModelComponent, << "done!");
+		return;
+	}
 
 	this->mMapTimeLevelComp.clear();
 	this->mapTimeLevels(this->mTimeLevel, this->mMapTimeLevelComp);
@@ -569,6 +571,13 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	// execute this components' pipeline
 	for (unsigned int i=0; i < this->mNumIterations; ++i)
 	{
+		if (controller->isModelAbortionRequested())
+		{
+			NMDebugAI(<< "The user elected to abort model execution, so we break out here!" << endl);
+			NMDebugCtx(ctxNMModelComponent, << "done!");
+			return;
+		}
+
 		NMDebugAI(<< "-------------------------------------------------------iteration " << i+1
 				<< "/" << this->mNumIterations << std::endl);
 
@@ -592,20 +601,6 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 				}
 				tmpComp = this->getNextInternalComponent();
 			}
-			//timeIt = this->mMapTimeLevelComp.find(level);
-			//if (timeIt != this->mMapTimeLevelComp.end())
-			//{
-			//	for (compIt = timeIt.value().begin(); compIt != timeIt.value().end(); ++compIt)
-			//	{
-			//		// we explicitly call link components here in case the particular component is atomic,
-			//		// ie only consists of one process which takes as input the result of another sub-component
-			//		// of this very component residing on a higher time level
-			//		// in fact it allows a component to consist of disconnected elements feeding
-			//		// into one another and thus working like a quasi pipeline
-			//		compIt.value()->linkComponents(0, repo);
-			//		compIt.value()->update(repo);
-			//	}
-			//}
 		}
 
 		// traverse all minLevel components and fetch input data from disconnected pipelines
@@ -616,15 +611,6 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 				tmpComp->linkComponents(i, repo);
 			tmpComp = this->getNextInternalComponent();
 		}
-
-		//timeIt = this->mMapTimeLevelComp.find(minLevel);
-		//if (timeIt != this->mMapTimeLevelComp.end())
-		//{
-		//	for (compIt = timeIt.value().begin(); compIt != timeIt.value().end(); ++compIt)
-		//	{
-		//		compIt.value()->linkComponents(i, repo);
-		//	}
-		//}
 
 		// call update on the last process of the level 0 pipeline
 		//		NMDebugAI(<< this->objectName().toStdString() << ": iteration #" << i << std::endl);
@@ -638,7 +624,6 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 		else
 		{
 			NMProcess* endProc = this->getEndOfTimeLevel();
-			//this->getEndOfPipelineProcess(endProc);
 			if (endProc != 0)
 			{
 				if (!endProc->isInitialised())
@@ -707,8 +692,3 @@ bool NMModelComponent::isSubComponent(NMModelComponent* comp)
 
 	return ret;
 }
-
-
-
-
-

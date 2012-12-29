@@ -30,6 +30,7 @@
 #include <iostream>
 
 #include <qwidget.h>
+#include <QThread>
 #include <QMenu>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -73,8 +74,8 @@ public slots:
 	void compProcChanged();
 
 	void executeModel(void);
-	void loadModel(void);
-	void saveModel(void);
+	//void loadModel(void);
+	//void saveModel(void);
 
 	void zoomIn(void);
 	void zoomOut(void);
@@ -82,10 +83,14 @@ public slots:
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);
 
+
+
 signals:
 	void linkToolToggled(bool);
 	void selToolToggled(bool);
 	void moveToolToggled(bool);
+	void requestModelExecution(const QString& compName);
+	void requestModelAbortion(void);
 
 protected:
 	void dragEnterEvent(QDragEnterEvent* event);
@@ -104,6 +109,7 @@ protected slots:
 	QString getComponentItemTitle(QGraphicsItem* item);
 	void saveItems();
 	void loadItems();
+	void reportIsModelControllerBusy(bool);
 
 	//void saveProcCompItem(NMProcessComponentItem* item, QDataStream& data,
 	//		QString fnXml, bool xmlAppend);
@@ -115,9 +121,13 @@ protected slots:
 private:
 	void initItemContextMenu();
 
+	bool mbControllerIsBusy;
+
 	QGraphicsView* mModelView;
 	NMModelScene* mModelScene;
 	QMenu* mItemContextMenu;
+
+	QThread* mModelRunThread;
 
 	QPointF mLastScenePos;
 	QGraphicsItem* mLastItem;

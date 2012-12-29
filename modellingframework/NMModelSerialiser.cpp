@@ -111,7 +111,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		{
 			comp = NMModelComponentFactory::instance().createModelComponent(
 					"NMModelComponent");
-			comp->setParent(controller);
+			//comp->setParent(controller);
 
 			// add new component to the model controller and make sure it has a unique name
 			comp->setObjectName(compName);
@@ -155,7 +155,8 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 						<< "'" << endl);
 
 				proc = NMProcessFactory::instance().createProcess(procName);
-				proc->setParent(comp);
+				
+				//proc->setParent(comp);
 				proc->setObjectName(procName);
 
 				QDomElement procPropElem = procElem.firstChildElement("Property");

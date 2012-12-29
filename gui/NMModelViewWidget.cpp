@@ -41,7 +41,7 @@
 
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
-	: QWidget(parent, f)
+	: QWidget(parent, f), mbControllerIsBusy(false)
 {
 	ctx = "NMModelViewWidget";
 	this->setAcceptDrops(true);
@@ -51,8 +51,20 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
         this->mRasConn = 0;
 #endif
 
-	mModelController = new NMModelController(this);
-	mRootComponent = new NMModelComponent(mModelController);
+    mModelRunThread = new QThread(this);
+    mModelRunThread->start();
+
+ 	mModelController = NMModelController::getInstance();
+ 	mModelController->moveToThread(mModelRunThread);
+
+ 	connect(this, SIGNAL(requestModelExecution(const QString &)),
+ 			mModelController, SLOT(executeModel(const QString &)));
+ 	connect(this, SIGNAL(requestModelAbortion()),
+ 			mModelController, SLOT(abortModel()), Qt::DirectConnection);
+ 	connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
+ 			this, SLOT(reportIsModelControllerBusy(bool)));
+
+ 	mRootComponent = new NMModelComponent();
 	mRootComponent->setObjectName("root");
 	mRootComponent->setDescription(
 			"Top level model component managed by the model view widget");
@@ -121,6 +133,10 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	mModelView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, false);
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
 
+	QPushButton* btnCancel = new QPushButton();
+	btnCancel->setText(tr("Cancel"));
+	btnCancel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
 	QPushButton* btnExec = new QPushButton();
 	btnExec->setText(tr("Execute"));
 	btnExec->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -137,7 +153,9 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	boxLayout->setAlignment(Qt::AlignRight | Qt::AlignBottom);
 //	boxLayout->addWidget(btnLoad);
 //	boxLayout->addWidget(btnSave);
+	boxLayout->addWidget(btnCancel);
 	boxLayout->addWidget(btnExec);
+
 
 	QVBoxLayout* gridLayout = new QVBoxLayout();
 	gridLayout->addWidget(mModelView);//, 0, 0);
@@ -147,6 +165,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
 	// connect buttons
 	connect(btnExec, SIGNAL(clicked()), this, SLOT(executeModel()));
+	connect(btnCancel, SIGNAL(clicked()), this, SIGNAL(requestModelAbortion()));
 //	connect(btnLoad, SIGNAL(clicked()), this, SLOT(loadModel()));
 //	connect(btnSave, SIGNAL(clicked()), this, SLOT(saveModel()));
 
@@ -157,6 +176,23 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
 NMModelViewWidget::~NMModelViewWidget()
 {
+	if (mModelRunThread != 0)
+	{
+		if (this->mbControllerIsBusy)
+		{
+			emit requestModelAbortion();
+			this->thread()->wait(5000);
+		}
+		mModelRunThread->quit();
+		//if (mModelRunThread != 0)
+		//	delete mModelRunThread;
+	}
+}
+
+void
+NMModelViewWidget::reportIsModelControllerBusy(bool busy)
+{
+	this->mbControllerIsBusy = busy;
 }
 
 void NMModelViewWidget::createAggregateComponent()
@@ -252,7 +288,7 @@ void NMModelViewWidget::createAggregateComponent()
 	}
 
 	// now we create a new ModelComponent, and add the selected components
-	NMModelComponent* aggrComp = new NMModelComponent(this->mModelController);
+	NMModelComponent* aggrComp = new NMModelComponent();
 	aggrComp->setObjectName("AggrComp");
 
 	connect(aggrComp, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
@@ -356,12 +392,14 @@ void NMModelViewWidget::initItemContextMenu()
 void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		QGraphicsItem* item)
 {
+	bool running = NMModelController::getInstance()->isModelRunning();
+
 	this->mLastScenePos = event->scenePos();
 	this->mLastItem = item;
 
 	// GROUP
 	QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
-	if (selection.count() > 1)
+	if (selection.count() > 1 && !running)
 	{
 		int levelIndi = this->shareLevel(selection);
 		if (levelIndi >= 0)
@@ -385,7 +423,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 	}
 
 	// DELETE & SAVE AS
-	if (selection.count() > 0 || item != 0)
+	if ((selection.count() > 0 || item != 0) && !running)
 		this->mActionMap.value("Delete")->setEnabled(true);
 	else
 		this->mActionMap.value("Delete")->setEnabled(false);
@@ -395,7 +433,11 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		this->mActionMap.value("Save As ...")->setEnabled(false);
 	else
 		this->mActionMap.value("Save As ...")->setEnabled(true);
-	this->mActionMap.value("Load ...")->setEnabled(true);
+
+	if (!running)
+		this->mActionMap.value("Load ...")->setEnabled(true);
+	else
+		this->mActionMap.value("Load ...")->setEnabled(false);
 
 	QPoint viewPt = this->mModelView->mapFromScene(this->mLastScenePos);
 	this->mItemContextMenu->move(mModelView->mapToGlobal(viewPt));
@@ -625,6 +667,7 @@ void NMModelViewWidget::loadItems(void)
 
 	NMDebugAI(<< "reading model view file ..." << endl);
 	NMDebugAI(<< "---------------------------" << endl);
+	NMProcess* procComp;
 	while(!lmv.atEnd())
 	{
 		qint32 readType;
@@ -640,7 +683,25 @@ void NMModelViewWidget::loadItems(void)
 				{
 					pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
-					pi->setTitle(nameRegister.value(pi->getTitle()));
+					QString itemTitle = nameRegister.value(pi->getTitle());
+					pi->setTitle(itemTitle);
+
+					// establish across-thread-communication between GUI item and process component
+					procComp = this->mModelController->getComponent(itemTitle)->getProcess();
+					if (procComp == 0)
+					{
+						NMErr(ctx, << "Couldn't find the process component for item '"
+								<< itemTitle.toStdString() << "'!");
+					}
+					connect(procComp, SIGNAL(signalProgress(float)), pi,
+							SLOT(updateProgress(float)));
+					connect(procComp, SIGNAL(signalExecutionStarted(const QString &)),
+							this->mModelController,
+							SLOT(reportExecutionStarted(const QString &)));
+					connect(procComp, SIGNAL(signalExecutionStopped(const QString &)),
+							this->mModelController,
+							SLOT(reportExecutionStopped(const QString &)));
+
 					this->mModelScene->addItem(pi);
 				}
 				break;
@@ -915,6 +976,8 @@ QString NMModelViewWidget::getComponentItemTitle(QGraphicsItem* item)
 void NMModelViewWidget::deleteItem()
 {
 	NMDebugCtx(ctx, << "...");
+
+
 
 	NMProcessComponentItem* procItem;
 	NMAggregateComponentItem* aggrItem;
@@ -1199,12 +1262,17 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		return;
 	}
 
-	NMModelComponent* comp = new NMModelComponent(this->mModelController);
+	NMModelComponent* comp = new NMModelComponent();
 	comp->setProcess(proc);
 
-	//connect(comp, SIGNAL(TimeLevelChanged(short)), this, SLOT(compTimeLevelChanged(short)));
-	connect(comp, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
-	connect(proc, SIGNAL(NMProcessChanged()), this, SLOT(compProcChanged()));
+	connect(proc, SIGNAL(signalProgress(float)),
+			procItem, SLOT(updateProgress(float)));
+	connect(proc, SIGNAL(signalExecutionStarted(const QString &)),
+			this->mModelController,
+			SLOT(reportExecutionStarted(const QString &)));
+	connect(proc, SIGNAL(signalExecutionStopped(const QString &)),
+			this->mModelController,
+			SLOT(reportExecutionStopped(const QString &)));
 
 
 	QString tname = procName;
@@ -1366,23 +1434,21 @@ void NMModelViewWidget::dropEvent(QDropEvent* event)
 
 void NMModelViewWidget::executeModel(void)
 {
-
-	NMModelSerialiser writer;
-	writer.serialiseComponent(this->mRootComponent, "/home/alex/tmp/lumassModeller_model.xml", 4, false);
-	//mModelController->saveModel("/home/alex/tmp/lumassModeller_model.xml");
-
-	this->mModelController->execute();
+	if (!NMModelController::getInstance()->isModelRunning())
+	{
+		emit requestModelExecution("");
+	}
 }
 
-void NMModelViewWidget::saveModel(void)
-{
-	NMDebugAI(<< "saving" << std::endl);
-}
-
-void NMModelViewWidget::loadModel(void)
-{
-	NMDebugAI(<< "load" << std::endl);
-}
+//void NMModelViewWidget::saveModel(void)
+//{
+//	NMDebugAI(<< "saving" << std::endl);
+//}
+//
+//void NMModelViewWidget::loadModel(void)
+//{
+//	NMDebugAI(<< "load" << std::endl);
+//}
 
 
 

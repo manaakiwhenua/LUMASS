@@ -43,6 +43,9 @@
 #include "itkProcessObject.h"
 #include "itkDataObject.h"
 #include "itkImageIOBase.h"
+#include "itkCommand.h"
+#include "itkEventObject.h"
+
 
 class NMModelComponent;
 
@@ -97,14 +100,9 @@ public:
 
 signals:
 	void NMProcessChanged();
-//	void InputComponentsChanged      (QList<QStringList>                     );
-//	void InputNMComponentTypeChanged (NMItkDataObjectWrapper::NMComponentType);
-//	void OutputNMComponentTypeChanged (NMItkDataObjectWrapper::NMComponentType);
-////	void NMComponentTypeChanged      (NMItkDataObjectWrapper::NMComponentType);
-//	void InputNumDimensionsChanged   (unsigned int                           );
-//	void OutputNumDimensionsChanged  (unsigned int                           );
-//	void InputNumBandsChanged        (unsigned int                           );
-//	void OutputNumBandsChanged       (unsigned int                           );
+	void signalProgress(float);
+	void signalExecutionStarted(const QString &);
+	void signalExecutionStopped(const QString &);
 
 public:
 	virtual ~NMProcess();
@@ -137,12 +135,15 @@ public:
 
 public slots:
 	void removeInputComponent(const QString& input);
+	virtual void abortExecution(void);
 
 protected:
 	NMProcess(QObject *parent=0);
 
 	bool mbIsInitialised;
+	bool mbAbortExecution;
 	unsigned int mParamPos;
+	float mProgress;
     QList<QStringList> mInputComponents;
 	itk::ProcessObject::Pointer mOtbProcess;
 	itk::DataObject::Pointer mOutputImg;
@@ -155,6 +156,13 @@ protected:
 	unsigned int mInputNumDimensions;
 	unsigned int mOutputNumDimensions;
 	NMProcess::AdvanceParameter mParameterHandling;
+
+	typedef itk::MemberCommand<NMProcess> ObserverType;
+	ObserverType::Pointer mObserver;
+
+	virtual void UpdateProgressInfo(itk::Object*, const itk::EventObject&);
+
+
 
 	/*! \brief Stores the parameter index. Needs to be set to 0 in constructor */
 //	unsigned int mParameterPos;

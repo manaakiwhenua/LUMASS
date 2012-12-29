@@ -454,7 +454,7 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mOutputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mFileName = "";
 	this->mbRasMode = false;
-	this->mFilePos = 0;
+	//this->mFilePos = 0;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
@@ -818,47 +818,51 @@ void
 NMImageReader::linkParameters(unsigned int step,
 		const QMap<QString, NMModelComponent*>& repo)
 {
+	NMDebugCtx(ctxNMImageReader, << "...");
 	// set the step parameter according to the ParameterHandling mode set for this process
+
+	NMDebugAI(<< "method called with #step=" << step
+			<< " mParamPos=" << this->mParamPos << endl);
+
 	switch(this->mParameterHandling)
 	{
 	case NM_USE_UP:
-		if (this->mFilePos < this->mFileNames.size())
+		if (this->mParamPos < this->mFileNames.size())
 		{
-			step = this->mFilePos;
-			++this->mFilePos;
+			step = this->mParamPos;
+			//++this->mParamPos;
 		}
-		else if (this->mFilePos >= this->mFileNames.size())
+		else if (this->mParamPos >= this->mFileNames.size())
 		{
-			this->mFilePos = this->mFileNames.size()-1;
-			step = this->mFilePos;
+			this->mParamPos = this->mFileNames.size()-1;
+			step = this->mParamPos;
 		}
 		break;
 	case NM_CYCLE:
-		if (this->mFilePos < this->mFileNames.size())
+		if (this->mParamPos < this->mFileNames.size())
 		{
-			step = this->mFilePos;
-			++this->mFilePos;
+			step = this->mParamPos;
+			//++this->mParamPos;
 		}
-		else if (this->mFilePos >= this->mFileNames.size())
+		else if (this->mParamPos >= this->mFileNames.size())
 		{
 			step = 0;
-			this->mFilePos = 1;
+			this->mParamPos = 1;
 		}
 		break;
 	case NM_SYNC_WITH_HOST:
 		if (step < this->mInputComponents.size())
 		{
-			this->mFilePos = step;
+			this->mParamPos = step;
 		}
 		else
 		{
 			step = 0;
-			this->mFilePos = 0;
+			this->mParamPos = 0;
 			NMErr(ctxNMProcess, << "mFilePos and host's step out of sync!! Set mFilePos = 0");
 		}
 		break;
 	}
-
 
 	if (this->mFileNames.size() > 0)
 	{
@@ -868,6 +872,9 @@ NMImageReader::linkParameters(unsigned int step,
 			this->initialise();
 		}
 	}
+	NMDebugAI(<< "FileName is '" << this->mFileName.toStdString() << "'" << endl);
+
+	NMDebugCtx(ctxNMImageReader, << "done!");
 }
 
 void NMImageReader::setNthInput(unsigned int numInput,
@@ -878,6 +885,7 @@ void NMImageReader::setNthInput(unsigned int numInput,
 
 void NMImageReader::instantiateObject(void)
 {
+	NMDebugCtx(ctxNMImageReader, << "...");
 	// grab properties and feed member vars for successful initialisation
 #ifdef BUILD_RASSUPPORT
 	if (this->mRasConnector != 0)
@@ -891,6 +899,10 @@ void NMImageReader::instantiateObject(void)
 
 	if (this->getFileNames().size() > 0)
 		this->setFileName(this->getFileNames().at(0));
+
+	NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
 	this->initialise();
+
+	NMDebugCtx(ctxNMImageReader, << "done!");
 }
 

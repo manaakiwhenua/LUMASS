@@ -28,6 +28,7 @@
 #include "itkImageIOBase.h"
 
 NMProcess::NMProcess(QObject *parent)
+	: mbAbortExecution(false)
 {
 	this->mInputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mOutputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
@@ -39,6 +40,7 @@ NMProcess::NMProcess(QObject *parent)
 	this->mbIsInitialised = false;
 	this->mParameterHandling = NM_SYNC_WITH_HOST;
 	this->mParamPos = 0;
+	this->mProgress = 0.0;
 }
 
 NMProcess::~NMProcess()
@@ -46,16 +48,30 @@ NMProcess::~NMProcess()
 	// TODO Auto-generated destructor stub
 }
 
-void NMProcess::linkInPipeline(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+void
+NMProcess::linkInPipeline(unsigned int step,
+		const QMap<QString, NMModelComponent*>& repo)
 {
 	if (!this->isInitialised())
 		this->instantiateObject();
+
+	// in case we've got an itk::ProcessObject, we
+	// add an observer for progress report
+	if (this->mOtbProcess.IsNotNull())
+	{
+		mObserver = ObserverType::New();
+		mObserver->SetCallbackFunction(this,
+				&NMProcess::UpdateProgressInfo);
+		this->mOtbProcess->AddObserver(itk::ProgressEvent(), mObserver);
+	}
 
 	this->linkInputs(step, repo);
 	this->linkParameters(step, repo);
 }
 
-void NMProcess::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+void
+NMProcess::linkParameters(unsigned int step,
+		const QMap<QString, NMModelComponent*>& repo)
 {
 	// this should really be implemented in subclasses;
 	// this stub is only provided to avoid stubs within subclasses
@@ -95,7 +111,9 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 		if (this->mParamPos < this->mInputComponents.size())
 		{
 			step = this->mParamPos;
-			++this->mParamPos;
+			// this is better done in the update function, so that it only
+			// get's incremented after an actual processing step
+			//++this->mParamPos;
 		}
 		else if (this->mParamPos >= this->mInputComponents.size())
 		{
@@ -107,7 +125,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 		if (this->mParamPos < this->mInputComponents.size())
 		{
 			step = this->mParamPos;
-			++this->mParamPos;
+			//++this->mParamPos;
 		}
 		else if (this->mParamPos >= this->mInputComponents.size())
 		{
@@ -209,7 +227,8 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
  * Get the value of mInputComponentType
  * \return the value of mInputComponentType
  */
-itk::ImageIOBase::IOComponentType NMProcess::getInputComponentType(void)
+itk::ImageIOBase::IOComponentType
+NMProcess::getInputComponentType(void)
 {
     return this->mInputComponentType;
 }
@@ -222,15 +241,60 @@ void NMProcess::reset(void)
 
 void NMProcess::update(void)
 {
-	if (this->mbIsInitialised)
+	NMDebugCtx(ctxNMProcess, << "...");
+
+	if (this->mbIsInitialised && this->mOtbProcess.IsNotNull())
+	{
+		QString name = this->parent()->objectName();
+		emit signalExecutionStarted(name);
+		this->mbAbortExecution = false;
+		this->mOtbProcess->AbortGenerateDataOff();
 		this->mOtbProcess->Update();
+		++this->mParamPos;
+		emit signalExecutionStopped(name);
+		emit signalProgress(0);
+		this->mOtbProcess->AbortGenerateDataOff();
+		this->mbAbortExecution = false;
+	}
 	else
 	{
-		NMErr(ctxNMProcess, << "Update couldn't be called because the process is not initialised!");
+		NMErr(ctxNMProcess,
+				<< "Update failed! Either the process object is not initialised or"
+				<< " itk::ProcessObject is NULL and ::update() is not re-implemented!");
+	}
+
+	NMDebugAI(<< "update value for: mParamPos=" << this->mParamPos << endl);
+	NMDebugCtx(ctxNMProcess, << "done!");
+}
+
+void
+NMProcess::abortExecution(void)
+{
+	this->mbAbortExecution = true;
+}
+
+void
+NMProcess::UpdateProgressInfo(itk::Object* obj,
+		const itk::EventObject& event)
+{
+	if (typeid(event) != typeid(itk::ProgressEvent))
+	{
+		NMDebugAI(<< "nope! - not a progress event!" << endl);
+		return;
+	}
+
+	itk::Object* ncobj = const_cast<itk::Object*>(obj);
+	itk::ProcessObject* proc = dynamic_cast<itk::ProcessObject*>(ncobj);
+	if (proc != 0)
+	{
+		emit signalProgress((float)(proc->GetProgress() * 100.0));
+		if (this->mbAbortExecution)
+			proc->AbortGenerateDataOn();
 	}
 }
 
-NMItkDataObjectWrapper::NMComponentType NMProcess::getInputNMComponentType()
+NMItkDataObjectWrapper::NMComponentType
+NMProcess::getInputNMComponentType()
 {
 	NMItkDataObjectWrapper::NMComponentType nmtype;
 	switch (this->mInputComponentType)
@@ -251,7 +315,8 @@ NMItkDataObjectWrapper::NMComponentType NMProcess::getInputNMComponentType()
 	return nmtype;
 }
 
-NMItkDataObjectWrapper::NMComponentType NMProcess::getOutputNMComponentType()
+NMItkDataObjectWrapper::NMComponentType
+NMProcess::getOutputNMComponentType()
 {
 	NMItkDataObjectWrapper::NMComponentType nmtype;
 	switch (this->mOutputComponentType)
@@ -272,7 +337,8 @@ NMItkDataObjectWrapper::NMComponentType NMProcess::getOutputNMComponentType()
 	return nmtype;
 }
 
-void NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype)
+void
+NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype)
 {
 	itk::ImageIOBase::IOComponentType type;
 	switch (nmtype)
@@ -294,7 +360,8 @@ void NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType 
 	this->mbIsInitialised = false;
 }
 
-void NMProcess::setOutputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype)
+void
+NMProcess::setOutputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype)
 {
 	itk::ImageIOBase::IOComponentType type;
 	switch (nmtype)

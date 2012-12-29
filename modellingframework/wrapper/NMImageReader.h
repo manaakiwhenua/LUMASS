@@ -137,7 +137,7 @@ private:
 	/** NMImageReader needs its own input parameter position indicator,
 	 *  since it doesn't use the input components' path
 	 */
-	unsigned int mFilePos;
+	//unsigned int mFilePos;
 };
 
 #endif /* NMImageReader_H_ */

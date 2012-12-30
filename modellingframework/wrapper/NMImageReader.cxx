@@ -459,6 +459,7 @@ NMImageReader::NMImageReader(QObject * parent)
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
+	this->mbLinked = false;
 #endif	
 	
 }
@@ -654,11 +655,27 @@ bool NMImageReader::initialise() throw (r_Error)
 		ret = false;
 		break;
 	}
+	this->mbIsInitialised = ret;
+
+	// set the observer
+	ReaderObserverType::Pointer observer = ReaderObserverType::New();
+	observer->SetCallbackFunction(this,
+			&NMImageReader::UpdateProgressInfo);
+	this->mOtbProcess->AddObserver(itk::ProgressEvent(), observer);
+	this->mOtbProcess->AddObserver(itk::StartEvent(), observer);
+	this->mOtbProcess->AddObserver(itk::EndEvent(), observer);
+	this->mOtbProcess->AddObserver(itk::AbortEvent(), observer);
 
 	NMDebugCtx(ctxNMImageReader, << "done!");
 
-	this->mbIsInitialised = ret;
 	return ret;
+}
+
+void
+NMImageReader::UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event)
+{
+	// just call base class implementation here
+	NMProcess::UpdateProgressInfo(obj, event);
 }
 
 NMItkDataObjectWrapper* NMImageReader::getOutput(void)
@@ -791,28 +808,6 @@ void NMImageReader::getBBox(double bbox[6])
 	bbox[5] = zmax;
 }
 
-//void NMImageReader::linkInPipeline(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-//{
-//	// we deliberately don't call the base class implementation here
-//	// 'cauz this reader does not have any image type input
-//
-//	if (this->mParameterPos < this->mFileNames.size())
-//	{
-//		if (this->mFileName.compare(this->mFileNames.at(this->mParameterPos)) != 0)
-//		{
-//			this->setFileName(this->mFileNames.at(this->mParameterPos));
-//			if (this->mRasConnector != 0)
-//			{
-//				this->setRasdamanConnector(
-//						const_cast<RasdamanConnector*>(
-//								this->mRasConnector->getConnector()));
-//			}
-//			this->initialise();
-//		}
-//	}
-//
-//	this->linkParameters(step, repo);
-//}
 
 void
 NMImageReader::linkParameters(unsigned int step,
@@ -830,7 +825,7 @@ NMImageReader::linkParameters(unsigned int step,
 		if (this->mParamPos < this->mFileNames.size())
 		{
 			step = this->mParamPos;
-			//++this->mParamPos;
+			++this->mParamPos;
 		}
 		else if (this->mParamPos >= this->mFileNames.size())
 		{
@@ -842,7 +837,7 @@ NMImageReader::linkParameters(unsigned int step,
 		if (this->mParamPos < this->mFileNames.size())
 		{
 			step = this->mParamPos;
-			//++this->mParamPos;
+			++this->mParamPos;
 		}
 		else if (this->mParamPos >= this->mFileNames.size())
 		{
@@ -851,7 +846,7 @@ NMImageReader::linkParameters(unsigned int step,
 		}
 		break;
 	case NM_SYNC_WITH_HOST:
-		if (step < this->mInputComponents.size())
+		if (step < this->mFileNames.size())
 		{
 			this->mParamPos = step;
 		}
@@ -866,7 +861,7 @@ NMImageReader::linkParameters(unsigned int step,
 
 	if (this->mFileNames.size() > 0)
 	{
-		if (this->mFileName.compare(this->mFileNames.at(step)) != 0)
+		//if (this->mFileName.compare(this->mFileNames.at(step)) != 0)
 		{
 			this->setFileName(this->mFileNames.at(step));
 			this->initialise();

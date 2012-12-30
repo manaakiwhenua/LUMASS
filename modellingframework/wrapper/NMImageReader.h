@@ -114,6 +114,12 @@ public:
 //	void advanceParameter(unsigned int step,
 //			const QMap<QString, NMModelComponent*>& repo);
 
+protected:
+	void UpdateProgressInfo(itk::Object* obj,
+			const itk::EventObject& event);
+
+	typedef itk::MemberCommand<NMImageReader> ReaderObserverType;
+
 private:
 
 #ifdef BUILD_RASSUPPORT

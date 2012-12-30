@@ -24,11 +24,15 @@
 
 #include "NMProcess.h"
 #include "NMModelComponent.h"
+#include "NMModelController.h"
+
+#include <QDateTime>
+
 #include "otbImage.h"
 #include "itkImageIOBase.h"
 
 NMProcess::NMProcess(QObject *parent)
-	: mbAbortExecution(false)
+	: mbAbortExecution(false), mbLinked(false)
 {
 	this->mInputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mOutputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
@@ -52,6 +56,15 @@ void
 NMProcess::linkInPipeline(unsigned int step,
 		const QMap<QString, NMModelComponent*>& repo)
 {
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
+
+	if (mbLinked)
+	{
+		NMDebugAI(<< "seems we've been linked already without being executed!" << endl);
+		NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+		return;
+	}
+
 	if (!this->isInitialised())
 		this->instantiateObject();
 
@@ -63,10 +76,18 @@ NMProcess::linkInPipeline(unsigned int step,
 		mObserver->SetCallbackFunction(this,
 				&NMProcess::UpdateProgressInfo);
 		this->mOtbProcess->AddObserver(itk::ProgressEvent(), mObserver);
+		this->mOtbProcess->AddObserver(itk::StartEvent(), mObserver);
+		this->mOtbProcess->AddObserver(itk::EndEvent(), mObserver);
+		this->mOtbProcess->AddObserver(itk::AbortEvent(), mObserver);
 	}
 
 	this->linkInputs(step, repo);
 	this->linkParameters(step, repo);
+
+	//NMDebugAI( << " mbLinked = true" << endl);
+	this->mbLinked = true;
+
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void
@@ -76,7 +97,6 @@ NMProcess::linkParameters(unsigned int step,
 	// this should really be implemented in subclasses;
 	// this stub is only provided to avoid stubs within subclasses
 	// have to be implemented in any case, even if this functionality is not required
-	// (eg NMImageReader)
 }
 
 void NMProcess::removeInputComponent(const QString& input)
@@ -113,7 +133,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 			step = this->mParamPos;
 			// this is better done in the update function, so that it only
 			// get's incremented after an actual processing step
-			//++this->mParamPos;
+			++this->mParamPos;
 		}
 		else if (this->mParamPos >= this->mInputComponents.size())
 		{
@@ -125,7 +145,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 		if (this->mParamPos < this->mInputComponents.size())
 		{
 			step = this->mParamPos;
-			//++this->mParamPos;
+			++this->mParamPos;
 		}
 		else if (this->mParamPos >= this->mInputComponents.size())
 		{
@@ -245,16 +265,7 @@ void NMProcess::update(void)
 
 	if (this->mbIsInitialised && this->mOtbProcess.IsNotNull())
 	{
-		QString name = this->parent()->objectName();
-		emit signalExecutionStarted(name);
-		this->mbAbortExecution = false;
-		this->mOtbProcess->AbortGenerateDataOff();
 		this->mOtbProcess->Update();
-		++this->mParamPos;
-		emit signalExecutionStopped(name);
-		emit signalProgress(0);
-		this->mOtbProcess->AbortGenerateDataOff();
-		this->mbAbortExecution = false;
 	}
 	else
 	{
@@ -262,6 +273,7 @@ void NMProcess::update(void)
 				<< "Update failed! Either the process object is not initialised or"
 				<< " itk::ProcessObject is NULL and ::update() is not re-implemented!");
 	}
+	this->mbLinked = false;
 
 	NMDebugAI(<< "update value for: mParamPos=" << this->mParamPos << endl);
 	NMDebugCtx(ctxNMProcess, << "done!");
@@ -277,20 +289,42 @@ void
 NMProcess::UpdateProgressInfo(itk::Object* obj,
 		const itk::EventObject& event)
 {
-	if (typeid(event) != typeid(itk::ProgressEvent))
-	{
-		NMDebugAI(<< "nope! - not a progress event!" << endl);
-		return;
-	}
-
 	itk::Object* ncobj = const_cast<itk::Object*>(obj);
 	itk::ProcessObject* proc = dynamic_cast<itk::ProcessObject*>(ncobj);
-	if (proc != 0)
+	if (proc == 0)
+		return;
+
+	if (typeid(event) == typeid(itk::ProgressEvent))
 	{
 		emit signalProgress((float)(proc->GetProgress() * 100.0));
 		if (this->mbAbortExecution)
 			proc->AbortGenerateDataOn();
 	}
+	else if (typeid(event) == typeid(itk::StartEvent))
+	{
+		emit signalExecutionStarted(this->parent()->objectName());
+	}
+	else if (typeid(event) == typeid(itk::EndEvent))
+	{
+		emit signalExecutionStopped(this->parent()->objectName());
+		emit signalProgress(0);
+		this->mOtbProcess->SetAbortGenerateData(false);
+		this->mbAbortExecution = false;
+	}
+	else if (typeid(event) == typeid(itk::AbortEvent))
+	{
+		emit signalExecutionStopped(this->parent()->objectName());
+		emit signalProgress(0);
+		this->mOtbProcess->SetAbortGenerateData(false);
+		this->mbAbortExecution = false;
+	}
+
+	// regardless of what event made this method been called, it indicates that
+	// the process has been executed, which means for the next iteration, new
+	// parameters have potentially be linked in again
+	//NMDebugAI(<< this->parent()->objectName().toStdString()
+	//		  << "::UpdateProgressInfo(): mbLinked = false" << endl);
+	this->mbLinked = false;
 }
 
 NMItkDataObjectWrapper::NMComponentType

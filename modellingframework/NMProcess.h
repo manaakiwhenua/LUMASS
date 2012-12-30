@@ -37,6 +37,7 @@
 #include <QSharedPointer>
 #include <QMetaObject>
 #include <QMetaType>
+#include <QDateTime>
 
 #include "NMItkDataObjectWrapper.h"
 #include "NMModelComponent.h"
@@ -156,6 +157,8 @@ protected:
 	unsigned int mInputNumDimensions;
 	unsigned int mOutputNumDimensions;
 	NMProcess::AdvanceParameter mParameterHandling;
+
+	bool mbLinked;
 
 	typedef itk::MemberCommand<NMProcess> ObserverType;
 	ObserverType::Pointer mObserver;

@@ -50,8 +50,11 @@
 class NMModelScene;
 class NMComponentLinkItem;
 
-class NMProcessComponentItem: public QGraphicsItem
+class NMProcessComponentItem: public QObject, public QGraphicsItem
 {
+
+	Q_OBJECT
+	Q_INTERFACES(QGraphicsItem)
 
 public:
 	NMProcessComponentItem(QGraphicsItem* parent=0,
@@ -89,11 +92,17 @@ public:
 	QList<NMComponentLinkItem*> getInputLinks(void)
 		{return this->mInputLinks;}
 
+public slots:
+	void updateProgress(float progr);
+	void reportExecutionStarted(const QString& proc);
+	void reportExecutionStopped(const QString& proc);
 
 private:
 
 	std::string ctx;
 
+	float mProgress;
+	bool mbIsExecuting;
 	NMModelScene* mScene;
 	QString mTitle;
 	QMenu* mContextMenu;

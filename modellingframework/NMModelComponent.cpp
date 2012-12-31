@@ -592,7 +592,7 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 		for(; level > minLevel; --level)
 		{
 			tmpComp = this->getInternalStartComponent();
-			while (tmpComp != 0)
+			while (tmpComp != 0 && !controller->isModelAbortionRequested())
 			{
 				if (tmpComp->getTimeLevel() == level)
 				{
@@ -605,7 +605,7 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 
 		// traverse all minLevel components and fetch input data from disconnected pipelines
 		tmpComp = this->getInternalStartComponent();
-		while (tmpComp != 0)
+		while (tmpComp != 0 && !controller->isModelAbortionRequested())
 		{
 			if (tmpComp->getTimeLevel() == minLevel)
 				tmpComp->linkComponents(i, repo);
@@ -614,26 +614,48 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 
 		// call update on the last process of the level 0 pipeline
 		//		NMDebugAI(<< this->objectName().toStdString() << ": iteration #" << i << std::endl);
-		if (this->mProcess != 0)
+		if (!controller->isModelAbortionRequested())
 		{
-			NMDebugAI(<< "update " << this->objectName().toStdString() << "'s process..." << std::endl);
-			if (!this->mProcess->isInitialised())
-				this->mProcess->instantiateObject();
-			this->mProcess->update();
-		}
-		else
-		{
-			NMProcess* endProc = this->getEndOfTimeLevel();
-			if (endProc != 0)
+			if (this->mProcess != 0)
 			{
-				if (!endProc->isInitialised())
-					endProc->instantiateObject();
-				endProc->update();
+				NMDebugAI(<< "update " << this->objectName().toStdString() << "'s process..." << std::endl);
+				if (!this->mProcess->isInitialised())
+					this->mProcess->instantiateObject();
+				this->mProcess->update();
+			}
+			else
+			{
+				NMProcess* endProc = this->getEndOfTimeLevel();
+				if (endProc != 0)
+				{
+					if (!endProc->isInitialised())
+						endProc->instantiateObject();
+					endProc->update();
+				}
 			}
 		}
 	}
 
 	NMDebugCtx(ctxNMModelComponent, << "done!");
+}
+
+void
+NMModelComponent::reset(void)
+{
+	if (this->getProcess() != 0)
+	{
+		this->getProcess()->reset();
+		return;
+	}
+	else
+	{
+		NMModelComponent* comp = this->getInternalStartComponent();
+		while(comp != 0)
+		{
+			comp->reset();
+			comp = this->getNextInternalComponent();
+		}
+	}
 }
 
 void NMModelComponent::getEndOfPipelineProcess(NMProcess*& endProc)

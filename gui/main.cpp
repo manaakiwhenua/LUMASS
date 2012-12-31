@@ -19,6 +19,7 @@
 #include <QResource>
 #include "otbmodellerwin.h"
 
+
 #ifdef BUILD_RASSUPPORT
 /// RASDAMAN includes
 #ifdef EARLY_TEMPLATE
@@ -42,8 +43,8 @@
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    QApplication lumass(argc, argv);
     OtbModellerWin w;
     w.show();
-    return a.exec();
+    return lumass.exec();
 }

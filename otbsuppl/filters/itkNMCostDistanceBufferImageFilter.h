@@ -220,6 +220,7 @@ private:
 
   int m_NumExec;
   int m_UpwardCounter;
+  int m_RowCounter;
   bool m_CreateBuffer;
   bool m_UseImageSpacing;
   bool m_ProcessDownward;

@@ -117,6 +117,7 @@ protected slots:
 	//		QString fnXml, QStringList* writenItems,
 	//		QList<NMComponentLinkItem*>* writtenLinks, bool xmlAppend);
 	void getSubComps(NMModelComponent* comp, QStringList& subs);
+	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
 
 private:
 	void initItemContextMenu();

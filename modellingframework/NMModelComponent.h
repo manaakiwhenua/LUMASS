@@ -144,6 +144,8 @@ public:
     /*! Counts the number of sub components. */
     int countComponents(void);
 
+    void reset(void);
+
 
     void setInput(NMItkDataObjectWrapper* inputImg)
     	{this->setNthInput(0, inputImg);};

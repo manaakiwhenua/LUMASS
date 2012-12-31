@@ -661,7 +661,7 @@ bool NMImageReader::initialise() throw (r_Error)
 	ReaderObserverType::Pointer observer = ReaderObserverType::New();
 	observer->SetCallbackFunction(this,
 			&NMImageReader::UpdateProgressInfo);
-	this->mOtbProcess->AddObserver(itk::ProgressEvent(), observer);
+	//this->mOtbProcess->AddObserver(itk::ProgressEvent(), observer);
 	this->mOtbProcess->AddObserver(itk::StartEvent(), observer);
 	this->mOtbProcess->AddObserver(itk::EndEvent(), observer);
 	this->mOtbProcess->AddObserver(itk::AbortEvent(), observer);

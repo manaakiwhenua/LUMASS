@@ -27,7 +27,8 @@
 
 NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
-	: QGraphicsItem(parent), mContextMenu(0)
+	: QGraphicsItem(parent), mContextMenu(0) ,
+	  mProgress(0.0), mbIsExecuting(false)
 {
 	ctx = "NMProcessComponentItem";
 	this->mScene = scene;
@@ -40,6 +41,14 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 
 NMProcessComponentItem::~NMProcessComponentItem()
 {
+}
+
+void
+NMProcessComponentItem::updateProgress(float progr)
+{
+	this->mProgress = progr;
+	//NMDebugAI(<< mTitle.toStdString() << " => progress: " << progr << std::endl);
+	this->update();
 }
 
 void NMProcessComponentItem::addInputLink(int idx, NMComponentLinkItem* link)
@@ -144,30 +153,72 @@ void NMProcessComponentItem::setTitle(const QString& title)
 
 QRectF NMProcessComponentItem::boundingRect(void) const
 {
-	return mBndRect;
+	QRectF rr(mBndRect);
+	rr.adjust(-5.0, -5.0, 10.0, 10.0);
+	return rr;
 }
+
+void
+NMProcessComponentItem::reportExecutionStarted(const QString& proc)
+{
+	if (proc.compare(this->mTitle) != 0)
+		return;
+	this->mbIsExecuting = true;
+	this->update();
+}
+
+void
+NMProcessComponentItem::reportExecutionStopped(const QString& proc)
+{
+	if (proc.compare(this->mTitle) != 0)
+		return;
+	this->mbIsExecuting = false;
+	this->update();
+}
+
 
 void
 NMProcessComponentItem::paint(QPainter* painter,
 		const QStyleOptionGraphicsItem* option,
 		QWidget* widget)
 {
-	// draw boundary
-	painter->setBrush(Qt::white);
-	QPen pen;
-	if (this->isSelected())
-		pen = QPen(QBrush(Qt::red), 1, Qt::SolidLine);
-	else
-		pen = QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine);
-	painter->setPen(pen);
-	painter->drawRoundRect(QRectF(-45,-45,90,90), 10, 10);
 
-	// draw icon
-	painter->drawPixmap(QRectF(-40,-40,64,64), mIcon, QRectF(0,0,64,64));
+	if(mbIsExecuting)
+	{
+		// draw boundary
+		painter->setBrush(Qt::white);
+		QPen pen = QPen(QBrush(Qt::red), 2, Qt::SolidLine);
+		painter->setPen(pen);
+		painter->drawRoundRect(QRectF(-45,-45,90,90), 10, 10);
+
+		// draw icon
+		painter->drawPixmap(QRectF(-40,-40,64,64), mIcon, QRectF(0,0,64,64));
+
+		if (mProgress > 0)
+		{
+			painter->setPen(QPen(QBrush(Qt::darkRed), 1, Qt::SolidLine));
+			mFont.setItalic(true);
+			painter->setFont(mFont);
+			QString strProg = QString("%1").arg(this->mProgress, 3, 'f', 0);
+			painter->drawText(QRectF(10,-43,20,15), Qt::AlignLeft, strProg);
+		}
+	}
+	else
+	{
+		// draw boundary
+		painter->setBrush(Qt::white);
+		QPen pen = QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine);
+		painter->setPen(pen);
+		painter->drawRoundRect(QRectF(-45,-45,90,90), 10, 10);
+
+		// draw icon
+		painter->drawPixmap(QRectF(-40,-40,64,64), mIcon, QRectF(0,0,64,64));
+	}
 
 	// draw the title
 	painter->setBrush(Qt::NoBrush);
 	painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+	mFont.setItalic(false);
 	mFont.setBold(true);
 	painter->setFont(mFont);
 	painter->drawText(QRectF(-40,25,80,15), Qt::AlignCenter, mTitle);

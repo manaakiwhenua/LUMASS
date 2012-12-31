@@ -29,11 +29,13 @@
 #include <QtConcurrentRun>
 
 NMModelController::NMModelController(QObject* parent)
-	: mRunningModelComponent(0), mbModelIsRunning(false),
+	: mbModelIsRunning(false),
 	  mRootComponent(0), mbAbortionRequested(false)
 {
 	this->setParent(parent);
 	this->ctx = "NMModelController";
+	this->mModelStarted = QDateTime::currentDateTime();
+	this->mModelStopped = this->mModelStarted;
 }
 
 NMModelController::~NMModelController()
@@ -56,26 +58,22 @@ NMModelController::isModelRunning(void)
 void
 NMModelController::reportExecutionStopped(const QString & compName)
 {
-	NMModelComponent* comp = this->getComponent(compName);
-	if (comp != 0)
+	for (int i=0; i < this->mExecutionStack.size(); ++i)
 	{
-		this->mRunningModelComponent = 0;
-		this->mbModelIsRunning = false;
-		emit signalIsControllerBusy(false);
+		if (compName.compare(this->mExecutionStack.at(i)) == 0)
+		{
+			this->mExecutionStack.remove(i);
+			break;
+		}
 	}
 }
 
 void
 NMModelController::reportExecutionStarted(const QString & compName)
 {
-	NMModelComponent* comp = this->getComponent(compName);
-	if (comp != 0)
-	{
-		this->mRunningModelComponent = comp;
-		this->mbModelIsRunning = true;
-		emit signalIsControllerBusy(true);
-	}
+	this->mExecutionStack.push(compName);
 }
+
 
 void
 NMModelController::abortModel(void)
@@ -83,16 +81,36 @@ NMModelController::abortModel(void)
 	NMDebugCtx(ctx, << "...");
 	if (this->mbModelIsRunning)
 	{
-		NMProcess* proc = this->mRunningModelComponent->getProcess();
-		if (proc != 0)
+		QString name;
+		if (this->mExecutionStack.size() > 0)
+			name = this->mExecutionStack.pop();
+
+		NMModelComponent* comp = this->getComponent(name);
+		if (comp != 0)
 		{
-			proc->abortExecution();
+			NMProcess* proc = comp->getProcess();
+			if (proc != 0)
+			{
+				proc->abortExecution();
+			}
 		}
 		this->mbAbortionRequested = true;
+		//this->resetExecutionStack();
 	}
 	NMDebugCtx(ctx, << "done!");
 }
 
+void
+NMModelController::resetExecutionStack(void)
+{
+	// we take all remaining component names from the stack and
+	// signal that they're actually not running any more
+	for (int n=0; n < this->mExecutionStack.size(); ++n)
+	{
+		QString name = this->mExecutionStack.pop();
+		emit signalExecutionStopped(name);
+	}
+}
 
 NMModelComponent*
 NMModelController::identifyRootComponent(void)
@@ -136,6 +154,7 @@ NMModelController::executeModel(const QString& compName)
 	}
 
 	this->mRootComponent = this->identifyRootComponent();
+	QString name = this->mRootComponent->objectName();
 	if (this->mRootComponent == 0)
 	{
 		NMErr(ctx, << "couldn't find a root component!");
@@ -145,40 +164,56 @@ NMModelController::executeModel(const QString& compName)
 	NMDebugAI(<< "running model on thread: "
 			<< this->thread()->currentThreadId() << endl);
 
+	// model management
 	this->mbModelIsRunning = true;
 	this->mbAbortionRequested = false;
-	this->mRootComponent->update(this->mComponentMap);
+
+	this->mModelStarted = QDateTime::currentDateTime();
+
+	// we catch all exceptions thrown by ITK & rasdaman here
+	// and just report them for now; note this includes
+	// the 'abortion-exception' thrwon by ITK/OTB as response to
+	// user-requested model abortion
+	try
+	{
+		this->mRootComponent->update(this->mComponentMap);
+	}
+	catch (std::exception& e)
+	{
+		NMDebugAI(<< e.what() << endl);
+	}
+
+	this->mModelStopped = QDateTime::currentDateTime();
+	int msec = this->mModelStarted.msecsTo(this->mModelStopped);
+	int min = msec / 60000;
+	double sec = (msec % 60000) / 1000.0;
+
+	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+	NMDebugAI(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
+
+	this->mbModelIsRunning = false;
+	this->mbAbortionRequested = false;
+	emit signalIsControllerBusy(false);
+
+	// to be on the safe side, we reset the execution stack and
+	// notify all listeners, that those components are no longer
+	// running
+	this->resetExecutionStack();
+	this->resetComponent(name);
 
 	NMDebugCtx(ctx, << "done!");
 }
 
-//void
-//NMModelController::execute()
-//{
-//	NMDebugCtx(ctx, << "...");
-//	this->mRootComponent = this->identifyRootComponent();
-//	if (this->mRootComponent == 0)
-//	{
-//		NMErr(ctx, << "couldn't find a root component!");
-//		return;
-//	}
-////	this->mRootComponent->initialiseComponents();
-//
-//	NMDebugAI(<< "running model on thread: "
-//			<< this->thread()->currentThreadId() << endl);
-//
-//	this->mRootComponent->update(this->mComponentMap);
-//
-//	//QtConcurrent::run(this->mRootComponent, &NMModelComponent::update,
-//	//		this->mComponentMap);
-//
-//	//NMDebugAI(<< "start modelling thread from thread " <<
-//	//		this->currentThreadId() << endl);
-//
-//
-//	//this->start();
-//	NMDebugCtx(ctx, << "done!");
-//}
+void
+NMModelController::resetComponent(const QString& compName)
+{
+	NMModelComponent* comp = this->getComponent(compName);
+	if (comp == 0)
+		return;
+
+	comp->reset();
+
+}
 
 QString NMModelController::addComponent(NMModelComponent* comp,
 		NMModelComponent* host)

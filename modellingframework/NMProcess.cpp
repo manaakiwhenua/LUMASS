@@ -255,8 +255,10 @@ NMProcess::getInputComponentType(void)
 
 void NMProcess::reset(void)
 {
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 	this->mParamPos = 0;
 	this->mbIsInitialised = false;
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void NMProcess::update(void)
@@ -294,11 +296,12 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 	if (proc == 0)
 		return;
 
+	if (this->mbAbortExecution)
+		proc->AbortGenerateDataOn();
+
 	if (typeid(event) == typeid(itk::ProgressEvent))
 	{
 		emit signalProgress((float)(proc->GetProgress() * 100.0));
-		if (this->mbAbortExecution)
-			proc->AbortGenerateDataOn();
 	}
 	else if (typeid(event) == typeid(itk::StartEvent))
 	{
@@ -315,6 +318,7 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 	{
 		emit signalExecutionStopped(this->parent()->objectName());
 		emit signalProgress(0);
+		this->mOtbProcess->ResetPipeline();
 		this->mOtbProcess->SetAbortGenerateData(false);
 		this->mbAbortExecution = false;
 	}

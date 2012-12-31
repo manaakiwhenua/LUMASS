@@ -54,6 +54,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
   m_NumCategories = 0;
   m_NumExec = 1;
   m_UpwardCounter = 1;
+  m_RowCounter = 1;
   m_BufferZoneIndicator = 0;
   m_CreateBuffer = false;
   m_UseImageSpacing = false;
@@ -115,6 +116,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 {
   this->m_NumExec = 1;
   this->m_UpwardCounter = 1;
+  this->m_RowCounter = 1;
 }
 
 
@@ -216,6 +218,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 
 	if (this->m_NumExec == 1)
 	{
+		//this->InvokeEvent(itk::StartEvent());
 		distanceMap->SetBufferedRegion(inImg->GetRequestedRegion());
 		distanceMap->Allocate();
 	}
@@ -264,7 +267,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 
 	int ncols = region.GetSize()[0];
 	int nrows = region.GetSize()[1];
-	unsigned int buflen = ncols * nrows;
+	int maxrows = distanceMap->GetLargestPossibleRegion().GetSize()[1] * 2;
 
 	double* colDist = 0;
 	double* rowDist = 0;
@@ -351,6 +354,13 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 
 			memcpy((void*)colDist, (void*)(colDist+ncols+2), (ncols+2)*sizeof(double));
 			memcpy((void*)rowDist, (void*)(rowDist+ncols+2), (ncols+2)*sizeof(double));
+
+			this->UpdateProgress(this->m_RowCounter / (float)maxrows);
+			if (this->GetAbortGenerateData())
+			{
+				goto cleanup;
+			}
+			++this->m_RowCounter;
 		}
     }
 
@@ -396,11 +406,20 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 				colDist[rr] = maxDist;
 				rowDist[rr] = maxDist;
 			}
+
+
+			this->UpdateProgress(this->m_RowCounter / (float)maxrows);
+			if (this->GetAbortGenerateData())
+			{
+				goto cleanup;
+			}
+			++this->m_RowCounter;
 		}
 		++this->m_UpwardCounter;
     }
 	++this->m_NumExec;
 
+	cleanup:
 	// clear memory
 	for (int i=0; i < 3; ++i)
 	{
@@ -421,6 +440,9 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 	// by destructor
 	m_colDist = colDist;
 	m_rowDist = rowDist;
+
+	//if (this->m_RowCounter >= maxrows)
+		//this->InvokeEvent(itk::EndEvent());
 
 	NMDebugCtx(ctx, << "done!");
 

@@ -97,6 +97,10 @@ protected:
 #endif	
 	QString mRasConnectFile;
 
+	//typedef itk::MemberCommand<NMStreamingImageFileWriterWrapper> WriteObserverType;
+
+	//void UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event);
+
 	void setInternalFileName(QString fileName);
 	void linkParameters(unsigned int step,
 			const QMap<QString, NMModelComponent*>& repo);

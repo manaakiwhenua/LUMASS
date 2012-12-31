@@ -33,6 +33,11 @@
 
 #include "NMProcess.h"
 
+#include "itkObject.h"
+//#include "itkCommand.h"
+//#include "itkEventObject.h"
+
+
 #ifdef BUILD_RASSUPPORT
 	#include "RasdamanConnector.h"
 	#include "NMRasdamanConnectorWrapper.h"
@@ -73,9 +78,6 @@ public:
 #endif
 
 
-signals:
-
-
 public:
 	NMCostDistanceBufferImageWrapper(QObject* parent = 0);
 	virtual ~NMCostDistanceBufferImageWrapper();
@@ -113,6 +115,11 @@ protected:
 	RasdamanConnector * mRasconn;
 #endif
 	bool mbRasMode;
+
+
+	typedef itk::MemberCommand<NMCostDistanceBufferImageWrapper> DistanceObserverType;
+
+	void UpdateProgressInfo(itk::Object*, const itk::EventObject&);
 
 
 	void linkParameters(unsigned int step,

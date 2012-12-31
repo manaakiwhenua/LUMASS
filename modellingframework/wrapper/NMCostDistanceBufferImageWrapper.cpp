@@ -155,6 +155,17 @@ public:
 		// set the other 'singular / fixed' parameters
 		f->SetUseImageSpacing(p->mUseImageSpacing);
 		f->SetCreateBuffer(p->mCreateBuffer);
+
+
+		// set the observer for this process object
+		NMCostDistanceBufferImageWrapper::DistanceObserverType::Pointer observer =
+				NMCostDistanceBufferImageWrapper::DistanceObserverType::New();
+		observer->SetCallbackFunction(p,
+				&NMCostDistanceBufferImageWrapper::UpdateProgressInfo);
+		f->AddObserver(itk::ProgressEvent(), observer);
+		//f->AddObserver(itk::StartEvent(), observer);
+		//f->AddObserver(itk::EndEvent(), observer);
+		f->AddObserver(itk::AbortEvent(), observer);
 	}
 
 	static void execute(itk::ProcessObject::Pointer& otbFilter,
@@ -397,6 +408,7 @@ public:
 		/* ================================================================== */
 		/* just check the single-run algorithm */
 
+		p->UpdateProgressInfo(distfilter, itk::StartEvent());
 			if (bRAM)
 			{
 				writer->SetInput(distfilter->GetOutput());
@@ -408,6 +420,7 @@ public:
 				NMDebugAI(<< "==> this took " << chrono.GetMean()
 						<< " time units " << endl);
 				NMDebugCtx("CostDistanceInternal", << "done!");
+				p->UpdateProgressInfo(distfilter, itk::EndEvent());
 				return;
 			}
 		/* ================================================================== */
@@ -418,7 +431,7 @@ public:
 	    // iterate over the regions (chunks of rows)
 	    // to get the job done
 	    QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
-	    for (int iter=0; iter <= niter; ++iter)
+	    for (int iter=0; iter <= niter && !p->mbAbortExecution; ++iter)
 	    {
 	    	NMDebugAI(<< "  startrow=" << startrow << "  endrow=" << endrow
 	    			<< "  rowstoread=" << rowstoread << "  rest=" << rest << endl);
@@ -491,7 +504,7 @@ public:
 	    startrow = nrows - chunksize;
 	    endrow = nrows - 1;
 	    rowstoread = chunksize;
-	    for (int iter=0; iter <= niter; ++iter)
+	    for (int iter=0; iter <= niter && !p->mbAbortExecution; ++iter)
 	    {
 	    	NMDebugAI(<< "startrow=" << startrow << " endrow=" << endrow
 	    			<< " rowstoread=" << rowstoread << " rest=" << rest << endl);
@@ -541,6 +554,7 @@ public:
 	        rowstoread = endrow - startrow + 1;
 	    }
 
+	    p->UpdateProgressInfo(distfilter, itk::EndEvent());
 		NMDebugCtx("CostDistanceInternal", << "done!");
 	}
 
@@ -567,6 +581,8 @@ NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* pare
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 	this->mParamPos = 0;
 	this->mbRasMode = false;
+
+
 #ifdef BUILD_RASSUPPORT
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
@@ -586,19 +602,28 @@ NMCostDistanceBufferImageWrapper::setRasdamanConnector(RasdamanConnector * rasco
 }
 #endif
 
+void
+NMCostDistanceBufferImageWrapper::UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event)
+{
+	// just call base class implementation here
+	NMProcess::UpdateProgressInfo(obj, event);
+}
 
 void
-NMCostDistanceBufferImageWrapper::update(void)
+NMCostDistanceBufferImageWrapper::update()
 {
 	if (!this->mbIsInitialised)
 		return;
 
+	int oldParamPos = this->mParamPos;
 	switch(this->mInputComponentType)
 	{
 	MacroPerType( callInputTypeInternalExecute, NMCostDistanceBufferImageWrapper_Internal )
 	default:
 		break;
 	}
+
+	this->mParamPos = oldParamPos + 1;
 }
 
 void

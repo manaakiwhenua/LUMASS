@@ -233,6 +233,17 @@ void
 NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
+	// we set our own progress observer here, to be able to filter
+	// this particular event from being processed for this object
+	// by the default NMProcess-based implementation
+	//WriteObserverType::Pointer observer = WriteObserverType::New();
+	//observer->SetCallbackFunction(this,
+	//		&NMStreamingImageFileWriterWrapper::UpdateProgressInfo);
+	//this->mOtbProcess->AddObserver(itk::ProgressEvent(), observer);
+	//this->mOtbProcess->AddObserver(itk::StartEvent(), observer);
+	//this->mOtbProcess->AddObserver(itk::EndEvent(), observer);
+	//this->mOtbProcess->AddObserver(itk::AbortEvent(), observer);
+
 	if (step > this->mFileNames.size()-1)
 		step = 0;
 
@@ -244,22 +255,13 @@ NMStreamingImageFileWriterWrapper
 
 //void
 //NMStreamingImageFileWriterWrapper
-//::linkInPipeline(const QMap<QString, NMModelComponent*>& repo)
+//::UpdateProgressInfo(itk::Object* obj, const itk::EventObject& event)
 //{
-//	NMDebugCtx(ctxNMStreamWriter, << "...");
-//
-//	// call the base class for linking inputs
-//	NMProcess::linkInputs(repo);
-//
-//	// now let's set this process' special properties
-//	if (this->mParameterPos < this->mFileNames.size())
-//		this->setInternalFileName(this->mFileNames.at(this->mParameterPos));
-//
-//	NMDebugCtx(ctxNMStreamWriter, << "done!");
-//
+//	// we just filter the progress event, since it doesn't provide
+//	// meaningful information for a writer (at the moment)
+//	if (typeid(event) != typeid(itk::ProgressEvent()))
+//		NMProcess::UpdateProgressInfo(obj, event);
 //}
-
-
 
 
 

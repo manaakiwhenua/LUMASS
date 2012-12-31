@@ -134,25 +134,15 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
 
 	QPushButton* btnCancel = new QPushButton();
-	btnCancel->setText(tr("Cancel"));
+	btnCancel->setText(tr("Stop Execution"));
 	btnCancel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
 	QPushButton* btnExec = new QPushButton();
 	btnExec->setText(tr("Execute"));
 	btnExec->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-//	QPushButton* btnLoad = new QPushButton();
-//	btnLoad->setText(tr("Load"));
-//	btnLoad->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-//
-//	QPushButton* btnSave = new QPushButton();
-//	btnSave->setText(tr("Save"));
-//	btnSave->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
 	QHBoxLayout* boxLayout = new QHBoxLayout();
 	boxLayout->setAlignment(Qt::AlignRight | Qt::AlignBottom);
-//	boxLayout->addWidget(btnLoad);
-//	boxLayout->addWidget(btnSave);
 	boxLayout->addWidget(btnCancel);
 	boxLayout->addWidget(btnExec);
 
@@ -166,8 +156,6 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	// connect buttons
 	connect(btnExec, SIGNAL(clicked()), this, SLOT(executeModel()));
 	connect(btnCancel, SIGNAL(clicked()), this, SIGNAL(requestModelAbortion()));
-//	connect(btnLoad, SIGNAL(clicked()), this, SLOT(loadModel()));
-//	connect(btnSave, SIGNAL(clicked()), this, SLOT(saveModel()));
 
 	this->initItemContextMenu();
 
@@ -183,6 +171,7 @@ NMModelViewWidget::~NMModelViewWidget()
 			emit requestModelAbortion();
 			this->thread()->wait(5000);
 		}
+		mModelRunThread->exit(0);
 		mModelRunThread->quit();
 		//if (mModelRunThread != 0)
 		//	delete mModelRunThread;
@@ -444,6 +433,74 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 	this->mItemContextMenu->exec();
 }
 
+void NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
+{
+	NMDebugCtx(ctx, << "...");
+
+
+	// remove all outgoing links to other components
+	QList<NMComponentLinkItem*> outLinks = procItem->getOutputLinks();
+	NMDebugAI(<< "found " << outLinks.size() << " outlinks" << std::endl);
+
+	for(unsigned int o=0; o < outLinks.size(); ++o)
+	{
+		NMComponentLinkItem* link = outLinks[o];
+		NMProcessComponentItem* target = link->targetItem();
+		target->removeLink(link);
+		NMModelComponent* tcomp = mModelController->getComponent(target->getTitle());
+		if (tcomp != 0)
+		{
+			if (tcomp->getProcess() != 0)
+				tcomp->getProcess()->removeInputComponent(procItem->getTitle());
+		}
+
+		mModelScene->removeItem(link);
+		delete link;
+		link = 0;
+
+		if (this->mOpenEditors.contains(tcomp))
+			this->mOpenEditors.value(tcomp)->update();
+	}
+
+	// remove all incoming links
+	QList<NMComponentLinkItem*> inLinks = procItem->getInputLinks();
+	NMDebugAI(<< "found " << inLinks.size() << " inlinks" << std::endl);
+	for(unsigned int i=0; i < inLinks.size(); ++i)
+	{
+		NMComponentLinkItem* link = inLinks[i];
+		NMProcessComponentItem* source = link->sourceItem();
+		source->removeLink(link);
+		mModelScene->removeItem(link);
+		delete link;
+		link = 0;
+	}
+
+	// check, whether the component is the last
+	// process component in this model component
+	NMModelComponent* procComp = mModelController->getComponent(procItem->getTitle());
+	if (procComp == 0)
+	{
+		NMErr(ctx, << "something has gone utterly wrong! The component which is supposed"
+				<< " to be deleted, is not controlled by this controller!");
+		NMDebugCtx(ctx, << "done!");
+		return;
+	}
+	NMModelComponent* hostComp = procComp->getHostComponent();
+
+	// finally remove the component itself
+	mModelScene->removeItem(procItem);
+	if (!mModelController->removeComponent(procItem->getTitle()))
+	{
+		NMErr(ctx, << "failed to remove component '"
+				<< procItem->getTitle().toStdString() << "'!");
+	}
+
+	this->deleteEmptyComponent(hostComp);
+
+	NMDebugCtx(ctx, << "done!");
+}
+
+
 void NMModelViewWidget::getSubComps(NMModelComponent* comp, QStringList& subs)
 {
 	NMModelComponent* ic = comp->getInternalStartComponent();
@@ -693,14 +750,17 @@ void NMModelViewWidget::loadItems(void)
 						NMErr(ctx, << "Couldn't find the process component for item '"
 								<< itemTitle.toStdString() << "'!");
 					}
-					connect(procComp, SIGNAL(signalProgress(float)), pi,
-							SLOT(updateProgress(float)));
-					connect(procComp, SIGNAL(signalExecutionStarted(const QString &)),
-							this->mModelController,
-							SLOT(reportExecutionStarted(const QString &)));
-					connect(procComp, SIGNAL(signalExecutionStopped(const QString &)),
-							this->mModelController,
-							SLOT(reportExecutionStopped(const QString &)));
+
+					this->connectProcessItem(procComp, pi);
+
+					//connect(procComp, SIGNAL(signalProgress(float)), pi,
+					//		SLOT(updateProgress(float)));
+					//connect(procComp, SIGNAL(signalExecutionStarted(const QString &)),
+					//		this->mModelController,
+					//		SLOT(reportExecutionStarted(const QString &)));
+					//connect(procComp, SIGNAL(signalExecutionStopped(const QString &)),
+					//		this->mModelController,
+					//		SLOT(reportExecutionStopped(const QString &)));
 
 					this->mModelScene->addItem(pi);
 				}
@@ -1127,74 +1187,6 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 	NMDebugCtx(ctx, << "done!");
 }
 
-void NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
-{
-	NMDebugCtx(ctx, << "...");
-
-
-	// remove all outgoing links to other components
-	QList<NMComponentLinkItem*> outLinks = procItem->getOutputLinks();
-	NMDebugAI(<< "found " << outLinks.size() << " outlinks" << std::endl);
-
-	for(unsigned int o=0; o < outLinks.size(); ++o)
-	{
-		NMComponentLinkItem* link = outLinks[o];
-		NMProcessComponentItem* target = link->targetItem();
-		target->removeLink(link);
-		NMModelComponent* tcomp = mModelController->getComponent(target->getTitle());
-		if (tcomp != 0)
-		{
-			if (tcomp->getProcess() != 0)
-				tcomp->getProcess()->removeInputComponent(procItem->getTitle());
-		}
-
-		mModelScene->removeItem(link);
-		delete link;
-		link = 0;
-
-		if (this->mOpenEditors.contains(tcomp))
-			this->mOpenEditors.value(tcomp)->update();
-	}
-
-	// remove all incoming links
-	QList<NMComponentLinkItem*> inLinks = procItem->getInputLinks();
-	NMDebugAI(<< "found " << inLinks.size() << " inlinks" << std::endl);
-	for(unsigned int i=0; i < inLinks.size(); ++i)
-	{
-		NMComponentLinkItem* link = inLinks[i];
-		NMProcessComponentItem* source = link->sourceItem();
-		source->removeLink(link);
-		mModelScene->removeItem(link);
-		delete link;
-		link = 0;
-	}
-
-	// check, whether the component is the last
-	// process component in this model component
-	NMModelComponent* procComp = mModelController->getComponent(procItem->getTitle());
-	if (procComp == 0)
-	{
-		NMErr(ctx, << "something has gone utterly wrong! The component which is supposed"
-				<< " to be deleted, is not controlled by this controller!");
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
-	NMModelComponent* hostComp = procComp->getHostComponent();
-
-	// finally remove the component itself
-	mModelScene->removeItem(procItem);
-	if (!mModelController->removeComponent(procItem->getTitle()))
-	{
-		NMErr(ctx, << "failed to remove component '"
-				<< procItem->getTitle().toStdString() << "'!");
-	}
-
-	this->deleteEmptyComponent(hostComp);
-
-	NMDebugCtx(ctx, << "done!");
-}
-
-
 void NMModelViewWidget::deleteEmptyComponent(NMModelComponent* comp)
 {
 	NMDebugCtx(ctx, << "...");
@@ -1237,6 +1229,32 @@ void NMModelViewWidget::compProcChanged()
 }
 
 void
+NMModelViewWidget::connectProcessItem(NMProcess* proc,
+		NMProcessComponentItem* procItem)
+{
+	connect(proc, SIGNAL(signalProgress(float)),
+			procItem, SLOT(updateProgress(float)));
+
+	connect(proc, SIGNAL(signalExecutionStarted(const QString &)),
+			procItem,
+			SLOT(reportExecutionStarted(const QString &)));
+	connect(proc, SIGNAL(signalExecutionStopped(const QString &)),
+			procItem,
+			SLOT(reportExecutionStopped(const QString &)));
+
+
+	connect(proc, SIGNAL(signalExecutionStarted(const QString &)),
+			this->mModelController,
+			SLOT(reportExecutionStarted(const QString &)));
+	connect(proc, SIGNAL(signalExecutionStopped(const QString &)),
+			this->mModelController,
+			SLOT(reportExecutionStopped(const QString &)));
+
+	connect(this->mModelController, SIGNAL(signalExecutionStopped(const QString &)),
+			procItem, SLOT(reportExecutionStopped(const QString &)));
+}
+
+void
 NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		const QString& procName, QPointF scenePos)
 {
@@ -1265,15 +1283,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 	NMModelComponent* comp = new NMModelComponent();
 	comp->setProcess(proc);
 
-	connect(proc, SIGNAL(signalProgress(float)),
-			procItem, SLOT(updateProgress(float)));
-	connect(proc, SIGNAL(signalExecutionStarted(const QString &)),
-			this->mModelController,
-			SLOT(reportExecutionStarted(const QString &)));
-	connect(proc, SIGNAL(signalExecutionStopped(const QString &)),
-			this->mModelController,
-			SLOT(reportExecutionStopped(const QString &)));
-
+	this->connectProcessItem(proc, procItem);
 
 	QString tname = procName;
 	unsigned int cnt = 1;

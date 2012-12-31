@@ -31,9 +31,9 @@
  
 #include <qobject.h>
 #include <QThread>
-#include <QMutex>
 #include <QMap>
 #include <QString>
+#include <QDateTime>
 
 #include <string>
 #include <iostream>
@@ -101,15 +101,25 @@ public slots:
 	 */
 	void reportExecutionStarted(const QString & compName);
 
-	/*! Sets NMProcess::mAbortExecution and NMModelController::mbAbortionRequested
-	 *  to true; the process object then either aborts the process execution
-	 *  or not and if so, it signals it back to the model controller
-	 *  (cf. NMModelController::reportExecutionStopped()). The member
-	 *  mbAbortionRequested is periodically checked within the update
-	 *  iteration loop of a model component and the component breaks out of
-	 *  the loop if an abortion is requested.
+	/*! Sets NMProcess::mAbortExecution to true for the most recently
+	 *  executed and still running process component at the time this
+	 *  function is invoked (note: due to delay in signal
+	 *  slot processing across threads, this may differ from the
+	 *  highlighted process item in the GUI at the time the
+	 *  user requested model abortion); If the process objects
+	 *  supports abortion it stops at a process specific point and
+	 *  signals back to the model controller that it stopped
+	 *  (cf. NMModelController::reportExecutionStopped()).
+	 *  This method also sets NMModelController::mbAbortionRequested
+	 *  to true, which is periodically checked within a model
+	 *  component's update iteration loop to prevent (re-) execution
+	 *  of 'aborted' process objects and process objects, which doesn't
+	 *  support abortion.
 	 */
 	void abortModel(void);
+
+	const QDateTime& getModelStartTime(void)
+		{return this->mModelStarted;}
 
 	/*! Indicates whether a model's update iteration loop should be
 	 *  terminated.*/
@@ -120,17 +130,26 @@ public slots:
 	/*! Signals whether any of the process components controlled
 	 *  by this controller is currently running or not */
 	void signalIsControllerBusy(bool);
+	void signalExecutionStopped(const QString&);
 
 protected:
 	NMModelController(QObject* parent=0);
 	virtual ~NMModelController();
 
+	void resetExecutionStack(void);
+	void resetComponent(const QString& compName);
+
 	QMap<QString, NMModelComponent*> mComponentMap;
+	QStack<QString> mExecutionStack;
+
 	NMModelComponent* mRootComponent;
 
-	NMModelComponent* mRunningModelComponent;
+	//NMModelComponent* mRunningModelComponent;
 	bool mbModelIsRunning;
 	bool mbAbortionRequested;
+
+	QDateTime mModelStarted;
+	QDateTime mModelStopped;
 
 	NMModelController* mModelController;
 

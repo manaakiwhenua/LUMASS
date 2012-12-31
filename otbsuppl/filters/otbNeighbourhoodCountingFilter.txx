@@ -143,7 +143,7 @@ NeighbourhoodCountingFilter< TInputImage, TOutputImage>
   int count;
   int val;
 
-  std::cout << "alright, we're in ... " << std::endl;
+  //std::cout << "all right, we're in ... " << std::endl;
   // Process each of the boundary faces.  These are N-d regions which border
   // the edge of the buffer.
   for (fit=faceList.begin(); fit != faceList.end(); ++fit)
@@ -155,7 +155,7 @@ NeighbourhoodCountingFilter< TInputImage, TOutputImage>
     bit.OverrideBoundaryCondition(&nbc);
     bit.GoToBegin();
 
-    while ( ! bit.IsAtEnd() )
+    while ( ! bit.IsAtEnd() && !this->GetAbortGenerateData())
       {
       count = 0;
       for (i = 0; i < neighborhoodSize; ++i)
@@ -174,7 +174,7 @@ NeighbourhoodCountingFilter< TInputImage, TOutputImage>
       }
     }
 
-  std::cout << "now we're out again!" << std::endl;
+  //std::cout << "now we're out again!" << std::endl;
 }
 
 /**

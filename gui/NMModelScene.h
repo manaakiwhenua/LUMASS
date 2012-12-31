@@ -103,7 +103,7 @@ protected:
 
 private:
 
-	std::string ctx;
+	static const std::string ctx;
 
 	qreal mLinkZLevel;
 	qreal mLinkHitTolerance;

@@ -28,6 +28,7 @@
 #include <QStatusBar>
 #include <QGraphicsTextItem>
 #include <QGraphicsLineItem>
+#include <QMessageBox>
 
 #include "NMModelScene.h"
 #include "NMModelViewWidget.h"
@@ -35,11 +36,13 @@
 #include "NMAggregateComponentItem.h"
 #include "otbmodellerwin.h"
 
+const std::string NMModelScene::ctx = "NMModelScene";
+
 
 NMModelScene::NMModelScene(QObject* parent)
 	: QGraphicsScene(parent)
 {
-	ctx = "NMModelScene";
+	//ctx = "NMModelScene";
 	mMode = NMS_IDLE;
 	mLinkHitTolerance = 15;
 	mLinkZLevel = 10000;
@@ -180,10 +183,24 @@ NMModelScene::getComponentItem(const QString& name)
 
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
+	NMDebugCtx(ctx, << "...");
 	if (event->mimeData()->hasFormat("text/plain"))
 	{
 		QString dropText = event->mimeData()->text();
 		//NMDebugCtx(ctx, << "dropText = " << dropText.toStdString() << std::endl);
+
+		if (NMModelController::getInstance()->isModelRunning())
+		{
+			QMessageBox::information(0, "Invalid user request!",
+					"You cannot create new model components\nwhile a "
+					"model is currently being executed! Please try again later!");
+
+			NMErr(ctx, << "You cannot create new model components while there is "
+					     "a model running. Please try again later!");
+			NMDebugCtx(ctx, << "done!");
+			return;
+		}
+
 
 		NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
 		procItem->setTitle(dropText);
@@ -192,6 +209,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 		event->acceptProposedAction();
 		emit processItemCreated(procItem, dropText, event->scenePos());
 	}
+	NMDebugCtx(ctx, << "done!");
 }
 
 void

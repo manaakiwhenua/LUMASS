@@ -1,5 +1,5 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
+ /*****************************i*************************************************
+ * Created by Alexander Herzig nk
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -51,7 +51,13 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
         this->mRasConn = 0;
 #endif
 
+
+    /* ====================================================================== */
+    /* MODEL CONTROLLER SETUP */
+    /* ====================================================================== */
     mModelRunThread = new QThread(this);
+    connect(this, SIGNAL(widgetIsExiting()), mModelRunThread, SLOT(quit()));
+
     mModelRunThread->start();
 
  	mModelController = NMModelController::getInstance();
@@ -71,6 +77,10 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	this->mModelController->addComponent(mRootComponent);
 	connect(mRootComponent, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
 
+
+    /* ====================================================================== */
+    /* GET THE RASDAMAN CONNECTOR FROM THE MAIN WINDOW */
+	/* ====================================================================== */
 	OtbModellerWin* mainWin = 0;
 	QWidgetList tlw = qApp->topLevelWidgets();
 	QWidgetList::ConstIterator it = tlw.constBegin();
@@ -99,6 +109,9 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	}
 #endif	
 
+    /* ====================================================================== */
+    /* MODEL SCENE SETUP */
+	/* ====================================================================== */
 	mModelScene = new NMModelScene(this);
 	mModelScene->setSceneRect(-3000,-3000,6000,6000);
 	mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
@@ -126,13 +139,22 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	connect(mModelScene, SIGNAL(zoomOut()), this, SLOT(zoomOut()));
 
 
+	/* ====================================================================== */
+    /* MODEL VIEW SETUP */
+	/* ====================================================================== */
 	mModelView = new QGraphicsView(mModelScene, this);
 	mModelView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	mModelView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 	mModelView->setCacheMode(QGraphicsView::CacheBackground);
 	mModelView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, false);
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
+	mModelView->setRenderHint(QPainter::Antialiasing, true);
+	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
 
+
+    /* ====================================================================== */
+    /* WIDGET BUTTON AND CONTEXT MENU SETUP */
+	/* ====================================================================== */
 	QPushButton* btnCancel = new QPushButton();
 	btnCancel->setText(tr("Stop Execution"));
 	btnCancel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -159,7 +181,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
 	this->initItemContextMenu();
 
-    qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
+	qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
 }
 
 NMModelViewWidget::~NMModelViewWidget()
@@ -169,12 +191,10 @@ NMModelViewWidget::~NMModelViewWidget()
 		if (this->mbControllerIsBusy)
 		{
 			emit requestModelAbortion();
-			this->thread()->wait(5000);
+			this->thread()->wait(10000);
 		}
-		mModelRunThread->exit(0);
-		mModelRunThread->quit();
-		//if (mModelRunThread != 0)
-		//	delete mModelRunThread;
+		emit widgetIsExiting();
+		mModelRunThread->wait();
 	}
 }
 
@@ -304,8 +324,7 @@ void NMModelViewWidget::createAggregateComponent()
 	QGraphicsItem* hostItem = this->mModelScene->getComponentItem(host->objectName());
 
 	// create the new aggregate component item, and add all selected children
-	NMAggregateComponentItem* aggrItem = new NMAggregateComponentItem(hostItem,
-			this->mModelScene);
+	NMAggregateComponentItem* aggrItem = new NMAggregateComponentItem(hostItem);
 	aggrItem->setTitle(newAggrItemName);
 	it.toFront();
 	while(it.hasNext())
@@ -753,22 +772,13 @@ void NMModelViewWidget::loadItems(void)
 
 					this->connectProcessItem(procComp, pi);
 
-					//connect(procComp, SIGNAL(signalProgress(float)), pi,
-					//		SLOT(updateProgress(float)));
-					//connect(procComp, SIGNAL(signalExecutionStarted(const QString &)),
-					//		this->mModelController,
-					//		SLOT(reportExecutionStarted(const QString &)));
-					//connect(procComp, SIGNAL(signalExecutionStopped(const QString &)),
-					//		this->mModelController,
-					//		SLOT(reportExecutionStopped(const QString &)));
-
 					this->mModelScene->addItem(pi);
 				}
 				break;
 
 		case (qint32)NMAggregateComponentItem::Type:
 				{
-					ai = new NMAggregateComponentItem(0, this->mModelScene);
+					ai = new NMAggregateComponentItem(0);
 
 					QString title;
 					QPointF pos;
@@ -841,7 +851,7 @@ void NMModelViewWidget::loadItems(void)
 								this->mModelScene->getComponentItem(tarName));
 					if (si != 0 && ti != 0)
 					{
-						li = new NMComponentLinkItem(si, ti, 0, this->mModelScene);
+						li = new NMComponentLinkItem(si, ti, 0);
 						li->setZValue(this->mModelScene->getLinkZLevel());
 						si->addOutputLink(srcIdx, li);
 						ti->addInputLink(tarIdx, li);
@@ -1037,13 +1047,10 @@ void NMModelViewWidget::deleteItem()
 {
 	NMDebugCtx(ctx, << "...");
 
-
-
 	NMProcessComponentItem* procItem;
 	NMAggregateComponentItem* aggrItem;
 	NMComponentLinkItem* linkItem;
 
-	//QList<QGraphicsItem*> delList;
 	QList<NMComponentLinkItem*> delLinkList;
 	QStringList delList;
 	if (this->mModelScene->selectedItems().count())
@@ -1062,8 +1069,18 @@ void NMModelViewWidget::deleteItem()
 				delLinkList.push_back(linkItem);
 		}
 	}
-	//else if (this->mLastItem != 0)
-	//	delList.push_back(this->mLastItem);
+	else if (this->mLastItem != 0)
+	{
+		procItem = qgraphicsitem_cast<NMProcessComponentItem*>(this->mLastItem);
+		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(this->mLastItem);
+		linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(this->mLastItem);
+		if (linkItem != 0)
+			this->deleteLinkComponentItem(linkItem);
+		else if (procItem != 0)
+			this->deleteProcessComponentItem(procItem);
+		else if (aggrItem != 0)
+			this->deleteAggregateComponentItem(aggrItem);
+	}
 
 
 	QStringListIterator sit(delList);
@@ -1103,10 +1120,69 @@ void NMModelViewWidget::deleteItem()
 		//}
 	}
 
-
 	mModelScene->invalidate();
 	NMDebugCtx(ctx, << "done!");
 }
+
+void
+NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
+{
+	// for now, we're just dealing with the inputs of the first
+	// iteration, since we don't support visualising the
+	// 2+ iteration inputs as yet
+	if (inputs.size() == 0)
+		return;
+	QStringList list = inputs.at(0);
+
+	NMProcess* sender = qobject_cast<NMProcess*>(this->sender());
+	if (sender == 0)
+		return;
+
+	QString senderName = sender->parent()->objectName();
+	QGraphicsItem* gi = this->mModelScene->getComponentItem(senderName);
+	if (gi == 0)
+		return;
+	NMProcessComponentItem* procItem =
+			qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+	if (procItem == 0)
+		return;
+	QList<NMComponentLinkItem*> inputLinks = procItem->getInputLinks();
+
+	// remove inputs
+	for (int a=0; a < inputLinks.size(); ++a)
+	{
+		NMComponentLinkItem* link = inputLinks.at(a);
+		if (!list.contains(procItem->identifyInputLink(a)))
+		{
+			NMProcessComponentItem* src = link->sourceItem();
+			src->removeLink(link);
+			procItem->removeLink(link);
+			this->mModelScene->removeItem(link);
+		}
+	}
+
+	// add inputs
+	for (int b=0; b < list.size(); ++b)
+	{
+		if (procItem->getInputLinkIndex(list.at(b)) == -1)
+		{
+			NMProcessComponentItem* si =
+					qgraphicsitem_cast<NMProcessComponentItem*>(
+						this->mModelScene->getComponentItem(list.at(b)));
+			NMComponentLinkItem* li;
+			if (si != 0)
+			{
+				li = new NMComponentLinkItem(si, procItem, 0);
+				li->setZValue(this->mModelScene->getLinkZLevel());
+				si->addOutputLink(-1, li);
+				procItem->addInputLink(b, li);
+				this->mModelScene->addItem(li);
+			}
+		}
+	}
+
+}
+
 
 void
 NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
@@ -1232,6 +1308,9 @@ void
 NMModelViewWidget::connectProcessItem(NMProcess* proc,
 		NMProcessComponentItem* procItem)
 {
+	connect(proc, SIGNAL(signalInputChanged(QList<QStringList>)),
+			this, SLOT(processProcInputChanged(QList<QStringList>)));
+
 	connect(proc, SIGNAL(signalProgress(float)),
 			procItem, SLOT(updateProgress(float)));
 

@@ -59,8 +59,6 @@ public:
 	NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
 	virtual ~NMModelViewWidget();
 
-//	QString createComponent(const QString& processComp);
-
 public slots:
 
 	void callEditComponentDialog(const QString &);
@@ -74,14 +72,16 @@ public slots:
 	void compProcChanged();
 
 	void executeModel(void);
-	//void loadModel(void);
-	//void saveModel(void);
-
 	void zoomIn(void);
 	void zoomOut(void);
 
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);
+
+	/*! Reflects changes of input components for the first
+	 *  iteration in the model view (i.e. deletes, draws
+	 *  links between components)*/
+	void processProcInputChanged(QList<QStringList> inputs);
 
 
 
@@ -91,6 +91,8 @@ signals:
 	void moveToolToggled(bool);
 	void requestModelExecution(const QString& compName);
 	void requestModelAbortion(void);
+	void widgetIsExiting(void);
+
 
 protected:
 	void dragEnterEvent(QDragEnterEvent* event);
@@ -111,11 +113,6 @@ protected slots:
 	void loadItems();
 	void reportIsModelControllerBusy(bool);
 
-	//void saveProcCompItem(NMProcessComponentItem* item, QDataStream& data,
-	//		QString fnXml, bool xmlAppend);
-	//void saveAggrCompItem(NMAggregateComponentItem* item, QDataStream& data,
-	//		QString fnXml, QStringList* writenItems,
-	//		QList<NMComponentLinkItem*>* writtenLinks, bool xmlAppend);
 	void getSubComps(NMModelComponent* comp, QStringList& subs);
 	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
 

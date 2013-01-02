@@ -288,6 +288,13 @@ NMProcess::abortExecution(void)
 }
 
 void
+NMProcess::setInputComponents(QList<QStringList> inputComponents)
+{
+	this->mInputComponents = inputComponents;
+	emit signalInputChanged(inputComponents);
+}
+
+void
 NMProcess::UpdateProgressInfo(itk::Object* obj,
 		const itk::EventObject& event)
 {

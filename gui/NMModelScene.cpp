@@ -281,11 +281,14 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 	else if (event->button() == Qt::RightButton)
 	{
 		QGraphicsItem* item = this->itemAt(event->scenePos());
-		if (item == 0)
-			item = this->getLinkItem(event->scenePos());
+		QGraphicsItem* sendItem = 0;
 
-		//if (item != 0 || this->selectedItems().count() > 0)
-			emit itemRightBtnClicked(event, item);
+		// first, we check, whether we've got a link on the hook
+		sendItem = this->getLinkItem(event->scenePos());
+		if (sendItem == 0 && item != 0)
+			sendItem = item;
+
+		emit itemRightBtnClicked(event, sendItem);
 	}
 	else
 	{
@@ -393,14 +396,13 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 					<< tt << std::endl);
 
 			link = new NMComponentLinkItem(
-					srcComp, tarComp, 0, this);
+					srcComp, tarComp, 0);
 
 			srcComp->addOutputLink(-1, link);
 			tarComp->addInputLink(-1, link);
 
 			addItem(link);
 			link->setZValue(this->mLinkZLevel);
-			link->updatePosition();
 			emit linkItemCreated(link);
 		}
 

@@ -54,7 +54,7 @@ class NMProcess : public QObject
 {
 	Q_OBJECT
 	Q_ENUMS(AdvanceParameter)
-	Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents NOTIFY NMProcessChanged)
+	Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents)
 	Q_PROPERTY(NMProcess::AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
 //	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMComponentType READ getNMComponentType WRITE setNMComponentType NOTIFY NMProcessChanged)
 	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMInputComponentType READ getInputNMComponentType WRITE setInputNMComponentType NOTIFY NMProcessChanged)
@@ -85,7 +85,7 @@ public:
 	 */
 	enum AdvanceParameter {NM_USE_UP=0, NM_CYCLE, NM_SYNC_WITH_HOST};
 
-	NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
+	//NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
 //	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
 	NMPropertyGetSet(InputNumDimensions   , unsigned int                           )
 	NMPropertyGetSet(OutputNumDimensions  , unsigned int                           )
@@ -98,12 +98,6 @@ public:
 	void setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype);
     void setOutputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype);
 
-
-signals:
-	void NMProcessChanged();
-	void signalProgress(float);
-	void signalExecutionStarted(const QString &);
-	void signalExecutionStopped(const QString &);
 
 public:
 	virtual ~NMProcess();
@@ -137,6 +131,17 @@ public:
 public slots:
 	void removeInputComponent(const QString& input);
 	virtual void abortExecution(void);
+	void setInputComponents(QList<QStringList> inputComponents);
+	QList<QStringList> getInputComponents(void)
+			{return this->mInputComponents;}
+
+signals:
+		void NMProcessChanged();
+		void signalInputChanged(QList<QStringList> inputs);
+		void signalProgress(float);
+		void signalExecutionStarted(const QString &);
+		void signalExecutionStopped(const QString &);
+
 
 protected:
 	NMProcess(QObject *parent=0);

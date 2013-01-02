@@ -35,8 +35,7 @@ class NMModelScene;
 class NMAggregateComponentItem: public QGraphicsItemGroup
 {
 public:
-	NMAggregateComponentItem(QGraphicsItem* parent=0,
-			NMModelScene* scene=0);
+	NMAggregateComponentItem(QGraphicsItem* parent=0);
 	virtual ~NMAggregateComponentItem();
 
 	// UserType is 65536
@@ -67,12 +66,10 @@ private:
 	std::string ctx;
 	QString mTitle;
 	QColor mColor;
-//	QRectF mBnd;
+	int rgb[3];
 
-	NMModelScene* mScene;
 };
 
 QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item);
-//QDataStream& operator>>(QDataStream &, NMAggregateComponentItem &);
 
 #endif /* NMAGGREGATECOMPONENTITEM_H_ */

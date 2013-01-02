@@ -22,18 +22,19 @@
  *      Author: alex
  */
 
+#include "nmlog.h"
 #include "NMComponentLinkItem.h"
 #include "math.h"
 #include <QDebug>
+#include <QTime>
 
 NMComponentLinkItem::NMComponentLinkItem(NMProcessComponentItem* sourceItem,
 		NMProcessComponentItem* targetItem,
-		QGraphicsItem* parent, QGraphicsScene* scene)
+		QGraphicsItem* parent)
 	: QGraphicsPathItem(parent)
 {
 	this->mSourceItem = sourceItem;
 	this->mTargetItem = targetItem;
-	this->mScene = scene;
 	this->mHeadSize = 10;
 
 //	this->setFlag(QGraphicsItem::ItemIsSelectable, false);
@@ -55,25 +56,6 @@ void NMComponentLinkItem::setTargetItem(const NMProcessComponentItem* targetItem
 		this->mTargetItem = const_cast<NMProcessComponentItem*>(targetItem);
 }
 
-void NMComponentLinkItem::updatePosition()
-{
-	QPointF sp = mapFromItem(mSourceItem, 0, 0);
-	QPointF tp = mapFromItem(mSourceItem, 0, 0);
-	QRectF srcBnd = mapFromItem(mSourceItem, mSourceItem->boundingRect()).boundingRect();
-	QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
-	this->mBndBox = srcBnd.united(tarBnd);
-
-	QPainterPath path(sp);
-	path.lineTo(tp);
-//	path.cubicTo(sp.x(), sp.y(), sp.x(), sp.y(),
-//			tp.x(), tp.y());
-
-//	path.cubicTo(sp.x(), tp.y(), tp.x(), sp.y(),
-//			tp.x(), tp.y());
-
-	this->mPath = path;
-	setPath(mPath);
-}
 
 void
 NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
@@ -82,13 +64,12 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 	if (mSourceItem->collidesWithItem(mTargetItem))
 		return;
 
-	// determine coordinates
+	// determine coordinates and bounding rectangle
 	QPointF sp = mapFromItem(mSourceItem, 0, 0);
 	QPointF tp = mapFromItem(mTargetItem, 0, 0);
 	QRectF srcBnd = mapFromItem(mSourceItem, mSourceItem->boundingRect()).boundingRect();
 	QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
 	this->mBndBox = srcBnd.united(tarBnd);
-
 
 	// determine target intersection point
 	QPointF ip;
@@ -130,13 +111,28 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 	head << ip << normal2.p1() << normal2.p2();
 
 	// create bezier curve
+	QPointF ep(shortBase.p2());
 	QPainterPath path(sip);
-	path.lineTo(ip); // tp
-//	path.cubicTo(sp.x(), sp.y(), sp.x(), sp.y(),
-//			tp.x(), tp.y());
+	path.lineTo(ep);
 
-//	path.cubicTo(sp.x(), tp.y(), tp.x(), sp.y(),
-//			tp.x(), tp.y());
+	// check, whether any component item is colliding with
+	// the direct line
+	//QList<QGraphicsItem*> closeItems = this->collidingItems(Qt::IntersectsItemBoundingRect);
+    //
+	//foreach(const QGraphicsItem* i, closeItems)
+	//{
+	//	if (i->type() == NMProcessComponentItem::Type    ||
+	//		i->type() == NMAggregateComponentItem::Type)
+	//	{
+	//		if (i->collidesWithPath(path, Qt::IntersectsItemShape))
+	//		{
+	//			NMDebug(<< QTime::currentTime().msec() << ": line hits!" << std::endl);
+	//		}
+	//	}
+	//}
+
+	//path.cubicTo(QPointF(shortBase.p2().x(), sip.y()),
+	//		QPointF(sip.x(), shortBase.p2().y()), shortBase.p2());
 
 	// draw elements
 	QPen pen;
@@ -155,7 +151,6 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 	setPath(mPath);
 }
 
-
 QDataStream& operator<<(QDataStream &data, const NMComponentLinkItem &item)
 {
 	NMComponentLinkItem& i = const_cast<NMComponentLinkItem&>(item);
@@ -169,15 +164,4 @@ QDataStream& operator<<(QDataStream &data, const NMComponentLinkItem &item)
 
 	return data;
 }
-
-//QDataStream& operator>>(QDataStream &data, NMComponentLinkItem &item)
-//{
-//
-//
-//
-//	item.updatePosition();
-//	return data;
-//}
-
-
 

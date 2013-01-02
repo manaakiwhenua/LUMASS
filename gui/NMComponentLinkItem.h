@@ -28,6 +28,7 @@
 #include <qgraphicsitem.h>
 #include "NMModelComponent.h"
 #include "NMProcessComponentItem.h"
+#include "NMAggregateComponentItem.h"
 #include <QPainterPath>
 
 class NMProcessComponentItem;
@@ -39,8 +40,7 @@ public:
 	enum { Type = QGraphicsItem::UserType + 30 };
 	NMComponentLinkItem(NMProcessComponentItem* sourceItem,
 			NMProcessComponentItem* targetItem,
-			QGraphicsItem* parent=0,
-			QGraphicsScene* scene=0);
+			QGraphicsItem* parent=0);
 	virtual ~NMComponentLinkItem();
 
 	int type() const
@@ -57,8 +57,6 @@ public:
 		{return this->mPath;}
 	QRectF boundingRect(void) const
 		{return this->mBndBox;}
-	void updatePosition(void);
-
 
 protected:
 	void paint(QPainter* painter,
@@ -76,7 +74,6 @@ private:
 };
 
 QDataStream& operator<<(QDataStream &, const NMComponentLinkItem &);
-//QDataStream& operator>>(QDataStream &, NMComponentLinkItem &);
 
 
 #endif /* NMCOMPONENTLINKITEM_H_ */

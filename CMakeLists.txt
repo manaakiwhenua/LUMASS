@@ -27,7 +27,7 @@ ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 8)
-SET(LUMASS_VERSION_REVISION 1)
+SET(LUMASS_VERSION_REVISION 5)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -38,7 +38,8 @@ message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.
                " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")               
 
 #==================================================================
-# THE DEFAULT BUILD TYPE - credits to http://vtk.org/gitweb?p=VTK.git;a=blob;f=CMakeLists.txt;h=a57fd66ef333fc26bf74fe658c88c3c634f54c3a;hb=HEAD#l12 
+# THE DEFAULT BUILD TYPE 
+#- credits to http://vtk.org/gitweb?p=VTK.git;a=blob;f=CMakeLists.txt;h=a57fd66ef333fc26bf74fe658c88c3c634f54c3a;hb=HEAD#l12 
 #==================================================================
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -174,7 +175,7 @@ add_definitions(-Wno-deprecated)
 
 ADD_SUBDIRECTORY(shared ${lumass_BINARY_DIR}/shared)
 ADD_SUBDIRECTORY(otbsuppl ${lumass_BINARY_DIR}/otbsuppl)
-ADD_SUBDIRECTORY(QtPropertyBrowser ${lumass_BINARY_DIR}/QtPropertyBrowser)
+ADD_SUBDIRECTORY(utils ${lumass_BINARY_DIR}/utils)
 ADD_SUBDIRECTORY(optimisation ${lumass_BINARY_DIR}/optimisation)
 ADD_SUBDIRECTORY(modellingframework ${lumass_BINARY_DIR}/modellingframework)
 ADD_SUBDIRECTORY(gui ${lumass_BINARY_DIR}/gui)

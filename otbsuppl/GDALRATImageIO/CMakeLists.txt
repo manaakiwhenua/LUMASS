@@ -2,7 +2,7 @@ PROJECT(GDALRATImageIO)
 
 INCLUDE_DIRECTORIES(
 	${GDALRATImageIO_SOURCE_DIR}
-	${GDALRATImageIO_SOURCE_DIR}/../../shared
+	${shared_SOURCE_DIR}
 	${OTB_DIR}/Code/Common
 	${OTB_DIR}/Code/IO
 	${OTB_DIR}/Utilities/ITK/Code/Common

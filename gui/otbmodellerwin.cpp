@@ -58,6 +58,7 @@
 // QT stuff
 #include "otbmodellerwin.h"
 #include "ui_otbmodellerwin.h"
+#include <QApplication>
 #include <QDebug>
 #include <QFileDialog>
 #include <QImage>
@@ -422,7 +423,24 @@ OtbModellerWin::~OtbModellerWin()
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
-const vtkRenderer* OtbModellerWin::getBkgRenderer(void)
+bool
+OtbModellerWin::notify(QObject* receiver, QEvent* event)
+{
+	try
+	{
+		return qApp->notify(receiver, event);
+	}
+	catch (std::exception& e)
+	{
+		qDebug() << "Exception thrown: " << e.what() << endl;
+	}
+
+	return true;
+}
+
+
+const vtkRenderer*
+OtbModellerWin::getBkgRenderer(void)
 {
 	return this->mBkgRenderer;
 }
@@ -692,99 +710,114 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	typedef otb::Image<float, 2> ImageType;
-	typedef otb::StreamingRATImageFileWriter<ImageType> WriterType;
-	typedef otb::RasdamanImageReader<ImageType> ReaderType;
-	WriterType::Pointer writer = WriterType::New();
-	//ReaderType::Pointer reader = ReaderType::New();
-	//reader->SetRasdamanConnector(this->getRasdamanConnector());
+	NMModelController* controller =
+			NMModelController::getInstance();
 
-	int ncols = 4000;
-	int nrows = 4000;
-	int chunksize = 1000;
-	int iter = ncols / chunksize;
-
-	itk::ImageIORegion lpr;
-	lpr.SetSize(0, ncols);
-	lpr.SetSize(1, nrows);
-	lpr.SetIndex(0, 0);
-	lpr.SetIndex(1, 0);
-	itk::ImageRegion<2> ilpr;
-	ilpr.SetSize(0, ncols);
-	ilpr.SetSize(1, nrows);
-	ilpr.SetIndex(0, 0);
-	ilpr.SetIndex(1, 0);
-
-	writer->SetRasdamanConnector(this->getRasdamanConnector());
-	writer->SetFileName("utem");
-
-	//otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
-	//writer->SetFileName("/home/alex/garage/img/utem.tiff");
-	//writer->SetImageIO(gio);
-
-	writer->SetForcedLargestPossibleRegion(lpr);
-	writer->SetNumberOfDivisionsStrippedStreaming(1);
-
-	ImageType::Pointer img;
-	typename ImageType::PointType origin;
-	origin.SetElement(0, 0);
-	origin.SetElement(1, nrows);
-	typename ImageType::SpacingType spacing;
-	spacing.SetElement(0, 1);
-	spacing.SetElement(1, 1);
-
-
-	//int chunksize = 1000;
-	//int ncols = lpr.GetSize()[0];
-	for (int r=0; r < iter; ++r)
+	if (controller == 0)
 	{
-		itk::ImageRegion<2> ir;
-		ir.SetSize(0, ncols);
-		ir.SetSize(1, chunksize);
-		ir.SetIndex(0,0);
-		ir.SetIndex(1,0+r*chunksize);
-
-		itk::ImageIORegion ior;
-		ior.SetSize(0, ncols);
-		ior.SetSize(1, chunksize);
-		ior.SetIndex(0,0);
-		ior.SetIndex(1,0+r*chunksize);
-
-
-		//if (r == 0)
-		{
-			img = ImageType::New();
-			img->SetOrigin(origin);
-			img->SetSpacing(spacing);
-			img->SetLargestPossibleRegion(ilpr);
-			img->SetBufferedRegion(ir);
-			img->SetRequestedRegion(ir);
-			img->Allocate();
-		}
-		//else
-		//{
-		//	reader->SetFileName("utem:_last_");
-		//	reader->GetOutput()->SetRequestedRegion(ir);
-		//	reader->Update();
-		//	img = reader->GetOutput();
-		//}
-		//img->DisconnectPipeline();
-
-		float* buf = (float*)img->GetBufferPointer();
-
-		for (int row=0; row < chunksize; ++row)
-			for (int col=0; col < ncols; ++col)
-				buf[col + row*ncols] = (float)(row);
-
-		if (r)
-		{
-			writer->SetFileName("utem:_last_");
-			writer->SetUpdateMode(true);
-		}
-		writer->SetInput(img);
-		writer->SetUpdateRegion(ior);
-		writer->Update();
+		NMDebugAI(<< "oops no controller!" << endl);
+		NMDebugCtx(ctxOtbModellerWin, << "done!");
+		return;
 	}
+
+	NMModelComponent* root = controller->getComponent("root");
+	NMDebugAI( << "here is root: '" << root->objectName().toStdString() << endl);
+
+
+
+//	typedef otb::Image<float, 2> ImageType;
+//	typedef otb::StreamingRATImageFileWriter<ImageType> WriterType;
+//	typedef otb::RasdamanImageReader<ImageType> ReaderType;
+//	WriterType::Pointer writer = WriterType::New();
+//	//ReaderType::Pointer reader = ReaderType::New();
+//	//reader->SetRasdamanConnector(this->getRasdamanConnector());
+//
+//	int ncols = 4000;
+//	int nrows = 4000;
+//	int chunksize = 1000;
+//	int iter = ncols / chunksize;
+//
+//	itk::ImageIORegion lpr;
+//	lpr.SetSize(0, ncols);
+//	lpr.SetSize(1, nrows);
+//	lpr.SetIndex(0, 0);
+//	lpr.SetIndex(1, 0);
+//	itk::ImageRegion<2> ilpr;
+//	ilpr.SetSize(0, ncols);
+//	ilpr.SetSize(1, nrows);
+//	ilpr.SetIndex(0, 0);
+//	ilpr.SetIndex(1, 0);
+//
+//	writer->SetRasdamanConnector(this->getRasdamanConnector());
+//	writer->SetFileName("utem");
+//
+//	//otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+//	//writer->SetFileName("/home/alex/garage/img/utem.tiff");
+//	//writer->SetImageIO(gio);
+//
+//	writer->SetForcedLargestPossibleRegion(lpr);
+//	writer->SetNumberOfDivisionsStrippedStreaming(1);
+//
+//	ImageType::Pointer img;
+//	typename ImageType::PointType origin;
+//	origin.SetElement(0, 0);
+//	origin.SetElement(1, nrows);
+//	typename ImageType::SpacingType spacing;
+//	spacing.SetElement(0, 1);
+//	spacing.SetElement(1, 1);
+//
+//
+//	//int chunksize = 1000;
+//	//int ncols = lpr.GetSize()[0];
+//	for (int r=0; r < iter; ++r)
+//	{
+//		itk::ImageRegion<2> ir;
+//		ir.SetSize(0, ncols);
+//		ir.SetSize(1, chunksize);
+//		ir.SetIndex(0,0);
+//		ir.SetIndex(1,0+r*chunksize);
+//
+//		itk::ImageIORegion ior;
+//		ior.SetSize(0, ncols);
+//		ior.SetSize(1, chunksize);
+//		ior.SetIndex(0,0);
+//		ior.SetIndex(1,0+r*chunksize);
+//
+//
+//		//if (r == 0)
+//		{
+//			img = ImageType::New();
+//			img->SetOrigin(origin);
+//			img->SetSpacing(spacing);
+//			img->SetLargestPossibleRegion(ilpr);
+//			img->SetBufferedRegion(ir);
+//			img->SetRequestedRegion(ir);
+//			img->Allocate();
+//		}
+//		//else
+//		//{
+//		//	reader->SetFileName("utem:_last_");
+//		//	reader->GetOutput()->SetRequestedRegion(ir);
+//		//	reader->Update();
+//		//	img = reader->GetOutput();
+//		//}
+//		//img->DisconnectPipeline();
+//
+//		float* buf = (float*)img->GetBufferPointer();
+//
+//		for (int row=0; row < chunksize; ++row)
+//			for (int col=0; col < ncols; ++col)
+//				buf[col + row*ncols] = (float)(row);
+//
+//		if (r)
+//		{
+//			writer->SetFileName("utem:_last_");
+//			writer->SetUpdateMode(true);
+//		}
+//		writer->SetInput(img);
+//		writer->SetUpdateRegion(ior);
+//		writer->Update();
+//	}
 
 	//vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
 	//NMImageLayer* layer = new NMImageLayer(renWin);

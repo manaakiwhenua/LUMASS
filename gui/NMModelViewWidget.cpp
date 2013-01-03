@@ -96,10 +96,20 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 #ifdef BUILD_RASSUPPORT	
 	if (mainWin != 0)
 	{
-		if (mainWin->getRasdamanConnector() != 0)
+		//if (mainWin->getRasdamanConnector() != 0)
 		{
-			this->mRasConn = new NMRasdamanConnectorWrapper(this);
-			mRasConn->setConnector(mainWin->getRasdamanConnector());
+			//std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
+	        //if (access(connfile.c_str(), R_OK) != 0)
+	        //{
+	        //	NMErr(ctx, << "failed accessing the rasdaman connecton configuration file!");
+	        //}
+	        //else
+	        {
+	        	//this->mPureRasConn = new RasdamanConnector(connfile);
+	        	this->mRasConn = new NMRasdamanConnectorWrapper(this);
+	        	this->mRasConn->setConnector(mainWin->getRasdamanConnector());
+	        	//this->mRasConn->setConnector(this->mPureRasConn);
+	        }
 			NMDebugAI(<< ctx << ": successfully set the rasdaman connector!"<< std::endl);
 		}
 	}

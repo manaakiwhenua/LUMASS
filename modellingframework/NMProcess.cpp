@@ -81,8 +81,8 @@ NMProcess::linkInPipeline(unsigned int step,
 		this->mOtbProcess->AddObserver(itk::AbortEvent(), mObserver);
 	}
 
-	this->linkInputs(step, repo);
 	this->linkParameters(step, repo);
+	this->linkInputs(step, repo);
 
 	//NMDebugAI( << " mbLinked = true" << endl);
 	this->mbLinked = true;
@@ -255,10 +255,10 @@ NMProcess::getInputComponentType(void)
 
 void NMProcess::reset(void)
 {
-	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
+	//NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 	this->mParamPos = 0;
 	this->mbIsInitialised = false;
-	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+	//NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void NMProcess::update(void)

@@ -5,8 +5,8 @@ INCLUDE_DIRECTORIES(
 	${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
-	${gui_SOURCE_DIR}/../QtPropertyBrowser/src
-	${gui_SOURCE_DIR}/../otbsuppl/GDALRATImageIO
+	${utils_SOURCE_DIR}/QtPropertyBrowser/src
+	${GDALRATImageIO_SOURCE_DIR}
 	${gui_SOURCE_DIR}
 	${filters_SOURCE_DIR}
 	${shared_SOURCE_DIR}
@@ -28,7 +28,8 @@ LINK_DIRECTORIES(
 	${LIBRARY_OUTPUT_PATH}
 	${mfw_BINARY_DIR}
 	${mfw_BINRAY_DIR}/lib
-	${gui_BINARY_DIR}/lib  
+	${gui_BINARY_DIR}/lib
+	${muparser_BINARY_DIR}  
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
 )
@@ -36,7 +37,7 @@ LINK_DIRECTORIES(
 QT4_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 QT4_WRAP_CPP(MOC_CPP 
-	${gui_SOURCE_DIR}/../optimisation/NMMosra.h
+	${opt_SOURCE_DIR}/NMMosra.h
 	${gui_SOURCE_DIR}/otbmodellerwin.h 
 	${gui_SOURCE_DIR}/modelcomponentlist.h
 	${gui_SOURCE_DIR}/NMLayer.h
@@ -66,20 +67,20 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp 
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx 
-    ${gui_SOURCE_DIR}/../optimisation/*.cpp
+    ${opt_SOURCE_DIR}/*.cpp
 )
 
-set(LUMASS_LINKLIBS ${QT_LIBRARIES} QtPropertyBrowser 
-	RasImageIO OTBGDALRATImageIO NMModFrame   
+set(LUMASS_LINKLIBS ${QT_LIBRARIES} QtPropertyBrowser
+	RasImageIO OTBGDALRATImageIO NMModFrame 
 	QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
 	OTBCommon OTBIO OTBBasicFilters 
 	${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-	${OPENGL_glu_LIBRARY}
+	${OPENGL_glu_LIBRARY} 
 )
 
 set(LUMASS_DEPLIBS
     NMModFrame RasImageIO OTBGDALRATImageIO
-    QtPropertyBrowser
+    QtPropertyBrowser 
 )
 
 IF(NOT RASSUPPORT)

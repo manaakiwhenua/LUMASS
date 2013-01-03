@@ -133,6 +133,7 @@ private:
 
 #ifdef BUILD_RASSUPPORT	
 	NMRasdamanConnectorWrapper* mRasConn;
+	RasdamanConnector* mPureRasConn;
 #endif
 	
 	NMModelComponent* mRootComponent;

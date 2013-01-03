@@ -63,6 +63,7 @@ RATBandMathImageFilter<TImage>
   this->SetNumberOfRequiredInputs( 1 );
   this->InPlaceOff();
 
+  m_NbExpr = 1;
   m_UnderflowCount = 0;
   m_OverflowCount = 0;
   m_ThreadUnderflow.SetSize(1);
@@ -91,6 +92,22 @@ void RATBandMathImageFilter<TImage>
   os << indent << "itk::NumericTraits<PixelType>::max()  :             " 
          << itk::NumericTraits<PixelType>::max()                 << std::endl;
 }
+
+template<class TImage>
+void RATBandMathImageFilter<TImage>
+::SetNbExpr(int numExpr)
+ {
+	if (numExpr <= 1)
+		return;
+
+	int e = this->GetNumberOfOutputs()-1;
+	for(; e < numExpr; ++e)
+	{
+		typename TImage::Pointer output =
+				static_cast<TImage*>(this->MakeOutput(e).GetPointer());
+		this->SetNthOutput(e, output.GetPointer());
+	}
+ }
 
 template<class TImage>
 void RATBandMathImageFilter<TImage>
@@ -356,116 +373,136 @@ void RATBandMathImageFilter<TImage>
 ::ThreadedGenerateData(const ImageRegionType& outputRegionForThread,
            int threadId)
 {
-  double value; 
-  unsigned int j;
-  unsigned int nbInputImages = this->GetNumberOfInputs();
-  
-  typedef itk::ImageRegionConstIterator<TImage> ImageRegionConstIteratorType;
-  
-  /** Attribute table support */
-  // create a vector indicating valid attribute table pointers
-  std::vector<bool> vTabAvail;
-  vTabAvail.resize(nbInputImages);
-  for (unsigned int ii=0; ii < nbInputImages; ii++)
-  {
-	  if (m_VRAT.size() > 0)
-	  {
-		  if (&m_VRAT[ii] != 0)
-		  {
-			  if (m_VRAT[ii].IsNotNull())
-				  vTabAvail[ii] = true;
-		  }
-	  }
-	  else
-		  vTabAvail[ii] = false;
-  }
+	double* value;
+	unsigned int j, r;
+	unsigned int nbInputImages = this->GetNumberOfInputs();
+	unsigned int nbOutputImages = this->GetNumberOfOutputs();
 
-  std::vector< ImageRegionConstIteratorType > Vit;
-  Vit.resize(nbInputImages);
-  for(j=0; j < nbInputImages; j++)
-    {
-    Vit[j] = ImageRegionConstIteratorType (this->GetNthInput(j), outputRegionForThread);
-    }
-  
-  itk::ImageRegionIterator<TImage> ot (this->GetOutput(), outputRegionForThread);
-  
-  // support progress methods/callbacks
-  itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
+	typedef itk::ImageRegionConstIterator<TImage> ImageRegionConstIteratorType;
+	typedef itk::ImageRegionIterator<TImage> ImageRegionIteratorType;
 
-  while(!Vit.at(0).IsAtEnd())
-    {
-    for(j=0; j < nbInputImages; j++)
-    {
-      m_AImage.at(threadId).at(j) = static_cast<double>(Vit.at(j).Get());
+	/** Attribute table support */
+	// create a vector indicating valid attribute table pointers
+	std::vector<bool> vTabAvail;
+	vTabAvail.resize(nbInputImages);
+	for (unsigned int ii = 0; ii < nbInputImages; ii++)
+	{
+		if (m_VRAT.size() > 0)
+		{
+			if (&m_VRAT[ii] != 0)
+			{
+				if (m_VRAT[ii].IsNotNull())
+					vTabAvail[ii] = true;
+			}
+		}
+		else
+			vTabAvail[ii] = false;
+	}
 
-      // raster attribute table support ......................................................................
-      if (vTabAvail[j])
-      {
-    	  for (unsigned int c=0; c < m_VTabAttr[j].size(); c++)
-    	  {
-			  switch(m_VAttrTypes[j][c])
-			  {
-			  case AttributeTable::ATTYPE_DOUBLE:
-				  m_VAttrValues[threadId][j][c] = static_cast<double>(m_VRAT[j]->GetDblValue(m_VTabAttr[j][c], Vit[j].Get()));
-				  break;
-			  case AttributeTable::ATTYPE_INT:
-				  m_VAttrValues[threadId][j][c] = static_cast<double>(m_VRAT[j]->GetIntValue(m_VTabAttr[j][c], Vit[j].Get()));
-				  break;
-			  }
-    	  }
-      }
-      // .......................................................................................................
+	std::vector<ImageRegionConstIteratorType> Vit;
+	Vit.resize(nbInputImages);
+	for (j = 0; j < nbInputImages; j++)
+	{
+		Vit[j] = ImageRegionConstIteratorType(this->GetNthInput(j),
+				outputRegionForThread);
+	}
 
-    }
-    
-    // Image Indexes
-    for(j=0; j < 2; j++)
-      {
-      m_AImage.at(threadId).at(nbInputImages+j)   = static_cast<double>(Vit.at(0).GetIndex()[j]);
-      }
-    for(j=0; j < 2; j++)
-      {
-      m_AImage.at(threadId).at(nbInputImages+2+j) = static_cast<double>(m_Origin[j])
-        +static_cast<double>(Vit.at(0).GetIndex()[j]) * static_cast<double>(m_Spacing[j]) ;
-      }
+	std::vector<ImageRegionIteratorType> Vot;
+	Vot.resize(nbOutputImages);
+	for (r = 0; r < nbOutputImages; ++r)
+	{
+		Vot[r] = ImageRegionIteratorType(this->GetOutput(r),
+				outputRegionForThread);
+	}
 
-    try
-      {
-      value = m_VParser.at(threadId)->Eval();
-      }
-    catch(itk::ExceptionObject& err)
-      {
-      itkExceptionMacro(<< err);
-      }
-    
-    // Case value is equal to -inf or inferior to the minimum value
-    // allowed by the pixelType cast
-    if (value < double(itk::NumericTraits<PixelType>::NonpositiveMin()))
-      {
-      ot.Set(itk::NumericTraits<PixelType>::NonpositiveMin());
-      m_ThreadUnderflow[threadId]++;
-      }
-    // Case value is equal to inf or superior to the maximum value
-    // allowed by the pixelType cast
-    else if (value > double(itk::NumericTraits<PixelType>::max()))
-      {
-      ot.Set(itk::NumericTraits<PixelType>::max());
-      m_ThreadOverflow[threadId]++;
-      }
-    else
-      {
-      ot.Set(static_cast<PixelType>(value));
-      }
+	// support progress methods/callbacks
+	itk::ProgressReporter progress(this, threadId,
+			outputRegionForThread.GetNumberOfPixels());
 
-    for(j=0; j < nbInputImages; j++)
-      {
-      ++(Vit.at(j));
-      }
+	while (!Vit.at(0).IsAtEnd())
+	{
+		for (j = 0; j < nbInputImages; j++)
+		{
+			m_AImage.at(threadId).at(j) = static_cast<double>(Vit.at(j).Get());
 
-    ++ot;
+			// raster attribute table support ......................................................................
+			if (vTabAvail[j])
+			{
+				for (unsigned int c = 0; c < m_VTabAttr[j].size(); c++)
+				{
+					switch (m_VAttrTypes[j][c])
+					{
+					case AttributeTable::ATTYPE_DOUBLE:
+						m_VAttrValues[threadId][j][c] =
+								static_cast<double>(m_VRAT[j]->GetDblValue(
+										m_VTabAttr[j][c], Vit[j].Get()));
+						break;
+					case AttributeTable::ATTYPE_INT:
+						m_VAttrValues[threadId][j][c] =
+								static_cast<double>(m_VRAT[j]->GetIntValue(
+										m_VTabAttr[j][c], Vit[j].Get()));
+						break;
+					}
+				}
+			}
+			// .......................................................................................................
 
-    progress.CompletedPixel();
-    }
+		}
+
+		// Image Indexes
+		for (j = 0; j < 2; j++)
+		{
+			m_AImage.at(threadId).at(nbInputImages + j) =
+					static_cast<double>(Vit.at(0).GetIndex()[j]);
+		}
+		for (j = 0; j < 2; j++)
+		{
+			m_AImage.at(threadId).at(nbInputImages + 2 + j) =
+					static_cast<double>(m_Origin[j])
+							+ static_cast<double>(Vit.at(0).GetIndex()[j])
+									* static_cast<double>(m_Spacing[j]);
+		}
+
+		try
+		{
+			value = m_VParser.at(threadId)->Eval(this->m_NbExpr);
+		}
+		catch (itk::ExceptionObject& err)
+		{
+			itkExceptionMacro(<< err);
+		}
+
+		// Case value is equal to -inf or inferior to the minimum value
+		// allowed by the pixelType cast
+		for (r = 0; r < nbOutputImages; ++r)
+		{
+			if (value[r] < double(itk::NumericTraits<PixelType>::NonpositiveMin()))
+			{
+				Vot.at(r).Set(itk::NumericTraits<PixelType>::NonpositiveMin());
+				m_ThreadUnderflow[threadId]++;
+			}
+			// Case value is equal to inf or superior to the maximum value
+			// allowed by the pixelType cast
+			else if (value[r] > double(itk::NumericTraits<PixelType>::max()))
+			{
+				Vot.at(r).Set(itk::NumericTraits<PixelType>::max());
+				m_ThreadOverflow[threadId]++;
+			}
+			else
+			{
+				Vot.at(r).Set(static_cast<PixelType>(value[r]));
+			}
+
+			++(Vot.at(r));
+		}
+
+		for (j = 0; j < nbInputImages; j++)
+		{
+			++(Vit.at(j));
+		}
+
+		progress.CompletedPixel();
+	}
 }
 
 }// end namespace otb

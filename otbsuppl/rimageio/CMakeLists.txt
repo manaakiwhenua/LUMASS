@@ -4,7 +4,7 @@ PROJECT(rimageio)
 INCLUDE_DIRECTORIES(
 	${PostgreSQL_INCLUDE_DIRS}
 	${rimageio_SOURCE_DIR}
-	${rimageio_SOURCE_DIR}/../../shared
+	${shared_SOURCE_DIR}
 	${RASDAMAN_INCLUDE_DIR}
 	${RASDAMAN_INCLUDE_DIR}/raslib
 	${RASDAMAN_SOURCE_DIR}/applications/rasgeo
@@ -15,7 +15,7 @@ INCLUDE_DIRECTORIES(
 
 LINK_DIRECTORIES(
 	${PostgreSQL_LIBRARY_DIRS}
-	${rimageio_BINARY_DIR}/lib
+	#${rimageio_BINARY_DIR}/lib
 	${OTB_LIBRARY_DIRS}
 	${RASDAMAN_LIBRARIES_DIR}
 )

@@ -48,7 +48,9 @@ public:
 		NMRasdamanConnectorWrapper* w = const_cast<NMRasdamanConnectorWrapper*>(&rasWrapper);
 		this->mpRasconn = const_cast<RasdamanConnector*>(w->getConnector());
 	}
-	virtual ~NMRasdamanConnectorWrapper(){};
+	virtual ~NMRasdamanConnectorWrapper()
+	{
+	}
 
 	void setConnector(RasdamanConnector* pConn)
 		{this->mpRasconn = pConn;}

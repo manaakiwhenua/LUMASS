@@ -102,6 +102,8 @@ public slots:
 	void importODBC();
 	void aboutLUMASS();
 
+	virtual bool notify(QObject* receiver, QEvent* event);
+
 protected:
 //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
 	vtkSmartPointer<vtkPolyData> OgrToVtkPolyData(OGRDataSource& ds);

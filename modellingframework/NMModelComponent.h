@@ -151,7 +151,7 @@ public:
     	{this->setNthInput(0, inputImg);};
     virtual void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 
-    virtual NMItkDataObjectWrapper* getOutput(void);
+    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
     virtual void setProcess(NMProcess* proc);
     virtual NMProcess* getProcess(void)
@@ -165,9 +165,21 @@ public:
     void mapTimeLevels(unsigned int startLevel,
     		QMap<unsigned int,
     		QMap<QString, NMModelComponent*> >& timeLevelMap);
+
+    /* deprecated */
     NMProcess* getEndOfTimeLevel(void);
+
+    /* deprecated */
     void getEndOfPipelineProcess(NMProcess*& endProc);
+
+
     bool isSubComponent(NMModelComponent* comp);
+
+    /* This method identifies executable sub components on the specified
+     * time level. Note executable components are components which don't
+     * serve as input to any other component on the specified time level.
+     */
+    const QStringList findExecutableComponents(unsigned int timeLevel);
 
 
 protected:

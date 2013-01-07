@@ -115,8 +115,11 @@ void NMModelComponent::addModelComponent(NMModelComponent* comp)
 
 	// nested components must not have lower time levels than
 	// the parent component
-	if (comp->getTimeLevel() < this->getTimeLevel())
-		comp->setTimeLevel(this->getTimeLevel());
+	//if (comp->getTimeLevel() < this->getTimeLevel())
+
+	// regardless of the previous time level of the component, we
+	// always set it to the time level of its new host
+	comp->setTimeLevel(this->getTimeLevel());
 
 	NMDebugAI(<< "parent: '" << this->objectName().toStdString() << "'" << std::endl);
 	NMDebugAI(<< "add child:  '" << comp->objectName().toStdString() << "'" << std::endl);
@@ -396,18 +399,17 @@ NMProcess* NMModelComponent::getEndOfTimeLevel(void)
 	return proc;
 }
 
-NMItkDataObjectWrapper* NMModelComponent::getOutput()
+NMItkDataObjectWrapper* NMModelComponent::getOutput(unsigned int idx)
 {
 	// check, whether we've got a 'single' process component
 	if (this->mProcess != 0)
 	{
 		NMDebugAI(<< this->objectName().toStdString()
-				<<"->getOutput()" << std::endl);
-		return this->mProcess->getOutput();
+				<<"->getOutput(" << idx << ")" << std::endl);
+		return this->mProcess->getOutput(idx);
 	}
 
 	NMProcess* proc = this->getEndOfTimeLevel();
-//	this->getEndOfPipelineProcess(proc);
 	if (proc == 0)
 	{
 		NMErr(ctx, << this->objectName().toStdString() <<
@@ -416,8 +418,8 @@ NMItkDataObjectWrapper* NMModelComponent::getOutput()
 	}
 
 	NMDebugAI(<< this->objectName().toStdString()
-			<<"->getOutput()" << std::endl);
-	return proc->getOutput();
+			<<"->getOutput(" << idx << ")" << std::endl);
+	return proc->getOutput(idx);
 }
 
 NMModelComponent* NMModelComponent::getInternalStartComponent(void)
@@ -487,11 +489,11 @@ void NMModelComponent::linkComponents(unsigned int step, const QMap<QString, NMM
 void NMModelComponent::mapTimeLevels(unsigned int startLevel,
 		QMap<unsigned int, QMap<QString, NMModelComponent*> >& timeLevelMap)
 {
+	QMap<unsigned int, QMap<QString, NMModelComponent*> >::iterator it;
 	if (this->mTimeLevel >= startLevel)
 	{
 		NMDebugAI(<< this->objectName().toStdString() << " is on time level " << this->mTimeLevel << std::endl);
-		QMap<unsigned int, QMap<QString, NMModelComponent*> >::iterator it =
-				timeLevelMap.find(this->mTimeLevel);
+		it = timeLevelMap.find(this->mTimeLevel);
 		if (it != timeLevelMap.end())
 		{
 			it.value().insert(this->objectName(), this);
@@ -512,6 +514,12 @@ void NMModelComponent::mapTimeLevels(unsigned int startLevel,
 			mc->mapTimeLevels(startLevel, timeLevelMap);
 			mc = this->getNextInternalComponent();
 		}
+
+		//it = timeLevelMap.find(this->mTimeLevel);
+		//if (it != timeLevelMap.end())
+		//{
+		//	it.value().remove(this->objectName());
+		//}
 	}
 }
 
@@ -522,11 +530,11 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	 * HERE IS WHAT WE DO for each iteration step
 	 * - first we generate a map containing all sub components up to the next higher time level
 	 * - call update on all sub components on a higher time level
-	 * - fetch (disconnected, ie non-pipelined) input data for all sub components on the same
+	 * - link pipeline components and fetch input data for 'disconnected' sub components on the same
 	 *   time level as the 'host' component
-	 * - finally, we execute this component's pipeline, by calling update on the most downstream
-	 *   process object;
-	 *
+	 * - identify and update each (executable) component on the host's time level, which is a
+	 *   process component and which doesn't serve as input to any of the other components on
+	 *   the same time level (minimum time level for the host)
 	 */
 
 	NMDebugCtx(ctxNMModelComponent, << "...");
@@ -567,6 +575,17 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	{
 		NMDebugAI(<< "no sub components detected!" << std::endl);
 	}
+
+	//// DEBUG DEBUG DEBUG
+	//foreach(const unsigned int& level, this->mMapTimeLevelComp.keys())
+	//{
+	//	NMDebugAI(<< "#" << level << " ... " << endl);
+	//	foreach(const QString& name, this->mMapTimeLevelComp.value(level).keys())
+	//	{
+	//		NMDebugAI(<< "   " << name.toStdString() << endl);
+	//	}
+	//}
+	// DEBUG DEBUG DEBUG
 
 	// execute this components' pipeline
 	for (unsigned int i=0; i < this->mNumIterations; ++i)
@@ -612,7 +631,8 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 			tmpComp = this->getNextInternalComponent();
 		}
 
-		// call update on the last process of the level 0 pipeline
+		// update all executable components on the host's time level, or just call
+		// update on this component's process object, if we're not hosting any other components
 		//		NMDebugAI(<< this->objectName().toStdString() << ": iteration #" << i << std::endl);
 		if (!controller->isModelAbortionRequested())
 		{
@@ -621,22 +641,82 @@ void NMModelComponent::update(const QMap<QString, NMModelComponent*>& repo)
 				NMDebugAI(<< "update " << this->objectName().toStdString() << "'s process..." << std::endl);
 				if (!this->mProcess->isInitialised())
 					this->mProcess->instantiateObject();
+				this->mProcess->linkInPipeline(i, repo);
 				this->mProcess->update();
 			}
 			else
 			{
-				NMProcess* endProc = this->getEndOfTimeLevel();
-				if (endProc != 0)
+				QStringList execs = this->findExecutableComponents(this->mTimeLevel);
+				foreach(const QString& cname, execs)
 				{
-					if (!endProc->isInitialised())
-						endProc->instantiateObject();
-					endProc->update();
+					NMModelComponent* ec = NMModelController::getInstance()->getComponent(cname);
+					if (ec == 0)
+						continue;
+
+					NMProcess* ep = ec->getProcess();
+					if (ep == 0)
+						continue;
+
+					if (!ep->isInitialised())
+						ep->instantiateObject();
+					ep->update();
 				}
 			}
 		}
 	}
 
 	NMDebugCtx(ctxNMModelComponent, << "done!");
+}
+
+const QStringList
+NMModelComponent::findExecutableComponents(unsigned int timeLevel)
+{
+	// get the list of components for the specified time level
+	QMap<QString, NMModelComponent*> levelComps =
+			this->mMapTimeLevelComp.value(timeLevel);
+
+	// we initially copy the list of keys
+	QStringList execComps = levelComps.keys();
+
+	//NMDebugAI(<< "raw execs: " << execComps.join(" ").toStdString() << endl);
+
+	// now we subsequently remove all components, which are mentioned as input
+	// of one of the given level's process components
+	QMap<QString, NMModelComponent*>::iterator levelIt =
+			levelComps.begin();
+	while(levelIt != levelComps.end())
+	{
+		NMProcess* proc = levelIt.value()->getProcess();
+		if (proc != 0)
+		{
+			QList<QStringList> allInputs = proc->getInputComponents();
+			foreach(const QStringList& list, allInputs)
+			{
+				foreach(const QString& input, list)
+				{
+					if (execComps.contains(input))
+					{
+						execComps.removeOne(input);
+					}
+				}
+			}
+		}
+		else
+		{
+			// we remove any aggregate components, since we've got all
+			// executable sub-components covered already
+			// (if everything went to plan ...); this is to avoid double
+			// execution of components
+			if (execComps.contains(levelIt.key()))
+			{
+				execComps.removeOne(levelIt.key());
+			}
+		}
+		++levelIt;
+	}
+
+	NMDebugAI(<< "executables: " << execComps.join(" ").toStdString() << endl);
+	return execComps;
 }
 
 void

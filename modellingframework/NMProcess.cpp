@@ -25,6 +25,7 @@
 #include "NMProcess.h"
 #include "NMModelComponent.h"
 #include "NMModelController.h"
+#include "NMMfwException.h"
 
 #include <QDateTime>
 
@@ -117,6 +118,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 {
 	NMDebugCtx(ctxNMProcess, << "...");
 
+	unsigned int inputstep = step;
 	if (this->mInputComponents.size() == 0)
 	{
 		NMDebugAI(<< "no inputs for " << this->objectName().toStdString() << std::endl);
@@ -172,7 +174,11 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 	QString targetName = parentComp->objectName();
 
 	// set the input images
+	int outIdx = 0;
+	QString inputSrc;
+	QStringList inputSrcParams;
 	QString inputCompName;
+	bool bOK;
 	NMDebugAI(<< "ParameterPos: #" << step << std::endl);
 	if (step < this->mInputComponents.size())
 	{
@@ -181,57 +187,112 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 				ii < this->mInputComponents.at(step).size();
 				++ii)
 		{
-			// find the input component
-			inputCompName = this->mInputComponents.at(step).at(
+			// parse the input source string
+			inputSrc = this->mInputComponents.at(step).at(
 					ii);
+			inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);
+			inputCompName = inputSrcParams.at(0);
+			if (inputSrcParams.size() == 2)
+			{
+				outIdx = inputSrcParams.at(1).toInt(&bOK);
+				if (!bOK)
+				{
+					NMErr(ctxNMProcess, << "failed to interpret input source parameter"
+							<< "'" << inputSrc.toStdString() << "'");
+				}
+			}
+
+			// find the input component
 			QMap<QString, NMModelComponent*>::const_iterator it = repo.find(
 					inputCompName);
 			if (it != repo.end())
 			{
 				NMModelComponent*& ic =
 						const_cast<NMModelComponent*&>(it.value());
-				// dont' link everything ...
-				if (//parentComp->objectName().compare(ic->objectName()) != 0 &&
-					parentComp->getTimeLevel() == ic->getTimeLevel()        &&
-					//parentComp->isSubComponent(ic)					        &&
-				    parentComp->getNumIterations() == 1
+				// don't link everything ...
+				if (parentComp->getTimeLevel() == ic->getTimeLevel()
+					&& parentComp->getNumIterations() == 1
 				   )
 				{
 					NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
-							<< ic->objectName().toStdString() << " ... " << std::endl);
-					this->setNthInput(ii, ic->getOutput());
+							<< ic->objectName().toStdString()
+							<< "[" << outIdx << "] ... " << std::endl);
+
+					if (!ic->getProcess()->isInitialised())
+					{
+						// since we're on the same time level, we can safely ask
+						// the input process to link itself into the pipeline
+						ic->getProcess()->linkInPipeline(inputstep, repo);
+					}
+
+					NMItkDataObjectWrapper* iw = ic->getOutput(outIdx);
+					if (iw == 0 || iw->getDataObject() == 0)
+					{
+						NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
+						stringstream ss;
+						ss << ic->objectName().toStdString() << "::getOutput("
+						   << outIdx << ") has not been initialised!" << endl;
+						e.setMsg(ss.str());
+						throw e;
+					}
+
+					// since we're on the same time level, we're in pipeline here
+					// connect output to input
+					this->setNthInput(ii, ic->getOutput(outIdx));
 				}
 				else
 				{
 					NMDebugAI(<< parentComp->objectName().toStdString() << "(" << ii
-							<< ") <-||- " << ic->objectName().toStdString() << " ... "
-							<< std::endl);
+							<< ") <-||- " << ic->objectName().toStdString()
+							<< "[" << outIdx << "] ... " << std::endl);
 
 
-					// ToDo - check whether we really want to update here,
-					// or whether we want the user to design its model properly
-					ic->getProcess()->update();
-
-					NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
-							*ic->getOutput());
-					if (dw->getDataObject() != 0)
+					if (!ic->getProcess()->isInitialised())
 					{
-						NMDebug(<< "ok!" << std::endl);
-						dw->setParent(parentComp);
-						dw->getDataObject()->DisconnectPipeline();
-						this->setNthInput(ii, dw);
+						ic->getProcess()->linkInPipeline(0, repo);
+
+						//NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+						//stringstream ss;
+						//ss << ic->objectName().toStdString() << "'s internal process object"
+						//   << " has not been initialised!" << endl;
+						//e.setMsg(ss.str());
+						//throw e;
+
 					}
-					else
+
+					// we're on different time levels here, so we're in a
+					// 'disconnected' pipeline and have to fetch the data
+					// 'physically', disconnect it from the source, and
+					// then chuck it into the input slot of this component
+					ic->getProcess()->update();
+					NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
+							*ic->getOutput(outIdx));
+					if (dw->getDataObject() == 0)
 					{
 						NMDebug(<< "failed!" << std::endl);
+						NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
+						stringstream ss;
+						ss << ic->objectName().toStdString() << "::getOutput("
+						   << outIdx << ") has not been initialised!" << endl;
+						e.setMsg(ss.str());
+						throw e;
 					}
+
+					NMDebug(<< "ok!" << std::endl);
+					dw->setParent(parentComp);
+					dw->getDataObject()->DisconnectPipeline();
+					this->setNthInput(ii, dw);
 				}
-				//this->mOtbProcess->Modified();
 			}
 			else
 			{
-				NMErr(ctxNMProcess, << "required input component not found!");
-				return;
+				NMMfwException e(NMMfwException::NMProcess_InvalidInput);
+				stringstream ss;
+				ss << this->parent()->objectName().toStdString() << ": The specified "
+				   << "input component '" << inputCompName.toStdString()
+				   << "' couldn't be found! Check the property settings." << endl;
+				e.setMsg(ss.str());
+				throw e;
 			}
 		}
 	}
@@ -258,6 +319,7 @@ void NMProcess::reset(void)
 	//NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 	this->mParamPos = 0;
 	this->mbIsInitialised = false;
+	this->mbLinked = false;
 	//NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 

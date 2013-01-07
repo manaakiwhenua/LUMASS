@@ -26,6 +26,8 @@
 #define NMProcess_H_
 #define ctxNMProcess "NMProcess"
 
+#include <exception>
+
 #include "nmlog.h"
 #include "NMMacros.h"
 
@@ -108,7 +110,7 @@ public:
 			NMItkDataObjectWrapper* img) = 0;
     void setInput (NMItkDataObjectWrapper* img)
     		{this->setNthInput(0, img);}
-    virtual NMItkDataObjectWrapper* getOutput(void) = 0;
+    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx) = 0;
     virtual void update(void);
     void reset(void);
 

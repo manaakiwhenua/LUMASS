@@ -57,7 +57,7 @@ public:
 	NMRandomImageSourceWrapper(QObject* parent=0);
 	~NMRandomImageSourceWrapper();
 
-	NMItkDataObjectWrapper* getOutput(void);
+	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,

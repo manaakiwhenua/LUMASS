@@ -86,7 +86,7 @@ public:
 	// NMProcess interface methods
 	void setNthInput(unsigned int numInput,
 			NMItkDataObjectWrapper* imgWrapper);
-	NMItkDataObjectWrapper* getOutput(void){return 0;}
+	NMItkDataObjectWrapper* getOutput(unsigned int idx){return 0;}
 
 protected:
 

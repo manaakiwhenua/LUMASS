@@ -86,7 +86,7 @@ public:
 	int mapUniqueValues(QString fieldName);
 
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
-	NMItkDataObjectWrapper* getOutput(void);
+	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
 protected:
 

@@ -381,9 +381,8 @@ bool NMImageLayer::setFileName(QString filename)
 		return false;
 	}
 
-
 	// concatenate the pipeline
-	this->mPipeconn->setInput(this->mReader->getOutput());
+	this->mPipeconn->setInput(this->mReader->getOutput(0));
 
 	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
@@ -544,9 +543,9 @@ void NMImageLayer::fetchRATs(void)
 		this->mRATVec[b] = this->mReader->getRasterAttributeTable(b+1);
 }
 
-NMItkDataObjectWrapper* NMImageLayer::getOutput(void)
+NMItkDataObjectWrapper* NMImageLayer::getOutput(unsigned int idx)
 {
-	return this->getImage();
+	return 0;//return this->getImage();
 }
 
 NMItkDataObjectWrapper* NMImageLayer::getImage(void)

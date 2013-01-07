@@ -80,7 +80,7 @@
 		}
 
 		static itk::DataObject *getOutput(itk::ProcessObject::Pointer &readerProcObj,
-				unsigned int numBands)
+				unsigned int numBands, unsigned int idx)
 		{
 			itk::DataObject *img = 0;
 			if (numBands == 1)
@@ -103,13 +103,13 @@
 //				NMDebugAI(<< "read origin & spacing ... " << endl);
 //				NMDebugAI(<< o.str() << " | " << s.str() << endl);
 
-				img = r->GetOutput();
+				img = r->GetOutput(idx);
 			}
 			else
 			{
 				VecReaderType *vr = dynamic_cast<VecReaderType*>(readerProcObj.GetPointer());
 				//r->Update();
-				img = vr->GetOutput();
+				img = vr->GetOutput(idx);
 			}
 			return img;
 		}
@@ -176,20 +176,20 @@ public:
 	}
 
 	static itk::DataObject *getOutput(itk::ProcessObject::Pointer &readerProcObj,
-			unsigned int numBands)
+			unsigned int numBands, unsigned int idx)
 	{
 		itk::DataObject *img = 0;
 		if (numBands == 1)
 		{
 			ReaderType *r = dynamic_cast<ReaderType*>(readerProcObj.GetPointer());
 			//r->Update();
-			img = r->GetOutput();
+			img = r->GetOutput(idx);
 		}
 		else
 		{
 			VecReaderType *vr = dynamic_cast<VecReaderType*>(readerProcObj.GetPointer());
 			//r->Update();
-			img = vr->GetOutput();
+			img = vr->GetOutput(idx);
 		}
 		return img;
 	}
@@ -294,15 +294,15 @@ public:
 			{ \
 			case 1: \
 				img = RasdamanReader<PixelType, 1 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 				break; \
 			case 3: \
 				img = RasdamanReader<PixelType, 3 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 				break; \
 			default: \
 				img = RasdamanReader<PixelType, 2 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 			}\
 		} \
 		else \
@@ -311,15 +311,15 @@ public:
 			{ \
 			case 1: \
 				img = FileReader<PixelType, 1 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 				break; \
 			case 3: \
 				img = FileReader<PixelType, 3 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 				break; \
 			default: \
 				img = FileReader<PixelType, 2 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 			}\
 		} \
 	}
@@ -402,15 +402,15 @@ public:
 			{ \
 			case 1: \
 				img = FileReader<PixelType, 1 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 				break; \
 			case 3: \
 				img = FileReader<PixelType, 3 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 				break; \
 			default: \
 				img = FileReader<PixelType, 2 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands); \
+						this->mOtbProcess, this->mOutputNumBands, idx); \
 			}\
 		} \
 	}
@@ -454,7 +454,6 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mOutputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mFileName = "";
 	this->mbRasMode = false;
-	//this->mFilePos = 0;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
@@ -527,18 +526,9 @@ otb::AttributeTable::Pointer NMImageReader::getRasterAttributeTable(int band)
 	return rat;
 }
 
-//itk::ImageIOBase::IOComponentType NMImageReader::getITKComponentType()
-//{
-//	return this->mOutputComponentType;
-//}
-
 void NMImageReader::setFileName(QString filename)
 {
 	this->mFileName = filename;
-//	if (!filename.contains("."))
-//		this->mbRasMode = true;
-//
-//	NMDebugAI(<< "rasmode is: " << this->mbRasMode << endl);
 }
 
 QString NMImageReader::getFileName(void)
@@ -678,7 +668,7 @@ NMImageReader::UpdateProgressInfo(itk::Object* obj, const itk::EventObject& even
 	NMProcess::UpdateProgressInfo(obj, event);
 }
 
-NMItkDataObjectWrapper* NMImageReader::getOutput(void)
+NMItkDataObjectWrapper* NMImageReader::getOutput(unsigned int idx)
 {
 	itk::DataObject *img = 0;
 	switch(this->mOutputComponentType)
@@ -727,6 +717,7 @@ NMItkDataObjectWrapper* NMImageReader::getOutput(void)
 itk::DataObject* NMImageReader::getItkImage(void)
 {
 	itk::DataObject *img = 0;
+	unsigned int idx = 0;
 	switch(this->mOutputComponentType)
 	{
 	case itk::ImageIOBase::UCHAR:

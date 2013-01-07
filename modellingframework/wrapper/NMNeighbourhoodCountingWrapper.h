@@ -62,7 +62,7 @@ public:
 	NMNeighbourhoodCountingWrapper(QObject* parent = 0);
 	virtual ~NMNeighbourhoodCountingWrapper();
 
-	NMItkDataObjectWrapper* getOutput(void);
+	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,

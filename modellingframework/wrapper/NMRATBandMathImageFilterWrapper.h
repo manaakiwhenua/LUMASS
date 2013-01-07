@@ -69,12 +69,14 @@ class NMRATBandMathImageFilterWrapper : public NMProcess
 	Q_PROPERTY(QList<QStringList> InputTables READ getInputTables WRITE setInputTables)
 	Q_PROPERTY(QList<QList<QStringList> > InputTableVarNames READ getInputTableVarNames WRITE setInputTableVarNames)
 	Q_PROPERTY(QStringList MapExpressions READ getMapExpressions WRITE setMapExpressions )
+	Q_PROPERTY(QStringList NumExpressions READ getNumExpressions WRITE setNumExpressions )
 
 public:
 //	NMPropertyGetSet( InputImgVarNames, QList<QStringList> )
 	NMPropertyGetSet( InputTables, QList<QStringList> )
 	NMPropertyGetSet( InputTableVarNames, QList<QList<QStringList> > )
 	NMPropertyGetSet( MapExpressions, QStringList )
+	NMPropertyGetSet( NumExpressions, QStringList )
 
 signals:
 //	void InputImgVarNamesChanged(QList<QStringList>);
@@ -87,7 +89,7 @@ public:
     NMRATBandMathImageFilterWrapper(QObject *parent=0);
     ~NMRATBandMathImageFilterWrapper ( );
 
-    NMItkDataObjectWrapper* getOutput(void);
+    NMItkDataObjectWrapper* getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
@@ -96,21 +98,18 @@ public:
     		otb::AttributeTable* table,
     		std::vector<std::string> tableColumns);
 
-    void setExpression(QString expression);
-
-//    void linkInPipeline(const QMap<QString, NMModelComponent*>& repo);
-//    void advanceParameter(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
-
-
 protected:
 
     void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
+    void setInternalExpression(QString expression);
+    void setInternalNumExpression(unsigned int numExpr);
 
     std::string ctx;
     QList<QStringList> 		   mInputImgVarNames;
     QList<QStringList> 		   mInputTables;
     QList<QList<QStringList> > mInputTableVarNames;
     QStringList 			   mMapExpressions;
+    QStringList				   mNumExpressions;
 
 //    void setTableParams( const QMap<QString,
 //    		NMModelComponent*>& repo);

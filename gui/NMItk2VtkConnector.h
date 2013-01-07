@@ -50,8 +50,8 @@ public:
 	virtual ~NMItk2VtkConnector();
 
 	void setNthInput(unsigned int numInput, NMItkDataObjectWrapper* imgWrapper);
-	//void setInput(NMItkDataObjectWrapper* imgWrapper);
-	NMItkDataObjectWrapper* getOutput(void);
+	NMItkDataObjectWrapper* getOutput(unsigned int idx)
+		{return 0;}
 
 	vtkImageData *getVtkImage(void);
 	vtkAlgorithmOutput *getVtkAlgorithmOutput(void);
@@ -61,15 +61,9 @@ public:
 private:
 	NMItk2VtkConnector & operator=(const NMItk2VtkConnector&);
 
-//	itk::ImageIOBase::IOComponentType mItkComponentType;
-//	itk::DataObject* mItkImgObj;
 	vtkSmartPointer<vtkImageImport> mVtkImgImp;
 	vtkSmartPointer<vtkImageChangeInformation> mVtkImgChangeInfo;
 	itk::VTKImageExportBase::Pointer mVtkImgExp;
-
-
-//	unsigned int mNumDimensions;
-//	unsigned int mNumBands;
 
 };
 

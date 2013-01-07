@@ -92,8 +92,7 @@ public:
 
 	// get the ITK Image Base
 	itk::DataObject* getItkImage(void);
-
-	NMItkDataObjectWrapper* getOutput(void);
+	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
 	// file name getter and setter
 	void setFileName(QString filename);
@@ -110,9 +109,6 @@ public:
 
 	bool isRasMode(void) {return this->mbRasMode;};
 	void instantiateObject(void);
-//	void linkInPipeline(const QMap<QString, NMModelComponent*>& repo);
-//	void advanceParameter(unsigned int step,
-//			const QMap<QString, NMModelComponent*>& repo);
 
 protected:
 	void UpdateProgressInfo(itk::Object* obj,

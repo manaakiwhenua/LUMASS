@@ -85,7 +85,7 @@ public:
 	template<class InPixelType, unsigned int Dimension>
 	friend class NMCostDistanceBufferImageWrapper_Internal;
 
-	NMItkDataObjectWrapper* getOutput(void);
+	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,

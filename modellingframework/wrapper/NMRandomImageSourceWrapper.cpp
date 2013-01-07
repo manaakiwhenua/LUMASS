@@ -56,10 +56,10 @@ public:
 		}
 
 	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
+			unsigned int numBands, unsigned int idx)
 		{
 			FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-			return dynamic_cast<ImgType*>(filter->GetOutput());
+			return dynamic_cast<ImgType*>(filter->GetOutput(idx));
 		}
 
 	static void setSize(itk::ProcessObject::Pointer& otbFilter,

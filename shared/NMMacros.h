@@ -64,17 +64,17 @@ signals: \
 	if (this->mInputNumDimensions == 1)		\
 	{		\
 		img = wrapName< inputType, outputType, 1>::getOutput(this->mOtbProcess, \
-				this->mInputNumBands);	\
+				this->mInputNumBands, idx);	\
 	}		\
 	else if (this->mInputNumDimensions == 2) \
 	{ \
 		img = wrapName< inputType, outputType, 2 >::getOutput(this->mOtbProcess, \
-				this->mInputNumBands);	\
+				this->mInputNumBands, idx);	\
 	} \
 	else if (this->mInputNumDimensions == 3) \
 	{ \
 		img = wrapName< inputType, outputType, 3 >::getOutput(this->mOtbProcess, \
-				this->mInputNumBands);	\
+				this->mInputNumBands, idx);	\
 	}\
 }
 
@@ -83,17 +83,17 @@ signals: \
 	if (this->mOutputNumDimensions == 1)		\
 	{		\
 		img = wrapName< outputType, 1>::getOutput(this->mOtbProcess, \
-				this->mOutputNumBands);	\
+				this->mOutputNumBands, idx);	\
 	}		\
 	else if (this->mOutputNumDimensions == 2) \
 	{ \
 		img = wrapName< outputType, 2 >::getOutput(this->mOtbProcess, \
-				this->mOutputNumBands);	\
+				this->mOutputNumBands, idx);	\
 	} \
 	else if (this->mOutputNumDimensions == 3) \
 	{ \
 		img = wrapName< outputType, 3 >::getOutput(this->mOtbProcess, \
-				this->mOutputNumBands);	\
+				this->mOutputNumBands, idx);	\
 	}\
 }
 
@@ -102,17 +102,17 @@ signals: \
 	if (this->mInputNumDimensions == 1)		\
 	{		\
 		img = wrapName< inputType, 1>::getOutput(this->mOtbProcess, \
-				this->mInputNumBands);	\
+				this->mInputNumBands, idx);	\
 	}		\
 	else if (this->mInputNumDimensions == 2) \
 	{ \
 		img = wrapName< inputType, 2 >::getOutput(this->mOtbProcess, \
-				this->mInputNumBands);	\
+				this->mInputNumBands, idx);	\
 	} \
 	else if (this->mInputNumDimensions == 3) \
 	{ \
 		img = wrapName< inputType, 3 >::getOutput(this->mOtbProcess, \
-				this->mInputNumBands);	\
+				this->mInputNumBands, idx);	\
 	}\
 }
 
@@ -486,7 +486,7 @@ void ClassName::instantiateObject(void)                                 \
  *  over the OUTPUT component type of this wrapper class
  */
 #define GetOutputTypeOutputWrap( ClassName, InternalWrapper )                     \
-NMItkDataObjectWrapper* ClassName::getOutput(void)							      \
+NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
 {                                                                                 \
 	if (!this->mbIsInitialised)                                                   \
 		return 0;                                                                 \
@@ -511,7 +511,7 @@ NMItkDataObjectWrapper* ClassName::getOutput(void)							      \
  *  over the INPUT component type of this wrapper class
  */
 #define GetInputTypeOutputWrap( ClassName, InternalWrapper )                     \
-NMItkDataObjectWrapper* ClassName::getOutput(void)							      \
+NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
 {                                                                                 \
 	if (!this->mbIsInitialised)                                                   \
 		return 0;                                                                 \
@@ -536,7 +536,7 @@ NMItkDataObjectWrapper* ClassName::getOutput(void)							      \
  *  over the INPUT and OUTPUT component type of this wrapper class
  */
 #define GetOutputWrap( ClassName, InternalWrapper )                                              \
-NMItkDataObjectWrapper* ClassName::getOutput(void)								\
+NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
 {                                                                               \
 	if (!this->mbIsInitialised)                                                 \
 		return 0;                                                               \

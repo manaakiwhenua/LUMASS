@@ -82,10 +82,10 @@ public:
 	}
 
 	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
+			unsigned int numBands, unsigned int idx)
 	{
 		DistanceFilterType* f = dynamic_cast<DistanceFilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutputImgType*>(f->GetOutput());
+		return dynamic_cast<OutputImgType*>(f->GetOutput(idx));
 	}
 
 	static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
@@ -576,6 +576,7 @@ NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* pare
 	  mCreateBuffer(false)
 {
 	this->setParent(parent);
+	this->setObjectName("NMCostDistanceBufferImageWrapper");
 	this->mInputComponentType = itk::ImageIOBase::INT;
 	this->mOutputComponentType = itk::ImageIOBase::DOUBLE;
 	this->mParameterHandling = NMProcess::NM_USE_UP;

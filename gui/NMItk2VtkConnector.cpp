@@ -242,10 +242,5 @@ vtkAlgorithmOutput * NMItk2VtkConnector::getVtkAlgorithmOutput()
 
 void NMItk2VtkConnector::instantiateObject(void)
 {
-
 }
 
-NMItkDataObjectWrapper* NMItk2VtkConnector::getOutput(void)
-{
-	return 0;
-}

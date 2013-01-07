@@ -60,6 +60,13 @@ public:
 			filter->SetExpression(expression.toStdString());
 		}
 
+	static void setNbExpr(itk::ProcessObject::Pointer& otbFilter,
+			unsigned int numExpr)
+		{
+			FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+			filter->SetNbExpr(numExpr);
+		}
+
 	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)//, QString varName)
 		{
@@ -84,10 +91,10 @@ public:
 		}
 
 	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
+			unsigned int numBands, unsigned int idx)
 		{
 			FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-			return dynamic_cast<ImgType*>(filter->GetOutput());
+			return dynamic_cast<ImgType*>(filter->GetOutput(idx));
 		}
 };
 
@@ -110,7 +117,7 @@ else if (this->mInputNumDimensions == 3)                                        
 
 
 
-#define callSetExpression( filterPixelType ) \
+#define callSetExpression( filterPixelType, wrapName ) \
 { \
 	if (this->mInputNumDimensions == 2) \
 	{ \
@@ -121,6 +128,20 @@ else if (this->mInputNumDimensions == 3)                                        
 	{ \
 		NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 3 >::setExpression( \
 				this->mOtbProcess, expression); \
+	}\
+}
+
+#define callSetNbExpr( filterPixelType, wrapName ) \
+{ \
+	if (this->mInputNumDimensions == 2) \
+	{ \
+		NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 2 >::setNbExpr( \
+				this->mOtbProcess, numExpr); \
+	} \
+	else if (this->mInputNumDimensions == 3) \
+	{ \
+		NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 3 >::setNbExpr( \
+				this->mOtbProcess, numExpr); \
 	}\
 }
 
@@ -167,94 +188,29 @@ NMRATBandMathImageFilterWrapper
 	}
 }
 
-//void NMRATBandMathImageFilterWrapper::setNthInput(unsigned int numInput,
-//		NMItkDataObjectWrapper* imgWrapper)
-//{
-//	if (!this->mbIsInitialised)
-//		return;
-//
-//	itk::DataObject* img = imgWrapper->getDataObject();
-//	switch (this->mInputComponentType)
-//	{
-//	case itk::ImageIOBase::UCHAR:
-//        callSetInput( unsigned char );
-//		break;
-//	case itk::ImageIOBase::CHAR:
-//		callSetInput( char );
-//		break;
-//	case itk::ImageIOBase::USHORT:
-//		callSetInput( unsigned short );
-//		break;
-//	case itk::ImageIOBase::SHORT:
-//		callSetInput( short );
-//		break;
-//	case itk::ImageIOBase::UINT:
-//		callSetInput( unsigned int );
-//		break;
-//	case itk::ImageIOBase::INT:
-//		callSetInput( int );
-//		break;
-//	case itk::ImageIOBase::ULONG:
-//		callSetInput( unsigned long );
-//		break;
-//	case itk::ImageIOBase::LONG:
-//		callSetInput( long );
-//		break;
-//	case itk::ImageIOBase::FLOAT:
-//		callSetInput( float );
-//		break;
-//	case itk::ImageIOBase::DOUBLE:
-//		callSetInput( double );
-//		break;
-//	default:
-//		break;
-//	}
-//}
+void
+NMRATBandMathImageFilterWrapper
+::setInternalNumExpression(unsigned int numExpr)
+{
+	if (!this->mbIsInitialised)
+		return;
 
+	switch(this->mInputComponentType)
+	{
+	MacroPerType( callSetNbExpr, NMRATBandMathImageFilterWrapper_Internal )
+	default:
+		break;
+	}
+}
 
-
-//NMItkDataObjectWrapper* NMRATBandMathImageFilterWrapper::getOutput(void)
-//{
-//	GetOutputWrap()
-//}
-
-void NMRATBandMathImageFilterWrapper::setExpression(QString expression)
+void NMRATBandMathImageFilterWrapper::setInternalExpression(QString expression)
 {
 	if (!this->mbIsInitialised)
 		return;
 
 	switch (this->mInputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:
-		callSetExpression( unsigned char );
-		break;
-	case itk::ImageIOBase::CHAR:
-		callSetExpression( char );
-		break;
-	case itk::ImageIOBase::USHORT:
-		callSetExpression( unsigned short );
-		break;
-	case itk::ImageIOBase::SHORT:
-		callSetExpression( short );
-		break;
-	case itk::ImageIOBase::UINT:
-		callSetExpression( unsigned int );
-		break;
-	case itk::ImageIOBase::INT:
-		callSetExpression( int );
-		break;
-	case itk::ImageIOBase::ULONG:
-		callSetExpression( unsigned long );
-		break;
-	case itk::ImageIOBase::LONG:
-		callSetExpression( long );
-		break;
-	case itk::ImageIOBase::FLOAT:
-		callSetExpression( float );
-		break;
-	case itk::ImageIOBase::DOUBLE:
-		callSetExpression( double );
-		break;
+	MacroPerType( callSetExpression, NMRATBandMathImageFilterWrapper_Internal)
 	default:
 		break;
 	}
@@ -266,12 +222,6 @@ NMRATBandMathImageFilterWrapper
 {
 	NMDebugCtx(ctx, << "...");
 
-//	if (step > 0)
-//	{
-//		this->mbIsInitialised = false;
-//		this->instantiateObject();
-//	}
-
 	if (step > this->mMapExpressions.size()-1)
 		step = 0;
 
@@ -279,7 +229,7 @@ NMRATBandMathImageFilterWrapper
 	// set the calculation expression
 	if (step < this->mMapExpressions.size())
 	{
-		this->setExpression(this->mMapExpressions.at(step));
+		this->setInternalExpression(this->mMapExpressions.at(step));
 	}
 	else
 	{
@@ -287,6 +237,13 @@ NMRATBandMathImageFilterWrapper
 		return;
 	}
 
+	if (step < this->mNumExpressions.size())
+	{
+		bool bOK;
+		int numExpr = this->mNumExpressions.at(step).toInt(&bOK);
+		if (bOK)
+			this->setInternalNumExpression(numExpr);
+	}
 
 	// let's see whether we've got some tables and associated variable names
 	// in any case, we need the same amount of tables and table column names

@@ -498,7 +498,7 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 		QStringList bracedList = value.toStringList();
 		if (!bracedList.isEmpty())
 		{
-			if (!bracedList.at(0).startsWith("invalid"))
+			if (!bracedList.at(0).isEmpty() && !bracedList.at(0).startsWith("invalid"))
 			{
 				updatedValue = this->nestedListFromStringList(bracedList);
 			}
@@ -519,14 +519,14 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 		}
 		else
 		{
-			NMDebug(<< "updated type: " << updatedValue.typeName());
 			obj->setProperty(propName.toStdString().c_str(), updatedValue);
-			NMDebug(<< " done!" << std::endl);
+			NMDebugAI(<< "object property updated - type '"
+					<< updatedValue.typeName() << "'" << endl);
 		}
 	}
 	else
 	{
-		NMDebug(<< " failed! Invalid value!" << std::endl);
+		NMDebugAI(<< "object property update failed! Invalid value!" << std::endl);
 	}
 }
 
@@ -568,8 +568,10 @@ void NMEditModelComponentDialog::updateSubComponents(const QStringList& compList
 	}
 }
 
-QVariant NMEditModelComponentDialog::nestedListFromStringList(const QStringList& strList)
+QVariant
+NMEditModelComponentDialog::nestedListFromStringList(const QStringList& strList)
 {
+	NMDebugCtx(ctx, << "...");
 	QVariant val;
 
 	// determine the max depth (level) of the stringlist
@@ -588,8 +590,8 @@ QVariant NMEditModelComponentDialog::nestedListFromStringList(const QStringList&
 			--levelcounter;
 		}
 	}
-//	NMDebugAI( << "detected maxlevel: " << maxlevel << std::endl);
-//	NMDebugAI( << "parsing list ..." << std::endl << std::endl);
+	NMDebugAI( << "detected maxlevel: " << maxlevel << std::endl);
+	NMDebugAI( << "parsing list ..." << std::endl << std::endl);
 
 	QList<QList<QStringList> >* llsl;
 	QList<QStringList>* lsl;
@@ -679,11 +681,6 @@ QVariant NMEditModelComponentDialog::nestedListFromStringList(const QStringList&
 		break;
 	}
 
+	NMDebugCtx(ctx, << "done!");
 	return val;
 }
-
-//void NMEditModelComponentDialog::updateSubComponents(const QStringList& compList)
-//{
-//
-//}
-

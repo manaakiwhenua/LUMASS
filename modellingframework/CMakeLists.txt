@@ -33,7 +33,10 @@ file(GLOB MFW_H
    ${mfw_wrapper_SOURCE_DIR}/*.h
 )
 
-QT4_WRAP_CPP(MFW_MOC_CPP ${MFW_H})
+SET(MFW_MOC_H ${MFW_H})
+LIST(REMOVE_ITEM MFW_MOC_H ${mfw_SOURCE_DIR}/NMMfwException.h)
+
+QT4_WRAP_CPP(MFW_MOC_CPP ${MFW_MOC_H})
 
 IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)

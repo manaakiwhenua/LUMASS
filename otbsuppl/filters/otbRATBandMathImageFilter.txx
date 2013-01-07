@@ -298,15 +298,15 @@ void RATBandMathImageFilter<TImage>
     m_VParser.at(i)->SetExpr(m_Expression);
 
     // debug
-    std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
-    std::cout << "no. of vars: " << m_NbVar << std::endl;
-    std::cout << "parser expression: " << m_VParser[i]->GetExpr() << std::endl << std::endl;
+    //std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
+    //std::cout << "no. of vars: " << m_NbVar << std::endl;
+    //std::cout << "parser expression: " << m_VParser[i]->GetExpr() << std::endl << std::endl;
   
-    std::cout << "image loop ----------------------------------------------" << std::endl << std::endl;
+    //std::cout << "image loop ----------------------------------------------" << std::endl << std::endl;
     for(j=0; j < nbInputImages; j++)
     {
       m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
-      std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img #" << j << std::endl;
+      //std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img #" << j << std::endl;
 
       //attribute table support
       if (m_VRAT.size() > 0)
@@ -319,7 +319,7 @@ void RATBandMathImageFilter<TImage>
 			  {
 				  std::string vname = bname + m_VTabAttr[j][c];
 
-				  std::cout << "Parser #" << i << ": define var: " << vname << " for img #" << j << std::endl;
+				  //std::cout << "Parser #" << i << ": define var: " << vname << " for img #" << j << std::endl;
 
 				  m_VParser[i]->DefineVar(vname, &(m_VAttrValues[i][j][c]));
 			  }
@@ -327,17 +327,17 @@ void RATBandMathImageFilter<TImage>
       }
 
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
-    std::cout << "image idx loop ----------------------------------------------" << std::endl << std::endl;
+    //std::cout << "image idx loop ----------------------------------------------" << std::endl << std::endl;
     for(j=nbInputImages; j < nbInputImages+nbAccessIndex; j++)
     {
       m_VVarName.at(j) = tmpIdxVarNames.at(j-nbInputImages);
-      std::cout << "set varname for img#" << j << " to " << m_VVarName[j] << std::endl;
+      //std::cout << "set varname for img#" << j << " to " << m_VVarName[j] << std::endl;
       m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
-      std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img-idx #" << j << std::endl;
+      //std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img-idx #" << j << std::endl;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
   }
 }
 

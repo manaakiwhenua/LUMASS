@@ -81,6 +81,15 @@ public slots:
 	/*! Requests the execution of the named component. */
 	void executeModel(const QString& compName);
 
+	/*! Resets the named model component and (recursively!)
+	 *  all of its sub components, i.e. reset is called on
+	 *  each process component hosted by this component.
+	 *  This causes all process components to be re-initialised
+	 *  upon next execution (i.e. either explicit update call or
+	 *  implicit execution as part of a pipeline).
+	 */
+	void resetComponent(const QString& compName);
+
 	/*! Indicates whether any of the process components
 	 *         controlled by this controller is currently
 	 *         being executed or not.
@@ -137,7 +146,6 @@ protected:
 	virtual ~NMModelController();
 
 	void resetExecutionStack(void);
-	void resetComponent(const QString& compName);
 
 	QMap<QString, NMModelComponent*> mComponentMap;
 	QStack<QString> mExecutionStack;

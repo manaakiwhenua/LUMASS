@@ -153,11 +153,13 @@ NMModelController::executeModel(const QString& compName)
 		return;
 	}
 
-	this->mRootComponent = this->identifyRootComponent();
-	QString name = this->mRootComponent->objectName();
-	if (this->mRootComponent == 0)
+	//this->mRootComponent = this->identifyRootComponent();
+	//QString name = this->mRootComponent->objectName();
+	NMModelComponent* comp = this->getComponent(compName);
+	if (comp == 0)
 	{
-		NMErr(ctx, << "couldn't find a root component!");
+		NMErr(ctx, << "couldn't find '"
+				<< compName.toStdString() << "'!");
 		return;
 	}
 
@@ -176,7 +178,7 @@ NMModelController::executeModel(const QString& compName)
 	// user-requested model abortion
 	try
 	{
-		this->mRootComponent->update(this->mComponentMap);
+		comp->update(this->mComponentMap);
 	}
 	catch (std::exception& e)
 	{
@@ -199,7 +201,7 @@ NMModelController::executeModel(const QString& compName)
 	// notify all listeners, that those components are no longer
 	// running
 	this->resetExecutionStack();
-	this->resetComponent(name);
+	this->resetComponent(compName);
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -207,12 +209,20 @@ NMModelController::executeModel(const QString& compName)
 void
 NMModelController::resetComponent(const QString& compName)
 {
+	NMDebugCtx(ctx, << "...");
 	NMModelComponent* comp = this->getComponent(compName);
 	if (comp == 0)
+	{
+		NMErr(ctx, << "couldn't find '"
+				<< compName.toStdString() << "'!");
 		return;
+	}
+
+	NMDebugAI(<< "resetting component '" << compName.toStdString()
+			  << "'" << endl);
 
 	comp->reset();
-
+	NMDebugCtx(ctx, << "done!");
 }
 
 QString NMModelController::addComponent(NMModelComponent* comp,

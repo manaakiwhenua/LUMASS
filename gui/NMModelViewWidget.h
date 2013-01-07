@@ -72,6 +72,7 @@ public slots:
 	void compProcChanged();
 
 	void executeModel(void);
+	void resetModel(void);
 	void zoomIn(void);
 	void zoomOut(void);
 
@@ -90,6 +91,7 @@ signals:
 	void selToolToggled(bool);
 	void moveToolToggled(bool);
 	void requestModelExecution(const QString& compName);
+	void requestModelReset(const QString& compName);
 	void requestModelAbortion(void);
 	void widgetIsExiting(void);
 

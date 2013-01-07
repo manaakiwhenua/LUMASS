@@ -31,6 +31,7 @@
 #include <QApplication>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QMessageBox>
 
 #include "otbmodellerwin.h"
 #include "NMModelViewWidget.h"
@@ -65,6 +66,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
  	connect(this, SIGNAL(requestModelExecution(const QString &)),
  			mModelController, SLOT(executeModel(const QString &)));
+ 	connect(this, SIGNAL(requestModelReset(const QString &)),
+ 			mModelController, SLOT(resetComponent(const QString &)));
  	connect(this, SIGNAL(requestModelAbortion()),
  			mModelController, SLOT(abortModel()), Qt::DirectConnection);
  	connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
@@ -238,16 +241,6 @@ void NMModelViewWidget::createAggregateComponent()
 		NMProcessComponentItem* procItem = 0;
 		NMAggregateComponentItem* aggrItem = 0;
 		QGraphicsItem* item = it.next();
-		//NMDebugAI(<< "item type is: " << item->type() << std::endl);
-        //
-		//if (item->type() == NMProcessComponentItem::Type)
-		//{
-		//	NMDebug(<< "process component" << endl);
-		//}
-		//else if (item->type() == NMAggregateComponentItem::Type)
-		//{
-		//	NMDebug(<< "group component" << endl);
-		//}
 
 		procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -310,6 +303,9 @@ void NMModelViewWidget::createAggregateComponent()
 	NMModelComponent* aggrComp = new NMModelComponent();
 	aggrComp->setObjectName("AggrComp");
 
+	// set the new aggregated component on time level host_level + 1
+	aggrComp->setTimeLevel(host->getTimeLevel() + 1);
+
 	connect(aggrComp, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
 
 	// ToDo: have to check the order in which 'selected items' returns the elements
@@ -321,14 +317,17 @@ void NMModelViewWidget::createAggregateComponent()
 		tcomp = itComp.next();
 		NMDebugAI(<< "adding to aggregate " << tcomp->objectName().toStdString() << std::endl);
 		aggrComp->addModelComponent(tcomp);
-	}
 
-	// set the new aggregated component on time level host_level + 1
-	aggrComp->setTimeLevel(host->getTimeLevel() + 1);
+		if (this->mOpenEditors.contains(tcomp))
+			this->mOpenEditors.value(tcomp)->update();
+	}
 
 	// now we add the new aggregate component to the identified host
 	// component of the model
 	QString newAggrItemName = this->mModelController->addComponent(aggrComp, host);
+
+	if (this->mOpenEditors.contains(host))
+		this->mOpenEditors.value(host)->update();
 
 	// get the host item -> ask the scene it should know
 	QGraphicsItem* hostItem = this->mModelScene->getComponentItem(host->objectName());
@@ -368,6 +367,16 @@ void NMModelViewWidget::initItemContextMenu()
 {
 	this->mItemContextMenu = new QMenu(this);
 
+	QAction* runComp = new QAction(this->mItemContextMenu);
+	runComp->setText(tr("Execute"));
+	runComp->setEnabled(false);
+	this->mActionMap.insert("Execute", runComp);
+
+	QAction* resetComp = new QAction(this->mItemContextMenu);
+	resetComp->setText(tr("Reset"));
+	resetComp->setEnabled(false);
+	this->mActionMap.insert("Reset", resetComp);
+
 	QAction* groupItems = new QAction(this->mItemContextMenu);
 	QString groupItemText = "Group Components";
 	groupItems->setEnabled(false);
@@ -386,12 +395,16 @@ void NMModelViewWidget::initItemContextMenu()
 
 	QAction* saveComp = new QAction(this->mItemContextMenu);
 	saveComp->setText(tr("Save As ..."));
+	saveComp->setEnabled(false);
 	this->mActionMap.insert("Save As ...", saveComp);
 
 	QAction* loadComp = new QAction(this->mItemContextMenu);
 	loadComp->setText(tr("Load ..."));
 	this->mActionMap.insert("Load ...", loadComp);
 
+	this->mItemContextMenu->addAction(runComp);
+	this->mItemContextMenu->addAction(resetComp);
+	this->mItemContextMenu->addSeparator();
 	this->mItemContextMenu->addAction(groupItems);
 	this->mItemContextMenu->addAction(ungroupItems);
 	this->mItemContextMenu->addSeparator();
@@ -400,6 +413,8 @@ void NMModelViewWidget::initItemContextMenu()
 	this->mItemContextMenu->addAction(loadComp);
 	this->mItemContextMenu->addAction(saveComp);
 
+	connect(runComp, SIGNAL(triggered()), this, SLOT(executeModel()));
+	connect(resetComp, SIGNAL(triggered()), this, SLOT(resetModel()));
 	connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
 	connect(groupItems, SIGNAL(triggered()), this, SLOT(createAggregateComponent()));
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
@@ -414,6 +429,19 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 
 	this->mLastScenePos = event->scenePos();
 	this->mLastItem = item;
+
+	// Execute && Reset model
+	if (((item != 0 && item->type() != NMComponentLinkItem::Type)
+		&& !running) || !running)
+	{
+		this->mActionMap.value("Execute")->setEnabled(true);
+		this->mActionMap.value("Reset")->setEnabled(true);
+	}
+	else
+	{
+		this->mActionMap.value("Execute")->setEnabled(false);
+		this->mActionMap.value("Reset")->setEnabled(false);
+	}
 
 	// GROUP
 	QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
@@ -447,7 +475,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		this->mActionMap.value("Delete")->setEnabled(false);
 
 	// SAVE & LOAD
-	if (item != 0 && item->type() == NMComponentLinkItem::Type)
+	if (item != 0 && item->type() != NMComponentLinkItem::Type)
 		this->mActionMap.value("Save As ...")->setEnabled(false);
 	else
 		this->mActionMap.value("Save As ...")->setEnabled(true);
@@ -462,7 +490,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 	this->mItemContextMenu->exec();
 }
 
-void NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
+void
+NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
 {
 	NMDebugCtx(ctx, << "...");
 
@@ -1019,9 +1048,20 @@ void NMModelViewWidget::ungroupComponents()
 		NMModelComponent* c = this->componentFromItem(i);
 		host->removeModelComponent(c->objectName());
 		hosthost->addModelComponent(c);
+		c->setTimeLevel(hosthost->getTimeLevel());
+
+		if (this->mOpenEditors.contains(c))
+		{
+			this->mOpenEditors.value(c)->update();
+		}
 	}
 
 	this->deleteEmptyComponent(host);
+
+	if (this->mOpenEditors.contains(host))
+		this->mOpenEditors.value(host)->update();
+	if (this->mOpenEditors.contains(hosthost))
+		this->mOpenEditors.value(hosthost)->update();
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -1137,12 +1177,14 @@ void NMModelViewWidget::deleteItem()
 void
 NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
 {
+	NMDebugCtx(ctx, << "...");
+
 	// for now, we're just dealing with the inputs of the first
 	// iteration, since we don't support visualising the
 	// 2+ iteration inputs as yet
-	if (inputs.size() == 0)
-		return;
-	QStringList list = inputs.at(0);
+	QStringList srclist;
+	if (!inputs.isEmpty())
+		srclist = inputs.at(0);
 
 	NMProcess* sender = qobject_cast<NMProcess*>(this->sender());
 	if (sender == 0)
@@ -1158,10 +1200,20 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
 		return;
 	QList<NMComponentLinkItem*> inputLinks = procItem->getInputLinks();
 
+
+	// strip off any position indices from the source input name
+	QStringList list;
+	foreach(const QString& src, srclist)
+	{
+		if (!src.isEmpty())
+			list.push_back(src.split(":", QString::SkipEmptyParts).at(0));
+	}
+
 	// remove inputs
 	for (int a=0; a < inputLinks.size(); ++a)
 	{
 		NMComponentLinkItem* link = inputLinks.at(a);
+
 		if (!list.contains(procItem->identifyInputLink(a)))
 		{
 			NMProcessComponentItem* src = link->sourceItem();
@@ -1191,6 +1243,7 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
 		}
 	}
 
+	NMDebugCtx(ctx, << "done!");
 }
 
 
@@ -1533,21 +1586,69 @@ void NMModelViewWidget::dropEvent(QDropEvent* event)
 
 void NMModelViewWidget::executeModel(void)
 {
-	if (!NMModelController::getInstance()->isModelRunning())
+	if (NMModelController::getInstance()->isModelRunning())
 	{
-		emit requestModelExecution("");
+		QMessageBox::information(this, "Execute Model Component",
+				"There's already a model running at the moment! Please"
+				"try again later!");
+		return;
+	}
+
+	NMModelComponent* comp = 0;
+	if (QString("QPushButton").compare(this->sender()->metaObject()->className()) == 0)
+		comp = this->mModelController->getComponent("root");
+	else if (this->mLastItem != 0)
+		comp = this->componentFromItem(this->mLastItem);
+	else
+		comp = this->mModelController->getComponent("root");
+
+	if (comp == 0)
+	{
+		NMErr(ctx, << "Failed to perform model execution!");
+		return;
+	}
+
+	//QString msg = QString(tr("Do you want to execute model component '%1'?"))
+	//		.arg(comp->objectName());
+	//if (QMessageBox::Ok == QMessageBox::question(this, "Execute Model Component",
+	//		msg, QMessageBox::No | QMessageBox::Yes, QMessageBox::Yes))
+	{
+		emit requestModelExecution(comp->objectName());
 	}
 }
 
-//void NMModelViewWidget::saveModel(void)
-//{
-//	NMDebugAI(<< "saving" << std::endl);
-//}
-//
-//void NMModelViewWidget::loadModel(void)
-//{
-//	NMDebugAI(<< "load" << std::endl);
-//}
+void
+NMModelViewWidget::resetModel(void)
+{
+	if (NMModelController::getInstance()->isModelRunning())
+	{
+		QMessageBox::information(this, "Reset Model Component",
+				"You cannot reset a model component while a model"
+				"is running! Please try again later!");
+		return;
+	}
+
+	NMModelComponent* comp = 0;
+	if (QString("QPushButton").compare(this->sender()->metaObject()->className()) == 0)
+		comp = this->mModelController->getComponent("root");
+	else if (this->mLastItem != 0)
+		comp = this->componentFromItem(this->mLastItem);
+	else
+		comp = this->mModelController->getComponent("root");
+
+	if (comp == 0)
+	{
+		NMErr(ctx, << "Failed to perform model reset!");
+		return;
+	}
+
+	//QString msg = QString(tr("Do you want to reset model component '%1'?")).arg(comp->objectName());
+	//if (QMessageBox::Ok == QMessageBox::question(this, "Reset Model Component",
+	//		msg, QMessageBox::No | QMessageBox::Yes, QMessageBox::No))
+	{
+		emit requestModelReset(comp->objectName());
+	}
+}
 
 
 

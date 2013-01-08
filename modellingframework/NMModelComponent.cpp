@@ -113,13 +113,11 @@ void NMModelComponent::addModelComponent(NMModelComponent* comp)
 	if (this->mProcess != 0)
 		return;
 
-	// nested components must not have lower time levels than
-	// the parent component
-	//if (comp->getTimeLevel() < this->getTimeLevel())
-
-	// regardless of the previous time level of the component, we
-	// always set it to the time level of its new host
-	comp->setTimeLevel(this->getTimeLevel());
+	// normally, we maintain components time levels to support
+	// loading models from file, however: nested components must
+	// not have lower time levels than the parent component;
+	if (comp->getTimeLevel() < this->getTimeLevel())
+		comp->setTimeLevel(this->getTimeLevel());
 
 	NMDebugAI(<< "parent: '" << this->objectName().toStdString() << "'" << std::endl);
 	NMDebugAI(<< "add child:  '" << comp->objectName().toStdString() << "'" << std::endl);

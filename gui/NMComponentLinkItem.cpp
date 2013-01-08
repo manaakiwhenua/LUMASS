@@ -139,10 +139,10 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 	if (this->isSelected())
 		pen = QPen(QBrush(Qt::red), 2);
 	else
-		pen = QPen(QBrush(Qt::darkGray), 2);
+		pen = QPen(QBrush(QColor(80,80,80)), 1.8);
 	painter->setPen(pen);
 	painter->drawPath(path);
-	painter->setBrush(Qt::darkGray);
+	painter->setBrush(QColor(80,80,80));
 	painter->drawPolygon(head);
 
 	QPainterPath npath = path;

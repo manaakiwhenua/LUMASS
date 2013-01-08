@@ -218,6 +218,12 @@ NMProcessComponentItem::paint(QPainter* painter,
 		painter->drawRoundRect(QRectF(-45,-45,90,90), 10, 10);
 
 		// draw icon
+		//QImage execIcon(mIcon.toImage());
+		//QPainter iconPainter(&execIcon);
+		//iconPainter.fillRect(QRectF(QPointF(0,0), mIcon.size()), QColor(255,0,0,128));
+		//iconPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+		////iconPainter.fillRect(QRectF(QPointF(0,0), mIcon.size()), QColor(0,0,0,128));
+		//painter->drawImage(QRectF(-40,-40,64,64), execIcon);
 		painter->drawPixmap(QRectF(-40,-40,64,64), mIcon, QRectF(0,0,64,64));
 
 		if (mProgress > 0)

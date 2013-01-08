@@ -62,22 +62,28 @@ NMAggregateComponentItem::paint(QPainter* painter,
 {
 	QRectF bnd = this->boundingRect();
 
+	// clip the image
+	QPainterPath clipPath;
+	clipPath.addRoundRect(bnd.adjusted(1,1,-1.5,-1.5), 5);
+	painter->setClipPath(clipPath);
+
+	// ============================================================================
+	// EDGE GLARE
+	// ============================================================================
 	QImage img(bnd.size().toSize(), QImage::Format_ARGB32_Premultiplied);
 	img.fill(0);
 	QPainter imgPainter(&img);
-	imgPainter.fillRect(img.rect(), mColor);
-
-	imgPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+	imgPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
 	// ------------------------------------------------------------------------
     // blend the corners
     QRadialGradient cornerglare;
-    cornerglare.setColorAt(0, mColor);
+    cornerglare.setColorAt(0.00, QColor(0,0,0,0));
     cornerglare.setColorAt(0.85, QColor(0,0,0,127));
-	cornerglare.setColorAt(0.88, QColor(0,0,0,255));
-	cornerglare.setColorAt(0.9, QColor(0,0,0,255));
-    cornerglare.setColorAt(0.95, QColor(0,0,0,150));
-	cornerglare.setColorAt(1, QColor(0,0,0,100));
+	cornerglare.setColorAt(0.88, QColor(0,0,0,200));
+	cornerglare.setColorAt(0.90, QColor(0,0,0,150));
+    cornerglare.setColorAt(0.95, QColor(0,0,0,100));
+	cornerglare.setColorAt(1.00, QColor(0,0,0,0));
 
 	// top left
 	QSize size(8,8);
@@ -91,6 +97,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	QRect tr(QPoint(img.rect().right()-8,0), size);
 	cornerglare.setCenter(tr.bottomLeft());
     cornerglare.setFocalPoint(tr.bottomLeft());
+    //cornerglare.setRadius(::sqrt(128)*0.8);
     imgPainter.fillRect(tr, cornerglare);
 
     // bottom left
@@ -108,39 +115,54 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	// ----------------------------------------------------------------------
 	// glare the edges on top of it
     // glare top
-	QRect glareRect = img.rect().adjusted(8,0,-8,-(img.rect().height()-8));
+	QRect glareRect = img.rect().adjusted(8,0,-9,-(img.rect().height()-8));
 	QLinearGradient glare(img.rect().center().x(), img.rect().top()+8,
 			img.rect().center().x(), img.rect().top());
-	glare.setColorAt(0, mColor);
-	glare.setColorAt(0.85, QColor(255,255,255,127));
-	glare.setColorAt(0.88, QColor(255,255,255,255));
-	glare.setColorAt(0.9, QColor(255,255,255,255));
-	glare.setColorAt(0.95, QColor(0,0,0,150));
-	glare.setColorAt(1, QColor(0,0,0,100));
+	glare.setColorAt(0.00, QColor(0,0,0,0));
+	glare.setColorAt(0.85, QColor(0,0,0,127));
+	glare.setColorAt(0.88, QColor(0,0,0,200));
+	glare.setColorAt(0.90, QColor(0,0,0,150));
+	glare.setColorAt(0.95, QColor(0,0,0,100));
+	glare.setColorAt(1.00, QColor(0,0,0,0));
 	imgPainter.fillRect(glareRect, glare);
 
 	// glare bottom
 	glare.setStart(img.rect().center().x(), img.rect().bottom()-8);
     glare.setFinalStop(img.rect().center().x(), img.rect().bottom());
-    glareRect = img.rect().adjusted(8, img.rect().height()-8, -8, 0);
+    glareRect = img.rect().adjusted(8, img.rect().height()-8, -9, 0);
     imgPainter.fillRect(glareRect, glare);
 
 	// glare left
 	glare.setStart(QPointF(img.rect().x()+8, img.rect().top() + img.rect().center().y()));
     glare.setFinalStop(QPointF(img.rect().x(), img.rect().top() + img.rect().center().y()));
-    glareRect = img.rect().adjusted(0, 8, 8, -8);
+    glareRect = img.rect().adjusted(0, 8, 8, -9);
     imgPainter.fillRect(glareRect, glare);
 
 	// glare right
 	glare.setStart(QPointF(img.rect().right()-8, img.rect().top() + img.rect().center().y()));
     glare.setFinalStop(QPointF(img.rect().right(), img.rect().top() + img.rect().center().y()));
-    glareRect = img.rect().adjusted(img.rect().width()-8, 8, 0, -8);
+    glareRect = img.rect().adjusted(img.rect().width()-8, 8, -1, -9);
     imgPainter.fillRect(glareRect, glare);
 
-    // make it nice
-    imgPainter.fillRect(img.rect(), QColor(0,0,0,128));
+	// ============================================================================
+	// TRANSPARENT BACKGROUND
+	// ============================================================================
 
-    painter->drawImage(bnd, img);
+	QImage bgImg(bnd.size().toSize(), QImage::Format_ARGB32_Premultiplied);
+	bgImg.fill(0);
+	QPainter bgImgPainter(&bgImg);
+	bgImgPainter.fillRect(bgImg.rect().adjusted(-2,-2,-1,-1), mColor);
+	bgImgPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+	bgImgPainter.fillRect(bgImg.rect().adjusted(-2,-2,-1,-1), QColor(0,0,0,128));
+
+
+	// ============================================================================
+	// PUTTING IT ALL TOGETHER
+	// ============================================================================
+
+	//bgImgPainter.drawImage(glareRect, img);
+	painter->drawImage(bnd, bgImg);
+	painter->drawImage(bnd, img);
 
     painter->setBrush(Qt::NoBrush);
 	painter->setRenderHint(QPainter::Antialiasing, true);
@@ -148,7 +170,9 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	if(this->isSelected())
 	{
 		painter->setPen(QPen(QBrush(Qt::red), 2, Qt::SolidLine));
-		painter->drawRect(bnd);
+		QPainterPath selRect;
+		selRect.addRoundRect(bnd.adjusted(3,3,-3,-3), 5);
+		painter->drawPolygon(selRect.toFillPolygon());
 	}
 }
 

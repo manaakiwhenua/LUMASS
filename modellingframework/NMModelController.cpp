@@ -160,6 +160,7 @@ NMModelController::executeModel(const QString& compName)
 	{
 		NMErr(ctx, << "couldn't find '"
 				<< compName.toStdString() << "'!");
+		NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -183,6 +184,7 @@ NMModelController::executeModel(const QString& compName)
 	catch (std::exception& e)
 	{
 		NMDebugAI(<< e.what() << endl);
+		NMDebugCtx(ctx, << "done!");
 	}
 
 	this->mModelStopped = QDateTime::currentDateTime();

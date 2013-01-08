@@ -107,6 +107,7 @@ void RATBandMathImageFilter<TImage>
 				static_cast<TImage*>(this->MakeOutput(e).GetPointer());
 		this->SetNthOutput(e, output.GetPointer());
 	}
+	this->Modified();
  }
 
 template<class TImage>
@@ -179,6 +180,7 @@ void RATBandMathImageFilter<TImage>
   m_VVarName[idx+2] = "idxY";
   m_VVarName[idx+3] = "idxPhyX";
   m_VVarName[idx+4] = "idxPhyY"; 
+  this->Modified();
 
 }
 
@@ -194,6 +196,7 @@ void RATBandMathImageFilter<TImage>
   m_VVarName[idx+2] = "idxY";
   m_VVarName[idx+3] = "idxPhyX";
   m_VVarName[idx+4] = "idxPhyY"; 
+  this->Modified();
 }
 
 template <class TImage>

@@ -233,6 +233,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 						ss << ic->objectName().toStdString() << "::getOutput("
 						   << outIdx << ") has not been initialised!" << endl;
 						e.setMsg(ss.str());
+						NMDebugCtx(ctxNMProcess, << "done!");
 						throw e;
 					}
 
@@ -275,6 +276,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 						ss << ic->objectName().toStdString() << "::getOutput("
 						   << outIdx << ") has not been initialised!" << endl;
 						e.setMsg(ss.str());
+						NMDebugCtx(ctxNMProcess, << "done!");
 						throw e;
 					}
 
@@ -292,6 +294,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 				   << "input component '" << inputCompName.toStdString()
 				   << "' couldn't be found! Check the property settings." << endl;
 				e.setMsg(ss.str());
+				NMDebugCtx(ctxNMProcess, << "done!");
 				throw e;
 			}
 		}

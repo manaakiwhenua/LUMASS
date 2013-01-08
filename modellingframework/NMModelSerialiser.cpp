@@ -64,7 +64,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 	this->mRasconn = &rasWrapper;
 #endif
 
-	// register maps parsed model component names to final model names
+	// register for mapping parsed model component names to final model names
 	// as registered with model controller
 	QMap<QString, QString> nameRegister;
 
@@ -91,9 +91,16 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 
 	int ind = nmlog::nmindent;
 
+	//==========================================================================================
+	// parsing model components -- creating objects, assiging properties
+	//==========================================================================================
+
 	QDomElement compElem = modelElem.firstChildElement("ModelComponent");
 	for (; !compElem.isNull(); compElem = compElem.nextSiblingElement("ModelComponent"))
 	{
+		// --------------------------------------------------------------------------------------
+		// model component creation
+		// --------------------------------------------------------------------------------------
 		NMModelComponent* comp = 0;
 		QString compName = compElem.attribute("name");
 		if (compName.isEmpty())
@@ -111,7 +118,6 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		{
 			comp = NMModelComponentFactory::instance().createModelComponent(
 					"NMModelComponent");
-			//comp->setParent(controller);
 
 			// add new component to the model controller and make sure it has a unique name
 			comp->setObjectName(compName);
@@ -121,8 +127,10 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 			nameRegister.insert(compName, finalName);
 		}
 
+		// --------------------------------------------------------------------------------------
+		// property assignment
+		// --------------------------------------------------------------------------------------
 		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
-
 		QDomElement propElem = compElem.firstChildElement("Property");
 		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
 		{
@@ -144,6 +152,9 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 					<< " - " << suc << endl);
 		}
 
+		// --------------------------------------------------------------------------------------
+		// process component creation
+		// --------------------------------------------------------------------------------------
 		QDomElement procElem = compElem.firstChildElement("Process");
 		if (!procElem.isNull())
 		{
@@ -174,7 +185,14 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		}
 	}
 
-	// now iterate over all ModelComponents again and establish subcomponents linkage
+	//==========================================================================================
+	// harmonising input component settings and with possibly adjusted component names
+	//==========================================================================================
+	this->harmoniseInputComponentNames(nameRegister, controller);
+
+	//==========================================================================================
+	// parsing model components -- establish component relationships
+	//==========================================================================================
 	compElem = modelElem.firstChildElement("ModelComponent");
 	for (; !compElem.isNull(); compElem = compElem.nextSiblingElement("ModelComponent"))
 	{
@@ -680,57 +698,60 @@ QDomElement NMModelSerialiser::createValueElement(QDomDocument& doc,
 	return valueElement;
 }
 
-//void NMModelSerialiser::serialiseModel(QMap<QString, NMModelComponent*>& repo,
-//		QString fileName)
-//{
-//
-//}
-
-//const QString
-//NMModelSerialiser::getXmlTypeNameFromPropertyType(QString propType)
-//{
-//	QString xmlType;
-//
-//	if (propType.compare("QString"))
-//		xmlType = "string";
-//	else if (propType.compare("QStringList"))
-//		xmlType = "stringlist";
-//	else if (propType.compare("QList<QStringList>"))
-//		xmlType = "list_stringlist";
-//	else if (propType.compare("QList<QList<QStringList> >"))
-//		xmlType = "list_list_stringlist";
-//	else if (propType.compare("NMItkDataObjectWrapper::NMComponentType"))
-//		xmlType = "component_type";
-//	else if (propType.compare("NMRasdamanConnectorWrapper*"))
-//		xmlType = "rasdaman_connection";
-//	else if (propType.compare("bool"))
-//		xmlType = "bool";
-//	else if (propType.compare("uchar"))
-//		xmlType = "unsigned_char";
-//	else if (propType.compare("char"))
-//		xmlType = "char";
-//	else if (propType.compare("uint"))
-//		xmlType = "unsigned_int";
-//	else if (propType.compare("int"))
-//		xmlType = "int";
-//	else if (propType.compare("ushort"))
-//		xmlType = "unsigned_short";
-//	else if (propType.compare("short"))
-//		xmlType = "short";
-//	else if (propType.compare("ulong"))
-//		xmlType = "unsigned_long";
-//	else if (propType.compare("long"))
-//		xmlType = "long";
-//	else if (propType.compare("float"))
-//		xmlType = "float";
-//	else if (propType.compare("double"))
-//		xmlType = "double";
-//	else
-//		xmlType = propType;
-//
-//	return xmlType;
-//}
-
+void
+NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegister,
+		NMModelController* controller)
+{
+	/*  We go through the list of imported components,
+	 *  and ensure for all process components that
+	 *  the names of any input components are consistent
+	 *  with the actual component names as results of
+	 *  the import process.
+	 */
+	QStringList newnames = nameRegister.values();
+	foreach(const QString& nn, newnames)
+	{
+		NMModelComponent* comp = controller->getComponent(nn);
+		if (comp->getProcess() != 0)
+		{
+			QList<QStringList> inputslist =
+					comp->getProcess()->getInputComponents();
+			for(int i=0; i < inputslist.size(); ++i)
+			{
+				QStringList oldinputs = inputslist.at(i);
+				for(int oi=0; oi < oldinputs.size(); ++oi)
+				{
+					QString oldinputSrc = oldinputs.at(oi);
+					QString newinput;
+					if (oldinputSrc.contains(":"))
+					{
+						QStringList oldinputSrcParams = oldinputSrc.split(":", QString::SkipEmptyParts);
+						if (oldinputSrcParams.size() == 2)
+						{
+							newinput = QString("%1:%2").
+								arg(nameRegister.value(oldinputSrcParams.at(0))).
+								arg(oldinputSrcParams.at(1));
+						}
+						else
+						{
+							NMErr(ctx, << comp->objectName().toStdString() << " seems to contain an "
+									<< "ill formatted component input string: '"
+									<< oldinputSrc.toStdString() << "' - we just go for the name then!");
+							newinput = nameRegister.value(oldinputSrcParams.at(0));
+						}
+					}
+					else
+					{
+						newinput = nameRegister.value(oldinputSrc);
+					}
+					oldinputs.replace(oi, newinput);
+				}
+				inputslist.replace(i, oldinputs);
+			}
+			comp->getProcess()->setInputComponents(inputslist);
+		}
+	}
+}
 
 
 

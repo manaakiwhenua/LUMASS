@@ -65,17 +65,16 @@ public:
 #endif			
 			);
 
-	//QMap<QString, NMModelComponent*>& repo,
-
-//	void serialiseModel(QMap<QString, NMModelComponent*>& repo,
-//			QString fileName);
-
 protected:
-//	const QString getXmlTypeNameFromPropertyType(QString propType);
 	QDomElement createValueElement(QDomDocument& doc,
 			QVariant& dataValue);
 	QVariant extractPropertyValue(QDomElement& propElem);
 
+	/*! Harmonises the process component input settings (i.e.
+	 *  model component names) with imported model components
+	 *  (i.e. accounting for any name adjustments during import)*/
+	void harmoniseInputComponentNames(QMap<QString, QString>& nameRegister,
+			NMModelController* controller);
 
 private:
 	string ctx;

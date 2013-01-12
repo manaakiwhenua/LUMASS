@@ -118,13 +118,13 @@
 #include "itkExtractImageFilter.h"
 #include "itkObjectFactoryBase.h"
 #include "itkNMCostDistanceBufferImageFilter.h"
-#include "itkDanielssonDistanceMapImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkImageIOBase.h"
 #include "otbImage2DToCubeSliceFilter.h"
 #include "otbMetaDataKey.h"
 #include "itkMetaDataObject.h"
-#include "itkSignedMaurerDistanceMapImageFilter.h"
+#include "otbFocalDistanceWeightingFilter.h"
+#include "itkArray2D.h"
 
 
 
@@ -710,126 +710,52 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	NMModelController* controller =
-			NMModelController::getInstance();
+	typedef otb::Image<unsigned char, 2> InputImageType;
+	typedef otb::Image<unsigned short, 2> OutputImageType;
 
-	if (controller == 0)
-	{
-		NMDebugAI(<< "oops no controller!" << endl);
-		NMDebugCtx(ctxOtbModellerWin, << "done!");
-		return;
-	}
+	typedef otb::GDALRATImageFileReader<InputImageType> ReaderType;
+	typedef otb::StreamingRATImageFileWriter<OutputImageType> WriterType;
 
-	NMModelComponent* root = controller->getComponent("root");
-	NMDebugAI( << "here is root: '" << root->objectName().toStdString() << endl);
+	typedef otb::FocalDistanceWeightingFilter<InputImageType, OutputImageType> FilterType;
+	FilterType::Pointer filter = FilterType::New();
 
+	ReaderType::Pointer reader = ReaderType::New();
+	reader->SetFileName("/home/alex/garage/img/t1med.tiff");
 
-
-//	typedef otb::Image<float, 2> ImageType;
-//	typedef otb::StreamingRATImageFileWriter<ImageType> WriterType;
-//	typedef otb::RasdamanImageReader<ImageType> ReaderType;
-//	WriterType::Pointer writer = WriterType::New();
-//	//ReaderType::Pointer reader = ReaderType::New();
-//	//reader->SetRasdamanConnector(this->getRasdamanConnector());
-//
-//	int ncols = 4000;
-//	int nrows = 4000;
-//	int chunksize = 1000;
-//	int iter = ncols / chunksize;
-//
-//	itk::ImageIORegion lpr;
-//	lpr.SetSize(0, ncols);
-//	lpr.SetSize(1, nrows);
-//	lpr.SetIndex(0, 0);
-//	lpr.SetIndex(1, 0);
-//	itk::ImageRegion<2> ilpr;
-//	ilpr.SetSize(0, ncols);
-//	ilpr.SetSize(1, nrows);
-//	ilpr.SetIndex(0, 0);
-//	ilpr.SetIndex(1, 0);
-//
-//	writer->SetRasdamanConnector(this->getRasdamanConnector());
-//	writer->SetFileName("utem");
-//
-//	//otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
-//	//writer->SetFileName("/home/alex/garage/img/utem.tiff");
-//	//writer->SetImageIO(gio);
-//
-//	writer->SetForcedLargestPossibleRegion(lpr);
-//	writer->SetNumberOfDivisionsStrippedStreaming(1);
-//
-//	ImageType::Pointer img;
-//	typename ImageType::PointType origin;
-//	origin.SetElement(0, 0);
-//	origin.SetElement(1, nrows);
-//	typename ImageType::SpacingType spacing;
-//	spacing.SetElement(0, 1);
-//	spacing.SetElement(1, 1);
-//
-//
-//	//int chunksize = 1000;
-//	//int ncols = lpr.GetSize()[0];
-//	for (int r=0; r < iter; ++r)
-//	{
-//		itk::ImageRegion<2> ir;
-//		ir.SetSize(0, ncols);
-//		ir.SetSize(1, chunksize);
-//		ir.SetIndex(0,0);
-//		ir.SetIndex(1,0+r*chunksize);
-//
-//		itk::ImageIORegion ior;
-//		ior.SetSize(0, ncols);
-//		ior.SetSize(1, chunksize);
-//		ior.SetIndex(0,0);
-//		ior.SetIndex(1,0+r*chunksize);
-//
-//
-//		//if (r == 0)
-//		{
-//			img = ImageType::New();
-//			img->SetOrigin(origin);
-//			img->SetSpacing(spacing);
-//			img->SetLargestPossibleRegion(ilpr);
-//			img->SetBufferedRegion(ir);
-//			img->SetRequestedRegion(ir);
-//			img->Allocate();
-//		}
-//		//else
-//		//{
-//		//	reader->SetFileName("utem:_last_");
-//		//	reader->GetOutput()->SetRequestedRegion(ir);
-//		//	reader->Update();
-//		//	img = reader->GetOutput();
-//		//}
-//		//img->DisconnectPipeline();
-//
-//		float* buf = (float*)img->GetBufferPointer();
-//
-//		for (int row=0; row < chunksize; ++row)
-//			for (int col=0; col < ncols; ++col)
-//				buf[col + row*ncols] = (float)(row);
-//
-//		if (r)
-//		{
-//			writer->SetFileName("utem:_last_");
-//			writer->SetUpdateMode(true);
-//		}
-//		writer->SetInput(img);
-//		writer->SetUpdateRegion(ior);
-//		writer->Update();
-//	}
-
-	//vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
-	//NMImageLayer* layer = new NMImageLayer(renWin);
-	//
-	//NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(this);
-	//
-	//typedef otb::ImageFileReader<ImageType> ReaderType;
-	//ReaderType::Pointer reader = ReaderType::New();
-	//
-	//otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetFileName("/home/alex/garage/img/focalDist.img");
 
 
+	filter->SetRadius(4);
+	std::vector<typename InputImageType::PixelType> values;
+	values.push_back(43);
+	values.push_back(54);
+	values.push_back(41);
+	values.push_back(20);
+	values.push_back(45);
+
+	filter->SetValues(values);
+
+	float v43[] = {80, 70, 60, 50, 20, 10, 0, 0, 0};
+	float v54[] = {98, 95, 93, 80,  0,  0, 0, 0, 0};
+	float v41[] = {-40, -30, -20, 0, 0, 0, 0, 0, 0};
+	float v20[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+	float v45[] = {40, 30, 20, 10, 0, 0, 0, 0, 0};
+
+	itk::Array2D<float> wheights(5, 9);
+	wheights.set_row(0, v43);
+	wheights.set_row(1, v54);
+	wheights.set_row(2, v41);
+	wheights.set_row(3, v20);
+	wheights.set_row(4, v45);
+
+	filter->SetWeights(wheights);
+
+	filter->Print(std::cout, itk::Indent(2));
+
+	filter->SetInput(reader->GetOutput());
+	writer->SetInput(filter->GetOutput());
+	writer->Update();
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

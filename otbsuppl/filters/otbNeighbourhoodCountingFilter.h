@@ -100,20 +100,17 @@ public:
   typedef typename OutputImageType::RegionType OutputImageRegionType;
   typedef typename InputImageType::SizeType    InputSizeType;
 
-  /** Set the radius of the neighborhood used to compute the mean. */
+  /** Set the radius of the neighborhood . */
   itkSetMacro(Radius, InputSizeType);
 
   /** Set the pixel value to look out for during the counting. */
   itkSetMacro(Testvalue, InputRealType);
 
-  /** Get the radius of the neighborhood used to compute the mean */
+  /** Get the radius of the neighbourhood used to compute the mean */
   itkGetConstReferenceMacro(Radius, InputSizeType);
   
-  /** MeanImageFilter needs a larger input requested region than
-   * the output requested region.  As such, MeanImageFilter needs
-   * to provide an implementation for GenerateInputRequestedRegion()
-   * in order to inform the pipeline execution model.
-   *
+  /** The neighbourhood counting filter needs a larger input requested region than
+   * the output requested region.
    * \sa ImageToImageFilter::GenerateInputRequestedRegion() */
   virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
 

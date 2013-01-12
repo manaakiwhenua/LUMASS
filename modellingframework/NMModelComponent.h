@@ -35,7 +35,7 @@
 
 class NMProcess;
 
-/*! \brief NMModelComponent is one of the core building blocks of the LUMASS' modelling
+/*! \brief NMModelComponent is one of the core building blocks of the LUMASS modelling
  *         framework. It represents either a single process (i.e. algorithm,
  *         called 'process component') or a chain of processes
  *         (i.e. a processing pipeline, called 'aggregate component').

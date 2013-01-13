@@ -42,6 +42,7 @@
 #include "itkOffset.h"
 #include "itkProgressReporter.h"
 #include "itkNeighborhoodAlgorithm.h"
+#include "itkExceptionObject.h"
 
 
 namespace otb
@@ -104,6 +105,51 @@ FocalDistanceWeightingFilter<TInputImage, TOutputImage>
     e.SetDataObject(inputPtr);
     throw e;
     }
+}
+
+
+template< class TInputImage, class TOutputImage>
+void
+FocalDistanceWeightingFilter< TInputImage, TOutputImage>
+::BeforeThreadedGenerateData()
+{
+	// check, whether the number of rows in the weights matrix matches
+	// the number of given values to account for during the weighting procedure.
+	if (this->m_Values.size() != this->m_Weights.rows())
+	{
+		itk::ExceptionObject e;
+		e.SetDescription("!Exception: The number of rows of the weights matrix\n"
+				         "doesn't match the number of neighbourhood values to\n"
+				         "account for in the weighting procedure!\n"
+				         "Please check your parameter settings!");
+		throw e;
+	}
+
+	// check, whether the number of provided distances classes (weights) fits
+	// with the fiven radius of the circular neighbourhood kernel;
+	//         int numclasses = ((radius*radius) / 2.0) + 0.5;  // for odd radii
+	//         int numclasses = ((radius*radius) / 2.0) + 1.5;  // for even radii
+
+	int nclasses = 0;
+	if (this->m_Radius % 2 == 0)
+	{
+		nclasses = ((m_Radius*m_Radius) / 2.0) + 1.5;
+	}
+	else
+	{
+		nclasses = ((m_Radius*m_Radius) / 2.0) + 0.5;
+	}
+
+	if (nclasses != m_Weights.cols())
+	{
+		itk::ExceptionObject e;
+		e.SetDescription("!Exception: The number of columns of the weights matrix\n"
+				         "doesn't match the number of distance classes for the given\n"
+				         "(circular) neighbourhood (radius).\n"
+				         "Please check your parameter settings!");
+		throw e;
+	}
+
 }
 
 template< class TInputImage, class TOutputImage>
@@ -244,12 +290,13 @@ FocalDistanceWeightingFilter<TInputImage, TOutput>
 	}
 
 	os << indent << "Weights matrix. The given rows represent the influence of the above given" << std::endl;
-	os << indent << "values (in the same order) with increasing distance from the centre." << std::endl;
+	os << indent << "values (one row per value) with increasing distance from the centre." << std::endl;
 	for (int r = 0; r < m_Weights.rows(); ++r)
 	{
+		os << indent << "  ";
 		for (int c = 0; c < m_Weights.cols(); ++c)
 		{
-			os << indent << "  " << m_Weights(r,c) << " ";
+			os << m_Weights(r,c) << " ";
 		}
 		os << std::endl;
 	}

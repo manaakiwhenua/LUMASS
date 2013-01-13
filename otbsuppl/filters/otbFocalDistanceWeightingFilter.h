@@ -107,7 +107,8 @@ public:
   typedef typename InputImageType::PixelType                    InputPixelType;
   typedef typename OutputImageType::PixelType                   OutputPixelType;
   typedef typename itk::NumericTraits<InputPixelType>::RealType InputRealType;
-  typedef typename itk::Array2D<float>                          WeightMatrixType;
+  typedef float													WeightType;
+  typedef itk::Array2D<float>                            WeightMatrixType;
   
   typedef typename InputImageType::RegionType                   InputImageRegionType;
   typedef typename OutputImageType::RegionType                  OutputImageRegionType;
@@ -159,6 +160,11 @@ protected:
    *     ImageToImageFilter::GenerateData() */
   void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
                             int threadId );
+
+  /** Before we do the real work, we just check the
+   *  input data for consistency, at least partly ...
+   */
+  void BeforeThreadedGenerateData(void);
 
 private:
   FocalDistanceWeightingFilter(const Self&); //purposely not implemented

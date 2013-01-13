@@ -40,6 +40,7 @@ public:
 		  NMProcess_UninitialisedDataObject,
 		  NMProcess_UninitialisedProcessObject,
 		  NMProcess_InvalidInput,
+		  NMProcess_InvalidParameter,
 		  Unspecified
 
 		} ExceptionType;

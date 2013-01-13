@@ -61,6 +61,9 @@ NMMfwException::type2string(void) const
 	case  NMProcess_InvalidInput:
 		ret = "NMProcess: Invalid input.";
 		break;
+	case  NMProcess_InvalidParameter:
+		ret = "NMProcess: Invalid parameter.";
+		break;
 	case Unspecified:
 		ret = "Unspecified problem.";
 		break;

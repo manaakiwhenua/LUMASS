@@ -181,6 +181,11 @@
         </item>
         <item>
          <property name="text">
+          <string>FocalDistanceWeight</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>ImageReader</string>
          </property>
         </item>

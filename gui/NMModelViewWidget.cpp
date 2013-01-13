@@ -1415,6 +1415,8 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 			proc = NMProcessFactory::instance().createProcess("NMRandomImageSourceWrapper");
 	else if (procName.compare("CostDistanceBuffer") == 0)
 			proc = NMProcessFactory::instance().createProcess("NMCostDistanceBufferImageWrapper");
+	else if (procName.compare("FocalDistanceWeight") == 0)
+			proc = NMProcessFactory::instance().createProcess("NMFocalNeighbourhoodDistanceWeightingWrapper");
 
 	if (proc == 0)
 	{

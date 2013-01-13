@@ -29,6 +29,7 @@
 #include "NMNeighbourhoodCountingWrapper.h"
 #include "NMRandomImageSourceWrapper.h"
 #include "NMCostDistanceBufferImageWrapper.h"
+#include "NMFocalNeighbourhoodDistanceWeightingWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -72,6 +73,10 @@ NMProcess* NMProcessFactory::createProcess(QString procClass)
 	else if (procClass.compare("NMCostDistanceBufferImageWrapper") == 0)
 	{
 		return new NMCostDistanceBufferImageWrapper(this);
+	}
+	else if (procClass.compare("NMFocalNeighbourhoodDistanceWeightingWrapper") == 0)
+	{
+		return new NMFocalNeighbourhoodDistanceWeightingWrapper(this);
 	}
 	else
 		return 0;

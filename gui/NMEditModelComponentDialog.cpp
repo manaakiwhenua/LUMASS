@@ -431,26 +431,6 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 		propName = "objectName";
 		updatedValue = value.toString();
 	}
-//	else if (QString("Subcomponents").compare(prop->propertyName()) == 0)
-//	{
-//		QStringList bracedList = value.value<QStringList>();
-//		QStringList nakedList;
-//		for (unsigned int q=0; q < bracedList.size(); ++q)
-//		{
-//			if (bracedList.at(q).compare("{") ||
-//				bracedList.at(q).compare("}"))
-//			{
-//				continue;
-//			}
-//			else
-//			{
-//				QString s = bracedList.at(q);
-//				nakedList.push_back(s.mid(1, s.size()-2));
-//			}
-//		}
-//		this->updateSubComponents(nakedList);
-//		return;
-//	}
 #ifdef BUILD_RASSUPPORT
 	else if (QString("RasConnector").compare(prop->propertyName()) == 0)
 	{
@@ -494,6 +474,7 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 	}
 	else if (QString("QStringList").compare(value.typeName()) == 0)
 	{
+
 		NMDebugAI(<< "incoming stringlist: " << value.toStringList().join(" | ").toStdString() << std::endl);
 		QStringList bracedList = value.toStringList();
 		if (!bracedList.isEmpty())
@@ -571,7 +552,7 @@ void NMEditModelComponentDialog::updateSubComponents(const QStringList& compList
 QVariant
 NMEditModelComponentDialog::nestedListFromStringList(const QStringList& strList)
 {
-	NMDebugCtx(ctx, << "...");
+	//NMDebugCtx(ctx, << "...");
 	QVariant val;
 
 	// determine the max depth (level) of the stringlist
@@ -590,8 +571,8 @@ NMEditModelComponentDialog::nestedListFromStringList(const QStringList& strList)
 			--levelcounter;
 		}
 	}
-	NMDebugAI( << "detected maxlevel: " << maxlevel << std::endl);
-	NMDebugAI( << "parsing list ..." << std::endl << std::endl);
+	//NMDebugAI( << "detected maxlevel: " << maxlevel << std::endl);
+	//NMDebugAI( << "parsing list ..." << std::endl << std::endl);
 
 	QList<QList<QStringList> >* llsl;
 	QList<QStringList>* lsl;
@@ -681,6 +662,6 @@ NMEditModelComponentDialog::nestedListFromStringList(const QStringList& strList)
 		break;
 	}
 
-	NMDebugCtx(ctx, << "done!");
+	//NMDebugCtx(ctx, << "done!");
 	return val;
 }

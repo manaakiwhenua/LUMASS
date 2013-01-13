@@ -242,6 +242,29 @@ signals: \
  * 					internalLinkParameters
  *  ==============================================================
  */
+#define callInternalLinkParameters( inputType, outputType, wrapName ) \
+{ \
+	if (this->mInputNumDimensions == 1) \
+	{ \
+		wrapName< inputType, outputType, 1 >::internalLinkParameters( \
+				this->mOtbProcess, this->mInputNumBands, \
+				this, step, repo); \
+	} \
+	else if (this->mInputNumDimensions == 2) \
+	{ \
+		wrapName< inputType, outputType, 2 >::internalLinkParameters( \
+				this->mOtbProcess, this->mInputNumBands, \
+				this, step, repo); \
+	} \
+	else if (this->mInputNumDimensions == 3) \
+	{ \
+		wrapName< inputType, outputType, 3 >::internalLinkParameters( \
+				this->mOtbProcess, this->mInputNumBands, \
+				this, step, repo); \
+	}\
+}
+
+
 #define callInputTypeInternalLinkParameters( inputType, wrapName ) \
 { \
 	if (this->mInputNumDimensions == 1) \
@@ -263,6 +286,7 @@ signals: \
 				this, step, repo); \
 	}\
 }
+
 
 /** ==============================================================
  * 					internalExecute
@@ -389,6 +413,50 @@ void ClassName::linkParameters(unsigned int step,                       \
 		break;                                                          \
 	}                                                                   \
 }
+
+#define LinkInternalParametersWrap( ClassName, wrapName )                                              \
+void ClassName::linkParameters(unsigned int step,							\
+		const QMap<QString, NMModelComponent*>& repo)                        \
+{                                                                               \
+	if (!this->mbIsInitialised)                                                 \
+	 return; \
+	switch (this->mInputComponentType)                                         \
+	{                                                                           \
+	case itk::ImageIOBase::UCHAR:                                               \
+		outputTypeSwitch( unsigned char, callInternalLinkParameters, wrapName );                                         \
+		break;                                                                  \
+	case itk::ImageIOBase::CHAR:                                                \
+		outputTypeSwitch( char, callInternalLinkParameters, wrapName );                                                  \
+		break;                                                                  \
+	case itk::ImageIOBase::USHORT:                                              \
+		outputTypeSwitch( unsigned short, callInternalLinkParameters, wrapName );                                        \
+		break;                                                                  \
+	case itk::ImageIOBase::SHORT:                                               \
+		outputTypeSwitch( short, callInternalLinkParameters, wrapName );                                                 \
+		break;                                                                  \
+	case itk::ImageIOBase::UINT:                                                \
+		outputTypeSwitch( unsigned int, callInternalLinkParameters, wrapName );                                          \
+		break;                                                                  \
+	case itk::ImageIOBase::INT:                                                 \
+		outputTypeSwitch( int, callInternalLinkParameters, wrapName );                                                   \
+		break;                                                                  \
+	case itk::ImageIOBase::ULONG:                                               \
+		outputTypeSwitch( unsigned long, callInternalLinkParameters, wrapName );                                         \
+		break;                                                                  \
+	case itk::ImageIOBase::LONG:                                                \
+		outputTypeSwitch( long, callInternalLinkParameters, wrapName );                                                  \
+		break;                                                                  \
+	case itk::ImageIOBase::FLOAT:                                               \
+		outputTypeSwitch( float, callInternalLinkParameters, wrapName );                                                 \
+		break;                                                                  \
+	case itk::ImageIOBase::DOUBLE:                                              \
+		outputTypeSwitch( double, callInternalLinkParameters, wrapName );                                                \
+		break;																	\
+	default:                                                                    \
+		break;                                                                  \
+	}                                                                           \
+}
+
 
 
 /** instantiation of process object, which is templated

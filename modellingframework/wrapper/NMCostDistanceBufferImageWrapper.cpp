@@ -111,7 +111,6 @@ public:
 			if (ols >= p->mObjectValueList.size() || ols < 0)
 				ols = 0;
 
-
 			std::vector<double> vObjValues;
 			QStringList strObjValues = p->mObjectValueList.at(ols);
 			foreach(const QString& strVal, strObjValues)

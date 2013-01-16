@@ -114,6 +114,66 @@ protected:
 	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
 
+
+
+	template<class T>
+	static int compare_asc(const void* a, const void* b)
+	{
+		if (*(T*)a < *(T*)b) return -1;
+		if (*(T*)a > *(T*)b) return 1;
+		return 0;
+	}
+
+	template<class T>
+	static int compare_desc(const void* a, const void* b)
+	{
+		if (*(T*)a < *(T*)b) return 1;
+		if (*(T*)a > *(T*)b) return -1;
+		return 0;
+	}
+
+	/** merging to adjacent arrays a and b; a sits in front of b,
+	 *  and both arrays share the same element type T */
+	template<class T>
+	static void merge_adj(char* a, char* b, int a_size, int b_size)
+	{
+		T* aar = reinterpret_cast<T*>(a);
+		T* bar = reinterpret_cast<T*>(b);
+
+		long totalcnt = 0;
+		long acnt = 0;
+		long bcnt = 0;
+
+		while (totalcnt < a_size+b_size)
+		{
+			if (acnt < a_size && bcnt < b_size)
+			{
+				if (aar[acnt] >= bar[bcnt])
+				{
+					aar[totalcnt] = aar[acnt];
+					++acnt;
+				}
+				else
+				{
+					aar[totalcnt] = bar[bcnt];
+					++bcnt;
+				}
+			}
+			else if (acnt < a_size)
+			{
+				aar[totalcnt] = aar[acnt];
+				++acnt;
+			}
+			else if (bcnt < b_size)
+			{
+				aar[totalcnt] = bar[bcnt];
+				++bcnt;
+			}
+			++totalcnt;
+		}
+	}
+
+
 private:
 
 	// holds the current 3D state (i.e. is interaction

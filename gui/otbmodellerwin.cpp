@@ -118,6 +118,7 @@
 #include "itkExtractImageFilter.h"
 #include "itkObjectFactoryBase.h"
 #include "itkNMCostDistanceBufferImageFilter.h"
+#include "otbProcessLUPotentials.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkImageIOBase.h"
 #include "otbImage2DToCubeSliceFilter.h"
@@ -125,6 +126,7 @@
 #include "itkMetaDataObject.h"
 #include "otbFocalDistanceWeightingFilter.h"
 #include "itkArray2D.h"
+#include "itkRandomImageSource.h"
 
 
 
@@ -710,52 +712,50 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	typedef otb::Image<unsigned char, 2> InputImageType;
-	typedef otb::Image<unsigned short, 2> OutputImageType;
+	typedef otb::Image<float, 2> FloatImageType;
+	typedef otb::Image<int, 2> IntImageType;
 
-	typedef otb::GDALRATImageFileReader<InputImageType> ReaderType;
-	typedef otb::StreamingRATImageFileWriter<OutputImageType> WriterType;
+	typedef otb::RasdamanImageReader<FloatImageType> ReaderType;
+	typedef otb::StreamingRATImageFileWriter<FloatImageType> FloatWriterType;
+	typedef otb::StreamingRATImageFileWriter<IntImageType> IntWriterType;
 
-	typedef otb::FocalDistanceWeightingFilter<InputImageType, OutputImageType> FilterType;
+	typedef otb::ProcessLUPotentials<FloatImageType, IntImageType> FilterType;
 	FilterType::Pointer filter = FilterType::New();
 
-	ReaderType::Pointer reader = ReaderType::New();
-	reader->SetFileName("/home/alex/garage/img/t1med.tiff");
+	ReaderType::Pointer reader1 = ReaderType::New();
+	reader1->SetRasdamanConnector(this->getRasdamanConnector());
 
-	WriterType::Pointer writer = WriterType::New();
-	writer->SetFileName("/home/alex/garage/img/focalDist.img");
+	ReaderType::Pointer reader2 = ReaderType::New();
+	reader2->SetRasdamanConnector(this->getRasdamanConnector());
+
+	reader1->SetFileName("lupot:_0_");
+	reader2->SetFileName("lupot:_1_");
+
+	IntWriterType::Pointer writer0 = IntWriterType::New();
+	writer0->SetRasdamanConnector(this->getRasdamanConnector());
+	writer0->SetFileName("lucat");
+
+	FloatWriterType::Pointer writer1 = FloatWriterType::New();
+	writer1->SetRasdamanConnector(this->getRasdamanConnector());
+	writer1->SetFileName("lumaxpot");
 
 
-	filter->SetRadius(4);
-	std::vector<typename InputImageType::PixelType> values;
-	values.push_back(43);
-	values.push_back(54);
-	values.push_back(41);
-	values.push_back(20);
-	values.push_back(45);
+	std::vector<int> cats;
+	cats.push_back(0);
+	cats.push_back(255);
 
-	filter->SetValues(values);
+	filter->SetInput(0, reader1->GetOutput());
+	filter->SetInput(1, reader2->GetOutput());
 
-	float v43[] = {80, 70, 60, 50, 20, 10, 0, 0, 0};
-	float v54[] = {98, 95, 93, 80,  0,  0, 0, 0, 0};
-	float v41[] = {-40, -30, -20, 0, 0, 0, 0, 0, 0};
-	float v20[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-	float v45[] = {40, 30, 20, 10, 0, 0, 0, 0, 0};
+	filter->SetCategories(cats);
 
-	itk::Array2D<float> wheights(5, 9);
-	wheights.set_row(0, v43);
-	wheights.set_row(1, v54);
-	wheights.set_row(2, v41);
-	wheights.set_row(3, v20);
-	wheights.set_row(4, v45);
+	writer0->SetInput(filter->GetOutput(0));
+	writer1->SetInput(filter->GetMaxPotentialMap());
 
-	filter->SetWeights(wheights);
+	writer0->Update();
+	writer1->Update();
 
-	filter->Print(std::cout, itk::Indent(2));
 
-	filter->SetInput(reader->GetOutput());
-	writer->SetInput(filter->GetOutput());
-	writer->Update();
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

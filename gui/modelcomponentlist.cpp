@@ -383,7 +383,7 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 
 void ModelComponentList::mousePressEvent(QMouseEvent *event)
 {
-    NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
 
 	int x = event->pos().x();
 	int y = event->pos().y();
@@ -424,7 +424,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		}
 	}
 
-    NMDebugCtx(ctx, << "done!");
+    //NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::processSelection(bool toggle)

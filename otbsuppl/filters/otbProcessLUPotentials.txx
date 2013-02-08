@@ -61,6 +61,8 @@ ProcessLUPotentials<TInputImage, TOutputImage>
 	// output #0 = the category map
 	this->SetNthOutput(0, this->MakeOutput(0));
 
+	m_MaskIdx = -1;
+
 }
 
 template <class TInputImage, class TOutputImage>
@@ -91,14 +93,13 @@ void
 ProcessLUPotentials< TInputImage, TOutputImage>
 ::BeforeThreadedGenerateData()
 {
-	// fill up the list of categories, if we haven't got enough
-	int numInputs = this->GetNumberOfInputs();
-	if (this->m_Categories.size() < numInputs)
-	{
-		for (int i=0; i < numInputs - this->m_Categories.size(); ++i)
-			this->m_Categories.push_back(numInputs+i);
-	}
 
+	int numInputs;
+	if (this->GetNumberOfInputs() > this->m_Categories.size())
+	{
+		numInputs = this->GetNumberOfInputs() - 1;
+		this->m_MaskIdx = this->m_Categories.size();
+	}
 
 	// check, whether all inputs have got the same dimension, size
 	InputImagePointer refImg = const_cast<InputImageType*>(this->GetInput(0));
@@ -121,9 +122,6 @@ ProcessLUPotentials< TInputImage, TOutputImage>
 			}
 		}
 	}
-
-
-
 }
 
 template< class TInputImage, class TOutputImage>
@@ -144,7 +142,21 @@ ProcessLUPotentials< TInputImage, TOutputImage>
 	InputIteratorType potsIt(pots, outputRegionForThread);
 
 	// create an iterator for each input map
-	int numInputs = this->GetNumberOfInputs();
+	int numInputs;
+	InputImagePointer maskImg;
+	InputIteratorType maskIt;
+	if (this->m_MaskIdx != -1)
+	{
+		numInputs = this->GetNumberOfInputs() - 1;
+		maskImg = m_Inputs.at(this->m_MaskIdx);
+		maskIt = InputIteratorType(maskImg, outputRegionForThread);
+	}
+	else
+	{
+		numInputs = this->GetNumberOfInputs();
+	}
+
+
 	std::vector<InputConstIteratorType> inputIts;
 	inputIts.resize(numInputs);
 	for (int i=0; i < numInputs; ++i)
@@ -170,8 +182,34 @@ ProcessLUPotentials< TInputImage, TOutputImage>
 			}
 		}
 
-		catsIt.Set(static_cast<OutputPixelType>(m_Categories.at(maxIdx)));
-		potsIt.Set(max);
+		//
+		if (m_MaskIdx != -1)
+		{
+			if (maskIt.Get() == 0)
+			{
+				potsIt.Set(max);
+				if (max > 0)
+					catsIt.Set(static_cast<OutputPixelType>(m_Categories.at(maxIdx)));
+				else
+					catsIt.Set(itk::NumericTraits<OutputPixelType>::Zero);
+			}
+			else
+			{
+				potsIt.Set(itk::NumericTraits<InputPixelType>::Zero);
+				//catsIt.Set(itk::NumericTraits<OutputPixelType>::Zero);
+				catsIt.Set(maskIt.Get());
+			}
+			++maskIt;
+		}
+		else
+		{
+			potsIt.Set(max);
+			if (max > 0)
+				catsIt.Set(static_cast<OutputPixelType>(m_Categories.at(maxIdx)));
+			else
+				catsIt.Set(itk::NumericTraits<OutputPixelType>::Zero);
+		}
+
 		progress.CompletedPixel();
 
 		++catsIt;
@@ -195,11 +233,11 @@ ProcessLUPotentials<TInputImage, TOutput>
 	Superclass::PrintSelf(os, indent);
 	os << indent << "Number of input layers: " << this->GetNumberOfInputs() << std::endl;
 	os << indent << "Categories in order of input: " << std::endl;
-	//for (int i=0; i < m_Categories.size(); ++i)
-	//{
-	//
-	//	os << indent << "  #" << i << ": " << (m_Categories[i]) << std::endl;
-	//}
+	for (int i=0; i < m_Categories.size(); ++i)
+	{
+
+		os << indent << "  #" << i << ": " << (m_Categories[i]) << std::endl;
+	}
 }
 
 } // end namespace otb

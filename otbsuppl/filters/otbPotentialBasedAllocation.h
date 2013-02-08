@@ -15,41 +15,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
-/*=========================================================================
 
-  Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: itkMeanImageFilter.h,v $
-  Language:  C++
-  Date:      $Date: 2008-10-16 18:05:25 $
-  Version:   $Revision: 1.7 $
-
-  Copyright (c) Insight Software Consortium. All rights reserved.
-  See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
-
-#ifndef __otbProcessLUPotentials_h
-#define __otbProcessLUPotentials_h
+#ifndef __otbPotentialBasedAllocation_h
+#define __otbPotentialBasedAllocation_h
 
 #include <vector>
 
 #include "nmlog.h"
-//#include "otbPersistentImageFilter.h"
-#include "itkImageToImageFilter.h"
-#include "itkImage.h"
 //#include "itkImageToImageFilter.h"
-//#include "itkImage.h"
+#include "itkInPlaceImageFilter.h"
+#include "itkImage.h"
 #include "itkNumericTraits.h"
 
 namespace otb
 {
 template <class TInputImage, class TOutputImage>
-class ITK_EXPORT ProcessLUPotentials :
-    public itk::ImageToImageFilter< TInputImage, TOutputImage >
+class ITK_EXPORT PotentialBasedAllocation :
+    public itk::InPlaceImageFilter< TInputImage, TOutputImage >
 {
 public:
   /** Extract dimension from input and output image. */
@@ -65,7 +47,7 @@ public:
   typedef typename OutputImageType::Pointer OutputImagePointer;
 
   /** Standard class typedefs. */
-  typedef ProcessLUPotentials                          Self;
+  typedef PotentialBasedAllocation                          Self;
   typedef itk::ImageToImageFilter< InputImageType, OutputImageType> Superclass;
   typedef itk::SmartPointer<Self>                                   Pointer;
   typedef itk::SmartPointer<const Self>                             ConstPointer;
@@ -74,7 +56,7 @@ public:
   itkNewMacro(Self);
 
   /** Run-time type information (and related methods). */
-  itkTypeMacro(ProcessLUPotentials, itk::ImageToImageFilter);
+  itkTypeMacro(PotentialBasedAllocation, itk::ImageToImageFilter);
   
   /** Image typedef support. */
   typedef typename InputImageType::PixelType                    InputPixelType;
@@ -85,24 +67,21 @@ public:
   typedef typename OutputImageType::RegionType                  OutputImageRegionType;
   typedef typename InputImageType::SizeType                     InputSizeType;
 
-  /** Set / Get category identifiers for denoting which of the input
+  /** Set / Get category identifiers; used for mapping categories
+   *  and  for denoting which of the input
    *  maps had the max potential for anyone given pixel */
   void SetCategories(std::vector<OutputPixelType> cats)
   	  {this->m_Categories = cats;}
   std::vector<OutputPixelType> GetCategories(void)
 	  {return this->m_Categories;}
 
+  void SetThresholds(std::vector<InputPixelType> potentialThresholds)
+  	  {this->m_Thresholds = potentialThresholds;}
+  std::vector<InputPixelType> GetThresholds(void)
+	  {return this->m_Thresholds;}
+
+
   
-  virtual itk::DataObject::Pointer MakeOutput(unsigned int idx);
-
-  /** Get the max potentials map (it's of InputImageType,
-   *  so we have to grab it separately */
-  InputImageType* GetMaxPotentialMap(void)
-  	  {return dynamic_cast<InputImageType*>(
-  			  const_cast<itk::DataObject*>(
-  					  itk::ProcessObject::GetOutput(1)));}
-
-
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
   itkConceptMacro(InputHasNumericTraitsCheck,
@@ -111,8 +90,8 @@ public:
 #endif
 
 protected:
-  ProcessLUPotentials();
-  virtual ~ProcessLUPotentials() {}
+  PotentialBasedAllocation();
+  virtual ~PotentialBasedAllocation() {}
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
   /** This filter can be implemented as a multithreaded filter.
@@ -133,21 +112,18 @@ protected:
 
 
 private:
-  ProcessLUPotentials(const Self&); //purposely not implemented
+  PotentialBasedAllocation(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
 
   std::vector<OutputPixelType> m_Categories;
-  std::vector<InputImagePointer> m_Inputs;
-
-  unsigned int m_MaskIdx;
-
+  std::vector<InputPixelType> m_Thresholds;
 
 };
   
 } // end namespace itk
 
 #ifndef ITK_MANUAL_INSTANTIATION
-#include "otbProcessLUPotentials.txx"
+#include "otbPotentialBasedAllocation.txx"
 #endif
 
 //#endif

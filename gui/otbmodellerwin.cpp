@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iostream>
 #include <list>
+#include <deque>
 #include <map>
 #include "math.h"
 
@@ -125,8 +126,11 @@
 #include "otbMetaDataKey.h"
 #include "itkMetaDataObject.h"
 #include "otbFocalDistanceWeightingFilter.h"
+#include "otbPotentialBasedAllocation.h"
 #include "itkArray2D.h"
 #include "itkRandomImageSource.h"
+#include "otbSortFilter.h"
+#include "otbImageRegionAdaptativeSplitter.h"
 
 
 
@@ -712,48 +716,48 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	typedef otb::Image<float, 2> FloatImageType;
-	typedef otb::Image<int, 2> IntImageType;
 
-	typedef otb::RasdamanImageReader<FloatImageType> ReaderType;
-	typedef otb::StreamingRATImageFileWriter<FloatImageType> FloatWriterType;
+	typedef otb::Image<long, 2> IdxImageType;
+	typedef otb::Image<unsigned char, 2> IntImageType;
+
+	//typedef otb::RasdamanImageReader<IdxImageType> IdxReaderType;
+	typedef otb::RasdamanImageReader<IntImageType> IntReaderType;
+	IntReaderType::Pointer reader = IntReaderType::New();
+	reader->SetRasdamanConnector(this->getRasdamanConnector());
+	reader->SetFileName("t1int32");
+
+	typedef otb::StreamingRATImageFileWriter<IdxImageType> IdxWriterType;
 	typedef otb::StreamingRATImageFileWriter<IntImageType> IntWriterType;
+	IdxWriterType::Pointer idxWriter = IdxWriterType::New();
+	IntWriterType::Pointer intWriter = IntWriterType::New();
+	idxWriter->SetRasdamanConnector(this->getRasdamanConnector());
+	intWriter->SetRasdamanConnector(this->getRasdamanConnector());
+	idxWriter->SetFileName("idxImg");
+	intWriter->SetFileName("intImg");
 
-	typedef otb::ProcessLUPotentials<FloatImageType, IntImageType> FilterType;
+	typedef otb::SortFilter<IntImageType, IntImageType> FilterType;
 	FilterType::Pointer filter = FilterType::New();
-
-	ReaderType::Pointer reader1 = ReaderType::New();
-	reader1->SetRasdamanConnector(this->getRasdamanConnector());
-
-	ReaderType::Pointer reader2 = ReaderType::New();
-	reader2->SetRasdamanConnector(this->getRasdamanConnector());
-
-	reader1->SetFileName("lupot:_0_");
-	reader2->SetFileName("lupot:_1_");
-
-	IntWriterType::Pointer writer0 = IntWriterType::New();
-	writer0->SetRasdamanConnector(this->getRasdamanConnector());
-	writer0->SetFileName("lucat");
-
-	FloatWriterType::Pointer writer1 = FloatWriterType::New();
-	writer1->SetRasdamanConnector(this->getRasdamanConnector());
-	writer1->SetFileName("lumaxpot");
+	int numth = QInputDialog::getInt(this, "no threads?", "how many?",
+			4);
+	filter->SetNumberOfThreads(numth);
 
 
-	std::vector<int> cats;
-	cats.push_back(0);
-	cats.push_back(255);
+	filter->SetInput(reader->GetOutput());
+	//filter->SortAscendingOn();
 
-	filter->SetInput(0, reader1->GetOutput());
-	filter->SetInput(1, reader2->GetOutput());
+	itk::TimeProbe probe;
+	probe.Start();
+	filter->Update();
+	probe.Stop();
 
-	filter->SetCategories(cats);
+	NMDebugAI(<< "and this took: " << probe.GetTotal()
+			<< " time units (secs?)" << endl);
 
-	writer0->SetInput(filter->GetOutput(0));
-	writer1->SetInput(filter->GetMaxPotentialMap());
+	intWriter->SetInput(filter->GetOutput(0));
+	idxWriter->SetInput(filter->GetIndexImage());
 
-	writer0->Update();
-	writer1->Update();
+	intWriter->Update();
+	idxWriter->Update();
 
 
 

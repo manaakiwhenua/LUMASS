@@ -595,7 +595,7 @@ RasdamanImageIO::insertForcedLPRDummyImage()//const std::string& collname, r_Min
 
 
 	oid = this->m_Helper->insertImage(this->m_collname, 0,
-			ashift, adom, true, this->m_ImageTypeName);
+			ashift, adom, true, this->m_ImageTypeName, "");
 
 	dimg->r_deactivate();
 
@@ -766,7 +766,7 @@ void RasdamanImageIO::WriteImageInformation()
 			NMDebugAI(<< "sdom:  " << sdom.get_string_representation() << endl << endl);
 
 			oid = this->m_Helper->insertImage(this->m_collname, 0, shift, sdom, true,
-					this->m_ImageTypeName);
+					this->m_ImageTypeName, "");
 		}
 
 		if (oid != -1)

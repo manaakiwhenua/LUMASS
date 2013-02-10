@@ -64,8 +64,10 @@ void SortFilter<TInputImage, TOutputImage>
 ::GenerateData(void)
 {
 	this->AllocateOutputs();
+	this->UpdateProgress(0.1);
 
 	this->BeforeThreadedGenerateData();
+	this->UpdateProgress(0.2);
 
 	ThreadStruct str;
 	str.Filter = this;
@@ -73,8 +75,10 @@ void SortFilter<TInputImage, TOutputImage>
 	this->GetMultiThreader()->SetNumberOfThreads(this->GetNumberOfThreads());
 	this->GetMultiThreader()->SetSingleMethod(this->CalledFromThreader, &str);
 	this->GetMultiThreader()->SingleMethodExecute();
+	this->UpdateProgress(0.7);
 
 	this->AfterThreadedGenerateData();
+	this->UpdateProgress(1.0);
 }
 
 
@@ -178,18 +182,6 @@ void SortFilter<TInputImage, TOutputImage>
 
 	long pixsize = sizeof(OutputImagePixelType);
 	long arraysize = pixsize * numpix;
-//	long numchunks = 1;// = arraysize / m_MaxMem;
-//	long lenchunk = numpix; //= numpix / numchunks;
-//	long rest = 0;
-//	if (arraysize > m_MaxMem)
-//	{
-//		numchunks = arraysize / m_MaxMem;
-//		lenchunk = numpix / numchunks;
-//		rest = numpix - (lenchunk * numchunks);
-//		if (rest > 0)
-//			numchunks++;
-//	}
-
 	int numThreads = this->GetNumberOfThreads();
 	long numchunks = numThreads;
 	long lenchunk = numpix / numchunks;
@@ -212,7 +204,6 @@ void SortFilter<TInputImage, TOutputImage>
 		}
 	}
 
-	//this->SetNumberOfThreads(numchunks);
 
 	if (rest > 0)
 	{
@@ -236,8 +227,10 @@ template <class TInputImage, class TOutputImage>
 void SortFilter<TInputImage, TOutputImage>
 ::ProcessThreaded(long threadId, long offset, long length)
 {
+	if (this->GetAbortGenerateData())
+		return;
 
-	NMDebug(<< threadId << ": offset = " << offset << " length = " << length << endl);
+	//NMDebug(<< threadId << ": offset = " << offset << " length = " << length << endl);
 
 	// create a vector of array pointers, pointing at the very chunk of the
 	// input and index image data, this thread is responsible for
@@ -302,7 +295,7 @@ void SortFilter<TInputImage, TOutputImage>
 			++le;
 			--ri;
 		}
-	} while (le <= ri);
+	} while (le <= ri && !this->GetAbortGenerateData());
 	if (left < ri) this->SortRegionDescending(inArrs, idxBuf, left, ri);
 	if (right > le) this->SortRegionDescending(inArrs, idxBuf, le, right);
 }
@@ -344,7 +337,7 @@ void SortFilter<TInputImage, TOutputImage>
 			++le;
 			--ri;
 		}
-	} while (le <= ri);
+	} while (le <= ri && !this->GetAbortGenerateData());
 	if (left < ri) this->SortRegionAscending(inArrs, idxBuf, left, ri);
 	if (right > le) this->SortRegionAscending(inArrs, idxBuf, le, right);
 }
@@ -399,7 +392,7 @@ void SortFilter<TInputImage, TOutputImage>
 	long pixcnt = 0;
 	if (m_SortAscending)
 	{
-		while(pixcnt < numpix)
+		while(pixcnt < numpix && !this->GetAbortGenerateData())
 		{
 			val = itk::NumericTraits<OutputImagePixelType>::max();
 			int valIdx = -1;
@@ -429,7 +422,7 @@ void SortFilter<TInputImage, TOutputImage>
 	}
 	else
 	{
-		while(pixcnt < numpix)
+		while(pixcnt < numpix && !this->GetAbortGenerateData())
 		{
 			val = itk::NumericTraits<OutputImagePixelType>::min();
 			int valIdx = -1;

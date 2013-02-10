@@ -40,7 +40,7 @@
  *	this filter produces and 'IndexImage' which denotes the original 1D-index (offset)
  *	position of input image #0. The IndexImage is available via GetIndexImage.
  *	The filter is implemented as being partly multi-threaded, i.e. the filter
- *	devides the image in chunks according to MaxMem and pre-sorts those
+ *	splits the image in chunks according to the number of threads and pre-sorts those
  *	in parallel using quick sort. The pre-sorted chunks are then merged to a
  *	single image using just one thread.
  */

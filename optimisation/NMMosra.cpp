@@ -1,20 +1,3 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
- *
- * This file is part of 'LUMASS', which is free software: you can redistribute
- * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
- * or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************/
 /*
  * NMMosra.cpp
  *
@@ -551,10 +534,13 @@ int NMMosra::solveLp(void)
 
 void NMMosra::createReport(void)
 {
+	NMDebugCtx(ctxNMMosra, << "...");
 
 	// let's put out some info about the solution, if any
 	QString streamstring;
 	QTextStream sRes(&streamstring);
+	sRes.setRealNumberNotation(QTextStream::SmartNotation);
+	sRes.setRealNumberPrecision(15);
 
 	sRes << endl << endl;
 	sRes << tr("\tProblem setting details") << endl;
@@ -676,16 +662,49 @@ void NMMosra::createReport(void)
 		{
 			for (criit = crilabit.value().constBegin(); criit != crilabit.value().constEnd(); ++criit)
 			{
-				QString sCL = crilabit.key() + QString(tr("_%1")).arg(criit.key());
+				QString compOp = criit.value().at(criit.value().size()-2);
+				QString compTypeLabel;
+				if (compOp.compare(tr("<=")) == 0)
+					compTypeLabel = "upper";
+				else if (compOp.compare(tr(">=")) == 0)
+					compTypeLabel = "lower";
+				else if (compOp.compare(tr("=")) == 0)
+					compTypeLabel = "equals";
+
+				QString sCL = crilabit.key() + QString(tr("_%1_%2")).arg(criit.key()).arg(compTypeLabel);
 				int index = this->mLp->GetNameIndex(sCL.toStdString().c_str(), true);
+
 				if (index >= 0)
 				{
-					sRes << sCL << " = " << pdCons[index -1] << endl;
+					sRes << sCL << " " << compOp << " " << pdCons[index -1] << endl;
+				}
+				else
+				{
+					QString tmplab = crilabit.key() + QString(tr("_%1")).arg(criit.key());
+					sRes << "error reading cirterion constraint for '"
+							<< tmplab << "'!" << endl;
 				}
 			}
 		}
 		sRes << endl;
 	}
+
+	// DEBUG - we just dump all constraints values here
+	NMDebugAI( << endl << "just dumping all constraint values .... " << endl);
+	int nrows = this->mLp->GetNRows();
+	for (int q=1; q < nrows; ++q)
+	{
+		QString name(this->mLp->GetRowName(q).c_str());
+		if (name.contains("Feature"))
+			continue;
+		int op = this->mLp->GetConstraintType(q-1);
+		double cv = pdCons[q-1];
+		char fv[256];
+		::sprintf(fv, "%g", cv);
+		NMDebugAI(<< name.toStdString() << " " << op << " " << fv << endl);
+	}
+	NMDebug(<< endl);
+
 
 	sRes << endl;
 
@@ -706,6 +725,8 @@ void NMMosra::createReport(void)
 
 	this->msReport.clear();
 	this->msReport = sRes.readAll();
+
+	NMDebugCtx(ctxNMMosra, << "done!");
 
 }
 
@@ -846,6 +867,14 @@ int NMMosra::checkSettings(void)
 	for (; acIt != this->mmslAreaCons.constEnd(); ++acIt)
 	{
 		// get the user specified area constraint value and add it to the total of all area constraints
+		if (acIt.value().size() < 4)
+		{
+			NMErr(ctxNMMosra, << "areal constraint '" << acIt.key().toStdString()
+					<< ": " << acIt.value().join(" ").toStdString() << "' is invalid! Check number of parameters!");
+			arealCriValid = false;
+			continue;
+		}
+
 		QString unittype = acIt.value().at(3);
 		QStringList zonespec;
 		double val = this->convertAreaUnits(acIt.value().at(2).toDouble(&bConv), unittype, zonespec);
@@ -864,23 +893,25 @@ int NMMosra::checkSettings(void)
 			{
 				NMErr(ctxNMMosra, << "area constraint for option '" << opt.toStdString() << "' with respect to zone field '"
 						<< zone.toStdString() << "' exceeds the available area for that option in that zone!");
-				arealCriValid = false;
+			//	arealCriValid = false;
 			}
 		}
 		totalConsArea += val;
 	}
 
 	// now check on the total area
-	if (totalConsArea > this->mdAreaTotal)
-	{
-		NMErr(ctxNMMosra, << "the specified area constraints exceed the total available area!");
-		arealCriValid = false;
-	}
+//	if (totalConsArea > this->mdAreaTotal)
+//	{
+//		NMErr(ctxNMMosra, << "the specified area constraints exceed the total available area!");
+//		arealCriValid = false;
+//	}
 
 	// we just don't bother checking it as above, which allows for having constraints like
 	// a >= x
 	// a <= y with y>=x
-	arealCriValid = true;
+
+	// well we don't bother with the above but if we're missing the unittype, we have to pull out!
+	//arealCriValid = true;
 
 
 	// selection
@@ -1227,10 +1258,10 @@ int NMMosra::makeLp(void)
 	// column names and column types; note: the default type is REAL
 	this->mLp->MakeLp(0,this->mlLpCols);
 	long colPos = 1;
-	for (int of=0; of < this->mlNumOptFeat; of++, colPos++)
+	for (int of=0; of < this->mlNumOptFeat; ++of, ++colPos)
 	{
 		QString colname;
-		for (int opt=1; opt <= this->miNumOptions; opt++, colPos++)
+		for (int opt=1; opt <= this->miNumOptions; ++opt, ++colPos)
 		{
 			colname = QString(tr("X_%1_%2")).arg(of).arg(opt);
 			this->mLp->SetColName(colPos, colname.toStdString());
@@ -1251,6 +1282,16 @@ int NMMosra::makeLp(void)
 		this->mLp->SetColName(colPos, colname.toStdString());
 		this->mLp->SetBinary(colPos, true);
 	}
+
+//	// initiate the objective function to zero; note that all unspecified
+//	// obj functions values are initiated to zero by lp_solve, so we
+//	// just set one value and then we're done
+//	double row = 0;
+//	int colno = 1;
+//
+//	this->mLp->SetAddRowmode(true);
+//	this->mLp->SetObjFnEx(1, &row, &colno);
+//	this->mLp->SetAddRowmode(false);
 
 	NMDebugCtx(ctxNMMosra, << "done!");
 	return 1;
@@ -1286,7 +1327,9 @@ int NMMosra::addObjFn(void)
 	// set coefficients of areal decision variables
 	QMap<QString, QStringList>::const_iterator it =
 			this->mmslObjectives.constBegin();
-	for (; it != this->mmslObjectives.constEnd(); it++)
+
+	unsigned int objcount = 0;
+	for (; it != this->mmslObjectives.constEnd(); ++it, ++objcount)
 	{
 		// get field indices for the performance indicators
 		NMDebugAI( << "objective '" << it.key().toStdString() << "' ..." << endl);
@@ -1363,8 +1406,10 @@ int NMMosra::addObjFn(void)
 					dCoeff *= dWeight;
 
 				// write coefficient into row array
-				// fixme before it was += dCoeff -> no idea why, did we init it before?
-				pdRow[arpos] = dCoeff;
+				if (objcount)
+					pdRow[arpos] += dCoeff;
+				else
+					pdRow[arpos] = dCoeff;
 				piColno[arpos] = colPos;
 
 				//NMDebug(<< this->mLp->GetColName(colPos) << "=" << pdRow[arpos] << "  ");
@@ -1519,13 +1564,13 @@ int NMMosra::addObjCons(void)
 			}
 
 			// leap frog the binary decision variable for this feature
-			colpos += 2;
+			colpos++;
 
 			if (f % 100 == 0)
 				NMDebug(<< ".");
 		}
 
-		NMDebug(<< endl);
+		NMDebug(<< " finished!" << endl);
 
 		// add the constraint to the matrix
 		this->mLp->AddConstraintEx(this->mlNumArealDVar, pdRow, piColno, vnConsType.at(obj), dConsVal);
@@ -1536,6 +1581,7 @@ int NMMosra::addObjCons(void)
 		// add the label for this constraint
 		this->mLp->SetRowName(lRowCounter, vsObjConsLabel.at(obj).toStdString());
 	}
+
 
 	this->mLp->SetAddRowmode(false);
 
@@ -1959,24 +2005,35 @@ int NMMosra::addCriCons(void)
 		QMap<QString, QStringList> luFieldList = crilabit.value();
 		for (criit = luFieldList.begin(); criit != luFieldList.end(); ++criit)
 		{
-			// construct the label for each constraint
-			QString label = crilabit.key() + QString(tr("_%1")).arg(criit.key());
-			vLabels.push_back(label);
-			vLandUses.push_back(criit.key());
-
 			QString compOp = criit.value().at(criit.value().size()-2);
+			QString compTypeLabel;
 			if (compOp.compare(tr("<=")) == 0)
+			{
 				vOperators.push_back(1);
+				compTypeLabel = "upper";
+			}
 			else if (compOp.compare(tr(">=")) == 0)
+			{
 				vOperators.push_back(2);
+				compTypeLabel = "lower";
+			}
 			else if (compOp.compare(tr("=")) == 0)
+			{
 				vOperators.push_back(3);
+				compTypeLabel = "equals";
+			}
 			else
 			{
-				NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: " << label.toStdString() << ": invalid comparison operator '"
+				NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: " << crilabit.key().toStdString()
+						<< "_" << criit.key().toStdString() <<	": invalid comparison operator '"
 						<< compOp.toStdString() << "'!");
 				return 0;
 			}
+
+			// construct the label for each constraint
+			QString label = crilabit.key() + QString(tr("_%1_%2")).arg(criit.key()).arg(compTypeLabel);
+			vLabels.push_back(label);
+			vLandUses.push_back(criit.key());
 
 			bool convertable;
 			QString sRhs = criit.value().last();
@@ -2010,7 +2067,7 @@ int NMMosra::addCriCons(void)
 			}
 			vZones.push_back(zone);
 
-			// now look for resource indcies and crietrion field names
+			// now look for resource indices and criterion field names
 			QVector<QString> vCriterionFieldNames;
 			QVector<unsigned int> vCriterionLandUseIdx;
 			QStringList fieldList = criit.value();
@@ -2188,7 +2245,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 	 *  resource_2 |		  |
 	 *  ...        |
 	 *  resource_n |
-	 *  mixed      |
+//	 *  mixed      |
 	 *  total      |
 	 *
 	 */
@@ -2200,7 +2257,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 
 	// we sum over each resource option (land use), all mixed landuses (mixed) and
 	// the overall total
-	int resNumRows = this->miNumOptions + 2;
+	//int resNumRows = this->miNumOptions + 2; // with mixed
+	int resNumRows = this->miNumOptions + 1;   // without mixed
 	long ncells = holeAr->GetNumberOfTuples();
 
 	vtkSmartPointer<vtkTable> restab = vtkSmartPointer<vtkTable>::New();
@@ -2213,7 +2271,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 	rowheads->SetNumberOfTuples(resNumRows);
 	for (int r=0; r < this->miNumOptions; ++r)
 		rowheads->SetValue(r, this->mslOptions.at(r).toAscii());
-	rowheads->SetValue(resNumRows-2, "Mixed");
+	//rowheads->SetValue(resNumRows-2, "Mixed");
 	rowheads->SetValue(resNumRows-1, "Total");
 	restab->AddColumn(rowheads);
 
@@ -2415,13 +2473,25 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 			{
 				// calc the target row of the resulting tab depending on whether we've got
 				// mixed land use or not
-				int resTabRow = optResList.size() > 1 ? resNumRows-2 : option;
+				//int resTabRow = option;//optResList.size() > 1 ? resNumRows-2 : option;
 
 //				NMDebugInd(ind, << "evaluating optimised resource option '" <<
 //						this->mslOptions.at(option).toStdString() << "' ..." << endl);
 
-				// update area stats
+				// get the allocated area for this resource category
 				optArea = optValArs.at(option)->GetTuple1(cell);
+
+//				// track mixed land-use separately
+//				if (optResList.size() > 1)
+//				{
+//					restab->SetValue(resNumRows-2, 2,
+//							vtkVariant(optArea + restab->GetValue(resNumRows-2, 2).ToDouble()));
+//				}
+
+				// define variable for row index in result table
+				int resTabRow = option;//optResList.size() > 1 ? resNumRows-2 : option;
+
+				// update area stats for actual resource category
 				accumArea = optArea + restab->GetValue(resTabRow, 2).ToDouble();
 				restab->SetValue(resTabRow, 2, vtkVariant(accumArea));
 
@@ -2438,6 +2508,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 
 					evalField = evalit.value().at(option);
 					evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
+
 					performanceValue = evalAr->GetTuple1(cell) * optArea +
 							restab->GetValue(resTabRow, coloffset*4 + 2).ToDouble();
 					restab->SetValue(resTabRow, coloffset*4 + 2, vtkVariant(performanceValue));

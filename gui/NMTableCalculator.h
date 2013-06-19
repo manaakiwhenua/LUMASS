@@ -1,6 +1,6 @@
  /****************************************************************************** 
  * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -40,6 +40,8 @@
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
 
+#include "otbMultiParser.h"
+
 class NMTableCalculator : public QObject
 {
 	Q_OBJECT
@@ -57,10 +59,15 @@ public:
 						  NM_STR_LTEQ,		 // <=
 						  NM_STR_NEQ,		 // !=
 						  NM_STR_IN,         // in
+						  NM_STR_NOTIN,		 // !in
 						  NM_STR_CONTAINS,   // contains
-						  NM_STR_EQ,		 // =
+						  NM_STR_EQ,		 // ==
 						  NM_STR_STARTSWITH, // startsWith
-						  NM_STR_ENDSWITH};  // endsWith
+						  NM_STR_ENDSWITH,   // endsWith
+						  NM_STR_UNKNOWN
+	};
+
+	inline NMStrOperator getStrOperator(const QString& strOp);
 
 	bool setRowFilterModeOn(QString filterColumn);
 	bool setResultColumn(const QString& name);
@@ -75,12 +82,13 @@ public:
 	QStringList normaliseColumns(QStringList columnNames, bool bCostCriterion);
 
 protected:
-	vtkSmartPointer<vtkFunctionParser> mParser;
+	//vtkSmartPointer<vtkFunctionParser> mParser;
+	otb::MultiParser::Pointer mParser;
 	vtkTable* mTab;
 
 	QString mFunction;
 	QStringList mFuncVars;
-	QList<int> mLstFuncVarColumnIndex;
+	QList<vtkDataArray*> mFuncFields;
 	QString mResultColumn;
 	int mResultColumnIndex;
 	int mResultColumnType;
@@ -92,11 +100,9 @@ protected:
 	bool mSelectionMode;
 	long mNumSelRecs;
 	QStringList mslStrTerms;
-	QList<QStringList> mLstStrFieldNames;
-	QList<QList<int> >  mLstStrColumnIndices;
+	QList<QStringList> mLstStrLeftRight;
+	QList<QList<vtkStringArray*> > mLstLstStrFields;
 	QList<NMStrOperator> mLstNMStrOperator;
-	QStringList mslStrOperators;
-
 
 	void initCalculator();
 	void clearLists();

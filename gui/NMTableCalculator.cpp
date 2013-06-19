@@ -1,6 +1,6 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+/*****************************h*************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -24,13 +24,16 @@
 
 #include "NMTableCalculator.h"
 
+#include <QMessageBox>
 #include <QString>
+#include <QStack>
 #include "vtkTable.h"
 #include "vtkStringArray.h"
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
 #include "vtkVariant.h"
 #include "vtkStdString.h"
+#include "itkExceptionObject.h"
 
 
 NMTableCalculator::NMTableCalculator(QObject* parent)
@@ -47,7 +50,8 @@ NMTableCalculator::NMTableCalculator(vtkTable* tab, QObject* parent)
 
 void NMTableCalculator::initCalculator()
 {
-	this->mParser = vtkSmartPointer<vtkFunctionParser>::New();
+	//this->mParser = vtkSmartPointer<vtkFunctionParser>::New();
+	this->mParser = otb::MultiParser::New();
 	this->mTabView = 0;
 	this->mFunction.clear();
 	this->mResultColumn.clear();
@@ -85,7 +89,6 @@ bool NMTableCalculator::setResultColumn(const QString& name)
 
 void NMTableCalculator::setFunction(const QString& function)
 {
-	this->mParser->SetFunction(function.toStdString().c_str());
 	this->mFunction = function;
 }
 
@@ -111,7 +114,7 @@ bool NMTableCalculator::setSelectionModeOn(const QString& selColumn,
 	NMDebugCtx(ctxTabCalc, << "...");
 	if (!this->setResultColumn(selColumn) || tabView == 0)
 	{
-		NMErr(ctxTabCalc, << "Invalid Selection Column and/or NMTableView!");
+		NMErr(ctxTabCalc, << "Invalid selection column and/or NMTableView!");
 		return false;
 	}
 
@@ -137,7 +140,7 @@ bool NMTableCalculator::setRowFilterModeOn(QString filterColumn)
 
 	if (aa->GetDataType() < VTK_VOID || aa->GetDataType() >= VTK_STRING)
 	{
-		NMErr(ctxTabCalc, << "Ivalid Filter Column Type!");
+		NMErr(ctxTabCalc, << "Invalid Filter Column Type!");
 		return false;
 	}
 
@@ -158,87 +161,242 @@ bool NMTableCalculator::parseFunction()
 		return false;
 	}
 
-	QString name;
-	QStringList funcTerms = this->mFunction.split(QRegExp("[&|,]"));
-	foreach(QString term, funcTerms)
+	QString expr = this->mFunction;
+	QStack<int> bstack;
+	QStack<bool> instack;
+	bool bin = false;
+
+	// first we extract functional groups as defined by parentheses or
+	// by commas to distinguish function input
+	QStringList groups;
+	std::stringstream term;
+	int pos = 0;
+	while (pos < expr.size())
 	{
-		NMDebug(<< endl);
-		NMDebugAI(<< "analysing term '" << term.toStdString() << "' ..." << endl);
-
-		int type;
-		QStringList strFieldNames;
-		QList<int> strFieldIndices;
-
-		NMDebugAI(<< "look for table columns ... " << endl);
-		for (int col=0; col < this->mTab->GetNumberOfColumns(); ++col)
+		QString c = expr.at(pos);
+		if (c != "(" && c != ")" && c != ",")
 		{
-			name = this->mTab->GetColumnName(col);
-			type = this->mTab->GetColumn(col)->GetDataType();
-			if (term.contains(name, Qt::CaseInsensitive))
+			term << c.toStdString();
+
+			if (pos == expr.size() - 1)
 			{
-				if (type == VTK_STRING)
-				{
-					strFieldNames.append(name);
-					strFieldIndices.append(col);
-					NMDebugAI(<< "detected string column: " << col
-							<< "-" << name.toStdString() << endl);
-				}
-				else
-				{
-					this->mFuncVars.append(name);
-					this->mLstFuncVarColumnIndex.append(col);
-					NMDebugAI(<< "detected numeric column: " << col
-							<< "-" << name.toStdString() << endl);
-				}
+				if (term.str().size() > 0)
+					groups.push_back(QString(term.str().c_str()));
+			}
+		}
+		else
+		{
+			if (term.str().size() > 0)
+			{
+				groups.push_back(QString(term.str().c_str()));
+				term.str("");
 			}
 		}
 
-		QRegExp rxOrig("('[\\w\\W]*'|[A-Za-z_]+[\\d\\w]*)\\s*(=|!=|>|<|>=|<=|in|startsWith|endsWith|contains)\\s*([A-Za-z_]+[\\d\\w]*|'[\\w\\W]*')",
-						Qt::CaseInsensitive);
-		int posOrig = rxOrig.indexIn(term);
+		++pos;
+	}
 
-		// if the current term is no string expression, we can skip the rest
-		if (strFieldIndices.size() == 0 && posOrig == -1)
-			continue;
+	QRegExp exprSep("(\\&\\&|\\?|:|\\|\\|)");
+	QRegExp termIdent("([_a-zA-Z]+[_a-zA-Z\\d]*|'[\\w\\d\\s\\W]*'|\\d*\\.*\\d+)"
+			"\\s*(=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|in|!in|"
+			"startsWith|endsWith|contains)\\s*"
+			"([_a-zA-Z]+[_a-zA-Z\\d]*|'[\\w\\d\\s\\W]*'|\\d*\\.*\\d+)"); // right hand side
+	QRegExp allOps("(?:=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|in|!in|startsWith|endsWith|contains)");
 
-		// add the field and col index list to the member vars
-		this->mLstStrFieldNames.append(strFieldNames);
-		this->mLstStrColumnIndices.append(strFieldIndices);
+	// now we analyse the functional groups and break them down into parts of logical expressions
+	foreach(const QString& grp, groups)
+	{
+		NMDebugInd(2, << "group term: " << grp.toStdString() << endl);
 
-		// get captured parts of the term
-		QStringList parts = rxOrig.capturedTexts();
-		this->mslStrTerms.append(parts[0]);
-		NMDebugAI(<< "captured string expression: " << parts[0].toStdString() << endl);
+		QStringList logTerms = grp.split(exprSep, QString::SkipEmptyParts);
+		foreach(const QString& lt, logTerms)
+		{
+			//if (lt.simplified().isEmpty())
+			//	continue;
+			NMDebugInd(4, << "logical term: " << lt.toStdString() << endl);
+			int pos = termIdent.indexIn(lt);
 
-		NMStrOperator sop;
-		if (parts[2] == ">")
-			sop = NM_STR_GT;
-		else if (parts[2] == ">=")
-			sop = NM_STR_GTEQ;
-		else if (parts[2] == "<")
-			sop = NM_STR_LT;
-		else if (parts[2] == "<=")
-			sop = NM_STR_LTEQ;
-		else if (parts[2] == "=")
-			sop = NM_STR_EQ;
-		else if (parts[2] == "!=")
-			sop = NM_STR_NEQ;
-		else if (parts[2].toLower() == "in")
-			sop = NM_STR_IN;
-		else if (parts[2].toLower() == "contains")
-			sop = NM_STR_CONTAINS;
-		else if (parts[2].toLower() == "startswith")
-			sop = NM_STR_STARTSWITH;
-		else if (parts[2].toLower() == "endswith")
-			sop = NM_STR_ENDSWITH;
+			// ideally, we've got a proper term; however we could also have only 'half' a term
+			// which is sitting outside of an expression in parenthesis or similar, so that's
+			// why we then just try and identify field names
+			if (pos >= 0)
+			{
+				QStringList guts = termIdent.capturedTexts();
+				// if we haven't got 4 elements in the list, something went wrong
+				if (guts.size() != 4)
+				{
+					NMErr(ctxTabCalc, << "Expected three element calculator expression!");
+					NMDebugCtx(ctxTabCalc, << "done!");
+					return false;
+				}
+				//NMDebugInd(6,
+				//		<< "expression again? > " << guts[0].toStdString() << endl);
+				//NMDebugInd(6,
+				//		<< "left-hand-side: '" << guts[1].toStdString() << "'" << endl);
+				//NMDebugInd(6,
+				//		<< "operator: '" << guts[2].toStdString() << "'" << endl);
+				//NMDebugInd(6,
+				//		<< "right-hand-side: '" << guts[3].toStdString() << "'" << endl);
 
-		this->mLstNMStrOperator.append(sop);
-		NMDebugAI(<< "string comparison operator: " << parts[2].toStdString()
-				<< " -> " << sop << endl);
+				// here, we check, whether the particular operator is a string operator or not
+				// if yes, we add the whole expression to the list of string expressions,
+				// if not, we check the left and right hand side of the expression of being
+				// a numeric attribute of the table
+				//if (guts.at(2).indexOf(allOps) != -1)
+						//|| guts.at(2).indexOf(numOps) != -1)
+				{
+					bool bRightStr = false;
+					bool bLeftStr = false;
+					vtkAbstractArray* arLeft = 0;
+					vtkAbstractArray* arRight = 0;
+					arLeft = this->mTab->GetColumnByName(guts.at(1).toStdString().c_str());
+					arRight = this->mTab->GetColumnByName(guts.at(3).toStdString().c_str());
+					QStringList strNames;
+					QList<vtkStringArray*> strFields;
+					if (arLeft != 0)
+					{
+						if (arLeft->GetDataType() == VTK_STRING)
+						{
+							bLeftStr = true;
+							strFields.append(vtkStringArray::SafeDownCast(arLeft));
+							NMDebugAI(<< "detected STRING field: "
+									<< guts.at(1).toStdString() << endl);
+						}
+						else
+						{
+							strFields.append(0);
+							this->mFuncVars.append(guts.at(1));
+							this->mFuncFields.append(vtkDataArray::SafeDownCast(arLeft));
+							NMDebugAI(<< "detected NUMERIC field: "
+									<< guts.at(1).toStdString() << endl);
+						}
+					}
+					else
+						strFields.append(0);
+
+					if (arRight != 0)
+					{
+						if (arRight->GetDataType() == VTK_STRING)
+						{
+							bRightStr = true;
+							strFields.append(vtkStringArray::SafeDownCast(arRight));
+							NMDebugAI(<< "detected STRING field: "
+									<< guts.at(3).toStdString() << endl);
+						}
+						else
+						{
+							strFields.append(0);
+							this->mFuncVars.append(guts.at(3));
+							this->mFuncFields.append(vtkDataArray::SafeDownCast(arRight));
+							NMDebugAI(<< "detected NUMERIC field: "
+									<< guts.at(3).toStdString() << endl);
+						}
+					}
+					else
+						strFields.append(0);
+
+					// is this a string expression?
+					if (bLeftStr || bRightStr)
+					{
+						NMDebugAI(<< "detected string term: " << lt.toStdString() << endl);
+						this->mslStrTerms.append(lt);
+
+						QRegExp stripHighComma("'([\\w\\d\\s\\W]*)'");
+						int pos = stripHighComma.indexIn(guts.at(1));
+						if (bLeftStr)
+							strNames << guts.at(1);
+						else
+							strNames << stripHighComma.capturedTexts().at(1);
+
+						pos = stripHighComma.indexIn(guts.at(3));
+						if (bRightStr)
+							strNames << guts.at(3);
+						else
+							strNames << stripHighComma.capturedTexts().at(1);
+
+						this->mLstStrLeftRight.append(strNames);
+						this->mLstLstStrFields.append(strFields);
+						this->mLstNMStrOperator.append(this->getStrOperator(guts.at(2)));
+						NMDebugAI(<< "eval string term: " << strNames.at(0).toStdString() << " "
+								<< guts.at(2).toStdString() << " "
+								<< strNames.at(1).toStdString() << endl);
+					}
+				}
+			}
+			else
+			{
+				QStringList scrambledEggs = lt.split(allOps,
+						QString::SkipEmptyParts);
+				//NMDebugInd(6,
+				//		<< "are those fields? : " << scrambledEggs.join(" ").toStdString() << endl);
+				// if we've got a numeric field here, we register the name with the
+				// the parser; in the calc routine, we then look up the particular
+				// value for each row and just set the value for the registered variable
+				// muParser deals with the rest;
+				foreach(const QString& egg, scrambledEggs)
+				{
+					vtkAbstractArray* ar = this->mTab->GetColumnByName(egg.toStdString().c_str());
+					if (ar != 0)
+					{
+						if (ar->GetDataType() != VTK_STRING)
+						{
+							this->mFuncVars.append(egg);
+							this->mFuncFields.append(vtkDataArray::SafeDownCast(ar));
+							NMDebugAI(<< "detected NUMERIC field: "
+									<< egg.toStdString() << endl);
+						}
+						else
+						{
+							//ToDo:: does this actually makes sense?
+							this->mslStrTerms.append(egg);
+							QList<vtkStringArray*> strFields;
+							strFields.append(vtkStringArray::SafeDownCast(ar));
+							strFields.append(0);
+							this->mLstLstStrFields.append(strFields);
+							this->mLstNMStrOperator.append(NMTableCalculator::NM_STR_UNKNOWN);
+							NMDebugAI(<< "detected STRING field: "
+									<< egg.toStdString() << endl);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	NMDebugCtx(ctxTabCalc, << "done!");
 	return true;
+}
+
+NMTableCalculator::NMStrOperator
+NMTableCalculator::getStrOperator(const QString& strOp)
+{
+	NMStrOperator sop;
+	if (strOp == ">")
+		sop = NM_STR_GT;
+	else if (strOp == ">=")
+		sop = NM_STR_GTEQ;
+	else if (strOp == "<")
+		sop = NM_STR_LT;
+	else if (strOp == "<=")
+		sop = NM_STR_LTEQ;
+	else if (strOp == "==")
+		sop = NM_STR_EQ;
+	else if (strOp == "!=")
+		sop = NM_STR_NEQ;
+	else if (strOp.toLower() == "in")
+		sop = NM_STR_IN;
+	else if (strOp.toLower() == "!in")
+		sop = NM_STR_NOTIN;
+	else if (strOp.toLower() == "contains")
+		sop = NM_STR_CONTAINS;
+	else if (strOp.toLower() == "startswith")
+		sop = NM_STR_STARTSWITH;
+	else if (strOp.toLower() == "endswith")
+		sop = NM_STR_ENDSWITH;
+	else
+		sop = NM_STR_UNKNOWN;
+
+	return sop;
 }
 
 bool NMTableCalculator::calculate(void)
@@ -269,12 +427,11 @@ bool NMTableCalculator::calculate(void)
 void NMTableCalculator::clearLists()
 {
 	this->mFuncVars.clear();
+	this->mFuncFields.clear();
 	this->mslStrTerms.clear();
-	this->mLstFuncVarColumnIndex.clear();
-	this->mLstStrFieldNames.clear();
-	this->mLstStrColumnIndices.clear();
+	this->mLstStrLeftRight.clear();
+	this->mLstLstStrFields.clear();
 	this->mLstNMStrOperator.clear();
-	this->mslStrOperators.clear();
 }
 
 void NMTableCalculator::doNumericCalcSelection()
@@ -301,66 +458,55 @@ void NMTableCalculator::doNumericCalcSelection()
 
 		// feed the parser with numeric variables and values
 		int fcnt=0;
-		foreach(const int &idx, this->mLstFuncVarColumnIndex)
+		foreach(const QString &colName, this->mFuncVars)
 		{
-			vtkDataArray* va = vtkDataArray::SafeDownCast(
-					this->mTab->GetColumn(idx));
+			//this->mParser->SetScalarVariableValue(
+			//		this->mFuncVars.at(fcnt).toStdString().c_str(),
+			//		this->mFuncFields.at(fcnt)->GetTuple1(row));
 
-			this->mParser->SetScalarVariableValue(
-					this->mFuncVars.at(fcnt).toStdString().c_str(),
-					va->GetTuple1(row));
+			this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(),
+					this->mFuncFields.at(fcnt)->GetTuple(row));
 
 			if (row==0) {NMDebugAI(<< "setting numeric variable: "
 					<< this->mFuncVars.at(fcnt).toStdString() << endl);}
 			++fcnt;
 		}
 
-
-		if (row==0) {NMDebugAI(<< "processing string expressions ..." << endl);}
 		// evaluate string expressions and replace them with numeric results (0 or 1)
 		// in function
 		newFunc = this->mFunction;
 		for (int t=0; t < this->mslStrTerms.size(); ++t)
 		{
-			QString term = this->mslStrTerms[t];
-			if (row==0) {NMDebugAI(<< "... term: " << term.toStdString() << endl);}
-			QString origTerm = term;
-			QList<int> idxs = this->mLstStrColumnIndices[t];
-			QStringList names = this->mLstStrFieldNames[t];
-			NMStrOperator op = this->mLstNMStrOperator[t];
+			if (row==0 && t==0) {NMDebugAI(<< "processing string expressions ..." << endl);}
 
-			if (row==0) {NMDebugAI(<< "setting string variables in term " << term.toStdString() << endl);}
-			for (int f=0; f < idxs.size(); ++f)
+			QString origTerm = this->mslStrTerms.at(t);
+			if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
+
+			vtkStringArray* leftField = this->mLstLstStrFields.at(t).at(0);
+			vtkStringArray* rightField = this->mLstLstStrFields.at(t).at(1);
+			QString left;
+			QString right;
+			if (leftField != 0)
+				left = leftField->GetValue(row).c_str();
+			else
+				left = this->mLstStrLeftRight.at(t).at(0);
+
+			if (rightField != 0)
+				right = rightField->GetValue(row).c_str();
+			else
+				right = this->mLstStrLeftRight.at(t).at(1);
+
+			// debug
+			if (row == 0)
 			{
-				const int &idx = idxs[f];
-				QString &name = names[f];
-
-				vtkStringArray* sa = vtkStringArray::SafeDownCast(
-						this->mTab->GetColumn(idx));
-				term = term.replace(name, QString("'%1'").arg(sa->GetValue(row).c_str()),
-						Qt::CaseInsensitive);
+				NMDebugAI(<< "... evaluating: "
+						<< left.toStdString() << " "
+						<< mLstNMStrOperator.at(t) << " "
+						<< right.toStdString() << endl);
 			}
-
-			QRegExp rx("'([\\w\\W]*)'\\s*(=|!=|>|<|>=|<=|in|startsWith|endsWith|contains)\\s*'([\\w\\W]*)'",
-					Qt::CaseInsensitive);
-			int pos = rx.indexIn(term);
-			if (pos == -1)
-			{
-				NMErr(ctxTabCalc, << "This should have never happened: String expression: "
-						  << term.toStdString() << " not recognised" << endl);
-				return;
-			}
-
-			// get captured parts of the term
-			QStringList parts = rx.capturedTexts();
-
-			QString left = parts[1];
-			left = left.trimmed();
-			QString right = parts[3];
-			right = right.trimmed();
 
 			// eval expression
-			switch (op)
+			switch (this->mLstNMStrOperator.at(t))
 			{
 			case NM_STR_GT:
 				strExpRes = QString::localeAwareCompare(left, right) > 0 ? 1 : 0;
@@ -383,7 +529,16 @@ void NMTableCalculator::doNumericCalcSelection()
 				strExpRes = QString::localeAwareCompare(left, right) != 0 ? 1 : 0;
 				break;
 			case NM_STR_IN:
-				strExpRes = right.contains(left, Qt::CaseInsensitive) ? 1 : 0;
+				{
+					QStringList rl = right.split(" ");
+					strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 1 : 0;
+				}
+				break;
+			case NM_STR_NOTIN:
+				{
+					QStringList rl = right.split(" ");
+					strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 0 : 1;
+				}
 				break;
 			case NM_STR_CONTAINS:
 				strExpRes = left.contains(right, Qt::CaseInsensitive) ? 1 : 0;
@@ -400,9 +555,26 @@ void NMTableCalculator::doNumericCalcSelection()
 					Qt::CaseInsensitive);
 		}
 
-		// write result into the result column
-		this->mParser->SetFunction(newFunc.toStdString().c_str());
-		double res = this->mParser->GetScalarResult();
+		this->mParser->SetExpr(newFunc.toStdString());
+		double res;
+		try
+		{
+			res = this->mParser->Eval();
+		}
+		catch(itk::ExceptionObject& err)
+		{
+			NMDebugAI(<< res << "oops - functions parser threw an exception!" << endl);
+			QMessageBox msgBox;
+			msgBox.setText(tr("Invalid Where Clause!\nPlease check syntax and try again."));
+			msgBox.setIcon(QMessageBox::Critical);
+			msgBox.exec();
+
+			NMErr(ctxTabCalc, << "Invalid expression!");
+			NMDebugCtx(ctxTabCalc, << "done!");
+
+			throw err;
+			return;
+		}
 
 		if (this->mSelectionMode)
 		{
@@ -420,9 +592,6 @@ void NMTableCalculator::doNumericCalcSelection()
 		}
 		else
 			resAr->SetTuple1(row, res);
-
-		// clear all variables
-		this->mParser->RemoveAllVariables();
 	}
 	NMDebugCtx(ctxTabCalc, << "done!");
 }
@@ -446,27 +615,23 @@ void NMTableCalculator::doStringCalculation()
 		// replace numeric columns with string version of the actual value
 		res = this->mFunction;
 		int cnt = 0;
-		foreach(const int &idx, this->mLstFuncVarColumnIndex)
+		foreach(const QString& fieldName, this->mFuncVars)
 		{
-			vtkAbstractArray* va = this->mTab->GetColumn(idx);
-			value = QString(va->GetVariantValue(row).ToString().c_str());
-			res = res.replace(this->mFuncVars.at(cnt), value, Qt::CaseInsensitive);
+			// we make sure, we've got a proper field name here and
+			// don't just replace the middle of a fieldname
+			QString rx = QString("\\b%1\\b").arg(fieldName);
+			value = QString(this->mFuncFields.at(cnt)->GetVariantValue(row).ToString().c_str());
+			res = res.replace(QRegExp(rx), value);
 			++cnt;
 		}
 
 		int termcnt=0;
 		int fieldcnt;
-		foreach(const QList<int> &ilst, this->mLstStrColumnIndices)
+		foreach(const QString& st, this->mslStrTerms)
 		{
-			fieldcnt=0;
-			foreach(const int& idx, ilst)
-			{
-				vtkStringArray* sa = vtkStringArray::SafeDownCast(
-						this->mTab->GetColumn(idx));
-				res = res.replace(this->mLstStrFieldNames.at(termcnt).at(fieldcnt),
-						sa->GetValue(row).c_str(), Qt::CaseInsensitive);
-				++fieldcnt;
-			}
+			QString rx = QString("\\b%1\\b").arg(this->mLstStrLeftRight.at(termcnt).at(0));
+			value = QString(this->mLstLstStrFields.at(termcnt).at(0)->GetValue(row).c_str());
+			res = res.replace(QRegExp(rx), value);
 			++termcnt;
 		}
 

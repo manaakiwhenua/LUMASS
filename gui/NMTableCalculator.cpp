@@ -335,20 +335,21 @@ bool NMTableCalculator::parseFunction()
 				// muParser deals with the rest;
 				foreach(const QString& egg, scrambledEggs)
 				{
-					vtkAbstractArray* ar = this->mTab->GetColumnByName(egg.toStdString().c_str());
+					QString item = egg.trimmed();
+					vtkAbstractArray* ar = this->mTab->GetColumnByName(item.toStdString().c_str());
 					if (ar != 0)
 					{
 						if (ar->GetDataType() != VTK_STRING)
 						{
-							this->mFuncVars.append(egg);
+							this->mFuncVars.append(item);
 							this->mFuncFields.append(vtkDataArray::SafeDownCast(ar));
 							NMDebugAI(<< "detected NUMERIC field: "
-									<< egg.toStdString() << endl);
+									<< item.toStdString() << endl);
 						}
 						else
 						{
-							//ToDo:: does this actually makes sense?
-							this->mslStrTerms.append(egg);
+							//ToDo:: does this actually make sense?
+							this->mslStrTerms.append(item);
 							QList<vtkStringArray*> strFields;
 							strFields.append(vtkStringArray::SafeDownCast(ar));
 							strFields.append(0);
@@ -357,6 +358,11 @@ bool NMTableCalculator::parseFunction()
 							NMDebugAI(<< "detected STRING field: "
 									<< egg.toStdString() << endl);
 						}
+					}
+					else
+					{
+						NMDebugAI(<< "couldn't do anything with this egg: "
+								<< item.toStdString() << endl);
 					}
 				}
 			}
@@ -555,10 +561,10 @@ void NMTableCalculator::doNumericCalcSelection()
 					Qt::CaseInsensitive);
 		}
 
-		this->mParser->SetExpr(newFunc.toStdString());
 		double res;
 		try
 		{
+			this->mParser->SetExpr(newFunc.toStdString());
 			res = this->mParser->Eval();
 		}
 		catch(itk::ExceptionObject& err)

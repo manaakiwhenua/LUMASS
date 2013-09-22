@@ -241,6 +241,7 @@ private :
   GDALDriverManagerWrapper()
   {
     GDALAllRegister();
+    GetGDALDriverManager()->AutoLoadDrivers();
 
 #ifndef CHECK_HDF4OPEN_SYMBOL
     // Get rid of the HDF4 driver when it is buggy
@@ -284,8 +285,8 @@ GDALRATImageIO::GDALRATImageIO()
 
   // By default set component type to unsigned char
   m_ComponentType = UCHAR;
-  m_UseCompression = false;
-  m_CompressionLevel = 4; // Range 0-9; 0 = no file compression, 9 = maximum file compression
+  m_UseCompression = true;
+  m_CompressionLevel = 9; // default was 4: Range 0-9; 0 = no file compression, 9 = maximum file compression
 
   // Set default spacing to one
   m_Spacing[0] = 1.0;
@@ -310,6 +311,10 @@ GDALRATImageIO::GDALRATImageIO()
   m_CanStreamWrite = false;
   m_IsComplex = false;
   m_IsVectorImage = false;
+
+  //this->AddSupportedReadExtension("kea");
+  //this->AddSupportedWriteExtension("kea");
+
 
   m_PxType = new GDALDataTypeWrapper;
 
@@ -1050,41 +1055,47 @@ void GDALRATImageIO::InternalReadImageInformation()
 		  }
     	}
     else
-    	{
-    	m_IsIndexed = false;
+		{
+			m_IsIndexed = false;
 
-        unsigned int ColorEntryCount = GDALGetColorEntryCount(hTable);
+			if (hTable != NULL)
+			{
+				unsigned int ColorEntryCount = GDALGetColorEntryCount(hTable);
 
-        itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::ColorTableNameKey,
-                                              static_cast<std::string>(GDALGetPaletteInterpretationName(
-                                                                         GDALGetPaletteInterpretation(hTable))));
+				itk::EncapsulateMetaData<std::string>(dict,
+						MetaDataKey::ColorTableNameKey,
+						static_cast<std::string>(GDALGetPaletteInterpretationName(
+								GDALGetPaletteInterpretation(hTable))));
 
-        itk::EncapsulateMetaData<unsigned int>(dict, MetaDataKey::ColorEntryCountKey, ColorEntryCount);
+				itk::EncapsulateMetaData<unsigned int>(dict,
+						MetaDataKey::ColorEntryCountKey, ColorEntryCount);
 
-        // NEW in the RAT version of this ImageIO:
-        // the older version seemed to just have read one colour entry per band;
-        // this version puts all colour entries (VColorEntry) into a vector
-        // which can be fetched from the MetaDataDictionary using MetaDataKey::ColorEntryAsRGBKey key
+				// NEW in the RAT version of this ImageIO:
+				// the older version seemed to just have read one colour entry per band;
+				// this version puts all colour entries (VColorEntry) into a vector
+				// which can be fetched from the MetaDataDictionary using MetaDataKey::ColorEntryAsRGBKey key
 
-  		typedef std::vector<MetaDataKey::VectorType> VectorVectorType;
-  		VectorVectorType VVColorEntries;
-  		for (int i = 0; i < GDALGetColorEntryCount(hTable); ++i)
-  		  {
-  		  GDALColorEntry sEntry;
-  		  MetaDataKey::VectorType     VColorEntry;
+				typedef std::vector<MetaDataKey::VectorType> VectorVectorType;
+				VectorVectorType VVColorEntries;
+				for (int i = 0; i < GDALGetColorEntryCount(hTable); ++i)
+				{
+					GDALColorEntry sEntry;
+					MetaDataKey::VectorType VColorEntry;
 
-  		  GDALGetColorEntryAsRGB(hTable, i, &sEntry);
+					GDALGetColorEntryAsRGB(hTable, i, &sEntry);
 
-  		  VColorEntry.push_back(sEntry.c1);
-  		  VColorEntry.push_back(sEntry.c2);
-  		  VColorEntry.push_back(sEntry.c3);
-  		  VColorEntry.push_back(sEntry.c4);
+					VColorEntry.push_back(sEntry.c1);
+					VColorEntry.push_back(sEntry.c2);
+					VColorEntry.push_back(sEntry.c3);
+					VColorEntry.push_back(sEntry.c4);
 
-  		  VVColorEntries.push_back(VColorEntry);
-  		  }
+					VVColorEntries.push_back(VColorEntry);
+				}
 
-  		itk::EncapsulateMetaData<VectorVectorType>(dict, MetaDataKey::ColorEntryAsRGBKey, VVColorEntries);
-        }
+				itk::EncapsulateMetaData<VectorVectorType>(dict,
+						MetaDataKey::ColorEntryAsRGBKey, VVColorEntries);
+			}
+		}
     }
 
   if (m_IsIndexed)
@@ -1316,15 +1327,21 @@ void GDALRATImageIO::Write(const void* buffer)
 					<< "Unable to instantiate driver " << gdalDriverShortName << " to write " << m_FileName);
 		}
 
-		// If JPEG, set the JPEG compression quality to 95.
-		char * option[2];
-		option[0] = NULL;
-		option[1] = NULL;
-		// If JPEG, set the image quality
+		// handle creation options
+		char ** option = 0;
 		if (gdalDriverShortName.compare("JPEG") == 0)
 		{
-			option[0] = const_cast<char *>("QUALITY=95");
+			// If JPEG, set the JPEG compression quality to 95.
+			option = CSLAddNameValue(option, "QUALITY", "95");
 
+		}
+		else if (gdalDriverShortName.compare("HFA") == 0)
+		{
+			option = CSLAddNameValue(option, "COMPRESSED", "YES");
+		}
+		else if (gdalDriverShortName.compare("GTiff") == 0)
+		{
+			option = CSLAddNameValue(option, "COMPRESS", "LZW");
 		}
 
 		GDALDataset* hOutputDS = driver->CreateCopy(realFileName.c_str(),
@@ -1529,7 +1546,17 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       oss << tileDimension;
       papszOptions = CSLAddNameValue( papszOptions, "BLOCKXSIZE", oss.str().c_str() );
       papszOptions = CSLAddNameValue( papszOptions, "BLOCKYSIZE", oss.str().c_str() );
+
+      //if (this->m_UseCompression)
+  		papszOptions = CSLAddNameValue( papszOptions, "COMPRESS", "LZW");
+
+
       }
+    else if (driverShortName.compare("HFA") == 0)
+     {
+    	//if (this->m_UseCompression)
+    		papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "YES");
+     }
 
     m_Dataset = GDALDriverManagerWrapper::GetInstance().Create(
                      driverShortName,
@@ -1729,6 +1756,8 @@ std::string GDALRATImageIO::FilenameToGdalDriverShortName(const std::string& nam
     gdalDriverShortName="PCIDSK";
   else if ( extension == "lbl" || extension == "pds" )
     gdalDriverShortName="ISIS2";
+  else if ( extension == "kea")
+	gdalDriverShortName="KEA";
   else
     gdalDriverShortName = "NOT-FOUND";
 
@@ -1817,18 +1846,13 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 
 	// set filename and band number
 	otbTab->SetBandNumber(iBand);
+
+	//NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
 	otbTab->SetImgFileName(this->GetFileName());
 
 	otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 	int nrows = rat->GetRowCount();
 	int ncols = rat->GetColumnCount();
-
-	// add number of rows to table
-//	for (int z=0; z < nrows; ++z)
-//	{
-//		otbTab->AddRow();
-//		otbTab->SetValue(0, z, z);
-//	}
 
 	// copy table
 	::GDALRATFieldType gdaltype;
@@ -1836,7 +1860,18 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	for (int c=0; c < ncols; ++c)
 	{
 		gdaltype = rat->GetTypeOfCol(c);
-		std::string colname = rat->GetNameOfCol(c);
+		std::string rawname = rat->GetNameOfCol(c);
+		const char* rawar = rawname.c_str();
+		std::string colname;
+		for(int p=0; p < rawname.size(); ++p)
+		{
+			if (std::isalnum(rawar[p]) || rawar[p] == '_'
+					|| rawar[p] == '-')
+			{
+				colname += rawar[p];
+			}
+		}
+
 		switch(gdaltype)
 		{
 		case GFT_Integer:
@@ -1852,25 +1887,28 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 			return 0;
 		}
 		otbTab->AddColumn(colname, otbtabtype);
+	}
+	otbTab->AddRows(nrows);
 
+	for (int c=0; c < ncols; ++c)
+	{
 		for (int r=0; r < nrows; ++r)
 		{
 			if (c==0)
 			{
-				otbTab->AddRow();
-				otbTab->SetValue("rowidx", r, r);
+				otbTab->SetValue(c, r, (long)r);
 			}
 
 			switch (gdaltype)
 			{
 			case GFT_Integer:
-				otbTab->SetValue(colname, r, rat->GetValueAsInt(r, c));
+				otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
 				break;
 			case GFT_Real:
-				otbTab->SetValue(colname, r, rat->GetValueAsDouble(r, c));
+				otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
 				break;
 			case GFT_String:
-				otbTab->SetValue(colname, r, rat->GetValueAsString(r, c));
+				otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
 				break;
 			default:
 				continue;

@@ -1,6 +1,6 @@
  /****************************************************************************** 
  * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -18,28 +18,30 @@
 
 #ifndef NMMODELCOMPONENT_H
 #define NMMODELCOMPONENT_H
-#define ctxNMModelComponent "NMModelComponent"
 
 #include <qobject.h>
 #include <string>
 #include <vector>
 
+#include <QList>
+#include <QStringList>
 #include <QMap>
 #include <QMetaType>
 #include <QSharedPointer>
 
 #include "nmlog.h"
 #include "NMMacros.h"
-#include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-class NMProcess;
 
-/*! \brief NMModelComponent is one of the core building blocks of the LUMASS modelling
+class NMIterableComponent;
+
+/*! \brief DEPRECATED: NMModelComponent is one of the core building blocks of the LUMASS modelling
  *         framework. It represents either a single process (i.e. algorithm,
  *         called 'process component') or a chain of processes
  *         (i.e. a processing pipeline, called 'aggregate component').
  *
+ *		   DEPRECATED:
  *		   NMModelComponent can be thought of as an intelligent container which
  *		   contains either
  *		   a single process object (NMProcess) or which references a doubly linked list
@@ -63,51 +65,45 @@ class NMProcess;
 class NMModelComponent : public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(NMModelComponent* HostComponent READ getHostComponent WRITE setHostComponent NOTIFY NMModelComponentChanged)
-	Q_PROPERTY(QString Description READ getDescription WRITE setDescription NOTIFY NMModelComponentChanged)
+	Q_PROPERTY(QString Description READ getDescription WRITE setDescription)
 	Q_PROPERTY(short TimeLevel READ getTimeLevel WRITE setTimeLevel NOTIFY NMModelComponentChanged)
-	Q_PROPERTY(unsigned int NumIterations READ getNumIterations WRITE setNumIterations NOTIFY NMModelComponentChanged)
+	Q_PROPERTY(QList<QStringList> Inputs READ getInputs WRITE setInputs NOTIFY NMModelComponentChanged)
 
 public:
-	NMPropertyGetSet(HostComponent, NMModelComponent*)
-    NMPropertyGetSet(Description, QString)
-    NMPropertyGetSet(NumIterations, unsigned int)
+	NMPropertyGetSet(HostComponent, NMIterableComponent*);
+    //NMPropertyGetSet(Description, QString);
 
 signals:
 	void NMModelComponentChanged();
+	void ComponentDescriptionChanged(const QString& descr);
 
 public:
-
-    NMModelComponent(QObject* parent=0);
-    NMModelComponent(const NMModelComponent& modelComp);
     virtual ~NMModelComponent(void);
+
+	// common public interface with common behaviour for
+    // all model component classes
+
+    /*! Follows and lists the process chain upstream
+     *  until it finds a component, which doesn't
+     *  host an itk::Process object and hence cannot
+     *  be 'piped' but has to be executed explicitly.  */
+    void getUpstreamPipe(QList<QStringList>& hydra,
+    		QStringList& upstreamPipe, int step);
 
     short getTimeLevel(void)
     	{return this->mTimeLevel;}
     void setTimeLevel(short level);
-    void changeTimeLevel(int diff);
+    virtual void changeTimeLevel(int diff);
 
-    void setInternalStartComponent (NMModelComponent* comp )
-    	{this->mProcessChainStart = comp;};
+    void setDescription(QString descr);
+    QString getDescription()
+    	{return this->mDescription;}
 
-    /*! Returns the first sub component referenced by the doubly linked
-     *  list hosted by this component. Note that the order of referenced
-     *  sub components is independent of the individual sub components
-     *  time level. After this function has been called, the host component's
-     *  internal pointer points at the second sub component of the
-     *  doubly linked list (which is identical with the start component's
-     *  'downstream component').*/
-    NMModelComponent* getInternalStartComponent(void);
-
-    /*! Returns the next sub component referenced in the doubly linked
-     *  list of sub components. Note this is identical with the previously
-     *  returned component's 'downstream component'
-     *  (or the start component, if this method is called for the first time
-     *  after NMModelComponent::getInternalStartComponent() has been called.
-     */
-    NMModelComponent* getNextInternalComponent(void);
-    NMModelComponent* getLastInternalComponent(void);
-
+    /*! Allows for recursive identification of
+     *  components, which belong to the same
+     *  host component, i.e. which are part of the
+     *  very same doubly linked list as the
+     *  component at hand */
     NMModelComponent* getDownstreamModelComponent(void)
     	{return this->mDownComponent;}
     NMModelComponent* getUpstreamModelComponent(void)
@@ -118,98 +114,46 @@ public:
     void setUpstreamModelComponent(NMModelComponent* comp)
     	{this->mUpComponent = comp;}
 
-    /*! Adds a sub component to the model component. This method does
-     *  nothing, if the component hosts already a process object (NMProcess).
-     *  If you want to turn a process component into an aggregate component,
-     *  you have to first set the component's process pointer to NULL (s.
-     *  NMModelComponent::setProcess()) and then call this method.
-     *  \note The insertion order of sub components determines their
-     *  execution order (s. NMModelComponent::update()) when the
-     *  component's update method is called. However, all sub components on
-     *  a higher time level than the host component are executed first depending
-     *  on the order of their time level (i.e. highest level gets executed first).
-     */
-    void addModelComponent(NMModelComponent* comp);
-
-    /*! Inserts a new sub component into the chain of model components
-     *  after the named sub component (see also NMModelComponent::addModelComponent()).*/
-    void insertModelComponent(NMModelComponent* proc, const QString& previousComponent );
-
-    /*! Looks for the named sub component and either returns a valid pointer or NULL.*/
-    NMModelComponent* findModelComponent(const QString& compName );
-
-    /*! Removes the named sub component from this host.*/
-    NMModelComponent* removeModelComponent(const QString& compName);
-
-    /*! Counts the number of sub components. */
-    int countComponents(void);
-
-    void reset(void);
-
 
     void setInput(NMItkDataObjectWrapper* inputImg)
     	{this->setNthInput(0, inputImg);};
-    virtual void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 
-    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx);
-
-    virtual void setProcess(NMProcess* proc);
-    virtual NMProcess* getProcess(void)
-    	{return this->mProcess;};
-
-    void initialiseComponents(void);
-    void update(const QMap<QString, NMModelComponent*>& repo);
-    void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
-    void destroySubComponents(QMap<QString, NMModelComponent*>& repo);
-
-    void mapTimeLevels(unsigned int startLevel,
-    		QMap<unsigned int,
-    		QMap<QString, NMModelComponent*> >& timeLevelMap);
-
-    /* deprecated */
-    NMProcess* getEndOfTimeLevel(void);
-
-    /* deprecated */
-    void getEndOfPipelineProcess(NMProcess*& endProc);
-
-
-    bool isSubComponent(NMModelComponent* comp);
-
-    /* This method identifies executable sub components on the specified
-     * time level. Note executable components are components which don't
-     * serve as input to any other component on the specified time level.
-     */
-    const QStringList findExecutableComponents(unsigned int timeLevel);
+    // virtual functions, defining sub-class specific behaviour
+    virtual void setInputs(const QList<QStringList>& inputs)
+    	{mInputs = inputs;};
+    virtual const QList<QStringList> getInputs(void)
+    	{return mInputs;};
+    virtual void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg)=0;//{};
+    virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)=0;//{};
+    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx)=0;//{return 0;};
+    virtual void update(const QMap<QString, NMModelComponent*>& repo)=0;//{};
+    virtual void reset(void){};
 
 
 protected:
-    std::string ctx;
-    QMap<unsigned int, QMap<QString, NMModelComponent*> > mMapTimeLevelComp;
-//    QMap<unsigned int, QMap<QString, NMModelComponent*> > mMapPostProcComp;
+    NMModelComponent(QObject* parent=0);
+    NMModelComponent(const NMModelComponent& modelComp){};
 
     QString mDescription;
-    NMProcess* mProcess;
 
-    NMModelComponent* mHostComponent;
+    NMIterableComponent* mHostComponent;
 
     NMModelComponent* mUpComponent;
     NMModelComponent* mDownComponent;
 
-    NMModelComponent* mProcessChainStart;
-    NMModelComponent* mProcessChainPointer;
-
     short mTimeLevel;
-    unsigned int mNumIterations;
-    unsigned int mMaxInternalTimeLevel;
+
+    QList<QStringList> mInputs;
+
+    virtual void initAttributes(void);
+
+private:
 
 
-    void initAttributes(void);
-//    void registerComponent(NMModelComponent* comp);
-//    void unregisterComponent(NMModelComponent* comp);
-
+    static const std::string ctx;
 };
 
-Q_DECLARE_METATYPE(NMModelComponent)
-Q_DECLARE_METATYPE(NMModelComponent*)
+//Q_DECLARE_METATYPE(NMModelComponent)
+//Q_DECLARE_METATYPE(NMModelComponent*)
 
 #endif // NMMODELCOMPONENT_H

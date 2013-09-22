@@ -31,24 +31,25 @@
 #include <fstream>
 
 #include "itkObject.h"
+#include "itkDataObject.h"
 #include "itkObjectFactory.h"
 
 namespace otb
 {
 
-class ITK_EXPORT AttributeTable : public itk::Object
+class ITK_EXPORT AttributeTable : public itk::DataObject
 {
 public:
 	/** Standard class typedefs. */
 	typedef AttributeTable				Self;
-	typedef itk::Object					Superclass;
+	typedef itk::DataObject					Superclass;
 	typedef itk::SmartPointer<Self>			Pointer;
 	typedef itk::SmartPointer<const Self>	ConstPointer;
 
 	// supported column types
 	typedef enum
 	{
-		ATTYPE_STRING,
+		ATTYPE_STRING = 0,
 		ATTYPE_INT,
 		ATTYPE_DOUBLE,
 		ATTYPE_UNKNOWN
@@ -60,32 +61,33 @@ public:
 	// getting info about the table
 	int GetNumCols();
 	int GetNumRows();
-	int ColumnExists(std::string sColName);
+	int ColumnExists(const std::string& sColName);
 
 	std::string GetColumnName(int idx);
 	TableColumnType GetColumnType(int idx);
 
 
 	// managing the attribute table's content
-	bool AddColumn(std::string sColName, TableColumnType type);
+	bool AddColumn(const std::string& sColName, TableColumnType type);
 	bool AddRow();
-	bool SetValue(std::string sColName, int idx, double value);
-	bool SetValue(std::string sColName, int idx, int value);
-	bool SetValue(std::string sColName, int idx, std::string value);
-	double GetDblValue(std::string sColName, int idx);
-	int GetIntValue(std::string sColName, int idx);
-	std::string GetStrValue(std::string sColName, int idx);
+	bool AddRows(long numRows);
+	void SetValue(const std::string& sColName, int idx, double value);
+	void SetValue(const std::string& sColName, int idx, long value);
+	void SetValue(const std::string& sColName, int idx, std::string value);
+	double GetDblValue(const std::string& sColName, int idx);
+	long GetIntValue(const std::string& sColName, int idx);
+	std::string GetStrValue(const std::string& sColName, int idx);
 
-	bool SetValue(int col, int row, double value);
-	bool SetValue(int col, int row, int value);
-	bool SetValue(int col, int row, std::string value);
+	void SetValue(int col, int row, double value);
+	void SetValue(int col, int row, long value);
+	void SetValue(int col, int row, std::string value);
 	double GetDblValue(int col, int row);
-	int GetIntValue(int col, int row);
+	long GetIntValue(int col, int row);
 	std::string GetStrValue(int col, int row);
 
 	// manage table meta data
 	void SetBandNumber(int iBand);
-	void SetImgFileName(std::string sFileName);
+	void SetImgFileName(const std::string& sFileName);
 	int GetBandNumber(void);
 	std::string GetImgFileName(void);
 
@@ -105,14 +107,14 @@ protected:
 	std::vector<TableColumnType> m_vTypes;
 
 	// maps holding table columns
-	std::map<std::string, std::vector<std::string> > m_mStringCols;
-	std::map<std::string, std::vector<int> > m_mIntCols;
-	std::map<std::string, std::vector<double> > m_mDoubleCols;
+	std::map<int, std::vector<std::string> > m_mStringCols;
+	std::map<int, std::vector<long> > m_mIntCols;
+	std::map<int, std::vector<double> > m_mDoubleCols;
 
 	// scalar members
 	int m_iNumRows;
 	std::string m_sNodata;
-	int m_iNodata;
+	long m_iNodata;
 	double m_dNodata;
 	int m_iBand;
 	std::string m_sImgName;
@@ -120,7 +122,7 @@ protected:
 	// validate column name and row index; if
 	// parameters are valid then the column index
 	// is returned otherwise -1;
-	int valid(std::string sColName, int idx);
+	inline int valid(const std::string& sColName, int idx);
 	std::string typestr(TableColumnType type);
 
 };

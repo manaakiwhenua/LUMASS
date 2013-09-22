@@ -55,8 +55,8 @@ namespace otb
  * mathematical expressions. Attribute Values within an expression are
  * referenced by combining the band name with the band's attributes in the
  * following manner:
- * <band name>$<column name>		e.g.: dist$SBH - 3 * dist$CCOL + lu
- * 										  b1$SBH - 3 * b1$CCOL + b2
+ * <band name>__<column name>		e.g.: dist__SBH - 3 * dist__CCOL + lu
+ *  (double underscore)									  b1__SBH - 3 * b1__CCOL + b2
  *
  * This filter is based on the mathematical parser library muParser.
  * The built in functions and operators list is available at:
@@ -126,6 +126,9 @@ public:
   typedef typename ImageType::SpacingType         SpacingType;
   typedef MultiParser                             ParserType;
   
+  typedef typename AttributeTable::Pointer		   TablePointer;
+  typedef typename AttributeTable::TableColumnType ColumnType;
+
   /** Set the nth filter input with or without a specified associated variable name */
   void SetNthInput( unsigned int idx, const ImageType * image);
   void SetNthInput( unsigned int idx, const ImageType * image, const std::string& varName);
@@ -176,6 +179,7 @@ private :
   //bool DefineAttrVars();
 
   std::string                           m_Expression; 
+  std::string                           m_ConcatChar;
   std::vector<ParserType::Pointer>      m_VParser;
   std::vector< std::vector<double> >    m_AImage;
   std::vector< std::string >            m_VVarName;
@@ -191,9 +195,9 @@ private :
   itk::Array<long>                      m_ThreadOverflow;
 
   /** Attribute Table support */
-  std::vector<AttributeTable::Pointer>  			m_VRAT;
-  std::vector< std::vector<std::string> > 			m_VTabAttr;
-  std::vector< std::vector< AttributeTable::TableColumnType > > m_VAttrTypes;
+  std::vector<TablePointer> 	m_VRAT;
+  std::vector< std::vector<int> > 	m_VTabAttr;
+  std::vector< std::vector< ColumnType > > m_VAttrTypes;
   std::vector< std::vector< std::vector<double> > >	m_VAttrValues;
 };
 

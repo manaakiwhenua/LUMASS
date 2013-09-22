@@ -68,6 +68,7 @@ RATBandMathImageFilter<TImage>
   m_OverflowCount = 0;
   m_ThreadUnderflow.SetSize(1);
   m_ThreadOverflow.SetSize(1);
+  m_ConcatChar = "__";
 }
 
 /** Destructor */
@@ -116,27 +117,45 @@ void RATBandMathImageFilter<TImage>
 		std::vector<std::string> vAttrNames	)
 {
 	// exclude invalid settings
-	if (this->GetNumberOfInputs() > idx+1 || idx < 0 || tab.IsNull())
-		return;
-
-	this->m_VAttrTypes.resize(this->GetNumberOfInputs());
-	this->m_VAttrTypes[idx].resize(vAttrNames.size());
-
-	unsigned int i;
-	for (unsigned int c=0; c < vAttrNames.size(); c++)
+	if (idx < 0)// || tab.IsNull() || tab.GetPointer() == 0)
 	{
-		i = tab->ColumnExists(vAttrNames[c]);
-		if (i >= 0)
-			this->m_VAttrTypes[idx][c] = tab->GetColumnType(i);
-		else
-			return;
+		std::cout << __FILE__ << ", line " << __LINE__ << ": WARNING:"
+				<< " Invalid index for ::SetNthAttributeTable()!" << std::endl;
+		return;
 	}
 
-	m_VRAT.resize(this->GetNumberOfInputs());
-	m_VRAT[idx] = tab;
+	std::vector<int> columns;
+	std::vector<ColumnType> types;
+	if (tab.IsNotNull())
+	{
+		int ncols = tab->GetNumCols();
+		for (int n=0; n < vAttrNames.size(); ++n)
+		{
+			int c = -1;
+			if ((c = tab->ColumnExists(vAttrNames.at(n))) >= 0)
+			{
+				if (tab->GetColumnType(c) == AttributeTable::ATTYPE_INT
+					|| tab->GetColumnType(c) == AttributeTable::ATTYPE_DOUBLE)
+				{
+					columns.push_back(c);
+					types.push_back(tab->GetColumnType(c));
+				}
+			}
+		}
+	}
 
-	m_VTabAttr.resize(this->GetNumberOfInputs());
-	m_VTabAttr[idx] = vAttrNames;
+	if (this->m_VAttrTypes.size() == idx)
+	{
+		this->m_VAttrTypes.push_back(types);
+		this->m_VRAT.push_back(tab);
+		this->m_VTabAttr.push_back(columns);
+	}
+	else
+	{
+		this->m_VAttrTypes[idx] = types;
+		this->m_VRAT[idx] = tab;
+		this->m_VTabAttr[idx] = columns;
+	}
 
 	this->Modified();
 }
@@ -155,13 +174,16 @@ template<class TImage>
 std::vector<std::string> RATBandMathImageFilter<TImage>
 ::GetNthTableAttributes(unsigned int idx)
 {
+	std::vector<std::string> ret;
 	if (idx < 0 || idx >= m_VTabAttr.size())
 	{
-		std::vector<std::string> ret;
 		return ret;
 	}
 
-	return m_VTabAttr[idx];
+	for (int i=0; i < m_VTabAttr[idx].size(); ++i)
+		ret.push_back(m_VRAT[idx]->GetColumnName(m_VTabAttr[idx][i]));
+
+	return ret;
 }
 
 
@@ -203,7 +225,7 @@ template <class TImage>
 void RATBandMathImageFilter<TImage>
 ::SetNthInputName(unsigned int idx, const std::string& varName)
 {
-  m_VVarName[idx] = varName;
+	m_VVarName[idx] = varName;
 }
 
 template <typename TImage>
@@ -269,6 +291,11 @@ void RATBandMathImageFilter<TImage>
                         << "band #" << p+1 << " is [" 
                         << this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(0) << ";" 
                         << this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(1) << "]");
+
+      itk::ExceptionObject e(__FILE__, __LINE__);
+      e.SetLocation(ITK_LOCATION);
+      e.SetDescription("Input regions don't match in size!");
+      throw e;
       }
     }
 
@@ -317,13 +344,10 @@ void RATBandMathImageFilter<TImage>
     	  if (&m_VRAT[j] != 0)
     	  {
 			  m_VAttrValues[i][j].resize(m_VTabAttr[j].size());
-			  std::string bname = this->GetNthInputName(j) + "__";
-			  for (unsigned int c = 0; c < m_VTabAttr[j].size(); c++)
+			  std::string bname = this->GetNthInputName(j) + m_ConcatChar;
+			  for (int c=0; c < m_VTabAttr[j].size(); ++c)
 			  {
-				  std::string vname = bname + m_VTabAttr[j][c];
-
-				  //std::cout << "Parser #" << i << ": define var: " << vname << " for img #" << j << std::endl;
-
+				  std::string vname = bname + m_VRAT[j]->GetColumnName(m_VTabAttr[j][c]);
 				  m_VParser[i]->DefineVar(vname, &(m_VAttrValues[i][j][c]));
 			  }
     	  }
@@ -396,6 +420,8 @@ void RATBandMathImageFilter<TImage>
 			{
 				if (m_VRAT[ii].IsNotNull())
 					vTabAvail[ii] = true;
+				else
+					vTabAvail[ii] = false;
 			}
 		}
 		else
@@ -435,7 +461,7 @@ void RATBandMathImageFilter<TImage>
 				{
 					switch (m_VAttrTypes[j][c])
 					{
-					case AttributeTable::ATTYPE_DOUBLE:
+					case AttributeTable::ATTYPE_DOUBLE://2:
 						m_VAttrValues[threadId][j][c] =
 								static_cast<double>(m_VRAT[j]->GetDblValue(
 										m_VTabAttr[j][c], Vit[j].Get()));
@@ -452,19 +478,19 @@ void RATBandMathImageFilter<TImage>
 
 		}
 
-		// Image Indexes
-		for (j = 0; j < 2; j++)
-		{
-			m_AImage.at(threadId).at(nbInputImages + j) =
-					static_cast<double>(Vit.at(0).GetIndex()[j]);
-		}
-		for (j = 0; j < 2; j++)
-		{
-			m_AImage.at(threadId).at(nbInputImages + 2 + j) =
-					static_cast<double>(m_Origin[j])
-							+ static_cast<double>(Vit.at(0).GetIndex()[j])
-									* static_cast<double>(m_Spacing[j]);
-		}
+		//// Image Indexes
+		//for (j = 0; j < 2; j++)
+		//{
+		//	m_AImage.at(threadId).at(nbInputImages + j) =
+		//			static_cast<double>(Vit.at(0).GetIndex()[j]);
+		//}
+		//for (j = 0; j < 2; j++)
+		//{
+		//	m_AImage.at(threadId).at(nbInputImages + 2 + j) =
+		//			static_cast<double>(m_Origin[j])
+		//					+ static_cast<double>(Vit.at(0).GetIndex()[j])
+		//							* static_cast<double>(m_Spacing[j]);
+		//}
 
 		try
 		{
@@ -472,6 +498,7 @@ void RATBandMathImageFilter<TImage>
 		}
 		catch (itk::ExceptionObject& err)
 		{
+			throw err;
 			itkExceptionMacro(<< err);
 		}
 

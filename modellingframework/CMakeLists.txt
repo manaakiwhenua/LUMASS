@@ -33,6 +33,20 @@ file(GLOB MFW_H
    ${mfw_wrapper_SOURCE_DIR}/*.h
 )
 
+    #LIST(REMOVE_ITEM MFW_CPP ${mfw_wrapper_SOURCE_DIR}/NMCostDistanceBufferImageWrapper.cpp)
+    #LIST(REMOVE_ITEM MFW_H ${mfw_wrapper_SOURCE_DIR}/NMCostDistanceBufferImageWrapper.h)
+   
+if (NOT RASSUPPORT)
+  list(REMOVE_ITEM MFW_H 
+  	"${mfw_wrapper_SOURCE_DIR}/NMRasdamanConnectorWrapper.h"
+  )
+  
+  list(REMOVE_ITEM MFW_CPP
+        "${mfw_wrapper_SOURCE_DIR}/NMRasdamanConnectorWrapper.cpp"
+  )
+endif()   
+    
+
 SET(MFW_MOC_H ${MFW_H})
 LIST(REMOVE_ITEM MFW_MOC_H ${mfw_SOURCE_DIR}/NMMfwException.h)
 

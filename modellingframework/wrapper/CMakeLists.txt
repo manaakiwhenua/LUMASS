@@ -1,20 +1,8 @@
 PROJECT(mfw_wrapper)
 
-file(GLOB MFW_WRAPPER_H
-  ${mfw_wrapper_SOURCE_DIR}/*.h
-)
 
-file(GLOB MFW_WRAPPER_CPP
-  ${mfw_wrapper_SOURCE_DIR}/*.cpp
-)
+# we can't make the lists generated here visible to the 
+# parent directory withou setting the whole CMAKE into parent
+# mode, which is what we don't want, so we just access all 
+# necessary files from the parent directory
 
-# when we're not in rasdaman mode, remove related files 
-if (NOT RASSUPPORT)
-  list(REMOVE_ITEM MFW_WRAPPER_H 
-  	"${mfw_wrapper_SOURCE_DIR}/NMRasdamanConnectorWrapper.h"
-  )
-  
-  list(REMOVE_ITEM MFW_WRAPPER_CPP
-        "${mfw_wrapper_SOURCE_DIR}/NMRasdamanConnectorWrapper.cpp"
-  )
-endif()

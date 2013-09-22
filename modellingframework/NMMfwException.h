@@ -27,7 +27,7 @@
 
 #include <string>
 #include <exception>
-#include <QObject>
+//#include <QObject>
 
 using namespace std;
 
@@ -41,6 +41,10 @@ public:
 		  NMProcess_UninitialisedProcessObject,
 		  NMProcess_InvalidInput,
 		  NMProcess_InvalidParameter,
+		  NMProcess_MissingParameter,
+		  NMDataComponent_InvalidParameter,
+		  NMModelController_UnregisteredModelComponent,
+		  NMMosra_InvalidParameter,
 		  Unspecified
 
 		} ExceptionType;

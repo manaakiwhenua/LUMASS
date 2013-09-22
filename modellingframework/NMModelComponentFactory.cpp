@@ -23,6 +23,9 @@
  */
 
 #include "NMModelComponentFactory.h"
+#include "NMSequentialIterComponent.h"
+#include "NMConditionalIterComponent.h"
+#include "NMDataComponent.h"
 
 NMModelComponentFactory::NMModelComponentFactory(QObject* parent)
 {
@@ -39,11 +42,22 @@ NMModelComponentFactory& NMModelComponentFactory::instance(void)
 	return fab;
 }
 
-NMModelComponent* NMModelComponentFactory::createModelComponent(QString compClass)
+NMModelComponent* NMModelComponentFactory::createModelComponent(const QString& compClass)
 {
-	if (compClass.compare("NMModelComponent") == 0)
+	if (compClass.compare("NMSequentialIterComponent") == 0)
 	{
-		return new NMModelComponent(this);
+		return qobject_cast<NMModelComponent*>(
+				new NMSequentialIterComponent(this));
+	}
+	else if (compClass.compare("NMConditionalIterComponent") == 0)
+	{
+		return qobject_cast<NMModelComponent*>(
+				new NMConditionalIterComponent(this));
+	}
+	else if (compClass.compare("NMDataComponent") == 0)
+	{
+		return qobject_cast<NMModelComponent*>(
+				new NMDataComponent(this));
 	}
 	else
 		return 0;

@@ -32,7 +32,7 @@ class NMModelComponentFactory: public QObject
 {
 public:
 	static NMModelComponentFactory& instance(void);
-	NMModelComponent* createModelComponent(QString compClass);
+	NMModelComponent* createModelComponent(const QString& compClass);
 
 private:
 	NMModelComponentFactory(QObject* parent=0);

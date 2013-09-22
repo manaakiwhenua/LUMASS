@@ -40,17 +40,13 @@
 #include <QMetaObject>
 #include <QMetaType>
 #include <QDateTime>
-
-#include "NMItkDataObjectWrapper.h"
 #include "NMModelComponent.h"
+#include "NMItkDataObjectWrapper.h"
 #include "itkProcessObject.h"
 #include "itkDataObject.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 #include "itkCommand.h"
 #include "itkEventObject.h"
-
-
-class NMModelComponent;
 
 class NMProcess : public QObject
 {
@@ -88,12 +84,12 @@ public:
 	enum AdvanceParameter {NM_USE_UP=0, NM_CYCLE, NM_SYNC_WITH_HOST};
 
 	//NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
-//	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
-	NMPropertyGetSet(InputNumDimensions   , unsigned int                           )
-	NMPropertyGetSet(OutputNumDimensions  , unsigned int                           )
-	NMPropertyGetSet(InputNumBands        , unsigned int                           )
-	NMPropertyGetSet(OutputNumBands	      , unsigned int                           )
-	NMPropertyGetSet(ParameterHandling	  , NMProcess::AdvanceParameter            )
+	//	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
+	NMPropertyGetSet(InputNumDimensions   , unsigned int                           );
+	NMPropertyGetSet(OutputNumDimensions  , unsigned int                           );
+	NMPropertyGetSet(InputNumBands        , unsigned int                           );
+	NMPropertyGetSet(OutputNumBands	      , unsigned int                           );
+	NMPropertyGetSet(ParameterHandling	  , NMProcess::AdvanceParameter            );
 
 	NMItkDataObjectWrapper::NMComponentType getInputNMComponentType();
     NMItkDataObjectWrapper::NMComponentType getOutputNMComponentType();
@@ -103,8 +99,8 @@ public:
 
 public:
 	virtual ~NMProcess();
-    itk::ImageIOBase::IOComponentType getOutputComponentType(void);
-    itk::ImageIOBase::IOComponentType getInputComponentType(void);
+    otb::ImageIOBase::IOComponentType getOutputComponentType(void);
+    otb::ImageIOBase::IOComponentType getInputComponentType(void);
 
 	virtual void setNthInput(unsigned int numInput,
 			NMItkDataObjectWrapper* img) = 0;
@@ -117,6 +113,9 @@ public:
 	virtual void instantiateObject(void) = 0;
 	bool isInitialised(void)
 		{return this->mbIsInitialised;};
+
+	QDateTime getModifiedTime(void)
+		{return mMTime;}
 
 	itk::ProcessObject* getInternalProc(void)
 		{return this->mOtbProcess;}
@@ -152,12 +151,13 @@ protected:
 	bool mbAbortExecution;
 	unsigned int mParamPos;
 	float mProgress;
+	QDateTime mMTime;
     QList<QStringList> mInputComponents;
 	itk::ProcessObject::Pointer mOtbProcess;
 	itk::DataObject::Pointer mOutputImg;
 	itk::DataObject::Pointer mInputImg;
-	itk::ImageIOBase::IOComponentType mInputComponentType;
-	itk::ImageIOBase::IOComponentType mOutputComponentType;
+	otb::ImageIOBase::IOComponentType mInputComponentType;
+	otb::ImageIOBase::IOComponentType mOutputComponentType;
 	NMItkDataObjectWrapper::NMComponentType mNMComponentType;
 	unsigned int mInputNumBands;
 	unsigned int mOutputNumBands;
@@ -170,12 +170,23 @@ protected:
 	typedef itk::MemberCommand<NMProcess> ObserverType;
 	ObserverType::Pointer mObserver;
 
+
+	/*! \brief Translates the iteration index of the host component
+	 *         into an internal parameter position index subject
+	 *         to the user-specified parameter handling policy
+	 *         (i.e. use_up, cycle, sync).
+	 */
+	unsigned short mapHostIndexToPolicyIndex(unsigned short step,
+			unsigned short size);
+
+	/*! \brief Call-back method for itk::Process-based NMProcess classes to
+	 *         signal (emit) the process' state to listeners
+	 *         (e.g. NMProcessComponentItem).
+	 */
 	virtual void UpdateProgressInfo(itk::Object*, const itk::EventObject&);
 
-
-
 	/*! \brief Stores the parameter index. Needs to be set to 0 in constructor */
-//	unsigned int mParameterPos;
+	//	unsigned int mParameterPos;
 
 	/*! \brief Links input images with internal process object.
 	 *

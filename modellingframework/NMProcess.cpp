@@ -1,4 +1,4 @@
- /****************************************************************************** 
+ /*****************************t********, reteppo*****************************************
  * Created by Alexander Herzig 
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
  *
@@ -23,20 +23,21 @@
  */
 
 #include "NMProcess.h"
-#include "NMModelComponent.h"
-#include "NMModelController.h"
 #include "NMMfwException.h"
+#include "NMSequentialIterComponent.h"
+#include "NMDataComponent.h"
 
 #include <QDateTime>
 
 #include "otbImage.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
+
 
 NMProcess::NMProcess(QObject *parent)
 	: mbAbortExecution(false), mbLinked(false)
 {
-	this->mInputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
-	this->mOutputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+	this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+	this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mNMComponentType = NMItkDataObjectWrapper::NM_UNKNOWN;
 	this->mInputNumDimensions = 2;
 	this->mOutputNumDimensions = 2;
@@ -46,6 +47,7 @@ NMProcess::NMProcess(QObject *parent)
 	this->mParameterHandling = NM_SYNC_WITH_HOST;
 	this->mParamPos = 0;
 	this->mProgress = 0.0;
+	this->mMTime.setMSecsSinceEpoch(0);
 }
 
 NMProcess::~NMProcess()
@@ -114,9 +116,39 @@ void NMProcess::removeInputComponent(const QString& input)
 	}
 }
 
+unsigned short
+NMProcess::mapHostIndexToPolicyIndex(unsigned short step,
+		unsigned short size)
+{
+	unsigned short idx = 0;
+	if (size == 0)
+		return idx;
+
+	switch(this->mParameterHandling)
+	{
+	case NM_USE_UP:
+		if (step > size-1)
+			idx = size-1;
+		else
+			idx = step;
+		break;
+	case NM_CYCLE:
+	case NM_SYNC_WITH_HOST:
+		unsigned short num = (step+1) % size;
+		if (num == 0)
+			idx = size-1;
+		else
+			idx = num-1;
+		break;
+	}
+	return idx;
+}
+
 void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
-	NMDebugCtx(ctxNMProcess, << "...");
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
+
+	NMDebugAI(<< "step #" << step << std::endl);
 
 	unsigned int inputstep = step;
 	if (this->mInputComponents.size() == 0)
@@ -169,8 +201,14 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 
 		break;
 	}
+	//step = this->mapHostIndexToPolicyIndex(inputstep, this->mInputComponents.size());
 
-	NMModelComponent* parentComp = qobject_cast<NMModelComponent*>(this->parent());
+
+	NMIterableComponent* parentComp = qobject_cast<NMIterableComponent*>(this->parent());
+	NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(this->parent());
+	int parentIter = 2;
+	if (sic != 0)
+		parentIter = sic->getNumIterations();
 	QString targetName = parentComp->objectName();
 
 	// set the input images
@@ -209,21 +247,28 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 			{
 				NMModelComponent*& ic =
 						const_cast<NMModelComponent*&>(it.value());
+				NMIterableComponent* procComp = qobject_cast<NMIterableComponent*>(ic);
+				NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(ic);
+
 				// don't link everything ...
 				if (parentComp->getTimeLevel() == ic->getTimeLevel()
-					&& parentComp->getNumIterations() == 1
+					&& parentIter == 1 && dataComp == 0
 				   )
 				{
 					NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
 							<< ic->objectName().toStdString()
 							<< "[" << outIdx << "] ... " << std::endl);
 
-					if (!ic->getProcess()->isInitialised())
+					// when we've got a process component here, we give it the
+					// opportunity to put itself in order and link in
+					if (procComp != 0 && !procComp->getProcess()->isInitialised())
 					{
 						// since we're on the same time level, we can safely ask
 						// the input process to link itself into the pipeline
-						ic->getProcess()->linkInPipeline(inputstep, repo);
+						procComp->getProcess()->linkInPipeline(inputstep, repo);
 					}
+					//else if (procComp == 0)
+					//	ic->linkComponents(inputstep, repo);
 
 					NMItkDataObjectWrapper* iw = ic->getOutput(outIdx);
 					if (iw == 0 || iw->getDataObject() == 0)
@@ -239,7 +284,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 
 					// since we're on the same time level, we're in pipeline here
 					// connect output to input
-					this->setNthInput(ii, ic->getOutput(outIdx));
+					this->setNthInput(ii, iw);//ic->getOutput(outIdx));
 				}
 				else
 				{
@@ -248,42 +293,52 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 							<< "[" << outIdx << "] ... " << std::endl);
 
 
-					if (!ic->getProcess()->isInitialised())
-					{
-						ic->getProcess()->linkInPipeline(0, repo);
+					// when we've got a process component here, we give it the
+					// opportunity to put itself in order and link in
+					//if (procComp != 0 && !procComp->getProcess()->isInitialised())
+					//{
+					//	// since we're on the same time level, we can safely ask
+					//	// the input process to link itself into the pipeline
+					//	procComp->getProcess()->linkInPipeline(inputstep, repo);
+					//}
+					//else //if (dataComp != 0)
+					//	ic->linkComponents(inputstep, repo); //dataComp->linkComponents(inputstep, repo);
 
-						//NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-						//stringstream ss;
-						//ss << ic->objectName().toStdString() << "'s internal process object"
-						//   << " has not been initialised!" << endl;
-						//e.setMsg(ss.str());
-						//throw e;
-
-					}
-
-					// we're on different time levels here, so we're in a
+					// we've got a
 					// 'disconnected' pipeline and have to fetch the data
 					// 'physically', disconnect it from the source, and
 					// then chuck it into the input slot of this component
-					ic->getProcess()->update();
-					NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
-							*ic->getOutput(outIdx));
-					if (dw->getDataObject() == 0)
-					{
-						NMDebug(<< "failed!" << std::endl);
-						NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-						stringstream ss;
-						ss << ic->objectName().toStdString() << "::getOutput("
-						   << outIdx << ") has not been initialised!" << endl;
-						e.setMsg(ss.str());
-						NMDebugCtx(ctxNMProcess, << "done!");
-						throw e;
-					}
+					//if (procComp != 0)
+					//	procComp->getProcess()->update();
+					//else //if (dataComp != 0)
+					//	ic->update(repo);//dataComp->update(repo);
 
-					NMDebug(<< "ok!" << std::endl);
-					dw->setParent(parentComp);
-					dw->getDataObject()->DisconnectPipeline();
-					this->setNthInput(ii, dw);
+					//else
+					//	ic->update(repo);
+
+					if (ic->getOutput(outIdx) != 0)
+					{
+
+						NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
+								*ic->getOutput(outIdx));
+						if (dw->getDataObject() == 0)
+						{
+							NMDebug(<< "failed!" << std::endl);
+							NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
+							stringstream ss;
+							ss << ic->objectName().toStdString() << "::getOutput("
+							   << outIdx << ") has not been initialised!" << endl;
+							e.setMsg(ss.str());
+							NMDebugAI(<< ss.str() << endl);
+							//NMDebugCtx(ctxNMProcess, << "done!");
+							//throw e;
+						}
+
+						NMDebugAI(<< "... ok!" << std::endl);
+						dw->setParent(parentComp);
+						dw->getDataObject()->DisconnectPipeline();
+						this->setNthInput(ii, dw);
+					}
 				}
 			}
 			else
@@ -304,14 +359,14 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 		NMDebugAI(<< "no other input for step #" << step << " - nothing to do ..." << std::endl);
 	}
 
-	NMDebugCtx(ctxNMProcess, << "done!");
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 /**
  * Get the value of mInputComponentType
  * \return the value of mInputComponentType
  */
-itk::ImageIOBase::IOComponentType
+otb::ImageIOBase::IOComponentType
 NMProcess::getInputComponentType(void)
 {
     return this->mInputComponentType;
@@ -319,31 +374,36 @@ NMProcess::getInputComponentType(void)
 
 void NMProcess::reset(void)
 {
-	//NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 	this->mParamPos = 0;
 	this->mbIsInitialised = false;
 	this->mbLinked = false;
-	//NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+	this->mMTime.setMSecsSinceEpoch(0);
+	this->mOtbProcess = 0;
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void NMProcess::update(void)
 {
-	NMDebugCtx(ctxNMProcess, << "...");
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 
 	if (this->mbIsInitialised && this->mOtbProcess.IsNotNull())
 	{
 		this->mOtbProcess->Update();
+		this->mMTime = QDateTime::currentDateTimeUtc();
+		NMDebugAI(<< "modified at: "
+				  << mMTime.toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString() << std::endl);
 	}
 	else
 	{
-		NMErr(ctxNMProcess,
+		NMErr(this->parent()->objectName().toStdString(),
 				<< "Update failed! Either the process object is not initialised or"
 				<< " itk::ProcessObject is NULL and ::update() is not re-implemented!");
 	}
 	this->mbLinked = false;
 
-	NMDebugAI(<< "update value for: mParamPos=" << this->mParamPos << endl);
-	NMDebugCtx(ctxNMProcess, << "done!");
+	//NMDebugAI(<< "update value for: mParamPos=" << this->mParamPos << endl);
+	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void
@@ -409,16 +469,16 @@ NMProcess::getInputNMComponentType()
 	NMItkDataObjectWrapper::NMComponentType nmtype;
 	switch (this->mInputComponentType)
 	{
-		case itk::ImageIOBase::UCHAR : nmtype = NMItkDataObjectWrapper::NM_UCHAR	; break;
-		case itk::ImageIOBase::CHAR	 : nmtype = NMItkDataObjectWrapper::NM_CHAR	; break;
-		case itk::ImageIOBase::USHORT: nmtype = NMItkDataObjectWrapper::NM_USHORT; break;
-		case itk::ImageIOBase::SHORT : nmtype = NMItkDataObjectWrapper::NM_SHORT	; break;
-		case itk::ImageIOBase::UINT	 : nmtype = NMItkDataObjectWrapper::NM_UINT	; break;
-		case itk::ImageIOBase::INT	 : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
-		case itk::ImageIOBase::ULONG : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
-		case itk::ImageIOBase::LONG	 : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
-		case itk::ImageIOBase::FLOAT : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
-		case itk::ImageIOBase::DOUBLE: nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
+		case otb::ImageIOBase::UCHAR : nmtype = NMItkDataObjectWrapper::NM_UCHAR	; break;
+		case otb::ImageIOBase::CHAR	 : nmtype = NMItkDataObjectWrapper::NM_CHAR	; break;
+		case otb::ImageIOBase::USHORT: nmtype = NMItkDataObjectWrapper::NM_USHORT; break;
+		case otb::ImageIOBase::SHORT : nmtype = NMItkDataObjectWrapper::NM_SHORT	; break;
+		case otb::ImageIOBase::UINT	 : nmtype = NMItkDataObjectWrapper::NM_UINT	; break;
+		case otb::ImageIOBase::INT	 : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
+		case otb::ImageIOBase::ULONG : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
+		case otb::ImageIOBase::LONG	 : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
+		case otb::ImageIOBase::FLOAT : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
+		case otb::ImageIOBase::DOUBLE: nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
 	default: nmtype = NMItkDataObjectWrapper::NM_UNKNOWN; break;
 	}
 
@@ -431,16 +491,16 @@ NMProcess::getOutputNMComponentType()
 	NMItkDataObjectWrapper::NMComponentType nmtype;
 	switch (this->mOutputComponentType)
 	{
-		case itk::ImageIOBase::UCHAR	 : nmtype = NMItkDataObjectWrapper::NM_UCHAR	; break;
-		case itk::ImageIOBase::CHAR		 : nmtype = NMItkDataObjectWrapper::NM_CHAR	; break;
-		case itk::ImageIOBase::USHORT	 : nmtype = NMItkDataObjectWrapper::NM_USHORT; break;
-		case itk::ImageIOBase::SHORT	 : nmtype = NMItkDataObjectWrapper::NM_SHORT	; break;
-		case itk::ImageIOBase::UINT		 : nmtype = NMItkDataObjectWrapper::NM_UINT	; break;
-		case itk::ImageIOBase::INT	 : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
-		case itk::ImageIOBase::ULONG : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
-		case itk::ImageIOBase::LONG	 : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
-		case itk::ImageIOBase::FLOAT : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
-		case itk::ImageIOBase::DOUBLE: nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
+		case otb::ImageIOBase::UCHAR	 : nmtype = NMItkDataObjectWrapper::NM_UCHAR	; break;
+		case otb::ImageIOBase::CHAR		 : nmtype = NMItkDataObjectWrapper::NM_CHAR	; break;
+		case otb::ImageIOBase::USHORT	 : nmtype = NMItkDataObjectWrapper::NM_USHORT; break;
+		case otb::ImageIOBase::SHORT	 : nmtype = NMItkDataObjectWrapper::NM_SHORT	; break;
+		case otb::ImageIOBase::UINT		 : nmtype = NMItkDataObjectWrapper::NM_UINT	; break;
+		case otb::ImageIOBase::INT	 : nmtype =	NMItkDataObjectWrapper::NM_INT	;	break;
+		case otb::ImageIOBase::ULONG : nmtype =	NMItkDataObjectWrapper::NM_ULONG;    break;
+		case otb::ImageIOBase::LONG	 : nmtype =	NMItkDataObjectWrapper::NM_LONG	;   break;
+		case otb::ImageIOBase::FLOAT : nmtype =	NMItkDataObjectWrapper::NM_FLOAT; break;
+		case otb::ImageIOBase::DOUBLE: nmtype =	NMItkDataObjectWrapper::NM_DOUBLE;	break;
 		default: nmtype = NMItkDataObjectWrapper::NM_UNKNOWN; break;
 	}
 
@@ -450,20 +510,20 @@ NMProcess::getOutputNMComponentType()
 void
 NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype)
 {
-	itk::ImageIOBase::IOComponentType type;
+	otb::ImageIOBase::IOComponentType type;
 	switch (nmtype)
 	{
-		case NMItkDataObjectWrapper::NM_UCHAR: type = itk::ImageIOBase::UCHAR; break;
-		case NMItkDataObjectWrapper::NM_CHAR: type = itk::ImageIOBase::CHAR; break;
-		case NMItkDataObjectWrapper::NM_USHORT: type = itk::ImageIOBase::USHORT; break;
-		case NMItkDataObjectWrapper::NM_SHORT: type = itk::ImageIOBase::SHORT; break;
-		case NMItkDataObjectWrapper::NM_UINT: type = itk::ImageIOBase::UINT; break;
-		case NMItkDataObjectWrapper::NM_INT: type = itk::ImageIOBase::INT; break;
-		case NMItkDataObjectWrapper::NM_ULONG: type = itk::ImageIOBase::ULONG; break;
-		case NMItkDataObjectWrapper::NM_LONG: type = itk::ImageIOBase::LONG; break;
-		case NMItkDataObjectWrapper::NM_FLOAT: type = itk::ImageIOBase::FLOAT; break;
-		case NMItkDataObjectWrapper::NM_DOUBLE: type = itk::ImageIOBase::DOUBLE; break;
-		default: type = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
+		case NMItkDataObjectWrapper::NM_UCHAR: type = otb::ImageIOBase::UCHAR; break;
+		case NMItkDataObjectWrapper::NM_CHAR: type = otb::ImageIOBase::CHAR; break;
+		case NMItkDataObjectWrapper::NM_USHORT: type = otb::ImageIOBase::USHORT; break;
+		case NMItkDataObjectWrapper::NM_SHORT: type = otb::ImageIOBase::SHORT; break;
+		case NMItkDataObjectWrapper::NM_UINT: type = otb::ImageIOBase::UINT; break;
+		case NMItkDataObjectWrapper::NM_INT: type = otb::ImageIOBase::INT; break;
+		case NMItkDataObjectWrapper::NM_ULONG: type = otb::ImageIOBase::ULONG; break;
+		case NMItkDataObjectWrapper::NM_LONG: type = otb::ImageIOBase::LONG; break;
+		case NMItkDataObjectWrapper::NM_FLOAT: type = otb::ImageIOBase::FLOAT; break;
+		case NMItkDataObjectWrapper::NM_DOUBLE: type = otb::ImageIOBase::DOUBLE; break;
+		default: type = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
 	}
 
 	this->mInputComponentType = type;
@@ -473,20 +533,20 @@ NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtyp
 void
 NMProcess::setOutputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtype)
 {
-	itk::ImageIOBase::IOComponentType type;
+	otb::ImageIOBase::IOComponentType type;
 	switch (nmtype)
 	{
-		case NMItkDataObjectWrapper::NM_UCHAR: type = itk::ImageIOBase::UCHAR; break;
-		case NMItkDataObjectWrapper::NM_CHAR: type = itk::ImageIOBase::CHAR; break;
-		case NMItkDataObjectWrapper::NM_USHORT: type = itk::ImageIOBase::USHORT; break;
-		case NMItkDataObjectWrapper::NM_SHORT: type = itk::ImageIOBase::SHORT; break;
-		case NMItkDataObjectWrapper::NM_UINT: type = itk::ImageIOBase::UINT; break;
-		case NMItkDataObjectWrapper::NM_INT: type = itk::ImageIOBase::INT; break;
-		case NMItkDataObjectWrapper::NM_ULONG: type = itk::ImageIOBase::ULONG; break;
-		case NMItkDataObjectWrapper::NM_LONG: type = itk::ImageIOBase::LONG; break;
-		case NMItkDataObjectWrapper::NM_FLOAT: type = itk::ImageIOBase::FLOAT; break;
-		case NMItkDataObjectWrapper::NM_DOUBLE: type = itk::ImageIOBase::DOUBLE; break;
-		default: type = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
+		case NMItkDataObjectWrapper::NM_UCHAR: type = otb::ImageIOBase::UCHAR; break;
+		case NMItkDataObjectWrapper::NM_CHAR: type = otb::ImageIOBase::CHAR; break;
+		case NMItkDataObjectWrapper::NM_USHORT: type = otb::ImageIOBase::USHORT; break;
+		case NMItkDataObjectWrapper::NM_SHORT: type = otb::ImageIOBase::SHORT; break;
+		case NMItkDataObjectWrapper::NM_UINT: type = otb::ImageIOBase::UINT; break;
+		case NMItkDataObjectWrapper::NM_INT: type = otb::ImageIOBase::INT; break;
+		case NMItkDataObjectWrapper::NM_ULONG: type = otb::ImageIOBase::ULONG; break;
+		case NMItkDataObjectWrapper::NM_LONG: type = otb::ImageIOBase::LONG; break;
+		case NMItkDataObjectWrapper::NM_FLOAT: type = otb::ImageIOBase::FLOAT; break;
+		case NMItkDataObjectWrapper::NM_DOUBLE: type = otb::ImageIOBase::DOUBLE; break;
+		default: type = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
 	}
 
 	this->mOutputComponentType = type;
@@ -498,7 +558,7 @@ NMProcess::setOutputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmty
  * Get the value of mOutputComponentType
  * \return the value of mOutputComponentType
  */
-itk::ImageIOBase::IOComponentType NMProcess::getOutputComponentType(void)
+otb::ImageIOBase::IOComponentType NMProcess::getOutputComponentType(void)
 {
     return this->mOutputComponentType;
 }

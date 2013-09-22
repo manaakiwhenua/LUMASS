@@ -26,7 +26,6 @@
 #define NMMODELCONTROLLER_H_
 
 #include "nmlog.h"
-#include "NMModelComponent.h"
 #include "NMModelSerialiser.h"
  
 #include <qobject.h>
@@ -41,6 +40,9 @@
 #ifdef BUILD_RASSUPPORT
   #include "NMRasdamanConnectorWrapper.h"
 #endif
+
+class NMItkDataObjectWrapper;
+class NMProcess;
 
 /*! \brief NMModelController is responsible for managing
  *         all NMModelComponents.
@@ -64,12 +66,14 @@ class NMModelController: public QObject
 	Q_OBJECT
 
 public:
+
+	NMItkDataObjectWrapper* getOutputFromSource(const QString& inputSrc);
 	NMModelComponent* getComponent(const QString& name);
 	QString addComponent(NMModelComponent* comp,
 			NMModelComponent* host=0);
 	bool removeComponent(const QString& name);
 	bool contains(const QString& compName);
-	NMModelComponent* identifyRootComponent(void);
+	NMIterableComponent* identifyRootComponent(void);
 
 	const QMap<QString, NMModelComponent*>& getRepository(void)
 			{return this->mComponentMap;}
@@ -150,7 +154,7 @@ protected:
 	QMap<QString, NMModelComponent*> mComponentMap;
 	QStack<QString> mExecutionStack;
 
-	NMModelComponent* mRootComponent;
+	NMIterableComponent* mRootComponent;
 
 	//NMModelComponent* mRunningModelComponent;
 	bool mbModelIsRunning;
@@ -162,7 +166,7 @@ protected:
 	NMModelController* mModelController;
 
 private:
-	std::string ctx;
+	static const std::string ctx;
 
 };
 

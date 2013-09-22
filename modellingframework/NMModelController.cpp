@@ -23,17 +23,21 @@
  */
 
 #include "NMModelController.h"
-#include "NMModelSerialiser.h"
+#include "NMIterableComponent.h"
 
 #include <QFuture>
 #include <QtConcurrentRun>
+
+
+
+
+const std::string NMModelController::ctx = "NMModelController";
 
 NMModelController::NMModelController(QObject* parent)
 	: mbModelIsRunning(false),
 	  mRootComponent(0), mbAbortionRequested(false)
 {
 	this->setParent(parent);
-	this->ctx = "NMModelController";
 	this->mModelStarted = QDateTime::currentDateTime();
 	this->mModelStopped = this->mModelStarted;
 }
@@ -47,6 +51,36 @@ NMModelController::getInstance(void)
 {
 	static NMModelController controller;
 	return &controller;
+}
+
+NMItkDataObjectWrapper*
+NMModelController::getOutputFromSource(const QString& inputSrc)
+{
+	NMItkDataObjectWrapper* w = 0;
+
+	// parse the input source string
+	QStringList inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);
+	QString inputCompName = inputSrcParams.at(0);
+
+	NMModelComponent* mc = this->getComponent(inputCompName);
+	if (mc == 0)
+		return w;
+
+	bool bOK;
+	int outIdx = 0;
+	if (inputSrcParams.size() == 2)
+	{
+		outIdx = inputSrcParams.at(1).toInt(&bOK);
+		if (!bOK)
+		{
+			NMErr(ctx, << "failed to interpret input source parameter"
+					<< "'" << inputSrc.toStdString() << "'");
+			return w;
+		}
+	}
+
+	w = mc->getOutput(outIdx);
+	return w;
 }
 
 bool
@@ -85,7 +119,8 @@ NMModelController::abortModel(void)
 		if (this->mExecutionStack.size() > 0)
 			name = this->mExecutionStack.pop();
 
-		NMModelComponent* comp = this->getComponent(name);
+		NMIterableComponent* comp =
+				qobject_cast<NMIterableComponent*>(this->getComponent(name));
 		if (comp != 0)
 		{
 			NMProcess* proc = comp->getProcess();
@@ -95,7 +130,6 @@ NMModelController::abortModel(void)
 			}
 		}
 		this->mbAbortionRequested = true;
-		//this->resetExecutionStack();
 	}
 	NMDebugCtx(ctx, << "done!");
 }
@@ -112,12 +146,12 @@ NMModelController::resetExecutionStack(void)
 	}
 }
 
-NMModelComponent*
+NMIterableComponent*
 NMModelController::identifyRootComponent(void)
 {
 	NMDebugCtx(ctx, << "...");
 
-	NMModelComponent* root = 0;
+	NMIterableComponent* root = 0;
 
 	QMapIterator<QString, NMModelComponent*> cit(this->mComponentMap);
 	while(cit.hasNext())
@@ -127,7 +161,7 @@ NMModelController::identifyRootComponent(void)
 				<< "' ...");
 		if (cit.value()->getHostComponent() == 0)
 		{
-			root = cit.value();
+			root = qobject_cast<NMIterableComponent*>(cit.value());
 			NMDebug(<< " got it !" << std::endl);
 			break;
 		}
@@ -164,6 +198,22 @@ NMModelController::executeModel(const QString& compName)
 		return;
 	}
 
+	// we only execute 'iterable / executable' components
+	NMIterableComponent* icomp =
+			qobject_cast<NMIterableComponent*>(comp);
+	if (icomp == 0)
+	{
+		NMErr(ctx, << "component '" << compName.toStdString()
+				<< "' is of type '" << comp->metaObject()->className()
+				<< "' which is non-executable!");
+		return;
+	}
+
+	// we reset all the components
+	// (and thereby delete all data buffers)
+	this->resetComponent(compName);
+
+
 	NMDebugAI(<< "running model on thread: "
 			<< this->thread()->currentThreadId() << endl);
 
@@ -173,9 +223,10 @@ NMModelController::executeModel(const QString& compName)
 
 	this->mModelStarted = QDateTime::currentDateTime();
 
-	// we catch all exceptions thrown by ITK & rasdaman here
+	// we catch all exceptions thrown by ITK/OTB, rasdaman
+	// and the LUMASS MFW components
 	// and just report them for now; note this includes
-	// the 'abortion-exception' thrwon by ITK/OTB as response to
+	// the 'abortion-exception' thrown by ITK/OTB as response to
 	// user-requested model abortion
 	try
 	{
@@ -194,6 +245,7 @@ NMModelController::executeModel(const QString& compName)
 
 	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
 	NMDebugAI(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
+	NMMsg(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
 
 	this->mbModelIsRunning = false;
 	this->mbAbortionRequested = false;
@@ -203,7 +255,7 @@ NMModelController::executeModel(const QString& compName)
 	// notify all listeners, that those components are no longer
 	// running
 	this->resetExecutionStack();
-	this->resetComponent(compName);
+	//this->resetComponent(compName);
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -232,7 +284,13 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 {
 	NMDebugCtx(ctx, << "...");
 
-	if (comp != 0 && host != 0)
+	NMIterableComponent* ihost = 0;
+	if (host != 0)
+	{
+		ihost = qobject_cast<NMIterableComponent*>(host);
+	}
+
+	if (comp != 0 && ihost != 0)
 	{
 		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to '"
 			     << host->objectName().toStdString() << "' ..." << endl);
@@ -287,11 +345,11 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 	this->mComponentMap.insert(tname, comp);
 
 	// check, whether we've go a valid host
-	if (host != 0)
+	if (ihost != 0)
 	{
 		if (this->mComponentMap.keys().contains(host->objectName()))
 		{
-			host->addModelComponent(comp);
+			ihost->addModelComponent(comp);
 		}
 	}
 
@@ -321,10 +379,13 @@ bool NMModelController::removeComponent(const QString& name)
 		return false;
 	}
 
-	NMModelComponent* host = comp->getHostComponent();
+	NMIterableComponent* host = comp->getHostComponent();
 	if (host != 0)
 		host->removeModelComponent(name);
-	comp->destroySubComponents(this->mComponentMap);
+
+	NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+	if (ic != 0)
+		ic->destroySubComponents(this->mComponentMap);
 	this->mComponentMap.remove(name);
 	delete comp;
 

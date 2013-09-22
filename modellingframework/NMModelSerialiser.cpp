@@ -34,6 +34,7 @@
 #include "NMModelSerialiser.h"
 #include "NMModelComponentFactory.h"
 #include "NMProcessFactory.h"
+#include "NMIterableComponent.h"
 
 
 NMModelSerialiser::NMModelSerialiser(QObject* parent)
@@ -92,12 +93,14 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 	int ind = nmlog::nmindent;
 
 	//==========================================================================================
-	// parsing model components -- creating objects, assiging properties
+	// parsing model components -- creating objects, assigning properties
 	//==========================================================================================
 
-	QDomElement compElem = modelElem.firstChildElement("ModelComponent");
-	for (; !compElem.isNull(); compElem = compElem.nextSiblingElement("ModelComponent"))
+	QDomNode compNode = modelElem.firstChild(); //Element("ModelComponent");
+	for (; !compNode.isNull() && compNode.isElement(); compNode = compNode.nextSibling()) //Element("ModelComponent"))
 	{
+		QDomElement compElem = compNode.toElement();
+		QString compType = compElem.tagName();
 		// --------------------------------------------------------------------------------------
 		// model component creation
 		// --------------------------------------------------------------------------------------
@@ -116,8 +119,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		}
 		else
 		{
-			comp = NMModelComponentFactory::instance().createModelComponent(
-					"NMModelComponent");
+			comp = NMModelComponentFactory::instance().createModelComponent(compType);
 
 			// add new component to the model controller and make sure it has a unique name
 			comp->setObjectName(compName);
@@ -158,6 +160,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		QDomElement procElem = compElem.firstChildElement("Process");
 		if (!procElem.isNull())
 		{
+			NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
 			NMProcess* proc = 0;
 			QString procName = procElem.attribute("name");
 			if (!procName.isEmpty())
@@ -167,7 +170,6 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 
 				proc = NMProcessFactory::instance().createProcess(procName);
 				
-				//proc->setParent(comp);
 				proc->setObjectName(procName);
 
 				QDomElement procPropElem = procElem.firstChildElement("Property");
@@ -181,7 +183,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 							<< " - " << suc << endl);
 				}
 			}
-			comp->setProcess(proc);
+			ic->setProcess(proc);
 		}
 	}
 
@@ -193,9 +195,10 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 	//==========================================================================================
 	// parsing model components -- establish component relationships
 	//==========================================================================================
-	compElem = modelElem.firstChildElement("ModelComponent");
-	for (; !compElem.isNull(); compElem = compElem.nextSiblingElement("ModelComponent"))
+	compNode = modelElem.firstChild(); //Element("ModelComponent");
+	for (; !compNode.isNull() && compNode.isElement(); compNode = compNode.nextSibling()) //Element("ModelComponent"))
 	{
+		QDomElement compElem = compNode.toElement();
 		QString itCompName = compElem.attribute("name");
 		if (itCompName.isEmpty())
 			continue;
@@ -214,7 +217,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 				continue;
 
 			QDomElement hostCompElem = propElem.firstChildElement("component_name");
-			NMModelComponent* hostComp = 0;
+			NMIterableComponent* hostComp = 0;
 			if ((nameRegister.find(hostCompElem.text()) == nameRegister.end() ||
 				 (hostCompElem.text().compare("root") == 0  &&
 				  nameRegister.find("root") == nameRegister.end())
@@ -222,7 +225,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 				itComp->objectName().compare("root") != 0
 			   )
 			{
-				hostComp = controller->getComponent("root");
+				hostComp = qobject_cast<NMIterableComponent*>(controller->getComponent("root"));
 				if (hostComp != 0)
 				{
 					hostComp->addModelComponent(itComp);
@@ -240,6 +243,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		QDomElement subcompElem = compElem.firstChildElement("Subcomponents");
 		if (!subcompElem.isNull())
 		{
+			NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(itComp);
 			QStringList lst = subcompElem.text().split(" ", QString::SkipEmptyParts);
 			for (unsigned int i=0; i < lst.size(); ++i)
 			{
@@ -248,9 +252,9 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 				{
 					QString finalName = nameRegister[lst.at(i)];
 					sub = controller->getComponent(finalName);
-					if (sub != 0)
+					if (sub != 0 && ic != 0)
 					{
-						itComp->addModelComponent(sub);
+						ic->addModelComponent(sub);
 					}
 				}
 			}
@@ -506,13 +510,19 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 		return;
 	}
 	NMDebugAI(<< "serialising '" << comp->objectName().toStdString() << endl);
+
+	// ----------------------------------------------------------------------
+	// CREATE THE MODEL COMPONENT ELEMENT
+	// what kind of component do we've got here?
+	const QMetaObject* meta = comp->metaObject();
 	QDomElement rootElem = doc.documentElement();
-	QDomElement compElem = doc.createElement("ModelComponent");
+	QDomElement compElem = doc.createElement(meta->className());
 	compElem.setAttribute("name", comp->objectName());
 	rootElem.appendChild(compElem);
 
+	// ---------------------------------------------------------------------
+	// NON-ITERABLE COMPONENTS (ie non-group or non-process components)
 	// serialise component's properties first
-	const QMetaObject* meta = comp->metaObject();
 	unsigned int nprop = meta->propertyCount();
 	for (unsigned int p=0; p < nprop; ++p)
 	{
@@ -526,48 +536,55 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 		propElem.appendChild(valueElem);
 	}
 
+	// -----------------------------------------------------------------------
+	// ITERABLE COMPONENTS
 	// serialise either a reference to subcomponents or
 	// the one and only process object
+	NMIterableComponent* ic =
+			qobject_cast<NMIterableComponent*>(comp);
 
-	// go through the component chain and serialise each component
-	if (comp->getProcess() == 0)
+	if (ic != 0)
 	{
-		QStringList strCompChain;
-		NMModelComponent* sc = comp->getInternalStartComponent();
-		while (sc != 0)
+		// go through the component chain and serialise each component
+		if (ic->getProcess() == 0)
 		{
-			//this->serialiseComponent(sc, doc);
-			strCompChain << sc->objectName();
-			sc = comp->getNextInternalComponent();
+			QStringList strCompChain;
+			NMModelComponent* sc = ic->getInternalStartComponent();
+			while (sc != 0)
+			{
+				//this->serialiseComponent(sc, doc);
+				strCompChain << sc->objectName();
+				sc = ic->getNextInternalComponent();
+			}
+
+			QDomElement subComps = doc.createElement("Subcomponents");
+			compElem.appendChild(subComps);
+
+			QDomNode subList = doc.createTextNode(strCompChain.join(" "));
+			subComps.appendChild(subList);
 		}
-
-		QDomElement subComps = doc.createElement("Subcomponents");
-		compElem.appendChild(subComps);
-
-		QDomNode subList = doc.createTextNode(strCompChain.join(" "));
-		subComps.appendChild(subList);
-	}
-	// serialise NMProcess
-	else
-	{
-		NMProcess* proc = comp->getProcess();
-		const QMetaObject* procMeta = proc->metaObject();
-
-		QDomElement procElem = doc.createElement("Process");
-		procElem.setAttribute("name", procMeta->className());
-		compElem.appendChild(procElem);
-
-		unsigned int nprocprops = procMeta->propertyCount();
-		for (unsigned int pp=0; pp < nprocprops; ++pp)
+		// serialise NMProcess
+		else
 		{
-			QMetaProperty procProp = procMeta->property(pp);
-			QDomElement procPropElem = doc.createElement("Property");
-			procPropElem.setAttribute("name", procProp.name());
-			procElem.appendChild(procPropElem);
+			NMProcess* proc = ic->getProcess();
+			const QMetaObject* procMeta = proc->metaObject();
 
-			QVariant v = proc->property(procProp.name());
-			QDomElement valueElem = this->createValueElement(doc, v);
-			procPropElem.appendChild(valueElem);
+			QDomElement procElem = doc.createElement("Process");
+			procElem.setAttribute("name", procMeta->className());
+			compElem.appendChild(procElem);
+
+			unsigned int nprocprops = procMeta->propertyCount();
+			for (unsigned int pp=0; pp < nprocprops; ++pp)
+			{
+				QMetaProperty procProp = procMeta->property(pp);
+				QDomElement procPropElem = doc.createElement("Property");
+				procPropElem.setAttribute("name", procProp.name());
+				procElem.appendChild(procPropElem);
+
+				QVariant v = proc->property(procProp.name());
+				QDomElement valueElem = this->createValueElement(doc, v);
+				procPropElem.appendChild(valueElem);
+			}
 		}
 	}
 
@@ -660,16 +677,16 @@ QDomElement NMModelSerialiser::createValueElement(QDomDocument& doc,
 		valueElement.appendChild(valueElementChild);
 	}
 #endif	
-	else if (QString(dataValue.typeName()).compare("NMModelComponent*") == 0)
-	{
-		valueElement = doc.createElement("component_name");
-		NMModelComponent* comp = dataValue.value<NMModelComponent*>();
-		if (comp != 0)
-			valueElementChild = doc.createTextNode(comp->objectName());
-		else
-			valueElementChild = doc.createTextNode("");
-		valueElement.appendChild(valueElementChild);
-	}
+	//else if (QString(dataValue.typeName()).compare("NMModelComponent*") == 0)
+	//{
+	//	valueElement = doc.createElement("component_name");
+	//	NMModelComponent* comp = dataValue.value<NMModelComponent*>();
+	//	if (comp != 0)
+	//		valueElementChild = doc.createTextNode(comp->objectName());
+	//	else
+	//		valueElementChild = doc.createTextNode("");
+	//	valueElement.appendChild(valueElementChild);
+	//}
 	else if (QString(dataValue.typeName()).compare("bool") == 0)
 	{
 		valueElement = doc.createElement("bool");
@@ -705,14 +722,15 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 	/*  We go through the list of imported components,
 	 *  and ensure for all process components that
 	 *  the names of any input components are consistent
-	 *  with the actual component names as results of
+	 *  with the actual component names as result of
 	 *  the import process.
 	 */
 	QStringList newnames = nameRegister.values();
 	foreach(const QString& nn, newnames)
 	{
-		NMModelComponent* comp = controller->getComponent(nn);
-		if (comp->getProcess() != 0)
+		NMIterableComponent* comp =
+				qobject_cast<NMIterableComponent*>(controller->getComponent(nn));
+		if (comp != 0 && comp->getProcess() != 0)
 		{
 			QList<QStringList> inputslist =
 					comp->getProcess()->getInputComponents();

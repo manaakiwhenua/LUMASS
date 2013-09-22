@@ -40,7 +40,7 @@ NMMfwException::what() const throw()
 {
 	stringstream usermsg;
 	usermsg << endl << "EXCEPTION - " << type2string() << endl
-			<< msg << endl;
+			<< " " << msg << endl;
 
 	return usermsg.str().c_str();
 }
@@ -63,6 +63,18 @@ NMMfwException::type2string(void) const
 		break;
 	case  NMProcess_InvalidParameter:
 		ret = "NMProcess: Invalid parameter.";
+		break;
+	case  NMProcess_MissingParameter:
+		ret = "NMProcess: Missing parameter.";
+		break;
+	case  NMDataComponent_InvalidParameter:
+		ret = "NMDataComponent: Invalid parameter.";
+		break;
+	case  NMModelController_UnregisteredModelComponent:
+		ret = "NMModelController: Specified component is not registered.";
+		break;
+	case NMMosra_InvalidParameter:
+		ret = "NMMosra: Invalid paramter.";
 		break;
 	case Unspecified:
 		ret = "Unspecified problem.";

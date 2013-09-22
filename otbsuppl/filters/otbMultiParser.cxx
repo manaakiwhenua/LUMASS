@@ -61,6 +61,11 @@ public:
   {
     m_MuParser.DefineFun("ndvi", NDVI);
     m_MuParser.DefineFun("NDVI", NDVI);
+
+    // init the random number generator fun
+    srand(time(0));
+    m_MuParser.DefineFun("rand", rnum, false);
+    m_MuParser.DefineFun("RAND", rnum, false);
   }
 
   /** Set the expression to be parsed */
@@ -227,6 +232,11 @@ private:
       return 0.;
       }
     return (niri-r)/(niri+r);
+  }
+
+  static ValueType rnum(ValueType lower, ValueType upper)
+  {
+	  return rand() % ((int)upper - (int)lower + 1) + (int)lower;
   }
 
   //----------  User Defined Functions  ----------//END

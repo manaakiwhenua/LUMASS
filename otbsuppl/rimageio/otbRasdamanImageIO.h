@@ -42,9 +42,9 @@
 #endif
 
 #include "otbAttributeTable.h"
-#include "itkImageIOBase.h"
-#include "RasdamanHelper2.h"
-#include "RasdamanConnector.h"
+#include "otbImageIOBase.h"
+#include "RasdamanHelper2.hh"
+#include "RasdamanConnector.hh"
 #include "rasdaman.hh"
 
 
@@ -52,12 +52,12 @@
 namespace otb
 {
 
-class ITK_EXPORT RasdamanImageIO : public itk::ImageIOBase
+class ITK_EXPORT RasdamanImageIO : public otb::ImageIOBase
 {
 public:
 
 	typedef RasdamanImageIO Self;
-	typedef itk::ImageIOBase Superclass;
+	typedef otb::ImageIOBase Superclass;
 	typedef itk::SmartPointer<Self> Pointer;
 	typedef Superclass::ByteOrder ByteOrder;
 	
@@ -118,10 +118,10 @@ private:
   	void operator=(const Self&); //purposely not implemented
 	
 	bool parseImageSpec(const std::string imagespec);
-	itk::ImageIOBase::IOComponentType getOTBComponentType(
+	otb::ImageIOBase::IOComponentType getOTBComponentType(
 			r_Type::r_Type_Id rtype);
 	double getOIDFromCollIndex(void);
-	r_Type::r_Type_Id getRasdamanComponentType(itk::ImageIOBase::IOComponentType otbtype);
+	r_Type::r_Type_Id getRasdamanComponentType(otb::ImageIOBase::IOComponentType otbtype);
 	void WriteRAT(otb::AttributeTable* tab, double _oid);
 	double insertForcedLPRDummyImage();
 			//const std::string& collname,
@@ -147,7 +147,7 @@ private:
 	bool m_bWasWriteCalled;
 	bool m_bImageInfoNeedsToBeWritten;
 
-	itk::ImageIOBase::ByteOrder m_FileByteOrder;
+	otb::ImageIOBase::ByteOrder m_FileByteOrder;
 	RasdamanHelper2* m_Helper;
 	RasdamanConnector* m_Rasconn;
 	std::vector<otb::AttributeTable::Pointer> m_vecRAT;
@@ -163,8 +163,8 @@ private:
 
 	r_Type::r_Type_Id m_rtype;
 
-	string m_CollectionTypeName;
-	string m_ImageTypeName;
+	std::string m_CollectionTypeName;
+	std::string m_ImageTypeName;
 };
 
 

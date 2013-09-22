@@ -35,7 +35,7 @@
 #include <sstream>
 #include <limits>
 #include "otbRasdamanImageIO.h"
-#include <itksys/SystemTools.hxx>
+#include "itksys/SystemTools.hxx"
 #include "itkExceptionObject.h"
 #include "otbMacro.h"
 #include "itkMacro.h"
@@ -105,23 +105,23 @@ RasdamanImageIO::~RasdamanImageIO()
 
 void RasdamanImageIO::SetFileName(const char* filename)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 	if (this->m_bCanRead || this->m_bCanWrite)
 	{
-		NMDebugAI(<< "file name is set and we've checked accessibility already!"
-				<< std::endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "file name is set and we've checked accessibility already!"
+		//		<< std::endl);
+		//NMDebugCtx(__rio, << "done!");
 		return;
 	}
 
 	if (this->parseImageSpec(filename))
 	{
 		this->m_FileName = filename;
-		NMDebugAI(<< "file name set to: " << filename << std::endl);
+		//NMDebugAI(<< "file name set to: " << filename << std::endl);
 	}
 	else
 		this->m_FileName = "";
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 }
 
 void
@@ -154,7 +154,7 @@ RasdamanImageIO::getOIDFromCollIndex(void)
 
 bool RasdamanImageIO::CanReadFile(const char* filename)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 	
 	// correct image specification string we are looking for:
 	// collection_name:local_oid
@@ -167,9 +167,9 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 	if ((this->m_prevImageSpec == this->m_ImageSpec) &&
 		 this->m_ImageSpec.find("_last_") == string::npos &&  this->m_bCanRead)
 	{
-		NMDebugAI(<< "checked '" << filename << "' already and we believe "
-				  << "we can read it!" << std::endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "checked '" << filename << "' already and we believe "
+		//		  << "we can read it!" << std::endl);
+		//NMDebugCtx(__rio, << "done!");
 		return true;
 	}             
 
@@ -240,13 +240,13 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 			this->m_bCanRead = true;
 	}
 	
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 	return this->m_bCanRead;           
 }
 
 void RasdamanImageIO::ReadImageInformation()
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
 	if (!this->CanReadFile(this->GetFileName()))
 		return;
@@ -291,15 +291,15 @@ void RasdamanImageIO::ReadImageInformation()
 		this->SetNumberOfComponents(this->m_Helper->getBaseTypeElementCount(this->m_collname));
 
 	if (this->GetNumberOfComponents() > 1)
-		this->SetPixelType(itk::ImageIOBase::VECTOR);
+		this->SetPixelType(otb::ImageIOBase::VECTOR);
 
 	this->SetFileTypeToBinary();
 	this->SetComponentType(this->getOTBComponentType(this->m_rtype));
 
 	if (!this->m_Helper->isNMMetaAvailable())
 	{
-		NMDebugAI(<< "no geospatial meta data available!" << std::endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "no geospatial meta data available!" << std::endl);
+		//NMDebugCtx(__rio, << "done!");
 	}
 
 	// --------------------------------------------------------------
@@ -349,12 +349,12 @@ void RasdamanImageIO::ReadImageInformation()
 	itk::EncapsulateMetaData< MetaDataKey::VectorType > (
 			dict, MetaDataKey::GeoTransformKey, geotrans);
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 }
 
 void RasdamanImageIO::Read(void* buffer)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
 	// since we can have negative pixel indices with rasdaman
 	// images, we have to map the indices onto each other
@@ -375,12 +375,12 @@ void RasdamanImageIO::Read(void* buffer)
 		firstPix = m_sdom[d].low() + this->GetIORegion().GetIndex()[d];
 		lastPix = firstPix + (numReadPix > 0 ? numReadPix - 1 : numReadPix);
 
-		NMDebugAI(<< "read dim #" << d << "\n");
-		NMDebugAI(<< "  numReadPix   = " << numReadPix << std::endl);
-		NMDebugAI(<< "  firstPix = " << firstPix << std::endl);
-		NMDebugAI(<< "  lastPix   = " << lastPix << std::endl);
+		//NMDebugAI(<< "read dim #" << d << "\n");
+		//NMDebugAI(<< "  numReadPix   = " << numReadPix << std::endl);
+		//NMDebugAI(<< "  firstPix = " << firstPix << std::endl);
+		//NMDebugAI(<< "  lastPix   = " << lastPix << std::endl);
 
-		readsdom << r_Sinterval((r_Long)firstPix, (r_Long)lastPix);
+		readsdom << r_Sinterval((r_Range)firstPix, (r_Range)lastPix);
 
 		if (d == 0)
 		{
@@ -389,9 +389,9 @@ void RasdamanImageIO::Read(void* buffer)
 		else
 			bandbufsize *= numReadPix;
 	}
-	NMDebugAI(<< "size of band buffer:  " << bandbufsize << " (" << bandbufsize / (1024.0*1024.0) << " MiB)" << std::endl);
-	NMDebugAI(<< "size of image buffer: " << (bandbufsize * this->GetNumberOfComponents())
-			<< " (" << (bandbufsize * this->GetNumberOfComponents()) / (1024.0*1024.0) << " MiB)" << std::endl);
+	//NMDebugAI(<< "size of band buffer:  " << bandbufsize << " (" << bandbufsize / (1024.0*1024.0) << " MiB)" << std::endl);
+	//NMDebugAI(<< "size of image buffer: " << (bandbufsize * this->GetNumberOfComponents())
+	//		<< " (" << (bandbufsize * this->GetNumberOfComponents()) / (1024.0*1024.0) << " MiB)" << std::endl);
 
 	char* otbbuf = static_cast<char*>(buffer);
 	char* bandbuf = new char[bandbufsize];
@@ -404,11 +404,11 @@ void RasdamanImageIO::Read(void* buffer)
 		{
 			if ( numcomps == 1)
 			{
-				NMDebugAI(<< "processing single band image ... " << endl);
+				//NMDebugAI(<< "processing single band image ... " << endl);
 			}
 			else
 			{
-				NMDebugAI(<< "processing multi-band band image ... " << endl);
+				//NMDebugAI(<< "processing multi-band band image ... " << endl);
 			}
 
 			this->m_Helper->getImageBuffer(this->m_collname, this->m_oids[0],
@@ -421,7 +421,7 @@ void RasdamanImageIO::Read(void* buffer)
 		}
 		else
 		{
-			NMDebugAI(<< "collapsing collection into multi-band image ... " << endl);
+			//NMDebugAI(<< "collapsing collection into multi-band image ... " << endl);
 //			std::vector<int> rmidx;
 //			std::vector<int> cmidx;
 //			rmidx.resize(ndim);
@@ -454,8 +454,8 @@ void RasdamanImageIO::Read(void* buffer)
 				this->m_Helper->getImageBuffer(this->m_collname, this->m_oids[b],
 						bandbuf, readsdom);
 
-				NMDebugInd(nmlog::nmindent+1, << "processing image/band #" << b+1 << " oid: "
-						<< this->m_oids[b] << " ... " << endl);
+				//NMDebugInd(nmlog::nmindent+1, << "processing image/band #" << b+1 << " oid: "
+				//		<< this->m_oids[b] << " ... " << endl);
 
 				// until we switch to full nD support, we stick with the faster 3D restricted version
 				int row, col, layer;
@@ -489,7 +489,7 @@ void RasdamanImageIO::Read(void* buffer)
 //
 //				}
 
-				NMDebugInd(nmlog::nmindent+1,<< "done!" << endl);
+				//NMDebugInd(nmlog::nmindent+1,<< "done!" << endl);
 
 				// increment the component offset by one componentsize unit
 				compoff += compsize;
@@ -501,34 +501,34 @@ void RasdamanImageIO::Read(void* buffer)
 	bandbuf = 0;
 
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 }
 
 bool RasdamanImageIO::CanWriteFile(const char* filename)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
 	if (this->m_FileName.empty())
 	{
-		NMDebugAI(<< "no valid filename has been specified yet!" << endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "no valid filename has been specified yet!" << endl);
+		//NMDebugCtx(__rio, << "done!");
 		return false;
 	}
 
-	NMDebugAI(<< "checking for data set '" << filename << "' ..." << endl);
+	//NMDebugAI(<< "checking for data set '" << filename << "' ..." << endl);
 
 	// skip checking, if we've already checked the image
 	// (only meaningful with stream writing
 	if ((this->m_prevImageSpec == this->m_ImageSpec) && this->m_bCanWrite)
 	{
-		NMDebugAI(<< "we know already we can!" << std::endl);
+		//NMDebugAI(<< "we know already we can!" << std::endl);
 		return true;
 	}
 
 	if (!this->m_Helper->checkDbConnection())
 	{
 		this->m_bCanWrite = false;
-		NMDebugAI(<< "no data base connection!" << std::endl);
+		//NMDebugAI(<< "no data base connection!" << std::endl);
 		return false;
 	}
 
@@ -540,7 +540,7 @@ bool RasdamanImageIO::CanWriteFile(const char* filename)
 		if (theoid == -1)
 		{
 			this->m_bCanWrite = false;
-			NMDebugAI(<< "specified local OID invalid!" << std::endl);
+			//NMDebugAI(<< "specified local OID invalid!" << std::endl);
 			return false;
 		}
 		this->m_oids.clear();
@@ -552,7 +552,7 @@ bool RasdamanImageIO::CanWriteFile(const char* filename)
 	// of the image (-> restrict to 3D)
 
 	this->m_bCanWrite = true;
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 	return this->m_bCanWrite;
 }
 
@@ -566,7 +566,7 @@ void RasdamanImageIO::setRasdamanTypeNames(string colltypename, string imagetype
 double
 RasdamanImageIO::insertForcedLPRDummyImage()//const std::string& collname, r_Minterval& sdom)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
 	double oid = -1;
 
@@ -577,21 +577,21 @@ RasdamanImageIO::insertForcedLPRDummyImage()//const std::string& collname, r_Min
 	r_Point fshift(2);
 	for (int d=0; d < this->m_NumberOfDimensions; ++d)
 	{
-		adom << r_Sinterval(0,0);
+		adom << r_Sinterval((r_Range)0,(r_Range)0);
 		ashift << (r_Long)0;
-		fdom << r_Sinterval(0, 0);
+		fdom << r_Sinterval((r_Range)0, (r_Range)0);
 		fshift << (r_Long)(this->m_ForcedLPR.GetSize(d)-1);
 	}
 
-	NMDebugAI(<< "let's have a dummy image with a forced LPR ..." << endl);
+	//NMDebugAI(<< "let's have a dummy image with a forced LPR ..." << endl);
 
 	int pixelsize = this->GetComponentSize() * this->GetNumberOfComponents();
 	r_Ref<r_GMarray> dimg;
 	dimg = new (this->m_ImageTypeName.c_str()) r_GMarray(fdom, pixelsize);
 
-	NMDebugAI(<< "let's have the first initial pixel here ... " << endl);
-	NMDebugAI(<< "shift: " << ashift.get_string_representation() << endl);
-	NMDebugAI(<< "sdom:  " << adom.get_string_representation() << endl << endl);
+	//NMDebugAI(<< "let's have the first initial pixel here ... " << endl);
+	//NMDebugAI(<< "shift: " << ashift.get_string_representation() << endl);
+	//NMDebugAI(<< "sdom:  " << adom.get_string_representation() << endl << endl);
 
 
 	oid = this->m_Helper->insertImage(this->m_collname, 0,
@@ -599,9 +599,9 @@ RasdamanImageIO::insertForcedLPRDummyImage()//const std::string& collname, r_Min
 
 	dimg->r_deactivate();
 
-	NMDebugAI(<< "... the second pixel, to build-up the desired LPR, we put here ... " << endl);
-	NMDebugAI(<< "shift: " << fshift.get_string_representation() << endl);
-	NMDebugAI(<< "sdom:  " << fdom.get_string_representation() << endl << endl);
+	//NMDebugAI(<< "... the second pixel, to build-up the desired LPR, we put here ... " << endl);
+	//NMDebugAI(<< "shift: " << fshift.get_string_representation() << endl);
+	//NMDebugAI(<< "sdom:  " << fdom.get_string_representation() << endl << endl);
 
 	this->m_Helper->updateImage(this->m_collname, oid, (char*)dimg.get_memory_ptr(),
 			fshift, fdom, true, this->m_ImageTypeName);
@@ -677,20 +677,20 @@ RasdamanImageIO::insertForcedLPRDummyImage()//const std::string& collname, r_Min
 //		throw re;
 //	}
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 	return oid;
 }
                                   
 void RasdamanImageIO::WriteImageInformation()
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
 	// we only write infos as soon we've got enough information
 	// (which is effectively when write() is called for the fist time)
 	if (!m_bImageInfoNeedsToBeWritten)
 	{
-		NMDebugAI( << "apparently, we've done that already ..." << endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI( << "apparently, we've done that already ..." << endl);
+		//NMDebugCtx(__rio, << "done!");
 		return;
 	}
 
@@ -703,7 +703,7 @@ void RasdamanImageIO::WriteImageInformation()
 	if (ndim > 3)
 	{
 		this->m_bCanWrite = false;
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugCtx(__rio, << "done!");
 		return;
 	}
 
@@ -712,30 +712,30 @@ void RasdamanImageIO::WriteImageInformation()
 	// check whether target collection already exists
 	if (this->m_Helper->doesCollectionExist(this->m_collname) == -1)
 	{
-		NMDebugAI(<< "creating collection '" << this->m_collname << "' ... " << endl);
+		//NMDebugAI(<< "creating collection '" << this->m_collname << "' ... " << endl);
 
 		// if we've got composite pixel type-based image, use the user specified collection
 		// type
 		if (!this->m_CollectionTypeName.empty())
 		{
 			this->m_Helper->insertUserCollection(this->m_collname, this->m_CollectionTypeName);
-			NMDebugAI(<< "collection '" << this->m_collname << "' created with type '" <<
-					this->m_CollectionTypeName << "'" << endl);
+			//NMDebugAI(<< "collection '" << this->m_collname << "' created with type '" <<
+			//		this->m_CollectionTypeName << "'" << endl);
 		}
 		else
 		{
 			this->m_Helper->insertCollection(this->m_collname, rtype, bAsCube);
-			NMDebugAI(<< "collection '" << this->m_collname << "' created with type '" <<
-					this->m_Helper->getDataTypeString(rtype) << "'" << endl);
+			//NMDebugAI(<< "collection '" << this->m_collname << "' created with type '" <<
+			//		this->m_Helper->getDataTypeString(rtype) << "'" << endl);
 		}
 	}
 	else
 	{
-		NMDebugAI(<< "found collection '" << this->m_collname << "' ... with "
-				<< this->m_Helper->getBaseTypeElementCount(this->m_collname)
-				<< " x " << this->m_Helper->getDataTypeString(rtype) << " pixels ... " << endl);
+		//NMDebugAI(<< "found collection '" << this->m_collname << "' ... with "
+		//		<< this->m_Helper->getBaseTypeElementCount(this->m_collname)
+		//		<< " x " << this->m_Helper->getDataTypeString(rtype) << " pixels ... " << endl);
 	}
-	NMDebug(<< endl);
+	//NMDebug(<< endl);
 
 	// -------------------------------
 	// if we're inserting a new image into a collection,
@@ -749,21 +749,21 @@ void RasdamanImageIO::WriteImageInformation()
 		for (int d=0; d < this->m_NumberOfDimensions; ++d)
 		{
 			shift << this->GetIORegion().GetIndex()[d];
-			sdom << r_Sinterval(0,0);
+			sdom << r_Sinterval((r_Range)0,(r_Range)0);
 		}
 
-		NMDebugAI(<< "creating image ... " << endl);
+		//NMDebugAI(<< "creating image ... " << endl);
 		double oid = -1;
 
-		NMDebugAI(<< "initial spatial image configuration ..." << endl);
-		NMDebugAI(<< "shift: " << shift.get_string_representation() << endl);
+		//NMDebugAI(<< "initial spatial image configuration ..." << endl);
+		//NMDebugAI(<< "shift: " << shift.get_string_representation() << endl);
 		if (this->m_UseForcedLPR)
 		{
 			oid = this->insertForcedLPRDummyImage();
 		}
 		else
 		{
-			NMDebugAI(<< "sdom:  " << sdom.get_string_representation() << endl << endl);
+			//NMDebugAI(<< "sdom:  " << sdom.get_string_representation() << endl << endl);
 
 			oid = this->m_Helper->insertImage(this->m_collname, 0, shift, sdom, true,
 					this->m_ImageTypeName, "");
@@ -771,14 +771,14 @@ void RasdamanImageIO::WriteImageInformation()
 
 		if (oid != -1)
 		{
-			NMDebugAI(<< "image #" << oid << " inserted into '" << this->m_collname << "'" << endl);
+			//NMDebugAI(<< "image #" << oid << " inserted into '" << this->m_collname << "'" << endl);
 			this->m_oids.push_back(oid);
 		}
 		else
 		{
 			NMErr(__rio, << "failed creating image(s) for collection '" << this->m_collname
 					<< "'!");
-			NMDebugCtx(__rio, << "done!");
+			//NMDebugCtx(__rio, << "done!");
 			this->m_bCanWrite = false;
 			return;
 		}
@@ -834,7 +834,7 @@ void RasdamanImageIO::WriteImageInformation()
 	r_Point shift = r_Point(this->GetNumberOfDimensions());
 	if (this->m_bUpdateImage)
 	{
-		NMDebugAI(<< "calculating shift vector for writing image piece into rasdaman ..." << endl);
+		//NMDebugAI(<< "calculating shift vector for writing image piece into rasdaman ..." << endl);
 		double xshift = (newdom[0] - curdom[0]) / csx;
 		xshift = xshift > 0 ? xshift + 0.5 : xshift - 0.5;
 
@@ -851,7 +851,7 @@ void RasdamanImageIO::WriteImageInformation()
 	}
 	else
 	{
-		NMDebugAI(<< "no shift required, we're inserting a new image ..." << endl);
+		//NMDebugAI(<< "no shift required, we're inserting a new image ..." << endl);
 		shift << 0 << 0;
 		if (this->GetNumberOfDimensions() == 3)
 			shift << 0;
@@ -903,12 +903,12 @@ void RasdamanImageIO::WriteImageInformation()
 		this->WriteRAT(tab, this->m_oids[ti]);
 	}
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 }
 
 void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
 	// DEBUG DEBUG DEBUG
 	// let's have a look how the table looks like ....
@@ -945,8 +945,8 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 		res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 		if (PQresultStatus(res) == PGRES_COMMAND_OK)
 		{
-			NMDebugAI(<< "delete present table nmrat_" << oid << " for being"
-					<< " replaced by the current version ..." << endl);
+			//NMDebugAI(<< "delete present table nmrat_" << oid << " for being"
+			//		<< " replaced by the current version ..." << endl);
 		}
 		else
 		{
@@ -1023,11 +1023,11 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 		PQclear(res);
 		return;
 	}
-	NMDebug(<< "done!" << endl);
+	//NMDebug(<< "done!" << endl);
 	query.str("");
 	PQclear(res);
 
-	NMDebugInd(1, << "copying table content ... ");
+	//NMDebugInd(1, << "copying table content ... ");
 	// copy the table body into the postgres table
 	for (r=0; r < nrows; r++)
 	{
@@ -1066,7 +1066,7 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 		res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
-			NMDebug(<< endl);
+			//NMDebug(<< endl);
 			NMErr(__rio, << "failed copying row " << r << "/" << nrows << " for table 'nmrat_" <<
 						oid << "': " << endl << PQresultErrorMessage(res));
 		}
@@ -1074,7 +1074,7 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 		query.str("");
 		PQclear(res);
 	}
-	NMDebug(<< " done!" << endl);
+	//NMDebug(<< " done!" << endl);
 
 	// --------------------------------------------------------------
 
@@ -1085,23 +1085,23 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		NMDebug(<< std::endl);
+		//NMDebug(<< std::endl);
 		NMErr(__rio, << "failed writing RAT name 'nmrat_" << oid
 				<< "' into nm_meta table: " << endl << PQresultErrorMessage(res));
 		PQclear(res);
 		return;
 	}
-	NMDebug(<< "done!" << endl);
+	//NMDebug(<< "done!" << endl);
 
 	// free result structure
 	PQclear(res);
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 }
 
 void RasdamanImageIO::Write(const void* buffer)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
 	// call "WriteImageInformation" when this function is called the first time
 	// (necessary for stream writing)
@@ -1123,9 +1123,9 @@ void RasdamanImageIO::Write(const void* buffer)
 	// the image's number of dimensions
 	if (!this->m_bCanWrite)
 	{
-		NMDebugAI(<< "we've probably had a problem writing the image's information, " <<
-				"so we abort here!" << endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "we've probably had a problem writing the image's information, " <<
+		//		"so we abort here!" << endl);
+		//NMDebugCtx(__rio, << "done!");
 		return;
 	}
 
@@ -1137,16 +1137,16 @@ void RasdamanImageIO::Write(const void* buffer)
 	r_Point seqShift = r_Point(this->GetNumberOfDimensions());
 	for (int d=0; d < this->GetNumberOfDimensions(); ++d)
 	{
-		sdom << r_Sinterval((r_Long)0, (r_Long)this->GetIORegion().GetSize()[d]-1);
+		sdom << r_Sinterval((r_Range)0, (r_Range)this->GetIORegion().GetSize()[d]-1);
 		seqShift << this->GetIORegion().GetIndex()[d];
 	}
 
 	r_Point totalShift = this->m_GeoUpdateShift + seqShift;
 
 
-	NMDebugAI(<< "spatial image update configuration ..." << endl);
-	NMDebugAI(<< "shift: " << totalShift.get_string_representation() << endl);
-	NMDebugAI(<< "sdom:  " << sdom.get_string_representation() << endl << endl);
+	//NMDebugAI(<< "spatial image update configuration ..." << endl);
+	//NMDebugAI(<< "shift: " << totalShift.get_string_representation() << endl);
+	//NMDebugAI(<< "sdom:  " << sdom.get_string_representation() << endl << endl);
 
 	// write otb buffer into rasdaman db
 	void* otbtmp = const_cast<void*>(buffer);
@@ -1156,23 +1156,26 @@ void RasdamanImageIO::Write(const void* buffer)
 			totalShift, sdom, true, this->m_ImageTypeName);
 
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 }
 
 otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 	// check band parameter
 	if (band < 1 || band > this->GetNumberOfComponents() ||
 			band > this->m_oids.size())
+	{
+		//NMDebugCtx(__rio, << "done!");
 		return 0;
+	}
 
 	// check, whether we've got rasgeo support (a nm_meta table) at all
 	if (!this->m_Helper->isNMMetaAvailable())
 	{
-		NMDebugAI(<< "there doesn't seem to be nm_meta support "
-				  << "for this rasdaman data base!" << endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "there doesn't seem to be nm_meta support "
+		//		  << "for this rasdaman data base!" << endl);
+		//NMDebugCtx(__rio, << "done!");
 		return 0;
 	}
 
@@ -1182,7 +1185,7 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	if (conn == 0)
 	{
 		NMErr(__rio, << "No connection to rasdaman data base!");
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugCtx(__rio, << "done!");
 		return 0;
 	}
 
@@ -1195,8 +1198,8 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQntuples(res) < 1)
 	{
-		NMDebugAI(<< "this band hasn't got an associated attribute table!" << endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "this band hasn't got an associated attribute table!" << endl);
+		//NMDebugCtx(__rio, << "done!");
 		return 0;
 	}
 	std::string ratName = PQgetvalue(res, 0, 0);
@@ -1221,12 +1224,13 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	int ntuples = PQntuples(res);
 	if (ntuples < 1)
 	{
-		NMDebugAI(<< "It seems, we haven't got a table for image band '"
-				<< ratName << " #" << band << "'!" << std::endl);
+		//NMDebugAI(<< "There's no table for band #"
+		//		<< band << " !" << std::endl);
+		//NMDebugCtx(__rio, << "done!");
 		return 0;
 	}
 
-	NMDebugAI(<< "reading table structure info ..." << endl);
+	//NMDebugAI(<< "reading table structure info ..." << endl);
 	std::vector<std::string> names(ntuples);
 	std::vector<std::string> types(ntuples);
 	for (int r=0; r < ntuples; ++r)
@@ -1242,7 +1246,7 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	rat->SetBandNumber(band);
 	rat->SetImgFileName(this->m_collname);
 
-	NMDebugAI(<< "cloning table structure ..." << endl);
+	//NMDebugAI(<< "cloning table structure ..." << endl);
 	for (int c=0; c < names.size(); ++c)
 	{
 		if (types[c] == "integer")
@@ -1263,26 +1267,26 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	}
 
 	// ------------------ query and copy table ----------------------------------------
-	NMDebugAI(<< "querying full table ... " << endl);
+	//NMDebugAI(<< "querying full table ... " << endl);
 	query.str("");
 	query << "SELECT * from " << ratName;
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	ntuples = PQntuples(res);
 
-	NMDebugAI(<< "cloning table contents ..." << endl);
+	//NMDebugAI(<< "cloning table contents ..." << endl);
+	rat->AddRows(ntuples);
 	char tmpstr[256];
 	for (int r=0; r < ntuples; ++r)
 	{
-		rat->AddRow();
 		for (int c=0; c < names.size(); ++c)
 		{
 			switch (rat->GetColumnType(c))
 			{
 			case otb::AttributeTable::ATTYPE_INT:
-				rat->SetValue(c, r, ::atoi(PQgetvalue(res, r, c)));
+				rat->SetValue(c, r, ::strtol(PQgetvalue(res, r, c),0,10));
 				break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
-				rat->SetValue(c, r, ::atof(PQgetvalue(res, r, c)));
+				rat->SetValue(c, r, ::strtod(PQgetvalue(res, r, c),0));
 				break;
 			case otb::AttributeTable::ATTYPE_STRING:
 			default:
@@ -1293,15 +1297,15 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	}
 	PQclear(res);
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 	return rat;
 }
 
 bool RasdamanImageIO::parseImageSpec(const std::string imagespec)
 {
-	NMDebugCtx(__rio, << "...");
+	//NMDebugCtx(__rio, << "...");
 
-	NMDebugAI(<< "user specified imagespec: " << imagespec << std::endl);
+	//NMDebugAI(<< "user specified imagespec: " << imagespec << std::endl);
 
 	// correct image specification string we are looking for:
 	// collection_name[:local_OID]
@@ -1311,8 +1315,8 @@ bool RasdamanImageIO::parseImageSpec(const std::string imagespec)
 	if (imagespec.empty())
 	{
 		itkExceptionMacro(<< "empty imagespec!");
-		NMDebugAI(<< "imagespec empty: " << imagespec << std::endl);
-		NMDebugCtx(__rio, << "done!");
+		//NMDebugAI(<< "imagespec empty: " << imagespec << std::endl);
+		//NMDebugCtx(__rio, << "done!");
 		return false;
 	}
 	
@@ -1344,18 +1348,18 @@ bool RasdamanImageIO::parseImageSpec(const std::string imagespec)
 			else
 				this->m_collnumindex = ::atol(stridx.c_str());
 
-			NMDebugAI(<< "image #" << oidstr << " of collection '"
-					<< this->m_collname << "' specified as input!" << std::endl);
+			//NMDebugAI(<< "image #" << oidstr << " of collection '"
+			//		<< this->m_collname << "' specified as input!" << std::endl);
 		}
 		else
 		{
 			this->m_oids.push_back(::atol(oidstr.c_str()));
-			NMDebugAI(<< "image #" << this->m_oids[0] << " of collection '"
-					<< this->m_collname << "' specified as input!" << std::endl);
+			//NMDebugAI(<< "image #" << this->m_oids[0] << " of collection '"
+			//		<< this->m_collname << "' specified as input!" << std::endl);
 		}
 	}
 
-	NMDebugCtx(__rio, << "done!");
+	//NMDebugCtx(__rio, << "done!");
 	return true;
 }
 
@@ -1384,75 +1388,75 @@ void RasdamanImageIO::PrintSelf(std::ostream& os, itk::Indent indent) const
 	Superclass::PrintSelf(os, indent);
 }
 
-itk::ImageIOBase::IOComponentType RasdamanImageIO::getOTBComponentType(
+otb::ImageIOBase::IOComponentType RasdamanImageIO::getOTBComponentType(
 		r_Type::r_Type_Id rtype)
 {
-	itk::ImageIOBase::IOComponentType otbtype;
+	otb::ImageIOBase::IOComponentType otbtype;
 	switch (rtype)
 	{
 		case r_Type::CHAR:
 		case r_Type::BOOL:
-			otbtype = itk::ImageIOBase::UCHAR;
+			otbtype = otb::ImageIOBase::UCHAR;
 			break;
 		case r_Type::ULONG:
-			otbtype = itk::ImageIOBase::ULONG;
+			otbtype = otb::ImageIOBase::ULONG;
 			break;
 	  case r_Type::USHORT:
-			otbtype = itk::ImageIOBase::USHORT;
+			otbtype = otb::ImageIOBase::USHORT;
 			break;
 		case r_Type::LONG:
-			otbtype = itk::ImageIOBase::LONG;
+			otbtype = otb::ImageIOBase::LONG;
 			break;
 	  case r_Type::SHORT:
-			otbtype = itk::ImageIOBase::SHORT;
+			otbtype = otb::ImageIOBase::SHORT;
 			break;
 	  case r_Type::OCTET:
-		  otbtype = itk::ImageIOBase::CHAR;
+		  otbtype = otb::ImageIOBase::CHAR;
 			break;
 	  case r_Type::DOUBLE:
-		  otbtype = itk::ImageIOBase::DOUBLE;
+		  otbtype = otb::ImageIOBase::DOUBLE;
 			break;
 	  case r_Type::FLOAT:
-			otbtype = itk::ImageIOBase::FLOAT;
+			otbtype = otb::ImageIOBase::FLOAT;
 			break;
 		default:
-			otbtype = otbtype = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+			otbtype = otbtype = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 			break;
 	}
 	return otbtype;
 }
 
 r_Type::r_Type_Id
-RasdamanImageIO::getRasdamanComponentType(itk::ImageIOBase::IOComponentType otbtype)
+RasdamanImageIO::getRasdamanComponentType(otb::ImageIOBase::IOComponentType otbtype)
 {
 	r_Type::r_Type_Id rtype;
 
 	switch (otbtype)
 	{
-	case itk::ImageIOBase::UCHAR:
+	case otb::ImageIOBase::UCHAR:
 		rtype = r_Type::CHAR;
 		break;
-	case itk::ImageIOBase::UINT:
-	case itk::ImageIOBase::ULONG:
+	case otb::ImageIOBase::UINT:
+	case otb::ImageIOBase::ULONG:
 		rtype = r_Type::ULONG;
 		break;
-	case itk::ImageIOBase::USHORT:
+	case otb::ImageIOBase::USHORT:
 		rtype = r_Type::USHORT;
 		break;
-	case itk::ImageIOBase::INT:
-	case itk::ImageIOBase::LONG:
+	case otb::ImageIOBase::INT:
+	case otb::ImageIOBase::LONG:
 		rtype = r_Type::LONG;
 		break;
-	case itk::ImageIOBase::SHORT:
+	case otb::ImageIOBase::SHORT:
 		rtype = r_Type::SHORT;
 		break;
-	case itk::ImageIOBase::CHAR:
+	case otb::ImageIOBase::CHAR:
 		rtype = r_Type::OCTET;
 		break;
-	case itk::ImageIOBase::DOUBLE:
+	case otb::ImageIOBase::DOUBLE:
 		rtype = r_Type::DOUBLE;
 		break;
-	case itk::ImageIOBase::FLOAT:
+	case otb::ImageIOBase::FLOAT:
 		rtype = r_Type::FLOAT;
 		break;
 	default:

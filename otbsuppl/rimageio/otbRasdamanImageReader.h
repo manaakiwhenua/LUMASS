@@ -46,7 +46,7 @@
 
 #include "otbImageFileReader.h"
 #include "otbAttributeTable.h"
-#include "RasdamanConnector.h"
+#include "RasdamanConnector.hh"
 
 namespace otb
 {
@@ -66,14 +66,14 @@ class ITK_EXPORT RasdamanImageReader : public otb::ImageFileReader<TOutputImage>
 public:
   /** Standard class typedefs. */
   typedef RasdamanImageReader                     Self;
-  typedef itk::ImageFileReader<TOutputImage>  Superclass;
+  typedef otb::ImageFileReader<TOutputImage>  Superclass;
   typedef itk::SmartPointer<Self>             Pointer;
 
   /** Method for creation through the object factory. */
   itkNewMacro(Self);
 
   /** Run-time type information (and related methods). */
-  itkTypeMacro(RasdamanImageReader, itk::ImageFileReader);
+  itkTypeMacro(RasdamanImageReader, otb::ImageFileReader);
 
   /** The pixel type of the output image. */
   typedef typename TOutputImage::InternalPixelType OutputImagePixelType;
@@ -112,7 +112,7 @@ protected:
   virtual ~RasdamanImageReader();
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
-  //unsigned int m_DatasetNumber;
+  ////unsigned int m_DatasetNumber;
 
 private:
 

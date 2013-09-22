@@ -54,6 +54,7 @@
 #include "otbImageKeywordlist.h"
 #include "otbMetaDataKey.h"
 #include "otbRasdamanImageIO.h"
+#include "itkDefaultConvertPixelTraits.h"
 
 #include <itksys/SystemTools.hxx>
 #include <fstream>
@@ -79,19 +80,23 @@ void RasdamanImageReader<TOutputImage>
 ::PrintSelf(std::ostream& os, itk::Indent indent) const
 {
   Superclass::PrintSelf(os, indent);
+  otb::RasdamanImageReader<TOutputImage>* myself =
+		  const_cast<otb::RasdamanImageReader<TOutputImage>* >(this);
+  otb::ImageIOBase* iob = myself->GetImageIO();
+  //const_cast<otb::ImageIOBase*>(myself->GetImageIO());
 
-  if (this->m_ImageIO)
+  if (iob != 0)
   {
     os << indent << "ImageIO: \n";
-    this->m_ImageIO->Print(os, indent.GetNextIndent());
+    iob->Print(os, indent.GetNextIndent());
   }
   else
   {
     os << indent << "ImageIO: (null)" << "\n";
   }
 
-  os << indent << "UserSpecifiedImageIO flag: " << this->m_UserSpecifiedImageIO << "\n";
-  os << indent << "m_FileName: " << this->m_FileName << "\n";
+  //os << indent << "UserSpecifiedImageIO flag: " << this->m_UserSpecifiedImageIO << "\n";
+  os << indent << "m_FileName: " << this->GetFileName() << "\n";
 }
 
 template <class TOutputImage>
@@ -117,7 +122,7 @@ RasdamanImageReader<TOutputImage>
   //
   OutputImagePixelType *buffer =
     output->GetPixelContainer()->GetBufferPointer();
-  this->m_ImageIO->SetFileName(this->m_FileName.c_str());
+  this->GetImageIO()->SetFileName(this->GetFileName());
 
   itk::ImageIORegion ioRegion(TOutputImage::ImageDimension);
 
@@ -128,10 +133,10 @@ RasdamanImageReader<TOutputImage>
   SizeType dimSize;
   for (unsigned int i=0; i<TOutputImage::ImageDimension; ++i)
   {
-    if (i < this->m_ImageIO->GetNumberOfDimensions())
+    if (i < this->GetImageIO()->GetNumberOfDimensions())
     {
-      if ( !this->m_ImageIO->CanStreamRead() )
-        dimSize[i] = this->m_ImageIO->GetDimensions(i);
+      if ( !this->GetImageIO()->CanStreamRead() )
+        dimSize[i] = this->GetImageIO()->GetDimensions(i);
       else
         dimSize[i] = output->GetRequestedRegion().GetSize()[i];
     }
@@ -151,7 +156,7 @@ RasdamanImageReader<TOutputImage>
 
   typedef typename TOutputImage::IndexType   IndexType;
   IndexType start;
-  if ( !this->m_ImageIO->CanStreamRead() )  start.Fill(0);
+  if ( !this->GetImageIO()->CanStreamRead() )  start.Fill(0);
   else start = output->GetRequestedRegion().GetIndex();
   for (unsigned int i = 0; i < start.GetIndexDimension(); ++i)
   {
@@ -162,18 +167,18 @@ RasdamanImageReader<TOutputImage>
   ioRegion.SetIndex(ioStart);
 
 
-  this->m_ImageIO->SetIORegion(ioRegion);
+  this->GetImageIO()->SetIORegion(ioRegion);
 
-  typedef itk::DefaultConvertPixelTraits<ITK_TYPENAME TOutputImage::IOPixelType> ConvertIOPixelTraits;
-  typedef itk::DefaultConvertPixelTraits<ITK_TYPENAME TOutputImage::PixelType> ConvertPixelTraits;
+  typedef itk::DefaultConvertPixelTraits<typename TOutputImage::IOPixelType> ConvertIOPixelTraits;
+  typedef itk::DefaultConvertPixelTraits<typename TOutputImage::PixelType> ConvertPixelTraits;
 
-  if (this->m_ImageIO->GetComponentTypeInfo()
-      == typeid(ITK_TYPENAME ConvertPixelTraits::ComponentType)
-      && (this->m_ImageIO->GetNumberOfComponents()
+  if (this->GetImageIO()->GetComponentTypeInfo()
+      == typeid(typename ConvertPixelTraits::ComponentType)
+      && (this->GetImageIO()->GetNumberOfComponents()
           == ConvertIOPixelTraits::GetNumberOfComponents()))
     {
     // Have the ImageIO read directly into the allocated buffer
-    this->m_ImageIO->Read(buffer);
+    this->GetImageIO()->Read(buffer);
     return;
     }
   else // a type conversion is necessary
@@ -183,17 +188,17 @@ RasdamanImageReader<TOutputImage>
     ImageRegionType region = output->GetBufferedRegion();
 
     // Adapt the image size with the region
-    std::streamoff nbBytes = (this->m_ImageIO->GetComponentSize() * this->m_ImageIO->GetNumberOfComponents())
+    std::streamoff nbBytes = (this->GetImageIO()->GetComponentSize() * this->GetImageIO()->GetNumberOfComponents())
                              * static_cast<std::streamoff>(region.GetNumberOfPixels());
 
     char * loadBuffer = new char[nbBytes];
 
     otbMsgDevMacro(<< "size of Buffer to RasdamanImageIO::read = " << nbBytes << " = \n"
-        << "ComponentSize ("<< this->m_ImageIO->GetComponentSize() << ") x " \
-        << "Nb of Component (" << this->m_ImageIO->GetNumberOfComponents() << ") x " \
+        << "ComponentSize ("<< this->GetImageIO()->GetComponentSize() << ") x " \
+        << "Nb of Component (" << this->GetImageIO()->GetNumberOfComponents() << ") x " \
         << "Nb of Pixel to read (" << region.GetNumberOfPixels() << ")" );
 
-    this->m_ImageIO->Read(loadBuffer);
+    this->GetImageIO()->Read(loadBuffer);
 
     this->DoConvertBuffer(loadBuffer, region.GetNumberOfPixels());
 
@@ -211,7 +216,7 @@ RasdamanImageReader<TOutputImage>
 
   // the ImageIO object cannot stream, then set the RequestedRegion to the
   // LargestPossibleRegion
-  if (!this->m_ImageIO->CanStreamRead())
+  if (!this->GetImageIO()->CanStreamRead())
   {
     if (out)
     {
@@ -219,7 +224,7 @@ RasdamanImageReader<TOutputImage>
     }
     else
     {
-      throw itk::ImageFileReaderException(__FILE__, __LINE__,
+      throw ImageFileReaderException(__FILE__, __LINE__,
                                           "Invalid output object type");
     }
   }
@@ -242,41 +247,45 @@ RasdamanImageReader<TOutputImage>
 
   typename TOutputImage::Pointer output = this->GetOutput();
 
-  itkDebugMacro(<<"Reading file for GenerateOutputInformation()" << this->m_FileName);
+  itkDebugMacro(<<"Reading file for GenerateOutputInformation()" << this->GetFileName());
 
   // Check to see if we can read the file given the name or prefix
   //
-  if ( this->m_FileName == "" )
+  if ( this->GetFileName() == "" )
   {
-    throw itk::ImageFileReaderException(__FILE__, __LINE__, "FileName must be specified");
+    throw ImageFileReaderException(__FILE__, __LINE__, "FileName must be specified");
     return;
   }
 
-  std::string lFileNameOssimKeywordlist = this->m_FileName;
+  std::string lFileNameOssimKeywordlist = this->GetFileName();
 
-  if ( !this->m_UserSpecifiedImageIO )
-  {
-    if (!this->mRasconn)
-    {
-		this->Print( std::cerr );
-		itk::ImageFileReaderException e(__FILE__, __LINE__);
-		itk::OStringStream msg;
-		msg << " How inconvenient, someone forgot to set the RasdamanConnector object!" << std::endl;
-		msg << " We can't do anything without it!!" << std::endl;
-		e.SetDescription(msg.str().c_str());
-		throw e;
-		return;
-    }
+  otb::RasdamanImageIO* ario = dynamic_cast<otb::RasdamanImageIO*>(this->GetImageIO());
+	if (ario == 0)
+	{
+		if (!this->mRasconn)
+		{
+			this->Print(std::cerr);
+			ImageFileReaderException e(__FILE__, __LINE__);
+			itk::OStringStream msg;
+			msg
+					<< " How inconvenient, someone forgot to set the RasdamanConnector object!"
+					<< std::endl;
+			msg << " We can't do anything without it!!" << std::endl;
+			e.SetDescription(msg.str().c_str());
+			throw e;
+			return;
+		}
 
-    otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-    rio->setRasdamanConnector(this->mRasconn);
-    this->m_ImageIO = rio;
-  }
+		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+		rio->setRasdamanConnector(this->mRasconn);
+		this->SetImageIO(dynamic_cast<otb::ImageIOBase*>(rio.GetPointer()));
+	}
 
-  if ( this->m_ImageIO.IsNull() )
+
+  if ( this->GetImageIO() == 0 )
   {
     this->Print( std::cerr );
-    itk::ImageFileReaderException e(__FILE__, __LINE__);
+    ImageFileReaderException e(__FILE__, __LINE__);
     itk::OStringStream msg;
     msg << " Mmmh, odd ... The user specified IO seems to be NULL!";
     msg << " Why would someone do this??" << std::endl;
@@ -289,8 +298,8 @@ RasdamanImageReader<TOutputImage>
   // Got to allocate space for the image. Determine the characteristics of
   // the image.
   //
-  this->m_ImageIO->SetFileName(this->m_FileName.c_str());
-  this->m_ImageIO->ReadImageInformation();
+  this->GetImageIO()->SetFileName(this->GetFileName());
+  this->GetImageIO()->ReadImageInformation();
 
 
   SizeType dimSize;
@@ -301,17 +310,17 @@ RasdamanImageReader<TOutputImage>
 
   for (unsigned int i=0; i<TOutputImage::ImageDimension; ++i)
   {
-    if ( i < this->m_ImageIO->GetNumberOfDimensions() )
+    if ( i < this->GetImageIO()->GetNumberOfDimensions() )
     {
-      dimSize[i] = this->m_ImageIO->GetDimensions(i);
-      spacing[i] = this->m_ImageIO->GetSpacing(i);
-      origin[i]  = this->m_ImageIO->GetOrigin(i);
+      dimSize[i] = this->GetImageIO()->GetDimensions(i);
+      spacing[i] = this->GetImageIO()->GetSpacing(i);
+      origin[i]  = this->GetImageIO()->GetOrigin(i);
 // Please note: direction cosines are stored as columns of the
 // direction matrix
-      axis = this->m_ImageIO->GetDirection(i);
+      axis = this->GetImageIO()->GetDirection(i);
       for (unsigned j=0; j<TOutputImage::ImageDimension; ++j)
       {
-        if (j < this->m_ImageIO->GetNumberOfDimensions())
+        if (j < this->GetImageIO()->GetNumberOfDimensions())
         {
           direction[j][i] = axis[j];
         }
@@ -348,10 +357,10 @@ RasdamanImageReader<TOutputImage>
   output->SetDirection( direction ); // Set the image direction cosines
 
   // Update otb Keywordlist
-  ImageKeywordlist otb_kwl = ReadGeometry(lFileNameOssimKeywordlist);
+  ImageKeywordlist otb_kwl = ReadGeometryFromImage(lFileNameOssimKeywordlist);
 
   // Update itk MetaData Dictionary
-  itk::MetaDataDictionary& dict = this->m_ImageIO->GetMetaDataDictionary();
+  itk::MetaDataDictionary& dict = this->GetImageIO()->GetMetaDataDictionary();
 
   // Don't add an empty ossim keyword list
   if( otb_kwl.GetSize() != 0 )
@@ -361,8 +370,8 @@ RasdamanImageReader<TOutputImage>
     }
  
   //Copy MetaDataDictionary from instantiated reader to output image.
-  output->SetMetaDataDictionary(this->m_ImageIO->GetMetaDataDictionary());
-  this->SetMetaDataDictionary(this->m_ImageIO->GetMetaDataDictionary());
+  output->SetMetaDataDictionary(this->GetImageIO()->GetMetaDataDictionary());
+  this->SetMetaDataDictionary(this->GetImageIO()->GetMetaDataDictionary());
  
   typedef typename TOutputImage::IndexType   IndexType;
 
@@ -379,7 +388,7 @@ RasdamanImageReader<TOutputImage>
   if ( strcmp( output->GetNameOfClass(), "VectorImage" ) == 0 )
   {
     typedef typename TOutputImage::AccessorFunctorType AccessorFunctorType;
-    AccessorFunctorType::SetVectorLength( output, this->m_ImageIO->GetNumberOfComponents() );
+    AccessorFunctorType::SetVectorLength( output, this->GetImageIO()->GetNumberOfComponents() );
   }
 
   output->SetLargestPossibleRegion(region);
@@ -392,7 +401,7 @@ RasdamanImageReader< TOutputImage >
 ::getRasterAttributeTable(int band)
 {
 	otb::RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(
-			this->m_ImageIO.GetPointer());
+			this->GetImageIO());
 	if (rio == 0)
 		return 0;
 

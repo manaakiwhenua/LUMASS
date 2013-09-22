@@ -36,7 +36,7 @@
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 
 
 class NMNeighbourhoodCountingWrapper: public NMProcess
@@ -49,11 +49,11 @@ class NMNeighbourhoodCountingWrapper: public NMProcess
 	Q_PROPERTY(unsigned int KernelSizeZ READ getKernelSizeZ WRITE setKernelSizeZ)
 
 public:
-	NMPropertyGetSet( TestValueList, QStringList )
-	NMPropertyGetSet( TestValue, int)
-	NMPropertyGetSet( KernelSizeX, unsigned int )
-	NMPropertyGetSet( KernelSizeY, unsigned int )
-	NMPropertyGetSet( KernelSizeZ, unsigned int )
+	NMPropertyGetSet( TestValueList, QStringList );
+	NMPropertyGetSet( TestValue, int);
+	NMPropertyGetSet( KernelSizeX, unsigned int );
+	NMPropertyGetSet( KernelSizeY, unsigned int );
+	NMPropertyGetSet( KernelSizeZ, unsigned int );
 
 signals:
 

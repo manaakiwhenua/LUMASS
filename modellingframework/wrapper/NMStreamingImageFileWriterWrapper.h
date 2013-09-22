@@ -45,7 +45,7 @@
 #ifdef BUILD_RASSUPPORT
  #include "NMRasdamanConnectorWrapper.h"
  #include "otbRasdamanImageIO.h"
- #include "RasdamanConnector.h"
+ #include "RasdamanConnector.hh"
 #endif
 
 class NMStreamingImageFileWriterWrapper: public NMProcess
@@ -73,7 +73,7 @@ signals:
 public:
 	NMStreamingImageFileWriterWrapper(QObject* parent=0);
 	NMStreamingImageFileWriterWrapper(QObject* parent,
-			itk::ImageIOBase::IOComponentType componentType,
+			otb::ImageIOBase::IOComponentType componentType,
 			unsigned int numDims, unsigned int numBands);
 	virtual ~NMStreamingImageFileWriterWrapper();
 

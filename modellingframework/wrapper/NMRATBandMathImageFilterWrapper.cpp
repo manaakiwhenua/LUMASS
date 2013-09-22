@@ -17,10 +17,13 @@
  ******************************************************************************/
 #include "NMMacros.h"
 #include "NMProcess.h"
+#include "NMModelController.h"
 #include "NMRATBandMathImageFilterWrapper.h"
 #include "NMImageReader.h"
 #include "NMModelComponent.h"
+#include "NMIterableComponent.h"
 #include "NMImageLayer.h"
+#include "NMMfwException.h"
 
 #include <string>
 #include <vector>
@@ -84,7 +87,7 @@ public:
 		}
 
 	static void setNthAttributeTable(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int idx, otb::AttributeTable* tab, std::vector<std::string>& varNames)
+			unsigned int idx, otb::AttributeTable::Pointer tab, std::vector<std::string> varNames)
 		{
 			FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
 			filter->SetNthAttributeTable(idx, tab, varNames);
@@ -156,8 +159,8 @@ NMRATBandMathImageFilterWrapper::NMRATBandMathImageFilterWrapper(QObject* parent
 	this->ctx = "NMRATBandMathImageFilterWrapper";
 	this->mbIsInitialised = false;
 	this->setObjectName(tr("NMRATBandMathImageFilterWrapper"));
-	this->mInputComponentType = itk::ImageIOBase::FLOAT;
-	this->mOutputComponentType = itk::ImageIOBase::FLOAT;
+	this->mInputComponentType = otb::ImageIOBase::FLOAT;
+	this->mOutputComponentType = otb::ImageIOBase::FLOAT;
 	this->mInputNumDimensions = 2;
 	this->mOutputNumDimensions = 2;
 	this->mInputNumBands = 1;
@@ -173,7 +176,7 @@ NMRATBandMathImageFilterWrapper::~NMRATBandMathImageFilterWrapper(void)
 void
 NMRATBandMathImageFilterWrapper
 ::setNthAttributeTable(unsigned int idx,
-		otb::AttributeTable* table,
+		otb::AttributeTable::Pointer table,
 		std::vector<std::string> tableColumns)
 {
 	if (!this->mbIsInitialised)
@@ -222,21 +225,27 @@ NMRATBandMathImageFilterWrapper
 {
 	NMDebugCtx(ctx, << "...");
 
-	if (step > this->mMapExpressions.size()-1)
-		step = 0;
-
+	int givenStep = step;
 	// now let's set this process' special properties
 	// set the calculation expression
+	step = this->mapHostIndexToPolicyIndex(givenStep, this->mMapExpressions.size());
+	QString currentExpression;
 	if (step < this->mMapExpressions.size())
 	{
-		this->setInternalExpression(this->mMapExpressions.at(step));
+		currentExpression = this->mMapExpressions.at(step);//.toLower();
+		this->setInternalExpression(currentExpression);
 	}
 	else
 	{
+		NMMfwException e(NMMfwException::NMProcess_MissingParameter);
+		e.setMsg("NMRATBandMathImageWrapper: No map expression specified!");
+		throw e;
+
 		NMErr(ctx, << "no map expression available!");
 		return;
 	}
 
+	step = this->mapHostIndexToPolicyIndex(givenStep, this->mNumExpressions.size());
 	if (step < this->mNumExpressions.size())
 	{
 		bool bOK;
@@ -244,70 +253,128 @@ NMRATBandMathImageFilterWrapper
 		if (bOK)
 			this->setInternalNumExpression(numExpr);
 	}
-
-	// let's see whether we've got some tables and associated variable names
-	// in any case, we need the same amount of tables and table column names
-	// and the parameter pos has to point to a valid position within those
-	// lists
-	if ((step < this->mInputTables.size())   	 &&
-		(step < this->mInputTableVarNames.size()) &&
-		(this->mInputTableVarNames.size() == this->mInputTables.size())
-	   )
+	else
 	{
-		QStringList inputTableComps = this->mInputTables.at(step);
-		QList<QStringList> inputTabVarNamesList = this->mInputTableVarNames.at(
-				step);
+		NMDebugAI(<< "no number of expressions given, so we assume,"
+				<< " we've got one expression!" << std::endl);
+	}
 
-		// check, whether both lists have the same number of entries, otherwise
-		// we have to pull out
-		if (inputTableComps.size() == inputTabVarNamesList.size())
+	// we go through every input image, check, whether a table is
+	// available for this step, and then we identify the
+	// columns uses in the currentExpression and pass their
+	// names to the internal process object
+	step = this->mapHostIndexToPolicyIndex(givenStep,
+			this->mInputComponents.size());
+	QStringList currentInputs;
+	if (step < this->mInputComponents.size())
+	{
+		currentInputs = this->mInputComponents.at(step);
+		int cnt = 0;
+		foreach (const QString& input, currentInputs)
 		{
-			for (unsigned int iT = 0; iT < inputTableComps.size(); ++iT)
+			NMItkDataObjectWrapper* dw = NMModelController::getInstance()->getOutputFromSource(input);
+			if (dw == 0)
 			{
-				QString tablecompname = inputTableComps.at(iT);
-				if (tablecompname.isEmpty())
-					return;
+				++cnt;
+				continue;
+			}
 
-				// get the associated table object from the named component
-				QMap<QString, NMModelComponent*>::const_iterator compIt =
-						repo.find(tablecompname);
-
-				otb::AttributeTable::Pointer table;// = 0;
-				NMImageLayer* layer = qobject_cast<NMImageLayer*>(compIt.value());
-				if (layer != 0)
+			otb::AttributeTable::Pointer tab = dw->getOTBTab();
+			std::vector<std::string> vcolnames;
+			if (tab.IsNotNull())
+			{
+				for (int c=0; c < tab->GetNumCols(); ++c)
 				{
-					table = layer->getRasterAttributeTable(1);
-				}
-				else
-				{
-					NMImageReader* reader = qobject_cast<NMImageReader*>(
-							compIt.value()->getProcess());
-					if (reader != 0)
+					std::string colname = tab->GetColumnName(c);
+					QString cn(colname.c_str());
+					//cn = cn.toLower();
+					if (currentExpression.contains(cn, Qt::CaseInsensitive))
 					{
-						table = reader->getRasterAttributeTable(1);//.GetPointer();
-					}
-				}
-
-				// now let's get the variable names
-				if (table.IsNotNull())// != 0)
-				{
-					QStringList varNames = inputTabVarNamesList.at(iT);
-					if (varNames.size() != 0)
-					{
-						std::vector<QString> qcolnames = varNames.toVector().toStdVector();
-						std::vector<std::string> colnames;
-						colnames.resize(qcolnames.size());
-
-						for (unsigned int qn = 0; qn < qcolnames.size(); ++qn)
-							colnames[qn] = qcolnames[qn].toStdString();
-
-						// at the end we've got one call to setnthattributetable
-						this->setNthAttributeTable(iT, table, colnames);
+						vcolnames.push_back(cn.toStdString());
 					}
 				}
 			}
+
+			this->setNthAttributeTable(cnt, tab, vcolnames);
+			++cnt;
 		}
 	}
+
+
+	//we've got some tables and associated variable names
+	// in any case, we need the same amount of tables and table column names
+	// and the parameter pos has to point to a valid position within those
+	// lists
+	//if ((step < this->mInputTables.size())   	 &&
+	//	(step < this->mInputTableVarNames.size()) &&
+	//	(this->mInputTableVarNames.size() == this->mInputTables.size())
+	//   )
+	//{
+	//	QStringList inputTableComps = this->mInputTables.at(step);
+	//	QList<QStringList> inputTabVarNamesList = this->mInputTableVarNames.at(
+	//			step);
+    //
+	//	// check, whether both lists have the same number of entries, otherwise
+	//	// we have to pull out
+	//	if (inputTableComps.size() == inputTabVarNamesList.size())
+	//	{
+	//		for (unsigned int iT = 0; iT < inputTableComps.size(); ++iT)
+	//		{
+	//			QString tablecompname = inputTableComps.at(iT);
+	//			if (tablecompname.isEmpty())
+	//				return;
+    //
+	//			// get the associated table object from the named component
+	//			QMap<QString, NMModelComponent*>::const_iterator compIt =
+	//					repo.find(tablecompname);
+    //
+	//			otb::AttributeTable::Pointer table;// = 0;
+	//			NMImageLayer* layer = qobject_cast<NMImageLayer*>(compIt.value());
+	//			if (layer != 0)
+	//			{
+	//				table = layer->getRasterAttributeTable(1);
+	//			}
+	//			else
+	//			{
+	//				NMIterableComponent* ic =
+	//						qobject_cast<NMIterableComponent*>(compIt.value());
+	//				if (ic != 0 && ic->getProcess() != 0)
+	//				{
+	//					NMImageReader* reader = qobject_cast<NMImageReader*>(
+	//							ic->getProcess());
+	//					if (reader != 0)
+	//					{
+	//						table = reader->getRasterAttributeTable(1);//.GetPointer();
+	//					}
+	//				}
+	//			}
+    //
+	//			// now let's get the variable names
+	//			if (table.IsNotNull())// != 0)
+	//			{
+	//				QStringList varNames = inputTabVarNamesList.at(iT);
+	//				if (varNames.size() != 0)
+	//				{
+	//					std::vector<QString> qcolnames = varNames.toVector().toStdVector();
+	//					std::vector<std::string> colnames;
+	//					colnames.resize(qcolnames.size());
+    //
+	//					for (unsigned int qn = 0; qn < qcolnames.size(); ++qn)
+	//						colnames[qn] = qcolnames[qn].toStdString();
+    //
+	//					// at the end we've got one call to setnthattributetable
+	//					this->setNthAttributeTable(iT, table, colnames);
+	//				}
+	//			}
+	//			else
+	//			{
+	//				NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+	//				e.setMsg("NMRATBandMathImageWrapper: Invalid attribute table input parameter!");
+	//				throw e;
+	//			}
+	//		}
+	//	}
+	//}
 
 	NMDebugCtx(ctx, << "done!");
 }

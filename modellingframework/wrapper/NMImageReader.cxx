@@ -36,9 +36,10 @@
 #include "otbVectorImage.h"
 #include "otbImage.h"
 #include "itkImageBase.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 #include "vtkImageImport.h"
 #include "itkVTKImageExport.h"
+#include "NMMfwException.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageIO.h"
@@ -103,19 +104,25 @@
 //				NMDebugAI(<< "read origin & spacing ... " << endl);
 //				NMDebugAI(<< o.str() << " | " << s.str() << endl);
 
-				img = r->GetOutput(idx);
+				if (idx == 0)
+					img = r->GetOutput(idx);
+				else if (idx == 1)
+					img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
 			}
 			else
 			{
 				VecReaderType *vr = dynamic_cast<VecReaderType*>(readerProcObj.GetPointer());
 				//r->Update();
-				img = vr->GetOutput(idx);
+				if (idx == 0)
+					img = vr->GetOutput(idx);
+				else if (idx == 1)
+					img = dynamic_cast<itk::DataObject*>(vr->getRasterAttributeTable(1).GetPointer());
 			}
 			return img;
 		}
 
 		static void initReader(itk::ProcessObject::Pointer &readerProcObj,
-				itk::ImageIOBase *imgIOBase, QString &imgName,
+				otb::ImageIOBase *imgIOBase, QString &imgName,
 				unsigned int numBands)
 		{
 			NMDebugCtx("RasdamanReader", << "...");
@@ -183,19 +190,25 @@ public:
 		{
 			ReaderType *r = dynamic_cast<ReaderType*>(readerProcObj.GetPointer());
 			//r->Update();
-			img = r->GetOutput(idx);
+			if (idx == 0)
+				img = r->GetOutput(idx);
+			else if (idx == 1)
+				img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
 		}
 		else
 		{
 			VecReaderType *vr = dynamic_cast<VecReaderType*>(readerProcObj.GetPointer());
 			//r->Update();
-			img = vr->GetOutput(idx);
+			if (idx == 0)
+				img = vr->GetOutput(idx);
+			else if (idx == 1)
+				img = dynamic_cast<itk::DataObject*>(vr->GetAttributeTable(1).GetPointer());
 		}
 		return img;
 	}
 
 	static void initReader(itk::ProcessObject::Pointer &readerProcObj,
-			itk::ImageIOBase *imgIOBase, QString &imgName,
+			otb::ImageIOBase *imgIOBase, QString &imgName,
 			unsigned int numBands)
 	{
 		NMDebugCtx("FileReader", << "...");
@@ -450,8 +463,8 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mInputNumBands = 1;
 	this->mOutputNumDimensions = 2;
 	this->mInputNumDimensions = 2;
-	this->mInputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
-	this->mOutputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+	this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+	this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mFileName = "";
 	this->mbRasMode = false;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
@@ -488,34 +501,34 @@ otb::AttributeTable::Pointer NMImageReader::getRasterAttributeTable(int band)
 
 	switch (this->mOutputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:
+	case otb::ImageIOBase::UCHAR:
 		CallFetchRATClassMacro( unsigned char );
 		break;
-	case itk::ImageIOBase::CHAR:
+	case otb::ImageIOBase::CHAR:
 		CallFetchRATClassMacro( char );
 		break;
-	case itk::ImageIOBase::USHORT:
+	case otb::ImageIOBase::USHORT:
 		CallFetchRATClassMacro( unsigned short );
 		break;
-	case itk::ImageIOBase::SHORT:
+	case otb::ImageIOBase::SHORT:
 		CallFetchRATClassMacro( short );
 		break;
-	case itk::ImageIOBase::UINT:
+	case otb::ImageIOBase::UINT:
 		CallFetchRATClassMacro( unsigned int );
 		break;
-	case itk::ImageIOBase::INT:
+	case otb::ImageIOBase::INT:
 		CallFetchRATClassMacro( int );
 		break;
-	case itk::ImageIOBase::ULONG:
+	case otb::ImageIOBase::ULONG:
 		CallFetchRATClassMacro( unsigned long );
 		break;
-	case itk::ImageIOBase::LONG:
+	case otb::ImageIOBase::LONG:
 		CallFetchRATClassMacro( long );
 		break;
-	case itk::ImageIOBase::FLOAT:
+	case otb::ImageIOBase::FLOAT:
 		CallFetchRATClassMacro( float );
 		break;
-	case itk::ImageIOBase::DOUBLE:
+	case otb::ImageIOBase::DOUBLE:
 		CallFetchRATClassMacro( double );
 		break;
 	default:
@@ -576,6 +589,7 @@ bool NMImageReader::initialise() throw (r_Error)
 	if (!this->mItkImgIOBase)
 	{
 		NMErr(ctxNMImageReader, << "NO IMAGEIO WAS FOUND!");
+		NMDebugCtx(ctxNMImageReader, << "done!");
 		return false;
 	}
 
@@ -593,13 +607,13 @@ bool NMImageReader::initialise() throw (r_Error)
 	this->mItkImgIOBase->ReadImageInformation();
 	this->mOutputNumBands = this->mItkImgIOBase->GetNumberOfComponents();
 
-	if (this->mOutputComponentType == itk::ImageIOBase::UNKNOWNCOMPONENTTYPE)
+	if (this->mOutputComponentType == otb::ImageIOBase::UNKNOWNCOMPONENTTYPE)
 		this->mOutputComponentType = this->mItkImgIOBase->GetComponentType();
 
 	this->mOutputNumDimensions = this->mItkImgIOBase->GetNumberOfDimensions();
 	this->mInputNumBands = this->mItkImgIOBase->GetNumberOfComponents();
 
-	if (this->mInputComponentType == itk::ImageIOBase::UNKNOWNCOMPONENTTYPE)
+	if (this->mInputComponentType == otb::ImageIOBase::UNKNOWNCOMPONENTTYPE)
 		this->mInputComponentType = this->mItkImgIOBase->GetComponentType();
 
 	this->mInputNumDimensions = this->mItkImgIOBase->GetNumberOfDimensions();
@@ -610,34 +624,34 @@ bool NMImageReader::initialise() throw (r_Error)
 	bool ret = true;
 	switch (this->mOutputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:
+	case otb::ImageIOBase::UCHAR:
 		CallReaderMacro( unsigned char );
 		break;
-	case itk::ImageIOBase::CHAR:
+	case otb::ImageIOBase::CHAR:
 		CallReaderMacro( char );
 		break;
-	case itk::ImageIOBase::USHORT:
+	case otb::ImageIOBase::USHORT:
 		CallReaderMacro( unsigned short );
 		break;
-	case itk::ImageIOBase::SHORT:
+	case otb::ImageIOBase::SHORT:
 		CallReaderMacro( short );
 		break;
-	case itk::ImageIOBase::UINT:
+	case otb::ImageIOBase::UINT:
 		CallReaderMacro( unsigned int );
 		break;
-	case itk::ImageIOBase::INT:
+	case otb::ImageIOBase::INT:
 		CallReaderMacro( int );
 		break;
-	case itk::ImageIOBase::ULONG:
+	case otb::ImageIOBase::ULONG:
 		CallReaderMacro( unsigned long );
 		break;
-	case itk::ImageIOBase::LONG:
+	case otb::ImageIOBase::LONG:
 		CallReaderMacro( long );
 		break;
-	case itk::ImageIOBase::FLOAT:
+	case otb::ImageIOBase::FLOAT:
 		CallReaderMacro( float );
 		break;
-	case itk::ImageIOBase::DOUBLE:
+	case otb::ImageIOBase::DOUBLE:
 		CallReaderMacro( double );
 		break;
 	default:
@@ -670,37 +684,43 @@ NMImageReader::UpdateProgressInfo(itk::Object* obj, const itk::EventObject& even
 
 NMItkDataObjectWrapper* NMImageReader::getOutput(unsigned int idx)
 {
+	if (!this->mbIsInitialised)
+	{
+		NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+		throw e;
+	}
+
 	itk::DataObject *img = 0;
 	switch(this->mOutputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:
+	case otb::ImageIOBase::UCHAR:
 		RequestReaderOutput( unsigned char );
 		break;
-	case itk::ImageIOBase::CHAR:
+	case otb::ImageIOBase::CHAR:
 		RequestReaderOutput( char );
 		break;
-	case itk::ImageIOBase::USHORT:
+	case otb::ImageIOBase::USHORT:
 		RequestReaderOutput( unsigned short );
 		break;
-	case itk::ImageIOBase::SHORT:
+	case otb::ImageIOBase::SHORT:
 		RequestReaderOutput( short );
 		break;
-	case itk::ImageIOBase::UINT:
+	case otb::ImageIOBase::UINT:
 		RequestReaderOutput( unsigned int );
 		break;
-	case itk::ImageIOBase::INT:
+	case otb::ImageIOBase::INT:
 		RequestReaderOutput( int );
 		break;
-	case itk::ImageIOBase::ULONG:
+	case otb::ImageIOBase::ULONG:
 		RequestReaderOutput( unsigned long );
 		break;
-	case itk::ImageIOBase::LONG:
+	case otb::ImageIOBase::LONG:
 		RequestReaderOutput( long );
 		break;
-	case itk::ImageIOBase::FLOAT:
+	case otb::ImageIOBase::FLOAT:
 		RequestReaderOutput( float );
 		break;
-	case itk::ImageIOBase::DOUBLE:
+	case otb::ImageIOBase::DOUBLE:
 		RequestReaderOutput( double );
 		break;
 	default:
@@ -711,6 +731,9 @@ NMItkDataObjectWrapper* NMImageReader::getOutput(unsigned int idx)
 	NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,
 			this->mOutputNumDimensions, this->mOutputNumBands);
 
+	// in case we've got an attribute table, we fetch it
+	dw->setOTBTab(this->getRasterAttributeTable(1));
+
 	return dw;
 }
 
@@ -720,34 +743,34 @@ itk::DataObject* NMImageReader::getItkImage(void)
 	unsigned int idx = 0;
 	switch(this->mOutputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:
+	case otb::ImageIOBase::UCHAR:
 		RequestReaderOutput( unsigned char );
 		break;
-	case itk::ImageIOBase::CHAR:
+	case otb::ImageIOBase::CHAR:
 		RequestReaderOutput( char );
 		break;
-	case itk::ImageIOBase::USHORT:
+	case otb::ImageIOBase::USHORT:
 		RequestReaderOutput( unsigned short );
 		break;
-	case itk::ImageIOBase::SHORT:
+	case otb::ImageIOBase::SHORT:
 		RequestReaderOutput( short );
 		break;
-	case itk::ImageIOBase::UINT:
+	case otb::ImageIOBase::UINT:
 		RequestReaderOutput( unsigned int );
 		break;
-	case itk::ImageIOBase::INT:
+	case otb::ImageIOBase::INT:
 		RequestReaderOutput( int );
 		break;
-	case itk::ImageIOBase::ULONG:
+	case otb::ImageIOBase::ULONG:
 		RequestReaderOutput( unsigned long );
 		break;
-	case itk::ImageIOBase::LONG:
+	case otb::ImageIOBase::LONG:
 		RequestReaderOutput( long );
 		break;
-	case itk::ImageIOBase::FLOAT:
+	case otb::ImageIOBase::FLOAT:
 		RequestReaderOutput( float );
 		break;
-	case itk::ImageIOBase::DOUBLE:
+	case otb::ImageIOBase::DOUBLE:
 		RequestReaderOutput( double );
 		break;
 	default:
@@ -757,7 +780,7 @@ itk::DataObject* NMImageReader::getItkImage(void)
 	return img;
 }
 
-const itk::ImageIOBase* NMImageReader::getImageIOBase(void)
+const otb::ImageIOBase* NMImageReader::getImageIOBase(void)
 {
 	if (this->mbIsInitialised)
 		return this->mItkImgIOBase;
@@ -878,8 +901,11 @@ void NMImageReader::instantiateObject(void)
 	{
 		RasdamanConnector* rasconn = const_cast<RasdamanConnector*>(
 				this->mRasConnector->getConnector());
-		if (rasconn != 0)
-			this->setRasdamanConnector(rasconn);
+		this->setRasdamanConnector(rasconn);
+	}
+	else
+	{
+		this->setRasdamanConnector(0);
 	}
 #endif	
 

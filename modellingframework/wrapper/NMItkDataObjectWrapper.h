@@ -28,7 +28,8 @@
 #include <qobject.h>
 #include <QMetaType>
 #include "itkDataObject.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
+#include "otbAttributeTable.h"
 
 class NMItkDataObjectWrapper: public QObject
 {
@@ -42,7 +43,7 @@ public:
 	NMItkDataObjectWrapper(QObject *parent=0);
 	NMItkDataObjectWrapper(QObject* parent, QString str);
 	NMItkDataObjectWrapper(QObject *parent, itk::DataObject* obj,
-			itk::ImageIOBase::IOComponentType type,  unsigned int numDims,
+			otb::ImageIOBase::IOComponentType type,  unsigned int numDims,
 			unsigned int numBands);
 	NMItkDataObjectWrapper(const NMItkDataObjectWrapper& dataObjectWrapper);
 	virtual ~NMItkDataObjectWrapper();
@@ -50,12 +51,18 @@ public:
 	enum NMComponentType {NM_UNKNOWN, NM_UCHAR, NM_CHAR, NM_USHORT, NM_SHORT,
 		NM_UINT, NM_INT, NM_ULONG, NM_LONG, NM_FLOAT, NM_DOUBLE, NM_STRING};
 
-	NMPropertyGetSet(NMComponentType, NMComponentType)
-	NMPropertyGetSet(NumDimensions, unsigned int)
-	NMPropertyGetSet(NumBands, unsigned int)
+	NMPropertyGetSet(NMComponentType, NMComponentType);
+	NMPropertyGetSet(NumDimensions, unsigned int);
+	NMPropertyGetSet(NumBands, unsigned int);
 
 	void setDataObject(itk::DataObject* obj)
 		{this->mDataObject = obj;}
+
+	void setOTBTab(otb::AttributeTable::Pointer otbtab)
+		{this->mOTBTab = otbtab;}
+
+	otb::AttributeTable::Pointer getOTBTab(void)
+		{return this->mOTBTab;}
 
 	itk::DataObject* getDataObject(void)
 		{return this->mDataObject;}
@@ -67,8 +74,8 @@ public:
 
 	NMItkDataObjectWrapper& operator=(const NMItkDataObjectWrapper& dw);
 
-	itk::ImageIOBase::IOComponentType getItkComponentType(void);
-	void setItkComponentType(itk::ImageIOBase::IOComponentType);
+	otb::ImageIOBase::IOComponentType getItkComponentType(void);
+	void setItkComponentType(otb::ImageIOBase::IOComponentType);
 
 	static const QString getComponentTypeString(NMItkDataObjectWrapper::NMComponentType type);
 	static const NMItkDataObjectWrapper::NMComponentType
@@ -76,6 +83,7 @@ public:
 
 private:
 	itk::DataObject::Pointer mDataObject;
+	otb::AttributeTable::Pointer mOTBTab;
 
 	NMComponentType mNMComponentType;
 	unsigned int mNumDimensions;

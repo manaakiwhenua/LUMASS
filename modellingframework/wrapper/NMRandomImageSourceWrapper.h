@@ -48,11 +48,11 @@ class NMRandomImageSourceWrapper : public NMProcess
 	Q_PROPERTY(QStringList MinValue READ getMinValue WRITE setMinValue)
 
 public:
-	NMPropertyGetSet( ImageSize, QList<QStringList>)
-	NMPropertyGetSet( ImageSpacing, QList<QStringList>)
-	NMPropertyGetSet( ImageOrigin, QList<QStringList>)
-	NMPropertyGetSet( MaxValue, QStringList)
-	NMPropertyGetSet( MinValue, QStringList)
+	NMPropertyGetSet( ImageSize, QList<QStringList>);
+	NMPropertyGetSet( ImageSpacing, QList<QStringList>);
+	NMPropertyGetSet( ImageOrigin, QList<QStringList>);
+	NMPropertyGetSet( MaxValue, QStringList);
+	NMPropertyGetSet( MinValue, QStringList);
 
 	NMRandomImageSourceWrapper(QObject* parent=0);
 	~NMRandomImageSourceWrapper();

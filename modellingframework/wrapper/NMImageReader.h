@@ -34,7 +34,7 @@
 #include "NMProcess.h"
 #include "NMMacros.h"
 
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 #include "otbImageFileReader.h"
 #include "otbGDALRATImageFileReader.h"
 #include "NMItkDataObjectWrapper.h"
@@ -45,7 +45,7 @@
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageReader.h"
-  #include "RasdamanConnector.h"
+  #include "RasdamanConnector.hh"
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 
@@ -66,10 +66,10 @@ class NMImageReader : public NMProcess
 #endif
 
 public:
-	NMPropertyGetSet(FileNames, QStringList)
+	NMPropertyGetSet(FileNames, QStringList);
 
 #ifdef BUILD_RASSUPPORT
-	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*)
+	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*);
 #endif
 
 signals:
@@ -104,7 +104,7 @@ public:
 	// initialise the reader: this will probe the given
 	// image file,  and set up the first part of the image pipeline
 
-	const itk::ImageIOBase* getImageIOBase();
+	const otb::ImageIOBase* getImageIOBase();
 	void getBBox(double bbox[6]);
 
 	bool isRasMode(void) {return this->mbRasMode;};
@@ -134,7 +134,7 @@ private:
 	RasdamanConnector * mRasconn;
 #endif
 	bool mbRasMode;
-	itk::ImageIOBase::Pointer mItkImgIOBase;
+	otb::ImageIOBase::Pointer mItkImgIOBase;
 
 	/** NMImageReader needs its own input parameter position indicator,
 	 *  since it doesn't use the input components' path

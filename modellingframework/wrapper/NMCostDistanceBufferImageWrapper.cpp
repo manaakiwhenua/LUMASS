@@ -39,11 +39,14 @@
 #include "otbGDALRATImageIO.h"
 #include "itkNMCostDistanceBufferImageFilter.h"
 #include "otbStreamingRATImageFileWriter.h"
-#include "otbRasdamanImageReader.h"
 #include "otbImageFileWriter.h"
 #include "otbImageFileReader.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 
+
+#ifdef BUILD_RASSUPPORT
+	#include "otbRasdamanImageReader.h"
+#endif
 
 template <class InPixelType, unsigned int Dimension>
 class NMCostDistanceBufferImageWrapper_Internal
@@ -183,7 +186,7 @@ public:
 		QString fileName = p->mInputImageFileName.at(pos);
 		if (fileName.isEmpty())
 		{
-			NMErr(ctx, << "Please provide an input image file name!");
+			NMErr("CostDistanceInternal", << "Please provide an input image file name!");
 			return;
 		}
 		bool bInRas = false;
@@ -212,13 +215,13 @@ public:
 			out = p->mOutputImageFileName.at(pos);
 			if (out.isEmpty())
 			{
-				NMErr(ctx, << "Please provide an output image file name!");
+				NMErr("CostDistanceInternal", << "Please provide an output image file name!");
 				return;
 			}
 		}
 		else
 		{
-			NMErr(ctx, << "Please provide an output image file name!");
+			NMErr("CostDistanceInternal", << "Please provide an output image file name!");
 			return;
 		}
 		bool bOutRas = false;
@@ -226,12 +229,13 @@ public:
 			bOutRas = true;
 
 
+#ifdef BUILD_RASSUPPORT
 		RasdamanConnector* rcon = 0;
 		if (bOutRas || bInRas || bCostRas)
 		{
 			if (p->mRasConnector == 0)
 			{
-				NMErr(ctx, << "no valid RasdamanConnector object!");
+				NMErr("CostDistanceInternal", << "no valid RasdamanConnector object!");
 				return;
 			}
 			else
@@ -242,7 +246,6 @@ public:
 		}
 
 
-#ifdef BUILD_RASSUPPORT
 		typename RasReaderType::Pointer rasreader;
 		typename RasReaderType::Pointer rascostreader;
 		typename RasOutReaderType::Pointer rasoutreader;
@@ -266,7 +269,7 @@ public:
 			inrio = otb::GDALRATImageIO::New();
 			inrio->SetRATSupport(true);
 			reader->SetFileName(fileName.toStdString().c_str());
-			reader->SetImageIO(inrio);
+			reader->SetImageIO(dynamic_cast<otb::ImageIOBase*>(inrio.GetPointer()));
 		}
 
 
@@ -284,7 +287,7 @@ public:
 		{
 			tmpOutReader = TmpOutReaderType::New();
 			tmpOutGIO = otb::GDALRATImageIO::New();
-			tmpOutReader->SetImageIO(tmpOutGIO);
+			tmpOutReader->SetImageIO(dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
 		}
 
 
@@ -303,7 +306,7 @@ public:
 		else
 		{
 			outgio = otb::GDALRATImageIO::New();
-			writer->SetImageIO(outgio);
+			writer->SetImageIO(dynamic_cast<otb::ImageIOBase*>(outgio.GetPointer()));
 		}
 		writer->SetNumberOfDivisionsStrippedStreaming(1);
 
@@ -446,7 +449,8 @@ public:
     			if (!bOutRas)
 	    		{
 	    			tmpOutReader->SetFileName(out.toStdString().c_str());
-    				tmpOutReader->SetImageIO(tmpOutGIO);
+    				tmpOutReader->SetImageIO(
+    						dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
     				tmpOutReader->GetOutput()->SetRequestedRegion(pr);
     	    		tmpOutReader->Update();
 
@@ -517,7 +521,8 @@ public:
 			if (!bOutRas)
     		{
     			tmpOutReader->SetFileName(out.toStdString().c_str());
-				tmpOutReader->SetImageIO(tmpOutGIO);
+				tmpOutReader->SetImageIO(
+						dynamic_cast<otb::ImageIOBase*>(tmpOutGIO.GetPointer()));
 				tmpOutReader->GetOutput()->SetRequestedRegion(pr);
 	    		tmpOutReader->Update();
 
@@ -576,8 +581,8 @@ NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* pare
 {
 	this->setParent(parent);
 	this->setObjectName("NMCostDistanceBufferImageWrapper");
-	this->mInputComponentType = itk::ImageIOBase::INT;
-	this->mOutputComponentType = itk::ImageIOBase::DOUBLE;
+	this->mInputComponentType = otb::ImageIOBase::INT;
+	this->mOutputComponentType = otb::ImageIOBase::DOUBLE;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 	this->mParamPos = 0;
 	this->mbRasMode = false;
@@ -623,6 +628,7 @@ NMCostDistanceBufferImageWrapper::update()
 		break;
 	}
 
+	this->mMTime = QDateTime::currentDateTimeUtc();
 	this->mParamPos = oldParamPos + 1;
 }
 

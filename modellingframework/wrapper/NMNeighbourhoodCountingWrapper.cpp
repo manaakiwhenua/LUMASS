@@ -144,8 +144,8 @@ NMNeighbourhoodCountingWrapper::NMNeighbourhoodCountingWrapper(QObject* parent)
 	this->setParent(parent);
 	this->ctx = "NMNeighbourhoodCountingWrapper";
 
-	this->mInputComponentType = itk::ImageIOBase::SHORT;
-	this->mOutputComponentType = itk::ImageIOBase::SHORT;
+	this->mInputComponentType = otb::ImageIOBase::SHORT;
+	this->mOutputComponentType = otb::ImageIOBase::SHORT;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 	this->mParamPos = 0;
 }
@@ -163,34 +163,34 @@ NMNeighbourhoodCountingWrapper::internalSetTestValue(void)
 
 	switch (this->mInputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:                                               \
+	case otb::ImageIOBase::UCHAR:                                               \
 		outputTypeSwitch( unsigned char, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::CHAR:                                                \
+	case otb::ImageIOBase::CHAR:                                                \
 		outputTypeSwitch( char, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::USHORT:                                              \
+	case otb::ImageIOBase::USHORT:                                              \
 		outputTypeSwitch( unsigned short, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                        \
 		break;                                                                  \
-	case itk::ImageIOBase::SHORT:                                               \
+	case otb::ImageIOBase::SHORT:                                               \
 		outputTypeSwitch( short, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::UINT:                                                \
+	case otb::ImageIOBase::UINT:                                                \
 		outputTypeSwitch( unsigned int, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                          \
 		break;                                                                  \
-	case itk::ImageIOBase::INT:                                                 \
+	case otb::ImageIOBase::INT:                                                 \
 		outputTypeSwitch( int, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                                   \
 		break;                                                                  \
-	case itk::ImageIOBase::ULONG:                                               \
+	case otb::ImageIOBase::ULONG:                                               \
 		outputTypeSwitch( unsigned long, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::LONG:                                                \
+	case otb::ImageIOBase::LONG:                                                \
 		outputTypeSwitch( long, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::FLOAT:                                               \
+	case otb::ImageIOBase::FLOAT:                                               \
 		outputTypeSwitch( float, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::DOUBLE:                                              \
+	case otb::ImageIOBase::DOUBLE:                                              \
 		outputTypeSwitch( double, callSetInternalTestValue, NMNeighbourhoodCountingWrapper_Internal );                                                \
 		break;																	\
 	default:
@@ -211,34 +211,34 @@ NMNeighbourhoodCountingWrapper::internalSetRadius(void)
 
 	switch (this->mInputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:                                               \
+	case otb::ImageIOBase::UCHAR:                                               \
 		outputTypeSwitch( unsigned char, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::CHAR:                                                \
+	case otb::ImageIOBase::CHAR:                                                \
 		outputTypeSwitch( char, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::USHORT:                                              \
+	case otb::ImageIOBase::USHORT:                                              \
 		outputTypeSwitch( unsigned short, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                        \
 		break;                                                                  \
-	case itk::ImageIOBase::SHORT:                                               \
+	case otb::ImageIOBase::SHORT:                                               \
 		outputTypeSwitch( short, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::UINT:                                                \
+	case otb::ImageIOBase::UINT:                                                \
 		outputTypeSwitch( unsigned int, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                          \
 		break;                                                                  \
-	case itk::ImageIOBase::INT:                                                 \
+	case otb::ImageIOBase::INT:                                                 \
 		outputTypeSwitch( int, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                                   \
 		break;                                                                  \
-	case itk::ImageIOBase::ULONG:                                               \
+	case otb::ImageIOBase::ULONG:                                               \
 		outputTypeSwitch( unsigned long, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::LONG:                                                \
+	case otb::ImageIOBase::LONG:                                                \
 		outputTypeSwitch( long, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::FLOAT:                                               \
+	case otb::ImageIOBase::FLOAT:                                               \
 		outputTypeSwitch( float, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::DOUBLE:                                              \
+	case otb::ImageIOBase::DOUBLE:                                              \
 		outputTypeSwitch( double, callSetInternalRadius, NMNeighbourhoodCountingWrapper_Internal );                                                \
 		break;																	\
 	default:

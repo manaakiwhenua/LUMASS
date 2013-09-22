@@ -39,7 +39,7 @@
 
 
 #ifdef BUILD_RASSUPPORT
-	#include "RasdamanConnector.h"
+	#include "RasdamanConnector.hh"
 	#include "NMRasdamanConnectorWrapper.h"
 #endif
 
@@ -50,16 +50,16 @@ class NMCostDistanceBufferImageWrapper: public NMProcess
 {
 	Q_OBJECT
 	//Q_PROPERTY(int MemoryMax READ getMemoryMax WRITE setMemoryMax)
-	Q_PROPERTY(QStringList InputImageFileName READ getInputImageFileName WRITE setInputImageFileName)
-	Q_PROPERTY(QStringList CostImageFileName READ getCostImageFileName WRITE setCostImageFileName)
-	Q_PROPERTY(QStringList OutputImageFileName READ getOutputImageFileName WRITE setOutputImageFileName)
-	Q_PROPERTY(QList<QStringList> ObjectValueList READ getObjectValueList WRITE setObjectValueList)
-	Q_PROPERTY(QStringList MaxDistance READ getMaxDistance WRITE setMaxDistance)
-	Q_PROPERTY(bool UseImageSpacing READ getUseImageSpacing WRITE setUseImageSpacing)
-	Q_PROPERTY(bool CreateBuffer READ getCreateBuffer WRITE setCreateBuffer)
-	Q_PROPERTY(QStringList BufferZoneIndicator READ getBufferZoneIndicator WRITE setBufferZoneIndicator)
+	Q_PROPERTY(QStringList InputImageFileName READ getInputImageFileName WRITE setInputImageFileName);
+	Q_PROPERTY(QStringList CostImageFileName READ getCostImageFileName WRITE setCostImageFileName);
+	Q_PROPERTY(QStringList OutputImageFileName READ getOutputImageFileName WRITE setOutputImageFileName);
+	Q_PROPERTY(QList<QStringList> ObjectValueList READ getObjectValueList WRITE setObjectValueList);
+	Q_PROPERTY(QStringList MaxDistance READ getMaxDistance WRITE setMaxDistance);
+	Q_PROPERTY(bool UseImageSpacing READ getUseImageSpacing WRITE setUseImageSpacing);
+	Q_PROPERTY(bool CreateBuffer READ getCreateBuffer WRITE setCreateBuffer);
+	Q_PROPERTY(QStringList BufferZoneIndicator READ getBufferZoneIndicator WRITE setBufferZoneIndicator);
 #ifdef BUILD_RASSUPPORT
-	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
+	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector);
 #endif
 
 

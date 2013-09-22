@@ -32,7 +32,7 @@
 #include "NMItkDataObjectWrapper.h"
 #include "NMOtbAttributeTableWrapper.h"
 
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 
 /**
   * class NMRATBandMathImageFilterWrapper
@@ -73,10 +73,10 @@ class NMRATBandMathImageFilterWrapper : public NMProcess
 
 public:
 //	NMPropertyGetSet( InputImgVarNames, QList<QStringList> )
-	NMPropertyGetSet( InputTables, QList<QStringList> )
-	NMPropertyGetSet( InputTableVarNames, QList<QList<QStringList> > )
-	NMPropertyGetSet( MapExpressions, QStringList )
-	NMPropertyGetSet( NumExpressions, QStringList )
+	NMPropertyGetSet( InputTables, QList<QStringList> );
+	NMPropertyGetSet( InputTableVarNames, QList<QList<QStringList> > );
+	NMPropertyGetSet( MapExpressions, QStringList );
+	NMPropertyGetSet( NumExpressions, QStringList );
 
 signals:
 //	void InputImgVarNamesChanged(QList<QStringList>);
@@ -95,7 +95,7 @@ public:
     void setNthInput(unsigned int numInput,
     		NMItkDataObjectWrapper* imgWrapper);
     void setNthAttributeTable(unsigned int idx,
-    		otb::AttributeTable* table,
+    		otb::AttributeTable::Pointer table,
     		std::vector<std::string> tableColumns);
 
 protected:

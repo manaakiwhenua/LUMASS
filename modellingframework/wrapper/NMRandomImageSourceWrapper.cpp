@@ -158,8 +158,8 @@ NMRandomImageSourceWrapper::NMRandomImageSourceWrapper(QObject* parent)
 	this->ctx = "NMRandomImageSourceWrapper";
 	this->setObjectName("NMRandomImageSourceWrapper");
 	this->mbIsInitialised = false;
-	this->mInputComponentType = itk::ImageIOBase::FLOAT;
-	this->mOutputComponentType = itk::ImageIOBase::FLOAT;
+	this->mInputComponentType = otb::ImageIOBase::FLOAT;
+	this->mOutputComponentType = otb::ImageIOBase::FLOAT;
 	this->mInputNumDimensions = 2;
 	this->mOutputNumDimensions = 2;
 	this->mInputNumBands = 1;

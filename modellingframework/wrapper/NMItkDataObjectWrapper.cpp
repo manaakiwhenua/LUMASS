@@ -43,7 +43,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject *parent, itk::DataObject* obj,
-		itk::ImageIOBase::IOComponentType type, unsigned int numDims, unsigned int numBands)
+		otb::ImageIOBase::IOComponentType type, unsigned int numDims, unsigned int numBands)
 {
 	this->setParent(parent);
 	this->mDataObject = obj;
@@ -79,41 +79,41 @@ NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectW
 	return *this;
 }
 
-itk::ImageIOBase::IOComponentType NMItkDataObjectWrapper::getItkComponentType()
+otb::ImageIOBase::IOComponentType NMItkDataObjectWrapper::getItkComponentType()
 {
-	itk::ImageIOBase::IOComponentType type;
+	otb::ImageIOBase::IOComponentType type;
 	switch (this->mNMComponentType)
 	{
-		case NM_UCHAR: type = itk::ImageIOBase::UCHAR; break;
-		case NM_CHAR: type = itk::ImageIOBase::CHAR; break;
-		case NM_USHORT: type = itk::ImageIOBase::USHORT; break;
-		case NM_SHORT: type = itk::ImageIOBase::SHORT; break;
-		case NM_UINT: type = itk::ImageIOBase::UINT; break;
-		case NM_INT: type = itk::ImageIOBase::INT; break;
-		case NM_ULONG: type = itk::ImageIOBase::ULONG; break;
-		case NM_LONG: type = itk::ImageIOBase::LONG; break;
-		case NM_FLOAT: type = itk::ImageIOBase::FLOAT; break;
-		case NM_DOUBLE: type = itk::ImageIOBase::DOUBLE; break;
-		default: type = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
+		case NM_UCHAR: type = otb::ImageIOBase::UCHAR; break;
+		case NM_CHAR: type = otb::ImageIOBase::CHAR; break;
+		case NM_USHORT: type = otb::ImageIOBase::USHORT; break;
+		case NM_SHORT: type = otb::ImageIOBase::SHORT; break;
+		case NM_UINT: type = otb::ImageIOBase::UINT; break;
+		case NM_INT: type = otb::ImageIOBase::INT; break;
+		case NM_ULONG: type = otb::ImageIOBase::ULONG; break;
+		case NM_LONG: type = otb::ImageIOBase::LONG; break;
+		case NM_FLOAT: type = otb::ImageIOBase::FLOAT; break;
+		case NM_DOUBLE: type = otb::ImageIOBase::DOUBLE; break;
+		default: type = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
 	}
 
 	return type;
 }
 
-void NMItkDataObjectWrapper::setItkComponentType(itk::ImageIOBase::IOComponentType type)
+void NMItkDataObjectWrapper::setItkComponentType(otb::ImageIOBase::IOComponentType type)
 {
 	switch (type)
 	{
-		case itk::ImageIOBase::UCHAR	: this->mNMComponentType = NM_UCHAR	; break;
-		case itk::ImageIOBase::CHAR		: this->mNMComponentType = NM_CHAR	; break;
-		case itk::ImageIOBase::USHORT	: this->mNMComponentType = NM_USHORT; break;
-		case itk::ImageIOBase::SHORT	: this->mNMComponentType = NM_SHORT	; break;
-		case itk::ImageIOBase::UINT		: this->mNMComponentType = NM_UINT	; break;
-		case itk::ImageIOBase::INT	 : this->mNMComponentType =	NM_INT	;	break;
-		case itk::ImageIOBase::ULONG : this->mNMComponentType =	NM_ULONG;    break;
-		case itk::ImageIOBase::LONG	 : this->mNMComponentType =	NM_LONG	;   break;
-		case itk::ImageIOBase::FLOAT : this->mNMComponentType =	NM_FLOAT; break;
-		case itk::ImageIOBase::DOUBLE: this->mNMComponentType =	NM_DOUBLE;	break;
+		case otb::ImageIOBase::UCHAR	: this->mNMComponentType = NM_UCHAR	; break;
+		case otb::ImageIOBase::CHAR		: this->mNMComponentType = NM_CHAR	; break;
+		case otb::ImageIOBase::USHORT	: this->mNMComponentType = NM_USHORT; break;
+		case otb::ImageIOBase::SHORT	: this->mNMComponentType = NM_SHORT	; break;
+		case otb::ImageIOBase::UINT		: this->mNMComponentType = NM_UINT	; break;
+		case otb::ImageIOBase::INT	 : this->mNMComponentType =	NM_INT	;	break;
+		case otb::ImageIOBase::ULONG : this->mNMComponentType =	NM_ULONG;    break;
+		case otb::ImageIOBase::LONG	 : this->mNMComponentType =	NM_LONG	;   break;
+		case otb::ImageIOBase::FLOAT : this->mNMComponentType =	NM_FLOAT; break;
+		case otb::ImageIOBase::DOUBLE: this->mNMComponentType =	NM_DOUBLE;	break;
 		default: this->mNMComponentType = NM_UNKNOWN; break;
 	}
 }

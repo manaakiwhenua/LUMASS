@@ -188,40 +188,40 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 	bool connect = true;
 	switch(this->mInputComponentType)
 	{
-	case itk::ImageIOBase::UCHAR:
+	case otb::ImageIOBase::UCHAR:
 		ConnectPipelines( unsigned char );
 		break;
-	case itk::ImageIOBase::CHAR:
+	case otb::ImageIOBase::CHAR:
 		ConnectPipelines( char );
 		break;
-	case itk::ImageIOBase::USHORT:
+	case otb::ImageIOBase::USHORT:
 		ConnectPipelines( unsigned short );
 		break;
-	case itk::ImageIOBase::SHORT:
+	case otb::ImageIOBase::SHORT:
 		ConnectPipelines( short );
 		break;
-	case itk::ImageIOBase::UINT:
+	case otb::ImageIOBase::UINT:
 		ConnectPipelines( unsigned int );
 		break;
-	case itk::ImageIOBase::INT:
+	case otb::ImageIOBase::INT:
 		ConnectPipelines( int );
 		break;
-	case itk::ImageIOBase::ULONG:
+	case otb::ImageIOBase::ULONG:
 		ConnectPipelines( unsigned long );
 		break;
-	case itk::ImageIOBase::LONG:
+	case otb::ImageIOBase::LONG:
 		ConnectPipelines( long );
 		break;
-	case itk::ImageIOBase::FLOAT:
+	case otb::ImageIOBase::FLOAT:
 		ConnectPipelines( float );
 		break;
-	case itk::ImageIOBase::DOUBLE:
+	case otb::ImageIOBase::DOUBLE:
 		ConnectPipelines( double );
 		break;
 	default:
 		NMErr(ctxNMItk2VtkConnector,
 				<< "UNKNOWN DATA TYPE, couldn't connect pipelines!");
-		this->mInputComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+		this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 		break;
 	}
 

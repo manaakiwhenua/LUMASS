@@ -36,7 +36,7 @@
 #include "vtkImageImport.h"
 #include "vtkSmartPointer.h"
 #include "itkDataObject.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 #include "itkImageBase.h"
 #include "itkVTKImageExportBase.h"
 #include "vtkImageChangeInformation.h"

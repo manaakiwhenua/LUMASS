@@ -31,13 +31,18 @@
 #endif
 #endif
 
-#ifdef RMANDEBUG
-	int indentLevel;
-	bool debugOutput;
-#endif
+//#ifdef RMANDEBUG
+//	int indentLevel;
+//	bool debugOutput;
+//#endif
 
 
 #ifdef DEBUG
+	// required for rasdaman debug output
+	int indentLevel;
+	bool debugOutput;
+
+	// required for LUMASS debug output
 	int nmlog::nmindent = 1;
 #endif
 

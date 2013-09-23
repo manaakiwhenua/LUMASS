@@ -31,14 +31,15 @@
 #include <QString>
 #include <QStringList>
 
-#include "NMTableView.h"
+//#include "NMTableView.h"
 
 #include "vtkType.h"
 #include "vtkSmartPointer.h"
 #include "vtkTable.h"
-#include "vtkFunctionParser.h"
+//#include "vtkFunctionParser.h"
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
+#include "vtkStringArray.h"
 
 #include "otbMultiParser.h"
 
@@ -72,8 +73,7 @@ public:
 	bool setRowFilterModeOn(QString filterColumn);
 	bool setResultColumn(const QString& name);
 	void setFunction(const QString& function);
-	bool setSelectionModeOn(const QString& selColumn,
-			NMTableView* tabView);
+	bool setSelectionModeOn(const QString& selColumn); //, NMTableView* tabView);
 
 	bool calculate(void);
 
@@ -96,7 +96,7 @@ protected:
 	bool mbRowFilter;
 	vtkDataArray* mFilterArray;
 
-	NMTableView* mTabView;
+	//NMTableView* mTabView;
 	bool mSelectionMode;
 	long mNumSelRecs;
 	QStringList mslStrTerms;

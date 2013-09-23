@@ -24,15 +24,11 @@
 
 #include "NMTableCalculator.h"
 
-#include <QMessageBox>
 #include <QString>
 #include <QStack>
-#include "vtkTable.h"
-#include "vtkStringArray.h"
-#include "vtkAbstractArray.h"
-#include "vtkDataArray.h"
 #include "vtkVariant.h"
 #include "vtkStdString.h"
+#include "vtkDoubleArray.h"
 #include "itkExceptionObject.h"
 
 
@@ -52,7 +48,7 @@ void NMTableCalculator::initCalculator()
 {
 	//this->mParser = vtkSmartPointer<vtkFunctionParser>::New();
 	this->mParser = otb::MultiParser::New();
-	this->mTabView = 0;
+	//this->mTabView = 0;
 	this->mFunction.clear();
 	this->mResultColumn.clear();
 	this->mResultColumnType = VTK_STRING;
@@ -108,21 +104,20 @@ int NMTableCalculator::getColumnIndex(QString name)
 	return idx;
 }
 
-bool NMTableCalculator::setSelectionModeOn(const QString& selColumn,
-		NMTableView* tabView)
+bool NMTableCalculator::setSelectionModeOn(const QString& selColumn)//,	NMTableView* tabView)
 {
 	NMDebugCtx(ctxTabCalc, << "...");
-	if (!this->setResultColumn(selColumn) || tabView == 0)
+	if (!this->setResultColumn(selColumn))// || tabView == 0)
 	{
 		NMErr(ctxTabCalc, << "Invalid selection column and/or NMTableView!");
 		return false;
 	}
 
 	this->mSelectionMode = true;
-	this->mTabView = tabView;
+	//this->mTabView = tabView;
 
 	NMDebugAI(<< "selection mode on? " << this->mSelectionMode << endl);
-	NMDebugAI(<< "table view set?    " << this->mTabView << endl);
+	//NMDebugAI(<< "table view set?    " << this->mTabView << endl);
 
 	NMDebugCtx(ctxTabCalc, << "done!");
 	return true;
@@ -569,13 +564,13 @@ void NMTableCalculator::doNumericCalcSelection()
 		}
 		catch(itk::ExceptionObject& err)
 		{
-			NMDebugAI(<< res << "oops - functions parser threw an exception!" << endl);
-			QMessageBox msgBox;
-			msgBox.setText(tr("Invalid Where Clause!\nPlease check syntax and try again."));
-			msgBox.setIcon(QMessageBox::Critical);
-			msgBox.exec();
+			//NMDebugAI(<< res << "oops - functions parser threw an exception!" << endl);
+			//QMessageBox msgBox;
+			//msgBox.setText(tr("Invalid Where Clause!\nPlease check syntax and try again."));
+			//msgBox.setIcon(QMessageBox::Critical);
+			//msgBox.exec();
 
-			NMErr(ctxTabCalc, << "Invalid expression!");
+			NMErr(ctxTabCalc, << "Invalid expression detected!");
 			NMDebugCtx(ctxTabCalc, << "done!");
 
 			throw err;
@@ -587,13 +582,13 @@ void NMTableCalculator::doNumericCalcSelection()
 			if (res != 0)
 			{
 				resAr->SetTuple1(row, 1);
-				this->mTabView->selectRow(row);
+				//this->mTabView->selectRow(row);
 				++this->mNumSelRecs;
 			}
 			else
 			{
 				resAr->SetTuple1(row, 0);
-				this->mTabView->deselectRow(row);
+				//this->mTabView->deselectRow(row);
 			}
 		}
 		else

@@ -49,6 +49,7 @@
     <addaction name="actionSaveAsVectorLayerOGR"/>
     <addaction name="separator"/>
     <addaction name="actionLoad_Layer"/>
+    <addaction name="actionImportRasdamanLayer"/>
     <addaction name="actionLoad_Vector_Layer"/>
     <addaction name="actionImport_3D_Point_Set"/>
     <addaction name="separator"/>
@@ -181,6 +182,11 @@
         </item>
         <item>
          <property name="text">
+          <string>DataBuffer</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>FocalDistanceWeight</string>
          </property>
         </item>
@@ -196,12 +202,12 @@
         </item>
         <item>
          <property name="text">
-          <string>NeighbourCounter</string>
+          <string>MapAlgebra</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>MapAlgebra</string>
+          <string>NeighbourCounter</string>
          </property>
         </item>
         <item>
@@ -407,6 +413,16 @@
   <action name="actionLUMASS">
    <property name="text">
     <string>LUMASS</string>
+   </property>
+  </action>
+  <action name="actionImportRasdamanLayer">
+   <property name="text">
+    <string>Import RasDaMan Layer ...</string>
+   </property>
+  </action>
+  <action name="actionMOSO_batch">
+   <property name="text">
+    <string>MOSO batch ...</string>
    </property>
   </action>
  </widget>

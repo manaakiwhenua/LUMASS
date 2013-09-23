@@ -1,5 +1,5 @@
  /****************************************************************************** 
- * This file has been adopted by Alexander Herzig from the below mentioned
+ * This file has been adapted by Alexander Herzig from the below mentioned
  * original source file. It uses GLU tesselation functions to
  * render non-convex polygons.
  *
@@ -2086,7 +2086,7 @@ int vtkOGRLayerMapper::Draw(vtkRenderer *aren, vtkActor *act)
   // get the transparency 
   tran = prop->GetOpacity();
   
-  // if the primitives are invisable then get out of here 
+  // if the primitives are invisible then get out of here
   if (tran <= 0.0)
     {
     return noAbort;

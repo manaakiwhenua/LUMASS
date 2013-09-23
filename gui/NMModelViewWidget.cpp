@@ -1,5 +1,5 @@
- /*****************************i*************************************************
- * Created by Alexander Herzig nk
+ /******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -39,6 +39,9 @@
 #include "NMProcessFactory.h"
 #include "NMModelComponentFactory.h"
 #include "NMModelSerialiser.h"
+#include "NMDataComponent.h"
+#include "NMSequentialIterComponent.h"
+#include "NMConditionalIterComponent.h"
 
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
@@ -73,11 +76,12 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
  	connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
  			this, SLOT(reportIsModelControllerBusy(bool)));
 
- 	mRootComponent = new NMModelComponent();
+ 	mRootComponent = new NMSequentialIterComponent();
 	mRootComponent->setObjectName("root");
 	mRootComponent->setDescription(
 			"Top level model component managed by the model view widget");
-	this->mModelController->addComponent(mRootComponent);
+	this->mModelController->addComponent(
+			qobject_cast<NMModelComponent*>(mRootComponent));
 	connect(mRootComponent, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
 
 
@@ -217,7 +221,19 @@ NMModelViewWidget::reportIsModelControllerBusy(bool busy)
 	this->mbControllerIsBusy = busy;
 }
 
-void NMModelViewWidget::createAggregateComponent()
+void
+NMModelViewWidget::createSequentialIterComponent()
+{
+	this->createAggregateComponent("NMSequentialIterComponent");
+}
+
+void
+NMModelViewWidget::createConditionalIterComponent()
+{
+	this->createAggregateComponent("NMConditionalIterComponent");
+}
+
+void NMModelViewWidget::createAggregateComponent(const QString& compType)
 {
 	NMDebugCtx(ctx, << "...");
 
@@ -234,7 +250,7 @@ void NMModelViewWidget::createAggregateComponent()
 
 	// get the host component of the selected items
 	NMDebugAI(<< "selected items ..." << std::endl);
-	NMModelComponent* host = 0;
+	NMIterableComponent* host = 0;
 	unsigned int compCounter = 0;
 	while(it.hasNext())
 	{
@@ -300,7 +316,9 @@ void NMModelViewWidget::createAggregateComponent()
 	}
 
 	// now we create a new ModelComponent, and add the selected components
-	NMModelComponent* aggrComp = new NMModelComponent();
+	NMIterableComponent* aggrComp =
+			qobject_cast<NMIterableComponent*>(
+					NMModelComponentFactory::instance().createModelComponent(compType));
 	aggrComp->setObjectName("AggrComp");
 
 	// set the new aggregated component on time level host_level + 1
@@ -324,7 +342,9 @@ void NMModelViewWidget::createAggregateComponent()
 
 	// now we add the new aggregate component to the identified host
 	// component of the model
-	QString newAggrItemName = this->mModelController->addComponent(aggrComp, host);
+	QString newAggrItemName = this->mModelController->addComponent(
+			qobject_cast<NMModelComponent*>(aggrComp),
+			qobject_cast<NMModelComponent*>(host));
 
 	if (this->mOpenEditors.contains(host))
 		this->mOpenEditors.value(host)->update();
@@ -377,11 +397,17 @@ void NMModelViewWidget::initItemContextMenu()
 	resetComp->setEnabled(false);
 	this->mActionMap.insert("Reset", resetComp);
 
-	QAction* groupItems = new QAction(this->mItemContextMenu);
-	QString groupItemText = "Group Components";
-	groupItems->setEnabled(false);
-	groupItems->setText(groupItemText);
-	this->mActionMap.insert(groupItemText, groupItems);
+	QAction* groupSeqItems = new QAction(this->mItemContextMenu);
+	QString groupSeqItemText = "Create Sequential Group";
+	groupSeqItems->setEnabled(false);
+	groupSeqItems->setText(groupSeqItemText);
+	this->mActionMap.insert(groupSeqItemText, groupSeqItems);
+
+	QAction* groupCondItems = new QAction(this->mItemContextMenu);
+	QString groupCondItemText = "Create Conditional Group";
+	groupCondItems->setEnabled(false);
+	groupCondItems->setText(groupCondItemText);
+	this->mActionMap.insert(groupCondItemText, groupCondItems);
 
 	QAction* ungroupItems = new QAction(this->mItemContextMenu);
 	QString ungroupItemsText = "Ungroup Components";
@@ -405,7 +431,8 @@ void NMModelViewWidget::initItemContextMenu()
 	this->mItemContextMenu->addAction(runComp);
 	this->mItemContextMenu->addAction(resetComp);
 	this->mItemContextMenu->addSeparator();
-	this->mItemContextMenu->addAction(groupItems);
+	this->mItemContextMenu->addAction(groupSeqItems);
+	this->mItemContextMenu->addAction(groupCondItems);
 	this->mItemContextMenu->addAction(ungroupItems);
 	this->mItemContextMenu->addSeparator();
 	this->mItemContextMenu->addAction(delComp);
@@ -416,7 +443,8 @@ void NMModelViewWidget::initItemContextMenu()
 	connect(runComp, SIGNAL(triggered()), this, SLOT(executeModel()));
 	connect(resetComp, SIGNAL(triggered()), this, SLOT(resetModel()));
 	connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
-	connect(groupItems, SIGNAL(triggered()), this, SLOT(createAggregateComponent()));
+	connect(groupSeqItems, SIGNAL(triggered()), this, SLOT(createSequentialIterComponent()));
+	connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
 	connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
 	connect(loadComp, SIGNAL(triggered()), this, SLOT(loadItems()));
@@ -450,7 +478,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		int levelIndi = this->shareLevel(selection);
 		if (levelIndi >= 0)
 		{
-			this->mActionMap.value("Group Components")->setEnabled(true);
+			this->mActionMap.value("Create Sequential Group")->setEnabled(true);
+			//this->mActionMap.value("Create Conditional Group")->setEnabled(true);
 			if (levelIndi > 0)
 				this->mActionMap.value("Ungroup Components")->setEnabled(true);
 			else
@@ -458,13 +487,15 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		}
 		else
 		{
-			this->mActionMap.value("Group Components")->setEnabled(false);
+			this->mActionMap.value("Create Sequential Group")->setEnabled(false);
+			this->mActionMap.value("Create Conditional Group")->setEnabled(false);
 			this->mActionMap.value("Ungroup Components")->setEnabled(false);
 		}
 	}
 	else
 	{
-		this->mActionMap.value("Group Components")->setEnabled(false);
+		this->mActionMap.value("Create Sequential Group")->setEnabled(false);
+		this->mActionMap.value("Create Conditional Group")->setEnabled(false);
 		this->mActionMap.value("Ungroup Components")->setEnabled(false);
 	}
 
@@ -508,8 +539,10 @@ NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
 		NMModelComponent* tcomp = mModelController->getComponent(target->getTitle());
 		if (tcomp != 0)
 		{
-			if (tcomp->getProcess() != 0)
-				tcomp->getProcess()->removeInputComponent(procItem->getTitle());
+			NMIterableComponent* itComp =
+					qobject_cast<NMIterableComponent*>(tcomp);
+			if (itComp != 0 && itComp->getProcess() != 0)
+				itComp->getProcess()->removeInputComponent(procItem->getTitle());
 		}
 
 		mModelScene->removeItem(link);
@@ -543,7 +576,7 @@ NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
 		NMDebugCtx(ctx, << "done!");
 		return;
 	}
-	NMModelComponent* hostComp = procComp->getHostComponent();
+	NMIterableComponent* hostComp = procComp->getHostComponent();
 
 	// finally remove the component itself
 	mModelScene->removeItem(procItem);
@@ -561,15 +594,22 @@ NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
 
 void NMModelViewWidget::getSubComps(NMModelComponent* comp, QStringList& subs)
 {
-	NMModelComponent* ic = comp->getInternalStartComponent();
+	NMIterableComponent* itComp =
+			qobject_cast<NMIterableComponent*>(comp);
+	if (itComp == 0)
+		return;
+
+	NMModelComponent* ic = itComp->getInternalStartComponent();
 	while(ic != 0)
 	{
 		if (!subs.contains(ic->objectName()))
 		{
 			subs.push_back(ic->objectName());
-			if (ic->getProcess() == 0)
-				this->getSubComps(ic, subs);
-			ic = comp->getNextInternalComponent();
+			NMIterableComponent* itic =
+					qobject_cast<NMIterableComponent*>(ic);
+			if (itic != 0 && itic->getProcess() == 0)
+				this->getSubComps(itic, subs);
+			ic = itComp->getNextInternalComponent();
 		}
 	}
 }
@@ -602,8 +642,10 @@ void NMModelViewWidget::saveItems(void)
 			if (!savecomps.contains(comp->objectName()))
 			{
 				savecomps.push_back(comp->objectName());
-				if (comp->getProcess() == 0)
-					this->getSubComps(comp, savecomps);
+				NMIterableComponent* itComp =
+						qobject_cast<NMIterableComponent*>(comp);
+				if (itComp != 0 && itComp->getProcess() == 0)
+					this->getSubComps(itComp, savecomps);
 			}
 		}
 	}
@@ -782,12 +824,14 @@ void NMModelViewWidget::loadItems(void)
 
 	NMDebugAI(<< "reading model view file ..." << endl);
 	NMDebugAI(<< "---------------------------" << endl);
+	NMDataComponent* dataComp = 0;
+	NMIterableComponent* itComp = 0;
 	NMProcess* procComp;
 	while(!lmv.atEnd())
 	{
 		qint32 readType;
 		lmv >> readType;
-		NMDebugAI(<< "item type is: " << (int)readType << endl);
+		//NMDebugAI(<< "item type is: " << (int)readType << endl);
 
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;
@@ -801,16 +845,32 @@ void NMModelViewWidget::loadItems(void)
 					QString itemTitle = nameRegister.value(pi->getTitle());
 					pi->setTitle(itemTitle);
 
-					// establish across-thread-communication between GUI item and process component
-					procComp = this->mModelController->getComponent(itemTitle)->getProcess();
-					if (procComp == 0)
+					if (!pi->getIsDataBufferItem())
 					{
-						NMErr(ctx, << "Couldn't find the process component for item '"
-								<< itemTitle.toStdString() << "'!");
+						// establish across-thread-communication between GUI item and process component
+						itComp = qobject_cast<NMIterableComponent*>(
+								this->mModelController->getComponent(itemTitle));
+
+						if (itComp != 0 && itComp->getProcess() == 0)
+						{
+							NMErr(ctx, << "Couldn't find the process component for item '"
+									<< itemTitle.toStdString() << "'!");
+						}
+						pi->setDescription(itComp->getDescription());
+
+						procComp = itComp->getProcess();
+						this->connectProcessItem(procComp, pi);
 					}
+					else
+					{
+						NMModelComponent* mcomp = this->mModelController->getComponent(itemTitle);
+						connect(mcomp, SIGNAL(ComponentDescriptionChanged(const QString &)),
+								pi, SLOT(updateDescription(const QString &)));
+						pi->setIsDataBufferItem(true);
+						pi->setDescription(mcomp->getDescription());
 
-					this->connectProcessItem(procComp, pi);
-
+					}
+					pi->setFlag(QGraphicsItem::ItemIsMovable, true);
 					this->mModelScene->addItem(pi);
 				}
 				break;
@@ -960,7 +1020,7 @@ int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 {
 	// check, whether all items belong to the same host
 	bool allLevel = true;
-	NMModelComponent* host = 0;
+	NMIterableComponent* host = 0;
 	NMModelComponent* comp = 0;
 	int cnt = 0;
 	foreach(QGraphicsItem* item, list)
@@ -1009,7 +1069,7 @@ void NMModelViewWidget::ungroupComponents()
 		NMDebugCtx(ctx, << "done!");
 		return;
 	}
-	NMModelComponent* host = comp->getHostComponent();
+	NMIterableComponent* host = comp->getHostComponent();
 	if (host == 0)
 	{
 		NMDebugAI(<< "components haven't got a host!" << endl);
@@ -1018,7 +1078,7 @@ void NMModelViewWidget::ungroupComponents()
 	}
 
 	// get the new host for the components to be ungrouped
-	NMModelComponent* hosthost = host->getHostComponent();
+	NMIterableComponent* hosthost = host->getHostComponent();
 	if (hosthost == 0)
 	{
 		NMDebugAI(<< "components haven't got a host!" << endl);
@@ -1259,7 +1319,12 @@ NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
 	if (targetComp == 0)
 		return;
 
-	NMProcess* proc = targetComp->getProcess();
+	NMIterableComponent* itComp =
+			qobject_cast<NMIterableComponent*>(targetComp);
+	if (itComp == 0)
+		return;
+
+	NMProcess* proc = itComp->getProcess();
 	if (proc == 0)
 		return;
 
@@ -1330,8 +1395,16 @@ void NMModelViewWidget::deleteEmptyComponent(NMModelComponent* comp)
 {
 	NMDebugCtx(ctx, << "...");
 
-	if (comp != 0 && comp->countComponents() == 0 &&
-			comp->objectName().compare("root") != 0)
+	NMIterableComponent* itComp =
+			qobject_cast<NMIterableComponent*>(comp);
+	if (itComp == 0)
+	{
+		NMDebugCtx(ctx, << "done!");
+		return;
+	}
+
+	if (itComp->countComponents() == 0 &&
+			itComp->objectName().compare("root") != 0)
 	{
 		QGraphicsItem* item = mModelScene->getComponentItem(comp->objectName());
 		if (item != 0)
@@ -1394,6 +1467,11 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
 
 	connect(this->mModelController, SIGNAL(signalExecutionStopped(const QString &)),
 			procItem, SLOT(reportExecutionStopped(const QString &)));
+
+	// connect some host-component signals
+	NMModelComponent* comp = qobject_cast<NMModelComponent*>(proc->parent());
+	connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)), procItem,
+			SLOT(updateDescription(const QString &)));
 }
 
 void
@@ -1401,8 +1479,22 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		const QString& procName, QPointF scenePos)
 {
 	NMDebugCtx(ctx, << "...");
+
 	QString compName;
+	QString tname = procName;
+	unsigned int cnt = 1;
+	while (this->mModelController->contains(tname))
+	{
+		tname = QString(tr("%1%2")).arg(procName).arg(cnt);
+		++cnt;
+	}
+	NMDebugAI(<< "finale name of component is '" << tname.toStdString() << "'" << endl);
+
+	NMModelComponent* comp = 0;
+	NMDataComponent* dataComp = 0;
+	NMIterableComponent* itComp = 0;
 	NMProcess* proc = 0;
+
 	if (procName.compare("ImageReader") == 0)
 		proc = NMProcessFactory::instance().createProcess("NMImageReader");
 	else if (procName.compare("MapAlgebra") == 0)
@@ -1417,34 +1509,43 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 			proc = NMProcessFactory::instance().createProcess("NMCostDistanceBufferImageWrapper");
 	else if (procName.compare("FocalDistanceWeight") == 0)
 			proc = NMProcessFactory::instance().createProcess("NMFocalNeighbourhoodDistanceWeightingWrapper");
-
-	if (proc == 0)
+	else if (procName.compare("DataBuffer") == 0)
 	{
-		//this->mModelScene->removeItem(procItem);
+		NMDebugAI(<< "it's gonna be a DataComponent ... " << endl);
+		dataComp = new NMDataComponent();
+		dataComp->setObjectName(tname);
+		comp = qobject_cast<NMModelComponent*>(dataComp);
+		connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)),
+				procItem, SLOT(updateDescription(const QString &)));
+		dataComp->setDescription(tname);
+	}
+
+	if (proc != 0)// && procName.compare("DataBuffer") != 0)
+	{
+		NMDebugAI( << "it's gonna be a SequentialIterComponent ..." << endl);
+		itComp = new NMSequentialIterComponent();
+		itComp->setObjectName(tname);
+		itComp->setProcess(proc);
+		this->connectProcessItem(proc, procItem);
+		comp = qobject_cast<NMModelComponent*>(itComp);
+		itComp->setDescription(tname);
+	}
+	NMDebugAI(<< "and its object name is '" << comp->objectName().toStdString() << "'" << endl);
+
+	if (comp == 0)
+	{
 		return;
 	}
 
-	NMModelComponent* comp = new NMModelComponent();
-	comp->setProcess(proc);
-
-	this->connectProcessItem(proc, procItem);
-
-	QString tname = procName;
-	unsigned int cnt = 1;
-	while (this->mModelController->contains(tname))
-	{
-		tname = QString(tr("%1%2")).arg(procName).arg(cnt);
-		++cnt;
-	}
-	comp->setObjectName(tname);
 	procItem->setTitle(tname);
+	procItem->setDescription(tname);
 
 	// identify the host component, depending on the actual position
 	QGraphicsItem* item = this->mModelScene->itemAt(scenePos);
 	NMProcessComponentItem* clickProcItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 	NMAggregateComponentItem* hostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
 
-	NMModelComponent* host = 0;
+	NMIterableComponent* host = 0;
 	if (item == 0)
 	{
 		host = this->mRootComponent;
@@ -1459,12 +1560,14 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		}
 		else
 		{
-			host = this->componentFromItem(hostItem);
+			host = qobject_cast<NMIterableComponent*>(
+					this->componentFromItem(hostItem));
 		}
 	}
 	else if (hostItem != 0)
 	{
-		host = this->componentFromItem(hostItem);
+		host = qobject_cast<NMIterableComponent*>(
+				this->componentFromItem(hostItem));
 	}
 
 	// set time level of the new process to the time level of the host component
@@ -1475,11 +1578,14 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		this->mModelScene->addItem(procItem);
 	else
 		hostItem->addToGroup(procItem);
-	this->mModelController->addComponent(comp, host);
+	this->mModelController->addComponent(comp,
+			qobject_cast<NMModelComponent*>(host));
 
 
 	NMDebugCtx(ctx, << "added " << compName.toStdString() << " to controller!" << std::endl);
 	this->mModelScene->invalidate();
+	this->mModelView->update();
+
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -1487,6 +1593,9 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 void
 NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 {
+	///ToDo: this nedds to be extended to index-based output (ie
+	//       source support
+
 	NMDebugCtx(ctx, << "...");
 
 	NMModelComponent* src = this->mModelController->getComponent(
@@ -1494,24 +1603,39 @@ NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 	NMModelComponent* target = this->mModelController->getComponent(
 			link->targetItem()->getTitle());
 
-	NMProcess* targetProc = target->getProcess();
-	if (targetProc == 0)
-		return;
+	//NMIterableComponent* itTarget =
+	//		qobject_cast<NMIterableComponent*>(target);
+	//NMDataComponent* dataTarget =
+	//		qobject_cast<NMDataComponent*>(target);
+    //
+	//NMProcess* targetProc = 0;
+	//if (itTarget != 0)
+	//	targetProc = itTarget->getProcess();
 
-	QList<QStringList> inpComps = targetProc->getInputComponents();
-	if (inpComps.count() == 0)
+	if (target != 0) //if (targetProc != 0)
 	{
-		QStringList newlst;
-		newlst.push_back(src->objectName());
-		inpComps.append(newlst);
+		QList<QStringList> inpComps = target->getInputs();
+		if (inpComps.count() == 0)
+		{
+			QStringList newlst;
+			newlst.push_back(src->objectName());
+			inpComps.append(newlst);
+		}
+		else
+		{
+			QStringList lst = inpComps.value(0);
+			lst.push_back(src->objectName());
+			inpComps[0] = lst;
+		}
+		target->setInputs(inpComps);
 	}
-	else
-	{
-		QStringList lst = inpComps.value(0);
-		lst.push_back(src->objectName());
-		inpComps[0] = lst;
-	}
-	targetProc->setInputComponents(inpComps);
+	//else if (dataTarget != 0)
+	//{
+	//	QList<QStringList> inputs = dataTarget->getInputs();
+	//	lst.append(src->objectName());
+    //
+	//	dataTarget->setInputSpec(lst);
+	//}
 
 	// update any potentially opened editors
 	NMEditModelComponentDialog* dlg = 0;

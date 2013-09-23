@@ -193,7 +193,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 		{
 			QMessageBox::information(0, "Invalid user request!",
 					"You cannot create new model components\nwhile a "
-					"model is currently being executed! Please try again later!");
+					"model is being executed! Please try again later!");
 
 			NMErr(ctx, << "You cannot create new model components while there is "
 					     "a model running. Please try again later!");
@@ -204,11 +204,19 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
 		NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
 		procItem->setTitle(dropText);
+		procItem->setDescription(dropText);
 		procItem->setPos(event->scenePos());
-
+		if (dropText.compare("DataBuffer") == 0)
+		{
+			procItem->setIsDataBufferItem(true);
+		}
+		procItem->setFlag(QGraphicsItem::ItemIsMovable, true);
 		event->acceptProposedAction();
+
+		NMDebugAI(<< "asking for creating '" << dropText.toStdString() << "' ..." << endl);
 		emit processItemCreated(procItem, dropText, event->scenePos());
 	}
+
 	NMDebugCtx(ctx, << "done!");
 }
 

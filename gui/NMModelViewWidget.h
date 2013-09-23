@@ -41,6 +41,8 @@
 #include "NMComponentLinkItem.h"
 #include "NMAggregateComponentItem.h"
 #include "NMModelComponent.h"
+#include "NMIterableComponent.h"
+#include "NMSequentialIterComponent.h"
 #include "NMModelScene.h"
 #include "NMModelController.h"
 #include "NMEditModelComponentDialog.h"
@@ -65,7 +67,9 @@ public slots:
 	void linkProcessComponents(NMComponentLinkItem* link);
 	void createProcessComponent(NMProcessComponentItem* procItem,
 			const QString& procName, QPointF scenePos);
-	void createAggregateComponent();
+	void createAggregateComponent(const QString& compType);
+	void createSequentialIterComponent();
+	void createConditionalIterComponent();
 	void ungroupComponents();
 
 	void editRootComponent();
@@ -138,7 +142,7 @@ private:
 	RasdamanConnector* mPureRasConn;
 #endif
 	
-	NMModelComponent* mRootComponent;
+	NMIterableComponent* mRootComponent;
 
 	QMap<NMModelComponent*,
 		NMEditModelComponentDialog*> mOpenEditors;

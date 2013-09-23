@@ -42,7 +42,10 @@
 #include "NMLayerModel.h"
 #include "NMVectorLayer.h"
 
+#include "vtkObject.h"
 #include "vtkRenderWindow.h"
+//#include "vtkEventQtSlotConnect.h"
+
 
 class ModelComponentList : public QTreeView
 {
@@ -83,6 +86,7 @@ public slots:
 	void mapUniqueValues();
 	void mapSingleSymbol();
 	void saveLayerChanges();
+	//void zoomChanged(vtkObject* obj);
 
 private slots:
 	void openAttributeTable();
@@ -95,6 +99,7 @@ private:
     QPoint dragStartPosition;
     QMenu* mMenu;
     QModelIndex mIndicatorIdx;
+    //vtkSmartPointer<vtkEventQtSlotConnect> m_vtkConns;
 
     void removeLayer(NMLayer* layer);
 

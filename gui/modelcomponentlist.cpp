@@ -45,6 +45,7 @@
 #include <QHeaderView>
 
 #include "vtkDataSetAttributes.h"
+#include "vtkCamera.h"
 #include "QVTKWidget.h"
 
 const std::string ModelComponentList::ctx = "ModelComponentList";
@@ -102,6 +103,19 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actUniqueValues, SIGNAL(triggered()), this, SLOT(mapUniqueValues()));
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
 
+
+	// connect to some of the qvtkWidget events
+	//OtbModellerWin* win = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
+	//m_vtkConns = vtkSmartPointer<vtkEventQtSlotConnect>::New();
+	//QVTKWidget* vtkWidget = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
+    //
+	//this->m_vtkConns->Connect(vtkWidget->GetRenderWindow()->GetInteractor(),
+    //		vtkCommand::MouseWheelForwardEvent,
+    //		this, SLOT(zoomChanged(vtkObject*)));
+    //this->m_vtkConns->Connect(vtkWidget->GetRenderWindow()->GetInteractor(),
+    //		vtkCommand::MouseWheelBackwardEvent,
+    //		this, SLOT(zoomChanged(vtkObject*)));
+
 }
 
 ModelComponentList::~ModelComponentList()
@@ -125,7 +139,11 @@ void ModelComponentList::saveLayerChanges()
 	NMLayer* l = (NMLayer*)this->currentIndex().internalPointer();
 	this->setCurrentIndex(QModelIndex());
 	if (l != 0)
+	{
+		NMDebugAI(<< "going to save changes to the data set!" << endl);
 		l->writeDataSet();
+	}
+
 }
 
 void ModelComponentList::removeCurrentLayer()
@@ -151,7 +169,15 @@ void ModelComponentList::updateLegend(const NMLayer* layer)
 	this->update(idx);
 }
 
-NMLayer* ModelComponentList::getSelectedLayer()
+//void
+//ModelComponentList::zoomChanged(vtkObject* obj)
+//{
+//	this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+//	NMDebugAI(<< "zoom" << endl);
+//}
+
+NMLayer*
+ModelComponentList::getSelectedLayer()
 {
 	NMLayer* l = 0;
 

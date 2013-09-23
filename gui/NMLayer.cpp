@@ -49,6 +49,10 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	else
 		this->mRenderer = renderer;
 
+	//this->mRenderer->SetUseDepthPeeling(1);
+	//this->mRenderer->SetMaximumNumberOfPeels(100);
+	//this->mRenderer->SetOcclusionRatio(0.1);
+
 	// make a legendinfo table for this layer
 	this->resetLegendInfo();
 
@@ -72,7 +76,6 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 		this->mBBox[i] = 1;
 
 	this->mLayerType = NMLayer::NM_UNKNOWN_LAYER;
-
 	this->mTotalArea = -1;
 
 	// connect the layer's own dataSetChanged signal to the layer's

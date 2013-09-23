@@ -51,6 +51,7 @@
 #include "vtkRowQueryToTable.h"
 #include "vtkSQLiteDatabase.h"
 #include "vtkProperty.h"
+#include "vtkDepthSortPolyData.h"
 
 
 NMVectorLayer::NMVectorLayer(vtkRenderWindow* renWin,
@@ -149,6 +150,7 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 	// create a contour actor
 	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
 	a->SetMapper(m);
+	//a->GetProperty()->SetOpacity(0.2);
 	this->mContourActor = a;
 	this->mContourActor->SetVisibility(1);
 	this->mContourActor->GetProperty()->SetLineWidth(1);
@@ -178,16 +180,30 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 	// set the bounding box
 	pd->GetBounds(this->mBBox);
 
+	vtkSmartPointer<vtkDepthSortPolyData> sortof =
+			vtkSmartPointer<vtkDepthSortPolyData>::New();
+	sortof->SetInput(pd);
+	sortof->SetDirectionToBackToFront();
+	sortof->SetVector(1,1,1);
+	sortof->SetCamera(this->mRenderer->GetActiveCamera());
+	sortof->SortScalarsOff();
+
 	// create and set the mapper
 	vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
-	m->SetInput(pd);
+	//m->SetInput(pd);
+	m->SetInputConnection(sortof->GetOutputPort());
 	this->mMapper = m;
 
 	// create and set the actor
 	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
 	a->SetMapper(m);
+	//a->GetProperty()->SetOpacity(0.3);
 	this->mActor = a;
 	this->mActor->SetVisibility(0);
+
+
+	//vtkActor* actor = vtkActor::SafeDownCast(this->mActor);
+	//actor->GetProperty()->SetOpacity(0.2);
 	this->mRenderer->AddActor(a);
 
 	// create contours, if we've got polygons
@@ -197,7 +213,6 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 		//		"' contains polygons!" << endl);
 		vtkSmartPointer<vtkPolyData> cont = vtkSmartPointer<vtkPolyData>::New();
 		cont->SetPoints(pd->GetPoints());
-//		cont->SetPolys(pd->GetPolys());
 		cont->SetLines(pd->GetPolys());
 		cont->BuildCells();
 		cont->BuildLinks();
@@ -408,7 +423,7 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 			nameAr->SetValue(newidx, sVal.toStdString().c_str());
 
 			// add the color spec to the mapper's color table
-			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
 //			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
 //					<< " " << rgba[1] << " " << rgba[2] << endl);
 
@@ -432,6 +447,7 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 	// get the mapper and look whats possible
 	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
 	mapper->SetLookupTable(clrtab);
+	mapper->Modified();
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);
@@ -477,7 +493,7 @@ void NMVectorLayer::mapSingleSymbol()
 		// add the new cell index to the hash map
 		idxVec.append(l);
 
-		clrtab->SetTableValue(l, rgba[0], rgba[1], rgba[2]);
+		clrtab->SetTableValue(l, rgba[0], rgba[1], rgba[2], rgba[3]);
 	}
 
 	// fill hash map

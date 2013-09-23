@@ -1,6 +1,6 @@
- /*****************************r*************************************************
- * Created by Alexander Herzig ue
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -121,7 +121,7 @@
 #include "itkNMCostDistanceBufferImageFilter.h"
 #include "otbProcessLUPotentials.h"
 #include "itkRescaleIntensityImageFilter.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 #include "otbImage2DToCubeSliceFilter.h"
 #include "otbMetaDataKey.h"
 #include "itkMetaDataObject.h"
@@ -131,6 +131,7 @@
 #include "itkRandomImageSource.h"
 #include "otbSortFilter.h"
 #include "otbImageRegionAdaptativeSplitter.h"
+#include "itkVectorContainer.h"
 
 
 
@@ -252,13 +253,23 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 #endif
 	qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
 	qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
-	qRegisterMetaType<NMModelComponent>("NMModelComponent");
-	qRegisterMetaType<NMModelComponent*>("NMModelComponent*");
+	//qRegisterMetaType<NMModelComponent>("NMModelComponent");
+	//qRegisterMetaType<NMModelComponent*>("NMModelComponent*");
 
-	// ++++++++++++++++++ VTK WIDGET +++++++++++++++++++++++++++++++
+	// ++++++++++++++++++ QT GUI STUFF +++++++++++++++++++++++++++++++
 
 	// set up the qt designer based controls
     ui->setupUi(this);
+
+    // we remove the rasdaman import option, when we haven't
+    // rasdaman suppor
+#ifndef BUILD_RASSUPPORT
+    ui->menuObject->removeAction(ui->actionImportRasdamanLayer);
+#endif
+
+    // since we havent' go an implementation for odbc import
+    // we just remove the action for now
+    ui->menuObject->removeAction(ui->actionImportODBC);
 
     // add a label to the status bar for displaying
     // the coordinates of the map window
@@ -326,12 +337,19 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
 
     // set the number of allowed layers in the window
+    //renwin->SetAlphaBitPlanes(1);
+    //renwin->SetMultiSamples(0);
     renwin->SetNumberOfLayers(2);
 
 	// set-up the background renderer
 	this->mBkgRenderer = vtkSmartPointer<vtkRenderer>::New();
 	this->mBkgRenderer->SetLayer(0);
 	this->mBkgRenderer->SetBackground(0.7,0.7,0.7);
+	this->mBkgRenderer->SetUseDepthPeeling(1);
+	this->mBkgRenderer->SetMaximumNumberOfPeels(100);
+	this->mBkgRenderer->SetOcclusionRatio(0.1);
+
+
 //	this->mBkgRenderer->SetBackground(0,0,0);
 	renwin->AddRenderer(this->mBkgRenderer);
 
@@ -373,6 +391,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     // ++++++++++++++++++ EVENT CONNECTIONS +++++++++++++++++++++++++++++++
     // connect menu actions to member functions
+#ifdef BUILD_RASSUPPORT
+	connect(ui->actionImportRasdamanLayer, SIGNAL(triggered()), this, SLOT(loadRasdamanLayer()));
+#endif
     connect(ui->actionLoad_Layer, SIGNAL(triggered()), this, SLOT(loadImageLayer()));
     connect(ui->actionImport_3D_Point_Set, SIGNAL(triggered()), this, SLOT(import3DPointSet()));
     connect(ui->actionToggle3DStereoMode, SIGNAL(triggered()), this, SLOT(toggle3DStereoMode()));
@@ -380,6 +401,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionLoad_VTK_PolyData, SIGNAL(triggered()), this, SLOT(loadVTKPolyData()));
     connect(ui->actionLoad_Vector_Layer, SIGNAL(triggered()), this, SLOT(loadVectorLayer()));
     connect(ui->actionMOSO, SIGNAL(triggered()), this, SLOT(doMOSO()));
+    //connect(ui->actionMOSO_batch, SIGNAL(triggered()), this, SLOT(doMOSObatch()));
     connect(ui->actionComponents_View, SIGNAL(triggered()), this, SLOT(showComponentsView()));
     connect(ui->actionModel_View, SIGNAL(triggered()), this, SLOT(showModelView()));
     connect(ui->actionRemoveAllObjects, SIGNAL(triggered()), this, SLOT(removeAllObjects()));
@@ -399,6 +421,12 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
     		vtkCommand::LeftButtonPressEvent,
     		this, SLOT(pickObject(vtkObject*)));
+    this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
+    		vtkCommand::MouseWheelForwardEvent,
+    		this, SLOT(zoomChanged(vtkObject*)));
+    this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
+    		vtkCommand::MouseWheelBackwardEvent,
+    		this, SLOT(zoomChanged(vtkObject*)));
 
 }
 
@@ -444,6 +472,28 @@ OtbModellerWin::notify(QObject* receiver, QEvent* event)
 	return true;
 }
 
+void
+OtbModellerWin::zoomChanged(vtkObject* obj)
+{
+	//NMDebugAI(<< "zoomed" << endl);
+	//ui->qvtkWidget->update();
+
+	//for (int i=0; i < ui->modelCompList->getLayerCount(); ++i)
+	//{
+	//	ui->modelCompList->getLayer(i);
+	//}
+
+
+	//vtkRendererCollection* rencoll = ui->qvtkWidget->GetRenderWindow()->GetRenderers();
+	//vtkRenderer* ren = rencoll->GetFirstRenderer();
+	//while (ren != 0)
+	//{
+	//	//ren->Render();
+	//	//ren->ResetCamera(ui->modelCompList->getMapBBox());
+	//	ren->Render();
+	//	ren = rencoll->GetNextItem();
+	//}
+}
 
 const vtkRenderer*
 OtbModellerWin::getBkgRenderer(void)
@@ -716,50 +766,33 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	NMLayer* l = ui->modelCompList->getLayer(0);
+	vtkRenderer* r = const_cast<vtkRenderer*>(l->getRenderer());
+	bool dp = r->GetLastRenderingUsedDepthPeeling();
 
-	typedef otb::Image<long, 2> IdxImageType;
-	typedef otb::Image<unsigned char, 2> IntImageType;
+	NMDebugAI(<< "last rendering used depth peeling? " << dp << endl);
+	NMDebugAI(<< "occlusion ration: " << r->GetOcclusionRatio() << endl);
+	NMDebugAI(<< "max peels:  " << r->GetMaximumNumberOfPeels() << endl);
 
-	//typedef otb::RasdamanImageReader<IdxImageType> IdxReaderType;
-	typedef otb::RasdamanImageReader<IntImageType> IntReaderType;
-	IntReaderType::Pointer reader = IntReaderType::New();
-	reader->SetRasdamanConnector(this->getRasdamanConnector());
-	reader->SetFileName("t1int32");
-
-	typedef otb::StreamingRATImageFileWriter<IdxImageType> IdxWriterType;
-	typedef otb::StreamingRATImageFileWriter<IntImageType> IntWriterType;
-	IdxWriterType::Pointer idxWriter = IdxWriterType::New();
-	IntWriterType::Pointer intWriter = IntWriterType::New();
-	idxWriter->SetRasdamanConnector(this->getRasdamanConnector());
-	intWriter->SetRasdamanConnector(this->getRasdamanConnector());
-	idxWriter->SetFileName("idxImg");
-	intWriter->SetFileName("intImg");
-
-	typedef otb::SortFilter<IntImageType, IntImageType> FilterType;
-	FilterType::Pointer filter = FilterType::New();
-	int numth = QInputDialog::getInt(this, "no threads?", "how many?",
-			4);
-	filter->SetNumberOfThreads(numth);
-
-
-	filter->SetInput(reader->GetOutput());
-	//filter->SortAscendingOn();
-
-	itk::TimeProbe probe;
-	probe.Start();
-	filter->Update();
-	probe.Stop();
-
-	NMDebugAI(<< "and this took: " << probe.GetTotal()
-			<< " time units (secs?)" << endl);
-
-	intWriter->SetInput(filter->GetOutput(0));
-	idxWriter->SetInput(filter->GetIndexImage());
-
-	intWriter->Update();
-	idxWriter->Update();
-
-
+//	QString expr = QInputDialog::getText(this, "bounds",
+//			"lower upper", QLineEdit::Normal, "0 5");
+//	if (expr.isNull())
+//		return;
+//	bool bok;
+//	QStringList bnds = expr.split(" ");
+//	int lower = bnds.at(0).toInt(&bok);
+//	int upper = bnds.at(1).toInt(&bok);
+//
+//	// check the max rand
+//	NMDebugAI(<< RAND_MAX << endl);
+//
+//	srand(time(0));
+//	int range = upper - lower + 1;
+//
+//	for (int i=0; i < 20; ++i)
+//	{
+//		NMDebugAI(<< "#" << i << ": " << rand() % range + lower << endl);
+//	}
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
@@ -1133,6 +1166,89 @@ void OtbModellerWin::showModelView()
 	this->ui->modelViewWidget->show();
 }
 
+void OtbModellerWin::doMOSObatch()
+{
+	return;
+
+	NMDebugCtx(ctxOtbModellerWin, << "...");
+
+	QString fileName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/scenario_files/r1_minNleach_ConstAgrProd.los";
+	QString dsName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/data/r1sens.vtk";
+	//QString fileName = QFileDialog::getOpenFileName(this,
+	//     tr("Open Optimisation Settings"), "~", tr("LUMASS Optimisation Settings (*.los)"));
+    //
+	//if (fileName.isNull())
+	//{
+	//	NMDebugAI( << "Please provide a filename!" << endl);
+	//	return;
+	//}
+
+	QFileInfo fileinfo(fileName);
+	QFileInfo dsInfo(dsName);
+
+	QString path = fileinfo.path();
+	QString baseName = fileinfo.baseName();
+	if (!fileinfo.isReadable())
+	{
+		NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
+		return;
+	}
+
+	// create a new optimisation object
+	NMMosra* mosra = new NMMosra(this);
+
+	for (int runs=5; runs < 7; ++runs)
+	{
+		NMDebugAI(<< "******** PERTURBATION #" << runs+1 << " *************" << endl);
+		// load the file with optimisation settings
+		mosra->loadSettings(fileName);
+
+		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
+		reader->SetFileName(dsName.toStdString().c_str());
+		reader->Update();
+		vtkPolyData* pd = reader->GetOutput();
+		mosra->setDataSet(pd);
+		mosra->perturbCriterion("Nleach", 5);
+		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
+
+		mosra->setTimeOut(180);
+		if (!mosra->solveLp())
+			continue;
+
+		if (!mosra->mapLp())
+			continue;
+
+		vtkSmartPointer<vtkTable> sumres = mosra->sumResults();
+
+		// get rid of admin fields
+		tab->RemoveColumnByName("nm_id");
+		tab->RemoveColumnByName("nm_hole");
+		tab->RemoveColumnByName("nm_sel");
+
+		// now write the input and the result table
+		QString perturbName = QString("%1/%2_p%3.csv").arg(dsInfo.path())
+				.arg(dsInfo.baseName()).arg(runs+1);
+
+		QString resName = QString("%1/res_%2_p%3.csv").arg(dsInfo.path())
+						.arg(dsInfo.baseName()).arg(runs+1);
+
+		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
+		writer->SetFieldDelimiter(",");
+
+		writer->SetInput(tab);
+		writer->SetFileName(perturbName.toStdString().c_str());
+		writer->Update();
+
+		writer->SetInput(sumres);
+		writer->SetFileName(resName.toStdString().c_str());
+		writer->Update();
+
+		writer->Delete();
+	}
+
+	NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
+
 void OtbModellerWin::doMOSO()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
@@ -1174,7 +1290,8 @@ void OtbModellerWin::doMOSO()
 	}
 
 	// now set the layer, do moso and clean up
-	mosra->setLayer(layer);
+	//mosra->setLayer(layer);
+	mosra->setDataSet(layer->getDataSet());
 
 //	NMDebugAI(<< "split off solving to seperate thread ... " << endl);
 //	QFuture<int> future = QtConcurrent::run(mosra, &NMMosra::solveLp);
@@ -1205,6 +1322,7 @@ void OtbModellerWin::doMOSO()
 
 
 	int solved = mosra->mapLp();
+	layer->emitDataSetChanged();
 
 	if (solved)
 	{
@@ -1219,7 +1337,7 @@ void OtbModellerWin::doMOSO()
 		}
 
 		// obviously, we have to prepare the table a bit better
-		QStandardItemModel* model = mosra->prepareResChartModel(resTab);
+		QStandardItemModel* model = this->prepareResChartModel(resTab);
 		if (model != 0)
 		{
 			NMChartWidget* cw = new NMChartWidget(this);
@@ -1247,6 +1365,55 @@ void OtbModellerWin::doMOSO()
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
+QStandardItemModel*
+OtbModellerWin::prepareResChartModel(vtkTable* restab)
+{
+	if (restab == 0)
+		return 0;
+
+	NMDebugCtx(ctxOtbModellerWin, << "...");
+
+
+	int nDestCols = restab->GetNumberOfRows();
+	int nSrcCols = restab->GetNumberOfColumns();
+	int nDestRows = (nSrcCols-1) / 4;
+
+	QStandardItemModel* model = new QStandardItemModel(nDestRows, nDestCols, this->parent());
+	model->setItemPrototype(new QStandardItem());
+
+	NMDebugAI( << "populating table ..." << endl);
+
+	QStringList slVHeaderLabels;
+	int srccol = 4;
+	for (int row=0; row < nDestRows; ++row, srccol+=4)
+	{
+		QString sVHeader = restab->GetColumnName(srccol);
+		slVHeaderLabels.append(sVHeader);
+		model->setVerticalHeaderItem(row, new QStandardItem());
+		model->verticalHeaderItem(row)->setData(QVariant((int)row*40), Qt::DisplayRole);
+
+		for (int col=0; col < nDestCols; ++col)
+		{
+			if (row == 0)
+			{
+				QString sHHeader = restab->GetValue(col, 0).ToString().c_str();
+				model->setHorizontalHeaderItem(col, new QStandardItem());
+				model->horizontalHeaderItem(col)->setData(QVariant(sHHeader), Qt::DisplayRole);
+			}
+
+			model->setItem(row, col, new QStandardItem());
+			model->item(row, col)->setData(QVariant(restab->GetValue(col, srccol).ToDouble()),
+					Qt::DisplayRole);
+		}
+	}
+	model->setVerticalHeaderLabels(slVHeaderLabels);
+
+	NMDebugCtx(ctxOtbModellerWin, << "done!");
+
+	return model;
+
+}
+
 void OtbModellerWin::displayChart(vtkTable* srcTab)
 {
 	NMChartWidget* cw = new NMChartWidget(srcTab, this);
@@ -1269,6 +1436,8 @@ void OtbModellerWin::loadVTKPolyData()
 	//check, what kind of format we've got
 	if (fileName.endsWith(".vtp", Qt::CaseInsensitive))
 	{
+		//QSysInfo::ByteOrder == QSysInfo::BigEndian
+
 		vtkSmartPointer<vtkXMLPolyDataReader> xr = vtkSmartPointer<vtkXMLPolyDataReader>::New();
 		xr->SetFileName(fileName.toStdString().c_str());
 		xr->Update();
@@ -1337,11 +1506,18 @@ void OtbModellerWin::saveAsVtkPolyData()
 
 	if (selectedFilter == "XML PolyData (*.vtp)")
 	{
-		NMDebugAI(<< "saving XML *.vtp file ..." << endl);
+		NMDebugAI(<< "writing XML-file " << fileName.toStdString() << " ..." << endl);
 		vtkSmartPointer<vtkXMLPolyDataWriter> xw = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-		xw->SetFileName(fileName.toStdString().c_str());
+		//if (xw.GetPointer() == 0)
+		//{
+		//	NMDebugAI(<< "XML PolyDataWriter is NULL!");
+		//	return;
+		//}
 		xw->SetInput(const_cast<vtkDataSet*>(l->getDataSet()));
-		xw->Update();
+		xw->SetFileName(fileName.toStdString().c_str());
+		//xw->SetDataModeToAscii();
+		xw->Write();
+		//xw->Update();
 	}
 	else
 	{
@@ -1981,28 +2157,21 @@ void OtbModellerWin::loadVectorLayer()
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
-void OtbModellerWin::loadImageLayer()
+#ifdef BUILD_RASSUPPORT
+void
+OtbModellerWin::loadRasdamanLayer()
 {
-
 	NMDebugCtx(ctxOtbModellerWin, << "...");
-
-//	QString fileName = QFileDialog::getOpenFileName(this,
-//	     tr("Open Image"), "~", tr("All Image Files (*.*)"));
-//	if (fileName.isNull())
-//		return;
 
 	QString fileName = QInputDialog::getText(this, "Image Name/Path", "");
 	if (fileName.isNull())
 		return;
 
-#ifdef BUILD_RASSUPPORT
 	try
 	{
-
 		std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
 		if (this->mpRasconn == 0)
 			this->mpRasconn = new RasdamanConnector(connfile);
-#endif
 
 		NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
 
@@ -2012,9 +2181,7 @@ void OtbModellerWin::loadImageLayer()
 		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
 		NMImageLayer* layer = new NMImageLayer(renWin);
 
-#ifdef BUILD_RASSUPPORT
 		layer->setRasdamanConnector(this->mpRasconn);
-#endif
 		layer->setObjectName(layerName);
 		if (layer->setFileName(fileName))
 		{
@@ -2023,7 +2190,6 @@ void OtbModellerWin::loadImageLayer()
 		}
 		else
 			delete layer;
-#ifdef BUILD_RASSUPPORT
 	}
 	catch(r_Error& re)
 	{
@@ -2032,68 +2198,40 @@ void OtbModellerWin::loadImageLayer()
 		NMErr(ctxOtbModellerWin, << re.what());
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
 	}
-#endif
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
-//	int nlayers = this->ui->qvtkWidget->GetRenderWindow()->GetNumberOfLayers();
-//	this->ui->qvtkWidget->GetRenderWindow()->SetNumberOfLayers(nlayers+1);
-//	int numren = this->ui->qvtkWidget->GetRenderWindow()->GetRenderers()->GetNumberOfItems();
-//
-//	NMImageReader* reader = new NMImageReader(this);
-//	if (!fileName.contains("."))
-//		reader->setRasdamanConnector(&rasconn);
-//	reader->setFileName(fileName);
-//	if (!reader->initialise())
-//	{
-//		NMErr(ctxOtbModellerWin, << "couldn't read the image!");
-//		NMDebugCtx(ctxOtbModellerWin, << "done!");
-//		return;
-//	}
-//
-//	otb::AttributeTable::Pointer rat = reader->getRasterAttributeTable(1);
-//	if (!rat.IsNull())
-//	{
-//		rat->Print(std::cout, itk::Indent(nmlog::nmindent+1), 3);
-//	}
-//
-//
-//
-//	NMItk2VtkConnector* pipeconn = new NMItk2VtkConnector(this);
-//	pipeconn->setInput(reader->getITKImageBase(), reader->getITKComponentType());
-//
-////	vtkSmartPointer<vtkImageSliceMapper> mapper = vtkSmartPointer<vtkImageSliceMapper>::New();
-//	vtkSmartPointer<vtkImageResliceMapper> mapper = vtkSmartPointer<vtkImageResliceMapper>::New();
-//	mapper->SetInputConnection(pipeconn->getOutputPort());
-//
-////	vtkSmartPointer<vtkImageProperty> ip =
-////			vtkSmartPointer<vtkImageProperty>::New();
-////	ip->SetColorWindow(2000);
-////	ip->SetColorLevel(1000);
-////	ip->SetAmbient(0.0);
-////	ip->SetDiffuse(1.0);
-////	ip->SetOpacity(1.0);
-////	ip->SetInterpolationTypeToLinear();
-////
-////	vtkSmartPointer<vtkLookupTable> lt = vtkSmartPointer<vtkLookupTable>::New();
-////	lt->SetRampToLinear();
-////	lt->SetRange(0, 255);
-////	lt->SetNumberOfColors(255);
-////	lt->Build();
-////	ip->SetLookupTable(lt);
-//
-//	vtkSmartPointer<vtkImageSlice> actor = vtkSmartPointer<vtkImageSlice>::New();
-////	actor->SetProperty(ip);
-//	actor->SetMapper(mapper);
-//
-//	vtkSmartPointer<vtkRenderer> ren1 = vtkSmartPointer<vtkRenderer>::New();
-//	ren1->SetLayer(numren);
-//	ren1->AddViewProp(actor);
-//	//vtkCamera* cam = vtkCamera::New();
-//	//cam->DeepCopy(this->mBkgRenderer->GetActiveCamera());
-//	ren1->SetActiveCamera(this->mBkgRenderer->GetActiveCamera());
-//	this->ui->qvtkWidget->GetRenderWindow()->AddRenderer(ren1);
-//	ren1->ResetCamera();
-//	this->ui->qvtkWidget->GetRenderWindow()->Render();
+
+}
+#endif
+
+
+void OtbModellerWin::loadImageLayer()
+{
+	NMDebugCtx(ctxOtbModellerWin, << "...");
+
+	QString fileName = QFileDialog::getOpenFileName(this,
+	     tr("Open Image"), "~", tr("All Image Files (*.*)"));
+	if (fileName.isNull())
+		return;
+
+	NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
+
+	QFileInfo finfo(fileName);
+	QString layerName = finfo.baseName();
+
+	vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
+	NMImageLayer* layer = new NMImageLayer(renWin);
+
+	layer->setObjectName(layerName);
+	if (layer->setFileName(fileName))
+	{
+		layer->setVisible(true);
+		this->ui->modelCompList->addLayer(layer);
+	}
+	else
+		delete layer;
+
+	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 void OtbModellerWin::toggle3DSimpleMode()

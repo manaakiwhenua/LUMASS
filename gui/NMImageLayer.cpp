@@ -112,7 +112,7 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 	this->mNumBands = 0;
 	this->mNumDimensions = 0;
-	this->mComponentType = itk::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+	this->mComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 
 	this->mLayerIcon = QIcon(":image_layer.png");
 }
@@ -357,7 +357,13 @@ bool NMImageLayer::setFileName(QString filename)
 	// whether we're loading a rasdaman image or not
 #ifdef BUILD_RASSUPPORT
 	if (!filename.contains(".") && this->mpRasconn != 0)
-		this->mReader->setRasdamanConnector(this->mpRasconn);
+	{
+		NMRasdamanConnectorWrapper raswrap;
+		raswrap.setConnector(this->mpRasconn);
+		this->mReader->setRasConnector(&raswrap);
+		//->setRasdamanConnector(this->mpRasconn);
+	}
+
 #endif
 
 	this->mReader->setFileName(filename);
@@ -448,7 +454,7 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 }
 
 //void NMImageLayer::setITKImage(itk::DataObject* img,
-//		itk::ImageIOBase::IOComponentType pixType,
+//		otb::ImageIOBase::IOComponentType pixType,
 //		unsigned int numDims,
 //		unsigned int numBands)
 //{
@@ -473,34 +479,34 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 //
 ////	switch (pixType)
 ////	{
-////	case itk::ImageIOBase::UCHAR:
+////	case otb::ImageIOBase::UCHAR:
 ////		getInternalBBox( unsigned char );
 ////		break;
-////	case itk::ImageIOBase::CHAR:
+////	case otb::ImageIOBase::CHAR:
 ////		getInternalBBox( char );
 ////		break;
-////	case itk::ImageIOBase::USHORT:
+////	case otb::ImageIOBase::USHORT:
 ////		getInternalBBox( unsigned short );
 ////		break;
-////	case itk::ImageIOBase::SHORT:
+////	case otb::ImageIOBase::SHORT:
 ////		getInternalBBox( short );
 ////		break;
-////	case itk::ImageIOBase::UINT:
+////	case otb::ImageIOBase::UINT:
 ////		getInternalBBox( unsigned int );
 ////		break;
-////	case itk::ImageIOBase::INT:
+////	case otb::ImageIOBase::INT:
 ////		getInternalBBox( int );
 ////		break;
-////	case itk::ImageIOBase::ULONG:
+////	case otb::ImageIOBase::ULONG:
 ////		getInternalBBox( unsigned long );
 ////		break;
-////	case itk::ImageIOBase::LONG:
+////	case otb::ImageIOBase::LONG:
 ////		getInternalBBox( long );
 ////		break;
-////	case itk::ImageIOBase::FLOAT:
+////	case otb::ImageIOBase::FLOAT:
 ////		getInternalBBox( float );
 ////		break;
-////	case itk::ImageIOBase::DOUBLE:
+////	case otb::ImageIOBase::DOUBLE:
 ////		getInternalBBox( double );
 ////		break;
 ////	default:
@@ -568,7 +574,7 @@ itk::DataObject* NMImageLayer::getITKImage(void)
 		return this->mReader->getItkImage();
 }
 
-itk::ImageIOBase::IOComponentType NMImageLayer::getITKComponentType(void)
+otb::ImageIOBase::IOComponentType NMImageLayer::getITKComponentType(void)
 {
 	return this->mComponentType;
 }

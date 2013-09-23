@@ -36,10 +36,10 @@
 #include "otbImage.h"
 #include "vtkImageData.h"
 #include "vtkImageProperty.h"
-#include "itkImageIOBase.h"
+#include "otbImageIOBase.h"
 
 #ifdef BUILD_RASSUPPORT
-  #include "RasdamanConnector.h"
+  #include "RasdamanConnector.hh"
 #endif
 
 class NMImageLayer: public NMLayer
@@ -52,7 +52,7 @@ public:
 			QObject* parent=0);
 	virtual ~NMImageLayer();
 
-	itk::ImageIOBase::IOComponentType getITKComponentType(void);
+	otb::ImageIOBase::IOComponentType getITKComponentType(void);
 	unsigned int getNumDimensions(void)
 		{return this->mNumDimensions;};
 	unsigned int getNumBands(void)
@@ -72,7 +72,7 @@ public:
 	otb::AttributeTable* getRasterAttributeTable(int band);
 
 //	void setITKImage(itk::DataObject* img,
-//			itk::ImageIOBase::IOComponentType pixType,
+//			otb::ImageIOBase::IOComponentType pixType,
 //			unsigned int numDims,
 //			unsigned int numBands);
 	void setImage(NMItkDataObjectWrapper* imgWrapper);
@@ -103,7 +103,7 @@ protected:
 
 	itk::DataObject::Pointer mImage;
 	vtkSmartPointer<vtkImageProperty> mImgProp;
-	itk::ImageIOBase::IOComponentType mComponentType;
+	otb::ImageIOBase::IOComponentType mComponentType;
 	unsigned int mNumDimensions;
 	unsigned int mNumBands;
 

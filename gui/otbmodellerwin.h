@@ -28,6 +28,7 @@
 #include <QMap>
 #include <QLabel>
 #include <QSharedPointer>
+#include <QStandardItemModel>
 
 // OGR
 #include "ogrsf_frmts.h"
@@ -49,7 +50,7 @@
 
 // rasdaman
 #ifdef BUILD_RASSUPPORT
-  #include "RasdamanConnector.h"
+  #include "RasdamanConnector.hh"
   #include "otbRasdamanImageReader.h"
   #include "otbRasdamanImageIO.h"
   #include "otbRasdamanImageIOFactory.h"
@@ -81,7 +82,12 @@ public:
 #ifdef BUILD_RASSUPPORT    
     RasdamanConnector* getRasdamanConnector(void);
 #endif
+
 public slots:
+
+#ifdef BUILD_RASSUPPORT
+	void loadRasdamanLayer();
+#endif
 	void loadImageLayer();
 	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
 	void toggle3DStereoMode();
@@ -89,6 +95,7 @@ public slots:
 	void loadVTKPolyData();			// loads VTK *vtp PolyData
 	void loadVectorLayer();
 	void doMOSO();
+	void doMOSObatch();
 	void showComponentsView();
 	void showModelView();
 	void updateCoords(vtkObject* obj);
@@ -101,6 +108,9 @@ public slots:
 	void updateLayerInfo(NMLayer* l, long cellId);
 	void importODBC();
 	void aboutLUMASS();
+	void zoomChanged(vtkObject* obj);
+
+	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 
 	virtual bool notify(QObject* receiver, QEvent* event);
 

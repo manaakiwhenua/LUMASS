@@ -51,7 +51,7 @@
 
 class NMTableView;
 
-class QVTK_EXPORT NMLayer : public NMModelComponent //public QObject
+class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
 	Q_OBJECT
 	Q_ENUMS(NMLayerType NMLayerSelectionType)

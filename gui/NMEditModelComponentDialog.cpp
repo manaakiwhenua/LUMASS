@@ -23,6 +23,7 @@
 #include <QScopedPointer>
 #include <limits>
 
+#include "NMIterableComponent.h"
 
 const std::string NMEditModelComponentDialog::ctx = "NMEditModelComponentDialog";
 
@@ -104,8 +105,9 @@ void NMEditModelComponentDialog::readComponentProperties(QObject* obj, NMModelCo
 	// in case we've got a component
 	if (comp != 0)// && comp->getProcess() == 0)
 	{
-		// do we have a process component?
-		proc = comp->getProcess();
+		// ------------------------------------------------------
+		// PROCESSING A NON-ITERABLE and NON-PROCESS COMPONENT
+		// ------------------------------------------------------
 
 		const QMetaObject* meta = obj->metaObject();
 		unsigned int nprop = meta->propertyCount();
@@ -115,16 +117,28 @@ void NMEditModelComponentDialog::readComponentProperties(QObject* obj, NMModelCo
 			this->createPropertyEdit(property, obj);
 		}
 
-		if (comp->getProcess() == 0)
+		// ------------------------------------------------------
+		// PROCESSING AN AGGREGATE COMPONENT
+		// ------------------------------------------------------
+
+		// do we have a process component?
+		NMIterableComponent* procComp =
+				qobject_cast<NMIterableComponent*>(comp);
+		if (procComp != 0)
+			proc = procComp->getProcess();
+		else
+			proc = 0;
+
+		if (procComp != 0 && proc == 0)
 		{
 			// now we add the subcomponents list for reference
 			QStringList strCompChain;
-			NMModelComponent* sc = comp->getInternalStartComponent();
+			NMModelComponent* sc = procComp->getInternalStartComponent();
 			strCompChain << "{";
 			while (sc != 0)
 			{
 				strCompChain << QString(tr("{%1}")).arg(sc->objectName());
-				sc = comp->getNextInternalComponent();
+				sc = procComp->getNextInternalComponent();
 			}
 			strCompChain << "}";
 
@@ -142,6 +156,10 @@ void NMEditModelComponentDialog::readComponentProperties(QObject* obj, NMModelCo
 			ui.propBrowser->addProperty(vprop);
 		}
 	}
+
+	// ------------------------------------------------------
+	// PROCESSING A PROCESS COMPONENT
+	// ------------------------------------------------------
 
 	// if this is a process component, we add the processes
 	// properties to the dialog
@@ -367,6 +385,7 @@ void NMEditModelComponentDialog::applySettings(QtProperty* prop,
 	NMDebugCtx(ctx, << "...");
 
 	NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
+	NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
 	NMProcess* proc = qobject_cast<NMProcess*>(mObj);
 	if (comp == 0 && proc == 0)
 	{
@@ -379,9 +398,9 @@ void NMEditModelComponentDialog::applySettings(QtProperty* prop,
 	{
 		this->setComponentProperty(prop, mObj);
 	}
-	else if (comp != 0 && comp->getProcess() != 0)
+	else if (itComp != 0 && itComp->getProcess() != 0)
 	{
-		proc = comp->getProcess();
+		proc = itComp->getProcess();
 		if (proc->property(prop->propertyName().toStdString().c_str()).isValid() ||
 			(prop->propertyName().compare("ProcessName") == 0))
 		{
@@ -513,7 +532,7 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 
 void NMEditModelComponentDialog::updateSubComponents(const QStringList& compList)
 {
-	NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
+	NMIterableComponent* comp = qobject_cast<NMIterableComponent*>(mObj);
 	if (comp == 0)
 	{
 		NMDebugCtx(ctx, << "comp is NULL!");

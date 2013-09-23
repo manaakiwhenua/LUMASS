@@ -28,7 +28,9 @@
 #include <QtTreePropertyBrowser>
 
 #include "nmlog.h"
-#include "NMModelComponent.h"
+
+#include "NMProcess.h"
+//#include "NMModelComponent.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "NMRasdamanConnectorWrapper.h"

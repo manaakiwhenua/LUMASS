@@ -25,20 +25,32 @@
 #include "NMProcessComponentItem.h"
 #include <QTime>
 #include <QDebug>
+#include <QFontMetrics>
 #include "nmlog.h"
+
+const std::string NMProcessComponentItem::ctx = "NMProcessComponentItem";
 
 NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
 	: QGraphicsItem(parent), mContextMenu(0) ,
-	  mProgress(0.0), mbIsExecuting(false)
+	  mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false)
 {
-	ctx = "NMProcessComponentItem";
 	this->mScene = scene;
 
-	mIcon.load(":model-icon.png");
-	mBndRect = QRectF(-45, -45, 90, 90);
-	mFont = QFont("Arial", 10);
+	mSingleLineHeight = 17;
+	mDoubleLineHeight = 34;
+	mMaxTextWidth = 80;
 
+	mIcon.load(":model-icon.png"); // supposed to be rendered as 64x64 pixel image
+	mIconRect = QRectF(-37, -37, 74, 74);
+
+	mIconBnd = QRectF(mIconRect.left()-5, mIconRect.top()-5,
+			          mIconRect.width()+10, mIconRect.height()+10);
+
+	mTextRect = QRectF(mIconBnd.left(), mIconBnd.bottom()+5,
+			           mIconBnd.width(), mSingleLineHeight);
+
+	mFont = QFont("Arial", 10);
 }
 
 NMProcessComponentItem::~NMProcessComponentItem()
@@ -51,6 +63,18 @@ NMProcessComponentItem::updateProgress(float progr)
 	this->mProgress = progr;
 	//NMDebugAI(<< mTitle.toStdString() << " => progress: " << progr << std::endl);
 	this->update();
+}
+
+void
+NMProcessComponentItem::setIsDataBufferItem(bool isbuffer)
+{
+	this->mbIsDataBuffer = isbuffer;
+	if (isbuffer)
+	{
+		mIcon.load(":image_layer.png");
+	}
+	else
+		mIcon.load(":model-icon.png");
 }
 
 void NMProcessComponentItem::addInputLink(int idx, NMComponentLinkItem* link)
@@ -155,12 +179,31 @@ void NMProcessComponentItem::setTitle(const QString& title)
 		this->mTitle = title;
 }
 
-QRectF NMProcessComponentItem::boundingRect(void) const
+QRectF
+NMProcessComponentItem::boundingRect(void) const
 {
-	//QRectF rr(mBndRect);
-	//rr.adjust(-5.0, -5.0, 10.0, 10.0);
-	return mBndRect;
+	return this->getShapeAsPolygon().boundingRect();
 }
+
+QPolygonF
+NMProcessComponentItem::getShapeAsPolygon(void) const
+{
+	QRectF gap = QRectF(mIconBnd.left(), mIconBnd.bottom()-2,
+			            mIconBnd.width(), mSingleLineHeight);
+
+	QPolygonF iconPoly(mIconBnd);
+	QPolygonF jointPoly = iconPoly.united(gap);
+	QPolygonF txtPoly(mTextRect);
+	return jointPoly.united(txtPoly);
+}
+
+//QPainterPath NMProcessComponentItem::shape(void) const
+//{
+//	QPainterPath path;
+//	path.addPolygon(this->getShapeAsPolygon());
+//	return path;
+//}
+
 
 void
 NMProcessComponentItem::reportExecutionStarted(const QString& proc)
@@ -180,6 +223,37 @@ NMProcessComponentItem::reportExecutionStopped(const QString& proc)
 	this->update();
 }
 
+void
+NMProcessComponentItem::updateDescription(
+	const QString& descr)
+{
+	this->mDescription = descr;
+
+	QFontMetricsF fm(mFont);
+	QRectF fbr = fm.boundingRect(mDescription);
+
+	if (fbr.width() > mIconBnd.width() && fbr.width() < mMaxTextWidth)
+	{
+		mTextRect.setLeft(-(fbr.width()*0.5));
+		mTextRect.setRight(fbr.width()*0.5);
+		mTextRect.setBottom(mTextRect.top()+mSingleLineHeight);
+	}
+	else if (fbr.width() >= mMaxTextWidth)
+	{
+		mTextRect.setLeft(-(mMaxTextWidth));
+		mTextRect.setRight(mMaxTextWidth);
+		mTextRect.setBottom(mTextRect.top()+mDoubleLineHeight);
+	}
+	else
+	{
+		mTextRect.setLeft(mIconBnd.left());
+		mTextRect.setRight(mIconBnd.right());
+		mTextRect.setBottom(mTextRect.top()+mSingleLineHeight);
+	}
+
+	this->update();
+}
+
 
 void
 NMProcessComponentItem::paint(QPainter* painter,
@@ -189,7 +263,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 
 	if(mbIsExecuting)
 	{
-		QSizeF psize = mBndRect.size();
+		QSizeF psize = mIconBnd.size();
 		QPointF centre(psize.width()*0.5, psize.height()*0.5);
 		QImage img(psize.toSize(), QImage::Format_ARGB32_Premultiplied);
 		img.fill(0);
@@ -204,18 +278,17 @@ NMProcessComponentItem::paint(QPainter* painter,
 
 	    QRadialGradient fade(centre, img.rect().height()*0.8, centre);
 	    fade.setColorAt(1, QColor(0,0,0,90));
-	    //fade.setColorAt(0.6, QColor(0,0,0,127));
 	    fade.setColorAt(0, QColor(0,0,0,90));
 	    bgPainter.fillRect(img.rect(), fade);
 
-		painter->drawImage(mBndRect, img);
+		painter->drawImage(mIconBnd, img);
 	    painter->setRenderHint(QPainter::Antialiasing, true);
 
 		// draw boundary
 		painter->setBrush(Qt::NoBrush);
 		QPen pen = QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine);
 		painter->setPen(pen);
-		painter->drawRoundRect(QRectF(-45,-45,90,90), 10, 10);
+		painter->drawRoundRect(mIconBnd, 10, 10);
 
 		// draw icon
 		//QImage execIcon(mIcon.toImage());
@@ -224,7 +297,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 		//iconPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
 		////iconPainter.fillRect(QRectF(QPointF(0,0), mIcon.size()), QColor(0,0,0,128));
 		//painter->drawImage(QRectF(-40,-40,64,64), execIcon);
-		painter->drawPixmap(QRectF(-40,-40,64,64), mIcon, QRectF(0,0,64,64));
+		painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64));
 
 		if (mProgress > 0)
 		{
@@ -232,7 +305,8 @@ NMProcessComponentItem::paint(QPainter* painter,
 			mFont.setItalic(true);
 			painter->setFont(mFont);
 			QString strProg = QString("%1").arg(this->mProgress, 3, 'f', 0);
-			painter->drawText(QRectF(10,-43,20,15), Qt::AlignLeft, strProg);
+			painter->drawText(QRectF(mIconBnd.right()-25,mIconBnd.top()+7,20,15),
+					Qt::AlignLeft, strProg);
 		}
 	}
 	else
@@ -245,22 +319,21 @@ NMProcessComponentItem::paint(QPainter* painter,
 		else
 			pen = QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine);
 		painter->setPen(pen);
-		painter->drawRoundRect(QRectF(-45,-45,90,90), 10, 10);
+		painter->drawRoundRect(mIconBnd, 10, 10);
 
 		// draw icon
-		painter->drawPixmap(QRectF(-40,-40,64,64), mIcon, QRectF(0,0,64,64));
+		painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64));
 	}
 
-	// draw the title
+	// draw description
 	painter->setBrush(Qt::NoBrush);
 	painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
 	mFont.setItalic(false);
 	mFont.setBold(true);
 	painter->setFont(mFont);
-	painter->drawText(QRectF(-40,25,80,15), Qt::AlignCenter, mTitle);
+	painter->drawText(mTextRect, Qt::AlignCenter | Qt::TextWordWrap,
+				mDescription);
 }
-
-
 
 QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 {
@@ -268,7 +341,9 @@ QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 	NMProcessComponentItem& i = const_cast<NMProcessComponentItem&>(item);
 	//data << (qint32)NMProcessComponentItem::Type;
 	data << i.getTitle();
+	//data << i.getDescription();
 	data << i.scenePos();
+	data << i.getIsDataBufferItem();
 	//qDebug() << "proc comp: op<< end!" << endl;
 	return data;
 }
@@ -278,11 +353,16 @@ QDataStream& operator>>(QDataStream& data, NMProcessComponentItem& item)
 	//qDebug() << "proc comp: op>> begin ..." << endl;
 	QPointF pos;
 	QString title;
+	QString descr;
+	bool databuffer;
 	data >> title;
+	//data >> descr;
 	data >> pos;
+	data >> databuffer;
 	item.setTitle(title);
+	//item.setDescription(descr);
 	item.setPos(pos);
-
+	item.setIsDataBufferItem(databuffer);
 	//qDebug() << "proc comp: op>> end!" << endl;
 	return data;
 }

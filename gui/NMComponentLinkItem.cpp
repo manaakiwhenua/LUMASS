@@ -73,7 +73,7 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
 	// determine target intersection point
 	QPointF ip;
-	QPolygonF poly(mapFromItem(mTargetItem, mTargetItem->boundingRect()));
+	QPolygonF poly(mapFromItem(mTargetItem, mTargetItem->getShapeAsPolygon()));
 	QLineF linkLine(sp, tp);
 	QLineF polyEdge;
 	QPointF p1, p2;
@@ -88,8 +88,8 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
 	// determine source intersection point
 	QPointF sip;
-	QPolygonF spoly(mapFromItem(mSourceItem, mSourceItem->boundingRect()));
-	for (unsigned int i=0; i < poly.count()-1; ++i)
+	QPolygonF spoly(mapFromItem(mSourceItem, mSourceItem->getShapeAsPolygon()));
+	for (unsigned int i=0; i < spoly.count()-1; ++i)
 	{
 		p1 = spoly.at(i);
 		p2 = spoly.at(i+1);

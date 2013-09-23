@@ -52,7 +52,6 @@ class NMComponentLinkItem;
 
 class NMProcessComponentItem: public QObject, public QGraphicsItem
 {
-
 	Q_OBJECT
 	Q_INTERFACES(QGraphicsItem)
 
@@ -75,6 +74,18 @@ public:
 	QString getTitle(void)
 		{return this->mTitle;}
 
+	QPolygonF getShapeAsPolygon(void) const;
+	//QPainterPath shape(void) const;
+
+	void setDescription(const QString& descr)
+		{this->updateDescription(descr);}
+	QString getDescription(void)
+		{return this->mDescription;}
+
+	void setIsDataBufferItem(bool isbuffer);
+	bool getIsDataBufferItem(void)
+		{return mbIsDataBuffer;}
+
 	void addInputLink(int idx, NMComponentLinkItem* link);
 	void addOutputLink(int idx, NMComponentLinkItem* link);
 
@@ -96,22 +107,33 @@ public slots:
 	void updateProgress(float progr);
 	void reportExecutionStarted(const QString& proc);
 	void reportExecutionStopped(const QString& proc);
+	void updateDescription(const QString& descr);
 
 private:
 
-	std::string ctx;
+	static const std::string ctx;
+
+	bool mbIsDataBuffer;
 
 	float mProgress;
 	bool mbIsExecuting;
 	NMModelScene* mScene;
 	QString mTitle;
+	QString mDescription;
 	QMenu* mContextMenu;
 	QList<NMComponentLinkItem*> mInputLinks;
 	QList<NMComponentLinkItem*> mOutputLinks;
 
+	int mSingleLineHeight;
+	int mDoubleLineHeight;
+	int mMaxTextWidth;
 	QPixmap mIcon;
-	QRectF mBndRect;
+	QRectF mIconRect;
+	QRectF mIconBnd;
+	QRectF mTextRect;
+
 	QFont mFont;
+
 
 };
 

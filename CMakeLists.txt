@@ -15,6 +15,10 @@ INCLUDE(GetGitRevisionDescription)
 SET(EXECUTABLE_OUTPUT_PATH ${lumass_BINARY_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
 
+# we're setting some more variables
+SET(CMAKE_CSS_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g")
+SET(CMAKE_CSS_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	SET(CMAKE_INSTALL_PREFIX "/opt/lumass" 
 		CACHE PATH "LUMASS installation directory" FORCE)
@@ -26,8 +30,8 @@ ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
-SET(LUMASS_VERSION_MINOR 8)
-SET(LUMASS_VERSION_REVISION 5)
+SET(LUMASS_VERSION_MINOR 9)
+SET(LUMASS_VERSION_REVISION 0)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -173,6 +177,7 @@ add_definitions(-Wno-deprecated)
 # ADD SUBDIRECTORIES
 #====================================================================
 
+ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
 ADD_SUBDIRECTORY(shared ${lumass_BINARY_DIR}/shared)
 ADD_SUBDIRECTORY(otbsuppl ${lumass_BINARY_DIR}/otbsuppl)
 ADD_SUBDIRECTORY(utils ${lumass_BINARY_DIR}/utils)

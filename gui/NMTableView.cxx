@@ -68,6 +68,7 @@
 #include "vtkRowQueryToTable.h"
 #include "vtkSQLiteDatabase.h"
 #include "vtkDelimitedTextWriter.h"
+#include "vtkDelimitedTextReader.h"
 #include "vtkSmartPointer.h"
 #include "vtkPolyDataWriter.h"
 #include "vtkPolyData.h"
@@ -178,6 +179,9 @@ void NMTableView::initView()
 	QAction* actNorm = new QAction(this->mColHeadMenu);
 	actNorm->setText(tr("Normalise Attributes ..."));
 
+	QAction* actJoin = new QAction(this->mColHeadMenu);
+	actJoin->setText(tr("Join Attributes ..."));
+
 	this->mColHeadMenu->addAction(actSel);
 	this->mColHeadMenu->addAction(actFilter);
 	this->mColHeadMenu->addSeparator();
@@ -188,6 +192,7 @@ void NMTableView::initView()
 	this->mColHeadMenu->addAction(actAdd);
 	this->mColHeadMenu->addAction(actDelete);
 	this->mColHeadMenu->addSeparator();
+	this->mColHeadMenu->addAction(actJoin);
 	this->mColHeadMenu->addAction(actExp);
 
 	this->connect(this->mBtnClearSelection, SIGNAL(pressed()), this, SLOT(clearSelection()));
@@ -203,6 +208,7 @@ void NMTableView::initView()
 	this->connect(actFilter, SIGNAL(triggered()), this, SLOT(userQuery()));
 	this->connect(actNorm, SIGNAL(triggered()), this, SLOT(normalise()));
 	this->connect(actSel, SIGNAL(triggered()), this, SLOT(selectionQuery()));
+	this->connect(actJoin, SIGNAL(triggered()), this, SLOT(joinAttributes()));
 }
 
 void NMTableView::updateSelRecsOnly(int state)
@@ -340,7 +346,7 @@ void NMTableView::userQuery()
 		return;
 	}
 
-//	QString sqlStmt = QString(tr("%1")).arg(whereclause);
+    //QString sqlStmt = QString(tr("%1")).arg(whereclause);
 	vtkSmartPointer<vtkTable> restab = this->queryTable(sqlStmt);
 	if (restab == 0)
 	{
@@ -571,6 +577,192 @@ void NMTableView::deleteColumn()
 	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
 }
+
+void NMTableView::joinAttributes()
+{
+	NMDebugCtx(__ctxtabview, << "...");
+
+	QString fileName = QFileDialog::getOpenFileName(this,
+	     tr("Select Source Attribute Table"), "~", tr("Delimited Text File (*.csv)"));
+	if (fileName.isNull())
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
+						vtkSmartPointer<vtkDelimitedTextReader>::New();
+
+	tabReader->SetFileName(fileName.toStdString().c_str());
+	tabReader->SetHaveHeaders(true);
+	tabReader->DetectNumericColumnsOn();
+	tabReader->SetFieldDelimiterCharacters(",\t");
+	tabReader->Update();
+
+	vtkTable* vtkTab = tabReader->GetOutput();
+
+	int numJoinCols = vtkTab->GetNumberOfColumns();
+	NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
+	QStringList srcJoinFields;
+	for (int i=0; i < numJoinCols; ++i)
+	{
+		QString srcName = vtkTab->GetColumn(i)->GetDataTypeAsString();
+		if (srcName.compare("int") == 0 || srcName.compare("string") == 0)
+		{
+			srcJoinFields.append(QString(vtkTab->GetColumnName(i)));
+		}
+	}
+
+	vtkTable* tarTab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+	int numTarCols = tarTab->GetNumberOfColumns();
+	QStringList tarJoinFields;
+	for (int i=0; i < numTarCols; ++i)
+	{
+		QString tarName = tarTab->GetColumn(i)->GetDataTypeAsString();
+		if (tarName.compare("int") == 0 || tarName.compare("string") == 0)
+		{
+			tarJoinFields.append(QString(tarTab->GetColumnName(i)));
+		}
+	}
+
+	// ask the user for semantically common fields
+	bool bOk = false;
+	QString tarFieldName = QInputDialog::getItem(this,
+			tr("Select Target Join Field"), tr("Select Target Join Field"),
+			tarJoinFields, 0, false, &bOk, 0);
+	if (!bOk || tarFieldName.isEmpty())
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	QString srcFieldName = QInputDialog::getItem(this,
+			tr("Select Source Join Field"), tr("Select Source Join Field"),
+			srcJoinFields, 0, false, &bOk, 0);
+	if (!bOk || srcFieldName.isEmpty())
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	this->appendAttributes(tarFieldName, srcFieldName, vtkTab);
+
+	NMDebugCtx(__ctxtabview, << "done!");
+}
+
+void
+NMTableView::appendAttributes(const QString& tarJoinField,
+		const QString& srcJoinField,
+		vtkTable* src)
+{
+	vtkTable* tar = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+
+	QStringList allTarFields;
+	for (int i=0; i < tar->GetNumberOfColumns(); ++i)
+	{
+		allTarFields.push_back(tar->GetColumnName(i));
+	}
+
+	// we determine which columns to copy, and which name + index they have
+	QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
+
+	NMDebugAI(<< "checking column names ... " << std::endl);
+	QStringList copyNames;
+	QStringList writeNames;
+	for (int i=0; i < src->GetNumberOfColumns(); ++i)
+	{
+		QString name = src->GetColumnName(i);
+		QString writeName = name;
+		if (name.compare(srcJoinField) == 0
+				|| name.compare(tarJoinField) == 0)
+		{
+			continue;
+		}
+		else if (allTarFields.contains(name, Qt::CaseInsensitive))
+		{
+			// come up with a new name for the column to appended
+			writeName = QString(tr("copy_%1")).arg(name);
+		}
+
+		int pos = -1;
+		pos = nameRegExp.indexIn(name);
+		if (pos >= 0)
+		{
+			copyNames.push_back(name);
+			writeNames.push_back(writeName);
+		}
+	}
+
+	NMDebugAI( << "adding new columns to target table ..." << std::endl);
+	// create new output columns for join fields
+	vtkIdType tarnumrows = tar->GetNumberOfRows();
+	for (int t=0; t < copyNames.size(); ++t)
+	{
+		int type = src->GetColumnByName(copyNames[t].toStdString().c_str())->GetDataType();
+		vtkSmartPointer<vtkAbstractArray> ar = vtkAbstractArray::CreateArray(type);
+		ar->SetName(writeNames.at(t).toStdString().c_str());
+		ar->SetNumberOfComponents(1);
+		ar->Allocate(tarnumrows);
+
+		vtkVariant v;
+		if (type == VTK_STRING)
+			v = vtkVariant("");
+		else
+			v = vtkVariant(0);
+
+		for (int tr=0; tr < tarnumrows; ++tr)
+			ar->InsertVariantValue(tr, v);
+
+		tar->AddColumn(ar);
+		NMDebugAI(<< copyNames.at(t).toStdString() << "->"
+				<< writeNames.at(t).toStdString() << " ");
+		this->mAlteredColumns.append(writeNames.at(t));
+	}
+	NMDebug(<< endl);
+
+	NMDebugAI(<< "copying field contents ...." << std::endl);
+	// copy field values
+	vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
+	vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
+	vtkIdType cnt = 0;
+	vtkIdType srcnumrows = src->GetNumberOfRows();
+	for (vtkIdType row=0; row < tarnumrows; ++row)
+	{
+		vtkVariant vTarJoin = tarJoin->GetVariantValue(row);
+		vtkIdType search = row < srcnumrows ? row : 0;
+		vtkIdType cnt = 0;
+		bool foundyou = false;
+		while (cnt < srcnumrows)
+		{
+			if (srcJoin->GetVariantValue(search) == vTarJoin)
+			{
+				foundyou = true;
+				break;
+			}
+
+			++search;
+			if (search >= srcnumrows)
+				search = 0;
+
+			++cnt;
+		}
+
+		if (foundyou)
+		{
+			// copy columns for current row
+			for (int c=0; c < copyNames.size(); ++c)
+			{
+				tar->SetValueByName(row, writeNames[c].toStdString().c_str(),
+						src->GetValueByName(search, copyNames[c].toStdString().c_str()));
+			}
+		}
+	}
+
+	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+
+
+}
+
 void NMTableView::exportTable()
 {
 	NMDebugCtx(__ctxtabview, << "...");
@@ -768,7 +960,7 @@ vtkSmartPointer<vtkTable> NMTableView::queryTable(QString sqlStmt)
 
 	vtkSmartPointer<vtkSQLiteQuery> sq = vtkSQLiteQuery::SafeDownCast(
 			sdb->GetQueryInstance());
-	sq->SetQuery(sqlStmt.toAscii());
+	sq->SetQuery(sqlStmt.toStdString().c_str());
 
 	// filter to a new table
 	vtkSmartPointer<vtkRowQueryToTable> rowtotab = vtkSmartPointer<vtkRowQueryToTable>::New();
@@ -990,7 +1182,7 @@ void NMTableView::selectionQuery(void)
 	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
 	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
 	selector->setFunction(query);
-	selector->setSelectionModeOn("nm_sel", this);
+	selector->setSelectionModeOn("nm_sel");//, this);
 	bool res = selector->calculate();
 
 	if (!res)
@@ -1000,7 +1192,8 @@ void NMTableView::selectionQuery(void)
 		return;
 	}
 
-	this->updateSelectionAdmin(selector->getSelectionCount());
+	this->updateSelection();
+	//this->updateSelectionAdmin(selector->getSelectionCount());
 	emit selectionChanged();
 
 	NMDebugCtx(__ctxtabview, << "done!");

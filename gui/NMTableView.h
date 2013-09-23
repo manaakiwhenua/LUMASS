@@ -109,6 +109,7 @@ public slots:
 	void deselectRow(int row);
 	void updateSelection(void);
 	void switchSelection(void);
+	void joinAttributes(void);
 
 signals:
 	void tableDataChanged(QStringList& slAlteredColumns,
@@ -128,6 +129,9 @@ protected:
 
 	vtkSmartPointer<vtkTable> queryTable(QString sqlStmt);
 
+	void appendAttributes(const QString& tarJoinField,
+			const QString& srcJoinField,
+			vtkTable* srcTable);
 
 	void mousePressEvent(QMouseEvent* event);
 	bool eventFilter(QObject* object, QEvent* event);

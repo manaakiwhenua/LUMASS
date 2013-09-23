@@ -49,10 +49,10 @@
 #include <QObject>
 #include <QMap>
 #include <QStringList>
-#include <QStandardItemModel>
+//#include <QStandardItemModel>
 
 #include "LpHelper.h"
-#include "NMLayer.h"
+//#include "NMLayer.h"
 
 #include "vtkSmartPointer.h"
 #include "vtkTable.h"
@@ -86,16 +86,33 @@ public:
 	// (from LUMASS Optimisation settings file)
 	int loadSettings(QString fileName);
 
-	void setLayer(NMLayer* layer);
 	QString getLayerName(void);
+
+	void setDataSet(const vtkDataSet* dataset);
+	const vtkDataSet* getDataSet()
+		{return this->mDataSet;}
+	vtkSmartPointer<vtkTable> getDataSetAsTable();
 
 	void cancelSolving(void) {this->mbCanceled = true;};
 	int solveLp(void);
 	int mapLp(void);
 	HLpHelper* getLp();
 	vtkSmartPointer<vtkTable> sumResults(void);
-	//vtkQtTableModelAdapter* prepareResChartModel(vtkTable* restab);
-	QStandardItemModel* prepareResChartModel(vtkTable* restab);
+
+	// enquire batch processing set up
+	bool doBatch(void);
+	QString getDataPath(void)
+		{return this->msDataPath;}
+	QStringList getPerturbationItems()
+		{return this->mslPerturbItems;}
+	QList<float> getUncertaintyLevels()
+		{return this->mflUncertainties;}
+	long getNumberOfPerturbations()
+		{return this->mlReps;}
+	QString getLosFileName(void)
+		{return this->msLosFileName;}
+	unsigned int getTimeOut(void)
+		{return this->muiTimeOut;}
 
 	void writeReport(QString fileName);
 	QString getReport(void);
@@ -106,25 +123,50 @@ public:
 	void setTimeOut(int secs)
 		{this->muiTimeOut = secs >= 0 ? secs : 0;};
 
+	/*	\brief add uncertainty to performance scores
+	 *
+	 *  This function varies the individual performance scores by
+	 *  the uncertainty given as 'percent'. It takes the scores for
+	 *  each individual land use of the criterion, and randomly
+	 *  (uniform distribution) adds an uncertainty value
+	 *  of +/- 0 to percent.
+	 */
+	void perturbCriterion(const QString& criterion, float percent);
+
+	/* \brief varies a constraint by a given percent
+	 *
+	 *  This function varies the named criterion by the given
+	 *  percentage.
+	 */
+	void varyConstraint(const QString& constraint, float percent);
+
 	/* lp_solve callback function to check for user abortion ->
 	 * i.e. interactive cancellation of solving process rather
 	 * than a time one
 	 */
 	static int callbackIsSolveCanceled(lprec* lp, void* userhandle);
 
+
+
 private:
 
 	bool mbCanceled;
 
 	HLpHelper* mLp;
-	NMLayer* mLayer;
+	vtkDataSet* mDataSet;
 
 	QString msReport;
 	QString msSettingsReport;
+	QString msLosFileName;
 
 	QString msLandUseField;
 	QString msAreaField;
 	QString msLayerName;
+
+	QString msDataPath;
+	QStringList mslPerturbItems;
+	QList<float> mflUncertainties;
+	long mlReps;
 
 	NMMosoDVType meDVType;
 	NMMosoScalMeth meScalMeth;
@@ -166,13 +208,12 @@ private:
 	// inner map (land use field map):
 	// 		key: <land use label | "total">  value: <if 'land use': land use performance field>
 	//				        		                <if 'total': list of all land use performance fields>
-	//		  < >= | <= | = > < criterion cap >
+	//		 										 < >= | <= | = > < criterion cap >
 	QMultiMap<QString, QMap<QString, QStringList > > mmslCriCons;
 
 	// maps objective constraints onto objectives
 	// <objective>, < >= | <= > < number >
 	QMap<QString, QStringList> mmslObjCons;
-
 
 	long mlNumDVar;
 	long mlNumArealDVar;

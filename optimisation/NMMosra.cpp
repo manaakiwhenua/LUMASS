@@ -1,13 +1,22 @@
 /*
- * NMMosra.cpp
+ * NMMosra., cpp
  *
  *  Created on: 23/03/2011
  *      Author: alex
  */
 
-#include <NMMosra.h>
-#include <NMVectorLayer.h>
-#include <NMTableView.h>
+#define NMDebug(arg)
+#define NMDebugAI(arg)
+#define NMDebugInd(level, arg)
+#define NMDebugTime(arg)
+#define NMDebugTimeInd(level, arg)
+#define NMDebugCtx(ctx, arg)
+#define NMDebugTimeCtx(ctx, arg)
+
+
+#include "NMMosra.h"
+//#include "NMTableCalculator.h"
+//#include "NMMfwException.h"
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -20,7 +29,12 @@
 #include <QVector>
 #include <QPointer>
 #include <QStandardItem>
+#include <QScopedPointer>
+#include <QFileInfo>
 
+#include "vtkDataSetAttributes.h"
+#include "vtkDataSet.h"
+#include "vtkTable.h"
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
 #include "vtkBitArray.h"
@@ -29,6 +43,7 @@
 #include "vtkStringArray.h"
 #include "vtkCellData.h"
 #include "vtkMath.h"
+#include "vtkDelimitedTextWriter.h"
 
 #include "lp_lib.h"
 
@@ -56,12 +71,25 @@ NMMosra::~NMMosra()
 	NMDebugCtx(ctxNMMosra, << "done!");
 }
 
+void
+NMMosra::setDataSet(const vtkDataSet* dataset)
+{
+	if (dataset != 0)
+		this->mDataSet = const_cast<vtkDataSet*>(dataset);
+	else
+	{
+		NMErr(ctxNMMosra, << "data set is NULL!");
+	}
+}
+
+
 void NMMosra::reset(void)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
 	this->mLp->DeleteLp();
-	this->mLayer = 0;
+	this->msLosFileName.clear();
+	this->mDataSet = 0;
 
 	this->mlNumDVar = 0;
 	this->mlNumOptFeat = 0;
@@ -84,7 +112,28 @@ void NMMosra::reset(void)
 
 	this->mbCanceled = false;
 
+	msDataPath = std::getenv("HOME");
+	mslPerturbItems.clear();
+	mflUncertainties.clear();
+	mlReps=1;
+
 	NMDebugCtx(ctxNMMosra, << "done!");
+}
+
+bool
+NMMosra::doBatch()
+{
+	bool ret = false;
+
+	if (   !msDataPath.isEmpty()
+		&& mslPerturbItems.size() > 0
+		&& mflUncertainties.size() > 0
+	   )
+	{
+		ret = true;
+	}
+
+	return ret;
 }
 
 int NMMosra::loadSettings(QString fileName)
@@ -101,6 +150,8 @@ int NMMosra::loadSettings(QString fileName)
 		NMDebugCtx(ctxNMMosra, << "done!");
 		return 0;
 	}
+	this->msLosFileName = fileName;
+
 	QTextStream str(&los);
 
 	QString rep;
@@ -108,9 +159,20 @@ int NMMosra::loadSettings(QString fileName)
 	QString sLine, sVarName, sValueStr;
 	int length, sep;
 	long lnumOpt=0;
-	bool problem=false, criteria=false, objectives=false, arealcons=false;
-	bool cricons=false, objcons=false, proc=false;
 	long numline = 0;
+
+	enum ParSec {
+		problem,
+		criteria,
+		objectives,
+		arealcons,
+		cricons,
+		objcons,
+		batch,
+		nosection
+	};
+
+	ParSec section = nosection;
 
 	sReport << "Import Report - '" << fileName << "'" << endl << endl;
 	NMDebugAI( << "parsing settings file ..." << endl);
@@ -128,87 +190,50 @@ int NMMosra::loadSettings(QString fileName)
 		if (sLine.isEmpty() || !sLine.left(1).compare(tr("#")))
 			continue;
 
-		//switch processing mode
+		//detect processing mode
 		if (!sLine.compare(tr("<PROBLEM>"), Qt::CaseInsensitive))
 		{
-			proc = true;
-			problem = true;
-			criteria = false;
-			objectives = false;
-			arealcons = false;
-			cricons = false;
-			objcons = false;
+			section = problem;
 			continue;
 		}
 		else if (!sLine.compare(tr("<CRITERIA>"), Qt::CaseInsensitive))
 		{
-			proc = true;
-			problem = false;
-			criteria = true;
-			objectives = false;
-			arealcons = false;
-			cricons = false;
-			objcons = false;
+			section = criteria;
 			continue;
 		}
 		else if (!sLine.compare(tr("<OBJECTIVES>"), Qt::CaseInsensitive))
 		{
-			proc = true;
-			problem = false;
-			criteria = false;
-			objectives = true;
-			arealcons = false;
-			cricons = false;
-			objcons = false;
+			section = objectives;
 			continue;
 		}
 		else if (!sLine.compare(tr("<AREAL_CONSTRAINTS>"), Qt::CaseInsensitive))
 		{
-			proc = true;
-			problem = false;
-			criteria = false;
-			objectives = false;
-			arealcons = true;
-			cricons = false;
-			objcons = false;
+			section = arealcons;
 			continue;
 		}
 		else if (!sLine.compare(tr("<CRITERIA_CONSTRAINTS>"), Qt::CaseInsensitive))
 		{
-			proc = true;
-			problem = false;
-			criteria = false;
-			objectives = false;
-			arealcons = false;
-			cricons = true;
-			objcons = false;
+			section = cricons;
 			continue;
 		}
 		else if (!sLine.compare(tr("<OBJECTIVE_CONSTRAINTS>"), Qt::CaseInsensitive))
 		{
-			proc = true;
-			problem = false;
-			criteria = false;
-			objectives = false;
-			arealcons = false;
-			cricons = false;
-			objcons = true;
+			section = objcons;
+			continue;
+		}
+		else if (!sLine.compare(tr("<BATCH_SETTINGS>"), Qt::CaseInsensitive))
+		{
+			section = batch;
 			continue;
 		}
 		else if (!sLine.right(5).compare(tr("_END>"), Qt::CaseInsensitive))
 		{
-			proc = false;
-			problem = false;
-			criteria = false;
-			objectives = false;
-			arealcons = false;
-			cricons = false;
-			objcons = false;
+			section = nosection;
 			continue;
 		}
 
 		//check, if we are dealing with a valid data section
-		if (!proc)
+		if (section == nosection)
 		{
 			sReport << "Line " << numline << " does not belong to a valid data section" << endl;
 			continue;
@@ -231,7 +256,10 @@ int NMMosra::loadSettings(QString fileName)
 
 
 		//process the line depending on the current data section
-		if (problem)	//----------------------------------------------PROBLEM-------------
+		//if (problem)	//----------------------------------------------PROBLEM-------------
+		switch(section)
+		{
+		case problem:
 		{
 			if (sVarName.compare(tr("DVTYPE"), Qt::CaseInsensitive) == 0)
 			{
@@ -247,7 +275,7 @@ int NMMosra::loadSettings(QString fileName)
 			else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
 			{
 				if (this->msLayerName.compare(sValueStr, Qt::CaseInsensitive) != 0)
-					this->mLayer = 0;
+					this->mDataSet = 0;
 
 				this->msLayerName = sValueStr;
 				NMDebugAI( << "LayerName: " << this->msLayerName.toStdString() << endl);
@@ -263,7 +291,9 @@ int NMMosra::loadSettings(QString fileName)
 				NMDebugAI( << "AreaField: " << this->msAreaField.toStdString() << endl);
 			}
 		}
-		else if (criteria)	//---------------------------------------------CRITERIA-----------
+		break;
+		//else if (criteria)	//---------------------------------------------CRITERIA-----------
+		case criteria:
 		{
 			if (sVarName.compare(tr("NUM_OPTIONS"), Qt::CaseInsensitive) == 0)
 			{
@@ -326,7 +356,9 @@ int NMMosra::loadSettings(QString fileName)
 			}
 
 		}
-		else if (objectives)	//----------------------------------------OBJECTIVES----------
+		break;
+		//else if (objectives)	//----------------------------------------OBJECTIVES----------
+		case objectives:
 		{
 			QString sAggrMeth;
 			if (sVarName.compare(tr("AGGR_METHOD"), Qt::CaseInsensitive) == 0)
@@ -355,7 +387,9 @@ int NMMosra::loadSettings(QString fileName)
 				 }
 			}
 		}
-		else if (arealcons)	//-----------------------------------------AREAL_CONS------------
+		break;
+		//else if (arealcons)	//-----------------------------------------AREAL_CONS------------
+		case arealcons:
 		{
 			if (sVarName.indexOf(tr("AREAL_CONS_"), Qt::CaseInsensitive) != -1)
 			{
@@ -400,7 +434,9 @@ int NMMosra::loadSettings(QString fileName)
 				}
 			}
 		}
-		else if (cricons) //----------------------------------------------ATTR_CONS--------
+		break;
+		//else if (cricons) //----------------------------------------------ATTR_CONS--------
+		case cricons:
 		{
 			if (sVarName.indexOf(tr("CRI_CONS_"), Qt::CaseInsensitive) != -1)
 			{
@@ -424,7 +460,9 @@ int NMMosra::loadSettings(QString fileName)
 				}
 			}
 		}
-		else if (objcons)	//------------------------------------------------OBJ_CONS-------
+		break;
+		//else if (objcons)	//------------------------------------------------OBJ_CONS-------
+		case objcons:
 		{
 			if (sVarName.indexOf(tr("OBJ_CONS_"), Qt::CaseInsensitive) != -1)
 			{
@@ -438,6 +476,92 @@ int NMMosra::loadSettings(QString fileName)
 				}
 			}
 		}
+		break;
+		case batch:
+		{
+			if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
+			{
+				QFileInfo fi(sValueStr);
+				if (fi.isReadable())
+				{
+					this->msDataPath = sValueStr;
+					NMDebugAI(<< "batch data path: " << this->msDataPath.toStdString() << endl);
+				}
+			}
+			else if (sVarName.compare("PERTURB", Qt::CaseInsensitive) == 0)
+			{
+				this->mslPerturbItems = sValueStr.split(" ");
+				if (mslPerturbItems.size() > 0)
+				{
+					NMDebugAI(<< "Criteria/constraints to be perturbed: ");
+					foreach(const QString& pc, this->mslPerturbItems)
+					{
+						NMDebug(<< pc.toStdString() << " ");
+					}
+					NMDebug(<< endl);
+				}
+				else
+				{
+					NMDebugAI(<< "No perturbation criteria provided!" << endl);
+				}
+			}
+			else if (sVarName.compare("UNCERTAINTIES", Qt::CaseInsensitive) == 0)
+			{
+				QStringList lunsure = sValueStr.split(" ");
+				bool bok;
+				float val;
+				foreach(const QString& vstr, lunsure)
+				{
+					val = vstr.toFloat(&bok);
+					if (bok)
+						this->mflUncertainties.push_back(val);
+				}
+
+				if (this->mflUncertainties.size() > 0)
+				{
+					NMDebugAI(<< "Perturbation levels: ");
+					foreach(const float& f, this->mflUncertainties)
+					{
+						NMDebug(<< f << " ");
+					}
+					NMDebug(<< endl);
+				}
+				else
+				{
+					NMDebugAI(<< "No uncertainty levels for perturbation provided!" << endl);
+				}
+			}
+			else if (sVarName.compare("REPETITIONS", Qt::CaseInsensitive) == 0)
+			{
+				if (!sValueStr.isEmpty())
+				{
+					bool bok;
+					long reps = sValueStr.toLong(&bok);
+					if (bok)
+					{
+						this->mlReps = reps;
+						NMDebugAI(<< "Number of perturbations: " << reps << endl);
+					}
+				}
+			}
+			else if (sVarName.compare("TIMEOUT", Qt::CaseInsensitive) == 0)
+			{
+				if (!sValueStr.isEmpty())
+				{
+					bool bok;
+					unsigned int timeout = sValueStr.toUInt(&bok);
+					if (bok)
+					{
+						this->muiTimeOut = timeout;
+						NMDebugAI(<< "Solver timeout: " << timeout << endl);
+					}
+				}
+			}
+		}
+		break;
+		default:
+			break;
+		}
 	}
 
 
@@ -450,16 +574,16 @@ int NMMosra::loadSettings(QString fileName)
 	return 1;
 }
 
-void NMMosra::setLayer(NMLayer* layer)
-{
-	this->mLayer = layer;
-	this->msLayerName = layer->objectName();
-}
+//void NMMosra::setLayer(NMLayer* layer)
+//{
+//	this->mLayer = layer;
+//	this->msLayerName = layer->objectName();
+//}
 
 // this function is useful when the optimisation settings
 // were read from a file and hence only the layer name
 // was set; the owner of the object then can read the
-// layer name and make sure, that the appropriate layer
+// layer name and make sure, that the appropriate dataset
 // is set afterwards
 QString NMMosra::getLayerName(void)
 {
@@ -759,7 +883,7 @@ int NMMosra::checkSettings(void)
 	sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << endl;
 
 	// get the attributes of the layer
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 
 	NMDebugAI(<< "checking area field ..." << endl);
@@ -1120,7 +1244,7 @@ int NMMosra::mapLp(void)
 	}
 
 	// get the attributes of the layer
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
 	long lNumCells = hole->GetNumberOfTuples();
@@ -1217,7 +1341,7 @@ int NMMosra::mapLp(void)
 
 	// call data set changed signal on layer to trigger
 	// update chain for reflecting the changes elsewhere
-	this->mLayer->emitDataSetChanged();
+	//this->mLayer->emitDataSetChanged();
 
 	NMDebugCtx(ctxNMMosra, << "done!");
 	return 1;
@@ -1297,13 +1421,202 @@ int NMMosra::makeLp(void)
 	return 1;
 }
 
+vtkSmartPointer<vtkTable>
+NMMosra::getDataSetAsTable()
+{
+	if (this->mDataSet == 0)
+		return 0;
+
+	vtkSmartPointer<vtkTable> tabCalc = vtkSmartPointer<vtkTable>::New();
+	tabCalc->SetRowData(this->mDataSet->GetAttributes(vtkDataSet::CELL));
+	return tabCalc;
+}
+
+
+void
+NMMosra::perturbCriterion(const QString& criterion,
+		float percent)
+{
+	NMDebugCtx(ctxNMMosra, << "...");
+
+	// check, whether the dataset has been set yet
+	if (this->mDataSet == 0)
+	{
+		NMErr(ctxNMMosra, << "Input dataset has not been set!");
+		return;
+	}
+
+	vtkSmartPointer<vtkTable> tabCalc = this->getDataSetAsTable();
+
+	// need to distinguish between criterion and constraint
+	// so, if we've got just one repetition, we assume to
+	// have to deal with a constraint rather than a criterion
+	if (this->mlReps == 1)
+	{
+		// constraint
+		// check, whether we've more than one
+		QStringList metaList = criterion.split(",");
+		foreach(const QString& cri, metaList)
+		{
+			this->varyConstraint(cri, percent);
+		}
+	}
+	else
+	{
+		// identify the criterion
+		QStringList fields = this->mmslCriteria.value(criterion);
+		if (fields.size() == 0)
+		{
+			NMDebugAI(<< "nothing to perturb for criterion '"
+					<< criterion.toStdString() << "'" << endl);
+			return;
+		}
+
+		// perturb field values by +/- percent of field value
+		srand(time(0));
+		foreach(const QString field, fields)
+		{
+			vtkDataArray* srcAr = vtkDataArray::SafeDownCast(
+					tabCalc->GetColumnByName(field.toStdString().c_str()));
+
+			for (int r=0; r < tabCalc->GetNumberOfRows(); ++r)
+			{
+				double inval = srcAr->GetTuple1(r);
+				double uncval = inval * ((rand() % ((int)percent+1))/100.0);
+				double newval;
+				if (rand() % 2)
+					newval = inval + uncval;
+				else
+					newval = inval - uncval;
+
+				srcAr->SetTuple1(r, newval);
+			}
+		}
+	}
+
+	NMDebugCtx(ctxNMMosra, << "done!");
+}
+
+void
+NMMosra::varyConstraint(const QString& constraint, float percent)
+{
+	NMDebugCtx(ctxNMMosra, << "...");
+
+	// identifying the constraint
+	QStringList identlist = constraint.split(":");
+	if (identlist.size() < 3)
+	{
+		NMErr(ctxNMMosra, << "Invalid pertubation item specified: "
+				<< constraint.toStdString() << std::endl);
+		NMDebugCtx(ctxNMMosra, << "done!");
+
+		//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+		//e.setMsg("Invalid pertubation item specified!");
+		//throw e;
+
+		return;
+	}
+
+	// read information
+	QString type = identlist.at(0);
+	QString label = identlist.at(1);
+	QString use = identlist.at(2);
+	QString zone = "";
+	if (identlist.size() == 4)
+		zone = identlist.at(3);
+
+	if (type.compare("CRI", Qt::CaseInsensitive) == 0)
+	{
+		// since we could have more than one constraint with the same
+		// label, we just go through and check the use
+		QMap<QString, QStringList> lufm;
+		QMultiMap<QString, QMap<QString, QStringList> >::iterator it =
+				mmslCriCons.begin();
+		while(it != mmslCriCons.end())
+		{
+			if (it.key().compare(label) == 0)
+			{
+				if (it.value().find(use) != it.value().end())
+				{
+					lufm = mmslCriCons.take(it.key());
+					break;
+				}
+			}
+
+			++it;
+		}
+
+
+		if (lufm.isEmpty())
+		{
+			NMDebugCtx(ctxNMMosra, << "done!");
+			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+			//e.setMsg("Land use field map is empty!");
+			//throw e;
+			return;
+		}
+
+		// get the field list + the operator + cap
+		QStringList fieldvaluelist = lufm.value(use);
+		if (fieldvaluelist.empty())
+		{
+			NMDebugCtx(ctxNMMosra, << "done!");
+			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+			//e.setMsg("field value list is empty!");
+			//throw e;
+			return;
+		}
+
+		fieldvaluelist = lufm.take(use);
+
+		bool bok;
+		double cap = fieldvaluelist.last().toDouble(&bok);
+		if (!bok)
+		{
+			NMDebugCtx(ctxNMMosra, << "done!");
+			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
+			//e.setMsg("Land use field map is empty!");
+			//throw e;
+			return;
+		}
+
+		NMDebugAI(<< "old value for " << constraint.toStdString()
+				<< " = " << cap << endl);
+
+
+		// adjust the cap value by adding the percentage of change
+		cap += (cap * percent/100.0);
+
+		NMDebugAI(<< "new value for " << constraint.toStdString()
+				<< " = " << cap << endl);
+
+		// vary the constraint value (cap)
+		QString strVal = QString("%1").arg(cap);
+		fieldvaluelist.replace(fieldvaluelist.size()-1, strVal);
+
+		// put the multi-map back together again
+		lufm.insert(use, fieldvaluelist);
+		mmslCriCons.insert(label, lufm);
+
+	}
+	else if (type.compare("AREA", Qt::CaseInsensitive) == 0)
+	{
+		//ToDo
+	}
+	else if (type.compare("OBJ", Qt::CaseInsensitive) == 0)
+	{
+		//ToDo
+	}
+
+	NMDebugCtx(ctxNMMosra, << "done!");
+}
 
 int NMMosra::addObjFn(void)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
 	// get the hole array
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
 
@@ -1348,7 +1661,8 @@ int NMMosra::addObjFn(void)
 			if (dsAttr->GetArray(sField.toStdString().c_str(), *(plFieldIndices + option)) == NULL)
 			{
 				NMErr(ctxNMMosra, << "failed to get performance indicator '"
-						<< sField.toStdString() << "'!");
+						<< sField.toStdString() << "' for option '" 
+						<< this->mslOptions.at(option).toStdString() << "'!");
 
 				// free some memory
 				delete[] pdRow;
@@ -1458,7 +1772,7 @@ int NMMosra::addObjCons(void)
 
 	// get data set attributes
 	// get the hole array
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
 	long lNumCells = hole->GetNumberOfTuples();
@@ -1600,7 +1914,7 @@ int NMMosra::addExplicitAreaCons(void)
 	NMDebugCtx(ctxNMMosra, << "...");
 
 	// get the hole array
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
 	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
@@ -1869,7 +2183,7 @@ int NMMosra::addImplicitAreaCons(void)
 	int* piColno = new int[this->miNumOptions + 1];
 
 	// get the hole array
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
 	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
@@ -2093,7 +2407,7 @@ int NMMosra::addCriCons(void)
 	}
 
 	// get the hole array
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
@@ -2204,7 +2518,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 
 	NMDebugAI(<< "getting input arrays (attributes) ..." << std::endl);
 	// get hold of the input attributes we need
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mLayer->getDataSet());
+	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* holeAr = dsAttr->GetArray("nm_hole");
 	vtkDataArray* areaAr = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
@@ -2301,7 +2615,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 	{
 		for (int s=0; s < colsuffix.size(); ++s)
 		{
-			QString colname = QString(tr("%1_%2")).arg(criit.key()).arg(colsuffix[s]);
+			QString colname = QString(tr("e_%1_%2")).arg(criit.key()).arg(colsuffix[s]);
 			vtkSmartPointer<vtkDoubleArray> da = vtkSmartPointer<vtkDoubleArray>::New();
 			da->SetName(colname.toAscii());
 			da->SetNumberOfComponents(1);
@@ -2318,11 +2632,11 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 	for (; constrit != this->mmslCriCons.constEnd(); ++constrit)
 	{
 		criit = constrit.value().constBegin();
-		for (; criit != constrit.value().constEnd(); ++ criit)
+		for (; criit != constrit.value().constEnd(); ++criit)
 		{
 			for (int s=0; s < colsuffix.size(); ++s)
 			{
-				QString colname = QString(tr("%1%2_%3")).arg(constrit.key()).
+				QString colname = QString(tr("c_%1%2_%3")).arg(constrit.key()).
 						arg(criit.key()).arg(colsuffix.at(s));
 				vtkSmartPointer<vtkDoubleArray> daa = vtkSmartPointer<vtkDoubleArray>::New();
 				daa->SetName(colname.toAscii());
@@ -2451,6 +2765,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 						else if (opt.compare(this->mslOptions.at(option), Qt::CaseInsensitive) == 0)
 							evalField = lufmap.value().at(0);
 
+
 						evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
 						if (evalAr == 0)
 							continue;
@@ -2461,6 +2776,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 
 //						NMDebugInd(ind2, << "attr performance measure: " << performanceValue
 //								<< " goes into row,col: " << option << ", " << (coloffset*4+1) << endl << endl);
+
 					}
 				}
 			}
@@ -2549,21 +2865,26 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 							zone = "";
 						}
 
-						if (opt.compare(tr("total"), Qt::CaseInsensitive) == 0)
-							evalField = lufmap.value().at(option);
-						else if (opt.compare(this->mslOptions.at(option), Qt::CaseInsensitive) == 0)
-							evalField = lufmap.value().at(0);
+						if (optResList.contains(opt, Qt::CaseInsensitive))
+						{
 
-						evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
-						if (evalAr == 0)
-							continue;
+							if (opt.compare(tr("total"), Qt::CaseInsensitive) == 0)
+								evalField = lufmap.value().at(option);
+							else if (opt.compare(this->mslOptions.at(option), Qt::CaseInsensitive) == 0)
+								evalField = lufmap.value().at(0);
 
-						performanceValue = evalAr->GetTuple1(cell) * optArea +
-								restab->GetValue(resTabRow, coloffset*4 + 2).ToDouble();
-						restab->SetValue(resTabRow, coloffset*4 + 2, vtkVariant(performanceValue));
+							evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
+							if (evalAr == 0)
+								continue;
 
-//						NMDebugInd(ind2, << "attr performance measure: " << performanceValue
-//								<< "goes into row,col: " << resTabRow << ", " << (coloffset*4+2) << endl << endl);
+							performanceValue = evalAr->GetTuple1(cell) * optArea +
+									restab->GetValue(resTabRow, coloffset*4 + 2).ToDouble();
+							restab->SetValue(resTabRow, coloffset*4 + 2, vtkVariant(performanceValue));
+
+	//						NMDebugInd(ind2, << "attr performance measure: " << performanceValue
+	//								<< "goes into row,col: " << resTabRow << ", " << (coloffset*4+2) << endl << endl);
+
+						}
 					}
 				}
 			}
@@ -2609,53 +2930,53 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 	return restab;
 }
 
-QStandardItemModel* NMMosra::prepareResChartModel(vtkTable* restab)
-{
-	if (restab == 0)
-		return 0;
-
-	NMDebugCtx(ctxNMMosra, << "...");
-
-
-	int nDestCols = restab->GetNumberOfRows();
-	int nSrcCols = restab->GetNumberOfColumns();
-	int nDestRows = (nSrcCols-1) / 4;
-
-	QStandardItemModel* model = new QStandardItemModel(nDestRows, nDestCols, this->parent());
-	model->setItemPrototype(new QStandardItem());
-
-	NMDebugAI( << "populating table ..." << endl);
-
-	QStringList slVHeaderLabels;
-	int srccol = 4;
-	for (int row=0; row < nDestRows; ++row, srccol+=4)
-	{
-		QString sVHeader = restab->GetColumnName(srccol);
-		slVHeaderLabels.append(sVHeader);
-		model->setVerticalHeaderItem(row, new QStandardItem());
-		model->verticalHeaderItem(row)->setData(QVariant((int)row*40), Qt::DisplayRole);
-
-		for (int col=0; col < nDestCols; ++col)
-		{
-			if (row == 0)
-			{
-				QString sHHeader = restab->GetValue(col, 0).ToString().c_str();
-				model->setHorizontalHeaderItem(col, new QStandardItem());
-				model->horizontalHeaderItem(col)->setData(QVariant(sHHeader), Qt::DisplayRole);
-			}
-
-			model->setItem(row, col, new QStandardItem());
-			model->item(row, col)->setData(QVariant(restab->GetValue(col, srccol).ToDouble()),
-					Qt::DisplayRole);
-		}
-	}
-	model->setVerticalHeaderLabels(slVHeaderLabels);
-
-	NMDebugCtx(ctxNMMosra, << "done!");
-
-	return model;
-
-}
+//QStandardItemModel* NMMosra::prepareResChartModel(vtkTable* restab)
+//{
+//	if (restab == 0)
+//		return 0;
+//
+//	NMDebugCtx(ctxNMMosra, << "...");
+//
+//
+//	int nDestCols = restab->GetNumberOfRows();
+//	int nSrcCols = restab->GetNumberOfColumns();
+//	int nDestRows = (nSrcCols-1) / 4;
+//
+//	QStandardItemModel* model = new QStandardItemModel(nDestRows, nDestCols, this->parent());
+//	model->setItemPrototype(new QStandardItem());
+//
+//	NMDebugAI( << "populating table ..." << endl);
+//
+//	QStringList slVHeaderLabels;
+//	int srccol = 4;
+//	for (int row=0; row < nDestRows; ++row, srccol+=4)
+//	{
+//		QString sVHeader = restab->GetColumnName(srccol);
+//		slVHeaderLabels.append(sVHeader);
+//		model->setVerticalHeaderItem(row, new QStandardItem());
+//		model->verticalHeaderItem(row)->setData(QVariant((int)row*40), Qt::DisplayRole);
+//
+//		for (int col=0; col < nDestCols; ++col)
+//		{
+//			if (row == 0)
+//			{
+//				QString sHHeader = restab->GetValue(col, 0).ToString().c_str();
+//				model->setHorizontalHeaderItem(col, new QStandardItem());
+//				model->horizontalHeaderItem(col)->setData(QVariant(sHHeader), Qt::DisplayRole);
+//			}
+//
+//			model->setItem(row, col, new QStandardItem());
+//			model->item(row, col)->setData(QVariant(restab->GetValue(col, srccol).ToDouble()),
+//					Qt::DisplayRole);
+//		}
+//	}
+//	model->setVerticalHeaderLabels(slVHeaderLabels);
+//
+//	NMDebugCtx(ctxNMMosra, << "done!");
+//
+//	return model;
+//
+//}
 
 HLpHelper* NMMosra::getLp()
 {

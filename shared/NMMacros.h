@@ -321,34 +321,34 @@ signals: \
  */
 
 #define MacroPerType( macroName, wrapName ) \
-	case itk::ImageIOBase::UCHAR:                                               \
+	case otb::ImageIOBase::UCHAR:                                               \
 		macroName( unsigned char, wrapName );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::CHAR:                                                \
+	case otb::ImageIOBase::CHAR:                                                \
 		macroName( char, wrapName );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::USHORT:                                              \
+	case otb::ImageIOBase::USHORT:                                              \
 		macroName( unsigned short, wrapName );                                        \
 		break;                                                                  \
-	case itk::ImageIOBase::SHORT:                                               \
+	case otb::ImageIOBase::SHORT:                                               \
 		macroName( short, wrapName );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::UINT:                                                \
+	case otb::ImageIOBase::UINT:                                                \
 		macroName( unsigned int, wrapName );                                          \
 		break;                                                                  \
-	case itk::ImageIOBase::INT:                                                 \
+	case otb::ImageIOBase::INT:                                                 \
 		macroName( int, wrapName );                                                   \
 		break;                                                                  \
-	case itk::ImageIOBase::ULONG:                                               \
+	case otb::ImageIOBase::ULONG:                                               \
 		macroName( unsigned long, wrapName );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::LONG:                                                \
+	case otb::ImageIOBase::LONG:                                                \
 		macroName( long, wrapName );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::FLOAT:                                               \
+	case otb::ImageIOBase::FLOAT:                                               \
 		macroName( float, wrapName );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::DOUBLE:                                              \
+	case otb::ImageIOBase::DOUBLE:                                              \
 		macroName( double, wrapName );                                                \
 		break;
 
@@ -359,34 +359,34 @@ signals: \
 #define outputTypeSwitch( inputType, macroName, wrapperClassName ) \
 switch(this->mOutputComponentType)	\
 {		\
-case itk::ImageIOBase::UCHAR:                                               \
+case otb::ImageIOBase::UCHAR:                                               \
 	macroName( inputType, unsigned char, wrapperClassName );                                         \
 	break;                                                                  \
-case itk::ImageIOBase::CHAR:                                                \
+case otb::ImageIOBase::CHAR:                                                \
 	macroName( inputType, char, wrapperClassName );                                                  \
 	break;                                                                  \
-case itk::ImageIOBase::USHORT:                                              \
+case otb::ImageIOBase::USHORT:                                              \
 	macroName( inputType, unsigned short, wrapperClassName );                                        \
 	break;                                                                  \
-case itk::ImageIOBase::SHORT:                                               \
+case otb::ImageIOBase::SHORT:                                               \
 	macroName( inputType, short, wrapperClassName );                                                 \
 	break;                                                                  \
-case itk::ImageIOBase::UINT:                                                \
+case otb::ImageIOBase::UINT:                                                \
 	macroName( inputType, unsigned int, wrapperClassName );                                          \
 	break;                                                                  \
-case itk::ImageIOBase::INT:                                                 \
+case otb::ImageIOBase::INT:                                                 \
 	macroName( inputType, int, wrapperClassName );                                                   \
 	break;                                                                  \
-case itk::ImageIOBase::ULONG:                                               \
+case otb::ImageIOBase::ULONG:                                               \
 	macroName( inputType, unsigned long, wrapperClassName );                                         \
 	break;                                                                  \
-case itk::ImageIOBase::LONG:                                                \
+case otb::ImageIOBase::LONG:                                                \
 	macroName( inputType, long, wrapperClassName );                                                  \
 	break;                                                                  \
-case itk::ImageIOBase::FLOAT:                                               \
+case otb::ImageIOBase::FLOAT:                                               \
 	macroName( inputType, float, wrapperClassName );                                                 \
 	break;                                                                  \
-case itk::ImageIOBase::DOUBLE:                                              \
+case otb::ImageIOBase::DOUBLE:                                              \
 	macroName( inputType, double, wrapperClassName );                                                \
 	break;	\
 default:	\
@@ -422,34 +422,34 @@ void ClassName::linkParameters(unsigned int step,							\
 	 return; \
 	switch (this->mInputComponentType)                                         \
 	{                                                                           \
-	case itk::ImageIOBase::UCHAR:                                               \
+	case otb::ImageIOBase::UCHAR:                                               \
 		outputTypeSwitch( unsigned char, callInternalLinkParameters, wrapName );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::CHAR:                                                \
+	case otb::ImageIOBase::CHAR:                                                \
 		outputTypeSwitch( char, callInternalLinkParameters, wrapName );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::USHORT:                                              \
+	case otb::ImageIOBase::USHORT:                                              \
 		outputTypeSwitch( unsigned short, callInternalLinkParameters, wrapName );                                        \
 		break;                                                                  \
-	case itk::ImageIOBase::SHORT:                                               \
+	case otb::ImageIOBase::SHORT:                                               \
 		outputTypeSwitch( short, callInternalLinkParameters, wrapName );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::UINT:                                                \
+	case otb::ImageIOBase::UINT:                                                \
 		outputTypeSwitch( unsigned int, callInternalLinkParameters, wrapName );                                          \
 		break;                                                                  \
-	case itk::ImageIOBase::INT:                                                 \
+	case otb::ImageIOBase::INT:                                                 \
 		outputTypeSwitch( int, callInternalLinkParameters, wrapName );                                                   \
 		break;                                                                  \
-	case itk::ImageIOBase::ULONG:                                               \
+	case otb::ImageIOBase::ULONG:                                               \
 		outputTypeSwitch( unsigned long, callInternalLinkParameters, wrapName );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::LONG:                                                \
+	case otb::ImageIOBase::LONG:                                                \
 		outputTypeSwitch( long, callInternalLinkParameters, wrapName );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::FLOAT:                                               \
+	case otb::ImageIOBase::FLOAT:                                               \
 		outputTypeSwitch( float, callInternalLinkParameters, wrapName );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::DOUBLE:                                              \
+	case otb::ImageIOBase::DOUBLE:                                              \
 		outputTypeSwitch( double, callInternalLinkParameters, wrapName );                                                \
 		break;																	\
 	default:                                                                    \
@@ -470,34 +470,34 @@ void ClassName::instantiateObject(void)        \
 	bool init = true;               \
 	switch (this->mInputComponentType)                                         \
 	{                                                                           \
-	case itk::ImageIOBase::UCHAR:                                               \
+	case otb::ImageIOBase::UCHAR:                                               \
 		outputTypeSwitch( unsigned char, callCreator, wrapName );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::CHAR:                                                \
+	case otb::ImageIOBase::CHAR:                                                \
 		outputTypeSwitch( char, callCreator, wrapName );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::USHORT:                                              \
+	case otb::ImageIOBase::USHORT:                                              \
 		outputTypeSwitch( unsigned short, callCreator, wrapName );                                        \
 		break;                                                                  \
-	case itk::ImageIOBase::SHORT:                                               \
+	case otb::ImageIOBase::SHORT:                                               \
 		outputTypeSwitch( short, callCreator, wrapName );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::UINT:                                                \
+	case otb::ImageIOBase::UINT:                                                \
 		outputTypeSwitch( unsigned int, callCreator, wrapName );                                          \
 		break;                                                                  \
-	case itk::ImageIOBase::INT:                                                 \
+	case otb::ImageIOBase::INT:                                                 \
 		outputTypeSwitch( int, callCreator, wrapName );                                                   \
 		break;                                                                  \
-	case itk::ImageIOBase::ULONG:                                               \
+	case otb::ImageIOBase::ULONG:                                               \
 		outputTypeSwitch( unsigned long, callCreator, wrapName );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::LONG:                                                \
+	case otb::ImageIOBase::LONG:                                                \
 		outputTypeSwitch( long, callCreator, wrapName );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::FLOAT:                                               \
+	case otb::ImageIOBase::FLOAT:                                               \
 		outputTypeSwitch( float, callCreator, wrapName );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::DOUBLE:                                              \
+	case otb::ImageIOBase::DOUBLE:                                              \
 		outputTypeSwitch( double, callCreator, wrapName );                                                \
 		break;																	\
 	default:                                                                    \
@@ -613,34 +613,34 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
                                                                                 \
 	switch (this->mInputComponentType)                                         \
 	{                                                                           \
-	case itk::ImageIOBase::UCHAR:                                               \
+	case otb::ImageIOBase::UCHAR:                                               \
 		outputTypeSwitch( unsigned char, callGetOutput, InternalWrapper );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::CHAR:                                                \
+	case otb::ImageIOBase::CHAR:                                                \
 		outputTypeSwitch( char, callGetOutput, InternalWrapper );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::USHORT:                                              \
+	case otb::ImageIOBase::USHORT:                                              \
 		outputTypeSwitch( unsigned short, callGetOutput, InternalWrapper );                                        \
 		break;                                                                  \
-	case itk::ImageIOBase::SHORT:                                               \
+	case otb::ImageIOBase::SHORT:                                               \
 		outputTypeSwitch( short, callGetOutput, InternalWrapper );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::UINT:                                                \
+	case otb::ImageIOBase::UINT:                                                \
 		outputTypeSwitch( unsigned int, callGetOutput, InternalWrapper );                                          \
 		break;                                                                  \
-	case itk::ImageIOBase::INT:                                                 \
+	case otb::ImageIOBase::INT:                                                 \
 		outputTypeSwitch( int, callGetOutput, InternalWrapper );                                                   \
 		break;                                                                  \
-	case itk::ImageIOBase::ULONG:                                               \
+	case otb::ImageIOBase::ULONG:                                               \
 		outputTypeSwitch( unsigned long, callGetOutput, InternalWrapper );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::LONG:                                                \
+	case otb::ImageIOBase::LONG:                                                \
 		outputTypeSwitch( long, callGetOutput, InternalWrapper );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::FLOAT:                                               \
+	case otb::ImageIOBase::FLOAT:                                               \
 		outputTypeSwitch( float, callGetOutput, InternalWrapper );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::DOUBLE:                                              \
+	case otb::ImageIOBase::DOUBLE:                                              \
 		outputTypeSwitch( double, callGetOutput, InternalWrapper );                                                \
 		break;																	\
 	default:                                                                    \
@@ -669,34 +669,34 @@ void ClassName::setNthInput(unsigned int numInput,  		\
 	itk::DataObject* img = imgWrapper->getDataObject();     \
 	switch (this->mInputComponentType)                      \
 	{                                                       \
-	case itk::ImageIOBase::UCHAR:                                               \
+	case otb::ImageIOBase::UCHAR:                                               \
 		outputTypeSwitch( unsigned char, callSetInput, InternalWrapper );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::CHAR:                                                \
+	case otb::ImageIOBase::CHAR:                                                \
 		outputTypeSwitch( char, callSetInput, InternalWrapper );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::USHORT:                                              \
+	case otb::ImageIOBase::USHORT:                                              \
 		outputTypeSwitch( unsigned short, callSetInput, InternalWrapper );                                        \
 		break;                                                                  \
-	case itk::ImageIOBase::SHORT:                                               \
+	case otb::ImageIOBase::SHORT:                                               \
 		outputTypeSwitch( short, callSetInput, InternalWrapper );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::UINT:                                                \
+	case otb::ImageIOBase::UINT:                                                \
 		outputTypeSwitch( unsigned int, callSetInput, InternalWrapper );                                          \
 		break;                                                                  \
-	case itk::ImageIOBase::INT:                                                 \
+	case otb::ImageIOBase::INT:                                                 \
 		outputTypeSwitch( int, callSetInput, InternalWrapper );                                                   \
 		break;                                                                  \
-	case itk::ImageIOBase::ULONG:                                               \
+	case otb::ImageIOBase::ULONG:                                               \
 		outputTypeSwitch( unsigned long, callSetInput, InternalWrapper );                                         \
 		break;                                                                  \
-	case itk::ImageIOBase::LONG:                                                \
+	case otb::ImageIOBase::LONG:                                                \
 		outputTypeSwitch( long, callSetInput, InternalWrapper );                                                  \
 		break;                                                                  \
-	case itk::ImageIOBase::FLOAT:                                               \
+	case otb::ImageIOBase::FLOAT:                                               \
 		outputTypeSwitch( float, callSetInput, InternalWrapper );                                                 \
 		break;                                                                  \
-	case itk::ImageIOBase::DOUBLE:                                              \
+	case otb::ImageIOBase::DOUBLE:                                              \
 		outputTypeSwitch( double, callSetInput, InternalWrapper );                                                \
 		break;																	\
 	default:                                                \

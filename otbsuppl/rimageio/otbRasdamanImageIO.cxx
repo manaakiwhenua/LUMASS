@@ -260,9 +260,9 @@ void RasdamanImageIO::ReadImageInformation()
 			this->m_collname, this->m_oids[0]);
 	this->SetNumberOfDimensions(m_sdom.dimension());
 
-	std::vector<double> cellsize = this->m_Helper->getNMMetaCellSize(
+	std::vector<double> cellsize = this->m_Helper->getMetaCellSize(
 			this->m_oids[0]);
-	std::vector<double> geodom = this->m_Helper->getNMMetaGeoDomain(
+	std::vector<double> geodom = this->m_Helper->getMetaGeoDomain(
 			this->m_oids[0]);
 
 	this->m_rtype = this->m_Helper->getBaseTypeId(this->m_collname);
@@ -296,18 +296,18 @@ void RasdamanImageIO::ReadImageInformation()
 	this->SetFileTypeToBinary();
 	this->SetComponentType(this->getOTBComponentType(this->m_rtype));
 
-	if (!this->m_Helper->isNMMetaAvailable())
-	{
-		//NMDebugAI(<< "no geospatial meta data available!" << std::endl);
-		//NMDebugCtx(__rio, << "done!");
-	}
+	//if (!this->m_Helper->isNMMetaAvailable())
+	//{
+	//	//NMDebugAI(<< "no geospatial meta data available!" << std::endl);
+	//	//NMDebugCtx(__rio, << "done!");
+	//}
 
 	// --------------------------------------------------------------
 	// set meta data
 	itk::MetaDataDictionary& dict = this->GetMetaDataDictionary();
 
 	// crs
-	std::string crs_descr = this->m_Helper->getNMMetaCrsName(this->m_oids[0]);
+	std::string crs_descr = this->m_Helper->getMetaCrsName(this->m_oids[0]);
 	itk::EncapsulateMetaData< std::string > (dict, MetaDataKey::ProjectionRefKey, crs_descr);
 
 	// LowerLeft
@@ -813,8 +813,8 @@ void RasdamanImageIO::WriteImageInformation()
 	double maxz = ndim == 3 ? minz + csz * zpix : numeric_limits<double>::max();
 
 	// get the current image domain geospatial info
-	vector<double> curdom = this->m_Helper->getNMMetaGeoDomain(this->m_oids[0]);
-	vector<double> cellsize = this->m_Helper->getNMMetaCellSize(this->m_oids[0]);
+	vector<double> curdom = this->m_Helper->getMetaGeoDomain(this->m_oids[0]);
+	vector<double> cellsize = this->m_Helper->getMetaCellSize(this->m_oids[0]);
 
 	// calc the new geospatial domain
 	vector<double> newdom(6);
@@ -884,36 +884,48 @@ void RasdamanImageIO::WriteImageInformation()
 	double stats_stddev = -1;
 	string RATName = "";
 
-	this->m_Helper->writeNMMetadata(collname, oid, epsgcode, crsname,
-			minx, maxx, miny, maxy, minz, maxz, csx, csy, csz, pixeltype,
-			stats_min, stats_max, stats_mean, stats_stddev, RATName);
+	//this->m_Helper->writeNMMetadata(collname, oid, epsgcode, crsname,
+	//		minx, maxx, miny, maxy, minz, maxz, csx, csy, csz, pixeltype,
+	//		stats_min, stats_max, stats_mean, stats_stddev, RATName);
 
-	this->m_Helper->writePSMetadata(collname, crsname, rtype,
-			this->GetNumberOfComponents(),
-			minx, maxx,
-			miny, maxy, minz, maxz, xpix, ypix, zpix);
+	std::string covname = "";
+	this->m_Helper->writePSMetadata(
+			oid,
+			collname,
+			covname,
+			crsname,
+			pixeltype,
+			minx,
+			maxx,
+			miny,
+			maxy,
+			minz,
+			maxz,
+			csx, csy, csz);
 
 	// write RAT
+	// ToDo: this needs checking, whether oid = bands here?
 	for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
 	{
 		otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
 		if (tab.IsNull() || ti > this->m_oids.size()-1)
 			continue;
 
-		this->WriteRAT(tab, this->m_oids[ti]);
+		// for now, we assume ti=band
+		this->writeRAT(tab, ti+1, this->m_oids[ti]);
 	}
 
 	//NMDebugCtx(__rio, << "done!");
 }
 
-void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
+void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
+		unsigned int band, double _oid)
 {
 	//NMDebugCtx(__rio, << "...");
 
 	// DEBUG DEBUG DEBUG
 	// let's have a look how the table looks like ....
 	//tab->Print(cout, itk::Indent(nmlog::nmindent), 100);
-
 
 	long oid = _oid;
 
@@ -925,23 +937,28 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 	}
 
 	// check, whether the nm_meta is installed at all
-	if (!this->m_Helper->isNMMetaAvailable())
-		return;
+	//if (!this->m_Helper->isNMMetaAvailable())
+	//	return;
 
 	// -------------------------------------------------------------
+
+	// build table name
+	std::stringstream tablename;
+	tablename << "rat" << band << "_" << oid;
+
 
 	std::stringstream query;
 	query.precision(14);
 	PGresult* res;
 
 	// check, whether the table already exists, if yes, delete it
-	query << "select * from nmrat_" << oid;
+	query << "select * from " << tablename.str();
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQntuples(res) >= 1)
 	{
 		PQclear(res);
 		query.str("");
-		query << "drop table nmrat_" << oid;
+		query << "drop table " << tablename.str();
 		res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 		if (PQresultStatus(res) == PGRES_COMMAND_OK)
 		{
@@ -950,7 +967,7 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 		}
 		else
 		{
-			NMErr(__rio, << "failed deleting present table nmrat_" << oid
+			NMErr(__rio, << "failed deleting present table "<< tablename.str()
 					<< "! Abort!");
 			PQclear(res);
 			return;
@@ -975,7 +992,7 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 	string k = ", ";
 	string s = " ";
 
-	query << "create table nmrat_" << oid << " ("
+	query << "create table " << tablename.str() << " ("
 			<< "rowidx integer unique NOT NULL,";
 
 	unsigned int bSkipIdx = -1;
@@ -1011,7 +1028,7 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 		++c_target;
 	}
 
-	query << "constraint nmrat_" << oid << "_pkey primary key (rowidx))";
+	query << "constraint " << tablename.str() << "_pkey primary key (rowidx))";
 
 	NMDebugInd(1, << "'" << query.str() << "' ... ");
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
@@ -1031,7 +1048,7 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 	// copy the table body into the postgres table
 	for (r=0; r < nrows; r++)
 	{
-		query << "insert into nmrat_" << oid << " values (" << r << k;
+		query << "insert into " << tablename.str() << " values (" << r << k;
 		for (c_orig=0, c_target=0; c_orig < ncols; ++c_orig)
 		{
 			// skip the index column
@@ -1067,8 +1084,8 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			//NMDebug(<< endl);
-			NMErr(__rio, << "failed copying row " << r << "/" << nrows << " for table 'nmrat_" <<
-						oid << "': " << endl << PQresultErrorMessage(res));
+			NMErr(__rio, << "failed copying row " << r << "/" << nrows << " for table "
+					     << tablename.str() << "': " << endl << PQresultErrorMessage(res));
 		}
 
 		query.str("");
@@ -1078,23 +1095,31 @@ void RasdamanImageIO::WriteRAT(otb::AttributeTable* tab, double _oid)
 
 	// --------------------------------------------------------------
 
-	// write the name of this table into the nm_meta table
-	query << "update nm_meta set attrtable_name = 'nmrat_" << oid << "' " <<
-			 "where img_id = " << oid;
-	NMDebugInd(1, << "'" << query.str() << "' ... ");
-	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	// write a reference to the table into the ps database
+	std::string metadata = "attrtable_name=" + tablename.str();
+	if (!this->m_Helper->writeExtraMetadata(oid, metadata))
 	{
-		//NMDebug(<< std::endl);
-		NMErr(__rio, << "failed writing RAT name 'nmrat_" << oid
-				<< "' into nm_meta table: " << endl << PQresultErrorMessage(res));
-		PQclear(res);
-		return;
+		NMErr(__rio, << "failed writing RAT name '" << tablename.str()
+				<< "' into nm_meta table!");
 	}
+
+	//// write the name of this table into the nm_meta table
+	//query << "update nm_meta set attrtable_name = 'nmrat_" << oid << "' " <<
+	//		 "where img_id = " << oid;
+	//NMDebugInd(1, << "'" << query.str() << "' ... ");
+	//res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
+	//if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	//{
+	//	//NMDebug(<< std::endl);
+	//	NMErr(__rio, << "failed writing RAT name 'nmrat_" << oid
+	//			<< "' into nm_meta table: " << endl << PQresultErrorMessage(res));
+	//	PQclear(res);
+	//	return;
+	//}
 	//NMDebug(<< "done!" << endl);
 
 	// free result structure
-	PQclear(res);
+	//PQclear(res);
 
 	//NMDebugCtx(__rio, << "done!");
 }
@@ -1171,13 +1196,13 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	}
 
 	// check, whether we've got rasgeo support (a nm_meta table) at all
-	if (!this->m_Helper->isNMMetaAvailable())
-	{
-		//NMDebugAI(<< "there doesn't seem to be nm_meta support "
-		//		  << "for this rasdaman data base!" << endl);
-		//NMDebugCtx(__rio, << "done!");
-		return 0;
-	}
+	//if (!this->m_Helper->isNMMetaAvailable())
+	//{
+	//	//NMDebugAI(<< "there doesn't seem to be nm_meta support "
+	//	//		  << "for this rasdaman data base!" << endl);
+	//	//NMDebugCtx(__rio, << "done!");
+	//	return 0;
+	//}
 
 
 	// get and check connection to the data base
@@ -1192,9 +1217,19 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	// ------------------- query table name ---------------------------
 	std::stringstream query;
 	PGresult* res;
-	query << "select attrtable_name from nm_meta where coll_name = '"
-			<< this->m_collname
-			<< "' and img_id = " << this->m_oids[band-1];
+
+	query << "select value from ps9_extra_metadata em "
+	             "inner join ps9_extra_metadata_type mt "
+	             "on mt.id = em.metadata_type_id "
+			        "where mt.type = 'attrtable_name' "
+			        "and em.coverage_id = "
+			"(select coverage_id from ps9_range_set rs "
+			     "inner join ps9_rasdaman_collection rc "
+			     "on rs.storage_id = rc.id "
+			         "where rc.oid = " << this->m_oids[band-1] << ")";
+	//query << "select attrtable_name from nm_meta where coll_name = '"
+	//		<< this->m_collname
+	//		<< "' and img_id = " << this->m_oids[band-1];
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQntuples(res) < 1)
 	{
@@ -1207,7 +1242,7 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 
 	//NMDebugAI(<< "found table '" << ratName << "' ... " << endl);
 
-	//-------------------- query table structure ----------------------
+	//-------------------- check, whether table exists  ----------------------
 	// CREDITS TO michaelb on 'http://bytes.com/topic/postgresql/answers/692471-how-get-column-names-table'
 	query.str("");
 	query << "SELECT a.attname as \"Column\", " <<

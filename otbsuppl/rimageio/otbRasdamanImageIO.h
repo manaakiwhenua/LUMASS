@@ -48,11 +48,10 @@
 #include "rasdaman.hh"
 
 
-
 namespace otb
 {
 
-class ITK_EXPORT RasdamanImageIO : public otb::ImageIOBase
+class ITK_EXPORT RasdamanImageIO : public ImageIOBase
 {
 public:
 
@@ -122,7 +121,8 @@ private:
 			r_Type::r_Type_Id rtype);
 	double getOIDFromCollIndex(void);
 	r_Type::r_Type_Id getRasdamanComponentType(otb::ImageIOBase::IOComponentType otbtype);
-	void WriteRAT(otb::AttributeTable* tab, double _oid);
+	void writeRAT(otb::AttributeTable* tab,
+			unsigned int band, double _oid);
 	double insertForcedLPRDummyImage();
 			//const std::string& collname,
 			//r_Minterval& sdom);

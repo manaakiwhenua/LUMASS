@@ -901,9 +901,9 @@ void RasdamanImageIO::WriteImageInformation()
 	// otb::ImageIOBase returns type strings concatenated with '_'
 	// so we get rid of it ...
 	string::size_type pos = 0;
-	while( (pos = pixeltype.find('_', pos)) != string::npos)
+	while( (pos = pixeltype.find("_", pos)) != string::npos)
 	{
-		pixeltype.replace(pos, 1, ' ');
+		pixeltype.replace(pos, 1, " ");
 	}
 
 	double stats_min = -1;

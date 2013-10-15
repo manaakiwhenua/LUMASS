@@ -43,10 +43,11 @@
 #include "otbImageFileReader.h"
 #include "otbImageIOBase.h"
 
-
 #ifdef BUILD_RASSUPPORT
 	#include "otbRasdamanImageReader.h"
 #endif
+
+
 
 template <class InPixelType, unsigned int Dimension>
 class NMCostDistanceBufferImageWrapper_Internal
@@ -564,16 +565,10 @@ public:
 
 };
 
-//template<class InPixelType, unsigned int Dimension>
-//const std::string NMCostDistanceBufferImageWrapper_Internal::ctx = "NMCostDistanceBufferImageWrapper_Internal";
-
 InstantiateInputTypeObjectWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
 SetInputTypeNthInputWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
 GetInputTypeOutputWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
 LinkInputTypeInternalParametersWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
-
-
-//const std::string NMCostDistanceBufferImageWrapper::ctx	= "NMCostDistanceBufferImageWrapper";
 
 NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* parent)
 	: mMemoryMax(32), mUseImageSpacing(true),

@@ -46,7 +46,7 @@
 template<class InPixelType, unsigned int Dimension>
 class NMCostDistanceBufferImageWrapper_Internal;
 
-class NMCostDistanceBufferImageWrapper: public NMProcess
+class NMCostDistanceBufferImageWrapper : public NMProcess
 {
 	Q_OBJECT
 	//Q_PROPERTY(int MemoryMax READ getMemoryMax WRITE setMemoryMax)
@@ -126,8 +126,6 @@ protected:
 			const QMap<QString, NMModelComponent*>& repo);
 
 	void linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
-	//static const std::string ctx;
-
 };
 
 #endif /* NMCOSTDISTANCEBUFFERIMAGEWRAPPER_H_ */

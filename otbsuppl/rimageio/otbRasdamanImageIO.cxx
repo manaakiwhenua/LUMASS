@@ -155,7 +155,16 @@ RasdamanImageIO::getOIDFromCollIndex(void)
 bool RasdamanImageIO::CanReadFile(const char* filename)
 {
 	//NMDebugCtx(__rio, << "...");
-	
+
+	// first we check, whether we can access petascope metadata
+	if (!this->m_Rasconn->getPetaConnection())
+	{
+		NMErr(__rio, << "No connection to '" <<
+				this->m_Rasconn->getPetaDbName() << "'!");
+		this->m_bCanRead = false;
+		return false;
+	}
+
 	// correct image specification string we are looking for:
 	// collection_name:local_oid
 	this->m_prevImageSpec = this->m_ImageSpec;
@@ -173,9 +182,10 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 		return true;
 	}             
 
-	// test for multi-band image just by testing for collection
-	// containing images
+
+	// prepare exception
 	itk::ExceptionObject eo(__FILE__, __LINE__);
+
 
 	if (this->m_oids.size() == 0)
 	{
@@ -507,6 +517,15 @@ void RasdamanImageIO::Read(void* buffer)
 bool RasdamanImageIO::CanWriteFile(const char* filename)
 {
 	//NMDebugCtx(__rio, << "...");
+
+	// first we check, whether we can access petascope metadata
+	if (!this->m_Rasconn->getPetaConnection())
+	{
+		NMErr(__rio, << "No connection to '" <<
+				this->m_Rasconn->getPetaDbName() << "'!");
+		return false;
+	}
+
 
 	if (this->m_FileName.empty())
 	{
@@ -878,6 +897,15 @@ void RasdamanImageIO::WriteImageInformation()
 		pixeltype = this->GetComponentTypeAsString(
 				this->GetComponentType());
 
+
+	// otb::ImageIOBase returns type strings concatenated with '_'
+	// so we get rid of it ...
+	string::size_type pos = 0;
+	while( (pos = pixeltype.find('_', pos)) != string::npos)
+	{
+		pixeltype.replace(pos, 1, ' ');
+	}
+
 	double stats_min = -1;
 	double stats_max = -1;
 	double stats_mean = -1;
@@ -1206,10 +1234,10 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 
 
 	// get and check connection to the data base
-	const PGconn* conn = this->m_Rasconn->getRasConnection();
+	const PGconn* conn = this->m_Rasconn->getPetaConnection();
 	if (conn == 0)
 	{
-		NMErr(__rio, << "No connection to rasdaman data base!");
+		NMErr(__rio, << "No connection to petascope data base!");
 		//NMDebugCtx(__rio, << "done!");
 		return 0;
 	}
@@ -1218,31 +1246,37 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	std::stringstream query;
 	PGresult* res;
 
-	query << "select value from ps9_extra_metadata em "
-	             "inner join ps9_extra_metadata_type mt "
+	query << "select value from ps9_extra_metadata as em "
+	             "inner join ps9_extra_metadata_type as mt "
 	             "on mt.id = em.metadata_type_id "
 			        "where mt.type = 'attrtable_name' "
 			        "and em.coverage_id = "
-			"(select coverage_id from ps9_range_set rs "
-			     "inner join ps9_rasdaman_collection rc "
+			"(select coverage_id from ps9_range_set as rs "
+			     "inner join ps9_rasdaman_collection as rc "
 			     "on rs.storage_id = rc.id "
 			         "where rc.oid = " << this->m_oids[band-1] << ")";
-	//query << "select attrtable_name from nm_meta where coll_name = '"
-	//		<< this->m_collname
-	//		<< "' and img_id = " << this->m_oids[band-1];
+	NMDebug( << query.str() << std::endl);
 	res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
 	if (PQntuples(res) < 1)
 	{
-		//NMDebugAI(<< "this band hasn't got an associated attribute table!" << endl);
+		NMDebugAI(<< "this band hasn't got an associated attribute table!" << endl);
 		//NMDebugCtx(__rio, << "done!");
 		return 0;
 	}
 	std::string ratName = PQgetvalue(res, 0, 0);
 	PQclear(res);
 
-	//NMDebugAI(<< "found table '" << ratName << "' ... " << endl);
 
 	//-------------------- check, whether table exists  ----------------------
+	// before, we connect to the rasdaman database since the table is physically stored there!
+	conn = this->m_Rasconn->getRasConnection();
+	if (conn == 0)
+	{
+		NMErr(__rio, << "No connection to rasdaman data base!");
+		//NMDebugCtx(__rio, << "done!");
+		return 0;
+	}
+
 	// CREDITS TO michaelb on 'http://bytes.com/topic/postgresql/answers/692471-how-get-column-names-table'
 	query.str("");
 	query << "SELECT a.attname as \"Column\", " <<

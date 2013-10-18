@@ -54,6 +54,8 @@
 #include <QRegExp>
 #include <QCheckBox>
 
+#include "vtkSelection.h"
+#include "vtkSelectionNode.h"
 #include "vtkCellData.h"
 #include "vtkDataObject.h"
 #include "vtkDataSet.h"
@@ -1223,16 +1225,18 @@ void NMTableView::clearSelection()
 
 void NMTableView::selectRow(int row)
 {
-	QModelIndex idx = this->mSortFilter->index(row,0,QModelIndex());
-	this->mTableView->selectionModel()->select(idx, QItemSelectionModel::Select |
+	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
+	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
+	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Select |
 			QItemSelectionModel::Rows);
 	this->mTableView->update(idx);
 }
 
 void NMTableView::deselectRow(int row)
 {
-	QModelIndex idx = this->mSortFilter->index(row,0,QModelIndex());
-	this->mTableView->selectionModel()->select(idx, QItemSelectionModel::Deselect |
+	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
+	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
+	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Deselect |
 			QItemSelectionModel::Rows);
 	this->mTableView->update(idx);
 }

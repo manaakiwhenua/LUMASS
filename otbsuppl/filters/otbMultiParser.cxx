@@ -54,6 +54,13 @@ public:
     m_MuParser.DefineConst( "ln10",   CONST_LN10 );
     m_MuParser.DefineConst( "pi",     CONST_PI );
     m_MuParser.DefineConst( "euler",  CONST_EULER );
+
+    // we also define the char set here - where else?
+    // TODO: check, whether this would work with adjustments to
+    // the NMTableCalculator
+    //m_MuParser.DefineNameChars(
+    //		"\"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    //		"01234567890_-");
   }
 
   /** Initialize user defined functions */

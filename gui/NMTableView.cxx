@@ -828,6 +828,7 @@ void NMTableView::colStats()
 	if (!aa->IsNumeric())
 	{
 		NMErr(__ctxtabview, << "Select a numeric column for statistics calculation!");
+		NMDebugCtx(__ctxtabview, << "done!");
 		return;
 	}
 

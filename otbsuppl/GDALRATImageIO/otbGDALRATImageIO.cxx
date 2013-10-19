@@ -1854,23 +1854,65 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	int nrows = rat->GetRowCount();
 	int ncols = rat->GetColumnCount();
 
+    std::vector< std::string > colnames;
+
+    // go and check the column names against the SQL standard, in case
+    // they don't match it, we enclose in double quotes.
+    for (int c=0; c < ncols; ++c)
+    {
+    	bool quote = false;
+    	std::string name = rat->GetNameOfCol(c);
+    	for (int l=0; l < name.size(); ++l)
+    	{
+    		if (l == 0)
+        	{
+        		if (!isalpha(name[l]) && name[l] != '_')
+        		{
+        			quote = true;
+        			break;
+        		}
+        	}
+        	else
+        	{
+        		if (!isalnum(name[l]) && name[l] != '_')
+        		{
+        			quote = true;
+        			break;
+        		}
+        	}
+    	}
+
+    	std::stringstream checkedstr;
+    	if (quote)
+    	{
+    		checkedstr << '\"' << name << '\"';
+    	}
+    	else
+    	{
+    		checkedstr << name;
+    	}
+    	colnames.push_back(checkedstr.str());
+    }
+
+
 	// copy table
 	::GDALRATFieldType gdaltype;
 	AttributeTable::TableColumnType otbtabtype;
 	for (int c=0; c < ncols; ++c)
 	{
 		gdaltype = rat->GetTypeOfCol(c);
-		std::string rawname = rat->GetNameOfCol(c);
-		const char* rawar = rawname.c_str();
-		std::string colname;
-		for(int p=0; p < rawname.size(); ++p)
-		{
-			if (std::isalnum(rawar[p]) || rawar[p] == '_'
-					|| rawar[p] == '-')
-			{
-				colname += rawar[p];
-			}
-		}
+//		std::string rawname = rat->GetNameOfCol(c);
+//		const char* rawar = rawname.c_str();
+//		std::string colname;
+//		for(int p=0; p < rawname.size(); ++p)
+//		{
+//			if (std::isalnum(rawar[p]) || rawar[p] == '_'
+//					|| rawar[p] == '-')
+//			{
+//				colname += rawar[p];
+//			}
+//		}
+		std::string colname = colnames[c];
 
 		switch(gdaltype)
 		{
@@ -1892,6 +1934,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 
 	for (int c=0; c < ncols; ++c)
 	{
+		gdaltype = rat->GetTypeOfCol(c);
 		for (int r=0; r < nrows; ++r)
 		{
 			if (c==0)
@@ -1918,6 +1961,10 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 
 	rat = 0;
 	img = 0;
+
+	//NMDebug(<< std::endl);
+	//NMDebugAI(<< "now pritn' the actual Table ...");
+	//otbTab->Print(std::cout, itk::Indent(0), 100);
 
 	return otbTab;
 }

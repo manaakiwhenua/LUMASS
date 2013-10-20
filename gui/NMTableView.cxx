@@ -81,11 +81,13 @@
 NMTableView::NMTableView(QWidget* parent)
 	: QWidget(parent)
 {
+	this->mViewMode = NMTABVIEW_ATTRTABLE;
 	this->initView();
 }
 
-NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
-	: QWidget(parent)
+NMTableView::NMTableView(vtkTable* tab, QWidget* parent,
+		ViewMode mode)
+	: QWidget(parent), mViewMode(mode)
 {
 	this->initView();
 	this->setTable(tab);
@@ -100,6 +102,11 @@ NMTableView::~NMTableView()
 
 void NMTableView::initView()
 {
+	if (mViewMode == NMTABVIEW_SORTANDPICK)
+	{
+		this->setWindowModality(Qt::ApplicationModal);
+	}
+
 	this->mTableView = new QTableView(this);
 	this->mTableView->setSortingEnabled(true);
 	this->mTableView->verticalHeader()->hide();

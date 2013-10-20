@@ -2241,8 +2241,8 @@ OtbModellerWin::loadRasdamanLayer()
 
 	std::stringstream query;
 	query << "select create_metatable(); "
-		  << "select * from geometadata as t1 "
-		  << "left join tmp_flatmetadata as t2 "
+		  << "select * from tmp_flatmetadata as t1 "
+		  << "right join geometadata as t2 "
 		  << "on t1.oid = t2.oid;";
 
 	// copy the table into a vtkTable to be fed into a TableView
@@ -2258,32 +2258,53 @@ OtbModellerWin::loadRasdamanLayer()
 		return;
 	}
 
+	// because of the left join above, we've got two oid fields,
+	// but we only want one!
+	std::vector<std::string> colnames;
+	std::vector<int> colindices;
+	int oidcnt = 0;
+	for (int c=0; c < ncols; ++c)
+	{
+		if (   QString(PQfname(res,c)).compare("oid", Qt::CaseInsensitive) == 0
+		    && oidcnt == 0)
+		{
+			colnames.push_back(PQfname(res,c));
+			colindices.push_back(c);
+			++oidcnt;
+		}
+		else
+		{
+			colnames.push_back(PQfname(res,c));
+			colindices.push_back(c);
+		}
+	}
+
 	// copy the table structure
 	// all columns, except oid, text columns, so we mostly just use vtk string arrays
 	vtkSmartPointer<vtkTable> metatab = vtkSmartPointer<vtkTable>::New();
-	int oididx = -1;
-	NMDebug(<< "colnames: ");
-	for (int c=0; c < ncols; ++c)
+	QMap<QString, int> idxmap;
+	for (int i=0; i < colindices.size(); ++i)
 	{
-		std::string colname = PQfname(res, c);
-		NMDebug(<< colname << " ");
-		if (::strcmp(colname.c_str(), "oid") == 0)
+		QString colname(PQfname(res, colindices[i]));
+		//NMDebug(<< colname.toStdString() << " ");
+		if (colname.compare("oid", Qt::CaseInsensitive) == 0)
 		{
 			vtkSmartPointer<vtkLongArray> lar = vtkSmartPointer<vtkLongArray>::New();
 			lar->SetNumberOfComponents(1);
 			lar->SetNumberOfTuples(nrows);
 			lar->FillComponent(0,0);
-			lar->SetName("oid");
+			lar->SetName(PQfname(res, colindices[i]));
 			metatab->AddColumn(lar);
-			oididx = c;
+			idxmap.insert(colname, colindices[i]);
 		}
 		else
 		{
 			vtkSmartPointer<vtkStringArray> sar = vtkSmartPointer<vtkStringArray>::New();
 			sar->SetNumberOfComponents(1);
 			sar->SetNumberOfTuples(nrows);
-			sar->SetName(PQfname(res,c));
+			sar->SetName(PQfname(res, colindices[i]));
 			metatab->AddColumn(sar);
+			idxmap.insert(colname, colindices[i]);
 		}
 	}
 	NMDebug(<< std::endl);
@@ -2301,27 +2322,22 @@ OtbModellerWin::loadRasdamanLayer()
 
 
 	// copy the table body
-	NMDebug(<< "tab body: ");
+	int ntabcols = metatab->GetNumberOfColumns();
 	for (int r=0; r < nrows; ++r)
 	{
-		for (int c=0; c < ncols; ++c)
+		for (int i=0; i < ntabcols; ++i)
 		{
-			if (c == oididx)
+			vtkAbstractArray* aar = metatab->GetColumn(i);
+			QString colname(aar->GetName());
+			if (colname.compare("oid", Qt::CaseInsensitive) == 0)
 			{
-				NMDebug( << c << "," << r << ":" <<
-						::atol(PQgetvalue(res, r, c)) << " ");
-				vtkLongArray* lar =
-						vtkLongArray::SafeDownCast(metatab->GetColumn(c));
-				lar->SetValue(r, ::atol(PQgetvalue(res, r, c)));
+				vtkLongArray* lar = vtkLongArray::SafeDownCast(aar);
+				lar->SetValue(r, ::atol(PQgetvalue(res, r, idxmap.value(colname))));
 			}
 			else
 			{
-				NMDebug( << c << "," << r << ":" <<
-						PQgetvalue(res, r, c) << " ");
-
-				vtkStringArray* sar =
-						vtkStringArray::SafeDownCast(metatab->GetColumn(c));
-				sar->SetValue(r, PQgetvalue(res, r, c));
+				vtkStringArray* sar = vtkStringArray::SafeDownCast(aar);
+				sar->SetValue(r, PQgetvalue(res, r, idxmap.value(colname)));
 			}
 		}
 		car->SetTuple1(r, 0);
@@ -2335,12 +2351,13 @@ OtbModellerWin::loadRasdamanLayer()
 
 
 	if (this->mpPetaView == 0)
-		this->mpPetaView = new NMTableView(metatab);
+		this->mpPetaView = new NMTableView(metatab,
+				NMTableView::NMTABVIEW_SORTANDPICK);
 	else
 		this->mpPetaView->setTable(metatab);
 
-	//this->mpPetaView->hideAttribute("nm_sel");
-	//this->mpPetaView->hideAttribute("nm_id");
+	this->mpPetaView->hideAttribute("nm_sel");
+	this->mpPetaView->hideAttribute("nm_id");
 	this->mpPetaView->show();
 
 

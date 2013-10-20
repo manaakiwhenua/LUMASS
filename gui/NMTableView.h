@@ -81,10 +81,19 @@ class QVTK_EXPORT NMTableView : public QWidget
 	Q_OBJECT
 
 public:
+
+	enum ViewMode{NMTABVIEW_ATTRTABLE,
+		NMTABVIEW_SORTANDPICK
+	};
+
 	NMTableView(QWidget* parent=0);
-	NMTableView(vtkTable* tab, QWidget* parent=0);
+	NMTableView(vtkTable* tab, ViewMode=NMTABVIEW_ATTRTABLE,
+			QWidget* parent=0);
 	virtual ~NMTableView();
 
+	ViewMode getViewMode() {return mViewMode;};
+	void setViewMode(ViewMode mode)
+		{mViewMode = mode;};
 	void hideAttribute(QString attr);
 	void filterAttribute(QString attr, QString regexp);
 	int getColumnIndex(QString attr);
@@ -136,6 +145,8 @@ protected:
 	void mousePressEvent(QMouseEvent* event);
 	bool eventFilter(QObject* object, QEvent* event);
 	void updateSelectionAdmin(long numsel);
+
+	ViewMode mViewMode;
 
 	long mlNumSelRecs;
 	int mRowKeyColIndex;

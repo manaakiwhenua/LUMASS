@@ -327,8 +327,7 @@ namespace mu
   {
     // this is just sample code to illustrate modifying variable names on the fly.
     // I'm not sure anyone really needs such a feature...
-    /*
-
+	/*
 
     string sVar(pExpr->begin()+nStart, pExpr->begin()+nEnd);
     string sRepl = std::string("_") + sVar + "_";

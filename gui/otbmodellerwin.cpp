@@ -240,6 +240,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
 #ifdef BUILD_RASSUPPORT
 	this->mpRasconn = 0;
+	this->mpPetaView = 0;
 #endif
 	
 	// some meta type registration for supporting the given types for
@@ -434,6 +435,13 @@ OtbModellerWin::~OtbModellerWin()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	// close the table view and delete;
+	if (this->mpPetaView != 0)
+	{
+		this->mpPetaView->close();
+		delete this->mpPetaView;
+	}
+
 #ifdef BUILD_RASSUPPORT
 	if (this->mpRasconn)
 		delete this->mpRasconn;
@@ -510,6 +518,58 @@ OtbModellerWin::getRasdamanConnector(void)
 		std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
 		this->mpRasconn = new RasdamanConnector(connfile);
 	}
+
+	// get the sql for creating required views and functions to
+	// facilitate metadata browsing
+	std::string geospatial_fn = std::string(_lumass_binary_dir) +
+			"/shared/ps_view_geometadata.sql";
+	std::string extrametadata_fn = std::string(_lumass_binary_dir) +
+			"/shared/ps_view_extrametadata.sql";
+	std::string metadatatable_fn = std::string(_lumass_binary_dir) +
+			"/shared/ps_func_metadatatable.sql";
+
+	QFile geofile(QString(geospatial_fn.c_str()));
+	if (!geofile.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		NMErr(ctxOtbModellerWin, << "view_geospatial: Failed installing petascope browsing support!");
+		return this->mpRasconn;
+	}
+	QTextStream in(&geofile);
+	QString geosql(in.readAll());
+
+	QFile extrafile(QString(extrametadata_fn.c_str()));
+	if (!extrafile.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		NMErr(ctxOtbModellerWin, << "view_extrametadata: Failed installing petascope browsing support!");
+		return this->mpRasconn;
+	}
+	QTextStream in2(&extrafile);
+	QString extrasql(in2.readAll());
+
+	QFile tabfile(QString(metadatatable_fn.c_str()));
+	if (!tabfile.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		NMErr(ctxOtbModellerWin, << "func_metadatatable: Failed installing petascope browsing support!");
+		return this->mpRasconn;
+	}
+	QTextStream in3(&tabfile);
+	QString tabsql(in3.readAll());
+
+
+	// now execute the files
+	std::string query = extrasql.toStdString() + geosql.toStdString() +
+			   tabsql.toStdString();
+
+	this->mpRasconn->connect();
+	const PGconn* conn = this->mpRasconn->getPetaConnection();
+	PGresult* res = PQexec(const_cast<PGconn*>(conn), query.c_str());
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		NMErr(ctxOtbModellerWin, << "PQexec: Failed installing petascope browsing support!"
+				                 << PQresultErrorMessage(res));
+		return this->mpRasconn;
+	}
+	PQclear(res);
 
 	return this->mpRasconn;
 }
@@ -2163,47 +2223,172 @@ OtbModellerWin::loadRasdamanLayer()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	QString fileName = QInputDialog::getText(this, "Image Name/Path", "");
-	if (fileName.isNull())
-		return;
 
 	try
 	{
-		std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
-		if (this->mpRasconn == 0)
-			this->mpRasconn = new RasdamanConnector(connfile);
-
-		NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
-
-		QFileInfo finfo(fileName);
-		QString layerName = finfo.baseName();
-
-		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
-		NMImageLayer* layer = new NMImageLayer(renWin);
-
-		layer->setRasdamanConnector(this->mpRasconn);
-		layer->setObjectName(layerName);
-		if (layer->setFileName(fileName))
-		{
-			layer->setVisible(true);
-			this->ui->modelCompList->addLayer(layer);
-		}
-		else
-			delete layer;
+		RasdamanConnector* rasconn = this->getRasdamanConnector();
 	}
-	catch(r_Error& re)
+	catch (r_Error& re)
 	{
-		this->mpRasconn->disconnect();
-		this->mpRasconn->connect();
 		NMErr(ctxOtbModellerWin, << re.what());
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
+		return;
 	}
+
+
+	// query the flat metadata table showing all coverage/image metadata
+	const PGconn* conn = this->mpRasconn->getPetaConnection();
+
+	std::stringstream query;
+	query << "select create_metatable(); "
+		  << "select * from geometadata as t1 "
+		  << "left join tmp_flatmetadata as t2 "
+		  << "on t1.oid = t2.oid;";
+
+	// copy the table into a vtkTable to be fed into a TableView
+	PGresult* res = const_cast<PGresult*>(
+			PQexec(const_cast<PGconn*>(conn), query.str().c_str()));
+	int nrows = PQntuples(res);
+	int ncols = PQnfields(res);
+	if (nrows < 1)
+	{
+		QMessageBox::information(this, "Open rasdaman image",
+				"No registered rasdaman images found in database!");
+		NMDebugCtx(ctxOtbModellerWin, << "done!");
+		return;
+	}
+
+	// copy the table structure
+	// all columns, except oid, text columns, so we mostly just use vtk string arrays
+	vtkSmartPointer<vtkTable> metatab = vtkSmartPointer<vtkTable>::New();
+	int oididx = -1;
+	NMDebug(<< "colnames: ");
+	for (int c=0; c < ncols; ++c)
+	{
+		std::string colname = PQfname(res, c);
+		NMDebug(<< colname << " ");
+		if (::strcmp(colname.c_str(), "oid") == 0)
+		{
+			vtkSmartPointer<vtkLongArray> lar = vtkSmartPointer<vtkLongArray>::New();
+			lar->SetNumberOfComponents(1);
+			lar->SetNumberOfTuples(nrows);
+			lar->FillComponent(0,0);
+			lar->SetName("oid");
+			metatab->AddColumn(lar);
+			oididx = c;
+		}
+		else
+		{
+			vtkSmartPointer<vtkStringArray> sar = vtkSmartPointer<vtkStringArray>::New();
+			sar->SetNumberOfComponents(1);
+			sar->SetNumberOfTuples(nrows);
+			sar->SetName(PQfname(res,c));
+			metatab->AddColumn(sar);
+		}
+	}
+	NMDebug(<< std::endl);
+
+	vtkSmartPointer<vtkUnsignedCharArray> car = vtkSmartPointer<vtkUnsignedCharArray>::New();
+	car->SetNumberOfComponents(1);
+	car->SetNumberOfTuples(nrows);
+	car->SetName("nm_sel");
+
+	vtkSmartPointer<vtkLongArray> idar = vtkSmartPointer<vtkLongArray>::New();
+	idar->SetNumberOfComponents(1);
+	idar->SetNumberOfTuples(nrows);
+	idar->FillComponent(0,0);
+	idar->SetName("nm_id");
+
+
+	// copy the table body
+	NMDebug(<< "tab body: ");
+	for (int r=0; r < nrows; ++r)
+	{
+		for (int c=0; c < ncols; ++c)
+		{
+			if (c == oididx)
+			{
+				NMDebug( << c << "," << r << ":" <<
+						::atol(PQgetvalue(res, r, c)) << " ");
+				vtkLongArray* lar =
+						vtkLongArray::SafeDownCast(metatab->GetColumn(c));
+				lar->SetValue(r, ::atol(PQgetvalue(res, r, c)));
+			}
+			else
+			{
+				NMDebug( << c << "," << r << ":" <<
+						PQgetvalue(res, r, c) << " ");
+
+				vtkStringArray* sar =
+						vtkStringArray::SafeDownCast(metatab->GetColumn(c));
+				sar->SetValue(r, PQgetvalue(res, r, c));
+			}
+		}
+		car->SetTuple1(r, 0);
+		idar->SetTuple1(r, r);
+	}
+	NMDebug( << std::endl);
+	metatab->AddColumn(car);
+	metatab->AddColumn(idar);
+
+	PQclear(res);
+
+
+	if (this->mpPetaView == 0)
+		this->mpPetaView = new NMTableView(metatab);
+	else
+		this->mpPetaView->setTable(metatab);
+
+	//this->mpPetaView->hideAttribute("nm_sel");
+	//this->mpPetaView->hideAttribute("nm_id");
+	this->mpPetaView->show();
+
+
+	return;
+
+
+//	try
+//	{
+//		//std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
+//
+//		NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
+//
+//		QFileInfo finfo(fileName);
+//		QString layerName = finfo.baseName();
+//
+//		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
+//		NMImageLayer* layer = new NMImageLayer(renWin);
+//
+//		layer->setRasdamanConnector(this->mpRasconn);
+//		layer->setObjectName(layerName);
+//		if (layer->setFileName(fileName))
+//		{
+//			layer->setVisible(true);
+//			this->ui->modelCompList->addLayer(layer);
+//		}
+//		else
+//			delete layer;
+//	}
+//	catch(r_Error& re)
+//	{
+//		this->mpRasconn->disconnect();
+//		this->mpRasconn->connect();
+//		NMErr(ctxOtbModellerWin, << re.what());
+//		NMDebugCtx(ctxOtbModellerWin, << "done!");
+//	}
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 
 }
 #endif
 
+//vtkTable*
+//OtbModellerWin::pgToVtkTable(const PGresult* res)
+//{
+//
+//
+//
+//}
 
 void OtbModellerWin::loadImageLayer()
 {

@@ -79,6 +79,8 @@ public:
     const vtkRenderer* getBkgRenderer(void);
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
+    //vtkTable* pgToVtkTable(const PGresult* res);
+
 #ifdef BUILD_RASSUPPORT    
     RasdamanConnector* getRasdamanConnector(void);
 #endif
@@ -208,6 +210,9 @@ private:
     vtkSmartPointer<vtkEventQtSlotConnect> m_vtkConns;
     // orientation marker
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientwidget;
+
+    // the petascope metadata table
+    NMTableView* mpPetaView;
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

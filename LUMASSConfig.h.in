@@ -22,9 +22,11 @@
  #define LUMASS_VERSION_REVISION "@LUMASS_VERSION_REVISION@"
  #define LUMASS_COMMIT_DATE "@LUMASS_COMMIT_DATE@"
  #define LUMASS_COMMIT_HASH "@GIT_SHA1@"
+ #define LUMASS_BINARY_DIR "@lumass_BINARY_DIR@"
  
  const char _lumass_commit_hash[] = LUMASS_COMMIT_HASH;
  const char _lumass_commit_date[] = LUMASS_COMMIT_DATE;
  const char _lumass_version_major[] = LUMASS_VERSION_MAJOR;
  const char _lumass_version_minor[] = LUMASS_VERSION_MINOR;
  const char _lumass_version_revision[] = LUMASS_VERSION_REVISION;
+ const char _lumass_binary_dir[] = LUMASS_BINARY_DIR;

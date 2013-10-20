@@ -52,7 +52,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
     "MinSizeRel" "RelWithDebInfo")
-endif()   
+endif()  
+
+message(STATUS "LUMASS build type: "${CMAKE_BUILD_TYPE}) 
 
 # define the DEBUG symbol, if we're in debug mode
 string(TOLOWER "${CMAKE_BUILD_TYPE}" testvar_in)

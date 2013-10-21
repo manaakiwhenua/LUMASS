@@ -1012,6 +1012,48 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 	std::vector< std::string > colnames;
 	std::vector< AttributeTable::TableColumnType > coltypes;
 
+    // go and check the column names against the SQL standard, in case
+    // they don't match it, we enclose in double quotes.
+    for (int c=0; c < ncols; ++c)
+    {
+    	bool quote = false;
+    	std::string name = tab->GetColumnName(c);
+    	if (name == "rowidx")
+    		continue;
+    	for (int l=0; l < name.size(); ++l)
+    	{
+    		if (l == 0)
+        	{
+        		if (!isalpha(name[l]) && name[l] != '_')
+        		{
+        			quote = true;
+        			break;
+        		}
+        	}
+        	else
+        	{
+        		if (!isalnum(name[l]) && name[l] != '_')
+        		{
+        			quote = true;
+        			break;
+        		}
+        	}
+    	}
+
+    	std::stringstream checkedstr;
+    	if (quote)
+    	{
+    		checkedstr << '\"' << name << '\"';
+    	}
+    	else
+    	{
+    		checkedstr << name;
+    	}
+    	colnames.push_back(checkedstr.str());
+    }
+
+
+
 	// the first field is going to store the row index 'rowidx', which starts
 	// at 0 and is incremented for each further row; this is necessary
 	// to support indexed raster layers which refer to attributes by
@@ -1035,7 +1077,7 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 			bSkipIdx = c_orig;
 			continue;
 		}
-		colnames.push_back(tab->GetColumnName(c_orig));
+		//colnames.push_back(tab->GetColumnName(c_orig));
 		coltypes.push_back(tab->GetColumnType(c_orig));
 
 		string typestr = "";

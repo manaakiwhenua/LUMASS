@@ -89,6 +89,10 @@ public slots:
 
 #ifdef BUILD_RASSUPPORT
 	void loadRasdamanLayer();
+	void updateRasMetaView();
+	void fetchRasLayer(const QString& imagespec,
+			const QString& covname);
+	void eraseRasLayer(const QString& imagespec);
 #endif
 	void loadImageLayer();
 	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)

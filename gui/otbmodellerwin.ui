@@ -49,9 +49,10 @@
     <addaction name="actionSaveAsVectorLayerOGR"/>
     <addaction name="separator"/>
     <addaction name="actionLoad_Layer"/>
-    <addaction name="actionImportRasdamanLayer"/>
     <addaction name="actionLoad_Vector_Layer"/>
     <addaction name="actionImport_3D_Point_Set"/>
+    <addaction name="separator"/>
+    <addaction name="actionImportRasdamanLayer"/>
     <addaction name="separator"/>
     <addaction name="actionImportODBC"/>
     <addaction name="separator"/>
@@ -305,6 +306,10 @@
    </widget>
   </widget>
   <action name="actionLoad_Layer">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/image_layer.png</normaloff>:/image_layer.png</iconset>
+   </property>
    <property name="text">
     <string>Import Image Layer ...</string>
    </property>
@@ -323,11 +328,19 @@
    </property>
   </action>
   <action name="actionLoad_VTK_PolyData">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/vector_layer.png</normaloff>:/vector_layer.png</iconset>
+   </property>
    <property name="text">
     <string>Load VTK PolyData ...</string>
    </property>
   </action>
   <action name="actionLoad_Vector_Layer">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/vector_layer.png</normaloff>:/vector_layer.png</iconset>
+   </property>
    <property name="text">
     <string>Import Vector Layer ...</string>
    </property>
@@ -416,8 +429,15 @@
    </property>
   </action>
   <action name="actionImportRasdamanLayer">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/image_layer.png</normaloff>:/image_layer.png</iconset>
+   </property>
    <property name="text">
-    <string>Import RasDaMan Layer ...</string>
+    <string>Manage rasdaman Images ...</string>
+   </property>
+   <property name="toolTip">
+    <string>Manage rasdaman Images</string>
    </property>
   </action>
   <action name="actionMOSO_batch">
@@ -451,6 +471,8 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="nmresources.qrc"/>
+ </resources>
  <connections/>
 </ui>

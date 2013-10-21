@@ -85,8 +85,16 @@ NMTableView::NMTableView(QWidget* parent)
 	this->initView();
 }
 
-NMTableView::NMTableView(vtkTable* tab, QWidget* parent,
-		ViewMode mode)
+NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
+	: QWidget(parent)
+{
+	this->mViewMode = NMTABVIEW_ATTRTABLE;
+	this->initView();
+	this->setTable(tab);
+}
+
+
+NMTableView::NMTableView(vtkTable* tab, ViewMode mode, QWidget* parent)
 	: QWidget(parent), mViewMode(mode)
 {
 	this->initView();
@@ -102,11 +110,6 @@ NMTableView::~NMTableView()
 
 void NMTableView::initView()
 {
-	if (mViewMode == NMTABVIEW_SORTANDPICK)
-	{
-		this->setWindowModality(Qt::ApplicationModal);
-	}
-
 	this->mTableView = new QTableView(this);
 	this->mTableView->setSortingEnabled(true);
 	this->mTableView->verticalHeader()->hide();
@@ -170,38 +173,56 @@ void NMTableView::initView()
 	QAction* actExp = new QAction(this->mColHeadMenu);
 	actExp->setText(tr("Export Table ..."));
 
-	QAction* actDelete = new QAction(this->mColHeadMenu);
-	actDelete->setText(tr("Delete Column"));
-
-	QAction* actAdd = new QAction(this->mColHeadMenu);
-	actAdd->setText(tr("Add Column ..."));
-
-	QAction* actCalc = new QAction(this->mColHeadMenu);
-	actCalc->setText(tr("Calculate Column ..."));
-
 	QAction* actFilter = new QAction(this->mColHeadMenu);
 	actFilter->setText(tr("Arbitrary SQL Query ..."));
 
 	QAction* actSel = new QAction(this->mColHeadMenu);
 	actSel->setText(tr("Select Attributes ..."));
 
-	QAction* actNorm = new QAction(this->mColHeadMenu);
-	actNorm->setText(tr("Normalise Attributes ..."));
+	QAction* actDelete;
+	QAction* actAdd;
+	QAction* actCalc;
+	QAction* actNorm;
+	QAction* actJoin;
 
-	QAction* actJoin = new QAction(this->mColHeadMenu);
-	actJoin->setText(tr("Join Attributes ..."));
+	if (mViewMode == NMTABVIEW_ATTRTABLE)
+	{
+		actDelete = new QAction(this->mColHeadMenu);
+		actDelete->setText(tr("Delete Column"));
+
+		actAdd = new QAction(this->mColHeadMenu);
+		actAdd->setText(tr("Add Column ..."));
+
+		actCalc = new QAction(this->mColHeadMenu);
+		actCalc->setText(tr("Calculate Column ..."));
+
+		actNorm = new QAction(this->mColHeadMenu);
+		actNorm->setText(tr("Normalise Attributes ..."));
+
+		actJoin = new QAction(this->mColHeadMenu);
+		actJoin->setText(tr("Join Attributes ..."));
+	}
+
 
 	this->mColHeadMenu->addAction(actSel);
 	this->mColHeadMenu->addAction(actFilter);
 	this->mColHeadMenu->addSeparator();
 	this->mColHeadMenu->addAction(actStat);
-	this->mColHeadMenu->addAction(actCalc);
-	this->mColHeadMenu->addAction(actNorm);
+
+	if (mViewMode == NMTABVIEW_ATTRTABLE)
+	{
+		this->mColHeadMenu->addAction(actCalc);
+		this->mColHeadMenu->addAction(actNorm);
+		this->mColHeadMenu->addSeparator();
+		this->mColHeadMenu->addAction(actAdd);
+		this->mColHeadMenu->addAction(actDelete);
+	}
 	this->mColHeadMenu->addSeparator();
-	this->mColHeadMenu->addAction(actAdd);
-	this->mColHeadMenu->addAction(actDelete);
-	this->mColHeadMenu->addSeparator();
-	this->mColHeadMenu->addAction(actJoin);
+
+	if (mViewMode == NMTABVIEW_ATTRTABLE)
+	{
+		this->mColHeadMenu->addAction(actJoin);
+	}
 	this->mColHeadMenu->addAction(actExp);
 
 	this->connect(this->mBtnClearSelection, SIGNAL(pressed()), this, SLOT(clearSelection()));
@@ -209,15 +230,36 @@ void NMTableView::initView()
 	this->connect(this->mChkSelectedRecsOnly, SIGNAL(stateChanged(int)), this,
 			SLOT(updateSelRecsOnly(int)));
 
-	this->connect(actCalc, SIGNAL(triggered()), this, SLOT(calcColumn()));
+	this->connect(actSel, SIGNAL(triggered()), this, SLOT(selectionQuery()));
 	this->connect(actStat, SIGNAL(triggered()), this, SLOT(colStats()));
-	this->connect(actAdd, SIGNAL(triggered()), this, SLOT(addColumn()));
-	this->connect(actDelete, SIGNAL(triggered()), this, SLOT(deleteColumn()));
 	this->connect(actExp, SIGNAL(triggered()), this, SLOT(exportTable()));
 	this->connect(actFilter, SIGNAL(triggered()), this, SLOT(userQuery()));
-	this->connect(actNorm, SIGNAL(triggered()), this, SLOT(normalise()));
-	this->connect(actSel, SIGNAL(triggered()), this, SLOT(selectionQuery()));
-	this->connect(actJoin, SIGNAL(triggered()), this, SLOT(joinAttributes()));
+
+	if (mViewMode == NMTABVIEW_ATTRTABLE)
+	{
+		this->connect(actAdd, SIGNAL(triggered()), this, SLOT(addColumn()));
+		this->connect(actDelete, SIGNAL(triggered()), this, SLOT(deleteColumn()));
+		this->connect(actCalc, SIGNAL(triggered()), this, SLOT(calcColumn()));
+		this->connect(actNorm, SIGNAL(triggered()), this, SLOT(normalise()));
+		this->connect(actJoin, SIGNAL(triggered()), this, SLOT(joinAttributes()));
+	}
+
+	///////////////////////////////////////////
+	// init the context menu for managing rasdaman layers
+	this->mManageLayerMenu = new QMenu(this);
+
+	QAction* loadLayer = new QAction(this->mManageLayerMenu);
+	loadLayer->setText(tr("Load Layer"));
+
+	QAction* delLayer = new QAction(this->mManageLayerMenu);
+	delLayer->setText(tr("Delete Selected Layer(s)"));
+
+	this->mManageLayerMenu->addAction(loadLayer);
+	this->mManageLayerMenu->addAction(delLayer);
+
+	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
+	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
+
 }
 
 void NMTableView::updateSelRecsOnly(int state)
@@ -862,6 +904,40 @@ void NMTableView::colStats()
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
+void
+NMTableView::loadRasLayer(void)
+{
+	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
+	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
+
+	vtkLongArray* oidar = vtkLongArray::SafeDownCast(this->mBaseTable->GetColumnByName("oid"));
+	vtkStringArray* collar = vtkStringArray::SafeDownCast(this->mBaseTable->GetColumnByName("coll_name"));
+	vtkStringArray* covar = vtkStringArray::SafeDownCast(this->mBaseTable->GetColumnByName("covername"));
+
+	QString imagespec = QString("%1:%2").arg(collar->GetValue(srcIdx.row()).c_str())
+			                            .arg(oidar->GetValue(srcIdx.row()));
+
+	QString covname = QString(covar->GetValue(srcIdx.row()).c_str());
+
+	emit notifyLoadRasLayer(imagespec, covname);
+
+}
+
+void
+NMTableView::deleteRasLayer(void)
+{
+	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
+	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
+
+	vtkLongArray* oidar = vtkLongArray::SafeDownCast(this->mBaseTable->GetColumnByName("oid"));
+	vtkStringArray* collar = vtkStringArray::SafeDownCast(this->mBaseTable->GetColumnByName("coll_name"));
+
+	QString imagespec = QString("%1:%2").arg(collar->GetValue(srcIdx.row()).c_str())
+			                            .arg(oidar->GetValue(srcIdx.row()));
+
+	emit notifyDeleteRasLayer(imagespec);
+}
+
 void NMTableView::setTable(vtkTable* tab)
 {
 	NMDebugCtx(__ctxtabview, << "...");
@@ -1134,14 +1210,22 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		return true;
 	}
 	// ----------------------------- PREVENT CELL SELECTION ------------------------------------
-	else if (object == this->mTableView->viewport() &&
-			 (event->type() == QEvent::MouseButtonPress ||
-			  event->type() == QEvent::MouseButtonDblClick))
+	else if (   object == this->mTableView->viewport()
+			 && event->type() == QEvent::MouseButtonPress
+			 )
 	{
-		//NMDebugAI(<< "clicked in the middle of the view!" << endl);
+			QMouseEvent* me = static_cast<QMouseEvent*>(event);
+			if (me->button() == Qt::RightButton)
+			{
+				this->mlLastClickedRow = this->mTableView->rowAt(me->pos().y());
+				NMDebugAI(<< "clicked at row: " << mlLastClickedRow << std::endl);
 
-		return true;
+				this->mManageLayerMenu->move(me->globalPos());
+				this->mManageLayerMenu->exec();
+			}
+			return false;
 	}
+
 
 	return false;
 }

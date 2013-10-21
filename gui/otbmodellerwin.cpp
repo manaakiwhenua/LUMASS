@@ -242,6 +242,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	this->mpRasconn = 0;
 	this->mpPetaView = 0;
 #endif
+
+	//Qt::WindowFlags flags = this->windowFlags() | Qt::WA_DeleteOnClose;
+	//this->setWindowFlags(flags);
 	
 	// some meta type registration for supporting the given types for
 	// properties and QVariant
@@ -2221,8 +2224,87 @@ void OtbModellerWin::loadVectorLayer()
 void
 OtbModellerWin::loadRasdamanLayer()
 {
-	NMDebugCtx(ctxOtbModellerWin, << "...");
+	//NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	this->updateRasMetaView();
+	this->mpPetaView->show();
+
+	//NMDebugCtx(ctxOtbModellerWin, << "done!");
+
+}
+
+void
+OtbModellerWin::fetchRasLayer(const QString& imagespec,
+		const QString& covname)
+{
+	try
+	{
+		NMDebugAI( << "opening " << imagespec.toStdString() << " ..." << std::endl);
+
+		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
+		NMImageLayer* layer = new NMImageLayer(renWin);
+
+		layer->setRasdamanConnector(this->mpRasconn);
+		layer->setObjectName(covname);
+		if (layer->setFileName(imagespec))
+		{
+			layer->setVisible(true);
+			this->ui->modelCompList->addLayer(layer);
+		}
+		else
+			delete layer;
+	}
+	catch(r_Error& re)
+	{
+		this->mpRasconn->disconnect();
+		this->mpRasconn->connect();
+		NMErr(ctxOtbModellerWin, << re.what());
+		NMDebugCtx(ctxOtbModellerWin, << "done!");
+	}
+}
+
+void
+OtbModellerWin::eraseRasLayer(const QString& imagespec)
+{
+	QString msg = QString(tr("You're about to delete image '%1'!\nDo you really want to do this?")).
+			arg(imagespec);
+
+	int ret = QMessageBox::warning(this, tr("Delete Rasdaman Image"),
+			msg, QMessageBox::Yes | QMessageBox::No);
+
+	if (ret == QMessageBox::No)
+	{
+		return;
+	}
+
+	NMDebugAI(<< "Deleting image ..." << imagespec.toStdString() << std::endl);
+
+	int pos = imagespec.indexOf(':');
+	QString coll = imagespec.left(pos);
+
+	bool bok;
+	double oid = imagespec.right(imagespec.size()-1-pos).toDouble(&bok);
+	if (!bok)
+	{
+		NMErr(ctxOtbModellerWin, << "Couldn't extract OID from rasdaman image spec!");
+		return;
+	}
+
+	RasdamanHelper2 helper(this->getRasdamanConnector());
+	helper.deletePSMetadata(coll.toStdString(), oid);
+	helper.dropImage(coll.toStdString(), oid);
+
+	std::vector<double> oids = helper.getImageOIDs(coll.toStdString());
+	if (oids.size() == 0)
+		helper.dropCollection(coll.toStdString());
+
+	if (this->mpPetaView != 0)
+		this->updateRasMetaView();
+}
+
+void
+OtbModellerWin::updateRasMetaView()
+{
 
 	try
 	{
@@ -2252,7 +2334,7 @@ OtbModellerWin::loadRasdamanLayer()
 	int ncols = PQnfields(res);
 	if (nrows < 1)
 	{
-		QMessageBox::information(this, "Open rasdaman image",
+		QMessageBox::information(this, "Rasdaman Image Metadata",
 				"No registered rasdaman images found in database!");
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return;
@@ -2351,51 +2433,26 @@ OtbModellerWin::loadRasdamanLayer()
 
 
 	if (this->mpPetaView == 0)
+	{
 		this->mpPetaView = new NMTableView(metatab,
-				NMTableView::NMTABVIEW_SORTANDPICK);
-	else
-		this->mpPetaView->setTable(metatab);
+				NMTableView::NMTABVIEW_RASMETADATA);
 
+		connect(this->mpPetaView, SIGNAL(notifyLoadRasLayer(const QString&, const QString&)),
+				this, SLOT(fetchRasLayer(const QString&, const QString&)));
+		connect(this->mpPetaView, SIGNAL(notifyDeleteRasLayer(const QString&)),
+				this, SLOT(eraseRasLayer(const QString&)));
+	}
+	else
+	{
+		this->mpPetaView->setTable(metatab);
+	}
+
+	this->mpPetaView->setTitle("Rasdaman Image Metadata");
+	this->mpPetaView->setRowKeyColumn("nm_id");
 	this->mpPetaView->hideAttribute("nm_sel");
 	this->mpPetaView->hideAttribute("nm_id");
-	this->mpPetaView->show();
-
 
 	return;
-
-
-//	try
-//	{
-//		//std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
-//
-//		NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
-//
-//		QFileInfo finfo(fileName);
-//		QString layerName = finfo.baseName();
-//
-//		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
-//		NMImageLayer* layer = new NMImageLayer(renWin);
-//
-//		layer->setRasdamanConnector(this->mpRasconn);
-//		layer->setObjectName(layerName);
-//		if (layer->setFileName(fileName))
-//		{
-//			layer->setVisible(true);
-//			this->ui->modelCompList->addLayer(layer);
-//		}
-//		else
-//			delete layer;
-//	}
-//	catch(r_Error& re)
-//	{
-//		this->mpRasconn->disconnect();
-//		this->mpRasconn->connect();
-//		NMErr(ctxOtbModellerWin, << re.what());
-//		NMDebugCtx(ctxOtbModellerWin, << "done!");
-//	}
-
-	NMDebugCtx(ctxOtbModellerWin, << "done!");
-
 }
 #endif
 

@@ -83,10 +83,11 @@ class QVTK_EXPORT NMTableView : public QWidget
 public:
 
 	enum ViewMode{NMTABVIEW_ATTRTABLE,
-		NMTABVIEW_SORTANDPICK
+		NMTABVIEW_RASMETADATA
 	};
 
 	NMTableView(QWidget* parent=0);
+	NMTableView(vtkTable* tab, QWidget* parent=0);
 	NMTableView(vtkTable* tab, ViewMode=NMTABVIEW_ATTRTABLE,
 			QWidget* parent=0);
 	virtual ~NMTableView();
@@ -119,11 +120,16 @@ public slots:
 	void updateSelection(void);
 	void switchSelection(void);
 	void joinAttributes(void);
+	void loadRasLayer(void);
+	void deleteRasLayer(void);
 
 signals:
 	void tableDataChanged(QStringList& slAlteredColumns,
 			QStringList& slDeletedColumns);
 	void selectionChanged();
+	void notifyLoadRasLayer(const QString& imagespec,
+			const QString& covname);
+	void notifyDeleteRasLayer(const QString& imagespec);
 
 protected slots:
 	void updateSelRecsOnly(int state);
@@ -151,6 +157,7 @@ protected:
 	long mlNumSelRecs;
 	int mRowKeyColIndex;
 	QString mLastClickedColumn;
+	long mlLastClickedRow;
 
 	QTableView* mTableView;
 	QItemSelection mRowSelection;
@@ -165,6 +172,7 @@ protected:
 	QCheckBox* mChkSelectedRecsOnly;
 
 	QMenu* mColHeadMenu;
+	QMenu* mManageLayerMenu;
 
 	vtkSmartPointer<vtkTable> mBaseTable;
 	NMLayer* mLayer;

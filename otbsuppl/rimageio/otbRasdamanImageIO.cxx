@@ -1510,13 +1510,15 @@ otb::ImageIOBase::IOComponentType RasdamanImageIO::getOTBComponentType(
 			otbtype = otb::ImageIOBase::UCHAR;
 			break;
 		case r_Type::ULONG:
-			otbtype = otb::ImageIOBase::ULONG;
+			//otbtype = otb::ImageIOBase::ULONG;
+			otbtype = otb::ImageIOBase::UINT;
 			break;
 	  case r_Type::USHORT:
 			otbtype = otb::ImageIOBase::USHORT;
 			break;
 		case r_Type::LONG:
-			otbtype = otb::ImageIOBase::LONG;
+			//otbtype = otb::ImageIOBase::LONG;
+			otbtype = otb::ImageIOBase::INT;
 			break;
 	  case r_Type::SHORT:
 			otbtype = otb::ImageIOBase::SHORT;

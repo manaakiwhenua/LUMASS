@@ -442,16 +442,26 @@ void NMTableView::calcColumn()
 	if (this->mTableView->selectionModel()->selection().count() > 0)
 		calc->setRowFilterModeOn("nm_sel");
 
-	calc->setFunction(func);
-	if (calc->calculate())
-	{
-		this->mAlteredColumns.append(this->mLastClickedColumn);
 
-		emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-	}
-	else
+	try
 	{
-		NMErr(__ctxtabview, << "Calculation failed!");
+		calc->setFunction(func);
+		if (calc->calculate())
+		{
+			this->mAlteredColumns.append(this->mLastClickedColumn);
+
+			emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+		}
+	}
+	catch (itk::ExceptionObject& err)
+	{
+		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+				      .arg(err.GetDescription());
+
+		NMErr(__ctxtabview, << "Calculation failed!"
+				<< errmsg.toStdString());
+
+		QMessageBox::critical(this, "Table Calculation Error", errmsg);
 	}
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -1277,17 +1287,32 @@ void NMTableView::selectionQuery(void)
 	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
 	selector->setFunction(query);
 	selector->setSelectionModeOn("nm_sel");//, this);
-	bool res = selector->calculate();
 
-	if (!res)
+	try
 	{
-		NMErr(__ctxtabview, << "Selection Query failed!");
+		if (!selector->calculate())
+		{
+			QMessageBox::critical(this,
+					"Selection Query Failed",
+					"Error parsing the query!");
+
+			NMErr(__ctxtabview, << "Selection Query failed!");
+			NMDebugCtx(__ctxtabview, << "done!");
+			return;
+		}
+	}
+	catch (itk::ExceptionObject& err)
+	{
+		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+				      .arg(err.GetDescription());
+		NMErr(__ctxtabview, << "Calculation failed!"
+				<< errmsg.toStdString());
+		QMessageBox::critical(this, "Table Calculation Error", errmsg);
 		NMDebugCtx(__ctxtabview, << "done!");
 		return;
 	}
 
 	this->updateSelection();
-	//this->updateSelectionAdmin(selector->getSelectionCount());
 	emit selectionChanged();
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -1300,9 +1325,25 @@ void NMTableView::clearSelection()
 	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
 	selector->setResultColumn("nm_sel");
 	selector->setFunction("0");
-	if (!selector->calculate())
+
+	try
 	{
-		NMErr(__ctxtabview, << "Error deselecting rows!");
+		if (!selector->calculate())
+		{
+			QMessageBox::critical(this, "Selection Query Failed",
+					"Error deslecting rows!");
+			NMErr(__ctxtabview, << "Error deselecting rows!");
+			return;
+		}
+	}
+	catch (itk::ExceptionObject& err)
+	{
+		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+				      .arg(err.GetDescription());
+		NMErr(__ctxtabview, << "Calculation failed!"
+				<< errmsg.toStdString());
+		QMessageBox::critical(this, "Table Calculation Error", errmsg);
+		NMDebugCtx(__ctxtabview, << "done!");
 		return;
 	}
 

@@ -960,7 +960,8 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 	const PGconn* conn = this->m_Rasconn->getRasConnection();
 	if (conn == 0)
 	{
-		NMErr(__rio, << "connection with '" << this->m_Rasconn->getRasDbName() << "' failed!");
+		NMErr(__rio, << "connection with '"
+				<< this->m_Rasconn->getRasDbName() << "' failed!");
 		return;
 	}
 
@@ -988,12 +989,7 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 		query.str("");
 		query << "drop table " << tablename.str();
 		res = PQexec(const_cast<PGconn*>(conn), query.str().c_str());
-		if (PQresultStatus(res) == PGRES_COMMAND_OK)
-		{
-			//NMDebugAI(<< "delete present table nmrat_" << oid << " for being"
-			//		<< " replaced by the current version ..." << endl);
-		}
-		else
+		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			NMErr(__rio, << "failed deleting present table "<< tablename.str()
 					<< "! Abort!");
@@ -1009,48 +1005,48 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 	int ncols = tab->GetNumCols();
 	int nrows = tab->GetNumRows();
 
-	std::vector< std::string > colnames;
+	//std::vector< std::string > colnames;
 	std::vector< AttributeTable::TableColumnType > coltypes;
 
     // go and check the column names against the SQL standard, in case
     // they don't match it, we enclose in double quotes.
-    for (int c=0; c < ncols; ++c)
-    {
-    	bool quote = false;
-    	std::string name = tab->GetColumnName(c);
-    	if (name == "rowidx")
-    		continue;
-    	for (int l=0; l < name.size(); ++l)
-    	{
-    		if (l == 0)
-        	{
-        		if (!isalpha(name[l]) && name[l] != '_')
-        		{
-        			quote = true;
-        			break;
-        		}
-        	}
-        	else
-        	{
-        		if (!isalnum(name[l]) && name[l] != '_')
-        		{
-        			quote = true;
-        			break;
-        		}
-        	}
-    	}
-
-    	std::stringstream checkedstr;
-    	if (quote)
-    	{
-    		checkedstr << '\"' << name << '\"';
-    	}
-    	else
-    	{
-    		checkedstr << name;
-    	}
-    	colnames.push_back(checkedstr.str());
-    }
+    //for (int c=0; c < ncols; ++c)
+    //{
+    //	bool quote = false;
+    //	std::string name = tab->GetColumnName(c);
+    //	if (name == "rowidx")
+    //		continue;
+    //	for (int l=0; l < name.size(); ++l)
+    //	{
+    //		if (l == 0)
+    //    	{
+    //    		if (!isalpha(name[l]) && name[l] != '_')
+    //    		{
+    //    			quote = true;
+    //    			break;
+    //    		}
+    //    	}
+    //    	else
+    //    	{
+    //    		if (!isalnum(name[l]) && name[l] != '_')
+    //    		{
+    //    			quote = true;
+    //    			break;
+    //    		}
+    //    	}
+    //	}
+    //
+    //	std::stringstream checkedstr;
+    //	if (quote)
+    //	{
+    //		checkedstr << '\"' << name << '\"';
+    //	}
+    //	else
+    //	{
+    //		checkedstr << name;
+    //	}
+    //	colnames.push_back(checkedstr.str());
+    //}
 
 
 
@@ -1077,7 +1073,10 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 			bSkipIdx = c_orig;
 			continue;
 		}
-		//colnames.push_back(tab->GetColumnName(c_orig));
+    	std::string tabcolname = tab->GetColumnName(c_orig);
+    	char* colname = PQescapeIdentifier(const_cast<PGconn*>(conn),
+    			tabcolname.c_str(), tabcolname.size());
+
 		coltypes.push_back(tab->GetColumnType(c_orig));
 
 		string typestr = "";
@@ -1094,8 +1093,10 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 				break;
 		}
 
-		query << colnames[c_target] << s << typestr << k;
+		query << colname << s << typestr << k;
 		++c_target;
+
+		PQfreemem((void*)colname);
 	}
 
 	query << "constraint " << tablename.str() << "_pkey primary key (rowidx))";
@@ -1135,10 +1136,16 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 				break;
 			case AttributeTable::ATTYPE_STRING:
 				string val = tab->GetStrValue(c_orig, r);
-				if (val.empty())
-					query << "NULL";
-				else
-					query << "'" << val << "'";
+				//if (val.empty())
+				//	query << "NULL";
+				//else
+				{
+					char* litstr = PQescapeLiteral(const_cast<PGconn*>(conn),
+								val.c_str(), val.size());
+					query << litstr;
+					PQfreemem((void*)litstr);
+				}
+
 				break;
 			}
 

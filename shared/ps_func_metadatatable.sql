@@ -42,7 +42,7 @@ $BODY$
                          'oid integer NOT NULL, ';
 
                 foreach t in array types loop
-                        qhead := qhead || replace(t, ' ', '_') || ' text, ';
+                        qhead := qhead || format('%I', t) || ' text, ';
 
                         if i = numtypes then
                                 qhead := qhead || 
@@ -82,7 +82,7 @@ $BODY$
 	            for elem in 1..numtypes loop
 			cols := cols || metarec.attributes[elem];
 			colvals := colvals || 
-				quote_literal(replace(metarec.attrvals[elem], ' ', '_'));
+				format('%L', metarec.attrvals[elem]);
 
 			-- don't forget to close the set of values once 
 			-- the number of max elems is reached

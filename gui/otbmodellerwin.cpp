@@ -829,33 +829,27 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	NMLayer* l = ui->modelCompList->getLayer(0);
-	vtkRenderer* r = const_cast<vtkRenderer*>(l->getRenderer());
-	bool dp = r->GetLastRenderingUsedDepthPeeling();
+	RasdamanHelper2 helper(this->getRasdamanConnector());
 
-	NMDebugAI(<< "last rendering used depth peeling? " << dp << endl);
-	NMDebugAI(<< "occlusion ration: " << r->GetOcclusionRatio() << endl);
-	NMDebugAI(<< "max peels:  " << r->GetMaximumNumberOfPeels() << endl);
+	std::vector<double> oids = helper.queryImageOIDs(
+			"StartTime=2001-01-01:AttributeValue=Exotic Forest");
 
-//	QString expr = QInputDialog::getText(this, "bounds",
-//			"lower upper", QLineEdit::Normal, "0 5");
-//	if (expr.isNull())
-//		return;
-//	bool bok;
-//	QStringList bnds = expr.split(" ");
-//	int lower = bnds.at(0).toInt(&bok);
-//	int upper = bnds.at(1).toInt(&bok);
-//
-//	// check the max rand
-//	NMDebugAI(<< RAND_MAX << endl);
-//
-//	srand(time(0));
-//	int range = upper - lower + 1;
-//
-//	for (int i=0; i < 20; ++i)
-//	{
-//		NMDebugAI(<< "#" << i << ": " << rand() % range + lower << endl);
-//	}
+	for (int v=0; v < oids.size(); ++v)
+	{
+		NMDebugAI( << "OID #" << v << ": " << oids[v] << std::endl);
+	}
+
+	//StartTime == '2001-01-01' && AttributeValue == 'Exotic Forest'
+
+
+	//NMLayer* l = ui->modelCompList->getLayer(0);
+	//vtkRenderer* r = const_cast<vtkRenderer*>(l->getRenderer());
+	//bool dp = r->GetLastRenderingUsedDepthPeeling();
+    //
+	//NMDebugAI(<< "last rendering used depth peeling? " << dp << endl);
+	//NMDebugAI(<< "occlusion ration: " << r->GetOcclusionRatio() << endl);
+	//NMDebugAI(<< "max peels:  " << r->GetMaximumNumberOfPeels() << endl);
+
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

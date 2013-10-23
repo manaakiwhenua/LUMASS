@@ -80,7 +80,7 @@ $BODY$
 
 		    -- integrate actual columns and values with query string
 	            for elem in 1..numtypes loop
-			cols := cols || metarec.attributes[elem];
+			cols := cols || format('%I', metarec.attributes[elem]);
 			colvals := colvals || 
 				format('%L', metarec.attrvals[elem]);
 

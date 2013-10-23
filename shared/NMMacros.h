@@ -30,6 +30,46 @@
 
 using namespace std;
 
+
+/** >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ *  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ * 	    QT-BASED CONVENIENCE MACROS FOR THE LAZY DEVELOPER
+ *  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+ *  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+ */
+
+/**
+ * VISIBLE USER FEEDBACK (i.e. MessageBox calls)
+ *
+ */
+#define NMBoxInfo( title, message )       \
+std::stringstream strtitle;               \
+strtitle << title;                        \
+std::stringstream strmsg;                 \
+strmsg << message;                        \
+QMessageBox::information(this,            \
+		QString(strtitle.str().c_str()),  \
+		QString(strmsg.str().c_str()));
+
+#define NMBoxWarn( title, message )       \
+std::stringstream strtitle;               \
+strtitle << title;                        \
+std::stringstream strmsg;                 \
+strmsg << message;                        \
+QMessageBox::warning(this,                \
+		QString(strtitle.str().c_str()),  \
+		QString(strmsg.str().c_str()));
+
+#define NMBoxErr( title, message )        \
+std::stringstream strtitle;               \
+strtitle << title;                        \
+std::stringstream strmsg;                 \
+strmsg << message;                        \
+QMessageBox::critical(this,               \
+		QString(strtitle.str().c_str()),  \
+		QString(strmsg.str().c_str()));
+
+
 /**
  * PROPERTY GETTER & SETTER METHODS
  */
@@ -44,15 +84,14 @@ type get ## name() \
 	return this->m ## name; \
 }
 
-/*
-signals: \
-	void nameChanged(## type); \
+/** >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ *  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ * 	   NMPROCESS-RELATED MACROS TO FACILITATE TEMPLATE HANDLING
+ *  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+ *  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
  */
 
-/**
- * CALL INTERNAL WRAPPER METHODS MACROS
- *
- */
+
 
 /** ==============================================================
  * 					getOutput

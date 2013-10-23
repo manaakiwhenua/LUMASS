@@ -26,22 +26,25 @@
 #define NMMODELCONTROLLER_H_
 
 #include "nmlog.h"
-#include "NMModelSerialiser.h"
+//#include "NMModelSerialiser.h"
  
 #include <qobject.h>
 #include <QThread>
 #include <QMap>
+#include <QStack>
 #include <QString>
 #include <QDateTime>
 
 #include <string>
 #include <iostream>
 
-#ifdef BUILD_RASSUPPORT
-  #include "NMRasdamanConnectorWrapper.h"
-#endif
+//#ifdef BUILD_RASSUPPORT
+//  #include "NMRasdamanConnectorWrapper.h"
+//#endif
 
 class NMItkDataObjectWrapper;
+class NMModelComponent;
+class NMIterableComponent;
 class NMProcess;
 
 /*! \brief NMModelController is responsible for managing

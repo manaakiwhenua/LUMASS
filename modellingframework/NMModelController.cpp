@@ -28,9 +28,6 @@
 #include <QFuture>
 #include <QtConcurrentRun>
 
-
-
-
 const std::string NMModelController::ctx = "NMModelController";
 
 NMModelController::NMModelController(QObject* parent)

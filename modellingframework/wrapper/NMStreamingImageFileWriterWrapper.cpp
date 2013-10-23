@@ -260,7 +260,7 @@ NMStreamingImageFileWriterWrapper
 
 #ifdef BUILD_RASSUPPORT
 	otb::RasdamanImageIO::Pointer rio;
-	if (mRasConnector != 0)
+	if (mRasConnector != 0 && this->mRasConnector->getConnector() != 0)
 	{
 		rio = otb::RasdamanImageIO::New();
 		rio->setRasdamanConnector(const_cast<RasdamanConnector*>(

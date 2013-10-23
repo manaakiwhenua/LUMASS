@@ -214,6 +214,8 @@ private:
     // orientation marker
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientwidget;
 
+    bool mbNoRasdaman;
+
     // the petascope metadata table
     NMTableView* mpPetaView;
 

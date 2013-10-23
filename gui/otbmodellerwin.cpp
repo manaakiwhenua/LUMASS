@@ -32,6 +32,7 @@
 
 // NM stuff
 #include "nmlog.h"
+#include "NMMacros.h"
 #include "NMLayer.h"
 #include "NMVectorLayer.h"
 #include "NMMosra.h"
@@ -242,6 +243,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	this->mpRasconn = 0;
 	this->mpPetaView = 0;
 #endif
+	this->mbNoRasdaman = false;
 
 	//Qt::WindowFlags flags = this->windowFlags() | Qt::WA_DeleteOnClose;
 	//this->setWindowFlags(flags);
@@ -516,6 +518,14 @@ OtbModellerWin::getBkgRenderer(void)
 RasdamanConnector*
 OtbModellerWin::getRasdamanConnector(void)
 {
+	// for now, this means that once rasdaman has been checked,
+	// and was found to be unavailable, it won't be available
+	// for the rest of the session, and the user has to close
+	// and restart LUMASS - this is, not really clever design
+	// and needs revision --> TODO:
+	if (mbNoRasdaman)
+		return 0;
+
 	if (this->mpRasconn == 0)
 	{
 		std::string connfile = std::string(getenv("HOME")) + "/.rasdaman/rasconnect";
@@ -532,47 +542,38 @@ OtbModellerWin::getRasdamanConnector(void)
 			"/shared/ps_func_metadatatable.sql";
 
 	QFile geofile(QString(geospatial_fn.c_str()));
+	bool fileopen = true;
 	if (!geofile.open(QIODevice::ReadOnly | QIODevice::Text))
-	{
-		NMErr(ctxOtbModellerWin, << "view_geospatial: Failed installing petascope browsing support!");
-		if (this->mpRasconn)
-		{
-			this->mpRasconn->disconnect();
-			delete this->mpRasconn;
-		}
-		return 0;
-	}
+		fileopen = false;
+
 	QTextStream in(&geofile);
 	QString geosql(in.readAll());
 
 	QFile extrafile(QString(extrametadata_fn.c_str()));
 	if (!extrafile.open(QIODevice::ReadOnly | QIODevice::Text))
-	{
-		NMErr(ctxOtbModellerWin, << "view_extrametadata: Failed installing petascope browsing support!");
-		if (this->mpRasconn)
-		{
-			this->mpRasconn->disconnect();
-			delete this->mpRasconn;
-		}
-		return 0;
-	}
+		fileopen = false;
+
 	QTextStream in2(&extrafile);
 	QString extrasql(in2.readAll());
 
 	QFile tabfile(QString(metadatatable_fn.c_str()));
 	if (!tabfile.open(QIODevice::ReadOnly | QIODevice::Text))
+		fileopen = false;
+
+	if (!fileopen)
 	{
 		NMErr(ctxOtbModellerWin, << "func_metadatatable: Failed installing petascope browsing support!");
 		if (this->mpRasconn)
 		{
 			this->mpRasconn->disconnect();
 			delete this->mpRasconn;
+			this->mpRasconn = 0;
 		}
 		return 0;
 	}
+
 	QTextStream in3(&tabfile);
 	QString tabsql(in3.readAll());
-
 
 	// now execute the files
 	std::string query = extrasql.toStdString() + geosql.toStdString() +
@@ -584,15 +585,15 @@ OtbModellerWin::getRasdamanConnector(void)
 	}
 	catch (r_Error& raserr)
 	{
-		QString errstr = QString(tr("%1: Check whether the rasdaman database is up and running!"))
-				.arg(raserr.what());
-		QMessageBox::critical(this, "Rasdaman Connection Error", errstr);
+		NMBoxErr("Rasdaman Connection Error", raserr.what()
+				 << ": Check whether the rasdaman database is up and running!");
 		NMErr(ctxOtbModellerWin, << raserr.what());
 		if (this->mpRasconn)
 		{
 			this->mpRasconn->disconnect();
 			delete this->mpRasconn;
 		}
+		this->mbNoRasdaman = true;
 		return 0;
 	}
 
@@ -600,10 +601,9 @@ OtbModellerWin::getRasdamanConnector(void)
 	PGresult* res = PQexec(const_cast<PGconn*>(conn), query.c_str());
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		QString errstr("Check whether Postgres is up and running and access is "
+		NMBoxErr("Failed initialising rasdaman metadata browser!",
+				 "Check whether Postgres is up and running and access is "
 				"is configured properly!");
-		QMessageBox::critical(this, "Failed initialising rasdaman metadata browser!",
-				errstr);
 		NMErr(ctxOtbModellerWin, << "PQexec: Failed installing petascope browsing support!"
 				                 << PQresultErrorMessage(res));
 		return 0;
@@ -2254,13 +2254,14 @@ void OtbModellerWin::loadVectorLayer()
 void
 OtbModellerWin::loadRasdamanLayer()
 {
-	this->updateRasMetaView();
-
 	// if we haven't got a connection, we shouldn't
 	// try browsing the metadata
-	if (this->mpRasconn == 0)
+	if (this->getRasdamanConnector() == 0)
 		return;
-	this->mpPetaView->show();
+
+	this->updateRasMetaView();
+	if (this->mpPetaView != 0)
+		this->mpPetaView->show();
 }
 
 void
@@ -2365,11 +2366,18 @@ OtbModellerWin::updateRasMetaView()
 	// copy the table into a vtkTable to be fed into a TableView
 	PGresult* res = const_cast<PGresult*>(
 			PQexec(const_cast<PGconn*>(conn), query.str().c_str()));
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		NMBoxErr("Rasdaman Image Metadata",
+				PQresultErrorMessage(res));
+		return;
+	}
+
 	int nrows = PQntuples(res);
 	int ncols = PQnfields(res);
 	if (nrows < 1)
 	{
-		QMessageBox::information(this, "Rasdaman Image Metadata",
+		NMBoxInfo("Rasdaman Image Metadata",
 				"No registered rasdaman images found in database!");
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return;

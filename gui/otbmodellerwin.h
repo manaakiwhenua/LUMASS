@@ -79,7 +79,6 @@ public:
     const vtkRenderer* getBkgRenderer(void);
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
-    //vtkTable* pgToVtkTable(const PGresult* res);
 
 #ifdef BUILD_RASSUPPORT    
     RasdamanConnector* getRasdamanConnector(void);

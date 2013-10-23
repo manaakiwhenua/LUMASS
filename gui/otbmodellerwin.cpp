@@ -535,7 +535,12 @@ OtbModellerWin::getRasdamanConnector(void)
 	if (!geofile.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		NMErr(ctxOtbModellerWin, << "view_geospatial: Failed installing petascope browsing support!");
-		return this->mpRasconn;
+		if (this->mpRasconn)
+		{
+			this->mpRasconn->disconnect();
+			delete this->mpRasconn;
+		}
+		return 0;
 	}
 	QTextStream in(&geofile);
 	QString geosql(in.readAll());
@@ -544,7 +549,12 @@ OtbModellerWin::getRasdamanConnector(void)
 	if (!extrafile.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		NMErr(ctxOtbModellerWin, << "view_extrametadata: Failed installing petascope browsing support!");
-		return this->mpRasconn;
+		if (this->mpRasconn)
+		{
+			this->mpRasconn->disconnect();
+			delete this->mpRasconn;
+		}
+		return 0;
 	}
 	QTextStream in2(&extrafile);
 	QString extrasql(in2.readAll());
@@ -553,7 +563,12 @@ OtbModellerWin::getRasdamanConnector(void)
 	if (!tabfile.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		NMErr(ctxOtbModellerWin, << "func_metadatatable: Failed installing petascope browsing support!");
-		return this->mpRasconn;
+		if (this->mpRasconn)
+		{
+			this->mpRasconn->disconnect();
+			delete this->mpRasconn;
+		}
+		return 0;
 	}
 	QTextStream in3(&tabfile);
 	QString tabsql(in3.readAll());
@@ -563,14 +578,35 @@ OtbModellerWin::getRasdamanConnector(void)
 	std::string query = extrasql.toStdString() + geosql.toStdString() +
 			   tabsql.toStdString();
 
-	this->mpRasconn->connect();
+	try
+	{
+		this->mpRasconn->connect();
+	}
+	catch (r_Error& raserr)
+	{
+		QString errstr = QString(tr("%1: Check whether the rasdaman database is up and running!"))
+				.arg(raserr.what());
+		QMessageBox::critical(this, "Rasdaman Connection Error", errstr);
+		NMErr(ctxOtbModellerWin, << raserr.what());
+		if (this->mpRasconn)
+		{
+			this->mpRasconn->disconnect();
+			delete this->mpRasconn;
+		}
+		return 0;
+	}
+
 	const PGconn* conn = this->mpRasconn->getPetaConnection();
 	PGresult* res = PQexec(const_cast<PGconn*>(conn), query.c_str());
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
+		QString errstr("Check whether Postgres is up and running and access is "
+				"is configured properly!");
+		QMessageBox::critical(this, "Failed initialising rasdaman metadata browser!",
+				errstr);
 		NMErr(ctxOtbModellerWin, << "PQexec: Failed installing petascope browsing support!"
 				                 << PQresultErrorMessage(res));
-		return this->mpRasconn;
+		return 0;
 	}
 	PQclear(res);
 
@@ -2218,13 +2254,13 @@ void OtbModellerWin::loadVectorLayer()
 void
 OtbModellerWin::loadRasdamanLayer()
 {
-	//NMDebugCtx(ctxOtbModellerWin, << "...");
-
 	this->updateRasMetaView();
+
+	// if we haven't got a connection, we shouldn't
+	// try browsing the metadata
+	if (this->mpRasconn == 0)
+		return;
 	this->mpPetaView->show();
-
-	//NMDebugCtx(ctxOtbModellerWin, << "done!");
-
 }
 
 void
@@ -2238,7 +2274,14 @@ OtbModellerWin::fetchRasLayer(const QString& imagespec,
 		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
 		NMImageLayer* layer = new NMImageLayer(renWin);
 
-		layer->setRasdamanConnector(this->mpRasconn);
+		RasdamanConnector* rasconn = this->getRasdamanConnector();
+		if (rasconn == 0)
+		{
+			NMErr(ctxOtbModellerWin, << "Connection with rasdaman failed!");
+			return;
+		}
+
+		layer->setRasdamanConnector(rasconn);
 		layer->setObjectName(covname);
 		if (layer->setFileName(imagespec))
 		{
@@ -2250,8 +2293,8 @@ OtbModellerWin::fetchRasLayer(const QString& imagespec,
 	}
 	catch(r_Error& re)
 	{
-		this->mpRasconn->disconnect();
-		this->mpRasconn->connect();
+		//this->mpRasconn->disconnect();
+		//this->mpRasconn->connect();
 		NMErr(ctxOtbModellerWin, << re.what());
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
 	}
@@ -2284,7 +2327,13 @@ OtbModellerWin::eraseRasLayer(const QString& imagespec)
 		return;
 	}
 
-	RasdamanHelper2 helper(this->getRasdamanConnector());
+	RasdamanConnector* rasconn = this->getRasdamanConnector();
+	if (rasconn == 0)
+	{
+		return;
+	}
+
+	RasdamanHelper2 helper(rasconn);
 	helper.deletePSMetadata(coll.toStdString(), oid);
 	helper.dropImage(coll.toStdString(), oid);
 
@@ -2299,21 +2348,13 @@ OtbModellerWin::eraseRasLayer(const QString& imagespec)
 void
 OtbModellerWin::updateRasMetaView()
 {
-
-	try
+	// query the flat metadata table showing all coverage/image metadata
+	RasdamanConnector* rasconn = this->getRasdamanConnector();
+	if (rasconn == 0)
 	{
-		RasdamanConnector* rasconn = this->getRasdamanConnector();
-	}
-	catch (r_Error& re)
-	{
-		NMErr(ctxOtbModellerWin, << re.what());
-		NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return;
 	}
-
-
-	// query the flat metadata table showing all coverage/image metadata
-	const PGconn* conn = this->mpRasconn->getPetaConnection();
+	const PGconn* conn = rasconn->getPetaConnection();
 
 	std::stringstream query;
 	query << "select create_metatable(); "
@@ -2449,14 +2490,6 @@ OtbModellerWin::updateRasMetaView()
 	return;
 }
 #endif
-
-//vtkTable*
-//OtbModellerWin::pgToVtkTable(const PGresult* res)
-//{
-//
-//
-//
-//}
 
 void OtbModellerWin::loadImageLayer()
 {

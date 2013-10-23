@@ -95,11 +95,12 @@ public:
 	ViewMode getViewMode() {return mViewMode;};
 	void setViewMode(ViewMode mode)
 		{mViewMode = mode;};
-	void hideAttribute(QString attr);
-	void filterAttribute(QString attr, QString regexp);
-	int getColumnIndex(QString attr);
-	void setTitle(QString title) {this->setWindowTitle(title);};
-	void setRowKeyColumn(QString rowKeyCol);
+	void hideAttribute(const QString& attr);
+	void filterAttribute(const QString& attr, const QString& regexp);
+	void unhideAttribute(const QString& attr);
+	int getColumnIndex(const QString& attr);
+	void setTitle(const QString& title) {this->setWindowTitle(title);};
+	void setRowKeyColumn(const QString& rowKeyCol);
 	const vtkTable* getTable(void);
 	vtkSmartPointer<vtkAbstractArray> createVTKArray(int datatype);
 
@@ -122,6 +123,8 @@ public slots:
 	void joinAttributes(void);
 	void loadRasLayer(void);
 	void deleteRasLayer(void);
+	void callHideColumn(void);
+	void callUnHideColumn(void);
 
 signals:
 	void tableDataChanged(QStringList& slAlteredColumns,
@@ -139,10 +142,13 @@ protected:
 
 	void initView();
 
-	bool writeDelimTxt(QString fileName, bool bselectedRecs);
-	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(QString dbName, QString tableName, bool bselectedRecs);
+	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
+	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
+			const QString& dbName,
+			const QString& tableName,
+			bool bselectedRecs);
 
-	vtkSmartPointer<vtkTable> queryTable(QString sqlStmt);
+	vtkSmartPointer<vtkTable> queryTable(const QString& sqlStmt);
 
 	void appendAttributes(const QString& tarJoinField,
 			const QString& srcJoinField,
@@ -179,6 +185,7 @@ protected:
 
 	QStringList mDeletedColumns;
 	QStringList mAlteredColumns;
+	QStringList mHiddenColumns;
 
 };
 

@@ -126,6 +126,7 @@ void NMTableView::initView()
 
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
+	this->mHiddenColumns.clear();
 
 	// ------------------ SET UP STATUS BAR ------------------------------
 	this->mStatusBar = new QStatusBar(this);
@@ -179,6 +180,13 @@ void NMTableView::initView()
 	QAction* actSel = new QAction(this->mColHeadMenu);
 	actSel->setText(tr("Select Attributes ..."));
 
+	QAction* actHide = new QAction(this->mColHeadMenu);
+	actHide->setText(tr("Hide Column"));
+
+	QAction* actUnHide = new QAction(this->mColHeadMenu);
+	actUnHide->setText(tr("Unhide Column ..."));
+
+
 	QAction* actDelete;
 	QAction* actAdd;
 	QAction* actCalc;
@@ -218,13 +226,18 @@ void NMTableView::initView()
 		this->mColHeadMenu->addAction(actDelete);
 	}
 	this->mColHeadMenu->addSeparator();
+	this->mColHeadMenu->addAction(actHide);
+	this->mColHeadMenu->addAction(actUnHide);
 
+	this->mColHeadMenu->addSeparator();
 	if (mViewMode == NMTABVIEW_ATTRTABLE)
 	{
 		this->mColHeadMenu->addAction(actJoin);
 	}
 	this->mColHeadMenu->addAction(actExp);
 
+
+    // CONNECT MENU ACTIONS WITH SLOTS
 	this->connect(this->mBtnClearSelection, SIGNAL(pressed()), this, SLOT(clearSelection()));
 	this->connect(this->mBtnSwitchSelection, SIGNAL(pressed()), this, SLOT(switchSelection()));
 	this->connect(this->mChkSelectedRecsOnly, SIGNAL(stateChanged(int)), this,
@@ -234,6 +247,8 @@ void NMTableView::initView()
 	this->connect(actStat, SIGNAL(triggered()), this, SLOT(colStats()));
 	this->connect(actExp, SIGNAL(triggered()), this, SLOT(exportTable()));
 	this->connect(actFilter, SIGNAL(triggered()), this, SLOT(userQuery()));
+	this->connect(actHide, SIGNAL(triggered()), this, SLOT(callHideColumn()));
+	this->connect(actUnHide, SIGNAL(triggered()), this, SLOT(callUnHideColumn()));
 
 	if (mViewMode == NMTABVIEW_ATTRTABLE)
 	{
@@ -966,7 +981,8 @@ void NMTableView::setTable(vtkTable* tab)
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
-bool NMTableView::writeDelimTxt(QString fileName, bool bselectedRecs)
+bool NMTableView::writeDelimTxt(const QString& fileName,
+		bool bselectedRecs)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
@@ -986,7 +1002,10 @@ bool NMTableView::writeDelimTxt(QString fileName, bool bselectedRecs)
 	return true;
 }
 
-vtkSmartPointer<vtkSQLiteDatabase> NMTableView::writeSqliteDb(QString dbName, QString tableName, bool bselectedRecs)
+vtkSmartPointer<vtkSQLiteDatabase> NMTableView::writeSqliteDb(
+		const QString& dbName,
+		const QString& tableName,
+		bool bselectedRecs)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
@@ -1029,7 +1048,7 @@ vtkSmartPointer<vtkSQLiteDatabase> NMTableView::writeSqliteDb(QString dbName, QS
 	}
 }
 
-vtkSmartPointer<vtkTable> NMTableView::queryTable(QString sqlStmt)
+vtkSmartPointer<vtkTable> NMTableView::queryTable(const QString& sqlStmt)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 	vtkSmartPointer<vtkSQLiteDatabase> sdb = this->writeSqliteDb(
@@ -1068,7 +1087,7 @@ vtkSmartPointer<vtkTable> NMTableView::queryTable(QString sqlStmt)
 	return outtab;
 }
 
-int NMTableView::getColumnIndex(QString attr)
+int NMTableView::getColumnIndex(const QString& attr)
 {
 	int attrCol = -1;
 
@@ -1088,7 +1107,7 @@ int NMTableView::getColumnIndex(QString attr)
 	return attrCol;
 }
 
-void NMTableView::setRowKeyColumn(QString rowKeyCol)
+void NMTableView::setRowKeyColumn(const QString& rowKeyCol)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 	int colidx = this->getColumnIndex(rowKeyCol);
@@ -1106,14 +1125,78 @@ void NMTableView::setRowKeyColumn(QString rowKeyCol)
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
-void NMTableView::hideAttribute(QString attr)
+void
+NMTableView::callHideColumn(void)
+{
+	this->hideAttribute(this->mLastClickedColumn);
+}
+
+void
+NMTableView::callUnHideColumn(void)
+{
+	if (this->mHiddenColumns.size() == 0)
+		return;
+
+	// show list of columns which can be unhidden
+	QInputDialog dlg(this);
+	dlg.setWindowTitle("Unhide Table Column")
+	dlg.setLabelText(QString(tr("Pick the column to unhide")));
+	dlg.setOptions(QInputDialog::UseListViewForComboBoxItems);
+	dlg.setComboBoxItems(this->mHiddenColumns);
+
+	int ret = dlg.exec();
+	if (!ret)
+		return;
+
+	QString colname = dlg.textValue();
+	this->unhideAttribute(colname);
+
+}
+
+void NMTableView::hideAttribute(const QString& attr)
 {
 	int colidx = this->getColumnIndex(attr);
+	if (colidx == -1)
+	{
+		NMDebugAI(<< "Cannot hide '"
+				<< attr.toStdString() << "'! "
+				<< "It doesn't seem to be part of the table!"
+				<< std::endl);
+		return;
+	}
+
+	if (   attr.compare("nm_id")   != 0
+		&& attr.compare("nm_hole") != 0
+		&& attr.compare("nm_sel")  != 0
+		&& !this->mHiddenColumns.contains(attr, Qt::CaseInsensitive))
+	{
+		this->mHiddenColumns.append(attr);
+	}
+
 	if (colidx >= 0)
 		this->mTableView->hideColumn(colidx);
 }
 
-void NMTableView::filterAttribute(QString attr, QString regexp)
+void
+NMTableView::unhideAttribute(const QString& attr)
+{
+	int colidx = this->getColumnIndex(attr);
+	if (colidx == -1)
+	{
+		NMDebugAI(<< "Cannot unhide '"
+				<< attr.toStdString() << "'! "
+				<< "It doesn't seem to be part of the table!"
+				<< std::endl);
+		return;
+	}
+
+	if (this->mHiddenColumns.contains(attr, Qt::CaseInsensitive))
+		this->mHiddenColumns.removeOne(attr);
+	this->mTableView->showColumn(colidx);
+}
+
+void NMTableView::filterAttribute(const QString& attr,
+		const QString& regexp)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 

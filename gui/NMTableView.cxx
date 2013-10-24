@@ -1139,7 +1139,7 @@ NMTableView::callUnHideColumn(void)
 
 	// show list of columns which can be unhidden
 	QInputDialog dlg(this);
-	dlg.setWindowTitle("Unhide Table Column")
+	dlg.setWindowTitle("Unhide Table Column");
 	dlg.setLabelText(QString(tr("Pick the column to unhide")));
 	dlg.setOptions(QInputDialog::UseListViewForComboBoxItems);
 	dlg.setComboBoxItems(this->mHiddenColumns);

@@ -71,10 +71,6 @@ public:
 	void getBBox(double bbox[6]);
 	otb::AttributeTable* getRasterAttributeTable(int band);
 
-//	void setITKImage(itk::DataObject* img,
-//			otb::ImageIOBase::IOComponentType pixType,
-//			unsigned int numDims,
-//			unsigned int numBands);
 	void setImage(NMItkDataObjectWrapper* imgWrapper);
 
 	itk::DataObject *getITKImage(void);
@@ -88,6 +84,10 @@ public:
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
+public slots:
+	void writeDataSet(void);
+
+
 protected:
 
 	void createTableView(void);
@@ -99,7 +99,8 @@ protected:
 	RasdamanConnector* mpRasconn;
 #endif	
 
-	std::vector<otb::AttributeTable::Pointer> mRATVec;
+	//std::vector<otb::AttributeTable::Pointer> mRATVec;
+	otb::AttributeTable::Pointer motbRAT;
 
 	itk::DataObject::Pointer mImage;
 	vtkSmartPointer<vtkImageProperty> mImgProp;
@@ -107,7 +108,7 @@ protected:
 	unsigned int mNumDimensions;
 	unsigned int mNumBands;
 
-	void fetchRATs(void);
+	//void fetchRATs(void);
 
 protected slots:
 	int updateAttributeTable(void);

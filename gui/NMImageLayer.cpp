@@ -236,7 +236,6 @@ int NMImageLayer::updateAttributeTable()
 
 	vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
 	tab->SetNumberOfRows(nrows);
-//	tab->Initialize();
 
 	// add the nm_id admin field
 	vtkSmartPointer<vtkLongArray> id = vtkSmartPointer<vtkLongArray>::New();
@@ -346,10 +345,30 @@ void
 NMImageLayer::updateDataSet(QStringList& slAlteredColumns,
 		QStringList& slDeletedColumns)
 {
+	/* for image layers this means we write back any changes
+	 * made to table by the associated tableview (vtktable)
+	 *
+	 *
+	 */
+
+	NMDebugCtx(ctxNMImageLayer, << "...");
+
+	if (slDeletedColumns.size() == 0 && slAlteredColumns.size() == 0)
+	{
+		NMDebugAI(<< "nothing to save!" << endl);
+		NMDebugCtx(ctxNMImageLayer, << "done!");
+		return;
+	}
 
 
 
 
+
+	// vtkDataArray::ExportToVoidPointer(void* out_ptr);
+
+
+
+	NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
 bool NMImageLayer::setFileName(QString filename)
@@ -545,19 +564,19 @@ const vtkDataSet* NMImageLayer::getDataSet()
 
 otb::AttributeTable* NMImageLayer::getRasterAttributeTable(int band)
 {
-	if (band < 1 || this->mRATVec.size() < band)
+	if (band < 1 || band > this->mReader->getOutputNumBands())
 		return 0;
 
-	return this->mRATVec.at(band-1);
+	return this->mReader->getRasterAttributeTable(band);
 }
 
-void NMImageLayer::fetchRATs(void)
-{
-	// fetch attribute tables, if applicable
-	this->mRATVec.resize(this->mReader->getOutputNumBands());
-	for (int b=0; b < this->mReader->getOutputNumBands(); ++b)
-		this->mRATVec[b] = this->mReader->getRasterAttributeTable(b+1);
-}
+//void NMImageLayer::fetchRATs(void)
+//{
+//	// fetch attribute tables, if applicable
+//	this->mRATVec.resize(this->mReader->getOutputNumBands());
+//	for (int b=0; b < this->mReader->getOutputNumBands(); ++b)
+//		this->mRATVec[b] = this->mReader->getRasterAttributeTable(b+1);
+//}
 
 NMItkDataObjectWrapper* NMImageLayer::getOutput(unsigned int idx)
 {
@@ -604,18 +623,10 @@ NMImageLayer::writeDataSet(void)
 
 
 #ifdef BUILD_RASSUPPORT
-	// we assume, the layer already exists in the data base, so we just get
-	// the file name, chuck it into a new rio and write the table
 	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-	std::string collname = rio->getCollectionName();
 	std::vector<double> oids = rio->getOIDs();
 
-	QString name = QString("%1:%2").arg(collname.c_str())
-			.arg(oids[0], 0, 'f', 0);
-
-	rio->SetFileName(name.toStdString());
-	rio->writeRAT(this->getRasterAttributeTable(1), 1, oids[0]);
-
+	rio->writeRAT(this->motbRAT, 1, oids[0]);
 #endif
 }
 

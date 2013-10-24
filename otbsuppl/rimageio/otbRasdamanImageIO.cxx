@@ -1443,15 +1443,24 @@ bool RasdamanImageIO::parseImageSpec(const std::string imagespec)
 	this->m_oids.clear();
 	std::string::size_type pos = 0;
 	pos = imagespec.find(":", 0);
-	if (pos == string::npos)
+
+	if (imagespec.find("=", 0) != std::string::npos)				// in case we got a metadata-based query
+	{
+		std::string thename;
+		std::vector<double> _oids = this->m_Helper->queryImageOIDs(imagespec);
+		if (_oids.size() > 0)
+			thename = this->m_Helper->getCollectionNameFromOID(_oids[0]);
+
+		if (!thename.empty())
+			this->m_collname = thename;
+
+		this->m_oids.push_back(_oids[0]);
+	}
+	else if (pos == string::npos)			// in case we got just the collection name
 	{
 		this->m_collname = imagespec;
-//		this->m_oids = this->m_Helper->getImageOIDs(imagespec);
-//
-//		NMDebugAI(<< "no particular image was referenced, so we export collection '" << imagespec
-//				<< "' as multi-band image!" << std::endl);
 	}
-	else
+	else									// in case we got a collection name and oid/index spec
 	{
 		this->m_collname = imagespec.substr(0, pos);
 	

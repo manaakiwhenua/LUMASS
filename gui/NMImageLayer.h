@@ -111,6 +111,8 @@ protected:
 
 protected slots:
 	int updateAttributeTable(void);
+	virtual void updateDataSet(QStringList& slAlteredColumns,
+			QStringList& slDeletedColumns);
 };
 
 #endif // ifndef NMIMAGELAYER_H_

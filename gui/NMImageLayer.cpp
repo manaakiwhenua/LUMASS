@@ -342,6 +342,16 @@ int NMImageLayer::updateAttributeTable()
 	return 1;
 }
 
+void
+NMImageLayer::updateDataSet(QStringList& slAlteredColumns,
+		QStringList& slDeletedColumns)
+{
+
+
+
+
+}
+
 bool NMImageLayer::setFileName(QString filename)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
@@ -582,6 +592,31 @@ otb::ImageIOBase::IOComponentType NMImageLayer::getITKComponentType(void)
 void NMImageLayer::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg)
 {
 	this->setImage(inputImg);
+}
+
+void
+NMImageLayer::writeDataSet(void)
+{
+	if (!this->isRasLayer())
+	{
+		// we do something here for file-based layers
+	}
+
+
+#ifdef BUILD_RASSUPPORT
+	// we assume, the layer already exists in the data base, so we just get
+	// the file name, chuck it into a new rio and write the table
+	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+	std::string collname = rio->getCollectionName();
+	std::vector<double> oids = rio->getOIDs();
+
+	QString name = QString("%1:%2").arg(collname.c_str())
+			.arg(oids[0], 0, 'f', 0);
+
+	rio->SetFileName(name.toStdString());
+	rio->writeRAT(this->getRasterAttributeTable(1), 1, oids[0]);
+
+#endif
 }
 
 int NMImageLayer::mapUniqueValues(QString fieldName)

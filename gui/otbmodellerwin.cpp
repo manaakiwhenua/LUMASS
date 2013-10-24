@@ -272,6 +272,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 #ifndef BUILD_RASSUPPORT
     ui->menuObject->removeAction(ui->actionImportRasdamanLayer);
 #endif
+#ifndef DEBUG
+    ui->menuMOSO->removeAction(ui->actionTest);
+#endif
 
     // since we havent' go an implementation for odbc import
     // we just remove the action for now
@@ -872,8 +875,14 @@ void OtbModellerWin::test()
 
 	for (int v=0; v < oids.size(); ++v)
 	{
-		NMDebugAI( << "OID #" << v << ": " << oids[v] << std::endl);
+		std::string collname = helper.getCollectionNameFromOID(oids[v]);
+
+		NMDebugAI( << collname << ":" << oids[v] << std::endl);
 	}
+
+
+
+
 
 	//StartTime == '2001-01-01' && AttributeValue == 'Exotic Forest'
 

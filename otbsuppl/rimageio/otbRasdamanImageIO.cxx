@@ -43,7 +43,9 @@
 #include "itkMetaDataObject.h"
 #include "otbMetaDataKey.h"
 
-
+// to account for the different table names
+// of the rasdaman feature branch (as 2013-10)
+#define PSPREFIX "ps9"
 
 namespace otb
 {
@@ -1295,13 +1297,13 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	std::stringstream query;
 	PGresult* res;
 
-	query << "select value from ps9_extra_metadata as em "
-	             "inner join ps9_extra_metadata_type as mt "
+	query << "select value from " << PSPREFIX << "_extra_metadata as em "
+	             "inner join " << PSPREFIX << "_extra_metadata_type as mt "
 	             "on mt.id = em.metadata_type_id "
 			        "where mt.type = 'attrtable_name' "
 			        "and em.coverage_id = "
-			"(select coverage_id from ps9_range_set as rs "
-			     "inner join ps9_rasdaman_collection as rc "
+			"(select coverage_id from " << PSPREFIX << "_range_set as rs "
+			     "inner join " << PSPREFIX << "_rasdaman_collection as rc "
 			     "on rs.storage_id = rc.id "
 			         "where rc.oid = " << this->m_oids[band-1] << ")";
 	NMDebug( << query.str() << std::endl);
@@ -1362,7 +1364,12 @@ otb::AttributeTable::Pointer RasdamanImageIO::getRasterAttributeTable(int band)
 	// create local table and init structure
 	otb::AttributeTable::Pointer rat = otb::AttributeTable::New();
 	rat->SetBandNumber(band);
-	rat->SetImgFileName(this->m_collname);
+	// well, we just set the name of the attribute table here,
+	// since that's we need later for updating the table in
+	// the data base, rather than the coll_name:oid in
+	// case of rasdaman images, also we can easily retrieve
+	// the coverage/image name this table belongs to
+	rat->SetImgFileName(ratName);
 
 	//NMDebugAI(<< "cloning table structure ..." << endl);
 	for (int c=0; c < names.size(); ++c)

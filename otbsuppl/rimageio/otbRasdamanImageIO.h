@@ -80,6 +80,12 @@ public:
 	
 	virtual void Write(const void* buffer);
 	
+	std::string getCollectionName(void)
+		{return this->m_collname;}
+
+	std::vector<double> getOIDs(void)
+		{return this->m_oids;}
+
 	/*! Sets a valid RasdamanConnector instance */
 	void setRasdamanConnector(RasdamanConnector* rasconn);
 	RasdamanConnector* getRasdamanConnector(void)
@@ -105,6 +111,7 @@ public:
 
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 	void setRasterAttributeTable(otb::AttributeTable* rat, int band);
+	void writeRAT(otb::AttributeTable* tab, unsigned int band, double _oid);
 
 protected:	
   RasdamanImageIO();
@@ -121,8 +128,6 @@ private:
 			r_Type::r_Type_Id rtype);
 	double getOIDFromCollIndex(void);
 	r_Type::r_Type_Id getRasdamanComponentType(otb::ImageIOBase::IOComponentType otbtype);
-	void writeRAT(otb::AttributeTable* tab,
-			unsigned int band, double _oid);
 	double insertForcedLPRDummyImage();
 			//const std::string& collname,
 			//r_Minterval& sdom);

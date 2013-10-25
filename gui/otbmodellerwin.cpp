@@ -524,7 +524,7 @@ OtbModellerWin::getRasdamanConnector(void)
 	// for now, this means that once rasdaman has been checked,
 	// and was found to be unavailable, it won't be available
 	// for the rest of the session, and the user has to close
-	// and restart LUMASS - this is, not really clever design
+	// and restart LUMASS - this is not really clever design
 	// and needs revision --> TODO:
 	if (mbNoRasdaman)
 		return 0;
@@ -595,6 +595,7 @@ OtbModellerWin::getRasdamanConnector(void)
 		{
 			this->mpRasconn->disconnect();
 			delete this->mpRasconn;
+			this->mpRasconn = 0;
 		}
 		this->mbNoRasdaman = true;
 		return 0;
@@ -868,23 +869,32 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	RasdamanHelper2 helper(this->getRasdamanConnector());
 
-	std::vector<double> oids = helper.queryImageOIDs(
-			"StartTime=2001-01-01:AttributeValue=Exotic Forest");
+	vtkStringArray* vtkar = vtkStringArray::New();
+	vtkar->SetNumberOfComponents(1);
+	vtkar->SetNumberOfTuples(10);
 
-	for (int v=0; v < oids.size(); ++v)
+	std::stringstream st;
+	for (int i=0; i < 10; ++i)
 	{
-		std::string collname = helper.getCollectionNameFromOID(oids[v]);
-
-		NMDebugAI( << collname << ":" << oids[v] << std::endl);
+		st.str("");
+		st << "#" << i;
+		vtkar->SetValue(i, st.str());
 	}
 
+	std::vector<std::string> vl(10);
+	vtkar->ExportToVoidPointer((void*)&vl[0]);
 
 
+	for (int i=0; i < 10; ++i)
+	{
+
+		NMDebugAI(<< vtkar->GetValue(i) << std::endl);
+	}
+
+	vtkar->Delete();
 
 
-	//StartTime == '2001-01-01' && AttributeValue == 'Exotic Forest'
 
 
 	//NMLayer* l = ui->modelCompList->getLayer(0);

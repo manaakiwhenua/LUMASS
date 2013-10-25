@@ -44,6 +44,7 @@ QT4_WRAP_CPP(MOC_CPP
 	${gui_SOURCE_DIR}/NMVectorLayer.h
 	${gui_SOURCE_DIR}/NMImageLayer.h
 	${gui_SOURCE_DIR}/NMLayerModel.h
+	${gui_SOURCE_DIR}/NMQtOtbAttributeTableModel.h
 	${gui_SOURCE_DIR}/NMTableView.h   
 	${gui_SOURCE_DIR}/NMChartWidget.h
 	${gui_SOURCE_DIR}/NMAddColumnDialog.h

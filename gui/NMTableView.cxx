@@ -117,7 +117,7 @@ void NMTableView::initView()
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 
-	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
+	//this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
 	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 	this->mSortFilter->setDynamicSortFilter(true);
 
@@ -963,9 +963,31 @@ NMTableView::deleteRasLayer(void)
 	emit notifyDeleteRasLayer(imagespec);
 }
 
+void
+NMTableView::setTable(otb::AttributeTable::Pointer tab)
+{
+	if (this->mOtbTableAdapter == 0)
+		this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
+
+	this->mOtbTableAdapter->setTable(tab);
+	this->mSortFilter->setSourceModel(this->mOtbTableAdapter);
+	this->mTableView->setModel(this->mSortFilter);
+
+
+	this->mBaseTable = tab;
+	this->mDeletedColumns.clear();
+	this->mAlteredColumns.clear();
+
+
+
+}
+
 void NMTableView::setTable(vtkTable* tab)
 {
 	NMDebugCtx(__ctxtabview, << "...");
+
+	if (this->mVtkTableAdapter == 0)
+		this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
 
 	this->mVtkTableAdapter->setTable(tab);
 	this->mSortFilter->setSourceModel(this->mVtkTableAdapter);

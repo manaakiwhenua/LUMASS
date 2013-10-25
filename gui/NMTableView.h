@@ -29,6 +29,9 @@
 #include "nmlog.h"
 #include "NMLayer.h"
 #include "NMSelectableSortFilterProxyModel.h"
+#include "NMQtOtbAttributeTableModel.h"
+
+#include "otbAttributeTable.h"
 
 #include <QObject>
 #include <QtGui/QMainWindow>
@@ -114,6 +117,7 @@ public slots:
 	void userQuery();
 	void normalise();
 	void setTable(vtkTable* tab);
+	void setTable(otb::AttributeTable::Pointer tab);
 	void selectionQuery();
 	void clearSelection();
 	void selectRow(int row);
@@ -166,9 +170,10 @@ protected:
 	long mlLastClickedRow;
 
 	QTableView* mTableView;
-	QItemSelection mRowSelection;
 	vtkQtTableModelAdapter* mVtkTableAdapter;
+	NMQtOtbAttributeTableModel* mOtbTableAdapter;
 	NMSelectableSortFilterProxyModel* mSortFilter;
+	QItemSelection mRowSelection;
 
 	QVBoxLayout* mLayout;
 	QStatusBar* mStatusBar;
@@ -181,6 +186,7 @@ protected:
 	QMenu* mManageLayerMenu;
 
 	vtkSmartPointer<vtkTable> mBaseTable;
+	otb::AttributeTable::Pointer mOtbTable;
 	NMLayer* mLayer;
 
 	QStringList mDeletedColumns;

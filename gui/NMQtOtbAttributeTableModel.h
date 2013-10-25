@@ -33,6 +33,8 @@
 
 class NMQtOtbAttributeTableModel: public QAbstractTableModel
 {
+	Q_OBJECT
+
 public:
 	NMQtOtbAttributeTableModel(QObject* parent=0);
 	NMQtOtbAttributeTableModel(otb::AttributeTable::Pointer tab,
@@ -50,6 +52,7 @@ public:
 	Qt::ItemFlags flags(const QModelIndex& index) const;
 	bool insertColumn(int column, const QModelIndex& parent=QModelIndex());
 	bool removeColumn(int column, const QModelIndex& parent=QModelIndex());
+	//QModelIndex index(int row, int column, const QModelIndex& parent) const;
 
 	// additional public interface to
 	void setTable(otb::AttributeTable::Pointer table);

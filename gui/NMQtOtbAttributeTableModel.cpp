@@ -62,43 +62,165 @@ NMQtOtbAttributeTableModel::columnCount(const QModelIndex& parent) const
 QVariant
 NMQtOtbAttributeTableModel::data(const QModelIndex& index, int role)
 {
-	if (mTable.IsNull())
-		return QVariant();
-
-	// we don't need to check indices here, 'cause the table is doing
-	// that for us and returns nodata values in case we're out of bounds
-	// (nodata is by default the default assigned value upon delcaration)
-
-	TableColumnType type = mTable->GetColumnType(index.column());
-	switch(type)
+	if ( mTable.IsNull() || !index.isValid() )
 	{
-	case ATTYPE_STRING:
-		return QVariant(mTable->GetStrValue(index.column(), index.row()));
-		break;
-	case ATTYPE_INT:
-		return QVariant(mTable->GetIntValue(index.column(), index.row()));
-		break;
-	case ATTYPE_DOUBLE:
-		return QVariant(mTable->GetDblValue(index.column(), index.row()));
-		break;
-	default:
 		return QVariant();
-		break;
 	}
+
+	// everything we do, depends on the column  type
+	TableColumnType type = mTable->GetColumnType(index.column());
+
+	switch(role)
+	{
+		case Qt::EditRole:
+		case Qt::DisplayRole:
+		{
+			switch(type)
+			{
+			case ATTYPE_STRING:
+				return QVariant(mTable->GetStrValue(index.column(), index.row()));
+				break;
+			case ATTYPE_INT:
+				return QVariant(mTable->GetIntValue(index.column(), index.row()));
+						//QString("%1")
+						//.arg(mTable->GetIntValue(index.column(), index.row())));
+				break;
+			case ATTYPE_DOUBLE:
+				return QVariant(mTable->GetDblValue(index.column(), index.row()));
+						//QString("%L1")
+						//.arg(mTable->GetDblValue(index.column(), index.row()), 0, 'G', 4));
+				break;
+			default:
+				return QVariant();
+				break;
+			}
+		}
+		break;
+
+		case Qt::TextAlignmentRole:
+		{
+			switch(type)
+			{
+			case ATTYPE_INT:
+			case ATTYPE_DOUBLE:
+				return QVariant(Qt::AlignRight | Qt::AlignVCenter);
+				break;
+			default:
+				return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
+				break;
+			}
+		}
+		break;
+
+		default:
+			break;
+	}
+	return QVariant();
+}
+
+QVariant
+NMQtOtbAttributeTableModel::headerData(int section,
+		Qt::Orientation orientation,
+		int role) const
+{
+	if (mTable.IsNull() || role != Qt::DisplayRole)
+		return QVariant();
+
+	if (orientation == Qt::Horizontal)
+		return QVariant(mTable->GetColumnName(section));
 
 	return QVariant();
 }
 
-QVariant headerData(int section, Qt::Orientation orientation,
-		int role=Qt::DisplayRole) const;
-bool setData(const QModelIndex& index, const QVariant& value,
-		int role=Qt::EditRole);
-Qt::ItemFlags flags(const QModelIndex& index) const;
-bool insertColumn(int column, const QModelIndex& parent=QModelIndex());
-bool removeColumn(int column, const QModelIndex& parent=QModelIndex());
+
+bool
+NMQtOtbAttributeTableModel::setData(const QModelIndex& index,
+		const QVariant& value,
+		int role) //=Qt::EditRole)
+{
+	if (	mTable.IsNull()
+		||  role != Qt::EditRole
+		||  !index.isValid())
+	{
+		return false;
+	}
+
+	bool bok = true;
+	switch(value.type())
+	{
+	case QVariant::Char:
+	case QVariant::Int:
+		mTable->SetValue(index.column(), index.row(), (long)value.toInt(&bok));
+		break;
+
+	case QVariant::Double:
+		mTable->SetValue(index.column(), index.row(), value.toDouble(&bok));
+		break;
+
+	case QVariant::Date:
+	case QVariant::DateTime:
+	case QVariant::Time:
+	case QVariant::Url:
+	case QVariant::String:
+		mTable->SetValue(index.column(), index.row(), value.toString().toStdString());
+		break;
+
+	default:
+		return false;
+		break;
+	}
+
+	return true;
+}
+
+
+Qt::ItemFlags
+NMQtOtbAttributeTableModel::flags(const QModelIndex& index) const
+{
+	if (index.isValid())
+		return Qt::ItemIsSelectable | Qt::ItemIsEditable;
+	else
+		return 0;
+}
+
+//QModelIndex
+//NMQtOtbAttributeTableModel::index(int row, int column,
+//		const QModelIndex& parent) const
+//{
+//	if (mTable.IsNull())
+//		return QModelIndex();
+//
+//	// we use the internal data member of the parent to wrap the column type
+//	// of the index
+//	return  createIndex(row, column, mTable->GetColumnType(column));
+//}
+
+//bool
+//NMQtOtbAttributeTableModel::insertColumn(int column,
+//		const QModelIndex& parent)
+//{
+//	if (mTable.IsNull())
+//		return false;
+//
+//	// since we only insert columns at the (right-hand side)
+//	// end of the table, we expect the 'column' to
+//	// denote the otbAttributeTable::TableColumnType
+//	// of the new column
+//
+//
+//
+//}
+//bool removeColumn(int column, const QModelIndex& parent=QModelIndex());
 
 // additional public interface to
-void setTable(otb::AttributeTable::Pointer table);
+void
+NMQtOtbAttributeTableModel::setTable(otb::AttributeTable::Pointer table)
+{
+	this->mTable = table;
+
+	emit this->reset();
+}
+
 
 
 

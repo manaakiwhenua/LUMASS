@@ -44,7 +44,7 @@ public:
 	// (re-)implemented from QAbstractTableModel
 	int rowCount(const QModelIndex& parent=QModelIndex()) const;
 	int columnCount(const QModelIndex& parent=QModelIndex()) const;
-	QVariant data(const QModelIndex& index, int role=Qt::DisplayRole);
+	QVariant data(const QModelIndex& index, int role) const;
 	QVariant headerData(int section, Qt::Orientation orientation,
 			int role=Qt::DisplayRole) const;
 	bool setData(const QModelIndex& index, const QVariant& value,
@@ -58,9 +58,12 @@ public:
 	void setTable(otb::AttributeTable::Pointer table);
 	otb::AttributeTable::Pointer getTable(void)
 		{return this->mTable;}
+	void setKeyColumn(const QString& key);
 
 private:
 	otb::AttributeTable::Pointer mTable;
+	QString mKey;
+	int mKeyIdx;
 
 };
 

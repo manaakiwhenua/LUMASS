@@ -24,13 +24,17 @@
 
 #include "NMQtOtbAttributeTableModel.h"
 
+#include <QColor>
+
 NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(QObject* parent)
+	: mKey(""), mKeyIdx(-1)
 {
 	this->setParent(parent);
 }
 
 NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(
 		otb::AttributeTable::Pointer tab, QObject* parent)
+	: mKey(""), mKeyIdx(-1)
 {
 	this->setParent(parent);
 	if (tab.IsNotNull())
@@ -59,8 +63,24 @@ NMQtOtbAttributeTableModel::columnCount(const QModelIndex& parent) const
 	return mTable->GetNumCols();
 }
 
+void
+NMQtOtbAttributeTableModel::setKeyColumn(const QString& key)
+{
+	int idx = this->mTable->ColumnExists(key.toStdString());
+	if (idx >= 0)
+	{
+		this->mKey = key;
+		this->mKeyIdx = idx;
+	}
+	else
+	{
+		this->mKey.clear();
+		this->mKeyIdx = -1;
+	}
+}
+
 QVariant
-NMQtOtbAttributeTableModel::data(const QModelIndex& index, int role)
+NMQtOtbAttributeTableModel::data(const QModelIndex& index, int role) const
 {
 	if ( mTable.IsNull() || !index.isValid() )
 	{
@@ -68,8 +88,7 @@ NMQtOtbAttributeTableModel::data(const QModelIndex& index, int role)
 	}
 
 	// everything we do, depends on the column  type
-	TableColumnType type = mTable->GetColumnType(index.column());
-
+	otb::AttributeTable::TableColumnType type = mTable->GetColumnType(index.column());
 	switch(role)
 	{
 		case Qt::EditRole:
@@ -77,15 +96,15 @@ NMQtOtbAttributeTableModel::data(const QModelIndex& index, int role)
 		{
 			switch(type)
 			{
-			case ATTYPE_STRING:
-				return QVariant(mTable->GetStrValue(index.column(), index.row()));
+			case otb::AttributeTable::ATTYPE_STRING:
+				return QVariant(mTable->GetStrValue(index.column(), index.row()).c_str());
 				break;
-			case ATTYPE_INT:
-				return QVariant(mTable->GetIntValue(index.column(), index.row()));
+			case otb::AttributeTable::ATTYPE_INT:
+				return QVariant((qlonglong)mTable->GetIntValue(index.column(), index.row()));
 						//QString("%1")
 						//.arg(mTable->GetIntValue(index.column(), index.row())));
 				break;
-			case ATTYPE_DOUBLE:
+			case otb::AttributeTable::ATTYPE_DOUBLE:
 				return QVariant(mTable->GetDblValue(index.column(), index.row()));
 						//QString("%L1")
 						//.arg(mTable->GetDblValue(index.column(), index.row()), 0, 'G', 4));
@@ -101,8 +120,8 @@ NMQtOtbAttributeTableModel::data(const QModelIndex& index, int role)
 		{
 			switch(type)
 			{
-			case ATTYPE_INT:
-			case ATTYPE_DOUBLE:
+			case otb::AttributeTable::ATTYPE_INT:
+			case otb::AttributeTable::ATTYPE_DOUBLE:
 				return QVariant(Qt::AlignRight | Qt::AlignVCenter);
 				break;
 			default:
@@ -111,6 +130,14 @@ NMQtOtbAttributeTableModel::data(const QModelIndex& index, int role)
 			}
 		}
 		break;
+
+		case Qt::ForegroundRole:
+			{
+				return QVariant(QColor(0,0,0));
+			}
+			break;
+
+
 
 		default:
 			break;
@@ -126,8 +153,16 @@ NMQtOtbAttributeTableModel::headerData(int section,
 	if (mTable.IsNull() || role != Qt::DisplayRole)
 		return QVariant();
 
-	if (orientation == Qt::Horizontal)
-		return QVariant(mTable->GetColumnName(section));
+	switch(orientation)
+	{
+	case Qt::Horizontal:
+		return QVariant(mTable->GetColumnName(section).c_str());
+		break;
+	case Qt::Vertical:
+		return QVariant(mTable->GetStrValue(mKeyIdx, section).c_str());
+	default:
+		break;
+	}
 
 	return QVariant();
 }
@@ -170,6 +205,7 @@ NMQtOtbAttributeTableModel::setData(const QModelIndex& index,
 		break;
 	}
 
+	emit dataChanged(index, index);
 	return true;
 }
 
@@ -178,7 +214,7 @@ Qt::ItemFlags
 NMQtOtbAttributeTableModel::flags(const QModelIndex& index) const
 {
 	if (index.isValid())
-		return Qt::ItemIsSelectable | Qt::ItemIsEditable;
+		return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
 	else
 		return 0;
 }

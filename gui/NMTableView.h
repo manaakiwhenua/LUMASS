@@ -28,8 +28,8 @@
 
 #include "nmlog.h"
 #include "NMLayer.h"
-#include "NMSelectableSortFilterProxyModel.h"
 #include "NMQtOtbAttributeTableModel.h"
+#include "NMSelectableSortFilterProxyModel.h"
 
 #include "otbAttributeTable.h"
 
@@ -91,6 +91,7 @@ public:
 
 	NMTableView(QWidget* parent=0);
 	NMTableView(vtkTable* tab, QWidget* parent=0);
+	NMTableView(otb::AttributeTable::Pointer model, QWidget* parent=0);
 	NMTableView(vtkTable* tab, ViewMode=NMTABVIEW_ATTRTABLE,
 			QWidget* parent=0);
 	virtual ~NMTableView();
@@ -172,6 +173,7 @@ protected:
 	QTableView* mTableView;
 	vtkQtTableModelAdapter* mVtkTableAdapter;
 	NMQtOtbAttributeTableModel* mOtbTableAdapter;
+	QAbstractTableModel* mModel;
 	NMSelectableSortFilterProxyModel* mSortFilter;
 	QItemSelection mRowSelection;
 

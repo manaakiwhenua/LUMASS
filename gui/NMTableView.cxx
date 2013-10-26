@@ -89,6 +89,23 @@ NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
 	: QWidget(parent)
 {
 	this->mViewMode = NMTABVIEW_ATTRTABLE;
+
+	this->mTableView = new QTableView(this);
+	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
+	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
+
+	this->initView();
+	this->setTable(tab);
+}
+
+NMTableView::NMTableView(otb::AttributeTable::Pointer tab, QWidget* parent)
+	: QWidget(parent)
+{
+	this->mViewMode = NMTABVIEW_ATTRTABLE;
+	this->mTableView = new QTableView(this);
+	this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
+	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
+
 	this->initView();
 	this->setTable(tab);
 }
@@ -97,20 +114,25 @@ NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
 NMTableView::NMTableView(vtkTable* tab, ViewMode mode, QWidget* parent)
 	: QWidget(parent), mViewMode(mode)
 {
+
+	this->mTableView = new QTableView(this);
+	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
+	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
+
 	this->initView();
 	this->setTable(tab);
 }
 
 NMTableView::~NMTableView()
 {
-	NMDebugCtx(__ctxtabview, << "...");
+	//NMDebugCtx(__ctxtabview, << "...");
 
-	NMDebugCtx(__ctxtabview, << "done!");
+	//NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void NMTableView::initView()
 {
-	this->mTableView = new QTableView(this);
+	//this->mTableView = new QTableView(this);
 	this->mTableView->setSortingEnabled(true);
 	this->mTableView->verticalHeader()->hide();
 
@@ -118,7 +140,7 @@ void NMTableView::initView()
 	this->mTableView->setAlternatingRowColors(true);
 
 	//this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
-	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
+	//this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 	this->mSortFilter->setDynamicSortFilter(true);
 
 	this->setWindowFlags(Qt::Window);
@@ -883,7 +905,7 @@ void NMTableView::exportTable()
 		}
 		else
 		{
-			NMErr(__ctxtabview, << "ivalid data base and table name!");
+			NMErr(__ctxtabview, << "invalid database and table name!");
 			return;
 		}
 
@@ -966,19 +988,13 @@ NMTableView::deleteRasLayer(void)
 void
 NMTableView::setTable(otb::AttributeTable::Pointer tab)
 {
-	if (this->mOtbTableAdapter == 0)
-		this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
-
 	this->mOtbTableAdapter->setTable(tab);
 	this->mSortFilter->setSourceModel(this->mOtbTableAdapter);
 	this->mTableView->setModel(this->mSortFilter);
 
-
-	this->mBaseTable = tab;
+	this->mOtbTable = tab;
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
-
-
 
 }
 
@@ -986,13 +1002,9 @@ void NMTableView::setTable(vtkTable* tab)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	if (this->mVtkTableAdapter == 0)
-		this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
-
 	this->mVtkTableAdapter->setTable(tab);
 	this->mSortFilter->setSourceModel(this->mVtkTableAdapter);
 	this->mTableView->setModel(this->mSortFilter);
-
 
 	this->mBaseTable = tab;
 	this->mDeletedColumns.clear();

@@ -22,7 +22,8 @@
  *      Author: alex
  */
 
-#include <NMImageLayer.h>
+#include "NMImageLayer.h"
+
 
 #include <QTime>
 
@@ -123,6 +124,11 @@ NMImageLayer::~NMImageLayer()
 		delete this->mReader;
 	if (this->mPipeconn)
 		delete this->mPipeconn;
+//	if (this->mTableView)
+//	{
+//		this->mTableView->close();
+//		delete this->mTableView;
+//	}
 }
 
 void NMImageLayer::world2pixel(double world[3], int pixel[3])
@@ -193,8 +199,8 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3])
 
 void NMImageLayer::createTableView(void)
 {
-	if (this->mRATVec.size() < 1)
-		return;
+	//if (this->mRATVec.size() < 1)
+	//	return;
 
 	if (this->mTableView != 0)
 	{
@@ -206,17 +212,19 @@ void NMImageLayer::createTableView(void)
 
 
 	// for debug only
-	this->mAttributeTable->Print(std::cout);
+	//this->mAttributeTable->Print(std::cout);
 
-	this->mTableView = new NMTableView(this->mAttributeTable, 0);
-	this->mTableView->hideAttribute("nm_sel");
-	this->mTableView->setRowKeyColumn("nm_id");
-	this->mTableView->hideAttribute("nm_id");
+
+	this->mTableView = new NMTableView(this->mOtbRAT, 0);//this->mAttributeTable, 0);
+	//this->mTableView->hideAttribute("nm_sel");
+	//this->mTableView->setRowKeyColumn("nm_id");
+	//this->mTableView->setRowKeyColumn("rowidx");
+	//this->mTableView->hideAttribute("nm_id");
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
 	// connect layer signals to tableview slots and model components list
-	this->connect(this, SIGNAL(attributeTableChanged(vtkTable*)),
-			this->mTableView, SLOT(setTable(vtkTable*)));
+	//this->connect(this, SIGNAL(attributeTableChanged(vtkTable*)),
+	//		this->mTableView, SLOT(setTable(vtkTable*)));
 
 	//TODO: connect to signal/slots for table updates
 
@@ -225,117 +233,121 @@ void NMImageLayer::createTableView(void)
 int NMImageLayer::updateAttributeTable()
 {
 	// for now we're operating only on the table of the first band
-	if (this->mRATVec.size() < 1)
-		return 0;
-	otb::AttributeTable::Pointer otbtab = this->mRATVec.at(0);
-	if (otbtab.IsNull())
-		return 0;
-
-	unsigned int nrows = otbtab->GetNumRows();
-	unsigned int ncols = otbtab->GetNumCols();
-
-	vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
-	tab->SetNumberOfRows(nrows);
-
-	// add the nm_id admin field
-	vtkSmartPointer<vtkLongArray> id = vtkSmartPointer<vtkLongArray>::New();
-	id->SetNumberOfComponents(1);
-	id->SetNumberOfTuples(nrows);
-	id->SetName("nm_id");
-	id->FillComponent(0,0);
-	tab->AddColumn(id);
-
-	// add the nm_sel admin field
-	vtkSmartPointer<vtkUnsignedCharArray> sel =
-			vtkSmartPointer<vtkUnsignedCharArray>::New();
-	sel->SetNumberOfComponents(1);
-	sel->SetNumberOfTuples(nrows);
-	sel->SetName("nm_sel");
-	sel->FillComponent(0,0);
-	tab->AddColumn(sel);
-
-	// copy table structure
-	for (unsigned int col = 0; col < ncols; ++col)
-	{
-		vtkSmartPointer<vtkStringArray> sar;
-		vtkSmartPointer<vtkDoubleArray> dar;
-		vtkSmartPointer<vtkIntArray> iar;
-		switch(otbtab->GetColumnType(col))
-		{
-		case otb::AttributeTable::ATTYPE_STRING:
-			sar = vtkSmartPointer<vtkStringArray>::New();
-			sar->SetNumberOfComponents(1);
-			sar->SetNumberOfTuples(nrows);
-			sar->SetName(otbtab->GetColumnName(col).c_str());
-			tab->AddColumn(sar);
-			break;
-		case otb::AttributeTable::ATTYPE_DOUBLE:
-			dar = vtkSmartPointer<vtkDoubleArray>::New();
-			dar->SetNumberOfComponents(1);
-			dar->SetNumberOfTuples(nrows);
-			dar->SetName(otbtab->GetColumnName(col).c_str());
-			dar->FillComponent(0,0);
-			tab->AddColumn(dar);
-			break;
-		case otb::AttributeTable::ATTYPE_INT:
-			iar = vtkSmartPointer<vtkIntArray>::New();
-			iar->SetNumberOfComponents(1);
-			iar->SetNumberOfTuples(nrows);
-			iar->SetName(otbtab->GetColumnName(col).c_str());
-			iar->FillComponent(0,0);
-			tab->AddColumn(iar);
-			break;
-		}
-	}
-
-	// copy table content
-	for (unsigned int row = 0; row < nrows; ++row)
-	{
-//		tab->InsertNextBlankRow(0);
-		vtkLongArray* nmid = vtkLongArray::SafeDownCast(
-				tab->GetColumnByName("nm_id"));
-		nmid->SetValue(row, row);
-
-		vtkUnsignedCharArray* nmsel = vtkUnsignedCharArray::SafeDownCast(
-				tab->GetColumnByName("nm_sel"));
-		nmsel->SetValue(row, 0);
-
-		for (unsigned int col = 2; col < ncols+2; ++col)
-		{
-			vtkStringArray* sa;
-			vtkDoubleArray* da;
-			vtkIntArray* ia;
-			switch(otbtab->GetColumnType(col-2))
-			{
-			case otb::AttributeTable::ATTYPE_STRING:
-				sa = vtkStringArray::SafeDownCast(
-						tab->GetColumn(col));
-				sa->SetValue(row, otbtab->GetStrValue(col-2, row).c_str());
-//				ar->InsertVariantValue(row,
-//						vtkVariant(otbtab->GetStrValue(col, row).c_str()));
-				break;
-			case otb::AttributeTable::ATTYPE_DOUBLE:
-				da = vtkDoubleArray::SafeDownCast(
-						tab->GetColumn(col));
-				da->SetValue(row, otbtab->GetDblValue(col-2, row));
-//				ar->InsertVariantValue(row,
-//						vtkVariant(otbtab->GetDblValue(col, row)));
-				break;
-			case otb::AttributeTable::ATTYPE_INT:
-				ia = vtkIntArray::SafeDownCast(
-						tab->GetColumn(col));
-				ia->SetValue(row, otbtab->GetIntValue(col-2, row));
-//				ar->InsertVariantValue(row,
-//						vtkVariant(otbtab->GetIntValue(col, row)));
-				break;
-			}
-		}
-	}
-
-	this->mAttributeTable = tab;
+	//if (this->mRATVec.size() < 1)
+	//	return 0;
+	//otb::AttributeTable::Pointer otbtab = this->mRATVec.at(0);
+	//otb::AttributeTable::Pointer otbtab = this->mReader->getRasterAttributeTable(1);
+	//if (otbtab.IsNull())
+	//	return 0;
+    //
+	//unsigned int nrows = otbtab->GetNumRows();
+	//unsigned int ncols = otbtab->GetNumCols();
+    //
+	//vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
+	//tab->SetNumberOfRows(nrows);
+    //
+	//// add the nm_id admin field
+	//vtkSmartPointer<vtkLongArray> id = vtkSmartPointer<vtkLongArray>::New();
+	//id->SetNumberOfComponents(1);
+	//id->SetNumberOfTuples(nrows);
+	//id->SetName("nm_id");
+	//id->FillComponent(0,0);
+	//tab->AddColumn(id);
+    //
+	//// add the nm_sel admin field
+	//vtkSmartPointer<vtkUnsignedCharArray> sel =
+	//		vtkSmartPointer<vtkUnsignedCharArray>::New();
+	//sel->SetNumberOfComponents(1);
+	//sel->SetNumberOfTuples(nrows);
+	//sel->SetName("nm_sel");
+	//sel->FillComponent(0,0);
+	//tab->AddColumn(sel);
+    //
+	//// copy table structure
+	//for (unsigned int col = 0; col < ncols; ++col)
+	//{
+	//	vtkSmartPointer<vtkStringArray> sar;
+	//	vtkSmartPointer<vtkDoubleArray> dar;
+	//	vtkSmartPointer<vtkIntArray> iar;
+	//	switch(otbtab->GetColumnType(col))
+	//	{
+	//	case otb::AttributeTable::ATTYPE_STRING:
+	//		sar = vtkSmartPointer<vtkStringArray>::New();
+	//		sar->SetNumberOfComponents(1);
+	//		sar->SetNumberOfTuples(nrows);
+	//		sar->SetName(otbtab->GetColumnName(col).c_str());
+	//		tab->AddColumn(sar);
+	//		break;
+	//	case otb::AttributeTable::ATTYPE_DOUBLE:
+	//		dar = vtkSmartPointer<vtkDoubleArray>::New();
+	//		dar->SetNumberOfComponents(1);
+	//		dar->SetNumberOfTuples(nrows);
+	//		dar->SetName(otbtab->GetColumnName(col).c_str());
+	//		dar->FillComponent(0,0);
+	//		tab->AddColumn(dar);
+	//		break;
+	//	case otb::AttributeTable::ATTYPE_INT:
+	//		iar = vtkSmartPointer<vtkIntArray>::New();
+	//		iar->SetNumberOfComponents(1);
+	//		iar->SetNumberOfTuples(nrows);
+	//		iar->SetName(otbtab->GetColumnName(col).c_str());
+	//		iar->FillComponent(0,0);
+	//		tab->AddColumn(iar);
+	//		break;
+	//	}
+	//}
+    //
+	//// copy table content
+	//for (unsigned int row = 0; row < nrows; ++row)
+	//{
+//	//	tab->InsertNextBlankRow(0);
+	//	vtkLongArray* nmid = vtkLongArray::SafeDownCast(
+	//			tab->GetColumnByName("nm_id"));
+	//	nmid->SetValue(row, row);
+    //
+	//	vtkUnsignedCharArray* nmsel = vtkUnsignedCharArray::SafeDownCast(
+	//			tab->GetColumnByName("nm_sel"));
+	//	nmsel->SetValue(row, 0);
+    //
+	//	for (unsigned int col = 2; col < ncols+2; ++col)
+	//	{
+	//		vtkStringArray* sa;
+	//		vtkDoubleArray* da;
+	//		vtkIntArray* ia;
+	//		switch(otbtab->GetColumnType(col-2))
+	//		{
+	//		case otb::AttributeTable::ATTYPE_STRING:
+	//			sa = vtkStringArray::SafeDownCast(
+	//					tab->GetColumn(col));
+	//			sa->SetValue(row, otbtab->GetStrValue(col-2, row).c_str());
+//	//			ar->InsertVariantValue(row,
+//	//					vtkVariant(otbtab->GetStrValue(col, row).c_str()));
+	//			break;
+	//		case otb::AttributeTable::ATTYPE_DOUBLE:
+	//			da = vtkDoubleArray::SafeDownCast(
+	//					tab->GetColumn(col));
+	//			da->SetValue(row, otbtab->GetDblValue(col-2, row));
+//	//			ar->InsertVariantValue(row,
+//	//					vtkVariant(otbtab->GetDblValue(col, row)));
+	//			break;
+	//		case otb::AttributeTable::ATTYPE_INT:
+	//			ia = vtkIntArray::SafeDownCast(
+	//					tab->GetColumn(col));
+	//			ia->SetValue(row, otbtab->GetIntValue(col-2, row));
+//	//			ar->InsertVariantValue(row,
+//	//					vtkVariant(otbtab->GetIntValue(col, row)));
+	//			break;
+	//		}
+	//	}
+	//}
+    //
+	//this->mAttributeTable = tab;
 
 	// notify table view class about changes
-	emit attributeTableChanged(this->mAttributeTable);
+	//emit attributeTableChanged(this->mOtbRAT);//this->mAttributeTable);
+
+	this->mOtbRAT = this->getRasterAttributeTable(1);
+
 	emit legendChanged(this);
 
 	return 1;
@@ -444,8 +456,8 @@ bool NMImageLayer::setFileName(QString filename)
 	// set the bounding box
 	this->mReader->getBBox(this->mBBox);
 
-	// fetch RATs
-	this->fetchRATs();
+	// we only fetch a RAT when we really need it
+	//this->fetchRATs();
 
 	this->mImage = 0;
 
@@ -626,7 +638,7 @@ NMImageLayer::writeDataSet(void)
 	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
 	std::vector<double> oids = rio->getOIDs();
 
-	rio->writeRAT(this->motbRAT, 1, oids[0]);
+	rio->writeRAT(this->mOtbRAT, 1, oids[0]);
 #endif
 }
 
@@ -634,15 +646,16 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
 
-	if (this->mRATVec.size() == 0)
+	//if (this->mRATVec.size() == 0)
+	if (mOtbRAT.IsNull())
 	{
 		NMDebugAI(<< "sorry, don't have an attribute table!");
 		return 0;
 	}
 
 	// make a list of available attributes
-	otb::AttributeTable::Pointer tab = this->mRATVec.at(0);
-	int idxField = tab->ColumnExists(fieldName.toStdString());
+	//otb::AttributeTable::Pointer tab = this->mRATVec.at(0);
+	int idxField = mOtbRAT->ColumnExists(fieldName.toStdString());
 	if (idxField < 0)
 	{
 		NMErr(ctxNMImageLayer, << "the specified attribute does not exist!");
@@ -653,11 +666,11 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	// if we've got doubles, we refuse to map unique values ->
 	// doesn't make sense, does it?
 	bool bNum = true;
-	if (tab->GetColumnType(idxField) == otb::AttributeTable::ATTYPE_STRING)
+	if (mOtbRAT->GetColumnType(idxField) == otb::AttributeTable::ATTYPE_STRING)
 	{
 		bNum = false;
 	}
-	else if (tab->GetColumnType(idxField) != otb::AttributeTable::ATTYPE_INT)
+	else if (mOtbRAT->GetColumnType(idxField) != otb::AttributeTable::ATTYPE_INT)
 	{
 		NMDebugAI( << "oh no, not with doubles!" << endl);
 		return 0;
@@ -665,8 +678,8 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 
 	// we create a new look-up table and set the number of entries we need
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->Allocate(tab->GetNumRows());
-	clrtab->SetNumberOfTableValues(tab->GetNumRows());
+	clrtab->Allocate(mOtbRAT->GetNumRows());
+	clrtab->SetNumberOfTableValues(mOtbRAT->GetNumRows());
 
 	// let's create a new legend info table
 	this->resetLegendInfo();
@@ -684,16 +697,16 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	std::string fn = fieldName.toStdString();
 	QString sVal;
 	vtkMath::RandomSeed(QTime::currentTime().msec());
-	for (int t=0; t < tab->GetNumRows(); ++t)
+	for (int t=0; t < mOtbRAT->GetNumRows(); ++t)
 	{
 		if (bNum)
 		{
-			int val = tab->GetIntValue(fn, t);
+			int val = mOtbRAT->GetIntValue(fn, t);
 			sVal = QString(tr("%1")).arg(val);
 		}
 		else
 		{
-			sVal = QString(tab->GetStrValue(fn, t).c_str());
+			sVal = QString(mOtbRAT->GetStrValue(fn, t).c_str());
 		}
 
 		QHash<QString, QVector<int> >::iterator it = this->mHashValueIndices.find(sVal);

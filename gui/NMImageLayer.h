@@ -100,7 +100,7 @@ protected:
 #endif	
 
 	//std::vector<otb::AttributeTable::Pointer> mRATVec;
-	otb::AttributeTable::Pointer motbRAT;
+	otb::AttributeTable::Pointer mOtbRAT;
 
 	itk::DataObject::Pointer mImage;
 	vtkSmartPointer<vtkImageProperty> mImgProp;

@@ -2496,8 +2496,8 @@ OtbModellerWin::updateRasMetaView()
 
 	if (this->mpPetaView == 0)
 	{
-		this->mpPetaView = new NMTableView(metatab,
-				NMTableView::NMTABVIEW_RASMETADATA);
+		this->mpPetaView = new NMTableView(metatab, 0);
+		this->mpPetaView->setViewMode(NMTableView::NMTABVIEW_RASMETADATA);
 
 		connect(this->mpPetaView, SIGNAL(notifyLoadRasLayer(const QString&, const QString&)),
 				this, SLOT(fetchRasLayer(const QString&, const QString&)));

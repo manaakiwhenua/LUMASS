@@ -6,6 +6,7 @@ INCLUDE_DIRECTORIES(
 	${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
 	${utils_SOURCE_DIR}/QtPropertyBrowser/src
+	${NMVtk_SOURCE_DIR}
 	${GDALRATImageIO_SOURCE_DIR}
 	${gui_SOURCE_DIR}
 	${filters_SOURCE_DIR}
@@ -68,7 +69,11 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp 
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx 
+    
+    # we also add some other stuff here
+    # want to be included
     ${opt_SOURCE_DIR}/*.cpp
+    ${NMVtk_SOURCE_DIR}/*.cxx
 )
 
 set(LUMASS_LINKLIBS ${QT_LIBRARIES} QtPropertyBrowser

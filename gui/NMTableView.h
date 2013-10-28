@@ -92,8 +92,8 @@ public:
 	NMTableView(QWidget* parent=0);
 	NMTableView(vtkTable* tab, QWidget* parent=0);
 	NMTableView(otb::AttributeTable::Pointer model, QWidget* parent=0);
-	NMTableView(vtkTable* tab, ViewMode=NMTABVIEW_ATTRTABLE,
-			QWidget* parent=0);
+	//NMTableView(vtkTable* tab, ViewMode=NMTABVIEW_ATTRTABLE,
+	//		QWidget* parent=0);
 	virtual ~NMTableView();
 
 	ViewMode getViewMode() {return mViewMode;};
@@ -161,7 +161,7 @@ protected:
 
 	void mousePressEvent(QMouseEvent* event);
 	bool eventFilter(QObject* object, QEvent* event);
-	void updateSelectionAdmin(long numsel);
+	void updateSelectionAdmin(void);
 
 	ViewMode mViewMode;
 
@@ -173,7 +173,7 @@ protected:
 	QTableView* mTableView;
 	vtkQtTableModelAdapter* mVtkTableAdapter;
 	NMQtOtbAttributeTableModel* mOtbTableAdapter;
-	QAbstractTableModel* mModel;
+	QAbstractItemModel* mModel;
 	NMSelectableSortFilterProxyModel* mSortFilter;
 	QItemSelection mRowSelection;
 

@@ -27,14 +27,14 @@
 #include <QColor>
 
 NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(QObject* parent)
-	: mKey(""), mKeyIdx(-1)
+	: mKeyIdx(-1)
 {
 	this->setParent(parent);
 }
 
 NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(
 		otb::AttributeTable::Pointer tab, QObject* parent)
-	: mKey(""), mKeyIdx(-1)
+	: mKeyIdx(-1)
 {
 	this->setParent(parent);
 	if (tab.IsNotNull())
@@ -64,19 +64,12 @@ NMQtOtbAttributeTableModel::columnCount(const QModelIndex& parent) const
 }
 
 void
-NMQtOtbAttributeTableModel::setKeyColumn(const QString& key)
+NMQtOtbAttributeTableModel::setKeyColumn(int keyidx)
 {
-	int idx = this->mTable->ColumnExists(key.toStdString());
-	if (idx >= 0)
-	{
-		this->mKey = key;
-		this->mKeyIdx = idx;
-	}
-	else
-	{
-		this->mKey.clear();
-		this->mKeyIdx = -1;
-	}
+	if (keyidx < 0 || keyidx > this->mTable->GetNumCols()-1)
+		return;
+
+	this->mKeyIdx = keyidx;
 }
 
 QVariant
@@ -174,7 +167,7 @@ NMQtOtbAttributeTableModel::setData(const QModelIndex& index,
 		int role) //=Qt::EditRole)
 {
 	if (	mTable.IsNull()
-		||  role != Qt::EditRole
+		//||  role != Qt::EditRole
 		||  !index.isValid())
 	{
 		return false;

@@ -86,12 +86,12 @@ NMTableView::NMTableView(QWidget* parent)
 }
 
 NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
-	: QWidget(parent)
+	: QWidget(parent), mOtbTableAdapter(0)
 {
 	this->mViewMode = NMTABVIEW_ATTRTABLE;
-
 	this->mTableView = new QTableView(this);
 	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
+	this->mModel = this->mVtkTableAdapter;
 	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 
 	this->initView();
@@ -99,11 +99,12 @@ NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
 }
 
 NMTableView::NMTableView(otb::AttributeTable::Pointer tab, QWidget* parent)
-	: QWidget(parent)
+	: QWidget(parent), mVtkTableAdapter(0)
 {
 	this->mViewMode = NMTABVIEW_ATTRTABLE;
 	this->mTableView = new QTableView(this);
 	this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
+	this->mModel = this->mOtbTableAdapter;
 	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 
 	this->initView();
@@ -111,36 +112,29 @@ NMTableView::NMTableView(otb::AttributeTable::Pointer tab, QWidget* parent)
 }
 
 
-NMTableView::NMTableView(vtkTable* tab, ViewMode mode, QWidget* parent)
-	: QWidget(parent), mViewMode(mode)
-{
-
-	this->mTableView = new QTableView(this);
-	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
-	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
-
-	this->initView();
-	this->setTable(tab);
-}
+//NMTableView::NMTableView(vtkTable* tab, ViewMode mode, QWidget* parent)
+//	: QWidget(parent), mViewMode(mode)
+//{
+//	this->mTableView = new QTableView(this);
+//	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
+//	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
+//
+//	this->initView();
+//	this->setTable(tab);
+//}
 
 NMTableView::~NMTableView()
 {
-	//NMDebugCtx(__ctxtabview, << "...");
-
-	//NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void NMTableView::initView()
 {
-	//this->mTableView = new QTableView(this);
 	this->mTableView->setSortingEnabled(true);
 	this->mTableView->verticalHeader()->hide();
-
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
+	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
 
-	//this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
-	//this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 	this->mSortFilter->setDynamicSortFilter(true);
 
 	this->setWindowFlags(Qt::Window);
@@ -302,8 +296,10 @@ void NMTableView::initView()
 void NMTableView::updateSelRecsOnly(int state)
 {
 	int selid = this->getColumnIndex("nm_sel");
-	this->mSortFilter->setFilterKeyColumn(selid);
+	if (selid < 0)
+		return;
 
+	this->mSortFilter->setFilterKeyColumn(selid);
 	switch (state)
 	{
 	case Qt::Checked:
@@ -318,53 +314,68 @@ void NMTableView::updateSelRecsOnly(int state)
 
 void NMTableView::switchSelection()
 {
-	vtkTable* tab = vtkTable::SafeDownCast(
-			this->mVtkTableAdapter->GetVTKDataObject());
-	vtkAbstractArray* aa = tab->GetColumnByName("nm_sel");
-	if (aa == 0)
-	{
-		NMErr(__ctxtabview, << "Selection column 'nm_sel' not found!");
-		return;
-	}
+	//vtkTable* tab = vtkTable::SafeDownCast(
+	//		this->mVtkTableAdapter->GetVTKDataObject());
+	//vtkAbstractArray* aa = tab->GetColumnByName("nm_sel");
+	//if (aa == 0)
+	//{
+	//	NMErr(__ctxtabview, << "Selection column 'nm_sel' not found!");
+	//	return;
+	//}
+    //
+	//vtkDataArray* selar = vtkDataArray::SafeDownCast(aa);
+	//long selcnt = 0;
+	//for (int r = 0; r < tab->GetNumberOfRows(); ++r)
+	//{
+	//	if (selar->GetTuple1(r) == 0)
+	//	{
+	//		selar->SetTuple1(r, 1);
+	//		this->selectRow(r);
+	//		++selcnt;
+	//	}
+	//	else
+	//	{
+	//		selar->SetTuple1(r, 0);
+	//		this->deselectRow(r);
+	//	}
+	//}
 
-	vtkDataArray* selar = vtkDataArray::SafeDownCast(aa);
-	long selcnt = 0;
-	for (int r = 0; r < tab->GetNumberOfRows(); ++r)
-	{
-		if (selar->GetTuple1(r) == 0)
-		{
-			selar->SetTuple1(r, 1);
-			this->selectRow(r);
-			++selcnt;
-		}
-		else
-		{
-			selar->SetTuple1(r, 0);
-			this->deselectRow(r);
-		}
-	}
+	QModelIndex topleft = this->mModel->index(0, 0, QModelIndex());
+	QModelIndex bottomright =
+			this->mModel->index(
+					this->mModel->rowCount(QModelIndex()), 0, QModelIndex());
 
-	if (selcnt)
-	{
-		this->mBtnClearSelection->setEnabled(true);
-		this->mBtnSwitchSelection->setEnabled(true);
-	}
-	else
-	{
-		this->mBtnClearSelection->setEnabled(false);
-		this->mBtnSwitchSelection->setEnabled(false);
-	}
+	QItemSelection newSelection(topleft, bottomright);
 
-	this->mlNumSelRecs = selcnt;
-	this->mRecStatusLabel->setText(
-			QString(tr("%1 of %2 records selected")).arg(selcnt).arg(
-					tab->GetNumberOfRows()));
+	this->mTableView->selectionModel()->
+			select(newSelection, QItemSelectionModel::Toggle);
 
-	emit selectionChanged();
+	this->updateSelectionAdmin();
+
+//	int selcnt = this->mTableView->selectionModel()->selectedRows().size();
+//	if (selcnt)
+//	{
+//		this->mBtnClearSelection->setEnabled(true);
+//		this->mBtnSwitchSelection->setEnabled(true);
+//	}
+//	else
+//	{
+//		this->mBtnClearSelection->setEnabled(false);
+//		this->mBtnSwitchSelection->setEnabled(false);
+//	}
+//
+//	this->mlNumSelRecs = selcnt;
+//	this->mRecStatusLabel->setText(
+//			QString(tr("%1 of %2 records selected")).arg(selcnt).arg(
+//					mModel->rowCount(QModelIndex())));
+
+	// ToDo :: needs to be fired! just turned off for debugging purposes
+	//emit selectionChanged();
 }
 
 void NMTableView::normalise()
 {
+
 	NMDebugCtx(__ctxtabview, << "...");
 
 	// -----------------------------------------------------------------------
@@ -506,40 +517,34 @@ void NMTableView::calcColumn()
 
 void NMTableView::updateSelection(void)
 {
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	vtkAbstractArray* aa = tab->GetColumnByName("nm_sel");
-	if (aa == 0)
-	{
-		NMErr(__ctxtabview, << "Selection column 'nm_sel' not found!");
-		return;
-	}
+	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+	//vtkAbstractArray* aa = tab->GetColumnByName("nm_sel");
+	//if (aa == 0)
+	//{
+	//	NMErr(__ctxtabview, << "Selection column 'nm_sel' not found!");
+	//	return;
+	//}
+    //
+	//vtkDataArray* selar = vtkDataArray::SafeDownCast(aa);
+	//long selcnt = 0;
+	//for (int r=0; r < tab->GetNumberOfRows(); ++r)
+	//{
+	//	if (selar->GetTuple1(r) == 0)
+	//		this->deselectRow(r);
+	//	else
+	//	{
+	//		++selcnt;
+	//		this->selectRow(r);
+	//	}
+	//}
 
-	vtkDataArray* selar = vtkDataArray::SafeDownCast(aa);
-	long selcnt = 0;
-	for (int r=0; r < tab->GetNumberOfRows(); ++r)
-	{
-		if (selar->GetTuple1(r) == 0)
-			this->deselectRow(r);
-		else
-		{
-			++selcnt;
-			this->selectRow(r);
-		}
-	}
-
-	this->updateSelectionAdmin(selcnt);
+	this->updateSelectionAdmin();
 }
 
-void NMTableView::updateSelectionAdmin(long numsel)
+void NMTableView::updateSelectionAdmin(void)
 {
-	vtkTable* tab = vtkTable::SafeDownCast(
-			this->mVtkTableAdapter->GetVTKDataObject());
-	int nrecs = tab->GetNumberOfRows();
-
-	if (numsel >=0)
-		this->mlNumSelRecs = numsel;
-
-	if (this->mlNumSelRecs)
+	int selcnt = this->mTableView->selectionModel()->selectedRows().size();
+	if (selcnt)
 	{
 		this->mBtnClearSelection->setEnabled(true);
 		this->mBtnSwitchSelection->setEnabled(true);
@@ -550,103 +555,103 @@ void NMTableView::updateSelectionAdmin(long numsel)
 		this->mBtnSwitchSelection->setEnabled(false);
 	}
 
-	this->mRecStatusLabel->setText(QString(tr("%1 of %2 records selected")).
-			arg(this->mlNumSelRecs).
-			arg(nrecs));
-
+	this->mlNumSelRecs = selcnt;
+	this->mRecStatusLabel->setText(
+			QString(tr("%1 of %2 records selected")).arg(selcnt).arg(
+					mModel->rowCount(QModelIndex())));
 }
 
 void NMTableView::addColumn()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	NMAddColumnDialog* dlg = new NMAddColumnDialog();
-	int ret = 0;
-	bool bok = true;
-	QString name;
-	int type = -1;
-
-	// regular expression which defines possible names for columns
-	QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
-	int pos = -1;
-	do {
-		ret = dlg->exec();
-		if (!ret)
-			break;
-
-		name = dlg->getColumnName();
-		type = dlg->getDataType();
-
-		// check, whether name matches the regular expression
-		// (i.e. is valid)
-		pos = nameRegExp.indexIn(name);
-		bok = pos >= 0 ? true : false;
-
-		//		NMDebugAI(<< "pos: " << pos << endl);
-		//		if (pos != -1)
-		//		{
-		//			NMDebugAI(<< "that's what I've got ..." << endl);
-		//			foreach(const QString& s, nameRegExp.capturedTexts())
-		//					NMDebugAI(<< s.toStdString() << endl);
-		//		}
-
-		if (type < 0 || name.isEmpty() || !bok)
-		{
-			QMessageBox msgBox;
-			msgBox.setText(tr("Name invalid!"));
-			msgBox.setIcon(QMessageBox::Critical);
-			msgBox.exec();
-			NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
-		}
-
-		if (this->getColumnIndex(name) >= 0)
-		{
-			bok = false;
-			QMessageBox msgBox;
-			msgBox.setText(tr("Column already exists!"));
-			msgBox.setIcon(QMessageBox::Critical);
-			msgBox.exec();
-		}
-
-
-	} while (!bok || name.isEmpty() || type < 1);
-
-	if (!ret)
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	delete dlg;
-
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	int nrows = tab->GetNumberOfRows();
-
-	NMDebugAI(<< "add column ? " << ret << endl);
-	NMDebugAI(<< "name: " << name.toStdString() << endl);
-	NMDebugAI(<< "type: " << type << endl);
-	NMDebugAI(<< "nrows in tab: " << tab->GetNumberOfRows() << endl);
-
-	vtkSmartPointer<vtkAbstractArray> a = this->createVTKArray(type);
-	a->SetName(name.toStdString().c_str());
-	a->SetNumberOfComponents(1);
-	a->Allocate(nrows);
-
-	vtkVariant v;
-	if (type == VTK_STRING)
-		v = vtkVariant("");
-	else
-		v = vtkVariant(0);
-
-	for (int t=0; t < nrows; ++t)
-		a->InsertVariantValue(t, v);
-
-	tab->AddColumn(a);
-	this->mAlteredColumns.append(name);
-
-//	this->mVtkTableAdapter->setTable(tab);
-
-	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+	//NMAddColumnDialog* dlg = new NMAddColumnDialog();
+	//int ret = 0;
+	//bool bok = true;
+	//QString name;
+	//int type = -1;
+    //
+	//// regular expression which defines possible names for columns
+	//QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
+	//int pos = -1;
+	//do {
+	//	ret = dlg->exec();
+	//	if (!ret)
+	//		break;
+    //
+	//	name = dlg->getColumnName();
+	//	type = dlg->getDataType();
+    //
+	//	// check, whether name matches the regular expression
+	//	// (i.e. is valid)
+	//	pos = nameRegExp.indexIn(name);
+	//	bok = pos >= 0 ? true : false;
+    //
+	//	//		NMDebugAI(<< "pos: " << pos << endl);
+	//	//		if (pos != -1)
+	//	//		{
+	//	//			NMDebugAI(<< "that's what I've got ..." << endl);
+	//	//			foreach(const QString& s, nameRegExp.capturedTexts())
+	//	//					NMDebugAI(<< s.toStdString() << endl);
+	//	//		}
+    //
+	//	if (type < 0 || name.isEmpty() || !bok)
+	//	{
+	//		QMessageBox msgBox;
+	//		msgBox.setText(tr("Name invalid!"));
+	//		msgBox.setIcon(QMessageBox::Critical);
+	//		msgBox.exec();
+	//		NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
+	//	}
+    //
+	//	if (this->getColumnIndex(name) >= 0)
+	//	{
+	//		bok = false;
+	//		QMessageBox msgBox;
+	//		msgBox.setText(tr("Column already exists!"));
+	//		msgBox.setIcon(QMessageBox::Critical);
+	//		msgBox.exec();
+	//	}
+    //
+    //
+	//} while (!bok || name.isEmpty() || type < 1);
+    //
+	//if (!ret)
+	//{
+	//	NMDebugCtx(__ctxtabview, << "done!");
+	//	return;
+	//}
+    //
+	//delete dlg;
+    //
+	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+	//int nrows = tab->GetNumberOfRows();
+    //
+	//NMDebugAI(<< "add column ? " << ret << endl);
+	//NMDebugAI(<< "name: " << name.toStdString() << endl);
+	//NMDebugAI(<< "type: " << type << endl);
+	//NMDebugAI(<< "nrows in tab: " << tab->GetNumberOfRows() << endl);
+    //
+	//vtkSmartPointer<vtkAbstractArray> a = this->createVTKArray(type);
+	//a->SetName(name.toStdString().c_str());
+	//a->SetNumberOfComponents(1);
+	//a->Allocate(nrows);
+    //
+	//vtkVariant v;
+	//if (type == VTK_STRING)
+	//	v = vtkVariant("");
+	//else
+	//	v = vtkVariant(0);
+    //
+	//for (int t=0; t < nrows; ++t)
+	//	a->InsertVariantValue(t, v);
+    //
+	//tab->AddColumn(a);
+	//this->mAlteredColumns.append(name);
+    //
+//	//this->mVtkTableAdapter->setTable(tab);
+    //
+	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -680,70 +685,70 @@ void NMTableView::joinAttributes()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	QString fileName = QFileDialog::getOpenFileName(this,
-	     tr("Select Source Attribute Table"), "~", tr("Delimited Text File (*.csv)"));
-	if (fileName.isNull())
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
-						vtkSmartPointer<vtkDelimitedTextReader>::New();
-
-	tabReader->SetFileName(fileName.toStdString().c_str());
-	tabReader->SetHaveHeaders(true);
-	tabReader->DetectNumericColumnsOn();
-	tabReader->SetFieldDelimiterCharacters(",\t");
-	tabReader->Update();
-
-	vtkTable* vtkTab = tabReader->GetOutput();
-
-	int numJoinCols = vtkTab->GetNumberOfColumns();
-	NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
-	QStringList srcJoinFields;
-	for (int i=0; i < numJoinCols; ++i)
-	{
-		QString srcName = vtkTab->GetColumn(i)->GetDataTypeAsString();
-		if (srcName.compare("int") == 0 || srcName.compare("string") == 0)
-		{
-			srcJoinFields.append(QString(vtkTab->GetColumnName(i)));
-		}
-	}
-
-	vtkTable* tarTab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	int numTarCols = tarTab->GetNumberOfColumns();
-	QStringList tarJoinFields;
-	for (int i=0; i < numTarCols; ++i)
-	{
-		QString tarName = tarTab->GetColumn(i)->GetDataTypeAsString();
-		if (tarName.compare("int") == 0 || tarName.compare("string") == 0)
-		{
-			tarJoinFields.append(QString(tarTab->GetColumnName(i)));
-		}
-	}
-
-	// ask the user for semantically common fields
-	bool bOk = false;
-	QString tarFieldName = QInputDialog::getItem(this,
-			tr("Select Target Join Field"), tr("Select Target Join Field"),
-			tarJoinFields, 0, false, &bOk, 0);
-	if (!bOk || tarFieldName.isEmpty())
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	QString srcFieldName = QInputDialog::getItem(this,
-			tr("Select Source Join Field"), tr("Select Source Join Field"),
-			srcJoinFields, 0, false, &bOk, 0);
-	if (!bOk || srcFieldName.isEmpty())
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	this->appendAttributes(tarFieldName, srcFieldName, vtkTab);
+	//QString fileName = QFileDialog::getOpenFileName(this,
+	//     tr("Select Source Attribute Table"), "~", tr("Delimited Text File (*.csv)"));
+	//if (fileName.isNull())
+	//{
+	//	NMDebugCtx(__ctxtabview, << "done!");
+	//	return;
+	//}
+    //
+	//vtkSmartPointer<vtkDelimitedTextReader> tabReader =
+	//					vtkSmartPointer<vtkDelimitedTextReader>::New();
+    //
+	//tabReader->SetFileName(fileName.toStdString().c_str());
+	//tabReader->SetHaveHeaders(true);
+	//tabReader->DetectNumericColumnsOn();
+	//tabReader->SetFieldDelimiterCharacters(",\t");
+	//tabReader->Update();
+    //
+	//vtkTable* vtkTab = tabReader->GetOutput();
+    //
+	//int numJoinCols = vtkTab->GetNumberOfColumns();
+	//NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
+	//QStringList srcJoinFields;
+	//for (int i=0; i < numJoinCols; ++i)
+	//{
+	//	QString srcName = vtkTab->GetColumn(i)->GetDataTypeAsString();
+	//	if (srcName.compare("int") == 0 || srcName.compare("string") == 0)
+	//	{
+	//		srcJoinFields.append(QString(vtkTab->GetColumnName(i)));
+	//	}
+	//}
+    //
+	//vtkTable* tarTab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+	//int numTarCols = tarTab->GetNumberOfColumns();
+	//QStringList tarJoinFields;
+	//for (int i=0; i < numTarCols; ++i)
+	//{
+	//	QString tarName = tarTab->GetColumn(i)->GetDataTypeAsString();
+	//	if (tarName.compare("int") == 0 || tarName.compare("string") == 0)
+	//	{
+	//		tarJoinFields.append(QString(tarTab->GetColumnName(i)));
+	//	}
+	//}
+    //
+	//// ask the user for semantically common fields
+	//bool bOk = false;
+	//QString tarFieldName = QInputDialog::getItem(this,
+	//		tr("Select Target Join Field"), tr("Select Target Join Field"),
+	//		tarJoinFields, 0, false, &bOk, 0);
+	//if (!bOk || tarFieldName.isEmpty())
+	//{
+	//	NMDebugCtx(__ctxtabview, << "done!");
+	//	return;
+	//}
+    //
+	//QString srcFieldName = QInputDialog::getItem(this,
+	//		tr("Select Source Join Field"), tr("Select Source Join Field"),
+	//		srcJoinFields, 0, false, &bOk, 0);
+	//if (!bOk || srcFieldName.isEmpty())
+	//{
+	//	NMDebugCtx(__ctxtabview, << "done!");
+	//	return;
+	//}
+    //
+	//this->appendAttributes(tarFieldName, srcFieldName, vtkTab);
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -753,108 +758,108 @@ NMTableView::appendAttributes(const QString& tarJoinField,
 		const QString& srcJoinField,
 		vtkTable* src)
 {
-	vtkTable* tar = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-
-	QStringList allTarFields;
-	for (int i=0; i < tar->GetNumberOfColumns(); ++i)
-	{
-		allTarFields.push_back(tar->GetColumnName(i));
-	}
-
-	// we determine which columns to copy, and which name + index they have
-	QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
-
-	NMDebugAI(<< "checking column names ... " << std::endl);
-	QStringList copyNames;
-	QStringList writeNames;
-	for (int i=0; i < src->GetNumberOfColumns(); ++i)
-	{
-		QString name = src->GetColumnName(i);
-		QString writeName = name;
-		if (name.compare(srcJoinField) == 0
-				|| name.compare(tarJoinField) == 0)
-		{
-			continue;
-		}
-		else if (allTarFields.contains(name, Qt::CaseInsensitive))
-		{
-			// come up with a new name for the column to appended
-			writeName = QString(tr("copy_%1")).arg(name);
-		}
-
-		int pos = -1;
-		pos = nameRegExp.indexIn(name);
-		if (pos >= 0)
-		{
-			copyNames.push_back(name);
-			writeNames.push_back(writeName);
-		}
-	}
-
-	NMDebugAI( << "adding new columns to target table ..." << std::endl);
-	// create new output columns for join fields
-	vtkIdType tarnumrows = tar->GetNumberOfRows();
-	for (int t=0; t < copyNames.size(); ++t)
-	{
-		int type = src->GetColumnByName(copyNames[t].toStdString().c_str())->GetDataType();
-		vtkSmartPointer<vtkAbstractArray> ar = vtkAbstractArray::CreateArray(type);
-		ar->SetName(writeNames.at(t).toStdString().c_str());
-		ar->SetNumberOfComponents(1);
-		ar->Allocate(tarnumrows);
-
-		vtkVariant v;
-		if (type == VTK_STRING)
-			v = vtkVariant("");
-		else
-			v = vtkVariant(0);
-
-		for (int tr=0; tr < tarnumrows; ++tr)
-			ar->InsertVariantValue(tr, v);
-
-		tar->AddColumn(ar);
-		NMDebugAI(<< copyNames.at(t).toStdString() << "->"
-				<< writeNames.at(t).toStdString() << " ");
-		this->mAlteredColumns.append(writeNames.at(t));
-	}
-	NMDebug(<< endl);
-
-	NMDebugAI(<< "copying field contents ...." << std::endl);
-	// copy field values
-	vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
-	vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
-	vtkIdType cnt = 0;
-	vtkIdType srcnumrows = src->GetNumberOfRows();
-	for (vtkIdType row=0; row < tarnumrows; ++row)
-	{
-		vtkVariant vTarJoin = tarJoin->GetVariantValue(row);
-		vtkIdType search = row < srcnumrows ? row : 0;
-		vtkIdType cnt = 0;
-		bool foundyou = false;
-		while (cnt < srcnumrows)
-		{
-			if (srcJoin->GetVariantValue(search) == vTarJoin)
-			{
-				foundyou = true;
-				break;
-			}
-
-			++search;
-			if (search >= srcnumrows)
-				search = 0;
-
-			++cnt;
-		}
-
-		if (foundyou)
-		{
-			// copy columns for current row
-			for (int c=0; c < copyNames.size(); ++c)
-			{
-				tar->SetValueByName(row, writeNames[c].toStdString().c_str(),
-						src->GetValueByName(search, copyNames[c].toStdString().c_str()));
-			}
-		}
-	}
+	//vtkTable* tar = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+    //
+	//QStringList allTarFields;
+	//for (int i=0; i < tar->GetNumberOfColumns(); ++i)
+	//{
+	//	allTarFields.push_back(tar->GetColumnName(i));
+	//}
+    //
+	//// we determine which columns to copy, and which name + index they have
+	//QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
+    //
+	//NMDebugAI(<< "checking column names ... " << std::endl);
+	//QStringList copyNames;
+	//QStringList writeNames;
+	//for (int i=0; i < src->GetNumberOfColumns(); ++i)
+	//{
+	//	QString name = src->GetColumnName(i);
+	//	QString writeName = name;
+	//	if (name.compare(srcJoinField) == 0
+	//			|| name.compare(tarJoinField) == 0)
+	//	{
+	//		continue;
+	//	}
+	//	else if (allTarFields.contains(name, Qt::CaseInsensitive))
+	//	{
+	//		// come up with a new name for the column to appended
+	//		writeName = QString(tr("copy_%1")).arg(name);
+	//	}
+    //
+	//	int pos = -1;
+	//	pos = nameRegExp.indexIn(name);
+	//	if (pos >= 0)
+	//	{
+	//		copyNames.push_back(name);
+	//		writeNames.push_back(writeName);
+	//	}
+	//}
+    //
+	//NMDebugAI( << "adding new columns to target table ..." << std::endl);
+	//// create new output columns for join fields
+	//vtkIdType tarnumrows = tar->GetNumberOfRows();
+	//for (int t=0; t < copyNames.size(); ++t)
+	//{
+	//	int type = src->GetColumnByName(copyNames[t].toStdString().c_str())->GetDataType();
+	//	vtkSmartPointer<vtkAbstractArray> ar = vtkAbstractArray::CreateArray(type);
+	//	ar->SetName(writeNames.at(t).toStdString().c_str());
+	//	ar->SetNumberOfComponents(1);
+	//	ar->Allocate(tarnumrows);
+    //
+	//	vtkVariant v;
+	//	if (type == VTK_STRING)
+	//		v = vtkVariant("");
+	//	else
+	//		v = vtkVariant(0);
+    //
+	//	for (int tr=0; tr < tarnumrows; ++tr)
+	//		ar->InsertVariantValue(tr, v);
+    //
+	//	tar->AddColumn(ar);
+	//	NMDebugAI(<< copyNames.at(t).toStdString() << "->"
+	//			<< writeNames.at(t).toStdString() << " ");
+	//	this->mAlteredColumns.append(writeNames.at(t));
+	//}
+	//NMDebug(<< endl);
+    //
+	//NMDebugAI(<< "copying field contents ...." << std::endl);
+	//// copy field values
+	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
+	//vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
+	//vtkIdType cnt = 0;
+	//vtkIdType srcnumrows = src->GetNumberOfRows();
+	//for (vtkIdType row=0; row < tarnumrows; ++row)
+	//{
+	//	vtkVariant vTarJoin = tarJoin->GetVariantValue(row);
+	//	vtkIdType search = row < srcnumrows ? row : 0;
+	//	vtkIdType cnt = 0;
+	//	bool foundyou = false;
+	//	while (cnt < srcnumrows)
+	//	{
+	//		if (srcJoin->GetVariantValue(search) == vTarJoin)
+	//		{
+	//			foundyou = true;
+	//			break;
+	//		}
+    //
+	//		++search;
+	//		if (search >= srcnumrows)
+	//			search = 0;
+    //
+	//		++cnt;
+	//	}
+    //
+	//	if (foundyou)
+	//	{
+	//		// copy columns for current row
+	//		for (int c=0; c < copyNames.size(); ++c)
+	//		{
+	//			tar->SetValueByName(row, writeNames[c].toStdString().c_str(),
+	//					src->GetValueByName(search, copyNames[c].toStdString().c_str()));
+	//		}
+	//	}
+	//}
 
 	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
@@ -865,52 +870,52 @@ void NMTableView::exportTable()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
-	QString proposedName = QString(tr("%1/%2.txt")).arg(getenv("HOME")).arg(tabName);
-
-	// take the first layer and save as vtkpolydata
-	QString selectedFilter = tr("Delimited Text (*.csv)");
-	QString fileName = QFileDialog::getSaveFileName(this,
-			tr("Export Table"), proposedName,
-			tr("Delimited Text (*.csv);;SQLite Database (*.sqlite *.sdb *.db)"),
-			&selectedFilter);
-	if (fileName.isNull())
-	{
-		NMDebugAI( << "got an empty filename from the user!" << endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	QStringList fnList = fileName.split(tr("."), QString::SkipEmptyParts);
-
-	QString suffix = fnList.last();
-	if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
-		suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
-	{
-		NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
-		this->writeDelimTxt(fileName, false);
-	}
-	else if (suffix.compare(tr("sqlite"), Qt::CaseInsensitive) == 0 ||
-			 suffix.compare(tr("sdb"), Qt::CaseInsensitive) == 0 ||
-			 suffix.compare(tr("db"), Qt::CaseInsensitive) == 0)
-	{
-		QString dbName;
-		QString tableName;
-		if (fnList.size() == 3)
-		{
-			dbName = QString(tr("%1.%2")).arg(fnList.first()).arg(fnList.last());
-			tableName = fnList.at(1);
-			NMDebugAI(<< "insert table '" << tableName.toStdString() << "' "
-					  << "into database '" << dbName.toStdString() << "'" << endl);
-		}
-		else
-		{
-			NMErr(__ctxtabview, << "invalid database and table name!");
-			return;
-		}
-
-		this->writeSqliteDb(dbName, tableName, false);
-	}
+	//QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
+	//QString proposedName = QString(tr("%1/%2.txt")).arg(getenv("HOME")).arg(tabName);
+    //
+	//// take the first layer and save as vtkpolydata
+	//QString selectedFilter = tr("Delimited Text (*.csv)");
+	//QString fileName = QFileDialog::getSaveFileName(this,
+	//		tr("Export Table"), proposedName,
+	//		tr("Delimited Text (*.csv);;SQLite Database (*.sqlite *.sdb *.db)"),
+	//		&selectedFilter);
+	//if (fileName.isNull())
+	//{
+	//	NMDebugAI( << "got an empty filename from the user!" << endl);
+	//	NMDebugCtx(__ctxtabview, << "done!");
+	//	return;
+	//}
+    //
+	//QStringList fnList = fileName.split(tr("."), QString::SkipEmptyParts);
+    //
+	//QString suffix = fnList.last();
+	//if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
+	//	suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
+	//{
+	//	NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
+	//	this->writeDelimTxt(fileName, false);
+	//}
+	//else if (suffix.compare(tr("sqlite"), Qt::CaseInsensitive) == 0 ||
+	//		 suffix.compare(tr("sdb"), Qt::CaseInsensitive) == 0 ||
+	//		 suffix.compare(tr("db"), Qt::CaseInsensitive) == 0)
+	//{
+	//	QString dbName;
+	//	QString tableName;
+	//	if (fnList.size() == 3)
+	//	{
+	//		dbName = QString(tr("%1.%2")).arg(fnList.first()).arg(fnList.last());
+	//		tableName = fnList.at(1);
+	//		NMDebugAI(<< "insert table '" << tableName.toStdString() << "' "
+	//				  << "into database '" << dbName.toStdString() << "'" << endl);
+	//	}
+	//	else
+	//	{
+	//		NMErr(__ctxtabview, << "invalid database and table name!");
+	//		return;
+	//	}
+    //
+	//	this->writeSqliteDb(dbName, tableName, false);
+	//}
 
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -995,6 +1000,8 @@ NMTableView::setTable(otb::AttributeTable::Pointer tab)
 	this->mOtbTable = tab;
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
+
+	this->updateSelection();
 
 }
 
@@ -1125,15 +1132,12 @@ int NMTableView::getColumnIndex(const QString& attr)
 {
 	int attrCol = -1;
 
-	if (this->mVtkTableAdapter->GetVTKDataObject() == 0)
-		return attrCol;
+	int ncols = this->mModel->columnCount(QModelIndex());
 
-	// determine the column number
-	int ncols = this->mVtkTableAdapter->columnCount(QModelIndex());
 	QString colname;
 	for (int c=0; c < ncols; ++c)
 	{
-		colname = this->mVtkTableAdapter->headerData(c, Qt::Horizontal).toString();
+		colname = this->mModel->headerData(c, Qt::Horizontal).toString();
 		if (colname.compare(attr, Qt::CaseInsensitive) == 0)
 			return c;
 	}
@@ -1153,7 +1157,11 @@ void NMTableView::setRowKeyColumn(const QString& rowKeyCol)
 		return;
 	}
 
-	this->mVtkTableAdapter->SetKeyColumn(colidx);
+	if (this->mVtkTableAdapter)
+		this->mVtkTableAdapter->SetKeyColumn(colidx);
+	else if (this->mOtbTableAdapter)
+		this->mOtbTableAdapter->setKeyColumn(colidx);
+
 	this->mTableView->verticalHeader()->show();
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -1308,51 +1316,81 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		{
 			if (me->modifiers() != Qt::ControlModifier)
 			{
-					this->clearSelection();
-			}
-
-			vtkTable* tab = vtkTable::SafeDownCast(
-					this->mVtkTableAdapter->GetVTKDataObject());
-			vtkDataArray* sa = vtkDataArray::SafeDownCast(tab->GetColumnByName("nm_sel"));
-
-			int row = this->mTableView->rowAt(me->pos().y());
-			//			NMDebugAI(<< "sel proc in row: " << row << endl);
-			QModelIndex ridx = this->mSortFilter->index(row, 0, QModelIndex());
-			if (sa->GetTuple1(row))
-			{
-				sa->SetTuple1(row, 0);
-				this->deselectRow(row);
-				--this->mlNumSelRecs;
+					this->mTableView->selectionModel()->clearSelection();
+					//this->clearSelection();
 			}
 			else
 			{
-				sa->SetTuple1(row, 1);
-				this->selectRow(row);
-				++this->mlNumSelRecs;
+				//
+				////vtkTable* tab = vtkTable::SafeDownCast(
+				////		this->mVtkTableAdapter->GetVTKDataObject());
+				////vtkDataArray* sa = vtkDataArray::SafeDownCast(tab->GetColumnByName("nm_sel"));
+				//
+				int row = this->mTableView->rowAt(me->pos().y());
+				QModelIndex left = this->mSortFilter->index(row, 0, QModelIndex());
+				QModelIndex right = this->mSortFilter->index(row, this->mModel->columnCount()-1,
+						QModelIndex());
+				QItemSelection newSelection(left, right);
+				this->mTableView->selectionModel()->select(newSelection, QItemSelectionModel::Toggle);
 
+				//if (sa->GetTuple1(row))
+				//{
+				//	sa->SetTuple1(row, 0);
+				//	this->deselectRow(row);
+				//	--this->mlNumSelRecs;
+				//}
+				//else
+				//{
+				//	sa->SetTuple1(row, 1);
+				//	this->selectRow(row);
+				//	++this->mlNumSelRecs;
+				//
+				//}
+
+				// toDo :: this needs to be enabled again later
+				//this->updateSelectionAdmin();
+				//emit selectionChanged ();
 			}
-			this->updateSelectionAdmin(-1);
-			emit selectionChanged ();
 		}
+		this->updateSelectionAdmin();
 		return true;
 	}
 	// ----------------------------- PREVENT CELL SELECTION ------------------------------------
-	else if (   object == this->mTableView->viewport()
-			 && event->type() == QEvent::MouseButtonPress
+	else if (   (   object == this->mTableView->viewport()
+			     && event->type() == QEvent::MouseButtonPress)
+			 || (   object == this->mTableView->viewport()
+				     && event->type() == QEvent::MouseButtonDblClick)
 			 )
 	{
 			QMouseEvent* me = static_cast<QMouseEvent*>(event);
 			if (me->button() == Qt::RightButton)
 			{
-				this->mlLastClickedRow = this->mTableView->rowAt(me->pos().y());
-				NMDebugAI(<< "clicked at row: " << mlLastClickedRow << std::endl);
+				if (this->mViewMode == NMTableView::NMTABVIEW_RASMETADATA)
+				{
+					this->mlLastClickedRow = this->mTableView->rowAt(me->pos().y());
+					NMDebugAI(<< "clicked at row: " << mlLastClickedRow << std::endl);
 
-				this->mManageLayerMenu->move(me->globalPos());
-				this->mManageLayerMenu->exec();
+					this->mManageLayerMenu->move(me->globalPos());
+					this->mManageLayerMenu->exec();
+				}
+				return true;
 			}
-			return false;
-	}
+			else if (	me->button() == Qt::LeftButton
+					 && event->type() == QEvent::MouseButtonDblClick)
+			{
+				int row = this->mTableView->rowAt(me->pos().y());
+				int col = this->mTableView->columnAt(me->pos().x());
+				QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
+				this->mTableView->edit(idx);
+				return true;
+			}
+			else
+			{
+				// we filter anything else out
+				return true;
+			}
 
+	}
 
 	return false;
 }
@@ -1469,7 +1507,7 @@ void NMTableView::clearSelection()
 	this->mTableView->update();
 	this->mSortFilter->invalidate();
 
-	this->updateSelectionAdmin(-1);
+	this->updateSelectionAdmin();
 	emit selectionChanged();
 }
 

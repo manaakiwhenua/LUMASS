@@ -1,4 +1,4 @@
-/*****************************h*************************************************
+/*****************************h*******A***********dx*******************************
  * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
@@ -23,9 +23,12 @@
  */
 
 #include "NMTableCalculator.h"
+#include "nmlog.h"
 
 #include <QString>
 #include <QStack>
+#include <QModelIndex>
+
 #include "vtkVariant.h"
 #include "vtkStdString.h"
 #include "vtkDoubleArray.h"
@@ -33,29 +36,38 @@
 
 
 NMTableCalculator::NMTableCalculator(QObject* parent)
-	: QObject(parent), mTab(0)
+	: QObject(parent), mModel(0)
 {
 	this->initCalculator();
 }
 
-NMTableCalculator::NMTableCalculator(vtkTable* tab, QObject* parent)
-	: QObject(parent), mTab(tab)
+//NMTableCalculator::NMTableCalculator(vtkTable* tab, QObject* parent)
+//	: QObject(parent), mTab(tab)
+//{
+//	this->initCalculator();
+//}
+
+NMTableCalculator::NMTableCalculator(QAbstractItemModel* model,
+		QObject* parent=0)
+	: QObject(parent), mModel(model)
 {
 	this->initCalculator();
 }
 
 void NMTableCalculator::initCalculator()
 {
-	//this->mParser = vtkSmartPointer<vtkFunctionParser>::New();
 	this->mParser = otb::MultiParser::New();
-	//this->mTabView = 0;
 	this->mFunction.clear();
 	this->mResultColumn.clear();
-	this->mResultColumnType = VTK_STRING;
+	this->mFuncFields.clear();
+	this->mInputSelection = 0;
+	this->mOutputSelection = 0;
+	//this->mSelection.clear();
+	this->mResultColumnType = QVariant::String;
 	this->mResultColumnIndex = -1;
 	this->mSelectionMode = false;
 	this->mbRowFilter = false;
-	this->mFilterArray = 0;
+	//this->mFilterArray = 0;
 	this->mNumSelRecs = 0;
 	this->clearLists();
 }
@@ -65,21 +77,27 @@ NMTableCalculator::~NMTableCalculator()
 
 }
 
+QItemSelection
+NMTableCalculator::getSelection(void)
+{
+	return this->mOutputSelection;
+}
+
 bool NMTableCalculator::setResultColumn(const QString& name)
 {
-
-	int colidx = this->getColumnIndex(name);
-
 	// check, whether the column is available in the table
+	int colidx = this->getColumnIndex(name);
 	if (colidx < 0)
 	{
 		NMErr(ctxTabCalc, << "Specified Column couldn't be found in the table!");
 		return false;
 	}
 
+	QModelIndex dummy = this->mModel->index(0, colidx, QModelIndex());
+
 	this->mResultColumn = name;
 	this->mResultColumnIndex = colidx;
-	this->mResultColumnType = this->mTab->GetColumn(colidx)->GetDataType();
+	this->mResultColumnType = this->mModel->data(dummy, Qt::DisplayRole).type();
 	return true;
 }
 
@@ -88,61 +106,96 @@ void NMTableCalculator::setFunction(const QString& function)
 	this->mFunction = function;
 }
 
-int NMTableCalculator::getColumnIndex(QString name)
+int NMTableCalculator::getColumnIndex(const QString& name)
 {
-	int idx = -1;
-
-	for (int col=0; col < this->mTab->GetNumberOfColumns(); ++col)
+	int colidx = -1;
+	int ncols = this->mModel->columnCount(QModelIndex());
+	QString colname;
+	for (int c=0; c < ncols; ++c)
 	{
-		if (name.toLower() == QString(this->mTab->GetColumnName(col)).toLower())
+		colname = this->mModel->headerData(c, Qt::Horizontal).toString();
+		if (colname.compare(name, Qt::CaseInsensitive) == 0)
 		{
-			idx = col;
+			colidx = c;
 			break;
 		}
 	}
 
-	return idx;
+	return colidx;
 }
 
-bool NMTableCalculator::setSelectionModeOn(const QString& selColumn)//,	NMTableView* tabView)
+bool
+NMTableCalculator::setSelectionModeOn(QItemSelection* ouputSelection)
 {
-	NMDebugCtx(ctxTabCalc, << "...");
-	if (!this->setResultColumn(selColumn))// || tabView == 0)
+	//NMDebugCtx(ctxTabCalc, << "...");
+	//if (!this->setResultColumn(selColumn))// || tabView == 0)
+	//{
+	//	NMErr(ctxTabCalc, << "Invalid selection column and/or NMTableView!");
+	//	return false;
+	//}
+
+	if (outputSelection == 0)
 	{
-		NMErr(ctxTabCalc, << "Invalid selection column and/or NMTableView!");
+		NMErr(ctxTabCalc, << "Please provide pre-allocated QItemSelection!");
 		return false;
 	}
 
+	this->mOutputSelection = outputSelection;
 	this->mSelectionMode = true;
-	//this->mTabView = tabView;
 
 	NMDebugAI(<< "selection mode on? " << this->mSelectionMode << endl);
-	//NMDebugAI(<< "table view set?    " << this->mTabView << endl);
 
-	NMDebugCtx(ctxTabCalc, << "done!");
+	//NMDebugCtx(ctxTabCalc, << "done!");
 	return true;
 }
 
-bool NMTableCalculator::setRowFilterModeOn(QString filterColumn)
+bool
+NMTableCalculator::setRowFilterModeOn(QItemSelection* inputSelection)
 {
-	// check, whether the column is available in the table
-	vtkAbstractArray* aa = this->mTab->GetColumnByName(filterColumn.toStdString().c_str());
-	if (aa == 0)
+
+	if (inputSelection == 0)
 	{
-		NMErr(ctxTabCalc, << "Specified Filter Column couldn't be found in the table!");
+		NMErr(ctxTabCalc, << "Please provided preallocated Item Selection!");
 		return false;
 	}
 
-	if (aa->GetDataType() < VTK_VOID || aa->GetDataType() >= VTK_STRING)
-	{
-		NMErr(ctxTabCalc, << "Invalid Filter Column Type!");
-		return false;
-	}
-
-	this->mFilterArray = vtkDataArray::SafeDownCast(aa);
+	this->mInputSelection = inputSelection;
 	this->mbRowFilter = true;
 
 	return true;
+}
+
+QVariant::Type
+NMTableCalculator::getColumnType(int colidx)
+{
+	QModelIndex midx = this->mModel->index(0, colidx, QModelIndex());
+	return this->mModel->data(midx, Qt::DisplayRole).type();
+}
+
+bool
+NMTableCalculator::isNumericColumn(int colidx)
+{
+	QVariant::Type type = this->getColumnType(colidx);
+	if (	type == QVariant::Int
+		||  type == QVariant::UInt
+		||  type == QVariant::Double)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool
+NMTableCalculator::isStringColumn(int colidx)
+{
+	QVariant::Type type = this->getColumnType(colidx);
+	if (type == QVariant::String)
+		return true;
+	else
+		return false;
 }
 
 
@@ -242,55 +295,67 @@ bool NMTableCalculator::parseFunction()
 				{
 					bool bRightStr = false;
 					bool bLeftStr = false;
-					vtkAbstractArray* arLeft = 0;
-					vtkAbstractArray* arRight = 0;
-					arLeft = this->mTab->GetColumnByName(guts.at(1).toStdString().c_str());
-					arRight = this->mTab->GetColumnByName(guts.at(3).toStdString().c_str());
+					int idxleft = this->getColumnIndex(guts.at(1));
+					int idxright = this->getColumnIndex(guts.at(2));
 					QStringList strNames;
-					QList<vtkStringArray*> strFields;
-					if (arLeft != 0)
+					QList<int> strFields;
+					if (idxleft >= 0)
 					{
-						if (arLeft->GetDataType() == VTK_STRING)
+						if (this->isStringColumn(idxleft))
 						{
 							bLeftStr = true;
-							strFields.append(vtkStringArray::SafeDownCast(arLeft));
+							strFields.append(idxleft);
 							NMDebugAI(<< "detected STRING field: "
 									<< guts.at(1).toStdString() << endl);
 						}
 						else
 						{
-							strFields.append(0);
+							strFields.append(-1);
 							this->mFuncVars.append(guts.at(1));
-							this->mFuncFields.append(vtkDataArray::SafeDownCast(arLeft));
+							this->mFuncFields.append(idxleft);
 							NMDebugAI(<< "detected NUMERIC field: "
 									<< guts.at(1).toStdString() << endl);
 						}
 					}
 					else
-						strFields.append(0);
-
-					if (arRight != 0)
 					{
-						if (arRight->GetDataType() == VTK_STRING)
+						// we thought we've got a column here, but don't!
+						// Let's get out of here!
+						NMErr(ctxTabCalc, << "Expected " << guts.at(1)
+								<< " to be a table column, but that's not the case!");
+						NMDebugCtx(ctxTabCalc, << "done!");
+						return false;
+					}
+
+					if (idxright >= 0)
+					{
+						if (this->isStringColumn(idxright))
 						{
 							bRightStr = true;
-							strFields.append(vtkStringArray::SafeDownCast(arRight));
+							strFields.append(idxright);
 							NMDebugAI(<< "detected STRING field: "
 									<< guts.at(3).toStdString() << endl);
 						}
 						else
 						{
-							strFields.append(0);
+							strFields.append(-1);
 							this->mFuncVars.append(guts.at(3));
-							this->mFuncFields.append(vtkDataArray::SafeDownCast(arRight));
+							this->mFuncFields.append(idxright);
 							NMDebugAI(<< "detected NUMERIC field: "
 									<< guts.at(3).toStdString() << endl);
 						}
 					}
 					else
-						strFields.append(0);
+					{
+						// we thought we've got a column here, but don't!
+						// Let's get out of here!
+						NMErr(ctxTabCalc, << "Expected " << guts.at(2)
+								<< " to be a table column, but that's not the case!");
+						NMDebugCtx(ctxTabCalc, << "done!");
+						return false;
+					}
 
-					// is this a string expression?
+					// analyse string expression
 					if (bLeftStr || bRightStr)
 					{
 						NMDebugAI(<< "detected string term: " << lt.toStdString() << endl);
@@ -324,6 +389,7 @@ bool NMTableCalculator::parseFunction()
 						QString::SkipEmptyParts);
 				//NMDebugInd(6,
 				//		<< "are those fields? : " << scrambledEggs.join(" ").toStdString() << endl);
+
 				// if we've got a numeric field here, we register the name with the
 				// the parser; in the calc routine, we then look up the particular
 				// value for each row and just set the value for the registered variable
@@ -331,13 +397,15 @@ bool NMTableCalculator::parseFunction()
 				foreach(const QString& egg, scrambledEggs)
 				{
 					QString item = egg.trimmed();
-					vtkAbstractArray* ar = this->mTab->GetColumnByName(item.toStdString().c_str());
-					if (ar != 0)
+					//vtkAbstractArray* ar = this->mTab->GetColumnByName(item.toStdString().c_str());
+					int aridx = this->getColumnIndex(item);
+
+					if (aridx >= 0)
 					{
-						if (ar->GetDataType() != VTK_STRING)
+						if (!this->isStringColumn(aridx))
 						{
 							this->mFuncVars.append(item);
-							this->mFuncFields.append(vtkDataArray::SafeDownCast(ar));
+							this->mFuncFields.append(aridx);
 							NMDebugAI(<< "detected NUMERIC field: "
 									<< item.toStdString() << endl);
 						}
@@ -345,9 +413,9 @@ bool NMTableCalculator::parseFunction()
 						{
 							//ToDo:: does this actually make sense?
 							this->mslStrTerms.append(item);
-							QList<vtkStringArray*> strFields;
-							strFields.append(vtkStringArray::SafeDownCast(ar));
-							strFields.append(0);
+							QList<int> strFields;
+							strFields.append(aridx);
+							strFields.append(-1);
 							this->mLstLstStrFields.append(strFields);
 							this->mLstNMStrOperator.append(NMTableCalculator::NM_STR_UNKNOWN);
 							NMDebugAI(<< "detected STRING field: "
@@ -412,7 +480,7 @@ bool NMTableCalculator::calculate(void)
 		return false;
 	}
 
-	if (this->mResultColumnType == VTK_STRING)
+	if (this->mResultColumnType == QVariant::String)
 	{
 		this->doStringCalculation();
 	}
@@ -439,8 +507,8 @@ void NMTableCalculator::doNumericCalcSelection()
 {
 	NMDebugCtx(ctxTabCalc, << "...");
 	// get the res array
-	vtkDataArray* resAr = vtkDataArray::SafeDownCast(
-			this->mTab->GetColumn(this->mResultColumnIndex));
+	//vtkDataArray* resAr = vtkDataArray::SafeDownCast(
+	//		this->mTab->GetColumn(this->mResultColumnIndex));
 
 	if (this->mSelectionMode)
 		this->mNumSelRecs = 0;
@@ -449,15 +517,17 @@ void NMTableCalculator::doNumericCalcSelection()
 	QString newFunc;
 	QString strFieldVal;
 	int strExpRes;
-	for (int row=0; row < this->mTab->GetNumberOfRows(); ++row)
+	for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
 	{
 		if (mbRowFilter)
 		{
-			if (this->mFilterArray->GetTuple1(row) == 0)
+			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
+			if (!this->mInputSelection->contains(rowidx))
 				continue;
 		}
 
 		// feed the parser with numeric variables and values
+		bool bok;
 		int fcnt=0;
 		foreach(const QString &colName, this->mFuncVars)
 		{
@@ -465,13 +535,30 @@ void NMTableCalculator::doNumericCalcSelection()
 			//		this->mFuncVars.at(fcnt).toStdString().c_str(),
 			//		this->mFuncFields.at(fcnt)->GetTuple1(row));
 
-			this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(),
-					this->mFuncFields.at(fcnt)->GetTuple(row));
+			QModelIndex fieldidx = this->mModel->index(row, mFuncFields.at(fnct), QModelIndex());
+			double value = this->mModel->data(fieldidx, Qt::DisplayRole).toDouble(&bok);
+			if (bok)
+			{
+				this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(), value);
+			}
+			else
+			{
+				NMErr(ctxTabCalc, << "Encountered invalid numeric value in column "
+						<< mFuncFields.at(fnct).toStdString() << " at row " << row
+						<< "!");
+				break;
+			}
 
 			if (row==0) {NMDebugAI(<< "setting numeric variable: "
 					<< this->mFuncVars.at(fcnt).toStdString() << endl);}
 			++fcnt;
 		}
+		if (!bok)
+		{
+			NMErr(ctxTabCalc, << "Skipping rest of invalid calculation in row " << row << "!");
+			continue;
+		}
+
 
 		// evaluate string expressions and replace them with numeric results (0 or 1)
 		// in function
@@ -483,19 +570,31 @@ void NMTableCalculator::doNumericCalcSelection()
 			QString origTerm = this->mslStrTerms.at(t);
 			if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
 
-			vtkStringArray* leftField = this->mLstLstStrFields.at(t).at(0);
-			vtkStringArray* rightField = this->mLstLstStrFields.at(t).at(1);
+			//vtkStringArray* leftField = this->mLstLstStrFields.at(t).at(0);
+			//vtkStringArray* rightField = this->mLstLstStrFields.at(t).at(1);
+			int idxleft = this->mLstLstStrFields.at(t).at(0);
+			int idxright = this->mLstLstStrFields.at(t).at(1);
 			QString left;
 			QString right;
-			if (leftField != 0)
-				left = leftField->GetValue(row).c_str();
+			if (idxleft >= 0)
+			{
+				QModelIndex fidx = this->mModel->index(row, idxleft, QModelIndex());
+				left = this->mModel->data(fidx, Qt::DisplayRole).toString();
+			}
 			else
+			{
 				left = this->mLstStrLeftRight.at(t).at(0);
+			}
 
-			if (rightField != 0)
-				right = rightField->GetValue(row).c_str();
+			if (idxright >= 0)
+			{
+				QModelIndex fidx = this->mModel->index(row, idxright, QModelIndex());
+				right = this->mModel->data(fidx, Qt::DisplayRole).toString();
+			}
 			else
+			{
 				right = this->mLstStrLeftRight.at(t).at(1);
+			}
 
 			// debug
 			if (row == 0)
@@ -579,20 +678,30 @@ void NMTableCalculator::doNumericCalcSelection()
 
 		if (this->mSelectionMode)
 		{
+			QModelIndex left = this->mModel->index(row, 0, QModelIndex());
+			QModelIndex right = this->mModel->index(row,
+					this->mModel->columnCount(QModelIndex())-1, QModelIndex());
+			QItemSelection rowsel(left, right);
 			if (res != 0)
 			{
-				resAr->SetTuple1(row, 1);
+				this->mOutputSelection->merge(rowsel, QItemSelectionModel::Select);
+				//resAr->SetTuple1(row, 1);
 				//this->mTabView->selectRow(row);
 				++this->mNumSelRecs;
 			}
 			else
 			{
-				resAr->SetTuple1(row, 0);
+				this->mOutputSelection->merge(rowsel, QItemSelectionModel::Deselect);
+				//resAr->SetTuple1(row, 0);
 				//this->mTabView->deselectRow(row);
 			}
 		}
 		else
-			resAr->SetTuple1(row, res);
+		{
+			QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
+			this->mModel->setData(resIdx, QVariant(res));
+			//resAr->SetTuple1(row, res);
+		}
 	}
 	NMDebugCtx(ctxTabCalc, << "done!");
 }
@@ -600,16 +709,17 @@ void NMTableCalculator::doNumericCalcSelection()
 void NMTableCalculator::doStringCalculation()
 {
 	// get the res array
-	vtkStringArray* resAr = vtkStringArray::SafeDownCast(
-			this->mTab->GetColumn(this->mResultColumnIndex));
+	//vtkStringArray* resAr = vtkStringArray::SafeDownCast(
+	//		this->mTab->GetColumn(this->mResultColumnIndex));
 
 	QString res;
 	QString value;
-	for (int row=0; row < this->mTab->GetNumberOfRows(); ++row)
+	for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
 	{
 		if (mbRowFilter)
 		{
-			if (this->mFilterArray->GetTuple1(row) == 0)
+			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
+			if (!this->mInputSelection->contains(rowidx))
 				continue;
 		}
 
@@ -618,11 +728,15 @@ void NMTableCalculator::doStringCalculation()
 		int cnt = 0;
 		foreach(const QString& fieldName, this->mFuncVars)
 		{
+			// get value from the model
+			QModelIndex fidx = this->mModel->index(row, this->mFuncFields.at(cnt), QModelIndex());
+			value = this->mModel->data(fidx, Qt::DisplayRole).toString();
+
 			// we make sure, we've got a proper field name here and
 			// don't just replace the middle of a fieldname
 			QString rx = QString("\\b%1\\b").arg(fieldName);
-			value = QString(this->mFuncFields.at(cnt)->GetVariantValue(row).ToString().c_str());
 			res = res.replace(QRegExp(rx), value);
+
 			++cnt;
 		}
 
@@ -630,18 +744,26 @@ void NMTableCalculator::doStringCalculation()
 		int fieldcnt;
 		foreach(const QString& st, this->mslStrTerms)
 		{
+			// get value from the model
+			QModelIndex fidx = this->mModel->index(row,
+					this->mLstLstStrFields.at(termcnt).at(0), QModelIndex());
+			value = this->mModel->data(fidx, Qt::DisplayRole).toString();
+
 			QString rx = QString("\\b%1\\b").arg(this->mLstStrLeftRight.at(termcnt).at(0));
-			value = QString(this->mLstLstStrFields.at(termcnt).at(0)->GetValue(row).c_str());
+			//value = QString(this->mLstLstStrFields.at(termcnt).at(0)->GetValue(row).c_str());
 			res = res.replace(QRegExp(rx), value);
 			++termcnt;
 		}
 
 		// write result into the result column
-		resAr->SetValue(row, res.toStdString());
+		QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
+		this->mModel->setData(resIdx, QVariant(res));
+		//resAr->SetValue(row, res.toStdString());
 	}
 }
 
-std::vector<double> NMTableCalculator::calcColumnStats(QString column)
+std::vector<double>
+NMTableCalculator::calcColumnStats(const QString& column)
 {
 	// result vector containing min, max, mean, sum
 	std::vector<double> res;
@@ -654,16 +776,18 @@ std::vector<double> NMTableCalculator::calcColumnStats(QString column)
 		return res;
 	}
 
-	if (!this->mTab->GetColumn(colidx)->IsNumeric())
+	if (!this->isNumericColumn(colidx))
 	{
 		NMErr(ctxTabCalc, << "Data Type is not suitable for this kind of operation!");
 		return res;
 	}
 
-	vtkDataArray* da = vtkDataArray::SafeDownCast(this->mTab->GetColumn(colidx));
-	int nrows = da->GetNumberOfTuples();
+	//vtkDataArray* da = vtkDataArray::SafeDownCast(this->mTab->GetColumn(colidx));
+	int nrows = this->mModel->rowCount(QModelIndex());
+			//da->GetNumberOfTuples();
 
 	// get the first valid value
+	bool bok;
 	double val;
 	int r = 0;
 	bool bGotInitial = false;
@@ -671,14 +795,26 @@ std::vector<double> NMTableCalculator::calcColumnStats(QString column)
 	{
 		if (this->mbRowFilter)
 		{
-			if (this->mFilterArray->GetTuple1(r) == 0)
+			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
+			if (!this->mInputSelection->contains(rowidx))
+			//if (this->mFilterArray->GetTuple1(r) == 0)
 			{
 				r = r + 1;
 				continue;
 			}
 		}
 
-		val = da->GetTuple1(r);
+		QModelIndex valIdx = this->mModel->index(r, colidx, QModelIndex());
+		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
+		if (!bok)
+		{
+			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+					<< "': Disregarding invalid value at row " << r << "!");
+			r = r + 1;
+			continue;
+		}
+
+		//val = da->GetTuple1(r);
 		bGotInitial = true;
 		r = r + 1;
 	}
@@ -693,14 +829,26 @@ std::vector<double> NMTableCalculator::calcColumnStats(QString column)
 	{
 		if (this->mbRowFilter)
 		{
-			if (this->mFilterArray->GetTuple1(r) == 0)
+			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
+			if (!this->mInputSelection->contains(rowidx))
 				continue;
 		}
 
-		val = da->GetTuple1(r);
-		sum += val;
-		min = val < min ? val : min;
-		max = val > max ? val : max;
+		//val = da->GetTuple1(r);
+
+		QModelIndex valIdx = this->mModel->index(r, colidx, QModelIndex());
+		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
+		if (bok)
+		{
+			sum += val;
+			min = val < min ? val : min;
+			max = val > max ? val : max;
+		}
+		else
+		{
+			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+					<< "': Disregarding invalid value at row " << r << "!");
+		}
 	}
 	mean = sum / nrows;
 
@@ -712,28 +860,31 @@ std::vector<double> NMTableCalculator::calcColumnStats(QString column)
 	return res;
 }
 
-QStringList NMTableCalculator::normaliseColumns(QStringList columnNames, bool bCostCriterion)
+QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
+		bool bCostCriterion)
 {
 	// return value
 	QStringList normalisedCols;
 
 	//check, whether all given fields are indeed in the data base
-	vtkTable* tab = this->mTab;
+	//vtkTable* tab = this->mTab;
 
-	QList<vtkDataArray*> fieldVec;
+	//QList<vtkDataArray*> fieldVec;
+	QList<int> fieldVec
 	for (int f=0; f < columnNames.count(); ++f)
 	{
 		QString name = columnNames.at(f);
 		int colidx = this->getColumnIndex(name);
-		if (colidx >= 0)
+		if (colidx >= 0 && this->isNumericColumn(colidx))
 		{
-			vtkDataArray* da = vtkDataArray::SafeDownCast(
-					tab->GetColumn(colidx));
-			fieldVec.push_back(da);
+			//vtkDataArray* da = vtkDataArray::SafeDownCast(
+			//		tab->GetColumn(colidx));
+			fieldVec.push_back(colidx);
 		}
 		else
 		{
-			NMErr(ctxTabCalc, << "Array '" << name.toStdString() << "' not found!" << endl);
+			NMErr(ctxTabCalc, << "Could't find any numeric array '"
+					<< name.toStdString() << "'!" << endl);
 			NMDebugCtx(ctxTabCalc, << "done!");
 			return normalisedCols;
 		}

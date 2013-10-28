@@ -58,11 +58,10 @@ public:
 	void setTable(otb::AttributeTable::Pointer table);
 	otb::AttributeTable::Pointer getTable(void)
 		{return this->mTable;}
-	void setKeyColumn(const QString& key);
+	void setKeyColumn(int keyidx);
 
 private:
 	otb::AttributeTable::Pointer mTable;
-	QString mKey;
 	int mKeyIdx;
 
 };

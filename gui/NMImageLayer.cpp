@@ -216,10 +216,10 @@ void NMImageLayer::createTableView(void)
 
 
 	this->mTableView = new NMTableView(this->mOtbRAT, 0);//this->mAttributeTable, 0);
-	//this->mTableView->hideAttribute("nm_sel");
+	this->mTableView->hideAttribute("nm_sel");
 	//this->mTableView->setRowKeyColumn("nm_id");
-	//this->mTableView->setRowKeyColumn("rowidx");
-	//this->mTableView->hideAttribute("nm_id");
+	this->mTableView->setRowKeyColumn("rowidx");
+	this->mTableView->hideAttribute("rowidx");
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
 	// connect layer signals to tableview slots and model components list
@@ -347,6 +347,19 @@ int NMImageLayer::updateAttributeTable()
 	//emit attributeTableChanged(this->mOtbRAT);//this->mAttributeTable);
 
 	this->mOtbRAT = this->getRasterAttributeTable(1);
+
+	// we add the "nm_sel" column for home grown selection handling
+	int selid = this->mOtbRAT->ColumnExists("nm_sel");
+	if (selid < 0)
+	{
+		this->mOtbRAT->AddColumn("nm_sel", otb::AttributeTable::ATTYPE_INT);
+		selid = this->mOtbRAT->ColumnExists("nm_sel");
+
+		for (int r=0; r < this->mOtbRAT->GetNumRows(); ++r)
+		{
+			this->mOtbRAT->SetValue(selid, r, (long)0);
+		}
+	}
 
 	emit legendChanged(this);
 

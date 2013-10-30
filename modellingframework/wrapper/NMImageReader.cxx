@@ -549,7 +549,7 @@ QString NMImageReader::getFileName(void)
 	return this->mFileName;
 }
 
-bool NMImageReader::initialise() throw (r_Error)
+bool NMImageReader::initialise()
 {
 	NMDebugCtx(ctxNMImageReader, << "...");
 

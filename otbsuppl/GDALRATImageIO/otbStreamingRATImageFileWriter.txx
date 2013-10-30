@@ -47,8 +47,9 @@
 #include "otbImageIOFactory.h"
 #include "otbGDALRATImageIO.h"
 
-
-#include "otbRasdamanImageIO.h"
+#ifdef BUILD_RASSUPPORT
+	#include "otbRasdamanImageIO.h"
+#endif
 
 #include "itkMetaDataObject.h"
 #include "otbImageKeywordlist.h"
@@ -90,7 +91,9 @@ StreamingRATImageFileWriter<TInputImage>
   m_UseForcedLPR = false;
   m_UseUpdateRegion = false;
   m_UpdateMode = false;
+#ifdef BUILD_RASSUPPORT
   this->mRasconn = 0;
+#endif
 }
 
 /**
@@ -443,6 +446,7 @@ StreamingRATImageFileWriter<TInputImage>
 	}
 }
 
+#ifdef BUILD_RASSUPPORT
 template<class TInputImage>
 void StreamingRATImageFileWriter<TInputImage>
 ::SetRasdamanConnector(RasdamanConnector* rascon)
@@ -460,7 +464,7 @@ void StreamingRATImageFileWriter<TInputImage>
 		this->m_ImageIO = NULL;
 	}
  }
-
+#endif
 
 /**
  *
@@ -580,7 +584,9 @@ StreamingRATImageFileWriter<TInputImage>
 
   /** set writer and imageIO output information */
   GDALRATImageIO* gio = dynamic_cast<otb::GDALRATImageIO*>(m_ImageIO.GetPointer());
+#ifdef BUILD_RASSUPPORT
   RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(m_ImageIO.GetPointer());
+#endif
 
   if (m_InputRAT.IsNotNull())
   {
@@ -588,10 +594,12 @@ StreamingRATImageFileWriter<TInputImage>
 	  {
 		  ;
 	  }
+#ifdef BUILD_RASSUPPORT
 	  else if (rio != 0)
 	  {
 		  rio->setRasterAttributeTable(m_InputRAT, 1);
 	  }
+#endif
   }
 
 
@@ -599,8 +607,10 @@ StreamingRATImageFileWriter<TInputImage>
   {
 	  if (gio != 0)
 		  gio->SetImageUpdateMode(true);
+#ifdef BUILD_RASSUPPORT
 	  else if (rio != 0)
 		  rio->SetImageUpdateMode(true);
+#endif
   }
 
   /* in case we want to make the image bigger than the we've currently data for
@@ -610,8 +620,10 @@ StreamingRATImageFileWriter<TInputImage>
   {
 	  if (gio != 0)
 		  gio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+#ifdef BUILD_RASSUPPORT
 	  else if (rio != 0)
 		  rio->SetForcedLPR(m_ForcedLargestPossibleRegion);
+#endif
   }
 
   // in case the user specified an explicit update region for externally controlled

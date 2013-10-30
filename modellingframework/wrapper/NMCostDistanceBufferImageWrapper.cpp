@@ -256,15 +256,15 @@ public:
 		// instantiate readers and writers
 		otb::GDALRATImageIO::Pointer inrio;
 		typename ReaderType::Pointer reader;
+#ifdef BUILD_RASSUPPORT
 		if (bInRas)
 		{
-#ifdef BUILD_RASSUPPORT
 			rasreader = RasReaderType::New();
 			rasreader->SetRasdamanConnector(rcon);
 			rasreader->SetFileName(fileName.toStdString().c_str());
-#endif
 		}
 		else
+#endif
 		{
 			reader = ReaderType::New();
 			inrio = otb::GDALRATImageIO::New();
@@ -277,14 +277,14 @@ public:
 
 		typename TmpOutReaderType::Pointer tmpOutReader;// = TmpOutReaderType::New();
 		otb::GDALRATImageIO::Pointer tmpOutGIO;
+#ifdef BUILD_RASSUPPORT
 		if (bOutRas)
 		{
-#ifdef BUILD_RASSUPPORT
 			rasoutreader = RasOutReaderType::New();
 			rasoutreader->SetRasdamanConnector(rcon);
-#endif
 		}
 		else
+#endif
 		{
 			tmpOutReader = TmpOutReaderType::New();
 			tmpOutGIO = otb::GDALRATImageIO::New();
@@ -296,15 +296,14 @@ public:
 		typename WriterType::Pointer writer = WriterType::New();
 		writer->SetFileName(out.toStdString().c_str());
 		otb::GDALRATImageIO::Pointer outgio;
+#ifdef BUILD_RASSUPPORT
 		if (bOutRas)
 		{
-#ifdef BUILD_RASSUPPORT
 			writer->SetRasdamanConnector(rcon);
 			writer->SetFileName(out.toStdString().c_str());
-#endif
-			;
 		}
 		else
+#endif
 		{
 			outgio = otb::GDALRATImageIO::New();
 			writer->SetImageIO(dynamic_cast<otb::ImageIOBase*>(outgio.GetPointer()));
@@ -317,6 +316,7 @@ public:
 		typename InputImgType::RegionType pr;
 		typename InputImgType::SpacingType inputSpacing;
 		typename InputImgType::PointType inputOrigin;
+#ifdef BUILD_RASSUPPORT
 		if (bInRas)
 		{
 			rasreader->GetOutput()->UpdateOutputInformation();
@@ -325,6 +325,7 @@ public:
 			inputOrigin  = rasreader->GetOutput()->GetOrigin();
 		}
 		else
+#endif
 		{
 			reader->GetOutput()->UpdateOutputInformation();
 			lpr          = reader->GetOutput()->GetLargestPossibleRegion();
@@ -383,24 +384,26 @@ public:
 	    		  << "  rest=" << rest << endl);
 
 	    //const piepeline connections // and filter settings
+#ifdef BUILD_RASSUPPORT
 		if (bInRas)
 			distfilter->SetInput(rasreader->GetOutput());
 		else
+#endif
 			distfilter->SetInput(reader->GetOutput());
 
 		typename ReaderType::Pointer costreader;
 		if (!costFN.isNull())
 		{
+#ifdef BUILD_RASSUPPORT
 			if (bCostRas)
 			{
-#ifdef BUILD_RASSUPPORT
 				rascostreader = RasReaderType::New();
 				rascostreader->SetRasdamanConnector(rcon);
 				rascostreader->SetFileName(costFN.toStdString().c_str());
 				distfilter->SetInput(1, rascostreader->GetOutput());
-#endif
 			}
 			else
+#endif
 			{
 				costreader = ReaderType::New();
 				costreader->SetFileName(costFN.toStdString().c_str());
@@ -459,6 +462,7 @@ public:
 
     	    		//writer->SetFileName(out.toStdString().c_str());
 	    		}
+#ifdef BUILD_RASSUPPORT
     			else
     			{
     				rasoutreader->SetFileName(nfn.toStdString().c_str());
@@ -468,6 +472,7 @@ public:
     				tout = rasoutreader->GetOutput();
     				writer->SetFileName(nfn.toStdString().c_str());
     			}
+#endif
 	    		tout->DisconnectPipeline();
 	    		distfilter->GraftOutput(tout);
 
@@ -489,7 +494,10 @@ public:
 	   		// since they're not closed for re-reading in non
 	   		// update mode
 	   		if (iter == 0)
-	   		{	if (!bOutRas)
+	   		{
+#ifdef BUILD_RASSUPPORT
+	   			if (!bOutRas)
+#endif
 	   				outgio->CloseDataset();
 	   		}
 
@@ -529,6 +537,7 @@ public:
 
 	    		tout = tmpOutReader->GetOutput();
     		}
+#ifdef BUILD_RASSUPPORT
 			else
 			{
 				QString nfn = QString("%1:_last_").arg(out.toStdString().c_str());
@@ -538,7 +547,7 @@ public:
 
 				tout = rasoutreader->GetOutput();
 			}
-
+#endif
 			tout->DisconnectPipeline();
 			distfilter->GraftOutput(tout);
 

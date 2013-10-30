@@ -35,6 +35,10 @@
 #ifndef __otbStreamingRATImageFileWriter_h
 #define __otbStreamingRATImageFileWriter_h
 
+#ifdef BUILD_RASSUPPORT
+	#include "RasdamanConnector.h"
+#endif
+
 #include "otbMacro.h"
 #include "otbAttributeTable.h"
 #include "otbImageIOBase.h"
@@ -201,8 +205,10 @@ public:
   virtual void SetFileName(std::string filename)
   {
     m_FileName = filename;
+#ifdef BUILD_RASSUPPORT
     if (this->mRasconn == 0)
     	m_ImageIO = NULL;
+#endif
     this->Modified();
   }
 
@@ -255,7 +261,9 @@ public:
    *  collections names (which don't come with a file extension)
    *  are always doomed to be invlaid file names and an exception is thrown
    */
+#ifdef BUILD_RASSUPPORT
   void SetRasdamanConnector(RasdamanConnector* rascon);
+#endif
 
   /** Specifiy a user specified largest possible region to be written as
    *  part of the image information; this is primarily meant for initialising
@@ -343,7 +351,9 @@ private:
   bool m_UseUpdateRegion;
   bool m_UpdateMode;
 
+#ifdef BUILD_RASSUPPORT
   RasdamanConnector* mRasconn;
+#endif
 
   AttributeTable::Pointer m_InputRAT;
   bool m_RATHaveBeenWritten;

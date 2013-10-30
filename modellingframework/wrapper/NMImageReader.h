@@ -118,12 +118,7 @@ protected:
 
 private:
 
-#ifdef BUILD_RASSUPPORT
-	bool initialise() throw(r_Error);
-#else
 	bool initialise();
-#endif
-
 	void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
 
 	QString mFileName;

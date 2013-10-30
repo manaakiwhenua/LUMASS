@@ -29,9 +29,22 @@
 
 class QVTK_EXPORT vtkQtEditableTableModelAdapter: public vtkQtTableModelAdapter
 {
+	Q_OBJECT
+
 public:
-	vtkQtEditableTableModelAdapter();
+	vtkQtEditableTableModelAdapter(QObject* parent=0);
+	vtkQtEditableTableModelAdapter(vtkTable* table, QObject* parent=0);
 	virtual ~vtkQtEditableTableModelAdapter();
+
+	bool setHeaderData(int section, Qt::Orientation orientation,
+			const QVariant& value, int role);
+	bool insertColumns(int column, int count, const QModelIndex& parent);
+	bool removeColumns(int column, int count, const QModelIndex& parent);
+
+
+private:
+	vtkQtEditableTableModelAdapter(const vtkQtEditableTableModelAdapter &);
+	void operator=(const vtkQtEditableTableModelAdapter&);
 };
 
 #endif /* VTKQTEDITABLETABLEMODELADAPTER_H_ */

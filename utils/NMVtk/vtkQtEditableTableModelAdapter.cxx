@@ -22,13 +22,41 @@
  *      Author: alex
  */
 
-#include "VTK/vtkQtEditableTableModelAdapter.h"
+#include "vtkQtEditableTableModelAdapter.h"
 
-vtkQtEditableTableModelAdapter::vtkQtEditableTableModelAdapter()
+vtkQtEditableTableModelAdapter::vtkQtEditableTableModelAdapter(QObject* parent=0)
+	: vtkQtTableModelAdapter(parent)
+{
+}
+
+vtkQtEditableTableModelAdapter::vtkQtEditableTableModelAdapter(vtkTable* table,
+		QObject* parent=0)
+	: vtkQtTableModelAdapter(parent, table)
 {
 }
 
 vtkQtEditableTableModelAdapter::~vtkQtEditableTableModelAdapter()
 {
+}
+
+bool
+vtkQtEditableTableModelAdapter::setHeaderData(int section, Qt::Orientation orientation,
+			const QVariant& value, int role)
+{
+	return false;
+}
+
+bool
+vtkQtEditableTableModelAdapter::insertColumns(int column, int count,
+		const QModelIndex& parent)
+{
+	return false;
+}
+
+bool
+vtkQtEditableTableModelAdapter::removeColumns(int column, int count,
+		const QModelIndex& parent)
+{
+	return false;
 }
 

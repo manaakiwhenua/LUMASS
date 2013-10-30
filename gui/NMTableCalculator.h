@@ -30,13 +30,11 @@
 #include <QString>
 #include <QStringList>
 #include <QAbstractItemModel>
-
-//#include "NMTableView.h"
+#include <QItemSelection>
 
 #include "vtkType.h"
 #include "vtkSmartPointer.h"
 #include "vtkTable.h"
-//#include "vtkFunctionParser.h"
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
 #include "vtkStringArray.h"
@@ -80,7 +78,7 @@ public:
 	bool calculate(void);
 
 	long getSelectionCount() {return  this->mNumSelRecs;};
-	QItemSelection getSelection(void);
+	const QItemSelection* getSelection(void);
 	std::vector<double> calcColumnStats(const QString& column);
 	QStringList normaliseColumns(const QStringList& columnNames, bool bCostCriterion);
 

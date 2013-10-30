@@ -48,7 +48,7 @@ NMTableCalculator::NMTableCalculator(QObject* parent)
 //}
 
 NMTableCalculator::NMTableCalculator(QAbstractItemModel* model,
-		QObject* parent=0)
+		QObject* parent)
 	: QObject(parent), mModel(model)
 {
 	this->initCalculator();
@@ -77,7 +77,7 @@ NMTableCalculator::~NMTableCalculator()
 
 }
 
-QItemSelection
+const QItemSelection*
 NMTableCalculator::getSelection(void)
 {
 	return this->mOutputSelection;
@@ -125,7 +125,7 @@ int NMTableCalculator::getColumnIndex(const QString& name)
 }
 
 bool
-NMTableCalculator::setSelectionModeOn(QItemSelection* ouputSelection)
+NMTableCalculator::setSelectionModeOn(QItemSelection* outputSelection)
 {
 	//NMDebugCtx(ctxTabCalc, << "...");
 	//if (!this->setResultColumn(selColumn))// || tabView == 0)
@@ -321,7 +321,7 @@ bool NMTableCalculator::parseFunction()
 					{
 						// we thought we've got a column here, but don't!
 						// Let's get out of here!
-						NMErr(ctxTabCalc, << "Expected " << guts.at(1)
+						NMErr(ctxTabCalc, << "Expected " << guts.at(1).toStdString()
 								<< " to be a table column, but that's not the case!");
 						NMDebugCtx(ctxTabCalc, << "done!");
 						return false;
@@ -349,7 +349,7 @@ bool NMTableCalculator::parseFunction()
 					{
 						// we thought we've got a column here, but don't!
 						// Let's get out of here!
-						NMErr(ctxTabCalc, << "Expected " << guts.at(2)
+						NMErr(ctxTabCalc, << "Expected " << guts.at(2).toStdString()
 								<< " to be a table column, but that's not the case!");
 						NMDebugCtx(ctxTabCalc, << "done!");
 						return false;
@@ -535,16 +535,16 @@ void NMTableCalculator::doNumericCalcSelection()
 			//		this->mFuncVars.at(fcnt).toStdString().c_str(),
 			//		this->mFuncFields.at(fcnt)->GetTuple1(row));
 
-			QModelIndex fieldidx = this->mModel->index(row, mFuncFields.at(fnct), QModelIndex());
+			QModelIndex fieldidx = this->mModel->index(row, mFuncFields.at(fcnt), QModelIndex());
 			double value = this->mModel->data(fieldidx, Qt::DisplayRole).toDouble(&bok);
 			if (bok)
 			{
-				this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(), value);
+				this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(), &value);
 			}
 			else
 			{
 				NMErr(ctxTabCalc, << "Encountered invalid numeric value in column "
-						<< mFuncFields.at(fnct).toStdString() << " at row " << row
+						<< mFuncFields.at(fcnt) << " at row " << row
 						<< "!");
 				break;
 			}
@@ -795,7 +795,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 	{
 		if (this->mbRowFilter)
 		{
-			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
+			QModelIndex rowidx = this->mModel->index(r, 0, QModelIndex());
 			if (!this->mInputSelection->contains(rowidx))
 			//if (this->mFilterArray->GetTuple1(r) == 0)
 			{
@@ -829,7 +829,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 	{
 		if (this->mbRowFilter)
 		{
-			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
+			QModelIndex rowidx = this->mModel->index(r, 0, QModelIndex());
 			if (!this->mInputSelection->contains(rowidx))
 				continue;
 		}
@@ -866,100 +866,100 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 	// return value
 	QStringList normalisedCols;
 
-	//check, whether all given fields are indeed in the data base
-	//vtkTable* tab = this->mTab;
-
-	//QList<vtkDataArray*> fieldVec;
-	QList<int> fieldVec
-	for (int f=0; f < columnNames.count(); ++f)
-	{
-		QString name = columnNames.at(f);
-		int colidx = this->getColumnIndex(name);
-		if (colidx >= 0 && this->isNumericColumn(colidx))
-		{
-			//vtkDataArray* da = vtkDataArray::SafeDownCast(
-			//		tab->GetColumn(colidx));
-			fieldVec.push_back(colidx);
-		}
-		else
-		{
-			NMErr(ctxTabCalc, << "Could't find any numeric array '"
-					<< name.toStdString() << "'!" << endl);
-			NMDebugCtx(ctxTabCalc, << "done!");
-			return normalisedCols;
-		}
-	}
-
-	// getting the maximum and minimum of the range of fields
-	double min;
-	double max;
-
-	for (int ar=0; ar < fieldVec.size(); ++ar)
-	{
-		std::vector<double> stats = this->calcColumnStats(columnNames.at(ar));
-		if (stats.size() == 0)
-			return normalisedCols;
-
-		if (ar == 0)
-		{
-			min = stats[0];
-			max = stats[1];
-		}
-		min = stats[0] < min ? stats[0] : min;
-		max = stats[1] > max ? stats[1] : max;
-	}
-
-	NMDebugAI(<< "min: " << min << " | max: " << max << endl);
-
-	// now create a new 'normalised' array for each of the input arrays
-	int nrows = fieldVec.at(0)->GetNumberOfTuples();
-	for (int ar=0; ar < fieldVec.size(); ++ar)
-	{
-		vtkSmartPointer<vtkDoubleArray> na = vtkSmartPointer<vtkDoubleArray>::New();
-		na->SetNumberOfComponents(1);
-		na->Allocate(nrows);
-		QString newName = QString(tr("%1_N")).arg(fieldVec.at(ar)->GetName());
-		na->SetName(newName.toStdString().c_str());
-
-		vtkDataArray* da = fieldVec.at(ar);
-		double val;
-		// calc normalised values
-		if (bCostCriterion)
-		{
-			for (int r=0; r < nrows; ++r)
-			{
-				if (this->mbRowFilter)
-				{
-					if (this->mFilterArray->GetTuple1(r) == 0)
-					{
-						na->InsertNextTuple1(-1);
-						continue;
-					}
-				}
-				val = da->GetTuple1(r);
-				na->InsertNextTuple1((max - val) / (max-min));
-			}
-		}
-		else // must be benefit now
-		{
-			for (int r=0; r < nrows; ++r)
-			{
-				if (this->mbRowFilter)
-				{
-					if (this->mFilterArray->GetTuple1(r) == 0)
-					{
-						na->InsertNextTuple1(-1);
-						continue;
-					}
-				}
-				val = da->GetTuple1(r);
-				na->InsertNextTuple1((val - min) / (max-min));
-			}
-		}
-
-		tab->AddColumn(na);
-		normalisedCols.append(newName);
-	}
-
+//	//check, whether all given fields are indeed in the data base
+//	//vtkTable* tab = this->mTab;
+//
+//	//QList<vtkDataArray*> fieldVec;
+//	QList<int> fieldVec;
+//	for (int f=0; f < columnNames.count(); ++f)
+//	{
+//		QString name = columnNames.at(f);
+//		int colidx = this->getColumnIndex(name);
+//		if (colidx >= 0 && this->isNumericColumn(colidx))
+//		{
+//			//vtkDataArray* da = vtkDataArray::SafeDownCast(
+//			//		tab->GetColumn(colidx));
+//			fieldVec.push_back(colidx);
+//		}
+//		else
+//		{
+//			NMErr(ctxTabCalc, << "Could't find any numeric array '"
+//					<< name.toStdString() << "'!" << endl);
+//			NMDebugCtx(ctxTabCalc, << "done!");
+//			return normalisedCols;
+//		}
+//	}
+//
+//	// getting the maximum and minimum of the range of fields
+//	double min;
+//	double max;
+//
+//	for (int ar=0; ar < fieldVec.size(); ++ar)
+//	{
+//		std::vector<double> stats = this->calcColumnStats(columnNames.at(ar));
+//		if (stats.size() == 0)
+//			return normalisedCols;
+//
+//		if (ar == 0)
+//		{
+//			min = stats[0];
+//			max = stats[1];
+//		}
+//		min = stats[0] < min ? stats[0] : min;
+//		max = stats[1] > max ? stats[1] : max;
+//	}
+//
+//	NMDebugAI(<< "min: " << min << " | max: " << max << endl);
+//
+//	// now create a new 'normalised' array for each of the input arrays
+//	int nrows = fieldVec.at(0)->GetNumberOfTuples();
+//	for (int ar=0; ar < fieldVec.size(); ++ar)
+//	{
+//		vtkSmartPointer<vtkDoubleArray> na = vtkSmartPointer<vtkDoubleArray>::New();
+//		na->SetNumberOfComponents(1);
+//		na->Allocate(nrows);
+//		QString newName = QString(tr("%1_N")).arg(fieldVec.at(ar)->GetName());
+//		na->SetName(newName.toStdString().c_str());
+//
+//		vtkDataArray* da = fieldVec.at(ar);
+//		double val;
+//		// calc normalised values
+//		if (bCostCriterion)
+//		{
+//			for (int r=0; r < nrows; ++r)
+//			{
+//				if (this->mbRowFilter)
+//				{
+//					if (this->mFilterArray->GetTuple1(r) == 0)
+//					{
+//						na->InsertNextTuple1(-1);
+//						continue;
+//					}
+//				}
+//				val = da->GetTuple1(r);
+//				na->InsertNextTuple1((max - val) / (max-min));
+//			}
+//		}
+//		else // must be benefit now
+//		{
+//			for (int r=0; r < nrows; ++r)
+//			{
+//				if (this->mbRowFilter)
+//				{
+//					if (this->mFilterArray->GetTuple1(r) == 0)
+//					{
+//						na->InsertNextTuple1(-1);
+//						continue;
+//					}
+//				}
+//				val = da->GetTuple1(r);
+//				na->InsertNextTuple1((val - min) / (max-min));
+//			}
+//		}
+//
+//		tab->AddColumn(na);
+//		normalisedCols.append(newName);
+//	}
+//
 	return normalisedCols;
 }

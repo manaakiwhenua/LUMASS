@@ -212,43 +212,92 @@ NMQtOtbAttributeTableModel::flags(const QModelIndex& index) const
 		return 0;
 }
 
-//QModelIndex
-//NMQtOtbAttributeTableModel::index(int row, int column,
-//		const QModelIndex& parent) const
-//{
-//	if (mTable.IsNull())
-//		return QModelIndex();
-//
-//	// we use the internal data member of the parent to wrap the column type
-//	// of the index
-//	return  createIndex(row, column, mTable->GetColumnType(column));
-//}
 
-//bool
-//NMQtOtbAttributeTableModel::insertColumn(int column,
-//		const QModelIndex& parent)
-//{
-//	if (mTable.IsNull())
-//		return false;
-//
-//	// since we only insert columns at the (right-hand side)
-//	// end of the table, we expect the 'column' to
-//	// denote the otbAttributeTable::TableColumnType
-//	// of the new column
-//
-//
-//
-//}
-//bool removeColumn(int column, const QModelIndex& parent=QModelIndex());
-
-// additional public interface to
 void
 NMQtOtbAttributeTableModel::setTable(otb::AttributeTable::Pointer table)
 {
 	this->mTable = table;
 
+	//this->beginResetModel();
 	emit this->reset();
+	//this->endResetModel();
 }
+
+bool
+NMQtOtbAttributeTableModel::setHeaderData(int section, Qt::Orientation orientation,
+		const QVariant& value, int role)
+{
+	// we don't care about the orientation, or the role, but interpret
+	// the value as string and set the name of the associated column
+
+	if (	section < 0
+		||  section > this->mTable->GetNumCols()-1
+		||  value.type() != QVariant::String
+	   )
+		return false;
+
+	this->mTable->SetColumnName(section, value.toString().toStdString());
+
+	emit this->reset();
+
+	return true;
+}
+
+bool
+NMQtOtbAttributeTableModel::insertColumns(int column, int count,
+		const QModelIndex& parent)
+{
+	// we ever only append just one column at a time, so
+	// just ignore column and count; we expect the
+	// the parents internalPoniter to point to a
+	// QVariant::Type
+
+	QVariant::Type* type = (QVariant::Type*)parent.internalPointer();
+	if (type == 0)
+		return false;
+
+	QString name = QString("Col_%1").arg(this->mTable->GetNumCols()+1);
+	switch (*type)
+	{
+	case QVariant::Int:
+		this->mTable->AddColumn(name.toStdString(), otb::AttributeTable::ATTYPE_INT);
+		break;
+	case QVariant::Double:
+		this->mTable->AddColumn(name.toStdString(), otb::AttributeTable::ATTYPE_DOUBLE);
+		break;
+	case QVariant::String:
+		this->mTable->AddColumn(name.toStdString(), otb::AttributeTable::ATTYPE_STRING);
+		break;
+	default:
+		break;
+	}
+
+	emit this->reset();
+
+
+	return true;
+}
+
+bool
+NMQtOtbAttributeTableModel::removeColumns(int column, int count,
+		const QModelIndex& parent)
+{
+	if (column < 0 || column > this->mTable->GetNumCols()-1)
+		return false;
+
+	int ret = this->mTable->RemoveColumn(column);
+	if (ret)
+	{
+		emit this->reset();
+	}
+	else
+	{
+		return false;
+	}
+
+	return true;
+}
+
 
 
 

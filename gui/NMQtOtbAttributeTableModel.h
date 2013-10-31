@@ -50,9 +50,14 @@ public:
 	bool setData(const QModelIndex& index, const QVariant& value,
 			int role=Qt::EditRole);
 	Qt::ItemFlags flags(const QModelIndex& index) const;
-	bool insertColumn(int column, const QModelIndex& parent=QModelIndex());
-	bool removeColumn(int column, const QModelIndex& parent=QModelIndex());
-	//QModelIndex index(int row, int column, const QModelIndex& parent) const;
+
+	bool setHeaderData(int section, Qt::Orientation orientation,
+			const QVariant& value, int role);
+	bool insertColumns(int column, int count, const QModelIndex& parent);
+	bool removeColumns(int column, int count, const QModelIndex& parent);
+
+
+
 
 	// additional public interface to
 	void setTable(otb::AttributeTable::Pointer table);

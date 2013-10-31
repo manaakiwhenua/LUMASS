@@ -69,7 +69,7 @@ public:
 
 	inline NMStrOperator getStrOperator(const QString& strOp);
 
-	bool setRowFilterModeOn(QItemSelection* inputSelection);
+	bool setRowFilterModeOn(const QModelIndexList& inputSelection);
 	bool setResultColumn(const QString& name);
 	void setFunction(const QString& function);
 	bool setSelectionModeOn(QItemSelection* outputSelection); //, NMTableView* tabView);
@@ -88,7 +88,8 @@ protected:
 	//vtkTable* mTab;
 	QAbstractItemModel* mModel;
 	QItemSelection* mOutputSelection;
-	QItemSelection* mInputSelection;
+	//QItemSelection* mInputSelection;
+	QModelIndexList mInputSelection;
 
 	QString mFunction;
 	QStringList mFuncVars;

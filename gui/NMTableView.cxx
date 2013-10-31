@@ -378,54 +378,54 @@ void NMTableView::normalise()
 
 	NMDebugCtx(__ctxtabview, << "...");
 
-	// -----------------------------------------------------------------------
-	// get user input
-
-	// get the names of the fields to normalise
-	bool bOk = false;
-	QString fieldNames = QInputDialog::getText(this, tr("Normalise Fields"),
-	                                          tr("Field Names:"), QLineEdit::Normal,
-	                                          tr(""), &bOk);
-	if (!bOk || fieldNames.isEmpty())
-	{
-		NMDebugAI(<< "No input fields for normalisation specified!" << endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	// ask for the criterion type
-	QStringList slModes;
-	slModes.append(tr("Cost Criterion"));
-	slModes.append(tr("Benefit Criterion"));
-
-	QString sMode = QInputDialog::getItem(this, tr("Normalisation Mode"),
-													 tr("Select mode"),
-													 slModes, 0, false, &bOk, 0);
-	if (!bOk)
-	{
-		NMDebugAI(<< "No normalisation mode specified!" << endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-	bool bCostCriterion = sMode == "Cost Criterion" ? true : false;
-
-	// -----------------------------------------------------------------------
-
-	// split the strings into a stringlist
-	QStringList columnNames = fieldNames.split(tr(" "),
-			QString::SkipEmptyParts, Qt::CaseInsensitive);
-
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-
-	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
-	if (this->mlNumSelRecs)
-		calc->setRowFilterModeOn("nm_sel");
-	QStringList normCols = calc->normaliseColumns(columnNames, bCostCriterion);
-	this->mAlteredColumns.append(normCols);
-
-
-	// inform listeners
-	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+//	// -----------------------------------------------------------------------
+//	// get user input
+//
+//	// get the names of the fields to normalise
+//	bool bOk = false;
+//	QString fieldNames = QInputDialog::getText(this, tr("Normalise Fields"),
+//	                                          tr("Field Names:"), QLineEdit::Normal,
+//	                                          tr(""), &bOk);
+//	if (!bOk || fieldNames.isEmpty())
+//	{
+//		NMDebugAI(<< "No input fields for normalisation specified!" << endl);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	// ask for the criterion type
+//	QStringList slModes;
+//	slModes.append(tr("Cost Criterion"));
+//	slModes.append(tr("Benefit Criterion"));
+//
+//	QString sMode = QInputDialog::getItem(this, tr("Normalisation Mode"),
+//													 tr("Select mode"),
+//													 slModes, 0, false, &bOk, 0);
+//	if (!bOk)
+//	{
+//		NMDebugAI(<< "No normalisation mode specified!" << endl);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//	bool bCostCriterion = sMode == "Cost Criterion" ? true : false;
+//
+//	// -----------------------------------------------------------------------
+//
+//	// split the strings into a stringlist
+//	QStringList columnNames = fieldNames.split(tr(" "),
+//			QString::SkipEmptyParts, Qt::CaseInsensitive);
+//
+//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+//
+//	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
+//	if (this->mlNumSelRecs)
+//		calc->setRowFilterModeOn("nm_sel");
+//	QStringList normCols = calc->normaliseColumns(columnNames, bCostCriterion);
+//	this->mAlteredColumns.append(normCols);
+//
+//
+//	// inform listeners
+//	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -468,49 +468,49 @@ void NMTableView::calcColumn()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	// get user input
-
-	QString label = QString(tr("%1 = ").arg(this->mLastClickedColumn));
-	bool bOk = false;
-	QString func = QInputDialog::getText(this, tr("Calculate Column"),
-	                                          label, QLineEdit::Normal,
-	                                          tr(""), &bOk);
-	if (!bOk || func.isEmpty())
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	// get the table
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-
-	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
-	calc->setResultColumn(this->mLastClickedColumn);
-
-	if (this->mTableView->selectionModel()->selection().count() > 0)
-		calc->setRowFilterModeOn("nm_sel");
-
-
-	try
-	{
-		calc->setFunction(func);
-		if (calc->calculate())
-		{
-			this->mAlteredColumns.append(this->mLastClickedColumn);
-
-			emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-		}
-	}
-	catch (itk::ExceptionObject& err)
-	{
-		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-				      .arg(err.GetDescription());
-
-		NMErr(__ctxtabview, << "Calculation failed!"
-				<< errmsg.toStdString());
-
-		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-	}
+//	// get user input
+//
+//	QString label = QString(tr("%1 = ").arg(this->mLastClickedColumn));
+//	bool bOk = false;
+//	QString func = QInputDialog::getText(this, tr("Calculate Column"),
+//	                                          label, QLineEdit::Normal,
+//	                                          tr(""), &bOk);
+//	if (!bOk || func.isEmpty())
+//	{
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	// get the table
+//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+//
+//	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
+//	calc->setResultColumn(this->mLastClickedColumn);
+//
+//	if (this->mTableView->selectionModel()->selection().count() > 0)
+//		calc->setRowFilterModeOn("nm_sel");
+//
+//
+//	try
+//	{
+//		calc->setFunction(func);
+//		if (calc->calculate())
+//		{
+//			this->mAlteredColumns.append(this->mLastClickedColumn);
+//
+//			emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+//		}
+//	}
+//	catch (itk::ExceptionObject& err)
+//	{
+//		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+//				      .arg(err.GetDescription());
+//
+//		NMErr(__ctxtabview, << "Calculation failed!"
+//				<< errmsg.toStdString());
+//
+//		QMessageBox::critical(this, "Table Calculation Error", errmsg);
+//	}
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -924,34 +924,34 @@ void NMTableView::colStats()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	vtkAbstractArray* aa = tab->GetColumnByName(this->mLastClickedColumn.toStdString().c_str());
-	if (!aa->IsNumeric())
-	{
-		NMErr(__ctxtabview, << "Select a numeric column for statistics calculation!");
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
-	if (this->mlNumSelRecs)
-		calc->setRowFilterModeOn("nm_sel");
-	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
-
-	if (stats.size() < 4)
-		return;
-
-	// min, max, mean, sum
-	QString res = QString(tr("min:   %1\nmax:  %2\nmean:  %3\nsum:  %4")).
-			arg(stats[0], 0, 'f', 4).
-			arg(stats[1], 0, 'f', 4).
-			arg(stats[2], 0, 'f', 4).
-			arg(stats[3], 0, 'f', 4);
-
-	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
-
-	QMessageBox::information(this, title, res);
-
+//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+//	vtkAbstractArray* aa = tab->GetColumnByName(this->mLastClickedColumn.toStdString().c_str());
+//	if (!aa->IsNumeric())
+//	{
+//		NMErr(__ctxtabview, << "Select a numeric column for statistics calculation!");
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
+//	if (this->mlNumSelRecs)
+//		calc->setRowFilterModeOn("nm_sel");
+//	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
+//
+//	if (stats.size() < 4)
+//		return;
+//
+//	// min, max, mean, sum
+//	QString res = QString(tr("min:   %1\nmax:  %2\nmean:  %3\nsum:  %4")).
+//			arg(stats[0], 0, 'f', 4).
+//			arg(stats[1], 0, 'f', 4).
+//			arg(stats[2], 0, 'f', 4).
+//			arg(stats[3], 0, 'f', 4);
+//
+//	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
+//
+//	QMessageBox::information(this, title, res);
+//
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -1428,87 +1428,87 @@ void NMTableView::selectionQuery(void)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	bool bOk = false;
-	QString query = QInputDialog::getText(this, tr("Selection Query"),
-	                                          tr("Where Clause"), QLineEdit::Normal,
-	                                          tr(""), &bOk);
-	if (!bOk || query.isEmpty())
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
-	selector->setFunction(query);
-	selector->setSelectionModeOn("nm_sel");//, this);
-
-	try
-	{
-		if (!selector->calculate())
-		{
-			QMessageBox::critical(this,
-					"Selection Query Failed",
-					"Error parsing the query!");
-
-			NMErr(__ctxtabview, << "Selection Query failed!");
-			NMDebugCtx(__ctxtabview, << "done!");
-			return;
-		}
-	}
-	catch (itk::ExceptionObject& err)
-	{
-		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-				      .arg(err.GetDescription());
-		NMErr(__ctxtabview, << "Calculation failed!"
-				<< errmsg.toStdString());
-		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	this->updateSelection();
-	emit selectionChanged();
+//	bool bOk = false;
+//	QString query = QInputDialog::getText(this, tr("Selection Query"),
+//	                                          tr("Where Clause"), QLineEdit::Normal,
+//	                                          tr(""), &bOk);
+//	if (!bOk || query.isEmpty())
+//	{
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+//	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
+//	selector->setFunction(query);
+//	selector->setSelectionModeOn("nm_sel");//, this);
+//
+//	try
+//	{
+//		if (!selector->calculate())
+//		{
+//			QMessageBox::critical(this,
+//					"Selection Query Failed",
+//					"Error parsing the query!");
+//
+//			NMErr(__ctxtabview, << "Selection Query failed!");
+//			NMDebugCtx(__ctxtabview, << "done!");
+//			return;
+//		}
+//	}
+//	catch (itk::ExceptionObject& err)
+//	{
+//		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+//				      .arg(err.GetDescription());
+//		NMErr(__ctxtabview, << "Calculation failed!"
+//				<< errmsg.toStdString());
+//		QMessageBox::critical(this, "Table Calculation Error", errmsg);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	this->updateSelection();
+//	emit selectionChanged();
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void NMTableView::clearSelection()
 {
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
 
-	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
-	selector->setResultColumn("nm_sel");
-	selector->setFunction("0");
-
-	try
-	{
-		if (!selector->calculate())
-		{
-			QMessageBox::critical(this, "Selection Query Failed",
-					"Error deslecting rows!");
-			NMErr(__ctxtabview, << "Error deselecting rows!");
-			return;
-		}
-	}
-	catch (itk::ExceptionObject& err)
-	{
-		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-				      .arg(err.GetDescription());
-		NMErr(__ctxtabview, << "Calculation failed!"
-				<< errmsg.toStdString());
-		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	this->mlNumSelRecs = 0;
-	this->mTableView->clearSelection();
-	this->mTableView->update();
-	this->mSortFilter->invalidate();
-
-	this->updateSelectionAdmin();
-	emit selectionChanged();
+//	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
+//	selector->setResultColumn("nm_sel");
+//	selector->setFunction("0");
+//
+//	try
+//	{
+//		if (!selector->calculate())
+//		{
+//			QMessageBox::critical(this, "Selection Query Failed",
+//					"Error deslecting rows!");
+//			NMErr(__ctxtabview, << "Error deselecting rows!");
+//			return;
+//		}
+//	}
+//	catch (itk::ExceptionObject& err)
+//	{
+//		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+//				      .arg(err.GetDescription());
+//		NMErr(__ctxtabview, << "Calculation failed!"
+//				<< errmsg.toStdString());
+//		QMessageBox::critical(this, "Table Calculation Error", errmsg);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	this->mlNumSelRecs = 0;
+//	this->mTableView->clearSelection();
+//	this->mTableView->update();
+//	this->mSortFilter->invalidate();
+//
+//	this->updateSelectionAdmin();
+//	emit selectionChanged();
 }
 
 void NMTableView::selectRow(int row)

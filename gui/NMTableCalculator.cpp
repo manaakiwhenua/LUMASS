@@ -60,7 +60,8 @@ void NMTableCalculator::initCalculator()
 	this->mFunction.clear();
 	this->mResultColumn.clear();
 	this->mFuncFields.clear();
-	this->mInputSelection = 0;
+	//this->mInputSelection = 0;
+	this->mInputSelection.clear();
 	this->mOutputSelection = 0;
 	//this->mSelection.clear();
 	this->mResultColumnType = QVariant::String;
@@ -784,7 +785,6 @@ NMTableCalculator::calcColumnStats(const QString& column)
 
 	//vtkDataArray* da = vtkDataArray::SafeDownCast(this->mTab->GetColumn(colidx));
 	int nrows = this->mModel->rowCount(QModelIndex());
-			//da->GetNumberOfTuples();
 
 	// get the first valid value
 	bool bok;
@@ -866,100 +866,161 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 	// return value
 	QStringList normalisedCols;
 
-//	//check, whether all given fields are indeed in the data base
-//	//vtkTable* tab = this->mTab;
-//
-//	//QList<vtkDataArray*> fieldVec;
-//	QList<int> fieldVec;
-//	for (int f=0; f < columnNames.count(); ++f)
-//	{
-//		QString name = columnNames.at(f);
-//		int colidx = this->getColumnIndex(name);
-//		if (colidx >= 0 && this->isNumericColumn(colidx))
-//		{
-//			//vtkDataArray* da = vtkDataArray::SafeDownCast(
-//			//		tab->GetColumn(colidx));
-//			fieldVec.push_back(colidx);
-//		}
-//		else
-//		{
-//			NMErr(ctxTabCalc, << "Could't find any numeric array '"
-//					<< name.toStdString() << "'!" << endl);
-//			NMDebugCtx(ctxTabCalc, << "done!");
-//			return normalisedCols;
-//		}
-//	}
-//
-//	// getting the maximum and minimum of the range of fields
-//	double min;
-//	double max;
-//
-//	for (int ar=0; ar < fieldVec.size(); ++ar)
-//	{
-//		std::vector<double> stats = this->calcColumnStats(columnNames.at(ar));
-//		if (stats.size() == 0)
-//			return normalisedCols;
-//
-//		if (ar == 0)
-//		{
-//			min = stats[0];
-//			max = stats[1];
-//		}
-//		min = stats[0] < min ? stats[0] : min;
-//		max = stats[1] > max ? stats[1] : max;
-//	}
-//
-//	NMDebugAI(<< "min: " << min << " | max: " << max << endl);
-//
-//	// now create a new 'normalised' array for each of the input arrays
-//	int nrows = fieldVec.at(0)->GetNumberOfTuples();
-//	for (int ar=0; ar < fieldVec.size(); ++ar)
-//	{
-//		vtkSmartPointer<vtkDoubleArray> na = vtkSmartPointer<vtkDoubleArray>::New();
-//		na->SetNumberOfComponents(1);
-//		na->Allocate(nrows);
-//		QString newName = QString(tr("%1_N")).arg(fieldVec.at(ar)->GetName());
-//		na->SetName(newName.toStdString().c_str());
-//
-//		vtkDataArray* da = fieldVec.at(ar);
-//		double val;
-//		// calc normalised values
-//		if (bCostCriterion)
-//		{
-//			for (int r=0; r < nrows; ++r)
-//			{
-//				if (this->mbRowFilter)
-//				{
-//					if (this->mFilterArray->GetTuple1(r) == 0)
-//					{
-//						na->InsertNextTuple1(-1);
-//						continue;
-//					}
-//				}
-//				val = da->GetTuple1(r);
-//				na->InsertNextTuple1((max - val) / (max-min));
-//			}
-//		}
-//		else // must be benefit now
-//		{
-//			for (int r=0; r < nrows; ++r)
-//			{
-//				if (this->mbRowFilter)
-//				{
-//					if (this->mFilterArray->GetTuple1(r) == 0)
-//					{
-//						na->InsertNextTuple1(-1);
-//						continue;
-//					}
-//				}
-//				val = da->GetTuple1(r);
-//				na->InsertNextTuple1((val - min) / (max-min));
-//			}
-//		}
-//
-//		tab->AddColumn(na);
-//		normalisedCols.append(newName);
-//	}
-//
+	QList<int> fieldVec;
+	for (int f=0; f < columnNames.count(); ++f)
+	{
+		QString name = columnNames.at(f);
+		int colidx = this->getColumnIndex(name);
+		if (colidx >= 0 && this->isNumericColumn(colidx))
+		{
+			fieldVec.push_back(colidx);
+		}
+		else
+		{
+			NMErr(ctxTabCalc, << "Could't find any numeric array '"
+					<< name.toStdString() << "'!" << endl);
+			NMDebugCtx(ctxTabCalc, << "done!");
+			return normalisedCols;
+		}
+	}
+
+	// getting the maximum and minimum of the range of fields
+	double min = std::numeric_limits<double>::max();
+	double max = -std::numeric_limits<double>::max();;
+
+	for (int field=0; field < fieldVec.size(); ++field)
+	{
+		std::vector<double> stats = this->calcColumnStats(columnNames.at(field));
+		if (stats.size() == 0)
+			return normalisedCols;
+
+		min = stats[0] < min ? stats[0] : min;
+		max = stats[1] > max ? stats[1] : max;
+	}
+
+	NMDebugAI(<< "min: " << min << " | max: " << max << endl);
+
+	// now create a new 'normalised' "<field name>_N" array for each of the input arrays
+
+	// type variable to denote the column type
+	bool bSomethingWrong = false;
+	QVariant::Type ftype = QVariant::Double;
+	QList<int> nfIdx; // the new field indices
+	int nfields = this->mModel->columnCount(QModelIndex());
+	for (int field=0; field < fieldVec.size(); ++field)
+	{
+		QString name = QString("%1_N").arg(columnNames.at(field));
+
+		QModelIndex indexType = this->mModel->index(0, 0, QModelIndex());
+		indexType.internalPointer() = (void*)(&ftype);
+
+		if (!this->mModel->insertColumns(0, 0, indexType))
+		{
+			NMErr(ctxTabCalc, << "Failed to add a column to the model!");
+			bSomethingWrong = true;
+			break;
+		}
+
+		// give the column a name
+		if (!this->mModel->setHeaderData(nfields+field, Qt::Horizontal, QVariant(name), Qt::EditRole))
+		{
+			NMErr(ctxTabCalc, << "Failed to set name for column '" << name.toStdString() << "'!");
+			bSomethingWrong = true;
+			break;
+		}
+
+		// add new column index to list
+		if (!bSomethingWrong)
+		{
+			nfIdx.push_back(nfields + field);
+			normalisedCols.push_back(name);
+		}
+	}
+
+	// in case bSomethingWrong, we delete the successful added columns ("roll back")
+	if (bSomethingWrong)
+	{
+		foreach(const int& idx, nfIdx)
+		{
+			this->mModel->removeColumns(idx, 0, QModelIndex());
+		}
+
+		normalisedCols.clear();
+		NMDebugCtx(ctxTabCalc, << "done!");
+		return normalisedCols;
+	}
+
+	// SO, HERE IS WHAT WE ACTUALLY DO
+	// val = getValue(row, column)
+	// cost formula:    val = (max - val) / (max-min)
+	// benefit formula: val = (val - min) / (max-min)
+	double diff = max-min;
+
+	long nrows = this->mModel->rowCount(QModelIndex());
+	int srcIdx, tarIdx;
+	bool bok;
+	for(int field=0; field < fieldVec.size(); ++field)
+	{
+		srcIdx = fieldVec.at(field);
+		tarIdx = nfIdx.at(field);
+
+		// get the selected model indices to not have to go through the whole table
+		if (this->mbRowFilter && this->mInputSelection.size() > 0)
+		{
+			//QModelIndexList indices = this->mInputSelection->indexes();
+			foreach(const QModelIndex& idx, this->mInputSelection)
+			{
+				// TODO: we need to check, whether actually there's only one index for each row!!!
+				QModelIndex misrc = this->mModel->index(idx.row(), srcIdx, QModelIndex());
+				QModelIndex mitar = this->mModel->index(idx.row(), tarIdx, QModelIndex());
+
+				double val = this->mModel->data(misrc, Qt::DisplayRole).toDouble(&bok);
+				if (!bok)
+				{
+					NMErr(ctxTabCalc, << "Failed getting input value for '"
+						<< this->mModel->headerData(srcIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
+						<< "', row " << idx.row() << "!");
+					continue;
+				}
+
+				double normval = (max - val) / diff;
+
+				if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
+				{
+					NMErr(ctxTabCalc, << "Failed setting normalised value for '"
+						<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
+						<< "', row " << idx.row() << "!");
+					continue;
+				}
+			}
+		}
+		else // we iterate over the whole table
+		{
+			for (int row=0; row < nrows; ++row)
+			{
+				QModelIndex misrc = this->mModel->index(row, srcIdx, QModelIndex());
+				QModelIndex mitar = this->mModel->index(row, tarIdx, QModelIndex());
+
+				double val = this->mModel->data(misrc, Qt::DisplayRole).toDouble(&bok);
+				if (!bok)
+				{
+					NMErr(ctxTabCalc, << "Failed getting input value for '"
+						<< this->mModel->headerData(srcIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
+						<< "', row " << row << "!");
+					continue;
+				}
+
+				double normval = (max - val) / diff;
+
+				if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
+				{
+					NMErr(ctxTabCalc, << "Failed setting normalised value for '"
+						<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
+						<< "', row " << row << "!");
+					continue;
+				}
+			}
+		}
+	}
 	return normalisedCols;
 }

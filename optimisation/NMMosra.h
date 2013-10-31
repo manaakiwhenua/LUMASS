@@ -58,7 +58,7 @@
 #include "vtkTable.h"
 #include "vtkDataSet.h"
 #include "vtkDataSetAttributes.h"
-#include "vtkQtTableModelAdapter.h"
+//#include "vtkQtTableModelAdapter.h"
 
 class NMMosra : public QObject
 {

@@ -81,9 +81,15 @@ public:
 	void SetValue(int col, int row, double value);
 	void SetValue(int col, int row, long value);
 	void SetValue(int col, int row, std::string value);
+
+	void SetColumnName(int col, const std::string& name);
+
 	double GetDblValue(int col, int row);
 	long GetIntValue(int col, int row);
 	std::string GetStrValue(int col, int row);
+
+	bool RemoveColumn(int col);
+	bool RemoveColumn(const std::string& name);
 
 	// manage table meta data
 	void SetBandNumber(int iBand);

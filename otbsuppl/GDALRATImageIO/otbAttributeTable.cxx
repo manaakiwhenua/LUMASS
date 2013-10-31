@@ -390,6 +390,56 @@ AttributeTable::TableColumnType AttributeTable::GetColumnType(int idx)
 	return m_vTypes.at(idx);
 }
 
+void
+AttributeTable::SetColumnName(int col, const std::string& name)
+{
+	if (	col < 0
+		||  col > this->m_vNames.size()-1
+		||  name.empty()
+	   )
+		return;
+
+	this->m_vNames[col] = name;
+}
+
+bool
+AttributeTable::RemoveColumn(int col)
+{
+	if (col < 0 || col > this->m_vNames.size()-1)
+		return false;
+
+	switch(this->m_vTypes[col])
+	{
+	case ATTYPE_INT:
+		this->m_mIntCols.erase(col);
+		break;
+	case ATTYPE_DOUBLE:
+		this->m_mDoubleCols.erase(col);
+		break;
+	case ATTYPE_STRING:
+		this->m_mStringCols.erase(col);
+		break;
+	default:
+		return false;
+		break;
+	}
+
+	// now remove any traces of the column in the admin arrays
+	this->m_vNames.erase(this->m_vNames.begin() + col);
+	this->m_vTypes.erase(this->m_vTypes.begin() + col);
+
+	return true;
+}
+
+bool
+AttributeTable::RemoveColumn(const std::string& name)
+{
+	int idx = this->ColumnExists(name);
+	if (idx < 0)
+		return false;
+
+	return this->RemoveColumn(idx);
+}
 
 void AttributeTable::SetValue(int col, int row, double value)
 {

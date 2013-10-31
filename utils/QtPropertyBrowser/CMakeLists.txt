@@ -5,7 +5,7 @@ PROJECT(QtPropertyBrowser)
 #-----------------------------------------------------------------------------
 # Output directories.
 #
-SET(output_dir ${ahdev_BINARY_DIR}/lib)
+SET(output_dir ${lumass_BINARY_DIR}/lib)
 #SET(output_dir ${QtPropertyBrowser_BINARY_DIR}/bin)
 #FOREACH(type LIBRARY RUNTIME ARCHIVE)
 #  IF(NOT DEFINED CMAKE_${type}_OUTPUT_DIRECTORY)

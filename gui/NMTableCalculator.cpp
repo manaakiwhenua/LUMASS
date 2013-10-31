@@ -25,6 +25,8 @@
 #include "NMTableCalculator.h"
 #include "nmlog.h"
 
+#include <limits>
+
 #include <QString>
 #include <QStack>
 #include <QModelIndex>
@@ -35,14 +37,8 @@
 #include "itkExceptionObject.h"
 
 
-NMTableCalculator::NMTableCalculator(QObject* parent)
-	: QObject(parent), mModel(0)
-{
-	this->initCalculator();
-}
-
-//NMTableCalculator::NMTableCalculator(vtkTable* tab, QObject* parent)
-//	: QObject(parent), mTab(tab)
+//NMTableCalculator::NMTableCalculator(QObject* parent)
+//	: QObject(parent), mModel(0)
 //{
 //	this->initCalculator();
 //}
@@ -60,25 +56,20 @@ void NMTableCalculator::initCalculator()
 	this->mFunction.clear();
 	this->mResultColumn.clear();
 	this->mFuncFields.clear();
-	//this->mInputSelection = 0;
-	this->mInputSelection.clear();
-	this->mOutputSelection = 0;
-	//this->mSelection.clear();
 	this->mResultColumnType = QVariant::String;
 	this->mResultColumnIndex = -1;
-	this->mSelectionMode = false;
+	this->mSelectionModeOn = false;
 	this->mbRowFilter = false;
-	//this->mFilterArray = 0;
-	this->mNumSelRecs = 0;
+	this->mInputSelection.clear();
+	this->mOutputSelection.clear();
 	this->clearLists();
 }
 
 NMTableCalculator::~NMTableCalculator()
 {
-
 }
 
-const QItemSelection*
+const QModelIndexList&
 NMTableCalculator::getSelection(void)
 {
 	return this->mOutputSelection;
@@ -125,38 +116,21 @@ int NMTableCalculator::getColumnIndex(const QString& name)
 	return colidx;
 }
 
-bool
-NMTableCalculator::setSelectionModeOn(QItemSelection* outputSelection)
+void
+NMTableCalculator::setSelectionMode(bool mode)
 {
-	//NMDebugCtx(ctxTabCalc, << "...");
-	//if (!this->setResultColumn(selColumn))// || tabView == 0)
-	//{
-	//	NMErr(ctxTabCalc, << "Invalid selection column and/or NMTableView!");
-	//	return false;
-	//}
-
-	if (outputSelection == 0)
-	{
-		NMErr(ctxTabCalc, << "Please provide pre-allocated QItemSelection!");
-		return false;
-	}
-
-	this->mOutputSelection = outputSelection;
-	this->mSelectionMode = true;
-
-	NMDebugAI(<< "selection mode on? " << this->mSelectionMode << endl);
-
-	//NMDebugCtx(ctxTabCalc, << "done!");
-	return true;
+	this->mSelectionModeOn = mode;
 }
 
 bool
-NMTableCalculator::setRowFilterModeOn(QItemSelection* inputSelection)
+NMTableCalculator::setRowFilter(const QModelIndexList& inputSelection)
 {
 
-	if (inputSelection == 0)
+	if (inputSelection.size() == 0)
 	{
-		NMErr(ctxTabCalc, << "Please provided preallocated Item Selection!");
+		NMErr(ctxTabCalc, << "Selection is empty! Row filter is turned off!");
+		this->mInputSelection.clear();
+		this->mbRowFilter = false;
 		return false;
 	}
 
@@ -504,263 +478,267 @@ void NMTableCalculator::clearLists()
 	this->mLstNMStrOperator.clear();
 }
 
-void NMTableCalculator::doNumericCalcSelection()
+void
+NMTableCalculator::doNumericCalcSelection()
 {
 	NMDebugCtx(ctxTabCalc, << "...");
-	// get the res array
-	//vtkDataArray* resAr = vtkDataArray::SafeDownCast(
-	//		this->mTab->GetColumn(this->mResultColumnIndex));
 
-	if (this->mSelectionMode)
-		this->mNumSelRecs = 0;
+	if (this->mSelectionModeOn)
+		this->mOutputSelection.clear();
 
+	if (this->mbRowFilter)
+	{
+		foreach(const QModelIndex& idx, this->mInputSelection)
+		{
+			this->processNumericCalcSelection(idx.row());
+		}
+	}
+	else
+	{
+		for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
+		{
+			this->processNumericCalcSelection(row);
+		}
+	}
+}
+
+void
+NMTableCalculator::processNumericCalcSelection(int row)
+{
 	double res;
 	QString newFunc;
 	QString strFieldVal;
 	int strExpRes;
-	for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
+
+	// feed the parser with numeric variables and values
+	bool bok;
+	int fcnt=0;
+	foreach(const QString &colName, this->mFuncVars)
 	{
-		if (mbRowFilter)
+		//this->mParser->SetScalarVariableValue(
+		//		this->mFuncVars.at(fcnt).toStdString().c_str(),
+		//		this->mFuncFields.at(fcnt)->GetTuple1(row));
+
+		QModelIndex fieldidx = this->mModel->index(row, mFuncFields.at(fcnt), QModelIndex());
+		double value = this->mModel->data(fieldidx, Qt::DisplayRole).toDouble(&bok);
+		if (bok)
 		{
-			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
-			if (!this->mInputSelection->contains(rowidx))
-				continue;
-		}
-
-		// feed the parser with numeric variables and values
-		bool bok;
-		int fcnt=0;
-		foreach(const QString &colName, this->mFuncVars)
-		{
-			//this->mParser->SetScalarVariableValue(
-			//		this->mFuncVars.at(fcnt).toStdString().c_str(),
-			//		this->mFuncFields.at(fcnt)->GetTuple1(row));
-
-			QModelIndex fieldidx = this->mModel->index(row, mFuncFields.at(fcnt), QModelIndex());
-			double value = this->mModel->data(fieldidx, Qt::DisplayRole).toDouble(&bok);
-			if (bok)
-			{
-				this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(), &value);
-			}
-			else
-			{
-				NMErr(ctxTabCalc, << "Encountered invalid numeric value in column "
-						<< mFuncFields.at(fcnt) << " at row " << row
-						<< "!");
-				break;
-			}
-
-			if (row==0) {NMDebugAI(<< "setting numeric variable: "
-					<< this->mFuncVars.at(fcnt).toStdString() << endl);}
-			++fcnt;
-		}
-		if (!bok)
-		{
-			NMErr(ctxTabCalc, << "Skipping rest of invalid calculation in row " << row << "!");
-			continue;
-		}
-
-
-		// evaluate string expressions and replace them with numeric results (0 or 1)
-		// in function
-		newFunc = this->mFunction;
-		for (int t=0; t < this->mslStrTerms.size(); ++t)
-		{
-			if (row==0 && t==0) {NMDebugAI(<< "processing string expressions ..." << endl);}
-
-			QString origTerm = this->mslStrTerms.at(t);
-			if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
-
-			//vtkStringArray* leftField = this->mLstLstStrFields.at(t).at(0);
-			//vtkStringArray* rightField = this->mLstLstStrFields.at(t).at(1);
-			int idxleft = this->mLstLstStrFields.at(t).at(0);
-			int idxright = this->mLstLstStrFields.at(t).at(1);
-			QString left;
-			QString right;
-			if (idxleft >= 0)
-			{
-				QModelIndex fidx = this->mModel->index(row, idxleft, QModelIndex());
-				left = this->mModel->data(fidx, Qt::DisplayRole).toString();
-			}
-			else
-			{
-				left = this->mLstStrLeftRight.at(t).at(0);
-			}
-
-			if (idxright >= 0)
-			{
-				QModelIndex fidx = this->mModel->index(row, idxright, QModelIndex());
-				right = this->mModel->data(fidx, Qt::DisplayRole).toString();
-			}
-			else
-			{
-				right = this->mLstStrLeftRight.at(t).at(1);
-			}
-
-			// debug
-			if (row == 0)
-			{
-				NMDebugAI(<< "... evaluating: "
-						<< left.toStdString() << " "
-						<< mLstNMStrOperator.at(t) << " "
-						<< right.toStdString() << endl);
-			}
-
-			// eval expression
-			switch (this->mLstNMStrOperator.at(t))
-			{
-			case NM_STR_GT:
-				strExpRes = QString::localeAwareCompare(left, right) > 0 ? 1 : 0;
-				break;
-			case NM_STR_GTEQ:
-				strExpRes = (QString::localeAwareCompare(left, right) > 0) ||
-							(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
-				break;
-			case NM_STR_LT:
-				strExpRes = QString::localeAwareCompare(left, right) < 0 ? 1 : 0;
-				break;
-			case NM_STR_LTEQ:
-				strExpRes = (QString::localeAwareCompare(left, right) < 0) ||
-							(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
-				break;
-			case NM_STR_EQ:
-				strExpRes = QString::localeAwareCompare(left, right) == 0 ? 1 : 0;
-				break;
-			case NM_STR_NEQ:
-				strExpRes = QString::localeAwareCompare(left, right) != 0 ? 1 : 0;
-				break;
-			case NM_STR_IN:
-				{
-					QStringList rl = right.split(" ");
-					strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 1 : 0;
-				}
-				break;
-			case NM_STR_NOTIN:
-				{
-					QStringList rl = right.split(" ");
-					strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 0 : 1;
-				}
-				break;
-			case NM_STR_CONTAINS:
-				strExpRes = left.contains(right, Qt::CaseInsensitive) ? 1 : 0;
-				break;
-			case NM_STR_STARTSWITH:
-				strExpRes = left.startsWith(right, Qt::CaseInsensitive) ? 1 : 0;
-				break;
-			case NM_STR_ENDSWITH:
-				strExpRes = left.endsWith(right, Qt::CaseInsensitive) ? 1 : 0;
-				break;
-			}
-
-			newFunc = newFunc.replace(origTerm, QString("%1").arg(strExpRes),
-					Qt::CaseInsensitive);
-		}
-
-		double res;
-		try
-		{
-			this->mParser->SetExpr(newFunc.toStdString());
-			res = this->mParser->Eval();
-		}
-		catch(itk::ExceptionObject& err)
-		{
-			//NMDebugAI(<< res << "oops - functions parser threw an exception!" << endl);
-			//QMessageBox msgBox;
-			//msgBox.setText(tr("Invalid Where Clause!\nPlease check syntax and try again."));
-			//msgBox.setIcon(QMessageBox::Critical);
-			//msgBox.exec();
-
-			NMErr(ctxTabCalc, << "Invalid expression detected!");
-			NMDebugCtx(ctxTabCalc, << "done!");
-
-			throw err;
-			return;
-		}
-
-		if (this->mSelectionMode)
-		{
-			QModelIndex left = this->mModel->index(row, 0, QModelIndex());
-			QModelIndex right = this->mModel->index(row,
-					this->mModel->columnCount(QModelIndex())-1, QModelIndex());
-			QItemSelection rowsel(left, right);
-			if (res != 0)
-			{
-				this->mOutputSelection->merge(rowsel, QItemSelectionModel::Select);
-				//resAr->SetTuple1(row, 1);
-				//this->mTabView->selectRow(row);
-				++this->mNumSelRecs;
-			}
-			else
-			{
-				this->mOutputSelection->merge(rowsel, QItemSelectionModel::Deselect);
-				//resAr->SetTuple1(row, 0);
-				//this->mTabView->deselectRow(row);
-			}
+			this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(), &value);
 		}
 		else
 		{
-			QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
-			this->mModel->setData(resIdx, QVariant(res));
-			//resAr->SetTuple1(row, res);
+			NMErr(ctxTabCalc, << "Encountered invalid numeric value in column "
+					<< mFuncFields.at(fcnt) << " at row " << row
+					<< "!");
+			break;
+		}
+
+		if (row==0) {NMDebugAI(<< "setting numeric variable: "
+				<< this->mFuncVars.at(fcnt).toStdString() << endl);}
+		++fcnt;
+	}
+	if (!bok)
+	{
+		NMErr(ctxTabCalc, << "Skipping rest of invalid calculation in row " << row << "!");
+		return;
+	}
+
+	// evaluate string expressions and replace them with numeric results (0 or 1)
+	// in function
+	newFunc = this->mFunction;
+	for (int t=0; t < this->mslStrTerms.size(); ++t)
+	{
+		if (row==0 && t==0) {NMDebugAI(<< "processing string expressions ..." << endl);}
+
+		QString origTerm = this->mslStrTerms.at(t);
+		if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
+
+		//vtkStringArray* leftField = this->mLstLstStrFields.at(t).at(0);
+		//vtkStringArray* rightField = this->mLstLstStrFields.at(t).at(1);
+		int idxleft = this->mLstLstStrFields.at(t).at(0);
+		int idxright = this->mLstLstStrFields.at(t).at(1);
+		QString left;
+		QString right;
+		if (idxleft >= 0)
+		{
+			QModelIndex fidx = this->mModel->index(row, idxleft, QModelIndex());
+			left = this->mModel->data(fidx, Qt::DisplayRole).toString();
+		}
+		else
+		{
+			left = this->mLstStrLeftRight.at(t).at(0);
+		}
+
+		if (idxright >= 0)
+		{
+			QModelIndex fidx = this->mModel->index(row, idxright, QModelIndex());
+			right = this->mModel->data(fidx, Qt::DisplayRole).toString();
+		}
+		else
+		{
+			right = this->mLstStrLeftRight.at(t).at(1);
+		}
+
+		// debug
+		if (row == 0)
+		{
+			NMDebugAI(<< "... evaluating: "
+					<< left.toStdString() << " "
+					<< mLstNMStrOperator.at(t) << " "
+					<< right.toStdString() << endl);
+		}
+
+		// eval expression
+		switch (this->mLstNMStrOperator.at(t))
+		{
+		case NM_STR_GT:
+			strExpRes = QString::localeAwareCompare(left, right) > 0 ? 1 : 0;
+			break;
+		case NM_STR_GTEQ:
+			strExpRes = (QString::localeAwareCompare(left, right) > 0) ||
+						(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
+			break;
+		case NM_STR_LT:
+			strExpRes = QString::localeAwareCompare(left, right) < 0 ? 1 : 0;
+			break;
+		case NM_STR_LTEQ:
+			strExpRes = (QString::localeAwareCompare(left, right) < 0) ||
+						(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
+			break;
+		case NM_STR_EQ:
+			strExpRes = QString::localeAwareCompare(left, right) == 0 ? 1 : 0;
+			break;
+		case NM_STR_NEQ:
+			strExpRes = QString::localeAwareCompare(left, right) != 0 ? 1 : 0;
+			break;
+		case NM_STR_IN:
+			{
+				QStringList rl = right.split(" ");
+				strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 1 : 0;
+			}
+			break;
+		case NM_STR_NOTIN:
+			{
+				QStringList rl = right.split(" ");
+				strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 0 : 1;
+			}
+			break;
+		case NM_STR_CONTAINS:
+			strExpRes = left.contains(right, Qt::CaseInsensitive) ? 1 : 0;
+			break;
+		case NM_STR_STARTSWITH:
+			strExpRes = left.startsWith(right, Qt::CaseInsensitive) ? 1 : 0;
+			break;
+		case NM_STR_ENDSWITH:
+			strExpRes = left.endsWith(right, Qt::CaseInsensitive) ? 1 : 0;
+			break;
+		}
+
+		newFunc = newFunc.replace(origTerm, QString("%1").arg(strExpRes),
+				Qt::CaseInsensitive);
+	}
+
+	//double res;
+	try
+	{
+		this->mParser->SetExpr(newFunc.toStdString());
+		res = this->mParser->Eval();
+	}
+	catch(itk::ExceptionObject& err)
+	{
+		//NMDebugAI(<< res << "oops - functions parser threw an exception!" << endl);
+		//QMessageBox msgBox;
+		//msgBox.setText(tr("Invalid Where Clause!\nPlease check syntax and try again."));
+		//msgBox.setIcon(QMessageBox::Critical);
+		//msgBox.exec();
+
+		NMErr(ctxTabCalc, << "Invalid expression detected!");
+		NMDebugCtx(ctxTabCalc, << "done!");
+
+		throw err;
+		return;
+	}
+
+	QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
+	if (this->mSelectionModeOn)
+	{
+		if (res != 0)
+		{
+			this->mOutputSelection.push_back(resIdx);
+			//resAr->SetTuple1(row, 1);
+			//this->mTabView->selectRow(row);
 		}
 	}
+	else
+	{
+		this->mModel->setData(resIdx, QVariant(res));
+		//resAr->SetTuple1(row, res);
+	}
+
 	NMDebugCtx(ctxTabCalc, << "done!");
 }
 
-void NMTableCalculator::doStringCalculation()
+void
+NMTableCalculator::doStringCalculation()
 {
-	// get the res array
-	//vtkStringArray* resAr = vtkStringArray::SafeDownCast(
-	//		this->mTab->GetColumn(this->mResultColumnIndex));
+	if (this->mbRowFilter)
+	{
+		foreach(const QModelIndex& idx, this->mInputSelection)
+		{
+			this->processStringCalc(idx.row());
+		}
+	}
+	else
+	{
+		for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
+		{
+			this->processStringCalc(row);
+		}
+	}
+}
 
+void
+NMTableCalculator::processStringCalc(int row)
+{
 	QString res;
 	QString value;
-	for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
+
+	// replace numeric columns with string version of the actual value
+	res = this->mFunction;
+	int cnt = 0;
+	foreach(const QString& fieldName, this->mFuncVars)
 	{
-		if (mbRowFilter)
-		{
-			QModelIndex rowidx = this->mModel->index(row, 0, QModelIndex());
-			if (!this->mInputSelection->contains(rowidx))
-				continue;
-		}
+		// get value from the model
+		QModelIndex fidx = this->mModel->index(row, this->mFuncFields.at(cnt), QModelIndex());
+		value = this->mModel->data(fidx, Qt::DisplayRole).toString();
 
-		// replace numeric columns with string version of the actual value
-		res = this->mFunction;
-		int cnt = 0;
-		foreach(const QString& fieldName, this->mFuncVars)
-		{
-			// get value from the model
-			QModelIndex fidx = this->mModel->index(row, this->mFuncFields.at(cnt), QModelIndex());
-			value = this->mModel->data(fidx, Qt::DisplayRole).toString();
+		// we make sure, we've got a proper field name here and
+		// don't just replace the middle of a fieldname
+		QString rx = QString("\\b%1\\b").arg(fieldName);
+		res = res.replace(QRegExp(rx), value);
 
-			// we make sure, we've got a proper field name here and
-			// don't just replace the middle of a fieldname
-			QString rx = QString("\\b%1\\b").arg(fieldName);
-			res = res.replace(QRegExp(rx), value);
-
-			++cnt;
-		}
-
-		int termcnt=0;
-		int fieldcnt;
-		foreach(const QString& st, this->mslStrTerms)
-		{
-			// get value from the model
-			QModelIndex fidx = this->mModel->index(row,
-					this->mLstLstStrFields.at(termcnt).at(0), QModelIndex());
-			value = this->mModel->data(fidx, Qt::DisplayRole).toString();
-
-			QString rx = QString("\\b%1\\b").arg(this->mLstStrLeftRight.at(termcnt).at(0));
-			//value = QString(this->mLstLstStrFields.at(termcnt).at(0)->GetValue(row).c_str());
-			res = res.replace(QRegExp(rx), value);
-			++termcnt;
-		}
-
-		// write result into the result column
-		QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
-		this->mModel->setData(resIdx, QVariant(res));
-		//resAr->SetValue(row, res.toStdString());
+		++cnt;
 	}
+
+	int termcnt=0;
+	int fieldcnt;
+	foreach(const QString& st, this->mslStrTerms)
+	{
+		// get value from the model
+		QModelIndex fidx = this->mModel->index(row,
+				this->mLstLstStrFields.at(termcnt).at(0), QModelIndex());
+		value = this->mModel->data(fidx, Qt::DisplayRole).toString();
+
+		QString rx = QString("\\b%1\\b").arg(this->mLstStrLeftRight.at(termcnt).at(0));
+		//value = QString(this->mLstLstStrFields.at(termcnt).at(0)->GetValue(row).c_str());
+		res = res.replace(QRegExp(rx), value);
+		++termcnt;
+	}
+
+	// write result into the result column
+	QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
+	this->mModel->setData(resIdx, QVariant(res));
+	//resAr->SetValue(row, res.toStdString());
 }
 
 std::vector<double>
@@ -784,37 +762,39 @@ NMTableCalculator::calcColumnStats(const QString& column)
 	}
 
 	//vtkDataArray* da = vtkDataArray::SafeDownCast(this->mTab->GetColumn(colidx));
-	int nrows = this->mModel->rowCount(QModelIndex());
+	int nrows;
+	if (this->mbRowFilter)
+		nrows = this->mInputSelection.size();
+	else
+		nrows = this->mModel->rowCount(QModelIndex());
 
 	// get the first valid value
 	bool bok;
 	double val;
 	int r = 0;
+	int row;
 	bool bGotInitial = false;
 	while (!bGotInitial && r < nrows)
 	{
 		if (this->mbRowFilter)
 		{
-			QModelIndex rowidx = this->mModel->index(r, 0, QModelIndex());
-			if (!this->mInputSelection->contains(rowidx))
-			//if (this->mFilterArray->GetTuple1(r) == 0)
-			{
-				r = r + 1;
-				continue;
-			}
+			row = this->mInputSelection.at(r).row();
+		}
+		else
+		{
+			row = r;
 		}
 
-		QModelIndex valIdx = this->mModel->index(r, colidx, QModelIndex());
+		QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
 		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
 		if (!bok)
 		{
 			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-					<< "': Disregarding invalid value at row " << r << "!");
+					<< "': Disregarding invalid value at row " << row << "!");
 			r = r + 1;
 			continue;
 		}
 
-		//val = da->GetTuple1(r);
 		bGotInitial = true;
 		r = r + 1;
 	}
@@ -829,14 +809,14 @@ NMTableCalculator::calcColumnStats(const QString& column)
 	{
 		if (this->mbRowFilter)
 		{
-			QModelIndex rowidx = this->mModel->index(r, 0, QModelIndex());
-			if (!this->mInputSelection->contains(rowidx))
-				continue;
+			row = this->mInputSelection.at(r).row();
+		}
+		else
+		{
+			row = r;
 		}
 
-		//val = da->GetTuple1(r);
-
-		QModelIndex valIdx = this->mModel->index(r, colidx, QModelIndex());
+		QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
 		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
 		if (bok)
 		{
@@ -847,7 +827,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 		else
 		{
 			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-					<< "': Disregarding invalid value at row " << r << "!");
+					<< "': Disregarding invalid value at row " << row << "!");
 		}
 	}
 	mean = sum / nrows;
@@ -866,6 +846,9 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 	// return value
 	QStringList normalisedCols;
 
+	// --------------------------------------------------------------------------
+	// check input fields for numeric data type
+	// --------------------------------------------------------------------------
 	QList<int> fieldVec;
 	for (int f=0; f < columnNames.count(); ++f)
 	{
@@ -884,9 +867,11 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		}
 	}
 
-	// getting the maximum and minimum of the range of fields
+	// --------------------------------------------------------------------------
+	// work out overall max and min of involved columns
+	// --------------------------------------------------------------------------
 	double min = std::numeric_limits<double>::max();
-	double max = -std::numeric_limits<double>::max();;
+	double max = -std::numeric_limits<double>::max();
 
 	for (int field=0; field < fieldVec.size(); ++field)
 	{
@@ -900,7 +885,10 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 
 	NMDebugAI(<< "min: " << min << " | max: " << max << endl);
 
-	// now create a new 'normalised' "<field name>_N" array for each of the input arrays
+
+	// --------------------------------------------------------------------------
+	// add output columns to take normalised values "<field name>_N"
+	// --------------------------------------------------------------------------
 
 	// type variable to denote the column type
 	bool bSomethingWrong = false;
@@ -912,7 +900,8 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		QString name = QString("%1_N").arg(columnNames.at(field));
 
 		QModelIndex indexType = this->mModel->index(0, 0, QModelIndex());
-		indexType.internalPointer() = (void*)(&ftype);
+		void* typepointer = indexType.internalPointer();
+		typepointer = (void*)(&ftype);
 
 		if (!this->mModel->insertColumns(0, 0, indexType))
 		{
@@ -965,7 +954,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		tarIdx = nfIdx.at(field);
 
 		// get the selected model indices to not have to go through the whole table
-		if (this->mbRowFilter && this->mInputSelection.size() > 0)
+		if (this->mbRowFilter)
 		{
 			//QModelIndexList indices = this->mInputSelection->indexes();
 			foreach(const QModelIndex& idx, this->mInputSelection)
@@ -983,7 +972,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 					continue;
 				}
 
-				double normval = (max - val) / diff;
+				double normval = bCostCriterion ? ((max - val) / diff) : ((val - min) / diff);
 
 				if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
 				{
@@ -1010,7 +999,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 					continue;
 				}
 
-				double normval = (max - val) / diff;
+				double normval = bCostCriterion ? ((max - val) / diff) : ((val - min) / diff);
 
 				if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
 				{

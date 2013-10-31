@@ -30,7 +30,7 @@
 #include <QString>
 #include <QStringList>
 #include <QAbstractItemModel>
-#include <QItemSelection>
+#include <QModelIndexList>
 
 #include "vtkType.h"
 #include "vtkSmartPointer.h"
@@ -47,7 +47,7 @@ class NMTableCalculator : public QObject
 	Q_ENUMS(NMStrOperator)
 
 public:
-	NMTableCalculator(QObject* parent=0);
+	//NMTableCalculator(QObject* parent=0);
 	//NMTableCalculator(vtkTable* tab, QObject* parent=0);
 	NMTableCalculator(QAbstractItemModel* model, QObject* parent=0);
 	virtual ~NMTableCalculator();
@@ -69,47 +69,35 @@ public:
 
 	inline NMStrOperator getStrOperator(const QString& strOp);
 
-	bool setRowFilterModeOn(const QModelIndexList& inputSelection);
+	bool setRowFilter(const QModelIndexList& inputSelection);
 	bool setResultColumn(const QString& name);
 	void setFunction(const QString& function);
-	bool setSelectionModeOn(QItemSelection* outputSelection); //, NMTableView* tabView);
-	//void setSelection(const QItemSelection& selection);
+	void setSelectionMode(bool selmode);
 
 	bool calculate(void);
 
-	long getSelectionCount() {return  this->mNumSelRecs;};
-	const QItemSelection* getSelection(void);
+	const QModelIndexList& getSelection(void);
 	std::vector<double> calcColumnStats(const QString& column);
 	QStringList normaliseColumns(const QStringList& columnNames, bool bCostCriterion);
 
 protected:
-	//vtkSmartPointer<vtkFunctionParser> mParser;
 	otb::MultiParser::Pointer mParser;
-	//vtkTable* mTab;
 	QAbstractItemModel* mModel;
-	QItemSelection* mOutputSelection;
-	//QItemSelection* mInputSelection;
+
+	bool mbRowFilter;
+	bool mSelectionModeOn;
+	QModelIndexList mOutputSelection;
 	QModelIndexList mInputSelection;
 
 	QString mFunction;
-	QStringList mFuncVars;
-	//QList<vtkDataArray*> mFuncFields;
-	QList<int> mFuncFields;
 	QString mResultColumn;
 	int mResultColumnIndex;
-
 	QVariant::Type mResultColumnType;
 
-	bool mbRowFilter;
-	//vtkDataArray* mFilterArray;
-
-	//NMTableView* mTabView;
-	bool mSelectionMode;
-	long mNumSelRecs;
+	QStringList mFuncVars;
+	QList<int> mFuncFields;
 	QStringList mslStrTerms;
 	QList<QStringList> mLstStrLeftRight;
-	//QList<QList<vtkStringArray*> > mLstLstStrFields;
-
 	// note the inner list might contain '-1' denoting
 	// non-index fields!
 	QList<QList<int> > mLstLstStrFields;
@@ -117,10 +105,14 @@ protected:
 
 	void initCalculator();
 	void clearLists();
-	virtual	bool parseFunction();
-	virtual	void doNumericCalcSelection();
-	virtual	void doStringCalculation();
+	bool parseFunction();
+	void doNumericCalcSelection();
+	void doStringCalculation();
+	void processNumericCalcSelection(int row);
+	void processStringCalc(int row);
 
+
+	QModelIndexList getInputRows();
 	int getColumnIndex(const QString& name);
 	QVariant::Type getColumnType(int colidx);
 	bool isNumericColumn(int colidx);

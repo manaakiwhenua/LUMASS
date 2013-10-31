@@ -1,6 +1,6 @@
  /****************************************************************************** 
  * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -90,8 +90,9 @@ NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
 {
 	this->mViewMode = NMTABVIEW_ATTRTABLE;
 	this->mTableView = new QTableView(this);
-	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
+	this->mVtkTableAdapter = new vtkQtEditableTableModelAdapter(this);
 	this->mModel = this->mVtkTableAdapter;
+	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
 	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 
 	this->initView();
@@ -105,6 +106,7 @@ NMTableView::NMTableView(otb::AttributeTable::Pointer tab, QWidget* parent)
 	this->mTableView = new QTableView(this);
 	this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
 	this->mModel = this->mOtbTableAdapter;
+	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
 	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 
 	this->initView();
@@ -309,7 +311,6 @@ void NMTableView::updateSelRecsOnly(int state)
 		this->mSortFilter->setFilterRegExp("");
 		break;
 	}
-
 }
 
 void NMTableView::switchSelection()
@@ -340,15 +341,16 @@ void NMTableView::switchSelection()
 	//	}
 	//}
 
-	QModelIndex topleft = this->mModel->index(0, 0, QModelIndex());
-	QModelIndex bottomright =
+	QModelIndex top = this->mModel->index(0, 0, QModelIndex());
+	QModelIndex bottom =
 			this->mModel->index(
-					this->mModel->rowCount(QModelIndex()), 0, QModelIndex());
+				this->mModel->rowCount(QModelIndex())-1, 0, QModelIndex());
 
-	QItemSelection newSelection(topleft, bottomright);
+	QItemSelection newSelection(top, bottom);
 
 	this->mTableView->selectionModel()->
-			select(newSelection, QItemSelectionModel::Toggle);
+			select(newSelection,
+			   QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
 
 	this->updateSelectionAdmin();
 
@@ -993,6 +995,13 @@ NMTableView::deleteRasLayer(void)
 void
 NMTableView::setTable(otb::AttributeTable::Pointer tab)
 {
+	if (tab.IsNull() || this->mOtbTableAdapter == 0)
+	{
+		NMErr(__ctxtabview, << "This view is not instanciated as an otbAttributeTable view!");
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
 	this->mOtbTableAdapter->setTable(tab);
 	this->mSortFilter->setSourceModel(this->mOtbTableAdapter);
 	this->mTableView->setModel(this->mSortFilter);
@@ -1008,6 +1017,13 @@ NMTableView::setTable(otb::AttributeTable::Pointer tab)
 void NMTableView::setTable(vtkTable* tab)
 {
 	NMDebugCtx(__ctxtabview, << "...");
+
+	if (tab == 0 || this->mVtkTableAdapter == 0)
+	{
+		NMErr(__ctxtabview, << "This view is not instanciated as a vtkTable view!");
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
 
 	this->mVtkTableAdapter->setTable(tab);
 	this->mSortFilter->setSourceModel(this->mVtkTableAdapter);
@@ -1395,34 +1411,34 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 	return false;
 }
 
-vtkSmartPointer<vtkAbstractArray> NMTableView::createVTKArray(int datatype)
-{
-	vtkSmartPointer<vtkAbstractArray> a;
-	switch(datatype)
-	{
-		case VTK_BIT: a = vtkSmartPointer<vtkBitArray>::New(); break;
-		case VTK_CHAR: a = vtkSmartPointer<vtkCharArray>::New(); break;
-		case VTK_SIGNED_CHAR: a = vtkSmartPointer<vtkSignedCharArray>::New(); break;
-		case VTK_UNSIGNED_CHAR: a = vtkSmartPointer<vtkUnsignedCharArray>::New(); break;
-		case VTK_SHORT: a = vtkSmartPointer<vtkShortArray>::New(); break;
-		case VTK_UNSIGNED_SHORT: a = vtkSmartPointer<vtkUnsignedShortArray>::New(); break;
-		case VTK_INT: a = vtkSmartPointer<vtkIntArray>::New(); break;
-		case VTK_UNSIGNED_INT: a = vtkSmartPointer<vtkUnsignedIntArray>::New(); break;
-		case VTK_LONG: a = vtkSmartPointer<vtkLongArray>::New(); break;
-		case VTK_UNSIGNED_LONG: a = vtkSmartPointer<vtkUnsignedLongArray>::New(); break;
-		case VTK_FLOAT: a = vtkSmartPointer<vtkFloatArray>::New(); break;
-		case VTK_DOUBLE: a = vtkSmartPointer<vtkDoubleArray>::New(); break;
-		case VTK_STRING: a = vtkSmartPointer<vtkStringArray>::New(); break;
-		default: a = vtkSmartPointer<vtkVariantArray>::New(); break;
-	}
+//vtkSmartPointer<vtkAbstractArray> NMTableView::createVTKArray(int datatype)
+//{
+//	vtkSmartPointer<vtkAbstractArray> a;
+//	switch(datatype)
+//	{
+//		case VTK_BIT: a = vtkSmartPointer<vtkBitArray>::New(); break;
+//		case VTK_CHAR: a = vtkSmartPointer<vtkCharArray>::New(); break;
+//		case VTK_SIGNED_CHAR: a = vtkSmartPointer<vtkSignedCharArray>::New(); break;
+//		case VTK_UNSIGNED_CHAR: a = vtkSmartPointer<vtkUnsignedCharArray>::New(); break;
+//		case VTK_SHORT: a = vtkSmartPointer<vtkShortArray>::New(); break;
+//		case VTK_UNSIGNED_SHORT: a = vtkSmartPointer<vtkUnsignedShortArray>::New(); break;
+//		case VTK_INT: a = vtkSmartPointer<vtkIntArray>::New(); break;
+//		case VTK_UNSIGNED_INT: a = vtkSmartPointer<vtkUnsignedIntArray>::New(); break;
+//		case VTK_LONG: a = vtkSmartPointer<vtkLongArray>::New(); break;
+//		case VTK_UNSIGNED_LONG: a = vtkSmartPointer<vtkUnsignedLongArray>::New(); break;
+//		case VTK_FLOAT: a = vtkSmartPointer<vtkFloatArray>::New(); break;
+//		case VTK_DOUBLE: a = vtkSmartPointer<vtkDoubleArray>::New(); break;
+//		case VTK_STRING: a = vtkSmartPointer<vtkStringArray>::New(); break;
+//		default: a = vtkSmartPointer<vtkVariantArray>::New(); break;
+//	}
+//
+//	return a;
+//}
 
-	return a;
-}
-
-const vtkTable* NMTableView::getTable(void)
-{
-	return vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-}
+//const vtkTable* NMTableView::getTable(void)
+//{
+//	return vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+//}
 
 void NMTableView::selectionQuery(void)
 {

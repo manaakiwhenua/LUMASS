@@ -53,12 +53,13 @@
 #include <QItemSelectionModel>
 #include <QItemSelection>
 
+#include "vtkQtEditableTableModelAdapter.h"
+
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
 #include "QVTKWin32Header.h"
 #include "vtkConfigure.h"
 #include "vtkSmartPointer.h"
-#include "vtkQtTableModelAdapter.h"
 #include "vtkSQLiteDatabase.h"
 
 #include "vtkBitArray.h"
@@ -105,8 +106,8 @@ public:
 	int getColumnIndex(const QString& attr);
 	void setTitle(const QString& title) {this->setWindowTitle(title);};
 	void setRowKeyColumn(const QString& rowKeyCol);
-	const vtkTable* getTable(void);
-	vtkSmartPointer<vtkAbstractArray> createVTKArray(int datatype);
+	//const vtkTable* getTable(void);
+	//vtkSmartPointer<vtkAbstractArray> createVTKArray(int datatype);
 
 public slots:
 
@@ -171,11 +172,11 @@ protected:
 	long mlLastClickedRow;
 
 	QTableView* mTableView;
-	vtkQtTableModelAdapter* mVtkTableAdapter;
+	vtkQtEditableTableModelAdapter* mVtkTableAdapter;
 	NMQtOtbAttributeTableModel* mOtbTableAdapter;
 	QAbstractItemModel* mModel;
 	NMSelectableSortFilterProxyModel* mSortFilter;
-	QItemSelection mRowSelection;
+	QItemSelectionModel* mSelectionModel;
 
 	QVBoxLayout* mLayout;
 	QStatusBar* mStatusBar;

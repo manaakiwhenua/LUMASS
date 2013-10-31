@@ -34,14 +34,14 @@ LINK_DIRECTORIES(
 QT4_WRAP_CPP(ENGINE_MOC_CPP 
 	${opt_SOURCE_DIR}/NMMosra.h
 	${opt_SOURCE_DIR}/MOSORunnable.h
-	${gui_SOURCE_DIR}/NMTableCalculator.h	
+	#${gui_SOURCE_DIR}/NMTableCalculator.h	
 	#${gui_SOURCE_DIR}/NMItk2VtkConnector.h
 )
 
 file(GLOB ENGINE_SRC 
     ${opt_SOURCE_DIR}/*.cpp 
     ${lumassengine_SOURCE_DIR}/*.cxx 
-    ${gui_SOURCE_DIR}/NMTableCalculator.cpp 
+    #${gui_SOURCE_DIR}/NMTableCalculator.cpp 
     #${gui_SOURCE_DIR}/NMItk2VtkConnector.cpp
 )
 

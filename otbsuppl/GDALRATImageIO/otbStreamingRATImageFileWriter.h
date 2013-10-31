@@ -36,7 +36,7 @@
 #define __otbStreamingRATImageFileWriter_h
 
 #ifdef BUILD_RASSUPPORT
-	#include "RasdamanConnector.h"
+	#include "RasdamanConnector.hh"
 #endif
 
 #include "otbMacro.h"

@@ -26,6 +26,7 @@
 #define VTKQTEDITABLETABLEMODELADAPTER_H_
 
 #include "vtkQtTableModelAdapter.h"
+#include "vtkTable.h"
 
 class QVTK_EXPORT vtkQtEditableTableModelAdapter: public vtkQtTableModelAdapter
 {

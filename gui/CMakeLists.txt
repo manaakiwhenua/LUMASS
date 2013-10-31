@@ -38,6 +38,7 @@ LINK_DIRECTORIES(
 QT4_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 QT4_WRAP_CPP(MOC_CPP 
+	${NMVtk_SOURCE_DIR}/vtkQtEditableTableModelAdapter.h
 	${opt_SOURCE_DIR}/NMMosra.h
 	${gui_SOURCE_DIR}/otbmodellerwin.h 
 	${gui_SOURCE_DIR}/modelcomponentlist.h

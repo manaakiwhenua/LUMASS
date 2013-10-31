@@ -22,7 +22,7 @@
 #include "NMImageReader.h"
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
-#include "NMImageLayer.h"
+//#include "NMImageLayer.h"
 #include "NMMfwException.h"
 
 #include <string>

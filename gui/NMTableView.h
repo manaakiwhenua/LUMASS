@@ -27,12 +27,14 @@
 #define __ctxtabview "NMTableView"
 
 #include "nmlog.h"
-#include "NMLayer.h"
-#include "NMQtOtbAttributeTableModel.h"
+//#include "NMLayer.h"
+//#include "NMQtOtbAttributeTableModel.h"
 #include "NMSelectableSortFilterProxyModel.h"
 
-#include "otbAttributeTable.h"
 
+//#include "otbAttributeTable.h"
+
+#include <QAbstractItemModel>
 #include <QObject>
 #include <QtGui/QMainWindow>
 #include <QMouseEvent>
@@ -53,7 +55,7 @@
 #include <QItemSelectionModel>
 #include <QItemSelection>
 
-#include "vtkQtEditableTableModelAdapter.h"
+//#include "vtkQtEditableTableModelAdapter.h"
 
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
@@ -78,7 +80,7 @@
 #include "vtkVariantArray.h"
 #include "vtkUnicodeStringArray.h"
 
-class NMLayer;
+//class NMLayer;
 
 class QVTK_EXPORT NMTableView : public QWidget
 {
@@ -90,22 +92,25 @@ public:
 		NMTABVIEW_RASMETADATA
 	};
 
-	NMTableView(QWidget* parent=0);
-	NMTableView(vtkTable* tab, QWidget* parent=0);
-	NMTableView(otb::AttributeTable::Pointer model, QWidget* parent=0);
-	//NMTableView(vtkTable* tab, ViewMode=NMTABVIEW_ATTRTABLE,
-	//		QWidget* parent=0);
+	//NMTableView(QWidget* parent=0);
+	NMTableView(QAbstractItemModel* model, QWidget* parent=0);
+	//NMTableView(vtkTable* tab, QWidget* parent=0);
+	//NMTableView(otb::AttributeTable::Pointer model, QWidget* parent=0);
+
 	virtual ~NMTableView();
 
-	ViewMode getViewMode() {return mViewMode;};
-	void setViewMode(ViewMode mode)
-		{mViewMode = mode;};
+	void setSelectionModel(QItemSelectionModel* selectionModel);
+
+	ViewMode getViewMode() {return mViewMode;}
+	void setViewMode(ViewMode mode);
+
 	void hideAttribute(const QString& attr);
 	void filterAttribute(const QString& attr, const QString& regexp);
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);
 	void setTitle(const QString& title) {this->setWindowTitle(title);};
-	void setRowKeyColumn(const QString& rowKeyCol);
+//	void setRowKeyColumn(const QString& rowKeyCol);
+	void hideRow(int row);
 	//const vtkTable* getTable(void);
 	//vtkSmartPointer<vtkAbstractArray> createVTKArray(int datatype);
 
@@ -118,8 +123,8 @@ public slots:
 	void colStats();
 	void userQuery();
 	void normalise();
-	void setTable(vtkTable* tab);
-	void setTable(otb::AttributeTable::Pointer tab);
+	//void setTable(vtkTable* tab);
+	//void setTable(otb::AttributeTable::Pointer tab);
 	void selectionQuery();
 	void clearSelection();
 	void selectRow(int row);
@@ -149,16 +154,16 @@ protected:
 	void initView();
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
-	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
-			const QString& dbName,
-			const QString& tableName,
-			bool bselectedRecs);
+//	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
+//			const QString& dbName,
+//			const QString& tableName,
+//			bool bselectedRecs);
 
-	vtkSmartPointer<vtkTable> queryTable(const QString& sqlStmt);
+	//vtkSmartPointer<vtkTable> queryTable(const QString& sqlStmt);
 
-	void appendAttributes(const QString& tarJoinField,
-			const QString& srcJoinField,
-			vtkTable* srcTable);
+	//void appendAttributes(const QString& tarJoinField,
+	//		const QString& srcJoinField,
+	//		vtkTable* srcTable);
 
 	void mousePressEvent(QMouseEvent* event);
 	bool eventFilter(QObject* object, QEvent* event);
@@ -172,8 +177,8 @@ protected:
 	long mlLastClickedRow;
 
 	QTableView* mTableView;
-	vtkQtEditableTableModelAdapter* mVtkTableAdapter;
-	NMQtOtbAttributeTableModel* mOtbTableAdapter;
+	//vtkQtEditableTableModelAdapter* mVtkTableAdapter;
+	//NMQtOtbAttributeTableModel* mOtbTableAdapter;
 	QAbstractItemModel* mModel;
 	NMSelectableSortFilterProxyModel* mSortFilter;
 	QItemSelectionModel* mSelectionModel;
@@ -188,9 +193,9 @@ protected:
 	QMenu* mColHeadMenu;
 	QMenu* mManageLayerMenu;
 
-	vtkSmartPointer<vtkTable> mBaseTable;
-	otb::AttributeTable::Pointer mOtbTable;
-	NMLayer* mLayer;
+	//vtkSmartPointer<vtkTable> mBaseTable;
+	//otb::AttributeTable::Pointer mOtbTable;
+	//NMLayer* mLayer;
 
 	QStringList mDeletedColumns;
 	QStringList mAlteredColumns;

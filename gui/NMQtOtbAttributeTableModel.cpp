@@ -63,6 +63,15 @@ NMQtOtbAttributeTableModel::columnCount(const QModelIndex& parent) const
 	return mTable->GetNumCols();
 }
 
+void NMQtOtbAttributeTableModel::setKeyColumn(const QString& keyColumn)
+{
+	int colidx = this->mTable->ColumnExists(keyColumn.toStdString());
+	if (colidx < 0)
+		return;
+
+	this->mKeyIdx = colidx;
+}
+
 void
 NMQtOtbAttributeTableModel::setKeyColumn(int keyidx)
 {

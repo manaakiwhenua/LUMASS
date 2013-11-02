@@ -69,7 +69,7 @@ public:
 
 	void world2pixel(double world[3], int pixel[3]);
 	void getBBox(double bbox[6]);
-	otb::AttributeTable* getRasterAttributeTable(int band);
+	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 
 	void setImage(NMItkDataObjectWrapper* imgWrapper);
 

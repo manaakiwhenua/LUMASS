@@ -36,6 +36,7 @@
 #include "QVTKWin32Header.h"
 #include "vtkConfigure.h"
 
+#include <QItemSelectionModel>
 #include <QObject>
 #include <QHash>
 #include <QVector>
@@ -49,7 +50,7 @@
 #include "vtkRenderWindow.h"
 #include "vtkTable.h"
 
-class NMTableView;
+//class NMTableView;
 
 class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
@@ -151,7 +152,13 @@ protected:
 	NMLayerType mLayerType;
 
 	NMTableView* mTableView;
+	QItemSelectionModel* mSelectionModel;
+	QAbstractItemModel* mTableModel;
+
+	// ToDo:: deprecated: move into VectorLayer; use
+	//        solely the tabel model here
 	vtkSmartPointer<vtkTable> mAttributeTable;
+
 
 	// hash map linking category values with
 	// table info index and lookup table info

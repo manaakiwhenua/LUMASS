@@ -54,76 +54,84 @@
 #include <QRegExp>
 #include <QCheckBox>
 
-#include "vtkSelection.h"
-#include "vtkSelectionNode.h"
-#include "vtkCellData.h"
-#include "vtkDataObject.h"
-#include "vtkDataSet.h"
-#include "vtkDataSetAttributes.h"
-#include "vtkDataArray.h"
-#include "vtkArrayCalculator.h"
-#include "vtkAbstractArray.h"
-#include "vtkDoubleArray.h"
-#include "vtkTable.h"
-#include "vtkTableToSQLiteWriter.h"
-#include "vtkSQLiteQuery.h"
-#include "vtkRowQueryToTable.h"
-#include "vtkSQLiteDatabase.h"
-#include "vtkDelimitedTextWriter.h"
-#include "vtkDelimitedTextReader.h"
-#include "vtkSmartPointer.h"
-#include "vtkPolyDataWriter.h"
-#include "vtkPolyData.h"
-#include "vtkVariant.h"
-#include "vtkAlgorithmOutput.h"
+//#include "vtkSelection.h"
+//#include "vtkSelectionNode.h"
+//#include "vtkCellData.h"
+//#include "vtkDataObject.h"
+//#include "vtkDataSet.h"
+//#include "vtkDataSetAttributes.h"
+//#include "vtkDataArray.h"
+//#include "vtkArrayCalculator.h"
+//#include "vtkAbstractArray.h"
+//#include "vtkDoubleArray.h"
+//#include "vtkTable.h"
+//#include "vtkTableToSQLiteWriter.h"
+//#include "vtkSQLiteQuery.h"
+//#include "vtkRowQueryToTable.h"
+//#include "vtkSQLiteDatabase.h"
+//#include "vtkDelimitedTextWriter.h"
+//#include "vtkDelimitedTextReader.h"
+//#include "vtkSmartPointer.h"
+//#include "vtkPolyDataWriter.h"
+//#include "vtkPolyData.h"
+//#include "vtkVariant.h"
+//#include "vtkAlgorithmOutput.h"
 
 
-NMTableView::NMTableView(QWidget* parent)
-	: QWidget(parent)
-{
-	this->mViewMode = NMTABVIEW_ATTRTABLE;
-	this->initView();
-}
-
-NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
-	: QWidget(parent), mOtbTableAdapter(0)
-{
-	this->mViewMode = NMTABVIEW_ATTRTABLE;
-	this->mTableView = new QTableView(this);
-	this->mVtkTableAdapter = new vtkQtEditableTableModelAdapter(this);
-	this->mModel = this->mVtkTableAdapter;
-	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
-	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
-
-	this->initView();
-	this->setTable(tab);
-}
-
-NMTableView::NMTableView(otb::AttributeTable::Pointer tab, QWidget* parent)
-	: QWidget(parent), mVtkTableAdapter(0)
-{
-	this->mViewMode = NMTABVIEW_ATTRTABLE;
-	this->mTableView = new QTableView(this);
-	this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
-	this->mModel = this->mOtbTableAdapter;
-	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
-	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
-
-	this->initView();
-	this->setTable(tab);
-}
-
-
-//NMTableView::NMTableView(vtkTable* tab, ViewMode mode, QWidget* parent)
-//	: QWidget(parent), mViewMode(mode)
+//NMTableView::NMTableView(QWidget* parent)
+//	: QWidget(parent)
 //{
+//	this->mViewMode = NMTABVIEW_ATTRTABLE;
+//	this->initView();
+//}
+
+//NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
+//	: QWidget(parent), mOtbTableAdapter(0)
+//{
+//	this->mViewMode = NMTABVIEW_ATTRTABLE;
 //	this->mTableView = new QTableView(this);
-//	this->mVtkTableAdapter = new vtkQtTableModelAdapter(this);
+//	this->mVtkTableAdapter = new vtkQtEditableTableModelAdapter(this);
+//	this->mModel = this->mVtkTableAdapter;
+//	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
 //	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 //
 //	this->initView();
 //	this->setTable(tab);
 //}
+
+//NMTableView::NMTableView(otb::AttributeTable::Pointer tab, QWidget* parent)
+//	: QWidget(parent), mVtkTableAdapter(0)
+//{
+//	this->mViewMode = NMTABVIEW_ATTRTABLE;
+//	this->mTableView = new QTableView(this);
+//	this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
+//	this->mModel = this->mOtbTableAdapter;
+//	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
+//	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
+//
+//	this->initView();
+//	this->setTable(tab);
+//}
+
+
+NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
+	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
+	  mModel(model)
+{
+	this->mTableView = new QTableView(this);
+
+	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
+	this->mSortFilter->setDynamicSortFilter(true);
+	this->mSortFilter->setSourceModel(mModel);
+	this->mTableView->setModel(this->mSortFilter);
+	this->mSortFilter->sort(0, Qt::DescendingOrder);
+
+	this->mDeletedColumns.clear();
+	this->mAlteredColumns.clear();
+
+	this->initView();
+}
+
 
 NMTableView::~NMTableView()
 {
@@ -132,12 +140,9 @@ NMTableView::~NMTableView()
 void NMTableView::initView()
 {
 	this->mTableView->setSortingEnabled(true);
-	this->mTableView->verticalHeader()->hide();
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-
-	this->mSortFilter->setDynamicSortFilter(true);
 
 	this->setWindowFlags(Qt::Window);
 	this->setWindowTitle(tr("Attributes"));
@@ -295,22 +300,40 @@ void NMTableView::initView()
 
 }
 
-void NMTableView::updateSelRecsOnly(int state)
+void
+NMTableView::setViewMode(ViewMode mode)
 {
-	int selid = this->getColumnIndex("nm_sel");
-	if (selid < 0)
-		return;
-
-	this->mSortFilter->setFilterKeyColumn(selid);
-	switch (state)
+	switch(mode)
 	{
-	case Qt::Checked:
-		this->mSortFilter->setFilterFixedString("1");
+	case NMTABVIEW_ATTRTABLE:
+		this->mViewMode = mode;
+		this->mTableView->verticalHeader()->show();
 		break;
-	case Qt::Unchecked:
-		this->mSortFilter->setFilterRegExp("");
+	case NMTABVIEW_RASMETADATA:
+		this->mViewMode = mode;
+		this->mTableView->verticalHeader()->hide();
+		break;
+	default:
 		break;
 	}
+}
+
+void NMTableView::updateSelRecsOnly(int state)
+{
+	//int selid = this->getColumnIndex("nm_sel");
+//	if (selid < 0)
+//		return;
+//
+//	this->mSortFilter->setFilterKeyColumn(selid);
+//	switch (state)
+//	{
+//	case Qt::Checked:
+//		this->mSortFilter->setFilterFixedString("1");
+//		break;
+//	case Qt::Unchecked:
+//		this->mSortFilter->setFilterRegExp("");
+//		break;
+//	}
 }
 
 void NMTableView::switchSelection()
@@ -435,33 +458,33 @@ void NMTableView::normalise()
 
 void NMTableView::userQuery()
 {
-	NMDebugCtx(__ctxtabview, << "...");
-	// ask for the name and the type of the new data field
-	bool bOk = false;
-	QString sqlStmt = QInputDialog::getText(this, tr("Filter Attributes"),
-	                                          tr("SQL Query (use 'memtab1' as table required!)"), QLineEdit::Normal,
-	                                          tr("Select * from memtab1 where "), &bOk);
-	if (!bOk || sqlStmt.isEmpty())
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-    //QString sqlStmt = QString(tr("%1")).arg(whereclause);
-	vtkSmartPointer<vtkTable> restab = this->queryTable(sqlStmt);
-	if (restab == 0)
-	{
-		NMDebugAI( << "got an empty result table (i.e. NULL)" << endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	//this->mVtkTableAdapter->setTable(restab);
-
-	NMTableView *resview = new NMTableView(restab, this->parentWidget());
-	resview->setWindowFlags(Qt::Window);
-	resview->setTitle(tr("Query Result"));
-	resview->show();
+	//NMDebugCtx(__ctxtabview, << "...");
+	//// ask for the name and the type of the new data field
+	//bool bOk = false;
+	//QString sqlStmt = QInputDialog::getText(this, tr("Filter Attributes"),
+	//                                          tr("SQL Query (use 'memtab1' as table required!)"), QLineEdit::Normal,
+	//                                          tr("Select * from memtab1 where "), &bOk);
+	//if (!bOk || sqlStmt.isEmpty())
+	//{
+	//	NMDebugCtx(__ctxtabview, << "done!");
+	//	return;
+	//}
+    //
+    ////QString sqlStmt = QString(tr("%1")).arg(whereclause);
+	//vtkSmartPointer<vtkTable> restab = this->queryTable(sqlStmt);
+	//if (restab == 0)
+	//{
+	//	NMDebugAI( << "got an empty result table (i.e. NULL)" << endl);
+	//	NMDebugCtx(__ctxtabview, << "done!");
+	//	return;
+	//}
+    //
+	////this->mVtkTableAdapter->setTable(restab);
+    //
+	//NMTableView *resview = new NMTableView(restab, this->parentWidget());
+	//resview->setWindowFlags(Qt::Window);
+	//resview->setTitle(tr("Query Result"));
+	//resview->show();
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -662,24 +685,24 @@ void NMTableView::addColumn()
 void NMTableView::deleteColumn()
 {
 	// ask the user whether he really wants to delete the current field
-	QMessageBox msgBox;
-	QString text = QString(tr("Delete Field '%1'?")).arg(this->mLastClickedColumn);
-	msgBox.setText(text);
-	//msgBox.setInformativeText("Do you want to save your changes?");
-	msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-	msgBox.setDefaultButton(QMessageBox::Cancel);
-	int ret = msgBox.exec();
-
-	if (ret == QMessageBox::Cancel)
-		return;
-
-	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	tab->RemoveColumnByName(this->mLastClickedColumn.toStdString().c_str());
-//	this->mVtkTableAdapter->setTable(tab);
-
-	// notify potential listeners
-	this->mDeletedColumns.append(this->mLastClickedColumn);
-	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+	//QMessageBox msgBox;
+	//QString text = QString(tr("Delete Field '%1'?")).arg(this->mLastClickedColumn);
+	//msgBox.setText(text);
+	////msgBox.setInformativeText("Do you want to save your changes?");
+	//msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	//msgBox.setDefaultButton(QMessageBox::Cancel);
+	//int ret = msgBox.exec();
+    //
+	//if (ret == QMessageBox::Cancel)
+	//	return;
+    //
+	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+	//tab->RemoveColumnByName(this->mLastClickedColumn.toStdString().c_str());
+//	//this->mVtkTableAdapter->setTable(tab);
+    //
+	//// notify potential listeners
+	//this->mDeletedColumns.append(this->mLastClickedColumn);
+	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
 }
 
@@ -755,116 +778,125 @@ void NMTableView::joinAttributes()
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
-void
-NMTableView::appendAttributes(const QString& tarJoinField,
-		const QString& srcJoinField,
-		vtkTable* src)
+//void
+//NMTableView::appendAttributes(const QString& tarJoinField,
+//		const QString& srcJoinField,
+//		vtkTable* src)
+//{
+//	//vtkTable* tar = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
+//    //
+//	//QStringList allTarFields;
+//	//for (int i=0; i < tar->GetNumberOfColumns(); ++i)
+//	//{
+//	//	allTarFields.push_back(tar->GetColumnName(i));
+//	//}
+//    //
+//	//// we determine which columns to copy, and which name + index they have
+//	//QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
+//    //
+//	//NMDebugAI(<< "checking column names ... " << std::endl);
+//	//QStringList copyNames;
+//	//QStringList writeNames;
+//	//for (int i=0; i < src->GetNumberOfColumns(); ++i)
+//	//{
+//	//	QString name = src->GetColumnName(i);
+//	//	QString writeName = name;
+//	//	if (name.compare(srcJoinField) == 0
+//	//			|| name.compare(tarJoinField) == 0)
+//	//	{
+//	//		continue;
+//	//	}
+//	//	else if (allTarFields.contains(name, Qt::CaseInsensitive))
+//	//	{
+//	//		// come up with a new name for the column to appended
+//	//		writeName = QString(tr("copy_%1")).arg(name);
+//	//	}
+//    //
+//	//	int pos = -1;
+//	//	pos = nameRegExp.indexIn(name);
+//	//	if (pos >= 0)
+//	//	{
+//	//		copyNames.push_back(name);
+//	//		writeNames.push_back(writeName);
+//	//	}
+//	//}
+//    //
+//	//NMDebugAI( << "adding new columns to target table ..." << std::endl);
+//	//// create new output columns for join fields
+//	//vtkIdType tarnumrows = tar->GetNumberOfRows();
+//	//for (int t=0; t < copyNames.size(); ++t)
+//	//{
+//	//	int type = src->GetColumnByName(copyNames[t].toStdString().c_str())->GetDataType();
+//	//	vtkSmartPointer<vtkAbstractArray> ar = vtkAbstractArray::CreateArray(type);
+//	//	ar->SetName(writeNames.at(t).toStdString().c_str());
+//	//	ar->SetNumberOfComponents(1);
+//	//	ar->Allocate(tarnumrows);
+//    //
+//	//	vtkVariant v;
+//	//	if (type == VTK_STRING)
+//	//		v = vtkVariant("");
+//	//	else
+//	//		v = vtkVariant(0);
+//    //
+//	//	for (int tr=0; tr < tarnumrows; ++tr)
+//	//		ar->InsertVariantValue(tr, v);
+//    //
+//	//	tar->AddColumn(ar);
+//	//	NMDebugAI(<< copyNames.at(t).toStdString() << "->"
+//	//			<< writeNames.at(t).toStdString() << " ");
+//	//	this->mAlteredColumns.append(writeNames.at(t));
+//	//}
+//	//NMDebug(<< endl);
+//    //
+//	//NMDebugAI(<< "copying field contents ...." << std::endl);
+//	//// copy field values
+//	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
+//	//vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
+//	//vtkIdType cnt = 0;
+//	//vtkIdType srcnumrows = src->GetNumberOfRows();
+//	//for (vtkIdType row=0; row < tarnumrows; ++row)
+//	//{
+//	//	vtkVariant vTarJoin = tarJoin->GetVariantValue(row);
+//	//	vtkIdType search = row < srcnumrows ? row : 0;
+//	//	vtkIdType cnt = 0;
+//	//	bool foundyou = false;
+//	//	while (cnt < srcnumrows)
+//	//	{
+//	//		if (srcJoin->GetVariantValue(search) == vTarJoin)
+//	//		{
+//	//			foundyou = true;
+//	//			break;
+//	//		}
+//    //
+//	//		++search;
+//	//		if (search >= srcnumrows)
+//	//			search = 0;
+//    //
+//	//		++cnt;
+//	//	}
+//    //
+//	//	if (foundyou)
+//	//	{
+//	//		// copy columns for current row
+//	//		for (int c=0; c < copyNames.size(); ++c)
+//	//		{
+//	//			tar->SetValueByName(row, writeNames[c].toStdString().c_str(),
+//	//					src->GetValueByName(search, copyNames[c].toStdString().c_str()));
+//	//		}
+//	//	}
+//	//}
+//
+//	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+//
+//
+//}
+
+void NMTableView::hideRow(int row)
 {
-	//vtkTable* tar = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-    //
-	//QStringList allTarFields;
-	//for (int i=0; i < tar->GetNumberOfColumns(); ++i)
-	//{
-	//	allTarFields.push_back(tar->GetColumnName(i));
-	//}
-    //
-	//// we determine which columns to copy, and which name + index they have
-	//QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
-    //
-	//NMDebugAI(<< "checking column names ... " << std::endl);
-	//QStringList copyNames;
-	//QStringList writeNames;
-	//for (int i=0; i < src->GetNumberOfColumns(); ++i)
-	//{
-	//	QString name = src->GetColumnName(i);
-	//	QString writeName = name;
-	//	if (name.compare(srcJoinField) == 0
-	//			|| name.compare(tarJoinField) == 0)
-	//	{
-	//		continue;
-	//	}
-	//	else if (allTarFields.contains(name, Qt::CaseInsensitive))
-	//	{
-	//		// come up with a new name for the column to appended
-	//		writeName = QString(tr("copy_%1")).arg(name);
-	//	}
-    //
-	//	int pos = -1;
-	//	pos = nameRegExp.indexIn(name);
-	//	if (pos >= 0)
-	//	{
-	//		copyNames.push_back(name);
-	//		writeNames.push_back(writeName);
-	//	}
-	//}
-    //
-	//NMDebugAI( << "adding new columns to target table ..." << std::endl);
-	//// create new output columns for join fields
-	//vtkIdType tarnumrows = tar->GetNumberOfRows();
-	//for (int t=0; t < copyNames.size(); ++t)
-	//{
-	//	int type = src->GetColumnByName(copyNames[t].toStdString().c_str())->GetDataType();
-	//	vtkSmartPointer<vtkAbstractArray> ar = vtkAbstractArray::CreateArray(type);
-	//	ar->SetName(writeNames.at(t).toStdString().c_str());
-	//	ar->SetNumberOfComponents(1);
-	//	ar->Allocate(tarnumrows);
-    //
-	//	vtkVariant v;
-	//	if (type == VTK_STRING)
-	//		v = vtkVariant("");
-	//	else
-	//		v = vtkVariant(0);
-    //
-	//	for (int tr=0; tr < tarnumrows; ++tr)
-	//		ar->InsertVariantValue(tr, v);
-    //
-	//	tar->AddColumn(ar);
-	//	NMDebugAI(<< copyNames.at(t).toStdString() << "->"
-	//			<< writeNames.at(t).toStdString() << " ");
-	//	this->mAlteredColumns.append(writeNames.at(t));
-	//}
-	//NMDebug(<< endl);
-    //
-	//NMDebugAI(<< "copying field contents ...." << std::endl);
-	//// copy field values
-	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
-	//vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
-	//vtkIdType cnt = 0;
-	//vtkIdType srcnumrows = src->GetNumberOfRows();
-	//for (vtkIdType row=0; row < tarnumrows; ++row)
-	//{
-	//	vtkVariant vTarJoin = tarJoin->GetVariantValue(row);
-	//	vtkIdType search = row < srcnumrows ? row : 0;
-	//	vtkIdType cnt = 0;
-	//	bool foundyou = false;
-	//	while (cnt < srcnumrows)
-	//	{
-	//		if (srcJoin->GetVariantValue(search) == vTarJoin)
-	//		{
-	//			foundyou = true;
-	//			break;
-	//		}
-    //
-	//		++search;
-	//		if (search >= srcnumrows)
-	//			search = 0;
-    //
-	//		++cnt;
-	//	}
-    //
-	//	if (foundyou)
-	//	{
-	//		// copy columns for current row
-	//		for (int c=0; c < copyNames.size(); ++c)
-	//		{
-	//			tar->SetValueByName(row, writeNames[c].toStdString().c_str(),
-	//					src->GetValueByName(search, copyNames[c].toStdString().c_str()));
-	//		}
-	//	}
-	//}
+	if (row < 0 || row > this->mModel->rowCount()-1)
+		return;
 
-	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-
+	this->mTableView->hideRow(row);
 
 }
 
@@ -964,14 +996,20 @@ NMTableView::loadRasLayer(void)
 	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
 	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
 
-	vtkLongArray* oidar = vtkLongArray::SafeDownCast(this->mBaseTable->GetColumnByName("oid"));
-	vtkStringArray* collar = vtkStringArray::SafeDownCast(this->mBaseTable->GetColumnByName("coll_name"));
-	vtkStringArray* covar = vtkStringArray::SafeDownCast(this->mBaseTable->GetColumnByName("covername"));
+	int oid_coll = this->getColumnIndex("oid");
+	int coll_id = this->getColumnIndex("coll_name");
+	int cov_id = this->getColumnIndex("covername");
 
-	QString imagespec = QString("%1:%2").arg(collar->GetValue(srcIdx.row()).c_str())
-			                            .arg(oidar->GetValue(srcIdx.row()));
+	QModelIndex oididx = this->mModel->index(this->mlLastClickedRow, oid_coll, QModelIndex());
+	QModelIndex collidx = this->mModel->index(this->mlLastClickedRow, coll_id, QModelIndex());
+	QModelIndex covidx = this->mModel->index(this->mlLastClickedRow, cov_id, QModelIndex());
 
-	QString covname = QString(covar->GetValue(srcIdx.row()).c_str());
+	bool bok;
+	long oid = (long)this->mModel->data(oididx, Qt::DisplayRole).toInt(&bok);
+	QString coll = this->mModel->data(collidx, Qt::DisplayRole).toString();
+	QString covname = this->mModel->data(covidx, Qt::DisplayRole).toString();
+
+	QString imagespec = QString("%1:%2").arg(coll).arg(oid);
 
 	emit notifyLoadRasLayer(imagespec, covname);
 
@@ -983,166 +1021,171 @@ NMTableView::deleteRasLayer(void)
 	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
 	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
 
-	vtkLongArray* oidar = vtkLongArray::SafeDownCast(this->mBaseTable->GetColumnByName("oid"));
-	vtkStringArray* collar = vtkStringArray::SafeDownCast(this->mBaseTable->GetColumnByName("coll_name"));
+	int oid_coll = this->getColumnIndex("oid");
+	int coll_id = this->getColumnIndex("coll_name");
 
-	QString imagespec = QString("%1:%2").arg(collar->GetValue(srcIdx.row()).c_str())
-			                            .arg(oidar->GetValue(srcIdx.row()));
+	QModelIndex oididx = this->mModel->index(this->mlLastClickedRow, oid_coll, QModelIndex());
+	QModelIndex collidx = this->mModel->index(this->mlLastClickedRow, coll_id, QModelIndex());
+
+	bool bok;
+	long oid = (long)this->mModel->data(oididx, Qt::DisplayRole).toInt(&bok);
+	QString coll = this->mModel->data(collidx, Qt::DisplayRole).toString();
+	QString imagespec = QString("%1:%2").arg(coll).arg(oid);
 
 	emit notifyDeleteRasLayer(imagespec);
 }
 
-void
-NMTableView::setTable(otb::AttributeTable::Pointer tab)
-{
-	if (tab.IsNull() || this->mOtbTableAdapter == 0)
-	{
-		NMErr(__ctxtabview, << "This view is not instanciated as an otbAttributeTable view!");
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
+//void
+//NMTableView::setTable(otb::AttributeTable::Pointer tab)
+//{
+//	if (tab.IsNull() || this->mOtbTableAdapter == 0)
+//	{
+//		NMErr(__ctxtabview, << "This view is not instanciated as an otbAttributeTable view!");
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	this->mOtbTableAdapter->setTable(tab);
+//	this->mSortFilter->setSourceModel(this->mOtbTableAdapter);
+//	this->mTableView->setModel(this->mSortFilter);
+//
+//	this->mOtbTable = tab;
+//	this->mDeletedColumns.clear();
+//	this->mAlteredColumns.clear();
+//
+//	this->updateSelection();
+//
+//}
 
-	this->mOtbTableAdapter->setTable(tab);
-	this->mSortFilter->setSourceModel(this->mOtbTableAdapter);
-	this->mTableView->setModel(this->mSortFilter);
-
-	this->mOtbTable = tab;
-	this->mDeletedColumns.clear();
-	this->mAlteredColumns.clear();
-
-	this->updateSelection();
-
-}
-
-void NMTableView::setTable(vtkTable* tab)
-{
-	NMDebugCtx(__ctxtabview, << "...");
-
-	if (tab == 0 || this->mVtkTableAdapter == 0)
-	{
-		NMErr(__ctxtabview, << "This view is not instanciated as a vtkTable view!");
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	this->mVtkTableAdapter->setTable(tab);
-	this->mSortFilter->setSourceModel(this->mVtkTableAdapter);
-	this->mTableView->setModel(this->mSortFilter);
-
-	this->mBaseTable = tab;
-	this->mDeletedColumns.clear();
-	this->mAlteredColumns.clear();
-
-	this->updateSelection();
-
-	NMDebugCtx(__ctxtabview, << "done!");
-}
+//void NMTableView::setTable(vtkTable* tab)
+//{
+//	NMDebugCtx(__ctxtabview, << "...");
+//
+//	if (tab == 0 || this->mVtkTableAdapter == 0)
+//	{
+//		NMErr(__ctxtabview, << "This view is not instanciated as a vtkTable view!");
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	this->mVtkTableAdapter->setTable(tab);
+//	this->mSortFilter->setSourceModel(this->mVtkTableAdapter);
+//	this->mTableView->setModel(this->mSortFilter);
+//
+//	this->mBaseTable = tab;
+//	this->mDeletedColumns.clear();
+//	this->mAlteredColumns.clear();
+//
+//	this->updateSelection();
+//
+//	NMDebugCtx(__ctxtabview, << "done!");
+//}
 
 bool NMTableView::writeDelimTxt(const QString& fileName,
 		bool bselectedRecs)
 {
-	NMDebugCtx(__ctxtabview, << "...");
-
-	// ToDo: account for selected rows i.e. filter before export
-
-	vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
-	writer->SetInput(this->mVtkTableAdapter->GetVTKDataObject());
-	writer->SetFieldDelimiter(",");
-
-	NMDebugAI( << "field delimiter: '" << writer->GetFieldDelimiter() << "'" << endl);
-	writer->SetFileName(fileName.toStdString().c_str());
-	writer->Update();
-
-	writer->Delete();
-
-	NMDebugCtx(__ctxtabview, << "done!");
+//	NMDebugCtx(__ctxtabview, << "...");
+//
+//	// ToDo: account for selected rows i.e. filter before export
+//
+//	vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
+//	writer->SetInput(this->mVtkTableAdapter->GetVTKDataObject());
+//	writer->SetFieldDelimiter(",");
+//
+//	NMDebugAI( << "field delimiter: '" << writer->GetFieldDelimiter() << "'" << endl);
+//	writer->SetFileName(fileName.toStdString().c_str());
+//	writer->Update();
+//
+//	writer->Delete();
+//
+//	NMDebugCtx(__ctxtabview, << "done!");
 	return true;
 }
 
-vtkSmartPointer<vtkSQLiteDatabase> NMTableView::writeSqliteDb(
-		const QString& dbName,
-		const QString& tableName,
-		bool bselectedRecs)
-{
-	NMDebugCtx(__ctxtabview, << "...");
-
-	// ToDo: account for selected rows i.e. filter before export
-	QString url = QString(tr("sqlite://%1")).arg(dbName);
-
-	NMDebugAI(<< "setting url: " << url.toStdString() << endl);
-	vtkSmartPointer<vtkSQLiteDatabase> db = vtkSQLiteDatabase::SafeDownCast(
-			vtkSQLDatabase::CreateFromURL(url.toStdString().c_str()));
-	if (db->IsA("vtkSQLiteDatabase") == 0)
-	{
-		NMDebugAI( << "failed creating db '" << dbName.toStdString() << ";" << std::endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return 0;
-	}
-	if (!db->Open("", vtkSQLiteDatabase::USE_EXISTING_OR_CREATE))
-	{
-		NMDebugAI( << "failed connecting to sqlite db '" << dbName.toStdString() << "'" << std::endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return 0;
-	}
-
-	vtkSmartPointer<vtkTableToSQLiteWriter> dbwriter = vtkSmartPointer<vtkTableToSQLiteWriter>::New();
-	dbwriter->SetDatabase(db);
-	dbwriter->SetInput(this->mVtkTableAdapter->GetVTKDataObject());
-	dbwriter->SetTableName(tableName.toStdString().c_str());
-	dbwriter->Update();
-
-	// we only return the memory version of the data base
-	if (dbName.compare(tr(":memory:")) == 0)
-	{
-		NMDebugAI( << "returning in-memory db" << endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return db;
-	}
-	else
-	{
-		NMDebugCtx(__ctxtabview, << "done!");
-		return 0;
-	}
-}
-
-vtkSmartPointer<vtkTable> NMTableView::queryTable(const QString& sqlStmt)
-{
-	NMDebugCtx(__ctxtabview, << "...");
-	vtkSmartPointer<vtkSQLiteDatabase> sdb = this->writeSqliteDb(
-			tr(":memory:"), tr("memtab1"), false);
-	if (sdb == 0)
-	{
-		NMDebugAI( << "couldn't create memory sql db for querying!" << std::endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return 0;
-	}
-//	if (!sdb->Open(0, vtkSQLiteDatabase::USE_EXISTING_OR_CREATE))
+//vtkSmartPointer<vtkSQLiteDatabase> NMTableView::writeSqliteDb(
+//		const QString& dbName,
+//		const QString& tableName,
+//		bool bselectedRecs)
+//{
+//	NMDebugCtx(__ctxtabview, << "...");
+//
+//	// ToDo: account for selected rows i.e. filter before export
+//	QString url = QString(tr("sqlite://%1")).arg(dbName);
+//
+//	NMDebugAI(<< "setting url: " << url.toStdString() << endl);
+//	vtkSmartPointer<vtkSQLiteDatabase> db = vtkSQLiteDatabase::SafeDownCast(
+//			vtkSQLDatabase::CreateFromURL(url.toStdString().c_str()));
+//	if (db->IsA("vtkSQLiteDatabase") == 0)
 //	{
-//		NMDebugAI( << "failed connecting to in-memory sql db!" << std::endl);
+//		NMDebugAI( << "failed creating db '" << dbName.toStdString() << ";" << std::endl);
 //		NMDebugCtx(__ctxtabview, << "done!");
 //		return 0;
 //	}
-	if (!sdb->IsOpen())
-	{
-		NMDebugAI( << "in-memory db is not open!" << std::endl);
-		NMDebugCtx(__ctxtabview, << "done!");
+//	if (!db->Open("", vtkSQLiteDatabase::USE_EXISTING_OR_CREATE))
+//	{
+//		NMDebugAI( << "failed connecting to sqlite db '" << dbName.toStdString() << "'" << std::endl);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return 0;
+//	}
+//
+//	vtkSmartPointer<vtkTableToSQLiteWriter> dbwriter = vtkSmartPointer<vtkTableToSQLiteWriter>::New();
+//	dbwriter->SetDatabase(db);
+//	dbwriter->SetInput(this->mVtkTableAdapter->GetVTKDataObject());
+//	dbwriter->SetTableName(tableName.toStdString().c_str());
+//	dbwriter->Update();
+//
+//	// we only return the memory version of the data base
+//	if (dbName.compare(tr(":memory:")) == 0)
+//	{
+//		NMDebugAI( << "returning in-memory db" << endl);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return db;
+//	}
+//	else
+//	{
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return 0;
+//	}
+//}
 
-		return 0;
-	}
-
-	vtkSmartPointer<vtkSQLiteQuery> sq = vtkSQLiteQuery::SafeDownCast(
-			sdb->GetQueryInstance());
-	sq->SetQuery(sqlStmt.toStdString().c_str());
-
-	// filter to a new table
-	vtkSmartPointer<vtkRowQueryToTable> rowtotab = vtkSmartPointer<vtkRowQueryToTable>::New();
-	rowtotab->SetQuery(sq);
-	rowtotab->Update();
-
-	vtkSmartPointer<vtkTable> outtab = rowtotab->GetOutput();
-	NMDebugCtx(__ctxtabview, << "done!");
-	return outtab;
-}
+//vtkSmartPointer<vtkTable> NMTableView::queryTable(const QString& sqlStmt)
+//{
+//	NMDebugCtx(__ctxtabview, << "...");
+//	vtkSmartPointer<vtkSQLiteDatabase> sdb = this->writeSqliteDb(
+//			tr(":memory:"), tr("memtab1"), false);
+//	if (sdb == 0)
+//	{
+//		NMDebugAI( << "couldn't create memory sql db for querying!" << std::endl);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return 0;
+//	}
+////	if (!sdb->Open(0, vtkSQLiteDatabase::USE_EXISTING_OR_CREATE))
+////	{
+////		NMDebugAI( << "failed connecting to in-memory sql db!" << std::endl);
+////		NMDebugCtx(__ctxtabview, << "done!");
+////		return 0;
+////	}
+//	if (!sdb->IsOpen())
+//	{
+//		NMDebugAI( << "in-memory db is not open!" << std::endl);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//
+//		return 0;
+//	}
+//
+//	vtkSmartPointer<vtkSQLiteQuery> sq = vtkSQLiteQuery::SafeDownCast(
+//			sdb->GetQueryInstance());
+//	sq->SetQuery(sqlStmt.toStdString().c_str());
+//
+//	// filter to a new table
+//	vtkSmartPointer<vtkRowQueryToTable> rowtotab = vtkSmartPointer<vtkRowQueryToTable>::New();
+//	rowtotab->SetQuery(sq);
+//	rowtotab->Update();
+//
+//	vtkSmartPointer<vtkTable> outtab = rowtotab->GetOutput();
+//	NMDebugCtx(__ctxtabview, << "done!");
+//	return outtab;
+//}
 
 int NMTableView::getColumnIndex(const QString& attr)
 {
@@ -1161,27 +1204,27 @@ int NMTableView::getColumnIndex(const QString& attr)
 	return attrCol;
 }
 
-void NMTableView::setRowKeyColumn(const QString& rowKeyCol)
-{
-	NMDebugCtx(__ctxtabview, << "...");
-	int colidx = this->getColumnIndex(rowKeyCol);
-	if (colidx < 0)
-	{
-		NMDebugAI(<< "you have to set the vtk data object before you can set "
-				<< " the row's key column!" << std::endl);
-		NMDebugCtx(__ctxtabview, << "done!");
-		return;
-	}
-
-	if (this->mVtkTableAdapter)
-		this->mVtkTableAdapter->SetKeyColumn(colidx);
-	else if (this->mOtbTableAdapter)
-		this->mOtbTableAdapter->setKeyColumn(colidx);
-
-	this->mTableView->verticalHeader()->show();
-
-	NMDebugCtx(__ctxtabview, << "done!");
-}
+//void NMTableView::setRowKeyColumn(const QString& rowKeyCol)
+//{
+//	NMDebugCtx(__ctxtabview, << "...");
+//	int colidx = this->getColumnIndex(rowKeyCol);
+//	if (colidx < 0)
+//	{
+//		NMDebugAI(<< "you have to set the vtk data object before you can set "
+//				<< " the row's key column!" << std::endl);
+//		NMDebugCtx(__ctxtabview, << "done!");
+//		return;
+//	}
+//
+//	if (this->mVtkTableAdapter)
+//		this->mVtkTableAdapter->SetKeyColumn(colidx);
+//	else if (this->mOtbTableAdapter)
+//		this->mOtbTableAdapter->setKeyColumn(colidx);
+//
+//	this->mTableView->verticalHeader()->show();
+//
+//	NMDebugCtx(__ctxtabview, << "done!");
+//}
 
 void
 NMTableView::callHideColumn(void)
@@ -1529,19 +1572,19 @@ void NMTableView::clearSelection()
 
 void NMTableView::selectRow(int row)
 {
-	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
-	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
-	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Select |
-			QItemSelectionModel::Rows);
-	this->mTableView->update(idx);
+//	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
+//	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
+//	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Select |
+//			QItemSelectionModel::Rows);
+//	this->mTableView->update(idx);
 }
 
 void NMTableView::deselectRow(int row)
 {
-	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
-	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
-	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Deselect |
-			QItemSelectionModel::Rows);
-	this->mTableView->update(idx);
+//	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
+//	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
+//	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Deselect |
+//			QItemSelectionModel::Rows);
+//	this->mTableView->update(idx);
 }
 

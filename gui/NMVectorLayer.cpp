@@ -22,7 +22,7 @@
  *      Author: alex
  */
 
-#include "NMTableView.h"
+//#include "NMTableView.h"
 
 #include <QHash>
 #include <QTime>
@@ -43,6 +43,9 @@
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
 #include "vtkSmartPointer.h"
+
+#include "vtkQtEditableTableModelAdapter.h"
+#include "vtkQtTableModelAdapter.h"
 
 #include "vtkTableToSQLiteWriter.h"
 #include "vtkSQLDatabase.h"
@@ -259,7 +262,7 @@ void NMVectorLayer::setVisible(bool visible)
 
 			this->mActor->SetVisibility(vis);
 			this->mIsVisible = visible;
-			emit visibilityChanged(this);
+			//emit visibilityChanged(this);
 		}
 	}
 
@@ -449,8 +452,8 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 	mapper->SetLookupTable(clrtab);
 	mapper->Modified();
 
-	emit visibilityChanged(this);
-	emit legendChanged(this);
+	//emit visibilityChanged(this);
+	//emit legendChanged(this);
 
 	return 1;
 }
@@ -523,8 +526,8 @@ void NMVectorLayer::mapSingleSymbol()
 //	mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
 	mapper->SetLookupTable(clrtab);
 
-	emit visibilityChanged(this);
-	emit legendChanged(this);
+	//emit visibilityChanged(this);
+	//emit legendChanged(this);
 }
 
 void NMVectorLayer::createTableView(void)
@@ -532,33 +535,49 @@ void NMVectorLayer::createTableView(void)
 	if (this->mTableView != 0)
 	{
 		delete this->mTableView;
+		this->mTableView = 0;
 	}
 
-	this->updateAttributeTable();
-	if (this->mAttributeTable.GetPointer() == 0 ||
-			this->mAttributeTable->GetNumberOfColumns() == 0 ||
-			this->mAttributeTable->GetNumberOfRows() == 0)
-		return;
+	if (!this->updateAttributeTable()) return;
+	//if (this->mAttributeTable.GetPointer() == 0 ||
+	//		this->mAttributeTable->GetNumberOfColumns() == 0 ||
+	//		this->mAttributeTable->GetNumberOfRows() == 0)
+	//	return;
 
-	this->mTableView = new NMTableView(this->mAttributeTable, 0);
-	this->mTableView->hideAttribute("nm_sel");
-	this->mTableView->setRowKeyColumn("nm_id");
+	if (this->mTableModel == 0)
+	{
+		NMErr(ctxNMVectorLayer, << "No table model - no table view! We're outa here!");
+		return;
+	}
+
+	//this->mTableView = new NMTableView(this->mAttributeTable, 0);
+	this->mTableView = new NMTableView(this->mTableModel, 0);
+	//this->mTableView->hideAttribute("nm_sel");
 	this->mTableView->hideAttribute("nm_id");
+
+	// hide the 'hole' rows
+	vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
+			this->mAttributeTable->GetColumnByName("nm_hole"));
+	for (int row=0; row < this->mAttributeTable->GetNumberOfRows(); ++row)
+	{
+		if (holes->GetValue(row))
+			this->mTableView->hideRow(row);
+	}
 
 	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
 		this->mTableView->hideAttribute("nm_hole");
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
 	// connect tableview signals to layer slots
-	this->connect(this->mTableView,
-			SIGNAL(tableDataChanged(QStringList&, QStringList&)), this,
-			SLOT(emitAttributeTableChanged(QStringList&, QStringList&)));
-	this->connect(this->mTableView, SIGNAL(selectionChanged()), this,
-			SLOT(updateSelectionData()));
+	//this->connect(this->mTableView,
+	//		SIGNAL(tableDataChanged(QStringList&, QStringList&)), this,
+	//		SLOT(emitAttributeTableChanged(QStringList&, QStringList&)));
+	//this->connect(this->mTableView, SIGNAL(selectionChanged()), this,
+	//		SLOT(updateSelectionData()));
 
 	// connect layer signals to tableview slots
-	this->connect(this, SIGNAL(attributeTableChanged(vtkTable*)),
-			this->mTableView, SLOT(setTable(vtkTable*)));
+	//this->connect(this, SIGNAL(attributeTableChanged(vtkTable*)),
+	//		this->mTableView, SLOT(setTable(vtkTable*)));
 //	this->connect(this, SIGNAL(layerSelectionChanged(NMLayer*)),
 //			this->mTableView, SLOT(updateSelection()));
 
@@ -575,35 +594,51 @@ int NMVectorLayer::updateAttributeTable(void)
 	vtkSmartPointer<vtkTable> rawtab = vtkSmartPointer<vtkTable>::New();
 	rawtab->SetRowData(dsa);
 
-	// create an sqlite mem version of the table
-	vtkSmartPointer<vtkSQLiteDatabase> sdb = vtkSQLiteDatabase::SafeDownCast(
-			vtkSQLDatabase::CreateFromURL(
-					"sqlite://:memory:"));
-	sdb->Open("", vtkSQLiteDatabase::USE_EXISTING_OR_CREATE);
-	vtkSmartPointer<vtkTableToSQLiteWriter> writer =
-			vtkSmartPointer<vtkTableToSQLiteWriter>::New();
-	writer->SetDatabase(sdb);
-	writer->SetInput(rawtab);
-	writer->SetTableName("memtable");
-	writer->Update();
+	//// create an sqlite mem version of the table
+	//vtkSmartPointer<vtkSQLiteDatabase> sdb = vtkSQLiteDatabase::SafeDownCast(
+	//		vtkSQLDatabase::CreateFromURL(
+	//				"sqlite://:memory:"));
+	//sdb->Open("", vtkSQLiteDatabase::USE_EXISTING_OR_CREATE);
+	//vtkSmartPointer<vtkTableToSQLiteWriter> writer =
+	//		vtkSmartPointer<vtkTableToSQLiteWriter>::New();
+	//writer->SetDatabase(sdb);
+	//writer->SetInput(rawtab);
+	//writer->SetTableName("memtable");
+	//writer->Update();
+    //
+	//// do the query
+	//vtkSQLiteQuery* sq = vtkSQLiteQuery::SafeDownCast(sdb->GetQueryInstance());
+    //
+	//if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+	//	sq->SetQuery("select * from memtable where nm_hole = 0");
+	//else
+	//	sq->SetQuery("select * from memtable");
+    //
+	//// filter to a new table
+	//vtkSmartPointer<vtkRowQueryToTable> rowtotab =
+	//		vtkSmartPointer<vtkRowQueryToTable>::New();
+	//rowtotab->SetQuery(sq);
+	//rowtotab->Update();
+    //
+	//this->mAttributeTable = rowtotab->GetOutput();
+	//emit attributeTableChanged(this->mAttributeTable);
 
-	// do the query
-	vtkSQLiteQuery* sq = vtkSQLiteQuery::SafeDownCast(sdb->GetQueryInstance());
-
-	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-		sq->SetQuery("select * from memtable where nm_hole = 0");
+	this->mAttributeTable = rawtab;
+	vtkQtEditableTableModelAdapter* tabModel;
+	if (this->mTableModel == 0)
+	{
+		tabModel = new vtkQtEditableTableModelAdapter(this->mAttributeTable, this);
+	}
 	else
-		sq->SetQuery("select * from memtable");
+	{
+		tabModel = qobject_cast<vtkQtEditableTableModelAdapter*>(this->mTableModel);
+		tabModel->setTable(this->mAttributeTable);
+	}
 
-	// filter to a new table
-	vtkSmartPointer<vtkRowQueryToTable> rowtotab =
-			vtkSmartPointer<vtkRowQueryToTable>::New();
-	rowtotab->SetQuery(sq);
-	rowtotab->Update();
+	tabModel->SetKeyColumnName("nm_id");
+	this->mTableModel = tabModel;
 
-	this->mAttributeTable = rowtotab->GetOutput();
-	emit attributeTableChanged(this->mAttributeTable);
-	emit legendChanged(this);
+	//emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
 	return 1;
@@ -646,8 +681,7 @@ void NMVectorLayer::updateDataSet(QStringList& slAlteredColumns,
 		vtkAbstractArray* aa = this->mAttributeTable->GetColumnByName(
 				slAlteredColumns.at(a).toStdString().c_str());
 
-		vtkSmartPointer<vtkAbstractArray> na =
-				this->mTableView->createVTKArray(aa->GetDataType());
+		vtkSmartPointer<vtkAbstractArray> na = vtkAbstractArray::CreateArray(aa->GetDataType());
 		na->SetName(aa->GetName());
 		na->SetNumberOfComponents(1);
 		na->Allocate(holeAr->GetNumberOfTuples());
@@ -672,8 +706,8 @@ void NMVectorLayer::updateDataSet(QStringList& slAlteredColumns,
 	slDeletedColumns.clear();
 	slAlteredColumns.clear();
 
-	emit dataSetChanged(this);
-	emit legendChanged(this);
+	//emit dataSetChanged(this);
+	//emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
@@ -699,7 +733,7 @@ void NMVectorLayer::writeDataSet(void)
 	writer->Update();
 
 	this->mHasChanged = false;
-	emit legendChanged(this);
+	//emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
@@ -708,43 +742,43 @@ void NMVectorLayer::updateSelectionData(void)
 {
 	NMDebugCtx(ctxNMVectorLayer, << "...");
 
-	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
-
-	vtkUnsignedCharArray* holeAr;
-	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-		holeAr = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
-
-	vtkDataArray* dsSel = dsAttr->GetArray("nm_sel");
-
-	vtkTable* tab = const_cast<vtkTable*>(this->mTableView->getTable());
-
-	vtkDataArray* tabSel = vtkDataArray::SafeDownCast(
-					tab->GetColumnByName("nm_sel"));
-
-	vtkLookupTable* clrTab = vtkLookupTable::SafeDownCast(
-			this->mContourMapper->GetLookupTable());
-
-	int valCellCnt = 0;
-	for (int r = 0; r < holeAr->GetNumberOfTuples(); ++r)
-	{
-		if (holeAr->GetValue(r) == 1)
-		{
-			clrTab->SetTableValue(r, 0,0,0,1);
-			continue;
-		}
-
-		dsSel->SetTuple1(r, tabSel->GetTuple1(valCellCnt));
-
-		if (tabSel->GetTuple1(valCellCnt) != 0)
-			clrTab->SetTableValue(r, 1,0,0,1);
-		else
-			clrTab->SetTableValue(r, 0,0,0,1);
-
-		++valCellCnt;
-	}
-
-	emit visibilityChanged(this);
-	emit legendChanged(this);
+//	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+//
+//	vtkUnsignedCharArray* holeAr;
+//	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+//		holeAr = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
+//
+//	vtkDataArray* dsSel = dsAttr->GetArray("nm_sel");
+//
+//	vtkTable* tab = const_cast<vtkTable*>(this->mTableView->getTable());
+//
+//	vtkDataArray* tabSel = vtkDataArray::SafeDownCast(
+//					tab->GetColumnByName("nm_sel"));
+//
+//	vtkLookupTable* clrTab = vtkLookupTable::SafeDownCast(
+//			this->mContourMapper->GetLookupTable());
+//
+//	int valCellCnt = 0;
+//	for (int r = 0; r < holeAr->GetNumberOfTuples(); ++r)
+//	{
+//		if (holeAr->GetValue(r) == 1)
+//		{
+//			clrTab->SetTableValue(r, 0,0,0,1);
+//			continue;
+//		}
+//
+//		dsSel->SetTuple1(r, tabSel->GetTuple1(valCellCnt));
+//
+//		if (tabSel->GetTuple1(valCellCnt) != 0)
+//			clrTab->SetTableValue(r, 1,0,0,1);
+//		else
+//			clrTab->SetTableValue(r, 0,0,0,1);
+//
+//		++valCellCnt;
+//	}
+//
+//	emit visibilityChanged(this);
+//	emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
@@ -752,87 +786,87 @@ void NMVectorLayer::updateSelectionData(void)
 void NMVectorLayer::updateLayerSelection(QList<long> lstCellId,
 		QList<long> lstNMId, NMLayerSelectionType seltype)
 {
-	// update the table, if present
-	if (this->mTableView != 0)
-	{
-		vtkDataArray* tabSel = vtkDataArray::SafeDownCast(
-				this->mAttributeTable->GetColumnByName("nm_sel"));
-
-		switch (seltype)
-		{
-		case NM_SEL_NEW:
-			this->mTableView->clearSelection();
-			foreach(const int &nmid, lstNMId)
-				tabSel->SetTuple1(nmid-1, 1);
-			break;
-		case NM_SEL_ADD:
-			foreach(const int &nmid, lstNMId)
-				tabSel->SetTuple1(nmid-1, 1);
-			break;
-		case NM_SEL_REMOVE:
-			foreach(const int &nmid, lstNMId)
-				tabSel->SetTuple1(nmid-1, 0);
-			break;
-		case NM_SEL_CLEAR:
-			this->mTableView->clearSelection();
-			break;
-		}
-
-		emit attributeTableChanged(this->mAttributeTable);
-	}
-
-	// update the data set and selection
-	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
-
-	vtkUnsignedCharArray* holeAr;
-	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-		holeAr = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
-	vtkDataArray* dsSel = dsAttr->GetArray("nm_sel");
-
-	vtkLookupTable* clrTab = vtkLookupTable::SafeDownCast(
-			this->mContourMapper->GetLookupTable());
-
-	switch(seltype)
-	{
-	case NM_SEL_NEW:
-		for (int r = 0; r < holeAr->GetNumberOfTuples(); ++r)
-		{
-			clrTab->SetTableValue(r, 0,0,0,1);
-			dsSel->SetTuple1(r,0);
-		}
-
-		foreach(const int &cid, lstCellId)
-		{
-			dsSel->SetTuple1(cid,1);
-			clrTab->SetTableValue(cid, 1,0,0,1);
-		}
-		break;
-	case NM_SEL_ADD:
-		foreach(const int &cid, lstCellId)
-		{
-			dsSel->SetTuple1(cid,1);
-			clrTab->SetTableValue(cid, 1,0,0,1);
-		}
-		break;
-	case NM_SEL_REMOVE:
-		foreach(const int &cid, lstCellId)
-		{
-			dsSel->SetTuple1(cid,0);
-			clrTab->SetTableValue(cid, 0,0,0,1);
-		}
-		break;
-	case NM_SEL_CLEAR:
-		for (int r = 0; r < holeAr->GetNumberOfTuples(); ++r)
-		{
-			clrTab->SetTableValue(r, 0,0,0,1);
-			dsSel->SetTuple1(r,0);
-		}
-		break;
-	}
-
-	emit dataSetChanged(this);
-	emit legendChanged(this);
-	emit visibilityChanged(this);
+//	// update the table, if present
+//	if (this->mTableView != 0)
+//	{
+//		vtkDataArray* tabSel = vtkDataArray::SafeDownCast(
+//				this->mAttributeTable->GetColumnByName("nm_sel"));
+//
+//		switch (seltype)
+//		{
+//		case NM_SEL_NEW:
+//			this->mTableView->clearSelection();
+//			foreach(const int &nmid, lstNMId)
+//				tabSel->SetTuple1(nmid-1, 1);
+//			break;
+//		case NM_SEL_ADD:
+//			foreach(const int &nmid, lstNMId)
+//				tabSel->SetTuple1(nmid-1, 1);
+//			break;
+//		case NM_SEL_REMOVE:
+//			foreach(const int &nmid, lstNMId)
+//				tabSel->SetTuple1(nmid-1, 0);
+//			break;
+//		case NM_SEL_CLEAR:
+//			this->mTableView->clearSelection();
+//			break;
+//		}
+//
+//		emit attributeTableChanged(this->mAttributeTable);
+//	}
+//
+//	// update the data set and selection
+//	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+//
+//	vtkUnsignedCharArray* holeAr;
+//	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+//		holeAr = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
+//	vtkDataArray* dsSel = dsAttr->GetArray("nm_sel");
+//
+//	vtkLookupTable* clrTab = vtkLookupTable::SafeDownCast(
+//			this->mContourMapper->GetLookupTable());
+//
+//	switch(seltype)
+//	{
+//	case NM_SEL_NEW:
+//		for (int r = 0; r < holeAr->GetNumberOfTuples(); ++r)
+//		{
+//			clrTab->SetTableValue(r, 0,0,0,1);
+//			dsSel->SetTuple1(r,0);
+//		}
+//
+//		foreach(const int &cid, lstCellId)
+//		{
+//			dsSel->SetTuple1(cid,1);
+//			clrTab->SetTableValue(cid, 1,0,0,1);
+//		}
+//		break;
+//	case NM_SEL_ADD:
+//		foreach(const int &cid, lstCellId)
+//		{
+//			dsSel->SetTuple1(cid,1);
+//			clrTab->SetTableValue(cid, 1,0,0,1);
+//		}
+//		break;
+//	case NM_SEL_REMOVE:
+//		foreach(const int &cid, lstCellId)
+//		{
+//			dsSel->SetTuple1(cid,0);
+//			clrTab->SetTableValue(cid, 0,0,0,1);
+//		}
+//		break;
+//	case NM_SEL_CLEAR:
+//		for (int r = 0; r < holeAr->GetNumberOfTuples(); ++r)
+//		{
+//			clrTab->SetTableValue(r, 0,0,0,1);
+//			dsSel->SetTuple1(r,0);
+//		}
+//		break;
+//	}
+//
+//	emit dataSetChanged(this);
+//	emit legendChanged(this);
+//	emit visibilityChanged(this);
 }
 
 

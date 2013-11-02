@@ -46,7 +46,6 @@
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 
-
 #include "NMRATBandMathImageFilterWrapper.h"
 #include "NMStreamingImageFileWriterWrapper.h"
 #include "NMModelComponentFactory.h"
@@ -215,6 +214,7 @@
 #include "vtkMath.h"
 #include "vtkQtTableView.h"
 #include "vtkQtTableModelAdapter.h"
+#include "vtkQtEditableTableModelAdapter.h"
 #include "vtkDataObjectToTable.h"
 #include "vtkTableToSQLiteWriter.h"
 //#include "vtkODBCDatabase.h"
@@ -1071,7 +1071,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 	else
 	{
 		NMImageLayer *il = qobject_cast<NMImageLayer*>(l);
-		if (il->getRasterAttributeTable(1) == 0)
+		if (il->getRasterAttributeTable(1).IsNull())
 					return;
 
 		vtkImageData *img = vtkImageData::SafeDownCast(
@@ -1443,7 +1443,9 @@ void OtbModellerWin::doMOSO()
 		// show table if we got one
 		if (resTab.GetPointer() != 0)
 		{
-			NMTableView* tv = new NMTableView(resTab, this);
+			vtkQtTableModelAdapter* tabModel = new vtkQtTableModelAdapter(this);
+			tabModel->setTable(resTab);
+			NMTableView* tv = new NMTableView(tabModel, this);
 			tv->setTitle(tr("Optimisation results!"));
 			tv->show();
 		}
@@ -2453,16 +2455,16 @@ OtbModellerWin::updateRasMetaView()
 	}
 	NMDebug(<< std::endl);
 
-	vtkSmartPointer<vtkUnsignedCharArray> car = vtkSmartPointer<vtkUnsignedCharArray>::New();
-	car->SetNumberOfComponents(1);
-	car->SetNumberOfTuples(nrows);
-	car->SetName("nm_sel");
+	//vtkSmartPointer<vtkUnsignedCharArray> car = vtkSmartPointer<vtkUnsignedCharArray>::New();
+	//car->SetNumberOfComponents(1);
+	//car->SetNumberOfTuples(nrows);
+	//car->SetName("nm_sel");
 
-	vtkSmartPointer<vtkLongArray> idar = vtkSmartPointer<vtkLongArray>::New();
-	idar->SetNumberOfComponents(1);
-	idar->SetNumberOfTuples(nrows);
-	idar->FillComponent(0,0);
-	idar->SetName("nm_id");
+	//vtkSmartPointer<vtkLongArray> idar = vtkSmartPointer<vtkLongArray>::New();
+	//idar->SetNumberOfComponents(1);
+	//idar->SetNumberOfTuples(nrows);
+	//idar->FillComponent(0,0);
+	//idar->SetName("nm_id");
 
 
 	// copy the table body
@@ -2484,35 +2486,44 @@ OtbModellerWin::updateRasMetaView()
 				sar->SetValue(r, PQgetvalue(res, r, idxmap.value(colname)));
 			}
 		}
-		car->SetTuple1(r, 0);
-		idar->SetTuple1(r, r);
+		//car->SetTuple1(r, 0);
+		//idar->SetTuple1(r, r);
 	}
 	NMDebug( << std::endl);
-	metatab->AddColumn(car);
-	metatab->AddColumn(idar);
+	//metatab->AddColumn(car);
+	//metatab->AddColumn(idar);
 
 	PQclear(res);
 
-
+	vtkQtTableModelAdapter* model;
 	if (this->mpPetaView == 0)
 	{
-		this->mpPetaView = new NMTableView(metatab, 0);
-		this->mpPetaView->setViewMode(NMTableView::NMTABVIEW_RASMETADATA);
-
-		connect(this->mpPetaView, SIGNAL(notifyLoadRasLayer(const QString&, const QString&)),
-				this, SLOT(fetchRasLayer(const QString&, const QString&)));
-		connect(this->mpPetaView, SIGNAL(notifyDeleteRasLayer(const QString&)),
-				this, SLOT(eraseRasLayer(const QString&)));
+		model = new vtkQtTableModelAdapter(metatab, this);
 	}
 	else
 	{
-		this->mpPetaView->setTable(metatab);
+		model = qobject_cast<vtkQtTableModelAdapter*>(this->mPetaMetaModel);
+		model->setTable(metatab);
+
+		delete this->mpPetaView;
+		this->mpPetaView = 0;
 	}
+	model->SetKeyColumn(0);
+	this->mPetaMetaModel = model;
+
+	this->mpPetaView = new NMTableView(this->mPetaMetaModel, 0);
+	this->mpPetaView->setViewMode(NMTableView::NMTABVIEW_RASMETADATA);
+
+	connect(this->mpPetaView, SIGNAL(notifyLoadRasLayer(const QString&, const QString&)),
+			this, SLOT(fetchRasLayer(const QString&, const QString&)));
+	connect(this->mpPetaView, SIGNAL(notifyDeleteRasLayer(const QString&)),
+			this, SLOT(eraseRasLayer(const QString&)));
+
 
 	this->mpPetaView->setTitle("Rasdaman Image Metadata");
-	this->mpPetaView->setRowKeyColumn("nm_id");
-	this->mpPetaView->hideAttribute("nm_sel");
-	this->mpPetaView->hideAttribute("nm_id");
+	//this->mpPetaView->setRowKeyColumn("nm_id");
+	//this->mpPetaView->hideAttribute("nm_sel");
+	//this->mpPetaView->hideAttribute("nm_id");
 
 	return;
 }

@@ -34,9 +34,11 @@
 
 NMLayer::NMLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
+	: QObject(parent), mSelectionModel(0), mTableModel(0), mTableView(0),
+	  mDataSet(0), mActor(0), mMapper(0),
+	  mIsVisible(false), mIsSelectable(false), mHasChanged(false),
+	  mLayerType(NM_UNKNOWN_LAYER)
 {
-	this->setParent(parent);
-
 	if (renWin == 0)
 	{
 		NMErr(ctxNMLayer, << "invalid render window specified!");
@@ -58,14 +60,6 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 	this->mFileName.clear();
 	this->mLayerPos = this->mRenderer->GetLayer();
-	this->mDataSet = 0;
-	this->mActor = 0;
-	this->mMapper = 0;
-	this->mTableView = 0;
-
-	this->mIsVisible = false;
-	this->mIsSelectable = false;
-	this->mHasChanged = false;
 
 	// set initial bounding box between 0 and 1
 	// for each dimension
@@ -75,7 +69,6 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	for (int i=1; i < 6; i += 2)
 		this->mBBox[i] = 1;
 
-	this->mLayerType = NMLayer::NM_UNKNOWN_LAYER;
 	this->mTotalArea = -1;
 
 	// connect the layer's own dataSetChanged signal to the layer's
@@ -436,7 +429,8 @@ double NMLayer::getLegendItemLowerValue(int legendRow)
 		return -9;
 	}
 
-	vtkDoubleArray* range = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("range"));
+	vtkDoubleArray* range = vtkDoubleArray::SafeDownCast(
+			this->mLegendInfo->GetColumnByName("range"));
 
 	double r[2];
 	range->GetTuple(legendRow, r);
@@ -452,7 +446,8 @@ bool NMLayer::getLegendItemRange(int legendRow, double* range)
 		return false;
 	}
 
-	vtkDoubleArray* rar = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("range"));
+	vtkDoubleArray* rar = vtkDoubleArray::SafeDownCast(
+			this->mLegendInfo->GetColumnByName("range"));
 
 	rar->GetTuple(legendRow, range);
 

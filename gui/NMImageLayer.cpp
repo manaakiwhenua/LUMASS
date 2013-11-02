@@ -23,7 +23,7 @@
  */
 
 #include "NMImageLayer.h"
-
+#include "NMQtOtbAttributeTableModel.h"
 
 #include <QTime>
 
@@ -215,11 +215,11 @@ void NMImageLayer::createTableView(void)
 	//this->mAttributeTable->Print(std::cout);
 
 
-	this->mTableView = new NMTableView(this->mOtbRAT, 0);//this->mAttributeTable, 0);
-	this->mTableView->hideAttribute("nm_sel");
+	this->mTableView = new NMTableView(this->mTableModel, 0);//this->mAttributeTable, 0);
+	//this->mTableView->hideAttribute("nm_sel");
 	//this->mTableView->setRowKeyColumn("nm_id");
-	this->mTableView->setRowKeyColumn("rowidx");
-	this->mTableView->hideAttribute("rowidx");
+	//this->mTableView->setRowKeyColumn("rowidx");
+	//this->mTableView->hideAttribute("rowidx");
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
 	// connect layer signals to tableview slots and model components list
@@ -347,19 +347,33 @@ int NMImageLayer::updateAttributeTable()
 	//emit attributeTableChanged(this->mOtbRAT);//this->mAttributeTable);
 
 	this->mOtbRAT = this->getRasterAttributeTable(1);
+	NMQtOtbAttributeTableModel* otbModel;
+	if (this->mTableModel == 0)
+	{
+
+		otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT, this);
+		otbModel->setKeyColumn("rowidx");
+	}
+	else
+	{
+		otbModel = qobject_cast<NMQtOtbAttributeTableModel*>(this->mTableModel);
+		otbModel->setTable(this->mOtbRAT);
+		otbModel->setKeyColumn("rowidx");
+	}
+	this->mTableModel = otbModel;
 
 	// we add the "nm_sel" column for home grown selection handling
-	int selid = this->mOtbRAT->ColumnExists("nm_sel");
-	if (selid < 0)
-	{
-		this->mOtbRAT->AddColumn("nm_sel", otb::AttributeTable::ATTYPE_INT);
-		selid = this->mOtbRAT->ColumnExists("nm_sel");
-
-		for (int r=0; r < this->mOtbRAT->GetNumRows(); ++r)
-		{
-			this->mOtbRAT->SetValue(selid, r, (long)0);
-		}
-	}
+	//int selid = this->mOtbRAT->ColumnExists("nm_sel");
+	//if (selid < 0)
+	//{
+	//	this->mOtbRAT->AddColumn("nm_sel", otb::AttributeTable::ATTYPE_INT);
+	//	selid = this->mOtbRAT->ColumnExists("nm_sel");
+    //
+	//	for (int r=0; r < this->mOtbRAT->GetNumRows(); ++r)
+	//	{
+	//		this->mOtbRAT->SetValue(selid, r, (long)0);
+	//	}
+	//}
 
 	emit legendChanged(this);
 
@@ -587,7 +601,8 @@ const vtkDataSet* NMImageLayer::getDataSet()
 	return this->mPipeconn->getVtkImage();
 }
 
-otb::AttributeTable* NMImageLayer::getRasterAttributeTable(int band)
+otb::AttributeTable::Pointer
+NMImageLayer::getRasterAttributeTable(int band)
 {
 	if (band < 1 || band > this->mReader->getOutputNumBands())
 		return 0;

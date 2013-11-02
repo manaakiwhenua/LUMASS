@@ -218,6 +218,7 @@ private:
 
     // the petascope metadata table
     NMTableView* mpPetaView;
+    QAbstractItemModel* mPetaMetaModel;
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

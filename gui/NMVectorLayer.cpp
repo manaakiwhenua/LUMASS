@@ -538,11 +538,8 @@ void NMVectorLayer::createTableView(void)
 		this->mTableView = 0;
 	}
 
-	if (!this->updateAttributeTable()) return;
-	//if (this->mAttributeTable.GetPointer() == 0 ||
-	//		this->mAttributeTable->GetNumberOfColumns() == 0 ||
-	//		this->mAttributeTable->GetNumberOfRows() == 0)
-	//	return;
+	if (!this->updateAttributeTable())
+		return;
 
 	if (this->mTableModel == 0)
 	{
@@ -550,10 +547,9 @@ void NMVectorLayer::createTableView(void)
 		return;
 	}
 
-	//this->mTableView = new NMTableView(this->mAttributeTable, 0);
 	this->mTableView = new NMTableView(this->mTableModel, 0);
-	//this->mTableView->hideAttribute("nm_sel");
-	this->mTableView->hideAttribute("nm_id");
+	this->mTableView->setSelectionModel(this->mSelectionModel);
+	this->mTableView->hideAttribute("nm_sel");
 
 	// hide the 'hole' rows
 	vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
@@ -594,35 +590,6 @@ int NMVectorLayer::updateAttributeTable(void)
 	vtkSmartPointer<vtkTable> rawtab = vtkSmartPointer<vtkTable>::New();
 	rawtab->SetRowData(dsa);
 
-	//// create an sqlite mem version of the table
-	//vtkSmartPointer<vtkSQLiteDatabase> sdb = vtkSQLiteDatabase::SafeDownCast(
-	//		vtkSQLDatabase::CreateFromURL(
-	//				"sqlite://:memory:"));
-	//sdb->Open("", vtkSQLiteDatabase::USE_EXISTING_OR_CREATE);
-	//vtkSmartPointer<vtkTableToSQLiteWriter> writer =
-	//		vtkSmartPointer<vtkTableToSQLiteWriter>::New();
-	//writer->SetDatabase(sdb);
-	//writer->SetInput(rawtab);
-	//writer->SetTableName("memtable");
-	//writer->Update();
-    //
-	//// do the query
-	//vtkSQLiteQuery* sq = vtkSQLiteQuery::SafeDownCast(sdb->GetQueryInstance());
-    //
-	//if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-	//	sq->SetQuery("select * from memtable where nm_hole = 0");
-	//else
-	//	sq->SetQuery("select * from memtable");
-    //
-	//// filter to a new table
-	//vtkSmartPointer<vtkRowQueryToTable> rowtotab =
-	//		vtkSmartPointer<vtkRowQueryToTable>::New();
-	//rowtotab->SetQuery(sq);
-	//rowtotab->Update();
-    //
-	//this->mAttributeTable = rowtotab->GetOutput();
-	//emit attributeTableChanged(this->mAttributeTable);
-
 	this->mAttributeTable = rawtab;
 	vtkQtEditableTableModelAdapter* tabModel;
 	if (this->mTableModel == 0)
@@ -634,8 +601,14 @@ int NMVectorLayer::updateAttributeTable(void)
 		tabModel = qobject_cast<vtkQtEditableTableModelAdapter*>(this->mTableModel);
 		tabModel->setTable(this->mAttributeTable);
 	}
-
 	tabModel->SetKeyColumnName("nm_id");
+
+	// in any case, we create a new item selection model
+	if (this->mSelectionModel != 0)
+	{
+		delete this->mSelectionModel;
+	}
+	this->mSelectionModel = new QItemSelectionModel(tabModel, this);
 	this->mTableModel = tabModel;
 
 	//emit legendChanged(this);

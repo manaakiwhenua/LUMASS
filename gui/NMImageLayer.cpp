@@ -205,21 +205,18 @@ void NMImageLayer::createTableView(void)
 	if (this->mTableView != 0)
 	{
 		delete this->mTableView;
+		this->mTableView = 0;
 	}
 
 	if (!this->updateAttributeTable())
 		return;
 
+	if (this->mTableModel == 0)
+		return;
 
-	// for debug only
-	//this->mAttributeTable->Print(std::cout);
 
-
-	this->mTableView = new NMTableView(this->mTableModel, 0);//this->mAttributeTable, 0);
-	//this->mTableView->hideAttribute("nm_sel");
-	//this->mTableView->setRowKeyColumn("nm_id");
-	//this->mTableView->setRowKeyColumn("rowidx");
-	//this->mTableView->hideAttribute("rowidx");
+	this->mTableView = new NMTableView(this->mTableModel, 0);
+	this->mTableView->setSelectionModel(this->mSelectionModel);
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
 	// connect layer signals to tableview slots and model components list
@@ -350,9 +347,7 @@ int NMImageLayer::updateAttributeTable()
 	NMQtOtbAttributeTableModel* otbModel;
 	if (this->mTableModel == 0)
 	{
-
 		otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT, this);
-		otbModel->setKeyColumn("rowidx");
 	}
 	else
 	{
@@ -360,6 +355,14 @@ int NMImageLayer::updateAttributeTable()
 		otbModel->setTable(this->mOtbRAT);
 		otbModel->setKeyColumn("rowidx");
 	}
+	otbModel->setKeyColumn("rowidx");
+
+	// in any case, we create a new item selection model
+	if (this->mSelectionModel != 0)
+	{
+		delete this->mSelectionModel;
+	}
+	this->mSelectionModel = new QItemSelectionModel(otbModel, this);
 	this->mTableModel = otbModel;
 
 	// we add the "nm_sel" column for home grown selection handling
@@ -375,7 +378,7 @@ int NMImageLayer::updateAttributeTable()
 	//	}
 	//}
 
-	emit legendChanged(this);
+	//emit legendChanged(this);
 
 	return 1;
 }

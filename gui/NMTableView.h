@@ -92,11 +92,7 @@ public:
 		NMTABVIEW_RASMETADATA
 	};
 
-	//NMTableView(QWidget* parent=0);
 	NMTableView(QAbstractItemModel* model, QWidget* parent=0);
-	//NMTableView(vtkTable* tab, QWidget* parent=0);
-	//NMTableView(otb::AttributeTable::Pointer model, QWidget* parent=0);
-
 	virtual ~NMTableView();
 
 	void setSelectionModel(QItemSelectionModel* selectionModel);
@@ -109,10 +105,7 @@ public:
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);
 	void setTitle(const QString& title) {this->setWindowTitle(title);};
-//	void setRowKeyColumn(const QString& rowKeyCol);
 	void hideRow(int row);
-	//const vtkTable* getTable(void);
-	//vtkSmartPointer<vtkAbstractArray> createVTKArray(int datatype);
 
 public slots:
 
@@ -123,12 +116,11 @@ public slots:
 	void colStats();
 	void userQuery();
 	void normalise();
-	//void setTable(vtkTable* tab);
-	//void setTable(otb::AttributeTable::Pointer tab);
 	void selectionQuery();
 	void clearSelection();
 	void selectRow(int row);
 	void deselectRow(int row);
+	void toggleRow(int row);
 	void updateSelection(void);
 	void switchSelection(void);
 	void joinAttributes(void);
@@ -146,8 +138,14 @@ signals:
 	void notifyDeleteRasLayer(const QString& imagespec);
 
 protected slots:
+	void updateProxySelection(const QItemSelection& selected,
+			const QItemSelection& deselected);
 	void updateSelRecsOnly(int state);
-
+	void updateSelectionAdmin(const QItemSelection&
+			selected, const QItemSelection& deselected);
+	void internalSwitchSelection(void)
+		{this->mbSwitchSelection = true;
+		 this->switchSelection();}
 
 protected:
 
@@ -167,14 +165,15 @@ protected:
 
 	void mousePressEvent(QMouseEvent* event);
 	bool eventFilter(QObject* object, QEvent* event);
-	void updateSelectionAdmin(void);
 
 	ViewMode mViewMode;
 
-	long mlNumSelRecs;
+	//long mlNumSelRecs;
 	int mRowKeyColIndex;
 	QString mLastClickedColumn;
 	long mlLastClickedRow;
+
+	bool mbSwitchSelection;
 
 	QTableView* mTableView;
 	//vtkQtEditableTableModelAdapter* mVtkTableAdapter;

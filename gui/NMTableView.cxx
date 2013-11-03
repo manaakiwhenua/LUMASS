@@ -116,20 +116,18 @@
 
 NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
-	  mModel(model)
+	  mModel(model), mbSwitchSelection(false)
 {
 	this->mTableView = new QTableView(this);
+	this->initView();
 
 	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 	this->mSortFilter->setDynamicSortFilter(true);
 	this->mSortFilter->setSourceModel(mModel);
 	this->mTableView->setModel(this->mSortFilter);
-	this->mSortFilter->sort(0, Qt::DescendingOrder);
 
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
-
-	this->initView();
 }
 
 
@@ -262,7 +260,7 @@ void NMTableView::initView()
 
     // CONNECT MENU ACTIONS WITH SLOTS
 	this->connect(this->mBtnClearSelection, SIGNAL(pressed()), this, SLOT(clearSelection()));
-	this->connect(this->mBtnSwitchSelection, SIGNAL(pressed()), this, SLOT(switchSelection()));
+	this->connect(this->mBtnSwitchSelection, SIGNAL(pressed()), this, SLOT(internalSwitchSelection()));
 	this->connect(this->mChkSelectedRecsOnly, SIGNAL(stateChanged(int)), this,
 			SLOT(updateSelRecsOnly(int)));
 
@@ -298,6 +296,31 @@ void NMTableView::initView()
 	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
 
+}
+
+void
+NMTableView::setSelectionModel(QItemSelectionModel* selectionModel)
+{
+	this->mSelectionModel = selectionModel;
+	if (this->mSelectionModel)
+	{
+		connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
+				                                         const QItemSelection &)),
+				this, SLOT(updateSelectionAdmin(const QItemSelection &,
+						                        const QItemSelection &)));
+
+		connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
+				                                         const QItemSelection &)),
+				this, SLOT(updateProxySelection(const QItemSelection &,
+						                        const QItemSelection &)));
+
+		QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
+				this->mSelectionModel->selection());
+		this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::ClearAndSelect |
+				QItemSelectionModel::Rows);
+
+		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
+	}
 }
 
 void
@@ -338,64 +361,24 @@ void NMTableView::updateSelRecsOnly(int state)
 
 void NMTableView::switchSelection()
 {
-	//vtkTable* tab = vtkTable::SafeDownCast(
-	//		this->mVtkTableAdapter->GetVTKDataObject());
-	//vtkAbstractArray* aa = tab->GetColumnByName("nm_sel");
-	//if (aa == 0)
-	//{
-	//	NMErr(__ctxtabview, << "Selection column 'nm_sel' not found!");
-	//	return;
-	//}
+	//QModelIndex proxytop = this->mSortFilter->index(0, 0, QModelIndex());
+	//QModelIndex proxybottom = this->mSortFilter->index(
+	//		this->mSortFilter->rowCount(QModelIndex())-1, 0, QModelIndex());
+	//QItemSelection proxySelection(proxytop, proxybottom);
     //
-	//vtkDataArray* selar = vtkDataArray::SafeDownCast(aa);
-	//long selcnt = 0;
-	//for (int r = 0; r < tab->GetNumberOfRows(); ++r)
-	//{
-	//	if (selar->GetTuple1(r) == 0)
-	//	{
-	//		selar->SetTuple1(r, 1);
-	//		this->selectRow(r);
-	//		++selcnt;
-	//	}
-	//	else
-	//	{
-	//		selar->SetTuple1(r, 0);
-	//		this->deselectRow(r);
-	//	}
-	//}
+	//this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Toggle |
+	//		QItemSelectionModel::Rows);
 
-	QModelIndex top = this->mModel->index(0, 0, QModelIndex());
-	QModelIndex bottom =
-			this->mModel->index(
-				this->mModel->rowCount(QModelIndex())-1, 0, QModelIndex());
-
-	QItemSelection newSelection(top, bottom);
-
-	this->mTableView->selectionModel()->
-			select(newSelection,
-			   QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
-
-	this->updateSelectionAdmin();
-
-//	int selcnt = this->mTableView->selectionModel()->selectedRows().size();
-//	if (selcnt)
-//	{
-//		this->mBtnClearSelection->setEnabled(true);
-//		this->mBtnSwitchSelection->setEnabled(true);
-//	}
-//	else
-//	{
-//		this->mBtnClearSelection->setEnabled(false);
-//		this->mBtnSwitchSelection->setEnabled(false);
-//	}
-//
-//	this->mlNumSelRecs = selcnt;
-//	this->mRecStatusLabel->setText(
-//			QString(tr("%1 of %2 records selected")).arg(selcnt).arg(
-//					mModel->rowCount(QModelIndex())));
-
-	// ToDo :: needs to be fired! just turned off for debugging purposes
-	//emit selectionChanged();
+	if (this->mSelectionModel != 0)
+	{
+		QModelIndex modeltop = this->mModel->index(0, 0, QModelIndex());
+		QModelIndex modelbottom =
+				this->mModel->index(
+					this->mModel->rowCount(QModelIndex())-1, 0, QModelIndex());
+		QItemSelection modelSelection(modeltop, modelbottom);
+		this->mSelectionModel->select(modelSelection, QItemSelectionModel::Toggle |
+				QItemSelectionModel::Rows);
+	}
 }
 
 void NMTableView::normalise()
@@ -563,24 +546,29 @@ void NMTableView::updateSelection(void)
 	//	}
 	//}
 
-	this->updateSelectionAdmin();
+	//this->updateSelectionAdmin();
 }
 
-void NMTableView::updateSelectionAdmin(void)
+void
+NMTableView::updateSelectionAdmin(const QItemSelection& sel,
+		const QItemSelection& desel)
 {
-	int selcnt = this->mTableView->selectionModel()->selectedRows().size();
+	int selcnt = 0;
+	if (this->mSelectionModel)
+		selcnt = this->mSelectionModel->selectedRows().size();
+	else
+		selcnt = this->mTableView->selectionModel()->selectedRows().size();
+
 	if (selcnt)
 	{
 		this->mBtnClearSelection->setEnabled(true);
-		this->mBtnSwitchSelection->setEnabled(true);
 	}
 	else
 	{
 		this->mBtnClearSelection->setEnabled(false);
-		this->mBtnSwitchSelection->setEnabled(false);
 	}
+	this->mBtnSwitchSelection->setEnabled(true);
 
-	this->mlNumSelRecs = selcnt;
 	this->mRecStatusLabel->setText(
 			QString(tr("%1 of %2 records selected")).arg(selcnt).arg(
 					mModel->rowCount(QModelIndex())));
@@ -1357,9 +1345,13 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		if (me->button() == Qt::RightButton)
 		{
 			int col = this->mTableView->columnAt(me->pos().x());
+			if (col < 0)
+			{
+				this->mLastClickedColumn.clear();
+				return false;
+			}
 			this->mLastClickedColumn = this->mSortFilter->
 					headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
-
 			this->mColHeadMenu->move(me->globalPos());
 			this->mColHeadMenu->exec();
 		}
@@ -1369,56 +1361,41 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 	else if (object == this->mTableView->verticalHeader()->viewport() &&
 				event->type() == QEvent::MouseButtonPress)
 	{
-		//		NMDebugAI(<< "row header clicked!" << endl);
 		QMouseEvent* me = static_cast<QMouseEvent*>(event);
 		if (me->button() == Qt::LeftButton)
 		{
 			if (me->modifiers() != Qt::ControlModifier)
 			{
-					this->mTableView->selectionModel()->clearSelection();
-					//this->clearSelection();
+					if (this->mSelectionModel)
+						this->mSelectionModel->clearSelection();
+					else
+						this->mTableView->selectionModel()->clearSelection();
 			}
 			else
 			{
-				//
-				////vtkTable* tab = vtkTable::SafeDownCast(
-				////		this->mVtkTableAdapter->GetVTKDataObject());
-				////vtkDataArray* sa = vtkDataArray::SafeDownCast(tab->GetColumnByName("nm_sel"));
-				//
 				int row = this->mTableView->rowAt(me->pos().y());
-				QModelIndex left = this->mSortFilter->index(row, 0, QModelIndex());
-				QModelIndex right = this->mSortFilter->index(row, this->mModel->columnCount()-1,
-						QModelIndex());
-				QItemSelection newSelection(left, right);
-				this->mTableView->selectionModel()->select(newSelection, QItemSelectionModel::Toggle);
+				NMDebugAI(<< "proxy row #" << row);
+				if (row != -1)
+				{
+					QModelIndex proxyIndx = this->mSortFilter->index(row, 0, QModelIndex());
+					QModelIndex srcIndx = this->mSortFilter->mapToSource(proxyIndx);
 
-				//if (sa->GetTuple1(row))
-				//{
-				//	sa->SetTuple1(row, 0);
-				//	this->deselectRow(row);
-				//	--this->mlNumSelRecs;
-				//}
-				//else
-				//{
-				//	sa->SetTuple1(row, 1);
-				//	this->selectRow(row);
-				//	++this->mlNumSelRecs;
-				//
-				//}
-
-				// toDo :: this needs to be enabled again later
-				//this->updateSelectionAdmin();
-				//emit selectionChanged ();
+					NMDebug(<< " | source row #" << srcIndx.row() << std::endl);
+					this->toggleRow(srcIndx.row());
+				}
+				else
+				{
+					NMDebug(<< std::endl);
+				}
 			}
 		}
-		this->updateSelectionAdmin();
 		return true;
 	}
 	// ----------------------------- PREVENT CELL SELECTION ------------------------------------
 	else if (   (   object == this->mTableView->viewport()
 			     && event->type() == QEvent::MouseButtonPress)
 			 || (   object == this->mTableView->viewport()
-				     && event->type() == QEvent::MouseButtonDblClick)
+				 && event->type() == QEvent::MouseButtonDblClick)
 			 )
 	{
 			QMouseEvent* me = static_cast<QMouseEvent*>(event);
@@ -1426,9 +1403,11 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 			{
 				if (this->mViewMode == NMTableView::NMTABVIEW_RASMETADATA)
 				{
-					this->mlLastClickedRow = this->mTableView->rowAt(me->pos().y());
-					NMDebugAI(<< "clicked at row: " << mlLastClickedRow << std::endl);
+					int row = this->mTableView->rowAt(me->pos().y());
+					if (!row)
+						return true;
 
+					this->mlLastClickedRow = row;
 					this->mManageLayerMenu->move(me->globalPos());
 					this->mManageLayerMenu->exec();
 				}
@@ -1439,8 +1418,11 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 			{
 				int row = this->mTableView->rowAt(me->pos().y());
 				int col = this->mTableView->columnAt(me->pos().x());
-				QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
-				this->mTableView->edit(idx);
+				if (row && col)
+				{
+					QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
+					this->mTableView->edit(idx);
+				}
 				return true;
 			}
 			else
@@ -1448,7 +1430,6 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				// we filter anything else out
 				return true;
 			}
-
 	}
 
 	return false;
@@ -1570,21 +1551,98 @@ void NMTableView::clearSelection()
 //	emit selectionChanged();
 }
 
-void NMTableView::selectRow(int row)
+void
+NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
 {
-//	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
-//	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
-//	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Select |
-//			QItemSelectionModel::Rows);
-//	this->mTableView->update(idx);
+	NMDebugCtx(__ctxtabview, << "...");
+
+	if (this->mbSwitchSelection)
+	{
+		NMDebugAI(<< "SWITCH SELECTION MODE" << std::endl);
+
+		QModelIndex top = this->mSortFilter->index(0, 0, QModelIndex());
+		QModelIndex bottom = this->mSortFilter->index(
+				this->mSortFilter->rowCount(QModelIndex())-1, 0, QModelIndex());
+
+		QItemSelection theSelection(top, bottom);
+
+		this->mTableView->selectionModel()->select(theSelection, QItemSelectionModel::Toggle |
+				QItemSelectionModel::Rows);
+		this->mbSwitchSelection = false;
+	}
+	else
+	{
+		NMDebugAI(<< "PICK SELECTION MODE" << std::endl);
+
+		//NMDebugAI(<< "we clear the table view selection ..." << std::endl);
+		//this->mTableView->selectionModel()->clearSelection();
+
+		NMDebugAI(<< "we map selection from source ..." << std::endl);
+		QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(sel);
+		QItemSelection proxyDeselection = this->mSortFilter->mapSelectionFromSource(desel);
+
+		NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
+		this->mTableView->selectionModel()->select(proxyDeselection,
+				QItemSelectionModel::Deselect);
+
+		this->mTableView->selectionModel()->select(proxySelection,
+				QItemSelectionModel::Select);
+	}
+
+	// DEBUG print selection
+
+
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
-void NMTableView::deselectRow(int row)
+void
+NMTableView::selectRow(int row)
 {
-//	QModelIndex idx = this->mVtkTableAdapter->index(row,0,QModelIndex());
-//	QModelIndex mappedIndex = this->mSortFilter->mapFromSource(idx);
-//	this->mTableView->selectionModel()->select(mappedIndex, QItemSelectionModel::Deselect |
+//	QModelIndex srcIndex = this->mModel->index(row,0,QModelIndex());
+//	QModelIndex proxyIndex = this->mSortFilter->mapFromSource(srcIndex);
+//
+//	this->mTableView->selectionModel()->select(proxyIndex, QItemSelectionModel::Select |
 //			QItemSelectionModel::Rows);
-//	this->mTableView->update(idx);
+//	this->mTableView->update(proxyIndex);
+//
+//	if (this->mSelectionModel)
+//	{
+//		this->mSelectionModel->select(srcIndex, QItemSelectionModel::Select |
+//				QItemSelectionModel::Rows);
+//	}
+//	else
+//		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
 }
+
+
+void
+NMTableView::deselectRow(int row)
+{
+//	QModelIndex srcIndex = this->mModel->index(row,0,QModelIndex());
+//	QModelIndex proxyIndex = this->mSortFilter->mapFromSource(srcIndex);
+//
+//	this->mTableView->selectionModel()->select(proxyIndex, QItemSelectionModel::Deselect |
+//			QItemSelectionModel::Rows);
+//	this->mTableView->update(proxyIndex);
+//
+//	if (this->mSelectionModel)
+//	{
+//		this->mSelectionModel->select(srcIndex, QItemSelectionModel::Deselect |
+//				QItemSelectionModel::Rows);
+//	}
+//	else
+//		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
+}
+
+void
+NMTableView::toggleRow(int row)
+{
+	QModelIndex srcIndex = this->mModel->index(row,0,QModelIndex());
+	if (this->mSelectionModel)
+	{
+		this->mSelectionModel->select(srcIndex, QItemSelectionModel::Toggle |
+				QItemSelectionModel::Rows);
+	}
+}
+
 

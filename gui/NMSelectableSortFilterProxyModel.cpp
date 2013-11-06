@@ -44,15 +44,16 @@ Qt::ItemFlags NMSelectableSortFilterProxyModel::flags(
 	return QSortFilterProxyModel::flags(index) | Qt::ItemIsSelectable;
 }
 
-void
-NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
-{
-	NMDebugCtx("ctxSelSortFilterProxy", << "...");
-
-	NMDebugAI(<< "about to filter column #" << column << std::endl);
-	QSortFilterProxyModel::sort(column, order);
-
-	NMDebugCtx("ctxSelSortFilterProxy", << "done!");
-}
+//void
+//NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
+//{
+//	NMDebugCtx("ctxSelSortFilterProxy", << "...");
+//
+//
+//	NMDebugAI(<< "about to filter column #" << column << std::endl);
+//	QSortFilterProxyModel::sort(column, order);
+//
+//	NMDebugCtx("ctxSelSortFilterProxy", << "done!");
+//}
 
 

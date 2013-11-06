@@ -1,4 +1,4 @@
- /****************************************************************************** 
+ /****************************************************************************el**
  * Created by Alexander Herzig 
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
@@ -128,6 +128,7 @@ NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
+	this->mMapColSortAsc.clear();
 }
 
 
@@ -137,7 +138,7 @@ NMTableView::~NMTableView()
 
 void NMTableView::initView()
 {
-	this->mTableView->setSortingEnabled(true);
+	//this->mTableView->setSortingEnabled(true);
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -1337,27 +1338,83 @@ void NMTableView::mousePressEvent(QMouseEvent* event)
 
 bool NMTableView::eventFilter(QObject* object, QEvent* event)
 {
-	// -------------------------- CONTEXT MENU CALLING -----------------------------------------
+	// ======================== COLUMN HEADER + MOUSE BUTTON ==================================================
 	if (object == this->mTableView->horizontalHeader()->viewport() &&
 			event->type() == QEvent::MouseButtonPress)
 	{
+		// --------------------- CHECK FOR VALID COLUMN CLICKED --------------------------------------
+		// if we haven't got a proper column on the hook, we bail out
 		QMouseEvent* me = static_cast<QMouseEvent*>(event);
-		if (me->button() == Qt::RightButton)
+		int col = this->mTableView->columnAt(me->pos().x());
+		if (col < 0)
 		{
-			int col = this->mTableView->columnAt(me->pos().x());
-			if (col < 0)
-			{
-				this->mLastClickedColumn.clear();
-				return false;
-			}
+			this->mLastClickedColumn.clear();
+			return false;
+		}
+		else
+		{
 			this->mLastClickedColumn = this->mSortFilter->
 					headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+		}
+
+
+		// let's see what kind of mouse button we've got
+		// --------------------- RIGHT BUTTON calls CONTEXT MENU ----------------------------------------
+		if (me->button() == Qt::RightButton)
+		{
 			this->mColHeadMenu->move(me->globalPos());
 			this->mColHeadMenu->exec();
 		}
+		// --------------------- LEFT BUTTON SORTS THE COLUMN ---------------------------------------------
+		else if (me->button() == Qt::LeftButton)
+		{
+			NMDebugAI(<< "SROTING COLUMN #" << col << "..." << std::endl);
+
+			NMDebugAI(<< "... clear current table view selection" << std::endl);
+			this->mTableView->selectionModel()->reset();
+
+			Qt::SortOrder order;
+			QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
+			if (it != mMapColSortAsc.end())
+			{
+				if (it.value())
+				{
+					order = Qt::DescendingOrder;
+					mMapColSortAsc.insert(col, false);
+				}
+				else
+				{
+					order = Qt::AscendingOrder;
+					mMapColSortAsc.insert(col, true);
+				}
+			}
+			else
+			{
+				order = Qt::AscendingOrder;
+				mMapColSortAsc.insert(col, true);
+			}
+			this->mTableView->horizontalHeader()->setSortIndicator(col, order);
+			this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
+
+			NMDebugAI(<< "... actually sorting the column" << std::endl);
+			this->mSortFilter->sort(col, order);
+
+
+			// re-apply any existing selection
+			NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
+			QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
+					this->mSelectionModel->selection());
+
+			this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
+					QItemSelectionModel::Rows);
+
+			NMDebugAI(<< "SORTING DONE!" << std::endl);
+
+			return true;
+		}
 		return false;
 	}
-	// ----------------------- ROW SELECTION HANDLING ----------------------------------------
+	// ============================== ROW HEADER AND MOUSE BUTTON ================================================
 	else if (object == this->mTableView->verticalHeader()->viewport() &&
 				event->type() == QEvent::MouseButtonPress)
 	{
@@ -1391,7 +1448,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		}
 		return true;
 	}
-	// ----------------------------- PREVENT CELL SELECTION ------------------------------------
+	// ================================ COLUMN HEADER AND DOUBLE CLICK ==============================================
 	else if (   (   object == this->mTableView->viewport()
 			     && event->type() == QEvent::MouseButtonPress)
 			 || (   object == this->mTableView->viewport()
@@ -1399,6 +1456,8 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 			 )
 	{
 			QMouseEvent* me = static_cast<QMouseEvent*>(event);
+
+			// ----------------------- RIGHT BUTTON CALLS META MENU ------------------------------------------------
 			if (me->button() == Qt::RightButton)
 			{
 				if (this->mViewMode == NMTableView::NMTABVIEW_RASMETADATA)
@@ -1413,6 +1472,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				}
 				return true;
 			}
+			// ------------------------LEFT BUTTON DBL CLICK EDITS THE CELL ----------------------------------------
 			else if (	me->button() == Qt::LeftButton
 					 && event->type() == QEvent::MouseButtonDblClick)
 			{
@@ -1564,9 +1624,9 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 		QModelIndex bottom = this->mSortFilter->index(
 				this->mSortFilter->rowCount(QModelIndex())-1, 0, QModelIndex());
 
-		QItemSelection theSelection(top, bottom);
+		QItemSelection selection(top, bottom);
 
-		this->mTableView->selectionModel()->select(theSelection, QItemSelectionModel::Toggle |
+		this->mTableView->selectionModel()->select(selection, QItemSelectionModel::Toggle |
 				QItemSelectionModel::Rows);
 		this->mbSwitchSelection = false;
 	}
@@ -1582,15 +1642,14 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 		QItemSelection proxyDeselection = this->mSortFilter->mapSelectionFromSource(desel);
 
 		NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
+
 		this->mTableView->selectionModel()->select(proxyDeselection,
 				QItemSelectionModel::Deselect);
-
 		this->mTableView->selectionModel()->select(proxySelection,
 				QItemSelectionModel::Select);
 	}
 
 	// DEBUG print selection
-
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }

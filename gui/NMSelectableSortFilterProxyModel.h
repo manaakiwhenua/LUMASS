@@ -40,7 +40,7 @@ public:
 
 	Qt::ItemFlags flags(const QModelIndex &index) const;
 
-	void sort(int column, Qt::SortOrder order);
+	//void sort(int column, Qt::SortOrder order);
 
 };
 

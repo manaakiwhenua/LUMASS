@@ -172,8 +172,9 @@ protected:
 	int mRowKeyColIndex;
 	QString mLastClickedColumn;
 	long mlLastClickedRow;
-
 	bool mbSwitchSelection;
+
+	QMap<int, bool> mMapColSortAsc;
 
 	QTableView* mTableView;
 	//vtkQtEditableTableModelAdapter* mVtkTableAdapter;

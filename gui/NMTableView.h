@@ -166,6 +166,9 @@ protected:
 	void mousePressEvent(QMouseEvent* event);
 	bool eventFilter(QObject* object, QEvent* event);
 
+	void printSelRanges(const QItemSelection& selection,
+			const QString& msg);
+
 	ViewMode mViewMode;
 
 	//long mlNumSelRecs;

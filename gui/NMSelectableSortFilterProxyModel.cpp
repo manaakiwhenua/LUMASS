@@ -44,6 +44,43 @@ Qt::ItemFlags NMSelectableSortFilterProxyModel::flags(
 	return QSortFilterProxyModel::flags(index) | Qt::ItemIsSelectable;
 }
 
+QItemSelection
+NMSelectableSortFilterProxyModel::mapRowSelectionToSource(const QItemSelection &proxySelection) const
+{
+	QModelIndexList proxyIndexes = proxySelection.indexes();
+    QItemSelection sourceSelection;
+    for (int i = 0; i < proxyIndexes.size(); ++i)
+    {
+        const QModelIndex proxyIdx = mapToSource(proxyIndexes.at(i));
+        if (!proxyIdx.isValid() || proxyIdx.column() > 0)
+            continue;
+        sourceSelection << QItemSelectionRange(proxyIdx);
+
+        //sourceSelection.merge(QItemSelection(proxyIdx, proxyIdx),
+        //		QItemSelectionModel::Select);
+    }
+    return sourceSelection;
+}
+
+
+QItemSelection
+NMSelectableSortFilterProxyModel::mapRowSelectionFromSource(const QItemSelection &sourceSelection) const
+{
+    QModelIndexList sourceIndexes = sourceSelection.indexes();
+    QItemSelection proxySelection;
+    for (int i = 0; i < sourceIndexes.size(); ++i)
+    {
+        const QModelIndex srcIdx = mapFromSource(sourceIndexes.at(i));
+        if (!srcIdx.isValid() || srcIdx.column() > 0)
+            continue;
+        proxySelection << QItemSelectionRange(srcIdx);
+        //proxySelection.merge(QItemSelection(srcIdx, srcIdx),
+        //		QItemSelectionModel::Select);
+    }
+    return proxySelection;
+}
+
+
 //void
 //NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
 //{

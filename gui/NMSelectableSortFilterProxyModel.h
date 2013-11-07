@@ -30,6 +30,8 @@
 
 #include "nmlog.h"
 
+#include <QItemSelection>
+
 class NMSelectableSortFilterProxyModel : public QSortFilterProxyModel
 {
 	Q_OBJECT
@@ -39,6 +41,10 @@ public:
 	~NMSelectableSortFilterProxyModel();
 
 	Qt::ItemFlags flags(const QModelIndex &index) const;
+
+	QItemSelection mapRowSelectionFromSource(const QItemSelection& sourceSelection) const;
+	QItemSelection mapRowSelectionToSource(const QItemSelection& proxySelection) const;
+
 
 	//void sort(int column, Qt::SortOrder order);
 

@@ -124,8 +124,8 @@ NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
 	this->mSortFilter->setDynamicSortFilter(true);
 	this->mSortFilter->setSourceModel(mModel);
-	//this->mTableView->setModel(this->mSortFilter);
-	this->mTableView->setModel(mModel);
+	this->mTableView->setModel(this->mSortFilter);
+	//this->mTableView->setModel(mModel);
 
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
@@ -316,13 +316,14 @@ NMTableView::setSelectionModel(QItemSelectionModel* selectionModel)
 				this, SLOT(updateProxySelection(const QItemSelection &,
 						                        const QItemSelection &)));
 
-		//QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
-		//		this->mSelectionModel->selection());
-		//this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::ClearAndSelect |
-		//		QItemSelectionModel::Rows);
-		this->mTableView->selectionModel()->select(mSelectionModel->selection(),
-				QItemSelectionModel::ClearAndSelect |
+		QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
+				this->mSelectionModel->selection());
+		this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::ClearAndSelect |
 				QItemSelectionModel::Rows);
+
+		//this->mTableView->selectionModel()->select(mSelectionModel->selection(),
+		//		QItemSelectionModel::ClearAndSelect |
+		//		QItemSelectionModel::Rows);
 
 
 		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
@@ -1408,7 +1409,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 
 			// re-apply any existing selection
 			NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
-			QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
+			QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
 					this->mSelectionModel->selection());
 
 			this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
@@ -1445,8 +1446,8 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 					QModelIndex srcIndx = this->mSortFilter->mapToSource(proxyIndx);
 
 					NMDebug(<< " | source row #" << srcIndx.row() << std::endl);
-//					this->toggleRow(srcIndx.row());
-					this->toggleRow(row);
+					this->toggleRow(srcIndx.row());
+					//this->toggleRow(row);
 				}
 				else
 				{
@@ -1654,32 +1655,33 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 		if (desel.count() > 0)
 		{
 			//this->printSelRanges(desel, "DESEL Source");
-			//NMDebugAI(<< "we map de-selection from source ..." << std::endl);
-			//QItemSelection proxyDeselection = this->mSortFilter->mapSelectionFromSource(desel);
+			NMDebugAI(<< "we map de-selection from source ..." << std::endl);
+			QItemSelection proxyDeselection = this->mSortFilter->mapRowSelectionFromSource(desel);
 
 
 			//this->printSelRanges(proxyDeselection, "Mapped Proxy (Desel)");
-			//NMDebugAI(<< "we apply the mapped de-selection to table view ..." << std::endl);
-//			this->mTableView->selectionModel()->select(proxyDeselection, QItemSelectionModel::Toggle |
-//					QItemSelectionModel::Rows | QItemSelectionModel::Current);
-
-			this->mTableView->selectionModel()->select(desel,
-					QItemSelectionModel::Toggle |
+			NMDebugAI(<< "we apply the mapped de-selection to table view ..." << std::endl);
+			this->mTableView->selectionModel()->select(proxyDeselection, QItemSelectionModel::Toggle |
 					QItemSelectionModel::Rows);
+
+//			this->mTableView->selectionModel()->select(desel,
+//					QItemSelectionModel::Toggle |
+//					QItemSelectionModel::Rows);
 		}
 
 		if (sel.count() > 0)
 		{
 			//this->printSelRanges(sel, "SEL Source");
-//			NMDebugAI(<< "we map selection from source ..." << std::endl);
-//			QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(sel);
-//
-//			this->printSelRanges(proxySelection, "Mapped Proxy (Sel)");
-//			NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
-//			this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Toggle |
-//					QItemSelectionModel::Rows | QItemSelectionModel::Current);
-						this->mTableView->selectionModel()->select(sel, QItemSelectionModel::Toggle |
-								QItemSelectionModel::Rows);
+			NMDebugAI(<< "we map selection from source ..." << std::endl);
+			QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(sel);
+
+			this->printSelRanges(proxySelection, "Mapped Proxy (Sel)");
+			NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
+			this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Toggle |
+					QItemSelectionModel::Rows);
+
+//			this->mTableView->selectionModel()->select(sel, QItemSelectionModel::Toggle |
+//					QItemSelectionModel::Rows);
 
 		}
 

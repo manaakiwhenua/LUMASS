@@ -143,9 +143,9 @@ protected slots:
 	void updateSelRecsOnly(int state);
 	void updateSelectionAdmin(const QItemSelection&
 			selected, const QItemSelection& deselected);
-	void internalSwitchSelection(void)
-		{this->mbSwitchSelection = true;
-		 this->switchSelection();}
+//	void internalSwitchSelection(void)
+//		{this->mbSwitchSelection = true;
+//		 this->switchSelection();}
 
 protected:
 
@@ -169,13 +169,16 @@ protected:
 	void printSelRanges(const QItemSelection& selection,
 			const QString& msg);
 
+
 	ViewMode mViewMode;
+	bool mbSortEnabled;
 
 	//long mlNumSelRecs;
 	int mRowKeyColIndex;
 	QString mLastClickedColumn;
 	long mlLastClickedRow;
 	bool mbSwitchSelection;
+	bool mbClearSelection;
 
 	QMap<int, bool> mMapColSortAsc;
 

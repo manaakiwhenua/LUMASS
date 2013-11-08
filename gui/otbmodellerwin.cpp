@@ -869,31 +869,25 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	QList<int> ar;
+	ar << 57 << 1003 << 100 << 2 << 33 << 5;
 
-	vtkStringArray* vtkar = vtkStringArray::New();
-	vtkar->SetNumberOfComponents(1);
-	vtkar->SetNumberOfTuples(10);
-
-	std::stringstream st;
-	for (int i=0; i < 10; ++i)
+	quicksort(ar, 0, 5, true);
+	NMDebugAI( << "ascending: ");
+	for (int i=0; i < 6; ++i)
 	{
-		st.str("");
-		st << "#" << i;
-		vtkar->SetValue(i, st.str());
+		NMDebug(<< ar[i] << " ");
 	}
-
-	std::vector<std::string> vl(10);
-	vtkar->ExportToVoidPointer((void*)&vl[0]);
+	NMDebug(<< std::endl);
 
 
-	for (int i=0; i < 10; ++i)
+	quicksort(ar, 0, 5, false);
+	NMDebugAI( << "descending: ");
+	for (int i=0; i < 6; ++i)
 	{
-
-		NMDebugAI(<< vtkar->GetValue(i) << std::endl);
+		NMDebug(<< ar[i] << " ");
 	}
-
-	vtkar->Delete();
-
+	NMDebug(<< std::endl);
 
 
 

@@ -57,8 +57,16 @@ public:
 
 	QModelIndex index(int row, int column, const QModelIndex& idx) const;
 	QModelIndex parent(const QModelIndex& idx) const;
-	int rowCount(const QModelIndex& idx) const;
+	int rowCount(const QModelIndex& idx=QModelIndex()) const;
 	int columnCount(const QModelIndex& idx) const;
+	QVariant headerData(int section, Qt::Orientation orientation,
+			int role) const;
+	QVariant data(const QModelIndex& index, int role) const;
+	bool setData(const QModelIndex& index, const QVariant& value,
+			int role);
+
+
+
 
 	void setDynamicSortFilter(bool dynamic){};
 	void setFilterRegExp(const QRegExp& regexp){};
@@ -72,9 +80,7 @@ protected:
 	QList<int> mProxy2Source; // sorted row index of source model
 	QList<int> mSource2Proxy;
 
-
 	Qt::SortOrder mSortOrder;
-
 	int mSortColumn;
 
 	// we only do row-based comparison
@@ -88,46 +94,118 @@ protected:
 			return valLeft.toLongLong(&bok) < valRight.toLongLong(&bok);
 			break;
 		case QVariant::Int:
-			return valLeft.toInt(&bok) < valRight.toInt(&bok);
+			return valLeft.toInt(&bok)      < valRight.toInt(&bok);
 			break;
 		case QVariant::UInt:
-			return valLeft.toUInt(&bok) < valRight.toUInt(&bok);
+			return valLeft.toUInt(&bok)     < valRight.toUInt(&bok);
 			break;
 		case QVariant::Double:
-			return valLeft.toDouble(&bok) < valRight.toDouble(&bok);
+			return valLeft.toDouble(&bok)   < valRight.toDouble(&bok);
 			break;
 		case QVariant::DateTime:
-			return valLeft.toDateTime() < valRight.toDateTime();
+			return valLeft.toDateTime()     < valRight.toDateTime();
 			break;
 		default:
-			return QString::localeAwareCompare(valLeft.toString(),valRight.toString());
+			return QString::localeAwareCompare(valLeft.toString(), valRight.toString())
+					< 0 ? true : false;
 			break;
 		}
+
+		return false;
 	}
+
+	inline bool greaterThan(const QVariant& valLeft, const QVariant& valRight)
+	{
+		bool bok;
+		switch(valLeft.type())
+		{
+		case QVariant::LongLong:
+			return valLeft.toLongLong(&bok) > valRight.toLongLong(&bok);
+			break;
+		case QVariant::Int:
+			return valLeft.toInt(&bok)      > valRight.toInt(&bok);
+			break;
+		case QVariant::UInt:
+			return valLeft.toUInt(&bok)     > valRight.toUInt(&bok);
+			break;
+		case QVariant::Double:
+			return valLeft.toDouble(&bok)   > valRight.toDouble(&bok);
+			break;
+		case QVariant::DateTime:
+			return valLeft.toDateTime()     > valRight.toDateTime();
+			break;
+		default:
+			return QString::localeAwareCompare(valLeft.toString(), valRight.toString())
+					> 0 ? true : false;
+			break;
+		}
+
+		return false;
+	}
+
 
 	// we do quick sort and expect that
 	// the given bounds are within the limit!
 	inline void qsort(int left, int right)
 	{
-		int le=left, ri=right, row=0;
+		//++nmlog::nmindent;
+
+		//NMDebugAI(<< "--> " << left << " right" << std::endl);
+
+		int le=left, ri=right;
 		int middle = (le + ri) / 2;
 
-		const QVariant mval = mSourceModel->data(
-				mSourceModel->index(middle, mSortColumn, QModelIndex()),
-				Qt::DisplayRole);
+		const QModelIndex midx = this->mSourceModel->index(
+				mProxy2Source[middle], mSortColumn, QModelIndex());
+		const QVariant mval = mSourceModel->data(midx, Qt::DisplayRole);
 
 		do
 		{
-			while (lessThan(mval, mSourceModel->data(
-				mSourceModel->index(le, mSortColumn, QModelIndex()),
-				Qt::DisplayRole))) ++le;
+			switch (mSortOrder)
+			{
+			case Qt::DescendingOrder:
+				{
+					QModelIndex leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+					while (greaterThan(mSourceModel->data(leidx, Qt::DisplayRole), mval))
+					{
+						++le;
+						leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+					}
 
-			while (lessThan(mSourceModel->data(
-				mSourceModel->index(ri, mSortColumn, QModelIndex()),
-				Qt::DisplayRole), mval)) --ri;
+					QModelIndex riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+					while (lessThan(mSourceModel->data(riidx, Qt::DisplayRole), mval))
+					{
+						--ri;
+						riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+					}
+				}
+				break;
+
+			case Qt::AscendingOrder:
+				{
+					QModelIndex leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+					while (lessThan(mSourceModel->data(leidx, Qt::DisplayRole), mval))
+					{
+						++le;
+						leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+					}
+
+					QModelIndex riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+					while (greaterThan(mSourceModel->data(riidx, Qt::DisplayRole), mval))
+					{
+						--ri;
+						riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+					}
+				}
+				break;
+
+			default:
+				break;
+			}
 
 			if (le <= ri)
 			{
+				//NMDebugAI(<< "  swap " << le << " " << ri << std::endl);
 				mProxy2Source.swap(le, ri);
 				++le;
 				--ri;
@@ -135,7 +213,10 @@ protected:
 		} while (le <= ri);
 		if (left < ri) qsort(left, ri);
 		if (right > le) qsort(le, right);
-	};
+
+		//NMDebugAI( << "<-- " << le << " " << ri << std::endl);
+		//--nmlog::nmindent;
+	}
 };
 
 #endif // ifndef

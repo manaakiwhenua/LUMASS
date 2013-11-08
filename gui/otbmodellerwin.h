@@ -189,6 +189,40 @@ protected:
 	}
 
 
+	inline void quicksort(QList<int>& ar, int left, int right, bool asc)
+	{
+		int le=left, ri=right, row=0;
+		int middle = (le + ri) / 2;
+
+		int mval = ar[middle];
+
+		do
+		{
+			if (asc)
+			{
+				while (mval > ar[le]) ++le;
+				while (ar[ri] > mval) --ri;
+			}
+			else
+			{
+				while (mval < ar[le]) ++le;
+				while (ar[ri] < mval) --ri;
+			}
+
+			if (le <= ri)
+			{
+				int t = ar[le];
+				ar[le] = ar[ri];
+				ar[ri] = t;
+				++le;
+				--ri;
+			}
+		} while (le <= ri);
+		if (left < ri) quicksort(ar, left, ri, asc);
+		if (right > le) quicksort(ar, le, right, asc);
+	}
+
+
 private:
 
 	// holds the current 3D state (i.e. is interaction

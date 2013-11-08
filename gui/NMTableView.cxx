@@ -145,8 +145,8 @@ NMTableView::~NMTableView()
 
 void NMTableView::initView()
 {
-	if (mbSortEnabled)
-		this->mTableView->setSortingEnabled(true);
+	//if (mbSortEnabled)
+		//this->mTableView->setSortingEnabled(true);
 
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
@@ -1390,49 +1390,49 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		// --------------------- LEFT BUTTON SORTS THE COLUMN ---------------------------------------------
 		else if (me->button() == Qt::LeftButton)
 		{
-			//NMDebugAI(<< "SROTING COLUMN #" << col << "..." << std::endl);
-            //
-			//NMDebugAI(<< "... clear current table view selection" << std::endl);
-			//this->mTableView->selectionModel()->clear();
-            //
-			//Qt::SortOrder order;
-			//QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
-			//if (it != mMapColSortAsc.end())
-			//{
-			//	if (it.value())
-			//	{
-			//		order = Qt::DescendingOrder;
-			//		mMapColSortAsc.insert(col, false);
-			//	}
-			//	else
-			//	{
-			//		order = Qt::AscendingOrder;
-			//		mMapColSortAsc.insert(col, true);
-			//	}
-			//}
-			//else
-			//{
-			//	order = Qt::AscendingOrder;
-			//	mMapColSortAsc.insert(col, true);
-			//}
-			//this->mTableView->horizontalHeader()->setSortIndicator(col, order);
-			//this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
-            //
-			//NMDebugAI(<< "... actually sorting the column" << std::endl);
-			//this->mSortFilter->sort(col, order);
-            //
-            //
-			//// re-apply any existing selection
-			//NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
+			NMDebugAI(<< "SROTING COLUMN #" << col << "..." << std::endl);
+
+			NMDebugAI(<< "... clear current table view selection" << std::endl);
+			this->mTableView->selectionModel()->clear();
+
+			Qt::SortOrder order;
+			QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
+			if (it != mMapColSortAsc.end())
+			{
+				if (it.value())
+				{
+					order = Qt::DescendingOrder;
+					mMapColSortAsc.insert(col, false);
+				}
+				else
+				{
+					order = Qt::AscendingOrder;
+					mMapColSortAsc.insert(col, true);
+				}
+			}
+			else
+			{
+				order = Qt::AscendingOrder;
+				mMapColSortAsc.insert(col, true);
+			}
+			this->mTableView->horizontalHeader()->setSortIndicator(col, order);
+			this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
+
+			NMDebugAI(<< "... actually sorting the column" << std::endl);
+			this->mSortFilter->sort(col, order);
+
+			// re-apply any existing selection
+			NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
+			QItemSelection newsel = this->mSelectionModel->selection();
 			//QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
-			//		this->mSelectionModel->selection());
-            //
-			//this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
-			//		QItemSelectionModel::Rows);
-            //
-			//NMDebugAI(<< "SORTING DONE!" << std::endl);
-            //
-			//return true;
+				//	this->mSelectionModel->selection());
+
+			this->mTableView->selectionModel()->select(newsel, QItemSelectionModel::Select |
+					QItemSelectionModel::Rows);
+
+			NMDebugAI(<< "SORTING DONE!" << std::endl);
+
+			return true;
 		}
 		return false;
 	}

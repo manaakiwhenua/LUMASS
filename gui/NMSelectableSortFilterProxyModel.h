@@ -26,13 +26,14 @@
 #define NMSELECTABLESORTFILTERPROXYMODEL_H_
 #define ctxSelSortFilter "NMSelectableSortFilterProxyModel"
 
-#include <QtGui/qsortfilterproxymodel.h>
+//#include <QtGui/qsortfilterproxymodel.h>
+#include <QtGui/qabstractproxymodel.h>
 
 #include "nmlog.h"
 
 #include <QItemSelection>
 
-class NMSelectableSortFilterProxyModel : public QSortFilterProxyModel
+class NMSelectableSortFilterProxyModel : public QAbstractProxyModel//public QSortFilterProxyModel
 {
 	Q_OBJECT
 
@@ -42,12 +43,28 @@ public:
 
 	Qt::ItemFlags flags(const QModelIndex &index) const;
 
-	QItemSelection mapRowSelectionFromSource(const QItemSelection& sourceSelection) const;
-	QItemSelection mapRowSelectionToSource(const QItemSelection& proxySelection) const;
+	void setSourceModel(QAbstractItemModel* sourceModel)
+			{this->mSourceModel = sourceModel;}
+	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
 
+	QModelIndex mapFromSource(const QModelIndex& srcIdx) const;
+	QModelIndex mapToSource(const QModelIndex& proxyIdx) const;
+	QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
+	QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
 
-	//void sort(int column, Qt::SortOrder order);
+	void sort(int column, Qt::SortOrder order);
 
+protected:
+
+	QAbstractItemModel* mSourceModel;
+	QItemSelection* mSrcSelection;
+	QItemSelection* mProxySelection;
+	QVector<int> mSortedSource;
+
+	// we only do row-based comparison
+	void lessThan(int left, int right){};
+
+	void qsort(int left, int right){};
 };
 
 #endif // ifndef

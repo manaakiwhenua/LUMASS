@@ -133,6 +133,16 @@ extern int nmindent;
 			std::cerr << str.str() << std::endl; \
 		}
 
+#define NMWarn(context, arg)  \
+		{ \
+			std::ostringstream str; \
+			str << "WARNING - " << context << "::" << \
+			       __FUNCTION__ << ", l. " << \
+			       __LINE__ << ": " arg; \
+			std::cerr << str.str() << std::endl; \
+		}
+
+
 // MESSAGE MACRO
 #define NMMsg(arg) \
 		{ \

@@ -28,32 +28,99 @@
 
 NMSelectableSortFilterProxyModel::NMSelectableSortFilterProxyModel(
 		QObject *parent)
+		//: QSortFilterProxyModel(parent), mSourceModel(0)
 		: QAbstractProxyModel(parent), mSourceModel(0)
 {
-
 }
 
 NMSelectableSortFilterProxyModel::~NMSelectableSortFilterProxyModel()
 {
+}
 
+
+QModelIndex
+NMSelectableSortFilterProxyModel::index(int row, int column, const QModelIndex& parent) const
+{
+	return this->createIndex(row, column);
+}
+
+QModelIndex
+NMSelectableSortFilterProxyModel::parent(const QModelIndex& idx) const
+{
+	return QModelIndex();
+}
+
+int
+NMSelectableSortFilterProxyModel::rowCount(const QModelIndex& parent) const
+{
+	if (mSourceModel == 0)
+		return 0;
+
+	return mSourceModel->rowCount(parent);
+}
+
+int
+NMSelectableSortFilterProxyModel::columnCount(const QModelIndex& parent) const
+{
+	if (mSourceModel == 0)
+		return 0;
+
+	return mSourceModel->columnCount(parent);
+}
+
+
+void
+NMSelectableSortFilterProxyModel::setSourceModel(QAbstractItemModel* sourceModel)
+{
+	if (sourceModel == 0 || sourceModel == mSourceModel)
+		return;
+
+	this->mSourceModel = sourceModel;
+	mProxy2Source.clear();
+	mSource2Proxy.clear();
+
+	for (int i=0; i < mSourceModel->rowCount(QModelIndex()); ++i)
+	{
+		mProxy2Source << i;
+		mSource2Proxy << i;
+	}
 }
 
 Qt::ItemFlags NMSelectableSortFilterProxyModel::flags(
 		const QModelIndex &index) const
 {
-	return QAbstractProxyModel::flags(index) | Qt::ItemIsSelectable;
+	if (index.isValid())
+		return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
+	else
+		return 0;
 }
 
 QModelIndex
 NMSelectableSortFilterProxyModel::mapFromSource(const QModelIndex& srcIdx) const
 {
-	return QModelIndex();
+	if (!srcIdx.isValid())
+		return QModelIndex();
+
+	int row = srcIdx.row();
+	if (mSource2Proxy.size() == this->mSourceModel->rowCount(QModelIndex()))
+	{
+		row = mSource2Proxy[srcIdx.row()];
+	}
+	return this->index(row, srcIdx.column(), QModelIndex());
 }
 
 QModelIndex
 NMSelectableSortFilterProxyModel::mapToSource(const QModelIndex& proxyIdx) const
 {
-	return QModelIndex();
+	if (!proxyIdx.isValid())
+		return QModelIndex();
+
+	int row = proxyIdx.row();
+	if (mProxy2Source.size() == this->mSourceModel->rowCount(QModelIndex()))
+	{
+		row = mProxy2Source[proxyIdx.row()];
+	}
+	return this->mSourceModel->index(row, proxyIdx.column(), QModelIndex());
 }
 
 
@@ -74,7 +141,13 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 void
 NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
 {
-	NMDebugCtx("ctxSelSortFilterProxy", << "...");
+	NMDebugCtx(ctxSelSortFilter, << "...");
+
+	if (this->mSourceModel == 0)
+	{
+		NMDebugCtx(ctxSelSortFilter, << "done!");
+		return;
+	}
 
 	// get the type of column
 	QModelIndex topcol = this->index(0, column, QModelIndex());
@@ -93,8 +166,19 @@ NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
 		return;
 	}
 
+	QString colName = this->headerData(column,
+			Qt::Horizontal, Qt::DisplayRole).toString();
+	mSortOrder = order;
+	QString sorder = order == Qt::AscendingOrder ? QString("asc") : QString("desc");
+	NMDebugAI(<< "Sort " << colName.toStdString() << " "
+			  << sorder.toStdString() << std::endl);
 
+	qsort(0, this->mSourceModel->rowCount(QModelIndex()));
 
+	for (int i=0; i < mProxy2Source.size(); ++i)
+	{
+		mSource2Proxy[mProxy2Source[i]] = i;
+	}
 
 	NMDebugCtx("ctxSelSortFilterProxy", << "done!");
 }

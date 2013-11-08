@@ -32,8 +32,9 @@
 #include "nmlog.h"
 
 #include <QItemSelection>
+#include <QDateTime>
 
-class NMSelectableSortFilterProxyModel : public QAbstractProxyModel//public QSortFilterProxyModel
+class NMSelectableSortFilterProxyModel : public QAbstractProxyModel //public QSortFilterProxyModel
 {
 	Q_OBJECT
 
@@ -43,8 +44,7 @@ public:
 
 	Qt::ItemFlags flags(const QModelIndex &index) const;
 
-	void setSourceModel(QAbstractItemModel* sourceModel)
-			{this->mSourceModel = sourceModel;}
+	void setSourceModel(QAbstractItemModel* sourceModel);
 	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
 
 	QModelIndex mapFromSource(const QModelIndex& srcIdx) const;
@@ -54,17 +54,88 @@ public:
 
 	void sort(int column, Qt::SortOrder order);
 
+
+	QModelIndex index(int row, int column, const QModelIndex& idx) const;
+	QModelIndex parent(const QModelIndex& idx) const;
+	int rowCount(const QModelIndex& idx) const;
+	int columnCount(const QModelIndex& idx) const;
+
+	void setDynamicSortFilter(bool dynamic){};
+	void setFilterRegExp(const QRegExp& regexp){};
+	void setFilterKeyColumn(int column){};
+
 protected:
 
 	QAbstractItemModel* mSourceModel;
 	QItemSelection* mSrcSelection;
 	QItemSelection* mProxySelection;
-	QVector<int> mSortedSource;
+	QList<int> mProxy2Source; // sorted row index of source model
+	QList<int> mSource2Proxy;
+
+
+	Qt::SortOrder mSortOrder;
+
+	int mSortColumn;
 
 	// we only do row-based comparison
-	void lessThan(int left, int right){};
+	// both values are expected to be of the same type
+	inline bool lessThan(const QVariant& valLeft, const QVariant& valRight)
+	{
+		bool bok;
+		switch(valLeft.type())
+		{
+		case QVariant::LongLong:
+			return valLeft.toLongLong(&bok) < valRight.toLongLong(&bok);
+			break;
+		case QVariant::Int:
+			return valLeft.toInt(&bok) < valRight.toInt(&bok);
+			break;
+		case QVariant::UInt:
+			return valLeft.toUInt(&bok) < valRight.toUInt(&bok);
+			break;
+		case QVariant::Double:
+			return valLeft.toDouble(&bok) < valRight.toDouble(&bok);
+			break;
+		case QVariant::DateTime:
+			return valLeft.toDateTime() < valRight.toDateTime();
+			break;
+		default:
+			return QString::localeAwareCompare(valLeft.toString(),valRight.toString());
+			break;
+		}
+	}
 
-	void qsort(int left, int right){};
+	// we do quick sort and expect that
+	// the given bounds are within the limit!
+	inline void qsort(int left, int right)
+	{
+		int le=left, ri=right, row=0;
+		int middle = (le + ri) / 2;
+
+		const QVariant mval = mSourceModel->data(
+				mSourceModel->index(middle, mSortColumn, QModelIndex()),
+				Qt::DisplayRole);
+
+		do
+		{
+			while (lessThan(mval, mSourceModel->data(
+				mSourceModel->index(le, mSortColumn, QModelIndex()),
+				Qt::DisplayRole))) ++le;
+
+			while (lessThan(mSourceModel->data(
+				mSourceModel->index(ri, mSortColumn, QModelIndex()),
+				Qt::DisplayRole), mval)) --ri;
+
+			if (le <= ri)
+			{
+				mProxy2Source.swap(le, ri);
+				++le;
+				--ri;
+			}
+		} while (le <= ri);
+		if (left < ri) qsort(left, ri);
+		if (right > le) qsort(le, right);
+	};
 };
 
 #endif // ifndef

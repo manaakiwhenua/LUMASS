@@ -75,8 +75,6 @@ public:
 protected:
 
 	QAbstractItemModel* mSourceModel;
-	QItemSelection* mSrcSelection;
-	QItemSelection* mProxySelection;
 	QList<int> mProxy2Source; // sorted row index of source model
 	QList<int> mSource2Proxy;
 

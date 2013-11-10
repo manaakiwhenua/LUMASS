@@ -44,10 +44,12 @@ public:
 
 	Qt::ItemFlags flags(const QModelIndex &index) const;
 
-	//void hideSource(int sourceRow);
-	//void showSource(int sourceRow);
 	void hideSource(const QList<int>& rows);
+
+	void addToFilter(const QItemSelection& proxySelection);
 	void showSource(const QList<int>& rows);
+	void removeFromFilter(const QItemSelection& proxySelection);
+	void clearFilter(void);
 
 	void setSourceModel(QAbstractItemModel* sourceModel);
 	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
@@ -81,10 +83,15 @@ protected:
 	QList<bool> mHiddenSource;
 
 	// proxy-source maps, which DO NOT
-	// contain hidden rows!
+	// contain hidden rows, i.e.
+	// size() = mSourceModel.size() - mHiddenSource.size()
 	QList<int> mSource2Raw;
 	QList<int> mProxy2Source;
 	QList<int> mSource2Proxy;
+
+	// list indicating filtered rows (i.e. visible)
+	// size is <= mProxy2Source.size()
+	QList<int> mFilter2Proxy;
 
 	int mNumHidden;
 	Qt::SortOrder mSortOrder;
@@ -93,7 +100,6 @@ protected:
 	void resetMapping(void);
 	QModelIndex mapToRaw(const QModelIndex& index) const;
 
-	// we only do row-based comparison
 	// both values are expected to be of the same type
 	inline bool lessThan(const QVariant& valLeft, const QVariant& valRight)
 	{
@@ -158,10 +164,6 @@ protected:
 	// the given bounds are within the limit!
 	inline void qsort(int left, int right)
 	{
-		//++nmlog::nmindent;
-
-		//NMDebugAI(<< "--> " << left << " right" << std::endl);
-
 		int le=left, ri=right;
 		const int middle = (le + ri) / 2;
 
@@ -215,7 +217,7 @@ protected:
 
 			if (le <= ri)
 			{
-				//NMDebugAI(<< "  swap " << le << " " << ri << std::endl);
+
 				mProxy2Source.swap(le, ri);
 				++le;
 				--ri;
@@ -223,9 +225,6 @@ protected:
 		} while (le <= ri);
 		if (left < ri) qsort(left, ri);
 		if (right > le) qsort(le, right);
-
-		//NMDebugAI( << "<-- " << le << " " << ri << std::endl);
-		//--nmlog::nmindent;
 	}
 };
 

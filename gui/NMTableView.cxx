@@ -373,20 +373,38 @@ NMTableView::setViewMode(ViewMode mode)
 
 void NMTableView::updateSelRecsOnly(int state)
 {
-	//int selid = this->getColumnIndex("nm_sel");
-//	if (selid < 0)
-//		return;
-//
-//	this->mSortFilter->setFilterKeyColumn(selid);
-//	switch (state)
-//	{
-//	case Qt::Checked:
-//		this->mSortFilter->setFilterFixedString("1");
-//		break;
-//	case Qt::Unchecked:
-//		this->mSortFilter->setFilterRegExp("");
-//		break;
-//	}
+
+	// do we have anything selected
+	bool mbSel = this->mTableView->selectionModel()->hasSelection();
+
+	switch (state)
+	{
+	case Qt::Checked:
+		{
+			if (mbSel)
+			{
+				this->mSortFilter->addToFilter(
+						this->mTableView->selectionModel()->selection());
+			}
+		}
+		break;
+
+	case Qt::Unchecked:
+		this->mSortFilter->clearFilter();
+		break;
+
+	default:
+		break;
+	}
+
+	// need to re-map and re-select 'cause the sort model has changed its indices
+	if (mbSel)
+	{
+		QItemSelection proxySel = this->mSortFilter->mapSelectionFromSource(
+				this->mSelectionModel->selection());
+		this->mTableView->selectionModel()->select(proxySel, QItemSelectionModel::Select |
+				QItemSelectionModel::Rows);
+	}
 }
 
 void NMTableView::switchSelection()
@@ -1737,6 +1755,9 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 				QString("current table selection"));
 
 	}
+
+	if (this->mChkSelectedRecsOnly->isChecked())
+		this->updateSelRecsOnly(Qt::Checked);
 
 	// DEBUG print selection
 

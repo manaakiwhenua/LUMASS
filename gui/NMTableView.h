@@ -144,9 +144,6 @@ protected slots:
 	void updateSelRecsOnly(int state);
 	void updateSelectionAdmin(const QItemSelection&
 			selected, const QItemSelection& deselected);
-//	void internalSwitchSelection(void)
-//		{this->mbSwitchSelection = true;
-//		 this->switchSelection();}
 
 protected:
 

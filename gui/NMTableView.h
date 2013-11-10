@@ -106,6 +106,7 @@ public:
 	int getColumnIndex(const QString& attr);
 	void setTitle(const QString& title) {this->setWindowTitle(title);};
 	void hideRow(int row);
+	void hideSource(const QList<int>& rows);
 
 public slots:
 

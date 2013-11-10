@@ -554,11 +554,13 @@ void NMVectorLayer::createTableView(void)
 	// hide the 'hole' rows
 	vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
 			this->mAttributeTable->GetColumnByName("nm_hole"));
+	QList<int> hiddenrows;
 	for (int row=0; row < this->mAttributeTable->GetNumberOfRows(); ++row)
 	{
 		if (holes->GetValue(row))
-			this->mTableView->hideRow(row);
+			hiddenrows << row;
 	}
+	this->mTableView->hideSource(hiddenrows);
 
 	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
 		this->mTableView->hideAttribute("nm_hole");

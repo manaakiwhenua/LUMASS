@@ -44,6 +44,11 @@ public:
 
 	Qt::ItemFlags flags(const QModelIndex &index) const;
 
+	//void hideSource(int sourceRow);
+	//void showSource(int sourceRow);
+	void hideSource(const QList<int>& rows);
+	void showSource(const QList<int>& rows);
+
 	void setSourceModel(QAbstractItemModel* sourceModel);
 	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
 
@@ -65,9 +70,6 @@ public:
 	bool setData(const QModelIndex& index, const QVariant& value,
 			int role);
 
-
-
-
 	void setDynamicSortFilter(bool dynamic){};
 	void setFilterRegExp(const QRegExp& regexp){};
 	void setFilterKeyColumn(int column){};
@@ -75,11 +77,21 @@ public:
 protected:
 
 	QAbstractItemModel* mSourceModel;
-	QList<int> mProxy2Source; // sorted row index of source model
+	QModelIndexList mProxySelection;
+	QList<bool> mHiddenSource;
+
+	// proxy-source maps, which DO NOT
+	// contain hidden rows!
+	QList<int> mSource2Raw;
+	QList<int> mProxy2Source;
 	QList<int> mSource2Proxy;
 
+	int mNumHidden;
 	Qt::SortOrder mSortOrder;
 	int mSortColumn;
+
+	void resetMapping(void);
+	QModelIndex mapToRaw(const QModelIndex& index) const;
 
 	// we only do row-based comparison
 	// both values are expected to be of the same type
@@ -151,10 +163,10 @@ protected:
 		//NMDebugAI(<< "--> " << left << " right" << std::endl);
 
 		int le=left, ri=right;
-		int middle = (le + ri) / 2;
+		const int middle = (le + ri) / 2;
 
 		const QModelIndex midx = this->mSourceModel->index(
-				mProxy2Source[middle], mSortColumn, QModelIndex());
+				mSource2Raw[mProxy2Source[middle]], mSortColumn, QModelIndex());
 		const QVariant mval = mSourceModel->data(midx, Qt::DisplayRole);
 
 		do
@@ -163,36 +175,36 @@ protected:
 			{
 			case Qt::DescendingOrder:
 				{
-					QModelIndex leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+					QModelIndex leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
 					while (greaterThan(mSourceModel->data(leidx, Qt::DisplayRole), mval))
 					{
 						++le;
-						leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+						leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
 					}
 
-					QModelIndex riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+					QModelIndex riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
 					while (lessThan(mSourceModel->data(riidx, Qt::DisplayRole), mval))
 					{
 						--ri;
-						riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+						riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
 					}
 				}
 				break;
 
 			case Qt::AscendingOrder:
 				{
-					QModelIndex leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+					QModelIndex leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
 					while (lessThan(mSourceModel->data(leidx, Qt::DisplayRole), mval))
 					{
 						++le;
-						leidx = this->mSourceModel->index(mProxy2Source[le], mSortColumn, QModelIndex());
+						leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
 					}
 
-					QModelIndex riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+					QModelIndex riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
 					while (greaterThan(mSourceModel->data(riidx, Qt::DisplayRole), mval))
 					{
 						--ri;
-						riidx = this->mSourceModel->index(mProxy2Source[ri], mSortColumn, QModelIndex());
+						riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
 					}
 				}
 				break;

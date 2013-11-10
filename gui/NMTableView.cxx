@@ -309,6 +309,17 @@ void NMTableView::initView()
 }
 
 void
+NMTableView::hideSource(const QList<int>& rows)
+{
+	if (mbSortEnabled)
+	{
+		this->mSortFilter->hideSource(rows);
+		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
+		//this->update();
+	}
+}
+
+void
 NMTableView::setSelectionModel(QItemSelectionModel* selectionModel)
 {
 	this->mSelectionModel = selectionModel;
@@ -584,7 +595,7 @@ NMTableView::updateSelectionAdmin(const QItemSelection& sel,
 
 	this->mRecStatusLabel->setText(
 			QString(tr("%1 of %2 records selected")).arg(selcnt).arg(
-					mModel->rowCount(QModelIndex())));
+					mSortFilter->rowCount(QModelIndex())));
 }
 
 void NMTableView::addColumn()
@@ -1349,24 +1360,28 @@ void NMTableView::filterAttribute(const QString& attr,
 
 void NMTableView::mousePressEvent(QMouseEvent* event)
 {
-	NMDebugCtx(__ctxtabview, << "...");
+	//NMDebugCtx(__ctxtabview, << "...");
 
 	//QWidget::mousePressEvent(event);
 
 
 
-	NMDebugCtx(__ctxtabview, << "done!");
+	//NMDebugCtx(__ctxtabview, << "done!");
 }
 
 bool NMTableView::eventFilter(QObject* object, QEvent* event)
 {
 	// ======================== COLUMN HEADER + MOUSE BUTTON ==================================================
-	if (object == this->mTableView->horizontalHeader()->viewport() &&
-			event->type() == QEvent::MouseButtonPress)
+	if (	object == this->mTableView->horizontalHeader()->viewport()
+		&&	event->type() == QEvent::MouseButtonPress
+		&&  event->type() != QEvent::MouseMove)
 	{
+		QMouseEvent* me = static_cast<QMouseEvent*>(event);
+
+
+
 		// --------------------- CHECK FOR VALID COLUMN CLICKED --------------------------------------
 		// if we haven't got a proper column on the hook, we bail out
-		QMouseEvent* me = static_cast<QMouseEvent*>(event);
 		int col = this->mTableView->columnAt(me->pos().x());
 		if (col < 0)
 		{
@@ -1432,7 +1447,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 
 			NMDebugAI(<< "SORTING DONE!" << std::endl);
 
-			return true;
+			//return false;
 		}
 		return false;
 	}

@@ -315,7 +315,6 @@ NMTableView::hideSource(const QList<int>& rows)
 	{
 		this->mSortFilter->hideSource(rows);
 		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
-		//this->update();
 	}
 }
 
@@ -373,37 +372,26 @@ NMTableView::setViewMode(ViewMode mode)
 
 void NMTableView::updateSelRecsOnly(int state)
 {
+	//if (this->mSortFilter->isFilterOn() && state == Qt::Checked)
+	//	return;
+	//else if (!this->mSortFilter->isFilterOn() && state == Qt::Unchecked)
+	//	return;
 
-	// do we have anything selected
-	bool mbSel = this->mTableView->selectionModel()->hasSelection();
-
-	switch (state)
+	if (state == Qt::Checked)
 	{
-	case Qt::Checked:
-		{
-			if (mbSel)
-			{
-				this->mSortFilter->addToFilter(
-						this->mTableView->selectionModel()->selection());
-			}
-		}
-		break;
-
-	case Qt::Unchecked:
 		this->mSortFilter->clearFilter();
-		break;
-
-	default:
-		break;
+		this->mSortFilter->addToFilter(this->mSortFilter->mapSelectionFromSource(
+				this->mSelectionModel->selection()));
+		this->mSortFilter->setFilterOn(true);
 	}
-
-	// need to re-map and re-select 'cause the sort model has changed its indices
-	if (mbSel)
+	else
 	{
+		this->mSortFilter->setFilterOn(false);
+		this->mSortFilter->clearFilter();
 		QItemSelection proxySel = this->mSortFilter->mapSelectionFromSource(
 				this->mSelectionModel->selection());
-		this->mTableView->selectionModel()->select(proxySel, QItemSelectionModel::Select |
-				QItemSelectionModel::Rows);
+		this->mTableView->selectionModel()->select(proxySel,
+				QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
 	}
 }
 
@@ -420,7 +408,6 @@ void NMTableView::switchSelection()
 		this->mSelectionModel->select(modelSelection, QItemSelectionModel::Toggle |
 				QItemSelectionModel::Rows);
 	}
-	//this->printSelRanges(this->mSelectionModel->selection(), "Source");
 }
 
 void NMTableView::normalise()
@@ -1470,8 +1457,10 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		return false;
 	}
 	// ============================== ROW HEADER AND MOUSE BUTTON ================================================
-	else if (object == this->mTableView->verticalHeader()->viewport() &&
-				event->type() == QEvent::MouseButtonPress)
+	else if (	object == this->mTableView->verticalHeader()->viewport()
+			 && event->type() == QEvent::MouseButtonPress
+			 && event->type() != QEvent::MouseMove
+			 )
 	{
 		QMouseEvent* me = static_cast<QMouseEvent*>(event);
 		if (me->button() == Qt::LeftButton)
@@ -1639,81 +1628,53 @@ void NMTableView::clearSelection()
 	mbClearSelection = true;
 	if (this->mSelectionModel)
 		this->mSelectionModel->clearSelection();
-
-//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-
-//	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
-//	selector->setResultColumn("nm_sel");
-//	selector->setFunction("0");
-//
-//	try
-//	{
-//		if (!selector->calculate())
-//		{
-//			QMessageBox::critical(this, "Selection Query Failed",
-//					"Error deslecting rows!");
-//			NMErr(__ctxtabview, << "Error deselecting rows!");
-//			return;
-//		}
-//	}
-//	catch (itk::ExceptionObject& err)
-//	{
-//		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-//				      .arg(err.GetDescription());
-//		NMErr(__ctxtabview, << "Calculation failed!"
-//				<< errmsg.toStdString());
-//		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	this->mlNumSelRecs = 0;
-//	this->mTableView->clearSelection();
-//	this->mTableView->update();
-//	this->mSortFilter->invalidate();
-//
-//	this->updateSelectionAdmin();
-//	emit selectionChanged();
 }
 
 void
 NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
 {
-	//NMDebugCtx(__ctxtabview, << "...");
-
 	if (mbSortEnabled && this->mbSwitchSelection)
 	{
-		//NMDebugAI(<< "SWITCH SELECTION MODE" << std::endl);
+		if (this->mChkSelectedRecsOnly->isChecked())
+		{
+			this->updateSelRecsOnly(Qt::Checked);
+		}
+		else
+		{
+			QModelIndex top = this->mSortFilter->index(0, 0, QModelIndex());
+			QModelIndex bottom = this->mSortFilter->index(
+					this->mSortFilter->rowCount(QModelIndex())-1, 0, QModelIndex());
 
-		QModelIndex top = this->mSortFilter->index(0, 0, QModelIndex());
-		QModelIndex bottom = this->mSortFilter->index(
-				this->mSortFilter->rowCount(QModelIndex())-1, 0, QModelIndex());
+			QItemSelection selection(top, bottom);
 
-		QItemSelection selection(top, bottom);
-
-		this->mTableView->selectionModel()->select(selection, QItemSelectionModel::Toggle |
-				QItemSelectionModel::Rows);
+			this->mTableView->selectionModel()->select(selection, QItemSelectionModel::Toggle |
+					QItemSelectionModel::Rows);
+		}
 		this->mbSwitchSelection = false;
 	}
 	else if (mbClearSelection)
 	{
-		this->mTableView->selectionModel()->clearSelection();
 		this->mbClearSelection = false;
+
+		if (this->mChkSelectedRecsOnly->isChecked())
+		{
+			this->updateSelRecsOnly(Qt::Checked);
+		}
+		else
+		{
+			this->mTableView->selectionModel()->clearSelection();
+		}
 	}
 	else
 	{
-		//NMDebugAI(<< "UPDATE PROXY SELECTION" << std::endl);
-
-		//NMDebugAI(<< "we clear the table view selection ..." << std::endl);
-		//this->mTableView->selectionModel()->clearSelection();
-
-		//NMDebugAI(<< "we fetch the source selection ..." << std::endl);
-		//QModelIndexList idxList = this->mSelectionModel->selectedRows();
-
 		if (desel.count() > 0)
 		{
 			this->printSelRanges(desel, "DESEL Source");
-			if (mbSortEnabled)
+			if (this->mChkSelectedRecsOnly->isChecked())
+			{
+				this->updateSelRecsOnly(Qt::Checked);
+			}
+			else if (mbSortEnabled)
 			{
 				NMDebugAI(<< "we map de-selection from source ..." << std::endl);
 				QItemSelection proxyDeselection = this->mSortFilter->mapSelectionFromSource(desel);
@@ -1734,7 +1695,12 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 		if (sel.count() > 0)
 		{
 			this->printSelRanges(sel, "SEL Source");
-			if (mbSortEnabled)
+
+			if (this->mChkSelectedRecsOnly->isChecked())
+			{
+				this->updateSelRecsOnly(Qt::Checked);
+			}
+			else if (mbSortEnabled)
 			{
 				NMDebugAI(<< "we map selection from source ..." << std::endl);
 				QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(sel);
@@ -1753,15 +1719,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 
 		this->printSelRanges(this->mTableView->selectionModel()->selection(),
 				QString("current table selection"));
-
 	}
-
-	if (this->mChkSelectedRecsOnly->isChecked())
-		this->updateSelRecsOnly(Qt::Checked);
-
-	// DEBUG print selection
-
-	//NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void

@@ -51,18 +51,34 @@ public:
 	void removeFromFilter(const QItemSelection& proxySelection);
 	void clearFilter(void);
 
+	void setFilterOn(bool yesno);
+	bool isFilterOn(void)
+		{return this->mbFilterOn;}
+
 	void setSourceModel(QAbstractItemModel* sourceModel);
 	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
 
+	/**
+	 *  NOTE: mapping indexes accounts for any active filter
+	 *        applied to the model! i.e.
+	 *        - source gets mapped to filtered proxy
+	 *        - filtered proxy gets mapped to source
+	 */
 	QModelIndex mapFromSource(const QModelIndex& srcIdx) const;
 	QModelIndex mapToSource(const QModelIndex& proxyIdx) const;
+
+	/**
+	 *  NOTE: mapping of selections is done regardless of any active filter;
+	 *        i.e. a source selection gets mapped to an unfiltered proxy selection
+	 *        and an unfiltered proxy selection  gets mapped to a source selection
+	 */
 	QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
 	QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
 
 	void sort(int column, Qt::SortOrder order);
 
 
-	QModelIndex index(int row, int column, const QModelIndex& idx) const;
+	QModelIndex index(int row, int column, const QModelIndex& idx=QModelIndex()) const;
 	QModelIndex parent(const QModelIndex& idx) const;
 	int rowCount(const QModelIndex& idx=QModelIndex()) const;
 	int columnCount(const QModelIndex& idx) const;
@@ -72,6 +88,7 @@ public:
 	bool setData(const QModelIndex& index, const QVariant& value,
 			int role);
 
+	// deprecated, they're not really in use in this implementation!
 	void setDynamicSortFilter(bool dynamic){};
 	void setFilterRegExp(const QRegExp& regexp){};
 	void setFilterKeyColumn(int column){};
@@ -92,6 +109,10 @@ protected:
 	// list indicating filtered rows (i.e. visible)
 	// size is <= mProxy2Source.size()
 	QList<int> mFilter2Proxy;
+	// we'll have another bool to control whether the
+	// filter should be used or not to explicitly allow for
+	// an empty filter display in the tableView
+	bool mbFilterOn;
 
 	int mNumHidden;
 	Qt::SortOrder mSortOrder;

@@ -400,12 +400,13 @@ void NMTableView::switchSelection()
 	mbSwitchSelection = true;
 	if (this->mSelectionModel != 0)
 	{
-		QModelIndex modeltop = this->mModel->index(0, 0, QModelIndex());
-		QModelIndex modelbottom =
-				this->mModel->index(
-					this->mModel->rowCount(QModelIndex())-1, 0, QModelIndex());
-		QItemSelection modelSelection(modeltop, modelbottom);
-		this->mSelectionModel->select(modelSelection, QItemSelectionModel::Toggle |
+		//QModelIndex modeltop = this->mModel->index(0, 0, QModelIndex());
+		//QModelIndex modelbottom =
+		//		this->mModel->index(
+		//			this->mModel->rowCount(QModelIndex())-1, 0, QModelIndex());
+		//QItemSelection modelSelection(modeltop, modelbottom);
+		QItemSelection sourceSelection = this->mSortFilter->getSourceSelection();
+		this->mSelectionModel->select(sourceSelection, QItemSelectionModel::Toggle |
 				QItemSelectionModel::Rows);
 	}
 }
@@ -588,19 +589,11 @@ NMTableView::updateSelectionAdmin(const QItemSelection& sel,
 	else
 		selcnt = this->mTableView->selectionModel()->selectedRows().size();
 
-	if (selcnt)
-	{
-		this->mBtnClearSelection->setEnabled(true);
-	}
-	else
-	{
-		this->mBtnClearSelection->setEnabled(false);
-	}
-	this->mBtnSwitchSelection->setEnabled(true);
+	this->mBtnClearSelection->setEnabled(selcnt);
 
 	this->mRecStatusLabel->setText(
 			QString(tr("%1 of %2 records selected")).arg(selcnt).arg(
-					mSortFilter->rowCount(QModelIndex())));
+					mSortFilter->sourceRowCount()));
 }
 
 void NMTableView::addColumn()

@@ -44,16 +44,49 @@ public:
 
 	Qt::ItemFlags flags(const QModelIndex &index) const;
 
+	/**
+	 *  Control which source rows are actually available
+	 *  as source for display, selection, and filtering
+	 *  offered by this model.
+	 */
 	void hideSource(const QList<int>& rows);
-
-	void addToFilter(const QItemSelection& proxySelection);
 	void showSource(const QList<int>& rows);
-	void removeFromFilter(const QItemSelection& proxySelection);
-	void clearFilter(void);
 
+	/**
+	 *  Returns the number of unhidden source rows.
+	 */
+	int sourceRowCount(void);
+
+	/**
+	 *  Returns an item selection, which comprises all
+	 *  actually considered source rows (i.e. excluding
+	 *  any hidden rows) regardless of any filter
+	 *  settings. This is handy for toggling selections
+	 *  (switch selection) when hidden rows are presented.
+	 */
+	QItemSelection getSourceSelection(void);
+
+
+	/**
+	 *  Turn filter mode on or off; the filter operates
+	 *  on the actual available source rows offered by
+	 *  this model (i.e. excluding any hidden rows);
+	 */
 	void setFilterOn(bool yesno);
 	bool isFilterOn(void)
 		{return this->mbFilterOn;}
+
+	/**
+	 * 	Controls the which source rows are part of the
+	 * 	filter or not. Rows 'in' the filter are visible
+	 * 	to any ItemView or other consumer, which accesses
+	 * 	the model by it's index, data, mapToSource, mapFromSource
+	 * 	functions.
+	 */
+	void addToFilter(const QItemSelection& proxySelection);
+	void removeFromFilter(const QItemSelection& proxySelection);
+	void clearFilter(void);
+
 
 	void setSourceModel(QAbstractItemModel* sourceModel);
 	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}

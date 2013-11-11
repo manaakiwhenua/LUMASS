@@ -54,65 +54,6 @@
 #include <QRegExp>
 #include <QCheckBox>
 
-//#include "vtkSelection.h"
-//#include "vtkSelectionNode.h"
-//#include "vtkCellData.h"
-//#include "vtkDataObject.h"
-//#include "vtkDataSet.h"
-//#include "vtkDataSetAttributes.h"
-//#include "vtkDataArray.h"
-//#include "vtkArrayCalculator.h"
-//#include "vtkAbstractArray.h"
-//#include "vtkDoubleArray.h"
-//#include "vtkTable.h"
-//#include "vtkTableToSQLiteWriter.h"
-//#include "vtkSQLiteQuery.h"
-//#include "vtkRowQueryToTable.h"
-//#include "vtkSQLiteDatabase.h"
-//#include "vtkDelimitedTextWriter.h"
-//#include "vtkDelimitedTextReader.h"
-//#include "vtkSmartPointer.h"
-//#include "vtkPolyDataWriter.h"
-//#include "vtkPolyData.h"
-//#include "vtkVariant.h"
-//#include "vtkAlgorithmOutput.h"
-
-
-//NMTableView::NMTableView(QWidget* parent)
-//	: QWidget(parent)
-//{
-//	this->mViewMode = NMTABVIEW_ATTRTABLE;
-//	this->initView();
-//}
-
-//NMTableView::NMTableView(vtkTable* tab, QWidget* parent)
-//	: QWidget(parent), mOtbTableAdapter(0)
-//{
-//	this->mViewMode = NMTABVIEW_ATTRTABLE;
-//	this->mTableView = new QTableView(this);
-//	this->mVtkTableAdapter = new vtkQtEditableTableModelAdapter(this);
-//	this->mModel = this->mVtkTableAdapter;
-//	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
-//	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
-//
-//	this->initView();
-//	this->setTable(tab);
-//}
-
-//NMTableView::NMTableView(otb::AttributeTable::Pointer tab, QWidget* parent)
-//	: QWidget(parent), mVtkTableAdapter(0)
-//{
-//	this->mViewMode = NMTABVIEW_ATTRTABLE;
-//	this->mTableView = new QTableView(this);
-//	this->mOtbTableAdapter = new NMQtOtbAttributeTableModel(this);
-//	this->mModel = this->mOtbTableAdapter;
-//	this->mSelectionModel = new QItemSelectionModel(this->mModel, this);
-//	this->mSortFilter = new NMSelectableSortFilterProxyModel(this);
-//
-//	this->initView();
-//	this->setTable(tab);
-//}
-
 
 NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
@@ -145,9 +86,6 @@ NMTableView::~NMTableView()
 
 void NMTableView::initView()
 {
-	//if (mbSortEnabled)
-		//this->mTableView->setSortingEnabled(true);
-
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -170,7 +108,7 @@ void NMTableView::initView()
 	this->mStatusBar->addWidget(this->mBtnClearSelection);
 
 	this->mBtnSwitchSelection = new QPushButton(this->mStatusBar);
-	this->mBtnSwitchSelection->setText(tr("Switch Selection"));
+	this->mBtnSwitchSelection->setText(tr("Swap Selection"));
 	this->mStatusBar->addWidget(this->mBtnSwitchSelection);
 
 	this->mChkSelectedRecsOnly = new QCheckBox(this->mStatusBar);
@@ -205,8 +143,8 @@ void NMTableView::initView()
 	QAction* actExp = new QAction(this->mColHeadMenu);
 	actExp->setText(tr("Export Table ..."));
 
-	QAction* actFilter = new QAction(this->mColHeadMenu);
-	actFilter->setText(tr("Arbitrary SQL Query ..."));
+	//QAction* actFilter = new QAction(this->mColHeadMenu);
+	//actFilter->setText(tr("Arbitrary SQL Query ..."));
 
 	QAction* actSel = new QAction(this->mColHeadMenu);
 	actSel->setText(tr("Select Attributes ..."));
@@ -244,7 +182,7 @@ void NMTableView::initView()
 
 
 	this->mColHeadMenu->addAction(actSel);
-	this->mColHeadMenu->addAction(actFilter);
+	//this->mColHeadMenu->addAction(actFilter);
 	this->mColHeadMenu->addSeparator();
 	this->mColHeadMenu->addAction(actStat);
 
@@ -277,7 +215,7 @@ void NMTableView::initView()
 	this->connect(actSel, SIGNAL(triggered()), this, SLOT(selectionQuery()));
 	this->connect(actStat, SIGNAL(triggered()), this, SLOT(colStats()));
 	this->connect(actExp, SIGNAL(triggered()), this, SLOT(exportTable()));
-	this->connect(actFilter, SIGNAL(triggered()), this, SLOT(userQuery()));
+	//this->connect(actFilter, SIGNAL(triggered()), this, SLOT(userQuery()));
 	this->connect(actHide, SIGNAL(triggered()), this, SLOT(callHideColumn()));
 	this->connect(actUnHide, SIGNAL(triggered()), this, SLOT(callUnHideColumn()));
 
@@ -372,11 +310,6 @@ NMTableView::setViewMode(ViewMode mode)
 
 void NMTableView::updateSelRecsOnly(int state)
 {
-	//if (this->mSortFilter->isFilterOn() && state == Qt::Checked)
-	//	return;
-	//else if (!this->mSortFilter->isFilterOn() && state == Qt::Unchecked)
-	//	return;
-
 	if (state == Qt::Checked)
 	{
 		this->mSortFilter->clearFilter();
@@ -400,11 +333,6 @@ void NMTableView::switchSelection()
 	mbSwitchSelection = true;
 	if (this->mSelectionModel != 0)
 	{
-		//QModelIndex modeltop = this->mModel->index(0, 0, QModelIndex());
-		//QModelIndex modelbottom =
-		//		this->mModel->index(
-		//			this->mModel->rowCount(QModelIndex())-1, 0, QModelIndex());
-		//QItemSelection modelSelection(modeltop, modelbottom);
 		QItemSelection sourceSelection = this->mSortFilter->getSourceSelection();
 		this->mSelectionModel->select(sourceSelection, QItemSelectionModel::Toggle |
 				QItemSelectionModel::Rows);
@@ -506,49 +434,46 @@ void NMTableView::calcColumn()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-//	// get user input
-//
-//	QString label = QString(tr("%1 = ").arg(this->mLastClickedColumn));
-//	bool bOk = false;
-//	QString func = QInputDialog::getText(this, tr("Calculate Column"),
-//	                                          label, QLineEdit::Normal,
-//	                                          tr(""), &bOk);
-//	if (!bOk || func.isEmpty())
-//	{
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	// get the table
-//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-//
-//	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
-//	calc->setResultColumn(this->mLastClickedColumn);
-//
-//	if (this->mTableView->selectionModel()->selection().count() > 0)
-//		calc->setRowFilterModeOn("nm_sel");
-//
-//
-//	try
-//	{
-//		calc->setFunction(func);
-//		if (calc->calculate())
-//		{
-//			this->mAlteredColumns.append(this->mLastClickedColumn);
-//
-//			emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-//		}
-//	}
-//	catch (itk::ExceptionObject& err)
-//	{
-//		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-//				      .arg(err.GetDescription());
-//
-//		NMErr(__ctxtabview, << "Calculation failed!"
-//				<< errmsg.toStdString());
-//
-//		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-//	}
+	// get user input
+
+	QString label = QString(tr("%1 = ").arg(this->mLastClickedColumn));
+	bool bOk = false;
+	QString func = QInputDialog::getText(this, tr("Calculate Column"),
+	                                          label, QLineEdit::Normal,
+	                                          tr(""), &bOk);
+	if (!bOk || func.isEmpty())
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(this->mModel));
+	calc->setResultColumn(this->mLastClickedColumn);
+
+	if (this->mSelectionModel->selection().count() > 0)
+		calc->setRowFilter(this->mSelectionModel->selectedRows());
+
+	try
+	{
+		calc->setFunction(func);
+		if (!calc->calculate())
+		{
+			NMErr(__ctxtabview, << "Something went wrong!");
+			//this->mAlteredColumns.append(this->mLastClickedColumn);
+
+			//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+		}
+	}
+	catch (itk::ExceptionObject& err)
+	{
+		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+				      .arg(err.GetDescription());
+
+		NMErr(__ctxtabview, << "Calculation failed!"
+				<< errmsg.toStdString());
+
+		QMessageBox::critical(this, "Table Calculation Error", errmsg);
+	}
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -1356,17 +1281,6 @@ void NMTableView::filterAttribute(const QString& attr,
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
-void NMTableView::mousePressEvent(QMouseEvent* event)
-{
-	//NMDebugCtx(__ctxtabview, << "...");
-
-	//QWidget::mousePressEvent(event);
-
-
-
-	//NMDebugCtx(__ctxtabview, << "done!");
-}
-
 bool NMTableView::eventFilter(QObject* object, QEvent* event)
 {
 	// ======================== COLUMN HEADER + MOUSE BUTTON ==================================================
@@ -1375,8 +1289,6 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		&&  event->type() != QEvent::MouseMove)
 	{
 		QMouseEvent* me = static_cast<QMouseEvent*>(event);
-
-
 
 		// --------------------- CHECK FOR VALID COLUMN CLICKED --------------------------------------
 		// if we haven't got a proper column on the hook, we bail out
@@ -1404,48 +1316,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		else if (me->button() == Qt::LeftButton)
 		{
 			NMDebugAI(<< "SROTING COLUMN #" << col << "..." << std::endl);
-
-			NMDebugAI(<< "... clear current table view selection" << std::endl);
-			this->mTableView->selectionModel()->clear();
-
-			Qt::SortOrder order;
-			QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
-			if (it != mMapColSortAsc.end())
-			{
-				if (it.value())
-				{
-					order = Qt::DescendingOrder;
-					mMapColSortAsc.insert(col, false);
-				}
-				else
-				{
-					order = Qt::AscendingOrder;
-					mMapColSortAsc.insert(col, true);
-				}
-			}
-			else
-			{
-				order = Qt::AscendingOrder;
-				mMapColSortAsc.insert(col, true);
-			}
-			this->mTableView->horizontalHeader()->setSortIndicator(col, order);
-			this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
-
-			NMDebugAI(<< "... actually sorting the column" << std::endl);
-			this->mSortFilter->sort(col, order);
-
-			// re-apply any existing selection
-			NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
-			QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
-					this->mSelectionModel->selection());
-
-			NMDebugAI(<< "... applying mapped selection to table" << std::endl);
-			this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
-					QItemSelectionModel::Rows);
-
-			NMDebugAI(<< "SORTING DONE!" << std::endl);
-
-			//return false;
+			this->sortColumn(col);
 		}
 		return false;
 	}
@@ -1458,35 +1329,17 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		QMouseEvent* me = static_cast<QMouseEvent*>(event);
 		if (me->button() == Qt::LeftButton)
 		{
-			//if (me->modifiers() != Qt::ControlModifier)
-			//{
-			//	this->clearSelection();
-			//		//if (this->mSelectionModel)
-			//		//	this->mSelectionModel->clear();
-			//		//else
-			//		//	this->mTableView->selectionModel()->clearSelection();
-			//}
-			//else
+			int row = this->mTableView->rowAt(me->pos().y());
+			if (row != -1)
 			{
-				int row = this->mTableView->rowAt(me->pos().y());
-				NMDebugAI(<< "table row #" << row);
-				if (row != -1)
+				int srcRow = row;
+				if (mbSortEnabled)
 				{
-					int srcRow = row;
-					if (mbSortEnabled)
-					{
-						QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
-						QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
-						srcRow = srcIndx.row();
-					}
-
-					NMDebug(<< " | source row #" << srcRow << std::endl);
-					this->toggleRow(srcRow);
+					QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
+					QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
+					srcRow = srcIndx.row();
 				}
-				else
-				{
-					NMDebug(<< std::endl);
-				}
+				this->toggleRow(srcRow);
 			}
 		}
 		return true;
@@ -1498,76 +1351,102 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				 && event->type() == QEvent::MouseButtonDblClick)
 			 )
 	{
-			QMouseEvent* me = static_cast<QMouseEvent*>(event);
+		QMouseEvent* me = static_cast<QMouseEvent*>(event);
 
-			// ----------------------- RIGHT BUTTON CALLS META MENU ------------------------------------------------
-			if (me->button() == Qt::RightButton)
-			{
-				if (this->mViewMode == NMTableView::NMTABVIEW_RASMETADATA)
-				{
-					int row = this->mTableView->rowAt(me->pos().y());
-					if (!row)
-						return true;
-
-					this->mlLastClickedRow = row;
-					this->mManageLayerMenu->move(me->globalPos());
-					this->mManageLayerMenu->exec();
-				}
-				return true;
-			}
-			// ------------------------LEFT BUTTON DBL CLICK EDITS THE CELL ----------------------------------------
-			else if (	me->button() == Qt::LeftButton
-					 && event->type() == QEvent::MouseButtonDblClick)
+		// ----------------------- RIGHT BUTTON CALLS META MENU ------------------------------------------------
+		if (me->button() == Qt::RightButton)
+		{
+			if (this->mViewMode == NMTableView::NMTABVIEW_RASMETADATA)
 			{
 				int row = this->mTableView->rowAt(me->pos().y());
-				int col = this->mTableView->columnAt(me->pos().x());
-				if (row && col)
-				{
-					QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
-					this->mTableView->edit(idx);
-				}
-				return true;
+				if (!row)
+					return true;
+
+				this->mlLastClickedRow = row;
+				this->mManageLayerMenu->move(me->globalPos());
+				this->mManageLayerMenu->exec();
 			}
-			else
+			return true;
+		}
+		// ------------------------LEFT BUTTON DBL CLICK EDITS THE CELL ----------------------------------------
+		else if (	me->button() == Qt::LeftButton
+				 && event->type() == QEvent::MouseButtonDblClick)
+		{
+			int row = this->mTableView->rowAt(me->pos().y());
+			int col = this->mTableView->columnAt(me->pos().x());
+			if (row && col)
 			{
-				// we filter anything else out
-				return true;
+				QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
+				this->mTableView->edit(idx);
 			}
+			return true;
+		}
+		else
+		{
+			// we filter anything else out
+			return true;
+		}
 	}
 
 	return false;
 }
 
-//vtkSmartPointer<vtkAbstractArray> NMTableView::createVTKArray(int datatype)
-//{
-//	vtkSmartPointer<vtkAbstractArray> a;
-//	switch(datatype)
-//	{
-//		case VTK_BIT: a = vtkSmartPointer<vtkBitArray>::New(); break;
-//		case VTK_CHAR: a = vtkSmartPointer<vtkCharArray>::New(); break;
-//		case VTK_SIGNED_CHAR: a = vtkSmartPointer<vtkSignedCharArray>::New(); break;
-//		case VTK_UNSIGNED_CHAR: a = vtkSmartPointer<vtkUnsignedCharArray>::New(); break;
-//		case VTK_SHORT: a = vtkSmartPointer<vtkShortArray>::New(); break;
-//		case VTK_UNSIGNED_SHORT: a = vtkSmartPointer<vtkUnsignedShortArray>::New(); break;
-//		case VTK_INT: a = vtkSmartPointer<vtkIntArray>::New(); break;
-//		case VTK_UNSIGNED_INT: a = vtkSmartPointer<vtkUnsignedIntArray>::New(); break;
-//		case VTK_LONG: a = vtkSmartPointer<vtkLongArray>::New(); break;
-//		case VTK_UNSIGNED_LONG: a = vtkSmartPointer<vtkUnsignedLongArray>::New(); break;
-//		case VTK_FLOAT: a = vtkSmartPointer<vtkFloatArray>::New(); break;
-//		case VTK_DOUBLE: a = vtkSmartPointer<vtkDoubleArray>::New(); break;
-//		case VTK_STRING: a = vtkSmartPointer<vtkStringArray>::New(); break;
-//		default: a = vtkSmartPointer<vtkVariantArray>::New(); break;
-//	}
-//
-//	return a;
-//}
+void
+NMTableView::sortColumn(int col)
+{
+	NMDebugCtx(__ctxtabview, << "...");
 
-//const vtkTable* NMTableView::getTable(void)
-//{
-//	return vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-//}
+	NMDebugAI(<< "... clear current table view selection" << std::endl);
+	this->mTableView->selectionModel()->clear();
 
-void NMTableView::selectionQuery(void)
+	Qt::SortOrder order;
+	QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
+	if (it != mMapColSortAsc.end())
+	{
+		if (it.value())
+		{
+			order = Qt::DescendingOrder;
+			mMapColSortAsc.insert(col, false);
+		}
+		else
+		{
+			order = Qt::AscendingOrder;
+			mMapColSortAsc.insert(col, true);
+		}
+	}
+	else
+	{
+		order = Qt::AscendingOrder;
+		mMapColSortAsc.insert(col, true);
+	}
+	this->mTableView->horizontalHeader()->setSortIndicator(col, order);
+	this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
+
+	NMDebugAI(<< "... actually sorting the column" << std::endl);
+	this->mSortFilter->sort(col, order);
+
+	if (this->mChkSelectedRecsOnly->isChecked())
+	{
+		this->updateSelRecsOnly(Qt::Checked);
+	}
+	else
+	{
+		// re-apply any existing selection
+		NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
+		QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
+				this->mSelectionModel->selection());
+
+		NMDebugAI(<< "... applying mapped selection to table" << std::endl);
+		this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
+				QItemSelectionModel::Rows);
+	}
+	NMDebugAI(<< "SORTING DONE!" << std::endl);
+
+	NMDebugCtx(__ctxtabview, << "done!");
+}
+
+void
+NMTableView::selectionQuery(void)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 

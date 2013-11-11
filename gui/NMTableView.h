@@ -144,10 +144,10 @@ protected slots:
 	void updateSelRecsOnly(int state);
 	void updateSelectionAdmin(const QItemSelection&
 			selected, const QItemSelection& deselected);
-
 protected:
 
 	void initView();
+	void sortColumn(int col);
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
 //	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
@@ -161,9 +161,9 @@ protected:
 	//		const QString& srcJoinField,
 	//		vtkTable* srcTable);
 
-	void mousePressEvent(QMouseEvent* event);
 	bool eventFilter(QObject* object, QEvent* event);
 
+	// DEBUG ONLY
 	void printSelRanges(const QItemSelection& selection,
 			const QString& msg);
 

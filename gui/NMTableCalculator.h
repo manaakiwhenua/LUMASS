@@ -86,6 +86,8 @@ protected:
 
 	bool mbRowFilter;
 	bool mSelectionModeOn;
+	//QList<QPair<int, int> > mOutputSelection;
+	//QList<QPair<int, int> >	mInputSelection;
 	QModelIndexList mOutputSelection;
 	QModelIndexList mInputSelection;
 

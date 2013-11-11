@@ -252,14 +252,14 @@ bool NMTableCalculator::parseFunction()
 					NMDebugCtx(ctxTabCalc, << "done!");
 					return false;
 				}
-				//NMDebugInd(6,
-				//		<< "expression again? > " << guts[0].toStdString() << endl);
-				//NMDebugInd(6,
-				//		<< "left-hand-side: '" << guts[1].toStdString() << "'" << endl);
-				//NMDebugInd(6,
-				//		<< "operator: '" << guts[2].toStdString() << "'" << endl);
-				//NMDebugInd(6,
-				//		<< "right-hand-side: '" << guts[3].toStdString() << "'" << endl);
+				NMDebugInd(6,
+						<< "expression again? > " << guts[0].toStdString() << endl);
+				NMDebugInd(6,
+						<< "left-hand-side: '" << guts[1].toStdString() << "'" << endl);
+				NMDebugInd(6,
+						<< "operator: '" << guts[2].toStdString() << "'" << endl);
+				NMDebugInd(6,
+						<< "right-hand-side: '" << guts[3].toStdString() << "'" << endl);
 
 				// here, we check, whether the particular operator is a string operator or not
 				// if yes, we add the whole expression to the list of string expressions,

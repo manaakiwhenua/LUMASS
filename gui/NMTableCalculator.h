@@ -53,17 +53,17 @@ public:
 	virtual ~NMTableCalculator();
 
 	// supported string comparison operators
-	enum NMStrOperator   {NM_STR_GT,		 // >
-						  NM_STR_GTEQ,		 // >=
-						  NM_STR_LT,		 // <
-						  NM_STR_LTEQ,		 // <=
-						  NM_STR_NEQ,		 // !=
-						  NM_STR_IN,         // in
-						  NM_STR_NOTIN,		 // !in
-						  NM_STR_CONTAINS,   // contains
-						  NM_STR_EQ,		 // ==
-						  NM_STR_STARTSWITH, // startsWith
-						  NM_STR_ENDSWITH,   // endsWith
+	enum NMStrOperator   {NM_STR_GT,		 //  0 >
+						  NM_STR_GTEQ,		 //  1 >=
+						  NM_STR_LT,		 //  2 <
+						  NM_STR_LTEQ,		 //  3 <=
+						  NM_STR_NEQ,		 //  4 !=
+						  NM_STR_IN,         //  5 in
+						  NM_STR_NOTIN,		 //  6 !in
+						  NM_STR_CONTAINS,   //  7 contains
+						  NM_STR_EQ,		 //  8 ==
+						  NM_STR_STARTSWITH, //  9 startsWith
+						  NM_STR_ENDSWITH,   // 10 endsWith
 						  NM_STR_UNKNOWN
 	};
 

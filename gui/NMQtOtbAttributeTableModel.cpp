@@ -247,7 +247,8 @@ NMQtOtbAttributeTableModel::setHeaderData(int section, Qt::Orientation orientati
 
 	this->mTable->SetColumnName(section, value.toString().toStdString());
 
-	emit this->reset();
+	//emit this->reset();
+	emit headerDataChanged(Qt::Horizontal, section, section);
 
 	return true;
 }
@@ -266,6 +267,8 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 		return false;
 
 	QString name = QString("Col_%1").arg(this->mTable->GetNumCols()+1);
+
+	QAbstractItemModel::beginInsertColumns(QModelIndex(), column, column);
 	switch (*type)
 	{
 	case QVariant::Int:
@@ -280,9 +283,7 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	default:
 		break;
 	}
-
-	emit this->reset();
-
+	QAbstractItemModel::endInsertColumns();
 
 	return true;
 }
@@ -294,10 +295,11 @@ NMQtOtbAttributeTableModel::removeColumns(int column, int count,
 	if (column < 0 || column > this->mTable->GetNumCols()-1)
 		return false;
 
+	QAbstractItemModel::beginRemoveColumns(parent, column, column);
 	int ret = this->mTable->RemoveColumn(column);
 	if (ret)
 	{
-		emit this->reset();
+		QAbstractItemModel::endRemoveColumns();
 	}
 	else
 	{

@@ -36,6 +36,8 @@
 #include "vtkImageProperty.h"
 #include "vtkLookupTable.h"
 #include "vtkMath.h"
+#include "vtkDoubleArray.h"
+#include "vtkStringArray.h"
 
 #include "itkDataObject.h"
 #include "otbImage.h"

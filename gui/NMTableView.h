@@ -27,12 +27,7 @@
 #define __ctxtabview "NMTableView"
 
 #include "nmlog.h"
-//#include "NMLayer.h"
-//#include "NMQtOtbAttributeTableModel.h"
 #include "NMSelectableSortFilterProxyModel.h"
-
-
-//#include "otbAttributeTable.h"
 
 #include <QAbstractItemModel>
 #include <QObject>
@@ -55,8 +50,7 @@
 #include <QItemSelectionModel>
 #include <QItemSelection>
 
-//#include "vtkQtEditableTableModelAdapter.h"
-
+/*
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
 #include "QVTKWin32Header.h"
@@ -79,10 +73,11 @@
 #include "vtkStringArray.h"
 #include "vtkVariantArray.h"
 #include "vtkUnicodeStringArray.h"
+*/
 
 //class NMLayer;
 
-class QVTK_EXPORT NMTableView : public QWidget
+class NMTableView : public QWidget
 {
 	Q_OBJECT
 
@@ -104,7 +99,7 @@ public:
 	void filterAttribute(const QString& attr, const QString& regexp);
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);
-	void setTitle(const QString& title) {this->setWindowTitle(title);};
+	void setTitle(const QString& title) {this->setWindowTitle(title);}
 	void hideRow(int row);
 	void hideSource(const QList<int>& rows);
 
@@ -122,7 +117,6 @@ public slots:
 	void selectRow(int row);
 	void deselectRow(int row);
 	void toggleRow(int row);
-	void updateSelection(void);
 	void switchSelection(void);
 	void joinAttributes(void);
 	void loadRasLayer(void);

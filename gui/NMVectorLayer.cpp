@@ -24,12 +24,13 @@
 
 //#include "NMTableView.h"
 
+#include "NMVectorLayer.h"
+
 #include <QHash>
 #include <QTime>
 #include <QVector>
 #include <QFileInfo>
 
-#include <NMVectorLayer.h>
 #include "vtkIntArray.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataWriter.h"
@@ -40,6 +41,8 @@
 #include "vtkPolygon.h"
 #include "vtkMath.h"
 #include "vtkTable.h"
+#include "vtkDataArray.h"
+#include "vtkLongArray.h"
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
 #include "vtkSmartPointer.h"

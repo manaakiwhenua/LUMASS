@@ -128,7 +128,7 @@ NMTableCalculator::setRowFilter(const QModelIndexList& inputSelection)
 
 	if (inputSelection.size() == 0)
 	{
-		NMErr(ctxTabCalc, << "Selection is empty! Row filter is turned off!");
+		NMWarn(ctxTabCalc, << "Selection is empty! Row filter is turned off!");
 		this->mInputSelection.clear();
 		this->mbRowFilter = false;
 		return false;
@@ -177,7 +177,9 @@ NMTableCalculator::isStringColumn(int colidx)
 bool NMTableCalculator::parseFunction()
 {
 	NMDebugCtx(ctxTabCalc, << "...");
-	if (this->mFunction.isEmpty() || this->mResultColumn.isEmpty())
+	if (	this->mFunction.isEmpty()
+		||  (this->mResultColumn.isEmpty() && !this->mSelectionModeOn)
+	   )
 	{
 		NMErr(ctxTabCalc, << "Function or result column has not been set!");
 		NMDebugCtx(ctxTabCalc, << "done!");
@@ -252,14 +254,14 @@ bool NMTableCalculator::parseFunction()
 					NMDebugCtx(ctxTabCalc, << "done!");
 					return false;
 				}
-				NMDebugInd(6,
-						<< "expression again? > " << guts[0].toStdString() << endl);
-				NMDebugInd(6,
-						<< "left-hand-side: '" << guts[1].toStdString() << "'" << endl);
-				NMDebugInd(6,
-						<< "operator: '" << guts[2].toStdString() << "'" << endl);
-				NMDebugInd(6,
-						<< "right-hand-side: '" << guts[3].toStdString() << "'" << endl);
+				//NMDebugInd(6,
+				//		<< "expression again? " << guts[0].toStdString() << endl);
+				//NMDebugInd(6,
+				//		<< "left-hand-side: '" << guts[1].toStdString() << "'" << endl);
+				//NMDebugInd(6,
+				//		<< "operator: '" << guts[2].toStdString() << "'" << endl);
+				//NMDebugInd(6,
+				//		<< "right-hand-side: '" << guts[3].toStdString() << "'" << endl);
 
 				// here, we check, whether the particular operator is a string operator or not
 				// if yes, we add the whole expression to the list of string expressions,
@@ -271,7 +273,7 @@ bool NMTableCalculator::parseFunction()
 					bool bRightStr = false;
 					bool bLeftStr = false;
 					int idxleft = this->getColumnIndex(guts.at(1));
-					int idxright = this->getColumnIndex(guts.at(2));
+					int idxright = this->getColumnIndex(guts.at(3));
 					QStringList strNames;
 					QList<int> strFields;
 					if (idxleft >= 0)
@@ -293,14 +295,7 @@ bool NMTableCalculator::parseFunction()
 						}
 					}
 					else
-					{
-						// we thought we've got a column here, but don't!
-						// Let's get out of here!
-						NMErr(ctxTabCalc, << "Expected " << guts.at(1).toStdString()
-								<< " to be a table column, but that's not the case!");
-						NMDebugCtx(ctxTabCalc, << "done!");
-						return false;
-					}
+						strFields << -1;
 
 					if (idxright >= 0)
 					{
@@ -321,14 +316,8 @@ bool NMTableCalculator::parseFunction()
 						}
 					}
 					else
-					{
-						// we thought we've got a column here, but don't!
-						// Let's get out of here!
-						NMErr(ctxTabCalc, << "Expected " << guts.at(2).toStdString()
-								<< " to be a table column, but that's not the case!");
-						NMDebugCtx(ctxTabCalc, << "done!");
-						return false;
-					}
+						strFields << -1;
+
 
 					// analyse string expression
 					if (bLeftStr || bRightStr)
@@ -399,8 +388,10 @@ bool NMTableCalculator::parseFunction()
 					}
 					else
 					{
-						NMDebugAI(<< "couldn't do anything with this egg: "
-								<< item.toStdString() << endl);
+						NMDebugAI(<< "Couldn't do anything with this egg: "
+								<< item.toStdString() << endl
+								<< "We leave it in the capable hands of the muParser!"
+								<< endl);
 					}
 				}
 			}
@@ -455,7 +446,9 @@ bool NMTableCalculator::calculate(void)
 		return false;
 	}
 
-	if (this->mResultColumnType == QVariant::String)
+	if (	this->mResultColumnType == QVariant::String
+		&&  !this->mSelectionModeOn
+	   )
 	{
 		this->doStringCalculation();
 	}
@@ -511,7 +504,7 @@ NMTableCalculator::processNumericCalcSelection(int row)
 	int strExpRes;
 
 	// feed the parser with numeric variables and values
-	bool bok;
+	bool bok = true;
 	int fcnt=0;
 	foreach(const QString &colName, this->mFuncVars)
 	{
@@ -613,13 +606,14 @@ NMTableCalculator::processNumericCalcSelection(int row)
 			break;
 		case NM_STR_IN:
 			{
-				QStringList rl = right.split(" ");
+
+				QStringList rl = right.simplified().split(" ");
 				strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 1 : 0;
 			}
 			break;
 		case NM_STR_NOTIN:
 			{
-				QStringList rl = right.split(" ");
+				QStringList rl = right.simplified().split(" ");
 				strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 0 : 1;
 			}
 			break;
@@ -641,6 +635,7 @@ NMTableCalculator::processNumericCalcSelection(int row)
 	//double res;
 	try
 	{
+		if (row < 10) {NMDebugAI( << "mu-parsing: " << newFunc.toStdString() << std::endl)};
 		this->mParser->SetExpr(newFunc.toStdString());
 		res = this->mParser->Eval();
 	}
@@ -659,23 +654,22 @@ NMTableCalculator::processNumericCalcSelection(int row)
 		return;
 	}
 
-	QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
+
 	if (this->mSelectionModeOn)
 	{
 		if (res != 0)
 		{
-			this->mOutputSelection.push_back(resIdx);
-			//resAr->SetTuple1(row, 1);
-			//this->mTabView->selectRow(row);
+			QModelIndex selIdx = this->mModel->index(row, 0, QModelIndex());
+			this->mOutputSelection.push_back(selIdx);
 		}
 	}
 	else
 	{
+		QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
 		this->mModel->setData(resIdx, QVariant(res));
-		//resAr->SetTuple1(row, res);
 	}
 
-	NMDebugCtx(ctxTabCalc, << "done!");
+	//NMDebugCtx(ctxTabCalc, << "done!");
 }
 
 void

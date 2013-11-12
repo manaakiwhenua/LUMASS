@@ -45,6 +45,12 @@ public:
 	Qt::ItemFlags flags(const QModelIndex &index) const;
 
 	/**
+	 *  Set/Get the underlying source model.
+	 */
+	void setSourceModel(QAbstractItemModel* sourceModel);
+	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
+
+	/**
 	 *  Control which source rows are actually available
 	 *  as source for display, selection, and filtering
 	 *  offered by this model.
@@ -88,9 +94,6 @@ public:
 	void clearFilter(void);
 
 
-	void setSourceModel(QAbstractItemModel* sourceModel);
-	QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
-
 	/**
 	 *  NOTE: mapping indexes accounts for any active filter
 	 *        applied to the model! i.e.
@@ -106,6 +109,8 @@ public:
 	 *        and an unfiltered proxy selection  gets mapped to a source selection
 	 */
 	QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
+	QItemSelection mapSelectionFromSource(const QModelIndexList& sourceList) const;
+	QItemSelection getSourceSelectionFromSourceList(const QModelIndexList& sourceList) const;
 	QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
 
 	void sort(int column, Qt::SortOrder order);

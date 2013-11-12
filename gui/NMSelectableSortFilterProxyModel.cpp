@@ -596,6 +596,149 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 	return proxySel;
 }
 
+QItemSelection
+NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QModelIndexList& sourceList) const
+{
+	QItemSelection proxySel;
+	if (mSourceModel == 0 || sourceList.count() == 0)
+		return proxySel;
+
+	int start = -1;
+	int end = -1;
+	for (int i=0; i < this->mProxy2Source.size(); ++i)
+	{
+		const QModelIndex idx = this->createIndex(mProxy2Source[i], 0, 0);
+		//const QModelIndex idx = this->mapToSource(_idx);
+
+		//NMDebugAI(<< "proxy-id: " << i << " source-id: " << idx.row() << std::endl);
+
+		// inside a selection
+		if (sourceList.contains(idx))
+		{
+			//NMDebugAI(<< "detected selection at: proxy=" << i << " source=" << idx.row() << std::endl);
+
+			// if we haven't got a selection range started yet, we do it now
+			if (start == -1)
+			{
+				start = i;
+				end = -1;
+				continue;
+			}
+			// if we've got already a selection range, we extend its end
+			else if (start != -1)
+			{
+				end = i;
+				// in case this is the last row, we complete the selection range
+				// and add it to the ItemSelection
+				if (i == mProxy2Source.size()-1)
+				{
+					QModelIndex sidx = this->createIndex(start, 0, 0);
+					QModelIndex eidx = this->createIndex(end, 0, 0);
+					proxySel.select(sidx, eidx);
+				}
+				continue;
+			}
+		}
+		// we're currently not in a selection
+		else
+		{
+			// if we've got a valid end index, we
+			// complete the selection range and add it to the
+			// ItemSelection
+			if (end != -1)
+			{
+				QModelIndex sidx = this->createIndex(start, 0, 0);
+				QModelIndex eidx = this->createIndex(end, 0, 0);
+				proxySel.select(sidx, eidx);
+
+				start = -1;
+				end = -1;
+				continue;
+			}
+			// we've got a single item selection, denoted just by the start index
+			else
+			{
+				QModelIndex sidx = this->createIndex(start, 0, 0);
+				proxySel.select(sidx, sidx);
+
+				start = -1;
+				end = -1;
+				continue;
+			}
+		}
+	}
+
+	return proxySel;
+}
+
+QItemSelection
+NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelIndexList& sourceList) const
+{
+	QItemSelection srcSel;
+	if (mSourceModel == 0 || sourceList.count() == 0)
+		return srcSel;
+
+	int start = -1;
+	int end = -1;
+	for (int i=0; i < this->mSource2Proxy.size(); ++i)
+	{
+		const QModelIndex idx = this->mSourceModel->index(i, 0, QModelIndex());
+
+		// inside a selection
+		if (sourceList.contains(idx))
+		{
+			// if we haven't got a selection range, we start a new one
+			if (start == -1)
+			{
+				start = i;
+				end = -1;
+				continue;
+			}
+			// if we've got already a selection range, we extend its end
+			else if (start != -1)
+			{
+				end = i;
+				// in case this is the last row, we complete the selection range
+				// and add it to the ItemSelection
+				if (i == this->mSource2Proxy.size()-1)
+				{
+					QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
+					QModelIndex eidx = this->mSourceModel->index(end, 0, QModelIndex());
+					srcSel.select(sidx, eidx);
+				}
+				continue;
+			}
+		}
+		// we're currently not in a selection
+		else
+		{
+			// if we've got a valid end index, we
+			// complete the selection range and add it to the
+			// ItemSelection
+			if (end != -1)
+			{
+				QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
+				QModelIndex eidx = this->mSourceModel->index(end, 0, QModelIndex());
+				srcSel.select(sidx, eidx);
+
+				start = -1;
+				end = -1;
+				continue;
+			}
+			// we've got a single item selection, denote just by the start index
+			else
+			{
+				QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
+				srcSel.select(sidx, sidx);
+
+				start = -1;
+				end = -1;
+				continue;
+			}
+		}
+	}
+	return srcSel;
+}
 
 void
 NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)

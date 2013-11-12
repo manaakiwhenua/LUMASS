@@ -478,32 +478,6 @@ void NMTableView::calcColumn()
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
-void NMTableView::updateSelection(void)
-{
-	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	//vtkAbstractArray* aa = tab->GetColumnByName("nm_sel");
-	//if (aa == 0)
-	//{
-	//	NMErr(__ctxtabview, << "Selection column 'nm_sel' not found!");
-	//	return;
-	//}
-    //
-	//vtkDataArray* selar = vtkDataArray::SafeDownCast(aa);
-	//long selcnt = 0;
-	//for (int r=0; r < tab->GetNumberOfRows(); ++r)
-	//{
-	//	if (selar->GetTuple1(r) == 0)
-	//		this->deselectRow(r);
-	//	else
-	//	{
-	//		++selcnt;
-	//		this->selectRow(r);
-	//	}
-	//}
-
-	//this->updateSelectionAdmin();
-}
-
 void
 NMTableView::updateSelectionAdmin(const QItemSelection& sel,
 		const QItemSelection& desel)
@@ -1298,12 +1272,27 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 			this->mLastClickedColumn.clear();
 			return false;
 		}
-		else
+
+		// -------------------- BAIL OUT IF WE're HOVERING ABOVE A COLUMN SEPARATOR ---------------------
+		QRect rect = this->mTableView->horizontalHeader()->viewport()->rect();
+		int ncols = this->mSortFilter->columnCount(QModelIndex());
+		int testx = rect.left();
+		bool hot = false;
+		for (int col=0; col <= ncols; ++col)
 		{
-			this->mLastClickedColumn = this->mSortFilter->
-					headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+			if (   me->pos().x() >= testx - 5
+				&& me->pos().x() <= testx + 5)
+			{
+				return false;
+			}
+
+			if (col < ncols)
+				testx += this->mTableView->columnWidth(col);
 		}
 
+		// ---------------------- MEMORISE CURRENTLY CLICKED COLUMN -------------------------------------
+		this->mLastClickedColumn = this->mSortFilter->
+				headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
 
 		// let's see what kind of mouse button we've got
 		// --------------------- RIGHT BUTTON calls CONTEXT MENU ----------------------------------------
@@ -1450,47 +1439,55 @@ NMTableView::selectionQuery(void)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-//	bool bOk = false;
-//	QString query = QInputDialog::getText(this, tr("Selection Query"),
-//	                                          tr("Where Clause"), QLineEdit::Normal,
-//	                                          tr(""), &bOk);
-//	if (!bOk || query.isEmpty())
-//	{
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-//	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(tab));
-//	selector->setFunction(query);
-//	selector->setSelectionModeOn("nm_sel");//, this);
-//
-//	try
-//	{
-//		if (!selector->calculate())
-//		{
-//			QMessageBox::critical(this,
-//					"Selection Query Failed",
-//					"Error parsing the query!");
-//
-//			NMErr(__ctxtabview, << "Selection Query failed!");
-//			NMDebugCtx(__ctxtabview, << "done!");
-//			return;
-//		}
-//	}
-//	catch (itk::ExceptionObject& err)
-//	{
-//		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-//				      .arg(err.GetDescription());
-//		NMErr(__ctxtabview, << "Calculation failed!"
-//				<< errmsg.toStdString());
-//		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	this->updateSelection();
-//	emit selectionChanged();
+	bool bOk = false;
+	QString query = QInputDialog::getText(this, tr("Selection Query"),
+	                                          tr("Where Clause"), QLineEdit::Normal,
+	                                          tr(""), &bOk);
+	if (!bOk || query.isEmpty())
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(this->mModel));
+	selector->setFunction(query);
+	selector->setRowFilter(this->mSelectionModel->selectedRows());
+	selector->setSelectionMode(true);
+
+	try
+	{
+		if (!selector->calculate())
+		{
+			QMessageBox::critical(this,
+					"Selection Query Failed",
+					"Error parsing the query!");
+
+			NMErr(__ctxtabview, << "Selection Query failed!");
+			NMDebugCtx(__ctxtabview, << "done!");
+			return;
+		}
+	}
+	catch (itk::ExceptionObject& err)
+	{
+		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+				      .arg(err.GetDescription());
+		NMErr(__ctxtabview, << "Calculation failed!"
+				<< errmsg.toStdString());
+		QMessageBox::critical(this, "Table Calculation Error", errmsg);
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	const QModelIndexList resSel = selector->getSelection();
+	NMDebugAI(<< "yeah! we've got " << resSel.count() << " selections!" << std::endl);
+
+	const QItemSelection newSelection = this->mSortFilter->getSourceSelectionFromSourceList(
+			resSel);
+
+	NMDebugAI(<< "... and now we've got only " << newSelection.count() << " selections left!" << std::endl);
+
+	this->mSelectionModel->select(newSelection, QItemSelectionModel::ClearAndSelect |
+			QItemSelectionModel::Rows);
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -1548,11 +1545,11 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 			}
 			else if (mbSortEnabled)
 			{
-				NMDebugAI(<< "we map de-selection from source ..." << std::endl);
+				//NMDebugAI(<< "we map de-selection from source ..." << std::endl);
 				QItemSelection proxyDeselection = this->mSortFilter->mapSelectionFromSource(desel);
 
-				this->printSelRanges(proxyDeselection, "Mapped Proxy (Desel)");
-				NMDebugAI(<< "we apply the mapped de-selection to table view ..." << std::endl);
+				//this->printSelRanges(proxyDeselection, "Mapped Proxy (Desel)");
+				//NMDebugAI(<< "we apply the mapped de-selection to table view ..." << std::endl);
 				this->mTableView->selectionModel()->select(proxyDeselection, QItemSelectionModel::Toggle |
 						QItemSelectionModel::Rows);
 			}
@@ -1566,7 +1563,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 
 		if (sel.count() > 0)
 		{
-			this->printSelRanges(sel, "SEL Source");
+			//this->printSelRanges(sel, "SEL Source");
 
 			if (this->mChkSelectedRecsOnly->isChecked())
 			{
@@ -1574,11 +1571,11 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 			}
 			else if (mbSortEnabled)
 			{
-				NMDebugAI(<< "we map selection from source ..." << std::endl);
+				//NMDebugAI(<< "we map selection from source ..." << std::endl);
 				QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(sel);
 
-				this->printSelRanges(proxySelection, "Mapped Proxy (Sel)");
-				NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
+				//this->printSelRanges(proxySelection, "Mapped Proxy (Sel)");
+				//NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
 				this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Toggle |
 						QItemSelectionModel::Rows);
 			}
@@ -1658,8 +1655,6 @@ NMTableView::toggleRow(int row)
 		this->mSelectionModel->select(srcIndex, QItemSelectionModel::Toggle |
 				QItemSelectionModel::Rows);
 	}
-
-	//this->printSelRanges(this->mSelectionModel->selection(), "Source");
 }
 
 

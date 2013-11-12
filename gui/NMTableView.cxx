@@ -451,7 +451,7 @@ void NMTableView::calcColumn()
 	calc->setResultColumn(this->mLastClickedColumn);
 
 	if (this->mSelectionModel->selection().count() > 0)
-		calc->setRowFilter(this->mSelectionModel->selectedRows());
+		calc->setRowFilter(this->mSelectionModel->selection());
 
 	try
 	{
@@ -1263,10 +1263,10 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		&&  event->type() != QEvent::MouseMove)
 	{
 		QMouseEvent* me = static_cast<QMouseEvent*>(event);
-
+		int xpos = me->pos().x();
 		// --------------------- CHECK FOR VALID COLUMN CLICKED --------------------------------------
 		// if we haven't got a proper column on the hook, we bail out
-		int col = this->mTableView->columnAt(me->pos().x());
+		int col = this->mTableView->columnAt(xpos);
 		if (col < 0)
 		{
 			this->mLastClickedColumn.clear();
@@ -1274,20 +1274,11 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		}
 
 		// -------------------- BAIL OUT IF WE're HOVERING ABOVE A COLUMN SEPARATOR ---------------------
-		QRect rect = this->mTableView->horizontalHeader()->viewport()->rect();
-		int ncols = this->mSortFilter->columnCount(QModelIndex());
-		int testx = rect.left();
-		bool hot = false;
-		for (int col=0; col <= ncols; ++col)
+		if (	(col != mTableView->columnAt(xpos -5))
+			||  (col != mTableView->columnAt(xpos +5))
+		   )
 		{
-			if (   me->pos().x() >= testx - 5
-				&& me->pos().x() <= testx + 5)
-			{
-				return false;
-			}
-
-			if (col < ncols)
-				testx += this->mTableView->columnWidth(col);
+			return false;
 		}
 
 		// ---------------------- MEMORISE CURRENTLY CLICKED COLUMN -------------------------------------
@@ -1451,7 +1442,7 @@ NMTableView::selectionQuery(void)
 
 	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(this->mModel));
 	selector->setFunction(query);
-	selector->setRowFilter(this->mSelectionModel->selectedRows());
+	selector->setRowFilter(this->mSelectionModel->selection());
 	selector->setSelectionMode(true);
 
 	try
@@ -1478,15 +1469,15 @@ NMTableView::selectionQuery(void)
 		return;
 	}
 
-	const QModelIndexList resSel = selector->getSelection();
+	const QItemSelection resSel = selector->getSelection();
 	NMDebugAI(<< "yeah! we've got " << resSel.count() << " selections!" << std::endl);
 
-	const QItemSelection newSelection = this->mSortFilter->getSourceSelectionFromSourceList(
-			resSel);
+	//const QItemSelection newSelection = this->mSortFilter->getSourceSelectionFromSourceList(
+	//		resSel);
 
-	NMDebugAI(<< "... and now we've got only " << newSelection.count() << " selections left!" << std::endl);
+	//NMDebugAI(<< "... and now we've got only " << newSelection.count() << " selections left!" << std::endl);
 
-	this->mSelectionModel->select(newSelection, QItemSelectionModel::ClearAndSelect |
+	this->mSelectionModel->select(resSel, QItemSelectionModel::ClearAndSelect |
 			QItemSelectionModel::Rows);
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -1538,7 +1529,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 	{
 		if (desel.count() > 0)
 		{
-			this->printSelRanges(desel, "DESEL Source");
+			//this->printSelRanges(desel, "DESEL Source");
 			if (this->mChkSelectedRecsOnly->isChecked())
 			{
 				this->updateSelRecsOnly(Qt::Checked);
@@ -1586,8 +1577,8 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 			}
 		}
 
-		this->printSelRanges(this->mTableView->selectionModel()->selection(),
-				QString("current table selection"));
+		//this->printSelRanges(this->mTableView->selectionModel()->selection(),
+		//		QString("current table selection"));
 	}
 }
 

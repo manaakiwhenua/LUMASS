@@ -69,7 +69,7 @@ NMTableCalculator::~NMTableCalculator()
 {
 }
 
-const QModelIndexList&
+const QItemSelection&
 NMTableCalculator::getSelection(void)
 {
 	return this->mOutputSelection;
@@ -123,10 +123,10 @@ NMTableCalculator::setSelectionMode(bool mode)
 }
 
 bool
-NMTableCalculator::setRowFilter(const QModelIndexList& inputSelection)
+NMTableCalculator::setRowFilter(const QItemSelection& inputSelection)
 {
 
-	if (inputSelection.size() == 0)
+	if (inputSelection.count() == 0)
 	{
 		NMWarn(ctxTabCalc, << "Selection is empty! Row filter is turned off!");
 		this->mInputSelection.clear();
@@ -481,14 +481,20 @@ NMTableCalculator::doNumericCalcSelection()
 
 	if (this->mbRowFilter)
 	{
-		foreach(const QModelIndex& idx, this->mInputSelection)
+		foreach(const QItemSelectionRange& range, this->mInputSelection)
 		{
-			this->processNumericCalcSelection(idx.row());
+			const int top = range.top();
+			const int bottom = range.bottom();
+			for (int row=top; row <= bottom; ++row)
+			{
+				this->processNumericCalcSelection(row);
+			}
 		}
 	}
 	else
 	{
-		for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
+		const int nrows = this->mModel->rowCount(QModelIndex());
+		for (int row=0; row < nrows; ++row)
 		{
 			this->processNumericCalcSelection(row);
 		}
@@ -659,8 +665,8 @@ NMTableCalculator::processNumericCalcSelection(int row)
 	{
 		if (res != 0)
 		{
-			QModelIndex selIdx = this->mModel->index(row, 0, QModelIndex());
-			this->mOutputSelection.push_back(selIdx);
+			const QModelIndex selIdx = this->mModel->index(row, 0, QModelIndex());
+			this->mOutputSelection.select(selIdx, selIdx);
 		}
 	}
 	else
@@ -677,14 +683,20 @@ NMTableCalculator::doStringCalculation()
 {
 	if (this->mbRowFilter)
 	{
-		foreach(const QModelIndex& idx, this->mInputSelection)
+		foreach(const QItemSelectionRange& range, this->mInputSelection)
 		{
-			this->processStringCalc(idx.row());
+			const int top = range.top();
+			const int bottom = range.bottom();
+			for (int row=top; row <= bottom; ++row)
+			{
+				this->processStringCalc(row);
+			}
 		}
 	}
 	else
 	{
-		for (int row=0; row < this->mModel->rowCount(QModelIndex()); ++row)
+		const int nrows = this->mModel->rowCount(QModelIndex());
+		for (int row=0; row < nrows; ++row)
 		{
 			this->processStringCalc(row);
 		}
@@ -740,96 +752,98 @@ NMTableCalculator::calcColumnStats(const QString& column)
 {
 	// result vector containing min, max, mean, sum
 	std::vector<double> res;
-
-	// check, whether the column is available in the table
-	int colidx = this->getColumnIndex(column);
-	if (colidx < 0)
-	{
-		NMErr(ctxTabCalc, << "Specified Column couldn't be found in the table!");
-		return res;
-	}
-
-	if (!this->isNumericColumn(colidx))
-	{
-		NMErr(ctxTabCalc, << "Data Type is not suitable for this kind of operation!");
-		return res;
-	}
-
-	//vtkDataArray* da = vtkDataArray::SafeDownCast(this->mTab->GetColumn(colidx));
-	int nrows;
-	if (this->mbRowFilter)
-		nrows = this->mInputSelection.size();
-	else
-		nrows = this->mModel->rowCount(QModelIndex());
-
-	// get the first valid value
-	bool bok;
-	double val;
-	int r = 0;
-	int row;
-	bool bGotInitial = false;
-	while (!bGotInitial && r < nrows)
-	{
-		if (this->mbRowFilter)
-		{
-			row = this->mInputSelection.at(r).row();
-		}
-		else
-		{
-			row = r;
-		}
-
-		QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
-		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
-		if (!bok)
-		{
-			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-					<< "': Disregarding invalid value at row " << row << "!");
-			r = r + 1;
-			continue;
-		}
-
-		bGotInitial = true;
-		r = r + 1;
-	}
-
-	double min = val;
-	double max = val;
-	double sum = val;
-	double mean;
-
-
-	for (; r < nrows; ++r)
-	{
-		if (this->mbRowFilter)
-		{
-			row = this->mInputSelection.at(r).row();
-		}
-		else
-		{
-			row = r;
-		}
-
-		QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
-		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
-		if (bok)
-		{
-			sum += val;
-			min = val < min ? val : min;
-			max = val > max ? val : max;
-		}
-		else
-		{
-			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-					<< "': Disregarding invalid value at row " << row << "!");
-		}
-	}
-	mean = sum / nrows;
-
-	res.push_back(min);
-	res.push_back(max);
-	res.push_back(mean);
-	res.push_back(sum);
+//
+//	// check, whether the column is available in the table
+//	int colidx = this->getColumnIndex(column);
+//	if (colidx < 0)
+//	{
+//		NMErr(ctxTabCalc, << "Specified Column couldn't be found in the table!");
+//		return res;
+//	}
+//
+//	if (!this->isNumericColumn(colidx))
+//	{
+//		NMErr(ctxTabCalc, << "Data Type is not suitable for this kind of operation!");
+//		return res;
+//	}
+//
+//	int nrows;
+//	if (this->mbRowFilter)
+//		nrows = this->mInputSelection.size();
+//	else
+//		nrows = this->mModel->rowCount(QModelIndex());
+//
+//	// get the first valid value
+//	bool bok;
+//	double val;
+//	int range = 0;
+//	int r = 0;
+//	int row;
+//	bool bGotInitial = false;
+//	//while (!bGotInitial && r < nrows)
+//	while (!bGotInitial && )
+//	{
+//		if (this->mbRowFilter)
+//		{
+//
+//			row = this->mInputSelection.at(r).row();
+//		}
+//		else
+//		{
+//			row = r;
+//		}
+//
+//		QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
+//		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
+//		if (!bok)
+//		{
+//			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+//					<< "': Disregarding invalid value at row " << row << "!");
+//			r = r + 1;
+//			continue;
+//		}
+//
+//		bGotInitial = true;
+//		r = r + 1;
+//	}
+//
+//	double min = val;
+//	double max = val;
+//	double sum = val;
+//	double mean;
+//
+//
+//	for (; r < nrows; ++r)
+//	{
+//		if (this->mbRowFilter)
+//		{
+//			row = this->mInputSelection.at(r).row();
+//		}
+//		else
+//		{
+//			row = r;
+//		}
+//
+//		QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
+//		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
+//		if (bok)
+//		{
+//			sum += val;
+//			min = val < min ? val : min;
+//			max = val > max ? val : max;
+//		}
+//		else
+//		{
+//			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+//					<< "': Disregarding invalid value at row " << row << "!");
+//		}
+//	}
+//	mean = sum / nrows;
+//
+//	res.push_back(min);
+//	res.push_back(max);
+//	res.push_back(mean);
+//	res.push_back(sum);
 
 	return res;
 }
@@ -939,7 +953,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 	// benefit formula: val = (val - min) / (max-min)
 	double diff = max-min;
 
-	long nrows = this->mModel->rowCount(QModelIndex());
+	const long nrows = this->mModel->rowCount(QModelIndex());
 	int srcIdx, tarIdx;
 	bool bok;
 	for(int field=0; field < fieldVec.size(); ++field)
@@ -950,30 +964,34 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		// get the selected model indices to not have to go through the whole table
 		if (this->mbRowFilter)
 		{
-			//QModelIndexList indices = this->mInputSelection->indexes();
-			foreach(const QModelIndex& idx, this->mInputSelection)
+			foreach(const QItemSelectionRange& idx, this->mInputSelection)
 			{
-				// TODO: we need to check, whether actually there's only one index for each row!!!
-				QModelIndex misrc = this->mModel->index(idx.row(), srcIdx, QModelIndex());
-				QModelIndex mitar = this->mModel->index(idx.row(), tarIdx, QModelIndex());
-
-				double val = this->mModel->data(misrc, Qt::DisplayRole).toDouble(&bok);
-				if (!bok)
+				const int top=idx.top();
+				const int bottom=idx.bottom();
+				for (int i=top; i <= bottom; ++i)
 				{
-					NMErr(ctxTabCalc, << "Failed getting input value for '"
-						<< this->mModel->headerData(srcIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
-						<< "', row " << idx.row() << "!");
-					continue;
-				}
+					// TODO: we need to check, whether actually there's only one index for each row!!!
+					QModelIndex misrc = this->mModel->index(i, srcIdx, QModelIndex());
+					QModelIndex mitar = this->mModel->index(i, tarIdx, QModelIndex());
 
-				double normval = bCostCriterion ? ((max - val) / diff) : ((val - min) / diff);
+					double val = this->mModel->data(misrc, Qt::DisplayRole).toDouble(&bok);
+					if (!bok)
+					{
+						NMErr(ctxTabCalc, << "Failed getting input value for '"
+							<< this->mModel->headerData(srcIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
+							<< "', row " << i << "!");
+						continue;
+					}
 
-				if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
-				{
-					NMErr(ctxTabCalc, << "Failed setting normalised value for '"
-						<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
-						<< "', row " << idx.row() << "!");
-					continue;
+					double normval = bCostCriterion ? ((max - val) / diff) : ((val - min) / diff);
+
+					if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
+					{
+						NMErr(ctxTabCalc, << "Failed setting normalised value for '"
+							<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
+							<< "', row " << i << "!");
+						continue;
+					}
 				}
 			}
 		}

@@ -227,7 +227,7 @@ protected:
 		const int middle = (le + ri) / 2;
 
 		const QModelIndex midx = this->mSourceModel->index(
-				mSource2Raw[mProxy2Source[middle]], mSortColumn, QModelIndex());
+				mSource2Raw.at(mProxy2Source.at(middle)), mSortColumn, QModelIndex());
 		const QVariant mval = mSourceModel->data(midx, Qt::DisplayRole);
 
 		do
@@ -236,36 +236,36 @@ protected:
 			{
 			case Qt::DescendingOrder:
 				{
-					QModelIndex leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
+					QModelIndex leidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(le)), mSortColumn, QModelIndex());
 					while (greaterThan(mSourceModel->data(leidx, Qt::DisplayRole), mval))
 					{
 						++le;
-						leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
+						leidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(le)), mSortColumn, QModelIndex());
 					}
 
-					QModelIndex riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
+					QModelIndex riidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(ri)), mSortColumn, QModelIndex());
 					while (lessThan(mSourceModel->data(riidx, Qt::DisplayRole), mval))
 					{
 						--ri;
-						riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
+						riidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(ri)), mSortColumn, QModelIndex());
 					}
 				}
 				break;
 
 			case Qt::AscendingOrder:
 				{
-					QModelIndex leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
+					QModelIndex leidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(le)), mSortColumn, QModelIndex());
 					while (lessThan(mSourceModel->data(leidx, Qt::DisplayRole), mval))
 					{
 						++le;
-						leidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[le]], mSortColumn, QModelIndex());
+						leidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(le)), mSortColumn, QModelIndex());
 					}
 
-					QModelIndex riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
+					QModelIndex riidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(ri)), mSortColumn, QModelIndex());
 					while (greaterThan(mSourceModel->data(riidx, Qt::DisplayRole), mval))
 					{
 						--ri;
-						riidx = this->mSourceModel->index(mSource2Raw[mProxy2Source[ri]], mSortColumn, QModelIndex());
+						riidx = this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(ri)), mSortColumn, QModelIndex());
 					}
 				}
 				break;

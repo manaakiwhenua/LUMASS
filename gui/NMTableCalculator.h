@@ -31,6 +31,7 @@
 #include <QStringList>
 #include <QAbstractItemModel>
 #include <QModelIndexList>
+#include <QItemSelection>
 
 #include "vtkType.h"
 #include "vtkSmartPointer.h"
@@ -69,14 +70,14 @@ public:
 
 	inline NMStrOperator getStrOperator(const QString& strOp);
 
-	bool setRowFilter(const QModelIndexList& inputSelection);
+	bool setRowFilter(const QItemSelection& inputSelection);
 	bool setResultColumn(const QString& name);
 	void setFunction(const QString& function);
 	void setSelectionMode(bool selmode);
 
 	bool calculate(void);
 
-	const QModelIndexList& getSelection(void);
+	const QItemSelection& getSelection(void);
 	std::vector<double> calcColumnStats(const QString& column);
 	QStringList normaliseColumns(const QStringList& columnNames, bool bCostCriterion);
 
@@ -88,8 +89,8 @@ protected:
 	bool mSelectionModeOn;
 	//QList<QPair<int, int> > mOutputSelection;
 	//QList<QPair<int, int> >	mInputSelection;
-	QModelIndexList mOutputSelection;
-	QModelIndexList mInputSelection;
+	QItemSelection mOutputSelection;
+	QItemSelection mInputSelection;
 
 	QString mFunction;
 	QString mResultColumn;

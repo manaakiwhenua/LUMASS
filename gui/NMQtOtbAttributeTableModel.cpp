@@ -23,6 +23,7 @@
  */
 
 #include "NMQtOtbAttributeTableModel.h"
+#include "nmlog.h"
 
 #include <QColor>
 
@@ -262,13 +263,20 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	// the parents internalPoniter to point to a
 	// QVariant::Type
 
+	NMDebugCtx("NMQtOtbAttributeTableModel", << "...");
+
 	QVariant::Type* type = (QVariant::Type*)parent.internalPointer();
 	if (type == 0)
+	{
+		NMErr("NMQtOtbAttributeTableModel", << "Invalid column type!");
+		NMDebugCtx("NMQtOtbAttributeTableModel", << "done!");
 		return false;
+	}
+	NMDebugAI(<< __FUNCTION__ << "column count before: " << this->mTable->GetNumCols() << std::endl);
 
 	QString name = QString("Col_%1").arg(this->mTable->GetNumCols()+1);
 
-	QAbstractItemModel::beginInsertColumns(QModelIndex(), column, column);
+	beginInsertColumns(QModelIndex(), column, column);
 	switch (*type)
 	{
 	case QVariant::Int:
@@ -283,8 +291,12 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	default:
 		break;
 	}
-	QAbstractItemModel::endInsertColumns();
+	endInsertColumns();
 
+	// let's check
+	NMDebugAI(<< __FUNCTION__ << "column count after: " << this->mTable->GetNumCols() << std::endl);
+
+	NMDebugCtx("NMQtOtbAttributeTableModel", << "done!");
 	return true;
 }
 
@@ -295,11 +307,11 @@ NMQtOtbAttributeTableModel::removeColumns(int column, int count,
 	if (column < 0 || column > this->mTable->GetNumCols()-1)
 		return false;
 
-	QAbstractItemModel::beginRemoveColumns(parent, column, column);
+	beginRemoveColumns(parent, column, column);
 	int ret = this->mTable->RemoveColumn(column);
 	if (ret)
 	{
-		QAbstractItemModel::endRemoveColumns();
+		endRemoveColumns();
 	}
 	else
 	{

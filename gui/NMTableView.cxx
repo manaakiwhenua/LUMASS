@@ -342,8 +342,8 @@ void NMTableView::switchSelection()
 void NMTableView::normalise()
 {
 
-	NMDebugCtx(__ctxtabview, << "...");
-
+//	NMDebugCtx(__ctxtabview, << "...");
+//
 //	// -----------------------------------------------------------------------
 //	// get user input
 //
@@ -391,9 +391,9 @@ void NMTableView::normalise()
 //
 //
 //	// inform listeners
-//	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-
-	NMDebugCtx(__ctxtabview, << "done!");
+//	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+//
+//	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 
@@ -499,78 +499,93 @@ void NMTableView::addColumn()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	//NMAddColumnDialog* dlg = new NMAddColumnDialog();
-	//int ret = 0;
-	//bool bok = true;
-	//QString name;
-	//int type = -1;
-    //
-	//// regular expression which defines possible names for columns
-	//QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
-	//int pos = -1;
-	//do {
-	//	ret = dlg->exec();
-	//	if (!ret)
-	//		break;
-    //
-	//	name = dlg->getColumnName();
-	//	type = dlg->getDataType();
-    //
-	//	// check, whether name matches the regular expression
-	//	// (i.e. is valid)
-	//	pos = nameRegExp.indexIn(name);
-	//	bok = pos >= 0 ? true : false;
-    //
-	//	//		NMDebugAI(<< "pos: " << pos << endl);
-	//	//		if (pos != -1)
-	//	//		{
-	//	//			NMDebugAI(<< "that's what I've got ..." << endl);
-	//	//			foreach(const QString& s, nameRegExp.capturedTexts())
-	//	//					NMDebugAI(<< s.toStdString() << endl);
-	//	//		}
-    //
-	//	if (type < 0 || name.isEmpty() || !bok)
-	//	{
-	//		QMessageBox msgBox;
-	//		msgBox.setText(tr("Name invalid!"));
-	//		msgBox.setIcon(QMessageBox::Critical);
-	//		msgBox.exec();
-	//		NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
-	//	}
-    //
-	//	if (this->getColumnIndex(name) >= 0)
-	//	{
-	//		bok = false;
-	//		QMessageBox msgBox;
-	//		msgBox.setText(tr("Column already exists!"));
-	//		msgBox.setIcon(QMessageBox::Critical);
-	//		msgBox.exec();
-	//	}
-    //
-    //
-	//} while (!bok || name.isEmpty() || type < 1);
-    //
-	//if (!ret)
-	//{
-	//	NMDebugCtx(__ctxtabview, << "done!");
-	//	return;
-	//}
-    //
-	//delete dlg;
-    //
+	NMAddColumnDialog* dlg = new NMAddColumnDialog();
+	int ret = 0;
+	bool bok = true;
+	QString name;
+	QVariant::Type type = QVariant::String;
+
+	// regular expression which defines possible names for columns
+	QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
+	int pos = -1;
+	do {
+		ret = dlg->exec();
+		if (!ret)
+			break;
+
+		name = dlg->getColumnName();
+		type = (QVariant::Type)dlg->getDataType();
+
+		// check, whether name matches the regular expression
+		// (i.e. is valid)
+		pos = nameRegExp.indexIn(name);
+		bok = pos >= 0 ? true : false;
+
+		//		NMDebugAI(<< "pos: " << pos << endl);
+		//		if (pos != -1)
+		//		{
+		//			NMDebugAI(<< "that's what I've got ..." << endl);
+		//			foreach(const QString& s, nameRegExp.capturedTexts())
+		//					NMDebugAI(<< s.toStdString() << endl);
+		//		}
+
+		if (type < 0 || name.isEmpty() || !bok)
+		{
+			QMessageBox msgBox;
+			msgBox.setText(tr("Name invalid!"));
+			msgBox.setIcon(QMessageBox::Critical);
+			msgBox.exec();
+			NMDebugAI(<< "type '" << type << "' or name '" << name.toStdString() << "' is invalid!" << endl);
+		}
+
+		if (this->getColumnIndex(name) >= 0)
+		{
+			bok = false;
+			QMessageBox msgBox;
+			msgBox.setText(tr("Column already exists!"));
+			msgBox.setIcon(QMessageBox::Critical);
+			msgBox.exec();
+		}
+	} while (!bok || name.isEmpty() || type < 0);
+
+	if (!ret)
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	delete dlg;
+
 	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
 	//int nrows = tab->GetNumberOfRows();
-    //
-	//NMDebugAI(<< "add column ? " << ret << endl);
-	//NMDebugAI(<< "name: " << name.toStdString() << endl);
-	//NMDebugAI(<< "type: " << type << endl);
-	//NMDebugAI(<< "nrows in tab: " << tab->GetNumberOfRows() << endl);
-    //
+	int ncols = this->mModel->columnCount(QModelIndex());
+
+	NMDebugAI(<< "add column ? " << ret << endl);
+	NMDebugAI(<< "name: " << name.toStdString() << endl);
+	NMDebugAI(<< "type: " << type << endl);
+	NMDebugAI(<< "ncols in tab: " << ncols << endl);
+
+	QModelIndex idx = this->mModel->index(0, 0, QModelIndex());
+	QModelIndex par = this->mModel->parent(idx);
+
+	void* dummyPtr = par.internalPointer();
+	dummyPtr = (void*)(&type);
+
+
+
+	//NMDebugAI(<< "type from index: " << *((*)par.internalPointer()) << std::endl);
+
+	NMDebugAI(<< __FUNCTION__ << " col count before: " << this->mModel->columnCount(QModelIndex()) << endl);
+
+	this->mModel->insertColumns(ncols, 1, par);
+
+	NMDebugAI(<< __FUNCTION__ << " col count after: " << this->mModel->columnCount(QModelIndex()) << endl);
+
 	//vtkSmartPointer<vtkAbstractArray> a = this->createVTKArray(type);
 	//a->SetName(name.toStdString().c_str());
 	//a->SetNumberOfComponents(1);
 	//a->Allocate(nrows);
-    //
+
 	//vtkVariant v;
 	//if (type == VTK_STRING)
 	//	v = vtkVariant("");
@@ -582,9 +597,9 @@ void NMTableView::addColumn()
     //
 	//tab->AddColumn(a);
 	//this->mAlteredColumns.append(name);
-    //
-//	//this->mVtkTableAdapter->setTable(tab);
-    //
+
+	//this->mVtkTableAdapter->setTable(tab);
+
 	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
 

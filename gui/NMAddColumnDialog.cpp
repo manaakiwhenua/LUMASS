@@ -19,7 +19,9 @@
 #include "NMAddColumnDialog.h"
 #include "ui_NMAddColumnDialog.h"
 
-#include "vtkType.h"
+//#include "vtkType.h"
+
+#include <QVariant>
 
 NMAddColumnDialog::NMAddColumnDialog(QWidget *parent)
     : QDialog(parent)
@@ -41,32 +43,16 @@ int NMAddColumnDialog::getDataType(void)
 	int ret = -1;
 	switch(ui.cbxDataType->currentIndex())
 	{
-	case 0: //"Unsigned Char":
-		ret = VTK_UNSIGNED_CHAR;
+	case 0: //INTEGER
+		ret = QVariant::Int;
 		break;
-	case 1: //"Signed Char":
-		ret = VTK_SIGNED_CHAR;
+	case 1: //REAL
+		ret = QVariant::Double;
 		break;
-	case 2: //"Short":
-		ret = VTK_SHORT;
-		break;
-	case 3: //"Integer":
-		ret = VTK_INT;
-		break;
-	case 4: //"Long":
-		ret = VTK_LONG;
-		break;
-	case 5: //"Float":
-		ret = VTK_FLOAT;
-		break;
-	case 6: //"Double":
-		ret = VTK_DOUBLE;
-		break;
-	case 7: //"String":
-		ret = VTK_STRING;
+	case 2: //STRING
+		ret = QVariant::String;
 		break;
 	default:
-		ret = VTK_STRING;
 		break;
 	}
 

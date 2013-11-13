@@ -61,37 +61,12 @@
         </property>
         <item>
          <property name="text">
-          <string>Unsigned Char</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Signed Char</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Short</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
           <string>Integer</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Long</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Float</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Double</string>
+          <string>Real</string>
          </property>
         </item>
         <item>

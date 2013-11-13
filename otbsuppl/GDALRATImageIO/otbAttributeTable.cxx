@@ -729,11 +729,12 @@ AttributeTable::valid(const std::string& sColName, int idx)
 
 
 AttributeTable::AttributeTable()
+	: m_iNumRows(0),
+	  m_iBand(1),
+	  m_iNodata(-std::numeric_limits<long>::max()),
+	  m_dNodata(-std::numeric_limits<double>::max()),
+	  m_sNodata("NULL")
 {
-	this->m_iNumRows = 0;
-	this->m_iNodata = -std::numeric_limits<long>::max();
-	this->m_dNodata = -std::numeric_limits<double>::max();
-	this->m_sNodata = "<nodata>";
 }
 
 // not implemented

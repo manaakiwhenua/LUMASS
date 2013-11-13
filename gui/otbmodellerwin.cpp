@@ -43,6 +43,7 @@
 #include "NMImageLayer.h"
 #include "NMItkDataObjectWrapper.h"
 #include "NMOtbAttributeTableWrapper.h"
+#include "NMQtOtbAttributeTableModel.h"
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 
@@ -98,6 +99,7 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QActionGroup>
+#include <QScopedPointer>
 
 // orfeo
 //#include "ImageReader.h"
@@ -869,25 +871,70 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	QList<int> ar;
-	ar << 57 << 1003 << 100 << 2 << 33 << 5;
-
-	quicksort(ar, 0, 5, true);
-	NMDebugAI( << "ascending: ");
-	for (int i=0; i < 6; ++i)
+	NMDebugAI(<< "create a dummy table ...");
+	otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
+	tab->AddColumn("Col1", otb::AttributeTable::ATTYPE_INT);
+	tab->AddColumn("Col2", otb::AttributeTable::ATTYPE_INT);
+	for(int i=0; i < 10; ++i)
 	{
-		NMDebug(<< ar[i] << " ");
+		tab->AddRow();
+		tab->SetValue(0, i, (long)i);
+		tab->SetValue(1, i, (long)(i+1)*10);
 	}
-	NMDebug(<< std::endl);
+	tab->PrintStructure(std::cout, itk::Indent(0));
 
 
-	quicksort(ar, 0, 5, false);
-	NMDebugAI( << "descending: ");
-	for (int i=0; i < 6; ++i)
-	{
-		NMDebug(<< ar[i] << " ");
-	}
-	NMDebug(<< std::endl);
+
+	NMDebugAI(<< "create a table model ..."<< std::endl);
+	QScopedPointer<NMQtOtbAttributeTableModel> model(new NMQtOtbAttributeTableModel(this));
+	model->setTable(tab);
+
+	NMDebugAI(<< "add a dummy column ..." << std::endl);
+	QVariant::Type coltype = QVariant::String;
+	QModelIndex idx;
+
+	QVariant::Type* tp = &coltype;
+	std::cout << "tp: " << tp << std::endl;
+
+	QVariant::Type* ip = (QVariant::Type*)idx.internalPointer();
+	std::cout << "ip: " << ip << std::endl;
+
+	ip = &coltype;
+	std::cout << "ip: " << ip << std::endl;
+
+	void* aT = idx.internalPointer();
+	std::cout << "aT: " << aT << std::endl;
+
+	NMDebugCtx(ctxOtbModellerWin, << "done!");
+return;
+
+	//std::cout << "the type: " << (int)(*anotherT) << std::endl;
+
+	//int ncols = model->columnCount();
+	//model->insertColumns(ncols, 1, idx);
+    //
+    //
+	//tab->PrintStructure(std::cout, itk::Indent(0));
+
+	//QList<int> ar;
+	//ar << 57 << 1003 << 100 << 2 << 33 << 5;
+    //
+	//quicksort(ar, 0, 5, true);
+	//NMDebugAI( << "ascending: ");
+	//for (int i=0; i < 6; ++i)
+	//{
+	//	NMDebug(<< ar[i] << " ");
+	//}
+	//NMDebug(<< std::endl);
+    //
+    //
+	//quicksort(ar, 0, 5, false);
+	//NMDebugAI( << "descending: ");
+	//for (int i=0; i < 6; ++i)
+	//{
+	//	NMDebug(<< ar[i] << " ");
+	//}
+	//NMDebug(<< std::endl);
 
 
 

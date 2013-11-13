@@ -111,7 +111,7 @@ protected:
 	bool parseFunction();
 	void doNumericCalcSelection();
 	void doStringCalculation();
-	void processNumericCalcSelection(int row);
+	void processNumericCalcSelection(int row, bool* selected);
 	void processStringCalc(int row);
 
 

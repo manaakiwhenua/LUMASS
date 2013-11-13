@@ -865,8 +865,8 @@ void NMTableView::exportTable()
 }
 void NMTableView::colStats()
 {
-	NMDebugCtx(__ctxtabview, << "...");
-
+//	NMDebugCtx(__ctxtabview, << "...");
+//
 //	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
 //	vtkAbstractArray* aa = tab->GetColumnByName(this->mLastClickedColumn.toStdString().c_str());
 //	if (!aa->IsNumeric())
@@ -895,8 +895,7 @@ void NMTableView::colStats()
 //
 //	QMessageBox::information(this, title, res);
 //
-
-	NMDebugCtx(__ctxtabview, << "done!");
+//	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void

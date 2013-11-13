@@ -402,10 +402,15 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 			{
 				start = i;
 				end = -1;
-				continue;
+				if (i == this->mHiddenSource.size()-1)
+				{
+					QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
+					srcSel.select(sidx, sidx);
+					start = -1;
+				}
 			}
 			// if we've got already a selection range, we extend its end
-			else if (start != -1)
+			else //if (start != -1)
 			{
 				end = i;
 				// in case this is the last row, we complete the selection range
@@ -416,7 +421,6 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 					QModelIndex eidx = this->mSourceModel->index(end, 0, QModelIndex());
 					srcSel.select(sidx, eidx);
 				}
-				continue;
 			}
 		}
 		// we're currently not in a selection
@@ -433,17 +437,15 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 			// we've got a single item selection, denote just by the start index
-			else
+			else if (start != -1)
 			{
 				QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
 				srcSel.select(sidx, sidx);
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 		}
 	}
@@ -472,10 +474,15 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 			{
 				start = i;
 				end = -1;
-				continue;
+				if (i == nrows-1)
+				{
+					QModelIndex sidx = this->createIndex(start, 0, 0);
+					srcSel.select(sidx, sidx);
+					start = -1;
+				}
 			}
 			// if we've got already a selection range, we extend its end
-			else if (start != -1)
+			else //if (start != -1)
 			{
 				end = i;
 				// in case this is the last row, we complete the selection range
@@ -486,7 +493,6 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 					QModelIndex eidx = this->createIndex(end, 0, 0);
 					srcSel.select(sidx, eidx);
 				}
-				continue;
 			}
 		}
 		// we're currently not in a selection
@@ -503,17 +509,15 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 			// we've got a single item selection, denote just by the start index
-			else
+			else if (start != -1)
 			{
 				QModelIndex sidx = this->createIndex(start, 0, 0);
 				srcSel.select(sidx, sidx);
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 		}
 	}
@@ -550,10 +554,16 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 			{
 				start = i;
 				end = -1;
-				continue;
+				if (i == nrows-1)
+				{
+					QModelIndex sidx = this->createIndex(start, 0, 0);
+					proxySel.select(sidx, sidx);
+
+					start = -1;
+				}
 			}
 			// if we've got already a selection range, we extend its end
-			else if (start != -1)
+			else //if (start != -1)
 			{
 				end = i;
 				// in case this is the last row, we complete the selection range
@@ -564,7 +574,6 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 					QModelIndex eidx = this->createIndex(end, 0, 0);
 					proxySel.select(sidx, eidx);
 				}
-				continue;
 			}
 		}
 		// we're currently not in a selection
@@ -581,17 +590,15 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 			// we've got a single item selection, denoted just by the start index
-			else
+			else if (start != -1)
 			{
 				QModelIndex sidx = this->createIndex(start, 0, 0);
 				proxySel.select(sidx, sidx);
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 		}
 	}
@@ -630,10 +637,16 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QModelIndexList& 
 			{
 				start = i;
 				end = -1;
-				continue;
+				if (i == nrows-1)
+				{
+					QModelIndex sidx = this->createIndex(start, 0, 0);
+					proxySel.select(sidx, sidx);
+
+					start = -1;
+				}
 			}
 			// if we've got already a selection range, we extend its end
-			else if (start != -1)
+			else //if (start != -1)
 			{
 				end = i;
 				// in case this is the last row, we complete the selection range
@@ -644,7 +657,6 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QModelIndexList& 
 					QModelIndex eidx = this->createIndex(end, 0, 0);
 					proxySel.select(sidx, eidx);
 				}
-				continue;
 			}
 		}
 		// we're currently not in a selection
@@ -661,17 +673,15 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QModelIndexList& 
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 			// we've got a single item selection, denoted just by the start index
-			else
+			else if (start != -1)
 			{
 				QModelIndex sidx = this->createIndex(start, 0, 0);
 				proxySel.select(sidx, sidx);
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 		}
 	}
@@ -701,10 +711,16 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 			{
 				start = i;
 				end = -1;
-				continue;
+				if (i == nrows-1)
+				{
+					QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
+					srcSel.select(sidx, sidx);
+
+					start = -1;
+				}
 			}
 			// if we've got already a selection range, we extend its end
-			else if (start != -1)
+			else //if (start != -1)
 			{
 				end = i;
 				// in case this is the last row, we complete the selection range
@@ -715,7 +731,6 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 					QModelIndex eidx = this->mSourceModel->index(end, 0, QModelIndex());
 					srcSel.select(sidx, eidx);
 				}
-				continue;
 			}
 		}
 		// we're currently not in a selection
@@ -732,17 +747,15 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 			// we've got a single item selection, denote just by the start index
-			else
+			else if (start != -1)
 			{
 				QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
 				srcSel.select(sidx, sidx);
 
 				start = -1;
 				end = -1;
-				continue;
 			}
 		}
 	}
@@ -752,7 +765,7 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 void
 NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
 {
-	NMDebugCtx(ctxSelSortFilter, << "...");
+	//NMDebugCtx(ctxSelSortFilter, << "...");
 
 	if (this->mSourceModel == 0)
 	{
@@ -808,7 +821,7 @@ NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
 	emit layoutChanged();
 
 
-	NMDebugCtx(ctxSelSortFilter, << "done!");
+	//NMDebugCtx(ctxSelSortFilter, << "done!");
 }
 
 

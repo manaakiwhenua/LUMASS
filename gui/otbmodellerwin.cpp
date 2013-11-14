@@ -884,37 +884,16 @@ void OtbModellerWin::test()
 	tab->PrintStructure(std::cout, itk::Indent(0));
 
 
-
 	NMDebugAI(<< "create a table model ..."<< std::endl);
 	QScopedPointer<NMQtOtbAttributeTableModel> model(new NMQtOtbAttributeTableModel(this));
 	model->setTable(tab);
 
 	NMDebugAI(<< "add a dummy column ..." << std::endl);
 	QVariant::Type coltype = QVariant::String;
-	QModelIndex idx;
 
-	QVariant::Type* tp = &coltype;
-	std::cout << "tp: " << tp << std::endl;
+	model->insertColumns(0, coltype, QModelIndex());
 
-	QVariant::Type* ip = (QVariant::Type*)idx.internalPointer();
-	std::cout << "ip: " << ip << std::endl;
-
-	ip = &coltype;
-	std::cout << "ip: " << ip << std::endl;
-
-	void* aT = idx.internalPointer();
-	std::cout << "aT: " << aT << std::endl;
-
-	NMDebugCtx(ctxOtbModellerWin, << "done!");
-return;
-
-	//std::cout << "the type: " << (int)(*anotherT) << std::endl;
-
-	//int ncols = model->columnCount();
-	//model->insertColumns(ncols, 1, idx);
-    //
-    //
-	//tab->PrintStructure(std::cout, itk::Indent(0));
+	tab->PrintStructure(std::cout, itk::Indent(0));
 
 	//QList<int> ar;
 	//ar << 57 << 1003 << 100 << 2 << 33 << 5;

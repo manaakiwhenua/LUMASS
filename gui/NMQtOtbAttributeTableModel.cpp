@@ -258,26 +258,24 @@ bool
 NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 		const QModelIndex& parent)
 {
-	// we ever only append just one column at a time, so
-	// just ignore column and count; we expect the
-	// the parents internalPoniter to point to a
-	// QVariant::Type
+	// we ever only append just one column at a time,
+	// at the end of the table; so, we use the count
+	// parameter to actually denote the column type
+	// represented by a QVariant::Type
 
-	NMDebugCtx("NMQtOtbAttributeTableModel", << "...");
-
-	QVariant::Type* type = (QVariant::Type*)parent.internalPointer();
+	QVariant::Type type = (QVariant::Type)count;
 	if (type == 0)
 	{
 		NMErr("NMQtOtbAttributeTableModel", << "Invalid column type!");
 		NMDebugCtx("NMQtOtbAttributeTableModel", << "done!");
 		return false;
 	}
-	NMDebugAI(<< __FUNCTION__ << "column count before: " << this->mTable->GetNumCols() << std::endl);
 
-	QString name = QString("Col_%1").arg(this->mTable->GetNumCols()+1);
+	int ncols = this->mTable->GetNumCols();
+	QString name = QString("Col_%1").arg(ncols+1);
 
-	beginInsertColumns(QModelIndex(), column, column);
-	switch (*type)
+	beginInsertColumns(QModelIndex(), ncols, ncols);
+	switch (type)
 	{
 	case QVariant::Int:
 		this->mTable->AddColumn(name.toStdString(), otb::AttributeTable::ATTYPE_INT);
@@ -293,10 +291,6 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	}
 	endInsertColumns();
 
-	// let's check
-	NMDebugAI(<< __FUNCTION__ << "column count after: " << this->mTable->GetNumCols() << std::endl);
-
-	NMDebugCtx("NMQtOtbAttributeTableModel", << "done!");
 	return true;
 }
 

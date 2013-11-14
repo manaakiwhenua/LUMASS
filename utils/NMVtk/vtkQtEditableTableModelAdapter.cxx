@@ -65,17 +65,21 @@ bool
 vtkQtEditableTableModelAdapter::insertColumns(int column, int count,
 		const QModelIndex& parent)
 {
-	// we ever only append just one column at a time, so
-	// just ignore column and count; we expect the
-	// the parents internalPoniter to point to a
-	// QVariant::Type
+	// we ever only append just one column at a time,
+	// at the end of the table; so, we use the count
+	// parameter to actually denote the column type
+	// represented by a QVariant::Type
 
-	QVariant::Type* type = (QVariant::Type*)parent.internalPointer();
+	QVariant::Type type = (QVariant::Type)count;
 	if (type == 0)
 		return false;
 
+	vtkSmartPointer<vtkTable> tab = this->table();
+	int ncols = tab->GetNumberOfColumns();
 	vtkAbstractArray* nar = 0;
-	switch (*type)
+
+	beginInsertColumns(QModelIndex(), ncols, ncols);
+	switch (type)
 	{
 	case QVariant::Int:
 		nar = vtkAbstractArray::CreateArray(VTK_LONG);
@@ -91,8 +95,7 @@ vtkQtEditableTableModelAdapter::insertColumns(int column, int count,
 	}
 
 	// to be on the safe side, we give a dummy name
-	vtkSmartPointer<vtkTable> tab = this->table();
-	QString name = QString("Col_%1").arg(tab->GetNumberOfColumns()+1);
+	QString name = QString("Col_%1").arg(ncols+1);
 	nar->SetName(name.toStdString().c_str());
 
 	// setTable takes care about resetting the model
@@ -101,6 +104,8 @@ vtkQtEditableTableModelAdapter::insertColumns(int column, int count,
 	tab->AddColumn(nar);
 	this->setTable(tab);
 	//this->endResetModel();
+
+	endInsertColumns();
 
 	return true;
 }
@@ -116,10 +121,10 @@ vtkQtEditableTableModelAdapter::removeColumns(int column, int count,
 
 
 	vtkSmartPointer<vtkTable> tab = this->table();
-	//this->beginResetModel();
+	beginRemoveColumns(parent, column, column);
 	tab->RemoveColumn(column);
 	this->setTable(tab);
-	//this->endResetModel();
+	endRemoveColumns();
 
 	return true;
 }

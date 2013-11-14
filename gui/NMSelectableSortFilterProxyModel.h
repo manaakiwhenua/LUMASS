@@ -159,6 +159,10 @@ protected:
 	void resetMapping(void);
 	QModelIndex mapToRaw(const QModelIndex& index) const;
 
+protected slots:
+	void handleColumnsInserted(const QModelIndex& parent, int start, int end);
+
+private:
 	// both values are expected to be of the same type
 	inline bool lessThan(const QVariant& valLeft, const QVariant& valRight)
 	{

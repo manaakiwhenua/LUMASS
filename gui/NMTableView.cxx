@@ -503,7 +503,7 @@ void NMTableView::addColumn()
 	int ret = 0;
 	bool bok = true;
 	QString name;
-	QVariant::Type type = QVariant::String;
+	QVariant::Type type = QVariant::Invalid;
 
 	// regular expression which defines possible names for columns
 	QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
@@ -529,7 +529,10 @@ void NMTableView::addColumn()
 		//					NMDebugAI(<< s.toStdString() << endl);
 		//		}
 
-		if (type < 0 || name.isEmpty() || !bok)
+		if (	type == QVariant::Invalid
+			||  name.isEmpty()
+			|| !bok
+		   )
 		{
 			QMessageBox msgBox;
 			msgBox.setText(tr("Name invalid!"));
@@ -565,43 +568,14 @@ void NMTableView::addColumn()
 	NMDebugAI(<< "type: " << type << endl);
 	NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
-	QModelIndex idx = this->mModel->index(0, 0, QModelIndex());
-	QModelIndex par = this->mModel->parent(idx);
 
-	void* dummyPtr = par.internalPointer();
-	dummyPtr = (void*)(&type);
-
-
-
-	//NMDebugAI(<< "type from index: " << *((*)par.internalPointer()) << std::endl);
-
-	NMDebugAI(<< __FUNCTION__ << " col count before: " << this->mModel->columnCount(QModelIndex()) << endl);
-
-	this->mModel->insertColumns(ncols, 1, par);
-
-	NMDebugAI(<< __FUNCTION__ << " col count after: " << this->mModel->columnCount(QModelIndex()) << endl);
-
-	//vtkSmartPointer<vtkAbstractArray> a = this->createVTKArray(type);
-	//a->SetName(name.toStdString().c_str());
-	//a->SetNumberOfComponents(1);
-	//a->Allocate(nrows);
-
-	//vtkVariant v;
-	//if (type == VTK_STRING)
-	//	v = vtkVariant("");
-	//else
-	//	v = vtkVariant(0);
-    //
-	//for (int t=0; t < nrows; ++t)
-	//	a->InsertVariantValue(t, v);
-    //
-	//tab->AddColumn(a);
-	//this->mAlteredColumns.append(name);
-
-	//this->mVtkTableAdapter->setTable(tab);
-
-	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-
+	if (this->mModel->insertColumns(0, type, QModelIndex()))
+	{
+		// reapply selection
+		const QItemSelection sel = this->mSortFilter->mapSelectionFromSource(mSelectionModel->selection());
+		this->mTableView->selectionModel()->select(sel, QItemSelectionModel::Select |
+				QItemSelectionModel::Rows);
+	}
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }

@@ -189,9 +189,18 @@ NMSelectableSortFilterProxyModel::setSourceModel(QAbstractItemModel* sourceModel
 	mNumHidden = 0;
 
 	connect(mSourceModel, SIGNAL(modelReset()), this, SIGNAL(modelReset()));
+	connect(mSourceModel, SIGNAL(columnsInserted(const QModelIndex &, int, int)),
+			this, SLOT(handleColumnsInserted(const QModelIndex &, int, int)));
 
 	this->reset();
 	emit endResetModel();
+}
+
+void
+NMSelectableSortFilterProxyModel::handleColumnsInserted(const QModelIndex& parent,
+		int start, int end)
+{
+	emit layoutChanged();
 }
 
 void

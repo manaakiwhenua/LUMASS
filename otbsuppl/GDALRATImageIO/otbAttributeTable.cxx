@@ -22,6 +22,7 @@
  *      Author: Alexander Herzig
  */
 #include "nmlog.h"
+#define _ctxotbtab "AttributeTable"
 #include "otbAttributeTable.h"
 #include <limits>
 #include <cstring>
@@ -79,20 +80,17 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 	case ATTYPE_STRING:
 		{
 		std::vector<std::string> vstr;
-		for (int i=0; i < m_iNumRows; ++i)
-			vstr.push_back(this->m_sNodata);
-		//std::pair<int, std::vector<std::string> > rec(idx, vstr);
-		//this->m_mStringCols.insert(rec);
+		vstr.resize(m_iNumRows, m_sNodata);
 		this->m_mStringCols[idx] = vstr;
-		//NMDebugAI(<< "new number of string cols: "
-		//		<< m_mStringCols.size() << std::endl);
+
 		break;
 		}
 	case ATTYPE_INT:
 		{
 		std::vector<long> vint;
-		for (int i=0; i < m_iNumRows; ++i)
-			vint.push_back(this->m_iNodata);
+		vint.resize(m_iNumRows, m_iNodata);
+		//for (int i=0; i < m_iNumRows; ++i)
+		//	vint.push_back(this->m_iNodata);
 		//std::pair<int, std::vector<long> > rec(idx, vint);
 		//this->m_mIntCols.insert(rec);
 		this->m_mIntCols[idx] = vint;
@@ -103,8 +101,9 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 	case ATTYPE_DOUBLE:
 		{
 		std::vector<double> vdbl;
-		for (int i=0; i < m_iNumRows; ++i)
-			vdbl.push_back(this->m_dNodata);
+		vdbl.resize(m_iNumRows, m_dNodata);
+		//for (int i=0; i < m_iNumRows; ++i)
+		//	vdbl.push_back(this->m_dNodata);
 		//std::pair<int, std::vector<double> > rec(idx, vdbl);
 		//this->m_mDoubleCols.insert(rec);
 		this->m_mDoubleCols[idx] = vdbl;
@@ -422,6 +421,15 @@ AttributeTable::RemoveColumn(int col)
 	default:
 		return false;
 		break;
+	}
+
+	// house keeping
+	for (int c=col+1; col < this->m_vNames.size(); ++c)
+	{
+		switch(this->m_vTypes[c])
+		{
+
+		}
 	}
 
 	// now remove any traces of the column in the admin arrays

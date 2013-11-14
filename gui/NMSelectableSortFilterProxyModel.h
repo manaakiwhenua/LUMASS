@@ -119,12 +119,15 @@ public:
 	QModelIndex index(int row, int column, const QModelIndex& idx=QModelIndex()) const;
 	QModelIndex parent(const QModelIndex& idx) const;
 	int rowCount(const QModelIndex& idx=QModelIndex()) const;
-	int columnCount(const QModelIndex& idx) const;
+	int columnCount(const QModelIndex& idx=QModelIndex()) const;
 	QVariant headerData(int section, Qt::Orientation orientation,
 			int role) const;
-	QVariant data(const QModelIndex& index, int role) const;
+	QVariant data(const QModelIndex& index, int role=Qt::DisplayRole) const;
 	bool setData(const QModelIndex& index, const QVariant& value,
 			int role);
+	bool insertColumns(int column, int count, const QModelIndex& parent=QModelIndex());
+	bool removeColumns(int column, int count, const QModelIndex& parent=QModelIndex());
+
 
 	// deprecated, they're not really in use in this implementation!
 	void setDynamicSortFilter(bool dynamic){};
@@ -159,8 +162,8 @@ protected:
 	void resetMapping(void);
 	QModelIndex mapToRaw(const QModelIndex& index) const;
 
-protected slots:
-	void handleColumnsInserted(const QModelIndex& parent, int start, int end);
+//protected slots:
+//	void handleColumnsChanged(const QModelIndex& parent, int start, int end);
 
 private:
 	// both values are expected to be of the same type

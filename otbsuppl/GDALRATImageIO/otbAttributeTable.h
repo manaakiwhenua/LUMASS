@@ -111,13 +111,17 @@ protected:
 	// admin vectors holding header infos about columns
 	std::vector<std::string> m_vNames;
 	std::vector<TableColumnType> m_vTypes;
+	std::vector<int> m_vPosition;
 
 	// maps holding table columns
 	std::map<int, std::vector<std::string> > m_mStringCols;
 	std::map<int, std::vector<long> > m_mIntCols;
 	std::map<int, std::vector<double> > m_mDoubleCols;
+	//std::list<std::vector<std::string> > m_mStringCols;
+	//std::list<std::vector<long> > m_mIntCols;
+	//std::list<std::vector<double> > m_mDoubleCols;	// scalar members
 
-	// scalar members
+
 	int m_iNumRows;
 	std::string m_sNodata;
 	long m_iNodata;

@@ -125,6 +125,7 @@ public slots:
 	void callUnHideColumn(void);
 
 signals:
+	//void columnsChanged(int oldCount, int newCount);
 	void tableDataChanged(QStringList& slAlteredColumns,
 			QStringList& slDeletedColumns);
 	void selectionChanged();

@@ -74,6 +74,10 @@ NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	else
 		this->mTableView->setModel(mModel);
 
+	//connect(this, SIGNAL(columnsChanged(int, int)),
+	//		mTableView, SLOT(columnCountChanged(int, int)),
+	//		Qt::DirectConnection);
+
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
 	this->mMapColSortAsc.clear();
@@ -561,7 +565,7 @@ void NMTableView::addColumn()
 
 	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
 	//int nrows = tab->GetNumberOfRows();
-	int ncols = this->mModel->columnCount(QModelIndex());
+	int ncols = this->mSortFilter->columnCount();
 
 	NMDebugAI(<< "add column ? " << ret << endl);
 	NMDebugAI(<< "name: " << name.toStdString() << endl);
@@ -569,8 +573,9 @@ void NMTableView::addColumn()
 	NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
 
-	if (this->mModel->insertColumns(0, type, QModelIndex()))
+	if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
 	{
+		//emit columnsChanged(ncols, ncols+1);
 		// reapply selection
 		const QItemSelection sel = this->mSortFilter->mapSelectionFromSource(mSelectionModel->selection());
 		this->mTableView->selectionModel()->select(sel, QItemSelectionModel::Select |
@@ -583,22 +588,32 @@ void NMTableView::addColumn()
 void NMTableView::deleteColumn()
 {
 	// ask the user whether he really wants to delete the current field
-	//QMessageBox msgBox;
-	//QString text = QString(tr("Delete Field '%1'?")).arg(this->mLastClickedColumn);
-	//msgBox.setText(text);
-	////msgBox.setInformativeText("Do you want to save your changes?");
-	//msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-	//msgBox.setDefaultButton(QMessageBox::Cancel);
-	//int ret = msgBox.exec();
-    //
-	//if (ret == QMessageBox::Cancel)
-	//	return;
-    //
-	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	//tab->RemoveColumnByName(this->mLastClickedColumn.toStdString().c_str());
-//	//this->mVtkTableAdapter->setTable(tab);
-    //
-	//// notify potential listeners
+	QMessageBox msgBox;
+	QString text = QString(tr("Delete Field '%1'?")).arg(this->mLastClickedColumn);
+	msgBox.setText(text);
+	//msgBox.setInformativeText("Do you want to save your changes?");
+	msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	msgBox.setDefaultButton(QMessageBox::Cancel);
+	int ret = msgBox.exec();
+
+	if (ret == QMessageBox::Cancel)
+		return;
+
+	int col = this->getColumnIndex(this->mLastClickedColumn);
+	if (col < 0)
+		return;
+
+	int ncols = this->mSortFilter->columnCount();
+	if (this->mSortFilter->removeColumns(col, 1, QModelIndex()))
+	{
+		//emit columnsChanged(ncols, ncols-1);
+		//this->mTableView->reset();
+		// reapply selection
+		const QItemSelection sel = this->mSortFilter->mapSelectionFromSource(mSelectionModel->selection());
+		this->mTableView->selectionModel()->select(sel, QItemSelectionModel::Select |
+				QItemSelectionModel::Rows);
+	}
+	// notify potential listeners
 	//this->mDeletedColumns.append(this->mLastClickedColumn);
 	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 

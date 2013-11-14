@@ -189,18 +189,39 @@ NMSelectableSortFilterProxyModel::setSourceModel(QAbstractItemModel* sourceModel
 	mNumHidden = 0;
 
 	connect(mSourceModel, SIGNAL(modelReset()), this, SIGNAL(modelReset()));
-	connect(mSourceModel, SIGNAL(columnsInserted(const QModelIndex &, int, int)),
-			this, SLOT(handleColumnsInserted(const QModelIndex &, int, int)));
+//	connect(mSourceModel, SIGNAL(columnsInserted(const QModelIndex &, int, int)),
+//			this, SLOT(handleColumnsChanged(const QModelIndex &, int, int)));
+//	connect(mSourceModel, SIGNAL(columnsRemoved(const QModelIndex &, int, int)),
+//			this, SLOT(handleColumnsChanged(const QModelIndex &, int, int)));
+
 
 	this->reset();
 	emit endResetModel();
 }
 
-void
-NMSelectableSortFilterProxyModel::handleColumnsInserted(const QModelIndex& parent,
-		int start, int end)
+//void
+//NMSelectableSortFilterProxyModel::handleColumnsChanged(const QModelIndex& parent,
+//		int start, int end)
+//{
+//	//emit layoutChanged();
+//}
+
+bool
+NMSelectableSortFilterProxyModel::insertColumns(int column, int count,
+		const QModelIndex& parent)
 {
-	emit layoutChanged();
+	//beginInsertColumns(QModelIndex(), column, column);
+	return this->mSourceModel->insertColumns(column, count, parent);
+	//endInsertColumns();
+}
+
+bool
+NMSelectableSortFilterProxyModel::removeColumns(int column, int count,
+		const QModelIndex& parent)
+{
+	//beginRemoveColumns(QModelIndex(), column, column);
+	return this->mSourceModel->removeColumns(column, count, parent);
+	//endRemoveColumns();
 }
 
 void

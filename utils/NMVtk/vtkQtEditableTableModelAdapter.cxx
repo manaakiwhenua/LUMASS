@@ -93,6 +93,8 @@ vtkQtEditableTableModelAdapter::insertColumns(int column, int count,
 	default:
 		break;
 	}
+	nar->SetNumberOfComponents(1);
+	nar->SetNumberOfTuples(tab->GetNumberOfRows());
 
 	// to be on the safe side, we give a dummy name
 	QString name = QString("Col_%1").arg(ncols+1);

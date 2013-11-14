@@ -289,6 +289,7 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	default:
 		break;
 	}
+	this->setTable(mTable);
 	endInsertColumns();
 
 	return true;
@@ -305,6 +306,7 @@ NMQtOtbAttributeTableModel::removeColumns(int column, int count,
 	int ret = this->mTable->RemoveColumn(column);
 	if (ret)
 	{
+		this->setTable(mTable);
 		endRemoveColumns();
 	}
 	else

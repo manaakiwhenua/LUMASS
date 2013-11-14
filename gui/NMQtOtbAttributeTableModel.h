@@ -53,11 +53,8 @@ public:
 
 	bool setHeaderData(int section, Qt::Orientation orientation,
 			const QVariant& value, int role);
-	bool insertColumns(int column, int count, const QModelIndex& parent);
-	bool removeColumns(int column, int count, const QModelIndex& parent);
-
-
-
+	bool insertColumns(int column, int count, const QModelIndex& parent=QModelIndex());
+	bool removeColumns(int column, int count, const QModelIndex& parent=QModelIndex());
 
 	// additional public interface to
 	void setTable(otb::AttributeTable::Pointer table);

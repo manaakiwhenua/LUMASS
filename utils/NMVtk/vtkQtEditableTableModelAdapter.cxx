@@ -25,6 +25,7 @@
 #include "vtkQtEditableTableModelAdapter.h"
 #include "vtkSmartPointer.h"
 #include "vtkAbstractArray.h"
+#include "vtkDataArray.h"
 
 vtkQtEditableTableModelAdapter::vtkQtEditableTableModelAdapter(QObject* parent)
 	: vtkQtTableModelAdapter(parent)
@@ -52,11 +53,9 @@ vtkQtEditableTableModelAdapter::setHeaderData(int section, Qt::Orientation orien
 	// the value as string and set the name of the associated column
 	vtkSmartPointer<vtkTable> tab = this->table();
 
-	//this->beginResetModel();
 	tab->GetColumn(section)->SetName(value.toString().toStdString().c_str());
-	// setTable takes care about resetting the model
-	this->setTable(tab);
-	//this->endResetModel();
+
+	emit headerDataChanged(Qt::Horizontal, section, section);
 
 	return true;
 }
@@ -77,6 +76,11 @@ vtkQtEditableTableModelAdapter::insertColumns(int column, int count,
 	vtkSmartPointer<vtkTable> tab = this->table();
 	int ncols = tab->GetNumberOfColumns();
 	vtkAbstractArray* nar = 0;
+
+	// we don't support multi-component columns, which has
+	// the advantage that we don't have to reset the model
+	// but can do with some appropriate signals
+	this->SetSplitMultiComponentColumns(false);
 
 	beginInsertColumns(QModelIndex(), ncols, ncols);
 	switch (type)
@@ -100,13 +104,12 @@ vtkQtEditableTableModelAdapter::insertColumns(int column, int count,
 	QString name = QString("Col_%1").arg(ncols+1);
 	nar->SetName(name.toStdString().c_str());
 
-	// setTable takes care about resetting the model
-	//this->beginResetModel();
-	// add the column to the table
+	vtkDataArray* da = vtkDataArray::SafeDownCast(nar);
+	if (da)
+	{
+		da->FillComponent(0, 0);
+	}
 	tab->AddColumn(nar);
-	this->setTable(tab);
-	//this->endResetModel();
-
 	endInsertColumns();
 
 	return true;
@@ -121,11 +124,14 @@ vtkQtEditableTableModelAdapter::removeColumns(int column, int count,
 	if (column < 0 || column > this->table()->GetNumberOfColumns()-1)
 		return false;
 
+	// we don't support multi-component columns, which has
+	// the advantage that we don't have to reset the model
+	// but can do with some appropriate signals
+	this->SetSplitMultiComponentColumns(false);
 
 	vtkSmartPointer<vtkTable> tab = this->table();
 	beginRemoveColumns(parent, column, column);
 	tab->RemoveColumn(column);
-	this->setTable(tab);
 	endRemoveColumns();
 
 	return true;

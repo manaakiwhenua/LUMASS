@@ -210,18 +210,22 @@ bool
 NMSelectableSortFilterProxyModel::insertColumns(int column, int count,
 		const QModelIndex& parent)
 {
-	//beginInsertColumns(QModelIndex(), column, column);
-	return this->mSourceModel->insertColumns(column, count, parent);
-	//endInsertColumns();
+	beginInsertColumns(QModelIndex(), column, column);
+	if (!this->mSourceModel->insertColumns(column, count, parent))
+		return false;
+	endInsertColumns();
+	return true;
 }
 
 bool
 NMSelectableSortFilterProxyModel::removeColumns(int column, int count,
 		const QModelIndex& parent)
 {
-	//beginRemoveColumns(QModelIndex(), column, column);
-	return this->mSourceModel->removeColumns(column, count, parent);
-	//endRemoveColumns();
+	beginRemoveColumns(QModelIndex(), column, column);
+	if (!this->mSourceModel->removeColumns(column, count, parent))
+		return false;
+	endRemoveColumns();
+	return true;
 }
 
 void
@@ -290,6 +294,20 @@ NMSelectableSortFilterProxyModel::addToFilter(const QItemSelection& proxySel)
 	emit this->reset();
 }
 
+bool
+NMSelectableSortFilterProxyModel::setHeaderData(int section,
+		Qt::Orientation orientation, const QVariant& value, int role)
+{
+	bool ret = false;
+	ret = this->mSourceModel->setHeaderData(section, orientation, value, role);
+	if (ret)
+	{
+		emit headerDataChanged(Qt::Horizontal, section, section);
+		return true;
+	}
+	else
+		return false;
+}
 
 void
 NMSelectableSortFilterProxyModel::resetMapping(void)

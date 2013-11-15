@@ -871,60 +871,45 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	NMDebugAI(<< "create a dummy table ...");
-	otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
-	tab->AddColumn("Col1", otb::AttributeTable::ATTYPE_INT);
-	tab->AddColumn("Col2", otb::AttributeTable::ATTYPE_INT);
-	for(int i=0; i < 10; ++i)
-	{
-		tab->AddRow();
-		tab->SetValue(0, i, (long)i);
-		tab->SetValue(1, i, (long)(i+1)*10);
-	}
-	tab->PrintStructure(std::cout, itk::Indent(0));
-
-
-	NMDebugAI(<< "create a table model ..."<< std::endl);
-	QScopedPointer<NMQtOtbAttributeTableModel> model(new NMQtOtbAttributeTableModel(this));
-	model->setTable(tab);
-
-	NMDebugAI(<< "add a dummy column ..." << std::endl);
-	QVariant::Type coltype = QVariant::String;
-
-	model->insertColumns(0, coltype, QModelIndex());
-
-	tab->PrintStructure(std::cout, itk::Indent(0));
-
-	//QList<int> ar;
-	//ar << 57 << 1003 << 100 << 2 << 33 << 5;
-    //
-	//quicksort(ar, 0, 5, true);
-	//NMDebugAI( << "ascending: ");
-	//for (int i=0; i < 6; ++i)
+	//NMDebugAI(<< "create a dummy table ..." << std::endl);
+	//otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
+	//tab->AddColumn("Col1", otb::AttributeTable::ATTYPE_INT);
+	//tab->AddColumn("Col2", otb::AttributeTable::ATTYPE_INT);
+	//for(int i=0; i < 10; ++i)
 	//{
-	//	NMDebug(<< ar[i] << " ");
+	//	tab->AddRow();
+	//	tab->SetValue(0, i, (long)i);
+	//	tab->SetValue(1, i, (long)(i+1)*10);
 	//}
+    //
+	//NMDebugAI(<< "initial test table ..." << endl);
+	//tab->PrintStructure(std::cout, itk::Indent(0));
 	//NMDebug(<< std::endl);
     //
-    //
-	//quicksort(ar, 0, 5, false);
-	//NMDebugAI( << "descending: ");
-	//for (int i=0; i < 6; ++i)
-	//{
-	//	NMDebug(<< ar[i] << " ");
-	//}
+	//NMDebugAI(<< "adding a string, double, and int column ...");
+	//tab->AddColumn("StringAdd1", otb::AttributeTable::ATTYPE_STRING);
+	//tab->AddColumn("StringAdd2", otb::AttributeTable::ATTYPE_STRING);
+	//tab->AddColumn("DoubleAdd", otb::AttributeTable::ATTYPE_DOUBLE);
+	//tab->AddColumn("DoubleAdd2", otb::AttributeTable::ATTYPE_DOUBLE);
+	//tab->AddColumn("INTAdd", otb::AttributeTable::ATTYPE_INT);
+	//tab->PrintStructure(std::cout, itk::Indent(0));
 	//NMDebug(<< std::endl);
-
-
-
-	//NMLayer* l = ui->modelCompList->getLayer(0);
-	//vtkRenderer* r = const_cast<vtkRenderer*>(l->getRenderer());
-	//bool dp = r->GetLastRenderingUsedDepthPeeling();
     //
-	//NMDebugAI(<< "last rendering used depth peeling? " << dp << endl);
-	//NMDebugAI(<< "occlusion ration: " << r->GetOcclusionRatio() << endl);
-	//NMDebugAI(<< "max peels:  " << r->GetMaximumNumberOfPeels() << endl);
-
+	//NMDebugAI(<< "removing a columns from the middle (StringAdd1, DoubleAdd) ...");
+	//tab->RemoveColumn("StringAdd2");
+	//tab->RemoveColumn("DoubleAdd");
+	//tab->PrintStructure(std::cout, itk::Indent(0));
+	//NMDebug(<< std::endl);
+    //
+	//NMDebugAI(<< "Setting string and int values ...	");
+	//for (int i=4; i < 8; ++i)
+	//	tab->SetValue("StringAdd1", i, "Banane");
+    //
+	//for (int i=0; i < 10; ++i)
+	//	tab->SetValue("DoubleAdd2", i, (double)(i+10)/2.0);
+    //
+	//tab->Print(std::cout, itk::Indent(0), 10);
+	//NMDebug(<< std::endl);
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

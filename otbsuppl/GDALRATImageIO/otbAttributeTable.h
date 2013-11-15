@@ -51,7 +51,7 @@ public:
 	{
 		ATTYPE_STRING = 0,
 		ATTYPE_INT,
-		ATTYPE_DOUBLE,
+		ATTYPE_DOUBLE ,
 		ATTYPE_UNKNOWN
 	} TableColumnType;
 
@@ -109,17 +109,36 @@ protected:
 	~AttributeTable();
 
 	// admin vectors holding header infos about columns
+
+	/**
+	 *  Hold the name and type of a column,
+	 *  in the order as columns 'appear' in
+	 *  the table;
+	 */
 	std::vector<std::string> m_vNames;
 	std::vector<TableColumnType> m_vTypes;
+
+	/** Holds the index of the respective type specific
+	 *  vector containing the data of the column
+	 *  denoted by the index in this vector;
+	 *  e.g.:
+	 *  		m_vNames[2]    = "Column_3";
+	 *  		m_vTypes[2]    = ATTYPE_INT;
+	 *  		m_vPosition[2] = 3;
+	 *
+	 *  Column "Column_3" is the third column in the table
+	 *  and its content is stored in m_mIntCols[3];
+	 *
+	 */
 	std::vector<int> m_vPosition;
 
 	// maps holding table columns
-	std::map<int, std::vector<std::string> > m_mStringCols;
-	std::map<int, std::vector<long> > m_mIntCols;
-	std::map<int, std::vector<double> > m_mDoubleCols;
-	//std::list<std::vector<std::string> > m_mStringCols;
-	//std::list<std::vector<long> > m_mIntCols;
-	//std::list<std::vector<double> > m_mDoubleCols;	// scalar members
+	//std::map<int, std::vector<std::string> > m_mStringCols;
+	//std::map<int, std::vector<long> > m_mIntCols;
+	//std::map<int, std::vector<double> > m_mDoubleCols;
+	std::vector<std::vector<std::string>* > m_mStringCols;
+	std::vector<std::vector<long>* > m_mIntCols;
+	std::vector<std::vector<double>* > m_mDoubleCols;
 
 
 	int m_iNumRows;

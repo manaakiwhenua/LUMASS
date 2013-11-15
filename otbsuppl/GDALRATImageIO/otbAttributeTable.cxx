@@ -65,57 +65,56 @@ AttributeTable::ColumnExists(const std::string& sColName)
 bool
 AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 {
-	if (eType != ATTYPE_STRING && eType != ATTYPE_INT
-			&& eType != ATTYPE_DOUBLE)
+	if ((	 eType != ATTYPE_STRING
+		 &&  eType != ATTYPE_INT
+		 &&  eType != ATTYPE_DOUBLE
+		)
+		||  this->ColumnExists(sColName) >= 0
+	   )
 	{
 		return false;
 	}
 
-	m_vNames.push_back(sColName);
-	int idx = m_vNames.size()-1;
 
+	std::vector<std::string>* vstr;
+	std::vector<long>* vint;
+	std::vector<double>* vdbl;
 	// create a new vector for the column's values
 	switch(eType)
 	{
 	case ATTYPE_STRING:
-		{
-		std::vector<std::string> vstr;
-		vstr.resize(m_iNumRows, m_sNodata);
-		this->m_mStringCols[idx] = vstr;
+		try{
+		vstr = new std::vector<std::string>();
+		vstr->resize(m_iNumRows, m_sNodata);
+		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
 
+		this->m_mStringCols.push_back(vstr);
+		this->m_vPosition.push_back(m_mStringCols.size()-1);
 		break;
-		}
 	case ATTYPE_INT:
-		{
-		std::vector<long> vint;
-		vint.resize(m_iNumRows, m_iNodata);
-		//for (int i=0; i < m_iNumRows; ++i)
-		//	vint.push_back(this->m_iNodata);
-		//std::pair<int, std::vector<long> > rec(idx, vint);
-		//this->m_mIntCols.insert(rec);
-		this->m_mIntCols[idx] = vint;
-		//NMDebugAI(<< "new number of integer cols: "
-		//		<< m_mIntCols.size() << std::endl);
+		try{
+		vint = new std::vector<long>();
+		vint->resize(m_iNumRows, m_iNodata);
+		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+
+		this->m_mIntCols.push_back(vint);
+		this->m_vPosition.push_back(m_mIntCols.size()-1);
 		break;
-		}
 	case ATTYPE_DOUBLE:
-		{
-		std::vector<double> vdbl;
-		vdbl.resize(m_iNumRows, m_dNodata);
-		//for (int i=0; i < m_iNumRows; ++i)
-		//	vdbl.push_back(this->m_dNodata);
-		//std::pair<int, std::vector<double> > rec(idx, vdbl);
-		//this->m_mDoubleCols.insert(rec);
-		this->m_mDoubleCols[idx] = vdbl;
-		//NMDebugAI(<< "new number of double cols: "
-		//		<< m_mDoubleCols.size() << std::endl);
+		try{
+		vdbl = new std::vector<double>();
+		vdbl->resize(m_iNumRows, m_dNodata);
+		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+
+		this->m_mDoubleCols.push_back(vdbl);
+		this->m_vPosition.push_back(m_mDoubleCols.size()-1);
 		break;
-		}
 	default:
-		return false;
+		break;
 	}
 
 	// update admin infos
+	this->m_vNames.push_back(sColName);
 	this->m_vTypes.push_back(eType);
 
 	return true;
@@ -129,21 +128,22 @@ bool AttributeTable::AddRows(long numRows)
 
 	for (int colidx = 0; colidx < this->m_vNames.size(); ++colidx)
 	{
+		const int& tidx = m_vPosition[colidx];
 		switch (this->m_vTypes[colidx])
 		{
 		case ATTYPE_STRING:
 			{
-			m_mStringCols.at(colidx).resize(m_iNumRows+numRows, m_sNodata);
+			m_mStringCols.at(tidx)->resize(m_iNumRows+numRows, m_sNodata);
 			break;
 			}
 		case ATTYPE_INT:
 			{
-			m_mIntCols.at(colidx).resize(m_iNumRows+numRows, m_iNodata);
+			m_mIntCols.at(tidx)->resize(m_iNumRows+numRows, m_iNodata);
 			break;
 			}
 		case ATTYPE_DOUBLE:
 			{
-			m_mDoubleCols.at(colidx).resize(m_iNumRows+numRows, m_dNodata);
+			m_mDoubleCols.at(tidx)->resize(m_iNumRows+numRows, m_dNodata);
 			break;
 			}
 		default:
@@ -165,21 +165,22 @@ bool AttributeTable::AddRow()
 
 	for (int colidx = 0; colidx < this->m_vNames.size(); ++colidx)
 	{
+		const int& tidx = m_vPosition[colidx];
 		switch (this->m_vTypes[colidx])
 		{
 		case ATTYPE_STRING:
 			{
-			m_mStringCols.at(colidx).push_back(this->m_sNodata);
+			m_mStringCols.at(tidx)->push_back(this->m_sNodata);
 			break;
 			}
 		case ATTYPE_INT:
 			{
-			m_mIntCols.at(colidx).push_back(this->m_iNodata);
+			m_mIntCols.at(tidx)->push_back(this->m_iNodata);
 			break;
 			}
 		case ATTYPE_DOUBLE:
 			{
-			m_mDoubleCols.at(colidx).push_back(this->m_dNodata);
+			m_mDoubleCols.at(tidx)->push_back(this->m_dNodata);
 			break;
 			}
 		default:
@@ -201,23 +202,24 @@ AttributeTable::SetValue(const std::string& sColName, int idx, double value)
 	if (colIdx < 0)
 		return;
 
+	const int& tidx = m_vPosition[colIdx];
 	switch (m_vTypes[colIdx])
 	{
 		case ATTYPE_STRING:
 		{
 			std::stringstream sval;
 			sval << value;
-			this->m_mStringCols.at(colIdx).at(idx) = sval.str();
+			this->m_mStringCols.at(tidx)->at(idx) = sval.str();
 			break;
 		}
 		case ATTYPE_INT:
 		{
-			this->m_mIntCols.at(colIdx).at(idx) = value;
+			this->m_mIntCols.at(tidx)->at(idx) = value;
 			break;
 		}
 		case ATTYPE_DOUBLE:
 		{
-			this->m_mDoubleCols.at(colIdx).at(idx) = value;
+			this->m_mDoubleCols.at(tidx)->at(idx) = value;
 			break;
 		}
 		default:
@@ -232,23 +234,24 @@ AttributeTable::SetValue(const std::string& sColName, int idx, long value)
 	if (colIdx < 0)
 		return;
 
+	const int& tidx = m_vPosition[colIdx];
 	switch (m_vTypes[colIdx])
 	{
 		case ATTYPE_STRING:
 		{
 			std::stringstream sval;
 			sval << value;
-			this->m_mStringCols.at(colIdx).at(idx) = sval.str();
+			this->m_mStringCols.at(tidx)->at(idx) = sval.str();
 			break;
 		}
 		case ATTYPE_INT:
 		{
-			this->m_mIntCols.at(colIdx).at(idx) = value;
+			this->m_mIntCols.at(tidx)->at(idx) = value;
 			break;
 		}
 		case ATTYPE_DOUBLE:
 		{
-			this->m_mDoubleCols.at(colIdx).at(idx) = value;
+			this->m_mDoubleCols.at(tidx)->at(idx) = value;
 			break;
 		}
 		default:
@@ -263,21 +266,23 @@ AttributeTable::SetValue(const std::string& sColName, int idx, std::string value
 	if (colIdx < 0)
 		return;
 
+	const int& tidx = m_vPosition[colIdx];
+
 	switch (m_vTypes[colIdx])
 	{
 		case ATTYPE_STRING:
 		{
-			this->m_mStringCols.at(colIdx).at(idx) = value;
+			this->m_mStringCols.at(tidx)->at(idx) = value;
 			break;
 		}
 		case ATTYPE_INT:
 		{
-			this->m_mIntCols.at(colIdx).at(idx) = ::strtol(value.c_str(),0,10);
+			this->m_mIntCols.at(tidx)->at(idx) = ::strtol(value.c_str(),0,10);
 			break;
 		}
 		case ATTYPE_DOUBLE:
 		{
-			this->m_mDoubleCols.at(colIdx).at(idx) = ::strtod(value.c_str(),0);
+			this->m_mDoubleCols.at(tidx)->at(idx) = ::strtod(value.c_str(),0);
 			break;
 		}
 		default:
@@ -292,17 +297,18 @@ double AttributeTable::GetDblValue(const std::string& sColName, int idx)
 	if (colidx < 0 || idx < 0 || idx > m_iNumRows)
 		return m_dNodata;
 
+	const int& tidx = m_vPosition[colidx];
 	double ret;
 	switch(m_vTypes[colidx])
 	{
 		case ATTYPE_STRING:
-			ret = ::strtod(this->m_mStringCols.at(colidx).at(idx).c_str(),0);
+			ret = ::strtod(this->m_mStringCols.at(tidx)->at(idx).c_str(),0);
 			break;
 		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(colidx).at(idx);
+			ret = this->m_mIntCols.at(tidx)->at(idx);
 			break;
 		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(colidx).at(idx);
+			ret = this->m_mDoubleCols.at(tidx)->at(idx);
 			break;
 		default:
 			ret = this->m_dNodata;
@@ -320,17 +326,18 @@ AttributeTable::GetIntValue(const std::string& sColName, int idx)
 	if (colidx < 0 || idx < 0 || idx > m_iNumRows)
 		return m_iNodata;
 
+	const int& tidx = m_vPosition[colidx];
 	long ret;
 	switch(m_vTypes[colidx])
 	{
 		case ATTYPE_STRING:
-			ret = ::strtol(this->m_mStringCols.at(colidx).at(idx).c_str(),0,10);
+			ret = ::strtol(this->m_mStringCols.at(tidx)->at(idx).c_str(),0,10);
 			break;
 		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(colidx).at(idx);
+			ret = this->m_mIntCols.at(tidx)->at(idx);
 			break;
 		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(colidx).at(idx);
+			ret = this->m_mDoubleCols.at(tidx)->at(idx);
 			break;
 		default:
 			ret = this->m_iNodata;
@@ -347,17 +354,18 @@ std::string AttributeTable::GetStrValue(const std::string& sColName, int idx)
 	if (colidx < 0 || idx < 0 || idx > m_iNumRows)
 		return m_sNodata;
 
+	const int& tidx = m_vPosition[colidx];
 	std::stringstream ret;
 	switch(m_vTypes[colidx])
 	{
 		case ATTYPE_STRING:
-			ret << this->m_mStringCols.at(colidx).at(idx);
+			ret << this->m_mStringCols.at(tidx)->at(idx);
 			break;
 		case ATTYPE_INT:
-			ret << this->m_mIntCols.at(colidx).at(idx);
+			ret << this->m_mIntCols.at(tidx)->at(idx);
 			break;
 		case ATTYPE_DOUBLE:
-			ret << this->m_mDoubleCols.at(colidx).at(idx);
+			ret << this->m_mDoubleCols.at(tidx)->at(idx);
 			break;
 		default:
 			ret << this->m_sNodata;
@@ -381,11 +389,16 @@ void AttributeTable::SetImgFileName(const std::string& sFileName)
 std::string
 AttributeTable::GetColumnName(int idx)
 {
+	if (idx < 0 || idx > m_vNames.size()-1)
+		return "";
 	return m_vNames.at(idx);
 }
 
-AttributeTable::TableColumnType AttributeTable::GetColumnType(int idx)
+AttributeTable::TableColumnType
+AttributeTable::GetColumnType(int idx)
 {
+	if (idx < 0 || idx > m_vNames.size()-1)
+		return ATTYPE_UNKNOWN;
 	return m_vTypes.at(idx);
 }
 
@@ -407,34 +420,41 @@ AttributeTable::RemoveColumn(int col)
 	if (col < 0 || col > this->m_vNames.size()-1)
 		return false;
 
+	int tidx = m_vPosition[col];
 	switch(this->m_vTypes[col])
 	{
 	case ATTYPE_INT:
-		this->m_mIntCols.erase(col);
+		delete this->m_mIntCols.at(tidx);
+		this->m_mIntCols.erase(this->m_mIntCols.begin()+tidx);
 		break;
 	case ATTYPE_DOUBLE:
-		this->m_mDoubleCols.erase(col);
+		delete this->m_mDoubleCols.at(tidx);
+		this->m_mDoubleCols.erase(this->m_mDoubleCols.begin()+tidx);
 		break;
 	case ATTYPE_STRING:
-		this->m_mStringCols.erase(col);
+		delete this->m_mStringCols.at(tidx);
+		this->m_mStringCols.erase(this->m_mStringCols.begin()+tidx);
 		break;
 	default:
 		return false;
 		break;
 	}
 
-	// house keeping
-	for (int c=col+1; col < this->m_vNames.size(); ++c)
+	// house keeping: adjust type specific array indices
+	// for each column of the same type to the right of
+	// the one being removed
+	for (int c=col+1; c < this->m_vNames.size(); ++c)
 	{
-		switch(this->m_vTypes[c])
+		if (m_vTypes[c] == m_vTypes[col])
 		{
-
+			--m_vPosition[c];
 		}
 	}
 
 	// now remove any traces of the column in the admin arrays
 	this->m_vNames.erase(this->m_vNames.begin() + col);
 	this->m_vTypes.erase(this->m_vTypes.begin() + col);
+	this->m_vPosition.erase(this->m_vPosition.begin() + col);
 
 	return true;
 }
@@ -457,23 +477,24 @@ void AttributeTable::SetValue(int col, int row, double value)
 	if (row < 0 || row >= m_iNumRows)
 		return;
 
+	const int& tidx = m_vPosition[col];
 	switch (m_vTypes[col])
 	{
 		case ATTYPE_STRING:
 		{
 			std::stringstream sval;
 			sval << value;
-			this->m_mStringCols.at(col).at(row) = sval.str();
+			this->m_mStringCols.at(tidx)->at(row) = sval.str();
 			break;
 		}
 		case ATTYPE_INT:
 		{
-			this->m_mIntCols.at(col).at(row) = value;
+			this->m_mIntCols.at(tidx)->at(row) = value;
 			break;
 		}
 		case ATTYPE_DOUBLE:
 		{
-			this->m_mDoubleCols.at(col).at(row) = value;
+			this->m_mDoubleCols.at(tidx)->at(row) = value;
 			break;
 		}
 		default:
@@ -489,23 +510,24 @@ void AttributeTable::SetValue(int col, int row, long value)
 	if (row < 0 || row >= m_iNumRows)
 		return;
 
+	const int& tidx = m_vPosition[col];
 	switch (m_vTypes[col])
 	{
 		case ATTYPE_STRING:
 		{
 			std::stringstream sval;
 			sval << value;
-			this->m_mStringCols.at(col).at(row) = sval.str();
+			this->m_mStringCols.at(tidx)->at(row) = sval.str();
 			break;
 		}
 		case ATTYPE_INT:
 		{
-			this->m_mIntCols.at(col).at(row) = value;
+			this->m_mIntCols.at(tidx)->at(row) = value;
 			break;
 		}
 		case ATTYPE_DOUBLE:
 		{
-			this->m_mDoubleCols.at(col).at(row) = value;
+			this->m_mDoubleCols.at(tidx)->at(row) = value;
 			break;
 		}
 		default:
@@ -521,21 +543,22 @@ void AttributeTable::SetValue(int col, int row, std::string value)
 	if (row < 0 || row >= m_iNumRows)
 		return;
 
+	const int& tidx = m_vPosition[col];
 	switch (m_vTypes[col])
 	{
 		case ATTYPE_STRING:
 		{
-			this->m_mStringCols.at(col).at(row) = value;
+			this->m_mStringCols.at(tidx)->at(row) = value;
 			break;
 		}
 		case ATTYPE_INT:
 		{
-			this->m_mIntCols.at(col).at(row) = ::strtol(value.c_str(), 0, 10);
+			this->m_mIntCols.at(tidx)->at(row) = ::strtol(value.c_str(), 0, 10);
 			break;
 		}
 		case ATTYPE_DOUBLE:
 		{
-			this->m_mDoubleCols.at(col).at(row) = ::strtod(value.c_str(), 0);
+			this->m_mDoubleCols.at(tidx)->at(row) = ::strtod(value.c_str(), 0);
 			break;
 		}
 		default:
@@ -551,17 +574,18 @@ double AttributeTable::GetDblValue(int col, int row)
 	if (row < 0 || row >= m_iNumRows)
 		return m_dNodata;
 
+	const int& tidx = m_vPosition[col];
 	double ret;
 	switch(m_vTypes[col])
 	{
 		case ATTYPE_STRING:
-			ret = ::strtod(this->m_mStringCols.at(col).at(row).c_str(),0);
+			ret = ::strtod(this->m_mStringCols.at(tidx)->at(row).c_str(),0);
 			break;
 		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(col).at(row);
+			ret = this->m_mIntCols.at(tidx)->at(row);
 			break;
 		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(col).at(row);
+			ret = this->m_mDoubleCols.at(tidx)->at(row);
 			break;
 		default:
 			ret = this->m_dNodata;
@@ -579,17 +603,18 @@ long AttributeTable::GetIntValue(int col, int row)
 	if (row < 0 || row >= m_iNumRows)
 		return m_iNodata;
 
+	const int& tidx = m_vPosition[col];
 	long ret;
 	switch(m_vTypes[col])
 	{
 		case ATTYPE_STRING:
-			ret = ::strtol(this->m_mStringCols.at(col).at(row).c_str(),0,10);
+			ret = ::strtol(this->m_mStringCols.at(tidx)->at(row).c_str(),0,10);
 			break;
 		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(col).at(row);
+			ret = this->m_mIntCols.at(tidx)->at(row);
 			break;
 		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(col).at(row);
+			ret = this->m_mDoubleCols.at(tidx)->at(row);
 			break;
 		default:
 			ret = this->m_iNodata;
@@ -608,17 +633,18 @@ std::string AttributeTable::GetStrValue(int col, int row)
 	if (row < 0 || row >= m_iNumRows)
 		return m_sNodata;
 
+	const int& tidx = m_vPosition[col];
 	std::stringstream ret;
 	switch(m_vTypes[col])
 	{
 		case ATTYPE_STRING:
-			ret << this->m_mStringCols.at(col).at(row);
+			ret << this->m_mStringCols.at(tidx)->at(row);
 			break;
 		case ATTYPE_INT:
-			ret << this->m_mIntCols.at(col).at(row);
+			ret << this->m_mIntCols.at(tidx)->at(row);
 			break;
 		case ATTYPE_DOUBLE:
-			ret << this->m_mDoubleCols.at(col).at(row);
+			ret << this->m_mDoubleCols.at(tidx)->at(row);
 			break;
 		default:
 			ret << this->m_sNodata;
@@ -745,9 +771,17 @@ AttributeTable::AttributeTable()
 {
 }
 
-// not implemented
+// clean up
 AttributeTable::~AttributeTable()
 {
+	for (int v=0; v < m_mStringCols.size(); ++v)
+		delete m_mStringCols[v];
+
+	for (int v=0; v < m_mIntCols.size(); ++v)
+		delete m_mIntCols[v];
+
+	for (int v=0; v < m_mDoubleCols.size(); ++v)
+		delete m_mDoubleCols[v];
 }
 
 

@@ -563,8 +563,6 @@ void NMTableView::addColumn()
 
 	delete dlg;
 
-	//vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	//int nrows = tab->GetNumberOfRows();
 	int ncols = this->mSortFilter->columnCount();
 
 	NMDebugAI(<< "add column ? " << ret << endl);
@@ -572,14 +570,15 @@ void NMTableView::addColumn()
 	NMDebugAI(<< "type: " << type << endl);
 	NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
-
+	const QItemSelection sel = mSelectionModel->selection();
 	if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
 	{
 		//emit columnsChanged(ncols, ncols+1);
-		// reapply selection
-		const QItemSelection sel = this->mSortFilter->mapSelectionFromSource(mSelectionModel->selection());
-		this->mTableView->selectionModel()->select(sel, QItemSelectionModel::Select |
-				QItemSelectionModel::Rows);
+		this->mTableView->selectionModel()->select(
+				this->mSortFilter->mapSelectionFromSource(sel),
+				QItemSelectionModel::Select | QItemSelectionModel::Rows);
+
+		this->mSortFilter->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
 	}
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -603,15 +602,14 @@ void NMTableView::deleteColumn()
 	if (col < 0)
 		return;
 
+	const QItemSelection sel = mSelectionModel->selection();
 	int ncols = this->mSortFilter->columnCount();
 	if (this->mSortFilter->removeColumns(col, 1, QModelIndex()))
 	{
-		//emit columnsChanged(ncols, ncols-1);
-		//this->mTableView->reset();
-		// reapply selection
-		const QItemSelection sel = this->mSortFilter->mapSelectionFromSource(mSelectionModel->selection());
-		this->mTableView->selectionModel()->select(sel, QItemSelectionModel::Select |
-				QItemSelectionModel::Rows);
+		//emit columnsChanged(ncols, ncols+1);
+		this->mTableView->selectionModel()->select(
+				this->mSortFilter->mapSelectionFromSource(sel),
+				QItemSelectionModel::Select | QItemSelectionModel::Rows);
 	}
 	// notify potential listeners
 	//this->mDeletedColumns.append(this->mLastClickedColumn);

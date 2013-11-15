@@ -248,7 +248,6 @@ NMQtOtbAttributeTableModel::setHeaderData(int section, Qt::Orientation orientati
 
 	this->mTable->SetColumnName(section, value.toString().toStdString());
 
-	//emit this->reset();
 	emit headerDataChanged(Qt::Horizontal, section, section);
 
 	return true;
@@ -289,7 +288,7 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	default:
 		break;
 	}
-	this->setTable(mTable);
+	//emit this->reset();
 	endInsertColumns();
 
 	return true;
@@ -306,7 +305,7 @@ NMQtOtbAttributeTableModel::removeColumns(int column, int count,
 	int ret = this->mTable->RemoveColumn(column);
 	if (ret)
 	{
-		this->setTable(mTable);
+		//emit this->reset();
 		endRemoveColumns();
 	}
 	else

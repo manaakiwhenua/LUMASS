@@ -110,7 +110,7 @@ public:
 	 */
 	QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
 	QItemSelection mapSelectionFromSource(const QModelIndexList& sourceList) const;
-	QItemSelection getSourceSelectionFromSourceList(const QModelIndexList& sourceList) const;
+	QItemSelection mapSelectionToSourceFromRaw(const QItemSelection& rawSelection) const;
 	QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
 
 	void sort(int column, Qt::SortOrder order);

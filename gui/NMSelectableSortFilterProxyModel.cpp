@@ -738,21 +738,22 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QModelIndexList& 
 }
 
 QItemSelection
-NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelIndexList& sourceList) const
+NMSelectableSortFilterProxyModel::mapSelectionToSourceFromRaw(
+		const QItemSelection& rawSelection) const
 {
 	QItemSelection srcSel;
-	if (mSourceModel == 0 || sourceList.count() == 0)
+	if (mSourceModel == 0 || rawSelection.size() == 0)
 		return srcSel;
 
-	const int nrows = this->mSource2Proxy.size();
+	const int nrows = this->mSource2Raw.size();
 	int start = -1;
 	int end = -1;
 	for (int i=0; i < nrows; ++i)
 	{
-		const QModelIndex idx = this->mSourceModel->index(i, 0, QModelIndex());
+		const QModelIndex idx = this->mSourceModel->index(mSource2Raw.at(i), 0, QModelIndex());
 
 		// inside a selection
-		if (sourceList.contains(idx))
+		if (rawSelection.contains(idx) && !mHiddenSource.at(mSource2Raw.at(i)))
 		{
 			// if we haven't got a selection range, we start a new one
 			if (start == -1)
@@ -761,9 +762,8 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 				end = -1;
 				if (i == nrows-1)
 				{
-					QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
+					QModelIndex sidx = this->createIndex(start, 0, 0);
 					srcSel.select(sidx, sidx);
-
 					start = -1;
 				}
 			}
@@ -775,8 +775,8 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 				// and add it to the ItemSelection
 				if (i == nrows-1)
 				{
-					QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
-					QModelIndex eidx = this->mSourceModel->index(end, 0, QModelIndex());
+					QModelIndex sidx = this->createIndex(start, 0, 0);
+					QModelIndex eidx = this->createIndex(end, 0, 0);
 					srcSel.select(sidx, eidx);
 				}
 			}
@@ -789,8 +789,8 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 			// ItemSelection
 			if (end != -1)
 			{
-				QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
-				QModelIndex eidx = this->mSourceModel->index(end, 0, QModelIndex());
+				QModelIndex sidx = this->createIndex(start, 0, 0);
+				QModelIndex eidx = this->createIndex(end, 0, 0);
 				srcSel.select(sidx, eidx);
 
 				start = -1;
@@ -799,7 +799,7 @@ NMSelectableSortFilterProxyModel::getSourceSelectionFromSourceList(const QModelI
 			// we've got a single item selection, denote just by the start index
 			else if (start != -1)
 			{
-				QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
+				QModelIndex sidx = this->createIndex(start, 0, 0);
 				srcSel.select(sidx, sidx);
 
 				start = -1;

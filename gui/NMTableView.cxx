@@ -1470,15 +1470,18 @@ NMTableView::selectionQuery(void)
 		return;
 	}
 
-	const QItemSelection resSel = selector->getSelection();
-	NMDebugAI(<< "yeah! we've got " << resSel.count() << " selections!" << std::endl);
 
-	//const QItemSelection newSelection = this->mSortFilter->getSourceSelectionFromSourceList(
-	//		resSel);
+	QItemSelection resSel = selector->getSelection();
+	NMDebugAI(<< "yeah! we've got " << resSel.count() << " selection range(s)!" << std::endl);
+
+	const QItemSelection newSelection = this->mSortFilter->mapSelectionToSourceFromRaw(
+			resSel);
+
+	resSel.clear();
 
 	//NMDebugAI(<< "... and now we've got only " << newSelection.count() << " selections left!" << std::endl);
 
-	this->mSelectionModel->select(resSel, QItemSelectionModel::ClearAndSelect |
+	this->mSelectionModel->select(newSelection, QItemSelectionModel::ClearAndSelect |
 			QItemSelectionModel::Rows);
 
 	NMDebugCtx(__ctxtabview, << "done!");

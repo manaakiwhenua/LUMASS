@@ -54,6 +54,8 @@
 #include <QRegExp>
 #include <QCheckBox>
 
+#include "valgrind/callgrind.h"
+
 
 NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
@@ -867,37 +869,31 @@ void NMTableView::exportTable()
 }
 void NMTableView::colStats()
 {
-//	NMDebugCtx(__ctxtabview, << "...");
-//
-//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-//	vtkAbstractArray* aa = tab->GetColumnByName(this->mLastClickedColumn.toStdString().c_str());
-//	if (!aa->IsNumeric())
-//	{
-//		NMErr(__ctxtabview, << "Select a numeric column for statistics calculation!");
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
-//	if (this->mlNumSelRecs)
-//		calc->setRowFilterModeOn("nm_sel");
-//	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
-//
-//	if (stats.size() < 4)
-//		return;
-//
-//	// min, max, mean, sum
-//	QString res = QString(tr("min:   %1\nmax:  %2\nmean:  %3\nsum:  %4")).
-//			arg(stats[0], 0, 'f', 4).
-//			arg(stats[1], 0, 'f', 4).
-//			arg(stats[2], 0, 'f', 4).
-//			arg(stats[3], 0, 'f', 4);
-//
-//	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
-//
-//	QMessageBox::information(this, title, res);
-//
-//	NMDebugCtx(__ctxtabview, << "done!");
+	NMDebugCtx(__ctxtabview, << "...");
+
+	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
+	calc->setRowFilter(mSelectionModel->selection());
+	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
+
+	if (stats.size() < 4)
+	{
+		NMDebugAI(<< "Couldn't calc stats for a reason!" << std::endl);
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	// min, max, mean, sum
+	QString res = QString(tr("min:   %1\nmax:  %2\nmean:  %3\nsum:  %4")).
+			arg(stats[0], 0, 'f', 4).
+			arg(stats[1], 0, 'f', 4).
+			arg(stats[2], 0, 'f', 4).
+			arg(stats[3], 0, 'f', 4);
+
+	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
+
+	QMessageBox::information(this, title, res);
+
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void
@@ -1431,6 +1427,8 @@ NMTableView::selectionQuery(void)
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
+	//CALLGRIND_START_INSTRUMENTATION;
+
 	bool bOk = false;
 	QString query = QInputDialog::getText(this, tr("Selection Query"),
 	                                          tr("Where Clause"), QLineEdit::Normal,
@@ -1445,6 +1443,7 @@ NMTableView::selectionQuery(void)
 	selector->setFunction(query);
 	selector->setRowFilter(this->mSelectionModel->selection());
 	selector->setSelectionMode(true);
+	selector->setRaw2Source(const_cast<QList<int>* >(this->mSortFilter->getRaw2Source()));
 
 	try
 	{
@@ -1471,18 +1470,22 @@ NMTableView::selectionQuery(void)
 	}
 
 
-	QItemSelection resSel = selector->getSelection();
-	NMDebugAI(<< "yeah! we've got " << resSel.count() << " selection range(s)!" << std::endl);
-
-	const QItemSelection newSelection = this->mSortFilter->mapSelectionToSourceFromRaw(
-			resSel);
-
-	resSel.clear();
-
-	//NMDebugAI(<< "... and now we've got only " << newSelection.count() << " selections left!" << std::endl);
-
-	this->mSelectionModel->select(newSelection, QItemSelectionModel::ClearAndSelect |
+	const QItemSelection& srcSel = selector->getSelection();
+	//NMDebugAI(<< "yeah! we've got " << resSel.count() << " selection range(s)!" << std::endl);
+    //
+	//const QItemSelection newSelection = this->mSortFilter->mapSelectionToSourceFromRaw(
+	//		resSel);
+    //
+	//resSel.clear();
+    //
+	////NMDebugAI(<< "... and now we've got only " << newSelection.count() << " selections left!" << std::endl);
+    //
+	this->mSelectionModel->select(srcSel, QItemSelectionModel::ClearAndSelect |
 			QItemSelectionModel::Rows);
+
+	//CALLGRIND_STOP_INSTRUMENTATION;
+	//CALLGRIND_DUMP_STATS;
+
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -1558,7 +1561,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 
 		if (sel.count() > 0)
 		{
-			//this->printSelRanges(sel, "SEL Source");
+			this->printSelRanges(sel, "SEL Source");
 
 			if (this->mChkSelectedRecsOnly->isChecked())
 			{
@@ -1581,8 +1584,8 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 			}
 		}
 
-		//this->printSelRanges(this->mTableView->selectionModel()->selection(),
-		//		QString("current table selection"));
+		this->printSelRanges(this->mTableView->selectionModel()->selection(),
+				QString("current table selection"));
 	}
 }
 

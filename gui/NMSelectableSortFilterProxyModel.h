@@ -112,6 +112,8 @@ public:
 	QItemSelection mapSelectionFromSource(const QModelIndexList& sourceList) const;
 	QItemSelection mapSelectionToSourceFromRaw(const QItemSelection& rawSelection) const;
 	QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
+	void itemSelectionFromIndexList(const std::vector<int>& list, QItemSelection& isel) const;
+
 
 	void sort(int column, Qt::SortOrder order);
 
@@ -129,6 +131,9 @@ public:
 	bool insertColumns(int column, int count, const QModelIndex& parent=QModelIndex());
 	bool removeColumns(int column, int count, const QModelIndex& parent=QModelIndex());
 
+	const QList<int>* getRaw2Source(void)
+		{return &mRaw2Source;}
+
 
 	// deprecated, they're not really in use in this implementation!
 	void setDynamicSortFilter(bool dynamic){};
@@ -139,7 +144,14 @@ protected:
 
 	QAbstractItemModel* mSourceModel;
 	QModelIndexList mProxySelection;
-	QList<bool> mHiddenSource;
+
+	/**
+	 *  contains for each index of the original
+	 *  source model the index of the 'mapped'
+	 *  (i.e. unhidden) source index (in view
+	 *  of the SortFilterProxyModel.
+	 */
+	QList<int> mRaw2Source;
 
 	// proxy-source maps, which DO NOT
 	// contain hidden rows, i.e.
@@ -167,6 +179,11 @@ protected:
 //	void handleColumnsChanged(const QModelIndex& parent, int start, int end);
 
 private:
+
+	void printSelRanges(const QItemSelection& selection,
+			const QString& msg) const;
+
+
 	// both values are expected to be of the same type
 	inline bool lessThan(const QVariant& valLeft, const QVariant& valRight)
 	{

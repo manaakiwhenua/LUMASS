@@ -1,4 +1,4 @@
-/*****************************h*******A***********dx*******************************
+/******************************************************************************
  * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
@@ -26,15 +26,18 @@
 #include "nmlog.h"
 
 #include <limits>
+#include <algorithm>
 
 #include <QString>
 #include <QStack>
 #include <QModelIndex>
 
-#include "vtkVariant.h"
-#include "vtkStdString.h"
-#include "vtkDoubleArray.h"
+//#include "vtkVariant.h"
+//#include "vtkStdString.h"
+//#include "vtkDoubleArray.h"
 #include "itkExceptionObject.h"
+
+#include "valgrind/callgrind.h"
 
 
 //NMTableCalculator::NMTableCalculator(QObject* parent)
@@ -69,10 +72,70 @@ NMTableCalculator::~NMTableCalculator()
 {
 }
 
-const QItemSelection&
+QItemSelection
 NMTableCalculator::getSelection(void)
 {
-	return this->mOutputSelection;
+	std::stable_sort(mOutputSrcSelIndices.begin(), mOutputSrcSelIndices.end());
+
+	QItemSelection isel;
+	const int& nrows = mOutputSrcSelIndices.size();
+	int start = -1;
+	int end = -1;
+	for (int r=0; r < nrows; ++r)
+	{
+		if (start == -1)
+		{
+			start = mOutputSrcSelIndices.at(r);
+			end = -1;
+			if (r == nrows-1)
+			{
+				QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+				isel.append(QItemSelectionRange(sidx));
+			}
+		}
+		else
+		{
+			// if we're already in a selection range
+			if (end != -1)
+			{
+				// expansion of selection range
+				if (	mOutputSrcSelIndices.at(r) == end + 1
+					&&  r < nrows - 1)
+				{
+					++end;
+				}
+				// end of selection range
+				else
+				{
+					QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+					QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+					isel.append(QItemSelectionRange(sidx, eidx));
+					start = -1;
+					end = -1;
+				}
+			}
+			// if we've just started a new selection range
+			else
+			{
+				// expansion of selection range
+				if (	mOutputSrcSelIndices.at(r) == start + 1
+					&&	r < nrows - 1)
+				{
+					end = mOutputSrcSelIndices.at(r);
+				}
+				// one item selection
+				else
+				{
+					QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+					isel.append(QItemSelectionRange(sidx));
+					start = -1;
+					end = -1;
+				}
+			}
+		}
+	}
+
+	return isel;
 }
 
 bool NMTableCalculator::setResultColumn(const QString& name)
@@ -151,9 +214,14 @@ bool
 NMTableCalculator::isNumericColumn(int colidx)
 {
 	QVariant::Type type = this->getColumnType(colidx);
+	NMDebugAI(<< __FUNCTION__ << "variant type: " << QVariant::typeToName(type) << std::endl);
 	if (	type == QVariant::Int
 		||  type == QVariant::UInt
-		||  type == QVariant::Double)
+		||  type == QVariant::LongLong
+		||  type == QVariant::ULongLong
+		||  type == QVariant::Double
+		||  type == QVariant::Char
+	   )
 	{
 		return true;
 	}
@@ -231,14 +299,14 @@ bool NMTableCalculator::parseFunction()
 	// now we analyse the functional groups and break them down into parts of logical expressions
 	foreach(const QString& grp, groups)
 	{
-		NMDebugInd(2, << "group term: " << grp.toStdString() << endl);
+		NMDebugInd(2, << "group term: " << grp.toStdString() << std::endl);
 
 		QStringList logTerms = grp.split(exprSep, QString::SkipEmptyParts);
 		foreach(const QString& lt, logTerms)
 		{
 			//if (lt.simplified().isEmpty())
 			//	continue;
-			NMDebugInd(4, << "logical term: " << lt.toStdString() << endl);
+			NMDebugInd(4, << "logical term: " << lt.toStdString() << std::endl);
 			int pos = termIdent.indexIn(lt);
 
 			// ideally, we've got a proper term; however we could also have only 'half' a term
@@ -283,7 +351,7 @@ bool NMTableCalculator::parseFunction()
 							bLeftStr = true;
 							strFields.append(idxleft);
 							NMDebugAI(<< "detected STRING field: "
-									<< guts.at(1).toStdString() << endl);
+									<< guts.at(1).toStdString() << std::endl);
 						}
 						else
 						{
@@ -291,7 +359,7 @@ bool NMTableCalculator::parseFunction()
 							this->mFuncVars.append(guts.at(1));
 							this->mFuncFields.append(idxleft);
 							NMDebugAI(<< "detected NUMERIC field: "
-									<< guts.at(1).toStdString() << endl);
+									<< guts.at(1).toStdString() << std::endl);
 						}
 					}
 					else
@@ -304,7 +372,7 @@ bool NMTableCalculator::parseFunction()
 							bRightStr = true;
 							strFields.append(idxright);
 							NMDebugAI(<< "detected STRING field: "
-									<< guts.at(3).toStdString() << endl);
+									<< guts.at(3).toStdString() << std::endl);
 						}
 						else
 						{
@@ -312,7 +380,7 @@ bool NMTableCalculator::parseFunction()
 							this->mFuncVars.append(guts.at(3));
 							this->mFuncFields.append(idxright);
 							NMDebugAI(<< "detected NUMERIC field: "
-									<< guts.at(3).toStdString() << endl);
+									<< guts.at(3).toStdString() << std::endl);
 						}
 					}
 					else
@@ -322,7 +390,7 @@ bool NMTableCalculator::parseFunction()
 					// analyse string expression
 					if (bLeftStr || bRightStr)
 					{
-						NMDebugAI(<< "detected string term: " << lt.toStdString() << endl);
+						NMDebugAI(<< "detected string term: " << lt.toStdString() << std::endl);
 						this->mslStrTerms.append(lt);
 
 						QRegExp stripHighComma("'([\\w\\d\\s\\W]*)'");
@@ -343,7 +411,7 @@ bool NMTableCalculator::parseFunction()
 						this->mLstNMStrOperator.append(this->getStrOperator(guts.at(2)));
 						NMDebugAI(<< "eval string term: " << strNames.at(0).toStdString() << " "
 								<< guts.at(2).toStdString() << " "
-								<< strNames.at(1).toStdString() << endl);
+								<< strNames.at(1).toStdString() << std::endl);
 					}
 				}
 			}
@@ -371,7 +439,7 @@ bool NMTableCalculator::parseFunction()
 							this->mFuncVars.append(item);
 							this->mFuncFields.append(aridx);
 							NMDebugAI(<< "detected NUMERIC field: "
-									<< item.toStdString() << endl);
+									<< item.toStdString() << std::endl);
 						}
 						else
 						{
@@ -383,15 +451,15 @@ bool NMTableCalculator::parseFunction()
 							this->mLstLstStrFields.append(strFields);
 							this->mLstNMStrOperator.append(NMTableCalculator::NM_STR_UNKNOWN);
 							NMDebugAI(<< "detected STRING field: "
-									<< egg.toStdString() << endl);
+									<< egg.toStdString() << std::endl);
 						}
 					}
 					else
 					{
 						NMDebugAI(<< "Couldn't do anything with this egg: "
-								<< item.toStdString() << endl
+								<< item.toStdString() << std::endl
 								<< "We leave it in the capable hands of the muParser!"
-								<< endl);
+								<< std::endl);
 					}
 				}
 			}
@@ -477,7 +545,10 @@ NMTableCalculator::doNumericCalcSelection()
 	NMDebugCtx(ctxTabCalc, << "...");
 
 	if (this->mSelectionModeOn)
-		this->mOutputSelection.clear();
+	{
+		mOutputSrcSelIndices.resize(mRaw2Source->size(),-1);
+		mNumSel = 0;
+	}
 
 	if (this->mbRowFilter)
 	{
@@ -491,110 +562,114 @@ NMTableCalculator::doNumericCalcSelection()
 			for (int row=top; row <= bottom; ++row)
 			{
 				this->processNumericCalcSelection(row, &selected);
-				if (selected)
-				{
-					if (start == -1)
-					{
-						start = row;
-						end = -1;
-						if (top == bottom)
-						{
-							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-							mOutputSelection.select(sidx, sidx);
-
-							start = -1;
-						}
-					}
-					else
-					{
-						end = row;
-						if (row == bottom)
-						{
-							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-							QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-							mOutputSelection.select(sidx, eidx);
-						}
-					}
-				}
-				else
-				{
-					if (end != -1)
-					{
-						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-						mOutputSelection.select(sidx, eidx);
-
-						start = -1;
-						end = -1;
-					}
-					else if (start != -1)
-					{
-						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						mOutputSelection.select(sidx, sidx);
-
-						start = -1;
-						end = -1;
-					}
-				}
+				//if (selected)
+				//{
+				//	if (start == -1)
+				//	{
+				//		start = row;
+				//		end = -1;
+				//		if (top == bottom)
+				//		{
+				//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+				//			mOutputSelection.append(QItemSelectionRange(sidx, sidx));
+                //
+				//			start = -1;
+				//		}
+				//	}
+				//	else
+				//	{
+				//		end = row;
+				//		if (row == bottom)
+				//		{
+				//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+				//			QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+				//			mOutputSelection.append(QItemSelectionRange(sidx, eidx));
+				//		}
+				//	}
+				//}
+				//else
+				//{
+				//	if (end != -1)
+				//	{
+				//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+				//		QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+				//		mOutputSelection.append(QItemSelectionRange(sidx, eidx));
+                //
+				//		start = -1;
+				//		end = -1;
+				//	}
+				//	else if (start != -1)
+				//	{
+				//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+				//		mOutputSelection.append(QItemSelectionRange(sidx, sidx));
+                //
+				//		start = -1;
+				//		end = -1;
+				//	}
+				//}
 			}
 		}
 	}
 	else
 	{
-		const int nrows = this->mModel->rowCount(QModelIndex());
+		const int& nrows = this->mModel->rowCount(QModelIndex());
 		int start = -1;
 		int end = -1;
 		bool selected;
 		for (int row=0; row < nrows; ++row)
 		{
+			if (mRaw2Source->at(row) == -1)
+				continue;
+
 			this->processNumericCalcSelection(row, &selected);
-			if (selected)
-			{
-				if (start == -1)
-				{
-					start = row;
-					end = -1;
-					if (row == nrows-1)
-					{
-						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						mOutputSelection.select(sidx, sidx);
-
-						start = -1;
-					}
-				}
-				else
-				{
-					end = row;
-					if (row == nrows-1)
-					{
-						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-						mOutputSelection.select(sidx, eidx);
-					}
-				}
-			}
-			else
-			{
-				if (end != -1)
-				{
-					QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-					QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-					mOutputSelection.select(sidx, eidx);
-
-					start = -1;
-					end = -1;
-				}
-				else if (start != -1)
-				{
-					QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-					mOutputSelection.select(sidx, sidx);
-
-					start = -1;
-					end = -1;
-				}
-			}
+			//if (selected)
+			//{
+			//	if (start == -1)
+			//	{
+			//		start = row;
+			//		end = -1;
+			//		if (row == nrows-1)
+			//		{
+			//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+			//			mOutputSelection.append(QItemSelectionRange(sidx, sidx));
+            //
+			//			start = -1;
+			//		}
+			//	}
+			//	else
+			//	{
+			//		end = row;
+			//		if (row == nrows-1)
+			//		{
+			//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+			//			QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+			//			mOutputSelection.append(QItemSelectionRange(sidx, eidx));
+			//		}
+			//	}
+			//}
+			//else
+			//{
+			//	if (end != -1)
+			//	{
+			//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+			//		QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+			//		mOutputSelection.append(QItemSelectionRange(sidx, eidx));
+            //
+			//		start = -1;
+			//		end = -1;
+			//	}
+			//	else if (start != -1)
+			//	{
+			//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+			//		mOutputSelection.append(QItemSelectionRange(sidx, sidx));
+            //
+			//		start = -1;
+			//		end = -1;
+			//	}
+			//}
 		}
 	}
+	mOutputSrcSelIndices.resize(mNumSel);
 
 	NMDebugCtx(ctxTabCalc, << "done!");
 }
@@ -602,6 +677,8 @@ NMTableCalculator::doNumericCalcSelection()
 void
 NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 {
+	//CALLGRIND_START_INSTRUMENTATION;
+
 	double res;
 	QString newFunc;
 	QString strFieldVal;
@@ -627,25 +704,27 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 			break;
 		}
 
-		if (row==0) {NMDebugAI(<< "setting numeric variable: "
-				<< this->mFuncVars.at(fcnt).toStdString() << endl);}
+		//if (row==0) {NMDebugAI(<< "setting numeric variable: "
+		//		<< this->mFuncVars.at(fcnt).toStdString() << endl);}
 		++fcnt;
 	}
-	if (!bok)
-	{
-		NMErr(ctxTabCalc, << "Skipping rest of invalid calculation in row " << row << "!");
-		return;
-	}
+	//if (!bok)
+	//{
+	//	NMErr(ctxTabCalc, << "Skipping rest of invalid calculation in row " << row << "!");
+	//	CALLGRIND_STOP_INSTRUMENTATION;
+	//	CALLGRIND_DUMP_STATS;
+	//	return;
+	//}
 
 	// evaluate string expressions and replace them with numeric results (0 or 1)
 	// in function
 	newFunc = this->mFunction;
 	for (int t=0; t < this->mslStrTerms.size(); ++t)
 	{
-		if (row==0 && t==0) {NMDebugAI(<< "processing string expressions ..." << endl);}
+		//if (row==0 && t==0) {NMDebugAI(<< "processing string expressions ..." << endl);}
 
 		QString origTerm = this->mslStrTerms.at(t);
-		if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
+		//if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
 
 		//vtkStringArray* leftField = this->mLstLstStrFields.at(t).at(0);
 		//vtkStringArray* rightField = this->mLstLstStrFields.at(t).at(1);
@@ -674,13 +753,13 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		}
 
 		// debug
-		if (row == 0)
-		{
-			NMDebugAI(<< "... evaluating: "
-					<< left.toStdString() << " "
-					<< mLstNMStrOperator.at(t) << " "
-					<< right.toStdString() << endl);
-		}
+		//if (row == 0)
+		//{
+		//	NMDebugAI(<< "... evaluating: "
+		//			<< left.toStdString() << " "
+		//			<< mLstNMStrOperator.at(t) << " "
+		//			<< right.toStdString() << endl);
+		//}
 
 		// eval expression
 		switch (this->mLstNMStrOperator.at(t))
@@ -744,6 +823,9 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		NMDebugCtx(ctxTabCalc, << "done!");
 
 		throw err;
+		//CALLGRIND_STOP_INSTRUMENTATION;
+		//CALLGRIND_DUMP_STATS;
+
 		return;
 	}
 
@@ -752,6 +834,10 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	{
 		if (res != 0)
 		{
+			mOutputSrcSelIndices.push_back(row);
+			++mNumSel;
+			//if (mSource2Proxy)
+			//	mOutputProxySelIndices << mSource2Proxy.at(row);
 			*selected = true;
 		}
 	}
@@ -760,6 +846,9 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
 		this->mModel->setData(resIdx, QVariant(res));
 	}
+
+	//CALLGRIND_STOP_INSTRUMENTATION;
+	//CALLGRIND_DUMP_STATS;
 }
 
 void
@@ -1005,7 +1094,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		else
 		{
 			NMErr(ctxTabCalc, << "Could't find any numeric array '"
-					<< name.toStdString() << "'!" << endl);
+					<< name.toStdString() << "'!" << std::endl);
 			NMDebugCtx(ctxTabCalc, << "done!");
 			return normalisedCols;
 		}
@@ -1027,7 +1116,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		max = stats[1] > max ? stats[1] : max;
 	}
 
-	NMDebugAI(<< "min: " << min << " | max: " << max << endl);
+	NMDebugAI(<< "min: " << min << " | max: " << max << std::endl);
 
 
 	// --------------------------------------------------------------------------

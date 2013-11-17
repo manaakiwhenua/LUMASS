@@ -26,6 +26,8 @@
 #define NMTABLECALCULATOR_H_
 #define ctxTabCalc "NMTableCalculator"
 
+#include <list>
+
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -33,12 +35,12 @@
 #include <QModelIndexList>
 #include <QItemSelection>
 
-#include "vtkType.h"
-#include "vtkSmartPointer.h"
-#include "vtkTable.h"
-#include "vtkAbstractArray.h"
-#include "vtkDataArray.h"
-#include "vtkStringArray.h"
+//#include "vtkType.h"
+//#include "vtkSmartPointer.h"
+//#include "vtkTable.h"
+//#include "vtkAbstractArray.h"
+//#include "vtkDataArray.h"
+//#include "vtkStringArray.h"
 
 #include "otbMultiParser.h"
 
@@ -75,20 +77,29 @@ public:
 	void setFunction(const QString& function);
 	void setSelectionMode(bool selmode);
 
+	void setRaw2Source(QList<int>* raw2Source)
+		{mRaw2Source = raw2Source;}
+
 	bool calculate(void);
 
-	const QItemSelection& getSelection(void);
+	//const QItemSelection& getSource
+	QItemSelection getSelection(void);
 	std::vector<double> calcColumnStats(const QString& column);
 	QStringList normaliseColumns(const QStringList& columnNames, bool bCostCriterion);
 
 protected:
 	otb::MultiParser::Pointer mParser;
 	QAbstractItemModel* mModel;
+	QList<int>* mRaw2Source;
+
 
 	bool mbRowFilter;
 	bool mSelectionModeOn;
 	//QList<QPair<int, int> > mOutputSelection;
 	//QList<QPair<int, int> >	mInputSelection;
+	std::vector<int> mOutputSrcSelIndices;
+	long mNumSel;
+	//QList<int> mOutputProxySelIndices;
 	QItemSelection mOutputSelection;
 	QItemSelection mInputSelection;
 

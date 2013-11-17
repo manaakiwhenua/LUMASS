@@ -24,6 +24,9 @@
 #include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
 
+#include <algorithm>
+#include <vector>
+
 #include <QItemSelectionRange>
 
 NMSelectableSortFilterProxyModel::NMSelectableSortFilterProxyModel(
@@ -176,7 +179,7 @@ NMSelectableSortFilterProxyModel::setSourceModel(QAbstractItemModel* sourceModel
 	const int nrows = mSourceModel->rowCount(QModelIndex());
 	mProxy2Source.clear();  mProxy2Source.reserve(nrows);
 	mSource2Proxy.clear();  mSource2Proxy.reserve(nrows);
-	mHiddenSource.clear();  mHiddenSource.reserve(nrows);
+	mRaw2Source.clear();  mRaw2Source.reserve(nrows);
 	mFilter2Proxy.clear();
 
 	for (int i=0; i < nrows; ++i)
@@ -184,7 +187,7 @@ NMSelectableSortFilterProxyModel::setSourceModel(QAbstractItemModel* sourceModel
 		mProxy2Source << i;
 		mSource2Proxy << i;
 		mSource2Raw << i;
-		mHiddenSource << false;
+		mRaw2Source << i;
 	}
 	mNumHidden = 0;
 
@@ -247,19 +250,31 @@ NMSelectableSortFilterProxyModel::hideSource(const QList<int>& rows)
 	if (this->mSourceModel == 0)
 		return;
 
-	const int nrows = rows.size();
+	const int& nrows = rows.size();
 	for (int i=0; i < nrows; ++i)
 	{
-		if (rows.at(i) < 0 || rows.at(i) > mHiddenSource.size()-1)
+		if (rows.at(i) < 0 || rows.at(i) > mRaw2Source.size()-1)
 			continue;
 
-		if (!mHiddenSource.at(rows.at(i)))
+		const int& src = mRaw2Source.at(rows.at(i));
+		if (src != -1)
 		{
-			mHiddenSource[rows.at(i)] = true;
+			mRaw2Source[rows.at(i)] = -1;
+			if (src > 0 && src < mSource2Raw.size())
+			{
+				if (src == mSource2Raw.at(src))
+				{
+					mSource2Raw.erase(mSource2Raw.begin() + src);
+					const int& proxy = mSource2Proxy.at(src);
+					mSource2Proxy.erase(mSource2Proxy.begin() + src);
+					mProxy2Source.erase(mProxy2Source.begin() + proxy);
+				}
+			}
 			++mNumHidden;
 		}
 	}
-	resetMapping();
+	//resetMapping();
+	this->clearFilter();
 
 	emit this->reset();
 }
@@ -312,7 +327,7 @@ NMSelectableSortFilterProxyModel::setHeaderData(int section,
 void
 NMSelectableSortFilterProxyModel::resetMapping(void)
 {
-	const int nrows = mHiddenSource.size();
+	const int nrows = mRaw2Source.size();
 	// we've got to clear everything here, since it might all change
 	  mSource2Raw.clear();    mSource2Raw.reserve(nrows);
 	mProxy2Source.clear();  mProxy2Source.reserve(nrows);
@@ -321,7 +336,7 @@ NMSelectableSortFilterProxyModel::resetMapping(void)
 
 	for (int i=0, row=0; i < nrows; ++i)
 	{
-		if (mHiddenSource[i])
+		if (mRaw2Source.at(i) == -1)
 			continue;
 
 		mSource2Raw << i;
@@ -334,26 +349,32 @@ NMSelectableSortFilterProxyModel::resetMapping(void)
 void
 NMSelectableSortFilterProxyModel::showSource(const QList<int>& rows)
 {
-	if (this->mSourceModel == 0)
+	if (	this->mSourceModel == 0
+		||  rows.size() == 0)
 		return;
 
-	const int nrows = rows.size();
-
-	//emit beginResetModel();
+	const int& nrows = rows.size();
 	for (int i=0; i < nrows; ++i)
 	{
-		if (rows.at(i) < 0 || rows.at(i) > mHiddenSource.size()-1)
+		const int& showsrc = rows.at(i);
+		if (showsrc < 0 || showsrc > mRaw2Source.size()-1)
 			continue;
 
-		if (mHiddenSource.at(rows.at(i)))
+		if (mRaw2Source.at(showsrc) == -1)
 		{
-			mHiddenSource[rows.at(i)] = false;
+			beginInsertRows(QModelIndex(), showsrc, showsrc);
+			mSource2Raw.insert(showsrc, showsrc);
+			const int& s2pi = mProxy2Source.size();
+			mProxy2Source.push_back(showsrc);
+			mSource2Proxy.insert(showsrc, s2pi);
+			mRaw2Source[showsrc] = showsrc;
+			endInsertRows();
 			--mNumHidden;
 		}
 	}
 
-	resetMapping();
-	emit this->reset();
+	//resetMapping();
+	//emit this->reset();
 }
 
 void
@@ -440,17 +461,17 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 
 	int start = -1;
 	int end = -1;
-	for (int i=0; i < this->mHiddenSource.size(); ++i)
+	for (int i=0; i < this->mRaw2Source.size(); ++i)
 	{
 		// inside a selection
-		if (!mHiddenSource.at(i))
+		if (!mRaw2Source.at(i))
 		{
 			// if we haven't got a selection range, we start a new one
 			if (start == -1)
 			{
 				start = i;
 				end = -1;
-				if (i == this->mHiddenSource.size()-1)
+				if (i == this->mRaw2Source.size()-1)
 				{
 					QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
 					srcSel.select(sidx, sidx);
@@ -463,7 +484,7 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 				end = i;
 				// in case this is the last row, we complete the selection range
 				// and add it to the ItemSelection
-				if (i == this->mHiddenSource.size()-1)
+				if (i == this->mRaw2Source.size()-1)
 				{
 					QModelIndex sidx = this->mSourceModel->index(start, 0, QModelIndex());
 					QModelIndex eidx = this->mSourceModel->index(end, 0, QModelIndex());
@@ -573,89 +594,200 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 }
 
 
-QItemSelection
-NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &sourceSelection) const
+void
+NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<int>& list,
+		QItemSelection& isel) const
 {
-	//NMDebugCtx(ctxSelSortFilter, << "...");
-
-	QItemSelection proxySel;
-	if (mSourceModel == 0 || sourceSelection.count() == 0)
-		return proxySel;
-
-	const int nrows = this->mProxy2Source.size();
+	const int& nrows = list.size();
 	int start = -1;
 	int end = -1;
-	for (int i=0; i < nrows; ++i)
+	for (int r=0; r < nrows; ++r)
 	{
-		const QModelIndex idx = this->createIndex(mProxy2Source.at(i), 0, 0);
-		//const QModelIndex idx = this->mapToSource(_idx);
-
-		//NMDebugAI(<< "proxy-id: " << i << " source-id: " << idx.row() << std::endl);
-
-		// inside a selection
-		if (sourceSelection.contains(idx))
+		// we start a new range
+		if (start == -1)
 		{
-			//NMDebugAI(<< "detected selection at: proxy=" << i << " source=" << idx.row() << std::endl);
-
-			// if we haven't got a selection range started yet, we do it now
-			if (start == -1)
+			start = list.at(r);
+			end = -1;
+			// in case there's just one item selected
+			if (r == nrows-1)
 			{
-				start = i;
-				end = -1;
-				if (i == nrows-1)
-				{
-					QModelIndex sidx = this->createIndex(start, 0, 0);
-					proxySel.select(sidx, sidx);
-
-					start = -1;
-				}
+				QModelIndex sidx = this->createIndex(start, 0, 0);
+				isel.append(QItemSelectionRange(sidx));
 			}
-			// if we've got already a selection range, we extend its end
-			else //if (start != -1)
+		}
+		// if we're already in a selection range
+		else
+		{
+			// if there's an end set already
+			if (end != -1)
 			{
-				end = i;
-				// in case this is the last row, we complete the selection range
-				// and add it to the ItemSelection
-				if (i == nrows-1)
+				// row is adjacent and not last row -> expansion of selection range
+				if (	list.at(r) == end + 1
+					&&  r < nrows - 1)
+				{
+					++end;
+				}
+				// -> end of selection range
+				else
 				{
 					QModelIndex sidx = this->createIndex(start, 0, 0);
 					QModelIndex eidx = this->createIndex(end, 0, 0);
-					proxySel.select(sidx, eidx);
+					isel.append(QItemSelectionRange(sidx, eidx));
+					start = -1;
+					end = -1;
+				}
+			}
+			// if we haven't set an end yet
+			else
+			{
+				// row is adjacent and not last row -> expansion of selection range
+				if (	list.at(r) == start + 1
+					&&	r < nrows - 1)
+				{
+					end = list.at(r);
+				}
+				// -> one item selection
+				else
+				{
+					QModelIndex sidx = this->createIndex(start, 0, 0);
+					isel.append(QItemSelectionRange(sidx));
+					start = -1;
+					end = -1;
 				}
 			}
 		}
-		// we're currently not in a selection
-		else
+	}
+}
+
+
+QItemSelection
+NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &sourceSelection) const
+{
+	NMDebugCtx(ctxSelSortFilter, << "...");
+	QItemSelection isel;
+	if (sourceSelection.size() == 0)
+	{
+		NMDebugAI(<< "Input selection is empty." << std::endl);
+		NMDebugCtx(ctxSelSortFilter, << "done!");
+		return isel;
+	}
+
+	// create sorted list of selected proxy indices
+	std::vector<int> selidx;//(mProxy2Source.size());
+	NMDebugAI(<< "map source indices to proxies ..." << std::endl);
+	foreach(const QItemSelectionRange& r, sourceSelection)
+	{
+		for(int row=r.top(); row <= r.bottom(); ++row)
 		{
-			// if we've got a valid end index, we
-			// complete the selection range and add it to the
-			// ItemSelection
-			if (end != -1)
-			{
-				QModelIndex sidx = this->createIndex(start, 0, 0);
-				QModelIndex eidx = this->createIndex(end, 0, 0);
-				proxySel.select(sidx, eidx);
-
-				start = -1;
-				end = -1;
-			}
-			// we've got a single item selection, denoted just by the start index
-			else if (start != -1)
-			{
-				QModelIndex sidx = this->createIndex(start, 0, 0);
-				proxySel.select(sidx, sidx);
-
-				start = -1;
-				end = -1;
-			}
+			//NMDebugAI(<< "\t" << row << " -> " << mSource2Proxy.at(row) << std::endl);
+			selidx.push_back(mSource2Proxy.at(row));
 		}
 	}
+	NMDebugAI(<< selidx.size() << " rows to sort ... and map ..." << std::endl);
+	if (selidx.size() > 1)
+		std::stable_sort(selidx.begin(), selidx.end());
+
+	// turn list of indices into selection ranges
+	this->itemSelectionFromIndexList(selidx, isel);
+
+	NMDebugCtx(ctxSelSortFilter, << "done!");
+	return isel;
+
+
+	//QItemSelection proxySel;
+	//if (mSourceModel == 0 || sourceSelection.count() == 0)
+	//	return proxySel;
+    //
+	//const int nrows = this->mProxy2Source.size();
+	//int start = -1;
+	//int end = -1;
+	//for (int i=0; i < nrows; ++i)
+	//{
+	//	const QModelIndex idx = this->createIndex(mProxy2Source.at(i), 0, 0);
+	//	//const QModelIndex idx = this->mapToSource(_idx);
+    //
+	//	//NMDebugAI(<< "proxy-id: " << i << " source-id: " << idx.row() << std::endl);
+    //
+	//	// inside a selection
+	//	if (sourceSelection.contains(idx))
+	//	{
+	//		//NMDebugAI(<< "detected selection at: proxy=" << i << " source=" << idx.row() << std::endl);
+    //
+	//		// if we haven't got a selection range started yet, we do it now
+	//		if (start == -1)
+	//		{
+	//			start = i;
+	//			end = -1;
+	//			if (i == nrows-1)
+	//			{
+	//				QModelIndex sidx = this->createIndex(start, 0, 0);
+	//				proxySel.select(sidx, sidx);
+    //
+	//				start = -1;
+	//			}
+	//		}
+	//		// if we've got already a selection range, we extend its end
+	//		else //if (start != -1)
+	//		{
+	//			end = i;
+	//			// in case this is the last row, we complete the selection range
+	//			// and add it to the ItemSelection
+	//			if (i == nrows-1)
+	//			{
+	//				QModelIndex sidx = this->createIndex(start, 0, 0);
+	//				QModelIndex eidx = this->createIndex(end, 0, 0);
+	//				proxySel.select(sidx, eidx);
+	//			}
+	//		}
+	//	}
+	//	// we're currently not in a selection
+	//	else
+	//	{
+	//		// if we've got a valid end index, we
+	//		// complete the selection range and add it to the
+	//		// ItemSelection
+	//		if (end != -1)
+	//		{
+	//			QModelIndex sidx = this->createIndex(start, 0, 0);
+	//			QModelIndex eidx = this->createIndex(end, 0, 0);
+	//			proxySel.select(sidx, eidx);
+    //
+	//			start = -1;
+	//			end = -1;
+	//		}
+	//		// we've got a single item selection, denoted just by the start index
+	//		else if (start != -1)
+	//		{
+	//			QModelIndex sidx = this->createIndex(start, 0, 0);
+	//			proxySel.select(sidx, sidx);
+    //
+	//			start = -1;
+	//			end = -1;
+	//		}
+	//	}
+	//}
 
 	// we store the selection for the show only selected rows filter
 	//mProxySelection = proxySel.indexes();
 
 	//NMDebugCtx(ctxSelSortFilter, << "done!");
-	return proxySel;
+	//return proxySel;
+}
+
+void
+NMSelectableSortFilterProxyModel::printSelRanges(const QItemSelection& selection,
+		const QString& msg) const
+{
+	int total = selection.count();
+	NMDebugAI(<< msg.toStdString() << ": " << total << " indices total" << std::endl);
+	int rcnt = 1;
+	foreach(const QItemSelectionRange& range, selection)
+	{
+		NMDebugAI(<< "   range #" << rcnt << ":  " << range.width()
+				                          << " x " << range.height() << std::endl);
+		NMDebugAI(<< "     rows: " << range.top() << " - " << range.bottom() << std::endl);
+		NMDebug(<< std::endl);
+	}
 }
 
 QItemSelection
@@ -753,7 +885,7 @@ NMSelectableSortFilterProxyModel::mapSelectionToSourceFromRaw(
 		const QModelIndex idx = this->mSourceModel->index(mSource2Raw.at(i), 0, QModelIndex());
 
 		// inside a selection
-		if (rawSelection.contains(idx) && !mHiddenSource.at(mSource2Raw.at(i)))
+		if (rawSelection.contains(idx) && !mRaw2Source.at(mSource2Raw.at(i)))
 		{
 			// if we haven't got a selection range, we start a new one
 			if (start == -1)

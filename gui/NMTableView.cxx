@@ -336,6 +336,8 @@ void NMTableView::updateSelRecsOnly(int state)
 
 void NMTableView::switchSelection()
 {
+	NMDebugCtx(__ctxtabview, << "...");
+
 	mbSwitchSelection = true;
 	if (this->mSelectionModel != 0)
 	{
@@ -343,6 +345,8 @@ void NMTableView::switchSelection()
 		this->mSelectionModel->select(sourceSelection, QItemSelectionModel::Toggle |
 				QItemSelectionModel::Rows);
 	}
+
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void NMTableView::normalise()
@@ -489,10 +493,10 @@ NMTableView::updateSelectionAdmin(const QItemSelection& sel,
 		const QItemSelection& desel)
 {
 	int selcnt = 0;
-	if (this->mSelectionModel)
+	//if (this->mSelectionModel)
 		selcnt = this->mSelectionModel->selectedRows().size();
-	else
-		selcnt = this->mTableView->selectionModel()->selectedRows().size();
+	//else
+		//selcnt = this->mTableView->selectionModel()->selectedRows().size();
 
 	this->mBtnClearSelection->setEnabled(selcnt);
 
@@ -1469,23 +1473,11 @@ NMTableView::selectionQuery(void)
 		return;
 	}
 
-
-	const QItemSelection& srcSel = selector->getSelection();
-	//NMDebugAI(<< "yeah! we've got " << resSel.count() << " selection range(s)!" << std::endl);
-    //
-	//const QItemSelection newSelection = this->mSortFilter->mapSelectionToSourceFromRaw(
-	//		resSel);
-    //
-	//resSel.clear();
-    //
-	////NMDebugAI(<< "... and now we've got only " << newSelection.count() << " selections left!" << std::endl);
-    //
-	this->mSelectionModel->select(srcSel, QItemSelectionModel::ClearAndSelect |
+	this->mSelectionModel->select(selector->getSelection(), QItemSelectionModel::ClearAndSelect |
 			QItemSelectionModel::Rows);
 
 	//CALLGRIND_STOP_INSTRUMENTATION;
 	//CALLGRIND_DUMP_STATS;
-
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -1536,7 +1528,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 	{
 		if (desel.count() > 0)
 		{
-			//this->printSelRanges(desel, "DESEL Source");
+			this->printSelRanges(desel, "DESEL Source");
 			if (this->mChkSelectedRecsOnly->isChecked())
 			{
 				this->updateSelRecsOnly(Qt::Checked);
@@ -1546,7 +1538,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 				//NMDebugAI(<< "we map de-selection from source ..." << std::endl);
 				QItemSelection proxyDeselection = this->mSortFilter->mapSelectionFromSource(desel);
 
-				//this->printSelRanges(proxyDeselection, "Mapped Proxy (Desel)");
+				this->printSelRanges(proxyDeselection, "Mapped Proxy (Desel)");
 				//NMDebugAI(<< "we apply the mapped de-selection to table view ..." << std::endl);
 				this->mTableView->selectionModel()->select(proxyDeselection, QItemSelectionModel::Toggle |
 						QItemSelectionModel::Rows);
@@ -1572,7 +1564,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 				//NMDebugAI(<< "we map selection from source ..." << std::endl);
 				QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(sel);
 
-				//this->printSelRanges(proxySelection, "Mapped Proxy (Sel)");
+				this->printSelRanges(proxySelection, "Mapped Proxy (Sel)");
 				//NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
 				this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Toggle |
 						QItemSelectionModel::Rows);
@@ -1584,8 +1576,8 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 			}
 		}
 
-		this->printSelRanges(this->mTableView->selectionModel()->selection(),
-				QString("current table selection"));
+		//this->printSelRanges(this->mTableView->selectionModel()->selection(),
+		//		QString("current table selection"));
 	}
 }
 

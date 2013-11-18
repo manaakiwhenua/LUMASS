@@ -109,8 +109,8 @@ public:
 	 *        and an unfiltered proxy selection  gets mapped to a source selection
 	 */
 	QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
-	QItemSelection mapSelectionFromSource(const QModelIndexList& sourceList) const;
-	QItemSelection mapSelectionToSourceFromRaw(const QItemSelection& rawSelection) const;
+	//QItemSelection mapSelectionFromSource(const QModelIndexList& sourceList) const;
+	//QItemSelection mapSelectionToSourceFromRaw(const QItemSelection& rawSelection) const;
 	QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
 	void itemSelectionFromIndexList(const std::vector<int>& list, QItemSelection& isel) const;
 

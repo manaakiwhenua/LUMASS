@@ -679,13 +679,14 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	// feed the parser with numeric variables and values
 	bool bok = true;
 	int fcnt=0;
+	std::vector<double> funcvals(this->mFuncVars.size());
 	foreach(const QString &colName, this->mFuncVars)
 	{
 		QModelIndex fieldidx = this->mModel->index(row, mFuncFields.at(fcnt), QModelIndex());
-		double value = this->mModel->data(fieldidx, Qt::DisplayRole).toDouble(&bok);
+		funcvals[fcnt] = this->mModel->data(fieldidx, Qt::DisplayRole).toDouble(&bok);
 		if (bok)
 		{
-			this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(), &value);
+			this->mParser->DefineVar(this->mFuncVars.at(fcnt).toStdString(), &funcvals[fcnt]);
 		}
 		else
 		{
@@ -698,7 +699,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		//if (row==0) {NMDebugAI(<< "setting numeric variable: "
 		//		<< this->mFuncVars.at(fcnt).toStdString() << std::endl);}
 
-		NMDebug(<< colName.toStdString() << "=" << value << " ");
+		NMDebug(<< colName.toStdString() << "=" << funcvals[fcnt] << " ");
 		++fcnt;
 	}
 	//if (!bok)
@@ -808,6 +809,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	try
 	{
 		this->mParser->SetExpr(newFunc.toStdString());
+		//this->mParser->Print(std::cout, itk::Indent(0));
 		res = this->mParser->Eval();
 	}
 	catch(itk::ExceptionObject& err)

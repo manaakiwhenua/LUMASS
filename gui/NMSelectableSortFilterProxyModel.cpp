@@ -702,7 +702,7 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 	{
 		for(int row=r.top(); row <= r.bottom(); ++row)
 		{
-			NMDebugAI(<< "\t" << row << " -> " << mSource2Proxy.at(row) << std::endl);
+			//NMDebugAI(<< "\t" << row << " -> " << mSource2Proxy.at(row) << std::endl);
 			selidx.push_back(mSource2Proxy.at(row));
 		}
 	}

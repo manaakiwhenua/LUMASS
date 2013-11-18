@@ -871,45 +871,42 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	//NMDebugAI(<< "create a dummy table ..." << std::endl);
-	//otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
-	//tab->AddColumn("Col1", otb::AttributeTable::ATTYPE_INT);
-	//tab->AddColumn("Col2", otb::AttributeTable::ATTYPE_INT);
-	//for(int i=0; i < 10; ++i)
-	//{
-	//	tab->AddRow();
-	//	tab->SetValue(0, i, (long)i);
-	//	tab->SetValue(1, i, (long)(i+1)*10);
-	//}
-    //
-	//NMDebugAI(<< "initial test table ..." << endl);
-	//tab->PrintStructure(std::cout, itk::Indent(0));
-	//NMDebug(<< std::endl);
-    //
-	//NMDebugAI(<< "adding a string, double, and int column ...");
-	//tab->AddColumn("StringAdd1", otb::AttributeTable::ATTYPE_STRING);
-	//tab->AddColumn("StringAdd2", otb::AttributeTable::ATTYPE_STRING);
-	//tab->AddColumn("DoubleAdd", otb::AttributeTable::ATTYPE_DOUBLE);
-	//tab->AddColumn("DoubleAdd2", otb::AttributeTable::ATTYPE_DOUBLE);
-	//tab->AddColumn("INTAdd", otb::AttributeTable::ATTYPE_INT);
-	//tab->PrintStructure(std::cout, itk::Indent(0));
-	//NMDebug(<< std::endl);
-    //
-	//NMDebugAI(<< "removing a columns from the middle (StringAdd1, DoubleAdd) ...");
-	//tab->RemoveColumn("StringAdd2");
-	//tab->RemoveColumn("DoubleAdd");
-	//tab->PrintStructure(std::cout, itk::Indent(0));
-	//NMDebug(<< std::endl);
-    //
-	//NMDebugAI(<< "Setting string and int values ...	");
-	//for (int i=4; i < 8; ++i)
-	//	tab->SetValue("StringAdd1", i, "Banane");
-    //
-	//for (int i=0; i < 10; ++i)
-	//	tab->SetValue("DoubleAdd2", i, (double)(i+10)/2.0);
-    //
-	//tab->Print(std::cout, itk::Indent(0), 10);
-	//NMDebug(<< std::endl);
+	NMDebugAI(<< "create a dummy table ..." << std::endl);
+	otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
+	tab->AddColumn("rowidx", otb::AttributeTable::ATTYPE_INT);
+	tab->AddColumn("Green", otb::AttributeTable::ATTYPE_DOUBLE);
+	for(int r=0; r < 6; ++r)
+	{
+		tab->AddRow();
+	}
+	tab->SetValue(0, 0, (long)0); tab->SetValue(1, 0, 0.0);
+	tab->SetValue(0, 1, (long)1); tab->SetValue(1, 1, 0.74902);
+	tab->SetValue(0, 2, (long)2); tab->SetValue(1, 2, 1.0);
+	tab->SetValue(0, 3, (long)3); tab->SetValue(1, 3, 1.0);
+	tab->SetValue(0, 4, (long)4); tab->SetValue(1, 4, 0.0);
+	tab->SetValue(0, 5, (long)5); tab->SetValue(1, 5, 0.801);
+
+	tab->Print(std::cout, itk::Indent(0), 6);
+
+	otb::MultiParser::Pointer parser = otb::MultiParser::New();
+	std::string expr = "rowidx < 5 && Green > 0.5";
+	NMDebugAI(<< expr << std::endl);
+	parser->SetExpr(expr);
+	double value;
+	double res;
+	for (int r = 0; r < 6; ++r)
+	{
+		value = tab->GetDblValue(0, r);
+		NMDebugAI( << value << " < 5 && ");
+		parser->DefineVar("rowidx", &value);
+
+		value = tab->GetDblValue(1, r);
+		NMDebug(<< value << " > 0.5 = ");
+		parser->DefineVar("Green", &value);
+
+		double res = parser->Eval();
+		NMDebug(<< res << std::endl);
+	}
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

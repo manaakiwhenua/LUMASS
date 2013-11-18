@@ -72,55 +72,55 @@ NMTableCalculator::~NMTableCalculator()
 {
 }
 
-QItemSelection
+const QItemSelection*
 NMTableCalculator::getSelection(void)
 {
 	//std::stable_sort(mOutputSrcSelIndices.begin(), mOutputSrcSelIndices.end());
 
-	QItemSelection isel;
-	const int& nrows = mOutputSrcSelIndices.size();
-	if (nrows == 0)
-		return isel;
-
-
-	NMDebugAI(<< "TableCalc::getSelection(): processing #" << nrows << " selections ... ");
-
-	int start = mOutputSrcSelIndices.at(0);
-	int end   = start;
-	for (int r=0; r < nrows; ++r)
-	{
-		// expansion of selection range
-		if (mOutputSrcSelIndices.at(r) == end + 1)
-		{
-			++end;
-
-			if (r == nrows -1)
-			{
-				QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-				QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-				isel.append(QItemSelectionRange(sidx, eidx));
-			}
-		}
-		else
-		{
-			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-			QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-			isel.append(QItemSelectionRange(sidx, eidx));
-
-			start = mOutputSrcSelIndices.at(r);
-			end   = start;
-
-			// end of selection range
-			if (r == nrows -1 && nrows > 1)
-			{
-				QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-				QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-				isel.append(QItemSelectionRange(sidx, eidx));
-			}
-		}
-	}
-	NMDebug(<< "done!" << std::endl);
-	return isel;
+	QItemSelection& isel = mOutputSelection;
+	//const int& nrows = mOutputSrcSelIndices.size();
+	//if (nrows == 0)
+	//	return isel;
+    //
+    //
+	//NMDebugAI(<< "TableCalc::getSelection(): processing #" << nrows << " selections ... ");
+    //
+	//int start = mOutputSrcSelIndices.at(0);
+	//int end   = start;
+	//for (int r=0; r < nrows; ++r)
+	//{
+	//	// expansion of selection range
+	//	if (mOutputSrcSelIndices.at(r) == end + 1)
+	//	{
+	//		++end;
+    //
+	//		if (r == nrows -1)
+	//		{
+	//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+	//			QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+	//			isel.append(QItemSelectionRange(sidx, eidx));
+	//		}
+	//	}
+	//	else
+	//	{
+	//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+	//		QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+	//		isel.append(QItemSelectionRange(sidx, eidx));
+    //
+	//		start = mOutputSrcSelIndices.at(r);
+	//		end   = start;
+    //
+	//		// end of selection range
+	//		if (r == nrows -1 && nrows > 1)
+	//		{
+	//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+	//			QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+	//			isel.append(QItemSelectionRange(sidx, eidx));
+	//		}
+	//	}
+	//}
+	//NMDebug(<< "done!" << std::endl);
+	return &isel;
 }
 
 bool NMTableCalculator::setResultColumn(const QString& name)
@@ -532,16 +532,19 @@ NMTableCalculator::doNumericCalcSelection()
 	if (this->mSelectionModeOn)
 	{
 		mOutputSrcSelIndices.clear();
+		mOutputSelection.clear();
 		//mOutputSrcSelIndices.resize(mRaw2Source->size(),-1);
 		mNumSel = 0;
 	}
 
+	QItemSelection& isel = mOutputSelection;
 	if (this->mbRowFilter)
 	{
 		foreach(const QItemSelectionRange& range, this->mInputSelection)
 		{
 			const int top = range.top();
 			const int bottom = range.bottom();
+			const int nrows = bottom - top + 1;
 			int start = -1;
 			int end = -1;
 			bool selected;
@@ -551,57 +554,56 @@ NMTableCalculator::doNumericCalcSelection()
 					continue;
 
 				this->processNumericCalcSelection(row, &selected);
-				//if (selected)
-				//{
-				//	if (start == -1)
-				//	{
-				//		start = row;
-				//		end = -1;
-				//		if (top == bottom)
-				//		{
-				//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-				//			mOutputSelection.append(QItemSelectionRange(sidx, sidx));
-                //
-				//			start = -1;
-				//		}
-				//	}
-				//	else
-				//	{
-				//		end = row;
-				//		if (row == bottom)
-				//		{
-				//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-				//			QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-				//			mOutputSelection.append(QItemSelectionRange(sidx, eidx));
-				//		}
-				//	}
-				//}
-				//else
-				//{
-				//	if (end != -1)
-				//	{
-				//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-				//		QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-				//		mOutputSelection.append(QItemSelectionRange(sidx, eidx));
-                //
-				//		start = -1;
-				//		end = -1;
-				//	}
-				//	else if (start != -1)
-				//	{
-				//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-				//		mOutputSelection.append(QItemSelectionRange(sidx, sidx));
-                //
-				//		start = -1;
-				//		end = -1;
-				//	}
-				//}
+				if (selected)
+				{
+					if (start == -1)
+					{
+						start = row;
+						end   = -1;
+
+						if (row == bottom)
+						{
+							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+							isel.append(QItemSelectionRange(sidx));
+						}
+					}
+					// expansion of selection range
+					else if (row == end + 1)
+					{
+						++end;
+
+						if (row == bottom)
+						{
+							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+							QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+							isel.append(QItemSelectionRange(sidx, eidx));
+						}
+					}
+					else
+					{
+						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+						isel.append(QItemSelectionRange(sidx, eidx));
+
+						start = row;
+						end   = start;
+
+						// end of selection range
+						if (row == bottom && nrows > 1)
+						{
+							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+							QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+							isel.append(QItemSelectionRange(sidx, eidx));
+						}
+					}
+				}
 			}
 		}
 	}
 	else
 	{
 		const int& nrows = this->mModel->rowCount(QModelIndex());
+		const int& bottom = nrows-1;
 		int start = -1;
 		int end = -1;
 		bool selected;
@@ -611,51 +613,49 @@ NMTableCalculator::doNumericCalcSelection()
 				continue;
 
 			this->processNumericCalcSelection(row, &selected);
-			//if (selected)
-			//{
-			//	if (start == -1)
-			//	{
-			//		start = row;
-			//		end = -1;
-			//		if (row == nrows-1)
-			//		{
-			//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-			//			mOutputSelection.append(QItemSelectionRange(sidx, sidx));
-            //
-			//			start = -1;
-			//		}
-			//	}
-			//	else
-			//	{
-			//		end = row;
-			//		if (row == nrows-1)
-			//		{
-			//			QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-			//			QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-			//			mOutputSelection.append(QItemSelectionRange(sidx, eidx));
-			//		}
-			//	}
-			//}
-			//else
-			//{
-			//	if (end != -1)
-			//	{
-			//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-			//		QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
-			//		mOutputSelection.append(QItemSelectionRange(sidx, eidx));
-            //
-			//		start = -1;
-			//		end = -1;
-			//	}
-			//	else if (start != -1)
-			//	{
-			//		QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-			//		mOutputSelection.append(QItemSelectionRange(sidx, sidx));
-            //
-			//		start = -1;
-			//		end = -1;
-			//	}
-			//}
+			if (selected)
+			{
+				if (start == -1)
+				{
+					start = row;
+					end   = -1;
+
+					if (row == bottom)
+					{
+						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+						isel.append(QItemSelectionRange(sidx));
+					}
+				}
+				// expansion of selection range
+				else if (row == end + 1)
+				{
+					++end;
+
+					if (row == bottom)
+					{
+						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+						isel.append(QItemSelectionRange(sidx, eidx));
+					}
+				}
+				else
+				{
+					QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+					QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+					isel.append(QItemSelectionRange(sidx, eidx));
+
+					start = row;
+					end   = start;
+
+					// end of selection range
+					if (row == bottom && nrows > 1)
+					{
+						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+						isel.append(QItemSelectionRange(sidx, eidx));
+					}
+				}
+			}
 		}
 	}
 	//mOutputSrcSelIndices.resize(mNumSel);
@@ -666,15 +666,13 @@ NMTableCalculator::doNumericCalcSelection()
 void
 NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 {
-	//CALLGRIND_START_INSTRUMENTATION;
-
 	double res;
 	QString newFunc;
 	QString strFieldVal;
 	int strExpRes;
 	*selected = false;
 
-	NMDebug(<< "row #" << row << " ");
+	//NMDebug(<< "row #" << row << " ");
 
 	// feed the parser with numeric variables and values
 	bool bok = true;
@@ -699,7 +697,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		//if (row==0) {NMDebugAI(<< "setting numeric variable: "
 		//		<< this->mFuncVars.at(fcnt).toStdString() << std::endl);}
 
-		NMDebug(<< colName.toStdString() << "=" << funcvals[fcnt] << " ");
+		//NMDebug(<< colName.toStdString() << "=" << funcvals[fcnt] << " ");
 		++fcnt;
 	}
 	//if (!bok)
@@ -720,8 +718,6 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		QString origTerm = this->mslStrTerms.at(t);
 		//if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
 
-		//vtkStringArray* leftField = this->mLstLstStrFields.at(t).at(0);
-		//vtkStringArray* rightField = this->mLstLstStrFields.at(t).at(1);
 		int idxleft = this->mLstLstStrFields.at(t).at(0);
 		int idxright = this->mLstLstStrFields.at(t).at(1);
 		QString left;
@@ -809,7 +805,6 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	try
 	{
 		this->mParser->SetExpr(newFunc.toStdString());
-		//this->mParser->Print(std::cout, itk::Indent(0));
 		res = this->mParser->Eval();
 	}
 	catch(itk::ExceptionObject& err)
@@ -818,9 +813,6 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		NMDebugCtx(ctxTabCalc, << "done!");
 
 		throw err;
-		//CALLGRIND_STOP_INSTRUMENTATION;
-		//CALLGRIND_DUMP_STATS;
-
 		return;
 	}
 
@@ -829,10 +821,10 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	{
 		if (res != 0)
 		{
-			mOutputSrcSelIndices.push_back(row);
+			//mOutputSrcSelIndices.push_back(row);
 			++mNumSel;
 
-			NMDebug(<< " -> = " << res << std::endl);
+			//NMDebug(<< " -> = " << res << std::endl);
 
 			//if (mSource2Proxy)
 			//	mOutputProxySelIndices << mSource2Proxy.at(row);
@@ -844,7 +836,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		QModelIndex resIdx = this->mModel->index(row, this->mResultColumnIndex, QModelIndex());
 		this->mModel->setData(resIdx, QVariant(res));
 	}
-	NMDebug(<< std::endl);
+	//NMDebug(<< std::endl);
 
 	//CALLGRIND_STOP_INSTRUMENTATION;
 	//CALLGRIND_DUMP_STATS;

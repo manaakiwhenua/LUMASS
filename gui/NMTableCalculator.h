@@ -83,7 +83,7 @@ public:
 	bool calculate(void);
 
 	//const QItemSelection& getSource
-	QItemSelection getSelection(void);
+	const QItemSelection* getSelection(void);
 	std::vector<double> calcColumnStats(const QString& column);
 	QStringList normaliseColumns(const QStringList& columnNames, bool bCostCriterion);
 
@@ -98,6 +98,7 @@ protected:
 	//QList<QPair<int, int> > mOutputSelection;
 	//QList<QPair<int, int> >	mInputSelection;
 	std::vector<int> mOutputSrcSelIndices;
+
 	long mNumSel;
 	//QList<int> mOutputProxySelIndices;
 	QItemSelection mOutputSelection;

@@ -461,19 +461,19 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 	if (mSourceModel == 0)
 		return srcSel;
 
-	NMDebugAI(<< "generate index list ...");
-	std::vector<int> srcidx;
-	for (int i=0; i < mProxy2Source.size(); ++i)
-		srcidx.push_back(mProxy2Source.at(i));
-	NMDebug( << " -> " << srcidx.size() << " items" << std::endl);
+	//NMDebugAI(<< "generate index list ...");
+	std::vector<int> srcidx(mSource2Raw.size());
+	for (int i=0; i < mSource2Raw.size(); ++i)
+		srcidx[i] = mSource2Raw.at(i);
+	//NMDebug( << " -> " << srcidx.size() << " items" << std::endl);
 
-	NMDebugAI(<< "sorting list ... ");
-	std::stable_sort(srcidx.begin(), srcidx.end());
-	NMDebug(<< "got " << srcidx.size() << " sorted items" << std::endl);
+	//NMDebugAI(<< "sorting list ... ");
+	//std::stable_sort(srcidx.begin(), srcidx.end());
+	//NMDebug(<< "got " << srcidx.size() << " sorted items" << std::endl);
 
-	NMDebugAI(<< "convert list to item selection (range list) ... " << std::endl);
+	//NMDebugAI(<< "convert list to item selection (range list) ... " << std::endl);
 	this->itemSelectionFromIndexList(srcidx, srcSel);
-	this->printSelRanges(srcSel, "Source selection ranges ...");
+	//this->printSelRanges(srcSel, "Source selection ranges ...");
 
 	NMDebugCtx(ctxSelSortFilter, << "done!");
 	return srcSel;
@@ -544,6 +544,7 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 QItemSelection
 NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& proxySelection) const
 {
+	NMDebugCtx(ctxSelSortFilter, << "...");
 	QItemSelection srcSel;
 	if (mSourceModel == 0 || proxySelection.count() == 0)
 		return srcSel;
@@ -560,6 +561,7 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 		std::stable_sort(srcidx.begin(), srcidx.end());
 	this->itemSelectionFromIndexList(srcidx, srcSel);
 
+	NMDebugCtx(ctxSelSortFilter, << "done!");
 	return srcSel;
 
 	//const int nrows = mSource2Proxy.size();
@@ -653,7 +655,7 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 				QModelIndex sidx = this->createIndex(start, 0, 0);
 				QModelIndex eidx = this->createIndex(end, 0, 0);
 				isel.append(QItemSelectionRange(sidx, eidx));
-				NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
+				//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
 				numsel += (end-start+1);
 			}
 		}
@@ -662,7 +664,7 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 			QModelIndex sidx = this->createIndex(start, 0, 0);
 			QModelIndex eidx = this->createIndex(end, 0, 0);
 			isel.append(QItemSelectionRange(sidx, eidx));
-			NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
+			//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
 			numsel += (end-start+1);
 
 			start = list.at(r);
@@ -673,12 +675,12 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 				QModelIndex sidx = this->createIndex(start, 0, 0);
 				QModelIndex eidx = this->createIndex(end, 0, 0);
 				isel.append(QItemSelectionRange(sidx, eidx));
-				NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
+				//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
 				numsel += (end-start+1);
 			}
 		}
 	}
-	NMDebugAI(<< "selected " << numsel << " rows in total!" << std::endl);
+	//NMDebugAI(<< "selected " << numsel << " rows in total!" << std::endl);
 	NMDebugCtx(ctxSelSortFilter, << "done!");
 }
 
@@ -697,7 +699,7 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 
 	// create sorted list of selected proxy indices
 	std::vector<int> selidx;//(mProxy2Source.size());
-	NMDebugAI(<< "map source indices to proxies ..." << std::endl);
+	//NMDebugAI(<< "map source indices to proxies ..." << std::endl);
 	foreach(const QItemSelectionRange& r, sourceSelection)
 	{
 		for(int row=r.top(); row <= r.bottom(); ++row)
@@ -706,7 +708,7 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 			selidx.push_back(mSource2Proxy.at(row));
 		}
 	}
-	NMDebugAI(<< selidx.size() << " rows to sort ... and map ..." << std::endl);
+	//NMDebugAI(<< selidx.size() << " rows to sort ... and map ..." << std::endl);
 	if (selidx.size() > 1)
 		std::stable_sort(selidx.begin(), selidx.end());
 
@@ -968,7 +970,7 @@ NMSelectableSortFilterProxyModel::printSelRanges(const QItemSelection& selection
 void
 NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
 {
-	//NMDebugCtx(ctxSelSortFilter, << "...");
+	NMDebugCtx(ctxSelSortFilter, << "...");
 
 	if (this->mSourceModel == 0)
 	{
@@ -1024,7 +1026,7 @@ NMSelectableSortFilterProxyModel::sort(int column, Qt::SortOrder order)
 	emit layoutChanged();
 
 
-	//NMDebugCtx(ctxSelSortFilter, << "done!");
+	NMDebugCtx(ctxSelSortFilter, << "done!");
 }
 
 

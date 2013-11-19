@@ -6,6 +6,7 @@ INCLUDE_DIRECTORIES(
 	${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
 	${utils_SOURCE_DIR}/QtPropertyBrowser/src
+	#${utils_SOURCE_DIR}/Qt
 	${NMVtk_SOURCE_DIR}
 	${GDALRATImageIO_SOURCE_DIR}
 	${gui_SOURCE_DIR}

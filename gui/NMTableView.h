@@ -140,6 +140,7 @@ protected slots:
 	void updateSelRecsOnly(int state);
 	void updateSelectionAdmin(const QItemSelection&
 			selected, const QItemSelection& deselected);
+	void updateSelectionAdmin(long numSel);
 protected:
 
 	void initView();

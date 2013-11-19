@@ -637,6 +637,7 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 	//NMDebugCtx(ctxSelSortFilter, << "...");
 	int numsel = 0;
 	const int& nrows = list.size();
+	const int& maxcolid = this->mSourceModel->columnCount()-1;
 	if (nrows == 0)
 		return;
 
@@ -653,7 +654,7 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 			if (r == nrows-1)
 			{
 				QModelIndex sidx = this->createIndex(start, 0, 0);
-				QModelIndex eidx = this->createIndex(end, 0, 0);
+				QModelIndex eidx = this->createIndex(end, maxcolid, 0);
 				isel.append(QItemSelectionRange(sidx, eidx));
 				//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
 				numsel += (end-start+1);
@@ -662,7 +663,7 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 		else
 		{
 			QModelIndex sidx = this->createIndex(start, 0, 0);
-			QModelIndex eidx = this->createIndex(end, 0, 0);
+			QModelIndex eidx = this->createIndex(end, maxcolid, 0);
 			isel.append(QItemSelectionRange(sidx, eidx));
 			//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
 			numsel += (end-start+1);
@@ -673,7 +674,7 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 			if (r == nrows-1 && nrows > 1)
 			{
 				QModelIndex sidx = this->createIndex(start, 0, 0);
-				QModelIndex eidx = this->createIndex(end, 0, 0);
+				QModelIndex eidx = this->createIndex(end, maxcolid, 0);
 				isel.append(QItemSelectionRange(sidx, eidx));
 				//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
 				numsel += (end-start+1);

@@ -538,6 +538,7 @@ NMTableCalculator::doNumericCalcSelection()
 	}
 
 	QItemSelection& isel = mOutputSelection;
+	const int maxcolidx = this->mModel->columnCount()-1;
 	if (this->mbRowFilter)
 	{
 		foreach(const QItemSelectionRange& range, this->mInputSelection)
@@ -564,7 +565,8 @@ NMTableCalculator::doNumericCalcSelection()
 						if (row == bottom)
 						{
 							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-							isel.append(QItemSelectionRange(sidx));
+							QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
+							isel.append(QItemSelectionRange(sidx, eidx));
 						}
 					}
 					// expansion of selection range
@@ -575,14 +577,14 @@ NMTableCalculator::doNumericCalcSelection()
 						if (row == bottom)
 						{
 							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-							QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+							QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
 							isel.append(QItemSelectionRange(sidx, eidx));
 						}
 					}
 					else
 					{
 						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+						QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
 						isel.append(QItemSelectionRange(sidx, eidx));
 
 						start = row;
@@ -592,7 +594,7 @@ NMTableCalculator::doNumericCalcSelection()
 						if (row == bottom && nrows > 1)
 						{
 							QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-							QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+							QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
 							isel.append(QItemSelectionRange(sidx, eidx));
 						}
 					}
@@ -623,7 +625,8 @@ NMTableCalculator::doNumericCalcSelection()
 					if (row == bottom)
 					{
 						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						isel.append(QItemSelectionRange(sidx));
+						QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
+						isel.append(QItemSelectionRange(sidx, eidx));
 					}
 				}
 				// expansion of selection range
@@ -634,14 +637,14 @@ NMTableCalculator::doNumericCalcSelection()
 					if (row == bottom)
 					{
 						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+						QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
 						isel.append(QItemSelectionRange(sidx, eidx));
 					}
 				}
 				else
 				{
 					QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-					QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+					QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
 					isel.append(QItemSelectionRange(sidx, eidx));
 
 					start = row;
@@ -651,7 +654,7 @@ NMTableCalculator::doNumericCalcSelection()
 					if (row == bottom && nrows > 1)
 					{
 						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
-						QModelIndex eidx = this->mModel->index(end, 0, QModelIndex());
+						QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
 						isel.append(QItemSelectionRange(sidx, eidx));
 					}
 				}

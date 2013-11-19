@@ -32,7 +32,8 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel,
 	d->ranges.clear();
 	d->currentSelection.clear();
 
-	d->ranges = d->expandSelection(newSel, command);
+	//d->ranges = newSel;
+	d->currentSelection = newSel;
 }
 
 /***********************************************************************************

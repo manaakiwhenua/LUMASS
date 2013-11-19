@@ -84,6 +84,8 @@ public:
 
 	//const QItemSelection& getSource
 	const QItemSelection* getSelection(void);
+	long getSelectionCount(void)
+		{return mNumSel;}
 	std::vector<double> calcColumnStats(const QString& column);
 	QStringList normaliseColumns(const QStringList& columnNames, bool bCostCriterion);
 

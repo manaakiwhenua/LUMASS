@@ -30,6 +30,7 @@
 #include "NMTableView.h"
 #include "NMAddColumnDialog.h"
 #include "NMTableCalculator.h"
+#include "NMFastTrackSelectionModel.h"
 
 #include <QtGui>
 #include <QWidget>
@@ -72,9 +73,19 @@ NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	this->mSortFilter->setSourceModel(mModel);
 
 	if (mbSortEnabled)
+	{
 		this->mTableView->setModel(this->mSortFilter);
+		this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+		this->mTableView->setSelectionModel(mProxySelModel);
+
+	}
 	else
+	{
 		this->mTableView->setModel(mModel);
+		this->mProxySelModel = new NMFastTrackSelectionModel(mModel, this);
+		this->mTableView->setSelectionModel(mProxySelModel);
+	}
+
 
 	//connect(this, SIGNAL(columnsChanged(int, int)),
 	//		mTableView, SLOT(columnCountChanged(int, int)),
@@ -1473,6 +1484,7 @@ NMTableView::selectionQuery(void)
 		return;
 	}
 
+
 	disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
 			                                         const QItemSelection &)),
 			this, SLOT(updateSelectionAdmin(const QItemSelection &,
@@ -1484,16 +1496,22 @@ NMTableView::selectionQuery(void)
 					                        const QItemSelection &)));
 
 
-	this->mSelectionModel->clearSelection();
-	this->mTableView->selectionModel()->clearSelection();
+	NMFastTrackSelectionModel* srcModel = qobject_cast<NMFastTrackSelectionModel*>(this->mSelectionModel);
+	NMFastTrackSelectionModel* proxyModel = qobject_cast<NMFastTrackSelectionModel*>(this->mTableView->selectionModel());
 
 	const QItemSelection* srcSel = selector->getSelection();
 	const QItemSelection& proxySel = this->mSortFilter->mapSelectionFromSource(*srcSel);
 
-	this->mSelectionModel->select(*srcSel, QItemSelectionModel::Select |
-			QItemSelectionModel::Rows);
-	this->mTableView->selectionModel()->select(proxySel, QItemSelectionModel::Select |
-			QItemSelectionModel::Rows);
+	srcModel->setSelection(*srcSel, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+	proxyModel->setSelection(proxySel, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+
+	//this->mSelectionModel->select(*srcSel, QItemSelectionModel::Toggle |
+	//		QItemSelectionModel::Rows);
+	//this->mTableView->selectionModel()->select(proxySel, QItemSelectionModel::Toggle |
+	//		QItemSelectionModel::Rows);
+
+
+
 
 	connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
 			                                         const QItemSelection &)),

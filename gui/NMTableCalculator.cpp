@@ -559,7 +559,7 @@ NMTableCalculator::doNumericCalcSelection()
 					if (start == -1)
 					{
 						start = row;
-						end   = -1;
+						end   = start;
 
 						if (row == bottom)
 						{
@@ -618,7 +618,7 @@ NMTableCalculator::doNumericCalcSelection()
 				if (start == -1)
 				{
 					start = row;
-					end   = -1;
+					end   = start;
 
 					if (row == bottom)
 					{

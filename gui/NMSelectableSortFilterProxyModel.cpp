@@ -544,7 +544,7 @@ NMSelectableSortFilterProxyModel::getSourceSelection(void)
 QItemSelection
 NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& proxySelection) const
 {
-	NMDebugCtx(ctxSelSortFilter, << "...");
+	//NMDebugCtx(ctxSelSortFilter, << "...");
 	QItemSelection srcSel;
 	if (mSourceModel == 0 || proxySelection.count() == 0)
 		return srcSel;
@@ -561,7 +561,7 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 		std::stable_sort(srcidx.begin(), srcidx.end());
 	this->itemSelectionFromIndexList(srcidx, srcSel);
 
-	NMDebugCtx(ctxSelSortFilter, << "done!");
+	//NMDebugCtx(ctxSelSortFilter, << "done!");
 	return srcSel;
 
 	//const int nrows = mSource2Proxy.size();
@@ -634,7 +634,7 @@ void
 NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<int>& list,
 		QItemSelection& isel) const
 {
-	NMDebugCtx(ctxSelSortFilter, << "...");
+	//NMDebugCtx(ctxSelSortFilter, << "...");
 	int numsel = 0;
 	const int& nrows = list.size();
 	if (nrows == 0)
@@ -681,14 +681,14 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 		}
 	}
 	//NMDebugAI(<< "selected " << numsel << " rows in total!" << std::endl);
-	NMDebugCtx(ctxSelSortFilter, << "done!");
+	//NMDebugCtx(ctxSelSortFilter, << "done!");
 }
 
 
 QItemSelection
 NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &sourceSelection) const
 {
-	NMDebugCtx(ctxSelSortFilter, << "...");
+	//NMDebugCtx(ctxSelSortFilter, << "...");
 	QItemSelection isel;
 	if (sourceSelection.size() == 0)
 	{
@@ -715,7 +715,7 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 	// turn list of indices into selection ranges
 	this->itemSelectionFromIndexList(selidx, isel);
 
-	NMDebugCtx(ctxSelSortFilter, << "done!");
+	//NMDebugCtx(ctxSelSortFilter, << "done!");
 	return isel;
 
 

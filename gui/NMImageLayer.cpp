@@ -24,6 +24,7 @@
 
 #include "NMImageLayer.h"
 #include "NMQtOtbAttributeTableModel.h"
+#include "NMFastTrackSelectionModel.h"
 
 #include <QTime>
 
@@ -364,7 +365,8 @@ int NMImageLayer::updateAttributeTable()
 	{
 		delete this->mSelectionModel;
 	}
-	this->mSelectionModel = new QItemSelectionModel(otbModel, this);
+	//this->mSelectionModel = new QItemSelectionModel(otbModel, this);
+	this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
 	this->mTableModel = otbModel;
 
 	// we add the "nm_sel" column for home grown selection handling

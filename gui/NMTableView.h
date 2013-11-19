@@ -92,6 +92,7 @@ public:
 
 	void setSelectionModel(QItemSelectionModel* selectionModel);
 
+
 	ViewMode getViewMode() {return mViewMode;}
 	void setViewMode(ViewMode mode);
 
@@ -181,6 +182,7 @@ protected:
 	QAbstractItemModel* mModel;
 	NMSelectableSortFilterProxyModel* mSortFilter;
 	QItemSelectionModel* mSelectionModel;
+	QItemSelectionModel* mProxySelModel;
 
 	QVBoxLayout* mLayout;
 	QStatusBar* mStatusBar;

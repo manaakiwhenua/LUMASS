@@ -244,8 +244,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 #ifdef BUILD_RASSUPPORT
 	this->mpRasconn = 0;
 	this->mpPetaView = 0;
-#endif
 	this->mbNoRasdaman = false;
+#endif
+	this->mbNoRasdaman = true; // shouldn't that be true
 
 	//Qt::WindowFlags flags = this->windowFlags() | Qt::WA_DeleteOnClose;
 	//this->setWindowFlags(flags);
@@ -590,8 +591,8 @@ OtbModellerWin::getRasdamanConnector(void)
 	}
 	catch (r_Error& raserr)
 	{
-		NMBoxErr("Rasdaman Connection Error", raserr.what()
-				 << ": Check whether the rasdaman database is up and running!");
+		//NMBoxErr("Rasdaman Connection Error", raserr.what()
+		//		 << ": Check whether the rasdaman database is up and running!");
 		NMErr(ctxOtbModellerWin, << raserr.what());
 		if (this->mpRasconn)
 		{

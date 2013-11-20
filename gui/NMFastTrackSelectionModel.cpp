@@ -6,8 +6,17 @@
  */
 
 #include "NMFastTrackSelectionModel.h"
-//#include <private/qitemselectionmodel_p.h>
+#include <private/qitemselectionmodel_p.h>
 #include "nmlog.h"
+
+
+class NMFastTrackSelectionModelPrivate : public QItemSelectionModelPrivate
+{
+	Q_DECLARE_PUBLIC(NMFastTrackSelectionModel)
+public:
+	NMFastTrackSelectionModelPrivate() {}
+	~NMFastTrackSelectionModelPrivate() {}
+};
 
 NMFastTrackSelectionModel::NMFastTrackSelectionModel(QAbstractItemModel* model)
 	: QItemSelectionModel(*new NMFastTrackSelectionModelPrivate, model)
@@ -29,17 +38,118 @@ NMFastTrackSelectionModel::~NMFastTrackSelectionModel()
 void
 NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel)
 {
-	//Q_D(NMFastTrackSelectionModel);
+	Q_D(NMFastTrackSelectionModel);
 
-	d_func()->ranges.clear();
-	d_func()->currentSelection.clear();
+	d->currentSelection.clear();
+	d->currentCommand = QItemSelectionModel::NoUpdate;
 
-	d_func()->ranges = newSel;
-	emit selectionChanged(d_func()->ranges, QItemSelection());
-	//d->currentSelection = newSel;
+	QItemSelection old = d->ranges;
 
-	//NMDebugAI(<< "I'm tracking real fast!"<< std::endl);
+	d->ranges.clear();
+	long numin = 0;
+	foreach(QItemSelectionRange range, newSel)
+	{
+		numin += range.bottom() - range.top() + 1;
+		d->ranges.append(range);
+	}
+
+	long numidx=0;
+	foreach(const QItemSelectionRange& r, d->ranges)
+	{
+		numidx += r.bottom() - r.top() + 1;
+	}
+	if (numidx < 0)
+		numidx = 0;
+
+	NMDebugAI(<< "FASTTRACK: added " << numidx << " of " << numin << " rows" << std::endl);
+
+	emit selectionChanged(d->ranges, old);
 }
+
+const QItemSelection
+NMFastTrackSelectionModel::getSelection(void) const
+{
+	Q_D(const NMFastTrackSelectionModel);
+
+
+
+	NMDebugAI(<< "FASTTRACK: ranges num: " << d->ranges.indexes().size() << std::endl);
+	NMDebugAI(<< "FASTTRACK: curSel num: " << d->currentSelection.indexes().size() << std::endl);
+
+	return d->ranges;
+}
+
+//void
+//NMFastTrackSelectionModel::toggleRow(int row)
+//{
+//	Q_D(NMFastTrackSelectionModel);
+//
+//	QItemSelection newSel = d->ranges;
+//
+//	foreach(QItemSelectionRange r, newSel)
+//	{
+//		if (row)
+//	}
+//}
+
+//void
+//NMFastTrackSelectionModel::swapSelection(void)
+//{
+//	//QItem
+//
+//	QItemSelection invSel;
+//	const int maxrow = this->mProxy2Source.size()-1;
+//	int invstart = -1;
+//	int invend   = -1;
+//
+//	const int numranges = selection.size();
+//	int rnum=0;
+//	while(rnum < numranges)
+//	{
+//		const int top = selection.at(rnum).top();
+//		const int bottom = selection.at(rnum).bottom();
+//		if (top < 0 || top > maxrow || bottom < 0 || bottom > maxrow)
+//			continue;
+//
+//		if (top == invend+1)
+//		{
+//			invstart = bottom + 1;
+//			if (invstart > maxrow)
+//			{
+//				break;
+//			}
+//			invend = invstart;
+//		}
+//
+//		if (rnum < numranges-1)
+//		{
+//			invend = selection.at(rnum+1).top()-1;
+//		}
+//		else
+//		{
+//			invend = maxrow;
+//		}
+//
+//		QModelIndex sidx = this->createIndex(invstart, 0, 0);
+//		QModelIndex eidx = this->createIndex(invend, 0, 0);
+//		invSel.append(QItemSelectionRange(sidx, eidx));
+//
+//		++rnum;
+//	}
+//
+//
+//	if (	numranges == 0
+//		||  (invstart == -1 && invend == -1)
+//	   )
+//	{
+//		invstart = 0;
+//		invend = maxrow;
+//		QModelIndex sidx = this->createIndex(invstart, 0, 0);
+//		QModelIndex eidx = this->createIndex(invend, 0, 0);
+//		invSel.append(QItemSelectionRange(sidx, eidx));
+//	}
+//
+//}
 
 
 

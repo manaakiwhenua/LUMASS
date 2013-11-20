@@ -20,25 +20,27 @@ public:
 	NMFastTrackSelectionModel(QAbstractItemModel* model, QObject* parent=0);
 	virtual ~NMFastTrackSelectionModel();
 
-	void setSelection(const QItemSelection& newSel);//,
-			//QItemSelectionModel::SelectionFlags command);
+	void setSelection(const QItemSelection& newSel);
+	const QItemSelection getSelection(void) const;
+	//void toggleRow(int row);
+	//void swapSelection(void);
 };
 
 #endif /* NMFASTTRACKSELECTIONMODEL_H_ */
 
 
 
-#ifndef NMFASTTRACKSELECTIONMODEL_P_H_
-#define NMFASTTRACKSELECTIONMODEL_P_H_
-
-#include <private/qitemselectionmodel_p.h>
-class NMFastTrackSelectionModelPrivate : public QItemSelectionModelPrivate
-{
-	Q_DECLARE_PUBLIC(NMFastTrackSelectionModel)
-public:
-	NMFastTrackSelectionModelPrivate() {}
-
-};
-
-
-#endif /* NMFASTTRACKSELECTIONMODEL_P_H_ */
+//#ifndef NMFASTTRACKSELECTIONMODEL_P_H_
+//#define NMFASTTRACKSELECTIONMODEL_P_H_
+//
+//#include <private/qitemselectionmodel_p.h>
+//class NMFastTrackSelectionModelPrivate : public QItemSelectionModelPrivate
+//{
+//	Q_DECLARE_PUBLIC(NMFastTrackSelectionModel)
+//public:
+//	NMFastTrackSelectionModelPrivate() {}
+//
+//};
+//
+//
+//#endif /* NMFASTTRACKSELECTIONMODEL_P_H_ */

@@ -168,7 +168,6 @@ protected:
 
 
 	ViewMode mViewMode;
-	bool mbSortEnabled;
 
 	//long mlNumSelRecs;
 	int mRowKeyColIndex;

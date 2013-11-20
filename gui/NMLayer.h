@@ -152,7 +152,8 @@ protected:
 	NMLayerType mLayerType;
 
 	NMTableView* mTableView;
-	QItemSelectionModel* mSelectionModel;
+	//QItemSelectionModel* mSelectionModel;
+	NMFastTrackSelectionModel* mSelectionModel;
 	QAbstractItemModel* mTableModel;
 
 	// ToDo:: deprecated: move into VectorLayer; use

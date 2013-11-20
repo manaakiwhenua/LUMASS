@@ -28,6 +28,7 @@
 
 #include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
+#include "NMFastTrackSelectionModel.h"
 
 #include <QAbstractItemModel>
 #include <QObject>
@@ -90,7 +91,8 @@ public:
 	NMTableView(QAbstractItemModel* model, QWidget* parent=0);
 	virtual ~NMTableView();
 
-	void setSelectionModel(QItemSelectionModel* selectionModel);
+	void setSelectionModel(NMFastTrackSelectionModel* selectionModel);
+	//void setSelectionModel(QItemSelectionModel* selectionModel);
 
 
 	ViewMode getViewMode() {return mViewMode;}
@@ -182,7 +184,8 @@ protected:
 	//NMQtOtbAttributeTableModel* mOtbTableAdapter;
 	QAbstractItemModel* mModel;
 	NMSelectableSortFilterProxyModel* mSortFilter;
-	QItemSelectionModel* mSelectionModel;
+	//QItemSelectionModel* mSelectionModel;
+	NMFastTrackSelectionModel* mSelectionModel;
 	QItemSelectionModel* mProxySelModel;
 
 	QVBoxLayout* mLayout;

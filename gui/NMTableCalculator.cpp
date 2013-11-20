@@ -538,7 +538,7 @@ NMTableCalculator::doNumericCalcSelection()
 	}
 
 	QItemSelection& isel = mOutputSelection;
-	const int maxcolidx = this->mModel->columnCount()-1;
+	const int maxcolidx = 0;//this->mModel->columnCount()-1;
 	if (this->mbRowFilter)
 	{
 		foreach(const QItemSelectionRange& range, this->mInputSelection)

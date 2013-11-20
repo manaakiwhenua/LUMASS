@@ -65,12 +65,13 @@ public:
 
 	/**
 	 *  Returns an item selection, which comprises all
-	 *  actually considered source rows (i.e. excluding
-	 *  any hidden rows) regardless of any filter
-	 *  settings. This is handy for toggling selections
-	 *  (switch selection) when hidden rows are presented.
+	 *  actually considered source rows
+	 *  (i.e. excluding any hidden rows) regardless of
+	 *  any filter settings. This is handy for toggling
+	 *  selections (switch selection) when hidden rows
+	 *  are presented.
 	 */
-	QItemSelection getSourceSelection(void);
+	QItemSelection getSourceSelection(bool rowsonly=true);
 
 
 	/**
@@ -109,11 +110,19 @@ public:
 	 *        and an unfiltered proxy selection  gets mapped to a source selection
 	 */
 	QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
+	QItemSelection mapRowSelectionFromSource(const QItemSelection& sourceSelection,
+			bool rowsonly=true) const;
 	//QItemSelection mapSelectionFromSource(const QModelIndexList& sourceList) const;
 	//QItemSelection mapSelectionToSourceFromRaw(const QItemSelection& rawSelection) const;
 	QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
-	void itemSelectionFromIndexList(const std::vector<int>& list, QItemSelection& isel) const;
+	void itemSelectionFromIndexList(const std::vector<int>& list,
+			QItemSelection& isel, bool rowsonly=true) const;
 
+	/**
+	 * 	Toggles the given item selection (i.e. selected rows, for column=0),
+	 * 	assuming either a proxy selection or a source selection;
+	 */
+	QItemSelection toggleRowSelection(const QItemSelection& selection) const;
 
 	void sort(int column, Qt::SortOrder order);
 

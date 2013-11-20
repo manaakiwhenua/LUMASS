@@ -613,7 +613,8 @@ int NMVectorLayer::updateAttributeTable(void)
 	{
 		delete this->mSelectionModel;
 	}
-	this->mSelectionModel = new QItemSelectionModel(tabModel, this);
+	//this->mSelectionModel = new QItemSelectionModel(tabModel, this);
+	this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
 	this->mTableModel = tabModel;
 
 	//emit legendChanged(this);

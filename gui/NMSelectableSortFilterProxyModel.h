@@ -61,7 +61,7 @@ public:
 	/**
 	 *  Returns the number of unhidden source rows.
 	 */
-	int sourceRowCount(void);
+	int sourceRowCount(void) const;
 
 	/**
 	 *  Returns an item selection, which comprises all
@@ -122,7 +122,8 @@ public:
 	 * 	Toggles the given item selection (i.e. selected rows, for column=0),
 	 * 	assuming either a proxy selection or a source selection;
 	 */
-	QItemSelection toggleRowSelection(const QItemSelection& selection) const;
+	QItemSelection swapRowSelection(const QItemSelection& selection,
+			bool rowsonly=true) const;
 
 	void sort(int column, Qt::SortOrder order);
 

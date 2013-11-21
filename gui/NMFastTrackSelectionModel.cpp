@@ -46,22 +46,24 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel)
 	QItemSelection old = d->ranges;
 
 	d->ranges.clear();
-	long numin = 0;
-	foreach(QItemSelectionRange range, newSel)
-	{
-		numin += range.bottom() - range.top() + 1;
-		d->ranges.append(range);
-	}
+	d->ranges = newSel;
+	//d->ranges.clear();
+	//long numin = 0;
+	//foreach(QItemSelectionRange range, newSel)
+	//{
+	//	//numin += range.bottom() - range.top() + 1;
+	//	d->ranges.append(range);
+	//}
 
-	long numidx=0;
-	foreach(const QItemSelectionRange& r, d->ranges)
-	{
-		numidx += r.bottom() - r.top() + 1;
-	}
-	if (numidx < 0)
-		numidx = 0;
-
-	NMDebugAI(<< "FASTTRACK: added " << numidx << " of " << numin << " rows" << std::endl);
+	//long numidx=0;
+	//foreach(const QItemSelectionRange& r, d->ranges)
+	//{
+	//	numidx += r.bottom() - r.top() + 1;
+	//}
+	//if (numidx < 0)
+	//	numidx = 0;
+    //
+	//NMDebugAI(<< "FASTTRACK: added " << numidx << " of " << numin << " rows" << std::endl);
 
 	emit selectionChanged(d->ranges, old);
 }
@@ -73,8 +75,8 @@ NMFastTrackSelectionModel::getSelection(void) const
 
 
 
-	NMDebugAI(<< "FASTTRACK: ranges num: " << d->ranges.indexes().size() << std::endl);
-	NMDebugAI(<< "FASTTRACK: curSel num: " << d->currentSelection.indexes().size() << std::endl);
+	//NMDebugAI(<< "FASTTRACK: ranges num: " << d->ranges.indexes().size() << std::endl);
+	//NMDebugAI(<< "FASTTRACK: curSel num: " << d->currentSelection.indexes().size() << std::endl);
 
 	return d->ranges;
 }

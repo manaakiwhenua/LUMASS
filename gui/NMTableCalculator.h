@@ -135,6 +135,10 @@ protected:
 	bool isNumericColumn(int colidx);
 	bool isStringColumn(int colidx);
 
+	// DEBUG ONLY
+	void printSelRanges(const QItemSelection& selection,
+			const QString& msg);
+
 };
 
 #endif // ifndef NMTABLECALCULATOR_H_

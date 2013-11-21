@@ -165,6 +165,7 @@ protected:
 	// DEBUG ONLY
 	void printSelRanges(const QItemSelection& selection,
 			const QString& msg);
+	void connectSelModels(bool bconnect);
 
 
 	ViewMode mViewMode;
@@ -185,7 +186,8 @@ protected:
 	NMSelectableSortFilterProxyModel* mSortFilter;
 	//QItemSelectionModel* mSelectionModel;
 	NMFastTrackSelectionModel* mSelectionModel;
-	QItemSelectionModel* mProxySelModel;
+	//QItemSelectionModel* mProxySelModel;
+	NMFastTrackSelectionModel* mProxySelModel;
 
 	QVBoxLayout* mLayout;
 	QStatusBar* mStatusBar;

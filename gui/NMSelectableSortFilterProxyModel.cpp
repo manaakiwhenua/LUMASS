@@ -71,12 +71,14 @@ NMSelectableSortFilterProxyModel::setFilterOn(bool yesno)
 }
 
 int
-NMSelectableSortFilterProxyModel::sourceRowCount(void)
+NMSelectableSortFilterProxyModel::sourceRowCount(void) const
 {
 	if (mSourceModel == 0)
 		return 0;
 
-	return this->mSource2Proxy.size();
+	int sr = this->mSource2Proxy.size();
+
+	return sr;
 }
 
 int
@@ -630,61 +632,106 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 }
 
 QItemSelection
-NMSelectableSortFilterProxyModel::toggleRowSelection(const QItemSelection& selection) const
+NMSelectableSortFilterProxyModel::swapRowSelection(
+		const QItemSelection& selection,
+		bool rowsonly) const
 {
-	QItemSelection invSel;
-	const int maxrow = this->mProxy2Source.size()-1;
-	int invstart = -1;
-	int invend   = -1;
 
+	QItemSelection isel;
 	const int numranges = selection.size();
-	int rnum=0;
-	while(rnum < numranges)
+	const int maxrow = this->sourceRowCount() - 1;
+	if (numranges == 0)
 	{
-		const int top = selection.at(rnum).top();
-		const int bottom = selection.at(rnum).bottom();
-		if (top < 0 || top > maxrow || bottom < 0 || bottom > maxrow)
-			continue;
+		const QModelIndex sidx = this->createIndex(0, 0, 0);
+		const QModelIndex eidx = this->createIndex(maxrow, 0, 0);
+		isel.append(QItemSelectionRange(sidx, eidx));
+		return isel;
+	}
 
-		if (top == invend+1)
+	// create list of selected indices
+	std::vector<int> selidx;
+	//NMDebugAI(<< "map source indices to proxies ..." << std::endl);
+
+	int rangeindex=0;
+	//NMDebugAI(<< "picking rows: ");
+	for (int invr=0; invr <= maxrow; ++invr)
+	{
+		if (	invr >= selection.at(rangeindex).top()
+			&& invr <= selection.at(rangeindex).bottom())
 		{
-			invstart = bottom + 1;
-			if (invstart > maxrow)
+			if (invr == selection.at(rangeindex).bottom())
 			{
-				break;
+				rangeindex = rangeindex < numranges - 1 ? rangeindex + 1 : rangeindex;
 			}
-			invend = invstart;
+			continue;
 		}
 
-		if (rnum < numranges-1)
-		{
-			invend = selection.at(rnum+1).top()-1;
-		}
-		else
-		{
-			invend = maxrow;
-		}
-
-		QModelIndex sidx = this->createIndex(invstart, 0, 0);
-		QModelIndex eidx = this->createIndex(invend, 0, 0);
-		invSel.append(QItemSelectionRange(sidx, eidx));
-
-		++rnum;
+		//NMDebug(<< invr << "  ");
+		selidx.push_back(invr);
 	}
+	NMDebugAI( << std::endl);
+
+	// turn list of indices into selection ranges
+	this->itemSelectionFromIndexList(selidx, isel, rowsonly);
 
 
-	if (	numranges == 0
-		||  (invstart == -1 && invend == -1)
-	   )
-	{
-		invstart = 0;
-		invend = maxrow;
-		QModelIndex sidx = this->createIndex(invstart, 0, 0);
-		QModelIndex eidx = this->createIndex(invend, 0, 0);
-		invSel.append(QItemSelectionRange(sidx, eidx));
-	}
+	//QItemSelection invSel;
+	//const int maxrow = this->mProxy2Source.size()-1;
+	//int invstart = -1;
+	//int invend   = -1;
+    //
+	//const int numranges = selection.size();
+	//int rnum=0;
+	//while(rnum < numranges)
+	//{
+	//	const int top = selection.at(rnum).top();
+	//	const int bottom = selection.at(rnum).bottom();
+	//	if (top < 0 || top > maxrow || bottom < 0 || bottom > maxrow)
+	//		continue;
+    //
+	//	if (top == invend+1)
+	//	{
+	//		invstart = bottom + 1;
+	//		if (invstart > maxrow)
+	//		{
+	//			break;
+	//		}
+	//		invend = invstart;
+	//	}
+	//	else
+	//	{
+    //
+	//	}
+    //
+	//	if (rnum < numranges-1)
+	//	{
+	//		invend = selection.at(rnum+1).top()-1;
+	//	}
+	//	else
+	//	{
+	//		invend = maxrow;
+	//	}
+    //
+	//	QModelIndex sidx = this->createIndex(invstart, 0, 0);
+	//	QModelIndex eidx = this->createIndex(invend, 0, 0);
+	//	invSel.append(QItemSelectionRange(sidx, eidx));
+    //
+	//	++rnum;
+	//}
+    //
+    //
+	//if (	numranges == 0
+	//	||  (invstart == -1 && invend == -1)
+	//   )
+	//{
+	//	invstart = 0;
+	//	invend = maxrow;
+	//	QModelIndex sidx = this->createIndex(invstart, 0, 0);
+	//	QModelIndex eidx = this->createIndex(invend, 0, 0);
+	//	invSel.append(QItemSelectionRange(sidx, eidx));
+	//}
 
-	return invSel;
+	return isel;
 }
 
 
@@ -739,23 +786,17 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 			//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
 			numsel += (end-start+1);
 
-			start = -1;
-			end   = -1;
+			start = list.at(r);
+			end   = start;
 
-			//if (r < nrows-1)
-			//{
-			//	start = list.at(r+1);
-			//	end   = start;
-			//}
-
-			//if (r == nrows-1 && nrows > 1)
-			//{
-			//	QModelIndex sidx = this->createIndex(start, 0, 0);
-			//	QModelIndex eidx = this->createIndex(end, maxcolid, 0);
-			//	isel.append(QItemSelectionRange(sidx, eidx));
-			//	//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
-			//	numsel += (end-start+1);
-			//}
+			if (r == nrows-1 && nrows > 1)
+			{
+				QModelIndex sidx = this->createIndex(start, 0, 0);
+				QModelIndex eidx = this->createIndex(end, maxcolid, 0);
+				isel.append(QItemSelectionRange(sidx, eidx));
+				//NMDebugAI(<< "  added rows: " << start << " to " << end << std::endl);
+				numsel += (end-start+1);
+			}
 		}
 	}
 	//NMDebugAI(<< "selected " << numsel << " rows in total!" << std::endl);

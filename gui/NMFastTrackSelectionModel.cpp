@@ -94,16 +94,20 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 {
 	Q_D(NMFastTrackSelectionModel);
 
-	const QModelIndex idx = model()->index(row, column, parent);
-	if (!idx.isValid())
+	if (row < 0 || row > model()->rowCount(parent)-1)
 		return;
 
+	// merge any outstanding current selections
 	d->cleanup();
 
 	const int& maxcol = column < 0  || column > model()->columnCount(parent)
 			?  model()->columnCount(parent) : column;
 	const int& mincol = maxcol != column ? 0 : column;
-	const int& maxrow = model()->rowCount(QModelIndex());
+	const int& maxrow = model()->rowCount(QModelIndex())-1;
+
+	// iterate through the current selection, check if row was
+	// selected and adjust selection accordingly
+	bool bRowWasSelected = false;
 	QItemSelection newSel;
 	foreach(const QItemSelectionRange& old, d->ranges)
 	{
@@ -112,6 +116,8 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 
 		const int& top = old.top();
 		const int& bottom = old.bottom();
+		if (top < 0 || bottom < 0 || top > maxrow || bottom > maxrow)
+			continue;
 		int ntop = -1;
 		int nbottom = -1;
 		if (top != bottom)
@@ -125,6 +131,7 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 					const QModelIndex sidx = model()->index(ntop, mincol, parent);
 					const QModelIndex eidx = model()->index(bottom, maxcol, parent);
 					newSel.append(QItemSelectionRange(sidx, eidx));
+					bRowWasSelected = true;
 				}
 			}
 			else if (row == bottom)
@@ -133,6 +140,7 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 				const QModelIndex sidx = model()->index(top, mincol, parent);
 				const QModelIndex eidx = model()->index(nbottom, maxcol, parent);
 				newSel.append(QItemSelectionRange(sidx, eidx));
+				bRowWasSelected = true;
 			}
 			else if (row > top && row < bottom)
 			{
@@ -143,6 +151,7 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 				const QModelIndex sidx = model()->index(row+1, mincol, parent);
 				const QModelIndex eidx = model()->index(bottom, maxcol, parent);
 				newSel.append(QItemSelectionRange(sidx, eidx));
+				bRowWasSelected = true;
 			}
 			else
 			{
@@ -155,18 +164,28 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 			{
 				newSel.append(old);
 			}
+			else
+			{
+				bRowWasSelected = true;
+			}
 		}
 	}
 
+
 	const QModelIndex sidx = model()->index(row, mincol, parent);
 	const QModelIndex eidx = model()->index(row, maxcol, parent);
-	newSel.append(QItemSelectionRange(sidx, eidx));
+	QItemSelectionRange rowrange(sidx, eidx);
 
+	if (!bRowWasSelected)
+	{
+		newSel.append(rowrange);
+	}
+
+	d->currentSelection.clear();
+	d->currentCommand = NoUpdate;
 	QItemSelection old = d->ranges;
 	d->ranges = newSel;
 
 	emit selectionChanged(newSel, old);
-
-	//model()
 }
 

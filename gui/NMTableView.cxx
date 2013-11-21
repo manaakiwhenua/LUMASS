@@ -496,8 +496,8 @@ void NMTableView::calcColumn()
 	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(this->mModel));
 	calc->setResultColumn(this->mLastClickedColumn);
 
-	if (this->mSelectionModel->selection().count() > 0)
-		calc->setRowFilter(this->mSelectionModel->selection());
+	if (this->mSelectionModel->getSelection().count() > 0)
+		calc->setRowFilter(this->mSelectionModel->getSelection());
 
 	try
 	{
@@ -1461,12 +1461,13 @@ NMTableView::sortColumn(int col)
 	{
 		// re-apply any existing selection
 		NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
-		const QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
-				this->mSelectionModel->selection());
+		const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
+				this->mSelectionModel->getSelection(), false);
 
 		NMDebugAI(<< "... applying mapped selection to table" << std::endl);
-		this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
-				QItemSelectionModel::Rows);
+		//this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
+		//		QItemSelectionModel::Rows);
+		mProxySelModel->setSelection(proxySelection);
 	}
 	NMDebugAI(<< "SORTING DONE!" << std::endl);
 

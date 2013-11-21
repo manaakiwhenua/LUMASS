@@ -31,6 +31,7 @@
 #include <QString>
 #include <QStack>
 #include <QModelIndex>
+#include <QDateTime>
 
 //#include "vtkVariant.h"
 //#include "vtkStdString.h"
@@ -539,6 +540,8 @@ NMTableCalculator::doNumericCalcSelection()
 		mNumSel = 0;
 	}
 
+	QDateTime started = QDateTime::currentDateTime();
+
 	QItemSelection& isel = mOutputSelection;
 	const int maxcolidx = 0;//this->mModel->columnCount()-1;
 	if (this->mbRowFilter)
@@ -671,6 +674,14 @@ NMTableCalculator::doNumericCalcSelection()
 		}
 	}
 	//mOutputSrcSelIndices.resize(mNumSel);
+
+	QDateTime stopped = QDateTime::currentDateTime();
+	int msec = started.msecsTo(stopped);
+	int min = msec / 60000;
+	double sec = (msec % 60000) / 1000.0;
+
+	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+	NMMsg(<< "Table calculation took (min:sec): " << elapsedTime.toStdString() << std::endl);
 
 	NMDebugCtx(ctxTabCalc, << "done!");
 }

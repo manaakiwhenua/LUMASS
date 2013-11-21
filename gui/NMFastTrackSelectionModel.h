@@ -21,9 +21,9 @@ public:
 	virtual ~NMFastTrackSelectionModel();
 
 	void setSelection(const QItemSelection& newSel);
-	const QItemSelection getSelection(void) const;
-	//void toggleRow(int row);
-	//void swapSelection(void);
+	const QItemSelection getSelection(void);
+	void toggleRow(int row, int column,
+			const QModelIndex& parent=QModelIndex());
 };
 
 #endif /* NMFASTTRACKSELECTIONMODEL_H_ */

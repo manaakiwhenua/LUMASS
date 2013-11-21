@@ -176,6 +176,7 @@ protected:
 	long mlLastClickedRow;
 	bool mbSwitchSelection;
 	bool mbClearSelection;
+	bool mbColumnCalc;
 
 	QMap<int, bool> mMapColSortAsc;
 

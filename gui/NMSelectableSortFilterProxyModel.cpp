@@ -669,7 +669,9 @@ NMSelectableSortFilterProxyModel::swapRowSelection(
 		//NMDebug(<< invr << "  ");
 		selidx.push_back(invr);
 	}
-	NMDebugAI( << std::endl);
+	//NMDebugAI( << std::endl);
+	NMDebugAI(<< __FUNCTION__ << ": " << selidx.size() << " indices in swapped selction" << std::endl);
+
 
 	// turn list of indices into selection ranges
 	this->itemSelectionFromIndexList(selidx, isel, rowsonly);

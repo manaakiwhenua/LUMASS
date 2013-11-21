@@ -328,7 +328,7 @@ void NMTableView::updateSelRecsOnly(int state)
 	if (state == Qt::Checked)
 	{
 		this->mSortFilter->clearFilter();
-		this->mSortFilter->addToFilter(this->mSortFilter->mapSelectionFromSource(
+		this->mSortFilter->addToFilter(this->mSortFilter->mapRowSelectionFromSource(
 				this->mSelectionModel->selection()));
 		this->mSortFilter->setFilterOn(true);
 	}
@@ -336,10 +336,12 @@ void NMTableView::updateSelRecsOnly(int state)
 	{
 		this->mSortFilter->setFilterOn(false);
 		this->mSortFilter->clearFilter();
-		QItemSelection proxySel = this->mSortFilter->mapSelectionFromSource(
+		this->mTableView->selectionModel()->clearSelection();
+		const QItemSelection proxySel = this->mSortFilter->mapRowSelectionFromSource(
 				this->mSelectionModel->selection());
+		this->printSelRanges(proxySel, "re-apply selection after unhiding");
 		this->mTableView->selectionModel()->select(proxySel,
-				QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+				QItemSelectionModel::Select | QItemSelectionModel::Rows);
 	}
 }
 
@@ -351,21 +353,21 @@ void NMTableView::switchSelection()
 
 	mbSwitchSelection = true;
 
-	//NMFastTrackSelectionModel* fastSel = qobject_cast<NMFastTrackSelectionModel*>(mSelectionModel);
-	//if (fastSel != 0)
 	if (mSelectionModel != 0)
 	{
 		//this->connectSelModels(false);
 
-		//const QItemSelection& sourceSelection = mSelectionModel->selection();
-		const QItemSelection& sourceSelection = mSelectionModel->getSelection();
-		//this->printSelRanges(sourceSelection, "current source selection");
+		const QItemSelection& sourceSelection = mSelectionModel->selection();
+		//const QItemSelection& sourceSelection = mSelectionModel->getSelection();
+		this->printSelRanges(sourceSelection, "current source selection");
 
 		const QItemSelection toggledSelection = this->mSortFilter->swapRowSelection(sourceSelection);
-		//this->printSelRanges(toggledSelection, "toggled Selection");
+		this->printSelRanges(toggledSelection, "toggled Selection");
 
 		mSelectionModel->setSelection(toggledSelection);
-		////fastSel->setSelection(toggledSelection);
+
+		this->printSelRanges(mSelectionModel->getSelection(), "new src getSelection()");
+		this->printSelRanges(mSelectionModel->selection(), "new src selection()");
 
 		//this->connectSelModels(true);
 
@@ -1575,6 +1577,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 {
 	if (this->mbSwitchSelection)
 	{
+		this->mbSwitchSelection = false;
 		if (this->mChkSelectedRecsOnly->isChecked())
 		{
 			this->updateSelRecsOnly(Qt::Checked);
@@ -1591,13 +1594,13 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 			//this->mTableView->selectionModel()->select(selection, QItemSelectionModel::Toggle |
 			//		QItemSelectionModel::Rows);
 
-			const QItemSelection& sourceSelection = mSelectionModel->getSelection();
+			const QItemSelection& sourceSelection = mSelectionModel->selection();
 			const QItemSelection& swappedProxySel = this->mSortFilter->mapRowSelectionFromSource(sourceSelection, false);
 			mProxySelModel->setSelection(swappedProxySel);
 
 			//NMDebug(<< "done!" << std::endl);
 		}
-		this->mbSwitchSelection = false;
+
 	}
 	else if (mbClearSelection)
 	{

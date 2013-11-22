@@ -1,5 +1,5 @@
- /*****************************I*************************************************
- * Created by Alexander Herzig te
+ /****************************I**************************************************
+ * Created by Alexander Herzigte
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -71,12 +71,8 @@ NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 
 	this->mTableView->setModel(this->mSortFilter);
 	this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+	this->mProxySelModel->setObjectName("FastProxySelection");
 	this->mTableView->setSelectionModel(mProxySelModel);
-
-
-	//connect(this, SIGNAL(columnsChanged(int, int)),
-	//		mTableView, SLOT(columnCountChanged(int, int)),
-	//		Qt::DirectConnection);
 
 	this->mDeletedColumns.clear();
 	this->mAlteredColumns.clear();
@@ -294,10 +290,10 @@ NMTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
 	this->mSelectionModel = selectionModel;
 	if (this->mSelectionModel)
 	{
-		QItemSelection proxySelection = this->mSortFilter->mapSelectionFromSource(
-				this->mSelectionModel->selection());
-		this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::ClearAndSelect |
-				QItemSelectionModel::Rows);
+		mSelectionModel->setObjectName("FastSourceSelection");
+		const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
+				this->mSelectionModel->selection(), false);
+		mProxySelModel->setSelection(proxySelection);
 
 		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
 
@@ -325,30 +321,32 @@ NMTableView::setViewMode(ViewMode mode)
 
 void NMTableView::updateSelRecsOnly(int state)
 {
+	NMDebugCtx(__ctxtabview, << "...");
 	if (state == Qt::Checked)
 	{
+		this->mSortFilter->setFilterOn(false);
+		this->mProxySelModel->clearSelection();
 		this->mSortFilter->clearFilter();
-		this->mSortFilter->addToFilter(this->mSortFilter->mapRowSelectionFromSource(
-				this->mSelectionModel->getSelection()));
+		const QItemSelection srcSel = this->mSelectionModel->selection();
+		const QItemSelection proxySel = this->mSortFilter->mapRowSelectionFromSource(srcSel);
+		this->mSortFilter->addToFilter(proxySel);
 		this->mSortFilter->setFilterOn(true);
 	}
 	else
 	{
 		this->mSortFilter->setFilterOn(false);
 		this->mSortFilter->clearFilter();
+		//const QItemSelection srcSel = this->mSelectionModel->selection();
+		//const QItemSelection proxySel = this->mSortFilter->mapRowSelectionFromSource(srcSel, false);
+		//mProxySelModel->setSelection(proxySel);
 		this->updateProxySelection(QItemSelection(), QItemSelection());
-		//this->mTableView->selectionModel()->clearSelection();
-		//const QItemSelection proxySel = this->mSortFilter->mapRowSelectionFromSource(
-		//		this->mSelectionModel->selection());
-		//this->printSelRanges(proxySel, "re-apply selection after unhiding");
-		//this->mTableView->selectionModel()->select(proxySel,
-		//		QItemSelectionModel::Select | QItemSelectionModel::Rows);
 	}
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void NMTableView::switchSelection()
 {
-	//NMDebugCtx(__ctxtabview, << "...");
+	NMDebugCtx(__ctxtabview, << "...");
 
 	//CALLGRIND_START_INSTRUMENTATION;
 
@@ -358,31 +356,28 @@ void NMTableView::switchSelection()
 	{
 		//this->connectSelModels(false);
 
-		const QItemSelection& sourceSelection = mSelectionModel->getSelection();
-		//const QItemSelection& sourceSelection = mSelectionModel->getSelection();
-		//this->printSelRanges(sourceSelection, "current source selection");
-
-		const QItemSelection toggledSelection = this->mSortFilter->swapRowSelection(sourceSelection);
-		//this->printSelRanges(toggledSelection, "toggled Selection");
+		const QItemSelection toggledSelection = this->mSortFilter->swapRowSelection(
+				mSelectionModel->selection());
 
 		mSelectionModel->setSelection(toggledSelection);
 
-		NMDebugAI(<< __FUNCTION__ << ": done the source switch" << std::endl);
-
-		//this->printSelRanges(mSelectionModel->getSelection(), "new src getSelection()");
-		//this->printSelRanges(mSelectionModel->selection(), "new src selection()");
-
-
+		//const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
+		//		toggledSelection, false);
+        //
+		//mProxySelModel->setSelection(proxySelection);
+        //
+		//if (this->mChkSelectedRecsOnly->isChecked())
+		//{
+		//	this->updateSelRecsOnly(Qt::Checked);
+		//}
+        //
 		//this->connectSelModels(true);
-
-		////NMDebugAI(<< __FUNCTION__ << ": selection    sel count: " << mSelectionModel->selection().size() << std::endl);
-		//NMDebugAI(<< __FUNCTION__ << ": getSelection sel count: " << mSelectionModel->getSelection().size() << std::endl);
 	}
 
 	//CALLGRIND_STOP_INSTRUMENTATION;
 	//CALLGRIND_DUMP_STATS;
 
-	//NMDebugCtx(__ctxtabview, << "done!");
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void NMTableView::normalise()
@@ -494,10 +489,11 @@ void NMTableView::calcColumn()
 	}
 
 	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(this->mModel));
+	calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
 	calc->setResultColumn(this->mLastClickedColumn);
 
-	if (this->mSelectionModel->getSelection().count() > 0)
-		calc->setRowFilter(this->mSelectionModel->getSelection());
+	if (this->mSelectionModel->selection().count() > 0)
+		calc->setRowFilter(this->mSelectionModel->selection());
 
 	try
 	{
@@ -505,9 +501,6 @@ void NMTableView::calcColumn()
 		if (!calc->calculate())
 		{
 			NMErr(__ctxtabview, << "Something went wrong!");
-			//this->mAlteredColumns.append(this->mLastClickedColumn);
-
-			//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 		}
 	}
 	catch (itk::ExceptionObject& err)
@@ -538,15 +531,17 @@ void
 NMTableView::updateSelectionAdmin(const QItemSelection& sel,
 		const QItemSelection& desel)
 {
-	const QItemSelection& srcSel = this->mSelectionModel->getSelection();
+	NMDebugCtx(__ctxtabview, << "...");
+	const QItemSelection& srcSel = this->mSelectionModel->selection();
 
 	long selcnt = 0;
 	foreach(const QItemSelectionRange& range, srcSel)
 	{
 		selcnt += range.bottom() - range.top() + 1;
 	}
-
+	NMDebugAI(<< "report " << selcnt << " selected records" << std::endl);
 	this->updateSelectionAdmin(selcnt);
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void NMTableView::addColumn()
@@ -620,15 +615,10 @@ void NMTableView::addColumn()
 	NMDebugAI(<< "type: " << type << endl);
 	NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
-	const QItemSelection sel = mSelectionModel->selection();
 	if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
 	{
-		//emit columnsChanged(ncols, ncols+1);
-		this->mTableView->selectionModel()->select(
-				this->mSortFilter->mapSelectionFromSource(sel),
-				QItemSelectionModel::Select | QItemSelectionModel::Rows);
-
 		this->mSortFilter->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
+		this->updateProxySelection(QItemSelection(), QItemSelection());
 	}
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -652,19 +642,10 @@ void NMTableView::deleteColumn()
 	if (col < 0)
 		return;
 
-	const QItemSelection sel = mSelectionModel->selection();
-	int ncols = this->mSortFilter->columnCount();
 	if (this->mSortFilter->removeColumns(col, 1, QModelIndex()))
 	{
-		//emit columnsChanged(ncols, ncols+1);
-		this->mTableView->selectionModel()->select(
-				this->mSortFilter->mapSelectionFromSource(sel),
-				QItemSelectionModel::Select | QItemSelectionModel::Rows);
+		this->updateProxySelection(QItemSelection(), QItemSelection());
 	}
-	// notify potential listeners
-	//this->mDeletedColumns.append(this->mLastClickedColumn);
-	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-
 }
 
 void NMTableView::joinAttributes()
@@ -1461,13 +1442,15 @@ NMTableView::sortColumn(int col)
 	{
 		// re-apply any existing selection
 		NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
-		const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
-				this->mSelectionModel->getSelection(), false);
+		this->updateProxySelection(QItemSelection(), QItemSelection());
 
-		NMDebugAI(<< "... applying mapped selection to table" << std::endl);
+		//const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
+		//		this->mSelectionModel->selection(), false);
+
+		//NMDebugAI(<< "... applying mapped selection to table" << std::endl);
 		//this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
 		//		QItemSelectionModel::Rows);
-		mProxySelModel->setSelection(proxySelection);
+		//mProxySelModel->setSelection(proxySelection);
 	}
 	NMDebugAI(<< "SORTING DONE!" << std::endl);
 
@@ -1583,6 +1566,7 @@ void NMTableView::clearSelection()
 void
 NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
 {
+	NMDebugCtx(__ctxtabview, << "...");
 	//if (mbSwitchSelection || mbColumnCalc)
 	//{
 	//	mbSwitchSelection = false;
@@ -1628,14 +1612,21 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 	}
 	else
 	{
+		// probably don't need this anymore
+		if (mbSwitchSelection || mbColumnCalc)
+		{
+			mbSwitchSelection = false;
+			mbColumnCalc = false;
+		}
+
 		if (this->mChkSelectedRecsOnly->isChecked())
 		{
 			this->updateSelRecsOnly(Qt::Checked);
 		}
 		else
 		{
-			const QItemSelection& sourceSelection = mSelectionModel->getSelection();
-			const QItemSelection& proxySel = this->mSortFilter->mapRowSelectionFromSource(sourceSelection, false);
+			const QItemSelection& proxySel = this->mSortFilter->mapRowSelectionFromSource(
+					mSelectionModel->selection(), false);
 			mProxySelModel->setSelection(proxySel);
 		}
 
@@ -1681,6 +1672,7 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 		//this->printSelRanges(this->mTableView->selectionModel()->selection(),
 		//		QString("current table selection"));
 	}
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 void

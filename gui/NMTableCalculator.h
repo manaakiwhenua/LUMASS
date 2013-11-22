@@ -26,21 +26,12 @@
 #define NMTABLECALCULATOR_H_
 #define ctxTabCalc "NMTableCalculator"
 
-#include <list>
-
 #include <QObject>
 #include <QString>
 #include <QStringList>
 #include <QAbstractItemModel>
-#include <QModelIndexList>
+//#include <QModelIndexList>
 #include <QItemSelection>
-
-//#include "vtkType.h"
-//#include "vtkSmartPointer.h"
-//#include "vtkTable.h"
-//#include "vtkAbstractArray.h"
-//#include "vtkDataArray.h"
-//#include "vtkStringArray.h"
 
 #include "otbMultiParser.h"
 
@@ -50,8 +41,6 @@ class NMTableCalculator : public QObject
 	Q_ENUMS(NMStrOperator)
 
 public:
-	//NMTableCalculator(QObject* parent=0);
-	//NMTableCalculator(vtkTable* tab, QObject* parent=0);
 	NMTableCalculator(QAbstractItemModel* model, QObject* parent=0);
 	virtual ~NMTableCalculator();
 
@@ -82,7 +71,6 @@ public:
 
 	bool calculate(void);
 
-	//const QItemSelection& getSource
 	const QItemSelection* getSelection(void);
 	long getSelectionCount(void)
 		{return mNumSel;}
@@ -97,12 +85,8 @@ protected:
 
 	bool mbRowFilter;
 	bool mSelectionModeOn;
-	//QList<QPair<int, int> > mOutputSelection;
-	//QList<QPair<int, int> >	mInputSelection;
-	std::vector<int> mOutputSrcSelIndices;
 
 	long mNumSel;
-	//QList<int> mOutputProxySelIndices;
 	QItemSelection mOutputSelection;
 	QItemSelection mInputSelection;
 

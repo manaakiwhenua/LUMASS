@@ -43,6 +43,8 @@ NMFastTrackSelectionModel::~NMFastTrackSelectionModel()
 void
 NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel)
 {
+	NMDebugCtx(this->objectName().toStdString(), << "...");
+
 	Q_D(NMFastTrackSelectionModel);
 
 	d->currentSelection.clear();
@@ -51,7 +53,7 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel)
 	QItemSelection old = d->ranges;
 
 	d->ranges.clear();
-	d->ranges = newSel;
+	d->ranges.append(newSel);
 	//d->ranges.clear();
 	//long numin = 0;
 	//foreach(QItemSelectionRange range, newSel)
@@ -60,33 +62,48 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel)
 	//	d->ranges.append(range);
 	//}
 
-	//long numidx=0;
-	//foreach(const QItemSelectionRange& r, d->ranges)
-	//{
-	//	numidx += r.bottom() - r.top() + 1;
-	//}
-	//if (numidx < 0)
-	//	numidx = 0;
-    //
-	//NMDebugAI(<< "FASTTRACK: added " << numidx << " of " << numin << " rows" << std::endl);
+	long numidx=0;
+	foreach(const QItemSelectionRange& r, d->ranges)
+	{
+		numidx += r.bottom() - r.top() + 1;
+	}
+	if (numidx < 0)
+		numidx = 0;
 
+	NMDebugAI(<< "set " << numidx << " rows (->selection)" << std::endl);
+
+	NMDebugCtx(this->objectName().toStdString(), << "done!");
 	emit selectionChanged(d->ranges, old);
 }
 
-const QItemSelection
+QItemSelection
 NMFastTrackSelectionModel::getSelection(void)
 {
+	NMDebugCtx(this->objectName().toStdString(), << "...");
+
 	Q_D(NMFastTrackSelectionModel);
 
-
-	d->cleanup();
+	//d->cleanup();
 	//d->currentSelection.clear();
 	//d->currentCommand = NoUpdate;
 
 	//NMDebugAI(<< "FASTTRACK: ranges num: " << d->ranges.indexes().size() << std::endl);
 	//NMDebugAI(<< "FASTTRACK: curSel num: " << d->currentSelection.indexes().size() << std::endl);
 
-	return d->ranges;
+	long numidx=0;
+	foreach(const QItemSelectionRange& r, d->ranges)
+	{
+		numidx += r.bottom() - r.top() + 1;
+	}
+	if (numidx < 0)
+		numidx = 0;
+
+	NMDebugAI(<< "got " << numidx << " selected rows (selection->)" << std::endl);
+
+	NMDebugCtx(this->objectName().toStdString(), << "done!");
+
+	QItemSelection ret = d->ranges;
+	return ret;
 }
 
 void
@@ -96,6 +113,8 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 
 	if (row < 0 || row > model()->rowCount(parent)-1)
 		return;
+
+	NMDebugCtx(this->objectName().toStdString(), << "...");
 
 	// merge any outstanding current selections
 	d->cleanup();
@@ -186,6 +205,7 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 	QItemSelection old = d->ranges;
 	d->ranges = newSel;
 
+	NMDebugCtx(this->objectName().toStdString(), << "done!");
 	emit selectionChanged(newSel, old);
 }
 

@@ -336,9 +336,6 @@ void NMTableView::updateSelRecsOnly(int state)
 	{
 		this->mSortFilter->setFilterOn(false);
 		this->mSortFilter->clearFilter();
-		//const QItemSelection srcSel = this->mSelectionModel->selection();
-		//const QItemSelection proxySel = this->mSortFilter->mapRowSelectionFromSource(srcSel, false);
-		//mProxySelModel->setSelection(proxySel);
 		this->updateProxySelection(QItemSelection(), QItemSelection());
 	}
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -348,34 +345,15 @@ void NMTableView::switchSelection()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	//CALLGRIND_START_INSTRUMENTATION;
-
 	mbSwitchSelection = true;
 
 	if (mSelectionModel != 0)
 	{
-		//this->connectSelModels(false);
-
 		const QItemSelection toggledSelection = this->mSortFilter->swapRowSelection(
 				mSelectionModel->selection());
 
 		mSelectionModel->setSelection(toggledSelection);
-
-		//const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
-		//		toggledSelection, false);
-        //
-		//mProxySelModel->setSelection(proxySelection);
-        //
-		//if (this->mChkSelectedRecsOnly->isChecked())
-		//{
-		//	this->updateSelRecsOnly(Qt::Checked);
-		//}
-        //
-		//this->connectSelModels(true);
 	}
-
-	//CALLGRIND_STOP_INSTRUMENTATION;
-	//CALLGRIND_DUMP_STATS;
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -720,119 +698,6 @@ void NMTableView::joinAttributes()
 	NMDebugCtx(__ctxtabview, << "done!");
 }
 
-//void
-//NMTableView::appendAttributes(const QString& tarJoinField,
-//		const QString& srcJoinField,
-//		vtkTable* src)
-//{
-//	//vtkTable* tar = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-//    //
-//	//QStringList allTarFields;
-//	//for (int i=0; i < tar->GetNumberOfColumns(); ++i)
-//	//{
-//	//	allTarFields.push_back(tar->GetColumnName(i));
-//	//}
-//    //
-//	//// we determine which columns to copy, and which name + index they have
-//	//QRegExp nameRegExp("^[A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
-//    //
-//	//NMDebugAI(<< "checking column names ... " << std::endl);
-//	//QStringList copyNames;
-//	//QStringList writeNames;
-//	//for (int i=0; i < src->GetNumberOfColumns(); ++i)
-//	//{
-//	//	QString name = src->GetColumnName(i);
-//	//	QString writeName = name;
-//	//	if (name.compare(srcJoinField) == 0
-//	//			|| name.compare(tarJoinField) == 0)
-//	//	{
-//	//		continue;
-//	//	}
-//	//	else if (allTarFields.contains(name, Qt::CaseInsensitive))
-//	//	{
-//	//		// come up with a new name for the column to appended
-//	//		writeName = QString(tr("copy_%1")).arg(name);
-//	//	}
-//    //
-//	//	int pos = -1;
-//	//	pos = nameRegExp.indexIn(name);
-//	//	if (pos >= 0)
-//	//	{
-//	//		copyNames.push_back(name);
-//	//		writeNames.push_back(writeName);
-//	//	}
-//	//}
-//    //
-//	//NMDebugAI( << "adding new columns to target table ..." << std::endl);
-//	//// create new output columns for join fields
-//	//vtkIdType tarnumrows = tar->GetNumberOfRows();
-//	//for (int t=0; t < copyNames.size(); ++t)
-//	//{
-//	//	int type = src->GetColumnByName(copyNames[t].toStdString().c_str())->GetDataType();
-//	//	vtkSmartPointer<vtkAbstractArray> ar = vtkAbstractArray::CreateArray(type);
-//	//	ar->SetName(writeNames.at(t).toStdString().c_str());
-//	//	ar->SetNumberOfComponents(1);
-//	//	ar->Allocate(tarnumrows);
-//    //
-//	//	vtkVariant v;
-//	//	if (type == VTK_STRING)
-//	//		v = vtkVariant("");
-//	//	else
-//	//		v = vtkVariant(0);
-//    //
-//	//	for (int tr=0; tr < tarnumrows; ++tr)
-//	//		ar->InsertVariantValue(tr, v);
-//    //
-//	//	tar->AddColumn(ar);
-//	//	NMDebugAI(<< copyNames.at(t).toStdString() << "->"
-//	//			<< writeNames.at(t).toStdString() << " ");
-//	//	this->mAlteredColumns.append(writeNames.at(t));
-//	//}
-//	//NMDebug(<< endl);
-//    //
-//	//NMDebugAI(<< "copying field contents ...." << std::endl);
-//	//// copy field values
-//	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
-//	//vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
-//	//vtkIdType cnt = 0;
-//	//vtkIdType srcnumrows = src->GetNumberOfRows();
-//	//for (vtkIdType row=0; row < tarnumrows; ++row)
-//	//{
-//	//	vtkVariant vTarJoin = tarJoin->GetVariantValue(row);
-//	//	vtkIdType search = row < srcnumrows ? row : 0;
-//	//	vtkIdType cnt = 0;
-//	//	bool foundyou = false;
-//	//	while (cnt < srcnumrows)
-//	//	{
-//	//		if (srcJoin->GetVariantValue(search) == vTarJoin)
-//	//		{
-//	//			foundyou = true;
-//	//			break;
-//	//		}
-//    //
-//	//		++search;
-//	//		if (search >= srcnumrows)
-//	//			search = 0;
-//    //
-//	//		++cnt;
-//	//	}
-//    //
-//	//	if (foundyou)
-//	//	{
-//	//		// copy columns for current row
-//	//		for (int c=0; c < copyNames.size(); ++c)
-//	//		{
-//	//			tar->SetValueByName(row, writeNames[c].toStdString().c_str(),
-//	//					src->GetValueByName(search, copyNames[c].toStdString().c_str()));
-//	//		}
-//	//	}
-//	//}
-//
-//	emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-//
-//
-//}
-
 void NMTableView::hideRow(int row)
 {
 	if (row < 0 || row > this->mModel->rowCount()-1)
@@ -974,51 +839,6 @@ NMTableView::deleteRasLayer(void)
 	emit notifyDeleteRasLayer(imagespec);
 }
 
-//void
-//NMTableView::setTable(otb::AttributeTable::Pointer tab)
-//{
-//	if (tab.IsNull() || this->mOtbTableAdapter == 0)
-//	{
-//		NMErr(__ctxtabview, << "This view is not instanciated as an otbAttributeTable view!");
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	this->mOtbTableAdapter->setTable(tab);
-//	this->mSortFilter->setSourceModel(this->mOtbTableAdapter);
-//	this->mTableView->setModel(this->mSortFilter);
-//
-//	this->mOtbTable = tab;
-//	this->mDeletedColumns.clear();
-//	this->mAlteredColumns.clear();
-//
-//	this->updateSelection();
-//
-//}
-
-//void NMTableView::setTable(vtkTable* tab)
-//{
-//	NMDebugCtx(__ctxtabview, << "...");
-//
-//	if (tab == 0 || this->mVtkTableAdapter == 0)
-//	{
-//		NMErr(__ctxtabview, << "This view is not instanciated as a vtkTable view!");
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	this->mVtkTableAdapter->setTable(tab);
-//	this->mSortFilter->setSourceModel(this->mVtkTableAdapter);
-//	this->mTableView->setModel(this->mSortFilter);
-//
-//	this->mBaseTable = tab;
-//	this->mDeletedColumns.clear();
-//	this->mAlteredColumns.clear();
-//
-//	this->updateSelection();
-//
-//	NMDebugCtx(__ctxtabview, << "done!");
-//}
 
 bool NMTableView::writeDelimTxt(const QString& fileName,
 		bool bselectedRecs)
@@ -1053,90 +873,7 @@ bool NMTableView::writeDelimTxt(const QString& fileName,
 	return true;
 }
 
-//vtkSmartPointer<vtkSQLiteDatabase> NMTableView::writeSqliteDb(
-//		const QString& dbName,
-//		const QString& tableName,
-//		bool bselectedRecs)
-//{
-//	NMDebugCtx(__ctxtabview, << "...");
-//
-//	// ToDo: account for selected rows i.e. filter before export
-//	QString url = QString(tr("sqlite://%1")).arg(dbName);
-//
-//	NMDebugAI(<< "setting url: " << url.toStdString() << endl);
-//	vtkSmartPointer<vtkSQLiteDatabase> db = vtkSQLiteDatabase::SafeDownCast(
-//			vtkSQLDatabase::CreateFromURL(url.toStdString().c_str()));
-//	if (db->IsA("vtkSQLiteDatabase") == 0)
-//	{
-//		NMDebugAI( << "failed creating db '" << dbName.toStdString() << ";" << std::endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return 0;
-//	}
-//	if (!db->Open("", vtkSQLiteDatabase::USE_EXISTING_OR_CREATE))
-//	{
-//		NMDebugAI( << "failed connecting to sqlite db '" << dbName.toStdString() << "'" << std::endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return 0;
-//	}
-//
-//	vtkSmartPointer<vtkTableToSQLiteWriter> dbwriter = vtkSmartPointer<vtkTableToSQLiteWriter>::New();
-//	dbwriter->SetDatabase(db);
-//	dbwriter->SetInput(this->mVtkTableAdapter->GetVTKDataObject());
-//	dbwriter->SetTableName(tableName.toStdString().c_str());
-//	dbwriter->Update();
-//
-//	// we only return the memory version of the data base
-//	if (dbName.compare(tr(":memory:")) == 0)
-//	{
-//		NMDebugAI( << "returning in-memory db" << endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return db;
-//	}
-//	else
-//	{
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return 0;
-//	}
-//}
 
-//vtkSmartPointer<vtkTable> NMTableView::queryTable(const QString& sqlStmt)
-//{
-//	NMDebugCtx(__ctxtabview, << "...");
-//	vtkSmartPointer<vtkSQLiteDatabase> sdb = this->writeSqliteDb(
-//			tr(":memory:"), tr("memtab1"), false);
-//	if (sdb == 0)
-//	{
-//		NMDebugAI( << "couldn't create memory sql db for querying!" << std::endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return 0;
-//	}
-////	if (!sdb->Open(0, vtkSQLiteDatabase::USE_EXISTING_OR_CREATE))
-////	{
-////		NMDebugAI( << "failed connecting to in-memory sql db!" << std::endl);
-////		NMDebugCtx(__ctxtabview, << "done!");
-////		return 0;
-////	}
-//	if (!sdb->IsOpen())
-//	{
-//		NMDebugAI( << "in-memory db is not open!" << std::endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//
-//		return 0;
-//	}
-//
-//	vtkSmartPointer<vtkSQLiteQuery> sq = vtkSQLiteQuery::SafeDownCast(
-//			sdb->GetQueryInstance());
-//	sq->SetQuery(sqlStmt.toStdString().c_str());
-//
-//	// filter to a new table
-//	vtkSmartPointer<vtkRowQueryToTable> rowtotab = vtkSmartPointer<vtkRowQueryToTable>::New();
-//	rowtotab->SetQuery(sq);
-//	rowtotab->Update();
-//
-//	vtkSmartPointer<vtkTable> outtab = rowtotab->GetOutput();
-//	NMDebugCtx(__ctxtabview, << "done!");
-//	return outtab;
-//}
 
 int NMTableView::getColumnIndex(const QString& attr)
 {
@@ -1154,28 +891,6 @@ int NMTableView::getColumnIndex(const QString& attr)
 
 	return attrCol;
 }
-
-//void NMTableView::setRowKeyColumn(const QString& rowKeyCol)
-//{
-//	NMDebugCtx(__ctxtabview, << "...");
-//	int colidx = this->getColumnIndex(rowKeyCol);
-//	if (colidx < 0)
-//	{
-//		NMDebugAI(<< "you have to set the vtk data object before you can set "
-//				<< " the row's key column!" << std::endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	if (this->mVtkTableAdapter)
-//		this->mVtkTableAdapter->SetKeyColumn(colidx);
-//	else if (this->mOtbTableAdapter)
-//		this->mOtbTableAdapter->setKeyColumn(colidx);
-//
-//	this->mTableView->verticalHeader()->show();
-//
-//	NMDebugCtx(__ctxtabview, << "done!");
-//}
 
 void
 NMTableView::callHideColumn(void)
@@ -1443,14 +1158,6 @@ NMTableView::sortColumn(int col)
 		// re-apply any existing selection
 		NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
 		this->updateProxySelection(QItemSelection(), QItemSelection());
-
-		//const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
-		//		this->mSelectionModel->selection(), false);
-
-		//NMDebugAI(<< "... applying mapped selection to table" << std::endl);
-		//this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Select |
-		//		QItemSelectionModel::Rows);
-		//mProxySelModel->setSelection(proxySelection);
 	}
 	NMDebugAI(<< "SORTING DONE!" << std::endl);
 
@@ -1461,8 +1168,6 @@ void
 NMTableView::selectionQuery(void)
 {
 	NMDebugCtx(__ctxtabview, << "...");
-
-	//CALLGRIND_START_INSTRUMENTATION;
 
 	bool bOk = false;
 	QString query = QInputDialog::getText(this, tr("Selection Query"),
@@ -1504,54 +1209,13 @@ NMTableView::selectionQuery(void)
 		return;
 	}
 
-
-	//disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-	//		                                         const QItemSelection &)),
-	//		this, SLOT(updateSelectionAdmin(const QItemSelection &,
-	//				                        const QItemSelection &)));
-    //
-	//disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-	//		                                         const QItemSelection &)),
-	//		this, SLOT(updateProxySelection(const QItemSelection &,
-	//				                        const QItemSelection &)));
-
-	//NMFastTrackSelectionModel* srcModel = qobject_cast<NMFastTrackSelectionModel*>(this->mSelectionModel);
-	//NMFastTrackSelectionModel* proxyModel = qobject_cast<NMFastTrackSelectionModel*>(this->mTableView->selectionModel());
-
 	const QItemSelection* srcSel = selector->getSelection();
 	long selectorcount = selector->getSelectionCount();
 	NMDebugAI(<< __FUNCTION__ << ": calculator reports "
 			<< selectorcount << " selected rows" << std::endl);
-	//this->printSelRanges(*srcSel, "selector ranges");
-	//const QItemSelection& proxySel = this->mSortFilter->mapRowSelectionFromSource(*srcSel, false);
 
-	//srcModel->setSelection(*srcSel);
 	mbColumnCalc = true;
 	mSelectionModel->setSelection(*srcSel);
-	NMDebugAI(<< __FUNCTION__ << ": done setting new source selection" << std::endl);
-	//proxyModel->setSelection(proxySel, QItemSelectionModel::Select);
-
-	//this->mSelectionModel->select(*srcSel, QItemSelectionModel::Toggle |
-	//		QItemSelectionModel::Rows);
-	//this->mTableView->selectionModel()->select(proxySel, QItemSelectionModel::Toggle |
-	//		QItemSelectionModel::Rows);
-
-
-	//connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-	//		                                         const QItemSelection &)),
-	//		this, SLOT(updateSelectionAdmin(const QItemSelection &,
-	//				                        const QItemSelection &)));
-    //
-	//connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-	//		                                         const QItemSelection &)),
-	//		this, SLOT(updateProxySelection(const QItemSelection &,
-	//				                        const QItemSelection &)));
-
-	//this->updateSelectionAdmin(selector->getSelectionCount());
-	//this->update
-
-	//CALLGRIND_STOP_INSTRUMENTATION;
-	//CALLGRIND_DUMP_STATS;
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -1567,35 +1231,6 @@ void
 NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
 {
 	NMDebugCtx(__ctxtabview, << "...");
-	//if (mbSwitchSelection || mbColumnCalc)
-	//{
-	//	mbSwitchSelection = false;
-	//	mbColumnCalc = false;
-	//	if (this->mChkSelectedRecsOnly->isChecked())
-	//	{
-	//		this->updateSelRecsOnly(Qt::Checked);
-	//	}
-	//	else
-	//	{
-	//		////NMDebugAI(<< __FUNCTION__ << ": switch proxy selection ... ");
-	//		//const int& maxrow = this->mSortFilter->rowCount(QModelIndex())-1;
-	//		////const int& maxcol = this->mSortFilter->columnCount(QModelIndex())-1;
-	//		//QModelIndex top = this->mSortFilter->index(0, 0, QModelIndex());
-	//		//QModelIndex bottom = this->mSortFilter->index(maxrow, 0, QModelIndex());
-    //        //
-	//		//QItemSelection selection(top, bottom);
-	//		//this->mTableView->selectionModel()->select(selection, QItemSelectionModel::Toggle |
-	//		//		QItemSelectionModel::Rows);
-    //
-	//		const QItemSelection& sourceSelection = mSelectionModel->getSelection();
-	//		const QItemSelection& swappedProxySel = this->mSortFilter->mapRowSelectionFromSource(sourceSelection, false);
-	//		mProxySelModel->setSelection(swappedProxySel);
-    //
-	//		NMDebugAI(<< __FUNCTION__ << ": direct proxy selection done!" << std::endl);
-	//	}
-    //
-	//}
-	//else
 	if (mbClearSelection)
 	{
 		this->mbClearSelection = false;
@@ -1606,7 +1241,6 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 		}
 		else
 		{
-			//this->mTableView->selectionModel()->clearSelection();
 			mProxySelModel->clearSelection();
 		}
 	}
@@ -1630,47 +1264,6 @@ NMTableView::updateProxySelection(const QItemSelection& sel, const QItemSelectio
 			mProxySelModel->setSelection(proxySel);
 		}
 
-		//if (desel.count() > 0)
-		//{
-		//	//this->printSelRanges(desel, "DESEL Source");
-		//	if (this->mChkSelectedRecsOnly->isChecked())
-		//	{
-		//		this->updateSelRecsOnly(Qt::Checked);
-		//	}
-		//	else
-		//	{
-		//		//NMDebugAI(<< "we map de-selection from source ..." << std::endl);
-		//		QItemSelection proxyDeselection = this->mSortFilter->mapRowSelectionFromSource(desel);
-        //
-		//		//this->printSelRanges(proxyDeselection, "Mapped Proxy (Desel)");
-		//		//NMDebugAI(<< "we apply the mapped de-selection to table view ..." << std::endl);
-		//		this->mTableView->selectionModel()->select(proxyDeselection, QItemSelectionModel::Toggle |
-		//				QItemSelectionModel::Rows);
-		//	}
-		//}
-        //
-		//if (sel.count() > 0)
-		//{
-		//	//this->printSelRanges(sel, "SEL Source");
-        //
-		//	if (this->mChkSelectedRecsOnly->isChecked())
-		//	{
-		//		this->updateSelRecsOnly(Qt::Checked);
-		//	}
-		//	else
-		//	{
-		//		//NMDebugAI(<< "we map selection from source ..." << std::endl);
-		//		QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(sel);
-        //
-		//		//this->printSelRanges(proxySelection, "Mapped Proxy (Sel)");
-		//		//NMDebugAI(<< "we apply the mapped selection to table view ..." << std::endl);
-		//		this->mTableView->selectionModel()->select(proxySelection, QItemSelectionModel::Toggle |
-		//				QItemSelectionModel::Rows);
-		//	}
-		//}
-
-		//this->printSelRanges(this->mTableView->selectionModel()->selection(),
-		//		QString("current table selection"));
 	}
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -1739,8 +1332,6 @@ NMTableView::toggleRow(int row)
 	QModelIndex srcIndex = this->mModel->index(row,0,QModelIndex());
 	if (this->mSelectionModel)
 	{
-		//this->mSelectionModel->select(srcIndex, QItemSelectionModel::Toggle);// |
-				//QItemSelectionModel::Rows);
 		this->mSelectionModel->toggleRow(row, 0, QModelIndex());
 	}
 }

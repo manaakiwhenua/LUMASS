@@ -2023,6 +2023,7 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 	// ------------------------------------------------------------------------------------------------
 	// process feature by feature
 	l.ResetReading();
+	//NMDebugAI(<< "importing features ... " << std::endl);
 	unsigned int featCounter = 1;
 	while ((pFeat = l.GetNextFeature()) != NULL)
 	{
@@ -2172,11 +2173,13 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 		}
 
 		// increase feature counter
+		//NMDebug(<< featCounter << " ");
 		++featCounter;
 
 		// release memory for the wkb buffer
 		delete[] wkb;
 	}
+	//NMDebug(<< std::endl);
 
 	// add geometry (i.e. points and cells)
 	vtkVect->SetPoints(mpts->GetPoints());

@@ -1,4 +1,4 @@
- /****************************I**************************************************
+ /******************************************************************************
  * Created by Alexander Herzigte
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
@@ -350,7 +350,7 @@ void NMTableView::switchSelection()
 	if (mSelectionModel != 0)
 	{
 		const QItemSelection toggledSelection = this->mSortFilter->swapRowSelection(
-				mSelectionModel->selection());
+				mSelectionModel->selection(), true);
 
 		mSelectionModel->setSelection(toggledSelection);
 	}
@@ -1062,6 +1062,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				int srcRow = row;
 				QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
 				QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
+				NMDebugAI(<< "proxy --> source : " << indx.row() << " --> " << srcIndx.row() << std::endl);
 				srcRow = srcIndx.row();
 				this->toggleRow(srcRow);
 			}

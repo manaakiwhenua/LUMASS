@@ -142,7 +142,8 @@ NMSelectableSortFilterProxyModel::mapToRaw(const QModelIndex& idx) const
 		return QModelIndex();
 	}
 
-	if (mFilter2Proxy.size() > lookuprow)
+	//if (mFilter2Proxy.size() > lookuprow)
+	if (mbFilterOn)
 		lookuprow = mFilter2Proxy.at(lookuprow);
 
 	return this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(lookuprow)),
@@ -251,36 +252,27 @@ NMSelectableSortFilterProxyModel::clearFilter(void)
 void
 NMSelectableSortFilterProxyModel::hideSource(const QList<int>& rows)
 {
-	if (this->mSourceModel == 0)
-		return;
-
-	const int& nrows = rows.size();
-	for (int i=0; i < nrows; ++i)
+	if (	this->mSourceModel == 0
+		&&  rows.size() <= this->mSourceModel->rowCount(QModelIndex())
+	   )
 	{
-		if (rows.at(i) < 0 || rows.at(i) > mRaw2Source.size()-1)
-			continue;
-
-		const int& src = mRaw2Source.at(rows.at(i));
-		if (src != -1)
-		{
-			mRaw2Source[rows.at(i)] = -1;
-			if (src > 0 && src < mSource2Raw.size())
-			{
-				if (src == mSource2Raw.at(src))
-				{
-					mSource2Raw.erase(mSource2Raw.begin() + src);
-					const int& proxy = mSource2Proxy.at(src);
-					mSource2Proxy.erase(mSource2Proxy.begin() + src);
-					mProxy2Source.erase(mProxy2Source.begin() + proxy);
-				}
-			}
-			++mNumHidden;
-		}
+		return;
 	}
-	//resetMapping();
+
+	//NMDebugCtx(ctxSelSortFilter, << "...");
+
+	for (int r=0; r < rows.size(); ++r)
+	{
+		mRaw2Source[rows.at(r)] = -1;
+	}
+
+	resetMapping();
 	this->clearFilter();
 
-	emit this->reset();
+	//NMDebugAI(<< "hid " << mNumHidden << " of " << mRaw2Source.size() << " raw rows " << std::endl);
+
+	//NMDebugCtx(ctxSelSortFilter, << "done!");
+	//emit this->reset();
 }
 
 void
@@ -332,23 +324,37 @@ NMSelectableSortFilterProxyModel::setHeaderData(int section,
 void
 NMSelectableSortFilterProxyModel::resetMapping(void)
 {
-	const int nrows = mRaw2Source.size();
-	// we've got to clear everything here, since it might all change
-	  mSource2Raw.clear();    mSource2Raw.reserve(nrows);
-	mProxy2Source.clear();  mProxy2Source.reserve(nrows);
-	mSource2Proxy.clear();  mSource2Proxy.reserve(nrows);
-	mFilter2Proxy.clear();
+	NMDebugCtx(ctxSelSortFilter, << "...");
+	const int nrows = this->mSourceModel->rowCount(QModelIndex());
+	mSource2Raw.clear();			mSource2Raw.reserve(nrows);
+	mSource2Proxy.clear();			mSource2Proxy.reserve(nrows);
+	mProxy2Source.clear();			mProxy2Source.reserve(nrows);
+	mProxy2Source.clear(); 			mProxy2Source.reserve(nrows);
 
-	for (int i=0, row=0; i < nrows; ++i)
+	long row = 0;
+	//NMDebugAI(<< "mRaw2Source indices ..." << std::endl);
+	for (int i=0; i < nrows; ++i)
 	{
 		if (mRaw2Source.at(i) == -1)
+		{
+			NMDebug(<< mRaw2Source.at(i) << " ");
 			continue;
+		}
 
+		mRaw2Source[i] = row;
 		mSource2Raw << i;
 		mProxy2Source << row;
 		mSource2Proxy << row;
 		++row;
+
+		NMDebug(<< mRaw2Source.at(i) << " ");
 	}
+	NMDebug(<< std::endl);
+
+	NMDebugAI(<< "un-hidden source rows: " << row << " (mSource2Raw.size()=" << mSource2Raw.size() << ") raw rows " << std::endl);
+	NMDebugCtx(ctxSelSortFilter, << "done!");
+
+	emit this->reset();
 }
 
 void
@@ -358,28 +364,21 @@ NMSelectableSortFilterProxyModel::showSource(const QList<int>& rows)
 		||  rows.size() == 0)
 		return;
 
-	const int& nrows = rows.size();
-	for (int i=0; i < nrows; ++i)
-	{
-		const int& showsrc = rows.at(i);
-		if (showsrc < 0 || showsrc > mRaw2Source.size()-1)
-			continue;
 
-		if (mRaw2Source.at(showsrc) == -1)
+	for (int i=0; i < rows.size(); ++i)
+	{
+		if (mRaw2Source.at(rows.at(i)) == -1)
 		{
-			beginInsertRows(QModelIndex(), showsrc, showsrc);
-			mSource2Raw.insert(showsrc, showsrc);
-			const int& s2pi = mProxy2Source.size();
-			mProxy2Source.push_back(showsrc);
-			mSource2Proxy.insert(showsrc, s2pi);
-			mRaw2Source[showsrc] = showsrc;
-			endInsertRows();
-			--mNumHidden;
+			mRaw2Source[rows.at(i)] = rows.at(i);
 		}
 	}
+	resetMapping();
+	this->clearFilter();
 
-	//resetMapping();
-	//emit this->reset();
+	//NMDebugAI(<< "hid " << mNumHidden << " of " << mRaw2Source.size() << " raw rows " << std::endl);
+
+	NMDebugCtx(ctxSelSortFilter, << "done!");
+	emit this->reset();
 }
 
 void
@@ -421,13 +420,16 @@ NMSelectableSortFilterProxyModel::mapFromSource(const QModelIndex& srcIdx) const
 		return QModelIndex();
 	}
 
-	if (srcIdx.row() < 0 || srcIdx.row() > this->mSource2Proxy.size()-1)
+	//if (srcIdx.row() < 0 || srcIdx.row() > this->mSource2Proxy.size()-1)
+	if (	srcIdx.row() < 0
+		||  srcIdx.row() > this->mRaw2Source.size()-1
+		||  this->mRaw2Source.at(srcIdx.row()) == -1)
 	{
 		//NMDebugAI(<< __FUNCTION__ << ": Invalid row: " << srcIdx.row());
 		return QModelIndex();
 	}
 
-	int row = mSource2Proxy.at(srcIdx.row());
+	int row = mSource2Proxy.at(mRaw2Source.at(srcIdx.row()));
 	if (mbFilterOn)
 		row = mFilter2Proxy.indexOf(row);
 
@@ -451,10 +453,11 @@ NMSelectableSortFilterProxyModel::mapToSource(const QModelIndex& proxyIdx) const
 		return QModelIndex();
 	}
 
-	if (mFilter2Proxy.size() > lookuprow)
+	//if (mFilter2Proxy.size() > lookuprow)
+	if (mbFilterOn)
 		lookuprow = mFilter2Proxy.at(lookuprow);
 
-	return this->mSourceModel->index(mProxy2Source.at(lookuprow), proxyIdx.column(), QModelIndex());
+	return this->mSourceModel->index(mSource2Raw.at(mProxy2Source.at(lookuprow)), proxyIdx.column(), QModelIndex());
 }
 
 QItemSelection
@@ -498,7 +501,7 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 	{
 		for (int row=range.top(); row <= range.bottom(); ++row)
 		{
-			srcidx.push_back(mProxy2Source.at(row));
+			srcidx.push_back(mSource2Raw.at(mProxy2Source.at(row)));
 		}
 	}
 	if (srcidx.size() > 1)
@@ -511,22 +514,23 @@ NMSelectableSortFilterProxyModel::mapSelectionToSource(const QItemSelection& pro
 
 QItemSelection
 NMSelectableSortFilterProxyModel::swapRowSelection(
-		const QItemSelection& selection,
+		const QItemSelection& selection, bool bSourceSelection,
 		bool rowsonly) const
 {
 	NMDebugCtx(ctxSelSortFilter, << "...");
 	QItemSelection isel;
 	const int numranges = selection.size();
-	const int maxrow = this->sourceRowCount() - 1;
-	if (numranges == 0)
-	{
-		const QModelIndex sidx = this->createIndex(0, 0, 0);
-		const QModelIndex eidx = this->createIndex(maxrow, 0, 0);
-		isel.append(QItemSelectionRange(sidx, eidx));
-		NMDebugAI(<< "input selection empty -> complete table selected!" << std::endl);
-		NMDebugCtx(ctxSelSortFilter, << "done!");
-		return isel;
-	}
+	const int maxrow = bSourceSelection ? this->mRaw2Source.size()-1
+			: this->mSource2Proxy.size()-1;
+	//if (numranges == 0)
+	//{
+	//	const QModelIndex sidx = this->createIndex(0, 0, 0);
+	//	const QModelIndex eidx = this->createIndex(maxrow, 0, 0);
+	//	isel.append(QItemSelectionRange(sidx, eidx));
+	//	NMDebugAI(<< "input selection empty -> complete table selected!" << std::endl);
+	//	NMDebugCtx(ctxSelSortFilter, << "done!");
+	//	return isel;
+	//}
 
 	// create list of selected indices
 	std::vector<int> selidx;
@@ -536,14 +540,19 @@ NMSelectableSortFilterProxyModel::swapRowSelection(
 	//NMDebugAI(<< "picking rows: ");
 	for (int invr=0; invr <= maxrow; ++invr)
 	{
-		if (	invr >= selection.at(rangeindex).top()
-			&& invr <= selection.at(rangeindex).bottom())
-		{
-			if (invr == selection.at(rangeindex).bottom())
-			{
-				rangeindex = rangeindex < numranges - 1 ? rangeindex + 1 : rangeindex;
-			}
+		if (bSourceSelection && mRaw2Source.at(invr) == -1)
 			continue;
+		if (numranges > 0)
+		{
+			if (	invr >= selection.at(rangeindex).top()
+				&&  invr <= selection.at(rangeindex).bottom())
+			{
+				if (invr == selection.at(rangeindex).bottom())
+				{
+					rangeindex = rangeindex < numranges - 1 ? rangeindex + 1 : rangeindex;
+				}
+				continue;
+			}
 		}
 
 		//NMDebug(<< invr << "  ");
@@ -551,6 +560,9 @@ NMSelectableSortFilterProxyModel::swapRowSelection(
 	}
 	//NMDebugAI( << std::endl);
 	NMDebugAI(<< selidx.size() << " indices in swapped selection" << std::endl);
+
+	// need to sort in any case?
+	//std::stable_sort(selidx.begin(), selidx.end());
 
 	// turn list of indices into selection ranges
 	this->itemSelectionFromIndexList(selidx, isel, rowsonly);
@@ -653,14 +665,15 @@ NMSelectableSortFilterProxyModel::mapRowSelectionFromSource(const QItemSelection
 	{
 		for(int row=r.top(); row <= r.bottom(); ++row)
 		{
-			if (row < 0 || row > mSource2Proxy.size()-1)
+			const int rowidx = mSource2Proxy.at(mRaw2Source.at(row));
+			if (rowidx < 0 || rowidx > mSource2Proxy.size()-1)
 			{
-				NMDebugAI(<< row << " is outside mSource2Proxy! Skip!" << std::endl);
+				NMDebugAI(<< rowidx << " is outside mSource2Proxy! Skip!" << std::endl);
 			}
 			else
 			{
 				//NMDebugAI(<< "\t" << row << " -> " << mSource2Proxy.at(row) << std::endl);
-				selidx.push_back(mSource2Proxy.at(row));
+				selidx.push_back(rowidx);
 			}
 		}
 	}
@@ -695,14 +708,15 @@ NMSelectableSortFilterProxyModel::mapSelectionFromSource(const QItemSelection &s
 	{
 		for(int row=r.top(); row <= r.bottom(); ++row)
 		{
-			if (row < 0 || row > mSource2Proxy.size()-1)
+			const int rowidx = mSource2Proxy.at(mRaw2Source.at(row));
+			if (rowidx < 0 || rowidx > mSource2Proxy.size()-1)
 			{
-				NMDebugAI(<< row << " is outside mSource2Proxy! Skip!" << std::endl);
+				NMDebugAI(<< rowidx << " is outside mSource2Proxy! Skip!" << std::endl);
 			}
 			else
 			{
 				//NMDebugAI(<< "\t" << row << " -> " << mSource2Proxy.at(row) << std::endl);
-				selidx.push_back(mSource2Proxy.at(row));
+				selidx.push_back(rowidx);
 			}
 		}
 	}

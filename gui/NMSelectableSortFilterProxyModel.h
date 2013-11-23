@@ -123,6 +123,7 @@ public:
 	 * 	assuming either a proxy selection or a source selection;
 	 */
 	QItemSelection swapRowSelection(const QItemSelection& selection,
+			bool bSourceSelection,
 			bool rowsonly=true) const;
 
 	void sort(int column, Qt::SortOrder order);
@@ -153,7 +154,7 @@ public:
 protected:
 
 	QAbstractItemModel* mSourceModel;
-	QModelIndexList mProxySelection;
+	//QList<bool> mHidden;
 
 	/**
 	 *  contains for each index of the original

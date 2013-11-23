@@ -558,11 +558,16 @@ void NMVectorLayer::createTableView(void)
 	vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
 			this->mAttributeTable->GetColumnByName("nm_hole"));
 	QList<int> hiddenrows;
+	NMDebugAI(<< __FUNCTION__ << ": hidden rows ..." << std::endl);
 	for (int row=0; row < this->mAttributeTable->GetNumberOfRows(); ++row)
 	{
 		if (holes->GetValue(row))
+		{
+			NMDebug(<< row << " ");
 			hiddenrows << row;
+		}
 	}
+	NMDebug(<< " --> sum=" << hiddenrows.size() << std::endl);
 	this->mTableView->hideSource(hiddenrows);
 
 	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)

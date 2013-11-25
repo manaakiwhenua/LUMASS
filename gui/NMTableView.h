@@ -169,8 +169,9 @@ protected:
 	void printSelRanges(const QItemSelection& selection,
 			const QString& msg);
 	void connectSelModels(bool bconnect);
-	void prepareProgressDlg(NMTableCalculator* obj, const QString& msg);
-	void cleanupProgressDlg(NMTableCalculator* obj);
+	void prepareProgressDlg(NMTableCalculator* obj,
+			const QString& msg, int maxrange=0);
+	void cleanupProgressDlg(NMTableCalculator* obj, int maxrange=0);
 
 	QProgressDialog* mProgressDialog;
 	ViewMode mViewMode;

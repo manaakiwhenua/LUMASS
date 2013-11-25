@@ -97,6 +97,8 @@ protected:
 	bool mSelectionModeOn;
 	bool mbCanceled;
 
+
+
 	long mNumSel;
 	QItemSelection mOutputSelection;
 	QItemSelection mInputSelection;

@@ -387,6 +387,8 @@ void NMTableView::switchSelection()
 void NMTableView::normalise()
 {
 
+	// NOTE: for progress maxrange needs to be ncols * rows!
+
 //	NMDebugCtx(__ctxtabview, << "...");
 //
 //	// -----------------------------------------------------------------------
@@ -476,9 +478,11 @@ void NMTableView::normalise()
 //}
 
 void
-NMTableView::prepareProgressDlg(NMTableCalculator* obj, const QString& msg)
+NMTableView::prepareProgressDlg(NMTableCalculator* obj, const QString& msg, int maxrange)
 {
-	const int maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
+	if (maxrange == 0)
+		maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
+
 	mProgressDialog->setWindowModality(Qt::WindowModal);
 	mProgressDialog->setLabelText(msg);
 	mProgressDialog->setRange(0, maxrange);
@@ -486,9 +490,11 @@ NMTableView::prepareProgressDlg(NMTableCalculator* obj, const QString& msg)
 	connect(mProgressDialog, SIGNAL(canceled()), obj, SLOT(cancelRequested()));
 }
 
-void NMTableView::cleanupProgressDlg(NMTableCalculator* obj)
+void NMTableView::cleanupProgressDlg(NMTableCalculator* obj, int maxrange)
 {
-	const int maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
+	if (maxrange == 0)
+		maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
+
 	mProgressDialog->setValue(maxrange);
 	disconnect(obj, SIGNAL(signalProgress(int)), mProgressDialog, SLOT(setValue(int)));
 	disconnect(mProgressDialog, SIGNAL(canceled()), obj, SLOT(cancelRequested()));
@@ -814,6 +820,9 @@ void NMTableView::colStats()
 	NMDebugCtx(__ctxtabview, << "...");
 
 	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
+	const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->sourceRowCount()*2;
+	prepareProgressDlg(calc.data(), "Calculate Column Statistics ...", maxrange);
+
 	calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
 	calc->setRowFilter(mSelectionModel->selection());
 	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
@@ -824,13 +833,28 @@ void NMTableView::colStats()
 		NMDebugCtx(__ctxtabview, << "done!");
 		return;
 	}
+	cleanupProgressDlg(calc.data(), maxrange);
 
 	// min, max, mean, sum
-	QString res = QString(tr("min:   %1\nmax:  %2\nmean:  %3\nsum:  %4")).
-			arg(stats[0], 0, 'f', 4).
-			arg(stats[1], 0, 'f', 4).
-			arg(stats[2], 0, 'f', 4).
-			arg(stats[3], 0, 'f', 4);
+	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
+	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
+	QString ssum  = QString("%1").arg(stats[2], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
+	QString smean = QString("%1").arg(stats[3], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
+	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
+
+	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
+	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
+	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
+	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
+	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
+
+
+	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10")
+			.arg(strmin).arg(smin)
+			.arg(strmax).arg(smax)
+			.arg(strsum).arg(ssum)
+			.arg(strmean).arg(smean)
+			.arg(strsdev).arg(ssdev);
 
 	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
 

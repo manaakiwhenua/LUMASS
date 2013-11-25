@@ -28,7 +28,7 @@
 #include <QColor>
 
 NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(QObject* parent)
-	: mKeyIdx(-1)
+	: mKeyIdx(0)
 {
 	this->setParent(parent);
 }
@@ -174,42 +174,47 @@ NMQtOtbAttributeTableModel::headerData(int section,
 bool
 NMQtOtbAttributeTableModel::setData(const QModelIndex& index,
 		const QVariant& value,
-		int role) //=Qt::EditRole)
+		int role)
 {
 	if (	mTable.IsNull()
-		//||  role != Qt::EditRole
 		||  !index.isValid())
 	{
 		return false;
 	}
 
-	bool bok = true;
-	switch(value.type())
+	if (	role == Qt::DisplayRole
+		||  role == Qt::EditRole
+	   )
 	{
-	case QVariant::Char:
-	case QVariant::Int:
-		mTable->SetValue(index.column(), index.row(), (long)value.toInt(&bok));
-		break;
+		bool bok = true;
+		switch(value.type())
+		{
+		case QVariant::Char:
+		case QVariant::Int:
+			mTable->SetValue(index.column(), index.row(), (long)value.toInt(&bok));
+			break;
 
-	case QVariant::Double:
-		mTable->SetValue(index.column(), index.row(), value.toDouble(&bok));
-		break;
+		case QVariant::Double:
+			mTable->SetValue(index.column(), index.row(), value.toDouble(&bok));
+			break;
 
-	case QVariant::Date:
-	case QVariant::DateTime:
-	case QVariant::Time:
-	case QVariant::Url:
-	case QVariant::String:
-		mTable->SetValue(index.column(), index.row(), value.toString().toStdString());
-		break;
+		case QVariant::Date:
+		case QVariant::DateTime:
+		case QVariant::Time:
+		case QVariant::Url:
+		case QVariant::String:
+			mTable->SetValue(index.column(), index.row(), value.toString().toStdString());
+			break;
 
-	default:
-		return false;
-		break;
+		default:
+			return false;
+			break;
+		}
+		emit dataChanged(index, index);
+		return true;
 	}
 
-	emit dataChanged(index, index);
-	return true;
+	return false;
 }
 
 
@@ -243,6 +248,7 @@ NMQtOtbAttributeTableModel::setHeaderData(int section, Qt::Orientation orientati
 	if (	section < 0
 		||  section > this->mTable->GetNumCols()-1
 		||  value.type() != QVariant::String
+		||  role != Qt::DisplayRole
 	   )
 		return false;
 

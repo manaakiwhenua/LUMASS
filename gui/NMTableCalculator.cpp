@@ -33,12 +33,9 @@
 #include <QModelIndex>
 #include <QDateTime>
 
-//#include "vtkVariant.h"
-//#include "vtkStdString.h"
-//#include "vtkDoubleArray.h"
 #include "itkExceptionObject.h"
 
-#include "valgrind/callgrind.h"
+//#include "valgrind/callgrind.h"
 
 
 //NMTableCalculator::NMTableCalculator(QObject* parent)
@@ -49,7 +46,7 @@
 
 NMTableCalculator::NMTableCalculator(QAbstractItemModel* model,
 		QObject* parent)
-	: QObject(parent), mModel(model)
+	: QObject(parent), mModel(model), mbCanceled(false)
 {
 	this->initCalculator();
 }
@@ -278,6 +275,7 @@ bool NMTableCalculator::parseFunction()
 	}
 
 	QRegExp exprSep("(\\&\\&|\\?|:|\\|\\|)");
+	// ToDo:: we probably want to take the '=' sign out of here -> double check with muParser
 	QRegExp termIdent("([_a-zA-Z]+[_a-zA-Z\\d]*|'[\\w\\d\\s\\W]*'|\\d*\\.*\\d+)"
 			"\\s*(=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|in|!in|"
 			"startsWith|endsWith|contains)\\s*"
@@ -534,6 +532,7 @@ NMTableCalculator::doNumericCalcSelection()
 
 	if (this->mSelectionModeOn)
 	{
+		mbCanceled = false;
 		mOutputSelection.clear();
 		mNumSel = 0;
 	}
@@ -541,6 +540,7 @@ NMTableCalculator::doNumericCalcSelection()
 	QDateTime started = QDateTime::currentDateTime();
 	QItemSelection& isel = mOutputSelection;
 	const int maxcolidx = 0;
+	int progress=0;
 	if (this->mbRowFilter)
 	{
 		foreach(const QItemSelectionRange& range, this->mInputSelection)
@@ -551,7 +551,7 @@ NMTableCalculator::doNumericCalcSelection()
 			int start = -1;
 			int end = -1;
 			bool selected;
-			for (int row=top; row <= bottom; ++row)
+			for (int row=top; row <= bottom && !mbCanceled; ++row)
 			{
 				if (mRaw2Source->at(row) == -1)
 					continue;
@@ -596,6 +596,10 @@ NMTableCalculator::doNumericCalcSelection()
 						end   = -1;
 					}
 				}
+
+				++progress;
+				if (progress % 1000 == 0)
+					emit signalProgress(progress);
 			}
 		}
 	}
@@ -606,7 +610,7 @@ NMTableCalculator::doNumericCalcSelection()
 		int start = -1;
 		int end = -1;
 		bool selected;
-		for (int row=0; row < nrows; ++row)
+		for (int row=0; row < nrows && !mbCanceled; ++row)
 		{
 			if (mRaw2Source->at(row) == -1)
 				continue;
@@ -651,6 +655,12 @@ NMTableCalculator::doNumericCalcSelection()
 					start = -1;
 					end   = -1;
 				}
+			}
+
+			++progress;
+			if (progress % 1000 == 0)
+			{
+				emit signalProgress(progress);
 			}
 		}
 	}
@@ -847,24 +857,32 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 void
 NMTableCalculator::doStringCalculation()
 {
+	mbCanceled = false;
+	int progress = 0;
 	if (this->mbRowFilter)
 	{
 		foreach(const QItemSelectionRange& range, this->mInputSelection)
 		{
 			const int top = range.top();
 			const int bottom = range.bottom();
-			for (int row=top; row <= bottom; ++row)
+			for (int row=top; row <= bottom && !mbCanceled; ++row)
 			{
 				this->processStringCalc(row);
+				++progress;
+				if (progress % 1000 == 0)
+					emit signalProgress(progress);
 			}
 		}
 	}
 	else
 	{
 		const int nrows = this->mModel->rowCount(QModelIndex());
-		for (int row=0; row < nrows; ++row)
+		for (int row=0; row < nrows && !mbCanceled; ++row)
 		{
 			this->processStringCalc(row);
+			++progress;
+			if (progress % 1000 == 0)
+				emit signalProgress(progress);
 		}
 	}
 }
@@ -892,18 +910,37 @@ NMTableCalculator::processStringCalc(int row)
 		++cnt;
 	}
 
+
+	// so, since we don't support any logical or assignment operators in string calculation
+	// expressions so far, we just probe the left-hand side of the field list and the
+	// list of constants and replace the terme with the first we find - done!
 	int termcnt=0;
 	int fieldcnt;
 	foreach(const QString& st, this->mslStrTerms)
 	{
 		// get value from the model
-		QModelIndex fidx = this->mModel->index(row,
-				this->mLstLstStrFields.at(termcnt).at(0), QModelIndex());
-		value = this->mModel->data(fidx, Qt::DisplayRole).toString();
+		if (mLstLstStrFields.at(termcnt).at(0) > 0)
+		{
+			QModelIndex fidx = this->mModel->index(row,
+					this->mLstLstStrFields.at(termcnt).at(0), QModelIndex());
+			value = this->mModel->data(fidx, Qt::DisplayRole).toString();
+			//NMDebugAI(<< row << ": field value = " << value.toStdString() << std::endl);
+		}
+		else if (termcnt < mLstStrLeftRight.size())
+		{
+			if (mLstStrLeftRight.at(termcnt).size() > 0)
+			{
+				value = mLstStrLeftRight.at(termcnt).at(0);
+				//NMDebugAI(<< row << ": constant value = " << value.toStdString() << std::endl);
+			}
+		}
 
-		QString rx = QString("\\b%1\\b").arg(this->mLstStrLeftRight.at(termcnt).at(0));
+		QString rx = QString("\\b%1\\b").arg(value);
 		//value = QString(this->mLstLstStrFields.at(termcnt).at(0)->GetValue(row).c_str());
-		res = res.replace(QRegExp(rx), value);
+		if (value.isEmpty() || value.isNull())
+			res = value;
+		else
+			res = res.replace(QRegExp(rx), value);
 		++termcnt;
 	}
 

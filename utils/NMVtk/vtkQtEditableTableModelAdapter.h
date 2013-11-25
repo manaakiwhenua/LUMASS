@@ -37,11 +37,13 @@ public:
 	vtkQtEditableTableModelAdapter(vtkTable* table, QObject* parent=0);
 	virtual ~vtkQtEditableTableModelAdapter();
 
+	Qt::ItemFlags flags(const QModelIndex& idx) const;
 	bool setHeaderData(int section, Qt::Orientation orientation,
-			const QVariant& value, int role);
+			const QVariant& value, int role=Qt::DisplayRole);
+	bool setData(const QModelIndex& idx, const QVariant& value, int role=Qt::DisplayRole);
 	bool insertColumns(int column, int count, const QModelIndex& parent);
 	bool removeColumns(int column, int count, const QModelIndex& parent);
-
+	QVariant data(const QModelIndex &idx, int role) const;
 
 private:
 	vtkQtEditableTableModelAdapter(const vtkQtEditableTableModelAdapter &);

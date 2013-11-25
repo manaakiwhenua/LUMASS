@@ -555,23 +555,25 @@ void NMVectorLayer::createTableView(void)
 	this->mTableView->hideAttribute("nm_sel");
 
 	// hide the 'hole' rows
-	vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
-			this->mAttributeTable->GetColumnByName("nm_hole"));
-	QList<int> hiddenrows;
-	NMDebugAI(<< __FUNCTION__ << ": hidden rows ..." << std::endl);
-	for (int row=0; row < this->mAttributeTable->GetNumberOfRows(); ++row)
-	{
-		if (holes->GetValue(row))
-		{
-			NMDebug(<< row << " ");
-			hiddenrows << row;
-		}
-	}
-	NMDebug(<< " --> sum=" << hiddenrows.size() << std::endl);
-	this->mTableView->hideSource(hiddenrows);
-
 	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+	{
+		vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
+				this->mAttributeTable->GetColumnByName("nm_hole"));
+		QList<int> hiddenrows;
+		//NMDebugAI(<< __FUNCTION__ << ": hidden rows ..." << std::endl);
+		for (int row=0; row < this->mAttributeTable->GetNumberOfRows(); ++row)
+		{
+			if (holes->GetValue(row))
+			{
+				//NMDebug(<< row << " ");
+				hiddenrows << row;
+			}
+		}
+		//NMDebug(<< " --> sum=" << hiddenrows.size() << std::endl);
+		this->mTableView->hideSource(hiddenrows);
 		this->mTableView->hideAttribute("nm_hole");
+	}
+
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
 	// connect tableview signals to layer slots
@@ -596,6 +598,8 @@ int NMVectorLayer::updateAttributeTable(void)
 	vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 	if (dsa == 0 || dsa->GetNumberOfArrays() == 0)
 		return 0;
+
+	disconnectTableSel();
 
 	vtkSmartPointer<vtkTable> rawtab = vtkSmartPointer<vtkTable>::New();
 	rawtab->SetRowData(dsa);
@@ -622,6 +626,7 @@ int NMVectorLayer::updateAttributeTable(void)
 	this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
 	this->mTableModel = tabModel;
 
+	connectTableSel();
 	//emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
@@ -636,65 +641,65 @@ const vtkTable* NMVectorLayer::getTable(void)
 	return this->mAttributeTable;
 }
 
-void NMVectorLayer::updateDataSet(QStringList& slAlteredColumns,
-		QStringList& slDeletedColumns)
-{
-	NMDebugCtx(ctxNMVectorLayer, << "...");
-
-	if (slDeletedColumns.size() == 0 && slAlteredColumns.size() == 0)
-	{
-		NMDebugAI(<< "nothing to save!" << endl);
-		NMDebugCtx(ctxNMVectorLayer, << "done!");
-		return;
-	}
-
-	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
-
-	vtkUnsignedCharArray* holeAr;
-	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-		holeAr = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
-
-
-	// delete all deleted columns
-	for (int d=0; d < slDeletedColumns.size(); ++d)
-		dsAttr->RemoveArray(slDeletedColumns.at(d).toStdString().c_str());
-
-	// add / update columns
-	for (int a=0; a < slAlteredColumns.size(); ++a)
-	{
-		vtkAbstractArray* aa = this->mAttributeTable->GetColumnByName(
-				slAlteredColumns.at(a).toStdString().c_str());
-
-		vtkSmartPointer<vtkAbstractArray> na = vtkAbstractArray::CreateArray(aa->GetDataType());
-		na->SetName(aa->GetName());
-		na->SetNumberOfComponents(1);
-		na->Allocate(holeAr->GetNumberOfTuples());
-
-		int aaCnt = 0;
-		for (int r=0; r < holeAr->GetNumberOfTuples(); ++r)
-		{
-			if (holeAr->GetValue(r))
-			{
-				na->InsertVariantValue(r, vtkVariant(0));
-			}
-			else
-			{
-				na->InsertVariantValue(r, vtkVariant(aa->GetVariantValue(aaCnt)));
-				++aaCnt;
-			}
-		}
-
-		dsAttr->AddArray(na);
-	}
-
-	slDeletedColumns.clear();
-	slAlteredColumns.clear();
-
-	//emit dataSetChanged(this);
-	//emit legendChanged(this);
-
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
-}
+//void NMVectorLayer::updateDataSet(QStringList& slAlteredColumns,
+//		QStringList& slDeletedColumns)
+//{
+//	NMDebugCtx(ctxNMVectorLayer, << "...");
+//
+//	if (slDeletedColumns.size() == 0 && slAlteredColumns.size() == 0)
+//	{
+//		NMDebugAI(<< "nothing to save!" << endl);
+//		NMDebugCtx(ctxNMVectorLayer, << "done!");
+//		return;
+//	}
+//
+//	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+//
+//	vtkUnsignedCharArray* holeAr;
+//	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+//		holeAr = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
+//
+//
+//	// delete all deleted columns
+//	for (int d=0; d < slDeletedColumns.size(); ++d)
+//		dsAttr->RemoveArray(slDeletedColumns.at(d).toStdString().c_str());
+//
+//	// add / update columns
+//	for (int a=0; a < slAlteredColumns.size(); ++a)
+//	{
+//		vtkAbstractArray* aa = this->mAttributeTable->GetColumnByName(
+//				slAlteredColumns.at(a).toStdString().c_str());
+//
+//		vtkSmartPointer<vtkAbstractArray> na = vtkAbstractArray::CreateArray(aa->GetDataType());
+//		na->SetName(aa->GetName());
+//		na->SetNumberOfComponents(1);
+//		na->Allocate(holeAr->GetNumberOfTuples());
+//
+//		int aaCnt = 0;
+//		for (int r=0; r < holeAr->GetNumberOfTuples(); ++r)
+//		{
+//			if (holeAr->GetValue(r))
+//			{
+//				na->InsertVariantValue(r, vtkVariant(0));
+//			}
+//			else
+//			{
+//				na->InsertVariantValue(r, vtkVariant(aa->GetVariantValue(aaCnt)));
+//				++aaCnt;
+//			}
+//		}
+//
+//		dsAttr->AddArray(na);
+//	}
+//
+//	slDeletedColumns.clear();
+//	slAlteredColumns.clear();
+//
+//	//emit dataSetChanged(this);
+//	//emit legendChanged(this);
+//
+//	NMDebugCtx(ctxNMVectorLayer, << "done!");
+//}
 
 void NMVectorLayer::writeDataSet(void)
 {

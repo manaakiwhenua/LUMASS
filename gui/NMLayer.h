@@ -121,19 +121,25 @@ public:
 	bool getLegendItemRange(int legendRow, double* range);
 
 	virtual int mapUniqueValues(QString fieldName)=0;
+	bool hasChanged(void) {return this->mHasChanged;};
 
 public slots:
 	// call this function whenever you've changed the
 	// layer's data set and wish other objects get
 	// to know about it
+	void selectionChanged(QItemSelection newSel, QItemSelection oldSel);
+	void tableDataChanged(QModelIndex tl, QModelIndex br);
+	void tableColumnsInserted(Qt::Orientations, int startsection,
+			int endsection);
+	void tableColumnsRemoved(Qt::Orientations, int startsection,
+			int endsection);
 	virtual void writeDataSet(void);
-	void emitDataSetChanged();
-	void emitAttributeTableChanged(
-			QStringList& slAlteredColumns,
-			QStringList& slDeletedColumns);
-	bool hasChanged(void) {return this->mHasChanged;};
+	//void emitDataSetChanged();
+	//void emitAttributeTableChanged(
+	//		QStringList& slAlteredColumns,
+	//		QStringList& slDeletedColumns);
 	virtual void updateLayerSelection(QList<long> lstCellId,
-			QList<long> lstNMId, NMLayerSelectionType seltype);
+		QList<long> lstNMId, NMLayerSelectionType seltype);
 
 signals:
 	void visibilityChanged(const NMLayer* layer);
@@ -205,11 +211,13 @@ protected:
 	virtual void createTableView(void);
 	virtual void resetLegendInfo(void);
 	virtual void removeFromMap(void);
+	virtual void connectTableSel(void);
+	virtual void disconnectTableSel(void);
 
 protected slots:
 	virtual int updateAttributeTable(void);
-	virtual void updateDataSet(QStringList& slAlteredColumns,
-			QStringList& slDeletedColumns);
+	//virtual void updateDataSet(QStringList& slAlteredColumns,
+	//		QStringList& slDeletedColumns);
 	virtual void updateSelectionData();
 
 

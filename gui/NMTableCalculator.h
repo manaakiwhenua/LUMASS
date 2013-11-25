@@ -77,6 +77,16 @@ public:
 	std::vector<double> calcColumnStats(const QString& column);
 	QStringList normaliseColumns(const QStringList& columnNames, bool bCostCriterion);
 
+public: signals:
+
+	void signalProgress(int);
+
+public slots:
+
+	void cancelRequested(void)
+		{mbCanceled = true;}
+
+
 protected:
 	otb::MultiParser::Pointer mParser;
 	QAbstractItemModel* mModel;
@@ -85,6 +95,7 @@ protected:
 
 	bool mbRowFilter;
 	bool mSelectionModeOn;
+	bool mbCanceled;
 
 	long mNumSel;
 	QItemSelection mOutputSelection;

@@ -29,6 +29,7 @@
 #include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
 #include "NMFastTrackSelectionModel.h"
+#include "NMTableCalculator.h"
 
 #include <QAbstractItemModel>
 #include <QObject>
@@ -50,6 +51,7 @@
 #include <QSortFilterProxyModel>
 #include <QItemSelectionModel>
 #include <QItemSelection>
+#include <QProgressDialog>
 
 /*
 #include "vtkAbstractArray.h"
@@ -89,6 +91,7 @@ public:
 	};
 
 	NMTableView(QAbstractItemModel* model, QWidget* parent=0);
+	NMTableView(QAbstractItemModel* model, ViewMode mode, QWidget* parent=0);
 	virtual ~NMTableView();
 
 	void setSelectionModel(NMFastTrackSelectionModel* selectionModel);
@@ -113,12 +116,12 @@ public slots:
 	void deleteColumn();
 	void exportTable();
 	void colStats();
-	void userQuery();
+	//void userQuery();
 	void normalise();
 	void selectionQuery();
 	void clearSelection();
-	void selectRow(int row);
-	void deselectRow(int row);
+	//void selectRow(int row);
+	//void deselectRow(int row);
 	void toggleRow(int row);
 	void switchSelection(void);
 	void joinAttributes(void);
@@ -166,11 +169,13 @@ protected:
 	void printSelRanges(const QItemSelection& selection,
 			const QString& msg);
 	void connectSelModels(bool bconnect);
+	void prepareProgressDlg(NMTableCalculator* obj, const QString& msg);
+	void cleanupProgressDlg(NMTableCalculator* obj);
 
-
+	QProgressDialog* mProgressDialog;
 	ViewMode mViewMode;
 
-	//long mlNumSelRecs;
+	long mlNumSelRecs;
 	int mRowKeyColIndex;
 	QString mLastClickedColumn;
 	long mlLastClickedRow;
@@ -179,6 +184,7 @@ protected:
 	bool mbColumnCalc;
 
 	QMap<int, bool> mMapColSortAsc;
+	QStringList mHiddenColumns;
 
 	QTableView* mTableView;
 	//vtkQtEditableTableModelAdapter* mVtkTableAdapter;
@@ -200,13 +206,15 @@ protected:
 	QMenu* mColHeadMenu;
 	QMenu* mManageLayerMenu;
 
+
+
+
 	//vtkSmartPointer<vtkTable> mBaseTable;
 	//otb::AttributeTable::Pointer mOtbTable;
 	//NMLayer* mLayer;
 
-	QStringList mDeletedColumns;
-	QStringList mAlteredColumns;
-	QStringList mHiddenColumns;
+	//QStringList mDeletedColumns;
+	//QStringList mAlteredColumns;
 
 };
 

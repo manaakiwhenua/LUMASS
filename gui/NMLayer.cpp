@@ -99,30 +99,30 @@ NMLayer::~NMLayer()
 	NMDebugCtx(ctxNMLayer, << "done!");
 }
 
-void NMLayer::emitDataSetChanged()
-{
-	NMDebugCtx(ctxNMLayer, << "...");
+//void NMLayer::emitDataSetChanged()
+//{
+//	NMDebugCtx(ctxNMLayer, << "...");
+//
+//	this->updateAttributeTable();
+//	this->mHasChanged = true;
+//	emit dataSetChanged(this);
+//
+//	NMDebugCtx(ctxNMLayer, << "done!");
+//}
 
-	this->updateAttributeTable();
-	this->mHasChanged = true;
-	emit dataSetChanged(this);
-
-	NMDebugCtx(ctxNMLayer, << "done!");
-}
-
-void NMLayer::emitAttributeTableChanged(
-		QStringList& slAlteredColumns,
-		QStringList& slDeletedColumns)
-{
-	NMDebugCtx(ctxNMLayer, << "...");
-
-	this->updateDataSet(slAlteredColumns, slDeletedColumns);
-	this->updateAttributeTable();
-	this->mHasChanged = true;
-//	emit attributeTableChanged(this->mAttributeTable);
-
-	NMDebugCtx(ctxNMLayer, << "done!");
-}
+//void NMLayer::emitAttributeTableChanged(
+//		QStringList& slAlteredColumns,
+//		QStringList& slDeletedColumns)
+//{
+//	NMDebugCtx(ctxNMLayer, << "...");
+//
+//	this->updateDataSet(slAlteredColumns, slDeletedColumns);
+//	this->updateAttributeTable();
+//	this->mHasChanged = true;
+////	emit attributeTableChanged(this->mAttributeTable);
+//
+//	NMDebugCtx(ctxNMLayer, << "done!");
+//}
 
 void NMLayer::updateLayerSelection(QList<long> lstCellId,
 		QList<long> lstNMId, NMLayerSelectionType seltype)
@@ -385,13 +385,38 @@ int NMLayer::updateAttributeTable(void)
 	return 0;
 }
 
-void NMLayer::updateDataSet(QStringList& slAlteredColumns,
-		QStringList& slDeletedColumns)
+//void NMLayer::updateDataSet(QStringList& slAlteredColumns,
+//		QStringList& slDeletedColumns)
+//{
+//	// update data set from changes in attribute table
+//	// subclasses to implement
+//}
+
+void
+NMLayer::disconnectTableSel(void)
 {
-	// update data set from changes in attribute table
-	// subclasses to implement
+	disconnect(mTableModel, SIGNAL(dataChanged(QModelIndex, QModelIndex)),
+			this, SLOT(tableDataChanged(QModelIndex, QModelIndex)));
+	disconnect(mTableModel, SIGNAL(columnsInserted(Qt::Orientations, int, int)),
+			this, SLOT(tableColumnsInserted(Qt::Orientations, int, int)));
+	disconnect(mTableModel, SIGNAL(columnsRemoved(Qt::Orientations, int , int)),
+			this, SLOT(tableColumnsRemoved(Qt::Orientations, int, int)));
+	disconnect(mSelectionModel, SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
+			this, SLOT(selectionChanged(QItemSelection, QItemSelection)));
 }
 
+void
+NMLayer::connectTableSel(void)
+{
+	connect(mTableModel, SIGNAL(dataChanged(QModelIndex, QModelIndex)),
+		this, SLOT(tableDataChanged(QModelIndex, QModelIndex)));
+	connect(mTableModel, SIGNAL(tableColumnsInserted(Qt::Orientations, int, int)),
+		this, SLOT(tableColumnsInserted(Qt::Orientations, int, int)));
+	connect(mTableModel, SIGNAL(tableColumnsRemoved(Qt::Orientations, int , int)),
+		this, SLOT(tableColumnsRemoved(Qt::Orientations, int, int)));
+	connect(mSelectionModel, SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
+			this, SLOT(selectionChanged(QItemSelection, QItemSelection)));
+}
 
 const vtkTable* NMLayer::getTable(void)
 {
@@ -464,3 +489,35 @@ void NMLayer::updateSelectionData(void)
 	// subclass to implement
 }
 
+void
+NMLayer::selectionChanged(QItemSelection newSel,
+		QItemSelection oldSel)
+{
+	NMDebugAI(<< this->objectName().toStdString() << ": selection changed!" << std::endl);
+}
+
+void
+NMLayer::tableDataChanged(QModelIndex tl, QModelIndex br)
+{
+	//NMDebugAI(<< this->objectName().toStdString()
+	//		<< ": data changed at " << tl.column() << ", " << tl.row() << std::endl);
+	this->mHasChanged = true;
+}
+
+void
+NMLayer::tableColumnsInserted(Qt::Orientations, int startsection,
+		int endsection)
+{
+	NMDebugAI(<< this->objectName().toStdString() << ": column inserted at "
+			  << startsection << std::endl);
+	this->mHasChanged = true;
+}
+
+void
+NMLayer::tableColumnsRemoved(Qt::Orientations, int startsection,
+		int endsection)
+{
+	NMDebugAI(<< this->objectName().toStdString() << ": column removed at "
+			  << startsection << std::endl);
+	this->mHasChanged = true;
+}

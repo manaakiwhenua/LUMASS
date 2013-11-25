@@ -47,6 +47,7 @@
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 
+#include "NMFastTrackSelectionModel.h"
 #include "NMRATBandMathImageFilterWrapper.h"
 #include "NMStreamingImageFileWriterWrapper.h"
 #include "NMModelComponentFactory.h"
@@ -244,9 +245,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 #ifdef BUILD_RASSUPPORT
 	this->mpRasconn = 0;
 	this->mpPetaView = 0;
-	this->mbNoRasdaman = false;
+	this->mbNoRasdaman = true;
 #endif
-	this->mbNoRasdaman = true; // shouldn't that be true
+	this->mbNoRasdaman = false;
 
 	//Qt::WindowFlags flags = this->windowFlags() | Qt::WA_DeleteOnClose;
 	//this->setWindowFlags(flags);
@@ -1184,7 +1185,7 @@ bool OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
 //		NMDebug( << "\t\thit: " << onseg << endl);
 
 	}
-	NMDebugAI(<< "total hits: " << retcnt << endl << endl);
+	//NMDebugAI(<< "total hits: " << retcnt << endl << endl);
 
 	// check whether retcnt is odd (=inside) or even (=outside)
 	if (retcnt > 0 && retcnt % 2 != 0)
@@ -1437,7 +1438,9 @@ void OtbModellerWin::doMOSO()
 
 
 	int solved = mosra->mapLp();
-	layer->emitDataSetChanged();
+	//layer->emitDataSetChanged();
+	layer->tableDataChanged(QModelIndex(), QModelIndex());
+
 
 	if (solved)
 	{
@@ -2289,6 +2292,13 @@ OtbModellerWin::loadRasdamanLayer()
 	this->updateRasMetaView();
 	if (this->mpPetaView != 0)
 		this->mpPetaView->show();
+	else
+	{
+		NMBoxInfo("Failed initialising rasdaman metadata browser!",
+				 "Check whether Postgres is up and running and access is "
+				"is configured properly!");
+		return;
+	}
 }
 
 void
@@ -2519,6 +2529,9 @@ OtbModellerWin::updateRasMetaView()
 
 	this->mpPetaView = new NMTableView(this->mPetaMetaModel, 0);
 	this->mpPetaView->setViewMode(NMTableView::NMTABVIEW_RASMETADATA);
+	this->mpPetaView->setSelectionModel(
+			new NMFastTrackSelectionModel(this->mPetaMetaModel, mpPetaView));
+
 
 	connect(this->mpPetaView, SIGNAL(notifyLoadRasLayer(const QString&, const QString&)),
 			this, SLOT(fetchRasLayer(const QString&, const QString&)));

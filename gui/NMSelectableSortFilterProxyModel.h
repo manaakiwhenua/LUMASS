@@ -137,7 +137,7 @@ public:
 			int role) const;
 	QVariant data(const QModelIndex& index, int role=Qt::DisplayRole) const;
 	bool setData(const QModelIndex& index, const QVariant& value,
-			int role);
+			int role=Qt::DisplayRole);
 	bool setHeaderData(int section, Qt::Orientation orientation, const QVariant& value, int role);
 	bool insertColumns(int column, int count, const QModelIndex& parent=QModelIndex());
 	bool removeColumns(int column, int count, const QModelIndex& parent=QModelIndex());

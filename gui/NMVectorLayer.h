@@ -86,8 +86,8 @@ protected:
 
 protected slots:
 	int updateAttributeTable(void);
-	virtual void updateDataSet(QStringList& slAlteredColumns,
-			QStringList& slDeletedColumns);
+	//virtual void updateDataSet(QStringList& slAlteredColumns,
+	//		QStringList& slDeletedColumns);
 	virtual void updateSelectionData(void);
 
 	// void createColourRamp

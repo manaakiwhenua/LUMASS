@@ -337,7 +337,7 @@ NMSelectableSortFilterProxyModel::resetMapping(void)
 	{
 		if (mRaw2Source.at(i) == -1)
 		{
-			NMDebug(<< mRaw2Source.at(i) << " ");
+			//NMDebug(<< mRaw2Source.at(i) << " ");
 			continue;
 		}
 
@@ -347,7 +347,7 @@ NMSelectableSortFilterProxyModel::resetMapping(void)
 		mSource2Proxy << row;
 		++row;
 
-		NMDebug(<< mRaw2Source.at(i) << " ");
+		//NMDebug(<< mRaw2Source.at(i) << " ");
 	}
 	NMDebug(<< std::endl);
 
@@ -576,7 +576,7 @@ void
 NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<int>& list,
 		QItemSelection& isel, bool rowsonly) const
 {
-	NMDebugCtx(ctxSelSortFilter, << "...");
+	//NMDebugCtx(ctxSelSortFilter, << "...");
 	int numsel = 0;
 	const int& nrows = list.size();
 	if (nrows == 0)
@@ -641,7 +641,7 @@ NMSelectableSortFilterProxyModel::itemSelectionFromIndexList(const std::vector<i
 		}
 	}
 	//NMDebugAI(<< "selected " << numsel << " rows in total!" << std::endl);
-	NMDebugCtx(ctxSelSortFilter, << "done!");
+	//NMDebugCtx(ctxSelSortFilter, << "done!");
 }
 
 

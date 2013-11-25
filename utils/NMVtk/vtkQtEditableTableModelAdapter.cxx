@@ -26,6 +26,11 @@
 #include "vtkSmartPointer.h"
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
+#include "vtkStringArray.h"
+
+#include <QVariant>
+
+#include "nmlog.h"
 
 vtkQtEditableTableModelAdapter::vtkQtEditableTableModelAdapter(QObject* parent)
 	: vtkQtTableModelAdapter(parent)
@@ -42,11 +47,125 @@ vtkQtEditableTableModelAdapter::~vtkQtEditableTableModelAdapter()
 {
 }
 
+Qt::ItemFlags
+vtkQtEditableTableModelAdapter::flags(const QModelIndex &idx) const
+{
+	if (idx.isValid())
+		return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
+	else
+		return 0;
+}
+
+bool
+vtkQtEditableTableModelAdapter::setData(const QModelIndex& index,
+		const QVariant& value,
+		int role)
+{
+	if (	this->table() == 0
+		||  !index.isValid())
+	{
+		return false;
+	}
+
+	if (	role == Qt::DisplayRole
+		||	role == Qt::EditRole
+	   )
+	{
+		vtkTable* tab = this->table();
+		vtkAbstractArray* ar = tab->GetColumn(index.column());
+		const int type = ar->GetDataType();
+		bool bok;
+		switch(type)
+		{
+			case VTK_BIT:
+			case VTK_CHAR:
+			case VTK_SIGNED_CHAR:
+			case VTK_UNSIGNED_CHAR:
+			case VTK_SHORT:
+			case VTK_UNSIGNED_SHORT:
+			case VTK_INT:
+			case VTK_UNSIGNED_INT:
+			case VTK_LONG:
+			case VTK_UNSIGNED_LONG:
+			case VTK_ID_TYPE:
+			{
+				long val = value.toInt(&bok);
+				if (bok)
+				{
+					ar->SetVariantValue(index.row(), vtkVariant(val));
+				}
+				else
+				{
+					return false;
+				}
+			}
+			break;
+
+			case VTK_DOUBLE:
+			{
+				double val = value.toDouble(&bok);
+				if (bok)
+				{
+					ar->SetVariantValue(index.row(), vtkVariant(val));
+				}
+				else
+				{
+					return false;
+				}
+			}
+			break;
+
+			default:
+				ar->SetVariantValue(index.row(), vtkVariant(value.toString().toStdString().c_str()));
+				break;
+		}
+		emit dataChanged(index, index);
+		return true;
+	}
+	else if (role == Qt::DecorationRole)
+	{
+		return vtkQtTableModelAdapter::setData(index, value, role);
+	}
+	else
+	{
+		NMWarn("vtkQtEditableTableModelAdapter", << "can't edit this role " << role << std::endl);
+		return false;
+	}
+}
+
+QVariant
+vtkQtEditableTableModelAdapter::data(const QModelIndex &idx, int role) const
+{
+	QVariant ret = vtkQtTableModelAdapter::data(idx, role);
+	if (ret.isValid())
+		return ret;
+
+	if (role == Qt::TextAlignmentRole)
+	{
+		vtkAbstractArray* ar = table()->GetColumn(idx.column());
+		if (ar->GetDataType() == VTK_STRING)
+		{
+			return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
+		}
+		else
+		{
+			return QVariant(Qt::AlignRight | Qt::AlignVCenter);
+		}
+	}
+
+	return ret;
+}
+
+
 bool
 vtkQtEditableTableModelAdapter::setHeaderData(int section, Qt::Orientation orientation,
 			const QVariant& value, int role)
 {
-	if (section < 0 || section > this->table()->GetNumberOfColumns()-1)
+	if (	section < 0
+		||  section > this->table()->GetNumberOfColumns()-1
+		||  value.type() != QVariant::String
+		||  role != Qt::DisplayRole
+		)
 		return false;
 
 	// we don't care about the orientation, or the role, but interpret

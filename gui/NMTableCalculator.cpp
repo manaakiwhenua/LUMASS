@@ -1001,95 +1001,101 @@ NMTableCalculator::calcColumnStats(const QString& column)
 
 	// sdev = sqrt(x); with x = sum((v-v_mean)^2) / (nrows-1)
 
-	double min;
-	double max;
-	double sum;
-	double mean;
-	double sumdiffsq;
-	double sdev;
+	double min = std::numeric_limits<double>::max();
+	double max = -std::numeric_limits<double>::max();
+	double sum = 0;
+	double mean = 0;
+	double sumdiffsq = 0;
+	double sdev = 0;
 
-	for (int s=0; s < 2 && !mbCanceled; ++s)
-	{
-
-		if (this->mbRowFilter)
-		{
-			for (; range < nranges; ++range)
-			{
-				const int top = mInputSelection.at(range).top();
-				const int bottom = mInputSelection.at(range).bottom();
-				for (row=top; row <= bottom && !mbCanceled; ++row)
-				{
-					const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
-					val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
-					if (!bok)
-					{
-						NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-								<< "': Disregarding invalid value at row " << row << "!");
-						continue;
-					}
-					++progress;
-					if (progress % 1000 == 0)
-						emit signalProgress(progress);
-
-					bGotInitial = true;
-					break;
-				}
-
-				if (bGotInitial)
-					break;
-			}
-		}
-		else
-		{
-			while(row < nrows && !bGotInitial && !mbCanceled)
-			{
-				if (mRaw2Source && mRaw2Source->at(row) < 0)
-				{
-					++row;
-					continue;
-				}
-
-				const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
-				val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
-				if (!bok)
-				{
-					NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-							<< "': Disregarding invalid value at row " << row << "!");
-					++row;
-					continue;
-				}
-				++progress;
-				if (progress % 1000 == 0)
-					emit signalProgress(progress);
-
-				bGotInitial = true;
-				break;
-				++row;
-			}
-		}
-
-		min = val;
-		max = val;
-		sum = val;
-		if (s==1)
-		{
-			sumdiffsq = (val - mean) * (val - mean);
-		}
+	//for (int s=0; s < 2 && !mbCanceled; ++s)
+	//{
+		//range = 0;
+		//row = 0;
+		//if (this->mbRowFilter)
+		//{
+		//	for (; range < nranges; ++range)
+		//	{
+		//		const int top = mInputSelection.at(range).top();
+		//		const int bottom = mInputSelection.at(range).bottom();
+		//		for (row=top; row <= bottom && !mbCanceled; ++row)
+		//		{
+		//			const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
+		//			val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
+		//			if (!bok)
+		//			{
+		//				NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+		//						<< "': Disregarding invalid value at row " << row << "!");
+		//				continue;
+		//			}
+		//			++progress;
+		//			if (progress % 1000 == 0)
+		//				emit signalProgress(progress);
+        //
+		//			bGotInitial = true;
+		//			break;
+		//		}
+        //
+		//		if (bGotInitial)
+		//			break;
+		//	}
+		//}
+		//else
+		//{
+		//	while(row < nrows && !bGotInitial && !mbCanceled)
+		//	{
+		//		if (mRaw2Source && mRaw2Source->at(row) < 0)
+		//		{
+		//			++row;
+		//			continue;
+		//		}
+        //
+		//		const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
+		//		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
+		//		if (!bok)
+		//		{
+		//			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+		//					<< "': Disregarding invalid value at row " << row << "!");
+		//			++row;
+		//			continue;
+		//		}
+		//		++progress;
+		//		if (progress % 1000 == 0)
+		//			emit signalProgress(progress);
+        //
+		//		bGotInitial = true;
+		//		break;
+		//		++row;
+		//	}
+		//}
+        //
+		//if (s==0)
+		//{
+		//	min = val;
+		//	max = val;
+		//	sum = val;
+		//}
+		//else
+		//{
+		//	sumdiffsq = (val - mean) * (val - mean);
+		//}
 
 		// need to advance row, since we broke out of the above before
 		// moving on to the the next following one
-		++row;
+		//++row;
 
+	for (int s=0; s < 2; ++s)
+	{
 		if (this->mbRowFilter)
 		{
-			for (; range < nranges; ++range)
+			for (int range=0; range < nranges; ++range)
 			{
 				int top = mInputSelection.at(range).top();
 				// this is just to finish off the remaining selected rows in this range
 				// which were left over from the 'GET INITIAL VALUE' THING
 				top = top < row ? row : top;
 				const int bottom = mInputSelection.at(range).bottom();
-				for (row=top; row <= bottom && !mbCanceled; ++row)
+				for (int row=top; row <= bottom && !mbCanceled; ++row)
 				{
 					const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
 					val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
@@ -1119,6 +1125,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 		}
 		else
 		{
+			int row=0;
 			while(row < nrows && !mbCanceled)
 			{
 				if (mRaw2Source && mRaw2Source->at(row) < 0)
@@ -1158,7 +1165,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 
 		if (s==0)
 		{
-			mean = sum / nrows;
+			mean = (double)sum / (double)nrows;
 		}
 	}
 
@@ -1166,8 +1173,8 @@ NMTableCalculator::calcColumnStats(const QString& column)
 
 	res.push_back(min);
 	res.push_back(max);
-	res.push_back(mean);
 	res.push_back(sum);
+	res.push_back(mean);
 	res.push_back(sdev);
 
 	return res;

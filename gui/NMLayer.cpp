@@ -410,9 +410,9 @@ NMLayer::connectTableSel(void)
 {
 	connect(mTableModel, SIGNAL(dataChanged(QModelIndex, QModelIndex)),
 		this, SLOT(tableDataChanged(QModelIndex, QModelIndex)));
-	connect(mTableModel, SIGNAL(tableColumnsInserted(Qt::Orientations, int, int)),
+	connect(mTableModel, SIGNAL(columnsInserted(Qt::Orientations, int, int)),
 		this, SLOT(tableColumnsInserted(Qt::Orientations, int, int)));
-	connect(mTableModel, SIGNAL(tableColumnsRemoved(Qt::Orientations, int , int)),
+	connect(mTableModel, SIGNAL(columnsRemoved(Qt::Orientations, int , int)),
 		this, SLOT(tableColumnsRemoved(Qt::Orientations, int, int)));
 	connect(mSelectionModel, SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
 			this, SLOT(selectionChanged(QItemSelection, QItemSelection)));

@@ -67,7 +67,7 @@ endif (testvar_in STREQUAL testvar_target)
 # QT 4 
 #====================================================================
 
-FIND_PACKAGE(Qt4 4.7 COMPONENTS QtCore QtGui QtXml REQUIRED)
+FIND_PACKAGE(Qt4 4.7 COMPONENTS QtCore QtGui QtXml QtSql REQUIRED)
 INCLUDE(${QT_USE_FILE})
 
 #====================================================================

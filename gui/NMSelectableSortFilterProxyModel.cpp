@@ -351,7 +351,7 @@ NMSelectableSortFilterProxyModel::resetMapping(void)
 	}
 	NMDebug(<< std::endl);
 
-	NMDebugAI(<< "un-hidden source rows: " << row << " (mSource2Raw.size()=" << mSource2Raw.size() << ") raw rows " << std::endl);
+	//NMDebugAI(<< "un-hidden source rows: " << row << " (mSource2Raw.size()=" << mSource2Raw.size() << ") raw rows " << std::endl);
 	NMDebugCtx(ctxSelSortFilter, << "done!");
 
 	emit this->reset();

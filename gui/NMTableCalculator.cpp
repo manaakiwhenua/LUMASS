@@ -554,7 +554,7 @@ NMTableCalculator::doNumericCalcSelection()
 			bool selected;
 			for (int row=top; row <= bottom && !mbCanceled; ++row)
 			{
-				if (mRaw2Source && mRaw2Source->at(row) == -1)
+				if (mRaw2Source && mRaw2Source->at(row) < 0)
 					continue;
 
 				this->processNumericCalcSelection(row, &selected);
@@ -613,7 +613,7 @@ NMTableCalculator::doNumericCalcSelection()
 		bool selected;
 		for (int row=0; row < nrows && !mbCanceled; ++row)
 		{
-			if (mRaw2Source && mRaw2Source->at(row) == -1)
+			if (mRaw2Source && mRaw2Source->at(row) < 0)
 				continue;
 
 			this->processNumericCalcSelection(row, &selected);
@@ -643,8 +643,27 @@ NMTableCalculator::doNumericCalcSelection()
 						isel.append(QItemSelectionRange(sidx, eidx));
 					}
 				}
-			}
+				// we've effectively just jumped a hidden source row here (i.e. we're within a selection,
+				// but it doesn't cover a contiguous section of raw model rows);
+				// so we complete the previously started selection and start a new with this
+				// row as its starting point
+				else
+				{
+					QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+					QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
+					isel.append(QItemSelectionRange(sidx, eidx));
 
+					start = row;
+					end   = start;
+
+					if (row == bottom)
+					{
+						QModelIndex sidx = this->mModel->index(start, 0, QModelIndex());
+						QModelIndex eidx = this->mModel->index(end, maxcolidx, QModelIndex());
+						isel.append(QItemSelectionRange(sidx, eidx));
+					}
+				}
+			}
 			else
 			{
 				if (start != -1 && end != -1)
@@ -674,6 +693,8 @@ NMTableCalculator::doNumericCalcSelection()
 
 	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
 	NMMsg(<< "Table calculation took (min:sec): " << elapsedTime.toStdString() << std::endl);
+
+	//this->printSelRanges(this->mOutputSelection, "TabCalc's recent selections ...");
 
 	NMDebugCtx(ctxTabCalc, << "done!");
 }
@@ -868,6 +889,11 @@ NMTableCalculator::doStringCalculation()
 			const int bottom = range.bottom();
 			for (int row=top; row <= bottom && !mbCanceled; ++row)
 			{
+				if (mRaw2Source && mRaw2Source->at(row) < 0)
+				{
+					continue;
+				}
+
 				this->processStringCalc(row);
 				++progress;
 				if (progress % 1000 == 0)
@@ -880,6 +906,11 @@ NMTableCalculator::doStringCalculation()
 		const int nrows = this->mModel->rowCount(QModelIndex());
 		for (int row=0; row < nrows && !mbCanceled; ++row)
 		{
+			if (mRaw2Source && mRaw2Source->at(row) < 0)
+			{
+				continue;
+			}
+
 			this->processStringCalc(row);
 			++progress;
 			if (progress % 1000 == 0)
@@ -952,14 +983,8 @@ NMTableCalculator::processStringCalc(int row)
 std::vector<double>
 NMTableCalculator::calcColumnStats(const QString& column)
 {
-	// result vector containing min, max, mean, sum
+	// result vector containing min, max, mean, std.dev, sum
 	std::vector<double> res;
-
-	//if (mRaw2Source == 0)
-	//{
-	//	NMErr(ctxTabCalc, << "mRaw2Source not set! Bail out!" << std::endl);
-	//	return res;
-	//}
 
 	// check, whether the column is available in the table
 	int colidx = this->getColumnIndex(column);
@@ -1007,82 +1032,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 	double mean = 0;
 	double sumdiffsq = 0;
 	double sdev = 0;
-
-	//for (int s=0; s < 2 && !mbCanceled; ++s)
-	//{
-		//range = 0;
-		//row = 0;
-		//if (this->mbRowFilter)
-		//{
-		//	for (; range < nranges; ++range)
-		//	{
-		//		const int top = mInputSelection.at(range).top();
-		//		const int bottom = mInputSelection.at(range).bottom();
-		//		for (row=top; row <= bottom && !mbCanceled; ++row)
-		//		{
-		//			const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
-		//			val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
-		//			if (!bok)
-		//			{
-		//				NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-		//						<< "': Disregarding invalid value at row " << row << "!");
-		//				continue;
-		//			}
-		//			++progress;
-		//			if (progress % 1000 == 0)
-		//				emit signalProgress(progress);
-        //
-		//			bGotInitial = true;
-		//			break;
-		//		}
-        //
-		//		if (bGotInitial)
-		//			break;
-		//	}
-		//}
-		//else
-		//{
-		//	while(row < nrows && !bGotInitial && !mbCanceled)
-		//	{
-		//		if (mRaw2Source && mRaw2Source->at(row) < 0)
-		//		{
-		//			++row;
-		//			continue;
-		//		}
-        //
-		//		const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
-		//		val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
-		//		if (!bok)
-		//		{
-		//			NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
-		//					<< "': Disregarding invalid value at row " << row << "!");
-		//			++row;
-		//			continue;
-		//		}
-		//		++progress;
-		//		if (progress % 1000 == 0)
-		//			emit signalProgress(progress);
-        //
-		//		bGotInitial = true;
-		//		break;
-		//		++row;
-		//	}
-		//}
-        //
-		//if (s==0)
-		//{
-		//	min = val;
-		//	max = val;
-		//	sum = val;
-		//}
-		//else
-		//{
-		//	sumdiffsq = (val - mean) * (val - mean);
-		//}
-
-		// need to advance row, since we broke out of the above before
-		// moving on to the the next following one
-		//++row;
+	long validrows = 0;
 
 	for (int s=0; s < 2; ++s)
 	{
@@ -1097,6 +1047,11 @@ NMTableCalculator::calcColumnStats(const QString& column)
 				const int bottom = mInputSelection.at(range).bottom();
 				for (int row=top; row <= bottom && !mbCanceled; ++row)
 				{
+					if (mRaw2Source && mRaw2Source->at(row) < 0)
+					{
+						continue;
+					}
+
 					const QModelIndex valIdx = this->mModel->index(row, colidx, QModelIndex());
 					val = this->mModel->data(valIdx, Qt::DisplayRole).toDouble(&bok);
 					if (bok)
@@ -1106,6 +1061,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 							sum += val;
 							min = val < min ? val : min;
 							max = val > max ? val : max;
+							++validrows;
 						}
 						else
 						{
@@ -1143,6 +1099,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 						sum += val;
 						min = val < min ? val : min;
 						max = val > max ? val : max;
+						++validrows;
 					}
 					else
 					{
@@ -1165,17 +1122,18 @@ NMTableCalculator::calcColumnStats(const QString& column)
 
 		if (s==0)
 		{
-			mean = (double)sum / (double)nrows;
+			mean = (double)sum / (double)validrows;
 		}
 	}
 
-	sdev = sqrt(sumdiffsq / (double)(nrows-1));
+	sdev = sqrt(sumdiffsq / (double)(validrows-1));
 
 	res.push_back(min);
 	res.push_back(max);
-	res.push_back(sum);
 	res.push_back(mean);
 	res.push_back(sdev);
+	res.push_back(sum);
+	res.push_back(validrows);
 
 	return res;
 }
@@ -1185,13 +1143,6 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 {
 	// return value
 	QStringList normalisedCols;
-
-	// check whether we've got the mRaw2Source filter set
-	//if (mRaw2Source == 0)
-	//{
-	//	NMErr(ctxTabCalc, << "mRaw2Source not set! Bail out!" << std::endl);
-	//	return normalisedCols;
-	//}
 
 	// --------------------------------------------------------------------------
 	// check input fields for numeric data type
@@ -1241,16 +1192,12 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 	bool bSomethingWrong = false;
 	QVariant::Type ftype = QVariant::Double;
 	QList<int> nfIdx; // the new field indices
-	int nfields = this->mModel->columnCount(QModelIndex());
+	int nfields;
 	for (int field=0; field < fieldVec.size(); ++field)
 	{
 		QString name = QString("%1_N").arg(columnNames.at(field));
-
-		QModelIndex indexType = this->mModel->index(0, 0, QModelIndex());
-		void* typepointer = indexType.internalPointer();
-		typepointer = (void*)(&ftype);
-
-		if (!this->mModel->insertColumns(0, 0, indexType))
+		nfields = this->mModel->columnCount(QModelIndex());
+		if (!this->mModel->insertColumns(nfields, ftype, QModelIndex()))
 		{
 			NMErr(ctxTabCalc, << "Failed to add a column to the model!");
 			bSomethingWrong = true;
@@ -1258,7 +1205,8 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		}
 
 		// give the column a name
-		if (!this->mModel->setHeaderData(nfields+field, Qt::Horizontal, QVariant(name), Qt::EditRole))
+		nfields = this->mModel->columnCount(QModelIndex());
+		if (!this->mModel->setHeaderData(nfields-1, Qt::Horizontal, QVariant(name), Qt::DisplayRole))
 		{
 			NMErr(ctxTabCalc, << "Failed to set name for column '" << name.toStdString() << "'!");
 			bSomethingWrong = true;
@@ -1268,7 +1216,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		// add new column index to list
 		if (!bSomethingWrong)
 		{
-			nfIdx.push_back(nfields + field);
+			nfIdx.push_back(nfields-1);
 			normalisedCols.push_back(name);
 		}
 	}
@@ -1311,7 +1259,9 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 				const int bottom=idx.bottom();
 				for (int i=top; i <= bottom && !mbCanceled; ++i)
 				{
-					// TODO: we need to check, whether actually there's only one index for each row!!!
+					if (mRaw2Source && mRaw2Source->at(i) < 0)
+						continue;
+
 					QModelIndex misrc = this->mModel->index(i, srcIdx, QModelIndex());
 					QModelIndex mitar = this->mModel->index(i, tarIdx, QModelIndex());
 
@@ -1326,7 +1276,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 
 					double normval = bCostCriterion ? ((max - val) / diff) : ((val - min) / diff);
 
-					if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
+					if (!this->mModel->setData(mitar, QVariant(normval), Qt::DisplayRole))
 					{
 						NMErr(ctxTabCalc, << "Failed setting normalised value for '"
 							<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
@@ -1345,9 +1295,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 			for (int row=0; row < nrows && !mbCanceled; ++row)
 			{
 				if (mRaw2Source && mRaw2Source->at(row) < 0)
-				{
 					continue;
-				}
 
 				QModelIndex misrc = this->mModel->index(row, srcIdx, QModelIndex());
 				QModelIndex mitar = this->mModel->index(row, tarIdx, QModelIndex());
@@ -1363,7 +1311,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 
 				double normval = bCostCriterion ? ((max - val) / diff) : ((val - min) / diff);
 
-				if (!this->mModel->setData(mitar, QVariant(normval), Qt::EditRole))
+				if (!this->mModel->setData(mitar, QVariant(normval), Qt::DisplayRole))
 				{
 					NMErr(ctxTabCalc, << "Failed setting normalised value for '"
 						<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()

@@ -386,61 +386,66 @@ void NMTableView::switchSelection()
 
 void NMTableView::normalise()
 {
-
 	// NOTE: for progress maxrange needs to be ncols * rows!
 
-//	NMDebugCtx(__ctxtabview, << "...");
-//
-//	// -----------------------------------------------------------------------
-//	// get user input
-//
-//	// get the names of the fields to normalise
-//	bool bOk = false;
-//	QString fieldNames = QInputDialog::getText(this, tr("Normalise Fields"),
-//	                                          tr("Field Names:"), QLineEdit::Normal,
-//	                                          tr(""), &bOk);
-//	if (!bOk || fieldNames.isEmpty())
-//	{
-//		NMDebugAI(<< "No input fields for normalisation specified!" << endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//
-//	// ask for the criterion type
-//	QStringList slModes;
-//	slModes.append(tr("Cost Criterion"));
-//	slModes.append(tr("Benefit Criterion"));
-//
-//	QString sMode = QInputDialog::getItem(this, tr("Normalisation Mode"),
-//													 tr("Select mode"),
-//													 slModes, 0, false, &bOk, 0);
-//	if (!bOk)
-//	{
-//		NMDebugAI(<< "No normalisation mode specified!" << endl);
-//		NMDebugCtx(__ctxtabview, << "done!");
-//		return;
-//	}
-//	bool bCostCriterion = sMode == "Cost Criterion" ? true : false;
-//
-//	// -----------------------------------------------------------------------
-//
-//	// split the strings into a stringlist
-//	QStringList columnNames = fieldNames.split(tr(" "),
-//			QString::SkipEmptyParts, Qt::CaseInsensitive);
-//
-//	vtkTable* tab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-//
-//	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(tab));
-//	if (this->mlNumSelRecs)
-//		calc->setRowFilterModeOn("nm_sel");
-//	QStringList normCols = calc->normaliseColumns(columnNames, bCostCriterion);
-//	this->mAlteredColumns.append(normCols);
-//
-//
-//	// inform listeners
-//	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
-//
-//	NMDebugCtx(__ctxtabview, << "done!");
+	NMDebugCtx(__ctxtabview, << "...");
+
+	// -----------------------------------------------------------------------
+	// get user input
+
+	// get the names of the fields to normalise
+	bool bOk = false;
+	QString fieldNames = QInputDialog::getText(this, tr("Normalise Fields"),
+	                                          tr("List of Field Names (separated by whitespace):"), QLineEdit::Normal,
+	                                          tr(""), &bOk);
+	if (!bOk || fieldNames.isEmpty())
+	{
+		NMDebugAI(<< "No input fields for normalisation specified!" << endl);
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	// ask for the criterion type
+	QStringList slModes;
+	slModes.append(tr("Cost Criterion"));
+	slModes.append(tr("Benefit Criterion"));
+
+	QString sMode = QInputDialog::getItem(this, tr("Normalisation Mode"),
+													 tr("Select mode"),
+													 slModes, 0, false, &bOk, 0);
+	if (!bOk)
+	{
+		NMDebugAI(<< "No normalisation mode specified!" << endl);
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+	bool bCostCriterion = sMode == "Cost Criterion" ? true : false;
+
+	// -----------------------------------------------------------------------
+
+	// split the strings into a stringlist
+	QStringList columnNames = fieldNames.split(tr(" "),
+			QString::SkipEmptyParts, Qt::CaseInsensitive);
+
+	const int ncols = columnNames.size();
+	const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mSortFilter->sourceRowCount() * ncols;
+
+	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
+	calc->setRowFilter(mSelectionModel->selection());
+	calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
+
+	prepareProgressDlg(calc.data(), "Normalise Columns ...", maxrange);
+	QStringList normCols = calc->normaliseColumns(columnNames, bCostCriterion);
+	cleanupProgressDlg(calc.data(), maxrange);
+
+	// since we've added columns, we want to make sure, that any selection is expanded to
+	// those columns as well
+	this->updateProxySelection(QItemSelection(), QItemSelection());
+
+	// inform listeners
+	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
+
+	NMDebugCtx(__ctxtabview, << "done!");
 }
 
 
@@ -835,26 +840,28 @@ void NMTableView::colStats()
 	}
 	cleanupProgressDlg(calc.data(), maxrange);
 
-	// min, max, mean, sum
+	// min, max, mean, std. dev, sum
 	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
 	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
-	QString ssum  = QString("%1").arg(stats[2], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
-	QString smean = QString("%1").arg(stats[3], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
-	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
+	QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
+	QString ssdev = QString("%1").arg(stats[3], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
+	QString ssum  = QString("%1").arg(stats[4], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
+	QString ssample = QString("Sample Size: %1").arg(stats[5]);
 
 	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
 	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
-	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
 	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
 	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
+	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
 
 
-	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10")
+	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11")
 			.arg(strmin).arg(smin)
 			.arg(strmax).arg(smax)
-			.arg(strsum).arg(ssum)
 			.arg(strmean).arg(smean)
-			.arg(strsdev).arg(ssdev);
+			.arg(strsdev).arg(ssdev)
+			.arg(strsum).arg(ssum)
+			.arg(ssample);
 
 	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
 

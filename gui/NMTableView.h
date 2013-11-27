@@ -53,6 +53,7 @@
 #include <QItemSelection>
 #include <QProgressDialog>
 
+#include "vtkTable.h"
 /*
 #include "vtkAbstractArray.h"
 #include "vtkDataArray.h"
@@ -159,9 +160,9 @@ protected:
 
 	//vtkSmartPointer<vtkTable> queryTable(const QString& sqlStmt);
 
-	//void appendAttributes(const QString& tarJoinField,
-	//		const QString& srcJoinField,
-	//		vtkTable* srcTable);
+	void appendAttributes(const int tarJoinColIdx,
+			const int srcJoinColIdx,
+			QAbstractItemModel* srcTable);
 
 	bool eventFilter(QObject* object, QEvent* event);
 

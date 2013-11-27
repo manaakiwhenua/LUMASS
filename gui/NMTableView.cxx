@@ -1,4 +1,4 @@
- /******************************************************************************
+ /****************************************Mod***************ame***********************
  * Created by Alexander Herzigte
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
@@ -31,7 +31,10 @@
 #include "NMTableView.h"
 #include "NMAddColumnDialog.h"
 #include "NMTableCalculator.h"
-//#include "NMFastTrackSelectionModel.h"
+
+#include "vtkQtTableModelAdapter.h"
+#include "vtkDelimitedTextReader.h"
+#include "vtkSmartPointer.h"
 
 #include <QtGui>
 #include <QWidget>
@@ -56,7 +59,7 @@
 #include <QRegExp>
 #include <QCheckBox>
 
-#include "valgrind/callgrind.h"
+//#include "valgrind/callgrind.h"
 
 
 NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
@@ -689,70 +692,194 @@ void NMTableView::joinAttributes()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	//QString fileName = QFileDialog::getOpenFileName(this,
-	//     tr("Select Source Attribute Table"), "~", tr("Delimited Text File (*.csv)"));
-	//if (fileName.isNull())
-	//{
-	//	NMDebugCtx(__ctxtabview, << "done!");
-	//	return;
-	//}
-    //
-	//vtkSmartPointer<vtkDelimitedTextReader> tabReader =
-	//					vtkSmartPointer<vtkDelimitedTextReader>::New();
-    //
-	//tabReader->SetFileName(fileName.toStdString().c_str());
-	//tabReader->SetHaveHeaders(true);
-	//tabReader->DetectNumericColumnsOn();
-	//tabReader->SetFieldDelimiterCharacters(",\t");
-	//tabReader->Update();
-    //
-	//vtkTable* vtkTab = tabReader->GetOutput();
-    //
-	//int numJoinCols = vtkTab->GetNumberOfColumns();
-	//NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
-	//QStringList srcJoinFields;
-	//for (int i=0; i < numJoinCols; ++i)
-	//{
-	//	QString srcName = vtkTab->GetColumn(i)->GetDataTypeAsString();
-	//	if (srcName.compare("int") == 0 || srcName.compare("string") == 0)
-	//	{
-	//		srcJoinFields.append(QString(vtkTab->GetColumnName(i)));
-	//	}
-	//}
-    //
-	//vtkTable* tarTab = vtkTable::SafeDownCast(this->mVtkTableAdapter->GetVTKDataObject());
-	//int numTarCols = tarTab->GetNumberOfColumns();
-	//QStringList tarJoinFields;
-	//for (int i=0; i < numTarCols; ++i)
-	//{
-	//	QString tarName = tarTab->GetColumn(i)->GetDataTypeAsString();
-	//	if (tarName.compare("int") == 0 || tarName.compare("string") == 0)
-	//	{
-	//		tarJoinFields.append(QString(tarTab->GetColumnName(i)));
-	//	}
-	//}
-    //
-	//// ask the user for semantically common fields
-	//bool bOk = false;
-	//QString tarFieldName = QInputDialog::getItem(this,
-	//		tr("Select Target Join Field"), tr("Select Target Join Field"),
-	//		tarJoinFields, 0, false, &bOk, 0);
-	//if (!bOk || tarFieldName.isEmpty())
-	//{
-	//	NMDebugCtx(__ctxtabview, << "done!");
-	//	return;
-	//}
-    //
-	//QString srcFieldName = QInputDialog::getItem(this,
-	//		tr("Select Source Join Field"), tr("Select Source Join Field"),
-	//		srcJoinFields, 0, false, &bOk, 0);
-	//if (!bOk || srcFieldName.isEmpty())
-	//{
-	//	NMDebugCtx(__ctxtabview, << "done!");
-	//	return;
-	//}
-    //
-	//this->appendAttributes(tarFieldName, srcFieldName, vtkTab);
+	QString fileName = QFileDialog::getOpenFileName(this,
+	     tr("Select Source Attribute Table"), "~", tr("Delimited Text File (*.csv)"));
+	if (fileName.isNull())
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
+						vtkSmartPointer<vtkDelimitedTextReader>::New();
+
+	tabReader->SetFileName(fileName.toStdString().c_str());
+	tabReader->SetHaveHeaders(true);
+	tabReader->DetectNumericColumnsOn();
+	tabReader->SetFieldDelimiterCharacters(",\t");
+	tabReader->Update();
+
+	QScopedPointer<vtkQtTableModelAdapter> srcModel(new vtkQtTableModelAdapter);
+	srcModel->setTable(tabReader->GetOutput());
+
+	int numJoinCols = srcModel->columnCount(QModelIndex());
+	NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
+	QStringList srcJoinFields;
+	for (int i=0; i < numJoinCols; ++i)
+	{
+		QModelIndex idx = srcModel->index(0, i, QModelIndex());
+		QVariant::Type type = srcModel->data(idx, Qt::DisplayRole).type();
+		if (type != QVariant::Invalid)
+		{
+			srcJoinFields.append(srcModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+		}
+	}
+
+	int numTarCols = this->mModel->columnCount(QModelIndex());
+	QStringList tarJoinFields;
+	for (int i=0; i < numTarCols; ++i)
+	{
+		QModelIndex idx = this->mModel->index(0, i, QModelIndex());
+		QVariant::Type type = this->mModel->data(idx, Qt::DisplayRole).type();
+		if (type != QVariant::Invalid)
+		{
+			tarJoinFields.append(this->mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+		}
+	}
+
+	// ask the user for semantically common fields
+	bool bOk = false;
+	QString tarFieldName = QInputDialog::getItem(this,
+			tr("Select Target Join Field"), tr("Select Target Join Field"),
+			tarJoinFields, 0, false, &bOk, 0);
+	int tarJoinColIdx = tarJoinFields.indexOf(tarFieldName);
+	if (!bOk || tarJoinColIdx < 0)
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+	NMDebugAI(<< "target field name=" << tarFieldName.toStdString()
+			  << " at index " << tarJoinColIdx << std::endl);
+
+
+	QString srcFieldName = QInputDialog::getItem(this,
+			tr("Select Source Join Field"), tr("Select Source Join Field"),
+			srcJoinFields, 0, false, &bOk, 0);
+	int srcJoinColIdx = srcJoinFields.indexOf(srcFieldName);
+	if (!bOk || srcJoinColIdx < 0)
+	{
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+	NMDebugAI(<< "source field name=" << srcFieldName.toStdString()
+			  << " at index " << srcJoinColIdx << std::endl);
+
+
+
+	this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
+
+	NMDebugCtx(__ctxtabview, << "done!");
+}
+
+void
+NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
+		QAbstractItemModel* srcTable)
+{
+	NMDebugCtx(__ctxtabview, << "...");
+
+	QStringList allTarFields;
+	for (int i=0; i < mModel->columnCount(QModelIndex()); ++i)
+	{
+		QString fN = mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+		allTarFields.push_back(fN);
+	}
+
+	// we determine which columns to copy, and which name + index they have
+	QRegExp nameRegExp("^[\"A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
+
+	NMDebugAI(<< "checking column names ... " << std::endl);
+	QStringList copyNames;
+	QList<int> copyIdx;
+	QStringList writeNames;
+	for (int i=0; i < srcTable->columnCount(QModelIndex()); ++i)
+	{
+		QString name = srcTable->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+		QString writeName = name;
+		if (i == srcJoinColIdx || allTarFields.contains(name))
+		{
+			continue;
+		}
+		//else if (allTarFields.contains(name, Qt::CaseInsensitive))
+		//{
+		//	// come up with a new name for the column to appended
+		//	writeName = QString(tr("copy_%1")).arg(name);
+		//}
+
+		int pos = -1;
+		pos = nameRegExp.indexIn(name);
+		if (pos >= 0)
+		{
+			copyNames.push_back(name);
+			copyIdx.push_back(i);
+			writeNames.push_back(writeName);
+		}
+	}
+
+	NMDebugAI( << "adding new columns to target table ..." << std::endl);
+	// create new output columns for join fields
+	QList<int> writeIdx;
+	long tarnumrows = mModel->rowCount(QModelIndex());
+	for (int t=0; t < copyNames.size(); ++t)
+	{
+		QModelIndex srcidx = srcTable->index(0, copyIdx.at(t), QModelIndex());
+		QVariant::Type type = srcTable->data(srcidx, Qt::DisplayRole).type();
+
+		mModel->insertColumns(0, type, QModelIndex());
+		int colnum = mModel->columnCount(QModelIndex());
+		mModel->setHeaderData(colnum-1, Qt::Horizontal, QVariant(writeNames.at(t)), Qt::DisplayRole);
+		writeIdx.push_back(colnum-1);
+	}
+
+	NMDebugAI(<< "copying field contents ...." << std::endl);
+
+	mProgressDialog->setWindowModality(Qt::WindowModal);
+	mProgressDialog->setLabelText("Joining Attributes ...");
+	mProgressDialog->setRange(0, tarnumrows);
+
+	// copy field values
+	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
+	//vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
+	//long cnt = 0;
+	long srcnumrows = srcTable->rowCount(QModelIndex());
+	for (long row=0; row < tarnumrows && !mProgressDialog->wasCanceled(); ++row)
+	{
+		QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
+		QVariant vTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole);//tarJoin->GetVariantValue(row);
+		long search = row < srcnumrows ? row : 0;
+		long cnt = 0;
+		bool foundyou = false;
+		while (cnt < srcnumrows)
+		{
+			QModelIndex srcJoinIdx = srcTable->index(search, srcJoinColIdx, QModelIndex());
+			QVariant vSrcJoin = srcTable->data(srcJoinIdx, Qt::DisplayRole);
+			if (vSrcJoin == vTarJoin)
+			{
+				foundyou = true;
+				break;
+			}
+
+			++search;
+			if (search >= srcnumrows)
+				search = 0;
+
+			++cnt;
+		}
+
+		if (foundyou)
+		{
+			// copy columns for current row
+			for (int c=0; c < copyIdx.size(); ++c)
+			{
+				QModelIndex srcIdx = srcTable->index(row, copyIdx.at(c), QModelIndex());
+				QVariant srcVal = srcTable->data(srcIdx, Qt::DisplayRole);
+
+				QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
+				mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
+			}
+		}
+
+		mProgressDialog->setValue(row+1);
+	}
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -770,31 +897,31 @@ void NMTableView::exportTable()
 {
 	NMDebugCtx(__ctxtabview, << "...");
 
-	//QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
-	//QString proposedName = QString(tr("%1/%2.txt")).arg(getenv("HOME")).arg(tabName);
-    //
-	//// take the first layer and save as vtkpolydata
-	//QString selectedFilter = tr("Delimited Text (*.csv)");
-	//QString fileName = QFileDialog::getSaveFileName(this,
-	//		tr("Export Table"), proposedName,
-	//		tr("Delimited Text (*.csv);;SQLite Database (*.sqlite *.sdb *.db)"),
-	//		&selectedFilter);
-	//if (fileName.isNull())
-	//{
-	//	NMDebugAI( << "got an empty filename from the user!" << endl);
-	//	NMDebugCtx(__ctxtabview, << "done!");
-	//	return;
-	//}
-    //
-	//QStringList fnList = fileName.split(tr("."), QString::SkipEmptyParts);
-    //
-	//QString suffix = fnList.last();
-	//if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
-	//	suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
-	//{
-	//	NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
-	//	this->writeDelimTxt(fileName, false);
-	//}
+	QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
+	QString proposedName = QString(tr("%1/%2.csv")).arg(getenv("HOME")).arg(tabName);
+
+	// take the first layer and save as vtkpolydata
+	QString selectedFilter = tr("Delimited Text (*.csv)");
+	QString fileName = QFileDialog::getSaveFileName(this,
+			tr("Export Table"), proposedName,
+			tr("Delimited Text (*.csv)"), //;;SQLite Database (*.sqlite *.sdb *.db)"),
+			&selectedFilter);
+	if (fileName.isNull())
+	{
+		NMDebugAI( << "got an empty filename from the user!" << endl);
+		NMDebugCtx(__ctxtabview, << "done!");
+		return;
+	}
+
+	QStringList fnList = fileName.split(tr("."), QString::SkipEmptyParts);
+
+	QString suffix = fnList.last();
+	if (suffix.compare(tr("txt"), Qt::CaseInsensitive) == 0 ||
+		suffix.compare(tr("csv"), Qt::CaseInsensitive) == 0)
+	{
+		NMDebugAI(<< "write delimited text to " << fileName.toStdString() << endl);
+		this->writeDelimTxt(fileName, false);
+	}
 	//else if (suffix.compare(tr("sqlite"), Qt::CaseInsensitive) == 0 ||
 	//		 suffix.compare(tr("sdb"), Qt::CaseInsensitive) == 0 ||
 	//		 suffix.compare(tr("db"), Qt::CaseInsensitive) == 0)
@@ -816,7 +943,6 @@ void NMTableView::exportTable()
     //
 	//	this->writeSqliteDb(dbName, tableName, false);
 	//}
-
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }
@@ -922,18 +1048,75 @@ NMTableView::deleteRasLayer(void)
 bool NMTableView::writeDelimTxt(const QString& fileName,
 		bool bselectedRecs)
 {
-//	NMDebugCtx(__ctxtabview, << "...");
+	NMDebugCtx(__ctxtabview, << "...");
 
-//	QFile file(fileName);
-//	if (!file.open(QIODevice::WriteOnly))
-//	{
-//		NMErr(ctxNMMosra, << "failed writing file '" << fileName.toStdString() << "'!");
-//		return;
-//	}
-//
-//	QByteArray bar(this->msReport.toStdString().c_str());
-//	file.write(bar);
-//	file.close();
+	QFile file(fileName);
+	if (!file.open(QIODevice::WriteOnly))
+	{
+		NMBoxErr("Export Table", "Couldn't create file '" << fileName.toStdString() << "'!");
+		NMDebugCtx(__ctxtabview, << "done!");
+		return false;
+	}
+	QTextStream out(&file);
+
+	const QItemSelection& inputSelection = mlNumSelRecs > 0 ? this->mSelectionModel->selection()
+			: this->mSortFilter->getSourceSelection(true);
+	const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : this->mSortFilter->sourceRowCount();
+	const int ncols = mModel->columnCount(QModelIndex());
+
+	mProgressDialog->setWindowModality(Qt::WindowModal);
+	mProgressDialog->setLabelText("Export Table ...");
+	mProgressDialog->setRange(0, maxrange);
+
+	// write header first
+	long progress = 0;
+	for (int col=0; col < ncols; ++col)
+	{
+		QString cN = mModel->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+		out << "\"" << cN << "\"";
+		if (col < ncols-1)
+			out << ",";
+	}
+	out << endl;
+
+	out.setRealNumberNotation(QTextStream::SmartNotation);
+	foreach(const QItemSelectionRange& range, inputSelection)
+	{
+		const int top = range.top();
+		const int bottom = range.bottom();
+		for (int row=top; row <= bottom; ++row)
+		{
+			for (int col=0; col < ncols; ++col)
+			{
+				QModelIndex idx = mModel->index(row, col, QModelIndex());
+				QVariant val = mModel->data(idx, Qt::DisplayRole);
+				if (val.type() == QVariant::String)
+				{
+					out << "'" << val.toString() << "'";
+				}
+				else
+				{
+					out << val.toString();
+				}
+
+				if (col < ncols-1)
+					out << ",";
+			}
+			out << "\n";
+			++progress;
+			if (progress % 100 == 0)
+			{
+				out.flush();
+				mProgressDialog->setValue(progress);
+			}
+		}
+	}
+	mProgressDialog->setValue(maxrange);
+	out.flush();
+	file.close();
+	NMDebugCtx(__ctxtabview, << "done!");
+	return true;
+
 
 //
 //	// ToDo: account for selected rows i.e. filter before export
@@ -948,7 +1131,7 @@ bool NMTableView::writeDelimTxt(const QString& fileName,
 //
 //	writer->Delete();
 //
-//	NMDebugCtx(__ctxtabview, << "done!");
+
 	return true;
 }
 

@@ -608,7 +608,7 @@ int NMVectorLayer::updateAttributeTable(void)
 	vtkQtEditableTableModelAdapter* tabModel;
 	if (this->mTableModel == 0)
 	{
-		tabModel = new vtkQtEditableTableModelAdapter(this->mAttributeTable, this);
+		tabModel = new vtkQtEditableTableModelAdapter(mAttributeTable, this);
 	}
 	else
 	{
@@ -633,13 +633,13 @@ int NMVectorLayer::updateAttributeTable(void)
 	return 1;
 }
 
-const vtkTable* NMVectorLayer::getTable(void)
-{
-	if (this->mAttributeTable.GetPointer() == 0)
-		this->updateAttributeTable();
-
-	return this->mAttributeTable;
-}
+//const vtkTable* NMVectorLayer::getTable(void)
+//{
+//	if (this->mAttributeTable.GetPointer() == 0)
+//		this->updateAttributeTable();
+//
+//	return this->mAttributeTable;
+//}
 
 //void NMVectorLayer::updateDataSet(QStringList& slAlteredColumns,
 //		QStringList& slDeletedColumns)

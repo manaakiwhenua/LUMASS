@@ -395,38 +395,50 @@ int NMLayer::updateAttributeTable(void)
 void
 NMLayer::disconnectTableSel(void)
 {
-	disconnect(mTableModel, SIGNAL(dataChanged(QModelIndex, QModelIndex)),
-			this, SLOT(tableDataChanged(QModelIndex, QModelIndex)));
-	disconnect(mTableModel, SIGNAL(columnsInserted(Qt::Orientations, int, int)),
-			this, SLOT(tableColumnsInserted(Qt::Orientations, int, int)));
-	disconnect(mTableModel, SIGNAL(columnsRemoved(Qt::Orientations, int , int)),
-			this, SLOT(tableColumnsRemoved(Qt::Orientations, int, int)));
-	disconnect(mSelectionModel, SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
-			this, SLOT(selectionChanged(QItemSelection, QItemSelection)));
+	disconnect(mTableModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)),
+			this, SLOT(tableDataChanged(const QModelIndex &, const QModelIndex &)));
+	disconnect(mTableModel, SIGNAL(columnsInserted(const QModelIndex &, int, int)),
+			this, SLOT(tableColumnsInserted(const QModelIndex &, int, int)));
+	disconnect(mTableModel, SIGNAL(const columnsRemoved(QModelIndex &, int , int)),
+			this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
+	disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
 }
 
 void
 NMLayer::connectTableSel(void)
 {
-	connect(mTableModel, SIGNAL(dataChanged(QModelIndex, QModelIndex)),
-		this, SLOT(tableDataChanged(QModelIndex, QModelIndex)));
-	connect(mTableModel, SIGNAL(columnsInserted(Qt::Orientations, int, int)),
-		this, SLOT(tableColumnsInserted(Qt::Orientations, int, int)));
-	connect(mTableModel, SIGNAL(columnsRemoved(Qt::Orientations, int , int)),
-		this, SLOT(tableColumnsRemoved(Qt::Orientations, int, int)));
-	connect(mSelectionModel, SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
-			this, SLOT(selectionChanged(QItemSelection, QItemSelection)));
+	connect(mTableModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)),
+		this, SLOT(tableDataChanged(const QModelIndex &, const QModelIndex &)));
+	connect(mTableModel, SIGNAL(columnsInserted(const QModelIndex &, int, int)),
+		this, SLOT(tableColumnsInserted(const QModelIndex &, int, int)));
+	connect(mTableModel, SIGNAL(const columnsRemoved(QModelIndex &, int , int)),
+		this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
+	connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
 }
 
-const vtkTable* NMLayer::getTable(void)
+const QAbstractItemModel* NMLayer::getTable(void)
 {
 	// subclass to implement
-	return 0;
+	if (mTableModel == 0)
+		this->updateAttributeTable();
+
+	return this->mTableModel;
+}
+
+const QItemSelection
+NMLayer::getSelection(void)
+{
+	return this->mSelectionModel->selection();
 }
 
 void NMLayer::writeDataSet()
 {
 	// subclass  to implement
+	// and call this method prior to
+	// re-implementation;
+	this->mHasChanged = false;
 }
 
 double NMLayer::getLegendItemUpperValue(int legendRow)
@@ -490,34 +502,38 @@ void NMLayer::updateSelectionData(void)
 }
 
 void
-NMLayer::selectionChanged(QItemSelection newSel,
-		QItemSelection oldSel)
+NMLayer::selectionChanged(const QItemSelection& newSel,
+		const QItemSelection& oldSel)
 {
 	NMDebugAI(<< this->objectName().toStdString() << ": selection changed!" << std::endl);
+	emit layerSelectionChanged(this);
 }
 
 void
-NMLayer::tableDataChanged(QModelIndex tl, QModelIndex br)
+NMLayer::tableDataChanged(const QModelIndex& tl, const QModelIndex& br)
 {
 	//NMDebugAI(<< this->objectName().toStdString()
 	//		<< ": data changed at " << tl.column() << ", " << tl.row() << std::endl);
 	this->mHasChanged = true;
+	emit dataSetChanged(this);
 }
 
 void
-NMLayer::tableColumnsInserted(Qt::Orientations, int startsection,
+NMLayer::tableColumnsInserted(const QModelIndex& parent, int startsection,
 		int endsection)
 {
 	NMDebugAI(<< this->objectName().toStdString() << ": column inserted at "
 			  << startsection << std::endl);
 	this->mHasChanged = true;
+	emit dataSetChanged(this);
 }
 
 void
-NMLayer::tableColumnsRemoved(Qt::Orientations, int startsection,
+NMLayer::tableColumnsRemoved(const QModelIndex& parent, int startsection,
 		int endsection)
 {
 	NMDebugAI(<< this->objectName().toStdString() << ": column removed at "
 			  << startsection << std::endl);
 	this->mHasChanged = true;
+	emit dataSetChanged(this);
 }

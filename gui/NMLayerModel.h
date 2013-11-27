@@ -81,6 +81,9 @@ public:
 	int toLayerStackIndex(int treePos);
 	int toTreeModelRow(int stackIndex);
 
+public slots:
+	void layerDataSetChanged(const NMLayer* layer);
+
 private:
 
 	// the map holding the actual layer objects

@@ -538,18 +538,22 @@ void NMImageLayer::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputIm
 void
 NMImageLayer::writeDataSet(void)
 {
-	if (!this->isRasLayer())
-	{
-		// we do something here for file-based layers
-	}
+	// call parent first, to deal with the
+	// layer's state recording
+	NMLayer::writeDataSet();
 
-
-#ifdef BUILD_RASSUPPORT
-	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-	std::vector<double> oids = rio->getOIDs();
-
-	rio->writeRAT(this->mOtbRAT, 1, oids[0]);
-#endif
+//	if (!this->isRasLayer())
+//	{
+//		// we do something here for file-based layers
+//	}
+//
+//
+//#ifdef BUILD_RASSUPPORT
+//	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+//	std::vector<double> oids = rio->getOIDs();
+//
+//	rio->writeRAT(this->mOtbRAT, 1, oids[0]);
+//#endif
 }
 
 int NMImageLayer::mapUniqueValues(QString fieldName)

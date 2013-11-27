@@ -54,6 +54,9 @@ int NMLayerModel::pileItemLayer(NMLayer* layer)
 	QSharedPointer<NMLayer> pL(layer);
 	pL->setLayerPos(nLayers);
 
+	connect(pL.data(), SIGNAL(dataSetChanged(const NMLayer *)),
+			this, SLOT(layerDataSetChanged(const NMLayer *)));
+
 	// update the layer model ---------------------------------------
 	this->layoutAboutToBeChanged();
 
@@ -63,6 +66,16 @@ int NMLayerModel::pileItemLayer(NMLayer* layer)
 
 	//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return 1;
+}
+
+void
+NMLayerModel::layerDataSetChanged(const NMLayer* layer)
+{
+	if (layer == 0)
+		return;
+
+	QModelIndex idx = this->getItemLayerModelIndex(layer->objectName());
+	emit dataChanged(idx, idx);
 }
 
 int NMLayerModel::changeItemLayerPos(int oldpos, int newpos)
@@ -123,6 +136,9 @@ void NMLayerModel::removeLayer(NMLayer* layer)
 	// get the stack position of this layer
 	int layerPos = layer->getLayerPos();
 	int treeRow =  this->toTreeModelRow(layerPos);
+
+	disconnect(layer, SIGNAL(dataSetChanged(const NMLayer *)),
+			this, SLOT(layerDataSetChanged(const NMLayer *)));
 
 	// remove layer from internal list
 	QString ln = layer->objectName();

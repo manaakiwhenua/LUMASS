@@ -43,6 +43,7 @@
 #include <QSize>
 #include <QImage>
 #include <QHeaderView>
+#include <QMessageBox>
 
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
@@ -150,8 +151,26 @@ void ModelComponentList::removeCurrentLayer()
 {
 	NMLayer* l = (NMLayer*)this->currentIndex().internalPointer();
 	this->setCurrentIndex(QModelIndex());
-	if (l != 0)
-		this->removeLayer(l);
+	if (l == 0)
+		return;
+
+	if (l->hasChanged())
+	{
+		QMessageBox msgBox;
+		QString text = QString(tr("Remove Layer '%1'")).arg(l->objectName());
+		msgBox.setText(text);
+		msgBox.setInformativeText("Do you want to save your changes before?");
+		msgBox.setStandardButtons(QMessageBox::No | QMessageBox::Yes);
+		msgBox.setDefaultButton(QMessageBox::Yes);
+		int ret = msgBox.exec();
+
+		if (ret == QMessageBox::Yes)
+		{
+			l->writeDataSet();
+		}
+	}
+
+	this->removeLayer(l);
 }
 
 void ModelComponentList::updateLegend(const NMLayer* layer)

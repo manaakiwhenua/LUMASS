@@ -80,7 +80,11 @@ public:
 	const vtkRenderer* getRenderer(void);
 
 	virtual void showAttributeTable(void);
-	virtual const vtkTable* getTable(void);
+	//virtual const vtkTable* getTable(void);
+	virtual const QAbstractItemModel* getTable(void);
+
+	const QItemSelection getSelection(void);
+
 
 	virtual void setBBox(double bbox[6]);
 	const double* getBBox(void);
@@ -127,12 +131,12 @@ public slots:
 	// call this function whenever you've changed the
 	// layer's data set and wish other objects get
 	// to know about it
-	void selectionChanged(QItemSelection newSel, QItemSelection oldSel);
-	void tableDataChanged(QModelIndex tl, QModelIndex br);
-	void tableColumnsInserted(Qt::Orientations, int startsection,
-			int endsection);
-	void tableColumnsRemoved(Qt::Orientations, int startsection,
-			int endsection);
+	void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);
+	void tableDataChanged(const QModelIndex& tl, const QModelIndex& br);
+	void tableColumnsInserted(const QModelIndex& parent,
+			int startsection, int endsection);
+	void tableColumnsRemoved(const QModelIndex& parent,
+			int startsection, int endsection);
 	virtual void writeDataSet(void);
 	//void emitDataSetChanged();
 	//void emitAttributeTableChanged(
@@ -166,7 +170,7 @@ protected:
 
 	// ToDo:: deprecated: move into VectorLayer; use
 	//        solely the tabel model here
-	vtkSmartPointer<vtkTable> mAttributeTable;
+	//vtkSmartPointer<vtkTable> mAttributeTable;
 
 
 	// hash map linking category values with

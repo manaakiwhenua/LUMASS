@@ -49,7 +49,7 @@ public:
 	virtual void setDataSet(vtkDataSet* dataset);
 	virtual void setVisible(bool visible);
 
-	virtual const vtkTable* getTable(void);
+	//virtual const vtkTable* getTable(void);
 	const vtkDataSet *getDataSet(void)
 		{return this->mDataSet;};
 
@@ -79,6 +79,7 @@ protected:
 	vtkSmartPointer<vtkActor> mContourActor;
 	vtkSmartPointer<vtkPolyData> mContour;
 	NMFeatureType mFeatureType;
+	vtkSmartPointer<vtkTable> mAttributeTable;
 
 	void createTableView(void);
 	void setContour(vtkPolyData* contour);

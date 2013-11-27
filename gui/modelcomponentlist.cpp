@@ -20,6 +20,7 @@
 #include "modelcomponentlist.h"
 #include "otbmodellerwin.h"
 #include "NMImageLayer.h"
+#include "NMVectorLayer.h"
 #include "otbAttributeTable.h"
 
 #include <QDrag>
@@ -489,6 +490,9 @@ void ModelComponentList::processSelection(bool toggle)
 		this->selectionModel()->clearSelection();
 		this->selectionModel()->select(idx, QItemSelectionModel::Select |
 			QItemSelectionModel::Rows);
+
+		const NMLayer* l = const_cast<NMLayer*>((NMLayer*)idx.internalPointer());
+		emit selectedLayerChanged(l);
 	}
 	else
 	{

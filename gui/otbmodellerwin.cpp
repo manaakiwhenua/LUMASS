@@ -267,10 +267,14 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	//qRegisterMetaType<NMModelComponent>("NMModelComponent");
 	//qRegisterMetaType<NMModelComponent*>("NMModelComponent*");
 
-	// ++++++++++++++++++ QT GUI STUFF +++++++++++++++++++++++++++++++
+	// **********************************************************************
+	// *                    MAIN WINDOW SETUP                               *
+	// **********************************************************************
 
 	// set up the qt designer based controls
     ui->setupUi(this);
+	ui->modelViewDock->close();
+	ui->layerInfoDock->close();
 
     // we remove the rasdaman import option, when we haven't
     // rasdaman suppor
@@ -296,11 +300,52 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->m_StateMsg = new QLabel("",  this, 0);
     this->ui->statusBar->addWidget(this->m_StateMsg);
 
-    // set up the toolbar
-    this->ui->mainToolBar->setWindowTitle("ModelView Tools");
+    // connect menu actions to member functions
+#ifdef BUILD_RASSUPPORT
+	connect(ui->actionImportRasdamanLayer, SIGNAL(triggered()), this, SLOT(loadRasdamanLayer()));
+#endif
+    connect(ui->actionLoad_Layer, SIGNAL(triggered()), this, SLOT(loadImageLayer()));
+    connect(ui->actionImport_3D_Point_Set, SIGNAL(triggered()), this, SLOT(import3DPointSet()));
+    connect(ui->actionToggle3DStereoMode, SIGNAL(triggered()), this, SLOT(toggle3DStereoMode()));
+    connect(ui->actionToggle3DSimpleMode, SIGNAL(triggered()), this, SLOT(toggle3DSimpleMode()));
+    connect(ui->actionLoad_VTK_PolyData, SIGNAL(triggered()), this, SLOT(loadVTKPolyData()));
+    connect(ui->actionLoad_Vector_Layer, SIGNAL(triggered()), this, SLOT(loadVectorLayer()));
+    connect(ui->actionMOSO, SIGNAL(triggered()), this, SLOT(doMOSO()));
+    //connect(ui->actionMOSO_batch, SIGNAL(triggered()), this, SLOT(doMOSObatch()));
+    connect(ui->actionComponents_View, SIGNAL(triggered()), this, SLOT(showComponentsView()));
+    connect(ui->actionModel_View, SIGNAL(triggered()), this, SLOT(showModelView()));
+    connect(ui->actionRemoveAllObjects, SIGNAL(triggered()), this, SLOT(removeAllObjects()));
+    connect(ui->actionFullExtent, SIGNAL(triggered()), this, SLOT(zoomFullExtent()));
+    connect(ui->actionSaveAsVTKPolyData, SIGNAL(triggered()), this, SLOT(saveAsVtkPolyData()));
+    connect(ui->actionTest, SIGNAL(triggered()), this, SLOT(test()));
+    connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
+    connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
+    connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
+    connect(ui->modelCompList, SIGNAL(selectedLayerChanged(const NMLayer *)),
+    		this, SLOT(setCurrentInteractorLayer(const NMLayer *)));
 
 
-//    QIcon moveIcon(":/resources/move-icon.png");
+    // **********************************************************************
+	// *                    MODEL BUILDER WINDOW                            *
+	// **********************************************************************
+
+    mModelBuilderWindow = new QMainWindow(this->ui->modelViewDock);
+    mModelBuilderWindow->setWindowFlags(Qt::Widget);
+    mModelBuilderWindow->setCentralWidget(this->ui->modelViewWidget);
+    mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
+    this->ui->modelViewDock->setWidget(mModelBuilderWindow);
+
+    this->ui->mainToolBar->setWindowTitle("Model Builder Tools");
+    this->ui->mainToolBar->addSeparator();
+
+    QIcon zoomInIcon(":zoom-in-icon.png");
+    QAction* zoomInAction = new QAction(zoomInIcon, "Zoom In", this->ui->mainToolBar);
+    zoomInAction->setAutoRepeat(true);
+
+    QIcon zoomOutIcon(":zoom-out-icon.png");
+    QAction* zoomOutAction = new QAction(zoomOutIcon, "Zoom Out", this->ui->mainToolBar);
+    zoomOutAction->setAutoRepeat(true);
+
     QIcon moveIcon(":move-icon.png");
     QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
     		this->ui->mainToolBar);
@@ -320,7 +365,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     modelToolGroup->addAction(linkAction);
     modelToolGroup->addAction(selAction);
     this->ui->mainToolBar->addActions(modelToolGroup->actions());
+    this->ui->mainToolBar->addAction(zoomInAction);
+    this->ui->mainToolBar->addAction(zoomOutAction);
 
+    // connect model view widget signals / slots
     connect(linkAction, SIGNAL(toggled(bool)),
     		this->ui->modelViewWidget, SIGNAL(linkToolToggled(bool)));
     connect(selAction, SIGNAL(toggled(bool)),
@@ -328,43 +376,32 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(moveAction, SIGNAL(toggled(bool)),
     		this->ui->modelViewWidget, SIGNAL(moveToolToggled(bool)));
 
-    ////////////////////////////////////////
-    this->ui->mainToolBar->addSeparator();
-
-    QIcon zoomInIcon(":zoom-in-icon.png");
-    QAction* zoomInAction = new QAction(zoomInIcon, "Zoom In", this->ui->mainToolBar);
-    zoomInAction->setAutoRepeat(true);
-    this->ui->mainToolBar->addAction(zoomInAction);
-
-    QIcon zoomOutIcon(":zoom-out-icon.png");
-    QAction* zoomOutAction = new QAction(zoomOutIcon, "Zoom Out", this->ui->mainToolBar);
-    zoomOutAction->setAutoRepeat(true);
-    this->ui->mainToolBar->addAction(zoomOutAction);
-
     connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
     connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));
 
 
-    // ++++++++++++++++++ VTK WIDGET +++++++++++++++++++++++++++++++
+    // **********************************************************************
+	// *                    VTK DISPLAY WIDGET                              *
+	// **********************************************************************
 
     // create the render window
     vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
 
     // set the number of allowed layers in the window
-    //renwin->SetAlphaBitPlanes(1);
-    //renwin->SetMultiSamples(0);
+    renwin->SetAlphaBitPlanes(1);
+    renwin->SetMultiSamples(0);
     renwin->SetNumberOfLayers(2);
 
 	// set-up the background renderer
 	this->mBkgRenderer = vtkSmartPointer<vtkRenderer>::New();
 	this->mBkgRenderer->SetLayer(0);
 	this->mBkgRenderer->SetBackground(0.7,0.7,0.7);
-	this->mBkgRenderer->SetUseDepthPeeling(1);
-	this->mBkgRenderer->SetMaximumNumberOfPeels(100);
-	this->mBkgRenderer->SetOcclusionRatio(0.1);
+	//this->mBkgRenderer->SetUseDepthPeeling(1);
+	//this->mBkgRenderer->SetMaximumNumberOfPeels(100);
+	//this->mBkgRenderer->SetOcclusionRatio(0.1);
 
 
-//	this->mBkgRenderer->SetBackground(0,0,0);
+	//	this->mBkgRenderer->SetBackground(0,0,0);
 	renwin->AddRenderer(this->mBkgRenderer);
 
     // set the render window
@@ -394,38 +431,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
     		vtkInteractorStyleImage::New());
-
-    // ++++++++++++++++++++ init control's state ++++++++++++++++++++++++++++
-    //this->ui->componentsWidget->close();
-//    this->ui->modelViewWidget->close();
-
-    QDockWidget* dw = this->findChild<QDockWidget*>("layerInfoDock");
-	if (dw != 0)
-		dw->close();
-
-    // ++++++++++++++++++ EVENT CONNECTIONS +++++++++++++++++++++++++++++++
-    // connect menu actions to member functions
-#ifdef BUILD_RASSUPPORT
-	connect(ui->actionImportRasdamanLayer, SIGNAL(triggered()), this, SLOT(loadRasdamanLayer()));
-#endif
-    connect(ui->actionLoad_Layer, SIGNAL(triggered()), this, SLOT(loadImageLayer()));
-    connect(ui->actionImport_3D_Point_Set, SIGNAL(triggered()), this, SLOT(import3DPointSet()));
-    connect(ui->actionToggle3DStereoMode, SIGNAL(triggered()), this, SLOT(toggle3DStereoMode()));
-    connect(ui->actionToggle3DSimpleMode, SIGNAL(triggered()), this, SLOT(toggle3DSimpleMode()));
-    connect(ui->actionLoad_VTK_PolyData, SIGNAL(triggered()), this, SLOT(loadVTKPolyData()));
-    connect(ui->actionLoad_Vector_Layer, SIGNAL(triggered()), this, SLOT(loadVectorLayer()));
-    connect(ui->actionMOSO, SIGNAL(triggered()), this, SLOT(doMOSO()));
-    //connect(ui->actionMOSO_batch, SIGNAL(triggered()), this, SLOT(doMOSObatch()));
-    connect(ui->actionComponents_View, SIGNAL(triggered()), this, SLOT(showComponentsView()));
-    connect(ui->actionModel_View, SIGNAL(triggered()), this, SLOT(showModelView()));
-    connect(ui->actionRemoveAllObjects, SIGNAL(triggered()), this, SLOT(removeAllObjects()));
-    connect(ui->actionFullExtent, SIGNAL(triggered()), this, SLOT(zoomFullExtent()));
-    connect(ui->actionSaveAsVTKPolyData, SIGNAL(triggered()), this, SLOT(saveAsVtkPolyData()));
-    connect(ui->actionTest, SIGNAL(triggered()), this, SLOT(test()));
-    connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
-    connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
-    connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
-
 
     // QVTKWidget Events---------------------------------------------------------
     this->m_vtkConns = vtkSmartPointer<vtkEventQtSlotConnect>::New();
@@ -1179,6 +1184,18 @@ OtbModellerWin::updateCoordLabel(const QString& newCoords)
 	this->m_coordLabel->setText(newCoords);
 }
 
+void
+OtbModellerWin::setCurrentInteractorLayer(const NMLayer* layer)
+{
+	NMLayer* l = const_cast<NMLayer*>(layer);
+	NMDebugAI(<< "current interactor layer: " << l->objectName().toStdString() << std::endl);
+
+	vtkRenderWindowInteractor* iren = this->ui->qvtkWidget->GetRenderWindow()->GetInteractor();
+
+	vtkRenderer* curRen = const_cast<vtkRenderer*>(l->getRenderer());
+	iren->GetInteractorStyle()->SetCurrentRenderer(curRen);
+}
+
 void OtbModellerWin::updateCoords(vtkObject* obj)
 {
 	// get interactor
@@ -1251,7 +1268,7 @@ void OtbModellerWin::showComponentsView()
 
 void OtbModellerWin::showModelView()
 {
-	this->ui->modelViewWidget->show();
+	this->ui->modelViewDock->show();
 }
 
 void OtbModellerWin::doMOSObatch()

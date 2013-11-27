@@ -1665,7 +1665,6 @@ void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 
 void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)
 {
-
 	NMModelComponent* comp = qobject_cast<NMModelComponent*>(obj);
 	NMEditModelComponentDialog* dlg;
 	if (this->mOpenEditors.contains(comp))
@@ -1696,7 +1695,6 @@ void NMModelViewWidget::dropEvent(QDropEvent* event)
 //	this->createComponent(droppedText);
 //	event->acceptProposedAction();
 }
-
 
 void NMModelViewWidget::executeModel(void)
 {

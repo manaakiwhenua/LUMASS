@@ -186,24 +186,25 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 	// set the bounding box
 	pd->GetBounds(this->mBBox);
 
-	vtkSmartPointer<vtkDepthSortPolyData> sortof =
-			vtkSmartPointer<vtkDepthSortPolyData>::New();
-	sortof->SetInput(pd);
-	sortof->SetDirectionToBackToFront();
-	sortof->SetVector(1,1,1);
-	sortof->SetCamera(this->mRenderer->GetActiveCamera());
-	sortof->SortScalarsOff();
+	//mDepthSort = vtkSmartPointer<vtkDepthSortPolyData>::New();
+	//mDepthSort->SetInput(pd);
+	////sortof->SetDirectionToBackToFront();
+	////sortof->SetVector(1,1,1);
+	//mDepthSort->SetCamera(this->mRenderer->GetActiveCamera());
+	//mDepthSort->SortScalarsOn();
 
 	// create and set the mapper
 	vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
-	//m->SetInput(pd);
-	m->SetInputConnection(sortof->GetOutputPort());
+	m->SetInput(pd);
+	//m->SetInputConnection(mDepthSort->GetOutputPort());
+	//m->SetScalarRange(0, mDepthSort->GetOutput()->GetNumberOfCells());
 	this->mMapper = m;
 
 	// create and set the actor
 	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
 	a->SetMapper(m);
 	//a->GetProperty()->SetOpacity(0.3);
+	//mDepthSort->SetProp3D(a);
 	this->mActor = a;
 	this->mActor->SetVisibility(0);
 
@@ -265,7 +266,7 @@ void NMVectorLayer::setVisible(bool visible)
 
 			this->mActor->SetVisibility(vis);
 			this->mIsVisible = visible;
-			//emit visibilityChanged(this);
+			emit visibilityChanged(this);
 		}
 	}
 
@@ -430,8 +431,8 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 
 			// add the color spec to the mapper's color table
 			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
-//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
-//					<< " " << rgba[1] << " " << rgba[2] << endl);
+			//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
+			//					<< " " << rgba[1] << " " << rgba[2] << endl);
 
 			clrCount++;
 		}
@@ -455,8 +456,8 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 	mapper->SetLookupTable(clrtab);
 	mapper->Modified();
 
-	//emit visibilityChanged(this);
-	//emit legendChanged(this);
+	emit visibilityChanged(this);
+	emit legendChanged(this);
 
 	return 1;
 }
@@ -529,8 +530,8 @@ void NMVectorLayer::mapSingleSymbol()
 //	mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
 	mapper->SetLookupTable(clrtab);
 
-	//emit visibilityChanged(this);
-	//emit legendChanged(this);
+	emit visibilityChanged(this);
+	emit legendChanged(this);
 }
 
 void NMVectorLayer::createTableView(void)

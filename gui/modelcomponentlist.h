@@ -40,10 +40,10 @@
 
 #include "NMLayer.h"
 #include "NMLayerModel.h"
-#include "NMVectorLayer.h"
+//#include "NMVectorLayer.h"
 
-#include "vtkObject.h"
-#include "vtkRenderWindow.h"
+//#include "vtkObject.h"
+//#include "vtkRenderWindow.h"
 //#include "vtkEventQtSlotConnect.h"
 
 
@@ -78,6 +78,9 @@ public:
     // in the layer stack
     // returns the layers old position
     int changeLayerPos(int oldpos, int newpos);
+
+public: signals:
+	void selectedLayerChanged(const NMLayer* layer);
 
 public slots:
 	void zoomToLayer();

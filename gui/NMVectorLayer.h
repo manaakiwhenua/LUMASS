@@ -31,6 +31,7 @@
 #include "vtkPolyData.h"
 #include "vtkOGRLayerMapper.h"
 #include "vtkActor.h"
+//#include "vtkDepthSortPolyData.h"
 
 class NMVectorLayer: public NMLayer
 {
@@ -80,6 +81,7 @@ protected:
 	vtkSmartPointer<vtkPolyData> mContour;
 	NMFeatureType mFeatureType;
 	vtkSmartPointer<vtkTable> mAttributeTable;
+	//vtkSmartPointer<vtkDepthSortPolyData> mDepthSort;
 
 	void createTableView(void);
 	void setContour(vtkPolyData* contour);

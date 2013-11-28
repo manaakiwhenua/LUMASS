@@ -399,7 +399,7 @@ NMLayer::disconnectTableSel(void)
 			this, SLOT(tableDataChanged(const QModelIndex &, const QModelIndex &)));
 	disconnect(mTableModel, SIGNAL(columnsInserted(const QModelIndex &, int, int)),
 			this, SLOT(tableColumnsInserted(const QModelIndex &, int, int)));
-	disconnect(mTableModel, SIGNAL(const columnsRemoved(QModelIndex &, int , int)),
+	disconnect(mTableModel, SIGNAL(columnsRemoved(const QModelIndex &, int , int)),
 			this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
 	disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
@@ -412,7 +412,7 @@ NMLayer::connectTableSel(void)
 		this, SLOT(tableDataChanged(const QModelIndex &, const QModelIndex &)));
 	connect(mTableModel, SIGNAL(columnsInserted(const QModelIndex &, int, int)),
 		this, SLOT(tableColumnsInserted(const QModelIndex &, int, int)));
-	connect(mTableModel, SIGNAL(const columnsRemoved(QModelIndex &, int , int)),
+	connect(mTableModel, SIGNAL(columnsRemoved(const QModelIndex &, int , int)),
 		this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
 	connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
@@ -439,6 +439,19 @@ void NMLayer::writeDataSet()
 	// and call this method prior to
 	// re-implementation;
 	this->mHasChanged = false;
+}
+
+void NMLayer::selectedLayerChanged(const NMLayer* layer)
+{
+	NMLayer* l = const_cast<NMLayer*>(layer);
+	if (l == this)
+	{
+		this->mRenderer->SetInteractive(1);
+	}
+	else
+	{
+		this->mRenderer->SetInteractive(0);
+	}
 }
 
 double NMLayer::getLegendItemUpperValue(int legendRow)

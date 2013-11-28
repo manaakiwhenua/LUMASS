@@ -93,7 +93,7 @@ public slots:
 			const QString& covname);
 	void eraseRasLayer(const QString& imagespec);
 #endif
-	void setCurrentInteractorLayer(const NMLayer* layer);
+	//void setCurrentInteractorLayer(const NMLayer* layer);
 	void loadImageLayer();
 	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
 	void toggle3DStereoMode();

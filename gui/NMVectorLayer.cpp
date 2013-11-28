@@ -527,7 +527,7 @@ void NMVectorLayer::mapSingleSymbol()
 
 	// get the mapper and look whats possible
 	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
-//	mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
+	//mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
 	mapper->SetLookupTable(clrtab);
 
 	emit visibilityChanged(this);

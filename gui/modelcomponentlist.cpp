@@ -262,6 +262,13 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 {
 	NMDebugCtx(ctx, << "...");
 
+	disconnect(layer, SIGNAL(visibilityChanged(const NMLayer*)),
+				this, SLOT(updateMapWin(const NMLayer*)));
+	disconnect(layer, SIGNAL(legendChanged(const NMLayer*)),
+			this, SLOT(updateLegend(const NMLayer*)));
+	disconnect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
+			layer, SLOT(selectedLayerChanged(const NMLayer *)));
+
 	// remove layer from the model (which updates as well the layer position
 	// hold by each layer in the layer stack)
 	this->mLayerModel->removeLayer(layer);
@@ -307,6 +314,8 @@ void ModelComponentList::addLayer(NMLayer* layer)
 				this, SLOT(updateMapWin(const NMLayer*)));
 	connect(layer, SIGNAL(legendChanged(const NMLayer*)),
 			this, SLOT(updateLegend(const NMLayer*)));
+	connect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
+			layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
 	// add the layer to the NMLayerModel
 	this->mLayerModel->pileItemLayer(layer);

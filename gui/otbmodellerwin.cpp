@@ -321,9 +321,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
     connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
     connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
-    connect(ui->modelCompList, SIGNAL(selectedLayerChanged(const NMLayer *)),
-    		this, SLOT(setCurrentInteractorLayer(const NMLayer *)));
-
 
     // **********************************************************************
 	// *                    MODEL BUILDER WINDOW                            *
@@ -1184,17 +1181,21 @@ OtbModellerWin::updateCoordLabel(const QString& newCoords)
 	this->m_coordLabel->setText(newCoords);
 }
 
-void
-OtbModellerWin::setCurrentInteractorLayer(const NMLayer* layer)
-{
-	NMLayer* l = const_cast<NMLayer*>(layer);
-	NMDebugAI(<< "current interactor layer: " << l->objectName().toStdString() << std::endl);
-
-	vtkRenderWindowInteractor* iren = this->ui->qvtkWidget->GetRenderWindow()->GetInteractor();
-
-	vtkRenderer* curRen = const_cast<vtkRenderer*>(l->getRenderer());
-	iren->GetInteractorStyle()->SetCurrentRenderer(curRen);
-}
+//void
+//OtbModellerWin::setCurrentInteractorLayer(const NMLayer* layer)
+//{
+////	for (int i=0; i < ui->modelCompList->getLayerCount(); ++i)
+////	{
+////		NMLayer* l = const_cast<NMLayer*>(ui->modelCompList->getLayer(i));
+////		vtkRenderer* ren = const_cast<vtkRenderer*>(l->getRenderer());
+////		ren->SetInteractive(0);
+////	}
+////
+////	NMLayer* la = const_cast<NMLayer*>(layer);
+////	vtkRenderer* renA = const_cast<vtkRenderer*>(la->getRenderer());
+////	renA->SetInteractive(1);
+//
+//}
 
 void OtbModellerWin::updateCoords(vtkObject* obj)
 {

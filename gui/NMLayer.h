@@ -46,11 +46,10 @@
 #include "vtkDataSet.h"
 #include "vtkAbstractMapper.h"
 #include "vtkProp3D.h"
-#include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
+#include "vtkRenderer.h"
 #include "vtkTable.h"
-
-//class NMTableView;
+#include "vtkEventQtSlotConnect.h"
 
 class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
@@ -137,6 +136,7 @@ public slots:
 			int startsection, int endsection);
 	void tableColumnsRemoved(const QModelIndex& parent,
 			int startsection, int endsection);
+	void selectedLayerChanged(const NMLayer* layer);
 	virtual void writeDataSet(void);
 	//void emitDataSetChanged();
 	//void emitAttributeTableChanged(
@@ -167,6 +167,8 @@ protected:
 	//QItemSelection* mElementSelection
 
 	QAbstractItemModel* mTableModel;
+
+	vtkSmartPointer<vtkEventQtSlotConnect> mVtkConn;
 
 	// ToDo:: deprecated: move into VectorLayer; use
 	//        solely the tabel model here

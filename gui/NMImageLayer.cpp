@@ -39,6 +39,8 @@
 #include "vtkMath.h"
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
+#include "vtkRenderWindowInteractor.h"
+#include "vtkInteractorObserver.h"
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -119,6 +121,15 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 	this->mComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 
 	this->mLayerIcon = QIcon(":image_layer.png");
+
+	vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
+	this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
+
+	this->mVtkConn->Connect(style, vtkCommand::ResetWindowLevelEvent,
+			this, SLOT(windowLevelReset(vtkObject*)));
+	this->mVtkConn->Connect(style, vtkCommand::InteractionEvent,
+			this, SLOT(windowLevelChanged(vtkObject*)));
+
 }
 
 NMImageLayer::~NMImageLayer()
@@ -211,8 +222,11 @@ void NMImageLayer::createTableView(void)
 		this->mTableView = 0;
 	}
 
-	if (!this->updateAttributeTable())
-		return;
+	if (this->mOtbRAT.IsNull())
+	{
+		if (!this->updateAttributeTable())
+			return;
+	}
 
 	if (this->mTableModel == 0)
 		return;
@@ -556,6 +570,26 @@ NMImageLayer::writeDataSet(void)
 //#endif
 }
 
+void
+NMImageLayer::windowLevelReset(vtkObject* obj)
+{
+	double window = this->mImgProp->GetColorWindow();
+	double level = this->mImgProp->GetColorLevel();
+
+	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
+
+}
+
+void
+NMImageLayer::windowLevelChanged(vtkObject* obj)
+{
+	double window = this->mImgProp->GetColorWindow();
+	double level = this->mImgProp->GetColorLevel();
+
+	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
+}
+
+
 int NMImageLayer::mapUniqueValues(QString fieldName)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
@@ -563,8 +597,11 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	//if (this->mRATVec.size() == 0)
 	if (mOtbRAT.IsNull())
 	{
-		NMDebugAI(<< "sorry, don't have an attribute table!");
-		return 0;
+		if (!this->updateAttributeTable())
+		{
+			NMDebugAI(<< "trouble getting an attribute table!");
+			return 0;
+		}
 	}
 
 	// make a list of available attributes
@@ -661,8 +698,8 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 
 			// add the color spec to the mapper's color table
 			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
-//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
-//					<< " " << rgba[1] << " " << rgba[2] << endl);
+			//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
+			//					<< " " << rgba[1] << " " << rgba[2] << endl);
 
 			clrCount++;
 		}
@@ -682,16 +719,16 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	}
 
 	// get the mapper and look whats possible
-//	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
+	//	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
 	//mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
-//	mapper->SetLookupTable(clrtab);
-//	mapper->UseLookupTableScalarRangeOn();
+	//	mapper->SetLookupTable(clrtab);
+	//	mapper->UseLookupTableScalarRangeOn();
 
-//	clrtab->SetNumberOfColors(clrCount);
-//	clrtab->Build();
+	//	clrtab->SetNumberOfColors(clrCount);
+	//	clrtab->Build();
 
 	this->mImgProp->SetLookupTable(clrtab);
-//	this->mImgProp->UseLookupTableScalarRangeOn();
+	//	this->mImgProp->UseLookupTableScalarRangeOn();
 
 
 	emit visibilityChanged(this);

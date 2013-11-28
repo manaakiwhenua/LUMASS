@@ -831,14 +831,27 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 		for (int r=0; r < nfields; ++r)
 		{
 			vtkAbstractArray* aa = dsAttr->GetAbstractArray(r);
-			if (aa == 0 || strcmp(aa->GetName(),"nm_sel") == 0 ||
-					strcmp(aa->GetName(),"nm_hole") == 0)
+			if (	aa == 0
+				||  strcmp(aa->GetName(),"nm_sel") == 0
+				||  strcmp(aa->GetName(),"nm_hole") == 0
+			   )
+			{
 				continue;
+			}
 
 			QTableWidgetItem* item1 = new QTableWidgetItem(aa->GetName());
 			ti->setItem(rowcnt,0, item1);
-			QTableWidgetItem* item2 = new QTableWidgetItem(
+
+			QTableWidgetItem* item2;
+			if (cellId < aa->GetNumberOfTuples())
+			{
+				item2 = new QTableWidgetItem(
 					aa->GetVariantValue(cellId).ToString().c_str());
+			}
+			else
+			{
+				item2 = new QTableWidgetItem("CellID invalid!");
+			}
 			ti->setItem(rowcnt,1, item2);
 			++rowcnt;
 		}
@@ -860,9 +873,18 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 		long rowcnt = 0;
 		for (int r=0; r < ncols; ++r)
 		{
-			QTableWidgetItem *item1 = new QTableWidgetItem(tab->GetColumnName(r).c_str());
+			QTableWidgetItem *item1;
+			std::string colname = tab->GetColumnName(r);
+			if (!colname.empty())
+				item1 = new QTableWidgetItem(colname.c_str());
+			else
+				item1 = new QTableWidgetItem("");
 			ti->setItem(r, 0, item1);
-			QTableWidgetItem *item2 = new QTableWidgetItem(tab->GetStrValue(r, cellId).c_str());
+			QTableWidgetItem *item2;
+			if (cellId < tab->GetNumRows())
+				item2 = new QTableWidgetItem(tab->GetStrValue(r, cellId).c_str());
+			else
+				item2 = new QTableWidgetItem("CellID invalid!");
 			ti->setItem(r, 1, item2);
 		}
 	}
@@ -874,18 +896,25 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 
 void OtbModellerWin::test()
 {
-	NMDebugCtx(ctxOtbModellerWin, << "...");
+	//NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	NMDebugAI(<< "Available QSqlDatabase drivers ..." << std::endl);
+	NMLayer* layer = this->ui->modelCompList->getSelectedLayer();
+	if (layer == 0 || layer->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+		return;
 
-	QStringList drivers = QSqlDatabase::drivers();
-	foreach(const QString& driver, drivers)
-	{
-		NMDebugAI(<< driver.toStdString() << std::endl);
-	}
+	NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
+	il->computeStats();
+
+	//NMDebugAI(<< "Available QSqlDatabase drivers ..." << std::endl);
+
+	//QStringList drivers = QSqlDatabase::drivers();
+	//foreach(const QString& driver, drivers)
+	//{
+	//	NMDebugAI(<< driver.toStdString() << std::endl);
+	//}
 
 
-	NMDebugCtx(ctxOtbModellerWin, << "done!");
+	//NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 
@@ -1275,6 +1304,18 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 
 
 	this->mPixelValLabel->setText(pixval);
+
+}
+
+void
+OtbModellerWin::showBusyStart(const QString& msg)
+{
+
+}
+
+void
+OtbModellerWin::showBusyEnd(const QString& msg)
+{
 
 }
 
@@ -2308,6 +2349,15 @@ OtbModellerWin::loadRasdamanLayer()
 }
 
 void
+OtbModellerWin::connectImageLayerProcSignals(NMLayer* layer)
+{
+	connect(layer, SIGNAL(layerProcessingStart(const QString &)),
+			this, SLOT(showBusyStart(const QString &)));
+	connect(layer, SIGNAL(layerProcessingEnd(const QString &)),
+			this, SLOT(showBusyEnd(const QString &)));
+}
+
+void
 OtbModellerWin::fetchRasLayer(const QString& imagespec,
 		const QString& covname)
 {
@@ -2327,6 +2377,8 @@ OtbModellerWin::fetchRasLayer(const QString& imagespec,
 
 		layer->setRasdamanConnector(rasconn);
 		layer->setObjectName(covname);
+		this->connectImageLayerProcSignals(layer);
+
 		if (layer->setFileName(imagespec))
 		{
 			layer->setVisible(true);
@@ -2570,8 +2622,9 @@ void OtbModellerWin::loadImageLayer()
 
 	vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
 	NMImageLayer* layer = new NMImageLayer(renWin);
-
 	layer->setObjectName(layerName);
+	this->connectImageLayerProcSignals(layer);
+
 	if (layer->setFileName(fileName))
 	{
 		layer->setVisible(true);

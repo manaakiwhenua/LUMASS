@@ -41,6 +41,8 @@
 #include "vtkStringArray.h"
 #include "vtkRenderWindowInteractor.h"
 #include "vtkInteractorObserver.h"
+#include "vtkImageHistogramStatistics.h"
+#include "vtkImageCast.h"
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -119,6 +121,7 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 	this->mNumBands = 0;
 	this->mNumDimensions = 0;
 	this->mComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+	this->mbStatsAvailable = false;
 
 	this->mLayerIcon = QIcon(":image_layer.png");
 
@@ -143,6 +146,48 @@ NMImageLayer::~NMImageLayer()
 //		this->mTableView->close();
 //		delete this->mTableView;
 //	}
+}
+
+void
+NMImageLayer::computeStats(void)
+{
+	NMDebugCtx(ctxNMImageLayer, << "...");
+	if (!this->mbStatsAvailable)
+	{
+		emit layerProcessingStart(this->objectName());
+
+		vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
+		cast->SetOutputScalarTypeToFloat();
+		cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+
+		vtkSmartPointer<vtkImageHistogramStatistics> stats = vtkSmartPointer<vtkImageHistogramStatistics>::New();
+		stats->SetInputConnection(cast->GetOutputPort());
+		stats->GenerateHistogramImageOn();
+		stats->SetHistogramImageScaleToSqrt();
+		stats->SetHistogramImageSize(256,256);
+		stats->Update();
+
+		mImgStats[0] = stats->GetMinimum();
+		mImgStats[1] = stats->GetMaximum();
+		mImgStats[2] = stats->GetMean();
+		mImgStats[3] = stats->GetMedian();
+		mImgStats[4] = stats->GetStandardDeviation();
+
+		this->mbStatsAvailable = true;
+
+		emit layerProcessingEnd(this->objectName());
+	}
+
+	NMDebugAI(<< "Image Statistics for '" << this->objectName().toStdString() << "' ... " << std::endl);
+	NMDebugAI(<< "min:     " << mImgStats[0] << std::endl);
+	NMDebugAI(<< "max:     " << mImgStats[1] << std::endl);
+	NMDebugAI(<< "mean:    " << mImgStats[2] << std::endl);
+	NMDebugAI(<< "median:  " << mImgStats[3] << std::endl);
+	NMDebugAI(<< "std.dev: " << mImgStats[4] << std::endl);
+
+	//vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+
+	NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
 void NMImageLayer::world2pixel(double world[3], int pixel[3])
@@ -330,10 +375,13 @@ bool NMImageLayer::setFileName(QString filename)
 
 #endif
 
+	emit layerProcessingStart(this->objectName());
+
 	this->mReader->setFileName(filename);
 	this->mReader->instantiateObject();
 	if (!this->mReader->isInitialised())
 	{
+		emit layerProcessingEnd(this->objectName());
 		NMErr(ctxNMImageLayer, << "couldn't read the image!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
@@ -346,6 +394,7 @@ bool NMImageLayer::setFileName(QString filename)
 
 	if (this->mNumBands != 1)
 	{
+		emit layerProcessingEnd(this->objectName());
 		NMErr(ctxNMImageLayer, << "we currently only support single band images!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
@@ -384,6 +433,7 @@ bool NMImageLayer::setFileName(QString filename)
 
 	this->mImage = 0;
 
+	emit layerProcessingEnd(this->objectName());
 	NMDebugCtx(ctxNMImageLayer, << "done!");
 	return true;
 }

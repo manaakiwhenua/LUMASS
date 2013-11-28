@@ -389,8 +389,9 @@ void AttributeTable::SetImgFileName(const std::string& sFileName)
 std::string
 AttributeTable::GetColumnName(int idx)
 {
+	std::string ret = "";
 	if (idx < 0 || idx > m_vNames.size()-1)
-		return "";
+		return ret;
 	return m_vNames.at(idx);
 }
 

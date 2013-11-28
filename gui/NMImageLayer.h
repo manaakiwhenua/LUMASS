@@ -37,6 +37,7 @@
 #include "vtkImageData.h"
 #include "vtkImageProperty.h"
 #include "otbImageIOBase.h"
+#include "vtkImageHistogram.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "RasdamanConnector.hh"
@@ -84,8 +85,13 @@ public:
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
+public: signals:
+	void layerProcessingStart(const QString& layerName);
+	void layerProcessingEnd(const QString& layerName);
+
 public slots:
 	void writeDataSet(void);
+	void computeStats(void);
 
 
 protected:
@@ -107,6 +113,17 @@ protected:
 	otb::ImageIOBase::IOComponentType mComponentType;
 	unsigned int mNumDimensions;
 	unsigned int mNumBands;
+
+	bool mbStatsAvailable;
+
+	/* Image stats
+	 * 0: min
+	 * 1: max
+	 * 2: mean
+	 * 3: median
+	 * 4: standard deviation
+	 */
+	double mImgStats[5];
 
 	//void fetchRATs(void);
 

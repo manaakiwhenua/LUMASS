@@ -92,8 +92,11 @@ public slots:
 	void fetchRasLayer(const QString& imagespec,
 			const QString& covname);
 	void eraseRasLayer(const QString& imagespec);
+	void connectImageLayerProcSignals(NMLayer* layer);
+
 #endif
-	//void setCurrentInteractorLayer(const NMLayer* layer);
+	void showBusyStart(const QString &);
+	void showBusyEnd(const QString &);
 	void loadImageLayer();
 	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
 	void toggle3DStereoMode();

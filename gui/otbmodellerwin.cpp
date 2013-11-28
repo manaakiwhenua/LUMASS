@@ -1213,7 +1213,7 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	wPt[2] = 0;
 
 	// update label
-	QString s = QString("Map Location - X: %1 Y: %2"). // Z: %3").
+	QString s = QString("Map Location: X: %1 Y: %2"). // Z: %3").
 	arg(wPt[0], 0, 'f', 5).arg(wPt[1], 0, 'f', 5); //.arg(wPt[3],0,'f',2);
 
 	this->m_coordLabel->setText(s);
@@ -1254,9 +1254,25 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 		cvs << img->GetScalarComponentAsDouble(did[0], did[1], did[2], d)
 				<< " ";
 	}
-	pixval = QString(" Pixel (%1, %2, %3) = %4").
+
+	// get the color window and level settings
+	double pixelvalue = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
+
+
+	vtkImageSlice* slice = vtkImageSlice::SafeDownCast(const_cast<vtkProp3D*>(l->getActor()));
+	vtkImageProperty* iprop = slice->GetProperty();
+	double cwin = iprop->GetColorWindow();
+	double clevel = iprop->GetColorLevel();
+
+	double lower = clevel - (cwin * 0.5);
+	double upper = clevel + (cwin * 0.5);
+
+	pixval = QString(" Pixel (%1, %2, %3) = %4  | Window, Level, Range = %5, %6, %7-%8").
 				arg(did[0]).arg(did[1]).arg(did[2]).
-				arg(cvs.str().c_str());
+				arg(cvs.str().c_str()).
+				arg(cwin, 0, 'f', 2).arg(clevel, 0, 'f', 2).
+				arg(lower, 0, 'f', 2).arg(upper, 0, 'f', 2);
+
 
 	this->mPixelValLabel->setText(pixval);
 

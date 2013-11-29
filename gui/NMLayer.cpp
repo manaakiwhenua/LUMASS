@@ -542,6 +542,31 @@ NMLayer::tableColumnsInserted(const QModelIndex& parent, int startsection,
 }
 
 void
+NMLayer::selectCell(long cellID, NMLayerSelectionType type)
+{
+	const QModelIndex idx = this->mTableModel->index(cellID, 0, QModelIndex());
+	switch(type)
+	{
+	case NM_SEL_ADD:
+		mSelectionModel->select(idx, QItemSelectionModel::Select);
+		break;
+	case NM_SEL_REMOVE:
+		mSelectionModel->select(idx, QItemSelectionModel::Deselect);
+		break;
+	case NM_SEL_NEW:
+		mSelectionModel->select(idx, QItemSelectionModel::ClearAndSelect);
+		break;
+	case NM_SEL_CLEAR:
+		mSelectionModel->clearSelection();
+		break;
+	default:
+		break;
+	}
+	emit legendChanged(this);
+	emit visibilityChanged(this);
+}
+
+void
 NMLayer::tableColumnsRemoved(const QModelIndex& parent, int startsection,
 		int endsection)
 {

@@ -1070,7 +1070,8 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		QList<long> lstNMId;
 		if (vIds.size() == 0)
 		{
-			l->updateLayerSelection(lstCellId,lstNMId, NMLayer::NM_SEL_CLEAR);
+			//l->updateLayerSelection(lstCellId,lstNMId, NMLayer::NM_SEL_CLEAR);
+			l->selectCell(cellId, NMLayerSelectionType::NM_SEL_CLEAR);
 			this->updateLayerInfo(l, -1);
 			return;
 		}
@@ -1086,7 +1087,8 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		long nmid = nmids->GetTuple1(cellId);
 		lstCellId.push_back(cellId);
 		lstNMId.push_back(nmid);
-		l->updateLayerSelection(lstCellId, lstNMId, seltype);
+		//l->updateLayerSelection(lstCellId, lstNMId, seltype);
+		l->selectCell(cellId, seltype);
 	}
 	// ==========================================================================
 	// 									PIXEL PICKING

@@ -323,7 +323,7 @@ int NMImageLayer::updateAttributeTable()
 	this->mTableModel = otbModel;
 
 	connectTableSel();
-	//emit legendChanged(this);
+	emit legendChanged(this);
 
 	return 1;
 }

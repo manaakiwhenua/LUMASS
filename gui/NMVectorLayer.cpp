@@ -628,7 +628,7 @@ int NMVectorLayer::updateAttributeTable(void)
 	this->mTableModel = tabModel;
 
 	connectTableSel();
-	//emit legendChanged(this);
+	emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
 	return 1;
@@ -728,10 +728,45 @@ void NMVectorLayer::writeDataSet(void)
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
 
-void NMVectorLayer::updateSelectionData(void)
+void
+NMVectorLayer::selectionChanged(const QItemSelection& newSel,
+		const QItemSelection& oldSel)
 {
-	NMDebugCtx(ctxNMVectorLayer, << "...");
 
+	vtkLookupTable* clrTab = vtkLookupTable::SafeDownCast(
+			this->mContourMapper->GetLookupTable());
+
+	const int numranges = newSel.size();
+	const int maxrow = this->mAttributeTable->GetNumberOfRows()-1;
+
+	int rangeindex=0;
+	for (int row=0; row <= maxrow; ++row)
+	{
+		if (numranges > 0)
+		{
+			if (	row >= newSel.at(rangeindex).top()
+				&&  row <= newSel.at(rangeindex).bottom())
+			{
+				clrTab->SetTableValue(row, 1,0,0,1);
+
+				if (row == newSel.at(rangeindex).bottom())
+				{
+					rangeindex = rangeindex < numranges - 1 ? rangeindex + 1 : rangeindex;
+				}
+				continue;
+			}
+		}
+		clrTab->SetTableValue(row, 0,0,0,1);
+	}
+
+	emit visibilityChanged(this);
+	emit legendChanged(this);
+}
+
+//void NMVectorLayer::updateSelectionData(void)
+//{
+//	NMDebugCtx(ctxNMVectorLayer, << "...");
+//
 //	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 //
 //	vtkUnsignedCharArray* holeAr;
@@ -769,13 +804,13 @@ void NMVectorLayer::updateSelectionData(void)
 //
 //	emit visibilityChanged(this);
 //	emit legendChanged(this);
+//
+//	NMDebugCtx(ctxNMVectorLayer, << "done!");
+//}
 
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
-}
-
-void NMVectorLayer::updateLayerSelection(QList<long> lstCellId,
-		QList<long> lstNMId, NMLayerSelectionType seltype)
-{
+//void NMVectorLayer::updateLayerSelection(QList<long> lstCellId,
+//		QList<long> lstNMId, NMLayerSelectionType seltype)
+//{
 //	// update the table, if present
 //	if (this->mTableView != 0)
 //	{
@@ -857,7 +892,7 @@ void NMVectorLayer::updateLayerSelection(QList<long> lstCellId,
 //	emit dataSetChanged(this);
 //	emit legendChanged(this);
 //	emit visibilityChanged(this);
-}
+//}
 
 
 

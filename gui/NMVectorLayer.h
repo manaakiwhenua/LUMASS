@@ -71,9 +71,10 @@ public:
 	void mapSingleSymbol();
 
 public slots:
+	virtual void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);
 	virtual void writeDataSet(void);
-	virtual void updateLayerSelection(QList<long> lstCellId,
-			QList<long> lstNMId, NMLayerSelectionType seltype);
+	//virtual void updateLayerSelection(QList<long> lstCellId,
+	//		QList<long> lstNMId, NMLayerSelectionType seltype);
 
 protected:
 	vtkSmartPointer<vtkOGRLayerMapper> mContourMapper;
@@ -91,7 +92,7 @@ protected slots:
 	int updateAttributeTable(void);
 	//virtual void updateDataSet(QStringList& slAlteredColumns,
 	//		QStringList& slDeletedColumns);
-	virtual void updateSelectionData(void);
+	//virtual void updateSelectionData(void);
 
 	// void createColourRamp
 

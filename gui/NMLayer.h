@@ -130,14 +130,15 @@ public slots:
 	// call this function whenever you've changed the
 	// layer's data set and wish other objects get
 	// to know about it
-	void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);
-	void tableDataChanged(const QModelIndex& tl, const QModelIndex& br);
-	void tableColumnsInserted(const QModelIndex& parent,
+	virtual void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);
+	virtual void tableDataChanged(const QModelIndex& tl, const QModelIndex& br);
+	virtual void tableColumnsInserted(const QModelIndex& parent,
 			int startsection, int endsection);
-	void tableColumnsRemoved(const QModelIndex& parent,
+	virtual void tableColumnsRemoved(const QModelIndex& parent,
 			int startsection, int endsection);
-	void selectedLayerChanged(const NMLayer* layer);
+	virtual void selectedLayerChanged(const NMLayer* layer);
 	virtual void writeDataSet(void);
+	virtual void selectCell(long cellID, NMLayerSelectionType seltype);
 	//void emitDataSetChanged();
 	//void emitAttributeTableChanged(
 	//		QStringList& slAlteredColumns,

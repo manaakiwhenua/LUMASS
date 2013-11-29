@@ -152,6 +152,9 @@ signals:
 	void dataSetChanged(const NMLayer* layer);
 	void attributeTableChanged(vtkTable* table);
 	void layerSelectionChanged(const NMLayer* layer);
+	void layerProcessingStart();
+	void layerProcessingEnd();
+	void layerLoaded();
 
 protected:
 	vtkSmartPointer<vtkRenderWindow> mRenderWindow;

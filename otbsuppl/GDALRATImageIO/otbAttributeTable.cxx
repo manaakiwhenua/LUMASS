@@ -347,7 +347,8 @@ AttributeTable::GetIntValue(const std::string& sColName, int idx)
 	return ret;
 }
 
-std::string AttributeTable::GetStrValue(const std::string& sColName, int idx)
+std::string
+AttributeTable::GetStrValue(const std::string& sColName, int idx)
 {
 	// check given index and column name
 	int colidx = this->ColumnExists(sColName);

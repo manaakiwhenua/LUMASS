@@ -29,6 +29,7 @@
 #include <QLabel>
 #include <QSharedPointer>
 #include <QStandardItemModel>
+#include <QProgressBar>
 
 // OGR
 #include "ogrsf_frmts.h"
@@ -95,8 +96,8 @@ public slots:
 	void connectImageLayerProcSignals(NMLayer* layer);
 
 #endif
-	void showBusyStart(const QString &);
-	void showBusyEnd(const QString &);
+	void showBusyStart();
+	void showBusyEnd();
 	void loadImageLayer();
 	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
 	void toggle3DStereoMode();
@@ -118,6 +119,7 @@ public slots:
 	void importODBC();
 	void aboutLUMASS();
 	void zoomChanged(vtkObject* obj);
+	void addLayerToCompList();
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 
@@ -239,8 +241,8 @@ private:
     QLabel* m_coordLabel;
     // for showing pixel values
     QLabel* mPixelValLabel;
-
     QMainWindow* mModelBuilderWindow;
+    QProgressBar* mProgressBar;
 
     // for showing random messages in the status bar
     QLabel* m_StateMsg;

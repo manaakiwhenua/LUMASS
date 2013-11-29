@@ -85,9 +85,6 @@ public:
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
-public: signals:
-	void layerProcessingStart(const QString& layerName);
-	void layerProcessingEnd(const QString& layerName);
 
 public slots:
 	void writeDataSet(void);
@@ -97,6 +94,7 @@ public slots:
 protected:
 
 	void createTableView(void);
+	void updateStats(void);
 
 	NMImageReader* mReader;
 	NMItk2VtkConnector* mPipeconn;

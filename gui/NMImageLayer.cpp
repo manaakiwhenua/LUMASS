@@ -27,6 +27,7 @@
 #include "NMFastTrackSelectionModel.h"
 
 #include <QTime>
+#include <QtCore>
 
 #include "itkImageRegion.h"
 #include "itkPoint.h"
@@ -154,28 +155,7 @@ NMImageLayer::computeStats(void)
 	NMDebugCtx(ctxNMImageLayer, << "...");
 	if (!this->mbStatsAvailable)
 	{
-		emit layerProcessingStart(this->objectName());
-
-		vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-		cast->SetOutputScalarTypeToFloat();
-		cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-
-		vtkSmartPointer<vtkImageHistogramStatistics> stats = vtkSmartPointer<vtkImageHistogramStatistics>::New();
-		stats->SetInputConnection(cast->GetOutputPort());
-		stats->GenerateHistogramImageOn();
-		stats->SetHistogramImageScaleToSqrt();
-		stats->SetHistogramImageSize(256,256);
-		stats->Update();
-
-		mImgStats[0] = stats->GetMinimum();
-		mImgStats[1] = stats->GetMaximum();
-		mImgStats[2] = stats->GetMean();
-		mImgStats[3] = stats->GetMedian();
-		mImgStats[4] = stats->GetStandardDeviation();
-
-		this->mbStatsAvailable = true;
-
-		emit layerProcessingEnd(this->objectName());
+		QtConcurrent::run(this, &NMImageLayer::updateStats);
 	}
 
 	NMDebugAI(<< "Image Statistics for '" << this->objectName().toStdString() << "' ... " << std::endl);
@@ -188,6 +168,33 @@ NMImageLayer::computeStats(void)
 	//vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
 
 	NMDebugCtx(ctxNMImageLayer, << "done!");
+}
+
+void
+NMImageLayer::updateStats(void)
+{
+	emit layerProcessingStart();
+
+	vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
+	cast->SetOutputScalarTypeToFloat();
+	cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+
+	vtkSmartPointer<vtkImageHistogramStatistics> stats = vtkSmartPointer<vtkImageHistogramStatistics>::New();
+	stats->SetInputConnection(cast->GetOutputPort());
+	//stats->GenerateHistogramImageOn();
+	//stats->SetHistogramImageScaleToSqrt();
+	//stats->SetHistogramImageSize(256,256);
+	stats->Update();
+
+	mImgStats[0] = stats->GetMinimum();
+	mImgStats[1] = stats->GetMaximum();
+	mImgStats[2] = stats->GetMean();
+	mImgStats[3] = stats->GetMedian();
+	mImgStats[4] = stats->GetStandardDeviation();
+
+	this->mbStatsAvailable = true;
+
+	emit layerProcessingEnd();
 }
 
 void NMImageLayer::world2pixel(double world[3], int pixel[3])
@@ -375,13 +382,13 @@ bool NMImageLayer::setFileName(QString filename)
 
 #endif
 
-	emit layerProcessingStart(this->objectName());
+	emit layerProcessingStart();
 
 	this->mReader->setFileName(filename);
 	this->mReader->instantiateObject();
 	if (!this->mReader->isInitialised())
 	{
-		emit layerProcessingEnd(this->objectName());
+		emit layerProcessingEnd();
 		NMErr(ctxNMImageLayer, << "couldn't read the image!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
@@ -394,7 +401,7 @@ bool NMImageLayer::setFileName(QString filename)
 
 	if (this->mNumBands != 1)
 	{
-		emit layerProcessingEnd(this->objectName());
+		emit layerProcessingEnd();
 		NMErr(ctxNMImageLayer, << "we currently only support single band images!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
@@ -433,7 +440,8 @@ bool NMImageLayer::setFileName(QString filename)
 
 	this->mImage = 0;
 
-	emit layerProcessingEnd(this->objectName());
+	emit layerProcessingEnd();
+	emit layerLoaded();
 	NMDebugCtx(ctxNMImageLayer, << "done!");
 	return true;
 }
@@ -677,10 +685,20 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 		return 0;
 	}
 
+	// let's get the statistics if not done already
+	if (!this->mbStatsAvailable)
+	{
+		this->updateStats();
+	}
+	double min = this->mImgStats[0];
+	double max = this->mImgStats[1];
+	bool bMinIncluded = false;
+	bool bMaxIncluded = false;
+
 	// we create a new look-up table and set the number of entries we need
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->Allocate(mOtbRAT->GetNumRows());
-	clrtab->SetNumberOfTableValues(mOtbRAT->GetNumRows());
+	clrtab->Allocate(mOtbRAT->GetNumRows()+1);
+	clrtab->SetNumberOfTableValues(mOtbRAT->GetNumRows()+1);
 
 	// let's create a new legend info table
 	this->resetLegendInfo();
@@ -700,6 +718,16 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	vtkMath::RandomSeed(QTime::currentTime().msec());
 	for (int t=0; t < mOtbRAT->GetNumRows(); ++t)
 	{
+		int pixval = mOtbRAT->GetIntValue("rowidx", t);
+		if (pixval == min)
+		{
+			bMinIncluded = true;
+		}
+		else if (pixval == max)
+		{
+			bMaxIncluded = true;
+		}
+
 		if (bNum)
 		{
 			int val = mOtbRAT->GetIntValue(fn, t);
@@ -768,18 +796,53 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 		}
 	}
 
-	// get the mapper and look whats possible
-	//	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
-	//mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
-	//	mapper->SetLookupTable(clrtab);
-	//	mapper->UseLookupTableScalarRangeOn();
+	if (!bMinIncluded && !bMaxIncluded)
+	{
+		// the nodata value
+		double val = bMinIncluded ? max : (bMaxIncluded ? val : max);
 
-	//	clrtab->SetNumberOfColors(clrCount);
-	//	clrtab->Build();
+		// add the key value pair to the hash map
+		QVector<int> idxVec;
+		idxVec.append(clrCount);
+		this->mHashValueIndices.insert("nodata", idxVec);
+
+		// add a new row to the legend_info table
+		vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
+
+		// add the value to the index map
+		double lowup[2];
+		lowup[0] = val;
+		lowup[1] = val;
+
+		vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
+				this->mLegendInfo->GetColumnByName("range"));
+		lowupAbstrAr->SetTuple(newidx, lowup);
+
+		// generate a random triple of uchar values
+		double rgba[4];
+		for (int i=0; i < 3; i++)
+			rgba[i] = 0;
+		rgba[3] = 0;
+
+		// add the color spec to the colour map
+		vtkDoubleArray* rgbaAr = vtkDoubleArray::SafeDownCast(
+				this->mLegendInfo->GetColumnByName("rgba"));
+		rgbaAr->SetTuple(newidx, rgba);
+
+		// add the name (sVal) to the name column of the legendinfo table
+		vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
+				this->mLegendInfo->GetColumnByName("name"));
+		nameAr->SetValue(newidx, sVal.toStdString().c_str());
+
+		// add the color spec to the mapper's color table
+		clrtab->SetTableValue(mOtbRAT->GetNumRows(), rgba[0], rgba[1], rgba[2], rgba[3]);
+		//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
+		//					<< " " << rgba[1] << " " << rgba[2] << endl);
+
+	}
 
 	this->mImgProp->SetLookupTable(clrtab);
-	//	this->mImgProp->UseLookupTableScalarRangeOn();
-
+	this->mImgProp->UseLookupTableScalarRangeOn();
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);

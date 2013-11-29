@@ -1,5 +1,5 @@
- /******************************************************************************
- * Created by Alexander Herzig
+ /***********************o*******************************************************
+ * Created by Alexander Headerrzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -299,6 +299,12 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // add a label to show random messages in the status bar
     this->m_StateMsg = new QLabel("",  this, 0);
     this->ui->statusBar->addWidget(this->m_StateMsg);
+    // progress bar
+    this->mProgressBar = new QProgressBar(this);
+    this->mProgressBar->setMaximumHeight(15);
+    this->mProgressBar->setVisible(false);
+    this->ui->statusBar->addPermanentWidget(mProgressBar, 1);
+
 
     // connect menu actions to member functions
 #ifdef BUILD_RASSUPPORT
@@ -528,6 +534,8 @@ OtbModellerWin::getBkgRenderer(void)
 RasdamanConnector*
 OtbModellerWin::getRasdamanConnector(void)
 {
+	NMDebugCtx(ctxOtbModellerWin, << "...");
+
 	// for now, this means that once rasdaman has been checked,
 	// and was found to be unavailable, it won't be available
 	// for the rest of the session, and the user has to close
@@ -617,11 +625,13 @@ OtbModellerWin::getRasdamanConnector(void)
 				"is configured properly!");
 		NMErr(ctxOtbModellerWin, << "PQexec: Failed installing petascope browsing support!"
 				                 << PQresultErrorMessage(res));
+		NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return 0;
 	}
 	PQclear(res);
 
 	return this->mpRasconn;
+	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 #endif
 
@@ -861,11 +871,17 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 	// =====================================================================
 	else if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
 	{
-		NMImageLayer *il = qobject_cast<NMImageLayer*>(l);
+		NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
 
 		// TODO: we have to reasonably extend this to any table
 		// we've got
-		otb::AttributeTable *tab = il->getRasterAttributeTable(1);
+		otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
+		if (tab.IsNull())
+		{
+			NMDebugAI(<< __FUNCTION__ << ": Couldn't fetch the image attribute table!" << std::endl);
+			return;
+		}
+		//QAbstractItemModel* tab = il->getTable();
 
 		int ncols = tab->GetNumCols();
 		ti->setRowCount(ncols);
@@ -1296,11 +1312,11 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	double lower = clevel - (cwin * 0.5);
 	double upper = clevel + (cwin * 0.5);
 
-	pixval = QString(" Pixel (%1, %2, %3) = %4  | Window, Level, Range = %5, %6, %7-%8").
+	pixval = QString(" Pixel (%1, %2, %3) = %4").//  | Window, Level, Range = %5, %6, %7-%8").
 				arg(did[0]).arg(did[1]).arg(did[2]).
-				arg(cvs.str().c_str()).
-				arg(cwin, 0, 'f', 2).arg(clevel, 0, 'f', 2).
-				arg(lower, 0, 'f', 2).arg(upper, 0, 'f', 2);
+				arg(cvs.str().c_str());//.
+				//arg(cwin, 0, 'f', 2).arg(clevel, 0, 'f', 2).
+				//arg(lower, 0, 'f', 2).arg(upper, 0, 'f', 2);
 
 
 	this->mPixelValLabel->setText(pixval);
@@ -1308,15 +1324,23 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 }
 
 void
-OtbModellerWin::showBusyStart(const QString& msg)
+OtbModellerWin::showBusyStart()
 {
-
+	NMDebugAI(<< this->sender()->objectName().toStdString() << " - turned busy!" << std::endl);
+	QString msg = QString("processing %1").arg(this->sender()->objectName());
+	this->m_StateMsg->setText(msg);
+	this->mProgressBar->reset();
+	this->mProgressBar->setVisible(true);
+	this->mProgressBar->setMinimum(0);
+	this->mProgressBar->setMaximum(0);
 }
 
 void
-OtbModellerWin::showBusyEnd(const QString& msg)
+OtbModellerWin::showBusyEnd()
 {
-
+	NMDebugAI(<< this->sender()->objectName().toStdString() << " - stopped processing!" << std::endl);
+	this->m_StateMsg->setText("");
+	this->mProgressBar->setVisible(false);
 }
 
 void OtbModellerWin::showComponentsView()
@@ -2351,18 +2375,17 @@ OtbModellerWin::loadRasdamanLayer()
 void
 OtbModellerWin::connectImageLayerProcSignals(NMLayer* layer)
 {
-	connect(layer, SIGNAL(layerProcessingStart(const QString &)),
-			this, SLOT(showBusyStart(const QString &)));
-	connect(layer, SIGNAL(layerProcessingEnd(const QString &)),
-			this, SLOT(showBusyEnd(const QString &)));
+	connect(layer, SIGNAL(layerProcessingStart()), this, SLOT(showBusyStart()));
+	connect(layer, SIGNAL(layerProcessingEnd()), this, SLOT(showBusyEnd()));
+	connect(layer, SIGNAL(layerLoaded()), this, SLOT(addLayerToCompList()));
 }
 
 void
 OtbModellerWin::fetchRasLayer(const QString& imagespec,
 		const QString& covname)
 {
-	try
-	{
+//	try
+//	{
 		NMDebugAI( << "opening " << imagespec.toStdString() << " ..." << std::endl);
 
 		vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
@@ -2379,21 +2402,23 @@ OtbModellerWin::fetchRasLayer(const QString& imagespec,
 		layer->setObjectName(covname);
 		this->connectImageLayerProcSignals(layer);
 
-		if (layer->setFileName(imagespec))
-		{
-			layer->setVisible(true);
-			this->ui->modelCompList->addLayer(layer);
-		}
-		else
-			delete layer;
-	}
-	catch(r_Error& re)
-	{
-		//this->mpRasconn->disconnect();
-		//this->mpRasconn->connect();
-		NMErr(ctxOtbModellerWin, << re.what());
-		NMDebugCtx(ctxOtbModellerWin, << "done!");
-	}
+		QtConcurrent::run(layer, &NMImageLayer::setFileName, imagespec);
+
+		//if (layer->setFileName(imagespec))
+		//{
+		//	layer->setVisible(true);
+		//	this->ui->modelCompList->addLayer(layer);
+		//}
+		//else
+		//	delete layer;
+//	}
+//	catch(r_Error& re)
+//	{
+//		//this->mpRasconn->disconnect();
+//		//this->mpRasconn->connect();
+//		NMErr(ctxOtbModellerWin, << re.what());
+//		NMDebugCtx(ctxOtbModellerWin, << "done!");
+//	}
 }
 
 void
@@ -2527,7 +2552,7 @@ OtbModellerWin::updateRasMetaView()
 			idxmap.insert(colname, colindices[i]);
 		}
 	}
-	NMDebug(<< std::endl);
+	//NMDebug(<< std::endl);
 
 	//vtkSmartPointer<vtkUnsignedCharArray> car = vtkSmartPointer<vtkUnsignedCharArray>::New();
 	//car->SetNumberOfComponents(1);
@@ -2563,7 +2588,7 @@ OtbModellerWin::updateRasMetaView()
 		//car->SetTuple1(r, 0);
 		//idar->SetTuple1(r, r);
 	}
-	NMDebug( << std::endl);
+	//NMDebug( << std::endl);
 	//metatab->AddColumn(car);
 	//metatab->AddColumn(idar);
 
@@ -2621,19 +2646,37 @@ void OtbModellerWin::loadImageLayer()
 	QString layerName = finfo.baseName();
 
 	vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
-	NMImageLayer* layer = new NMImageLayer(renWin);
+	NMImageLayer* layer = new NMImageLayer(renWin, 0, this);
+
+//	QThread* loader = new QThread;
+//	layer->moveToThread(loader);
+//	connect(layer, SIGNAL(layerProcessingEnd(const QString &)),
+//			loader, SLOT())
+
 	layer->setObjectName(layerName);
 	this->connectImageLayerProcSignals(layer);
+	QtConcurrent::run(layer, &NMImageLayer::setFileName, fileName);
 
-	if (layer->setFileName(fileName))
-	{
-		layer->setVisible(true);
-		this->ui->modelCompList->addLayer(layer);
-	}
-	else
-		delete layer;
+//	if (layer->setFileName(fileName))
+//	{
+//		layer->setVisible(true);
+//		this->ui->modelCompList->addLayer(layer);
+//	}
+//	else
+//		delete layer;
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
+
+void
+OtbModellerWin::addLayerToCompList()
+{
+	NMLayer* layer = qobject_cast<NMLayer*>(this->sender());
+	if (layer == 0)
+		return;
+
+	layer->setVisible(true);
+	this->ui->modelCompList->addLayer(layer);
 }
 
 void OtbModellerWin::toggle3DSimpleMode()

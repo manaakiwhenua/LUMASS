@@ -1,5 +1,5 @@
- /****************************************Mod***************ame***********************
- * Created by Alexander Herzigte
+ /******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute

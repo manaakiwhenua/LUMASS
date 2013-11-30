@@ -325,7 +325,6 @@ NMTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
 		mProxySelModel->setSelection(proxySelection);
 
 		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
-
 		this->connectSelModels(true);
 	}
 }
@@ -1594,6 +1593,13 @@ NMTableView::printSelRanges(const QItemSelection& selection, const QString& msg)
 ////	else
 ////		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
 //}
+
+void
+NMTableView::showEvent(QShowEvent* event)
+{
+	NMDebugAI(<< __FUNCTION__ << ": updating selection? ..." << std::endl);
+	this->updateSelectionAdmin(QItemSelection(), QItemSelection());
+}
 
 void
 NMTableView::toggleRow(int row)

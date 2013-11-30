@@ -542,16 +542,18 @@ NMLayer::tableColumnsInserted(const QModelIndex& parent, int startsection,
 }
 
 void
-NMLayer::selectCell(long cellID, NMLayerSelectionType type)
+NMLayer::selectCell(int cellID, NMLayerSelectionType type)
 {
 	const QModelIndex idx = this->mTableModel->index(cellID, 0, QModelIndex());
 	switch(type)
 	{
 	case NM_SEL_ADD:
-		mSelectionModel->select(idx, QItemSelectionModel::Select);
+		//mSelectionModel->select(idx, QItemSelectionModel::Select);
+		mSelectionModel->toggleRow(cellID, 0, QModelIndex());
 		break;
 	case NM_SEL_REMOVE:
-		mSelectionModel->select(idx, QItemSelectionModel::Deselect);
+		//mSelectionModel->select(idx, QItemSelectionModel::Deselect);
+		mSelectionModel->toggleRow(cellID, 0, QModelIndex());
 		break;
 	case NM_SEL_NEW:
 		mSelectionModel->select(idx, QItemSelectionModel::ClearAndSelect);
@@ -560,6 +562,7 @@ NMLayer::selectCell(long cellID, NMLayerSelectionType type)
 		mSelectionModel->clearSelection();
 		break;
 	default:
+		return;
 		break;
 	}
 	emit legendChanged(this);

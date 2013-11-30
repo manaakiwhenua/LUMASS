@@ -80,9 +80,10 @@ protected:
 	vtkSmartPointer<vtkOGRLayerMapper> mContourMapper;
 	vtkSmartPointer<vtkActor> mContourActor;
 	vtkSmartPointer<vtkPolyData> mContour;
+
 	NMFeatureType mFeatureType;
 	vtkSmartPointer<vtkTable> mAttributeTable;
-	//vtkSmartPointer<vtkDepthSortPolyData> mDepthSort;
+
 
 	void createTableView(void);
 	void setContour(vtkPolyData* contour);

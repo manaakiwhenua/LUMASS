@@ -165,6 +165,7 @@ protected:
 			QAbstractItemModel* srcTable);
 
 	bool eventFilter(QObject* object, QEvent* event);
+	void showEvent(QShowEvent* event);
 
 	// DEBUG ONLY
 	void printSelRanges(const QItemSelection& selection,

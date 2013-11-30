@@ -1027,27 +1027,28 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		{
 			if (hole->GetTuple1(c) == 0)
 			{
-	//		NMDebugAI( << "cell (nmid) " << nmids->GetTuple1(c) << ":" << endl);
-			cell = pd->GetCell(c);
-			in = this->ptInPoly2D(wPt, cell);
-			if (in)
-			{
-				vIds.push_back(c);
-				vnmIds.push_back(nmids->GetTuple1(c));
-				if (hole->GetTuple1(c) == 1)
-					  holeIds.push_back(c);
-			}
+				//		NMDebugAI( << "cell (nmid) " << nmids->GetTuple1(c) << ":" << endl);
+				cell = pd->GetCell(c);
+				in = this->ptInPoly2D(wPt, cell);
+				if (in)
+				{
+					vIds.push_back(c);
+					vnmIds.push_back(nmids->GetTuple1(c));
+					// don't really what this is for anymore
+					if (hole->GetTuple1(c) == 1)
+						  holeIds.push_back(c);
+				}
 			}
 		}
 
-	//	// remove holes from result vector
-	//	for (int k=0; k < vIds.size(); ++k)
-	//	{
-	//		if (holeIds.contains(vIds.at(k)))
-	//		{
-	//			vIds.removeOne(vIds.at(k));
-	//		}
-	//	}
+		//	// remove holes from result vector
+		//	for (int k=0; k < vIds.size(); ++k)
+		//	{
+		//		if (holeIds.contains(vIds.at(k)))
+		//		{
+		//			vIds.removeOne(vIds.at(k));
+		//		}
+		//	}
 
 		if (vIds.size() > 1)
 		{
@@ -1071,7 +1072,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		if (vIds.size() == 0)
 		{
 			//l->updateLayerSelection(lstCellId,lstNMId, NMLayer::NM_SEL_CLEAR);
-			l->selectCell(cellId, NMLayerSelectionType::NM_SEL_CLEAR);
+			l->selectCell(0, NMLayer::NM_SEL_CLEAR);
 			this->updateLayerInfo(l, -1);
 			return;
 		}

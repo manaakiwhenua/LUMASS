@@ -435,8 +435,13 @@ bool NMImageLayer::setFileName(QString filename)
 	// set the bounding box
 	this->mReader->getBBox(this->mBBox);
 
-	// we only fetch a RAT when we really need it
-	//this->fetchRATs();
+	// we're going to update the attribute table, since
+	// we'll probably need it
+	if (!this->updateAttributeTable())
+	{
+		NMWarn(ctxNMImageLayer, << "Couldn't update the attibute table, "
+				<< "which might lead to trouble later on!");
+	}
 
 	this->mImage = 0;
 

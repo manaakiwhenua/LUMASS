@@ -57,7 +57,9 @@
 #include "vtkRowQueryToTable.h"
 #include "vtkSQLiteDatabase.h"
 #include "vtkProperty.h"
-#include "vtkDepthSortPolyData.h"
+//#include "vtkDepthSortPolyData.h"
+#include "vtkExtractCells.h"
+#include "vtkDataSetMapper.h"
 
 
 NMVectorLayer::NMVectorLayer(vtkRenderWindow* renWin,
@@ -224,6 +226,12 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 		cont->BuildCells();
 		cont->BuildLinks();
 		this->setContour(cont);
+	}
+
+	if (!this->updateAttributeTable())
+	{
+		NMWarn(ctxNMVectorLayer, << "Couldn't update the attribute table, "
+				<< "which might lead to trouble later on!");
 	}
 
 	// initially, we show all polys in the same colour
@@ -553,7 +561,6 @@ void NMVectorLayer::createTableView(void)
 
 	this->mTableView = new NMTableView(this->mTableModel, 0);
 	this->mTableView->setSelectionModel(this->mSelectionModel);
-	this->mTableView->hideAttribute("nm_sel");
 
 	// hide the 'hole' rows
 	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
@@ -574,7 +581,7 @@ void NMVectorLayer::createTableView(void)
 		this->mTableView->hideSource(hiddenrows);
 		this->mTableView->hideAttribute("nm_hole");
 	}
-
+	this->mTableView->hideAttribute("nm_sel");
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
 	// connect tableview signals to layer slots
@@ -732,13 +739,11 @@ void
 NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
-
-	vtkLookupTable* clrTab = vtkLookupTable::SafeDownCast(
-			this->mContourMapper->GetLookupTable());
-
 	const int numranges = newSel.size();
 	const int maxrow = this->mAttributeTable->GetNumberOfRows()-1;
 
+	// create new selections
+	vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
 	int rangeindex=0;
 	for (int row=0; row <= maxrow; ++row)
 	{
@@ -747,8 +752,7 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 			if (	row >= newSel.at(rangeindex).top()
 				&&  row <= newSel.at(rangeindex).bottom())
 			{
-				clrTab->SetTableValue(row, 1,0,0,1);
-
+				selCellIds->InsertNextId(row);
 				if (row == newSel.at(rangeindex).bottom())
 				{
 					rangeindex = rangeindex < numranges - 1 ? rangeindex + 1 : rangeindex;
@@ -756,8 +760,33 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 				continue;
 			}
 		}
-		clrTab->SetTableValue(row, 0,0,0,1);
 	}
+
+	if (this->mCellSelection->GetNumberOfCells() != 0 && mSelectionActor.GetPointer() != 0)
+	{
+		this->mRenderer->RemoveActor(mSelectionActor);
+	}
+
+	vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
+	extractor->SetInput(mDataSet);
+	extractor->SetCellList(selCellIds);
+	extractor->Update();
+	mCellSelection = extractor->GetOutput();
+
+	vtkSmartPointer<vtkDataSetMapper> selMapper = vtkSmartPointer<vtkDataSetMapper>::New();
+	selMapper->SetInput(mCellSelection);
+
+	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
+	a->SetMapper(selMapper);
+
+
+	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
+	clrtab->SetNumberOfColors(1);
+	clrtab->SetTableValue(0, 1, 0, 0, 1);
+	selMapper->SetLookupTable(clrtab);
+
+	mSelectionActor = a;
+	mRenderer->AddActor(a);
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);

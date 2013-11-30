@@ -50,6 +50,7 @@
 #include "vtkRenderer.h"
 #include "vtkTable.h"
 #include "vtkEventQtSlotConnect.h"
+#include "vtkUnstructuredGrid.h"
 
 class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
@@ -138,7 +139,7 @@ public slots:
 			int startsection, int endsection);
 	virtual void selectedLayerChanged(const NMLayer* layer);
 	virtual void writeDataSet(void);
-	virtual void selectCell(long cellID, NMLayerSelectionType seltype);
+	virtual void selectCell(int cellID, NMLayerSelectionType seltype);
 	//void emitDataSetChanged();
 	//void emitAttributeTableChanged(
 	//		QStringList& slAlteredColumns,
@@ -163,6 +164,10 @@ protected:
 	vtkSmartPointer<vtkDataSet> mDataSet;
 	vtkSmartPointer<vtkAbstractMapper> mMapper;
 	vtkSmartPointer<vtkProp3D> mActor;
+
+	vtkSmartPointer<vtkUnstructuredGrid> mCellSelection;
+	vtkSmartPointer<vtkProp3D>	mSelectionActor;
+
 	NMLayerType mLayerType;
 
 	NMTableView* mTableView;

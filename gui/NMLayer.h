@@ -51,6 +51,8 @@
 #include "vtkTable.h"
 #include "vtkEventQtSlotConnect.h"
 #include "vtkUnstructuredGrid.h"
+#include "vtkPolyData.h"
+#include "vtkOGRLayerMapper.h"
 
 class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
@@ -144,6 +146,7 @@ public slots:
 	//void emitAttributeTableChanged(
 	//		QStringList& slAlteredColumns,
 	//		QStringList& slDeletedColumns);
+	void forwardLastClickedRowSignal(long cellID);
 	virtual void updateLayerSelection(QList<long> lstCellId,
 		QList<long> lstNMId, NMLayerSelectionType seltype);
 
@@ -157,6 +160,7 @@ signals:
 	void layerProcessingStart();
 	void layerProcessingEnd();
 	void layerLoaded();
+	void notifyLastClickedRow(NMLayer* l, long cellID);
 
 protected:
 	vtkSmartPointer<vtkRenderWindow> mRenderWindow;
@@ -165,7 +169,8 @@ protected:
 	vtkSmartPointer<vtkAbstractMapper> mMapper;
 	vtkSmartPointer<vtkProp3D> mActor;
 
-	vtkSmartPointer<vtkUnstructuredGrid> mCellSelection;
+	vtkSmartPointer<vtkPolyData> mCellSelection;
+	vtkSmartPointer<vtkOGRLayerMapper> mSelectionMapper;
 	vtkSmartPointer<vtkProp3D>	mSelectionActor;
 
 	NMLayerType mLayerType;
@@ -173,6 +178,7 @@ protected:
 	NMTableView* mTableView;
 	//QItemSelectionModel* mSelectionModel;
 	NMFastTrackSelectionModel* mSelectionModel;
+	//QSharedPointer<NMFastTrackSelectionModel> mSelectionModel;
 	//QItemSelection* mElementSelection
 
 	QAbstractItemModel* mTableModel;
@@ -228,6 +234,7 @@ protected:
 	virtual void removeFromMap(void);
 	virtual void connectTableSel(void);
 	virtual void disconnectTableSel(void);
+	void printSelRanges(const QItemSelection& sel, const QString& msg);
 
 protected slots:
 	virtual int updateAttributeTable(void);

@@ -270,8 +270,9 @@ void NMImageLayer::createTableView(void)
 
 	if (this->mTableView != 0)
 	{
-		delete this->mTableView;
-		this->mTableView = 0;
+		return;
+		//delete this->mTableView;
+		//this->mTableView = 0;
 	}
 
 	if (this->mOtbRAT.IsNull())
@@ -288,6 +289,8 @@ void NMImageLayer::createTableView(void)
 	this->mTableView->setSelectionModel(this->mSelectionModel);
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
+	connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SLOT(forwardLastClickedRowSignal(long)));
+
 	// connect layer signals to tableview slots and model components list
 	//this->connect(this, SIGNAL(attributeTableChanged(vtkTable*)),
 	//		this->mTableView, SLOT(setTable(vtkTable*)));
@@ -298,6 +301,9 @@ void NMImageLayer::createTableView(void)
 
 int NMImageLayer::updateAttributeTable()
 {
+	if (this->mTableModel != 0)
+		return 1;
+
 	disconnectTableSel();
 
 	this->mOtbRAT = this->getRasterAttributeTable(1);
@@ -315,11 +321,10 @@ int NMImageLayer::updateAttributeTable()
 	otbModel->setKeyColumn("rowidx");
 
 	// in any case, we create a new item selection model
-	if (this->mSelectionModel != 0)
+	if (this->mSelectionModel == 0)
 	{
-		delete this->mSelectionModel;
+		this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
 	}
-	this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
 	this->mTableModel = otbModel;
 
 	connectTableSel();

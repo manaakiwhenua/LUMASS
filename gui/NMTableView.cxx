@@ -64,7 +64,8 @@
 
 NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
-	  mModel(model), mbSwitchSelection(false), mbClearSelection(false)
+	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
+	  mSelectionModel(0)
 {
 	this->mTableView = new QTableView(this);
 	this->initView();
@@ -85,7 +86,8 @@ NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 
 NMTableView::NMTableView(QAbstractItemModel* model, ViewMode mode, QWidget* parent)
 	: QWidget(parent), mViewMode(mode),
-	  mModel(model), mbSwitchSelection(false), mbClearSelection(false)
+	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
+	  mSelectionModel(0)
 {
 	this->mTableView = new QTableView(this);
 	this->initView();
@@ -311,21 +313,31 @@ NMTableView::connectSelModels(bool bconnect)
 	}
 }
 
+void
+NMTableView::update(void)
+{
+	this->updateProxySelection(QItemSelection(), QItemSelection());
+}
 
 void
 //NMTableView::setSelectionModel(QItemSelectionModel* selectionModel)
 NMTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
 {
+	this->printSelRanges(selectionModel->getSelection(), selectionModel->objectName());
+	if (mSelectionModel != 0)
+		this->connectSelModels(false);
+
 	this->mSelectionModel = selectionModel;
+	this->connectSelModels(true);
 	if (this->mSelectionModel)
 	{
-		mSelectionModel->setObjectName("FastSourceSelection");
-		const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
-				this->mSelectionModel->selection(), false);
-		mProxySelModel->setSelection(proxySelection);
-
+//		//mSelectionModel->setObjectName("FastSourceSelection");
+//		const QItemSelection srcSelection = selectionModel->selection();
+//		const QItemSelection proxySelection = this->mSortFilter->mapRowSelectionFromSource(
+//				srcSelection, false);
+//		mProxySelModel->setSelection(proxySelection);
+		this->updateProxySelection(QItemSelection(), QItemSelection());
 		this->updateSelectionAdmin(QItemSelection(), QItemSelection());
-		this->connectSelModels(true);
 	}
 }
 
@@ -1318,6 +1330,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 		if (me->button() == Qt::LeftButton)
 		{
 			int row = this->mTableView->rowAt(me->pos().y());
+			this->mlLastClickedRow = row;
 			if (row != -1)
 			{
 				int srcRow = row;
@@ -1326,6 +1339,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				NMDebugAI(<< "proxy --> source : " << indx.row() << " --> " << srcIndx.row() << std::endl);
 				srcRow = srcIndx.row();
 				this->toggleRow(srcRow);
+				emit notifyLastClickedRow((long)srcRow);
 			}
 		}
 		return true;
@@ -1349,6 +1363,9 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 					return true;
 
 				this->mlLastClickedRow = row;
+				const QModelIndex ridx = mSortFilter->index(row, 0, QModelIndex());
+				const int srcRow = mSortFilter->mapToSource(ridx).row();
+				emit notifyLastClickedRow((long)srcRow);
 				this->mManageLayerMenu->move(me->globalPos());
 				this->mManageLayerMenu->exec();
 			}

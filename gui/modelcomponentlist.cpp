@@ -317,6 +317,9 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	connect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
 			layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
+	OtbModellerWin* mwin = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
+	connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, long)), mwin, SLOT(updateLayerInfo(NMLayer *, long)));
+
 	// add the layer to the NMLayerModel
 	this->mLayerModel->pileItemLayer(layer);
 	int nlayers = this->mLayerModel->getItemLayerCount();

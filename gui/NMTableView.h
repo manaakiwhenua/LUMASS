@@ -121,8 +121,7 @@ public slots:
 	void normalise();
 	void selectionQuery();
 	void clearSelection();
-	//void selectRow(int row);
-	//void deselectRow(int row);
+	void update();
 	void toggleRow(int row);
 	void switchSelection(void);
 	void joinAttributes(void);
@@ -136,6 +135,7 @@ signals:
 	void tableDataChanged(QStringList& slAlteredColumns,
 			QStringList& slDeletedColumns);
 	void selectionChanged();
+	void notifyLastClickedRow(long cellID);
 	void notifyLoadRasLayer(const QString& imagespec,
 			const QString& covname);
 	void notifyDeleteRasLayer(const QString& imagespec);
@@ -190,13 +190,9 @@ protected:
 	QStringList mHiddenColumns;
 
 	QTableView* mTableView;
-	//vtkQtEditableTableModelAdapter* mVtkTableAdapter;
-	//NMQtOtbAttributeTableModel* mOtbTableAdapter;
 	QAbstractItemModel* mModel;
 	NMSelectableSortFilterProxyModel* mSortFilter;
-	//QItemSelectionModel* mSelectionModel;
 	NMFastTrackSelectionModel* mSelectionModel;
-	//QItemSelectionModel* mProxySelModel;
 	NMFastTrackSelectionModel* mProxySelModel;
 
 	QVBoxLayout* mLayout;

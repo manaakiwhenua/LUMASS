@@ -59,6 +59,7 @@
 #include "vtkProperty.h"
 //#include "vtkDepthSortPolyData.h"
 #include "vtkExtractCells.h"
+#include "vtkGeometryFilter.h"
 #include "vtkDataSetMapper.h"
 
 
@@ -145,10 +146,10 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 
 	for (int c=0; c < contour->GetNumberOfCells(); ++c)
 	{
-		if (sel->GetTuple1(c) == 0)
+		//if (sel->GetTuple1(c) == 0)
 			olclrtab->SetTableValue(c, 0,0,0,1);
-		else
-			olclrtab->SetTableValue(c, 1,0,0,1);
+		//else
+			//olclrtab->SetTableValue(c, 1,0,0,1);
 	}
 
 	m->SetLookupTable(olclrtab);
@@ -223,8 +224,8 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 		vtkSmartPointer<vtkPolyData> cont = vtkSmartPointer<vtkPolyData>::New();
 		cont->SetPoints(pd->GetPoints());
 		cont->SetLines(pd->GetPolys());
-		cont->BuildCells();
-		cont->BuildLinks();
+		//cont->BuildCells();
+		//cont->BuildLinks();
 		this->setContour(cont);
 	}
 
@@ -546,8 +547,9 @@ void NMVectorLayer::createTableView(void)
 {
 	if (this->mTableView != 0)
 	{
-		delete this->mTableView;
-		this->mTableView = 0;
+		return;
+		//delete this->mTableView;
+		//this->mTableView = 0;
 	}
 
 	if (!this->updateAttributeTable())
@@ -584,6 +586,8 @@ void NMVectorLayer::createTableView(void)
 	this->mTableView->hideAttribute("nm_sel");
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
+	connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SLOT(forwardLastClickedRowSignal(long)));
+
 	// connect tableview signals to layer slots
 	//this->connect(this->mTableView,
 	//		SIGNAL(tableDataChanged(QStringList&, QStringList&)), this,
@@ -602,6 +606,13 @@ void NMVectorLayer::createTableView(void)
 int NMVectorLayer::updateAttributeTable(void)
 {
 	NMDebugCtx(ctxNMVectorLayer, << "...");
+
+	if (mTableModel != 0)
+	{
+		NMDebugAI(<< "we've got a table already!" << std::endl);
+		NMDebugCtx(ctxNMVectorLayer, << "done!");
+		return 1;
+	}
 
 	vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 	if (dsa == 0 || dsa->GetNumberOfArrays() == 0)
@@ -626,12 +637,10 @@ int NMVectorLayer::updateAttributeTable(void)
 	tabModel->SetKeyColumnName("nm_id");
 
 	// in any case, we create a new item selection model
-	if (this->mSelectionModel != 0)
+	if (this->mSelectionModel == 0)
 	{
-		delete this->mSelectionModel;
+		this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
 	}
-	//this->mSelectionModel = new QItemSelectionModel(tabModel, this);
-	this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
 	this->mTableModel = tabModel;
 
 	connectTableSel();
@@ -739,51 +748,75 @@ void
 NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
-	const int numranges = newSel.size();
-	const int maxrow = this->mAttributeTable->GetNumberOfRows()-1;
+	//const int numranges = newSel.size();
+	//const int nrows = this->mAttributeTable->GetNumberOfRows();
 
 	// create new selections
+	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
+	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
-	int rangeindex=0;
-	for (int row=0; row <= maxrow; ++row)
+	vtkSmartPointer<vtkLongArray> scalars = vtkSmartPointer<vtkLongArray>::New();
+
+	int selcnt = 0;
+	foreach(const QItemSelectionRange& range, newSel)
 	{
-		if (numranges > 0)
+		const int top = range.top();
+		const int bottom = range.bottom();
+		for (int row=top; row<=bottom; ++row)
 		{
-			if (	row >= newSel.at(rangeindex).top()
-				&&  row <= newSel.at(rangeindex).bottom())
-			{
-				selCellIds->InsertNextId(row);
-				if (row == newSel.at(rangeindex).bottom())
-				{
-					rangeindex = rangeindex < numranges - 1 ? rangeindex + 1 : rangeindex;
-				}
-				continue;
-			}
+			++selcnt;
+		}
+	}
+	selCellIds->SetNumberOfIds(selcnt);
+	scalars->SetNumberOfTuples(selcnt);
+	clrtab->SetNumberOfTableValues(selcnt);
+
+	this->printSelRanges(newSel, "incoming update selection");
+
+	int clrcnt = 0;
+	foreach(const QItemSelectionRange& range, newSel)
+	{
+		const int top = range.top();
+		const int bottom = range.bottom();
+		for (int row=top; row<=bottom; ++row)
+		{
+			scalars->SetValue(clrcnt, clrcnt);
+			selCellIds->SetId(clrcnt, row);
+			clrtab->SetTableValue(clrcnt, 1, 0, 0);
+			++clrcnt;
 		}
 	}
 
-	if (this->mCellSelection->GetNumberOfCells() != 0 && mSelectionActor.GetPointer() != 0)
+	//NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
+
+	if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
 	{
+		NMDebugAI(<< "removed old selection" << std::endl);
 		this->mRenderer->RemoveActor(mSelectionActor);
 	}
 
 	vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
 	extractor->SetInput(mDataSet);
 	extractor->SetCellList(selCellIds);
-	extractor->Update();
-	mCellSelection = extractor->GetOutput();
 
-	vtkSmartPointer<vtkDataSetMapper> selMapper = vtkSmartPointer<vtkDataSetMapper>::New();
-	selMapper->SetInput(mCellSelection);
+	vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
+	geoFilter->SetInputConnection(extractor->GetOutputPort());
+	geoFilter->Update();
+
+	mCellSelection = vtkSmartPointer<vtkPolyData>::New();
+
+	mCellSelection->SetPoints(geoFilter->GetOutput()->GetPoints());
+	mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
+	mCellSelection->GetCellData()->SetScalars(scalars);
+
+	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
+			<< " cells in selection" << std::endl);
+
+	mSelectionMapper->SetInput(mCellSelection);
+	mSelectionMapper->SetLookupTable(clrtab);
 
 	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
-	a->SetMapper(selMapper);
-
-
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->SetNumberOfColors(1);
-	clrtab->SetTableValue(0, 1, 0, 0, 1);
-	selMapper->SetLookupTable(clrtab);
+	a->SetMapper(mSelectionMapper);
 
 	mSelectionActor = a;
 	mRenderer->AddActor(a);

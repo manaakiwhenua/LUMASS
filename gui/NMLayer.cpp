@@ -371,6 +371,8 @@ void NMLayer::showAttributeTable(void)
 
 	if (this->mTableView != 0)
 		this->mTableView->show();
+
+	this->mTableView->update();
 }
 
 void NMLayer::createTableView(void)
@@ -403,6 +405,7 @@ NMLayer::disconnectTableSel(void)
 			this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
 	disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
+	//disconnect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SIGNAL(notifyLastClickedRow(long)));
 }
 
 void
@@ -416,9 +419,17 @@ NMLayer::connectTableSel(void)
 		this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
 	connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
+	//connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SIGNAL(notifyLastClickedRow(long)));
 }
 
-const QAbstractItemModel* NMLayer::getTable(void)
+void
+NMLayer::forwardLastClickedRowSignal(long cellID)
+{
+	emit notifyLastClickedRow(this, cellID);
+}
+
+const QAbstractItemModel*
+NMLayer::getTable(void)
 {
 	// subclass to implement
 	if (mTableModel == 0)
@@ -556,7 +567,9 @@ NMLayer::selectCell(int cellID, NMLayerSelectionType type)
 		mSelectionModel->toggleRow(cellID, 0, QModelIndex());
 		break;
 	case NM_SEL_NEW:
-		mSelectionModel->select(idx, QItemSelectionModel::ClearAndSelect);
+		mSelectionModel->clearSelection();
+		mSelectionModel->toggleRow(cellID, 0, QModelIndex());
+		//mSelectionModel->select(idx, QItemSelectionModel::ClearAndSelect);
 		break;
 	case NM_SEL_CLEAR:
 		mSelectionModel->clearSelection();
@@ -577,4 +590,22 @@ NMLayer::tableColumnsRemoved(const QModelIndex& parent, int startsection,
 			  << startsection << std::endl);
 	this->mHasChanged = true;
 	emit dataSetChanged(this);
+}
+
+void
+NMLayer::printSelRanges(const QItemSelection& selection, const QString& msg)
+{
+	int total = selection.count();
+	NMDebugAI(<< msg.toStdString() << std::endl);
+	int rcnt = 1;
+	int numidx = 0;
+	foreach(const QItemSelectionRange& range, selection)
+	{
+		NMDebugAI(<< "   range #" << rcnt << ":  " << range.width()
+				                          << " x " << range.height() << std::endl);
+		NMDebugAI(<< "     rows: " << range.top() << " - " << range.bottom() << std::endl);
+		++rcnt;
+		numidx += range.bottom() - range.top() + 1;
+	}
+	NMDebugAI(<< numidx << " selected rows in total" << std::endl);
 }

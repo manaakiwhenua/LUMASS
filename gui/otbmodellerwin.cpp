@@ -1,5 +1,5 @@
- /***********************o*******************************************************
- * Created by Alexander Headerrzig
+ /******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -915,20 +915,22 @@ void OtbModellerWin::test()
 	//NMDebugCtx(ctxOtbModellerWin, << "...");
 
 	NMLayer* layer = this->ui->modelCompList->getSelectedLayer();
-	if (layer == 0 || layer->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+	if (layer == 0)
 		return;
 
-	NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
-	il->computeStats();
+	int selcnt=0;
+	const QItemSelection sel = layer->getSelection();
+	foreach(const QItemSelectionRange& range, sel)
+	{
+		const int top=range.top();
+		const int bottom=range.bottom();
+		for(int row=top; row <= bottom; ++row)
+		{
+			++selcnt;
+		}
+	}
 
-	//NMDebugAI(<< "Available QSqlDatabase drivers ..." << std::endl);
-
-	//QStringList drivers = QSqlDatabase::drivers();
-	//foreach(const QString& driver, drivers)
-	//{
-	//	NMDebugAI(<< driver.toStdString() << std::endl);
-	//}
-
+	NMDebugAI(<< selcnt << " selections" << std::endl);
 
 	//NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

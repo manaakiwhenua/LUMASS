@@ -51,6 +51,9 @@
 #include "vtkCellData.h"
 #include "vtkContourFilter.h"
 #include "vtkGenericContourFilter.h"
+#include "vtkExtractSelection.h"
+#include "vtkSelectionNode.h"
+
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -275,7 +278,12 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
 	// create new selections
-	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
+	//mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
+	vtkSmartPointer<vtkImageResliceMapper> mapper = vtkSmartPointer<vtkImageResliceMapper>::New();
+
+	vtkSmartPointer<vtkSelection> vsel = vtkSmartPointer<vtkSelection>::New();
+	vtkSmartPointer<vtkSelectionNode> vnode = vtkSmartPointer<vtkSelectionNode>::New();
+	vtkSmartPointer<vtkLongArray> selids = vtkSmartPointer<vtkLongArray>::New();
 
 	int selcnt = 0;
 	foreach(const QItemSelectionRange& range, newSel)
@@ -284,26 +292,40 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const int bottom = range.bottom();
 		for (int row=top; row<=bottom; ++row)
 		{
+			selids->InsertNextValue(row);
 			++selcnt;
 		}
 	}
 	this->printSelRanges(newSel, "Image Selection");
 
-	vtkSmartPointer<vtkGenericContourFilter> extractor = vtkSmartPointer<vtkGenericContourFilter>::New();
-	extractor->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+	vnode->SetFieldType(vtkSelectionNode::CELL);
+	vnode->SetContentType(vtkSelectionNode::INDICES);
+	vnode->SetSelectionList(selids);
+	vsel->AddNode(vnode);
 
-	int clrcnt = 0;
-	foreach(const QItemSelectionRange& range, newSel)
-	{
-		const int top = range.top();
-		const int bottom = range.bottom();
-		for (int row=top; row<=bottom; ++row)
-		{
-			extractor->SetValue(clrcnt, row);
-			++clrcnt;
-		}
-	}
+	vtkSmartPointer<vtkExtractSelection> extractor = vtkSmartPointer<vtkExtractSelection>::New();
+	extractor->SetInput(0, this->mPipeconn->getVtkAlgorithmOutput());
+	extractor->SetInput(1, vsel);
+	extractor->PreserveTopologyOn();
 	extractor->Update();
+
+	vtkSmartPointer<vtkUnstructuredGrid> grid = extractor->GetOutput();
+	vtkSmartPointer<vtkDataSet> ds = vtkDataSet::SafeDownCast(grid);
+	vtkSmartPointer<vtkImageData> imgsel = vtkImageData::SafeDownCast(ds);
+	mapper->SetInput(imgsel);
+
+	//int clrcnt = 0;
+	//foreach(const QItemSelectionRange& range, newSel)
+	//{
+	//	const int top = range.top();
+	//	const int bottom = range.bottom();
+	//	for (int row=top; row<=bottom; ++row)
+	//	{
+	//		extractor->SetValue(clrcnt, row);
+	//		++clrcnt;
+	//	}
+	//}
+	//extractor->Update();
 
 	if (extractor->GetOutput() == 0)
 	{
@@ -315,33 +337,41 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		NMDebugAI(<< "IMAGE SELECTION: promising!" << std::endl);
 	}
 
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->SetHueRange(0.667, 0.0);
 
-	if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
+
+	//vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
+	//clrtab->SetHueRange(0.667, 0.0);
+
+	if (mSelectionActor.GetPointer() != 0)
 	{
 		NMDebugAI(<< "removed old selection" << std::endl);
 		this->mRenderer->RemoveActor(mSelectionActor);
 	}
 
-	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
-	mSelectionMapper->SetLookupTable(clrtab);
-	mSelectionMapper->SetInputConnection(extractor->GetOutputPort());
-
-	if(extractor->GetOutput()->GetPointData() != 0)
-	{
-		if (extractor->GetOutput()->GetPointData()->GetScalars() != 0)
-		{
-			mSelectionMapper->SetScalarRange(
-					extractor->GetOutput()->GetPointData()->GetScalars()->GetRange());
-		}
-	}
-
 	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
 	a->SetMapper(mSelectionMapper);
-
+	a->GetProperty()->SetColor(1,0,0);
 	mSelectionActor = a;
 	mRenderer->AddActor(a);
+
+	//mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
+	//mSelectionMapper->SetLookupTable(clrtab);
+	//mSelectionMapper->SetInputConnection(extractor->GetOutputPort());
+
+	//if(extractor->GetOutput()->GetPointData() != 0)
+	//{
+	//	if (extractor->GetOutput()->GetPointData()->GetScalars() != 0)
+	//	{
+	//		mSelectionMapper->SetScalarRange(
+	//				extractor->GetOutput()->GetPointData()->GetScalars()->GetRange());
+	//	}
+	//}
+
+	//vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
+	//a->SetMapper(mSelectionMapper);
+    //
+	//mSelectionActor = a;
+	//mRenderer->AddActor(a);
 
 	// call the base class implementation to do datatype agnostic stuff
 	NMLayer::selectionChanged(newSel, oldSel);

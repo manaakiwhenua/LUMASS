@@ -89,6 +89,8 @@ public:
 public slots:
 	void writeDataSet(void);
 	void computeStats(void);
+	void selectionChanged(const QItemSelection& newSel,
+			const QItemSelection& oldSel);
 
 
 protected:

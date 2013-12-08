@@ -821,6 +821,9 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 	mSelectionActor = a;
 	mRenderer->AddActor(a);
 
+	// call the base class implementation to do datatype agnostic stuff
+	NMLayer::selectionChanged(newSel, oldSel);
+
 	emit visibilityChanged(this);
 	emit legendChanged(this);
 }

@@ -53,6 +53,8 @@
 #include "vtkGenericContourFilter.h"
 #include "vtkExtractSelection.h"
 #include "vtkSelectionNode.h"
+#include "vtkSelection.h"
+#include "vtkProperty.h"
 
 
 #include "itkDataObject.h"
@@ -304,14 +306,14 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 	vsel->AddNode(vnode);
 
 	vtkSmartPointer<vtkExtractSelection> extractor = vtkSmartPointer<vtkExtractSelection>::New();
-	extractor->SetInput(0, this->mPipeconn->getVtkAlgorithmOutput());
+	extractor->SetInput(0, this->mPipeconn->getVtkImage());
 	extractor->SetInput(1, vsel);
 	extractor->PreserveTopologyOn();
 	extractor->Update();
 
-	vtkSmartPointer<vtkUnstructuredGrid> grid = extractor->GetOutput();
-	vtkSmartPointer<vtkDataSet> ds = vtkDataSet::SafeDownCast(grid);
-	vtkSmartPointer<vtkImageData> imgsel = vtkImageData::SafeDownCast(ds);
+	//vtkSmartPointer<vtkUnstructuredGrid> grid = extractor->GetOutput();
+	//vtkSmartPointer<vtkDataSet> ds = vtkDataSet::SafeDownCast(grid);
+	vtkSmartPointer<vtkImageData> imgsel = vtkImageData::SafeDownCast(extractor->GetOutput());
 	mapper->SetInput(imgsel);
 
 	//int clrcnt = 0;

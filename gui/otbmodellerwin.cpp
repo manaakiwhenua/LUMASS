@@ -237,6 +237,7 @@
 #include "vtkFunctionParser.h"
 #include "vtkImageFlip.h"
 #include "vtkMath.h"
+#include "vtkPointData.h"
 
 OtbModellerWin::OtbModellerWin(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::OtbModellerWin)
@@ -912,27 +913,29 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 
 void OtbModellerWin::test()
 {
-	//NMDebugCtx(ctxOtbModellerWin, << "...");
+	NMDebugCtx(ctxOtbModellerWin, << "...");
 
 	NMLayer* layer = this->ui->modelCompList->getSelectedLayer();
-	if (layer == 0)
+	if (layer == 0 || layer->getLayerType() != NMLayer::NM_IMAGE_LAYER)
 		return;
 
-	int selcnt=0;
-	const QItemSelection sel = layer->getSelection();
-	foreach(const QItemSelectionRange& range, sel)
+	NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
+	vtkImageData* id = vtkImageData::SafeDownCast(const_cast<vtkDataSet*>(il->getDataSet()));
+
+	vtkPointData* dsa = id->GetPointData();
+
+	for (int a=0; a < dsa->GetNumberOfArrays(); ++a)
 	{
-		const int top=range.top();
-		const int bottom=range.bottom();
-		for(int row=top; row <= bottom; ++row)
-		{
-			++selcnt;
-		}
+
+		NMDebugAI(<< "name: " << dsa->GetArrayName(a)
+				  << " type: " << dsa->GetAttributeTypeAsString(a)
+				  << " #elem: " << dsa->GetAbstractArray(a)->GetNumberOfTuples()
+				  << std::endl);
 	}
 
-	NMDebugAI(<< selcnt << " selections" << std::endl);
 
-	//NMDebugCtx(ctxOtbModellerWin, << "done!");
+
+	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 
@@ -1113,15 +1116,25 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		for (unsigned int d=0; d < 3; ++d)
 		{
 			if (did[d] < 0)
+			{
+				this->updateLayerInfo(l, -1);
+				l->selectCell(cellId, NMLayer::NM_SEL_CLEAR);
 				return;
+			}
 		}
 
 		cellId = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
 	}
 
+	NMLayer::NMLayerSelectionType seltype;
+	if (iren->GetControlKey())
+		seltype = NMLayer::NM_SEL_ADD;
+	else
+		seltype = NMLayer::NM_SEL_NEW;
+
 	// populate layer info table with currently picked cell
-	if (cellId >= 0)
-		this->updateLayerInfo(l, cellId);
+	this->updateLayerInfo(l, -1);
+	l->selectCell(cellId, seltype);
 }
 
 bool OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)

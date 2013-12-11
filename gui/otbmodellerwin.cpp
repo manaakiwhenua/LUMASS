@@ -1321,6 +1321,9 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	// get the color window and level settings
 	double pixelvalue = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
 
+	//vtkIdType ptId = img->ComputePointId(did);
+	//std::string ptval = img->GetPointData()->GetScalars()->GetVariantValue(ptId).ToString();
+
 
 	vtkImageSlice* slice = vtkImageSlice::SafeDownCast(const_cast<vtkProp3D*>(l->getActor()));
 	vtkImageProperty* iprop = slice->GetProperty();

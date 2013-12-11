@@ -1825,7 +1825,8 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	img = m_Dataset->GetDataSet();
 	if (img == 0)
 	{
-		itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+		itkWarningMacro(<< "ReadRAT: unable to access data set!");
+		//itkExceptionMacro(<< "ReadRAT: unable to access data set!");
 		return 0;
 	}
 

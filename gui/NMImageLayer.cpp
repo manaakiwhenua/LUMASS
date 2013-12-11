@@ -311,9 +311,11 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
 	vtkSmartPointer<vtkContourFilter> extractor = vtkSmartPointer<vtkContourFilter>::New();
 	extractor->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-	extractor->SetNumberOfContours(selcnt);
+	//extractor->SetNumberOfContours(selcnt);
+	//extractor->SetNumberOfContours(selcnt);
+	//extractor->SetValue(0, 43);
 	//extractor->SetComputeScalars(1);
-	extractor->SetUseScalarTree(1);
+	//extractor->SetUseScalarTree(1);
 
 	double minrow = std::numeric_limits<int>::max();
 	double maxrow = -std::numeric_limits<int>::max();
@@ -332,6 +334,7 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 			++selcnt;
 		}
 	}
+
 	this->printSelRanges(newSel, "Image Selection");
 
 	extractor->Update();
@@ -403,6 +406,11 @@ int NMImageLayer::updateAttributeTable()
 	disconnectTableSel();
 
 	this->mOtbRAT = this->getRasterAttributeTable(1);
+	if (mOtbRAT.IsNull())
+	{
+		NMWarn(ctxNMImageLayer, << "No attribute table available!");
+		return 0;
+	}
 	NMQtOtbAttributeTableModel* otbModel;
 	if (this->mTableModel == 0)
 	{

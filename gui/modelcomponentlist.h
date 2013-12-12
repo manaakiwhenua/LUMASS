@@ -91,6 +91,8 @@ public slots:
 	void saveLayerChanges();
 	//void zoomChanged(vtkObject* obj);
 
+	void test();
+
 private slots:
 	void openAttributeTable();
 	void removeCurrentLayer();

@@ -1118,7 +1118,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 			if (did[d] < 0)
 			{
 				this->updateLayerInfo(l, -1);
-				l->selectCell(cellId, NMLayer::NM_SEL_CLEAR);
+				//l->selectCell(cellId, NMLayer::NM_SEL_CLEAR);
 				return;
 			}
 		}
@@ -1134,7 +1134,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 
 	// populate layer info table with currently picked cell
 	this->updateLayerInfo(l, -1);
-	l->selectCell(cellId, seltype);
+	//l->selectCell(cellId, seltype);
 }
 
 bool OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)

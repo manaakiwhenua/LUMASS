@@ -105,6 +105,18 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actUniqueValues, SIGNAL(triggered()), this, SLOT(mapUniqueValues()));
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
 
+#ifdef DEBUG
+
+	QAction* testing = new QAction(this->mMenu);
+	testing->setText(tr("Test ..."));
+	this->mMenu->addSeparator();
+	this->mMenu->addAction(testing);
+
+	this->connect(testing, SIGNAL(triggered()), this, SLOT(test()));
+
+#endif
+
+
 
 	// connect to some of the qvtkWidget events
 	//OtbModellerWin* win = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
@@ -787,4 +799,14 @@ void ModelComponentList::mapUniqueValues()
 		vL->mapUniqueValues(theField);
 	else if (iL != 0)
 		iL->mapUniqueValues(theField);
+}
+
+void ModelComponentList::test()
+{
+	NMLayer* l = this->getSelectedLayer();
+	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+	if (il == 0)
+		return;
+	il->test();
+
 }

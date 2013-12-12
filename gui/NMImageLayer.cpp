@@ -165,7 +165,7 @@ void
 NMImageLayer::computeStats(void)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
-	if (!this->mbStatsAvailable)
+	if (true)//!this->mbStatsAvailable)
 	{
 		QtConcurrent::run(this, &NMImageLayer::updateStats);
 	}
@@ -182,13 +182,71 @@ NMImageLayer::computeStats(void)
 	NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
+const double*
+NMImageLayer::getStatistics(void)
+{
+	//if (!this->mbStatsAvailable)
+		this->computeStats();
+
+	return this->mImgStats;
+}
+
+void NMImageLayer::test()
+{
+	const double* stats = this->getStatistics();
+
+	double nodata;
+	switch(this->mComponentType)
+	{
+	case otb::ImageIOBase::UCHAR:  nodata = 255; 		 break;
+	case otb::ImageIOBase::DOUBLE: nodata = -3.40282e38; break;
+	default:					   nodata = -2147483647; break;
+	}
+
+	double min = stats[0];
+	if (stats[0] == nodata)
+	{
+		double min = 0;
+	}
+
+	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
+	//clrtab->SetTableRange(min, stats[1]);
+	clrtab->SetNumberOfColors(256);
+	clrtab->SetHueRange(0, 1);
+	clrtab->Build();
+
+	bool bRamp = true;
+	if (stats[0] == 0 && stats[1] == 1)
+	{
+		clrtab->SetNumberOfColors(2);
+		clrtab->SetTableValue(0, 0,0,0,0);
+		clrtab->SetTableValue(1, 1,0,0,1);
+	}
+	else if (nodata == 255)
+		clrtab->SetTableValue(255, 0, 0, 0, 0);
+	else
+		clrtab->SetTableValue(0, 0, 0, 0, 0);
+
+	this->mImgProp->SetLookupTable(clrtab);
+	if (!bRamp)
+		this->mImgProp->SetUseLookupTableScalarRange(1);
+
+	emit visibilityChanged(this);
+	emit legendChanged(this);
+
+	//double window = stats[1] - min;
+	//this->mImgProp->SetColorWindow(window);
+	//this->mImgProp->SetColorLevel(window * 0.5);
+
+}
+
 void
 NMImageLayer::updateStats(void)
 {
 	emit layerProcessingStart();
 
 	vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-	cast->SetOutputScalarTypeToFloat();
+	cast->SetOutputScalarTypeToDouble();
 	cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
 
 	vtkSmartPointer<vtkImageHistogramStatistics> stats = vtkSmartPointer<vtkImageHistogramStatistics>::New();
@@ -301,24 +359,11 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 	// create new selections
 	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
 
-	//vtkSmartPointer<vtkDoubleArray> scalars = vtkSmartPointer<vtkDoubleArray>::New();
-	//scalars->SetNumberOfTuples(selcnt);
-
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->SetNumberOfTableValues(1);
-	clrtab->SetHueRange(0.0, 0.0);
-	clrtab->Build();
-
 	vtkSmartPointer<vtkContourFilter> extractor = vtkSmartPointer<vtkContourFilter>::New();
 	extractor->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-	//extractor->SetNumberOfContours(selcnt);
-	//extractor->SetNumberOfContours(selcnt);
-	//extractor->SetValue(0, 43);
-	//extractor->SetComputeScalars(1);
-	//extractor->SetUseScalarTree(1);
 
-	double minrow = std::numeric_limits<int>::max();
-	double maxrow = -std::numeric_limits<int>::max();
+	//double minrow = std::numeric_limits<int>::max();
+	//double maxrow = -std::numeric_limits<int>::max();
 	selcnt = 0;
 	foreach(const QItemSelectionRange& range, newSel)
 	{
@@ -326,8 +371,9 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const int bottom = range.bottom();
 		for (int row=top; row<=bottom; ++row)
 		{
-			minrow = row < minrow ? row : minrow;
-			maxrow = row > maxrow ? row : maxrow;
+			//minrow = row < minrow ? row : minrow;
+			//maxrow = row > maxrow ? row : maxrow;
+			//extractor->SetValue(selcnt, (double)row-1);
 			extractor->SetValue(selcnt, (double)row);
 			//clrtab->SetTableValue(selcnt, 1, 0, 0, 1);
 			//scalars->SetValue(selcnt, (double)row);
@@ -339,7 +385,6 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
 	extractor->Update();
 	mCellSelection = extractor->GetOutput();
-	//mCellSelection->GetCellData()->SetScalars(scalars);
 	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
 	mSelectionMapper->SetInput(mCellSelection);
 	mSelectionMapper->SetScalarVisibility(0);

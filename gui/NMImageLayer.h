@@ -85,12 +85,17 @@ public:
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
+	const double* getStatistics(void);
+
 
 public slots:
 	void writeDataSet(void);
 	void computeStats(void);
 	void selectionChanged(const QItemSelection& newSel,
 			const QItemSelection& oldSel);
+	//void selectCell(int cellID)
+
+	void test(void);
 
 
 protected:

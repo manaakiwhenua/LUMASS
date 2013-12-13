@@ -71,6 +71,8 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 	this->mTotalArea = -1;
 
+	//this->mVtkConn->Connect(mRenderer, vtkCommand::EndEvent, this, SIGNAL(layerProcessingEnd()));
+
 	// connect the layer's own dataSetChanged signal to the layer's
 	// own updateAttributeTable, to reflect changes to the data set
 	// by other processing objects (e.g. NMMosra)

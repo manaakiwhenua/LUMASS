@@ -28,6 +28,7 @@
 
 #include <QTime>
 #include <QtCore>
+#include <QInputDialog>
 
 #include "itkImageRegion.h"
 #include "itkPoint.h"
@@ -55,6 +56,8 @@
 #include "vtkSelectionNode.h"
 #include "vtkSelection.h"
 #include "vtkProperty.h"
+#include "vtkColorTransferFunction.h"
+
 
 
 #include "itkDataObject.h"
@@ -145,7 +148,6 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 			this, SLOT(windowLevelReset(vtkObject*)));
 	this->mVtkConn->Connect(style, vtkCommand::InteractionEvent,
 			this, SLOT(windowLevelChanged(vtkObject*)));
-
 }
 
 NMImageLayer::~NMImageLayer()
@@ -165,7 +167,7 @@ void
 NMImageLayer::computeStats(void)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
-	if (true)//!this->mbStatsAvailable)
+	if (true)//this->mbStatsAvailable)
 	{
 		QtConcurrent::run(this, &NMImageLayer::updateStats);
 	}
@@ -185,15 +187,43 @@ NMImageLayer::computeStats(void)
 const double*
 NMImageLayer::getStatistics(void)
 {
-	//if (!this->mbStatsAvailable)
-		this->computeStats();
+	if (!this->mbStatsAvailable)
+		this->updateStats();
 
 	return this->mImgStats;
 }
 
 void NMImageLayer::test()
 {
-	const double* stats = this->getStatistics();
+
+	QStringList ramplist;
+	ramplist << "Binary" << "Grey" << "Rainbow" << "RedToBlue";
+	QString ramp = QInputDialog::getItem(0, "Select Color Scheme", "", ramplist);
+
+	QString range = QInputDialog::getText(0, "Enter Value Range", "");
+	QStringList ranges = range.split(QChar(' '), QString::SkipEmptyParts);
+	double lower, upper;
+	bool bok;
+	if (ranges.size() != 2)
+	{
+		NMErr(ctxNMImageLayer, << "wrong range!"<< std::endl);
+		return;
+	}
+
+	lower = ranges.at(0).toDouble(&bok);
+	upper = ranges.at(1).toDouble(&bok);
+	if (!bok)
+	{
+		NMErr(ctxNMImageLayer, << "invalid range bounds!"<< std::endl);
+		return;
+	}
+
+	NMDebugAI(<< "scalar range: " << lower << " - " << upper << std::endl);
+
+	//const double* stats = this->getStatistics();
+	//this->updateStats();
+	//const double* stats = this->mImgStats;
+
 
 	double nodata;
 	switch(this->mComponentType)
@@ -203,41 +233,46 @@ void NMImageLayer::test()
 	default:					   nodata = -2147483647; break;
 	}
 
-	double min = stats[0];
-	if (stats[0] == nodata)
+	vtkSmartPointer<vtkColorTransferFunction> clrtab = vtkSmartPointer<vtkColorTransferFunction>::New();
+	//clrtab->SetColorSpaceToHSV();
+	bool bramp = false;
+	if (ramp == "Binary")
 	{
-		double min = 0;
+		clrtab->AddRGBPoint(0,0.0,0.0,0.0);
+		clrtab->AddRGBPoint(1,1.0,1.0,1.0);
+		//clrtab->ClampingOff();
 	}
-
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	//clrtab->SetTableRange(min, stats[1]);
-	clrtab->SetNumberOfColors(256);
-	clrtab->SetHueRange(0, 1);
-	clrtab->Build();
-
-	bool bRamp = true;
-	if (stats[0] == 0 && stats[1] == 1)
-	{
-		clrtab->SetNumberOfColors(2);
-		clrtab->SetTableValue(0, 0,0,0,0);
-		clrtab->SetTableValue(1, 1,0,0,1);
-	}
-	else if (nodata == 255)
-		clrtab->SetTableValue(255, 0, 0, 0, 0);
 	else
-		clrtab->SetTableValue(0, 0, 0, 0, 0);
+	{
+		//clrtab->SetNumberOfColors(256);
+		if (ramp == "Grey")
+		{
+			clrtab->AddRGBPoint(lower, 0.0, 0.0, 0.0);
+			clrtab->AddRGBPoint(upper, 1.0, 1.0, 1.0);
+			//clrtab->ClampingOff();
+		}
+		else if (ramp == "Rainbow")
+		{
+			clrtab->AddRGBPoint(lower, 1.0, 0.0, 0.0);
+			clrtab->AddRGBPoint(upper, 0.0, 1.0, 0.0);
+		}
+		else if (ramp == "RedToBlue")
+		{
+			clrtab->AddRGBPoint(lower, 0.0, 1.0, 0.0);
+			clrtab->AddRGBPoint(upper, 0.0, 0.0, 1.0);
+		}
 
+		bramp = true;
+	}
+	clrtab->ClampingOff();
+	clrtab->Build();
 	this->mImgProp->SetLookupTable(clrtab);
-	if (!bRamp)
-		this->mImgProp->SetUseLookupTableScalarRange(1);
+	//this->mImgProp->SetUseLookupTableScalarRange(1);
+	//if (!bramp)
+		//this->mImgProp->SetUseLookupTableScalarRange(1);
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);
-
-	//double window = stats[1] - min;
-	//this->mImgProp->SetColorWindow(window);
-	//this->mImgProp->SetColorLevel(window * 0.5);
-
 }
 
 void
@@ -536,6 +571,9 @@ bool NMImageLayer::setFileName(QString filename)
 
 #endif
 
+
+	//this->mVtkConn->Connect(mRenderer, vtkCommand::EndEvent, this, SIGNAL(layerProcessingEnd()));
+
 	emit layerProcessingStart();
 
 	this->mReader->setFileName(filename);
@@ -566,6 +604,7 @@ bool NMImageLayer::setFileName(QString filename)
 
 	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+	//m->ResampleToScreenPixelsOn();
 	m->SetBorder(1);
 
 	// adjust origin
@@ -593,7 +632,7 @@ bool NMImageLayer::setFileName(QString filename)
 	// we'll probably need it
 	if (!this->updateAttributeTable())
 	{
-		NMWarn(ctxNMImageLayer, << "Couldn't update the attibute table, "
+		NMWarn(ctxNMImageLayer, << "Couldn't update the attribute table, "
 				<< "which might lead to trouble later on!");
 	}
 

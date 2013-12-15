@@ -57,6 +57,7 @@
 #include "vtkSelection.h"
 #include "vtkProperty.h"
 #include "vtkColorTransferFunction.h"
+#include "vtkDiscretizableColorTransferFunction.h"
 
 
 
@@ -218,7 +219,7 @@ void NMImageLayer::test()
 		return;
 	}
 
-	NMDebugAI(<< "scalar range: " << lower << " - " << upper << std::endl);
+	NMDebugAI(<< "user range: " << lower << " - " << upper << std::endl);
 
 	//const double* stats = this->getStatistics();
 	//this->updateStats();
@@ -233,43 +234,84 @@ void NMImageLayer::test()
 	default:					   nodata = -2147483647; break;
 	}
 
-	vtkSmartPointer<vtkColorTransferFunction> clrtab = vtkSmartPointer<vtkColorTransferFunction>::New();
+	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	//clrtab->SetColorSpaceToHSV();
 	bool bramp = false;
 	if (ramp == "Binary")
 	{
-		clrtab->AddRGBPoint(0,0.0,0.0,0.0);
-		clrtab->AddRGBPoint(1,1.0,1.0,1.0);
-		//clrtab->ClampingOff();
+		clrtab->SetNumberOfTableValues(256);
+		clrtab->SetTableValue(0, 0.0, 0.0, 0.0, 0.0);
+		for (int i=1; i < 255; i++)
+			clrtab->SetTableValue(i, 1.0, 1.0, 1.0, 1.0);
+		clrtab->SetTableValue(255, 0, 0, 0, 0);
+		clrtab->SetTableRange(0, 255);
 	}
 	else
 	{
-		//clrtab->SetNumberOfColors(256);
+		clrtab->SetNumberOfTableValues(258);
+		vtkSmartPointer<vtkColorTransferFunction> clrfunc =
+				vtkSmartPointer<vtkColorTransferFunction>::New();
 		if (ramp == "Grey")
 		{
-			clrtab->AddRGBPoint(lower, 0.0, 0.0, 0.0);
-			clrtab->AddRGBPoint(upper, 1.0, 1.0, 1.0);
-			//clrtab->ClampingOff();
+			//clrtab->SetHueRange(0.0, 0.0);
+			//clrtab->SetSaturationRange(0.0, 0.0);
+			//clrtab->SetValueRange(0.0, 1.0);
+			//clrtab->SetAlphaRange(1.0, 1.0);
+			//clrtab->SetTableRange(lower, upper);
+			//clrtab->Build();
+			clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
+			clrfunc->AddRGBPoint(1.0, 1.0, 1.0, 1.0);
 		}
 		else if (ramp == "Rainbow")
 		{
-			clrtab->AddRGBPoint(lower, 1.0, 0.0, 0.0);
-			clrtab->AddRGBPoint(upper, 0.0, 1.0, 0.0);
+			//clrtab->SetHueRange(0.0, 1.0);
+			//clrtab->SetSaturationRange(1.0, 1.0);
+			//clrtab->SetValueRange(1.0, 1.0);
+			//clrtab->SetAlphaRange(1.0, 1.0);
+			//clrtab->SetTableRange(lower, upper);
+			//clrtab->Build();
+			//clrfunc->SetColorSpaceToHSV();
+			//clrfunc->AddHSVPoint(0.0, 0.0, 1.0, 1.0);
+			//clrfunc->AddHSVPoint(1.0, 1.0, 1.0, 1.0);
+			clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
+			clrfunc->AddRGBPoint(0.5, 0.0, 1.0, 0.0);
+			clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
 		}
 		else if (ramp == "RedToBlue")
 		{
-			clrtab->AddRGBPoint(lower, 0.0, 1.0, 0.0);
-			clrtab->AddRGBPoint(upper, 0.0, 0.0, 1.0);
+			//clrtab->SetHueRange(0.0, 0.67);
+			//clrtab->SetSaturationRange(1.0, 1.0);
+			//clrtab->SetValueRange(1.0, 1.0);
+			//clrtab->SetAlphaRange(1.0, 1.0);
+			//clrtab->SetTableRange(lower, upper);
+			//clrtab->Build();
+			clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
+			clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
 		}
+		clrfunc->Build();
 
-		bramp = true;
+		clrtab->SetTableValue(0, 0, 0, 0, 0);
+		for (int i=0; i < 256; ++i)
+		{
+			double fc[3];
+			clrfunc->GetColor(((float)i/(float)255), fc);
+			clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+		}
+		clrtab->SetTableValue(257, 0, 0, 0, 0);
+
+		clrtab->SetTableRange(lower-0.00000001, upper+0.00000001);
+		//clrtab->Build();
 	}
-	clrtab->ClampingOff();
-	clrtab->Build();
+	//clrtab->ClampingOff();
+	//clrtab->Build();
+	this->mImgProp->SetUseLookupTableScalarRange(1);
 	this->mImgProp->SetLookupTable(clrtab);
-	//this->mImgProp->SetUseLookupTableScalarRange(1);
-	//if (!bramp)
-		//this->mImgProp->SetUseLookupTableScalarRange(1);
+
+	double* clrrange = clrtab->GetRange();
+	long numclr = clrtab->GetNumberOfColors();
+	long numavailclr = clrtab->GetNumberOfAvailableColors();
+	NMDebugAI(<< "range: " << clrrange[0] << " to " << clrrange[1]
+	          << " num clr: " << numclr << " avail clr: " << numavailclr << std::endl);
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);

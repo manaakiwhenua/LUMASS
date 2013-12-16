@@ -36,7 +36,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
 	: QObject(parent), mSelectionModel(0), mTableModel(0), mTableView(0),
 	  mDataSet(0), mActor(0), mMapper(0),
-	  mIsVisible(false), mIsSelectable(false), mHasChanged(false),
+	  mIsVisible(false), mIsSelectable(true), mHasChanged(false),
 	  mLayerType(NM_UNKNOWN_LAYER)
 {
 	if (renWin == 0)
@@ -323,7 +323,22 @@ void NMLayer::setVisible(bool visible)
 	{
 		if (this->mActor != 0)
 			this->mActor->SetVisibility(visible);
+
 		this->mIsVisible = visible;
+		switch(this->mLayerType)
+		{
+		case NMLayer::NM_VECTOR_LAYER:
+			this->mLayerIcon = mIsVisible ?
+					QIcon(":vector_layer.png") : QIcon(":vector_layer_invisible.png");
+			break;
+		case NMLayer::NM_IMAGE_LAYER:
+			this->mLayerIcon = mIsVisible ?
+					QIcon(":image_layer.png") : QIcon(":image_layer_invisible.png");
+			break;
+		default:
+			break;
+		}
+
 		emit visibilityChanged(this);
 	}
 }
@@ -341,8 +356,28 @@ void NMLayer::setSelectable(bool selectable)
 	if (this->mIsSelectable != selectable)
 	{
 		this->mIsSelectable = selectable;
-		emit selectabilityChanged(this);
+		if (!selectable)
+			this->mSelectionModel->clearSelection();
+		emit selectabilityChanged(selectable);
 	}
+}
+
+QIcon NMLayer::getLayerIcon(void)
+{
+	QIcon ic;
+	switch(mLayerType)
+	{
+	case NM_VECTOR_LAYER:
+		ic = mIsVisible ? QIcon(":vector_layer.png") : QIcon(":vector_layer_invisible.png");
+		break;
+	case NM_IMAGE_LAYER:
+		ic = mIsVisible ? QIcon(":image_layer.png") : QIcon(":image_layer_invisible.png");
+		break;
+	default:
+		ic = mLayerIcon;
+		break;
+	}
+	return ic;
 }
 
 bool NMLayer::isSelectable(void)

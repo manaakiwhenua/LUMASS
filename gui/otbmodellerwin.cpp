@@ -987,6 +987,9 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 	if (l == 0)
 		return;
 
+	if (!l->isSelectable())
+		return;
+
 	double wPt[3];
 
 	//	vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();

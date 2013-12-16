@@ -129,6 +129,7 @@ public slots:
 	void deleteRasLayer(void);
 	void callHideColumn(void);
 	void callUnHideColumn(void);
+	void setSelectable(bool);
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);
@@ -185,6 +186,7 @@ protected:
 	bool mbSwitchSelection;
 	bool mbClearSelection;
 	bool mbColumnCalc;
+	bool mbIsSelectable;
 
 	QMap<int, bool> mMapColSortAsc;
 	QStringList mHiddenColumns;
@@ -204,6 +206,8 @@ protected:
 
 	QMenu* mColHeadMenu;
 	QMenu* mManageLayerMenu;
+
+	QAction* mActSel;
 
 
 

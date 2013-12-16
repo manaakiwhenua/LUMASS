@@ -218,8 +218,15 @@ void NMImageLayer::test()
 		NMErr(ctxNMImageLayer, << "invalid range bounds!"<< std::endl);
 		return;
 	}
-
 	NMDebugAI(<< "user range: " << lower << " - " << upper << std::endl);
+
+	QStringList scaletype;
+	scaletype << "Linear" << "Log10";
+	QString userscale = QInputDialog::getItem(0, "Get Color Scale", "", scaletype);
+	if (userscale.isEmpty())
+		userscale = "Linear";
+
+
 
 	//const double* stats = this->getStatistics();
 	//this->updateStats();
@@ -235,75 +242,81 @@ void NMImageLayer::test()
 	}
 
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	//clrtab->SetColorSpaceToHSV();
-	bool bramp = false;
+	clrtab->SetNumberOfTableValues(258);
+
+	vtkSmartPointer<vtkColorTransferFunction> clrfunc =
+			vtkSmartPointer<vtkColorTransferFunction>::New();
 	if (ramp == "Binary")
 	{
-		clrtab->SetNumberOfTableValues(256);
-		clrtab->SetTableValue(0, 0.0, 0.0, 0.0, 0.0);
-		for (int i=1; i < 255; i++)
-			clrtab->SetTableValue(i, 1.0, 1.0, 1.0, 1.0);
-		clrtab->SetTableValue(255, 0, 0, 0, 0);
-		clrtab->SetTableRange(0, 255);
+		clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
+		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 0.0);
 	}
-	else
+	else if (ramp == "Grey")
 	{
-		clrtab->SetNumberOfTableValues(258);
-		vtkSmartPointer<vtkColorTransferFunction> clrfunc =
-				vtkSmartPointer<vtkColorTransferFunction>::New();
-		if (ramp == "Grey")
-		{
-			//clrtab->SetHueRange(0.0, 0.0);
-			//clrtab->SetSaturationRange(0.0, 0.0);
-			//clrtab->SetValueRange(0.0, 1.0);
-			//clrtab->SetAlphaRange(1.0, 1.0);
-			//clrtab->SetTableRange(lower, upper);
-			//clrtab->Build();
-			clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
-			clrfunc->AddRGBPoint(1.0, 1.0, 1.0, 1.0);
-		}
-		else if (ramp == "Rainbow")
-		{
-			//clrtab->SetHueRange(0.0, 1.0);
-			//clrtab->SetSaturationRange(1.0, 1.0);
-			//clrtab->SetValueRange(1.0, 1.0);
-			//clrtab->SetAlphaRange(1.0, 1.0);
-			//clrtab->SetTableRange(lower, upper);
-			//clrtab->Build();
-			//clrfunc->SetColorSpaceToHSV();
-			//clrfunc->AddHSVPoint(0.0, 0.0, 1.0, 1.0);
-			//clrfunc->AddHSVPoint(1.0, 1.0, 1.0, 1.0);
-			clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
-			clrfunc->AddRGBPoint(0.5, 0.0, 1.0, 0.0);
-			clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
-		}
-		else if (ramp == "RedToBlue")
-		{
-			//clrtab->SetHueRange(0.0, 0.67);
-			//clrtab->SetSaturationRange(1.0, 1.0);
-			//clrtab->SetValueRange(1.0, 1.0);
-			//clrtab->SetAlphaRange(1.0, 1.0);
-			//clrtab->SetTableRange(lower, upper);
-			//clrtab->Build();
-			clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
-			clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
-		}
-		clrfunc->Build();
-
-		clrtab->SetTableValue(0, 0, 0, 0, 0);
-		for (int i=0; i < 256; ++i)
-		{
-			double fc[3];
-			clrfunc->GetColor(((float)i/(float)255), fc);
-			clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
-		}
-		clrtab->SetTableValue(257, 0, 0, 0, 0);
-
-		clrtab->SetTableRange(lower-0.00000001, upper+0.00000001);
-		//clrtab->Build();
+		clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
+		clrfunc->AddRGBPoint(1.0, 1.0, 1.0, 1.0);
+		if (userscale == "Log10")
+			clrfunc->SetScaleToLog10();
 	}
-	//clrtab->ClampingOff();
-	//clrtab->Build();
+	else if (ramp == "Rainbow")
+	{
+		//clrfunc->SetColorSpaceToHSV();
+		double* rgb = new double[3];
+		double* hsv = new double[3];
+		hsv[0] = 0.0;
+		hsv[1] = 1.0;
+		hsv[2] = 1.0;
+		vtkMath::HSVToRGB(hsv, rgb);
+		clrfunc->AddRGBPoint(0.0, rgb[0], rgb[1], rgb[2]);
+
+		hsv[0] = 0.25;
+		vtkMath::HSVToRGB(hsv, rgb);
+		clrfunc->AddRGBPoint(0.25, rgb[0], rgb[1], rgb[2]);
+
+		hsv[0] = 1.0;
+		vtkMath::HSVToRGB(hsv, rgb);
+		clrfunc->AddRGBPoint(1.0, rgb[0], rgb[1], rgb[2]);
+
+		hsv[0] = 0.5;
+		vtkMath::HSVToRGB(hsv, rgb);
+		clrfunc->AddRGBPoint(0.5, rgb[0], rgb[1], rgb[2]);
+
+		hsv[0] = 0.75;
+		vtkMath::HSVToRGB(hsv, rgb);
+		clrfunc->AddRGBPoint(0.75, rgb[0], rgb[1], rgb[2]);
+
+		hsv[0] = 1.0;
+		vtkMath::HSVToRGB(hsv, rgb);
+		clrfunc->AddRGBPoint(1.0, rgb[0], rgb[1], rgb[2]);
+
+		delete[] rgb;
+		delete[] hsv;
+	}
+	else if (ramp == "RedToBlue")
+	{
+		clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
+		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
+	}
+	clrfunc->Build();
+	clrfunc->SetColorSpaceToRGB();
+
+	clrtab->SetTableValue(0, 0, 0, 0, 0);
+	for (int i=0; i < 256; ++i)
+	{
+		double fc[3];
+		clrfunc->GetColor(((float)i/(float)255), fc);
+		clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+	}
+	clrtab->SetTableValue(257, 0, 0, 0, 0);
+
+	// for linear color tables
+	double valrange = upper - lower + 1;
+	double step = valrange / 258;
+	double tolerance = step * 0.5;
+	//clrtab->SetTableRange(lower, upper);
+	//clrtab->SetNanColor(0, 0, 0, 0);
+	clrtab->SetTableRange(lower-step-tolerance, upper+step+tolerance);
+
 	this->mImgProp->SetUseLookupTableScalarRange(1);
 	this->mImgProp->SetLookupTable(clrtab);
 
@@ -510,6 +523,7 @@ void NMImageLayer::createTableView(void)
 	this->mTableView->setSelectionModel(this->mSelectionModel);
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
+	connect(this, SIGNAL(selectabilityChanged(bool)), mTableView, SLOT(setSelectable(bool)));
 	connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SLOT(forwardLastClickedRowSignal(long)));
 
 	// connect layer signals to tableview slots and model components list

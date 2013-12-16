@@ -65,7 +65,7 @@
 NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
 	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
-	  mSelectionModel(0)
+	  mSelectionModel(0), mbIsSelectable(true)
 {
 	this->mTableView = new QTableView(this);
 	this->initView();
@@ -87,7 +87,7 @@ NMTableView::NMTableView(QAbstractItemModel* model, QWidget* parent)
 NMTableView::NMTableView(QAbstractItemModel* model, ViewMode mode, QWidget* parent)
 	: QWidget(parent), mViewMode(mode),
 	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
-	  mSelectionModel(0)
+	  mSelectionModel(0), mbIsSelectable(true)
 {
 	this->mTableView = new QTableView(this);
 	this->initView();
@@ -113,6 +113,7 @@ NMTableView::~NMTableView()
 
 void NMTableView::initView()
 {
+
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -178,6 +179,7 @@ void NMTableView::initView()
 	//actFilter->setText(tr("Arbitrary SQL Query ..."));
 
 	QAction* actSel = new QAction(this->mColHeadMenu);
+	this->mActSel = actSel;
 	actSel->setText(tr("Select Attributes ..."));
 
 	QAction* actHide = new QAction(this->mColHeadMenu);
@@ -282,6 +284,26 @@ NMTableView::hideSource(const QList<int>& rows)
 {
 	this->mSortFilter->hideSource(rows);
 	this->updateSelectionAdmin(QItemSelection(), QItemSelection());
+}
+
+void
+NMTableView::setSelectable(bool bselectable)
+{
+	if (mbIsSelectable == bselectable)
+		return;
+
+	this->mbIsSelectable = bselectable;
+	if (bselectable)
+	{
+		mActSel->setEnabled(true);
+		mBtnSwitchSelection->setEnabled(true);
+	}
+	else
+	{
+		mActSel->setEnabled(false);
+		mBtnSwitchSelection->setEnabled(false);
+		this->mSelectionModel->clearSelection();
+	}
 }
 
 void
@@ -1338,7 +1360,10 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
 				NMDebugAI(<< "proxy --> source : " << indx.row() << " --> " << srcIndx.row() << std::endl);
 				srcRow = srcIndx.row();
-				this->toggleRow(srcRow);
+				if (this->mbIsSelectable)
+				{
+					this->toggleRow(srcRow);
+				}
 				emit notifyLastClickedRow((long)srcRow);
 			}
 		}

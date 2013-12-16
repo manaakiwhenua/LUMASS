@@ -586,6 +586,7 @@ void NMVectorLayer::createTableView(void)
 	this->mTableView->hideAttribute("nm_sel");
 	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
+	connect(this, SIGNAL(selectabilityChanged(bool)), mTableView, SLOT(setSelectable(bool)));
 	connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SLOT(forwardLastClickedRowSignal(long)));
 
 	// connect tableview signals to layer slots

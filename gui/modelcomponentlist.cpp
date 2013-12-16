@@ -60,6 +60,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	// set the general column count for this control
 	this->setHeaderHidden(true);
+	this->setColumnWidth(0, 50);
 	this->setExpandsOnDoubleClick(true);
 	this->setUniformRowHeights(true);
 
@@ -473,17 +474,25 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		{
 			QRect vrect = visualRect(idx);
 			int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
-			QRect rect = QRect(
+			QRect rect1 = QRect(
 					header()->sectionViewportPosition(0) + itemIndentation,
+					vrect.y(), style()->pixelMetric(QStyle::PM_ListViewIconSize),
+					vrect.height());
+			QRect rect2 = QRect(
+					header()->sectionViewportPosition(1) + itemIndentation,
 					vrect.y(), style()->pixelMetric(QStyle::PM_IndicatorWidth),
 					vrect.height());
-			if (rect.contains(event->pos()))
+			if (rect1.contains(event->pos()) || rect2.contains(event->pos()))
 			{
 				this->mLayerModel->setData(idx, QVariant(), Qt::CheckStateRole);
+				this->processSelection(false);
 			}
-
+			else
+			{
+				this->processSelection(true);
+			}
 			this->dragStartPosition = event->pos();
-			this->processSelection(true);
+
 		}
 		else if (event->button() == Qt::RightButton)
 		{

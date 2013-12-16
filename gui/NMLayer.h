@@ -107,8 +107,8 @@ public:
 	bool isVectorLayer(void);
 	bool isImageLayer(void);
 
-	QIcon getLayerIcon(void)
-		{return this->mLayerIcon;};
+	QIcon getLayerIcon(void);
+
 
 	bool isVisible(void);
 	virtual void setVisible(bool visible);
@@ -152,7 +152,7 @@ public slots:
 
 signals:
 	void visibilityChanged(const NMLayer* layer);
-	void selectabilityChanged(const NMLayer* layer);
+	void selectabilityChanged(bool bselectable);
 	void legendChanged(const NMLayer* layer);
 	void dataSetChanged(const NMLayer* layer);
 	void attributeTableChanged(vtkTable* table);

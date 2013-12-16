@@ -87,44 +87,13 @@ int NMLayerModel::changeItemLayerPos(int oldpos, int newpos)
 
 	emit layoutAboutToBeChanged();
 
-	//int treepos;
-	//NMDebugAI(<< "BEFORE BEFORE BEFORE" << endl);
-	//NMDebugAI(<< "tree\tlayer\t\tstack" << endl);
-	//for (int i=0; i < this->mLayers.size(); ++i)
-	//{
-	//	treepos = this->toTreeModelRow(i);
-	//	std::string ln = this->mLayers.at(i)->objectName().toStdString();
-	//	NMDebugAI( << treepos << "\t" << ln << "  \t" << i << endl);
-	//}
-
 	QSharedPointer<NMLayer> pL = this->mLayers.takeAt(oldpos);
-
-	//NMDebugAI(<< "FISRT STEP FIRST STEP FIRST STEP" << endl);
-	//NMDebugAI(<< "tree\tlayer\t\tstack" << endl);
-	//for (int i=0; i < this->mLayers.size(); ++i)
-	//{
-	//	treepos = this->toTreeModelRow(i);
-	//	std::string ln = this->mLayers.at(i)->objectName().toStdString();
-	//	NMDebugAI( << treepos << "\t" << ln << "  \t" << i << endl);
-	//}
-
 	this->mLayers.insert(newpos, pL);
-
-	//NMDebugAI(<< "SECOND STEP SECOND STEP SECOND STEP" << endl);
-	//NMDebugAI(<< "tree\tlayer\t\tstack" << endl);
-	//for (int i=0; i < this->mLayers.size(); ++i)
-	//{
-	//	treepos = this->toTreeModelRow(i);
-	//	std::string ln = this->mLayers.at(i)->objectName().toStdString();
-	//	NMDebugAI( << treepos << "\t" << ln << "  \t" << i << endl);
-	//}
-
 	emit layoutChanged();
 
 	// update each layer's position within the layer stack
 	for (int i=0; i < this->mLayers.size(); ++i)
 		this->mLayers[i]->setLayerPos(i);
-
 
 	return oldpos;
 }
@@ -204,7 +173,10 @@ bool NMLayerModel::setData(const QModelIndex& index,
 		if (role == Qt::CheckStateRole)
 		{
 			NMLayer* l = (NMLayer*)index.internalPointer();
-			l->isVisible() ? l->setVisible(false) : l->setVisible(true);
+			if (index.column() == 0)
+				l->isVisible() ? l->setVisible(false) : l->setVisible(true);
+			else if (index.column() == 1)
+				l->isSelectable() ? l->setSelectable(false) : l->setSelectable(true);
 		}
 	}
 
@@ -268,11 +240,21 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 		switch (role)
 		{
 		case Qt::DisplayRole:
-			retVar = QVariant(l->objectName());
-			break;
+			{
+				if (col == 0)
+					retVar = QVariant();
+				else if (col == 1)
+					retVar = QVariant(l->objectName());
+				break;
+			}
 		case Qt::CheckStateRole:
-			retVar = l->isVisible() ? Qt::Checked : Qt::Unchecked;
-			break;
+			{
+				//if (col == 0)
+				//	retVar = l->isVisible() ? Qt::Checked : Qt::Unchecked;
+				if (col == 1)
+					retVar = l->isSelectable() ? Qt::Checked : Qt::Unchecked;
+				break;
+			}
 		case Qt::FontRole:
 			{
 			QFont font;
@@ -281,10 +263,12 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			}
 			break;
 		case Qt::DecorationRole:
-			retVar = l->getLayerIcon();
-			break;
+			{
+				if (col == 0)
+					retVar = l->getLayerIcon();
+				break;
+			}
 		}
-
 	}
 
 	return retVar;
@@ -292,12 +276,10 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 
 QIcon NMLayerModel::createLegendIcon(NMLayer* layer, int legendRow)
 {
-	//	NMDebugCtx(ctxNMLayerModel, << "...");
 
 	double rgba[4];
 	if (!layer->getLegendColour(legendRow, rgba))
 	{
-		//		NMDebugCtx(ctxNMLayerModel, << "done!");
 		return QIcon();
 	}
 
@@ -309,7 +291,6 @@ QIcon NMLayerModel::createLegendIcon(NMLayer* layer, int legendRow)
 
 	QIcon icon(pix);
 
-	//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return icon;
 }
 
@@ -337,10 +318,14 @@ int NMLayerModel::rowCount(const QModelIndex& parent) const
 
 int NMLayerModel::columnCount(const QModelIndex& parent) const
 {
-	int ncols = 1;
+	//int ncols = 1;
+	int ncols = 2;
 
 	if (parent.isValid())
+	{
 		ncols = 2;
+		//ncols = 4;
+	}
 
 	return ncols;
 }

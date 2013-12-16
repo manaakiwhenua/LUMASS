@@ -60,7 +60,6 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	// set the general column count for this control
 	this->setHeaderHidden(true);
-	this->setColumnWidth(0, 50);
 	this->setExpandsOnDoubleClick(true);
 	this->setUniformRowHeights(true);
 
@@ -117,6 +116,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 #endif
 
+	// do some stuff we can't do here
+	//initView();
 
 
 	// connect to some of the qvtkWidget events
@@ -139,6 +140,13 @@ ModelComponentList::~ModelComponentList()
 	delete this->mLayerModel;
 }
 
+void
+ModelComponentList::initView(void)
+{
+	// we do some init work here we can't do in the constructor
+	this->setColumnWidth(0, style()->pixelMetric(QStyle::PM_ListViewIconSize));
+}
+
 void ModelComponentList::openAttributeTable()
 {
 //	NMDebugCtx(ctx, << "...");
@@ -158,7 +166,6 @@ void ModelComponentList::saveLayerChanges()
 		NMDebugAI(<< "going to save changes to the data set!" << endl);
 		l->writeDataSet();
 	}
-
 }
 
 void ModelComponentList::removeCurrentLayer()

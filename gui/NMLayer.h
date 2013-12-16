@@ -108,6 +108,7 @@ public:
 	bool isImageLayer(void);
 
 	QIcon getLayerIcon(void);
+	QImage getLayerIconAsImage(void);
 
 
 	bool isVisible(void);

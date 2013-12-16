@@ -380,6 +380,23 @@ QIcon NMLayer::getLayerIcon(void)
 	return ic;
 }
 
+QImage NMLayer::getLayerIconAsImage(void)
+{
+	QImage img;
+	switch(mLayerType)
+	{
+	case NM_VECTOR_LAYER:
+		img = mIsVisible ? QImage(":vector_layer.png") : QImage(":vector_layer_invisible.png");
+		break;
+	case NM_IMAGE_LAYER:
+		img = mIsVisible ? QImage(":image_layer.png") : QImage(":image_layer_invisible.png");
+		break;
+	default:
+		break;
+	}
+	return img;
+}
+
 bool NMLayer::isSelectable(void)
 {
 	return this->mIsSelectable;

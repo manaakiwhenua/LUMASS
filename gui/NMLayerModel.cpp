@@ -24,8 +24,12 @@
 
 #include <NMLayerModel.h>
 
+#include <QPixmap>
+#include <QPainter>
+
 #include "vtkLookupTable.h"
 #include "vtkMapper.h"
+
 
 NMLayerModel::NMLayerModel(QObject* parent)
 {
@@ -242,19 +246,20 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 		case Qt::DisplayRole:
 			{
 				if (col == 0)
-					retVar = QVariant();
-				else if (col == 1)
-					retVar = QVariant(l->objectName());
-				break;
+					retVar = l->objectName();
+				//else if (col == 1)
+				//	retVar = QVariant(l->objectName());
+				//break;
 			}
-		case Qt::CheckStateRole:
-			{
-				//if (col == 0)
-				//	retVar = l->isVisible() ? Qt::Checked : Qt::Unchecked;
-				if (col == 1)
-					retVar = l->isSelectable() ? Qt::Checked : Qt::Unchecked;
-				break;
-			}
+			break;
+		//case Qt::CheckStateRole:
+		//	{
+		//		//if (col == 0)
+		//		//	retVar = l->isVisible() ? Qt::Checked : Qt::Unchecked;
+		//		if (col == 1)
+		//			retVar = l->isSelectable() ? Qt::Checked : Qt::Unchecked;
+		//		break;
+		//	}
 		case Qt::FontRole:
 			{
 			QFont font;
@@ -265,7 +270,24 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 		case Qt::DecorationRole:
 			{
 				if (col == 0)
-					retVar = l->getLayerIcon();
+				{
+					QImage pix(69,32, QImage::Format_ARGB32_Premultiplied);
+
+					QPainter painter(&pix);
+
+					QImage selImg = l->isSelectable() ?
+							QImage(":edit-select_enabled.png") : QImage(":edit-select.png");
+
+					QImage layerImg = l->getLayerIconAsImage();
+
+					painter.drawImage(QRect(0,0,32,32), layerImg);
+					painter.drawImage(QRect(37,0,32,32), selImg);
+
+					QPixmap rpix;
+					rpix.convertFromImage(pix);
+					retVar = QIcon(rpix);
+
+				}
 				break;
 			}
 		}
@@ -318,13 +340,12 @@ int NMLayerModel::rowCount(const QModelIndex& parent) const
 
 int NMLayerModel::columnCount(const QModelIndex& parent) const
 {
-	//int ncols = 1;
-	int ncols = 2;
+	int ncols = 1;
+	//int ncols = 2;
 
 	if (parent.isValid())
 	{
 		ncols = 2;
-		//ncols = 4;
 	}
 
 	return ncols;

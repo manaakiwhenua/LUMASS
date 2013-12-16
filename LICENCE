@@ -25,8 +25,9 @@ license. Please see the individual source files for further information.
 ********************************************************************************
 
 LUMASS uses various icons released under various licences. See the list below 
-for detailed information.
+for detailed information of icon source and license.
 
+--- lumass/gui/resources/edit-select.png (modified)
 --- lumass/gui/resources/draw-bezier-curves.png
 --- lumass/gui/resources/transform-move.png
 source: Oxygen Icons <http://www.oxygen-icons.org>

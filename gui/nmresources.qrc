@@ -10,5 +10,7 @@
         <file alias="image_layer.png">resources/image_layer.png</file>
         <file alias="image_layer_invisible.png">resources/image_layer_invisible.png</file>
         <file alias="vector_layer_invisible.png">resources/vector_layer_invisible.png</file>
+        <file alias="edit-select.png">resources/edit-select.png</file>
+        <file alias="edit-select_enabled.png">resources/edit-select_enabled.png</file>
     </qresource>
 </RCC>

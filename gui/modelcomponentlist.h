@@ -104,12 +104,12 @@ private:
     QPoint dragStartPosition;
     QMenu* mMenu;
     QModelIndex mIndicatorIdx;
-    //vtkSmartPointer<vtkEventQtSlotConnect> m_vtkConns;
+	static const std::string ctx;
 
+	void initView(void);
+	void processSelection(bool toggle);
     void removeLayer(NMLayer* layer);
-
-    // union of the total bounding box
-   	void unionMapBBox(const double* box);
+ 	void unionMapBBox(const double* box);
    	void recalcMapBBox();
 
    	// event handlers
@@ -121,12 +121,6 @@ private:
     void dragEnterEvent(QDragEnterEvent* event);
     void dropEvent(QDropEvent* event);
     void paintEvent(QPaintEvent* event);
-
-
-	void processSelection(bool toggle);
-
-	static const std::string ctx;
-
 };
 
 #endif // MODELCOMPONENTLIST_H

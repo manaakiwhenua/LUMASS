@@ -21,6 +21,7 @@
 #include "otbmodellerwin.h"
 #include "NMImageLayer.h"
 #include "NMVectorLayer.h"
+#include "NMComponentListItemDelegate.h"
 #include "otbAttributeTable.h"
 
 #include <QDrag>
@@ -118,6 +119,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	// do some stuff we can't do here
 	//initView();
+	this->setItemDelegate(new NMComponentListItemDelegate(this));
 
 
 	// connect to some of the qvtkWidget events
@@ -144,7 +146,7 @@ void
 ModelComponentList::initView(void)
 {
 	// we do some init work here we can't do in the constructor
-	this->setColumnWidth(0, style()->pixelMetric(QStyle::PM_ListViewIconSize));
+	this->setIconSize(QSize(35,16));
 }
 
 void ModelComponentList::openAttributeTable()

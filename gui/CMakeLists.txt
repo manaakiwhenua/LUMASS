@@ -62,6 +62,7 @@ QT4_WRAP_CPP(MOC_CPP
 	${gui_SOURCE_DIR}/NMAggregateComponentItem.h
 	${gui_SOURCE_DIR}/NMComponentLinkItem.h
 	${gui_SOURCE_DIR}/NMFastTrackSelectionModel.h
+	${gui_SOURCE_DIR}/NMComponentListItemDelegate.h
 )
        
 file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)

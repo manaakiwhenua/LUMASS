@@ -237,6 +237,10 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			if (col == 0)
 				retVar = lm->createLegendIcon(l, row);
 		}
+		else if (role == Qt::SizeHintRole)
+		{
+			retVar = QSize(100, 20);
+		}
 	}
 	else 	// return general layer info
 	{
@@ -247,9 +251,6 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			{
 				if (col == 0)
 					retVar = l->objectName();
-				//else if (col == 1)
-				//	retVar = QVariant(l->objectName());
-				//break;
 			}
 			break;
 		//case Qt::CheckStateRole:
@@ -262,31 +263,42 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 		//	}
 		case Qt::FontRole:
 			{
-			QFont font;
-			l->hasChanged() ? font.setItalic(true) : font.setItalic(false);
-			retVar = font;
+				QFont font;
+				l->hasChanged() ? font.setItalic(true) : font.setItalic(false);
+				retVar = font;
 			}
 			break;
+
+		case Qt::SizeHintRole:
+			retVar = QSize(100, 22);
+			break;
+
 		case Qt::DecorationRole:
 			{
 				if (col == 0)
 				{
-					QImage pix(69,32, QImage::Format_ARGB32_Premultiplied);
+					QImage pix(35,16, QImage::Format_ARGB32_Premultiplied);
+					pix.fill(0);
 
 					QPainter painter(&pix);
 
-					QImage selImg = l->isSelectable() ?
-							QImage(":edit-select_enabled.png") : QImage(":edit-select.png");
+					//QImage selImg = l->isSelectable() ?
+					//		QImage(":edit-select_enabled.png") : QImage(":edit-select.png");
+					//QImage layerImg = l->getLayerIconAsImage();
 
-					QImage layerImg = l->getLayerIconAsImage();
+					QPixmap selImg = l->isSelectable() ?
+							QPixmap(":edit-select_enabled.png") : QPixmap(":edit-select.png");
+					QPixmap layerImg = l->getLayerIcon().pixmap(QSize(16,16));
 
-					painter.drawImage(QRect(0,0,32,32), layerImg);
-					painter.drawImage(QRect(37,0,32,32), selImg);
+					painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+					painter.drawPixmap(QRect(0,0,16,16), layerImg);
+					painter.drawPixmap(QRect(19,0,16,16), selImg);
 
-					QPixmap rpix;
-					rpix.convertFromImage(pix);
-					retVar = QIcon(rpix);
+					QPixmap rPix(35, 16);
+					rPix.convertFromImage(pix);
 
+					QIcon rIcon(rPix);
+					retVar = rIcon;
 				}
 				break;
 			}

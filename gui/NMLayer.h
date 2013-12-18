@@ -161,7 +161,7 @@ signals:
 	void layerProcessingStart();
 	void layerProcessingEnd();
 	void layerLoaded();
-	void notifyLastClickedRow(NMLayer* l, long cellID);
+	void notifyLastClickedRow(NMLayer* l, double cellID);
 
 protected:
 	vtkSmartPointer<vtkRenderWindow> mRenderWindow;

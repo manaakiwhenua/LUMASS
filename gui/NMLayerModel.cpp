@@ -177,9 +177,9 @@ bool NMLayerModel::setData(const QModelIndex& index,
 		if (role == Qt::CheckStateRole)
 		{
 			NMLayer* l = (NMLayer*)index.internalPointer();
-			if (index.column() == 0)
+			if (value.toString() == "VIS")
 				l->isVisible() ? l->setVisible(false) : l->setVisible(true);
-			else if (index.column() == 1)
+			else if (value.toString() == "SEL")
 				l->isSelectable() ? l->setSelectable(false) : l->setSelectable(true);
 		}
 	}
@@ -239,7 +239,7 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 		}
 		else if (role == Qt::SizeHintRole)
 		{
-			retVar = QSize(100, 20);
+			retVar = QSize(16, 20);
 		}
 	}
 	else 	// return general layer info
@@ -253,14 +253,7 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 					retVar = l->objectName();
 			}
 			break;
-		//case Qt::CheckStateRole:
-		//	{
-		//		//if (col == 0)
-		//		//	retVar = l->isVisible() ? Qt::Checked : Qt::Unchecked;
-		//		if (col == 1)
-		//			retVar = l->isSelectable() ? Qt::Checked : Qt::Unchecked;
-		//		break;
-		//	}
+
 		case Qt::FontRole:
 			{
 				QFont font;
@@ -270,31 +263,25 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			break;
 
 		case Qt::SizeHintRole:
-			retVar = QSize(100, 22);
+			retVar = QSize(32, 22);
 			break;
 
 		case Qt::DecorationRole:
 			{
 				if (col == 0)
 				{
-					QImage pix(35,16, QImage::Format_ARGB32_Premultiplied);
+					QImage pix(32,16, QImage::Format_ARGB32_Premultiplied);
 					pix.fill(0);
 
 					QPainter painter(&pix);
-
-					//QImage selImg = l->isSelectable() ?
-					//		QImage(":edit-select_enabled.png") : QImage(":edit-select.png");
-					//QImage layerImg = l->getLayerIconAsImage();
-
 					QPixmap selImg = l->isSelectable() ?
 							QPixmap(":edit-select_enabled.png") : QPixmap(":edit-select.png");
 					QPixmap layerImg = l->getLayerIcon().pixmap(QSize(16,16));
-
 					painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 					painter.drawPixmap(QRect(0,0,16,16), layerImg);
-					painter.drawPixmap(QRect(19,0,16,16), selImg);
+					painter.drawPixmap(QRect(17,0,16,16), selImg);
 
-					QPixmap rPix(35, 16);
+					QPixmap rPix(32, 16);
 					rPix.convertFromImage(pix);
 
 					QIcon rIcon(rPix);
@@ -320,7 +307,7 @@ QIcon NMLayerModel::createLegendIcon(NMLayer* layer, int legendRow)
 	QColor clr;
 	clr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
 
-	QPixmap pix(30,30);
+	QPixmap pix(32,32);
 	pix.fill(clr);
 
 	QIcon icon(pix);

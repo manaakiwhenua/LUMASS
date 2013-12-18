@@ -22,6 +22,16 @@
  *      Author: alex
  */
 
+/****************************************************************************
+**
+** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
+**
+** This file is part of the QtGui module of the Qt Toolkit.
+*/
+
+#include <QApplication>
+
 #include "NMComponentListItemDelegate.h"
 
 NMComponentListItemDelegate::NMComponentListItemDelegate(QObject* parent)
@@ -33,24 +43,37 @@ NMComponentListItemDelegate::~NMComponentListItemDelegate()
 {
 }
 
+void
+NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
+		const QModelIndex& index) const
+{
+    if(!index.isValid())
+    	return;
+
+    QStyleOptionViewItemV4 opt = option;
+    initStyleOption(&opt, index);
+
+    opt.decorationSize = index.data(Qt::SizeHintRole).toSize();
+
+
+    QWidget* widget = 0;
+    if (QStyleOptionViewItemV3 *v3 = qstyleoption_cast<QStyleOptionViewItemV3 *>(&opt))
+        widget = const_cast<QWidget*>(v3->widget);
+
+    QStyle *style = widget ? widget->style() : QApplication::style();
+    style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+}
+
 QSize
 NMComponentListItemDelegate::sizeHint(const QStyleOptionViewItem& option,
 		const QModelIndex& index) const
 {
-	QStyleOptionViewItem opt = const_cast<QStyleOptionViewItem&>(option);
+	QSize ret;
 	if (index.isValid())
 	{
-		if (index.parent().isValid())
-		{
-			// sufficent for now, but do sophisticated settings
-			// for image ramps
-			opt.decorationSize = QSize(8,16);
-		}
-		else
-		{
-			opt.decorationSize = QSize(35, 16);
-		}
+		ret = QSize(option.rect.width(), index.data(Qt::SizeHintRole).toSize().height());
 	}
-	return QStyledItemDelegate::sizeHint(opt, index);
+
+	return ret;
 }
 

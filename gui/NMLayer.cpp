@@ -350,8 +350,8 @@ bool NMLayer::isVisible(void)
 
 void NMLayer::setSelectable(bool selectable)
 {
-	if (this->mDataSet == 0)
-		return;
+	//if (this->mDataSet == 0)
+	//	return;
 
 	if (this->mIsSelectable != selectable)
 	{

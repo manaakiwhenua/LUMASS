@@ -798,7 +798,7 @@ void OtbModellerWin::saveAsVectorLayerOGR(void)
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
-void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
+void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 {
 	//NMDebugCtx(ctxOtbModellerWin, << "...");
 
@@ -806,7 +806,7 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 	QTableWidget* ti = this->findChild<QTableWidget*>("layerInfoTable");
 	ti->clear();
 
-	if (cellId < 0)
+	if (cellId < 0 && l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
 	{
 		dw->setWindowTitle(tr("Layer Info"));
 		ti->setColumnCount(0);
@@ -822,7 +822,7 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 	ti->horizontalHeader()->setStretchLastSection(true);
 
 	QStringList colHeaderLabels;
-	colHeaderLabels << QString(tr("Attributes (%1)").arg(cellId)) << "Value";
+	colHeaderLabels << QString(tr("Attributes (%1)").arg((long)cellId)) << "Value";
 
 	ti->setHorizontalHeaderLabels(colHeaderLabels);
 
@@ -854,10 +854,10 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 			ti->setItem(rowcnt,0, item1);
 
 			QTableWidgetItem* item2;
-			if (cellId < aa->GetNumberOfTuples())
+			if ((long)cellId < aa->GetNumberOfTuples())
 			{
 				item2 = new QTableWidgetItem(
-					aa->GetVariantValue(cellId).ToString().c_str());
+					aa->GetVariantValue((long)cellId).ToString().c_str());
 			}
 			else
 			{
@@ -877,31 +877,38 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, long cellId)
 		// TODO: we have to reasonably extend this to any table
 		// we've got
 		otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
-		if (tab.IsNull())
-		{
-			NMDebugAI(<< __FUNCTION__ << ": Couldn't fetch the image attribute table!" << std::endl);
-			return;
-		}
+		//if (tab.IsNull())
+		//{
+		//	NMDebugAI(<< __FUNCTION__ << ": Couldn't fetch the image attribute table!" << std::endl);
+		//	return;
+		//}
 		//QAbstractItemModel* tab = il->getTable();
 
-		int ncols = tab->GetNumCols();
+		int ncols = tab.IsNull() ? 1 : tab->GetNumCols();
 		ti->setRowCount(ncols);
 
 		long rowcnt = 0;
 		for (int r=0; r < ncols; ++r)
 		{
 			QTableWidgetItem *item1;
-			std::string colname = tab->GetColumnName(r);
+			std::string colname = tab.IsNull() ? "Value" : tab->GetColumnName(r);
 			if (!colname.empty())
 				item1 = new QTableWidgetItem(colname.c_str());
 			else
 				item1 = new QTableWidgetItem("");
 			ti->setItem(r, 0, item1);
 			QTableWidgetItem *item2;
-			if (cellId < tab->GetNumRows())
-				item2 = new QTableWidgetItem(tab->GetStrValue(r, cellId).c_str());
+			if (tab.IsNotNull())
+			{
+				if (cellId < tab->GetNumRows())
+					item2 = new QTableWidgetItem(tab->GetStrValue(r, cellId).c_str());
+				else
+					item2 = new QTableWidgetItem("CellID invalid!");
+			}
 			else
-				item2 = new QTableWidgetItem("CellID invalid!");
+			{
+				item2 = new QTableWidgetItem(QString("%1").arg(cellId, 0, 'g'));
+			}
 			ti->setItem(r, 1, item2);
 		}
 	}
@@ -1002,7 +1009,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 
 	//	NMDebugAI(<< "wPt: " << wPt[0] << ", " << wPt[1] << ", " << wPt[2] << endl);
 
-	vtkIdType cellId = -1;
+	double cellId = -1;
 	// ==========================================================================
 	// 									VECTOR PICKING
 	// ==========================================================================
@@ -1096,7 +1103,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		long nmid = nmids->GetTuple1(cellId);
 		lstCellId.push_back(cellId);
 		lstNMId.push_back(nmid);
-		//l->updateLayerSelection(lstCellId, lstNMId, seltype);
+		this->updateLayerInfo(l, cellId);
 		l->selectCell(cellId, seltype);
 	}
 	// ==========================================================================
@@ -1121,23 +1128,23 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 			if (did[d] < 0)
 			{
 				this->updateLayerInfo(l, -1);
-				//l->selectCell(cellId, NMLayer::NM_SEL_CLEAR);
+				l->selectCell(cellId, NMLayer::NM_SEL_CLEAR);
 				return;
 			}
 		}
 
 		cellId = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
+
+		NMLayer::NMLayerSelectionType seltype;
+		if (iren->GetControlKey())
+			seltype = NMLayer::NM_SEL_ADD;
+		else
+			seltype = NMLayer::NM_SEL_NEW;
+
+		// populate layer info table with currently picked cell
+		this->updateLayerInfo(l, cellId);
+		l->selectCell(cellId, seltype);
 	}
-
-	NMLayer::NMLayerSelectionType seltype;
-	if (iren->GetControlKey())
-		seltype = NMLayer::NM_SEL_ADD;
-	else
-		seltype = NMLayer::NM_SEL_NEW;
-
-	// populate layer info table with currently picked cell
-	this->updateLayerInfo(l, -1);
-	//l->selectCell(cellId, seltype);
 }
 
 bool OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)

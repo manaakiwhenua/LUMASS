@@ -115,7 +115,7 @@ public slots:
 	void saveAsVtkPolyData();
 	void test();
 	void saveAsVectorLayerOGR();
-	void updateLayerInfo(NMLayer* l, long cellId);
+	void updateLayerInfo(NMLayer* l, double cellId);
 	void importODBC();
 	void aboutLUMASS();
 	void zoomChanged(vtkObject* obj);

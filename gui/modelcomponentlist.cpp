@@ -61,8 +61,9 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	// set the general column count for this control
 	this->setHeaderHidden(true);
+	this->setRootIsDecorated(false);
 	this->setExpandsOnDoubleClick(true);
-	this->setUniformRowHeights(true);
+	this->setUniformRowHeights(false);
 
 	this->setSelectionBehavior(QAbstractItemView::SelectRows);
 
@@ -340,7 +341,7 @@ void ModelComponentList::addLayer(NMLayer* layer)
 			layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
 	OtbModellerWin* mwin = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
-	connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, long)), mwin, SLOT(updateLayerInfo(NMLayer *, long)));
+	connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, double)), mwin, SLOT(updateLayerInfo(NMLayer *, double)));
 
 	// add the layer to the NMLayerModel
 	this->mLayerModel->pileItemLayer(layer);
@@ -485,15 +486,18 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 			int itemIndentation = vrect.x() - visualRect(rootIndex()).x();
 			QRect rect1 = QRect(
 					header()->sectionViewportPosition(0) + itemIndentation,
-					vrect.y(), style()->pixelMetric(QStyle::PM_ListViewIconSize),
-					vrect.height());
+					vrect.y(), 16, vrect.height());
 			QRect rect2 = QRect(
-					header()->sectionViewportPosition(1) + itemIndentation,
-					vrect.y(), style()->pixelMetric(QStyle::PM_IndicatorWidth),
-					vrect.height());
-			if (rect1.contains(event->pos()) || rect2.contains(event->pos()))
+					header()->sectionViewportPosition(0) + itemIndentation + 17,
+					vrect.y(), 16, vrect.height());
+			if (rect1.contains(event->pos()))
 			{
-				this->mLayerModel->setData(idx, QVariant(), Qt::CheckStateRole);
+				this->mLayerModel->setData(idx, QVariant("VIS"), Qt::CheckStateRole);
+				this->processSelection(false);
+			}
+			else if  (rect2.contains(event->pos()))
+			{
+				this->mLayerModel->setData(idx, QVariant("SEL"), Qt::CheckStateRole);
 				this->processSelection(false);
 			}
 			else
@@ -559,7 +563,9 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
     	return;
 
     QString layerName = idx.data(Qt::DisplayRole).toString();
-    QIcon layerIcon = idx.data(Qt::DecorationRole).value<QIcon>();
+    NMLayer* l = (NMLayer*)idx.internalPointer();
+
+    QIcon layerIcon = l->getLayerIcon();//idx.data(Qt::DecorationRole).value<QIcon>();
 
     QSize dragImageSize(32,32);
     QImage dragImage(dragImageSize, QImage::Format_ARGB32_Premultiplied);
@@ -640,10 +646,6 @@ void ModelComponentList::dragMoveEvent(QDragMoveEvent* event)
 		this->mIndicatorIdx = QModelIndex();
 		return;
 	}
-
-	//QModelIndex oid = this->indexAt(this->dragStartPosition);
-	//if (oid == id)
-	//	return;
 
 	this->mIndicatorIdx = id;
 	this->viewport()->update();

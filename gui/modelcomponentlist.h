@@ -97,6 +97,9 @@ private slots:
 	void openAttributeTable();
 	void removeCurrentLayer();
 
+protected:
+	void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const {}
+
 private:
 
 	double mFullMapExt[6];

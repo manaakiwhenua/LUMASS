@@ -196,6 +196,25 @@ NMImageLayer::getStatistics(void)
 
 void NMImageLayer::test()
 {
+	if (!this->updateAttributeTable())
+		return;
+
+	// get a list of table columns
+
+	int ncols = this->mTableModel->columnCount(QModelIndex());
+	int nrows = this->mTableModel->rowCount(QModelIndex());
+
+	QStringList cols;
+	for (int i=0; i < ncols; ++i)
+	{
+		const QModelIndex ci = mTableModel->index(0, i, QModelIndex());
+		if (mTableModel->data(ci, Qt::DisplayRole).type() != QVariant::String)
+			cols << mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+	}
+	QString theCol = QInputDialog::getItem(0, "Select Value Field", "", cols);
+	int colidx = cols.indexOf(theCol);
+
+	NMDebugAI(<< "using field #" << colidx << ": " << theCol.toStdString() << std::endl);
 
 	QStringList ramplist;
 	ramplist << "Binary" << "Grey" << "Rainbow" << "RedToBlue";
@@ -220,18 +239,10 @@ void NMImageLayer::test()
 	}
 	NMDebugAI(<< "user range: " << lower << " - " << upper << std::endl);
 
-	QStringList scaletype;
-	scaletype << "Linear" << "Log10";
-	QString userscale = QInputDialog::getItem(0, "Get Color Scale", "", scaletype);
-	if (userscale.isEmpty())
-		userscale = "Linear";
-
-
-
-	//const double* stats = this->getStatistics();
-	//this->updateStats();
-	//const double* stats = this->mImgStats;
-
+	// for linear color tables
+	double valrange = upper - lower + 1;
+	double step = valrange / nrows;
+	double tolerance = step * 0.5;
 
 	double nodata;
 	switch(this->mComponentType)
@@ -242,7 +253,8 @@ void NMImageLayer::test()
 	}
 
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->SetNumberOfTableValues(258);
+	clrtab->SetNumberOfTableValues(nrows+2);
+	clrtab->SetTableRange(-1, nrows+1);
 
 	vtkSmartPointer<vtkColorTransferFunction> clrfunc =
 			vtkSmartPointer<vtkColorTransferFunction>::New();
@@ -255,8 +267,6 @@ void NMImageLayer::test()
 	{
 		clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
 		clrfunc->AddRGBPoint(1.0, 1.0, 1.0, 1.0);
-		if (userscale == "Log10")
-			clrfunc->SetScaleToLog10();
 	}
 	else if (ramp == "Rainbow")
 	{
@@ -301,21 +311,22 @@ void NMImageLayer::test()
 	clrfunc->SetColorSpaceToRGB();
 
 	clrtab->SetTableValue(0, 0, 0, 0, 0);
-	for (int i=0; i < 256; ++i)
+	for (int i=0; i < nrows; ++i)
 	{
 		double fc[3];
-		clrfunc->GetColor(((float)i/(float)255), fc);
-		clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+		const QModelIndex fidx = mTableModel->index(i, colidx, QModelIndex());
+		double fieldVal = mTableModel->data(fidx, Qt::DisplayRole).toDouble(&bok);
+		if (bok && fieldVal >= lower && fieldVal <= upper && fieldVal != nodata)
+		{
+			clrfunc->GetColor((fieldVal/(double)valrange), fc);
+			clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+		}
+		else
+		{
+			clrtab->SetTableValue(i+1, 0, 0, 0, 0);
+		}
 	}
-	clrtab->SetTableValue(257, 0, 0, 0, 0);
-
-	// for linear color tables
-	double valrange = upper - lower + 1;
-	double step = valrange / 258;
-	double tolerance = step * 0.5;
-	//clrtab->SetTableRange(lower, upper);
-	//clrtab->SetNanColor(0, 0, 0, 0);
-	clrtab->SetTableRange(lower-step-tolerance, upper+step+tolerance);
+	clrtab->SetTableValue(nrows, 0, 0, 0, 0);
 
 	this->mImgProp->SetUseLookupTableScalarRange(1);
 	this->mImgProp->SetLookupTable(clrtab);
@@ -427,68 +438,6 @@ void
 NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
-	// bail out, if we haven't got any selections
-	int selcnt = 0;
-	foreach(const QItemSelectionRange& range, newSel)
-	{
-		const int top = range.top();
-		const int bottom = range.bottom();
-		for (int row=top; row<=bottom; ++row)
-		{
-			++selcnt;
-		}
-	}
-	if (mSelectionActor.GetPointer() != 0)
-	{
-		NMDebugAI(<< "removed old selection" << std::endl);
-		this->mRenderer->RemoveActor(mSelectionActor);
-	}
-	if (selcnt == 0)
-		return;
-
-	// create new selections
-	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
-
-	vtkSmartPointer<vtkContourFilter> extractor = vtkSmartPointer<vtkContourFilter>::New();
-	extractor->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-
-	//double minrow = std::numeric_limits<int>::max();
-	//double maxrow = -std::numeric_limits<int>::max();
-	selcnt = 0;
-	foreach(const QItemSelectionRange& range, newSel)
-	{
-		const int top = range.top();
-		const int bottom = range.bottom();
-		for (int row=top; row<=bottom; ++row)
-		{
-			//minrow = row < minrow ? row : minrow;
-			//maxrow = row > maxrow ? row : maxrow;
-			//extractor->SetValue(selcnt, (double)row-1);
-			extractor->SetValue(selcnt, (double)row);
-			//clrtab->SetTableValue(selcnt, 1, 0, 0, 1);
-			//scalars->SetValue(selcnt, (double)row);
-			++selcnt;
-		}
-	}
-
-	this->printSelRanges(newSel, "Image Selection");
-
-	extractor->Update();
-	mCellSelection = extractor->GetOutput();
-	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
-	mSelectionMapper->SetInput(mCellSelection);
-	mSelectionMapper->SetScalarVisibility(0);
-	//mSelectionMapper->SetScalarRange(minrow, maxrow);
-	//mSelectionMapper->SetLookupTable(clrtab);
-
-	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
-	a->SetMapper(mSelectionMapper);
-	a->SetVisibility(1);
-	a->GetProperty()->SetColor(1, 0, 0);
-	a->GetProperty()->SetLineWidth(2);
-	mSelectionActor = a;
-	mSelectionActor->SetPickable(0);
-	mRenderer->AddActor(a);
 
 	// call the base class implementation to do datatype agnostic stuff
 	NMLayer::selectionChanged(newSel, oldSel);

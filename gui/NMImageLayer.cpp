@@ -59,8 +59,6 @@
 #include "vtkColorTransferFunction.h"
 #include "vtkDiscretizableColorTransferFunction.h"
 
-
-
 #include "itkDataObject.h"
 #include "otbImage.h"
 #include "otbVectorImage.h"
@@ -74,7 +72,8 @@ public:
 	typedef otb::VectorImage<PixelType, Dimension> VecImgType;
 	typedef typename VecImgType::RegionType VecRegionType;
 
-	static void getBBox(itk::DataObject* img, unsigned int numBands, double* bbox)
+	static void getBBox(itk::DataObject* img, unsigned int numBands,
+			double* bbox)
 		{
 			if (numBands == 1)
 			{
@@ -200,43 +199,56 @@ void NMImageLayer::test()
 		return;
 
 	// get a list of table columns
-
 	int ncols = this->mTableModel->columnCount(QModelIndex());
 	int nrows = this->mTableModel->rowCount(QModelIndex());
 
 	QStringList cols;
+	int idxred = -1, idxblue = -1, idxgreen = -1, idxalpha = -1;
 	for (int i=0; i < ncols; ++i)
 	{
 		const QModelIndex ci = mTableModel->index(0, i, QModelIndex());
 		if (mTableModel->data(ci, Qt::DisplayRole).type() != QVariant::String)
-			cols << mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+		{
+			QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+			cols << fieldName;
+
+			if (fieldName.compare("red", Qt::CaseInsensitive) == 0)
+				idxred = i;
+			else if (fieldName.compare("green", Qt::CaseInsensitive) == 0)
+				idxgreen = i;
+			else if (fieldName.compare("blue", Qt::CaseInsensitive) == 0)
+				idxblue = i;
+			else if (	fieldName.compare("alpha", Qt::CaseInsensitive) == 0
+					 || fieldName.compare("opacity", Qt::CaseInsensitive) == 0
+					)
+				idxalpha = i;
+		}
 	}
 	QString theCol = QInputDialog::getItem(0, "Select Value Field", "", cols);
 	int colidx = cols.indexOf(theCol);
-
 	NMDebugAI(<< "using field #" << colidx << ": " << theCol.toStdString() << std::endl);
 
 	QStringList ramplist;
 	ramplist << "Binary" << "Grey" << "Rainbow" << "RedToBlue";
+	if (idxred >= 0 && idxgreen >=0 && idxblue >=0)
+		ramplist << "ColourTable";
 	QString ramp = QInputDialog::getItem(0, "Select Color Scheme", "", ramplist);
 
 	QString range = QInputDialog::getText(0, "Enter Value Range", "");
 	QStringList ranges = range.split(QChar(' '), QString::SkipEmptyParts);
-	double lower, upper;
+	double lower = 0, upper = nrows -1;
 	bool bok;
-	if (ranges.size() != 2)
+	if (ranges.size() == 2)
 	{
-		NMErr(ctxNMImageLayer, << "wrong range!"<< std::endl);
-		return;
+		lower = ranges.at(0).toDouble(&bok);
+		upper = ranges.at(1).toDouble(&bok);
+		if (!bok)
+		{
+			lower = 0;
+			upper = nrows-1;
+		}
 	}
 
-	lower = ranges.at(0).toDouble(&bok);
-	upper = ranges.at(1).toDouble(&bok);
-	if (!bok)
-	{
-		NMErr(ctxNMImageLayer, << "invalid range bounds!"<< std::endl);
-		return;
-	}
 	NMDebugAI(<< "user range: " << lower << " - " << upper << std::endl);
 
 	// for linear color tables
@@ -308,22 +320,53 @@ void NMImageLayer::test()
 		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
 	}
 	clrfunc->Build();
-	clrfunc->SetColorSpaceToRGB();
+	//clrfunc->SetColorSpaceToRGB();
 
 	clrtab->SetTableValue(0, 0, 0, 0, 0);
 	for (int i=0; i < nrows; ++i)
 	{
-		double fc[3];
-		const QModelIndex fidx = mTableModel->index(i, colidx, QModelIndex());
-		double fieldVal = mTableModel->data(fidx, Qt::DisplayRole).toDouble(&bok);
-		if (bok && fieldVal >= lower && fieldVal <= upper && fieldVal != nodata)
+		if (ramp == "ColourTable")
 		{
-			clrfunc->GetColor((fieldVal/(double)valrange), fc);
-			clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+			double fc[4];
+			const QModelIndex mired   = mTableModel->index(i, idxred  , QModelIndex());
+			const QModelIndex migreen = mTableModel->index(i, idxgreen, QModelIndex());
+			const QModelIndex miblue  = mTableModel->index(i, idxblue , QModelIndex());
+			const QModelIndex mialpha = mTableModel->index(i, idxalpha, QModelIndex());
+
+			const QVariant vred = mTableModel->data(mired, Qt::DisplayRole);
+			const QVariant vgreen = mTableModel->data(migreen, Qt::DisplayRole);
+			const QVariant vblue = mTableModel->data(miblue, Qt::DisplayRole);
+			const QVariant valpha = mTableModel->data(mialpha, Qt::DisplayRole);
+			if (vred.type() == QVariant::Double)
+			{
+				fc[0] = vred.toDouble(&bok);
+				fc[1] = vgreen.toDouble(&bok);
+				fc[2] = vblue.toDouble(&bok);
+				fc[3] = valpha.toDouble(&bok);
+			}
+			else
+			{
+				fc[0] = vred.toDouble(&bok)   / 255.0;
+				fc[1] = vgreen.toDouble(&bok) / 255.0;
+				fc[2] = vblue.toDouble(&bok)  / 255.0;
+				fc[3] = valpha.toDouble(&bok) / 255.0;
+			}
+			clrtab->SetTableValue(i+1, fc);
 		}
 		else
 		{
-			clrtab->SetTableValue(i+1, 0, 0, 0, 0);
+			double fc[3];
+			const QModelIndex fidx = mTableModel->index(i, colidx, QModelIndex());
+			double fieldVal = mTableModel->data(fidx, Qt::DisplayRole).toDouble(&bok);
+			if (bok && fieldVal >= lower && fieldVal <= upper && fieldVal != nodata)
+			{
+				clrfunc->GetColor((fieldVal/(double)valrange), fc);
+				clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+			}
+			else
+			{
+				clrtab->SetTableValue(i+1, 0, 0, 0, 0);
+			}
 		}
 	}
 	clrtab->SetTableValue(nrows, 0, 0, 0, 0);

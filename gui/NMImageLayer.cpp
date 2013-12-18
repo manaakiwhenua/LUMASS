@@ -266,7 +266,7 @@ void NMImageLayer::test()
 
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	clrtab->SetNumberOfTableValues(nrows+2);
-	clrtab->SetTableRange(-1, nrows+1);
+	clrtab->SetTableRange(lower-step-tolerance, upper+step+tolerance);
 
 	vtkSmartPointer<vtkColorTransferFunction> clrfunc =
 			vtkSmartPointer<vtkColorTransferFunction>::New();

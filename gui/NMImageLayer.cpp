@@ -229,7 +229,7 @@ void NMImageLayer::test()
 	NMDebugAI(<< "using field #" << colidx << ": " << theCol.toStdString() << std::endl);
 
 	QStringList ramplist;
-	ramplist << "Binary" << "Grey" << "Rainbow" << "RedToBlue";
+	ramplist << "Binary" << "Grey" << "Rainbow" << "RedToBlue" << "GreenToBlue";
 	if (idxred >= 0 && idxgreen >=0 && idxblue >=0)
 		ramplist << "ColourTable";
 	QString ramp = QInputDialog::getItem(0, "Select Color Scheme", "", ramplist);
@@ -266,7 +266,7 @@ void NMImageLayer::test()
 
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	clrtab->SetNumberOfTableValues(nrows+2);
-	clrtab->SetTableRange(lower-step-tolerance, upper+step+tolerance);
+	//clrtab->SetTableRange(0, nrows+2);
 
 	vtkSmartPointer<vtkColorTransferFunction> clrfunc =
 			vtkSmartPointer<vtkColorTransferFunction>::New();
@@ -319,8 +319,12 @@ void NMImageLayer::test()
 		clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
 		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
 	}
+	else if (ramp == "GreenToBlue")
+	{
+		clrfunc->AddRGBPoint(0.0, 0.0, 1.0, 0.0);
+		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
+	}
 	clrfunc->Build();
-	//clrfunc->SetColorSpaceToRGB();
 
 	clrtab->SetTableValue(0, 0, 0, 0, 0);
 	for (int i=0; i < nrows; ++i)
@@ -363,15 +367,19 @@ void NMImageLayer::test()
 				clrfunc->GetColor((fieldVal/(double)valrange), fc);
 				clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
 			}
+			else if (fieldVal == nodata)
+			{
+				clrtab->SetTableValue(i+1, 1, 0, 0, 1);
+			}
 			else
 			{
-				clrtab->SetTableValue(i+1, 0, 0, 0, 0);
+				clrtab->SetTableValue(i+1, 1, 1, 1, 1);
 			}
 		}
 	}
-	clrtab->SetTableValue(nrows, 0, 0, 0, 0);
+	clrtab->SetTableValue(nrows, 0, 0, 0, 1);
 
-	this->mImgProp->SetUseLookupTableScalarRange(1);
+	//this->mImgProp->SetUseLookupTableScalarRange(1);
 	this->mImgProp->SetLookupTable(clrtab);
 
 	double* clrrange = clrtab->GetRange();

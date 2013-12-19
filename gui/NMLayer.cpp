@@ -583,7 +583,7 @@ void
 NMLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
-	NMDebugAI(<< this->objectName().toStdString() << ": selection changed!" << std::endl);
+	//NMDebugAI(<< this->objectName().toStdString() << ": selection changed!" << std::endl);
 	emit layerSelectionChanged(this);
 }
 

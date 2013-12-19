@@ -199,8 +199,8 @@ void ModelComponentList::removeCurrentLayer()
 
 void ModelComponentList::updateLegend(const NMLayer* layer)
 {
-	NMDebugAI( << "going to update the legend for " << layer->objectName().toStdString()
-			<< endl);
+	//NMDebugAI( << "going to update the legend for " << layer->objectName().toStdString()
+		//	<< endl);
 
 	QModelIndex idx = this->mLayerModel->getItemLayerModelIndex(layer->objectName());
 	if (this->isExpanded(idx))
@@ -310,7 +310,7 @@ void ModelComponentList::updateMapWin(const NMLayer* layer)
 	// TODO: later we have to get the layer's bbox, transform into the window
 	// coordinates and then just update this very region of the renderwidget window
 
-	NMDebugAI( << "updating map window for " << layer->objectName().toStdString() << endl);
+	//NMDebugAI( << "updating map window for " << layer->objectName().toStdString() << endl);
 
 	QVTKWidget* qvtk = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
     qvtk->update();

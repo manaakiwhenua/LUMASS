@@ -25,6 +25,7 @@
 #include "NMImageLayer.h"
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMFastTrackSelectionModel.h"
+#include "NMTableCalculator.h"
 
 #include <QTime>
 #include <QtCore>
@@ -198,6 +199,15 @@ void NMImageLayer::test()
 	if (!this->updateAttributeTable())
 		return;
 
+	double nodata;
+	switch(this->mComponentType)
+	{
+	case otb::ImageIOBase::UCHAR:  nodata = 255; 		 break;
+	case otb::ImageIOBase::DOUBLE: nodata = -3.40282e38; break;
+	default:					   nodata = -2147483647; break;
+	}
+
+
 	// get a list of table columns
 	int ncols = this->mTableModel->columnCount(QModelIndex());
 	int nrows = this->mTableModel->rowCount(QModelIndex());
@@ -248,24 +258,32 @@ void NMImageLayer::test()
 			upper = nrows-1;
 		}
 	}
+	else if (ramp != "ColourTable")
+	{
+		NMTableCalculator calc(mTableModel, this);
+		std::vector<double> stats = calc.calcColumnStats(theCol);
+		lower = stats[0];
+		upper = stats[1];
+
+		if (lower == nodata)
+			lower = 0;
+	}
 
 	NMDebugAI(<< "user range: " << lower << " - " << upper << std::endl);
 
 	// for linear color tables
-	double valrange = upper - lower + 1;
+
+	// since color is addressed by 0-based index, we don't need the +1 here
+	double valrange = upper - lower; // + 1;
 	double step = valrange / nrows;
 	double tolerance = step * 0.5;
 
-	double nodata;
-	switch(this->mComponentType)
-	{
-	case otb::ImageIOBase::UCHAR:  nodata = 255; 		 break;
-	case otb::ImageIOBase::DOUBLE: nodata = -3.40282e38; break;
-	default:					   nodata = -2147483647; break;
-	}
 
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->SetNumberOfTableValues(nrows+2);
+	clrtab->SetNumberOfTableValues(nrows);
+	clrtab->SetTableRange(0, nrows-1);
+	// only when colouring scalars directly with nrows = number of colours
+	//clrtab->SetNumberOfTableValues(nrows+2);
 	//clrtab->SetTableRange(0, nrows+2);
 
 	vtkSmartPointer<vtkColorTransferFunction> clrfunc =
@@ -295,9 +313,9 @@ void NMImageLayer::test()
 		vtkMath::HSVToRGB(hsv, rgb);
 		clrfunc->AddRGBPoint(0.25, rgb[0], rgb[1], rgb[2]);
 
-		hsv[0] = 1.0;
-		vtkMath::HSVToRGB(hsv, rgb);
-		clrfunc->AddRGBPoint(1.0, rgb[0], rgb[1], rgb[2]);
+		//hsv[0] = 1.0;
+		//vtkMath::HSVToRGB(hsv, rgb);
+		//clrfunc->AddRGBPoint(1.0, rgb[0], rgb[1], rgb[2]);
 
 		hsv[0] = 0.5;
 		vtkMath::HSVToRGB(hsv, rgb);
@@ -326,7 +344,11 @@ void NMImageLayer::test()
 	}
 	clrfunc->Build();
 
-	clrtab->SetTableValue(0, 0, 0, 0, 0);
+	// only when colouring scalars directly
+	//clrtab->SetTableValue(0, 0, 0, 0, 0);
+
+	NMDebugAI(<< "checking colour assignments ..." << std::endl);
+	long in=0, nod=0, out=0;
 	for (int i=0; i < nrows; ++i)
 	{
 		if (ramp == "ColourTable")
@@ -355,7 +377,8 @@ void NMImageLayer::test()
 				fc[2] = vblue.toDouble(&bok)  / 255.0;
 				fc[3] = valpha.toDouble(&bok) / 255.0;
 			}
-			clrtab->SetTableValue(i+1, fc);
+			clrtab->SetTableValue(i, fc);
+			//clrtab->SetTableValue(i+1, fc);
 		}
 		else
 		{
@@ -364,20 +387,33 @@ void NMImageLayer::test()
 			double fieldVal = mTableModel->data(fidx, Qt::DisplayRole).toDouble(&bok);
 			if (bok && fieldVal >= lower && fieldVal <= upper && fieldVal != nodata)
 			{
-				clrfunc->GetColor((fieldVal/(double)valrange), fc);
-				clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+				double clrpos = fieldVal/(double)valrange;
+				//NMDebug(<< fieldVal << "=in" << "=" << clrpos << " ");
+				clrfunc->GetColor(clrpos, fc);
+				clrtab->SetTableValue(i, fc[0], fc[1], fc[2], 1);
+				// only when colouring scalars directly (i.e. w/o table)
+				//clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+
+				++in;
 			}
 			else if (fieldVal == nodata)
 			{
-				clrtab->SetTableValue(i+1, 1, 0, 0, 1);
+				//NMDebug(<< fieldVal << "=nodata ");
+				clrtab->SetTableValue(i, 0, 0, 0, 0);
+				++nod;
 			}
 			else
 			{
-				clrtab->SetTableValue(i+1, 1, 1, 1, 1);
+				++out;
+				//NMDebug(<< fieldVal << "=out " );
+				clrtab->SetTableValue(i, 1, 1, 1, 1);
+				// only when colouring scalars directly (i.e. w/o table)
+				//clrtab->SetTableValue(i+1, 1, 1, 1, 1);
 			}
 		}
 	}
-	clrtab->SetTableValue(nrows, 0, 0, 0, 1);
+	NMDebugAI(<< "colouring: in=" << in << " out=" << out << " nodata=" << nod << std::endl);
+	//clrtab->SetTableValue(nrows, 0, 0, 0, 1);
 
 	//this->mImgProp->SetUseLookupTableScalarRange(1);
 	this->mImgProp->SetLookupTable(clrtab);

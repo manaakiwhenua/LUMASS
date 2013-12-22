@@ -210,6 +210,7 @@ void NMImageLayer::test()
 	///////////////////////////////// GET RAT PROPS INCASE WE HAVE ONE /////////////////////////////////////////
 	int ncols=0, numcolors=256;
 	QStringList cols;
+	QList<int> colindices;
 	int idxred = -1, idxblue = -1, idxgreen = -1, idxalpha = -1;
 	if (this->mTableModel)
 	{
@@ -223,6 +224,7 @@ void NMImageLayer::test()
 			{
 				QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
 				cols << fieldName;
+				colindices << i;
 
 				if (fieldName.compare("red", Qt::CaseInsensitive) == 0)
 					idxred = i;
@@ -245,7 +247,7 @@ void NMImageLayer::test()
 	if (mTableModel)
 	{
 		theCol= QInputDialog::getItem(0, "Select Value Field", "", cols);
-		colidx = cols.indexOf(theCol);
+		colidx = colindices.at(cols.indexOf(theCol));
 		NMDebugAI(<< "using field #" << colidx << ": " << theCol.toStdString() << std::endl);
 	}
 
@@ -276,12 +278,18 @@ void NMImageLayer::test()
 		std::vector<double> stats = calc.calcColumnStats(theCol);
 		lower = stats[0];
 		upper = stats[1];
+		NMDebugAI(<< theCol.toStdString() << " statistics: " << std::endl);
+		NMDebugAI(<< "min=" << lower << " max=" << upper << " mean=" << stats[2]
+		          << "std.dev=" << stats[3] << " numVals=" << stats[5] << std::endl);
 	}
 	else if (this->mTableModel == 0 && this->mLayerType == NMLayer::NM_IMAGE_LAYER)
 	{
 		const double* imgstats = this->getStatistics();
 		lower = imgstats[0];
 		upper = imgstats[1];
+		NMDebugAI(<< this->objectName().toStdString() << " statistics: " << std::endl);
+		NMDebugAI(<< "min=" << lower << " max=" << upper << " mean=" << imgstats[2]
+		          << "std.dev=" << imgstats[3] << " median=" << imgstats[4] << std::endl);
 	}
 	if (lower == nodata)
 		lower = 0;
@@ -293,19 +301,21 @@ void NMImageLayer::test()
 
 	// since color is addressed by 0-based index, we don't need the +1 here
 	double valrange = upper - lower;// + 1;
-	double step = valrange / (double)numcolors+2;
+	double step = valrange / (double)numcolors;
 	double tolerance = step * 0.5;
 
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	clrtab->SetNumberOfTableValues(numcolors+2);
 	if (mTableModel)
 	{
-		//clrtab->SetTableRange(-1, numcolors+1);
-		clrtab->SetTableRange(0, numcolors-1);
+		clrtab->SetTableRange(-1, numcolors);
+		//clrtab->IndexedLookupOn();
+		//clrtab->SetNanColor(0, 0, 0, 0);
 	}
 	else
 	{
-		clrtab->SetTableRange(lower-step-tolerance, upper+step+tolerance);
+		//clrtab->SetNumberOfTableValues(numcolors+2);
+		clrtab->SetTableRange(lower-step, upper+step);
 	}
 
 
@@ -313,7 +323,6 @@ void NMImageLayer::test()
 
 	vtkSmartPointer<vtkColorTransferFunction> clrfunc =
 			vtkSmartPointer<vtkColorTransferFunction>::New();
-	clrfunc->SetAllowDuplicateScalars(1);
 	if (ramp == "Binary")
 	{
 		clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
@@ -370,10 +379,12 @@ void NMImageLayer::test()
 	////////////////////////////// FILL THE LOOKUP TABLE ///////////////////////////////////////
 
 	// everything below the 'range' is transparent
-	clrtab->SetTableValue(0, 0, 0, 0, 0);
+	//if (mTableModel == 0)
+		clrtab->SetTableValue(0, 0, 0, 0, 0);
 
 	NMDebugAI(<< "checking colour assignments ..." << std::endl);
 	long in=0, nod=0, out=0;
+	double minclrpos, maxclrpos;
 	for (int i=0; i < numcolors; ++i)
 	{
 		// ============================ USING COLOUR TABLE (i.e. attributes of Table) =====================
@@ -403,8 +414,8 @@ void NMImageLayer::test()
 				fc[2] = vblue.toDouble(&bok)  / 255.0;
 				fc[3] = valpha.toDouble(&bok) / 255.0;
 			}
-			clrtab->SetTableValue(i, fc);
-			//clrtab->SetTableValue(i+1, fc);
+			//clrtab->SetTableValue(i, fc);
+			clrtab->SetTableValue(i+1, fc);
 		}
 		// ============================= COLOURING ATTRIBUTE TABLE FIELD ==============================
 		else if (mTableModel)
@@ -417,26 +428,36 @@ void NMImageLayer::test()
 				double clrpos = (double)fieldVal/(double)valrange;
 				//NMDebug(<< fieldVal << "=in" << "=" << clrpos << " ");
 				clrfunc->GetColor(clrpos, fc);
-				clrtab->SetTableValue(i, fc[0], fc[1], fc[2], 1);
-				// only when colouring scalars directly (i.e. w/o table)
-				//clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+				//clrtab->SetTableValue(i, fc[0], fc[1], fc[2], 1);
+				clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
+
+				if (i==0)
+				{
+					minclrpos = clrpos;
+					maxclrpos = clrpos;
+				}
+				else
+				{
+					minclrpos = ::min(clrpos, minclrpos);
+					maxclrpos = ::max(clrpos, maxclrpos);
+				}
 
 				++in;
 			}
 			else if (fieldVal == nodata)
 			{
-				//NMDebug(<< fieldVal << "=nodata ");
-				//clrtab->SetTableValue(i+1, 0, 0, 0, 0);
-				clrtab->SetTableValue(i, 0, 0, 0, 0);
+				clrtab->SetTableValue(i+1, 0, 0, 0, 0);
 				++nod;
 			}
-			else
+			else if (fieldVal > upper)
 			{
 				++out;
-				//NMDebug(<< fieldVal << "=out " );
-				clrtab->SetTableValue(i, 1, 1, 1, 1);
-				// only when colouring scalars directly (i.e. w/o table)
-				//clrtab->SetTableValue(i+1, 1, 1, 1, 1);
+				clrtab->SetTableValue(i+1, 1, 1, 1, 1);
+			}
+			else if (fieldVal < lower)
+			{
+				++out;
+				clrtab->SetTableValue(i+1, 0, 0, 0, 1);
 			}
 		}
 		// ==================== JUST COLOUR THE SCALARS (i.e. image without table) =======================
@@ -449,8 +470,11 @@ void NMImageLayer::test()
 		}
 	}
 	// everything above the 'range' is going to be transparent as well
-	clrtab->SetTableValue(numcolors+1, 0, 0, 0, 0);
+	//if (mTableModel == 0)
+		clrtab->SetTableValue(numcolors+1, 0, 0, 0, 0);
+
 	NMDebugAI(<< "colouring: in=" << in << " out=" << out << " nodata=" << nod << std::endl);
+	NMDebugAI(<< "minclrpos=" << minclrpos << " maxcolrpos=" << maxclrpos << std::endl);
 
 	this->mImgProp->SetUseLookupTableScalarRange(1);
 	this->mImgProp->SetLookupTable(clrtab);

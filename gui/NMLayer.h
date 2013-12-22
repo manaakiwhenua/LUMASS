@@ -177,11 +177,7 @@ protected:
 	NMLayerType mLayerType;
 
 	NMTableView* mTableView;
-	//QItemSelectionModel* mSelectionModel;
 	NMFastTrackSelectionModel* mSelectionModel;
-	//QSharedPointer<NMFastTrackSelectionModel> mSelectionModel;
-	//QItemSelection* mElementSelection
-
 	QAbstractItemModel* mTableModel;
 
 	vtkSmartPointer<vtkEventQtSlotConnect> mVtkConn;

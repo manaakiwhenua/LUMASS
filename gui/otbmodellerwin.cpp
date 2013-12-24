@@ -33,7 +33,7 @@
 // NM stuff
 #include "nmlog.h"
 #include "NMMacros.h"
-#include "NMLayer.h"
+//#include "NMLayer.h"
 #include "NMVectorLayer.h"
 #include "NMMosra.h"
 #include "NMTableView.h"
@@ -260,6 +260,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	qRegisterMetaType< QList< QList< QStringList > > >();
 	qRegisterMetaType< NMItkDataObjectWrapper::NMComponentType >();
 	qRegisterMetaType< NMProcess::AdvanceParameter >();
+	qRegisterMetaType< NMLayer::NMLegendType >();
+	qRegisterMetaType< NMLayer::NMLayerType >();
+	qRegisterMetaType< NMLayer::NMLegendClassType >();
+	qRegisterMetaType< NMLayer::NMColourRamp >();
 #ifdef BUILD_RASSUPPORT	
 	qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif

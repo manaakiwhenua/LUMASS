@@ -26,12 +26,11 @@
 #define NMVECTORLAYER_H_
 #define ctxNMVectorLayer "NMVectorLayer"
 
-#include <NMLayer.h>
+#include "NMLayer.h"
 
 #include "vtkPolyData.h"
 #include "vtkOGRLayerMapper.h"
 #include "vtkActor.h"
-//#include "vtkDepthSortPolyData.h"
 
 class NMVectorLayer: public NMLayer
 {
@@ -67,7 +66,7 @@ public:
 	long getNumberOfFeatures(void);
 
 	// map unique values
-	int mapUniqueValues(QString fieldName);
+	void mapUniqueValues();
 	void mapSingleSymbol();
 
 public slots:

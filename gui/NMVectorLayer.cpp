@@ -175,6 +175,8 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 		return;
 	}
 
+	emit layerProcessingStart();
+
 	vtkPolyData* pd = vtkPolyData::SafeDownCast(dataset);
 	this->mDataSet = pd;
 
@@ -229,15 +231,19 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 		this->setContour(cont);
 	}
 
-	if (!this->updateAttributeTable())
-	{
-		NMWarn(ctxNMVectorLayer, << "Couldn't update the attribute table, "
-				<< "which might lead to trouble later on!");
-	}
+	//if (!this->updateAttributeTable())
+	//{
+	//	NMWarn(ctxNMVectorLayer, << "Couldn't update the attribute table, "
+	//			<< "which might lead to trouble later on!");
+	//}
 
 	// initially, we show all polys in the same colour
-	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-		this->mapSingleSymbol();
+	//if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+	this->initiateLegend();
+	this->mapSingleSymbol();
+
+	emit layerProcessingEnd();
+
 }
 
 const vtkPolyData* NMVectorLayer::getContour(void)
@@ -334,11 +340,14 @@ long NMVectorLayer::getNumberOfFeatures(void)
 	return this->mDataSet->GetNumberOfCells();
 }
 
-int NMVectorLayer::mapUniqueValues(QString fieldName)
+
+void
+NMVectorLayer::mapUniqueValues()
 {
 	if (this->mFeatureType != NMVectorLayer::NM_POLYGON_FEAT)
 	{
-		return 0;
+		NMLayer::mapUniqueValues();
+		return;
 	}
 
 	// make a list of available attributes
@@ -352,7 +361,7 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 	// let's find out about the attribute
 	// if we've got doubles, we refuse to map unique values ->
 	// doesn't make sense, does it?
-	vtkAbstractArray* anAr = dsAttr->GetAbstractArray(fieldName.toStdString().c_str());
+	vtkAbstractArray* anAr = dsAttr->GetAbstractArray(mLegenValueField.toStdString().c_str());
 	int type = anAr->GetDataType();
 	if (type == VTK_DOUBLE)
 	{
@@ -365,12 +374,12 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 		bNum = false;
 
 	// we create a new look-up table and set the number of entries we need
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->Allocate(anAr->GetNumberOfTuples());
-	clrtab->SetNumberOfColors(anAr->GetNumberOfTuples());
+	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+	mLookupTable->Allocate(anAr->GetNumberOfTuples());
+	mLookupTable->SetNumberOfColors(anAr->GetNumberOfTuples());
 
 	// let's create a new legend info table
-	this->resetLegendInfo();
+	//this->resetLegendInfo();
 
 
 	// we iterate over the number of tuples in the user specified attribute array
@@ -389,7 +398,7 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 	{
 		if (hole->GetValue(t))
 		{
-			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
 			continue;
 		}
 
@@ -439,7 +448,7 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 			nameAr->SetValue(newidx, sVal.toStdString().c_str());
 
 			// add the color spec to the mapper's color table
-			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
 			//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
 			//					<< " " << rgba[1] << " " << rgba[2] << endl);
 
@@ -456,25 +465,28 @@ int NMVectorLayer::mapUniqueValues(QString fieldName)
 			//double tmprgba[4];
 			dblAr->GetTuple(tabInfoIdx, rgba);
 
-			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
 		}
 	}
 
-	// get the mapper and look whats possible
-	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
-	mapper->SetLookupTable(clrtab);
-	mapper->Modified();
+	//// get the mapper and look whats possible
+	//vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
+	//mapper->SetLookupTable(mLookupTable);
+	//mapper->Modified();
+    //
+	//emit visibilityChanged(this);
+	//emit legendChanged(this);
 
-	emit visibilityChanged(this);
-	emit legendChanged(this);
-
-	return 1;
+	return;
 }
 
 void NMVectorLayer::mapSingleSymbol()
 {
 	if (this->mFeatureType != NMVectorLayer::NM_POLYGON_FEAT)
+	{
+		NMLayer::mapSingleSymbol();
 		return;
+	}
 
 	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 	vtkLongArray* nmids = vtkLongArray::SafeDownCast(dsAttr->GetArray("nm_id"));
@@ -484,12 +496,12 @@ void NMVectorLayer::mapSingleSymbol()
 			dsAttr->GetArray("nm_hole"));
 
 	// we create a new look-up table and set the number of entries we need
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->Allocate(ncells);
-	clrtab->SetNumberOfTableValues(ncells);
+	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+	mLookupTable->Allocate(ncells);
+	mLookupTable->SetNumberOfTableValues(ncells);
 
 	// let's create a new legend info table
-	this->resetLegendInfo();
+	//this->resetLegendInfo();
 
 	// chose a random colour
 	QString sVal;
@@ -509,7 +521,7 @@ void NMVectorLayer::mapSingleSymbol()
 		// add the new cell index to the hash map
 		idxVec.append(l);
 
-		clrtab->SetTableValue(l, rgba[0], rgba[1], rgba[2], rgba[3]);
+		mLookupTable->SetTableValue(l, rgba[0], rgba[1], rgba[2], rgba[3]);
 	}
 
 	// fill hash map
@@ -535,12 +547,12 @@ void NMVectorLayer::mapSingleSymbol()
 	clrs->SetTuple(newidx, rgba);
 
 	// get the mapper and look whats possible
-	vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
+	//vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
 	//mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
-	mapper->SetLookupTable(clrtab);
+	//mapper->SetLookupTable(clrtab);
 
-	emit visibilityChanged(this);
-	emit legendChanged(this);
+	//emit visibilityChanged(this);
+	//emit legendChanged(this);
 }
 
 void NMVectorLayer::createTableView(void)

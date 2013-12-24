@@ -783,13 +783,14 @@ bool NMImageLayer::setFileName(QString filename)
 
 	// we're going to update the attribute table, since
 	// we'll probably need it
-	if (!this->updateAttributeTable())
-	{
-		NMWarn(ctxNMImageLayer, << "Couldn't update the attribute table, "
-				<< "which might lead to trouble later on!");
-	}
+	//if (!this->updateAttributeTable())
+	//{
+	//	NMWarn(ctxNMImageLayer, << "Couldn't update the attribute table, "
+	//			<< "which might lead to trouble later on!");
+	//}
 
 	this->mImage = 0;
+	this->initiateLegend();
 
 	emit layerProcessingEnd();
 	emit layerLoaded();
@@ -999,7 +1000,8 @@ NMImageLayer::windowLevelChanged(vtkObject* obj)
 }
 
 
-int NMImageLayer::mapUniqueValues(QString fieldName)
+void
+NMImageLayer::mapUniqueValues()
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
 
@@ -1009,17 +1011,17 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 		if (!this->updateAttributeTable())
 		{
 			NMDebugAI(<< "trouble getting an attribute table!");
-			return 0;
+			return;
 		}
 	}
 
 	// make a list of available attributes
 	//otb::AttributeTable::Pointer tab = this->mRATVec.at(0);
-	int idxField = mOtbRAT->ColumnExists(fieldName.toStdString());
+	int idxField = mOtbRAT->ColumnExists(mLegendValueField.toStdString());
 	if (idxField < 0)
 	{
 		NMErr(ctxNMImageLayer, << "the specified attribute does not exist!");
-		return 0;
+		return;
 	}
 
 	// let's find out about the attribute
@@ -1033,7 +1035,7 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	else if (mOtbRAT->GetColumnType(idxField) != otb::AttributeTable::ATTYPE_INT)
 	{
 		NMDebugAI( << "oh no, not with doubles!" << endl);
-		return 0;
+		return;
 	}
 
 	// let's get the statistics if not done already
@@ -1047,12 +1049,12 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	bool bMaxIncluded = false;
 
 	// we create a new look-up table and set the number of entries we need
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->Allocate(mOtbRAT->GetNumRows()+1);
-	clrtab->SetNumberOfTableValues(mOtbRAT->GetNumRows()+1);
+	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+	mLookupTable->Allocate(mOtbRAT->GetNumRows()+1);
+	mLookupTable->SetNumberOfTableValues(mOtbRAT->GetNumRows()+1);
 
 	// let's create a new legend info table
-	this->resetLegendInfo();
+	//this->resetLegendInfo();
 
 
 	// we iterate over the number of tuples in the user specified attribute array
@@ -1064,7 +1066,7 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 	// indices, we fill the HashMap mHashValueIndices (s. Header file for further descr.)
 	bool bConvOk;
 	int clrCount = 0, val;
-	std::string fn = fieldName.toStdString();
+	std::string fn = mLegendValueField.toStdString();
 	QString sVal;
 	vtkMath::RandomSeed(QTime::currentTime().msec());
 	for (int t=0; t < mOtbRAT->GetNumRows(); ++t)
@@ -1126,7 +1128,7 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 			nameAr->SetValue(newidx, sVal.toStdString().c_str());
 
 			// add the color spec to the mapper's color table
-			clrtab->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
 			//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
 			//					<< " " << rgba[1] << " " << rgba[2] << endl);
 
@@ -1143,7 +1145,7 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 			double tmprgba[4];
 			dblAr->GetTuple(tabInfoIdx, tmprgba);
 
-			clrtab->SetTableValue(t, tmprgba[0], tmprgba[1], tmprgba[2]);
+			mLookupTable->SetTableValue(t, tmprgba[0], tmprgba[1], tmprgba[2]);
 		}
 	}
 
@@ -1186,18 +1188,18 @@ int NMImageLayer::mapUniqueValues(QString fieldName)
 		nameAr->SetValue(newidx, sVal.toStdString().c_str());
 
 		// add the color spec to the mapper's color table
-		clrtab->SetTableValue(mOtbRAT->GetNumRows(), rgba[0], rgba[1], rgba[2], rgba[3]);
+		mLookupTable->SetTableValue(mOtbRAT->GetNumRows(), rgba[0], rgba[1], rgba[2], rgba[3]);
 		//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
 		//					<< " " << rgba[1] << " " << rgba[2] << endl);
 
 	}
 
-	this->mImgProp->SetLookupTable(clrtab);
-	this->mImgProp->UseLookupTableScalarRangeOn();
-
-	emit visibilityChanged(this);
-	emit legendChanged(this);
+	//this->mImgProp->SetLookupTable(mLookupTable);
+	//this->mImgProp->UseLookupTableScalarRangeOn();
+    //
+	//emit visibilityChanged(this);
+	//emit legendChanged(this);
 
 	NMDebugCtx(ctxNMImageLayer, << "done!");
-	return 1;
+	return;
 }

@@ -80,12 +80,14 @@ public:
 		{return this->mReader;}
 
 	bool isRasLayer(void) {return this->mReader->isRasMode();};
-	int mapUniqueValues(QString fieldName);
+	void mapUniqueValues();
 
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
 	const double* getStatistics(void);
+	const vtkImageProperty* getImageProperty(void)
+		{return this->mImgProp;}
 
 
 public slots:

@@ -735,11 +735,12 @@ void ModelComponentList::mapSingleSymbol()
 	// get the current layer
 	QModelIndex idx = this->currentIndex();
 	NMLayer* l = (NMLayer*)idx.internalPointer();
-	if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-	{
-		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
-		vl->mapSingleSymbol();
-	}
+	l->mapSingleSymbol();
+	//if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+	//{
+	//	NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+	//	vl->mapSingleSymbol();
+	//}
 }
 
 void ModelComponentList::mapUniqueValues()
@@ -815,10 +816,19 @@ void ModelComponentList::mapUniqueValues()
 	if (!bOk)
 		return;
 
-	if (vL != 0)
-		vL->mapUniqueValues(theField);
-	else if (iL != 0)
-		iL->mapUniqueValues(theField);
+	l->setLegendType(NMLayer::NM_LEGEND_INDEXED);
+	l->setLegendClassType(NMLayer::NM_CLASS_UNIQUE);
+	l->setLegendValueField(theField);
+	l->updateLegend();
+	//if (vL != 0)
+	//{
+	//	vL->setLegendValueField(theField);
+	//	vL->mapUniqueValues();
+	//}
+	//else if (iL != 0)
+	//{
+	//	iL->mapUniqueValues(theField);
+	//}
 }
 
 void ModelComponentList::test()

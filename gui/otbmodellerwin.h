@@ -46,7 +46,7 @@
 #include "vtkCellPicker.h"
 
 #include "LUMASSConfig.h"
-#include "NMLayer.h"
+//#include "NMLayer.h"
 
 
 // rasdaman
@@ -57,11 +57,13 @@
   #include "otbRasdamanImageIOFactory.h"
 #endif
 
-
 class vtkRenderer;
 class vtkEventQtSlotConnect;
 class vtkObject;
 class vtkCommand;
+class vtkTable;
+class NMLayer;
+class NMTableView;
 
 namespace Ui
 {

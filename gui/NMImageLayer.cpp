@@ -157,6 +157,9 @@ NMImageLayer::~NMImageLayer()
 		delete this->mReader;
 	if (this->mPipeconn)
 		delete this->mPipeconn;
+
+
+
 //	if (this->mTableView)
 //	{
 //		this->mTableView->close();
@@ -647,7 +650,7 @@ int NMImageLayer::updateAttributeTable()
 	NMQtOtbAttributeTableModel* otbModel;
 	if (this->mTableModel == 0)
 	{
-		otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT, this);
+		otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
 	}
 	else
 	{
@@ -660,7 +663,7 @@ int NMImageLayer::updateAttributeTable()
 	// in any case, we create a new item selection model
 	if (this->mSelectionModel == 0)
 	{
-		this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
+		this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, 0);
 	}
 	this->mTableModel = otbModel;
 

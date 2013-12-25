@@ -53,6 +53,8 @@
 #include "vtkUnstructuredGrid.h"
 #include "vtkPolyData.h"
 #include "vtkOGRLayerMapper.h"
+#include "vtkColorTransferFunction.h"
+#include "vtkLookupTable.h"
 
 class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
@@ -70,32 +72,6 @@ class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QOb
 
 
 public:
-	NMPropertyGetSet(LegendType, NMLegendType);
-	NMPropertyGetSet(LegendClassType, NMLegendClassType);
-	NMPropertyGetSet(ColourRamp, NMColourRamp);
-	NMPropertyGetSet(LegendValueField, QString);
-	NMPropertyGetSet(LegendDescrField, QString);
-	NMPropertyGetSet(Nodata, double);
-	NMPropertyGetSet(Lower, double);
-	NMPropertyGetSet(Upper, double);
-
-signals:
-	void LegendTypeChanged();
-	void LegendClassTypeChanged();
-	void LegendDescrFieldChanged();
-	void LegendValueFieldChanged();
-	void ColourRampChanged();
-	void LowerChanged();
-	void UpperChanged();
-	void NodataChanged();
-
-
-public:
-	NMLayer(vtkRenderWindow* renWin,
-			vtkRenderer* renderer=0,
-			QObject* parent=0);
-	virtual ~NMLayer();
-
 	enum NMLayerType
 		{
 			NM_VECTOR_LAYER,
@@ -139,6 +115,33 @@ public:
 			NM_RAMP_GREEN2YELLOW2RED,
 			NM_RAMP_MANUAL
 		};
+
+	NMPropertyGetSet(LegendType, NMLayer::NMLegendType);
+	NMPropertyGetSet(LegendClassType, NMLayer::NMLegendClassType);
+	NMPropertyGetSet(ColourRamp, NMLayer::NMColourRamp);
+	NMPropertyGetSet(LegendValueField, QString);
+	NMPropertyGetSet(LegendDescrField, QString);
+	NMPropertyGetSet(Nodata, double);
+	NMPropertyGetSet(Lower, double);
+	NMPropertyGetSet(Upper, double);
+
+signals:
+	void LegendTypeChanged();
+	void LegendClassTypeChanged();
+	void LegendDescrFieldChanged();
+	void LegendValueFieldChanged();
+	void ColourRampChanged();
+	void LowerChanged();
+	void UpperChanged();
+	void NodataChanged();
+
+
+public:
+	NMLayer(vtkRenderWindow* renWin,
+			vtkRenderer* renderer=0,
+			QObject* parent=0);
+	virtual ~NMLayer();
+
 
 	virtual void setDataSet(vtkDataSet* dataset);
 	virtual bool setFileName(QString filename)
@@ -305,10 +308,10 @@ protected:
 	QString mLegendValueField;
 	QString mLegendDescrField;
 
-	NMLayerType mLayerType;
-	NMLegendType mLegendType;
-	NMLegendClassType mLegendClassType;
-	NMColourRamp mColourRamp;
+	NMLayer::NMLayerType mLayerType;
+	NMLayer::NMLegendType mLegendType;
+	NMLayer::NMLegendClassType mLegendClassType;
+	NMLayer::NMColourRamp mColourRamp;
 
 	vtkSmartPointer<vtkColorTransferFunction> mClrFunc;
 	vtkSmartPointer<vtkLookupTable> mLookupTable;

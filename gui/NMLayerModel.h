@@ -27,7 +27,7 @@
 
 #define ctxNMLayerModel "NMLayerModel"
 #include "nmlog.h"
-#include "NMLayer.h"
+//#include "NMLayer.h"
 
 #include <QObject>
 #include <QStandardItem>
@@ -36,6 +36,8 @@
 #include <QHash>
 #include <QVariant>
 #include <QSharedPointer>
+
+class NMLayer;
 
 class NMLayerModel : public QAbstractItemModel
 {

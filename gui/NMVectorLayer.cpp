@@ -361,12 +361,12 @@ NMVectorLayer::mapUniqueValues()
 	// let's find out about the attribute
 	// if we've got doubles, we refuse to map unique values ->
 	// doesn't make sense, does it?
-	vtkAbstractArray* anAr = dsAttr->GetAbstractArray(mLegenValueField.toStdString().c_str());
+	vtkAbstractArray* anAr = dsAttr->GetAbstractArray(mLegendValueField.toStdString().c_str());
 	int type = anAr->GetDataType();
 	if (type == VTK_DOUBLE)
 	{
 		NMDebugAI( << "oh no, not with doubles!" << endl);
-		return 0;
+		return;
 	}
 
 	bool bNum = true;
@@ -640,7 +640,7 @@ int NMVectorLayer::updateAttributeTable(void)
 	vtkQtEditableTableModelAdapter* tabModel;
 	if (this->mTableModel == 0)
 	{
-		tabModel = new vtkQtEditableTableModelAdapter(mAttributeTable, this);
+		tabModel = new vtkQtEditableTableModelAdapter(mAttributeTable);
 	}
 	else
 	{
@@ -652,7 +652,7 @@ int NMVectorLayer::updateAttributeTable(void)
 	// in any case, we create a new item selection model
 	if (this->mSelectionModel == 0)
 	{
-		this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
+		this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, 0);
 	}
 	this->mTableModel = tabModel;
 

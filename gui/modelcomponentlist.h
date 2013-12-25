@@ -38,7 +38,7 @@
 #include <QDrag>
 #include <QPaintEvent>
 
-#include "NMLayer.h"
+//#include "NMLayer.h"
 #include "NMLayerModel.h"
 //#include "NMVectorLayer.h"
 
@@ -46,6 +46,7 @@
 //#include "vtkRenderWindow.h"
 //#include "vtkEventQtSlotConnect.h"
 
+class NMLayer;
 
 class ModelComponentList : public QTreeView
 {

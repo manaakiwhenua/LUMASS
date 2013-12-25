@@ -34,6 +34,7 @@
 #include "nmlog.h"
 #include "NMMacros.h"
 //#include "NMLayer.h"
+#include "NMImageLayer.h"
 #include "NMVectorLayer.h"
 #include "NMMosra.h"
 #include "NMTableView.h"
@@ -1584,8 +1585,13 @@ void OtbModellerWin::doMOSO()
 	if (solved)
 	{
 		NMDebugAI( << "mapping unique values ..." << endl);
-		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(layer);
-		vl->mapUniqueValues(tr("OPT_STR"));
+		//NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(layer);
+		//vl->mapUniqueValues(tr("OPT_STR"));
+		layer->setLegendType(NMLayer::NM_LEGEND_INDEXED);
+		layer->setLegendClassType(NMLayer::NM_CLASS_UNIQUE);
+		layer->setLegendValueField("OPT_STR");
+		layer->setLegendDescrField("OPT_STR");
+		layer->updateLegend();
 	}
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

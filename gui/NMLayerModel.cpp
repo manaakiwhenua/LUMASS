@@ -22,7 +22,8 @@
  *      Author: alex
  */
 
-#include <NMLayerModel.h>
+#include "NMLayerModel.h"
+#include "NMLayer.h"
 
 #include <QPixmap>
 #include <QPainter>
@@ -55,6 +56,7 @@ int NMLayerModel::pileItemLayer(NMLayer* layer)
 
 	int stackindex = nLayers == 0 ? 0 : nLayers-1;
 	int treeidx = this->toTreeModelRow(stackindex);
+	layer->setParent(this);
 	QSharedPointer<NMLayer> pL(layer);
 	pL->setLayerPos(nLayers);
 

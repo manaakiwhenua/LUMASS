@@ -342,6 +342,7 @@ void ModelComponentList::addLayer(NMLayer* layer)
 
 	OtbModellerWin* mwin = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
 	connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, double)), mwin, SLOT(updateLayerInfo(NMLayer *, double)));
+	//layer->setParent(this);
 
 	// add the layer to the NMLayerModel
 	this->mLayerModel->pileItemLayer(layer);
@@ -735,7 +736,8 @@ void ModelComponentList::mapSingleSymbol()
 	// get the current layer
 	QModelIndex idx = this->currentIndex();
 	NMLayer* l = (NMLayer*)idx.internalPointer();
-	l->mapSingleSymbol();
+	l->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
+	l->updateLegend();
 	//if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
 	//{
 	//	NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);

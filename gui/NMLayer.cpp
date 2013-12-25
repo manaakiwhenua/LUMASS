@@ -22,7 +22,9 @@
  *      Author: alex
  */
 
-#include <NMLayer.h>
+#include "NMLayer.h"
+#include "NMImageLayer.h"
+#include "NMVectorLayer.h"
 
 #include <QTime>
 
@@ -30,6 +32,7 @@
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
 #include "vtkDataSetAttributes.h"
+#include "vtkMath.h"
 
 
 NMLayer::NMLayer(vtkRenderWindow* renWin,
@@ -98,6 +101,12 @@ NMLayer::~NMLayer()
 		this->mTableView->close();
 		delete this->mTableView;
 	}
+
+	if (mSelectionModel != 0)
+		delete mSelectionModel;
+
+	if (mTableModel != 0)
+		delete mTableModel;
 
 	NMDebugCtx(ctxNMLayer, << "done!");
 }
@@ -172,7 +181,7 @@ NMLayer::getColumnIndex(const QString& fieldname)
 	for (int c=0; c < ncols; ++c)
 	{
 		colname = mTableModel->headerData(c, Qt::Horizontal).toString();
-		if (colname.compare(name, Qt::CaseInsensitive) == 0)
+		if (colname.compare(fieldname, Qt::CaseInsensitive) == 0)
 		{
 			colidx = c;
 			break;
@@ -195,11 +204,13 @@ NMLayer::getColumnType(int colidx)
 void
 NMLayer::initiateLegend(void)
 {
+	NMDebugCtx(ctxNMLayer, << "...");
 	this->updateAttributeTable();
 
 	// do we have a table
 	if (mTableModel)
 	{
+		NMDebugAI(<< "TableModel-based legend ..." << std::endl);
 		// do we have a colour table
 		mLegendValueField.clear();
 		mLegendDescrField.clear();
@@ -240,16 +251,18 @@ NMLayer::initiateLegend(void)
 		}
 
 		// in case we still don't have a column yet, we just use the rowidx
-		if (mLegendValueField.isEmpty() && mNumClass > 0)
+		if (mLegendValueField.isEmpty() && mNumClasses > 0)
 		{
 			mLegendValueField = "rowidx";
 			mLegendDescrField = "rowidx";
 		}
 		else
 		{
+			NMDebugAI(<< "... mapping all to one single symbol ..." << std::endl);
 			mLegendType == NMLayer::NM_LEGEND_SINGLESYMBOL;
 			mNumClasses = 1;
 			mNumLegendRows = 1;
+			NMDebugCtx(ctxNMLayer, << "done!");
 			return;
 		}
 
@@ -286,6 +299,7 @@ NMLayer::initiateLegend(void)
 			&&  mClrTabIdx[2] >=0
 			&&  mClrTabIdx[3] >=0)
 		{
+			NMDebugAI(<< "... use colour table for mapping ..." << std::endl);
 			mLegendType = NMLayer::NM_LEGEND_CLRTAB;
 			mLegendValueField.clear();
 			mLegendDescrField.clear();
@@ -296,9 +310,10 @@ NMLayer::initiateLegend(void)
 				 || this->getColumnType(colidx) == QVariant::Double
 				)
 		{
+			NMDebugAI(<< "... mapping a numeric attribute ..." << std::endl);
 			NMTableCalculator calc(mTableModel, this);
 			if (raw2source.size() > 0)
-				calc.setRaw2Source(raw2source);
+				calc.setRaw2Source(&raw2source);
 
 			std::vector<double> colstats = calc.calcColumnStats(mLegendValueField);
 			mStats[0] = colstats[0];	// min
@@ -324,21 +339,25 @@ NMLayer::initiateLegend(void)
 			else
 				mNodata = -2147483647;
 
+			NMDebugAI(<< "lower=" << mLower << " upper=" << mUpper << " nodata=" << mNodata << std::endl);
+
 			mLegendType = NMLayer::NM_LEGEND_RAMP;
 			mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
 		}
 		// STRING FIELD (CATEGORICAL)
 		else
 		{
+			NMDebugAI(<< "... mapping unique values of '" << mLegendValueField.toStdString() << "' ..." << std::endl);
 			mLegendType = NMLayer::NM_LEGEND_INDEXED;
 			mLegendClassType = NMLayer::NM_CLASS_UNIQUE;
 			mNumLegendRows = mNumClasses;
-			this->mapUniqueValues(mLegendValueField);
+			this->mapUniqueValues();
 		}
 	}
 	// NO TABLE
 	else
 	{
+		NMDebugAI(<< "... mapping pixel values ..." << std::endl);
 		// Layer must be an image layer then
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 
@@ -350,7 +369,7 @@ NMLayer::initiateLegend(void)
 		}
 
 		// let's get/update the stats
-		double* imgStats = il->getStatistics();
+		const double* imgStats = il->getStatistics();
 		for (int i=0; i < 5; ++i)
 			mStats[i] = imgStats[i];
 
@@ -360,20 +379,24 @@ NMLayer::initiateLegend(void)
 		mNumClasses = 256;
 		mNumLegendRows = 259;
 
+		NMDebugAI(<< "lower=" << mLower << " upper=" << mUpper << " nodata=" << mNodata << std::endl);
+
 		mLegendValueField = "Pixel Value";
 		mLegendDescrField.clear();
 
 		// let's build a ramp
-		this->mLayerType == NMLayer::NM_LEGEND_RAMP;
-		this->mColourRamp == NMLayer::NM_RAMP_BLUE2RED_DIV;
+		this->mLegendType = NMLayer::NM_LEGEND_RAMP;
+		this->mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
 	}
 
 	this->updateLegend();
+	NMDebugCtx(ctxNMLayer, << "done!");
 }
 
 void
 NMLayer::updateLegend(void)
 {
+	NMDebugCtx(ctxNMLayer, << "...");
 	this->resetLegendInfo();
 
 	switch(mLegendType)
@@ -389,7 +412,7 @@ NMLayer::updateLegend(void)
 			case NM_CLASS_UNIQUE:
 				mNumClasses = mTableModel->rowCount(QModelIndex());
 				mNumLegendRows = mNumClasses;
-				this->mapUniqueValues(mLegendValueField);
+				this->mapUniqueValues();
 				break;
 
 			default:
@@ -412,8 +435,8 @@ NMLayer::updateLegend(void)
 	if (mLayerType == NM_IMAGE_LAYER)
 	{
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-		vtkImageProperty iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-		iprop->SetLookupTable(clrtab);
+		vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
+		iprop->SetLookupTable(mLookupTable);
 		iprop->SetUseLookupTableScalarRange(1);
 	}
 	else
@@ -426,11 +449,22 @@ NMLayer::updateLegend(void)
 	emit legendChanged(this);
 	// do we need this?
 	emit visibilityChanged(this);
+	NMDebugCtx(ctxNMLayer, << "done!");
 }
 
 void
 NMLayer::mapSingleSymbol()
 {
+	if (mLayerType == NM_VECTOR_LAYER)
+	{
+		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT);
+		{
+			vl->mapSingleSymbol();
+			return;
+		}
+	}
+
 	// we create a new look-up table and set the number of entries we need
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
 	mLookupTable->SetNumberOfTableValues(1);
@@ -448,7 +482,9 @@ NMLayer::mapSingleSymbol()
 
 	// fill hash map
 	vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
-	this->mHashValueIndices.insert(tr(""), 0);
+	QVector<int> idxVec;
+	idxVec.push_back(0);
+	this->mHashValueIndices.insert(tr(""), idxVec);
 
 	// fill mLegendInfoTable with corresponding infor
 	double lowup[2];
@@ -466,6 +502,33 @@ NMLayer::mapSingleSymbol()
 	vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(
 			this->mLegendInfo->GetColumnByName("rgba"));
 	clrs->SetTuple(newidx, rgba);
+}
+
+void
+NMLayer::mapUniqueValues(void)
+{
+
+
+}
+
+
+void
+NMLayer::mapValueRamp(void)
+{
+
+}
+
+void
+NMLayer::mapValueClasses(void)
+{
+
+}
+
+
+void
+NMLayer::mapColourTable(void)
+{
+
 }
 
 

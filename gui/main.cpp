@@ -43,6 +43,7 @@
 	bool debugOutput;
 
 	// required for LUMASS debug output
+	#include "nmlog.h"
 	int nmlog::nmindent = 1;
 #endif
 

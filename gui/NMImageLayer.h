@@ -39,9 +39,12 @@
 #include "otbImageIOBase.h"
 #include "vtkImageHistogram.h"
 
+
 #ifdef BUILD_RASSUPPORT
   #include "RasdamanConnector.hh"
 #endif
+
+class NMLayer;
 
 class NMImageLayer: public NMLayer
 {

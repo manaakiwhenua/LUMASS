@@ -31,6 +31,7 @@
 */
 
 #include <QApplication>
+#include <QPainter>
 
 #include "NMComponentListItemDelegate.h"
 
@@ -52,16 +53,46 @@ NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem
 
     QStyleOptionViewItemV4 opt = option;
     initStyleOption(&opt, index);
-
     opt.decorationSize = index.data(Qt::SizeHintRole).toSize();
 
+    const int level = index.internalId() % 100;
+    if (level == 2)// && index.column() == 1)
+    {
+    	opt.rect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
 
-    QWidget* widget = 0;
-    if (QStyleOptionViewItemV3 *v3 = qstyleoption_cast<QStyleOptionViewItemV3 *>(&opt))
-        widget = const_cast<QWidget*>(v3->widget);
+    	painter->save();
+		QString valStr1 = index.data().toString();
+    	QString valStr2 = index.sibling(index.row(), 1).data().toString();
+    	//QRect valRect;
+    	//if (index.column() == 0)
+    	//{
+    		QRect valRect1 = QRect(opt.rect.x(),
+					opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
+    	//}
+    	//else if (index.column() == 1)
+    	//{
+    		QRect valRect2 = QRect(opt.rect.x() + (opt.rect.width() / 2.0 + 0.5),
+					opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
+    	//}
+    	painter->setFont(index.data(Qt::FontRole).value<QFont>());
+    	painter->setPen(index.data(Qt::ForegroundRole).value<QColor>());
+    	painter->drawText(valRect1, opt.displayAlignment, valStr1);
 
-    QStyle *style = widget ? widget->style() : QApplication::style();
-    style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+    	painter->setFont(index.sibling(index.row(), 1).data(Qt::FontRole).value<QFont>());
+    	painter->setPen(index.sibling(index.row(), 1).data(Qt::ForegroundRole).value<QColor>());
+    	painter->drawText(valRect2, opt.displayAlignment, valStr2);
+
+    	painter->restore();
+    }
+    else
+    {
+		QWidget* widget = 0;
+		if (QStyleOptionViewItemV3 *v3 = qstyleoption_cast<QStyleOptionViewItemV3 *>(&opt))
+			widget = const_cast<QWidget*>(v3->widget);
+
+		QStyle *style = widget ? widget->style() : QApplication::style();
+		style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+    }
 }
 
 QSize

@@ -39,12 +39,39 @@
 
 class NMLayer;
 
+/*!	\brief The NMLayerModel class manages map layers and provides and interface
+ * 		   to control how a layer is displayed in the geospatial map view. The
+ * 		   general structure of a map layer is given in the table below:
+ *
+ * 	<table>
+ * 		<tr> 	<td><b>Level</b></td> <td><b>row</b></td> <td><b>internalPointer()</b></td> <td><b>internalId()</b></td></tr>
+ * 		<tr>       <td><i>layer entry</i></td> <td><i>layer index</i></td> <td><i>pointer to layer</i></td> <td><i></i></td></tr>
+ * 		<tr>       <td>layer entry</td> <td>0</td>   <td>layer address</td> <td></td></tr>
+ * 		<tr>       <td>layer entry</td> <td>1</td>   <td>layer address</td> <td></td></tr>
+ * 		<tr>       <td>layer entry</td> <td>...</td> <td>layer address</td> <td></td></tr>
+ *  	<tr>       <td><i>legend item</i></td> <td><i>legend item index </i></td> <td><i>NULL</i></td> <td><i>item identifier</i></td></tr>
+ * 		<tr>       <td><i>legend metadata</i></td> <td><i>data item and index</i></td> <td><i>NULL</i></td> <td><i>item identifier</i></td></tr>
+ *  	<tr>       <td>legend admin</td> <td>0: Value Field</td>     <td>0</td> <td>-170</td></tr>
+ *  	<tr>       <td>legend admin</td> <td>1: Descr Field</td>     <td>0</td> <td>-171</td></tr>
+ *  	<tr>       <td>legend admin</td> <td>2: LegendType</td>      <td>0</td> <td>-172</td></tr>
+ *  	<tr>       <td>legend admin</td> <td>3: LegendClassType</td> <td>0</td> <td>-173</td></tr>
+ *  	<tr>       <td>legend admin</td> <td>4: ColourRamp</td>      <td>0</td> <td>-174</td></tr>
+ *  	<tr>       <td>legend admin</td> <td>5: Lower</td>           <td>0</td> <td>-175</td></tr>
+ *  	<tr>       <td>legend admin</td> <td>6: Upper</td>           <td>0</td> <td>-176</td></tr>
+ *  	<tr>       <td>legend admin</td> <td>7: Nodata</td>          <td>0</td> <td>-177</td></tr>
+
+ *  	<tr>       <td>...</td> <td></td>          <td></td> <td></td></tr>
+ * 	</table>
+ *
+ */
+
 class NMLayerModel : public QAbstractItemModel
 {
 	Q_OBJECT
 
 
 public:
+
 	NMLayerModel(QObject* parent=0);
 	virtual ~NMLayerModel();
 

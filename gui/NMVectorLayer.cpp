@@ -482,9 +482,11 @@ NMVectorLayer::mapUniqueValues()
 
 void NMVectorLayer::mapSingleSymbol()
 {
+	NMDebugCtx(ctxNMVectorLayer, << "...");
 	if (this->mFeatureType != NMVectorLayer::NM_POLYGON_FEAT)
 	{
 		NMLayer::mapSingleSymbol();
+		NMDebugCtx(ctxNMVectorLayer, << "done!");
 		return;
 	}
 
@@ -546,13 +548,8 @@ void NMVectorLayer::mapSingleSymbol()
 			this->mLegendInfo->GetColumnByName("rgba"));
 	clrs->SetTuple(newidx, rgba);
 
-	// get the mapper and look whats possible
-	//vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
-	//mapper->SetScalarRange(0, clrtab->GetNumberOfColors());
-	//mapper->SetLookupTable(clrtab);
+	NMDebugCtx(ctxNMVectorLayer, << "done!");
 
-	//emit visibilityChanged(this);
-	//emit legendChanged(this);
 }
 
 void NMVectorLayer::createTableView(void)

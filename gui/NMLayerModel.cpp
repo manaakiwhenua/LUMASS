@@ -136,7 +136,7 @@ Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const
     Qt::ItemFlags flags = Qt::ItemIsEnabled;
 
     // top level items (i.e. layer entries)
-    if (index.internalPointer() != 0)
+    if (!index.parent().isValid())
     {
     	// checkboxes (selctability and visibility)
    		flags |= Qt::ItemIsUserCheckable | Qt::ItemIsEditable |
@@ -149,36 +149,66 @@ Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const
 
 QModelIndex NMLayerModel::index(int row, int column, const QModelIndex& parent) const
 {
-	//	NMDebugCtx(ctxNMLayerModel, << "...");
-
 	QModelIndex idx;
 
-    NMLayer* l;
-    if (!parent.isValid())
+	if (row < 0 || column > 1)
+		return idx;
+
+	int iid = -1;
+	// top level (layer) item (i.e. no parent)
+	if (!parent.isValid())
     {
-       	NMLayerModel* lm = const_cast<NMLayerModel*>(this);
-       	int stackpos = lm->toLayerStackIndex(row);
-       	NMLayer* l = lm->getItemLayer(stackpos);
-       	idx = createIndex(row, column, (void*) l);
+       	if (row < this->mLayers.size() && column == 0)
+       	{
+			iid = (row + 1) * 100;
+			idx = createIndex(row, 0, iid);
+       	}
     }
+	// legend item / legend admin item
     else
     {
-    	idx = createIndex(row, column, parent.row());
+    	int toplevelrow = (parent.internalId() / 100) - 1;
+    	int level = parent.internalId() % 100;
+
+    	if (level == 1)
+    	{
+    		if (parent.row() == 0)
+    		{
+				if (	 (column >= 0 && column < 2)
+					&&   (row < 8)
+				   )
+				{
+					iid = (toplevelrow + 1) * 100 + 2;
+					idx = createIndex(row, column, iid);
+				}
+    		}
+    	}
+		else if (level == 0)
+		{
+			iid = (toplevelrow + 1) * 100 + 1;
+			idx = createIndex(row, 0, iid);
+		}
     }
 
-    //    NMDebugCtx(ctxNMLayerModel, << "done!");
     return idx;
 }
 
 bool NMLayerModel::setData(const QModelIndex& index,
 		const QVariant& value, int role)
 {
+	if (!index.isValid())
+		return false;
+
+	const int toplevelrow = (index.internalId() / 100) - 1;
+	const int stackpos = this->toLayerStackIndex(toplevelrow);
+	const int level = index.internalId() % 100;
+
 	// leave when we are dealing with legend items
-	if (!index.parent().isValid())
+	if (level == 0)
 	{
 		if (role == Qt::CheckStateRole)
 		{
-			NMLayer* l = (NMLayer*)index.internalPointer();
+			NMLayer* l = this->getItemLayer(stackpos);
 			if (value.toString() == "VIS")
 				l->isVisible() ? l->setVisible(false) : l->setVisible(true);
 			else if (value.toString() == "SEL")
@@ -199,101 +229,163 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 	}
 
 	QVariant retVar;
-	NMLayer* l;
 	QString sName;
 
-	int col = index.column();
-	int row = index.row();
+	const int col = index.column();
+	const int row = index.row();
 
-	// return legend related info (i.e. icon or category name)
-	if (index.parent().isValid())
+	const int toplevelrow = (index.internalId() / 100) - 1;
+	const int level = index.internalId() % 100;
+
+	NMLayerModel* lm = const_cast<NMLayerModel*>(this);
+	const int stackpos = lm->toLayerStackIndex(toplevelrow);
+	NMLayer* l = lm->getItemLayer(stackpos);
+
+	/////////////////////////// LEGEND CLOUR ITEMS ///////////////////////////////////////
+	switch(level)
 	{
-		l = (NMLayer*)index.parent().internalPointer();
-		NMLayerModel* lm = const_cast<NMLayerModel*>(this);
-		if (role == Qt::DisplayRole)
-		{
-			if (col == 0)
-			{
-				if (l->getLegendItemCount() == 1)
-				{
-					retVar = tr("all Features");
-				}
-				else
-					retVar = QVariant(l->getLegendName(row));
-			}
-			else if (col == 1)
-			{
-				if (l->getLegendItemCount() == 1)
-				{
-					retVar = tr("");
-				}
-				else
-				{
-					retVar = QVariant(QString(tr("%1 - %2")).arg(l->getLegendItemLowerValue(row)).
-							arg(l->getLegendItemUpperValue(row)));
-				}
-			}
-		}
-		else if (role == Qt::DecorationRole)
-		{
-			if (col == 0)
-				retVar = lm->createLegendIcon(l, row);
-		}
-		else if (role == Qt::SizeHintRole)
-		{
-			retVar = QSize(16, 20);
-		}
-	}
-	else 	// return general layer info
+	case 1:
 	{
-		l = (NMLayer*)index.internalPointer();
 		switch (role)
 		{
-		case Qt::DisplayRole:
+			case Qt::DisplayRole:
 			{
-				if (col == 0)
-					retVar = l->objectName();
+				col == 0 ? retVar = QVariant(l->getLegendName(row)) : QString();
 			}
 			break;
 
-		case Qt::FontRole:
+			case Qt::DecorationRole:
+			{
+				if (row > 0)
+				{
+					col == 0 ? retVar = lm->createLegendIcon(l, row): QIcon();
+				}
+			}
+			break;
+
+			case Qt::SizeHintRole:
+			{
+				if (row == 0)
+					retVar = QSize(0, 20);
+				else
+					retVar = QSize(16, 20);
+			}
+			break;
+
+			default:
+				break;
+		}
+	}
+	break;
+	/////////////////////////// LEGEND ADMIN ITEMS ///////////////////////////////////////
+	case 2:
+	{
+		NMLayer* pl = l;
+		switch(role)
+		{
+			case Qt::FontRole:
 			{
 				QFont font;
-				l->hasChanged() ? font.setItalic(true) : font.setItalic(false);
+				font.setPointSize(7);
+				if (col == 0)
+				{
+					font.setItalic(true);
+				}
 				retVar = font;
 			}
 			break;
 
-		case Qt::SizeHintRole:
-			retVar = QSize(32, 22);
-			break;
-
-		case Qt::DecorationRole:
+			case Qt::ForegroundRole:
 			{
 				if (col == 0)
+					return QVariant(QColor(0,0,255));
+			}
+			break;
+
+			case Qt::DisplayRole:
+			{
+				switch(row)
 				{
-					QImage pix(32,16, QImage::Format_ARGB32_Premultiplied);
-					pix.fill(0);
+				case 0: col == 0 ? retVar = "Value Field" : retVar = pl->getLegendValueField(); break;
+				case 1:	col == 0 ? retVar = "Descr Field" : retVar = pl->getLegendDescrField(); break;
+				case 2: col == 0 ? retVar = "Legend Type"
+						: retVar = pl->getLegendTypeStr(pl->getLegendType()); break;
+				case 3: col == 0 ? retVar = "Legend Class Type"
+						: retVar = pl->getLegendClassTypeStr(pl->getLegendClassType()); break;
+				case 4: col == 0 ? retVar = "Colour Ramp"
+						: retVar = pl->getColourRampStr(pl->getColourRamp()); break;
+				case 5: col == 0 ? retVar = "Lower" : retVar = QVariant(pl->getLower()); break;
+				case 6: col == 0 ? retVar = "Upper" : retVar = QVariant(pl->getUpper()); break;
+				case 7: col == 0 ? retVar = "Nodata" : retVar = QVariant(pl->getNodata()); break;
+				}
+			}
+			break;
 
-					QPainter painter(&pix);
-					QPixmap selImg = l->isSelectable() ?
-							QPixmap(":edit-select_enabled.png") : QPixmap(":edit-select.png");
-					QPixmap layerImg = l->getLayerIcon().pixmap(QSize(16,16));
-					painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-					painter.drawPixmap(QRect(0,0,16,16), layerImg);
-					painter.drawPixmap(QRect(17,0,16,16), selImg);
-
-					QPixmap rPix(32, 16);
-					rPix.convertFromImage(pix);
-
-					QIcon rIcon(rPix);
-					retVar = rIcon;
+			case Qt::SizeHintRole:
+			{
+				retVar = QSize(32, 16);
+			}
+			break;
+		}
+	}
+	break;
+	/////////////////////////// LAYER ADMIN ITEMS ///////////////////////////////////////
+	case 0:
+	{
+		if (col == 0)
+		{
+			switch (role)
+			{
+				case Qt::DisplayRole:
+				{
+						retVar = l->objectName();
 				}
 				break;
+
+				case Qt::FontRole:
+				{
+					QFont font;
+					l->hasChanged() ? font.setItalic(true) : font.setItalic(false);
+					retVar = font;
+				}
+				break;
+
+				case Qt::SizeHintRole:
+					retVar = QSize(32, 22);
+					break;
+
+				case Qt::DecorationRole:
+				{
+					if (col == 0)
+					{
+						QImage pix(32,16, QImage::Format_ARGB32_Premultiplied);
+						pix.fill(0);
+
+						QPainter painter(&pix);
+						QPixmap selImg = l->isSelectable() ?
+								QPixmap(":edit-select_enabled.png") : QPixmap(":edit-select.png");
+						QPixmap layerImg = l->getLayerIcon().pixmap(QSize(16,16));
+						painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+						painter.drawPixmap(QRect(0,0,16,16), layerImg);
+						painter.drawPixmap(QRect(17,0,16,16), selImg);
+
+						QPixmap rPix(32, 16);
+						rPix.convertFromImage(pix);
+
+						QIcon rIcon(rPix);
+						retVar = rIcon;
+					}
+					break;
+				}
 			}
 		}
 	}
+	break;
 
+	default:
+	break;
+
+	}
 	return retVar;
 }
 
@@ -319,57 +411,78 @@ QIcon NMLayerModel::createLegendIcon(NMLayer* layer, int legendRow)
 
 int NMLayerModel::rowCount(const QModelIndex& parent) const
 {
-	int ret = this->mLayers.size();
+	int ret = 0;
 
 	if (!parent.isValid())
 	{
-		return ret;
+		return this->mLayers.size();
 	}
 
-	// if we've got an internal pointer, parent
-	// must be valid and therefore we have to
-	// report the number of child rows (i.e. legend
-	// items)
-	NMLayerModel* lm = const_cast<NMLayerModel*>(this);
-	int stackpos = lm->toLayerStackIndex(parent.row());
-	NMLayer* l = lm->mLayers[stackpos].data();
+	int toplevelrow = (parent.internalId() / 100) - 1;
+	int level = parent.internalId() % 100;
 
-	ret = l->getLegendItemCount();
+	if (level == 1 && parent.row() == 0)
+	{
+		ret = 8;
+	}
+	else if (level == 0)
+	{
+		NMLayerModel* lm = const_cast<NMLayerModel*>(this);
+		int stackpos = lm->toLayerStackIndex(toplevelrow);
+		NMLayer* l = lm->getItemLayer(stackpos);
+		ret = l->getLegendItemCount();
+	}
 
 	return ret;
 }
 
 int NMLayerModel::columnCount(const QModelIndex& parent) const
 {
-	int ncols = 1;
-	//int ncols = 2;
-
-	if (parent.isValid())
-	{
-		ncols = 2;
-	}
-
-	return ncols;
+	return 1;
+	//int ncols = 1;
+    //
+	//if (!parent.isValid())
+	//	return ncols;
+    //
+	//const int level = parent.internalId() % 100;
+	//if (level == 1 && parent.row() == 0)
+	//	ncols = 2;
+    //
+	//return ncols;
 }
 
 QModelIndex NMLayerModel::parent(const QModelIndex& index) const
 {
-	//	NMDebugCtx(ctxNMLayerModel, << "...");
-
 	QModelIndex parentIdx;
 
-	// if we've got an internal pointer attached,
-	// index is already a parent
-	if (index.internalId() >= 0 && index.internalId() < this->mLayers.size())
+	if (!index.isValid())
+		return parentIdx;
+
+	const int toplevelrow = (index.internalId() / 100) - 1;
+	const int level = index.internalId() % 100;
+
+	int iid = 0;
+	switch(level)
 	{
-		int row = index.internalId();
-		NMLayerModel* lm = const_cast<NMLayerModel*>(this);
-		int stackpos = lm->toLayerStackIndex(row);
-		NMLayer* l = this->mLayers[stackpos].data();
-		parentIdx = this->createIndex(row, 0, (void*)l);
+		case 1: // legend item level
+		{
+			iid = (toplevelrow + 1) * 100; // + 0;
+			parentIdx = this->createIndex(toplevelrow, 0, iid);
+		}
+		break;
+
+		case 2: // legend item admin level (always associated with row=0 on level 1)
+		{
+			iid = (toplevelrow + 1) * 100 + 1;
+			parentIdx = this->createIndex(0, 0, iid);
+		}
+		break;
+
+		case 0:
+		default:
+		break;
 	}
 
-	//	NMDebugCtx(ctxNMLayerModel, << "done!");
 	return parentIdx;
 }
 
@@ -418,13 +531,13 @@ int NMLayerModel::toTreeModelRow(int stackIndex)
 
 int NMLayerModel::toLayerStackIndex(int treePos)
 {
-	int nrows = this->rowCount(QModelIndex());
+	int nrows = this->mLayers.size();
 
 	if (nrows == 0)
-		return 0;
+		return -1;
 
 	if (treePos < 0 || treePos >= nrows)
-		return 0;
+		return -1;
 
 	return nrows - treePos - 1;
 }

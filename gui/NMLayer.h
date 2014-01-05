@@ -41,6 +41,7 @@
 #include <QHash>
 #include <QVector>
 #include <QIcon>
+#include <QStringList>
 
 #include "vtkSmartPointer.h"
 #include "vtkDataSet.h"
@@ -199,6 +200,15 @@ public:
 	double getLegendItemLowerValue(int legendRow);
 	bool getLegendItemRange(int legendRow, double* range);
 
+	QString getLegendTypeStr(NMLayer::NMLegendType type)
+		{return mLegendTypeStr.at((int)type);}
+	QString getLegendClassTypeStr(NMLayer::NMLegendClassType type)
+		{return mLegendClassTypeStr.at((int)type);}
+	QString getColourRampStr(NMLayer::NMColourRamp ramptype)
+		{return mColourRampStr.at((int)ramptype);}
+
+
+
 	//virtual int mapUniqueValues(QString fieldName)=0;
 	bool hasChanged(void) {return this->mHasChanged;};
 
@@ -318,6 +328,10 @@ protected:
 
 	QIcon mLayerIcon;
 	QString mFileName;
+
+	QStringList mLegendTypeStr;
+	QStringList mLegendClassTypeStr;
+	QStringList mColourRampStr;
 
 	bool mIsVisible;
 	bool mIsSelectable;

@@ -75,15 +75,32 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 	this->mTotalArea = -1;
 
-	//this->mVtkConn->Connect(mRenderer, vtkCommand::EndEvent, this, SIGNAL(layerProcessingEnd()));
 
-	// connect the layer's own dataSetChanged signal to the layer's
-	// own updateAttributeTable, to reflect changes to the data set
-	// by other processing objects (e.g. NMMosra)
-//	this->connect(this, SIGNAL(dataSetChanged(const NMLayer*)),
-//			this, SLOT(updateAttributeTable()));
-//	this->connect(this, SIGNAL(attributeTableChanged(const NMLayer*)),
-//			this, SLOT(updateDataSet()));
+	// init some enum to string conversion lists
+	mLegendTypeStr << "NM_LEGEND_SINGLESYMBOL"
+			       << "NM_LEGEND_RAMP"
+			       << "NM_LEGEND_INDEXED"
+	               << "NM_LEGEND_CLRTAB";
+
+	mLegendClassTypeStr << "NM_CLASS_UNIQUE"
+			    << "NM_CLASS_EQINT"
+			    << "NM_CLASS_JENKS"
+			    << "NM_CLASS_MANUAL"
+			    << "NM_CLASS_SDEV";
+
+	mColourRampStr << "NM_RAMP_RAINBOW"
+			       << "NM_RAMP_GREY"
+			       << "NM_RAMP_RED"
+			       << "NM_RAMP_BLUE"
+			       << "NM_RAMP_GREEN"
+			       << "NM_RAMP_RED2BLUE"
+			       << "NM_RAMP_BLUE2RED"
+			       << "NM_RAMP_ALTITUDE"
+			       << "NM_RAMP_BLUE2RED_DIV"
+			       << "NM_RAMP_GREEN2RED_DIV"
+			       << "NM_RAMP_GREEN2YELLOW2RED"
+			       << "NM_RAMP_MANUAL";
+
 }
 
 NMLayer::~NMLayer()
@@ -221,7 +238,8 @@ NMLayer::initiateLegend(void)
 
 		int ncols = this->mTableModel->columnCount(QModelIndex());
 		mNumClasses = this->mTableModel->rowCount(QModelIndex());
-		mNumLegendRows = mNumClasses + 3;
+		// + 4: description (field); nodata; > upper; < lower
+		mNumLegendRows = mNumClasses + 4;
 
 		int colidx = -1;
 		for (int i=0; i < ncols; ++i)
@@ -230,7 +248,7 @@ NMLayer::initiateLegend(void)
 			if (mTableModel->data(ci, Qt::DisplayRole).type() != QVariant::String)
 			{
 				QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-				if (mLegendValueField.isEmpty() && fieldName != "rowidx")
+				if (mLegendValueField.isEmpty() && fieldName != "rowidx" && fieldName != "nm_id")
 				{
 					mLegendValueField = fieldName;
 					mLegendDescrField = fieldName;
@@ -251,107 +269,108 @@ NMLayer::initiateLegend(void)
 		}
 
 		// in case we still don't have a column yet, we just use the rowidx
-		if (mLegendValueField.isEmpty() && mNumClasses > 0)
-		{
-			mLegendValueField = "rowidx";
-			mLegendDescrField = "rowidx";
-		}
-		else
+		if (mLegendValueField.isEmpty())
 		{
 			NMDebugAI(<< "... mapping all to one single symbol ..." << std::endl);
 			mLegendType == NMLayer::NM_LEGEND_SINGLESYMBOL;
 			mNumClasses = 1;
-			mNumLegendRows = 1;
-			NMDebugCtx(ctxNMLayer, << "done!");
-			return;
-		}
-
-		// determine non-hole features in case we've got a
-		// polygon layer here
-		QList<int> raw2source;
-		if (this->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-		{
-			NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
-			if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
-			{
-				raw2source.reserve(mNumClasses);
-				int holeidx = this->getColumnIndex("nm_hole");
-				bool bok;
-				for (long row=0; row < mNumClasses; ++row)
-				{
-					const QModelIndex ridx = mTableModel->index(row, holeidx, QModelIndex());
-					int val = mTableModel->data(ridx, Qt::DisplayRole).toInt(&bok);
-					if (val < 0)
-					{
-						raw2source << -1;
-					}
-					else
-					{
-						raw2source << row;
-					}
-				}
-			}
-		}
-
-		// do we have a colour table
-		if (	mClrTabIdx[0] >=0
-			&&  mClrTabIdx[1] >=0
-			&&  mClrTabIdx[2] >=0
-			&&  mClrTabIdx[3] >=0)
-		{
-			NMDebugAI(<< "... use colour table for mapping ..." << std::endl);
-			mLegendType = NMLayer::NM_LEGEND_CLRTAB;
-			mLegendValueField.clear();
-			mLegendDescrField.clear();
-			mNumLegendRows = mNumClasses;
-		}
-		// NUMERIC attribute
-		else if (	this->getColumnType(colidx) == QVariant::Int
-				 || this->getColumnType(colidx) == QVariant::Double
-				)
-		{
-			NMDebugAI(<< "... mapping a numeric attribute ..." << std::endl);
-			NMTableCalculator calc(mTableModel, this);
-			if (raw2source.size() > 0)
-				calc.setRaw2Source(&raw2source);
-
-			std::vector<double> colstats = calc.calcColumnStats(mLegendValueField);
-			mStats[0] = colstats[0];	// min
-			mStats[1] = colstats[1];	// max
-			mStats[2] = colstats[2];	// mean
-			mStats[4] = colstats[3];	// sdev
-
-			mLower = mStats[0];
-			mUpper = mStats[1];
-
-			if (this->getLayerType() == NMLayer::NM_IMAGE_LAYER)
-			{
-				NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-				switch(il->getITKComponentType())
-				{
-					case otb::ImageIOBase::UCHAR:  mNodata = 255; 		  break;
-					case otb::ImageIOBase::DOUBLE: mNodata = -3.40282e38; break;
-					default: /* LONG */			   mNodata = -2147483647; break;
-				}
-				if (mNodata == mLower)
-					mLower = 0;
-			}
+			// +1: description (field)
+			mNumLegendRows = mNumClasses + 1;
+			if (this->mLayerType == NMLayer::NM_IMAGE_LAYER)
+				mLegendDescrField = tr("All Pixel");
 			else
-				mNodata = -2147483647;
-
-			NMDebugAI(<< "lower=" << mLower << " upper=" << mUpper << " nodata=" << mNodata << std::endl);
-
-			mLegendType = NMLayer::NM_LEGEND_RAMP;
-			mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
+				mLegendDescrField = tr("All Features");
 		}
-		// STRING FIELD (CATEGORICAL)
 		else
 		{
-			NMDebugAI(<< "... mapping unique values of '" << mLegendValueField.toStdString() << "' ..." << std::endl);
-			mLegendType = NMLayer::NM_LEGEND_INDEXED;
-			mLegendClassType = NMLayer::NM_CLASS_UNIQUE;
-			mNumLegendRows = mNumClasses;
-			this->mapUniqueValues();
+			// determine non-hole features in case we've got a
+			// polygon layer here
+			QList<int> raw2source;
+			if (this->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+			{
+				NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+				if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+				{
+					raw2source.reserve(mNumClasses);
+					int holeidx = this->getColumnIndex("nm_hole");
+					bool bok;
+					for (long row=0; row < mNumClasses; ++row)
+					{
+						const QModelIndex ridx = mTableModel->index(row, holeidx, QModelIndex());
+						int val = mTableModel->data(ridx, Qt::DisplayRole).toInt(&bok);
+						if (val < 0)
+						{
+							raw2source << -1;
+						}
+						else
+						{
+							raw2source << row;
+						}
+					}
+				}
+			}
+
+			// do we have a colour table
+			if (	mClrTabIdx[0] >=0
+				&&  mClrTabIdx[1] >=0
+				&&  mClrTabIdx[2] >=0
+				&&  mClrTabIdx[3] >=0)
+			{
+				mHasClrTab = true;
+				NMDebugAI(<< "... use colour table for mapping ..." << std::endl);
+				mLegendType = NMLayer::NM_LEGEND_CLRTAB;
+				mLegendDescrField = mLegendValueField;
+				// +2: description (field); nodata
+				mNumLegendRows = mNumClasses+2;
+			}
+			// NUMERIC attribute
+			else if (	this->getColumnType(colidx) == QVariant::Int
+					 || this->getColumnType(colidx) == QVariant::Double
+					)
+			{
+				NMDebugAI(<< "... mapping a numeric attribute ..." << std::endl);
+				NMTableCalculator calc(mTableModel, this);
+				if (raw2source.size() > 0)
+					calc.setRaw2Source(&raw2source);
+
+				std::vector<double> colstats = calc.calcColumnStats(mLegendValueField);
+				mStats[0] = colstats[0];	// min
+				mStats[1] = colstats[1];	// max
+				mStats[2] = colstats[2];	// mean
+				mStats[4] = colstats[3];	// sdev
+
+				mLower = mStats[0];
+				mUpper = mStats[1];
+
+				if (this->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+				{
+					NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+					switch(il->getITKComponentType())
+					{
+						case otb::ImageIOBase::UCHAR:  mNodata = 255; 		  break;
+						case otb::ImageIOBase::DOUBLE: mNodata = -3.40282e38; break;
+						default: /* LONG */			   mNodata = -2147483647; break;
+					}
+					if (mNodata == mLower)
+						mLower = 0;
+				}
+				else
+					mNodata = -2147483647;
+
+				NMDebugAI(<< "lower=" << mLower << " upper=" << mUpper << " nodata=" << mNodata << std::endl);
+
+				mLegendType = NMLayer::NM_LEGEND_RAMP;
+				mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
+			}
+			// STRING FIELD (CATEGORICAL)
+			else
+			{
+				NMDebugAI(<< "... mapping unique values of '" << mLegendValueField.toStdString() << "' ..." << std::endl);
+				mLegendType = NMLayer::NM_LEGEND_INDEXED;
+				mLegendClassType = NMLayer::NM_CLASS_UNIQUE;
+				// +2: description (field); nodata ('other')
+				mNumLegendRows = mNumClasses+2;
+			}
 		}
 	}
 	// NO TABLE
@@ -377,14 +396,14 @@ NMLayer::initiateLegend(void)
 		mUpper = mStats[1];
 
 		mNumClasses = 256;
-		mNumLegendRows = 259;
+		// +4: description (field); nodata; > upper; < lower
+		mNumLegendRows = mNumClasses + 4;
 
 		NMDebugAI(<< "lower=" << mLower << " upper=" << mUpper << " nodata=" << mNodata << std::endl);
 
 		mLegendValueField = "Pixel Value";
 		mLegendDescrField.clear();
 
-		// let's build a ramp
 		this->mLegendType = NMLayer::NM_LEGEND_RAMP;
 		this->mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
 	}
@@ -455,12 +474,14 @@ NMLayer::updateLegend(void)
 void
 NMLayer::mapSingleSymbol()
 {
+	NMDebugCtx(ctxNMLayer, << "...");
 	if (mLayerType == NM_VECTOR_LAYER)
 	{
 		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
 		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT);
 		{
 			vl->mapSingleSymbol();
+			NMDebugCtx(ctxNMLayer, << "done!");
 			return;
 		}
 	}
@@ -502,6 +523,8 @@ NMLayer::mapSingleSymbol()
 	vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(
 			this->mLegendInfo->GetColumnByName("rgba"));
 	clrs->SetTuple(newidx, rgba);
+
+	NMDebugCtx(ctxNMLayer, << "done!");
 }
 
 void
@@ -528,30 +551,109 @@ NMLayer::mapValueClasses(void)
 void
 NMLayer::mapColourTable(void)
 {
+	NMDebugCtx(ctxNMLayer, << "...");
 
+	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+	mLookupTable->SetNumberOfTableValues(mNumClasses+2);
+	mLookupTable->SetTableRange(-1, mNumClasses);
+
+	// everything outside the table index range is set to transparent
+	mLookupTable->SetTableValue(0, 0, 0, 0, 0);
+	mLookupTable->SetTableValue(mNumClasses, 0, 0, 0, 0);
+
+	bool bok;
+	double fc[4];
+	for (long row=0; row < mNumClasses; ++row)
+	{
+		const QModelIndex mired   = mTableModel->index(row, mClrTabIdx[0], QModelIndex());
+		const QModelIndex migreen = mTableModel->index(row, mClrTabIdx[1], QModelIndex());
+		const QModelIndex miblue  = mTableModel->index(row, mClrTabIdx[2], QModelIndex());
+		const QModelIndex mialpha = mTableModel->index(row, mClrTabIdx[3], QModelIndex());
+
+		const QVariant vred   = mTableModel->data(mired, Qt::DisplayRole);
+		const QVariant vgreen = mTableModel->data(migreen, Qt::DisplayRole);
+		const QVariant vblue  = mTableModel->data(miblue, Qt::DisplayRole);
+		const QVariant valpha = mTableModel->data(mialpha, Qt::DisplayRole);
+		if (vred.type() == QVariant::Double)
+		{
+			fc[0] = vred.toDouble(&bok);
+			fc[1] = vgreen.toDouble(&bok);
+			fc[2] = vblue.toDouble(&bok);
+			fc[3] = valpha.toDouble(&bok);
+		}
+		else
+		{
+			fc[0] = vred.toDouble(&bok)   / 255.0;
+			fc[1] = vgreen.toDouble(&bok) / 255.0;
+			fc[2] = vblue.toDouble(&bok)  / 255.0;
+			fc[3] = valpha.toDouble(&bok) / 255.0;
+		}
+		mLookupTable->SetTableValue(row+1, fc);
+	}
+
+	NMDebugCtx(ctxNMLayer, << "done!");
 }
 
 
 bool  NMLayer::getLegendColour(int legendRow, double* rgba)
 {
-//	NMDebugCtx(ctxNMLayer, << "...");
+	//NMDebugCtx(ctxNMLayer, << "...");
 
 	// check whether row is valid or not
-	if (legendRow < 0 || legendRow >= this->mLegendInfo->GetNumberOfRows())
+	if (legendRow < 1 || legendRow >= mNumLegendRows) //this->mLegendInfo->GetNumberOfRows())
 		return false;
 
-	vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
-	clrs->GetTuple(legendRow, rgba);
+	switch(mLegendType)
+	{
+	case NM_LEGEND_CLRTAB:
+		{
+			if (mLookupTable->GetNumberOfTableValues() > legendRow-1)
+			{
+				mLookupTable->GetTableValue(legendRow-1, rgba);
+			}
+			else
+			{
+				for (int c=0; c < 4; ++c)
+					rgba[0] = 0;
+			}
+		}
+		break;
 
-//	NMDebugCtx(ctxNMLayer, << "done!");
+	case NM_LEGEND_INDEXED:
+		{
+			switch(mLegendClassType)
+			{
+			case NM_CLASS_UNIQUE:
+				{
+					if (mLegendInfo->GetNumberOfRows() > legendRow)
+					{
+						vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
+						clrs->GetTuple(legendRow, rgba);
+					}
+				}
+				break;
+
+
+			default:
+				break;
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	//NMDebugCtx(ctxNMLayer, << "done!");
 	return true;
 }
 
 int NMLayer::getLegendItemCount(void)
 {
-	if (this->mLegendInfo.GetPointer() == 0)
-		return 0;
-	return this->mLegendInfo->GetNumberOfRows();
+	//if (this->mLegendInfo.GetPointer() == 0)
+	//	return 0;
+	//return this->mLegendInfo->GetNumberOfRows();
+	return this->mNumLegendRows;
 }
 
 QString  NMLayer::getLegendName(int legendRow)
@@ -559,11 +661,49 @@ QString  NMLayer::getLegendName(int legendRow)
 	QString name;
 
 	// check whether row is valid or not
-	if (legendRow < 0 || legendRow >= this->mLegendInfo->GetNumberOfRows())
+	if (legendRow < 0 || legendRow >= mNumLegendRows)//this->mLegendInfo->GetNumberOfRows())
 		return tr("");
 
-	vtkStringArray* names = vtkStringArray::SafeDownCast(this->mLegendInfo->GetColumnByName("name"));
-	name = names->GetValue(legendRow).c_str();
+	if (legendRow == 0)
+	{
+		return this->mLegendDescrField;
+	}
+
+
+	switch(mLegendType)
+	{
+	case NM_LEGEND_CLRTAB:
+		{
+			int colidx = this->getColumnIndex(mLegendDescrField);
+			const QModelIndex mi = mTableModel->index(legendRow-1, colidx, QModelIndex());
+			name = mTableModel->data(mi, Qt::DisplayRole).toString();
+		}
+		break;
+
+	case NM_LEGEND_INDEXED:
+		{
+			switch(mLegendClassType)
+			{
+			case NM_CLASS_UNIQUE:
+				{
+					if (mLegendInfo->GetNumberOfRows() > legendRow)
+					{
+						vtkStringArray* names = vtkStringArray::SafeDownCast(this->mLegendInfo->GetColumnByName("name"));
+						name = names->GetValue(legendRow).c_str();
+					}
+				}
+				break;
+
+
+			default:
+				break;
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
 
 	return name;
 

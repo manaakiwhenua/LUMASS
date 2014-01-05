@@ -154,15 +154,20 @@ void ModelComponentList::openAttributeTable()
 {
 //	NMDebugCtx(ctx, << "...");
 
-	NMLayer* l = (NMLayer*)this->currentIndex().internalPointer();
-	l->showAttributeTable();
+	const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+	if (l != 0)
+		l->showAttributeTable();
 
 //	NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::saveLayerChanges()
 {
-	NMLayer* l = (NMLayer*)this->currentIndex().internalPointer();
+	const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
 	this->setCurrentIndex(QModelIndex());
 	if (l != 0)
 	{
@@ -173,7 +178,9 @@ void ModelComponentList::saveLayerChanges()
 
 void ModelComponentList::removeCurrentLayer()
 {
-	NMLayer* l = (NMLayer*)this->currentIndex().internalPointer();
+	const int toplevelrow = (this->currentIndex().internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
 	this->setCurrentIndex(QModelIndex());
 	if (l == 0)
 		return;
@@ -229,7 +236,8 @@ ModelComponentList::getSelectedLayer()
 		return l;
 
 	const QModelIndex idx = il.at(0);
-	l = (NMLayer*)idx.internalPointer();
+	const int stackpos = this->mLayerModel->toLayerStackIndex(idx.row());
+	l = this->mLayerModel->getItemLayer(stackpos);
 
 	return l;
 }
@@ -432,19 +440,27 @@ const double* ModelComponentList::getMapBBox(void)
 
 void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 {
-	NMDebugCtx(ctx, << "...")
+	//NMDebugCtx(ctx, << "...")
 
 	QModelIndex idx = this->indexAt(event->pos());
 	if (!idx.isValid())
 	{
-		NMDebugCtx(ctx, << "done!")
+		//NMDebugCtx(ctx, << "done!")
 		return;
 	}
 
-	if (!idx.parent().isValid())
+	//const int toplevelrow = (idx.internalId() / 100) - 1;
+	//const int level = idx.internalId() % 100;
+	//const QModelIndex pidx = idx.parent();
+
+	//if (level == 0 || (level == 1 && idx.row() == 0))
+	if (this->mLayerModel->rowCount(idx) > 0)
 	{
-		NMLayer* l = (NMLayer*)idx.internalPointer();
-		int nleg = l->getLegendItemCount();
+
+		//const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+		//NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+        //
+		//int nleg = l->getLegendItemCount();
 		//NMDebugAI(<< l->objectName().toStdString() << " has " << nleg << " items .." << endl);
 
 		if (this->isExpanded(idx))
@@ -453,7 +469,7 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 			this->expand(idx);
 	}
 
-	NMDebugCtx(ctx, << "done!")
+	//NMDebugCtx(ctx, << "done!")
 }
 
 //bool ModelComponentList::eventFilter(QObject* obj, QEvent* event)
@@ -538,7 +554,9 @@ void ModelComponentList::processSelection(bool toggle)
 		this->selectionModel()->select(idx, QItemSelectionModel::Select |
 			QItemSelectionModel::Rows);
 
-		const NMLayer* l = const_cast<NMLayer*>((NMLayer*)idx.internalPointer());
+		const int toplevelrow = (idx.internalId() / 100) - 1;
+		const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+		const NMLayer* l = const_cast<NMLayer*>(this->mLayerModel->getItemLayer(stackpos));
 		emit selectedLayerChanged(l);
 	}
 	else
@@ -563,8 +581,15 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
     if (!idx.isValid())
     	return;
 
-    QString layerName = idx.data(Qt::DisplayRole).toString();
-    NMLayer* l = (NMLayer*)idx.internalPointer();
+    const int tlr = (idx.internalId() / 100) - 1;
+    const int sp = this->mLayerModel->toLayerStackIndex(tlr);
+    NMLayer* l = this->mLayerModel->getItemLayer(sp);
+    if (l == 0)
+    	return;
+
+    QString layerName = l->objectName();//idx.data(Qt::DisplayRole).toString();
+    //NMLayer* l = (NMLayer*)idx.internalPointer();
+    //NMLayer* l = this->getLayer(layerName);
 
     QIcon layerIcon = l->getLayerIcon();//idx.data(Qt::DecorationRole).value<QIcon>();
 
@@ -606,14 +631,18 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 		return;
 	}
 
-	NMLayer* dl = (NMLayer*)destidx.internalPointer();
+	const int stackpos = this->mLayerModel->toLayerStackIndex(destidx.row());
+	//NMLayer* dl = (NMLayer*)destidx.internalPointer();
+	NMLayer* dl = this->mLayerModel->getItemLayer(stackpos);
 	if (dl == 0)
 		return;
 	int destpos = dl->getLayerPos();
 	//NMDebugAI(<< "dest pos: " << destpos << endl);
 
 	QModelIndex srcidx = this->indexAt(this->dragStartPosition);
-	NMLayer* sl = (NMLayer*)srcidx.internalPointer();
+	const int srcstackpos = this->mLayerModel->toLayerStackIndex(srcidx.row());
+	//NMLayer* sl = (NMLayer*)srcidx.internalPointer();
+	NMLayer* sl = this->mLayerModel->getItemLayer(srcstackpos);
 	if (sl == 0)
 		return;
 	int srcpos = sl->getLayerPos();
@@ -722,7 +751,11 @@ void ModelComponentList::zoomToLayer()
 {
 	// get the current layer
 	QModelIndex idx = this->currentIndex();
-	NMLayer* l = (NMLayer*)idx.internalPointer();
+
+	const int toplevelrow = (idx.internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+	//NMLayer* l = (NMLayer*)idx.internalPointer();
 
 	// get the camera of the background renderer
     OtbModellerWin* win = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
@@ -735,7 +768,10 @@ void ModelComponentList::mapSingleSymbol()
 {
 	// get the current layer
 	QModelIndex idx = this->currentIndex();
-	NMLayer* l = (NMLayer*)idx.internalPointer();
+	const int toplevelrow = (idx.internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+
 	l->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
 	l->updateLegend();
 	//if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
@@ -749,7 +785,9 @@ void ModelComponentList::mapUniqueValues()
 {
 	// get the current layer
 	QModelIndex idx = this->currentIndex();
-	NMLayer* l = (NMLayer*)idx.internalPointer();
+	const int toplevelrow = (idx.internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
 
 	NMVectorLayer* vL = 0;
 	NMImageLayer* iL = 0;

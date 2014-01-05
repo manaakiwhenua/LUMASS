@@ -56,24 +56,17 @@ NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem
     opt.decorationSize = index.data(Qt::SizeHintRole).toSize();
 
     const int level = index.internalId() % 100;
-    if (level == 2)// && index.column() == 1)
+    if (level == 2)
     {
     	opt.rect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
 
     	painter->save();
 		QString valStr1 = index.data().toString();
     	QString valStr2 = index.sibling(index.row(), 1).data().toString();
-    	//QRect valRect;
-    	//if (index.column() == 0)
-    	//{
-    		QRect valRect1 = QRect(opt.rect.x(),
+   		QRect valRect1 = QRect(opt.rect.x(),
 					opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
-    	//}
-    	//else if (index.column() == 1)
-    	//{
-    		QRect valRect2 = QRect(opt.rect.x() + (opt.rect.width() / 2.0 + 0.5),
+   		QRect valRect2 = QRect(opt.rect.x() + (opt.rect.width() / 2.0 + 0.5),
 					opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
-    	//}
     	painter->setFont(index.data(Qt::FontRole).value<QFont>());
     	painter->setPen(index.data(Qt::ForegroundRole).value<QColor>());
     	painter->drawText(valRect1, opt.displayAlignment, valStr1);

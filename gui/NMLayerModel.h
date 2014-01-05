@@ -39,29 +39,49 @@
 
 class NMLayer;
 
-/*!	\brief The NMLayerModel class manages map layers and provides and interface
- * 		   to control how a layer is displayed in the geospatial map view. The
- * 		   general structure of a map layer is given in the table below:
+/*!	\brief The NMLayerModel class manages map layers and provides and interactive
+ * 		   legend to control the colour coding of the map in the map view. The
+ * 		   general tree view structure used for the legend is given in the following
+ * 		   table.
  *
  * 	<table>
- * 		<tr> 	<td><b>Level</b></td> <td><b>row</b></td> <td><b>internalPointer()</b></td> <td><b>internalId()</b></td></tr>
- * 		<tr>       <td><i>layer entry</i></td> <td><i>layer index</i></td> <td><i>pointer to layer</i></td> <td><i></i></td></tr>
- * 		<tr>       <td>layer entry</td> <td>0</td>   <td>layer address</td> <td></td></tr>
- * 		<tr>       <td>layer entry</td> <td>1</td>   <td>layer address</td> <td></td></tr>
- * 		<tr>       <td>layer entry</td> <td>...</td> <td>layer address</td> <td></td></tr>
- *  	<tr>       <td><i>legend item</i></td> <td><i>legend item index </i></td> <td><i>NULL</i></td> <td><i>item identifier</i></td></tr>
- * 		<tr>       <td><i>legend metadata</i></td> <td><i>data item and index</i></td> <td><i>NULL</i></td> <td><i>item identifier</i></td></tr>
- *  	<tr>       <td>legend admin</td> <td>0: Value Field</td>     <td>0</td> <td>-170</td></tr>
- *  	<tr>       <td>legend admin</td> <td>1: Descr Field</td>     <td>0</td> <td>-171</td></tr>
- *  	<tr>       <td>legend admin</td> <td>2: LegendType</td>      <td>0</td> <td>-172</td></tr>
- *  	<tr>       <td>legend admin</td> <td>3: LegendClassType</td> <td>0</td> <td>-173</td></tr>
- *  	<tr>       <td>legend admin</td> <td>4: ColourRamp</td>      <td>0</td> <td>-174</td></tr>
- *  	<tr>       <td>legend admin</td> <td>5: Lower</td>           <td>0</td> <td>-175</td></tr>
- *  	<tr>       <td>legend admin</td> <td>6: Upper</td>           <td>0</td> <td>-176</td></tr>
- *  	<tr>       <td>legend admin</td> <td>7: Nodata</td>          <td>0</td> <td>-177</td></tr>
-
- *  	<tr>       <td>...</td> <td></td>          <td></td> <td></td></tr>
+ * 		<tr> 	<td><b>Tree Level</b></td> <td><b>Row #</b></td>  <td><b>internalId()</b></td> </tr>
+ * 		<tr>    <td><i>level</i></td>          <td><i>layer number</i> </td> <td><i>item model identifier</i></td>      </tr>
+ * 		<tr>    <td>0</td>                 <td>0</td>             <td>100</td>       </tr>
+ * 		<tr>    <td>0</td>                 <td>1</td>             <td>200</td>       </tr>
+ * 		<tr>    <td>0</td>                 <td>...</td>           <td>...</td>       </tr>
+ * 		<tr>    <td>0</td>                 <td>n</td>             <td>(n+1)*100</td>       </tr>
+ *  	<tr>    <td><i>level</i></td> <td><i>legend item number</i></td> <td><i>item model identifier</i></td> </tr>
+ *      <tr>    <td>1</td>                 <td>0</td>             <td>101</td>          </tr>
+ *      <tr>    <td>1</td>                 <td>1</td>             <td>101</td>          </tr>
+ *      <tr>    <td>1</td>                 <td>...</td>           <td>...</td>          </tr>
+ *      <tr>    <td>1</td>                 <td>m</td>             <td>(n+1)*100+1</td>  </tr>
+ * 		<tr>    <td><i>level</i></td> <td><i>legend metadata item number: meaning</i></td> <td><i>item model identifier</i></td> </tr>
+ *  	<tr>    <td>2</td>                 <td>0: Value Field</td>     <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>1: Descr Field</td>     <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>2: LegendType</td>      <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>3: LegendClassType</td> <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>4: ColourRamp</td>      <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>5: Lower</td>           <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>6: Upper</td>           <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>7: Nodata</td>          <td>(n+1)*100+2</td> </tr>
  * 	</table>
+ *
+ * 	For each legend item, the tree level, layer (i.e. top level) tree row number and relative tree row number can
+ * 	be retrieved from the \c QModelIndex as follows:
+ *
+ *  \code
+ *
+ *  // let's take the currentIndex for example
+ *  QModelIndex idx = currentIndex();
+ *
+ *  // retrieving tree model information for the current index
+ *  int top_level_row_number = (idx.internalId() / 100) - 1;
+ *  int tree_level           = idx.internalId() % 100;
+ *  int level_row_number     = idx.row();
+ *
+ *  \endcode
+ *
  *
  */
 

@@ -263,6 +263,7 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			}
 			break;
 
+			// used only for decoration (icon) size by NMComponentListItemDelegate
 			case Qt::SizeHintRole:
 			{
 				if (row == 0)

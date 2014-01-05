@@ -248,7 +248,12 @@ NMLayer::initiateLegend(void)
 			if (mTableModel->data(ci, Qt::DisplayRole).type() != QVariant::String)
 			{
 				QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-				if (mLegendValueField.isEmpty() && fieldName != "rowidx" && fieldName != "nm_id")
+				if (	mLegendValueField.isEmpty()
+					&&  fieldName != "rowidx"
+					&&  fieldName != "nm_id"
+					&&  fieldName != "nm_hole"
+					&&  fieldName != "nm_sel"
+				   )
 				{
 					mLegendValueField = fieldName;
 					mLegendDescrField = fieldName;
@@ -314,7 +319,8 @@ NMLayer::initiateLegend(void)
 			if (	mClrTabIdx[0] >=0
 				&&  mClrTabIdx[1] >=0
 				&&  mClrTabIdx[2] >=0
-				&&  mClrTabIdx[3] >=0)
+				&&  mClrTabIdx[3] >=0
+			   )
 			{
 				mHasClrTab = true;
 				NMDebugAI(<< "... use colour table for mapping ..." << std::endl);
@@ -401,8 +407,8 @@ NMLayer::initiateLegend(void)
 
 		NMDebugAI(<< "lower=" << mLower << " upper=" << mUpper << " nodata=" << mNodata << std::endl);
 
-		mLegendValueField = "Pixel Value";
-		mLegendDescrField.clear();
+		mLegendValueField = "Pixel Values";
+		mLegendDescrField = "Pixel Values";
 
 		this->mLegendType = NMLayer::NM_LEGEND_RAMP;
 		this->mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
@@ -614,7 +620,7 @@ bool  NMLayer::getLegendColour(int legendRow, double* rgba)
 			else
 			{
 				for (int c=0; c < 4; ++c)
-					rgba[0] = 0;
+					rgba[c] = 0;
 			}
 		}
 		break;

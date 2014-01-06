@@ -41,7 +41,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	  mDataSet(0), mActor(0), mMapper(0),
 	  mIsVisible(false), mIsSelectable(true), mHasChanged(false),
 	  mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
-	  mLegendClassType(NM_CLASS_JENKS)
+	  mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV)
 {
 	if (renWin == 0)
 	{
@@ -60,7 +60,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	//this->mRenderer->SetOcclusionRatio(0.1);
 
 	// make a legendinfo table for this layer
-	this->resetLegendInfo();
+	//this->resetLegendInfo();
 
 	this->mFileName.clear();
 	this->mLayerPos = this->mRenderer->GetLayer();
@@ -435,8 +435,8 @@ NMLayer::updateLegend(void)
 			switch(mLegendClassType)
 			{
 			case NM_CLASS_UNIQUE:
-				mNumClasses = mTableModel->rowCount(QModelIndex());
-				mNumLegendRows = mNumClasses;
+				mNumClasses = 0;mTableModel->rowCount(QModelIndex());
+				mNumLegendRows = mNumClasses+2;
 				this->mapUniqueValues();
 				break;
 
@@ -481,16 +481,22 @@ void
 NMLayer::mapSingleSymbol()
 {
 	NMDebugCtx(ctxNMLayer, << "...");
+
+	mNumLegendRows = 2;
+
 	if (mLayerType == NM_VECTOR_LAYER)
 	{
+		mLegendDescrField = tr("All Features");
 		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
-		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT);
+		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
 		{
 			vl->mapSingleSymbol();
 			NMDebugCtx(ctxNMLayer, << "done!");
 			return;
 		}
 	}
+
+	mLegendDescrField = tr("All Pixel");
 
 	// we create a new look-up table and set the number of entries we need
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
@@ -505,30 +511,58 @@ NMLayer::mapSingleSymbol()
 		rgba[i] = vtkMath::Random();
 	rgba[3] = 1;
 
+	if (mTableModel != 0)
+	{
+		mLower = 0;
+		mUpper = mTableModel->rowCount(QModelIndex())-1;
+	}
+	else
+	{
+		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+		if (il == 0)
+		{
+			const double* stats = il->getStatistics();
+			mLower = stats[0];
+			mUpper = stats[1];
+
+			double nd = il->getDefaultNodata();
+			if (mLower == nd)
+				mLower = 0;
+			else if (nd == 255 && mUpper == 255)
+			{
+				mUpper = 254;
+			}
+
+		}
+	}
+
+
 	mLookupTable->SetTableValue(0, rgba[0], rgba[1], rgba[2], rgba[3]);
+	mLookupTable->SetTableRange(mLower, mUpper);
+
 
 	// fill hash map
-	vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
-	QVector<int> idxVec;
-	idxVec.push_back(0);
-	this->mHashValueIndices.insert(tr(""), idxVec);
-
-	// fill mLegendInfoTable with corresponding infor
-	double lowup[2];
-	lowup[0] = -9;
-	lowup[1] = -9;
-
-	vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
-			this->mLegendInfo->GetColumnByName("range"));
-	lowupAbstrAr->SetTuple(newidx, lowup);
-
-	vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
-			this->mLegendInfo->GetColumnByName("name"));
-	nameAr->SetValue(newidx, "");
-
-	vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(
-			this->mLegendInfo->GetColumnByName("rgba"));
-	clrs->SetTuple(newidx, rgba);
+	//vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
+	//QVector<int> idxVec;
+	//idxVec.push_back(0);
+	//this->mHashValueIndices.insert(tr(""), idxVec);
+    //
+	//// fill mLegendInfoTable with corresponding infor
+	//double lowup[2];
+	//lowup[0] = -9;
+	//lowup[1] = -9;
+    //
+	//vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
+	//		this->mLegendInfo->GetColumnByName("range"));
+	//lowupAbstrAr->SetTuple(newidx, lowup);
+    //
+	//vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
+	//		this->mLegendInfo->GetColumnByName("name"));
+	//nameAr->SetValue(newidx, "");
+    //
+	//vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(
+	//		this->mLegendInfo->GetColumnByName("rgba"));
+	//clrs->SetTuple(newidx, rgba);
 
 	NMDebugCtx(ctxNMLayer, << "done!");
 }
@@ -631,10 +665,15 @@ bool  NMLayer::getLegendColour(int legendRow, double* rgba)
 			{
 			case NM_CLASS_UNIQUE:
 				{
-					if (mLegendInfo->GetNumberOfRows() > legendRow)
+					if (legendRow > 1)
 					{
 						vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
-						clrs->GetTuple(legendRow, rgba);
+						clrs->GetTuple(legendRow-2, rgba);
+					}
+					else
+					{
+						for (int c=0; c < 4; ++c)
+							rgba[c] = 0;
 					}
 				}
 				break;
@@ -646,12 +685,42 @@ bool  NMLayer::getLegendColour(int legendRow, double* rgba)
 		}
 		break;
 
+	case NM_LEGEND_SINGLESYMBOL:
+		{
+			mLookupTable->GetTableValue(legendRow-1, rgba);
+		}
+		break;
+
 	default:
 		break;
 	}
 
 	//NMDebugCtx(ctxNMLayer, << "done!");
 	return true;
+}
+
+QIcon NMLayer::getLegendIcon(int legendRow)
+{
+	QIcon icon;
+
+	switch (mLegendType)
+	{
+	case NM_LEGEND_RAMP:
+		break;
+
+	case NM_LEGEND_INDEXED:
+	case NM_LEGEND_CLRTAB:
+		break;
+
+	case NM_LEGEND_SINGLESYMBOL:
+		break;
+
+	default:
+		break;
+	}
+
+
+	return icon;
 }
 
 int NMLayer::getLegendItemCount(void)
@@ -680,9 +749,16 @@ QString  NMLayer::getLegendName(int legendRow)
 	{
 	case NM_LEGEND_CLRTAB:
 		{
-			int colidx = this->getColumnIndex(mLegendDescrField);
-			const QModelIndex mi = mTableModel->index(legendRow-1, colidx, QModelIndex());
-			name = mTableModel->data(mi, Qt::DisplayRole).toString();
+			if (legendRow > 1)
+			{
+				int colidx = this->getColumnIndex(mLegendDescrField);
+				const QModelIndex mi = mTableModel->index(legendRow-1, colidx, QModelIndex());
+				name = mTableModel->data(mi, Qt::DisplayRole).toString();
+			}
+			else // legendRow == 1
+			{
+				name = tr("other");
+			}
 		}
 		break;
 
@@ -692,10 +768,14 @@ QString  NMLayer::getLegendName(int legendRow)
 			{
 			case NM_CLASS_UNIQUE:
 				{
-					if (mLegendInfo->GetNumberOfRows() > legendRow)
+					if (legendRow > 1)
 					{
 						vtkStringArray* names = vtkStringArray::SafeDownCast(this->mLegendInfo->GetColumnByName("name"));
-						name = names->GetValue(legendRow).c_str();
+						name = names->GetValue(legendRow-2).c_str();
+					}
+					else
+					{
+						name = tr("other");
 					}
 				}
 				break;
@@ -705,6 +785,11 @@ QString  NMLayer::getLegendName(int legendRow)
 				break;
 			}
 		}
+		break;
+
+	case NM_LEGEND_SINGLESYMBOL:
+		if (legendRow == 1)
+			name = tr("");
 		break;
 
 	default:

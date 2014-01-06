@@ -492,6 +492,20 @@ void NMImageLayer::test()
 	emit legendChanged(this);
 }
 
+double NMImageLayer::getDefaultNodata()
+{
+	double nodata;
+
+	switch(this->mComponentType)
+	{
+		case otb::ImageIOBase::UCHAR:  nodata = 255; 		 break;
+		case otb::ImageIOBase::DOUBLE: nodata = -3.40282e38; break;
+		default:					   nodata = -2147483647; break;
+	}
+
+	return nodata;
+}
+
 void
 NMImageLayer::updateStats(void)
 {

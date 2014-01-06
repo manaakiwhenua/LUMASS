@@ -279,20 +279,18 @@ protected:
 	// 			with this legend category
 	QHash<QString, QVector<int> > mHashValueIndices;
 
-	/* Legend category information, is supposed
-	 * to be used in conjunction with the
-	 * lookup table of the layer
+	/*! Auxiliary legend category information used in conjunction
+	 *  with the layer's lookup table for NMLegendType == NM_LEGEND_INDEXED
+	 *  and NMLegendClassType != NM_CLASS_UNIQUE. The table holds
+	 *  three vtkAbstractArrays:
 	 *
-	 * the array holds three vtkArrays
+	 *  \c <i>DEPRECATED</i>
+	 *  \b rgba (vtkDoubleArray) : double [4]: 0: red; 1: green; 2: blue; 3: alpha \n
 	 *
-	 * "rgba": vtkDoubleArray
-	 * 		   double [4]: 0: red; 1: green; 2: blue; 3: alpha
+	 *  \b range (vtkDoubleArray) : double [2]: 0: lower value; 1: upper value; \n
+	 *  			range domain: [\<lower value\>, \<upper value\>[ \n
 	 *
-	 * "range": vtkDoubleArray
-	 * 			double [2]: 0: lower value; 1: upper value
-	 *
-	 * "name": vtkStringArray
-	 * 			vtkString: name of legend category
+	 *  \b name (vtkStringArray) : vtkString: name of legend category \n
 	 *
 	 */
 	vtkSmartPointer<vtkTable> mLegendInfo;

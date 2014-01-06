@@ -92,6 +92,8 @@ public:
 	const vtkImageProperty* getImageProperty(void)
 		{return this->mImgProp;}
 
+	double getDefaultNodata(void);
+
 
 public slots:
 	void writeDataSet(void);

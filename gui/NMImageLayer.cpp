@@ -311,14 +311,16 @@ void NMImageLayer::test()
 	clrtab->SetNumberOfTableValues(numcolors+2);
 	if (mTableModel)
 	{
+
 		clrtab->SetTableRange(-1, numcolors);
 		//clrtab->IndexedLookupOn();
 		//clrtab->SetNanColor(0, 0, 0, 0);
 	}
 	else
 	{
-		//clrtab->SetNumberOfTableValues(numcolors+2);
-		clrtab->SetTableRange(lower-step, upper+step);
+		//clrtab->SetNumberOfTableValues(numcolors);
+		//clrtab->SetTableRange(lower-step, upper+step);
+		clrtab->SetTableRange(lower, upper);
 	}
 
 
@@ -368,11 +370,13 @@ void NMImageLayer::test()
 	}
 	else if (ramp == "RedToBlue")
 	{
+		clrfunc->SetColorSpaceToDiverging();
 		clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
 		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
 	}
 	else if (ramp == "GreenToBlue")
 	{
+		clrfunc->SetColorSpaceToDiverging();
 		clrfunc->AddRGBPoint(0.0, 0.0, 1.0, 0.0);
 		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
 	}
@@ -382,7 +386,7 @@ void NMImageLayer::test()
 	////////////////////////////// FILL THE LOOKUP TABLE ///////////////////////////////////////
 
 	// everything below the 'range' is transparent
-	//if (mTableModel == 0)
+	//if (mTableModel)
 		clrtab->SetTableValue(0, 0, 0, 0, 0);
 
 	NMDebugAI(<< "checking colour assignments ..." << std::endl);
@@ -473,7 +477,7 @@ void NMImageLayer::test()
 		}
 	}
 	// everything above the 'range' is going to be transparent as well
-	//if (mTableModel == 0)
+	//if (mTableModel)
 		clrtab->SetTableValue(numcolors+1, 0, 0, 0, 0);
 
 	NMDebugAI(<< "colouring: in=" << in << " out=" << out << " nodata=" << nod << std::endl);
@@ -775,6 +779,8 @@ bool NMImageLayer::setFileName(QString filename)
 	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
 	//m->ResampleToScreenPixelsOn();
+	m->ResampleToScreenPixelsOff();
+	m->SeparateWindowLevelOperationOff();
 	m->SetBorder(1);
 
 	// adjust origin

@@ -483,85 +483,86 @@ NMVectorLayer::mapUniqueValues()
 	return;
 }
 
-void NMVectorLayer::mapSingleSymbol()
-{
-	NMDebugCtx(ctxNMVectorLayer, << "...");
-	if (this->mFeatureType != NMVectorLayer::NM_POLYGON_FEAT)
-	{
-		NMLayer::mapSingleSymbol();
-		NMDebugCtx(ctxNMVectorLayer, << "done!");
-		return;
-	}
 
-	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
-	vtkLongArray* nmids = vtkLongArray::SafeDownCast(dsAttr->GetArray("nm_id"));
-	long ncells = nmids->GetNumberOfTuples();
-
-	vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
-
-	// we create a new look-up table and set the number of entries we need
-	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
-	mLookupTable->SetNumberOfTableValues(ncells);
-
-	mNumLegendRows = 2;
-	mLegendDescrField = tr("All Features");
-
-	// let's create a new legend info table
-	//this->resetLegendInfo();
-
-	// chose a random colour
-	QString sVal;
-	vtkMath::RandomSeed(QTime::currentTime().msec());
-
-	double rgba[4];
-	for (int i=0; i < 3; i++)
-		rgba[i] = vtkMath::Random();
-	rgba[3] = 1;
-
-	// cell index vector for has map
-	//QVector<int> idxVec;
-
-	// fill colour look-up table for mapper
-	for (long l=0; l < ncells; ++l)
-	{
-		// add the new cell index to the hash map
-		//idxVec.append(l);
-
-		//if (hole->GetValue(l))
-		//{
-		//	//mLookupTable->SetTableValue(l, rgba[0], rgba[1], rgba[2], 0);
-		//}
-		//else
-		{
-			mLookupTable->SetTableValue(l, rgba[0], rgba[1], rgba[2], rgba[3]);
-		}
-	}
-
-	//// fill hash map
-	//vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
-	//this->mHashValueIndices.insert(tr(""), idxVec);
-    //
-    //
-	//// fill mLegendInfoTable with corresponding infor
-	//double lowup[2];
-	//lowup[0] = -9;
-	//lowup[1] = -9;
-    //
-	//vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
-	//		this->mLegendInfo->GetColumnByName("range"));
-	//lowupAbstrAr->SetTuple(newidx, lowup);
-    //
-	//vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
-	//		this->mLegendInfo->GetColumnByName("name"));
-	//nameAr->SetValue(newidx, "");
-    //
-	//vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(
-	//		this->mLegendInfo->GetColumnByName("rgba"));
-	//clrs->SetTuple(newidx, rgba);
-
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
-
-}
+//void NMVectorLayer::mapSingleSymbol()
+//{
+//	NMDebugCtx(ctxNMVectorLayer, << "...");
+//	if (this->mFeatureType != NMVectorLayer::NM_POLYGON_FEAT)
+//	{
+//		NMLayer::mapSingleSymbol();
+//		NMDebugCtx(ctxNMVectorLayer, << "done!");
+//		return;
+//	}
+//
+//	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+//	vtkLongArray* nmids = vtkLongArray::SafeDownCast(dsAttr->GetArray("nm_id"));
+//	long ncells = nmids->GetNumberOfTuples();
+//
+//	vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(dsAttr->GetArray("nm_hole"));
+//
+//	// we create a new look-up table and set the number of entries we need
+//	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+//	mLookupTable->SetNumberOfTableValues(ncells);
+//
+//	mNumLegendRows = 2;
+//	mLegendDescrField = tr("All Features");
+//
+//	// let's create a new legend info table
+//	//this->resetLegendInfo();
+//
+//	// chose a random colour
+//	QString sVal;
+//	vtkMath::RandomSeed(QTime::currentTime().msec());
+//
+//	double rgba[4];
+//	for (int i=0; i < 3; i++)
+//		rgba[i] = vtkMath::Random();
+//	rgba[3] = 1;
+//
+//	// cell index vector for has map
+//	//QVector<int> idxVec;
+//
+//	// fill colour look-up table for mapper
+//	for (long l=0; l < ncells; ++l)
+//	{
+//		// add the new cell index to the hash map
+//		//idxVec.append(l);
+//
+//		//if (hole->GetValue(l))
+//		//{
+//		//	//mLookupTable->SetTableValue(l, rgba[0], rgba[1], rgba[2], 0);
+//		//}
+//		//else
+//		{
+//			mLookupTable->SetTableValue(l, rgba[0], rgba[1], rgba[2], rgba[3]);
+//		}
+//	}
+//
+//	//// fill hash map
+//	//vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
+//	//this->mHashValueIndices.insert(tr(""), idxVec);
+//    //
+//    //
+//	//// fill mLegendInfoTable with corresponding infor
+//	//double lowup[2];
+//	//lowup[0] = -9;
+//	//lowup[1] = -9;
+//    //
+//	//vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
+//	//		this->mLegendInfo->GetColumnByName("range"));
+//	//lowupAbstrAr->SetTuple(newidx, lowup);
+//    //
+//	//vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
+//	//		this->mLegendInfo->GetColumnByName("name"));
+//	//nameAr->SetValue(newidx, "");
+//    //
+//	//vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(
+//	//		this->mLegendInfo->GetColumnByName("rgba"));
+//	//clrs->SetTuple(newidx, rgba);
+//
+//	NMDebugCtx(ctxNMVectorLayer, << "done!");
+//
+//}
 
 void NMVectorLayer::createTableView(void)
 {

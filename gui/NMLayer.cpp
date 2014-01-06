@@ -484,19 +484,24 @@ NMLayer::mapSingleSymbol()
 
 	mNumLegendRows = 2;
 
-	if (mLayerType == NM_VECTOR_LAYER)
-	{
-		mLegendDescrField = tr("All Features");
-		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
-		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
-		{
-			vl->mapSingleSymbol();
-			NMDebugCtx(ctxNMLayer, << "done!");
-			return;
-		}
-	}
+	//if (mLayerType == NM_VECTOR_LAYER)
+	//{
+	//	mLegendDescrField = tr("All Features");
+	//	NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+	//	if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+	//	{
+	//		vl->mapSingleSymbol();
+	//		NMDebugCtx(ctxNMLayer, << "done!");
+	//		return;
+	//	}
+	//}
 
-	mLegendDescrField = tr("All Pixel");
+	if (mLayerType == NM_VECTOR_LAYER)
+		mLegendDescrField = tr("All Features");
+	else
+		mLegendDescrField = tr("All Pixel");
+
+	//long ncells = mTableModel->rowCount(QModelIndex());
 
 	// we create a new look-up table and set the number of entries we need
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
@@ -593,6 +598,9 @@ NMLayer::mapColourTable(void)
 {
 	NMDebugCtx(ctxNMLayer, << "...");
 
+	mNumClasses = mTableModel->rowCount(QModelIndex());
+	mNumLegendRows = mNumClasses + 2;
+
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
 	mLookupTable->SetNumberOfTableValues(mNumClasses+2);
 	mLookupTable->SetTableRange(-1, mNumClasses);
@@ -647,15 +655,12 @@ bool  NMLayer::getLegendColour(int legendRow, double* rgba)
 	{
 	case NM_LEGEND_CLRTAB:
 		{
-			if (mLookupTable->GetNumberOfTableValues() > legendRow-1)
+			if (legendRow-1 < mLookupTable->GetNumberOfTableValues())
 			{
 				mLookupTable->GetTableValue(legendRow-1, rgba);
 			}
 			else
-			{
-				for (int c=0; c < 4; ++c)
-					rgba[c] = 0;
-			}
+				return false;
 		}
 		break;
 

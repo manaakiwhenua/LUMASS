@@ -67,7 +67,7 @@ public:
 
 	// map unique values
 	void mapUniqueValues();
-	void mapSingleSymbol();
+	//void mapSingleSymbol();
 
 public slots:
 	virtual void selectionChanged(const QItemSelection& newSel, const QItemSelection& oldSel);

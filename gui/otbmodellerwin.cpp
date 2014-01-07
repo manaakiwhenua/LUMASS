@@ -1347,19 +1347,19 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	}
 
 	// get the color window and level settings
-	double pixelvalue = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
-
-	//vtkIdType ptId = img->ComputePointId(did);
-	//std::string ptval = img->GetPointData()->GetScalars()->GetVariantValue(ptId).ToString();
-
-
-	vtkImageSlice* slice = vtkImageSlice::SafeDownCast(const_cast<vtkProp3D*>(l->getActor()));
-	vtkImageProperty* iprop = slice->GetProperty();
-	double cwin = iprop->GetColorWindow();
-	double clevel = iprop->GetColorLevel();
-
-	double lower = clevel - (cwin * 0.5);
-	double upper = clevel + (cwin * 0.5);
+	//double pixelvalue = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
+    //
+	////vtkIdType ptId = img->ComputePointId(did);
+	////std::string ptval = img->GetPointData()->GetScalars()->GetVariantValue(ptId).ToString();
+    //
+    //
+	//vtkImageSlice* slice = vtkImageSlice::SafeDownCast(const_cast<vtkProp3D*>(l->getActor()));
+	//vtkImageProperty* iprop = slice->GetProperty();
+	//double cwin = iprop->GetColorWindow();
+	//double clevel = iprop->GetColorLevel();
+    //
+	//double lower = clevel - (cwin * 0.5);
+	//double upper = clevel + (cwin * 0.5);
 
 	pixval = QString(" Pixel (%1, %2, %3) = %4").//  | Window, Level, Range = %5, %6, %7-%8").
 				arg(did[0]).arg(did[1]).arg(did[2]).

@@ -309,6 +309,7 @@ void NMImageLayer::test()
 
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	clrtab->SetNumberOfTableValues(numcolors+2);
+	double* clrptr = 0;
 	if (mTableModel)
 	{
 
@@ -316,11 +317,12 @@ void NMImageLayer::test()
 		//clrtab->IndexedLookupOn();
 		//clrtab->SetNanColor(0, 0, 0, 0);
 	}
-	else
+	else if (ramp == "RedToBlue")
 	{
-		//clrtab->SetNumberOfTableValues(numcolors);
+		clrtab->SetNumberOfTableValues(numcolors);
 		//clrtab->SetTableRange(lower-step, upper+step);
-		clrtab->SetTableRange(lower, upper);
+		clrtab->SetTableRange(nodata, upper+0.0000001);
+		clrptr = new double[3*numcolors];
 	}
 
 
@@ -371,8 +373,19 @@ void NMImageLayer::test()
 	else if (ramp == "RedToBlue")
 	{
 		clrfunc->SetColorSpaceToDiverging();
-		clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
-		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
+		if (mTableModel)
+		{
+			clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
+			clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
+		}
+		else
+		{
+			clrfunc->AddRGBPoint(nodata, 0.4,0.4,0.4);
+			clrfunc->AddRGBPoint(lower-0.0000001, 0.0,0.0,0.0);
+			clrfunc->AddRGBPoint(lower, 1.0, 0.0, 0.0);
+			clrfunc->AddRGBPoint(upper, 0.0, 0.0, 1.0);
+			clrfunc->AddRGBPoint(upper+0.0000001, 0.0,1.0,0.0);
+		}
 	}
 	else if (ramp == "GreenToBlue")
 	{
@@ -386,7 +399,7 @@ void NMImageLayer::test()
 	////////////////////////////// FILL THE LOOKUP TABLE ///////////////////////////////////////
 
 	// everything below the 'range' is transparent
-	//if (mTableModel)
+	if (mTableModel || ramp != "RedToBlue")
 		clrtab->SetTableValue(0, 0, 0, 0, 0);
 
 	NMDebugAI(<< "checking colour assignments ..." << std::endl);
@@ -470,21 +483,53 @@ void NMImageLayer::test()
 		// ==================== JUST COLOUR THE SCALARS (i.e. image without table) =======================
 		else
 		{
-			double fc[3];
-			double clrpos = (double)i/(double)(numcolors-1);
-			clrfunc->GetColor(clrpos, fc);
-			clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2]);
+			if (ramp != "RedToBlue")
+			{
+				double fc[3];
+				double clrpos = (double)i/(double)(numcolors-3);
+				clrfunc->GetColor(clrpos, fc);
+				clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2]);
+			}
+			else
+			{
+				if (i == 0)
+				{
+					clrfunc->GetTable(
+							clrtab->GetTableRange()[0],
+							clrtab->GetTableRange()[1],
+							numcolors, clrptr);
+				}
+				double* pos = clrptr + 3*i;
+				clrtab->SetTableValue(i, pos[0], pos[1], pos[2], 1);
+			}
 		}
 	}
 	// everything above the 'range' is going to be transparent as well
-	//if (mTableModel)
+	if (mTableModel || ramp != "RedToBlue")
+	{
 		clrtab->SetTableValue(numcolors+1, 0, 0, 0, 0);
+	}
+	else
+	{
+		delete[] clrptr;
+		clrptr = 0;
+	}
+
+	//else
+	{
+		int lidx = clrtab->GetIndex(lower);
+		int uidx = clrtab->GetIndex(upper);
+		NMDebugAI(<< "clrtab: lower-idx=" << lidx << " upper-idx=" << uidx << std::endl);
+	}
 
 	NMDebugAI(<< "colouring: in=" << in << " out=" << out << " nodata=" << nod << std::endl);
 	NMDebugAI(<< "minclrpos=" << minclrpos << " maxcolrpos=" << maxclrpos << std::endl);
 
 	this->mImgProp->SetUseLookupTableScalarRange(1);
-	this->mImgProp->SetLookupTable(clrtab);
+	//if (mTableModel || ramp != "RedToBlue")
+		this->mImgProp->SetLookupTable(clrtab);
+	//else
+		//this->mImgProp->SetLookupTable(clrfunc);
 
 	double* clrrange = clrtab->GetRange();
 	long numclr = clrtab->GetNumberOfColors();
@@ -779,8 +824,8 @@ bool NMImageLayer::setFileName(QString filename)
 	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
 	//m->ResampleToScreenPixelsOn();
-	m->ResampleToScreenPixelsOff();
-	m->SeparateWindowLevelOperationOff();
+	//m->ResampleToScreenPixelsOff();
+	//m->SeparateWindowLevelOperationOff();
 	m->SetBorder(1);
 
 	// adjust origin

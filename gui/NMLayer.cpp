@@ -29,6 +29,7 @@
 #include <QTime>
 
 #include "vtkMapper.h"
+#include "vtkLongArray.h"
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
 #include "vtkDataSetAttributes.h"
@@ -386,13 +387,6 @@ NMLayer::initiateLegend(void)
 		// Layer must be an image layer then
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 
-		switch(il->getITKComponentType())
-		{
-			case otb::ImageIOBase::UCHAR:  mNodata = 255; 		  break;
-			case otb::ImageIOBase::DOUBLE: mNodata = -3.40282e38; break;
-			default: /* LONG */			   mNodata = -2147483647; break;
-		}
-
 		// let's get/update the stats
 		const double* imgStats = il->getStatistics();
 		for (int i=0; i < 5; ++i)
@@ -405,6 +399,13 @@ NMLayer::initiateLegend(void)
 		// +4: description (field); nodata; > upper; < lower
 		mNumLegendRows = mNumClasses + 4;
 
+		switch(il->getITKComponentType())
+		{
+			case otb::ImageIOBase::UCHAR:  mNodata = 255; mUpper=254;  break;
+			case otb::ImageIOBase::DOUBLE: mNodata = -3.40282e38; break;
+			default: /* LONG */			   mNodata = -2147483647; break;
+		}
+
 		NMDebugAI(<< "lower=" << mLower << " upper=" << mUpper << " nodata=" << mNodata << std::endl);
 
 		mLegendValueField = "Pixel Values";
@@ -414,8 +415,9 @@ NMLayer::initiateLegend(void)
 		this->mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
 	}
 
-	this->updateLegend();
 	NMDebugCtx(ctxNMLayer, << "done!");
+	this->updateLegend();
+
 }
 
 void
@@ -461,8 +463,8 @@ NMLayer::updateLegend(void)
 	{
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 		vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-		iprop->SetLookupTable(mLookupTable);
 		iprop->SetUseLookupTableScalarRange(1);
+		iprop->SetLookupTable(mLookupTable);
 	}
 	else
 	{
@@ -482,30 +484,47 @@ NMLayer::mapSingleSymbol()
 {
 	NMDebugCtx(ctxNMLayer, << "...");
 
-	mNumLegendRows = 2;
+	mNumLegendRows = 3;
 
-	//if (mLayerType == NM_VECTOR_LAYER)
-	//{
-	//	mLegendDescrField = tr("All Features");
-	//	NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
-	//	if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
-	//	{
-	//		vl->mapSingleSymbol();
-	//		NMDebugCtx(ctxNMLayer, << "done!");
-	//		return;
-	//	}
-	//}
+	double minrange = mNodata;
+	double maxrange = mLower;
 
-	if (mLayerType == NM_VECTOR_LAYER)
-		mLegendDescrField = tr("All Features");
+	if (mNodata > max(mUpper, mLower))
+	{
+		maxrange = max(mUpper, mLower);
+	}
 	else
-		mLegendDescrField = tr("All Pixel");
+	{
+		maxrange = min(mUpper, mLower);
+	}
 
-	//long ncells = mTableModel->rowCount(QModelIndex());
 
-	// we create a new look-up table and set the number of entries we need
+	long numclrs = 2;
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
-	mLookupTable->SetNumberOfTableValues(1);
+	if (mTableModel)
+	{
+		if (mLayerType == NM_IMAGE_LAYER)
+		{
+			mLegendDescrField = tr("All Pixel");
+			numclrs = mTableModel->rowCount(QModelIndex())+1;
+		}
+		else
+		{
+			vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+			vtkLongArray* nmids = vtkLongArray::SafeDownCast(dsAttr->GetArray("nm_id"));
+			numclrs = nmids->GetNumberOfTuples();
+			mLegendDescrField = tr("All Features");
+		}
+		minrange = 0;
+		maxrange = numclrs-1;
+	}
+	else
+	{
+		mLegendDescrField = tr("All Pixel");
+		numclrs = 2;
+	}
+	mLookupTable->SetNumberOfTableValues(numclrs);
+	mLookupTable->SetTableRange(minrange, maxrange);
 
 	// chose a random colour
 	QString sVal;
@@ -514,60 +533,24 @@ NMLayer::mapSingleSymbol()
 	double rgba[4];
 	for (int i=0; i < 3; i++)
 		rgba[i] = vtkMath::Random();
-	rgba[3] = 1;
-
-	if (mTableModel != 0)
+	double alpha1, alpha2;
+	if (minrange == maxrange && minrange == mNodata)
 	{
-		mLower = 0;
-		mUpper = mTableModel->rowCount(QModelIndex())-1;
+		alpha1 = 0;
+		alpha2 = 0;
 	}
 	else
 	{
-		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-		if (il == 0)
-		{
-			const double* stats = il->getStatistics();
-			mLower = stats[0];
-			mUpper = stats[1];
-
-			double nd = il->getDefaultNodata();
-			if (mLower == nd)
-				mLower = 0;
-			else if (nd == 255 && mUpper == 255)
-			{
-				mUpper = 254;
-			}
-
-		}
+		alpha1 = 0;
+		alpha2 = 1;
 	}
 
-
-	mLookupTable->SetTableValue(0, rgba[0], rgba[1], rgba[2], rgba[3]);
-	mLookupTable->SetTableRange(mLower, mUpper);
-
-
-	// fill hash map
-	//vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
-	//QVector<int> idxVec;
-	//idxVec.push_back(0);
-	//this->mHashValueIndices.insert(tr(""), idxVec);
-    //
-	//// fill mLegendInfoTable with corresponding infor
-	//double lowup[2];
-	//lowup[0] = -9;
-	//lowup[1] = -9;
-    //
-	//vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
-	//		this->mLegendInfo->GetColumnByName("range"));
-	//lowupAbstrAr->SetTuple(newidx, lowup);
-    //
-	//vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
-	//		this->mLegendInfo->GetColumnByName("name"));
-	//nameAr->SetValue(newidx, "");
-    //
-	//vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(
-	//		this->mLegendInfo->GetColumnByName("rgba"));
-	//clrs->SetTuple(newidx, rgba);
+	long r = mLayerType == NM_VECTOR_LAYER ? 0 : 1;
+	mLookupTable->SetTableValue(0, rgba[0], rgba[1], rgba[2], alpha1);
+	for (; r < numclrs; ++r)
+	{
+		mLookupTable->SetTableValue(r, rgba[0], rgba[1], rgba[2], alpha2);
+	}
 
 	NMDebugCtx(ctxNMLayer, << "done!");
 }
@@ -598,8 +581,8 @@ NMLayer::mapColourTable(void)
 {
 	NMDebugCtx(ctxNMLayer, << "...");
 
-	mNumClasses = mTableModel->rowCount(QModelIndex());
-	mNumLegendRows = mNumClasses + 2;
+	//mNumClasses = mTableModel->rowCount(QModelIndex());
+	//mNumLegendRows = mNumClasses + 2;
 
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
 	mLookupTable->SetNumberOfTableValues(mNumClasses+2);
@@ -692,7 +675,20 @@ bool  NMLayer::getLegendColour(int legendRow, double* rgba)
 
 	case NM_LEGEND_SINGLESYMBOL:
 		{
-			mLookupTable->GetTableValue(legendRow-1, rgba);
+			if (legendRow == 1)
+			{
+				if (mLayerType == NM_VECTOR_LAYER)
+				{
+					for (int i=0; i < 4; ++i)
+						rgba[i] = 0.0;
+				}
+				else
+					mLookupTable->GetTableValue(0, rgba);
+			}
+			else if (legendRow == 2)
+			{
+				mLookupTable->GetTableValue(1, rgba);
+			}
 		}
 		break;
 
@@ -794,7 +790,9 @@ QString  NMLayer::getLegendName(int legendRow)
 
 	case NM_LEGEND_SINGLESYMBOL:
 		if (legendRow == 1)
-			name = tr("");
+			name = tr("Nodata");
+		else
+			name = tr("Valid Values");
 		break;
 
 	default:

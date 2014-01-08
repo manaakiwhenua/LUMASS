@@ -194,6 +194,7 @@ public:
 	// legendRow; requires provision of a double[4]
 	bool getLegendColour(int legendRow, double* rgba);
 	QIcon getLegendIcon(int legendRow);
+	QIcon getColourRampIcon(void);
 	QString getLegendName(int legendRow);
 	int getLegendItemCount(void);
 	double getLegendItemUpperValue(int legendRow);

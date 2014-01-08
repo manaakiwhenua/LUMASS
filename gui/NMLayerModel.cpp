@@ -250,7 +250,8 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 		{
 			case Qt::DisplayRole:
 			{
-				col == 0 ? retVar = QVariant(l->getLegendName(row)) : QString();
+				//col == 0 ? retVar = QVariant(l->getLegendName(row)) : QString();
+				retVar = QVariant(l->getLegendName(row));
 			}
 			break;
 
@@ -258,7 +259,8 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			{
 				if (row > 0)
 				{
-					col == 0 ? retVar = lm->createLegendIcon(l, row): QIcon();
+					//col == 0 ? retVar = lm->createLegendIcon(l, row): QIcon();
+					retVar = l->getLegendIcon(row);
 				}
 			}
 			break;
@@ -267,9 +269,20 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			case Qt::SizeHintRole:
 			{
 				if (row == 0)
+				{
 					retVar = QSize(0, 20);
+				}
 				else
-					retVar = QSize(16, 20);
+				{
+					if (l->getLegendType() == NMLayer::NM_LEGEND_RAMP && row == 3)
+					{
+						retVar = QSize(16, 60);
+					}
+					else
+					{
+						retVar = QSize(16, 20);
+					}
+				}
 			}
 			break;
 

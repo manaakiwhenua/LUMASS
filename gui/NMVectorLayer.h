@@ -57,12 +57,15 @@ public:
 	const vtkOGRLayerMapper* getContourMapper(void);
 	const vtkActor* getContourActor(void);
 
-//	void showAttributeTable(void);
-//	const vtkTable* getTable(void);
+	//	void showAttributeTable(void);
+	//	const vtkTable* getTable(void);
 
 	NMFeatureType getFeatureType(void);
 
-//	double getArea();
+	QColor getContourColour(void) {return mContourColour;}
+	void setContourColour(QColor clr) {mContourColour = clr;}
+
+	//	double getArea();
 	long getNumberOfFeatures(void);
 
 	// map unique values
@@ -82,6 +85,7 @@ protected:
 
 	NMFeatureType mFeatureType;
 	vtkSmartPointer<vtkTable> mAttributeTable;
+	QColor mContourColour;
 
 
 	void createTableView(void);

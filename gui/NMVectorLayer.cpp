@@ -30,6 +30,7 @@
 #include <QTime>
 #include <QVector>
 #include <QFileInfo>
+#include <QColor>
 
 #include "vtkIntArray.h"
 #include "vtkPolyData.h"
@@ -73,6 +74,7 @@ NMVectorLayer::NMVectorLayer(vtkRenderWindow* renWin,
 	this->mContour = 0;
 	this->mContourMapper = 0;
 	this->mContourActor = 0;
+	this->mContourColour = QColor(0, 0, 0, 255);
 
 	this->mLayerIcon = QIcon(":vector_layer.png");
 }
@@ -146,10 +148,11 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 
 	for (int c=0; c < contour->GetNumberOfCells(); ++c)
 	{
-		//if (sel->GetTuple1(c) == 0)
-			olclrtab->SetTableValue(c, 0,0,0,1);
-		//else
-			//olclrtab->SetTableValue(c, 1,0,0,1);
+		olclrtab->SetTableValue(c,
+					mContourColour.redF(),
+					mContourColour.greenF(),
+					mContourColour.blueF(),
+					mContourColour.alphaF());
 	}
 
 	m->SetLookupTable(olclrtab);

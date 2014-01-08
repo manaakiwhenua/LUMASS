@@ -27,6 +27,8 @@
 #include "NMVectorLayer.h"
 
 #include <QTime>
+#include <QColor>
+#include <QPainter>
 
 #include "vtkMapper.h"
 #include "vtkLongArray.h"
@@ -701,24 +703,82 @@ QIcon NMLayer::getLegendIcon(int legendRow)
 {
 	QIcon icon;
 
-	switch (mLegendType)
+	if (mLegendType == NM_LEGEND_RAMP && legendRow == 3)
 	{
-	case NM_LEGEND_RAMP:
-		break;
+		icon = this->getColourRampIcon();
+	}
+	else
+	{
+		double rgba[4] = {0,0,0,0};
+		if (!this->getLegendColour(legendRow, rgba))
+		{
+			return icon;
+		}
+		QColor clr;
+		clr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
 
-	case NM_LEGEND_INDEXED:
-	case NM_LEGEND_CLRTAB:
-		break;
+		QPixmap pix(32,32);
+		if (mLayerType == NM_VECTOR_LAYER)
+		{
+			NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+			QColor cclr = vl->getContourColour();
+			QPainter painter(&pix);
+			QRect inner = pix.rect();
+			inner.adjust(1,1,-1,-1);
+			painter.fillRect(pix.rect(), cclr);
+			painter.fillRect(inner, clr);
+		}
+		else
+		{
+			pix.fill(clr);
+		}
 
-	case NM_LEGEND_SINGLESYMBOL:
-		break;
-
-	default:
-		break;
+		icon = QIcon(pix);
 	}
 
 
+	//switch (mLegendType)
+	//{
+	//case NM_LEGEND_RAMP:
+	//	icon  = this->getColourRampIcon();
+	//	break;
+    //
+	//case NM_LEGEND_INDEXED:
+	//case NM_LEGEND_CLRTAB:
+	//	//break;
+    //
+	//case NM_LEGEND_SINGLESYMBOL:
+	//	//break;
+    //
+	//default:
+	//	break;
+	//}
+
 	return icon;
+}
+
+QIcon NMLayer::getColourRampIcon()
+{
+	QIcon rampIcon;
+
+	QPixmap pix(16,60);
+	QPainter p(&pix);
+
+	QLinearGradient ramp;
+	ramp.setCoordinateMode(QGradient::StretchToDeviceMode);
+	ramp.setStart(0.5, 0.0);
+	ramp.setFinalStop(0.5, 1.0);
+
+	// dummy, needs to be replaced by one which makes use of
+	// the actually specified colour ramp
+	ramp.setColorAt(0.0, QColor(255,255,255,255));
+	ramp.setColorAt(0.5, QColor(0, 255, 0, 255));
+	ramp.setColorAt(1.0, QColor(0, 0, 255, 255));
+
+	p.fillRect(pix.rect(), ramp);
+
+	rampIcon = QIcon(pix);
+	return rampIcon;
 }
 
 int NMLayer::getLegendItemCount(void)

@@ -170,10 +170,10 @@ void NMLayer::resetLegendInfo(void)
 	// create new one
 	this->mLegendInfo = vtkSmartPointer<vtkTable>::New();
 
-	vtkSmartPointer<vtkDoubleArray> rgba = vtkSmartPointer<vtkDoubleArray>::New();
-	rgba->SetName("rgba");
-	rgba->SetNumberOfComponents(4);
-	mLegendInfo->AddColumn(rgba);
+	//vtkSmartPointer<vtkDoubleArray> rgba = vtkSmartPointer<vtkDoubleArray>::New();
+	//rgba->SetName("rgba");
+	//rgba->SetNumberOfComponents(4);
+	//mLegendInfo->AddColumn(rgba);
 
 	vtkSmartPointer<vtkDoubleArray> range = vtkSmartPointer<vtkDoubleArray>::New();
 	range->SetName("range");
@@ -446,8 +446,8 @@ NMLayer::updateLegend(void)
 			switch(mLegendClassType)
 			{
 			case NM_CLASS_UNIQUE:
-				mNumClasses = 0;mTableModel->rowCount(QModelIndex());
-				mNumLegendRows = mNumClasses+2;
+				//mNumClasses = 0;//mTableModel->rowCount(QModelIndex());
+				//mNumLegendRows = mNumClasses+2;
 				this->mapUniqueValues();
 				break;
 
@@ -557,6 +557,41 @@ NMLayer::mapSingleSymbol()
 void
 NMLayer::mapUniqueValues(void)
 {
+	if (mTableModel == 0)
+	{
+		NMErr(ctxNMLayer, << "Invalid attribute table");
+		return;
+	}
+
+	// check attribute value type
+	const int validx = this->getColumnIndex(mLegendValueField);
+	const int descridx = this->getColumnIndex(mLegendDescrField);
+	if (validx < 0)
+	{
+		NMErr(ctxNMLayer, << "Value field not specified!");
+		return;
+	}
+	if (descridx < 0) descridx = validx;
+
+	const QModelIndex sampleIdx = mTableModel->index(0, validx);
+	if (mTableModel->data(sampleIdx).type() == QVariant::Double)
+	{
+		NMErr(ctxNMLayer, << "Continuous data types are not supported!");
+		return;
+	}
+
+	long ncells = 0;
+	if (mLayerType == NM_VECTOR_LAYER)
+	{
+		vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+		vtkAbstractArray* nmid = dsa->GetArray("nm_id");
+		ncells = nmid->GetNumberOfTuples();
+	}
+	else
+	{
+		ncells = mTableModel->rowCount(QModelIndex());
+	}
+
 
 
 }
@@ -625,7 +660,7 @@ NMLayer::mapColourTable(void)
 }
 
 
-bool  NMLayer::getLegendColour(int legendRow, double* rgba)
+bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 {
 	//NMDebugCtx(ctxNMLayer, << "...");
 
@@ -699,7 +734,7 @@ bool  NMLayer::getLegendColour(int legendRow, double* rgba)
 	return true;
 }
 
-QIcon NMLayer::getLegendIcon(int legendRow)
+QIcon NMLayer::getLegendIcon(const int legendRow)
 {
 	QIcon icon;
 
@@ -710,10 +745,7 @@ QIcon NMLayer::getLegendIcon(int legendRow)
 	else
 	{
 		double rgba[4] = {0,0,0,0};
-		if (!this->getLegendColour(legendRow, rgba))
-		{
-			return icon;
-		}
+		this->getLegendColour(legendRow, rgba);
 		QColor clr;
 		clr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
 
@@ -735,24 +767,6 @@ QIcon NMLayer::getLegendIcon(int legendRow)
 
 		icon = QIcon(pix);
 	}
-
-
-	//switch (mLegendType)
-	//{
-	//case NM_LEGEND_RAMP:
-	//	icon  = this->getColourRampIcon();
-	//	break;
-    //
-	//case NM_LEGEND_INDEXED:
-	//case NM_LEGEND_CLRTAB:
-	//	//break;
-    //
-	//case NM_LEGEND_SINGLESYMBOL:
-	//	//break;
-    //
-	//default:
-	//	break;
-	//}
 
 	return icon;
 }
@@ -789,7 +803,7 @@ int NMLayer::getLegendItemCount(void)
 	return this->mNumLegendRows;
 }
 
-QString  NMLayer::getLegendName(int legendRow)
+QString  NMLayer::getLegendName(const int legendRow)
 {
 	QString name;
 
@@ -850,6 +864,19 @@ QString  NMLayer::getLegendName(int legendRow)
 			name = tr("Nodata");
 		else
 			name = tr("Valid Values");
+		break;
+
+	case NM_LEGEND_RAMP:
+		{
+			switch (legendRow)
+			{
+				case 1:	name = tr("Nodata"); break;
+				case 2: name = tr("> Upper"); break;
+				//case 3: name = tr("Upper\n\n\nLower"); break;
+				case 4: name = tr("< Lower"); break;
+				default: name = tr(""); break;
+			}
+		}
 		break;
 
 	default:
@@ -1185,7 +1212,7 @@ void NMLayer::selectedLayerChanged(const NMLayer* layer)
 	}
 }
 
-double NMLayer::getLegendItemUpperValue(int legendRow)
+double NMLayer::getLegendItemUpperValue(const int legendRow)
 {
 	if (!(0 <= legendRow < this->mLegendInfo->GetNumberOfRows()))
 	{
@@ -1202,7 +1229,7 @@ double NMLayer::getLegendItemUpperValue(int legendRow)
 }
 
 
-double NMLayer::getLegendItemLowerValue(int legendRow)
+double NMLayer::getLegendItemLowerValue(const int legendRow)
 {
 	if (!(0 <= legendRow < this->mLegendInfo->GetNumberOfRows()))
 	{
@@ -1219,7 +1246,7 @@ double NMLayer::getLegendItemLowerValue(int legendRow)
 	return r[0];
 }
 
-bool NMLayer::getLegendItemRange(int legendRow, double* range)
+bool NMLayer::getLegendItemRange(const int legendRow, double* range)
 {
 	if (!(0 <= legendRow < this->mLegendInfo->GetNumberOfRows()))
 	{

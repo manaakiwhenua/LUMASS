@@ -56,36 +56,67 @@ NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem
     opt.decorationSize = index.data(Qt::SizeHintRole).toSize();
 
     const int level = index.internalId() % 100;
-    if (level == 2)
+    switch (level)
     {
-    	opt.rect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
+    case 1:
+		{
+			QString legendTypeStr = index.data(Qt::UserRole).toString();
+			if (legendTypeStr == "NM_LEGEND_RAMP" && index.row() == 3)
+			{
+				painter->save();
 
-    	painter->save();
-		QString valStr1 = index.data().toString();
-    	QString valStr2 = index.sibling(index.row(), 1).data().toString();
-   		QRect valRect1 = QRect(opt.rect.x(),
-					opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
-   		QRect valRect2 = QRect(opt.rect.x() + (opt.rect.width() / 2.0 + 0.5),
-					opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
-    	painter->setFont(index.data(Qt::FontRole).value<QFont>());
-    	painter->setPen(index.data(Qt::ForegroundRole).value<QColor>());
-    	painter->drawText(valRect1, opt.displayAlignment, valStr1);
+				QIcon rampIcon = index.data(Qt::DecorationRole).value<QIcon>();
+				QPixmap rampPix = rampIcon.pixmap(opt.decorationSize);
+				painter->drawPixmap(opt.rect.topLeft(), rampPix);
 
-    	painter->setFont(index.sibling(index.row(), 1).data(Qt::FontRole).value<QFont>());
-    	painter->setPen(index.sibling(index.row(), 1).data(Qt::ForegroundRole).value<QColor>());
-    	painter->drawText(valRect2, opt.displayAlignment, valStr2);
+				QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
+				QString upperStr = index.data(Qt::UserRole+1).toString();
+				QString lowerStr = index.data(Qt::UserRole+2).toString();
+				painter->setFont(index.data(Qt::FontRole).value<QFont>());
+				QFontMetrics fm(painter->font());
+				const int lh = fm.height();
+				painter->drawText(textRect.x(), textRect.top()+lh, upperStr);
+				painter->drawText(textRect.x(), textRect.bottom(), lowerStr);
 
-    	painter->restore();
+				painter->restore();
+				return;
+			}
+		}
+		break;
+
+    case 2:
+		{
+			opt.rect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
+
+			painter->save();
+			QString valStr1 = index.data().toString();
+			QString valStr2 = index.sibling(index.row(), 1).data().toString();
+			QRect valRect1 = QRect(opt.rect.x(),
+						opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
+			QRect valRect2 = QRect(opt.rect.x() + (opt.rect.width() / 2.0 + 0.5),
+						opt.rect.y(), opt.rect.width() / 2, opt.rect.height());
+			painter->setFont(index.data(Qt::FontRole).value<QFont>());
+			painter->setPen(index.data(Qt::ForegroundRole).value<QColor>());
+			painter->drawText(valRect1, opt.displayAlignment, valStr1);
+
+			painter->setFont(index.sibling(index.row(), 1).data(Qt::FontRole).value<QFont>());
+			painter->setPen(index.sibling(index.row(), 1).data(Qt::ForegroundRole).value<QColor>());
+			painter->drawText(valRect2, opt.displayAlignment, valStr2);
+
+			painter->restore();
+		}
+		return;
+		break;
     }
-    else
-    {
-		QWidget* widget = 0;
-		if (QStyleOptionViewItemV3 *v3 = qstyleoption_cast<QStyleOptionViewItemV3 *>(&opt))
-			widget = const_cast<QWidget*>(v3->widget);
 
-		QStyle *style = widget ? widget->style() : QApplication::style();
-		style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
-    }
+    // we put the DEFAULT switch at the end in case other switches have some subconditions
+    // and might fall back onto this default implementation (e.g. level == 1)
+    QWidget* widget = 0;
+	if (QStyleOptionViewItemV3 *v3 = qstyleoption_cast<QStyleOptionViewItemV3 *>(&opt))
+		widget = const_cast<QWidget*>(v3->widget);
+
+	QStyle *style = widget ? widget->style() : QApplication::style();
+	style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
 }
 
 QSize

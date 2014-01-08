@@ -56,6 +56,7 @@
 #include "vtkOGRLayerMapper.h"
 #include "vtkColorTransferFunction.h"
 #include "vtkLookupTable.h"
+//#include "vtkScalarsToColors.h"
 
 class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
@@ -192,14 +193,14 @@ public:
 	//--LEGEND INFO---------------------------------
 	// get the colour of the legend item in row
 	// legendRow; requires provision of a double[4]
-	bool getLegendColour(int legendRow, double* rgba);
-	QIcon getLegendIcon(int legendRow);
+	bool getLegendColour(const int legendRow, double* rgba);
+	QIcon getLegendIcon(const int legendRow);
 	QIcon getColourRampIcon(void);
-	QString getLegendName(int legendRow);
+	QString getLegendName(const int legendRow);
 	int getLegendItemCount(void);
-	double getLegendItemUpperValue(int legendRow);
-	double getLegendItemLowerValue(int legendRow);
-	bool getLegendItemRange(int legendRow, double* range);
+	double getLegendItemUpperValue(const int legendRow);
+	double getLegendItemLowerValue(const int legendRow);
+	bool getLegendItemRange(const int legendRow, double* range);
 
 	QString getLegendTypeStr(NMLayer::NMLegendType type)
 		{return mLegendTypeStr.at((int)type);}
@@ -324,6 +325,7 @@ protected:
 
 	vtkSmartPointer<vtkColorTransferFunction> mClrFunc;
 	vtkSmartPointer<vtkLookupTable> mLookupTable;
+	//vtkSmartPointer<vtkScalarsToColors> mLookupTable;
 
 	QIcon mLayerIcon;
 	QString mFileName;

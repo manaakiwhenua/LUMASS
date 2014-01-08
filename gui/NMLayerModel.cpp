@@ -255,6 +255,13 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			}
 			break;
 
+			case Qt::ToolTipRole:
+			{
+				if (row == 0)
+					retVar = tr("Double click to show/edit legend metadata");
+			}
+			break;
+
 			case Qt::DecorationRole:
 			{
 				if (row > 0)
@@ -265,7 +272,19 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 			}
 			break;
 
-			// used only for decoration (icon) size by NMComponentListItemDelegate
+			case Qt::FontRole:
+				{
+					QFont font;
+					if (row == 0)
+						font.setPointSize(9);
+					else
+						font.setPointSize(8);
+
+					retVar = font;
+				}
+				break;
+
+
 			case Qt::SizeHintRole:
 			{
 				if (row == 0)
@@ -285,6 +304,20 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 				}
 			}
 			break;
+
+			// herewith we provide the NMComponentListItemDelegate with the
+			// specified legend type to paint ramp description
+			case Qt::UserRole:
+				retVar = l->getLegendTypeStr(l->getLegendType());
+				break;
+
+			case Qt::UserRole+1:
+				retVar = QString(tr("%1")).arg(l->getUpper());
+				break;
+
+			case Qt::UserRole+2:
+				retVar = QString(tr("%1")).arg(l->getLower());
+				break;
 
 			default:
 				break;

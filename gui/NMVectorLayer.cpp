@@ -138,15 +138,16 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 	m->SetInput(this->mContour);
 
 	vtkSmartPointer<vtkLookupTable> olclrtab = vtkSmartPointer<vtkLookupTable>::New();
-	olclrtab->Allocate(this->mContour->GetNumberOfCells());
-	olclrtab->SetNumberOfTableValues(this->mContour->GetNumberOfCells());
+	long ncells = this->mContour->GetNumberOfCells();
+	olclrtab->Allocate(ncells);
+	olclrtab->SetNumberOfTableValues(ncells);
 
 	// since we can save selections with the data set, we better check, whether
 	// we've got some
 	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* sel = dsAttr->GetArray("nm_sel");
 
-	for (int c=0; c < contour->GetNumberOfCells(); ++c)
+	for (int c=0; c < ncells; ++c)
 	{
 		olclrtab->SetTableValue(c,
 					mContourColour.redF(),
@@ -154,9 +155,12 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 					mContourColour.blueF(),
 					mContourColour.alphaF());
 	}
+	//olclrtab->SetTableValue(0, 0, 0, 0, 0);
+	//olclrtab->SetTableValue(ncells, 0, 0, 0, 0);
+	olclrtab->SetTableRange(0, ncells-1);
 
 	m->SetLookupTable(olclrtab);
-	m->SetScalarRange(0, contour->GetNumberOfCells());
+	m->SetUseLookupTableScalarRange(1);
 	this->mContourMapper = m;
 
 	// create a contour actor

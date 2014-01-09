@@ -565,7 +565,7 @@ NMLayer::mapUniqueValues(void)
 
 	// check attribute value type
 	int validx = this->getColumnIndex(mLegendValueField);
-	int descridx = validx;//this->getColumnIndex(mLegendDescrField);
+	int descridx = validx;
 	mLegendDescrField = mLegendValueField;
 	if (validx < 0)
 	{
@@ -587,24 +587,34 @@ NMLayer::mapUniqueValues(void)
 		bNum = true;
 	}
 
+	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+
 	long ncells = 0;
 	vtkAbstractArray* valar = 0;
+	vtkUnsignedCharArray* hole = 0;
 	if (mLayerType == NM_VECTOR_LAYER)
 	{
 		vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 		valar = dsa->GetAbstractArray(validx);
 		ncells = valar->GetNumberOfTuples();
+		mLookupTable->SetNumberOfTableValues(ncells);
+
+		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+			hole = vtkUnsignedCharArray::SafeDownCast(dsa->GetArray("nm_hole"));
 	}
 	else
 	{
 		ncells = mTableModel->rowCount(QModelIndex());
+		mLookupTable->SetNumberOfTableValues(ncells+2);
 	}
 
-	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
-	mLookupTable->SetNumberOfTableValues(ncells+2);
+
+
 
 	// value index
-	this->mHashValueIndices.clear();
+	//this->mHashValueIndices.clear();
+	this->mMapValueIndices.clear();
 
 	bool bConvOk;
 	int clrCount = 0, val;
@@ -612,8 +622,14 @@ NMLayer::mapUniqueValues(void)
 	QModelIndex vi;
 	vtkMath::RandomSeed(QTime::currentTime().msec());
 	double rgba[4];
-	for (int t=1; t < ncells; ++t)
+	for (int t=0; t < ncells; ++t)
 	{
+		if (hole && hole->GetValue(t))
+		{
+			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+			continue;
+		}
+
 		if (bNum)
 		{
 			if (valar)
@@ -641,11 +657,11 @@ NMLayer::mapUniqueValues(void)
 			}
 		}
 
-		QHash<QString, int>::iterator it = this->mHashValueIndices.find(sVal);
-		if (it == this->mHashValueIndices.end())
+		QMap<QString, int>::iterator it = this->mMapValueIndices.find(sVal);
+		if (it == this->mMapValueIndices.end())
 		{
 			// add the key value pair to the hash map
-			this->mHashValueIndices.insert(sVal, t);
+			this->mMapValueIndices.insert(sVal, t);
 
 			// generate a random triple of uchar values
 			for (int i=0; i < 3; i++)
@@ -653,18 +669,24 @@ NMLayer::mapUniqueValues(void)
 			rgba[3] = 1;
 
 			// add the color spec to the mapper's color table
-			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+			if (valar)
+				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+			else
+				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
 		}
 		else
 		{
 			mLookupTable->GetTableValue(it.value(), rgba);
-			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+			if ()
+			mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
 		}
 	}
 	mLookupTable->SetTableValue(0, 0, 0, 0, 0);
 	mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
+	mLookupTable->SetTableRange(-1, ncells);
+	mMapValueIndices.insert("other", 0);
 
-	mNumClasses = mHashValueIndices.size();
+	mNumClasses = mMapValueIndices.size();
 	mNumLegendRows = mNumClasses + 2;
 }
 
@@ -761,12 +783,12 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 				{
 					if (legendRow-1 < mNumLegendRows)
 					{
-						mLookupTable->GetTableValue(legendRow-1, rgba);
-					}
-					else
-					{
-						for (int c=0; c < 4; ++c)
-							rgba[c] = 0;
+						QList<QString> keys = mMapValueIndices.keys();
+						if (legendRow-1 < keys.size())
+						{
+							int tabidx = mMapValueIndices.value(keys[legendRow-1]);
+							mLookupTable->GetTableValue(tabidx, rgba);
+						}
 					}
 				}
 				break;
@@ -898,7 +920,7 @@ QString  NMLayer::getLegendName(const int legendRow)
 				const QModelIndex mi = mTableModel->index(legendRow-1, colidx, QModelIndex());
 				name = mTableModel->data(mi, Qt::DisplayRole).toString();
 			}
-			else // legendRow == 1
+			else if (legendRow == 1)
 			{
 				name = tr("other");
 			}
@@ -911,13 +933,10 @@ QString  NMLayer::getLegendName(const int legendRow)
 			{
 			case NM_CLASS_UNIQUE:
 				{
-					if (legendRow > 1)
+					QList<QString> keys = mMapValueIndices.keys();
+					if (legendRow-1 < keys.size())
 					{
-
-					}
-					else
-					{
-						name = tr("other");
+						name = keys[legendRow-1];
 					}
 				}
 				break;
@@ -942,7 +961,6 @@ QString  NMLayer::getLegendName(const int legendRow)
 			{
 				case 1:	name = tr("Nodata"); break;
 				case 2: name = tr("> Upper"); break;
-				//case 3: name = tr("Upper\n\n\nLower"); break;
 				case 4: name = tr("< Lower"); break;
 				default: name = tr(""); break;
 			}

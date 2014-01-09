@@ -344,147 +344,147 @@ long NMVectorLayer::getNumberOfFeatures(void)
 }
 
 
-void
-NMVectorLayer::mapUniqueValues()
-{
-	if (this->mFeatureType != NMVectorLayer::NM_POLYGON_FEAT)
-	{
-		NMLayer::mapUniqueValues();
-		return;
-	}
-
-	// make a list of available attributes
-	vtkDataSet* ds = const_cast<vtkDataSet*>(this->getDataSet());
-	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-	vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(
-			dsAttr->GetArray("nm_hole"));
-	vtkLongArray* nmid = vtkLongArray::SafeDownCast(
-			dsAttr->GetArray("nm_id"));
-
-	// let's find out about the attribute
-	// if we've got doubles, we refuse to map unique values ->
-	// doesn't make sense, does it?
-	vtkAbstractArray* anAr = dsAttr->GetAbstractArray(mLegendValueField.toStdString().c_str());
-	int type = anAr->GetDataType();
-	if (type == VTK_DOUBLE)
-	{
-		NMDebugAI( << "oh no, not with doubles!" << endl);
-		return;
-	}
-
-	bool bNum = true;
-	if (type == VTK_STRING)
-		bNum = false;
-
-	const long ncells = anAr->GetNumberOfTuples();
-
-	// we create a new look-up table and set the number of entries we need
-	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
-	mLookupTable->SetNumberOfTableValues(ncells);
-
-	// let's create a new legend info table
-	this->resetLegendInfo();
-
-	// we iterate over the number of tuples in the user specified attribute array
-	// and assign each unique categorical value its own (hopefully unique)
-	// random colour, which is then inserted into the layer's lookup table; we further
-	// specify a default name for each colour and put it together with the
-	// chosen colour into a LengendInfo-Table, which basically holds the legend
-	// category to display; for linking attribute values to table-info and lookup-table
-	// indices, we fill the HashMap mHashValueIndices (s. Header file for further descr.)
-	bool bConvOk;
-	int clrCount = 0, val;
-	QString sVal;
-	vtkMath::RandomSeed(QTime::currentTime().msec());
-	double rgba[4];
-	for (int t=0; t < ncells; ++t)
-	{
-		if (hole->GetValue(t))
-		{
-			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
-			continue;
-		}
-
-		if (bNum)
-		{
-			int val = anAr->GetVariantValue(t).ToInt(&bConvOk);
-			sVal = QString(tr("%1")).arg(val);
-		}
-		else
-		{
-			sVal = anAr->GetVariantValue(t).ToString().c_str();
-		}
-
-		QHash<QString, QVector<int> >::iterator it = this->mHashValueIndices.find(sVal);
-		if (it == this->mHashValueIndices.end())
-		{
-			// add the key value pair to the hash map
-			QVector<int> idxVec;
-			idxVec.append(clrCount);
-			this->mHashValueIndices.insert(sVal, idxVec);
-
-			// add a new row to the legend_info table
-			vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
-
-			// add the value to the index map
-			double lowup[2];
-			lowup[0] = val;
-			lowup[1] = val;
-
-			vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
-					this->mLegendInfo->GetColumnByName("range"));
-			lowupAbstrAr->SetTuple(newidx, lowup);
-
-			// generate a random triple of uchar values
-			for (int i=0; i < 3; i++)
-				rgba[i] = vtkMath::Random();
-			rgba[3] = 1;
-
-			// add the color spec to the colour map
-			vtkDoubleArray* rgbaAr = vtkDoubleArray::SafeDownCast(
-					this->mLegendInfo->GetColumnByName("rgba"));
-			rgbaAr->SetTuple(newidx, rgba);
-
-			// add the name (sVal) to the name column of the legendinfo table
-			vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
-					this->mLegendInfo->GetColumnByName("name"));
-			nameAr->SetValue(newidx, sVal.toStdString().c_str());
-
-			// add the color spec to the mapper's color table
-			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
-			//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
-			//					<< " " << rgba[1] << " " << rgba[2] << endl);
-
-			clrCount++;
-		}
-		else
-		{
-			// add the index to the index map
-			int tabInfoIdx = this->mHashValueIndices.find(sVal).value()[0];
-			this->mHashValueIndices.find(sVal).value().append(t);
-
-			// add the colour to the real color table
-			vtkDoubleArray* dblAr = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
-			//double tmprgba[4];
-			dblAr->GetTuple(tabInfoIdx, rgba);
-
-			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
-		}
-	}
-
-	mNumLegendRows = mLegendInfo->GetNumberOfRows() + 2;
-	mLegendDescrField = mLegendValueField;
-
-	//// get the mapper and look whats possible
-	//vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
-	//mapper->SetLookupTable(mLookupTable);
-	//mapper->Modified();
-    //
-	//emit visibilityChanged(this);
-	//emit legendChanged(this);
-
-	return;
-}
+//void
+//NMVectorLayer::mapUniqueValues()
+//{
+//	if (this->mFeatureType != NMVectorLayer::NM_POLYGON_FEAT)
+//	{
+//		NMLayer::mapUniqueValues();
+//		return;
+//	}
+//
+//	// make a list of available attributes
+//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->getDataSet());
+//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
+//	vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(
+//			dsAttr->GetArray("nm_hole"));
+//	vtkLongArray* nmid = vtkLongArray::SafeDownCast(
+//			dsAttr->GetArray("nm_id"));
+//
+//	// let's find out about the attribute
+//	// if we've got doubles, we refuse to map unique values ->
+//	// doesn't make sense, does it?
+//	vtkAbstractArray* anAr = dsAttr->GetAbstractArray(mLegendValueField.toStdString().c_str());
+//	int type = anAr->GetDataType();
+//	if (type == VTK_DOUBLE)
+//	{
+//		NMDebugAI( << "oh no, not with doubles!" << endl);
+//		return;
+//	}
+//
+//	bool bNum = true;
+//	if (type == VTK_STRING)
+//		bNum = false;
+//
+//	const long ncells = anAr->GetNumberOfTuples();
+//
+//	// we create a new look-up table and set the number of entries we need
+//	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+//	mLookupTable->SetNumberOfTableValues(ncells);
+//
+//	// let's create a new legend info table
+//	this->resetLegendInfo();
+//
+//	// we iterate over the number of tuples in the user specified attribute array
+//	// and assign each unique categorical value its own (hopefully unique)
+//	// random colour, which is then inserted into the layer's lookup table; we further
+//	// specify a default name for each colour and put it together with the
+//	// chosen colour into a LengendInfo-Table, which basically holds the legend
+//	// category to display; for linking attribute values to table-info and lookup-table
+//	// indices, we fill the HashMap mHashValueIndices (s. Header file for further descr.)
+//	bool bConvOk;
+//	int clrCount = 0, val;
+//	QString sVal;
+//	vtkMath::RandomSeed(QTime::currentTime().msec());
+//	double rgba[4];
+//	for (int t=0; t < ncells; ++t)
+//	{
+//		if (hole->GetValue(t))
+//		{
+//			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+//			continue;
+//		}
+//
+//		if (bNum)
+//		{
+//			int val = anAr->GetVariantValue(t).ToInt(&bConvOk);
+//			sVal = QString(tr("%1")).arg(val);
+//		}
+//		else
+//		{
+//			sVal = anAr->GetVariantValue(t).ToString().c_str();
+//		}
+//
+//		QHash<QString, QVector<int> >::iterator it = this->mHashValueIndices.find(sVal);
+//		if (it == this->mHashValueIndices.end())
+//		{
+//			// add the key value pair to the hash map
+//			QVector<int> idxVec;
+//			idxVec.append(clrCount);
+//			this->mHashValueIndices.insert(sVal, idxVec);
+//
+//			// add a new row to the legend_info table
+//			vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
+//
+//			// add the value to the index map
+//			double lowup[2];
+//			lowup[0] = val;
+//			lowup[1] = val;
+//
+//			vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
+//					this->mLegendInfo->GetColumnByName("range"));
+//			lowupAbstrAr->SetTuple(newidx, lowup);
+//
+//			// generate a random triple of uchar values
+//			for (int i=0; i < 3; i++)
+//				rgba[i] = vtkMath::Random();
+//			rgba[3] = 1;
+//
+//			// add the color spec to the colour map
+//			vtkDoubleArray* rgbaAr = vtkDoubleArray::SafeDownCast(
+//					this->mLegendInfo->GetColumnByName("rgba"));
+//			rgbaAr->SetTuple(newidx, rgba);
+//
+//			// add the name (sVal) to the name column of the legendinfo table
+//			vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
+//					this->mLegendInfo->GetColumnByName("name"));
+//			nameAr->SetValue(newidx, sVal.toStdString().c_str());
+//
+//			// add the color spec to the mapper's color table
+//			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+//			//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
+//			//					<< " " << rgba[1] << " " << rgba[2] << endl);
+//
+//			clrCount++;
+//		}
+//		else
+//		{
+//			// add the index to the index map
+//			int tabInfoIdx = this->mHashValueIndices.find(sVal).value()[0];
+//			this->mHashValueIndices.find(sVal).value().append(t);
+//
+//			// add the colour to the real color table
+//			vtkDoubleArray* dblAr = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
+//			//double tmprgba[4];
+//			dblAr->GetTuple(tabInfoIdx, rgba);
+//
+//			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+//		}
+//	}
+//
+//	mNumLegendRows = mLegendInfo->GetNumberOfRows() + 2;
+//	mLegendDescrField = mLegendValueField;
+//
+//	//// get the mapper and look whats possible
+//	//vtkMapper* mapper = vtkMapper::SafeDownCast(this->mMapper);
+//	//mapper->SetLookupTable(mLookupTable);
+//	//mapper->Modified();
+//    //
+//	//emit visibilityChanged(this);
+//	//emit legendChanged(this);
+//
+//	return;
+//}
 
 
 //void NMVectorLayer::mapSingleSymbol()

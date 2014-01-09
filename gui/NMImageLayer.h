@@ -83,7 +83,7 @@ public:
 		{return this->mReader;}
 
 	bool isRasLayer(void) {return this->mReader->isRasMode();};
-	void mapUniqueValues();
+	//void mapUniqueValues();
 
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);

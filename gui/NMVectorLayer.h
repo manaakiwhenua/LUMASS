@@ -69,7 +69,7 @@ public:
 	long getNumberOfFeatures(void);
 
 	// map unique values
-	void mapUniqueValues();
+	//void mapUniqueValues();
 	//void mapSingleSymbol();
 
 public slots:

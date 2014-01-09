@@ -272,14 +272,10 @@ protected:
 
 
 	// hash map linking category values with
-	// table info index and lookup table info
-	// of the associated mapper
+	// table info index and lookup table index
 	// key = category name (equals the value for unique value classifications)
-	// value = a vector of n indices; whereas the value[0] denotes the index
-	//		   of the table info table and all subsequent indices value[1] ...
-	//		   value[n-1] are denoting the lookup-table indices associated
-	// 			with this legend category
-	QHash<QString, QVector<int> > mHashValueIndices;
+	// value = the index into the LegendInfo or LookupTable or ClrFunc nodes respectively
+	QHash<QString, int> mHashValueIndices;
 
 	/*! Auxiliary legend category information used in conjunction
 	 *  with the layer's lookup table for NMLegendType == NM_LEGEND_INDEXED

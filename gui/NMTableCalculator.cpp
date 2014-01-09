@@ -812,15 +812,30 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 			break;
 		case NM_STR_IN:
 			{
-
-				QStringList rl = right.simplified().split(" ");
-				strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 1 : 0;
+				strExpRes = 0;
+				QStringList ll = left.simplified().split(" ");
+				foreach(const QString& l, ll)
+				{
+					if (right.contains(l, Qt::CaseInsensitive))
+					{
+						strExpRes = 1;
+						break;
+					}
+				}
 			}
 			break;
 		case NM_STR_NOTIN:
 			{
-				QStringList rl = right.simplified().split(" ");
-				strExpRes = rl.contains(left, Qt::CaseInsensitive) ? 0 : 1;
+				strExpRes = 0;
+				QStringList ll = left.simplified().split(" ");
+				foreach(const QString& l, ll)
+				{
+					if (!right.contains(l, Qt::CaseInsensitive))
+					{
+						strExpRes = 1;
+						break;
+					}
+				}
 			}
 			break;
 		case NM_STR_CONTAINS:

@@ -564,8 +564,9 @@ NMLayer::mapUniqueValues(void)
 	}
 
 	// check attribute value type
-	const int validx = this->getColumnIndex(mLegendValueField);
-	const int descridx = this->getColumnIndex(mLegendDescrField);
+	int validx = this->getColumnIndex(mLegendValueField);
+	int descridx = validx;//this->getColumnIndex(mLegendDescrField);
+	mLegendDescrField = mLegendValueField;
 	if (validx < 0)
 	{
 		NMErr(ctxNMLayer, << "Value field not specified!");
@@ -574,26 +575,97 @@ NMLayer::mapUniqueValues(void)
 	if (descridx < 0) descridx = validx;
 
 	const QModelIndex sampleIdx = mTableModel->index(0, validx);
-	if (mTableModel->data(sampleIdx).type() == QVariant::Double)
+	bool bNum = false;
+	QVariant::Type valType = mTableModel->data(sampleIdx).type();
+	if (valType == QVariant::Double)
 	{
 		NMErr(ctxNMLayer, << "Continuous data types are not supported!");
 		return;
 	}
+	else if (valType != QVariant::String)
+	{
+		bNum = true;
+	}
 
 	long ncells = 0;
+	vtkAbstractArray* valar = 0;
 	if (mLayerType == NM_VECTOR_LAYER)
 	{
 		vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
-		vtkAbstractArray* nmid = dsa->GetArray("nm_id");
-		ncells = nmid->GetNumberOfTuples();
+		valar = dsa->GetAbstractArray(validx);
+		ncells = valar->GetNumberOfTuples();
 	}
 	else
 	{
 		ncells = mTableModel->rowCount(QModelIndex());
 	}
 
+	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+	mLookupTable->SetNumberOfTableValues(ncells+2);
 
+	// value index
+	this->mHashValueIndices.clear();
 
+	bool bConvOk;
+	int clrCount = 0, val;
+	QString sVal;
+	QModelIndex vi;
+	vtkMath::RandomSeed(QTime::currentTime().msec());
+	double rgba[4];
+	for (int t=1; t < ncells; ++t)
+	{
+		if (bNum)
+		{
+			if (valar)
+			{
+				val = valar->GetVariantValue(t).ToInt(&bConvOk);
+			}
+			else
+			{
+				vi = mTableModel->index(t, validx);
+				val = vi.data().toInt(&bConvOk);
+			}
+
+			sVal = QString(tr("%1")).arg(val);
+		}
+		else
+		{
+			if (valar)
+			{
+				sVal = valar->GetVariantValue(t).ToString().c_str();
+			}
+			else
+			{
+				vi = mTableModel->index(t, validx);
+				sVal = vi.data().toString();
+			}
+		}
+
+		QHash<QString, int>::iterator it = this->mHashValueIndices.find(sVal);
+		if (it == this->mHashValueIndices.end())
+		{
+			// add the key value pair to the hash map
+			this->mHashValueIndices.insert(sVal, t);
+
+			// generate a random triple of uchar values
+			for (int i=0; i < 3; i++)
+				rgba[i] = vtkMath::Random();
+			rgba[3] = 1;
+
+			// add the color spec to the mapper's color table
+			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+		}
+		else
+		{
+			mLookupTable->GetTableValue(it.value(), rgba);
+			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+		}
+	}
+	mLookupTable->SetTableValue(0, 0, 0, 0, 0);
+	mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
+
+	mNumClasses = mHashValueIndices.size();
+	mNumLegendRows = mNumClasses + 2;
 }
 
 
@@ -687,10 +759,9 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 			{
 			case NM_CLASS_UNIQUE:
 				{
-					if (legendRow > 1)
+					if (legendRow-1 < mNumLegendRows)
 					{
-						vtkDoubleArray* clrs = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
-						clrs->GetTuple(legendRow-2, rgba);
+						mLookupTable->GetTableValue(legendRow-1, rgba);
 					}
 					else
 					{
@@ -842,8 +913,7 @@ QString  NMLayer::getLegendName(const int legendRow)
 				{
 					if (legendRow > 1)
 					{
-						vtkStringArray* names = vtkStringArray::SafeDownCast(this->mLegendInfo->GetColumnByName("name"));
-						name = names->GetValue(legendRow-2).c_str();
+
 					}
 					else
 					{

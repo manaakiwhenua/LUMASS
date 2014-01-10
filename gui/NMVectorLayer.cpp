@@ -233,24 +233,12 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 		vtkSmartPointer<vtkPolyData> cont = vtkSmartPointer<vtkPolyData>::New();
 		cont->SetPoints(pd->GetPoints());
 		cont->SetLines(pd->GetPolys());
-		//cont->BuildCells();
-		//cont->BuildLinks();
 		this->setContour(cont);
 	}
 
-	//if (!this->updateAttributeTable())
-	//{
-	//	NMWarn(ctxNMVectorLayer, << "Couldn't update the attribute table, "
-	//			<< "which might lead to trouble later on!");
-	//}
-
-	// initially, we show all polys in the same colour
-	//if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
 	this->initiateLegend();
-	this->mapSingleSymbol();
 
 	emit layerProcessingEnd();
-
 }
 
 const vtkPolyData* NMVectorLayer::getContour(void)

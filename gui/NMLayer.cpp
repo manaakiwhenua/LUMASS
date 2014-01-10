@@ -1,4 +1,4 @@
- /****************************************************************************** 
+ /**********************************************************************bok********
  * Created by Alexander Herzig 
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
  *
@@ -446,8 +446,6 @@ NMLayer::updateLegend(void)
 			switch(mLegendClassType)
 			{
 			case NM_CLASS_UNIQUE:
-				//mNumClasses = 0;//mTableModel->rowCount(QModelIndex());
-				//mNumLegendRows = mNumClasses+2;
 				this->mapUniqueValues();
 				break;
 
@@ -609,9 +607,6 @@ NMLayer::mapUniqueValues(void)
 		mLookupTable->SetNumberOfTableValues(ncells+2);
 	}
 
-
-
-
 	// value index
 	//this->mHashValueIndices.clear();
 	this->mMapValueIndices.clear();
@@ -660,34 +655,47 @@ NMLayer::mapUniqueValues(void)
 		QMap<QString, int>::iterator it = this->mMapValueIndices.find(sVal);
 		if (it == this->mMapValueIndices.end())
 		{
-			// add the key value pair to the hash map
-			this->mMapValueIndices.insert(sVal, t);
-
 			// generate a random triple of uchar values
 			for (int i=0; i < 3; i++)
 				rgba[i] = vtkMath::Random();
 			rgba[3] = 1;
 
-			// add the color spec to the mapper's color table
+			// add the random colour to the mLookupTable
+			// and store a reference into the LookupTable for the
+			// given value;
+			if (valar)
+			{
+				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+				this->mMapValueIndices.insert(sVal, t);
+			}
+			else
+			{
+				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
+				this->mMapValueIndices.insert(sVal, t+1);
+			}
+		}
+		else
+		{
+			mLookupTable->GetTableValue(it.value(), rgba);
 			if (valar)
 				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
 			else
 				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
 		}
-		else
-		{
-			mLookupTable->GetTableValue(it.value(), rgba);
-			if ()
-			mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
-		}
 	}
-	mLookupTable->SetTableValue(0, 0, 0, 0, 0);
-	mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
-	mLookupTable->SetTableRange(-1, ncells);
-	mMapValueIndices.insert("other", 0);
+
+	if (valar == 0)
+	{
+		mLookupTable->SetTableValue(0, 0, 0, 0, 0);
+		mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
+		mLookupTable->SetTableRange(-1, ncells);
+		mMapValueIndices.insert("other", 0);
+	}
+	else
+		mLookupTable->SetTableRange(0, ncells-1);
 
 	mNumClasses = mMapValueIndices.size();
-	mNumLegendRows = mNumClasses + 2;
+	mNumLegendRows = mNumClasses + (valar ? 1 : 2);
 }
 
 
@@ -709,45 +717,108 @@ NMLayer::mapColourTable(void)
 {
 	NMDebugCtx(ctxNMLayer, << "...");
 
-	//mNumClasses = mTableModel->rowCount(QModelIndex());
-	//mNumLegendRows = mNumClasses + 2;
+	if (mTableModel == 0 || !mHasClrTab)
+	{
+		NMErr(ctxNMLayer, << "Invalid attribute table");
+		return;
+	}
 
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
-	mLookupTable->SetNumberOfTableValues(mNumClasses+2);
-	mLookupTable->SetTableRange(-1, mNumClasses);
+	long ncells = 0;
+	bool bvect = false;
+	bool bfloat = false;
+	vtkUnsignedCharArray* hole = 0;
+	vtkDataArray* ar=0;
+	vtkDataArray* ag=0;
+	vtkDataArray* ab=0;
+	vtkDataArray* aa=0;
+	if (mLayerType == NM_VECTOR_LAYER)
+	{
+		bvect = true;
+		vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+		ar = dsa->GetArray(mClrTabIdx[0]);
+		ag = dsa->GetArray(mClrTabIdx[1]);
+		ab = dsa->GetArray(mClrTabIdx[2]);
+		aa = dsa->GetArray(mClrTabIdx[3]);
+		if (	ar->GetDataType() == VTK_DOUBLE
+			||  ar->GetDataType() == VTK_FLOAT)
+		{
+			bfloat = true;
+		}
 
-	// everything outside the table index range is set to transparent
-	mLookupTable->SetTableValue(0, 0, 0, 0, 0);
-	mLookupTable->SetTableValue(mNumClasses, 0, 0, 0, 0);
+		ncells = aa->GetNumberOfTuples();
+		mLookupTable->SetNumberOfTableValues(ncells);
+
+		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+			hole = vtkUnsignedCharArray::SafeDownCast(dsa->GetArray("nm_hole"));
+	}
+	else
+	{
+		ncells = mTableModel->rowCount(QModelIndex());
+		mLookupTable->SetNumberOfTableValues(ncells+2);
+	}
 
 	bool bok;
 	double fc[4];
-	for (long row=0; row < mNumClasses; ++row)
+	for (long row=0; row < ncells; ++row)
 	{
-		const QModelIndex mired   = mTableModel->index(row, mClrTabIdx[0], QModelIndex());
-		const QModelIndex migreen = mTableModel->index(row, mClrTabIdx[1], QModelIndex());
-		const QModelIndex miblue  = mTableModel->index(row, mClrTabIdx[2], QModelIndex());
-		const QModelIndex mialpha = mTableModel->index(row, mClrTabIdx[3], QModelIndex());
-
-		const QVariant vred   = mTableModel->data(mired, Qt::DisplayRole);
-		const QVariant vgreen = mTableModel->data(migreen, Qt::DisplayRole);
-		const QVariant vblue  = mTableModel->data(miblue, Qt::DisplayRole);
-		const QVariant valpha = mTableModel->data(mialpha, Qt::DisplayRole);
-		if (vred.type() == QVariant::Double)
+		if (bvect)
 		{
-			fc[0] = vred.toDouble(&bok);
-			fc[1] = vgreen.toDouble(&bok);
-			fc[2] = vblue.toDouble(&bok);
-			fc[3] = valpha.toDouble(&bok);
+			if (hole && hole->GetValue(row))
+			{
+				mLookupTable->SetTableValue(row, fc);
+				continue;
+			}
+
+			fc[0] = ar->GetVariantValue(row).ToDouble();
+			fc[1] = ag->GetVariantValue(row).ToDouble();
+			fc[2] = ab->GetVariantValue(row).ToDouble();
+			fc[3] = aa->GetVariantValue(row).ToDouble();
+
+			if (!bfloat)
+			{
+				fc[0] /= 255.0;
+				fc[1] /= 255.0;
+				fc[2] /= 255.0;
+				fc[3] /= 255.0;
+			}
+			mLookupTable->SetTableValue(row, fc);
 		}
 		else
 		{
-			fc[0] = vred.toDouble(&bok)   / 255.0;
-			fc[1] = vgreen.toDouble(&bok) / 255.0;
-			fc[2] = vblue.toDouble(&bok)  / 255.0;
-			fc[3] = valpha.toDouble(&bok) / 255.0;
+			const QModelIndex mired   = mTableModel->index(row, mClrTabIdx[0], QModelIndex());
+			const QModelIndex migreen = mTableModel->index(row, mClrTabIdx[1], QModelIndex());
+			const QModelIndex miblue  = mTableModel->index(row, mClrTabIdx[2], QModelIndex());
+			const QModelIndex mialpha = mTableModel->index(row, mClrTabIdx[3], QModelIndex());
+
+			fc[0] = mTableModel->data(mired, Qt::DisplayRole).toDouble(&bok);
+			fc[1] = mTableModel->data(migreen, Qt::DisplayRole).toDouble(&bok);;
+			fc[2] = mTableModel->data(miblue, Qt::DisplayRole).toDouble(&bok);;
+			fc[3] = mTableModel->data(mialpha, Qt::DisplayRole).toDouble(&bok);;
+			if (mTableModel->data(mired, Qt::DisplayRole).type() != QVariant::Double)
+			{
+				fc[0] /= 255.0;
+				fc[1] /= 255.0;
+				fc[2] /= 255.0;
+				fc[3] /= 255.0;
+			}
+			mLookupTable->SetTableValue(row+1, fc);
 		}
-		mLookupTable->SetTableValue(row+1, fc);
+	}
+
+	// everything outside the table index range is set to transparent
+	if (!bvect)
+	{
+		mLookupTable->SetTableValue(0, 0, 0, 0, 0);
+		mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
+		mLookupTable->SetTableRange(-1, ncells);
+		mNumLegendRows = ncells + 2;
+	}
+	else
+	{
+		mLookupTable->SetTableRange(0, ncells-1);
+		mNumLegendRows = ncells+1;
 	}
 
 	NMDebugCtx(ctxNMLayer, << "done!");
@@ -766,12 +837,7 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 	{
 	case NM_LEGEND_CLRTAB:
 		{
-			if (legendRow-1 < mLookupTable->GetNumberOfTableValues())
-			{
-				mLookupTable->GetTableValue(legendRow-1, rgba);
-			}
-			else
-				return false;
+			mLookupTable->GetTableValue(legendRow-1, rgba);
 		}
 		break;
 
@@ -890,9 +956,6 @@ QIcon NMLayer::getColourRampIcon()
 
 int NMLayer::getLegendItemCount(void)
 {
-	//if (this->mLegendInfo.GetPointer() == 0)
-	//	return 0;
-	//return this->mLegendInfo->GetNumberOfRows();
 	return this->mNumLegendRows;
 }
 
@@ -914,15 +977,23 @@ QString  NMLayer::getLegendName(const int legendRow)
 	{
 	case NM_LEGEND_CLRTAB:
 		{
-			if (legendRow > 1)
+			int colidx = this->getColumnIndex(mLegendDescrField);
+			if (mLayerType == NMLayer::NM_VECTOR_LAYER)
 			{
-				int colidx = this->getColumnIndex(mLegendDescrField);
 				const QModelIndex mi = mTableModel->index(legendRow-1, colidx, QModelIndex());
 				name = mTableModel->data(mi, Qt::DisplayRole).toString();
 			}
-			else if (legendRow == 1)
+			else
 			{
-				name = tr("other");
+				if (legendRow == 1)
+				{
+					name = tr("other");
+				}
+				else
+				{
+					const QModelIndex mi = mTableModel->index(legendRow-2, colidx, QModelIndex());
+					name = mTableModel->data(mi, Qt::DisplayRole).toString();
+				}
 			}
 		}
 		break;

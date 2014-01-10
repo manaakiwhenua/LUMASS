@@ -249,28 +249,20 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 		switch (role)
 		{
 			case Qt::DisplayRole:
-			{
-				//col == 0 ? retVar = QVariant(l->getLegendName(row)) : QString();
 				retVar = QVariant(l->getLegendName(row));
-			}
-			break;
+				break;
 
 			case Qt::ToolTipRole:
-			{
 				if (row == 0)
 					retVar = tr("Double click to show/edit legend metadata");
-			}
-			break;
+				break;
 
 			case Qt::DecorationRole:
-			{
 				if (row > 0)
 				{
-					//col == 0 ? retVar = lm->createLegendIcon(l, row): QIcon();
 					retVar = l->getLegendIcon(row);
 				}
-			}
-			break;
+				break;
 
 			case Qt::FontRole:
 				{

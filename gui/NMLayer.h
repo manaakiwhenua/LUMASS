@@ -282,7 +282,7 @@ protected:
 	// key = category name (equals the value for unique value classifications)
 	// value = the index into the LegendInfo or LookupTable or ClrFunc nodes respectively
 	QHash<QString, int> mHashValueIndices;
-	QMap<QString, int> mMapValueIndices;
+	QMap<QString, QVector<int> > mMapValueIndices;
 
 	/*! Auxiliary legend category information used in conjunction
 	 *  with the layer's lookup table for NMLegendType == NM_LEGEND_INDEXED

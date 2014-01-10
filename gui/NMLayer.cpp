@@ -1,4 +1,4 @@
- /**********************************************************************bok********
+ /******************************************************************************
  * Created by Alexander Herzig 
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
  *
@@ -664,7 +664,7 @@ NMLayer::mapUniqueValues(void)
 			}
 		}
 
-		QMap<QString, int>::iterator it = this->mMapValueIndices.find(sVal);
+		QMap<QString, QVector<int> >::iterator it = this->mMapValueIndices.find(sVal);
 		if (it == this->mMapValueIndices.end())
 		{
 			// generate a random triple of uchar values
@@ -675,24 +675,33 @@ NMLayer::mapUniqueValues(void)
 			// add the random colour to the mLookupTable
 			// and store a reference into the LookupTable for the
 			// given value;
+			QVector<int> ids;
 			if (valar)
 			{
 				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
-				this->mMapValueIndices.insert(sVal, t);
+				ids.push_back(t);
+				this->mMapValueIndices.insert(sVal, ids);
 			}
 			else
 			{
 				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
-				this->mMapValueIndices.insert(sVal, t+1);
+				ids.push_back(t+1);
+				this->mMapValueIndices.insert(sVal, ids);
 			}
 		}
 		else
 		{
-			mLookupTable->GetTableValue(it.value(), rgba);
+			mLookupTable->GetTableValue(it.value().at(0), rgba);
 			if (valar)
+			{
+				it.value().push_back(t);
 				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+			}
 			else
+			{
+				it.value().push_back(t+1);
 				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
+			}
 		}
 	}
 
@@ -701,7 +710,9 @@ NMLayer::mapUniqueValues(void)
 		mLookupTable->SetTableValue(0, 0, 0, 0, 0);
 		mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
 		mLookupTable->SetTableRange(-1, ncells);
-		mMapValueIndices.insert("other", 0);
+		QVector<int> ov;
+		ov.push_back(0);
+		mMapValueIndices.insert("other", ov);
 	}
 	else
 		mLookupTable->SetTableRange(0, ncells-1);
@@ -864,7 +875,7 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 						QList<QString> keys = mMapValueIndices.keys();
 						if (legendRow-1 < keys.size())
 						{
-							int tabidx = mMapValueIndices.value(keys[legendRow-1]);
+							int tabidx = mMapValueIndices.value(keys[legendRow-1]).at(0);
 							mLookupTable->GetTableValue(tabidx, rgba);
 						}
 					}
@@ -940,8 +951,46 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 						QList<QString> keys = mMapValueIndices.keys();
 						if (legendRow-1 < keys.size())
 						{
-							int tabidx = mMapValueIndices.value(keys[legendRow-1]);
-							mLookupTable->SetTableValue(tabidx, rgba);
+							// the ugly part is that we have to set the
+							// new colour for each element with the
+							// given value ...
+							const QString key = keys[legendRow-1];
+							QVector<int> ids = mMapValueIndices.value(key);
+							for (int i=0; i < ids.size(); ++ i)
+							{
+								int ti = ids.at(i);
+								mLookupTable->SetTableValue(ti, rgba);
+
+								// the even uglier part is that we have to
+								// give any possbile hole-rings in a polygon
+								// the same colour as the polygon itself ...
+								if (mLayerType == NMLayer::NM_VECTOR_LAYER)
+								{
+									NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+									if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+									{
+										vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+										vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(
+												dsa->GetArray("nm_hole"));
+
+										//vtkOGRLayerMapper* contourMapper =
+										//		const_cast<vtkOGRLayerMapper*>(vl->getContourMapper());
+										//vtkLookupTable* lut = vtkLookupTable::SafeDownCast(
+										//		contourMapper->GetLookupTable());
+										//lut->SetTableValue(ti, 0, 0, 0, 0);
+
+										++ti;
+										while (		ti < mLookupTable->GetNumberOfTableValues()
+												&&  hole->GetValue(ti)
+											  )
+										{
+											mLookupTable->SetTableValue(ti, rgba);
+											//lut->SetTableValue(ti, 0, 0, 0, rgba[3]);
+											++ti;
+										}
+									}
+								}
+							}
 						}
 					}
 				}
@@ -1012,9 +1061,15 @@ QIcon NMLayer::getLegendIcon(const int legendRow)
 		{
 			NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
 			QColor cclr = vl->getContourColour();
+			//cclr.setAlphaF(clr.alphaF());
+
 			QPainter painter(&pix);
 			QRect inner = pix.rect();
+			QRect outer = pix.rect();
+			//outer.adjust(0, 0, 1, 1);
 			inner.adjust(1,1,-1,-1);
+			//painter.setPen(cclr);
+			//painter.drawRect(outer);
 			painter.fillRect(pix.rect(), cclr);
 			painter.fillRect(inner, clr);
 		}

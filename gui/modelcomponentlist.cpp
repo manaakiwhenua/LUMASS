@@ -482,8 +482,16 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 
 				QColor curclr;
 				curclr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
-				QColor clr = QColorDialog::getColor(curclr, this, title,
-						QColorDialog::ShowAlphaChannel);
+				QColor clr;
+				if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+				{
+					clr = QColorDialog::getColor(curclr, this, title);
+				}
+				else
+				{
+					clr = QColorDialog::getColor(curclr, this, title,
+							QColorDialog::ShowAlphaChannel);
+				}
 
 				NMDebugAI(<< "new colour: "
 						<< clr.redF() << " "

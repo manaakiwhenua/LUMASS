@@ -46,6 +46,7 @@
 #include <QImage>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QColorDialog>
 
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
@@ -449,24 +450,54 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 		return;
 	}
 
-	//const int toplevelrow = (idx.internalId() / 100) - 1;
-	//const int level = idx.internalId() % 100;
-	//const QModelIndex pidx = idx.parent();
+	// ---------------------------------------------------------------
+	// COLLAPSE AND EXPAND CHILD NODES
 
-	//if (level == 0 || (level == 1 && idx.row() == 0))
 	if (this->mLayerModel->rowCount(idx) > 0)
 	{
-
-		//const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-		//NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
-        //
-		//int nleg = l->getLegendItemCount();
-		//NMDebugAI(<< l->objectName().toStdString() << " has " << nleg << " items .." << endl);
-
 		if (this->isExpanded(idx))
 			this->collapse(idx);
 		else
 			this->expand(idx);
+	}
+	// ----------------------------------------------------------------
+	// EDIT CHILD NODES
+	else
+	{
+		const int toplevelrow = (idx.internalId() / 100) - 1;
+		const int level = idx.internalId() % 100;
+		const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+		NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+
+		if (level == 1 && idx.row() > 0)
+		{
+			if (l->getLegendType() != NMLayer::NM_LEGEND_RAMP)
+			{
+				double rgba[4];
+				l->getLegendColour(idx.row(), rgba);
+
+				QString title = QString("Colour for '%1' of %2")
+						.arg(l->getLegendName(idx.row()))
+						.arg(l->objectName());
+
+				QColor curclr;
+				curclr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
+				QColor clr = QColorDialog::getColor(curclr, this, title,
+						QColorDialog::ShowAlphaChannel);
+
+				NMDebugAI(<< "new colour: "
+						<< clr.redF() << " "
+						<< clr.greenF() << " "
+						<< clr.blueF() << " "
+						<< clr.alphaF() << std::endl);
+
+				rgba[0] = clr.redF();
+				rgba[1] = clr.greenF();
+				rgba[2] = clr.blueF();
+				rgba[3] = clr.alphaF();
+				l->setLegendColour(idx.row(), rgba);
+			}
+		}
 	}
 
 	//NMDebugCtx(ctx, << "done!")

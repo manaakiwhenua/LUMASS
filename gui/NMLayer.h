@@ -190,7 +190,9 @@ public:
 	bool isSelectable(void);
 	virtual void setSelectable(bool selectable);
 
-	//--LEGEND INFO---------------------------------
+	//-----------------------------------------------
+	//--GET LEGEND INFO---------------------------------
+
 	// get the colour of the legend item in row
 	// legendRow; requires provision of a double[4]
 	bool getLegendColour(const int legendRow, double* rgba);
@@ -209,6 +211,10 @@ public:
 	QString getColourRampStr(NMLayer::NMColourRamp ramptype)
 		{return mColourRampStr.at((int)ramptype);}
 
+
+	// -------------------------------------------------------
+	// --SET LEGEND INFO ------------------------------------
+	void setLegendColour(const int legendRow, double* rgba);
 
 
 	//virtual int mapUniqueValues(QString fieldName)=0;

@@ -481,8 +481,8 @@ NMLayer::updateLegend(void)
 	}
 
 	emit legendChanged(this);
-	// do we need this?
 	emit visibilityChanged(this);
+
 	NMDebugCtx(ctxNMLayer, << "done!");
 }
 
@@ -491,36 +491,37 @@ NMLayer::mapSingleSymbol()
 {
 	NMDebugCtx(ctxNMLayer, << "...");
 
-	mNumLegendRows = 3;
-
 	double minrange = mNodata > mUpper ? mUpper : mNodata;
 	double maxrange = minrange != mNodata ? mNodata : mLower;
 
-	long numclrs = 2;
+	long ncells = 2;
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
 	if (mTableModel)
 	{
 		if (mLayerType == NM_IMAGE_LAYER)
 		{
 			mLegendDescrField = tr("All Pixel");
-			numclrs = mTableModel->rowCount(QModelIndex())+1;
+			ncells = mTableModel->rowCount(QModelIndex())+1;
+			mNumLegendRows = 3;
 		}
 		else
 		{
 			vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 			vtkLongArray* nmids = vtkLongArray::SafeDownCast(dsAttr->GetArray("nm_id"));
-			numclrs = nmids->GetNumberOfTuples()+2;
+			ncells = nmids->GetNumberOfTuples();
 			mLegendDescrField = tr("All Features");
-			minrange = -1;
-			maxrange = numclrs-2;
+			minrange = 0;
+			maxrange = ncells-1;
+			mNumLegendRows = 2;
 		}
 	}
 	else
 	{
 		mLegendDescrField = tr("All Pixel");
-		numclrs = 2;
+		ncells = 2;
+		mNumLegendRows = 3;
 	}
-	mLookupTable->SetNumberOfTableValues(numclrs);
+	mLookupTable->SetNumberOfTableValues(ncells);
 	mLookupTable->SetTableRange(minrange, maxrange);
 
 	// chose a random colour
@@ -530,23 +531,33 @@ NMLayer::mapSingleSymbol()
 	double rgba[4];
 	for (int i=0; i < 3; i++)
 		rgba[i] = vtkMath::Random();
-	double alpha1, alpha2;
-	if (minrange == maxrange && minrange == mNodata)
+
+	if (mLayerType == NMLayer::NM_IMAGE_LAYER)
 	{
-		alpha1 = 0;
-		alpha2 = 0;
+		double alpha1, alpha2;
+		if (minrange == maxrange && minrange == mNodata)
+		{
+			alpha1 = 0;
+			alpha2 = 0;
+		}
+		else
+		{
+			alpha1 = minrange == mNodata ? 0 : 1;
+			alpha2 = alpha1 == 0 ? 1 : 0;
+		}
+
+		mLookupTable->SetTableValue(0, rgba[0], rgba[1], rgba[2], alpha1);
+		for (long r=1; r < ncells; ++r)
+		{
+			mLookupTable->SetTableValue(r, rgba[0], rgba[1], rgba[2], alpha2);
+		}
 	}
 	else
 	{
-		alpha1 = minrange == mNodata ? 0 : 1;
-		alpha2 = alpha1 == 0 ? 1 : 0;
-	}
-
-	long r = mLayerType == NM_VECTOR_LAYER ? 0 : 1;
-	mLookupTable->SetTableValue(0, rgba[0], rgba[1], rgba[2], alpha1);
-	for (; r < numclrs; ++r)
-	{
-		mLookupTable->SetTableValue(r, rgba[0], rgba[1], rgba[2], alpha2);
+		for (long r=0; r < ncells; ++r)
+		{
+			mLookupTable->SetTableValue(r, rgba[0], rgba[1], rgba[2], 1);
+		}
 	}
 
 	NMDebugCtx(ctxNMLayer, << "done!");
@@ -574,7 +585,8 @@ NMLayer::mapUniqueValues(void)
 
 	const QModelIndex sampleIdx = mTableModel->index(0, validx);
 	bool bNum = false;
-	QVariant::Type valType = mTableModel->data(sampleIdx).type();
+	//QVariant::Type valType = mTableModel->data(sampleIdx).type();
+	QVariant::Type valType = this->getColumnType(this->getColumnIndex(mLegendValueField));
 	if (valType == QVariant::Double)
 	{
 		NMErr(ctxNMLayer, << "Continuous data types are not supported!");
@@ -612,7 +624,7 @@ NMLayer::mapUniqueValues(void)
 	this->mMapValueIndices.clear();
 
 	bool bConvOk;
-	int clrCount = 0, val;
+	qlonglong val;
 	QString sVal;
 	QModelIndex vi;
 	vtkMath::RandomSeed(QTime::currentTime().msec());
@@ -629,12 +641,12 @@ NMLayer::mapUniqueValues(void)
 		{
 			if (valar)
 			{
-				val = valar->GetVariantValue(t).ToInt(&bConvOk);
+				val = valar->GetVariantValue(t).ToLongLong();
 			}
 			else
 			{
 				vi = mTableModel->index(t, validx);
-				val = vi.data().toInt(&bConvOk);
+				val = vi.data().toLongLong(&bConvOk);
 			}
 
 			sVal = QString(tr("%1")).arg(val);
@@ -868,19 +880,26 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 
 	case NM_LEGEND_SINGLESYMBOL:
 		{
-			if (legendRow == 1)
+			if (mLayerType == NMLayer::NM_IMAGE_LAYER)
 			{
-				if (mLookupTable->GetTableRange()[1] == mNodata)
-					mLookupTable->GetTableValue(1, rgba);
+				if (legendRow == 1)
+				{
+					if (mLookupTable->GetTableRange()[1] == mNodata)
+						mLookupTable->GetTableValue(1, rgba);
+					else
+						mLookupTable->GetTableValue(0, rgba);
+				}
 				else
-					mLookupTable->GetTableValue(0, rgba);
+				{
+					if (mLookupTable->GetTableRange()[1] == mNodata)
+						mLookupTable->GetTableValue(0, rgba);
+					else
+						mLookupTable->GetTableValue(1, rgba);
+				}
 			}
 			else
 			{
-				if (mLookupTable->GetTableRange()[1] == mNodata)
-					mLookupTable->GetTableValue(0, rgba);
-				else
-					mLookupTable->GetTableValue(1, rgba);
+				mLookupTable->GetTableValue(legendRow-1, rgba);
 			}
 		}
 		break;
@@ -892,6 +911,86 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 	//NMDebugCtx(ctxNMLayer, << "done!");
 	return true;
 }
+
+void
+NMLayer::setLegendColour(const int legendRow, double* rgba)
+{
+	//NMDebugCtx(ctxNMLayer, << "...");
+
+	// check whether row is valid or not
+	if (legendRow < 1 || legendRow >= mNumLegendRows)
+		return;
+
+	switch(mLegendType)
+	{
+	case NM_LEGEND_CLRTAB:
+		{
+			mLookupTable->SetTableValue(legendRow-1, rgba);
+		}
+		break;
+
+	case NM_LEGEND_INDEXED:
+		{
+			switch(mLegendClassType)
+			{
+			case NM_CLASS_UNIQUE:
+				{
+					if (legendRow-1 < mNumLegendRows)
+					{
+						QList<QString> keys = mMapValueIndices.keys();
+						if (legendRow-1 < keys.size())
+						{
+							int tabidx = mMapValueIndices.value(keys[legendRow-1]);
+							mLookupTable->SetTableValue(tabidx, rgba);
+						}
+					}
+				}
+				break;
+
+
+			default:
+				break;
+			}
+		}
+		break;
+
+	case NM_LEGEND_SINGLESYMBOL:
+		{
+			if (mLayerType == NMLayer::NM_IMAGE_LAYER)
+			{
+				if (legendRow == 1)
+				{
+					if (mLookupTable->GetTableRange()[1] == mNodata)
+						mLookupTable->SetTableValue(1, rgba);
+					else
+						mLookupTable->SetTableValue(0, rgba);
+				}
+				else
+				{
+					if (mLookupTable->GetTableRange()[1] == mNodata)
+						mLookupTable->SetTableValue(0, rgba);
+					else
+						mLookupTable->SetTableValue(1, rgba);
+				}
+			}
+			else
+			{
+				mLookupTable->SetTableValue(legendRow-1, rgba);
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	emit legendChanged(this);
+	emit visibilityChanged(this);
+
+	//NMDebugCtx(ctxNMLayer, << "done!");
+	return;
+}
+
 
 QIcon NMLayer::getLegendIcon(const int legendRow)
 {
@@ -1020,10 +1119,12 @@ QString  NMLayer::getLegendName(const int legendRow)
 		break;
 
 	case NM_LEGEND_SINGLESYMBOL:
-		if (legendRow == 1)
-			name = tr("Nodata");
-		else
-			name = tr("Valid Values");
+		name = tr("Valid Values");
+		if (mLayerType == NMLayer::NM_IMAGE_LAYER)
+		{
+			if (legendRow == 1)
+				name = tr("Nodata");
+		}
 		break;
 
 	case NM_LEGEND_RAMP:

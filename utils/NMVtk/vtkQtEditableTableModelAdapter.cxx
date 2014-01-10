@@ -136,24 +136,63 @@ vtkQtEditableTableModelAdapter::setData(const QModelIndex& index,
 QVariant
 vtkQtEditableTableModelAdapter::data(const QModelIndex &idx, int role) const
 {
-	QVariant ret = vtkQtTableModelAdapter::data(idx, role);
-	if (ret.isValid())
-		return ret;
+	if (!idx.isValid())
+		return QVariant();
 
-	if (role == Qt::TextAlignmentRole)
+	vtkTable* tab = vtkTable::SafeDownCast(this->GetVTKDataObject());
+	const int type = tab->GetValue(idx.row(), idx.column()).GetType();
+
+	switch(role)
 	{
-		vtkAbstractArray* ar = table()->GetColumn(idx.column());
-		if (ar->GetDataType() == VTK_STRING)
+	case Qt::EditRole:
+	case Qt::DisplayRole:
 		{
-			return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
+			switch(type)
+			{
+			case VTK_ID_TYPE:
+			case VTK_CHAR:
+			case VTK_SIGNED_CHAR:
+			case VTK_UNSIGNED_CHAR:
+			case VTK_SHORT:
+			case VTK_UNSIGNED_SHORT:
+			case VTK_INT:
+			case VTK_UNSIGNED_INT:
+			case VTK_LONG:
+			case VTK_UNSIGNED_LONG:
+			case VTK_LONG_LONG:
+				return QVariant((qlonglong)tab->GetValue(idx.row(), idx.column()).ToLongLong());
+				break;
+
+			case VTK_FLOAT:
+			case VTK_DOUBLE:
+				return tab->GetValue(idx.row(), idx.column()).ToDouble();
+				break;
+
+			default:
+				return tab->GetValue(idx.row(), idx.column()).ToString().c_str();
+				break;
+			}
 		}
-		else
+		break;
+
+	case Qt::TextAlignmentRole:
 		{
-			return QVariant(Qt::AlignRight | Qt::AlignVCenter);
+			if (type == VTK_STRING)
+			{
+				return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
+			}
+			else
+			{
+				return QVariant(Qt::AlignRight | Qt::AlignVCenter);
+			}
 		}
+		break;
+
+	default:
+		break;
 	}
 
-	return ret;
+	return QVariant();
 }
 
 

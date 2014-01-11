@@ -66,8 +66,13 @@ NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem
 				painter->save();
 
 				QIcon rampIcon = index.data(Qt::DecorationRole).value<QIcon>();
-				QPixmap rampPix = rampIcon.pixmap(opt.decorationSize);
-				painter->drawPixmap(opt.rect.topLeft(), rampPix);
+				QRect rampRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemDecoration, &opt);
+
+				//ToDo:: find out how to get rid of these hard coded padding values below !!
+				//       it might not work with every style
+				//QPixmap rampPix = rampIcon.pixmap(QSize(opt.decorationSize.width(), rampRect.height()-4));
+				QPixmap rampPix = rampIcon.pixmap(QSize(16, rampRect.height()-4));
+				painter->drawPixmap(rampRect.topLeft()+QPoint(0,2), rampPix);
 
 				QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
 				QString upperStr = index.data(Qt::UserRole+1).toString();

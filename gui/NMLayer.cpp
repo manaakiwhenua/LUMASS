@@ -37,6 +37,7 @@
 #include "vtkDataSetAttributes.h"
 #include "vtkMath.h"
 
+#define VALUE_MARGIN 0.0000001
 
 NMLayer::NMLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
@@ -79,6 +80,14 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	this->mTotalArea = -1;
 
 
+	// schweinerosa
+	mClrNodata = QColor(255, 192, 192);
+	// babyblau
+	mClrLowerMar = QColor(192, 192, 255);
+	// mint
+	mClrUpperMar = QColor(192, 255, 192);
+
+
 	// init some enum to string conversion lists
 	mLegendTypeStr << "NM_LEGEND_SINGLESYMBOL"
 			       << "NM_LEGEND_RAMP"
@@ -103,7 +112,6 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 			       << "NM_RAMP_GREEN2RED_DIV"
 			       << "NM_RAMP_GREEN2YELLOW2RED"
 			       << "NM_RAMP_MANUAL";
-
 }
 
 NMLayer::~NMLayer()
@@ -433,6 +441,11 @@ void
 NMLayer::updateLegend(void)
 {
 	NMDebugCtx(ctxNMLayer, << "...");
+	if (mLookupTable.GetPointer())
+		mLookupTable->Delete();
+	if (mClrFunc.GetPointer())
+		mClrFunc->Delete();
+
 	this->resetLegendInfo();
 
 	switch(mLegendType)
@@ -471,12 +484,18 @@ NMLayer::updateLegend(void)
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 		vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
 		iprop->SetUseLookupTableScalarRange(1);
-		iprop->SetLookupTable(mLookupTable);
+		if (mClrFunc.GetPointer() == 0)
+			iprop->SetLookupTable(mLookupTable);
+		else
+			iprop->SetLookupTable(mClrFunc);
 	}
 	else
 	{
 		vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
-		mapper->SetLookupTable(mLookupTable);
+		if (mClrFunc.GetPointer() == 0)
+			mapper->SetLookupTable(mLookupTable);
+		else
+			mapper->SetLookupTable(mClrFunc);
 		mapper->UseLookupTableScalarRangeOn();
 	}
 
@@ -725,6 +744,83 @@ NMLayer::mapUniqueValues(void)
 void
 NMLayer::mapValueRamp(void)
 {
+	mNumClasses = 256;
+	mNumLegendRows = 5;
+	mClrFunc = vtkSmartPointer<vtkColorTransferFunction>::New();
+
+	double lower = min(mUpper, mLower);
+	double upper = max(mUpper, mLower);
+	mUpper = upper;
+	mLower = lower;
+
+	switch (mColourRamp)
+	{
+	case NM_RAMP_RED:
+		mClrFunc->AddHSVPoint(mLower, 0.0, 0.0, 1.0);
+		mClrFunc->AddHSVPoint(mUpper, 0.0, 1.0, 1.0);
+		mClrFunc->SetColorSpaceToHSV();
+		break;
+
+	case NM_RAMP_BLUE:
+		mClrFunc->AddHSVPoint(mLower, (240.0/360.0), 0.0, 1.0);
+		mClrFunc->AddHSVPoint(mUpper, (240.0/360.0), 1.0, 1.0);
+		mClrFunc->SetColorSpaceToHSV();
+		break;
+
+	case NM_RAMP_GREEN:
+		mClrFunc->AddHSVPoint(mLower, (120.0/360.0), 0.0, 1.0);
+		mClrFunc->AddHSVPoint(mUpper, (120.0/360.0), 1.0, 1.0);
+		mClrFunc->SetColorSpaceToHSV();
+		break;
+
+	case NM_RAMP_RED2BLUE:
+		mClrFunc->AddRGBPoint(mLower, 1.0, 0.0, 0.0);
+		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
+		mClrFunc->SetColorSpaceToRGB();
+		break;
+
+	case NM_RAMP_BLUE2RED:
+		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
+		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
+		mClrFunc->SetColorSpaceToRGB();
+		break;
+
+	case NM_RAMP_BLUE2RED_DIV:
+		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
+		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
+		mClrFunc->SetColorSpaceToDiverging();
+		break;
+
+	case NM_RAMP_GREEN2RED_DIV:
+		mClrFunc->AddRGBPoint(mLower, 0.0, 1.0, 0.0);
+		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
+		mClrFunc->SetColorSpaceToDiverging();
+		break;
+
+	case NM_RAMP_RAINBOW:
+	{
+		double d = mUpper - mLower;
+		double s = d/6.0;
+		for (int i=0; i < 6; ++i)
+			mClrFunc->AddHSVPoint(mLower+(i*s), ((mLower+(i*s))/d), 1.0, 1.0);
+		mClrFunc->SetColorSpaceToHSV();
+	}
+		break;
+
+	//case NM_RAMP_GREEN2YELLOW2RED:
+	case NM_RAMP_MANUAL:
+	case NM_RAMP_ALTITUDE:
+	case NM_RAMP_GREY:
+	default:
+		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 0.0);
+		mClrFunc->AddRGBPoint(mUpper, 1.0, 1.0, 1.0);
+		break;
+	}
+
+	mClrFunc->AddRGBPoint(mNodata, mClrNodata.redF(), mClrNodata.greenF(), mClrNodata.blueF());
+	mClrFunc->AddRGBPoint(mLower-VALUE_MARGIN, mClrLowerMar.redF(), mClrLowerMar.greenF(), mClrLowerMar.blueF());
+	mClrFunc->AddRGBPoint(mUpper+VALUE_MARGIN, mClrUpperMar.redF(), mClrUpperMar.greenF(), mClrUpperMar.blueF());
+	mClrFunc->Build();
 
 }
 
@@ -888,6 +984,25 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 			}
 		}
 		break;
+
+	case NM_LEGEND_RAMP:
+	{
+		if (legendRow != 3)
+		{
+			double* clr;
+			if (legendRow == 1)
+				clr = mClrFunc->GetColor(mNodata);
+			else if (legendRow == 2)
+				clr = mClrFunc->GetColor(mLower-VALUE_MARGIN);
+			else if (legendRow == 4)
+				clr = mClrFunc->GetColor(mUpper+VALUE_MARGIN);
+
+			for (int i=0; i < 3; ++i)
+				rgba[i] = clr[i];
+			rgba[3] = 1;
+		}
+	}
+	break;
 
 	case NM_LEGEND_SINGLESYMBOL:
 		{
@@ -1088,7 +1203,7 @@ QIcon NMLayer::getColourRampIcon()
 {
 	QIcon rampIcon;
 
-	QPixmap pix(16,60);
+	QPixmap pix(18, 60);
 	QPainter p(&pix);
 
 	QLinearGradient ramp;
@@ -1096,11 +1211,45 @@ QIcon NMLayer::getColourRampIcon()
 	ramp.setStart(0.5, 0.0);
 	ramp.setFinalStop(0.5, 1.0);
 
+	// here, we just sample the colour transfer function 256 times
+	// to build the colour ramp
+	double* rgb;
+	double lower = min(mLower, mUpper);
+	double upper = max(mLower, mUpper);
+	double range = upper - lower;
+	double step = range/256.0;
+	QColor clr;
+
+	rgb = mClrFunc->GetColor(lower);
+	clr.setRedF(rgb[0]);
+	clr.setGreenF(rgb[1]);
+	clr.setBlueF(rgb[2]);
+	ramp.setColorAt(0, clr);
+
+	for (int i=1; i < 256; ++i)
+	{
+		double sample = lower + ((double)i * step);
+		if (sample < 0 || sample > 1)
+			continue;
+
+		rgb = mClrFunc->GetColor(sample);
+		clr.setRedF(rgb[0]);
+		clr.setGreenF(rgb[1]);
+		clr.setBlueF(rgb[2]);
+		ramp.setColorAt((sample/range), clr);
+	}
+
+	rgb = mClrFunc->GetColor(lower);
+	clr.setRedF(rgb[0]);
+	clr.setGreenF(rgb[1]);
+	clr.setBlueF(rgb[2]);
+	ramp.setColorAt(1, clr);
+
 	// dummy, needs to be replaced by one which makes use of
 	// the actually specified colour ramp
-	ramp.setColorAt(0.0, QColor(255,255,255,255));
-	ramp.setColorAt(0.5, QColor(0, 255, 0, 255));
-	ramp.setColorAt(1.0, QColor(0, 0, 255, 255));
+	//ramp.setColorAt(0.0, QColor(255,255,255,255));
+	//ramp.setColorAt(0.5, QColor(0, 255, 0, 255));
+	//ramp.setColorAt(1.0, QColor(0, 0, 255, 255));
 
 	p.fillRect(pix.rect(), ramp);
 

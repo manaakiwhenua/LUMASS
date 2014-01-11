@@ -330,6 +330,10 @@ protected:
 	vtkSmartPointer<vtkLookupTable> mLookupTable;
 	//vtkSmartPointer<vtkScalarsToColors> mLookupTable;
 
+	QColor mClrNodata;
+	QColor mClrLowerMar;
+	QColor mClrUpperMar;
+
 	QIcon mLayerIcon;
 	QString mFileName;
 

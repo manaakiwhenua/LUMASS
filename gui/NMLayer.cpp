@@ -181,7 +181,7 @@ NMLayer::getColumnName(int idx)
 }
 
 QStringList
-NMLayer::getNumericColumns(void)
+NMLayer::getNumericColumns(bool onlyints)
 {
 	QStringList cols;
 	if (mTableModel == 0)
@@ -190,8 +190,19 @@ NMLayer::getNumericColumns(void)
 	int ncols = mTableModel->columnCount(QModelIndex());
 	for (int c=0; c < ncols; ++c)
 	{
-		if (this->getColumnType(c) != QVariant::String)
-			cols << this->getColumnName(c);
+		const QVariant::Type type = this->getColumnType(c);
+		if (type != QVariant::String)
+		{
+			if (onlyints)
+			{
+				if (type != QVariant::Double)
+					cols << this->getColumnName(c);
+			}
+			else
+			{
+				cols << this->getColumnName(c);
+			}
+		}
 	}
 }
 
@@ -474,24 +485,22 @@ NMLayer::initiateLegend(void)
 	}
 
 	NMDebugCtx(ctxNMLayer, << "done!");
-	this->updateLegend();
+	this->updateMapping();
 }
 
 void
-NMLayer::updateLegend(void)
+NMLayer::updateMapping(void)
 {
 	NMDebugCtx(ctxNMLayer, << "...");
-	if (mLookupTable.GetPointer())
-		mLookupTable->Delete();
-	if (mClrFunc.GetPointer())
-		mClrFunc->Delete();
 
 	this->resetLegendInfo();
 
+	bool clrtab = false;
 	switch(mLegendType)
 	{
 	case NM_LEGEND_RAMP:
 		this->mapValueRamp();
+		clrtab = true;
 		break;
 
 	case NM_LEGEND_INDEXED:
@@ -524,7 +533,7 @@ NMLayer::updateLegend(void)
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 		vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
 		iprop->SetUseLookupTableScalarRange(1);
-		if (mClrFunc.GetPointer() == 0)
+		if (!clrtab)
 			iprop->SetLookupTable(mLookupTable);
 		else
 			iprop->SetLookupTable(mClrFunc);
@@ -532,7 +541,7 @@ NMLayer::updateLegend(void)
 	else
 	{
 		vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
-		if (mClrFunc.GetPointer() == 0)
+		if (!clrtab)
 			mapper->SetLookupTable(mLookupTable);
 		else
 			mapper->SetLookupTable(mClrFunc);
@@ -543,6 +552,12 @@ NMLayer::updateLegend(void)
 	emit visibilityChanged(this);
 
 	NMDebugCtx(ctxNMLayer, << "done!");
+}
+
+void NMLayer::updateLegend()
+{
+
+	emit legendChanged(this);
 }
 
 void
@@ -870,17 +885,65 @@ NMLayer::mapValueClasses(void)
 
 }
 
+bool
+NMLayer::hasColourTable(void)
+{
+	if (mTableModel == 0)
+		return false;
+
+	mHasClrTab = false;
+	for (int i=0; i < 4; ++i)
+		mClrTabIdx[i] = -1;
+
+	// -------------------------------------------------------------------------------------
+	// ANALYSE ATTRIBUTE TABLE
+
+	int ncols = this->mTableModel->columnCount(QModelIndex());
+	for (int i=0; i < ncols; ++i)
+	{
+		const QModelIndex ci = mTableModel->index(0, i, QModelIndex());
+		if (mTableModel->data(ci, Qt::DisplayRole).type() != QVariant::String)
+		{
+			QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+
+			if (fieldName.compare("red", Qt::CaseInsensitive) == 0)
+				mClrTabIdx[0] = i;
+			else if (fieldName.compare("green", Qt::CaseInsensitive) == 0)
+				mClrTabIdx[1] = i;
+			else if (fieldName.compare("blue", Qt::CaseInsensitive) == 0)
+				mClrTabIdx[2] = i;
+			else if (	fieldName.compare("alpha", Qt::CaseInsensitive) == 0
+					 || fieldName.compare("opacity", Qt::CaseInsensitive) == 0
+					)
+				mClrTabIdx[3] = i;
+		}
+	}
+
+	if (	mClrTabIdx[0] >= 0
+		&&  mClrTabIdx[1] >= 0
+		&&  mClrTabIdx[2] >= 0
+		&&  mClrTabIdx[3] >= 0
+	   )
+	{
+		mHasClrTab = true;
+	}
+
+	return mHasClrTab;
+
+}
 
 void
 NMLayer::mapColourTable(void)
 {
 	NMDebugCtx(ctxNMLayer, << "...");
 
-	if (mTableModel == 0 || !mHasClrTab)
+	if (mTableModel == 0 || !this->hasColourTable())
 	{
 		NMErr(ctxNMLayer, << "Invalid attribute table");
 		return;
 	}
+
+	mLegendValueField = tr("Colour Table");
 
 	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
 	long ncells = 0;

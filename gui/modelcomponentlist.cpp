@@ -83,9 +83,11 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	QAction* actRemove = new QAction(this->mMenu);
 	actRemove->setText(tr("Remove Layer"));
 	QAction* actUniqueValues = new QAction(this->mMenu);
-	actUniqueValues->setText(tr("Unique Values Map ..."));
+	actUniqueValues->setText(tr("Map Unique Values ..."));
 	QAction* actSingleSymbol = new QAction(this->mMenu);
-	actSingleSymbol->setText(tr("Single Symbol Map"));
+	actSingleSymbol->setText(tr("Map Single Symbol"));
+	QAction* actClrTab = new QAction(this->mMenu);
+	actClrTab->setText(tr("Map Colour Table"));
 	QAction* actSaveChanges = new QAction(this->mMenu);
 	actSaveChanges->setText(tr("Save Changes"));
 
@@ -93,7 +95,9 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	this->mMenu->addSeparator();
 	this->mMenu->addAction(actZoom);
+	this->mMenu->addSeparator();
 	this->mMenu->addAction(actSingleSymbol);
+	this->mMenu->addAction(actClrTab);
 	this->mMenu->addAction(actUniqueValues);
 
 	this->mMenu->addSeparator();
@@ -106,6 +110,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actRemove, SIGNAL(triggered()), this, SLOT(removeCurrentLayer()));
 	this->connect(actSingleSymbol, SIGNAL(triggered()), this, SLOT(mapSingleSymbol()));
 	this->connect(actUniqueValues, SIGNAL(triggered()), this, SLOT(mapUniqueValues()));
+	this->connect(actClrTab, SIGNAL(triggered()), this, SLOT(mapColourTable()));
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
 
 #ifdef DEBUG
@@ -508,6 +513,10 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 		}
 		else if (level == 2)
 		{
+			NMLayer* l = static_cast<NMLayer*>(idx.data(Qt::UserRole+100).value<void*>());
+			QString itemstr = idx.data(Qt::DisplayRole).toString();
+			NMDebugAI(<< "trying to edit '" << itemstr.toStdString() << "' of "
+					<< l->objectName().toStdString() << std::endl);
 			this->edit(idx);
 		}
 	}
@@ -816,12 +825,33 @@ void ModelComponentList::mapSingleSymbol()
 	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
 
 	l->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
-	l->updateLegend();
-	//if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-	//{
-	//	NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
-	//	vl->mapSingleSymbol();
-	//}
+	l->updateMapping();
+}
+
+void ModelComponentList::mapColourTable()
+{
+	// get the current layer
+	QModelIndex idx = this->currentIndex();
+	const int toplevelrow = (idx.internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+
+	if (l->getTable() == 0)
+	{
+		NMDebugAI(<< "cannot map the colour table, since we don't even have an attribute table!" << std::endl);
+		return;
+	}
+
+	if (!l->hasColourTable())
+	{
+		NMDebugAI(<< "cannot map the colour table, since we didn't find any colour attributes!" << std::endl);
+		return;
+	}
+
+	l->setLegendType(NMLayer::NM_LEGEND_CLRTAB);
+	l->updateMapping();
+
+
 }
 
 void ModelComponentList::mapUniqueValues()
@@ -902,16 +932,7 @@ void ModelComponentList::mapUniqueValues()
 	l->setLegendType(NMLayer::NM_LEGEND_INDEXED);
 	l->setLegendClassType(NMLayer::NM_CLASS_UNIQUE);
 	l->setLegendValueField(theField);
-	l->updateLegend();
-	//if (vL != 0)
-	//{
-	//	vL->setLegendValueField(theField);
-	//	vL->mapUniqueValues();
-	//}
-	//else if (iL != 0)
-	//{
-	//	iL->mapUniqueValues(theField);
-	//}
+	l->updateMapping();
 }
 
 void ModelComponentList::test()
@@ -921,5 +942,4 @@ void ModelComponentList::test()
 	if (il == 0)
 		return;
 	il->test();
-
 }

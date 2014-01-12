@@ -90,6 +90,7 @@ public slots:
 	void mapUniqueValues();
 	void mapSingleSymbol();
 	void saveLayerChanges();
+	void mapColourTable();
 	//void zoomChanged(vtkObject* obj);
 
 	void test();

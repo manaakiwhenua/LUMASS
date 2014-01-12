@@ -161,7 +161,7 @@ public:
 	int getColumnIndex(const QString& fieldname);
 	QVariant::Type getColumnType(int colidx);
 	QString getColumnName(const int idx);
-	QStringList getNumericColumns(void);
+	QStringList getNumericColumns(bool onlyints);
 	QStringList getStringColumns(void);
 
 	const QItemSelection getSelection(void);
@@ -209,6 +209,8 @@ public:
 	double getLegendItemLowerValue(const int legendRow);
 	bool getLegendItemRange(const int legendRow, double* range);
 
+	bool hasColourTable(void);
+
 	QString getLegendTypeStr(NMLayer::NMLegendType type)
 		{return mLegendTypeStr.at((int)type);}
 	QString getLegendClassTypeStr(NMLayer::NMLegendClassType type)
@@ -255,6 +257,7 @@ public slots:
 		QList<long> lstNMId, NMLayerSelectionType seltype);
 	/*! Create a legend according to user choices */
 	virtual void updateLegend(void);
+	virtual void updateMapping(void);
 
 signals:
 	void visibilityChanged(const NMLayer* layer);

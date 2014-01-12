@@ -37,6 +37,8 @@
 #include "NMComponentListItemDelegate.h"
 #include "NMLayer.h"
 
+#define ctxCompLID "NMComponentListItemDelegate"
+
 NMComponentListItemDelegate::NMComponentListItemDelegate(QObject* parent)
 	: QStyledItemDelegate(parent)
 {
@@ -144,55 +146,97 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		const QStyleOptionViewItem& option,
 		const QModelIndex& index) const
 {
+	NMDebugCtx(ctxCompLID, << "...");
+
 	QWidget* widget = 0;
 
 	const int level = index.internalId() % 100;
 	if (level != 2)
+	{
+		NMDebugCtx(ctxCompLID, << "done!");
 		return widget;
+	}
+
 
 	NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
 
 	bool bok;
-	const int legendtype = index.sibling(2, 0).data().toInt(&bok);
-	const int classtype = index.sibling(3, 0).data().toInt(&bok);
+	const int legendtype = l->getLegendType();//index.sibling(2, 0).data().toInt(&bok);
+	const int classtype = l->getLegendClassType(); //index.sibling(3, 0).data().toInt(&bok);
 
 	const int row = index.row();
 	switch(row)
 	{
-	case 0:
-	{
-		if (	l->getTable() != 0
-			&&	(  	 legendtype == NMLayer::NM_LEGEND_INDEXED
-				 ||  legendtype == NMLayer::NM_LEGEND_RAMP
-				)
-		   )
+	case 1:
+	case 0: // ------------------ LEGEND VALUE FIELD -----------------------------------------
 		{
-			QStringList cols = l->getNumericColumns();
-			if (classtype == NMLayer::NM_CLASS_UNIQUE)
-				cols.append(l->getStringColumns());
-
-			int current = 0;
-			for (int c=0; c < cols.size(); ++c)
+			if (	l->getTable() != 0
+				&&	(  	 legendtype == NMLayer::NM_LEGEND_INDEXED
+					 ||  legendtype == NMLayer::NM_LEGEND_RAMP
+					 ||  legendtype == NMLayer::NM_LEGEND_CLRTAB
+					)
+			   )
 			{
-				if (cols.at(c).compare(l->getLegendValueField(), Qt::CaseInsensitive) == 0)
+				QStringList cols;
+				if (legendtype == NMLayer::NM_LEGEND_INDEXED && classtype == NMLayer::NM_CLASS_UNIQUE)
 				{
-					current = c;
-					break;
+					// editing of the description field for UNIQUE VALUE
+					// doesn't make sense, so bail out!
+					if (row == 1)
+					{
+						NMDebugAI(<< "cannot edit legend description field when "
+								<< "mapping unique values!" << std::endl);
+						NMDebugCtx(ctxCompLID, << "done!");
+						return widget;
+					}
+					cols.append(l->getStringColumns());
+					cols.append(l->getNumericColumns(true));
 				}
-			}
+				// editing the value field for colour tables doesn't make sense
+				// so, bail out!
+				else if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
+				{
+					if (row == 0)
+					{
+						NMDebugAI(<< "cannot edit the legend value field when "
+								<< "mapping table colours!" << std::endl);
+						NMDebugCtx(ctxCompLID, << "done!");
+						return widget;
+					}
+					cols.append(l->getStringColumns());
+					cols.append(l->getNumericColumns(false));
+				}
+				else
+				{
+					cols.append(l->getNumericColumns(false));
+				}
 
-			QComboBox* box = new QComboBox(parent);
-			box->addItems(cols);
-			box->setCurrentIndex(current);
-			return box;
+				int current = 0;
+				QString currentValue = row == 0 ? l->getLegendValueField() : l->getLegendDescrField();
+				for (int c=0; c < cols.size(); ++c)
+				{
+					if (cols.at(c).compare(currentValue, Qt::CaseInsensitive) == 0)
+					{
+						current = c;
+						break;
+					}
+				}
+
+				QComboBox* box = new QComboBox(parent);
+				box->addItems(cols);
+				box->setCurrentIndex(current);
+
+				NMDebugCtx(ctxCompLID, << "done!");
+				return box;
+			}
 		}
-	}
-	break;
+		break;
 
 	default:
 		break;
 	}
 
+	NMDebugCtx(ctxCompLID, << "done!");
 	return widget;
 }
 
@@ -200,21 +244,41 @@ void
 NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
 		const QModelIndex& index) const
 {
+	NMDebugCtx(ctxCompLID, << "...");
+
 	const int level = index.internalId() % 100;
 	if (level != 2)
+	{
+		NMDebugCtx(ctxCompLID, << "done!");
 		return;
+	}
 
 	NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
 
 	const int row = index.row();
 	switch(row)
 	{
+		case 1:
 		case 0:
 		{
 			QComboBox* box = static_cast<QComboBox*>(editor);
 			QString valuefield = box->currentText();
-			l->setLegendValueField(valuefield);
-			l->updateLegend();
+			if (row == 0)
+			{
+				if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
+				{
+					l->setLegendValueField(valuefield);
+					l->updateMapping();
+				}
+			}
+			else if (row == 1)
+			{
+				if (valuefield.compare(l->getLegendDescrField(), Qt::CaseInsensitive) != 0)
+				{
+					l->setLegendDescrField(valuefield);
+					l->updateLegend();
+				}
+			}
 		}
 		break;
 
@@ -222,18 +286,14 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 		break;
 	}
 
+	NMDebugCtx(ctxCompLID, << "done!");
 }
 
 void
 NMComponentListItemDelegate::setEditorData(QWidget* editor,
 		const QModelIndex& index) const
 {
-
-
-
-	QComboBox* box = static_cast<QComboBox*>(editor);
-	box->addItem("Col1");
-	box->addItem("Col2");
+	NMDebugCtx(ctxCompLID, << "...");
 
 	//const int level = index.internalId() % 100;
     //
@@ -254,8 +314,7 @@ NMComponentListItemDelegate::setEditorData(QWidget* editor,
 	//	break;
 	//}
 
-
-
+	NMDebugCtx(ctxCompLID, << "done!");
 }
 
 void
@@ -263,5 +322,9 @@ NMComponentListItemDelegate::updateEditorGeometry(QWidget* editor,
 		const QStyleOptionViewItem& option,
 		const QModelIndex& index) const
 {
-	editor->setGeometry(option.rect);
+	NMDebugCtx(ctxCompLID, << "...");
+	QRect geom = option.rect;
+	//geom.adjust(option.rect.width()/2.0, 0, 0, 50);
+	editor->setGeometry(geom);
+	NMDebugCtx(ctxCompLID, << "done!");
 }

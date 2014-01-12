@@ -506,6 +506,10 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 				l->setLegendColour(idx.row(), rgba);
 			}
 		}
+		else if (level == 2)
+		{
+			this->edit(idx);
+		}
 	}
 
 	//NMDebugCtx(ctx, << "done!")

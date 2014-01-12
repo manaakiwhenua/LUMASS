@@ -158,6 +158,11 @@ public:
 	virtual void showAttributeTable(void);
 	//virtual const vtkTable* getTable(void);
 	virtual const QAbstractItemModel* getTable(void);
+	int getColumnIndex(const QString& fieldname);
+	QVariant::Type getColumnType(int colidx);
+	QString getColumnName(const int idx);
+	QStringList getNumericColumns(void);
+	QStringList getStringColumns(void);
 
 	const QItemSelection getSelection(void);
 
@@ -210,6 +215,14 @@ public:
 		{return mLegendClassTypeStr.at((int)type);}
 	QString getColourRampStr(NMLayer::NMColourRamp ramptype)
 		{return mColourRampStr.at((int)ramptype);}
+
+	const QStringList getLegendTypeStrings(void)
+		{return mLegendTypeStr;}
+	const QStringList getLegendClassTypeStrings(void)
+		{return mLegendClassTypeStr;}
+	const QStringList getColourRampStrings(void)
+		{return mColourRampStr;}
+
 
 
 	// -------------------------------------------------------
@@ -357,8 +370,8 @@ protected:
 	virtual void connectTableSel(void);
 	virtual void disconnectTableSel(void);
 	void printSelRanges(const QItemSelection& sel, const QString& msg);
-	int getColumnIndex(const QString& fieldname);
-	QVariant::Type getColumnType(int colidx);
+	//int getColumnIndex(const QString& fieldname);
+	//QVariant::Type getColumnType(int colidx);
 
 	virtual void mapSingleSymbol(void);
 	virtual void mapUniqueValues(void);

@@ -32,8 +32,10 @@
 
 #include <QApplication>
 #include <QPainter>
+#include <QComboBox>
 
 #include "NMComponentListItemDelegate.h"
+#include "NMLayer.h"
 
 NMComponentListItemDelegate::NMComponentListItemDelegate(QObject* parent)
 	: QStyledItemDelegate(parent)
@@ -137,3 +139,129 @@ NMComponentListItemDelegate::sizeHint(const QStyleOptionViewItem& option,
 	return ret;
 }
 
+QWidget*
+NMComponentListItemDelegate::createEditor(QWidget* parent,
+		const QStyleOptionViewItem& option,
+		const QModelIndex& index) const
+{
+	QWidget* widget = 0;
+
+	const int level = index.internalId() % 100;
+	if (level != 2)
+		return widget;
+
+	NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
+
+	bool bok;
+	const int legendtype = index.sibling(2, 0).data().toInt(&bok);
+	const int classtype = index.sibling(3, 0).data().toInt(&bok);
+
+	const int row = index.row();
+	switch(row)
+	{
+	case 0:
+	{
+		if (	l->getTable() != 0
+			&&	(  	 legendtype == NMLayer::NM_LEGEND_INDEXED
+				 ||  legendtype == NMLayer::NM_LEGEND_RAMP
+				)
+		   )
+		{
+			QStringList cols = l->getNumericColumns();
+			if (classtype == NMLayer::NM_CLASS_UNIQUE)
+				cols.append(l->getStringColumns());
+
+			int current = 0;
+			for (int c=0; c < cols.size(); ++c)
+			{
+				if (cols.at(c).compare(l->getLegendValueField(), Qt::CaseInsensitive) == 0)
+				{
+					current = c;
+					break;
+				}
+			}
+
+			QComboBox* box = new QComboBox(parent);
+			box->addItems(cols);
+			box->setCurrentIndex(current);
+			return box;
+		}
+	}
+	break;
+
+	default:
+		break;
+	}
+
+	return widget;
+}
+
+void
+NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
+		const QModelIndex& index) const
+{
+	const int level = index.internalId() % 100;
+	if (level != 2)
+		return;
+
+	NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
+
+	const int row = index.row();
+	switch(row)
+	{
+		case 0:
+		{
+			QComboBox* box = static_cast<QComboBox*>(editor);
+			QString valuefield = box->currentText();
+			l->setLegendValueField(valuefield);
+			l->updateLegend();
+		}
+		break;
+
+	default:
+		break;
+	}
+
+}
+
+void
+NMComponentListItemDelegate::setEditorData(QWidget* editor,
+		const QModelIndex& index) const
+{
+
+
+
+	QComboBox* box = static_cast<QComboBox*>(editor);
+	box->addItem("Col1");
+	box->addItem("Col2");
+
+	//const int level = index.internalId() % 100;
+    //
+	//if (level != 2)
+	//	return;
+    //
+	//NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
+    //
+	//const int row = index.row();
+	//switch(row)
+	//{
+	//	case 0:
+	//	{
+	//	}
+	//	break;
+    //
+	//default:
+	//	break;
+	//}
+
+
+
+}
+
+void
+NMComponentListItemDelegate::updateEditorGeometry(QWidget* editor,
+		const QStyleOptionViewItem& option,
+		const QModelIndex& index) const
+{
+	editor->setGeometry(option.rect);
+}

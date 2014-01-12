@@ -170,6 +170,46 @@ void NMLayer::updateLayerSelection(QList<long> lstCellId,
 
 }
 
+QString
+NMLayer::getColumnName(int idx)
+{
+	if (mTableModel == 0)
+		return QString();
+
+	return mTableModel->headerData(idx,
+			Qt::Horizontal, Qt::DisplayRole).toString();
+}
+
+QStringList
+NMLayer::getNumericColumns(void)
+{
+	QStringList cols;
+	if (mTableModel == 0)
+		return cols;
+
+	int ncols = mTableModel->columnCount(QModelIndex());
+	for (int c=0; c < ncols; ++c)
+	{
+		if (this->getColumnType(c) != QVariant::String)
+			cols << this->getColumnName(c);
+	}
+}
+
+QStringList
+NMLayer::getStringColumns(void)
+{
+	QStringList cols;
+	if (mTableModel == 0)
+		return cols;
+
+	int ncols = mTableModel->columnCount(QModelIndex());
+	for (int c=0; c < ncols; ++c)
+	{
+		if (this->getColumnType(c) == QVariant::String)
+			cols << this->getColumnName(c);
+	}
+}
+
 void NMLayer::resetLegendInfo(void)
 {
 	// clear the HashMap

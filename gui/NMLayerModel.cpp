@@ -143,6 +143,11 @@ Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const
     				 Qt::ItemIsSelectable | Qt::ItemIsDragEnabled |
     				 Qt::ItemIsDropEnabled;
     }
+    else
+    {
+    	const int level = index.internalId() % 100;
+    	flags |= Qt::ItemIsEditable | Qt::ItemIsSelectable;
+    }
 
     return flags;
 }
@@ -365,6 +370,13 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 				retVar = QSize(32, 16);
 			}
 			break;
+
+			case Qt::UserRole+100:
+			{
+				QVariant ptvar;
+				ptvar.setValue<void*>((void*)l);
+				retVar = ptvar;
+			}
 		}
 	}
 	break;

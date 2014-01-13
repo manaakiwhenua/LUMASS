@@ -123,9 +123,17 @@ public:
 	NMPropertyGetSet(ColourRamp, NMLayer::NMColourRamp);
 	NMPropertyGetSet(LegendValueField, QString);
 	NMPropertyGetSet(LegendDescrField, QString);
-	NMPropertyGetSet(Nodata, double);
-	NMPropertyGetSet(Lower, double);
-	NMPropertyGetSet(Upper, double);
+	//NMPropertyGetSet(Nodata, double);
+	//NMPropertyGetSet(Lower, double);
+	//NMPropertyGetSet(Upper, double);
+	double getNodata(void) {return mNodata;}
+	double getUpper(void) {return mUpper;}
+	double getLower(void) {return mLower;}
+	void setNodata(double val);
+	void setUpper(double val);
+	void setLower(double val);
+
+
 
 signals:
 	void LegendTypeChanged();

@@ -1,6 +1,6 @@
  /****************************************************************************** 
  * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ * Copyright 2010,2011,2012,2013,2014 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -39,31 +39,31 @@
 
 class NMLayer;
 
-/*!	\brief The NMLayerModel class manages map layers and provides and interactive
- * 		   legend to control the colour coding of the map in the map view. The
- * 		   general tree view structure used for the legend is given in the following
- * 		   table.
+/*!	\brief The NMLayerModel class manages map layers and provides an interactive
+ * 		   legend to control the colour coding of the data in the map view. The
+ * 		   general tree view structure used for the visualisation of the legend
+ * 		   is given in the following table.
  *
  * 	<table>
  * 		<tr> 	<td><b>Tree Level</b></td> <td><b>Row #</b></td>  <td><b>internalId()</b></td> </tr>
- * 		<tr>    <td><i>level</i></td>          <td><i>layer number</i> </td> <td><i>item model identifier</i></td>      </tr>
- * 		<tr>    <td>0</td>                 <td>0</td>             <td>100</td>       </tr>
- * 		<tr>    <td>0</td>                 <td>1</td>             <td>200</td>       </tr>
- * 		<tr>    <td>0</td>                 <td>...</td>           <td>...</td>       </tr>
- * 		<tr>    <td>0</td>                 <td>n</td>             <td>(n+1)*100</td>       </tr>
+ * 		<tr>    <td><i>level</i></td>          <td><i>layer number</i> </td> <td><i>item model identifier</i></td>  </tr>
+ * 		<tr>    <td>0</td>                 <td>0</td>             <td>100</td>              </tr>
+ * 		<tr>    <td>0</td>                 <td>1</td>             <td>200</td>              </tr>
+ * 		<tr>    <td>0</td>                 <td>...</td>           <td>...</td>              </tr>
+ * 		<tr>    <td>0</td>                 <td>n</td>             <td>(n+1)*100</td>        </tr>
  *  	<tr>    <td><i>level</i></td> <td><i>legend item number</i></td> <td><i>item model identifier</i></td> </tr>
- *      <tr>    <td>1</td>                 <td>0</td>             <td>101</td>          </tr>
- *      <tr>    <td>1</td>                 <td>1</td>             <td>101</td>          </tr>
- *      <tr>    <td>1</td>                 <td>...</td>           <td>...</td>          </tr>
- *      <tr>    <td>1</td>                 <td>m</td>             <td>(n+1)*100+1</td>  </tr>
+ *      <tr>    <td>1</td>                 <td>0</td>             <td>101</td>              </tr>
+ *      <tr>    <td>1</td>                 <td>1</td>             <td>101</td>              </tr>
+ *      <tr>    <td>1</td>                 <td>...</td>           <td>...</td>              </tr>
+ *      <tr>    <td>1</td>                 <td>m</td>             <td>(n+1)*100+1</td>      </tr>
  * 		<tr>    <td><i>level</i></td> <td><i>legend metadata item number: meaning</i></td> <td><i>item model identifier</i></td> </tr>
- *  	<tr>    <td>2</td>                 <td>0: Value Field</td>     <td>102</td> </tr>
- *  	<tr>    <td>2</td>                 <td>1: Descr Field</td>     <td>102</td> </tr>
- *  	<tr>    <td>2</td>                 <td>2: LegendType</td>      <td>102</td> </tr>
- *  	<tr>    <td>2</td>                 <td>3: LegendClassType</td> <td>102</td> </tr>
- *  	<tr>    <td>2</td>                 <td>4: ColourRamp</td>      <td>102</td> </tr>
- *  	<tr>    <td>2</td>                 <td>5: Lower</td>           <td>102</td> </tr>
- *  	<tr>    <td>2</td>                 <td>6: Upper</td>           <td>102</td> </tr>
+ *  	<tr>    <td>2</td>                 <td>0: Value Field</td>     <td>102</td>         </tr>
+ *  	<tr>    <td>2</td>                 <td>1: Descr Field</td>     <td>102</td>         </tr>
+ *  	<tr>    <td>2</td>                 <td>2: LegendType</td>      <td>102</td>         </tr>
+ *  	<tr>    <td>2</td>                 <td>3: LegendClassType</td> <td>102</td>         </tr>
+ *  	<tr>    <td>2</td>                 <td>4: ColourRamp</td>      <td>102</td>         </tr>
+ *  	<tr>    <td>2</td>                 <td>5: Upper</td>           <td>102</td>         </tr>
+ *  	<tr>    <td>2</td>                 <td>6: Lower</td>           <td>102</td>         </tr>
  *  	<tr>    <td>2</td>                 <td>7: Nodata</td>          <td>(n+1)*100+2</td> </tr>
  * 	</table>
  *
@@ -82,6 +82,29 @@ class NMLayer;
  *
  *  \endcode
  *
+ *  Furthermore, some layer properties can be accessed on different levels using the following <tt>Qt::ItemDataRole</tt>s
+ *  with \n <tt>NMLayer::data(const QModelIndex& index, int role)</tt>:
+ *
+ *  <table>
+ *  	<tr> <td><b>Level</b></td> <td><b>layer property (type) </b></td> <td><b><tt>Qt::ItemDataRole</tt></b></td> </tr>
+ *  	<tr>    <td> 0 </td>    <td> layer name  (string) </td>    <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 1 </td>    <td> legend type (string) </td>    <td><tt> Qt::UserRole </tt></td> </tr>
+ *		<tr>    <td> 1 </td>    <td> upper value (string) </td>    <td><tt> Qt::UserRole+1 </tt></td> </tr>
+ *		<tr>    <td> 1 </td>    <td> lower value (string) </td>    <td><tt> Qt::UserRole+2 </tt></td> </tr>
+ *      <tr>    <td> 2 </td>    <td> upper value (string) </td>    <td><tt> Qt::UserRole+1 </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> lower value (string) </td>    <td><tt> Qt::UserRole+2 </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> nodata value (string) </td>   <td><tt> Qt::UserRole+3 </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> pointer to layer (void *) </td>    <td><tt> Qt::UserRole+100 </tt></td> </tr>
+ *		<tr> <td colspan="3"><i>the following properties are accessible depending on the <tt>index.row()</tt></i></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> legend value field (string) </td>          <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> legend description field (string) </td>    <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> legend type (string) </td>                 <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> legend class type (string) </td>           <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> colour ramp (string) </td>                 <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> upper value (string) </td>                 <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> lower value (string) </td>                 <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> nodata value (string) </td>                 <td><tt> Qt::DisplayRole </tt></td> </tr>
+ *  </table>
  *
  */
 

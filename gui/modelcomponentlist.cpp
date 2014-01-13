@@ -510,6 +510,10 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 				rgba[3] = clr.alphaF();
 				l->setLegendColour(idx.row(), rgba);
 			}
+			else
+			{
+
+			}
 		}
 		else if (level == 2)
 		{

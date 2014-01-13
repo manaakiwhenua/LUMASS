@@ -1,6 +1,6 @@
  /****************************************************************************** 
  * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ * Copyright 2010,2011,2012,2013,2014 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -319,7 +319,7 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 				{
 					if (l->getLegendType() == NMLayer::NM_LEGEND_RAMP && row == 3)
 					{
-						retVar = QSize(16, 60);
+						retVar = QSize(18, 60);
 					}
 					else
 					{

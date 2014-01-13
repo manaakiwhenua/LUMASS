@@ -795,6 +795,34 @@ NMLayer::mapUniqueValues(void)
 	mNumLegendRows = mNumClasses + (valar ? 1 : 2);
 }
 
+void
+NMLayer::setNodata(double val)
+{
+
+	if (mLegendType == NMLayer::NM_LEGEND_RAMP)
+	{
+		this->mNodata = mNodata < mLower && (val >= mLower && val <= mUpper) ? mLower-VALUE_MARGIN : val;
+		this->mNodata = mNodata > mUpper && (val >= mLower && val <= mUpper) ? mUpper+VALUE_MARGIN : val;
+	}
+	else
+	{
+		this->mNodata = val;
+	}
+}
+
+void
+NMLayer::setUpper(double val)
+{
+	this->mUpper = max(mLower, val);
+	this->mLower = min(mLower, val);
+}
+
+void
+NMLayer::setLower(double val)
+{
+	this->mUpper = max(mUpper, val);
+	this->mLower = min(mUpper, val);
+}
 
 void
 NMLayer::mapValueRamp(void)
@@ -803,10 +831,10 @@ NMLayer::mapValueRamp(void)
 	mNumLegendRows = 5;
 	mClrFunc = vtkSmartPointer<vtkColorTransferFunction>::New();
 
-	double lower = min(mUpper, mLower);
-	double upper = max(mUpper, mLower);
-	mUpper = upper;
-	mLower = lower;
+	// adjust nodata value (in case it is not outside the
+	// mapping value range)
+	this->setNodata(mNodata);
+
 
 	switch (mColourRamp)
 	{
@@ -877,6 +905,18 @@ NMLayer::mapValueRamp(void)
 	mClrFunc->AddRGBPoint(mUpper+VALUE_MARGIN, mClrUpperMar.redF(), mClrUpperMar.greenF(), mClrUpperMar.blueF());
 	mClrFunc->Build();
 
+	// Debug
+	NMDebugAI(<< "ColorTransferFunction Definition: " << std::endl);
+	int numnodes = mClrFunc->GetSize();
+	double clrpt[6];
+	for (int i=0; i < numnodes; ++ i)
+	{
+		mClrFunc->GetNodeValue(i, clrpt);
+		NMDebugAI(<< "node: " << i << std::endl);
+		NMDebugAI(<< "pos: " << clrpt[0] << std::endl);
+		NMDebugAI(<< "r,g,b: " << clrpt[1] << ", " << clrpt[2] << ", " << clrpt[3] << std::endl);
+		NMDebugAI(<< "midpoint, sharpness: " << clrpt[4] << ", " << clrpt[5] << std::endl);
+	}
 }
 
 void
@@ -1329,7 +1369,13 @@ QIcon NMLayer::getColourRampIcon()
 	clr.setBlueF(rgb[2]);
 	ramp.setColorAt(0, clr);
 
-	for (int i=1; i < 256; ++i)
+	rgb = mClrFunc->GetColor(upper);
+	clr.setRedF(rgb[0]);
+	clr.setGreenF(rgb[1]);
+	clr.setBlueF(rgb[2]);
+	ramp.setColorAt(1, clr);
+
+	for (int i=1; i < 255; ++i)
 	{
 		double sample = lower + ((double)i * step);
 		double pos = sample/range;
@@ -1343,11 +1389,6 @@ QIcon NMLayer::getColourRampIcon()
 		ramp.setColorAt(pos, clr);
 	}
 
-	rgb = mClrFunc->GetColor(upper);
-	clr.setRedF(rgb[0]);
-	clr.setGreenF(rgb[1]);
-	clr.setBlueF(rgb[2]);
-	ramp.setColorAt(1, clr);
 
 	p.fillRect(pix.rect(), ramp);
 
@@ -1431,6 +1472,7 @@ QString  NMLayer::getLegendName(const int legendRow)
 
 	case NM_LEGEND_RAMP:
 		{
+			//name = "";
 			switch (legendRow)
 			{
 				case 1:	name = tr("Nodata"); break;

@@ -1095,9 +1095,9 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 			double* clr;
 			if (legendRow == 1)
 				clr = mClrFunc->GetColor(mNodata);
-			else if (legendRow == 2)
-				clr = mClrFunc->GetColor(mLower-VALUE_MARGIN);
 			else if (legendRow == 4)
+				clr = mClrFunc->GetColor(mLower-VALUE_MARGIN);
+			else if (legendRow == 2)
 				clr = mClrFunc->GetColor(mUpper+VALUE_MARGIN);
 
 			for (int i=0; i < 3; ++i)
@@ -1311,8 +1311,8 @@ QIcon NMLayer::getColourRampIcon()
 
 	QLinearGradient ramp;
 	ramp.setCoordinateMode(QGradient::StretchToDeviceMode);
-	ramp.setStart(0.5, 0.0);
-	ramp.setFinalStop(0.5, 1.0);
+	ramp.setStart(0.5, 1.0);
+	ramp.setFinalStop(0.5, 0.0);
 
 	// here, we just sample the colour transfer function 256 times
 	// to build the colour ramp
@@ -1332,27 +1332,22 @@ QIcon NMLayer::getColourRampIcon()
 	for (int i=1; i < 256; ++i)
 	{
 		double sample = lower + ((double)i * step);
-		if (sample < 0 || sample > 1)
+		double pos = sample/range;
+		if (pos < 0 || pos > 1)
 			continue;
 
 		rgb = mClrFunc->GetColor(sample);
 		clr.setRedF(rgb[0]);
 		clr.setGreenF(rgb[1]);
 		clr.setBlueF(rgb[2]);
-		ramp.setColorAt((sample/range), clr);
+		ramp.setColorAt(pos, clr);
 	}
 
-	rgb = mClrFunc->GetColor(lower);
+	rgb = mClrFunc->GetColor(upper);
 	clr.setRedF(rgb[0]);
 	clr.setGreenF(rgb[1]);
 	clr.setBlueF(rgb[2]);
 	ramp.setColorAt(1, clr);
-
-	// dummy, needs to be replaced by one which makes use of
-	// the actually specified colour ramp
-	//ramp.setColorAt(0.0, QColor(255,255,255,255));
-	//ramp.setColorAt(0.5, QColor(0, 255, 0, 255));
-	//ramp.setColorAt(1.0, QColor(0, 0, 255, 255));
 
 	p.fillRect(pix.rect(), ramp);
 

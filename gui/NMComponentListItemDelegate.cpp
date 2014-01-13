@@ -33,6 +33,7 @@
 #include <QApplication>
 #include <QPainter>
 #include <QComboBox>
+#include <QLineEdit>
 
 #include "NMComponentListItemDelegate.h"
 #include "NMLayer.h"
@@ -186,6 +187,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 					{
 						NMDebugAI(<< "cannot edit legend description field when "
 								<< "mapping unique values!" << std::endl);
+
 						NMDebugCtx(ctxCompLID, << "done!");
 						return widget;
 					}
@@ -200,6 +202,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 					{
 						NMDebugAI(<< "cannot edit the legend value field when "
 								<< "mapping table colours!" << std::endl);
+
 						NMDebugCtx(ctxCompLID, << "done!");
 						return widget;
 					}
@@ -231,6 +234,26 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 			}
 		}
 		break;
+
+	case 5:
+	case 6:
+	case 7:
+		{
+			if (	(legendtype == NMLayer::NM_LEGEND_INDEXED && classtype != NMLayer::NM_CLASS_UNIQUE)
+				||  legendtype == NMLayer::NM_LEGEND_RAMP
+			   )
+			{
+				QLineEdit* lineedit = new QLineEdit(parent);
+				int base = Qt::UserRole-4;
+				QString curVal = index.data(base+index.row()).toString();
+				lineedit->setText(curVal);
+
+				NMDebugCtx(ctxCompLID, << "done!");
+				return lineedit;
+			}
+		}
+		break;
+
 
 	default:
 		break;
@@ -282,6 +305,20 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 		}
 		break;
 
+		case 5:
+		case 6:
+		case 7:
+			{
+				QLineEdit* lineedit = static_cast<QLineEdit*>(editor);
+				QString curVal = lineedit->text();
+				int base = Qt::UserRole-4;
+				if (!curVal.isEmpty())
+				{
+					model->setData(index, QVariant(curVal), base+index.row());
+				}
+			}
+			break;
+
 	default:
 		break;
 	}
@@ -324,7 +361,7 @@ NMComponentListItemDelegate::updateEditorGeometry(QWidget* editor,
 {
 	NMDebugCtx(ctxCompLID, << "...");
 	QRect geom = option.rect;
-	//geom.adjust(option.rect.width()/2.0, 0, 0, 50);
+	geom.adjust(0, -2, 0, 2);
 	editor->setGeometry(geom);
 	NMDebugCtx(ctxCompLID, << "done!");
 }

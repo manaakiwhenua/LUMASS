@@ -207,17 +207,44 @@ bool NMLayerModel::setData(const QModelIndex& index,
 	const int toplevelrow = (index.internalId() / 100) - 1;
 	const int stackpos = this->toLayerStackIndex(toplevelrow);
 	const int level = index.internalId() % 100;
+	NMLayer* l = this->getItemLayer(stackpos);
 
 	// leave when we are dealing with legend items
 	if (level == 0)
 	{
 		if (role == Qt::CheckStateRole)
 		{
-			NMLayer* l = this->getItemLayer(stackpos);
 			if (value.toString() == "VIS")
 				l->isVisible() ? l->setVisible(false) : l->setVisible(true);
 			else if (value.toString() == "SEL")
 				l->isSelectable() ? l->setSelectable(false) : l->setSelectable(true);
+		}
+	}
+	else if (level == 2 && role > Qt::UserRole && role <= Qt::UserRole+3)
+	{
+		bool bconv = false;
+		double dv = value.toDouble(&bconv);
+		if (bconv)
+		{
+			switch(role)
+			{
+			case Qt::UserRole+1:
+				l->setUpper(dv);
+				break;
+
+			case Qt::UserRole+2:
+				l->setLower(dv);
+				break;
+
+			case Qt::UserRole+3:
+				l->setNodata(dv);
+				break;
+
+			default:
+				break;
+			}
+
+			l->updateMapping();
 		}
 	}
 
@@ -358,8 +385,8 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 						: retVar = pl->getLegendClassTypeStr(pl->getLegendClassType()); break;
 				case 4: col == 0 ? retVar = "Colour Ramp"
 						: retVar = pl->getColourRampStr(pl->getColourRamp()); break;
-				case 5: col == 0 ? retVar = "Lower" : retVar = QVariant(pl->getLower()); break;
-				case 6: col == 0 ? retVar = "Upper" : retVar = QVariant(pl->getUpper()); break;
+				case 5: col == 0 ? retVar = "Upper" : retVar = QVariant(pl->getUpper()); break;
+				case 6: col == 0 ? retVar = "Lower" : retVar = QVariant(pl->getLower()); break;
 				case 7: col == 0 ? retVar = "Nodata" : retVar = QVariant(pl->getNodata()); break;
 				}
 			}
@@ -370,6 +397,18 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 				retVar = QSize(32, 16);
 			}
 			break;
+
+			case Qt::UserRole+1:
+				retVar = QString(tr("%1")).arg(l->getUpper());
+				break;
+
+			case Qt::UserRole+2:
+				retVar = QString(tr("%1")).arg(l->getLower());
+				break;
+
+			case Qt::UserRole+3:
+				retVar = QString(tr("%1")).arg(l->getNodata());
+				break;
 
 			case Qt::UserRole+100:
 			{

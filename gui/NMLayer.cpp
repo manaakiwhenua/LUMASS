@@ -79,6 +79,9 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 	this->mTotalArea = -1;
 
+	mUpper = DBL_MIN;
+	mLower = DBL_MAX;
+	mNodata = DBL_MIN;
 
 	// schweinerosa
 	mClrNodata = QColor(255, 192, 192);
@@ -295,21 +298,21 @@ NMLayer::initiateLegend(void)
 		for (int i=0; i < 5; ++i)
 			mStats[i] = imgStats[i];
 
-		mLower = mStats[0];
-		mUpper = mStats[1];
+		setLower(mStats[0]);
+		setUpper(mStats[1]);
 
 		switch(il->getITKComponentType())
 		{
-			case otb::ImageIOBase::UCHAR:  mNodata = 255; mUpper = 254;  break;
-			case otb::ImageIOBase::DOUBLE: mNodata = -3.40282e38; break;
-			default: /* LONG */			   mNodata = -2147483647; break;
+			case otb::ImageIOBase::UCHAR:  setNodata(255); setUpper(254);  break;
+			case otb::ImageIOBase::DOUBLE: setNodata(DBL_MIN); break;
+			default: /* LONG */			   setNodata(LONG_MIN); break;
 		}
 		if (mNodata == mLower)
-			mLower = 0;
+			setLower(0);
 	}
 	else
 	{
-		mNodata = -2147483647;
+		setNodata(LONG_MIN); //-2147483647;
 	}
 
 

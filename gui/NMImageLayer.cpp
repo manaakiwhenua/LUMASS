@@ -825,7 +825,7 @@ bool NMImageLayer::setFileName(QString filename)
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
 	//m->ResampleToScreenPixelsOn();
 	//m->ResampleToScreenPixelsOff();
-	//m->SeparateWindowLevelOperationOff();
+	m->SeparateWindowLevelOperationOff();
 	m->SetBorder(1);
 
 	// adjust origin

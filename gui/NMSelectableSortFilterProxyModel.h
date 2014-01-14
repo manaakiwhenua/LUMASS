@@ -151,6 +151,8 @@ public:
 	void setFilterRegExp(const QRegExp& regexp){};
 	void setFilterKeyColumn(int column){};
 
+	void notifyLayoutUpdate() {emit layoutChanged();}
+
 protected:
 
 	QAbstractItemModel* mSourceModel;

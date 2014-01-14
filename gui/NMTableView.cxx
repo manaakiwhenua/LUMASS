@@ -797,8 +797,6 @@ void NMTableView::joinAttributes()
 	NMDebugAI(<< "source field name=" << srcFieldName.toStdString()
 			  << " at index " << srcJoinColIdx << std::endl);
 
-
-
 	this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
 
 	NMDebugCtx(__ctxtabview, << "done!");
@@ -863,6 +861,21 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 		writeIdx.push_back(colnum-1);
 	}
 
+	// DEBUG
+	//NMDebugAI(<< "SOURCE TABLE 0 to 10 ..." << std::endl);
+	//int nsrccols = srcTable->columnCount(QModelIndex());
+	//for (int i=0; i < srcTable->rowCount(QModelIndex()) && i < 10; ++i)
+	//{
+	//	for (int c=nsrccols-4; c < nsrccols; ++c)
+	//	{
+	//		const QModelIndex ind = srcTable->index(i, c, QModelIndex());
+	//		QString nam = srcTable->headerData(c, Qt::Horizontal, Qt::DisplayRole).toString();
+	//		QString val = srcTable->data(ind, Qt::DisplayRole).toString();
+	//		NMDebug(<< "#" << i << " " << nam.toStdString().c_str() << "=" << val.toStdString().c_str() << " ");
+	//	}
+	//	NMDebug(<< std::endl);
+	//}
+    //
 	NMDebugAI(<< "copying field contents ...." << std::endl);
 
 	mProgressDialog->setWindowModality(Qt::WindowModal);
@@ -873,46 +886,66 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
 	//vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
 	//long cnt = 0;
+
+	// let's create a hash index into the src key column to
+	// quickly find corresponding records
+	QHash<QString, int> srchash;
+	for (int sr=0; sr < srcTable->rowCount(QModelIndex()); ++sr)
+	{
+		const QModelIndex idx = srcTable->index(sr, srcJoinColIdx, QModelIndex());
+		const QString key = srcTable->data(idx, Qt::DisplayRole).toString();
+		srchash.insert(key, sr);
+	}
+
+
 	long srcnumrows = srcTable->rowCount(QModelIndex());
+	long havefound = 0;
 	for (long row=0; row < tarnumrows && !mProgressDialog->wasCanceled(); ++row)
 	{
-		QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
-		QVariant vTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole);//tarJoin->GetVariantValue(row);
-		long search = row < srcnumrows ? row : 0;
-		long cnt = 0;
-		bool foundyou = false;
-		while (cnt < srcnumrows)
-		{
-			QModelIndex srcJoinIdx = srcTable->index(search, srcJoinColIdx, QModelIndex());
-			QVariant vSrcJoin = srcTable->data(srcJoinIdx, Qt::DisplayRole);
-			if (vSrcJoin == vTarJoin)
-			{
-				foundyou = true;
-				break;
-			}
+		const QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
+		const QString sTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole).toString();//tarJoin->GetVariantValue(row);
+		//long search = row < srcnumrows ? row : 0;
+		//long cnt = 0;
+		//bool foundyou = false;
+		//while (cnt < srcnumrows)
+		//{
+		//	const QModelIndex srcJoinIdx = srcTable->index(search, srcJoinColIdx, QModelIndex());
+		//	const QVariant vSrcJoin = srcTable->data(srcJoinIdx, Qt::DisplayRole);
+		//	//if (vSrcJoin.toString().compare(vTarJoin.toString(), Qt::CaseInsensitive) == 0)// == vTarJoin.toString())
+		//	if (vSrcJoin == vTarJoin)
+		//	{
+		//		foundyou = true;
+		//		++havefound;
+		//		break;
+		//	}
+        //
+		//	++search;
+		//	if (search >= srcnumrows)
+		//		search = 0;
+        //
+		//	++cnt;
+		//}
 
-			++search;
-			if (search >= srcnumrows)
-				search = 0;
-
-			++cnt;
-		}
-
-		if (foundyou)
+		const int foundyou = srchash.value(sTarJoin, -1);
+		if (foundyou >= 0)
 		{
 			// copy columns for current row
 			for (int c=0; c < copyIdx.size(); ++c)
 			{
-				QModelIndex srcIdx = srcTable->index(row, copyIdx.at(c), QModelIndex());
-				QVariant srcVal = srcTable->data(srcIdx, Qt::DisplayRole);
+				const QModelIndex srcIdx = srcTable->index(foundyou, copyIdx.at(c), QModelIndex());
+				const QVariant srcVal = srcTable->data(srcIdx, Qt::DisplayRole);
 
-				QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
+				const QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
 				mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
 			}
+			++havefound;
 		}
 
 		mProgressDialog->setValue(row+1);
 	}
+
+	NMDebugAI(<< "did find " << havefound << " matching recs!" << std::endl);
+	this->mSortFilter->notifyLayoutUpdate();
 
 	NMDebugCtx(__ctxtabview, << "done!");
 }

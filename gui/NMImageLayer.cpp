@@ -547,9 +547,37 @@ double NMImageLayer::getDefaultNodata()
 
 	switch(this->mComponentType)
 	{
-		case otb::ImageIOBase::UCHAR:  nodata = 255; 		 break;
-		case otb::ImageIOBase::DOUBLE: nodata = -3.40282e38; break;
-		default:					   nodata = -2147483647; break;
+		case otb::ImageIOBase::UCHAR:
+			nodata = std::numeric_limits<unsigned short>::max();//255;
+			break;
+		case otb::ImageIOBase::CHAR:
+			nodata = -std::numeric_limits<char>::max();
+			break;
+		case otb::ImageIOBase::USHORT:
+			nodata = std::numeric_limits<unsigned short>::max();
+			break;
+		case otb::ImageIOBase::SHORT:
+			nodata = -std::numeric_limits<short>::max();
+			break;
+		case otb::ImageIOBase::UINT:
+			nodata = std::numeric_limits<unsigned int>::max();
+			break;
+		case otb::ImageIOBase::INT:
+			nodata = -std::numeric_limits<int>::max();
+			break;
+		case otb::ImageIOBase::ULONG:
+			nodata = std::numeric_limits<unsigned long>::max();
+			break;
+		case otb::ImageIOBase::LONG:
+			nodata = -std::numeric_limits<long>::max();
+			break;
+		case otb::ImageIOBase::DOUBLE:
+			nodata = -std::numeric_limits<double>::max();
+			break;
+		case otb::ImageIOBase::FLOAT:
+			nodata = -std::numeric_limits<float>::max();
+			break;
+		default: break;//					   nodata = -2147483647; break;
 	}
 
 	return nodata;
@@ -807,6 +835,7 @@ bool NMImageLayer::setFileName(QString filename)
 
 	// let's store some meta data, in case someone needs it
 	this->mComponentType = this->mReader->getOutputComponentType();
+	this->mNodata = this->getDefaultNodata();
 	this->mNumBands = this->mReader->getOutputNumBands();
 	this->mNumDimensions = this->mReader->getOutputNumDimensions();
 

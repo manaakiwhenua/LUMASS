@@ -247,6 +247,19 @@ bool NMLayerModel::setData(const QModelIndex& index,
 			l->updateMapping();
 		}
 	}
+	else if (level == 2 && role > Qt::UserRole+3 && role < Qt::UserRole+100)
+	{
+		switch (role)
+		{
+		case Qt::UserRole+4:
+		{
+			l->setColourRamp(l->getColourRampFromStr(value.toString()));
+			l->updateMapping();
+		}
+		break;
+
+		}
+	}
 
 	emit dataChanged(index, index);
 

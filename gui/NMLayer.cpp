@@ -79,9 +79,9 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 	this->mTotalArea = -1;
 
-	mUpper = DBL_MIN;
-	mLower = DBL_MAX;
-	mNodata = DBL_MIN;
+	mUpper = std::numeric_limits<double>::max();
+	mLower = -std::numeric_limits<double>::max();
+	mNodata = -std::numeric_limits<double>::max();
 
 	// schweinerosa
 	mClrNodata = QColor(255, 192, 192);
@@ -113,7 +113,6 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 			       << "NM_RAMP_ALTITUDE"
 			       << "NM_RAMP_BLUE2RED_DIV"
 			       << "NM_RAMP_GREEN2RED_DIV"
-			       << "NM_RAMP_GREEN2YELLOW2RED"
 			       << "NM_RAMP_MANUAL";
 }
 
@@ -298,21 +297,19 @@ NMLayer::initiateLegend(void)
 		for (int i=0; i < 5; ++i)
 			mStats[i] = imgStats[i];
 
-		setLower(mStats[0]);
-		setUpper(mStats[1]);
-
-		switch(il->getITKComponentType())
-		{
-			case otb::ImageIOBase::UCHAR:  setNodata(255); setUpper(254);  break;
-			case otb::ImageIOBase::DOUBLE: setNodata(DBL_MIN); break;
-			default: /* LONG */			   setNodata(LONG_MIN); break;
-		}
-		if (mNodata == mLower)
-			setLower(0);
+		il->setNodata(il->getDefaultNodata());
+		if (mStats[0] == il->getDefaultNodata())
+			setLower(mStats[0] + 3*VALUE_MARGIN);
+		else
+			setLower(mStats[0]);
+		if (mStats[1] == mNodata)
+			setUpper(mStats[1] - 1);
+		else
+			setUpper(mStats[1]);
 	}
 	else
 	{
-		setNodata(LONG_MIN); //-2147483647;
+		setNodata(-2147483647);
 	}
 
 
@@ -801,16 +798,25 @@ NMLayer::mapUniqueValues(void)
 void
 NMLayer::setNodata(double val)
 {
-
 	if (mLegendType == NMLayer::NM_LEGEND_RAMP)
 	{
-		this->mNodata = mNodata < mLower && (val >= mLower && val <= mUpper) ? mLower-VALUE_MARGIN : val;
-		this->mNodata = mNodata > mUpper && (val >= mLower && val <= mUpper) ? mUpper+VALUE_MARGIN : val;
+		if (val < mLower || val > mUpper)
+			mNodata = val;
+		else
+		{
+			if (mLower == mUpper && val == mLower)
+				mNodata = mNodata > mUpper ? mUpper+2*VALUE_MARGIN : mLower-2*VALUE_MARGIN;
+			else if (val == mLower)
+				mNodata = mLower-2*VALUE_MARGIN;
+			else if (val == mUpper)
+				mNodata = mUpper+2*VALUE_MARGIN;
+		}
 	}
 	else
 	{
 		this->mNodata = val;
 	}
+	NMDebugAI(<< "mNodata = " << mNodata << std::endl);
 }
 
 void
@@ -818,6 +824,7 @@ NMLayer::setUpper(double val)
 {
 	this->mUpper = max(mLower, val);
 	this->mLower = min(mLower, val);
+	this->setNodata(mNodata);
 }
 
 void
@@ -825,6 +832,27 @@ NMLayer::setLower(double val)
 {
 	this->mUpper = max(mUpper, val);
 	this->mLower = min(mUpper, val);
+	this->setNodata(mNodata);
+}
+
+NMLayer::NMColourRamp
+NMLayer::getColourRampFromStr(const QString rampStr)
+{
+	NMLayer::NMColourRamp ramp = NMLayer::NM_RAMP_GREY;
+
+	     if (rampStr.compare("NM_RAMP_RAINBOW"      )==0) {ramp = NMLayer::NM_RAMP_RAINBOW       ;}
+	else if (rampStr.compare("NM_RAMP_GREY"         )==0) {ramp = NMLayer::NM_RAMP_GREY          ;}
+	else if (rampStr.compare("NM_RAMP_RED"          )==0) {ramp = NMLayer::NM_RAMP_RED           ;}
+	else if (rampStr.compare("NM_RAMP_BLUE"         )==0) {ramp = NMLayer::NM_RAMP_BLUE          ;}
+	else if (rampStr.compare("NM_RAMP_GREEN"        )==0) {ramp = NMLayer::NM_RAMP_GREEN         ;}
+	else if (rampStr.compare("NM_RAMP_RED2BLUE"     )==0) {ramp = NMLayer::NM_RAMP_RED2BLUE      ;}
+	else if (rampStr.compare("NM_RAMP_BLUE2RED"     )==0) {ramp = NMLayer::NM_RAMP_BLUE2RED      ;}
+	else if (rampStr.compare("NM_RAMP_ALTITUDE"     )==0) {ramp = NMLayer::NM_RAMP_ALTITUDE      ;}
+	else if (rampStr.compare("NM_RAMP_BLUE2RED_DIV" )==0) {ramp = NMLayer::NM_RAMP_BLUE2RED_DIV  ;}
+	else if (rampStr.compare("NM_RAMP_GREEN2RED_DIV")==0) {ramp = NMLayer::NM_RAMP_GREEN2RED_DIV ;}
+	else if (rampStr.compare("NM_RAMP_MANUAL"       )==0) {ramp = NMLayer::NM_RAMP_MANUAL        ;}
+
+	return ramp;
 }
 
 void
@@ -842,21 +870,18 @@ NMLayer::mapValueRamp(void)
 	switch (mColourRamp)
 	{
 	case NM_RAMP_RED:
-		mClrFunc->AddHSVPoint(mLower, 0.0, 0.0, 1.0);
-		mClrFunc->AddHSVPoint(mUpper, 0.0, 1.0, 1.0);
-		mClrFunc->SetColorSpaceToHSV();
+		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
+		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
 		break;
 
 	case NM_RAMP_BLUE:
-		mClrFunc->AddHSVPoint(mLower, (240.0/360.0), 0.0, 1.0);
-		mClrFunc->AddHSVPoint(mUpper, (240.0/360.0), 1.0, 1.0);
-		mClrFunc->SetColorSpaceToHSV();
+		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
+		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
 		break;
 
 	case NM_RAMP_GREEN:
-		mClrFunc->AddHSVPoint(mLower, (120.0/360.0), 0.0, 1.0);
-		mClrFunc->AddHSVPoint(mUpper, (120.0/360.0), 1.0, 1.0);
-		mClrFunc->SetColorSpaceToHSV();
+		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
+		mClrFunc->AddRGBPoint(mUpper, 0.0, 1.0, 0.0);
 		break;
 
 	case NM_RAMP_RED2BLUE:
@@ -886,14 +911,13 @@ NMLayer::mapValueRamp(void)
 	case NM_RAMP_RAINBOW:
 	{
 		double d = mUpper - mLower;
-		double s = d/6.0;
-		for (int i=0; i < 6; ++i)
-			mClrFunc->AddHSVPoint(mLower+(i*s), ((mLower+(i*s))/d), 1.0, 1.0);
+		double s = d/5.0;
+		for (int i=0, hue=300; i < 6; ++i, hue-=60)
+			mClrFunc->AddHSVPoint(mLower+((double)i*s), (double)hue/360.0, 1.0, 1.0);
 		mClrFunc->SetColorSpaceToHSV();
 	}
 		break;
 
-	//case NM_RAMP_GREEN2YELLOW2RED:
 	case NM_RAMP_MANUAL:
 	case NM_RAMP_ALTITUDE:
 	case NM_RAMP_GREY:
@@ -909,17 +933,17 @@ NMLayer::mapValueRamp(void)
 	mClrFunc->Build();
 
 	// Debug
-	NMDebugAI(<< "ColorTransferFunction Definition: " << std::endl);
-	int numnodes = mClrFunc->GetSize();
-	double clrpt[6];
-	for (int i=0; i < numnodes; ++ i)
-	{
-		mClrFunc->GetNodeValue(i, clrpt);
-		NMDebugAI(<< "node: " << i << std::endl);
-		NMDebugAI(<< "pos: " << clrpt[0] << std::endl);
-		NMDebugAI(<< "r,g,b: " << clrpt[1] << ", " << clrpt[2] << ", " << clrpt[3] << std::endl);
-		NMDebugAI(<< "midpoint, sharpness: " << clrpt[4] << ", " << clrpt[5] << std::endl);
-	}
+	//NMDebugAI(<< "ColorTransferFunction Definition: " << std::endl);
+	//int numnodes = mClrFunc->GetSize();
+	//double clrpt[6];
+	//for (int i=0; i < numnodes; ++ i)
+	//{
+	//	mClrFunc->GetNodeValue(i, clrpt);
+	//	NMDebugAI(<< "node: " << i << std::endl);
+	//	NMDebugAI(<< "pos: " << clrpt[0] << std::endl);
+	//	NMDebugAI(<< "r,g,b: " << clrpt[1] << ", " << clrpt[2] << ", " << clrpt[3] << std::endl);
+	//	NMDebugAI(<< "midpoint, sharpness: " << clrpt[4] << ", " << clrpt[5] << std::endl);
+	//}
 }
 
 void
@@ -1360,38 +1384,26 @@ QIcon NMLayer::getColourRampIcon()
 	// here, we just sample the colour transfer function 256 times
 	// to build the colour ramp
 	double* rgb;
-	double lower = min(mLower, mUpper);
-	double upper = max(mLower, mUpper);
+	double lower = mLower;// = min(mLower, mUpper);
+	double upper = mUpper; //max(mLower, mUpper);
 	double range = upper - lower;
-	double step = range/256.0;
+	double step = range/255.0;
 	QColor clr;
 
-	rgb = mClrFunc->GetColor(lower);
-	clr.setRedF(rgb[0]);
-	clr.setGreenF(rgb[1]);
-	clr.setBlueF(rgb[2]);
-	ramp.setColorAt(0, clr);
-
-	rgb = mClrFunc->GetColor(upper);
-	clr.setRedF(rgb[0]);
-	clr.setGreenF(rgb[1]);
-	clr.setBlueF(rgb[2]);
-	ramp.setColorAt(1, clr);
-
-	for (int i=1; i < 255; ++i)
+	for (int i=0; i < 256; ++i)
 	{
-		double sample = lower + ((double)i * step);
-		double pos = sample/range;
-		if (pos < 0 || pos > 1)
-			continue;
+		double incr = ((double)i * step);
+		double sample = lower + incr;
+		double pos = abs(incr/range);
+		//if (pos < 0 || pos > 1)
+		//	continue;
 
 		rgb = mClrFunc->GetColor(sample);
-		clr.setRedF(rgb[0]);
-		clr.setGreenF(rgb[1]);
-		clr.setBlueF(rgb[2]);
+		clr.setRedF((qreal)rgb[0]);
+		clr.setGreenF((qreal)rgb[1]);
+		clr.setBlueF((qreal)rgb[2]);
 		ramp.setColorAt(pos, clr);
 	}
-
 
 	p.fillRect(pix.rect(), ramp);
 

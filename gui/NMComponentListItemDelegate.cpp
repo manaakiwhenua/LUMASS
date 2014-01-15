@@ -235,6 +235,30 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		}
 		break;
 
+	case 4:
+		if (legendtype == NMLayer::NM_LEGEND_RAMP)
+		{
+			QStringList ramps = l->getColourRampStrings();
+
+			int current = 0;
+			QString currentRamp = l->getColourRampStr(l->getColourRamp());
+			for (int c=0; c < ramps.size(); ++c)
+			{
+				if (ramps.at(c).compare(currentRamp, Qt::CaseInsensitive) == 0)
+				{
+					current = c;
+					break;
+				}
+			}
+			QComboBox* box = new QComboBox(parent);
+			box->addItems(ramps);
+			box->setCurrentIndex(current);
+
+			NMDebugCtx(ctxCompLID, << "done!");
+			return box;
+		}
+		break;
+
 	case 5:
 	case 6:
 	case 7:
@@ -304,6 +328,17 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 			}
 		}
 		break;
+
+		case 4:
+			{
+				QComboBox* box = static_cast<QComboBox*>(editor);
+				QString curVal = box->currentText();
+				model->setData(index, QVariant(curVal), Qt::UserRole+4);
+				//NMLayer::NMColourRamp ramp = l->getColourRampFromStr(curVal);
+				//l->setColourRamp(ramp);
+				//l->updateMapping();
+			}
+			break;
 
 		case 5:
 		case 6:

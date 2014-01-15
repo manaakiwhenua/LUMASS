@@ -114,7 +114,6 @@ public:
 			NM_RAMP_ALTITUDE,
 			NM_RAMP_BLUE2RED_DIV,
 			NM_RAMP_GREEN2RED_DIV,
-			NM_RAMP_GREEN2YELLOW2RED,
 			NM_RAMP_MANUAL
 		};
 
@@ -129,9 +128,9 @@ public:
 	double getNodata(void) {return mNodata;}
 	double getUpper(void) {return mUpper;}
 	double getLower(void) {return mLower;}
-	void setNodata(double val);
-	void setUpper(double val);
-	void setLower(double val);
+	virtual void setNodata(double val);
+	virtual void setUpper(double val);
+	virtual void setLower(double val);
 
 
 
@@ -232,6 +231,9 @@ public:
 		{return mLegendClassTypeStr;}
 	const QStringList getColourRampStrings(void)
 		{return mColourRampStr;}
+
+	NMLayer::NMColourRamp getColourRampFromStr(const QString rampStr);
+
 
 
 
@@ -352,7 +354,7 @@ protected:
 
 	vtkSmartPointer<vtkColorTransferFunction> mClrFunc;
 	vtkSmartPointer<vtkLookupTable> mLookupTable;
-	//vtkSmartPointer<vtkScalarsToColors> mLookupTable;
+	QMap<double, QColor> mUserClrNodes;
 
 	QColor mClrNodata;
 	QColor mClrLowerMar;

@@ -94,6 +94,7 @@ class NMLayer;
  *      <tr>    <td> 2 </td>    <td> upper value (string) </td>    <td><tt> Qt::UserRole+1 </tt></td> </tr>
  *		<tr>    <td> 2 </td>    <td> lower value (string) </td>    <td><tt> Qt::UserRole+2 </tt></td> </tr>
  *		<tr>    <td> 2 </td>    <td> nodata value (string) </td>   <td><tt> Qt::UserRole+3 </tt></td> </tr>
+ *		<tr>    <td> 2 </td>    <td> only writing: colour ramp string </td>   <td><tt> Qt::UserRole+4 </tt></td> </tr>
  *		<tr>    <td> 2 </td>    <td> pointer to layer (void *) </td>    <td><tt> Qt::UserRole+100 </tt></td> </tr>
  *		<tr> <td colspan="3"><i>the following properties are accessible depending on the <tt>index.row()</tt></i></td> </tr>
  *		<tr>    <td> 2 </td>    <td> legend value field (string) </td>          <td><tt> Qt::DisplayRole </tt></td> </tr>

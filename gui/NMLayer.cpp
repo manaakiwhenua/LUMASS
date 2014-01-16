@@ -36,6 +36,7 @@
 #include "vtkStringArray.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkMath.h"
+#include "vtkEditableDiscreteClrTransferFunc.h"
 
 #define VALUE_MARGIN 0.0000001
 
@@ -226,7 +227,7 @@ NMLayer::getStringColumns(void)
 void NMLayer::resetLegendInfo(void)
 {
 	// clear the HashMap
-	this->mHashValueIndices.clear();
+	//this->mHashValueIndices.clear();
 
 	// create new one
 	this->mLegendInfo = vtkSmartPointer<vtkTable>::New();
@@ -855,6 +856,202 @@ NMLayer::getColourRampFromStr(const QString rampStr)
 	return ramp;
 }
 
+vtkSmartPointer<vtkColorTransferFunction>
+NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
+		const QList<double>& userNodes,
+		const QList<QColor>& userColours,
+		bool invertRamp)
+{
+	/* userNodes and userColours are synchronised
+	 * and represent the following value for
+	 * all supported colour ramp types
+	 *
+	 * 0: nodata
+	 * 1: lower - VALUE_MARGIN
+	 * 2: lower
+	 * 3: upper
+	 * 4: upper + VALUE_MARGIN
+	 *
+	 * for NM_RAMP_MANUAL all colour specified
+	 * beyond index 4 (i.e. 4+) are user specified
+	 * additional colours (hopefully) in the range
+	 * lower <= additional node <= upper
+	 */
+
+	if (userNodes.size() != userColours.size())
+		return 0;
+
+	double nodata, lower, upper, lowermar, uppermar;
+	double ndclr[4], lowclr[4], upclr[4];
+	double lowmarclr[4], upmarclr[4];
+	if (userNodes.size() < 5 || userColours.size() < 5)
+	{
+		lower = 0;
+		upper = 1;
+
+		nodata = mNodata;
+		ndclr[0] = mClrNodata.redF();
+		ndclr[1] = mClrNodata.greenF();
+		ndclr[2] = mClrNodata.blueF();
+		ndclr[3] = mClrNodata.alphaF();
+
+		lowermar = lower-VALUE_MARGIN;
+		lowmarclr[0] = mClrLowerMar.redF();
+        lowmarclr[1] = mClrLowerMar.greenF();
+		lowmarclr[2] = mClrLowerMar.blueF();
+		lowmarclr[3] = mClrLowerMar.alphaF();
+
+		uppermar = upper+VALUE_MARGIN;
+		upmarclr[0] = mClrUpperMar.redF();
+		upmarclr[1] = mClrUpperMar.greenF();
+		upmarclr[2] = mClrUpperMar.blueF();
+		upmarclr[3] = mClrUpperMar.alphaF();
+	}
+	else
+	{
+		nodata = userNodes.at(0);
+		lower = userNodes.at(1);
+		upper = userNodes.at(2);
+		lowermar = mLower - VALUE_MARGIN;
+		uppermar = mUpper + VALUE_MARGIN;
+
+		ndclr[0] = userColours.at(0).redF();
+		ndclr[1] = userColours.at(0).greenF();
+		ndclr[2] = userColours.at(0).blueF();
+		ndclr[3] = userColours.at(0).alphaF();
+
+		lowmarclr[0] = userColours.at(1).redF();
+		lowmarclr[1] = userColours.at(1).greenF();
+		lowmarclr[2] = userColours.at(1).blueF();
+		lowmarclr[3] = userColours.at(1).alphaF();
+
+		lowclr[0] = userColours.at(2).redF();
+		lowclr[1] = userColours.at(2).greenF();
+		lowclr[2] = userColours.at(2).blueF();
+
+		upclr[0] = userColours.at(3).redF();
+		upclr[1] = userColours.at(3).greenF();
+		upclr[2] = userColours.at(3).blueF();
+
+		upmarclr[0] = userColours.at(4).redF();
+		upmarclr[1] = userColours.at(4).greenF();
+		upmarclr[2] = userColours.at(4).blueF();
+		upmarclr[3] = userColours.at(4).alphaF();
+	}
+
+	if (invertRamp)
+	{
+		double t = lower;
+		lower = upper;
+		upper = t;
+	}
+
+	vtkSmartPointer<vtkEditableDiscreteClrTransferFunc> cf =
+			vtkSmartPointer<vtkEditableDiscreteClrTransferFunc>::New();
+
+	switch (mColourRamp)
+	{
+	case NM_RAMP_RED:
+		cf->AddRGBPoint(lower, 1.0, 1.0, 1.0);
+		cf->AddRGBPoint(upper, 1.0, 0.0, 0.0);
+		break;
+
+	case NM_RAMP_BLUE:
+		cf->AddRGBPoint(lower, 1.0, 1.0, 1.0);
+		cf->AddRGBPoint(upper, 0.0, 0.0, 1.0);
+		break;
+
+	case NM_RAMP_GREEN:
+		cf->AddRGBPoint(lower, 1.0, 1.0, 1.0);
+		cf->AddRGBPoint(upper, 0.0, 1.0, 0.0);
+		break;
+
+	case NM_RAMP_RED2BLUE:
+		cf->AddRGBPoint(lower, 1.0, 0.0, 0.0);
+		cf->AddRGBPoint(upper, 0.0, 0.0, 1.0);
+		cf->SetColorSpaceToRGB();
+		break;
+
+	case NM_RAMP_BLUE2RED:
+		cf->AddRGBPoint(lower, 0.0, 0.0, 1.0);
+		cf->AddRGBPoint(upper, 1.0, 0.0, 0.0);
+		cf->SetColorSpaceToRGB();
+		break;
+
+	case NM_RAMP_BLUE2RED_DIV:
+		cf->AddRGBPoint(lower, 0.0, 0.0, 1.0);
+		cf->AddRGBPoint(upper, 1.0, 0.0, 0.0);
+		cf->SetColorSpaceToDiverging();
+		break;
+
+	case NM_RAMP_GREEN2RED_DIV:
+		cf->AddRGBPoint(lower, 0.0, 1.0, 0.0);
+		cf->AddRGBPoint(upper, 1.0, 0.0, 0.0);
+		cf->SetColorSpaceToDiverging();
+		break;
+
+	case NM_RAMP_RAINBOW:
+		{
+			double d = abs(upper - lower);
+			double s = d/5.0;
+			for (int i=0, hue=300; i < 6; ++i, hue-=60)
+			{
+				if (invertRamp)
+					cf->AddHSVPoint(lower-((double)i*s), (double)hue/360.0, 1.0, 1.0);
+				else
+					cf->AddHSVPoint(lower+((double)i*s), (double)hue/360.0, 1.0, 1.0);
+			}
+			cf->SetColorSpaceToHSV();
+		}
+		break;
+
+	case NM_RAMP_MANUAL:
+		{
+			for (int c=0; c < userNodes.size(); ++c)
+			{
+				cf->AddRGBPoint(
+						userNodes.at(c),
+						userColours.at(c).redF(),
+						userColours.at(c).greenF(),
+						userColours.at(c).blueF()
+						);
+			}
+		}
+		break;
+
+	case NM_RAMP_ALTITUDE:
+	case NM_RAMP_GREY:
+	default:
+		cf->AddRGBPoint(lower, 0.0, 0.0, 0.0);
+		cf->AddRGBPoint(upper, 1.0, 1.0, 1.0);
+		break;
+	}
+
+	cf->AddRGBPoint(nodata, ndclr[0], ndclr[1], ndclr[2]);
+	cf->AddRGBPoint(lowermar, lowmarclr[0], lowmarclr[1], lowmarclr[2]);
+	cf->AddRGBPoint(uppermar, upmarclr[0], upmarclr[1], upmarclr[2]);
+	cf->SetNumberOfValues(256);
+	cf->DiscretizeOn();
+	cf->Build();
+
+	// now let's replace the 'non-ramp' colours with the colours
+	// possibly containing non-opaque alpha settings
+	cf->replaceColourTableValue(nodata, ndclr);
+	int li = cf->getColourTableIndex(lower);
+	int lmi = cf->getColourTableIndex(lowermar);
+	if (lmi == li)
+		lmi = lmi - 1 < 0 ? 0 : lmi-1;
+	cf->setColourTableValue(lmi, lowmarclr);
+
+
+
+
+	cf->replaceColourTableValue(lowermar, lowmarclr);
+	cf->replaceColourTableValue(uppermar, upmarclr);
+
+	return cf;
+}
+
 void
 NMLayer::mapValueRamp(void)
 {
@@ -866,71 +1063,83 @@ NMLayer::mapValueRamp(void)
 	// mapping value range)
 	this->setNodata(mNodata);
 
+	QList<double> userNodes;
+	userNodes << mNodata << mLower-VALUE_MARGIN << mLower << mUpper << mUpper + VALUE_MARGIN;
 
-	switch (mColourRamp)
-	{
-	case NM_RAMP_RED:
-		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
-		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-		break;
+	QList<QColor> userColours;
+	userColours << mClrNodata
+			    << mClrLowerMar
+			    << QColor(0,0,0)
+			    << QColor(255,255,255)
+			    << mClrUpperMar;
 
-	case NM_RAMP_BLUE:
-		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
-		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
-		break;
+	mClrFunc = this->getColorTransferFunc(mColourRamp,
+			userNodes, userColours);
 
-	case NM_RAMP_GREEN:
-		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
-		mClrFunc->AddRGBPoint(mUpper, 0.0, 1.0, 0.0);
-		break;
-
-	case NM_RAMP_RED2BLUE:
-		mClrFunc->AddRGBPoint(mLower, 1.0, 0.0, 0.0);
-		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
-		mClrFunc->SetColorSpaceToRGB();
-		break;
-
-	case NM_RAMP_BLUE2RED:
-		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
-		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-		mClrFunc->SetColorSpaceToRGB();
-		break;
-
-	case NM_RAMP_BLUE2RED_DIV:
-		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
-		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-		mClrFunc->SetColorSpaceToDiverging();
-		break;
-
-	case NM_RAMP_GREEN2RED_DIV:
-		mClrFunc->AddRGBPoint(mLower, 0.0, 1.0, 0.0);
-		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-		mClrFunc->SetColorSpaceToDiverging();
-		break;
-
-	case NM_RAMP_RAINBOW:
-	{
-		double d = mUpper - mLower;
-		double s = d/5.0;
-		for (int i=0, hue=300; i < 6; ++i, hue-=60)
-			mClrFunc->AddHSVPoint(mLower+((double)i*s), (double)hue/360.0, 1.0, 1.0);
-		mClrFunc->SetColorSpaceToHSV();
-	}
-		break;
-
-	case NM_RAMP_MANUAL:
-	case NM_RAMP_ALTITUDE:
-	case NM_RAMP_GREY:
-	default:
-		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 0.0);
-		mClrFunc->AddRGBPoint(mUpper, 1.0, 1.0, 1.0);
-		break;
-	}
-
-	mClrFunc->AddRGBPoint(mNodata, mClrNodata.redF(), mClrNodata.greenF(), mClrNodata.blueF());
-	mClrFunc->AddRGBPoint(mLower-VALUE_MARGIN, mClrLowerMar.redF(), mClrLowerMar.greenF(), mClrLowerMar.blueF());
-	mClrFunc->AddRGBPoint(mUpper+VALUE_MARGIN, mClrUpperMar.redF(), mClrUpperMar.greenF(), mClrUpperMar.blueF());
-	mClrFunc->Build();
+//	switch (mColourRamp)
+//	{
+//	case NM_RAMP_RED:
+//		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
+//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
+//		break;
+//
+//	case NM_RAMP_BLUE:
+//		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
+//		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
+//		break;
+//
+//	case NM_RAMP_GREEN:
+//		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
+//		mClrFunc->AddRGBPoint(mUpper, 0.0, 1.0, 0.0);
+//		break;
+//
+//	case NM_RAMP_RED2BLUE:
+//		mClrFunc->AddRGBPoint(mLower, 1.0, 0.0, 0.0);
+//		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
+//		mClrFunc->SetColorSpaceToRGB();
+//		break;
+//
+//	case NM_RAMP_BLUE2RED:
+//		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
+//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
+//		mClrFunc->SetColorSpaceToRGB();
+//		break;
+//
+//	case NM_RAMP_BLUE2RED_DIV:
+//		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
+//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
+//		mClrFunc->SetColorSpaceToDiverging();
+//		break;
+//
+//	case NM_RAMP_GREEN2RED_DIV:
+//		mClrFunc->AddRGBPoint(mLower, 0.0, 1.0, 0.0);
+//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
+//		mClrFunc->SetColorSpaceToDiverging();
+//		break;
+//
+//	case NM_RAMP_RAINBOW:
+//	{
+//		double d = mUpper - mLower;
+//		double s = d/5.0;
+//		for (int i=0, hue=300; i < 6; ++i, hue-=60)
+//			mClrFunc->AddHSVPoint(mLower+((double)i*s), (double)hue/360.0, 1.0, 1.0);
+//		mClrFunc->SetColorSpaceToHSV();
+//	}
+//		break;
+//
+//	case NM_RAMP_MANUAL:
+//	case NM_RAMP_ALTITUDE:
+//	case NM_RAMP_GREY:
+//	default:
+//		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 0.0);
+//		mClrFunc->AddRGBPoint(mUpper, 1.0, 1.0, 1.0);
+//		break;
+//	}
+//
+//	mClrFunc->AddRGBPoint(mNodata, mClrNodata.redF(), mClrNodata.greenF(), mClrNodata.blueF());
+//	mClrFunc->AddRGBPoint(mLower-VALUE_MARGIN, mClrLowerMar.redF(), mClrLowerMar.greenF(), mClrLowerMar.blueF());
+//	mClrFunc->AddRGBPoint(mUpper+VALUE_MARGIN, mClrUpperMar.redF(), mClrUpperMar.greenF(), mClrUpperMar.blueF());
+//	mClrFunc->Build();
 
 	// Debug
 	//NMDebugAI(<< "ColorTransferFunction Definition: " << std::endl);

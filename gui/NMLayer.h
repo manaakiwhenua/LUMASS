@@ -307,8 +307,9 @@ protected:
 	// table info index and lookup table index
 	// key = category name (equals the value for unique value classifications)
 	// value = the index into the LegendInfo or LookupTable or ClrFunc nodes respectively
-	QHash<QString, int> mHashValueIndices;
+	//QHash<QString, int> mHashValueIndices;
 	QMap<QString, QVector<int> > mMapValueIndices;
+	QMap<double, QColor> mUserClrNodes;
 
 	/*! Auxiliary legend category information used in conjunction
 	 *  with the layer's lookup table for NMLegendType == NM_LEGEND_INDEXED
@@ -354,7 +355,6 @@ protected:
 
 	vtkSmartPointer<vtkColorTransferFunction> mClrFunc;
 	vtkSmartPointer<vtkLookupTable> mLookupTable;
-	QMap<double, QColor> mUserClrNodes;
 
 	QColor mClrNodata;
 	QColor mClrLowerMar;
@@ -391,6 +391,12 @@ protected:
 	virtual void mapColourTable(void);
 	virtual void mapValueClasses(void);
 	virtual void mapValueRamp(void);
+
+	vtkSmartPointer<vtkColorTransferFunction> getColorTransferFunc(
+			const NMLayer::NMColourRamp& ramp,
+			const QList<double>& userNodes,
+			const QList<QColor>& userColours,
+			bool invertRamp=false);
 
 protected slots:
 	virtual int updateAttributeTable(void);

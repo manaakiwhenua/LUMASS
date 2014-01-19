@@ -59,6 +59,8 @@
 #include "vtkProperty.h"
 #include "vtkColorTransferFunction.h"
 #include "vtkDiscretizableColorTransferFunction.h"
+#include "vtkImageMapper.h"
+#include "vtkActor2D.h"
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -851,11 +853,13 @@ bool NMImageLayer::setFileName(QString filename)
 	this->mPipeconn->setInput(this->mReader->getOutput(0));
 
 	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
+	//vtkSmartPointer<vtkImageMapper> m = vtkSmartPointer<vtkImageMapper>::New();
 	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
 	//m->ResampleToScreenPixelsOn();
 	//m->ResampleToScreenPixelsOff();
-	m->SeparateWindowLevelOperationOff();
+	//m->SeparateWindowLevelOperationOff();
 	m->SetBorder(1);
+
 
 	// adjust origin
 	double ori[3], spc[3];
@@ -864,11 +868,13 @@ bool NMImageLayer::setFileName(QString filename)
 	img->GetSpacing(spc);
 
 	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
+	//vtkSmartPointer<vtkActor2D> a = vtkSmartPointer<vtkActor2D>::New();
 	a->SetMapper(m);
 
 	mImgProp = vtkSmartPointer<vtkImageProperty>::New();
 	mImgProp->SetInterpolationTypeToNearest();
 	a->SetProperty(mImgProp);
+
 
 	this->mRenderer->AddViewProp(a);
 

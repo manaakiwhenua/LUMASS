@@ -330,7 +330,8 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 				}
 				else
 				{
-					if (l->getLegendType() == NMLayer::NM_LEGEND_RAMP && row == 3)
+					if (   l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+						&& row == NM_LEGEND_RAMP_ROW)
 					{
 						retVar = QSize(18, 60);
 					}

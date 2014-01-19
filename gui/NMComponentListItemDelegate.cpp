@@ -66,7 +66,7 @@ NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem
     case 1:
 		{
 			QString legendTypeStr = index.data(Qt::UserRole).toString();
-			if (legendTypeStr == "NM_LEGEND_RAMP" && index.row() == 3)
+			if (legendTypeStr == "NM_LEGEND_RAMP" && index.row() == NM_LEGEND_RAMP_ROW)
 			{
 				painter->save();
 

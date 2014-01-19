@@ -36,7 +36,8 @@
 #include "vtkStringArray.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkMath.h"
-#include "vtkEditableDiscreteClrTransferFunc.h"
+//#include "vtkEditableDiscreteClrTransferFunc.h"
+#include "vtkColorTransferFunctionSpecialNodes.h"
 
 #define VALUE_MARGIN 0.0000001
 
@@ -87,9 +88,9 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	// schweinerosa
 	mClrNodata = QColor(255, 192, 192);
 	// babyblau
-	mClrLowerMar = QColor(192, 192, 255);
+	mClrLowerMar = QColor(0,0,0);//QColor(192, 192, 255);
 	// mint
-	mClrUpperMar = QColor(192, 255, 192);
+	mClrUpperMar = QColor(0, 255, 0);
 
 
 	// init some enum to string conversion lists
@@ -485,6 +486,13 @@ NMLayer::initiateLegend(void)
 		this->mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
 	}
 
+	NMDebugAI(<< "Layer Statistics: " << std::endl);
+	NMDebugAI(<< "min: " << mStats[0] << std::endl);
+	NMDebugAI(<< "max: " << mStats[1] << std::endl);
+	NMDebugAI(<< "mean: " << mStats[2] << std::endl);
+	NMDebugAI(<< "median: " << mStats[3] << std::endl);
+	NMDebugAI(<< "sdev: " << mStats[4] << std::endl);
+
 	NMDebugCtx(ctxNMLayer, << "done!");
 	this->updateMapping();
 }
@@ -535,7 +543,10 @@ NMLayer::updateMapping(void)
 		vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
 		iprop->SetUseLookupTableScalarRange(1);
 		if (!clrtab)
+		{
 			iprop->SetLookupTable(mLookupTable);
+
+		}
 		else
 			iprop->SetLookupTable(mClrFunc);
 	}
@@ -856,7 +867,7 @@ NMLayer::getColourRampFromStr(const QString rampStr)
 	return ramp;
 }
 
-vtkSmartPointer<vtkColorTransferFunction>
+vtkSmartPointer<vtkColorTransferFunctionSpecialNodes>
 NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 		const QList<double>& userNodes,
 		const QList<QColor>& userColours,
@@ -878,65 +889,67 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 	 * lower <= additional node <= upper
 	 */
 
+	//double minval = this->mStats[0];
+	//double maxval = this->mStats[1];
+
 	if (userNodes.size() != userColours.size())
 		return 0;
 
 	double nodata, lower, upper, lowermar, uppermar;
-	double ndclr[4], lowclr[4], upclr[4];
-	double lowmarclr[4], upmarclr[4];
+	std::vector<double> nodataclr, lowerclr, upperclr, lowermarclr, uppermarclr;
 	if (userNodes.size() < 5 || userColours.size() < 5)
 	{
 		lower = 0;
 		upper = 1;
 
 		nodata = mNodata;
-		ndclr[0] = mClrNodata.redF();
-		ndclr[1] = mClrNodata.greenF();
-		ndclr[2] = mClrNodata.blueF();
-		ndclr[3] = mClrNodata.alphaF();
+		nodataclr.push_back(mClrNodata.redF()  );
+		nodataclr.push_back(mClrNodata.greenF());
+		nodataclr.push_back(mClrNodata.blueF() );
+		nodataclr.push_back(mClrNodata.alphaF());
 
 		lowermar = lower-VALUE_MARGIN;
-		lowmarclr[0] = mClrLowerMar.redF();
-        lowmarclr[1] = mClrLowerMar.greenF();
-		lowmarclr[2] = mClrLowerMar.blueF();
-		lowmarclr[3] = mClrLowerMar.alphaF();
+		lowermarclr.push_back(mClrLowerMar.redF()  );
+        lowermarclr.push_back(mClrLowerMar.greenF());
+		lowermarclr.push_back(mClrLowerMar.blueF() );
+		lowermarclr.push_back(mClrLowerMar.alphaF());
 
 		uppermar = upper+VALUE_MARGIN;
-		upmarclr[0] = mClrUpperMar.redF();
-		upmarclr[1] = mClrUpperMar.greenF();
-		upmarclr[2] = mClrUpperMar.blueF();
-		upmarclr[3] = mClrUpperMar.alphaF();
+		uppermarclr.push_back(mClrUpperMar.redF()  );
+		uppermarclr.push_back(mClrUpperMar.greenF());
+		uppermarclr.push_back(mClrUpperMar.blueF() );
+		uppermarclr.push_back(mClrUpperMar.alphaF());
 	}
 	else
 	{
-		nodata = userNodes.at(0);
-		lower = userNodes.at(1);
-		upper = userNodes.at(2);
-		lowermar = mLower - VALUE_MARGIN;
-		uppermar = mUpper + VALUE_MARGIN;
+		nodata   = userNodes.at(0);
+		lowermar = userNodes.at(1);
+		lower    = userNodes.at(2);
+		upper    = userNodes.at(3);
+		uppermar = userNodes.at(4);
 
-		ndclr[0] = userColours.at(0).redF();
-		ndclr[1] = userColours.at(0).greenF();
-		ndclr[2] = userColours.at(0).blueF();
-		ndclr[3] = userColours.at(0).alphaF();
+		nodataclr.push_back(userColours.at(0).redF()  );
+		nodataclr.push_back(userColours.at(0).greenF());
+		nodataclr.push_back(userColours.at(0).blueF() );
+		nodataclr.push_back(userColours.at(0).alphaF());
 
-		lowmarclr[0] = userColours.at(1).redF();
-		lowmarclr[1] = userColours.at(1).greenF();
-		lowmarclr[2] = userColours.at(1).blueF();
-		lowmarclr[3] = userColours.at(1).alphaF();
+		lowermarclr.push_back(userColours.at(1).redF()  );
+		lowermarclr.push_back(userColours.at(1).greenF());
+		lowermarclr.push_back(userColours.at(1).blueF() );
+		lowermarclr.push_back(userColours.at(1).alphaF());
 
-		lowclr[0] = userColours.at(2).redF();
-		lowclr[1] = userColours.at(2).greenF();
-		lowclr[2] = userColours.at(2).blueF();
+		lowerclr.push_back(userColours.at(2).redF()  );
+		lowerclr.push_back(userColours.at(2).greenF());
+		lowerclr.push_back(userColours.at(2).blueF() );
 
-		upclr[0] = userColours.at(3).redF();
-		upclr[1] = userColours.at(3).greenF();
-		upclr[2] = userColours.at(3).blueF();
+		upperclr.push_back(userColours.at(3).redF()  );
+		upperclr.push_back(userColours.at(3).greenF());
+		upperclr.push_back(userColours.at(3).blueF() );
 
-		upmarclr[0] = userColours.at(4).redF();
-		upmarclr[1] = userColours.at(4).greenF();
-		upmarclr[2] = userColours.at(4).blueF();
-		upmarclr[3] = userColours.at(4).alphaF();
+		uppermarclr.push_back(userColours.at(4).redF()  );
+		uppermarclr.push_back(userColours.at(4).greenF());
+		uppermarclr.push_back(userColours.at(4).blueF() );
+		uppermarclr.push_back(userColours.at(4).alphaF());
 	}
 
 	if (invertRamp)
@@ -946,8 +959,46 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 		upper = t;
 	}
 
-	vtkSmartPointer<vtkEditableDiscreteClrTransferFunc> cf =
-			vtkSmartPointer<vtkEditableDiscreteClrTransferFunc>::New();
+	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> cf =
+			vtkSmartPointer<vtkColorTransferFunctionSpecialNodes>::New();
+
+	//cf->AddRGBPoint(-3.40282e+38,
+	//		nodataclr[0],
+	//		nodataclr[1],
+	//		nodataclr[2]);
+
+	cf->AddRGBPoint(lowermar,
+			lowermarclr[0],
+			lowermarclr[1],
+			lowermarclr[2]);
+
+	//cf->AddRGBPoint(lower-VALUE_MARGIN,
+	//		lowermarclr[0],
+	//		lowermarclr[1],
+	//		lowermarclr[2]);
+    //
+	//cf->AddRGBPoint(upper+VALUE_MARGIN,
+	//		uppermarclr[0],
+	//		uppermarclr[1],
+	//		uppermarclr[2]);
+
+	cf->AddRGBPoint(uppermar,
+			uppermarclr[0],
+			uppermarclr[1],
+			uppermarclr[2]);
+
+	//cf->AddRGBPoint(1740,
+	//		nodataclr[0],
+	//		nodataclr[1],
+	//		nodataclr[2]);
+
+	//cf->setSpecialNode(0, nodata, nodataclr);
+	//cf->setSpecialNode(1, lowermar, lowermarclr);
+	//cf->setSpecialNode(2, lower, lowermarclr);
+	//cf->setSpecialNode(3, upper, lowermarclr);
+	//cf->setSpecialNode(4, uppermar, uppermarclr);
+
+
 
 	switch (mColourRamp)
 	{
@@ -1027,27 +1078,7 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 		break;
 	}
 
-	cf->AddRGBPoint(nodata, ndclr[0], ndclr[1], ndclr[2]);
-	cf->AddRGBPoint(lowermar, lowmarclr[0], lowmarclr[1], lowmarclr[2]);
-	cf->AddRGBPoint(uppermar, upmarclr[0], upmarclr[1], upmarclr[2]);
-	cf->SetNumberOfValues(256);
-	cf->DiscretizeOn();
 	cf->Build();
-
-	// now let's replace the 'non-ramp' colours with the colours
-	// possibly containing non-opaque alpha settings
-	cf->replaceColourTableValue(nodata, ndclr);
-	int li = cf->getColourTableIndex(lower);
-	int lmi = cf->getColourTableIndex(lowermar);
-	if (lmi == li)
-		lmi = lmi - 1 < 0 ? 0 : lmi-1;
-	cf->setColourTableValue(lmi, lowmarclr);
-
-
-
-
-	cf->replaceColourTableValue(lowermar, lowmarclr);
-	cf->replaceColourTableValue(uppermar, upmarclr);
 
 	return cf;
 }
@@ -1056,15 +1087,14 @@ void
 NMLayer::mapValueRamp(void)
 {
 	mNumClasses = 256;
-	mNumLegendRows = 5;
-	mClrFunc = vtkSmartPointer<vtkColorTransferFunction>::New();
+	mNumLegendRows = 4;
 
 	// adjust nodata value (in case it is not outside the
 	// mapping value range)
-	this->setNodata(mNodata);
+	//this->setNodata(mNodata);
 
 	QList<double> userNodes;
-	userNodes << mNodata << mLower-VALUE_MARGIN << mLower << mUpper << mUpper + VALUE_MARGIN;
+	userNodes << mNodata << mLower-VALUE_MARGIN << mLower << mUpper << mUpper+VALUE_MARGIN;
 
 	QList<QColor> userColours;
 	userColours << mClrNodata
@@ -1075,84 +1105,6 @@ NMLayer::mapValueRamp(void)
 
 	mClrFunc = this->getColorTransferFunc(mColourRamp,
 			userNodes, userColours);
-
-//	switch (mColourRamp)
-//	{
-//	case NM_RAMP_RED:
-//		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
-//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-//		break;
-//
-//	case NM_RAMP_BLUE:
-//		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
-//		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
-//		break;
-//
-//	case NM_RAMP_GREEN:
-//		mClrFunc->AddRGBPoint(mLower, 1.0, 1.0, 1.0);
-//		mClrFunc->AddRGBPoint(mUpper, 0.0, 1.0, 0.0);
-//		break;
-//
-//	case NM_RAMP_RED2BLUE:
-//		mClrFunc->AddRGBPoint(mLower, 1.0, 0.0, 0.0);
-//		mClrFunc->AddRGBPoint(mUpper, 0.0, 0.0, 1.0);
-//		mClrFunc->SetColorSpaceToRGB();
-//		break;
-//
-//	case NM_RAMP_BLUE2RED:
-//		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
-//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-//		mClrFunc->SetColorSpaceToRGB();
-//		break;
-//
-//	case NM_RAMP_BLUE2RED_DIV:
-//		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 1.0);
-//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-//		mClrFunc->SetColorSpaceToDiverging();
-//		break;
-//
-//	case NM_RAMP_GREEN2RED_DIV:
-//		mClrFunc->AddRGBPoint(mLower, 0.0, 1.0, 0.0);
-//		mClrFunc->AddRGBPoint(mUpper, 1.0, 0.0, 0.0);
-//		mClrFunc->SetColorSpaceToDiverging();
-//		break;
-//
-//	case NM_RAMP_RAINBOW:
-//	{
-//		double d = mUpper - mLower;
-//		double s = d/5.0;
-//		for (int i=0, hue=300; i < 6; ++i, hue-=60)
-//			mClrFunc->AddHSVPoint(mLower+((double)i*s), (double)hue/360.0, 1.0, 1.0);
-//		mClrFunc->SetColorSpaceToHSV();
-//	}
-//		break;
-//
-//	case NM_RAMP_MANUAL:
-//	case NM_RAMP_ALTITUDE:
-//	case NM_RAMP_GREY:
-//	default:
-//		mClrFunc->AddRGBPoint(mLower, 0.0, 0.0, 0.0);
-//		mClrFunc->AddRGBPoint(mUpper, 1.0, 1.0, 1.0);
-//		break;
-//	}
-//
-//	mClrFunc->AddRGBPoint(mNodata, mClrNodata.redF(), mClrNodata.greenF(), mClrNodata.blueF());
-//	mClrFunc->AddRGBPoint(mLower-VALUE_MARGIN, mClrLowerMar.redF(), mClrLowerMar.greenF(), mClrLowerMar.blueF());
-//	mClrFunc->AddRGBPoint(mUpper+VALUE_MARGIN, mClrUpperMar.redF(), mClrUpperMar.greenF(), mClrUpperMar.blueF());
-//	mClrFunc->Build();
-
-	// Debug
-	//NMDebugAI(<< "ColorTransferFunction Definition: " << std::endl);
-	//int numnodes = mClrFunc->GetSize();
-	//double clrpt[6];
-	//for (int i=0; i < numnodes; ++ i)
-	//{
-	//	mClrFunc->GetNodeValue(i, clrpt);
-	//	NMDebugAI(<< "node: " << i << std::endl);
-	//	NMDebugAI(<< "pos: " << clrpt[0] << std::endl);
-	//	NMDebugAI(<< "r,g,b: " << clrpt[1] << ", " << clrpt[2] << ", " << clrpt[3] << std::endl);
-	//	NMDebugAI(<< "midpoint, sharpness: " << clrpt[4] << ", " << clrpt[5] << std::endl);
-	//}
 }
 
 void
@@ -1365,23 +1317,21 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 		break;
 
 	case NM_LEGEND_RAMP:
-	{
-		if (legendRow != 3)
+		if (legendRow == 3)
 		{
-			double* clr;
-			if (legendRow == 1)
-				clr = mClrFunc->GetColor(mNodata);
-			else if (legendRow == 4)
-				clr = mClrFunc->GetColor(mLower-VALUE_MARGIN);
-			else if (legendRow == 2)
-				clr = mClrFunc->GetColor(mUpper+VALUE_MARGIN);
-
-			for (int i=0; i < 3; ++i)
-				rgba[i] = clr[i];
-			rgba[3] = 1;
+			rgba[0] = mClrLowerMar.redF();
+			rgba[1] = mClrLowerMar.greenF();
+			rgba[2] = mClrLowerMar.blueF();
+			rgba[3] = mClrLowerMar.alphaF();
 		}
-	}
-	break;
+		else if (legendRow == 1)
+		{
+			rgba[0] = mClrUpperMar.redF();
+			rgba[1] = mClrUpperMar.greenF();
+			rgba[2] = mClrUpperMar.blueF();
+			rgba[3] = mClrUpperMar.alphaF();
+		}
+		break;
 
 	case NM_LEGEND_SINGLESYMBOL:
 		{
@@ -1432,6 +1382,24 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 		{
 			mLookupTable->SetTableValue(legendRow-1, rgba);
 		}
+		break;
+
+	case NM_LEGEND_RAMP:
+		if (legendRow == 1)
+		{
+			mClrUpperMar.setRedF(rgba[0]);
+			mClrUpperMar.setGreenF(rgba[1]);
+			mClrUpperMar.setBlueF(rgba[2]);
+			mClrUpperMar.setAlphaF(rgba[3]);
+		}
+		else if (legendRow == 3)
+		{
+			mClrLowerMar.setRedF(rgba[0]);
+			mClrLowerMar.setGreenF(rgba[1]);
+			mClrLowerMar.setBlueF(rgba[2]);
+			mClrLowerMar.setAlphaF(rgba[3]);
+		}
+		this->updateMapping();
 		break;
 
 	case NM_LEGEND_INDEXED:
@@ -1539,7 +1507,7 @@ QIcon NMLayer::getLegendIcon(const int legendRow)
 {
 	QIcon icon;
 
-	if (mLegendType == NM_LEGEND_RAMP && legendRow == 3)
+	if (mLegendType == NM_LEGEND_RAMP && legendRow == NM_LEGEND_RAMP_ROW)
 	{
 		icon = this->getColourRampIcon();
 	}
@@ -1638,7 +1606,6 @@ QString  NMLayer::getLegendName(const int legendRow)
 		return this->mLegendDescrField;
 	}
 
-
 	switch(mLegendType)
 	{
 	case NM_LEGEND_CLRTAB:
@@ -1699,9 +1666,9 @@ QString  NMLayer::getLegendName(const int legendRow)
 			//name = "";
 			switch (legendRow)
 			{
-				case 1:	name = tr("Nodata"); break;
-				case 2: name = tr("> Upper"); break;
-				case 4: name = tr("< Lower"); break;
+				//case 1:	name = tr("Nodata"); break;
+				case 1: name = tr("> Upper"); break;
+				case 3: name = tr("< Lower"); break;
 				default: name = tr(""); break;
 			}
 		}

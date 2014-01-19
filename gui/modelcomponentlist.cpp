@@ -476,7 +476,10 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 
 		if (level == 1 && idx.row() > 0)
 		{
-			if (l->getLegendType() != NMLayer::NM_LEGEND_RAMP)
+			if (! (		l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+					&&  idx.row() == NM_LEGEND_RAMP_ROW
+				  )
+			   )
 			{
 				double rgba[4];
 				l->getLegendColour(idx.row(), rgba);
@@ -488,7 +491,9 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 				QColor curclr;
 				curclr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
 				QColor clr;
-				if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+				if (	l->getLayerType() == NMLayer::NM_VECTOR_LAYER
+					||  l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+				   )
 				{
 					clr = QColorDialog::getColor(curclr, this, title);
 				}
@@ -509,10 +514,6 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 				rgba[2] = clr.blueF();
 				rgba[3] = clr.alphaF();
 				l->setLegendColour(idx.row(), rgba);
-			}
-			else
-			{
-
 			}
 		}
 		else if (level == 2)

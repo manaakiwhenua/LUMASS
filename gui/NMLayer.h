@@ -28,7 +28,6 @@
 #ifndef NMLAYER_H_
 #define NMLAYER_H_
 
-#define ctxNMLayer "NMLayer"
 #include "nmlog.h"
 #include "NMModelComponent.h"
 #include "NMTableView.h"
@@ -55,8 +54,12 @@
 #include "vtkPolyData.h"
 #include "vtkOGRLayerMapper.h"
 #include "vtkColorTransferFunction.h"
+#include "vtkColorTransferFunctionSpecialNodes.h"
 #include "vtkLookupTable.h"
 //#include "vtkScalarsToColors.h"
+
+#define ctxNMLayer "NMLayer"
+#define NM_LEGEND_RAMP_ROW 2
 
 class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 {
@@ -353,7 +356,7 @@ protected:
 	NMLayer::NMLegendClassType mLegendClassType;
 	NMLayer::NMColourRamp mColourRamp;
 
-	vtkSmartPointer<vtkColorTransferFunction> mClrFunc;
+	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> mClrFunc;
 	vtkSmartPointer<vtkLookupTable> mLookupTable;
 
 	QColor mClrNodata;
@@ -392,7 +395,7 @@ protected:
 	virtual void mapValueClasses(void);
 	virtual void mapValueRamp(void);
 
-	vtkSmartPointer<vtkColorTransferFunction> getColorTransferFunc(
+	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> getColorTransferFunc(
 			const NMLayer::NMColourRamp& ramp,
 			const QList<double>& userNodes,
 			const QList<QColor>& userColours,

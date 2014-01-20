@@ -568,7 +568,6 @@ NMLayer::updateMapping(void)
 
 void NMLayer::updateLegend()
 {
-
 	emit legendChanged(this);
 }
 

@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -285,7 +285,7 @@ void NMImageLayer::test()
 		upper = stats[1];
 		NMDebugAI(<< theCol.toStdString() << " statistics: " << std::endl);
 		NMDebugAI(<< "min=" << lower << " max=" << upper << " mean=" << stats[2]
-		          << "std.dev=" << stats[3] << " numVals=" << stats[5] << std::endl);
+		          << "median=" << stats[3] << "std.dev=" << stats[4] << " numVals=" << stats[5] << std::endl);
 	}
 	else if (this->mTableModel == 0 && this->mLayerType == NMLayer::NM_IMAGE_LAYER)
 	{
@@ -606,6 +606,8 @@ NMImageLayer::updateStats(void)
 	mImgStats[2] = stats->GetMean();
 	mImgStats[3] = stats->GetMedian();
 	mImgStats[4] = stats->GetStandardDeviation();
+
+	this->mReader
 
 	this->mbStatsAvailable = true;
 

@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
+ /******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -123,14 +123,16 @@ public:
 	NMPropertyGetSet(LegendType, NMLayer::NMLegendType);
 	NMPropertyGetSet(LegendClassType, NMLayer::NMLegendClassType);
 	NMPropertyGetSet(ColourRamp, NMLayer::NMColourRamp);
-	NMPropertyGetSet(LegendValueField, QString);
+	//NMPropertyGetSet(LegendValueField, QString);
 	NMPropertyGetSet(LegendDescrField, QString);
 	//NMPropertyGetSet(Nodata, double);
 	//NMPropertyGetSet(Lower, double);
 	//NMPropertyGetSet(Upper, double);
+	QString getLegendValueField(void) {return mLegendValueField;}
 	double getNodata(void) {return mNodata;}
 	double getUpper(void) {return mUpper;}
 	double getLower(void) {return mLower;}
+	virtual void setLegendValueField(QString field);
 	virtual void setNodata(double val);
 	virtual void setUpper(double val);
 	virtual void setLower(double val);
@@ -220,6 +222,16 @@ public:
 	bool getLegendItemRange(const int legendRow, double* range);
 
 	bool hasColourTable(void);
+	/* get the statistics of the current legend value field;
+	 * in case of an image layer without attribute table,
+	 * the pixel value statistics are returned for the current
+	 * band.
+	 *
+	 * 0:	min
+	 * 1:	max
+	 * 2:
+	 */
+	std::vector<double> getValueFieldStatistics(void);
 
 	QString getLegendTypeStr(NMLayer::NMLegendType type)
 		{return mLegendTypeStr.at((int)type);}
@@ -343,7 +355,9 @@ protected:
 	// 2: mean
 	// 3: median
 	// 4: sdev
-	double mStats[5];
+	// 5: sample size
+	// 6: sum
+	double mStats[7];
 	double mLower;
 	double mUpper;
 	double mNodata;

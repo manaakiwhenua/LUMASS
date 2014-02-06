@@ -1,10 +1,10 @@
  /******************************************************************************
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -445,10 +445,9 @@ NMLayer::initiateLegend(void)
 						calc.setRaw2Source(&raw2source);
 
 					std::vector<double> colstats = calc.calcColumnStats(mLegendValueField);
-					mStats[0] = colstats[0];	// min
-					mStats[1] = colstats[1];	// max
-					mStats[2] = colstats[2];	// mean
-					mStats[4] = colstats[3];	// sdev
+					// copy stats: min, max, mean, median, sample size, sdev
+					for (int i=0; i < 7; ++i)
+						mStats[i] = colstats[i];
 				}
 
 				mLower = mStats[0];
@@ -1367,6 +1366,18 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 }
 
 void
+NMLayer::setLegendValueField(QString field)
+{
+	this->mLegendValueField = field;
+	if (field == "Pixel Values")
+	{
+		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+		const double* istats = il->getStatistics();
+		for (int i=0; i < 7; )
+	}
+}
+
+void
 NMLayer::setLegendColour(const int legendRow, double* rgba)
 {
 	//NMDebugCtx(ctxNMLayer, << "...");
@@ -1501,6 +1512,18 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 	return;
 }
 
+std::vector<double>
+NMLayer::getValueFieldStatistics()
+{
+	NMDebugCtx(ctxNMLayer, << "...");
+
+	std::vector<double> stats(7);
+	for (int i=0; i < 7; ++i)
+		stats[i] = this->mStats[i];
+
+
+	NMDebugCtx(ctxNMLayer, << "done!");
+}
 
 QIcon NMLayer::getLegendIcon(const int legendRow)
 {

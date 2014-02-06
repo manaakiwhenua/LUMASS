@@ -4,7 +4,7 @@
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -1047,6 +1047,8 @@ NMTableCalculator::calcColumnStats(const QString& column)
 	double mean = 0;
 	double sumdiffsq = 0;
 	double sdev = 0;
+	double median;
+	std::vector<double> valueBuffer;
 	long validrows = 0;
 
 	for (int s=0; s < 2; ++s)
@@ -1076,7 +1078,8 @@ NMTableCalculator::calcColumnStats(const QString& column)
 							sum += val;
 							min = val < min ? val : min;
 							max = val > max ? val : max;
-							++validrows;
+							valueBuffer.push_back(val);
+							//++validrows;
 						}
 						else
 						{
@@ -1114,7 +1117,8 @@ NMTableCalculator::calcColumnStats(const QString& column)
 						sum += val;
 						min = val < min ? val : min;
 						max = val > max ? val : max;
-						++validrows;
+						valueBuffer.push_back(val);
+						//++validrows;
 					}
 					else
 					{
@@ -1135,20 +1139,38 @@ NMTableCalculator::calcColumnStats(const QString& column)
 			}
 		}
 
-		if (s==0)
+		if (s==0 && valueBuffer.size() > 0)
 		{
-			mean = (double)sum / (double)validrows;
+			mean = (double)sum / (double)valueBuffer.size();
 		}
 	}
 
+	// sample size
+	validrows = valueBuffer.size();
+
+	// standard deviation
 	sdev = sqrt(sumdiffsq / (double)(validrows-1));
+
+	// median
+	sort(valueBuffer.begin(), valueBuffer.end());
+	long lhalf = static_cast<long>(validrows / 2);
+	if (validrows % 2 == 0)
+	{
+		long uhalf = static_cast<long>((validrows / 2.0) + 0.5);
+		median = valueBuffer[lhalf] + valueBuffer[uhalf] / 2.0;
+	}
+	else
+	{
+		median = valueBuffer[lhalf];
+	}
 
 	res.push_back(min);
 	res.push_back(max);
 	res.push_back(mean);
+	res.push_back(median);
 	res.push_back(sdev);
-	res.push_back(sum);
 	res.push_back(validrows);
+	res.push_back(sum);
 
 	return res;
 }

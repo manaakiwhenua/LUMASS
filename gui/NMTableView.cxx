@@ -4,7 +4,7 @@
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -1036,21 +1036,24 @@ void NMTableView::colStats()
 	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
 	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
 	QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
-	QString ssdev = QString("%1").arg(stats[3], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
-	QString ssum  = QString("%1").arg(stats[4], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
+	QString smedi = QString("%1").arg(stats[3], 0, 'f', 4);
+	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
+	QString ssum  = QString("%1").arg(stats[6], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
 	QString ssample = QString("Sample Size: %1").arg(stats[5]);
 
 	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
 	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
 	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
+	QString strmedi ("Median: ");
 	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
 	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
 
 
-	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11")
+	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11%12\n%13")
 			.arg(strmin).arg(smin)
 			.arg(strmax).arg(smax)
 			.arg(strmean).arg(smean)
+			.arg(strmedi).arg(smedi)
 			.arg(strsdev).arg(ssdev)
 			.arg(strsum).arg(ssum)
 			.arg(ssample);

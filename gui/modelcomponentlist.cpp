@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -80,25 +80,35 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	actZoom->setText(tr("Zoom To Layer"));
 	QAction* actTable = new QAction(this->mMenu);
 	actTable->setText(tr("Open Attribute Table"));
+	QAction* actSaveChanges = new QAction(this->mMenu);
+	actSaveChanges->setText(tr("Save Changes"));
 	QAction* actRemove = new QAction(this->mMenu);
 	actRemove->setText(tr("Remove Layer"));
+
+	QAction* actValueStats = new QAction(this->mMenu);
+	actValueStats->setText(tr("Value Field Statistics"));
+
 	QAction* actUniqueValues = new QAction(this->mMenu);
 	actUniqueValues->setText(tr("Map Unique Values ..."));
 	QAction* actSingleSymbol = new QAction(this->mMenu);
 	actSingleSymbol->setText(tr("Map Single Symbol"));
 	QAction* actClrTab = new QAction(this->mMenu);
 	actClrTab->setText(tr("Map Colour Table"));
-	QAction* actSaveChanges = new QAction(this->mMenu);
-	actSaveChanges->setText(tr("Save Changes"));
+	QAction* actClrRamp = new QAction(this->mMenu);
+	actClrRamp->setText(tr("Map Colour Ramp"));
 
 	this->mMenu->addAction(actTable);
 
 	this->mMenu->addSeparator();
 	this->mMenu->addAction(actZoom);
 	this->mMenu->addSeparator();
+	this->mMenu->addAction(actValueStats);
+	this->mMenu->addSeparator();
 	this->mMenu->addAction(actSingleSymbol);
 	this->mMenu->addAction(actClrTab);
 	this->mMenu->addAction(actUniqueValues);
+	this->mMenu->addAction(actClrRamp);
+
 
 	this->mMenu->addSeparator();
 	this->mMenu->addAction(actSaveChanges);
@@ -111,7 +121,9 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actSingleSymbol, SIGNAL(triggered()), this, SLOT(mapSingleSymbol()));
 	this->connect(actUniqueValues, SIGNAL(triggered()), this, SLOT(mapUniqueValues()));
 	this->connect(actClrTab, SIGNAL(triggered()), this, SLOT(mapColourTable()));
+	this->connect(actClrRamp, SIGNAL(triggered()), this, SLOT(mapColourRamp()));
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
+	this->connect(actValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
 
 #ifdef DEBUG
 
@@ -859,6 +871,18 @@ void ModelComponentList::mapColourTable()
 
 }
 
+void ModelComponentList::mapColourRamp()
+{
+	// get the current layer
+	QModelIndex idx = this->currentIndex();
+	const int toplevelrow = (idx.internalId() / 100) - 1;
+	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+
+	l->setLegendType(NMLayer::NM_LEGEND_RAMP);
+	l->updateMapping();
+}
+
 void ModelComponentList::mapUniqueValues()
 {
 	// get the current layer
@@ -942,9 +966,47 @@ void ModelComponentList::mapUniqueValues()
 
 void ModelComponentList::test()
 {
+	NMDebugCtx(ctx, << "...");
+	NMDebugCtx(ctx, << "done!");
+}
+
+void ModelComponentList::showValueStats()
+{
+	NMDebugCtx(ctx, << "...");
+
 	NMLayer* l = this->getSelectedLayer();
-	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-	if (il == 0)
-		return;
-	il->test();
+	std::vector<double> stats = l->getValueFieldStatistics();
+
+	// min, max, mean, std. dev, sum
+	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
+	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
+	QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
+	QString smedi = QString("%1").arg(stats[3], 0, 'f', 4);
+	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
+	QString ssum  = QString("%1").arg(stats[6], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
+	QString ssample = QString("Sample Size: %1").arg(stats[5]);
+
+	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
+	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
+	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
+	QString strmedi ("Median: ");
+	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
+	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
+
+
+	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11%12\n%13")
+			.arg(strmin).arg(smin)
+			.arg(strmax).arg(smax)
+			.arg(strmean).arg(smean)
+			.arg(strmedi).arg(smedi)
+			.arg(strsdev).arg(ssdev)
+			.arg(strsum).arg(ssum)
+			.arg(ssample);
+
+	QString title = QString(tr("%1")).arg(l->getLegendValueField());
+
+	QMessageBox::information(this, title, res);
+
+
+	NMDebugCtx(ctx, << "done!");
 }

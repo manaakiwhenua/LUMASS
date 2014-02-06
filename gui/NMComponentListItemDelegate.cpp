@@ -179,18 +179,25 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 			   )
 			{
 				QStringList cols;
-				if (legendtype == NMLayer::NM_LEGEND_INDEXED && classtype == NMLayer::NM_CLASS_UNIQUE)
+				if (row == 1)
 				{
-					// editing of the description field for UNIQUE VALUE
-					// doesn't make sense, so bail out!
-					if (row == 1)
+					if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
 					{
-						NMDebugAI(<< "cannot edit legend description field when "
-								<< "mapping unique values!" << std::endl);
+						cols.append(l->getStringColumns());
+						cols.append(l->getNumericColumns(false));
+					}
+					else
+					{
+						NMDebugAI(<< "can edit legend description field only when "
+								<< "mapping table colours!" << std::endl);
 
 						NMDebugCtx(ctxCompLID, << "done!");
 						return widget;
 					}
+				}
+
+				if (legendtype == NMLayer::NM_LEGEND_INDEXED && classtype == NMLayer::NM_CLASS_UNIQUE)
+				{
 					cols.append(l->getStringColumns());
 					cols.append(l->getNumericColumns(true));
 				}
@@ -198,16 +205,11 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 				// so, bail out!
 				else if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
 				{
-					if (row == 0)
-					{
-						NMDebugAI(<< "cannot edit the legend value field when "
-								<< "mapping table colours!" << std::endl);
+					NMDebugAI(<< "cannot edit the legend value field when "
+							<< "mapping table colours!" << std::endl);
 
-						NMDebugCtx(ctxCompLID, << "done!");
-						return widget;
-					}
-					cols.append(l->getStringColumns());
-					cols.append(l->getNumericColumns(false));
+					NMDebugCtx(ctxCompLID, << "done!");
+					return widget;
 				}
 				else
 				{
@@ -315,7 +317,12 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 				if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
 				{
 					l->setLegendValueField(valuefield);
-					l->updateMapping();
+
+					// we also adjust the description field; it makes only sense
+					// to be different from the value field if we're mapping
+					// unique values
+					if (l->getLegendClassType() != NMLayer::NM_CLASS_UNIQUE)
+						l->setLegendDescrField(valuefield);
 				}
 			}
 			else if (row == 1)

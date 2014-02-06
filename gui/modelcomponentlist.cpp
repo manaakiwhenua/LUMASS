@@ -975,7 +975,23 @@ void ModelComponentList::showValueStats()
 	NMDebugCtx(ctx, << "...");
 
 	NMLayer* l = this->getSelectedLayer();
+	if (l == 0)
+		return;
+
 	std::vector<double> stats = l->getValueFieldStatistics();
+	if (stats.size() == 0)
+	{
+		NMErr(ctx, << "failed retrieving value field statistics!");
+		NMDebugCtx(ctx, << "done!");
+		return;
+	}
+
+	NMDebugAI(<< "what we've got: ..." << std::endl);
+	for (int r=0; r < stats.size(); ++r)
+	{
+		NMDebugAI(<< "#" << r << ": " << stats[r] << std::endl);
+	}
+
 
 	// min, max, mean, std. dev, sum
 	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');

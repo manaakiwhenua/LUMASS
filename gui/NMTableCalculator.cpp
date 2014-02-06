@@ -148,6 +148,9 @@ void NMTableCalculator::setFunction(const QString& function)
 int NMTableCalculator::getColumnIndex(const QString& name)
 {
 	int colidx = -1;
+	if (mModel == 0)
+		return colidx;
+
 	int ncols = this->mModel->columnCount(QModelIndex());
 	QString colname;
 	for (int c=0; c < ncols; ++c)
@@ -192,6 +195,9 @@ NMTableCalculator::setRowFilter(const QItemSelection& inputSelection)
 QVariant::Type
 NMTableCalculator::getColumnType(int colidx)
 {
+	if (mModel == 0)
+		return QVariant::Invalid;
+
 	QModelIndex midx = this->mModel->index(0, colidx, QModelIndex());
 	return this->mModel->data(midx, Qt::DisplayRole).type();
 }

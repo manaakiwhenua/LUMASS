@@ -607,8 +607,6 @@ NMImageLayer::updateStats(void)
 	mImgStats[3] = stats->GetMedian();
 	mImgStats[4] = stats->GetStandardDeviation();
 
-	this->mReader
-
 	this->mbStatsAvailable = true;
 
 	emit layerProcessingEnd();

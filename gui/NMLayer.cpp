@@ -36,6 +36,7 @@
 #include "vtkStringArray.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkMath.h"
+#include "vtkQtEditableTableModelAdapter.h"
 //#include "vtkEditableDiscreteClrTransferFunc.h"
 #include "vtkColorTransferFunctionSpecialNodes.h"
 
@@ -295,19 +296,19 @@ NMLayer::initiateLegend(void)
 	if (this->getLayerType() == NMLayer::NM_IMAGE_LAYER)
 	{
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-		const double* imgStats = il->getStatistics();
-		for (int i=0; i < 5; ++i)
-			mStats[i] = imgStats[i];
+		//const double* imgStats = il->getStatistics();
+		//for (int i=0; i < 5; ++i)
+		//	mStats[i] = imgStats[i];
 
 		il->setNodata(il->getDefaultNodata());
-		if (mStats[0] == il->getDefaultNodata())
-			setLower(mStats[0] + 3*VALUE_MARGIN);
-		else
-			setLower(mStats[0]);
-		if (mStats[1] == mNodata)
-			setUpper(mStats[1] - 1);
-		else
-			setUpper(mStats[1]);
+		//if (mStats[0] == il->getDefaultNodata())
+		//	setLower(mStats[0] + 3*VALUE_MARGIN);
+		//else
+		//	setLower(mStats[0]);
+		//if (mStats[1] == mNodata)
+		//	setUpper(mStats[1] - 1);
+		//else
+		//	setUpper(mStats[1]);
 	}
 	else
 	{
@@ -1087,9 +1088,22 @@ NMLayer::mapValueRamp(void)
 	mNumClasses = 256;
 	mNumLegendRows = 4;
 
-	// adjust nodata value (in case it is not outside the
-	// mapping value range)
-	//this->setNodata(mNodata);
+	// ensure value and display field are the same
+	this->setLegendDescrField(mLegendValueField);
+
+	// just in case we jut now ran through initiateLegend, we
+	// still have to calc the value field statistics
+	this->setLegendValueField(mLegendValueField);
+
+	if (mStats[0] == mNodata)
+		setLower(mStats[0] + 3*VALUE_MARGIN);
+	else
+		setLower(mStats[0]);
+
+	if (mStats[1] == mNodata)
+		setUpper(mStats[1] - 1);
+	else
+		setUpper(mStats[1]);
 
 	QList<double> userNodes;
 	userNodes << mNodata << mLower-VALUE_MARGIN << mLower << mUpper << mUpper+VALUE_MARGIN;
@@ -1368,13 +1382,71 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 void
 NMLayer::setLegendValueField(QString field)
 {
-	this->mLegendValueField = field;
-	if (field == "Pixel Values")
+	if (field.compare(mLegendValueField, Qt::CaseInsensitive) != 0)
+		this->mLegendValueField = field;
+	else
+		return;
+
+	if (field == "Colour Table")
+	{
+		return;
+	}
+	else if (field == "Pixel Values" || this->mTableModel == 0)
 	{
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 		const double* istats = il->getStatistics();
-		for (int i=0; i < 7; )
+		for (int i=0; i < 4; ++i)
+			mStats[i] = istats[i];
+		mStats[5] = il->getDefaultNodata();
+		mStats[6] = il->getDefaultNodata();
 	}
+	else
+	{
+		NMTableCalculator calc(mTableModel);
+		QList<int> raw2source;
+		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+		if (	vl != 0
+			&&  vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT
+		   )
+
+		{
+			if (mTableView == 0)
+			{
+				vtkQtEditableTableModelAdapter* vtkmodel = qobject_cast<vtkQtEditableTableModelAdapter*>(mTableModel);
+				vtkTable* tab  = 0;
+				if (vtkmodel != 0)
+				{
+					tab = vtkTable::SafeDownCast(vtkmodel->GetVTKDataObject());
+				}
+				vtkUnsignedCharArray* hole = 0;
+				if (tab != 0)
+				{
+					hole = vtkUnsignedCharArray::SafeDownCast(tab->GetColumnByName("nm_hole"));
+				}
+				if (hole != 0)
+				{
+					for (long row=0; row < tab->GetNumberOfRows(); ++row)
+					{
+						if (hole->GetValue(row))
+							raw2source << -1;
+						else
+							raw2source << row;
+					}
+					calc.setRaw2Source(&raw2source);
+				}
+			}
+			else
+			{
+				calc.setRaw2Source(const_cast<QList<int>* >(mTableView->getRaw2Source()));
+			}
+		}
+
+		std::vector<double> colstats = calc.calcColumnStats(mLegendValueField);
+		for (int s=0; s < colstats.size(); ++s)
+			mStats[s] = colstats[s];
+	}
+
+	this->updateMapping();
 }
 
 void
@@ -1517,12 +1589,17 @@ NMLayer::getValueFieldStatistics()
 {
 	NMDebugCtx(ctxNMLayer, << "...");
 
-	std::vector<double> stats(7);
-	for (int i=0; i < 7; ++i)
-		stats[i] = this->mStats[i];
+	std::vector<double> stats;
 
+	if (mLegendValueField == "Colour Table")
+		return stats;
+
+	for (int i=0; i < 7; ++i)
+		stats.push_back(this->mStats[i]);
 
 	NMDebugCtx(ctxNMLayer, << "done!");
+	return stats;
+
 }
 
 QIcon NMLayer::getLegendIcon(const int legendRow)

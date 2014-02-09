@@ -504,12 +504,12 @@ NMLayer::updateMapping(void)
 
 	this->resetLegendInfo();
 
-	bool clrtab = false;
+	bool clrfunc = false;
 	switch(mLegendType)
 	{
 	case NM_LEGEND_RAMP:
 		this->mapValueRamp();
-		clrtab = true;
+		clrfunc = true;
 		break;
 
 	case NM_LEGEND_INDEXED:
@@ -542,7 +542,7 @@ NMLayer::updateMapping(void)
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 		vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
 		iprop->SetUseLookupTableScalarRange(1);
-		if (!clrtab)
+		if (!clrfunc)
 		{
 			iprop->SetLookupTable(mLookupTable);
 
@@ -553,7 +553,7 @@ NMLayer::updateMapping(void)
 	else
 	{
 		vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
-		if (!clrtab)
+		if (!clrfunc)
 			mapper->SetLookupTable(mLookupTable);
 		else
 			mapper->SetLookupTable(mClrFunc);
@@ -1088,22 +1088,12 @@ NMLayer::mapValueRamp(void)
 	mNumClasses = 256;
 	mNumLegendRows = 4;
 
-	// ensure value and display field are the same
-	this->setLegendDescrField(mLegendValueField);
-
 	// just in case we jut now ran through initiateLegend, we
 	// still have to calc the value field statistics
-	this->setLegendValueField(mLegendValueField);
+	this->setLegendValueField("Pixel Values");
 
-	if (mStats[0] == mNodata)
-		setLower(mStats[0] + 3*VALUE_MARGIN);
-	else
-		setLower(mStats[0]);
-
-	if (mStats[1] == mNodata)
-		setUpper(mStats[1] - 1);
-	else
-		setUpper(mStats[1]);
+	// ensure value and display field are the same
+	//this->setLegendDescrField("Pixel Values");
 
 	QList<double> userNodes;
 	userNodes << mNodata << mLower-VALUE_MARGIN << mLower << mUpper << mUpper+VALUE_MARGIN;
@@ -1399,6 +1389,8 @@ NMLayer::setLegendValueField(QString field)
 			mStats[i] = istats[i];
 		mStats[5] = il->getDefaultNodata();
 		mStats[6] = il->getDefaultNodata();
+
+		mLegendDescrField = field;
 	}
 	else
 	{
@@ -1445,6 +1437,16 @@ NMLayer::setLegendValueField(QString field)
 		for (int s=0; s < colstats.size(); ++s)
 			mStats[s] = colstats[s];
 	}
+
+	if (mStats[0] == mNodata)
+		setLower(mStats[0] + 3*VALUE_MARGIN);
+	else
+		setLower(mStats[0]);
+
+	if (mStats[1] == mNodata)
+		setUpper(mStats[1] - 1);
+	else
+		setUpper(mStats[1]);
 
 	this->updateMapping();
 }

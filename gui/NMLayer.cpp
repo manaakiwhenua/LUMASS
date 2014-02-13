@@ -1090,10 +1090,11 @@ NMLayer::mapValueRamp(void)
 
 	// just in case we jut now ran through initiateLegend, we
 	// still have to calc the value field statistics
-	this->setLegendValueField("Pixel Values");
+	//this->setLegendValueField("Pixel Values");
 
 	// ensure value and display field are the same
 	//this->setLegendDescrField("Pixel Values");
+
 
 	QList<double> userNodes;
 	userNodes << mNodata << mLower-VALUE_MARGIN << mLower << mUpper << mUpper+VALUE_MARGIN;
@@ -1107,6 +1108,30 @@ NMLayer::mapValueRamp(void)
 
 	mClrFunc = this->getColorTransferFunc(mColourRamp,
 			userNodes, userColours);
+
+
+	if (mLegendValueField != "Pixel Values")
+	{
+		if (this->getLayerType() == NM_IMAGE_LAYER)
+		{
+			NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+			vtkImageData* id = vtkImageData::SafeDownCast(const_cast<vtkDataSet*>(this->getDataSet()));
+
+			int idx = this->getColumnIndex(mLegendValueField);
+			std::string tn = QVariant::typeToName(this->getColumnType(idx));
+
+			NMDebugAI(<< "legend value type: " << tn << std::endl);
+
+			NMQtOtbAttributeTableModel* tm =
+					static_cast<NMQtOtbAttributeTableModel*>(
+							const_cast<QAbstractItemModel*>(this->getTable()));
+			otb::AttributeTable::Pointer ot = tm->getTable();
+
+
+
+
+		}
+	}
 }
 
 void
@@ -1372,16 +1397,17 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 void
 NMLayer::setLegendValueField(QString field)
 {
+	if (field == "Colour Table")
+	{
+		return;
+	}
+
 	if (field.compare(mLegendValueField, Qt::CaseInsensitive) != 0)
 		this->mLegendValueField = field;
 	else
 		return;
 
-	if (field == "Colour Table")
-	{
-		return;
-	}
-	else if (field == "Pixel Values" || this->mTableModel == 0)
+	if (field == "Pixel Values" || this->mTableModel == 0)
 	{
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 		const double* istats = il->getStatistics();
@@ -1391,6 +1417,17 @@ NMLayer::setLegendValueField(QString field)
 		mStats[6] = il->getDefaultNodata();
 
 		mLegendDescrField = field;
+
+		if (mStats[0] == mNodata)
+			setLower(mStats[0] + 3*VALUE_MARGIN);
+		else
+			setLower(mStats[0]);
+
+		if (mStats[1] == mNodata)
+			setUpper(mStats[1] - 1);
+		else
+			setUpper(mStats[1]);
+
 	}
 	else
 	{
@@ -1436,17 +1473,12 @@ NMLayer::setLegendValueField(QString field)
 		std::vector<double> colstats = calc.calcColumnStats(mLegendValueField);
 		for (int s=0; s < colstats.size(); ++s)
 			mStats[s] = colstats[s];
+
+		mNodata = mStats[0];
+		setLower(mStats[0]);
+		setUpper(mStats[1]);
 	}
 
-	if (mStats[0] == mNodata)
-		setLower(mStats[0] + 3*VALUE_MARGIN);
-	else
-		setLower(mStats[0]);
-
-	if (mStats[1] == mNodata)
-		setUpper(mStats[1] - 1);
-	else
-		setUpper(mStats[1]);
 
 	this->updateMapping();
 }

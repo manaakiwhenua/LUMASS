@@ -179,7 +179,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 			   )
 			{
 				QStringList cols;
-				if (row == 1)
+				if (row == 1) // legend value field
 				{
 					if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
 					{
@@ -203,7 +203,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 				}
 				// editing the value field for colour tables doesn't make sense
 				// so, bail out!
-				else if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
+				else if (legendtype == NMLayer::NM_LEGEND_CLRTAB && row == 0)
 				{
 					NMDebugAI(<< "cannot edit the legend value field when "
 							<< "mapping table colours!" << std::endl);
@@ -312,6 +312,7 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 		{
 			QComboBox* box = static_cast<QComboBox*>(editor);
 			QString valuefield = box->currentText();
+			// -------------------------- LEGEND VALUE FIELD ---------------------------------
 			if (row == 0)
 			{
 				if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
@@ -325,6 +326,7 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 						l->setLegendDescrField(valuefield);
 				}
 			}
+			// --------------------------- LEGEND DESCR FIELD -----------------------------
 			else if (row == 1)
 			{
 				if (valuefield.compare(l->getLegendDescrField(), Qt::CaseInsensitive) != 0)

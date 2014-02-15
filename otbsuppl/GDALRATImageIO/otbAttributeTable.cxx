@@ -1,10 +1,10 @@
  /*****************************h*************************************************
  * Created by Alexander Herzig is-
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -375,6 +375,37 @@ AttributeTable::GetStrValue(const std::string& sColName, int idx)
 
 	return ret.str();
 }
+
+void*
+AttributeTable::GetColumnPointer(int col)
+{
+	void* ret = 0;
+
+	if (col < 0 || col >= m_vNames.size())
+		return ret;
+
+	if (m_iNumRows == 0)
+		return ret;
+
+	const int& tidx = m_vPosition[col];
+	switch(m_vTypes[col])
+	{
+	case ATTYPE_STRING:
+		ret = (void*)&this->m_mStringCols.at(tidx)->at(0);
+		break;
+	case ATTYPE_INT:
+		ret = (void*)&this->m_mIntCols.at(tidx)->at(0);
+		break;
+	case ATTYPE_DOUBLE:
+		ret = (void*)&this->m_mDoubleCols.at(tidx)->at(0);
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 
 void AttributeTable::SetBandNumber(int iBand)
 {

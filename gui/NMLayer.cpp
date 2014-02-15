@@ -25,6 +25,7 @@
 #include "NMLayer.h"
 #include "NMImageLayer.h"
 #include "NMVectorLayer.h"
+#include "NMQtOtbAttributeTableModel.h"
 
 #include <QTime>
 #include <QColor>
@@ -37,7 +38,6 @@
 #include "vtkDataSetAttributes.h"
 #include "vtkMath.h"
 #include "vtkQtEditableTableModelAdapter.h"
-//#include "vtkEditableDiscreteClrTransferFunc.h"
 #include "vtkColorTransferFunctionSpecialNodes.h"
 
 #define VALUE_MARGIN 0.0000001
@@ -509,7 +509,7 @@ NMLayer::updateMapping(void)
 	{
 	case NM_LEGEND_RAMP:
 		this->mapValueRamp();
-		clrfunc = true;
+		clrfunc = mLookupTable.GetPointer() != 0 ? false : true;
 		break;
 
 	case NM_LEGEND_INDEXED:
@@ -1085,6 +1085,8 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 void
 NMLayer::mapValueRamp(void)
 {
+	NMDebugCtx(ctxNMLayer, << "...");
+
 	mNumClasses = 256;
 	mNumLegendRows = 4;
 
@@ -1110,28 +1112,78 @@ NMLayer::mapValueRamp(void)
 			userNodes, userColours);
 
 
-	if (mLegendValueField != "Pixel Values")
+	//  fill lookup table based on the legend value field
+	if (mTableModel != 0 && mLegendValueField != "Pixel Values")
 	{
-		if (this->getLayerType() == NM_IMAGE_LAYER)
+		if (mLookupTable.GetPointer() != 0)
 		{
-			NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-			vtkImageData* id = vtkImageData::SafeDownCast(const_cast<vtkDataSet*>(this->getDataSet()));
-
-			int idx = this->getColumnIndex(mLegendValueField);
-			std::string tn = QVariant::typeToName(this->getColumnType(idx));
-
-			NMDebugAI(<< "legend value type: " << tn << std::endl);
-
-			NMQtOtbAttributeTableModel* tm =
-					static_cast<NMQtOtbAttributeTableModel*>(
-							const_cast<QAbstractItemModel*>(this->getTable()));
-			otb::AttributeTable::Pointer ot = tm->getTable();
-
-
-
-
+			mLookupTable = 0;
 		}
+
+
+		// prepare look up table
+		long nrows = mTableModel->rowCount(QModelIndex());
+		mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+		vtkUnsignedCharArray* hole = 0;
+		int clroff = 0;
+		if (this->mLayerType == NM_VECTOR_LAYER)
+		{
+			NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+			vtkQtEditableTableModelAdapter* model = static_cast<vtkQtEditableTableModelAdapter*>(mTableModel);
+			vtkTable* tab = vtkTable::SafeDownCast(model->GetVTKDataObject());
+
+			if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+			{
+				hole = vtkUnsignedCharArray::SafeDownCast(tab->GetColumnByName("nm_hole"));
+			}
+
+			mLookupTable->SetNumberOfTableValues(nrows);
+			mLookupTable->SetTableRange(0, nrows-1);
+		}
+		else if (this->mLayerType == NM_IMAGE_LAYER)
+		{
+			mLookupTable->SetNumberOfTableValues(nrows+1);
+			mLookupTable->SetTableRange(-1, nrows);
+			mLookupTable->SetTableValue(0,0,0,0,0);
+			clroff = 1;
+		}
+
+		const int cidx = this->getColumnIndex(mLegendValueField);
+		QVariant::Type coltype = this->getColumnType(cidx);
+
+		double fc[3];
+		double value;
+		bool bok;
+		for (int row=0; row < nrows+clroff; ++row)
+		{
+			if (hole && hole->GetValue(row))
+			{
+				mLookupTable->SetTableValue(row, fc[0], fc[1], fc[2], 1);
+				continue;
+			}
+
+			const QModelIndex mi = mTableModel->index(row+clroff, cidx, QModelIndex());
+			value = mi.data().toDouble(&bok);
+
+			mClrFunc->GetColor(value, fc);
+			mLookupTable->SetTableValue(row+clroff, fc[0], fc[1], fc[2], 1);
+		}
+
+
+		//unsigned char* lutPt = mLookupTable->WritePointer(1, nrows-1);
+
+		//if (coltype == QVariant::Double)
+		//{
+		//	mClrFunc->MapScalarsThroughTable2(data, lutPt, VTK_DOUBLE, nrows-1, 1, 1);
+		//}
+		//else if (coltype == QVariant::LongLong)
+		//{
+		//	mClrFunc->MapScalarsThroughTable2(data, lutPt, VTK_LONG, nrows-1, 1, 1);
+		//}
+
 	}
+
+	NMDebugCtx(ctxNMLayer, << "done!");
 }
 
 void
@@ -1474,7 +1526,6 @@ NMLayer::setLegendValueField(QString field)
 		for (int s=0; s < colstats.size(); ++s)
 			mStats[s] = colstats[s];
 
-		mNodata = mStats[0];
 		setLower(mStats[0]);
 		setUpper(mStats[1]);
 	}

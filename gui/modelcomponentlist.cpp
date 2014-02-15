@@ -95,7 +95,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	QAction* actClrTab = new QAction(this->mMenu);
 	actClrTab->setText(tr("Map Colour Table"));
 	QAction* actClrRamp = new QAction(this->mMenu);
-	actClrRamp->setText(tr("Map Colour Ramp"));
+	actClrRamp->setText(tr("Map Value Ramp"));
 
 	this->mMenu->addAction(actTable);
 

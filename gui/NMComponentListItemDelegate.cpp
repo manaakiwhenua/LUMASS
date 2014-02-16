@@ -172,8 +172,8 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 	if (level == 1 && l->getLegendType() == NMLayer::NM_LEGEND_RAMP && row == 2)
 	{
 		QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &option);
-		QRect upperRect(textRect.x(), option.rect.top(), option.rect.width(), textRect.height()+2);
-		QRect lowerRect(textRect.x(), option.rect.bottom()-textRect.height(), option.rect.width(), textRect.height()+2);
+		QRect upperRect(textRect.x(), option.rect.top(), option.rect.width(), textRect.height());
+		QRect lowerRect(textRect.x(), option.rect.bottom()-textRect.height(), option.rect.width(), textRect.height());
 
 		qDebug() << "mouse pos:   " << mLastMousePos;
 		qDebug() << "option rect: " << option.rect;
@@ -478,14 +478,17 @@ NMComponentListItemDelegate::updateEditorGeometry(QWidget* editor,
 	NMDebugCtx(ctxCompLID, << "...");
 
 	const int level = index.internalId() % 100;
-	if (level != 2)
+	QRect geom;
+	if (level == 1)
 	{
-		NMDebugCtx(ctxCompLID, << "done!");
-		return;
+		geom = editor->geometry();
 	}
-
-	QRect geom = option.rect;
+	else if (level == 2)
+	{
+		geom = option.rect;
+	}
 	geom.adjust(0, -2, 0, 2);
 	editor->setGeometry(geom);
+
 	NMDebugCtx(ctxCompLID, << "done!");
 }

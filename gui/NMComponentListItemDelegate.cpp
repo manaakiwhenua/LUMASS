@@ -34,6 +34,7 @@
 #include <QPainter>
 #include <QComboBox>
 #include <QLineEdit>
+#include <QDebug>
 
 #include "NMComponentListItemDelegate.h"
 #include "NMLayer.h"
@@ -152,12 +153,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 	QWidget* widget = 0;
 
 	const int level = index.internalId() % 100;
-	if (level != 2)
-	{
-		NMDebugCtx(ctxCompLID, << "done!");
-		return widget;
-	}
-
+	const int row = index.row();
 
 	NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
 
@@ -165,124 +161,178 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 	const int legendtype = l->getLegendType();//index.sibling(2, 0).data().toInt(&bok);
 	const int classtype = l->getLegendClassType(); //index.sibling(3, 0).data().toInt(&bok);
 
-	const int row = index.row();
-	switch(row)
+	///////////////////////////////////?????
+	//if (level != 2)
+	//{
+	//	NMDebugCtx(ctxCompLID, << "done!");
+	//	return widget;
+	//}
+
+	//=============================== COLOUR RAMP ================================================
+	if (level == 1 && l->getLegendType() == NMLayer::NM_LEGEND_RAMP && row == 2)
 	{
-	case 1:
-	case 0: // ------------------ LEGEND VALUE FIELD -----------------------------------------
+		QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &option);
+		QRect upperRect(textRect.x(), option.rect.top(), option.rect.width(), textRect.height()+2);
+		QRect lowerRect(textRect.x(), option.rect.bottom()-textRect.height(), option.rect.width(), textRect.height()+2);
+
+		qDebug() << "mouse pos:   " << mLastMousePos;
+		qDebug() << "option rect: " << option.rect;
+		qDebug() << "text rect:   " << textRect;
+		qDebug() << "upperRect:   " << upperRect;
+		qDebug() << "lowerRect:   " << lowerRect;
+
+		QLineEdit* lineedit = 0;
+		QString dval;
+		QRect editrect;
+		bool bhit = false;
+		if (upperRect.contains(this->mLastMousePos))
 		{
-			if (	l->getTable() != 0
-				&&	(  	 legendtype == NMLayer::NM_LEGEND_INDEXED
-					 ||  legendtype == NMLayer::NM_LEGEND_RAMP
-					 ||  legendtype == NMLayer::NM_LEGEND_CLRTAB
-					)
-			   )
+			NMDebugAI(<< "got hit at upper text!" << std::endl);
+			lineedit = new QLineEdit(parent);
+			lineedit->setObjectName("le_upper_value");
+			dval = QString("%1").arg(l->getUpper());
+			editrect = upperRect;
+			bhit = true;
+		}
+		else if (lowerRect.contains(this->mLastMousePos))
+		{
+			NMDebugAI(<< "got hit at lower text!" << std::endl);
+			lineedit = new QLineEdit(parent);
+			lineedit->setObjectName("le_lower_value");
+			dval = QString("%1").arg(l->getLower());
+			editrect = lowerRect;
+			bhit = true;
+		}
+
+		if (bhit)
+		{
+			lineedit->setText(dval);
+			lineedit->setGeometry(editrect);
+			return lineedit;
+		}
+
+	}
+	//=============================== LEGEND META DATA ============================================
+	else if (level == 2)
+	{
+		switch(row)
+		{
+		case 1:
+		case 0: // ------------------ LEGEND VALUE FIELD -----------------------------------------
 			{
-				QStringList cols;
-				if (row == 1) // legend value field
+				if (	l->getTable() != 0
+					&&	(  	 legendtype == NMLayer::NM_LEGEND_INDEXED
+						 ||  legendtype == NMLayer::NM_LEGEND_RAMP
+						 ||  legendtype == NMLayer::NM_LEGEND_CLRTAB
+						)
+				   )
 				{
-					if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
+					QStringList cols;
+					if (row == 1) // legend value field
+					{
+						if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
+						{
+							cols.append(l->getStringColumns());
+							cols.append(l->getNumericColumns(false));
+						}
+						else
+						{
+							NMDebugAI(<< "can edit legend description field only when "
+									<< "mapping table colours!" << std::endl);
+
+							NMDebugCtx(ctxCompLID, << "done!");
+							return widget;
+						}
+					}
+
+					if (legendtype == NMLayer::NM_LEGEND_INDEXED && classtype == NMLayer::NM_CLASS_UNIQUE)
 					{
 						cols.append(l->getStringColumns());
-						cols.append(l->getNumericColumns(false));
+						cols.append(l->getNumericColumns(true));
 					}
-					else
+					// editing the value field for colour tables doesn't make sense
+					// so, bail out!
+					else if (legendtype == NMLayer::NM_LEGEND_CLRTAB && row == 0)
 					{
-						NMDebugAI(<< "can edit legend description field only when "
+						NMDebugAI(<< "cannot edit the legend value field when "
 								<< "mapping table colours!" << std::endl);
 
 						NMDebugCtx(ctxCompLID, << "done!");
 						return widget;
 					}
-				}
+					else
+					{
+						cols.append(l->getNumericColumns(false));
+					}
 
-				if (legendtype == NMLayer::NM_LEGEND_INDEXED && classtype == NMLayer::NM_CLASS_UNIQUE)
-				{
-					cols.append(l->getStringColumns());
-					cols.append(l->getNumericColumns(true));
-				}
-				// editing the value field for colour tables doesn't make sense
-				// so, bail out!
-				else if (legendtype == NMLayer::NM_LEGEND_CLRTAB && row == 0)
-				{
-					NMDebugAI(<< "cannot edit the legend value field when "
-							<< "mapping table colours!" << std::endl);
+					int current = 0;
+					QString currentValue = row == 0 ? l->getLegendValueField() : l->getLegendDescrField();
+					for (int c=0; c < cols.size(); ++c)
+					{
+						if (cols.at(c).compare(currentValue, Qt::CaseInsensitive) == 0)
+						{
+							current = c;
+							break;
+						}
+					}
+
+					QComboBox* box = new QComboBox(parent);
+					box->addItems(cols);
+					box->setCurrentIndex(current);
 
 					NMDebugCtx(ctxCompLID, << "done!");
-					return widget;
+					return box;
 				}
-				else
-				{
-					cols.append(l->getNumericColumns(false));
-				}
+			}
+			break;
+
+		case 4:
+			if (legendtype == NMLayer::NM_LEGEND_RAMP)
+			{
+				QStringList ramps = l->getColourRampStrings();
 
 				int current = 0;
-				QString currentValue = row == 0 ? l->getLegendValueField() : l->getLegendDescrField();
-				for (int c=0; c < cols.size(); ++c)
+				QString currentRamp = l->getColourRampStr(l->getColourRamp());
+				for (int c=0; c < ramps.size(); ++c)
 				{
-					if (cols.at(c).compare(currentValue, Qt::CaseInsensitive) == 0)
+					if (ramps.at(c).compare(currentRamp, Qt::CaseInsensitive) == 0)
 					{
 						current = c;
 						break;
 					}
 				}
-
 				QComboBox* box = new QComboBox(parent);
-				box->addItems(cols);
+				box->addItems(ramps);
 				box->setCurrentIndex(current);
 
 				NMDebugCtx(ctxCompLID, << "done!");
 				return box;
 			}
-		}
-		break;
+			break;
 
-	case 4:
-		if (legendtype == NMLayer::NM_LEGEND_RAMP)
-		{
-			QStringList ramps = l->getColourRampStrings();
-
-			int current = 0;
-			QString currentRamp = l->getColourRampStr(l->getColourRamp());
-			for (int c=0; c < ramps.size(); ++c)
+		case 5:
+		case 6:
+		case 7:
 			{
-				if (ramps.at(c).compare(currentRamp, Qt::CaseInsensitive) == 0)
+				if (	(legendtype == NMLayer::NM_LEGEND_INDEXED && classtype != NMLayer::NM_CLASS_UNIQUE)
+					||  legendtype == NMLayer::NM_LEGEND_RAMP
+				   )
 				{
-					current = c;
-					break;
+					QLineEdit* lineedit = new QLineEdit(parent);
+					int base = Qt::UserRole-4;
+					QString curVal = index.data(base+index.row()).toString();
+					lineedit->setText(curVal);
+
+					NMDebugCtx(ctxCompLID, << "done!");
+					return lineedit;
 				}
 			}
-			QComboBox* box = new QComboBox(parent);
-			box->addItems(ramps);
-			box->setCurrentIndex(current);
+			break;
 
-			NMDebugCtx(ctxCompLID, << "done!");
-			return box;
+
+		default:
+			break;
 		}
-		break;
-
-	case 5:
-	case 6:
-	case 7:
-		{
-			if (	(legendtype == NMLayer::NM_LEGEND_INDEXED && classtype != NMLayer::NM_CLASS_UNIQUE)
-				||  legendtype == NMLayer::NM_LEGEND_RAMP
-			   )
-			{
-				QLineEdit* lineedit = new QLineEdit(parent);
-				int base = Qt::UserRole-4;
-				QString curVal = index.data(base+index.row()).toString();
-				lineedit->setText(curVal);
-
-				NMDebugCtx(ctxCompLID, << "done!");
-				return lineedit;
-			}
-		}
-		break;
-
-
-	default:
-		break;
 	}
 
 	NMDebugCtx(ctxCompLID, << "done!");
@@ -296,75 +346,97 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 	NMDebugCtx(ctxCompLID, << "...");
 
 	const int level = index.internalId() % 100;
-	if (level != 2)
-	{
-		NMDebugCtx(ctxCompLID, << "done!");
-		return;
-	}
+	//if (level != 2)
+	//{
+	//	NMDebugCtx(ctxCompLID, << "done!");
+	//	return;
+	//}
 
 	NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
 
 	const int row = index.row();
-	switch(row)
+	if (level == 1 && l->getLegendType() == NMLayer::NM_LEGEND_RAMP	&& index.row() == 2)
 	{
-		case 1:
-		case 0:
+		QLineEdit* lineedit = static_cast<QLineEdit*>(editor);
+		bool bok = true;
+		double val = lineedit->text().toDouble(&bok);
+
+		if (bok)
 		{
-			QComboBox* box = static_cast<QComboBox*>(editor);
-			QString valuefield = box->currentText();
-			// -------------------------- LEGEND VALUE FIELD ---------------------------------
-			if (row == 0)
+			if (lineedit->objectName() == "le_upper_value")
 			{
-				if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
-				{
-					l->setLegendValueField(valuefield);
-
-					// we also adjust the description field; it makes only sense
-					// to be different from the value field if we're mapping
-					// unique values
-					if (l->getLegendClassType() != NMLayer::NM_CLASS_UNIQUE)
-						l->setLegendDescrField(valuefield);
-				}
+				l->setUpper(val);
 			}
-			// --------------------------- LEGEND DESCR FIELD -----------------------------
-			else if (row == 1)
+			else if (lineedit->objectName() == "le_lower_value")
 			{
-				if (valuefield.compare(l->getLegendDescrField(), Qt::CaseInsensitive) != 0)
-				{
-					l->setLegendDescrField(valuefield);
-					l->updateLegend();
-				}
+				l->setLower(val);
 			}
+			l->updateMapping();
 		}
-		break;
-
-		case 4:
+	}
+	else if (level == 2)
+	{
+		switch(row)
+		{
+			case 1:
+			case 0:
 			{
 				QComboBox* box = static_cast<QComboBox*>(editor);
-				QString curVal = box->currentText();
-				model->setData(index, QVariant(curVal), Qt::UserRole+4);
-				//NMLayer::NMColourRamp ramp = l->getColourRampFromStr(curVal);
-				//l->setColourRamp(ramp);
-				//l->updateMapping();
-			}
-			break;
-
-		case 5:
-		case 6:
-		case 7:
-			{
-				QLineEdit* lineedit = static_cast<QLineEdit*>(editor);
-				QString curVal = lineedit->text();
-				int base = Qt::UserRole-4;
-				if (!curVal.isEmpty())
+				QString valuefield = box->currentText();
+				// -------------------------- LEGEND VALUE FIELD ---------------------------------
+				if (row == 0)
 				{
-					model->setData(index, QVariant(curVal), base+index.row());
+					if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
+					{
+						l->setLegendValueField(valuefield);
+
+						// we also adjust the description field; it makes only sense
+						// to be different from the value field if we're mapping
+						// unique values
+						if (l->getLegendClassType() != NMLayer::NM_CLASS_UNIQUE)
+							l->setLegendDescrField(valuefield);
+					}
+				}
+				// --------------------------- LEGEND DESCR FIELD -----------------------------
+				else if (row == 1)
+				{
+					if (valuefield.compare(l->getLegendDescrField(), Qt::CaseInsensitive) != 0)
+					{
+						l->setLegendDescrField(valuefield);
+						l->updateLegend();
+					}
 				}
 			}
 			break;
 
-	default:
-		break;
+			case 4:
+				{
+					QComboBox* box = static_cast<QComboBox*>(editor);
+					QString curVal = box->currentText();
+					model->setData(index, QVariant(curVal), Qt::UserRole+4);
+					//NMLayer::NMColourRamp ramp = l->getColourRampFromStr(curVal);
+					//l->setColourRamp(ramp);
+					//l->updateMapping();
+				}
+				break;
+
+			case 5:
+			case 6:
+			case 7:
+				{
+					QLineEdit* lineedit = static_cast<QLineEdit*>(editor);
+					QString curVal = lineedit->text();
+					int base = Qt::UserRole-4;
+					if (!curVal.isEmpty())
+					{
+						model->setData(index, QVariant(curVal), base+index.row());
+					}
+				}
+				break;
+
+		default:
+			break;
+		}
 	}
 
 	NMDebugCtx(ctxCompLID, << "done!");
@@ -404,6 +476,14 @@ NMComponentListItemDelegate::updateEditorGeometry(QWidget* editor,
 		const QModelIndex& index) const
 {
 	NMDebugCtx(ctxCompLID, << "...");
+
+	const int level = index.internalId() % 100;
+	if (level != 2)
+	{
+		NMDebugCtx(ctxCompLID, << "done!");
+		return;
+	}
+
 	QRect geom = option.rect;
 	geom.adjust(0, -2, 0, 2);
 	editor->setGeometry(geom);

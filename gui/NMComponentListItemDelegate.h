@@ -26,6 +26,7 @@
 #define NMCOMPONENTLISTITEMDELEGATE_H_
 
 #include <qstyleditemdelegate.h>
+#include <QPoint>
 
 class NMComponentListItemDelegate: public QStyledItemDelegate
 {
@@ -54,6 +55,12 @@ public:
 	void setModelData(QWidget* editor,
 			QAbstractItemModel* model,
 			const QModelIndex& index) const;
+
+	void setLastMousePos(const QPoint& pos)
+		{mLastMousePos = pos;}
+
+private:
+	QPoint mLastMousePos;
 
 };
 

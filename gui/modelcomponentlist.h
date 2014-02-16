@@ -40,6 +40,7 @@
 
 //#include "NMLayer.h"
 #include "NMLayerModel.h"
+#include "NMComponentListItemDelegate.h"
 //#include "NMVectorLayer.h"
 
 //#include "vtkObject.h"
@@ -108,6 +109,7 @@ private:
 
 	double mFullMapExt[6];
     NMLayerModel* mLayerModel;
+    NMComponentListItemDelegate* mDelegate;
     QPoint dragStartPosition;
     QMenu* mMenu;
     QModelIndex mIndicatorIdx;

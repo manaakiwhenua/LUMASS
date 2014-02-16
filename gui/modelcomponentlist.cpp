@@ -138,7 +138,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	// do some stuff we can't do here
 	//initView();
-	this->setItemDelegate(new NMComponentListItemDelegate(this));
+	mDelegate = new NMComponentListItemDelegate(this);
+	this->setItemDelegate(mDelegate);
 
 
 	// connect to some of the qvtkWidget events
@@ -488,7 +489,7 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 
 		if (level == 1 && idx.row() > 0)
 		{
-			if (! (		l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+			if ( !(		l->getLegendType() == NMLayer::NM_LEGEND_RAMP
 					&&  idx.row() == NM_LEGEND_RAMP_ROW
 				  )
 			   )
@@ -526,6 +527,11 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 				rgba[2] = clr.blueF();
 				rgba[3] = clr.alphaF();
 				l->setLegendColour(idx.row(), rgba);
+			}
+			else
+			{
+				mDelegate->setLastMousePos(event->pos());
+				this->edit(idx);
 			}
 		}
 		else if (level == 2)

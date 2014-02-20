@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -15,12 +15,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
-/* 
+/*
 	name: otbRasdamanImageIO.cxx
 	author:
-	date: 
+	date:
 	purpose: read and write rasdaman image files
-	
+
 */
 
 // TODO: to be removed from final version
@@ -52,29 +52,29 @@ namespace otb
 
 /// ----------------------------------------- CONSTRUCTOR / DESTRUCTOR
 RasdamanImageIO::RasdamanImageIO(void)
-{                                             
+{
 	// default number of dimensions is two
 	this->SetNumberOfDimensions(2);
 	// currently only scalars are supported
-	m_PixelType = SCALAR;          
-	// reasonable default pixel type 
+	m_PixelType = SCALAR;
+	// reasonable default pixel type
 	m_ComponentType = UCHAR;
 	m_rtype = r_Type::CHAR;
 
 	// default spacing (i.e. pixel size)
 	m_Spacing[0] = 1.0;
-	m_Spacing[1] = 1.0;                     
+	m_Spacing[1] = 1.0;
 
 	// default origin is (0,0)
 	m_Origin[0] = 0.0;
 	m_Origin[1] = 0.0;
-	           
+
 	// we don't have any info about the image so far ...
-	m_ImageSpec = "";   
+	m_ImageSpec = "";
 	m_prevImageSpec = "";
 	m_collname = "";
-	
-	m_bCanRead = false;      
+
+	m_bCanRead = false;
 	m_bCanWrite = false;
 	m_bCollImageAvail = false;
 	m_bWasWriteCalled = false;
@@ -83,7 +83,7 @@ RasdamanImageIO::RasdamanImageIO(void)
 //	m_bCollectionsAsVector = false;
 	this->m_CollectionTypeName = "";
 	this->m_ImageTypeName = "";
-	
+
 	m_UseForcedLPR = false;
 	m_ImageUpdateMode = false;
 
@@ -102,7 +102,7 @@ RasdamanImageIO::~RasdamanImageIO()
 	this->m_Helper = 0;
 	this->m_Rasconn = 0;
 }
-	                                   
+
 // --------------------------- PUBLIC METHODS
 
 void RasdamanImageIO::SetFileName(const char* filename)
@@ -171,7 +171,7 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 	// collection_name:local_oid
 	this->m_prevImageSpec = this->m_ImageSpec;
 	this->m_ImageSpec = filename;
-	
+
 	// skip checking, if we've already checked the image
 	// (only meaningful with stream reading, but in that case
 	// it helps reducing db queries)
@@ -182,7 +182,7 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 		//		  << "we can read it!" << std::endl);
 		//NMDebugCtx(__rio, << "done!");
 		return true;
-	}             
+	}
 
 
 	// prepare exception
@@ -251,9 +251,9 @@ bool RasdamanImageIO::CanReadFile(const char* filename)
 		else
 			this->m_bCanRead = true;
 	}
-	
+
 	//NMDebugCtx(__rio, << "done!");
-	return this->m_bCanRead;           
+	return this->m_bCanRead;
 }
 
 void RasdamanImageIO::ReadImageInformation()
@@ -701,7 +701,7 @@ RasdamanImageIO::insertForcedLPRDummyImage()//const std::string& collname, r_Min
 	//NMDebugCtx(__rio, << "done!");
 	return oid;
 }
-                                  
+
 void RasdamanImageIO::WriteImageInformation()
 {
 	//NMDebugCtx(__rio, << "...");
@@ -888,8 +888,25 @@ void RasdamanImageIO::WriteImageInformation()
 	string crsname;
 	itk::ExposeMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey,
 			crsname);
+	std::vector<std::string> crs;
+	const int ndims = this->GetNumberOfDimensions();
 	if (crsname.empty())
-		crsname = "CRS:1";
+	{
+		switch(ndims)
+		{
+		case 1:
+			crsname = "%SECORE_URL%/crs/OGC/0/Index1D";
+			break;
+		case 3:
+			crsname = "%SECORE_URL%/crs/OGC/0/Index3D";
+			break;
+		default:
+			crsname = "%SECORE_URL%/crs/OGC/0/Index2D";
+			break;
+		}
+	}
+
+	crs.push_back(crsname);
 
 	string collname = this->m_collname;
 	long oid = this->m_oids[0];
@@ -919,11 +936,23 @@ void RasdamanImageIO::WriteImageInformation()
 	//		stats_min, stats_max, stats_mean, stats_stddev, RATName);
 
 	std::string covname = "";
+
+	// we do the standard stuff for now ...
+	std::vector<bool> axisIndexed;
+	std::vector<int> crs_order;
+	for (int d=0; d < ndims; ++d)
+	{
+		axisIndexed.push_back(false);
+		crs_order.push_back(d);
+	}
+
+
 	this->m_Helper->writePSMetadata(
 			oid,
 			collname,
 			covname,
-			crsname,
+			crs,
+			crs_order,
 			pixeltype,
 			minx,
 			maxx,
@@ -931,7 +960,11 @@ void RasdamanImageIO::WriteImageInformation()
 			maxy,
 			minz,
 			maxz,
-			csx, csy, csz);
+			csx, csy, csz,
+			true,
+			-1,
+			-1,
+			axisIndexed);
 
 	// write RAT
 	// ToDo: this needs checking, whether oid = bands here?
@@ -1444,7 +1477,7 @@ bool RasdamanImageIO::parseImageSpec(const std::string imagespec)
 		//NMDebugCtx(__rio, << "done!");
 		return false;
 	}
-	
+
 	this->m_collstrindex = "";
 	this->m_collnumindex = -1;
 	this->m_oids.clear();
@@ -1470,7 +1503,7 @@ bool RasdamanImageIO::parseImageSpec(const std::string imagespec)
 	else									// in case we got a collection name and oid/index spec
 	{
 		this->m_collname = imagespec.substr(0, pos);
-	
+
 		// get the local oid
 		std::string oidstr = imagespec.substr(pos+1,
 				imagespec.size()-pos+1);
@@ -1603,5 +1636,5 @@ RasdamanImageIO::getRasdamanComponentType(otb::ImageIOBase::IOComponentType otbt
 	return rtype;
 }
 
-	
+
 }		// end of namespace otb

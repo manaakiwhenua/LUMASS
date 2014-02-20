@@ -114,7 +114,7 @@ protected:
 
 	/**
 	 *  Hold the name and type of a column,
-	 *  in the order as columns 'appear' in
+	 *  in the order as columns are added to
 	 *  the table;
 	 */
 	std::vector<std::string> m_vNames;

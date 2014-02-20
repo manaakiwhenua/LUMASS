@@ -31,6 +31,7 @@
 #include <QColor>
 #include <QPainter>
 
+#include "vtkPointData.h"
 #include "vtkMapper.h"
 #include "vtkLongArray.h"
 #include "vtkDoubleArray.h"
@@ -38,6 +39,8 @@
 #include "vtkDataSetAttributes.h"
 #include "vtkMath.h"
 #include "vtkQtEditableTableModelAdapter.h"
+#include "NMQtOtbAttributeTableModel.h"
+//#include "vtkEditableDiscreteClrTransferFunc.h"
 #include "vtkColorTransferFunctionSpecialNodes.h"
 
 #define VALUE_MARGIN 0.0000001
@@ -1120,6 +1123,12 @@ NMLayer::mapValueRamp(void)
 			mLookupTable = 0;
 		}
 
+        //	<<<<<<< Updated upstream
+        //	=======
+        //				int idx = this->getColumnIndex(mLegendValueField);
+        //				QVariant::Type vtype = this->getColumnType(idx);
+        //				std::string tn = QVariant::typeToName(vtype);
+        //>>>>>>> Stashed changes
 
 		// prepare look up table
 		long nrows = mTableModel->rowCount(QModelIndex());
@@ -1132,6 +1141,7 @@ NMLayer::mapValueRamp(void)
 			vtkQtEditableTableModelAdapter* model = static_cast<vtkQtEditableTableModelAdapter*>(mTableModel);
 			vtkTable* tab = vtkTable::SafeDownCast(model->GetVTKDataObject());
 
+            //<<<<<<< Updated upstream
 			if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
 			{
 				hole = vtkUnsignedCharArray::SafeDownCast(tab->GetColumnByName("nm_hole"));
@@ -1167,7 +1177,33 @@ NMLayer::mapValueRamp(void)
 
 			mClrFunc->GetColor(value, fc);
 			mLookupTable->SetTableValue(row+clroff, fc[0], fc[1], fc[2], 1);
+
 		}
+         //=======
+         //			NMQtOtbAttributeTableModel* tm =
+         //					static_cast<NMQtOtbAttributeTableModel*>(
+         //							const_cast<QAbstractItemModel*>(this->getTable()));
+         //
+         //			otb::AttributeTable::Pointer ot = tm->getTable();
+         //			long nrows = ot->GetNumRows();
+         //			void* data = ot->GetColumnPointer(idx);
+         //
+         //			vtkSmartPointer<vtkDataArray> da;
+         //			switch(vtype)
+         //			{
+         //			case QVariant::Double:
+         //				da = vtkSmartPointer<vtkDoubleArray>::New();
+         //				break;
+         //			case QVariant::LongLong:
+         //				da = vtkSmartPointer<vtkLongArray>::New();
+         //				break;
+         //			default: break;
+         //			}
+         //
+         //			da->SetVoidArray(data, nrows, 1);
+         //			id->GetPointData()->SetScalars(da);
+         //>>>>>>> Stashed changes
+		 //}
 
 
 		//unsigned char* lutPt = mLookupTable->WritePointer(1, nrows-1);

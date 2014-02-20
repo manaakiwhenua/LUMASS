@@ -21,7 +21,7 @@ $BODY$
                 -- get a string array of types (attribute names)
                 -- and count the attributes
                 select array_agg(type) into types 
-                  from ps9_extra_metadata_type;
+                  from ps_extra_metadata_type;
                 numtypes := array_length(types, 1);
                         
                 -- determine whether the flatmetadata table exists
@@ -58,7 +58,7 @@ $BODY$
 	
                 -- iterate over coverages (ids), fetch metadata and 
                 -- put it into the prepared flat metadata table
-                qtmp := 'select oid from ps9_rasdaman_collection as s1 order by s1.oid';
+                qtmp := 'select oid from ps_rasdaman_collection as s1 order by s1.oid';
                 for rec in execute qtmp loop
 		    -- fetch metadata for an individual coverage
                     select oid, 

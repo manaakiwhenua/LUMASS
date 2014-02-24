@@ -284,10 +284,10 @@ bool NMTableCalculator::parseFunction()
 	QRegExp exprSep("(\\&\\&|\\?|:|\\|\\|)");
 	// ToDo:: we probably want to take the '=' sign out of here -> double check with muParser
 	QRegExp termIdent("([_a-zA-Z]+[_a-zA-Z\\d]*|'[\\w\\d\\s\\W]*'|\\d*\\.*\\d+)"
-			"\\s*(=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|in|!in|"
-			"startsWith|endsWith|contains)\\s*"
+			"\\s*(=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|"
+			"\bin\b|\b!in\b|\bstartsWith\b|\bendsWith\b|\bcontains\b)\\s*" //"in|!in|startsWith|endsWith|contains)\\s*"
 			"([_a-zA-Z]+[_a-zA-Z\\d]*|'[\\w\\d\\s\\W]*'|\\d*\\.*\\d+)"); // right hand side
-	QRegExp allOps("(?:=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|in|!in|startsWith|endsWith|contains)");
+	QRegExp allOps("(?:=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|\bin\b|\b!in\b|\bstartsWith\b|\bendsWith\b|\bcontains\b)");
 
 	// now we analyse the functional groups and break them down into parts of logical expressions
 	foreach(const QString& grp, groups)
@@ -315,14 +315,10 @@ bool NMTableCalculator::parseFunction()
 					NMDebugCtx(ctxTabCalc, << "done!");
 					return false;
 				}
-				//NMDebugInd(6,
-				//		<< "expression again? " << guts[0].toStdString() << endl);
-				//NMDebugInd(6,
-				//		<< "left-hand-side: '" << guts[1].toStdString() << "'" << endl);
-				//NMDebugInd(6,
-				//		<< "operator: '" << guts[2].toStdString() << "'" << endl);
-				//NMDebugInd(6,
-				//		<< "right-hand-side: '" << guts[3].toStdString() << "'" << endl);
+				NMDebugAI(<< "expression again? " << guts[0].toStdString() << std::endl);
+				NMDebugAI(<< "left-hand-side: '" << guts[1].toStdString() << "'" << std::endl);
+				NMDebugAI(<< "operator: '" << guts[2].toStdString() << "'" << std::endl);
+				NMDebugAI(<< "right-hand-side: '" << guts[3].toStdString() << "'" << std::endl);
 
 				// here, we check, whether the particular operator is a string operator or not
 				// if yes, we add the whole expression to the list of string expressions,
@@ -436,12 +432,16 @@ bool NMTableCalculator::parseFunction()
 						}
 						else
 						{
-							//ToDo:: does this actually make sense?
+							//seems we've got just a string field
+							//given without any operators; so
+							//later we try to just convert to double
 							this->mslStrTerms.append(item);
+							QStringList strNames;
+							strNames << item;// << QString();
 							QList<int> strFields;
-							strFields.append(aridx);
-							strFields.append(-1);
+							strFields  << aridx; //<< -1;
 							this->mLstLstStrFields.append(strFields);
+							this->mLstStrLeftRight.append(strNames);
 							this->mLstNMStrOperator.append(NMTableCalculator::NM_STR_UNKNOWN);
 							NMDebugAI(<< "detected STRING field: "
 									<< egg.toStdString() << std::endl);
@@ -751,112 +751,151 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	//}
 
 	// evaluate string expressions and replace them with numeric results (0 or 1)
-	// in function
+	// or cast to double, if no string operator is given) and put into function
 	newFunc = this->mFunction;
 	for (int t=0; t < this->mslStrTerms.size(); ++t)
 	{
-		//if (row==0 && t==0) {NMDebugAI(<< "processing string expressions ..." << endl);}
+		if (row==0 && t==0) {NMDebugAI(<< "processing string expressions ..." << std::endl);}
 
 		QString origTerm = this->mslStrTerms.at(t);
-		//if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << endl);}
+		if (row==0) {NMDebugAI(<< "... term: " << origTerm.toStdString() << std::endl);}
 
-		int idxleft = this->mLstLstStrFields.at(t).at(0);
-		int idxright = this->mLstLstStrFields.at(t).at(1);
-		QString left;
-		QString right;
-		if (idxleft >= 0)
+		// check whether we've got a three element string expression here or not
+		// in case not, we check for a string field and cast to double, if applicable
+		if (this->mLstLstStrFields.at(t).size() == 2)
 		{
-			QModelIndex fidx = this->mModel->index(row, idxleft, QModelIndex());
-			left = this->mModel->data(fidx, Qt::DisplayRole).toString().trimmed();
-		}
-		else
-		{
-			left = this->mLstStrLeftRight.at(t).at(0);
-		}
-
-		if (idxright >= 0)
-		{
-			QModelIndex fidx = this->mModel->index(row, idxright, QModelIndex());
-			right = this->mModel->data(fidx, Qt::DisplayRole).toString().trimmed();
-		}
-		else
-		{
-			right = this->mLstStrLeftRight.at(t).at(1);
-		}
-
-		// debug
-		//if (row == 0)
-		//{
-		//	NMDebugAI(<< "... evaluating: "
-		//			<< left.toStdString() << " "
-		//			<< mLstNMStrOperator.at(t) << " "
-		//			<< right.toStdString() << endl);
-		//}
-
-		// eval expression
-		switch (this->mLstNMStrOperator.at(t))
-		{
-		case NM_STR_GT:
-			strExpRes = QString::localeAwareCompare(left, right) > 0 ? 1 : 0;
-			break;
-		case NM_STR_GTEQ:
-			strExpRes = (QString::localeAwareCompare(left, right) > 0) ||
-						(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
-			break;
-		case NM_STR_LT:
-			strExpRes = QString::localeAwareCompare(left, right) < 0 ? 1 : 0;
-			break;
-		case NM_STR_LTEQ:
-			strExpRes = (QString::localeAwareCompare(left, right) < 0) ||
-						(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
-			break;
-		case NM_STR_EQ:
-			strExpRes = QString::localeAwareCompare(left, right) == 0 ? 1 : 0;
-			break;
-		case NM_STR_NEQ:
-			strExpRes = QString::localeAwareCompare(left, right) != 0 ? 1 : 0;
-			break;
-		case NM_STR_IN:
+			// are both fields strings or do we have
+			// a numeric field in between?
+			int idxleft = this->mLstLstStrFields.at(t).at(0);
+			int idxright = this->mLstLstStrFields.at(t).at(1);
+			QString left;
+			QString right;
+			if (idxleft >= 0)
 			{
-				strExpRes = 0;
-				QStringList ll = left.simplified().split(" ");
-				foreach(const QString& l, ll)
+				QModelIndex fidx = this->mModel->index(row, idxleft, QModelIndex());
+				left = this->mModel->data(fidx, Qt::DisplayRole).toString().trimmed();
+			}
+			else
+			{
+					left = this->mLstStrLeftRight.at(t).at(0);
+			}
+
+			if (idxright >= 0)
+			{
+				QModelIndex fidx = this->mModel->index(row, idxright, QModelIndex());
+				right = this->mModel->data(fidx, Qt::DisplayRole).toString().trimmed();
+			}
+			else
+			{
+					right = this->mLstStrLeftRight.at(t).at(1);
+			}
+
+			// debug
+			if (row == 0)
+			{
+				NMDebugAI(<< "... evaluating: "
+						<< left.toStdString() << " "
+						<< mLstNMStrOperator.at(t) << " "
+						<< right.toStdString() << std::endl);
+			}
+
+			// eval expression
+			switch (this->mLstNMStrOperator.at(t))
+			{
+			case NM_STR_GT:
+				strExpRes = QString::localeAwareCompare(left, right) > 0 ? 1 : 0;
+				break;
+			case NM_STR_GTEQ:
+				strExpRes = (QString::localeAwareCompare(left, right) > 0) ||
+							(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
+				break;
+			case NM_STR_LT:
+				strExpRes = QString::localeAwareCompare(left, right) < 0 ? 1 : 0;
+				break;
+			case NM_STR_LTEQ:
+				strExpRes = (QString::localeAwareCompare(left, right) < 0) ||
+							(QString::localeAwareCompare(left, right) == 0)    ? 1 : 0;
+				break;
+			case NM_STR_EQ:
+				strExpRes = QString::localeAwareCompare(left, right) == 0 ? 1 : 0;
+				break;
+			case NM_STR_NEQ:
+				strExpRes = QString::localeAwareCompare(left, right) != 0 ? 1 : 0;
+				break;
+			case NM_STR_IN:
 				{
-					if (right.contains(l, Qt::CaseInsensitive))
+					strExpRes = 0;
+					QStringList ll = left.simplified().split(" ");
+					foreach(const QString& l, ll)
 					{
-						strExpRes = 1;
-						break;
+						if (right.contains(l, Qt::CaseInsensitive))
+						{
+							strExpRes = 1;
+							break;
+						}
 					}
 				}
-			}
-			break;
-		case NM_STR_NOTIN:
-			{
-				strExpRes = 0;
-				QStringList ll = left.simplified().split(" ");
-				foreach(const QString& l, ll)
+				break;
+			case NM_STR_NOTIN:
 				{
-					if (!right.contains(l, Qt::CaseInsensitive))
+					strExpRes = 0;
+					QStringList ll = left.simplified().split(" ");
+					foreach(const QString& l, ll)
 					{
-						strExpRes = 1;
-						break;
+						if (!right.contains(l, Qt::CaseInsensitive))
+						{
+							strExpRes = 1;
+							break;
+						}
 					}
 				}
+				break;
+			case NM_STR_CONTAINS:
+				strExpRes = left.contains(right, Qt::CaseInsensitive) ? 1 : 0;
+				break;
+			case NM_STR_STARTSWITH:
+				strExpRes = left.startsWith(right, Qt::CaseInsensitive) ? 1 : 0;
+				break;
+			case NM_STR_ENDSWITH:
+				strExpRes = left.endsWith(right, Qt::CaseInsensitive) ? 1 : 0;
+				break;
 			}
-			break;
-		case NM_STR_CONTAINS:
-			strExpRes = left.contains(right, Qt::CaseInsensitive) ? 1 : 0;
-			break;
-		case NM_STR_STARTSWITH:
-			strExpRes = left.startsWith(right, Qt::CaseInsensitive) ? 1 : 0;
-			break;
-		case NM_STR_ENDSWITH:
-			strExpRes = left.endsWith(right, Qt::CaseInsensitive) ? 1 : 0;
-			break;
-		}
 
-		newFunc = newFunc.replace(origTerm, QString("%1").arg(strExpRes),
-				Qt::CaseInsensitive);
+			// replace original string expression with either 0 or 1 (int)
+			newFunc = newFunc.replace(origTerm, QString("%1").arg(strExpRes),
+					Qt::CaseInsensitive);
+		}
+		// convert single
+		else if (this->mLstLstStrFields.at(t).size() == 1)
+		{
+			int idx;
+			bool bok = false;
+			double val;
+
+			idx = this->mLstLstStrFields.at(t).at(0);
+			if (idx >=0)
+			{
+				const QModelIndex mi = this->mModel->index(row, idx, QModelIndex());
+				val = mi.data(Qt::DisplayRole).toDouble(&bok);
+			}
+
+			if (bok)
+			{
+				newFunc = newFunc.replace(origTerm, QString("%1").arg(val),
+						Qt::CaseInsensitive);
+			}
+			else
+			{
+				itk::ExceptionObject e;
+				std::stringstream msg;
+				msg << "Failed converting '" << origTerm.toStdString() << "' "
+					<< "into numeric value!";
+				e.SetDescription(msg.str());
+				msg.str("");
+				e.SetLocation(ctxTabCalc);
+				throw e;
+			}
+		}
 	}
 
 	try

@@ -45,7 +45,7 @@
 
 // to account for the different table names
 // of the rasdaman feature branch (as 2013-10)
-#define PSPREFIX "ps9"
+#define PSPREFIX "ps"
 
 namespace otb
 {

@@ -2156,6 +2156,11 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 	while ((pFeat = l.GetNextFeature()) != NULL)
 	{
 		OGRGeometry *geom = pFeat->GetGeometryRef();
+		if (geom == 0)
+		{
+			NMWarn(ctxOtbModellerWin, << "Oops - got NULL geometry for this feature! - Abort.");
+			continue;
+		}
 		int fid = pFeat->GetFieldAsInteger(0);
 
 		int wkbSize = geom->WkbSize();

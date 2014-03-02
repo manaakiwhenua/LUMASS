@@ -287,7 +287,7 @@ void RasdamanImageIO::ReadImageInformation()
 		if (d == 1)
 		{
 			this->SetOrigin(d, geodom[step+1]);			  // real world origin
-			this->SetSpacing(d, cellsize[d] * -1);
+			this->SetSpacing(d, cellsize[d]);// * -1);
 		}
 		else
 		{
@@ -815,7 +815,7 @@ void RasdamanImageIO::WriteImageInformation()
 	double minz = ndim == 3 ? this->GetOrigin(2) : numeric_limits<double>::max() * -1;
 	double csx = this->GetSpacing(0);
 	double csy = this->GetSpacing(1);
-	csy = csy < 0 ? csy * -1 : csy;
+	//csy = csy < 0 ? csy * -1 : csy;
 	double csz = ndim == 3 ? this->GetSpacing(2) : 0;
 	int xpix = this->m_Dimensions[0];
 	int ypix = this->m_Dimensions[1];
@@ -830,7 +830,7 @@ void RasdamanImageIO::WriteImageInformation()
 	}
 
 	double maxx = minx + csx * xpix;
-	double miny = maxy - csy * ypix;
+	double miny = maxy + csy * ypix;
 	double maxz = ndim == 3 ? minz + csz * zpix : numeric_limits<double>::max();
 
 	// get the current image domain geospatial info
@@ -895,13 +895,13 @@ void RasdamanImageIO::WriteImageInformation()
 		switch(ndims)
 		{
 		case 1:
-			crsname = "%SECORE_URL%/crs/OGC/0/Index1D";
+			crsname = "%SECORE_URL%/crs/OGC/0/Unknown1D";
 			break;
 		case 3:
-			crsname = "%SECORE_URL%/crs/OGC/0/Index3D";
+			crsname = "%SECORE_URL%/crs/OGC/0/Unknown3D";
 			break;
 		default:
-			crsname = "%SECORE_URL%/crs/OGC/0/Index2D";
+			crsname = "%SECORE_URL%/crs/OGC/0/Unknown2D";
 			break;
 		}
 	}

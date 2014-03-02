@@ -4,7 +4,7 @@
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -254,7 +254,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
 	//Qt::WindowFlags flags = this->windowFlags() | Qt::WA_DeleteOnClose;
 	//this->setWindowFlags(flags);
-	
+
 	// some meta type registration for supporting the given types for
 	// properties and QVariant
 	qRegisterMetaType< QList< QStringList> >();
@@ -265,7 +265,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	qRegisterMetaType< NMLayer::NMLayerType >();
 	qRegisterMetaType< NMLayer::NMLegendClassType >();
 	qRegisterMetaType< NMLayer::NMColourRamp >();
-#ifdef BUILD_RASSUPPORT	
+#ifdef BUILD_RASSUPPORT
 	qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif
 	qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
@@ -473,7 +473,7 @@ OtbModellerWin::~OtbModellerWin()
 	if (this->mpRasconn)
 		delete this->mpRasconn;
 #endif
-	
+
 	NMDebugAI(<< "delete ui ..." << endl);
 	delete ui;
 
@@ -681,7 +681,7 @@ void OtbModellerWin::importODBC(void)
 
 	// ask for the name and the type of the new data field
 	bool bOk = false;
-#ifdef BUILD_RASSUPPORT	
+#ifdef BUILD_RASSUPPORT
 	QString dsn = QInputDialog::getText(this, tr("ODBC Data Source Name"),
 			tr("..."),
 			QLineEdit::Normal, tr("psql://rasdaman:rasdaman@localhost:5432/RASBASE"), &bOk);
@@ -2405,6 +2405,14 @@ void OtbModellerWin::loadVectorLayer()
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
+void
+OtbModellerWin::connectImageLayerProcSignals(NMLayer* layer)
+{
+	connect(layer, SIGNAL(layerProcessingStart()), this, SLOT(showBusyStart()));
+	connect(layer, SIGNAL(layerProcessingEnd()), this, SLOT(showBusyEnd()));
+	connect(layer, SIGNAL(layerLoaded()), this, SLOT(addLayerToCompList()));
+}
+
 #ifdef BUILD_RASSUPPORT
 void
 OtbModellerWin::loadRasdamanLayer()
@@ -2424,14 +2432,6 @@ OtbModellerWin::loadRasdamanLayer()
 				"is configured properly!");
 		return;
 	}
-}
-
-void
-OtbModellerWin::connectImageLayerProcSignals(NMLayer* layer)
-{
-	connect(layer, SIGNAL(layerProcessingStart()), this, SLOT(showBusyStart()));
-	connect(layer, SIGNAL(layerProcessingEnd()), this, SLOT(showBusyEnd()));
-	connect(layer, SIGNAL(layerLoaded()), this, SLOT(addLayerToCompList()));
 }
 
 void

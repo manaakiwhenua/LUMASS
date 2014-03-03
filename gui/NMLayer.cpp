@@ -1689,7 +1689,13 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 			}
 			else
 			{
-				mLookupTable->SetTableValue(legendRow-1, rgba);
+				vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+				vtkLongArray* nmids = vtkLongArray::SafeDownCast(dsAttr->GetArray("nm_id"));
+				long ncells = nmids->GetNumberOfTuples();
+				for (long r=0; r < ncells; ++r)
+				{
+					mLookupTable->SetTableValue(r, rgba);
+				}
 			}
 		}
 		break;

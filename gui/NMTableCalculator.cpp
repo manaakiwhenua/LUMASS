@@ -285,9 +285,9 @@ bool NMTableCalculator::parseFunction()
 	// ToDo:: we probably want to take the '=' sign out of here -> double check with muParser
 	QRegExp termIdent("([_a-zA-Z]+[_a-zA-Z\\d]*|'[\\w\\d\\s\\W]*'|\\d*\\.*\\d+)"
 			"\\s*(=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|"
-			"\bin\b|\b!in\b|\bstartsWith\b|\bendsWith\b|\bcontains\b)\\s*" //"in|!in|startsWith|endsWith|contains)\\s*"
+			"in|!in|startsWith|endsWith|contains)\\s*"
 			"([_a-zA-Z]+[_a-zA-Z\\d]*|'[\\w\\d\\s\\W]*'|\\d*\\.*\\d+)"); // right hand side
-	QRegExp allOps("(?:=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|\bin\b|\b!in\b|\bstartsWith\b|\bendsWith\b|\bcontains\b)");
+	QRegExp allOps("(?:=|!=|>|<|>=|<=|==|\\+|-|\\*|/|\\^|in|!in|startsWith|endsWith|contains)");
 
 	// now we analyse the functional groups and break them down into parts of logical expressions
 	foreach(const QString& grp, groups)

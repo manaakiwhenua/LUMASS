@@ -1619,6 +1619,8 @@ int NMMosra::addObjFn(void)
 	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
+	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
+
 
 	// some vars we need
 
@@ -1661,7 +1663,7 @@ int NMMosra::addObjFn(void)
 			if (dsAttr->GetArray(sField.toStdString().c_str(), *(plFieldIndices + option)) == NULL)
 			{
 				NMErr(ctxNMMosra, << "failed to get performance indicator '"
-						<< sField.toStdString() << "' for option '" 
+						<< sField.toStdString() << "' for option '"
 						<< this->mslOptions.at(option).toStdString() << "'!");
 
 				// free some memory
@@ -1719,6 +1721,22 @@ int NMMosra::addObjFn(void)
 				if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
 					dCoeff *= dWeight;
 
+				// do we have binary decision variables?
+				double area = areas->GetTuple1(f);
+				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
+				bool bok;
+				switch(this->meDVType)
+				{
+				case NM_MOSO_BINARY:
+					dCoeff = vtkMath::Floor(dCoeff);
+					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
+					break;
+				case NM_MOSO_INT:
+					dCoeff = vtkMath::Floor(dCoeff);
+					break;
+				}
+
+
 				// write coefficient into row array
 				if (objcount)
 					pdRow[arpos] += dCoeff;
@@ -1775,6 +1793,7 @@ int NMMosra::addObjCons(void)
 	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
+	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
 	long lNumCells = hole->GetNumberOfTuples();
 
 	// create vectors holding the constraint types
@@ -1868,6 +1887,21 @@ int NMMosra::addObjCons(void)
 			{
 				vtkDataArray* da = dsAttr->GetArray(piFieldIndices[option]);
 				dCoeff = da->GetTuple1(f);
+
+				// do we have binary decision variables?
+				double area = areas->GetTuple1(f);
+				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
+				bool bok;
+				switch(this->meDVType)
+				{
+				case NM_MOSO_BINARY:
+					dCoeff = vtkMath::Floor(dCoeff);
+					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
+					break;
+				case NM_MOSO_INT:
+					dCoeff = vtkMath::Floor(dCoeff);
+					break;
+				}
 
 				pdRow[lCounter] = dCoeff;
 				piColno[lCounter] = colpos;

@@ -756,7 +756,7 @@ int NMImageLayer::updateAttributeTable()
 	// in any case, we create a new item selection model
 	if (this->mSelectionModel == 0)
 	{
-		this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, 0);
+		this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
 	}
 	this->mTableModel = otbModel;
 

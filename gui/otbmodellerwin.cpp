@@ -1570,8 +1570,10 @@ void OtbModellerWin::doMOSO()
 		if (resTab.GetPointer() != 0)
 		{
 			vtkQtTableModelAdapter* tabModel = new vtkQtTableModelAdapter(this);
+			NMFastTrackSelectionModel* ftsm = new NMFastTrackSelectionModel(tabModel, this);
 			tabModel->setTable(resTab);
 			NMTableView* tv = new NMTableView(tabModel, this);
+			tv->setSelectionModel(ftsm);
 			tv->setTitle(tr("Optimisation results!"));
 			tv->show();
 		}

@@ -927,38 +927,27 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	int a = -5507;
-	void* b = reinterpret_cast<void*>(a);
+	NMLayer* l = this->ui->modelCompList->getSelectedLayer();
+	if (l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+		return;
 
-	qint64 c = reinterpret_cast<qint64>(b);
+	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+	otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
 
-	NMDebugAI(<< "a=" << a << " internalPointer() < 0 ?=" << (b<0) << " internalId()=" << c << std::endl);
+	tab->Print(std::cout, itk::Indent(2), 30);
 
-	NMVectorLayer* vla = new NMVectorLayer(0);
-	void* vlb = reinterpret_cast<void*>(vla);
-	qint64 vlc = reinterpret_cast<qint64>(vlb);
+	double val = tab->GetDblValue("CFshp07", 24);
 
-	NMDebugAI(<< "vla=" << vla << " internalPointer() < 0 ?=" << (vlb<0) << " internalId()=" << vlc << std::endl);
+	if (val != val)
+	{
+		NMDebugAI(<< "yep - it's a nan!" << std::endl);
+	}
+	else
+	{
+		NMDebugAI(<< "just a number!" << std::endl);
+	}
 
-	//NMLayer* layer = this->ui->modelCompList->getSelectedLayer();
-	//if (layer == 0 || layer->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-	//	return;
-    //
-	//NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
-	//vtkImageData* id = vtkImageData::SafeDownCast(const_cast<vtkDataSet*>(il->getDataSet()));
-    //
-	//vtkPointData* dsa = id->GetPointData();
-    //
-	//for (int a=0; a < dsa->GetNumberOfArrays(); ++a)
-	//{
-    //
-	//	NMDebugAI(<< "name: " << dsa->GetArrayName(a)
-	//			  << " type: " << dsa->GetAttributeTypeAsString(a)
-	//			  << " #elem: " << dsa->GetAbstractArray(a)->GetNumberOfTuples()
-	//			  << std::endl);
-	//}
-
-
+	NMDebugAI(<< "CFshp07 at row 24 = " << val << std::endl);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

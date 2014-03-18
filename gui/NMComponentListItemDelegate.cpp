@@ -175,11 +175,11 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		QRect upperRect(textRect.x(), option.rect.top(), option.rect.width(), textRect.height());
 		QRect lowerRect(textRect.x(), option.rect.bottom()-textRect.height(), option.rect.width(), textRect.height());
 
-		qDebug() << "mouse pos:   " << mLastMousePos;
-		qDebug() << "option rect: " << option.rect;
-		qDebug() << "text rect:   " << textRect;
-		qDebug() << "upperRect:   " << upperRect;
-		qDebug() << "lowerRect:   " << lowerRect;
+		//qDebug() << "mouse pos:   " << mLastMousePos;
+		//qDebug() << "option rect: " << option.rect;
+		//qDebug() << "text rect:   " << textRect;
+		//qDebug() << "upperRect:   " << upperRect;
+		//qDebug() << "lowerRect:   " << lowerRect;
 
 		QLineEdit* lineedit = 0;
 		QString dval;

@@ -26,6 +26,8 @@
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMFastTrackSelectionModel.h"
 #include "NMTableCalculator.h"
+#include "NMStreamingImageFileWriterWrapper.h"
+#include "NMRasdamanConnectorWrapper.h"
 
 #include <QTime>
 #include <QtCore>
@@ -893,6 +895,7 @@ bool NMImageLayer::setFileName(QString filename)
 	//}
 
 	this->mImage = 0;
+	this->mFileName = filename;
 	this->initiateLegend();
 
 	emit layerProcessingEnd();
@@ -1068,6 +1071,38 @@ NMImageLayer::writeDataSet(void)
 	// call parent first, to deal with the
 	// layer's state recording
 	NMLayer::writeDataSet();
+
+	if (this->mFileName.isEmpty())
+	{
+		NMErr(ctxNMImageLayer, << "No valid file name set! Abort!")
+		return;
+	}
+
+	NMStreamingImageFileWriterWrapper* writer = new NMStreamingImageFileWriterWrapper(
+			this, this->getITKComponentType(), this->getNumDimensions(), this->getNumBands());
+
+#ifdef BUILD_RASSUPPORT
+	if (this->isRasLayer())
+	{
+		NMRasdamanConnectorWrapper rcon(this);
+		rcon.setConnector(this->mpRasconn);
+
+		writer->setRasConnector(&rcon);
+	}
+#endif
+
+	writer->setFileNames(QStringList(this->mFileName));
+
+	NMItkDataObjectWrapper* dw = this->getImage();
+	if (this->mOtbRAT.IsNotNull())
+	{
+		dw->setOTBTab(this->mOtbRAT);
+	}
+
+	writer->setInput(dw);
+	writer->instantiateObject();
+	writer->update();
+
 
 //	if (!this->isRasLayer())
 //	{

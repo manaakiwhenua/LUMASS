@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -164,6 +164,12 @@ public:
 
   /** Reads the Attribute Table of the nth band*/
   virtual AttributeTable::Pointer ReadRAT(unsigned int iBand);
+
+  /** Writes an attribute table to the nth band of the specified
+   *  GDALDataset
+   */
+  virtual void WriteRAT(AttributeTable::Pointer tab, unsigned int iBand=1);
+
 
 protected:
   /** Constructor.*/

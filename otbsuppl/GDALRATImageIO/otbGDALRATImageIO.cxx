@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
+ /******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -1121,6 +1121,7 @@ bool GDALRATImageIO::CanWriteFile(const char* name)
   std::string gdalDriverShortName = FilenameToGdalDriverShortName(name);
   if (gdalDriverShortName == "NOT-FOUND")
     {
+	itkDebugMacro(<< "Couldn't find suitable driver for file type.");
     return false;
     }
 
@@ -1968,6 +1969,103 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	//otbTab->Print(std::cout, itk::Indent(0), 100);
 
 	return otbTab;
+}
+
+void
+GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
+{
+	// if m_Dataset hasn't been instantiated before, we do it here, because
+	// we just do an independent write of the RAT into the data set
+	// (i.e. outside any pipeline activities ...)
+	GDALDataset* ds;
+	if (m_Dataset.IsNull())
+	{
+		m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+		if (m_Dataset.IsNull())
+			return;
+	}
+
+	// data set already available?
+	ds = m_Dataset->GetDataSet();
+	if (ds == 0)
+	{
+		//itkWarningMacro(<< "ReadRAT: unable to access data set!");
+		//itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+		return;
+	}
+
+	// how many bands? (band index is 1-based)
+	if (ds->GetRasterCount() < iBand)
+		return;
+
+	// fetch the band
+	GDALRasterBand* band = ds->GetRasterBand(iBand);
+
+	// create a new raster attribute table
+	// note: we just create a whole new table and replace the
+	// current one; we don't bother with just writing changed
+	// values (too lazy for doing the required housekeeping
+	// beforehand) ...
+	GDALRasterAttributeTable gdaltab;
+	gdaltab.SetRowCount(tab->GetNumRows());
+
+	// add the category field "Value"
+	gdaltab.CreateColumn("Value", GFT_Integer, GFU_MinMax);
+	CPLErr err;
+
+	// add all the other columns
+	for (int col = 1; col < tab->GetNumCols(); ++col)
+	{
+		GDALRATFieldType type;
+		switch(tab->GetColumnType(col))
+		{
+		case otb::AttributeTable::ATTYPE_INT:
+			type = GFT_Integer;
+			break;
+		case otb::AttributeTable::ATTYPE_DOUBLE:
+			type = GFT_Real;
+			break;
+		case otb::AttributeTable::ATTYPE_STRING:
+			type = GFT_String;
+			break;
+		}
+
+		GDALRATFieldUsage usage = GFU_Generic;
+		err = gdaltab.CreateColumn(tab->GetColumnName(col).c_str(),
+							type, usage);
+		if (err == CE_Failure)
+		{
+			itkExceptionMacro(<< "Failed creating column '" <<
+					tab->GetColumnName(col).c_str() << "!");
+		}
+	}
+
+	// copy values row by row
+	for (long row=0; row < tab->GetNumRows(); ++row)
+	{
+		for (int col=0; col < tab->GetNumCols(); ++col)
+		{
+			switch(tab->GetColumnType(col))
+			{
+			case otb::AttributeTable::ATTYPE_INT:
+				gdaltab.SetValue(row, col, (int)tab->GetIntValue(col, row));
+				break;
+			case otb::AttributeTable::ATTYPE_DOUBLE:
+				gdaltab.SetValue(row, col, tab->GetDblValue(col, row));
+				break;
+			case otb::AttributeTable::ATTYPE_STRING:
+				gdaltab.SetValue(row, col, tab->GetStrValue(col, row).c_str());
+				break;
+			}
+		}
+	}
+
+	// associate the table with the band
+	err = band->SetDefaultRAT(&gdaltab);
+	if (err == CE_Failure)
+	{
+		itkExceptionMacro(<< "Failed writing table to band!");
+	}
 }
 
 

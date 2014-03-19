@@ -1080,33 +1080,49 @@ NMImageLayer::writeDataSet(void)
 		return;
 	}
 
+	bool berr = false;
+	const char* fn = this->mFileName.toStdString().c_str();
+	unsigned int band = this->mOtbRAT->GetBandNumber();
+
 #ifdef BUILD_RASSUPPORT
 	if (this->isRasLayer())
 	{
+		NMDebugAI(<< "writing rasdaman stuff ... !" << std::endl);
 		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
 		rio->setRasdamanConnector(this->mpRasconn);
 
-		rio->SetFileName(this->mFileName.toStdString().c_str());
+		rio->SetFileName(fn);
 		if (rio->CanWriteFile(0) && this->mOtbRAT.IsNotNull())
 		{
-			unsigned int band = this->mOtbRAT->GetBandNumber();
 			std::vector<double> oids = rio->getOIDs();
 			rio->writeRAT(this->mOtbRAT.GetPointer(), band, oids[band-1]);
 		}
 		else
 		{
-			NMErr(ctxNMImageLayer, << "Bugger! Couldn't update the RAT!");
-			NMDebugCtx(ctxNMImageLayer, << "done!");
-			return;
+			berr = true;
 		}
 	}
 	else
 #endif
 	{
-		NMDebugAI(<< "writing GDAL stuff ... !");
+		NMDebugAI(<< "writing GDAL stuff ... !" << std::endl);
 
+		otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+		gio->SetFileName(fn);
+		if (gio->CanWriteFile(fn))
+		{
+			gio->WriteRAT(this->mOtbRAT, band);
+		}
+		else
+		{
+			berr = true;
+		}
 	}
 
+	if (berr)
+	{
+		NMErr(ctxNMImageLayer, << "Bugger! Couldn't update the RAT!");
+	}
 
 	NMDebugCtx(ctxNMImageLayer, << "done!");
 }

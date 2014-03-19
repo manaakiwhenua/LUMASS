@@ -815,7 +815,6 @@ void RasdamanImageIO::WriteImageInformation()
 	double minz = ndim == 3 ? this->GetOrigin(2) : numeric_limits<double>::max() * -1;
 	double csx = this->GetSpacing(0);
 	double csy = this->GetSpacing(1);
-	//csy = csy < 0 ? csy * -1 : csy;
 	double csz = ndim == 3 ? this->GetSpacing(2) : 0;
 	int xpix = this->m_Dimensions[0];
 	int ypix = this->m_Dimensions[1];
@@ -946,7 +945,9 @@ void RasdamanImageIO::WriteImageInformation()
 		crs_order.push_back(d);
 	}
 
-
+	// note: RasdamanHelper2::writePSMetadata expects
+	// cellsizes to be positive!
+	csy = csy < 0 ? csy * -1 : csy;
 	this->m_Helper->writePSMetadata(
 			oid,
 			collname,
@@ -1216,7 +1217,7 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 		PQclear(res);
 	}
 
-	NMDebug(<< std:endl);
+	NMDebug(<< std::endl);
 	// --------------------------------------------------------------
 
 	// write a reference to the table into the ps database

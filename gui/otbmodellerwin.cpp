@@ -649,12 +649,13 @@ void OtbModellerWin::aboutLUMASS(void)
 												  .arg(_lumass_commit_hash)
 												  .arg(_lumass_commit_date);
 
+	QString year = QString(_lumass_commit_date).split(" ").at(4);
 	QString title = tr("About LUMASS");
 	stringstream textstr;
 	textstr << "LUMASS - The Land-Use Management Support System" << endl
 			<< vinfo.toStdString() << endl
 			<< "Developed by Alexander Herzig" << endl
-			<< "Copyright 2012 Landcare Research New Zealand Ltd" << endl
+			<< "Copyright 2010-" << year.toStdString() << " Landcare Research New Zealand Ltd" << endl
 			<< "www.landcareresearch.co.nz" << endl << endl
 			<< "LUMASS is free software and licenced under the GPL v3." << endl
 			<< "Contact: herziga@landcareresearch.co.nz" << endl

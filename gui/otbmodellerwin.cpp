@@ -934,9 +934,11 @@ void OtbModellerWin::test()
 	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
 	otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
 
-	tab->Print(std::cout, itk::Indent(2), 30);
+	tab->Print(std::cout, itk::Indent(2), 24);
 
 	double val = tab->GetDblValue("CFshp07", 24);
+	NMDebugAI(<< "CFshp07 at row 24 = " << val << std::endl);
+
 
 	if (val != val)
 	{
@@ -947,7 +949,15 @@ void OtbModellerWin::test()
 		NMDebugAI(<< "just a number!" << std::endl);
 	}
 
-	NMDebugAI(<< "CFshp07 at row 24 = " << val << std::endl);
+	if (std::numeric_limits<long>::has_quiet_NaN)
+	{
+		NMDebugAI(<< "long can be quiet NaN too!" << std::endl);
+	}
+	else
+	{
+		NMDebugAI(<< "no way long could represent NaN!" << std::endl);
+	}
+
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

@@ -21,7 +21,6 @@
  *  Created on: 18/01/2012
  *      Author: alex
  */
-
 #include "NMImageLayer.h"
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMFastTrackSelectionModel.h"
@@ -33,8 +32,12 @@
 #include <QtCore>
 #include <QInputDialog>
 
+#include "itkDataObject.h"
+#include "otbImage.h"
+#include "otbVectorImage.h"
 #include "itkImageRegion.h"
 #include "itkPoint.h"
+#include "itkExceptionObject.h"
 
 #include "vtkImageData.h"
 #include "vtkImageSlice.h"
@@ -63,10 +66,6 @@
 #include "vtkDiscretizableColorTransferFunction.h"
 #include "vtkImageMapper.h"
 #include "vtkActor2D.h"
-
-#include "itkDataObject.h"
-#include "otbImage.h"
-#include "otbVectorImage.h"
 
 template<class PixelType, unsigned int Dimension>
 class InternalImageHelper
@@ -1068,6 +1067,8 @@ void NMImageLayer::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputIm
 void
 NMImageLayer::writeDataSet(void)
 {
+	NMDebugCtx(ctxNMImageLayer, << "...");
+
 	// call parent first, to deal with the
 	// layer's state recording
 	NMLayer::writeDataSet();
@@ -1075,47 +1076,39 @@ NMImageLayer::writeDataSet(void)
 	if (this->mFileName.isEmpty())
 	{
 		NMErr(ctxNMImageLayer, << "No valid file name set! Abort!")
+		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return;
 	}
-
-	NMStreamingImageFileWriterWrapper* writer = new NMStreamingImageFileWriterWrapper(
-			this, this->getITKComponentType(), this->getNumDimensions(), this->getNumBands());
 
 #ifdef BUILD_RASSUPPORT
 	if (this->isRasLayer())
 	{
-		NMRasdamanConnectorWrapper rcon(this);
-		rcon.setConnector(this->mpRasconn);
+		otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
+		rio->setRasdamanConnector(this->mpRasconn);
 
-		writer->setRasConnector(&rcon);
+		rio->SetFileName(this->mFileName.toStdString().c_str());
+		if (rio->CanWriteFile(0) && this->mOtbRAT.IsNotNull())
+		{
+			unsigned int band = this->mOtbRAT->GetBandNumber();
+			std::vector<double> oids = rio->getOIDs();
+			rio->writeRAT(this->mOtbRAT.GetPointer(), band, oids[band-1]);
+		}
+		else
+		{
+			NMErr(ctxNMImageLayer, << "Bugger! Couldn't update the RAT!");
+			NMDebugCtx(ctxNMImageLayer, << "done!");
+			return;
+		}
 	}
+	else
 #endif
-
-	writer->setFileNames(QStringList(this->mFileName));
-
-	NMItkDataObjectWrapper* dw = this->getImage();
-	if (this->mOtbRAT.IsNotNull())
 	{
-		dw->setOTBTab(this->mOtbRAT);
+		NMDebugAI(<< "writing GDAL stuff ... !");
+
 	}
 
-	writer->setInput(dw);
-	writer->instantiateObject();
-	writer->update();
 
-
-//	if (!this->isRasLayer())
-//	{
-//		// we do something here for file-based layers
-//	}
-//
-//
-//#ifdef BUILD_RASSUPPORT
-//	otb::RasdamanImageIO::Pointer rio = otb::RasdamanImageIO::New();
-//	std::vector<double> oids = rio->getOIDs();
-//
-//	rio->writeRAT(this->mOtbRAT, 1, oids[0]);
-//#endif
+	NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
 void

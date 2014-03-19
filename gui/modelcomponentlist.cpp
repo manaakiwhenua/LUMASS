@@ -190,7 +190,7 @@ void ModelComponentList::saveLayerChanges()
 	this->setCurrentIndex(QModelIndex());
 	if (l != 0)
 	{
-		NMDebugAI(<< "going to save changes to the data set!" << endl);
+		NMDebugAI(<< "going to save changes to the data set..." << endl);
 		l->writeDataSet();
 	}
 }

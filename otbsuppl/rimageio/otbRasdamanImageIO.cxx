@@ -1167,8 +1167,20 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 				query << tab->GetIntValue(c_orig, r);
 				break;
 			case AttributeTable::ATTYPE_DOUBLE:
-				query << tab->GetDblValue(c_orig, r);
+				{
+					double val = tab->GetDblValue(c_orig, r);
+					// NaN test complying with IEEE floating-point arithmetic
+					if (val != val)
+					{
+						query << "\'NaN\'::numeric";
+					}
+					else
+					{
+						query << val;
+					}
+				}
 				break;
+
 			case AttributeTable::ATTYPE_STRING:
 				string val = tab->GetStrValue(c_orig, r);
 				//if (val.empty())
@@ -1203,16 +1215,16 @@ void RasdamanImageIO::writeRAT(otb::AttributeTable* tab,
 		query.str("");
 		PQclear(res);
 	}
-	//NMDebug(<< " done!" << endl);
 
+	NMDebug(<< std:endl);
 	// --------------------------------------------------------------
 
 	// write a reference to the table into the ps database
 	std::string metadata = "attrtable_name=" + tablename.str();
 	if (!this->m_Helper->writeExtraMetadata(oid, metadata))
 	{
-		NMErr(__rio, << "failed writing RAT name '" << tablename.str()
-				<< "' into nm_meta table!");
+		NMWarn(__rio, << "failed writing RAT name '" << tablename.str()
+				<< "' into '" << this->m_Rasconn->getRasDbName() << "'!");
 	}
 
 	//// write the name of this table into the nm_meta table

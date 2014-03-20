@@ -1081,7 +1081,7 @@ NMImageLayer::writeDataSet(void)
 	}
 
 	bool berr = false;
-	const char* fn = this->mFileName.toStdString().c_str();
+	const char* fn = this->mFileName.toAscii().data();
 	unsigned int band = this->mOtbRAT->GetBandNumber();
 
 #ifdef BUILD_RASSUPPORT

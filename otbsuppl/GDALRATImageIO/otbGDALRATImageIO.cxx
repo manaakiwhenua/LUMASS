@@ -1,5 +1,5 @@
- /******************************************************************************
- * Created by Alexander Herzig
+ /****************************	**************************************************
+ * Created by Alexander Herzig;
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
@@ -1862,38 +1862,40 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     // they don't match it, we enclose in double quotes.
     for (int c=0; c < ncols; ++c)
     {
-    	bool quote = false;
-    	std::string name = rat->GetNameOfCol(c);
-    	for (int l=0; l < name.size(); ++l)
-    	{
-    		if (l == 0)
-        	{
-        		if (!isalpha(name[l]) && name[l] != '_')
-        		{
-        			quote = true;
-        			break;
-        		}
-        	}
-        	else
-        	{
-        		if (!isalnum(name[l]) && name[l] != '_')
-        		{
-        			quote = true;
-        			break;
-        		}
-        	}
-    	}
+    	colnames.push_back(rat->GetNameOfCol(c));
 
-    	std::stringstream checkedstr;
-    	if (quote)
-    	{
-    		checkedstr << '\"' << name << '\"';
-    	}
-    	else
-    	{
-    		checkedstr << name;
-    	}
-    	colnames.push_back(checkedstr.str());
+    	//bool quote = false;
+    	//std::string name = rat->GetNameOfCol(c);
+    	//for (int l=0; l < name.size(); ++l)
+    	//{
+    	//	if (l == 0)
+        //	{
+        //		if (!isalpha(name[l]) && name[l] != '_')
+        //		{
+        //			quote = true;
+        //			break;
+        //		}
+        //	}
+        //	else
+        //	{
+        //		if (!isalnum(name[l]) && name[l] != '_')
+        //		{
+        //			quote = true;
+        //			break;
+        //		}
+        //	}
+    	//}
+        //
+    	//std::stringstream checkedstr;
+    	//if (quote)
+    	//{
+    	//	checkedstr << '\"' << name << '\"';
+    	//}
+    	//else
+    	//{
+    	//	checkedstr << name;
+    	//}
+    	//colnames.push_back(checkedstr.str());
     }
 
 
@@ -1974,13 +1976,15 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 void
 GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 {
+	//this->DebugOn();
+
 	// if m_Dataset hasn't been instantiated before, we do it here, because
 	// we just do an independent write of the RAT into the data set
 	// (i.e. outside any pipeline activities ...)
 	GDALDataset* ds;
 	if (m_Dataset.IsNull())
 	{
-		m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+		m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
 		if (m_Dataset.IsNull())
 			return;
 	}
@@ -2006,14 +2010,15 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	// current one; we don't bother with just writing changed
 	// values (too lazy for doing the required housekeeping
 	// beforehand) ...
-	GDALRasterAttributeTable gdaltab;
-	gdaltab.SetRowCount(tab->GetNumRows());
+	GDALRasterAttributeTable* gdaltab = new GDALRasterAttributeTable();
+	gdaltab->SetRowCount(tab->GetNumRows());
 
 	// add the category field "Value"
-	gdaltab.CreateColumn("Value", GFT_Integer, GFU_MinMax);
+	//gdaltab->CreateColumn("Value", GFT_Integer, GFU_MinMax);
 	CPLErr err;
 
-	// add all the other columns
+
+	// add all but the 'rowidx' column to the table
 	for (int col = 1; col < tab->GetNumCols(); ++col)
 	{
 		GDALRATFieldType type;
@@ -2031,41 +2036,52 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 		}
 
 		GDALRATFieldUsage usage = GFU_Generic;
-		err = gdaltab.CreateColumn(tab->GetColumnName(col).c_str(),
+		err = gdaltab->CreateColumn(tab->GetColumnName(col).c_str(),
 							type, usage);
 		if (err == CE_Failure)
 		{
-			itkExceptionMacro(<< "Failed creating column '" <<
-					tab->GetColumnName(col).c_str() << "!");
+			itkExceptionMacro(<< "Failed creating column #" << col
+					<< " '" << tab->GetColumnName(col).c_str() << "!");
 		}
+		itkDebugMacro(<< "Created column #" << col << " '"
+				<< tab->GetColumnName(col).c_str() << "'");
 	}
 
 	// copy values row by row
 	for (long row=0; row < tab->GetNumRows(); ++row)
 	{
-		for (int col=0; col < tab->GetNumCols(); ++col)
+		for (int col=1; col < tab->GetNumCols(); ++col)
 		{
+			itkDebugMacro(<< "Setting value: col=" << col
+					<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
 			switch(tab->GetColumnType(col))
 			{
 			case otb::AttributeTable::ATTYPE_INT:
-				gdaltab.SetValue(row, col, (int)tab->GetIntValue(col, row));
+				gdaltab->SetValue(row, col-1, (int)tab->GetIntValue(col, row));
 				break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
-				gdaltab.SetValue(row, col, tab->GetDblValue(col, row));
+				gdaltab->SetValue(row, col-1, tab->GetDblValue(col, row));
 				break;
 			case otb::AttributeTable::ATTYPE_STRING:
-				gdaltab.SetValue(row, col, tab->GetStrValue(col, row).c_str());
+				gdaltab->SetValue(row, col-1, tab->GetStrValue(col, row).c_str());
+				break;
+			default:
+				itkExceptionMacro(<< "Unrecognised field type! Couldn't set value col=" << col
+						<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
 				break;
 			}
 		}
 	}
 
 	// associate the table with the band
-	err = band->SetDefaultRAT(&gdaltab);
+	err = band->SetDefaultRAT(gdaltab);
 	if (err == CE_Failure)
 	{
 		itkExceptionMacro(<< "Failed writing table to band!");
 	}
+	ds->FlushCache();
+	m_Dataset->CloseDataSet();
+	delete gdaltab;
 }
 
 

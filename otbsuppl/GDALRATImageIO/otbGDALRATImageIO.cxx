@@ -1557,6 +1557,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
      {
     	//if (this->m_UseCompression)
     		papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "YES");
+    		papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "YES");
      }
 
     m_Dataset = GDALDriverManagerWrapper::GetInstance().Create(
@@ -1730,6 +1731,19 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 
   otbMsgDevMacro( << "GCP Projection Ref: "<< dataset->GetGCPProjection() );
   otbMsgDevMacro( << "GCP Count: " << dataset->GetGCPCount() );
+
+
+  // we now write the RAT's
+  otbMsgDevMacro( << "Writing RATs ...");
+  for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
+  {
+  	otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
+  	if (tab.IsNull())
+  		continue;
+
+  	// for now, we assume ti=band
+  	this->WriteRAT(tab, ti+1);
+  }
 
 }
 
@@ -1974,6 +1988,18 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 }
 
 void
+GDALRATImageIO::setRasterAttributeTable(AttributeTable* rat, int band)
+{
+	if (band < 1)
+		return;
+
+	if (this->m_vecRAT.capacity() < band)
+		this->m_vecRAT.resize(band);
+
+	this->m_vecRAT[band-1] = rat;
+}
+
+void
 GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 {
 	//this->DebugOn();
@@ -2080,6 +2106,8 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 		itkExceptionMacro(<< "Failed writing table to band!");
 	}
 	ds->FlushCache();
+	// if we don't close the data set, the RAT is not written properly to disk
+	// let's find out whether that interferes with the 'update mode'
 	m_Dataset->CloseDataSet();
 	delete gdaltab;
 }

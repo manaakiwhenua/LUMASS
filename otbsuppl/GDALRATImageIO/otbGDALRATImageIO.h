@@ -165,10 +165,14 @@ public:
   /** Reads the Attribute Table of the nth band*/
   virtual AttributeTable::Pointer ReadRAT(unsigned int iBand);
 
+
+  /** sets a pointer for the nth band RAT */
+  void setRasterAttributeTable(otb::AttributeTable* rat, int band);
+
   /** Writes an attribute table to the nth band of the specified
    *  GDALDataset
    */
-  virtual void WriteRAT(AttributeTable::Pointer tab, unsigned int iBand=1);
+  void WriteRAT(AttributeTable::Pointer tab, unsigned int iBand=1);
 
 
 protected:
@@ -198,6 +202,9 @@ protected:
 
   /** indicates whether RAT support is switched on or not */
   bool m_RATSupport;
+
+  /** keeps pointers to the RAT of individual bands */
+  std::vector<otb::AttributeTable::Pointer> m_vecRAT;
 
   /** are existing images being opened in update or (overwrite) mode?*/
   bool m_ImageUpdateMode;

@@ -1339,6 +1339,7 @@ void GDALRATImageIO::Write(const void* buffer)
 		else if (gdalDriverShortName.compare("HFA") == 0)
 		{
 			option = CSLAddNameValue(option, "COMPRESSED", "YES");
+			option = CSLAddNameValue(option, "IGNOREUTM", "YES");
 		}
 		else if (gdalDriverShortName.compare("GTiff") == 0)
 		{
@@ -1548,16 +1549,16 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       papszOptions = CSLAddNameValue( papszOptions, "BLOCKXSIZE", oss.str().c_str() );
       papszOptions = CSLAddNameValue( papszOptions, "BLOCKYSIZE", oss.str().c_str() );
 
-      //if (this->m_UseCompression)
+      if (this->m_UseCompression)
   		papszOptions = CSLAddNameValue( papszOptions, "COMPRESS", "LZW");
 
 
       }
     else if (driverShortName.compare("HFA") == 0)
      {
-    	//if (this->m_UseCompression)
+    	if (this->m_UseCompression)
     		papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "YES");
-    		papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "YES");
+    	papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "YES");
      }
 
     m_Dataset = GDALDriverManagerWrapper::GetInstance().Create(
@@ -2002,8 +2003,6 @@ GDALRATImageIO::setRasterAttributeTable(AttributeTable* rat, int band)
 void
 GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 {
-	//this->DebugOn();
-
 	// if m_Dataset hasn't been instantiated before, we do it here, because
 	// we just do an independent write of the RAT into the data set
 	// (i.e. outside any pipeline activities ...)
@@ -2106,9 +2105,15 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 		itkExceptionMacro(<< "Failed writing table to band!");
 	}
 	ds->FlushCache();
-	// if we don't close the data set, the RAT is not written properly to disk
-	// let's find out whether that interferes with the 'update mode'
+
+	// if we don't close the data set here, the RAT is not written properly to disk
+	// (not quite sure why that's not done when m_Dataset runs out of scope(?)
 	m_Dataset->CloseDataSet();
+
+	// need an open data set for writing the actual image later on;
+	// when we're only updating the RAT, the data sets gets closed as soon as
+	// the data set run's out of scope
+	m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
 	delete gdaltab;
 }
 

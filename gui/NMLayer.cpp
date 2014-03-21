@@ -2138,9 +2138,10 @@ void NMLayer::showAttributeTable(void)
 		this->createTableView();
 
 	if (this->mTableView != 0)
+	{
 		this->mTableView->show();
-
-	this->mTableView->update();
+		this->mTableView->update();
+	}
 }
 
 void NMLayer::createTableView(void)

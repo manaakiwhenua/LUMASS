@@ -928,36 +928,23 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	NMLayer* l = this->ui->modelCompList->getSelectedLayer();
-	if (l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+	int nlayers = this->ui->modelCompList->getLayerCount();
+	if (nlayers < 2)
 		return;
 
-	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-	otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
+	NMLayer* zL = this->ui->modelCompList->getLayer(0);
+	NMLayer* vL = this->ui->modelCompList->getLayer(1);
+	if ( 	(zL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+		||  (vL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+	   )
+		return;
 
-	tab->Print(std::cout, itk::Indent(2), 24);
-
-	double val = tab->GetDblValue("CFshp07", 24);
-	NMDebugAI(<< "CFshp07 at row 24 = " << val << std::endl);
+	NMImageLayer* zonesL = qobject_cast<NMImageLayer*>(zL);
+	NMImageLayer* valuesL = qobject_cast<NMImageLayer*>(vL);
 
 
-	if (val != val)
-	{
-		NMDebugAI(<< "yep - it's a nan!" << std::endl);
-	}
-	else
-	{
-		NMDebugAI(<< "just a number!" << std::endl);
-	}
 
-	if (std::numeric_limits<long>::has_quiet_NaN)
-	{
-		NMDebugAI(<< "long can be quiet NaN too!" << std::endl);
-	}
-	else
-	{
-		NMDebugAI(<< "no way long could represent NaN!" << std::endl);
-	}
+
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

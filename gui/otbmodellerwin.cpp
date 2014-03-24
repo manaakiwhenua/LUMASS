@@ -138,6 +138,7 @@
 #include "otbImageRegionAdaptativeSplitter.h"
 #include "itkVectorContainer.h"
 #include "otbSumZonesFilter.h"
+#include "itkStreamingImageFilter.h"
 
 
 
@@ -289,7 +290,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     ui->menuObject->removeAction(ui->actionImportRasdamanLayer);
 #endif
 #ifndef DEBUG
-    ui->menuMOSO->removeAction(ui->actionTest);
+    //ui->menuMOSO->removeAction(ui->actionTest);
 #endif
 
     // since we havent' go an implementation for odbc import
@@ -929,34 +930,50 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	int nlayers = this->ui->modelCompList->getLayerCount();
-	if (nlayers < 2)
-		return;
+	//int nlayers = this->ui->modelCompList->getLayerCount();
+	//if (nlayers < 2)
+	//	return;
+    //
+	//NMLayer* zL = this->ui->modelCompList->getLayer(0);
+	//NMLayer* vL = this->ui->modelCompList->getLayer(1);
+	//if ( 	(zL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+	//	||  (vL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+	//   )
+	//	return;
+    //
+	//NMImageLayer* zonesL = qobject_cast<NMImageLayer*>(zL);
+	//NMDebugAI(<< "zones layer is " << zonesL->objectName().toStdString() << std::endl);
+    //
+	//NMImageLayer* valuesL = qobject_cast<NMImageLayer*>(vL);
+	//NMDebugAI(<< "value layer is " << valuesL->objectName().toStdString() << std::endl);
 
-	NMLayer* zL = this->ui->modelCompList->getLayer(0);
-	NMLayer* vL = this->ui->modelCompList->getLayer(1);
-	if ( 	(zL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-		||  (vL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-	   )
-		return;
+	std::string zoneFN = "/home/alex/tmp/mwmanzones_s1.kea";
+	std::string valueFN = "/home/alex/tmp/netero13.kea";
 
-	NMImageLayer* zonesL = qobject_cast<NMImageLayer*>(zL);
-	NMDebugAI(<< "zones layer is " << zonesL->objectName().toStdString() << std::endl);
-
-	NMImageLayer* valuesL = qobject_cast<NMImageLayer*>(vL);
-	NMDebugAI(<< "value layer is " << valuesL->objectName().toStdString() << std::endl);
-
-	typedef otb::Image<unsigned char, 2> ZoneImgType;
+	typedef otb::Image<long, 2> ZoneImgType;
 	typedef otb::Image<float, 2> ValueImgType;
 
-	ZoneImgType::Pointer zoneImg = (ZoneImgType*)zonesL->getITKImage();
-	ValueImgType::Pointer valImg = (ValueImgType*)valuesL->getITKImage();
+	typedef otb::ImageFileReader<ZoneImgType> ZoneReaderType;
+	ZoneReaderType::Pointer zoneReader = ZoneReaderType::New();
+	zoneReader->SetFileName(zoneFN);
 
-	typedef typename otb::SumZonesFilter<ZoneImgType, ValueImgType> FilterType;
+	typedef otb::ImageFileReader<ValueImgType> ValueReaderType;
+	ValueReaderType::Pointer valueReader = ValueReaderType::New();
+	valueReader->SetFileName(valueFN);
+
+	//ZoneImgType::Pointer zoneImg = (ZoneImgType*)zonesL->getITKImage();
+	//ValueImgType::Pointer valImg = (ValueImgType*)valuesL->getITKImage();
+
+	typedef otb::SumZonesFilter<ZoneImgType, ValueImgType> FilterType;
 	FilterType::Pointer filter = FilterType::New();
 
-	filter->SetZoneImage(zoneImg);
-	filter->SetValueImage(valImg);
+	typedef itk::StreamingImageFilter<ValueImgType, ValueImgType> StreamType;
+	StreamType::Pointer streamer = StreamType::New();
+	streamer->SetInput(valueReader->GetOutput());
+	streamer->SetNumberOfStreamDivisions(8);
+
+	filter->SetZoneImage(zoneReader->GetOutput());
+	filter->SetValueImage(streamer->GetOutput());
 
 	try
 	{
@@ -969,14 +986,14 @@ void OtbModellerWin::test()
 	}
 
 	otb::AttributeTable::Pointer tab = filter->GetZoneTable();
-	NMQtOtbAttributeTableModel* tabModel = new NMQtOtbAttributeTableModel(this);
+	NMQtOtbAttributeTableModel* tabModel = new NMQtOtbAttributeTableModel(tab, this);
 	NMFastTrackSelectionModel* selModel = new NMFastTrackSelectionModel(tabModel, this);
-
 
 	NMTableView* tabView;
 	tabView = new NMTableView(tabModel, this);
 	tabView->setSelectionModel(selModel);
-	tabView->setTitle(tr("Zones Summary of ") + this->objectName());
+	tabView->setTitle(tr("Summary of Zones"));// + vL->objectName() +
+			//tr("in zones of ") + zL->objectName());
 	tabView->show();
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

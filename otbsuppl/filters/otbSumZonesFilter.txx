@@ -21,11 +21,15 @@
 #ifndef __otbSumZonesFilter_txx
 #define __otbSumZonesFilter_txx
 
+#include <map>
+#include "nmlog.h"
 #include "otbSumZonesFilter.h"
 
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkMacro.h"
+
+#define ctx "otb::SumZonesFilter"
 
 namespace otb
 {
@@ -34,15 +38,15 @@ template< class TInputImage, class TOutputImage >
 SumZonesFilter< TInputImage, TOutputImage >
 ::SumZonesFilter()
 {
-	this->SetNumberOfRequiredInputs(2);
+	this->SetNumberOfRequiredInputs(1);
+	this->SetNumberOfRequiredOutputs(1);
+	this->SetNumberOfThreads(1);
 }
 
 template< class TInputImage, class TOutputImage >
 SumZonesFilter< TInputImage, TOutputImage >
 ::~SumZonesFilter()
 {
-	if (mThreadValueStore)
-		delete[] mThreadValueStore;
 }
 
 template< class TInputImage, class TOutputImage >
@@ -54,16 +58,27 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
-::SetValueImage(const TOutputImage* image) const
+::SetValueImage(const OutputImageType* image)
 {
-	mValueImage = image;
+	mValueImage = const_cast<TOutputImage*>(image);
 }
+
+//template< class TInputImage, class TOutputImage >
+//void SumZonesFilter< TInputImage, TOutputImage >
+//::SetInput(const InputImageType* image)
+//{
+//	mZoneImage = const_cast<TInputImage*>(image);
+//
+//
+//	Superclass::ProcessObject::SetInput(0, const_cast<TInputImage*>(image));
+//}
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
-::SetZoneImage(const TInputImage* image) const
+::SetZoneImage(const InputImageType* image)
 {
-	mZoneImage = image;
+	mZoneImage = const_cast<TInputImage*>(image);
+	this->SetInput(image);
 }
 
 template< class TInputImage, class TOutputImage >
@@ -77,6 +92,7 @@ template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::BeforeThreadedGenerateData()
 {
+	NMDebugCtx(ctx, << "...");
 	if (mZoneImage.IsNull())
 	{
 		itkExceptionMacro(<< "Zone Image has not been specified!");
@@ -86,54 +102,92 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	if (mValueImage.IsNull())
 	{
 		itkExceptionMacro(<< "Value Image has not been specified!");
+		NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
 	unsigned int numThreads = this->GetNumberOfThreads();
-	if (mThreadValueStore)
-		delete[] mThreadValueStore;
 
-	mThreadValueStore =
-			new std::unordered_map< InputPixelType, std::vector< double> >[numThreads];
-
+	mThreadValueStore.clear();
 	for (int t=0; t < numThreads; ++t)
 	{
-		mThreadValueStore[t] = std::unordered_map< InputPixelType,
-				std::vector<double>,
-				Alloc=std::pair< InputPixelType, std::vector<double>(5,0) > >;
+		mThreadValueStore.push_back(ZoneMapType());
 	}
 
 	// for now, the size of the input regions must be exactly the same
-	if (	mZoneImage->GetLargestPossibleRegion().GetSize(0)
-		!=  mValueImage->GetLargestPossibleRegion().GetSize(1))
+	if (	(	mZoneImage->GetLargestPossibleRegion().GetSize(0)
+			 !=  mValueImage->GetLargestPossibleRegion().GetSize(0))
+		||  (   mZoneImage->GetLargestPossibleRegion().GetSize(1)
+			 !=  mValueImage->GetLargestPossibleRegion().GetSize(1))
+	   )
 	{
 		itkExceptionMacro(<< "ZoneImage and ValueImage dimensions don't match!");
+		NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
+	NMDebugCtx(ctx, << "done!");
 }
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, int threadId)
 {
+	typename OutputImageType::Pointer output = this->GetOutput();
+
+	if (threadId == 0)
+	{
+		NMDebugCtx(ctx, << "...");
+		unsigned int xsize = outputRegionForThread.GetSize(0);
+		unsigned int ysize = outputRegionForThread.GetSize(1);
+		NMDebugAI(<< "analysing region of " << xsize << " x " << ysize
+				<< " pixels ..." << std::endl);
+		//NMDebugAI(<< "number of threads: " << this->GetNumberOfThreads() << std::endl);
+	}
 	typedef itk::ImageRegionConstIterator<TInputImage> InputIterType;
 	InputIterType zoneIt(mZoneImage, outputRegionForThread);
 
 	typedef itk::ImageRegionConstIterator<TOutputImage> OutputIterType;
 	OutputIterType valueIt(mValueImage, outputRegionForThread);
 
-	std::unordered_map< InputPixelType, std::vector<double> >* vMap = mThreadStore[threadId];
+	ZoneMapType vMap = mThreadValueStore[threadId];
+	ZoneMapTypeIterator mapIt;
 
 	itk::ProgressReporter progress(this, threadId,
 			outputRegionForThread.GetNumberOfPixels());
 
+	if (threadId == 0)
+	{
+		NMDebugAI(<< "start summarising ..." << std::endl);
+	}
+
 	zoneIt.GoToBegin();
 	valueIt.GoToBegin();
-	while (!zoneIt.IsAtEnd())
+	while (!zoneIt.IsAtEnd() && !valueIt.IsAtEnd() && !this->GetAbortGenerateData())
 	{
-		InputPixelType zone = zoneIt.Get();
-		double val = valueIt.Get();
+		const ZoneKeyType zone = static_cast<ZoneKeyType>(zoneIt.Get());
+		const double val = static_cast<double>(valueIt.Get());
+
+		mapIt = vMap.find(zone);
+		if (mapIt == vMap.end())
+		{
+
+			vMap[zone] = std::vector<double>(5,0);
+
+			if (zone == 8)
+			{
+				std::vector<double>& v = vMap[zone];
+				NMDebugAI(<< "zone " << zone << " ..." << std::endl);
+				int size = v.size() < 20 ? v.size() : 20;
+				for (int i=0; i < size; ++i)
+				{
+					NMDebug( << v[i] << " ");
+				}
+				NMDebug(<< std::endl);
+			}
+
+			//NMDebugAI( << "new Zone: " << zone << std::endl);
+		}
 
 		std::vector<double>& params = vMap[zone];
 
@@ -150,6 +204,13 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 		++zoneIt;
 		++valueIt;
+
+		progress.CompletedPixel();
+	}
+
+	if (threadId == 0)
+	{
+		NMDebugCtx(ctx, << "done!");
 	}
 }
 
@@ -157,13 +218,15 @@ template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::AfterThreadedGenerateData()
 {
-	if (mZoneTable.IsNull())
+	NMDebugCtx(ctx, << "...");
+	//if (mZoneTable.IsNull())
 	{
 		mZoneTable = AttributeTable::New();
 	}
 
+
 	mZoneTable->SetBandNumber(1);
-	mZoneTable->SetImageFileName("ZoneTable");
+	mZoneTable->SetImgFileName("ZoneTable");
 	mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 	// ToDo:: check for integer zone type earlier
 	mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
@@ -180,15 +243,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	//        zone maps of individual threads; for small images
 	//        this might prove more inefficient than just doing
 	//        it on one thread in the first place ... ??
+	NMDebugAI(<< "create set of zones ..." << std::endl);
 	long numzones = 0;
-	std::set<InputPixelType> zones;
-	std::unordered_map< InputPixelType, std::vector<double> >* vMap;
-	std::unordered_map< InputPixelType, std::vector<double> >::const_iterator mapIt;
+	std::set<ZoneKeyType> zones;
+	ZoneMapType vMap;
+	ZoneMapTypeIterator mapIt;
 	for (int t=0; t < this->GetNumberOfThreads(); ++t)
 	{
-		vMap = mThreadStore[t];
-		mapIt = vMap->cbegin();
-		while(mapIt != vMap->cend())
+		vMap = mThreadValueStore[t];
+		mapIt = vMap.begin();
+		while(mapIt != vMap.end())
 		{
 			if ((zones.insert(mapIt->first)).second)
 			{
@@ -197,13 +261,15 @@ void SumZonesFilter< TInputImage, TOutputImage >
 			++mapIt;
 		}
 	}
+
+	NMDebugAI(<< "add " << numzones << " rows to table ..."<< std::endl;)
 	// add a chunk of rows
 	mZoneTable->AddRows(numzones);
 
-	std::set<InputPixelType>::const_iterator zoneIt =
-			zones.cbegin();
+	typename std::set<ZoneKeyType>::const_iterator zoneIt =
+			zones.begin();
 	long rowcounter = 0;
-	while(zoneIt != zones.cend())
+	while(zoneIt != zones.end())
 	{
 		double min = itk::NumericTraits<double>::max();
 		double max = itk::NumericTraits<double>::max() * -1;
@@ -213,36 +279,33 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		double sd = 0;
 		long count = 0;
 
-		InputPixelType zone = *zoneIt;
+		ZoneKeyType zone = *zoneIt;
 		for (int t=0; t < this->GetNumberOfThreads(); ++t)
 		{
-			vMap = mThreadStore[t];
-			try
+			vMap = mThreadValueStore[t];
+			mapIt = vMap.find(zone);
+			if (mapIt == vMap.end())
 			{
-				std::vector<double>& params = vMap[zone];
-				// min
-				min = params[0] < min ? params[0] : min;
-				// max
-				max = params[1] > max ? params[1] : max;
-				// sum_val
-				sum_Zone += params[2];
-				// sum_val^2
-				sum_Zone2 += params[3];
-				// count
-				count += params[4];
-			}
-			catch (const std::out_of_range& e)
-			{
-				// current zone not identified by thread t
 				continue;
 			}
+			std::vector<double>& params = mapIt->second;
+			// min
+			min = params[0] < min ? params[0] : min;
+			// max
+			max = params[1] > max ? params[1] : max;
+			// sum_val
+			sum_Zone += params[2];
+			// sum_val^2
+			sum_Zone2 += params[3];
+			// count
+			count += params[4];
 		}
 
 		mean = sum_Zone / (double)count;
 		sd = ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) );
 
 		mZoneTable->SetValue("rowidx", rowcounter, rowcounter);
-		mZoneTable->SetValue("zone", rowcounter, (long)zone);
+		mZoneTable->SetValue("zone", rowcounter, static_cast<long>(zone));
 		mZoneTable->SetValue("count", rowcounter, count);
 		mZoneTable->SetValue("min", rowcounter, min);
 		mZoneTable->SetValue("max", rowcounter, max);
@@ -253,6 +316,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		++rowcounter;
 		++zoneIt;
 	}
+
+	mZoneTable->Print(std::cout, itk::Indent(2), numzones);
+
+	NMDebugCtx(ctx, << "done!");
 }
 
 } // end namespace otb

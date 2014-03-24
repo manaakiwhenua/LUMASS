@@ -19,6 +19,8 @@
 #ifndef OTBSUMZONESFILTER_H_
 #define OTBSUMZONESFILTER_H_
 
+#include <map>
+
 #include "otbAttributeTable.h"
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
@@ -50,6 +52,7 @@ public:
 	                      TOutputImage::ImageDimension);
 
 	  /** Convenient typedefs for simplifying declarations. */
+
 	  typedef TInputImage  InputImageType;
 	  typedef TOutputImage OutputImageType;
 
@@ -69,8 +72,8 @@ public:
 	  itkTypeMacro(SumZonesFilter, itk::ImageToImageFilter);
 
 	  /** Image typedef support. */
-	  typedef typename InputImageType::PixelType   InputImagePixelType;
-	  typedef typename OutputImageType::PixelType  OutputImagePixelType;
+	  typedef typename InputImageType::PixelType   InputPixelType;
+	  typedef typename OutputImageType::PixelType  OutputPixelType;
 
 	  typedef typename InputImageType::RegionType  InputImageRegionType;
 	  typedef typename OutputImageType::RegionType OutputImageRegionType;
@@ -81,7 +84,13 @@ public:
 	  typedef typename InputImageType::SpacingType  InputImageSpacingType;
 	  typedef typename OutputImageType::SpacingType OutputImageSpacingType;
 
+	  typedef int ZoneKeyType;
+
+	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
+	  typedef typename ZoneMapType::iterator 							ZoneMapTypeIterator;
+
 	  /** Set the input images */
+	  //void SetInput(const InputImageType* image);
 	  void SetZoneImage(const InputImageType* image);
 	  void SetValueImage(const OutputImageType* image);
 
@@ -113,7 +122,7 @@ private:
 	  // for the given zones
 	  OutputImagePointerType mOutputImage;
 
-	  std::unordered_map< InputPixelType, std::vector< double> >* mThreadValueStore;
+	  typename std::vector<ZoneMapType> mThreadValueStore;
 
 };
 

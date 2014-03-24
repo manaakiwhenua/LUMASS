@@ -137,6 +137,7 @@
 #include "otbSortFilter.h"
 #include "otbImageRegionAdaptativeSplitter.h"
 #include "itkVectorContainer.h"
+#include "otbSumZonesFilter.h"
 
 
 
@@ -940,12 +941,43 @@ void OtbModellerWin::test()
 		return;
 
 	NMImageLayer* zonesL = qobject_cast<NMImageLayer*>(zL);
+	NMDebugAI(<< "zones layer is " << zonesL->objectName().toStdString() << std::endl);
+
 	NMImageLayer* valuesL = qobject_cast<NMImageLayer*>(vL);
+	NMDebugAI(<< "value layer is " << valuesL->objectName().toStdString() << std::endl);
+
+	typedef otb::Image<unsigned char, 2> ZoneImgType;
+	typedef otb::Image<float, 2> ValueImgType;
+
+	ZoneImgType::Pointer zoneImg = (ZoneImgType*)zonesL->getITKImage();
+	ValueImgType::Pointer valImg = (ValueImgType*)valuesL->getITKImage();
+
+	typedef typename otb::SumZonesFilter<ZoneImgType, ValueImgType> FilterType;
+	FilterType::Pointer filter = FilterType::New();
+
+	filter->SetZoneImage(zoneImg);
+	filter->SetValueImage(valImg);
+
+	try
+	{
+		filter->Update();
+	}
+	catch (itk::ExceptionObject& eo)
+	{
+		NMDebug(<< eo.what() << std::endl);
+		return;
+	}
+
+	otb::AttributeTable::Pointer tab = filter->GetZoneTable();
+	NMQtOtbAttributeTableModel* tabModel = new NMQtOtbAttributeTableModel(this);
+	NMFastTrackSelectionModel* selModel = new NMFastTrackSelectionModel(tabModel, this);
 
 
-
-
-
+	NMTableView* tabView;
+	tabView = new NMTableView(tabModel, this);
+	tabView->setSelectionModel(selModel);
+	tabView->setTitle(tr("Zones Summary of ") + this->objectName());
+	tabView->show();
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

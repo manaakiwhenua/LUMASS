@@ -38,9 +38,9 @@ template< class TInputImage, class TOutputImage >
 SumZonesFilter< TInputImage, TOutputImage >
 ::SumZonesFilter()
 {
-	this->SetNumberOfRequiredInputs(1);
-	this->SetNumberOfRequiredOutputs(1);
-	this->SetNumberOfThreads(1);
+	this->SetNumberOfRequiredInputs(2);
+	this->SetNumberOfRequiredOutputs(0);
+	//this->SetNumberOfThreads(1);
 }
 
 template< class TInputImage, class TOutputImage >
@@ -61,6 +61,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::SetValueImage(const OutputImageType* image)
 {
 	mValueImage = const_cast<TOutputImage*>(image);
+	this->SetNthInput(1, const_cast<TOutputImage*>(image));
 }
 
 //template< class TInputImage, class TOutputImage >
@@ -78,7 +79,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::SetZoneImage(const InputImageType* image)
 {
 	mZoneImage = const_cast<TInputImage*>(image);
-	this->SetInput(image);
+	this->SetNthInput(0, const_cast<TInputImage*>(image));
 }
 
 template< class TInputImage, class TOutputImage >
@@ -133,7 +134,7 @@ template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, int threadId)
 {
-	typename OutputImageType::Pointer output = this->GetOutput();
+	//typename OutputImageType::Pointer output = this->GetOutput();
 
 	if (threadId == 0)
 	{
@@ -150,7 +151,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	typedef itk::ImageRegionConstIterator<TOutputImage> OutputIterType;
 	OutputIterType valueIt(mValueImage, outputRegionForThread);
 
-	ZoneMapType vMap = mThreadValueStore[threadId];
+	ZoneMapType& vMap = mThreadValueStore[threadId];
 	ZoneMapTypeIterator mapIt;
 
 	itk::ProgressReporter progress(this, threadId,
@@ -171,24 +172,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mapIt = vMap.find(zone);
 		if (mapIt == vMap.end())
 		{
-
 			vMap[zone] = std::vector<double>(5,0);
-
-			if (zone == 8)
-			{
-				std::vector<double>& v = vMap[zone];
-				NMDebugAI(<< "zone " << zone << " ..." << std::endl);
-				int size = v.size() < 20 ? v.size() : 20;
-				for (int i=0; i < size; ++i)
-				{
-					NMDebug( << v[i] << " ");
-				}
-				NMDebug(<< std::endl);
-			}
-
-			//NMDebugAI( << "new Zone: " << zone << std::endl);
 		}
-
 		std::vector<double>& params = vMap[zone];
 
 		// min
@@ -224,9 +209,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mZoneTable = AttributeTable::New();
 	}
 
-
-	mZoneTable->SetBandNumber(1);
-	mZoneTable->SetImgFileName("ZoneTable");
+	//mZoneTable->SetBandNumber(1);
+	//mZoneTable->SetImgFileName("ZoneTable");
 	mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 	// ToDo:: check for integer zone type earlier
 	mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
@@ -246,11 +230,11 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	NMDebugAI(<< "create set of zones ..." << std::endl);
 	long numzones = 0;
 	std::set<ZoneKeyType> zones;
-	ZoneMapType vMap;
+	//ZoneMapType vMap;
 	ZoneMapTypeIterator mapIt;
 	for (int t=0; t < this->GetNumberOfThreads(); ++t)
 	{
-		vMap = mThreadValueStore[t];
+		ZoneMapType& vMap = mThreadValueStore[t];
 		mapIt = vMap.begin();
 		while(mapIt != vMap.end())
 		{
@@ -282,7 +266,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		ZoneKeyType zone = *zoneIt;
 		for (int t=0; t < this->GetNumberOfThreads(); ++t)
 		{
-			vMap = mThreadValueStore[t];
+			ZoneMapType& vMap = mThreadValueStore[t];
 			mapIt = vMap.find(zone);
 			if (mapIt == vMap.end())
 			{
@@ -317,7 +301,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		++zoneIt;
 	}
 
-	mZoneTable->Print(std::cout, itk::Indent(2), numzones);
+	//mZoneTable->Print(std::cout, itk::Indent(2), numzones);
 
 	NMDebugCtx(ctx, << "done!");
 }

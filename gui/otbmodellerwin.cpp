@@ -956,24 +956,29 @@ void OtbModellerWin::test()
 	typedef otb::ImageFileReader<ZoneImgType> ZoneReaderType;
 	ZoneReaderType::Pointer zoneReader = ZoneReaderType::New();
 	zoneReader->SetFileName(zoneFN);
+	zoneReader->ReleaseDataFlagOn();
 
 	typedef otb::ImageFileReader<ValueImgType> ValueReaderType;
 	ValueReaderType::Pointer valueReader = ValueReaderType::New();
 	valueReader->SetFileName(valueFN);
+	valueReader->ReleaseDataFlagOn();
 
 	//ZoneImgType::Pointer zoneImg = (ZoneImgType*)zonesL->getITKImage();
 	//ValueImgType::Pointer valImg = (ValueImgType*)valuesL->getITKImage();
 
 	typedef otb::SumZonesFilter<ValueImgType, ZoneImgType> FilterType;
 	FilterType::Pointer filter = FilterType::New();
-
+	filter->IgnoreNodataValueOff();
+	filter->ReleaseDataFlagOn();
 	filter->SetZoneImage(zoneReader->GetOutput());
 	filter->SetValueImage(valueReader->GetOutput());
 
 	typedef itk::StreamingImageFilter<ZoneImgType, ZoneImgType> StreamType;
 	StreamType::Pointer streamer = StreamType::New();
+	streamer->ReleaseDataFlagOn();
 	streamer->SetNumberOfStreamDivisions(16);
 	streamer->SetInput(filter->GetOutput());
+
 
 	try
 	{

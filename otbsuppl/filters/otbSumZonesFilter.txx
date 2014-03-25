@@ -39,8 +39,9 @@ SumZonesFilter< TInputImage, TOutputImage >
 ::SumZonesFilter()
 {
 	this->SetNumberOfRequiredInputs(2);
-	this->SetNumberOfRequiredOutputs(0);
-	//this->SetNumberOfThreads(1);
+	this->SetNumberOfRequiredOutputs(1);
+	mStreamingProc = false;
+	mZoneTable = 0;
 }
 
 template< class TInputImage, class TOutputImage >
@@ -58,35 +59,26 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
-::SetValueImage(const OutputImageType* image)
+::SetValueImage(const InputImageType* image)
 {
-	mValueImage = const_cast<TOutputImage*>(image);
-	this->SetNthInput(1, const_cast<TOutputImage*>(image));
+	mValueImage = const_cast<TInputImage*>(image);
+	this->SetNthInput(0, const_cast<TInputImage*>(image));
 }
-
-//template< class TInputImage, class TOutputImage >
-//void SumZonesFilter< TInputImage, TOutputImage >
-//::SetInput(const InputImageType* image)
-//{
-//	mZoneImage = const_cast<TInputImage*>(image);
-//
-//
-//	Superclass::ProcessObject::SetInput(0, const_cast<TInputImage*>(image));
-//}
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
-::SetZoneImage(const InputImageType* image)
+::SetZoneImage(const OutputImageType* image)
 {
-	mZoneImage = const_cast<TInputImage*>(image);
-	this->SetNthInput(0, const_cast<TInputImage*>(image));
+	mZoneImage = const_cast<TOutputImage*>(image);
+	this->SetNthInput(1, const_cast<TOutputImage*>(image));
+	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
 }
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::SetZoneTable(AttributeTable::Pointer tab)
  {
-	mZoneTable = tab;
+	//mZoneTable = tab;
  }
 
 template< class TInputImage, class TOutputImage >
@@ -109,11 +101,32 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 	unsigned int numThreads = this->GetNumberOfThreads();
 
-	mThreadValueStore.clear();
-	for (int t=0; t < numThreads; ++t)
+	if (!mStreamingProc)
 	{
-		mThreadValueStore.push_back(ZoneMapType());
+		NMDebugAI(<< "clearing mThreadValueStore ..." << std::endl);
+		mThreadValueStore.clear();
+		for (int t=0; t < numThreads; ++t)
+		{
+			mThreadValueStore.push_back(ZoneMapType());
+		}
+
+		NMDebugAI(<< "creating new attribute table ..." << std::endl);
+		mZoneTable = AttributeTable::New();
+		mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
+		// ToDo:: check for integer zone type earlier
+		mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
+		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
+		mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
+		mZoneTable->AddColumn("max", AttributeTable::ATTYPE_DOUBLE);
+		mZoneTable->AddColumn("mean", AttributeTable::ATTYPE_DOUBLE);
+		mZoneTable->AddColumn("stddev", AttributeTable::ATTYPE_DOUBLE);
+		mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
+		mZoneTable->AddColumn("sum2", AttributeTable::ATTYPE_DOUBLE);
+
+		mStreamingProc = true;
 	}
+
+
 
 	// for now, the size of the input regions must be exactly the same
 	if (	(	mZoneImage->GetLargestPossibleRegion().GetSize(0)
@@ -134,8 +147,6 @@ template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, int threadId)
 {
-	//typename OutputImageType::Pointer output = this->GetOutput();
-
 	if (threadId == 0)
 	{
 		NMDebugCtx(ctx, << "...");
@@ -145,10 +156,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
 				<< " pixels ..." << std::endl);
 		//NMDebugAI(<< "number of threads: " << this->GetNumberOfThreads() << std::endl);
 	}
-	typedef itk::ImageRegionConstIterator<TInputImage> InputIterType;
+	typedef itk::ImageRegionConstIterator<TOutputImage> InputIterType;
 	InputIterType zoneIt(mZoneImage, outputRegionForThread);
 
-	typedef itk::ImageRegionConstIterator<TOutputImage> OutputIterType;
+	typedef itk::ImageRegionConstIterator<TInputImage> OutputIterType;
 	OutputIterType valueIt(mValueImage, outputRegionForThread);
 
 	ZoneMapType& vMap = mThreadValueStore[threadId];
@@ -195,6 +206,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 	if (threadId == 0)
 	{
+		NMDebugAI( << "mStreamingProc = " << mStreamingProc << std::endl);
 		NMDebugCtx(ctx, << "done!");
 	}
 }
@@ -204,23 +216,14 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::AfterThreadedGenerateData()
 {
 	NMDebugCtx(ctx, << "...");
-	//if (mZoneTable.IsNull())
+
+	if (mZoneTable.IsNull())
 	{
-		mZoneTable = AttributeTable::New();
+		NMErr(ctx, << "oops, don't have a zone table - shouldn't have happened!");
+		itk::ExceptionObject eo;
+		eo.SetDescription("no table found! How could that happen?!");
+		throw eo;
 	}
-
-	//mZoneTable->SetBandNumber(1);
-	//mZoneTable->SetImgFileName("ZoneTable");
-	mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
-	// ToDo:: check for integer zone type earlier
-	mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
-	mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
-	mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
-	mZoneTable->AddColumn("max", AttributeTable::ATTYPE_DOUBLE);
-	mZoneTable->AddColumn("mean", AttributeTable::ATTYPE_DOUBLE);
-	mZoneTable->AddColumn("stddev", AttributeTable::ATTYPE_DOUBLE);
-	mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
-
 
 	// ToDo:: mmh, is there a better way of doing this?
 	//        we need a list of all zones to pull together the
@@ -228,9 +231,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	//        this might prove more inefficient than just doing
 	//        it on one thread in the first place ... ??
 	NMDebugAI(<< "create set of zones ..." << std::endl);
-	long numzones = 0;
-	std::set<ZoneKeyType> zones;
-	//ZoneMapType vMap;
+	long numzones = mZones.size();
+	long newzones = 0;
 	ZoneMapTypeIterator mapIt;
 	for (int t=0; t < this->GetNumberOfThreads(); ++t)
 	{
@@ -238,32 +240,58 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mapIt = vMap.begin();
 		while(mapIt != vMap.end())
 		{
-			if ((zones.insert(mapIt->first)).second)
+			// add zone to set if not already present
+			if ((mZones.insert(mapIt->first)).second)
 			{
-				++numzones;
+				++newzones;
 			}
 			++mapIt;
 		}
 	}
 
-	NMDebugAI(<< "add " << numzones << " rows to table ..."<< std::endl;)
+	NMDebugAI(<< "added " << newzones << " new zones, which gives total of " << numzones+newzones << " ..."<< std::endl;)
 	// add a chunk of rows
-	mZoneTable->AddRows(numzones);
+	if (newzones > 0)
+		mZoneTable->AddRows(newzones);
 
 	typename std::set<ZoneKeyType>::const_iterator zoneIt =
-			zones.begin();
+			mZones.begin();
 	long rowcounter = 0;
-	while(zoneIt != zones.end())
-	{
-		double min = itk::NumericTraits<double>::max();
-		double max = itk::NumericTraits<double>::max() * -1;
-		double sum_Zone = 0;
-		double sum_Zone2 = 0;
-		double mean = 0;
-		double sd = 0;
-		long count = 0;
 
+	double min 		 ;
+	double max 		 ;
+	double sum_Zone  ;
+	double sum_Zone2 ;
+	double mean      ;
+	double sd        ;
+	long   count     ;
+
+	long rowid = -1;
+	while(zoneIt != mZones.end())
+	{
 		ZoneKeyType zone = *zoneIt;
+		long lz = static_cast<long>(zone);
+		if (	mStreamingProc
+			&& (rowid = mZoneTable->GetRowIdx("zone", (void*)&lz) >= 0)
+		   )
+		{
+			count     = mZoneTable->GetIntValue("count", rowid);
+			min 	  = mZoneTable->GetDblValue("min", rowid);
+			max       = mZoneTable->GetDblValue("max", rowid);
+			sum_Zone  = mZoneTable->GetDblValue("sum", rowid);
+			sum_Zone2 = mZoneTable->GetDblValue("sum2", rowid);
+		}
+		else
+		{
+			min 	  = itk::NumericTraits<double>::max();
+			max       = itk::NumericTraits<double>::NonpositiveMin();
+			sum_Zone  = 0;
+			sum_Zone2 = 0;
+			count     = 0;
+		}
+		mean      = 0;
+		sd        = 0;
+
 		for (int t=0; t < this->GetNumberOfThreads(); ++t)
 		{
 			ZoneMapType& vMap = mThreadValueStore[t];
@@ -289,7 +317,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		sd = ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) );
 
 		mZoneTable->SetValue("rowidx", rowcounter, rowcounter);
-		mZoneTable->SetValue("zone", rowcounter, static_cast<long>(zone));
+		mZoneTable->SetValue("zone", rowcounter, lz);//static_cast<long>(zone));
 		mZoneTable->SetValue("count", rowcounter, count);
 		mZoneTable->SetValue("min", rowcounter, min);
 		mZoneTable->SetValue("max", rowcounter, max);
@@ -303,6 +331,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 	//mZoneTable->Print(std::cout, itk::Indent(2), numzones);
 
+	NMDebugCtx(ctx, << "done!");
+}
+
+template< class TInputImage, class TOutputImage >
+void SumZonesFilter< TInputImage, TOutputImage >
+::ResetPipeline()
+{
+	NMDebugCtx(ctx, << "...");
+	mStreamingProc = false;
+	Superclass::ResetPipeline();
 	NMDebugCtx(ctx, << "done!");
 }
 

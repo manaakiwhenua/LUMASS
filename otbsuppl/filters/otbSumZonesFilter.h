@@ -87,17 +87,20 @@ public:
 	  typedef int ZoneKeyType;
 
 	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
-	  typedef typename ZoneMapType::iterator 							ZoneMapTypeIterator;
+	  typedef typename ZoneMapType::iterator 						 ZoneMapTypeIterator;
 
 	  /** Set the input images */
-	  //void SetInput(const InputImageType* image);
-	  void SetZoneImage(const InputImageType* image);
-	  void SetValueImage(const OutputImageType* image);
+	  void SetZoneImage(const OutputImageType* image);
+	  void SetValueImage(const InputImageType* image);
+	  OutputImageType* GetZoneImage()
+	  	  {return dynamic_cast<OutputImageType*>(this->GetOutput());}
 
 	  /** Specify the table to store the zone values */
 	  void SetZoneTable(AttributeTable::Pointer);
 
 	  AttributeTable::Pointer GetZoneTable(void) {return mZoneTable;}
+
+	  virtual void ResetPipeline();
 
 protected:
 	  SumZonesFilter();
@@ -115,14 +118,15 @@ private:
 
 	  AttributeTable::Pointer mZoneTable;
 	  // this image defines the zones for which to do the summary
-	  InputImagePointerType mZoneImage;
+	  OutputImagePointerType mZoneImage;
 	  // this image contains the values to be summarised for the individual zones
-	  OutputImagePointerType mValueImage;
-	  // this image is produced on request and contains ONE selected statistic
-	  // for the given zones
-	  OutputImagePointerType mOutputImage;
+	  InputImagePointerType mValueImage;
 
 	  typename std::vector<ZoneMapType> mThreadValueStore;
+
+	  bool mStreamingProc;
+
+	  std::set<ZoneKeyType> mZones;
 
 };
 

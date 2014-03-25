@@ -947,8 +947,8 @@ void OtbModellerWin::test()
 	//NMImageLayer* valuesL = qobject_cast<NMImageLayer*>(vL);
 	//NMDebugAI(<< "value layer is " << valuesL->objectName().toStdString() << std::endl);
 
-	std::string zoneFN = "/home/alex/tmp/mwmanzones_s1.kea";
-	std::string valueFN = "/home/alex/tmp/netero13.kea";
+	std::string zoneFN = "/home/alex/tmp/slui/mwmanzones_s1.kea";
+	std::string valueFN = "/home/alex/tmp/slui/netero13.kea";
 
 	typedef otb::Image<long, 2> ZoneImgType;
 	typedef otb::Image<float, 2> ValueImgType;
@@ -964,20 +964,21 @@ void OtbModellerWin::test()
 	//ZoneImgType::Pointer zoneImg = (ZoneImgType*)zonesL->getITKImage();
 	//ValueImgType::Pointer valImg = (ValueImgType*)valuesL->getITKImage();
 
-	typedef otb::SumZonesFilter<ZoneImgType, ValueImgType> FilterType;
+	typedef otb::SumZonesFilter<ValueImgType, ZoneImgType> FilterType;
 	FilterType::Pointer filter = FilterType::New();
 
-	typedef itk::StreamingImageFilter<ValueImgType, ValueImgType> StreamType;
-	StreamType::Pointer streamer = StreamType::New();
-	streamer->SetInput(valueReader->GetOutput());
-	streamer->SetNumberOfStreamDivisions(8);
-
 	filter->SetZoneImage(zoneReader->GetOutput());
-	filter->SetValueImage(streamer->GetOutput());
+	filter->SetValueImage(valueReader->GetOutput());
+
+	typedef itk::StreamingImageFilter<ZoneImgType, ZoneImgType> StreamType;
+	StreamType::Pointer streamer = StreamType::New();
+	streamer->SetNumberOfStreamDivisions(16);
+	streamer->SetInput(filter->GetOutput());
 
 	try
 	{
-		filter->Update();
+		streamer->Update();
+		//filter->Update();
 	}
 	catch (itk::ExceptionObject& eo)
 	{

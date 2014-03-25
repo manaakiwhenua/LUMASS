@@ -40,6 +40,10 @@ SumZonesFilter< TInputImage, TOutputImage >
 {
 	this->SetNumberOfRequiredInputs(2);
 	this->SetNumberOfRequiredOutputs(1);
+
+	m_IgnoreNodataValue = true;
+	m_NodataValue = itk::NumericTraits<InputPixelType>::NonpositiveMin();
+
 	mStreamingProc = false;
 	mZoneTable = 0;
 }
@@ -113,7 +117,6 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		NMDebugAI(<< "creating new attribute table ..." << std::endl);
 		mZoneTable = AttributeTable::New();
 		mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
-		// ToDo:: check for integer zone type earlier
 		mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
@@ -179,6 +182,12 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	{
 		const ZoneKeyType zone = static_cast<ZoneKeyType>(zoneIt.Get());
 		const double val = static_cast<double>(valueIt.Get());
+		if (	m_IgnoreNodataValue
+			&&	val == static_cast<double>(m_NodataValue)
+		   )
+		{
+			continue;
+		}
 
 		mapIt = vMap.find(zone);
 		if (mapIt == vMap.end())
@@ -324,6 +333,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mZoneTable->SetValue("mean", rowcounter, mean);
 		mZoneTable->SetValue("stddev", rowcounter, sd);
 		mZoneTable->SetValue("sum", rowcounter, sum_Zone);
+		mZoneTable->SetValue("sum2", rowcounter, sum_Zone2);
 
 		++rowcounter;
 		++zoneIt;

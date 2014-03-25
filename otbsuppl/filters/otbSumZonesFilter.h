@@ -89,6 +89,12 @@ public:
 	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
 	  typedef typename ZoneMapType::iterator 						 ZoneMapTypeIterator;
 
+	  itkSetMacro(NodataValue, InputPixelType);
+	  itkGetMacro(NodataValue, InputPixelType);
+	  itkSetMacro(IgnoreNodataValue, bool);
+	  itkGetMacro(IgnoreNodataValue, bool);
+	  itkBooleanMacro(IgnoreNodataValue);
+
 	  /** Set the input images */
 	  void SetZoneImage(const OutputImageType* image);
 	  void SetValueImage(const InputImageType* image);
@@ -127,6 +133,9 @@ private:
 	  bool mStreamingProc;
 
 	  std::set<ZoneKeyType> mZones;
+
+	  bool m_IgnoreNodataValue;
+	  InputPixelType m_NodataValue;
 
 };
 

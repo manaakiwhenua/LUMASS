@@ -68,6 +68,11 @@ public:
 
 	void* GetColumnPointer(int idx);
 
+	long GetRowIdx(const std::string& column, void* value);
+
+	//long GetRowIdx(const std::string& column, const double& value);
+	//long GetRowIdx(const std::string& column, const long& value);
+	//long GetRowIdx(const std::string& column, const std::string& value);
 
 	// managing the attribute table's content
 	bool AddColumn(const std::string& sColName, TableColumnType type);

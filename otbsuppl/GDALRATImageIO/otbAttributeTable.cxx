@@ -406,6 +406,66 @@ AttributeTable::GetColumnPointer(int col)
 	return ret;
 }
 
+long
+AttributeTable::GetRowIdx(const std::string& column, void* value)
+{
+	long idx = -1;
+
+	int colidx = ColumnExists(column);
+	if (colidx < 0)
+		return idx;
+
+	switch(m_vTypes[colidx])
+	{
+	case ATTYPE_STRING:
+		{
+			std::string* strings = static_cast<std::string*>(GetColumnPointer(colidx));
+			std::string* strVal = static_cast<std::string*>(value);
+			for (int r=0; r < m_iNumRows; ++r)
+			{
+				if (*strVal == strings[r])
+				{
+					idx = r;
+					break;
+				}
+			}
+		}
+		break;
+
+	case ATTYPE_INT:
+		{
+			long* longValues = static_cast<long*>(GetColumnPointer(colidx));
+			long* longVal = static_cast<long*>(value);
+			for (int r=0; r < m_iNumRows; ++r)
+			{
+				if (*longVal == longValues[r])
+				{
+					idx = r;
+					break;
+				}
+			}
+		}
+		break;
+
+	case ATTYPE_DOUBLE:
+		{
+			double* doubleValues = static_cast<double*>(GetColumnPointer(colidx));
+			double* doubleVal = static_cast<double*>(value);
+			for (int r=0; r < m_iNumRows; ++r)
+			{
+				if (*doubleVal == doubleValues[r])
+				{
+					idx = r;
+					break;
+				}
+			}
+		}
+		break;
+	}
+
+	return idx;
+}
+
 
 void AttributeTable::SetBandNumber(int iBand)
 {

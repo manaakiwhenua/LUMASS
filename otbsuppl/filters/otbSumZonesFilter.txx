@@ -45,7 +45,8 @@ SumZonesFilter< TInputImage, TOutputImage >
 	m_NodataValue = itk::NumericTraits<InputPixelType>::NonpositiveMin();
 
 	mStreamingProc = false;
-	mZoneTable = 0;
+
+	mZoneTable = AttributeTable::New();
 }
 
 template< class TInputImage, class TOutputImage >
@@ -115,7 +116,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		}
 
 		NMDebugAI(<< "creating new attribute table ..." << std::endl);
-		mZoneTable = AttributeTable::New();
+		//mZoneTable = AttributeTable::New();
 		mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
@@ -124,7 +125,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mZoneTable->AddColumn("mean", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("stddev", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
-		mZoneTable->AddColumn("sum2", AttributeTable::ATTYPE_DOUBLE);
+		//mZoneTable->AddColumn("sum2", AttributeTable::ATTYPE_DOUBLE);
 
 		mStreamingProc = true;
 	}
@@ -239,7 +240,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	//        zone maps of individual threads; for small images
 	//        this might prove more inefficient than just doing
 	//        it on one thread in the first place ... ??
-	NMDebugAI(<< "create set of zones ..." << std::endl);
+	NMDebugAI(<< "update set of zones - adding: ");
 	long numzones = mZones.size();
 	long newzones = 0;
 	ZoneMapTypeIterator mapIt;
@@ -252,20 +253,21 @@ void SumZonesFilter< TInputImage, TOutputImage >
 			// add zone to set if not already present
 			if ((mZones.insert(mapIt->first)).second)
 			{
+				NMDebug(<< mapIt->first << " ");
 				++newzones;
 			}
 			++mapIt;
 		}
 	}
-
+	NMDebug(<< std::endl);
 	NMDebugAI(<< "added " << newzones << " new zones, which gives total of " << numzones+newzones << " ..."<< std::endl;)
+
 	// add a chunk of rows
 	if (newzones > 0)
 		mZoneTable->AddRows(newzones);
 
 	typename std::set<ZoneKeyType>::const_iterator zoneIt =
 			mZones.begin();
-	long rowcounter = 0;
 
 	double min 		 ;
 	double max 		 ;
@@ -275,31 +277,19 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	double sd        ;
 	long   count     ;
 
-	long rowid = -1;
+	NMDebugAI(<< "updating zone table ..." << std::endl);
+	long rowid = 0;
+	long tr = -1;
 	while(zoneIt != mZones.end())
 	{
 		ZoneKeyType zone = *zoneIt;
 		long lz = static_cast<long>(zone);
-		if (	mStreamingProc
-			&& (rowid = mZoneTable->GetRowIdx("zone", (void*)&lz) >= 0)
-		   )
-		{
-			count     = mZoneTable->GetIntValue("count", rowid);
-			min 	  = mZoneTable->GetDblValue("min", rowid);
-			max       = mZoneTable->GetDblValue("max", rowid);
-			sum_Zone  = mZoneTable->GetDblValue("sum", rowid);
-			sum_Zone2 = mZoneTable->GetDblValue("sum2", rowid);
-		}
-		else
-		{
-			min 	  = itk::NumericTraits<double>::max();
-			max       = itk::NumericTraits<double>::NonpositiveMin();
-			sum_Zone  = 0;
-			sum_Zone2 = 0;
-			count     = 0;
-		}
-		mean      = 0;
-		sd        = 0;
+
+		min 	  = itk::NumericTraits<double>::max();
+		max       = itk::NumericTraits<double>::NonpositiveMin();
+		sum_Zone  = 0;
+		sum_Zone2 = 0;
+		count     = 0;
 
 		for (int t=0; t < this->GetNumberOfThreads(); ++t)
 		{
@@ -325,21 +315,21 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mean = sum_Zone / (double)count;
 		sd = ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) );
 
-		mZoneTable->SetValue("rowidx", rowcounter, rowcounter);
-		mZoneTable->SetValue("zone", rowcounter, lz);//static_cast<long>(zone));
-		mZoneTable->SetValue("count", rowcounter, count);
-		mZoneTable->SetValue("min", rowcounter, min);
-		mZoneTable->SetValue("max", rowcounter, max);
-		mZoneTable->SetValue("mean", rowcounter, mean);
-		mZoneTable->SetValue("stddev", rowcounter, sd);
-		mZoneTable->SetValue("sum", rowcounter, sum_Zone);
-		mZoneTable->SetValue("sum2", rowcounter, sum_Zone2);
+		mZoneTable->SetValue("rowidx", rowid, rowid);
+		mZoneTable->SetValue("zone",   rowid, lz);
+		mZoneTable->SetValue("count",  rowid, count);
+		mZoneTable->SetValue("min",    rowid, min);
+		mZoneTable->SetValue("max",    rowid, max);
+		mZoneTable->SetValue("mean",   rowid, mean);
+		mZoneTable->SetValue("stddev", rowid, sd);
+		mZoneTable->SetValue("sum",    rowid, sum_Zone);
+		//mZoneTable->SetValue("sum2",   rowid, sum_Zone2);
 
-		++rowcounter;
+		++rowid;
 		++zoneIt;
 	}
 
-	//mZoneTable->Print(std::cout, itk::Indent(2), numzones);
+	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -350,6 +340,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
 {
 	NMDebugCtx(ctx, << "...");
 	mStreamingProc = false;
+	mZoneTable = AttributeTable::New();
+
 	Superclass::ResetPipeline();
 	NMDebugCtx(ctx, << "done!");
 }

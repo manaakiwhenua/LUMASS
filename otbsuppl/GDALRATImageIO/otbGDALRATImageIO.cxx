@@ -1172,7 +1172,10 @@ void GDALRATImageIO::Write(const void* buffer)
 		{
 			GDALClose(pDs);
 			// in case we've worked on the data set in non-update mode before
-			m_Dataset->CloseDataSet();
+			if (m_Dataset.IsNotNull())
+			{
+				m_Dataset->CloseDataSet();
+			}
 			m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
 					m_FileName);
 			pDs = m_Dataset->GetDataSet();
@@ -1303,6 +1306,18 @@ void GDALRATImageIO::Write(const void* buffer)
 		// just flush the dataset cache though
 		if (m_ImageUpdateMode)
 		{
+            // also update RAT's
+			otbMsgDevMacro( << "Writing RATs ...");
+			for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
+			{
+				otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
+				if (tab.IsNull())
+					continue;
+
+				// for now, we assume ti=band
+				this->WriteRAT(tab, ti + 1);
+			}
+
 			m_Dataset->CloseDataSet();
 		}
 		else

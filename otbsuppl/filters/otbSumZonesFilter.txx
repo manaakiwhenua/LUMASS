@@ -79,12 +79,12 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
 }
 
-template< class TInputImage, class TOutputImage >
-void SumZonesFilter< TInputImage, TOutputImage >
-::SetZoneTable(AttributeTable::Pointer tab)
- {
-	//mZoneTable = tab;
- }
+//template< class TInputImage, class TOutputImage >
+//void SumZonesFilter< TInputImage, TOutputImage >
+//::SetZoneTable(AttributeTable::Pointer tab)
+// {
+//	//mZoneTable = tab;
+// }
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >

@@ -31,12 +31,9 @@ namespace otb
  *  \brief Summarises zones
  *
  *  This filter requires at least two inputs:
- *  	1. a zone image defining the zones for which to compute the
+ *  	1. INPUT-1: a zone image defining the zones for which to compute the
  *  	   summary (type = TOutputImage);
- *  	2. an image containing the values to be summarised (type = TInputImage)
- *  	3. optionally an otb::AttributeTable, which contains as many rows
- *  	   as zones in the zone image - ideally, it's the attribute table of
- *  	   that particular layer
+ *  	2. INPUT-0: an image containing the values to be summarised (type = TInputImage)
  *
  */
 
@@ -102,7 +99,7 @@ public:
 	  	  {return dynamic_cast<OutputImageType*>(this->GetOutput());}
 
 	  /** Specify the table to store the zone values */
-	  void SetZoneTable(AttributeTable::Pointer);
+	  //void SetZoneTable(AttributeTable::Pointer);
 
 	  AttributeTable::Pointer GetZoneTable(void) {return mZoneTable;}
 

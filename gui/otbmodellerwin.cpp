@@ -242,6 +242,9 @@
 #include "vtkMath.h"
 #include "vtkPointData.h"
 
+//#include "valgrind/callgrind.h"
+
+
 OtbModellerWin::OtbModellerWin(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::OtbModellerWin)
 {
@@ -930,6 +933,10 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+
+
+	//CALLGRIND_START_INSTRUMENTATION;
+
 	//int nlayers = this->ui->modelCompList->getLayerCount();
 	//if (nlayers < 2)
 	//	return;
@@ -947,7 +954,7 @@ void OtbModellerWin::test()
 	//NMImageLayer* valuesL = qobject_cast<NMImageLayer*>(vL);
 	//NMDebugAI(<< "value layer is " << valuesL->objectName().toStdString() << std::endl);
 
-	std::string zoneFN = "/home/alex/tmp/slui/mwmanzones_s1.kea";
+	std::string zoneFN = "/home/alex/tmp/slui/randzones1.kea";
 	std::string valueFN = "/home/alex/tmp/slui/netero13.kea";
 
 	typedef otb::Image<long, 2> ZoneImgType;
@@ -956,12 +963,12 @@ void OtbModellerWin::test()
 	typedef otb::ImageFileReader<ZoneImgType> ZoneReaderType;
 	ZoneReaderType::Pointer zoneReader = ZoneReaderType::New();
 	zoneReader->SetFileName(zoneFN);
-	zoneReader->ReleaseDataFlagOn();
+	zoneReader->ReleaseDataBeforeUpdateFlagOn();
 
 	typedef otb::ImageFileReader<ValueImgType> ValueReaderType;
 	ValueReaderType::Pointer valueReader = ValueReaderType::New();
 	valueReader->SetFileName(valueFN);
-	valueReader->ReleaseDataFlagOn();
+	valueReader->ReleaseDataBeforeUpdateFlagOn();
 
 	//ZoneImgType::Pointer zoneImg = (ZoneImgType*)zonesL->getITKImage();
 	//ValueImgType::Pointer valImg = (ValueImgType*)valuesL->getITKImage();
@@ -969,20 +976,32 @@ void OtbModellerWin::test()
 	typedef otb::SumZonesFilter<ValueImgType, ZoneImgType> FilterType;
 	FilterType::Pointer filter = FilterType::New();
 	filter->IgnoreNodataValueOff();
-	filter->ReleaseDataFlagOn();
+	filter->ReleaseDataBeforeUpdateFlagOn();
+	//filter->SetNumberOfThreads(2);
 	filter->SetZoneImage(zoneReader->GetOutput());
 	filter->SetValueImage(valueReader->GetOutput());
 
-	typedef itk::StreamingImageFilter<ZoneImgType, ZoneImgType> StreamType;
-	StreamType::Pointer streamer = StreamType::New();
-	streamer->ReleaseDataFlagOn();
-	streamer->SetNumberOfStreamDivisions(16);
-	streamer->SetInput(filter->GetOutput());
+	//typedef itk::StreamingImageFilter<ZoneImgType, ZoneImgType> StreamType;
+	//StreamType::Pointer streamer = StreamType::New();
+	//streamer->ReleaseDataBeforeUpdateFlagOn();
+	//streamer->SetNumberOfStreamDivisions(16);
+	//streamer->SetInput(filter->GetOutput());
 
+	typedef otb::StreamingRATImageFileWriter<ZoneImgType> WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetFileName("/home/alex/tmp/slui/outrandzones.kea");
+	writer->SetAutomaticTiledStreaming(128);
+	// need update mode to update RAT while stream processing the data
+	//writer->UpdateModeOn();
+	writer->SetInput(filter->GetOutput());
+	//writer->SetInputRAT(filter->GetZoneTable());
 
+	itk::TimeProbe stopwatch;
+	stopwatch.Start();
 	try
 	{
-		streamer->Update();
+		writer->Update();
+		//streamer->Update();
 		//filter->Update();
 	}
 	catch (itk::ExceptionObject& eo)
@@ -990,6 +1009,13 @@ void OtbModellerWin::test()
 		NMDebug(<< eo.what() << std::endl);
 		return;
 	}
+
+	stopwatch.Stop();
+	double span = stopwatch.GetTotal();
+	NMDebugAI(<< "test took " << span << " " << stopwatch.GetUnit() << std::endl);
+
+	//CALLGRIND_STOP_INSTRUMENTATION;
+	//CALLGRIND_DUMP_STATS;
 
 	otb::AttributeTable::Pointer tab = filter->GetZoneTable();
 	NMQtOtbAttributeTableModel* tabModel = new NMQtOtbAttributeTableModel(tab, this);

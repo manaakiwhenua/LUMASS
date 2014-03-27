@@ -33,8 +33,8 @@ file(GLOB MFW_H
    ${mfw_wrapper_SOURCE_DIR}/*.h
 )
 
-    #LIST(REMOVE_ITEM MFW_CPP ${mfw_wrapper_SOURCE_DIR}/NMCostDistanceBufferImageWrapper.cpp)
-    #LIST(REMOVE_ITEM MFW_H ${mfw_wrapper_SOURCE_DIR}/NMCostDistanceBufferImageWrapper.h)
+    #LIST(REMOVE_ITEM MFW_CPP ${mfw_wrapper_SOURCE_DIR}/WrapperTemplate.cpp)
+    #LIST(REMOVE_ITEM MFW_H ${mfw_wrapper_SOURCE_DIR}/WrapperTemplate.h)
    
 if (NOT RASSUPPORT)
   list(REMOVE_ITEM MFW_H 

@@ -1,0 +1,11 @@
+# LUMASS otb::SumZonesFilter wrapper profile
+
+Year                        = 2014
+WrapperClassName            = NMSumZonesFilter
+FileDate                    = 2014-03-27
+Author                      = Alexander Herzig
+FilterClassName             = NMSumZonesFilterWrapper
+WrapperTemplateTypePamphlet = template<class TInputImage, class TOutputImage>
+InternalInImgTypedef        = typedef otb::Image<TInuptImage, 2> InImgType;
+InternalOutImgTypedef       = typedef otb::Image<TOutputImage, 2> OutImgType;
+InternalFilterTypedef       = typedef otb::SumZonesFilter<InImgType, OutImgType> FilterType;

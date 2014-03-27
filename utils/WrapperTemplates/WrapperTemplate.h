@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
+ * Copyright /*$<Year>$*/ Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -16,14 +16,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * NMFocalNeighbourhoodDistanceWeightingWrapper.h
+ * /*$<WrapperClassName>$*/.h
  *
- *  Created on: 12/01/2013
- *      Author: alex
+ *  Created on: /*$<FileDate>$*/
+ *      Author: /*$<Author>$*/
  */
 
-#ifndef NMFOCALNEIGHBOURHOODDISTANCEWEIGHTINGWRAPPER_H_
-#define NMFOCALNEIGHBOURHOODDISTANCEWEIGHTINGWRAPPER_H_
+#ifndef /*$<WrapperClassName>$*/_H_
+#define /*$<WrapperClassName>$*/_H_
 
 #include "nmlog.h"
 #include "NMMacros.h"
@@ -35,29 +35,38 @@
 #include <QStringList>
 #include <QList>
 
-template<class InPixelType, class OutPixelType, unsigned int Dimension>
-class NMFocalNeighbourhoodDistanceWeightingWrapper_Internal;
+/*$<WrapperTemplateTypePamphlet>$*/
+class /*$<WrapperClassName>$*/_Internal;
 
 class
-NMFocalNeighbourhoodDistanceWeightingWrapper
+/*$<WrapperClassName>$*/
 		: public NMProcess
 {
 	Q_OBJECT
+
+    /*
 	Q_PROPERTY(QStringList RadiusList READ getRadiusList WRITE setRadiusList)
 	Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights WRITE setWeights)
 	Q_PROPERTY(QList<QStringList> Values READ getValues WRITE setValues)
+    */
+
+    /*$<WrapperPropertyList>$*/
 
 public:
 
+    /*
 	NMPropertyGetSet ( RadiusList, QStringList)
 	NMPropertyGetSet ( Weights, QList<QList<QStringList> >)
 	NMPropertyGetSet ( Values, QList<QStringList>)
+    */
 
-	NMFocalNeighbourhoodDistanceWeightingWrapper(QObject* parent=0);
-	virtual ~NMFocalNeighbourhoodDistanceWeightingWrapper();
+    /*$<WrapperPropertyGetSetter>$*/
 
-	template<class InPixelType, class OutPixelType, unsigned int Dimension>
-	friend class NMFocalNeighbourhoodDistanceWeightingWrapper_Internal;
+    /*$<WrapperClassName>$*/(QObject* parent=0);
+    virtual ~/*$<WrapperClassName>$*/();
+
+    /*$<WrapperTemplateTypePamphlet>$*/
+    friend class /*$<WrapperClassName>$*/_Internal;
 
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 	void instantiateObject(void);
@@ -69,10 +78,14 @@ protected:
     void linkParameters(unsigned int step,
     		const QMap<QString, NMModelComponent*>& repo);
 
+    /*
     QStringList 				mRadiusList;
     QList<QList<QStringList> >  mWeights;
     QList<QStringList> 			mValues;
+    */
+
+    /*$<PropertyVarDef>$*/
 
 };
 
-#endif /* NMFOCALNEIGHBOURHOODDISTANCEWEIGHTINGWRAPPER_H_ */
+#endif /* /*$<WrapperClassName>$*/_H_ */

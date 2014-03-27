@@ -34,13 +34,13 @@
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
- /*$<WrapperTemplateTypePamphlet>$*/
+/*$<WrapperTemplateTypePamphlet>$*/
 class /*$<WrapperClassName>$*/_Internal
 {
 public:
-	 /*$<InternalInImgTypedef>$*/
-	 /*$<InternalOutImgTypedef>$*/
-	 /*$<InternalFilterTypedef>$*/
+	 /*$<InternalInImgTypedef>$*/ InImgType;
+	 /*$<InternalOutImgTypedef>$*/ OutImgType;
+	 /*$<InternalFilterTypedef>$*/ FilterType;
 	typedef typename FilterType::Pointer FilterTypePointer;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
@@ -50,7 +50,6 @@ public:
 		otbFilter = f;
 	}
 
-	/*
 	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
 	{
@@ -58,7 +57,6 @@ public:
 		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
 		filter->SetInput(img);
 	}
-	*/
 
 	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, unsigned int idx)

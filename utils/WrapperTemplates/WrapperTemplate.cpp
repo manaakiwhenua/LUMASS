@@ -34,14 +34,13 @@
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
-/*$<WrapperTemplateTypePamphlet>$*/
+template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class /*$<WrapperClassName>$*/_Internal
 {
 public:
-	 /*$<InternalInImgTypedef>$*/ InImgType;
-	 /*$<InternalOutImgTypedef>$*/ OutImgType;
-	 /*$<InternalFilterTypedef>$*/ FilterType;
-	typedef typename FilterType::Pointer FilterTypePointer;
+	typedef otb::Image<TInuptImage, Dimension> InImgType;
+	typedef otb::Image<TOutputImage, Dimension> OutImgType;
+	typedef typename otb::SumZonesFilter<InImgType, OutImgType> FilterType;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands)
@@ -91,7 +90,7 @@ public:
 
 		// DEBUG
 		// let's print the filter's self information
-		f->Print(std::cout, itk::Indent(2));
+		//f->Print(std::cout, itk::Indent(2));
 
 		NMDebugCtx("/*$<WrapperClassName>$*/_Internal", << "done!");
 	}

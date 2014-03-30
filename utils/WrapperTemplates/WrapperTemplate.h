@@ -35,7 +35,7 @@
 #include <QStringList>
 #include <QList>
 
-/*$<WrapperTemplateTypePamphlet>$*/
+template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class /*$<WrapperClassName>$*/_Internal;
 
 class
@@ -65,7 +65,7 @@ public:
     /*$<WrapperClassName>$*/(QObject* parent=0);
     virtual ~/*$<WrapperClassName>$*/();
 
-    /*$<WrapperTemplateTypePamphlet>$*/
+    template<class TInputImage, class TOutputImage, unsigned int Dimension>
     friend class /*$<WrapperClassName>$*/_Internal;
 
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);

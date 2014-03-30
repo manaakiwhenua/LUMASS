@@ -5,8 +5,9 @@ import shutil
 import inspect, os
 import string
 import re
+import errno
 
-
+# ========================================================================================
 def buildDict(profileFile):
     ''' parse the lumass wrapper profile and build a
         dictionary with of keywords and properties
@@ -43,13 +44,106 @@ def buildDict(profileFile):
                             pdict[k] = tl[1].strip()
                             
     return pdict                    
-       
+
+# ===============================================================================
+def getPropertyType(propertyElementList):
+    '''
+    returns the wrapper type given the list of properties
+    elements
+    '''
+    if len(propertyElementList) < 3:
+        print "ERROR - Invalid property element list length!"
+        return None
+    
+    if propertyElementList[1] == '1':
+        type = 'QStringList'
+    elif propertyElementList[1] == '2':
+        type = 'QList<QStringList>'
+    elif propertyElementList[1] == '3':
+        type = 'QList< QList<QStringList> >'
+    else:
+        print "ERROR - cannot handle property beyond 3 dimensions!"
+        type = None
+    
+    return type
+
+    
+# ===============================================================================
+def formatPropertyDefinition(propertyList):
+    '''
+    formats the property definition section of a header file
+    given the property elements (name, dimension, type), e.g.
+    Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights WRITE setWeights)
+    '''     
+    
+    defSection = ''  
+    for prop in propList:
+        propType = getPropertyType(prop)
+        tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s)" % (propType, prop[0], prop[0], prop[0])
+        defSection = defSection + '\n' + tmp
+        
+    return defSection
+
+# ===============================================================================
+def formatPropertyGetSet(propertyList):
+    '''
+    formats properties' getter and setter methods using an NMMacro, e.g. 
+    NMPropertyGetSet ( Weights, QList<QList<QStringList> >)    
+    '''     
+
+    getset = ''  
+    for prop in propList:
+        propType = getPropertyType(prop)
+        tmp = "    NMPropertyGetSet( %s, %s )" % (prop[0], propType)
+        getset = getset + '\n' + tmp
+        
+    return getset
 
 
-# open the files, to the copy, and do the main 
-# workflow here, then we'll break out to do somethings
-# more special
+# ===============================================================================
+def formatPropertyVariable(propertyList):
+    '''
+    formats the properties' variables 
+    QList<QList<QStringList> >  mWeights;
+    '''    
+    
+    vardef = ''  
+    for prop in propList:
+        propType = getPropertyType(prop)
+        tmp = "    %s m%s" % (propType, prop[0])
+        vardef = vardef + '\n' + tmp
+        
+    return vardef
+
+# ===============================================================================
+def formatInternalParamSetting(propertyList):
+    '''
+    formats parameter setting of the internal templated
+    wrapper helper class
+    '''
+    
+    paramSetting = ''
+    for prop in propList:
+        propType = getPropertyType(prop)
+        #tmp = "    %s m%s" % (propType, prop[0])
+        # -> setMTime 
+        # -> NMProcess::mapHostIndexToPolicyIndex
+        
+        
+        
+        
+        paramSetting = paramSetting + '\n' + tmp
+        
+    return paramSetting
+
+
+# ===============================================================================
 if __name__ == '__main__':
+    '''
+    open the files, to the copy, and do the main 
+    workflow here, then we'll break out to do some things
+    more special
+    '''
 
     # -----------------------------------------------------------------------
     # check input profile file
@@ -88,20 +182,69 @@ if __name__ == '__main__':
     path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     targetpath="/home/alex/tmp"
     
-    for tf in ('h', 'cpp'):
-        inFN  = "%s/WrapperTemplate.%s" % (path, tf)
-        outFN = "%s/%sWrapper.%s" % (targetpath, className, tf)
-        shutil.copyfile(inFN, outFN)
-        
+    inCppPath = "%s/WrapperTemplate.cpp" % (path)
+    inHPath   = "%s/WrapperTemplate.h" % (path)
     
-        
-        
-        
+    cppPath = "%s/%s.cpp" % (targetpath, className)
+    hPath = "%s/%s.h" % (targetpath, className)
     
+    shutil.copyfile(inHPath, hPath)
+    shutil.copyfile(inCppPath, cppPath)
 
+    # -----------------------------------------------------------------------
+    # process copied files
     
-    # something for replacement rather than scanning
-    #"InternalFilterParamSetter", 
-    #            "WrapperPropertyList", "WrapperPropertyGetSetter", 
-    #            "PropertyVarDef"]
+    # HEADER FILE
+    hStr = None
+    with open(hPath, 'r') as hWrapper:
+        hStr = hWrapper.read()
+        
+        for key in pDict:
+            if key == 'Property':
+                propList = pDict[key]
+                
+                # property definition, e.g. Q_PROPERTY(QList<QList<QStringList> > Weights READ getWeights WRITE setWeights)
+                propDef    = formatPropertyDefinition(propList)
+                hStr = hStr.replace("/*$<WrapperPropertyList>$*/", propDef)
+                
+                propGetSet = formatPropertyGetSet(propList)
+                hStr = hStr.replace("/*$<WrapperPropertyGetSetter>$*/", propGetSet)
+                
+                propVarDef = formatPropertyVariable(propList)
+                hStr = hStr.replace("/*$<PropertyVarDef>$*/", propVarDef)
+            
+            else:
+                keyword = "/*$<%s>$*/" % str(key)
+                hStr = hStr.replace(keyword, pDict[key])
+                
+        # check whether there is any keyword left unreplaced ...
+        if hStr.find("/*$<") != -1:
+            print "WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (hPath)
     
+    with open(hPath, 'w') as hWrapper:
+        hWrapper.write(hStr)
+    
+   
+    # CPP FILE
+    cppStr = None
+    with open(cppPath, 'r') as cppWrapper:
+        cppStr = cppWrapper.read()
+        
+        for key in pDict:
+            if key == 'Property':
+                propList = pDict[key]
+                
+                # internal property setting 
+                paramSetting = formatInternalParamSetting(propList)
+                cppStr = cppStr.replace("/*$<InternalFilterParamSetter>$*/", paramSetting)
+            
+            else:
+                keyword = "/*$<%s>$*/" % str(key)
+                cppStr = cppStr.replace(keyword, pDict[key])
+                
+        # check whether there is any keyword left unreplaced ...
+        if hStr.find("/*$<") != -1:
+            print "WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (cppPath)
+    
+    with open(cppPath, 'w') as cppWrapper:
+        cppWrapper.write(cppStr)

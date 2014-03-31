@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright /*$<Year>$*/ Landcare Research New Zealand Ltd
+ * Copyright 2014 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -16,14 +16,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * /*$<WrapperClassName>$*/.h
+ * NMSumZonesFilterWrapper.h
  *
- *  Created on: /*$<FileDate>$*/
- *      Author: /*$<Author>$*/
+ *  Created on: 2014-03-27
+ *      Author: Alexander Herzig
  */
 
-#ifndef /*$<WrapperClassName>$*/_H_
-#define /*$<WrapperClassName>$*/_H_
+#ifndef NMSumZonesFilterWrapper_H_
+#define NMSumZonesFilterWrapper_H_
 
 #include "nmlog.h"
 #include "NMMacros.h"
@@ -36,26 +36,30 @@
 #include <QList>
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
-class /*$<WrapperClassName>$*/_Internal;
+class NMSumZonesFilterWrapper_Internal;
 
 class
-/*$<WrapperClassName>$*/
+NMSumZonesFilterWrapper
 		: public NMProcess
 {
 	Q_OBJECT
 
-    /*$<WrapperPropertyList>$*/
+    
+    Q_PROPERTY(QStringList IgnoreNodataValue READ getIgnoreNodataValue WRITE setIgnoreNodataValue);
+    Q_PROPERTY(QStringList NodataValue READ getNodataValue WRITE setNodataValue);
 
 public:
 
-    /*$<WrapperPropertyGetSetter>$*/
+    
+    NMPropertyGetSet( IgnoreNodataValue, QStringList );
+    NMPropertyGetSet( NodataValue, QStringList );
 
 public:
-    /*$<WrapperClassName>$*/(QObject* parent=0);
-    virtual ~/*$<WrapperClassName>$*/();
+    NMSumZonesFilterWrapper(QObject* parent=0);
+    virtual ~NMSumZonesFilterWrapper();
 
     template<class TInputImage, class TOutputImage, unsigned int Dimension>
-    friend class /*$<WrapperClassName>$*/_Internal;
+    friend class NMSumZonesFilterWrapper_Internal;
 
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 	void instantiateObject(void);
@@ -67,8 +71,10 @@ protected:
     void linkParameters(unsigned int step,
     		const QMap<QString, NMModelComponent*>& repo);
 
-    /*$<PropertyVarDef>$*/
+    
+    QStringList mIgnoreNodataValue;
+    QStringList mNodataValue;
 
 };
 
-#endif /* /*$<WrapperClassName>$*/_H_ */
+#endif /* NMSumZonesFilterWrapper_H_ */

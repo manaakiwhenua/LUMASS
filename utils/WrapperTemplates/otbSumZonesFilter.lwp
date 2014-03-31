@@ -1,10 +1,18 @@
 # LUMASS otb::SumZonesFilter wrapper profile
-# types: double, long, string
+# recognised (filter variable) types: double, long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
 
 Year                        = 2014
-WrapperClassName            = NMSumZonesFilter
+WrapperClassName            = NMSumZonesFilterWrapper
 FileDate                    = 2014-03-27
 Author                      = Alexander Herzig
-FilterClassName             = NMSumZonesFilterWrapper
-Property_1                  = IgnoreNodataValue:1:double
+FilterClassFileName         = otbSumZonesFilter
+FilterTypeDef               = otb::SumZonesFilter<InImgType, OutImgType>
+Property_1                  = IgnoreNodataValue:1:bool
 Property_2                  = NodataValue:1:double 

@@ -16,7 +16,7 @@ def buildDict(profileFile):
     
     # define keywords to look for
     keys = ["Year", "WrapperClassName", "FileDate", "Author", 
-                "FilterClassName"]
+                "FilterClassFileName", "FilterTypeDef"]
     pdict = {}
     # initialise an empty property list 
     pdict['Property'] = []
@@ -54,12 +54,13 @@ def getPropertyType(propertyElementList):
     if len(propertyElementList) < 3:
         print "ERROR - Invalid property element list length!"
         return None
+    propDim = int(propertyElementList[1])
     
-    if propertyElementList[1] == '1':
+    if propDim == 1:
         type = 'QStringList'
-    elif propertyElementList[1] == '2':
+    elif propDim == 2:
         type = 'QList<QStringList>'
-    elif propertyElementList[1] == '3':
+    elif propDim == 3:
         type = 'QList< QList<QStringList> >'
     else:
         print "ERROR - cannot handle property beyond 3 dimensions!"
@@ -79,7 +80,7 @@ def formatPropertyDefinition(propertyList):
     defSection = ''  
     for prop in propertyList:
         propType = getPropertyType(prop)
-        tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s)" % (propType, prop[0], prop[0], prop[0])
+        tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s);" % (propType, prop[0], prop[0], prop[0])
         defSection = defSection + '\n' + tmp
         
     return defSection
@@ -94,7 +95,7 @@ def formatPropertyGetSet(propertyList):
     getset = ''  
     for prop in propertyList:
         propType = getPropertyType(prop)
-        tmp = "    NMPropertyGetSet( %s, %s )" % (prop[0], propType)
+        tmp = "    NMPropertyGetSet( %s, %s );" % (prop[0], propType)
         getset = getset + '\n' + tmp
         
     return getset
@@ -107,12 +108,20 @@ def formatPropertyVariable(propertyList):
     QList<QList<QStringList> >  mWeights;
     '''    
     
-    vardef = ''  
+    vardef = ''
+    tmp = ''  
     for prop in propList:
         propType = getPropertyType(prop)
-        tmp = "    %s m%s" % (propType, prop[0])
-        vardef = vardef + '\n' + tmp
+        propVarType = prop[2]
+        propDim = int(prop[1])
         
+        if propDim == 0:
+            tmp = "    %s m%s;" % (propVarType, prop[0])
+        elif propDim > 0:
+            tmp = "    %s m%s;" % (propType, prop[0])
+        
+        vardef = vardef + '\n' + tmp
+        tmp = ''
     return vardef
 
 # ===============================================================================
@@ -123,12 +132,13 @@ def formatTypeConversion(type):
         typeConv = ".toDouble(&bok)"
     elif type == "long":
         typeConv = ".toLong(&bok)"
+    elif type == "bool":
+        typeConv = ".toInt(&bok)"
 
     return typeConv
-    
 
 # ===============================================================================
-def formatInternalParamSetting(propertyList):
+def formatInternalParamSetting(propertyList, className):
     '''
     formats parameter setting of the internal templated
     wrapper helper class
@@ -146,32 +156,67 @@ def formatInternalParamSetting(propertyList):
     #    this->setInternalExpression(currentExpression);
     #}
     
+    # in case something goes wrong while parsing / setting parameters, we debug
+    # and throw an exception, roughly like this ...
+    #NMErr("NMFocalNeighbourhoodDistanceWeighting_Internal",
+    #        << "Invalid weights matrix detected!");
+    #
+    #NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+    #e.setMsg("Invalid weights matrix detected!");
+    #throw e;
+    
     paramSetting = ''
+    tmp = ''
     for prop in propertyList:
         propType = getPropertyType(prop)
         propName = prop[0]
-        propDim = prop[1]
+        propDim = int(prop[1])
         propVarType = prop[2]
         typeConv = formatTypeConversion(propVarType)
 
-        if propDim == 1:
+        if propDim == 0:
             tmp = \
-            "step = this->mapHostIndexToPolicyIndex(givenStep, this->m%s.size());\n" \
-            "%s cur%s;\n"                                                            \
-            "if (step < this->m%s.size())\n"                                         \
-            "{\n"                                                                    \
-            "    cur%s = this ->m%s.at(step)%s;\n"                                   \
-            "    f->Set%s(cur%s);\n"                                                 \
-            "}\n"                                                                    \
-            % (propName, propVarType, propName, propName, propName, typeConv,
-               propName, propName)
-        
-            paramSetting = paramSetting + '\n' + tmp
-            tmp = ''
-            
+            "                f->Set%s(m%s);\n" % (propName, propName)
+        elif propDim == 1:
+            tmp = \
+            "                step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
+            "                %s cur%s;\n"                                                            \
+            "                if (step < p->m%s.size())\n"                                         \
+            "                {\n"                                                                    \
+            "                    cur%s = p->m%s.at(step)%s;\n"                                   \
+            % (propName, propVarType, propName, propName, propName, propName, typeConv)
+
+            test = ''
+            if propVarType != "string":
+                test = \
+                "                    if (bok)\n"                                                         \
+                "                    {\n"                                                                \
+                "                        f->Set%s(cur%s);\n"                                             \
+                "                    }\n"                                                                \
+                "                    else\n"                                                             \
+                "                    {\n"                                                                \
+                "                        NMErr(\"%s_Internal\", << \"Invalid value for '%s'!\");\n"      \
+                "                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);\n"\
+                "                        e.setMsg(\"Invalid value for '%s'!\");\n"                       \
+                "                        throw e;\n"                                                     \
+                "                    }\n"                                                                \
+                % (propName, propName, className, propName, propName)
+                tmp = tmp + test
+            else:
+                test = \
+                "                    f->Set%s(cur%s);\n"                                             \
+                % (propName, propName)
+                tmp = tmp + test
+                
+            tmp = tmp + \
+            "                }\n"     
         else: 
             print "WARNING - cannot format multi-dimensional parameter settings yet!!"
             return None
+        
+        if tmp != '':
+            paramSetting = paramSetting + '\n' + tmp        
+        tmp = ''
         
     return paramSetting
 
@@ -204,12 +249,11 @@ if __name__ == '__main__':
     
     # -----------------------------------------------------------------------
     # parsing the profile file
-    
     print "    >>> using '%s' as lumass wrapper profile ..." % str(profile)
+
     pDict = buildDict(fp)
-    print pDict
-  
-    
+    #print pDict
+      
     # ---------------------------------------------------------------------  
     # copying the wrapper template to new files
     print "    >>> creating wrapper class files ..."
@@ -219,7 +263,12 @@ if __name__ == '__main__':
     # copy file
     filepath = inspect.getfile(inspect.currentframe())
     path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    targetpath="/home/alex/tmp"
+    pos = string.rfind(path, '/', 0)
+    pos = string.rfind(path, '/', 0, pos)
+    homepath = path[0:pos]
+    targetpath = homepath + "/modellingframework/wrapper"
+    print "    >>> lumass HOME=%s" % homepath
+    print "    >>> wrapper file path: %s" % targetpath
     
     inCppPath = "%s/WrapperTemplate.cpp" % (path)
     inHPath   = "%s/WrapperTemplate.h" % (path)
@@ -232,6 +281,7 @@ if __name__ == '__main__':
 
     # -----------------------------------------------------------------------
     # process copied files
+    print "    >>> processing wrapper header file ..."    
     
     # HEADER FILE
     hStr = None
@@ -263,18 +313,18 @@ if __name__ == '__main__':
     with open(hPath, 'w') as hWrapper:
         hWrapper.write(hStr)
     
-   
+    print "    >>> processing wrapper c++ implementation file ..."
     # CPP FILE
     cppStr = None
     with open(cppPath, 'r') as cppWrapper:
         cppStr = cppWrapper.read()
-        
+
         for key in pDict:
             if key == 'Property':
                 propList = pDict[key]
                 
                 # internal property setting 
-                paramSetting = formatInternalParamSetting(propList)
+                paramSetting = formatInternalParamSetting(propList, className)
                 cppStr = cppStr.replace("/*$<InternalFilterParamSetter>$*/", paramSetting)
             
             else:
@@ -287,3 +337,5 @@ if __name__ == '__main__':
     
     with open(cppPath, 'w') as cppWrapper:
         cppWrapper.write(cppStr)
+
+    print "    >>> I'm done!"

@@ -219,6 +219,11 @@
           <string>RandomImage</string>
          </property>
         </item>
+        <item>
+         <property name="text">
+          <string>SummariseZones</string>
+         </property>
+        </item>
        </widget>
       </widget>
      </item>

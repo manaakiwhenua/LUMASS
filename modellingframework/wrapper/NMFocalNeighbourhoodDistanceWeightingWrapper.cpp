@@ -223,7 +223,7 @@ NMFocalNeighbourhoodDistanceWeightingWrapper
 	this->setParent(parent);
 	this->setObjectName("NMFocalNeighbourhoodDistanceWeightingWrapper");
 	this->mInputComponentType = otb::ImageIOBase::SHORT;
-	this->mInputComponentType = otb::ImageIOBase::INT;
+	this->mOutputComponentType = otb::ImageIOBase::INT;
 }
 
 NMFocalNeighbourhoodDistanceWeightingWrapper

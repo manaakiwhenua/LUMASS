@@ -933,100 +933,20 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	bool b = true;
+	bool a = false;
 
+	QString astr = QString("true=%1 | false=%2").arg(b).arg(a);
+	NMDebugAI(<< astr.toStdString() << std::endl);
 
-	//CALLGRIND_START_INSTRUMENTATION;
+	QString strue = "true";
+	QString sfalse = "false";
 
-	//int nlayers = this->ui->modelCompList->getLayerCount();
-	//if (nlayers < 2)
-	//	return;
-    //
-	//NMLayer* zL = this->ui->modelCompList->getLayer(0);
-	//NMLayer* vL = this->ui->modelCompList->getLayer(1);
-	//if ( 	(zL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-	//	||  (vL->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-	//   )
-	//	return;
-    //
-	//NMImageLayer* zonesL = qobject_cast<NMImageLayer*>(zL);
-	//NMDebugAI(<< "zones layer is " << zonesL->objectName().toStdString() << std::endl);
-    //
-	//NMImageLayer* valuesL = qobject_cast<NMImageLayer*>(vL);
-	//NMDebugAI(<< "value layer is " << valuesL->objectName().toStdString() << std::endl);
+	bool bok;
+	bool c = strue.toInt(&bok);
+	bool d = sfalse.toInt(&bok);
 
-	std::string zoneFN = "/home/alex/tmp/slui/randzones1.kea";
-	std::string valueFN = "/home/alex/tmp/slui/netero13.kea";
-
-	typedef otb::Image<long, 2> ZoneImgType;
-	typedef otb::Image<float, 2> ValueImgType;
-
-	typedef otb::ImageFileReader<ZoneImgType> ZoneReaderType;
-	ZoneReaderType::Pointer zoneReader = ZoneReaderType::New();
-	zoneReader->SetFileName(zoneFN);
-	zoneReader->ReleaseDataBeforeUpdateFlagOn();
-
-	typedef otb::ImageFileReader<ValueImgType> ValueReaderType;
-	ValueReaderType::Pointer valueReader = ValueReaderType::New();
-	valueReader->SetFileName(valueFN);
-	valueReader->ReleaseDataBeforeUpdateFlagOn();
-
-	//ZoneImgType::Pointer zoneImg = (ZoneImgType*)zonesL->getITKImage();
-	//ValueImgType::Pointer valImg = (ValueImgType*)valuesL->getITKImage();
-
-	typedef otb::SumZonesFilter<ValueImgType, ZoneImgType> FilterType;
-	FilterType::Pointer filter = FilterType::New();
-	filter->IgnoreNodataValueOff();
-	filter->ReleaseDataBeforeUpdateFlagOn();
-	//filter->SetNumberOfThreads(2);
-	filter->SetZoneImage(zoneReader->GetOutput());
-	filter->SetValueImage(valueReader->GetOutput());
-
-	//typedef itk::StreamingImageFilter<ZoneImgType, ZoneImgType> StreamType;
-	//StreamType::Pointer streamer = StreamType::New();
-	//streamer->ReleaseDataBeforeUpdateFlagOn();
-	//streamer->SetNumberOfStreamDivisions(16);
-	//streamer->SetInput(filter->GetOutput());
-
-	typedef otb::StreamingRATImageFileWriter<ZoneImgType> WriterType;
-	WriterType::Pointer writer = WriterType::New();
-	writer->SetFileName("/home/alex/tmp/slui/outrandzones.kea");
-	writer->SetAutomaticTiledStreaming(128);
-	// need update mode to update RAT while stream processing the data
-	//writer->UpdateModeOn();
-	writer->SetInput(filter->GetOutput());
-	//writer->SetInputRAT(filter->GetZoneTable());
-
-	itk::TimeProbe stopwatch;
-	stopwatch.Start();
-	try
-	{
-		writer->Update();
-		//streamer->Update();
-		//filter->Update();
-	}
-	catch (itk::ExceptionObject& eo)
-	{
-		NMDebug(<< eo.what() << std::endl);
-		return;
-	}
-
-	stopwatch.Stop();
-	double span = stopwatch.GetTotal();
-	NMDebugAI(<< "test took " << span << " " << stopwatch.GetUnit() << std::endl);
-
-	//CALLGRIND_STOP_INSTRUMENTATION;
-	//CALLGRIND_DUMP_STATS;
-
-	otb::AttributeTable::Pointer tab = filter->GetZoneTable();
-	NMQtOtbAttributeTableModel* tabModel = new NMQtOtbAttributeTableModel(tab, this);
-	NMFastTrackSelectionModel* selModel = new NMFastTrackSelectionModel(tabModel, this);
-
-	NMTableView* tabView;
-	tabView = new NMTableView(tabModel, this);
-	tabView->setSelectionModel(selModel);
-	tabView->setTitle(tr("Summary of Zones"));// + vL->objectName() +
-			//tr("in zones of ") + zL->objectName());
-	tabView->show();
+	NMDebugAI(<< "strue=" << c << " | sfalse=" << d << std::endl);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

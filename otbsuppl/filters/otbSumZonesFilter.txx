@@ -21,12 +21,12 @@
 #ifndef __otbSumZonesFilter_txx
 #define __otbSumZonesFilter_txx
 
-#include <map>
 #include "nmlog.h"
 #include "otbSumZonesFilter.h"
 
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
+#include "itkProgressReporter.h"
 #include "itkMacro.h"
 
 #define ctx "otb::SumZonesFilter"

@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright /*$<Year>$*/ Landcare Research New Zealand Ltd
+ * Copyright 2014 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -16,31 +16,31 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- *  /*$<WrapperClassName>$*/.cpp
+ *  NMSumZonesFilterWrapper.cpp
  *
- *  Created on: /*$<FileDate>$*/
- *      Author: /*$<Author>$*/
+ *  Created on: 2014-03-27
+ *      Author: Alexander Herzig
  */
 
-#include "/*$<WrapperClassName>$*/.h"
+#include "NMSumZonesFilterWrapper.h"
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
-#include "/*$<FilterClassFileName>$*/.h"
+#include "otbSumZonesFilter.h"
 
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
  */
 template<class TInputImage, class TOutputImage, unsigned int Dimension>
-class /*$<WrapperClassName>$*/_Internal
+class NMSumZonesFilterWrapper_Internal
 {
 public:
 	typedef otb::Image<TInputImage, Dimension> InImgType;
 	typedef otb::Image<TOutputImage, Dimension> OutImgType;
-	typedef typename /*$<FilterTypeDef>$*/ FilterType;
+	typedef typename otb::SumZonesFilter<InImgType, OutImgType> FilterType;
 	typedef typename FilterType::Pointer FilterTypePointer;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
@@ -69,11 +69,11 @@ public:
 			unsigned int numBands, NMProcess* proc,
 			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 	{
-		NMDebugCtx("/*$<WrapperClassName>$*/_Internal", << "...");
+		NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "...");
 
 		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		/*$<WrapperClassName>$*/* p =
-				dynamic_cast</*$<WrapperClassName>$*/*>(proc);
+		NMSumZonesFilterWrapper* p =
+				dynamic_cast<NMSumZonesFilterWrapper*>(proc);
 
 		// make sure we've got a valid filter object
 		if (f == 0)
@@ -88,26 +88,62 @@ public:
 		bool bok;
 		int givenStep = step;
 
-		/*$<InternalFilterParamSetter>$*/
+		
+                step = p->mapHostIndexToPolicyIndex(givenStep, p->mIgnoreNodataValue.size());
+                bool curIgnoreNodataValue;
+                if (step < p->mIgnoreNodataValue.size())
+                {
+                    curIgnoreNodataValue = p->mIgnoreNodataValue.at(step).toInt(&bok);
+                    if (bok)
+                    {
+                        f->SetIgnoreNodataValue(curIgnoreNodataValue);
+                    }
+                    else
+                    {
+                        NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'IgnoreNodataValue'!");
+                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                        e.setMsg("Invalid value for 'IgnoreNodataValue'!");
+                        throw e;
+                    }
+                }
 
-		NMDebugCtx("/*$<WrapperClassName>$*/_Internal", << "done!");
+                step = p->mapHostIndexToPolicyIndex(givenStep, p->mNodataValue.size());
+                double curNodataValue;
+                if (step < p->mNodataValue.size())
+                {
+                    curNodataValue = p->mNodataValue.at(step).toDouble(&bok);
+                    if (bok)
+                    {
+                        f->SetNodataValue(curNodataValue);
+                    }
+                    else
+                    {
+                        NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'NodataValue'!");
+                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                        e.setMsg("Invalid value for 'NodataValue'!");
+                        throw e;
+                    }
+                }
+
+
+		NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "done!");
 	}
 };
 
-InstantiateObjectWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
-SetNthInputWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
-GetOutputWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
-LinkInternalParametersWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
+InstantiateObjectWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
+SetNthInputWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
+GetOutputWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
+LinkInternalParametersWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
 
-/*$<WrapperClassName>$*/
-::/*$<WrapperClassName>$*/(QObject* parent)
+NMSumZonesFilterWrapper
+::NMSumZonesFilterWrapper(QObject* parent)
 {
 	this->setParent(parent);
-	this->setObjectName("/*$<WrapperClassName>$*/");
+	this->setObjectName("NMSumZonesFilterWrapper");
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 }
 
-/*$<WrapperClassName>$*/
-::~/*$<WrapperClassName>$*/()
+NMSumZonesFilterWrapper
+::~NMSumZonesFilterWrapper()
 {
 }

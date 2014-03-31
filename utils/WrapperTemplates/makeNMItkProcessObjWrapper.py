@@ -77,7 +77,7 @@ def formatPropertyDefinition(propertyList):
     '''     
     
     defSection = ''  
-    for prop in propList:
+    for prop in propertyList:
         propType = getPropertyType(prop)
         tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s)" % (propType, prop[0], prop[0], prop[0])
         defSection = defSection + '\n' + tmp
@@ -92,7 +92,7 @@ def formatPropertyGetSet(propertyList):
     '''     
 
     getset = ''  
-    for prop in propList:
+    for prop in propertyList:
         propType = getPropertyType(prop)
         tmp = "    NMPropertyGetSet( %s, %s )" % (prop[0], propType)
         getset = getset + '\n' + tmp
@@ -116,23 +116,62 @@ def formatPropertyVariable(propertyList):
     return vardef
 
 # ===============================================================================
+def formatTypeConversion(type):
+    
+    typeConv = ''
+    if type == "double":
+        typeConv = ".toDouble(&bok)"
+    elif type == "long":
+        typeConv = ".toLong(&bok)"
+
+    return typeConv
+    
+
+# ===============================================================================
 def formatInternalParamSetting(propertyList):
     '''
     formats parameter setting of the internal templated
     wrapper helper class
     '''
+
+    #tmp = "    %s m%s" % (propType, prop[0])
+    # -> setMTime 
+    # -> NMProcess::mapHostIndexToPolicyIndex
+    
+    #step = this->mapHostIndexToPolicyIndex(givenStep, this->mMapExpressions.size());
+    #QString currentExpression;
+    #if (step < this->mMapExpressions.size())
+    #{
+    #    currentExpression = this->mMapExpressions.at(step);//.toLower();
+    #    this->setInternalExpression(currentExpression);
+    #}
     
     paramSetting = ''
-    for prop in propList:
+    for prop in propertyList:
         propType = getPropertyType(prop)
-        #tmp = "    %s m%s" % (propType, prop[0])
-        # -> setMTime 
-        # -> NMProcess::mapHostIndexToPolicyIndex
+        propName = prop[0]
+        propDim = prop[1]
+        propVarType = prop[2]
+        typeConv = formatTypeConversion(propVarType)
+
+        if propDim == 1:
+            tmp = \
+            "step = this->mapHostIndexToPolicyIndex(givenStep, this->m%s.size());\n" \
+            "%s cur%s;\n"                                                            \
+            "if (step < this->m%s.size())\n"                                         \
+            "{\n"                                                                    \
+            "    cur%s = this ->m%s.at(step)%s;\n"                                   \
+            "    f->Set%s(cur%s);\n"                                                 \
+            "}\n"                                                                    \
+            % (propName, propVarType, propName, propName, propName, typeConv,
+               propName, propName)
         
-        
-        
-        
-        paramSetting = paramSetting + '\n' + tmp
+            paramSetting = paramSetting + '\n' + tmp
+            tmp = ''
+            
+        else: 
+            print "WARNING - cannot format multi-dimensional parameter settings yet!!"
+            return None
         
     return paramSetting
 

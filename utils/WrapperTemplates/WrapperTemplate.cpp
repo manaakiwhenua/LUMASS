@@ -84,6 +84,7 @@ public:
 		}
 
 		/* do something reasonable here */
+		bool bok;
 		int givenStep = step;
 
 		/*$<InternalFilterParamSetter>$*/

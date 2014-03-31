@@ -1,4 +1,5 @@
 # LUMASS otb::SumZonesFilter wrapper profile
+# types: double, long, string
 
 Year                        = 2014
 WrapperClassName            = NMSumZonesFilter

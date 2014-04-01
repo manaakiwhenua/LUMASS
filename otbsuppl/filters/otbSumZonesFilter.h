@@ -103,6 +103,7 @@ public:
 	  //void SetZoneTable(AttributeTable::Pointer);
 
 	  AttributeTable::Pointer GetZoneTable(void) {return mZoneTable;}
+      AttributeTable::Pointer getRAT(unsigned int idx) {return mZoneTable;}
 
 	  virtual void ResetPipeline();
 

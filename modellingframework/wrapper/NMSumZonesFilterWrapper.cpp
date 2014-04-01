@@ -55,17 +55,29 @@ public:
 	{
 		InImgType* img = dynamic_cast<InImgType*>(dataObj);
 		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		filter->SetInput(img);
+        filter->SetInput(idx, img);
 	}
 
 	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, unsigned int idx)
 	{
 		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType>(filter->GetOutput(idx));
+		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
 	}
 
-	static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
+    static otb::AttributeTable::Pointer getRAT(
+        itk::ProcessObject::Pointer& procObj, 
+        unsigned int numBands, unsigned int idx)
+    {
+        FilterType *f = dynamic_cast<FilterType*>(procObj.GetPointer());
+        return f->getRAT(idx);
+    }
+
+
+/*$<InternalRATSetSupport>$*/
+
+
+    static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, NMProcess* proc,
 			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 	{
@@ -89,41 +101,41 @@ public:
 		int givenStep = step;
 
 		
-                step = p->mapHostIndexToPolicyIndex(givenStep, p->mIgnoreNodataValue.size());
-                bool curIgnoreNodataValue;
-                if (step < p->mIgnoreNodataValue.size())
-                {
-                    curIgnoreNodataValue = p->mIgnoreNodataValue.at(step).toInt(&bok);
-                    if (bok)
-                    {
-                        f->SetIgnoreNodataValue(curIgnoreNodataValue);
-                    }
-                    else
-                    {
-                        NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'IgnoreNodataValue'!");
-                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                        e.setMsg("Invalid value for 'IgnoreNodataValue'!");
-                        throw e;
-                    }
-                }
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mIgnoreNodataValue.size());
+        bool curIgnoreNodataValue;
+        if (step < p->mIgnoreNodataValue.size())
+        {
+            curIgnoreNodataValue = p->mIgnoreNodataValue.at(step).toInt(&bok);
+            if (bok)
+            {
+                f->SetIgnoreNodataValue(curIgnoreNodataValue);
+            }
+            else
+            {
+                NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'IgnoreNodataValue'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setMsg("Invalid value for 'IgnoreNodataValue'!");
+                throw e;
+            }
+        }
 
-                step = p->mapHostIndexToPolicyIndex(givenStep, p->mNodataValue.size());
-                double curNodataValue;
-                if (step < p->mNodataValue.size())
-                {
-                    curNodataValue = p->mNodataValue.at(step).toDouble(&bok);
-                    if (bok)
-                    {
-                        f->SetNodataValue(curNodataValue);
-                    }
-                    else
-                    {
-                        NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'NodataValue'!");
-                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                        e.setMsg("Invalid value for 'NodataValue'!");
-                        throw e;
-                    }
-                }
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mNodataValue.size());
+        double curNodataValue;
+        if (step < p->mNodataValue.size())
+        {
+            curNodataValue = p->mNodataValue.at(step).toDouble(&bok);
+            if (bok)
+            {
+                f->SetNodataValue(curNodataValue);
+            }
+            else
+            {
+                NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'NodataValue'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setMsg("Invalid value for 'NodataValue'!");
+                throw e;
+            }
+        }
 
 
 		NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "done!");
@@ -132,8 +144,11 @@ public:
 
 InstantiateObjectWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
 SetNthInputWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
-GetOutputWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
+GetOutputRATWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
 LinkInternalParametersWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
+GetRATWrap( NMSumZonesFilterWrapper, NMSumZonesFilterWrapper_Internal )
+
+/*$<RATSetSupportWrap>$*/
 
 NMSumZonesFilterWrapper
 ::NMSumZonesFilterWrapper(QObject* parent)

@@ -18,24 +18,35 @@ def buildDict(profileFile):
     keys = ["Year", "WrapperClassName", "FileDate", "Author", 
             "FilterClassFileName", "FilterTypeDef",
             "RATGetSupport", "RATSetSupport"]
+
     pdict = {}
-    # initialise an empty property list 
+    # initialise list elements
     pdict['Property'] = []
+    pdict['InputTypeFunc'] = []
     
     # now crawl through the file line by line
     # and build a dictionary with string objects
     with fp as f:
         for line in f:
-            if line.find('Property') >= 0 and line.find('Property') < line.find('='):
+            cleanline = line.strip()
+            if len(cleanline) == 0 or cleanline[0] == '#':
+                continue
+
+            if (line.find('Property') >= 0 and line.find('Property') < line.find('=')) \
+               or (line.find('InputTypeFunc') >= 0 and line.find('InputTypeFunc') < line.find('=')):
                 # handle properties
                 tl = line.split('=')
+                tkey = tl[0]
                 if len(tl[1]) > 0:
                     tl2 = tl[1].split(':')
                     if len(tl2) == 3:
                         tl3 = []
                         for y in tl2:
                             tl3.append(y.strip())
-                        pdict['Property'].append(tl3)
+                        if tkey.find('Property') >= 0:
+                            pdict['Property'].append(tl3)
+                        elif tkey.find('InputTypeFunc') >= 0:
+                            pdict['InputTypeFunc'].append(tl3)
             else:
                 # handle the rest
                 for k in keys:
@@ -251,6 +262,65 @@ def formatInternalRATSetSupport():
     return s
 
 # ===============================================================================
+def formatInternalStdSetNthInput():
+
+    s = \
+    "    static void setNthInput(itk::ProcessObject::Pointer& otbFilter,\n"                     \
+    "                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)\n"  \
+    "    {\n"                                                                                   \
+    "        InImgType* img = dynamic_cast<InImgType*>(dataObj);\n"                             \
+    "        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());\n"         \
+    "        filter->SetInput(idx, img);\n"                                                     \
+    "    }\n"                                                                                   \
+
+    return s
+
+# ===============================================================================
+def formatInternalSetNthInput(propList):
+
+    start = \
+    "    static void setNthInput(itk::ProcessObject::Pointer& otbFilter,\n"                     \
+    "                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)\n"  \
+    "    {\n"                                                                                   \
+    "        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());\n"
+
+    middle = ''
+    counter = 0
+    for tf in propList:
+        idx = tf[0]
+        type = tf[1]
+        func = tf[2]
+
+        opening = ''
+        if counter == 0:
+            opening = "        if (idx == %s)\n" % idx
+        else:
+            opening = "        else if (idx == %s)\n" % idx
+
+        body = \
+        "        {\n"                                               \
+        "            %s* img = dynamic_cast<%s*>(dataObj);\n"       \
+        "            filter->%s(img);\n"                            \
+        "        }\n"                                               \
+        % (type, type, func)
+
+        middle = middle + opening + body
+        counter = counter + 1
+
+    elsepart = ''
+    if len(middle) > 0:
+        elsepart = \
+        "        else\n"                                                      \
+        "        {\n"                                                         \
+        "            InImgType* img = dynamic_cast<InImgType*>(dataObj);\n"   \
+        "            filter->SetInput(idx, img);\n"                           \
+        "        }\n"                                                         \
+
+    end = "    }\n"
+
+    return start + middle + elsepart + end
+
+# ===============================================================================
 def formatRATSetSupportWrap(className):
 
     return "SetRATWrap( %s, %s_Internal )\n" % (className, className)
@@ -372,7 +442,7 @@ if __name__ == '__main__':
                 if setsupp == 1:
                     hStr = hStr.replace("/*$<RATSetSupportDecl>$*/", formatRATSetSupportDecl())
 
-            else:
+            elif key != 'InputTypeFunc':
                 keyword = "/*$<%s>$*/" % str(key)
                 hStr = hStr.replace(keyword, pDict[key])
                 
@@ -392,6 +462,10 @@ if __name__ == '__main__':
     else:
         RATGetSupp = 0
 
+    putStdNthInput = False
+    if len(pDict['InputTypeFunc']) == 0:
+        putStdNthInput = True
+
     cppStr = None
     with open(cppPath, 'r') as cppWrapper:
         cppStr = cppWrapper.read()
@@ -400,6 +474,11 @@ if __name__ == '__main__':
             cppStr = cppStr.replace("/*$<GetOutPutWrap>$*/", "GetOutputWrap")
         else:
             cppStr = cppStr.replace("/*$<GetOutPutWrap>$*/", "GetOutputRATWrap")
+
+        if putStdNthInput:
+            # internal setNthInput formatting
+            stdsetinput = formatInternalStdSetNthInput()
+            cppStr = cppStr.replace("/*$<InternalSetNthInput>$*/", stdsetinput)
 
 
         for key in pDict:
@@ -424,6 +503,14 @@ if __name__ == '__main__':
                                         formatInternalRATSetSupport())
                     cppStr = cppStr.replace("/*$<RATSetSupportWrap>$*/", \
                                         formatRATSetSupportWrap(className))
+
+            elif key == 'InputTypeFunc':
+                typefuncs = pDict[key]
+
+                # internal setNthInput formatting
+                setinput = formatInternalSetNthInput(typefuncs)
+                cppStr = cppStr.replace("/*$<InternalSetNthInput>$*/", setinput)
+
             else:
                 keyword = "/*$<%s>$*/" % str(key)
                 cppStr = cppStr.replace(keyword, pDict[key])

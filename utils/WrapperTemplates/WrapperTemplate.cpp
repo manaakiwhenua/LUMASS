@@ -50,13 +50,7 @@ public:
 		otbFilter = f;
 	}
 
-	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
-	{
-		InImgType* img = dynamic_cast<InImgType*>(dataObj);
-		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        filter->SetInput(idx, img);
-	}
+/*$<InternalSetNthInput>$*/
 
 	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, unsigned int idx)

@@ -1483,21 +1483,22 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 	NMIterableComponent* itComp = 0;
 	NMProcess* proc = 0;
 
-	if (procName.compare("ImageReader") == 0)
-		proc = NMProcessFactory::instance().createProcess("NMImageReader");
-	else if (procName.compare("MapAlgebra") == 0)
-		proc = NMProcessFactory::instance().createProcess("NMRATBandMathImageFilterWrapper");
-	else if (procName.compare("ImageWriter") == 0)
-		proc = NMProcessFactory::instance().createProcess("NMStreamingImageFileWriterWrapper");
-	else if (procName.compare("NeighbourCounter") == 0)
-		proc = NMProcessFactory::instance().createProcess("NMNeighbourhoodCountingWrapper");
-	else if (procName.compare("RandomImage") == 0)
-			proc = NMProcessFactory::instance().createProcess("NMRandomImageSourceWrapper");
-	else if (procName.compare("CostDistanceBuffer") == 0)
-			proc = NMProcessFactory::instance().createProcess("NMCostDistanceBufferImageWrapper");
-	else if (procName.compare("FocalDistanceWeight") == 0)
-			proc = NMProcessFactory::instance().createProcess("NMFocalNeighbourhoodDistanceWeightingWrapper");
-	else if (procName.compare("DataBuffer") == 0)
+//	if (procName.compare("ImageReader") == 0)
+//		proc = NMProcessFactory::instance().createProcess("NMImageReader");
+//	else if (procName.compare("MapAlgebra") == 0)
+//		proc = NMProcessFactory::instance().createProcess("NMRATBandMathImageFilterWrapper");
+//	else if (procName.compare("ImageWriter") == 0)
+//		proc = NMProcessFactory::instance().createProcess("NMStreamingImageFileWriterWrapper");
+//	else if (procName.compare("NeighbourCounter") == 0)
+//		proc = NMProcessFactory::instance().createProcess("NMNeighbourhoodCountingWrapper");
+//	else if (procName.compare("RandomImage") == 0)
+//			proc = NMProcessFactory::instance().createProcess("NMRandomImageSourceWrapper");
+//	else if (procName.compare("CostDistanceBuffer") == 0)
+//			proc = NMProcessFactory::instance().createProcess("NMCostDistanceBufferImageWrapper");
+//	else if (procName.compare("FocalDistanceWeight") == 0)
+//			proc = NMProcessFactory::instance().createProcess("NMFocalNeighbourhoodDistanceWeightingWrapper");
+
+    if (procName.compare("DataBuffer") == 0)
 	{
 		NMDebugAI(<< "it's gonna be a DataComponent ... " << endl);
 		dataComp = new NMDataComponent();
@@ -1507,6 +1508,10 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 				procItem, SLOT(updateDescription(const QString &)));
 		dataComp->setDescription(tname);
 	}
+    else
+    {
+        proc = NMProcessFactory::instance().createProcess(procName);
+    }
 
 	if (proc != 0)// && procName.compare("DataBuffer") != 0)
 	{

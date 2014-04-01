@@ -47,10 +47,52 @@ NMProcessFactory& NMProcessFactory::instance(void)
 	return fab;
 }
 
+QString
+NMProcessFactory::procNameFromAlias(const QString &alias)
+{
+    QString proc = "";
+
+    if (alias.compare("ImageReader") == 0)
+    {
+        return "NMImageReader";
+    }
+    else if (alias.compare("MapAlgebra") == 0)
+    {
+        return "NMRATBandMathImageFilterWrapper";
+    }
+    else if (alias.compare("ImageWriter") == 0)
+    {
+        return "NMStreamingImageFileWriterWrapper";
+    }
+    else if (alias.compare("NeighbourCounter") == 0)
+    {
+        return "NMNeighbourhoodCountingWrapper";
+    }
+    else if (alias.compare("RandomImage") == 0)
+    {
+        return "NMRandomImageSourceWrapper";
+    }
+    else if (alias.compare("CostDistanceBuffer") == 0)
+    {
+        return "NMCostDistanceBufferImageWrapper";
+    }
+    else if (alias.compare("FocalDistanceWeight") == 0)
+    {
+        return "NMFocalNeighbourhoodDistanceWeightingWrapper";
+    }
+    else if (alias.compare("SummariseZones") == 0)
+    {
+        return "NMSumZonesFilterWrapper";
+    }
+    else return proc;
+}
+
 // TODO: this needs to be revised to support automatic
 //       registration of supported classes;
-NMProcess* NMProcessFactory::createProcess(QString procClass)
+NMProcess* NMProcessFactory::createProcess(const QString& alias)
 {
+    QString procClass = this->procNameFromAlias(alias);
+
 	if (procClass.compare("NMImageReader") == 0)
 	{
 		return new NMImageReader(this);

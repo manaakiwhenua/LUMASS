@@ -91,7 +91,129 @@ type get ## name() \
  *  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
  */
 
+/** ==============================================================
+ * 					setRAT
+ *  ==============================================================
+ */
 
+#define callSetRAT( inputType, outputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< inputType, outputType, 1>::setRAT(this->mOtbProcess, \
+                this->mInputNumBands, numInput, rat);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        rat = wrapName< inputType, outputType, 2 >::setRAT(this->mOtbProcess, \
+                this->mInputNumBands, numInput, rat);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        rat = wrapName< inputType, outputType, 3 >::setRAT(this->mOtbProcess, \
+                this->mInputNumBands, numInput, rat);	\
+    }\
+}
+
+#define callOutputTypeSetRAT( outputType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< outputType, 1>::setRAT(this->mOtbProcess, \
+                this->mOutputNumBands, numInput, rat);	\
+    }		\
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        rat = wrapName< outputType, 2 >::setRAT(this->mOtbProcess, \
+                this->mOutputNumBands, numInput, rat);	\
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        rat = wrapName< outputType, 3 >::setRAT(this->mOtbProcess, \
+                this->mOutputNumBands, numInput, rat);	\
+    }\
+}
+
+#define callInputTypeSetRAT( inputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< inputType, 1>::setRAT(this->mOtbProcess, \
+                this->mInputNumBands, numInput, rat);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        rat = wrapName< inputType, 2 >::setRAT(this->mOtbProcess, \
+                this->mInputNumBands, numInput, rat);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        rat = wrapName< inputType, 3 >::setRAT(this->mOtbProcess, \
+                this->mInputNumBands, numInput, rat);	\
+    }\
+}
+
+/** ==============================================================
+ * 					getRAT
+ *  ==============================================================
+ */
+
+#define callGetRAT( inputType, outputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< inputType, outputType, 1>::getRAT(this->mOtbProcess, \
+                this->mInputNumBands, idx);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        rat = wrapName< inputType, outputType, 2 >::getRAT(this->mOtbProcess, \
+                this->mInputNumBands, idx);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        rat = wrapName< inputType, outputType, 3 >::getRAT(this->mOtbProcess, \
+                this->mInputNumBands, idx);	\
+    }\
+}
+
+#define callOutputTypeGetRAT( outputType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< outputType, 1>::getRAT(this->mOtbProcess, \
+                this->mOutputNumBands, idx);	\
+    }		\
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        rat = wrapName< outputType, 2 >::getRAT(this->mOtbProcess, \
+                this->mOutputNumBands, idx);	\
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        rat = wrapName< outputType, 3 >::getRAT(this->mOtbProcess, \
+                this->mOutputNumBands, idx);	\
+    }\
+}
+
+#define callInputTypeGetRAT( inputType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1)		\
+    {		\
+        rat = wrapName< inputType, 1>::getRAT(this->mOtbProcess, \
+                this->mInputNumBands, idx);	\
+    }		\
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        rat = wrapName< inputType, 2 >::getRAT(this->mOtbProcess, \
+                this->mInputNumBands, idx);	\
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        rat = wrapName< inputType, 3 >::getRAT(this->mOtbProcess, \
+                this->mInputNumBands, idx);	\
+    }\
+}
 
 /** ==============================================================
  * 					getOutput
@@ -693,6 +815,62 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
 	return dw;																	\
 }
 
+/** get the output of the process object, which is templated
+ *  over the INPUT and OUTPUT component type of this wrapper class
+ */
+#define GetOutputRATWrap( ClassName, InternalWrapper )                                              \
+NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
+{                                                                               \
+    if (!this->mbIsInitialised)                                                 \
+        return 0;                                                               \
+                                                                                \
+    itk::DataObject* img = 0;                                                   \
+    otb::AttributeTable::Pointer rat = 0;                                       \
+                                                                                \
+    switch (this->mInputComponentType)                                         \
+    {                                                                           \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callGetOutput, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callGetOutput, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callGetOutput, InternalWrapper );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callGetOutput, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callGetOutput, InternalWrapper );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callGetOutput, InternalWrapper );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callGetOutput, InternalWrapper );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callGetOutput, InternalWrapper );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callGetOutput, InternalWrapper );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callGetOutput, InternalWrapper );                                                \
+        break;																	\
+    default:                                                                    \
+        break;                                                                  \
+    }                                                                           \
+                                                                                \
+    NMItkDataObjectWrapper* dw =                                                \
+            new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands);                 \
+                                                                                \
+    dw->setOTBTab(this->getRAT(idx)->getOTBTab());                                           \
+                                                                                \
+    return dw;																	\
+}
 
 /** set the nth input of a process object, which is
  *  templated over the INPUT and OUTPUT type of this
@@ -761,6 +939,112 @@ void ClassName::setNthInput(unsigned int numInput,  		\
 	default:                                                                      \
 		break;                                                                    \
 	}                                                                             \
+}
+
+/** get the raster attribute table (RAT) of the process object,
+ *  which is templated over the INPUT and OUTPUT component type
+ *  of this wrapper class
+ */
+#define GetRATWrap( ClassName, InternalWrapper )                                              \
+NMItkDataObjectWrapper* ClassName::getRAT(unsigned int idx)					\
+{                                                                               \
+    if (!this->mbIsInitialised)                                                 \
+        return 0;                                                               \
+                                                                                \
+    otb::AttributeTable::Pointer rat = 0;                                       \
+                                                                                \
+    switch (this->mInputComponentType)                                          \
+    {                                                                           \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callGetRAT, InternalWrapper );         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callGetRAT, InternalWrapper );                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callGetRAT, InternalWrapper );        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callGetRAT, InternalWrapper );                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callGetRAT, InternalWrapper );          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callGetRAT, InternalWrapper );                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callGetRAT, InternalWrapper );         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callGetRAT, InternalWrapper );                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callGetRAT, InternalWrapper );                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callGetRAT, InternalWrapper );                \
+        break;																	\
+    default:                                                                    \
+        break;                                                                  \
+    }                                                                           \
+                                                                                \
+    NMItkDataObjectWrapper* dw =                                                \
+            new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,     \
+            this->mOutputNumDimensions, this->mOutputNumBands);                 \
+    dw->setOTBTab(rat);                                                         \
+                                                                                \
+    return dw;																	\
+}
+
+/** get the raster attribute table (RAT) of the process object,
+ *  which is templated over the INPUT and OUTPUT component type
+ *  of this wrapper class
+ */
+#define SetRATWrap( ClassName, InternalWrapper )						\
+void ClassName::setRAT(unsigned int numInput,  		\
+        NMItkDataObjectWrapper* imgWrapper)                 \
+{                                                                               \
+    if (!this->mbIsInitialised)                                                 \
+        return 0;                                                               \
+                                                                                \
+    otb::AttributeTable::Pointer rat = imgWrapper->getOTBTab();                 \
+                                                                                \
+    switch (this->mInputComponentType)                                          \
+    {                                                                           \
+    case otb::ImageIOBase::UCHAR:                                               \
+        outputTypeSwitch( unsigned char, callSetRAT, InternalWrapper );         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        outputTypeSwitch( char, callGetRAT, InternalWrapper );                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        outputTypeSwitch( unsigned short, callSetRAT, InternalWrapper );        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        outputTypeSwitch( short, callGetRAT, InternalWrapper );                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        outputTypeSwitch( unsigned int, callSetRAT, InternalWrapper );          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        outputTypeSwitch( int, callGetRAT, InternalWrapper );                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        outputTypeSwitch( unsigned long, callSetRAT, InternalWrapper );         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        outputTypeSwitch( long, callSetRAT, InternalWrapper );                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        outputTypeSwitch( float, callSetRAT, InternalWrapper );                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        outputTypeSwitch( double, callSetRAT, InternalWrapper );                \
+        break;																	\
+    default:                                                                    \
+        break;                                                                  \
+    }                                                                           \
 }
 
 

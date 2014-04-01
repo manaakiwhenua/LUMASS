@@ -55,17 +55,22 @@ public:
 	{
 		InImgType* img = dynamic_cast<InImgType*>(dataObj);
 		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		filter->SetInput(img);
+        filter->SetInput(idx, img);
 	}
 
 	static itk::DataObject* getOutput(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, unsigned int idx)
 	{
 		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-		return dynamic_cast<OutImgType>(filter->GetOutput(idx));
+		return dynamic_cast<OutImgType*>(filter->GetOutput(idx));
 	}
 
-	static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
+/*$<InternalRATGetSupport>$*/
+
+/*$<InternalRATSetSupport>$*/
+
+
+    static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, NMProcess* proc,
 			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 	{
@@ -96,8 +101,10 @@ public:
 
 InstantiateObjectWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
 SetNthInputWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
-GetOutputWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
+/*$<GetOutPutWrap>$*/( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
 LinkInternalParametersWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
+/*$<RATGetSupportWrap>$*/
+/*$<RATSetSupportWrap>$*/
 
 /*$<WrapperClassName>$*/
 ::/*$<WrapperClassName>$*/(QObject* parent)

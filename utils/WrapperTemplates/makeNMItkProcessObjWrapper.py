@@ -16,7 +16,8 @@ def buildDict(profileFile):
     
     # define keywords to look for
     keys = ["Year", "WrapperClassName", "FileDate", "Author", 
-                "FilterClassFileName", "FilterTypeDef"]
+            "FilterClassFileName", "FilterTypeDef",
+            "RATGetSupport", "RATSetSupport"]
     pdict = {}
     # initialise an empty property list 
     pdict['Property'] = []
@@ -176,40 +177,40 @@ def formatInternalParamSetting(propertyList, className):
 
         if propDim == 0:
             tmp = \
-            "                f->Set%s(m%s);\n" % (propName, propName)
+            "        f->Set%s(m%s);\n" % (propName, propName)
         elif propDim == 1:
             tmp = \
-            "                step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
-            "                %s cur%s;\n"                                                            \
-            "                if (step < p->m%s.size())\n"                                         \
-            "                {\n"                                                                    \
-            "                    cur%s = p->m%s.at(step)%s;\n"                                   \
+            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
+            "        %s cur%s;\n"                                                            \
+            "        if (step < p->m%s.size())\n"                                         \
+            "        {\n"                                                                    \
+            "            cur%s = p->m%s.at(step)%s;\n"                                   \
             % (propName, propVarType, propName, propName, propName, propName, typeConv)
 
             test = ''
             if propVarType != "string":
                 test = \
-                "                    if (bok)\n"                                                         \
-                "                    {\n"                                                                \
-                "                        f->Set%s(cur%s);\n"                                             \
-                "                    }\n"                                                                \
-                "                    else\n"                                                             \
-                "                    {\n"                                                                \
-                "                        NMErr(\"%s_Internal\", << \"Invalid value for '%s'!\");\n"      \
-                "                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);\n"\
-                "                        e.setMsg(\"Invalid value for '%s'!\");\n"                       \
-                "                        throw e;\n"                                                     \
-                "                    }\n"                                                                \
+                "            if (bok)\n"                                                         \
+                "            {\n"                                                                \
+                "                f->Set%s(cur%s);\n"                                             \
+                "            }\n"                                                                \
+                "            else\n"                                                             \
+                "            {\n"                                                                \
+                "                NMErr(\"%s_Internal\", << \"Invalid value for '%s'!\");\n"      \
+                "                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);\n"\
+                "                e.setMsg(\"Invalid value for '%s'!\");\n"                       \
+                "                throw e;\n"                                                     \
+                "            }\n"                                                                \
                 % (propName, propName, className, propName, propName)
                 tmp = tmp + test
             else:
                 test = \
-                "                    f->Set%s(cur%s);\n"                                             \
+                "                f->Set%s(cur%s);\n"                                             \
                 % (propName, propName)
                 tmp = tmp + test
                 
             tmp = tmp + \
-            "                }\n"     
+            "        }\n"
         else: 
             print "WARNING - cannot format multi-dimensional parameter settings yet!!"
             return None
@@ -220,6 +221,56 @@ def formatInternalParamSetting(propertyList, className):
         
     return paramSetting
 
+# ===============================================================================
+def formatInternalRATGetSupport():
+
+    s = \
+    "    static otb::AttributeTable::Pointer getRAT(\n"            \
+    "        itk::ProcessObject::Pointer& procObj, \n"  \
+    "        unsigned int numBands, unsigned int idx)\n"\
+    "    {\n"                                                      \
+    "        FilterType *f = dynamic_cast<FilterType*>(procObj.GetPointer());\n"\
+    "        return f->getRAT(idx);\n"                             \
+    "    }\n"
+
+    return s
+
+# ===============================================================================
+def formatInternalRATSetSupport():
+
+    s = \
+    "    static void setRAT(\n"            \
+    "        itk::ProcessObject::Pointer& procObj, \n"  \
+    "        unsigned int numBands, unsigned int idx,\n"\
+    "        otb::AttributeTable::Pointer& rat)\n"      \
+    "    {\n"                                                      \
+    "        FilterType *f = dynamic_cast<FilterType*>(procObj.GetPointer());\n"\
+    "        return f->setRAT(idx, rat);\n"                        \
+    "    }\n"
+
+    return s
+
+# ===============================================================================
+def formatRATSetSupportWrap(className):
+
+    return "SetRATWrap( %s, %s_Internal )\n" % (className, className)
+
+# ===============================================================================
+def formatRATGetSupportWrap(className):
+
+    return "GetRATWrap( %s, %s_Internal )\n" % (className, className)
+
+# ===============================================================================
+def formatRATGetSupportDecl():
+
+    return "NMItkDataObjectWrapper* getRAT(unsigned int idx);\n"
+
+# ===============================================================================
+def formatRATSetSupportDecl():
+
+    s = "void setRAT(unsigned int idx, \n" \
+        "        NMItkDataObjectWrapper* imgWrapper);\n"
+    return s
 
 # ===============================================================================
 if __name__ == '__main__':
@@ -252,8 +303,10 @@ if __name__ == '__main__':
     print "    >>> using '%s' as lumass wrapper profile ..." % str(profile)
 
     pDict = buildDict(fp)
-    #print pDict
-      
+    print ''
+    print pDict
+    print ''
+
     # ---------------------------------------------------------------------  
     # copying the wrapper template to new files
     print "    >>> creating wrapper class files ..."
@@ -282,12 +335,19 @@ if __name__ == '__main__':
     # -----------------------------------------------------------------------
     # process copied files
     print "    >>> processing wrapper header file ..."    
-    
+
+    #/*$<InternalRATGetSupport>$*/
+    #/*$<InternalRATSetSupport>$*/
+    #/*$<RATGetSupportWrap>$*/
+    #/*$<RATSetSupportWrap>$*/
+    #/*$<RATGetSupportDecl>$*/
+    #/*$<RATSetSupportDecl>$*/
+
     # HEADER FILE
     hStr = None
     with open(hPath, 'r') as hWrapper:
         hStr = hWrapper.read()
-        
+
         for key in pDict:
             if key == 'Property':
                 propList = pDict[key]
@@ -302,6 +362,16 @@ if __name__ == '__main__':
                 propVarDef = formatPropertyVariable(propList)
                 hStr = hStr.replace("/*$<PropertyVarDef>$*/", propVarDef)
             
+            elif key == 'RATGetSupport':
+                getsupp = int(pDict[key])
+                if getsupp == 1:
+                    hStr = hStr.replace("/*$<RATGetSupportDecl>$*/", formatRATGetSupportDecl())
+
+            elif key == 'RATSetSupport':
+                setsupp = int(pDict[key])
+                if setsupp == 1:
+                    hStr = hStr.replace("/*$<RATSetSupportDecl>$*/", formatRATSetSupportDecl())
+
             else:
                 keyword = "/*$<%s>$*/" % str(key)
                 hStr = hStr.replace(keyword, pDict[key])
@@ -313,11 +383,24 @@ if __name__ == '__main__':
     with open(hPath, 'w') as hWrapper:
         hWrapper.write(hStr)
     
+
+
     print "    >>> processing wrapper c++ implementation file ..."
     # CPP FILE
+    if 'RATGetSupport' in pDict:
+        RATGetSupp = int(pDict['RATGetSupport'])
+    else:
+        RATGetSupp = 0
+
     cppStr = None
     with open(cppPath, 'r') as cppWrapper:
         cppStr = cppWrapper.read()
+
+        if RATGetSupp == 0:
+            cppStr = cppStr.replace("/*$<GetOutPutWrap>$*/", "GetOutputWrap")
+        else:
+            cppStr = cppStr.replace("/*$<GetOutPutWrap>$*/", "GetOutputRATWrap")
+
 
         for key in pDict:
             if key == 'Property':
@@ -327,6 +410,20 @@ if __name__ == '__main__':
                 paramSetting = formatInternalParamSetting(propList, className)
                 cppStr = cppStr.replace("/*$<InternalFilterParamSetter>$*/", paramSetting)
             
+            elif key == 'RATGetSupport':
+                getsupp = int(pDict[key])
+                if getsupp == 1:
+                    cppStr = cppStr.replace("/*$<InternalRATGetSupport>$*/", \
+                                        formatInternalRATGetSupport())
+                    cppStr = cppStr.replace("/*$<RATGetSupportWrap>$*/", \
+                                        formatRATGetSupportWrap(className))
+            elif key == 'RATSetSupport':
+                setsupp = int(pDict[key])
+                if setsupp == 1:
+                    cppStr = cppStr.replace("/*$<InternalRATSetSupport>$*/", \
+                                        formatInternalRATSetSupport())
+                    cppStr = cppStr.replace("/*$<RATSetSupportWrap>$*/", \
+                                        formatRATSetSupportWrap(className))
             else:
                 keyword = "/*$<%s>$*/" % str(key)
                 cppStr = cppStr.replace(keyword, pDict[key])

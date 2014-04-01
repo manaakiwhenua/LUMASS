@@ -63,6 +63,10 @@ public:
 	void setNthInput(unsigned int numInput,
 			NMItkDataObjectWrapper* imgWrapper);
 
+    /*$<RATGetSupportDecl>$*/
+
+    /*$<RATSetSupportDecl>$*/
+
 protected:
     void linkParameters(unsigned int step,
     		const QMap<QString, NMModelComponent*>& repo);

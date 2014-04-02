@@ -65,6 +65,21 @@ public:
 			}
 		}
 
+    static void setUpdateMode(itk::ProcessObject::Pointer& otbFilter,
+                              unsigned int numBands, bool updateMode)
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetUpdateMode(updateMode);
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetUpdateMode(updateMode);
+            }
+        }
+
 	static void setFileName(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, QString& fileName
 
@@ -204,6 +219,24 @@ public:
 	}\
 }
 
+#define callSetUpdateMode( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setUpdateMode( \
+                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setUpdateMode( \
+                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setUpdateMode( \
+                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode); \
+    }\
+}
 
 InstantiateObjectWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
 //SetNthInputWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
@@ -221,6 +254,7 @@ NMStreamingImageFileWriterWrapper
 	this->mOutputNumBands = 1;
 	this->mInputNumDimensions = 2;
 	this->mOutputNumDimensions = 2;
+    this->mUpdateMode = false;
 #ifdef BUILD_RASSUPPORT
 	this->mRasConnector = 0;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
@@ -287,6 +321,21 @@ NMStreamingImageFileWriterWrapper
 	{
 		this->setInternalFileName(this->mFileNames.at(step));
 	}
+}
+
+void
+NMStreamingImageFileWriterWrapper
+::setInternalUpdateMode()
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callSetUpdateMode, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
 }
 
 

@@ -55,12 +55,15 @@ class NMStreamingImageFileWriterWrapper: public NMProcess
 	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
 #endif	
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
+    Q_PROPERTY(bool UpdateMode READ getUpdateMode WRITE setUpdateMode)
 
 public:
-	NMPropertyGetSet( FileNames, QStringList );
+    NMPropertyGetSet( FileNames, QStringList )
+    NMPropertyGetSet( UpdateMode, bool )
+
 
 #ifdef BUILD_RASSUPPORT
-	NMPropertyGetSet( RasConnector, NMRasdamanConnectorWrapper* );
+    NMPropertyGetSet( RasConnector, NMRasdamanConnectorWrapper* )
 #endif
 	
 signals:
@@ -79,9 +82,6 @@ public:
 
 	// NMModel relevant virtual methods
 	void instantiateObject(void);
-//	void linkInPipeline(const QMap<QString, NMModelComponent*>& repo);
-//	void advanceParameter(unsigned int step,
-//			const QMap<QString, NMModelComponent*>& repo);
 
 	// NMProcess interface methods
 	void setNthInput(unsigned int numInput,
@@ -91,6 +91,7 @@ public:
 protected:
 
 	QStringList mFileNames;
+    bool mUpdateMode;
 
 #ifdef BUILD_RASSUPPORT
 	NMRasdamanConnectorWrapper* mRasConnector;
@@ -104,6 +105,8 @@ protected:
 	void setInternalFileName(QString fileName);
 	void linkParameters(unsigned int step,
 			const QMap<QString, NMModelComponent*>& repo);
+
+    void setInternalUpdateMode();
 
 };
 

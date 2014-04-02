@@ -100,17 +100,17 @@ type get ## name() \
 { \
     if (this->mInputNumDimensions == 1)		\
     {		\
-        rat = wrapName< inputType, outputType, 1>::setRAT(this->mOtbProcess, \
+        wrapName< inputType, outputType, 1>::setRAT(this->mOtbProcess, \
                 this->mInputNumBands, numInput, rat);	\
     }		\
     else if (this->mInputNumDimensions == 2) \
     { \
-        rat = wrapName< inputType, outputType, 2 >::setRAT(this->mOtbProcess, \
+        wrapName< inputType, outputType, 2 >::setRAT(this->mOtbProcess, \
                 this->mInputNumBands, numInput, rat);	\
     } \
     else if (this->mInputNumDimensions == 3) \
     { \
-        rat = wrapName< inputType, outputType, 3 >::setRAT(this->mOtbProcess, \
+        wrapName< inputType, outputType, 3 >::setRAT(this->mOtbProcess, \
                 this->mInputNumBands, numInput, rat);	\
     }\
 }
@@ -119,17 +119,17 @@ type get ## name() \
 { \
     if (this->mOutputNumDimensions == 1)		\
     {		\
-        rat = wrapName< outputType, 1>::setRAT(this->mOtbProcess, \
+        wrapName< outputType, 1>::setRAT(this->mOtbProcess, \
                 this->mOutputNumBands, numInput, rat);	\
     }		\
     else if (this->mOutputNumDimensions == 2) \
     { \
-        rat = wrapName< outputType, 2 >::setRAT(this->mOtbProcess, \
+        wrapName< outputType, 2 >::setRAT(this->mOtbProcess, \
                 this->mOutputNumBands, numInput, rat);	\
     } \
     else if (this->mOutputNumDimensions == 3) \
     { \
-        rat = wrapName< outputType, 3 >::setRAT(this->mOtbProcess, \
+        wrapName< outputType, 3 >::setRAT(this->mOtbProcess, \
                 this->mOutputNumBands, numInput, rat);	\
     }\
 }
@@ -138,17 +138,17 @@ type get ## name() \
 { \
     if (this->mInputNumDimensions == 1)		\
     {		\
-        rat = wrapName< inputType, 1>::setRAT(this->mOtbProcess, \
+        wrapName< inputType, 1>::setRAT(this->mOtbProcess, \
                 this->mInputNumBands, numInput, rat);	\
     }		\
     else if (this->mInputNumDimensions == 2) \
     { \
-        rat = wrapName< inputType, 2 >::setRAT(this->mOtbProcess, \
+        wrapName< inputType, 2 >::setRAT(this->mOtbProcess, \
                 this->mInputNumBands, numInput, rat);	\
     } \
     else if (this->mInputNumDimensions == 3) \
     { \
-        rat = wrapName< inputType, 3 >::setRAT(this->mOtbProcess, \
+        wrapName< inputType, 3 >::setRAT(this->mOtbProcess, \
                 this->mInputNumBands, numInput, rat);	\
     }\
 }

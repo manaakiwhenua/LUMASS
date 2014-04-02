@@ -58,6 +58,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(
 	NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dataObjectWrapper);
 	this->setParent(w->parent());
 	this->mDataObject = w->getDataObject();
+    this->mOTBTab = w->getOTBTab();
 	this->mNMComponentType = w->getNMComponentType();
 	this->mNumDimensions = w->getNumDimensions();
 	this->mNumBands = w->getNumBands();
@@ -72,6 +73,7 @@ NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectW
 	this->setParent(dw.parent());
 	NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dw);
 	this->mDataObject = w->getDataObject();
+    this->mOTBTab = w->getOTBTab();
 	this->mNMComponentType = w->getNMComponentType();
 	this->mNumDimensions = w->getNumDimensions();
 	this->mNumBands = w->getNumBands();

@@ -36,7 +36,7 @@
      <x>0</x>
      <y>0</y>
      <width>725</width>
-     <height>25</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -181,6 +181,11 @@
         </property>
         <item>
          <property name="text">
+          <string>CastImage</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>CostDistanceBuffer</string>
          </property>
         </item>
@@ -305,9 +310,6 @@
        <property name="columnCount">
         <number>0</number>
        </property>
-       <attribute name="verticalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
        <attribute name="verticalHeaderVisible">
         <bool>false</bool>
        </attribute>

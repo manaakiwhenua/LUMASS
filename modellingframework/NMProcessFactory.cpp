@@ -31,6 +31,7 @@
 #include "NMCostDistanceBufferImageWrapper.h"
 #include "NMFocalNeighbourhoodDistanceWeightingWrapper.h"
 #include "NMSumZonesFilterWrapper.h"
+#include "NMItkCastImageFilterWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -84,6 +85,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMSumZonesFilterWrapper";
     }
+    else if (alias.compare("CastImage") == 0)
+    {
+        return "NMItkCastImageFilterWrapper";
+    }
     else return proc;
 }
 
@@ -123,6 +128,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
 	{
 		return new NMSumZonesFilterWrapper(this);
 	}
+    else if (procClass.compare("NMItkCastImageFilterWrapper") == 0)
+    {
+        return new NMItkCastImageFilterWrapper(this);
+    }
 	else
 		return 0;
 }
@@ -132,38 +141,5 @@ NMProcessFactory::createProcessFromAlias(const QString& alias)
 {
     QString procClass = this->procNameFromAlias(alias);
 
-    if (procClass.compare("NMImageReader") == 0)
-    {
-        return new NMImageReader(this);
-    }
-    else if (procClass.compare("NMRATBandMathImageFilterWrapper") == 0)
-    {
-        return new NMRATBandMathImageFilterWrapper(this);
-    }
-    else if (procClass.compare("NMStreamingImageFileWriterWrapper") == 0)
-    {
-        return new NMStreamingImageFileWriterWrapper(this);
-    }
-    else if (procClass.compare("NMNeighbourhoodCountingWrapper") == 0)
-    {
-        return new NMNeighbourhoodCountingWrapper(this);
-    }
-    else if (procClass.compare("NMRandomImageSourceWrapper") == 0)
-    {
-        return new NMRandomImageSourceWrapper(this);
-    }
-    else if (procClass.compare("NMCostDistanceBufferImageWrapper") == 0)
-    {
-        return new NMCostDistanceBufferImageWrapper(this);
-    }
-    else if (procClass.compare("NMFocalNeighbourhoodDistanceWeightingWrapper") == 0)
-    {
-        return new NMFocalNeighbourhoodDistanceWeightingWrapper(this);
-    }
-    else if (procClass.compare("NMSumZonesFilterWrapper") == 0)
-    {
-        return new NMSumZonesFilterWrapper(this);
-    }
-    else
-        return 0;
+    return this->createProcess(procClass);
 }

@@ -33,7 +33,8 @@ class NMProcessFactory: public QObject
 {
 public:
 	static NMProcessFactory& instance(void);
-    NMProcess* createProcess(const QString& alias);
+    NMProcess* createProcess(const QString& procClass);
+    NMProcess* createProcessFromAlias(const QString& alias);
 
 private:
 	NMProcessFactory(QObject* parent=0);

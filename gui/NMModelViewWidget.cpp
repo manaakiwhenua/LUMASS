@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * NMModelViewWidget.oucecpp
+ * NMModelViewWidget.cpp
  *
  *  Created on: 20/06/2012
  *      Author: alex
@@ -1510,7 +1510,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 	}
     else
     {
-        proc = NMProcessFactory::instance().createProcess(procName);
+        proc = NMProcessFactory::instance().createProcessFromAlias(procName);
     }
 
 	if (proc != 0)// && procName.compare("DataBuffer") != 0)

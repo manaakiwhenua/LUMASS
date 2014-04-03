@@ -641,6 +641,7 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
     {
     this->ProcessObject::SetNthInput(1, const_cast< TOutputImage *>( image ) );
     this->Modified();
+    m_UseReferenceImage = true;
     }
 }
 

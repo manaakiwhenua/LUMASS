@@ -85,11 +85,11 @@ public:
 
 	//NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
 	//	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
-	NMPropertyGetSet(InputNumDimensions   , unsigned int                           );
-	NMPropertyGetSet(OutputNumDimensions  , unsigned int                           );
-	NMPropertyGetSet(InputNumBands        , unsigned int                           );
-	NMPropertyGetSet(OutputNumBands	      , unsigned int                           );
-	NMPropertyGetSet(ParameterHandling	  , NMProcess::AdvanceParameter            );
+    NMPropertyGetSet(InputNumDimensions   , unsigned int                           )
+    NMPropertyGetSet(OutputNumDimensions  , unsigned int                           )
+    NMPropertyGetSet(InputNumBands        , unsigned int                           )
+    NMPropertyGetSet(OutputNumBands	      , unsigned int                           )
+    NMPropertyGetSet(ParameterHandling	  , NMProcess::AdvanceParameter            )
 
 	NMItkDataObjectWrapper::NMComponentType getInputNMComponentType();
     NMItkDataObjectWrapper::NMComponentType getOutputNMComponentType();

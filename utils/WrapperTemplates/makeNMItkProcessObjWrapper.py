@@ -39,7 +39,7 @@ def buildDict(profileFile):
                 tkey = tl[0]
                 if len(tl[1]) > 0:
                     tl2 = tl[1].split(':')
-                    if len(tl2) == 3:
+                    if len(tl2) >= 3:
                         tl3 = []
                         for y in tl2:
                             tl3.append(y.strip())
@@ -61,21 +61,24 @@ def buildDict(profileFile):
 def getPropertyType(propertyElementList):
     '''
     returns the wrapper type given the list of properties
-    elements
+    elements, which could look like this:
+        OutputSpacing:2:double:OutputSpacingValueType
     '''
     if len(propertyElementList) < 3:
         print "ERROR - Invalid property element list length!"
         return None
     propDim = int(propertyElementList[1])
     
-    if propDim == 1:
+    if propDim == 0:
+        type = propertyElementList[2]
+    elif propDim == 1:
         type = 'QStringList'
     elif propDim == 2:
         type = 'QList<QStringList>'
     elif propDim == 3:
         type = 'QList< QList<QStringList> >'
     else:
-        print "ERROR - cannot handle property beyond 3 dimensions!"
+        print "ERROR - cannot handle property with 3+ dimensions!"
         type = None
     
     return type
@@ -92,7 +95,7 @@ def formatPropertyDefinition(propertyList):
     defSection = ''  
     for prop in propertyList:
         propType = getPropertyType(prop)
-        tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s);" % (propType, prop[0], prop[0], prop[0])
+        tmp = "    Q_PROPERTY(%s %s READ get%s WRITE set%s)" % (propType, prop[0], prop[0], prop[0])
         defSection = defSection + '\n' + tmp
         
     return defSection
@@ -107,7 +110,7 @@ def formatPropertyGetSet(propertyList):
     getset = ''  
     for prop in propertyList:
         propType = getPropertyType(prop)
-        tmp = "    NMPropertyGetSet( %s, %s );" % (prop[0], propType)
+        tmp = "    NMPropertyGetSet( %s, %s )" % (prop[0], propType)
         getset = getset + '\n' + tmp
         
     return getset
@@ -124,13 +127,16 @@ def formatPropertyVariable(propertyList):
     tmp = ''  
     for prop in propList:
         propType = getPropertyType(prop)
-        propVarType = prop[2]
-        propDim = int(prop[1])
+        #propVarType = prop[2]
+        #propDim = int(prop[1])
         
-        if propDim == 0:
-            tmp = "    %s m%s;" % (propVarType, prop[0])
-        elif propDim > 0:
-            tmp = "    %s m%s;" % (propType, prop[0])
+        tmp = "    %s m%s;" % (propType, prop[0])
+
+        #if propDim == 0:
+        #    tmp = "    %s m%s;" % (propVarType, prop[0])
+        #elif propDim > 0:
+        #    tmp = "    %s m%s;" % (propType, prop[0])
+
         
         vardef = vardef + '\n' + tmp
         tmp = ''
@@ -153,7 +159,8 @@ def formatTypeConversion(type):
 def formatInternalParamSetting(propertyList, className):
     '''
     formats parameter setting of the internal templated
-    wrapper helper class
+    wrapper helper class; note propertyList could look like this:
+            OutputSpacing:2:double:OutputSpacingValueType
     '''
 
     #tmp = "    %s m%s" % (propType, prop[0])
@@ -184,11 +191,24 @@ def formatInternalParamSetting(propertyList, className):
         propName = prop[0]
         propDim = int(prop[1])
         propVarType = prop[2]
-        typeConv = formatTypeConversion(propVarType)
+        if propVarType == 'string':
+            propVarType = 'std::string'
+
+        strToNumConv = formatTypeConversion(propVarType)
+
+        varTargetType = ''
+        varTargetCast = ''
+        varTargetPointerCast = ''
+        if len(prop) == 4:
+            varTargetType = prop[3]
+            varTargetCast = "static_cast<%s>" % varTargetType
+            varTargetPointerCast = "static_cast<%s*>" % varTargetType
 
         if propDim == 0:
             tmp = \
-            "        f->Set%s(m%s);\n" % (propName, propName)
+            "        f->Set%s(%s(m%s));\n" % (varTargetCast, propName, propName)
+
+        # ------------------------------------- QStringList -------------------------------------
         elif propDim == 1:
             tmp = \
             "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
@@ -196,14 +216,14 @@ def formatInternalParamSetting(propertyList, className):
             "        if (step < p->m%s.size())\n"                                         \
             "        {\n"                                                                    \
             "            cur%s = p->m%s.at(step)%s;\n"                                   \
-            % (propName, propVarType, propName, propName, propName, propName, typeConv)
+            % (propName, propVarType, propName, propName, propName, propName, strToNumConv)
 
             test = ''
-            if propVarType != "string":
+            if propVarType != "std::string":
                 test = \
                 "            if (bok)\n"                                                         \
                 "            {\n"                                                                \
-                "                f->Set%s(cur%s);\n"                                             \
+                "                f->Set%s(%s(cur%s));\n"                                         \
                 "            }\n"                                                                \
                 "            else\n"                                                             \
                 "            {\n"                                                                \
@@ -212,17 +232,72 @@ def formatInternalParamSetting(propertyList, className):
                 "                e.setMsg(\"Invalid value for '%s'!\");\n"                       \
                 "                throw e;\n"                                                     \
                 "            }\n"                                                                \
-                % (propName, propName, className, propName, propName)
+                % (propName, varTargetCast, propName, className, propName, propName)
                 tmp = tmp + test
             else:
                 test = \
-                "                f->Set%s(cur%s);\n"                                             \
+                "            f->Set%s(cur%s);\n"                                             \
                 % (propName, propName)
                 tmp = tmp + test
                 
             tmp = tmp + \
             "        }\n"
-        else: 
+
+        # ---------------------------------- QList< QStringList > -------------------------------
+        elif propDim == 2:
+
+            if len(varTargetType) == 0:
+                varTargetType = propVarType
+
+
+            tmp = \
+            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
+            "        std::vector<%s> vec%s;\n"                                         \
+            "        %s cur%s;\n"                                                      \
+            "        if (step < p->m%s.size())\n"                                      \
+            "        {\n"                                                              \
+            "            for (int i=0; i < p->m%s.at(step).size(); ++i) \n"            \
+            "            {\n"                                                          \
+            "                cur%s = p->m%s.at(step).at(i)%s;\n"                       \
+            % (propName, varTargetType, propName, propVarType, propName, propName,
+            propName, propName, propName, strToNumConv)
+
+            test = ''
+            if propVarType != "std::string":
+                test = \
+                "                if (bok)\n"                                                         \
+                "                {\n"                                                                \
+                "                    vec%s.push_back(%s(cur%s));\n"                                         \
+                "                }\n"                                                                \
+                "                else\n"                                                             \
+                "                {\n"                                                                \
+                "                    NMErr(\"%s_Internal\", << \"Invalid value for '%s'!\");\n"      \
+                "                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);\n"\
+                "                    e.setMsg(\"Invalid value for '%s'!\");\n"                       \
+                "                   throw e;\n"                                                     \
+                "                }\n"                                                                \
+                % (propName, varTargetCast, propName, className, propName, propName)
+                tmp = tmp + test
+            else:
+                test = \
+                "            vec%s.push_back(cur%s);\n"                                             \
+                % (propName, propName)
+                tmp = tmp + test
+
+            tmp = tmp + \
+            "            }\n"                              \
+            "            if (vec%s.size() > 0)\n"          \
+            "            {\n"                              \
+            "                f->Set%s(%s(&vec%s[0]));\n"        \
+            "            }\n"                              \
+            "            else\n"                           \
+            "            {\n"                              \
+            "                f->Set%s(0);\n"               \
+            "            }\n"                              \
+            "        }\n"                                  \
+            % (propName, propName, varTargetPointerCast, propName, propName)
+
+        else:
             print "WARNING - cannot format multi-dimensional parameter settings yet!!"
             return None
         

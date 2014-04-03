@@ -38,10 +38,21 @@ template<class TInputImage, class TOutputImage, unsigned int Dimension>
 class /*$<WrapperClassName>$*/_Internal
 {
 public:
-	typedef otb::Image<TInputImage, Dimension> InImgType;
-	typedef otb::Image<TOutputImage, Dimension> OutImgType;
-	typedef typename /*$<FilterTypeDef>$*/ FilterType;
-	typedef typename FilterType::Pointer FilterTypePointer;
+    typedef otb::Image<TInputImage, Dimension>  InImgType;
+    typedef otb::Image<TOutputImage, Dimension> OutImgType;
+    typedef typename /*$<FilterTypeDef>$*/      FilterType;
+    typedef typename FilterType::Pointer        FilterTypePointer;
+
+    // more typedefs
+    typedef typename InImgType::PixelType  InImgPixelType;
+    typedef typename OutImgType::PixelType OutImgPixelType;
+
+    typedef typename OutImgType::SpacingType      OutSpacingType;
+    typedef typename OutImgType::SpacingValueType OutSpacingValueType;
+    typedef typename OutImgType::PointType        OutPointType;
+    typedef typename OutImgType::PointValueType   OutPointValueType;
+
+
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands)

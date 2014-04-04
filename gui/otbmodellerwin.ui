@@ -226,6 +226,11 @@
         </item>
         <item>
          <property name="text">
+          <string>ResampleImage</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>SummariseZones</string>
          </property>
         </item>

@@ -152,6 +152,8 @@ def formatTypeConversion(type):
         typeConv = ".toLong(&bok)"
     elif type == "bool":
         typeConv = ".toInt(&bok)"
+    elif type == "std::string" or type == "string":
+        typeConv = ".toStdString().c_str()"
 
     return typeConv
 
@@ -194,9 +196,12 @@ def formatInternalParamSetting(propertyList, className):
         if propVarType == 'string':
             propVarType = 'std::string'
 
+        # no long exclusively a string to number conversion,
+        # we forgot that we have to convert QString to std::string
+        # as welsl
         strToNumConv = formatTypeConversion(propVarType)
 
-        varTargetType = ''
+        varTargetType = propVarType
         varTargetCast = ''
         varTargetPointerCast = ''
         if len(prop) == 4:
@@ -246,10 +251,6 @@ def formatInternalParamSetting(propertyList, className):
         # ---------------------------------- QList< QStringList > -------------------------------
         elif propDim == 2:
 
-            if len(varTargetType) == 0:
-                varTargetType = propVarType
-
-
             tmp = \
             "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
             "        std::vector<%s> vec%s;\n"                                         \
@@ -267,14 +268,14 @@ def formatInternalParamSetting(propertyList, className):
                 test = \
                 "                if (bok)\n"                                                         \
                 "                {\n"                                                                \
-                "                    vec%s.push_back(%s(cur%s));\n"                                         \
+                "                    vec%s.push_back(%s(cur%s));\n"                                  \
                 "                }\n"                                                                \
                 "                else\n"                                                             \
                 "                {\n"                                                                \
                 "                    NMErr(\"%s_Internal\", << \"Invalid value for '%s'!\");\n"      \
                 "                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);\n"\
                 "                    e.setMsg(\"Invalid value for '%s'!\");\n"                       \
-                "                   throw e;\n"                                                     \
+                "                    throw e;\n"                                                     \
                 "                }\n"                                                                \
                 % (propName, varTargetCast, propName, className, propName, propName)
                 tmp = tmp + test
@@ -288,7 +289,7 @@ def formatInternalParamSetting(propertyList, className):
             "            }\n"                              \
             "            if (vec%s.size() > 0)\n"          \
             "            {\n"                              \
-            "                f->Set%s(%s(&vec%s[0]));\n"        \
+            "                f->Set%s(%s(&vec%s[0]));\n"   \
             "            }\n"                              \
             "            else\n"                           \
             "            {\n"                              \

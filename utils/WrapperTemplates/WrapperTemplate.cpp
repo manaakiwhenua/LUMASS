@@ -51,8 +51,7 @@ public:
     typedef typename OutImgType::SpacingValueType OutSpacingValueType;
     typedef typename OutImgType::PointType        OutPointType;
     typedef typename OutImgType::PointValueType   OutPointValueType;
-
-
+    typedef typename OutImgType::SizeValueType    SizeValueType;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands)

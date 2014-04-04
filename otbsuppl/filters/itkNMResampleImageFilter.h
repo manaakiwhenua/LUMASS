@@ -38,11 +38,11 @@
 // First make sure that the configuration is available.
 // This line can be removed once the optimized versions
 // gets integrated into the main directories.
-#include "itkConfigure.h"
+//#include "itkConfigure.h"
 
-#ifdef ITK_USE_OPTIMIZED_REGISTRATION_METHODS
-#include "itkOptResampleImageFilter.h"
-#else
+//#ifdef ITK_USE_OPTIMIZED_REGISTRATION_METHODS
+//#include "itkOptResampleImageFilter.h"
+//#else
 
 #include "itkFixedArray.h"
 #include "itkTransform.h"
@@ -94,8 +94,8 @@ namespace itk
  */
 template <class TInputImage, class TOutputImage,
           class TInterpolatorPrecisionType=double>
-class ITK_EXPORT NMResampleImageFilter:
-    public ImageToImageFilter<TInputImage, TOutputImage>
+class ITK_EXPORT NMResampleImageFilter
+    : public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
   /** Standard class typedefs. */
@@ -137,6 +137,7 @@ public:
 
   /** Image size typedef. */
   typedef Size<itkGetStaticConstMacro(ImageDimension)> SizeType;
+  typedef typename SizeType::SizeValueType SizeVectorType;
 
   /** Image index typedef. */
   typedef typename TOutputImage::IndexType IndexType;
@@ -198,15 +199,16 @@ public:
    *  - 'BSpline4'
    *  - 'BSpline5'
    */
-  itkSetMacro( InterpolationMethod, const std::string& );
+  itkSetMacro( InterpolationMethod, std::string& );
   itkGetMacro( InterpolationMethod, std::string );
 
   /** Set the size of the output image. */
   itkSetMacro( Size, SizeType );
+  virtual void SetSize( const unsigned long* values);
 
   /** Get the size of the output image. */
   itkGetConstReferenceMacro( Size, SizeType );
-     
+
   /** Set the pixel value when a transformed pixel is outside of the
    * image.  The default default pixel value is 0. */
   itkSetMacro( DefaultPixelValue, PixelType );
@@ -325,18 +327,18 @@ private:
   NMResampleImageFilter( const Self& ); //purposely not implemented
   void operator=( const Self& ); //purposely not implemented
 
-  SizeType                m_Size;              // Size of the output image
-  TransformPointerType    m_Transform;         // Coordinate transform to use
-  std::string             m_InterpolationMethod// string representation of InterpolatorType
-  InterpolatorPointerType m_Interpolator;      // Image function for
-                                               // interpolation
-  PixelType               m_DefaultPixelValue; // default pixel value
-                                               // if the point is
-                                               // outside the image
-  SpacingType             m_OutputSpacing;     // output image spacing
-  OriginPointType         m_OutputOrigin;      // output image origin
-  DirectionType           m_OutputDirection;   // output image direction cosines
-  IndexType               m_OutputStartIndex;  // output image start index
+  SizeType                m_Size;                // Size of the output image
+  TransformPointerType    m_Transform;           // Coordinate transform to use
+  std::string             m_InterpolationMethod; // string representation of InterpolatorType
+  InterpolatorPointerType m_Interpolator;        // Image function for
+                                                 // interpolation
+  PixelType               m_DefaultPixelValue;   // default pixel value
+                                                 // if the point is
+                                                 // outside the image
+  SpacingType             m_OutputSpacing;       // output image spacing
+  OriginPointType         m_OutputOrigin;        // output image origin
+  DirectionType           m_OutputDirection;     // output image direction cosines
+  IndexType               m_OutputStartIndex;    // output image start index
   bool                    m_UseReferenceImage;
 
 };
@@ -348,6 +350,6 @@ private:
 #include "itkNMResampleImageFilter.txx"
 #endif
   
-#endif
+//#endif
   
 #endif

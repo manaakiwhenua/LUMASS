@@ -37,18 +37,18 @@
 // First make sure that the configuration is available.
 // This line can be removed once the optimized versions
 // gets integrated into the main directories.
-#include "itkConfigure.h"
+//#include "itkConfigure.h"
 
-#ifdef ITK_USE_OPTIMIZED_REGISTRATION_METHODS
-#include "itkOptResampleImageFilter.txx"
-#else
+//#ifdef ITK_USE_OPTIMIZED_REGISTRATION_METHODS
+//#include "itkOptResampleImageFilter.txx"
+//#else
 
 
 #include "itkNMResampleImageFilter.h"
 #include "itkObjectFactory.h"
 #include "itkIdentityTransform.h"
 #include "itkLinearInterpolateImageFunction.h"
-#include "itkBSplineInterplationImageFunction.h"
+#include "itkBSplineInterpolateImageFunction.h"
 #include "itkNearestNeighborInterpolateImageFunction.h"
 #include "itkProgressReporter.h"
 #include "itkImageRegionIteratorWithIndex.h"
@@ -135,6 +135,19 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
   this->SetOutputOrigin( p );
 }
 
+/**
+ * Set the output image size.
+ */
+template <class TInputImage, class TOutputImage, class TInterpolatorPrecisionType>
+void
+NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
+::SetSize(
+  const unsigned long* size)
+{
+  SizeType s;
+  s.SetSize(size);
+  this->SetSize( s );
+}
 
 /**
  * Set up state of filter before multi-threading.
@@ -163,53 +176,64 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
   // account for InterpolationMethod
   if (!m_InterpolationMethod.empty())
   {
-      const std::string& method = m_InterpolationMethod;
+      std::string methods[] = {"NearestNeighbour", "Linear", "BSpline0",
+          "BSpline1", "BSpline2", "BSpline3", "BSpline4", "BSpline5"};
+      int method = -1;
+      for (int k=0; k < 8; ++k)
+      {
+          if (methods[k] == m_InterpolationMethod)
+          {
+              method = k;
+              break;
+          }
+      }
+
       switch (method)
       {
-      case "NearestNeighbour":
+      case 0: //"NearestNeighbour":
           m_Interpolator = NearestType::New();
           break;
-      case "Linear":
+      case 1: //"Linear":
           m_Interpolator = LinearType::New();
           break;
-      case "BSpline0":
+      case 2: //"BSpline0":
           {
-              SplineType::Pointer spline = SplineType::New();
+              typename SplineType::Pointer spline = SplineType::New();
               spline->SetSplineOrder(0);
               m_Interpolator = spline;
           }
           break;
-      case "BSpline1":
+      case 3: //"BSpline1":
           {
-              SplineType::Pointer spline = SplineType::New();
+              typename SplineType::Pointer spline = SplineType::New();
               spline->SetSplineOrder(1);
               m_Interpolator = spline;
           }
           break;
-      case "BSpline2":
+      case 4: //"BSpline2":
           {
-              SplineType::Pointer spline = SplineType::New();
+              typename SplineType::Pointer spline = SplineType::New();
               spline->SetSplineOrder(2);
               m_Interpolator = spline;
           }
           break;
-      case "BSpline3":
+      case 5: //"BSpline3":
           {
-              SplineType::Pointer spline = SplineType::New();
+              typename SplineType::Pointer spline = SplineType::New();
               spline->SetSplineOrder(3);
               m_Interpolator = spline;
           }
           break;
-      case "BSpline4":
+      case 6: //"BSpline4":
           {
-              SplineType::Pointer spline = SplineType::New();
+              typename SplineType::Pointer spline = SplineType::New();
               spline->SetSplineOrder(4);
               m_Interpolator = spline;
           }
           break;
-      case "BSpline5":
+      case 7: //"BSpline5":
           {
-              SplineType::Pointer spline = SplineType::New();
+              typename SplineType::Pointer spline = SplineType::New();
               spline->SetSplineOrder(5);
               m_Interpolator = spline;
           }
@@ -695,29 +719,41 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
   if( m_UseReferenceImage && referenceImage )
     {
     outputPtr->SetLargestPossibleRegion( referenceImage->GetLargestPossibleRegion() );
-    }
-  else
-    {
-    typename TOutputImage::RegionType outputLargestPossibleRegion;
-    outputLargestPossibleRegion.SetSize( m_Size );
-    outputLargestPossibleRegion.SetIndex( m_OutputStartIndex );
-    outputPtr->SetLargestPossibleRegion( outputLargestPossibleRegion );
-    }
-
-  // Set spacing and origin
-  if (m_UseReferenceImage && referenceImage)
-    {
     outputPtr->SetOrigin( referenceImage->GetOrigin() );
     outputPtr->SetSpacing( referenceImage->GetSpacing() );
     outputPtr->SetDirection( referenceImage->GetDirection() );
     }
   else
-    {
-    outputPtr->SetOrigin( m_OutputOrigin );
-    outputPtr->SetSpacing( m_OutputSpacing );
-    outputPtr->SetDirection( m_OutputDirection );
-    }
-  return;
+  {
+        // if we've got only a new spacing given, we calculate the rest from the input image
+        if (m_OutputSpacing.GetNumberOfComponents() == 0)
+        {
+
+        }
+
+        InputImageConstPointer inImg = this->GetInput();
+
+
+        typename TOutputImage::RegionType outputLargestPossibleRegion;
+        outputLargestPossibleRegion.SetSize( m_Size );
+        outputLargestPossibleRegion.SetIndex( m_OutputStartIndex );
+        outputPtr->SetLargestPossibleRegion( outputLargestPossibleRegion );
+
+        outputPtr->SetOrigin( m_OutputOrigin );
+        outputPtr->SetSpacing( m_OutputSpacing );
+        outputPtr->SetDirection( m_OutputDirection );
+   }
+
+//  // Set spacing and origin
+//  if (m_UseReferenceImage && referenceImage)
+//    {
+
+//    }
+//  else
+//    {
+
+//    }
+//  return;
 }
 
 /** 
@@ -751,6 +787,6 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
 
 } // end namespace itk
 
-#endif
+//#endif
 
 #endif

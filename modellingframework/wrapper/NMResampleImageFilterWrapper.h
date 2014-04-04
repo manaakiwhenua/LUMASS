@@ -49,6 +49,7 @@ NMResampleImageFilterWrapper
     Q_PROPERTY(QStringList DefaultPixelValue READ getDefaultPixelValue WRITE setDefaultPixelValue)
     Q_PROPERTY(QList<QStringList> OutputSpacing READ getOutputSpacing WRITE setOutputSpacing)
     Q_PROPERTY(QList<QStringList> OutputOrigin READ getOutputOrigin WRITE setOutputOrigin)
+    Q_PROPERTY(QList<QStringList> Size READ getSize WRITE setSize)
 
 public:
 
@@ -57,6 +58,7 @@ public:
     NMPropertyGetSet( DefaultPixelValue, QStringList )
     NMPropertyGetSet( OutputSpacing, QList<QStringList> )
     NMPropertyGetSet( OutputOrigin, QList<QStringList> )
+    NMPropertyGetSet( Size, QList<QStringList> )
 
 public:
     NMResampleImageFilterWrapper(QObject* parent=0);
@@ -84,6 +86,7 @@ protected:
     QStringList mDefaultPixelValue;
     QList<QStringList> mOutputSpacing;
     QList<QStringList> mOutputOrigin;
+    QList<QStringList> mSize;
 
 };
 

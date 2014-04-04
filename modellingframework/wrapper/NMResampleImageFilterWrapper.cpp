@@ -51,8 +51,7 @@ public:
     typedef typename OutImgType::SpacingValueType OutSpacingValueType;
     typedef typename OutImgType::PointType        OutPointType;
     typedef typename OutImgType::PointValueType   OutPointValueType;
-
-
+    typedef typename OutImgType::SizeValueType    SizeValueType;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands)
@@ -118,7 +117,7 @@ public:
         std::string curInterpolationMethod;
         if (step < p->mInterpolationMethod.size())
         {
-            curInterpolationMethod = p->mInterpolationMethod.at(step);
+            curInterpolationMethod = p->mInterpolationMethod.at(step).toStdString().c_str();
             f->SetInterpolationMethod(curInterpolationMethod);
         }
 
@@ -157,7 +156,7 @@ public:
                     NMErr("NMResampleImageFilterWrapper_Internal", << "Invalid value for 'OutputSpacing'!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
                     e.setMsg("Invalid value for 'OutputSpacing'!");
-                   throw e;
+                    throw e;
                 }
             }
             if (vecOutputSpacing.size() > 0)
@@ -187,7 +186,7 @@ public:
                     NMErr("NMResampleImageFilterWrapper_Internal", << "Invalid value for 'OutputOrigin'!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
                     e.setMsg("Invalid value for 'OutputOrigin'!");
-                   throw e;
+                    throw e;
                 }
             }
             if (vecOutputOrigin.size() > 0)
@@ -197,6 +196,36 @@ public:
             else
             {
                 f->SetOutputOrigin(0);
+            }
+        }
+
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mSize.size());
+        std::vector<SizeValueType> vecSize;
+        long curSize;
+        if (step < p->mSize.size())
+        {
+            for (int i=0; i < p->mSize.at(step).size(); ++i) 
+            {
+                curSize = p->mSize.at(step).at(i).toLong(&bok);
+                if (bok)
+                {
+                    vecSize.push_back(static_cast<SizeValueType>(curSize));
+                }
+                else
+                {
+                    NMErr("NMResampleImageFilterWrapper_Internal", << "Invalid value for 'Size'!");
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setMsg("Invalid value for 'Size'!");
+                    throw e;
+                }
+            }
+            if (vecSize.size() > 0)
+            {
+                f->SetSize(static_cast<SizeValueType*>(&vecSize[0]));
+            }
+            else
+            {
+                f->SetSize(0);
             }
         }
 

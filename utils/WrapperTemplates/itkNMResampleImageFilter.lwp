@@ -31,3 +31,4 @@ Property_1                  = InterpolationMethod:1:string
 Property_2                  = DefaultPixelValue:1:double:OutImgPixelType
 Property_3                  = OutputSpacing:2:double:OutSpacingValueType
 Property_4                  = OutputOrigin:2:double:OutPointValueType
+Property_5                  = Size:2:long:SizeValueType

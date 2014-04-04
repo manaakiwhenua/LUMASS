@@ -32,6 +32,7 @@
 #include "NMFocalNeighbourhoodDistanceWeightingWrapper.h"
 #include "NMSumZonesFilterWrapper.h"
 #include "NMItkCastImageFilterWrapper.h"
+#include "NMResampleImageFilterWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -89,6 +90,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMItkCastImageFilterWrapper";
     }
+    else if (alias.compare("ResampleImage") == 0)
+    {
+        return "NMResampleImageFilterWrapper";
+    }
     else return proc;
 }
 
@@ -132,7 +137,11 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     {
         return new NMItkCastImageFilterWrapper(this);
     }
-	else
+    else if (procClass.compare("NMResampleImageFilterWrapper") == 0)
+    {
+        return new NMResampleImageFilterWrapper(this);
+    }
+    else
 		return 0;
 }
 

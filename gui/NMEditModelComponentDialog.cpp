@@ -493,16 +493,41 @@ void NMEditModelComponentDialog::setComponentProperty(const QtProperty* prop,
 	}
 	else if (QString("QStringList").compare(value.typeName()) == 0)
 	{
-
 		NMDebugAI(<< "incoming stringlist: " << value.toStringList().join(" | ").toStdString() << std::endl);
 		QStringList bracedList = value.toStringList();
-		if (!bracedList.isEmpty())
+        bool bvalid = false;
+        if (!bracedList.isEmpty())
 		{
 			if (!bracedList.at(0).isEmpty() && !bracedList.at(0).startsWith("invalid"))
 			{
 				updatedValue = this->nestedListFromStringList(bracedList);
+                bvalid = true;
 			}
 		}
+
+        // we set an empty value (i.e. override current property set for this object),
+        // if the incoming value is not valid; otherwise, no opportunity for the user
+        // to remove/clear a once set value, e.g. as it would be the case when a model
+        // is loaded from disk.
+        if (!bvalid)
+        {
+           QVariant emptyValue;
+           QString longtypename = obj->property(propName.toStdString().c_str()).typeName();
+           if (QString("QStringList").compare(longtypename) == 0)
+           {
+                emptyValue = QVariant::fromValue(QStringList());
+           }
+           else if (QString("QList<QStringList>").compare(longtypename) == 0)
+           {
+               emptyValue = QVariant::fromValue(QList<QStringList>());
+           }
+           else if (QString("QList<QList<QStringList> >").compare(longtypename) == 0)
+           {
+               emptyValue = QVariant::fromValue(QList< QList<QStringList> >());
+           }
+
+           updatedValue = emptyValue;
+        }
 	}
 	else
 	{

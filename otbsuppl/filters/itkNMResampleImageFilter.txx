@@ -43,7 +43,6 @@
 //#include "itkOptResampleImageFilter.txx"
 //#else
 
-
 #include "itkNMResampleImageFilter.h"
 #include "itkObjectFactory.h"
 #include "itkIdentityTransform.h"
@@ -79,6 +78,10 @@ NMResampleImageFilter<TInputImage, TOutputImage,TInterpolatorPrecisionType>
   m_InterpolationMethod.clear();
   m_Interpolator = LinearInterpolateImageFunction<InputImageType, CoordRepType>::New();
   m_DefaultPixelValue = 0;
+
+  m_UserOrigin = false;
+  m_UserSize = false;
+  m_UserSpacing = false;
 }
 
 
@@ -119,6 +122,7 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
 {
   SpacingType s(spacing);
   this->SetOutputSpacing( s );
+  m_UserSpacing = true;
 }
 
 
@@ -133,6 +137,7 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
 {
   OriginPointType p(origin);
   this->SetOutputOrigin( p );
+  m_UserOrigin = true;
 }
 
 /**
@@ -147,6 +152,7 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
   SizeType s;
   s.SetSize(size);
   this->SetSize( s );
+  m_UserSize = true;
 }
 
 /**
@@ -723,15 +729,45 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
     outputPtr->SetSpacing( referenceImage->GetSpacing() );
     outputPtr->SetDirection( referenceImage->GetDirection() );
     }
+  // Calculate input parameters as needed, or copy from input image
   else
-  {
-        // if we've got only a new spacing given, we calculate the rest from the input image
-        if (m_OutputSpacing.GetNumberOfComponents() == 0)
-        {
+    {   // here, we use user settings as much as possible, however, if we
+        // haven't got user settings, we copy from the input image
 
+        InputImageConstPointer inImg = this->GetInput(0);
+        SizeType        inSize = inImg->GetLargestPossibleRegion().GetSize();
+        OriginPointType inOrigin = inImg->GetOrigin();
+        SpacingType     inSpacing = inImg->GetSpacing();
+
+        double ddim[ImageDimension];
+        for (int d=0; d < ImageDimension; ++d)
+            ddim[d] = (inOrigin[d] + (inSize[d] * inSpacing[d])) - inOrigin[d];
+
+        if (!m_UserSize && m_UserSpacing)
+        {
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                m_Size[d] = (ddim[d] / (double)m_OutputSpacing[d]) + 0.5;
+            }
+            m_UserSize = true;
+        }
+        else if (m_UserSize && !m_UserSpacing)
+        {
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                m_OutputSpacing[d] = (ddim[d]) / (double)m_Size[d];
+            }
+            m_UserSpacing = true;
         }
 
-        InputImageConstPointer inImg = this->GetInput();
+        if (!m_UserOrigin)
+            m_OutputOrigin = inOrigin;
+
+        if (!m_UserSize)
+            m_Size = inSize;
+
+        if (!m_UserSpacing)
+            m_OutputSpacing = inSpacing;
 
 
         typename TOutputImage::RegionType outputLargestPossibleRegion;
@@ -742,18 +778,9 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
         outputPtr->SetOrigin( m_OutputOrigin );
         outputPtr->SetSpacing( m_OutputSpacing );
         outputPtr->SetDirection( m_OutputDirection );
-   }
+    }
 
-//  // Set spacing and origin
-//  if (m_UseReferenceImage && referenceImage)
-//    {
 
-//    }
-//  else
-//    {
-
-//    }
-//  return;
 }
 
 /** 

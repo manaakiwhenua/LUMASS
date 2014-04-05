@@ -341,6 +341,9 @@ private:
   IndexType               m_OutputStartIndex;    // output image start index
   bool                    m_UseReferenceImage;
 
+  bool                    m_UserOrigin;
+  bool                    m_UserSize;
+  bool                    m_UserSpacing;
 };
 
   

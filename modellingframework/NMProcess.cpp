@@ -87,6 +87,13 @@ NMProcess::linkInPipeline(unsigned int step,
 	this->linkParameters(step, repo);
 	this->linkInputs(step, repo);
 
+#ifdef DEBUG
+    if (this->mOtbProcess.IsNotNull())
+    {
+        this->mOtbProcess->Print(std::cout, itk::Indent(nmlog::nmindent));
+    }
+#endif
+
 	//NMDebugAI( << " mbLinked = true" << endl);
 	this->mbLinked = true;
 

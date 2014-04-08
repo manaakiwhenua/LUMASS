@@ -76,6 +76,9 @@ NMMfwException::type2string(void) const
 	case NMMosra_InvalidParameter:
 		ret = "NMMosra: Invalid paramter.";
 		break;
+    case NMModelComponent_InvalidUserID:
+        ret = "NMModelComponent: Invalid UserID.";
+        break;
 	case Unspecified:
 		ret = "Unspecified problem.";
 		break;

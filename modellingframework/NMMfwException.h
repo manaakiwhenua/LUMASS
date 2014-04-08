@@ -35,19 +35,20 @@ class NMMfwException: public std::exception
 {
 public:
 
-	typedef enum
-		{
-		  NMProcess_UninitialisedDataObject,
-		  NMProcess_UninitialisedProcessObject,
-		  NMProcess_InvalidInput,
-		  NMProcess_InvalidParameter,
-		  NMProcess_MissingParameter,
-		  NMDataComponent_InvalidParameter,
-		  NMModelController_UnregisteredModelComponent,
-		  NMMosra_InvalidParameter,
-		  Unspecified
+    typedef enum
+    {
+        NMProcess_UninitialisedDataObject,
+        NMProcess_UninitialisedProcessObject,
+        NMProcess_InvalidInput,
+        NMProcess_InvalidParameter,
+        NMProcess_MissingParameter,
+        NMDataComponent_InvalidParameter,
+        NMModelController_UnregisteredModelComponent,
+        NMMosra_InvalidParameter,
+        NMModelComponent_InvalidUserID,
+        Unspecified
 
-		} ExceptionType;
+    } ExceptionType;
 
 	NMMfwException(ExceptionType t = Unspecified);
 	virtual ~NMMfwException() throw();

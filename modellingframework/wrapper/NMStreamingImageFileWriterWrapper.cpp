@@ -321,6 +321,8 @@ NMStreamingImageFileWriterWrapper
 	{
 		this->setInternalFileName(this->mFileNames.at(step));
 	}
+
+    this->setInternalUpdateMode();
 }
 
 void

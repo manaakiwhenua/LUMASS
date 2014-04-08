@@ -65,6 +65,7 @@ class NMIterableComponent;
 class NMModelComponent : public QObject
 {
 	Q_OBJECT
+    Q_PROPERTY(QString UserID READ getUserID WRITE setUserID)
 	Q_PROPERTY(QString Description READ getDescription WRITE setDescription)
 	Q_PROPERTY(short TimeLevel READ getTimeLevel WRITE setTimeLevel NOTIFY NMModelComponentChanged)
 	Q_PROPERTY(QList<QStringList> Inputs READ getInputs WRITE setInputs NOTIFY NMModelComponentChanged)
@@ -76,6 +77,7 @@ public:
 signals:
 	void NMModelComponentChanged();
 	void ComponentDescriptionChanged(const QString& descr);
+    void ComponentUserIDChanged(const QString& userID);
 
 public:
     virtual ~NMModelComponent(void);
@@ -94,6 +96,10 @@ public:
     	{return this->mTimeLevel;}
     void setTimeLevel(short level);
     virtual void changeTimeLevel(int diff);
+
+    void setUserID(const QString& userID);
+    QString getUserID()
+        {return this->mUserID;}
 
     void setDescription(QString descr);
     QString getDescription()
@@ -135,6 +141,7 @@ protected:
     NMModelComponent(const NMModelComponent& modelComp){};
 
     QString mDescription;
+    QString mUserID;
 
     NMIterableComponent* mHostComponent;
 

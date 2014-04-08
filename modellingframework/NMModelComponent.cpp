@@ -18,6 +18,7 @@
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
 #include "NMModelController.h"
+#include "NMMfwException.h"
 
 #include <string>
 #include <iostream>
@@ -165,4 +166,36 @@ NMModelComponent::setDescription(QString descr)
 	this->mDescription = descr;
 
 	emit ComponentDescriptionChanged(descr);
+}
+
+void
+NMModelComponent::setUserID(const QString& userID)
+{
+    if (userID.compare(mUserID, Qt::CaseSensitive) == 0)
+        return;
+
+    // do what we can to fix 'erroneously' ill-formatted
+    // ids
+    QString uid = userID.simplified();
+
+    // check, whether string is fit for purpose
+    // here we apply the muParser character set for
+    // names, as we want to use the the UserID, amongst others,
+    // in expressions subject to be parsed by muParser
+    // allowed set of characters:
+    // "0123456789_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    QRegExp idchars("[_a-zA-Z\\d]*");
+    if (idchars.indexIn(uid) >= 0)
+    {
+        mUserID = uid;
+        emit ComponentUserIDChanged(uid);
+    }
+    else
+    {
+        NMMfwException e(NMMfwException::NMModelComponent_InvalidUserID);
+        QString msg = QString(tr("%1: Invalid UserID: '%2'!"))
+                .arg(this->objectName()).arg(uid);
+        e.setMsg(msg.toStdString());
+        throw e;
+    }
 }

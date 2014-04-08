@@ -103,6 +103,7 @@ protected:
     void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
     void setInternalExpression(QString expression);
     void setInternalNumExpression(unsigned int numExpr);
+    void setInternalNthInputName(unsigned int idx, const QString& varName);
 
     std::string ctx;
     QList<QStringList> 		   mInputImgVarNames;

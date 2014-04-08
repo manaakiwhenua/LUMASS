@@ -86,6 +86,13 @@ public:
 			//NMDebugCtx(ctxNMRATBandMathWrapper, << "done!");
 		}
 
+    static void setNthInputName(itk::ProcessObject::Pointer& otbFilter,
+            unsigned int idx, const std::string& name)
+        {
+            FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+            filter->SetNthInputName(idx, name);
+        }
+
 	static void setNthAttributeTable(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int idx, otb::AttributeTable::Pointer tab, std::vector<std::string> varNames)
 		{
@@ -149,6 +156,20 @@ else if (this->mInputNumDimensions == 3)                                        
 }
 
 
+#define callSetNthInputName( filterPixelType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 2) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 2 >::setNthInputName( \
+                this->mOtbProcess, idx, name); \
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 3 >::setNthInputName( \
+                this->mOtbProcess, idx, name); \
+    }\
+}
+
 /** Constructors/Destructors
  */
 
@@ -204,6 +225,23 @@ NMRATBandMathImageFilterWrapper
 	default:
 		break;
 	}
+}
+
+void
+NMRATBandMathImageFilterWrapper
+::setInternalNthInputName(unsigned int idx, const QString& varName)
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    std::string name = varName.toStdString();
+
+    switch(this->mInputComponentType)
+    {
+    MacroPerType( callSetNthInputName, NMRATBandMathImageFilterWrapper_Internal )
+    default:
+        break;
+    }
 }
 
 void NMRATBandMathImageFilterWrapper::setInternalExpression(QString expression)
@@ -296,9 +334,19 @@ NMRATBandMathImageFilterWrapper
 			}
 
 			this->setNthAttributeTable(cnt, tab, vcolnames);
+
+            // we check, whether the input has a UserID defined, and if so, we set it as the
+            // nth input variable name
+            NMModelComponent* comp = NMModelController::getInstance()->getComponent(input);
+            if (!comp->getUserID().isEmpty())
+            {
+                this->setInternalNthInputName(cnt, comp->getUserID());
+            }
 			++cnt;
 		}
 	}
+
+
 
 
 	//we've got some tables and associated variable names

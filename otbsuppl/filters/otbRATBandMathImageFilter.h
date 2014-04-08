@@ -183,6 +183,7 @@ private :
   std::vector<ParserType::Pointer>      m_VParser;
   std::vector< std::vector<double> >    m_AImage;
   std::vector< std::string >            m_VVarName;
+  std::vector< std::string >            m_UserNames;
   unsigned int                          m_NbVar;
   int									m_NbExpr;
 

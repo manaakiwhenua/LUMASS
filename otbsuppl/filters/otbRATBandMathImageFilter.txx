@@ -193,15 +193,15 @@ void RATBandMathImageFilter<TImage>
 {  
   this->SetInput(idx, const_cast<TImage *>( image ));
   unsigned int nbInput = idx+1;//this->GetNumberOfInputs();
+
   m_VVarName.resize(nbInput+4);
   std::ostringstream varName; 
   varName << "b" << nbInput;
-  m_VVarName[idx] = varName.str();
-  
-  m_VVarName[idx+1] = "idxX";
-  m_VVarName[idx+2] = "idxY";
-  m_VVarName[idx+3] = "idxPhyX";
-  m_VVarName[idx+4] = "idxPhyY"; 
+
+//  m_VVarName[idx+1] = "idxX";
+//  m_VVarName[idx+2] = "idxY";
+//  m_VVarName[idx+3] = "idxPhyX";
+//  m_VVarName[idx+4] = "idxPhyY";
   this->Modified();
 
 }
@@ -211,13 +211,13 @@ void RATBandMathImageFilter<TImage>
 ::SetNthInput(unsigned int idx, const ImageType * image, const std::string& varName)
 {
   this->SetInput(idx, const_cast<TImage *>( image ));
-  m_VVarName.resize(this->GetNumberOfInputs()+4);
+  m_VVarName.resize(idx+1);
   m_VVarName[idx] = varName;
   
-  m_VVarName[idx+1] = "idxX";
-  m_VVarName[idx+2] = "idxY";
-  m_VVarName[idx+3] = "idxPhyX";
-  m_VVarName[idx+4] = "idxPhyY"; 
+//  m_VVarName[idx+1] = "idxX";
+//  m_VVarName[idx+2] = "idxY";
+//  m_VVarName[idx+3] = "idxPhyX";
+//  m_VVarName[idx+4] = "idxPhyY";
   this->Modified();
 }
 
@@ -225,7 +225,9 @@ template <class TImage>
 void RATBandMathImageFilter<TImage>
 ::SetNthInputName(unsigned int idx, const std::string& varName)
 {
-	m_VVarName[idx] = varName;
+    m_UserNames.resize(idx+1);
+    m_UserNames[idx] = varName;
+    this->Modified();
 }
 
 template <typename TImage>
@@ -312,6 +314,18 @@ void RATBandMathImageFilter<TImage>
   m_AImage.resize(nbThreads);
   m_NbVar = nbInputImages+nbAccessIndex;
   m_VVarName.resize(m_NbVar);
+
+  // replace default varnames with user names, if applicable
+  for (int n=0; n < m_UserNames.size(); ++n)
+  {
+      if (!m_UserNames.at(n).empty())
+      {
+          if (n < m_VVarName.size())
+          {
+              m_VVarName[n] = m_UserNames[n];
+          }
+      }
+  }
   
   // attribute table support
   m_VAttrValues.resize(nbThreads);

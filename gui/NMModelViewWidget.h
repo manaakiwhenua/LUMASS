@@ -77,8 +77,9 @@ public slots:
 
 	void executeModel(void);
 	void resetModel(void);
-	void zoomIn(void);
-	void zoomOut(void);
+    void zoomIn() {zoom(1);}
+    void zoomOut() {zoom(-1);}
+    void zoom(int delta);
 
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);
@@ -121,9 +122,12 @@ protected slots:
 
 	void getSubComps(NMModelComponent* comp, QStringList& subs);
 	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
+    bool eventFilter(QObject* obj, QEvent* e);
 
 private:
 	void initItemContextMenu();
+
+    qreal mScaleFactor;
 
 	bool mbControllerIsBusy;
 

@@ -29,6 +29,7 @@
 #include <QGraphicsTextItem>
 #include <QGraphicsLineItem>
 #include <QMessageBox>
+#include <QDebug>
 
 #include "NMModelScene.h"
 #include "NMModelViewWidget.h"
@@ -223,10 +224,9 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 void
 NMModelScene::wheelEvent(QGraphicsSceneWheelEvent* event)
 {
-	if (event->delta() > 0)
-		emit zoomOut();
-	else
-		emit zoomIn();
+    mMousePos = event->scenePos();
+    //qDebug() << "wheelEvent(): scene pos: " << mMousePos;
+    emit zoom(event->delta());
 }
 
 void
@@ -342,6 +342,8 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 	QString pos = QString("Scene Position - X: %1 Y: %2").arg(event->scenePos().x())
 			.arg(event->scenePos().y());
 	tlw->updateCoordLabel(pos);
+
+    mMousePos = event->scenePos();
 
 	switch(mMode)
 	{

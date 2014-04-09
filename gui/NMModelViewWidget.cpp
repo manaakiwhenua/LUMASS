@@ -32,6 +32,8 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QScrollBar>
+#include <QDebug>
 
 #include "otbmodellerwin.h"
 #include "NMModelViewWidget.h"
@@ -45,7 +47,7 @@
 
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
-	: QWidget(parent, f), mbControllerIsBusy(false)
+    : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075)
 {
 	ctx = "NMModelViewWidget";
 	this->setAcceptDrops(true);
@@ -118,7 +120,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* MODEL SCENE SETUP */
 	/* ====================================================================== */
 	mModelScene = new NMModelScene(this);
-	mModelScene->setSceneRect(-3000,-3000,6000,6000);
+    mModelScene->setSceneRect(-5000,-5000,8000,8000);
 	mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	connect(this, SIGNAL(linkToolToggled(bool)), mModelScene,
 			SLOT(toggleLinkToolButton(bool)));
@@ -140,21 +142,24 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 			this, SLOT(editRootComponent()));
 	connect(mModelScene, SIGNAL(procAggregateCompDblClicked(const QString &)),
 			this, SLOT(callEditComponentDialog(const QString &)));
-	connect(mModelScene, SIGNAL(zoomIn()), this, SLOT(zoomIn()));
-	connect(mModelScene, SIGNAL(zoomOut()), this, SLOT(zoomOut()));
-
+    connect(mModelScene, SIGNAL(zoom(int)), this, SLOT(zoom(int)));
 
 	/* ====================================================================== */
     /* MODEL VIEW SETUP */
 	/* ====================================================================== */
 	mModelView = new QGraphicsView(mModelScene, this);
 	mModelView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-	mModelView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
+    //mModelView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 	mModelView->setCacheMode(QGraphicsView::CacheBackground);
 	mModelView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, false);
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
 	mModelView->setRenderHint(QPainter::Antialiasing, true);
 	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
+
+    mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    mModelView->viewport()->installEventFilter(this);
 
 
     /* ====================================================================== */
@@ -1409,16 +1414,6 @@ void NMModelViewWidget::editRootComponent()
 		this->callEditComponentDialog(this->mRootComponent->objectName());
 }
 
-void NMModelViewWidget::zoomIn(void)
-{
-	mModelView->scale(1.075, 1.075);
-}
-
-void NMModelViewWidget::zoomOut(void)
-{
-	mModelView->scale(0.925, 0.925);
-}
-
 void NMModelViewWidget::compProcChanged()
 {
 //	NMDebugCtx(ctx, << "...");
@@ -1767,6 +1762,37 @@ NMModelViewWidget::resetModel(void)
 	}
 }
 
+void NMModelViewWidget::zoom(int delta)
+{
+    qreal scaleby = 1;
+    if (delta > 0)
+        scaleby = mScaleFactor;
+    else
+        scaleby = 1/mScaleFactor;
+    mModelView->scale(scaleby, scaleby);
+}
 
+bool
+NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
+{
+    if (e->type() == QEvent::Wheel)
+    {
+        QWheelEvent* we = static_cast<QWheelEvent*>(e);
+
+        const QPointF pS0 = mModelView->mapToScene(we->pos());
+
+        zoom(we->delta());
+
+        const QPoint pS1 = mModelView->mapFromScene(pS0);
+        const QPoint pd = pS1 - we->pos();
+
+        mModelView->horizontalScrollBar()->setValue(pd.x() + mModelView->horizontalScrollBar()->value());
+        mModelView->verticalScrollBar()->setValue(pd.y() + mModelView->verticalScrollBar()->value());
+
+        return true;
+    }
+
+    return false;
+}
 
 

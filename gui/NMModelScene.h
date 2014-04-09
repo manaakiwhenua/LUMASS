@@ -68,6 +68,9 @@ public:
 	qreal getLinkZLevel(void)
 		{return this->mLinkZLevel;}
 
+    QPointF getMousePos(void)
+        {return mMousePos;}
+
 public slots:
 	void toggleLinkToolButton(bool);
 	void toggleSelToolButton(bool);
@@ -81,9 +84,7 @@ signals:
 	void procAggregateCompDblClicked(const QString&);	// name
 	void itemRightBtnClicked(QGraphicsSceneMouseEvent *,
 			QGraphicsItem *);
-	void zoomIn(void);
-	void zoomOut(void);
-
+    void zoom(int delta);
 
 protected:
 	void dragEnterEvent(QGraphicsSceneDragDropEvent* event);
@@ -110,6 +111,8 @@ private:
 
 	QGraphicsLineItem* mLinkLine;
 	InteractionMode mMode;
+
+    QPointF mMousePos;
 };
 
 #endif /* NMMODELSCENE_H_ */

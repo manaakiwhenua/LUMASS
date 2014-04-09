@@ -34,6 +34,7 @@
 #include <QMessageBox>
 #include <QScrollBar>
 #include <QDebug>
+#include <QDockWidget>
 
 #include "otbmodellerwin.h"
 #include "NMModelViewWidget.h"
@@ -44,6 +45,7 @@
 #include "NMDataComponent.h"
 #include "NMSequentialIterComponent.h"
 #include "NMConditionalIterComponent.h"
+#include "NMComponentEditor.h"
 
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
@@ -155,12 +157,11 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
 	mModelView->setRenderHint(QPainter::Antialiasing, true);
 	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
-
     mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
     mModelView->viewport()->installEventFilter(this);
 
+    mTreeCompEditor = const_cast<NMComponentEditor*>(mainWin->getCompEditor());
 
     /* ====================================================================== */
     /* WIDGET BUTTON AND CONTEXT MENU SETUP */
@@ -1648,6 +1649,14 @@ void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 		NMErr(ctx, << "component '" << compName.toStdString() << "' couldn't be found!");
 		return;
 	}
+
+#ifdef BUILD_RASSUPPORT
+        mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);
+#endif
+
+    mTreeCompEditor->setObject(comp);
+    return;
+
 
 	if (!this->mOpenEditors.contains(comp))
 	{

@@ -50,7 +50,7 @@ public:
     };
 
     explicit NMComponentEditor(QWidget *parent = 0,
-                               NMCompEditorMode mode);
+                               NMCompEditorMode mode = NM_COMPEDITOR_TREE);
 
     void setObject(QObject* obj);
 

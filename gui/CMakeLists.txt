@@ -4,7 +4,7 @@ PROJECT(gui)
 INCLUDE_DIRECTORIES(
 	${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
-    ${gui_BINARY_DIR}
+        ${gui_BINARY_DIR}
 	${utils_SOURCE_DIR}/QtPropertyBrowser/src
 	#${utils_SOURCE_DIR}/Qt
 	${NMVtk_SOURCE_DIR}
@@ -15,7 +15,7 @@ INCLUDE_DIRECTORIES(
 	${rimageio_SOURCE_DIR}
 	${mfw_SOURCE_DIR}    
 	${mfw_wrapper_SOURCE_DIR}
-    ${LPSOLVE_INCLUDE_DIR}
+        ${LPSOLVE_INCLUDE_DIR}
 	${VTK_INCLUDE_DIRS}
 	${OTB_INCLUDE_DIRS}
 	${RASDAMAN_INCLUDE_DIR}                                   
@@ -63,6 +63,7 @@ QT4_WRAP_CPP(MOC_CPP
 	${gui_SOURCE_DIR}/NMComponentLinkItem.h
 	${gui_SOURCE_DIR}/NMFastTrackSelectionModel.h
 	${gui_SOURCE_DIR}/NMComponentListItemDelegate.h
+        ${gui_SOURCE_DIR}/NMComponentEditor.h
 )
        
 file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)

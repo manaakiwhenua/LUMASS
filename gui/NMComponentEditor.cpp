@@ -45,11 +45,11 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     {
     case NM_COMPEDITOR_GRPBOX:
         mPropBrowser = new QtGroupBoxPropertyBrowser(this);
-        mPropBrowser->objectName("PropertyGroupBoxBrowser");
+        mPropBrowser->setObjectName("ComponentGroupBoxEditor");
         break;
     case NM_COMPEDITOR_TREE:
         mPropBrowser = new QtTreePropertyBrowser(this);
-        mPropBrowser->objectName("PropertyTreeBrowser");
+        mPropBrowser->setObjectName("ComponentTreeEditor");
         break;
     }
 
@@ -111,7 +111,7 @@ NMComponentEditor::setObject(QObject* obj)
     }
 
     this->mObj = obj;
-    this->setWindowTitle(obj->objectName());
+    //this->setWindowTitle(obj->objectName());
 
     this->readComponentProperties(mObj, comp, proc);
 

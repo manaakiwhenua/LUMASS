@@ -85,6 +85,7 @@
 #include <QDialog>
 #include <QLayout>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QDockWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -345,7 +346,22 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     mModelBuilderWindow = new QMainWindow(this->ui->modelViewDock);
     mModelBuilderWindow->setWindowFlags(Qt::Widget);
-    mModelBuilderWindow->setCentralWidget(this->ui->modelViewWidget);
+
+    //QVBoxLayout* mvLayout = new QVBoxLayout();
+    QSplitter* mvSplitter = new QSplitter(mModelBuilderWindow);
+    mvSplitter->setObjectName(QString::fromUtf8("ModelViewSplitter"));
+    mvSplitter->setOrientation(Qt::Horizontal);
+
+    mvSplitter->addWidget(this->ui->modelViewWidget);
+
+    mTreeCompEditor = new NMComponentEditor(this);
+    mvSplitter->addWidget(mTreeCompEditor);
+
+    //mvLayout->addWidget(mvSplitter);
+    //mModelBuilderWindow->setLayout(mvLayout);
+
+    mModelBuilderWindow->setCentralWidget(mvSplitter);
+    //mModelBuilderWindow->setCentralWidget(this->ui->modelViewWidget);
     mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
     this->ui->modelViewDock->setWidget(mModelBuilderWindow);
 
@@ -539,6 +555,16 @@ const vtkRenderer*
 OtbModellerWin::getBkgRenderer(void)
 {
 	return this->mBkgRenderer;
+}
+
+const NMComponentEditor*
+OtbModellerWin::getCompEditor(void)
+{
+    if (mTreeCompEditor)
+        return mTreeCompEditor;
+    else
+        return 0;
+    //return this->ui->compEditor;
 }
 
 #ifdef BUILD_RASSUPPORT

@@ -46,6 +46,7 @@
 #include "NMModelScene.h"
 #include "NMModelController.h"
 #include "NMEditModelComponentDialog.h"
+#include "NMComponentEditor.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "NMRasdamanConnectorWrapper.h"
@@ -150,6 +151,8 @@ private:
 
 	QMap<NMModelComponent*,
 		NMEditModelComponentDialog*> mOpenEditors;
+
+    NMComponentEditor* mTreeCompEditor;
 
 	QMap<QString, QAction*> mActionMap;
 

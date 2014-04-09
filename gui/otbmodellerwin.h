@@ -57,6 +57,7 @@
   #include "otbRasdamanImageIOFactory.h"
 #endif
 
+class NMComponentEditor;
 class vtkRenderer;
 class vtkEventQtSlotConnect;
 class vtkObject;
@@ -82,6 +83,7 @@ public:
     const vtkRenderer* getBkgRenderer(void);
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
+    const NMComponentEditor* getCompEditor(void);
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
@@ -244,6 +246,8 @@ private:
     QLabel* mPixelValLabel;
     QMainWindow* mModelBuilderWindow;
     QProgressBar* mProgressBar;
+
+    NMComponentEditor* mTreeCompEditor;
 
     // for showing random messages in the status bar
     QLabel* m_StateMsg;

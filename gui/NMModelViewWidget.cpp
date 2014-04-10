@@ -161,8 +161,6 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mModelView->viewport()->installEventFilter(this);
 
-    mTreeCompEditor = const_cast<NMComponentEditor*>(mainWin->getCompEditor());
-
     /* ====================================================================== */
     /* WIDGET BUTTON AND CONTEXT MENU SETUP */
 	/* ====================================================================== */
@@ -1479,21 +1477,6 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 	NMIterableComponent* itComp = 0;
 	NMProcess* proc = 0;
 
-//	if (procName.compare("ImageReader") == 0)
-//		proc = NMProcessFactory::instance().createProcess("NMImageReader");
-//	else if (procName.compare("MapAlgebra") == 0)
-//		proc = NMProcessFactory::instance().createProcess("NMRATBandMathImageFilterWrapper");
-//	else if (procName.compare("ImageWriter") == 0)
-//		proc = NMProcessFactory::instance().createProcess("NMStreamingImageFileWriterWrapper");
-//	else if (procName.compare("NeighbourCounter") == 0)
-//		proc = NMProcessFactory::instance().createProcess("NMNeighbourhoodCountingWrapper");
-//	else if (procName.compare("RandomImage") == 0)
-//			proc = NMProcessFactory::instance().createProcess("NMRandomImageSourceWrapper");
-//	else if (procName.compare("CostDistanceBuffer") == 0)
-//			proc = NMProcessFactory::instance().createProcess("NMCostDistanceBufferImageWrapper");
-//	else if (procName.compare("FocalDistanceWeight") == 0)
-//			proc = NMProcessFactory::instance().createProcess("NMFocalNeighbourhoodDistanceWeightingWrapper");
-
     if (procName.compare("DataBuffer") == 0)
 	{
 		NMDebugAI(<< "it's gonna be a DataComponent ... " << endl);
@@ -1571,7 +1554,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 			qobject_cast<NMModelComponent*>(host));
 
 
-	NMDebugCtx(ctx, << "added " << compName.toStdString() << " to controller!" << std::endl);
+    //NMDebugCtx(ctx, << "added " << compName.toStdString() << " to controller!" << std::endl);
 	this->mModelScene->invalidate();
 	this->mModelView->update();
 
@@ -1650,26 +1633,24 @@ void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 		return;
 	}
 
-#ifdef BUILD_RASSUPPORT
-        mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);
-#endif
+    mTreeCompEditor = this->parentWidget()->findChild<NMComponentEditor*>(
+                QString::fromUtf8("ComponentTreeEditor"));
 
-    mTreeCompEditor->setObject(comp);
-    return;
+    if (mTreeCompEditor != 0)
+        mTreeCompEditor->setObject(comp);
 
-
-	if (!this->mOpenEditors.contains(comp))
-	{
-		NMEditModelComponentDialog* dlg = new NMEditModelComponentDialog();
-		this->mOpenEditors.insert(comp, dlg);
-		connect(dlg, SIGNAL(finishedEditing(QObject*)),
-				this, SLOT(removeObjFromOpenEditsList(QObject*)));
-#ifdef BUILD_RASSUPPORT		
-		dlg->setRasdamanConnectorWrapper(this->mRasConn);
-#endif		
-		dlg->setObject(comp);
-		dlg->show();
-	}
+//	if (!this->mOpenEditors.contains(comp))
+//	{
+//		NMEditModelComponentDialog* dlg = new NMEditModelComponentDialog();
+//		this->mOpenEditors.insert(comp, dlg);
+//		connect(dlg, SIGNAL(finishedEditing(QObject*)),
+//				this, SLOT(removeObjFromOpenEditsList(QObject*)));
+//#ifdef BUILD_RASSUPPORT
+//		dlg->setRasdamanConnectorWrapper(this->mRasConn);
+//#endif
+//		dlg->setObject(comp);
+//		dlg->show();
+//	}
 }
 
 void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)

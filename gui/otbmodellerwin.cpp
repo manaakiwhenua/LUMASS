@@ -354,7 +354,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     mvSplitter->addWidget(this->ui->modelViewWidget);
 
-    mTreeCompEditor = new NMComponentEditor(this);
+    mTreeCompEditor = new NMComponentEditor(mvSplitter);
     mvSplitter->addWidget(mTreeCompEditor);
 
     //mvLayout->addWidget(mvSplitter);

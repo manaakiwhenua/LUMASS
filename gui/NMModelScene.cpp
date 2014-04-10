@@ -191,7 +191,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 		//NMDebugCtx(ctx, << "dropText = " << dropText.toStdString() << std::endl);
 
 		if (NMModelController::getInstance()->isModelRunning())
-		{
+        {
 			QMessageBox::information(0, "Invalid user request!",
 					"You cannot create new model components\nwhile a "
 					"model is being executed! Please try again later!");

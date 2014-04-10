@@ -18,6 +18,7 @@
 
 #include "NMComponentEditor.h"
 
+#include <QObject>
 #include <QMetaObject>
 #include <QMetaProperty>
 #include <QList>
@@ -27,7 +28,12 @@
 #include <QVBoxLayout>
 #include <limits>
 
+#include "NMProcess.h"
+#include "NMModelComponent.h"
+#include "NMDataComponent.h"
 #include "NMIterableComponent.h"
+#include "NMConditionalIterComponent.h"
+#include "NMSequentialIterComponent.h"
 
 const std::string NMComponentEditor::ctx = "NMComponentEditor";
 
@@ -91,8 +97,13 @@ NMComponentEditor::setObject(QObject* obj)
 
     // we only support NMModelComponent and
     // NMProcess objects at this stage
-    this->comp = qobject_cast<NMModelComponent*>(obj);
-    this->proc = qobject_cast<NMProcess*>(obj);
+
+    this->comp = reinterpret_cast<NMModelComponent*>(obj);
+    this->proc = reinterpret_cast<NMProcess*>(obj);
+
+
+//    this->comp = qobject_cast<NMModelComponent*>(obj);
+//    this->proc = qobject_cast<NMProcess*>(obj);
 
 //	// make this dialog listen to any changes within the components themselves
 //	if (comp != 0)

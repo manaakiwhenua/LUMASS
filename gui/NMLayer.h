@@ -140,6 +140,7 @@ public:
 
 
 signals:
+    void nmChanged();
 	void LegendTypeChanged();
 	void LegendClassTypeChanged();
 	void LegendDescrFieldChanged();

@@ -138,6 +138,7 @@ public slots:
 
 signals:
 		void NMProcessChanged();
+        void nmChanged();
 		void signalInputChanged(QList<QStringList> inputs);
 		void signalProgress(float);
 		void signalExecutionStarted(const QString &);

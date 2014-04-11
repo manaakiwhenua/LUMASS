@@ -1639,7 +1639,11 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
     NMModelComponent* comp = this->mModelController->getComponent(compName);
     if (comp == 0)
     {
-        NMErr(ctx, << "component '" << compName.toStdString() << "' couldn't be found!");
+        if (mTreeCompEditor)
+        {
+            mTreeCompEditor->clear();
+            mTreeCompEditor->hide();
+        }
         return;
     }
 
@@ -1647,6 +1651,8 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
     {
         QSplitter* sp = qobject_cast<QSplitter*>(this->parentWidget());
         mTreeCompEditor = new NMComponentEditor(this);
+        connect(this->mModelController, SIGNAL(componentRemoved(const QString &)),
+                this, SLOT(updateTreeEditor(const QString &)));
         sp->addWidget(mTreeCompEditor);
 #ifdef BUILD_RASSUPPORT
         mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);
@@ -1694,10 +1700,13 @@ void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)
 		delete dlg;
 	}
 
-    if (mTreeCompEditor && !this->mModelController->contains(comp->objectName()))
+    if (mTreeCompEditor)
     {
-        mTreeCompEditor->clear();
-        mTreeCompEditor->hide();
+        if (!this->mModelController->contains(comp->objectName()))
+        {
+            mTreeCompEditor->clear();
+            mTreeCompEditor->hide();
+        }
     }
 }
 

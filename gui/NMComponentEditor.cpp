@@ -70,12 +70,12 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     this->setLayout(lo);
 }
 
-void
-NMComponentEditor::closeEvent(QCloseEvent* event)
-{
-    emit finishedEditing(mObj);
-    QWidget::closeEvent(event);
-}
+//void
+//NMComponentEditor::closeEvent(QCloseEvent* event)
+//{
+//    emit finishedEditing(mObj);
+//    QWidget::closeEvent(event);
+//}
 
 void
 NMComponentEditor::update()
@@ -125,6 +125,8 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
     // in case we've got a component
     if (comp != 0)// && comp->getProcess() == 0)
     {
+        connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
+
         // ------------------------------------------------------
         // PROCESSING A NON-ITERABLE and NON-PROCESS COMPONENT
         // ------------------------------------------------------
@@ -185,6 +187,8 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
     // properties to the dialog
     if (proc != 0)
     {
+        connect(proc, SIGNAL(nmChanged()), this, SLOT(update()));
+
         const QMetaObject* procmeta = proc->metaObject();
         unsigned int nprop = procmeta->propertyCount();
         for (unsigned int p=0; p < nprop; ++p)

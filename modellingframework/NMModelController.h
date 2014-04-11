@@ -148,6 +148,9 @@ signals:
 	void signalIsControllerBusy(bool);
     void signalExecutionStopped(const QString&);
 
+    /*! Notify listeners that a component was deleted from the controller */
+    void componentRemoved(const QString&);
+
 protected:
 	NMModelController(QObject* parent=0);
 	virtual ~NMModelController();

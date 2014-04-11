@@ -81,6 +81,9 @@ public:
 	static const NMItkDataObjectWrapper::NMComponentType
 		getComponentTypeFromString(const QString& compType);
 
+signals:
+    void nmChanged();
+
 private:
 	itk::DataObject::Pointer mDataObject;
 	otb::AttributeTable::Pointer mOTBTab;

@@ -423,6 +423,7 @@ void
 NMProcess::setInputComponents(QList<QStringList> inputComponents)
 {
 	this->mInputComponents = inputComponents;
+    emit NMProcessChanged();
 	emit signalInputChanged(inputComponents);
 }
 

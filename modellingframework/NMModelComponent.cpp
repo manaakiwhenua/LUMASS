@@ -164,7 +164,7 @@ void
 NMModelComponent::setDescription(QString descr)
 {
 	this->mDescription = descr;
-
+    emit NMModelComponentChanged();
 	emit ComponentDescriptionChanged(descr);
 }
 
@@ -188,6 +188,7 @@ NMModelComponent::setUserID(const QString& userID)
     if (idchars.indexIn(uid) >= 0)
     {
         mUserID = uid;
+        emit NMModelComponentChanged();
         emit ComponentUserIDChanged(uid);
     }
     else

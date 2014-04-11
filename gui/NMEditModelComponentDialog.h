@@ -29,6 +29,7 @@
 
 #include "nmlog.h"
 
+#include "NMComponentEditor.h"
 #include "NMProcess.h"
 //#include "NMModelComponent.h"
 
@@ -44,44 +45,48 @@ public:
     NMEditModelComponentDialog(QWidget *parent = 0);
     ~NMEditModelComponentDialog();
 
-    void setObject(QObject* obj);
+    void setObject(QObject* obj) {mCompEditor->setObject(obj);}
 
 #ifdef BUILD_RASSUPPORT    
     void setRasdamanConnectorWrapper(NMRasdamanConnectorWrapper* wrap)
-		{this->mRasConn = wrap;}
+        {mCompEditor->setRasdamanConnectorWrapper(wrap);}
+        //{this->mRasConn = wrap;}
 #endif		
 
 signals:
 	void finishedEditing(QObject* obj);
 
 public slots:
-	void update(void);
+    void update(void) {mCompEditor->update();}
 
 private slots:
-	void applySettings(QtProperty* prop, const QVariant& val);
+    //void applySettings(QtProperty* prop, const QVariant& val);
 
 private:
-    void updateSubComponents(const QStringList& compList);
-    QVariant nestedListFromStringList(const QStringList& strList);
+//    void updateSubComponents(const QStringList& compList);
+//    QVariant nestedListFromStringList(const QStringList& strList);
 
-    void createPropertyEdit(const QMetaProperty& property,
-    		QObject* obj);
-    void setComponentProperty(const QtProperty* prop,
-    		QObject* obj);
+//    void createPropertyEdit(const QMetaProperty& property,
+//    		QObject* obj);
+//    void setComponentProperty(const QtProperty* prop,
+//    		QObject* obj);
     void closeEvent(QCloseEvent* event);
-    void readComponentProperties(QObject* obj, NMModelComponent* comp,
-    		NMProcess* proc);
+//    void readComponentProperties(QObject* obj, NMModelComponent* comp,
+//    		NMProcess* proc);
 
 
-    QObject* mObj;
-    NMModelComponent* comp;
-    NMProcess* proc;
+    //QObject* mObj;
+    //NMModelComponent* comp;
+    //NMProcess* proc;
     static const std::string ctx;
-    Ui::compEditor ui;
+    //Ui::compEditor ui;
+
+    NMComponentEditor* mCompEditor;
+
     
-#ifdef BUILD_RASSUPPORT
-    NMRasdamanConnectorWrapper* mRasConn;
-#endif    
+//#ifdef BUILD_RASSUPPORT
+//    NMRasdamanConnectorWrapper* mRasConn;
+//#endif
 };
 
 #endif // NMEDITMODELCOMPONENTDIALOG_H

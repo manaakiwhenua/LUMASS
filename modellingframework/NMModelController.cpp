@@ -386,6 +386,7 @@ bool NMModelController::removeComponent(const QString& name)
 	this->mComponentMap.remove(name);
 	delete comp;
 
+    emit componentRemoved(name);
 	return true;
 }
 

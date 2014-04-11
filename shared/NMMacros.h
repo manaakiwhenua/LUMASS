@@ -78,6 +78,7 @@ QMessageBox::critical(this,               \
 void set ## name(type _arg) \
 { \
 	this->m ## name = _arg; \
+    emit nmChanged();\
 }	\
 type get ## name() \
 { \

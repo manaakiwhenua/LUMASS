@@ -53,6 +53,7 @@ public:
                                NMCompEditorMode mode = NM_COMPEDITOR_TREE);
 
     void setObject(QObject* obj);
+    QObject* getObject(void) {return mObj;}
 
 #ifdef BUILD_RASSUPPORT
     void setRasdamanConnectorWrapper(NMRasdamanConnectorWrapper* wrap)
@@ -60,7 +61,7 @@ public:
 #endif
 
 signals:
-    void finishedEditing(QObject* obj);
+    //void finishedEditing(QObject* obj);
 
 public slots:
     void update(void);
@@ -78,7 +79,7 @@ private:
             QObject* obj);
     void setComponentProperty(const QtProperty* prop,
             QObject* obj);
-    void closeEvent(QCloseEvent* event);
+    //void closeEvent(QCloseEvent* event);
     void readComponentProperties(QObject* obj, NMModelComponent* comp,
             NMProcess* proc);
 

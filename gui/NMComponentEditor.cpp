@@ -90,7 +90,6 @@ NMComponentEditor::update()
 }
 
 void
-//NMComponentEditor::setComponent(NMModelComponent* comp)
 NMComponentEditor::setObject(QObject* obj)
 {
     NMDebugCtx(ctx, << "...");
@@ -102,19 +101,6 @@ NMComponentEditor::setObject(QObject* obj)
     this->proc = reinterpret_cast<NMProcess*>(obj);
 
 
-//    this->comp = qobject_cast<NMModelComponent*>(obj);
-//    this->proc = qobject_cast<NMProcess*>(obj);
-
-//	// make this dialog listen to any changes within the components themselves
-//	if (comp != 0)
-//	{
-//		connect(comp, SIGNAL(NMModelComponentChanged()), this, SLOT(update()));
-//	}
-//	else if (proc != 0)
-//	{
-//		connect(proc, SIGNAL(NMProcessChanged()), this, SLOT(update()));
-//	}
-//	else
     if (comp == 0 && proc == 0)
     {
         NMDebugCtx(ctx, << "done!");
@@ -122,7 +108,7 @@ NMComponentEditor::setObject(QObject* obj)
     }
 
     this->mObj = obj;
-    //this->setWindowTitle(obj->objectName());
+    this->setWindowTitle(obj->objectName());
 
     this->readComponentProperties(mObj, comp, proc);
 

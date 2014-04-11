@@ -81,6 +81,7 @@ public slots:
     void zoomIn() {zoom(1);}
     void zoomOut() {zoom(-1);}
     void zoom(int delta);
+    void updateTreeEditor(const QString&);
 
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);
@@ -149,8 +150,8 @@ private:
 	
 	NMIterableComponent* mRootComponent;
 
-	QMap<NMModelComponent*,
-		NMEditModelComponentDialog*> mOpenEditors;
+    QMap<NMModelComponent*,
+        NMEditModelComponentDialog*> mOpenEditors;
 
     NMComponentEditor* mTreeCompEditor;
 

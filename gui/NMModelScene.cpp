@@ -265,9 +265,9 @@ NMModelScene::serialiseItems(QList<QGraphicsItem*> items, QDataStream& data)
 void
 NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
-	QGraphicsItem* item = 0;
-	NMProcessComponentItem* procItem = 0;
-	NMAggregateComponentItem* aggrItem = 0;
+    QGraphicsItem* item = this->itemAt(event->scenePos());
+    NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+    NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);;
 
 	if (event->button() == Qt::LeftButton)
 	{
@@ -282,19 +282,28 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 			break;
 
 		default:
+            if (procItem)
+            {
+                emit itemLeftClicked(procItem->getTitle());
+            }
+            else if (aggrItem)
+            {
+                emit itemLeftClicked(aggrItem->getTitle());
+            }
 			break;
 		}
 		QGraphicsScene::mousePressEvent(event);
 	}
 	else if (event->button() == Qt::RightButton)
 	{
-		QGraphicsItem* item = this->itemAt(event->scenePos());
 		QGraphicsItem* sendItem = 0;
 
 		// first, we check, whether we've got a link on the hook
 		sendItem = this->getLinkItem(event->scenePos());
 		if (sendItem == 0 && item != 0)
+        {
 			sendItem = item;
+        }
 
 		emit itemRightBtnClicked(event, sendItem);
 	}

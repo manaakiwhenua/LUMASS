@@ -35,6 +35,8 @@
 #include <QScrollBar>
 #include <QDebug>
 #include <QDockWidget>
+#include <QWidget>
+#include <QSplitter>
 
 #include "otbmodellerwin.h"
 #include "NMModelViewWidget.h"
@@ -102,6 +104,12 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 		{
 			mainWin = qobject_cast<OtbModellerWin*>(w);
 		}
+
+//        NMDebugAI(<< "children of " << w->objectName().toStdString() << std::endl);
+//        foreach(QObject* obj, w->children())
+//        {
+//            NMDebugAI(<< "  --" << obj->objectName().toStdString() << std::endl);
+//        }
 	}
 
 #ifdef BUILD_RASSUPPORT	
@@ -145,6 +153,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	connect(mModelScene, SIGNAL(procAggregateCompDblClicked(const QString &)),
 			this, SLOT(callEditComponentDialog(const QString &)));
     connect(mModelScene, SIGNAL(zoom(int)), this, SLOT(zoom(int)));
+    connect(mModelScene, SIGNAL(itemLeftClicked(const QString &)), this,
+            SLOT(updateTreeEditor(const QString &)));
 
 	/* ====================================================================== */
     /* MODEL VIEW SETUP */
@@ -160,6 +170,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mModelView->viewport()->installEventFilter(this);
+
+    mTreeCompEditor = 0;
 
     /* ====================================================================== */
     /* WIDGET BUTTON AND CONTEXT MENU SETUP */
@@ -1153,7 +1165,7 @@ void NMModelViewWidget::deleteItem()
 	NMAggregateComponentItem* aggrItem;
 	NMComponentLinkItem* linkItem;
 
-	QList<NMComponentLinkItem*> delLinkList;
+    //QList<NMComponentLinkItem*> delLinkList;
 	QStringList delList;
 	if (this->mModelScene->selectedItems().count())
 	{
@@ -1167,8 +1179,8 @@ void NMModelViewWidget::deleteItem()
 				delList.push_back(procItem->getTitle());
 			else if (aggrItem != 0)
 				delList.push_back(aggrItem->getTitle());
-			else if (linkItem != 0)
-				delLinkList.push_back(linkItem);
+            //else if (linkItem != 0)
+            //	delLinkList.push_back(linkItem);
 		}
 	}
 	else if (this->mLastItem != 0)
@@ -1177,11 +1189,19 @@ void NMModelViewWidget::deleteItem()
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(this->mLastItem);
 		linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(this->mLastItem);
 		if (linkItem != 0)
+        {
 			this->deleteLinkComponentItem(linkItem);
+        }
 		else if (procItem != 0)
-			this->deleteProcessComponentItem(procItem);
+        {
+            delList.push_back(procItem->getTitle());
+            //this->deleteProcessComponentItem(procItem);
+        }
 		else if (aggrItem != 0)
-			this->deleteAggregateComponentItem(aggrItem);
+        {
+            delList.push_back(aggrItem->getTitle());
+            //this->deleteAggregateComponentItem(aggrItem);
+        }
 	}
 
 
@@ -1575,16 +1595,7 @@ NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 	NMModelComponent* target = this->mModelController->getComponent(
 			link->targetItem()->getTitle());
 
-	//NMIterableComponent* itTarget =
-	//		qobject_cast<NMIterableComponent*>(target);
-	//NMDataComponent* dataTarget =
-	//		qobject_cast<NMDataComponent*>(target);
-    //
-	//NMProcess* targetProc = 0;
-	//if (itTarget != 0)
-	//	targetProc = itTarget->getProcess();
-
-	if (target != 0) //if (targetProc != 0)
+    if (target != 0)
 	{
 		QList<QStringList> inpComps = target->getInputs();
 		if (inpComps.count() == 0)
@@ -1601,13 +1612,6 @@ NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 		}
 		target->setInputs(inpComps);
 	}
-	//else if (dataTarget != 0)
-	//{
-	//	QList<QStringList> inputs = dataTarget->getInputs();
-	//	lst.append(src->objectName());
-    //
-	//	dataTarget->setInputSpec(lst);
-	//}
 
 	// update any potentially opened editors
 	NMEditModelComponentDialog* dlg = 0;
@@ -1617,8 +1621,40 @@ NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 	if (dlg != 0)
 		dlg->update();
 
+    if (mTreeCompEditor)
+    {
+        mTreeCompEditor->setObject(target);
+    }
+
 
 	NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelViewWidget::updateTreeEditor(const QString& compName)
+{
+    if (compName.isEmpty())
+        return;
+
+    NMModelComponent* comp = this->mModelController->getComponent(compName);
+    if (comp == 0)
+    {
+        NMErr(ctx, << "component '" << compName.toStdString() << "' couldn't be found!");
+        return;
+    }
+
+    if (mTreeCompEditor == 0)
+    {
+        QSplitter* sp = qobject_cast<QSplitter*>(this->parentWidget());
+        mTreeCompEditor = new NMComponentEditor(this);
+        sp->addWidget(mTreeCompEditor);
+#ifdef BUILD_RASSUPPORT
+        mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);
+#endif
+
+    }
+    mTreeCompEditor->setObject(comp);
+    mTreeCompEditor->show();
 }
 
 void NMModelViewWidget::callEditComponentDialog(const QString& compName)
@@ -1633,24 +1669,18 @@ void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 		return;
 	}
 
-    mTreeCompEditor = this->parentWidget()->findChild<NMComponentEditor*>(
-                QString::fromUtf8("ComponentTreeEditor"));
-
-    if (mTreeCompEditor != 0)
-        mTreeCompEditor->setObject(comp);
-
-//	if (!this->mOpenEditors.contains(comp))
-//	{
-//		NMEditModelComponentDialog* dlg = new NMEditModelComponentDialog();
-//		this->mOpenEditors.insert(comp, dlg);
-//		connect(dlg, SIGNAL(finishedEditing(QObject*)),
-//				this, SLOT(removeObjFromOpenEditsList(QObject*)));
-//#ifdef BUILD_RASSUPPORT
-//		dlg->setRasdamanConnectorWrapper(this->mRasConn);
-//#endif
-//		dlg->setObject(comp);
-//		dlg->show();
-//	}
+    if (!this->mOpenEditors.contains(comp))
+    {
+        NMEditModelComponentDialog* dlg = new NMEditModelComponentDialog();
+        this->mOpenEditors.insert(comp, dlg);
+        connect(dlg, SIGNAL(finishedEditing(QObject*)),
+                this, SLOT(removeObjFromOpenEditsList(QObject*)));
+#ifdef BUILD_RASSUPPORT
+        dlg->setRasdamanConnectorWrapper(this->mRasConn);
+#endif
+        dlg->setObject(comp);
+        dlg->show();
+    }
 }
 
 void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)
@@ -1663,6 +1693,12 @@ void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)
 		this->mOpenEditors.remove(comp);
 		delete dlg;
 	}
+
+    if (mTreeCompEditor && !this->mModelController->contains(comp->objectName()))
+    {
+        mTreeCompEditor->clear();
+        mTreeCompEditor->hide();
+    }
 }
 
 void NMModelViewWidget::dragEnterEvent(QDragEnterEvent* event)

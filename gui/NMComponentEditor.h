@@ -64,6 +64,8 @@ signals:
 
 public slots:
     void update(void);
+    void clear(void)
+        {if(mPropBrowser) mPropBrowser->clear();}
 
 private slots:
     void applySettings(QtProperty* prop, const QVariant& val);

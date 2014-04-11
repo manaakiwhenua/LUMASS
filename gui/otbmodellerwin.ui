@@ -298,14 +298,6 @@
          </sizepolicy>
         </property>
        </widget>
-       <widget class="NMComponentEditor" name="compEditor" native="true">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
       </widget>
      </item>
     </layout>
@@ -496,12 +488,6 @@
    <class>NMModelViewWidget</class>
    <extends>QWidget</extends>
    <header>NMModelViewWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>NMComponentEditor</class>
-   <extends>QWidget</extends>
-   <header>NMComponentEditor.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

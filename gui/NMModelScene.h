@@ -84,6 +84,7 @@ signals:
 	void procAggregateCompDblClicked(const QString&);	// name
 	void itemRightBtnClicked(QGraphicsSceneMouseEvent *,
 			QGraphicsItem *);
+    void itemLeftClicked(const QString& itemName);
     void zoom(int delta);
 
 protected:

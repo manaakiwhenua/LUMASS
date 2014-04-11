@@ -142,11 +142,11 @@ public slots:
 	bool isModelAbortionRequested(void)
 		{return this->mbAbortionRequested;}
 
-	signals:
+signals:
 	/*! Signals whether any of the process components controlled
 	 *  by this controller is currently running or not */
 	void signalIsControllerBusy(bool);
-	void signalExecutionStopped(const QString&);
+    void signalExecutionStopped(const QString&);
 
 protected:
 	NMModelController(QObject* parent=0);

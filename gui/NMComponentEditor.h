@@ -91,6 +91,8 @@ private:
     NMCompEditorMode mEditorMode;
     QtAbstractPropertyBrowser* mPropBrowser;
 
+    bool mUpdating;
+
 
 #ifdef BUILD_RASSUPPORT
     NMRasdamanConnectorWrapper* mRasConn;

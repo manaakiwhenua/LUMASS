@@ -39,7 +39,7 @@ const std::string NMComponentEditor::ctx = "NMComponentEditor";
 
 NMComponentEditor::NMComponentEditor(QWidget *parent,
             NMCompEditorMode mode)
-    : QWidget(parent), mEditorMode(mode), mObj(0), comp(0), proc(0)
+    : QWidget(parent), mEditorMode(mode), mObj(0), comp(0), proc(0), mUpdating(false)
 {
 
 #ifdef BUILD_RASSUPPORT
@@ -93,6 +93,13 @@ void
 NMComponentEditor::setObject(QObject* obj)
 {
     NMDebugCtx(ctx, << "...");
+
+    if (mUpdating)
+    {
+        NMWarn(ctx, << "just updating ..." << std::endl);
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
     // we only support NMModelComponent and
     // NMProcess objects at this stage
@@ -408,6 +415,8 @@ void NMComponentEditor::applySettings(QtProperty* prop,
 {
     NMDebugCtx(ctx, << "...");
 
+    mUpdating = true;
+
     NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
     NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
     NMProcess* proc = qobject_cast<NMProcess*>(mObj);
@@ -435,7 +444,7 @@ void NMComponentEditor::applySettings(QtProperty* prop,
     {
         this->setComponentProperty(prop, mObj);
     }
-
+    mUpdating = false;
     NMDebugCtx(ctx, << "done!");
 }
 

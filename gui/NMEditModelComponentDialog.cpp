@@ -43,6 +43,7 @@ NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
 
     QVBoxLayout* vLayout = new QVBoxLayout(this);
     mCompEditor = new NMComponentEditor(this, NMComponentEditor::NM_COMPEDITOR_GRPBOX);
+    //mCompEditor = new NMComponentEditor(this);
     vLayout->addWidget(mCompEditor);
 
     QFormLayout* formLayout = new QFormLayout();

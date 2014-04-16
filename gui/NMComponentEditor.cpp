@@ -83,6 +83,13 @@ NMComponentEditor::update()
     NMDebugCtx(ctx, << "...");
 
 
+    if (mUpdating)
+    {
+        NMWarn(ctx, << "just updating ..." << std::endl);
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
     this->readComponentProperties(mObj, comp, proc);
 
 
@@ -226,6 +233,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
             << "): " << obj->property(property.name()).toString().toStdString()
             << " ...");
 
+    QString propToolTip = "";
     QVariant value;
     bool bok;
     QStringList ctypes;
@@ -288,6 +296,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
             if (ctypes.at(p).compare(curPropValStr) == 0)
                 value = QVariant(p);
         }
+        propToolTip = tr("PixelType");
     }
     else if (QString("NMProcess::AdvanceParameter").compare(property.typeName()) == 0)
     {
@@ -297,6 +306,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         NMProcess::AdvanceParameter ap =
                 obj->property(property.name()).value<NMProcess::AdvanceParameter>();
         value = QVariant(ap);
+        propToolTip = tr("NMProcess::AdvanceParameter");
         NMDebug(<< "current value = " << ap);
     }
 #ifdef BUILD_RASSUPPORT
@@ -348,6 +358,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
 
         value = QVariant::fromValue(bracedList);
         prop = manager->addProperty(QVariant::StringList, propName);
+        propToolTip = tr("QList<QStringList>");
     }
     else if (QString("QList<QList<QStringList> >").compare(property.typeName()) == 0)
     {
@@ -373,6 +384,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
 
         value = QVariant::fromValue(bracedList);
         prop = manager->addProperty(QVariant::StringList, propName);
+        propToolTip = tr("QList<QList<QStringList> >");
     }
     else
     {
@@ -393,7 +405,12 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
             prop->propertyName().compare("ComponentName") == 0)
             prop->setEnabled(false);
 
-        prop->setToolTip(QString(tr("type: %1")).arg(value.typeName()));
+        if (propToolTip.isEmpty())
+            propToolTip = value.typeName();
+
+        prop->setToolTip(QString(tr("type: %1")).arg(propToolTip));
+        //prop->setToolTip(QString(tr("type: %1")).arg(value.typeName()));
+        //prop->setToolTip(propToolTip);
 
         mPropBrowser->setFactoryForManager(manager, editor);
         mPropBrowser->addProperty(prop);

@@ -158,6 +158,7 @@ void NMModelComponent::changeTimeLevel(int diff)
 		this->mTimeLevel = 0;
 
 	emit NMModelComponentChanged();
+    emit nmChanged();
 }
 
 void
@@ -165,6 +166,7 @@ NMModelComponent::setDescription(QString descr)
 {
 	this->mDescription = descr;
     emit NMModelComponentChanged();
+    emit nmChanged();
 	emit ComponentDescriptionChanged(descr);
 }
 
@@ -189,6 +191,7 @@ NMModelComponent::setUserID(const QString& userID)
     {
         mUserID = uid;
         emit NMModelComponentChanged();
+        emit nmChanged();
         emit ComponentUserIDChanged(uid);
     }
     else

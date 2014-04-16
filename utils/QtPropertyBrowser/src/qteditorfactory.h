@@ -203,6 +203,7 @@ public:
     QtLineEditFactory(QObject *parent = 0);
     ~QtLineEditFactory();
 protected:
+    bool eventFilter(QObject* obj, QEvent* event);
     void connectPropertyManager(QtStringPropertyManager *manager);
     QWidget *createEditor(QtStringPropertyManager *manager, QtProperty *property,
                 QWidget *parent);
@@ -213,7 +214,8 @@ private:
     Q_DISABLE_COPY(QtLineEditFactory)
     Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, const QString &))
     Q_PRIVATE_SLOT(d_func(), void slotRegExpChanged(QtProperty *, const QRegExp &))
-    Q_PRIVATE_SLOT(d_func(), void slotSetValue(const QString &))
+    //Q_PRIVATE_SLOT(d_func(), void slotSetValue(const QString &))
+    Q_PRIVATE_SLOT(d_func(), void slotSetValue(QObject *))
     Q_PRIVATE_SLOT(d_func(), void slotEditorDestroyed(QObject *))
 };
 

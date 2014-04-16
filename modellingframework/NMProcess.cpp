@@ -121,6 +121,8 @@ void NMProcess::removeInputComponent(const QString& input)
 			break;
 		}
 	}
+    emit NMProcessChanged();
+    emit nmChanged();
 }
 
 unsigned short
@@ -422,8 +424,9 @@ NMProcess::abortExecution(void)
 void
 NMProcess::setInputComponents(QList<QStringList> inputComponents)
 {
-	this->mInputComponents = inputComponents;
+    this->mInputComponents = inputComponents;
     emit NMProcessChanged();
+    emit nmChanged();
 	emit signalInputChanged(inputComponents);
 }
 
@@ -534,8 +537,13 @@ NMProcess::setInputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmtyp
 		default: type = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
 	}
 
-	this->mInputComponentType = type;
-	this->mbIsInitialised = false;
+    if (this->mInputComponentType != type)
+    {
+        this->mInputComponentType = type;
+        this->mbIsInitialised = false;
+        emit NMProcessChanged();
+        emit nmChanged();
+    }
 }
 
 void
@@ -557,8 +565,13 @@ NMProcess::setOutputNMComponentType(NMItkDataObjectWrapper::NMComponentType nmty
 		default: type = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE; break;
 	}
 
-	this->mOutputComponentType = type;
-	this->mbIsInitialised = false;
+    if (this->mOutputComponentType != type)
+    {
+        this->mOutputComponentType = type;
+        this->mbIsInitialised = false;
+        emit NMProcessChanged();
+        emit nmChanged();
+    }
 }
 
 

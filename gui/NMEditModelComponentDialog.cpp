@@ -60,7 +60,6 @@ NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
 
     vLayout->addLayout(formLayout);
 
-
     //ui.setupUi(this);
 //#ifdef BUILD_RASSUPPORT
 //	this->mRasConn = 0;

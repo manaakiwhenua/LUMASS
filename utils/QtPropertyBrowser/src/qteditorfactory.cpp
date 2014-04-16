@@ -1064,7 +1064,8 @@ public:
 
     void slotPropertyChanged(QtProperty *property, const QString &value);
     void slotRegExpChanged(QtProperty *property, const QRegExp &regExp);
-    void slotSetValue(const QString &value);
+    //void slotSetValue(const QString &value);
+    void slotSetValue(QObject *);
 };
 
 void QtLineEditFactoryPrivate::slotPropertyChanged(QtProperty *property,
@@ -1107,9 +1108,24 @@ void QtLineEditFactoryPrivate::slotRegExpChanged(QtProperty *property,
     }
 }
 
-void QtLineEditFactoryPrivate::slotSetValue(const QString &value)
+//void QtLineEditFactoryPrivate::slotSetValue(const QString &value)
+//{
+//    QObject *object = q_ptr->sender();
+//    const QMap<QLineEdit *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
+//    for (QMap<QLineEdit *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend; ++itEditor)
+//        if (itEditor.key() == object) {
+//            QtProperty *property = itEditor.value();
+//            QtStringPropertyManager *manager = q_ptr->propertyManager(property);
+//            if (!manager)
+//                return;
+//            manager->setValue(property, value);
+//            return;
+//        }
+//}
+
+void QtLineEditFactoryPrivate::slotSetValue(QObject* obj)
 {
-    QObject *object = q_ptr->sender();
+    QObject *object = obj;//q_ptr->sender();
     const QMap<QLineEdit *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
     for (QMap<QLineEdit *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend; ++itEditor)
         if (itEditor.key() == object) {
@@ -1117,6 +1133,8 @@ void QtLineEditFactoryPrivate::slotSetValue(const QString &value)
             QtStringPropertyManager *manager = q_ptr->propertyManager(property);
             if (!manager)
                 return;
+
+            QString value = itEditor.key()->text();
             manager->setValue(property, value);
             return;
         }
@@ -1151,6 +1169,29 @@ QtLineEditFactory::~QtLineEditFactory()
     delete d_ptr;
 }
 
+bool QtLineEditFactory::eventFilter(QObject* obj, QEvent* event)
+{
+    if (    qobject_cast<QLineEdit*>(obj) != 0
+         && event->type() == QEvent::FocusOut
+       )
+    {
+        d_ptr->slotSetValue(obj);
+    }
+    else if (    qobject_cast<QLineEdit*>(obj) != 0
+             && event->type() == QEvent::KeyPress
+            )
+    {
+        QKeyEvent* ke = static_cast<QKeyEvent*>(event);
+        if (ke->key() == Qt::Key_Return)
+        {
+            d_ptr->slotSetValue(obj);
+        }
+    }
+
+    // standard processing
+    return QObject::eventFilter(obj, event);
+}
+
 /*!
     \internal
 
@@ -1174,6 +1215,8 @@ QWidget *QtLineEditFactory::createEditor(QtStringPropertyManager *manager,
 {
 
     QLineEdit *editor = d_ptr->createEditor(property, parent);
+    editor->setFocusPolicy(Qt::WheelFocus);
+    editor->installEventFilter(this);
     QRegExp regExp = manager->regExp(property);
     if (regExp.isValid()) {
         QValidator *validator = new QRegExpValidator(regExp, editor);
@@ -1181,8 +1224,8 @@ QWidget *QtLineEditFactory::createEditor(QtStringPropertyManager *manager,
     }
     editor->setText(manager->value(property));
 
-    connect(editor, SIGNAL(textEdited(const QString &)),
-                this, SLOT(slotSetValue(const QString &)));
+//    connect(editor, SIGNAL(textEdited(const QString &)),
+//                this, SLOT(slotSetValue(const QString &)));
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
@@ -1276,6 +1319,16 @@ bool QtTextEditFactory::eventFilter(QObject* obj, QEvent* event)
 	{
 		d_ptr->slotSetValue(obj);
 	}
+    else if (    qobject_cast<QTextEdit*>(obj) != 0
+             &&  event->type() == QEvent::KeyPress
+            )
+    {
+        QKeyEvent* ke = static_cast<QKeyEvent*>(event);
+        if (ke->key() == Qt::Key_Return)
+        {
+            d_ptr->slotSetValue(obj);
+        }
+    }
 
 	// standard processing
 	return QObject::eventFilter(obj, event);
@@ -1302,6 +1355,7 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
 {
 
     QTextEdit *editor = d_ptr->createEditor(property, parent);
+    editor->setFocusPolicy(Qt::WheelFocus);
     editor->installEventFilter(this);
     QStringList lst = manager->value(property);
     QString instr = QtStringListPropertyManager::StringListToString(lst);

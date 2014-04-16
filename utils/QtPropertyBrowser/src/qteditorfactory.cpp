@@ -1182,7 +1182,9 @@ bool QtLineEditFactory::eventFilter(QObject* obj, QEvent* event)
             )
     {
         QKeyEvent* ke = static_cast<QKeyEvent*>(event);
-        if (ke->key() == Qt::Key_Return)
+        if (    ke->key() == Qt::Key_Return
+            ||  ke->key() == Qt::Key_Enter
+           )
         {
             d_ptr->slotSetValue(obj);
         }
@@ -1324,7 +1326,9 @@ bool QtTextEditFactory::eventFilter(QObject* obj, QEvent* event)
             )
     {
         QKeyEvent* ke = static_cast<QKeyEvent*>(event);
-        if (ke->key() == Qt::Key_Return)
+        if (    ke->key() == Qt::Key_Return
+            ||  ke->key() == Qt::Key_Enter
+            )
         {
             d_ptr->slotSetValue(obj);
         }

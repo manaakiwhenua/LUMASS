@@ -45,6 +45,9 @@
 #include <QtGui/QGroupBox>
 #include <QtCore/QTimer>
 #include <QtCore/QMap>
+#include <QtCore/QDebug>
+#include <QtCore/QEvent>
+#include <QtGui/QKeyEvent>
 
 #if QT_VERSION >= 0x040400
 QT_BEGIN_NAMESPACE
@@ -66,6 +69,8 @@ public:
 
     void slotEditorDestroyed();
     void slotUpdate();
+
+    bool eventFilter(QObject* obj, QEvent* event);
 
     struct WidgetItem
     {
@@ -250,7 +255,11 @@ void QtGroupBoxPropertyBrowserPrivate::propertyInserted(QtBrowserItem *index, Qt
 
     newItem->label = new QLabel(parentWidget);
     newItem->label->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
-    newItem->widget = createEditor(index->property(), parentWidget);
+
+    QtGroupBoxPropertyBrowserPrivate* gb = const_cast<QtGroupBoxPropertyBrowserPrivate*>(this);
+    QWidget* ew = const_cast<QWidget*>(createEditor(index->property(), parentWidget));
+    q_ptr->installEventFilter(gb);
+    newItem->widget = ew;
     if (!newItem->widget) {
         newItem->widgetLabel = new QLabel(parentWidget);
         newItem->widgetLabel->setSizePolicy(QSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed));
@@ -274,6 +283,23 @@ void QtGroupBoxPropertyBrowserPrivate::propertyInserted(QtBrowserItem *index, Qt
     m_indexToItem[index] = newItem;
 
     updateItem(newItem);
+}
+
+bool QtGroupBoxPropertyBrowserPrivate::eventFilter(QObject *obj, QEvent *event)
+{
+    QWidget* w = qobject_cast<QWidget*>(obj);
+    if (w && event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent* ke = static_cast<QKeyEvent*>(event);
+        if (    ke->key() == Qt::Key_Return
+            ||  ke->key() == Qt::Key_Enter
+           )
+        {
+            w->close();
+        }
+    }
+
+    return false;
 }
 
 void QtGroupBoxPropertyBrowserPrivate::propertyRemoved(QtBrowserItem *index)

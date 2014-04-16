@@ -82,6 +82,8 @@ public:
     void slotCollapsed(const QModelIndex &index);
     void slotExpanded(const QModelIndex &index);
 
+    void closeEditor(QtProperty* property);
+
     QColor calculatedBackgroundColor(QtBrowserItem *item) const;
 
     QtPropertyEditorView *treeWidget() const { return m_treeWidget; }
@@ -178,18 +180,34 @@ void QtPropertyEditorView::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Enter:
     case Qt::Key_Space: // Trigger Edit
         if (!m_editorPrivate->editedItem())
+        {
             if (const QTreeWidgetItem *item = currentItem())
-                if (item->columnCount() >= 2 && ((item->flags() & (Qt::ItemIsEditable | Qt::ItemIsEnabled)) == (Qt::ItemIsEditable | Qt::ItemIsEnabled))) {
+            {
+                if (item->columnCount() >= 2 && ((item->flags() & (Qt::ItemIsEditable | Qt::ItemIsEnabled)) == (Qt::ItemIsEditable | Qt::ItemIsEnabled)))
+                {
                     event->accept();
                     // If the current position is at column 0, move to 1.
                     QModelIndex index = currentIndex();
-                    if (index.column() == 0) {
+                    if (index.column() == 0)
+                    {
                         index = index.sibling(index.row(), 1);
                         setCurrentIndex(index);
                     }
                     edit(index);
                     return;
                 }
+            }
+        }
+        else
+        {
+            if (    event->key() == Qt::Key_Return
+                ||  event->key() == Qt::Key_Enter
+               )
+            {
+                QtProperty* prop = m_editorPrivate->indexToProperty(currentIndex());
+                m_editorPrivate->closeEditor(prop);
+            }
+        }
         break;
     default:
         break;
@@ -495,6 +513,11 @@ QtBrowserItem *QtTreePropertyBrowserPrivate::currentItem() const
     if (QTreeWidgetItem *treeItem = m_treeWidget->currentItem())
         return m_itemToIndex.value(treeItem);
     return 0;
+}
+
+void QtTreePropertyBrowserPrivate::closeEditor(QtProperty* property)
+{
+    m_delegate->closeEditor(property);
 }
 
 void QtTreePropertyBrowserPrivate::setCurrentItem(QtBrowserItem *browserItem, bool block)

@@ -62,9 +62,12 @@ public:
     NMPropertyGetSet( UpdateMode, bool )
 
 
-#ifdef BUILD_RASSUPPORT
-    NMPropertyGetSet( RasConnector, NMRasdamanConnectorWrapper* )
-#endif
+//#ifdef BUILD_RASSUPPORT
+//    NMPropertyGetSet( RasConnector, NMRasdamanConnectorWrapper* )
+//#endif
+
+    void setRasConnector(NMRasdamanConnectorWrapper* rw);
+    NMRasdamanConnectorWrapper* getRasConnector(void);
 	
 signals:
 	void FileNamesChanged(QStringList );

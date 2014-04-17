@@ -370,7 +370,21 @@ NMStreamingImageFileWriterWrapper
 	}
 }
 
+#ifdef BUILD_RASSUPPORT
+void NMStreamingImageFileWriterWrapper::setRasConnector(NMRasdamanConnectorWrapper* rw)
+{
+    if (rw != this->mRasConnector)
+    {
+        this->mRasConnector = rw;
+        emit nmChanged();
+    }
+}
 
+NMRasdamanConnectorWrapper* NMStreamingImageFileWriterWrapper::getRasConnector(void)
+{
+    return this->mRasConnector;
+}
 
+#endif
 
 

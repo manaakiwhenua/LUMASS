@@ -68,9 +68,9 @@ class NMImageReader : public NMProcess
 public:
 	NMPropertyGetSet(FileNames, QStringList);
 
-#ifdef BUILD_RASSUPPORT
-	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*);
-#endif
+//#ifdef BUILD_RASSUPPORT
+//	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*);
+//#endif
 
 signals:
 	void FileNamesChanged(QStringList);
@@ -94,7 +94,10 @@ public:
 	itk::DataObject* getItkImage(void);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
-	// file name getter and setter
+    void setRasConnector(NMRasdamanConnectorWrapper* rw);
+    NMRasdamanConnectorWrapper* getRasConnector(void);
+
+    // file name getter and setter
 	void setFileName(QString filename);
 	QString getFileName(void);
 

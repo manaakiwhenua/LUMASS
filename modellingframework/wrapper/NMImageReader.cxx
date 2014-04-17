@@ -918,3 +918,19 @@ void NMImageReader::instantiateObject(void)
 	NMDebugCtx(ctxNMImageReader, << "done!");
 }
 
+#ifdef BUILD_RASSUPPORT
+void NMImageReader::setRasConnector(NMRasdamanConnectorWrapper* rw)
+{
+    if (rw != this->mRasConnector)
+    {
+        this->mRasConnector = rw;
+        emit nmChanged();
+    }
+}
+
+NMRasdamanConnectorWrapper* NMImageReader::getRasConnector(void)
+{
+    return this->mRasConnector;
+}
+#endif
+

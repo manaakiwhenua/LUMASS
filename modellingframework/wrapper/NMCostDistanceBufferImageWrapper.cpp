@@ -580,7 +580,7 @@ GetInputTypeOutputWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferIm
 LinkInputTypeInternalParametersWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
 
 NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* parent)
-	: mMemoryMax(32), mUseImageSpacing(true),
+    : mMemoryMax(256), mUseImageSpacing(true),
 	  mCreateBuffer(false)
 {
 	this->setParent(parent);
@@ -609,6 +609,21 @@ NMCostDistanceBufferImageWrapper::setRasdamanConnector(RasdamanConnector * rasco
 {
 	this->mRasconn = rasconn;
 }
+
+void NMCostDistanceBufferImageWrapper::setRasConnector(NMRasdamanConnectorWrapper* rw)
+{
+    if (rw != this->mRasConnector)
+    {
+        this->mRasConnector = rw;
+        emit nmChanged();
+    }
+}
+
+NMRasdamanConnectorWrapper* NMCostDistanceBufferImageWrapper::getRasConnector(void)
+{
+    return this->mRasConnector;
+}
+
 #endif
 
 void

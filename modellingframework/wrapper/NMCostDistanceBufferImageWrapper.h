@@ -73,9 +73,9 @@ public:
 	NMPropertyGetSet( InputImageFileName, QStringList)
 	NMPropertyGetSet( OutputImageFileName, QStringList)
 	NMPropertyGetSet( CostImageFileName, QStringList)
-#ifdef BUILD_RASSUPPORT
-	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*)
-#endif
+//#ifdef BUILD_RASSUPPORT
+//	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*)
+//#endif
 
 
 public:
@@ -84,6 +84,9 @@ public:
 
 	template<class InPixelType, unsigned int Dimension>
 	friend class NMCostDistanceBufferImageWrapper_Internal;
+
+    void setRasConnector(NMRasdamanConnectorWrapper* rw);
+    NMRasdamanConnectorWrapper* getRasConnector(void);
 
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 	void instantiateObject(void);

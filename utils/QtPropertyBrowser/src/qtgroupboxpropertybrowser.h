@@ -57,6 +57,8 @@ public:
     QtGroupBoxPropertyBrowser(QWidget *parent = 0);
     ~QtGroupBoxPropertyBrowser();
 
+    bool eventFilter(QObject* obj, QEvent* event);
+
 protected:
     virtual void itemInserted(QtBrowserItem *item, QtBrowserItem *afterItem);
     virtual void itemRemoved(QtBrowserItem *item);
@@ -69,7 +71,6 @@ private:
     Q_DISABLE_COPY(QtGroupBoxPropertyBrowser)
     Q_PRIVATE_SLOT(d_func(), void slotUpdate())
     Q_PRIVATE_SLOT(d_func(), void slotEditorDestroyed())
-    Q_PRIVATE_SLOT(d_func(), bool eventFilter(QObject* obj, QEvent* event))
 };
 
 #if QT_VERSION >= 0x040400

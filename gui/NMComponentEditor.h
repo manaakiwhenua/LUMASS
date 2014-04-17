@@ -93,7 +93,6 @@ private:
 
     bool mUpdating;
 
-
 #ifdef BUILD_RASSUPPORT
     NMRasdamanConnectorWrapper* mRasConn;
 #endif

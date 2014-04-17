@@ -39,7 +39,8 @@ const std::string NMComponentEditor::ctx = "NMComponentEditor";
 
 NMComponentEditor::NMComponentEditor(QWidget *parent,
             NMCompEditorMode mode)
-    : QWidget(parent), mEditorMode(mode), mObj(0), comp(0), proc(0), mUpdating(false)
+    : QWidget(parent), mEditorMode(mode), mObj(0), comp(0), proc(0),
+      mUpdating(false)
 {
 
 #ifdef BUILD_RASSUPPORT
@@ -317,11 +318,22 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
                 .value<NMRasdamanConnectorWrapper*>();
 
         propType = QVariant::Bool;
-        if (wrap != 0)
-            value = QVariant(true);
-        else
-            value = QVariant(false);
+        value = QVariant(false);
         prop = manager->addProperty(propType, propName);
+
+        if (this->mRasConn == 0)
+        {
+            prop->setEnabled(false);
+        }
+        else if (this->mRasConn->getConnector() == 0)
+        {
+            prop->setEnabled(false);
+        }
+
+        if (wrap != 0 && wrap->getConnector() != 0)
+        {
+            value = QVariant(true);
+        }
     }
 #endif
     else if (QString("QStringList")

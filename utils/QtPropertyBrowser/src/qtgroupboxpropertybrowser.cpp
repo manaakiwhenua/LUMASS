@@ -256,9 +256,8 @@ void QtGroupBoxPropertyBrowserPrivate::propertyInserted(QtBrowserItem *index, Qt
     newItem->label = new QLabel(parentWidget);
     newItem->label->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
 
-    QtGroupBoxPropertyBrowserPrivate* gb = const_cast<QtGroupBoxPropertyBrowserPrivate*>(this);
     QWidget* ew = const_cast<QWidget*>(createEditor(index->property(), parentWidget));
-    q_ptr->installEventFilter(gb);
+    ew->installEventFilter(q_ptr);
     newItem->widget = ew;
     if (!newItem->widget) {
         newItem->widgetLabel = new QLabel(parentWidget);
@@ -285,6 +284,11 @@ void QtGroupBoxPropertyBrowserPrivate::propertyInserted(QtBrowserItem *index, Qt
     updateItem(newItem);
 }
 
+bool QtGroupBoxPropertyBrowser::eventFilter(QObject* obj, QEvent* event)
+{
+    return d_ptr->eventFilter(obj, event);
+}
+
 bool QtGroupBoxPropertyBrowserPrivate::eventFilter(QObject *obj, QEvent *event)
 {
     QWidget* w = qobject_cast<QWidget*>(obj);
@@ -295,7 +299,7 @@ bool QtGroupBoxPropertyBrowserPrivate::eventFilter(QObject *obj, QEvent *event)
             ||  ke->key() == Qt::Key_Enter
            )
         {
-            w->close();
+            w->clearFocus();
         }
     }
 

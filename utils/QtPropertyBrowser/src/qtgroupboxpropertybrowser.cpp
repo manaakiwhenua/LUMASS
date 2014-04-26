@@ -39,15 +39,15 @@
 
 
 #include "qtgroupboxpropertybrowser.h"
-#include <QtCore/QSet>
-#include <QtGui/QGridLayout>
-#include <QtGui/QLabel>
-#include <QtGui/QGroupBox>
-#include <QtCore/QTimer>
-#include <QtCore/QMap>
-#include <QtCore/QDebug>
-#include <QtCore/QEvent>
-#include <QtGui/QKeyEvent>
+#include <QSet>
+#include <QGridLayout>
+#include <QLabel>
+#include <QGroupBox>
+#include <QTimer>
+#include <QMap>
+#include <QDebug>
+#include <QEvent>
+#include <QKeyEvent>
 
 #if QT_VERSION >= 0x040400
 QT_BEGIN_NAMESPACE

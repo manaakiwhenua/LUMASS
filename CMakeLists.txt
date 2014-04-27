@@ -2,7 +2,7 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.9)
 cmake_policy(SET CMP0003 NEW)
 
 PROJECT(lumass)
@@ -16,8 +16,11 @@ SET(EXECUTABLE_OUTPUT_PATH ${lumass_BINARY_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
 
 # we're setting some more variables
-SET(CMAKE_CSS_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g")
-SET(CMAKE_CSS_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+SET(CMAKE_INCLUDE_CURRENT_DIR ON)
+#SET(CMAKE_SHARED_LIBRARY_CXX_FLAGS "-fPIC -fPIE")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fPIE")
+SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g -fPIC -fPIE")
+SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fPIC -fPIE")
 
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	SET(CMAKE_INSTALL_PREFIX "/opt/lumass" 
@@ -64,11 +67,15 @@ if (testvar_in STREQUAL testvar_target)
 endif (testvar_in STREQUAL testvar_target)
 
 #====================================================================
-# QT 4 
+# QT 5
 #====================================================================
 
-FIND_PACKAGE(Qt4 4.7 COMPONENTS QtCore QtGui QtXml QtSql REQUIRED)
-INCLUDE(${QT_USE_FILE})
+FIND_PACKAGE(LUMASSQt5)
+IF(NOT Qt5Core_FOUND)
+	message(FATAL_ERROR "Need to specify Qt5 install DIR!")
+ENDIF()
+
+
 
 #====================================================================
 # OpenGL 

@@ -85,9 +85,6 @@ public:
 	template<class InPixelType, unsigned int Dimension>
 	friend class NMCostDistanceBufferImageWrapper_Internal;
 
-    void setRasConnector(NMRasdamanConnectorWrapper* rw);
-    NMRasdamanConnectorWrapper* getRasConnector(void);
-
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 	void instantiateObject(void);
 
@@ -95,7 +92,10 @@ public:
 			NMItkDataObjectWrapper* imgWrapper);
 
 #ifdef BUILD_RASSUPPORT
-	void setRasdamanConnector(RasdamanConnector * rasconn);
+    void setRasConnector(NMRasdamanConnectorWrapper* rw);
+    NMRasdamanConnectorWrapper* getRasConnector(void);
+
+    void setRasdamanConnector(RasdamanConnector * rasconn);
 #endif
 
 	void update(void);

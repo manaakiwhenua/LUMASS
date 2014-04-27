@@ -94,15 +94,15 @@ public:
 	itk::DataObject* getItkImage(void);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
-    void setRasConnector(NMRasdamanConnectorWrapper* rw);
-    NMRasdamanConnectorWrapper* getRasConnector(void);
-
     // file name getter and setter
 	void setFileName(QString filename);
 	QString getFileName(void);
 
 #ifdef BUILD_RASSUPPORT	
-	void setRasdamanConnector(RasdamanConnector * rasconn);
+    void setRasConnector(NMRasdamanConnectorWrapper* rw);
+    NMRasdamanConnectorWrapper* getRasConnector(void);
+
+    void setRasdamanConnector(RasdamanConnector * rasconn);
 #endif
 	// initialise the reader: this will probe the given
 	// image file,  and set up the first part of the image pipeline
@@ -110,7 +110,7 @@ public:
 	const otb::ImageIOBase* getImageIOBase();
 	void getBBox(double bbox[6]);
 
-	bool isRasMode(void) {return this->mbRasMode;};
+    bool isRasMode(void) {return this->mbRasMode;}
 	void instantiateObject(void);
 
 protected:

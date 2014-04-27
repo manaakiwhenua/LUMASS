@@ -42,6 +42,7 @@ ADD_LIBRARY(RasImageIO SHARED
 	${rimageio_SOURCE_DIR}/otbRasdamanImageIOFactory.cxx
 	${rimageio_SOURCE_DIR}/otbRasdamanImageReader.txx
 )
+set_property(TARGET RasImageIO PROPERTY POSITION_INDEPENDENT_CODE 1)
 TARGET_LINK_LIBRARIES(RasImageIO ${RASLIBS} ${PostgreSQL_LIBRARIES} OTBCommon OTBIO)	
 
 FILE(GLOB RIO_HEADER  

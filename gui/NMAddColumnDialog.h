@@ -18,7 +18,7 @@
 #ifndef NMADDCOLUMNDIALOG_H
 #define NMADDCOLUMNDIALOG_H
 
-#include <QtGui/QDialog>
+#include <QDialog>
 #include "ui_NMAddColumnDialog.h"
 
 #include <QString>

@@ -33,7 +33,7 @@
 
 #include <QAbstractItemModel>
 #include <QObject>
-#include <QtGui/QMainWindow>
+#include <QMainWindow>
 #include <QMouseEvent>
 #include <QActionEvent>
 #include <QChildEvent>

@@ -20,7 +20,7 @@
 
 #define ctxOtbModellerWin "OtbModellerWin"
 
-#include <QtGui/QMainWindow>
+#include <QMainWindow>
 #include <QMouseEvent>
 #include <QActionEvent>
 #include <QChildEvent>

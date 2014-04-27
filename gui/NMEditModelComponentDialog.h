@@ -20,7 +20,7 @@
 
 #include <string>
 #include <iostream>
-#include <QtGui/QWidget>
+#include <QWidget>
 #include <QVariant>
 #include "ui_NMEditModelComponentDialog.h"
 #include "qtpropertymanager.h"

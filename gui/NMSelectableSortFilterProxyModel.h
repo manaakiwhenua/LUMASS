@@ -26,8 +26,8 @@
 #define NMSELECTABLESORTFILTERPROXYMODEL_H_
 #define ctxSelSortFilter "NMSelectableSortFilterProxyModel"
 
-//#include <QtGui/qsortfilterproxymodel.h>
-#include <QtGui/qabstractproxymodel.h>
+//#include <qsortfilterproxymodel.h>
+#include <qabstractproxymodel.h>
 
 #include "nmlog.h"
 

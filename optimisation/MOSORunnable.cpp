@@ -107,11 +107,11 @@ MOSORunnable::run()
 		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");
 
-		writer->SetInput(tab);
+        writer->SetInputData(tab);
 		writer->SetFileName(perturbName.toStdString().c_str());
 		writer->Update();
 
-		writer->SetInput(sumres);
+        writer->SetInputData(sumres);
 		writer->SetFileName(resName.toStdString().c_str());
 		writer->Update();
 

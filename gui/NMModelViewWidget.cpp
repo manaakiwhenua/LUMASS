@@ -665,7 +665,7 @@ void NMModelViewWidget::saveItems(void)
 	dlg.setFileMode(QFileDialog::AnyFile);
 	dlg.setWindowTitle(tr("Save Model Component(s)"));
 	dlg.setDirectory("~/");
-	dlg.setFilter("LUMASS Model Component Files (*.lmx *.lmv)");
+    dlg.setNameFilter("LUMASS Model Component Files (*.lmx *.lmv)");
 
 	QString fileNameString;
 	if (dlg.exec())
@@ -1533,7 +1533,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 	procItem->setDescription(tname);
 
 	// identify the host component, depending on the actual position
-	QGraphicsItem* item = this->mModelScene->itemAt(scenePos);
+    QGraphicsItem* item = this->mModelScene->itemAt(scenePos, this->mModelView->transform());
 	NMProcessComponentItem* clickProcItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 	NMAggregateComponentItem* hostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
 

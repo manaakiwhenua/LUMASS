@@ -1,5 +1,18 @@
 PROJECT(gui)
 
+find_package(VTK REQUIRED Components
+vtkCommonCore
+vtkCommonDataModel
+vtkRenderingCore
+vtkRenderingAnnotation
+vtkGUISupportQt
+vtkInteractionWidgets
+vtkIOCore
+vtkIOSQL
+vtkIOLegacy
+vtkIOXML
+)
+
 
 INCLUDE_DIRECTORIES(
         ${QT5_INCLUDE_DIRS}

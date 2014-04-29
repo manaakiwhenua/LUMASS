@@ -2,7 +2,7 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 2.8.7)
 cmake_policy(SET CMP0003 NEW)
 
 PROJECT(lumass)
@@ -37,7 +37,7 @@ ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 1)
+SET(LUMASS_VERSION_REVISION 10)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -107,15 +107,17 @@ endif(NOT OTB_FOUND)
 # VTK 
 #====================================================================
 
+# here we just make sure we've got a proper VTK version
+# available; set up specifics later with respect to the
+# different executables
+
 FIND_PACKAGE(LUMASSVTK)
-if(NOT VTK_FOUND)
-  message(FATAL_ERROR "You have to install VTK prior to compiling LUMASS!")
-else()
-  INCLUDE(${VTK_DIR}/VTKConfig.cmake)
+find_package(VTK NO_MODULE)
+if (VTK_MAJOR_VERSION LESS 6)
+  message(FATAL_ERROR "LUMASS requires VTK 6 or greater!")
 endif()
 
-message(STATUS "vtk include dirs: "${VTK_INCLUDE_DIRS})
-message(STATUS "vtk dir: "${VTK_DIR})
+message(STATUS "found VTK!")
 
 #====================================================================
 # GDAL SUPPORT - always required otherwise we pull out

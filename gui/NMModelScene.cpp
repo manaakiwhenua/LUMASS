@@ -234,7 +234,7 @@ NMModelScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
 	if (event->button() == Qt::LeftButton)
 	{
-		QGraphicsItem* item = this->itemAt(event->scenePos());
+        QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
 		NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
 		if (item == 0)
@@ -265,7 +265,7 @@ NMModelScene::serialiseItems(QList<QGraphicsItem*> items, QDataStream& data)
 void
 NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
-    QGraphicsItem* item = this->itemAt(event->scenePos());
+    QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
     NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);;
 
@@ -315,7 +315,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
 NMComponentLinkItem* NMModelScene::getLinkItem(QPointF pos)
 {
-	QGraphicsItem* item = this->itemAt(pos);
+    QGraphicsItem* item = this->itemAt(pos, this->views()[0]->transform());
 	NMComponentLinkItem* link = qgraphicsitem_cast<NMComponentLinkItem*>(item);
 
 	if (link == 0)

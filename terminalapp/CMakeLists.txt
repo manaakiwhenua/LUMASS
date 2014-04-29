@@ -1,8 +1,7 @@
 PROJECT(lumassengine)
 
 INCLUDE_DIRECTORIES(
-        ${Qt5Concurrent_INCLUDE_DIRS}
-        ${Qt5Core_INCLUDE_DIRS}
+        ${QT5_INCLUDE_DIRS}
 	${opt_SOURCE_DIR}
 	${gui_SOURCE_DIR}
 	${shared_SOURCE_DIR}
@@ -23,8 +22,7 @@ INCLUDE_DIRECTORIES(
 )     
 
 LINK_DIRECTORIES(
-        ${Qt5Concurrent_LIBRARIES}
-        ${Qt5Core_LIBRARIES}
+        ${QT5_LINK_DIRS}
 	${OTB_LIBRARY_DIRS}
 	${VTK_LIBRARY_DIRS}
 	${LIBRARY_OUTPUT_PATH}
@@ -49,7 +47,7 @@ file(GLOB ENGINE_SRC
     #${gui_SOURCE_DIR}/NMItk2VtkConnector.cpp
 )
 
-set(ENGINE_LINKLIBS #QtCore QtXml
+set(ENGINE_LINKLIBS QtCore QtXml
 	RasImageIO OTBGDALRATImageIO NMModFrame 
 	vtkImaging vtkIO vtkCommon vtkFiltering vtkHybrid 
 	OTBCommon OTBIO OTBBasicFilters 
@@ -73,20 +71,11 @@ IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
 ENDIF()
 
-ADD_DEFINITIONS(
-        ${Qt5Concurrent_COMPILE_DEFINITIONS}
-        ${Qt5Core_COMPILE_DEFINITIONS}
-)
-
-SET(CMAKE_CXX_FLAGS
-        ${CMAKE_CXX_FLAGS}
-        ${Qt5Concurrent_EXECUTABLE_COMPILE_FLAGS}
-        ${Qt5Core_EXECUTABLE_COMPILE_FLAGS}
-)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE")
 
 
 ADD_EXECUTABLE(lumassengine ${ENGINE_SRC} ${ENGINE_MOC_CPP})
-QT5_USE_MODULES(lumassengine Core Xml)
+#QT5_USE_MODULES(lumassengine Core Xml)
 TARGET_LINK_LIBRARIES(lumassengine ${ENGINE_LINKLIBS})
 ADD_DEPENDENCIES(lumassengine ${ENGINE_DEPLIBS})
 

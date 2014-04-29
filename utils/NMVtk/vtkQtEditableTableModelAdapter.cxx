@@ -33,7 +33,7 @@
 #include "nmlog.h"
 
 vtkQtEditableTableModelAdapter::vtkQtEditableTableModelAdapter(QObject* parent)
-	: vtkQtTableModelAdapter(parent)
+    : NMVtkQtTableModelAdapter(parent)
 {
 }
 

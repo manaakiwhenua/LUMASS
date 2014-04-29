@@ -2,7 +2,7 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 2.8.3)
 cmake_policy(SET CMP0003 NEW)
 
 PROJECT(lumass)
@@ -17,10 +17,13 @@ SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
 
 # we're setting some more variables
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
-#SET(CMAKE_SHARED_LIBRARY_CXX_FLAGS "-fPIC -fPIE")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fPIE")
-SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g -fPIC -fPIE")
-SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fPIC -fPIE")
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC")
+
+# this cmake variable doesn't seem to be honoured with this CMAKE version
+#SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIE")
+
+SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g")
+SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	SET(CMAKE_INSTALL_PREFIX "/opt/lumass" 
@@ -82,9 +85,10 @@ ENDIF()
 #====================================================================
 
 FIND_PACKAGE(OpenGL)
-if(NOT OPENGL_GLU_FOUND)
+
+if(NOT OPENGL_INCLUDE_DIR)
   message(FATAL_ERROR "LUMASS requires OpenGL's GL/glu.h !")
-endif(NOT OPENGL_GLU_FOUND)
+endif()
 
 message(STATUS "OpenGL's include dir: "${OPENGL_INCLUDE_DIR})
 message(STATUS "OpenGL's GLU library: "${OPENGL_glu_LIBRARY})

@@ -10,7 +10,19 @@ FIND_PATH(CMAKE_PREFIX_PATH Qt5CoreConfig.cmake
 	PATH_SUFFIXES
 		Qt5.2.1/5.2.1/
 		Qt5.2.1/5.2.1/gcc_64
-		qq
+                Qt5.2.1/5.2.1/gcc
+
+                Qt5.2.0/5.2.0/
+                Qt5.2.0/5.2.0/gcc_64
+                Qt5.2.0/5.2.0/gcc
+
+                Qt5.1.0/5.1.0/
+                Qt5.1.0/5.1.0/gcc_64
+                Qt5.1.0/5.1.0/gcc
+
+                Qt5.1.1/5.1.1/
+                Qt5.1.1/5.1.1/gcc_64
+                Qt5.1.1/5.1.1/gcc
 
 	PATHS
 		/opt

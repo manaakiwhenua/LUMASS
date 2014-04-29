@@ -3,6 +3,8 @@ PROJECT(gui)
 
 INCLUDE_DIRECTORIES(
         ${QT5_INCLUDE_DIRS}
+        ${CMAKE_PREFIX_PATH}/include/QtCore/5.2.1/QtCore
+        ${CMAKE_PREFIX_PATH}/include/QtGui/5.2.1/QtGui
 	${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
         ${gui_BINARY_DIR}
@@ -37,7 +39,6 @@ LINK_DIRECTORIES(
 	${PostgreSQL_LIBRARY_DIRS}
 )
 
-
 QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 QT5_WRAP_CPP(MOC_CPP
@@ -67,10 +68,10 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMComponentListItemDelegate.h
         ${gui_SOURCE_DIR}/NMComponentEditor.h
 )
-       
-#file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)
-QT5_WRAP_UI(UI_CPP ${QT_UI})
 
+file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)
+QT5_WRAP_UI(UI_CPP ${QT_UI})
+       
 file(GLOB QT_SRC 
     ${gui_SOURCE_DIR}/*.rcc 
     ${gui_SOURCE_DIR}/*.cpp 
@@ -109,36 +110,10 @@ IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
 ENDIF()
 
-#ADD_DEFINITIONS(
-#        ${Qt5Widgets_COMPILE_DEFINITIONS}
-#        ${Qt5Xml_COMPILE_DEFINITIONS}
-#        ${Qt5Gui_COMPILE_DEFINITIONS}
-#        ${Qt5Concurrent_COMPILE_DEFINITIONS}
-#        ${Qt5Core_COMPILE_DEFINITIONS}
-#        #${Qt5Script_COMPILE_DEFINITIONS}
-#        ${Qt5Declarative_COMPILE_DEFINITIONS}
-#        ${Qt5Qml_COMPILE_DEFINITIONS}
-#        ${Qt5Quick_COMPILE_DEFINITIONS}
-#)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE")
 
-#SET(CMAKE_CXX_FLAGS
-#        ${CMAKE_CXX_FLAGS}
-#        ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}
-#        ${Qt5Xml_EXECUTABLE_COMPILE_FLAGS}
-#        ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS}
-#        ${Qt5Concurrent_EXECUTABLE_COMPILE_FLAGS}
-#        ${Qt5Core_EXECUTABLE_COMPILE_FLAGS}
-#        #${Qt5Script_EXECUTABLE_COMPILE_FLAGS}
-#        ${Qt5Declarative_EXECUTABLE_COMPILE_FLAGS}
-#        ${Qt5Qml_EXECUTABLE_COMPILE_FLAGS}
-#        ${Qt5Quick_EXECUTABLE_COMPILE_FLAGS}
-#)
-
-
-
-# have taken out ${UI_CPP}
-ADD_EXECUTABLE(lumass ${QT_SRC} ${MOC_CPP}  ${NM_RES})
-QT5_USE_MODULES(lumass Widgets Xml Gui Concurrent Core Declarative Qml Quick)
+ADD_EXECUTABLE(lumass ${QT_SRC} ${MOC_CPP} ${UI_CPP} ${NM_RES})
+#QT5_USE_MODULES(lumass Widgets Xml Gui Concurrent Core Declarative Qml Quick)
 TARGET_LINK_LIBRARIES(lumass ${LUMASS_LINKLIBS})     
 ADD_DEPENDENCIES(lumass ${LUMASS_DEPLIBS})
 

@@ -43,8 +43,6 @@ NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
 
     QVBoxLayout* vLayout = new QVBoxLayout(this);
     mCompEditor = new NMComponentEditor(this, NMComponentEditor::NM_COMPEDITOR_GRPBOX);
-    //mCompEditor = new NMComponentEditor(this);
-    mCompEditor->setRasdamanConnectorWrapper(0);
     vLayout->addWidget(mCompEditor);
 
     QFormLayout* formLayout = new QFormLayout();
@@ -61,10 +59,9 @@ NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
 
     vLayout->addLayout(formLayout);
 
-    //ui.setupUi(this);
-//#ifdef BUILD_RASSUPPORT
-//    this->mRasConn = 0;
-//#endif
+#ifdef BUILD_RASSUPPORT
+    mCompEditor->setRasdamanConnectorWrapper(0);
+#endif
 }
 
 NMEditModelComponentDialog::~NMEditModelComponentDialog()

@@ -30,6 +30,7 @@
 
 #include <QTime>
 #include <QtCore>
+#include <QtConcurrent>
 #include <QInputDialog>
 
 #include "itkDataObject.h"
@@ -1081,7 +1082,7 @@ NMImageLayer::writeDataSet(void)
 	}
 
 	bool berr = false;
-	const char* fn = this->mFileName.toAscii().data();
+    const char* fn = this->mFileName.toLatin1().data();
 	unsigned int band = this->mOtbRAT->GetBandNumber();
 
 #ifdef BUILD_RASSUPPORT

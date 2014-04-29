@@ -21,10 +21,9 @@ file(GLOB OTBSUPPL_HEADER
 )
 
 ADD_LIBRARY(OTBSupplFilters SHARED ${OTBSUPPL_FILTERS})
-#set_target_properties(OTBSupplFilters PROPERTIES
-#                        LINKER_LANGUAGE CXX)
-set_property(TARGET OTBSupplFilters PROPERTY LINKER_LANGUAGE CXX)
-set_property(TARGET OTBSupplFilters PROPERTY POSITION_INDEPENDENT_CODE 1)
+set_target_properties(OTBSupplFilters PROPERTIES
+                        LINKER_LANGUAGE CXX)
+#set_property(TARGET OTBSupplFilters PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 install(TARGETS OTBSupplFilters LIBRARY DESTINATION 
 	${CMAKE_INSTALL_PREFIX}/lib)

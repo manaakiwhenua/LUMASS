@@ -2618,7 +2618,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 	rowheads->SetNumberOfComponents(1);
 	rowheads->SetNumberOfTuples(resNumRows);
 	for (int r=0; r < this->miNumOptions; ++r)
-		rowheads->SetValue(r, this->mslOptions.at(r).toAscii());
+        rowheads->SetValue(r, this->mslOptions.at(r).toLatin1());
 	//rowheads->SetValue(resNumRows-2, "Mixed");
 	rowheads->SetValue(resNumRows-1, "Total");
 	restab->AddColumn(rowheads);
@@ -2634,7 +2634,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 		QString colname = QString(tr("%1_%2")).arg(this->msAreaField).
 				arg(colsuffix.at(s));
 		vtkSmartPointer<vtkDoubleArray> aar = vtkSmartPointer<vtkDoubleArray>::New();
-		aar->SetName(colname.toAscii());
+        aar->SetName(colname.toLatin1());
 		aar->SetNumberOfComponents(1);
 		aar->SetNumberOfTuples(resNumRows);
 		aar->FillComponent(0, 0);
@@ -2651,7 +2651,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 		{
 			QString colname = QString(tr("e_%1_%2")).arg(criit.key()).arg(colsuffix[s]);
 			vtkSmartPointer<vtkDoubleArray> da = vtkSmartPointer<vtkDoubleArray>::New();
-			da->SetName(colname.toAscii());
+            da->SetName(colname.toLatin1());
 			da->SetNumberOfComponents(1);
 			da->SetNumberOfTuples(resNumRows);
 			da->FillComponent(0, 0);
@@ -2673,7 +2673,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 				QString colname = QString(tr("c_%1%2_%3")).arg(constrit.key()).
 						arg(criit.key()).arg(colsuffix.at(s));
 				vtkSmartPointer<vtkDoubleArray> daa = vtkSmartPointer<vtkDoubleArray>::New();
-				daa->SetName(colname.toAscii());
+                daa->SetName(colname.toLatin1());
 				daa->SetNumberOfComponents(1);
 				daa->SetNumberOfTuples(resNumRows);
 				daa->FillComponent(0, 0);

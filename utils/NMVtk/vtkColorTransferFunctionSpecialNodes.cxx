@@ -130,8 +130,8 @@ inline double vtkColorTransferFunctionSpecialNodesAngleDiff(double a1, double a2
 {
   double adiff = a1 - a2;
   if (adiff < 0.0) adiff = -adiff;
-  while (adiff >= 2*vtkMath::DoublePi()) adiff -= 2*vtkMath::DoublePi();
-  if (adiff > vtkMath::DoublePi()) adiff = 2*vtkMath::DoublePi() - adiff;
+  while (adiff >= 2*vtkMath::Pi()) adiff -= 2*vtkMath::Pi();
+  if (adiff > vtkMath::Pi()) adiff = 2*vtkMath::Pi() - adiff;
   return adiff;
 }
 
@@ -152,7 +152,7 @@ inline double vtkColorTransferFunctionSpecialNodesAdjustHue(const double msh[3],
     double hueSpin = (  msh[1]*sqrt(unsatM*unsatM - msh[0]*msh[0])
                       / (msh[0]*sin(msh[1])) );
     // Spin hue away from 0 except in purple hues.
-    if (msh[2] > -0.3*vtkMath::DoublePi())
+    if (msh[2] > -0.3*vtkMath::Pi())
       {
       return msh[2] + hueSpin;
       }
@@ -180,7 +180,7 @@ inline void vtkColorTransferFunctionSpecialNodesInterpolateDiverging(double s,
   // If the endpoints are distinct saturated colors, then place white in between
   // them.
   if (   (msh1[1] > 0.05) && (msh2[1] > 0.05)
-      && (vtkColorTransferFunctionSpecialNodesAngleDiff(msh1[2], msh2[2]) > 0.33*vtkMath::DoublePi()) )
+      && (vtkColorTransferFunctionSpecialNodesAngleDiff(msh1[2], msh2[2]) > 0.33*vtkMath::Pi()) )
     {
     // Insert the white midpoint by setting one end to white and adjusting the
     // scalar value.

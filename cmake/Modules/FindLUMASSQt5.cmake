@@ -6,33 +6,31 @@
 
 # CUSTQT5_FOUND
 
-FIND_PATH(CMAKE_PREFIX_PATH Qt5CoreConfig.cmake
+FIND_PATH(CMAKE_PREFIX_PATH lib/libQt5Core.la
 	PATH_SUFFIXES
-		Qt5.2.1/5.2.1/
-		Qt5.2.1/5.2.1/gcc_64
+                Qt5.2.1/5.2.1/gcc_64
                 Qt5.2.1/5.2.1/gcc
 
-                Qt5.2.0/5.2.0/
                 Qt5.2.0/5.2.0/gcc_64
                 Qt5.2.0/5.2.0/gcc
 
-                Qt5.1.0/5.1.0/
                 Qt5.1.0/5.1.0/gcc_64
                 Qt5.1.0/5.1.0/gcc
 
-                Qt5.1.1/5.1.1/
                 Qt5.1.1/5.1.1/gcc_64
                 Qt5.1.1/5.1.1/gcc
 
 	PATHS
-		/opt
-		/usr/lib
-		/usr/local/lib
+                /opt
+                /usr
+                /usr/local
 )
 
 if(NOT CMAKE_PREFIX_PATH)
 	SET(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" CACHE PATH "Qt5 install dir")
 else()
+
+        SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH}/../ CACHE PATH "Qt5 install dir")
 
 	SET(QT5_COMP_LIST
 	    "Qt5Core"

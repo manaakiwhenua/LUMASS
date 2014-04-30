@@ -29,7 +29,7 @@
 #include "vtkLookupTable.h"
 #include <map>
 
-class VTK_FILTERING_EXPORT vtkEditableDiscreteClrTransferFunc: public vtkDiscretizableColorTransferFunction
+class vtkEditableDiscreteClrTransferFunc: public vtkDiscretizableColorTransferFunction
 {
 public:
 	static vtkEditableDiscreteClrTransferFunc* New();

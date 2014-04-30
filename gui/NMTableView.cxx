@@ -47,6 +47,7 @@
 #include <QMenu>
 #include <QAction>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QPointer>
 #include <QStringList>
 #include <QDialog>

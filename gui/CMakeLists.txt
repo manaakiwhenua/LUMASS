@@ -1,17 +1,23 @@
 PROJECT(gui)
 
-find_package(VTK REQUIRED Components
+find_package(VTK COMPONENTS
 vtkCommonCore
 vtkCommonDataModel
+vtkFiltersGeneric
 vtkRenderingCore
 vtkRenderingAnnotation
+vtkRenderingImage
 vtkGUISupportQt
+vtkImagingStatistics
 vtkInteractionWidgets
 vtkIOCore
+vtkIOInfovis
 vtkIOSQL
 vtkIOLegacy
 vtkIOXML
 )
+
+include(${VTK_USE_FILE})
 
 
 INCLUDE_DIRECTORIES(
@@ -31,7 +37,7 @@ INCLUDE_DIRECTORIES(
 	${mfw_SOURCE_DIR}    
 	${mfw_wrapper_SOURCE_DIR}
         ${LPSOLVE_INCLUDE_DIR}
-	${VTK_INCLUDE_DIRS}
+        #${VTK_INCLUDE_DIRS}
 	${OTB_INCLUDE_DIRS}
 	${RASDAMAN_INCLUDE_DIR}                                   
 	${RASDAMAN_INCLUDE_DIR}/raslib	
@@ -42,7 +48,7 @@ INCLUDE_DIRECTORIES(
 LINK_DIRECTORIES(
         ${QT5_LINK_DIRS}
 	${OTB_LIBRARY_DIRS}
-	${VTK_LIBRARY_DIRS}
+        #${VTK_LIBRARY_DIRS}
 	${LIBRARY_OUTPUT_PATH}
 	${mfw_BINARY_DIR}
 	${mfw_BINRAY_DIR}/lib
@@ -65,7 +71,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMLayerModel.h
         ${gui_SOURCE_DIR}/NMQtOtbAttributeTableModel.h
         ${gui_SOURCE_DIR}/NMTableView.h
-        ${gui_SOURCE_DIR}/NMChartWidget.h
+        #${gui_SOURCE_DIR}/NMChartWidget.h
         ${gui_SOURCE_DIR}/NMAddColumnDialog.h
         ${gui_SOURCE_DIR}/NMTableCalculator.h
         ${gui_SOURCE_DIR}/NMSelectableSortFilterProxyModel.h
@@ -97,15 +103,20 @@ file(GLOB QT_SRC
     ${NMVtk_SOURCE_DIR}/*.cxx
 )
 
+# take the ChartsWidget out until we've switched to the new VTK Charts
+# framework
+list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
+
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
         Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml
         Qt5Declarative Qt5Qml Qt5Quick
         QtPropertyBrowser
 	RasImageIO OTBGDALRATImageIO NMModFrame 
-	QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
-	OTBCommon OTBIO OTBBasicFilters 
-	${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+        OTBCommon OTBIO OTBBasicFilters
+        #QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
+        ${VTK_LIBRARIES}
+        ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
 	${OPENGL_glu_LIBRARY} 
 )
 
@@ -123,7 +134,11 @@ IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
 ENDIF()
 
+# Qt5 requirement
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE")
+
+# VTK6 requirement
+set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${VTK_DEFINITIONS})
 
 ADD_EXECUTABLE(lumass ${QT_SRC} ${MOC_CPP} ${UI_CPP} ${NM_RES})
 #QT5_USE_MODULES(lumass Widgets Xml Gui Concurrent Core Declarative Qml Quick)

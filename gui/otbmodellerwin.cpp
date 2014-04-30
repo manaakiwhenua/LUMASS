@@ -38,7 +38,7 @@
 #include "NMVectorLayer.h"
 #include "NMMosra.h"
 #include "NMTableView.h"
-#include "NMChartWidget.h"
+//#include "NMChartWidget.h"
 #include "NMImageReader.h"
 #include "NMItk2VtkConnector.h"
 #include "NMImageLayer.h"
@@ -95,7 +95,6 @@
 #include <QFile>
 #include <QtXml>
 #include <QTextStream>
-#include <QSqlDatabase>
 #include "qttreepropertybrowser.h"
 #include "qteditorfactory.h"
 #include "qtpropertymanager.h"
@@ -148,6 +147,7 @@
 #include "vtkAxesActor.h"
 #include "vtkCamera.h"
 #include "vtkCell.h"
+#include "vtkCellData.h"
 #include "vtkCellArray.h"
 #include "vtkDataArray.h"
 #include "vtkDataSet.h"
@@ -160,6 +160,7 @@
 #include "vtkIntArray.h"
 #include "vtkInteractorObserver.h"
 #include "vtkInteractorStyle.h"
+#include "vtkInteractorStyleImage.h"
 #include "vtkLongArray.h"
 #include "vtkMath.h"
 #include "vtkMergePoints.h"
@@ -168,6 +169,7 @@
 #include "vtkPoints.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataReader.h"
+#include "vtkPolyDataWriter.h"
 #include "vtkQtTableModelAdapter.h"
 #include "vtkRenderer.h"
 #include "vtkRendererCollection.h"
@@ -181,105 +183,6 @@
 #include "vtkXMLPolyDataReader.h"
 #include "vtkXMLPolyDataWriter.h"
 
-
-////TODO: remove unused ones!
-//#include "vtkXMLPolyDataWriter.h"
-//#include "vtkSmartPointer.h"
-//#include "vtkPNGReader.h"
-//#include "vtkImageReader.h"
-//#include "vtkImageMapper.h"
-//#include "vtkImageMapper3D.h"
-//#include "vtkImageSliceMapper.h"
-//#include "vtkImageResliceMapper.h"
-//#include "vtkImageProperty.h"
-//#include "vtkImageSlice.h"
-//#include "vtkImageActor.h"
-//#include "vtkPNGReader.h"
-//#include "vtkImageData.h"
-//#include "vtkSmartPointer.h"
-//#include "vtkVolume.h"
-//#include "vtkVolumeRayCastMapper.h"
-//#include "vtkSmartVolumeMapper.h"
-//#include "vtkRenderWindow.h"
-//#include "vtkCamera.h"
-//#include "vtkRenderer.h"
-//#include "vtkRendererCollection.h"
-//#include "vtkCollection.h"
-//#include "vtkCommand.h"
-//#include "vtkProperty.h"
-//#include "vtkEventQtSlotConnect.h"
-//#include "vtkElevationFilter.h"
-//#include "vtkCellArray.h"
-//#include "vtkPoints.h"
-//#include "vtkPolygon.h"
-//#include "vtkIdList.h"
-//#include "vtkIndent.h"
-//#include "vtkAxesActor.h"
-//#include "vtkXMLPolyDataReader.h"
-//#include "vtkOGRLayerMapper.h"
-//#include "vtkPolyDataReader.h"
-//#include "vtkPolyDataWriter.h"
-//#include "vtkPolyDataMapper.h"
-//#include "vtkPolyDataMapper2D.h"
-//#include "vtkTriangleFilter.h"
-//#include "vtkActor.h"
-//#include "vtkActor2D.h"
-//#include "vtkImageActor.h"
-//#include "vtkImageShiftScale.h"
-//#include "vtkHomogeneousTransform.h"
-//#include "vtkInteractorStyleImage.h"
-//#include "vtkInteractorStyleSwitch.h"
-//#include "vtkInteractorStyle.h"
-//#include "vtkInteractorStyleJoystickCamera.h"
-//#include "vtkInteractorStyleTrackballCamera.h"
-//#include "vtkInteractorStyleRubberBand2D.h"
-//#include "vtkTDxInteractorStyleCamera.h"
-//#include "vtkTDxInteractorStyleSettings.h"
-//#include "vtkDelaunay2D.h"
-//#include "vtkAppendPolyData.h"
-//#include "vtkDataSetMapper.h"
-//#include "vtkCellData.h"
-//#include "vtkLookupTable.h"
-//#include "vtkDataSet.h"
-//#include "vtkDataSetSurfaceFilter.h"
-//#include "vtkPropPicker.h"
-//#include "vtkCellLocator.h"
-//#include "vtkGenericCell.h"
-//#include "vtkIdList.h"
-//#include "vtkMergePoints.h"
-//#include "vtkAbstractArray.h"
-//#include "vtkCharArray.h"
-//#include "vtkIntArray.h"
-//#include "vtkLongArray.h"
-//#include "vtkFloatArray.h"
-//#include "vtkDoubleArray.h"
-//#include "vtkStringArray.h"
-//#include "vtkShortArray.h"
-//#include "vtkTable.h"
-//#include "vtkDelimitedTextWriter.h"
-//#include "vtkMath.h"
-//#include "vtkQtTableView.h"
-//#include "vtkQtTableModelAdapter.h"
-//#include "vtkQtEditableTableModelAdapter.h"
-//#include "vtkDataObjectToTable.h"
-//#include "vtkTableToSQLiteWriter.h"
-//#include "vtkODBCDatabase.h"
-//#include "vtkSQLDatabase.h"
-//#include "vtkSQLQuery.h"
-//#include "vtkSQLiteQuery.h"
-//#include "vtkRowQueryToTable.h"
-//#include "vtkSQLiteDatabase.h"
-//#include "vtkQtTableModelAdapter.h"
-//#include "vtkQtBarChartOptions.h"
-//#include "vtkCellPicker.h"
-//#include "vtkCellLocator.h"
-//#include "vtkWorldPointPicker.h"
-//#include "vtkGenericCell.h"
-//#include "vtkArrayCalculator.h"
-//#include "vtkFunctionParser.h"
-//#include "vtkImageFlip.h"
-//#include "vtkMath.h"
-//#include "vtkPointData.h"
 
 //#include "valgrind/callgrind.h"
 
@@ -1525,11 +1428,11 @@ void OtbModellerWin::doMOSObatch()
 		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");
 
-		writer->SetInput(tab);
+        writer->SetInputData(tab);
 		writer->SetFileName(perturbName.toStdString().c_str());
 		writer->Update();
 
-		writer->SetInput(sumres);
+        writer->SetInputData(sumres);
 		writer->SetFileName(resName.toStdString().c_str());
 		writer->Update();
 
@@ -1632,15 +1535,16 @@ void OtbModellerWin::doMOSO()
 			tv->show();
 		}
 
-		// obviously, we have to prepare the table a bit better
-		QStandardItemModel* model = this->prepareResChartModel(resTab);
-		if (model != 0)
-		{
-			NMChartWidget* cw = new NMChartWidget(this);
-			cw->setChartModel(model);
-			cw->setWinTitle(tr("Optimisation Change Chart"));
-			cw->show();
-		}
+        // obviously, we have to prepare the table a bit better
+// TODO: need to switch the NMChartWidget to VTK's new chart framework!
+//		QStandardItemModel* model = this->prepareResChartModel(resTab);
+//		if (model != 0)
+//		{
+//			NMChartWidget* cw = new NMChartWidget(this);
+//			cw->setChartModel(model);
+//			cw->setWinTitle(tr("Optimisation Change Chart"));
+//			cw->show();
+//		}
 	}
 
 	QString sRepName = path + QString(tr("/report_%1.%2")).arg(baseName).arg(tr("txt"));
@@ -1717,8 +1621,10 @@ OtbModellerWin::prepareResChartModel(vtkTable* restab)
 
 void OtbModellerWin::displayChart(vtkTable* srcTab)
 {
-	NMChartWidget* cw = new NMChartWidget(srcTab, this);
-	cw->show();
+
+// NMChartWidget needs switching to VTK 6's new chart framework
+//	NMChartWidget* cw = new NMChartWidget(srcTab, this);
+//	cw->show();
 }
 
 void OtbModellerWin::loadVTKPolyData()
@@ -1788,7 +1694,7 @@ void OtbModellerWin::saveAsVtkPolyData()
 	dlg.setFileMode(QFileDialog::AnyFile);
 	dlg.setWindowTitle(tr("Save As VTK PolyData File (binary/XML)"));
 	dlg.setDirectory("~/");
-	dlg.setFilter("XML PolyData (*.vtp);;Binary PolyData (*.vtk)");
+    dlg.setNameFilter("XML PolyData (*.vtp);;Binary PolyData (*.vtk)");
 
 	QString selectedFilter;
 	QString fileName;
@@ -1814,7 +1720,7 @@ void OtbModellerWin::saveAsVtkPolyData()
 		//	NMDebugAI(<< "XML PolyDataWriter is NULL!");
 		//	return;
 		//}
-		xw->SetInput(const_cast<vtkDataSet*>(l->getDataSet()));
+        xw->SetInputData(const_cast<vtkDataSet*>(l->getDataSet()));
 		xw->SetFileName(fileName.toStdString().c_str());
 		//xw->SetDataModeToAscii();
 		xw->Write();
@@ -1825,7 +1731,7 @@ void OtbModellerWin::saveAsVtkPolyData()
 		NMDebugAI(<< "saving binary *.vtk file ..." << endl);
 		vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
 		writer->SetFileName(fileName.toStdString().c_str());
-		writer->SetInput(const_cast<vtkDataSet*>(l->getDataSet()));
+        writer->SetInputData(const_cast<vtkDataSet*>(l->getDataSet()));
 		writer->SetFileTypeToBinary();
 		writer->Update();
 	}

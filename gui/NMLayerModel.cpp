@@ -108,6 +108,8 @@ void NMLayerModel::removeLayer(NMLayer* layer)
 {
 	//	NMDebugCtx(ctxNMLayerModel, << "...");
 
+    beginResetModel();
+
 	// get the stack position of this layer
 	int layerPos = layer->getLayerPos();
 	int treeRow =  this->toTreeModelRow(layerPos);
@@ -119,7 +121,8 @@ void NMLayerModel::removeLayer(NMLayer* layer)
 	QString ln = layer->objectName();
 	this->mLayers.removeAt(layerPos);
 	this->removeRow(treeRow);
-	this->reset();
+    // due to qt4 to qt5 transition
+    //this->reset();
 	NMDebugAI(<< "removing layer: " << ln.toStdString() << endl);
 	NMDebugAI(<< "layerPos = " << layerPos << endl);
 	NMDebugAI(<< "treeRow = " << treeRow << endl);
@@ -128,7 +131,8 @@ void NMLayerModel::removeLayer(NMLayer* layer)
 	for (int i=0; i < this->mLayers.size(); ++i)
 		this->mLayers[i]->setLayerPos(i);
 
-	//	NMDebugCtx(ctxNMLayerModel, << "done!");
+    endResetModel();
+    //	NMDebugCtx(ctxNMLayerModel, << "done!");
 }
 
 Qt::ItemFlags NMLayerModel::flags(const QModelIndex& index) const

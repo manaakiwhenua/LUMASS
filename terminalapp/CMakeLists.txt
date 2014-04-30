@@ -1,5 +1,20 @@
 PROJECT(lumassengine)
 
+find_package(VTK COMPONENTS
+vtkCommonCore
+vtkCommonDataModel
+#vtkRenderingCore
+#vtkRenderingAnnotation
+#vtkGUISupportQt
+#vtkInteractionWidgets
+vtkIOCore
+vtkIOSQL
+vtkIOLegacy
+vtkIOXML
+)
+
+include(${VTK_USE_FILE})
+
 INCLUDE_DIRECTORIES(
         ${QT5_INCLUDE_DIRS}
 	${opt_SOURCE_DIR}
@@ -13,7 +28,7 @@ INCLUDE_DIRECTORIES(
 	${mfw_SOURCE_DIR}    
 	${mfw_wrapper_SOURCE_DIR}
         ${LPSOLVE_INCLUDE_DIR}
-	${VTK_INCLUDE_DIRS}
+        #${VTK_INCLUDE_DIRS}
 	${OTB_INCLUDE_DIRS}
 	${RASDAMAN_INCLUDE_DIR}                                   
 	${RASDAMAN_INCLUDE_DIR}/raslib	
@@ -24,7 +39,7 @@ INCLUDE_DIRECTORIES(
 LINK_DIRECTORIES(
         ${QT5_LINK_DIRS}
 	${OTB_LIBRARY_DIRS}
-	${VTK_LIBRARY_DIRS}
+        #${VTK_LIBRARY_DIRS}
 	${LIBRARY_OUTPUT_PATH}
 	${mfw_BINARY_DIR}
 	${mfw_BINRAY_DIR}/lib
@@ -49,8 +64,9 @@ file(GLOB ENGINE_SRC
 
 set(ENGINE_LINKLIBS QtCore QtXml
 	RasImageIO OTBGDALRATImageIO NMModFrame 
-	vtkImaging vtkIO vtkCommon vtkFiltering vtkHybrid 
-	OTBCommon OTBIO OTBBasicFilters 
+        #vtkImaging vtkIO vtkCommon vtkFiltering vtkHybrid
+        ${VTK_LIBRARIES}
+        OTBCommon OTBIO OTBBasicFilters
 	${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
 )
 
@@ -71,8 +87,11 @@ IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
 ENDIF()
 
+# Qt5 requirement
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE")
 
+# VTK6 requirement
+set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${VTK_DEFINITIONS})
 
 ADD_EXECUTABLE(lumassengine ${ENGINE_SRC} ${ENGINE_MOC_CPP})
 #QT5_USE_MODULES(lumassengine Core Xml)

@@ -46,7 +46,7 @@ class vtkColorTransferFunctionSpecialNodesInternals;
 #define VTK_CTF_LINEAR        0
 #define VTK_CTF_LOG10         1
 
-class VTK_FILTERING_EXPORT vtkColorTransferFunctionSpecialNodes : public vtkScalarsToColors
+class vtkColorTransferFunctionSpecialNodes : public vtkScalarsToColors
 {
 public:
   static vtkColorTransferFunctionSpecialNodes *New();

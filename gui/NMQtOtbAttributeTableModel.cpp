@@ -231,11 +231,9 @@ NMQtOtbAttributeTableModel::flags(const QModelIndex& index) const
 void
 NMQtOtbAttributeTableModel::setTable(otb::AttributeTable::Pointer table)
 {
-	this->mTable = table;
-
-	//this->beginResetModel();
-	emit this->reset();
-	//this->endResetModel();
+    this->beginResetModel();
+    this->mTable = table;
+    this->endResetModel();
 }
 
 bool
@@ -294,7 +292,6 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	default:
 		break;
 	}
-	//emit this->reset();
 	endInsertColumns();
 
 	return true;
@@ -311,7 +308,6 @@ NMQtOtbAttributeTableModel::removeColumns(int column, int count,
 	int ret = this->mTable->RemoveColumn(column);
 	if (ret)
 	{
-		//emit this->reset();
 		endRemoveColumns();
 	}
 	else

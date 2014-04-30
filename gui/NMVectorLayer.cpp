@@ -135,7 +135,7 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 
 	// create a contour mapper
 	vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
-	m->SetInput(this->mContour);
+    m->SetInputData(this->mContour);
 
 	vtkSmartPointer<vtkLookupTable> olclrtab = vtkSmartPointer<vtkLookupTable>::New();
 	long ncells = this->mContour->GetNumberOfCells();
@@ -207,7 +207,7 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 
 	// create and set the mapper
 	vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
-	m->SetInput(pd);
+    m->SetInputData(pd);
 	//m->SetInputConnection(mDepthSort->GetOutputPort());
 	//m->SetScalarRange(0, mDepthSort->GetOutput()->GetNumberOfCells());
 	this->mMapper = m;
@@ -751,7 +751,7 @@ void NMVectorLayer::writeDataSet(void)
 	vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<
 			vtkPolyDataWriter>::New();
 	writer->SetFileName(this->mFileName.toStdString().c_str());
-	writer->SetInput(this->mDataSet);
+    writer->SetInputData(this->mDataSet);
 	writer->SetFileTypeToBinary();
 	writer->Update();
 
@@ -813,7 +813,7 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 	}
 
 	vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
-	extractor->SetInput(mDataSet);
+    extractor->SetInputData(mDataSet);
 	extractor->SetCellList(selCellIds);
 
 	vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
@@ -829,7 +829,7 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
 			<< " cells in selection" << std::endl);
 
-	mSelectionMapper->SetInput(mCellSelection);
+    mSelectionMapper->SetInputData(mCellSelection);
 	mSelectionMapper->SetLookupTable(clrtab);
 
 	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();

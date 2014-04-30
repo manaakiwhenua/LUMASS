@@ -74,7 +74,7 @@ endif (testvar_in STREQUAL testvar_target)
 #====================================================================
 
 FIND_PACKAGE(LUMASSQt5)
-IF(NOT Qt5Core_FOUND)
+IF(NOT CMAKE_PREFIX_PATH)
 	message(FATAL_ERROR "Need to specify Qt5 install DIR!")
 ENDIF()
 
@@ -112,6 +112,11 @@ endif(NOT OTB_FOUND)
 # different executables
 
 FIND_PACKAGE(LUMASSVTK)
+
+if (NOT VTK_DIR)
+    message(FATAL_ERROR "Couldn't find VTK!")
+endif()
+
 find_package(VTK NO_MODULE)
 if (VTK_MAJOR_VERSION LESS 6)
   message(FATAL_ERROR "LUMASS requires VTK 6 or greater!")

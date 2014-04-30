@@ -685,7 +685,7 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
 
 
 	QMimeData *mimeData = new QMimeData;
-    mimeData->setText(layerName.toAscii());
+    mimeData->setText(layerName.toLatin1());
     drag->setMimeData(mimeData);
     drag->exec(Qt::CopyAction, Qt::CopyAction);
 

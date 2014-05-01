@@ -114,7 +114,12 @@ SetNthInputWrap( NMRATBandMathImageFilterWrapper, NMRATBandMathImageFilterWrappe
 
 
 #define callSetNthAttributeTable( filterPixelType, wrapName )											\
-if (this->mInputNumDimensions == 2)                                                         \
+if (this->mInputNumDimensions == 1)                                                         \
+{                                                                                           \
+    wrapName<filterPixelType, filterPixelType, 1>::setNthAttributeTable(     \
+            this->mOtbProcess, idx, table, colnames);                                          \
+}                                                                                           \
+else if (this->mInputNumDimensions == 2)                                                         \
 {                                                                                           \
 	wrapName<filterPixelType, filterPixelType, 2>::setNthAttributeTable(     \
 			this->mOtbProcess, idx, table, colnames);                                          \
@@ -129,7 +134,12 @@ else if (this->mInputNumDimensions == 3)                                        
 
 #define callSetExpression( filterPixelType, wrapName ) \
 { \
-	if (this->mInputNumDimensions == 2) \
+    if (this->mInputNumDimensions == 1) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 1 >::setExpression( \
+                this->mOtbProcess, expression); \
+    } \
+    else if (this->mInputNumDimensions == 2) \
 	{ \
 		NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 2 >::setExpression( \
 				this->mOtbProcess, expression); \
@@ -143,7 +153,12 @@ else if (this->mInputNumDimensions == 3)                                        
 
 #define callSetNbExpr( filterPixelType, wrapName ) \
 { \
-	if (this->mInputNumDimensions == 2) \
+    if (this->mInputNumDimensions == 1) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 1 >::setNbExpr( \
+                this->mOtbProcess, numExpr); \
+    } \
+    else if (this->mInputNumDimensions == 2) \
 	{ \
 		NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 2 >::setNbExpr( \
 				this->mOtbProcess, numExpr); \
@@ -158,7 +173,12 @@ else if (this->mInputNumDimensions == 3)                                        
 
 #define callSetNthInputName( filterPixelType, wrapName ) \
 { \
-    if (this->mInputNumDimensions == 2) \
+    if (this->mInputNumDimensions == 1) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 1 >::setNthInputName( \
+                this->mOtbProcess, idx, name); \
+    } \
+    else if (this->mInputNumDimensions == 2) \
     { \
         NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 2 >::setNthInputName( \
                 this->mOtbProcess, idx, name); \

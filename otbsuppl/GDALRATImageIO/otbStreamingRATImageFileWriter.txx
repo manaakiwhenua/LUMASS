@@ -85,7 +85,8 @@ StreamingRATImageFileWriter<TInputImage>
 
   // By default, we use tiled streaming, with automatic tile size
   // We don't set any parameter, so the memory size is retrieved from the OTB configuration options
-  this->SetAutomaticTiledStreaming();
+  //this->SetAutomaticTiledStreaming();
+  this->SetAutomaticStrippedStreaming();
 
   m_RATHaveBeenWritten = false;
   m_UseForcedLPR = false;
@@ -643,18 +644,18 @@ StreamingRATImageFileWriter<TInputImage>
   InputImagePointer inputPtr =
     const_cast<InputImageType *>(this->GetInput(0));
 
+
   /**
    * Determine of number of pieces to divide the input.  This will be the
    * minimum of what the user specified via SetNumberOfDivisionsStrippedStreaming()
    * and what the Splitter thinks is a reasonable value.
    */
 
-  /** Control if the ImageIO is CanStreamWrite */
-  if (m_ImageIO->CanStreamWrite() == false)
+  /** Control if the ImageIO is CanStreamWrite*/
+  if (m_ImageIO->CanStreamWrite() == false || InputImageDimension == 1)
     {
     otbWarningMacro(
-      << "The ImageFactory selected for the image file <" << m_FileName.c_str() <<
-      "> does not support streaming.");
+      << "ImageIO doesn't support streaming, or we've got a 1D image!");
     this->SetNumberOfDivisionsStrippedStreaming(1);
     }
   else if (inputPtr->GetBufferedRegion() == inputPtr->GetLargestPossibleRegion())

@@ -99,7 +99,7 @@ message(STATUS "OpenGL's GLU library: "${OPENGL_glu_LIBRARY})
 
 FIND_PACKAGE(LUMASSOTB)  
 INCLUDE(${OTB_USE_FILE})
-if (NOT OTB_FOUND)
+if(NOT OTB_FOUND)
   message(FATAL_ERROR "You have to install Orfeo Toolbox prior to compiling LUMASS!")
 endif(NOT OTB_FOUND)
 
@@ -113,12 +113,12 @@ endif(NOT OTB_FOUND)
 
 FIND_PACKAGE(LUMASSVTK)
 
-if (NOT VTK_DIR)
+if(NOT VTK_DIR)
     message(FATAL_ERROR "Couldn't find VTK!")
 endif()
 
 find_package(VTK NO_MODULE)
-if (VTK_MAJOR_VERSION LESS 6)
+if(VTK_MAJOR_VERSION LESS 6)
   message(FATAL_ERROR "LUMASS requires VTK 6 or greater!")
 endif()
 
@@ -129,7 +129,7 @@ message(STATUS "found VTK!")
 #====================================================================
 
 FIND_PACKAGE(GDAL)
-IF (NOT GDAL_FOUND)
+IF(NOT GDAL_FOUND)
   message(FATAL_ERROR "You have to install GDAL prior to compiling LUMASS!")
 ENDIF()
 
@@ -142,7 +142,7 @@ message(STATUS "gdal include dir: "${GDAL_INCLUDE_DIR})
 #====================================================================
 
 FIND_PACKAGE(Lpsolve)
-IF (NOT LPSOLVE_FOUND)
+IF(NOT LPSOLVE_FOUND)
   message(FATAL_ERROR "You have to install lp_solve prior to compiling LUMASS!")
 ENDIF()
 
@@ -156,23 +156,23 @@ message(STATUS "lp_solve library: "${LPSOLVE_LIBRARY})
 OPTION(RASSUPPORT "Build lumass with rasdaman support?" ON )
 IF(RASSUPPORT)
   FIND_PACKAGE(Rasdaman)
-  IF (RASDAMAN_FOUND)            
+  IF(RASDAMAN_FOUND)
      message(STATUS "rasdaman source dir: "${RASDAMAN_SOURCE_DIR})
      message(STATUS "rasdaman libraries dir: "${RASDAMAN_LIBRARIES_DIR})
-  ENDIF ()
+  ENDIF()
   
   # when we use rasdaman, we need postgres as well!
   FIND_PACKAGE(LUMASSPostgreSQL)
-  IF (PostgreSQL_FOUND)
+  IF(PostgreSQL_FOUND)
      message(STATUS "postgres include dirs: "${PostgreSQL_INCLUDE_DIRS})
      message(STATUS "postgres libraries dirs: "${PostgreSQL_LIBRARY_DIRS})
   ENDIF()
 
-  IF (PostgreSQL_FOUND AND RASDAMAN_FOUND)
-    OPTION(RASDEBUG "Is rasdaman running in debug mode?" OFF)
-    IF (RASDEBUG)
-        ADD_DEFINITIONS(-DRMANDEBUG)
-    ENDIF (RASDEBUG)
+  IF(PostgreSQL_FOUND AND RASDAMAN_FOUND)
+#    OPTION(RASDEBUG "Is rasdaman running in debug mode?" OFF)
+#    IF(RASDEBUG)
+#        ADD_DEFINITIONS(-DRMANDEBUG)
+#    ENDIF(RASDEBUG)
     ADD_DEFINITIONS(-DBUILD_RASSUPPORT)
     message(STATUS "building with rasdaman support and define BUILD_RASSUPPORT")
   ELSE(PostgreSQL_FOUND AND RASDAMAN_FOUND)          

@@ -130,7 +130,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* MODEL SCENE SETUP */
 	/* ====================================================================== */
 	mModelScene = new NMModelScene(this);
-    mModelScene->setSceneRect(-5000,-5000,8000,8000);
+    //mModelScene->setSceneRect(-5000,-5000,8000,8000);
 	mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	connect(this, SIGNAL(linkToolToggled(bool)), mModelScene,
 			SLOT(toggleLinkToolButton(bool)));
@@ -1018,6 +1018,16 @@ void NMModelViewWidget::loadItems(void)
 	this->mModelScene->invalidate();
 }
 
+void
+NMModelViewWidget::zoomToContent()
+{
+    // go through the actual content of the scene, and determien the
+    // convex hull of all items and set that as the scenes rect
+
+    this->mModelScene->setSceneRect(this->mModelScene->itemsBoundingRect());
+    this->mModelView->fitInView(this->mModelScene->sceneRect(),
+                                Qt::KeepAspectRatio);
+}
 
 
 int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
@@ -1641,6 +1651,7 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
     {
         if (mTreeCompEditor)
         {
+            mTreeCompEditor->setObject(0);
             mTreeCompEditor->clear();
             mTreeCompEditor->hide();
         }

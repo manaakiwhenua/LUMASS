@@ -81,6 +81,7 @@ public slots:
     void zoomIn() {zoom(1);}
     void zoomOut() {zoom(-1);}
     void zoom(int delta);
+    void zoomToContent(void);
     void updateTreeEditor(const QString&);
 
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,

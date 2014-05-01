@@ -319,6 +319,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     QAction* zoomOutAction = new QAction(zoomOutIcon, "Zoom Out", this->ui->mainToolBar);
     zoomOutAction->setAutoRepeat(true);
 
+    QAction* zoomToContent = new QAction("zoomCont", this->ui->mainToolBar);
+
+
     QIcon moveIcon(":move-icon.png");
     QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
     		this->ui->mainToolBar);
@@ -340,6 +343,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->ui->mainToolBar->addActions(modelToolGroup->actions());
     this->ui->mainToolBar->addAction(zoomInAction);
     this->ui->mainToolBar->addAction(zoomOutAction);
+    this->ui->mainToolBar->addAction(zoomToContent);
 
     // connect model view widget signals / slots
     connect(linkAction, SIGNAL(toggled(bool)),
@@ -351,6 +355,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
     connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));
+    connect(zoomToContent, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomToContent()));
 
 
     // **********************************************************************

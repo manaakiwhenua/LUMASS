@@ -91,7 +91,8 @@ NMComponentEditor::update()
         return;
     }
 
-    this->readComponentProperties(mObj, comp, proc);
+    if (mObj)
+        this->readComponentProperties(mObj, comp, proc);
 
 
     NMDebugCtx(ctx, << "done!");
@@ -101,6 +102,13 @@ void
 NMComponentEditor::setObject(QObject* obj)
 {
     NMDebugCtx(ctx, << "...");
+
+    if (obj == 0)
+    {
+        NMDebugAI(<< "got a NULL object!" << std::endl);
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
     if (mUpdating)
     {

@@ -31,6 +31,18 @@ NMProcCompList::NMProcCompList(QWidget* parent)
 	: QListWidget(parent)
 {
 	ctx = "NMProcCompList";
+
+    this->addItem(QString::fromLatin1("CastImage"));
+    this->addItem(QString::fromLatin1("CostDistanceBuffer"));
+    this->addItem(QString::fromLatin1("DataBuffer"));
+    this->addItem(QString::fromLatin1("FocalDistanceWeight"));
+    this->addItem(QString::fromLatin1("ImageReader"));
+    this->addItem(QString::fromLatin1("ImageWriter"));
+    this->addItem(QString::fromLatin1("MapAlgebra"));
+    this->addItem(QString::fromLatin1("NeighbourCounter"));
+    this->addItem(QString::fromLatin1("RandomImage"));
+    this->addItem(QString::fromLatin1("ResampleImage"));
+    this->addItem(QString::fromLatin1("SummarizeZones"));
 }
 
 NMProcCompList::~NMProcCompList()

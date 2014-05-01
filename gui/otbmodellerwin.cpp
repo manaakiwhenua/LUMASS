@@ -48,6 +48,8 @@
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 
+#include "modelcomponentlist.h"
+#include "NMProcCompList.h"
 #include "NMFastTrackSelectionModel.h"
 #include "NMRATBandMathImageFilterWrapper.h"
 #include "NMStreamingImageFileWriterWrapper.h"
@@ -221,13 +223,48 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	//qRegisterMetaType<NMModelComponent*>("NMModelComponent*");
 
 	// **********************************************************************
-	// *                    MAIN WINDOW SETUP                               *
+    // *                    MAIN WINDOW - MENU BAR AND DOCKS                *
 	// **********************************************************************
 
 	// set up the qt designer based controls
     ui->setupUi(this);
-	ui->modelViewDock->close();
-	ui->layerInfoDock->close();
+//    for (int i=0; i < ui->infoBox->count(); ++i)
+//        ui->infoBox->removeItem(i);
+
+//    for (int i=0; i < ui->compBox->count(); ++i)
+//        ui->compBox->removeItem(i);
+
+
+
+    // ================================================
+    // INFO COMPONENT DOCK
+    // ================================================
+
+    QTableWidget* tabWidget = new QTableWidget();
+    tabWidget->setObjectName(QString::fromUtf8("layerInfoTable"));
+    ui->infoBox->insertItem(0, tabWidget, QString::fromUtf8("Layer Info"));
+
+    mTreeCompEditor = new NMComponentEditor();
+    ui->infoBox->insertItem(1, mTreeCompEditor, QString::fromUtf8("Model Component Info"));
+
+    ui->componentInfoDock->close();
+
+    // ================================================
+    // MODEL COMPONENT DOCK (Source)
+    // ================================================
+
+    mLayerList = new ModelComponentList(ui->compBox);
+    mLayerList->setObjectName(QString::fromUtf8("modelCompList"));
+    ui->compBox->insertItem(0, mLayerList, QString::fromUtf8("Map Layers"));
+
+    NMProcCompList* procList = new NMProcCompList(ui->compBox);
+    procList->setObjectName(QString::fromUtf8("processComponents"));
+    ui->compBox->insertItem(1, procList, QString::fromUtf8("Model Components"));
+
+    // ================================================
+    // BAR(s) SETUP - MENU - PROGRESS - STATUS
+    // ================================================
+
 
     // we remove the rasdaman import option, when we haven't
     // rasdaman suppor
@@ -285,15 +322,15 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	// *                    MODEL BUILDER WINDOW                            *
 	// **********************************************************************
 
-    mModelBuilderWindow = new QMainWindow(this->ui->modelViewDock);
+    mModelBuilderWindow = new QMainWindow(this->ui->centralWidget);
     mModelBuilderWindow->setWindowFlags(Qt::Widget);
 
     //QVBoxLayout* mvLayout = new QVBoxLayout();
-    QSplitter* mvSplitter = new QSplitter(mModelBuilderWindow);
-    mvSplitter->setObjectName(QString::fromUtf8("ModelViewSplitter"));
-    mvSplitter->setOrientation(Qt::Horizontal);
+//    QSplitter* mvSplitter = new QSplitter(mModelBuilderWindow);
+//    mvSplitter->setObjectName(QString::fromUtf8("ModelViewSplitter"));
+//    mvSplitter->setOrientation(Qt::Horizontal);
 
-    mvSplitter->addWidget(this->ui->modelViewWidget);
+//    mvSplitter->addWidget(this->ui->modelViewWidget);
 
 //    mTreeCompEditor = new NMComponentEditor(this,
 //                                NMComponentEditor::NM_COMPEDITOR_TREE);
@@ -303,10 +340,11 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     //mvLayout->addWidget(mvSplitter);
     //mModelBuilderWindow->setLayout(mvLayout);
 
-    mModelBuilderWindow->setCentralWidget(mvSplitter);
+    //mModelBuilderWindow->setCentralWidget(mvSplitter);
+    mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
     //mModelBuilderWindow->setCentralWidget(this->ui->modelViewWidget);
     mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
-    this->ui->modelViewDock->setWidget(mModelBuilderWindow);
+    //this->ui->modelViewDock->setWidget(mModelBuilderWindow);
 
     this->ui->mainToolBar->setWindowTitle("Model Builder Tools");
     this->ui->mainToolBar->addSeparator();
@@ -482,9 +520,9 @@ OtbModellerWin::zoomChanged(vtkObject* obj)
 	//NMDebugAI(<< "zoomed" << endl);
 	//ui->qvtkWidget->update();
 
-	//for (int i=0; i < ui->modelCompList->getLayerCount(); ++i)
+    //for (int i=0; i < mLayerList->getLayerCount(); ++i)
 	//{
-	//	ui->modelCompList->getLayer(i);
+    //	mLayerList->getLayer(i);
 	//}
 
 
@@ -493,7 +531,7 @@ OtbModellerWin::zoomChanged(vtkObject* obj)
 	//while (ren != 0)
 	//{
 	//	//ren->Render();
-	//	//ren->ResetCamera(ui->modelCompList->getMapBBox());
+    //	//ren->ResetCamera(mLayerList->getMapBBox());
 	//	ren->Render();
 	//	ren = rencoll->GetNextItem();
 	//}
@@ -708,7 +746,7 @@ void OtbModellerWin::saveAsVectorLayerOGR(void)
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
 	// get the selected layer
-	NMLayer* l = this->ui->modelCompList->getSelectedLayer();
+    NMLayer* l = this->mLayerList->getSelectedLayer();
 	if (l == 0)
 		return;
 
@@ -928,12 +966,12 @@ void OtbModellerWin::test()
 
 void OtbModellerWin::zoomFullExtent()
 {
-	int nlayers = this->ui->modelCompList->getLayerCount();
+    int nlayers = this->mLayerList->getLayerCount();
 	if (nlayers <= 0)
 		return;
 
 	this->mBkgRenderer->ResetCamera(const_cast<double*>(
-			this->ui->modelCompList->getMapBBox()));
+            this->mLayerList->getMapBBox()));
 	this->ui->qvtkWidget->update();
 }
 
@@ -941,13 +979,13 @@ void OtbModellerWin::removeAllObjects()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	int nlayers = this->ui->modelCompList->getLayerCount();
+    int nlayers = this->mLayerList->getLayerCount();
 	int seccounter = 0;
 	while(nlayers > 0)
 	{
-		NMLayer* l = this->ui->modelCompList->getLayer(nlayers-1);
-		this->ui->modelCompList->removeLayer(l->objectName());
-		nlayers = this->ui->modelCompList->getLayerCount();
+        NMLayer* l = this->mLayerList->getLayer(nlayers-1);
+        this->mLayerList->removeLayer(l->objectName());
+        nlayers = this->mLayerList->getLayerCount();
 
 		if (seccounter > 100) break;
 		seccounter++;
@@ -970,7 +1008,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 	iren->GetEventPosition(event_pos);
 
 	// get the selected layer or quit
-	NMLayer* l = this->ui->modelCompList->getSelectedLayer();
+    NMLayer* l = this->mLayerList->getSelectedLayer();
 	if (l == 0)
 		return;
 
@@ -1237,9 +1275,9 @@ OtbModellerWin::updateCoordLabel(const QString& newCoords)
 //void
 //OtbModellerWin::setCurrentInteractorLayer(const NMLayer* layer)
 //{
-////	for (int i=0; i < ui->modelCompList->getLayerCount(); ++i)
+////	for (int i=0; i < mLayerList->getLayerCount(); ++i)
 ////	{
-////		NMLayer* l = const_cast<NMLayer*>(ui->modelCompList->getLayer(i));
+////		NMLayer* l = const_cast<NMLayer*>(mLayerList->getLayer(i));
 ////		vtkRenderer* ren = const_cast<vtkRenderer*>(l->getRenderer());
 ////		ren->SetInteractive(0);
 ////	}
@@ -1275,7 +1313,7 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	// get pixel value, if image layer is selected
 
 	// update the pixel value label, if we've got an image layer selected
-	NMLayer *l = this->ui->modelCompList->getSelectedLayer();
+    NMLayer *l = this->mLayerList->getSelectedLayer();
 	if (l == 0)
 		return;
 
@@ -1359,10 +1397,6 @@ void OtbModellerWin::showComponentsView()
 	this->ui->componentsWidget->show();
 }
 
-void OtbModellerWin::showModelView()
-{
-	this->ui->modelViewDock->show();
-}
 
 void OtbModellerWin::doMOSObatch()
 {
@@ -1479,7 +1513,7 @@ void OtbModellerWin::doMOSO()
 	mosra->loadSettings(fileName);
 
 	// look for the layer mentioned in the settings file
-	NMLayer* layer = this->ui->modelCompList->getLayer(mosra->getLayerName());
+    NMLayer* layer = this->mLayerList->getLayer(mosra->getLayerName());
 	if (layer == 0)
 	{
 		NMDebugAI( << "couldn't find layer '" << mosra->getLayerName().toStdString() << "'" << endl);
@@ -1673,7 +1707,7 @@ void OtbModellerWin::loadVTKPolyData()
 	layer->setObjectName(layerName);
 	layer->setDataSet(pd);
 	layer->setVisible(true);
-	this->ui->modelCompList->addLayer(layer);
+    this->mLayerList->addLayer(layer);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -1683,7 +1717,7 @@ void OtbModellerWin::saveAsVtkPolyData()
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
 	// get the selected layer
-	NMLayer* l = this->ui->modelCompList->getSelectedLayer();
+    NMLayer* l = this->mLayerList->getSelectedLayer();
 	if (l == 0)
 		return;
 
@@ -1848,7 +1882,7 @@ void OtbModellerWin::import3DPointSet()
 	layer->setObjectName(fi.baseName());
 	layer->setDataSet(pointCloud);
 	layer->setVisible(true);
-	this->ui->modelCompList->addLayer(layer);
+    this->mLayerList->addLayer(layer);
 
 }
 
@@ -2372,7 +2406,7 @@ void OtbModellerWin::loadVectorLayer()
 	layer->setObjectName(layerName);
 	layer->setDataSet(vtkVec);
 	layer->setVisible(true);
-	this->ui->modelCompList->addLayer(layer);
+    this->mLayerList->addLayer(layer);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -2433,7 +2467,7 @@ OtbModellerWin::fetchRasLayer(const QString& imagespec,
 		//if (layer->setFileName(imagespec))
 		//{
 		//	layer->setVisible(true);
-		//	this->ui->modelCompList->addLayer(layer);
+        //	this->mLayerList->addLayer(layer);
 		//}
 		//else
 		//	delete layer;
@@ -2686,7 +2720,7 @@ void OtbModellerWin::loadImageLayer()
 //	if (layer->setFileName(fileName))
 //	{
 //		layer->setVisible(true);
-//		this->ui->modelCompList->addLayer(layer);
+//		this->mLayerList->addLayer(layer);
 //	}
 //	else
 //		delete layer;
@@ -2702,7 +2736,7 @@ OtbModellerWin::addLayerToCompList()
 		return;
 
 	layer->setVisible(true);
-	this->ui->modelCompList->addLayer(layer);
+    this->mLayerList->addLayer(layer);
 }
 
 void OtbModellerWin::toggle3DSimpleMode()

@@ -20,7 +20,7 @@
    <string>LUMASS</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout_3">
     <item>
      <widget class="QVTKWidget" name="qvtkWidget" native="true">
       <property name="sizePolicy">
@@ -31,6 +31,22 @@
       </property>
       <property name="cursor">
        <cursorShape>ArrowCursor</cursorShape>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="baseSize">
+       <size>
+        <width>200</width>
+        <height>100</height>
+       </size>
       </property>
      </widget>
     </item>
@@ -137,189 +153,81 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
-      <widget class="QSplitter" name="splitter">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
+      <widget class="QToolBox" name="compBox">
+       <property name="currentIndex">
+        <number>0</number>
        </property>
-       <widget class="ModelComponentList" name="modelCompList">
-        <property name="font">
-         <font>
-          <family>AlArabiya</family>
-         </font>
+       <widget class="QWidget" name="page_3">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>68</width>
+          <height>488</height>
+         </rect>
         </property>
-        <property name="mouseTracking">
-         <bool>true</bool>
-        </property>
-        <property name="acceptDrops">
-         <bool>false</bool>
-        </property>
-        <property name="editTriggers">
-         <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
-        </property>
-        <property name="tabKeyNavigation">
-         <bool>true</bool>
-        </property>
-        <property name="showDropIndicator" stdset="0">
-         <bool>false</bool>
-        </property>
-        <property name="dragEnabled">
-         <bool>false</bool>
-        </property>
-        <property name="dragDropOverwriteMode">
-         <bool>false</bool>
-        </property>
-        <property name="dragDropMode">
-         <enum>QAbstractItemView::NoDragDrop</enum>
-        </property>
-        <property name="alternatingRowColors">
-         <bool>false</bool>
-        </property>
-        <property name="selectionMode">
-         <enum>QAbstractItemView::MultiSelection</enum>
-        </property>
-        <property name="selectionBehavior">
-         <enum>QAbstractItemView::SelectRows</enum>
-        </property>
+        <attribute name="label">
+         <string>Page 1</string>
+        </attribute>
        </widget>
-       <widget class="NMProcCompList" name="processComponents">
-        <property name="mouseTracking">
-         <bool>false</bool>
+       <widget class="QWidget" name="page_4">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>98</width>
+          <height>28</height>
+         </rect>
         </property>
-        <item>
-         <property name="text">
-          <string>CastImage</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>CostDistanceBuffer</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>DataBuffer</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>FocalDistanceWeight</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>ImageReader</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>ImageWriter</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>MapAlgebra</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>NeighbourCounter</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>RandomImage</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>ResampleImage</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>SummariseZones</string>
-         </property>
-        </item>
+        <attribute name="label">
+         <string>Page 2</string>
+        </attribute>
        </widget>
       </widget>
      </item>
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="modelViewDock">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="acceptDrops">
-    <bool>true</bool>
-   </property>
-   <property name="floating">
-    <bool>false</bool>
-   </property>
-   <property name="features">
-    <set>QDockWidget::AllDockWidgetFeatures</set>
-   </property>
+  <widget class="QDockWidget" name="componentInfoDock">
    <property name="windowTitle">
-    <string>Model Builder</string>
+    <string>Component Info</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_2">
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="maximumSize">
-     <size>
-      <width>559</width>
-      <height>130</height>
-     </size>
-    </property>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QSplitter" name="splitter_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QDockWidget" name="layerInfoDock">
-   <property name="windowTitle">
-    <string>Layer Info</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>1</number>
-   </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QTableWidget" name="layerInfoTable">
-       <property name="columnCount">
+      <widget class="QToolBox" name="infoBox">
+       <property name="currentIndex">
         <number>0</number>
        </property>
-       <attribute name="verticalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
+       <widget class="QWidget" name="page">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>68</width>
+          <height>488</height>
+         </rect>
+        </property>
+        <attribute name="label">
+         <string>Page 1</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="page_2">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>98</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <attribute name="label">
+         <string>Page 2</string>
+        </attribute>
+       </widget>
       </widget>
      </item>
     </layout>
@@ -469,20 +377,10 @@
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>ModelComponentList</class>
-   <extends>QListWidget</extends>
-   <header>modelcomponentlist.h</header>
-  </customwidget>
-  <customwidget>
    <class>QVTKWidget</class>
    <extends>QWidget</extends>
    <header>QVTKWidget.h</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>NMProcCompList</class>
-   <extends>QListWidget</extends>
-   <header>NMProcCompList.h</header>
   </customwidget>
   <customwidget>
    <class>NMModelViewWidget</class>

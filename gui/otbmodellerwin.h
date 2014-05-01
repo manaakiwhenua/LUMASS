@@ -30,6 +30,7 @@
 #include <QSharedPointer>
 #include <QStandardItemModel>
 #include <QProgressBar>
+#include <QToolBox>
 
 // OGR
 #include "ogrsf_frmts.h"
@@ -58,6 +59,7 @@
 #endif
 
 class NMComponentEditor;
+class ModelComponentList;
 class vtkRenderer;
 class vtkEventQtSlotConnect;
 class vtkObject;
@@ -110,7 +112,6 @@ public slots:
 	void doMOSO();
 	void doMOSObatch();
 	void showComponentsView();
-	void showModelView();
 	void updateCoords(vtkObject* obj);
 	void removeAllObjects();
 	void pickObject(vtkObject* obj);
@@ -248,6 +249,7 @@ private:
     QProgressBar* mProgressBar;
 
     NMComponentEditor* mTreeCompEditor;
+    ModelComponentList* mLayerList;
 
     // for showing random messages in the status bar
     QLabel* m_StateMsg;

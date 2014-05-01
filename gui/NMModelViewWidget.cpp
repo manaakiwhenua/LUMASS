@@ -511,9 +511,9 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 
 	// SAVE & LOAD
 	if (item != 0 && item->type() != NMComponentLinkItem::Type)
-		this->mActionMap.value("Save As ...")->setEnabled(false);
+        this->mActionMap.value("Save As ...")->setEnabled(true);
 	else
-		this->mActionMap.value("Save As ...")->setEnabled(true);
+        this->mActionMap.value("Save As ...")->setEnabled(false);
 
 	if (!running)
 		this->mActionMap.value("Load ...")->setEnabled(true);

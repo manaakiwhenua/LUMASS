@@ -133,6 +133,7 @@ protected:
     void keyPressEvent(QKeyEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void drawRow(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+    void mouseMoveEvent(QMouseEvent* event);
 
 private:
     QtTreePropertyBrowserPrivate *m_editorPrivate;
@@ -143,6 +144,18 @@ QtPropertyEditorView::QtPropertyEditorView(QWidget *parent) :
     m_editorPrivate(0)
 {
     connect(header(), SIGNAL(sectionDoubleClicked(int)), this, SLOT(resizeColumnToContents(int)));
+}
+
+void QtPropertyEditorView::mouseMoveEvent(QMouseEvent *event)
+{
+    QTreeWidget::mouseMoveEvent(event);
+
+    QPoint pos = event->pos();
+    QModelIndex idx = this->indexAt(pos);
+    QtProperty* prop = m_editorPrivate->indexToProperty(idx);
+
+    qDebug() << prop->propertyName();
+
 }
 
 void QtPropertyEditorView::drawRow(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const

@@ -51,7 +51,8 @@
 #ifdef BUILD_RASSUPPORT
   #include "NMRasdamanConnectorWrapper.h"
 #endif
-  
+
+class OtbModellerWin;
 class NMComponentLinkItem;
 
 class NMModelViewWidget: public QWidget
@@ -126,6 +127,8 @@ protected slots:
 	void getSubComps(NMModelComponent* comp, QStringList& subs);
 	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
     bool eventFilter(QObject* obj, QEvent* e);
+
+    OtbModellerWin* getMainWindow(void);
 
 private:
 	void initItemContextMenu();

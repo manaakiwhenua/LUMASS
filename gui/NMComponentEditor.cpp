@@ -55,8 +55,12 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
         mPropBrowser->setObjectName("ComponentGroupBoxEditor");
         break;
     case NM_COMPEDITOR_TREE:
-        mPropBrowser = new QtTreePropertyBrowser(this);
-        mPropBrowser->setObjectName("ComponentTreeEditor");
+        {
+            QtTreePropertyBrowser* tpb = new QtTreePropertyBrowser(this);
+            tpb->setResizeMode(QtTreePropertyBrowser::Interactive);
+            mPropBrowser = tpb;
+            mPropBrowser->setObjectName("ComponentTreeEditor");
+        }
         break;
     }
 

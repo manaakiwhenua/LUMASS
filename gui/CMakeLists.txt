@@ -86,6 +86,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMFastTrackSelectionModel.h
         ${gui_SOURCE_DIR}/NMComponentListItemDelegate.h
         ${gui_SOURCE_DIR}/NMComponentEditor.h
+        ${gui_SOURCE_DIR}/NMWidgetListView.h
 )
 
 file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)

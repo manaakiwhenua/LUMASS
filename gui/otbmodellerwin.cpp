@@ -58,6 +58,7 @@
 #include "NMModelSerialiser.h"
 #include "NMEditModelComponentDialog.h"
 #include "NMModelScene.h"
+#include "NMWidgetListView.h"
 
 #include "LpHelper.h"
 
@@ -228,13 +229,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
 	// set up the qt designer based controls
     ui->setupUi(this);
-//    for (int i=0; i < ui->infoBox->count(); ++i)
-//        ui->infoBox->removeItem(i);
-
-//    for (int i=0; i < ui->compBox->count(); ++i)
-//        ui->compBox->removeItem(i);
-
-
 
     // ================================================
     // INFO COMPONENT DOCK
@@ -242,10 +236,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     QTableWidget* tabWidget = new QTableWidget();
     tabWidget->setObjectName(QString::fromUtf8("layerInfoTable"));
-    ui->infoBox->insertItem(0, tabWidget, QString::fromUtf8("Layer Info"));
+    ui->infoWidgetList->addWidgetItem(tabWidget, QString::fromUtf8("Layer Info"));
 
     mTreeCompEditor = new NMComponentEditor();
-    ui->infoBox->insertItem(1, mTreeCompEditor, QString::fromUtf8("Model Component Info"));
+    ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Model Component Info"));
 
     ui->componentInfoDock->close();
 
@@ -253,13 +247,13 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // MODEL COMPONENT DOCK (Source)
     // ================================================
 
-    mLayerList = new ModelComponentList(ui->compBox);
+    mLayerList = new ModelComponentList(ui->compWidgetList);
     mLayerList->setObjectName(QString::fromUtf8("modelCompList"));
-    ui->compBox->insertItem(0, mLayerList, QString::fromUtf8("Map Layers"));
+    ui->compWidgetList->addWidgetItem(mLayerList, QString::fromUtf8("Map Layers"));
 
-    NMProcCompList* procList = new NMProcCompList(ui->compBox);
+    NMProcCompList* procList = new NMProcCompList();
     procList->setObjectName(QString::fromUtf8("processComponents"));
-    ui->compBox->insertItem(1, procList, QString::fromUtf8("Model Components"));
+    ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
 
     // ================================================
     // BAR(s) SETUP - MENU - PROGRESS - STATUS
@@ -322,33 +316,17 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	// *                    MODEL BUILDER WINDOW                            *
 	// **********************************************************************
 
-    mModelBuilderWindow = new QMainWindow(this->ui->centralWidget);
+    mModelBuilderWindow = new QMainWindow(this);
     mModelBuilderWindow->setWindowFlags(Qt::Widget);
-
-    //QVBoxLayout* mvLayout = new QVBoxLayout();
-//    QSplitter* mvSplitter = new QSplitter(mModelBuilderWindow);
-//    mvSplitter->setObjectName(QString::fromUtf8("ModelViewSplitter"));
-//    mvSplitter->setOrientation(Qt::Horizontal);
-
-//    mvSplitter->addWidget(this->ui->modelViewWidget);
-
-//    mTreeCompEditor = new NMComponentEditor(this,
-//                                NMComponentEditor::NM_COMPEDITOR_TREE);
-//    mTreeCompEditor->setObjectName("TreeCompEditor_");
-//    mvSplitter->addWidget(mTreeCompEditor);
-
-    //mvLayout->addWidget(mvSplitter);
-    //mModelBuilderWindow->setLayout(mvLayout);
-
-    //mModelBuilderWindow->setCentralWidget(mvSplitter);
-    mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
-    //mModelBuilderWindow->setCentralWidget(this->ui->modelViewWidget);
     mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
-    //this->ui->modelViewDock->setWidget(mModelBuilderWindow);
+    mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
 
+    // =============================================================
+    // set up the tool bar
     this->ui->mainToolBar->setWindowTitle("Model Builder Tools");
-    this->ui->mainToolBar->addSeparator();
 
+    // .....................
+    // zoom actions
     QIcon zoomInIcon(":zoom-in-icon.png");
     QAction* zoomInAction = new QAction(zoomInIcon, "Zoom In", this->ui->mainToolBar);
     zoomInAction->setAutoRepeat(true);
@@ -359,7 +337,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     QAction* zoomToContent = new QAction("zoomCont", this->ui->mainToolBar);
 
-
+    // ..........................
+    // component management actions
     QIcon moveIcon(":move-icon.png");
     QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
     		this->ui->mainToolBar);
@@ -378,10 +357,25 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     modelToolGroup->addAction(moveAction);
     modelToolGroup->addAction(linkAction);
     modelToolGroup->addAction(selAction);
+
+
+    // ..........................
+    // model execution actions
+    QAction* execAction = new QAction("execModel", this->ui->mainToolBar);
+    QAction* stopAction = new QAction("stopModel", this->ui->mainToolBar);
+
+
     this->ui->mainToolBar->addActions(modelToolGroup->actions());
+    this->ui->mainToolBar->addSeparator();
+
     this->ui->mainToolBar->addAction(zoomInAction);
     this->ui->mainToolBar->addAction(zoomOutAction);
     this->ui->mainToolBar->addAction(zoomToContent);
+
+    this->ui->mainToolBar->addSeparator();
+    this->ui->mainToolBar->addAction(execAction);
+    this->ui->mainToolBar->addAction(stopAction);
+
 
     // connect model view widget signals / slots
     connect(linkAction, SIGNAL(toggled(bool)),
@@ -394,6 +388,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
     connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));
     connect(zoomToContent, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomToContent()));
+
+    connect(execAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(executeModel()));
+    connect(stopAction, SIGNAL(triggered()), this->ui->modelViewWidget, SIGNAL(requestModelAbortion()));
 
 
     // **********************************************************************
@@ -463,6 +460,21 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     		vtkCommand::MouseWheelBackwardEvent,
     		this, SLOT(zoomChanged(vtkObject*)));
 
+    // **********************************************************************
+    // *                    CENTRAL WIDGET                                  *
+    // **********************************************************************
+
+    QVBoxLayout* boxL = new QVBoxLayout();
+    if (ui->centralWidget->layout())
+        delete ui->centralWidget->layout();
+
+    ui->centralWidget->setLayout(boxL);
+
+    QSplitter* splitter = new QSplitter(Qt::Vertical);
+    splitter->setChildrenCollapsible(true);
+    splitter->addWidget(ui->qvtkWidget);
+    splitter->addWidget(mModelBuilderWindow);
+    boxL->addWidget(splitter);
 }
 
 OtbModellerWin::~OtbModellerWin()
@@ -825,21 +837,21 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 {
 	//NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	QDockWidget* dw = this->findChild<QDockWidget*>("layerInfoDock");
-	QTableWidget* ti = this->findChild<QTableWidget*>("layerInfoTable");
+    QDockWidget* dw = qobject_cast<QDockWidget*>(this->ui->infoDock);
+    QTableWidget* ti = this->ui->infoWidgetList->findChild<QTableWidget*>("layerInfoTable");
 	ti->clear();
 
 	if (cellId < 0 && l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
 	{
-		dw->setWindowTitle(tr("Layer Info"));
+        //dw->setWindowTitle(tr("Layer Info"));
 		ti->setColumnCount(0);
 		ti->setRowCount(0);
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return;
 	}
 
-	dw->setWindowTitle(QString(tr("Layer Info '%1'")).arg(
-			l->objectName()));
+    //dw->setWindowTitle(QString(tr("Layer Info '%1'")).arg(
+    //		l->objectName()));
 
 	ti->setColumnCount(2);
 	ti->horizontalHeader()->setStretchLastSection(true);

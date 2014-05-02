@@ -94,23 +94,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* ====================================================================== */
     /* GET THE RASDAMAN CONNECTOR FROM THE MAIN WINDOW */
 	/* ====================================================================== */
-	OtbModellerWin* mainWin = 0;
-	QWidgetList tlw = qApp->topLevelWidgets();
-	QWidgetList::ConstIterator it = tlw.constBegin();
-	for (; it != tlw.constEnd(); ++it)
-	{
-		QWidget* w = const_cast<QWidget*>(*it);
-		if (w->objectName().compare("OtbModellerWin") == 0)
-		{
-			mainWin = qobject_cast<OtbModellerWin*>(w);
-		}
-
-//        NMDebugAI(<< "children of " << w->objectName().toStdString() << std::endl);
-//        foreach(QObject* obj, w->children())
-//        {
-//            NMDebugAI(<< "  --" << obj->objectName().toStdString() << std::endl);
-//        }
-	}
+    OtbModellerWin* mainWin = this->getMainWindow();
 
 #ifdef BUILD_RASSUPPORT	
 	this->mRasConn = new NMRasdamanConnectorWrapper(this);
@@ -176,29 +160,29 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* ====================================================================== */
     /* WIDGET BUTTON AND CONTEXT MENU SETUP */
 	/* ====================================================================== */
-	QPushButton* btnCancel = new QPushButton();
-	btnCancel->setText(tr("Stop Execution"));
-	btnCancel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    //	QPushButton* btnCancel = new QPushButton();
+    //	btnCancel->setText(tr("Stop Execution"));
+    //	btnCancel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-	QPushButton* btnExec = new QPushButton();
-	btnExec->setText(tr("Execute"));
-	btnExec->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    //	QPushButton* btnExec = new QPushButton();
+    //	btnExec->setText(tr("Execute"));
+    //	btnExec->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-	QHBoxLayout* boxLayout = new QHBoxLayout();
-	boxLayout->setAlignment(Qt::AlignRight | Qt::AlignBottom);
-	boxLayout->addWidget(btnCancel);
-	boxLayout->addWidget(btnExec);
+    //	QHBoxLayout* boxLayout = new QHBoxLayout();
+    //	boxLayout->setAlignment(Qt::AlignRight | Qt::AlignBottom);
+    //	boxLayout->addWidget(btnCancel);
+    //	boxLayout->addWidget(btnExec);
 
 
 	QVBoxLayout* gridLayout = new QVBoxLayout();
 	gridLayout->addWidget(mModelView);//, 0, 0);
-	gridLayout->addLayout(boxLayout);//, 1, 0);
+    //gridLayout->addLayout(boxLayout);//, 1, 0);
 
 	this->setLayout(gridLayout);
 
 	// connect buttons
-	connect(btnExec, SIGNAL(clicked()), this, SLOT(executeModel()));
-	connect(btnCancel, SIGNAL(clicked()), this, SIGNAL(requestModelAbortion()));
+    //	connect(btnExec, SIGNAL(clicked()), this, SLOT(executeModel()));
+    //	connect(btnCancel, SIGNAL(clicked()), this, SIGNAL(requestModelAbortion()));
 
 	this->initItemContextMenu();
 
@@ -1653,18 +1637,22 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
         {
             mTreeCompEditor->setObject(0);
             mTreeCompEditor->clear();
-            mTreeCompEditor->hide();
         }
         return;
     }
 
     if (mTreeCompEditor == 0)
     {
-        QSplitter* sp = qobject_cast<QSplitter*>(this->parentWidget());
-        mTreeCompEditor = new NMComponentEditor(this);
+        OtbModellerWin* otbwin = this->getMainWindow();
+        if (otbwin == 0)
+        {
+            NMErr(ctx, << "Couldn't get hold of main application window!")
+            return;
+        }
+
+        mTreeCompEditor = const_cast<NMComponentEditor*>(otbwin->getCompEditor());
         connect(this->mModelController, SIGNAL(componentRemoved(const QString &)),
                 this, SLOT(updateTreeEditor(const QString &)));
-        sp->addWidget(mTreeCompEditor);
 #ifdef BUILD_RASSUPPORT
         mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);
 #endif
@@ -1839,6 +1827,24 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
     }
 
     return false;
+}
+
+OtbModellerWin*
+NMModelViewWidget::getMainWindow(void)
+{
+    OtbModellerWin* mainWin = 0;
+    QWidgetList tlw = qApp->topLevelWidgets();
+    QWidgetList::ConstIterator it = tlw.constBegin();
+    for (; it != tlw.constEnd(); ++it)
+    {
+        QWidget* w = const_cast<QWidget*>(*it);
+        if (w->objectName().compare("OtbModellerWin") == 0)
+        {
+            mainWin = qobject_cast<OtbModellerWin*>(w);
+        }
+    }
+
+    return mainWin;
 }
 
 

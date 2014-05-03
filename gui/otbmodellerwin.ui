@@ -99,7 +99,10 @@
      <string>View</string>
     </property>
     <addaction name="actionComponents_View"/>
-    <addaction name="actionModel_View"/>
+    <addaction name="actionShow_Components_Info"/>
+    <addaction name="separator"/>
+    <addaction name="actionShow_Map_View"/>
+    <addaction name="actionShow_Model_View"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -263,7 +266,7 @@
   </action>
   <action name="actionComponents_View">
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="checked">
     <bool>false</bool>
@@ -346,6 +349,30 @@
   <action name="actionMOSO_batch">
    <property name="text">
     <string>MOSO batch ...</string>
+   </property>
+  </action>
+  <action name="actionShow_Components_Info">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Components Info</string>
+   </property>
+  </action>
+  <action name="actionShow_Map_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Map View</string>
+   </property>
+  </action>
+  <action name="actionShow_Model_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Model View</string>
    </property>
   </action>
  </widget>

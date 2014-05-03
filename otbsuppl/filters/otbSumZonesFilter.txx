@@ -29,7 +29,7 @@
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
 
-#define ctx "otb::SumZonesFilter"
+//#define ctx "otb::SumZonesFilter"
 
 namespace otb
 {

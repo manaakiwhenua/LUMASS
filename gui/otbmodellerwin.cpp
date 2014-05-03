@@ -1,6 +1,6 @@
  /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2010,2011,2012,2013 Landcare Research New Zealand Ltd
+ * Copyright 2010,2011,2012,2013,2014 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -140,7 +140,6 @@
 #include "otbSortFilter.h"
 #include "otbImageRegionAdaptativeSplitter.h"
 #include "itkVectorContainer.h"
-#include "otbSumZonesFilter.h"
 #include "itkStreamingImageFilter.h"
 
 
@@ -289,7 +288,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->mProgressBar->setVisible(false);
     this->ui->statusBar->addPermanentWidget(mProgressBar, 1);
 
-
     // connect menu actions to member functions
 #ifdef BUILD_RASSUPPORT
 	connect(ui->actionImportRasdamanLayer, SIGNAL(triggered()), this, SLOT(loadRasdamanLayer()));
@@ -302,7 +300,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionLoad_Vector_Layer, SIGNAL(triggered()), this, SLOT(loadVectorLayer()));
     connect(ui->actionMOSO, SIGNAL(triggered()), this, SLOT(doMOSO()));
     //connect(ui->actionMOSO_batch, SIGNAL(triggered()), this, SLOT(doMOSObatch()));
-    connect(ui->actionComponents_View, SIGNAL(triggered()), this, SLOT(showComponentsView()));
+    connect(ui->actionComponents_View, SIGNAL(toggled(bool)), this, SLOT(showComponentsView(bool)));
+    connect(ui->actionShow_Components_Info, SIGNAL(toggled(bool)), this, SLOT(showComponentsInfoView(bool)));
     connect(ui->actionModel_View, SIGNAL(triggered()), this, SLOT(showModelView()));
     connect(ui->actionRemoveAllObjects, SIGNAL(triggered()), this, SLOT(removeAllObjects()));
     connect(ui->actionFullExtent, SIGNAL(triggered()), this, SLOT(zoomFullExtent()));
@@ -311,6 +310,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
     connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
     connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
+
+    connect(ui->actionShow_Map_View, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
+    connect(ui->actionShow_Model_View, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
 
     // **********************************************************************
 	// *                    MODEL BUILDER WINDOW                            *
@@ -335,7 +337,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     QAction* zoomOutAction = new QAction(zoomOutIcon, "Zoom Out", this->ui->mainToolBar);
     zoomOutAction->setAutoRepeat(true);
 
-    QAction* zoomToContent = new QAction("zoomCont", this->ui->mainToolBar);
+    QIcon zoomContentIcon(":zoom-fit-best-icon.png");
+    QAction* zoomToContent = new QAction(zoomContentIcon, "Zoom To Content", this->ui->mainToolBar);
 
     // ..........................
     // component management actions
@@ -358,11 +361,16 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     modelToolGroup->addAction(linkAction);
     modelToolGroup->addAction(selAction);
 
-
     // ..........................
     // model execution actions
-    QAction* execAction = new QAction("execModel", this->ui->mainToolBar);
-    QAction* stopAction = new QAction("stopModel", this->ui->mainToolBar);
+    QIcon execIcon(":model-execute-icon.png");
+    QAction* execAction = new QAction(execIcon, "Execute Model", this->ui->mainToolBar);
+
+    QIcon stopIcon(":model-stop-icon.png");
+    QAction* stopAction = new QAction(stopIcon, "Stop Model Execution", this->ui->mainToolBar);
+
+    QIcon resetIcon(":model-reset-icon.png");
+    QAction* resetAction = new QAction(resetIcon, "Reset Model",  this->ui->mainToolBar);
 
 
     this->ui->mainToolBar->addActions(modelToolGroup->actions());
@@ -373,8 +381,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->ui->mainToolBar->addAction(zoomToContent);
 
     this->ui->mainToolBar->addSeparator();
-    this->ui->mainToolBar->addAction(execAction);
+    this->ui->mainToolBar->addAction(resetAction);
     this->ui->mainToolBar->addAction(stopAction);
+    this->ui->mainToolBar->addAction(execAction);
+
 
 
     // connect model view widget signals / slots
@@ -391,6 +401,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     connect(execAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(executeModel()));
     connect(stopAction, SIGNAL(triggered()), this->ui->modelViewWidget, SIGNAL(requestModelAbortion()));
+    connect(resetAction, SIGNAL(triggered()), this->ui->modelViewWidget, SIGNAL(resetModel()));
 
 
     // **********************************************************************
@@ -524,6 +535,18 @@ OtbModellerWin::notify(QObject* receiver, QEvent* event)
 	}
 
 	return true;
+}
+
+void
+OtbModellerWin::showMapView(bool vis)
+{
+    ui->qvtkWidget->setVisible(vis);
+}
+
+void
+OtbModellerWin::showModelView(bool vis)
+{
+    ui->modelViewWidget->parentWidget()->setVisible(vis);
 }
 
 void
@@ -1404,9 +1427,14 @@ OtbModellerWin::showBusyEnd()
 	this->mProgressBar->setVisible(false);
 }
 
-void OtbModellerWin::showComponentsView()
+void OtbModellerWin::showComponentsView(bool vis)
 {
-	this->ui->componentsWidget->show();
+    this->ui->componentsWidget->setVisible(vis);
+}
+
+void OtbModellerWin::showComponentsInfoView(bool vis)
+{
+    this->ui->componentInfoDock->setVisible(vis);
 }
 
 

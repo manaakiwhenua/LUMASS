@@ -1,6 +1,6 @@
  /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
+ * Copyright 2010,2011,2012,2013,2014 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -111,7 +111,10 @@ public slots:
 	void loadVectorLayer();
 	void doMOSO();
 	void doMOSObatch();
-	void showComponentsView();
+    void showComponentsView(bool);
+    void showComponentsInfoView(bool);
+    void showMapView(bool);
+    void showModelView(bool);
 	void updateCoords(vtkObject* obj);
 	void removeAllObjects();
 	void pickObject(vtkObject* obj);

@@ -33,6 +33,15 @@ for detailed information of icon source and license.
 source: Oxygen Icons <http://www.oxygen-icons.org>
 license: http://creativecommons.org/licenses/LGPL/2.1/
          http://creativecommons.org/licenses/by-sa/3.0/
+
+--- lumass/gui/resources/data-read.png
+--- lumass/gui/resources/data-save.png
+--- lumass/gui/resources/model-execute.png (modified)
+--- lumass/gui/resources/model-pause.png (modified)
+--- lumass/gui/resources/model-stop.png (modified)
+source: Oxygen Icons <http://www.oxygen-icons.org>
+license: http://creativecommons.org/licenses/by-sa/3.0/
+
          
 --- lumass/gui/resources/select.png
 source: Intrigue Icon Set
@@ -41,5 +50,6 @@ license: http://creativecommons.org/licenses/GPL/2.0/
         
 --- lumass/gui/resources/zoom-in-3.png
 --- lumass/gui/resources/zoom-in-3.png
+--- lumass/gui/resources/zoom-fit-best-2.png
 source: GNOME Icon Theme <http://art.gnome.org>
 license: http://creativecommons.org/licenses/GPL/2.0/

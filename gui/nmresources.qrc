@@ -12,5 +12,12 @@
         <file alias="vector_layer_invisible.png">resources/vector_layer_invisible.png</file>
         <file alias="edit-select.png">resources/edit-select.png</file>
         <file alias="edit-select_enabled.png">resources/edit-select_enabled.png</file>
+        <file alias="data-read-icon.png">resources/data-read.png</file>
+        <file alias="data-save-icon.png">resources/data-save.png</file>
+        <file alias="zoom-fit-best-icon.png">resources/zoom-fit-best-2.png</file>
+        <file alias="model-execute-icon.png">resources/model-execute.png</file>
+        <file alias="model-pause-icon.png">resources/model-pause.png</file>
+        <file alias="model-reset-icon.png">resources/model-reset.png</file>
+        <file alias="model-stop-icon.png">resources/model-stop.png</file>
     </qresource>
 </RCC>

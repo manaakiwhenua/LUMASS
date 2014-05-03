@@ -21,6 +21,7 @@
 
 #include <map>
 #include <set>
+#include <string>
 
 #include "otbAttributeTable.h"
 #include "itkImageToImageFilter.h"
@@ -136,9 +137,16 @@ private:
 	  bool m_IgnoreNodataValue;
 	  InputPixelType m_NodataValue;
 
+      static const std::string ctx;
+
 };
 
 } // end namespace otb
+
+
+template< class TInputImage, class TOutputImage>
+const std::string otb::SumZonesFilter<TInputImage, TOutputImage>::ctx = "otb::SumZonesFilter";
+
 
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbSumZonesFilter.txx"

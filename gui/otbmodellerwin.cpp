@@ -313,6 +313,13 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     connect(ui->actionShow_Map_View, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
     connect(ui->actionShow_Model_View, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
+    connect(ui->actionMap_View_Mode, SIGNAL(triggered()), this, SLOT(mapViewMode()));
+    connect(ui->actionModel_View_Mode, SIGNAL(triggered()), this, SLOT(modelViewMode()));
+
+    connect(ui->componentsWidget, SIGNAL(visibilityChanged(bool)),
+            ui->actionComponents_View, SLOT(setChecked(bool)));
+    connect(ui->componentInfoDock, SIGNAL(visibilityChanged(bool)),
+            ui->actionShow_Components_Info, SLOT(setChecked(bool)));
 
     // **********************************************************************
 	// *                    MODEL BUILDER WINDOW                            *
@@ -384,7 +391,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->ui->mainToolBar->addAction(resetAction);
     this->ui->mainToolBar->addAction(stopAction);
     this->ui->mainToolBar->addAction(execAction);
-
 
 
     // connect model view widget signals / slots
@@ -486,6 +492,19 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     splitter->addWidget(ui->qvtkWidget);
     splitter->addWidget(mModelBuilderWindow);
     boxL->addWidget(splitter);
+
+    // ================================================
+    // INITIAL WIDGET's VISIBILITY
+    // ================================================
+
+    this->ui->componentsWidget->setVisible(true);
+    this->ui->actionComponents_View->setChecked(true);
+
+    this->ui->componentInfoDock->setVisible(false);
+    this->ui->actionShow_Components_Info->setChecked(false);
+
+    this->ui->actionShow_Map_View->setChecked(true);
+    this->ui->actionShow_Model_View->setChecked(true);
 }
 
 OtbModellerWin::~OtbModellerWin()
@@ -535,6 +554,50 @@ OtbModellerWin::notify(QObject* receiver, QEvent* event)
 	}
 
 	return true;
+}
+
+void
+OtbModellerWin::mapViewMode()
+{
+    ui->qvtkWidget->setVisible(true);
+    ui->actionShow_Map_View->setChecked(true);
+
+    ui->compWidgetList->setWidgetVisibile(0, true);
+    ui->compWidgetList->setWidgetVisibile(1, false);
+
+    ui->infoWidgetList->setWidgetVisibile(0, true);
+    ui->infoWidgetList->setWidgetVisibile(1, false);
+
+    ui->componentsWidget->setVisible(true);
+    ui->actionComponents_View->setChecked(true);
+
+    ui->infoDock->setVisible(true);
+    ui->actionShow_Components_Info->setChecked(true);
+
+    ui->modelViewWidget->parentWidget()->setVisible(false);
+    ui->actionShow_Model_View->setChecked(false);
+}
+
+void
+OtbModellerWin::modelViewMode()
+{
+    ui->qvtkWidget->setVisible(false);
+    ui->actionShow_Map_View->setChecked(false);
+
+    ui->compWidgetList->setWidgetVisibile(0, false);
+    ui->compWidgetList->setWidgetVisibile(1, true);
+
+    ui->infoWidgetList->setWidgetVisibile(0, false);
+    ui->infoWidgetList->setWidgetVisibile(1, true);
+
+    ui->componentsWidget->setVisible(true);
+    ui->actionComponents_View->setChecked(true);
+
+    ui->infoDock->setVisible(true);
+    ui->actionShow_Components_Info->setChecked(true);
+
+    ui->modelViewWidget->parentWidget()->setVisible(true);
+    ui->actionShow_Model_View->setChecked(true);
 }
 
 void

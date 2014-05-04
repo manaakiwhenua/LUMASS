@@ -29,10 +29,10 @@
    <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>330</y>
-      <width>261</width>
-      <height>221</height>
+      <x>20</x>
+      <y>270</y>
+      <width>461</width>
+      <height>281</height>
      </rect>
     </property>
    </widget>
@@ -41,8 +41,8 @@
      <rect>
       <x>39</x>
       <y>50</y>
-      <width>221</width>
-      <height>211</height>
+      <width>441</width>
+      <height>191</height>
      </rect>
     </property>
    </widget>
@@ -103,6 +103,9 @@
     <addaction name="separator"/>
     <addaction name="actionShow_Map_View"/>
     <addaction name="actionShow_Model_View"/>
+    <addaction name="separator"/>
+    <addaction name="actionMap_View_Mode"/>
+    <addaction name="actionModel_View_Mode"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -373,6 +376,16 @@
    </property>
    <property name="text">
     <string>Show Model View</string>
+   </property>
+  </action>
+  <action name="actionMap_View_Mode">
+   <property name="text">
+    <string>Map View Mode</string>
+   </property>
+  </action>
+  <action name="actionModel_View_Mode">
+   <property name="text">
+    <string>Model View Mode</string>
    </property>
   </action>
  </widget>

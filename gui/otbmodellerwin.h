@@ -115,6 +115,8 @@ public slots:
     void showComponentsInfoView(bool);
     void showMapView(bool);
     void showModelView(bool);
+    void mapViewMode();
+    void modelViewMode();
 	void updateCoords(vtkObject* obj);
 	void removeAllObjects();
 	void pickObject(vtkObject* obj);

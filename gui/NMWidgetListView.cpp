@@ -42,6 +42,7 @@ NMWidgetListView::NMWidgetListView(QWidget *parent) :
     mVBoxLayout->setAlignment(Qt::AlignTop);
 }
 
+
 void
 NMWidgetListView::addWidgetItem(QWidget* widget, const QString& btnLabel)
 {
@@ -84,13 +85,14 @@ NMWidgetListView::addWidgetItem(QWidget* widget, const QString& btnLabel)
     // do admin stuff
     mBtnList.append(btn);
     mWidgetList.insert(btn, widget);
-    connect(btn, SIGNAL(clicked()), this, SLOT(btnPushed()));
+
+    connect(btn, SIGNAL(clicked(bool)), this, SLOT(btnPushed(bool)));
 
     NMDebugCtx(ctx, << "done!")
 }
 
 void
-NMWidgetListView::btnPushed(void)
+NMWidgetListView::btnPushed(bool checked)
 {
     QPushButton* btn = qobject_cast<QPushButton*>(this->sender());
     if (btn == 0)
@@ -101,12 +103,31 @@ NMWidgetListView::btnPushed(void)
     QMap<QPushButton*, QWidget*>::iterator it = mWidgetList.find(btn);
     if (it != mWidgetList.end())
     {
-        bool vis = it.value()->isVisible();
-        it.value()->setVisible(!vis);
+        it.value()->setVisible(checked);
+        btn->setChecked(checked);
+    }
+    this->updateWidgets();
+}
 
-        btn->setChecked(!vis);
+void
+NMWidgetListView::setWidgetVisibile(int index, bool visible)
+{
+    if (index < 0 || index >= mBtnList.size())
+    {
+        NMErr(ctx, << "Index out of range!")
+        return;
     }
 
+    QPushButton* btn = mBtnList.at(index);
+    btn->setChecked(visible);
+    mWidgetList.value(btn)->setVisible(visible);
+
+    this->updateWidgets();
+}
+
+
+void NMWidgetListView::updateWidgets(void)
+{
     // brute force
     foreach(QPushButton* b, mBtnList)
     {

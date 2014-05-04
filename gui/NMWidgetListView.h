@@ -38,10 +38,12 @@ signals:
 public slots:
 
     void addWidgetItem(QWidget* widget, const QString& btnLabel);
+    void setWidgetVisibile(int index, bool visible);
 
 protected slots:
 
-    void btnPushed(void);
+    void btnPushed(bool);
+    void updateWidgets(void);
 
 protected:
     QList<QPushButton*> mBtnList;

@@ -46,11 +46,11 @@ NMWidgetListView::NMWidgetListView(QWidget *parent) :
 void
 NMWidgetListView::addWidgetItem(QWidget* widget, const QString& btnLabel)
 {
-    NMDebugCtx(ctx, << "...")
+    //NMDebugCtx(ctx, << "...")
 
     if (widget == 0)
     {
-        NMDebugCtx(ctx, << "done!")
+        //NMDebugCtx(ctx, << "done!")
         return;
     }
     // prepare the button
@@ -87,9 +87,10 @@ NMWidgetListView::addWidgetItem(QWidget* widget, const QString& btnLabel)
     mBtnList.append(btn);
     mWidgetList.insert(btn, widget);
 
-    //this->updateWidgets();
+//    NMDebugAI(<< "added: " << mWidgetList[btn]->objectName().toStdString()
+//              << " isVisible: " << mWidgetList[btn]->isVisible() << std::endl);
 
-    NMDebugCtx(ctx, << "done!")
+    //NMDebugCtx(ctx, << "done!")
 }
 
 void
@@ -113,6 +114,8 @@ NMWidgetListView::btnPushed(bool checked)
 void
 NMWidgetListView::setWidgetItemVisible(int index, bool visible)
 {
+    //NMDebugCtx(ctx, << "...");
+
     if (index < 0 || index >= mBtnList.size())
     {
         NMErr(ctx, << "Index out of range!")
@@ -123,7 +126,19 @@ NMWidgetListView::setWidgetItemVisible(int index, bool visible)
     btn->setChecked(visible);
     mWidgetList.value(btn)->setVisible(visible);
 
+    //NMDebugAI(<< "what are the widgets doing?" << std::endl);
+
+    //    foreach(QPushButton* b, mWidgetList.keys())
+    //    {
+    //        NMDebugAI(<< "   widget: " << mWidgetList[b]->objectName().toStdString()
+    //                  << " | visibility: " << mWidgetList[b]->isVisible() << std::endl);
+    //    }
+
+
+
     this->updateWidgets();
+
+   // NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -145,6 +160,8 @@ NMWidgetListView::setWidgetItemVisible(const QString& name, bool visible)
 
 void NMWidgetListView::updateWidgets(void)
 {
+    //NMDebugCtx(ctx, << "...");
+
     // brute force
     foreach(QPushButton* b, mBtnList)
     {
@@ -157,10 +174,13 @@ void NMWidgetListView::updateWidgets(void)
         mVBoxLayout->addWidget(b);//, 0, Qt::AlignTop);
         if (mWidgetList[b]->isVisible())
         {
+            //NMDebugAI(<< "added: " << mWidgetList[b]->objectName().toStdString() << std::endl);
             b->setChecked(true);
             mVBoxLayout->addWidget(mWidgetList[b]);//, 0, Qt::AlignTop);
         }
     }
+
+    //NMDebugCtx(ctx, << "done!");
 }
 
 void

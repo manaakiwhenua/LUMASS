@@ -39,10 +39,22 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 
 	mSingleLineHeight = 17;
 	mDoubleLineHeight = 34;
-	mMaxTextWidth = 80;
+    mMaxTextWidth = 80;
 
-	mIcon.load(":model-icon.png"); // supposed to be rendered as 64x64 pixel image
-	mIconRect = QRectF(-37, -37, 74, 74);
+    if (this->objectName().contains("Reader", Qt::CaseInsensitive))
+    {
+        mIcon.load(":data-read-icon.png");
+    }
+    else if (this->objectName().contains("Writer", Qt::CaseInsensitive))
+    {
+        mIcon.load(":data-write-icon.png");
+    }
+    else
+    {
+        mIcon.load(":model-icon.png");
+    }
+
+    mIconRect = QRectF(-37, -37, 74, 74);
 
 	mIconBnd = QRectF(mIconRect.left()-5, mIconRect.top()-5,
 			          mIconRect.width()+10, mIconRect.height()+10);
@@ -177,6 +189,19 @@ void NMProcessComponentItem::setTitle(const QString& title)
 {
 	if (!title.isEmpty())
 		this->mTitle = title;
+
+    if (title.contains(QString("Reader"), Qt::CaseInsensitive))
+    {
+        mIcon.load(":data-read-icon.png");
+    }
+    else if (title.contains(QString("Writer"), Qt::CaseInsensitive))
+    {
+        mIcon.load(":data-save-icon.png");
+    }
+    else
+    {
+        mIcon.load(":model-icon.png");
+    }
 }
 
 QRectF

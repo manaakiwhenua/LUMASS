@@ -236,13 +236,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     QTableWidget* tabWidget = new QTableWidget(ui->infoWidgetList);
     tabWidget->setObjectName(QString::fromUtf8("layerInfoTable"));
     tabWidget->setAlternatingRowColors(true);
-    tabWidget->setVerticalHeader(0);
-    tabWidget->setColumnCount(2);
-    tabWidget->setRowCount(1);
-    tabWidget->clear();
     ui->infoWidgetList->addWidgetItem(tabWidget, QString::fromUtf8("Layer Info"));
 
     mTreeCompEditor = new NMComponentEditor(ui->infoWidgetList);
+    mTreeCompEditor->setObjectName(QString::fromUtf8("treeCompEditor"));
     ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Model Component Info"));
 
     ui->componentInfoDock->setVisible(false);
@@ -577,20 +574,20 @@ OtbModellerWin::mapViewMode()
     ui->qvtkWidget->setVisible(true);
     ui->actionShow_Map_View->setChecked(true);
 
+    ui->modelViewWidget->parentWidget()->setVisible(false);
+    ui->actionShow_Model_View->setChecked(false);
+
+    ui->infoDock->setVisible(true);
+    ui->actionShow_Components_Info->setChecked(true);
+
+    ui->componentsWidget->setVisible(true);
+    ui->actionComponents_View->setChecked(true);
+
     ui->compWidgetList->setWidgetItemVisible(0, true);
     ui->compWidgetList->setWidgetItemVisible(1, false);
 
     ui->infoWidgetList->setWidgetItemVisible(0, true);
     ui->infoWidgetList->setWidgetItemVisible(1, false);
-
-    ui->componentsWidget->setVisible(true);
-    ui->actionComponents_View->setChecked(true);
-
-    ui->infoDock->setVisible(true);
-    ui->actionShow_Components_Info->setChecked(true);
-
-    ui->modelViewWidget->parentWidget()->setVisible(false);
-    ui->actionShow_Model_View->setChecked(false);
 }
 
 void
@@ -599,11 +596,8 @@ OtbModellerWin::modelViewMode()
     ui->qvtkWidget->setVisible(false);
     ui->actionShow_Map_View->setChecked(false);
 
-    ui->compWidgetList->setWidgetItemVisible(0, false);
-    ui->compWidgetList->setWidgetItemVisible(1, true);
-
-    ui->infoWidgetList->setWidgetItemVisible(0, false);
-    ui->infoWidgetList->setWidgetItemVisible(1, true);
+    ui->modelViewWidget->parentWidget()->setVisible(true);
+    ui->actionShow_Model_View->setChecked(true);
 
     ui->componentsWidget->setVisible(true);
     ui->actionComponents_View->setChecked(true);
@@ -611,8 +605,11 @@ OtbModellerWin::modelViewMode()
     ui->infoDock->setVisible(true);
     ui->actionShow_Components_Info->setChecked(true);
 
-    ui->modelViewWidget->parentWidget()->setVisible(true);
-    ui->actionShow_Model_View->setChecked(true);
+    ui->compWidgetList->setWidgetItemVisible(0, false);
+    ui->compWidgetList->setWidgetItemVisible(1, true);
+
+    ui->infoWidgetList->setWidgetItemVisible(0, false);
+    ui->infoWidgetList->setWidgetItemVisible(1, true);
 }
 
 void

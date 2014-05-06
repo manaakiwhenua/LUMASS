@@ -611,10 +611,14 @@ void NMModelViewWidget::saveItems(void)
 	QStringList savecomps;
 	if (items.isEmpty())
 	{
-		if (!this->mModelScene->items().isEmpty())
+        if (this->mLastItem != 0)
+        {
+            items.append(this->mLastItem);
+        }
+        else if (!this->mModelScene->items().isEmpty())
 		{
 			items.append(this->mModelScene->items());
-			savecomps.push_back("root");
+            savecomps.push_back("root");
 		}
 	}
 
@@ -717,6 +721,27 @@ void NMModelViewWidget::saveItems(void)
 				NMErr(ctx, << "couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
 				return;
 			}
+
+//            // only save input information, if inputs are going to be saved as well
+//            QList<QStringList> newInputs;
+//            foreach(const QStringList& sl, comp->getInputs())
+//            {
+//                QStringList nIn;
+//                foreach(const QString& input, sl)
+//                {
+//                    if (savecomps.contains(input))
+//                    {
+//                        nIn.push_back(input);
+//                    }
+//                }
+//                if (nIn.size() > 0)
+//                {
+//                    newInputs.push_back(nIn);
+//                }
+//            }
+
+
+
 			xmlS.serialiseComponent(comp, fnLmx, 4, append);
 			lmv << (qint32)NMProcessComponentItem::Type;
 			lmv << *pi;
@@ -1177,7 +1202,7 @@ void NMModelViewWidget::deleteItem()
             //	delLinkList.push_back(linkItem);
 		}
 	}
-	else if (this->mLastItem != 0)
+    else if (this->mLastItem != 0)
 	{
 		procItem = qgraphicsitem_cast<NMProcessComponentItem*>(this->mLastItem);
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(this->mLastItem);
@@ -1467,7 +1492,7 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
 	// connect some host-component signals
 	NMModelComponent* comp = qobject_cast<NMModelComponent*>(proc->parent());
 	connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)), procItem,
-			SLOT(updateDescription(const QString &)));
+            SLOT(updateDescription(const QString &)));
 }
 
 void

@@ -290,6 +290,10 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
             {
                 emit itemLeftClicked(aggrItem->getTitle());
             }
+            else if (item == 0)
+            {
+                emit itemLeftClicked(QString::fromUtf8("root"));
+            }
 			break;
 		}
 		QGraphicsScene::mousePressEvent(event);

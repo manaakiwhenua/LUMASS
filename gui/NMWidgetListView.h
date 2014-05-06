@@ -38,7 +38,15 @@ signals:
 public slots:
 
     void addWidgetItem(QWidget* widget, const QString& btnLabel);
-    void setWidgetVisibile(int index, bool visible);
+
+    void removeWidgetItem(int index);
+    void removeWidgetItem(const QString& name);
+
+    void setWidgetItemVisible(int index, bool visible);
+    void setWidgetItemVisible(const QString& name, bool visible);
+
+    QWidget* getWidgetItem(int index);
+    QWidget* getWidgetItem(const QString& name);
 
 protected slots:
 

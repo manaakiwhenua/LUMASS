@@ -66,7 +66,8 @@ NMWidgetListView::addWidgetItem(QWidget* widget, const QString& btnLabel)
     btn->setFlat(false);
     btn->setCheckable(true);
     btn->setChecked(true);
-    mVBoxLayout->addWidget(btn, 0, Qt::AlignTop);
+    btn->setVisible(true);
+    mVBoxLayout->addWidget(btn);//, 0, Qt::AlignTop);
 
 
     // prepare the widget
@@ -79,14 +80,14 @@ NMWidgetListView::addWidgetItem(QWidget* widget, const QString& btnLabel)
     widget->setVisible(true);
     widget->setMaximumHeight(QWIDGETSIZE_MAX);
     widget->setSizePolicy(spW);
-
     mVBoxLayout->addWidget(widget);//, 0, Qt::AlignTop);
 
     // do admin stuff
+    connect(btn, SIGNAL(clicked(bool)), this, SLOT(btnPushed(bool)));
     mBtnList.append(btn);
     mWidgetList.insert(btn, widget);
 
-    connect(btn, SIGNAL(clicked(bool)), this, SLOT(btnPushed(bool)));
+    //this->updateWidgets();
 
     NMDebugCtx(ctx, << "done!")
 }
@@ -110,7 +111,7 @@ NMWidgetListView::btnPushed(bool checked)
 }
 
 void
-NMWidgetListView::setWidgetVisibile(int index, bool visible)
+NMWidgetListView::setWidgetItemVisible(int index, bool visible)
 {
     if (index < 0 || index >= mBtnList.size())
     {
@@ -125,6 +126,22 @@ NMWidgetListView::setWidgetVisibile(int index, bool visible)
     this->updateWidgets();
 }
 
+void
+NMWidgetListView::setWidgetItemVisible(const QString& name, bool visible)
+{
+    QWidget* w = this->getWidgetItem(name);
+    if (w == 0)
+        return;
+
+    w->setVisible(visible);
+
+    QPushButton* btn = mWidgetList.key(w);
+    btn->setChecked(visible);
+
+    this->updateWidgets();
+}
+
+
 
 void NMWidgetListView::updateWidgets(void)
 {
@@ -137,12 +154,102 @@ void NMWidgetListView::updateWidgets(void)
 
     foreach(QPushButton* b, mBtnList)
     {
-        mVBoxLayout->addWidget(b, 0, Qt::AlignTop);
+        mVBoxLayout->addWidget(b);//, 0, Qt::AlignTop);
         if (mWidgetList[b]->isVisible())
         {
+            b->setChecked(true);
             mVBoxLayout->addWidget(mWidgetList[b]);//, 0, Qt::AlignTop);
         }
     }
 }
+
+void
+NMWidgetListView::removeWidgetItem(int index)
+{
+    if (index < 0 || index >= mBtnList.size())
+    {
+        NMWarn(ctx, << "Couldn't find Widget at index " << index);
+        return;
+    }
+
+    QPushButton* btn = mBtnList.takeAt(index);
+    QWidget* w = mWidgetList.value(btn);
+    mWidgetList.remove(btn);
+
+    mVBoxLayout->removeWidget(w);
+    mVBoxLayout->removeWidget(btn);
+
+    delete btn;
+    delete w;
+}
+
+void
+NMWidgetListView::removeWidgetItem(const QString& name)
+{
+    QWidget* w = this->getWidgetItem(name);
+    if (w == 0)
+        return;
+
+    QPushButton* btn = mWidgetList.key(w);
+    int idx = 0;
+    foreach(QPushButton* b, mBtnList)
+    {
+        if (b == btn)
+            break;
+        ++idx;
+    }
+
+    mBtnList.removeAt(idx);
+    mWidgetList.remove(btn);
+
+    mVBoxLayout->removeWidget(w);
+    mVBoxLayout->removeWidget(btn);
+
+    delete btn;
+    delete w;
+}
+
+QWidget*
+NMWidgetListView::getWidgetItem(int index)
+{
+    QWidget* ret = 0;
+
+    if (index < 0 || index >= mBtnList.size())
+    {
+        NMWarn(ctx, << "Couldn't find a widget at index " << index);
+        return ret;
+    }
+
+    return mWidgetList.value(mBtnList.at(index));
+}
+
+QWidget*
+NMWidgetListView::getWidgetItem(const QString& name)
+{
+    QWidget* ret = 0;
+
+    QMap<QPushButton*, QWidget*>::const_iterator it = mWidgetList.cbegin();
+    while (it != mWidgetList.cend())
+    {
+        if (name.compare(it.value()->objectName()) == 0)
+        {
+            ret = it.value();
+            break;
+        }
+        ++it;
+    }
+
+    return ret;
+}
+
+
+
+
+
+
+
+
+
+
 
 

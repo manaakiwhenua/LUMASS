@@ -233,14 +233,19 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // INFO COMPONENT DOCK
     // ================================================
 
-    QTableWidget* tabWidget = new QTableWidget();
+    QTableWidget* tabWidget = new QTableWidget(ui->infoWidgetList);
     tabWidget->setObjectName(QString::fromUtf8("layerInfoTable"));
+    tabWidget->setAlternatingRowColors(true);
+    tabWidget->setVerticalHeader(0);
+    tabWidget->setColumnCount(2);
+    tabWidget->setRowCount(1);
+    tabWidget->clear();
     ui->infoWidgetList->addWidgetItem(tabWidget, QString::fromUtf8("Layer Info"));
 
-    mTreeCompEditor = new NMComponentEditor();
+    mTreeCompEditor = new NMComponentEditor(ui->infoWidgetList);
     ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Model Component Info"));
 
-    ui->componentInfoDock->close();
+    ui->componentInfoDock->setVisible(false);
 
     // ================================================
     // MODEL COMPONENT DOCK (Source)
@@ -250,7 +255,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     mLayerList->setObjectName(QString::fromUtf8("modelCompList"));
     ui->compWidgetList->addWidgetItem(mLayerList, QString::fromUtf8("Map Layers"));
 
-    NMProcCompList* procList = new NMProcCompList();
+    NMProcCompList* procList = new NMProcCompList(ui->compWidgetList);
     procList->setObjectName(QString::fromUtf8("processComponents"));
     ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
 
@@ -497,12 +502,22 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // INITIAL WIDGET's VISIBILITY
     // ================================================
 
+//    this->ui->compWidgetList->setWidgetVisibile(0, true);
+//    this->ui->compWidgetList->setWidgetVisibile(1, true);
+
     this->ui->componentsWidget->setVisible(true);
     this->ui->actionComponents_View->setChecked(true);
+
+    this->ui->infoWidgetList->setWidgetItemVisible(0, false);
+    this->ui->infoWidgetList->setWidgetItemVisible(1, false);
+
+    this->ui->infoWidgetList->setWidgetItemVisible(0, true);
+    this->ui->infoWidgetList->setWidgetItemVisible(1, true);
 
     this->ui->componentInfoDock->setVisible(false);
     this->ui->actionShow_Components_Info->setChecked(false);
 
+    // set menu's check buttons to right state
     this->ui->actionShow_Map_View->setChecked(true);
     this->ui->actionShow_Model_View->setChecked(true);
 }
@@ -562,11 +577,11 @@ OtbModellerWin::mapViewMode()
     ui->qvtkWidget->setVisible(true);
     ui->actionShow_Map_View->setChecked(true);
 
-    ui->compWidgetList->setWidgetVisibile(0, true);
-    ui->compWidgetList->setWidgetVisibile(1, false);
+    ui->compWidgetList->setWidgetItemVisible(0, true);
+    ui->compWidgetList->setWidgetItemVisible(1, false);
 
-    ui->infoWidgetList->setWidgetVisibile(0, true);
-    ui->infoWidgetList->setWidgetVisibile(1, false);
+    ui->infoWidgetList->setWidgetItemVisible(0, true);
+    ui->infoWidgetList->setWidgetItemVisible(1, false);
 
     ui->componentsWidget->setVisible(true);
     ui->actionComponents_View->setChecked(true);
@@ -584,11 +599,11 @@ OtbModellerWin::modelViewMode()
     ui->qvtkWidget->setVisible(false);
     ui->actionShow_Map_View->setChecked(false);
 
-    ui->compWidgetList->setWidgetVisibile(0, false);
-    ui->compWidgetList->setWidgetVisibile(1, true);
+    ui->compWidgetList->setWidgetItemVisible(0, false);
+    ui->compWidgetList->setWidgetItemVisible(1, true);
 
-    ui->infoWidgetList->setWidgetVisibile(0, false);
-    ui->infoWidgetList->setWidgetVisibile(1, true);
+    ui->infoWidgetList->setWidgetItemVisible(0, false);
+    ui->infoWidgetList->setWidgetItemVisible(1, true);
 
     ui->componentsWidget->setVisible(true);
     ui->actionComponents_View->setChecked(true);
@@ -923,8 +938,14 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 {
 	//NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    QDockWidget* dw = qobject_cast<QDockWidget*>(this->ui->infoDock);
-    QTableWidget* ti = this->ui->infoWidgetList->findChild<QTableWidget*>("layerInfoTable");
+    //QDockWidget* dw = qobject_cast<QDockWidget*>(this->ui->infoDock);
+    QTableWidget* ti = this->ui->infoWidgetList->findChild<QTableWidget*>(
+                QString::fromUtf8("layerInfoTable"));
+    if (ti == 0)
+    {
+        NMWarn(ctx, << "Couldn't find 'layerInfoTable'!");
+        return;
+    }
 	ti->clear();
 
 	if (cellId < 0 && l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
@@ -1034,7 +1055,9 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 		}
 	}
 
-	dw->show();
+    connect(l, SIGNAL(destroyed()), ti, SLOT(clear()));
+    ui->infoWidgetList->setWidgetItemVisible(0, true);
+    ui->compDock->setVisible(true);
 
 	//NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

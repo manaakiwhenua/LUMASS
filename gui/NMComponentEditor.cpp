@@ -85,13 +85,13 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
 void
 NMComponentEditor::update()
 {
-    NMDebugCtx(ctx, << "...");
+    //    NMDebugCtx(ctx, << "...");
 
 
     if (mUpdating)
     {
-        NMWarn(ctx, << "just updating ..." << std::endl);
-        NMDebugCtx(ctx, << "done!");
+    //        NMWarn(ctx, << "just updating ..." << std::endl);
+    //        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -99,25 +99,25 @@ NMComponentEditor::update()
         this->readComponentProperties(mObj, comp, proc);
 
 
-    NMDebugCtx(ctx, << "done!");
+    //    NMDebugCtx(ctx, << "done!");
 }
 
 void
 NMComponentEditor::setObject(QObject* obj)
 {
-    NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
 
     if (obj == 0)
     {
-        NMDebugAI(<< "got a NULL object!" << std::endl);
-        NMDebugCtx(ctx, << "done!");
+    //        NMDebugAI(<< "got a NULL object!" << std::endl);
+    //        NMDebugCtx(ctx, << "done!");
         return;
     }
 
     if (mUpdating)
     {
-        NMWarn(ctx, << "just updating ..." << std::endl);
-        NMDebugCtx(ctx, << "done!");
+    //        NMWarn(ctx, << "just updating ..." << std::endl);
+    //        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -130,7 +130,7 @@ NMComponentEditor::setObject(QObject* obj)
 
     if (comp == 0 && proc == 0)
     {
-        NMDebugCtx(ctx, << "done!");
+//          NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -140,7 +140,7 @@ NMComponentEditor::setObject(QObject* obj)
     this->readComponentProperties(mObj, comp, proc);
 
 
-    NMDebugCtx(ctx, << "done!");
+//      NMDebugCtx(ctx, << "done!");
 }
 
 void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* comp,

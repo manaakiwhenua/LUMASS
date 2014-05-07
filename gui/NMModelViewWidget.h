@@ -161,7 +161,7 @@ private:
 
 	QMap<QString, QAction*> mActionMap;
 
-	string ctx;
+    static const std::string ctx;
 
 };
 

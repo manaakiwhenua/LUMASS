@@ -49,11 +49,12 @@
 #include "NMConditionalIterComponent.h"
 #include "NMComponentEditor.h"
 
+const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075)
 {
-	ctx = "NMModelViewWidget";
+    //ctx = "NMModelViewWidget";
 	this->setAcceptDrops(true);
 	this->mLastItem = 0;
 	
@@ -446,17 +447,49 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 	this->mLastScenePos = event->scenePos();
 	this->mLastItem = item;
 
+    NMProcessComponentItem* pi   = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+    bool dataBuffer = false;
+
+    NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+    QString title;
+    if (pi != 0)
+    {
+        title = pi->getTitle();
+        dataBuffer = pi->getIsDataBufferItem();
+    }
+    else if (ai != 0)
+    {
+        title = ai->getTitle();
+    }
+    else
+    {
+        title = QString::fromUtf8("Root Model");
+    }
+
 	// Execute && Reset model
-	if (((item != 0 && item->type() != NMComponentLinkItem::Type)
+    if (((item != 0 && item->type() != NMComponentLinkItem::Type)
 		&& !running) || !running)
 	{
-		this->mActionMap.value("Execute")->setEnabled(true);
-		this->mActionMap.value("Reset")->setEnabled(true);
+        if (!dataBuffer)
+        {
+            this->mActionMap.value("Execute")->setEnabled(true);
+            mActionMap.value("Execute")->setText(QString("Execute %1").arg(title));
+        }
+        else
+        {
+            this->mActionMap.value("Execute")->setEnabled(false);
+            mActionMap.value("Execute")->setText(QString::fromUtf8("Execute"));
+        }
+
+        this->mActionMap.value("Reset")->setEnabled(true);
+        mActionMap.value("Reset")->setText(QString("Reset %1").arg(title));
 	}
 	else
 	{
 		this->mActionMap.value("Execute")->setEnabled(false);
+        mActionMap.value("Execute")->setText(QString::fromUtf8("Execute"));
 		this->mActionMap.value("Reset")->setEnabled(false);
+        mActionMap.value("Reset")->setText(QString::fromUtf8("Reset"));
 	}
 
 	// GROUP
@@ -489,20 +522,45 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 
 	// DELETE & SAVE AS
 	if ((selection.count() > 0 || item != 0) && !running)
-		this->mActionMap.value("Delete")->setEnabled(true);
+    {
+        this->mActionMap.value("Delete")->setEnabled(true);
+        if (selection.count() > 0)
+        {
+            mActionMap.value("Delete")->setText(QString("Delete Selection"));
+        }
+        else
+        {
+            mActionMap.value("Delete")->setText(QString("Delete %1").arg(title));
+        }
+    }
 	else
+    {
 		this->mActionMap.value("Delete")->setEnabled(false);
+        mActionMap.value("Delete")->setText(QString::fromUtf8("Delete"));
+    }
 
 	// SAVE & LOAD
 	if (item != 0 && item->type() != NMComponentLinkItem::Type)
+    {
         this->mActionMap.value("Save As ...")->setEnabled(true);
+        mActionMap.value("Save As ...")->setText(QString("Save %1 As ...").arg(title));
+    }
 	else
+    {
         this->mActionMap.value("Save As ...")->setEnabled(false);
+        mActionMap.value("Save As ...")->setText(QString::fromUtf8("Save As ..."));
+    }
 
-	if (!running)
+    if (!running && pi == 0)
+    {
 		this->mActionMap.value("Load ...")->setEnabled(true);
+        mActionMap.value("Load ...")->setText(QString("Load into %1 ...").arg(title));
+    }
 	else
+    {
 		this->mActionMap.value("Load ...")->setEnabled(false);
+        mActionMap.value("Load ...")->setText(QString::fromUtf8("Load ..."));
+    }
 
 	QPoint viewPt = this->mModelView->mapFromScene(this->mLastScenePos);
 	this->mItemContextMenu->move(mModelView->mapToGlobal(viewPt));
@@ -721,26 +779,6 @@ void NMModelViewWidget::saveItems(void)
 				NMErr(ctx, << "couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
 				return;
 			}
-
-//            // only save input information, if inputs are going to be saved as well
-//            QList<QStringList> newInputs;
-//            foreach(const QStringList& sl, comp->getInputs())
-//            {
-//                QStringList nIn;
-//                foreach(const QString& input, sl)
-//                {
-//                    if (savecomps.contains(input))
-//                    {
-//                        nIn.push_back(input);
-//                    }
-//                }
-//                if (nIn.size() > 0)
-//                {
-//                    newInputs.push_back(nIn);
-//                }
-//            }
-
-
 
 			xmlS.serialiseComponent(comp, fnLmx, 4, append);
 			lmv << (qint32)NMProcessComponentItem::Type;

@@ -29,9 +29,9 @@
    <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>270</y>
-      <width>461</width>
+      <x>60</x>
+      <y>250</y>
+      <width>291</width>
       <height>281</height>
      </rect>
     </property>
@@ -39,9 +39,9 @@
    <widget class="QVTKWidget" name="qvtkWidget" native="true">
     <property name="geometry">
      <rect>
-      <x>39</x>
-      <y>50</y>
-      <width>441</width>
+      <x>30</x>
+      <y>30</y>
+      <width>251</width>
       <height>191</height>
      </rect>
     </property>
@@ -169,7 +169,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>68</width>
+          <width>160</width>
           <height>544</height>
          </rect>
         </property>
@@ -204,7 +204,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>68</width>
+          <width>161</width>
           <height>544</height>
          </rect>
         </property>

@@ -723,8 +723,13 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 	 *  and ensure for all process components that
 	 *  the names of any input components are consistent
 	 *  with the actual component names as result of
-	 *  the import process.
-	 */
+     *  the import process.
+     *  We also make sure that we remove any input registered
+     *  with the component, but not available amongst the currently
+     *  loaded model components (this is the case when a single
+     *  component embedded in a certain context, is saved individually
+     *  and re-used (imported) to another modelling context).
+     */
 	QStringList newnames = nameRegister.values();
 	foreach(const QString& nn, newnames)
 	{
@@ -732,10 +737,12 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 				qobject_cast<NMIterableComponent*>(controller->getComponent(nn));
 		if (comp != 0 && comp->getProcess() != 0)
 		{
+            QList<QStringList> revisedList;
 			QList<QStringList> inputslist =
 					comp->getProcess()->getInputComponents();
 			for(int i=0; i < inputslist.size(); ++i)
 			{
+                QStringList newInputsList;
 				QStringList oldinputs = inputslist.at(i);
 				for(int oi=0; oi < oldinputs.size(); ++oi)
 				{
@@ -762,11 +769,19 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 					{
 						newinput = nameRegister.value(oldinputSrc);
 					}
-					oldinputs.replace(oi, newinput);
+                    //oldinputs.replace(oi, newinput);
+                    if (!newinput.isEmpty())
+                    {
+                        newInputsList.push_back(newinput);
+                    }
 				}
-				inputslist.replace(i, oldinputs);
+                //inputslist.replace(i, oldinputs);
+                if (newInputsList.size() > 0)
+                {
+                    revisedList.push_back(newInputsList);
+                }
 			}
-			comp->getProcess()->setInputComponents(inputslist);
+            comp->getProcess()->setInputComponents(revisedList);
 		}
 	}
 }

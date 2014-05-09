@@ -463,7 +463,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
     else
     {
-        title = QString::fromUtf8("Root Model");
+        title = QString::fromUtf8("root");
     }
 
 	// Execute && Reset model
@@ -540,7 +540,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
 
 	// SAVE & LOAD
-	if (item != 0 && item->type() != NMComponentLinkItem::Type)
+    if (    (item != 0 && item->type() != NMComponentLinkItem::Type)
+         || item == 0)
     {
         this->mActionMap.value("Save As ...")->setEnabled(true);
         mActionMap.value("Save As ...")->setText(QString("Save %1 As ...").arg(title));
@@ -851,14 +852,22 @@ void NMModelViewWidget::loadItems(void)
 	QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
 	QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
 
+    // get the import component
+    NMModelComponent* hc = this->componentFromItem(mLastItem);
+    NMIterableComponent* importHost = 0;
+    if (hc != 0)
+    {
+        importHost = qobject_cast<NMIterableComponent*>(hc);
+    }
+
 	// read the data model
 	QMap<QString, QString> nameRegister;
 	NMModelSerialiser xmlS;
 
 #ifdef BUILD_RASSUPPORT	
-	nameRegister = xmlS.parseComponent(fnLmx, this->mModelController, *this->mRasConn);
+    nameRegister = xmlS.parseComponent(fnLmx, importHost, this->mModelController, *this->mRasConn);
 #else
-    nameRegister = xmlS.parseComponent(fnLmx, this->mModelController);
+    nameRegister = xmlS.parseComponent(fnLmx, importHost, this->mModelController);
 #endif
 
 	QFile fileLmv(fnLmv);

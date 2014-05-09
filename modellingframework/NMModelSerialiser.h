@@ -53,12 +53,12 @@ public:
 	virtual ~NMModelSerialiser();
 
 	void serialiseComponent(NMModelComponent* comp,
-			QString fileName, unsigned int indent,
+            const QString& fileName, unsigned int indent,
 			bool appendmode);
 	void serialiseComponent(NMModelComponent* comp,
 			QDomDocument& doc);
-	QMap<QString, QString> parseComponent(QString fileName,
-			NMModelController* controller
+    QMap<QString, QString> parseComponent(const QString& fileName,
+            NMIterableComponent* importHost, NMModelController* controller
 #ifdef BUILD_RASSUPPORT			
 			,
 			NMRasdamanConnectorWrapper& rasWrapper

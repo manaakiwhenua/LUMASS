@@ -30,6 +30,7 @@
 #include <QMetaProperty>
 #include <QList>
 #include <QStringList>
+#include <QMessageBox>
 
 #include "NMModelSerialiser.h"
 #include "NMModelComponentFactory.h"
@@ -50,8 +51,8 @@ NMModelSerialiser::~NMModelSerialiser()
 {
 }
 
-QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
-		NMModelController* controller
+QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName,
+        NMIterableComponent* importHost, NMModelController* controller
 #ifdef BUILD_RASSUPPORT		
 		,
 		NMRasdamanConnectorWrapper& rasWrapper
@@ -115,15 +116,25 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		else if (compName.compare("root") == 0)
 		{
 			comp = controller->getComponent("root");
-			nameRegister.insert("root", "root");
+            QMessageBox::StandardButton resp =
+               QMessageBox::question(0, QString::fromUtf8("Overwrite root properties?"),
+                  QString::fromUtf8("Do you want to overwrite 'root' component properties with value in the file?"));
+
+            if (resp == QMessageBox::No)
+            {
+                NMDebugAI(<< "naa, don't overwrite root!" << std::endl);
+                continue;
+            }
+            nameRegister.insert("root", "root");
 		}
 		else
 		{
 			comp = NMModelComponentFactory::instance().createModelComponent(compType);
 
 			// add new component to the model controller and make sure it has a unique name
+            // note: we're sorting out the host component later (see below)
 			comp->setObjectName(compName);
-			QString finalName = controller->addComponent(comp, 0);
+            QString finalName = controller->addComponent(comp, 0);
 			if (finalName.compare(compName) != 0)
 				comp->setObjectName(finalName);
 			nameRegister.insert(compName, finalName);
@@ -136,9 +147,10 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		QDomElement propElem = compElem.firstChildElement("Property");
 		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
 		{
-			// we can only deal with the HostComponent after we've parsed everything
-			if (propElem.attribute("name").compare("HostComponent") == 0)
-				continue;
+            // serialisation of HostComponent is deprecated
+            //            // we can only deal with the HostComponent after we've parsed everything
+            //            if (propElem.attribute("name").compare("HostComponent") == 0)
+            //                continue;
 
 			QVariant value;
 			bool suc = false;
@@ -193,7 +205,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 	this->harmoniseInputComponentNames(nameRegister, controller);
 
 	//==========================================================================================
-	// parsing model components -- establish component relationships
+    // parsing model components -- establish component relationships I: setting subcomponents
 	//==========================================================================================
 	compNode = modelElem.firstChild(); //Element("ModelComponent");
 	for (; !compNode.isNull() && compNode.isElement(); compNode = compNode.nextSibling()) //Element("ModelComponent"))
@@ -209,34 +221,34 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 		if (itComp == 0)
 			continue;
 
-		NMDebugAI(<< "adding '" << finalName.toStdString() << "' to its host component" << endl);
-		QDomElement propElem = compElem.firstChildElement("Property");
-		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
-		{
-			if (propElem.attribute("name").compare("HostComponent") != 0)
-				continue;
+        //		NMDebugAI(<< "adding '" << finalName.toStdString() << "' to its host component" << endl);
+        //		QDomElement propElem = compElem.firstChildElement("Property");
+        //		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
+        //		{
+        //			if (propElem.attribute("name").compare("HostComponent") != 0)
+        //				continue;
 
-			QDomElement hostCompElem = propElem.firstChildElement("component_name");
-			NMIterableComponent* hostComp = 0;
-			if ((nameRegister.find(hostCompElem.text()) == nameRegister.end() ||
-				 (hostCompElem.text().compare("root") == 0  &&
-				  nameRegister.find("root") == nameRegister.end())
-				 )                                                                   &&
-				itComp->objectName().compare("root") != 0
-			   )
-			{
-				hostComp = qobject_cast<NMIterableComponent*>(controller->getComponent("root"));
-				if (hostComp != 0)
-				{
-					hostComp->addModelComponent(itComp);
-				}
-				else
-				{
-					NMErr(ctx, << "couldn't get the root model component from "
-							<< "the model controller!");
-				}
-			}
-		}
+        //			QDomElement hostCompElem = propElem.firstChildElement("component_name");
+        //			NMIterableComponent* hostComp = 0;
+        //			if ((nameRegister.find(hostCompElem.text()) == nameRegister.end() ||
+        //				 (hostCompElem.text().compare("root") == 0  &&
+        //				  nameRegister.find("root") == nameRegister.end())
+        //				 )                                                                   &&
+        //				itComp->objectName().compare("root") != 0
+        //			   )
+        //			{
+        //				hostComp = qobject_cast<NMIterableComponent*>(controller->getComponent("root"));
+        //				if (hostComp != 0)
+        //				{
+        //					hostComp->addModelComponent(itComp);
+        //				}
+        //				else
+        //				{
+        //					NMErr(ctx, << "couldn't get the root model component from "
+        //							<< "the model controller!");
+        //				}
+        //			}
+        //		}
 
 
 		NMDebugAI(<< "setting subcomponents for '" << itCompName.toStdString() << "'" << endl);
@@ -260,6 +272,25 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(QString fileName,
 			}
 		}
 	}
+
+    //==========================================================================================
+    // iterating over imported components -- establish component relationships II: setting host component
+    //==========================================================================================
+    NMIterableComponent* ic = importHost;
+    if (ic == 0)
+    {
+        NMModelComponent* mc = NMModelController::getInstance()->getComponent(QString::fromUtf8("root"));
+        ic = qobject_cast<NMIterableComponent*>(mc);
+    }
+
+    foreach(const QString& name, nameRegister.values())
+    {
+        NMModelComponent* c = NMModelController::getInstance()->getComponent(name);
+        if (c->getHostComponent() == 0 && c->objectName().compare("root") != 0 && ic != 0)
+        {
+            ic->addModelComponent(c);
+        }
+    }
 
 	// ------------------------------------------------------
 	// a bit of debug code
@@ -445,7 +476,7 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 
 void
 NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
-		QString fileName, unsigned int indent, bool appendmode)
+        const QString& fileName, unsigned int indent, bool appendmode)
 {
 	NMDebugCtx(ctx, << "...");
 

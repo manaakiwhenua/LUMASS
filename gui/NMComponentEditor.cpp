@@ -150,7 +150,7 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
 
     // let's start with the component's properties,
     // in case we've got a component
-    if (comp != 0)// && comp->getProcess() == 0)
+    if (comp != 0)// && compq->getProcess() == 0)
     {
         connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
 

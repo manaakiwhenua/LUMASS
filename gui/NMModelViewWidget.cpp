@@ -37,6 +37,8 @@
 #include <QDockWidget>
 #include <QWidget>
 #include <QSplitter>
+#include <QtDebug>
+#include <QPropertyAnimation>
 
 #include "otbmodellerwin.h"
 #include "NMModelViewWidget.h"
@@ -552,7 +554,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         mActionMap.value("Save As ...")->setText(QString::fromUtf8("Save As ..."));
     }
 
-    if (!running && pi == 0)
+    if (!running && pi == 0 && selection.count() == 0)
     {
 		this->mActionMap.value("Load ...")->setEnabled(true);
         mActionMap.value("Load ...")->setText(QString("Load into %1 ...").arg(title));
@@ -682,7 +684,10 @@ void NMModelViewWidget::saveItems(void)
 	}
 
 	if (items.count() == 0)
-		return;
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
 	// create a list of all components to be saved
 	foreach(QGraphicsItem* item, items)
@@ -884,7 +889,9 @@ void NMModelViewWidget::loadItems(void)
 
 	NMDebugAI(<< "reading model view file ..." << endl);
 	NMDebugAI(<< "---------------------------" << endl);
-	NMDataComponent* dataComp = 0;
+    QList<QGraphicsItem*> importItems;
+    QRectF importRegion; // in scene's coordinate space
+    NMDataComponent* dataComp = 0;
 	NMIterableComponent* itComp = 0;
 	NMProcess* procComp;
 	while(!lmv.atEnd())
@@ -932,6 +939,16 @@ void NMModelViewWidget::loadItems(void)
 					}
 					pi->setFlag(QGraphicsItem::ItemIsMovable, true);
 					this->mModelScene->addItem(pi);
+
+                    if (importItems.size() == 0)
+                    {
+                        importRegion = pi->mapRectToScene(pi->boundingRect());
+                    }
+                    else
+                    {
+                        importRegion = importRegion.united(pi->mapRectToScene(pi->boundingRect()));
+                    }
+                    importItems.push_back(pi);
 				}
 				break;
 
@@ -956,6 +973,16 @@ void NMModelViewWidget::loadItems(void)
 					}
 
 					this->mModelScene->addItem(ai);
+
+                    if (importItems.size() == 0)
+                    {
+                        importRegion = ai->mapRectToScene(ai->boundingRect());
+                    }
+                    else
+                    {
+                        importRegion = importRegion.united(ai->mapRectToScene(ai->boundingRect()));
+                    }
+                    importItems.push_back(ai);
 				}
 
 				break;
@@ -1025,8 +1052,8 @@ void NMModelViewWidget::loadItems(void)
 				}
 				break;
 		case (qint32)NMProcessComponentItem::Type:
-				pi = new NMProcessComponentItem(0,0);
-				lmv >> *pi;
+                pi = new NMProcessComponentItem(0,0);
+                lmv >> *pi;
 				break;
 
 		case (qint32)NMAggregateComponentItem::Type:
@@ -1041,17 +1068,30 @@ void NMModelViewWidget::loadItems(void)
 					ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
 							this->mModelScene->getComponentItem(title));
 
-					if (ai == 0 || nkids < 1)
+
+                    NMModelComponent* c = NMModelController::getInstance()->getComponent(title);
+                    QStringList subNames;
+                    this->getSubComps(c, subNames);
+
+                    //if (ai == 0 || nkids < 1)
+                    if (ai == 0 || subNames.size() == 0)
 						break;
+
+                    for (unsigned int c=0; c < nkids; ++c)
+                    {
+                        QString kn;
+                        lmv >> kn;
+                    }
 
 					NMProcessComponentItem* ipi = 0;
 					NMAggregateComponentItem* iai = 0;
-					for (unsigned int c=0; c < nkids; ++c)
+                    //for (unsigned int c=0; c < nkids; ++c)
+                    foreach(const QString& kname, subNames)
 					{
-						QString kname;
-						lmv >> kname;
+//						QString kname;
+//						lmv >> kname;
 
-						kname = nameRegister.value(kname);
+//						kname = nameRegister.value(kname);
 						ipi = qgraphicsitem_cast<NMProcessComponentItem*>(
 								this->mModelScene->getComponentItem(kname));
 						iai = qgraphicsitem_cast<NMAggregateComponentItem*>(
@@ -1071,7 +1111,73 @@ void NMModelViewWidget::loadItems(void)
 		}
 	}
 
-	this->mModelScene->invalidate();
+    // re-group and shift imported graphics items to
+    // appear as part of their new import host
+    // - if importHost is not NULL -
+    if (importHost != 0)
+    {
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
+                    mModelScene->getComponentItem(importHost->objectName()));
+
+        QRectF translocRect = importRegion;
+        translocRect.moveCenter(mLastScenePos);
+        QRectF hostImportRect = ai->mapFromScene(translocRect).boundingRect();
+        QLineF longDiag(hostImportRect.center(), hostImportRect.topLeft());
+        qreal refLength = longDiag.length();
+        if (refLength == 0)
+        {
+            refLength == 1;
+        }
+
+        // make some space in the importHost item
+        // (all operations in importHost's coordinate space)
+        foreach(QGraphicsItem* ki, ai->childItems())
+        {
+            // since QGraphicsItem functions all operate in the item's
+            // coordinate space (except setPos), we have to transform it
+            // into it's parent's coordinate space
+            QRectF kiRect = ai->mapRectFromItem(ki, ki->boundingRect());
+            if (kiRect.intersects(hostImportRect))
+            {
+                QLineF movePath(hostImportRect.center(), kiRect.center());
+                movePath.setLength(refLength + (refLength * (movePath.length()/refLength)));
+
+                NMProcessComponentItem* kipi = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
+                NMAggregateComponentItem* kiai = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
+
+                // Start animate this class
+                QPropertyAnimation* anim;
+                if (kipi != 0)
+                {
+                    anim = new QPropertyAnimation(kipi, "pos");
+
+                    // 2 second duration animation
+                    anim->setDuration(4000);
+                    // position to start animation
+                    anim->setStartValue(ki->pos());
+                    // end position of animation
+                    anim->setEndValue(movePath.p2());
+                }
+                else
+                {
+                    ki->setPos(movePath.p2());
+                }
+            }
+        }
+
+        foreach(QGraphicsItem* ii, importItems)
+        {
+            NMModelComponent* c = this->componentFromItem(ii);
+            if (c->getHostComponent()->objectName().compare(importHost->objectName()) == 0)
+            {
+                QPointF deltaIn = importRegion.center() - ii->mapRectToScene(ii->boundingRect()).center();
+                ai->addToGroup(ii);
+                ii->setPos(ai->mapFromScene(mLastScenePos) + deltaIn);
+            }
+        }
+    }
+
+    this->mModelScene->invalidate();
 }
 
 void
@@ -1588,12 +1694,14 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		comp = qobject_cast<NMModelComponent*>(itComp);
 		itComp->setDescription(tname);
 	}
-	NMDebugAI(<< "and its object name is '" << comp->objectName().toStdString() << "'" << endl);
 
-	if (comp == 0)
+    if (comp == 0)
 	{
-		return;
+        NMErr(ctx, << "Component creation failed! proc=" << proc << " | comp=" << comp);
+        NMDebugCtx(ctx, << "done!")
+        return;
 	}
+    NMDebugAI(<< "and its object name is '" << comp->objectName().toStdString() << "'" << endl);
 
 	procItem->setTitle(tname);
 	procItem->setDescription(tname);
@@ -1775,6 +1883,7 @@ void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)
     {
         if (!this->mModelController->contains(comp->objectName()))
         {
+            mTreeCompEditor->setObject(0);
             mTreeCompEditor->clear();
             mTreeCompEditor->hide();
         }

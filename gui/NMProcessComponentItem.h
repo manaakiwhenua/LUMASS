@@ -53,7 +53,8 @@ class NMComponentLinkItem;
 class NMProcessComponentItem: public QObject, public QGraphicsItem
 {
 	Q_OBJECT
-	Q_INTERFACES(QGraphicsItem)
+    Q_INTERFACES(QGraphicsItem)
+    Q_PROPERTY(QPointF pos READ pos WRITE setPos)
 
 public:
 	NMProcessComponentItem(QGraphicsItem* parent=0,
@@ -63,10 +64,12 @@ public:
 	// UserType is 65536
 	enum {Type = QGraphicsItem::UserType + 10};
 
+
+
 	int type(void) const
 		{return Type;}
 
-	QRectF boundingRect() const;
+    QRectF boundingRect() const;
 	void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 			QWidget* widget);
 

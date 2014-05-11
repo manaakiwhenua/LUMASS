@@ -49,6 +49,10 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     {
         mIcon.load(":data-write-icon.png");
     }
+    else if (this->objectName().contains("DataBuffer", Qt::CaseInsensitive))
+    {
+        mIcon.load(":image_layer.png");
+    }
     else
     {
         mIcon.load(":model-icon.png");
@@ -197,6 +201,10 @@ void NMProcessComponentItem::setTitle(const QString& title)
     else if (title.contains(QString("Writer"), Qt::CaseInsensitive))
     {
         mIcon.load(":data-save-icon.png");
+    }
+    else if (title.contains("DataBuffer", Qt::CaseInsensitive))
+    {
+        mIcon.load(":image_layer.png");
     }
     else
     {

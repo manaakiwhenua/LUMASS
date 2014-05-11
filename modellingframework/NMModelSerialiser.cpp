@@ -115,17 +115,31 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 		}
 		else if (compName.compare("root") == 0)
 		{
-			comp = controller->getComponent("root");
-            QMessageBox::StandardButton resp =
-               QMessageBox::question(0, QString::fromUtf8("Overwrite root properties?"),
-                  QString::fromUtf8("Do you want to overwrite 'root' component properties with value in the file?"));
-
-            if (resp == QMessageBox::No)
+            if (    importHost == 0
+                ||  (importHost != 0 && importHost->objectName().compare("root", Qt::CaseInsensitive) == 0)
+               )
             {
-                NMDebugAI(<< "naa, don't overwrite root!" << std::endl);
+                comp = controller->getComponent("root");
+                QMessageBox::StandardButton resp =
+                   QMessageBox::question(0, QString::fromUtf8("Overwrite root properties?"),
+                      QString::fromUtf8("Do you want to overwrite 'root' component properties with value in the file?"));
+
+                if (resp == QMessageBox::No)
+                {
+                    NMDebugAI(<< "naa, don't overwrite root!" << std::endl);
+                    continue;
+                }
+                else
+                {
+                    nameRegister.insert("root", "root");
+                }
+            }
+            else
+            {
+                NMDebugAI(<< "Ignored 'root' component! Cannot import 'root' "
+                          << "component into higher level aggregate component!" << std::endl);
                 continue;
             }
-            nameRegister.insert("root", "root");
 		}
 		else
 		{
@@ -285,8 +299,13 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 
     foreach(const QString& name, nameRegister.values())
     {
+        NMDebugAI(<< "sorting host for '" << name.toStdString() << "' ..." << std::endl);
         NMModelComponent* c = NMModelController::getInstance()->getComponent(name);
-        if (c->getHostComponent() == 0 && c->objectName().compare("root") != 0 && ic != 0)
+        if (    c != 0
+            &&  c->getHostComponent() == 0
+            &&  c->objectName().compare("root") != 0
+            &&  ic != 0
+           )
         {
             ic->addModelComponent(c);
         }

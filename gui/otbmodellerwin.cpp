@@ -242,6 +242,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     mTreeCompEditor->setObjectName(QString::fromUtf8("treeCompEditor"));
     ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Model Component Info"));
 
+    ui->componentInfoDock->setMinimumWidth(160);
     ui->componentInfoDock->setVisible(false);
 
     // ================================================
@@ -255,6 +256,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     NMProcCompList* procList = new NMProcCompList(ui->compWidgetList);
     procList->setObjectName(QString::fromUtf8("processComponents"));
     ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
+
+    ui->componentsWidget->setMinimumWidth(150);
 
     // ================================================
     // BAR(s) SETUP - MENU - PROGRESS - STATUS

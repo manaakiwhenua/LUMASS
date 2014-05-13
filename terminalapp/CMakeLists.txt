@@ -62,7 +62,7 @@ file(GLOB ENGINE_SRC
     #${gui_SOURCE_DIR}/NMItk2VtkConnector.cpp
 )
 
-set(ENGINE_LINKLIBS QtCore QtXml
+set(ENGINE_LINKLIBS Qt5Core Qt5Xml
 	RasImageIO OTBGDALRATImageIO NMModFrame 
         #vtkImaging vtkIO vtkCommon vtkFiltering vtkHybrid
         ${VTK_LIBRARIES}

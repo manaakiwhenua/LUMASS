@@ -117,7 +117,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* MODEL SCENE SETUP */
 	/* ====================================================================== */
 	mModelScene = new NMModelScene(this);
-    //mModelScene->setSceneRect(-5000,-5000,8000,8000);
+    mModelScene->setSceneRect(-5000,-5000,8000,8000);
 	mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	connect(this, SIGNAL(linkToolToggled(bool)), mModelScene,
 			SLOT(toggleLinkToolButton(bool)));
@@ -453,6 +453,9 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     bool dataBuffer = false;
 
     NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+
+    NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
+
     QString title;
     if (pi != 0)
     {
@@ -463,14 +466,17 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     {
         title = ai->getTitle();
     }
+    else if (li != 0)
+    {
+        title = QString("input link");
+    }
     else
     {
         title = QString::fromUtf8("root");
     }
 
 	// Execute && Reset model
-    if (((item != 0 && item->type() != NMComponentLinkItem::Type)
-		&& !running) || !running)
+    if (!running && ((ai != 0 || pi != 0) && li == 0))
 	{
         if (!dataBuffer)
         {
@@ -554,7 +560,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         mActionMap.value("Save As ...")->setText(QString::fromUtf8("Save As ..."));
     }
 
-    if (!running && pi == 0 && selection.count() == 0)
+    if (!running && pi == 0 && li == 0 && selection.count() == 0)
     {
 		this->mActionMap.value("Load ...")->setEnabled(true);
         mActionMap.value("Load ...")->setText(QString("Load into %1 ...").arg(title));
@@ -1111,6 +1117,8 @@ void NMModelViewWidget::loadItems(void)
 		}
 	}
 
+    NMDebug(<< std::endl << std::endl);
+    NMDebugAI(<< "REGROUP AND SHIFT ======================================" << std::endl);
     // re-group and shift imported graphics items to
     // appear as part of their new import host
     // - if importHost is not NULL -
@@ -1121,13 +1129,15 @@ void NMModelViewWidget::loadItems(void)
 
         QRectF translocRect = importRegion;
         translocRect.moveCenter(mLastScenePos);
-        QRectF hostImportRect = ai->mapFromScene(translocRect).boundingRect();
+        QRectF hostImportRect = ai->mapRectFromScene(translocRect);
         QLineF longDiag(hostImportRect.center(), hostImportRect.topLeft());
         qreal refLength = longDiag.length();
         if (refLength == 0)
         {
             refLength == 1;
         }
+        NMDebugAI(<< ">>> max move dist: " << refLength << std::endl);
+        NMDebugAI(<< ">>> repositioning kids ..." << std::endl);
 
         // make some space in the importHost item
         // (all operations in importHost's coordinate space)
@@ -1139,46 +1149,73 @@ void NMModelViewWidget::loadItems(void)
             QRectF kiRect = ai->mapRectFromItem(ki, ki->boundingRect());
             if (kiRect.intersects(hostImportRect))
             {
+                NMDebugAI(<< reportRect(kiRect, "kiRect:") << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
+
                 QLineF movePath(hostImportRect.center(), kiRect.center());
-                movePath.setLength(refLength + (refLength * (movePath.length()/refLength)));
+                movePath.setLength(refLength - (refLength * (movePath.length()/refLength)));
 
-                NMProcessComponentItem* kipi = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
-                NMAggregateComponentItem* kiai = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
+                NMDebugAI(<< "move length: " << movePath.length() << " " << reportLine(movePath, "movePath:") << std::endl);
 
-                // Start animate this class
-                QPropertyAnimation* anim;
-                if (kipi != 0)
-                {
-                    anim = new QPropertyAnimation(kipi, "pos");
+                ki->setPos(movePath.p2());
 
-                    // 2 second duration animation
-                    anim->setDuration(4000);
-                    // position to start animation
-                    anim->setStartValue(ki->pos());
-                    // end position of animation
-                    anim->setEndValue(movePath.p2());
-                }
-                else
-                {
-                    ki->setPos(movePath.p2());
-                }
+                NMDebug(<< std::endl);
             }
         }
 
+        // position the import items within the hostImportRect
         foreach(QGraphicsItem* ii, importItems)
         {
             NMModelComponent* c = this->componentFromItem(ii);
             if (c->getHostComponent()->objectName().compare(importHost->objectName()) == 0)
             {
-                QPointF deltaIn = importRegion.center() - ii->mapRectToScene(ii->boundingRect()).center();
+                QPointF deltaIn = ii->mapRectToScene(ii->boundingRect()).center() - importRegion.center();
                 ai->addToGroup(ii);
-                ii->setPos(ai->mapFromScene(mLastScenePos) + deltaIn);
+                ii->setPos(ai->mapFromScene(mLastScenePos) + ai->mapFromScene(deltaIn));
             }
         }
     }
 
     this->mModelScene->invalidate();
 }
+
+std::string
+NMModelViewWidget::reportRect(const QRectF& rect, const char* msg)
+{
+    std::stringstream str;
+
+    str << msg << " "
+            << rect.center().x() << ","
+            << rect.center().y() << " "
+            << rect.width() << "x"
+            << rect.height();
+
+    return str.str();
+}
+
+std::string
+NMModelViewWidget::reportLine(const QLineF& line, const char* msg)
+{
+    std::stringstream str;
+    str << msg << " "
+            << line.p1().x() << ","
+            << line.p1().y() << " "
+            << line.p2().x() << ","
+            << line.p2().y();
+
+    return str.str();
+}
+
+std::string
+NMModelViewWidget::reportPoint(const QPointF& pt, const char* msg)
+{
+    std::stringstream str;
+    str << msg << " "
+            << pt.x() << ","
+            << pt.y();
+
+    return str.str();
+}
+
 
 void
 NMModelViewWidget::zoomToContent()
@@ -1816,7 +1853,7 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
         if (mTreeCompEditor)
         {
             mTreeCompEditor->setObject(0);
-            mTreeCompEditor->clear();
+            //mTreeCompEditor->clear();
         }
         return;
     }
@@ -2027,5 +2064,3 @@ NMModelViewWidget::getMainWindow(void)
 
     return mainWin;
 }
-
-

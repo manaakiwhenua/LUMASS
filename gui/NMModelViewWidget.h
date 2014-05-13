@@ -132,6 +132,10 @@ protected slots:
 
 private:
 	void initItemContextMenu();
+    //debug
+    std::string reportRect(const QRectF& rect, const char* msg);
+    std::string reportPoint(const QPointF& pt, const char* msg);
+    std::string reportLine(const QLineF& line, const char* msg);
 
     qreal mScaleFactor;
 

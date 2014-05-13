@@ -35,6 +35,7 @@
 #include "NMConditionalIterComponent.h"
 #include "NMSequentialIterComponent.h"
 
+
 const std::string NMComponentEditor::ctx = "NMComponentEditor";
 
 NMComponentEditor::NMComponentEditor(QWidget *parent,
@@ -107,30 +108,32 @@ NMComponentEditor::setObject(QObject* obj)
 {
     //NMDebugCtx(ctx, << "...");
 
-    if (obj == 0)
-    {
-    //        NMDebugAI(<< "got a NULL object!" << std::endl);
-    //        NMDebugCtx(ctx, << "done!");
-        return;
-    }
-
+    // don't do anyting as long we're not ready for change!
     if (mUpdating)
     {
-    //        NMWarn(ctx, << "just updating ..." << std::endl);
-    //        NMDebugCtx(ctx, << "done!");
+        //        NMWarn(ctx, << "just updating ..." << std::endl);
+        //        NMDebugCtx(ctx, << "done!");
         return;
     }
 
-    // we only support NMModelComponent and
-    // NMProcess objects at this stage
+    // reset the editor upon receiving a NULL object
+    if (obj == 0)
+    {
+        this->mObj = 0;
+        this->comp = 0;
+        this->proc = 0;
+        this->clear();
+
+        //        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
     this->comp = reinterpret_cast<NMModelComponent*>(obj);
     this->proc = reinterpret_cast<NMProcess*>(obj);
 
-
     if (comp == 0 && proc == 0)
     {
-//          NMDebugCtx(ctx, << "done!");
+        //          NMDebugCtx(ctx, << "done!");
         return;
     }
 

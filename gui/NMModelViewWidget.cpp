@@ -1160,13 +1160,25 @@ void NMModelViewWidget::loadItems(void)
     // (all operations in importHost's coordinate space)
     foreach(QGraphicsItem* ki, siblings)
     {
+        if (importItems.contains(ki)) continue;
+
+        NMProcessComponentItem* piki = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
+        NMAggregateComponentItem* aiki = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
+        QString name;
+        if (piki != 0)
+            name = piki->getTitle();
+        else if (aiki != 0)
+            name = aiki->getTitle();
+        else
+            continue;
+
         // since QGraphicsItem functions all operate in the item's
         // coordinate space (except setPos), we have to transform it
         // into it's parent's coordinate space
         QRectF kiRect = ki->mapRectToParent(ki->boundingRect());
         if (kiRect.intersects(hostImportRect))
         {
-            NMDebugAI(<< reportRect(kiRect, "kiRect:") << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
+            NMDebugAI(<< reportRect(kiRect, name.toStdString().c_str()) << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
 
             QLineF movePath(hostImportRect.center(), kiRect.center());
             movePath.setLength(refLength + (refLength * 0.1));
@@ -1198,7 +1210,7 @@ void NMModelViewWidget::loadItems(void)
             movePath.setP2(itsct);
             movePath.setLength(movePath.length()+kiRect.width());
 
-            NMDebugAI(<< reportPoint(movePath.p2(), "new ki center:") << std::endl);
+            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: " << reportPoint(movePath.p2(), "new ki center:") << std::endl);
 
             ki->setPos(movePath.p2().x()-(kiRect.width()/2.0), movePath.p2().y()-(kiRect.height()/2.0));
 
@@ -1213,7 +1225,9 @@ void NMModelViewWidget::loadItems(void)
         NMModelComponent* c = this->componentFromItem(ii);
         if (importHost == 0 || (importHost != 0 && c->getHostComponent()->objectName().compare(importHost->objectName()) == 0))
         {
-            QPointF deltaIn = ii->mapRectToScene(ii->boundingRect()).center() - importRegion.center();
+            QPointF curPos = ii->mapToScene(ii->boundingRect().center());
+            NMDebugAI(<< c->objectName().toStdString() << "'s cur pos: " << reportPoint(curPos, "curPos:") << std::endl);
+            QPointF deltaIn = ii->mapToScene(ii->boundingRect().center()) - importRegion.center();
             NMDebugAI(<< c->objectName().toStdString() << "'s loc delta: " << reportPoint(deltaIn, "deltaIn:") << std::endl);
 
             if (ai != 0)

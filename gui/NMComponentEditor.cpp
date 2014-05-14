@@ -123,9 +123,22 @@ NMComponentEditor::setObject(QObject* obj)
         this->comp = 0;
         this->proc = 0;
         this->clear();
-
         //        NMDebugCtx(ctx, << "done!");
         return;
+    }
+    else
+    {
+        if (mObj != 0 && obj->objectName().compare(mObj->objectName()) == 0)
+        {
+            return;
+        }
+        else
+        {
+            if (this->comp != 0)
+            {
+                this->disconnect(comp);
+            }
+        }
     }
 
     this->comp = reinterpret_cast<NMModelComponent*>(obj);

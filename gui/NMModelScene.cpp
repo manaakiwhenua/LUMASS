@@ -36,6 +36,9 @@
 #include "NMProcessComponentItem.h"
 #include "NMAggregateComponentItem.h"
 #include "otbmodellerwin.h"
+#include "nmlog.h"
+
+class NMModelViewWidget;
 
 const std::string NMModelScene::ctx = "NMModelScene";
 
@@ -349,12 +352,54 @@ NMComponentLinkItem* NMModelScene::getLinkItem(QPointF pos)
 void
 NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-	// update coordinate label in status bar
-	QWidget* w = qobject_cast<QWidget*>(this->parent());
-	OtbModellerWin* tlw = qobject_cast<OtbModellerWin*>(w->topLevelWidget());
-	QString pos = QString("Scene Position - X: %1 Y: %2").arg(event->scenePos().x())
-			.arg(event->scenePos().y());
-	tlw->updateCoordLabel(pos);
+    // update coordinate label in status bar
+    QPointF sp = event->scenePos();
+    QGraphicsItem* item = this->itemAt(sp, this->views()[0]->transform());
+    NMAggregateComponentItem* ai = 0;
+    NMProcessComponentItem* pi = 0;
+    qreal x = sp.x();
+    qreal y = sp.y();
+    QString title = "Scene";
+    if (item != 0)
+    {
+        pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+        if (pi != 0)
+        {
+            if (pi->parentItem() != 0)
+            {
+                ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi->parentItem());
+            }
+        }
+        else
+        {
+             ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        }
+
+        if (ai != 0)
+        {
+            title = ai->getTitle();
+            QPointF aip = ai->mapFromScene(sp);
+            x = aip.x();
+            y = aip.y();
+        }
+    }
+
+    QString pos = QString("Scene Position - X: %1 Y: %2 || %3 Position - X: %4 Y: %5")
+            .arg(event->scenePos().x())
+            .arg(event->scenePos().y())
+            .arg(title)
+            .arg(x)
+            .arg(y);
+    NMModelViewWidget* vw = qobject_cast<NMModelViewWidget*>(this->views().at(0)->parent());
+    OtbModellerWin* mainWin = 0;
+    if (vw != 0)
+    {
+        mainWin = vw->getMainWindow();
+        if (mainWin != 0)
+        {
+            mainWin->updateCoordLabel(pos);
+        }
+    }
 
     mMousePos = event->scenePos();
 
@@ -374,7 +419,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 		break;
 	}
 
-	QGraphicsScene::mouseMoveEvent(event);
+    QGraphicsScene::mouseMoveEvent(event);
 }
 
 void

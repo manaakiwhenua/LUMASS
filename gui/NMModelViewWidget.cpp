@@ -56,7 +56,6 @@ const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075)
 {
-    //ctx = "NMModelViewWidget";
 	this->setAcceptDrops(true);
 	this->mLastItem = 0;
 	
@@ -117,7 +116,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* MODEL SCENE SETUP */
 	/* ====================================================================== */
 	mModelScene = new NMModelScene(this);
-    mModelScene->setSceneRect(-5000,-5000,8000,8000);
+    mModelScene->setSceneRect(-4000,-4000,8000,8000);
 	mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	connect(this, SIGNAL(linkToolToggled(bool)), mModelScene,
 			SLOT(toggleLinkToolButton(bool)));
@@ -156,6 +155,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
     mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    mModelView->setMouseTracking(true);
     mModelView->viewport()->installEventFilter(this);
 
     mTreeCompEditor = 0;
@@ -1162,6 +1162,7 @@ void NMModelViewWidget::loadItems(void)
             }
         }
 
+        NMDebugAI(<< ">>> repositioning import graphics ..." << std::endl);
         // position the import items within the hostImportRect
         foreach(QGraphicsItem* ii, importItems)
         {
@@ -1170,6 +1171,8 @@ void NMModelViewWidget::loadItems(void)
             {
                 QPointF deltaIn = ii->mapRectToScene(ii->boundingRect()).center() - importRegion.center();
                 ai->addToGroup(ii);
+                deltaIn -= QPointF(ii->mapRectToScene(ii->boundingRect()).width()/2.0,
+                                   ii->mapRectToScene(ii->boundingRect()).height()/2.0);
                 ii->setPos(ai->mapFromScene(mLastScenePos) + ai->mapFromScene(deltaIn));
             }
         }
@@ -1832,12 +1835,6 @@ NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 	if (dlg != 0)
 		dlg->update();
 
-    if (mTreeCompEditor)
-    {
-        mTreeCompEditor->setObject(target);
-    }
-
-
 	NMDebugCtx(ctx, << "done!");
 }
 
@@ -1853,7 +1850,6 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
         if (mTreeCompEditor)
         {
             mTreeCompEditor->setObject(0);
-            //mTreeCompEditor->clear();
         }
         return;
     }
@@ -2043,6 +2039,19 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
 
         return true;
     }
+    //    else if (e->type() == QEvent::GraphicsSceneMouseMove)
+    //    {
+    //        QGraphicsSceneMouseEvent* mme = static_cast<QGraphicsSceneMouseEvent*>(e);
+
+    //        QString pos = QString("Scene Position - X: %1 Y: %2").arg(mme->scenePos().x())
+    //                .arg(mme->scenePos().y());
+    //        NMDebugAI(<< pos.toStdString() << std::endl);
+    //        OtbModellerWin* mainWin = this->getMainWindow();
+    //        if (mainWin != 0)
+    //        {
+    //            mainWin->updateCoordLabel(pos);
+    //        }
+    //    }
 
     return false;
 }

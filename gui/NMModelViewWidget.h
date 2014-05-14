@@ -63,6 +63,8 @@ public:
 	NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
 	virtual ~NMModelViewWidget();
 
+    OtbModellerWin* getMainWindow(void);
+
 public slots:
 
 	void callEditComponentDialog(const QString &);
@@ -127,8 +129,6 @@ protected slots:
 	void getSubComps(NMModelComponent* comp, QStringList& subs);
 	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
     bool eventFilter(QObject* obj, QEvent* e);
-
-    OtbModellerWin* getMainWindow(void);
 
 private:
 	void initItemContextMenu();

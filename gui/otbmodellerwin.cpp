@@ -332,8 +332,11 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     mModelBuilderWindow = new QMainWindow(this);
     mModelBuilderWindow->setWindowFlags(Qt::Widget);
+    mModelBuilderWindow->setMouseTracking(true);
     mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
     mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
+    //ui->modelViewWidget->setMouseTracking(true);
+    //ui->modelViewWidget->setParent(this);
 
     // =============================================================
     // set up the tool bar

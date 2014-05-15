@@ -531,7 +531,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
 
 	// Execute && Reset model
-    if (!running && ((ai != 0 || pi != 0) && li == 0))
+    if (!running && ((ai != 0 || pi != 0) && li == 0 && ti == 0))
 	{
         if (!dataBuffer)
         {
@@ -606,7 +606,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         mActionMap.value("Save As ...")->setText(QString::fromUtf8("Save As ..."));
     }
 
-    if (!running && pi == 0 && li == 0 && selection.count() == 0)
+    if (!running && pi == 0 && li == 0 && selection.count() == 0 && ti == 0)
     {
 		this->mActionMap.value("Load ...")->setEnabled(true);
         mActionMap.value("Load ...")->setText(QString("Load Into %1 ...").arg(title));
@@ -762,8 +762,12 @@ void NMModelViewWidget::saveItems(void)
     }
 
 	// create a list of all components to be saved
+    // create also a list of all labels on root level
+    // since they don't belong to anyone NMAggregateComponentItem
+    QList<QGraphicsTextItem*> rootLabels;
 	foreach(QGraphicsItem* item, items)
 	{
+        QGraphicsTextItem* label = qgraphicsitem_cast<QGraphicsTextItem*>(item);
 		NMModelComponent* comp = this->componentFromItem(item);
 		if (comp != 0)
 		{
@@ -771,11 +775,19 @@ void NMModelViewWidget::saveItems(void)
 			{
 				savecomps.push_back(comp->objectName());
 				NMIterableComponent* itComp =
-						qobject_cast<NMIterableComponent*>(comp);
+                        qobject_cast<NMIterableComponent*>(comp);
 				if (itComp != 0 && itComp->getProcess() == 0)
 					this->getSubComps(itComp, savecomps);
 			}
 		}
+        // look after "root-labels"
+        else if (label != 0)
+        {
+            if (label->parentItem() == 0)
+            {
+                rootLabels.push_back(label);
+            }
+        }
 	}
 
 	NMDebugAI(<< "save comps '" << savecomps.join(" ").toStdString() << "'" << endl);
@@ -819,9 +831,23 @@ void NMModelViewWidget::saveItems(void)
 		return;
 	}
 	QDataStream lmv(&fileLmv);
-	lmv.setVersion(12);
+    lmv.setVersion(13);
 
-	int cnt = 0;
+
+    // --------------------------------------
+    // save root labels
+
+    foreach(QGraphicsTextItem* label, rootLabels)
+    {
+        lmv << (qint32)QGraphicsTextItem::Type;
+        lmv << *label;
+    }
+
+    // --------------------------------------
+
+    // ------------------------------------------------------
+    // save model component items (incl. any included labels)
+    int cnt = 0;
 	bool append = false;
 	NMModelSerialiser xmlS;
 	foreach(QString itemName, savecomps)
@@ -836,7 +862,8 @@ void NMModelViewWidget::saveItems(void)
 		NMModelComponent* comp;
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;
-		NMComponentLinkItem* li;
+        //NMComponentLinkItem* li;
+        QGraphicsTextItem* ti;
 
 		// we treat root differently, because it hasn't got an item
 		// associated with it
@@ -962,8 +989,13 @@ void NMModelViewWidget::loadItems(void)
 		return;
 	}
 	QDataStream lmv(&fileLmv);
-	if (lmv.version() < 12)
+    if (lmv.version() < 12)
+    {
+        NMBoxErr("Unsupported File Version",
+                 "This *.lmv file version is not supported "
+                 "by LUMASS version < 0.9.3!");
 		return;
+    }
 
 	NMDebugAI(<< "reading model view file ..." << endl);
 	NMDebugAI(<< "---------------------------" << endl);
@@ -980,10 +1012,19 @@ void NMModelViewWidget::loadItems(void)
 
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;
-		NMComponentLinkItem* li;
-		switch(readType)
+        //NMComponentLinkItem* li;
+        QGraphicsTextItem* ti;
+        switch(readType)
 		{
-		case (qint32)NMProcessComponentItem::Type:
+        case (qint32)QGraphicsTextItem::Type:
+            // we deal with 'root-labels' in the second pass of the
+            // lmv file, once we can be certain that we've instantied
+            // the potential new 'importHost'
+            ti = new QGraphicsTextItem();
+            lmv >> *ti;
+            break;
+
+        case (qint32)NMProcessComponentItem::Type:
 				{
 					pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
@@ -1096,8 +1137,36 @@ void NMModelViewWidget::loadItems(void)
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;
 		NMComponentLinkItem* li;
+        QGraphicsTextItem* ti;
 		switch (readType)
 		{
+        case (qint32)QGraphicsTextItem::Type:
+            {
+                ti = new QGraphicsTextItem();
+                lmv >> *ti;
+
+                // any 'root-labels' of the import file
+                // become children of the new importHost
+                if (importHost != 0)
+                {
+                    QGraphicsItem* ppi = this->mModelScene->getComponentItem(
+                                importHost->objectName());
+
+                    NMAggregateComponentItem* pai =
+                            qgraphicsitem_cast<NMAggregateComponentItem*>(ppi);
+
+                    if (pai != 0)
+                    {
+                        pai->addToGroup(ti);
+                    }
+                }
+                else
+                {
+                    this->mModelScene->addItem(ti);
+                }
+            }
+            break;
+
 		case (qint32)NMComponentLinkItem::Type:
 				{
 					int srcIdx, tarIdx;
@@ -1151,34 +1220,36 @@ void NMModelViewWidget::loadItems(void)
                     QStringList subNames;
                     this->getSubComps(c, subNames);
 
-                    //if (ai == 0 || nkids < 1)
-                    if (ai == 0 || subNames.size() == 0)
-						break;
+                    if (ai == 0 || nkids < 1)
+                        break;
 
-                    for (unsigned int c=0; c < nkids; ++c)
-                    {
-                        QString kn;
-                        lmv >> kn;
-                    }
-
-					NMProcessComponentItem* ipi = 0;
+                    NMProcessComponentItem* ipi = 0;
 					NMAggregateComponentItem* iai = 0;
-                    //for (unsigned int c=0; c < nkids; ++c)
-                    foreach(const QString& kname, subNames)
+                    for (unsigned int c=0; c < nkids; ++c)
 					{
-//						QString kname;
-//						lmv >> kname;
+                        QString kname;
+                        lmv >> kname;
 
-//						kname = nameRegister.value(kname);
-						ipi = qgraphicsitem_cast<NMProcessComponentItem*>(
-								this->mModelScene->getComponentItem(kname));
-						iai = qgraphicsitem_cast<NMAggregateComponentItem*>(
-								this->mModelScene->getComponentItem(kname));
+                        if (kname.compare(QString::fromLatin1("TextLabel")) == 0)
+                        {
+                            ti = new QGraphicsTextItem(ai);
+                            lmv >> *ti;
+                            ai->addToGroup(ti);
+                        }
+                        else
+                        {
+                            kname = nameRegister.value(kname);
 
-						if (ipi != 0)
-							ai->addToGroup(ipi);
-						else if (iai != 0)
-							ai->addToGroup(iai);
+                            ipi = qgraphicsitem_cast<NMProcessComponentItem*>(
+                                    this->mModelScene->getComponentItem(kname));
+                            iai = qgraphicsitem_cast<NMAggregateComponentItem*>(
+                                    this->mModelScene->getComponentItem(kname));
+
+                            if (ipi != 0)
+                                ai->addToGroup(ipi);
+                            else if (iai != 0)
+                                ai->addToGroup(iai);
+                        }
 					}
 					ai->setHandlesChildEvents(false);
 				}
@@ -1526,22 +1597,28 @@ void NMModelViewWidget::deleteItem()
 
 	NMProcessComponentItem* procItem;
 	NMAggregateComponentItem* aggrItem;
-	NMComponentLinkItem* linkItem;
+    NMComponentLinkItem* linkItem;
+    QGraphicsTextItem* labelItem;
 
     //QList<NMComponentLinkItem*> delLinkList;
 	QStringList delList;
+    QList<QGraphicsTextItem*> delLabels;
 	if (this->mModelScene->selectedItems().count())
 	{
 		foreach(QGraphicsItem* gi, this->mModelScene->selectedItems())
 		{
 			procItem = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
 			aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
-			linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
+            //linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
+            labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
 
 			if (procItem != 0)
 				delList.push_back(procItem->getTitle());
 			else if (aggrItem != 0)
 				delList.push_back(aggrItem->getTitle());
+            else if (labelItem != 0)
+                delLabels.push_back(labelItem);
+
             //else if (linkItem != 0)
             //	delLinkList.push_back(linkItem);
 		}
@@ -1551,6 +1628,7 @@ void NMModelViewWidget::deleteItem()
 		procItem = qgraphicsitem_cast<NMProcessComponentItem*>(this->mLastItem);
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(this->mLastItem);
 		linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(this->mLastItem);
+        labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(this->mLastItem);
 		if (linkItem != 0)
         {
 			this->deleteLinkComponentItem(linkItem);
@@ -1565,8 +1643,18 @@ void NMModelViewWidget::deleteItem()
             delList.push_back(aggrItem->getTitle());
             //this->deleteAggregateComponentItem(aggrItem);
         }
+        else if (labelItem != 0)
+        {
+            delLabels.push_back(labelItem);
+        }
 	}
 
+
+    // remove labels first, then deal with the rest
+    foreach(QGraphicsTextItem* ti, delLabels)
+    {
+        this->mModelScene->removeItem(ti);
+    }
 
 	QStringListIterator sit(delList);
 	while(sit.hasNext())

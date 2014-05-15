@@ -506,3 +506,4 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 }
 
 
+

@@ -70,6 +70,8 @@ private:
 
 };
 
-QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item);
+QDataStream& operator<<(QDataStream& data, const QGraphicsTextItem& item);
+QDataStream& operator>>(QDataStream& data, QGraphicsTextItem& item);
+QDataStream& operator<<(QDataStream& data, const NMAggregateComponentItem &item);
 
 #endif /* NMAGGREGATECOMPONENTITEM_H_ */

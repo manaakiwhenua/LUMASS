@@ -213,6 +213,36 @@ NMAggregateComponentItem::containsComponent(QString name)
 	return ret;
 }
 
+/*!
+    define QDataStream operator<< and operator>> for QGraphicsTextItem
+*/
+
+QDataStream& operator<<(QDataStream& data, const QGraphicsTextItem& item)
+{
+    data << item.toPlainText();
+    data << item.font();
+    data << item.defaultTextColor();
+    data << item.pos();
+
+    return data;
+}
+
+QDataStream& operator>>(QDataStream& data, QGraphicsTextItem& item)
+{
+    QString text;
+    QFont font;
+    QColor color;
+    QPointF pos;
+
+    data >> text >> font >> color >> pos;
+
+    item.setPlainText(text);
+    item.setFont(font);
+    item.setDefaultTextColor(color);
+    item.setPos(pos);
+
+    return data;
+}
 
 QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
 {
@@ -229,18 +259,23 @@ QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
 	{
 		NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(kids.at(c));
 		NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(c));
+        QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(kids.at(c));
 		if (ai != 0)
+        {
 			data << ai->getTitle();
+        }
 		else if (pi != 0)
+        {
 			data << pi->getTitle();
+        }
+        else if (ti != 0)
+        {
+            data << QString::fromLatin1("TextLabel");
+            data << *ti;
+        }
 	}
 
 	return data;
 }
-
-
-
-
-
 
 

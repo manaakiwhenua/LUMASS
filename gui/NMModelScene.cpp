@@ -205,20 +205,42 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 			return;
 		}
 
+        if (dropText.compare(QString::fromLatin1("TextLabel")) == 0)
+        {
+            QGraphicsItem* pi = this->itemAt(event->scenePos(), this->views()[0]->transform());
+            NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
+            QGraphicsTextItem* labelItem = new QGraphicsTextItem(ai);
+            labelItem->setHtml(QString::fromLatin1("<h2><b>Text Label</b></h2>"));
+            labelItem->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+            labelItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+            labelItem->setOpenExternalLinks(true);
+            if (ai != 0)
+            {
+                ai->addToGroup(labelItem);
+                labelItem->setPos(ai->mapFromScene(event->scenePos()));
+            }
+            else
+            {
+                this->addItem(labelItem);
+                labelItem->setPos(event->scenePos());
+            }
+        }
+        else
+        {
+            NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
+            procItem->setTitle(dropText);
+            procItem->setDescription(dropText);
+            procItem->setPos(event->scenePos());
+            if (dropText.compare("DataBuffer") == 0)
+            {
+                procItem->setIsDataBufferItem(true);
+            }
+            procItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+            event->acceptProposedAction();
 
-		NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
-		procItem->setTitle(dropText);
-		procItem->setDescription(dropText);
-		procItem->setPos(event->scenePos());
-		if (dropText.compare("DataBuffer") == 0)
-		{
-			procItem->setIsDataBufferItem(true);
-		}
-		procItem->setFlag(QGraphicsItem::ItemIsMovable, true);
-		event->acceptProposedAction();
-
-		NMDebugAI(<< "asking for creating '" << dropText.toStdString() << "' ..." << endl);
-		emit processItemCreated(procItem, dropText, event->scenePos());
+            NMDebugAI(<< "asking for creating '" << dropText.toStdString() << "' ..." << endl);
+            emit processItemCreated(procItem, dropText, event->scenePos());
+        }
 	}
 
 	NMDebugCtx(ctx, << "done!");

@@ -419,6 +419,14 @@ void NMModelViewWidget::initItemContextMenu()
 	loadComp->setText(tr("Load ..."));
 	this->mActionMap.insert("Load ...", loadComp);
 
+    QAction* fontAct = new QAction(this->mItemContextMenu);
+    fontAct->setText(tr("Change Font ..."));
+    this->mActionMap.insert("Change Font ...", fontAct);
+
+    QAction* clrAct = new QAction(this->mItemContextMenu);
+    clrAct->setText(tr("Change Colour ..."));
+    this->mActionMap.insert("Change Colour ...", clrAct);
+
 	this->mItemContextMenu->addAction(runComp);
 	this->mItemContextMenu->addAction(resetComp);
 	this->mItemContextMenu->addSeparator();
@@ -430,6 +438,9 @@ void NMModelViewWidget::initItemContextMenu()
 	this->mItemContextMenu->addSeparator();
 	this->mItemContextMenu->addAction(loadComp);
 	this->mItemContextMenu->addAction(saveComp);
+    this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(fontAct);
+    this->mItemContextMenu->addAction(clrAct);
 
 	connect(runComp, SIGNAL(triggered()), this, SLOT(executeModel()));
 	connect(resetComp, SIGNAL(triggered()), this, SLOT(resetModel()));
@@ -439,6 +450,41 @@ void NMModelViewWidget::initItemContextMenu()
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
 	connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
 	connect(loadComp, SIGNAL(triggered()), this, SLOT(loadItems()));
+    connect(fontAct, SIGNAL(triggered()), this, SLOT(changeFont()));
+    connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
+}
+
+void
+NMModelViewWidget::changeFont(void)
+{
+    QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(mLastItem);
+    if (ti != 0)
+    {
+        bool ok;
+        ti->setFont(QFontDialog::getFont(&ok, ti->font(),
+                     this, QString::fromLatin1("Select Label Font")));
+    }
+}
+
+void
+NMModelViewWidget::changeColour(void)
+{
+    QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(mLastItem);
+    NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+
+    if (ti != 0)
+    {
+
+        ti->setDefaultTextColor(QColorDialog::getColor(ti->defaultTextColor(),
+                    this, QString::fromLatin1("Select Label Colour")));
+
+    }
+    else if (ai != 0)
+    {
+        ai->setColor(QColorDialog::getColor(ai->getColor(),
+                    this, QString::fromLatin1("Select Component Colour"),
+                    QColorDialog::ShowAlphaChannel));
+    }
 }
 
 void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
@@ -452,13 +498,12 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
 
     NMProcessComponentItem* pi   = qgraphicsitem_cast<NMProcessComponentItem*>(item);
-    bool dataBuffer = false;
-
     NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
-
     NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
+    QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(item);
 
     QString title;
+    bool dataBuffer = false;
     if (selection.count() > 0)
     {
         title = QString("%1 Components").arg(selection.count());
@@ -475,6 +520,10 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     else if (li != 0)
     {
         title = QString("input link");
+    }
+    else if (ti != 0)
+    {
+        title = QString("Label");
     }
     else
     {
@@ -566,6 +615,26 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     {
 		this->mActionMap.value("Load ...")->setEnabled(false);
         mActionMap.value("Load ...")->setText(QString::fromUtf8("Load ..."));
+    }
+
+    // CHANGE FONT & COLOUR
+    if ((ai != 0 || ti != 0) && selection.count() == 0)
+    {
+        if (ti != 0)
+        {
+            this->mActionMap.value("Change Font ...")->setEnabled(true);
+            this->mActionMap.value("Change Font ...")->setText(QString("Change %1's Font ...").arg(title));
+        }
+
+        this->mActionMap.value("Change Colour ...")->setEnabled(true);
+        this->mActionMap.value("Change Colour ...")->setText(QString("Change %1's Colour ...").arg(title));
+    }
+    else
+    {
+        this->mActionMap.value("Change Font ...")->setEnabled(false);
+        this->mActionMap.value("Change Colour ...")->setEnabled(false);
+        this->mActionMap.value("Change Font ...")->setText(QString("Change Font ..."));
+        this->mActionMap.value("Change Colour ...")->setText(QString("Change Colour ..."));
     }
 
 	QPoint viewPt = this->mModelView->mapFromScene(this->mLastScenePos);
@@ -861,11 +930,17 @@ void NMModelViewWidget::loadItems(void)
 	QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
 
     // get the import component
+    QString importHostName;
     NMModelComponent* hc = this->componentFromItem(mLastItem);
     NMIterableComponent* importHost = 0;
     if (hc != 0)
     {
         importHost = qobject_cast<NMIterableComponent*>(hc);
+        importHostName = importHost->objectName();
+    }
+    else
+    {
+        importHostName = "root";
     }
 
 	// read the data model
@@ -894,7 +969,7 @@ void NMModelViewWidget::loadItems(void)
 	NMDebugAI(<< "---------------------------" << endl);
     QList<QGraphicsItem*> importItems;
     QRectF importRegion; // in scene's coordinate space
-    NMDataComponent* dataComp = 0;
+    //NMDataComponent* dataComp = 0;
 	NMIterableComponent* itComp = 0;
 	NMProcess* procComp;
 	while(!lmv.atEnd())
@@ -949,7 +1024,7 @@ void NMModelViewWidget::loadItems(void)
                     }
                     else
                     {
-                        importRegion = importRegion.united(pi->mapRectToScene(pi->boundingRect()));
+                        importRegion = unionRects(importRegion, pi->mapRectToScene(pi->boundingRect()));
                     }
                     importItems.push_back(pi);
 				}
@@ -983,7 +1058,7 @@ void NMModelViewWidget::loadItems(void)
                     }
                     else
                     {
-                        importRegion = importRegion.united(ai->mapRectToScene(ai->boundingRect()));
+                        importRegion = unionRects(importRegion, ai->mapRectToScene(ai->boundingRect()));
                     }
                     importItems.push_back(ai);
 				}
@@ -1118,7 +1193,8 @@ void NMModelViewWidget::loadItems(void)
     NMDebugAI(<< "REGROUP AND SHIFT ======================================" << std::endl);
     // re-group and shift imported graphics items to
     // appear as part of their new import host
-    // - if importHost is not NULL -
+    // - if importHost  = NULL -> root
+    // - if importHost != NULL -> NMIterableComponent* --> NMAggregateComponentItem*
     NMAggregateComponentItem* ai = 0;
     QList<QGraphicsItem*> siblings;
     QRectF hostImportRect;
@@ -1141,8 +1217,9 @@ void NMModelViewWidget::loadItems(void)
         NMDebugAI(<< reportRect(importRegion, "importRegion") << std::endl);
         NMDebugAI(<< reportPoint(mLastScenePos, "lastScenePos") << std::endl);
 
-        importRegion.moveCenter(mLastScenePos);
+        //importRegion.moveCenter(mLastScenePos);
         hostImportRect = importRegion;
+        hostImportRect.moveCenter(mLastScenePos);
         NMDebugAI(<< reportPoint(hostImportRect.center(), "hostImportRect.center:") << std::endl);
         siblings = mModelScene->items();
     }
@@ -1210,32 +1287,45 @@ void NMModelViewWidget::loadItems(void)
             movePath.setP2(itsct);
             movePath.setLength(movePath.length()+kiRect.width());
 
-            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: " << reportPoint(movePath.p2(), "new ki center:") << std::endl);
+            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: "
+                      << reportPoint(movePath.p2(), "new ki center:") << std::endl);
 
-            ki->setPos(movePath.p2().x()-(kiRect.width()/2.0), movePath.p2().y()-(kiRect.height()/2.0));
+            ki->setPos(movePath.p2().x()-(kiRect.width()/2.0),
+                       movePath.p2().y()-(kiRect.height()/2.0));
 
             NMDebug(<< std::endl);
         }
     }
 
+    NMDebug(<< std::endl);
     NMDebugAI(<< ">>> repositioning import graphics ..." << std::endl);
     // position the import items within the hostImportRect
     foreach(QGraphicsItem* ii, importItems)
     {
         NMModelComponent* c = this->componentFromItem(ii);
-        if (importHost == 0 || (importHost != 0 && c->getHostComponent()->objectName().compare(importHost->objectName()) == 0))
+        if (c->getHostComponent()->objectName().compare(importHostName) == 0)
         {
-            QPointF curPos = ii->mapToScene(ii->boundingRect().center());
-            NMDebugAI(<< c->objectName().toStdString() << "'s cur pos: " << reportPoint(curPos, "curPos:") << std::endl);
-            QPointF deltaIn = ii->mapToScene(ii->boundingRect().center()) - importRegion.center();
-            NMDebugAI(<< c->objectName().toStdString() << "'s loc delta: " << reportPoint(deltaIn, "deltaIn:") << std::endl);
+            QRectF iiRect = ii->mapRectToScene(ii->boundingRect());
+            QPointF move = iiRect.center() - importRegion.center();
+
+            QPointF newPos(ii->mapToScene(hostImportRect.center()) + move);
+            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
+                       newPos.y() - (ii->boundingRect().height()/2.0));
 
             if (ai != 0)
                 ai->addToGroup(ii);
 
-            ii->setPos(hostImportRect.center() + deltaIn);
+            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
+            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
+            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
+                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
             NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
-                      << reportPoint(hostImportRect.center() + deltaIn, "deltaIn:") << std::endl);
+                      << reportPoint(ii->pos(), "") << std::endl);
+
+            //newPos -= QPointF(ii->boundingRect().width()/2.0, ii->boundingRect().height()/2.0);
+
+            //ii->setPos(newPos);
+            //ii->setPos(hostImportRect.center() + deltaIn);
         }
     }
 

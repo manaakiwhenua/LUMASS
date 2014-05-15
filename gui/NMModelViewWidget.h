@@ -36,6 +36,7 @@
 #include <QDropEvent>
 #include <QDragMoveEvent>
 #include <QGraphicsView>
+#include <QRectF>
 
 #include "NMProcessComponentItem.h"
 #include "NMComponentLinkItem.h"
@@ -86,6 +87,8 @@ public slots:
     void zoom(int delta);
     void zoomToContent(void);
     void updateTreeEditor(const QString&);
+    void changeFont(void);
+    void changeColour(void);
 
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);
@@ -126,6 +129,7 @@ protected slots:
 	void loadItems();
 	void reportIsModelControllerBusy(bool);
 
+
 	void getSubComps(NMModelComponent* comp, QStringList& subs);
 	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
     bool eventFilter(QObject* obj, QEvent* e);
@@ -136,6 +140,20 @@ private:
     std::string reportRect(const QRectF& rect, const char* msg);
     std::string reportPoint(const QPointF& pt, const char* msg);
     std::string reportLine(const QLineF& line, const char* msg);
+
+    QRectF unionRects(const QRectF& r1, const QRectF& r2)
+    {
+        return QRectF(
+           QPointF(
+              r1.topLeft().x() < r2.topLeft().x() ? r1.topLeft().x() : r2.topLeft().x(),
+              r1.topLeft().y() < r2.topLeft().y() ? r1.topLeft().y() : r2.topLeft().y()
+                   ),
+           QPointF(
+              r1.bottomRight().x() > r2.bottomRight().x() ? r1.bottomRight().x() : r2.bottomRight().x(),
+              r1.bottomRight().y() > r2.bottomRight().y() ? r1.bottomRight().y() : r2.bottomRight().y()
+            )
+        );
+    }
 
     qreal mScaleFactor;
 

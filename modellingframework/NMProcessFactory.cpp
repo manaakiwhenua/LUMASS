@@ -82,7 +82,7 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMFocalNeighbourhoodDistanceWeightingWrapper";
     }
-    else if (alias.compare("SummariseZones") == 0)
+    else if (alias.compare("SummarizeZones") == 0)
     {
         return "NMSumZonesFilterWrapper";
     }

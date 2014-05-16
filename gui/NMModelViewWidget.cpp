@@ -1144,6 +1144,9 @@ void NMModelViewWidget::loadItems(void)
             {
                 ti = new QGraphicsTextItem();
                 lmv >> *ti;
+                ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                ti->setFlag(QGraphicsItem::ItemIsMovable, true);
+                ti->setOpenExternalLinks(true);
 
                 // any 'root-labels' of the import file
                 // become children of the new importHost
@@ -1234,6 +1237,9 @@ void NMModelViewWidget::loadItems(void)
                         {
                             ti = new QGraphicsTextItem(ai);
                             lmv >> *ti;
+                            ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                            ti->setFlag(QGraphicsItem::ItemIsMovable, true);
+                            ti->setOpenExternalLinks(true);
                             ai->addToGroup(ti);
                         }
                         else

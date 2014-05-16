@@ -556,7 +556,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 	}
 
 	// GROUP
-	if (selection.count() > 1 && !running)
+    if (selection.count() > 1 && !running)
 	{
 		int levelIndi = this->shareLevel(selection);
 		if (levelIndi >= 0)
@@ -625,6 +625,11 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
             this->mActionMap.value("Change Font ...")->setEnabled(true);
             this->mActionMap.value("Change Font ...")->setText(QString("Change %1's Font ...").arg(title));
         }
+        else
+        {
+            this->mActionMap.value("Change Font ...")->setEnabled(false);
+            this->mActionMap.value("Change Font ...")->setText(QString("Change Font ..."));
+        }
 
         this->mActionMap.value("Change Colour ...")->setEnabled(true);
         this->mActionMap.value("Change Colour ...")->setText(QString("Change %1's Colour ...").arg(title));
@@ -632,8 +637,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     else
     {
         this->mActionMap.value("Change Font ...")->setEnabled(false);
-        this->mActionMap.value("Change Colour ...")->setEnabled(false);
         this->mActionMap.value("Change Font ...")->setText(QString("Change Font ..."));
+        this->mActionMap.value("Change Colour ...")->setEnabled(false);
         this->mActionMap.value("Change Colour ...")->setText(QString("Change Colour ..."));
     }
 
@@ -967,7 +972,7 @@ void NMModelViewWidget::loadItems(void)
     }
     else
     {
-        importHostName = "root";
+        importHostName = QString::fromLatin1("root");
     }
 
 	// read the data model
@@ -1001,7 +1006,6 @@ void NMModelViewWidget::loadItems(void)
 	NMDebugAI(<< "---------------------------" << endl);
     QList<QGraphicsItem*> importItems;
     QRectF importRegion; // in scene's coordinate space
-    //NMDataComponent* dataComp = 0;
 	NMIterableComponent* itComp = 0;
 	NMProcess* procComp;
 	while(!lmv.atEnd())
@@ -1012,16 +1016,20 @@ void NMModelViewWidget::loadItems(void)
 
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;
-        //NMComponentLinkItem* li;
         QGraphicsTextItem* ti;
+        QGraphicsItem* gi;
         switch(readType)
 		{
         case (qint32)QGraphicsTextItem::Type:
-            // we deal with 'root-labels' in the second pass of the
-            // lmv file, once we can be certain that we've instantied
-            // the potential new 'importHost'
-            ti = new QGraphicsTextItem();
-            lmv >> *ti;
+            {
+                ti = new QGraphicsTextItem();
+                lmv >> *ti;
+                ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                ti->setFlag(QGraphicsItem::ItemIsMovable, true);
+                ti->setOpenExternalLinks(true);
+                this->mModelScene->addItem(ti);
+                gi = qgraphicsitem_cast<QGraphicsItem*>(ti);
+            }
             break;
 
         case (qint32)NMProcessComponentItem::Type:
@@ -1058,16 +1066,7 @@ void NMModelViewWidget::loadItems(void)
 					}
 					pi->setFlag(QGraphicsItem::ItemIsMovable, true);
 					this->mModelScene->addItem(pi);
-
-                    if (importItems.size() == 0)
-                    {
-                        importRegion = pi->mapRectToScene(pi->boundingRect());
-                    }
-                    else
-                    {
-                        importRegion = unionRects(importRegion, pi->mapRectToScene(pi->boundingRect()));
-                    }
-                    importItems.push_back(pi);
+                    gi = qgraphicsitem_cast<QGraphicsItem*>(pi);
 				}
 				break;
 
@@ -1092,16 +1091,7 @@ void NMModelViewWidget::loadItems(void)
 					}
 
 					this->mModelScene->addItem(ai);
-
-                    if (importItems.size() == 0)
-                    {
-                        importRegion = ai->mapRectToScene(ai->boundingRect());
-                    }
-                    else
-                    {
-                        importRegion = unionRects(importRegion, ai->mapRectToScene(ai->boundingRect()));
-                    }
-                    importItems.push_back(ai);
+                    gi = qgraphicsitem_cast<QGraphicsItem*>(ai);
 				}
 
 				break;
@@ -1117,6 +1107,22 @@ void NMModelViewWidget::loadItems(void)
 		default:
 			break;
 		}
+
+        // keep track of imported items and their original (source) positions
+        if (gi != 0)
+        {
+            if (importItems.size() == 0)
+            {
+                importRegion = gi->mapRectToScene(gi->boundingRect());
+            }
+            else
+            {
+                importRegion = unionRects(importRegion, gi->mapRectToScene(gi->boundingRect()));
+            }
+            importItems.push_back(gi);
+            gi = 0;
+        }
+
 	}
 
 	// - establish links:
@@ -1144,29 +1150,29 @@ void NMModelViewWidget::loadItems(void)
             {
                 ti = new QGraphicsTextItem();
                 lmv >> *ti;
-                ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
-                ti->setFlag(QGraphicsItem::ItemIsMovable, true);
-                ti->setOpenExternalLinks(true);
+                //                ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                //                ti->setFlag(QGraphicsItem::ItemIsMovable, true);
+                //                ti->setOpenExternalLinks(true);
 
-                // any 'root-labels' of the import file
-                // become children of the new importHost
-                if (importHost != 0)
-                {
-                    QGraphicsItem* ppi = this->mModelScene->getComponentItem(
-                                importHost->objectName());
+                //                // any 'root-labels' of the import file
+                //                // become children of the new importHost
+                //                if (importHost != 0)
+                //                {
+                //                    QGraphicsItem* ppi = this->mModelScene->getComponentItem(
+                //                                importHost->objectName());
 
-                    NMAggregateComponentItem* pai =
-                            qgraphicsitem_cast<NMAggregateComponentItem*>(ppi);
+                //                    NMAggregateComponentItem* pai =
+                //                            qgraphicsitem_cast<NMAggregateComponentItem*>(ppi);
 
-                    if (pai != 0)
-                    {
-                        pai->addToGroup(ti);
-                    }
-                }
-                else
-                {
-                    this->mModelScene->addItem(ti);
-                }
+                //                    if (pai != 0)
+                //                    {
+                //                        pai->addToGroup(ti);
+                //                    }
+                //                }
+                //                else
+                //                {
+                //                    this->mModelScene->addItem(ti);
+                //                }
             }
             break;
 
@@ -1316,23 +1322,30 @@ void NMModelViewWidget::loadItems(void)
     {
         if (importItems.contains(ki)) continue;
 
-        NMProcessComponentItem* piki = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
-        NMAggregateComponentItem* aiki = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
-        QString name;
-        if (piki != 0)
-            name = piki->getTitle();
-        else if (aiki != 0)
-            name = aiki->getTitle();
-        else
-            continue;
+        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ki);
+        NMModelComponent* c = this->componentFromItem(ki);
+
+        //        NMProcessComponentItem* piki = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
+        //        NMAggregateComponentItem* aiki = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
+        //        QString name;
+        //        if (piki != 0)
+        //            name = piki->getTitle();
+        //        else if (aiki != 0)
+        //            name = aiki->getTitle();
+        //        else
+        //            continue;
 
         // since QGraphicsItem functions all operate in the item's
         // coordinate space (except setPos), we have to transform it
         // into it's parent's coordinate space
         QRectF kiRect = ki->mapRectToParent(ki->boundingRect());
-        if (kiRect.intersects(hostImportRect))
+        if (     (   (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
+                  || labelItem != 0
+                 )
+             &&  kiRect.intersects(hostImportRect)
+           )
         {
-            NMDebugAI(<< reportRect(kiRect, name.toStdString().c_str()) << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
+            //NMDebugAI(<< reportRect(kiRect, name.toStdString().c_str()) << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
 
             QLineF movePath(hostImportRect.center(), kiRect.center());
             movePath.setLength(refLength + (refLength * 0.1));
@@ -1362,15 +1375,15 @@ void NMModelViewWidget::loadItems(void)
             }
 
             movePath.setP2(itsct);
-            movePath.setLength(movePath.length()+kiRect.width());
+            movePath.setLength(movePath.length()+(kiRect.width()));
 
-            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: "
-                      << reportPoint(movePath.p2(), "new ki center:") << std::endl);
+            //            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: "
+            //                      << reportPoint(movePath.p2(), "new ki center:") << std::endl);
 
             ki->setPos(movePath.p2().x()-(kiRect.width()/2.0),
                        movePath.p2().y()-(kiRect.height()/2.0));
 
-            NMDebug(<< std::endl);
+            //            NMDebug(<< std::endl);
         }
     }
 
@@ -1379,30 +1392,31 @@ void NMModelViewWidget::loadItems(void)
     // position the import items within the hostImportRect
     foreach(QGraphicsItem* ii, importItems)
     {
+        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ii);
         NMModelComponent* c = this->componentFromItem(ii);
-        if (c->getHostComponent()->objectName().compare(importHostName) == 0)
+        if (    (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
+            ||  labelItem != 0
+           )
         {
             QRectF iiRect = ii->mapRectToScene(ii->boundingRect());
             QPointF move = iiRect.center() - importRegion.center();
 
-            QPointF newPos(ii->mapToScene(hostImportRect.center()) + move);
-            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
-                       newPos.y() - (ii->boundingRect().height()/2.0));
+            QPointF newPos(hostImportRect.center() + move);
 
             if (ai != 0)
                 ai->addToGroup(ii);
 
-            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
-            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
-            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
-                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
-            NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
-                      << reportPoint(ii->pos(), "") << std::endl);
-
-            //newPos -= QPointF(ii->boundingRect().width()/2.0, ii->boundingRect().height()/2.0);
-
             //ii->setPos(newPos);
-            //ii->setPos(hostImportRect.center() + deltaIn);
+
+            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
+                       newPos.y() - (ii->boundingRect().height()/2.0));
+
+            //            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
+            //            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
+            //            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
+            //                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
+            //            NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
+            //                      << reportPoint(ii->pos(), "") << std::endl);
         }
     }
 
@@ -1475,6 +1489,9 @@ int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 			comp = this->mModelController->getComponent(pi->getTitle());
 		else if (ai != 0)
 			comp = this->mModelController->getComponent(ai->getTitle());
+        else
+            // in case of label item
+            continue;
 
 		if (cnt == 0)
 			host = comp->getHostComponent();
@@ -1488,7 +1505,7 @@ int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 	}
 
 	int ret = -1;
-	if (allLevel)
+    if (allLevel && cnt > 0)
 	{
 		if (host != this->mRootComponent)
 			ret = 1;
@@ -1606,7 +1623,6 @@ void NMModelViewWidget::deleteItem()
     NMComponentLinkItem* linkItem;
     QGraphicsTextItem* labelItem;
 
-    //QList<NMComponentLinkItem*> delLinkList;
 	QStringList delList;
     QList<QGraphicsTextItem*> delLabels;
 	if (this->mModelScene->selectedItems().count())
@@ -1615,18 +1631,16 @@ void NMModelViewWidget::deleteItem()
 		{
 			procItem = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
 			aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
-            //linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
             labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
 
 			if (procItem != 0)
 				delList.push_back(procItem->getTitle());
 			else if (aggrItem != 0)
 				delList.push_back(aggrItem->getTitle());
-            else if (labelItem != 0)
+            // we only deal with root-labels here, any other labels
+            // are dealt with in deleteAggregateComponent
+            else if (labelItem != 0 && labelItem->parentItem() == 0)
                 delLabels.push_back(labelItem);
-
-            //else if (linkItem != 0)
-            //	delLinkList.push_back(linkItem);
 		}
 	}
     else if (this->mLastItem != 0)
@@ -1660,6 +1674,8 @@ void NMModelViewWidget::deleteItem()
     foreach(QGraphicsTextItem* ti, delLabels)
     {
         this->mModelScene->removeItem(ti);
+        delete ti;
+        ti = 0;
     }
 
 	QStringListIterator sit(delList);
@@ -1806,6 +1822,8 @@ NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
 	targetItem->removeLink(linkItem);
 	sourceItem->removeLink(linkItem);
 	this->mModelScene->removeItem(linkItem);
+    delete linkItem;
+    linkItem = 0;
 }
 
 void
@@ -1820,13 +1838,14 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 
 	// iterate over all subcomponents and delete them
 	QList<QGraphicsItem*> childItems = aggrItem->childItems();
-	QListIterator<QGraphicsItem*> it(childItems);
+    QMutableListIterator<QGraphicsItem*> it(childItems);
 	NMModelComponent* pcomp = 0;
 	while(it.hasNext())
 	{
 		QGraphicsItem* item = it.next();
 		NMProcessComponentItem* procChildItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aggrChildItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
 
 		if (procChildItem != 0)
 		{
@@ -1844,6 +1863,12 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 			this->removeObjFromOpenEditsList(pcomp);
 			this->deleteAggregateComponentItem(aggrChildItem);
 		}
+        else if (labelItem != 0)
+        {
+            mModelScene->removeItem(labelItem);
+            delete labelItem;
+            labelItem = 0;
+        }
 	}
 
 	// finally remove the component itself

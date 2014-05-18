@@ -32,8 +32,9 @@ const std::string NMProcessComponentItem::ctx = "NMProcessComponentItem";
 
 NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
-	: QGraphicsItem(parent), mContextMenu(0) ,
-	  mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false)
+    : QGraphicsItem(parent), //mContextMenu(0) ,
+      mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false),
+      mTimeLevel(0)
 {
 	this->mScene = scene;
 
@@ -257,6 +258,13 @@ NMProcessComponentItem::reportExecutionStopped(const QString& proc)
 }
 
 void
+NMProcessComponentItem::updateTimeLevel(short level)
+{
+    this->mTimeLevel;
+    this->update();
+}
+
+void
 NMProcessComponentItem::updateDescription(
 	const QString& descr)
 {
@@ -337,8 +345,8 @@ NMProcessComponentItem::paint(QPainter* painter,
 			painter->setPen(QPen(QBrush(Qt::darkRed), 1, Qt::SolidLine));
 			mFont.setItalic(true);
 			painter->setFont(mFont);
-			QString strProg = QString("%1").arg(this->mProgress, 3, 'f', 0);
-			painter->drawText(QRectF(mIconBnd.right()-25,mIconBnd.top()+7,20,15),
+            QString strProg = QString("%1\%").arg(this->mProgress, 3, 'f', 0);
+            painter->drawText(QRectF(mIconBnd.right()-28,mIconBnd.top()+7,23,15),
 					Qt::AlignLeft, strProg);
 		}
 	}
@@ -362,41 +370,40 @@ NMProcessComponentItem::paint(QPainter* painter,
 	painter->setBrush(Qt::NoBrush);
 	painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
 	mFont.setItalic(false);
-	mFont.setBold(true);
+    painter->setFont(mFont);
+    painter->drawText(QRectF(mIconBnd.left()+3,mIconBnd.top()+7,15,15),
+                      Qt::AlignLeft, QString("%1").arg(mTimeLevel));
+    mFont.setBold(true);
 	painter->setFont(mFont);
 	painter->drawText(mTextRect, Qt::AlignCenter | Qt::TextWordWrap,
 				mDescription);
+
 }
 
 QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 {
-	//qDebug() << "proc comp: op<< begin ..." << endl;
 	NMProcessComponentItem& i = const_cast<NMProcessComponentItem&>(item);
-	//data << (qint32)NMProcessComponentItem::Type;
 	data << i.getTitle();
-	//data << i.getDescription();
+    data << i.getTimeLevel();
 	data << i.scenePos();
 	data << i.getIsDataBufferItem();
-	//qDebug() << "proc comp: op<< end!" << endl;
 	return data;
 }
 
 QDataStream& operator>>(QDataStream& data, NMProcessComponentItem& item)
 {
-	//qDebug() << "proc comp: op>> begin ..." << endl;
 	QPointF pos;
 	QString title;
 	QString descr;
 	bool databuffer;
-	data >> title;
-	//data >> descr;
-	data >> pos;
-	data >> databuffer;
+    short timelevel;
+
+    data >> title >> timelevel >> pos >> databuffer;
+
 	item.setTitle(title);
-	//item.setDescription(descr);
+    item.setTimeLevel(timelevel);
 	item.setPos(pos);
 	item.setIsDataBufferItem(databuffer);
-	//qDebug() << "proc comp: op>> end!" << endl;
 	return data;
 }
 

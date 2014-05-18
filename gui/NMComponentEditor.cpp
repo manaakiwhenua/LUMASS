@@ -130,6 +130,7 @@ NMComponentEditor::setObject(QObject* obj)
     {
         if (mObj != 0 && obj->objectName().compare(mObj->objectName()) == 0)
         {
+
             return;
         }
         else
@@ -137,6 +138,10 @@ NMComponentEditor::setObject(QObject* obj)
             if (this->comp != 0)
             {
                 this->disconnect(comp);
+            }
+            if (this->proc != 0)
+            {
+                this->disconnect(proc);
             }
         }
     }
@@ -211,12 +216,13 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
             QtVariantPropertyManager* man = new QtVariantPropertyManager();
             QtVariantProperty* vprop;
 
-            connect(man, SIGNAL(valueChanged(QtProperty*, const QVariant &)),
-                    this, SLOT(applySettings(QtProperty*, const QVariant &)));
+            //connect(man, SIGNAL(valueChanged(QtProperty*, const QVariant &)),
+            //        this, SLOT(applySettings(QtProperty*, const QVariant &)));
 
             QVariant vval = QVariant::fromValue(strCompChain);
             vprop = man->addProperty(QVariant::StringList, "Subcomponents");
             vprop->setValue(vval);
+            vprop->setEnabled(false);
             mPropBrowser->setFactoryForManager(man, ed);
             mPropBrowser->addProperty(vprop);
         }
@@ -472,8 +478,6 @@ void NMComponentEditor::applySettings(QtProperty* prop,
 {
     NMDebugCtx(ctx, << "...");
 
-    mUpdating = true;
-
     NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
     NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
     NMProcess* proc = qobject_cast<NMProcess*>(mObj);
@@ -482,6 +486,8 @@ void NMComponentEditor::applySettings(QtProperty* prop,
         NMDebugCtx(ctx, << "done!");
         return;
     }
+
+    mUpdating = true;
 
     if (mObj->property(prop->propertyName().toStdString().c_str()).isValid() ||
         (prop->propertyName().compare("ComponentName")== 0))

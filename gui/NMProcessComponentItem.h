@@ -89,6 +89,11 @@ public:
 	bool getIsDataBufferItem(void)
 		{return mbIsDataBuffer;}
 
+    void setTimeLevel(short level)
+        {this->mTimeLevel = level;}
+    short getTimeLevel(void)
+        {return this->mTimeLevel;}
+
 	void addInputLink(int idx, NMComponentLinkItem* link);
 	void addOutputLink(int idx, NMComponentLinkItem* link);
 
@@ -111,6 +116,7 @@ public slots:
 	void reportExecutionStarted(const QString& proc);
 	void reportExecutionStopped(const QString& proc);
 	void updateDescription(const QString& descr);
+    void updateTimeLevel(short level);
 
 private:
 
@@ -123,7 +129,7 @@ private:
 	NMModelScene* mScene;
 	QString mTitle;
 	QString mDescription;
-	QMenu* mContextMenu;
+    //QMenu* mContextMenu;
 	QList<NMComponentLinkItem*> mInputLinks;
 	QList<NMComponentLinkItem*> mOutputLinks;
 
@@ -134,9 +140,9 @@ private:
 	QRectF mIconRect;
 	QRectF mIconBnd;
 	QRectF mTextRect;
+    short mTimeLevel;
 
 	QFont mFont;
-
 
 };
 

@@ -687,7 +687,8 @@ NMIterableComponent::changeTimeLevel(int diff)
 		comp = this->getNextInternalComponent();
 	}
 
-	emit NMModelComponentChanged();
+    emit TimeLevelChanged(this->mTimeLevel);
+    //emit NMModelComponentChanged();
 }
 
 

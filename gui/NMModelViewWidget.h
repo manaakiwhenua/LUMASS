@@ -78,7 +78,7 @@ public slots:
 	void ungroupComponents();
 
 	void editRootComponent();
-	void compProcChanged();
+    //void compProcChanged();
 
 	void executeModel(void);
 	void resetModel(void);

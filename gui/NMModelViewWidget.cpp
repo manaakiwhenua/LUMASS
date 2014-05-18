@@ -90,7 +90,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 			"Top level model component managed by the model view widget");
 	this->mModelController->addComponent(
 			qobject_cast<NMModelComponent*>(mRootComponent));
-	connect(mRootComponent, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
+    //connect(mRootComponent, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
 
 
     /* ====================================================================== */
@@ -315,7 +315,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 	// set the new aggregated component on time level host_level + 1
 	aggrComp->setTimeLevel(host->getTimeLevel() + 1);
 
-	connect(aggrComp, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
+    //connect(aggrComp, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
 
 	// ToDo: have to check the order in which 'selected items' returns the elements
 	// ie is it according to z-order or order of selection?
@@ -1314,8 +1314,41 @@ void NMModelViewWidget::loadItems(void)
         refLength == 1;
     }
     NMDebugAI(<< ">>> hostImportRect diagonale length: " << refLength << std::endl);
-    NMDebugAI(<< ">>> repositioning kids ..." << std::endl);
 
+    NMDebug(<< std::endl);
+    NMDebugAI(<< ">>> repositioning import graphics ..." << std::endl);
+    // position the import items within the hostImportRect
+    foreach(QGraphicsItem* ii, importItems)
+    {
+        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ii);
+        NMModelComponent* c = this->componentFromItem(ii);
+        if (    (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
+            ||  labelItem != 0
+           )
+        {
+            QRectF iiRect = ii->mapRectToScene(ii->boundingRect());
+            QPointF move = iiRect.center() - importRegion.center();
+
+            QPointF newPos(hostImportRect.center() + move);
+
+            if (ai != 0)
+                ai->addToGroup(ii);
+
+
+            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
+                       newPos.y() - (ii->boundingRect().height()/2.0));
+
+            //            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
+            //            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
+            //            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
+            //                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
+            //            NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
+            //                      << reportPoint(ii->pos(), "") << std::endl);
+        }
+    }
+
+
+    NMDebugAI(<< ">>> repositioning kids ..." << std::endl);
     // make some space in the importHost item
     // (all operations in importHost's coordinate space)
     foreach(QGraphicsItem* ki, siblings)
@@ -1387,38 +1420,6 @@ void NMModelViewWidget::loadItems(void)
         }
     }
 
-    NMDebug(<< std::endl);
-    NMDebugAI(<< ">>> repositioning import graphics ..." << std::endl);
-    // position the import items within the hostImportRect
-    foreach(QGraphicsItem* ii, importItems)
-    {
-        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ii);
-        NMModelComponent* c = this->componentFromItem(ii);
-        if (    (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
-            ||  labelItem != 0
-           )
-        {
-            QRectF iiRect = ii->mapRectToScene(ii->boundingRect());
-            QPointF move = iiRect.center() - importRegion.center();
-
-            QPointF newPos(hostImportRect.center() + move);
-
-            if (ai != 0)
-                ai->addToGroup(ii);
-
-            //ii->setPos(newPos);
-
-            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
-                       newPos.y() - (ii->boundingRect().height()/2.0));
-
-            //            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
-            //            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
-            //            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
-            //                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
-            //            NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
-            //                      << reportPoint(ii->pos(), "") << std::endl);
-        }
-    }
 
     this->mModelScene->invalidate();
 }
@@ -1915,14 +1916,14 @@ void NMModelViewWidget::editRootComponent()
 		this->callEditComponentDialog(this->mRootComponent->objectName());
 }
 
-void NMModelViewWidget::compProcChanged()
-{
-//	NMDebugCtx(ctx, << "...");
-//	NMModelComponent* comp = qobject_cast<NMModelComponent*>(this->sender());
-//	NMProcess* proc = qobject_cast<NMProcess*>(this->sender());
-//
-//	NMDebugCtx(ctx, << "done!");
-}
+//void NMModelViewWidget::compProcChanged()
+//{
+////	NMDebugCtx(ctx, << "...");
+////	NMModelComponent* comp = qobject_cast<NMModelComponent*>(this->sender());
+////	NMProcess* proc = qobject_cast<NMProcess*>(this->sender());
+////
+////	NMDebugCtx(ctx, << "done!");
+//}
 
 void
 NMModelViewWidget::connectProcessItem(NMProcess* proc,
@@ -1956,6 +1957,8 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
 	NMModelComponent* comp = qobject_cast<NMModelComponent*>(proc->parent());
 	connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)), procItem,
             SLOT(updateDescription(const QString &)));
+    connect(comp, SIGNAL(TimeLevelChanged(short)), procItem,
+            SLOT(updateTimeLevel(short)));
 }
 
 void
@@ -1964,7 +1967,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 {
 	NMDebugCtx(ctx, << "...");
 
-	QString compName;
+    //QString compName;
 	QString tname = procName;
 	unsigned int cnt = 1;
 	while (this->mModelController->contains(tname))
@@ -2014,6 +2017,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
     NMDebugAI(<< "and its object name is '" << comp->objectName().toStdString() << "'" << endl);
 
 	procItem->setTitle(tname);
+    procItem->setTimeLevel(comp->getTimeLevel());
 	procItem->setDescription(tname);
 
 	// identify the host component, depending on the actual position

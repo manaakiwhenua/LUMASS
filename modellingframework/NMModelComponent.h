@@ -77,6 +77,7 @@ public:
 signals:
 	void NMModelComponentChanged();
     void nmChanged();
+    void TimeLevelChanged(short level);
 	void ComponentDescriptionChanged(const QString& descr);
     void ComponentUserIDChanged(const QString& userID);
 

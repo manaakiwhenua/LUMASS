@@ -157,8 +157,9 @@ void NMModelComponent::changeTimeLevel(int diff)
 	if (this->mTimeLevel < 0)
 		this->mTimeLevel = 0;
 
-	emit NMModelComponentChanged();
+    emit NMModelComponentChanged();
     emit nmChanged();
+    emit TimeLevelChanged(mTimeLevel);
 }
 
 void

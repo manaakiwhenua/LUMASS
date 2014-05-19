@@ -147,8 +147,18 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
 void NMModelComponent::setTimeLevel(short level)
 {
-	int diff = level - this->mTimeLevel;
-	this->changeTimeLevel(diff);
+    int maxdiff = mTimeLevel * -1;
+    int diff = level - this->mTimeLevel;
+
+    if (this->mHostComponent != 0)
+    {
+        maxdiff = (this->mTimeLevel - mHostComponent->getTimeLevel()) * -1;
+    }
+
+    // make sure we're at least at the same time level
+    // as our host
+    diff = diff < maxdiff ? maxdiff : diff;
+    this->changeTimeLevel(diff);
 }
 
 void NMModelComponent::changeTimeLevel(int diff)
@@ -157,16 +167,16 @@ void NMModelComponent::changeTimeLevel(int diff)
 	if (this->mTimeLevel < 0)
 		this->mTimeLevel = 0;
 
-    emit NMModelComponentChanged();
-    emit nmChanged();
+    //emit NMModelComponentChanged();
     emit TimeLevelChanged(mTimeLevel);
+    emit nmChanged();
 }
 
 void
 NMModelComponent::setDescription(QString descr)
 {
 	this->mDescription = descr;
-    emit NMModelComponentChanged();
+    //emit NMModelComponentChanged();
     emit nmChanged();
 	emit ComponentDescriptionChanged(descr);
 }

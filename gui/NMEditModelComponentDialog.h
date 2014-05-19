@@ -45,7 +45,7 @@ public:
     NMEditModelComponentDialog(QWidget *parent = 0);
     ~NMEditModelComponentDialog();
 
-    void setObject(QObject* obj) {mCompEditor->setObject(obj);}
+    void setObject(QObject* obj);
 
 #ifdef BUILD_RASSUPPORT    
     void setRasdamanConnectorWrapper(NMRasdamanConnectorWrapper* wrap)

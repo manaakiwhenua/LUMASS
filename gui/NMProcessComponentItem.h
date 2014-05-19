@@ -140,6 +140,12 @@ private:
 	QRectF mIconRect;
 	QRectF mIconBnd;
 	QRectF mTextRect;
+    QRectF mTimeLevelRect;
+    QRectF mClockRect;
+    QLineF mPointer1;
+    QLineF mPointer2;
+
+
     short mTimeLevel;
 
 	QFont mFont;

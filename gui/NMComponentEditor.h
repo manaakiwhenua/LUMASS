@@ -86,10 +86,13 @@ private:
 
     QObject* mObj;
     NMModelComponent* comp;
+    NMIterableComponent* itComp;
     NMProcess* proc;
     static const std::string ctx;
     NMCompEditorMode mEditorMode;
     QtAbstractPropertyBrowser* mPropBrowser;
+
+    int debugCounter;
 
     bool mUpdating;
 

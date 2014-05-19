@@ -69,6 +69,16 @@ NMEditModelComponentDialog::~NMEditModelComponentDialog()
 }
 
 void
+NMEditModelComponentDialog::setObject(QObject* obj)
+{
+    mCompEditor->setObject(obj);
+    if (mCompEditor->getObject() != 0)
+    {
+        this->setWindowTitle(obj->objectName());
+    }
+}
+
+void
 NMEditModelComponentDialog::closeEvent(QCloseEvent* event)
 {
     emit finishedEditing(mCompEditor->getObject());

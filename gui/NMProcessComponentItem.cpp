@@ -59,13 +59,31 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
         mIcon.load(":model-icon.png");
     }
 
-    mIconRect = QRectF(-37, -37, 74, 74);
+    //mIconRect = QRectF(-37, -37, 74, 74);
+    mIconRect = QRectF(-30, -26, 50, 50);
 
-	mIconBnd = QRectF(mIconRect.left()-5, mIconRect.top()-5,
-			          mIconRect.width()+10, mIconRect.height()+10);
+    //	mIconBnd = QRectF(mIconRect.left()-5, mIconRect.top()-5,
+    //			          mIconRect.width()+10, mIconRect.height()+10);
+
+    mIconBnd = QRectF(mIconRect.left()-12, mIconRect.top()-16,
+                      mIconRect.width()+24, mIconRect.height()+24);
 
 	mTextRect = QRectF(mIconBnd.left(), mIconBnd.bottom()+5,
 			           mIconBnd.width(), mSingleLineHeight);
+
+    mTimeLevelRect = QRectF(mIconBnd.left()+12,mIconBnd.top()+1.5,30,15);
+
+    mClockRect = QRectF(mIconBnd.left()+2, mIconBnd.top()+5,8,8);
+
+    QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
+                             mClockRect.top() +(mClockRect.height()/2.0));
+
+    mPointer1 = QLineF(center, QPointF(mClockRect.left()+(mClockRect.width()/2.0),
+                                       mClockRect.top()+1));
+    mPointer1.setAngle((qreal)85);
+    mPointer2 = mPointer1;
+    mPointer2.setLength(0.6*mPointer1.length());
+    mPointer2.setAngle((qreal)-27.5);
 
 	mFont = QFont("Arial", 10);
 }
@@ -89,6 +107,8 @@ NMProcessComponentItem::setIsDataBufferItem(bool isbuffer)
 	if (isbuffer)
 	{
 		mIcon.load(":image_layer.png");
+        mIconRect.adjust(0, -4, 0, 0);
+        mIconBnd.adjust(0, +4, 0, 0);
 	}
 	else
 		mIcon.load(":model-icon.png");
@@ -260,7 +280,7 @@ NMProcessComponentItem::reportExecutionStopped(const QString& proc)
 void
 NMProcessComponentItem::updateTimeLevel(short level)
 {
-    this->mTimeLevel;
+    this->mTimeLevel = level;
     this->update();
 }
 
@@ -301,7 +321,6 @@ NMProcessComponentItem::paint(QPainter* painter,
 		const QStyleOptionGraphicsItem* option,
 		QWidget* widget)
 {
-
 	if(mbIsExecuting)
 	{
 		QSizeF psize = mIconBnd.size();
@@ -338,16 +357,17 @@ NMProcessComponentItem::paint(QPainter* painter,
 		//iconPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
 		////iconPainter.fillRect(QRectF(QPointF(0,0), mIcon.size()), QColor(0,0,0,128));
 		//painter->drawImage(QRectF(-40,-40,64,64), execIcon);
-		painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64));
+        painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64)); // 0,0,64,64
 
-		if (mProgress > 0)
+        if (mProgress > 0)
 		{
+            mFont.setBold(false);
 			painter->setPen(QPen(QBrush(Qt::darkRed), 1, Qt::SolidLine));
-			mFont.setItalic(true);
+            mFont.setItalic(false);
 			painter->setFont(mFont);
             QString strProg = QString("%1\%").arg(this->mProgress, 3, 'f', 0);
-            painter->drawText(QRectF(mIconBnd.right()-28,mIconBnd.top()+7,23,15),
-					Qt::AlignLeft, strProg);
+            painter->drawText(QRectF(mIconBnd.right()-40,mIconBnd.top()+1.5,40,15),
+                    Qt::AlignRight, strProg);
 		}
 	}
 	else
@@ -366,13 +386,29 @@ NMProcessComponentItem::paint(QPainter* painter,
 		painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64));
 	}
 
-	// draw description
+    // -----------------------------
+    // draw metadata elements
 	painter->setBrush(Qt::NoBrush);
-	painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
-	mFont.setItalic(false);
-    painter->setFont(mFont);
-    painter->drawText(QRectF(mIconBnd.left()+3,mIconBnd.top()+7,15,15),
-                      Qt::AlignLeft, QString("%1").arg(mTimeLevel));
+    painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+    mFont.setItalic(false);
+
+    if (!this->mbIsDataBuffer)
+    {
+        // the clock icon
+        painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
+        painter->drawEllipse(mClockRect);
+        painter->drawLine(mPointer1);
+        painter->drawLine(mPointer2);
+
+        // the time level
+        painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+
+        mFont.setBold(false);
+        painter->setFont(mFont);
+        painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
+    }
+
+    // the description
     mFont.setBold(true);
 	painter->setFont(mFont);
 	painter->drawText(mTextRect, Qt::AlignCenter | Qt::TextWordWrap,

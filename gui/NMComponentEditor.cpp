@@ -74,6 +74,8 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     QVBoxLayout* lo = new QVBoxLayout();
     lo->addWidget(mPropBrowser);
     this->setLayout(lo);
+
+    debugCounter = 1;
 }
 
 //void
@@ -86,21 +88,14 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
 void
 NMComponentEditor::update()
 {
-    //    NMDebugCtx(ctx, << "...");
-
-
     if (mUpdating)
     {
-    //        NMWarn(ctx, << "just updating ..." << std::endl);
-    //        NMDebugCtx(ctx, << "done!");
         return;
     }
 
     if (mObj)
-        this->readComponentProperties(mObj, comp, proc);
-
-
-    //    NMDebugCtx(ctx, << "done!");
+        this->setObject(mObj);
+        //this->readComponentProperties(mObj, comp, proc);
 }
 
 void
@@ -111,55 +106,81 @@ NMComponentEditor::setObject(QObject* obj)
     // don't do anyting as long we're not ready for change!
     if (mUpdating)
     {
-        //        NMWarn(ctx, << "just updating ..." << std::endl);
-        //        NMDebugCtx(ctx, << "done!");
         return;
     }
 
     // reset the editor upon receiving a NULL object
     if (obj == 0)
     {
+        if (this->comp != 0)
+        {
+            this->disconnect(comp);
+        }
+        if (this->proc != 0)
+        {
+            this->disconnect(proc);
+        }
+
         this->mObj = 0;
         this->comp = 0;
         this->proc = 0;
         this->clear();
-        //        NMDebugCtx(ctx, << "done!");
+        debugCounter = 1;
         return;
     }
-    else
-    {
-        if (mObj != 0 && obj->objectName().compare(mObj->objectName()) == 0)
-        {
 
-            return;
+    NMModelComponent* c = qobject_cast<NMModelComponent*>(obj);
+    NMIterableComponent* i = qobject_cast<NMIterableComponent*>(obj);
+    NMProcess* p = i != 0 ? i->getProcess() : 0;
+
+    if (mObj == 0)
+    {
+        if (c != 0)
+        {
+            mObj = obj;
+            comp = c;
+            connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
         }
         else
+            return;
+
+        if (p != 0)
         {
-            if (this->comp != 0)
-            {
-                this->disconnect(comp);
-            }
-            if (this->proc != 0)
-            {
-                this->disconnect(proc);
-            }
+            proc = p;
+            connect(proc, SIGNAL(nmChanged()), this, SLOT(update()));
         }
+        debugCounter = 1;
     }
-
-    this->comp = reinterpret_cast<NMModelComponent*>(obj);
-    this->proc = reinterpret_cast<NMProcess*>(obj);
-
-    if (comp == 0 && proc == 0)
+    else if (mObj != 0 && obj->objectName().compare(mObj->objectName()) != 0)
     {
-        //          NMDebugCtx(ctx, << "done!");
-        return;
+        if (this->comp != 0)
+        {
+            this->disconnect(comp);
+            comp = 0;
+        }
+        if (this->proc != 0)
+        {
+            this->disconnect(proc);
+            proc = 0;
+        }
+
+        if (c != 0)
+        {
+            mObj = obj;
+            comp = c;
+            connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
+        }
+        if (p != 0)
+        {
+            proc = p;
+            connect(proc, SIGNAL(nmChanged()), this, SLOT(update()));
+        }
+        debugCounter = 1;
     }
 
-    this->mObj = obj;
-    this->setWindowTitle(obj->objectName());
-
+    //this->setWindowTitle(c->objectName());
+    //this->mPropBrowser->setWindowTitle(comp->objectName());
     this->readComponentProperties(mObj, comp, proc);
-
 
 //      NMDebugCtx(ctx, << "done!");
 }
@@ -169,11 +190,13 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
 {
     mPropBrowser->clear();
 
+    NMDebugAI(<< ">>>> #" << debugCounter << " - START: " << mObj->objectName().toStdString() << " >>>>>>>>>>>>>>>>>>" << std::endl);
+
     // let's start with the component's properties,
     // in case we've got a component
     if (comp != 0)// && compq->getProcess() == 0)
     {
-        connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
+        //connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
 
         // ------------------------------------------------------
         // PROCESSING A NON-ITERABLE and NON-PROCESS COMPONENT
@@ -236,7 +259,7 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
     // properties to the dialog
     if (proc != 0)
     {
-        connect(proc, SIGNAL(nmChanged()), this, SLOT(update()));
+        //connect(proc, SIGNAL(nmChanged()), this, SLOT(update()));
 
         const QMetaObject* procmeta = proc->metaObject();
         unsigned int nprop = procmeta->propertyCount();
@@ -246,6 +269,9 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
             this->createPropertyEdit(property, proc);
         }
     }
+
+    NMDebugAI(<< "<<<< #" << debugCounter << " - END: " << mObj->objectName().toStdString() << " <<<<<<<<<<<<<<<<<<" << std::endl);
+    debugCounter++;
 }
 
 void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,

@@ -1954,7 +1954,8 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
 			procItem, SLOT(reportExecutionStopped(const QString &)));
 
 	// connect some host-component signals
-	NMModelComponent* comp = qobject_cast<NMModelComponent*>(proc->parent());
+    //NMModelComponent* comp = qobject_cast<NMModelComponent*>(proc->parent());
+    NMIterableComponent* comp = qobject_cast<NMIterableComponent*>(proc->parent());
 	connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)), procItem,
             SLOT(updateDescription(const QString &)));
     connect(comp, SIGNAL(TimeLevelChanged(short)), procItem,

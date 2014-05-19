@@ -28,12 +28,17 @@
 #include <string>
 #include <iostream>
 #include <qgraphicsitem.h>
+#include <QGraphicsItemGroup>
 #include "NMModelScene.h"
 
 class NMModelScene;
 
-class NMAggregateComponentItem: public QGraphicsItemGroup
+class NMAggregateComponentItem: public QObject, public QGraphicsItemGroup
 {
+
+    Q_OBJECT
+    Q_INTERFACES(QGraphicsItemGroup)
+
 public:
 	NMAggregateComponentItem(QGraphicsItem* parent=0);
 	virtual ~NMAggregateComponentItem();
@@ -62,11 +67,32 @@ public:
 
 	QRectF boundingRect(void) const;
 
+
+public slots:
+    void updateDescription(const QString& descr);
+    void updateTimeLevel(short level);
+
+
 private:
 	std::string ctx;
 	QString mTitle;
 	QColor mColor;
 	int rgb[3];
+
+    QFont mFont;
+    QString mDescription;
+    short mTimeLevel;
+
+    QRectF mItemBnd;
+    QRectF mDash;
+
+    QRectF mTimeLevelRect;
+    QRectF mDescrRect;
+
+    QRectF mClockRect;
+    QLineF mPointer1;
+    QLineF mPointer2;
+
 
 };
 

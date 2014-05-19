@@ -50,8 +50,28 @@ QRectF NMAggregateComponentItem::boundingRect() const
 			bnd = QRectF(bnd.united(tbnd));
 		}
 	}
-	bnd.adjust(-10,-10,10,10);
+    mItemBnd = bnd;
+    mDash = QRectF(bnd.left(), bnd.top()-15, 50,15);
+    bnd = bnd.united(mDash);
+    bnd.adjust(-10,-10,10,10);
 
+    mClockRect = QRectF(mDash.left()+2, mDash.top()+7.5,8,8);
+    QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
+                             mClockRect.top() +(mClockRect.height()/2.0));
+
+    mPointer1 = QLineF(center, QPointF(mClockRect.left()+(mClockRect.width()/2.0),
+                                       mClockRect.top()+1));
+    mPointer1.setAngle((qreal)85);
+    mPointer2 = mPointer1;
+    mPointer2.setLength(0.6*mPointer1.length());
+    mPointer2.setAngle((qreal)-27.5);
+
+    mTimeLevelRect = QRectF(mClockRect.left()+2, mDash.top()+4, 30,15);
+    mDescrRect = QRectF(mTimeLevelRect.right()+3, mTimeLevelRect.top(),
+                        mDash.width() - mTimeLevelRect.width() - mClockRect.width()-5,
+                        mTimeLevelRect.height());
+
+    mFont = QFont("Arial", 10);
 	return bnd;
 }
 
@@ -154,6 +174,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	bgImgPainter.fillRect(bgImg.rect().adjusted(-2,-2,-1,-1), mColor);
 	bgImgPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
 	bgImgPainter.fillRect(bgImg.rect().adjusted(-2,-2,-1,-1), QColor(0,0,0,128));
+    bgImgPainter.fillRect(mDash, QColor(255,255,255,179));
 
 
 	// ============================================================================
@@ -167,7 +188,32 @@ NMAggregateComponentItem::paint(QPainter* painter,
     painter->setBrush(Qt::NoBrush);
 	painter->setRenderHint(QPainter::Antialiasing, true);
 
-	if(this->isSelected())
+
+    // ------------------------------------------------
+    // DRAW THE DASH
+    // ------------------------------------------------
+
+    // the clock icon
+    painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
+    painter->drawEllipse(mClockRect);
+    painter->drawLine(mPointer1);
+    painter->drawLine(mPointer2);
+
+    // the time level
+    painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+
+    mFont.setBold(true);
+    painter->setFont(mFont);
+    painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
+
+    // the description
+    painter->drawText(mDescrRect, Qt::AlignRight, mDescription);
+
+    // ------------------------------------------------
+    // DRAW SELECTION MARKER
+    // ------------------------------------------------
+
+    if(this->isSelected())
 	{
 		painter->setPen(QPen(QBrush(Qt::red), 2, Qt::SolidLine));
 		QPainterPath selRect;

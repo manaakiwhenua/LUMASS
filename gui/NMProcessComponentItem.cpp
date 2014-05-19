@@ -107,8 +107,8 @@ NMProcessComponentItem::setIsDataBufferItem(bool isbuffer)
 	if (isbuffer)
 	{
 		mIcon.load(":image_layer.png");
-        mIconRect.adjust(0, -4, 0, 0);
-        mIconBnd.adjust(0, +4, 0, 0);
+        //mIconRect.adjust(0, -4, 0, 0);
+        //mIconBnd.adjust(0, +4, 0, 0);
 	}
 	else
 		mIcon.load(":model-icon.png");
@@ -321,6 +321,8 @@ NMProcessComponentItem::paint(QPainter* painter,
 		const QStyleOptionGraphicsItem* option,
 		QWidget* widget)
 {
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
 	if(mbIsExecuting)
 	{
 		QSizeF psize = mIconBnd.size();
@@ -346,7 +348,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 
 		// draw boundary
 		painter->setBrush(Qt::NoBrush);
-		QPen pen = QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine);
+        QPen pen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
 		painter->setPen(pen);
 		painter->drawRoundRect(mIconBnd, 10, 10);
 
@@ -378,7 +380,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 		if (this->isSelected())
 			pen = QPen(QBrush(Qt::red), 2, Qt::SolidLine);
 		else
-			pen = QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine);
+            pen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
 		painter->setPen(pen);
 		painter->drawRoundRect(mIconBnd, 10, 10);
 
@@ -392,7 +394,7 @@ NMProcessComponentItem::paint(QPainter* painter,
     painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
     mFont.setItalic(false);
 
-    if (!this->mbIsDataBuffer)
+    //if (!this->mbIsDataBuffer)
     {
         // the clock icon
         painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
@@ -420,7 +422,7 @@ QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 {
 	NMProcessComponentItem& i = const_cast<NMProcessComponentItem&>(item);
 	data << i.getTitle();
-    data << i.getTimeLevel();
+    //data << i.getTimeLevel();
 	data << i.scenePos();
 	data << i.getIsDataBufferItem();
 	return data;
@@ -430,14 +432,14 @@ QDataStream& operator>>(QDataStream& data, NMProcessComponentItem& item)
 {
 	QPointF pos;
 	QString title;
-	QString descr;
 	bool databuffer;
-    short timelevel;
+    //short timelevel;
 
-    data >> title >> timelevel >> pos >> databuffer;
+    data >> title;// >> timelevel >> pos >> databuffer;
+    data >> pos >> databuffer;
 
 	item.setTitle(title);
-    item.setTimeLevel(timelevel);
+    //item.setTimeLevel(timelevel);
 	item.setPos(pos);
 	item.setIsDataBufferItem(databuffer);
 	return data;

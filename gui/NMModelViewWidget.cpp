@@ -1051,6 +1051,7 @@ void NMModelViewWidget::loadItems(void)
 									<< itemTitle.toStdString() << "'!");
 						}
 						pi->setDescription(itComp->getDescription());
+                        pi->setTimeLevel(itComp->getTimeLevel());
 
 						procComp = itComp->getProcess();
 						this->connectProcessItem(procComp, pi);
@@ -1062,7 +1063,7 @@ void NMModelViewWidget::loadItems(void)
 								pi, SLOT(updateDescription(const QString &)));
 						pi->setIsDataBufferItem(true);
 						pi->setDescription(mcomp->getDescription());
-
+                        pi->setTimeLevel(itComp->getTimeLevel());
 					}
 					pi->setFlag(QGraphicsItem::ItemIsMovable, true);
 					this->mModelScene->addItem(pi);
@@ -1989,8 +1990,10 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		dataComp = new NMDataComponent();
 		dataComp->setObjectName(tname);
 		comp = qobject_cast<NMModelComponent*>(dataComp);
-		connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)),
+        connect(dataComp, SIGNAL(ComponentDescriptionChanged(const QString &)),
 				procItem, SLOT(updateDescription(const QString &)));
+        connect(dataComp, SIGNAL(TimeLevelChanged(short)),
+                procItem, SLOT(updateTimeLevel(short)));
 		dataComp->setDescription(tname);
 	}
     else
@@ -2018,7 +2021,6 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
     NMDebugAI(<< "and its object name is '" << comp->objectName().toStdString() << "'" << endl);
 
 	procItem->setTitle(tname);
-    procItem->setTimeLevel(comp->getTimeLevel());
 	procItem->setDescription(tname);
 
 	// identify the host component, depending on the actual position
@@ -2053,6 +2055,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 
 	// set time level of the new process to the time level of the host component
 	comp->setTimeLevel(host->getTimeLevel());
+    procItem->setTimeLevel(host->getTimeLevel());
 
 
 	if (hostItem == 0)

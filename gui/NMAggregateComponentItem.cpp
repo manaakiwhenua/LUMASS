@@ -30,6 +30,11 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
 	this->setParentItem(parent);
 	ctx = "NMAggregateComponentItem";
 	this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
+
+    dx1 = 10;
+    dy1 = 35;
+    dx2 = 10;
+    dy2 = 35;
 }
 
 NMAggregateComponentItem::~NMAggregateComponentItem()
@@ -49,11 +54,39 @@ QRectF NMAggregateComponentItem::boundingRect() const
 			QRectF tbnd = QRectF(this->mapFromItem(item, item->boundingRect()).boundingRect());
 			bnd = QRectF(bnd.united(tbnd));
 		}
-	}
+    }
+    bnd.adjust(-dx1,-dy1,dx2,dy2);
+    return bnd;
+}
+
+void
+NMAggregateComponentItem::updateDescription(const QString& descr)
+{
+    if (descr.compare(this->mDescription) != 0)
+    {
+        this->mDescription = descr;
+        this->update();
+    }
+}
+
+void
+NMAggregateComponentItem::updateTimeLevel(short level)
+{
+    if (level != this->mTimeLevel)
+    {
+        this->mTimeLevel = level;
+        this->update();
+    }
+}
+
+void
+NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
+{
+    QRectF bnd = const_cast<QRectF&>(bndRect);
     mItemBnd = bnd;
-    mDash = QRectF(bnd.left(), bnd.top()-15, 50,15);
-    bnd = bnd.united(mDash);
-    bnd.adjust(-10,-10,10,10);
+    mItemBnd.adjust(dx1,dy1,-dx2,-dy2);
+
+    mDash = QRectF(mItemBnd.left(), bnd.top()+17, mItemBnd.width(),25);
 
     mClockRect = QRectF(mDash.left()+2, mDash.top()+7.5,8,8);
     QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
@@ -66,13 +99,15 @@ QRectF NMAggregateComponentItem::boundingRect() const
     mPointer2.setLength(0.6*mPointer1.length());
     mPointer2.setAngle((qreal)-27.5);
 
-    mTimeLevelRect = QRectF(mClockRect.left()+2, mDash.top()+4, 30,15);
-    mDescrRect = QRectF(mTimeLevelRect.right()+3, mTimeLevelRect.top(),
-                        mDash.width() - mTimeLevelRect.width() - mClockRect.width()-5,
-                        mTimeLevelRect.height());
+    mTimeLevelRect = QRectF(mClockRect.right()+2, mDash.top()+4, 30,15);
+    mFont = QFont("Arial", 11);
+    QFontMetrics fm(mFont);
+    QRectF dsr = fm.boundingRect(mDescription);
+    qreal width = dsr.width();
+    qreal height = dsr.height();
 
-    mFont = QFont("Arial", 10);
-	return bnd;
+    mDescrRect = QRectF(mDash.right()-width-2, mTimeLevelRect.top(),
+                        width, 15);
 }
 
 void
@@ -81,6 +116,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 		QWidget* widget)
 {
 	QRectF bnd = this->boundingRect();
+    preparePainting(bnd);
 
 	// clip the image
 	QPainterPath clipPath;
@@ -174,7 +210,11 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	bgImgPainter.fillRect(bgImg.rect().adjusted(-2,-2,-1,-1), mColor);
 	bgImgPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
 	bgImgPainter.fillRect(bgImg.rect().adjusted(-2,-2,-1,-1), QColor(0,0,0,128));
-    bgImgPainter.fillRect(mDash, QColor(255,255,255,179));
+
+    QRectF wr = QRectF(bgImg.rect().left()+2, bgImg.rect().top()+2, mDash.width(),
+                       mDash.height());
+    bgImgPainter.setCompositionMode(QPainter::CompositionMode_DestinationOver);
+    bgImgPainter.fillRect(wr, QColor(255,255,255,179));
 
 
 	// ============================================================================
@@ -193,6 +233,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // DRAW THE DASH
     // ------------------------------------------------
 
+    painter->setBrush(Qt::NoBrush);
+    painter->setPen(QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine));
+    painter->drawRoundedRect(mDash, 10, 10);
+
     // the clock icon
     painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
     painter->drawEllipse(mClockRect);
@@ -202,11 +246,14 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // the time level
     painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
 
-    mFont.setBold(true);
+    mFont.setBold(false);
     painter->setFont(mFont);
     painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
 
     // the description
+    //painter->setBrush(Qt::white);
+    //painter->drawRoundedRect(mDash, 10, 10);
+
     painter->drawText(mDescrRect, Qt::AlignRight, mDescription);
 
     // ------------------------------------------------

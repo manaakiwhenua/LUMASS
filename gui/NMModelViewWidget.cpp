@@ -346,6 +346,14 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 	// create the new aggregate component item, and add all selected children
 	NMAggregateComponentItem* aggrItem = new NMAggregateComponentItem(hostItem);
 	aggrItem->setTitle(newAggrItemName);
+    aggrItem->updateTimeLevel(aggrComp->getTimeLevel());
+    aggrItem->updateDescription(aggrComp->getDescription());
+
+    connect(aggrComp, SIGNAL(ComponentDescriptionChanged(QString)),
+            aggrItem, SLOT(updateDescription(QString)));
+    connect(aggrComp, SIGNAL(TimeLevelChanged(short)),
+            aggrItem, SLOT(updateTimeLevel(short)));
+
 	it.toFront();
 	while(it.hasNext())
 	{
@@ -1226,7 +1234,17 @@ void NMModelViewWidget::loadItems(void)
 							this->mModelScene->getComponentItem(title));
 
 
-                    NMModelComponent* c = NMModelController::getInstance()->getComponent(title);
+                    NMIterableComponent* c = qobject_cast<NMIterableComponent*>(
+                                NMModelController::getInstance()->getComponent(title));
+                    ai->updateDescription(c->getDescription());
+                    ai->updateTimeLevel(c->getTimeLevel());
+
+                    connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
+                            ai, SLOT(updateDescription(QString)));
+                    connect(c, SIGNAL(TimeLevelChanged(short)),
+                            ai, SLOT(updateTimeLevel(short)));
+
+
                     QStringList subNames;
                     this->getSubComps(c, subNames);
 

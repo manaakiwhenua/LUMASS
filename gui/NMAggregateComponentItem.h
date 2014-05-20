@@ -29,6 +29,7 @@
 #include <iostream>
 #include <qgraphicsitem.h>
 #include <QGraphicsItemGroup>
+#include <QFontMetrics>
 #include "NMModelScene.h"
 
 class NMModelScene;
@@ -37,7 +38,7 @@ class NMAggregateComponentItem: public QObject, public QGraphicsItemGroup
 {
 
     Q_OBJECT
-    Q_INTERFACES(QGraphicsItemGroup)
+    //Q_INTERFACES(QGraphicsItemGroup)
 
 public:
 	NMAggregateComponentItem(QGraphicsItem* parent=0);
@@ -65,7 +66,7 @@ public:
 
 	bool containsComponent(QString name);
 
-	QRectF boundingRect(void) const;
+    QRectF boundingRect(void) const;
 
 
 public slots:
@@ -74,6 +75,9 @@ public slots:
 
 
 private:
+
+    void preparePainting(const QRectF& bndRect);
+
 	std::string ctx;
 	QString mTitle;
 	QColor mColor;
@@ -92,6 +96,8 @@ private:
     QRectF mClockRect;
     QLineF mPointer1;
     QLineF mPointer2;
+
+    int dx1, dy1, dx2, dy2;
 
 
 };

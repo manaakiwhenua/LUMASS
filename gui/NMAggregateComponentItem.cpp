@@ -32,9 +32,9 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
 	this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
 
     dx1 = 10;
-    dy1 = 35;
+    dy1 = 43;
     dx2 = 10;
-    dy2 = 35;
+    dy2 = 43;
 }
 
 NMAggregateComponentItem::~NMAggregateComponentItem()
@@ -86,7 +86,7 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mItemBnd = bnd;
     mItemBnd.adjust(dx1,dy1,-dx2,-dy2);
 
-    mDash = QRectF(mItemBnd.left(), bnd.top()+17, mItemBnd.width(),25);
+    mDash = QRectF(mItemBnd.left(), bnd.top()+12, mItemBnd.width(),25);
 
     mClockRect = QRectF(mDash.left()+2, mDash.top()+7.5,8,8);
     QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
@@ -211,10 +211,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	bgImgPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
 	bgImgPainter.fillRect(bgImg.rect().adjusted(-2,-2,-1,-1), QColor(0,0,0,128));
 
-    QRectF wr = QRectF(bgImg.rect().left()+2, bgImg.rect().top()+2, mDash.width(),
+    QRectF wr = QRectF(bgImg.rect().left()+10, bgImg.rect().top()+12, bgImg.rect().width()-20,
                        mDash.height());
-    bgImgPainter.setCompositionMode(QPainter::CompositionMode_DestinationOver);
-    bgImgPainter.fillRect(wr, QColor(255,255,255,179));
+    bgImgPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    bgImgPainter.fillRect(wr, QColor(mColor.red(),mColor.green(),mColor.blue(),200));
 
 
 	// ============================================================================
@@ -235,7 +235,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
     painter->setBrush(Qt::NoBrush);
     painter->setPen(QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine));
-    painter->drawRoundedRect(mDash, 10, 10);
+    painter->drawRoundedRect(mDash, 3, 3);
 
     // the clock icon
     painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));

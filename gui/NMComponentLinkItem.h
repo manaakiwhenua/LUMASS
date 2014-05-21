@@ -58,6 +58,10 @@ public:
 	QRectF boundingRect(void) const
 		{return this->mBndBox;}
 
+    void setIsDynamic(bool dynamic);
+    bool getIsDynamic(void)
+        {return this->mIsDynamic;}
+
 protected:
 	void paint(QPainter* painter,
 			const QStyleOptionGraphicsItem* option,
@@ -70,6 +74,8 @@ private:
 	QGraphicsScene* mScene;
 	QRectF mBndBox;
 	QPainterPath mPath;
+
+    bool mIsDynamic;
 
 };
 

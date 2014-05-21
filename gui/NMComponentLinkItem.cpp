@@ -31,7 +31,7 @@
 NMComponentLinkItem::NMComponentLinkItem(NMProcessComponentItem* sourceItem,
 		NMProcessComponentItem* targetItem,
 		QGraphicsItem* parent)
-	: QGraphicsPathItem(parent)
+    : QGraphicsPathItem(parent), mIsDynamic(false)
 {
 	this->mSourceItem = sourceItem;
 	this->mTargetItem = targetItem;
@@ -56,6 +56,15 @@ void NMComponentLinkItem::setTargetItem(const NMProcessComponentItem* targetItem
 		this->mTargetItem = const_cast<NMProcessComponentItem*>(targetItem);
 }
 
+void
+NMComponentLinkItem::setIsDynamic(bool dynamic)
+{
+    if (this->mIsDynamic != dynamic)
+    {
+        this->mIsDynamic = dynamic;
+        this->update();
+    }
+}
 
 void
 NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
@@ -136,10 +145,13 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
 	// draw elements
 	QPen pen;
-	if (this->isSelected())
-		pen = QPen(QBrush(Qt::red), 2);
-	else
-		pen = QPen(QBrush(QColor(80,80,80)), 1.8);
+    //if (this->isSelected())
+    //	pen = QPen(QBrush(Qt::red), 2);
+    //else
+    if (this->mIsDynamic)
+        pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::DashLine);
+    else
+        pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::DashLine);
 	painter->setPen(pen);
 	painter->drawPath(path);
 	painter->setBrush(QColor(80,80,80));

@@ -88,7 +88,7 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 
     mDash = QRectF(mItemBnd.left(), bnd.top()+12, mItemBnd.width(),25);
 
-    mClockRect = QRectF(mDash.left()+2, mDash.top()+7.5,8,8);
+    mClockRect = QRectF(mDash.left()+2, mDash.top()+9,8,8);
     QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
                              mClockRect.top() +(mClockRect.height()/2.0));
 
@@ -99,15 +99,19 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mPointer2.setLength(0.6*mPointer1.length());
     mPointer2.setAngle((qreal)-27.5);
 
-    mTimeLevelRect = QRectF(mClockRect.right()+2, mDash.top()+4, 30,15);
+    mTimeLevelRect = QRectF(mClockRect.right()+2, mDash.top()+4, 25,15);
     mFont = QFont("Arial", 11);
     QFontMetrics fm(mFont);
     QRectF dsr = fm.boundingRect(mDescription);
     qreal width = dsr.width();
     qreal height = dsr.height();
 
-    mDescrRect = QRectF(mDash.right()-width-2, mTimeLevelRect.top(),
-                        width, 15);
+    //mDescrRect = QRectF(mDash.right()-width-2, mTimeLevelRect.top(),
+    //                    width, 15);
+
+    width = (mDash.right()-2) - (mTimeLevelRect.right()+2);
+    mDescrRect = QRectF(mTimeLevelRect.right()+2, mDash.top()+4,
+                        width, 20);
 }
 
 void
@@ -213,8 +217,8 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
     QRectF wr = QRectF(bgImg.rect().left()+10, bgImg.rect().top()+12, bgImg.rect().width()-20,
                        mDash.height());
-    bgImgPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    bgImgPainter.fillRect(wr, QColor(mColor.red(),mColor.green(),mColor.blue(),200));
+    //bgImgPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    bgImgPainter.fillRect(wr, QColor(mColor.red(),mColor.green(),mColor.blue(),100));
 
 
 	// ============================================================================
@@ -254,7 +258,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
     //painter->setBrush(Qt::white);
     //painter->drawRoundedRect(mDash, 10, 10);
 
-    painter->drawText(mDescrRect, Qt::AlignRight, mDescription);
+    painter->drawText(mDescrRect, Qt::AlignCenter, mDescription);
 
     // ------------------------------------------------
     // DRAW SELECTION MARKER

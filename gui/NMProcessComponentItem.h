@@ -103,13 +103,15 @@ public:
 	int getInputLinkIndex(QString inputItemName);
 	int getOutputLinkIndex(QString outputItemName);
 
+
+
 	void removeLink(NMComponentLinkItem* link);
 
 	QList<NMComponentLinkItem*> getOutputLinks(void)
 		{return this->mOutputLinks;}
 
-	QList<NMComponentLinkItem*> getInputLinks(void)
-		{return this->mInputLinks;}
+    QList<NMComponentLinkItem*> getInputLinks(void)
+        {return this->mInputLinks;}
 
 public slots:
 	void updateProgress(float progr);
@@ -129,9 +131,8 @@ private:
 	NMModelScene* mScene;
 	QString mTitle;
 	QString mDescription;
-    //QMenu* mContextMenu;
-	QList<NMComponentLinkItem*> mInputLinks;
-	QList<NMComponentLinkItem*> mOutputLinks;
+    QList<NMComponentLinkItem*> mInputLinks;
+    QList<NMComponentLinkItem*> mOutputLinks;
 
 	int mSingleLineHeight;
 	int mDoubleLineHeight;

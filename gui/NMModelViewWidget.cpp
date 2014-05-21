@@ -844,9 +844,13 @@ void NMModelViewWidget::saveItems(void)
 		return;
 	}
 	QDataStream lmv(&fileLmv);
+
+    // ---------------
+    // set LUMASS identifier
+    lmv << QString::fromLatin1("LUMASS Model Visualisation File");
+    lmv << (qreal)0.93;
+
     lmv.setVersion(13);
-
-
     // --------------------------------------
     // save root labels
 
@@ -1002,12 +1006,34 @@ void NMModelViewWidget::loadItems(void)
 		return;
 	}
 	QDataStream lmv(&fileLmv);
+
+    QString fileIdentifier = "";
+    // indicates lumass version from which on
+    // this file format was used
+    qreal lumass_version = 0.91;
+
     if (lmv.version() < 12)
     {
         NMBoxErr("Unsupported File Version",
                  "This *.lmv file version is not supported "
                  "by LUMASS version < 0.9.3!");
 		return;
+    }
+    else if (lmv.version() >= 13)
+    {
+        lmv >> fileIdentifier;
+        lmv >> lumass_version;
+    }
+    bool bok;
+    QString progVersion = QString("%1.%2%3").arg(LUMASS_VERSION_MAJOR)
+            .arg(LUMASS_VERSION_MINOR).arg(LUMASS_VERSION_REVISION);
+    qreal curVersion = progVersion.toDouble(&bok);
+    if (curVersion < lumass_version)
+    {
+        NMBoxErr("Unsupported File Version",
+                 "This *.lmv file version is not supported "
+                 "by LUMASS version < " << lumass_version << "!");
+        return;
     }
 
 	NMDebugAI(<< "reading model view file ..." << endl);
@@ -1110,6 +1136,10 @@ void NMModelViewWidget::loadItems(void)
 					int srcIdx, tarIdx;
 					QString srcName, tarName;
 					lmv >> srcIdx >> srcName >> tarIdx >> tarName;
+
+                    bool dyn;
+                    if (lumass_version > 0.91)
+                        lmv >> dyn;
 				}
 				break;
 
@@ -1156,33 +1186,8 @@ void NMModelViewWidget::loadItems(void)
 		switch (readType)
 		{
         case (qint32)QGraphicsTextItem::Type:
-            {
-                ti = new QGraphicsTextItem();
-                lmv >> *ti;
-                //                ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
-                //                ti->setFlag(QGraphicsItem::ItemIsMovable, true);
-                //                ti->setOpenExternalLinks(true);
-
-                //                // any 'root-labels' of the import file
-                //                // become children of the new importHost
-                //                if (importHost != 0)
-                //                {
-                //                    QGraphicsItem* ppi = this->mModelScene->getComponentItem(
-                //                                importHost->objectName());
-
-                //                    NMAggregateComponentItem* pai =
-                //                            qgraphicsitem_cast<NMAggregateComponentItem*>(ppi);
-
-                //                    if (pai != 0)
-                //                    {
-                //                        pai->addToGroup(ti);
-                //                    }
-                //                }
-                //                else
-                //                {
-                //                    this->mModelScene->addItem(ti);
-                //                }
-            }
+            ti = new QGraphicsTextItem();
+            lmv >> *ti;
             break;
 
 		case (qint32)NMComponentLinkItem::Type:
@@ -1190,6 +1195,10 @@ void NMModelViewWidget::loadItems(void)
 					int srcIdx, tarIdx;
 					QString srcName, tarName;
 					lmv >> srcIdx >> srcName >> tarIdx >> tarName;
+
+                    bool dyn;
+                    if (lumass_version > 0.91)
+                        lmv >> dyn;
 
 					srcName = nameRegister.value(srcName);
 					tarName = nameRegister.value(tarName);
@@ -1204,6 +1213,9 @@ void NMModelViewWidget::loadItems(void)
 					{
 						li = new NMComponentLinkItem(si, ti, 0);
 						li->setZValue(this->mModelScene->getLinkZLevel());
+                        if (lumass_version > 0.91)
+                            li->setIsDynamic(dyn);
+
 						si->addOutputLink(srcIdx, li);
 						ti->addInputLink(tarIdx, li);
 						this->mModelScene->addItem(li);

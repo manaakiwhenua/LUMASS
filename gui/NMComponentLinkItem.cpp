@@ -151,7 +151,7 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
     if (this->mIsDynamic)
         pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::DashLine);
     else
-        pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::DashLine);
+        pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::SolidLine);
 	painter->setPen(pen);
 	painter->drawPath(path);
 	painter->setBrush(QColor(80,80,80));
@@ -173,6 +173,8 @@ QDataStream& operator<<(QDataStream &data, const NMComponentLinkItem &item)
 
 	data << (qint32)i.targetItem()->getInputLinkIndex(i.targetItem()->getTitle());
 	data << i.targetItem()->getTitle();
+
+    data << i.getIsDynamic();
 
 	return data;
 }

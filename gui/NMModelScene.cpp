@@ -47,7 +47,7 @@ NMModelScene::NMModelScene(QObject* parent)
 	: QGraphicsScene(parent)
 {
 	//ctx = "NMModelScene";
-	mMode = NMS_IDLE;
+    mMode = NMS_MOVE;
 	mLinkHitTolerance = 15;
 	mLinkZLevel = 10000;
 	mLinkLine = 0;
@@ -80,6 +80,26 @@ NMModelScene::toggleLinkToolButton(bool linkMode)
 	}
 	else
 		this->mMode = NMS_IDLE;
+}
+
+void
+NMModelScene::updateComponentItemFlags(QGraphicsItem *item)
+{
+    switch(mMode)
+    {
+    case NMS_MOVE:
+        item->setFlag(QGraphicsItem::ItemIsMovable, true);
+        item->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        break;
+    case NMS_LINK:
+        break;
+    case NMS_SELECT:
+        item->setFlag(QGraphicsItem::ItemIsMovable, false);
+        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+        break;
+    case NMS_IDLE:
+        break;
+    }
 }
 
 void NMModelScene::setProcCompSelectability(bool selectable)

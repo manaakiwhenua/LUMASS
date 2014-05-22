@@ -1523,7 +1523,16 @@ void OtbModellerWin::showComponentsView(bool vis)
 
 void OtbModellerWin::showComponentsInfoView(bool vis)
 {
-    this->ui->componentInfoDock->setVisible(vis);
+    ui->infoDock->setVisible(vis);
+    ui->componentInfoDock->setVisible(vis);
+
+    // a bit of a dirty hack to avoid ill-aligned display
+    // of the layer info table widget; should be really resolved in
+    // NMWidgetListView
+    bool livis = ui->infoWidgetList->getWidgetItem(0)->isVisible();
+    ui->infoWidgetList->setWidgetItemVisible(0, true);
+    ui->infoWidgetList->setWidgetItemVisible(0, false);
+    ui->infoWidgetList->setWidgetItemVisible(0, livis);
 }
 
 

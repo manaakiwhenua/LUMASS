@@ -71,6 +71,8 @@ public:
     QPointF getMousePos(void)
         {return mMousePos;}
 
+    void updateComponentItemFlags(QGraphicsItem* item);
+
 public slots:
 	void toggleLinkToolButton(bool);
 	void toggleSelToolButton(bool);

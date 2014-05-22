@@ -390,6 +390,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 	aggrItem->setHandlesChildEvents(false);
 
 	// finally add the new group component item itself to the scene
+    this->mModelScene->updateComponentItemFlags(aggrItem);
 	this->mModelScene->addItem(aggrItem);
 	this->mModelScene->invalidate();
 
@@ -1078,6 +1079,7 @@ void NMModelViewWidget::loadItems(void)
                 ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
                 ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                 ti->setOpenExternalLinks(true);
+                this->mModelScene->updateComponentItemFlags(ti);
                 this->mModelScene->addItem(ti);
                 gi = qgraphicsitem_cast<QGraphicsItem*>(ti);
             }
@@ -1116,8 +1118,9 @@ void NMModelViewWidget::loadItems(void)
 						pi->setDescription(mcomp->getDescription());
                         pi->setTimeLevel(itComp->getTimeLevel());
 					}
-					pi->setFlag(QGraphicsItem::ItemIsMovable, true);
-					this->mModelScene->addItem(pi);
+                    //pi->setFlag(QGraphicsItem::ItemIsMovable, true);
+                    this->mModelScene->updateComponentItemFlags(pi);
+                    this->mModelScene->addItem(pi);
                     gi = qgraphicsitem_cast<QGraphicsItem*>(pi);
 				}
 				break;
@@ -1142,6 +1145,8 @@ void NMModelViewWidget::loadItems(void)
 						lmv >> dummy;
 					}
 
+                    ai->setHandlesChildEvents(false);
+                    this->mModelScene->updateComponentItemFlags(ai);
 					this->mModelScene->addItem(ai);
                     gi = qgraphicsitem_cast<QGraphicsItem*>(ai);
 				}
@@ -1162,6 +1167,21 @@ void NMModelViewWidget::loadItems(void)
 
 		default:
             {
+                // clean up first before we bail out!
+                for(int i=0; i < importItems.size(); ++i)
+                {
+                    this->mModelScene->removeItem(importItems.at(i));
+                    NMAggregateComponentItem* iai = qgraphicsitem_cast<NMAggregateComponentItem*>(importItems.at(i));
+                    NMProcessComponentItem* ipi = qgraphicsitem_cast<NMProcessComponentItem*>(importItems.at(i));
+                    if (iai != 0)
+                    {
+                        mModelController->removeComponent(iai->getTitle());
+                    }
+                    else if (ipi != 0)
+                    {
+                        mModelController->removeComponent(ipi->getTitle());
+                    }
+                }
                 NMBoxErr("Invalid file type!",
                          "LUMASS couldn't read the LUMASS Model Visualisation File (*.lmv)!");
                 return;
@@ -1183,7 +1203,6 @@ void NMModelViewWidget::loadItems(void)
             importItems.push_back(gi);
             gi = 0;
         }
-
 	}
 
     // --------------------------------------------
@@ -1342,7 +1361,7 @@ void NMModelViewWidget::loadItems(void)
                                 ai->addToGroup(iai);
                         }
 					}
-					ai->setHandlesChildEvents(false);
+                    //ai->setHandlesChildEvents(false);
 				}
 				break;
 
@@ -1548,8 +1567,8 @@ NMModelViewWidget::zoomToContent()
     // go through the actual content of the scene, and determien the
     // convex hull of all items and set that as the scenes rect
 
-    this->mModelScene->setSceneRect(this->mModelScene->itemsBoundingRect());
-    this->mModelView->fitInView(this->mModelScene->sceneRect(),
+    //this->mModelScene->setSceneRect(this->mModelScene->itemsBoundingRect());
+    this->mModelView->fitInView(this->mModelScene->itemsBoundingRect(),
                                 Qt::KeepAspectRatio);
 }
 

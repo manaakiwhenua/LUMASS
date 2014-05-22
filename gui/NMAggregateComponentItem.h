@@ -72,6 +72,7 @@ public:
 public slots:
     void updateDescription(const QString& descr);
     void updateTimeLevel(short level);
+    void updateNumIterations(unsigned int iter);
 
 
 private:
@@ -85,13 +86,27 @@ private:
 
     QFont mFont;
     QString mDescription;
+    unsigned int mNumIterations;
     short mTimeLevel;
 
     QRectF mItemBnd;
     QRectF mDash;
 
     QRectF mTimeLevelRect;
+    QRectF mNumIterRect;
     QRectF mDescrRect;
+
+    QPainterPath mIterSymbol;
+
+    QRectF mIterSymbolRect;
+    QLineF mHeadLeft;
+    QLineF mHeadRight;
+    qreal headBase;
+    qreal mStartAngle;
+    qreal mSpanAngle;
+    qreal mHeadAngleLeft;
+    qreal mHeadAngleRight;
+
 
     QRectF mClockRect;
     QLineF mPointer1;

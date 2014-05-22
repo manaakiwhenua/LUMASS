@@ -29,12 +29,18 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
 {
 	this->setParentItem(parent);
 	ctx = "NMAggregateComponentItem";
+    this->mNumIterations = 0;
 	this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
 
     dx1 = 10;
     dy1 = 43;
     dx2 = 10;
     dy2 = 43;
+    headBase = 3;
+    mStartAngle = 95 * 16;
+    mSpanAngle  = -315 * 16;
+    mHeadAngleLeft = -165;
+    mHeadAngleRight = -60;
 }
 
 NMAggregateComponentItem::~NMAggregateComponentItem()
@@ -80,6 +86,16 @@ NMAggregateComponentItem::updateTimeLevel(short level)
 }
 
 void
+NMAggregateComponentItem::updateNumIterations(unsigned int iter)
+{
+    if (this->mNumIterations != iter)
+    {
+        this->mNumIterations = iter;
+        this->update();
+    }
+}
+
+void
 NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 {
     QRectF bnd = const_cast<QRectF&>(bndRect);
@@ -99,18 +115,35 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mPointer2.setLength(0.6*mPointer1.length());
     mPointer2.setAngle((qreal)-27.5);
 
-    mTimeLevelRect = QRectF(mClockRect.right()+2, mDash.top()+4, 25,15);
     mFont = QFont("Arial", 11);
     QFontMetrics fm(mFont);
-    QRectF dsr = fm.boundingRect(mDescription);
-    qreal width = dsr.width();
-    qreal height = dsr.height();
+    qreal levelWidth = fm.width(QString("%1").arg(mTimeLevel));
 
-    //mDescrRect = QRectF(mDash.right()-width-2, mTimeLevelRect.top(),
-    //                    width, 15);
+    mTimeLevelRect = QRectF(mClockRect.right()+2, mDash.top()+4, levelWidth,15);
 
-    width = (mDash.right()-2) - (mTimeLevelRect.right()+2);
-    mDescrRect = QRectF(mTimeLevelRect.right()+2, mDash.top()+4,
+    mIterSymbolRect = QRectF(mTimeLevelRect.right()+2+(headBase/2.0), mDash.top()+9, 8,8);
+
+    mIterSymbol.moveTo(mIterSymbolRect.center());
+    mIterSymbol.arcTo(mIterSymbolRect, (this->mStartAngle/16.0), (this->mSpanAngle/16.0));
+
+    QPointF arcEnd = mIterSymbol.currentPosition();
+
+    mHeadLeft = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
+    mHeadRight = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
+
+    mHeadLeft.setAngle(mHeadAngleLeft);
+    mHeadRight.setAngle(mHeadAngleRight);
+
+    mIterSymbol.lineTo(mHeadLeft.p2());
+    mIterSymbol.moveTo(arcEnd);
+    mIterSymbol.lineTo(mHeadRight.p2());
+
+    qreal numIterWidth = fm.width(QString("%1").arg(mNumIterations));
+
+    mNumIterRect = QRectF(mIterSymbolRect.right()+2, mDash.top()+4, numIterWidth,15);
+
+    qreal width = (mDash.right()-2) - (mIterSymbolRect.right()+2);
+    mDescrRect = QRectF(mTimeLevelRect.right()+2, mDash.top()+3.5,
                         width, 20);
 }
 
@@ -242,7 +275,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
     painter->drawRoundedRect(mDash, 3, 3);
 
     // the clock icon
-    painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
+    painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
     painter->drawEllipse(mClockRect);
     painter->drawLine(mPointer1);
     painter->drawLine(mPointer2);
@@ -254,10 +287,21 @@ NMAggregateComponentItem::paint(QPainter* painter,
     painter->setFont(mFont);
     painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
 
-    // the description
-    //painter->setBrush(Qt::white);
-    //painter->drawRoundedRect(mDash, 10, 10);
+    // the iteration icon
+    painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
+    //painter->drawPath(mIterSymbol);
+    painter->drawArc(mIterSymbolRect, mStartAngle, mSpanAngle);
+    painter->drawLine(mHeadLeft);
+    painter->drawLine(mHeadRight);
 
+    // the actual number of iterations
+    if (mNumIterations > 0)
+    {
+        painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+        painter->drawText(mNumIterRect, Qt::AlignLeft, QString("%1").arg(mNumIterations));
+    }
+
+    // the description
     painter->drawText(mDescrRect, Qt::AlignCenter, mDescription);
 
     // ------------------------------------------------

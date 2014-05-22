@@ -349,10 +349,24 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
     aggrItem->updateTimeLevel(aggrComp->getTimeLevel());
     aggrItem->updateDescription(aggrComp->getDescription());
 
+    NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(aggrComp);
+    if (sic != 0)
+    {
+        aggrItem->updateNumIterations(1);
+        connect(sic, SIGNAL(NumIterationsChanged(uint)),
+                aggrItem, SLOT(updateNumIterations(uint)));
+    }
+    else
+    {
+        aggrItem->updateNumIterations(0);
+    }
+
     connect(aggrComp, SIGNAL(ComponentDescriptionChanged(QString)),
             aggrItem, SLOT(updateDescription(QString)));
     connect(aggrComp, SIGNAL(TimeLevelChanged(short)),
             aggrItem, SLOT(updateTimeLevel(short)));
+
+
 
 	it.toFront();
 	while(it.hasNext())
@@ -1007,10 +1021,14 @@ void NMModelViewWidget::loadItems(void)
 	}
 	QDataStream lmv(&fileLmv);
 
+    NMDebugAI(<< "reading model view file ..." << endl);
+    NMDebugAI(<< "---------------------------" << endl);
+
+    // file identifier
     QString fileIdentifier = "";
     // indicates lumass version from which on
     // this file format was used
-    qreal lumass_version = 0.91;
+    qreal lmv_version = (qreal)0.91;
 
     if (lmv.version() < 12)
     {
@@ -1019,25 +1037,24 @@ void NMModelViewWidget::loadItems(void)
                  "by LUMASS version < 0.9.3!");
 		return;
     }
-    else if (lmv.version() >= 13)
+
+
+    // check whether we can read the header and if so, what the lmv file version is
+    lmv >> fileIdentifier;
+    if (fileIdentifier.compare(QString::fromLatin1("LUMASS Model Visualisation File")) == 0)
     {
-        lmv >> fileIdentifier;
-        lmv >> lumass_version;
+        lmv >> lmv_version;
     }
-    bool bok;
-    QString progVersion = QString("%1.%2%3").arg(LUMASS_VERSION_MAJOR)
-            .arg(LUMASS_VERSION_MINOR).arg(LUMASS_VERSION_REVISION);
-    qreal curVersion = progVersion.toDouble(&bok);
-    if (curVersion < lumass_version)
+    else
     {
-        NMBoxErr("Unsupported File Version",
-                 "This *.lmv file version is not supported "
-                 "by LUMASS version < " << lumass_version << "!");
-        return;
+        fileLmv.seek(0);
+        lmv.resetStatus();
     }
 
-	NMDebugAI(<< "reading model view file ..." << endl);
-	NMDebugAI(<< "---------------------------" << endl);
+    // --------------------------------------
+    // first iteration: create item objects
+    // --------------------------------------
+
     QList<QGraphicsItem*> importItems;
     QRectF importRegion; // in scene's coordinate space
 	NMIterableComponent* itComp = 0;
@@ -1138,12 +1155,17 @@ void NMModelViewWidget::loadItems(void)
 					lmv >> srcIdx >> srcName >> tarIdx >> tarName;
 
                     bool dyn;
-                    if (lumass_version > 0.91)
+                    if (lmv_version > (qreal)0.91)
                         lmv >> dyn;
 				}
 				break;
 
 		default:
+            {
+                NMBoxErr("Invalid file type!",
+                         "LUMASS couldn't read the LUMASS Model Visualisation File (*.lmv)!");
+                return;
+            }
 			break;
 		}
 
@@ -1164,15 +1186,31 @@ void NMModelViewWidget::loadItems(void)
 
 	}
 
-	// - establish links:
-	//   since we don't know the order of components in the file
-	//   because we didn't know it as we were saving the file
-	//   we have to establish all links at the very end to make
-	//   sure that all source/target items have already been
-	//   processed and are available!
-	// - establish group components
-	fileLmv.seek(0);
-	lmv.resetStatus();
+    // --------------------------------------------
+    // second iteration: link & group
+    // --------------------------------------------
+
+    // re-read header again to get to the point where the actual items are stored
+    fileLmv.seek(0);
+    lmv.resetStatus();
+    lmv >> fileIdentifier;
+    if (fileIdentifier.compare(QString::fromLatin1("LUMASS Model Visualisation File")) == 0)
+    {
+        lmv >> lmv_version;
+    }
+    else
+    {
+        fileLmv.seek(0);
+        lmv.resetStatus();
+    }
+
+    // - establish links:
+    //   since we don't know the order of components in the file
+    //   because we didn't know it as we were saving the file
+    //   we have to establish all links at the very end to make
+    //   sure that all source/target items have already been
+    //   processed and are available!
+    // - establish group components
 	while(!lmv.atEnd())
 	{
 		qint32 readType;
@@ -1197,7 +1235,7 @@ void NMModelViewWidget::loadItems(void)
 					lmv >> srcIdx >> srcName >> tarIdx >> tarName;
 
                     bool dyn;
-                    if (lumass_version > 0.91)
+                    if (lmv_version > (qreal)0.91)
                         lmv >> dyn;
 
 					srcName = nameRegister.value(srcName);
@@ -1213,7 +1251,7 @@ void NMModelViewWidget::loadItems(void)
 					{
 						li = new NMComponentLinkItem(si, ti, 0);
 						li->setZValue(this->mModelScene->getLinkZLevel());
-                        if (lumass_version > 0.91)
+                        if (lmv_version > (qreal)0.91)
                             li->setIsDynamic(dyn);
 
 						si->addOutputLink(srcIdx, li);
@@ -1250,11 +1288,21 @@ void NMModelViewWidget::loadItems(void)
                                 NMModelController::getInstance()->getComponent(title));
                     ai->updateDescription(c->getDescription());
                     ai->updateTimeLevel(c->getTimeLevel());
+                    NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(c);
+                    if (sic != 0)
+                    {
+                        ai->updateNumIterations(sic->getNumIterations());
+                    }
+                    else
+                        ai->updateNumIterations(0);
+
 
                     connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
                             ai, SLOT(updateDescription(QString)));
                     connect(c, SIGNAL(TimeLevelChanged(short)),
                             ai, SLOT(updateTimeLevel(short)));
+                    connect(sic, SIGNAL(NumIterationsChanged(uint)),
+                            ai, SLOT(updateNumIterations(uint)));
 
 
                     QStringList subNames;
@@ -1751,74 +1799,117 @@ void NMModelViewWidget::deleteItem()
 	NMDebugCtx(ctx, << "done!");
 }
 
+QStringList
+NMModelViewWidget::dynamicInputs(QList<QStringList>& inputs)
+{
+    NMDebugCtx(ctx, << "...");
+
+    QStringList dynMembers;
+
+    foreach(const QStringList& stepList, inputs)
+    {
+        foreach(const QString& stepInput, stepList)
+        {
+            bool persistent = true;
+            foreach(const QStringList& _stepList, inputs)
+            {
+                if (!_stepList.contains(stepInput))
+                {
+                    persistent = false;
+                    dynMembers.push_back(stepInput);
+                    break;
+                }
+            }
+        }
+    }
+
+    // debug
+    NMDebugAI( << "dynamic members..." << std::endl);
+    foreach(const QString& mem, dynMembers)
+    {
+        NMDebugAI(<< "  >> " << mem.toStdString() << std::endl);
+    }
+
+    NMDebugCtx(ctx, << "done!");
+    return dynMembers;
+}
+
 void
 NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
 {
 	NMDebugCtx(ctx, << "...");
 
-	// for now, we're just dealing with the inputs of the first
-	// iteration, since we don't support visualising the
-	// 2+ iteration inputs as yet
-	QStringList srclist;
-	if (!inputs.isEmpty())
-		srclist = inputs.at(0);
 
-	NMProcess* sender = qobject_cast<NMProcess*>(this->sender());
-	if (sender == 0)
-		return;
+    NMProcess* sender = qobject_cast<NMProcess*>(this->sender());
+    if (sender == 0)
+        return;
 
-	QString senderName = sender->parent()->objectName();
-	QGraphicsItem* gi = this->mModelScene->getComponentItem(senderName);
-	if (gi == 0)
-		return;
-	NMProcessComponentItem* procItem =
-			qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-	if (procItem == 0)
-		return;
-	QList<NMComponentLinkItem*> inputLinks = procItem->getInputLinks();
+    QString senderName = sender->parent()->objectName();
+    QGraphicsItem* gi = this->mModelScene->getComponentItem(senderName);
+    if (gi == 0)
+        return;
+    NMProcessComponentItem* procItem =
+            qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+    if (procItem == 0)
+        return;
+    QList<NMComponentLinkItem*> inputLinks = procItem->getInputLinks();
+
+    // get a list of dynamic inputs
+    QStringList dynamicInputs = this->dynamicInputs(inputs);
 
 
-	// strip off any position indices from the source input name
-	QStringList list;
-	foreach(const QString& src, srclist)
-	{
-		if (!src.isEmpty())
-			list.push_back(src.split(":", QString::SkipEmptyParts).at(0));
-	}
+    //QStringList srclist;
+    //	if (!inputs.isEmpty())
+    //		srclist = inputs.at(0);
+    foreach(const QStringList& srclist, inputs)
+    {
+        // strip off any position indices from the source input name
+        QStringList list;
+        foreach(const QString& src, srclist)
+        {
+            if (!src.isEmpty())
+                list.push_back(src.split(":", QString::SkipEmptyParts).at(0));
+        }
 
-	// remove inputs
-	for (int a=0; a < inputLinks.size(); ++a)
-	{
-		NMComponentLinkItem* link = inputLinks.at(a);
+        // remove inputs
+        for (int a=0; a < inputLinks.size(); ++a)
+        {
+            NMComponentLinkItem* link = inputLinks.at(a);
 
-		if (!list.contains(procItem->identifyInputLink(a)))
-		{
-			NMProcessComponentItem* src = link->sourceItem();
-			src->removeLink(link);
-			procItem->removeLink(link);
-			this->mModelScene->removeItem(link);
-		}
-	}
+            if (!list.contains(procItem->identifyInputLink(a)))
+            {
+                NMProcessComponentItem* src = link->sourceItem();
+                src->removeLink(link);
+                procItem->removeLink(link);
+                this->mModelScene->removeItem(link);
+                delete link;
+            }
+        }
 
-	// add inputs
-	for (int b=0; b < list.size(); ++b)
-	{
-		if (procItem->getInputLinkIndex(list.at(b)) == -1)
-		{
-			NMProcessComponentItem* si =
-					qgraphicsitem_cast<NMProcessComponentItem*>(
-						this->mModelScene->getComponentItem(list.at(b)));
-			NMComponentLinkItem* li;
-			if (si != 0)
-			{
-				li = new NMComponentLinkItem(si, procItem, 0);
-				li->setZValue(this->mModelScene->getLinkZLevel());
-				si->addOutputLink(-1, li);
-				procItem->addInputLink(b, li);
-				this->mModelScene->addItem(li);
-			}
-		}
-	}
+        // add inputs
+        for (int b=0; b < list.size(); ++b)
+        {
+            if (procItem->getInputLinkIndex(list.at(b)) == -1)
+            {
+                NMProcessComponentItem* si =
+                        qgraphicsitem_cast<NMProcessComponentItem*>(
+                            this->mModelScene->getComponentItem(list.at(b)));
+                NMComponentLinkItem* li;
+                if (si != 0)
+                {
+                    li = new NMComponentLinkItem(si, procItem, 0);
+                    li->setZValue(this->mModelScene->getLinkZLevel());
+                    if (dynamicInputs.contains(srclist.at(b)))
+                    {
+                        li->setIsDynamic(true);
+                    }
+                    si->addOutputLink(-1, li);
+                    procItem->addInputLink(b, li);
+                    this->mModelScene->addItem(li);
+                }
+            }
+        }
+    }
 
 	NMDebugCtx(ctx, << "done!");
 }

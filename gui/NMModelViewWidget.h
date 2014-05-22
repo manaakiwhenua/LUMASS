@@ -136,10 +136,11 @@ protected slots:
 
 private:
 	void initItemContextMenu();
-    //debug
-    std::string reportRect(const QRectF& rect, const char* msg);
-    std::string reportPoint(const QPointF& pt, const char* msg);
-    std::string reportLine(const QLineF& line, const char* msg);
+    // identifies members of any one list, which are not present
+    // in all of the other lists (i.e. inputs, which change over
+    // iteration steps)
+    QStringList dynamicInputs(QList<QStringList>& inputs);
+
 
     QRectF unionRects(const QRectF& r1, const QRectF& r2)
     {
@@ -154,6 +155,12 @@ private:
             )
         );
     }
+
+    // debug func ------------------
+    std::string reportRect(const QRectF& rect, const char* msg);
+    std::string reportPoint(const QPointF& pt, const char* msg);
+    std::string reportLine(const QLineF& line, const char* msg);
+    // ----------------------
 
     qreal mScaleFactor;
 

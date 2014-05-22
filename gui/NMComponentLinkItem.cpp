@@ -154,8 +154,21 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
         pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::SolidLine);
 	painter->setPen(pen);
 	painter->drawPath(path);
-	painter->setBrush(QColor(80,80,80));
-	painter->drawPolygon(head);
+
+    if (this->mIsDynamic)
+    {
+        pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::SolidLine);
+        painter->setPen(pen);
+        painter->setBrush(QColor(255,255,255));
+        painter->drawPolygon(head);
+    }
+    else
+    {
+        pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::SolidLine);
+        painter->setPen(pen);
+        painter->setBrush(QColor(80,80,80));
+        painter->drawPolygon(head);
+    }
 
 	QPainterPath npath = path;
 	npath.addPolygon(head);

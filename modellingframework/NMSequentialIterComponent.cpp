@@ -40,6 +40,16 @@ NMSequentialIterComponent::~NMSequentialIterComponent()
 }
 
 void
+NMSequentialIterComponent::setNumIterations(unsigned int numiter)
+{
+    if (this->mNumIterations != numiter && numiter > 0)
+    {
+        this->mNumIterations = numiter;
+        emit NumIterationsChanged(numiter);
+    }
+}
+
+void
 NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
     		unsigned int minLevel, unsigned int maxLevel)
 {

@@ -46,8 +46,13 @@ public:
 	NMSequentialIterComponent(QObject* parent=0);
 	virtual ~NMSequentialIterComponent(void);
 
-	NMPropertyGetSet(NumIterations, unsigned int)
+    //NMPropertyGetSet(NumIterations, unsigned int)
+    void setNumIterations(unsigned int numiter);
+    unsigned int getNumIterations(void)
+        {return this->mNumIterations;}
 
+signals:
+    void NumIterationsChanged(unsigned int numiter);
 
 protected:
 	unsigned int mNumIterations;

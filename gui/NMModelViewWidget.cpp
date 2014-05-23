@@ -151,6 +151,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	mModelView->setCacheMode(QGraphicsView::CacheBackground);
 	mModelView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, false);
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
+    mModelView->setRubberBandSelectionMode(Qt::ContainsItemShape);
 	mModelView->setRenderHint(QPainter::Antialiasing, true);
 	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
     mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -1890,12 +1891,14 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
                 list.push_back(src.split(":", QString::SkipEmptyParts).at(0));
         }
 
-        // remove inputs
+        // remove (persistent) input links
         for (int a=0; a < inputLinks.size(); ++a)
         {
             NMComponentLinkItem* link = inputLinks.at(a);
 
-            if (!list.contains(procItem->identifyInputLink(a)))
+            if (    !list.contains(procItem->identifyInputLink(a))
+                &&  !link->getIsDynamic()
+               )
             {
                 NMProcessComponentItem* src = link->sourceItem();
                 src->removeLink(link);
@@ -1905,15 +1908,16 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
             }
         }
 
-        // add inputs
+        // add inputs and update the ones already present
         for (int b=0; b < list.size(); ++b)
         {
-            if (procItem->getInputLinkIndex(list.at(b)) == -1)
+            NMProcessComponentItem* si = 0;
+            NMComponentLinkItem* li = 0;
+            int inputLinkIndex = procItem->getInputLinkIndex(list.at(b));
+            if (inputLinkIndex < 0)
             {
-                NMProcessComponentItem* si =
-                        qgraphicsitem_cast<NMProcessComponentItem*>(
+                si = qgraphicsitem_cast<NMProcessComponentItem*>(
                             this->mModelScene->getComponentItem(list.at(b)));
-                NMComponentLinkItem* li;
                 if (si != 0)
                 {
                     li = new NMComponentLinkItem(si, procItem, 0);
@@ -1925,6 +1929,20 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
                     si->addOutputLink(-1, li);
                     procItem->addInputLink(b, li);
                     this->mModelScene->addItem(li);
+                }
+            }
+            // we also look after those, which are already present
+            // since they might have change persistency
+            else
+            {
+                li = procItem->getInputLinks().at(inputLinkIndex);
+                if (dynamicInputs.contains(srclist.at(b)))
+                {
+                    li->setIsDynamic(true);
+                }
+                else
+                {
+                    li->setIsDynamic(false);
                 }
             }
         }

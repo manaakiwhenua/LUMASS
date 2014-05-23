@@ -357,24 +357,24 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     // ..........................
     // component management actions
-    QIcon moveIcon(":move-icon.png");
-    QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
-    		this->ui->mainToolBar);
-    moveAction->setCheckable(true);
-    moveAction->setChecked(true);
+//    QIcon moveIcon(":move-icon.png");
+//    QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
+//    		this->ui->mainToolBar);
+//    moveAction->setCheckable(true);
+//    moveAction->setChecked(true);
 
     QIcon linkIcon(":link-icon.png");
     QAction* linkAction = new QAction(linkIcon, "Link Components", this->ui->mainToolBar);
     linkAction->setCheckable(true);
 
-    QIcon selIcon(":select-icon.png");
-    QAction* selAction = new QAction(selIcon, "Select Components", this->ui->mainToolBar);
-    selAction->setCheckable(true);
+//    QIcon selIcon(":select-icon.png");
+//    QAction* selAction = new QAction(selIcon, "Select Components", this->ui->mainToolBar);
+//    selAction->setCheckable(true);
 
-    QActionGroup* modelToolGroup = new QActionGroup(this->ui->mainToolBar);
-    modelToolGroup->addAction(moveAction);
-    modelToolGroup->addAction(linkAction);
-    modelToolGroup->addAction(selAction);
+//    QActionGroup* modelToolGroup = new QActionGroup(this->ui->mainToolBar);
+//    modelToolGroup->addAction(moveAction);
+//    modelToolGroup->addAction(linkAction);
+//    modelToolGroup->addAction(selAction);
 
     // ..........................
     // model execution actions
@@ -388,7 +388,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     QAction* resetAction = new QAction(resetIcon, "Reset Model",  this->ui->mainToolBar);
 
 
-    this->ui->mainToolBar->addActions(modelToolGroup->actions());
+    //this->ui->mainToolBar->addActions(modelToolGroup->actions());
+    this->ui->mainToolBar->addAction(linkAction);
     this->ui->mainToolBar->addSeparator();
 
     this->ui->mainToolBar->addAction(zoomInAction);
@@ -404,10 +405,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // connect model view widget signals / slots
     connect(linkAction, SIGNAL(toggled(bool)),
     		this->ui->modelViewWidget, SIGNAL(linkToolToggled(bool)));
-    connect(selAction, SIGNAL(toggled(bool)),
-    		this->ui->modelViewWidget, SIGNAL(selToolToggled(bool)));
-    connect(moveAction, SIGNAL(toggled(bool)),
-    		this->ui->modelViewWidget, SIGNAL(moveToolToggled(bool)));
+//    connect(selAction, SIGNAL(toggled(bool)),
+//    		this->ui->modelViewWidget, SIGNAL(selToolToggled(bool)));
+//    connect(moveAction, SIGNAL(toggled(bool)),
+//    		this->ui->modelViewWidget, SIGNAL(moveToolToggled(bool)));
 
     connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
     connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));

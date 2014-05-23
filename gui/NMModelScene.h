@@ -115,6 +115,8 @@ private:
 	QGraphicsLineItem* mLinkLine;
 	InteractionMode mMode;
 
+    QList<QGraphicsItem*> mDragItemList;
+
     QPointF mMousePos;
 };
 

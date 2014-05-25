@@ -580,10 +580,19 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 	}
 
 	// GROUP
-    if (selection.count() > 1 && !running)
+    if ((selection.count() > 0 || ai != 0) && !running)
 	{
-		int levelIndi = this->shareLevel(selection);
-		if (levelIndi >= 0)
+        int levelIndi = -1 ;
+        if (selection.count() > 0)
+            levelIndi = this->shareLevel(selection);
+
+        if ((ai != 0 && selection.count() == 0) || selection.count() == 1)
+        {
+            this->mActionMap.value("Ungroup Components")->setEnabled(true);
+            this->mActionMap.value("Create Sequential Group")->setEnabled(false);
+            //this->mActionMap.value("Create Conditional Group")->setEnabled(true);
+        }
+        else if (selection.count() > 1 && levelIndi >= 0)
 		{
 			this->mActionMap.value("Create Sequential Group")->setEnabled(true);
 			//this->mActionMap.value("Create Conditional Group")->setEnabled(true);
@@ -1621,7 +1630,31 @@ void NMModelViewWidget::ungroupComponents()
 	NMDebugCtx(ctx, << "...");
 	QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
 	if (selection.count() == 0)
-		return;
+    {
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+        if (ai != 0)
+        {
+            QList<QGraphicsItem*> kids = ai->childItems();
+            QList<QGraphicsItem*>::iterator iit = kids.begin();
+            while(iit != kids.end())
+            {
+                if (    (*iit)->type() == NMAggregateComponentItem::Type
+                    ||  (*iit)->type() == NMProcessComponentItem::Type
+                   )
+                {
+                    selection.push_back(*iit);
+                }
+                ++iit;
+            }
+        }
+        else
+        {
+            return;
+        }
+
+        if (selection.count() == 0)
+            return;
+    }
 
 	QGraphicsItem* item = selection.at(0);
 	NMModelComponent* comp = this->componentFromItem(item);

@@ -1357,8 +1357,28 @@ void QtTextEditFactory::connectPropertyManager(QtStringListPropertyManager *mana
 QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
         QtProperty *property, QWidget *parent)
 {
-
+    QWidget* w = new QWidget(parent);
+    w->setWindowFlags(Qt::FramelessWindowHint);
+    QHBoxLayout* blo = new QHBoxLayout(w);
+    QPushButton* btn = new QPushButton("...", w);
+    QSizePolicy sp(QSizePolicy::Maximum,
+                   QSizePolicy::Maximum);
+    btn->setMaximumWidth(20);
+    //btn->setMinimumHeight(20);
+    btn->setSizePolicy(sp);
     QTextEdit *editor = d_ptr->createEditor(property, parent);
+    //editor->setMinimumHeight(15);
+    editor->setSizePolicy(sp);
+
+    blo->setSpacing(0);
+    blo->setContentsMargins(0,0,0,0);
+    blo->addWidget(editor);
+    blo->addWidget(btn);
+    w->setSizePolicy(sp);
+    w->setLayout(blo);
+    w->setContentsMargins(0,0,0,0);
+
+
     editor->setFocusPolicy(Qt::WheelFocus);
     editor->installEventFilter(this);
     QStringList lst = manager->value(property);
@@ -1369,7 +1389,8 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
 //                this, SLOT(slotSetValue()));
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
-    return editor;
+    //return editor;
+    return w;
 }
 
 /*!

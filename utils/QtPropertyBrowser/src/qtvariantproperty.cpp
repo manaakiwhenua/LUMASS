@@ -2328,7 +2328,16 @@ QWidget *QtVariantEditorFactory::createEditor(QtVariantPropertyManager *manager,
     QtAbstractEditorFactoryBase *factory = d_ptr->m_typeToFactory.value(propType, 0);
     if (!factory)
         return 0;
-    return factory->createEditor(wrappedProperty(property), parent);
+
+    // ----------- alex ------------------------
+    //qDebug() << "QtVariantEditorFactory::createEditor(): propertyName in: " << property->propertyName();
+    QtProperty* wrappedProp = wrappedProperty(property);
+    //qDebug() << "QtVariantEditorFactory::createEditor(): wrapped propertyName: " << wrappedProp->propertyName();
+    wrappedProp->setPropertyName(property->propertyName());
+    //return factory->createEditor(wrappedProperty(property), parent);
+
+    return factory->createEditor(wrappedProp, parent);
+    // ---------- alex --------------------------
 }
 
 /*!

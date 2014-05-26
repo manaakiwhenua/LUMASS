@@ -495,7 +495,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         //if (slpm != 0)
 
         {
-            connect(prop->propertyManager(), SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
+            connect(manager, SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
                     this, SLOT(callFeeder(QtProperty*, const QStringList &)));
         }
 

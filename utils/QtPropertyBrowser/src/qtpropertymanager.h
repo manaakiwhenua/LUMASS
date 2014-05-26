@@ -245,8 +245,15 @@ public:
 
 public Q_SLOTS:
     void setValue(QtProperty *property, const QStringList &val);
+    void slotCallAuxEditor(QtProperty* property, const QStringList& val)
+        {
+            qDebug() << "QStringListPropertyManager::slotCallAuxEditor";
+            emit signalCallAuxEditor(property, val);
+        }
+
 Q_SIGNALS:
     void valueChanged(QtProperty *property, const QStringList &val);
+    void signalCallAuxEditor(QtProperty* property, const QStringList& val);
 protected:
     QString valueText(const QtProperty *property) const;
     virtual void initializeProperty(QtProperty *property);

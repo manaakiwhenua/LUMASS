@@ -1257,7 +1257,9 @@ public:
 
     void slotPropertyChanged(QtProperty *property, const QStringList &value);
     void slotSetValue(QObject* obj);
+    void callAuxEditor(QtProperty *property, const QStringList &value);
 };
+
 
 void QtTextEditFactoryPrivate::slotPropertyChanged(QtProperty *property,
                 const QStringList &value)
@@ -1349,6 +1351,28 @@ void QtTextEditFactory::connectPropertyManager(QtStringListPropertyManager *mana
                 this, SLOT(slotPropertyChanged(QtProperty *, const QStringList &)));
 }
 
+void
+QtTextEditFactory::slotCallAuxEditor(void)
+{
+    QPushButton* btn = qobject_cast<QPushButton*>(this->sender());
+    if (btn == 0)
+        return;
+
+    if (mButton2Property.contains(btn))
+    {
+        QtProperty* prop = mButton2Property.value(btn);
+        if (prop != 0)
+        {
+            QtStringListPropertyManager* slpm =
+                    qobject_cast<QtStringListPropertyManager*>(prop->propertyManager());
+            QStringList value = slpm->value(prop);
+            emit signalCallAuxEditor(prop, value);
+            qDebug()<< "QtTextEditFactory::slotCallAuxEditor: emitted signalCallAuxEditor!";
+        }
+    }
+}
+
+
 /*!
     \internal
 
@@ -1361,8 +1385,8 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
     w->setWindowFlags(Qt::FramelessWindowHint);
     QHBoxLayout* blo = new QHBoxLayout(w);
     QPushButton* btn = new QPushButton("...", w);
-    QSizePolicy sp(QSizePolicy::Maximum,
-                   QSizePolicy::Maximum);
+    QSizePolicy sp(QSizePolicy::Expanding,
+                   QSizePolicy::Expanding);
     btn->setMaximumWidth(20);
     //btn->setMinimumHeight(20);
     btn->setSizePolicy(sp);
@@ -1385,10 +1409,17 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
     QString instr = QtStringListPropertyManager::StringListToString(lst);
     editor->setPlainText(instr);
 
+    qDebug() << "createEditor for '" << property->propertyName() << "' ...";
+    mButton2Property.insert(btn, property);
+
 //    connect(editor, SIGNAL(textChanged()),
 //                this, SLOT(slotSetValue()));
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
+    connect(btn, SIGNAL(clicked()), this, SLOT(slotCallAuxEditor()));
+    connect(this, SIGNAL(signalCallAuxEditor(QtProperty *, const QStringList &)),
+            manager, SLOT(slotCallAuxEditor(QtProperty *, const QStringList &)));
+
     //return editor;
     return w;
 }

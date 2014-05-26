@@ -1060,6 +1060,8 @@ QtVariantPropertyManager::QtVariantPropertyManager(QObject *parent)
     d_ptr->m_typeToValueType[QVariant::StringList] = QVariant::StringList;
     connect(stringListPropertyManager, SIGNAL(valueChanged(QtProperty *, const QStringList &)),
                 this, SLOT(slotValueChanged(QtProperty *, const QStringList &)));
+    connect(stringListPropertyManager, SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
+                this, SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)));
 
     // DatePropertyManager
     QtDatePropertyManager *datePropertyManager = new QtDatePropertyManager(this);

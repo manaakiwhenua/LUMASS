@@ -70,8 +70,14 @@ public slots:
 
 private slots:
     void applySettings(QtProperty* prop, const QVariant& val);
+    void callFeeder(QtProperty* prop, const QStringList& val);
 
 private:
+    /*!
+     * \brief updateSubComponents
+     * \param compList list of new component names reflecting any change
+     *        in content and order of sub components
+     */
     void updateSubComponents(const QStringList& compList);
     QVariant nestedListFromStringList(const QStringList& strList);
 

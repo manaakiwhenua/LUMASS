@@ -229,6 +229,12 @@ public:
     QtTextEditFactory(QObject *parent = 0);
     ~QtTextEditFactory();
 
+public Q_SLOTS:
+    void slotCallAuxEditor(void);
+
+Q_SIGNALS:
+    void signalCallAuxEditor(QtProperty *, const QStringList &);
+
 protected:
     bool eventFilter(QObject* obj, QEvent* event);
     void connectPropertyManager(QtStringListPropertyManager *manager);
@@ -237,6 +243,7 @@ protected:
     void disconnectPropertyManager(QtStringListPropertyManager *manager);
 private:
     QtTextEditFactoryPrivate *d_ptr;
+    QMap<QPushButton*, QtProperty*> mButton2Property;
     Q_DECLARE_PRIVATE(QtTextEditFactory)
     Q_DISABLE_COPY(QtTextEditFactory)
     Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, const QStringList &))

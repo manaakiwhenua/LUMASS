@@ -490,6 +490,15 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         connect(manager, SIGNAL(valueChanged(QtProperty*, const QVariant &)),
                 this, SLOT(applySettings(QtProperty*, const QVariant &)));
 
+
+        //QtStringListPropertyManager* slpm = qobject_cast<QtStringListPropertyManager*>(manager);
+        //if (slpm != 0)
+
+        {
+            connect(prop->propertyManager(), SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
+                    this, SLOT(callFeeder(QtProperty*, const QStringList &)));
+        }
+
         NMDebug(<< " - processed!" << std::endl);
     }
     else
@@ -499,40 +508,57 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     }
 }
 
+void
+NMComponentEditor::callFeeder(QtProperty* prop, const QStringList& val)
+{
+    NMDebugCtx(ctx, << "...");
+
+    NMDebugAI(<< "Feeder for " << mObj->objectName().toStdString()
+              << "'s '" << prop->propertyName().toStdString()
+              << "' requested ..." << std::endl);
+
+    NMDebugCtx(ctx, << "done!");
+}
+
 void NMComponentEditor::applySettings(QtProperty* prop,
         const QVariant& val)
 {
     NMDebugCtx(ctx, << "...");
 
-    NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
-    NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
-    NMProcess* proc = qobject_cast<NMProcess*>(mObj);
     if (comp == 0 && proc == 0)
     {
         NMDebugCtx(ctx, << "done!");
         return;
     }
 
+//    NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
+//    NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
+//    NMProcess* proc = qobject_cast<NMProcess*>(mObj);
+
+
     mUpdating = true;
 
-    if (mObj->property(prop->propertyName().toStdString().c_str()).isValid() ||
-        (prop->propertyName().compare("ComponentName")== 0))
-    {
-        this->setComponentProperty(prop, mObj);
-    }
-    else if (itComp != 0 && itComp->getProcess() != 0)
-    {
-        proc = itComp->getProcess();
-        if (proc->property(prop->propertyName().toStdString().c_str()).isValid() ||
-            (prop->propertyName().compare("ProcessName") == 0))
-        {
-            this->setComponentProperty(prop, proc);
-        }
-    }
-    else
-    {
-        this->setComponentProperty(prop, mObj);
-    }
+    this->setComponentProperty(prop, mObj);
+
+
+//    if (mObj->property(prop->propertyName().toStdString().c_str()).isValid() ||
+//        (prop->propertyName().compare("ComponentName")== 0))
+//    {
+//        this->setComponentProperty(prop, mObj);
+//    }
+//    else if (itComp != 0 && itComp->getProcess() != 0)
+//    {
+//        proc = itComp->getProcess();
+//        if (proc->property(prop->propertyName().toStdString().c_str()).isValid() ||
+//            (prop->propertyName().compare("ProcessName") == 0))
+//        {
+//            this->setComponentProperty(prop, proc);
+//        }
+//    }
+//    else
+//    {
+//        this->setComponentProperty(prop, mObj);
+//    }
     mUpdating = false;
     NMDebugCtx(ctx, << "done!");
 }
@@ -831,3 +857,5 @@ NMComponentEditor::nestedListFromStringList(const QStringList& strList)
     //NMDebugCtx(ctx, << "done!");
     return val;
 }
+
+

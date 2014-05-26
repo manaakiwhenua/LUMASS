@@ -112,6 +112,7 @@ Q_SIGNALS:
     void valueChanged(QtProperty *property, const QVariant &val);
     void attributeChanged(QtProperty *property,
                 const QString &attribute, const QVariant &val);
+    void signalCallAuxEditor(QtProperty *property, const QStringList& val);
 protected:
     virtual bool hasValue(const QtProperty *property) const;
     QString valueText(const QtProperty *property) const;

@@ -490,14 +490,8 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         connect(manager, SIGNAL(valueChanged(QtProperty*, const QVariant &)),
                 this, SLOT(applySettings(QtProperty*, const QVariant &)));
 
-
-        //QtStringListPropertyManager* slpm = qobject_cast<QtStringListPropertyManager*>(manager);
-        //if (slpm != 0)
-
-        {
-            connect(manager, SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
-                    this, SLOT(callFeeder(QtProperty*, const QStringList &)));
-        }
+        connect(manager, SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
+                 this, SLOT(callFeeder(QtProperty*, const QStringList &)));
 
         NMDebug(<< " - processed!" << std::endl);
     }
@@ -516,6 +510,56 @@ NMComponentEditor::callFeeder(QtProperty* prop, const QStringList& val)
     NMDebugAI(<< "Feeder for " << mObj->objectName().toStdString()
               << "'s '" << prop->propertyName().toStdString()
               << "' requested ..." << std::endl);
+
+    NMDebugAI(<< "current value: " << val.join(":").toStdString() << std::endl);
+
+    QVariant nestedList; // = QVariant::fromValue(nestedListFromStringList(val));
+    if (!val.isEmpty())
+    {
+        if (!val.at(0).isEmpty() && !val.at(0).startsWith("invalid"))
+        {
+            nestedList = this->nestedListFromStringList(val);
+        }
+    }
+
+    if (!nestedList.isValid())
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+
+    if (QString::fromLatin1("QList<QStringList>").compare(QString(nestedList.typeName())) == 0)
+    {
+        QList<QStringList> _nestedList = nestedList.value<QList<QStringList> >();
+        foreach(const QStringList& lst, _nestedList)
+        {
+            NMDebugAI(<< "  >> " << std::endl);
+            foreach(const QString& qstr, lst)
+            {
+                NMDebugAI(<< "    -- " << qstr.toStdString() << std::endl);
+            }
+            NMDebugAI(<< "  << " << std::endl);
+        }
+    }
+    else if (QString::fromLatin1("QList<QList<QStringList> >").compare(QString(nestedList.typeName())) == 0)
+    {
+        QList<QList<QStringList> > _nestedList = nestedList.value<QList<QList<QStringList> > >();
+        foreach(const QList<QStringList>& llst, _nestedList)
+        {
+            NMDebugAI( << "  >> " << std::endl);
+            foreach(const QStringList& lst, llst)
+            {
+                NMDebugAI(<< "    >> " << std::endl);
+                foreach(const QString& qstr, lst)
+                {
+                    NMDebugAI(<< "      -- " << qstr.toStdString() << std::endl);
+                }
+                NMDebugAI(<< "    << " << std::endl);
+            }
+            NMDebugAI( << "  << " << std::endl);
+        }
+    }
 
     NMDebugCtx(ctx, << "done!");
 }

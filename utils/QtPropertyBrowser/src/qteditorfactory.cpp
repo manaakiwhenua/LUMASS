@@ -1388,16 +1388,15 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
     QSizePolicy sp(QSizePolicy::Expanding,
                    QSizePolicy::Expanding);
     btn->setMaximumWidth(20);
-    //btn->setMinimumHeight(20);
     btn->setSizePolicy(sp);
     QTextEdit *editor = d_ptr->createEditor(property, parent);
-    //editor->setMinimumHeight(15);
     editor->setSizePolicy(sp);
 
     blo->setSpacing(0);
     blo->setContentsMargins(0,0,0,0);
-    blo->addWidget(editor);
     blo->addWidget(btn);
+    blo->addWidget(editor);
+
     w->setSizePolicy(sp);
     w->setLayout(blo);
     w->setContentsMargins(0,0,0,0);

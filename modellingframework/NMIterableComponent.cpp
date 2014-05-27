@@ -451,17 +451,24 @@ void NMIterableComponent::destroySubComponents(QMap<QString, NMModelComponent*>&
 	if (this->mProcess == 0)
 	{
 		NMModelComponent* sc = this->getInternalStartComponent();
-		NMIterableComponent* dc;
+        NMIterableComponent* dc = 0;
 		while (sc != 0)
 		{
-			dc = qobject_cast<NMIterableComponent*>(sc);
-			sc = this->getNextInternalComponent();
+            dc = static_cast<NMIterableComponent*>(sc);
 			if (dc != 0)
+            {
 				dc->destroySubComponents(repo);
+                repo.remove(dc->objectName());
+                delete dc;
+                dc = 0;
+            }
+
+            sc = this->getNextInternalComponent();
             if (sc != 0)
             {
                 repo.remove(sc->objectName());
                 delete sc;
+                sc = 0;
             }
 		}
 	}

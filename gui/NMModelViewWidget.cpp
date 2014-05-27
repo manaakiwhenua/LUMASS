@@ -801,7 +801,7 @@ void NMModelViewWidget::saveItems(void)
 
 	// create a list of all components to be saved
     // create also a list of all labels on root level
-    // since they don't belong to anyone NMAggregateComponentItem
+    // since they don't belong to any NMAggregateComponentItem
     QList<QGraphicsTextItem*> rootLabels;
 	foreach(QGraphicsItem* item, items)
 	{
@@ -915,6 +915,13 @@ void NMModelViewWidget::saveItems(void)
 			xmlS.serialiseComponent(comp, fnLmx, 4, false);
 			continue;
 		}
+
+        if (item == 0)
+        {
+            NMWarn(ctx, << "couldn't find item '" << itemName.toStdString()
+                        << "' on the scene - skip saving!" << std::endl);
+            continue;
+        }
 
 		switch (item->type())
 		{
@@ -1119,14 +1126,17 @@ void NMModelViewWidget::loadItems(void)
 						procComp = itComp->getProcess();
 						this->connectProcessItem(procComp, pi);
 					}
+                    // data buffer item
 					else
 					{
-						NMModelComponent* mcomp = this->mModelController->getComponent(itemTitle);
+                        NMModelComponent* mcomp = this->mModelController->getComponent(itemTitle);
 						connect(mcomp, SIGNAL(ComponentDescriptionChanged(const QString &)),
 								pi, SLOT(updateDescription(const QString &)));
-						pi->setIsDataBufferItem(true);
+                        connect(mcomp, SIGNAL(TimeLevelChanged(short)),
+                                pi, SLOT(updateTimeLevel(short)));
+                        //pi->setIsDataBufferItem(true);
 						pi->setDescription(mcomp->getDescription());
-                        pi->setTimeLevel(itComp->getTimeLevel());
+                        pi->setTimeLevel(mcomp->getTimeLevel());
 					}
                     //pi->setFlag(QGraphicsItem::ItemIsMovable, true);
                     this->mModelScene->updateComponentItemFlags(pi);
@@ -1153,6 +1163,14 @@ void NMModelViewWidget::loadItems(void)
 					{
 						QString dummy;
 						lmv >> dummy;
+                        // text labels are stored as (QString("TextLabel"), QGraphicsItem*) pair!
+                        if (dummy.compare(QString::fromLatin1("TextLabel")) == 0)
+                        {
+                            QGraphicsTextItem* textItemDummy = new QGraphicsTextItem(0);
+                            lmv >> *textItemDummy;
+                            delete textItemDummy;
+                            textItemDummy = 0;
+                        }
 					}
 
                     ai->setHandlesChildEvents(false);
@@ -1177,24 +1195,24 @@ void NMModelViewWidget::loadItems(void)
 
 		default:
             {
-                // clean up first before we bail out!
-                for(int i=0; i < importItems.size(); ++i)
-                {
-                    this->mModelScene->removeItem(importItems.at(i));
-                    NMAggregateComponentItem* iai = qgraphicsitem_cast<NMAggregateComponentItem*>(importItems.at(i));
-                    NMProcessComponentItem* ipi = qgraphicsitem_cast<NMProcessComponentItem*>(importItems.at(i));
-                    if (iai != 0)
-                    {
-                        mModelController->removeComponent(iai->getTitle());
-                    }
-                    else if (ipi != 0)
-                    {
-                        mModelController->removeComponent(ipi->getTitle());
-                    }
-                }
-                NMBoxErr("Invalid file type!",
-                         "LUMASS couldn't read the LUMASS Model Visualisation File (*.lmv)!");
-                return;
+//                // clean up first before we bail out!
+//                for(int i=0; i < importItems.size(); ++i)
+//                {
+//                    this->mModelScene->removeItem(importItems.at(i));
+//                    NMAggregateComponentItem* iai = qgraphicsitem_cast<NMAggregateComponentItem*>(importItems.at(i));
+//                    NMProcessComponentItem* ipi = qgraphicsitem_cast<NMProcessComponentItem*>(importItems.at(i));
+//                    if (iai != 0)
+//                    {
+//                        mModelController->removeComponent(iai->getTitle());
+//                    }
+//                    else if (ipi != 0)
+//                    {
+//                        mModelController->removeComponent(ipi->getTitle());
+//                    }
+//                }
+//                NMBoxErr("Invalid file type!",
+//                         "LUMASS couldn't read the LUMASS Model Visualisation File (*.lmv)!");
+//                return;
             }
 			break;
 		}

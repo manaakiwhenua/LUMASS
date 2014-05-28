@@ -575,34 +575,29 @@ void NMComponentEditor::applySettings(QtProperty* prop,
         return;
     }
 
-//    NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
-//    NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
-//    NMProcess* proc = qobject_cast<NMProcess*>(mObj);
-
+    NMModelComponent* comp = qobject_cast<NMModelComponent*>(mObj);
+    NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
+    NMProcess* proc = qobject_cast<NMProcess*>(mObj);
 
     mUpdating = true;
-
-    this->setComponentProperty(prop, mObj);
-
-
-//    if (mObj->property(prop->propertyName().toStdString().c_str()).isValid() ||
-//        (prop->propertyName().compare("ComponentName")== 0))
-//    {
-//        this->setComponentProperty(prop, mObj);
-//    }
-//    else if (itComp != 0 && itComp->getProcess() != 0)
-//    {
-//        proc = itComp->getProcess();
-//        if (proc->property(prop->propertyName().toStdString().c_str()).isValid() ||
-//            (prop->propertyName().compare("ProcessName") == 0))
-//        {
-//            this->setComponentProperty(prop, proc);
-//        }
-//    }
-//    else
-//    {
-//        this->setComponentProperty(prop, mObj);
-//    }
+    if (mObj->property(prop->propertyName().toStdString().c_str()).isValid() ||
+        (prop->propertyName().compare("ComponentName")== 0))
+    {
+        this->setComponentProperty(prop, mObj);
+    }
+    else if (itComp != 0 && itComp->getProcess() != 0)
+    {
+        proc = itComp->getProcess();
+        if (proc->property(prop->propertyName().toStdString().c_str()).isValid() ||
+            (prop->propertyName().compare("ProcessName") == 0))
+        {
+            this->setComponentProperty(prop, proc);
+        }
+    }
+    else
+    {
+        this->setComponentProperty(prop, mObj);
+    }
     mUpdating = false;
     NMDebugCtx(ctx, << "done!");
 }

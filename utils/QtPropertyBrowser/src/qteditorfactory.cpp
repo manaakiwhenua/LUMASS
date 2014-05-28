@@ -1411,8 +1411,8 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
     qDebug() << "createEditor for '" << property->propertyName() << "' ...";
     mButton2Property.insert(btn, property);
 
-//    connect(editor, SIGNAL(textChanged()),
-//                this, SLOT(slotSetValue()));
+    //connect(editor, SIGNAL(textChanged()),
+    //            this, SLOT(slotSetValue()));
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
     connect(btn, SIGNAL(clicked()), this, SLOT(slotCallAuxEditor()));

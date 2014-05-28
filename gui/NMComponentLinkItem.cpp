@@ -37,7 +37,7 @@ NMComponentLinkItem::NMComponentLinkItem(NMProcessComponentItem* sourceItem,
 	this->mTargetItem = targetItem;
 	this->mHeadSize = 10;
 
-//	this->setFlag(QGraphicsItem::ItemIsSelectable, false);
+    //	this->setFlag(QGraphicsItem::ItemIsSelectable, false);
 }
 
 NMComponentLinkItem::~NMComponentLinkItem()
@@ -66,19 +66,31 @@ NMComponentLinkItem::setIsDynamic(bool dynamic)
     }
 }
 
+QRectF
+NMComponentLinkItem::boundingRect(void) const
+{
+    // determine coordinates and bounding rectangle
+    QPointF sp = mapFromItem(mSourceItem, 0, 0);
+    QPointF tp = mapFromItem(mTargetItem, 0, 0);
+    QRectF srcBnd = mapFromItem(mSourceItem, mSourceItem->boundingRect()).boundingRect();
+    QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
+    //this->mBndBox = srcBnd.united(tarBnd);
+    return srcBnd.united(tarBnd);
+}
+
 void
 NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 		QWidget* widget)
 {
-	if (mSourceItem->collidesWithItem(mTargetItem))
-		return;
+    if (mSourceItem->collidesWithItem(mTargetItem))
+        return;
 
 	// determine coordinates and bounding rectangle
 	QPointF sp = mapFromItem(mSourceItem, 0, 0);
 	QPointF tp = mapFromItem(mTargetItem, 0, 0);
-	QRectF srcBnd = mapFromItem(mSourceItem, mSourceItem->boundingRect()).boundingRect();
-	QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
-	this->mBndBox = srcBnd.united(tarBnd);
+    //	QRectF srcBnd = mapFromItem(mSourceItem, mSourceItem->boundingRect()).boundingRect();
+    //	QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
+    //	this->mBndBox = srcBnd.united(tarBnd);
 
 	// determine target intersection point
 	QPointF ip;

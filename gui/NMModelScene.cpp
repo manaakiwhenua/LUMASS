@@ -607,10 +607,10 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 			srcComp->addOutputLink(-1, link);
 			tarComp->addInputLink(-1, link);
-
-			addItem(link);
-			link->setZValue(this->mLinkZLevel);
-			emit linkItemCreated(link);
+            link->setZValue(this->mLinkZLevel);
+            addItem(link);
+            this->invalidate();
+            emit linkItemCreated(link);
 		}
 
 		break;

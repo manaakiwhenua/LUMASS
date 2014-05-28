@@ -55,8 +55,8 @@ public:
 
 	QPainterPath shape(void) const
 		{return this->mPath;}
-	QRectF boundingRect(void) const
-		{return this->mBndBox;}
+    QRectF boundingRect(void) const;
+        //{return this->mBndBox;}
 
     void setIsDynamic(bool dynamic);
     bool getIsDynamic(void)
@@ -72,7 +72,7 @@ private:
 	NMProcessComponentItem* mTargetItem;
 	double mHeadSize;
 	QGraphicsScene* mScene;
-	QRectF mBndBox;
+    //QRectF mBndBox;
 	QPainterPath mPath;
 
     bool mIsDynamic;

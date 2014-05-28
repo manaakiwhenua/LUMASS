@@ -117,7 +117,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	/* ====================================================================== */
 	mModelScene = new NMModelScene(this);
     mModelScene->setSceneRect(-4000,-4000,8000,8000);
-	mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
+    mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	connect(this, SIGNAL(linkToolToggled(bool)), mModelScene,
 			SLOT(toggleLinkToolButton(bool)));
 	connect(this, SIGNAL(selToolToggled(bool)), mModelScene,
@@ -148,7 +148,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	mModelView = new QGraphicsView(mModelScene, this);
 	mModelView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     //mModelView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-	mModelView->setCacheMode(QGraphicsView::CacheBackground);
+    //mModelView->setCacheMode(QGraphicsView::CacheBackground);
 	mModelView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, false);
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
     mModelView->setRubberBandSelectionMode(Qt::ContainsItemShape);

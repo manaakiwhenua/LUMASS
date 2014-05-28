@@ -32,8 +32,8 @@ const std::string NMEditModelComponentDialog::ctx = "NMEditModelComponentDialog"
 NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
     : QWidget(parent) //,mObj(0), comp(0), proc(0)
 {
-    this->setMinimumHeight(100);
-    this->setMinimumWidth(100);
+    this->setMinimumHeight(300);
+    this->setMinimumWidth(300);
     QSizePolicy sizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     sizePolicy.setHorizontalStretch(0);
     sizePolicy.setVerticalStretch(0);
@@ -42,8 +42,19 @@ NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
     this->setMouseTracking(true);
 
     QVBoxLayout* vLayout = new QVBoxLayout(this);
+    vLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+
+    QScrollArea* scrollArea = new QScrollArea(this);
+    scrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     mCompEditor = new NMComponentEditor(this, NMComponentEditor::NM_COMPEDITOR_GRPBOX);
-    vLayout->addWidget(mCompEditor);
+    mCompEditor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    scrollArea->setWidget(mCompEditor);
+
+    //vLayout->addWidget(mCompEditor);
+
+    vLayout->addWidget(scrollArea);
 
     QFormLayout* formLayout = new QFormLayout();
     formLayout->setSpacing(6);

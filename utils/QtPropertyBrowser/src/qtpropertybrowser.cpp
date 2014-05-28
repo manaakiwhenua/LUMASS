@@ -1961,7 +1961,11 @@ QWidget *QtAbstractPropertyBrowser::createEditor(QtProperty *property,
 
     if (!factory)
         return 0;
-    return factory->createEditor(property, parent);
+
+    QWidget* w = factory->createEditor(property, parent);
+    w->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    return w;
+    //return factory->createEditor(property, parent);
 }
 
 bool QtAbstractPropertyBrowser::addFactory(QtAbstractPropertyManager *abstractManager,

@@ -1383,6 +1383,7 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
 {
     QWidget* w = new QWidget(parent);
     w->setWindowFlags(Qt::FramelessWindowHint);
+    w->setMinimumHeight(150);
     QHBoxLayout* blo = new QHBoxLayout(w);
     QPushButton* btn = new QPushButton("...", w);
     QSizePolicy sp(QSizePolicy::Expanding,

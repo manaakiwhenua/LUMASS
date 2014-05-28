@@ -54,6 +54,7 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     case NM_COMPEDITOR_GRPBOX:
         mPropBrowser = new QtGroupBoxPropertyBrowser(this);
         mPropBrowser->setObjectName("ComponentGroupBoxEditor");
+        mPropBrowser->setMinimumWidth(300);
         break;
     case NM_COMPEDITOR_TREE:
         {
@@ -66,12 +67,13 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     }
 
     QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    sizePolicy.setHorizontalStretch(0);
-    sizePolicy.setVerticalStretch(0);
-    sizePolicy.setHeightForWidth(mPropBrowser->sizePolicy().hasHeightForWidth());
+    //sizePolicy.setHorizontalStretch(0);
+    //sizePolicy.setVerticalStretch(0);
+    //sizePolicy.setHeightForWidth(mPropBrowser->sizePolicy().hasHeightForWidth());
     mPropBrowser->setSizePolicy(sizePolicy);
 
     QVBoxLayout* lo = new QVBoxLayout();
+    lo->setSizeConstraint(QLayout::SetMinAndMaxSize);
     lo->addWidget(mPropBrowser);
     this->setLayout(lo);
 
@@ -513,7 +515,7 @@ NMComponentEditor::callFeeder(QtProperty* prop, const QStringList& val)
 
     NMDebugAI(<< "current value: " << val.join(":").toStdString() << std::endl);
 
-    QVariant nestedList; // = QVariant::fromValue(nestedListFromStringList(val));
+    QVariant nestedList;
     if (!val.isEmpty())
     {
         if (!val.at(0).isEmpty() && !val.at(0).startsWith("invalid"))
@@ -528,38 +530,73 @@ NMComponentEditor::callFeeder(QtProperty* prop, const QStringList& val)
         return;
     }
 
+    // wait until we've done coding below
+    return;
 
-    if (QString::fromLatin1("QList<QStringList>").compare(QString(nestedList.typeName())) == 0)
+    mUpdating = true;
+    // ------------------------------------------------------
+    // here we edit the value
+    // ...
+
+
+
+
+    // ------------------------------------------------------
+    // here we get the value back from the editor
+    QVariant newVal; // = QVariant::fromValue(newList);
+
+    NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
+    NMProcess* proc = 0;
+
+
+    if (mObj->property(prop->propertyName().toStdString().c_str()).isValid())
     {
-        QList<QStringList> _nestedList = nestedList.value<QList<QStringList> >();
-        foreach(const QStringList& lst, _nestedList)
+        mObj->setProperty(prop->propertyName().toStdString().c_str(), newVal);
+    }
+    else if (itComp != 0 && itComp->getProcess() != 0)
+    {
+        proc = itComp->getProcess();
+        if (proc->property(prop->propertyName().toStdString().c_str()).isValid())
         {
-            NMDebugAI(<< "  >> " << std::endl);
-            foreach(const QString& qstr, lst)
-            {
-                NMDebugAI(<< "    -- " << qstr.toStdString() << std::endl);
-            }
-            NMDebugAI(<< "  << " << std::endl);
+            proc->setProperty(prop->propertyName().toStdString().c_str(), newVal);
         }
     }
-    else if (QString::fromLatin1("QList<QList<QStringList> >").compare(QString(nestedList.typeName())) == 0)
-    {
-        QList<QList<QStringList> > _nestedList = nestedList.value<QList<QList<QStringList> > >();
-        foreach(const QList<QStringList>& llst, _nestedList)
-        {
-            NMDebugAI( << "  >> " << std::endl);
-            foreach(const QStringList& lst, llst)
-            {
-                NMDebugAI(<< "    >> " << std::endl);
-                foreach(const QString& qstr, lst)
-                {
-                    NMDebugAI(<< "      -- " << qstr.toStdString() << std::endl);
-                }
-                NMDebugAI(<< "    << " << std::endl);
-            }
-            NMDebugAI( << "  << " << std::endl);
-        }
-    }
+
+    mUpdating = false;
+
+
+
+//    if (QString::fromLatin1("QList<QStringList>").compare(QString(nestedList.typeName())) == 0)
+//    {
+//        QList<QStringList> _nestedList = nestedList.value<QList<QStringList> >();
+//        foreach(const QStringList& lst, _nestedList)
+//        {
+//            NMDebugAI(<< "  >> " << std::endl);
+//            foreach(const QString& qstr, lst)
+//            {
+//                NMDebugAI(<< "    -- " << qstr.toStdString() << std::endl);
+//            }
+//            NMDebugAI(<< "  << " << std::endl);
+//        }
+//    }
+//    else if (QString::fromLatin1("QList<QList<QStringList> >").compare(QString(nestedList.typeName())) == 0)
+//    {
+//        QList<QList<QStringList> > _nestedList = nestedList.value<QList<QList<QStringList> > >();
+//        foreach(const QList<QStringList>& llst, _nestedList)
+//        {
+//            NMDebugAI( << "  >> " << std::endl);
+//            foreach(const QStringList& lst, llst)
+//            {
+//                NMDebugAI(<< "    >> " << std::endl);
+//                foreach(const QString& qstr, lst)
+//                {
+//                    NMDebugAI(<< "      -- " << qstr.toStdString() << std::endl);
+//                }
+//                NMDebugAI(<< "    << " << std::endl);
+//            }
+//            NMDebugAI( << "  << " << std::endl);
+//        }
+//    }
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -594,7 +631,7 @@ void NMComponentEditor::applySettings(QtProperty* prop,
             this->setComponentProperty(prop, proc);
         }
     }
-    else
+    else // ??
     {
         this->setComponentProperty(prop, mObj);
     }

@@ -104,9 +104,11 @@ private:
 void QtGroupBoxPropertyBrowserPrivate::init(QWidget *parent)
 {
     m_mainLayout = new QGridLayout();
+    m_mainLayout->setSizeConstraint(QLayout::SetMinAndMaxSize); // by alex
     parent->setLayout(m_mainLayout);
     QLayoutItem *item = new QSpacerItem(0, 0,
-                QSizePolicy::Fixed, QSizePolicy::Expanding);
+                // alex: QSizePolicy::Fixed, QSizePolicy::Expanding);
+                QSizePolicy::Fixed, QSizePolicy::Expanding);    // by alex
     m_mainLayout->addItem(item, 0, 0);
 }
 
@@ -254,9 +256,15 @@ void QtGroupBoxPropertyBrowserPrivate::propertyInserted(QtBrowserItem *index, Qt
     }
 
     newItem->label = new QLabel(parentWidget);
+
+    // --------------- alex -------------
     newItem->label->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
+    layout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+    // --------------- alex -------------
 
     QWidget* ew = const_cast<QWidget*>(createEditor(index->property(), parentWidget));
+    ew->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     ew->installEventFilter(q_ptr);
     newItem->widget = ew;
     if (!newItem->widget) {

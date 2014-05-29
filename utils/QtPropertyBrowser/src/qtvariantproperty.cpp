@@ -2334,6 +2334,7 @@ QWidget *QtVariantEditorFactory::createEditor(QtVariantPropertyManager *manager,
     QtProperty* wrappedProp = wrappedProperty(property);
     //qDebug() << "QtVariantEditorFactory::createEditor(): wrapped propertyName: " << wrappedProp->propertyName();
     wrappedProp->setPropertyName(property->propertyName());
+    wrappedProp->setToolTip(property->toolTip());
     //return factory->createEditor(wrappedProperty(property), parent);
 
     return factory->createEditor(wrappedProp, parent);

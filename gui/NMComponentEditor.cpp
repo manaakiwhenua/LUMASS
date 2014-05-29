@@ -54,7 +54,7 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     case NM_COMPEDITOR_GRPBOX:
         mPropBrowser = new QtGroupBoxPropertyBrowser(this);
         mPropBrowser->setObjectName("ComponentGroupBoxEditor");
-        mPropBrowser->setMinimumWidth(300);
+        //mPropBrowser->setMinimumWidth(300);
         break;
     case NM_COMPEDITOR_TREE:
         {
@@ -412,13 +412,22 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
 
         value = QVariant::fromValue(bracedList);
         prop = manager->addProperty(QVariant::StringList, propName);
+        propToolTip = tr("QStringList");
     }
     else if (QString("QList<QStringList>").compare(property.typeName()) == 0)
     {
-        QList<QStringList> lst = obj->property(property.name()).value<QList<QStringList> >();
-
+        QList<QStringList> lst;
         QStringList bracedList;
-        bracedList << QString("{");
+        if (obj->property(property.name()).canConvert(QMetaType::type("QList<QStringList>")))
+        {
+            lst = obj->property(property.name()).value<QList<QStringList> >();
+            bracedList << QString("{");
+        }
+        else
+        {
+            bracedList << QString::fromLatin1("invalid expression: {");
+        }
+
         foreach(QStringList l, lst)
         {
             bracedList << QString("{");
@@ -482,9 +491,9 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         if (propToolTip.isEmpty())
             propToolTip = value.typeName();
 
-        prop->setToolTip(QString(tr("type: %1")).arg(propToolTip));
+        //prop->setToolTip(QString(tr("type: %1")).arg(propToolTip));
         //prop->setToolTip(QString(tr("type: %1")).arg(value.typeName()));
-        //prop->setToolTip(propToolTip);
+        prop->setToolTip(propToolTip);
 
         mPropBrowser->setFactoryForManager(manager, editor);
         mPropBrowser->addProperty(prop);

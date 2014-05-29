@@ -1868,7 +1868,6 @@ void QtStringListPropertyManager::setValue(QtProperty *property, const QStringLi
         return;
 
     QtStringListPropertyManagerPrivate::Data data = it.value();
-
     QString instr = QtStringListPropertyManager::StringListToString(val);
     if (data.val == instr)
         return;

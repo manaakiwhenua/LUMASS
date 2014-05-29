@@ -1289,6 +1289,43 @@ void QtTextEditFactoryPrivate::slotSetValue(QObject* obj)
                 return;
 
             QString value = itEditor.key()->toPlainText();
+
+            // we double check whether the provided string list matches the required
+            // property type (coded tool tip)
+
+            // depth: 0=string | 1=stringlist | 2=list<stringlist> | 3=list<list<stringlist> >
+            int depth = QtStringListPropertyManager::validateExpression(value);
+            if (property->toolTip().compare(QString::fromLatin1("QStringList")) == 0)
+            {
+                if (depth != 1)
+                {
+                    qWarning() << property->propertyName()
+                               << ": Specified expression is not a valid list of strings (format: {{}} )!";
+                    itEditor.key()->setText(QString::fromLatin1("invalid expression: {}"));
+                    return;
+                }
+            }
+            else if (property->toolTip().compare(QString::fromLatin1("QList<QStringList>")) == 0)
+            {
+                if (depth != 2)
+                {
+                    qWarning() << property->propertyName()
+                               << ": Specified expression is not a valid list of lists of strings (format: {{{}}} )!";
+                    itEditor.key()->setText(QString::fromLatin1("invalid expression: {}"));
+                    return;
+                }
+            }
+            else if (property->toolTip().compare(QString::fromLatin1("QList<QList<QStringList> >")) == 0)
+            {
+                if (depth != 3)
+                {
+                    qWarning() << property->propertyName()
+                               << ": Specified expression is not a valid list of lists of lists of strings (format: {{{{}}}} )!";
+                    itEditor.key()->setText(QString::fromLatin1("invalid expression: {}"));
+                    return;
+                }
+            }
+
             QStringList lst = QtStringListPropertyManager::StringToStringList(value);
             manager->setValue(property, lst);
             return;
@@ -1367,7 +1404,7 @@ QtTextEditFactory::slotCallAuxEditor(void)
                     qobject_cast<QtStringListPropertyManager*>(prop->propertyManager());
             QStringList value = slpm->value(prop);
             emit signalCallAuxEditor(prop, value);
-            qDebug()<< "QtTextEditFactory::slotCallAuxEditor: emitted signalCallAuxEditor!";
+            //qDebug()<< "QtTextEditFactory::slotCallAuxEditor: emitted signalCallAuxEditor!";
         }
     }
 }
@@ -1383,8 +1420,10 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
 {
     QWidget* w = new QWidget(parent);
     w->setWindowFlags(Qt::FramelessWindowHint);
-    w->setMinimumHeight(150);
+    w->setMinimumHeight(200);
+    w->setMinimumWidth(100);
     QHBoxLayout* blo = new QHBoxLayout(w);
+    blo->setSizeConstraint(QLayout::SetMinAndMaxSize);
     QPushButton* btn = new QPushButton("...", w);
     QSizePolicy sp(QSizePolicy::Expanding,
                    QSizePolicy::Expanding);
@@ -1409,7 +1448,7 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
     QString instr = QtStringListPropertyManager::StringListToString(lst);
     editor->setPlainText(instr);
 
-    qDebug() << "createEditor for '" << property->propertyName() << "' ...";
+    //qDebug() << "createEditor for '" << property->propertyName() << "' ...";
     mButton2Property.insert(btn, property);
 
     //connect(editor, SIGNAL(textChanged()),
@@ -1420,7 +1459,6 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
     connect(this, SIGNAL(signalCallAuxEditor(QtProperty *, const QStringList &)),
             manager, SLOT(slotCallAuxEditor(QtProperty *, const QStringList &)));
 
-    //return editor;
     return w;
 }
 

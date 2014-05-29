@@ -59,34 +59,14 @@ signals:
 public slots:
     void update(void) {mCompEditor->update();}
 
-private slots:
-    //void applySettings(QtProperty* prop, const QVariant& val);
 
 private:
-//    void updateSubComponents(const QStringList& compList);
-//    QVariant nestedListFromStringList(const QStringList& strList);
-
-//    void createPropertyEdit(const QMetaProperty& property,
-//    		QObject* obj);
-//    void setComponentProperty(const QtProperty* prop,
-//    		QObject* obj);
     void closeEvent(QCloseEvent* event);
-//    void readComponentProperties(QObject* obj, NMModelComponent* comp,
-//    		NMProcess* proc);
 
-
-    //QObject* mObj;
-    //NMModelComponent* comp;
-    //NMProcess* proc;
     static const std::string ctx;
-    //Ui::compEditor ui;
 
     NMComponentEditor* mCompEditor;
-
-    
-//#ifdef BUILD_RASSUPPORT
-//    NMRasdamanConnectorWrapper* mRasConn;
-//#endif
+    QScrollArea* mScrollArea;
 };
 
 #endif // NMEDITMODELCOMPONENTDIALOG_H

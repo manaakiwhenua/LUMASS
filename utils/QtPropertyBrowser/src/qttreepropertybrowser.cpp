@@ -144,6 +144,7 @@ QtPropertyEditorView::QtPropertyEditorView(QWidget *parent) :
     m_editorPrivate(0)
 {
     connect(header(), SIGNAL(sectionDoubleClicked(int)), this, SLOT(resizeColumnToContents(int)));
+    //this->setUniformRowHeights(false);
 }
 
 void QtPropertyEditorView::mouseMoveEvent(QMouseEvent *event)
@@ -162,8 +163,9 @@ void QtPropertyEditorView::drawRow(QPainter *painter, const QStyleOptionViewItem
 {
     QStyleOptionViewItemV3 opt = option;
     bool hasValue = true;
+    QtProperty* property = 0;
     if (m_editorPrivate) {
-        QtProperty *property = m_editorPrivate->indexToProperty(index);
+        property = m_editorPrivate->indexToProperty(index);
         if (property)
             hasValue = property->hasValue();
     }
@@ -179,6 +181,7 @@ void QtPropertyEditorView::drawRow(QPainter *painter, const QStyleOptionViewItem
         }
     }
     QTreeWidget::drawRow(painter, opt, index);
+
     QColor color = static_cast<QRgb>(QApplication::style()->styleHint(QStyle::SH_Table_GridLineColor, &opt));
     painter->save();
     painter->setPen(QPen(color));
@@ -438,7 +441,20 @@ void QtPropertyEditorDelegate::drawDisplay(QPainter *painter, const QStyleOption
 QSize QtPropertyEditorDelegate::sizeHint(const QStyleOptionViewItem &option,
             const QModelIndex &index) const
 {
-    return QItemDelegate::sizeHint(option, index) + QSize(3, 4);
+    QStyleOptionViewItemV4 opt = option;
+
+//    opt.rect.setHeight(150);
+
+//    if (this->m_editedWidget != 0)
+//    {
+//        if (QString::fromLatin1("QTextEdit").compare(this->m_editedWidget->metaObject()->className()) == 0)
+//        {
+//            int minHeight = this->m_editedWidget->minimumHeight();
+//            opt.decorationSize = QSize(option.decorationSize.width(), minHeight);
+//        }
+//    }
+
+    return QItemDelegate::sizeHint(opt, index) + QSize(3, 4);
 }
 
 bool QtPropertyEditorDelegate::eventFilter(QObject *object, QEvent *event)
@@ -513,6 +529,7 @@ void QtTreePropertyBrowserPrivate::init(QWidget *parent)
     m_treeWidget->setItemDelegate(m_delegate);
     m_treeWidget->header()->setSectionsMovable(false);
     m_treeWidget->header()->setSectionResizeMode(QHeaderView::Stretch);
+    //m_treeWidget->setUniformRowHeights(false);
 
     m_expandIcon = drawIndicatorIcon(q_ptr->palette(), q_ptr->style());
 

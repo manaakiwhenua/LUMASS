@@ -155,7 +155,7 @@ void QtPropertyEditorView::mouseMoveEvent(QMouseEvent *event)
     QModelIndex idx = this->indexAt(pos);
     QtProperty* prop = m_editorPrivate->indexToProperty(idx);
 
-    qDebug() << prop->propertyName();
+    //qDebug() << prop->propertyName();
 
 }
 

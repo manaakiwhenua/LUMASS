@@ -2386,6 +2386,10 @@ void NMModelViewWidget::callEditComponentDialog(const QString& compName)
         dlg->setObject(comp);
         dlg->show();
     }
+    else
+    {
+        this->mOpenEditors.value(comp)->activateWindow();
+    }
 }
 
 void NMModelViewWidget::removeObjFromOpenEditsList(QObject* obj)

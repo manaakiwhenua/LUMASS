@@ -108,7 +108,7 @@ void QtGroupBoxPropertyBrowserPrivate::init(QWidget *parent)
     parent->setLayout(m_mainLayout);
     QLayoutItem *item = new QSpacerItem(0, 0,
                 // alex: QSizePolicy::Fixed, QSizePolicy::Expanding);
-                QSizePolicy::Fixed, QSizePolicy::Expanding);    // by alex
+                QSizePolicy::Maximum, QSizePolicy::Expanding);    // by alex
     m_mainLayout->addItem(item, 0, 0);
 }
 
@@ -151,7 +151,7 @@ void QtGroupBoxPropertyBrowserPrivate::slotUpdate()
             item->widgetLabel->setParent(w);
         } else {
             item->widgetLabel = new QLabel(w);
-            item->widgetLabel->setSizePolicy(QSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed));
+            item->widgetLabel->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed)); // by alex Ignored -> Expanding
             item->widgetLabel->setTextFormat(Qt::PlainText);
         }
         int span = 1;
@@ -258,7 +258,7 @@ void QtGroupBoxPropertyBrowserPrivate::propertyInserted(QtBrowserItem *index, Qt
     newItem->label = new QLabel(parentWidget);
 
     // --------------- alex -------------
-    newItem->label->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
+    newItem->label->setSizePolicy(QSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed));
     layout->setSizeConstraint(QLayout::SetMinAndMaxSize);
     // --------------- alex -------------
 

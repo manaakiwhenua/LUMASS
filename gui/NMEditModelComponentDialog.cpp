@@ -32,12 +32,10 @@ const std::string NMEditModelComponentDialog::ctx = "NMEditModelComponentDialog"
 NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
     : QWidget(parent) //,mObj(0), comp(0), proc(0)
 {
-    this->setMinimumHeight(300);
-    this->setMinimumWidth(700);
-    QSizePolicy sizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-    sizePolicy.setHorizontalStretch(0);
-    sizePolicy.setVerticalStretch(0);
-    sizePolicy.setHeightForWidth(this->sizePolicy().hasHeightForWidth());
+    //this->setMinimumHeight(300);
+    //this->setMinimumWidth(700);
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    sizePolicy.setHeightForWidth(false);
     this->setSizePolicy(sizePolicy);
     this->setMouseTracking(true);
 
@@ -52,10 +50,14 @@ NMEditModelComponentDialog::NMEditModelComponentDialog(QWidget *parent)
 
 
     mCompEditor = new NMComponentEditor(this, NMComponentEditor::NM_COMPEDITOR_GRPBOX);
+    //mCompEditor = new NMComponentEditor(this, NMComponentEditor::NM_COMPEDITOR_TREE);
     mCompEditor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
 
     mScrollArea->setWidget(mCompEditor);
+    //mScrollArea->resize(450, 300);
+    mScrollArea->setMinimumWidth(450);
+    mScrollArea->setMinimumHeight(250);
     vLayout->addWidget(mScrollArea);
 
     QFormLayout* formLayout = new QFormLayout();

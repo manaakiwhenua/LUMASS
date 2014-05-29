@@ -2359,7 +2359,7 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
 
     }
     mTreeCompEditor->setObject(comp);
-    mTreeCompEditor->show();
+    //mTreeCompEditor->show();
 }
 
 void NMModelViewWidget::callEditComponentDialog(const QString& compName)

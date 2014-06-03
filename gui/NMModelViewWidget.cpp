@@ -555,7 +555,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
 
 	// Execute && Reset model
-    if (!running && ((ai != 0 || pi != 0) && li == 0 && ti == 0))
+    if (!running && ((ai != 0 || pi != 0 || mLastItem == 0) && li == 0 && ti == 0))
 	{
         if (!dataBuffer)
         {
@@ -1954,8 +1954,11 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
                 NMProcessComponentItem* src = link->sourceItem();
                 src->removeLink(link);
                 procItem->removeLink(link);
-                this->mModelScene->removeItem(link);
-                delete link;
+                if (link->scene() == qobject_cast<QGraphicsScene*>(this->mModelScene))
+                {
+                    this->mModelScene->removeItem(link);
+                }
+                link->deleteLater();
             }
         }
 

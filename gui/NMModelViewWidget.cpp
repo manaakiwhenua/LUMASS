@@ -141,6 +141,12 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     connect(mModelScene, SIGNAL(zoom(int)), this, SLOT(zoom(int)));
     connect(mModelScene, SIGNAL(itemLeftClicked(const QString &)), this,
             SLOT(updateTreeEditor(const QString &)));
+    connect(mModelScene, SIGNAL(signalModelFileDropped(const QString &)),
+            this, SLOT(importModel(const QString &)));
+    connect(mModelScene, SIGNAL(signalItemCopy(const QList<QGraphicsItem*> &)),
+            this, SLOT(copyComponents(const QList<QGraphicsItem*> &)));
+    connect(mModelScene, SIGNAL(signalItemMove(const QList<QGraphicsItem*> &)),
+            this, SLOT(moveComponents(const QList<QGraphicsItem*> &)));
 
 	/* ====================================================================== */
     /* MODEL VIEW SETUP */
@@ -995,15 +1001,43 @@ void NMModelViewWidget::saveItems(void)
 	NMDebugCtx(ctx, << "done!");
 }
 
-void NMModelViewWidget::loadItems(void)
+void
+NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList)
+{
+    NMDebugCtx(ctx, << "...");
+
+
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList)
+{
+    NMDebugCtx(ctx, << "...");
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+
+void
+NMModelViewWidget::loadItems(void)
 {
 	QString fileNameString = QFileDialog::getOpenFileName(this,
 	     tr("Load LUMASS Model Component"), "~", tr("LUMASS Model Component Files (*.lmx *.lmv)"));
 	if (fileNameString.isNull()) return;
 
-	QFileInfo fi(fileNameString);
-	QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
-	QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
+    this->importModel(fileNameString);
+}
+
+void
+NMModelViewWidget::importModel(const QString& fileNameString)
+{
+    NMDebugCtx(ctx, << "...");
+
+    QFileInfo fi(fileNameString);
+    QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
+    QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
 
     // get the import component
     QString importHostName;
@@ -2431,6 +2465,9 @@ void NMModelViewWidget::dragMoveEvent(QDragMoveEvent* event)
 
 void NMModelViewWidget::dropEvent(QDropEvent* event)
 {
+    // store last item
+    //mLastItem = this->mModelScene->itemAt(this->mModelView->mapToScene(event->pos()), this->mModelView->transform());
+
 //	QString droppedText = event->mimeData()->text();
 //	NMDebugAI( << "droppedText: " << droppedText.toStdString() << std::endl);
 //
@@ -2533,20 +2570,14 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
 
         return true;
     }
-    //    else if (e->type() == QEvent::GraphicsSceneMouseMove)
-    //    {
-    //        QGraphicsSceneMouseEvent* mme = static_cast<QGraphicsSceneMouseEvent*>(e);
-
-    //        QString pos = QString("Scene Position - X: %1 Y: %2").arg(mme->scenePos().x())
-    //                .arg(mme->scenePos().y());
-    //        NMDebugAI(<< pos.toStdString() << std::endl);
-    //        OtbModellerWin* mainWin = this->getMainWindow();
-    //        if (mainWin != 0)
-    //        {
-    //            mainWin->updateCoordLabel(pos);
-    //        }
-    //    }
-
+    else if (e->type() == QEvent::Drop)
+    {
+        QDropEvent* de = static_cast<QDropEvent*>(e);
+        if (de != 0)
+        {
+            mLastItem = this->mModelScene->itemAt(this->mModelView->mapToScene(de->pos()), this->mModelView->transform());
+        }
+    }
     return false;
 }
 

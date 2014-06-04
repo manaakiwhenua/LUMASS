@@ -22,7 +22,11 @@
 #include "NMImageLayer.h"
 #include "NMVectorLayer.h"
 #include "NMComponentListItemDelegate.h"
+#include "NMProcessComponentItem.h"
 #include "otbAttributeTable.h"
+#include "NMModelController.h"
+#include "NMModelComponent.h"
+#include "NMItkDataObjectWrapper.h"
 
 #include <QDrag>
 #include <QMimeData>
@@ -47,6 +51,7 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QColorDialog>
+#include <QGraphicsItem>
 
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
@@ -685,7 +690,7 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
 
 
 	QMimeData *mimeData = new QMimeData;
-    mimeData->setText(layerName.toLatin1());
+    mimeData->setText(QString::fromLatin1("_ModelComponentList_:%1").arg(layerName).toStdString().c_str());
     drag->setMimeData(mimeData);
     drag->exec(Qt::CopyAction, Qt::CopyAction);
 
@@ -694,53 +699,96 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
 
 void ModelComponentList::dropEvent(QDropEvent* event)
 {
-	//NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
-	QModelIndex destidx = this->indexAt(event->pos());
-	if (!destidx.isValid() || destidx.parent().isValid())
-	{
-		this->mIndicatorIdx = QModelIndex();
+    QString dropSource;
+    QString dropLayer;
+    if (event->mimeData()->hasFormat("text/plain"))
+    {
+        QString ts = event->mimeData()->text();
+        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        if (tl.count() == 2)
+        {
+            dropSource = tl.at(0);
+            dropLayer = tl.at(1);
+        }
+    }
 
-		NMDebugAI(<< "no valid drop pos!" << endl);
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+    if (dropSource.compare(QString::fromLatin1("_NMModelScene_")) == 0)
+    {
+        NMDebugAI(<< "adding layer: " << dropLayer.toStdString() << std::endl);
+    }
+    else if (dropSource.compare(QString::fromLatin1("_ModelComponentList_")) == 0)
+    {
+        QModelIndex destidx = this->indexAt(event->pos());
+        if (!destidx.isValid() || destidx.parent().isValid())
+        {
+            this->mIndicatorIdx = QModelIndex();
 
-	const int stackpos = this->mLayerModel->toLayerStackIndex(destidx.row());
-	//NMLayer* dl = (NMLayer*)destidx.internalPointer();
-	NMLayer* dl = this->mLayerModel->getItemLayer(stackpos);
-	if (dl == 0)
-		return;
-	int destpos = dl->getLayerPos();
-	//NMDebugAI(<< "dest pos: " << destpos << endl);
+            NMDebugAI(<< "no valid drop pos!" << endl);
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
 
-	QModelIndex srcidx = this->indexAt(this->dragStartPosition);
-	const int srcstackpos = this->mLayerModel->toLayerStackIndex(srcidx.row());
-	//NMLayer* sl = (NMLayer*)srcidx.internalPointer();
-	NMLayer* sl = this->mLayerModel->getItemLayer(srcstackpos);
-	if (sl == 0)
-		return;
-	int srcpos = sl->getLayerPos();
-	//NMDebugAI(<< "src pos: " << srcpos << endl);
+        const int stackpos = this->mLayerModel->toLayerStackIndex(destidx.row());
+        //NMLayer* dl = (NMLayer*)destidx.internalPointer();
+        NMLayer* dl = this->mLayerModel->getItemLayer(stackpos);
+        if (dl == 0)
+            return;
+        int destpos = dl->getLayerPos();
+        //NMDebugAI(<< "dest pos: " << destpos << endl);
 
-	this->changeLayerPos(srcpos, destpos);
+        QModelIndex srcidx = this->indexAt(this->dragStartPosition);
+        const int srcstackpos = this->mLayerModel->toLayerStackIndex(srcidx.row());
+        //NMLayer* sl = (NMLayer*)srcidx.internalPointer();
+        NMLayer* sl = this->mLayerModel->getItemLayer(srcstackpos);
+        if (sl == 0)
+            return;
+        int srcpos = sl->getLayerPos();
+        //NMDebugAI(<< "src pos: " << srcpos << endl);
 
-	// stop drawing the indicator
-	this->mIndicatorIdx = QModelIndex();
+        this->changeLayerPos(srcpos, destpos);
 
-	//NMDebugCtx(ctx, << "done!");
-	event->acceptProposedAction();
+        // stop drawing the indicator
+        this->mIndicatorIdx = QModelIndex();
+        event->acceptProposedAction();
+    }
+
+    NMDebugCtx(ctx, << "done!");
+
 }
 
 
 void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
 {
+    NMDebugCtx(ctx, << "...");
 	if (event->mimeData()->hasFormat("text/plain"))
 	{
 		QString layer = event->mimeData()->text();
 		if (this->getLayer(layer) != 0)
 			event->acceptProposedAction();
+        else if (layer.startsWith(QString::fromLatin1("_NMModelScene_:")))
+        {
+            QStringList tmp = layer.split(':', QString::SkipEmptyParts);
+            if (tmp.count() == 2)
+            {
+                NMModelComponent* comp = NMModelController::getInstance()->getComponent(tmp.at(1));
+                if (comp != 0)
+                {
+                    if (comp->getOutput(0) == 0 || comp->getOutput(0)->getDataObject() == 0)
+                    {
+                        NMDebugAI(<< "empty data object!" << std::endl);
+                    }
+                    else
+                    {
+                        NMDebugAI(<< "got data on the hook!" << std::endl);
+                    }
+                    event->acceptProposedAction();
+                }
+            }
+        }
 	}
+    NMDebugCtx(ctx, << "done!");
 }
 
 void ModelComponentList::dragMoveEvent(QDragMoveEvent* event)

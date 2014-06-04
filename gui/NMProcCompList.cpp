@@ -57,7 +57,8 @@ void NMProcCompList::mouseMoveEvent(QMouseEvent* event)
 
 	QDrag *drag = new QDrag(this);
 	QMimeData *mimeData = new QMimeData;
-    mimeData->setText(itText.toStdString().c_str());
+    QString mimeText = QString::fromLatin1("_NMProcCompList_:%1").arg(itText);
+    mimeData->setText(mimeText.toStdString().c_str());
     drag->setMimeData(mimeData);
     drag->exec(Qt::CopyAction, Qt::CopyAction);
 

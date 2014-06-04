@@ -89,6 +89,9 @@ public slots:
     void updateTreeEditor(const QString&);
     void changeFont(void);
     void changeColour(void);
+    void importModel(const QString& fileName);
+    void copyComponents(const QList<QGraphicsItem*>& copyList);
+    void moveComponents(const QList<QGraphicsItem*>& moveList);
 
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);

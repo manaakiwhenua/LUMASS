@@ -88,11 +88,16 @@ signals:
 			QGraphicsItem *);
     void itemLeftClicked(const QString& itemName);
     void zoom(int delta);
+    void signalModelFileDropped(const QString& fileName);
+    void signalItemCopy(const QList<QGraphicsItem*>& copyList);
+    void signalItemMove(const QList<QGraphicsItem*>& moveList);
 
 protected:
 	void dragEnterEvent(QGraphicsSceneDragDropEvent* event);
 	void dragMoveEvent(QGraphicsSceneDragDropEvent* event);
 	void dropEvent(QGraphicsSceneDragDropEvent* event);
+    void dragLeaveEvent(QGraphicsSceneDragDropEvent *event);
+
 
 	void setProcCompSelectability(bool selectable);
 	void setProcCompMoveability(bool moveable);

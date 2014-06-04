@@ -57,13 +57,69 @@ NMModelScene::~NMModelScene()
 {
 }
 
-void NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
+void
+NMModelScene::dragLeaveEvent(QGraphicsSceneDragDropEvent *event)
 {
-	if (event->mimeData()->hasFormat("text/plain"))
-		event->acceptProposedAction();
+    NMDebugCtx(ctx, << "...");
+    if (event->mimeData()->hasFormat("text/plain"))
+    {
+        QString leaveText = event->mimeData()->text();
+        if (leaveText.startsWith(QString::fromLatin1("_NMModelScene_:")))
+        {
+            if (mDragItemList.count() == 1)
+            {
+                NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(
+                            mDragItemList.at(0));
+                if (pi != 0)
+                {
+                    if (pi->getIsDataBufferItem())
+                    {
+                        leaveText = QString::fromLatin1("_NMModelScene_:%1").arg(pi->getTitle());
+                        QMimeData* md = const_cast<QMimeData*>(event->mimeData());
+                        md->setText(leaveText);
+                        event->setMimeData(md);
+                        event->acceptProposedAction();
+                    }
+                }
+            }
+        }
+    }
+    NMDebugCtx(ctx, << "done!");
 }
 
-void NMModelScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
+void
+NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
+{
+    NMDebugCtx(ctx, << "...");
+
+	if (event->mimeData()->hasFormat("text/plain"))
+    {
+        NMDebugAI(<< event->mimeData()->text().toStdString());
+        QString mimeText = event->mimeData()->text();
+        if (    (   mimeText.startsWith(QString::fromLatin1("file://"))
+                 && (   mimeText.endsWith(QString::fromLatin1("lmv"))
+                     || mimeText.endsWith(QString::fromLatin1("lmx"))
+                    )
+                )
+            ||  mimeText.startsWith(QString::fromLatin1("_NMProcCompList_:"))
+            ||  mimeText.startsWith(QString::fromLatin1("_NMModelScene_:"))
+            ||  mimeText.startsWith(QString::fromLatin1("_ModelComponentList_:"))
+           )
+        {
+            NMDebug(<< " - supported!" << std::endl);
+            event->acceptProposedAction();
+        }
+        else
+        {
+            NMDebug(<< " - unfortunately not supported!" << std::endl);
+        }
+    }
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
 {
 	if (event->mimeData()->hasFormat("text/plain"))
 		event->acceptProposedAction();
@@ -219,10 +275,17 @@ NMModelScene::getComponentItem(const QString& name)
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
 	NMDebugCtx(ctx, << "...");
+
     if (event->mimeData()->hasFormat("text/plain"))
 	{
 		QString dropText = event->mimeData()->text();
-		//NMDebugCtx(ctx, << "dropText = " << dropText.toStdString() << std::endl);
+        QStringList dropsplit = dropText.split(':');
+        QString dropSource = dropsplit.at(0);
+        QString dropItem;
+        if (dropsplit.count() > 1)
+        {
+            dropItem = dropsplit.at(1);
+        }
 
 		if (NMModelController::getInstance()->isModelRunning())
         {
@@ -236,63 +299,97 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 			return;
 		}
 
-        if (dropText.startsWith("_drag_:"))
+        // do something depending on the source of the object
+
+        // internal drag'n'drop for copying or moving of objects
+        if (dropItem.isEmpty())
         {
-            QString itemTitle = dropText.split(':').at(1);
+            NMDebugAI(<< "nothing to be done - no drop item provided!" << std::endl);
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+        else if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
+        {
             QPointF dropPos = event->scenePos();
             switch(event->dropAction())
             {
             case Qt::MoveAction:
                 NMDebugAI( << "moving: " << mDragItemList.count() << " items" << std::endl);
+                emit signalItemMove(mDragItemList);
                 break;
             case Qt::CopyAction:
                 NMDebugAI( << "copying: " << mDragItemList.count() << " items" << std::endl);
+                emit signalItemCopy(mDragItemList);
                 break;
             }
-
-
-
-
-
+            event->acceptProposedAction();
         }
-        else if (dropText.compare(QString::fromLatin1("TextLabel")) == 0)
+        else if (dropSource.startsWith(QString::fromLatin1("_NMProcCompList_")))
         {
-            QGraphicsItem* pi = this->itemAt(event->scenePos(), this->views()[0]->transform());
-            NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
-            QGraphicsTextItem* labelItem = new QGraphicsTextItem(ai);
-            labelItem->setHtml(QString::fromLatin1("<b>Text Label</b>"));
-            labelItem->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
-            labelItem->setFlag(QGraphicsItem::ItemIsMovable, true);
-            labelItem->setOpenExternalLinks(true);
-            if (ai != 0)
+            if (dropItem.compare(QString::fromLatin1("TextLabel")) == 0)
             {
-                ai->addToGroup(labelItem);
-                labelItem->setPos(ai->mapFromScene(event->scenePos()));
+                QGraphicsItem* pi = this->itemAt(event->scenePos(), this->views()[0]->transform());
+                NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
+                QGraphicsTextItem* labelItem = new QGraphicsTextItem(ai);
+                labelItem->setHtml(QString::fromLatin1("<b>Text Label</b>"));
+                labelItem->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                labelItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                labelItem->setOpenExternalLinks(true);
+                if (ai != 0)
+                {
+                    ai->addToGroup(labelItem);
+                    labelItem->setPos(ai->mapFromScene(event->scenePos()));
+                }
+                else
+                {
+                    this->addItem(labelItem);
+                    labelItem->setPos(event->scenePos());
+                }
+                event->acceptProposedAction();
             }
             else
             {
-                this->addItem(labelItem);
-                labelItem->setPos(event->scenePos());
+                NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
+                procItem->setTitle(dropItem);
+                procItem->setDescription(dropItem);
+                procItem->setPos(event->scenePos());
+                if (dropItem.compare("DataBuffer") == 0)
+                {
+                    procItem->setIsDataBufferItem(true);
+                }
+                procItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                event->acceptProposedAction();
+
+                NMDebugAI(<< "asking for creating '" << dropItem.toStdString() << "' ..." << endl);
+                emit processItemCreated(procItem, dropItem, event->scenePos());
+            }
+        }
+        else if (dropText.startsWith(QString::fromLatin1("file://")))
+        {
+            if (    dropText.endsWith(QString::fromLatin1("lmv"))
+                ||  dropText.endsWith(QString::fromLatin1("lmx"))
+               )
+            {
+                // 01234567
+                // file://
+                QString fileName = dropText.remove(0,7);
+                QFileInfo finfo(fileName);
+                if (finfo.isFile())
+                {
+                    NMDebugAI(<< "gonna import model file: " << fileName.toStdString() << std::endl);
+                    event->acceptProposedAction();
+
+                    emit signalModelFileDropped(fileName);
+                }
             }
         }
         else
         {
-            NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
-            procItem->setTitle(dropText);
-            procItem->setDescription(dropText);
-            procItem->setPos(event->scenePos());
-            if (dropText.compare("DataBuffer") == 0)
-            {
-                procItem->setIsDataBufferItem(true);
-            }
-            procItem->setFlag(QGraphicsItem::ItemIsMovable, true);
-            event->acceptProposedAction();
-
-            NMDebugAI(<< "asking for creating '" << dropText.toStdString() << "' ..." << endl);
-            emit processItemCreated(procItem, dropText, event->scenePos());
+            NMDebugAI(<< "No valid drag source detected!" << std::endl);
         }
 	}
 
+    mDragItemList.clear();
 	NMDebugCtx(ctx, << "done!");
 }
 
@@ -518,6 +615,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                     )
                )
             {
+                mDragItemList.clear();
                 mDragItemList = this->selectedItems();
                 if (mDragItemList.count() == 0)
                 {
@@ -534,7 +632,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
                 QDrag* drag = new QDrag(this);
                 QMimeData* mimeData = new QMimeData;
-                QString mimeText = QString("_drag_:%1").arg(mDragItemList.count());
+                QString mimeText = QString("_NMModelScene_:%1").arg(mDragItemList.count());
                 mimeData->setText(mimeText);
 
                 drag->setMimeData(mimeData);

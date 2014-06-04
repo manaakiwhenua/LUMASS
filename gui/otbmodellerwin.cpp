@@ -575,6 +575,13 @@ OtbModellerWin::notify(QObject* receiver, QEvent* event)
 	return true;
 }
 
+vtkRenderWindow*
+OtbModellerWin::getRenderWindow(void)
+{
+    return this->ui->qvtkWidget->GetRenderWindow();
+}
+
+
 void
 OtbModellerWin::mapViewMode()
 {

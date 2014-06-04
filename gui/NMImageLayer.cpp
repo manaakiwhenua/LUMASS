@@ -27,6 +27,7 @@
 #include "NMTableCalculator.h"
 #include "NMStreamingImageFileWriterWrapper.h"
 #include "NMRasdamanConnectorWrapper.h"
+#include "NMMacros.h"
 
 #include <QTime>
 #include <QtCore>
@@ -122,12 +123,12 @@ public:
 };
 
 /** macro for querying the bbox */
-#define getInternalBBox( PixelType ) \
+#define getInternalBBox( PixelType, wrapName ) \
 {	\
 	if (numDims == 2) \
-		InternalImageHelper<PixelType, 2>::getBBox(img, numBands, this->mBBox); \
+        wrapName<PixelType, 2>::getBBox(img, numBands, this->mBBox); \
 	else \
-		InternalImageHelper<PixelType, 3>::getBBox(img, numBands, this->mBBox); \
+        wrapName<PixelType, 3>::getBBox(img, numBands, this->mBBox); \
 }
 
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
@@ -161,8 +162,6 @@ NMImageLayer::~NMImageLayer()
 		delete this->mReader;
 	if (this->mPipeconn)
 		delete this->mPipeconn;
-
-
 
 //	if (this->mTableView)
 //	{
@@ -931,6 +930,20 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 
 	this->mMapper = m;
 	this->mActor = a;
+
+    unsigned int numDims = imgWrapper->getNumDimensions();
+    unsigned int numBands = imgWrapper->getNumBands();
+    itk::DataObject* img = this->mImage;
+    otb::ImageIOBase::IOComponentType type = imgWrapper->getItkComponentType();
+    switch(type)
+    {
+    MacroPerType( getInternalBBox, InternalImageHelper )
+    default:
+        break;
+    }
+
+    this->initiateLegend();
+    emit layerLoaded();
 }
 
 //void NMImageLayer::setITKImage(itk::DataObject* img,

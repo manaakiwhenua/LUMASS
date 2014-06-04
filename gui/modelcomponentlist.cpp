@@ -27,6 +27,7 @@
 #include "NMModelController.h"
 #include "NMModelComponent.h"
 #include "NMItkDataObjectWrapper.h"
+#include "NMGlobalHelper.h"
 
 #include <QDrag>
 #include <QMimeData>
@@ -595,7 +596,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 			else if  (rect2.contains(event->pos()))
 			{
 				this->mLayerModel->setData(idx, QVariant("SEL"), Qt::CheckStateRole);
-				this->processSelection(false);
+                this->processSelection(false);
 			}
 			else
 			{
@@ -606,7 +607,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		}
 		else if (event->button() == Qt::RightButton)
 		{
-			this->processSelection(false);
+            //this->processSelection(false);
 
 			this->mMenu->move(event->globalPos());
 			this->mMenu->exec();
@@ -619,27 +620,28 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 void ModelComponentList::processSelection(bool toggle)
 {
 	QModelIndex idx = this->currentIndex();
-	QModelIndexList il = this->selectedIndexes();
+    QModelIndexList il = this->selectedIndexes();
 	QModelIndexList::Iterator it = il.begin();
-	bool bselect = toggle ? false : true;
-	for (; it != il.end(); ++it)
-	{
-		if ((*it).row() == idx.row())
-			bselect = toggle ? true : false;
-	}
 
-	if (bselect)
+    bool bselect = toggle ? false : true;
+    for (; it != il.end(); ++it)
+    {
+        if ((*it).row() == idx.row())
+            bselect = toggle ? true : false;
+    }
+
+    if (toggle && bselect)
 	{
 		this->selectionModel()->clearSelection();
 		this->selectionModel()->select(idx, QItemSelectionModel::Select |
 			QItemSelectionModel::Rows);
+        const int toplevelrow = (idx.internalId() / 100) - 1;
+        const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+        const NMLayer* l = const_cast<NMLayer*>(this->mLayerModel->getItemLayer(stackpos));
 
-		const int toplevelrow = (idx.internalId() / 100) - 1;
-		const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-		const NMLayer* l = const_cast<NMLayer*>(this->mLayerModel->getItemLayer(stackpos));
 		emit selectedLayerChanged(l);
 	}
-	else
+    else if (toggle && !bselect)
 	{
 		this->selectionModel()->select(idx, QItemSelectionModel::Deselect |
 			QItemSelectionModel::Rows);
@@ -717,6 +719,24 @@ void ModelComponentList::dropEvent(QDropEvent* event)
     if (dropSource.compare(QString::fromLatin1("_NMModelScene_")) == 0)
     {
         NMDebugAI(<< "adding layer: " << dropLayer.toStdString() << std::endl);
+        NMModelComponent* comp = NMModelController::getInstance()->getComponent(dropLayer);
+        if (comp == 0)
+        {
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+
+        event->acceptProposedAction();
+
+        NMGlobalHelper h;
+        vtkRenderWindow* renWin = h.getRenderWindow();
+        NMImageLayer* iLayer = new NMImageLayer(renWin, 0, this);
+        iLayer->setObjectName(dropLayer);
+        h.getMainWindow()->connectImageLayerProcSignals(iLayer);
+
+        iLayer->setImage(comp->getOutput(0));
+
+
     }
     else if (dropSource.compare(QString::fromLatin1("_ModelComponentList_")) == 0)
     {

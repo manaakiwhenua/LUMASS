@@ -2070,7 +2070,7 @@ void NMLayer::setSelectable(bool selectable)
 	if (this->mIsSelectable != selectable)
 	{
 		this->mIsSelectable = selectable;
-		if (!selectable)
+        if (!selectable && this->mSelectionModel != 0)
 			this->mSelectionModel->clearSelection();
 		emit selectabilityChanged(selectable);
 	}

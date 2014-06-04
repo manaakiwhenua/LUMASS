@@ -68,6 +68,7 @@ class vtkTable;
 class NMLayer;
 class NMTableView;
 
+
 namespace Ui
 {
     class OtbModellerWin;
@@ -82,10 +83,14 @@ public:
     OtbModellerWin(QWidget *parent = 0);
     ~OtbModellerWin();
 
+    friend class NMGlobalHelper;
+
+    vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
+
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);

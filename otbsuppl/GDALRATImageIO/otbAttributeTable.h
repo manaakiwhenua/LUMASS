@@ -29,6 +29,7 @@
 #include <map>
 #include <vector>
 #include <fstream>
+#include <sqlite3.h>
 
 #include "itkObject.h"
 #include "itkDataObject.h"

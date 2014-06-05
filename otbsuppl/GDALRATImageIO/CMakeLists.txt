@@ -15,9 +15,9 @@ LINK_DIRECTORIES(
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/lib
-)                                                        
+        ${SQLITE3_INCLUDE_DIR}
+)                                                         
 
-#message(STATUS "Looking for OTB libs in: ${OTB_DIR}/bin and ${OTB_DIR}/bin/Release and ${OTB_DIR}/bin/Deubg ... ")
 
 # list of project source files
 file(GLOB GDALRATIO 
@@ -43,12 +43,13 @@ generate_export_header(OTBGDALRATImageIO)
 
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIO ... ")
-	TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} OTBCommon OTBIO)
+        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} ${SQLITE3_LIBRARY} OTBCommon OTBIO)
 else()
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIOGDAL ... ")
-	TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} 
+        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} ${SQLITE3_LIBRARY}
 		OTBCommon OTBIOGDAL)
 endif()
+
 
 # define where to install what
 install(FILES ${GDALRATIO_HEADER} DESTINATION include)

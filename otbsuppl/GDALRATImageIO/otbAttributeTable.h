@@ -110,11 +110,23 @@ public:
 	void Print(std::ostream& os, itk::Indent indent, int nrows);
 	void PrintStructure(std::ostream& os, itk::Indent indent);
 
+    /// SQLite support functions
+    std::string getDbFileName() {return this->m_dbFileName;}
+
 
 protected:
 	AttributeTable();
 	virtual
 	~AttributeTable();
+
+
+    /*! SQLite foundation of otbAttributeTable
+     *
+     */
+    sqlite3* m_db;
+    std::string m_dbFileName;
+
+    void createDb(void);
 
 	// admin vectors holding header infos about columns
 

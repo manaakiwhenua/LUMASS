@@ -225,6 +225,8 @@ message(STATUS "gdal include dir: ${GDAL_INCLUDE_DIR}")
 FIND_PACKAGE(Lpsolve)
 IF(NOT LPSOLVE_FOUND)
   message(FATAL_ERROR "You have to install lp_solve prior to compiling LUMASS!")
+ELSE()
+  add_definitions(-DSQLITE_THREADSAFE=1)
 ENDIF()
 
 message(STATUS "lp_solve include dir: ${LPSOLVE_INCLUDE_DIR}")

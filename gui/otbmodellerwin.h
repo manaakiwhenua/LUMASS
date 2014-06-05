@@ -147,6 +147,8 @@ public slots:
 
 	virtual bool notify(QObject* receiver, QEvent* event);
 
+    static int sqlite_resCallback(void *NotUsed, int argc, char **argv, char **azColName);
+
 
 protected:
 

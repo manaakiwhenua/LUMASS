@@ -66,11 +66,6 @@ AttributeTable::ColumnExists(const std::string& sColName)
 bool
 AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 {
-    if (this->m_db == 0)
-    {
-        this->createDb();
-    }
-
 	if ((	 eType != ATTYPE_STRING
 		 &&  eType != ATTYPE_INT
 		 &&  eType != ATTYPE_DOUBLE
@@ -863,25 +858,33 @@ AttributeTable::valid(const std::string& sColName, int idx)
 void
 AttributeTable::createDb()
 {
+    //this->DebugOn();
+
     std::stringstream uri;
     m_dbFileName = std::tmpnam(0);
-    std::cout << "random file name: " << m_dbFileName << std::endl;
+
+    //itkDebugMacro(<< "random file name: " << m_dbFileName);
+
     size_t pos = m_dbFileName.find_last_of('/') + 1;
     size_t len = m_dbFileName.size() - pos;
     m_dbFileName = m_dbFileName.substr(pos, len);
-    std::cout << "random base name: " << m_dbFileName << std::endl;
-    uri << "file:" << getenv("HOME") << "/" << m_dbFileName << ".db?cache=shared";
 
-    std::cout << "otb::AttributeTable::AttributeTable(): " << uri.str() << std::endl;
+    //itkDebugMacro(<< "random base name: " << m_dbFileName);
+
+    //uri << "file::memory:?cache=shared";
+    uri << "file:" << getenv("HOME") << "/" << m_dbFileName << ".db";//?cache=shared";
+
+    itkDebugMacro(<< "otb::AttributeTable::createDb(): try to open " << uri.str());
 
     int rc = ::sqlite3_open(uri.str().c_str(),
                                &m_db);//,
                                //SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
                                //0);
-    if (rc)
+    if (rc != SQLITE_OK)
     {
-        std::cout << "ERROR #" << rc << ": something went wrong creating the underlying sqlite db!" << std::endl;
-        itkExceptionMacro(<< "Error opening a temporary sqlite data base file!");
+        std::string errmsg = sqlite3_errmsg(m_db);
+        itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
         m_db = 0;
@@ -896,6 +899,7 @@ AttributeTable::AttributeTable()
       m_sNodata("NULL"),
       m_db(0)
 {
+    this->createDb();
 }
 
 // clean up

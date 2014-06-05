@@ -126,7 +126,16 @@ protected:
     sqlite3* m_db;
     std::string m_dbFileName;
 
+    sqlite3_stmt* m_stmt;
+
     void createDb(void);
+
+    inline int getSqlIntValue(const std::string& col, int row);
+    inline double getSqlDblValue(const std::string& col, int row);
+    inline std::string getSqlStrValue(const std::string& col, int row);
+
+    inline void setSqlValue(const std::string& col, int row);
+
 
 	// admin vectors holding header infos about columns
 

@@ -212,6 +212,7 @@
 #include "itkImageRegionSplitterMultidimensional.h"
 #include "itkNMImageRegionSplitterMaxSize.h"
 
+#include <sqlite3.h>
 
 //#include "valgrind/callgrind.h"
 
@@ -237,7 +238,10 @@ class NMMdiSubWindow : public QMdiSubWindow
 OtbModellerWin::OtbModellerWin(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::OtbModellerWin)
 {
-	// ++++++++++++++++++ META TYPES AND OTHER STUFF +++++++++++++++++++++++++++++
+    // **********************************************************************
+    // *                    META TYPES and other initisalisations           *
+    // **********************************************************************
+
 
 #ifdef BUILD_RASSUPPORT
 	this->mpRasconn = 0;
@@ -267,6 +271,12 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
     //qRegisterMetaType<NMDataComponent>("NMDataComponent");
     //qRegisterMetaType<NMDataComponent*>("NMDataComponent*");
+
+    // **********************************************************************
+    // *                    SQLITE3                                         *
+    // **********************************************************************
+
+    sqlite3_temp_directory = getenv("HOME");
 
 	// **********************************************************************
     // *                    MAIN WINDOW - MENU BAR AND DOCKS                *
@@ -1572,10 +1582,89 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+    sqlite3* m_db;
+    std::string m_dbFileName;
+
+    std::stringstream uri;
+    m_dbFileName = std::tmpnam(0);
+
+    NMDebugAI(<< "random file name: " << m_dbFileName << std::endl);
+
+    size_t pos = m_dbFileName.find_last_of('/') + 1;
+    size_t len = m_dbFileName.size() - pos;
+    m_dbFileName = m_dbFileName.substr(pos, len);
+
+    NMDebugAI(<< "random base name: " << m_dbFileName << std::endl);
+
+    //uri << "file:/home/alex/projects/SWE-VRI/data/JagathsTestWSN/xserve_sqlite_1.db";//?mode=rw&cache=shared";
+           //"file:/home/alex/tmp/mfs.db?mode=rwc&cache=shared";
+    //uri << "file:" << getenv("HOME") << "/" << m_dbFileName << ".db?mode=rwc&cache=shared";
+    uri << "file:" << m_dbFileName << ".db?mode=rwc&cache=shared";
+
+    NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);
+
+    int rc = ::sqlite3_open(uri.str().c_str(),
+                               &m_db);/*,
+                               SQLITE_OPEN_READWRITE |
+                               SQLITE_OPEN_CREATE |
+                               SQLITE_OPEN_SHAREDCACHE |
+                               SQLITE_OPEN_FULLMUTEX,
+                               0); */
+    if (rc != SQLITE_OK)
+    {
+        std::string errmsg = sqlite3_errmsg(m_db);
+        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
+        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+        m_dbFileName.clear();
+        ::sqlite3_close(m_db);
+        m_db = 0;
+    }
+    else
+    {
+        NMDebugAI(<< "db created!" << std::endl);
+    }
+
+    uri.str("");
+    uri << "begin transaction;";
+    uri << "CREATE TABLE atable(acol, bcol, ccol);";
+    uri << "insert into atable (acol, bcol, ccol) values (10, 'bettina', 0.3);";
+    uri << "insert into atable (acol, bcol, ccol) values (0 , 'alex'  , 1.3);";
+    uri << "insert into atable (acol, bcol, ccol) values (40, 'linn', 10e-3);";
+    uri << "commit;";
+
+    uri << "select * from atable;";
+
+    char* errMsg = 0;
+    rc = ::sqlite3_exec(m_db, uri.str().c_str(), &OtbModellerWin::sqlite_resCallback, 0, &errMsg);
+
+    if (rc != SQLITE_OK)
+    {
+        std::string errmsg = sqlite3_errmsg(m_db);
+        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
+    }
+
+
+    ::sqlite3_close(m_db);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
+/// only for debug and testing purposes
+int
+OtbModellerWin::sqlite_resCallback(void *NotUsed, int argc, char **argv, char **azColName)
+{
+    //NMDebugAI(<< "SQLite query results:" << std::endl);
+
+    int i;
+    for(i=0; i<argc; i++)
+    {
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+    }
+
+    printf("\n");
+
+    return 0;
+}
 
 void OtbModellerWin::zoomFullExtent()
 {

@@ -28,29 +28,30 @@ INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${QT5CORE_PRIVATE_DIR}
     ${opt_SOURCE_DIR}
-	${lumass_BINARY_DIR}
+    ${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
-	${utils_SOURCE_DIR}/QtPropertyBrowser/src
-	${NMVtk_SOURCE_DIR}
-	${GDALRATImageIO_SOURCE_DIR}
-	${GDALRATImageIO_BINARY_DIR}
-	${gui_SOURCE_DIR}
-	${filters_SOURCE_DIR}
-        ${otbsuppl_core_SOURCE_DIR}
-	${filters_BINARY_DIR}
-	${shared_SOURCE_DIR}
-	${rimageio_SOURCE_DIR}
-	${mfw_SOURCE_DIR}
-	${mfw_BINARY_DIR}    
-	${mfw_wrapper_SOURCE_DIR}
+    ${utils_SOURCE_DIR}/QtPropertyBrowser/src
+    ${NMVtk_SOURCE_DIR}
+    ${GDALRATImageIO_SOURCE_DIR}
+    ${GDALRATImageIO_BINARY_DIR}
+    ${gui_SOURCE_DIR}
+    ${filters_SOURCE_DIR}
+    ${otbsuppl_core_SOURCE_DIR}
+    ${filters_BINARY_DIR}
+    ${shared_SOURCE_DIR}
+    ${rimageio_SOURCE_DIR}
+    ${mfw_SOURCE_DIR}
+    ${mfw_BINARY_DIR}
+    ${mfw_wrapper_SOURCE_DIR}
     ${LPSOLVE_INCLUDE_DIR}
-	${OTB_INCLUDE_DIRS}
-	${RASDAMAN_INCLUDE_DIR}                                   
-	${RASDAMAN_INCLUDE_DIR}/raslib	
-	${RASDAMAN_SOURCE_DIR}/applications/rasgeo
-	${PostgreSQL_INCLUDE_DIRS}
+    ${OTB_INCLUDE_DIRS}
+    ${RASDAMAN_INCLUDE_DIR}
+    ${RASDAMAN_INCLUDE_DIR}/raslib
+    ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
+    ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
-	${GDALRATImageIO_BINARY_DIR}
+    ${GDALRATImageIO_BINARY_DIR}
+    ${SQLITE3_INCLUDE_DIR}
 )     
 
 LINK_DIRECTORIES(
@@ -126,6 +127,7 @@ set(LUMASS_LINKLIBS
         ${VTK_LIBRARIES}
         ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
 	${OPENGL_glu_LIBRARY} 
+        ${SQLITE3_LIBRARY}
 )
 
 set(LUMASS_DEPLIBS

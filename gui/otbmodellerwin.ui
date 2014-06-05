@@ -149,7 +149,7 @@
     <set>Qt::AllDockWidgetAreas</set>
    </property>
    <property name="windowTitle">
-    <string>Model Components</string>
+    <string>Layers &amp;&amp; Components</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -184,7 +184,7 @@
   </widget>
   <widget class="QDockWidget" name="componentInfoDock">
    <property name="windowTitle">
-    <string>Component Info</string>
+    <string>Attributes &amp;&amp; Properties</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -278,7 +278,7 @@
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Show Model Components</string>
+    <string>Layers &amp;&amp; Components</string>
    </property>
   </action>
   <action name="actionModel_View">
@@ -362,7 +362,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Components Info</string>
+    <string>Attributes &amp;&amp; Properties</string>
    </property>
   </action>
   <action name="actionShow_Map_View">
@@ -370,7 +370,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Map View</string>
+    <string>Map View</string>
    </property>
   </action>
   <action name="actionShow_Model_View">
@@ -378,7 +378,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Model View</string>
+    <string>Model View</string>
    </property>
   </action>
   <action name="actionMap_View_Mode">

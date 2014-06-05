@@ -236,11 +236,11 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     QTableWidget* tabWidget = new QTableWidget(ui->infoWidgetList);
     tabWidget->setObjectName(QString::fromUtf8("layerInfoTable"));
     tabWidget->setAlternatingRowColors(true);
-    ui->infoWidgetList->addWidgetItem(tabWidget, QString::fromUtf8("Layer Info"));
+    ui->infoWidgetList->addWidgetItem(tabWidget, QString::fromUtf8("Layer Attributes"));
 
     mTreeCompEditor = new NMComponentEditor(ui->infoWidgetList);
     mTreeCompEditor->setObjectName(QString::fromUtf8("treeCompEditor"));
-    ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Model Component Info"));
+    ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Component Properties"));
 
     ui->componentInfoDock->setMinimumWidth(160);
     ui->componentInfoDock->setVisible(false);

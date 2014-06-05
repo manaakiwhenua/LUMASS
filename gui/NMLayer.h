@@ -74,6 +74,7 @@ class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QOb
 	Q_PROPERTY(double Lower READ getLower WRITE setLower NOTIFY LowerChanged)
 	Q_PROPERTY(double Upper READ getUpper WRITE setUpper NOTIFY UpperChanged)
 	Q_PROPERTY(double Nodata READ getNodata WRITE setNodata NOTIFY NodataChanged)
+    Q_PROPERTY(bool IsSelected READ getIsSelected WRITE setIsSelected)
 
 
 public:
@@ -137,6 +138,9 @@ public:
 	virtual void setUpper(double val);
 	virtual void setLower(double val);
 
+    void setIsSelected(bool sel);
+    bool getIsSelected(void) {return this->mIsSelected;}
+
 
 
 signals:
@@ -149,6 +153,7 @@ signals:
 	void LowerChanged();
 	void UpperChanged();
 	void NodataChanged();
+    void IsSelectedChanged(bool);
 
 
 public:
@@ -207,6 +212,8 @@ public:
 	virtual void setVisible(bool visible);
 	bool isSelectable(void);
 	virtual void setSelectable(bool selectable);
+    bool isInteractive(void);
+
 
 	//-----------------------------------------------
 	//--GET LEGEND INFO---------------------------------
@@ -259,7 +266,7 @@ public:
 
 
 	//virtual int mapUniqueValues(QString fieldName)=0;
-	bool hasChanged(void) {return this->mHasChanged;};
+    bool hasChanged(void) {return this->mHasChanged;}
 
 public slots:
 	// call this function whenever you've changed the
@@ -387,6 +394,7 @@ protected:
 
 	bool mIsVisible;
 	bool mIsSelectable;
+    bool mIsSelected;
 	int mLayerPos;
 	bool mHasChanged;
 	double mBBox[6];

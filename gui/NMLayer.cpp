@@ -49,7 +49,8 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
 	: QObject(parent), mSelectionModel(0), mTableModel(0), mTableView(0),
 	  mDataSet(0), mActor(0), mMapper(0),
-	  mIsVisible(false), mIsSelectable(true), mHasChanged(false),
+      mIsVisible(false), mIsSelectable(true),
+      mIsSelected(false), mHasChanged(false),
 	  mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
 	  mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV)
 {
@@ -2221,12 +2222,33 @@ void NMLayer::writeDataSet()
 	this->mHasChanged = false;
 }
 
+void
+NMLayer::setIsSelected(bool sel)
+{
+    if (sel != this->mIsSelected)
+    {
+        this->mIsSelected = sel;
+        emit IsSelectedChanged(sel);
+    }
+}
+
+bool NMLayer::isInteractive(void)
+{
+    bool interactive = false;
+    if (this->mRenderer != 0)
+    {
+        interactive = this->mRenderer->GetInteractive();
+    }
+
+    return interactive;
+}
+
 void NMLayer::selectedLayerChanged(const NMLayer* layer)
 {
 	NMLayer* l = const_cast<NMLayer*>(layer);
 	if (l == this)
 	{
-		this->mRenderer->SetInteractive(1);
+        this->mRenderer->SetInteractive(1);
 	}
 	else
 	{

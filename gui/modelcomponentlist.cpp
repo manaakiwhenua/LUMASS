@@ -607,7 +607,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		}
 		else if (event->button() == Qt::RightButton)
 		{
-            //this->processSelection(false);
+            this->processSelection(false);
 
 			this->mMenu->move(event->globalPos());
 			this->mMenu->exec();
@@ -620,29 +620,24 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 void ModelComponentList::processSelection(bool toggle)
 {
 	QModelIndex idx = this->currentIndex();
-    QModelIndexList il = this->selectedIndexes();
-	QModelIndexList::Iterator it = il.begin();
 
-    bool bselect = toggle ? false : true;
-    for (; it != il.end(); ++it)
-    {
-        if ((*it).row() == idx.row())
-            bselect = toggle ? true : false;
-    }
+    const int toplevelrow = (idx.internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
 
-    if (toggle && bselect)
+    bool bselect = toggle ? !l->getIsSelected() : l->getIsSelected();
+    if (bselect)
 	{
 		this->selectionModel()->clearSelection();
 		this->selectionModel()->select(idx, QItemSelectionModel::Select |
 			QItemSelectionModel::Rows);
-        const int toplevelrow = (idx.internalId() / 100) - 1;
-        const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-        const NMLayer* l = const_cast<NMLayer*>(this->mLayerModel->getItemLayer(stackpos));
 
+        l->setIsSelected(true);
 		emit selectedLayerChanged(l);
 	}
-    else if (toggle && !bselect)
+    else
 	{
+        l->setIsSelected(false);
 		this->selectionModel()->select(idx, QItemSelectionModel::Deselect |
 			QItemSelectionModel::Rows);
 	}

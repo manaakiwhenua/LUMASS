@@ -243,7 +243,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	NMDebugAI(<< "update set of zones - adding: ");
 	long numzones = mZones.size();
 	long newzones = 0;
-	ZoneMapTypeIterator mapIt;
+    long maxKey = 0;
+    ZoneMapTypeIterator mapIt;
 	for (int t=0; t < this->GetNumberOfThreads(); ++t)
 	{
 		ZoneMapType& vMap = mThreadValueStore[t];
@@ -253,6 +254,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 			// add zone to set if not already present
 			if ((mZones.insert(mapIt->first)).second)
 			{
+                maxKey = mapIt->first > maxKey ? mapIt->first : maxKey;
 				NMDebug(<< mapIt->first << " ");
 				++newzones;
 			}
@@ -260,11 +262,23 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		}
 	}
 	NMDebug(<< std::endl);
-	NMDebugAI(<< "added " << newzones << " new zones, which gives total of " << numzones+newzones << " ..."<< std::endl;)
+    NMDebugAI(<< "added " << newzones << " new zones, which gives total of "
+              << numzones+newzones << " ..."<< std::endl;)
 
 	// add a chunk of rows
 	if (newzones > 0)
-		mZoneTable->AddRows(newzones);
+    {
+        if (mZoneTable->GetNumRows() < maxKey+1)
+        {
+            long numOldRows = mZoneTable->GetNumRows();
+            long numNewRows = maxKey+1 - numOldRows;
+            mZoneTable->AddRows(numNewRows);
+            for (long i = numOldRows; i < maxKey+1; ++i)
+            {
+                mZoneTable->SetValue("rowidx", i, i);
+            }
+        }
+    }
 
 	typename std::set<ZoneKeyType>::const_iterator zoneIt =
 			mZones.begin();
@@ -315,14 +329,15 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mean = sum_Zone / (double)count;
 		sd = ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) );
 
-		mZoneTable->SetValue("rowidx", rowid, rowid);
-		mZoneTable->SetValue("zone",   rowid, lz);
-		mZoneTable->SetValue("count",  rowid, count);
-		mZoneTable->SetValue("min",    rowid, min);
-		mZoneTable->SetValue("max",    rowid, max);
-		mZoneTable->SetValue("mean",   rowid, mean);
-		mZoneTable->SetValue("stddev", rowid, sd);
-		mZoneTable->SetValue("sum",    rowid, sum_Zone);
+        //mZoneTable->SetValue("rowidx", rowid, rowid);
+        //mZoneTable->SetValue("rowidx", rowid, lz);
+        mZoneTable->SetValue("zone",   lz, lz);
+        mZoneTable->SetValue("count",  lz, count);
+        mZoneTable->SetValue("min",    lz, min);
+        mZoneTable->SetValue("max",    lz, max);
+        mZoneTable->SetValue("mean",   lz, mean);
+        mZoneTable->SetValue("stddev", lz, sd);
+        mZoneTable->SetValue("sum",    lz, sum_Zone);
 		//mZoneTable->SetValue("sum2",   rowid, sum_Zone2);
 
 		++rowid;

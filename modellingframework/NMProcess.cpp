@@ -90,7 +90,7 @@ NMProcess::linkInPipeline(unsigned int step,
 #ifdef DEBUG
     if (this->mOtbProcess.IsNotNull())
     {
-        this->mOtbProcess->Print(std::cout, itk::Indent(nmlog::nmindent));
+//        this->mOtbProcess->Print(std::cout, itk::Indent(nmlog::nmindent));
     }
 #endif
 

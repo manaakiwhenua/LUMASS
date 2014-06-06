@@ -174,7 +174,7 @@ void
 NMImageLayer::computeStats(void)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
-	if (true)//this->mbStatsAvailable)
+    if (true)//this->mbStatsAvailable)
 	{
 		QtConcurrent::run(this, &NMImageLayer::updateStats);
 	}
@@ -735,8 +735,8 @@ int NMImageLayer::updateAttributeTable()
 
 	disconnectTableSel();
 
-	this->mOtbRAT = this->getRasterAttributeTable(1);
-	if (mOtbRAT.IsNull())
+    this->mOtbRAT = this->getRasterAttributeTable(1);
+    if (mOtbRAT.IsNull())
 	{
 		NMWarn(ctxNMImageLayer, << "No attribute table available!");
 		return 0;
@@ -909,6 +909,7 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 		return;
 
 	this->mImage = imgWrapper->getDataObject();
+    this->mOtbRAT = imgWrapper->getOTBTab();
 	this->mComponentType = imgWrapper->getItkComponentType();
 	this->mNumDimensions = imgWrapper->getNumDimensions();
 	this->mNumBands = imgWrapper->getNumBands();
@@ -1029,10 +1030,18 @@ const vtkDataSet* NMImageLayer::getDataSet()
 otb::AttributeTable::Pointer
 NMImageLayer::getRasterAttributeTable(int band)
 {
-	if (band < 1 || band > this->mReader->getOutputNumBands())
-		return 0;
+    if (this->mReader->isInitialised())
+    {
 
-	return this->mReader->getRasterAttributeTable(band);
+        if (band < 1 || band > this->mReader->getOutputNumBands())
+            return 0;
+
+        return this->mReader->getRasterAttributeTable(band);
+    }
+    else
+    {
+        return this->mOtbRAT;
+    }
 }
 
 //void NMImageLayer::fetchRATs(void)

@@ -192,7 +192,7 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
 {
     mPropBrowser->clear();
 
-    NMDebugAI(<< ">>>> #" << debugCounter << " - START: " << mObj->objectName().toStdString() << " >>>>>>>>>>>>>>>>>>" << std::endl);
+    //NMDebugAI(<< ">>>> #" << debugCounter << " - START: " << mObj->objectName().toStdString() << " >>>>>>>>>>>>>>>>>>" << std::endl);
 
     // let's start with the component's properties,
     // in case we've got a component
@@ -272,7 +272,7 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         }
     }
 
-    NMDebugAI(<< "<<<< #" << debugCounter << " - END: " << mObj->objectName().toStdString() << " <<<<<<<<<<<<<<<<<<" << std::endl);
+    //NMDebugAI(<< "<<<< #" << debugCounter << " - END: " << mObj->objectName().toStdString() << " <<<<<<<<<<<<<<<<<<" << std::endl);
     debugCounter++;
 }
 
@@ -292,9 +292,9 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     }
     int propType = property.userType();
 
-    NMDebugAI(<< propName.toStdString() << " (" << property.typeName()
-            << "): " << obj->property(property.name()).toString().toStdString()
-            << " ...");
+//    NMDebugAI(<< propName.toStdString() << " (" << property.typeName()
+//            << "): " << obj->property(property.name()).toString().toStdString()
+//            << " ...");
 
     QString propToolTip = "";
     QVariant value;
@@ -353,7 +353,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         QString curPropValStr = NMItkDataObjectWrapper::getComponentTypeString(
                 obj->property(property.name())
                 .value<NMItkDataObjectWrapper::NMComponentType>());
-        NMDebug(<< "current value = " << curPropValStr.toStdString());
+//        NMDebug(<< "current value = " << curPropValStr.toStdString());
         for (unsigned int p=0; p < ctypes.size(); ++p)
         {
             if (ctypes.at(p).compare(curPropValStr) == 0)
@@ -370,7 +370,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
                 obj->property(property.name()).value<NMProcess::AdvanceParameter>();
         value = QVariant(ap);
         propToolTip = tr("NMProcess::AdvanceParameter");
-        NMDebug(<< "current value = " << ap);
+//        NMDebug(<< "current value = " << ap);
     }
 #ifdef BUILD_RASSUPPORT
     else if (QString("NMRasdamanConnectorWrapper*")
@@ -471,7 +471,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     }
     else
     {
-        NMDebug(<< "standard ");
+//        NMDebug(<< "standard ");
         value = obj->property(property.name());
         prop = manager->addProperty(propType, propName);
     }
@@ -504,11 +504,11 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         connect(manager, SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
                  this, SLOT(callFeeder(QtProperty*, const QStringList &)));
 
-        NMDebug(<< " - processed!" << std::endl);
+//        NMDebug(<< " - processed!" << std::endl);
     }
     else
     {
-        NMDebug(<< " - failed!" << std::endl);
+//        NMDebug(<< " - failed!" << std::endl);
         delete manager;
     }
 }

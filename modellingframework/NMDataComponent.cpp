@@ -270,6 +270,7 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 	//NMDebug(<< endl);
 
 	this->setInput(to);
+
 	emit NMDataComponentChanged();
 
 

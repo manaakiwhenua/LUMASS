@@ -300,19 +300,19 @@ NMLayer::initiateLegend(void)
 	if (this->getLayerType() == NMLayer::NM_IMAGE_LAYER)
 	{
 		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-		//const double* imgStats = il->getStatistics();
-		//for (int i=0; i < 5; ++i)
-		//	mStats[i] = imgStats[i];
+        const double* imgStats = il->getStatistics();
+        for (int i=0; i < 5; ++i)
+            mStats[i] = imgStats[i];
 
 		il->setNodata(il->getDefaultNodata());
-		//if (mStats[0] == il->getDefaultNodata())
-		//	setLower(mStats[0] + 3*VALUE_MARGIN);
-		//else
-		//	setLower(mStats[0]);
-		//if (mStats[1] == mNodata)
-		//	setUpper(mStats[1] - 1);
-		//else
-		//	setUpper(mStats[1]);
+        if (mStats[0] == il->getDefaultNodata())
+            setLower(mStats[0] + 3*VALUE_MARGIN);
+        else
+            setLower(mStats[0]);
+        if (mStats[1] == mNodata)
+            setUpper(mStats[1] - 1);
+        else
+            setUpper(mStats[1]);
 	}
 	else
 	{

@@ -89,8 +89,10 @@ signals:
     void itemLeftClicked(const QString& itemName);
     void zoom(int delta);
     void signalModelFileDropped(const QString& fileName);
-    void signalItemCopy(const QList<QGraphicsItem*>& copyList);
-    void signalItemMove(const QList<QGraphicsItem*>& moveList);
+    void signalItemCopy(const QList<QGraphicsItem*>& copyList,
+                        const QPointF& sourcePos, const QPointF& targetPos);
+    void signalItemMove(const QList<QGraphicsItem*>& moveList,
+                        const QPointF& sourcePos, const QPointF& targetPos);
 
 protected:
 	void dragEnterEvent(QGraphicsSceneDragDropEvent* event);
@@ -121,7 +123,7 @@ private:
 	InteractionMode mMode;
 
     QList<QGraphicsItem*> mDragItemList;
-
+    QPointF mDragStartPos;
     QPointF mMousePos;
 };
 

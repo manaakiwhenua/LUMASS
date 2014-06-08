@@ -38,9 +38,9 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 {
 	this->mScene = scene;
 
-	mSingleLineHeight = 17;
-	mDoubleLineHeight = 34;
-    mMaxTextWidth = 80;
+    mSingleLineHeight = 15;
+    mDoubleLineHeight = 30;
+    mMaxTextWidth = 150;
 
     if (this->objectName().contains("Reader", Qt::CaseInsensitive))
     {
@@ -242,8 +242,8 @@ NMProcessComponentItem::boundingRect(void) const
 QPolygonF
 NMProcessComponentItem::getShapeAsPolygon(void) const
 {
-	QRectF gap = QRectF(mIconBnd.left(), mIconBnd.bottom()-2,
-			            mIconBnd.width(), mSingleLineHeight);
+    QRectF gap = QRectF(mIconBnd.left(), mIconBnd.bottom(), //-2,
+                        mIconBnd.width(), mSingleLineHeight);
 
 	QPolygonF iconPoly(mIconBnd);
 	QPolygonF jointPoly = iconPoly.united(gap);
@@ -289,28 +289,29 @@ NMProcessComponentItem::updateDescription(
 	const QString& descr)
 {
 	this->mDescription = descr;
+    QFontMetricsF fm(mFont);
+    qreal leading = fm.leading();
+    qreal height = 0;
 
-	QFontMetricsF fm(mFont);
-	QRectF fbr = fm.boundingRect(mDescription);
 
-	if (fbr.width() > mIconBnd.width() && fbr.width() < mMaxTextWidth)
-	{
-		mTextRect.setLeft(-(fbr.width()*0.5));
-		mTextRect.setRight(fbr.width()*0.5);
-		mTextRect.setBottom(mTextRect.top()+mSingleLineHeight);
-	}
-	else if (fbr.width() >= mMaxTextWidth)
-	{
-		mTextRect.setLeft(-(mMaxTextWidth));
-		mTextRect.setRight(mMaxTextWidth);
-		mTextRect.setBottom(mTextRect.top()+mDoubleLineHeight);
-	}
-	else
-	{
-		mTextRect.setLeft(mIconBnd.left());
-		mTextRect.setRight(mIconBnd.right());
-		mTextRect.setBottom(mTextRect.top()+mSingleLineHeight);
-	}
+    mTextLayout.setText(descr);
+    mTextLayout.setFont(mFont);
+    mTextLayout.beginLayout();
+    while(true)
+    {
+        QTextLine line = mTextLayout.createLine();
+        if (!line.isValid())
+            break;
+
+        line.setLineWidth(mMaxTextWidth);
+        height += leading;
+        line.setPosition(QPointF(0, height));
+        height += line.height();
+    }
+    mTextLayout.endLayout();
+    mTextRect = mTextLayout.boundingRect();
+    mTextRect.moveTopLeft(QPointF(-(0.5*mTextRect.width())-4,
+                          mIconBnd.bottom()+0.5*mSingleLineHeight));
 
 	this->update();
 }
@@ -413,8 +414,14 @@ NMProcessComponentItem::paint(QPainter* painter,
     // the description
     mFont.setBold(true);
 	painter->setFont(mFont);
-	painter->drawText(mTextRect, Qt::AlignCenter | Qt::TextWordWrap,
-				mDescription);
+    //painter->drawText(mTextRect, Qt::AlignCenter | Qt::TextWordWrap,
+    //			mDescription);
+    painter->drawText(mTextRect,
+                      Qt::AlignTop | Qt::AlignHCenter | Qt::TextWordWrap |
+                      Qt::ElideRight,
+                      mDescription);
+
+    //mTextLayout.draw(painter, QPointF(mTextRect.left(), mTextRect.top()));
 
 }
 

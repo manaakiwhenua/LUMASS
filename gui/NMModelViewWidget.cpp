@@ -143,10 +143,14 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
             SLOT(updateTreeEditor(const QString &)));
     connect(mModelScene, SIGNAL(signalModelFileDropped(const QString &)),
             this, SLOT(importModel(const QString &)));
-    connect(mModelScene, SIGNAL(signalItemCopy(const QList<QGraphicsItem*> &)),
-            this, SLOT(copyComponents(const QList<QGraphicsItem*> &)));
-    connect(mModelScene, SIGNAL(signalItemMove(const QList<QGraphicsItem*> &)),
-            this, SLOT(moveComponents(const QList<QGraphicsItem*> &)));
+    connect(mModelScene, SIGNAL(signalItemCopy(const QList<QGraphicsItem*> &, const QPointF &,
+                                               const QPointF &)),
+            this, SLOT(copyComponents(const QList<QGraphicsItem*> &, const QPointF &,
+                                      const QPointF &)));
+    connect(mModelScene, SIGNAL(signalItemMove(const QList<QGraphicsItem*> &, const QPointF &,
+                                               const QPointF &)),
+            this, SLOT(moveComponents(const QList<QGraphicsItem*> &, const QPointF &,
+                                      const QPointF &)));
 
 	/* ====================================================================== */
     /* MODEL VIEW SETUP */
@@ -1002,19 +1006,112 @@ void NMModelViewWidget::saveItems(void)
 }
 
 void
-NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList)
+NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const QPointF &source,
+                                  const QPointF &target)
 {
     NMDebugCtx(ctx, << "...");
 
+    NMDebugAI(<< this->reportPoint(target, "move target") << std::endl);
+
+    // determine move vector
+    QPointF delta = target - source;
+
+    QList<QGraphicsItem*> topList;
+    foreach(QGraphicsItem* gi, moveList)
+    {
+        bool isTopLevel = true;
+        foreach(QGraphicsItem* gii, moveList)
+        {
+            if (gii->childItems().contains(gi))
+            {
+                isTopLevel = false;
+                break;
+            }
+        }
+        if (isTopLevel)
+        {
+            topList << gi;
+        }
+    }
+
+    // get the new host of the components
+    QGraphicsItem* targetItem = this->mModelScene->itemAt(target, this->mModelView->transform());
+    QGraphicsItemGroup* newHostItem = 0;
+    NMIterableComponent* newHostComp = 0;
+
+    if (targetItem != 0)
+    {
+        if (targetItem->type() == NMProcessComponentItem::Type)
+        {
+            NMErr(ctx, <<  "Cannot dorop anything into a process component!" << std::endl);
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+        else if (targetItem->type() == QGraphicsTextItem::Type)
+        {
+            NMErr(ctx, <<  "Cannot dorop anything into a text label!" << std::endl);
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+        else if (targetItem->type() == NMAggregateComponentItem::Type)
+        {
+            newHostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(
+                        this->mModelScene->itemAt(target, this->mModelView->transform()));
+            newHostComp = qobject_cast<NMIterableComponent*>(this->componentFromItem(newHostItem));
+        }
+    }
+    else
+    {
+        newHostItem = 0;
+        newHostComp = qobject_cast<NMIterableComponent*>(NMModelController::getInstance()->getComponent("root"));
+    }
+
+    if (newHostComp == 0)
+    {
+        NMErr(ctx, << "Couldn't find a suitable new host to move to!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    NMDebugAI( << "moving these top level items ..." << std::endl);
+    foreach(QGraphicsItem* tli, topList)
+    {
+        NMModelComponent* comp = this->componentFromItem(tli);
+        if (comp != 0)
+        {
+            NMDebugAI( << comp->objectName().toStdString() << " - "
+                       << comp->getDescription().toStdString() << std::endl);
+
+            NMIterableComponent* hostComp = comp->getHostComponent();
+            hostComp->removeModelComponent(comp->objectName());
+            newHostComp->addModelComponent(comp);
+        }
+
+        QGraphicsItemGroup* hostItem = qgraphicsitem_cast<QGraphicsItemGroup*>(tli->parentItem());
+        if (hostItem != 0)
+        {
+            hostItem->removeFromGroup(tli);
+        }
+
+        tli->setParentItem(0);
+        tli->moveBy(delta.x(), delta.y());
+
+        if (newHostItem != 0)
+        {
+            newHostItem->addToGroup(tli);
+        }
+    }
 
 
     NMDebugCtx(ctx, << "done!");
 }
 
 void
-NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList)
+NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const QPointF &source,
+                                  const QPointF &target)
 {
     NMDebugCtx(ctx, << "...");
+
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -2466,6 +2563,8 @@ void NMModelViewWidget::dragMoveEvent(QDragMoveEvent* event)
 void NMModelViewWidget::dropEvent(QDropEvent* event)
 {
     // store last item
+
+
     //mLastItem = this->mModelScene->itemAt(this->mModelView->mapToScene(event->pos()), this->mModelView->transform());
 
 //	QString droppedText = event->mimeData()->text();

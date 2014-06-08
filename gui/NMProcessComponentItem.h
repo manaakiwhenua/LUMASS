@@ -40,6 +40,7 @@
 #include <QStyleOptionGraphicsItem>
 #include <QPixmap>
 #include <QDebug>
+#include <QTextLayout>
 
 #include "nmlog.h"
 #include "NMComponentLinkItem.h"
@@ -104,7 +105,6 @@ public:
 	int getOutputLinkIndex(QString outputItemName);
 
 
-
 	void removeLink(NMComponentLinkItem* link);
 
 	QList<NMComponentLinkItem*> getOutputLinks(void)
@@ -145,6 +145,8 @@ private:
     QRectF mClockRect;
     QLineF mPointer1;
     QLineF mPointer2;
+
+    QTextLayout mTextLayout;
 
 
     short mTimeLevel;

@@ -315,11 +315,11 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             {
             case Qt::MoveAction:
                 NMDebugAI( << "moving: " << mDragItemList.count() << " items" << std::endl);
-                emit signalItemMove(mDragItemList);
+                emit signalItemMove(mDragItemList, mDragStartPos, dropPos);
                 break;
             case Qt::CopyAction:
                 NMDebugAI( << "copying: " << mDragItemList.count() << " items" << std::endl);
-                emit signalItemCopy(mDragItemList);
+                emit signalItemCopy(mDragItemList, mDragStartPos, dropPos);
                 break;
             }
             event->acceptProposedAction();
@@ -615,6 +615,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                     )
                )
             {
+                mDragStartPos = mMousePos;
                 mDragItemList.clear();
                 mDragItemList = this->selectedItems();
                 if (mDragItemList.count() == 0)

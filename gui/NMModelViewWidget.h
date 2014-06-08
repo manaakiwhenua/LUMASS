@@ -90,8 +90,10 @@ public slots:
     void changeFont(void);
     void changeColour(void);
     void importModel(const QString& fileName);
-    void copyComponents(const QList<QGraphicsItem*>& copyList);
-    void moveComponents(const QList<QGraphicsItem*>& moveList);
+    void copyComponents(const QList<QGraphicsItem*>& copyList,
+                        const QPointF & source, const QPointF & target);
+    void moveComponents(const QList<QGraphicsItem*>& moveList,
+                        const QPointF & source, const QPointF & target);
 
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);
@@ -176,6 +178,7 @@ private:
 	QThread* mModelRunThread;
 
 	QPointF mLastScenePos;
+    QPointF mSceneDropPos;
 	QGraphicsItem* mLastItem;
 	NMModelController* mModelController;
 

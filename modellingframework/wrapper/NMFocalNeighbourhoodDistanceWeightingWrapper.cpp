@@ -79,7 +79,7 @@ public:
 	}
 
 	static void setWeights(itk::ProcessObject::Pointer& otbFilter,
-			itk::Array2D<typename FilterType::WeightMatrixType> weights)
+            typename FilterType::WeightMatrixType weights)
 	{
 		FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
 		filter->SetWeights(weights);

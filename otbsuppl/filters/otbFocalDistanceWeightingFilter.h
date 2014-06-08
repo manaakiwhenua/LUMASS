@@ -108,7 +108,7 @@ public:
   typedef typename OutputImageType::PixelType                   OutputPixelType;
   typedef typename itk::NumericTraits<InputPixelType>::RealType InputRealType;
   typedef float													WeightType;
-  typedef itk::Array2D<float>                            WeightMatrixType;
+  typedef itk::Array2D<float>                                   WeightMatrixType;
   
   typedef typename InputImageType::RegionType                   InputImageRegionType;
   typedef typename OutputImageType::RegionType                  OutputImageRegionType;

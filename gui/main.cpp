@@ -31,6 +31,11 @@
 #endif
 #endif
 
+//#ifdef EARLY_TEMPLATE
+//#ifdef __GNUG__
+//#include "LUMASS_TemplateInst.h"
+//#endif
+
 //#ifdef RMANDEBUG
 //	int indentLevel;
 //	bool debugOutput;

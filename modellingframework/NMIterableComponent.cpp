@@ -1057,6 +1057,7 @@ NMIterableComponent::reset(void)
 	}
 }
 
+/*
 void NMIterableComponent::getEndOfPipelineProcess(NMProcess*& endProc)
 {
 	NMDebugAI(<< this->objectName().toStdString()
@@ -1095,6 +1096,7 @@ void NMIterableComponent::getEndOfPipelineProcess(NMProcess*& endProc)
 		endProc = this->mProcess;
 	}
 }
+*/
 
 bool NMIterableComponent::isSubComponent(NMModelComponent* comp)
 {

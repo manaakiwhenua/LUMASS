@@ -332,7 +332,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
                 QGraphicsTextItem* labelItem = new QGraphicsTextItem(ai);
                 labelItem->setHtml(QString::fromLatin1("<b>Text Label</b>"));
-                labelItem->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                labelItem->setTextInteractionFlags(Qt::NoTextInteraction);
                 labelItem->setFlag(QGraphicsItem::ItemIsMovable, true);
                 labelItem->setOpenExternalLinks(true);
                 if (ai != 0)
@@ -407,6 +407,7 @@ NMModelScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 	if (event->button() == Qt::LeftButton)
 	{
         QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
+        QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
 		NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
 		if (item == 0)
@@ -421,6 +422,11 @@ NMModelScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 		{
 			emit procAggregateCompDblClicked(aggrItem->getTitle());
 		}
+        else if (textItem != 0)
+        {
+            textItem->setTextInteractionFlags(Qt::TextEditorInteraction |
+                                              Qt::TextBrowserInteraction);
+        }
 	}
 	else
 	{
@@ -439,6 +445,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     mMousePos = event->scenePos();
     QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
+    QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
     NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
 
@@ -480,6 +487,11 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                         else if (aggrItem)
                         {
                             emit itemLeftClicked(aggrItem->getTitle());
+                        }
+                        else if (textItem)
+                        {
+                            textItem->setTextInteractionFlags(Qt::NoTextInteraction
+                                                              | Qt::TextBrowserInteraction);
                         }
                     }
                     else

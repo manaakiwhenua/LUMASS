@@ -1224,7 +1224,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
             {
                 ti = new QGraphicsTextItem();
                 lmv >> *ti;
-                ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                ti->setTextInteractionFlags(Qt::NoTextInteraction | Qt::TextBrowserInteraction);
                 ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                 ti->setOpenExternalLinks(true);
                 this->mModelScene->updateComponentItemFlags(ti);
@@ -2151,14 +2151,24 @@ NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
 
 	NMIterableComponent* itComp =
 			qobject_cast<NMIterableComponent*>(targetComp);
-	if (itComp == 0)
-		return;
+    NMDataComponent* dataComp =
+            qobject_cast<NMDataComponent*>(targetComp);
+    if (itComp)
+    {
+        NMProcess* proc = itComp->getProcess();
+        if (proc == 0)
+            return;
 
-	NMProcess* proc = itComp->getProcess();
-	if (proc == 0)
-		return;
-
-	proc->removeInputComponent(sourceItem->getTitle());
+        proc->removeInputComponent(sourceItem->getTitle());
+    }
+    else if (dataComp)
+    {
+        dataComp->setInputs(QList<QStringList>());
+    }
+    else
+    {
+        return;
+    }
 
 	if (this->mOpenEditors.contains(targetComp))
 		this->mOpenEditors.value(targetComp)->update();

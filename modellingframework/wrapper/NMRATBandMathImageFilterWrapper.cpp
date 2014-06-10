@@ -351,9 +351,8 @@ NMRATBandMathImageFilterWrapper
 						vcolnames.push_back(cn.toStdString());
 					}
 				}
+                this->setNthAttributeTable(cnt, tab, vcolnames);
 			}
-
-			this->setNthAttributeTable(cnt, tab, vcolnames);
 
             // we check, whether the input has a UserID defined, and if so, we set it as the
             // nth input variable name

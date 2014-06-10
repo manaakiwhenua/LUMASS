@@ -81,6 +81,9 @@ public:
 	static void getBBox(itk::DataObject* img, unsigned int numBands,
 			double* bbox)
 		{
+            if (img == 0)
+                return;
+
 			if (numBands == 1)
 			{
 				ImgType* theimg = dynamic_cast<ImgType*>(img);

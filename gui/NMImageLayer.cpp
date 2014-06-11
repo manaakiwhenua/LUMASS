@@ -78,43 +78,70 @@ public:
 	typedef otb::VectorImage<PixelType, Dimension> VecImgType;
 	typedef typename VecImgType::RegionType VecRegionType;
 
-	static void getBBox(itk::DataObject* img, unsigned int numBands,
+    static void getBBox(itk::DataObject::Pointer& img, unsigned int numBands,
 			double* bbox)
 		{
-            if (img == 0)
-                return;
+            if (img.IsNull() || img.GetPointer() == 0 || bbox == 0) return;
+
+            // we set everything to zero here
+            for(int i=0; i < 6; ++i)
+            {
+                bbox[i] = 0;
+            }
 
 			if (numBands == 1)
 			{
-				ImgType* theimg = dynamic_cast<ImgType*>(img);
+                ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
 				RegionType reg = theimg->GetBufferedRegion();
 
-				//ImgType::PointType ori = theimg->GetOrigin()
+                // problem here is that we could also be dealing with an
+                // image of type 'itk::Image' rather than 'otb::Image',
+                // so using the convenient 'GetLowerLeftCorner()' etc.
+                // functions would crash with 'itk::Image' and hence crash
+                //				bbox[0] = theimg->GetLowerLeftCorner()[0];  // minx
+                //				bbox[2] = theimg->GetLowerLeftCorner()[1];  // miny
+                //				bbox[1] = theimg->GetUpperRightCorner()[0]; // maxx
+                //				bbox[3] = theimg->GetUpperRightCorner()[1]; // maxy
+                //				bbox[5] = 0;
+                //				bbox[6] = 0;
 
-				bbox[0] = theimg->GetLowerLeftCorner()[0];
-				bbox[2] = theimg->GetLowerLeftCorner()[1];
-				bbox[1] = theimg->GetUpperRightCorner()[0];
-				bbox[3] = theimg->GetUpperRightCorner()[1];
-				bbox[5] = 0;
-				bbox[6] = 0;
+                //				if (theimg->GetImageDimension() == 3)
+                //				{
+                //					bbox[5] = theimg->GetOrigin()[2];
+                //					bbox[6] = bbox[5] + theimg->GetSpacing()[2] * reg.GetSize()[2];
+                //				}
 
-				if (theimg->GetImageDimension() == 3)
-				{
-					bbox[5] = theimg->GetOrigin()[2];
-					bbox[6] = bbox[5] + theimg->GetSpacing()[2] * reg.GetSize()[2];
-				}
+                bbox[0] = theimg->GetOrigin()[0];
+                bbox[1] = bbox[0] + (theimg->GetSpacing()[0] * reg.GetSize()[0]);
+                bbox[2] = theimg->GetOrigin()[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
+                bbox[3] = theimg->GetOrigin()[1];
+                bbox[4] = 0;
+                bbox[5] = 0;
+                if (theimg->GetImageDimension() == 3)
+                {
+                    bbox[4] = theimg->GetOrigin()[2];
+                    bbox[5] = bbox[4] + (theimg->GetSpacing()[2] * reg.GetSize()[2]);
+                }
+
+
 			}
 			else if (numBands > 1)
 			{
-				VecImgType* theimg = (VecImgType*)img;
+                VecImgType* theimg = dynamic_cast<VecImgType*>(img.GetPointer());
 				VecRegionType reg = theimg->GetBufferedRegion();
 
-				bbox[0] = theimg->GetLowerLeftCorner()[0];
-				bbox[2] = theimg->GetLowerLeftCorner()[1];
-				bbox[1] = theimg->GetUpperRightCorner()[0];
-				bbox[3] = theimg->GetUpperRightCorner()[1];
-				bbox[5] = 0;
-				bbox[6] = 0;
+                bbox[0] = theimg->GetOrigin()[0];
+                bbox[1] = bbox[0] + (theimg->GetSpacing()[0] * reg.GetSize()[0]);
+                bbox[2] = theimg->GetOrigin()[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
+                bbox[3] = theimg->GetOrigin()[1];
+                bbox[4] = 0;
+                bbox[5] = 0;
+                //				bbox[0] = theimg->GetLowerLeftCorner()[0];
+                //				bbox[2] = theimg->GetLowerLeftCorner()[1];
+                //				bbox[1] = theimg->GetUpperRightCorner()[0];
+                //				bbox[3] = theimg->GetUpperRightCorner()[1];
+                //                bbox[4] = 0;
+                //                bbox[5] = 0;
 
 				if (theimg->GetImageDimension() == 3)
 				{
@@ -129,9 +156,9 @@ public:
 #define getInternalBBox( PixelType, wrapName ) \
 {	\
 	if (numDims == 2) \
-        wrapName<PixelType, 2>::getBBox(img, numBands, this->mBBox); \
+        wrapName<PixelType, 2>::getBBox(img, numBands, bbox); \
 	else \
-        wrapName<PixelType, 3>::getBBox(img, numBands, this->mBBox); \
+        wrapName<PixelType, 3>::getBBox(img, numBands, bbox); \
 }
 
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
@@ -917,7 +944,7 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 	this->mNumDimensions = imgWrapper->getNumDimensions();
 	this->mNumBands = imgWrapper->getNumBands();
 
-	// concatenate the pipeline
+    // concatenate the pipeline
 	this->mPipeconn->setInput(imgWrapper);
 
 	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
@@ -935,9 +962,11 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 	this->mMapper = m;
 	this->mActor = a;
 
+    // check bouding box before we to into heres
     unsigned int numDims = imgWrapper->getNumDimensions();
     unsigned int numBands = imgWrapper->getNumBands();
-    itk::DataObject* img = this->mImage;
+    itk::DataObject::Pointer img = this->mImage;
+    double* bbox = new double[6];
     otb::ImageIOBase::IOComponentType type = imgWrapper->getItkComponentType();
     switch(type)
     {
@@ -945,6 +974,12 @@ void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
     default:
         break;
     }
+
+    for(int i=0; i < 6; ++i)
+    {
+        this->mBBox[i] = bbox[i];
+    }
+    delete bbox;
 
     this->initiateLegend();
     emit layerLoaded();

@@ -244,6 +244,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 	if (selItems.count() < 2)
 	{
 		NMDebugAI(<< "grouping one single component does not make sense!" << endl);
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -296,6 +297,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 					<< endl);
 			//NMDebugAI(<< "ignoring component '" << comp->objectName().toStdString()
 			//		<< "', which is not on the grouping level!" << endl);
+            NMDebugCtx(ctx, << "done!");
 			return;
 		}
 
@@ -856,10 +858,16 @@ void NMModelViewWidget::saveItems(void)
 	{
 		fileNameString = dlg.selectedFiles().at(0);
 		if (fileNameString.isNull() || fileNameString.isEmpty())
+        {
+            NMDebugCtx(ctx, << "done!");
 			return;
+        }
 	}
 	else
+    {
+        NMDebugCtx(ctx, << "done!");
 		return;
+    }
 
 	QFileInfo fi(fileNameString);
 	QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
@@ -941,6 +949,7 @@ void NMModelViewWidget::saveItems(void)
 			if (comp == 0)
 			{
 				NMErr(ctx, << "couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
+                NMDebugCtx(ctx, << "done!");
 				return;
 			}
 
@@ -988,6 +997,7 @@ void NMModelViewWidget::saveItems(void)
 			if (comp == 0)
 			{
 				NMErr(ctx, << "couldn't write '" << ai->getTitle().toStdString() << "' - skip it!");
+                NMDebugCtx(ctx, << "done!");
 				return;
 			}
 			xmlS.serialiseComponent(comp, fnLmx, 4, append);
@@ -1184,6 +1194,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
         NMBoxErr("Unsupported File Version",
                  "This *.lmv file version is not supported "
                  "by LUMASS version < 0.9.3!");
+        NMDebugCtx(ctx, << "done!");
 		return;
     }
 
@@ -1677,7 +1688,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
         }
     }
 
-
+    NMDebugCtx(ctx, << "done!");
     this->mModelScene->invalidate();
 }
 
@@ -1798,11 +1809,15 @@ void NMModelViewWidget::ungroupComponents()
         }
         else
         {
+            NMDebugCtx(ctx, << "done!");
             return;
         }
 
         if (selection.count() == 0)
+        {
+            NMDebugCtx(ctx, << "done!");
             return;
+        }
     }
 
 	QGraphicsItem* item = selection.at(0);
@@ -2044,16 +2059,25 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
 
     NMProcess* sender = qobject_cast<NMProcess*>(this->sender());
     if (sender == 0)
+    {
+        NMDebugCtx(ctx, << "done!");
         return;
+    }
 
     QString senderName = sender->parent()->objectName();
     QGraphicsItem* gi = this->mModelScene->getComponentItem(senderName);
     if (gi == 0)
+    {
+        NMDebugCtx(ctx, << "done!");
         return;
+    }
     NMProcessComponentItem* procItem =
             qgraphicsitem_cast<NMProcessComponentItem*>(gi);
     if (procItem == 0)
+    {
+        NMDebugCtx(ctx, << "done!");
         return;
+    }
     QList<NMComponentLinkItem*> inputLinks = procItem->getInputLinks();
 
     // get a list of dynamic inputs

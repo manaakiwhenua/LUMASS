@@ -116,7 +116,7 @@ NMProcessComponentItem::setIsDataBufferItem(bool isbuffer)
 
 void NMProcessComponentItem::addInputLink(int idx, NMComponentLinkItem* link)
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 	if (link == 0)
 		return;
 
@@ -124,14 +124,14 @@ void NMProcessComponentItem::addInputLink(int idx, NMComponentLinkItem* link)
 		this->mInputLinks.push_back(link);
 	else //if (idx >= 0 && idx < this->mInputLinks.size()-1)
 		this->mInputLinks[idx] = link;
-	NMDebugAI( << "new no of in links: " << this->mInputLinks.size() << std::endl);
+//	NMDebugAI( << "new no of in links: " << this->mInputLinks.size() << std::endl);
 
-	NMDebugCtx(ctx, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 }
 
 void NMProcessComponentItem::addOutputLink(int idx, NMComponentLinkItem* link)
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 
 	if (link == 0)
 		return;
@@ -141,9 +141,9 @@ void NMProcessComponentItem::addOutputLink(int idx, NMComponentLinkItem* link)
 	else //if (idx >= 0 && idx < this->mOutputLinks.size()-1)
 		this->mOutputLinks[idx] = link;
 
-	NMDebugAI( << "new no of out links: " << this->mOutputLinks.size() << std::endl);
+//	NMDebugAI( << "new no of out links: " << this->mOutputLinks.size() << std::endl);
 
-	NMDebugCtx(ctx, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 }
 
 int NMProcessComponentItem::getInputLinkIndex(QString inputItemName)

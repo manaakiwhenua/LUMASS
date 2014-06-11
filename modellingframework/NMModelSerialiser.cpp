@@ -89,7 +89,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 	}
 
 	QDomElement modelElem = doc.documentElement();
-	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
+//	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
 
 	int ind = nmlog::nmindent;
 
@@ -157,7 +157,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 		// --------------------------------------------------------------------------------------
 		// property assignment
 		// --------------------------------------------------------------------------------------
-		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
+//		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
 		QDomElement propElem = compElem.firstChildElement("Property");
 		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
 		{
@@ -175,9 +175,9 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 				value = QVariant(nameRegister.value(value.toString()));
 			suc = comp->setProperty(propElem.attribute("name").toStdString().c_str(), value);
 
-			NMDebugInd(ind+2, << "setting " << propElem.attribute("name").toStdString()
-					<< "=" << value.toString().toStdString()
-					<< " - " << suc << endl);
+//			NMDebugInd(ind+2, << "setting " << propElem.attribute("name").toStdString()
+//					<< "=" << value.toString().toStdString()
+//					<< " - " << suc << endl);
 		}
 
 		// --------------------------------------------------------------------------------------
@@ -191,8 +191,8 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 			QString procName = procElem.attribute("name");
 			if (!procName.isEmpty())
 			{
-				NMDebugInd(ind+2, << "setting process '" << procName.toStdString()
-						<< "'" << endl);
+//				NMDebugInd(ind+2, << "setting process '" << procName.toStdString()
+//						<< "'" << endl);
 
 				proc = NMProcessFactory::instance().createProcess(procName);
 				
@@ -204,9 +204,9 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 					QVariant value = this->extractPropertyValue(procPropElem);
 					bool suc = proc->setProperty(procPropElem.attribute("name").toStdString().c_str(), value);
 
-					NMDebugInd(ind+3, << "setting " << procPropElem.attribute("name").toStdString()
-							<< "=" << value.toString().toStdString()
-							<< " - " << suc << endl);
+//					NMDebugInd(ind+3, << "setting " << procPropElem.attribute("name").toStdString()
+//							<< "=" << value.toString().toStdString()
+//							<< " - " << suc << endl);
 				}
 			}
 			ic->setProcess(proc);
@@ -265,7 +265,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
         //		}
 
 
-		NMDebugAI(<< "setting subcomponents for '" << itCompName.toStdString() << "'" << endl);
+//		NMDebugAI(<< "setting subcomponents for '" << itCompName.toStdString() << "'" << endl);
 		QDomElement subcompElem = compElem.firstChildElement("Subcomponents");
 		if (!subcompElem.isNull())
 		{
@@ -299,7 +299,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 
     foreach(const QString& name, nameRegister.values())
     {
-        NMDebugAI(<< "sorting host for '" << name.toStdString() << "' ..." << std::endl);
+//        NMDebugAI(<< "sorting host for '" << name.toStdString() << "' ..." << std::endl);
         NMModelComponent* c = NMModelController::getInstance()->getComponent(name);
         if (    c != 0
             &&  c->getHostComponent() == 0
@@ -313,15 +313,15 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 
 	// ------------------------------------------------------
 	// a bit of debug code
-	QMap<QString, NMModelComponent*>& repo =
-			const_cast<QMap<QString, NMModelComponent*>& >(controller->getRepository());
+//	QMap<QString, NMModelComponent*>& repo =
+//			const_cast<QMap<QString, NMModelComponent*>& >(controller->getRepository());
 
-	NMDebug(<< endl);
-	NMDebugAI(<< "Model controller's contents after import ..." << endl);
-	foreach(NMModelComponent* cmp, repo.values())
-	{
-		NMDebugAI(<< cmp->objectName().toStdString() << endl);
-	}
+//	NMDebug(<< endl);
+//	NMDebugAI(<< "Model controller's contents after import ..." << endl);
+//	foreach(NMModelComponent* cmp, repo.values())
+//	{
+//		NMDebugAI(<< cmp->objectName().toStdString() << endl);
+//	}
 	// ------------------------------------------------------
 
 

@@ -260,7 +260,7 @@ NMModelController::executeModel(const QString& compName)
 void
 NMModelController::resetComponent(const QString& compName)
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 	NMModelComponent* comp = this->getComponent(compName);
 	if (comp == 0)
 	{
@@ -269,17 +269,17 @@ NMModelController::resetComponent(const QString& compName)
 		return;
 	}
 
-	NMDebugAI(<< "resetting component '" << compName.toStdString()
-			  << "'" << endl);
+//	NMDebugAI(<< "resetting component '" << compName.toStdString()
+//			  << "'" << endl);
 
 	comp->reset();
-	NMDebugCtx(ctx, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 }
 
 QString NMModelController::addComponent(NMModelComponent* comp,
 		NMModelComponent* host)
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 
 	NMIterableComponent* ihost = 0;
 	if (host != 0)
@@ -287,21 +287,21 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 		ihost = qobject_cast<NMIterableComponent*>(host);
 	}
 
-	if (comp != 0 && ihost != 0)
-	{
-		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to '"
-			     << host->objectName().toStdString() << "' ..." << endl);
-	}
-	else if (comp != 0)
-	{
-		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to 'root"
-			     << "' ..." << endl);
-	}
+//	if (comp != 0 && ihost != 0)
+//	{
+//		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to '"
+//			     << host->objectName().toStdString() << "' ..." << endl);
+//	}
+//	else if (comp != 0)
+//	{
+//		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to 'root"
+//			     << "' ..." << endl);
+//	}
 
 	if (this->mComponentMap.values().contains(comp))
 	{
 		NMErr(ctx, << "model component already present in repository!");
-		NMDebugCtx(ctx, << "done!");
+//		NMDebugCtx(ctx, << "done!");
 		return "failed";
 	}
 
@@ -311,8 +311,8 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 	QString numstr;
 	unsigned long cnt = 1;
 	bool bok;
-	NMDebugAI(<< "checking names ..." << endl);
-	NMDebugAI(<< tname.toStdString() << endl);
+//	NMDebugAI(<< "checking names ..." << endl);
+//	NMDebugAI(<< tname.toStdString() << endl);
 	while (this->mComponentMap.keys().contains(tname))
 	{
 		if (re.indexIn(tname) > 0)
@@ -330,10 +330,10 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 		}
 
 		tname = QString(tr("%1%2")).arg(cname).arg(cnt);
-		NMDebugAI(<< tname.toStdString() << endl);
+//		NMDebugAI(<< tname.toStdString() << endl);
 	}
 
-	NMDebugAI(<< "insert comp as '" << tname.toStdString() << "'" << endl);
+//	NMDebugAI(<< "insert comp as '" << tname.toStdString() << "'" << endl);
 	comp->setParent(0);
 	comp->moveToThread(this->thread());
 	comp->setObjectName(tname);
@@ -350,7 +350,7 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 		}
 	}
 
-	NMDebugCtx(ctx, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 	return tname;
 }
 

@@ -159,7 +159,6 @@ protected:
 
 	QMap<QString, NMModelComponent*> mComponentMap;
 	QStack<QString> mExecutionStack;
-
 	NMIterableComponent* mRootComponent;
 
 	//NMModelComponent* mRunningModelComponent;

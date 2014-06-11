@@ -164,8 +164,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     mModelView->setRubberBandSelectionMode(Qt::ContainsItemShape);
 	mModelView->setRenderHint(QPainter::Antialiasing, true);
 	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
-    mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    //mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    //mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mModelView->setMouseTracking(true);
     mModelView->viewport()->installEventFilter(this);
 
@@ -1404,7 +1404,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 	{
 		qint32 readType;
 		lmv >> readType;
-		NMDebugAI(<< "item type is: " << (int)readType << endl);
+        //NMDebugAI(<< "item type is: " << (int)readType << endl);
 
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;

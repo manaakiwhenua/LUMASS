@@ -689,7 +689,10 @@ OtbModellerWin::getRasdamanConnector(void)
 	// and restart LUMASS - this is not really clever design
 	// and needs revision --> TODO:
 	if (mbNoRasdaman)
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return 0;
+    }
 
 	if (this->mpRasconn == 0)
 	{
@@ -734,6 +737,7 @@ OtbModellerWin::getRasdamanConnector(void)
 			delete this->mpRasconn;
 			this->mpRasconn = 0;
 		}
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return 0;
 	}
 
@@ -760,6 +764,7 @@ OtbModellerWin::getRasdamanConnector(void)
 			this->mpRasconn = 0;
 		}
 		this->mbNoRasdaman = true;
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return 0;
 	}
 

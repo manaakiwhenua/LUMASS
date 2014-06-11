@@ -288,6 +288,19 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
 {
 	NMDebugCtx(ctx, << "...");
 
+//    // don't do anything, if we're already 'loaded'
+//    if (    mDataWrapper != 0
+//        &&  (   mDataWrapper->getDataObject() != 0
+//            ||  mDataWrapper->getOTBTab().IsNotNull()
+//            )
+//       )
+//    {
+//        NMDebugAI(<< "It appears as if we've got our data already!" << std::endl);
+//        NMDebugCtx(ctx, << "done!");
+//        return;
+//    }
+
+
 	QMap<QString, NMModelComponent*>::const_iterator it =
 			repo.find(mInputCompName);
 

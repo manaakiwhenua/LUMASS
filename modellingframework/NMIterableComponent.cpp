@@ -910,7 +910,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		NMDebug(<< endl);
 		////////////////// DEBUG
 
-		// for each pipeline, we first update each individual component
+        // for each pipeline, we first link each individual component
 		// (from head to toe), before we finally call update on the
 		// last (i.e. executable) component of the pipeline
 		foreach(const QStringList& pipeline, execList)

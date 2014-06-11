@@ -261,7 +261,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 
 				// don't link everything ...
 				if (parentComp->getTimeLevel() == ic->getTimeLevel()
-					&& parentIter == 1 && dataComp == 0
+                    && parentIter == 1// && dataComp == 0
 				   )
 				{
 					NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
@@ -276,8 +276,8 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 						// the input process to link itself into the pipeline
 						procComp->getProcess()->linkInPipeline(inputstep, repo);
 					}
-					//else if (procComp == 0)
-					//	ic->linkComponents(inputstep, repo);
+                    else if (dataComp == 0)
+                        ic->linkComponents(inputstep, repo);
 
 					NMItkDataObjectWrapper* iw = ic->getOutput(outIdx);
 					if (iw == 0 || iw->getDataObject() == 0)
@@ -304,26 +304,25 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 
 					// when we've got a process component here, we give it the
 					// opportunity to put itself in order and link in
-					//if (procComp != 0 && !procComp->getProcess()->isInitialised())
-					//{
-					//	// since we're on the same time level, we can safely ask
-					//	// the input process to link itself into the pipeline
-					//	procComp->getProcess()->linkInPipeline(inputstep, repo);
-					//}
-					//else //if (dataComp != 0)
-					//	ic->linkComponents(inputstep, repo); //dataComp->linkComponents(inputstep, repo);
+                    if (procComp != 0 && !procComp->getProcess()->isInitialised())
+                    {
+                        // since we're on the same time level, we can safely ask
+                        // the input process to link itself into the pipeline
+                        procComp->getProcess()->linkInPipeline(inputstep, repo);
+                    }
+                    //else if (dataComp != 0)
+                        //ic->linkComponents(inputstep, repo); //dataComp->linkComponents(inputstep, repo);
 
 					// we've got a
 					// 'disconnected' pipeline and have to fetch the data
 					// 'physically', disconnect it from the source, and
 					// then chuck it into the input slot of this component
-					//if (procComp != 0)
-					//	procComp->getProcess()->update();
-					//else //if (dataComp != 0)
-					//	ic->update(repo);//dataComp->update(repo);
-
+                    if (procComp != 0)
+                        procComp->getProcess()->update();
+                    //else if (dataComp != 0)
+                        //ic->update(repo);//dataComp->update(repo);
 					//else
-					//	ic->update(repo);
+                    //	ic->update(repo);
 
 					if (ic->getOutput(outIdx) != 0)
 					{
@@ -342,11 +341,14 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 							//NMDebugCtx(ctxNMProcess, << "done!");
 							//throw e;
 						}
-
 						NMDebugAI(<< "... ok!" << std::endl);
-						dw->setParent(parentComp);
-						dw->getDataObject()->DisconnectPipeline();
-						this->setNthInput(ii, dw);
+
+                        if (procComp != 0)
+                        {
+                            dw->setParent(parentComp);
+                            dw->getDataObject()->DisconnectPipeline();
+                        }
+                        this->setNthInput(ii, dw);
 					}
 				}
 			}

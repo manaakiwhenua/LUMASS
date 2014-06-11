@@ -49,7 +49,7 @@ NMIterableComponent::~NMIterableComponent(void)
 
 void NMIterableComponent::setProcess(NMProcess* proc)
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 
 	this->mProcess = proc;
 	this->mProcessChainPointer = 0;
@@ -58,7 +58,7 @@ void NMIterableComponent::setProcess(NMProcess* proc)
 	proc->moveToThread(this->thread());
 	proc->setParent(this);
 
-	NMDebugCtx(ctx, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 
 	emit NMModelComponentChanged();
 }
@@ -101,7 +101,7 @@ int NMIterableComponent::countComponents(void)
 
 void NMIterableComponent::addModelComponent(NMModelComponent* comp)
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 
 	if (comp == 0)
 		return;
@@ -118,34 +118,34 @@ void NMIterableComponent::addModelComponent(NMModelComponent* comp)
 	if (comp->getTimeLevel() < this->getTimeLevel())
 		comp->setTimeLevel(this->getTimeLevel());
 
-	NMDebugAI(<< "parent: '" << this->objectName().toStdString() << "'" << std::endl);
-	NMDebugAI(<< "add child:  '" << comp->objectName().toStdString() << "'" << std::endl);
-	NMDebugAI(<< "new chain: ");
+//	NMDebugAI(<< "parent: '" << this->objectName().toStdString() << "'" << std::endl);
+//	NMDebugAI(<< "add child:  '" << comp->objectName().toStdString() << "'" << std::endl);
+//	NMDebugAI(<< "new chain: ");
 	comp->setHostComponent(this);
 
 	NMModelComponent* lastComp = this->getInternalStartComponent();
 	if (lastComp == 0)
 	{
 		this->mProcessChainStart = comp;
-		NMDebug(<< "'" << comp->objectName().toStdString() << "'" << std::endl);
-		NMDebugCtx(ctx, << "done!");
+//		NMDebug(<< "'" << comp->objectName().toStdString() << "'" << std::endl);
+//		NMDebugCtx(ctx, << "done!");
 		return;
 	}
-	NMDebug(<< " '" << lastComp->objectName().toStdString() << "'");
+//	NMDebug(<< " '" << lastComp->objectName().toStdString() << "'");
 
 	while (lastComp->getDownstreamModelComponent() != 0)
 	{
 		lastComp = this->getNextInternalComponent();
-		NMDebug(<< " '" << lastComp->objectName().toStdString() << "'");
+//		NMDebug(<< " '" << lastComp->objectName().toStdString() << "'");
 	}
-	NMDebug(<< "'" << comp->objectName().toStdString() << "'" << std::endl);
+//	NMDebug(<< "'" << comp->objectName().toStdString() << "'" << std::endl);
 
 	lastComp->setDownstreamModelComponent(comp);
 	comp->setUpstreamModelComponent(lastComp);
 
 	emit NMModelComponentChanged();
 
-	NMDebugCtx(ctx, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 }
 
 
@@ -655,13 +655,13 @@ NMModelComponent* NMIterableComponent::getNextInternalComponent(void)
 
 void NMIterableComponent::initialiseComponents(unsigned int timeLevel)
 {
-	NMDebugCtx(this->objectName().toStdString(), << "...");
+//	NMDebugCtx(this->objectName().toStdString(), << "...");
 
 	if (this->mProcess != 0 && this->getTimeLevel() == timeLevel)
 	{
-		NMDebugAI(<< "instantiate process '" << this->mProcess->objectName().toStdString() << "'" << std::endl);
+//		NMDebugAI(<< "instantiate process '" << this->mProcess->objectName().toStdString() << "'" << std::endl);
 		this->mProcess->instantiateObject();
-		NMDebugCtx(this->objectName().toStdString(), << "done!");
+//		NMDebugCtx(this->objectName().toStdString(), << "done!");
 		return;
 	}
 
@@ -671,14 +671,14 @@ void NMIterableComponent::initialiseComponents(unsigned int timeLevel)
 		NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
 		if (ic != 0 && ic->getTimeLevel() == timeLevel)
 		{
-			NMDebugAI(<< "initialise '" << mc->objectName().toStdString()
-					 << "' ... " << std::endl );
+//			NMDebugAI(<< "initialise '" << mc->objectName().toStdString()
+//					 << "' ... " << std::endl );
 			ic->initialiseComponents(timeLevel);
 		}
 		mc = this->getNextInternalComponent();
 	}
 
-	NMDebugCtx(this->objectName().toStdString(), << "done!");
+//	NMDebugCtx(this->objectName().toStdString(), << "done!");
 }
 
 void
@@ -747,13 +747,13 @@ void NMIterableComponent::mapTimeLevels(unsigned int startLevel,
 		NMModelComponent* mc = this->getInternalStartComponent();
 		while (mc != 0)
 		{
-			NMIterableComponent* ic =
-					qobject_cast<NMIterableComponent*>(mc);
-			if (ic != 0)
-			{
-				ic->mapTimeLevels(startLevel, timeLevelMap);
-			}
-			else
+//			NMIterableComponent* ic =
+//					qobject_cast<NMIterableComponent*>(mc);
+//			if (ic != 0)
+//			{
+//				ic->mapTimeLevels(startLevel, timeLevelMap);
+//			}
+//			else
 			{
 				if (mc->getTimeLevel() >= startLevel)
 				{
@@ -829,16 +829,16 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 		NMDebugAI(<< "no sub components detected!" << std::endl);
 	}
 
-	//// DEBUG DEBUG DEBUG
-	//foreach(const unsigned int& level, this->mMapTimeLevelComp.keys())
-	//{
-	//	NMDebugAI(<< "#" << level << " ... " << endl);
-	//	foreach(const QString& name, this->mMapTimeLevelComp.value(level).keys())
-	//	{
-	//		NMDebugAI(<< "   " << name.toStdString() << endl);
-	//	}
-	//}
-	// DEBUG DEBUG DEBUG
+    // DEBUG DEBUG DEBUG
+    foreach(const unsigned int& level, this->mMapTimeLevelComp.keys())
+    {
+        NMDebugAI(<< "#" << level << " ... " << endl);
+        foreach(const QString& name, this->mMapTimeLevelComp.value(level).keys())
+        {
+            NMDebugAI(<< "   " << name.toStdString() << endl);
+        }
+    }
+    // DEBUG DEBUG DEBUG
 
 	// execute this components' pipeline
 	this->iterativeComponentUpdate(repo, minLevel, maxLevel);
@@ -871,7 +871,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		if (!this->mProcess->isInitialised())
 			this->mProcess->instantiateObject();
 		this->mProcess->linkInPipeline(i, repo);
-		this->mProcess->update();
+        this->mProcess->update();
 		NMDebugCtx(this->objectName().toStdString(), << "done!");
 		return;
 	}
@@ -927,7 +927,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 					e.setMsg(msg.str());
 					throw e;
 				}
-				comp->linkComponents(step, repo);
+                comp->linkComponents(step, repo);
 			}
 
 			// calling update on the last component of the pipeline
@@ -936,7 +936,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 			{
 				NMDebugAI(<< "calling " << pipeline.last().toStdString()
 						<< "::update() ..." << endl);
-				comp->update(repo);
+                comp->update(repo);
 			}
 			else
 			{
@@ -1011,10 +1011,22 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 		QStringList inputs = allInputs.at(step);
 		foreach(const QString& in, inputs)
 		{
+//            NMModelComponent* c = ctrl->getComponent(in);
+//            NMModelComponent* hc = c ? c->getHostComponent() : 0;
+
 			if (execComps.contains(in))
 			{
 				execComps.removeOne(in);
 			}
+            //experimental
+            // we only account for those components, which are
+            // actually direct children of THIS iterable
+            // component; all nested components are run
+            //
+//            else if (hc != 0 && hc != this)
+//            {
+//                execComps.removeOne(in);
+//            }
 		}
 
 		++levelIt;

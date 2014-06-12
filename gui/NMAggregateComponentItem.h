@@ -74,6 +74,10 @@ public slots:
     void updateTimeLevel(short level);
     void updateNumIterations(unsigned int iter);
 
+    void slotExecutionStarted();
+    void slotExecutionStopped();
+    void slotProgress(float progress);
+
 
 private:
 
@@ -88,6 +92,9 @@ private:
     QString mDescription;
     unsigned int mNumIterations;
     short mTimeLevel;
+
+    float mProgress;
+    bool mIsExecuting;
 
     QRectF mItemBnd;
     QRectF mDash;

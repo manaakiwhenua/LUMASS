@@ -221,6 +221,11 @@ void
 NMModelViewWidget::reportIsModelControllerBusy(bool busy)
 {
 	this->mbControllerIsBusy = busy;
+
+    if (!busy)
+    {
+
+    }
 }
 
 void
@@ -368,6 +373,8 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
         aggrItem->updateNumIterations(1);
         connect(sic, SIGNAL(NumIterationsChanged(uint)),
                 aggrItem, SLOT(updateNumIterations(uint)));
+        connect(sic, SIGNAL(signalProgress(float)),
+                aggrItem, SLOT(slotProgress(float)));
     }
     else
     {
@@ -378,8 +385,10 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
             aggrItem, SLOT(updateDescription(QString)));
     connect(aggrComp, SIGNAL(TimeLevelChanged(short)),
             aggrItem, SLOT(updateTimeLevel(short)));
-
-
+    connect(aggrComp, SIGNAL(signalExecutionStarted()),
+            aggrItem, SLOT(slotExecutionStarted()));
+    connect(aggrComp, SIGNAL(signalExecutionStopped()),
+            aggrItem, SLOT(slotExecutionStopped()));
 
 	it.toFront();
 	while(it.hasNext())
@@ -1492,6 +1501,13 @@ NMModelViewWidget::importModel(const QString& fileNameString)
                             ai, SLOT(updateTimeLevel(short)));
                     connect(sic, SIGNAL(NumIterationsChanged(uint)),
                             ai, SLOT(updateNumIterations(uint)));
+
+                    connect(c, SIGNAL(signalExecutionStarted()),
+                            ai, SLOT(slotExecutionStarted()));
+                    connect(c, SIGNAL(signalExecutionStopped()),
+                            ai, SLOT(slotExecutionStopped()));
+                    connect(sic, SIGNAL(signalProgress(float)),
+                            ai, SLOT(slotProgress(float)));
 
 
                     QStringList subNames;

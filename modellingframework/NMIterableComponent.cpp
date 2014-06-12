@@ -792,6 +792,8 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	NMDebugCtx(this->objectName().toStdString(), << "...");
 	NMDebugAI(<< "--- " << this->objectName().toStdString() << " ---" << std::endl);
 
+    emit signalExecutionStarted();
+
 	// check, whether we're supposed to run at all
 	NMModelController* controller = qobject_cast<NMModelController*>(this->parent());
 	if (controller != 0)
@@ -800,6 +802,7 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 		{
 			NMDebugAI(<< "The user elected to abort model execution, so we break out here!" << endl);
 			NMDebugCtx(this->objectName().toStdString(), << "done!");
+            emit signalExecutionStopped();
 			return;
 		}
 	}
@@ -808,6 +811,7 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 		NMErr(this->objectName().toStdString(),
 				<< "We'd better quit here - there's no controller in charge!" << endl);
 		NMDebugCtx(this->objectName().toStdString(), << "done!");
+        emit signalExecutionStopped();
 		return;
 	}
 
@@ -841,8 +845,18 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
     // DEBUG DEBUG DEBUG
 
 	// execute this components' pipeline
-	this->iterativeComponentUpdate(repo, minLevel, maxLevel);
+    try
+    {
+        this->iterativeComponentUpdate(repo, minLevel, maxLevel);
+    }
+    catch (std::exception& e)
+    {
+        emit signalExecutionStopped();
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+        throw e;
+    }
 
+    emit signalExecutionStopped();
 	NMDebugCtx(this->objectName().toStdString(), << "done!");
 }
 
@@ -862,6 +876,9 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 	}
 
 	NMDebugAI(<< ">>>> START ITERATION #" << i+1 << std::endl);
+
+    try
+    {
 
 	// when we've got a process component, the process is straightforward
 	// and we just link and execute this one
@@ -946,6 +963,13 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 			}
 		}
 	}
+
+    }
+    catch (std::exception& e)
+    {
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+        emit signalExecutionStopped(); throw e;
+    }
 
 	NMDebugAI(<< ">>>> END ITERATION #" << i+1 << std::endl);
 	NMDebugCtx(this->objectName().toStdString(), << "done!");

@@ -153,6 +153,11 @@ public:
     void createExecSequence(QList<QStringList>& execList,
     		unsigned int timeLevel, int step);
 
+signals:
+    void signalProgress(float);
+    void signalExecutionStarted();
+    void signalExecutionStopped();
+
 
 protected:
     QMap<unsigned int, QMap<QString, NMModelComponent*> > mMapTimeLevelComp;

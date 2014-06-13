@@ -202,61 +202,84 @@ NMAggregateComponentItem::paint(QPainter* painter,
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
     painter->setBrush(QColor(red, green, blue, 200));
     painter->setPen(Qt::NoPen);
-    painter->drawRoundedRect(bnd, 5, 5);
+    painter->drawRoundedRect(bnd.adjusted(0.25,0.25,-0.25,-0.25), 8, 8);
 
     // ============================================================================
     // EDGE EFFECT
     // ============================================================================
 
-    painter->setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    //    if (mIsExecuting)
+    //    {
+    //    	    painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+    //    }
+    //    else
+    {
+    	    painter->setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    }
 
     // blend the corners
-    QRadialGradient cornerglare;
-    cornerglare.setColorAt(0.00, mIsExecuting ? QColor(0,0,200,255) : QColor(255,255,255,255));
-    cornerglare.setColorAt(0.50, mIsExecuting ? QColor(0,0,200,200) : QColor(255,255,255,200));
-    cornerglare.setColorAt(0.75, mIsExecuting ? QColor(0,0,200,180) : QColor(255,255,255,180));
-    cornerglare.setColorAt(0.85, mIsExecuting ? QColor(0,0,200,150) : QColor(255,255,255,150));
-    cornerglare.setColorAt(1.00, mIsExecuting ? QColor(0,0,200,100) : QColor(255,255,255,100));
+    QRadialGradient cornerglare;                                                             
+//    cornerglare.setColorAt(0.00, mIsExecuting ? QColor(200,0,0,0  ) : QColor(255,255,255,255));
+//    cornerglare.setColorAt(0.50, mIsExecuting ? QColor(200,0,0,50 ) : QColor(255,255,255,200));
+//    cornerglare.setColorAt(0.75, mIsExecuting ? QColor(200,0,0,100) : QColor(255,255,255,180));
+//    cornerglare.setColorAt(0.85, mIsExecuting ? QColor(200,0,0,128) : QColor(255,255,255,150));
+//    cornerglare.setColorAt(1.00, mIsExecuting ? QColor(200,0,0,255) : QColor(255,255,255,100));
+    cornerglare.setColorAt(0.00, QColor(255,255,255,255));
+    cornerglare.setColorAt(0.50, QColor(255,255,255,200));
+    cornerglare.setColorAt(0.75, QColor(255,255,255,180));
+    cornerglare.setColorAt(0.85, QColor(255,255,255,150));
+    cornerglare.setColorAt(1.00, QColor(255,255,255,100));
+
 
     // top left
-    QSize size(8,8);
+    QSize size(16,16);
     QRect tl(QPoint(l,t), size);
-    cornerglare.setCenter(tl.bottomRight());
-    cornerglare.setFocalPoint(tl.bottomRight());
-    cornerglare.setRadius(8);
+    cornerglare.setCenter(QPoint(l+9, t+9));
+    cornerglare.setFocalPoint(QPoint(l+9, t+9));
+    cornerglare.setRadius(9);
     painter->setBrush(cornerglare);
-    painter->drawRoundedRect(tl, 5,5);
+    int start = 16*90;
+    int span  = 16*90;
+    painter->drawPie(tl, start, span);
 
     // top right
-    QRect tr(QPoint(r-7, t), size);
-    cornerglare.setCenter(tr.bottomLeft());
-    cornerglare.setFocalPoint(tr.bottomLeft());
+    QRect tr(QPoint(r-15, t), size);                              
+    cornerglare.setCenter(QPoint(r-7, t+9));
+    cornerglare.setFocalPoint(QPoint(r-7, t+9));                     
     painter->setBrush(cornerglare);
-    painter->drawRoundedRect(tr, 5,5);
+    start = 0;
+    painter->drawPie(tr, start, span);
 
     // bottom left
-    QRect bl(QPoint(l,b-7), size);
-    cornerglare.setCenter(bl.topRight());
-    cornerglare.setFocalPoint(bl.topRight());
-    painter->setBrush(cornerglare);
-    painter->drawRoundedRect(bl, 5,5);
+    QRect bl(QPoint(l,b-15), size);
+    cornerglare.setCenter(QPoint(l+9, b-8));
+    cornerglare.setFocalPoint(QPoint(l+9, b-8));
+    painter->setBrush(cornerglare);                                                      
+    start = 16*180;
+    painter->drawPie(bl, start, span);
 
     // bottom right
-    QRect br(QPoint(r-7, b-7), size);
-    cornerglare.setCenter(br.topLeft());
-    cornerglare.setFocalPoint(br.topLeft());
+    QRect br(QPoint(r-15, b-15), size);               
+    cornerglare.setCenter(QPoint(r-7, b-8));
+    cornerglare.setFocalPoint(QPoint(r-7, b-8));
     painter->setBrush(cornerglare);
-    painter->drawRoundedRect(br, 5,5);
+    start = 16*270;                                    
+    painter->drawPie(br, start, span);
     
     // ----------------------------------------------------------------------
-    // glare the edges on top of it
-
+    // glare the edges on top of it    
+    
     QLinearGradient glare(l+(w/2.0), t+8, l+(w/2.0), t);
-    glare.setColorAt(0.00, mIsExecuting ? QColor(0,0,200,255) : QColor(255,255,255,255));
-    glare.setColorAt(0.50, mIsExecuting ? QColor(0,0,200,200) : QColor(255,255,255,200));
-    glare.setColorAt(0.75, mIsExecuting ? QColor(0,0,200,180) : QColor(255,255,255,180));
-    glare.setColorAt(0.85, mIsExecuting ? QColor(0,0,200,150) : QColor(255,255,255,150));
-    glare.setColorAt(1.00, mIsExecuting ? QColor(0,0,200,100) : QColor(255,255,255,100));
+    //    glare.setColorAt(0.00, mIsExecuting ? QColor(200,0,0,0  ) : QColor(255,255,255,255));
+    //    glare.setColorAt(0.50, mIsExecuting ? QColor(200,0,0,50 ) : QColor(255,255,255,200));
+    //    glare.setColorAt(0.75, mIsExecuting ? QColor(200,0,0,100) : QColor(255,255,255,180));
+    //    glare.setColorAt(0.85, mIsExecuting ? QColor(200,0,0,128) : QColor(255,255,255,150));
+    //    glare.setColorAt(1.00, mIsExecuting ? QColor(200,0,0,255) : QColor(255,255,255,100));
+    glare.setColorAt(0.00, QColor(255,255,255,255));
+    glare.setColorAt(0.50, QColor(255,255,255,200));
+    glare.setColorAt(0.75, QColor(255,255,255,180));
+    glare.setColorAt(0.85, QColor(255,255,255,150));
+    glare.setColorAt(1.00, QColor(255,255,255,100));
 
     // glare top
     QRect glareRect = QRect(l+8,t,w,8);
@@ -289,7 +312,14 @@ NMAggregateComponentItem::paint(QPainter* painter,
     QRectF wr = QRectF(bnd.left()+10, bnd.top()+12, bnd.width()-20,
                        mDash.height());
 
-    painter->setBrush(QColor(255,255,255,255));
+    if (mIsExecuting)
+    {
+        painter->setBrush(QColor(255,240,240,255));
+    }
+    else
+    {
+        painter->setBrush(QColor(255,255,255,255));
+    }
     painter->drawRoundedRect(wr, 5, 5);
 
     // ------------------------------------------------
@@ -297,7 +327,15 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // ------------------------------------------------
 
     painter->setBrush(Qt::NoBrush);
-    painter->setPen(QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine));
+    if (mIsExecuting)
+    {
+        painter->setPen(QPen(QBrush(Qt::darkRed), 1, Qt::SolidLine));
+    }
+    else
+    {
+        painter->setPen(QPen(QBrush(Qt::darkGray), 1, Qt::SolidLine));
+    }
+
     painter->drawRoundedRect(mDash, 5, 5);
 
     // the clock icon
@@ -325,9 +363,12 @@ NMAggregateComponentItem::paint(QPainter* painter,
     {
         if (mIsExecuting)
         {
-            painter->setPen(QPen(QBrush(Qt::blue), 2.5, Qt::SolidLine));
+//            mFont.setBold(true);
+//            painter->setPen(QPen(QBrush(Qt::darkRed), 2, Qt::SolidLine));
             painter->drawText(mNumIterRect, Qt::AlignLeft,
                QString("%1 of %2").arg(mProgress).arg(mNumIterations));
+
+            mFont.setBold(false);
         }
         else
         {

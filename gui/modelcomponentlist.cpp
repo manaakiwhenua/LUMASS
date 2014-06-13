@@ -730,8 +730,6 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         h.getMainWindow()->connectImageLayerProcSignals(iLayer);
 
         iLayer->setImage(comp->getOutput(0));
-        this->addLayer(iLayer);
-
 
     }
     else if (dropSource.startsWith(QString::fromLatin1("_ModelComponentList_")) == 0)

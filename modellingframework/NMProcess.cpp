@@ -82,6 +82,7 @@ NMProcess::linkInPipeline(unsigned int step,
 		this->mOtbProcess->AddObserver(itk::StartEvent(), mObserver);
 		this->mOtbProcess->AddObserver(itk::EndEvent(), mObserver);
 		this->mOtbProcess->AddObserver(itk::AbortEvent(), mObserver);
+        this->mOtbProcess->ReleaseDataFlagOn();
 	}
 
 	this->linkParameters(step, repo);

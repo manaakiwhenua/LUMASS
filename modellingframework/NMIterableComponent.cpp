@@ -964,15 +964,18 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		}
 	}
 
+    NMDebugAI(<< ">>>> END ITERATION #" << i+1 << std::endl);
+    NMDebugCtx(this->objectName().toStdString(), << "done!");
+
     }
     catch (std::exception& e)
     {
+        NMMfwException re(NMMfwException::Unspecified);
+        re.setMsg(e.what());
         NMDebugCtx(this->objectName().toStdString(), << "done!");
-        emit signalExecutionStopped(); throw e;
+        emit signalExecutionStopped();
+        throw re;
     }
-
-	NMDebugAI(<< ">>>> END ITERATION #" << i+1 << std::endl);
-	NMDebugCtx(this->objectName().toStdString(), << "done!");
 }
 
 const QStringList

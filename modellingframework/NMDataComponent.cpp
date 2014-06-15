@@ -198,23 +198,26 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 		throw e;
 	}
 
-	bool sharesHost = false;
-	NMIterableComponent* host = this->getHostComponent();
-	if (host->isSubComponent(comp))
-	{
-		sharesHost = true;
-	}
+    // the below doesn't really make sense, e.g. when we want to update a data buffer which
+    // holds a timestamp of a time series, and the buffer itself sits on a different time
+    // level (i.e. an outer loop), which is very plausible ...
+//	bool sharesHost = false;
+//	NMIterableComponent* host = this->getHostComponent();
+//	if (host->isSubComponent(comp))
+//	{
+//		sharesHost = true;
+//	}
 
-	// if we don't share the host, and we're in the 2nd+ iteration
-	// we assume, we've got the data already
-	if (!sharesHost
-			&& comp->getTimeLevel() != this->getTimeLevel()
-			&& mParamPos > 0)
-	{
-		NMDebugAI(<< "We believe the data is still up-to-date!" << std::endl);
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+//	// if we don't share the host, and we're in the 2nd+ iteration
+//	// we assume, we've got the data already
+//	if (!sharesHost
+//			&& comp->getTimeLevel() != this->getTimeLevel()
+//			&& mParamPos > 0)
+//	{
+//		NMDebugAI(<< "We believe the data is still up-to-date!" << std::endl);
+//		NMDebugCtx(ctx, << "done!");
+//		return;
+//	}
 
 
 	NMDebugAI(<< "previous modified source time: "

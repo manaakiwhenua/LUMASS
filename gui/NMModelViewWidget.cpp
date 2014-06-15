@@ -1032,12 +1032,21 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
 
     NMDebugAI(<< this->reportPoint(target, "move target") << std::endl);
 
+    NMAggregateComponentItem* ai = 0;
+    NMProcessComponentItem* pi = 0;
+    QGraphicsTextItem* ti = 0;
+
     // determine move vector
     QPointF delta = target - source;
 
+    NMDebugAI(<< "items on the move ..." << std::endl);
     QList<QGraphicsItem*> topList;
     foreach(QGraphicsItem* gi, moveList)
     {
+        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+        pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+        ti = qgraphicsitem_cast<QGraphicsTextItem*>(ti);
+
         bool isTopLevel = true;
         foreach(QGraphicsItem* gii, moveList)
         {
@@ -1050,8 +1059,33 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         if (isTopLevel)
         {
             topList << gi;
+
+            //=================DEBUG DEBUG DEBUG DEBUG DEBUG
+            QString title;
+            if (ai)
+                title = ai->getTitle();
+            else if (pi)
+                title = pi->getTitle();
+            else if (ti)
+                title = ti->toPlainText();
+
+            std::string pos = this->reportPoint(gi->pos(), "pos");
+            std::string scenePos;
+            if (gi->parentItem() != 0)
+            {
+                scenePos = this->reportPoint(gi->parentItem()->mapToScene(gi->pos()), "scene pos");
+            }
+            else
+            {
+                scenePos = pos;
+            }
+            NMDebugAI(<< title.toStdString() << ": " << pos << std::endl);
+            NMDebugAI(<< title.toStdString() << ": " << scenePos << std::endl);
+
+            //================DEBUG DEBUG DEBUG DEBUG DEBUG
         }
     }
+
 
     // get the new host of the components
     QGraphicsItem* targetItem = this->mModelScene->itemAt(target, this->mModelView->transform());
@@ -1062,13 +1096,13 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
     {
         if (targetItem->type() == NMProcessComponentItem::Type)
         {
-            NMErr(ctx, <<  "Cannot dorop anything into a process component!" << std::endl);
+            NMErr(ctx, <<  "Can't drop anything on a process component!" << std::endl);
             NMDebugCtx(ctx, << "done!");
             return;
         }
         else if (targetItem->type() == QGraphicsTextItem::Type)
         {
-            NMErr(ctx, <<  "Cannot dorop anything into a text label!" << std::endl);
+            NMErr(ctx, <<  "Can't drop anything on a text label!" << std::endl);
             NMDebugCtx(ctx, << "done!");
             return;
         }
@@ -1092,6 +1126,25 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         return;
     }
 
+    std::string nhr;
+    std::string nhrs;
+
+    if (newHostItem != 0)
+    {
+        nhr = this->reportRect(newHostItem->boundingRect(), "new host rect");
+        nhrs = this->reportRect(newHostItem->mapRectToScene(newHostItem->boundingRect()), "new host bnd on scene");
+        NMDebugAI(<< nhr << std::endl);
+        NMDebugAI(<< nhrs << std::endl);
+    }
+    else
+    {
+        nhr = this->reportRect(mModelScene->sceneRect(), "now host: scene rect:");
+        NMDebugAI(<< nhr << std::endl);
+    }
+
+    // re-group items to move group
+    //    QGraphicsItemGroup* moveGroup = new QGraphicsItemGroup(0);
+    //mModelScene->addItem(moveGroup);
     NMDebugAI( << "moving these top level items ..." << std::endl);
     foreach(QGraphicsItem* tli, topList)
     {
@@ -1111,17 +1164,34 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         {
             hostItem->removeFromGroup(tli);
         }
-
         tli->setParentItem(0);
         tli->moveBy(delta.x(), delta.y());
-
         if (newHostItem != 0)
         {
             newHostItem->addToGroup(tli);
         }
     }
 
+//    // add move group to new host and move to target position
+//    if (newHostItem != 0)
+//    {
+//    //        moveGroup->setPos(target);
+//        newHostItem->addToGroup(moveGroup);
+//    }
+//    else
+//    {
+//        moveGroup->setPos(target);
+//        mModelScene->addItem(moveGroup);
+//    }
 
+    this->mModelScene->invalidate();
+
+    foreach(QGraphicsItem* gi, topList)
+    {
+        NMDebugAI(<< this->reportPoint(gi->mapToScene(gi->pos()), "new pos:") << std::endl);
+    }
+
+    //    mModelScene->destroyItemGroup(moveGroup);
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -1556,153 +1626,179 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 		}
 	}
 
-    NMDebug(<< std::endl << std::endl);
-    NMDebugAI(<< "REGROUP AND SHIFT ======================================" << std::endl);
-    // re-group and shift imported graphics items to
-    // appear as part of their new import host
-    // - if importHost  = NULL -> root
-    // - if importHost != NULL -> NMIterableComponent* --> NMAggregateComponentItem*
-    NMAggregateComponentItem* ai = 0;
-    QList<QGraphicsItem*> siblings;
-    QRectF hostImportRect;
-    if (importHost != 0)
-    {
-        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
-                    mModelScene->getComponentItem(importHost->objectName()));
 
-        siblings = ai->childItems();
+//    NMAggregateComponentItem* ai = 0;
+//    if (importHost != 0)
+//    {
+//        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
+//                    mModelScene->getComponentItem(importHost->objectName()));
+//    }
 
-        NMDebugAI(<< reportRect(importRegion, "importRegion") << std::endl);
-        QRectF translocRect = importRegion;
-        translocRect.moveCenter(mLastScenePos);
-        NMDebugAI(<< reportRect(translocRect, "translocRect") << std::endl);
-        hostImportRect = ai->mapRectFromScene(translocRect);
-        NMDebugAI(<< reportRect(hostImportRect, "hostImportRect") << std::endl);
-    }
-    else
-    {
-        NMDebugAI(<< reportRect(importRegion, "importRegion") << std::endl);
-        NMDebugAI(<< reportPoint(mLastScenePos, "lastScenePos") << std::endl);
+//    QScopedPointer<QGraphicsItemGroup> importGroup(new QGraphicsItemGroup());
+//    foreach(QGraphicsItem* ii, importItems)
+//    {
+//        importGroup->addToGroup(ii);
+//    }
+//    importGroup->setPos(mLastScenePos.x()-(importGroup->boundingRect().width()/2.0),
+//                        mLastScenePos.y()-(importGroup->boundingRect().height()/2.0));
 
-        //importRegion.moveCenter(mLastScenePos);
-        hostImportRect = importRegion;
-        hostImportRect.moveCenter(mLastScenePos);
-        NMDebugAI(<< reportPoint(hostImportRect.center(), "hostImportRect.center:") << std::endl);
-        siblings = mModelScene->items();
-    }
+//    foreach(QGraphicsItem* ii, importItems)
+//    {
+//        importGroup->removeFromGroup(ii);
 
-    QLineF longDiag(hostImportRect.center(), hostImportRect.topLeft());
-    qreal refLength = longDiag.length();
-    if (refLength == 0)
-    {
-        refLength == 1;
-    }
-    NMDebugAI(<< ">>> hostImportRect diagonale length: " << refLength << std::endl);
-
-    NMDebug(<< std::endl);
-    NMDebugAI(<< ">>> repositioning import graphics ..." << std::endl);
-    // position the import items within the hostImportRect
-    foreach(QGraphicsItem* ii, importItems)
-    {
-        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ii);
-        NMModelComponent* c = this->componentFromItem(ii);
-        if (    (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
-            ||  labelItem != 0
-           )
-        {
-            QRectF iiRect = ii->mapRectToScene(ii->boundingRect());
-            QPointF move = iiRect.center() - importRegion.center();
-
-            QPointF newPos(hostImportRect.center() + move);
-
-            if (ai != 0)
-                ai->addToGroup(ii);
+//        if (ai != 0)
+//            ai->addToGroup(ii);
+//    }
 
 
-            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
-                       newPos.y() - (ii->boundingRect().height()/2.0));
 
-            //            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
-            //            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
-            //            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
-            //                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
-            //            NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
-            //                      << reportPoint(ii->pos(), "") << std::endl);
-        }
-    }
+//    NMDebug(<< std::endl << std::endl);
+//    NMDebugAI(<< "REGROUP AND SHIFT ======================================" << std::endl);
+//    // re-group and shift imported graphics items to
+//    // appear as part of their new import host
+//    // - if importHost  = NULL -> root
+//    // - if importHost != NULL -> NMIterableComponent* --> NMAggregateComponentItem*
+//    NMAggregateComponentItem* ai = 0;
+//    QList<QGraphicsItem*> siblings;
+//    QRectF hostImportRect;
+//    if (importHost != 0)
+//    {
+//        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
+//                    mModelScene->getComponentItem(importHost->objectName()));
+
+//        siblings = ai->childItems();
+
+//        NMDebugAI(<< reportRect(importRegion, "importRegion") << std::endl);
+//        QRectF translocRect = importRegion;
+//        translocRect.moveCenter(mLastScenePos);
+//        NMDebugAI(<< reportRect(translocRect, "translocRect") << std::endl);
+//        hostImportRect = ai->mapRectFromScene(translocRect);
+//        NMDebugAI(<< reportRect(hostImportRect, "hostImportRect") << std::endl);
+//    }
+//    else
+//    {
+//        NMDebugAI(<< reportRect(importRegion, "importRegion") << std::endl);
+//        NMDebugAI(<< reportPoint(mLastScenePos, "lastScenePos") << std::endl);
+
+//        //importRegion.moveCenter(mLastScenePos);
+//        hostImportRect = importRegion;
+//        hostImportRect.moveCenter(mLastScenePos);
+//        NMDebugAI(<< reportPoint(hostImportRect.center(), "hostImportRect.center:") << std::endl);
+//        siblings = mModelScene->items();
+//    }
+
+//    QLineF longDiag(hostImportRect.center(), hostImportRect.topLeft());
+//    qreal refLength = longDiag.length();
+//    if (refLength == 0)
+//    {
+//        refLength == 1;
+//    }
+//    NMDebugAI(<< ">>> hostImportRect diagonale length: " << refLength << std::endl);
+
+//    NMDebug(<< std::endl);
+//    NMDebugAI(<< ">>> repositioning import graphics ..." << std::endl);
+//    // position the import items within the hostImportRect
+//    foreach(QGraphicsItem* ii, importItems)
+//    {
+//        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ii);
+//        NMModelComponent* c = this->componentFromItem(ii);
+//        if (    (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
+//            ||  labelItem != 0
+//           )
+//        {
+//            QRectF iiRect = ii->mapRectToScene(ii->boundingRect());
+//            QPointF move = iiRect.center() - importRegion.center();
+
+//            QPointF newPos(hostImportRect.center() + move);
+
+//            if (ai != 0)
+//                ai->addToGroup(ii);
 
 
-    NMDebugAI(<< ">>> repositioning kids ..." << std::endl);
-    // make some space in the importHost item
-    // (all operations in importHost's coordinate space)
-    foreach(QGraphicsItem* ki, siblings)
-    {
-        if (importItems.contains(ki)) continue;
+//            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
+//                       newPos.y() - (ii->boundingRect().height()/2.0));
 
-        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ki);
-        NMModelComponent* c = this->componentFromItem(ki);
+//            //            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
+//            //            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
+//            //            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
+//            //                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
+//            //            NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
+//            //                      << reportPoint(ii->pos(), "") << std::endl);
+//        }
+//    }
 
-        //        NMProcessComponentItem* piki = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
-        //        NMAggregateComponentItem* aiki = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
-        //        QString name;
-        //        if (piki != 0)
-        //            name = piki->getTitle();
-        //        else if (aiki != 0)
-        //            name = aiki->getTitle();
-        //        else
-        //            continue;
 
-        // since QGraphicsItem functions all operate in the item's
-        // coordinate space (except setPos), we have to transform it
-        // into it's parent's coordinate space
-        QRectF kiRect = ki->mapRectToParent(ki->boundingRect());
-        if (     (   (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
-                  || labelItem != 0
-                 )
-             &&  kiRect.intersects(hostImportRect)
-           )
-        {
-            //NMDebugAI(<< reportRect(kiRect, name.toStdString().c_str()) << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
+//    NMDebugAI(<< ">>> repositioning kids ..." << std::endl);
+//    // make some space in the importHost item
+//    // (all operations in importHost's coordinate space)
+//    foreach(QGraphicsItem* ki, siblings)
+//    {
+//        if (importItems.contains(ki)) continue;
 
-            QLineF movePath(hostImportRect.center(), kiRect.center());
-            movePath.setLength(refLength + (refLength * 0.1));
-            QPointF itsct;
-            QList<QPointF> verts;
-            verts << hostImportRect.topLeft() << hostImportRect.topRight()
-                     << hostImportRect.bottomRight() << hostImportRect.bottomLeft();
-            for(int k=0; k < 4; ++k)
-            {
-                QLineF tl;
-                tl.setP1(verts.at(k));
-                if (k < 3)
-                {
-                    tl.setP2(verts.at(k+1));
-                }
-                else
-                {
-                    tl.setP2(verts.at(0));
-                }
+//        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ki);
+//        NMModelComponent* c = this->componentFromItem(ki);
 
-                QPointF tp;
-                if (movePath.intersect(tl, &tp) == QLineF::BoundedIntersection)
-                {
-                    itsct = tp;
-                    break;
-                }
-            }
+//        //        NMProcessComponentItem* piki = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
+//        //        NMAggregateComponentItem* aiki = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
+//        //        QString name;
+//        //        if (piki != 0)
+//        //            name = piki->getTitle();
+//        //        else if (aiki != 0)
+//        //            name = aiki->getTitle();
+//        //        else
+//        //            continue;
 
-            movePath.setP2(itsct);
-            movePath.setLength(movePath.length()+(kiRect.width()));
+//        // since QGraphicsItem functions all operate in the item's
+//        // coordinate space (except setPos), we have to transform it
+//        // into it's parent's coordinate space
+//        QRectF kiRect = ki->mapRectToParent(ki->boundingRect());
+//        if (     (   (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
+//                  || labelItem != 0
+//                 )
+//             &&  kiRect.intersects(hostImportRect)
+//           )
+//        {
+//            //NMDebugAI(<< reportRect(kiRect, name.toStdString().c_str()) << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
 
-            //            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: "
-            //                      << reportPoint(movePath.p2(), "new ki center:") << std::endl);
+//            QLineF movePath(hostImportRect.center(), kiRect.center());
+//            movePath.setLength(refLength + (refLength * 0.1));
+//            QPointF itsct;
+//            QList<QPointF> verts;
+//            verts << hostImportRect.topLeft() << hostImportRect.topRight()
+//                     << hostImportRect.bottomRight() << hostImportRect.bottomLeft();
+//            for(int k=0; k < 4; ++k)
+//            {
+//                QLineF tl;
+//                tl.setP1(verts.at(k));
+//                if (k < 3)
+//                {
+//                    tl.setP2(verts.at(k+1));
+//                }
+//                else
+//                {
+//                    tl.setP2(verts.at(0));
+//                }
 
-            ki->setPos(movePath.p2().x()-(kiRect.width()/2.0),
-                       movePath.p2().y()-(kiRect.height()/2.0));
+//                QPointF tp;
+//                if (movePath.intersect(tl, &tp) == QLineF::BoundedIntersection)
+//                {
+//                    itsct = tp;
+//                    break;
+//                }
+//            }
 
-            //            NMDebug(<< std::endl);
-        }
-    }
+//            movePath.setP2(itsct);
+//            movePath.setLength(movePath.length()+(kiRect.width()));
+
+//            //            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: "
+//            //                      << reportPoint(movePath.p2(), "new ki center:") << std::endl);
+
+//            ki->setPos(movePath.p2().x()-(kiRect.width()/2.0),
+//                       movePath.p2().y()-(kiRect.height()/2.0));
+
+//            //            NMDebug(<< std::endl);
+//        }
+//    }
 
     NMDebugCtx(ctx, << "done!");
     this->mModelScene->invalidate();
@@ -2724,7 +2820,8 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
         QDropEvent* de = static_cast<QDropEvent*>(e);
         if (de != 0)
         {
-            mLastItem = this->mModelScene->itemAt(this->mModelView->mapToScene(de->pos()), this->mModelView->transform());
+            mLastScenePos = this->mModelView->mapToScene(de->pos());
+            mLastItem = this->mModelScene->itemAt(mLastScenePos, this->mModelView->transform());
         }
     }
     return false;

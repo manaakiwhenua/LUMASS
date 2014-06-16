@@ -68,6 +68,8 @@ public:
 
     QRectF boundingRect(void) const;
 
+    void normaliseAt(const QPointF& pos);
+
 
 public slots:
     void updateDescription(const QString& descr);
@@ -77,7 +79,11 @@ public slots:
     void slotExecutionStarted();
     void slotExecutionStopped();
     void slotProgress(float progress);
+    //void slotChildPosChanged();
 
+
+protected:
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 
 private:
 

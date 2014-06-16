@@ -30,6 +30,10 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
 {
 	this->setParentItem(parent);
 	ctx = "NMAggregateComponentItem";
+
+//    this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+//    this->setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
+
     this->mNumIterations = 0;
     this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
 
@@ -69,20 +73,59 @@ NMAggregateComponentItem::slotProgress(float progress)
     this->update();
 }
 
+
+QVariant
+NMAggregateComponentItem::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+//    QGraphicsItem* pi = this->parentItem();
+//    NMAggregateComponentItem* ai =  qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
+//    if (ai != 0)
+//    {
+//        ai->slotChildPosChanged();
+//    }
+    return QGraphicsItem::itemChange(change, value);
+}
+
+void
+NMAggregateComponentItem::normaliseAt(const QPointF& pos)
+{
+    prepareGeometryChange();
+
+    QRectF normbnd = this->mapRectToParent(this->childrenBoundingRect());
+
+    QList<QGraphicsItem*> kids = this->childItems();
+    foreach(QGraphicsItem* ci, kids)
+    {
+        this->removeFromGroup(ci);
+    }
+
+    this->setPos(normbnd.topLeft());
+
+    foreach(QGraphicsItem* ci, kids)
+    {
+        this->addToGroup(ci);
+    }
+
+    this->setPos(pos);
+}
+
 QRectF NMAggregateComponentItem::boundingRect() const
 {
-	QList<QGraphicsItem*> childs = this->childItems();
-	QListIterator<QGraphicsItem*> it(childs);
-	QRectF bnd;
-	while(it.hasNext())
-	{
-		QGraphicsItem* item = it.next();
-		if (item->type() != NMComponentLinkItem::Type)
-		{
-			QRectF tbnd = QRectF(this->mapFromItem(item, item->boundingRect()).boundingRect());
-			bnd = QRectF(bnd.united(tbnd));
-		}
-    }
+//    QList<QGraphicsItem*> childs = this->childItems();
+//    QListIterator<QGraphicsItem*> it(childs);
+//    QRectF bnd;
+//    while(it.hasNext())
+//    {
+//        QGraphicsItem* item = it.next();
+//        if (item->type() != NMComponentLinkItem::Type)
+//        {
+//            QRectF tbnd = QRectF(this->mapFromItem(item, item->boundingRect()).boundingRect());
+//            bnd = QRectF(bnd.united(tbnd));
+//        }
+//    }
+
+
+    QRectF bnd = this->childrenBoundingRect();
     bnd.adjust(-dx1,-dy1,dx2,dy2);
     return bnd;
 }

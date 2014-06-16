@@ -37,6 +37,8 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
       mTimeLevel(0)
 {
 	this->mScene = scene;
+//    this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+//    this->setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
 
     mSingleLineHeight = 15;
     mDoubleLineHeight = 30;
@@ -314,6 +316,18 @@ NMProcessComponentItem::updateDescription(
                           mIconBnd.bottom()+0.5*mSingleLineHeight));
 
 	this->update();
+}
+
+QVariant
+NMProcessComponentItem::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+//    QGraphicsItem* pi = this->parentItem();
+//    NMAggregateComponentItem* ai =  qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
+//    if (ai != 0)
+//    {
+//        ai->slotChildPosChanged();
+//    }
+    return QGraphicsItem::itemChange(change, value);
 }
 
 

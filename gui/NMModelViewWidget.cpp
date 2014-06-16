@@ -116,7 +116,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* MODEL SCENE SETUP */
 	/* ====================================================================== */
 	mModelScene = new NMModelScene(this);
-    mModelScene->setSceneRect(-4000,-4000,8000,8000);
+    mModelScene->setSceneRect(-50000,-50000,100000,100000);
     mModelScene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	connect(this, SIGNAL(linkToolToggled(bool)), mModelScene,
 			SLOT(toggleLinkToolButton(bool)));
@@ -405,6 +405,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 		{
 			aggrItem->addToGroup(aItem);
 		}
+
 	}
 
 	// let the individual members of an aggregate component handle their
@@ -413,8 +414,16 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 
 	// finally add the new group component item itself to the scene
     this->mModelScene->updateComponentItemFlags(aggrItem);
-	this->mModelScene->addItem(aggrItem);
-	this->mModelScene->invalidate();
+    if (hostItem != 0)
+    {
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(hostItem);
+        ai->addToGroup(aggrItem);
+    }
+    else
+    {
+        this->mModelScene->addItem(aggrItem);
+    }
+    this->mModelScene->invalidate();
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -1030,14 +1039,15 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
 {
     NMDebugCtx(ctx, << "...");
 
-    NMDebugAI(<< this->reportPoint(target, "move target") << std::endl);
+    NMDebugAI(<< this->reportPoint(source, "move from") << std::endl);
+    NMDebugAI(<< this->reportPoint(target, "move to") << std::endl);
 
     NMAggregateComponentItem* ai = 0;
     NMProcessComponentItem* pi = 0;
     QGraphicsTextItem* ti = 0;
 
-    // determine move vector
-    QPointF delta = target - source;
+    // determine individual group delta
+    QList<QPointF> deltas;
 
     NMDebugAI(<< "items on the move ..." << std::endl);
     QList<QGraphicsItem*> topList;
@@ -1059,30 +1069,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         if (isTopLevel)
         {
             topList << gi;
-
-            //=================DEBUG DEBUG DEBUG DEBUG DEBUG
-            QString title;
-            if (ai)
-                title = ai->getTitle();
-            else if (pi)
-                title = pi->getTitle();
-            else if (ti)
-                title = ti->toPlainText();
-
-            std::string pos = this->reportPoint(gi->pos(), "pos");
-            std::string scenePos;
-            if (gi->parentItem() != 0)
-            {
-                scenePos = this->reportPoint(gi->parentItem()->mapToScene(gi->pos()), "scene pos");
-            }
-            else
-            {
-                scenePos = pos;
-            }
-            NMDebugAI(<< title.toStdString() << ": " << pos << std::endl);
-            NMDebugAI(<< title.toStdString() << ": " << scenePos << std::endl);
-
-            //================DEBUG DEBUG DEBUG DEBUG DEBUG
+            deltas << (gi->scenePos() - source);
         }
     }
 
@@ -1126,25 +1113,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         return;
     }
 
-    std::string nhr;
-    std::string nhrs;
-
-    if (newHostItem != 0)
-    {
-        nhr = this->reportRect(newHostItem->boundingRect(), "new host rect");
-        nhrs = this->reportRect(newHostItem->mapRectToScene(newHostItem->boundingRect()), "new host bnd on scene");
-        NMDebugAI(<< nhr << std::endl);
-        NMDebugAI(<< nhrs << std::endl);
-    }
-    else
-    {
-        nhr = this->reportRect(mModelScene->sceneRect(), "now host: scene rect:");
-        NMDebugAI(<< nhr << std::endl);
-    }
-
     // re-group items to move group
-    //    QGraphicsItemGroup* moveGroup = new QGraphicsItemGroup(0);
-    //mModelScene->addItem(moveGroup);
     NMDebugAI( << "moving these top level items ..." << std::endl);
     foreach(QGraphicsItem* tli, topList)
     {
@@ -1164,34 +1133,46 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         {
             hostItem->removeFromGroup(tli);
         }
-        tli->setParentItem(0);
-        tli->moveBy(delta.x(), delta.y());
+        mModelScene->removeItem(tli);
+    }
+    mModelScene->invalidate();
+
+    // re-assemble the moving components at its new position and host
+    int counter = 0;
+    foreach(QGraphicsItem* tli, topList)
+    {
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(tli);
+
+        QPointF newPos = target + deltas.at(counter);
         if (newHostItem != 0)
         {
             newHostItem->addToGroup(tli);
+            if (ai)
+            {
+                ai->normaliseAt(newHostItem->mapFromScene(newPos));
+            }
+            else
+            {
+                tli->setPos(newHostItem->mapFromScene(newPos));
+            }
         }
+        else
+        {
+            mModelScene->addItem(tli);
+            if (ai)
+            {
+                ai->normaliseAt(newPos);
+            }
+            else
+            {
+                tli->setPos(newPos);
+            }
+        }
+        ++counter;
     }
-
-//    // add move group to new host and move to target position
-//    if (newHostItem != 0)
-//    {
-//    //        moveGroup->setPos(target);
-//        newHostItem->addToGroup(moveGroup);
-//    }
-//    else
-//    {
-//        moveGroup->setPos(target);
-//        mModelScene->addItem(moveGroup);
-//    }
-
     this->mModelScene->invalidate();
 
-    foreach(QGraphicsItem* gi, topList)
-    {
-        NMDebugAI(<< this->reportPoint(gi->mapToScene(gi->pos()), "new pos:") << std::endl);
-    }
 
-    //    mModelScene->destroyItemGroup(moveGroup);
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -1912,6 +1893,7 @@ void NMModelViewWidget::ungroupComponents()
             {
                 if (    (*iit)->type() == NMAggregateComponentItem::Type
                     ||  (*iit)->type() == NMProcessComponentItem::Type
+                    ||  (*iit)->type() == QGraphicsTextItem::Type
                    )
                 {
                     selection.push_back(*iit);
@@ -1976,14 +1958,17 @@ void NMModelViewWidget::ungroupComponents()
 			continue;
 
 		NMModelComponent* c = this->componentFromItem(i);
-		host->removeModelComponent(c->objectName());
-		hosthost->addModelComponent(c);
-		c->setTimeLevel(hosthost->getTimeLevel());
+        if (c != 0)
+        {
+            host->removeModelComponent(c->objectName());
+            hosthost->addModelComponent(c);
+            c->setTimeLevel(hosthost->getTimeLevel());
 
-		if (this->mOpenEditors.contains(c))
-		{
-			this->mOpenEditors.value(c)->update();
-		}
+            if (this->mOpenEditors.contains(c))
+            {
+                this->mOpenEditors.value(c)->update();
+            }
+        }
 	}
 
 	this->deleteEmptyComponent(host);

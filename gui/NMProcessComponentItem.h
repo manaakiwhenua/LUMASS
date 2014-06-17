@@ -120,9 +120,6 @@ public slots:
 	void updateDescription(const QString& descr);
     void updateTimeLevel(short level);
 
-protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
-
 private:
 
 	static const std::string ctx;

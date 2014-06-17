@@ -79,11 +79,12 @@ public slots:
     void slotExecutionStarted();
     void slotExecutionStopped();
     void slotProgress(float progress);
-    //void slotChildPosChanged();
 
-
-protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+    // moves the group (i.e. all kids)
+    // to the new target location, which
+    // depicts the centre of the bouding rect
+    // in scene coordinates
+    void relocate(const QPointF& target);
 
 private:
 

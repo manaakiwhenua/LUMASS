@@ -255,6 +255,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 
 	QListIterator<QGraphicsItem*> it(selItems);
 	QList<NMModelComponent*> selComps;
+    //QRectF grpBnd;
 
 	// get the host component of the selected items
 	NMDebugAI(<< "selected items ..." << std::endl);
@@ -265,6 +266,8 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 		NMProcessComponentItem* procItem = 0;
 		NMAggregateComponentItem* aggrItem = 0;
 		QGraphicsItem* item = it.next();
+
+        //grpBnd = grpBnd.united(item->mapRectToScene(item->boundingRect()));
 
 		procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -390,6 +393,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
     connect(aggrComp, SIGNAL(signalExecutionStopped()),
             aggrItem, SLOT(slotExecutionStopped()));
 
+    //aggrItem->setPos(grpBnd.topLeft());
 	it.toFront();
 	while(it.hasNext())
 	{
@@ -423,7 +427,9 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
     {
         this->mModelScene->addItem(aggrItem);
     }
+    //QPointF apos = aggrItem->mapToParent(aggrItem->childrenBoundingRect().topLeft());
     this->mModelScene->invalidate();
+
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -1069,7 +1075,14 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         if (isTopLevel)
         {
             topList << gi;
-            deltas << (gi->scenePos() - source);
+            if (ai)
+            {
+                deltas << (ai->sceneBoundingRect().center() - source);
+            }
+            else
+            {
+                deltas << (gi->scenePos() - source);
+            }
         }
     }
 
@@ -1135,7 +1148,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         }
         mModelScene->removeItem(tli);
     }
-    mModelScene->invalidate();
+    //mModelScene->invalidate();
 
     // re-assemble the moving components at its new position and host
     int counter = 0;
@@ -1149,7 +1162,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
             newHostItem->addToGroup(tli);
             if (ai)
             {
-                ai->normaliseAt(newHostItem->mapFromScene(newPos));
+                ai->relocate(newPos);
             }
             else
             {
@@ -1161,7 +1174,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
             mModelScene->addItem(tli);
             if (ai)
             {
-                ai->normaliseAt(newPos);
+                ai->relocate(newPos);
             }
             else
             {

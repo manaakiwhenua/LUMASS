@@ -29,7 +29,7 @@
 const std::string NMSequentialIterComponent::ctx = "NMSequentialIterComponent";
 
 NMSequentialIterComponent::NMSequentialIterComponent(QObject* parent)
-	: mNumIterations(1)
+    : mNumIterations(1), mIterationStep(0)
 {
 	this->setParent(parent);
 	this->initAttributes();
@@ -55,8 +55,10 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
 {
 	for (unsigned int i=0; i < this->mNumIterations; ++i)
 	{
+        mIterationStep = i+1;
 		this->componentUpdateLogic(repo, minLevel, maxLevel, i);
         emit signalProgress(i+1);
 	}
+    mIterationStep = 0;
 }
 

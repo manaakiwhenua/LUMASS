@@ -314,8 +314,9 @@ void
 NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
-	if (step > this->mFileNames.size()-1)
-		step = 0;
+    //if (step > this->mFileNames.size()-1)
+    //	step = 0;
+    step = this->mapHostIndexToPolicyIndex(step, mFileNames.size());
 
 	if (step < this->mFileNames.size())
 	{

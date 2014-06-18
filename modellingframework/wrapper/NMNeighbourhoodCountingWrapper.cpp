@@ -253,13 +253,15 @@ NMNeighbourhoodCountingWrapper::linkParameters(unsigned int step,
 {
 	NMDebugCtx(ctx, << "...");
 
-	if (step > this->mTestValueList.size()-1)
-		step = 0;
+    //if (step > this->mTestValueList.size()-1)
+    //	step = 0;
 
-	if (step < this->mTestValueList.size())
+    if (this->mTestValueList.size())
 	{
+        int pos = this->mapHostIndexToPolicyIndex(step, mTestValueList.size());
+
 		bool bok;
-		int val = this->mTestValueList.at(step).toInt(&bok);
+        int val = this->mTestValueList.at(pos).toInt(&bok);
 		if (bok)
 			this->mTestValue = val;
 	}

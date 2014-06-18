@@ -180,8 +180,9 @@ void NMRandomImageSourceWrapper::extractNumericVector(unsigned int step,
 
 	outvec.clear();
 
-	if (step < 0 || step >= instring.size())
-		step = 0;
+    //if (step < 0 || step >= instring.size())
+    //	step = 0;
+    step = this->mapHostIndexToPolicyIndex(step, instring.size());
 
 	QStringList vallist = instring.at(step);
 	if (vallist.size() != this->mOutputNumDimensions)
@@ -205,8 +206,9 @@ bool NMRandomImageSourceWrapper::extractNumericValue(unsigned int step,
 	if (instring.size() == 0)
 		return false;
 
-	if (step < 0 || step >= instring.size())
-		step = 0;
+    //if (step < 0 || step >= instring.size())
+    //	step = 0;
+    step = this->mapHostIndexToPolicyIndex(step, instring.size());
 
 	bool bok;
 	double val = instring.at(step).toDouble(&bok);

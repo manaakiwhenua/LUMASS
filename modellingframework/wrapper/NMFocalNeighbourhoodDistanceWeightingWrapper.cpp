@@ -111,8 +111,9 @@ public:
 		// set the radius
 		if (p->mRadiusList.size() > 0)
 		{
-			if (pos >= p->mRadiusList.size())
-				pos = 0;
+            //if (pos >= p->mRadiusList.size())
+            //	pos = 0;
+            pos = p->mapHostIndexToPolicyIndex(step, p->mRadiusList.size());
 
 			unsigned int radius = p->mRadiusList.at(pos).toInt(&bok);
 			if (bok && radius > 0)
@@ -124,8 +125,9 @@ public:
 		if (p->mValues.size() > 0)
 		{
 			pos = step;
-			if (pos >= p->mValues.size())
-				pos = 0;
+            //if (pos >= p->mValues.size())
+            //	pos = 0;
+            pos = p->mapHostIndexToPolicyIndex(step, p->mValues.size());
 
 			std::vector<InPixelType> values;
 			QStringList valuesList = p->mValues.at(pos);
@@ -151,8 +153,9 @@ public:
 		if (p->mWeights.size() > 0)
 		{
 			pos = step;
-			if (pos >= p->mWeights.size())
-				pos = 0;
+            //if (pos >= p->mWeights.size())
+            //	pos = 0;
+            pos = p->mapHostIndexToPolicyIndex(step, p->mWeights.size());
 
 			QList<QStringList> strMatrix = p->mWeights.at(pos);
 			int nrows = strMatrix.size();

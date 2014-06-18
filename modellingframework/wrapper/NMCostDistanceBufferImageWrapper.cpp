@@ -112,8 +112,9 @@ public:
 
 		if (p->mObjectValueList.size())
 		{
-			if (ols >= p->mObjectValueList.size() || ols < 0)
-				ols = 0;
+            ols = p->mapHostIndexToPolicyIndex(step, p->mObjectValueList.size());
+            //if (ols >= p->mObjectValueList.size() || ols < 0)
+            //	ols = 0;
 
 			std::vector<double> vObjValues;
 			QStringList strObjValues = p->mObjectValueList.at(ols);
@@ -128,9 +129,10 @@ public:
 
 		// -------------------------------------------------------------------
 		// set max distances
-		ols = step;
-		if (ols >= p->mMaxDistance.size() || ols < 0)
-			ols = 0;
+        //ols = step;
+        //if (ols >= p->mMaxDistance.size() || ols < 0)
+        //	ols = 0;
+        ols = p->mapHostIndexToPolicyIndex(step, p->mMaxDistance.size());
 
 		double distance;
 		if (p->mMaxDistance.size())
@@ -142,13 +144,15 @@ public:
 
 		// -------------------------------------------------------------------
 		// set buffer zone indicator
-		ols = step;
-		if (ols >= p->mBufferZoneIndicator.size() || ols < 0)
-			ols = 0;
+        ols = step;
+        //if (ols >= p->mBufferZoneIndicator.size() || ols < 0)
+        //	ols = 0;
+
 
 		int indicator;
 		if (p->mBufferZoneIndicator.size())
 		{
+            ols = p->mapHostIndexToPolicyIndex(step, p->mBufferZoneIndicator.size());
 			indicator = p->mBufferZoneIndicator.at(ols).toInt(&bok);
 			if (bok)
 				f->SetBufferZoneIndicator(indicator);
@@ -182,14 +186,20 @@ public:
 		// get the input, cost, and output image filenames
 		int pos = p->mParamPos;
 
-		if (pos >= p->mInputImageFileName.size())
-			pos = 0;
-		QString fileName = p->mInputImageFileName.at(pos);
+        //if (pos >= p->mInputImageFileName.size())
+        //	pos = 0;
+        QString fileName;
+        if (p->mInputImageFileName.size())
+        {
+            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mInputImageFileName.size());
+            fileName = p->mInputImageFileName.at(pos);
+        }
 		if (fileName.isEmpty())
 		{
 			NMErr("CostDistanceInternal", << "Please provide an input image file name!");
 			return;
 		}
+
 		bool bInRas = false;
 		if (!fileName.contains('.'))
 			bInRas = true;
@@ -199,8 +209,9 @@ public:
 		bool bCostRas = false;
 		if (p->mCostImageFileName.size())
 		{
-			if (pos >= p->mCostImageFileName.size())
-				pos = 0;
+            //if (pos >= p->mCostImageFileName.size())
+            //	pos = 0;
+            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mCostImageFileName.size());
 			costFN = p->mCostImageFileName.at(pos);
 
 			if (!costFN.contains('.'))
@@ -211,8 +222,9 @@ public:
 		QString out;
 		if (p->mOutputImageFileName.size())
 		{
-			if (pos >= p->mOutputImageFileName.size())
-				pos = 0;
+            //if (pos >= p->mOutputImageFileName.size())
+            //	pos = 0;
+            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mOutputImageFileName.size());
 			out = p->mOutputImageFileName.at(pos);
 			if (out.isEmpty())
 			{

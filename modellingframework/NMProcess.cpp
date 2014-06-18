@@ -59,8 +59,16 @@ void
 NMProcess::linkInPipeline(unsigned int step,
 		const QMap<QString, NMModelComponent*>& repo)
 {
-	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
+    NMIterableComponent* hostComp = qobject_cast<NMIterableComponent*>(this->parent());
+    if (hostComp == 0)
+    {
+        NMMfwException nme(NMMfwException::NMProcess_UninitialisedProcessObject);
+        nme.setMsg("NMProcess Object not embedded in NMIterableComponent!");
+        throw nme;
+        return;
+    }
 
+    NMDebugCtx(hostComp->objectName().toStdString(), << "...");
 	if (mbLinked)
 	{
 		NMDebugAI(<< "seems we've been linked already without being executed!" << endl);
@@ -85,8 +93,20 @@ NMProcess::linkInPipeline(unsigned int step,
         this->mOtbProcess->ReleaseDataFlagOn();
 	}
 
-	this->linkParameters(step, repo);
-	this->linkInputs(step, repo);
+    // we use the host's step parameter to determine which parameter to read in
+    // rather than the one of the calling process
+    NMIterableComponent* hostHost = hostComp->getHostComponent();
+    if (hostHost)
+    {
+        step = hostHost->getIterationStep()-1;
+    }
+    else
+    {
+        step = hostComp->getIterationStep()-1;
+    }
+
+    this->linkParameters(step, repo);
+    this->linkInputs(step, repo);
 
 #ifdef DEBUG
     if (this->mOtbProcess.IsNotNull())
@@ -202,12 +222,12 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 		{
 			this->mParamPos = step;
 		}
-		else
-		{
-			step = 0;
-			this->mParamPos = 0;
-			NMErr(ctxNMProcess, << "mParamPos and host's step out of sync!! Set step / mParamPos = 0");
-		}
+//		else
+//		{
+//			step = 0;
+//			this->mParamPos = 0;
+//			NMErr(ctxNMProcess, << "mParamPos and host's step out of sync!! Set step / mParamPos = 0");
+//		}
 
 		break;
 	}
@@ -261,9 +281,18 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 				NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(ic);
 
 				// don't link everything ...
-				if (parentComp->getTimeLevel() == ic->getTimeLevel()
-                    && parentIter == 1// && dataComp == 0
-				   )
+                // ===========DEPRECATED DEPRECATED
+                //				if (parentComp->getTimeLevel() == ic->getTimeLevel()
+                //                    && parentIter == 1// && dataComp == 0
+                //				   )
+                // ===========
+
+                // we cannot link to siblings (i.e. same component) on lower time levels
+                // (-> execution list should account for that)
+                // otherwise, just link in!
+                // and we ever only grab from data buffers, we don't ask them to
+                // fetch anything
+                if (dataComp == 0)
 				{
 					NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
 							<< ic->objectName().toStdString()

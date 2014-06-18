@@ -40,6 +40,7 @@
 #include "vtkImageImport.h"
 #include "itkVTKImageExport.h"
 #include "NMMfwException.h"
+#include "NMIterableComponent.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageIO.h"
@@ -830,7 +831,12 @@ NMImageReader::linkParameters(unsigned int step,
 	NMDebugCtx(ctxNMImageReader, << "...");
 	// set the step parameter according to the ParameterHandling mode set for this process
 
-	NMDebugAI(<< "method called with #step=" << step
+
+    // reflect new feature of the user being able to specify the start mIterationStep
+    // of the model run!
+    mParamPos = step;
+
+    NMDebugAI(<< "method called with #step=" << step
 			<< " mParamPos=" << this->mParamPos << endl);
 
 	switch(this->mParameterHandling)
@@ -864,12 +870,12 @@ NMImageReader::linkParameters(unsigned int step,
 		{
 			this->mParamPos = step;
 		}
-		else
-		{
-			step = 0;
-			this->mParamPos = 0;
-			NMErr(ctxNMProcess, << "mFilePos and host's step out of sync!! Set mFilePos = 0");
-		}
+//        else
+//        {
+//            step = 0;
+//            this->mParamPos = 0;
+//            NMErr(ctxNMProcess, << "mFilePos and host's step out of sync!! Set mFilePos = 0");
+//        }
 		break;
 	}
 
@@ -909,8 +915,36 @@ void NMImageReader::instantiateObject(void)
 	}
 #endif	
 
-	if (this->getFileNames().size() > 0)
-		this->setFileName(this->getFileNames().at(0));
+    // instantiate the reader with  the image which is being read
+    // later on
+    unsigned int step = 0;
+    NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
+    NMIterableComponent* hosthost = 0;
+    if (host)
+    {
+        step = host->getIterationStep()-1;
+        hosthost = host->getHostComponent();
+        if (hosthost)
+        {
+            step = hosthost->getIterationStep()-1;
+        }
+    }
+    step = this->mapHostIndexToPolicyIndex(step, this->getFileNames().size());
+
+    if (step > this->getFileNames().size()-1)
+    {
+        NMMfwException nme(NMMfwException::NMProcess_InvalidParameter);
+        std::stringstream msgstr;
+        msgstr << "Step Size #" << step << " is out of bounds!";
+        nme.setMsg(msgstr.str());
+        NMDebugCtx(ctxNMImageReader, << "done!");
+        throw nme;
+        return;
+    }
+    else
+    {
+        this->setFileName(this->getFileNames().at(step));
+    }
 
 	NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
 	this->initialise();

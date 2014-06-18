@@ -37,11 +37,11 @@ class NMSequentialIterComponent: public NMIterableComponent
 {
 	Q_OBJECT
 	Q_PROPERTY(unsigned int NumIterations READ getNumIterations WRITE setNumIterations NOTIFY NMModelComponentChanged);
-    Q_PROPERTY(unsigned int IterationStep READ getIterationStep)
 
 public:
 	signals:
 		void NMModelComponentChanged(void);
+        void NumIterationsChanged(unsigned int numiter);
 
 public:
 	NMSequentialIterComponent(QObject* parent=0);
@@ -52,15 +52,8 @@ public:
     unsigned int getNumIterations(void)
         {return this->mNumIterations;}
 
-    unsigned int getIterationStep(void)
-        {return this->mIterationStep;}
-
-signals:
-    void NumIterationsChanged(unsigned int numiter);
-
 protected:
 	unsigned int mNumIterations;
-    unsigned int mIterationStep;
 
     void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
     		unsigned int minLevel, unsigned int maxLevel);

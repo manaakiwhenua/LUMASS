@@ -45,7 +45,13 @@ class NMIterableComponent : public NMModelComponent
 {
 	Q_OBJECT
 
+    Q_PROPERTY(unsigned int IterationStep READ getIterationStep WRITE setIterationStep)
+
 public:
+
+    //NMPropertyGetSet(IterationStep , unsigned int)
+
+
     virtual ~NMIterableComponent(void);
 
 	void setInternalStartComponent (NMModelComponent* comp )
@@ -121,6 +127,9 @@ public:
     		QMap<unsigned int,
     		QMap<QString, NMModelComponent*> >& timeLevelMap);
 
+    unsigned int getIterationStep(void);
+    void setIterationStep(unsigned int step);
+
 
     // DEPRECATED: part of ancient execution models, no longer valid
     NMModelComponent* getEndOfTimeLevel(void);
@@ -166,6 +175,9 @@ protected:
     NMModelComponent* mProcessChainStart;
     NMModelComponent* mProcessChainPointer;
     unsigned int mMaxInternalTimeLevel;
+
+    unsigned int mIterationStep;
+    unsigned int mIterationStepRun;
 
     //QList<QStringList> mExecSequence;
 

@@ -41,6 +41,8 @@ void NMIterableComponent::initAttributes(void)
     this->mProcessChainPointer = 0;
     this->mProcessChainStart = 0;
     this->mProcess = 0;
+    this->mIterationStep = 1;
+    this->mIterationStepRun = 1;
 }
 
 NMIterableComponent::~NMIterableComponent(void)
@@ -845,16 +847,16 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
     // DEBUG DEBUG DEBUG
 
 	// execute this components' pipeline
-    try
-    {
+//    try
+//    {
         this->iterativeComponentUpdate(repo, minLevel, maxLevel);
-    }
-    catch (std::exception& e)
-    {
-        emit signalExecutionStopped();
-        NMDebugCtx(this->objectName().toStdString(), << "done!");
-        throw e;
-    }
+//    }
+//    catch (std::exception& e)
+//    {
+//        emit signalExecutionStopped();
+//        NMDebugCtx(this->objectName().toStdString(), << "done!");
+//        throw e;
+//    }
 
     emit signalExecutionStopped();
 	NMDebugCtx(this->objectName().toStdString(), << "done!");
@@ -1080,7 +1082,8 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 void
 NMIterableComponent::reset(void)
 {
-	if (this->getProcess() != 0)
+    this->mIterationStepRun = this->mIterationStep;
+    if (this->getProcess() != 0)
 	{
 		this->getProcess()->reset();
 		return;
@@ -1094,6 +1097,22 @@ NMIterableComponent::reset(void)
 			comp = this->getNextInternalComponent();
 		}
 	}
+}
+
+void
+NMIterableComponent::setIterationStep(unsigned int step)
+{
+    this->mIterationStep = step == 0 ? 1 : step;
+    this->mIterationStepRun = this->mIterationStep;
+}
+
+unsigned int
+NMIterableComponent::getIterationStep(void)
+{
+    if (NMModelController::getInstance()->isModelRunning())
+        return this->mIterationStepRun;
+    else
+        return this->mIterationStep;
 }
 
 /*

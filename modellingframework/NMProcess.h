@@ -126,6 +126,10 @@ public:
 	 *  which use different input mechanisms than the default process should overwrite
 	 *  linkInputs() (e.g. NMImageReader, which needs to be re-instantiated with each
 	 *  new filename parameter).
+     *  The 'step' and 'repo' parameters are deprecated and no longer used in the default
+     *  implementation: For accessing other model components use the singelton NMModelController
+     *  object and for the step parameter use either the host's or host's host's
+     *  mIterationStep parameter (e.g. step = host->getIterationStep()).
 	 */
 	virtual void linkInPipeline(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
 

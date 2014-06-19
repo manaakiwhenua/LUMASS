@@ -133,6 +133,14 @@ public:
 	 */
 	virtual void linkInPipeline(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
 
+    /*! \brief Translates the iteration index of the host component
+     *         into an internal parameter position index subject
+     *         to the user-specified parameter handling policy
+     *         (i.e. use_up, cycle, sync).
+     */
+    unsigned short mapHostIndexToPolicyIndex(unsigned short step,
+            unsigned short size);
+
 public slots:
 	void removeInputComponent(const QString& input);
 	virtual void abortExecution(void);
@@ -175,14 +183,6 @@ protected:
 	typedef itk::MemberCommand<NMProcess> ObserverType;
 	ObserverType::Pointer mObserver;
 
-
-	/*! \brief Translates the iteration index of the host component
-	 *         into an internal parameter position index subject
-	 *         to the user-specified parameter handling policy
-	 *         (i.e. use_up, cycle, sync).
-	 */
-	unsigned short mapHostIndexToPolicyIndex(unsigned short step,
-			unsigned short size);
 
 	/*! \brief Call-back method for itk::Process-based NMProcess classes to
 	 *         signal (emit) the process' state to listeners

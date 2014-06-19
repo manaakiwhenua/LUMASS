@@ -1007,7 +1007,7 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 
 	// now we subsequently remove all components, which are mentioned as input
 	// of one of the given level's other components;
-	// we alos look for any data components we can find, in case
+    // we also look for any data components we can find, in case
 	// we haven't got 'dead ends' but a cyclic relationship whereas a
 	// data buffer component is updated subsequently
 	QStringList dataBuffers;
@@ -1016,7 +1016,20 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 			levelComps.begin();
 	while(levelIt != levelComps.end())
 	{
-		NMDataComponent* buf = qobject_cast<NMDataComponent*>(levelIt.value());
+        // we don't execute readers at all; for readers it only makes sense,
+        // if they're 'called' as part of a pipeline rather than being
+        // executed by themselves, so we remove those
+        if (levelIt.key().contains(QString::fromLatin1("reader"), Qt::CaseInsensitive))
+        {
+            execComps.removeOne(levelIt.key());
+            NMDebugAI(<< "removed '" << levelIt.key().toStdString() << "' from executables"
+                      << std::endl);
+            ++levelIt;
+            continue;
+        }
+
+
+        NMDataComponent* buf = qobject_cast<NMDataComponent*>(levelIt.value());
 		if (buf != 0)
 		{
 			dataBuffers.push_back(buf->objectName());
@@ -1029,13 +1042,28 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 			continue;
 		}
 
-		if (step > allInputs.size()-1)
-		{
-			// ToDo: this might need to be adjusted when we
-			// introduce the choice between 'use_up | cyle | <other>'
-			// for now, we make it NM_USE_UP
-			step = allInputs.size()-1;
-		}
+        // determine step to determine the input link for this component
+
+        // here: conventional approach
+        if (step > allInputs.size()-1)
+        {
+            // ToDo: this might need to be adjusted when we
+            // introduce the choice between 'use_up | cyle | <other>'
+            // for now, we make it NM_USE_UP
+            step = allInputs.size()-1;
+        }
+
+        // in case we're looking at a process component, we account for its index policy
+        // (i.e. USE_UP | CYCLIC | SYNC_WITH_HOST)
+        // and for its current iteration step
+        NMIterableComponent* procComp = qobject_cast<NMIterableComponent*>(levelIt.value());
+        if (procComp)
+        {
+            if (procComp->getProcess())
+            {
+                step = procComp->getProcess()->mapHostIndexToPolicyIndex(step, allInputs.size());
+            }
+        }
 
 		QStringList inputs = allInputs.at(step);
 		foreach(const QString& in, inputs)
@@ -1043,7 +1071,7 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 //            NMModelComponent* c = ctrl->getComponent(in);
 //            NMModelComponent* hc = c ? c->getHostComponent() : 0;
 
-			if (execComps.contains(in))
+            if (execComps.contains(in))
 			{
 				execComps.removeOne(in);
 			}

@@ -920,6 +920,7 @@ void NMImageReader::instantiateObject(void)
     unsigned int step = 0;
     NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
     NMIterableComponent* hosthost = 0;
+    // that's when we run in 'model mode' (i.e. image reader is part of a model)
     if (host)
     {
         step = host->getIterationStep()-1;
@@ -928,23 +929,25 @@ void NMImageReader::instantiateObject(void)
         {
             step = hosthost->getIterationStep()-1;
         }
-    }
-    step = this->mapHostIndexToPolicyIndex(step, this->getFileNames().size());
 
-    if (step > this->getFileNames().size()-1)
-    {
-        NMMfwException nme(NMMfwException::NMProcess_InvalidParameter);
-        std::stringstream msgstr;
-        msgstr << "Step Size #" << step << " is out of bounds!";
-        nme.setMsg(msgstr.str());
-        NMDebugCtx(ctxNMImageReader, << "done!");
-        throw nme;
-        return;
+        step = this->mapHostIndexToPolicyIndex(step, this->getFileNames().size());
+
+        if (step > this->getFileNames().size()-1)
+        {
+            NMMfwException nme(NMMfwException::NMProcess_InvalidParameter);
+            std::stringstream msgstr;
+            msgstr << "Step Size #" << step << " is out of bounds!";
+            nme.setMsg(msgstr.str());
+            NMDebugCtx(ctxNMImageReader, << "done!");
+            throw nme;
+            return;
+        }
+        else
+        {
+            this->setFileName(this->getFileNames().at(step));
+        }
     }
-    else
-    {
-        this->setFileName(this->getFileNames().at(step));
-    }
+
 
 	NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
 	this->initialise();

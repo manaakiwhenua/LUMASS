@@ -832,62 +832,72 @@ NMImageReader::linkParameters(unsigned int step,
 	// set the step parameter according to the ParameterHandling mode set for this process
 
 
-    // reflect new feature of the user being able to specify the start mIterationStep
-    // of the model run!
-    mParamPos = step;
+//    // reflect new feature of the user being able to specify the start mIterationStep
+//    // of the model run!
+//    mParamPos = step;
 
-    NMDebugAI(<< "method called with #step=" << step
-			<< " mParamPos=" << this->mParamPos << endl);
+//    NMDebugAI(<< "method called with #step=" << step
+//			<< " mParamPos=" << this->mParamPos << endl);
 
-	switch(this->mParameterHandling)
-	{
-	case NM_USE_UP:
-		if (this->mParamPos < this->mFileNames.size())
-		{
-			step = this->mParamPos;
-			++this->mParamPos;
-		}
-		else if (this->mParamPos >= this->mFileNames.size())
-		{
-			this->mParamPos = this->mFileNames.size()-1;
-			step = this->mParamPos;
-		}
-		break;
-	case NM_CYCLE:
-		if (this->mParamPos < this->mFileNames.size())
-		{
-			step = this->mParamPos;
-			++this->mParamPos;
-		}
-		else if (this->mParamPos >= this->mFileNames.size())
-		{
-			step = 0;
-			this->mParamPos = 1;
-		}
-		break;
-	case NM_SYNC_WITH_HOST:
-		if (step < this->mFileNames.size())
-		{
-			this->mParamPos = step;
-		}
-//        else
-//        {
-//            step = 0;
-//            this->mParamPos = 0;
-//            NMErr(ctxNMProcess, << "mFilePos and host's step out of sync!! Set mFilePos = 0");
-//        }
-		break;
-	}
+//	switch(this->mParameterHandling)
+//	{
+//	case NM_USE_UP:
+//		if (this->mParamPos < this->mFileNames.size())
+//		{
+//			step = this->mParamPos;
+//			++this->mParamPos;
+//		}
+//		else if (this->mParamPos >= this->mFileNames.size())
+//		{
+//			this->mParamPos = this->mFileNames.size()-1;
+//			step = this->mParamPos;
+//		}
+//		break;
+//	case NM_CYCLE:
+//		if (this->mParamPos < this->mFileNames.size())
+//		{
+//			step = this->mParamPos;
+//			++this->mParamPos;
+//		}
+//		else if (this->mParamPos >= this->mFileNames.size())
+//		{
+//			step = 0;
+//			this->mParamPos = 1;
+//		}
+//		break;
+//	case NM_SYNC_WITH_HOST:
+//		if (step < this->mFileNames.size())
+//		{
+//			this->mParamPos = step;
+//		}
+////        else
+////        {
+////            step = 0;
+////            this->mParamPos = 0;
+////            NMErr(ctxNMProcess, << "mFilePos and host's step out of sync!! Set mFilePos = 0");
+////        }
+//		break;
+//	}
 
-	if (this->mFileNames.size() > 0)
-	{
-		//if (this->mFileName.compare(this->mFileNames.at(step)) != 0)
-		{
-			this->setFileName(this->mFileNames.at(step));
-			this->initialise();
-		}
-	}
-	NMDebugAI(<< "FileName is '" << this->mFileName.toStdString() << "'" << endl);
+//	if (this->mFileNames.size() > 0)
+//	{
+//		//if (this->mFileName.compare(this->mFileNames.at(step)) != 0)
+//		{
+//			this->setFileName(this->mFileNames.at(step));
+//			this->initialise();
+//		}
+//	}
+//	NMDebugAI(<< "FileName is '" << this->mFileName.toStdString() << "'" << endl);
+
+    QVariant param = this->getParameter("FileNames");
+    if (param.isValid())
+    {
+        this->setFileName(param.toString());
+    }
+
+    NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
+    this->initialise();
+
 
 	NMDebugCtx(ctxNMImageReader, << "done!");
 }
@@ -917,42 +927,47 @@ void NMImageReader::instantiateObject(void)
 
     // instantiate the reader with  the image which is being read
     // later on
-    unsigned int step = 0;
-    NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
-    NMIterableComponent* hosthost = 0;
-    // that's when we run in 'model mode' (i.e. image reader is part of a model)
-    if (host)
+//    unsigned int step = 0;
+//    NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
+//    NMIterableComponent* hosthost = 0;
+//    // that's when we run in 'model mode' (i.e. image reader is part of a model)
+//    if (host)
+//    {
+//        step = host->getIterationStep()-1;
+//        hosthost = host->getHostComponent();
+//        if (hosthost)
+//        {
+//            step = hosthost->getIterationStep()-1;
+//        }
+
+//        step = this->mapHostIndexToPolicyIndex(step, this->getFileNames().size());
+
+//        if (step > this->getFileNames().size()-1)
+//        {
+//            NMMfwException nme(NMMfwException::NMProcess_InvalidParameter);
+//            std::stringstream msgstr;
+//            msgstr << "Step Size #" << step << " is out of bounds!";
+//            nme.setMsg(msgstr.str());
+//            NMDebugCtx(ctxNMImageReader, << "done!");
+//            throw nme;
+//            return;
+//        }
+//        else
+//        {
+//            this->setFileName(this->getFileNames().at(step));
+//        }
+//    }
+
+    QVariant param = this->getParameter("FileNames");
+    if (param.isValid())
     {
-        step = host->getIterationStep()-1;
-        hosthost = host->getHostComponent();
-        if (hosthost)
-        {
-            step = hosthost->getIterationStep()-1;
-        }
-
-        step = this->mapHostIndexToPolicyIndex(step, this->getFileNames().size());
-
-        if (step > this->getFileNames().size()-1)
-        {
-            NMMfwException nme(NMMfwException::NMProcess_InvalidParameter);
-            std::stringstream msgstr;
-            msgstr << "Step Size #" << step << " is out of bounds!";
-            nme.setMsg(msgstr.str());
-            NMDebugCtx(ctxNMImageReader, << "done!");
-            throw nme;
-            return;
-        }
-        else
-        {
-            this->setFileName(this->getFileNames().at(step));
-        }
+        this->setFileName(param.toString());
     }
 
+    NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
+    this->initialise();
 
-	NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
-	this->initialise();
-
-	NMDebugCtx(ctxNMImageReader, << "done!");
+    NMDebugCtx(ctxNMImageReader, << "done!");
 }
 
 #ifdef BUILD_RASSUPPORT

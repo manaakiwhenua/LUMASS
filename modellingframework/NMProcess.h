@@ -141,6 +141,10 @@ public:
     unsigned short mapHostIndexToPolicyIndex(unsigned short step,
             unsigned short size);
 
+
+     QVariant getParameter(const QString& property);
+
+
 public slots:
 	void removeInputComponent(const QString& input);
 	virtual void abortExecution(void);
@@ -206,6 +210,9 @@ protected:
 	 *	processing step (i.e. iteration of host component) to the underlying process object.
 	 */
 	virtual void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
+
+private:
+    unsigned int mStepIndex;
 
 };
 

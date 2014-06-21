@@ -26,6 +26,7 @@
 #include "NMMfwException.h"
 #include "NMSequentialIterComponent.h"
 #include "NMDataComponent.h"
+#include "NMModelController.h"
 
 #include <QDateTime>
 
@@ -93,17 +94,22 @@ NMProcess::linkInPipeline(unsigned int step,
         this->mOtbProcess->ReleaseDataFlagOn();
 	}
 
-    // we use the host's step parameter to determine which parameter to read in
-    // rather than the one of the calling process
-    NMIterableComponent* hostHost = hostComp->getHostComponent();
-    if (hostHost)
+    // ATTENTION:
+    // now we use the host's step parameter to determine which parameter
+    // to read in, rather than step parameter from the calling process;
+    // furthermore, if the host's step is param is zero (i.e. IterationStep == 1)
+    // we take the one from the host's host component, since most of the time
+    // iteration takes place one level a above the process' direct host
+    step = hostComp->getIterationStep()-1;
+    if (step == 0)
     {
-        step = hostHost->getIterationStep()-1;
+        NMIterableComponent* hostHost = hostComp->getHostComponent();
+        if (hostHost)
+        {
+            step = hostHost->getIterationStep()-1;
+        }
     }
-    else
-    {
-        step = hostComp->getIterationStep()-1;
-    }
+    mStepIndex = step;
 
     this->linkParameters(step, repo);
     this->linkInputs(step, repo);
@@ -174,6 +180,72 @@ NMProcess::mapHostIndexToPolicyIndex(unsigned short step,
 	return idx;
 }
 
+QVariant
+NMProcess::getParameter(const QString& property)
+{
+    NMDebugCtx(this->objectName().toStdString(), << "...");
+
+    QVariant ret;
+    QVariant propVal = this->property(property.toStdString().c_str());
+
+    if (QString::fromLatin1("QStringList").compare(propVal.typeName()) == 0)
+    {
+        QString retStr;
+        QStringList lst = propVal.toStringList();
+        if (lst.size())
+        {
+            int step = this->mapHostIndexToPolicyIndex(mStepIndex, lst.size());
+            retStr = lst.at(step);
+
+            QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]*)(\\d*)\\$");
+            int pos = 0;
+            while((pos = rex.indexIn(retStr, pos)) != -1)
+            {
+                // 0: whole captured text
+                // 1: component name
+                // 2: operator
+                // 3: integer number
+                QStringList m = rex.capturedTexts();
+                NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
+                NMDebugAI(<< "---------------" << std::endl);
+                pos += rex.matchedLength();
+
+                NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(
+                            NMModelController::getInstance()->getComponent(m.at(1)));
+                if (ic)
+                {
+                    bool bok;
+                    int delta = 0;
+                    if (!m.at(3).isEmpty())
+                    {
+                        const int t = m.at(3).toInt(&bok);
+                        if (bok)
+                            delta = t;
+                    }
+
+                    unsigned int itStep = ic->getIterationStep();
+                    if (QString::fromLatin1("+").compare(m.at(2)) == 0)
+                    {
+                        itStep += delta;
+                    }
+                    else if (QString::fromLatin1("-").compare(m.at(2)) == 0)
+                    {
+                        itStep -= delta;
+                    }
+
+                    retStr = retStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
+                    NMDebugAI(<< "generated parameter: " << retStr.toStdString() << std::endl);
+                }
+            }
+        }
+        ret = QVariant::fromValue(retStr);
+    }
+    // further impl for QList<QStringList> and QList<QList<QStringList> >
+
+    NMDebugCtx(this->objectName().toStdString(), << "done!");
+    return ret;
+}
+
 void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
 	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
@@ -189,49 +261,49 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 	}
 
 	// set the step parameter according to the ParameterHandling mode set for this process
-	switch(this->mParameterHandling)
-	{
-	case NM_USE_UP:
-		if (this->mParamPos < this->mInputComponents.size())
-		{
-			step = this->mParamPos;
-			// this is better done in the update function, so that it only
-			// get's incremented after an actual processing step
-			++this->mParamPos;
-		}
-		else if (this->mParamPos >= this->mInputComponents.size())
-		{
-			this->mParamPos = this->mInputComponents.size()-1;
-			step = this->mParamPos;
-		}
-		break;
-	case NM_CYCLE:
-		if (this->mParamPos < this->mInputComponents.size())
-		{
-			step = this->mParamPos;
-			++this->mParamPos;
-		}
-		else if (this->mParamPos >= this->mInputComponents.size())
-		{
-			step = 0;
-			this->mParamPos = 1;
-		}
-		break;
-	case NM_SYNC_WITH_HOST:
-		if (step < this->mInputComponents.size())
-		{
-			this->mParamPos = step;
-		}
-//		else
+//	switch(this->mParameterHandling)
+//	{
+//	case NM_USE_UP:
+//		if (this->mParamPos < this->mInputComponents.size())
+//		{
+//			step = this->mParamPos;
+//			// this is better done in the update function, so that it only
+//			// get's incremented after an actual processing step
+//			++this->mParamPos;
+//		}
+//		else if (this->mParamPos >= this->mInputComponents.size())
+//		{
+//			this->mParamPos = this->mInputComponents.size()-1;
+//			step = this->mParamPos;
+//		}
+//		break;
+//	case NM_CYCLE:
+//		if (this->mParamPos < this->mInputComponents.size())
+//		{
+//			step = this->mParamPos;
+//			++this->mParamPos;
+//		}
+//		else if (this->mParamPos >= this->mInputComponents.size())
 //		{
 //			step = 0;
-//			this->mParamPos = 0;
-//			NMErr(ctxNMProcess, << "mParamPos and host's step out of sync!! Set step / mParamPos = 0");
+//			this->mParamPos = 1;
 //		}
+//		break;
+//	case NM_SYNC_WITH_HOST:
+//		if (step < this->mInputComponents.size())
+//		{
+//			this->mParamPos = step;
+//		}
+////		else
+////		{
+////			step = 0;
+////			this->mParamPos = 0;
+////			NMErr(ctxNMProcess, << "mParamPos and host's step out of sync!! Set step / mParamPos = 0");
+////		}
 
-		break;
-	}
-	//step = this->mapHostIndexToPolicyIndex(inputstep, this->mInputComponents.size());
+//		break;
+//	}
+    step = this->mapHostIndexToPolicyIndex(inputstep, this->mInputComponents.size());
 
 
 	NMIterableComponent* parentComp = qobject_cast<NMIterableComponent*>(this->parent());

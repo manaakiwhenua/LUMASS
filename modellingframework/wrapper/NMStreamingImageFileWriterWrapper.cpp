@@ -316,12 +316,18 @@ NMStreamingImageFileWriterWrapper
 {
     //if (step > this->mFileNames.size()-1)
     //	step = 0;
-    step = this->mapHostIndexToPolicyIndex(step, mFileNames.size());
+//    step = this->mapHostIndexToPolicyIndex(step, mFileNames.size());
 
-	if (step < this->mFileNames.size())
-	{
-		this->setInternalFileName(this->mFileNames.at(step));
-	}
+//	if (step < this->mFileNames.size())
+//	{
+//		this->setInternalFileName(this->mFileNames.at(step));
+//	}
+
+    QVariant param = this->getParameter("FileNames");
+    if (param.isValid())
+    {
+        this->setInternalFileName(param.toString());
+    }
 
     this->setInternalUpdateMode();
 }

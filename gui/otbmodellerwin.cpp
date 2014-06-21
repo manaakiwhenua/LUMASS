@@ -1082,20 +1082,18 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	bool b = true;
-	bool a = false;
+    QString test = QInputDialog::getText(this, "", "test string=", QLineEdit::Normal,
+                                         "$AggrComp4-10$");
 
-	QString astr = QString("true=%1 | false=%2").arg(b).arg(a);
-	NMDebugAI(<< astr.toStdString() << std::endl);
+    QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-])(\\d*)\\$");
+    int pos = 0; //rex.indexIn(test); //) != -1)
+    while((pos = rex.indexIn(test, pos)) != -1)
+    {
+        QStringList m = rex.capturedTexts();
+        NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
+        pos += rex.matchedLength();
+    }
 
-	QString strue = "true";
-	QString sfalse = "false";
-
-	bool bok;
-	bool c = strue.toInt(&bok);
-	bool d = sfalse.toInt(&bok);
-
-	NMDebugAI(<< "strue=" << c << " | sfalse=" << d << std::endl);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

@@ -961,7 +961,9 @@ void NMImageReader::instantiateObject(void)
     QVariant param = this->getParameter("FileNames");
     if (param.isValid())
     {
-        this->setFileName(param.toString());
+        QString fn = param.toString();
+        if (!fn.isEmpty())
+            this->setFileName(param.toString());
     }
 
     NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);

@@ -57,6 +57,7 @@ public:
 			bool appendmode);
 	void serialiseComponent(NMModelComponent* comp,
 			QDomDocument& doc);
+
     QMap<QString, QString> parseComponent(const QString& fileName,
             NMIterableComponent* importHost, NMModelController* controller
 #ifdef BUILD_RASSUPPORT			

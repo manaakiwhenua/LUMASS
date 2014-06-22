@@ -60,7 +60,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 )
 
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = &rasWrapper;
@@ -75,7 +75,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 	{
 		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
 				<< "'!");
-		NMDebugCtx(ctx, << "done!");
+//		NMDebugCtx(ctx, << "done!");
 		return nameRegister;
 	}
 
@@ -84,7 +84,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 	{
 		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
 				<< "'!");
-		NMDebugCtx(ctx, << "done!");
+//		NMDebugCtx(ctx, << "done!");
 		return nameRegister;
 	}
 
@@ -110,7 +110,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 		if (compName.isEmpty())
 		{
 			NMErr(ctx, << "detected unnamed component!");
-			NMDebugCtx(ctx, << "done!");
+//			NMDebugCtx(ctx, << "done!");
 			return nameRegister;
 		}
 		else if (compName.compare("root") == 0)
@@ -126,7 +126,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 
                 if (resp == QMessageBox::No)
                 {
-                    NMDebugAI(<< "naa, don't overwrite root!" << std::endl);
+//                    NMDebugAI(<< "naa, don't overwrite root!" << std::endl);
                     continue;
                 }
                 else
@@ -136,8 +136,8 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
             }
             else
             {
-                NMDebugAI(<< "Ignored 'root' component! Cannot import 'root' "
-                          << "component into higher level aggregate component!" << std::endl);
+//                NMDebugAI(<< "Ignored 'root' component! Cannot import 'root' "
+//                          << "component into higher level aggregate component!" << std::endl);
                 continue;
             }
 		}
@@ -235,6 +235,8 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 		if (itComp == 0)
 			continue;
 
+        // MARKED FOR DELETION
+        //---------------------
         //		NMDebugAI(<< "adding '" << finalName.toStdString() << "' to its host component" << endl);
         //		QDomElement propElem = compElem.firstChildElement("Property");
         //		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
@@ -325,7 +327,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 	// ------------------------------------------------------
 
 
-	NMDebugCtx(ctx, << "done!");
+//    NMDebugCtx(ctx, << "done!");
 	return nameRegister;
 }
 
@@ -497,14 +499,14 @@ void
 NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
         const QString& fileName, unsigned int indent, bool appendmode)
 {
-	NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	QFile file(fileName);
 	if (!file.open(QIODevice::ReadWrite | QIODevice::Text))
 	{
 		NMErr(ctx, << "unable to create file '" << fileName.toStdString()
 				<< "'!");
-		NMDebugCtx(ctx, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -523,7 +525,7 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 		{
 			NMErr(ctx, << "failed reading document structure from '"
 					<< fileName.toStdString() << "'!");
-			NMDebugCtx(ctx, << "done!");
+            NMDebugCtx(ctx, << "done!");
 			return;
 		}
 	}
@@ -545,21 +547,21 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 	out << doc.toString(indent);
 	file.close();
 
-	NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
 NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 		QDomDocument& doc)
 {
-	NMDebugCtx(ctx, << "...");
+//	NMDebugCtx(ctx, << "...");
 
 	if (comp == 0)
 	{
 		NMErr(ctx, << "cannot serialise NULL component!");
 		return;
 	}
-	NMDebugAI(<< "serialising '" << comp->objectName().toStdString() << endl);
+//	NMDebugAI(<< "serialising '" << comp->objectName().toStdString() << endl);
 
 	// ----------------------------------------------------------------------
 	// CREATE THE MODEL COMPONENT ELEMENT
@@ -638,7 +640,7 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 		}
 	}
 
-	NMDebugCtx(ctx, << "done!");
+//	NMDebugCtx(ctx, << "done!");
 }
 
 QDomElement NMModelSerialiser::createValueElement(QDomDocument& doc,

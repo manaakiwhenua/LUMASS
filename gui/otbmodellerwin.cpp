@@ -1083,9 +1083,9 @@ void OtbModellerWin::test()
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QString test = QInputDialog::getText(this, "", "test string=", QLineEdit::Normal,
-                                         "$AggrComp4-10$");
+                                         "/home/file/rad_$AggrComp5$_$AggrComp13$.kea");
 
-    QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-])(\\d*)\\$");
+    QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]?)(\\d*)\\$");
     int pos = 0; //rex.indexIn(test); //) != -1)
     while((pos = rex.indexIn(test, pos)) != -1)
     {

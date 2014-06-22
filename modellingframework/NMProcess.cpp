@@ -197,7 +197,8 @@ NMProcess::getParameter(const QString& property)
             int step = this->mapHostIndexToPolicyIndex(mStepIndex, lst.size());
             retStr = lst.at(step);
 
-            QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]*)(\\d*)\\$");
+            QString tStr = retStr;
+            QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]?)(\\d*)\\$");
             int pos = 0;
             while((pos = rex.indexIn(retStr, pos)) != -1)
             {
@@ -233,10 +234,11 @@ NMProcess::getParameter(const QString& property)
                         itStep -= delta;
                     }
 
-                    retStr = retStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
-                    NMDebugAI(<< "generated parameter: " << retStr.toStdString() << std::endl);
+                    tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
+                    NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
                 }
             }
+            retStr = tStr;
         }
         ret = QVariant::fromValue(retStr);
     }

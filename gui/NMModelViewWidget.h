@@ -89,7 +89,7 @@ public slots:
     void updateTreeEditor(const QString&);
     void changeFont(void);
     void changeColour(void);
-    void importModel(const QString& fileName);
+    void importModel(QDataStream& lmv, const QMap<QString, QString>& nameRegister);
     void copyComponents(const QList<QGraphicsItem*>& copyList,
                         const QPointF & source, const QPointF & target);
     void moveComponents(const QList<QGraphicsItem*>& moveList,
@@ -131,8 +131,12 @@ protected slots:
 	NMModelComponent* componentFromItem(QGraphicsItem* item);
 	QString getComponentItemTitle(QGraphicsItem* item);
 	void saveItems();
-	void loadItems();
+    void loadItems(const QString& fileName);
 	void reportIsModelControllerBusy(bool);
+    void callLoadItems()
+        {loadItems(QString());}
+
+    //void serialiseModelItems(QIODevice& device);
 
 
 	void getSubComps(NMModelComponent* comp, QStringList& subs);

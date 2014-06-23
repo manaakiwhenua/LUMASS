@@ -142,7 +142,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     connect(mModelScene, SIGNAL(itemLeftClicked(const QString &)), this,
             SLOT(updateTreeEditor(const QString &)));
     connect(mModelScene, SIGNAL(signalModelFileDropped(const QString &)),
-            this, SLOT(importModel(const QString &)));
+            this, SLOT(loadItems(const QString &)));
     connect(mModelScene, SIGNAL(signalItemCopy(const QList<QGraphicsItem*> &, const QPointF &,
                                                const QPointF &)),
             this, SLOT(copyComponents(const QList<QGraphicsItem*> &, const QPointF &,
@@ -267,8 +267,6 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 		NMAggregateComponentItem* aggrItem = 0;
 		QGraphicsItem* item = it.next();
 
-        //grpBnd = grpBnd.united(item->mapRectToScene(item->boundingRect()));
-
 		procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
 
@@ -291,10 +289,10 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 				host = comp->getHostComponent();
 			selComps.push_back(comp);
 		}
-		else
+        else // non-model-component-items
 		{
-			NMDebugAI(<< "oops! The model controller couldn't find the component for '"
-					<< itemTitle.toStdString() << "'!" << endl);
+            //NMDebugAI(<< "oops! The model controller couldn't find the component for '"
+            //		<< itemTitle.toStdString() << "'!" << endl);
 			continue;
 		}
 
@@ -333,10 +331,8 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 					NMModelComponentFactory::instance().createModelComponent(compType));
 	aggrComp->setObjectName("AggrComp");
 
-	// set the new aggregated component on time level host_level + 1
-	aggrComp->setTimeLevel(host->getTimeLevel() + 1);
-
-    //connect(aggrComp, SIGNAL(NMModelComponentChanged()), this, SLOT(compProcChanged()));
+    // set the new aggregated component on the host's time level
+    aggrComp->setTimeLevel(host->getTimeLevel());// + 1);
 
 	// ToDo: have to check the order in which 'selected items' returns the elements
 	// ie is it according to z-order or order of selection?
@@ -393,13 +389,13 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
     connect(aggrComp, SIGNAL(signalExecutionStopped()),
             aggrItem, SLOT(slotExecutionStopped()));
 
-    //aggrItem->setPos(grpBnd.topLeft());
 	it.toFront();
 	while(it.hasNext())
 	{
 		QGraphicsItem* item = it.next();
 		NMProcessComponentItem* pItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(item);
 
 		if (pItem != 0)
 		{
@@ -409,7 +405,10 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 		{
 			aggrItem->addToGroup(aItem);
 		}
-
+        else if (ti != 0)
+        {
+            aggrItem->addToGroup(ti);
+        }
 	}
 
 	// let the individual members of an aggregate component handle their
@@ -509,7 +508,7 @@ void NMModelViewWidget::initItemContextMenu()
 	connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
 	connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
-	connect(loadComp, SIGNAL(triggered()), this, SLOT(loadItems()));
+    connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
     connect(fontAct, SIGNAL(triggered()), this, SLOT(changeFont()));
     connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
 }
@@ -1045,12 +1044,17 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
 {
     NMDebugCtx(ctx, << "...");
 
+    NMDebugAI(<< this->reportRect(this->mModelScene->sceneRect(), "scene rect") << std::endl);
     NMDebugAI(<< this->reportPoint(source, "move from") << std::endl);
     NMDebugAI(<< this->reportPoint(target, "move to") << std::endl);
+
 
     NMAggregateComponentItem* ai = 0;
     NMProcessComponentItem* pi = 0;
     QGraphicsTextItem* ti = 0;
+
+    // the target item
+    QGraphicsItem* targetItem = this->mModelScene->itemAt(target, this->mModelView->transform());
 
     // determine individual group delta
     QList<QPointF> deltas;
@@ -1066,6 +1070,15 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         bool isTopLevel = true;
         foreach(QGraphicsItem* gii, moveList)
         {
+            // check, whether move is possible
+            if (gii->childItems().contains(targetItem))
+            {
+                // ouch we can't do that
+                NMBoxErr("Move Components", "Cannot move components into itself!");
+                NMDebugCtx(ctx, << "done!");
+                return;
+            }
+
             if (gii->childItems().contains(gi))
             {
                 isTopLevel = false;
@@ -1088,8 +1101,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
 
 
     // get the new host of the components
-    QGraphicsItem* targetItem = this->mModelScene->itemAt(target, this->mModelView->transform());
-    QGraphicsItemGroup* newHostItem = 0;
+    NMAggregateComponentItem* newHostItem = 0;
     NMIterableComponent* newHostComp = 0;
 
     if (targetItem != 0)
@@ -1108,8 +1120,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         }
         else if (targetItem->type() == NMAggregateComponentItem::Type)
         {
-            newHostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(
-                        this->mModelScene->itemAt(target, this->mModelView->transform()));
+            newHostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(targetItem);
             newHostComp = qobject_cast<NMIterableComponent*>(this->componentFromItem(newHostItem));
         }
     }
@@ -1137,18 +1148,22 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
                        << comp->getDescription().toStdString() << std::endl);
 
             NMIterableComponent* hostComp = comp->getHostComponent();
-            hostComp->removeModelComponent(comp->objectName());
-            newHostComp->addModelComponent(comp);
+            if (    hostComp->objectName().compare(newHostComp->objectName()) != 0
+                &&  newHostComp->objectName().compare(comp->objectName()) != 0
+               )
+            {
+                hostComp->removeModelComponent(comp->objectName());
+                newHostComp->addModelComponent(comp);
+            }
         }
 
-        QGraphicsItemGroup* hostItem = qgraphicsitem_cast<QGraphicsItemGroup*>(tli->parentItem());
+        NMAggregateComponentItem* hostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(tli->parentItem());
         if (hostItem != 0)
         {
             hostItem->removeFromGroup(tli);
         }
         mModelScene->removeItem(tli);
     }
-    //mModelScene->invalidate();
 
     // re-assemble the moving components at its new position and host
     int counter = 0;
@@ -1157,7 +1172,9 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(tli);
 
         QPointF newPos = target + deltas.at(counter);
-        if (newHostItem != 0)
+        if (    newHostItem != 0
+            &&  (ai != 0 && newHostItem->getTitle().compare(ai->getTitle()) != 0)
+           )
         {
             newHostItem->addToGroup(tli);
             if (ai)
@@ -1195,29 +1212,29 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
 {
     NMDebugCtx(ctx, << "...");
 
+    // - serialise items
+    // QDataStream; QDomDocument
+
 
     NMDebugCtx(ctx, << "done!");
 }
 
 
 void
-NMModelViewWidget::loadItems(void)
+NMModelViewWidget::loadItems(const QString& fileName)
 {
-	QString fileNameString = QFileDialog::getOpenFileName(this,
-	     tr("Load LUMASS Model Component"), "~", tr("LUMASS Model Component Files (*.lmx *.lmv)"));
-	if (fileNameString.isNull()) return;
+    QString fileNameString;
+    if (fileName.isEmpty())
+    {
+        fileNameString = QFileDialog::getOpenFileName(this,
+             tr("Load LUMASS Model Component"), "~", tr("LUMASS Model Component Files (*.lmx *.lmv)"));
+        if (fileNameString.isNull()) return;
+    }
+    else
+    {
+        fileNameString = fileName;
+    }
 
-    this->importModel(fileNameString);
-}
-
-void
-NMModelViewWidget::importModel(const QString& fileNameString)
-{
-    NMDebugCtx(ctx, << "...");
-
-    QFileInfo fi(fileNameString);
-    QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
-    QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
 
     // get the import component
     QString importHostName;
@@ -1233,25 +1250,41 @@ NMModelViewWidget::importModel(const QString& fileNameString)
         importHostName = QString::fromLatin1("root");
     }
 
-	// read the data model
-	QMap<QString, QString> nameRegister;
-	NMModelSerialiser xmlS;
 
-#ifdef BUILD_RASSUPPORT	
+    QFileInfo fi(fileNameString);
+    QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
+    QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
+
+    // read the data model
+    QMap<QString, QString> nameRegister;
+    NMModelSerialiser xmlS;
+
+#ifdef BUILD_RASSUPPORT
     nameRegister = xmlS.parseComponent(fnLmx, importHost, this->mModelController, *this->mRasConn);
 #else
     nameRegister = xmlS.parseComponent(fnLmx, importHost, this->mModelController);
 #endif
 
-	QFile fileLmv(fnLmv);
-	if (!fileLmv.open(QIODevice::ReadOnly))
-	{
-		NMErr(ctx, << "unable to open file '" << fnLmv.toStdString()
-				<< "'!");
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
-	QDataStream lmv(&fileLmv);
+    QFile fileLmv(fnLmv);
+    if (!fileLmv.open(QIODevice::ReadOnly))
+    {
+        NMErr(ctx, << "unable to open file '" << fnLmv.toStdString()
+                << "'!");
+        //NMDebugCtx(ctx, << "done!");
+        return;
+    }
+    QDataStream lmv(&fileLmv);
+
+    this->importModel(lmv, nameRegister, true);
+}
+
+void
+NMModelViewWidget::importModel(QDataStream& lmv,
+                               const QMap<QString, QString>& nameRegister,
+                               bool move)
+{
+    NMDebugCtx(ctx, << "...");
+
 
     NMDebugAI(<< "reading model view file ..." << endl);
     NMDebugAI(<< "---------------------------" << endl);
@@ -1280,7 +1313,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
     }
     else
     {
-        fileLmv.seek(0);
+        lmv.device()->seek(0);
         lmv.resetStatus();
     }
 
@@ -1288,8 +1321,8 @@ NMModelViewWidget::importModel(const QString& fileNameString)
     // first iteration: create item objects
     // --------------------------------------
 
-    QList<QGraphicsItem*> importItems;
-    QRectF importRegion; // in scene's coordinate space
+    QList<QString> importItems;
+    QList<QGraphicsTextItem*> importLabels;
 	NMIterableComponent* itComp = 0;
 	NMProcess* procComp;
 	while(!lmv.atEnd())
@@ -1301,7 +1334,6 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 		NMProcessComponentItem* pi;
 		NMAggregateComponentItem* ai;
         QGraphicsTextItem* ti;
-        QGraphicsItem* gi;
         switch(readType)
 		{
         case (qint32)QGraphicsTextItem::Type:
@@ -1313,7 +1345,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
                 ti->setOpenExternalLinks(true);
                 this->mModelScene->updateComponentItemFlags(ti);
                 this->mModelScene->addItem(ti);
-                gi = qgraphicsitem_cast<QGraphicsItem*>(ti);
+                importLabels <<  ti;
             }
             break;
 
@@ -1323,6 +1355,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 					lmv >> *pi;
 					QString itemTitle = nameRegister.value(pi->getTitle());
 					pi->setTitle(itemTitle);
+                    importItems << itemTitle;
 
 					if (!pi->getIsDataBufferItem())
 					{
@@ -1356,7 +1389,6 @@ NMModelViewWidget::importModel(const QString& fileNameString)
                     //pi->setFlag(QGraphicsItem::ItemIsMovable, true);
                     this->mModelScene->updateComponentItemFlags(pi);
                     this->mModelScene->addItem(pi);
-                    gi = qgraphicsitem_cast<QGraphicsItem*>(pi);
 				}
 				break;
 
@@ -1373,6 +1405,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 					ai->setTitle(nameRegister.value(title));
 					ai->setPos(pos);
 					ai->setColor(color);
+                    importItems <<  ai->getTitle();
 
 					for (unsigned v=0; v < nkids; ++v)
 					{
@@ -1391,7 +1424,6 @@ NMModelViewWidget::importModel(const QString& fileNameString)
                     ai->setHandlesChildEvents(false);
                     this->mModelScene->updateComponentItemFlags(ai);
 					this->mModelScene->addItem(ai);
-                    gi = qgraphicsitem_cast<QGraphicsItem*>(ai);
 				}
 
 				break;
@@ -1431,21 +1463,6 @@ NMModelViewWidget::importModel(const QString& fileNameString)
             }
 			break;
 		}
-
-        // keep track of imported items and their original (source) positions
-        if (gi != 0)
-        {
-            if (importItems.size() == 0)
-            {
-                importRegion = gi->mapRectToScene(gi->boundingRect());
-            }
-            else
-            {
-                importRegion = unionRects(importRegion, gi->mapRectToScene(gi->boundingRect()));
-            }
-            importItems.push_back(gi);
-            gi = 0;
-        }
 	}
 
     // --------------------------------------------
@@ -1453,7 +1470,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
     // --------------------------------------------
 
     // re-read header again to get to the point where the actual items are stored
-    fileLmv.seek(0);
+    lmv.device()->seek(0);
     lmv.resetStatus();
     lmv >> fileIdentifier;
     if (fileIdentifier.compare(QString::fromLatin1("LUMASS Model Visualisation File")) == 0)
@@ -1462,7 +1479,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
     }
     else
     {
-        fileLmv.seek(0);
+        lmv.device()->seek(0);
         lmv.resetStatus();
     }
 
@@ -1479,10 +1496,10 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 		lmv >> readType;
         //NMDebugAI(<< "item type is: " << (int)readType << endl);
 
-		NMProcessComponentItem* pi;
-		NMAggregateComponentItem* ai;
-		NMComponentLinkItem* li;
-        QGraphicsTextItem* ti;
+        NMProcessComponentItem* pi = 0;
+        NMAggregateComponentItem* ai = 0;
+        NMComponentLinkItem* li = 0;
+        QGraphicsTextItem* ti = 0;
 		switch (readType)
 		{
         case (qint32)QGraphicsTextItem::Type:
@@ -1619,6 +1636,34 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 			break;
 		}
 	}
+    this->mModelScene->invalidate();
+
+    if (move)
+    {
+        // determine import region
+        QRectF importRegion;
+
+        QList<QGraphicsItem*> moveItems;
+        foreach(const QString& itemName, importItems)
+        {
+            QGraphicsItem* gi = this->mModelScene->getComponentItem(itemName);
+            if (gi != 0)
+            {
+                importRegion = unionRects(importRegion, gi->sceneBoundingRect());
+                moveItems <<  gi;
+            }
+        }
+
+        foreach(QGraphicsItem* gti, importLabels)
+        {
+            importRegion = unionRects(importRegion, gti->sceneBoundingRect());
+            moveItems << gti;
+        }
+
+        NMDebugAI(<< this->reportRect(importRegion, "import region") << std::endl);
+
+        this->moveComponents(moveItems, importRegion.center(), mLastScenePos);
+    }
 
 
 //    NMAggregateComponentItem* ai = 0;
@@ -1795,7 +1840,7 @@ NMModelViewWidget::importModel(const QString& fileNameString)
 //    }
 
     NMDebugCtx(ctx, << "done!");
-    this->mModelScene->invalidate();
+    //this->mModelScene->invalidate();
 }
 
 std::string
@@ -1975,7 +2020,9 @@ void NMModelViewWidget::ungroupComponents()
         {
             host->removeModelComponent(c->objectName());
             hosthost->addModelComponent(c);
-            c->setTimeLevel(hosthost->getTimeLevel());
+            const unsigned int htl = hosthost->getTimeLevel();
+            const unsigned int ctl = c->getTimeLevel();
+            c->setTimeLevel(ctl < htl ? htl : ctl);
 
             if (this->mOpenEditors.contains(c))
             {

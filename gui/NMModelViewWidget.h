@@ -89,7 +89,8 @@ public slots:
     void updateTreeEditor(const QString&);
     void changeFont(void);
     void changeColour(void);
-    void importModel(QDataStream& lmv, const QMap<QString, QString>& nameRegister);
+    void importModel(QDataStream& lmv, const QMap<QString, QString>& nameRegister,
+                     bool move);
     void copyComponents(const QList<QGraphicsItem*>& copyList,
                         const QPointF & source, const QPointF & target);
     void moveComponents(const QList<QGraphicsItem*>& moveList,

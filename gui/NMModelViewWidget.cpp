@@ -39,6 +39,7 @@
 #include <QSplitter>
 #include <QtDebug>
 #include <QPropertyAnimation>
+#include <QDomDocument>
 
 #include "otbmodellerwin.h"
 #include "NMModelViewWidget.h"
@@ -814,24 +815,104 @@ void NMModelViewWidget::saveItems(void)
 	// we save either all selected items, the item under the mouse pointer
 	// or all items of the scene
 	QList<QGraphicsItem*> items = this->mModelScene->selectedItems();
-	QStringList savecomps;
-	if (items.isEmpty())
-	{
+    bool bSaveRoot = false;
+    if (items.isEmpty())
+    {
         if (this->mLastItem != 0)
         {
             items.append(this->mLastItem);
         }
         else if (!this->mModelScene->items().isEmpty())
-		{
-			items.append(this->mModelScene->items());
-            savecomps.push_back("root");
-		}
-	}
+        {
+            items.append(this->mModelScene->items());
+            bSaveRoot = true;
+        }
+    }
 
-	if (items.count() == 0)
+    if (items.count() == 0)
     {
         NMDebugCtx(ctx, << "done!");
         return;
+    }
+
+    QFileDialog dlg(this);
+    dlg.setAcceptMode(QFileDialog::AcceptSave);
+    dlg.setFileMode(QFileDialog::AnyFile);
+    dlg.setWindowTitle(tr("Save Model Component(s)"));
+    dlg.setDirectory("~/");
+    dlg.setNameFilter("LUMASS Model Component Files (*.lmx *.lmv)");
+
+    QString fileNameString;
+    if (dlg.exec())
+    {
+        fileNameString = dlg.selectedFiles().at(0);
+        if (fileNameString.isNull() || fileNameString.isEmpty())
+        {
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+    }
+    else
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    QFileInfo fi(fileNameString);
+    QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
+    QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
+
+    NMDebugAI(<< "absolutePath: " << fi.absolutePath().toStdString() << endl);
+    NMDebugAI(<< "baseName:     " << fi.baseName().toStdString() << endl);
+    NMDebugAI(<< "model file:   " << fnLmx.toStdString() << endl);
+    NMDebugAI(<< "view file:    " << fnLmv.toStdString() << endl);
+
+    QFile fileLmv(fnLmv);
+    if (!fileLmv.open(QIODevice::WriteOnly))
+    {
+        NMErr(ctx, << "unable to open/create file '" << fnLmv.toStdString()
+                << "'!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    QFile fileLmx(fnLmx);
+    if (!fileLmx.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        fileLmv.close();
+        NMErr(ctx, << "unable to create file '" << fnLmx.toStdString()
+                << "'!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    QDomDocument doc;
+    // call the actually working horse for exporting items ...
+    this->exportModel(items, fileLmv, doc, bSaveRoot);
+
+    // write xml file
+    QTextStream out(&fileLmx);
+    out << doc.toString(4);
+    fileLmx.close();
+
+    // write the lmv file
+    fileLmv.close();
+
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+
+void
+NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
+                               QIODevice& device,
+                               QDomDocument& doc,
+                               bool bSaveRoot)
+{
+    QStringList savecomps;
+    if (bSaveRoot)
+    {
+        savecomps.push_back("root");
     }
 
 	// create a list of all components to be saved
@@ -869,47 +950,7 @@ void NMModelViewWidget::saveItems(void)
 	QList<NMComponentLinkItem*> writtenLinks;
 
 
-	QFileDialog dlg(this);
-	dlg.setAcceptMode(QFileDialog::AcceptSave);
-	dlg.setFileMode(QFileDialog::AnyFile);
-	dlg.setWindowTitle(tr("Save Model Component(s)"));
-	dlg.setDirectory("~/");
-    dlg.setNameFilter("LUMASS Model Component Files (*.lmx *.lmv)");
-
-	QString fileNameString;
-	if (dlg.exec())
-	{
-		fileNameString = dlg.selectedFiles().at(0);
-		if (fileNameString.isNull() || fileNameString.isEmpty())
-        {
-            NMDebugCtx(ctx, << "done!");
-			return;
-        }
-	}
-	else
-    {
-        NMDebugCtx(ctx, << "done!");
-		return;
-    }
-
-	QFileInfo fi(fileNameString);
-	QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
-	QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
-
-	NMDebugAI(<< "absolutePath: " << fi.absolutePath().toStdString() << endl);
-	NMDebugAI(<< "baseName:     " << fi.baseName().toStdString() << endl);
-	NMDebugAI(<< "model file:   " << fnLmx.toStdString() << endl);
-	NMDebugAI(<< "view file:    " << fnLmv.toStdString() << endl);
-
-	QFile fileLmv(fnLmv);
-	if (!fileLmv.open(QIODevice::WriteOnly))
-	{
-		NMErr(ctx, << "unable to open/create file '" << fnLmv.toStdString()
-				<< "'!");
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
-	QDataStream lmv(&fileLmv);
+    QDataStream lmv(&device);
 
     // ---------------
     // set LUMASS identifier
@@ -927,6 +968,12 @@ void NMModelViewWidget::saveItems(void)
     }
 
     // --------------------------------------
+
+    // add the root node to the document
+    QDomElement modElem = doc.createElement("Model");
+    modElem.setAttribute("description", "the one and only model element");
+    doc.appendChild(modElem);
+
 
     // ------------------------------------------------------
     // save model component items (incl. any included labels)
@@ -953,7 +1000,8 @@ void NMModelViewWidget::saveItems(void)
 		if (itemName.compare("root") == 0)
 		{
 			comp = this->mModelController->getComponent("root");
-			xmlS.serialiseComponent(comp, fnLmx, 4, false);
+            //xmlS.serialiseComponent(comp, fnLmx, 4, false);
+            xmlS.serialiseComponent(comp, doc);
 			continue;
 		}
 
@@ -976,8 +1024,9 @@ void NMModelViewWidget::saveItems(void)
 				return;
 			}
 
-			xmlS.serialiseComponent(comp, fnLmx, 4, append);
-			lmv << (qint32)NMProcessComponentItem::Type;
+            //xmlS.serialiseComponent(comp, fnLmx, 4, append);
+            xmlS.serialiseComponent(comp, doc);
+            lmv << (qint32)NMProcessComponentItem::Type;
 			lmv << *pi;
 
 			// save links
@@ -1023,8 +1072,9 @@ void NMModelViewWidget::saveItems(void)
                 NMDebugCtx(ctx, << "done!");
 				return;
 			}
-			xmlS.serialiseComponent(comp, fnLmx, 4, append);
-			lmv << (qint32)NMAggregateComponentItem::Type;
+            //xmlS.serialiseComponent(comp, fnLmx, 4, append);
+            xmlS.serialiseComponent(comp, doc);
+            lmv << (qint32)NMAggregateComponentItem::Type;
 			lmv << *ai;
 			break;
 
@@ -1033,7 +1083,7 @@ void NMModelViewWidget::saveItems(void)
 		}
 	}
 
-	fileLmv.close();
+    //fileLmv.close();
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -1212,9 +1262,69 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
 {
     NMDebugCtx(ctx, << "...");
 
-    // - serialise items
-    // QDataStream; QDomDocument
+    NMAggregateComponentItem* hostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(
+                this->mModelScene->itemAt(target, this->mModelView->transform()));
 
+    NMIterableComponent* importHost = 0;
+    if (hostItem)
+    {
+        importHost = qobject_cast<NMIterableComponent*>(
+                        NMModelController::getInstance()->getComponent(hostItem->getTitle()));
+    }
+
+    // make a structured copy of the selected item
+    // -> DomDocument -> ByteStream
+    QBuffer buf;
+    buf.open(QBuffer::ReadWrite);
+    QDomDocument doc;
+    this->exportModel(copyList, buf, doc, false);
+
+    // parse the DomDocument copy and create identical copy
+    // with own identity (i.e. objectName is unique)
+    NMModelSerialiser xmlS;
+    QMap<QString, QString> nameRegister;
+    xmlS.parseModelDocument(nameRegister, doc, importHost);
+
+    // create a copy of the graphical item representation
+    buf.seek(0);
+    QDataStream itemStream(&buf);
+    this->importModel(itemStream, nameRegister, false);
+
+    // create a list of newly imported items
+    QList<QGraphicsItem*> itemList;
+    foreach(QGraphicsItem* origItem, copyList)
+    {
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(origItem);
+        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(origItem);
+        //QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(origItem);
+
+        QGraphicsItem* ni = 0;
+        if (pi)
+        {
+            ni = this->mModelScene->getComponentItem(nameRegister.value(pi->getTitle()));
+        }
+        else if (ai)
+        {
+            ni = this->mModelScene->getComponentItem(nameRegister.value(ai->getTitle()));
+        }
+        else
+        {
+            ni = this->mModelScene->itemAt(origItem->scenePos(), this->mModelView->transform());
+            if (ni == 0)
+            {
+                ni = origItem;
+            }
+        }
+
+        if (ni)
+        {
+            itemList << ni;
+        }
+    }
+
+
+    // move the new components to the pointed at position
+    this->moveComponents(itemList, source, target);
 
     NMDebugCtx(ctx, << "done!");
 }

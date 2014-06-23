@@ -53,6 +53,7 @@
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 
+class QDomDocument;
 class OtbModellerWin;
 class NMComponentLinkItem;
 
@@ -137,7 +138,10 @@ protected slots:
     void callLoadItems()
         {loadItems(QString());}
 
-    //void serialiseModelItems(QIODevice& device);
+    void exportModel(const QList<QGraphicsItem*>& items,
+                     QIODevice& device,
+                     QDomDocument& doc,
+                     bool bSaveRoot);
 
 
 	void getSubComps(NMModelComponent* comp, QStringList& subs);

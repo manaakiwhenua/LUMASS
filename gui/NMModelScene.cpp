@@ -275,7 +275,7 @@ NMModelScene::getComponentItem(const QString& name)
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
 	NMDebugCtx(ctx, << "...");
-
+    mMousePos = event->scenePos();
     if (event->mimeData()->hasFormat("text/plain"))
 	{
 		QString dropText = event->mimeData()->text();

@@ -88,10 +88,25 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 		return nameRegister;
 	}
 
+    this->parseModelDocument(nameRegister, doc, importHost);
+
+    file->close();
+
+    return nameRegister;
+}
+
+void
+NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
+                                      QDomDocument& doc,
+                                      NMIterableComponent* importHost)
+{
+
 	QDomElement modelElem = doc.documentElement();
 //	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
 
-	int ind = nmlog::nmindent;
+    NMModelController* controller = NMModelController::getInstance();
+
+    int ind = nmlog::nmindent;
 
 	//==========================================================================================
 	// parsing model components -- creating objects, assigning properties
@@ -111,7 +126,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 		{
 			NMErr(ctx, << "detected unnamed component!");
 //			NMDebugCtx(ctx, << "done!");
-			return nameRegister;
+            return;// nameRegister;
 		}
 		else if (compName.compare("root") == 0)
 		{
@@ -328,7 +343,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 
 
 //    NMDebugCtx(ctx, << "done!");
-	return nameRegister;
+    //return nameRegister;
 }
 
 

@@ -66,6 +66,11 @@ public:
 #endif			
 			);
 
+    void parseModelDocument(QMap<QString, QString>& nameRegister,
+                            QDomDocument& doc,
+                            NMIterableComponent* importHost);
+
+
 protected:
 	QDomElement createValueElement(QDomDocument& doc,
 			QVariant& dataValue);

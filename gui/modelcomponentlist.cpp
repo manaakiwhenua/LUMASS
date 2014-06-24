@@ -53,6 +53,8 @@
 #include <QMessageBox>
 #include <QColorDialog>
 #include <QGraphicsItem>
+#include <QFileInfo>
+#include <QtConcurrent>
 
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
@@ -767,6 +769,27 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         this->mIndicatorIdx = QModelIndex();
         event->acceptProposedAction();
     }
+    else if (event->mimeData()->text().startsWith(QString::fromLatin1("file://")))
+    {
+        QString fn = event->mimeData()->text();
+        fn = fn.right(fn.size()-7);
+
+        NMDebugAI(<< "dropped file: " << fn.toStdString() << std::endl);
+
+        QFileInfo finfo(fn);
+        if (finfo.isFile())
+        {
+            event->acceptProposedAction();
+
+            NMGlobalHelper h;
+            vtkRenderWindow* renWin = h.getRenderWindow();
+            NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
+            fLayer->setObjectName(finfo.baseName());
+            h.getMainWindow()->connectImageLayerProcSignals(fLayer);
+            QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fn);
+        }
+    }
+
 
     NMDebugCtx(ctx, << "done!");
 
@@ -812,6 +835,11 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
             }
             event->acceptProposedAction();
         }
+    }
+    else if (event->mimeData()->text().startsWith(QString::fromLatin1("file://")))
+    {
+        NMDebugAI(<< "file dragged into layer component list" << std::endl);
+        event->acceptProposedAction();
     }
 
     NMDebugCtx(ctx, << "done!");

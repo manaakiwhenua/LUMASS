@@ -937,7 +937,8 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
         // look after "root-labels"
         else if (label != 0)
         {
-            if (label->parentItem() == 0)
+            if (    label->parentItem() == 0
+                ||  !items.contains(label->parentItem()))
             {
                 rootLabels.push_back(label);
             }

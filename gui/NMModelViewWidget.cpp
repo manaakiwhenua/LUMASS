@@ -1222,17 +1222,23 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(tli);
 
         QPointF newPos = target + deltas.at(counter);
-        if (    newHostItem != 0
-            &&  (ai != 0 && newHostItem->getTitle().compare(ai->getTitle()) != 0)
-           )
+        if (newHostItem != 0)
         {
-            newHostItem->addToGroup(tli);
             if (ai)
             {
+                if (newHostItem->getTitle().compare(ai->getTitle()) != 0)
+                {
+                    newHostItem->addToGroup(ai);
+                }
+                else
+                {
+                    mModelScene->addItem(ai);
+                }
                 ai->relocate(newPos);
             }
             else
             {
+                newHostItem->addToGroup(tli);
                 tli->setPos(newHostItem->mapFromScene(newPos));
             }
         }
@@ -1248,11 +1254,11 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
                 tli->setPos(newPos);
             }
         }
+        tli->ungrabMouse();
         ++counter;
     }
     this->mModelScene->invalidate();
-
-
+    this->mModelScene->clearDragItems();
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -1321,7 +1327,6 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
             itemList << ni;
         }
     }
-
 
     // move the new components to the pointed at position
     this->moveComponents(itemList, source, target);

@@ -243,7 +243,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Component Properties"));
 
     ui->componentInfoDock->setMinimumWidth(160);
-    ui->componentInfoDock->setVisible(false);
+    ui->componentInfoDock->setVisible(true);
 
     // ================================================
     // MODEL COMPONENT DOCK (Source)
@@ -357,11 +357,11 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     // ..........................
     // component management actions
-//    QIcon moveIcon(":move-icon.png");
-//    QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
-//    		this->ui->mainToolBar);
-//    moveAction->setCheckable(true);
-//    moveAction->setChecked(true);
+    QIcon moveIcon(":move-icon.png");
+    QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
+            this->ui->mainToolBar);
+    moveAction->setCheckable(true);
+    moveAction->setChecked(false);
 
     QIcon linkIcon(":link-icon.png");
     QAction* linkAction = new QAction(linkIcon, "Link Components", this->ui->mainToolBar);
@@ -395,6 +395,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->ui->mainToolBar->addAction(zoomInAction);
     this->ui->mainToolBar->addAction(zoomOutAction);
     this->ui->mainToolBar->addAction(zoomToContent);
+    this->ui->mainToolBar->addAction(moveAction);
 
     this->ui->mainToolBar->addSeparator();
     this->ui->mainToolBar->addAction(resetAction);
@@ -407,8 +408,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     		this->ui->modelViewWidget, SIGNAL(linkToolToggled(bool)));
 //    connect(selAction, SIGNAL(toggled(bool)),
 //    		this->ui->modelViewWidget, SIGNAL(selToolToggled(bool)));
-//    connect(moveAction, SIGNAL(toggled(bool)),
-//    		this->ui->modelViewWidget, SIGNAL(moveToolToggled(bool)));
+    connect(moveAction, SIGNAL(toggled(bool)),
+            this->ui->modelViewWidget, SIGNAL(moveToolToggled(bool)));
 
     connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
     connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));
@@ -512,14 +513,18 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->ui->componentsWidget->setVisible(true);
     this->ui->actionComponents_View->setChecked(true);
 
-    this->ui->infoWidgetList->setWidgetItemVisible(0, false);
-    this->ui->infoWidgetList->setWidgetItemVisible(1, false);
+
+    this->ui->componentInfoDock->setVisible(true);
+    this->ui->actionShow_Components_Info->setChecked(true);
 
     this->ui->infoWidgetList->setWidgetItemVisible(0, true);
-    this->ui->infoWidgetList->setWidgetItemVisible(1, true);
+    this->ui->infoWidgetList->setWidgetItemVisible(0, false);
 
-    this->ui->componentInfoDock->setVisible(false);
-    this->ui->actionShow_Components_Info->setChecked(false);
+    this->ui->infoWidgetList->setWidgetItemVisible(1, true);
+    this->ui->infoWidgetList->setWidgetItemVisible(1, false);
+
+    this->ui->infoWidgetList->setWidgetItemVisible(1, true);
+    this->ui->infoWidgetList->setWidgetItemVisible(0, true);
 
     // set menu's check buttons to right state
     this->ui->actionShow_Map_View->setChecked(true);

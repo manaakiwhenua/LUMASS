@@ -358,7 +358,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // ..........................
     // component management actions
     QIcon moveIcon(":move-icon.png");
-    QAction* moveAction = new QAction(moveIcon, "Move Scene or Component",
+    QAction* moveAction = new QAction(moveIcon, "Move Scene",
             this->ui->mainToolBar);
     moveAction->setCheckable(true);
     moveAction->setChecked(false);
@@ -507,24 +507,13 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // INITIAL WIDGET's VISIBILITY
     // ================================================
 
-//    this->ui->compWidgetList->setWidgetVisibile(0, true);
-//    this->ui->compWidgetList->setWidgetVisibile(1, true);
-
-    this->ui->componentsWidget->setVisible(true);
-    this->ui->actionComponents_View->setChecked(true);
-
-
     this->ui->componentInfoDock->setVisible(true);
     this->ui->actionShow_Components_Info->setChecked(true);
 
-    this->ui->infoWidgetList->setWidgetItemVisible(0, true);
-    this->ui->infoWidgetList->setWidgetItemVisible(0, false);
-
-    this->ui->infoWidgetList->setWidgetItemVisible(1, true);
     this->ui->infoWidgetList->setWidgetItemVisible(1, false);
 
-    this->ui->infoWidgetList->setWidgetItemVisible(1, true);
-    this->ui->infoWidgetList->setWidgetItemVisible(0, true);
+    this->ui->componentsWidget->setVisible(true);
+    this->ui->actionComponents_View->setChecked(true);
 
     // set menu's check buttons to right state
     this->ui->actionShow_Map_View->setChecked(true);

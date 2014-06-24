@@ -732,7 +732,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         iLayer->setImage(comp->getOutput(0));
 
     }
-    else if (dropSource.startsWith(QString::fromLatin1("_ModelComponentList_")) == 0)
+    else if (dropSource.compare(QString::fromLatin1("_ModelComponentList_")) == 0)
     {
         QModelIndex destidx = this->indexAt(event->pos());
         if (!destidx.isValid() || destidx.parent().isValid())
@@ -776,32 +776,44 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
 {
     NMDebugCtx(ctx, << "...");
-	if (event->mimeData()->hasFormat("text/plain"))
-	{
-		QString layer = event->mimeData()->text();
-		if (this->getLayer(layer) != 0)
-			event->acceptProposedAction();
-        else if (layer.startsWith(QString::fromLatin1("_NMModelScene_:")))
+
+    QString dropSource;
+    QString dropLayer;
+    if (event->mimeData()->hasFormat("text/plain"))
+    {
+        QString ts = event->mimeData()->text();
+        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        if (tl.count() == 2)
         {
-            QStringList tmp = layer.split(':', QString::SkipEmptyParts);
-            if (tmp.count() == 2)
-            {
-                NMModelComponent* comp = NMModelController::getInstance()->getComponent(tmp.at(1));
-                if (comp != 0)
-                {
-                    if (comp->getOutput(0) == 0 || comp->getOutput(0)->getDataObject() == 0)
-                    {
-                        NMDebugAI(<< "empty data object!" << std::endl);
-                    }
-                    else
-                    {
-                        NMDebugAI(<< "got data on the hook!" << std::endl);
-                    }
-                    event->acceptProposedAction();
-                }
-            }
+            dropSource = tl.at(0);
+            dropLayer = tl.at(1);
         }
-	}
+    }
+
+    if (dropSource.compare(QString::fromLatin1("_ModelComponentList_")) == 0)
+    {
+        if (this->getLayer(dropLayer) != 0)
+        {
+            event->acceptProposedAction();
+        }
+    }
+    else if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
+    {
+        NMModelComponent* comp = NMModelController::getInstance()->getComponent(dropLayer);
+        if (comp != 0)
+        {
+            if (comp->getOutput(0) == 0 || comp->getOutput(0)->getDataObject() == 0)
+            {
+                NMDebugAI(<< "empty data object!" << std::endl);
+            }
+            else
+            {
+                NMDebugAI(<< "got data on the hook!" << std::endl);
+            }
+            event->acceptProposedAction();
+        }
+    }
+
     NMDebugCtx(ctx, << "done!");
 }
 

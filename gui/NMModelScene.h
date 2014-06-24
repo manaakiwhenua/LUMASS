@@ -78,6 +78,9 @@ public slots:
 	void toggleSelToolButton(bool);
 	void toggleMoveToolButton(bool);
 
+    void clearDragItems(void)
+        {this->mDragItemList.clear();}
+
 signals:
 	void linkItemCreated(NMComponentLinkItem*);
 	void processItemCreated(NMProcessComponentItem*,

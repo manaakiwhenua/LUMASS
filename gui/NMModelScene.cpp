@@ -173,7 +173,7 @@ void NMModelScene::setProcCompSelectability(bool selectable)
 {
 	QList<QGraphicsItem*> allItems = this->items();
 	QListIterator<QGraphicsItem*> it(allItems);
-	NMProcessComponentItem* item;
+    //NMProcessComponentItem* item;
 	while(it.hasNext())
 	{
 		QGraphicsItem* item = it.next();
@@ -202,7 +202,7 @@ void NMModelScene::setProcCompMoveability(bool moveable)
 {
 	QList<QGraphicsItem*> allItems = this->items();
 	QListIterator<QGraphicsItem*> it(allItems);
-	NMProcessComponentItem* item;
+    //NMProcessComponentItem* item;
 	while(it.hasNext())
 	{
 		it.next()->setFlag(QGraphicsItem::ItemIsMovable, moveable);
@@ -222,7 +222,7 @@ void NMModelScene::toggleSelToolButton(bool selMode)
 	}
 	else
 	{
-		this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
+        this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
 		this->mMode = NMS_IDLE;
 		this->setProcCompSelectability(false);
 		//this->setLinkCompSelectability(false);
@@ -233,16 +233,17 @@ void NMModelScene::toggleMoveToolButton(bool moveMode)
 {
 	if (moveMode)
 	{
-		this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
-		this->mMode = NMS_MOVE;
-		this->setProcCompMoveability(true);
+        //this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
+        this->mMode = NMS_MOVE;
+        this->setProcCompMoveability(false);
 	}
 	else
 	{
-        this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
+        //this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
         this->mMode = NMS_IDLE;
-        this->setProcCompMoveability(false);
+        this->setProcCompMoveability(true);
 	}
+    this->invalidate();
 }
 
 QGraphicsItem*
@@ -310,6 +311,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         }
         else if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
         {
+            event->acceptProposedAction();
             QPointF dropPos = event->scenePos();
             switch(event->dropAction())
             {
@@ -322,7 +324,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 emit signalItemCopy(mDragItemList, mDragStartPos, dropPos);
                 break;
             }
-            event->acceptProposedAction();
+            this->mDragItemList.clear();
         }
         else if (dropSource.startsWith(QString::fromLatin1("_NMProcCompList_")))
         {
@@ -728,9 +730,24 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 	default:
         {
-            this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
-            this->views().at(0)->setCursor(Qt::OpenHandCursor);
-            this->setProcCompMoveability(true);
+            if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            {
+                this->views().at(0)->setCursor(Qt::PointingHandCursor);
+                this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);
+                this->setProcCompSelectability(true);
+                this->setLinkCompSelectability(false);
+            }
+            else
+            {
+                this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
+                this->views().at(0)->setCursor(Qt::OpenHandCursor);
+                this->setProcCompSelectability(false);
+            }
+            if (mMode != NMS_MOVE)
+            {
+                this->setProcCompMoveability(true);
+            }
+            this->mDragItemList.clear();
         }
 		break;
 	}

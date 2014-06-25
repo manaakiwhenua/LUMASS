@@ -1303,7 +1303,6 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
     {
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(origItem);
         NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(origItem);
-        //QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(origItem);
 
         QGraphicsItem* ni = 0;
         if (pi)
@@ -1316,6 +1315,7 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
         }
         else
         {
+
             ni = this->mModelScene->itemAt(origItem->scenePos(), this->mModelView->transform());
             if (ni == 0)
             {

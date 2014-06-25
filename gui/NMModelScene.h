@@ -56,6 +56,7 @@ class NMModelScene: public QGraphicsScene
 	Q_OBJECT
 
 public:
+
 	enum InteractionMode {NMS_IDLE, NMS_MOVE, NMS_LINK, NMS_SELECT};
 
 	NMModelScene(QObject* parent=0);
@@ -124,6 +125,8 @@ private:
 
 	QGraphicsLineItem* mLinkLine;
 	InteractionMode mMode;
+
+    bool mbSceneMove;
 
     QList<QGraphicsItem*> mDragItemList;
     QPointF mDragStartPos;

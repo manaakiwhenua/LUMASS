@@ -47,7 +47,8 @@ NMModelScene::NMModelScene(QObject* parent)
 	: QGraphicsScene(parent)
 {
 	//ctx = "NMModelScene";
-    mMode = NMS_MOVE;
+    mMode = NMS_IDLE;
+    mbSceneMove = false;
 	mLinkHitTolerance = 15;
 	mLinkZLevel = 10000;
 	mLinkLine = 0;
@@ -157,15 +158,31 @@ NMModelScene::updateComponentItemFlags(QGraphicsItem *item)
     switch(mMode)
     {
     case NMS_LINK:
-        item->setFlag(QGraphicsItem::ItemIsMovable, false);
+        //item->setFlag(QGraphicsItem::ItemIsMovable, false);
         item->setFlag(QGraphicsItem::ItemIsSelectable, false);
         break;
+//    case NMS_MOVE:
+//        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+//        item->setFlag(QGraphicsItem::ItemIsMovable, false);
+//        break;
     case NMS_SELECT:
-    case NMS_MOVE:
+        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+//        item->setFlag(QGraphicsItem::ItemIsMovable, true);
+        break;
+    case NMS_IDLE:
     default:
-        item->setFlag(QGraphicsItem::ItemIsMovable, true);
+//        item->setFlag(QGraphicsItem::ItemIsMovable, true);
         item->setFlag(QGraphicsItem::ItemIsSelectable, false);
         break;
+    }
+
+    if (mbSceneMove)
+    {
+        item->setFlag(QGraphicsItem::ItemIsMovable, false);
+    }
+    else
+    {
+        item->setFlag(QGraphicsItem::ItemIsMovable, true);
     }
 }
 
@@ -234,13 +251,15 @@ void NMModelScene::toggleMoveToolButton(bool moveMode)
 	if (moveMode)
 	{
         //this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
-        this->mMode = NMS_MOVE;
+        //this->mMode = NMS_MOVE;
+        mbSceneMove = true;
         this->setProcCompMoveability(false);
 	}
 	else
 	{
         //this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
-        this->mMode = NMS_IDLE;
+        //this->mMode = NMS_IDLE;
+        mbSceneMove = false;
         this->setProcCompMoveability(true);
 	}
     this->invalidate();
@@ -470,7 +489,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                 {
                     this->views().at(0)->setCursor(Qt::PointingHandCursor);
                     this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);
-                    this->setProcCompMoveability(false);
+                    //this->setProcCompMoveability(false);
                     this->setProcCompSelectability(true);
                     this->setLinkCompSelectability(false);
                 }
@@ -736,17 +755,23 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);
                 this->setProcCompSelectability(true);
                 this->setLinkCompSelectability(false);
+                mMode = NMS_SELECT;
             }
             else
             {
                 this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
                 this->views().at(0)->setCursor(Qt::OpenHandCursor);
                 this->setProcCompSelectability(false);
+                mMode = NMS_IDLE;
             }
-            if (mMode != NMS_MOVE)
-            {
-                this->setProcCompMoveability(true);
-            }
+            //            if (!mbSceneMove)
+            //            {
+            //                this->setProcCompMoveability(true);
+            //            }
+            //            else
+            //            {
+            //                this->setProcCompMoveability(false);
+            //            }
             this->mDragItemList.clear();
         }
 		break;

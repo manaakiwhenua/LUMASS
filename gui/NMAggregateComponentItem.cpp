@@ -444,7 +444,7 @@ QDataStream& operator<<(QDataStream& data, const QGraphicsTextItem& item)
     data << item.toPlainText();
     data << item.font();
     data << item.defaultTextColor();
-    data << item.pos();
+    data << item.scenePos();
 
     return data;
 }

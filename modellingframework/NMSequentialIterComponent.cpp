@@ -57,9 +57,10 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
     unsigned int i = mIterationStepRun-1;
     for (; i < this->mNumIterations; ++i)
 	{
-		this->componentUpdateLogic(repo, minLevel, maxLevel, i);
         emit signalProgress(mIterationStepRun);
+        this->componentUpdateLogic(repo, minLevel, maxLevel, i);
         ++mIterationStepRun;
 	}
+    mIterationStepRun = mIterationStep;
 }
 

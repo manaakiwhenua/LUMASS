@@ -156,6 +156,10 @@ unsigned short
 NMProcess::mapHostIndexToPolicyIndex(unsigned short step,
 		unsigned short size)
 {
+    // attention, this relies on ::linkInPipeline() having been
+    // called already when this function is called
+    step = this->mStepIndex;
+
 	unsigned short idx = 0;
 	if (size == 0)
 		return idx;

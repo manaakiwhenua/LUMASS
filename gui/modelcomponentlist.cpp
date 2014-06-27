@@ -769,24 +769,30 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         this->mIndicatorIdx = QModelIndex();
         event->acceptProposedAction();
     }
-    else if (event->mimeData()->text().startsWith(QString::fromLatin1("file://")))
+    else if (event->mimeData()->hasUrls())
     {
-        QString fn = event->mimeData()->text();
-        fn = fn.right(fn.size()-7);
+        QString fileName;
+        foreach(const QUrl& url, event->mimeData()->urls())
+        {
+            if (url.isLocalFile())
+            {
+                fileName = url.toLocalFile();
+                break;
+            }
+        }
 
-        NMDebugAI(<< "dropped file: " << fn.toStdString() << std::endl);
-
-        QFileInfo finfo(fn);
-        if (finfo.isFile())
+        if (!fileName.isEmpty())
         {
             event->acceptProposedAction();
+
+            QFileInfo finfo(fileName);
 
             NMGlobalHelper h;
             vtkRenderWindow* renWin = h.getRenderWindow();
             NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
             fLayer->setObjectName(finfo.baseName());
             h.getMainWindow()->connectImageLayerProcSignals(fLayer);
-            QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fn);
+            QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
         }
     }
 
@@ -836,10 +842,23 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
             event->acceptProposedAction();
         }
     }
-    else if (event->mimeData()->text().startsWith(QString::fromLatin1("file://")))
+    else if (event->mimeData()->hasUrls())
     {
-        NMDebugAI(<< "file dragged into layer component list" << std::endl);
-        event->acceptProposedAction();
+        QString fileName;
+        foreach(const QUrl& url, event->mimeData()->urls())
+        {
+            if (url.isLocalFile())
+            {
+                fileName = url.toLocalFile();
+                break;
+            }
+        }
+
+        if (!fileName.isEmpty())
+        {
+            NMDebugAI(<< "file dragged into layer component list" << std::endl);
+            event->acceptProposedAction();
+        }
     }
 
     NMDebugCtx(ctx, << "done!");

@@ -93,18 +93,29 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
 {
     NMDebugCtx(ctx, << "...");
 
-	if (event->mimeData()->hasFormat("text/plain"))
+    if (    event->mimeData()->hasFormat("text/plain")
+        ||  event->mimeData()->hasUrls())
     {
+        QString fileName;
+        foreach(const QUrl& url, event->mimeData()->urls())
+        {
+            if (    url.isLocalFile()
+                &&  (   url.toLocalFile().endsWith(QString::fromLatin1("lmv"))
+                     || url.toLocalFile().endsWith(QString::fromLatin1("lmx"))
+                    )
+               )
+            {
+                fileName = url.toLocalFile();
+                break;
+            }
+        }
+
         NMDebugAI(<< event->mimeData()->text().toStdString());
         QString mimeText = event->mimeData()->text();
-        if (    (   mimeText.startsWith(QString::fromLatin1("file://"))
-                 && (   mimeText.endsWith(QString::fromLatin1("lmv"))
-                     || mimeText.endsWith(QString::fromLatin1("lmx"))
-                    )
-                )
-            ||  mimeText.startsWith(QString::fromLatin1("_NMProcCompList_:"))
+        if (    mimeText.startsWith(QString::fromLatin1("_NMProcCompList_:"))
             ||  mimeText.startsWith(QString::fromLatin1("_NMModelScene_:"))
             ||  mimeText.startsWith(QString::fromLatin1("_ModelComponentList_:"))
+            ||  !fileName.isEmpty()
            )
         {
             NMDebug(<< " - supported!" << std::endl);
@@ -296,7 +307,8 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
 	NMDebugCtx(ctx, << "...");
     mMousePos = event->scenePos();
-    if (event->mimeData()->hasFormat("text/plain"))
+    if (    event->mimeData()->hasFormat("text/plain")
+        ||  event->mimeData()->hasUrls())
 	{
 		QString dropText = event->mimeData()->text();
         QStringList dropsplit = dropText.split(':');
@@ -385,15 +397,25 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 emit processItemCreated(procItem, dropItem, event->scenePos());
             }
         }
-        else if (dropText.startsWith(QString::fromLatin1("file://")))
+        else if (event->mimeData()->hasUrls())
         {
-            if (    dropText.endsWith(QString::fromLatin1("lmv"))
-                ||  dropText.endsWith(QString::fromLatin1("lmx"))
-               )
+            // we grab the first we can get hold of
+            QString fileName;
+            foreach(const QUrl& url, event->mimeData()->urls())
             {
-                // 01234567
-                // file://
-                QString fileName = dropText.remove(0,7);
+                if (    url.isLocalFile()
+                    &&  (   url.toLocalFile().endsWith(QString::fromLatin1("lmv"))
+                         || url.toLocalFile().endsWith(QString::fromLatin1("lmx"))
+                        )
+                   )
+                {
+                    fileName = url.toLocalFile();
+                    break;
+                }
+            }
+
+            if (!fileName.isEmpty())
+            {
                 QFileInfo finfo(fileName);
                 if (finfo.isFile())
                 {

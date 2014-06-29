@@ -300,6 +300,7 @@ NMRATBandMathImageFilterWrapper
 		throw e;
 
 		NMErr(ctx, << "no map expression available!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -330,11 +331,30 @@ NMRATBandMathImageFilterWrapper
 		int cnt = 0;
 		foreach (const QString& input, currentInputs)
 		{
-			NMItkDataObjectWrapper* dw = NMModelController::getInstance()->getOutputFromSource(input);
+
+            NMItkDataObjectWrapper* dw = NMModelController::getInstance()->getOutputFromSource(input);
 			if (dw == 0)
 			{
-				++cnt;
-				continue;
+
+                NMModelComponent* reqComp = NMModelController::getInstance()->getComponent(input);
+                NMIterableComponent* reqItComp = qobject_cast<NMIterableComponent*>(reqComp);
+                if (reqItComp)
+                {
+                    NMProcess* reqProc = reqItComp->getProcess();
+                    if (!reqProc->isInitialised())
+                    {
+                        reqItComp->initialiseComponents(reqItComp->getTimeLevel());
+                    }
+                    reqProc->linkInPipeline(step, repo);
+                }
+
+                dw = NMModelController::getInstance()->getOutputFromSource(input);
+
+                if (dw == 0)
+                {
+                    ++cnt;
+                    continue;
+                }
 			}
 
 			otb::AttributeTable::Pointer tab = dw->getOTBTab();

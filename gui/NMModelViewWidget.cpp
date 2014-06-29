@@ -593,15 +593,15 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 	// Execute && Reset model
     if (!running && ((ai != 0 || pi != 0 || mLastItem == 0) && li == 0 && ti == 0))
 	{
-        if (!dataBuffer)
+        if (dataBuffer)
         {
             this->mActionMap.value("Execute")->setEnabled(true);
-            mActionMap.value("Execute")->setText(QString("Execute %1").arg(title));
+            mActionMap.value("Execute")->setText(QString::fromLatin1("Update %1").arg(title));
         }
         else
         {
-            this->mActionMap.value("Execute")->setEnabled(false);
-            mActionMap.value("Execute")->setText(QString::fromUtf8("Execute"));
+            this->mActionMap.value("Execute")->setEnabled(true);
+            mActionMap.value("Execute")->setText(QString::fromUtf8("Execute %1").arg(title));
         }
 
         this->mActionMap.value("Reset")->setEnabled(true);
@@ -815,6 +815,7 @@ void NMModelViewWidget::saveItems(void)
 	// we save either all selected items, the item under the mouse pointer
 	// or all items of the scene
 	QList<QGraphicsItem*> items = this->mModelScene->selectedItems();
+
     bool bSaveRoot = false;
     if (items.isEmpty())
     {

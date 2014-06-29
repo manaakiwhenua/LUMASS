@@ -36,12 +36,17 @@ public:
     NMProcess* createProcess(const QString& procClass);
     NMProcess* createProcessFromAlias(const QString& alias);
 
+    bool isSink(const QString& process);
+
 private:
 	NMProcessFactory(QObject* parent=0);
 	virtual ~NMProcessFactory();
-    NMProcessFactory(const NMProcessFactory& fab){};
+    NMProcessFactory(const NMProcessFactory& fab){}
 
     QString procNameFromAlias(const QString& alias);
+
+    QStringList mSinks;
+    QStringList mProcRegister;
 
 
 };

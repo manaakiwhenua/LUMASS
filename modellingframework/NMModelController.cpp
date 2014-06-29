@@ -196,15 +196,15 @@ NMModelController::executeModel(const QString& compName)
 	}
 
 	// we only execute 'iterable / executable' components
-	NMIterableComponent* icomp =
-			qobject_cast<NMIterableComponent*>(comp);
-	if (icomp == 0)
-	{
-		NMErr(ctx, << "component '" << compName.toStdString()
-				<< "' is of type '" << comp->metaObject()->className()
-				<< "' which is non-executable!");
-		return;
-	}
+//	NMIterableComponent* icomp =
+//			qobject_cast<NMIterableComponent*>(comp);
+//	if (icomp == 0)
+//	{
+//		NMErr(ctx, << "component '" << compName.toStdString()
+//				<< "' is of type '" << comp->metaObject()->className()
+//				<< "' which is non-executable!");
+//		return;
+//	}
 
 	// we reset all the components
 	// (and thereby delete all data buffers)

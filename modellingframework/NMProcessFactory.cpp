@@ -37,6 +37,23 @@
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
 	this->setParent(parent);
+
+    //  dirty hack; needs to be replaced with proper
+    //  process registration (i.e. classname plus
+    //  individual process factory)
+    mProcRegister << QString::fromLatin1("ImageReader")          ;
+    mProcRegister << QString::fromLatin1("MapAlgebra")           ;
+    mProcRegister << QString::fromLatin1("ImageWriter")          ;
+    mProcRegister << QString::fromLatin1("NeighbourCounter")     ;
+    mProcRegister << QString::fromLatin1("RandomImage")          ;
+    mProcRegister << QString::fromLatin1("CostDistanceBuffer")   ;
+    mProcRegister << QString::fromLatin1("FocalDistanceWeight")  ;
+    mProcRegister << QString::fromLatin1("SummarizeZones")       ;
+    mProcRegister << QString::fromLatin1("CastImage")            ;
+    mProcRegister << QString::fromLatin1("ResampleImage")        ;
+
+    mSinks << QString::fromLatin1("ImageWriter");
+
 }
 
 NMProcessFactory::~NMProcessFactory()
@@ -47,6 +64,22 @@ NMProcessFactory& NMProcessFactory::instance(void)
 {
 	static NMProcessFactory fab;
 	return fab;
+}
+
+bool
+NMProcessFactory::isSink(const QString& process)
+{
+    bool sink = false;
+    foreach(const QString& p, mSinks)
+    {
+        if (process.startsWith(p))
+        {
+            sink = true;
+            break;
+        }
+    }
+
+    return sink;
 }
 
 QString

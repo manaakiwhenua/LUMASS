@@ -25,6 +25,7 @@
 #include "NMModelController.h"
 #include "NMDataComponent.h"
 #include "NMMfwException.h"
+#include "NMProcessFactory.h"
 
 const std::string NMIterableComponent::ctx = "NMIterableComponent";
 
@@ -524,6 +525,7 @@ NMModelComponent* NMIterableComponent::getLastInternalComponent(void)
 //	emit NMModelComponentChanged();
 //}
 
+/*
 NMModelComponent* NMIterableComponent::getEndOfTimeLevel(void)
 {
 	NMDebugCtx(ctx, << "...");
@@ -611,6 +613,7 @@ NMModelComponent* NMIterableComponent::getEndOfTimeLevel(void)
 	NMDebugCtx(ctx, << "done!");
 	return ret;
 }
+*/
 
 NMItkDataObjectWrapper*
 NMIterableComponent::getOutput(unsigned int idx)
@@ -624,11 +627,11 @@ NMIterableComponent::getOutput(unsigned int idx)
 	}
 
 	// ToDo: double check this approach!
-	NMModelComponent* eotComp = this->getEndOfTimeLevel();
-	if (eotComp != 0)
-	{
-		return eotComp->getOutput(idx);
-	}
+//	NMModelComponent* eotComp = this->getEndOfTimeLevel();
+//	if (eotComp != 0)
+//	{
+//		return eotComp->getOutput(idx);
+//	}
 
 	NMErr(this->objectName().toStdString(), << this->objectName().toStdString() <<
 			" - Couldn't fetch any output!");
@@ -1016,13 +1019,16 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 			levelComps.begin();
 	while(levelIt != levelComps.end())
 	{
-        // we don't execute readers at all; for readers it only makes sense,
-        // if they're 'called' as part of a pipeline rather than being
-        // executed by themselves, so we remove those
-        if (levelIt.key().contains(QString::fromLatin1("reader"), Qt::CaseInsensitive))
+        // we only execute 'non-sink' processes, DataBuffers or
+        // aggregate components
+        QString cn = levelIt.key();
+        if (    !cn.startsWith(QString::fromLatin1("DataBuffer"))
+            &&  !cn.startsWith(QString::fromLatin1("AggrComp"))
+            &&  !NMProcessFactory::instance().isSink(cn)
+           )
         {
             execComps.removeOne(levelIt.key());
-            NMDebugAI(<< "removed '" << levelIt.key().toStdString() << "' from executables"
+            NMDebugAI(<< "removed non-executable '" << levelIt.key().toStdString() << "' from executables"
                       << std::endl);
             ++levelIt;
             continue;

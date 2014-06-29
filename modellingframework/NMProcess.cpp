@@ -69,11 +69,11 @@ NMProcess::linkInPipeline(unsigned int step,
         return;
     }
 
-    NMDebugCtx(hostComp->objectName().toStdString(), << "...");
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 	if (mbLinked)
 	{
 		NMDebugAI(<< "seems we've been linked already without being executed!" << endl);
-		NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+        NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 		return;
 	}
 
@@ -124,7 +124,7 @@ NMProcess::linkInPipeline(unsigned int step,
 	//NMDebugAI( << " mbLinked = true" << endl);
 	this->mbLinked = true;
 
-	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+    NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void
@@ -370,95 +370,95 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 // otherwise, just link in!
                 // and we ever only grab from data buffers, we don't ask them to
                 // fetch anything
-                if (dataComp == 0)
-				{
-					NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
-							<< ic->objectName().toStdString()
-							<< "[" << outIdx << "] ... " << std::endl);
+//                if (dataComp == 0)
+//				{
+                    NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
+                            << ic->objectName().toStdString()
+                            << "[" << outIdx << "] ... " << std::endl);
 
-					// when we've got a process component here, we give it the
-					// opportunity to put itself in order and link in
-					if (procComp != 0 && !procComp->getProcess()->isInitialised())
-					{
-						// since we're on the same time level, we can safely ask
-						// the input process to link itself into the pipeline
-						procComp->getProcess()->linkInPipeline(inputstep, repo);
-					}
-                    else if (dataComp == 0)
-                        ic->linkComponents(inputstep, repo);
-
-					NMItkDataObjectWrapper* iw = ic->getOutput(outIdx);
-					if (iw == 0 || iw->getDataObject() == 0)
-					{
-						NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-						stringstream ss;
-						ss << ic->objectName().toStdString() << "::getOutput("
-						   << outIdx << ") has not been initialised!" << endl;
-						e.setMsg(ss.str());
-						NMDebugCtx(ctxNMProcess, << "done!");
-						throw e;
-					}
-
-					// since we're on the same time level, we're in pipeline here
-					// connect output to input
-					this->setNthInput(ii, iw);//ic->getOutput(outIdx));
-				}
-				else
-				{
-					NMDebugAI(<< parentComp->objectName().toStdString() << "(" << ii
-							<< ") <-||- " << ic->objectName().toStdString()
-							<< "[" << outIdx << "] ... " << std::endl);
-
-
-					// when we've got a process component here, we give it the
-					// opportunity to put itself in order and link in
+//					// when we've got a process component here, we give it the
+//					// opportunity to put itself in order and link in
                     if (procComp != 0 && !procComp->getProcess()->isInitialised())
                     {
                         // since we're on the same time level, we can safely ask
                         // the input process to link itself into the pipeline
                         procComp->getProcess()->linkInPipeline(inputstep, repo);
                     }
-                    //else if (dataComp != 0)
-                        //ic->linkComponents(inputstep, repo); //dataComp->linkComponents(inputstep, repo);
+                    else //if (dataComp == 0)
+                        ic->linkComponents(inputstep, repo);
 
-					// we've got a
-					// 'disconnected' pipeline and have to fetch the data
-					// 'physically', disconnect it from the source, and
-					// then chuck it into the input slot of this component
-                    if (procComp != 0)
-                        procComp->getProcess()->update();
-                    //else if (dataComp != 0)
-                        //ic->update(repo);//dataComp->update(repo);
-					//else
-                    //	ic->update(repo);
+                    NMItkDataObjectWrapper* iw = ic->getOutput(outIdx);
+                    if (iw == 0 || iw->getDataObject() == 0)
+                    {
+                        NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
+                        stringstream ss;
+                        ss << ic->objectName().toStdString() << "::getOutput("
+                           << outIdx << ") has not been initialised!" << endl;
+                        e.setMsg(ss.str());
+                        NMDebugCtx(ctxNMProcess, << "done!");
+                        throw e;
+                    }
 
-					if (ic->getOutput(outIdx) != 0)
-					{
+                    // since we're on the same time level, we're in pipeline here
+                    // connect output to input
+                    this->setNthInput(ii, iw);//ic->getOutput(outIdx));
+//				}
+//				else
+//				{
+//					NMDebugAI(<< parentComp->objectName().toStdString() << "(" << ii
+//							<< ") <-||- " << ic->objectName().toStdString()
+//							<< "[" << outIdx << "] ... " << std::endl);
 
-						NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
-								*ic->getOutput(outIdx));
-						if (dw->getDataObject() == 0)
-						{
-							NMDebug(<< "failed!" << std::endl);
-							NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-							stringstream ss;
-							ss << ic->objectName().toStdString() << "::getOutput("
-							   << outIdx << ") has not been initialised!" << endl;
-							e.setMsg(ss.str());
-							NMDebugAI(<< ss.str() << endl);
-							//NMDebugCtx(ctxNMProcess, << "done!");
-							//throw e;
-						}
-						NMDebugAI(<< "... ok!" << std::endl);
 
-                        if (procComp != 0)
-                        {
-                            dw->setParent(parentComp);
-                            dw->getDataObject()->DisconnectPipeline();
-                        }
-                        this->setNthInput(ii, dw);
-					}
-				}
+//					// when we've got a process component here, we give it the
+//					// opportunity to put itself in order and link in
+//                    if (procComp != 0 && !procComp->getProcess()->isInitialised())
+//                    {
+//                        // since we're on the same time level, we can safely ask
+//                        // the input process to link itself into the pipeline
+//                        procComp->getProcess()->linkInPipeline(inputstep, repo);
+//                    }
+//                    //else if (dataComp != 0)
+//                        //ic->linkComponents(inputstep, repo); //dataComp->linkComponents(inputstep, repo);
+
+//					// we've got a
+//					// 'disconnected' pipeline and have to fetch the data
+//					// 'physically', disconnect it from the source, and
+//					// then chuck it into the input slot of this component
+//                    if (procComp != 0)
+//                        procComp->getProcess()->update();
+//                    //else if (dataComp != 0)
+//                        //ic->update(repo);//dataComp->update(repo);
+//					//else
+//                    //	ic->update(repo);
+
+//					if (ic->getOutput(outIdx) != 0)
+//					{
+
+//						NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
+//								*ic->getOutput(outIdx));
+//						if (dw->getDataObject() == 0)
+//						{
+//							NMDebug(<< "failed!" << std::endl);
+//							NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
+//							stringstream ss;
+//							ss << ic->objectName().toStdString() << "::getOutput("
+//							   << outIdx << ") has not been initialised!" << endl;
+//							e.setMsg(ss.str());
+//							NMDebugAI(<< ss.str() << endl);
+//							//NMDebugCtx(ctxNMProcess, << "done!");
+//							//throw e;
+//						}
+//						NMDebugAI(<< "... ok!" << std::endl);
+
+//                        if (procComp != 0)
+//                        {
+//                            dw->setParent(parentComp);
+//                            dw->getDataObject()->DisconnectPipeline();
+//                        }
+//                        this->setNthInput(ii, dw);
+//					}
+//				}
 			}
 			else
 			{

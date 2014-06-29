@@ -132,7 +132,7 @@ public:
 
 
     // DEPRECATED: part of ancient execution models, no longer valid
-    NMModelComponent* getEndOfTimeLevel(void);
+    //NMModelComponent* getEndOfTimeLevel(void);
     //void getEndOfPipelineProcess(NMProcess*& endProc);
 
 

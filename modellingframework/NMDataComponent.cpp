@@ -236,7 +236,7 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 		this->mSourceMTime = ic->getProcess()->getModifiedTime();
 	}
 
-	//NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(comp);
+    //NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(comp);
 	//if (itComp != 0 && itComp->getProcess() != 0)
 	//{
 	//	if (itComp->getProcess()->getInternalProc() != 0)
@@ -303,6 +303,13 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
 //        return;
 //    }
 
+    if (!this->mbLinked)
+    {
+        NMIterableComponent* host = this->getHostComponent();
+        unsigned int step = host != 0 ? host->getIterationStep()-1 : 0;
+
+        this->linkComponents(step, repo);
+    }
 
 	QMap<QString, NMModelComponent*>::const_iterator it =
 			repo.find(mInputCompName);

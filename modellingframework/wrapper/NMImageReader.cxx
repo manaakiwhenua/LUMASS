@@ -688,6 +688,12 @@ NMItkDataObjectWrapper* NMImageReader::getOutput(unsigned int idx)
 	if (!this->mbIsInitialised)
 	{
 		NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        QString hostName = "";
+        if (this->parent() != 0)
+            hostName = this->parent()->objectName();
+        QString msg = QString::fromLatin1("%1: NMImageReader::getOutput(%2) failed - Object not initialised!")
+                .arg(hostName).arg(idx);
+        e.setMsg(msg.toStdString());
 		throw e;
 	}
 

@@ -796,7 +796,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         }
     }
 
-
+    event->setAccepted(true);
     NMDebugCtx(ctx, << "done!");
 
 }

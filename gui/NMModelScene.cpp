@@ -79,12 +79,12 @@ NMModelScene::dragLeaveEvent(QGraphicsSceneDragDropEvent *event)
                         QMimeData* md = const_cast<QMimeData*>(event->mimeData());
                         md->setText(leaveText);
                         event->setMimeData(md);
-                        event->acceptProposedAction();
                     }
                 }
             }
         }
     }
+    mDragItemList.clear();
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -431,7 +431,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             NMDebugAI(<< "No valid drag source detected!" << std::endl);
         }
 	}
-
+    event->accept();
     mDragItemList.clear();
 	NMDebugCtx(ctx, << "done!");
 }
@@ -487,6 +487,7 @@ void
 NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     mMousePos = event->scenePos();
+    mDragItemList.clear();
     QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
     QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
@@ -649,7 +650,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
-    mMousePos = event->scenePos();
+    //mMousePos = event->scenePos();
 
 	switch(mMode)
 	{
@@ -670,7 +671,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                     )
                )
             {
-                mDragStartPos = mMousePos;
+                mDragStartPos = event->scenePos();
                 mDragItemList.clear();
                 mDragItemList = this->selectedItems();
                 if (mDragItemList.count() == 0)

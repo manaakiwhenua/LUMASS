@@ -2963,15 +2963,15 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
 
         return true;
     }
-    else if (e->type() == QEvent::Drop)
-    {
-        QDropEvent* de = static_cast<QDropEvent*>(e);
-        if (de != 0)
-        {
-            mLastScenePos = this->mModelView->mapToScene(de->pos());
-            mLastItem = this->mModelScene->itemAt(mLastScenePos, this->mModelView->transform());
-        }
-    }
+//    else if (e->type() == QEvent::Drop)
+//    {
+//        QDropEvent* de = static_cast<QDropEvent*>(e);
+//        if (de != 0)
+//        {
+//            //mLastScenePos = this->mModelView->mapToScene(de->pos());
+//            //mLastItem = this->mModelScene->itemAt(mLastScenePos, this->mModelView->transform());
+//        }
+//    }
     return false;
 }
 

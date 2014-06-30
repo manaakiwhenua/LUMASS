@@ -922,7 +922,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		// let's have a look what we've got so far ...
 		NMDebug(<< endl);
 		NMDebugAI(<< "PIPELINES AND EXECUTION ORDER ON LEVEL "
-				  << level << " ..." << endl);
+                  << level << " ------------" << endl);
 		int cnt = 0;
 		foreach(const QStringList& sp, execList)
 		{
@@ -1192,23 +1192,43 @@ void NMIterableComponent::getEndOfPipelineProcess(NMProcess*& endProc)
 
 bool NMIterableComponent::isSubComponent(NMModelComponent* comp)
 {
-	bool ret = false;
+    bool bIsSub = false;
 
-	QMap<unsigned int, QMap<QString, NMModelComponent*> >::const_iterator timeIt =
-			this->mMapTimeLevelComp.begin();
-	QMap<QString, NMModelComponent*>::const_iterator compIt;
-	for (; timeIt != this->mMapTimeLevelComp.end(); ++timeIt)
-	{
-		compIt = timeIt.value().begin();
-		for (; compIt != timeIt.value().end(); ++compIt)
-		{
-			if (compIt.value()->objectName().compare(comp->objectName()) == 0)
-			{
-				ret = true;
-				break;
-			}
-		}
-	}
+/// this commented code below doesn't work any more, since we now only map
+/// time levels within the bounds of an IterableComponent
 
-	return ret;
+//	QMap<unsigned int, QMap<QString, NMModelComponent*> >::const_iterator timeIt =
+//			this->mMapTimeLevelComp.begin();
+//	QMap<QString, NMModelComponent*>::const_iterator compIt;
+//	for (; timeIt != this->mMapTimeLevelComp.end(); ++timeIt)
+//	{
+//		compIt = timeIt.value().begin();
+//		for (; compIt != timeIt.value().end(); ++compIt)
+//		{
+//			if (compIt.value()->objectName().compare(comp->objectName()) == 0)
+//			{
+//				ret = true;
+//				break;
+//			}
+//		}
+//	}
+
+    NMModelComponent* c = this->getInternalStartComponent();
+    while(c != 0 && !bIsSub)
+    {
+        if (comp->objectName().compare(c->objectName()) == 0)
+        {
+            bIsSub = true;
+            break;
+        }
+
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(c);
+        if (ic)
+        {
+            bIsSub = ic->isSubComponent(comp);
+        }
+        c = this->getNextInternalComponent();
+    }
+
+    return bIsSub;
 }

@@ -371,7 +371,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 // and we ever only grab from data buffers, we don't ask them to
                 // fetch anything
 //                if (dataComp == 0)
-//				{
+//                {
                     NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
                             << ic->objectName().toStdString()
                             << "[" << outIdx << "] ... " << std::endl);
@@ -402,12 +402,12 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                     // since we're on the same time level, we're in pipeline here
                     // connect output to input
                     this->setNthInput(ii, iw);//ic->getOutput(outIdx));
-//				}
-//				else
-//				{
-//					NMDebugAI(<< parentComp->objectName().toStdString() << "(" << ii
-//							<< ") <-||- " << ic->objectName().toStdString()
-//							<< "[" << outIdx << "] ... " << std::endl);
+//                }
+//                else
+//                {
+//                    NMDebugAI(<< parentComp->objectName().toStdString() << "(" << ii
+//                            << ") <-||- " << ic->objectName().toStdString()
+//                            << "[" << outIdx << "] ... " << std::endl);
 
 
 //					// when we've got a process component here, we give it the
@@ -434,22 +434,21 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 
 //					if (ic->getOutput(outIdx) != 0)
 //					{
-
-//						NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
-//								*ic->getOutput(outIdx));
-//						if (dw->getDataObject() == 0)
-//						{
-//							NMDebug(<< "failed!" << std::endl);
-//							NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-//							stringstream ss;
-//							ss << ic->objectName().toStdString() << "::getOutput("
-//							   << outIdx << ") has not been initialised!" << endl;
-//							e.setMsg(ss.str());
-//							NMDebugAI(<< ss.str() << endl);
-//							//NMDebugCtx(ctxNMProcess, << "done!");
-//							//throw e;
-//						}
-//						NMDebugAI(<< "... ok!" << std::endl);
+//                        NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
+//                                *ic->getOutput(outIdx));
+//                        if (dw->getDataObject() == 0)
+//                        {
+//                            NMDebug(<< "failed!" << std::endl);
+//                            NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
+//                            stringstream ss;
+//                            ss << ic->objectName().toStdString() << "::getOutput("
+//                               << outIdx << ") has not been initialised!" << endl;
+//                            e.setMsg(ss.str());
+//                            NMDebugAI(<< ss.str() << endl);
+//                            //NMDebugCtx(ctxNMProcess, << "done!");
+//                            throw e;
+//                        }
+//                        NMDebugAI(<< "... ok!" << std::endl);
 
 //                        if (procComp != 0)
 //                        {
@@ -458,19 +457,19 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 //                        }
 //                        this->setNthInput(ii, dw);
 //					}
-//				}
+//                }
 			}
-			else
-			{
-				NMMfwException e(NMMfwException::NMProcess_InvalidInput);
-				stringstream ss;
-				ss << this->parent()->objectName().toStdString() << ": The specified "
-				   << "input component '" << inputCompName.toStdString()
-				   << "' couldn't be found! Check the property settings." << endl;
-				e.setMsg(ss.str());
-				NMDebugCtx(ctxNMProcess, << "done!");
-				throw e;
-			}
+            else
+            {
+                NMMfwException e(NMMfwException::NMProcess_InvalidInput);
+                stringstream ss;
+                ss << this->parent()->objectName().toStdString() << ": The specified "
+                   << "input component '" << inputCompName.toStdString()
+                   << "' couldn't be found! Check the property settings." << endl;
+                e.setMsg(ss.str());
+                NMDebugCtx(ctxNMProcess, << "done!");
+                throw e;
+            }
 		}
 	}
 	else

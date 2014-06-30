@@ -17,6 +17,7 @@
  ******************************************************************************/
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
+#include "NMDataComponent.h"
 #include "NMModelController.h"
 #include "NMMfwException.h"
 
@@ -52,16 +53,29 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 	if (this->mInputs.size() == 0)
 		return;
 
-	int compstep = step < 0 ? 0
-			: (step > this->mInputs.size()-1 ? this->mInputs.size()-1
-					: step);
+    int compstep = step;
+
+    // what if we're an NMProcess? and have an index policy set?
+    NMIterableComponent* weIc = qobject_cast<NMIterableComponent*>(this);
+    if (weIc && weIc->getProcess() != 0)
+    {
+        compstep = weIc->getProcess()->mapHostIndexToPolicyIndex(compstep, this->mInputs.size());
+    }
+    else
+    {
+        compstep = step < 0 ? 0
+            : (step > this->mInputs.size()-1 ? this->mInputs.size()-1
+                        : step);
+    }
+
 	if (compstep != step)
 	{
 		// ToDo: this needs to be adjusted as soon as
 		// we implement the choice of how to map
 		// step size to input list index (i.e. use_up, cycle, strict step);
 		// for now, we go for the NM_USE_UP policy
-		NMDebugAI(<< "mind you, we've adjusted the step parameter to select"
+        NMDebugAI(<< "mind you, we've adjusted the step parameter "
+                  << " from " << step << " to " << compstep << " to select"
 				<< " an input component from '" << this->objectName().toStdString()
 				<< "'" << std::endl);
 		//compstep = this->mInputs.size()-1;
@@ -94,8 +108,42 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 			continue;
 		}
 
-		NMModelComponent* comp = NMModelController::getInstance()->getComponent(in);
-		if (comp != 0 && comp->getTimeLevel() == this->getTimeLevel())
+
+        // we follow inputs upstream as long as they are sitting outside this component's host or
+        // share the same time level as this component
+        // -> and are not a subcomponent of this one
+
+        bool bGoUp = false;
+        NMModelComponent* comp = NMModelController::getInstance()->getComponent(in);
+        NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(comp);
+        if (comp != 0 && dataComp == 0)
+        {
+            if (this->getHostComponent()->objectName().compare(comp->getHostComponent()->objectName()) == 0)
+            {
+                if (this->getTimeLevel() == comp->getTimeLevel())
+                {
+                    bGoUp = true;
+                }
+            }
+            else
+            {
+                if (weIc)
+                {
+                    if (!weIc->isSubComponent(comp))
+                    {
+                        bGoUp = true;
+                    }
+                }
+                else
+                {
+                    bGoUp = true;
+                }
+            }
+        }
+
+
+        //if (comp != 0 && comp->getTimeLevel() == this->getTimeLevel())
+        if (bGoUp)
 		{
 			// here, we distinguish between components hosting an itk::Process-derived
 			// process object, which can be piped together with other itk::Process-derived
@@ -103,11 +151,19 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 			// process components, or components of any other kind, such as group
 			// components or data components; thus we're looking for an itk::Process object
 			NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
-			if (ic != 0 && ic->getProcess() != 0 && ic->getProcess()->getInternalProc() != 0)
+            if (ic != 0 && ic->getProcess() != 0)// && ic->getProcess()->getInternalProc() != 0)
 			{
+                if (ic->getProcess()->getInternalProc() == 0)
+                {
+                    ic->getProcess()->instantiateObject();
+                }
+            }
+
+            if (ic != 0 && ic->getProcess() != 0 && ic->getProcess()->getInternalProc() != 0)
+            {
 				//NMDebugAI(<< "... and higher ... " << std::endl);
 				upstreamPipe.push_front(ic->objectName());
-				ic->getUpstreamPipe(hydra, upstreamPipe, step);
+                ic->getUpstreamPipe(hydra, upstreamPipe, compstep);
 			}
 			else
 			{
@@ -137,7 +193,7 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 				{
 					QStringList upstreamUpstreamPipe;
 					upstreamUpstreamPipe.push_front(comp->objectName());
-					comp->getUpstreamPipe(hydra, upstreamUpstreamPipe, step);
+                    comp->getUpstreamPipe(hydra, upstreamUpstreamPipe, compstep);
 					hydra.push_back(upstreamUpstreamPipe);
 				}
 			}

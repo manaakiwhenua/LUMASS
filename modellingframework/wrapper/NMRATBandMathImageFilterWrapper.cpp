@@ -336,21 +336,23 @@ NMRATBandMathImageFilterWrapper
 			if (dw == 0)
 			{
 
-                NMModelComponent* reqComp = NMModelController::getInstance()->getComponent(input);
-                NMIterableComponent* reqItComp = qobject_cast<NMIterableComponent*>(reqComp);
-                if (reqItComp)
-                {
-                    NMProcess* reqProc = reqItComp->getProcess();
-                    if (!reqProc->isInitialised())
-                    {
-                        reqItComp->initialiseComponents(reqItComp->getTimeLevel());
-                    }
-                    reqProc->linkInPipeline(step, repo);
-                }
+//                NMModelComponent* reqComp = NMModelController::getInstance()->getComponent(input);
+//                NMIterableComponent* reqItComp = qobject_cast<NMIterableComponent*>(reqComp);
+//                if (reqItComp)
+//                {
+//                    NMProcess* reqProc = reqItComp->getProcess();
+//                    if (!reqProc->isInitialised())
+//                    {
+//                        reqItComp->initialiseComponents(reqItComp->getTimeLevel());
+//                    }
+//                    // we just set any value for the step parameter, since
+//                    // the process figures out itself which step its at
+//                    reqProc->linkInPipeline(0, repo);
+//                }
 
-                dw = NMModelController::getInstance()->getOutputFromSource(input);
+//                dw = NMModelController::getInstance()->getOutputFromSource(input);
 
-                if (dw == 0)
+//                if (dw == 0)
                 {
                     ++cnt;
                     continue;

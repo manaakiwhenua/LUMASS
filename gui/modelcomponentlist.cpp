@@ -723,7 +723,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             return;
         }
 
-        event->acceptProposedAction();
+        //event->acceptProposedAction();
 
         NMGlobalHelper h;
         vtkRenderWindow* renWin = h.getRenderWindow();
@@ -767,7 +767,8 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 
         // stop drawing the indicator
         this->mIndicatorIdx = QModelIndex();
-        event->acceptProposedAction();
+
+        //event->acceptProposedAction();
     }
     else if (event->mimeData()->hasUrls())
     {
@@ -783,7 +784,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 
         if (!fileName.isEmpty())
         {
-            event->acceptProposedAction();
+            //event->acceptProposedAction();
 
             QFileInfo finfo(fileName);
 
@@ -795,8 +796,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
         }
     }
-
-    event->setAccepted(true);
+    //event->setAccepted(true);
     NMDebugCtx(ctx, << "done!");
 
 }

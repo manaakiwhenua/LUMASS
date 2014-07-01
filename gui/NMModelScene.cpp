@@ -49,7 +49,7 @@ NMModelScene::NMModelScene(QObject* parent)
 	//ctx = "NMModelScene";
     mMode = NMS_IDLE;
     mbSceneMove = false;
-	mLinkHitTolerance = 15;
+    mLinkHitTolerance = 15;
 	mLinkZLevel = 10000;
 	mLinkLine = 0;
 }
@@ -87,6 +87,8 @@ NMModelScene::dragLeaveEvent(QGraphicsSceneDragDropEvent *event)
     }
     mDragItemList.clear();
     NMDebugCtx(ctx, << "done!");
+
+    //QGraphicsScene::dragLeaveEvent(event);
 }
 
 void
@@ -134,11 +136,12 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
 void
 NMModelScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
 {
-    NMDebugCtx(ctx, << "...");
-	if (event->mimeData()->hasFormat("text/plain"))
-		event->acceptProposedAction();
+//    QGraphicsScene::dragMoveEvent(event);
+//    NMDebugCtx(ctx, << "...");
+    if (event->mimeData()->hasFormat("text/plain"))
+        event->acceptProposedAction();
 
-    NMDebugCtx(ctx, << "done!");
+//    NMDebugCtx(ctx, << "done!");
 //    else
 //    {
 //        QGraphicsItem* i = this->getComponentItem(event->mimeData()->text());
@@ -346,7 +349,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         }
         else if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
         {
-            event->acceptProposedAction();
+            //event->acceptProposedAction();
             QPointF dropPos = event->scenePos();
             switch(event->dropAction())
             {
@@ -382,7 +385,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     this->addItem(labelItem);
                     labelItem->setPos(event->scenePos());
                 }
-                event->acceptProposedAction();
+                //event->acceptProposedAction();
             }
             else
             {
@@ -395,7 +398,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     procItem->setIsDataBufferItem(true);
                 }
                 procItem->setFlag(QGraphicsItem::ItemIsMovable, true);
-                event->acceptProposedAction();
+                //event->acceptProposedAction();
 
                 NMDebugAI(<< "asking for creating '" << dropItem.toStdString() << "' ..." << endl);
                 emit processItemCreated(procItem, dropItem, event->scenePos());
@@ -424,7 +427,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 if (finfo.isFile())
                 {
                     NMDebugAI(<< "gonna import model file: " << fileName.toStdString() << std::endl);
-                    event->acceptProposedAction();
+                    //event->acceptProposedAction();
 
                     emit signalModelFileDropped(fileName);
                 }
@@ -435,7 +438,11 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             NMDebugAI(<< "No valid drag source detected!" << std::endl);
         }
 	}
-    event->accept();
+    //event->accept();
+    if (!mbSceneMove)
+    {
+        this->setProcCompMoveability(true);
+    }
     mDragItemList.clear();
 	NMDebugCtx(ctx, << "done!");
 }
@@ -669,11 +676,13 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 	case NMS_MOVE:
     case NMS_SELECT:
     default:
+
         {
             QGraphicsItem* dragItem = this->itemAt(mMousePos, this->views()[0]->transform());
-            if (    dragItem != 0
-                &&  (   event->modifiers() & Qt::AltModifier
-                     || event->modifiers() & Qt::ShiftModifier
+            if (    (event->buttons() & Qt::LeftButton)
+                &&  dragItem != 0
+                &&  (   QApplication::keyboardModifiers() & Qt::AltModifier
+                     || QApplication::keyboardModifiers() & Qt::ShiftModifier
                     )
                )
             {
@@ -713,12 +722,12 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                    drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::CopyAction);
                 }
                 NMDebugAI(<< "drag start - " << mimeText.toStdString() << std::endl);
+                this->setProcCompMoveability(false);
             }
         }
         this->invalidate();
         break;
 	}
-
     QGraphicsScene::mouseMoveEvent(event);
 }
 
@@ -805,7 +814,10 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         }
 		break;
 	}
-
+    if (!mbSceneMove)
+    {
+        this->setProcCompMoveability(true);
+    }
 	QGraphicsScene::mouseReleaseEvent(event);
 }
 

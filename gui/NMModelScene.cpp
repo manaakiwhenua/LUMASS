@@ -79,6 +79,7 @@ NMModelScene::dragLeaveEvent(QGraphicsSceneDragDropEvent *event)
                         QMimeData* md = const_cast<QMimeData*>(event->mimeData());
                         md->setText(leaveText);
                         event->setMimeData(md);
+                        event->accept();
                     }
                 }
             }
@@ -133,8 +134,11 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
 void
 NMModelScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
 {
+    NMDebugCtx(ctx, << "...");
 	if (event->mimeData()->hasFormat("text/plain"))
 		event->acceptProposedAction();
+
+    NMDebugCtx(ctx, << "done!");
 //    else
 //    {
 //        QGraphicsItem* i = this->getComponentItem(event->mimeData()->text());
@@ -486,6 +490,7 @@ NMModelScene::serialiseItems(QList<QGraphicsItem*> items, QDataStream& data)
 void
 NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    NMDebugCtx(ctx, << "...");
     mMousePos = event->scenePos();
     mDragItemList.clear();
     QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
@@ -508,7 +513,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 		default:
             {
                 // SELECTION 'MODE'
-                if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+                if (event->modifiers() & Qt::ControlModifier)
                 {
                     this->views().at(0)->setCursor(Qt::PointingHandCursor);
                     this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);
@@ -548,7 +553,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
             }
 			break;
 		}
-		QGraphicsScene::mousePressEvent(event);
+        QGraphicsScene::mousePressEvent(event);
 	}
 	else if (event->button() == Qt::RightButton)
 	{
@@ -565,8 +570,9 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 	}
 	else
 	{
-		QGraphicsScene::mousePressEvent(event);
+        QGraphicsScene::mousePressEvent(event);
 	}
+    NMDebugCtx(ctx, << "done!");
 }
 
 NMComponentLinkItem* NMModelScene::getLinkItem(QPointF pos)
@@ -666,8 +672,8 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         {
             QGraphicsItem* dragItem = this->itemAt(mMousePos, this->views()[0]->transform());
             if (    dragItem != 0
-                &&  (   QApplication::keyboardModifiers() == Qt::AltModifier
-                     || QApplication::keyboardModifiers() == Qt::ShiftModifier
+                &&  (   event->modifiers() & Qt::AltModifier
+                     || event->modifiers() & Qt::ShiftModifier
                     )
                )
             {
@@ -694,13 +700,13 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
                 drag->setMimeData(mimeData);
                 drag->setPixmap(dragPix);
-                if (QApplication::keyboardModifiers() == Qt::ShiftModifier)
+                if (event->modifiers() & Qt::ShiftModifier)
                 {
                     NMDebugAI(<< " >> moving ..." << std::endl);
                     //drag->setDragCursor(dragPix, Qt::MoveAction);
                     drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::MoveAction);
                 }
-                else if (QApplication::keyboardModifiers() == Qt::AltModifier)
+                else if (event->modifiers() & Qt::AltModifier)
                 {
                    NMDebugAI(<< " >> copying ..." << std::endl);
                    //drag->setDragCursor(dragPix, Qt::CopyAction);
@@ -772,7 +778,7 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 	default:
         {
-            if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            if (event->modifiers() & Qt::ControlModifier)
             {
                 this->views().at(0)->setCursor(Qt::PointingHandCursor);
                 this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);

@@ -24,6 +24,7 @@
 
 #include <QDebug>
 #include "NMAggregateComponentItem.h"
+#include "nmlog.h"
 
 NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     : mProgress(0), mIsExecuting(false)
@@ -67,6 +68,7 @@ void
 NMAggregateComponentItem::slotProgress(float progress)
 {
     this->mProgress = progress;
+    //NMDebugAI(<< mTitle.toStdString() << " progress: " << mProgress << std::endl);
     this->update();
 }
 
@@ -76,7 +78,6 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     // target comes in parent coord sys
     // target is new centre
     QPointF centre = this->mapToScene(this->boundingRect().center());
-
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* ci, kids)
     {
@@ -98,6 +99,7 @@ NMAggregateComponentItem::updateDescription(const QString& descr)
     if (descr.compare(this->mDescription) != 0)
     {
         this->mDescription = descr;
+        //NMDebugAI(<< mTitle.toStdString() << " description: " << mDescription.toStdString() << std::endl);
         this->update();
     }
 }
@@ -118,6 +120,7 @@ NMAggregateComponentItem::updateNumIterations(unsigned int iter)
     if (this->mNumIterations != iter)
     {
         this->mNumIterations = iter;
+        //NMDebugAI(<< mTitle.toStdString() << " # iterations: " << mNumIterations << std::endl);
         this->update();
     }
 }
@@ -173,9 +176,14 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 
     mNumIterRect = QRectF(mIterSymbolRect.right()+2, mDash.top()+4, numIterWidth,15);
 
-    qreal width = (mDash.right()-2) - (mIterSymbolRect.right()+2);
-    mDescrRect = QRectF(mTimeLevelRect.right()+2, mDash.top()+3.5,
+    qreal descrWidth = fm.width(mDescription);
+
+    qreal width = (mDash.right()-2) - (mNumIterRect.right()+2);
+    mDescrRect = QRectF(mNumIterRect.right()+2, mDash.top()+3.5,
                         width, 20);
+    qreal dc = mDescrRect.center().x();
+    mDescrRect.setLeft(dc-(descrWidth/2.0));
+    mDescrRect.setRight(dc+(descrWidth/2.0));
 }
 
 void
@@ -188,6 +196,14 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // ============================================================================
 
     QRectF bnd = this->boundingRect();
+
+//    QTransform wt = painter->worldTransform();
+//    wt.translate(bnd.right(), 0);
+//    painter->setWorldTransform(wt);
+
+//    bnd.setLeft(-bnd.width());
+//    bnd.setRight(0);
+
     preparePainting(bnd);
 
     int l,r,t,b,h,w;
@@ -213,22 +229,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // EDGE EFFECT
     // ============================================================================
 
-    //    if (mIsExecuting)
-    //    {
-    //    	    painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
-    //    }
-    //    else
-    {
-    	    painter->setCompositionMode(QPainter::CompositionMode_DestinationIn);
-    }
+    painter->setCompositionMode(QPainter::CompositionMode_DestinationIn);
 
     // blend the corners
     QRadialGradient cornerglare;                                                             
-//    cornerglare.setColorAt(0.00, mIsExecuting ? QColor(200,0,0,0  ) : QColor(255,255,255,255));
-//    cornerglare.setColorAt(0.50, mIsExecuting ? QColor(200,0,0,50 ) : QColor(255,255,255,200));
-//    cornerglare.setColorAt(0.75, mIsExecuting ? QColor(200,0,0,100) : QColor(255,255,255,180));
-//    cornerglare.setColorAt(0.85, mIsExecuting ? QColor(200,0,0,128) : QColor(255,255,255,150));
-//    cornerglare.setColorAt(1.00, mIsExecuting ? QColor(200,0,0,255) : QColor(255,255,255,100));
     cornerglare.setColorAt(0.00, QColor(255,255,255,255));
     cornerglare.setColorAt(0.50, QColor(255,255,255,200));
     cornerglare.setColorAt(0.75, QColor(255,255,255,180));
@@ -275,11 +279,6 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // glare the edges on top of it    
     
     QLinearGradient glare(l+(w/2.0), t+8, l+(w/2.0), t);
-    //    glare.setColorAt(0.00, mIsExecuting ? QColor(200,0,0,0  ) : QColor(255,255,255,255));
-    //    glare.setColorAt(0.50, mIsExecuting ? QColor(200,0,0,50 ) : QColor(255,255,255,200));
-    //    glare.setColorAt(0.75, mIsExecuting ? QColor(200,0,0,100) : QColor(255,255,255,180));
-    //    glare.setColorAt(0.85, mIsExecuting ? QColor(200,0,0,128) : QColor(255,255,255,150));
-    //    glare.setColorAt(1.00, mIsExecuting ? QColor(200,0,0,255) : QColor(255,255,255,100));
     glare.setColorAt(0.00, QColor(255,255,255,255));
     glare.setColorAt(0.50, QColor(255,255,255,200));
     glare.setColorAt(0.75, QColor(255,255,255,180));
@@ -354,7 +353,9 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
     mFont.setBold(false);
     painter->setFont(mFont);
-    painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
+
+    //painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
+    this->renderText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel), *painter);
 
     // the iteration icon
     painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
@@ -368,22 +369,28 @@ NMAggregateComponentItem::paint(QPainter* painter,
     {
         if (mIsExecuting)
         {
-//            mFont.setBold(true);
-//            painter->setPen(QPen(QBrush(Qt::darkRed), 2, Qt::SolidLine));
-            painter->drawText(mNumIterRect, Qt::AlignLeft,
-               QString("%1 of %2").arg(mProgress).arg(mNumIterations));
+            //            mFont.setBold(true);
+            //            painter->setPen(QPen(QBrush(Qt::darkRed), 2, Qt::SolidLine));
+            //painter->drawText(mNumIterRect, Qt::AlignLeft,
+              // QString("%1 of %2").arg(mProgress).arg(mNumIterations));
+
+            this->renderText(mNumIterRect, Qt::AlignLeft,
+               QString("%1 of %2").arg(mProgress).arg(mNumIterations), *painter);
 
             mFont.setBold(false);
         }
         else
         {
             painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
-            painter->drawText(mNumIterRect, Qt::AlignLeft, QString("%1").arg(mNumIterations));
+            //painter->drawText(mNumIterRect, Qt::AlignLeft, QString("%1").arg(mNumIterations));
+            this->renderText(mNumIterRect, Qt::AlignLeft, QString("%1").arg(mNumIterations), *painter);
         }
     }
 
     // the description
-    painter->drawText(mDescrRect, Qt::AlignCenter, mDescription);
+    //painter->drawText(mDescrRect, Qt::AlignCenter, mDescription);
+    this->renderText(mDescrRect, Qt::AlignCenter, mDescription, *painter);
+
 
     // ------------------------------------------------
     // DRAW SELECTION MARKER

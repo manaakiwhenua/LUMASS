@@ -90,6 +90,21 @@ private:
 
     void preparePainting(const QRectF& bndRect);
 
+    inline void renderText(const QRectF& rect, const Qt::AlignmentFlag& flag, const QString& text, QPainter& p)
+    {
+        QTransform ot = p.worldTransform();
+        QTransform wt = p.worldTransform();
+        QRectF r = rect;
+        wt.translate(rect.right(), 0);
+        p.setWorldTransform(wt);
+
+        r.setLeft(-rect.width());
+        r.setRight(0);
+        p.drawText(r, flag, text);
+
+        p.setWorldTransform(ot);
+    }
+
 	std::string ctx;
 	QString mTitle;
 	QColor mColor;

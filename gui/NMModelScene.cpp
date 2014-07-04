@@ -497,7 +497,6 @@ NMModelScene::serialiseItems(QList<QGraphicsItem*> items, QDataStream& data)
 void
 NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
-    NMDebugCtx(ctx, << "...");
     mMousePos = event->scenePos();
     mDragItemList.clear();
     QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
@@ -579,7 +578,6 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 	{
         QGraphicsScene::mousePressEvent(event);
 	}
-    NMDebugCtx(ctx, << "done!");
 }
 
 NMComponentLinkItem* NMModelScene::getLinkItem(QPointF pos)

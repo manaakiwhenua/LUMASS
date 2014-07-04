@@ -77,12 +77,25 @@ NMAggregateComponentItem::relocate(const QPointF &target)
 {
     // target comes in parent coord sys
     // target is new centre
-    QPointF centre = this->mapToScene(this->boundingRect().center());
+    QRectF sceneBnd = this->mapToScene(this->boundingRect()).boundingRect();
+    QPointF centre = sceneBnd.center();
+
+    QList<QPointF> npos;
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* ci, kids)
     {
-        QPointF posDelta = ci->scenePos()-centre;
-        ci->setPos(this->mapFromScene(target + posDelta));
+        npos << target + (ci->scenePos() - centre);
+        //ci->setPos(this->mapFromScene(target + posDelta));
+    }
+
+
+//    QGraphicsItemGroup::setPos(target.x() - (sceneBnd.width()/2.0),
+//                               target.y() - (sceneBnd.height()/2.0));
+
+    QGraphicsItemGroup::setPos(target);
+    for(int i=0; i < kids.count(); ++i)
+    {
+        kids.at(i)->setPos(this->mapFromScene(npos.at(i)));
     }
 }
 
@@ -477,7 +490,7 @@ QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
 {
 	NMAggregateComponentItem& i = const_cast<NMAggregateComponentItem&>(item);
 	data << i.getTitle();
-	data << i.pos();
+    data << i.scenePos();
 	data << i.getColor();
 
 	QList<QGraphicsItem*> kids = i.childItems();

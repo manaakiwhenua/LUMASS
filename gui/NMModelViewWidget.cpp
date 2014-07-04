@@ -418,16 +418,22 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 
 	// finally add the new group component item itself to the scene
     this->mModelScene->updateComponentItemFlags(aggrItem);
+    QPointF npos;
     if (hostItem != 0)
     {
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(hostItem);
+
+        npos = hostItem->mapFromScene(aggrItem->sceneBoundingRect().center());
         ai->addToGroup(aggrItem);
+        aggrItem->relocate(npos);
     }
     else
     {
         this->mModelScene->addItem(aggrItem);
+        npos = aggrItem->sceneBoundingRect().center();
+        aggrItem->relocate(npos);
     }
-    //QPointF apos = aggrItem->mapToParent(aggrItem->childrenBoundingRect().topLeft());
+
     this->mModelScene->invalidate();
 
 
@@ -1231,12 +1237,14 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
                 if (newHostItem->getTitle().compare(ai->getTitle()) != 0)
                 {
                     newHostItem->addToGroup(ai);
+                    ai->relocate(newHostItem->mapFromScene(newPos));
                 }
                 else
                 {
                     mModelScene->addItem(ai);
+                    ai->relocate(newPos);
                 }
-                ai->relocate(newPos);
+
             }
             else
             {
@@ -1521,6 +1529,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
 					ai->setTitle(nameRegister.value(title));
 					ai->setPos(pos);
+                    ai->relocate(pos);
 					ai->setColor(color);
                     importItems <<  ai->getTitle();
 

@@ -83,7 +83,10 @@ public slots:
     // moves the group (i.e. all kids)
     // to the new target location, which
     // depicts the centre of the bouding rect
-    // in scene coordinates
+    // in partent coordinates; this also
+    // normalises the coordinates of the group
+    // with pos() to be in the center of the
+    // child items' bounding rect
     void relocate(const QPointF& target);
 
 private:

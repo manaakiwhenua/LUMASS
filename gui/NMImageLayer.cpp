@@ -180,10 +180,10 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 	vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
 	this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
 
-	this->mVtkConn->Connect(style, vtkCommand::ResetWindowLevelEvent,
-			this, SLOT(windowLevelReset(vtkObject*)));
-	this->mVtkConn->Connect(style, vtkCommand::InteractionEvent,
-			this, SLOT(windowLevelChanged(vtkObject*)));
+//	this->mVtkConn->Connect(style, vtkCommand::ResetWindowLevelEvent,
+//			this, SLOT(windowLevelReset(vtkObject*)));
+//	this->mVtkConn->Connect(style, vtkCommand::InteractionEvent,
+//			this, SLOT(windowLevelChanged(vtkObject*)));
 }
 
 NMImageLayer::~NMImageLayer()
@@ -1188,24 +1188,24 @@ NMImageLayer::writeDataSet(void)
 	NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
-void
-NMImageLayer::windowLevelReset(vtkObject* obj)
-{
-	double window = this->mImgProp->GetColorWindow();
-	double level = this->mImgProp->GetColorLevel();
+//void
+//NMImageLayer::windowLevelReset(vtkObject* obj)
+//{
+//	double window = this->mImgProp->GetColorWindow();
+//	double level = this->mImgProp->GetColorLevel();
 
-	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
+//	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
 
-}
+//}
 
-void
-NMImageLayer::windowLevelChanged(vtkObject* obj)
-{
-	double window = this->mImgProp->GetColorWindow();
-	double level = this->mImgProp->GetColorLevel();
+//void
+//NMImageLayer::windowLevelChanged(vtkObject* obj)
+//{
+//	double window = this->mImgProp->GetColorWindow();
+//	double level = this->mImgProp->GetColorLevel();
 
-	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
-}
+//	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
+//}
 
 
 //void

@@ -141,8 +141,8 @@ protected:
 
 protected slots:
 	int updateAttributeTable(void);
-	void windowLevelReset(vtkObject* obj);
-	void windowLevelChanged(vtkObject* obj);
+//	void windowLevelReset(vtkObject* obj);
+//	void windowLevelChanged(vtkObject* obj);
 
 
 	//virtual void updateDataSet(QStringList& slAlteredColumns,

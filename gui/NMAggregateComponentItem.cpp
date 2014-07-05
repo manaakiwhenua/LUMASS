@@ -80,11 +80,18 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     QRectF sceneBnd = this->mapToScene(this->boundingRect()).boundingRect();
     QPointF centre = sceneBnd.center();
 
+    QGraphicsItem* pi = this->parentItem();
+    QPointF nt = target;
+    if (pi)
+    {
+        nt = pi->mapToScene(target);
+    }
+
     QList<QPointF> npos;
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* ci, kids)
     {
-        npos << target + (ci->scenePos() - centre);
+        npos << nt + (ci->scenePos() - centre);
         //ci->setPos(this->mapFromScene(target + posDelta));
     }
 
@@ -92,7 +99,7 @@ NMAggregateComponentItem::relocate(const QPointF &target)
 //    QGraphicsItemGroup::setPos(target.x() - (sceneBnd.width()/2.0),
 //                               target.y() - (sceneBnd.height()/2.0));
 
-    QGraphicsItemGroup::setPos(target);
+    QGraphicsItemGroup::setPos(this->mapFromScene(nt));
     for(int i=0; i < kids.count(); ++i)
     {
         kids.at(i)->setPos(this->mapFromScene(npos.at(i)));

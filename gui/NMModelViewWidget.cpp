@@ -1028,7 +1028,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
 			if (comp == 0)
 			{
 				NMErr(ctx, << "couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
-                NMDebugCtx(ctx, << "done!");
+                //NMDebugCtx(ctx, << "done!");
 				return;
 			}
 
@@ -1077,7 +1077,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
 			if (comp == 0)
 			{
 				NMErr(ctx, << "couldn't write '" << ai->getTitle().toStdString() << "' - skip it!");
-                NMDebugCtx(ctx, << "done!");
+                //NMDebugCtx(ctx, << "done!");
 				return;
 			}
             //xmlS.serialiseComponent(comp, fnLmx, 4, append);
@@ -1093,7 +1093,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
 
     //fileLmv.close();
 
-	NMDebugCtx(ctx, << "done!");
+    //NMDebugCtx(ctx, << "done!");
 }
 
 void

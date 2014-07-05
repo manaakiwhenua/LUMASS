@@ -723,12 +723,16 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             return;
         }
 
-        //event->acceptProposedAction();
+        QString layerName = dropLayer;
+        if (!comp->getDescription().isEmpty())
+        {
+            layerName = comp->getDescription();
+        }
 
         NMGlobalHelper h;
         vtkRenderWindow* renWin = h.getRenderWindow();
         NMImageLayer* iLayer = new NMImageLayer(renWin, 0, this);
-        iLayer->setObjectName(dropLayer);
+        iLayer->setObjectName(layerName);
         h.getMainWindow()->connectImageLayerProcSignals(iLayer);
 
         iLayer->setImage(comp->getOutput(0));

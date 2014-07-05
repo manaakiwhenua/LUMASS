@@ -947,6 +947,8 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 					std::stringstream msg;
 					msg << "'" << in.toStdString() << "'";
 					e.setMsg(msg.str());
+                    NMDebugCtx(this->objectName().toStdString(), << "done!");
+                    emit signalExecutionStopped();
 					throw e;
 				}
                 comp->linkComponents(step, repo);

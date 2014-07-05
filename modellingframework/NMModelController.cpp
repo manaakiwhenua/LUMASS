@@ -220,6 +220,10 @@ NMModelController::executeModel(const QString& compName)
 
 	this->mModelStarted = QDateTime::currentDateTime();
 
+#ifdef DEBUG
+    int ind = nmlog::nmindent;
+#endif
+
 	// we catch all exceptions thrown by ITK/OTB, rasdaman
 	// and the LUMASS MFW components
 	// and just report them for now; note this includes
@@ -231,9 +235,16 @@ NMModelController::executeModel(const QString& compName)
 	}
 	catch (std::exception& e)
 	{
-		NMDebugAI(<< e.what() << endl);
+#ifdef DEBUG
+    nmlog::nmindent = ind;
+#endif
+        NMDebugAI(<< e.what() << endl);
 		NMDebugCtx(ctx, << "done!");
 	}
+
+#ifdef DEBUG
+    nmlog::nmindent = ind;
+#endif
 
 	this->mModelStopped = QDateTime::currentDateTime();
 	int msec = this->mModelStarted.msecsTo(this->mModelStopped);

@@ -793,7 +793,7 @@ void NMComponentEditor::updateSubComponents(const QStringList& compList)
     NMIterableComponent* comp = qobject_cast<NMIterableComponent*>(mObj);
     if (comp == 0)
     {
-        NMDebugCtx(ctx, << "comp is NULL!");
+        NMWarn(ctx, << "comp is NULL!");
         return;
     }
 

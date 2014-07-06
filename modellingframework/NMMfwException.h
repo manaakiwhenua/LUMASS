@@ -42,12 +42,12 @@ public:
         NMProcess_InvalidInput,
         NMProcess_InvalidParameter,
         NMProcess_MissingParameter,
+        NMProcess_ExecutionError,
         NMDataComponent_InvalidParameter,
         NMModelController_UnregisteredModelComponent,
         NMMosra_InvalidParameter,
         NMModelComponent_InvalidUserID,
         Unspecified
-
     } ExceptionType;
 
 	NMMfwException(ExceptionType t = Unspecified);

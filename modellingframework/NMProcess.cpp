@@ -507,7 +507,23 @@ void NMProcess::update(void)
 
 	if (this->mbIsInitialised && this->mOtbProcess.IsNotNull())
 	{
-		this->mOtbProcess->Update();
+        try
+        {
+            this->mOtbProcess->Update();
+        }
+        catch (itk::ExceptionObject& err)
+        {
+            NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
+            std::string msg = err.GetDescription();
+            rerr.setMsg(msg);
+            NMErr(this->parent()->objectName().toStdString(), << err.GetDescription());
+            NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+            emit signalExecutionStopped(this->parent()->objectName());
+            emit signalProgress(0);
+
+            throw rerr;
+        }
+
 		this->mMTime = QDateTime::currentDateTimeUtc();
 		NMDebugAI(<< "modified at: "
 				  << mMTime.toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString() << std::endl);

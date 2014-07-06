@@ -975,10 +975,26 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     NMDebugCtx(this->objectName().toStdString(), << "done!");
 
     }
+    catch (itk::ExceptionObject& err)
+    {
+        NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
+        rerr.setMsg(err.GetDescription());
+
+        NMErr(this->objectName().toStdString(), << err.GetDescription() << std::endl);
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+        throw rerr;
+    }
+    catch (NMMfwException& nmerr)
+    {
+        NMErr(this->objectName().toStdString(), << nmerr.what() << std::endl);
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+        throw nmerr;
+    }
     catch (std::exception& e)
     {
         NMMfwException re(NMMfwException::Unspecified);
         re.setMsg(e.what());
+        NMErr(this->objectName().toStdString(), << e.what() << std::endl);
         NMDebugCtx(this->objectName().toStdString(), << "done!");
         emit signalExecutionStopped();
         throw re;

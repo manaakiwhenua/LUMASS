@@ -67,7 +67,10 @@ NMMfwException::type2string(void) const
 	case  NMProcess_MissingParameter:
 		ret = "NMProcess: Missing parameter.";
 		break;
-	case  NMDataComponent_InvalidParameter:
+    case  NMProcess_ExecutionError:
+        ret = "NMProcess: Execution error.";
+        break;
+    case  NMDataComponent_InvalidParameter:
 		ret = "NMDataComponent: Invalid parameter.";
 		break;
 	case  NMModelController_UnregisteredModelComponent:

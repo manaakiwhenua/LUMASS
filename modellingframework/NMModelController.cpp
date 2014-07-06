@@ -24,6 +24,7 @@
 
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
+#include "NMMfwException.h"
 
 #include <QFuture>
 #include <QtConcurrentRun>
@@ -233,7 +234,15 @@ NMModelController::executeModel(const QString& compName)
 	{
 		comp->update(this->mComponentMap);
 	}
-	catch (std::exception& e)
+    catch (NMMfwException& nmerr)
+    {
+#ifdef DEBUG
+    nmlog::nmindent = ind;
+#endif
+        NMDebugAI(<< nmerr.what() << std::endl);
+        NMDebugCtx(ctx, << "done!");
+    }
+    catch (std::exception& e)
 	{
 #ifdef DEBUG
     nmlog::nmindent = ind;
@@ -241,6 +250,7 @@ NMModelController::executeModel(const QString& compName)
         NMDebugAI(<< e.what() << endl);
 		NMDebugCtx(ctx, << "done!");
 	}
+
 
 #ifdef DEBUG
     nmlog::nmindent = ind;

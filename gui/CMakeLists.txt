@@ -22,8 +22,9 @@ include(${VTK_USE_FILE})
 
 INCLUDE_DIRECTORIES(
         ${QT5_INCLUDE_DIRS}
-        ${CMAKE_PREFIX_PATH}/include/QtCore/5.2.1/QtCore
-        ${CMAKE_PREFIX_PATH}/include/QtGui/5.2.1/QtGui
+        ${QT5CORE_PRIVATE_DIR}
+        #${CMAKE_PREFIX_PATH}/include/QtCore/5.2.1/QtCore
+        #${CMAKE_PREFIX_PATH}/include/QtGui/5.2.1/QtGui
 	${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
         ${gui_BINARY_DIR}
@@ -111,7 +112,7 @@ list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
         Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml
-        Qt5Declarative Qt5Qml Qt5Quick
+        #Qt5Declarative Qt5Qml Qt5Quick
         QtPropertyBrowser
 	RasImageIO OTBGDALRATImageIO NMModFrame 
         OTBCommon OTBIO OTBBasicFilters

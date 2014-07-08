@@ -20,17 +20,23 @@ required 3rd party software libraries / packages
 LUMASS relies on a number of other open source software libraries, which are
 required (except rasdaman/PostgreSQL) to successfully build LUMASS. 
 
-Qt                      version > 4.6; (core, gui, and XML components)
+Qt                      version > 5; tested against Qt5.2.1;
+                        required modules: Qt5Widgets, Qt5Core, Qt5Gui,
+                        Qt5Concurrent, Qt5Xml
 
 GDAL                    see launchpad repository: unbuntu-gis-unstable 
                         <https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable>
 
-Orfeo Toolbox           see launchpad repository: unbuntu-gis-unstable 
-                        <https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable>
+Orfeo Toolbox           3.16 <= version <= 3.20 (recommended); download at
+                        http://sourceforge.net/projects/orfeo-toolbox/files/OTB/ ;
+                        or see launchpad repository: unbuntu-gis-unstable
+                        <https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable>;
 
-VTK                     ubuntu/debian package (version >= 5.8); requires VTK 
-                        support Qt (VTK_USE_QT) and Qt Charts (VTK_USE_QTCHARTS)
-                        when compiled from source
+VTK                     version >= 6; tested against 6.1.0; required modules vtkCommonCore,
+                        vtkCommonDataModel, vtkFiltersGeneric, vtkRenderingCore,
+                        vtkRenderingAnnotation, vtkRenderingImage, vtkGUISupportQt,
+                        vtkImagingStatistics, vtkIteractionWidgets, vtkIOCore,
+                        vtkIOInfovis, vtkIOSQL, vtkIOLegacy, vtkIOXML
 
 rasdaman                this package is optional and only useful, if you intend
                         to use the LUMASS modelling framework; if you're only 
@@ -49,7 +55,7 @@ cmake-curses-gui        build system packages used to compile LUMASS (s. below)
 
 
 
-Except rasdaman, all above mentioned packages/libraries are available as Debian
+Some of the above mentioned packages/libraries are available as Debian
 (Ubuntu) packages and can be installed via your favourite package manager. 
 For Orfeo and GDAL you have to add the launchpad-repository 'unbuntu-gis-unstable'
 (see URL above) to make the packages available via your package manager. 
@@ -88,64 +94,3 @@ Building LUMASS from source
 
 4. you're good to go now!
    
-
-
-detailed list of package dependencies (including rasdaman requirements)
------------------------------------------------------------------------
-libqtcore4
-libqtgui4
-libQtXml
-libc6, libc6-dev
-zlib1g, zlib1g-dev
-libglib2.0-0
-libpcre3, libpcre3-dev
-libstdc++6, libstdc++6-4.6-dev
-libgcc1
-libfontconfig1, libfontconfig1-dev
-libfreetype6, libfreetype6-dev
-libexpat1, libexpat1-dev
-libaudio2      
-libxt6, libxt-dev
-libsm6, libsm6-dev
-libice6, libice-dev
-libuuid1
-libX11-6, libX11-dev
-libcxb1-dbg
-libxau6, libxau-dev
-libxdmcp6, libxdmcp-dev   
-libpng12, libpng12-dev            
-libffi6, libffi-dev
-libxi6
-libxext6, libxext-dev
-libxrender1
-libssl1.0.0
-libpq5, libpq-dev
-libkrb5-3, libkrb5-dev
-libcomerr2
-libkeyutils1
-libgssapi-krb5-2
-libldap-2.4-2
-libsasl2-modules
-libasn1-8-heimdal
-libroken18-heimdal
-libwind0-heimdal
-libheimbase1-heimdal	
-libhx509-heim
-libsqlite3-0
-libgnutls26
-libtasn1-3
-libgcrypt11
-libgpg-error0
-libgeotiff2, libgeotiff-dev
-libproj.0
-libjpeg8, libjpeg8-dev
-libgeos-3.3.3, libgeos-dev
-libnetcdf6, libnetcdf-dev
-libcurl3	
-libidn11
-librtmp0
-libhdf5-serial-1.8.4
-libjpeg62
-lp-solve, liblpsolve-55-dev
-libglu1-mesa
-

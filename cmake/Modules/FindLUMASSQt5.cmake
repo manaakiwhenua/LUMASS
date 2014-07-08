@@ -6,25 +6,41 @@
 
 # CUSTQT5_FOUND
 
+# brute force
 FIND_PATH(CMAKE_PREFIX_PATH lib/libQt5Core.la
-	PATH_SUFFIXES
-                Qt5.2.1/5.2.1/gcc_64
-                Qt5.2.1/5.2.1/gcc
-
-                Qt5.2.0/5.2.0/gcc_64
-                Qt5.2.0/5.2.0/gcc
-
-                Qt5.1.0/5.1.0/gcc_64
+        PATH_SUFFIXES
+                Qt5.0.0/5.0.0/gcc
+                Qt5.0.0/5.0.0/gcc_64
+                Qt5.0.1/5.0.1/gcc
+                Qt5.0.1/5.0.1/gcc_64
+                Qt5.0.2/5.0.2/gcc
+                Qt5.0.2/5.0.2/gcc_64
                 Qt5.1.0/5.1.0/gcc
-
-                Qt5.1.1/5.1.1/gcc_64
+                Qt5.1.0/5.1.0/gcc_64
                 Qt5.1.1/5.1.1/gcc
+                Qt5.1.1/5.1.1/gcc_64
+                Qt5.2.0/5.2.0/gcc
+                Qt5.2.0/5.2.0/gcc_64
+                Qt5.2.1/5.2.1/gcc
+                Qt5.2.1/5.2.1/gcc_64
+                Qt5.3.0/5.3.0/gcc
+                Qt5.3.0/5.3.0/gcc_64
+                Qt5.3.1/5.3.1/gcc
+                Qt5.3.1/5.3.1/gcc_64
+
+                qt/5.3/gcc
+                qt/5.3/gcc_64
+                5.3/gcc
+                5.3/gcc_64
 
 	PATHS
                 /opt
+                /opt/qt
                 /usr
+                /usr/qt
                 /usr/local
 )
+message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
 
 if(NOT CMAKE_PREFIX_PATH)
 	SET(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" CACHE PATH "Qt5 install dir")
@@ -68,3 +84,31 @@ else()
 	
 	message(STATUS "qt5 link dirs: ${QT5_LINK_DIRS}")
 endif()
+
+# find the private header dir for QtCore and QtGui
+foreach(INCLDIR ${QT5_INCLUDE_DIRS})
+    FIND_PATH(QT5CORE_PRIVATE_DIR private/qitemselectionmodel_p.h
+        PATH_SUFFIXES
+            5.0.0/QtCore
+            5.0.1/QtCore
+            5.0.2/QtCore
+            5.1.0/QtCore
+            5.1.1/QtCore
+            5.2.0/QtCore
+            5.2.1/QtCore
+            5.3.0/QtCore
+            5.3.1/QtCore
+            5.3/QtCore
+        PATHS ${INCLDIR}
+        NO_DEFAULT_PATH
+    )
+endforeach()
+
+if(NOT QT5CORE_PRIVATE_DIR)
+    #set(QT5CORE_PRIVATE_DIR "${CMAKE_PREFIX_PATH}" CACHE PATH "Qt5Core private header dir")
+    message(STATUS "couldn't find QT5CORE_PRIVATE_DIR!")
+else()
+    message(STATUS "QT5CORE_PRIVATE_DIR=${QT5CORE_PRIVATE_DIR}")
+endif()
+
+

@@ -58,12 +58,17 @@ public:
 
 	void instantiateObject(void);
 
+    void updateInput(NMItkDataObjectWrapper* imgWrapper);
+
+    void update(void);
+
 private:
 	NMItk2VtkConnector & operator=(const NMItk2VtkConnector&);
 
 	vtkSmartPointer<vtkImageImport> mVtkImgImp;
 	vtkSmartPointer<vtkImageChangeInformation> mVtkImgChangeInfo;
 	itk::VTKImageExportBase::Pointer mVtkImgExp;
+    bool mbIsConnected;
 
 };
 

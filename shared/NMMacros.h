@@ -475,6 +475,42 @@ type get ## name() \
 
 
 // **********************************************************************************
+/*  ===============================================================================
+ *	  Local Macro per Type : 'SINGLE' TYPE SWITCH ONLY MACRO
+ *	===============================================================================
+ */
+
+#define LocalMacroPerSingleType( macroName ) \
+    case otb::ImageIOBase::UCHAR:                                               \
+        macroName( unsigned char );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::CHAR:                                                \
+        macroName( char );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::USHORT:                                              \
+        macroName( unsigned short );                                        \
+        break;                                                                  \
+    case otb::ImageIOBase::SHORT:                                               \
+        macroName( short );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::UINT:                                                \
+        macroName( unsigned int );                                          \
+        break;                                                                  \
+    case otb::ImageIOBase::INT:                                                 \
+        macroName( int );                                                   \
+        break;                                                                  \
+    case otb::ImageIOBase::ULONG:                                               \
+        macroName( unsigned long );                                         \
+        break;                                                                  \
+    case otb::ImageIOBase::LONG:                                                \
+        macroName( long );                                                  \
+        break;                                                                  \
+    case otb::ImageIOBase::FLOAT:                                               \
+        macroName( float );                                                 \
+        break;                                                                  \
+    case otb::ImageIOBase::DOUBLE:                                              \
+        macroName( double );                                                \
+        break;
 
 
 /*  ===============================================================================

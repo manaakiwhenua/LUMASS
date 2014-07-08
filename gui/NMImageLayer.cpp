@@ -933,7 +933,21 @@ bool NMImageLayer::setFileName(QString filename)
 	return true;
 }
 
-void NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
+void
+NMImageLayer::updateSourceBuffer(void)
+{
+    NMDataComponent* dc = qobject_cast<NMDataComponent*>(this->sender());
+    if (dc != 0 && dc->getOutput(0) != 0 && dc->getOutput(0)->getDataObject() != 0)
+    {
+        this->mPipeconn->setInput(dc->getOutput(0));
+        this->mMapper->Update();
+        this->mRenderer->Render();
+        this->updateMapping();
+    }
+}
+
+void
+NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 {
 	if (imgWrapper == 0)
 		return;

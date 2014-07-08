@@ -274,9 +274,6 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 
 	this->setInput(to);
 
-	emit NMDataComponentChanged();
-
-
 	NMDebugCtx(ctx, << "done!");
 }
 

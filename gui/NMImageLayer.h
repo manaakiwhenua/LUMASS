@@ -31,6 +31,7 @@
 #include <NMLayer.h>
 #include <NMImageReader.h>
 #include <NMItk2VtkConnector.h>
+#include <NMDataComponent.h>
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -96,7 +97,8 @@ public:
 
 
 public slots:
-	void writeDataSet(void);
+    void updateSourceBuffer(void);
+    void writeDataSet(void);
 	void computeStats(void);
 	void selectionChanged(const QItemSelection& newSel,
 			const QItemSelection& oldSel);
@@ -110,6 +112,7 @@ protected:
 	void createTableView(void);
 	void updateStats(void);
 
+    NMDataComponent* mSourceBuffer;
 	NMImageReader* mReader;
 	NMItk2VtkConnector* mPipeconn;
 

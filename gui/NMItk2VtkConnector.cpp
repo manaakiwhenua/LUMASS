@@ -49,7 +49,46 @@ public:
 //	typedef itk::NMVTKImageExport< VecImgType >		      VecExporterType;
 //	typedef typename VecExporterType::Pointer		      VecExporterTypePointer;
 
-	static void connectPipeline(
+    static void updateInput(
+            itk::VTKImageExportBase::Pointer& vtkImgExp,
+            vtkSmartPointer<vtkImageChangeInformation>& vtkImgChangeInfo,
+            itk::DataObject::Pointer& imgObj, unsigned int numBands
+            )
+    {
+        if (numBands == 1)
+        {
+            ImgType* img = dynamic_cast<ImgType*>(imgObj.GetPointer());
+            ExporterType* vtkExp = dynamic_cast<ExporterType*>(vtkImgExp.GetPointer());
+            vtkExp->SetInput(img);
+
+            img->UpdateOutputInformation();
+            const ImgSize& size = img->GetRequestedRegion().GetSize();
+            const ImgSpacing& spacing = img->GetSpacing();
+            const ImgOrigin& origin = img->GetOrigin();
+            double neworigin[3] = {0,0,0};
+            double newspacing[3] = {0,0,0};
+
+            std::cout.precision(9);
+            NMDebugAI(<< "VTK image origin: ");
+            for (unsigned int d=0; d < ImageDimension; ++d)
+            {
+                newspacing[d] = spacing[d];
+                if (d==1)
+                    neworigin[d] = origin[d];// - (spacing[d] / 2.0);
+                else
+                    neworigin[d] = origin[d] + (spacing[d] / 2.0);
+
+                NMDebug( << origin[d] << " ");
+            }
+            NMDebug(<< endl);
+
+
+            vtkImgChangeInfo->SetOutputOrigin(neworigin);
+            vtkImgChangeInfo->SetOutputSpacing(newspacing);
+        }
+    }
+
+    static void connectPipeline(
 			itk::VTKImageExportBase::Pointer& vtkImgExp,
 			vtkSmartPointer<vtkImageImport>& vtkImgImp,
 			vtkSmartPointer<vtkImageChangeInformation>& vtkImgChangeInfo,
@@ -162,7 +201,27 @@ public:
 	} \
 }
 
+#define UpdateInput( PixelType ) \
+{ \
+    switch (this->mInputNumDimensions) \
+    { \
+    case 3: \
+        PipelineConnector< PixelType, 3 >::updateInput( \
+            this->mVtkImgExp, this->mVtkImgChangeInfo, this->mInputImg, this->mInputNumBands); \
+        break; \
+    case 1: \
+        PipelineConnector< PixelType, 1 >::updateInput( \
+            this->mVtkImgExp, this->mVtkImgChangeInfo, this->mInputImg, this->mInputNumBands); \
+        break; \
+    default: \
+        PipelineConnector< PixelType, 2 >::updateInput( \
+            this->mVtkImgExp, this->mVtkImgChangeInfo, this->mInputImg, this->mInputNumBands); \
+    } \
+}
+
+
 NMItk2VtkConnector::NMItk2VtkConnector(QObject* parent)
+    : mbIsConnected(false)
 {
 	this->setParent(parent);
 }
@@ -175,9 +234,14 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 {
 	NMDebugCtx(ctxNMItk2VtkConnector, << "...");
 
-	this->mInputImg = imgWrapper->getDataObject();
+    if (mbIsConnected && this->mInputImg.IsNotNull())
+    {
+        this->updateInput(imgWrapper);
+        NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
+        return;
+    }
 
-//	this->mItkImgObj = imgObj;
+	this->mInputImg = imgWrapper->getDataObject();
 	this->mInputComponentType = imgWrapper->getItkComponentType();
 	this->mInputNumDimensions = imgWrapper->getNumDimensions();
 	this->mInputNumBands = imgWrapper->getNumBands();
@@ -188,44 +252,72 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 	bool connect = true;
 	switch(this->mInputComponentType)
 	{
-	case otb::ImageIOBase::UCHAR:
-		ConnectPipelines( unsigned char );
-		break;
-	case otb::ImageIOBase::CHAR:
-		ConnectPipelines( char );
-		break;
-	case otb::ImageIOBase::USHORT:
-		ConnectPipelines( unsigned short );
-		break;
-	case otb::ImageIOBase::SHORT:
-		ConnectPipelines( short );
-		break;
-	case otb::ImageIOBase::UINT:
-		ConnectPipelines( unsigned int );
-		break;
-	case otb::ImageIOBase::INT:
-		ConnectPipelines( int );
-		break;
-	case otb::ImageIOBase::ULONG:
-		ConnectPipelines( unsigned long );
-		break;
-	case otb::ImageIOBase::LONG:
-		ConnectPipelines( long );
-		break;
-	case otb::ImageIOBase::FLOAT:
-		ConnectPipelines( float );
-		break;
-	case otb::ImageIOBase::DOUBLE:
-		ConnectPipelines( double );
-		break;
+    LocalMacroPerSingleType( ConnectPipelines )
 	default:
 		NMErr(ctxNMItk2VtkConnector,
 				<< "UNKNOWN DATA TYPE, couldn't connect pipelines!");
 		this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+        connect = false;
 		break;
 	}
 
+    this->mbIsConnected = connect;
 	NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
+}
+
+void
+NMItk2VtkConnector::updateInput(NMItkDataObjectWrapper* imgWrapper)
+{
+    if (imgWrapper)
+    {
+        if (imgWrapper->getDataObject())
+        {
+            this->mInputImg = imgWrapper->getDataObject();
+
+            this->mInputComponentType = imgWrapper->getItkComponentType();
+            this->mInputNumDimensions = imgWrapper->getNumDimensions();
+            this->mInputNumBands = imgWrapper->getNumBands();
+
+            switch(this->mInputComponentType)
+            {
+            LocalMacroPerSingleType( UpdateInput )
+            default:
+                NMErr(ctxNMItk2VtkConnector,
+                        << "UNKNOWN DATA TYPE, couldn't connect pipelines!");
+                this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
+                break;
+            }
+        }
+    }
+}
+
+void
+NMItk2VtkConnector::update()
+{
+//    this->mInputImg->UpdateOutputInformation();
+//    const ImgSize& size = img->GetRequestedRegion().GetSize();
+//    const ImgSpacing& spacing = img->GetSpacing();
+//    const ImgOrigin& origin = img->GetOrigin();
+//    double neworigin[3] = {0,0,0};
+//    double newspacing[3] = {0,0,0};
+
+//    std::cout.precision(9);
+//    NMDebugAI(<< "VTK image origin: ");
+//    for (unsigned int d=0; d < ImageDimension; ++d)
+//    {
+//        newspacing[d] = spacing[d];
+//        if (d==1)
+//            neworigin[d] = origin[d];// - (spacing[d] / 2.0);
+//        else
+//            neworigin[d] = origin[d] + (spacing[d] / 2.0);
+
+//        NMDebug( << origin[d] << " ");
+//    }
+//    NMDebug(<< endl);
+
+//    //this->mVtkImgChangeInfo->SetInputConnection(vtkImgImp->GetOutputPort());
+//    this->mVtkImgChangeInfo->SetOutputOrigin(neworigin);
+//    this->mVtkImgChangeInfo->SetOutputSpacing(newspacing);
 }
 
 vtkImageData * NMItk2VtkConnector::getVtkImage()

@@ -716,7 +716,8 @@ void ModelComponentList::dropEvent(QDropEvent* event)
     if (dropSource.compare(QString::fromLatin1("_NMModelScene_")) == 0)
     {
         NMDebugAI(<< "adding layer: " << dropLayer.toStdString() << std::endl);
-        NMModelComponent* comp = NMModelController::getInstance()->getComponent(dropLayer);
+        NMDataComponent* comp = qobject_cast<NMDataComponent*>(
+                    NMModelController::getInstance()->getComponent(dropLayer));
         if (comp == 0)
         {
             NMDebugCtx(ctx, << "done!");
@@ -736,6 +737,8 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         h.getMainWindow()->connectImageLayerProcSignals(iLayer);
 
         iLayer->setImage(comp->getOutput(0));
+
+        connect(comp, SIGNAL(NMDataComponentChanged()), iLayer, SLOT(updateSourceBuffer()));
 
     }
     else if (dropSource.compare(QString::fromLatin1("_ModelComponentList_")) == 0)

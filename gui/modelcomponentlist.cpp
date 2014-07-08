@@ -870,16 +870,40 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
 
 void ModelComponentList::dragMoveEvent(QDragMoveEvent* event)
 {
-	QModelIndex id = this->indexAt(event->pos());
-	if (!id.isValid() || id.parent().isValid())
-	{
-		this->mIndicatorIdx = QModelIndex();
-		return;
-	}
+    QString dropSource;
+    QString dropLayer;
+    if (event->mimeData()->hasFormat("text/plain"))
+    {
+        QString ts = event->mimeData()->text();
+        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        if (tl.count() == 2)
+        {
+            dropSource = tl.at(0);
+            dropLayer = tl.at(1);
+        }
+    }
 
-	this->mIndicatorIdx = id;
-	this->viewport()->update();
-	event->acceptProposedAction();
+    if (dropSource.compare(QString::fromLatin1("_ModelComponentList_")) == 0)
+    {
+        QModelIndex id = this->indexAt(event->pos());
+        if (!id.isValid() || id.parent().isValid())
+        {
+            this->mIndicatorIdx = QModelIndex();
+            return;
+        }
+        this->mIndicatorIdx = id;
+        this->viewport()->update();
+        event->acceptProposedAction();
+    }
+    else
+    {
+        if (    dropSource.startsWith(QString::fromLatin1("_NMModelScene_"))
+            ||  event->mimeData()->hasUrls()
+            )
+        {
+            event->acceptProposedAction();
+        }
+    }
 }
 
 void ModelComponentList::mouseReleaseEvent(QMouseEvent* event)

@@ -293,6 +293,11 @@ NMProcessComponentItem::updateDescription(
     qreal leading = fm.leading();
     qreal height = 0;
 
+    qreal linewidth = fm.width(descr)+5;
+    if (linewidth > mMaxTextWidth)
+    {
+        linewidth = mMaxTextWidth;
+    }
 
     mTextLayout.setText(descr);
     mTextLayout.setFont(mFont);
@@ -303,7 +308,7 @@ NMProcessComponentItem::updateDescription(
         if (!line.isValid())
             break;
 
-        line.setLineWidth(mMaxTextWidth);
+        line.setLineWidth(linewidth);
         height += leading;
         line.setPosition(QPointF(0, height));
         height += line.height();

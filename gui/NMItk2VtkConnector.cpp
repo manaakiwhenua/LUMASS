@@ -270,10 +270,11 @@ NMItk2VtkConnector::updateInput(NMItkDataObjectWrapper* imgWrapper)
 {
     if (imgWrapper)
     {
-        if (imgWrapper->getDataObject())
+        if (    imgWrapper->getDataObject()
+            &&  this->mInputComponentType == imgWrapper->getItkComponentType()
+           )
         {
             this->mInputImg = imgWrapper->getDataObject();
-
             this->mInputComponentType = imgWrapper->getItkComponentType();
             this->mInputNumDimensions = imgWrapper->getNumDimensions();
             this->mInputNumBands = imgWrapper->getNumBands();
@@ -288,47 +289,43 @@ NMItk2VtkConnector::updateInput(NMItkDataObjectWrapper* imgWrapper)
                 break;
             }
         }
+        else
+        {
+            QString parentName = "NMItk2VtkConnector";
+            if (this->parent())
+            {
+                if (this->parent()->objectName().isEmpty())
+                {
+                    parentName = this->parent()->metaObject()->className();
+                }
+                else
+                {
+                    parentName = this->parent()->objectName();
+                }
+            }
+
+            NMErr(ctxNMItk2VtkConnector,
+                  << "Data type mismatch! Update of "
+                  << parentName.toStdString() << "'s data failed!");
+        }
     }
 }
 
 void
 NMItk2VtkConnector::update()
 {
-//    this->mInputImg->UpdateOutputInformation();
-//    const ImgSize& size = img->GetRequestedRegion().GetSize();
-//    const ImgSpacing& spacing = img->GetSpacing();
-//    const ImgOrigin& origin = img->GetOrigin();
-//    double neworigin[3] = {0,0,0};
-//    double newspacing[3] = {0,0,0};
-
-//    std::cout.precision(9);
-//    NMDebugAI(<< "VTK image origin: ");
-//    for (unsigned int d=0; d < ImageDimension; ++d)
-//    {
-//        newspacing[d] = spacing[d];
-//        if (d==1)
-//            neworigin[d] = origin[d];// - (spacing[d] / 2.0);
-//        else
-//            neworigin[d] = origin[d] + (spacing[d] / 2.0);
-
-//        NMDebug( << origin[d] << " ");
-//    }
-//    NMDebug(<< endl);
-
-//    //this->mVtkImgChangeInfo->SetInputConnection(vtkImgImp->GetOutputPort());
-//    this->mVtkImgChangeInfo->SetOutputOrigin(neworigin);
-//    this->mVtkImgChangeInfo->SetOutputSpacing(newspacing);
+    // this class is just a container for the ITK-VTK bridge
+    // whose involved classes are updated by other classes, so
+    // no need for an update implementation here
 }
 
 vtkImageData * NMItk2VtkConnector::getVtkImage()
 {
-//	return this->mVtkImgImp->GetOutput();
 	return this->mVtkImgChangeInfo->GetOutput();
 }
 
 vtkAlgorithmOutput * NMItk2VtkConnector::getVtkAlgorithmOutput()
 {
-//	return this->mVtkImgImp->GetOutputPort();
 	return this->mVtkImgChangeInfo->GetOutputPort();
 }
 

@@ -2050,7 +2050,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	// current one; we don't bother with just writing changed
 	// values (too lazy for doing the required housekeeping
 	// beforehand) ...
-	GDALRasterAttributeTable* gdaltab = new GDALRasterAttributeTable();
+    GDALRasterAttributeTable* gdaltab = new GDALRasterAttributeTable();
 	gdaltab->SetRowCount(tab->GetNumRows());
 
 	// add the category field "Value"
@@ -2106,6 +2106,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 				gdaltab->SetValue(row, col-1, tab->GetStrValue(col, row).c_str());
 				break;
 			default:
+                delete gdaltab;
 				itkExceptionMacro(<< "Unrecognised field type! Couldn't set value col=" << col
 						<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
 				break;
@@ -2117,6 +2118,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	err = band->SetDefaultRAT(gdaltab);
 	if (err == CE_Failure)
 	{
+        delete gdaltab;
 		itkExceptionMacro(<< "Failed writing table to band!");
 	}
 	ds->FlushCache();

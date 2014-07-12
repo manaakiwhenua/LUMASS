@@ -164,7 +164,10 @@ NMModelScene::toggleLinkToolButton(bool linkMode)
 	}
 	else
     {
-        this->setProcCompMoveability(true);
+        if (!mbSceneMove)
+        {
+            this->setProcCompMoveability(true);
+        }
         this->views().at(0)->setCursor(Qt::OpenHandCursor);
         this->mMode = NMS_MOVE;
     }
@@ -268,17 +271,16 @@ void NMModelScene::toggleMoveToolButton(bool moveMode)
 {
 	if (moveMode)
 	{
-        //this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
-        //this->mMode = NMS_MOVE;
         mbSceneMove = true;
         this->setProcCompMoveability(false);
 	}
 	else
 	{
-        //this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
-        //this->mMode = NMS_IDLE;
         mbSceneMove = false;
-        this->setProcCompMoveability(true);
+        if (mMode != NMS_LINK)
+        {
+            this->setProcCompMoveability(true);
+        }
 	}
     this->invalidate();
 }
@@ -800,19 +802,11 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 this->setProcCompSelectability(false);
                 mMode = NMS_IDLE;
             }
-            //            if (!mbSceneMove)
-            //            {
-            //                this->setProcCompMoveability(true);
-            //            }
-            //            else
-            //            {
-            //                this->setProcCompMoveability(false);
-            //            }
             this->mDragItemList.clear();
         }
 		break;
 	}
-    if (!mbSceneMove)
+    if (!mbSceneMove && mMode != NMS_LINK)
     {
         this->setProcCompMoveability(true);
     }

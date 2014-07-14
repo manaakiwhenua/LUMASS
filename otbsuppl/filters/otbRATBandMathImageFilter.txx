@@ -493,18 +493,18 @@ void RATBandMathImageFilter<TImage>
 		}
 
 		//// Image Indexes
-		//for (j = 0; j < 2; j++)
-		//{
-		//	m_AImage.at(threadId).at(nbInputImages + j) =
-		//			static_cast<double>(Vit.at(0).GetIndex()[j]);
-		//}
-		//for (j = 0; j < 2; j++)
-		//{
-		//	m_AImage.at(threadId).at(nbInputImages + 2 + j) =
-		//			static_cast<double>(m_Origin[j])
-		//					+ static_cast<double>(Vit.at(0).GetIndex()[j])
-		//							* static_cast<double>(m_Spacing[j]);
-		//}
+        for (j = 0; j < 2; j++)
+        {
+            m_AImage.at(threadId).at(nbInputImages + j) =
+                    static_cast<double>(Vit.at(0).GetIndex()[j]);
+        }
+        for (j = 0; j < 2; j++)
+        {
+            m_AImage.at(threadId).at(nbInputImages + 2 + j) =
+                    static_cast<double>(m_Origin[j])
+                            + static_cast<double>(Vit.at(0).GetIndex()[j])
+                                    * static_cast<double>(m_Spacing[j]);
+        }
 
 		try
 		{

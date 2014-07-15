@@ -53,6 +53,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("ResampleImage")        ;
 
     mSinks << QString::fromLatin1("ImageWriter");
+    mSinks << QString::fromLatin1("CostDistanceBuffer");
 
 }
 

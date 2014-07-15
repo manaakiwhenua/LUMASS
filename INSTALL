@@ -38,6 +38,11 @@ VTK                     version >= 6; tested against 6.1.0; required modules vtk
                         vtkImagingStatistics, vtkIteractionWidgets, vtkIOCore,
                         vtkIOInfovis, vtkIOSQL, vtkIOLegacy, vtkIOXML
 
+                        NOTE:
+                        While compiling VTK, please make sure you enable the build of
+                        Module_vtkGUISupportQt (i.e. set to 'ON'), which becomes
+                        available once you've toggled [t] the advanced mode.
+
 rasdaman                this package is optional and only useful, if you intend
                         to use the LUMASS modelling framework; if you're only 
                         interested in spatial optimisation, you don't need this 
@@ -61,8 +66,7 @@ For Orfeo and GDAL you have to add the launchpad-repository 'unbuntu-gis-unstabl
 (see URL above) to make the packages available via your package manager. 
 You will also need the 'build-essentials' package for compiling LUMASS from 
 source. Installing the above mentioned packages should resolve most of the 
-library dependencies. You find a detailed list of (Ubuntu) package dependencies
-at the end of this guide.
+library dependencies.
 
 
 Building LUMASS from source
@@ -93,4 +97,8 @@ Building LUMASS from source
    $ make -j 4 			# ← uses 4 cores
 
 4. you're good to go now!
+
+
+Feel free to consult the lumass-users group (https://groups.google.com/forum/#!forum/lumass-users)
+for help if you encounter any issues with the installation process.
    

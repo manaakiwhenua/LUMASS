@@ -1037,7 +1037,7 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 			levelComps.begin();
 	while(levelIt != levelComps.end())
 	{
-        // we only execute 'non-sink' processes, DataBuffers or
+        // we only execute 'sink' processes, DataBuffers or
         // aggregate components
         QString cn = levelIt.key();
         if (    !cn.startsWith(QString::fromLatin1("DataBuffer"))

@@ -73,6 +73,9 @@ public:
     srand(time(0));
     m_MuParser.DefineFun("rand", rnum, false);
     m_MuParser.DefineFun("RAND", rnum, false);
+
+    // init fmod function
+    m_MuParser.DefineFun("mod", calcMod, false);
   }
 
   /** Set the expression to be parsed */
@@ -244,6 +247,11 @@ private:
   static ValueType rnum(ValueType lower, ValueType upper)
   {
 	  return rand() % ((int)upper - (int)lower + 1) + (int)lower;
+  }
+
+  static ValueType calcMod(ValueType numer, ValueType denom)
+  {
+      return std::fmod(numer, denom);
   }
 
   //----------  User Defined Functions  ----------//END

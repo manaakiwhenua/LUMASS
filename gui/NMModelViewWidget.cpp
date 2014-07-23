@@ -1504,7 +1504,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					{
                         NMModelComponent* mcomp = this->mModelController->getComponent(itemTitle);
 						connect(mcomp, SIGNAL(ComponentDescriptionChanged(const QString &)),
-								pi, SLOT(updateDescription(const QString &)));
+                                pi, SLOT(setDescription(const QString &)));
                         connect(mcomp, SIGNAL(TimeLevelChanged(short)),
                                 pi, SLOT(updateTimeLevel(short)));
                         //pi->setIsDataBufferItem(true);
@@ -2604,7 +2604,7 @@ NMModelViewWidget::connectProcessItem(NMProcess* proc,
     //NMModelComponent* comp = qobject_cast<NMModelComponent*>(proc->parent());
     NMIterableComponent* comp = qobject_cast<NMIterableComponent*>(proc->parent());
 	connect(comp, SIGNAL(ComponentDescriptionChanged(const QString &)), procItem,
-            SLOT(updateDescription(const QString &)));
+            SLOT(setDescription(const QString &)));
     connect(comp, SIGNAL(TimeLevelChanged(short)), procItem,
             SLOT(updateTimeLevel(short)));
 }
@@ -2637,7 +2637,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		dataComp->setObjectName(tname);
 		comp = qobject_cast<NMModelComponent*>(dataComp);
         connect(dataComp, SIGNAL(ComponentDescriptionChanged(const QString &)),
-				procItem, SLOT(updateDescription(const QString &)));
+                procItem, SLOT(setDescription(const QString &)));
         connect(dataComp, SIGNAL(TimeLevelChanged(short)),
                 procItem, SLOT(updateTimeLevel(short)));
 		dataComp->setDescription(tname);

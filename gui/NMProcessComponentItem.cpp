@@ -285,10 +285,19 @@ NMProcessComponentItem::updateTimeLevel(short level)
 }
 
 void
-NMProcessComponentItem::updateDescription(
-	const QString& descr)
+NMProcessComponentItem::setDescription(const QString& descr)
 {
-	this->mDescription = descr;
+    if (descr.compare(this->mDescription) != 0)
+    {
+        this->mDescription = descr;
+        this->update();
+    }
+}
+
+void
+NMProcessComponentItem::updateDescription()
+{
+    const QString& descr = this->mDescription;
     QFontMetricsF fm(mFont);
     qreal leading = fm.leading();
     qreal height = 0;
@@ -314,11 +323,14 @@ NMProcessComponentItem::updateDescription(
         height += line.height();
     }
     mTextLayout.endLayout();
+
+    // let model scene know that we're about to
+    // (indirectly) change the geometry
+    prepareGeometryChange();
     mTextRect = mTextLayout.boundingRect();
+
     mTextRect.moveTopLeft(QPointF(-(0.5*mTextRect.width())-4,
                           mIconBnd.bottom()+0.5*mSingleLineHeight));
-
-	this->update();
 }
 
 void
@@ -327,6 +339,8 @@ NMProcessComponentItem::paint(QPainter* painter,
 		QWidget* widget)
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
+
+    this->updateDescription();
 
 	if(mbIsExecuting)
 	{

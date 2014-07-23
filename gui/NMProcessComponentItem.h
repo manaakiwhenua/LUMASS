@@ -81,7 +81,6 @@ public:
 	QPolygonF getShapeAsPolygon(void) const;
 	//QPainterPath shape(void) const;
 
-    void setDescription(const QString& descr);
 	QString getDescription(void)
 		{return this->mDescription;}
 
@@ -113,7 +112,8 @@ public:
         {return this->mInputLinks;}
 
 public slots:
-	void updateProgress(float progr);
+    void setDescription(const QString& descr);
+    void updateProgress(float progr);
 	void reportExecutionStarted(const QString& proc);
 	void reportExecutionStopped(const QString& proc);
     void updateTimeLevel(short level);

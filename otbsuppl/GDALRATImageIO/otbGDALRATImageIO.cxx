@@ -2051,7 +2051,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	// values (too lazy for doing the required housekeeping
 	// beforehand) ...
 #ifdef GDAL_NEWRATAPI
-    GDALDefaultRasterAttributeTable* gdaltab = GDALDefaultRasterAttributeTable();
+    GDALDefaultRasterAttributeTable* gdaltab = new GDALDefaultRasterAttributeTable();
 #else
     GDALRasterAttributeTable* gdaltab = new GDALRasterAttributeTable();
 #endif

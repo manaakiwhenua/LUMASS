@@ -60,7 +60,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "MinSizeRel" "RelWithDebInfo")
 endif()  
 
-message(STATUS "LUMASS build type: "${CMAKE_BUILD_TYPE}) 
+message(STATUS "LUMASS build type: ${CMAKE_BUILD_TYPE}")
 
 # define the DEBUG symbol, if we're in debug mode
 string(TOLOWER "${CMAKE_BUILD_TYPE}" testvar_in)
@@ -90,8 +90,8 @@ if(NOT OPENGL_INCLUDE_DIR)
   message(FATAL_ERROR "LUMASS requires OpenGL's GL/glu.h !")
 endif()
 
-message(STATUS "OpenGL's include dir: "${OPENGL_INCLUDE_DIR})
-message(STATUS "OpenGL's GLU library: "${OPENGL_glu_LIBRARY})
+message(STATUS "OpenGL's include dir: ${OPENGL_INCLUDE_DIR}")
+message(STATUS "OpenGL's GLU library: ${OPENGL_glu_LIBRARY}")
 
 #====================================================================
 # Orfeo Toolbox 
@@ -146,9 +146,9 @@ ELSE()
 ENDIF()
 
 
-message(STATUS "gdal version: " ${GDAL_VERSION})
-message(STATUS "gdal lib: "${GDAL_LIBRARY})
-message(STATUS "gdal include dir: "${GDAL_INCLUDE_DIR})
+message(STATUS "gdal version: ${GDAL_VERSION}")
+message(STATUS "gdal lib: ${GDAL_LIBRARY}")
+message(STATUS "gdal include dir: ${GDAL_INCLUDE_DIR}")
 
 
 #====================================================================
@@ -160,26 +160,26 @@ IF(NOT LPSOLVE_FOUND)
   message(FATAL_ERROR "You have to install lp_solve prior to compiling LUMASS!")
 ENDIF()
 
-message(STATUS "lp_solve include dir: "${LPSOLVE_INCLUDE_DIR})
-message(STATUS "lp_solve library: "${LPSOLVE_LIBRARY})
+message(STATUS "lp_solve include dir: ${LPSOLVE_INCLUDE_DIR}")
+message(STATUS "lp_solve library: ${LPSOLVE_LIBRARY}")
 
 #====================================================================
 # RASDAMAN SUPPORT - optional (requires PostgreSQL support)
 #====================================================================
 
-OPTION(RASSUPPORT "Build lumass with rasdaman support?" ON )
+OPTION(RASSUPPORT "Build lumass with rasdaman support?" OFF )
 IF(RASSUPPORT)
   FIND_PACKAGE(Rasdaman)
   IF(RASDAMAN_FOUND)
-     message(STATUS "rasdaman source dir: "${RASDAMAN_SOURCE_DIR})
-     message(STATUS "rasdaman libraries dir: "${RASDAMAN_LIBRARIES_DIR})
+     message(STATUS "rasdaman source dir: ${RASDAMAN_SOURCE_DIR}")
+     message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
   ENDIF()
   
   # when we use rasdaman, we need postgres as well!
   FIND_PACKAGE(LUMASSPostgreSQL)
   IF(PostgreSQL_FOUND)
-     message(STATUS "postgres include dirs: "${PostgreSQL_INCLUDE_DIRS})
-     message(STATUS "postgres libraries dirs: "${PostgreSQL_LIBRARY_DIRS})
+     message(STATUS "postgres include dirs: ${PostgreSQL_INCLUDE_DIRS}")
+     message(STATUS "postgres libraries dirs: ${PostgreSQL_LIBRARY_DIRS}")
   ENDIF()
 
   IF(PostgreSQL_FOUND AND RASDAMAN_FOUND)
@@ -196,10 +196,10 @@ IF(RASSUPPORT)
   ENDIF(PostgreSQL_FOUND AND RASDAMAN_FOUND)
 ENDIF()
 
-message(STATUS "rasdaman support: "${RASSUPPORT})
-message(STATUS "rasdaman source dir: "${RASDAMAN_SOURCE_DIR})
-message(STATUS "rasdaman include dir: "${RASDAMAN_INCLUDE_DIR})
-message(STATUS "rasdaman libraries dir: "${RASDAMAN_LIBRARIES_DIR})
+message(STATUS "rasdaman support: ${RASSUPPORT}")
+message(STATUS "rasdaman source dir: ${RASDAMAN_SOURCE_DIR}")
+message(STATUS "rasdaman include dir: ${RASDAMAN_INCLUDE_DIR}")
+message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
 
 #====================================================================
 # SOME OTHER STUFF WE WANNA USE GLOBALLY

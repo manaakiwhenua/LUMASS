@@ -147,5 +147,13 @@ ADD_EXECUTABLE(lumass ${QT_SRC} ${MOC_CPP} ${UI_CPP} ${NM_RES})
 TARGET_LINK_LIBRARIES(lumass ${LUMASS_LINKLIBS})     
 ADD_DEPENDENCIES(lumass ${LUMASS_DEPLIBS})
 
+# post-build query of lumass dependencies
+#add_custom_command(TARGET lumass POST_BUILD
+#                   COMMAND ${CMAKE_SOURCE_DIR}/fetch_ludeps ${lumass_BINARY_DIR}/lib
+#                   WORKING_DIRECTORY ${lumass_BINARY_DIR}/bin
+#                   VERBATIM
+#)
+
+# install rules for lumass executable
 install(TARGETS lumass RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 	

@@ -412,7 +412,7 @@ void RATBandMathImageFilter<TImage>
 template< typename TImage >
 void RATBandMathImageFilter<TImage>
 ::ThreadedGenerateData(const ImageRegionType& outputRegionForThread,
-           int threadId)
+           itk::threadidtype threadId)
 {
 	double* value;
 	unsigned int j, r;

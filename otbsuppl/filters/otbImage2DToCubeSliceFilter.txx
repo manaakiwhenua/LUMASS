@@ -253,7 +253,7 @@ void Image2DToCubeSliceFilter<TInputImage, TOutputImage>
 template <class TInputImage, class TOutputImage>
 void Image2DToCubeSliceFilter<TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
-		  int threadId )
+          itk::ThreadIdType threadId )
 {
 	TInputImage* InImg = const_cast<TInputImage*>(this->GetInput());
 	TOutputImage* OutImg = const_cast<TOutputImage*>(this->GetOutput());

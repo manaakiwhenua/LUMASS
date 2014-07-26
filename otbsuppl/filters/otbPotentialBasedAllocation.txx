@@ -77,7 +77,7 @@ template< class TInputImage, class TOutputImage>
 void
 PotentialBasedAllocation< TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
-                       int threadId)
+                       itk::threadidtype threadId)
 {
 	OutputImagePointer cats = dynamic_cast<OutputImageType*>(
 			const_cast<itk::DataObject*>(itk::ProcessObject::GetOutput(0)));

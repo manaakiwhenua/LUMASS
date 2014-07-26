@@ -389,7 +389,9 @@ bool GDALRATImageFileReader<TOutputImage>::GetGdalReadImageFileName(
 	{
 		std::string strFileName(filename);
 
-		std::string extension = System::GetExtension(strFileName);
+        std::string extension = itksys::SystemTools::GetFilenameLastExtension(strFileName);
+        extension = extension.substr(1, extension.size()-1);
+
 		if ((extension == "HDR") || (extension == "hdr"))
 		{
 			//Supprime l'extension
@@ -503,7 +505,7 @@ void GDALRATImageFileReader<TOutputImage>::TestFileExistanceAndReadability()
 		if (res != 0 && res != 63) // 63 stands for filesize exceed
 		{
 			ImageFileReaderException e(__FILE__, __LINE__);
-			itk::OStringStream msg;
+            std::ostringstream msg;
 			msg
 					<< "File name is an http address, but curl fails to connect to it "
 					<< std::endl << "Filename = " << this->GetFileName()
@@ -528,7 +530,7 @@ void GDALRATImageFileReader<TOutputImage>::TestFileExistanceAndReadability()
 	if (!itksys::SystemTools::FileExists(this->GetFileName()))
 	{
 		ImageFileReaderException e(__FILE__, __LINE__);
-		itk::OStringStream msg;
+        std::ostringstream msg;
 		msg << "The file doesn't exist. " << std::endl << "Filename = "
 				<< this->GetFileName() << std::endl;
 		e.SetDescription(msg.str().c_str());
@@ -538,14 +540,14 @@ void GDALRATImageFileReader<TOutputImage>::TestFileExistanceAndReadability()
 
 	// Test if the file can be open for reading access.
 	//Only if GetFileName() specify a filename (not a dirname)
-	if (System::IsAFileName(this->GetFileName()) == true)
+    if (itksys::SystemTools::FileExists(this->GetFileName(), true) == true)
 	{
 		std::ifstream readTester;
 		readTester.open(this->GetFileName());
 		if (readTester.fail())
 		{
 			readTester.close();
-			itk::OStringStream msg;
+            std::ostringstream msg;
 			msg << "The file couldn't be opened for reading. " << std::endl
 					<< "Filename: " << this->GetFileName() << std::endl;
 			ImageFileReaderException e(__FILE__, __LINE__, msg.str().c_str(),

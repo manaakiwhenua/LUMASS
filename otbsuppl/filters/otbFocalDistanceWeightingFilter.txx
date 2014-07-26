@@ -156,7 +156,7 @@ template< class TInputImage, class TOutputImage>
 void
 FocalDistanceWeightingFilter< TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
-                       int threadId)
+                       itk::ThreadIdType threadId)
 {
 	unsigned int i;
 	itk::ConstantBoundaryCondition<InputImageType> nbc;

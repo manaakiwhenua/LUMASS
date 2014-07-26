@@ -149,7 +149,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
-::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, int threadId)
+::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId)
 {
 	if (threadId == 0)
 	{

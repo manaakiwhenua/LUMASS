@@ -273,7 +273,7 @@ void
 NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
 ::ThreadedGenerateData(
   const OutputImageRegionType& outputRegionForThread,
-  ThreadIdType threadId)
+  itk::ThreadIdType threadId)
 {
   // Check whether the input or the output is a
   // SpecialCoordinatesImage.  If either are, then we cannot use the

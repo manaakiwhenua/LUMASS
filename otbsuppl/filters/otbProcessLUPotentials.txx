@@ -128,7 +128,7 @@ template< class TInputImage, class TOutputImage>
 void
 ProcessLUPotentials< TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
-                       itk::threadidtype threadId)
+                       itk::ThreadIdType threadId)
 {
 	OutputImagePointer cats = dynamic_cast<OutputImageType*>(
 			const_cast<itk::DataObject*>(itk::ProcessObject::GetOutput(0)));

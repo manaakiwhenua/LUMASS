@@ -159,7 +159,7 @@ protected:
    * \sa ImageToImageFilter::ThreadedGenerateData(),
    *     ImageToImageFilter::GenerateData() */
   void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
-                            int threadId );
+                            itk::ThreadIdType threadId );
 
   /** Before we do the real work, we just check the
    *  input data for consistency, at least partly ...

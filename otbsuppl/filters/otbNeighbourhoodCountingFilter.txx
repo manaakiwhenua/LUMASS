@@ -118,7 +118,7 @@ template< class TInputImage, class TOutputImage>
 void
 NeighbourhoodCountingFilter< TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
-                       itk::threadidtype threadId)
+                       itk::ThreadIdType threadId)
 {
   unsigned int i;
   itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;

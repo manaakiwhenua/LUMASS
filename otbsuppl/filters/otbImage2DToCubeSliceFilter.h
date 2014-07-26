@@ -113,7 +113,7 @@ protected:
   void
   ThreadedGenerateData(
 		  const OutputImageRegionType& outputRegionForThread,
-		  int threadId );
+          itk::ThreadIdType threadId );
 
   unsigned int m_ZLevel;
   double m_ZSpacing;

@@ -205,10 +205,10 @@ public:
   virtual void SetFileName(std::string filename)
   {
     m_FileName = filename;
-#ifdef BUILD_RASSUPPORT
-    if (this->mRasconn == 0)
+//#ifdef BUILD_RASSUPPORT
+//    if (this->mRasconn == 0)
     	m_ImageIO = NULL;
-#endif
+//#endif
     this->Modified();
   }
 

@@ -34,13 +34,19 @@ cp $( echo "$LIBKEA" ) lib/
 GDAL_KEA=$( locate -n 1 gdal_KEA.so)
 cp $( echo "$GDAL_KEA") lib/
 
+cd lib
+for LIB in $( ls ./ ); do
+	if grep -q "PATH" <<< $( readelf --dynamic $LIB ); then
+		chrpath -d $LIB
+	fi
+done
+
 # package ...
+cd ../..
 
 OS=$( uname -s )
 REL=$( uname -r )
 PLATFORM=$( uname -i )
-
-cd ..
 
 tar czvf lumass-$( echo $LUMASS_VERSION )_$OS-$( echo $REL )_$PLATFORM.tar.gz lumass
 

@@ -85,11 +85,14 @@ if [ -a "lib/libkea.so" -o -L "lib/libkea.so" ]; then
 	rm lib/libkea.so
 fi
 
-echo "---> versioned libkea = $LIBKEA2"
+#echo "---> versioned libkea = $LIBKEA2"
 
-ln -s $( echo "$INDIR" )/lib/$( echo "$LIBKEA2" ) lib/libkea.so
+#ln -s $( echo "$INDIR" )/lib/$( echo "$LIBKEA2" ) lib/libkea.so
+cd lib
+ln -s './$LIBKEA2' ./libkea.so
+cd ..
 
-echo "---> created symlink lib/libkea.so ok"
+#echo "---> created symlink lib/libkea.so ok"
 
 GDAL_KEA=$( locate -n 1 gdal_KEA.so)
 cp $( echo "$GDAL_KEA" ) lib/

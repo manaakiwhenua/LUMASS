@@ -17,6 +17,7 @@ INCLUDE_DIRECTORIES(
     ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
     ${gui_SOURCE_DIR}
+    ${lumass_SOURCE_DIR}/utils/ITK
 )
 
 LINK_DIRECTORIES(
@@ -28,6 +29,7 @@ file(GLOB MFW_CPP
    ${mfw_SOURCE_DIR}/*.cpp
    ${mfw_wrapper_SOURCE_DIR}/*.cpp
    ${mfw_wrapper_SOURCE_DIR}/*.cxx
+   ${lumass_SOURCE_DIR}/util/ITK/itkVTKImageExportBase.cxx
 )
 
 file(GLOB MFW_H

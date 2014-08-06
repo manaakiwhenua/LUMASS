@@ -8,6 +8,7 @@ INCLUDE_DIRECTORIES(
 	${muparser_SOURCE_DIR}
 	${utils_SOURCE_DIR}
 	${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
+	${lumass_SOURCE_DIR}/utils/ITK
 )
 
 file(GLOB OTBSUPPL_FILTERS

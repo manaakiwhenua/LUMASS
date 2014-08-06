@@ -44,6 +44,7 @@ INCLUDE_DIRECTORIES(
 	${RASDAMAN_INCLUDE_DIR}/raslib	
 	${RASDAMAN_SOURCE_DIR}/applications/rasgeo
 	${PostgreSQL_INCLUDE_DIRS}
+        ${lumass_SOURCE_DIR}/utils/ITK
 )     
 
 LINK_DIRECTORIES(
@@ -103,6 +104,7 @@ file(GLOB QT_SRC
     # want to be included
     ${opt_SOURCE_DIR}/*.cpp
     ${NMVtk_SOURCE_DIR}/*.cxx
+    ${lumass_SOURCE_DIR}/utils/ITK/itkVTKImageExportBase.cxx
 )
 
 # take the ChartsWidget out until we've switched to the new VTK Charts

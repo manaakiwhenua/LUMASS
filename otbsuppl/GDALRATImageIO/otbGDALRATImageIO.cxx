@@ -315,6 +315,9 @@ GDALRATImageIO::GDALRATImageIO()
   //this->AddSupportedReadExtension("kea");
   //this->AddSupportedWriteExtension("kea");
 
+  m_NbOverviews = 0;
+  m_OverviewIdx = -1;
+
 
   m_PxType = new GDALDataTypeWrapper;
 
@@ -375,25 +378,53 @@ void GDALRATImageIO::Read(void* buffer)
     }
 
   // Get nb. of lines and columns of the region to read
-  int lNbLines     = this->GetIORegion().GetSize()[1];
-  int lNbColumns   = this->GetIORegion().GetSize()[0];
+  int lNbBufLines     = this->GetIORegion().GetSize()[1];
+  int lNbBufColumns   = this->GetIORegion().GetSize()[0];
   int lFirstLine   = this->GetIORegion().GetIndex()[1]; // [1... ]
   int lFirstColumn = this->GetIORegion().GetIndex()[0]; // [1... ]
 
+  // set the output number of cols and rows depending on the
+  // resolution factor
+  int lNbLines = lNbBufLines;
+  int lNbColumns = lNbBufColumns;
+
   GDALDataset* dataset = m_Dataset->GetDataSet();
-  if (dataset == 0)
+  if (dataset == 0)// || this->m_OverviewIdx >= 0)
   {
-	  this->InternalReadImageInformation();
+      this->InternalReadImageInformation();
   }
 
+  // calc reference (orig. image values) of requested region
+  if (m_OverviewIdx >= 0)
+  {
+      std::cout << "ImgIO-read: ULC: " << lFirstColumn << "," << lFirstLine << std::endl;
+      std::cout << "ImgIO-read: size: " << lNbBufColumns
+                << " x " << lNbBufLines << std::endl;
+
+      double xstart = m_Origin[0] + lFirstColumn * m_LPRSpacing[0];
+      double xend = xstart + lNbBufColumns * m_Spacing[0];
+      lNbColumns = (xend - xstart) / m_LPRSpacing[0];
+
+      double ystart = m_Origin[1] + lFirstLine * m_LPRSpacing[1];
+      double yend = ystart + lNbBufLines * m_Spacing[1];
+      lNbLines = (ystart - yend) / ::fabs(m_LPRSpacing[1]);
+
+
+      lFirstColumn = (xstart - m_Origin[0]) / m_Spacing[0];
+      lFirstLine = (m_Origin[1] - ystart) / ::fabs(m_Spacing[1]);
+
+      std::cout << "ImgIO-read: orig. ULC: " << lFirstColumn << "," << lFirstLine << std::endl;
+      std::cout << "ImgIO-read: orig. size: " << lNbColumns
+                << " x " << lNbLines << std::endl;
+  }
 
   if (m_IsIndexed)
     {
     // TODO: This is a very special case and seems to be working only
     // for unsigned char pixels. There might be a gdal method to do
     // the work in a cleaner way
-    std::streamoff lNbPixels = (static_cast<std::streamoff>(lNbColumns))
-                             * (static_cast<std::streamoff>(lNbLines));
+    std::streamoff lNbPixels = (static_cast<std::streamoff>(lNbBufColumns))
+                             * (static_cast<std::streamoff>(lNbBufLines));
     std::streamoff lBufferSize = static_cast<std::streamoff>(m_BytePerPixel) * lNbPixels;
     itk::VariableLengthVector<unsigned char> value(lBufferSize);
 
@@ -406,8 +437,8 @@ void GDALRATImageIO::Read(void* buffer)
                                      lNbColumns,
                                      lNbLines,
                                      const_cast<unsigned char*>(value.GetDataPointer()),
-                                     lNbColumns,
-                                     lNbLines,
+                                     lNbBufColumns,
+                                     lNbBufLines,
                                      m_PxType->pixType,
                                      0,
                                      0);
@@ -433,7 +464,7 @@ void GDALRATImageIO::Read(void* buffer)
     {
     /********  Nominal case ***********/
     int pixelOffset = m_BytePerPixel * m_NbBands;
-    int lineOffset  = m_BytePerPixel * m_NbBands * lNbColumns;
+    int lineOffset  = m_BytePerPixel * m_NbBands * lNbBufColumns;
     int bandOffset  = m_BytePerPixel;
     int nbBands     = m_NbBands;
 
@@ -441,7 +472,7 @@ void GDALRATImageIO::Read(void* buffer)
     if(!GDALDataTypeIsComplex(m_PxType->pixType) && m_IsComplex && m_IsVectorImage && (m_NbBands > 1))
       {
       pixelOffset = m_BytePerPixel * 2;
-      lineOffset  = pixelOffset * lNbColumns;
+      lineOffset  = pixelOffset * lNbBufColumns;
       bandOffset  = m_BytePerPixel;
       }
 
@@ -450,8 +481,8 @@ void GDALRATImageIO::Read(void* buffer)
     otbMsgDevMacro(<< "Parameters RasterIO : \n"
                    << " indX = " << lFirstColumn << "\n"
                    << " indY = " << lFirstLine << "\n"
-                   << " sizeX = " << lNbColumns << "\n"
-                   << " sizeY = " << lNbLines << "\n"
+                   << " sizeX = " << lNbBufColumns << "\n"
+                   << " sizeY = " << lNbBufLines << "\n"
                    << " GDAL Data Type = " << GDALGetDataTypeName(m_PxType->pixType) << "\n"
                    << " pixelOffset = " << pixelOffset << "\n"
                    << " lineOffset = " << lineOffset << "\n"
@@ -465,8 +496,8 @@ void GDALRATImageIO::Read(void* buffer)
                                                        lNbColumns,
                                                        lNbLines,
                                                        p,
-                                                       lNbColumns,
-                                                       lNbLines,
+                                                       lNbBufColumns,
+                                                       lNbBufLines,
                                                        m_PxType->pixType,
                                                        nbBands,
                                                        // We want to read all bands
@@ -543,6 +574,17 @@ void GDALRATImageIO::ReadImageInformation()
   this->InternalReadImageInformation();
 }
 
+std::vector<unsigned int> GDALRATImageIO::GetOverviewSize(int ovv)
+{
+    std::vector<unsigned int> ret;
+    if (ovv >=0 && ovv < this->m_NbOverviews)
+    {
+        ret = m_OvvSize[ovv];
+    }
+
+    return ret;
+}
+
 void GDALRATImageIO::InternalReadImageInformation()
 {
   // do we have a valid dataset wrapper and a valid
@@ -604,8 +646,10 @@ void GDALRATImageIO::InternalReadImageInformation()
     }
 
   // Set image dimensions into IO
-  m_Dimensions[0] = dataset->GetRasterXSize();
-  m_Dimensions[1] = dataset->GetRasterYSize();
+  m_LPRDimensions[0] = dataset->GetRasterXSize();
+  m_LPRDimensions[1] = dataset->GetRasterYSize();
+  m_Dimensions[0] = m_LPRDimensions[0];
+  m_Dimensions[1] = m_LPRDimensions[1];
 
   // Get Number of Bands
   m_NbBands = dataset->GetRasterCount();
@@ -619,6 +663,28 @@ void GDALRATImageIO::InternalReadImageInformation()
   this->SetNumberOfDimensions(2);
 
   otbMsgDevMacro(<< "Nb of Dimensions of the input file: " << m_NumberOfDimensions);
+
+  // fetch overview information
+  this->m_NbOverviews = dataset->GetRasterBand(1)->GetOverviewCount();
+  this->m_OvvSize.clear();
+  for (int ov=0; ov < m_NbOverviews; ++ov)
+  {
+      std::vector<unsigned int> s;
+      s.push_back(dataset->GetRasterBand(1)->GetOverview(ov)->GetXSize());
+      s.push_back(dataset->GetRasterBand(1)->GetOverview(ov)->GetYSize());
+      this->m_OvvSize.push_back(s);
+  }
+
+  if (m_OverviewIdx >= 0 && m_OverviewIdx < m_NbOverviews)
+  {
+    m_Dimensions[0] = m_OvvSize[m_OverviewIdx][0];
+    m_Dimensions[1] = m_OvvSize[m_OverviewIdx][1];
+    //std::cout << "ImgIO: 'ovv-idx': " << m_OverviewIdx << std::endl;
+
+  }
+  std::cout << "ImgIO: ovv #" << m_OverviewIdx
+            << ": size: " << m_Dimensions[0] << " x " << m_Dimensions[1] << std::endl;
+
 
   // Automatically set the Type to Binary for GDAL data
   this->SetFileTypeToBinary();
@@ -912,9 +978,20 @@ void GDALRATImageIO::InternalReadImageInformation()
     /// retrieve origin and spacing from the geo transform
     m_Origin[0] = VadfGeoTransform[0];
     m_Origin[1] = VadfGeoTransform[3];
-    m_Spacing[0] = VadfGeoTransform[1];
-    m_Spacing[1] = VadfGeoTransform[5];
+    m_LPRSpacing[0] = VadfGeoTransform[1];
+    m_LPRSpacing[1] = VadfGeoTransform[5];
+    m_Spacing[0] = m_LPRSpacing[0];
+    m_Spacing[1] = m_LPRSpacing[1];
 
+    if (m_OverviewIdx >= 0 && m_OverviewIdx < m_NbOverviews)
+    {
+        double xsize = (m_Origin[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_Origin[0];
+        double ysize = m_Origin[1] - (m_Origin[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
+        m_Spacing[0] = xsize / (double)m_Dimensions[0];
+        m_Spacing[1] = -(ysize / (double)m_Dimensions[1]);
+    }
+
+    std::cout << "ImgIO: scaled spacing: x: " << m_Spacing[0] << " y: " << m_Spacing[1] << std::endl;
     }
 
   // Dataset info

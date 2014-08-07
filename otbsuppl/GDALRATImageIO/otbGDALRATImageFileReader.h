@@ -77,6 +77,9 @@ public:
   /** Prepare image allocation at the first call of the pipeline processing */
   virtual void GenerateOutputInformation(void);
 
+  itkGetMacro(OverviewIdx, int);
+  void SetOverviewIdx(int ovvidx);
+
 //
 //  /** Does the real work. */
 //  virtual void GenerateData();
@@ -100,6 +103,8 @@ protected:
 
   // pointer to the raster attribute table of the first band
   AttributeTable::Pointer m_RAT;
+
+  int m_OverviewIdx;
 
 private:
   /** Test whether the given filename exist and it is readable,

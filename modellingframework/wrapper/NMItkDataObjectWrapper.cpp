@@ -24,6 +24,81 @@
 
 #include "NMItkDataObjectWrapper.h"
 #include "itkDataObject.h"
+#include "itkImageRegion.h"
+#include "otbImage.h"
+#include "otbVectorImage.h"
+#include "NMMacros.h"
+
+template <class PixelType, unsigned int ImageDimension>
+class NMItkDataObjectWrapper_Internal
+{
+public:
+    typedef otb::Image<PixelType, ImageDimension> ImgType;
+    typedef typename ImgType::RegionType ImgRegType;
+    typedef otb::VectorImage<PixelType, ImageDimension> VecType;
+    typedef typename VecType::RegionType VecRegType;
+
+    static void setRegion(itk::DataObject::Pointer& dataObj,
+                          NMItkDataObjectWrapper::NMRegionType& regType,
+                          void* regObj, unsigned int numBands)
+    {
+        if (numBands == 1)
+        {
+            ImgType* img = dynamic_cast<ImgType*>(dataObj.GetPointer());
+            ImgRegType* reg = (ImgRegType*)regObj;
+
+            switch(regType)
+            {
+                case NMItkDataObjectWrapper::NM_BUFFERED_REGION:
+                    img->SetBufferedRegion(*reg);
+                    break;
+                case NMItkDataObjectWrapper::NM_REQUESTED_REGION:
+                    img->SetRequestedRegion(*reg);
+                    break;
+                case NMItkDataObjectWrapper::NM_LARGESTPOSSIBLE_REGION:
+                    img->SetLargestPossibleRegion(*reg);
+                    break;
+            }
+        }
+        else
+        {
+            VecType* img = dynamic_cast<VecType*>(dataObj.GetPointer());
+            VecRegType* reg = (VecRegType*)regObj;
+
+            switch(regType)
+            {
+                case NMItkDataObjectWrapper::NM_BUFFERED_REGION:
+                    img->SetBufferedRegion(*reg);
+                    break;
+                case NMItkDataObjectWrapper::NM_REQUESTED_REGION:
+                    img->SetRequestedRegion(*reg);
+                    break;
+                case NMItkDataObjectWrapper::NM_LARGESTPOSSIBLE_REGION:
+                    img->SetLargestPossibleRegion(*reg);
+                    break;
+            }
+        }
+    }
+};
+
+#define DWSetRegion( comptype ) \
+{ \
+    switch(mNumDimensions) \
+    { \
+    case 1: \
+        NMItkDataObjectWrapper_Internal<comptype, 1>::setRegion( \
+            mDataObject, regType, regObj, mNumBands); \
+        break; \
+    case 2: \
+        NMItkDataObjectWrapper_Internal<comptype, 2>::setRegion( \
+            mDataObject, regType, regObj, mNumBands); \
+        break; \
+    case 3: \
+        NMItkDataObjectWrapper_Internal<comptype, 3>::setRegion( \
+            mDataObject, regType, regObj, mNumBands); \
+        break; \
+    }\
+}
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent)//, itk::DataObject* obj)
 {
@@ -79,6 +154,24 @@ NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectW
 	this->mNumBands = w->getNumBands();
 
 	return *this;
+}
+
+void
+NMItkDataObjectWrapper::setImageRegion(NMRegionType regType, void *regObj)
+{
+    if (mDataObject.IsNull())
+    {
+        NMWarn("NMItkDataObjectWrapper::setImageRegion()",
+               << "itk::DataObject is NULL");
+        return;
+    }
+
+    switch (this->mNMComponentType)
+    {
+        LocalMacroPerSingleType( DWSetRegion )
+        default:
+            break;
+    }
 }
 
 otb::ImageIOBase::IOComponentType NMItkDataObjectWrapper::getItkComponentType()

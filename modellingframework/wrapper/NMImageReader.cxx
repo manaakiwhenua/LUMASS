@@ -183,6 +183,21 @@ public:
 		}
 	}
 
+    static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
+                                 unsigned int numBands, int ovvidx)
+    {
+        if (numBands == 1)
+        {
+            ReaderType *r = dynamic_cast<ReaderType*>(procObj.GetPointer());
+            r->SetOverviewIdx(ovvidx);
+        }
+        else
+        {
+            VecReaderType *r = dynamic_cast<VecReaderType*>(procObj.GetPointer());
+            r->SetOverviewIdx(ovvidx);
+        }
+    }
+
 	static itk::DataObject *getOutput(itk::ProcessObject::Pointer &readerProcObj,
 			unsigned int numBands, unsigned int idx)
 	{
@@ -299,6 +314,8 @@ public:
   	} \
   }  
 
+
+
 	/** Macro for getting the reader's output */
 	#define RequestReaderOutput( PixelType ) \
 	{ \
@@ -337,6 +354,31 @@ public:
 			}\
 		} \
 	}
+
+    #define SetReaderOverviewIdx( PixelType ) \
+    { \
+        if (this->mbRasMode) \
+        { \
+            ;\
+        } \
+        else \
+        { \
+            switch (this->mOutputNumDimensions) \
+            { \
+            case 1: \
+                FileReader<PixelType, 1 >::setOverviewIdx( \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                break; \
+            case 3: \
+                FileReader<PixelType, 3 >::setOverviewIdx( \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                break; \
+            default: \
+                FileReader<PixelType, 2 >::setOverviewIdx( \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+            }\
+        } \
+    }
 
 	/* Helper macro for calling the right class to fetch the attribute table
 	 * from the reader
@@ -429,6 +471,27 @@ public:
 		} \
 	}
 
+    /*! Macro for setting the OverviewIdx factor of the GDALRATImageFileReader
+     */
+    #define SetReaderOverviewIdx( PixelType ) \
+    {\
+        switch (this->mOutputNumDimensions) \
+        { \
+        case 1: \
+            FileReader<PixelType, 1 >::setOverviewIdx( \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+            break; \
+        case 3: \
+            FileReader<PixelType, 3 >::setOverviewIdx( \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+            break; \
+        default: \
+            FileReader<PixelType, 2 >::setOverviewIdx( \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+        }\
+     }
+
+
 	/* Helper macro for calling the right class to fetch the attribute table
 	 * from the reader
 	 */
@@ -493,7 +556,8 @@ void NMImageReader::setRasdamanConnector(RasdamanConnector * rasconn)
 }
 #endif
 
-otb::AttributeTable::Pointer NMImageReader::getRasterAttributeTable(int band)
+otb::AttributeTable::Pointer
+NMImageReader::getRasterAttributeTable(int band)
 {
 	if (!this->mbIsInitialised || band < 1)
 		return 0;
@@ -619,6 +683,23 @@ bool NMImageReader::initialise()
 
 	this->mInputNumDimensions = this->mItkImgIOBase->GetNumberOfDimensions();
 
+    if (!mbRasMode)
+    {
+        otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                    this->mItkImgIOBase.GetPointer());
+
+
+        NMDebugAI(<< "img size: " << gio->GetDimensions(0)
+                  << " x " << gio->GetDimensions(1) << std::endl);
+        uint numOvv = gio->GetNbOverviews();
+        for (uint i=0; i < numOvv; ++i)
+        {
+            std::vector<unsigned int> s = gio->GetOverviewSize(i);
+            NMDebugAI(<< "#" << i+1 << " overview: " << s[0] << " x " << s[1] << std::endl);
+        }
+    }
+
+
 	NMDebugAI(<< "... numBands: " << this->mOutputNumBands << endl);
 	NMDebugAI(<< "... comp type: " << this->mOutputComponentType << endl);
 
@@ -674,6 +755,63 @@ bool NMImageReader::initialise()
 	NMDebugCtx(ctxNMImageReader, << "done!");
 
 	return ret;
+}
+
+void
+NMImageReader::setOverviewIdx(int ovvidx)
+{
+    if (!mbRasMode)
+    {
+        otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                    this->mItkImgIOBase.GetPointer());
+        if (gio)
+        {
+            switch(this->mOutputComponentType)
+            {
+            LocalMacroPerSingleType( SetReaderOverviewIdx )
+            default:
+                break;
+            }
+        }
+    }
+}
+
+int
+NMImageReader::getNumberOfOverviews()
+{
+    int ret = 0;
+    if (!mbRasMode)
+    {
+        otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                    this->mItkImgIOBase.GetPointer());
+
+        if (gio)
+        {
+            ret = gio->GetNbOverviews();
+        }
+    }
+    return ret;
+}
+
+std::vector<unsigned int>
+NMImageReader::getOverviewSize(int ovvidx)
+{
+    std::vector<unsigned int> ret;
+    if (!mbRasMode)
+    {
+        otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                    this->mItkImgIOBase.GetPointer());
+
+        if (    gio
+            &&  (   ovvidx >= 0
+                 && ovvidx < gio->GetNbOverviews()
+                )
+           )
+        {
+            ret = gio->GetOverviewSize(ovvidx);
+        }
+    }
+    return ret;
 }
 
 void
@@ -793,6 +931,31 @@ const otb::ImageIOBase* NMImageReader::getImageIOBase(void)
 		return this->mItkImgIOBase;
 	else
 		return 0;
+}
+
+void
+NMImageReader::getOrigin(double origin[3])
+{
+    origin[0] = this->mItkImgIOBase->GetOrigin(0);
+    origin[1] = this->mItkImgIOBase->GetOrigin(1);
+    if (this->mItkImgIOBase->GetNumberOfDimensions() == 3)
+    {
+        origin[2] = this->mItkImgIOBase->GetOrigin(2);
+    }
+    else
+    {
+        origin[2] = 0;
+    }
+}
+
+void
+NMImageReader::getSpacing(double spacing[3])
+{
+    spacing[0] = this->mItkImgIOBase->GetSpacing(0);
+    spacing[1] = this->mItkImgIOBase->GetSpacing(1);
+    spacing[2] = this->mItkImgIOBase->GetNumberOfDimensions() == 3
+                    ? this->mItkImgIOBase->GetSpacing(2)
+                    : 0;
 }
 
 void NMImageReader::getBBox(double bbox[6])

@@ -25,6 +25,7 @@
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMFastTrackSelectionModel.h"
 #include "NMTableCalculator.h"
+#include "NMItkDataObjectWrapper.h"
 #include "NMStreamingImageFileWriterWrapper.h"
 #include "NMRasdamanConnectorWrapper.h"
 #include "NMMacros.h"
@@ -40,6 +41,7 @@
 #include "itkImageRegion.h"
 #include "itkPoint.h"
 #include "itkExceptionObject.h"
+#include "itkImageRegion.h"
 
 #include "vtkImageData.h"
 #include "vtkImageSlice.h"
@@ -50,6 +52,7 @@
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
 #include "vtkRenderWindowInteractor.h"
+#include "vtkRendererCollection.h"
 #include "vtkInteractorObserver.h"
 #include "vtkImageHistogramStatistics.h"
 #include "vtkImageCast.h"
@@ -67,7 +70,16 @@
 #include "vtkColorTransferFunction.h"
 #include "vtkDiscretizableColorTransferFunction.h"
 #include "vtkImageMapper.h"
+#include "vtkCamera.h"
 #include "vtkActor2D.h"
+#include "vtkStreamingDemandDrivenPipeline.h"
+#include "vtkInformation.h"
+#include "vtkInformationIntegerVectorKey.h"
+#include "vtkInformationVector.h"
+#include "vtkNew.h"
+#include "vtkImageActor.h"
+#include "vtkImageSliceMapper.h"
+#include "NMVtkOpenGLImageSliceMapper.h"
 
 template<class PixelType, unsigned int Dimension>
 class InternalImageHelper
@@ -92,7 +104,7 @@ public:
 			if (numBands == 1)
 			{
                 ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
-				RegionType reg = theimg->GetBufferedRegion();
+                RegionType reg = theimg->GetLargestPossibleRegion();//theimg->GetBufferedRegion();
 
                 // problem here is that we could also be dealing with an
                 // image of type 'itk::Image' rather than 'otb::Image',
@@ -128,7 +140,7 @@ public:
 			else if (numBands > 1)
 			{
                 VecImgType* theimg = dynamic_cast<VecImgType*>(img.GetPointer());
-				VecRegionType reg = theimg->GetBufferedRegion();
+                VecRegionType reg = theimg->GetLargestPossibleRegion();//theimg->GetBufferedRegion();
 
                 bbox[0] = theimg->GetOrigin()[0];
                 bbox[1] = bbox[0] + (theimg->GetSpacing()[0] * reg.GetSize()[0]);
@@ -166,7 +178,7 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 	: NMLayer(renWin, renderer, parent)
 {
 	this->mLayerType = NMLayer::NM_IMAGE_LAYER;
-	this->mReader = new NMImageReader(this);
+    this->mReader = 0; //new NMImageReader(this);
 	this->mPipeconn = new NMItk2VtkConnector(this);
 	this->mFileName = "";
 
@@ -177,8 +189,11 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 	this->mLayerIcon = QIcon(":image_layer.png");
 
-	vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
-	this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
+    this->mOverviewIdx = -1; // (loading original image)
+    this->mbUseOverviews = true;
+
+    //vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
+    //this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
 
 //	this->mVtkConn->Connect(style, vtkCommand::ResetWindowLevelEvent,
 //			this, SLOT(windowLevelReset(vtkObject*)));
@@ -225,7 +240,7 @@ const double*
 NMImageLayer::getStatistics(void)
 {
 	if (!this->mbStatsAvailable)
-		this->updateStats();
+        this->updateStats();
 
 	return this->mImgStats;
 }
@@ -638,75 +653,106 @@ NMImageLayer::updateStats(void)
 	mImgStats[3] = stats->GetMedian();
 	mImgStats[4] = stats->GetStandardDeviation();
 
-	this->mbStatsAvailable = true;
+    this->mbStatsAvailable = true;
 
 	emit layerProcessingEnd();
 }
 
-void NMImageLayer::world2pixel(double world[3], int pixel[3])
+void NMImageLayer::world2pixel(double world[3], int pixel[3],
+    bool bOnLPR, bool bImgConstrained)
 {
-	vtkImageData* img = vtkImageData::SafeDownCast(
-			const_cast<vtkDataSet*>(this->getDataSet()));
-
-	if (img == 0)
-		return;
-
 	// we tweak the world coordinates a little bit to
 	// generate the illusion as if we had pixel-centered
 	// coordinates in vtk as well
+    double wcoord[3];
+    for (int i=0; i<3; ++i)
+    {
+        wcoord[i] = world[i];
+    }
 	unsigned int d=0;
-	double spacing[3];
+    double spacing[3];
 	double origin[3];
 	int dims[3];
 	double bnd[6];
 	double err[3];
-	img->GetSpacing(spacing);
-	img->GetOrigin(origin);
-	img->GetDimensions(dims);
 
-	// adjust coordinates & calc bnd
-	for (d=0; d<3; ++d)
-	{
-		// account for 'pixel corner coordinate' vs.
-		// 'pixel centre coordinate' philosophy of
-		// vtk vs itk
-		world[d] += spacing[d] / 2.0;
+    if (bOnLPR)
+    {
+        for (int d=0; d<3; ++d)
+        {
+            bnd[d*2] = mBBox[d*2];
+            bnd[d*2+1] = mBBox[d*2+1];
+            origin[d] = mOrigin[d];
+            spacing[d] = mSpacing[d];//::fabs(mSpacing[d]);
+            wcoord[d] += spacing[d] / 2.0;
+            dims[d] = (mBBox[d*2+1] - mBBox[d*2]) / ::fabs(spacing[d]);
+            err[d] = 0.001 * spacing[d];
+        }
+    }
+    else
+    {
+        vtkImageData* img = vtkImageData::SafeDownCast(
+                const_cast<vtkDataSet*>(this->getDataSet()));
 
-		// account for origin is 'upper left' as for itk
-		// vs. 'lower left' as for vtk
-		if (d == 1)
-		{
-			bnd[d*2+1] = origin[d];
-			bnd[d*2] = origin[d] + dims[d] * spacing[d];
-		}
-		else
-		{
-			bnd[d*2] = origin[d];
-			bnd[d*2+1] = origin[d] + dims[d] * spacing[d];
-		}
+        if (img == 0)
+            return;
 
-		// set the 'pointing accuracy' to 1 percent of
-		// pixel width for each dimension
-		err[d] = spacing[d] * 0.001;
-	}
+        img->GetSpacing(spacing);
+        img->GetOrigin(origin);
+        img->GetDimensions(dims);
+
+        // adjust coordinates & calc bnd
+        for (d=0; d<3; ++d)
+        {
+            // account for 'pixel corner coordinate' vs.
+            // 'pixel centre coordinate' philosophy of
+            // vtk vs itk
+            wcoord[d] += spacing[d] / 2.0;
+
+            // account for origin is 'upper left' as for itk
+            // vs. 'lower left' as for vtk
+            if (d == 1)
+            {
+                bnd[d*2+1] = origin[d];
+                bnd[d*2] = origin[d] + dims[d] * spacing[d];
+            }
+            else
+            {
+                bnd[d*2] = origin[d];
+                bnd[d*2+1] = origin[d] + dims[d] * spacing[d];
+            }
+
+            // set the 'pointing accuracy' to 1 percent of
+            // pixel width for each dimension
+            err[d] = spacing[d] * 0.001;
+        }
+    }
 
 	// check, whether the user point is within the
 	// image boundary
-	if (vtkMath::PointIsWithinBounds(world, bnd, err))
-	{
-		// calculate the image/pixel coordinates
-		for (d = 0; d < 3; ++d)
-		{
-			// init value
-			pixel[d] = 0;
+    if (bImgConstrained)
+    {
+        if (vtkMath::PointIsWithinBounds(wcoord, bnd, err))
+        {
+            // calculate the image/pixel coordinates
+            for (d = 0; d < 3; ++d)
+            {
+                pixel[d] = 0;
 
-			if (dims[d] > 1)
-				pixel[d] = ::abs((int)((world[d] - origin[d]) / spacing[d]));
-
-			if (pixel[d] > dims[d]-1)
-				pixel[d] = 0;
-		}
-	}
+                if (dims[d] > 0)
+                    pixel[d] = ::abs((int)((wcoord[d] - origin[d]) / spacing[d]));
+            }
+        }
+    }
+    else
+    {
+        //spacing[1] = -spacing[1];
+        for (d = 0; d < 3; ++d)
+        {
+            if (dims[d] > 0)
+                pixel[d] = (int)((wcoord[d] - origin[d]) / spacing[d]);
+        }
+    }
 }
 
 void
@@ -758,12 +804,13 @@ void NMImageLayer::createTableView(void)
 
 }
 
-int NMImageLayer::updateAttributeTable()
+int
+NMImageLayer::updateAttributeTable()
 {
 	if (this->mTableModel != 0)
 		return 1;
 
-	disconnectTableSel();
+    //disconnectTableSel();
 
     this->mOtbRAT = this->getRasterAttributeTable(1);
     if (mOtbRAT.IsNull())
@@ -827,7 +874,8 @@ int NMImageLayer::updateAttributeTable()
 //	NMDebugCtx(ctxNMImageLayer, << "done!");
 //}
 
-bool NMImageLayer::setFileName(QString filename)
+bool
+NMImageLayer::setFileName(QString filename)
 {
 	NMDebugCtx(ctxNMImageLayer, << "...");
 
@@ -837,6 +885,12 @@ bool NMImageLayer::setFileName(QString filename)
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
 	}
+
+    // allocate the reader object, if it hasn't been so
+    if (this->mReader == 0)
+    {
+        this->mReader = new NMImageReader(this);
+    }
 
 	// TODO: find a more unambiguous way of determining
 	// whether we're loading a rasdaman image or not
@@ -851,9 +905,6 @@ bool NMImageLayer::setFileName(QString filename)
 
 #endif
 
-
-	//this->mVtkConn->Connect(mRenderer, vtkCommand::EndEvent, this, SIGNAL(layerProcessingEnd()));
-
 	emit layerProcessingStart();
 
 	this->mReader->setFileName(filename);
@@ -865,12 +916,27 @@ bool NMImageLayer::setFileName(QString filename)
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
 	}
+    this->mReader->getInternalProc()->ReleaseDataFlagOn();
+    //this->mReader->getInternalProc()->ReleaseDataBeforeUpdateFlagOn();
+
+
+
+    // get original image attributes before we muck
+    // around with scaling and overviews
+    this->mReader->getBBox(this->mBBox);
+    this->mReader->getBBox(this->mBufferedBox);
+    this->mReader->getSpacing(this->mSpacing);
+    this->mReader->getOrigin(this->mOrigin);
 
 	// let's store some meta data, in case someone needs it
 	this->mComponentType = this->mReader->getOutputComponentType();
 	this->mNodata = this->getDefaultNodata();
 	this->mNumBands = this->mReader->getOutputNumBands();
 	this->mNumDimensions = this->mReader->getOutputNumDimensions();
+
+    // ==> set the desired overview and requested region,
+    //     if supported
+    this->mapExtentChanged();
 
 	if (this->mNumBands != 1)
 	{
@@ -881,41 +947,63 @@ bool NMImageLayer::setFileName(QString filename)
 	}
 
 	// concatenate the pipeline
-	this->mPipeconn->setInput(this->mReader->getOutput(0));
+    this->mPipeconn->setInput(this->mReader->getOutput(0));
+    //this->mPipeconn->getVtkImageImport()->ReleaseDataFlagOn();
 
-	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
-	//vtkSmartPointer<vtkImageMapper> m = vtkSmartPointer<vtkImageMapper>::New();
-	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-	//m->ResampleToScreenPixelsOn();
-	//m->ResampleToScreenPixelsOff();
-	//m->SeparateWindowLevelOperationOff();
-	m->SetBorder(1);
+//    this->mImgInfoChange = vtkSmartPointer<vtkImageChangeInformation>::New();
+//    this->mImgInfoChange->SetInputConnection(this->mPipeconn->getVtkImageImport()->GetOutputPort());
+//    vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
+//    m->SetInputConnection(this->mImgInfoChange->GetOutputPort());
 
+
+
+//    int we[6];
+//    double origin[3];
+//    double spacing[3];
+
+//    vtkImageImport ii;
+
+//    vtkInformation* outInfo = mPipeconn->getVtkImageImport()->GetOutputPortInformation(0);
+//    outInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), we, 6);
+//    outInfo->Get(vtkDataObject::ORIGIN(), origin, 3);
+//    outInfo->Get(vtkDataObject::SPACING(), spacing, 3);
+
+//    this->mImgInfoChange->SetOutputExtentStart(we[0], we[2], we[4]);
+//    this->mImgInfoChange->SetOutputOrigin(origin);
+//    this->mImgInfoChange->SetOutputSpacing(spacing);
+
+    //vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
+    //vtkSmartPointer<vtkImageSliceMapper> m = vtkSmartPointer<vtkImageSliceMapper>::New();
+    vtkSmartPointer<NMVtkOpenGLImageSliceMapper> m = vtkSmartPointer<NMVtkOpenGLImageSliceMapper>::New();
+    //vtkSmartPointer<vtkImageMapper> m = vtkSmartPointer<vtkImageMapper>::New();
+    m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+
+    //m->ResampleToScreenPixelsOn();
+    //m->ResampleToScreenPixelsOff();
+    //m->SeparateWindowLevelOperationOff();
+    m->SetBorder(1);
 
 	// adjust origin
-	double ori[3], spc[3];
-	vtkImageData* img = vtkImageData::SafeDownCast(this->mPipeconn->getVtkImage());
-	img->GetOrigin(ori);
-	img->GetSpacing(spc);
+    //double ori[3], spc[3];
+    //vtkImageData* img = vtkImageData::SafeDownCast(this->mPipeconn->getVtkImage());
+    //img->GetOrigin(ori);
+    //img->GetSpacing(spc);
 
-	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
-	//vtkSmartPointer<vtkActor2D> a = vtkSmartPointer<vtkActor2D>::New();
-	a->SetMapper(m);
+    //vtkSmartPointer<vtkImageActor> a = vtkSmartPointer<vtkImageActor>::New();
+    vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
+    //vtkSmartPointer<vtkActor2D> a = vtkSmartPointer<vtkActor2D>::New();
+    a->SetMapper(m);
 
-	mImgProp = vtkSmartPointer<vtkImageProperty>::New();
-	mImgProp->SetInterpolationTypeToNearest();
-	a->SetProperty(mImgProp);
-
+    mImgProp = vtkSmartPointer<vtkImageProperty>::New();
+    mImgProp->SetInterpolationTypeToNearest();
+    a->SetProperty(mImgProp);
 
 	this->mRenderer->AddViewProp(a);
 
 	this->mMapper = m;
-	this->mActor = a;
+    this->mActor = a;
 
-	// set the bounding box
-	this->mReader->getBBox(this->mBBox);
-
-	// we're going to update the attribute table, since
+    // we're going to update the attribute table, since
 	// we'll probably need it
 	//if (!this->updateAttributeTable())
 	//{
@@ -925,12 +1013,240 @@ bool NMImageLayer::setFileName(QString filename)
 
 	this->mImage = 0;
 	this->mFileName = filename;
-	this->initiateLegend();
+    this->initiateLegend();
 
 	emit layerProcessingEnd();
 	emit layerLoaded();
 	NMDebugCtx(ctxNMImageLayer, << "done!");
 	return true;
+}
+
+void
+NMImageLayer::mapExtentChanged(void)
+{
+    NMDebugCtx(ctxNMImageLayer, << "...");
+
+    // check which overview is currently set
+    // check the size of the current overview (mBufferedBox)
+
+    // this makes only sense, if this layer is reader-based rather than
+    // data buffer-based, so
+
+    if (    !this->mbUseOverviews
+        ||  this->mReader == 0
+        ||  !this->mReader->isInitialised()
+        ||  this->mReader->getNumberOfOverviews() == 0
+       )
+    {
+        //        // can't do anything without available overviews
+        //        NMDebugAI(<< "NMImageLayer::mapExtentChanged(): No reader or overivews."
+        //                  << std::endl);
+        NMDebugCtx(ctxNMImageLayer, << "done!");
+        return;
+    }
+
+    // get the bbox and fullsize of this layer
+    double h_ext = (mBBox[1] - mBBox[0]);
+    double v_ext = (mBBox[3] - mBBox[2]);
+
+    int fullcols = h_ext / mSpacing[0];
+    int fullrows = v_ext / ::fabs(mSpacing[1]);
+
+    double h_res;
+    double v_res;
+
+    vtkRendererCollection* rencoll = this->mRenderWindow->GetRenderers();
+    vtkRenderer* ren = 0;
+    if (this->mRenderer->GetViewProps()->GetNumberOfItems() == 0)
+    {
+        if (rencoll->GetNumberOfItems() > 1)
+        {
+            rencoll->InitTraversal();
+            for (int r=0; r < rencoll->GetNumberOfItems(); ++r)
+            {
+                ren = rencoll->GetNextItem();
+            }
+        }
+    }
+    else
+    {
+        ren = this->mRenderer;
+    }
+
+    int* size;
+    double wminx, wmaxx, wminy, wmaxy;
+    if (ren)
+    {
+        double wbr[] = {-1,-1,-1};
+        double wtl[] = {-1,-1,-1};
+
+        size = ren->GetSize();
+
+        // top left (note: display origin is bottom left)
+        vtkInteractorObserver::ComputeDisplayToWorld(ren, 0,size[1]-1,0, wtl);
+        wminx = wtl[0];
+        wmaxy = wtl[1];
+
+        //this->world2pixel(wtl, ptl, true, false);
+
+        // bottom right
+        vtkInteractorObserver::ComputeDisplayToWorld(ren, size[0]-1,0,0, wbr);
+        wmaxx = wbr[0];
+        wminy = wbr[1];
+        //this->world2pixel(wbr, pbr, true, false);
+
+        h_res = (wmaxx - wminx) / (double)size[0];
+        v_res = (wmaxy - wminy) / (double)size[1];
+
+        //        NMDebugAI(<< "world: tl: " << wtl[0] << " " << wtl[1]
+        //                  << " br: " << wbr[0] << " " << wbr[1] << std::endl);
+    }
+    else
+    {
+        // full extent and overview according to window size
+        ren = this->mRenderWindow->GetRenderers()->GetFirstRenderer();
+        size = ren->GetSize();
+
+        h_res = h_ext / (double)size[0];
+        v_res = v_ext / (double)size[1];
+    }
+
+    int ovidx = -1;
+    double target_res;
+    double opt_res;
+    if (size[0] > size[1])
+    {
+        opt_res = mSpacing[0];
+        target_res = h_res;
+    }
+    else
+    {
+        target_res = v_res;
+        opt_res = mSpacing[1];
+    }
+    double diff = ::fabs(opt_res-target_res);
+
+
+//        NMDebugAI(<< "screen size: " << size[0] << "x" << size[1] << std::endl);
+//        NMDebugAI(<< "opt_res: " << opt_res << " | target_res: " << target_res << " | diff: "
+//                  << diff << std::endl);
+
+    for (int i=0; i < mReader->getNumberOfOverviews(); ++i)
+    {
+        double _tres;
+        if (size[0] > size[1])
+        {
+            _tres = h_ext / (double)mReader->getOverviewSize(i)[0];
+        }
+        else
+        {
+            _tres = v_ext / (double)mReader->getOverviewSize(i)[1];
+        }
+
+        if (::fabs(_tres-target_res) < diff)
+        {
+            diff = ::fabs(_tres-target_res);
+            //            NMDebugAI(<< "_tres: " << _tres << " | target_res: " << target_res << " | diff: "
+            //                      << diff << " --> idx = " << i << std::endl);
+            ovidx = i;
+        }
+    }
+
+    // also check the original resolution
+
+
+    //NMDebug( << ">>>-------------------" << std::endl);
+    this->mReader->setOverviewIdx(ovidx);
+    if (this->mRenderer->GetViewProps()->GetNumberOfItems() > 0)
+    {
+
+        int cols = ovidx >= 0 ? this->mReader->getOverviewSize(ovidx)[0]: fullcols;
+        int rows = ovidx >= 0 ? this->mReader->getOverviewSize(ovidx)[1]: fullrows;
+
+        double uspacing[3];
+        this->mReader->getSpacing(uspacing);
+
+        int xo, yo, xe, ye;
+        xo = (wminx - mBBox[0]) / uspacing[0];
+        yo = (mBBox[3] - wmaxy) / ::fabs(uspacing[1]);
+        xe = (wmaxx - mBBox[0]) / uspacing[0];
+        ye = (mBBox[3] - wminy) / ::fabs(uspacing[1]);
+
+        // calc update extent
+        int uext[6];
+        uext[0] = xo > cols-1 ? cols-1 : xo < 0 ? 0 : xo;
+        uext[2] = yo > rows-1 ? rows-1 : yo < 0 ? 0 : yo;
+        uext[1] = xe > cols-1 ? cols-1 : xe < 0 ? 0 : xe;
+        uext[3] = ye > rows-1 ? rows-1 : ye < 0 ? 0 : ye;
+        uext[4] = 0;
+        uext[5] = 0;
+
+        int wext[6];
+        wext[0] = 0;
+        wext[1] = cols-1;
+        wext[2] = 0;
+        wext[3] = rows-1;
+        wext[4] = 0;
+        wext[5] = 0;
+
+        double uor[3];
+        uor[0] = ::max<double>(mBBox[0],(wminx - mBBox[0]) / uspacing[0]);
+        uor[1] = ::min<double>(mBBox[3], (mBBox[3] - wmaxy) / ::fabs(uspacing[1]));
+        uor[2] = 0;
+
+        itk::ImageRegion<2> reg;
+        reg.SetIndex(0, uext[0]);
+        reg.SetIndex(1, uext[2]);
+        reg.SetSize(0, uext[1] - uext[0] + 1);
+        reg.SetSize(1, uext[3] - uext[2] + 1);
+
+        this->mReader->getOutput(0)->setImageRegion(NMItkDataObjectWrapper::NM_LARGESTPOSSIBLE_REGION,
+                                                    (void*)&reg);
+
+        this->mReader->getOutput(0)->setImageRegion(NMItkDataObjectWrapper::NM_REQUESTED_REGION,
+                                                            (void*)&reg);
+
+
+//        if (this->mOverviewIdx != ovidx)
+//            this->mReader->update();
+
+//        this->mPipeconn->getVtkImageImport()->SetWholeExtent(uext);
+//        //this->mPipeconn->getVtkImageImport()->UpdateInformation();
+//        this->mPipeconn->getVtkImageImport()->SetUpdateExtent(uext);
+
+
+
+//        vtkStreamingDemandDrivenPipeline* sddp = vtkStreamingDemandDrivenPipeline::SafeDownCast(
+//                    this->mPipeconn->getVtkImageImport()->GetExecutive());
+
+//        vtkInformation* outInfo = sddp->GetOutputInformation(0);
+
+//        //vtkImageData* img = vtkImageData::SafeDownCast(sddp->GetOutputData(0));
+//        //img->SetExtent(uext);
+//        //img->SetOrigin(uor);
+
+
+//        outInfo->Set(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), uext, 6);
+//        outInfo->Set(vtkStreamingDemandDrivenPipeline::UPDATE_EXTENT(), uext, 6);
+//        outInfo->Set(vtkDataObject::DATA_EXTENT(), uext, 6);
+//        outInfo->Set(vtkDataObject::SPACING(), uspacing, 3);
+//        outInfo->Set(vtkDataObject::ORIGIN(), uor, 3);
+
+        this->mMapper->UpdateInformation();
+
+//        vtkImageData* img = vtkImageData::SafeDownCast(this->mMapper->GetInputDataObject(0, 0));
+//        img->SetExtent(uext);
+//        img->SetOrigin(uor);
+
+        NMVtkOpenGLImageSliceMapper* ism = NMVtkOpenGLImageSliceMapper::SafeDownCast(this->mMapper);
+        ism->SetDisplayExtent(uext);
+        ism->SetDataWholeExtent(uext);
+
+        this->mRenderer->Render();
+
+    }
+    this->mOverviewIdx = ovidx;
+    NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
 void
@@ -952,6 +1268,7 @@ NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 	if (imgWrapper == 0)
 		return;
 
+    this->mbUseOverviews = false;
 	this->mImage = imgWrapper->getDataObject();
     this->mOtbRAT = imgWrapper->getOTBTab();
 	this->mComponentType = imgWrapper->getItkComponentType();
@@ -1062,7 +1379,7 @@ NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 
 void NMImageLayer::getBBox(double bbox[6])
 {
-	NMDebugCtx(ctxNMImageLayer, << "...");
+    //NMDebugCtx(ctxNMImageLayer, << "...");
 
 	bbox[0] = this->mBBox[0];
 	bbox[1] = this->mBBox[1];
@@ -1071,18 +1388,19 @@ void NMImageLayer::getBBox(double bbox[6])
 	bbox[4] = this->mBBox[4];
 	bbox[5] = this->mBBox[5];
 
-	NMDebugCtx(ctxNMImageLayer, << "done!");
+    //NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
 const vtkDataSet* NMImageLayer::getDataSet()
 {
-	return this->mPipeconn->getVtkImage();
+    return this->mPipeconn->getVtkImage();
 }
+
 
 otb::AttributeTable::Pointer
 NMImageLayer::getRasterAttributeTable(int band)
 {
-    if (this->mReader->isInitialised())
+    if (this->mReader != 0 && this->mReader->isInitialised())
     {
 
         if (band < 1 || band > this->mReader->getOutputNumBands())

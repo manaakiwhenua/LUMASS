@@ -111,6 +111,14 @@ public:
   itkSetMacro(ImageUpdateMode, bool);
   itkGetMacro(ImageUpdateMode, bool);
 
+  itkGetMacro(NbOverviews, int);
+
+  itkGetMacro(OverviewIdx, int);
+  itkSetMacro(OverviewIdx, int);
+
+  std::vector<unsigned int> GetOverviewSize(int ovv);
+
+
   /** surrounding region specs */
   void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
  // void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
@@ -175,6 +183,9 @@ public:
   void WriteRAT(AttributeTable::Pointer tab, unsigned int iBand=1);
 
 
+  unsigned int* getLPR(void)
+  {return this->m_LPRDimensions;}
+
 protected:
   /** Constructor.*/
   GDALRATImageIO();
@@ -190,6 +201,14 @@ protected:
   int m_NbBands;
   /** Buffer*/
   //float **pafimas;
+
+  unsigned int m_NbOverviews;
+  std::vector<std::vector<unsigned int > > m_OvvSize;
+  int m_OverviewIdx;
+
+  unsigned int m_LPRDimensions[2];
+  double m_LPRSpacing[2];
+
 
   /** Determines the level of compression for written files.
    *  Range 0-9; 0 = none, 9 = maximum , default = 4 */

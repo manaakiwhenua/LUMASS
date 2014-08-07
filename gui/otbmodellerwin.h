@@ -96,6 +96,9 @@ public:
     RasdamanConnector* getRasdamanConnector(void);
 #endif
 
+signals:
+    void mapExtentChanged(void);
+
 public slots:
 
 #ifdef BUILD_RASSUPPORT
@@ -139,6 +142,7 @@ public slots:
 
 	virtual bool notify(QObject* receiver, QEvent* event);
 
+
 protected:
 //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
 	vtkSmartPointer<vtkPolyData> OgrToVtkPolyData(OGRDataSource& ds);
@@ -149,6 +153,7 @@ protected:
 	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
 
+    bool eventFilter(QObject* obj, QEvent* e);
 
 
 	template<class T>

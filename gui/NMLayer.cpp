@@ -336,7 +336,9 @@ NMLayer::initiateLegend(void)
 		// ANALYSE ATTRIBUTE TABLE
 
 		int ncols = this->mTableModel->columnCount(QModelIndex());
-		mNumClasses = this->mTableModel->rowCount(QModelIndex());
+
+        //ToDo:: let's destrict us to 256 categories
+        mNumClasses = this->mTableModel->rowCount(QModelIndex());
 		// + 4: description (field); nodata; > upper; < lower
 		mNumLegendRows = mNumClasses + 4;
 
@@ -465,7 +467,8 @@ NMLayer::initiateLegend(void)
 			// CLASS_UNIQUE STRING ATTRIBUTE
 			else
 			{
-				NMDebugAI(<< "... mapping unique values of '" << mLegendValueField.toStdString() << "' ..." << std::endl);
+                NMDebugAI(<< "... mapping unique values of '" << mLegendValueField.toStdString()
+                          << "' ..." << std::endl);
 				mLegendType = NMLayer::NM_LEGEND_INDEXED;
 				mLegendClassType = NMLayer::NM_CLASS_UNIQUE;
 				// +2: description (field); nodata ('other')
@@ -504,7 +507,8 @@ NMLayer::initiateLegend(void)
 void
 NMLayer::updateMapping(void)
 {
-	NMDebugCtx(ctxNMLayer, << "...");
+
+    NMDebugCtx(ctxNMLayer, << "...");
 
 	this->resetLegendInfo();
 
@@ -512,8 +516,8 @@ NMLayer::updateMapping(void)
 	switch(mLegendType)
 	{
 	case NM_LEGEND_RAMP:
-		this->mapValueRamp();
-		clrfunc = mLookupTable.GetPointer() != 0 ? false : true;
+        this->mapValueRamp();
+        clrfunc = mLookupTable.GetPointer() != 0 ? false : true;
 		break;
 
 	case NM_LEGEND_INDEXED:
@@ -543,16 +547,18 @@ NMLayer::updateMapping(void)
 
 	if (mLayerType == NM_IMAGE_LAYER)
 	{
-		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-		vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-		iprop->SetUseLookupTableScalarRange(1);
-		if (!clrfunc)
-		{
-			iprop->SetLookupTable(mLookupTable);
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+        vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
+        //        iprop->SetColorWindow(mUpper-mLower);
+        //        iprop->SetColorLevel((mUpper-mLower)*0.5);
+        iprop->SetUseLookupTableScalarRange(1);
+        if (!clrfunc)
+        {
+            iprop->SetLookupTable(mLookupTable);
 
-		}
-		else
-			iprop->SetLookupTable(mClrFunc);
+        }
+        else
+            iprop->SetLookupTable(mClrFunc);
 	}
 	else
 	{
@@ -1115,14 +1121,17 @@ NMLayer::mapValueRamp(void)
 	mClrFunc = this->getColorTransferFunc(mColourRamp,
 			userNodes, userColours);
 
+    if (mLookupTable.GetPointer() != 0)
+    {
+        mLookupTable->Delete();
+        mLookupTable = 0;
+    }
+    mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
 
-	//  fill lookup table based on the legend value field
-	if (mTableModel != 0 && mLegendValueField != "Pixel Values")
+    //  fill lookup table based on the legend value field
+    if (mTableModel != 0 && mLegendValueField != "Pixel Values")
 	{
-		if (mLookupTable.GetPointer() != 0)
-		{
-			mLookupTable = 0;
-		}
+
 
         //	<<<<<<< Updated upstream
         //	=======
@@ -1132,8 +1141,8 @@ NMLayer::mapValueRamp(void)
         //>>>>>>> Stashed changes
 
 		// prepare look up table
-		long nrows = mTableModel->rowCount(QModelIndex());
-		mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+        long nrows = mTableModel->rowCount(QModelIndex());
+
 		vtkUnsignedCharArray* hole = 0;
 		int clroff = 0;
 		if (this->mLayerType == NM_VECTOR_LAYER)
@@ -1180,45 +1189,33 @@ NMLayer::mapValueRamp(void)
 			mLookupTable->SetTableValue(row+clroff, fc[0], fc[1], fc[2], 1);
 
 		}
-         //=======
-         //			NMQtOtbAttributeTableModel* tm =
-         //					static_cast<NMQtOtbAttributeTableModel*>(
-         //							const_cast<QAbstractItemModel*>(this->getTable()));
-         //
-         //			otb::AttributeTable::Pointer ot = tm->getTable();
-         //			long nrows = ot->GetNumRows();
-         //			void* data = ot->GetColumnPointer(idx);
-         //
-         //			vtkSmartPointer<vtkDataArray> da;
-         //			switch(vtype)
-         //			{
-         //			case QVariant::Double:
-         //				da = vtkSmartPointer<vtkDoubleArray>::New();
-         //				break;
-         //			case QVariant::LongLong:
-         //				da = vtkSmartPointer<vtkLongArray>::New();
-         //				break;
-         //			default: break;
-         //			}
-         //
-         //			da->SetVoidArray(data, nrows, 1);
-         //			id->GetPointData()->SetScalars(da);
-         //>>>>>>> Stashed changes
-		 //}
-
-
-		//unsigned char* lutPt = mLookupTable->WritePointer(1, nrows-1);
-
-		//if (coltype == QVariant::Double)
-		//{
-		//	mClrFunc->MapScalarsThroughTable2(data, lutPt, VTK_DOUBLE, nrows-1, 1, 1);
-		//}
-		//else if (coltype == QVariant::LongLong)
-		//{
-		//	mClrFunc->MapScalarsThroughTable2(data, lutPt, VTK_LONG, nrows-1, 1, 1);
-		//}
-
 	}
+    else
+    {
+        mLookupTable->SetNumberOfTableValues(mNumClasses+2);
+        mLookupTable->SetTableValue(0, mClrLowerMar.redF(), mClrLowerMar.greenF(), mClrLowerMar.blueF(), 1);
+        mLookupTable->SetTableValue(mNumClasses+1, mClrUpperMar.redF(), mClrUpperMar.greenF(), mClrUpperMar.blueF(), 1);
+
+        double* rgb;
+        double lower = mLower;// = min(mLower, mUpper);
+        double upper = mUpper; //max(mLower, mUpper);
+        double range = upper - lower;
+        double step = range/255.0;
+
+        for (int i=1; i < mNumClasses+1; ++i)
+        {
+            double incr = ((double)i * step);
+            double sample = lower + incr;
+            double pos = abs(incr/range);
+            //if (pos < 0 || pos > 1)
+            //	continue;
+
+            rgb = mClrFunc->GetColor(sample);
+            mLookupTable->SetTableValue(i, rgb[0], rgb[1], rgb[2], 1);
+        }
+        mLookupTable->SetIndexedLookup(0);
+        mLookupTable->SetTableRange(mLower-VALUE_MARGIN, mUpper+VALUE_MARGIN);
+    }
 
 	NMDebugCtx(ctxNMLayer, << "done!");
 }
@@ -2163,6 +2160,12 @@ int NMLayer::updateAttributeTable(void)
 //	// update data set from changes in attribute table
 //	// subclasses to implement
 //}
+
+void
+NMLayer::mapExtentChanged(void)
+{
+    // sub-classes who care to implement
+}
 
 void
 NMLayer::disconnectTableSel(void)

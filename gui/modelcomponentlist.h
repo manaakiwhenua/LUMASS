@@ -45,7 +45,8 @@
 
 //#include "vtkObject.h"
 //#include "vtkRenderWindow.h"
-//#include "vtkEventQtSlotConnect.h"
+#include "vtkSmartPointer.h"
+#include "vtkEventQtSlotConnect.h"
 
 class NMLayer;
 
@@ -114,6 +115,8 @@ private:
     QMenu* mMenu;
     QModelIndex mIndicatorIdx;
 	static const std::string ctx;
+
+    vtkSmartPointer<vtkEventQtSlotConnect> mVTKConn;
 
 	void initView(void);
 	void processSelection(bool toggle);

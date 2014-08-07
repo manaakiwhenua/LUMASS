@@ -564,6 +564,12 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 	if (proc == 0)
 		return;
 
+    QString objName = this->objectName();
+    if (this->parent())
+    {
+        objName = this->parent()->objectName();
+    }
+
 	if (this->mbAbortExecution)
 		proc->AbortGenerateDataOn();
 
@@ -573,18 +579,18 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 	}
 	else if (typeid(event) == typeid(itk::StartEvent))
 	{
-		emit signalExecutionStarted(this->parent()->objectName());
+        emit signalExecutionStarted(objName);
 	}
 	else if (typeid(event) == typeid(itk::EndEvent))
 	{
-		emit signalExecutionStopped(this->parent()->objectName());
+        emit signalExecutionStopped(objName);
 		emit signalProgress(0);
 		this->mOtbProcess->SetAbortGenerateData(false);
 		this->mbAbortExecution = false;
 	}
 	else if (typeid(event) == typeid(itk::AbortEvent))
 	{
-		emit signalExecutionStopped(this->parent()->objectName());
+        emit signalExecutionStopped(objName);
 		emit signalProgress(0);
 		this->mOtbProcess->ResetPipeline();
 		this->mOtbProcess->SetAbortGenerateData(false);

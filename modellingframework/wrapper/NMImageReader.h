@@ -110,8 +110,17 @@ public:
 	const otb::ImageIOBase* getImageIOBase();
 	void getBBox(double bbox[6]);
 
+    void getSpacing(double spacing[3]);
+    void getOrigin(double origin[3]);
+
+    int getNumberOfOverviews(void);
+    std::vector<unsigned int> getOverviewSize(int ovvidx);
+
+
     bool isRasMode(void) {return this->mbRasMode;}
 	void instantiateObject(void);
+
+    void setOverviewIdx(int ovvidx);
 
 protected:
 	void UpdateProgressInfo(itk::Object* obj,

@@ -56,6 +56,8 @@
 #include <QFileInfo>
 #include <QtConcurrent>
 
+#include "vtkSmartPointer.h"
+#include "vtkObject.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
 #include "QVTKWidget.h"
@@ -67,6 +69,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 {
 	this->mLayerModel = new NMLayerModel(this);
 	this->setModel(this->mLayerModel);
+
+    this->mVTKConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
 
 	// set the general column count for this control
 	this->setHeaderHidden(true);
@@ -377,6 +381,13 @@ void ModelComponentList::addLayer(NMLayer* layer)
 
 	OtbModellerWin* mwin = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
 	connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, double)), mwin, SLOT(updateLayerInfo(NMLayer *, double)));
+//    if (layer->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+//    {
+        //NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
+        connect(mwin, SIGNAL(mapExtentChanged()), layer, SLOT(mapExtentChanged()),
+                Qt::DirectConnection);
+    //}
+
 	//layer->setParent(this);
 
 	// add the layer to the NMLayerModel
@@ -385,8 +396,8 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	this->recalcMapBBox();
 
 	// get the camera of the background renderer
-    OtbModellerWin* win = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
-	vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
+    //OtbModellerWin* win = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
+    vtkRenderer* bkgRen = const_cast<vtkRenderer*>(mwin->getBkgRenderer());
 
 	// adjust the camera to the map bounding box if it is the first layer we're adding
 	if (nlayers == 1)
@@ -400,7 +411,7 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	// adjust the number of layers per this render window and add the renderer
 	// to the render window
 	// add the renderer to the render window and update the widget
-	QVTKWidget* qvtk = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
+    QVTKWidget* qvtk = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
 
 	// we keep one layer more than required (and keep in mind that we've got the
 	// the background layer as well
@@ -800,7 +811,9 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
             fLayer->setObjectName(finfo.baseName());
             h.getMainWindow()->connectImageLayerProcSignals(fLayer);
-            QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
+            fLayer->setFileName(fileName);
+            //QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
+
         }
     }
     //event->setAccepted(true);

@@ -170,7 +170,7 @@ public:
 	virtual const vtkDataSet* getDataSet(void)=0;
 
 	const vtkAbstractMapper* getMapper(void);
-	const vtkProp3D* getActor(void);
+    const vtkProp3D* getActor(void);
 	const vtkRenderer* getRenderer(void);
 
 	virtual void showAttributeTable(void);
@@ -288,9 +288,12 @@ public slots:
 	void forwardLastClickedRowSignal(long cellID);
 	virtual void updateLayerSelection(QList<long> lstCellId,
 		QList<long> lstNMId, NMLayerSelectionType seltype);
-	/*! Create a legend according to user choices */
+
+    /*! Create a legend according to user choices */
 	virtual void updateLegend(void);
 	virtual void updateMapping(void);
+
+    virtual void mapExtentChanged(void);
 
 signals:
 	void visibilityChanged(const NMLayer* layer);
@@ -309,7 +312,7 @@ protected:
 	vtkSmartPointer<vtkRenderer> mRenderer;
 	vtkSmartPointer<vtkDataSet> mDataSet;
 	vtkSmartPointer<vtkAbstractMapper> mMapper;
-	vtkSmartPointer<vtkProp3D> mActor;
+    vtkSmartPointer<vtkProp3D> mActor;
 
 	vtkSmartPointer<vtkPolyData> mCellSelection;
 	vtkSmartPointer<vtkOGRLayerMapper> mSelectionMapper;

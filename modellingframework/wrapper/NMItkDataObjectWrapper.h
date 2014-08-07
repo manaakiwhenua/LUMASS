@@ -34,7 +34,7 @@
 class NMItkDataObjectWrapper: public QObject
 {
 	Q_OBJECT
-	Q_ENUMS(NMComponentType)
+    Q_ENUMS(NMComponentType NMRegionType)
 	Q_PROPERTY(NMComponentType NMComponentType READ getNMComponentType WRITE setNMComponentType)
 	Q_PROPERTY(unsigned int NumDimensions READ getNumDimensions WRITE setNumDimensions)
 	Q_PROPERTY(unsigned int NumBands READ getNumBands WRITE setNumBands)
@@ -50,6 +50,8 @@ public:
 
 	enum NMComponentType {NM_UNKNOWN, NM_UCHAR, NM_CHAR, NM_USHORT, NM_SHORT,
 		NM_UINT, NM_INT, NM_ULONG, NM_LONG, NM_FLOAT, NM_DOUBLE, NM_STRING};
+
+    enum NMRegionType {NM_BUFFERED_REGION, NM_REQUESTED_REGION, NM_LARGESTPOSSIBLE_REGION};
 
 	NMPropertyGetSet(NMComponentType, NMComponentType);
 	NMPropertyGetSet(NumDimensions, unsigned int);
@@ -71,6 +73,8 @@ public:
 		{this->mStringObject = str;}
 	const QString& getStringObject(void)
 		{return this->mStringObject;}
+
+    void setImageRegion(NMRegionType regType, void* regObj);
 
 	NMItkDataObjectWrapper& operator=(const NMItkDataObjectWrapper& dw);
 

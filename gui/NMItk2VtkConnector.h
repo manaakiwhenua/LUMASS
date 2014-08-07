@@ -56,6 +56,8 @@ public:
 	vtkImageData *getVtkImage(void);
 	vtkAlgorithmOutput *getVtkAlgorithmOutput(void);
 
+    vtkImageImport* getVtkImageImport(void);
+
 	void instantiateObject(void);
 
     void updateInput(NMItkDataObjectWrapper* imgWrapper);

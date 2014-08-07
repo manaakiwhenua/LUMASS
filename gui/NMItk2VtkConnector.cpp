@@ -61,30 +61,30 @@ public:
             ExporterType* vtkExp = dynamic_cast<ExporterType*>(vtkImgExp.GetPointer());
             vtkExp->SetInput(img);
 
-            img->UpdateOutputInformation();
-            const ImgSize& size = img->GetRequestedRegion().GetSize();
-            const ImgSpacing& spacing = img->GetSpacing();
-            const ImgOrigin& origin = img->GetOrigin();
-            double neworigin[3] = {0,0,0};
-            double newspacing[3] = {0,0,0};
+//            img->UpdateOutputInformation();
+//            const ImgSize& size = img->GetRequestedRegion().GetSize();
+//            const ImgSpacing& spacing = img->GetSpacing();
+//            const ImgOrigin& origin = img->GetOrigin();
+//            double neworigin[3] = {0,0,0};
+//            double newspacing[3] = {0,0,0};
 
-            std::cout.precision(9);
-            NMDebugAI(<< "VTK image origin: ");
-            for (unsigned int d=0; d < ImageDimension; ++d)
-            {
-                newspacing[d] = spacing[d];
-                if (d==1)
-                    neworigin[d] = origin[d];// - (spacing[d] / 2.0);
-                else
-                    neworigin[d] = origin[d] + (spacing[d] / 2.0);
+//            std::cout.precision(9);
+//            NMDebugAI(<< "VTK image origin: ");
+//            for (unsigned int d=0; d < ImageDimension; ++d)
+//            {
+//                newspacing[d] = spacing[d];
+//                if (d==1)
+//                    neworigin[d] = origin[d];// - (spacing[d] / 2.0);
+//                else
+//                    neworigin[d] = origin[d] + (spacing[d] / 2.0);
 
-                NMDebug( << origin[d] << " ");
-            }
-            NMDebug(<< endl);
+//                NMDebug( << origin[d] << " ");
+//            }
+//            NMDebug(<< endl);
 
 
-            vtkImgChangeInfo->SetOutputOrigin(neworigin);
-            vtkImgChangeInfo->SetOutputSpacing(newspacing);
+//            vtkImgChangeInfo->SetOutputOrigin(neworigin);
+//            vtkImgChangeInfo->SetOutputSpacing(newspacing);
         }
     }
 
@@ -120,32 +120,32 @@ public:
 			// we shift the origin of the vtk image by half a pixel length in each
 			// dimension, since vtk uses corner/edge-based coordinates
 			// whereas itk/otb are using pixel-centered coordinates
-			img->UpdateOutputInformation();
-			const ImgSize& size = img->GetRequestedRegion().GetSize();
-			const ImgSpacing& spacing = img->GetSpacing();
-			const ImgOrigin& origin = img->GetOrigin();
-			double neworigin[3] = {0,0,0};
-			double newspacing[3] = {0,0,0};
+//			img->UpdateOutputInformation();
+//			const ImgSize& size = img->GetRequestedRegion().GetSize();
+//			const ImgSpacing& spacing = img->GetSpacing();
+//			const ImgOrigin& origin = img->GetOrigin();
+//			double neworigin[3] = {0,0,0};
+//			double newspacing[3] = {0,0,0};
 
-			std::cout.precision(9);
-			NMDebugAI(<< "VTK image origin: ");
-			for (unsigned int d=0; d < ImageDimension; ++d)
-			{
-				newspacing[d] = spacing[d];
-				if (d==1)
-					neworigin[d] = origin[d];// - (spacing[d] / 2.0);
-				else
-					neworigin[d] = origin[d] + (spacing[d] / 2.0);
+//			std::cout.precision(9);
+//			NMDebugAI(<< "VTK image origin: ");
+//			for (unsigned int d=0; d < ImageDimension; ++d)
+//			{
+//				newspacing[d] = spacing[d];
+//				if (d==1)
+//					neworigin[d] = origin[d];// - (spacing[d] / 2.0);
+//				else
+//					neworigin[d] = origin[d] + (spacing[d] / 2.0);
 
-				NMDebug( << origin[d] << " ");
-			}
-			NMDebug(<< endl);
+//				NMDebug( << origin[d] << " ");
+//			}
+//			NMDebug(<< endl);
 
 
 
-			vtkImgChangeInfo->SetInputConnection(vtkImgImp->GetOutputPort());
-			vtkImgChangeInfo->SetOutputOrigin(neworigin);
-			vtkImgChangeInfo->SetOutputSpacing(newspacing);
+//			vtkImgChangeInfo->SetInputConnection(vtkImgImp->GetOutputPort());
+//			vtkImgChangeInfo->SetOutputOrigin(neworigin);
+//			vtkImgChangeInfo->SetOutputSpacing(newspacing);
 
 			// keep references to the exporter
 			vtkImgExp = vtkExp;
@@ -232,12 +232,12 @@ NMItk2VtkConnector::~NMItk2VtkConnector()
 
 void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapper* imgWrapper)
 {
-	NMDebugCtx(ctxNMItk2VtkConnector, << "...");
+    //NMDebugCtx(ctxNMItk2VtkConnector, << "...");
 
     if (mbIsConnected && this->mInputImg.IsNotNull())
     {
         this->updateInput(imgWrapper);
-        NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
+        //        NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
         return;
     }
 
@@ -262,7 +262,7 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 	}
 
     this->mbIsConnected = connect;
-	NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
+    //	NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
 }
 
 void
@@ -321,12 +321,20 @@ NMItk2VtkConnector::update()
 
 vtkImageData * NMItk2VtkConnector::getVtkImage()
 {
-	return this->mVtkImgChangeInfo->GetOutput();
+    //return this->mVtkImgChangeInfo->GetOutput();
+    return this->mVtkImgImp->GetOutput();
 }
 
 vtkAlgorithmOutput * NMItk2VtkConnector::getVtkAlgorithmOutput()
 {
-	return this->mVtkImgChangeInfo->GetOutputPort();
+    //return this->mVtkImgChangeInfo->GetOutputPort();
+    return this->mVtkImgImp->GetOutputPort();
+}
+
+vtkImageImport*
+NMItk2VtkConnector::getVtkImageImport(void)
+{
+    return this->mVtkImgImp.Get();
 }
 
 void NMItk2VtkConnector::instantiateObject(void)

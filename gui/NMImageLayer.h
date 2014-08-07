@@ -72,11 +72,27 @@ public:
 
 	const vtkDataSet* getDataSet(void);
 
-	void world2pixel(double world[3], int pixel[3]);
+    /*!
+     * \brief Calculates pixel indices for a given world coordinate on the
+     *        displayed image. bOnLPR=true ensures that pixel indices of
+     *        the largest possible region of the image are returned rather
+     *        than pixel indices of an associated overview image (pyramid layer).
+     * \param world
+     * \param pixel
+     * \param bOnLPR
+     */
+    void world2pixel(double world[3], int pixel[3],
+        bool bOnLPR, bool bImgConstrained);
+
 	void getBBox(double bbox[6]);
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 
 	void setImage(NMItkDataObjectWrapper* imgWrapper);
+
+    void setUseOverviews(bool useOvv)
+    {this->mbUseOverviews = useOvv;}
+    bool getUseOverviews(void)
+    {return this->mbUseOverviews;}
 
 	itk::DataObject *getITKImage(void);
 	NMItkDataObjectWrapper* getImage(void);
@@ -102,10 +118,10 @@ public slots:
 	void computeStats(void);
 	void selectionChanged(const QItemSelection& newSel,
 			const QItemSelection& oldSel);
-	//void selectCell(int cellID)
 
 	void test(void);
 
+    void mapExtentChanged(void);
 
 protected:
 
@@ -124,21 +140,44 @@ protected:
 	otb::AttributeTable::Pointer mOtbRAT;
 
 	itk::DataObject::Pointer mImage;
+
+    vtkSmartPointer<vtkImageChangeInformation> mImgInfoChange;
+
 	vtkSmartPointer<vtkImageProperty> mImgProp;
 	otb::ImageIOBase::IOComponentType mComponentType;
 	unsigned int mNumDimensions;
 	unsigned int mNumBands;
 
+    double mSpacing[3];
+    double mOrigin[3];
+
+    int mOverviewIdx;
+
+    /*!
+     * \brief The buffered (current) image region
+     *        (real world coordinates)
+     *
+     * \sa mLargestPossibleRegion
+     *
+     */
+    double mBufferedBox[6];
+
+
 	bool mbStatsAvailable;
 
-	/* Image stats
+    /*!
+     * \brief Image stats
+     *
 	 * 0: min
 	 * 1: max
 	 * 2: mean
 	 * 3: median
 	 * 4: standard deviation
+     *
 	 */
 	double mImgStats[5];
+
+    bool mbUseOverviews;
 
 	//void fetchRATs(void);
 

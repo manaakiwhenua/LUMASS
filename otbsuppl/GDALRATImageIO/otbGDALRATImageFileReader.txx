@@ -70,6 +70,7 @@ GDALRATImageFileReader<TOutputImage>::GDALRATImageFileReader() :
 		otb::ImageFileReader<TOutputImage>(), m_DatasetNumber(0)
 {
 	m_Curl = CurlHelper::New();
+    m_OverviewIdx = -1;
 }
 
 template<class TOutputImage>
@@ -161,6 +162,7 @@ void GDALRATImageFileReader<TOutputImage>::GenerateOutputInformation(void)
 		if (gio.IsNotNull())
 		{
 			this->SetImageIO(gio);
+            gio->SetOverviewIdx(m_OverviewIdx);
 			gio->SetRATSupport(true);
 			this->m_RAT = gio->ReadRAT(1);
 		}
@@ -334,6 +336,10 @@ void GDALRATImageFileReader<TOutputImage>::GenerateOutputInformation(void)
 	region.SetSize(dimSize);
 	region.SetIndex(start);
 
+    std::cout << "ImgReader: new LPRImgRegion: "
+              << region.GetIndex(0) << "-" << region.GetSize(0)-1 << " x "
+              << region.GetIndex(1) << "-" << region.GetSize(1)-1 << std::endl;
+
 // THOMAS : ajout
 // If a VectorImage, this requires us to set the
 // VectorLength before allocate
@@ -344,8 +350,24 @@ void GDALRATImageFileReader<TOutputImage>::GenerateOutputInformation(void)
 				this->GetImageIO()->GetNumberOfComponents());
 	}
 
-	output->SetLargestPossibleRegion(region);
+    output->SetLargestPossibleRegion(region);
+}
 
+template<class TOutputImage>
+void GDALRATImageFileReader<TOutputImage>::SetOverviewIdx(int ovvidx)
+{
+    if (ovvidx != this->m_OverviewIdx)
+    {
+        this->m_OverviewIdx = ovvidx;
+        otb::GDALRATImageIO* gio = static_cast<otb::GDALRATImageIO*>(
+                    this->GetImageIO());
+        if (gio)
+        {
+            gio->SetOverviewIdx(ovvidx);
+            this->UpdateOutputInformation();
+            this->Modified();
+        }
+    }
 }
 
 template<class TOutputImage>

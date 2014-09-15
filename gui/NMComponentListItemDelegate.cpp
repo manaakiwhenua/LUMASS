@@ -171,24 +171,26 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 	//=============================== COLOUR RAMP ================================================
 	if (level == 1 && l->getLegendType() == NMLayer::NM_LEGEND_RAMP && row == 2)
 	{
-		QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &option);
-		QRect upperRect(textRect.x(), option.rect.top(), option.rect.width(), textRect.height());
-		QRect lowerRect(textRect.x(), option.rect.bottom()-textRect.height(), option.rect.width(), textRect.height());
+        QLineEdit* lineedit = new QLineEdit(parent);
 
-		//qDebug() << "mouse pos:   " << mLastMousePos;
-		//qDebug() << "option rect: " << option.rect;
-		//qDebug() << "text rect:   " << textRect;
-		//qDebug() << "upperRect:   " << upperRect;
-		//qDebug() << "lowerRect:   " << lowerRect;
+        QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &option, lineedit);
+        QRect upperRect(textRect.x(), option.rect.top(), option.rect.width(), textRect.height()/2.0);
+        QRect lowerRect(textRect.x(), option.rect.bottom()-upperRect.height(), option.rect.width(), textRect.height()/2.0);
 
-		QLineEdit* lineedit = 0;
+        //        qDebug() << "mouse pos:   " << mLastMousePos;
+        //        qDebug() << "option rect: " << option.rect;
+        //        qDebug() << "text rect:   " << textRect;
+        //        qDebug() << "upperRect:   " << upperRect;
+        //        qDebug() << "lowerRect:   " << lowerRect;
+
+
 		QString dval;
 		QRect editrect;
 		bool bhit = false;
 		if (upperRect.contains(this->mLastMousePos))
 		{
 			NMDebugAI(<< "got hit at upper text!" << std::endl);
-			lineedit = new QLineEdit(parent);
+            //lineedit = new QLineEdit(parent);
 			lineedit->setObjectName("le_upper_value");
 			dval = QString("%1").arg(l->getUpper());
 			editrect = upperRect;
@@ -197,7 +199,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		else if (lowerRect.contains(this->mLastMousePos))
 		{
 			NMDebugAI(<< "got hit at lower text!" << std::endl);
-			lineedit = new QLineEdit(parent);
+            //lineedit = new QLineEdit(parent);
 			lineedit->setObjectName("le_lower_value");
 			dval = QString("%1").arg(l->getLower());
 			editrect = lowerRect;
@@ -395,6 +397,15 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 						// unique values
 						if (l->getLegendClassType() != NMLayer::NM_CLASS_UNIQUE)
 							l->setLegendDescrField(valuefield);
+
+                        std::vector<double> stats = l->getValueFieldStatistics();
+                        if (stats.size() >= 2)
+                        {
+                            l->setLower(stats[0]);
+                            l->setUpper(stats[1]);
+                        }
+                        l->updateMapping();
+                        l->updateLegend();
 					}
 				}
 				// --------------------------- LEGEND DESCR FIELD -----------------------------

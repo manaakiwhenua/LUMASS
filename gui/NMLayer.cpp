@@ -1079,7 +1079,7 @@ NMLayer::mapValueRamp(void)
         {
             double incr = ((double)i * step);
             double sample = lower + incr;
-            double pos = abs(incr/range);
+            //double pos = abs(incr/range);
 
             rgb = mClrFunc->GetColor(sample);
             lut->SetTableValue(i, rgb[0], rgb[1], rgb[2], 1);
@@ -1737,8 +1737,8 @@ QIcon NMLayer::getColourRampIcon()
 		double incr = ((double)i * step);
 		double sample = lower + incr;
 		double pos = abs(incr/range);
-		//if (pos < 0 || pos > 1)
-		//	continue;
+        if (pos < 0 || pos > 1)
+            continue;
 
 		rgb = mClrFunc->GetColor(sample);
 		clr.setRedF((qreal)rgb[0]);

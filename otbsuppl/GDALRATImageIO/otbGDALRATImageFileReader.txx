@@ -71,6 +71,7 @@ GDALRATImageFileReader<TOutputImage>::GDALRATImageFileReader() :
 {
 	m_Curl = CurlHelper::New();
     m_OverviewIdx = -1;
+    m_UseUserLargestPossibleRegion = false;
 }
 
 template<class TOutputImage>
@@ -333,12 +334,18 @@ void GDALRATImageFileReader<TOutputImage>::GenerateOutputInformation(void)
 	start.Fill(0);
 
 	ImageRegionType region;
-	region.SetSize(dimSize);
-	region.SetIndex(start);
-
-    std::cout << "ImgReader: new LPRImgRegion: "
-              << region.GetIndex(0) << "-" << region.GetSize(0)-1 << " x "
-              << region.GetIndex(1) << "-" << region.GetSize(1)-1 << std::endl;
+    if (m_UseUserLargestPossibleRegion)
+    {
+        // NOTE: the user is responsible for specifying a
+        // region which is a sub region of the actual LPR!!
+        region.SetSize(m_UserLargestPossibleRegion.GetSize());
+        region.SetIndex(m_UserLargestPossibleRegion.GetIndex());
+    }
+    else
+    {
+        region.SetSize(dimSize);
+        region.SetIndex(start);
+    }
 
 // THOMAS : ajout
 // If a VectorImage, this requires us to set the
@@ -364,7 +371,6 @@ void GDALRATImageFileReader<TOutputImage>::SetOverviewIdx(int ovvidx)
         if (gio)
         {
             gio->SetOverviewIdx(ovvidx);
-            this->UpdateOutputInformation();
             this->Modified();
         }
     }

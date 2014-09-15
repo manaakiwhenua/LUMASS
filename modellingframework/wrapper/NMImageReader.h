@@ -120,7 +120,7 @@ public:
     bool isRasMode(void) {return this->mbRasMode;}
 	void instantiateObject(void);
 
-    void setOverviewIdx(int ovvidx);
+    void setOverviewIdx(int ovvidx, int* userLPR);
 
 protected:
 	void UpdateProgressInfo(itk::Object* obj,

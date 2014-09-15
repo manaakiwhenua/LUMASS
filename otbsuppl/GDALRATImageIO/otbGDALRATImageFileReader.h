@@ -80,6 +80,16 @@ public:
   itkGetMacro(OverviewIdx, int);
   void SetOverviewIdx(int ovvidx);
 
+  /** Allow the user to set a custom largest possible region
+      to help with customised overview region loading */
+
+  itkSetMacro(UseUserLargestPossibleRegion, bool)
+  itkGetMacro(UseUserLargestPossibleRegion, bool)
+  itkBooleanMacro(UseUserLargestPossibleRegion)
+
+  itkSetMacro(UserLargestPossibleRegion, ImageRegionType)
+  itkGetMacro(UserLargestPossibleRegion, ImageRegionType)
+
 //
 //  /** Does the real work. */
 //  virtual void GenerateData();
@@ -105,6 +115,10 @@ protected:
   AttributeTable::Pointer m_RAT;
 
   int m_OverviewIdx;
+
+  bool m_UseUserLargestPossibleRegion;
+  ImageRegionType m_UserLargestPossibleRegion;
+
 
 private:
   /** Test whether the given filename exist and it is readable,

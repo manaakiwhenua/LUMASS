@@ -161,10 +161,12 @@ public:
 	typedef otb::Image< PixelType, ImageDimension > 	ImgType;
 	typedef otb::GDALRATImageFileReader< ImgType > 		ReaderType;
 	typedef typename ReaderType::Pointer				ReaderTypePointer;
+    typedef typename ReaderType::ImageRegionType        ReaderRegionType;
 
 	typedef otb::VectorImage< PixelType, ImageDimension > VecImgType;
 	typedef otb::GDALRATImageFileReader< VecImgType > 	  VecReaderType;
 	typedef typename VecReaderType::Pointer				  VecReaderTypePointer;
+    typedef typename VecReaderType::ImageRegionType       VecReaderRegionType;
 
 
 	static otb::AttributeTable::Pointer
@@ -184,17 +186,49 @@ public:
 	}
 
     static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
-                                 unsigned int numBands, int ovvidx)
+                                 unsigned int numBands, int ovvidx, int* userLPR)
     {
         if (numBands == 1)
         {
             ReaderType *r = dynamic_cast<ReaderType*>(procObj.GetPointer());
             r->SetOverviewIdx(ovvidx);
+            if (userLPR != 0)
+            {
+                ReaderRegionType lpr;
+                for (int d=0; d < ImageDimension; ++d)
+                {
+                    lpr.SetIndex(d, userLPR[d*2]);
+                    lpr.SetSize(d, userLPR[d*2+1]);
+                }
+                r->UseUserLargestPossibleRegionOn();
+                r->SetUserLargestPossibleRegion(lpr);
+            }
+            else
+            {
+                r->UseUserLargestPossibleRegionOff();
+            }
+            r->UpdateOutputInformation();
         }
         else
         {
             VecReaderType *r = dynamic_cast<VecReaderType*>(procObj.GetPointer());
             r->SetOverviewIdx(ovvidx);
+            if (userLPR != 0)
+            {
+                VecReaderRegionType lpr;
+                for (int d=0; d < ImageDimension; ++d)
+                {
+                    lpr.SetIndex(d, userLPR[d*2]);
+                    lpr.SetSize(d, userLPR[d*2+1]);
+                }
+                r->UseUserLargestPossibleRegionOn();
+                r->SetUserLargestPossibleRegion(lpr);
+            }
+            else
+            {
+                r->UseUserLargestPossibleRegionOff();
+            }
+            r->UpdateOutputInformation();
         }
     }
 
@@ -367,15 +401,15 @@ public:
             { \
             case 1: \
                 FileReader<PixelType, 1 >::setOverviewIdx( \
-                        this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
                 break; \
             case 3: \
                 FileReader<PixelType, 3 >::setOverviewIdx( \
-                        this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
                 break; \
             default: \
                 FileReader<PixelType, 2 >::setOverviewIdx( \
-                        this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
             }\
         } \
     }
@@ -479,15 +513,15 @@ public:
         { \
         case 1: \
             FileReader<PixelType, 1 >::setOverviewIdx( \
-                    this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
             break; \
         case 3: \
             FileReader<PixelType, 3 >::setOverviewIdx( \
-                    this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
             break; \
         default: \
             FileReader<PixelType, 2 >::setOverviewIdx( \
-                    this->mOtbProcess, this->mOutputNumBands, ovvidx); \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
         }\
      }
 
@@ -758,7 +792,7 @@ bool NMImageReader::initialise()
 }
 
 void
-NMImageReader::setOverviewIdx(int ovvidx)
+NMImageReader::setOverviewIdx(int ovvidx, int* userLPR)
 {
     if (!mbRasMode)
     {

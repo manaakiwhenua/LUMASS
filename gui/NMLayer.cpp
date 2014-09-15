@@ -40,8 +40,8 @@
 #include "vtkMath.h"
 #include "vtkQtEditableTableModelAdapter.h"
 #include "NMQtOtbAttributeTableModel.h"
-//#include "vtkEditableDiscreteClrTransferFunc.h"
-#include "vtkColorTransferFunctionSpecialNodes.h"
+#include "vtkDiscretizableColorTransferFunction.h"
+#include "NMVtkLookupTable.h"
 
 #define VALUE_MARGIN 0.0000001
 
@@ -129,7 +129,6 @@ NMLayer::~NMLayer()
 
 	if (this->mRenderer != 0)
 	{
-
 		this->removeFromMap();
 	}
 
@@ -144,6 +143,8 @@ NMLayer::~NMLayer()
 
 	if (mTableModel != 0)
 		delete mTableModel;
+
+
 
 	NMDebugCtx(ctxNMLayer, << "done!");
 }
@@ -282,8 +283,13 @@ NMLayer::getColumnIndex(const QString& fieldname)
 QVariant::Type
 NMLayer::getColumnType(int colidx)
 {
-	if (mTableModel == 0)
+    if (   mTableModel == 0
+        || colidx < 0
+        || colidx >= mTableModel->columnCount()
+       )
+    {
 		return QVariant::Invalid;
+    }
 
 	QModelIndex midx = mTableModel->index(0, colidx, QModelIndex());
 	return mTableModel->data(midx, Qt::DisplayRole).type();
@@ -297,22 +303,22 @@ NMLayer::initiateLegend(void)
 
 	// ----------------------------------------------------------------------------------
 	// GATHER IMAGE LAYER INFORMATION
-	if (this->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+    if (il && mTableModel == 0)
 	{
-		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
         const double* imgStats = il->getStatistics();
         for (int i=0; i < 5; ++i)
             mStats[i] = imgStats[i];
 
-		il->setNodata(il->getDefaultNodata());
-        if (mStats[0] == il->getDefaultNodata())
-            setLower(mStats[0] + 3*VALUE_MARGIN);
-        else
-            setLower(mStats[0]);
-        if (mStats[1] == mNodata)
-            setUpper(mStats[1] - 1);
-        else
-            setUpper(mStats[1]);
+        setNodata(il->getDefaultNodata());
+        //        if (mStats[0] == il->getDefaultNodata())
+        //            setLower(mStats[0] - ((mStats[1] - mStats[0])/255.0));
+        //        else
+        setLower(mStats[0]);
+        //        if (mStats[1] == mNodata)
+        //            setUpper(mStats[1] - 1);
+        //        else
+        setUpper(mStats[1]);
 	}
 	else
 	{
@@ -421,47 +427,15 @@ NMLayer::initiateLegend(void)
 			{
 				NMDebugAI(<< "... mapping a numeric attribute ..." << std::endl);
 
-				// determine non-hole features in case we've got a
-				// polygon layer here
-				QList<int> raw2source;
-				if (this->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-				{
-					NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
-					if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
-					{
-						raw2source.reserve(mNumClasses);
-						int holeidx = this->getColumnIndex("nm_hole");
-						bool bok;
-						for (long row=0; row < mNumClasses; ++row)
-						{
-							const QModelIndex ridx = mTableModel->index(row, holeidx, QModelIndex());
-							int val = mTableModel->data(ridx, Qt::DisplayRole).toInt(&bok);
-							if (val < 0)
-							{
-								raw2source << -1;
-							}
-							else
-							{
-								raw2source << row;
-							}
-						}
-					}
-
-					NMTableCalculator calc(mTableModel, this);
-					if (raw2source.size() > 0)
-						calc.setRaw2Source(&raw2source);
-
-					std::vector<double> colstats = calc.calcColumnStats(mLegendValueField);
-					// copy stats: min, max, mean, median, sample size, sdev
-					for (int i=0; i < 7; ++i)
-						mStats[i] = colstats[i];
-				}
+                // updates also internal stats
+                this->getValueFieldStatistics();
 
 				mLower = mStats[0];
 				mUpper = mStats[1];
 
 				mLegendType = NMLayer::NM_LEGEND_RAMP;
 				mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
+
 			}
 			// ..................................................................................
 			// CLASS_UNIQUE STRING ATTRIBUTE
@@ -549,8 +523,6 @@ NMLayer::updateMapping(void)
 	{
         NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
         vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-        //        iprop->SetColorWindow(mUpper-mLower);
-        //        iprop->SetColorLevel((mUpper-mLower)*0.5);
         iprop->SetUseLookupTableScalarRange(1);
         if (!clrfunc)
         {
@@ -876,7 +848,8 @@ NMLayer::getColourRampFromStr(const QString rampStr)
 	return ramp;
 }
 
-vtkSmartPointer<vtkColorTransferFunctionSpecialNodes>
+//vtkSmartPointer<vtkColorTransferFunctionSpecialNodes>
+vtkSmartPointer<vtkColorTransferFunction>
 NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 		const QList<double>& userNodes,
 		const QList<QColor>& userColours,
@@ -886,79 +859,26 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 	 * and represent the following value for
 	 * all supported colour ramp types
 	 *
-	 * 0: nodata
-	 * 1: lower - VALUE_MARGIN
-	 * 2: lower
-	 * 3: upper
-	 * 4: upper + VALUE_MARGIN
+     * 0: lower
+     * 1: upper
 	 *
-	 * for NM_RAMP_MANUAL all colour specified
-	 * beyond index 4 (i.e. 4+) are user specified
-	 * additional colours (hopefully) in the range
-	 * lower <= additional node <= upper
+     * for NM_RAMP_MANUAL colour nodes are
+     * interpreted as starting with the lowest
+     * value at index 0 to the hightest value
+     * at index userNodes.size()-1
 	 */
 
-	//double minval = this->mStats[0];
-	//double maxval = this->mStats[1];
-
-	if (userNodes.size() != userColours.size())
-		return 0;
-
-	double nodata, lower, upper, lowermar, uppermar;
+    double lower, upper;
 	std::vector<double> nodataclr, lowerclr, upperclr, lowermarclr, uppermarclr;
-	if (userNodes.size() < 5 || userColours.size() < 5)
+    if (userNodes.size() < 2)
 	{
 		lower = 0;
 		upper = 1;
-
-		nodata = mNodata;
-		nodataclr.push_back(mClrNodata.redF()  );
-		nodataclr.push_back(mClrNodata.greenF());
-		nodataclr.push_back(mClrNodata.blueF() );
-		nodataclr.push_back(mClrNodata.alphaF());
-
-		lowermar = lower-VALUE_MARGIN;
-		lowermarclr.push_back(mClrLowerMar.redF()  );
-        lowermarclr.push_back(mClrLowerMar.greenF());
-		lowermarclr.push_back(mClrLowerMar.blueF() );
-		lowermarclr.push_back(mClrLowerMar.alphaF());
-
-		uppermar = upper+VALUE_MARGIN;
-		uppermarclr.push_back(mClrUpperMar.redF()  );
-		uppermarclr.push_back(mClrUpperMar.greenF());
-		uppermarclr.push_back(mClrUpperMar.blueF() );
-		uppermarclr.push_back(mClrUpperMar.alphaF());
-	}
+    }
 	else
 	{
-		nodata   = userNodes.at(0);
-		lowermar = userNodes.at(1);
-		lower    = userNodes.at(2);
-		upper    = userNodes.at(3);
-		uppermar = userNodes.at(4);
-
-		nodataclr.push_back(userColours.at(0).redF()  );
-		nodataclr.push_back(userColours.at(0).greenF());
-		nodataclr.push_back(userColours.at(0).blueF() );
-		nodataclr.push_back(userColours.at(0).alphaF());
-
-		lowermarclr.push_back(userColours.at(1).redF()  );
-		lowermarclr.push_back(userColours.at(1).greenF());
-		lowermarclr.push_back(userColours.at(1).blueF() );
-		lowermarclr.push_back(userColours.at(1).alphaF());
-
-		lowerclr.push_back(userColours.at(2).redF()  );
-		lowerclr.push_back(userColours.at(2).greenF());
-		lowerclr.push_back(userColours.at(2).blueF() );
-
-		upperclr.push_back(userColours.at(3).redF()  );
-		upperclr.push_back(userColours.at(3).greenF());
-		upperclr.push_back(userColours.at(3).blueF() );
-
-		uppermarclr.push_back(userColours.at(4).redF()  );
-		uppermarclr.push_back(userColours.at(4).greenF());
-		uppermarclr.push_back(userColours.at(4).blueF() );
-		uppermarclr.push_back(userColours.at(4).alphaF());
+        lower    = userNodes.at(0);
+        upper    = userNodes.at(userNodes.size()-1);
 	}
 
 	if (invertRamp)
@@ -968,46 +888,11 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 		upper = t;
 	}
 
-	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> cf =
-			vtkSmartPointer<vtkColorTransferFunctionSpecialNodes>::New();
+    vtkSmartPointer<vtkDiscretizableColorTransferFunction> cf =
+            vtkSmartPointer<vtkDiscretizableColorTransferFunction>::New();
 
-	//cf->AddRGBPoint(-3.40282e+38,
-	//		nodataclr[0],
-	//		nodataclr[1],
-	//		nodataclr[2]);
-
-	cf->AddRGBPoint(lowermar,
-			lowermarclr[0],
-			lowermarclr[1],
-			lowermarclr[2]);
-
-	//cf->AddRGBPoint(lower-VALUE_MARGIN,
-	//		lowermarclr[0],
-	//		lowermarclr[1],
-	//		lowermarclr[2]);
-    //
-	//cf->AddRGBPoint(upper+VALUE_MARGIN,
-	//		uppermarclr[0],
-	//		uppermarclr[1],
-	//		uppermarclr[2]);
-
-	cf->AddRGBPoint(uppermar,
-			uppermarclr[0],
-			uppermarclr[1],
-			uppermarclr[2]);
-
-	//cf->AddRGBPoint(1740,
-	//		nodataclr[0],
-	//		nodataclr[1],
-	//		nodataclr[2]);
-
-	//cf->setSpecialNode(0, nodata, nodataclr);
-	//cf->setSpecialNode(1, lowermar, lowermarclr);
-	//cf->setSpecialNode(2, lower, lowermarclr);
-	//cf->setSpecialNode(3, upper, lowermarclr);
-	//cf->setSpecialNode(4, uppermar, uppermarclr);
-
-
+    cf->SetNumberOfValues(256);
+    cf->DiscretizeOn();
 
 	switch (mColourRamp)
 	{
@@ -1107,66 +992,39 @@ NMLayer::mapValueRamp(void)
 	// ensure value and display field are the same
 	//this->setLegendDescrField("Pixel Values");
 
-
+    QList<QColor> userColours;
 	QList<double> userNodes;
-	userNodes << mNodata << mLower-VALUE_MARGIN << mLower << mUpper << mUpper+VALUE_MARGIN;
 
-	QList<QColor> userColours;
-	userColours << mClrNodata
-			    << mClrLowerMar
-			    << QColor(0,0,0)
-			    << QColor(255,255,255)
-			    << mClrUpperMar;
-
+    userNodes << mLower << mUpper;
 	mClrFunc = this->getColorTransferFunc(mColourRamp,
 			userNodes, userColours);
 
     if (mLookupTable.GetPointer() != 0)
     {
-        mLookupTable->Delete();
         mLookupTable = 0;
     }
-    mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
 
     //  fill lookup table based on the legend value field
-    if (mTableModel != 0 && mLegendValueField != "Pixel Values")
+    if (this->mLayerType == NM_VECTOR_LAYER)
 	{
-
-
-        //	<<<<<<< Updated upstream
-        //	=======
-        //				int idx = this->getColumnIndex(mLegendValueField);
-        //				QVariant::Type vtype = this->getColumnType(idx);
-        //				std::string tn = QVariant::typeToName(vtype);
-        //>>>>>>> Stashed changes
-
-		// prepare look up table
+        mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+        // prepare look-up table
         long nrows = mTableModel->rowCount(QModelIndex());
 
 		vtkUnsignedCharArray* hole = 0;
-		int clroff = 0;
-		if (this->mLayerType == NM_VECTOR_LAYER)
-		{
-			NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
-			vtkQtEditableTableModelAdapter* model = static_cast<vtkQtEditableTableModelAdapter*>(mTableModel);
-			vtkTable* tab = vtkTable::SafeDownCast(model->GetVTKDataObject());
 
-            //<<<<<<< Updated upstream
-			if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
-			{
-				hole = vtkUnsignedCharArray::SafeDownCast(tab->GetColumnByName("nm_hole"));
-			}
+        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+        vtkQtEditableTableModelAdapter* model =
+                static_cast<vtkQtEditableTableModelAdapter*>(mTableModel);
+        vtkTable* tab = vtkTable::SafeDownCast(model->GetVTKDataObject());
 
-			mLookupTable->SetNumberOfTableValues(nrows);
-			mLookupTable->SetTableRange(0, nrows-1);
-		}
-		else if (this->mLayerType == NM_IMAGE_LAYER)
-		{
-			mLookupTable->SetNumberOfTableValues(nrows+1);
-			mLookupTable->SetTableRange(-1, nrows);
-			mLookupTable->SetTableValue(0,0,0,0,0);
-			clroff = 1;
-		}
+        if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+        {
+            hole = vtkUnsignedCharArray::SafeDownCast(tab->GetColumnByName("nm_hole"));
+        }
+
+        mLookupTable->SetNumberOfTableValues(nrows);
+        mLookupTable->SetTableRange(0, nrows-1);
 
 		const int cidx = this->getColumnIndex(mLegendValueField);
 		QVariant::Type coltype = this->getColumnType(cidx);
@@ -1174,7 +1032,7 @@ NMLayer::mapValueRamp(void)
 		double fc[3];
 		double value;
 		bool bok;
-		for (int row=0; row < nrows+clroff; ++row)
+        for (int row=0; row < nrows; ++row)
 		{
 			if (hole && hole->GetValue(row))
 			{
@@ -1182,39 +1040,67 @@ NMLayer::mapValueRamp(void)
 				continue;
 			}
 
-			const QModelIndex mi = mTableModel->index(row+clroff, cidx, QModelIndex());
+            const QModelIndex mi = mTableModel->index(row, cidx, QModelIndex());
 			value = mi.data().toDouble(&bok);
 
-			mClrFunc->GetColor(value, fc);
-			mLookupTable->SetTableValue(row+clroff, fc[0], fc[1], fc[2], 1);
-
+            if (value < mLower)
+            {
+                fc[0] = mClrLowerMar.redF();
+                fc[1] = mClrLowerMar.greenF();
+                fc[2] = mClrLowerMar.blueF();
+                fc[3] = 1;
+            }
+            else if (value > mUpper)
+            {
+                fc[0] = mClrUpperMar.redF();
+                fc[1] = mClrUpperMar.greenF();
+                fc[2] = mClrUpperMar.blueF();
+                fc[3] = 1;
+            }
+            else
+            {
+                mClrFunc->GetColor(value, fc);
+            }
+            mLookupTable->SetTableValue(row, fc[0], fc[1], fc[2], 1);
 		}
 	}
-    else
+    else // NM_IMAGE_LAYER
     {
-        mLookupTable->SetNumberOfTableValues(mNumClasses+2);
-        mLookupTable->SetTableValue(0, mClrLowerMar.redF(), mClrLowerMar.greenF(), mClrLowerMar.blueF(), 1);
-        mLookupTable->SetTableValue(mNumClasses+1, mClrUpperMar.redF(), mClrUpperMar.greenF(), mClrUpperMar.blueF(), 1);
+        vtkSmartPointer<NMVtkLookupTable> lut = vtkSmartPointer<NMVtkLookupTable>::New();
+        lut->SetNumberOfColors(mNumClasses);
 
         double* rgb;
-        double lower = mLower;// = min(mLower, mUpper);
-        double upper = mUpper; //max(mLower, mUpper);
+        double lower = mLower;
+        double upper = mUpper;
         double range = upper - lower;
         double step = range/255.0;
 
-        for (int i=1; i < mNumClasses+1; ++i)
+        for (int i=0; i < mNumClasses; ++i)
         {
             double incr = ((double)i * step);
             double sample = lower + incr;
             double pos = abs(incr/range);
-            //if (pos < 0 || pos > 1)
-            //	continue;
 
             rgb = mClrFunc->GetColor(sample);
-            mLookupTable->SetTableValue(i, rgb[0], rgb[1], rgb[2], 1);
+            lut->SetTableValue(i, rgb[0], rgb[1], rgb[2], 1);
         }
-        mLookupTable->SetIndexedLookup(0);
-        mLookupTable->SetTableRange(mLower-VALUE_MARGIN, mUpper+VALUE_MARGIN);
+        lut->setLowerUpperClrOn();
+
+        unsigned char clr[4];
+        clr[0] = mClrLowerMar.red();
+        clr[1] = mClrLowerMar.green();
+        clr[2] = mClrLowerMar.blue();
+        clr[3] = mClrLowerMar.alpha();
+        lut->setLowerClr(lower, clr);
+
+        clr[0] = mClrUpperMar.red();
+        clr[1] = mClrUpperMar.green();
+        clr[2] = mClrUpperMar.blue();
+        clr[3] = mClrUpperMar.alpha();
+        lut->setUpperClr(upper, clr);
+        lut->SetTableRange(lower, upper);
+        lut->SetIndexedLookup(0);
+        mLookupTable = lut;
     }
 
 	NMDebugCtx(ctxNMLayer, << "done!");
@@ -1493,27 +1379,35 @@ NMLayer::setLegendValueField(QString field)
 	else
 		return;
 
-	if (field == "Pixel Values" || this->mTableModel == 0)
-	{
-		NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-		const double* istats = il->getStatistics();
-		for (int i=0; i < 4; ++i)
-			mStats[i] = istats[i];
-		mStats[5] = il->getDefaultNodata();
-		mStats[6] = il->getDefaultNodata();
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
 
-		mLegendDescrField = field;
+    //if (field == "Pixel Values" || this->mTableModel == 0)
+    if (il)
+    {
+        if (field == "Pixel Values")
+        {
+            const double* istats = il->getStatistics();
+            for (int i=0; i < 4; ++i)
+                mStats[i] = istats[i];
+            mStats[5] = il->getDefaultNodata();
+            mStats[6] = il->getDefaultNodata();
 
-		if (mStats[0] == mNodata)
-			setLower(mStats[0] + 3*VALUE_MARGIN);
-		else
-			setLower(mStats[0]);
+            mLegendDescrField = field;
 
-		if (mStats[1] == mNodata)
-			setUpper(mStats[1] - 1);
-		else
-			setUpper(mStats[1]);
+            if (mStats[0] == mNodata)
+                setLower(mStats[0] + 3*VALUE_MARGIN);
+            else
+                setLower(mStats[0]);
 
+            if (mStats[1] == mNodata)
+                setUpper(mStats[1] - 1);
+            else
+                setUpper(mStats[1]);
+        }
+        else if (il->getColumnIndex(mLegendValueField) != -1)
+        {
+            il->setUpdateScalars();
+        }
 	}
 	else
 	{
@@ -1527,7 +1421,8 @@ NMLayer::setLegendValueField(QString field)
 		{
 			if (mTableView == 0)
 			{
-				vtkQtEditableTableModelAdapter* vtkmodel = qobject_cast<vtkQtEditableTableModelAdapter*>(mTableModel);
+                vtkQtEditableTableModelAdapter* vtkmodel =
+                        qobject_cast<vtkQtEditableTableModelAdapter*>(mTableModel);
 				vtkTable* tab  = 0;
 				if (vtkmodel != 0)
 				{
@@ -1562,8 +1457,8 @@ NMLayer::setLegendValueField(QString field)
 
 		setLower(mStats[0]);
 		setUpper(mStats[1]);
-	}
 
+	}
 
 	this->updateMapping();
 }
@@ -1716,15 +1611,61 @@ NMLayer::getValueFieldStatistics()
 
 	std::vector<double> stats;
 
-	if (mLegendValueField == "Colour Table")
-		return stats;
+    int colidx = this->getColumnIndex(mLegendValueField);
+    QVariant::Type type = this->getColumnType(colidx);
 
-	for (int i=0; i < 7; ++i)
-		stats.push_back(this->mStats[i]);
+    if (    type == QVariant::Invalid
+        ||  (   type != QVariant::Int
+             && type != QVariant::Double
+             && type != QVariant::LongLong
+            )
+        ||  mLegendValueField == "Colour Table"
+        ||  mLegendValueField == "Pixel Values"
+       )
+    {
+		return stats;
+    }
+
+
+    // determine non-hole features in case we've got a
+    // polygon layer here
+    QList<int> raw2source;
+    if (this->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+    {
+        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+        if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+        {
+            raw2source.reserve(mTableModel->rowCount());
+            int holeidx = this->getColumnIndex("nm_hole");
+            bool bok;
+            for (long row=0; row < mTableModel->rowCount(); ++row)
+            {
+                const QModelIndex ridx = mTableModel->index(row, holeidx, QModelIndex());
+                int val = mTableModel->data(ridx, Qt::DisplayRole).toInt(&bok);
+                if (val < 0)
+                {
+                    raw2source << -1;
+                }
+                else
+                {
+                    raw2source << row;
+                }
+            }
+        }
+    }
+
+    NMTableCalculator calc(mTableModel, this);
+    if (raw2source.size() > 0)
+        calc.setRaw2Source(&raw2source);
+
+    stats = calc.calcColumnStats(mLegendValueField);
+
+    // copy stats: min, max, mean, median, sample size, sdev
+    for (int i=0; i < stats.size(); ++i)
+        mStats[i] = stats[i];
 
 	NMDebugCtx(ctxNMLayer, << "done!");
 	return stats;
-
 }
 
 QIcon NMLayer::getLegendIcon(const int legendRow)

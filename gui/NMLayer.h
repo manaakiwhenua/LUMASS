@@ -54,8 +54,10 @@
 #include "vtkPolyData.h"
 #include "vtkOGRLayerMapper.h"
 #include "vtkColorTransferFunction.h"
-#include "vtkColorTransferFunctionSpecialNodes.h"
+//#include "vtkColorTransferFunctionSpecialNodes.h"
 #include "vtkLookupTable.h"
+//#include "NMVtkLookupTable.h"
+
 //#include "vtkScalarsToColors.h"
 
 #define ctxNMLayer "NMLayer"
@@ -381,8 +383,10 @@ protected:
 	NMLayer::NMLegendClassType mLegendClassType;
 	NMLayer::NMColourRamp mColourRamp;
 
-	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> mClrFunc;
-	vtkSmartPointer<vtkLookupTable> mLookupTable;
+    //vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> mClrFunc;
+    vtkSmartPointer<vtkColorTransferFunction> mClrFunc;
+    vtkSmartPointer<vtkLookupTable> mLookupTable;
+    //vtkSmartPointer<NMVtkLookupTable> mLookupTable;
 
 	QColor mClrNodata;
 	QColor mClrLowerMar;
@@ -421,11 +425,17 @@ protected:
 	virtual void mapValueClasses(void);
 	virtual void mapValueRamp(void);
 
-	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> getColorTransferFunc(
-			const NMLayer::NMColourRamp& ramp,
-			const QList<double>& userNodes,
-			const QList<QColor>& userColours,
-			bool invertRamp=false);
+    //	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> getColorTransferFunc(
+    //			const NMLayer::NMColourRamp& ramp,
+    //			const QList<double>& userNodes,
+    //			const QList<QColor>& userColours,
+    //			bool invertRamp=false);
+
+    vtkSmartPointer<vtkColorTransferFunction> getColorTransferFunc(
+            const NMLayer::NMColourRamp& ramp,
+            const QList<double>& userNodes,
+            const QList<QColor>& userColours,
+            bool invertRamp=false);
 
 protected slots:
 	virtual int updateAttributeTable(void);

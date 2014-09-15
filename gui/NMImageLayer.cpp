@@ -51,6 +51,7 @@
 #include "vtkMath.h"
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
+#include "vtkPointData.h"
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRendererCollection.h"
 #include "vtkInteractorObserver.h"
@@ -80,6 +81,15 @@
 #include "vtkImageActor.h"
 #include "vtkImageSliceMapper.h"
 #include "NMVtkOpenGLImageSliceMapper.h"
+#include "vtkSignedCharArray.h"
+#include "vtkUnsignedShortArray.h"
+#include "vtkShortArray.h"
+#include "vtkUnsignedIntArray.h"
+#include "vtkIntArray.h"
+#include "vtkUnsignedLongArray.h"
+#include "vtkLongArray.h"
+#include "vtkLongLongArray.h"
+#include "vtkSetGet.h"
 
 template<class PixelType, unsigned int Dimension>
 class InternalImageHelper
@@ -669,73 +679,48 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     {
         wcoord[i] = world[i];
     }
-	unsigned int d=0;
     double spacing[3];
 	double origin[3];
-	int dims[3];
-	double bnd[6];
+    int dims[3] = {0,0,0};
+    double bnd[6];
 	double err[3];
 
-    if (bOnLPR)
-    {
-        for (int d=0; d<3; ++d)
-        {
-            bnd[d*2] = mBBox[d*2];
-            bnd[d*2+1] = mBBox[d*2+1];
-            origin[d] = mOrigin[d];
-            spacing[d] = mSpacing[d];//::fabs(mSpacing[d]);
-            wcoord[d] += spacing[d] / 2.0;
-            dims[d] = (mBBox[d*2+1] - mBBox[d*2]) / ::fabs(spacing[d]);
-            err[d] = 0.001 * spacing[d];
-        }
-    }
-    else
-    {
-        vtkImageData* img = vtkImageData::SafeDownCast(
+    vtkImageData* img = vtkImageData::SafeDownCast(
                 const_cast<vtkDataSet*>(this->getDataSet()));
 
-        if (img == 0)
-            return;
+    if (img == 0)
+        return;
 
-        img->GetSpacing(spacing);
-        img->GetOrigin(origin);
-        img->GetDimensions(dims);
+    img->GetSpacing(spacing);
+    img->GetOrigin(origin);
 
-        // adjust coordinates & calc bnd
-        for (d=0; d<3; ++d)
+    // adjust coordinates & calc bnd
+    unsigned int d;
+    for (d = 0; d < this->mNumDimensions; ++d)
+    {
+        if (bOnLPR)
         {
-            // account for 'pixel corner coordinate' vs.
-            // 'pixel centre coordinate' philosophy of
-            // vtk vs itk
-            wcoord[d] += spacing[d] / 2.0;
-
-            // account for origin is 'upper left' as for itk
-            // vs. 'lower left' as for vtk
-            if (d == 1)
-            {
-                bnd[d*2+1] = origin[d];
-                bnd[d*2] = origin[d] + dims[d] * spacing[d];
-            }
-            else
-            {
-                bnd[d*2] = origin[d];
-                bnd[d*2+1] = origin[d] + dims[d] * spacing[d];
-            }
-
-            // set the 'pointing accuracy' to 1 percent of
-            // pixel width for each dimension
-            err[d] = spacing[d] * 0.001;
+            spacing[d] = mSpacing[d];
         }
+        dims[d] = (mBBox[d*2+1] - mBBox[d*2]) / ::fabs(spacing[d]);
+
+        // account for 'pixel corner coordinate' vs.
+        // 'pixel centre coordinate' philosophy of
+        // vtk vs itk
+        wcoord[d] += spacing[d] / 2.0;
+        // set the 'pointing accuracy' to 1 percent of
+        // pixel width for each dimension
+        err[d] = spacing[d] * 0.001;
     }
 
 	// check, whether the user point is within the
 	// image boundary
     if (bImgConstrained)
     {
-        if (vtkMath::PointIsWithinBounds(wcoord, bnd, err))
+        if (vtkMath::PointIsWithinBounds(wcoord, mBBox, err))
         {
             // calculate the image/pixel coordinates
-            for (d = 0; d < 3; ++d)
+            for (d = 0; d < this->mNumDimensions; ++d)
             {
                 pixel[d] = 0;
 
@@ -746,12 +731,17 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     }
     else
     {
-        //spacing[1] = -spacing[1];
-        for (d = 0; d < 3; ++d)
+        for (d = 0; d < this->mNumDimensions; ++d)
         {
             if (dims[d] > 0)
                 pixel[d] = (int)((wcoord[d] - origin[d]) / spacing[d]);
         }
+    }
+
+    // fill up until 3rd dimension with zeros, if applicable
+    for (; d < 3; ++d)
+    {
+        pixel[d] = 0;
     }
 }
 
@@ -917,8 +907,6 @@ NMImageLayer::setFileName(QString filename)
 		return false;
 	}
     this->mReader->getInternalProc()->ReleaseDataFlagOn();
-    //this->mReader->getInternalProc()->ReleaseDataBeforeUpdateFlagOn();
-
 
 
     // get original image attributes before we muck
@@ -948,50 +936,14 @@ NMImageLayer::setFileName(QString filename)
 
 	// concatenate the pipeline
     this->mPipeconn->setInput(this->mReader->getOutput(0));
-    //this->mPipeconn->getVtkImageImport()->ReleaseDataFlagOn();
 
-//    this->mImgInfoChange = vtkSmartPointer<vtkImageChangeInformation>::New();
-//    this->mImgInfoChange->SetInputConnection(this->mPipeconn->getVtkImageImport()->GetOutputPort());
-//    vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
-//    m->SetInputConnection(this->mImgInfoChange->GetOutputPort());
-
-
-
-//    int we[6];
-//    double origin[3];
-//    double spacing[3];
-
-//    vtkImageImport ii;
-
-//    vtkInformation* outInfo = mPipeconn->getVtkImageImport()->GetOutputPortInformation(0);
-//    outInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), we, 6);
-//    outInfo->Get(vtkDataObject::ORIGIN(), origin, 3);
-//    outInfo->Get(vtkDataObject::SPACING(), spacing, 3);
-
-//    this->mImgInfoChange->SetOutputExtentStart(we[0], we[2], we[4]);
-//    this->mImgInfoChange->SetOutputOrigin(origin);
-//    this->mImgInfoChange->SetOutputSpacing(spacing);
-
-    //vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
-    //vtkSmartPointer<vtkImageSliceMapper> m = vtkSmartPointer<vtkImageSliceMapper>::New();
     vtkSmartPointer<NMVtkOpenGLImageSliceMapper> m = vtkSmartPointer<NMVtkOpenGLImageSliceMapper>::New();
-    //vtkSmartPointer<vtkImageMapper> m = vtkSmartPointer<vtkImageMapper>::New();
     m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-
-    //m->ResampleToScreenPixelsOn();
-    //m->ResampleToScreenPixelsOff();
-    //m->SeparateWindowLevelOperationOff();
+    m->SetNMLayer(this);
     m->SetBorder(1);
-
-	// adjust origin
-    //double ori[3], spc[3];
-    //vtkImageData* img = vtkImageData::SafeDownCast(this->mPipeconn->getVtkImage());
-    //img->GetOrigin(ori);
-    //img->GetSpacing(spc);
 
     //vtkSmartPointer<vtkImageActor> a = vtkSmartPointer<vtkImageActor>::New();
     vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
-    //vtkSmartPointer<vtkActor2D> a = vtkSmartPointer<vtkActor2D>::New();
     a->SetMapper(m);
 
     mImgProp = vtkSmartPointer<vtkImageProperty>::New();
@@ -1003,17 +955,11 @@ NMImageLayer::setFileName(QString filename)
 	this->mMapper = m;
     this->mActor = a;
 
-    // we're going to update the attribute table, since
-	// we'll probably need it
-	//if (!this->updateAttributeTable())
-	//{
-	//	NMWarn(ctxNMImageLayer, << "Couldn't update the attribute table, "
-	//			<< "which might lead to trouble later on!");
-	//}
-
 	this->mImage = 0;
 	this->mFileName = filename;
+    this->mMapper->Update();
     this->initiateLegend();
+
 
 	emit layerProcessingEnd();
 	emit layerLoaded();
@@ -1024,10 +970,7 @@ NMImageLayer::setFileName(QString filename)
 void
 NMImageLayer::mapExtentChanged(void)
 {
-    NMDebugCtx(ctxNMImageLayer, << "...");
-
-    // check which overview is currently set
-    // check the size of the current overview (mBufferedBox)
+    //NMDebugCtx(ctxNMImageLayer, << "...");
 
     // this makes only sense, if this layer is reader-based rather than
     // data buffer-based, so
@@ -1038,16 +981,19 @@ NMImageLayer::mapExtentChanged(void)
         ||  this->mReader->getNumberOfOverviews() == 0
        )
     {
-        //        // can't do anything without available overviews
-        //        NMDebugAI(<< "NMImageLayer::mapExtentChanged(): No reader or overivews."
-        //                  << std::endl);
-        NMDebugCtx(ctxNMImageLayer, << "done!");
         return;
     }
 
+    if (this->mRenderWindow->GetInteractor()->GetInteractorStyle()->GetClassName() ==
+                "vtkInteractorStyleTrackballCamera")
+    {
+        return;
+    }
+
+
     // get the bbox and fullsize of this layer
-    double h_ext = (mBBox[1] - mBBox[0]);
-    double v_ext = (mBBox[3] - mBBox[2]);
+    double h_ext = mBBox[1] - mBBox[0];
+    double v_ext = mBBox[3] - mBBox[2];
 
     int fullcols = h_ext / mSpacing[0];
     int fullrows = v_ext / ::fabs(mSpacing[1]);
@@ -1095,6 +1041,7 @@ NMImageLayer::mapExtentChanged(void)
         wminy = wbr[1];
         //this->world2pixel(wbr, pbr, true, false);
 
+        // only works good if
         h_res = (wmaxx - wminx) / (double)size[0];
         v_res = (wmaxy - wminy) / (double)size[1];
 
@@ -1127,9 +1074,9 @@ NMImageLayer::mapExtentChanged(void)
     double diff = ::fabs(opt_res-target_res);
 
 
-//        NMDebugAI(<< "screen size: " << size[0] << "x" << size[1] << std::endl);
-//        NMDebugAI(<< "opt_res: " << opt_res << " | target_res: " << target_res << " | diff: "
-//                  << diff << std::endl);
+    //        NMDebugAI(<< "screen size: " << size[0] << "x" << size[1] << std::endl);
+    //        NMDebugAI(<< "opt_res: " << opt_res << " | target_res: " << target_res << " | diff: "
+    //                  << diff << std::endl);
 
     for (int i=0; i < mReader->getNumberOfOverviews(); ++i)
     {
@@ -1152,27 +1099,25 @@ NMImageLayer::mapExtentChanged(void)
         }
     }
 
-    // also check the original resolution
-
-
-    //NMDebug( << ">>>-------------------" << std::endl);
-    this->mReader->setOverviewIdx(ovidx);
     if (this->mRenderer->GetViewProps()->GetNumberOfItems() > 0)
+    //if (ren)
     {
-
+        // overview properties and visible extent
         int cols = ovidx >= 0 ? this->mReader->getOverviewSize(ovidx)[0]: fullcols;
         int rows = ovidx >= 0 ? this->mReader->getOverviewSize(ovidx)[1]: fullrows;
 
         double uspacing[3];
-        this->mReader->getSpacing(uspacing);
+        uspacing[0] = h_ext / cols;
+        uspacing[1] = v_ext / rows;
+        uspacing[2] = 0;
 
-        int xo, yo, xe, ye;
+        int xo, yo, xe, ye, zo, ze;
         xo = (wminx - mBBox[0]) / uspacing[0];
         yo = (mBBox[3] - wmaxy) / ::fabs(uspacing[1]);
         xe = (wmaxx - mBBox[0]) / uspacing[0];
         ye = (mBBox[3] - wminy) / ::fabs(uspacing[1]);
 
-        // calc update extent
+        // calc vtk update extent
         int uext[6];
         uext[0] = xo > cols-1 ? cols-1 : xo < 0 ? 0 : xo;
         uext[2] = yo > rows-1 ? rows-1 : yo < 0 ? 0 : yo;
@@ -1181,72 +1126,167 @@ NMImageLayer::mapExtentChanged(void)
         uext[4] = 0;
         uext[5] = 0;
 
+        // visible itk image region
         int wext[6];
-        wext[0] = 0;
-        wext[1] = cols-1;
-        wext[2] = 0;
-        wext[3] = rows-1;
-        wext[4] = 0;
-        wext[5] = 0;
+        wext[0] = uext[0];
+        wext[1] = uext[1] - uext[0] + 1;
+        wext[2] = uext[2];
+        wext[3] = uext[3] - uext[2] + 1;
+        wext[4] = uext[4];
+        wext[5] = uext[4] == 0 && uext[5] == 0 ? 0 : uext[5] - uext[4] + 1;
 
-        double uor[3];
-        uor[0] = ::max<double>(mBBox[0],(wminx - mBBox[0]) / uspacing[0]);
-        uor[1] = ::min<double>(mBBox[3], (mBBox[3] - wmaxy) / ::fabs(uspacing[1]));
-        uor[2] = 0;
+        //        NMDebugAI(<< "ov #" << ovidx << ": " << cols << "x" << rows << std::endl);
 
-        itk::ImageRegion<2> reg;
-        reg.SetIndex(0, uext[0]);
-        reg.SetIndex(1, uext[2]);
-        reg.SetSize(0, uext[1] - uext[0] + 1);
-        reg.SetSize(1, uext[3] - uext[2] + 1);
+        //        NMDebugAI(<< "uext: " << uext[0] << ".." << uext[1] << " "
+        //                              << uext[2] << ".." << uext[3] << std::endl);
 
-        this->mReader->getOutput(0)->setImageRegion(NMItkDataObjectWrapper::NM_LARGESTPOSSIBLE_REGION,
-                                                    (void*)&reg);
+        //        NMDebugAI(<< "wext: " << wext[0] << "," << wext[2] << " "
+        //                              << wext[1] << "x" << wext[3] << std::endl);
 
-        this->mReader->getOutput(0)->setImageRegion(NMItkDataObjectWrapper::NM_REQUESTED_REGION,
-                                                            (void*)&reg);
-
-
-//        if (this->mOverviewIdx != ovidx)
-//            this->mReader->update();
-
-//        this->mPipeconn->getVtkImageImport()->SetWholeExtent(uext);
-//        //this->mPipeconn->getVtkImageImport()->UpdateInformation();
-//        this->mPipeconn->getVtkImageImport()->SetUpdateExtent(uext);
-
-
-
-//        vtkStreamingDemandDrivenPipeline* sddp = vtkStreamingDemandDrivenPipeline::SafeDownCast(
-//                    this->mPipeconn->getVtkImageImport()->GetExecutive());
-
-//        vtkInformation* outInfo = sddp->GetOutputInformation(0);
-
-//        //vtkImageData* img = vtkImageData::SafeDownCast(sddp->GetOutputData(0));
-//        //img->SetExtent(uext);
-//        //img->SetOrigin(uor);
-
-
-//        outInfo->Set(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), uext, 6);
-//        outInfo->Set(vtkStreamingDemandDrivenPipeline::UPDATE_EXTENT(), uext, 6);
-//        outInfo->Set(vtkDataObject::DATA_EXTENT(), uext, 6);
-//        outInfo->Set(vtkDataObject::SPACING(), uspacing, 3);
-//        outInfo->Set(vtkDataObject::ORIGIN(), uor, 3);
-
+        this->mReader->setOverviewIdx(ovidx, wext);
         this->mMapper->UpdateInformation();
-
-//        vtkImageData* img = vtkImageData::SafeDownCast(this->mMapper->GetInputDataObject(0, 0));
-//        img->SetExtent(uext);
-//        img->SetOrigin(uor);
 
         NMVtkOpenGLImageSliceMapper* ism = NMVtkOpenGLImageSliceMapper::SafeDownCast(this->mMapper);
         ism->SetDisplayExtent(uext);
         ism->SetDataWholeExtent(uext);
 
-        this->mRenderer->Render();
-
+        this->mMapper->Update();
     }
+    else
+    {
+        this->mReader->setOverviewIdx(ovidx, 0);
+    }
+
     this->mOverviewIdx = ovidx;
-    NMDebugCtx(ctxNMImageLayer, << "done!");
+    //NMDebugCtx(ctxNMImageLayer, << "done!");
+}
+
+void
+NMImageLayer::setScalars(vtkImageData* img)
+{
+    //NMDebugCtx(ctxNMImageLayer, << "...");
+
+
+    const int colidx = this->getColumnIndex(mLegendValueField);
+
+    if (colidx < 0 || this->mOtbRAT.IsNull())
+    {
+        //NMWarn(ctxNMImageLayer, << "Table is NULL or Value Field is invalid!");
+        //NMDebugCtx(ctxNMImageLayer, << "done!");
+        return;
+    }
+
+    vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
+    vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
+    void* buf = idxScalars->GetVoidPointer(0);
+    int numPix = idxScalars->GetSize();
+    int maxidx = mOtbRAT->GetNumRows()-1;
+
+    switch(mOtbRAT->GetColumnType(colidx))
+    {
+    case otb::AttributeTable::ATTYPE_DOUBLE:
+        {
+            vtkSmartPointer<vtkDoubleArray> ar = vtkSmartPointer<vtkDoubleArray>::New();
+            ar->SetName(mLegendValueField.toStdString().c_str());
+            ar->SetNumberOfValues(numPix);
+            ar->SetNumberOfComponents(1);
+
+
+            double* out = static_cast<double*>(ar->GetVoidPointer(0));
+            double* tabCol = static_cast<double*>(mOtbRAT->GetColumnPointer(colidx));
+            const double nodata = this->getNodata();
+
+            switch(idxScalars->GetDataType())
+            {
+            vtkTemplateMacro(
+                        setDoubleScalars(static_cast<VTK_TT*>(buf),
+                                                     out, tabCol, numPix, maxidx,
+                                                     nodata)
+                        );
+            default:
+                {
+                    for (int i=0; i < numPix; ++i)
+                    {
+                        const long idx = idxScalars->GetVariantValue(i).ToLong();
+                        idx < 0 || idx > maxidx
+                                ? out[i] = nodata
+                                : out[i] = tabCol[idx];
+                    }
+                }
+            }
+            dsa->AddArray(ar);
+        }
+        break;
+    case otb::AttributeTable::ATTYPE_INT:
+        {
+            vtkSmartPointer<vtkLongArray> ar = vtkSmartPointer<vtkLongArray>::New();
+            ar->SetName(mLegendValueField.toStdString().c_str());
+            ar->SetNumberOfValues(numPix);
+            ar->SetNumberOfComponents(1);
+
+            long* out = static_cast<long*>(ar->GetVoidPointer(0));
+            long* tabCol = static_cast<long*>(mOtbRAT->GetColumnPointer(colidx));
+            long nodata = static_cast<long>(this->getNodata());
+
+            switch(idxScalars->GetDataType())
+            {
+            vtkTemplateMacro(
+                        setLongScalars(static_cast<VTK_TT*>(buf),
+                                                     out, tabCol, numPix, maxidx,
+                                                     nodata)
+                        );
+            default:
+                {
+                    for (int i=0; i < numPix; ++i)
+                    {
+                        const long idx = idxScalars->GetVariantValue(i).ToLong();
+                        idx < 0 || idx > maxidx
+                                ? out[i] = nodata
+                                : out[i] = tabCol[idx];
+                    }
+                }
+            }
+            dsa->AddArray(ar);
+        }
+        break;
+    default:
+        NMErr(ctxNMImageLayer, << "Invalid ColumnType!" << std::endl);
+        //NMDebugCtx(ctxNMImageLayer, << "done!");
+        return;
+    }
+
+    dsa->SetActiveAttribute(mLegendValueField.toStdString().c_str(),
+                            vtkDataSetAttributes::SCALARS);
+
+    mbUpdateScalars = false;
+    //NMDebugCtx(ctxNMImageLayer, << "done!");
+}
+
+// worker function for scalars setting
+template<class T>
+void
+NMImageLayer::setLongScalars(T* buf, long* out, long* tabCol,
+                             int numPix, int maxidx, long nodata)
+{
+    for (int i=0; i < numPix; ++i)
+    {
+        buf[i] < 0 || buf[i] > maxidx
+                ? out[i] = nodata
+                : out[i] = tabCol[static_cast<long>(buf[i])];
+    }
+}
+
+template<class T>
+void
+NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
+                               int numPix, int maxidx, double nodata)
+{
+    for (int i=0; i < numPix; ++i)
+    {
+        buf[i] < 0 || buf[i] > maxidx
+                ? out[i] = nodata
+                : out[i] = tabCol[static_cast<long>(buf[i])];
+    }
 }
 
 void

@@ -122,11 +122,23 @@ public slots:
 	void test(void);
 
     void mapExtentChanged(void);
+    void setUpdateScalars()
+        {this->mbUpdateScalars = true;}
+    void setScalars(vtkImageData* img);
 
 protected:
 
 	void createTableView(void);
 	void updateStats(void);
+
+    template<class T>
+    void setLongScalars(T* buf, long* out, long* tabCol,
+                        int numPix, int maxid,
+                        long nodata);
+    template<class T>
+    void setDoubleScalars(T* buf, double* out, double* tabCol,
+                        int numPix, int maxid,
+                        double nodata);
 
     NMDataComponent* mSourceBuffer;
 	NMImageReader* mReader;
@@ -136,22 +148,20 @@ protected:
 	RasdamanConnector* mpRasconn;
 #endif	
 
-	//std::vector<otb::AttributeTable::Pointer> mRATVec;
 	otb::AttributeTable::Pointer mOtbRAT;
+    otb::ImageIOBase::IOComponentType mComponentType;
 
-	itk::DataObject::Pointer mImage;
-
-    vtkSmartPointer<vtkImageChangeInformation> mImgInfoChange;
-
+    itk::DataObject::Pointer mImage;
 	vtkSmartPointer<vtkImageProperty> mImgProp;
-	otb::ImageIOBase::IOComponentType mComponentType;
-	unsigned int mNumDimensions;
+
+    unsigned int mNumDimensions;
 	unsigned int mNumBands;
 
     double mSpacing[3];
     double mOrigin[3];
 
     int mOverviewIdx;
+    bool mbUpdateScalars;
 
     /*!
      * \brief The buffered (current) image region
@@ -161,7 +171,6 @@ protected:
      *
      */
     double mBufferedBox[6];
-
 
 	bool mbStatsAvailable;
 

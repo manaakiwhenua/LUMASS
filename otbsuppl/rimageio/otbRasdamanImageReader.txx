@@ -266,7 +266,7 @@ RasdamanImageReader<TOutputImage>
 		{
 			this->Print(std::cerr);
 			ImageFileReaderException e(__FILE__, __LINE__);
-			itk::OStringStream msg;
+            std::ostringstream msg;
 			msg
 					<< " How inconvenient, someone forgot to set the RasdamanConnector object!"
 					<< std::endl;
@@ -286,7 +286,7 @@ RasdamanImageReader<TOutputImage>
   {
     this->Print( std::cerr );
     ImageFileReaderException e(__FILE__, __LINE__);
-    itk::OStringStream msg;
+    std::ostringstream msg;
     msg << " Mmmh, odd ... The user specified IO seems to be NULL!";
     msg << " Why would someone do this??" << std::endl;
     e.SetDescription(msg.str().c_str());

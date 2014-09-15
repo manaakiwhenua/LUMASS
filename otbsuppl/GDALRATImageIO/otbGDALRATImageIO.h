@@ -114,14 +114,13 @@ public:
   itkGetMacro(NbOverviews, int);
 
   itkGetMacro(OverviewIdx, int);
-  itkSetMacro(OverviewIdx, int);
+  void SetOverviewIdx(int idx);
 
   std::vector<unsigned int> GetOverviewSize(int ovv);
 
 
   /** surrounding region specs */
   void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
- // void SetUpdateRegion(const itk::ImageIORegion& updateRegion);
 
   /** close the gdal data set incase it is still open */
   void CloseDataset(void);
@@ -202,7 +201,9 @@ protected:
   /** Buffer*/
   //float **pafimas;
 
-  unsigned int m_NbOverviews;
+  void updateOverviewInfo();
+
+  int m_NbOverviews;
   std::vector<std::vector<unsigned int > > m_OvvSize;
   int m_OverviewIdx;
 
@@ -229,10 +230,10 @@ protected:
   bool m_ImageUpdateMode;
 
   /** force a largest possible region */
-  //itk::ImageIORegion m_UpdateRegion;
   itk::ImageIORegion m_ForcedLPR;
   bool m_UseForcedLPR;
-  //bool m_UseUpdateRegion;
+
+  bool m_ImgInfoHasBeenRead;
 
 
 private:

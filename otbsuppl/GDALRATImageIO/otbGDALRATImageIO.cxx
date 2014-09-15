@@ -318,7 +318,7 @@ GDALRATImageIO::GDALRATImageIO()
   m_NbOverviews = 0;
   m_OverviewIdx = -1;
 
-
+  m_ImgInfoHasBeenRead = false;
   m_PxType = new GDALDataTypeWrapper;
 
   //ctx = "GDALRATImageIO";
@@ -364,6 +364,16 @@ void GDALRATImageIO::CloseDataset(void)
 	}
 }
 
+void
+GDALRATImageIO::SetOverviewIdx(int idx)
+{
+    if (idx >= -1 && idx < this->m_NbOverviews)
+    {
+        this->m_OverviewIdx = idx;
+        this->updateOverviewInfo();
+    }
+}
+
 // Read image with GDAL
 void GDALRATImageIO::Read(void* buffer)
 {
@@ -389,33 +399,34 @@ void GDALRATImageIO::Read(void* buffer)
   int lNbColumns = lNbBufColumns;
 
   GDALDataset* dataset = m_Dataset->GetDataSet();
+  // make sure we know about any spcified overviews!
   if (dataset == 0)// || this->m_OverviewIdx >= 0)
   {
       this->InternalReadImageInformation();
   }
 
   // calc reference (orig. image values) of requested region
-  if (m_OverviewIdx >= 0)
+  if (m_OverviewIdx >= 0 && m_OverviewIdx < this->m_NbOverviews)
   {
-      std::cout << "ImgIO-read: ULC: " << lFirstColumn << "," << lFirstLine << std::endl;
-      std::cout << "ImgIO-read: size: " << lNbBufColumns
-                << " x " << lNbBufLines << std::endl;
+        //            std::cout << "ImgIO-read: ULC: " << lFirstColumn << "," << lFirstLine << std::endl;
+        //            std::cout << "ImgIO-read: size: " << lNbBufColumns
+        //                      << " x " << lNbBufLines << std::endl;
 
-      double xstart = m_Origin[0] + lFirstColumn * m_LPRSpacing[0];
+      double xstart = m_Origin[0] + lFirstColumn * m_Spacing[0];//m_LPRSpacing[0];
       double xend = xstart + lNbBufColumns * m_Spacing[0];
       lNbColumns = (xend - xstart) / m_LPRSpacing[0];
 
-      double ystart = m_Origin[1] + lFirstLine * m_LPRSpacing[1];
+      double ystart = m_Origin[1] + lFirstLine * m_Spacing[1];//m_LPRSpacing[1];
       double yend = ystart + lNbBufLines * m_Spacing[1];
       lNbLines = (ystart - yend) / ::fabs(m_LPRSpacing[1]);
 
 
-      lFirstColumn = (xstart - m_Origin[0]) / m_Spacing[0];
-      lFirstLine = (m_Origin[1] - ystart) / ::fabs(m_Spacing[1]);
+      lFirstColumn = (xstart - m_Origin[0]) / m_LPRSpacing[0];
+      lFirstLine = (m_Origin[1] - ystart) / ::fabs(m_LPRSpacing[1]);
 
-      std::cout << "ImgIO-read: orig. ULC: " << lFirstColumn << "," << lFirstLine << std::endl;
-      std::cout << "ImgIO-read: orig. size: " << lNbColumns
-                << " x " << lNbLines << std::endl;
+    //            std::cout << "ImgIO-read: orig. ULC: " << lFirstColumn << "," << lFirstLine << std::endl;
+    //            std::cout << "ImgIO-read: orig. size: " << lNbColumns
+    //                      << " x " << lNbLines << std::endl;
   }
 
   if (m_IsIndexed)
@@ -585,6 +596,36 @@ std::vector<unsigned int> GDALRATImageIO::GetOverviewSize(int ovv)
     return ret;
 }
 
+void GDALRATImageIO::updateOverviewInfo()
+{
+    // we just bail out if no img info is avail as yet
+    // (i.e. the data set hasn't been initialised)
+    if (!m_ImgInfoHasBeenRead)
+    {
+        this->ReadImageInformation();
+        return;
+    }
+
+    if (m_OverviewIdx >= 0 && m_OverviewIdx < m_NbOverviews)
+    {
+        m_Dimensions[0] = m_OvvSize[m_OverviewIdx][0];
+        m_Dimensions[1] = m_OvvSize[m_OverviewIdx][1];
+
+        double xsize = (m_Origin[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_Origin[0];
+        double ysize = m_Origin[1] - (m_Origin[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
+        m_Spacing[0] = xsize / (double)m_Dimensions[0];
+        m_Spacing[1] = -(ysize / (double)m_Dimensions[1]);
+
+    }
+    else if (m_OverviewIdx == -1)
+    {
+        m_Dimensions[0] = m_LPRDimensions[0];
+        m_Dimensions[1] = m_LPRDimensions[1];
+        m_Spacing[0] = m_LPRSpacing[0];
+        m_Spacing[1] = m_LPRSpacing[1];
+    }
+}
+
 void GDALRATImageIO::InternalReadImageInformation()
 {
   // do we have a valid dataset wrapper and a valid
@@ -596,6 +637,11 @@ void GDALRATImageIO::InternalReadImageInformation()
 		  itkExceptionMacro(<< "We can't actually read file "
 				  << m_FileName);
 	  }
+  }
+
+  if (m_ImgInfoHasBeenRead)
+  {
+      return;
   }
 
   // Detecting if we are in the case of an image with subdatasets
@@ -682,8 +728,8 @@ void GDALRATImageIO::InternalReadImageInformation()
     //std::cout << "ImgIO: 'ovv-idx': " << m_OverviewIdx << std::endl;
 
   }
-  std::cout << "ImgIO: ovv #" << m_OverviewIdx
-            << ": size: " << m_Dimensions[0] << " x " << m_Dimensions[1] << std::endl;
+//  std::cout << "ImgIO: ovv #" << m_OverviewIdx
+//            << ": size: " << m_Dimensions[0] << " x " << m_Dimensions[1] << std::endl;
 
 
   // Automatically set the Type to Binary for GDAL data
@@ -991,7 +1037,7 @@ void GDALRATImageIO::InternalReadImageInformation()
         m_Spacing[1] = -(ysize / (double)m_Dimensions[1]);
     }
 
-    std::cout << "ImgIO: scaled spacing: x: " << m_Spacing[0] << " y: " << m_Spacing[1] << std::endl;
+//    std::cout << "ImgIO: scaled spacing: x: " << m_Spacing[0] << " y: " << m_Spacing[1] << std::endl;
     }
 
   // Dataset info
@@ -1181,6 +1227,8 @@ void GDALRATImageIO::InternalReadImageInformation()
     this->SetNumberOfComponents(m_NbBands);
     this->SetPixelType(VECTOR);
     }
+
+  m_ImgInfoHasBeenRead = true;
 }
 
 bool GDALRATImageIO::CanWriteFile(const char* name)

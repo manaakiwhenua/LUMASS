@@ -169,6 +169,7 @@
 #include "vtkObject.h"
 #include "vtkOrientationMarkerWidget.h"
 #include "vtkPoints.h"
+#include "vtkPointData.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataReader.h"
 #include "vtkPolyDataWriter.h"
@@ -452,8 +453,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 		//this->ui->qvtkWidget->SetUseTDx(true);
     this->ui->qvtkWidget->SetRenderWindow(renwin);
 
-    this->ui->qvtkWidget->installEventFilter(this);
-
     this->m_b3D = false;
     this->ui->actionToggle3DStereoMode->setChecked(false);
     this->ui->actionToggle3DStereoMode->setEnabled(false);
@@ -485,12 +484,6 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
     		vtkCommand::LeftButtonPressEvent,
     		this, SLOT(pickObject(vtkObject*)));
-    this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
-            vtkCommand::MouseWheelForwardEvent,
-            this, SLOT(zoomChanged(vtkObject*)));
-    this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
-            vtkCommand::MouseWheelBackwardEvent,
-            this, SLOT(zoomChanged(vtkObject*)));
 
     // **********************************************************************
     // *                    CENTRAL WIDGET                                  *
@@ -576,95 +569,6 @@ OtbModellerWin::notify(QObject* receiver, QEvent* event)
 }
 
 
-bool
-OtbModellerWin::eventFilter(QObject* obj, QEvent* e)
-{
-    if (obj == this->ui->qvtkWidget)
-    {
-        if (e->type() == QEvent::Resize)
-        {
-            emit mapExtentChanged();
-        }
-        else if (e->type() == QEvent::MouseButtonRelease)
-        {
-            QMouseEvent* me = static_cast<QMouseEvent*>(e);
-            if (me)
-            {
-                if (me->button() & Qt::MidButton)
-                {
-                    emit mapExtentChanged();
-                }
-                else if (   (me->button() & Qt::LeftButton)
-                         && (me->modifiers() & Qt::ShiftModifier)
-                        )
-                {
-                    emit mapExtentChanged();
-                }
-            }
-        }
-//        else if (e->type() == QEvent::Wheel)
-//        {
-//            // zoom logic here is copied from
-//            // vtkInteractorStyleTrackballCamera
-
-//            QWheelEvent* we = static_cast<QWheelEvent*>(e);
-//            vtkInteractorStyleTrackballCamera* tbc =
-//                    vtkInteractorStyleTrackballCamera::SafeDownCast(
-//                        this->ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
-
-//            NMLayer* l = this->mLayerList->getSelectedLayer();
-//            if (l == 0 || l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-//                return false;
-
-//            NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-//            vtkRenderer* ren = const_cast<vtkRenderer*>(il->getRenderer());
-//            if (ren == 0)
-//                return 0;
-
-//            vtkCamera* cam = ren->GetActiveCamera();
-
-//            double zoom = tbc->GetMouseWheelMotionFactor();
-
-//            if (we->angleDelta().y() > 0)
-//            {
-//                //NMDebugAI(<< "forward : zoom in" << std::endl);
-//                zoom *= 0.2 * tbc->GetMotionFactor();
-//            }
-//            else
-//            {
-//                //NMDebugAI(<< "backward : zoom out" << std::endl);
-//                zoom *= -0.2 * tbc->GetMotionFactor();
-//            }
-
-//            // dolly amount
-//            zoom = pow(1.1, zoom);
-
-//            if (cam->GetParallelProjection())
-//            {
-//                cam->SetParallelScale(cam->GetParallelScale() / zoom);
-//            }
-//            else
-//            {
-//                cam->Dolly(zoom);
-//                if (tbc->GetAutoAdjustCameraClippingRange())
-//                {
-//                    ren->ResetCameraClippingRange();
-//                }
-//            }
-
-//            if (ui->qvtkWidget->GetInteractor()->GetLightFollowCamera())
-//            {
-//                ren->UpdateLightsGeometryToFollowCamera();
-//            }
-//            emit mapExtentChanged();
-//            ui->qvtkWidget->GetInteractor()->Render();
-
-//            return true;
-//        }
-    }
-    return false;
-}
-
 vtkRenderWindow*
 OtbModellerWin::getRenderWindow(void)
 {
@@ -726,15 +630,6 @@ void
 OtbModellerWin::showModelView(bool vis)
 {
     ui->modelViewWidget->parentWidget()->setVisible(vis);
-}
-
-void
-OtbModellerWin::zoomChanged(vtkObject* obj)
-{
-//    double camdist = this->mBkgRenderer->GetActiveCamera()->GetDistance();
-//    NMDebugAI(<< "zoomChanged: camera distance: " << camdist << std::endl);
-
-    emit mapExtentChanged();
 }
 
 const vtkRenderer*
@@ -1184,7 +1079,6 @@ void OtbModellerWin::zoomFullExtent()
 	this->mBkgRenderer->ResetCamera(const_cast<double*>(
             this->mLayerList->getMapBBox()));
 
-    emit mapExtentChanged();
 	this->ui->qvtkWidget->update();
 }
 
@@ -1349,12 +1243,18 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		vtkImageData *img = vtkImageData::SafeDownCast(
 				const_cast<vtkDataSet*>(l->getDataSet()));
 
+        //int* ext = img->GetExtent();
+
 		if (img == 0)
 			return;
 
 		int did[3] = {-1,-1,-1};
         il->world2pixel(wPt, did, false, true);
-		for (unsigned int d=0; d < 3; ++d)
+
+        // normally, we're dealing with 2D images anyway,
+        //did[2] = did[2] < 0 ? 0 : did[2];
+
+        for (unsigned int d=0; d < 2; ++d)
 		{
 			if (did[d] < 0)
 			{
@@ -1364,7 +1264,17 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 			}
 		}
 
-		cellId = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
+        vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
+        void* idxPtr = img->GetArrayPointer(idxScalars, did);
+
+        switch(img->GetPointData()->GetArray(0)->GetDataType())
+        {
+        vtkTemplateMacro(getDoubleFromVtkTypedPtr(
+                             static_cast<VTK_TT*>(idxPtr), &cellId)
+                    );
+        default:
+            NMWarn(ctxOtbModellerWin, << "Scalar pointer type not supported!");
+        }
 
 		NMLayer::NMLayerSelectionType seltype;
 		if (iren->GetControlKey())
@@ -1378,7 +1288,15 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 	}
 }
 
-bool OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
+template<class T>
+void
+OtbModellerWin::getDoubleFromVtkTypedPtr(T* in, double* out)
+{
+    *out = static_cast<double>(*in);
+}
+
+bool
+OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
 {
 //	NMDebugCtx(ctxOtbModellerWin, << "...");
 
@@ -1539,10 +1457,11 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	if (img == 0)
 		return;
 
-    int dims[3];
+
+    int ext[6];
     double orig[3];
-    img->GetDimensions(dims);
     img->GetOrigin(orig);
+    img->GetExtent(ext);
 
 	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
 	QString pixval = "";
@@ -1552,38 +1471,22 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
     il->world2pixel(wPt, did, false, false);
     il->world2pixel(wPt, lprpix, true, false);
 
-	stringstream cvs;
-    if (    (did[0] >= 0 && did[0] < dims[0])
-         && (did[1] >= 0 && did[1] < dims[1])
+    stringstream cvs;
+    if (    (did[0] >= ext[0] && did[0] <= ext[1])
+         && (did[1] >= ext[2] && did[1] <= ext[3])
+         && (did[2] >= ext[4] && did[2] <= ext[5])
        )
     {
         for (unsigned int d=0; d < img->GetNumberOfScalarComponents(); ++d)
         {
-            cvs << img->GetScalarComponentAsDouble(did[0], did[1], 0, d)
+            cvs << img->GetScalarComponentAsDouble(did[0], did[1], did[2], d)
                     << " ";
         }
     }
-
-	// get the color window and level settings
-	//double pixelvalue = img->GetScalarComponentAsDouble(did[0], did[1], did[2], 0);
-    //
-	////vtkIdType ptId = img->ComputePointId(did);
-	////std::string ptval = img->GetPointData()->GetScalars()->GetVariantValue(ptId).ToString();
-    //
-    //
-	//vtkImageSlice* slice = vtkImageSlice::SafeDownCast(const_cast<vtkProp3D*>(l->getActor()));
-	//vtkImageProperty* iprop = slice->GetProperty();
-	//double cwin = iprop->GetColorWindow();
-	//double clevel = iprop->GetColorLevel();
-    //
-	//double lower = clevel - (cwin * 0.5);
-	//double upper = clevel + (cwin * 0.5);
-
-//	pixval = QString(" Pixel (%1, %2, %3) = %4 ").//  | Window, Level, Range = %5, %6, %7-%8").
-//				arg(did[0]).arg(did[1]).arg(did[2]).
-//				arg(cvs.str().c_str());//.
-//				//arg(cwin, 0, 'f', 2).arg(clevel, 0, 'f', 2).
-//				//arg(lower, 0, 'f', 2).arg(upper, 0, 'f', 2);
+    else
+    {
+        cvs << "nodata ";
+    }
 
     pixval = QString(" Pixel(%1, %2, %3) = %4 | LPRPixel(%5, %6, %7)").  // | Displ(%8, %9) | Orig(%10, %11)").
                 arg(did[0]).arg(did[1]).arg(did[2]).
@@ -1594,7 +1497,6 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
                 //                arg(orig[1], 0, 'f', 0);
 
 	this->mPixelValLabel->setText(pixval);
-
 }
 
 void
@@ -2995,7 +2897,7 @@ void OtbModellerWin::toggle3DSimpleMode()
 
 		// set image interaction
 		this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-			vtkInteractorStyleImage::New());
+            vtkInteractorStyleImage::New());
 
 		// reset the camera for the background renderer
 		vtkRenderer* ren0 = this->mBkgRenderer;
@@ -3020,8 +2922,6 @@ void OtbModellerWin::toggle3DSimpleMode()
 		vtkRenderer *ren = recoll->GetNextItem();
 		while (ren != NULL)
 		{
-//			vtkCamera* c = vtkCamera::New();
-//			c->DeepCopy(cam0);
 			ren->SetActiveCamera(cam0);
 			ren = recoll->GetNextItem();
 		}

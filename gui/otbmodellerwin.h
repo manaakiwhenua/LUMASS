@@ -96,8 +96,6 @@ public:
     RasdamanConnector* getRasdamanConnector(void);
 #endif
 
-signals:
-    void mapExtentChanged(void);
 
 public slots:
 
@@ -135,7 +133,6 @@ public slots:
 	void updateLayerInfo(NMLayer* l, double cellId);
 	void importODBC();
 	void aboutLUMASS();
-	void zoomChanged(vtkObject* obj);
 	void addLayerToCompList();
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
@@ -153,8 +150,8 @@ protected:
 	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
 
-    bool eventFilter(QObject* obj, QEvent* e);
-
+    template<class T>
+    void getDoubleFromVtkTypedPtr(T* in, double* out);
 
 	template<class T>
 	static int compare_asc(const void* a, const void* b)

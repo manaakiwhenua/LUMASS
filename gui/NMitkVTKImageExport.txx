@@ -150,14 +150,14 @@ int* NMVTKImageExport<TInputImage>::WholeExtentCallback()
 
   unsigned int i=0;
   // Fill in the known portion of the extent.
-  std::cout << "ItkImgExp: WholeExtent: ";
+  //std::cout << "ItkImgExp: WholeExtent: ";
   for(;i < InputImageDimension;++i)
     {
     m_WholeExtent[i*2] = int(index[i]);
     m_WholeExtent[i*2+1] = int(index[i]+size[i])-1;
-    std::cout << m_WholeExtent[i*2] << "-" << m_WholeExtent[i*2+1] << " ";
+    //std::cout << m_WholeExtent[i*2] << "-" << m_WholeExtent[i*2+1] << " ";
     }
-  std::cout << std::endl;
+    //  std::cout << std::endl;
   // Fill in the extent for dimensions up to three.
   for(;i < 3; ++i)
     {
@@ -240,26 +240,23 @@ double* NMVTKImageExport<TInputImage>::OriginCallback()
   const typename TInputImage::PointType& origin = input->GetOrigin();
 
   // we've got to account for the different origin settings in VTK/ITK (ie corner vs centre)
-  //const typename TInputImage::SpacingType& spacing = input->GetSpacing();
+  const typename TInputImage::SpacingType& spacing = input->GetSpacing();
 
   unsigned int i=0;
 
-//  for (; i < InputImageDimension; ++i)
-//  {
-//      if (i == 1)
-//        m_DataOrigin[i] = origin[i];
-//      else
-//        m_DataOrigin[i] = origin[i] + (spacing[i] / 2.0);
-//  }
+  for (; i < InputImageDimension; ++i)
+  {
+        m_DataOrigin[i] = origin[i] + (spacing[i] / 2.0);
+  }
 
   // Fill in the known portion of the origin.
-  std::cout << "ItkImgExp: img orgigin: ";
-  for(;i < InputImageDimension;++i)						// part added by alex: - static_cast ...
-    {
-    m_DataOrigin[i] = static_cast<double>(origin[i]);
-    std::cout << m_DataOrigin[i] << " ";
-    }
-    std::cout << std::endl;
+  //  std::cout << "ItkImgExp: img orgigin: ";
+//  for(;i < InputImageDimension;++i)						// part added by alex: - static_cast ...
+//    {
+//    m_DataOrigin[i] = static_cast<double>(origin[i]);
+//    //    std::cout << m_DataOrigin[i] << " ";
+//    }
+  //    std::cout << std::endl;
   // Fill up the origin with defaults up to three dimensions.
   for(;i < 3;++i)
     {
@@ -281,21 +278,17 @@ float* NMVTKImageExport<TInputImage>::FloatOriginCallback()
   // we've got to account for the different origin settings in VTK/ITK (ie corner vs centre)
   const typename TInputImage::SpacingType& spacing = input->GetSpacing();
 
-//  // what nonsense is this? why did I do that? ... ToDo: check
   unsigned int i=0;
-//  for (; i < InputImageDimension; ++i)
-//  {
-//      if (i == 1)
-//        m_DataOrigin[i] = origin[i];
-//      else
-//        m_DataOrigin[i] = origin[i] + (float)(spacing[i] / 2.0);
-//  }
+  for (; i < InputImageDimension; ++i)
+  {
+        m_DataOrigin[i] = origin[i] + (float)(spacing[i] / 2.0);
+  }
 
-  // Fill in the known portion of the origin.
-  for(;i < InputImageDimension;++i)
-    {
-        m_FloatDataOrigin[i] = static_cast<float>(origin[i]);
-    }
+//  // Fill in the known portion of the origin.
+//  for(;i < InputImageDimension;++i)
+//    {
+//        m_FloatDataOrigin[i] = static_cast<float>(origin[i]);
+//    }
   // Fill up the origin with defaults up to three dimensions.
   for(;i < 3;++i)
     {
@@ -345,7 +338,7 @@ void NMVTKImageExport<TInputImage>::PropagateUpdateExtentCallback(int* extent)
   InputSizeType size;
   InputIndexType index;
 
-  std::cout << "ItkImgExp: PropUpdateExtent: ";
+//  std::cout << "ItkImgExp: PropUpdateExtent: ";
   for(unsigned int i=0;i < InputImageDimension;++i)
     {
     index[i] = extent[i*2];
@@ -363,9 +356,8 @@ void NMVTKImageExport<TInputImage>::PropagateUpdateExtentCallback(int* extent)
     return; 
     }
 
-  std::cout << "ulc: " << index[0] << ", " << index[1] << " size: ";
-  std::cout << size[0] << " x " << size[1] << std::endl;
-
+//  std::cout << "ulc: " << index[0] << ", " << index[1] << " size: ";
+//  std::cout << size[0] << " x " << size[1] << std::endl;
 
   input->SetRequestedRegion(region);
 }

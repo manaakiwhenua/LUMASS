@@ -523,9 +523,14 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 				QColor curclr;
 				curclr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
 				QColor clr;
-				if (	l->getLayerType() == NMLayer::NM_VECTOR_LAYER
-					||  l->getLegendType() == NMLayer::NM_LEGEND_RAMP
-				   )
+
+                // ToDo: improve! alpha should work with all layers and
+                //       legned options!
+                if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+                    //                    ||  (   l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+                    //                         && l->getTable() != 0
+                    //                        )
+                    //				   )
 				{
 					clr = QColorDialog::getColor(curclr, this, title);
 				}
@@ -535,11 +540,11 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 							QColorDialog::ShowAlphaChannel);
 				}
 
-				NMDebugAI(<< "new colour: "
-						<< clr.redF() << " "
-						<< clr.greenF() << " "
-						<< clr.blueF() << " "
-						<< clr.alphaF() << std::endl);
+                //				NMDebugAI(<< "new colour: "
+                //						<< clr.redF() << " "
+                //						<< clr.greenF() << " "
+                //						<< clr.blueF() << " "
+                //						<< clr.alphaF() << std::endl);
 
 				rgba[0] = clr.redF();
 				rgba[1] = clr.greenF();
@@ -990,7 +995,7 @@ void ModelComponentList::paintEvent(QPaintEvent* event)
 void ModelComponentList::zoomToLayer()
 {
 	// get the current layer
-	QModelIndex idx = this->currentIndex();
+    QModelIndex idx = this->currentIndex();
 
 	const int toplevelrow = (idx.internalId() / 100) - 1;
 	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);

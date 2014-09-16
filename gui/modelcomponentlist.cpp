@@ -380,15 +380,8 @@ void ModelComponentList::addLayer(NMLayer* layer)
 			layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
 	OtbModellerWin* mwin = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
-	connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, double)), mwin, SLOT(updateLayerInfo(NMLayer *, double)));
-//    if (layer->getLayerType() == NMLayer::NM_IMAGE_LAYER)
-//    {
-        //NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
-        connect(mwin, SIGNAL(mapExtentChanged()), layer, SLOT(mapExtentChanged()),
-                Qt::DirectConnection);
-    //}
-
-	//layer->setParent(this);
+    connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, double)),
+            mwin, SLOT(updateLayerInfo(NMLayer *, double)));
 
 	// add the layer to the NMLayerModel
 	this->mLayerModel->pileItemLayer(layer);

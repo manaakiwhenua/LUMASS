@@ -1992,7 +1992,11 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 		return 0;
 
 	// get the RAT for the specified band
+#ifdef GDAL_NEWRATAPI
+    GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+#else
     const GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+#endif
 	if (rat == 0)
 	{
 		img = 0;
@@ -2022,39 +2026,6 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     for (int c=0; c < ncols; ++c)
     {
     	colnames.push_back(rat->GetNameOfCol(c));
-
-    	//bool quote = false;
-    	//std::string name = rat->GetNameOfCol(c);
-    	//for (int l=0; l < name.size(); ++l)
-    	//{
-    	//	if (l == 0)
-        //	{
-        //		if (!isalpha(name[l]) && name[l] != '_')
-        //		{
-        //			quote = true;
-        //			break;
-        //		}
-        //	}
-        //	else
-        //	{
-        //		if (!isalnum(name[l]) && name[l] != '_')
-        //		{
-        //			quote = true;
-        //			break;
-        //		}
-        //	}
-    	//}
-        //
-    	//std::stringstream checkedstr;
-    	//if (quote)
-    	//{
-    	//	checkedstr << '\"' << name << '\"';
-    	//}
-    	//else
-    	//{
-    	//	checkedstr << name;
-    	//}
-    	//colnames.push_back(checkedstr.str());
     }
 
 
@@ -2064,17 +2035,6 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	for (int c=0; c < ncols; ++c)
 	{
 		gdaltype = rat->GetTypeOfCol(c);
-//		std::string rawname = rat->GetNameOfCol(c);
-//		const char* rawar = rawname.c_str();
-//		std::string colname;
-//		for(int p=0; p < rawname.size(); ++p)
-//		{
-//			if (std::isalnum(rawar[p]) || rawar[p] == '_'
-//					|| rawar[p] == '-')
-//			{
-//				colname += rawar[p];
-//			}
-//		}
 		std::string colname = colnames[c];
 
 		switch(gdaltype)
@@ -2086,7 +2046,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 			otbtabtype = AttributeTable::ATTYPE_DOUBLE;
 			break;
 		case GFT_String:
-			otbtabtype = AttributeTable::ATTYPE_STRING;
+            otbtabtype = AttributeTable::ATTYPE_STRING;
 			break;
 		default:
 			return 0;
@@ -2095,32 +2055,131 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	}
 	otbTab->AddRows(nrows);
 
-	for (int c=0; c < ncols; ++c)
-	{
-		gdaltype = rat->GetTypeOfCol(c);
-		for (int r=0; r < nrows; ++r)
-		{
-			if (c==0)
-			{
-				otbTab->SetValue(c, r, (long)r);
-			}
+#ifdef GDAL_NEWRATAPI
+    // the new way - chunk of rows by chunk of rows
+    // might want to turn that into a user-specified variable
+    int chunksize = nrows < 5000 ? nrows : 5000;
+    int rest=0;
+    int numChunks=0;
+    if (nrows <= chunksize)
+    {
+        numChunks = 1;
+    }
+    else
+    {
+        numChunks =  nrows / chunksize;
+        rest = nrows - (numChunks * chunksize);
+        if (rest == 0)
+        {
+            ++numChunks;
+        }
+    }
 
-			switch (gdaltype)
-			{
-			case GFT_Integer:
-				otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
-				break;
-			case GFT_Real:
-				otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
-				break;
-			case GFT_String:
-				otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
-				break;
-			default:
-				continue;
-			}
-		}
-	}
+    int procrows = 0;
+    int s=0;
+    int e=0;
+    for (int chunk = 0; chunk < numChunks+1; ++chunk)
+    {
+        s = procrows;
+        e = s + chunksize - 1;
+
+        for (int col=0; col < ncols; ++col)
+        {
+            gdaltype = rat->GetTypeOfCol(col);
+            void* colPtr = 0;
+
+            if (col == 0)
+            {
+                colPtr = otbTab->GetColumnPointer(col);
+                long* valPtr = static_cast<long*>(colPtr);
+                for (int r=s; r < e; ++r)
+                {
+                    valPtr[r] = r;
+                }
+            }
+            colPtr = otbTab->GetColumnPointer(col+1);
+
+            switch(gdaltype)
+            {
+            case GFT_Integer:
+            {
+                long* valPtr = static_cast<long*>(colPtr);
+                int* tptr = (int*)CPLCalloc(sizeof(int), chunksize);
+                rat->ValuesIO(GF_Read, col, s, chunksize, tptr);
+                for (int k=0; k < chunksize; ++k)
+                {
+                    valPtr[s+k] = static_cast<long>(tptr[k]);
+                }
+                CPLFree(tptr);
+            }
+                break;
+            case GFT_Real:
+            {
+                double* valPtr = static_cast<double*>(colPtr);
+                rat->ValuesIO(GF_Read, col, s, chunksize, (valPtr+s));
+            }
+                break;
+            case GFT_String:
+            {
+                char** valPtr = (char**)CPLCalloc(sizeof(char*), chunksize);
+                rat->ValuesIO(GF_Read, col, s, chunksize, valPtr);
+                for (int k=0; k < chunksize; ++k)
+                {
+                    const char* ccv = valPtr[k] != 0 ? valPtr[k] : "NULL";
+                    otbTab->SetValue(col+1, s+k, ccv);
+                    CPLFree(valPtr[k]);
+                }
+                CPLFree(valPtr);
+            }
+                break;
+            default:
+                continue;
+            }
+        }
+
+        procrows += chunksize;
+
+        if (chunk == numChunks-1)
+        {
+            if (rest > 0)
+            {
+                chunksize = rest;
+            }
+            else
+            {
+                chunk = numChunks;
+            }
+        }
+    }
+#else
+    // the old way - row by row
+    for (int c=0; c < ncols; ++c)
+    {
+        gdaltype = rat->GetTypeOfCol(c);
+        for (int r=0; r < nrows; ++r)
+        {
+            if (c==0)
+            {
+                otbTab->SetValue(c, r, (long)r);
+            }
+
+            switch (gdaltype)
+            {
+            case GFT_Integer:
+                otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
+                break;
+            case GFT_Real:
+                otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
+                break;
+            case GFT_String:
+                otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
+                break;
+            default:
+                continue;
+            }
+        }
+    }
+#endif
 
 	rat = 0;
 	img = 0;

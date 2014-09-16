@@ -803,8 +803,12 @@ NMImageLayer::updateAttributeTable()
     //disconnectTableSel();
 
     this->mOtbRAT = this->getRasterAttributeTable(1);
-    if (mOtbRAT.IsNull())
+    if (    mOtbRAT.IsNull()
+        ||  mOtbRAT->GetNumRows() == 0
+        ||  mOtbRAT->GetNumCols() == 0
+       )
 	{
+        mOtbRAT = 0;
 		NMWarn(ctxNMImageLayer, << "No attribute table available!");
 		return 0;
 	}

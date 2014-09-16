@@ -72,6 +72,7 @@ GDALRATImageFileReader<TOutputImage>::GDALRATImageFileReader() :
 	m_Curl = CurlHelper::New();
     m_OverviewIdx = -1;
     m_UseUserLargestPossibleRegion = false;
+    m_RAT = 0;
 }
 
 template<class TOutputImage>

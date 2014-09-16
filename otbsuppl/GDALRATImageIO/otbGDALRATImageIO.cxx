@@ -1992,14 +1992,20 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 		return 0;
 
 	// get the RAT for the specified band
-	const GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+    const GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
 	if (rat == 0)
 	{
 		img = 0;
 		return 0;
 	}
 
-	// copy gdal tab into otbAttributeTable
+    // double check, whether the table actually contains some data
+    int nrows = rat->GetRowCount();
+    int ncols = rat->GetColumnCount();
+    if (nrows == 0 || ncols == 0)
+        return 0;
+
+    // copy gdal tab into otbAttributeTable
 	AttributeTable::Pointer otbTab = AttributeTable::New();
 
 	// set filename and band number
@@ -2009,9 +2015,6 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	otbTab->SetImgFileName(this->GetFileName());
 
 	otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
-	int nrows = rat->GetRowCount();
-	int ncols = rat->GetColumnCount();
-
     std::vector< std::string > colnames;
 
     // go and check the column names against the SQL standard, in case

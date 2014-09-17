@@ -1103,7 +1103,13 @@ void OtbModellerWin::removeAllObjects()
 
 void OtbModellerWin::pickObject(vtkObject* obj)
 {
-  // get interactor
+    // picking implementation only properly works in 2d mode
+    if (m_b3D)
+    {
+        return;
+    }
+
+    // get interactor
 	vtkRenderWindowInteractor* iren = vtkRenderWindowInteractor::SafeDownCast(
 			obj);
 
@@ -1440,7 +1446,15 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 
 	this->m_coordLabel->setText(s);
 
-	// =======================================================================================
+    // generated pixel information is not meaningful in 3d, so
+    // lets skip that
+    if (m_b3D)
+    {
+        this->mPixelValLabel->setText("");
+        return;
+    }
+
+    // =======================================================================================
 	// get pixel value, if image layer is selected
 
 	// update the pixel value label, if we've got an image layer selected
@@ -2882,8 +2896,6 @@ OtbModellerWin::addLayerToCompList()
 
 void OtbModellerWin::toggle3DSimpleMode()
 {
-	NMDebugCtx(ctxOtbModellerWin, << "...");
-
 	if (m_b3D)
 	{
 		NMDebugAI( << "switching 3D off ..." << endl);

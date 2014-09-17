@@ -2942,9 +2942,8 @@ void OtbModellerWin::toggle3DSimpleMode()
 		m_b3D = true;
 	}
 
+    emit signalIsIn3DMode(m_b3D);
 	this->ui->qvtkWidget->update();
-
-
 }
 
 void OtbModellerWin::toggle3DStereoMode()

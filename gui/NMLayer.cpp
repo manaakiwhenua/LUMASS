@@ -52,7 +52,8 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
       mIsVisible(false), mIsSelectable(true),
       mIsSelected(false), mHasChanged(false),
 	  mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
-	  mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV)
+      mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV),
+      mIsIn3DMode(false)
 {
 	if (renWin == 0)
 	{

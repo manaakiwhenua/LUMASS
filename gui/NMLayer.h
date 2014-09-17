@@ -297,6 +297,8 @@ public slots:
 
     virtual void mapExtentChanged(void);
 
+    void setIsIn3DMode(bool in3d) {this->mIsIn3DMode = in3d;}
+
 signals:
 	void visibilityChanged(const NMLayer* layer);
 	void selectabilityChanged(bool bselectable);
@@ -402,6 +404,7 @@ protected:
 	bool mIsVisible;
 	bool mIsSelectable;
     bool mIsSelected;
+    bool mIsIn3DMode;
 	int mLayerPos;
 	bool mHasChanged;
 	double mBBox[6];

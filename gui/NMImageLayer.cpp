@@ -983,6 +983,7 @@ NMImageLayer::mapExtentChanged(void)
         ||  this->mReader == 0
         ||  !this->mReader->isInitialised()
         ||  this->mReader->getNumberOfOverviews() == 0
+        ||  this->mIsIn3DMode
        )
     {
         return;

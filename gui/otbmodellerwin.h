@@ -96,6 +96,8 @@ public:
     RasdamanConnector* getRasdamanConnector(void);
 #endif
 
+signals:
+    void signalIsIn3DMode(bool in3d);
 
 public slots:
 

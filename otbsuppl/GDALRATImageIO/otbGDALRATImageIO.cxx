@@ -2122,6 +2122,11 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
             case GFT_String:
             {
                 char** valPtr = (char**)CPLCalloc(sizeof(char*), chunksize);
+                if (valPtr == 0)
+                {
+                    itkExceptionMacro(<< "Not enough memory to allocate chunk of string records!");
+                    break;
+                }
                 rat->ValuesIO(GF_Read, col, s, chunksize, valPtr);
                 for (int k=0; k < chunksize; ++k)
                 {

@@ -37,14 +37,12 @@
 #include <QSharedPointer>
 #include <QDrag>
 #include <QPaintEvent>
+#include <QFutureWatcher>
+#include <QFuture>
 
-//#include "NMLayer.h"
 #include "NMLayerModel.h"
 #include "NMComponentListItemDelegate.h"
-//#include "NMVectorLayer.h"
 
-//#include "vtkObject.h"
-//#include "vtkRenderWindow.h"
 #include "vtkSmartPointer.h"
 #include "vtkEventQtSlotConnect.h"
 
@@ -95,7 +93,6 @@ public slots:
 	void mapColourTable();
 	void mapColourRamp();
 	void showValueStats();
-	//void zoomChanged(vtkObject* obj);
 
 	void test();
 
@@ -105,6 +102,10 @@ private slots:
 
 protected:
 	void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const {}
+
+protected slots:
+    void showWholeImgStats();
+    void wholeImgStats();
 
 private:
 
@@ -116,6 +117,14 @@ private:
     QModelIndex mIndicatorIdx;
 	static const std::string ctx;
 
+    QAction* mActValueStats;
+    QAction* mActImageStats;
+    bool mbWholeImgStats;
+
+    // keeps track of future watchers being created for stats creation survaillance
+    // and keeps them thereby in scope
+    QMap<QFutureWatcher<std::vector<double> >*, QString> mStatsWatcherMap;
+
     vtkSmartPointer<vtkEventQtSlotConnect> mVTKConn;
 
 	void initView(void);
@@ -123,6 +132,9 @@ private:
     void removeLayer(NMLayer* layer);
  	void unionMapBBox(const double* box);
    	void recalcMapBBox();
+    NMLayer* getCurrentLayer(void);
+
+    QString formatStats(const std::vector<double>& stats);
 
    	// event handlers
     void mousePressEvent(QMouseEvent *event);

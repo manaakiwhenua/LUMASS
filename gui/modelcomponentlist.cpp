@@ -72,6 +72,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
     this->mVTKConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
 
+    mbWholeImgStats = false;
+
 	// set the general column count for this control
 	this->setHeaderHidden(true);
 	this->setRootIsDecorated(false);
@@ -97,8 +99,10 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	QAction* actRemove = new QAction(this->mMenu);
 	actRemove->setText(tr("Remove Layer"));
 
-	QAction* actValueStats = new QAction(this->mMenu);
-	actValueStats->setText(tr("Value Field Statistics"));
+    mActValueStats = new QAction(this->mMenu);
+    mActValueStats->setText(tr("Value Field Statistics"));
+    mActImageStats = new QAction(this->mMenu);
+    mActImageStats->setText(tr("Whole Image Pixel Statistics"));
 
 	QAction* actUniqueValues = new QAction(this->mMenu);
 	actUniqueValues->setText(tr("Map Unique Values ..."));
@@ -114,18 +118,17 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->mMenu->addSeparator();
 	this->mMenu->addAction(actZoom);
 	this->mMenu->addSeparator();
-	this->mMenu->addAction(actValueStats);
+    this->mMenu->addAction(mActValueStats);
+    this->mMenu->addAction(mActImageStats);
 	this->mMenu->addSeparator();
 	this->mMenu->addAction(actSingleSymbol);
 	this->mMenu->addAction(actClrTab);
 	this->mMenu->addAction(actUniqueValues);
 	this->mMenu->addAction(actClrRamp);
 
-
 	this->mMenu->addSeparator();
 	this->mMenu->addAction(actSaveChanges);
 	this->mMenu->addAction(actRemove);
-
 
 	this->connect(actZoom, SIGNAL(triggered()), this, SLOT(zoomToLayer()));
 	this->connect(actTable, SIGNAL(triggered()), this, SLOT(openAttributeTable()));
@@ -135,7 +138,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actClrTab, SIGNAL(triggered()), this, SLOT(mapColourTable()));
 	this->connect(actClrRamp, SIGNAL(triggered()), this, SLOT(mapColourRamp()));
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
-	this->connect(actValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
+    this->connect(mActValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
+    this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
 
 #ifdef DEBUG
 
@@ -622,6 +626,32 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		{
             this->processSelection(false);
 
+            // update the menu if we've got an image layer
+            NMLayer* l = this->getCurrentLayer();
+            if (l != 0 && l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+            {
+                    if (    mActValueStats->text() == "Value Field Statistics"
+                        ||  mActValueStats->text() == "Visible Pixels' Statistics")
+                    {
+                        if (l->getLegendValueField() == "Pixel Values")
+                        {
+                            mActValueStats->setText("Visible Pixel Statistics");
+                        }
+                        else
+                        {
+                            mActValueStats->setText("Value Field Statistics");
+                        }
+                    }
+                    mActImageStats->setEnabled(true);
+                    mActImageStats->setVisible(true);
+            }
+            else
+            {
+                mActImageStats->setEnabled(false);
+                mActImageStats->setVisible(false);
+                mActValueStats->setText("Value Field Statistics");
+            }
+
 			this->mMenu->move(event->globalPos());
 			this->mMenu->exec();
 		}
@@ -1042,13 +1072,28 @@ void ModelComponentList::mapColourTable()
 
 }
 
+NMLayer* ModelComponentList::getCurrentLayer()
+{
+    // get the current layer
+    QModelIndex idx = this->currentIndex();
+    if (!idx.isValid())
+    {
+        return 0;
+    }
+    const int toplevelrow = (idx.internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    return this->mLayerModel->getItemLayer(stackpos);
+}
+
+
 void ModelComponentList::mapColourRamp()
 {
 	// get the current layer
-	QModelIndex idx = this->currentIndex();
-	const int toplevelrow = (idx.internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+    {
+        return;
+    }
 
 	l->setLegendType(NMLayer::NM_LEGEND_RAMP);
 	l->updateMapping();
@@ -1141,15 +1186,71 @@ void ModelComponentList::test()
 	NMDebugCtx(ctx, << "done!");
 }
 
+void ModelComponentList::wholeImgStats()
+{
+    mbWholeImgStats = true;
+    this->showValueStats();
+}
+
+void ModelComponentList::showWholeImgStats()
+{
+    QFutureWatcher<std::vector<double > >* watcher =
+            static_cast<QFutureWatcher<std::vector<double> >* >(this->sender());
+
+    // can this actually happen?
+    if (!mStatsWatcherMap.contains(watcher))
+    {
+        NMErr(ctx, << "Got an unobserved future watcher for img stats!");
+        delete watcher;
+        return;
+    }
+
+    //    FutureStatsType past = watcher->future();
+    //    StatsType stats = past.result();
+
+    QFuture<std::vector<double> > past = watcher->future();
+    std::vector<double> stats = past.result();
+
+    QString layerName = *mStatsWatcherMap.find(watcher);
+
+    QString res = this->formatStats(stats);
+    QString title = QString(tr("%1 - %2")).arg(layerName)
+            .arg("Whole Image Pixel Statistics");
+
+    QMessageBox::information(this, title, res);
+
+}
+
 void ModelComponentList::showValueStats()
 {
-	NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
 
-	NMLayer* l = this->getSelectedLayer();
+    NMLayer* l = this->getCurrentLayer();
 	if (l == 0)
 		return;
 
-	std::vector<double> stats = l->getValueFieldStatistics();
+    std::vector<double> stats;
+    if (mbWholeImgStats)
+    {
+        mbWholeImgStats = false;
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+
+        QFutureWatcher<std::vector<double> >* watcher =
+                new QFutureWatcher<std::vector<double> >();
+        mStatsWatcherMap.insert(watcher, il->objectName());
+        connect(watcher, SIGNAL(finished()), this, SLOT(showWholeImgStats()));
+
+        QFuture<std::vector<double> > res = QtConcurrent::run(
+                    il, &NMImageLayer::getWholeImageStatistics);
+
+        watcher->setFuture(res); //const_cast<QFuture<QList<double> >& >(res));
+        return;
+    }
+    else
+    {
+        stats = l->getValueFieldStatistics();
+    }
+
 	if (stats.size() == 0)
 	{
 		NMErr(ctx, << "failed retrieving value field statistics!");
@@ -1157,43 +1258,57 @@ void ModelComponentList::showValueStats()
 		return;
 	}
 
-	NMDebugAI(<< "what we've got: ..." << std::endl);
-	for (int r=0; r < stats.size(); ++r)
-	{
-		NMDebugAI(<< "#" << r << ": " << stats[r] << std::endl);
-	}
+    //	NMDebugAI(<< "what we've got: ..." << std::endl);
+    //	for (int r=0; r < stats.size(); ++r)
+    //	{
+    //		NMDebugAI(<< "#" << r << ": " << stats[r] << std::endl);
+    //	}
 
-
-	// min, max, mean, std. dev, sum
-	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
-	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
-	QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
-	QString smedi = QString("%1").arg(stats[3], 0, 'f', 4);
-	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
-	QString ssum  = QString("%1").arg(stats[6], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
-	QString ssample = QString("Sample Size: %1").arg(stats[5]);
-
-	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
-	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
-	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
-	QString strmedi ("Median: ");
-	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
-	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
-
-
-	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11%12\n%13")
-			.arg(strmin).arg(smin)
-			.arg(strmax).arg(smax)
-			.arg(strmean).arg(smean)
-			.arg(strmedi).arg(smedi)
-			.arg(strsdev).arg(ssdev)
-			.arg(strsum).arg(ssum)
-			.arg(ssample);
-
-	QString title = QString(tr("%1")).arg(l->getLegendValueField());
+    QString res = this->formatStats(stats);
+    QString title = QString(tr("%1::%2")).arg(l->objectName())
+            .arg(l->getLegendValueField());
 
 	QMessageBox::information(this, title, res);
 
+    //NMDebugCtx(ctx, << "done!");
+}
 
-	NMDebugCtx(ctx, << "done!");
+QString ModelComponentList::formatStats(const std::vector<double> &stats)
+{
+    QString res;
+
+    if (stats.size() == 7)
+    {
+        // min, max, mean, std. dev, sum
+        QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
+        QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
+        QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
+        QString smedi = QString("%1").arg(stats[3], 0, 'f', 4);
+        QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
+        QString ssum  = QString("%1").arg(stats[6], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
+        QString ssample = QString("Sample Size: %1").arg(stats[5]);
+
+        QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
+        QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
+        QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
+        QString strmedi ("Median: ");
+        QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
+        QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
+
+
+        res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11%12\n%13")
+                .arg(strmin).arg(smin)
+                .arg(strmax).arg(smax)
+                .arg(strmean).arg(smean)
+                .arg(strmedi).arg(smedi)
+                .arg(strsdev).arg(ssdev)
+                .arg(strsum).arg(ssum)
+                .arg(ssample);
+    }
+    else
+    {
+        res = "Failed Calculating Statistics!";
+    }
+
+    return res;
 }

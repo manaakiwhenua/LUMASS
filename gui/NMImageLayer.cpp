@@ -225,378 +225,129 @@ NMImageLayer::~NMImageLayer()
 //	}
 }
 
-void
-NMImageLayer::computeStats(void)
+//void
+//NMImageLayer::computeStats(void)
+//{
+//	NMDebugCtx(ctxNMImageLayer, << "...");
+//    if (true)//this->mbStatsAvailable)
+//	{
+//		QtConcurrent::run(this, &NMImageLayer::updateStats);
+//	}
+
+//	NMDebugAI(<< "Image Statistics for '" << this->objectName().toStdString() << "' ... " << std::endl);
+//	NMDebugAI(<< "min:     " << mImgStats[0] << std::endl);
+//	NMDebugAI(<< "max:     " << mImgStats[1] << std::endl);
+//	NMDebugAI(<< "mean:    " << mImgStats[2] << std::endl);
+//	NMDebugAI(<< "median:  " << mImgStats[3] << std::endl);
+//	NMDebugAI(<< "std.dev: " << mImgStats[4] << std::endl);
+
+//	//vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+
+//	NMDebugCtx(ctxNMImageLayer, << "done!");
+//}
+
+std::vector<double>
+NMImageLayer::getWindowStatistics(void)
 {
-	NMDebugCtx(ctxNMImageLayer, << "...");
-    if (true)//this->mbStatsAvailable)
-	{
-		QtConcurrent::run(this, &NMImageLayer::updateStats);
-	}
+    std::vector<double> ret;
 
-	NMDebugAI(<< "Image Statistics for '" << this->objectName().toStdString() << "' ... " << std::endl);
-	NMDebugAI(<< "min:     " << mImgStats[0] << std::endl);
-	NMDebugAI(<< "max:     " << mImgStats[1] << std::endl);
-	NMDebugAI(<< "mean:    " << mImgStats[2] << std::endl);
-	NMDebugAI(<< "median:  " << mImgStats[3] << std::endl);
-	NMDebugAI(<< "std.dev: " << mImgStats[4] << std::endl);
+    emit layerProcessingStart();
 
-	//vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+    vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
+    cast->SetOutputScalarTypeToDouble();
+    cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
 
-	NMDebugCtx(ctxNMImageLayer, << "done!");
+    vtkSmartPointer<vtkImageHistogramStatistics> stats =
+            vtkSmartPointer<vtkImageHistogramStatistics>::New();
+    stats->SetInputConnection(cast->GetOutputPort());
+    //stats->GenerateHistogramImageOn();
+    //stats->SetHistogramImageScaleToSqrt();
+    //stats->SetHistogramImageSize(256,256);
+    stats->Update();
+
+    ret.push_back(stats->GetMinimum());
+    ret.push_back(stats->GetMaximum());
+    ret.push_back(stats->GetMean());
+    ret.push_back(stats->GetMedian());
+    ret.push_back(stats->GetStandardDeviation());
+    ret.push_back(mPipeconn->getVtkImage()->GetNumberOfPoints());
+    ret.push_back(-9999);
+
+    emit layerProcessingEnd();
+    return ret;
 }
 
-const double*
-NMImageLayer::getStatistics(void)
+std::vector<double>
+NMImageLayer::getWholeImageStatistics(void)
 {
-	if (!this->mbStatsAvailable)
-        this->updateStats();
+    std::vector<double> ret;
 
-	return this->mImgStats;
+    NMImageReader* imgReader = 0;
+    NMItk2VtkConnector* vtkConn = 0;
+
+    if (!mbStatsAvailable)
+    {
+        emit layerProcessingStart();
+
+        vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
+        cast->SetOutputScalarTypeToFloat();
+        if (this->mFileName.isEmpty())
+        {
+            cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+        }
+        else
+        {
+            imgReader = new NMImageReader(0);
+            imgReader->setFileName(this->mFileName);
+            imgReader->instantiateObject();
+            if (!imgReader->isInitialised())
+            {
+                NMWarn(ctxNMImageLayer, << "Failed initialising NMImageReader!");
+                return ret;
+            }
+
+            vtkConn = new NMItk2VtkConnector(0);
+            vtkConn->setInput(imgReader->getOutput(0));
+            cast->SetInputConnection(vtkConn->getVtkAlgorithmOutput());
+        }
+
+        vtkSmartPointer<vtkImageHistogramStatistics> stats =
+                vtkSmartPointer<vtkImageHistogramStatistics>::New();
+        stats->SetInputConnection(cast->GetOutputPort());
+        stats->GenerateHistogramImageOff();
+
+        // we leave two threads to keep the OS and UI usable
+        int threadNum = max(1, QThread::idealThreadCount()-2);
+        stats->SetNumberOfThreads(threadNum);
+        stats->Update();
+
+        mImgStats[0] = stats->GetMinimum();
+        mImgStats[1] = stats->GetMaximum();
+        mImgStats[2] = stats->GetMean();
+        mImgStats[3] = stats->GetMedian();
+        mImgStats[4] = stats->GetStandardDeviation();
+        mImgStats[5] = vtkConn->getVtkImage()->GetNumberOfPoints();
+        this->mbStatsAvailable = true;
+
+        emit layerProcessingEnd();
+    }
+
+    ret.push_back(mImgStats[0]);
+    ret.push_back(mImgStats[1]);
+    ret.push_back(mImgStats[2]);
+    ret.push_back(mImgStats[3]);
+    ret.push_back(mImgStats[4]);
+    ret.push_back(mImgStats[5]);
+    ret.push_back(-9999);
+
+    if (imgReader) delete imgReader;
+    if (vtkConn) delete vtkConn;
+
+    return ret;
 }
 
 void NMImageLayer::test()
 {
-	this->updateAttributeTable();
-
-	double nodata;
-	switch(this->mComponentType)
-	{
-		case otb::ImageIOBase::UCHAR:  nodata = 255; 		 break;
-		case otb::ImageIOBase::DOUBLE: nodata = -3.40282e38; break;
-		default:					   nodata = -2147483647; break;
-	}
-
-
-	///////////////////////////////// GET RAT PROPS INCASE WE HAVE ONE /////////////////////////////////////////
-	int ncols=0, numcolors=256;
-	QStringList cols;
-	QList<int> colindices;
-	int idxred = -1, idxblue = -1, idxgreen = -1, idxalpha = -1;
-	if (this->mTableModel)
-	{
-		ncols = this->mTableModel->columnCount(QModelIndex());
-		numcolors = this->mTableModel->rowCount(QModelIndex());
-
-		for (int i=0; i < ncols; ++i)
-		{
-			const QModelIndex ci = mTableModel->index(0, i, QModelIndex());
-			if (mTableModel->data(ci, Qt::DisplayRole).type() != QVariant::String)
-			{
-				QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-				cols << fieldName;
-				colindices << i;
-
-				if (fieldName.compare("red", Qt::CaseInsensitive) == 0)
-					idxred = i;
-				else if (fieldName.compare("green", Qt::CaseInsensitive) == 0)
-					idxgreen = i;
-				else if (fieldName.compare("blue", Qt::CaseInsensitive) == 0)
-					idxblue = i;
-				else if (	fieldName.compare("alpha", Qt::CaseInsensitive) == 0
-						 || fieldName.compare("opacity", Qt::CaseInsensitive) == 0
-						)
-					idxalpha = i;
-			}
-		}
-	}
-
-	////////////////////// GET USER INPUT ////////////////////////////////////////////////
-
-	QString theCol;
-	int colidx;
-	if (mTableModel)
-	{
-		theCol= QInputDialog::getItem(0, "Select Value Field", "", cols);
-		colidx = colindices.at(cols.indexOf(theCol));
-		NMDebugAI(<< "using field #" << colidx << ": " << theCol.toStdString() << std::endl);
-	}
-
-	QStringList ramplist;
-	ramplist << "Binary" << "Grey" << "Rainbow" << "RedToBlue" << "GreenToBlue";
-	if (idxred >= 0 && idxgreen >=0 && idxblue >=0)
-		ramplist << "ColourTable";
-	QString ramp = QInputDialog::getItem(0, "Select Color Scheme", "", ramplist);
-
-	QString range = QInputDialog::getText(0, "Enter Value Range", "");
-	QStringList ranges = range.split(QChar(' '), QString::SkipEmptyParts);
-	double lower = 0, upper;
-	bool bok;
-	if (ranges.size() == 2)
-	{
-		lower = ranges.at(0).toDouble(&bok);
-		upper = ranges.at(1).toDouble(&bok);
-		if (!bok)
-		{
-			lower = 0;
-			upper = numcolors-1;
-		}
-	}
-	else if (this->mTableModel && ramp != "ColourTable")
-	{
-		NMTableCalculator calc(mTableModel, this);
-
-		std::vector<double> stats = calc.calcColumnStats(theCol);
-		lower = stats[0];
-		upper = stats[1];
-		NMDebugAI(<< theCol.toStdString() << " statistics: " << std::endl);
-		NMDebugAI(<< "min=" << lower << " max=" << upper << " mean=" << stats[2]
-		          << "median=" << stats[3] << "std.dev=" << stats[4] << " numVals=" << stats[5] << std::endl);
-	}
-	else if (this->mTableModel == 0 && this->mLayerType == NMLayer::NM_IMAGE_LAYER)
-	{
-		const double* imgstats = this->getStatistics();
-		lower = imgstats[0];
-		upper = imgstats[1];
-		NMDebugAI(<< this->objectName().toStdString() << " statistics: " << std::endl);
-		NMDebugAI(<< "min=" << lower << " max=" << upper << " mean=" << imgstats[2]
-		          << "std.dev=" << imgstats[3] << " median=" << imgstats[4] << std::endl);
-	}
-	if (lower == nodata)
-		lower = 0;
-
-	NMDebugAI(<< "user range: " << lower << " - " << upper << std::endl);
-
-
-	////////////////////////////////// PREPARE LOOKUP TABLE ///////////////////////////////////////////
-
-	// since color is addressed by 0-based index, we don't need the +1 here
-	double valrange = upper - lower;// + 1;
-	double step = valrange / (double)numcolors;
-	double tolerance = step * 0.5;
-
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	clrtab->SetNumberOfTableValues(numcolors+2);
-	double* clrptr = 0;
-	if (mTableModel)
-	{
-
-		clrtab->SetTableRange(-1, numcolors);
-		//clrtab->IndexedLookupOn();
-		//clrtab->SetNanColor(0, 0, 0, 0);
-	}
-	else if (ramp == "RedToBlue")
-	{
-		clrtab->SetNumberOfTableValues(numcolors);
-		//clrtab->SetTableRange(lower-step, upper+step);
-		clrtab->SetTableRange(nodata, upper+0.0000001);
-		clrptr = new double[3*numcolors];
-	}
-
-
-	/////////////////////////////////// BUILD THE COLOR TRANSFER FUNCTION ///////////////////////////////////////
-
-	vtkSmartPointer<vtkColorTransferFunction> clrfunc =
-			vtkSmartPointer<vtkColorTransferFunction>::New();
-	if (ramp == "Binary")
-	{
-		clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
-		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 0.0);
-	}
-	else if (ramp == "Grey")
-	{
-		clrfunc->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
-		clrfunc->AddRGBPoint(1.0, 1.0, 1.0, 1.0);
-	}
-	else if (ramp == "Rainbow")
-	{
-		//clrfunc->SetColorSpaceToHSV();
-		double* rgb = new double[3];
-		double* hsv = new double[3];
-		hsv[0] = 0.0;
-		hsv[1] = 1.0;
-		hsv[2] = 1.0;
-		vtkMath::HSVToRGB(hsv, rgb);
-		clrfunc->AddRGBPoint(0.0, rgb[0], rgb[1], rgb[2]);
-
-		hsv[0] = 0.25;
-		vtkMath::HSVToRGB(hsv, rgb);
-		clrfunc->AddRGBPoint(0.25, rgb[0], rgb[1], rgb[2]);
-
-		hsv[0] = 0.5;
-		vtkMath::HSVToRGB(hsv, rgb);
-		clrfunc->AddRGBPoint(0.5, rgb[0], rgb[1], rgb[2]);
-
-		hsv[0] = 0.75;
-		vtkMath::HSVToRGB(hsv, rgb);
-		clrfunc->AddRGBPoint(0.75, rgb[0], rgb[1], rgb[2]);
-
-		hsv[0] = 1.0;
-		vtkMath::HSVToRGB(hsv, rgb);
-		clrfunc->AddRGBPoint(1.0, rgb[0], rgb[1], rgb[2]);
-
-		delete[] rgb;
-		delete[] hsv;
-	}
-	else if (ramp == "RedToBlue")
-	{
-		clrfunc->SetColorSpaceToDiverging();
-		if (mTableModel)
-		{
-			clrfunc->AddRGBPoint(0.0, 1.0, 0.0, 0.0);
-			clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
-		}
-		else
-		{
-			clrfunc->AddRGBPoint(nodata, 0.4,0.4,0.4);
-			clrfunc->AddRGBPoint(lower-0.0000001, 0.0,0.0,0.0);
-			clrfunc->AddRGBPoint(lower, 1.0, 0.0, 0.0);
-			clrfunc->AddRGBPoint(upper, 0.0, 0.0, 1.0);
-			clrfunc->AddRGBPoint(upper+0.0000001, 0.0,1.0,0.0);
-		}
-	}
-	else if (ramp == "GreenToBlue")
-	{
-		clrfunc->SetColorSpaceToDiverging();
-		clrfunc->AddRGBPoint(0.0, 0.0, 1.0, 0.0);
-		clrfunc->AddRGBPoint(1.0, 0.0, 0.0, 1.0);
-	}
-	clrfunc->Build();
-
-
-	////////////////////////////// FILL THE LOOKUP TABLE ///////////////////////////////////////
-
-	// everything below the 'range' is transparent
-	if (mTableModel || ramp != "RedToBlue")
-		clrtab->SetTableValue(0, 0, 0, 0, 0);
-
-	NMDebugAI(<< "checking colour assignments ..." << std::endl);
-	long in=0, nod=0, out=0;
-	double minclrpos, maxclrpos;
-	for (int i=0; i < numcolors; ++i)
-	{
-		// ============================ USING COLOUR TABLE (i.e. attributes of Table) =====================
-		if (mTableModel && ramp == "ColourTable")
-		{
-			double fc[4];
-			const QModelIndex mired   = mTableModel->index(i, idxred  , QModelIndex());
-			const QModelIndex migreen = mTableModel->index(i, idxgreen, QModelIndex());
-			const QModelIndex miblue  = mTableModel->index(i, idxblue , QModelIndex());
-			const QModelIndex mialpha = mTableModel->index(i, idxalpha, QModelIndex());
-
-			const QVariant vred = mTableModel->data(mired, Qt::DisplayRole);
-			const QVariant vgreen = mTableModel->data(migreen, Qt::DisplayRole);
-			const QVariant vblue = mTableModel->data(miblue, Qt::DisplayRole);
-			const QVariant valpha = mTableModel->data(mialpha, Qt::DisplayRole);
-			if (vred.type() == QVariant::Double)
-			{
-				fc[0] = vred.toDouble(&bok);
-				fc[1] = vgreen.toDouble(&bok);
-				fc[2] = vblue.toDouble(&bok);
-				fc[3] = valpha.toDouble(&bok);
-			}
-			else
-			{
-				fc[0] = vred.toDouble(&bok)   / 255.0;
-				fc[1] = vgreen.toDouble(&bok) / 255.0;
-				fc[2] = vblue.toDouble(&bok)  / 255.0;
-				fc[3] = valpha.toDouble(&bok) / 255.0;
-			}
-			//clrtab->SetTableValue(i, fc);
-			clrtab->SetTableValue(i+1, fc);
-		}
-		// ============================= COLOURING ATTRIBUTE TABLE FIELD ==============================
-		else if (mTableModel)
-		{
-			double fc[3];
-			const QModelIndex fidx = mTableModel->index(i, colidx, QModelIndex());
-			double fieldVal = mTableModel->data(fidx, Qt::DisplayRole).toDouble(&bok);
-			if (bok && fieldVal >= lower && fieldVal <= upper && fieldVal != nodata)
-			{
-				double clrpos = (double)fieldVal/(double)valrange;
-				//NMDebug(<< fieldVal << "=in" << "=" << clrpos << " ");
-				clrfunc->GetColor(clrpos, fc);
-				//clrtab->SetTableValue(i, fc[0], fc[1], fc[2], 1);
-				clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2], 1);
-
-				if (i==0)
-				{
-					minclrpos = clrpos;
-					maxclrpos = clrpos;
-				}
-				else
-				{
-					minclrpos = ::min(clrpos, minclrpos);
-					maxclrpos = ::max(clrpos, maxclrpos);
-				}
-
-				++in;
-			}
-			else if (fieldVal == nodata)
-			{
-				clrtab->SetTableValue(i+1, 0, 0, 0, 0);
-				++nod;
-			}
-			else if (fieldVal > upper)
-			{
-				++out;
-				clrtab->SetTableValue(i+1, 1, 1, 1, 1);
-			}
-			else if (fieldVal < lower)
-			{
-				++out;
-				clrtab->SetTableValue(i+1, 0, 0, 0, 1);
-			}
-		}
-		// ==================== JUST COLOUR THE SCALARS (i.e. image without table) =======================
-		else
-		{
-			if (ramp != "RedToBlue")
-			{
-				double fc[3];
-				double clrpos = (double)i/(double)(numcolors-3);
-				clrfunc->GetColor(clrpos, fc);
-				clrtab->SetTableValue(i+1, fc[0], fc[1], fc[2]);
-			}
-			else
-			{
-				if (i == 0)
-				{
-					clrfunc->GetTable(
-							clrtab->GetTableRange()[0],
-							clrtab->GetTableRange()[1],
-							numcolors, clrptr);
-				}
-				double* pos = clrptr + 3*i;
-				clrtab->SetTableValue(i, pos[0], pos[1], pos[2], 1);
-			}
-		}
-	}
-	// everything above the 'range' is going to be transparent as well
-	if (mTableModel || ramp != "RedToBlue")
-	{
-		clrtab->SetTableValue(numcolors+1, 0, 0, 0, 0);
-	}
-	else
-	{
-		delete[] clrptr;
-		clrptr = 0;
-	}
-
-	//else
-	{
-		int lidx = clrtab->GetIndex(lower);
-		int uidx = clrtab->GetIndex(upper);
-		NMDebugAI(<< "clrtab: lower-idx=" << lidx << " upper-idx=" << uidx << std::endl);
-	}
-
-	NMDebugAI(<< "colouring: in=" << in << " out=" << out << " nodata=" << nod << std::endl);
-	NMDebugAI(<< "minclrpos=" << minclrpos << " maxcolrpos=" << maxclrpos << std::endl);
-
-	this->mImgProp->SetUseLookupTableScalarRange(1);
-	//if (mTableModel || ramp != "RedToBlue")
-		this->mImgProp->SetLookupTable(clrtab);
-	//else
-		//this->mImgProp->SetLookupTable(clrfunc);
-
-	double* clrrange = clrtab->GetRange();
-	long numclr = clrtab->GetNumberOfColors();
-	long numavailclr = clrtab->GetNumberOfAvailableColors();
-	NMDebugAI(<< "range: " << clrrange[0] << " to " << clrrange[1]
-	          << " num clr: " << numclr << " avail clr: " << numavailclr << std::endl);
-
-	emit visibilityChanged(this);
-	emit legendChanged(this);
 }
 
 double NMImageLayer::getDefaultNodata()
@@ -641,32 +392,6 @@ double NMImageLayer::getDefaultNodata()
 	return nodata;
 }
 
-void
-NMImageLayer::updateStats(void)
-{
-	emit layerProcessingStart();
-
-	vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-	cast->SetOutputScalarTypeToDouble();
-	cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-
-	vtkSmartPointer<vtkImageHistogramStatistics> stats = vtkSmartPointer<vtkImageHistogramStatistics>::New();
-	stats->SetInputConnection(cast->GetOutputPort());
-	//stats->GenerateHistogramImageOn();
-	//stats->SetHistogramImageScaleToSqrt();
-	//stats->SetHistogramImageSize(256,256);
-	stats->Update();
-
-	mImgStats[0] = stats->GetMinimum();
-	mImgStats[1] = stats->GetMaximum();
-	mImgStats[2] = stats->GetMean();
-	mImgStats[3] = stats->GetMedian();
-	mImgStats[4] = stats->GetStandardDeviation();
-
-    this->mbStatsAvailable = true;
-
-	emit layerProcessingEnd();
-}
 
 void NMImageLayer::world2pixel(double world[3], int pixel[3],
     bool bOnLPR, bool bImgConstrained)

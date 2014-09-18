@@ -304,22 +304,32 @@ NMLayer::initiateLegend(void)
 
 	// ----------------------------------------------------------------------------------
 	// GATHER IMAGE LAYER INFORMATION
+    bool brawpixels = false;
     NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-    if (il && mTableModel == 0)
+    if (   (il && mTableModel == 0)
+        || (    il
+            &&  (   il->getITKComponentType() == otb::ImageIOBase::FLOAT
+                 || il->getITKComponentType() == otb::ImageIOBase::DOUBLE
+                )
+           )
+       )
 	{
-        const double* imgStats = il->getStatistics();
-        for (int i=0; i < 5; ++i)
+        // we settle for a 'guestimate' of the proper statistics
+        std::vector<double> imgStats = il->getWindowStatistics();
+        int i=0;
+        for (; i < imgStats.size(); ++i)
+        {
             mStats[i] = imgStats[i];
+        }
+        for (; i < 7; ++i)
+        {
+            mStats[i] = -9999;
+        }
 
         setNodata(il->getDefaultNodata());
-        //        if (mStats[0] == il->getDefaultNodata())
-        //            setLower(mStats[0] - ((mStats[1] - mStats[0])/255.0));
-        //        else
         setLower(mStats[0]);
-        //        if (mStats[1] == mNodata)
-        //            setUpper(mStats[1] - 1);
-        //        else
         setUpper(mStats[1]);
+        brawpixels = true;
 	}
 	else
 	{
@@ -328,7 +338,7 @@ NMLayer::initiateLegend(void)
 
 
 	// do we have a table
-	if (mTableModel)
+    if (mTableModel && !brawpixels)
 	{
 		NMDebugAI(<< "TableModel-based legend ..." << std::endl);
 		// do we have a colour table
@@ -1381,29 +1391,32 @@ NMLayer::setLegendValueField(QString field)
 		return;
 
     NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-
-    //if (field == "Pixel Values" || this->mTableModel == 0)
     if (il)
     {
         if (field == "Pixel Values")
         {
-            const double* istats = il->getStatistics();
-            for (int i=0; i < 4; ++i)
+            std::vector<double> istats = il->getWindowStatistics();
+            int i=0;
+            for (; i < istats.size(); ++i)
+            {
                 mStats[i] = istats[i];
-            mStats[5] = il->getDefaultNodata();
-            mStats[6] = il->getDefaultNodata();
-
+            }
+            for (; i < 7; ++i)
+            {
+                mStats[i] = -9999;
+            }
             mLegendDescrField = field;
+            setLower(mStats[0]);
+            setUpper(mStats[1]);
+            //            //if (mStats[0] == mNodata)
+            //                setLower(mStats[0] + 3*VALUE_MARGIN);
+            //            else
+            //                setLower(mStats[0]);
 
-            if (mStats[0] == mNodata)
-                setLower(mStats[0] + 3*VALUE_MARGIN);
-            else
-                setLower(mStats[0]);
-
-            if (mStats[1] == mNodata)
-                setUpper(mStats[1] - 1);
-            else
-                setUpper(mStats[1]);
+            //            if (mStats[1] == mNodata)
+            //                setUpper(mStats[1] - 1);
+            //            else
+            //                setUpper(mStats[1]);
         }
         else if (il->getColumnIndex(mLegendValueField) != -1)
         {
@@ -1624,7 +1637,19 @@ NMLayer::getValueFieldStatistics()
         ||  mLegendValueField == "Pixel Values"
        )
     {
-		return stats;
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+        if (il)
+        {
+            vtkImageData* vtkImg = vtkImageData::SafeDownCast(
+                        const_cast<vtkDataSet*>(il->getDataSet()));
+            stats = il->getWindowStatistics();
+            for (int i=stats.size()-1; i < 7; ++i)
+            {
+                stats[i] = -9999;
+            }
+        }
+
+        return stats;
     }
 
 

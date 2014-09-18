@@ -38,6 +38,7 @@
 
 #include "NMComponentListItemDelegate.h"
 #include "NMLayer.h"
+#include "NMImageLayer.h"
 
 #define ctxCompLID "NMComponentListItemDelegate"
 
@@ -161,7 +162,20 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 	const int legendtype = l->getLegendType();//index.sibling(2, 0).data().toInt(&bok);
 	const int classtype = l->getLegendClassType(); //index.sibling(3, 0).data().toInt(&bok);
 
-	///////////////////////////////////?????
+    // check whether we've got one of those odd Imagine layers with float or double pixel type
+    // and an attribute table
+    bool bForcePixelMapping = false;
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (    il
+        &&  (   il->getITKComponentType() == otb::ImageIOBase::FLOAT
+             || il->getITKComponentType() == otb::ImageIOBase::DOUBLE
+            )
+       )
+    {
+        bForcePixelMapping = true;
+    }
+
+    /////////////////////////////////////////
 	//if (level != 2)
 	//{
 	//	NMDebugCtx(ctxCompLID, << "done!");
@@ -222,7 +236,9 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		case 1:
 		case 0: // ------------------ LEGEND VALUE FIELD -----------------------------------------
 			{
-				if (	l->getTable() != 0
+                if (	(   l->getTable() != 0
+                         && !bForcePixelMapping
+                        )
 					&&	(  	 legendtype == NMLayer::NM_LEGEND_INDEXED
 						 ||  legendtype == NMLayer::NM_LEGEND_RAMP
 						 ||  legendtype == NMLayer::NM_LEGEND_CLRTAB

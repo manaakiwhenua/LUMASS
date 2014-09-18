@@ -105,8 +105,10 @@ public:
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
 	NMItkDataObjectWrapper* getOutput(unsigned int idx);
 
-	const double* getStatistics(void);
-	const vtkImageProperty* getImageProperty(void)
+    std::vector<double> getWindowStatistics(void);
+    std::vector<double> getWholeImageStatistics(void);
+
+    const vtkImageProperty* getImageProperty(void)
 		{return this->mImgProp;}
 
 	double getDefaultNodata(void);
@@ -115,7 +117,6 @@ public:
 public slots:
     void updateSourceBuffer(void);
     void writeDataSet(void);
-	void computeStats(void);
 	void selectionChanged(const QItemSelection& newSel,
 			const QItemSelection& oldSel);
 
@@ -126,10 +127,11 @@ public slots:
         {this->mbUpdateScalars = true;}
     void setScalars(vtkImageData* img);
 
+
+
 protected:
 
 	void createTableView(void);
-	void updateStats(void);
 
     template<class T>
     void setLongScalars(T* buf, long* out, long* tabCol,
@@ -182,9 +184,10 @@ protected:
 	 * 2: mean
 	 * 3: median
 	 * 4: standard deviation
+     * 5: number of pixels
      *
 	 */
-	double mImgStats[5];
+    double mImgStats[6];
 
     bool mbUseOverviews;
 

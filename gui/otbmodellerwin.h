@@ -260,6 +260,7 @@ private:
     // for showing pixel values
     QLabel* mPixelValLabel;
     QMainWindow* mModelBuilderWindow;
+    unsigned int mBusyProcCounter;
     QProgressBar* mProgressBar;
 
     NMComponentEditor* mTreeCompEditor;

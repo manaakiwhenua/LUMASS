@@ -289,6 +289,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->ui->statusBar->addWidget(mPixelValLabel);
 
     // add a label to show random messages in the status bar
+    this->mBusyProcCounter = 0;
     this->m_StateMsg = new QLabel("",  this, 0);
     this->ui->statusBar->addWidget(this->m_StateMsg);
     // progress bar
@@ -1517,20 +1518,25 @@ void
 OtbModellerWin::showBusyStart()
 {
 	NMDebugAI(<< this->sender()->objectName().toStdString() << " - turned busy!" << std::endl);
-	QString msg = QString("processing %1").arg(this->sender()->objectName());
+    QString msg = QString("processing ..."); //.arg(this->sender()->objectName());
 	this->m_StateMsg->setText(msg);
 	this->mProgressBar->reset();
 	this->mProgressBar->setVisible(true);
 	this->mProgressBar->setMinimum(0);
 	this->mProgressBar->setMaximum(0);
+    this->mBusyProcCounter++;
 }
 
 void
 OtbModellerWin::showBusyEnd()
 {
-	NMDebugAI(<< this->sender()->objectName().toStdString() << " - stopped processing!" << std::endl);
-	this->m_StateMsg->setText("");
-	this->mProgressBar->setVisible(false);
+    this->mBusyProcCounter--;
+    if (mBusyProcCounter == 0)
+    {
+        NMDebugAI(<< this->sender()->objectName().toStdString() << " - stopped processing!" << std::endl);
+        this->m_StateMsg->setText("");
+        this->mProgressBar->setVisible(false);
+    }
 }
 
 void OtbModellerWin::showComponentsView(bool vis)

@@ -321,6 +321,9 @@ GDALRATImageIO::GDALRATImageIO()
   m_ImgInfoHasBeenRead = false;
   m_PxType = new GDALDataTypeWrapper;
 
+  m_RGBMode = false;
+  m_BandMap.clear();
+
   //ctx = "GDALRATImageIO";
 }
 
@@ -474,10 +477,31 @@ void GDALRATImageIO::Read(void* buffer)
   else
     {
     /********  Nominal case ***********/
-    int pixelOffset = m_BytePerPixel * m_NbBands;
-    int lineOffset  = m_BytePerPixel * m_NbBands * lNbBufColumns;
-    int bandOffset  = m_BytePerPixel;
     int nbBands     = m_NbBands;
+
+    int* bandMap = 0;
+    // make sure we've got a meaningful list of bands
+    // to be read when we're in RGB mode
+    if (this->GetPixelType() == RGB)
+    {
+        bandMap = new int[3];
+        for (int b=0; b < 3; ++b)
+        {
+            if (m_BandMap.size() >= b+1)
+            {
+                bandMap[b] = m_BandMap[b];
+            }
+            else
+            {
+                bandMap[b] = m_NbBands >= b+1 ? b+1 : m_NbBands;
+            }
+        }
+        nbBands = 3;
+    }
+
+    int pixelOffset = m_BytePerPixel * nbBands;
+    int lineOffset  = m_BytePerPixel * nbBands * lNbBufColumns;
+    int bandOffset  = m_BytePerPixel;
 
     // In some cases, we need to change some parameters for RasterIO
     if(!GDALDataTypeIsComplex(m_PxType->pixType) && m_IsComplex && m_IsVectorImage && (m_NbBands > 1))
@@ -511,13 +535,15 @@ void GDALRATImageIO::Read(void* buffer)
                                                        lNbBufLines,
                                                        m_PxType->pixType,
                                                        nbBands,
-                                                       // We want to read all bands
-                                                       NULL,
+                                                       // read specified bands
+                                                       bandMap,
                                                        pixelOffset,
                                                        lineOffset,
                                                        bandOffset);
     chrono.Stop();
     otbMsgDevMacro(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
+
+    if (bandMap) delete(bandMap);
 
     // Check if gdal call succeed
     if (lCrGdal == CE_Failure)
@@ -641,6 +667,7 @@ void GDALRATImageIO::InternalReadImageInformation()
 
   if (m_ImgInfoHasBeenRead)
   {
+      // do we have to look after the band map?
       return;
   }
 
@@ -723,13 +750,11 @@ void GDALRATImageIO::InternalReadImageInformation()
 
   if (m_OverviewIdx >= 0 && m_OverviewIdx < m_NbOverviews)
   {
-    m_Dimensions[0] = m_OvvSize[m_OverviewIdx][0];
-    m_Dimensions[1] = m_OvvSize[m_OverviewIdx][1];
-    //std::cout << "ImgIO: 'ovv-idx': " << m_OverviewIdx << std::endl;
-
+      m_Dimensions[0] = m_OvvSize[m_OverviewIdx][0];
+      m_Dimensions[1] = m_OvvSize[m_OverviewIdx][1];
   }
-//  std::cout << "ImgIO: ovv #" << m_OverviewIdx
-//            << ": size: " << m_Dimensions[0] << " x " << m_Dimensions[1] << std::endl;
+    //  std::cout << "ImgIO: ovv #" << m_OverviewIdx
+    //            << ": size: " << m_Dimensions[0] << " x " << m_Dimensions[1] << std::endl;
 
 
   // Automatically set the Type to Binary for GDAL data
@@ -861,33 +886,41 @@ void GDALRATImageIO::InternalReadImageInformation()
   // Set the pixel type with some special cases linked to the fact
   //  we read some data with complex type.
   if ( GDALDataTypeIsComplex(m_PxType->pixType) ) // Try to read data with complex type with GDAL
-    {
-    if ( !m_IsComplex && m_IsVectorImage )
+  {
+      if ( !m_IsComplex && m_IsVectorImage )
       {
-      // we are reading a complex data set into an image where the pixel
-      // type is Vector<real>: we have to double the number of component
-      // for that to work
-      otbMsgDevMacro( << "GDALtypeIO= Complex and IFReader::InternalPixelType= Scalar and IFReader::PixelType= Vector");
-      this->SetNumberOfComponents(m_NbBands*2);
-      this->SetPixelType(VECTOR);
+          // we are reading a complex data set into an image where the pixel
+          // type is Vector<real>: we have to double the number of component
+          // for that to work
+          otbMsgDevMacro( << "GDALtypeIO= Complex and IFReader::InternalPixelType= Scalar and IFReader::PixelType= Vector");
+          this->SetNumberOfComponents(m_NbBands*2);
+          this->SetPixelType(VECTOR);
       }
-    else
+      else
       {
-      this->SetPixelType(COMPLEX);
+          this->SetPixelType(COMPLEX);
       }
-    }
+  }
   else // Try to read data with scalar type with GDAL
-    {
-    this->SetNumberOfComponents(m_NbBands);
-    if (this->GetNumberOfComponents() == 1)
+  {
+      if (this->m_RGBMode && m_NbBands > 1)
       {
-      this->SetPixelType(SCALAR);
+          this->SetPixelType(RGB);
+          this->SetNumberOfComponents(3);
       }
-    else
+      else
       {
-      this->SetPixelType(VECTOR);
+          this->SetNumberOfComponents(m_NbBands);
+          if (this->GetNumberOfComponents() == 1)
+          {
+              this->SetPixelType(SCALAR);
+          }
+          else
+          {
+              this->SetPixelType(VECTOR);
+          }
       }
-    }
+  }
 
   /*** Parameters set by Internal Read function ***/
   otbMsgDevMacro( << "Pixel Type IFReader = " << GetPixelTypeAsString(this->GetPixelType()) )
@@ -908,8 +941,14 @@ void GDALRATImageIO::InternalReadImageInformation()
 
   // Default Spacing
   m_Spacing[0] = 1;
-  m_Spacing[1] = 1;
+  m_Spacing[1] = -1;
   if (m_NumberOfDimensions == 3) m_Spacing[2] = 1;
+
+  // Default Spacing
+  m_LPRSpacing[0] = 1;
+  m_LPRSpacing[1] = -1;
+  if (m_NumberOfDimensions == 3) m_LPRSpacing[2] = 1;
+
 
   char** papszMetadata;
   papszMetadata =  dataset->GetMetadata(NULL);
@@ -1015,45 +1054,47 @@ void GDALRATImageIO::InternalReadImageInformation()
   MetaDataKey::VectorType VadfGeoTransform;
 
   if (dataset->GetGeoTransform(adfGeoTransform) == CE_None)
-    {
-    for (int cpt = 0; cpt < 6; ++cpt)
-      VadfGeoTransform.push_back(adfGeoTransform[cpt]);
+  {
+      for (int cpt = 0; cpt < 6; ++cpt)
+          VadfGeoTransform.push_back(adfGeoTransform[cpt]);
 
-    itk::EncapsulateMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::GeoTransformKey, VadfGeoTransform);
+      itk::EncapsulateMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::GeoTransformKey, VadfGeoTransform);
 
-    /// retrieve origin and spacing from the geo transform
-    m_Origin[0] = VadfGeoTransform[0];
-    m_Origin[1] = VadfGeoTransform[3];
-    m_LPRSpacing[0] = VadfGeoTransform[1];
-    m_LPRSpacing[1] = VadfGeoTransform[5];
-    m_Spacing[0] = m_LPRSpacing[0];
-    m_Spacing[1] = m_LPRSpacing[1];
+      /// retrieve origin and spacing from the geo transform
+      m_Origin[0] = VadfGeoTransform[0];
+      m_Origin[1] = VadfGeoTransform[3];
+      m_LPRSpacing[0] = VadfGeoTransform[1];
+      m_LPRSpacing[1] = VadfGeoTransform[5];
+      m_Spacing[0] = m_LPRSpacing[0];
+      m_Spacing[1] = m_LPRSpacing[1];
 
-    if (m_OverviewIdx >= 0 && m_OverviewIdx < m_NbOverviews)
-    {
-        double xsize = (m_Origin[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_Origin[0];
-        double ysize = m_Origin[1] - (m_Origin[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
-        m_Spacing[0] = xsize / (double)m_Dimensions[0];
-        m_Spacing[1] = -(ysize / (double)m_Dimensions[1]);
-    }
+      //    std::cout << "ImgIO: scaled spacing: x: " << m_Spacing[0] << " y: " << m_Spacing[1] << std::endl;
+  }
 
-//    std::cout << "ImgIO: scaled spacing: x: " << m_Spacing[0] << " y: " << m_Spacing[1] << std::endl;
-    }
+  // want to adjust spacing even if we haven't got a GeoTransform given (e.g. for photos)
+  if (m_OverviewIdx >= 0 && m_OverviewIdx < m_NbOverviews)
+  {
+      double xsize = (m_Origin[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_Origin[0];
+      double ysize = m_Origin[1] - (m_Origin[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
+      m_Spacing[0] = xsize / (double)m_Dimensions[0];
+      m_Spacing[1] = -(ysize / (double)m_Dimensions[1]);
+  }
+
 
   // Dataset info
   otbMsgDevMacro(<< "**** ReadImageInformation() DATASET INFO: ****" );
   otbMsgDevMacro(<< "Projection Ref: "<< dataset->GetProjectionRef() );
   double GT[6];
   if (dataset->GetGeoTransform(GT) == CE_None)
-    {
-    otbMsgDevMacro( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
-                                 << GT[2] << ", " << GT[3] << ", "
-                                 << GT[4] << ", " << GT[5] );
-    }
+  {
+      otbMsgDevMacro( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
+                                                  << GT[2] << ", " << GT[3] << ", "
+                                                  << GT[4] << ", " << GT[5] );
+  }
   else
-    {
-    otbMsgDevMacro( << "No Geo Transform: ");
-    }
+  {
+      otbMsgDevMacro( << "No Geo Transform: ");
+  }
   otbMsgDevMacro(<< "GCP Projection Ref: "<< dataset->GetGCPProjection() );
   otbMsgDevMacro(<< "GCP Count: " << dataset->GetGCPCount() );
 
@@ -1395,6 +1436,15 @@ void GDALRATImageIO::Write(const void* buffer)
 		//NMDebugAI(<< "no bands: " << m_NbBands << " of type: " << GDALGetDataTypeName(m_PxType->pixType)
 		//		<< " of " << m_BytePerPixel << " bytes" << std::endl);
 
+        // set up band map parameter
+        int* bandMap = 0;
+        int numWriteBands = m_NbBands;
+        if (m_BandMap.size() > 0 && m_BandMap.size() <= m_NbBands)
+        {
+            bandMap = &m_BandMap[0];
+            numWriteBands = m_BandMap.size();
+        }
+
 		chrono.Start();
 		CPLErr lCrGdal = m_Dataset->GetDataSet()->RasterIO(GF_Write,
 							lFirstColumn,
@@ -1405,9 +1455,9 @@ void GDALRATImageIO::Write(const void* buffer)
 							lNbColumns,
 							lNbLines,
 							m_PxType->pixType,
-							m_NbBands,
+                            numWriteBands,
 							// We want to write all bands
-							NULL,
+                            bandMap,
 							// Pixel offset
 							// is nbComp * BytePerPixel
 							m_BytePerPixel * m_NbBands,

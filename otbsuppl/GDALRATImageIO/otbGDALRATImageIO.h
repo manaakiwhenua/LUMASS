@@ -106,6 +106,18 @@ public:
   itkSetMacro(RATSupport, bool);
   itkGetMacro(RATSupport, bool);
 
+  /** Set/Get the band map to be read/written by this IO */
+  void SetBandMap(std::vector<int> map)
+    {m_BandMap = map;}
+  std::vector<int> GetBandMap() {return m_BandMap;}
+
+  /** Set/Get whether pixels are represented as RGB(A) pixels */
+  itkSetMacro(RGBMode, bool)
+  itkGetMacro(RGBMode, bool)
+
+  /** Get total number of components (bands) of source data set */
+  int GetTotalNumberOfBands(void) {return m_NbBands;}
+
   /** Set/Get whether files should be opened in update mode
    *  rather than being overridden */
   itkSetMacro(ImageUpdateMode, bool);
@@ -191,6 +203,9 @@ protected:
   /** Destructor.*/
   virtual ~GDALRATImageIO();
 
+  /** update overview-related information */
+  void updateOverviewInfo();
+
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
   /** Read all information on the image*/
   void InternalReadImageInformation();
@@ -198,10 +213,10 @@ protected:
   void InternalWriteImageInformation(const void* buffer);
   /** Number of bands of the image*/
   int m_NbBands;
-  /** Buffer*/
-  //float **pafimas;
-
-  void updateOverviewInfo();
+  /** map of band numbers to be read/written */
+  std::vector<int> m_BandMap;
+  /** pixels in RGB mode? */
+  bool m_RGBMode;
 
   int m_NbOverviews;
   std::vector<std::vector<unsigned int > > m_OvvSize;

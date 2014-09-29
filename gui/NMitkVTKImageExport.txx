@@ -19,9 +19,7 @@
 
 #include "NMitkVTKImageExport.h"
 
-#include "NMitkPixelTraits.h"
-
-#include "itkRGBPixel.h"
+#include "itkPixelTraits.h"
 
 namespace itk
 {
@@ -34,7 +32,7 @@ template <class TInputImage>
 NMVTKImageExport<TInputImage>::NMVTKImageExport()
 {
   typedef typename TInputImage::PixelType         	        PixelType;
-  typedef typename NMPixelTraits< PixelType >::ValueType    ScalarType;
+  typedef typename PixelTraits< PixelType >::ValueType      ScalarType;
 
   if(typeid(ScalarType) == typeid(double))
     {
@@ -80,18 +78,6 @@ NMVTKImageExport<TInputImage>::NMVTKImageExport()
     {
     m_ScalarTypeName = "signed char";
     }
-  else if(typeid(ScalarType) == typeid(itk::RGBPixel<unsigned char>))
-  {
-	m_ScalarTypeName = "unsigned char";
-  }
-  else if(typeid(ScalarType) == typeid(itk::RGBPixel<float>))
-  {
-	m_ScalarTypeName = "float";
-  }
-  else if(typeid(ScalarType) == typeid(itk::RGBPixel<double>))
-  {
-	m_ScalarTypeName = "double";
-  }
   else
     {
     itkExceptionMacro(<<"Type currently not supported");
@@ -318,11 +304,12 @@ const char* NMVTKImageExport<TInputImage>::ScalarTypeCallback()
 template <class TInputImage>
 int NMVTKImageExport<TInputImage>::NumberOfComponentsCallback()
 {
-  typedef typename TInputImage::PixelType                 PixelType;
+  typedef typename TInputImage::PixelType                   PixelType;
   typedef typename PixelTraits< PixelType >::ValueType    ValueType;
 
   // on the assumption that there is no padding in this pixel type...
-  return sizeof( PixelType ) / sizeof( ValueType );
+  //return sizeof( PixelType ) / sizeof( ValueType );
+  return PixelTraits<PixelType>::Dimension;// * sizeof( ValueType );
 }
 
 

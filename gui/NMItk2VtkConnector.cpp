@@ -29,7 +29,7 @@
 #include "otbImage.h"
 #include "otbVectorImage.h"
 #include "NMitkVTKImageExport.h"
-//#include "NMitkVTKImageExport.txx"
+#include "itkRGBPixel.h"
 
 /** some private classes facilitating pipeline connection
  *  for templated image exporter
@@ -45,9 +45,10 @@ public:
 	typedef typename ImgType::PointType				ImgOrigin;
 	typedef typename ImgType::SizeType				ImgSize;
 
-//	typedef otb::VectorImage< PixelType, ImageDimension > VecImgType;
-//	typedef itk::NMVTKImageExport< VecImgType >		      VecExporterType;
-//	typedef typename VecExporterType::Pointer		      VecExporterTypePointer;
+    typedef itk::RGBPixel< PixelType >                  RGBPixelType;
+    typedef otb::Image< RGBPixelType, ImageDimension >  RGBImgType;
+    typedef itk::NMVTKImageExport< RGBImgType >	    RGBExporterType;
+    typedef typename RGBExporterType::Pointer	        RGBExporterTypePointer;
 
     static void updateInput(
             itk::VTKImageExportBase::Pointer& vtkImgExp,
@@ -60,31 +61,12 @@ public:
             ImgType* img = dynamic_cast<ImgType*>(imgObj.GetPointer());
             ExporterType* vtkExp = dynamic_cast<ExporterType*>(vtkImgExp.GetPointer());
             vtkExp->SetInput(img);
-
-//            img->UpdateOutputInformation();
-//            const ImgSize& size = img->GetRequestedRegion().GetSize();
-//            const ImgSpacing& spacing = img->GetSpacing();
-//            const ImgOrigin& origin = img->GetOrigin();
-//            double neworigin[3] = {0,0,0};
-//            double newspacing[3] = {0,0,0};
-
-//            std::cout.precision(9);
-//            NMDebugAI(<< "VTK image origin: ");
-//            for (unsigned int d=0; d < ImageDimension; ++d)
-//            {
-//                newspacing[d] = spacing[d];
-//                if (d==1)
-//                    neworigin[d] = origin[d];// - (spacing[d] / 2.0);
-//                else
-//                    neworigin[d] = origin[d] + (spacing[d] / 2.0);
-
-//                NMDebug( << origin[d] << " ");
-//            }
-//            NMDebug(<< endl);
-
-
-//            vtkImgChangeInfo->SetOutputOrigin(neworigin);
-//            vtkImgChangeInfo->SetOutputSpacing(newspacing);
+        }
+        else if (numBands == 3)
+        {
+            RGBImgType* img = dynamic_cast<RGBImgType*>(imgObj.GetPointer());
+            RGBExporterType* vtkExp = dynamic_cast<RGBExporterType*>(vtkImgExp.GetPointer());
+            vtkExp->SetInput(img);
         }
     }
 
@@ -115,66 +97,30 @@ public:
 			vtkImgImp->SetUpdateDataCallback(vtkExp->GetUpdateDataCallback());
 			vtkImgImp->SetUpdateInformationCallback(vtkExp->GetUpdateInformationCallback());
 			vtkImgImp->SetWholeExtentCallback(vtkExp->GetWholeExtentCallback());
-			//vtkImgImp->SetReleaseDataFlag(1);
 
-			// we shift the origin of the vtk image by half a pixel length in each
-			// dimension, since vtk uses corner/edge-based coordinates
-			// whereas itk/otb are using pixel-centered coordinates
-//			img->UpdateOutputInformation();
-//			const ImgSize& size = img->GetRequestedRegion().GetSize();
-//			const ImgSpacing& spacing = img->GetSpacing();
-//			const ImgOrigin& origin = img->GetOrigin();
-//			double neworigin[3] = {0,0,0};
-//			double newspacing[3] = {0,0,0};
-
-//			std::cout.precision(9);
-//			NMDebugAI(<< "VTK image origin: ");
-//			for (unsigned int d=0; d < ImageDimension; ++d)
-//			{
-//				newspacing[d] = spacing[d];
-//				if (d==1)
-//					neworigin[d] = origin[d];// - (spacing[d] / 2.0);
-//				else
-//					neworigin[d] = origin[d] + (spacing[d] / 2.0);
-
-//				NMDebug( << origin[d] << " ");
-//			}
-//			NMDebug(<< endl);
-
-
-
-//			vtkImgChangeInfo->SetInputConnection(vtkImgImp->GetOutputPort());
-//			vtkImgChangeInfo->SetOutputOrigin(neworigin);
-//			vtkImgChangeInfo->SetOutputSpacing(newspacing);
-
-			// keep references to the exporter
-			vtkImgExp = vtkExp;
+            vtkImgExp = vtkExp;
 		}
-//		else
-//		{
-//			VecImgType *img = dynamic_cast<VecImgType*>(imgObj);
-//			VecExporterTypePointer vtkExp = VecExporterType::New();
-//
-//			vtkExp->SetInput(img);
-//			vtkImgImp->SetBufferPointerCallback(vtkExp->GetBufferPointerCallback());
-//			vtkImgImp->SetCallbackUserData(vtkExp->GetCallbackUserData());
-//			vtkImgImp->SetDataExtentCallback(vtkExp->GetDataExtentCallback());
-//			vtkImgImp->SetNumberOfComponentsCallback(vtkExp->GetNumberOfComponentsCallback());
-//			vtkImgImp->SetOriginCallback(vtkExp->GetOriginCallback());
-//			vtkImgImp->SetPipelineModifiedCallback(vtkExp->GetPipelineModifiedCallback());
-//			vtkImgImp->SetPropagateUpdateExtentCallback(vtkExp->GetPropagateUpdateExtentCallback());
-//			vtkImgImp->SetScalarTypeCallback(vtkExp->GetScalarTypeCallback());
-//			vtkImgImp->SetSpacingCallback(vtkExp->GetSpacingCallback());
-//			vtkImgImp->SetUpdateDataCallback(vtkExp->GetUpdateDataCallback());
-//			vtkImgImp->SetUpdateInformationCallback(vtkExp->GetUpdateInformationCallback());
-//			vtkImgImp->SetWholeExtentCallback(vtkExp->GetWholeExtentCallback());
-//	//		vtkImgImp->SetReleaseDataFlag(1);
-//
-//			// keep references to the exporter
-//			vtkImgExp = vtkExp;
-//
-//		}
+        else if (numBands == 3)
+        {
+            RGBImgType *img = dynamic_cast<RGBImgType*>(imgObj.GetPointer());
+            RGBExporterTypePointer vtkExp = RGBExporterType::New();
 
+            vtkExp->SetInput(img);
+            vtkImgImp->SetBufferPointerCallback(vtkExp->GetBufferPointerCallback());
+            vtkImgImp->SetCallbackUserData(vtkExp->GetCallbackUserData());
+            vtkImgImp->SetDataExtentCallback(vtkExp->GetDataExtentCallback());
+            vtkImgImp->SetNumberOfComponentsCallback(vtkExp->GetNumberOfComponentsCallback());
+            vtkImgImp->SetOriginCallback(vtkExp->GetOriginCallback());
+            vtkImgImp->SetPipelineModifiedCallback(vtkExp->GetPipelineModifiedCallback());
+            vtkImgImp->SetPropagateUpdateExtentCallback(vtkExp->GetPropagateUpdateExtentCallback());
+            vtkImgImp->SetScalarTypeCallback(vtkExp->GetScalarTypeCallback());
+            vtkImgImp->SetSpacingCallback(vtkExp->GetSpacingCallback());
+            vtkImgImp->SetUpdateDataCallback(vtkExp->GetUpdateDataCallback());
+            vtkImgImp->SetUpdateInformationCallback(vtkExp->GetUpdateInformationCallback());
+            vtkImgImp->SetWholeExtentCallback(vtkExp->GetWholeExtentCallback());
+
+            vtkImgExp = vtkExp;
+        }
 		NMDebugCtx(ctxNMItk2VtkConnector, << "done!");
 	}
 };
@@ -247,7 +193,7 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 	this->mInputNumBands = imgWrapper->getNumBands();
 
 	this->mVtkImgImp = vtkSmartPointer<vtkImageImport>::New();
-	this->mVtkImgChangeInfo = vtkSmartPointer<vtkImageChangeInformation>::New();
+    //this->mVtkImgChangeInfo = vtkSmartPointer<vtkImageChangeInformation>::New();
 
 	bool connect = true;
 	switch(this->mInputComponentType)

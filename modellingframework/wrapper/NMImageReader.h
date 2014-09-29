@@ -66,7 +66,9 @@ class NMImageReader : public NMProcess
 #endif
 
 public:
-	NMPropertyGetSet(FileNames, QStringList);
+    NMPropertyGetSet(FileNames, QStringList)
+    NMPropertyGetSet(RGBMode, bool)
+    //NMPropertyGetSet(BandMap, std::vector<int>)
 
 //#ifdef BUILD_RASSUPPORT
 //	NMPropertyGetSet(RasConnector, NMRasdamanConnectorWrapper*);
@@ -98,6 +100,10 @@ public:
 	void setFileName(QString filename);
 	QString getFileName(void);
 
+    // enable the RGB mode, i.e. in case we've got 3 bands
+    // they're going to be interpreted as RGBPixel
+
+
 #ifdef BUILD_RASSUPPORT	
     void setRasConnector(NMRasdamanConnectorWrapper* rw);
     NMRasdamanConnectorWrapper* getRasConnector(void);
@@ -115,6 +121,10 @@ public:
 
     int getNumberOfOverviews(void);
     std::vector<unsigned int> getOverviewSize(int ovvidx);
+
+    std::vector<int> getBandMap() {return this->mBandMap;}
+    void setBandMap(const std::vector<int> map);
+
 
 
     bool isRasMode(void) {return this->mbRasMode;}
@@ -141,7 +151,13 @@ private:
 	RasdamanConnector * mRasconn;
 #endif
 	bool mbRasMode;
-	otb::ImageIOBase::Pointer mItkImgIOBase;
+
+    // support vector / RGB display
+    bool mRGBMode;
+    std::vector<int> mBandMap;
+
+
+    otb::ImageIOBase::Pointer mItkImgIOBase;
 
 	/** NMImageReader needs its own input parameter position indicator,
 	 *  since it doesn't use the input components' path

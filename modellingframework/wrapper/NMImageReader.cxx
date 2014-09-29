@@ -41,6 +41,7 @@
 #include "itkVTKImageExport.h"
 #include "NMMfwException.h"
 #include "NMIterableComponent.h"
+#include "itkRGBPixel.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageIO.h"
@@ -60,98 +61,178 @@
 		typedef typename ImgType::PointType				ImgOriginType;
 		typedef typename ImgType::SpacingType			ImgSpacingType;
 
-		typedef otb::VectorImage< PixelType, ImageDimension > 		VecImgType;
+        typedef itk::RGBPixel< PixelType >                  RGBPixelType;
+        typedef otb::Image< RGBPixelType, ImageDimension >  RGBImageType;
+        typedef otb::RasdamanImageReader< RGBImageType >    RGBReaderType;
+        typedef typename RGBReaderType::Pointer             RGBReaderTypePointer;
+        typedef typename RGBReaderType::ImageRegionType     RGBReaderRegionType;
+
+
+        typedef otb::VectorImage< PixelType, ImageDimension > 		VecImgType;
 		typedef otb::RasdamanImageReader< VecImgType > 				VecReaderType;
 		typedef typename VecReaderType::Pointer						VecReaderTypePointer;
 
 
-		static otb::AttributeTable::Pointer
-			fetchRAT(itk::ProcessObject* procObj, int band,
-					unsigned int numBands)
-		{
-			if (numBands == 1)
-			{
-				ReaderType *r = dynamic_cast<ReaderType*>(procObj);
-				return r->getRasterAttributeTable(band);
-			}
-			else
-			{
-				VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
-				return r->getRasterAttributeTable(band);
-			}
-		}
+        static otb::AttributeTable::Pointer
+            fetchRAT(itk::ProcessObject* procObj, int band,
+                    unsigned int numBands, bool rgbMode)
+        {
+            if (numBands == 1)
+            {
+                ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+                return r->GetAttributeTable(band);
+            }
+            else if (rgbMode && numBands == 3)
+            {
+                RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
+                return r->GetAttributeTable(band);
+            }
+            else
+            {
+                VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
+                return r->GetAttributeTable(band);
+            }
+        }
 
-		static itk::DataObject *getOutput(itk::ProcessObject::Pointer &readerProcObj,
-				unsigned int numBands, unsigned int idx)
-		{
-			itk::DataObject *img = 0;
-			if (numBands == 1)
-			{
-				ReaderType *r = dynamic_cast<ReaderType*>(readerProcObj.GetPointer());
-				//r->Update();
+        //        static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
+        //                                     unsigned int numBands, int ovvidx, int* userLPR,
+        //                                   bool rgbMode)
+        //        {
+        //            if (numBands == 1)
+        //            {
+        //                ReaderType *r = dynamic_cast<ReaderType*>(procObj.GetPointer());
+        //                r->SetOverviewIdx(ovvidx);
+        //                if (userLPR != 0)
+        //                {
+        //                    ReaderRegionType lpr;
+        //                    for (int d=0; d < ImageDimension; ++d)
+        //                    {
+        //                        lpr.SetIndex(d, userLPR[d*2]);
+        //                        lpr.SetSize(d, userLPR[d*2+1]);
+        //                    }
+        //                    r->UseUserLargestPossibleRegionOn();
+        //                    r->SetUserLargestPossibleRegion(lpr);
+        //                }
+        //                else
+        //                {
+        //                    r->UseUserLargestPossibleRegionOff();
+        //                }
+        //                r->UpdateOutputInformation();
+        //            }
+        //            else if (rgbMode && numBands == 3)
+        //            {
+        //                RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj.GetPointer());
+        //                r->SetOverviewIdx(ovvidx);
+        //                if (userLPR != 0)
+        //                {
+        //                    RGBReaderRegionType lpr;
+        //                    for (int d=0; d < ImageDimension; ++d)
+        //                    {
+        //                        lpr.SetIndex(d, userLPR[d*2]);
+        //                        lpr.SetSize(d, userLPR[d*2+1]);
+        //                    }
+        //                    r->UseUserLargestPossibleRegionOn();
+        //                    r->SetUserLargestPossibleRegion(lpr);
+        //                }
+        //                else
+        //                {
+        //                    r->UseUserLargestPossibleRegionOff();
+        //                }
+        //                r->UpdateOutputInformation();
+        //            }
+        //            else
+        //            {
+        //                VecReaderType *r = dynamic_cast<VecReaderType*>(procObj.GetPointer());
+        //                r->SetOverviewIdx(ovvidx);
+        //                if (userLPR != 0)
+        //                {
+        //                    VecReaderRegionType lpr;
+        //                    for (int d=0; d < ImageDimension; ++d)
+        //                    {
+        //                        lpr.SetIndex(d, userLPR[d*2]);
+        //                        lpr.SetSize(d, userLPR[d*2+1]);
+        //                    }
+        //                    r->UseUserLargestPossibleRegionOn();
+        //                    r->SetUserLargestPossibleRegion(lpr);
+        //                }
+        //                else
+        //                {
+        //                    r->UseUserLargestPossibleRegionOff();
+        //                }
+        //                r->UpdateOutputInformation();
+        //            }
+        //        }
 
-//				r->GenerateOutputInformation();
-//				ImgType* i = r->GetOutput();
-//				const ImgOriginType& ori = i->GetOrigin();
-//				const ImgSpacingType& spc = i->GetSpacing();
-//
-//				stringstream o;
-//				stringstream s;
-//				for (unsigned int d=0; d<ImageDimension; ++d)
-//				{
-//					o << ori[d] << " ";
-//					s << spc[d] << " ";
-//				}
-//				NMDebugAI(<< "read origin & spacing ... " << endl);
-//				NMDebugAI(<< o.str() << " | " << s.str() << endl);
+        static itk::DataObject *getOutput(itk::ProcessObject::Pointer &readerProcObj,
+                unsigned int numBands, unsigned int idx, bool rgbMode)
+        {
+            itk::DataObject *img = 0;
+            if (numBands == 1)
+            {
+                ReaderType *r = dynamic_cast<ReaderType*>(readerProcObj.GetPointer());
+                if (idx == 0)
+                    img = r->GetOutput(idx);
+                else if (idx == 1)
+                    img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
+            }
+            else if (rgbMode && numBands == 3)
+            {
+                RGBReaderType *r = dynamic_cast<RGBReaderType*>(readerProcObj.GetPointer());
+                if (idx == 0)
+                    img = r->GetOutput(idx);
+                else if (idx == 1)
+                    img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
+            }
+            else
+            {
+                VecReaderType *vr = dynamic_cast<VecReaderType*>(readerProcObj.GetPointer());
+                if (idx == 0)
+                    img = vr->GetOutput(idx);
+                else if (idx == 1)
+                    img = dynamic_cast<itk::DataObject*>(vr->GetAttributeTable(1).GetPointer());
+            }
+            return img;
+        }
 
-				if (idx == 0)
-					img = r->GetOutput(idx);
-				else if (idx == 1)
-					img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
-			}
-			else
-			{
-				VecReaderType *vr = dynamic_cast<VecReaderType*>(readerProcObj.GetPointer());
-				//r->Update();
-				if (idx == 0)
-					img = vr->GetOutput(idx);
-				else if (idx == 1)
-					img = dynamic_cast<itk::DataObject*>(vr->getRasterAttributeTable(1).GetPointer());
-			}
-			return img;
-		}
+        static void initReader(itk::ProcessObject::Pointer &readerProcObj,
+                otb::ImageIOBase *imgIOBase, QString &imgName,
+                unsigned int numBands, bool rgbMode)
+        {
+            if (numBands == 1)
+            {
+                ReaderTypePointer reader = ReaderType::New();
+                otb::GDALRATImageIO *gio = dynamic_cast<otb::GDALRATImageIO*>(imgIOBase);
+                reader->SetImageIO(imgIOBase);
+                reader->SetFileName(imgName.toStdString().c_str());
 
-		static void initReader(itk::ProcessObject::Pointer &readerProcObj,
-				otb::ImageIOBase *imgIOBase, QString &imgName,
-				unsigned int numBands)
-		{
-			NMDebugCtx("RasdamanReader", << "...");
+                // keep references to the exporter and the reader
+                // (we've already got a reference to the importer)
+                readerProcObj = reader;
+            }
+            else if (rgbMode && numBands == 3)
+            {
+                RGBReaderTypePointer reader = RGBReaderType::New();
+                otb::GDALRATImageIO *gio = dynamic_cast<otb::GDALRATImageIO*>(imgIOBase);
+                reader->SetImageIO(imgIOBase);
+                reader->SetFileName(imgName.toStdString().c_str());
 
-			if (numBands == 1)
-			{
-				ReaderTypePointer reader = ReaderType::New();
-				otb::RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(imgIOBase);
-				reader->SetImageIO(rio);
-				reader->SetFileName(imgName.toStdString().c_str());
+                // keep references to the exporter and the reader
+                // (we've already got a reference to the importer)
+                readerProcObj = reader;
+            }
+            else
+            {
+                VecReaderTypePointer reader = VecReaderType::New();
+                otb::GDALRATImageIO *gio = dynamic_cast<otb::GDALRATImageIO*>(imgIOBase);
+                reader->SetImageIO(imgIOBase);
+                reader->SetFileName(imgName.toStdString().c_str());
 
-				// keep reference to objects
-				readerProcObj = reader;
-			}
-			else
-			{
-				VecReaderTypePointer reader = VecReaderType::New();
-				otb::RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(imgIOBase);
-				reader->SetImageIO(rio);
-				reader->SetFileName(imgName.toStdString().c_str());
-
-				// keep reference to objects
-				readerProcObj = reader;
-			}
-
-			NMDebugCtx("RasdamanReader", << "done!");
-		}
-	};
+                // keep references to the exporter and the reader
+                // (we've already got a reference to the importer)
+                readerProcObj = reader;
+            }
+        }
+    };
 #endif // BUILD_RASSUPPORT 
 
 template <class PixelType, unsigned int ImageDimension>
@@ -163,6 +244,12 @@ public:
 	typedef typename ReaderType::Pointer				ReaderTypePointer;
     typedef typename ReaderType::ImageRegionType        ReaderRegionType;
 
+    typedef itk::RGBPixel< PixelType >                  RGBPixelType;
+    typedef otb::Image< RGBPixelType, ImageDimension >  RGBImageType;
+    typedef otb::GDALRATImageFileReader< RGBImageType > RGBReaderType;
+    typedef typename RGBReaderType::Pointer             RGBReaderTypePointer;
+    typedef typename RGBReaderType::ImageRegionType     RGBReaderRegionType;
+
 	typedef otb::VectorImage< PixelType, ImageDimension > VecImgType;
 	typedef otb::GDALRATImageFileReader< VecImgType > 	  VecReaderType;
 	typedef typename VecReaderType::Pointer				  VecReaderTypePointer;
@@ -171,13 +258,18 @@ public:
 
 	static otb::AttributeTable::Pointer
 		fetchRAT(itk::ProcessObject* procObj, int band,
-				unsigned int numBands)
+                unsigned int numBands, bool rgbMode)
 	{
 		if (numBands == 1)
 		{
 			ReaderType *r = dynamic_cast<ReaderType*>(procObj);
 			return r->GetAttributeTable(band);
 		}
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
+            return r->GetAttributeTable(band);
+        }
 		else
 		{
 			VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
@@ -186,7 +278,8 @@ public:
 	}
 
     static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
-                                 unsigned int numBands, int ovvidx, int* userLPR)
+                                 unsigned int numBands, int ovvidx, int* userLPR,
+                               bool rgbMode)
     {
         if (numBands == 1)
         {
@@ -195,6 +288,27 @@ public:
             if (userLPR != 0)
             {
                 ReaderRegionType lpr;
+                for (int d=0; d < ImageDimension; ++d)
+                {
+                    lpr.SetIndex(d, userLPR[d*2]);
+                    lpr.SetSize(d, userLPR[d*2+1]);
+                }
+                r->UseUserLargestPossibleRegionOn();
+                r->SetUserLargestPossibleRegion(lpr);
+            }
+            else
+            {
+                r->UseUserLargestPossibleRegionOff();
+            }
+            r->UpdateOutputInformation();
+        }
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj.GetPointer());
+            r->SetOverviewIdx(ovvidx);
+            if (userLPR != 0)
+            {
+                RGBReaderRegionType lpr;
                 for (int d=0; d < ImageDimension; ++d)
                 {
                     lpr.SetIndex(d, userLPR[d*2]);
@@ -233,22 +347,28 @@ public:
     }
 
 	static itk::DataObject *getOutput(itk::ProcessObject::Pointer &readerProcObj,
-			unsigned int numBands, unsigned int idx)
+            unsigned int numBands, unsigned int idx, bool rgbMode)
 	{
 		itk::DataObject *img = 0;
 		if (numBands == 1)
 		{
 			ReaderType *r = dynamic_cast<ReaderType*>(readerProcObj.GetPointer());
-			//r->Update();
 			if (idx == 0)
 				img = r->GetOutput(idx);
 			else if (idx == 1)
 				img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
 		}
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderType *r = dynamic_cast<RGBReaderType*>(readerProcObj.GetPointer());
+            if (idx == 0)
+                img = r->GetOutput(idx);
+            else if (idx == 1)
+                img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
+        }
 		else
 		{
 			VecReaderType *vr = dynamic_cast<VecReaderType*>(readerProcObj.GetPointer());
-			//r->Update();
 			if (idx == 0)
 				img = vr->GetOutput(idx);
 			else if (idx == 1)
@@ -259,7 +379,7 @@ public:
 
 	static void initReader(itk::ProcessObject::Pointer &readerProcObj,
 			otb::ImageIOBase *imgIOBase, QString &imgName,
-			unsigned int numBands)
+            unsigned int numBands, bool rgbMode)
 	{
 		NMDebugCtx("FileReader", << "...");
 
@@ -274,6 +394,17 @@ public:
 			// (we've already got a reference to the importer)
 			readerProcObj = reader;
 		}
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderTypePointer reader = RGBReaderType::New();
+            otb::GDALRATImageIO *gio = dynamic_cast<otb::GDALRATImageIO*>(imgIOBase);
+            reader->SetImageIO(imgIOBase);
+            reader->SetFileName(imgName.toStdString().c_str());
+
+            // keep references to the exporter and the reader
+            // (we've already got a reference to the importer)
+            readerProcObj = reader;
+        }
 		else
 		{
 			VecReaderTypePointer reader = VecReaderType::New();
@@ -303,21 +434,21 @@ public:
   					this->mOtbProcess, \
   					this->mItkImgIOBase, \
   					this->mFileName, \
-  					this->mOutputNumBands); \
+                    this->mOutputNumBands, mRGBMode); \
   			break; \
   		case 3: \
   			RasdamanReader< PixelType, 3 >::initReader( \
   					this->mOtbProcess, \
   					this->mItkImgIOBase, \
   					this->mFileName, \
-  					this->mOutputNumBands); \
+                    this->mOutputNumBands, mRGBMode); \
   			break; \
   		default: \
   			RasdamanReader< PixelType, 2 >::initReader( \
   				this->mOtbProcess, \
   				this->mItkImgIOBase, \
   				this->mFileName, \
-  				this->mOutputNumBands); \
+                this->mOutputNumBands, mRGBMode); \
   		}\
   	} \
   	else \
@@ -329,21 +460,21 @@ public:
   					this->mOtbProcess, \
   					this->mItkImgIOBase, \
   					this->mFileName, \
-  					this->mOutputNumBands); \
+                    this->mOutputNumBands, mRGBMode); \
   			break; \
   		case 3: \
   			FileReader< PixelType, 3 >::initReader( \
   					this->mOtbProcess, \
   					this->mItkImgIOBase, \
   					this->mFileName, \
-  					this->mOutputNumBands); \
+                    this->mOutputNumBands, mRGBMode); \
   			break; \
   		default: \
   			FileReader< PixelType, 2 >::initReader( \
   				this->mOtbProcess, \
   				this->mItkImgIOBase, \
   				this->mFileName, \
-  				this->mOutputNumBands); \
+                this->mOutputNumBands, mRGBMode); \
   		}\
   	} \
   }  
@@ -359,15 +490,15 @@ public:
 			{ \
 			case 1: \
 				img = RasdamanReader<PixelType, 1 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 				break; \
 			case 3: \
 				img = RasdamanReader<PixelType, 3 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 				break; \
 			default: \
 				img = RasdamanReader<PixelType, 2 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 			}\
 		} \
 		else \
@@ -376,15 +507,15 @@ public:
 			{ \
 			case 1: \
 				img = FileReader<PixelType, 1 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 				break; \
 			case 3: \
 				img = FileReader<PixelType, 3 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 				break; \
 			default: \
 				img = FileReader<PixelType, 2 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 			}\
 		} \
 	}
@@ -401,15 +532,15 @@ public:
             { \
             case 1: \
                 FileReader<PixelType, 1 >::setOverviewIdx( \
-                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR, mRGBMode); \
                 break; \
             case 3: \
                 FileReader<PixelType, 3 >::setOverviewIdx( \
-                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR, mRGBMode); \
                 break; \
             default: \
                 FileReader<PixelType, 2 >::setOverviewIdx( \
-                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
+                        this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR, mRGBMode); \
             }\
         } \
     }
@@ -425,15 +556,15 @@ public:
 			{ \
 			case 1: \
 				rat = RasdamanReader< PixelType, 1 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 				break; \
 			case 3: \
 				rat = RasdamanReader< PixelType, 3 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 				break; \
 			default: \
 				rat = RasdamanReader< PixelType, 2 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 			}\
 		}\
 		else \
@@ -442,15 +573,15 @@ public:
 			{ \
 			case 1: \
 				rat = FileReader< PixelType, 1 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 				break; \
 			case 3: \
 				rat = FileReader< PixelType, 3 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 				break; \
 			default: \
 				rat = FileReader< PixelType, 2 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 			}\
 		} \
 	}
@@ -465,21 +596,21 @@ public:
 						this->mOtbProcess, \
 						this->mItkImgIOBase, \
 						this->mFileName, \
-						this->mOutputNumBands); \
+                        this->mOutputNumBands, mRGBMode); \
 				break; \
 			case 3: \
 				FileReader< PixelType, 3 >::initReader( \
 						this->mOtbProcess, \
 						this->mItkImgIOBase, \
 						this->mFileName, \
-						this->mOutputNumBands); \
+                        this->mOutputNumBands, mRGBMode); \
 				break; \
 			default: \
 				FileReader< PixelType, 2 >::initReader( \
 					this->mOtbProcess, \
 					this->mItkImgIOBase, \
 					this->mFileName, \
-					this->mOutputNumBands); \
+                    this->mOutputNumBands, mRGBMode); \
 			}\
 		} \
 	}
@@ -492,15 +623,15 @@ public:
 			{ \
 			case 1: \
 				img = FileReader<PixelType, 1 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 				break; \
 			case 3: \
 				img = FileReader<PixelType, 3 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 				break; \
 			default: \
 				img = FileReader<PixelType, 2 >::getOutput( \
-						this->mOtbProcess, this->mOutputNumBands, idx); \
+                        this->mOtbProcess, this->mOutputNumBands, idx, mRGBMode); \
 			}\
 		} \
 	}
@@ -513,15 +644,15 @@ public:
         { \
         case 1: \
             FileReader<PixelType, 1 >::setOverviewIdx( \
-                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR, mRGBMode); \
             break; \
         case 3: \
             FileReader<PixelType, 3 >::setOverviewIdx( \
-                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR, mRGBMode); \
             break; \
         default: \
             FileReader<PixelType, 2 >::setOverviewIdx( \
-                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR); \
+                    this->mOtbProcess, this->mOutputNumBands, ovvidx, userLPR, mRGBMode); \
         }\
      }
 
@@ -536,15 +667,15 @@ public:
 			{ \
 			case 1: \
 				rat = FileReader< PixelType, 1 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 				break; \
 			case 3: \
 				rat = FileReader< PixelType, 3 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 				break; \
 			default: \
 				rat = FileReader< PixelType, 2 >::fetchRAT( \
-						this->mOtbProcess.GetPointer(), band, this->mOutputNumBands ); \
+                        this->mOtbProcess.GetPointer(), band, this->mOutputNumBands, mRGBMode ); \
 			}\
 		} \
 	}
@@ -565,6 +696,7 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mFileName = "";
 	this->mbRasMode = false;
+    this->mRGBMode = false;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
@@ -648,6 +780,22 @@ QString NMImageReader::getFileName(void)
 	return this->mFileName;
 }
 
+void
+NMImageReader::setBandMap(const std::vector<int> map)
+{
+    this->mBandMap = map;
+    if (this->isInitialised())
+    {
+        if (!mbRasMode)
+        {
+            otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                        this->mItkImgIOBase.GetPointer());
+            gio->SetBandMap(mBandMap);
+            this->mOtbProcess->Modified();
+        }
+    }
+}
+
 bool NMImageReader::initialise()
 {
 	NMDebugCtx(ctxNMImageReader, << "...");
@@ -664,6 +812,8 @@ bool NMImageReader::initialise()
 		NMDebugAI(<< "we're not in ras mode ..." << endl);
 		otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
 		gio->SetRATSupport(true);
+        gio->SetRGBMode(mRGBMode);
+        gio->SetBandMap(mBandMap);
 		this->mItkImgIOBase = gio;
 	}
 #ifdef BUILD_RASSUPPORT
@@ -710,7 +860,7 @@ bool NMImageReader::initialise()
 		this->mOutputComponentType = this->mItkImgIOBase->GetComponentType();
 
 	this->mOutputNumDimensions = this->mItkImgIOBase->GetNumberOfDimensions();
-	this->mInputNumBands = this->mItkImgIOBase->GetNumberOfComponents();
+    //this->mInputNumBands = this->mItkImgIOBase->GetNumberOfComponents();
 
 	if (this->mInputComponentType == otb::ImageIOBase::UNKNOWNCOMPONENTTYPE)
 		this->mInputComponentType = this->mItkImgIOBase->GetComponentType();
@@ -722,6 +872,7 @@ bool NMImageReader::initialise()
         otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
                     this->mItkImgIOBase.GetPointer());
 
+        this->mInputNumBands = gio->GetTotalNumberOfBands();
 
         NMDebugAI(<< "img size: " << gio->GetDimensions(0)
                   << " x " << gio->GetDimensions(1) << std::endl);
@@ -734,7 +885,8 @@ bool NMImageReader::initialise()
     }
 
 
-	NMDebugAI(<< "... numBands: " << this->mOutputNumBands << endl);
+    NMDebugAI(<< "... numBands in/out: " << this->mInputNumBands << "/"
+              << this->mOutputNumBands << endl);
 	NMDebugAI(<< "... comp type: " << this->mOutputComponentType << endl);
 
 	bool ret = true;
@@ -1034,64 +1186,6 @@ NMImageReader::linkParameters(unsigned int step,
 	NMDebugCtx(ctxNMImageReader, << "...");
 	// set the step parameter according to the ParameterHandling mode set for this process
 
-
-//    // reflect new feature of the user being able to specify the start mIterationStep
-//    // of the model run!
-//    mParamPos = step;
-
-//    NMDebugAI(<< "method called with #step=" << step
-//			<< " mParamPos=" << this->mParamPos << endl);
-
-//	switch(this->mParameterHandling)
-//	{
-//	case NM_USE_UP:
-//		if (this->mParamPos < this->mFileNames.size())
-//		{
-//			step = this->mParamPos;
-//			++this->mParamPos;
-//		}
-//		else if (this->mParamPos >= this->mFileNames.size())
-//		{
-//			this->mParamPos = this->mFileNames.size()-1;
-//			step = this->mParamPos;
-//		}
-//		break;
-//	case NM_CYCLE:
-//		if (this->mParamPos < this->mFileNames.size())
-//		{
-//			step = this->mParamPos;
-//			++this->mParamPos;
-//		}
-//		else if (this->mParamPos >= this->mFileNames.size())
-//		{
-//			step = 0;
-//			this->mParamPos = 1;
-//		}
-//		break;
-//	case NM_SYNC_WITH_HOST:
-//		if (step < this->mFileNames.size())
-//		{
-//			this->mParamPos = step;
-//		}
-////        else
-////        {
-////            step = 0;
-////            this->mParamPos = 0;
-////            NMErr(ctxNMProcess, << "mFilePos and host's step out of sync!! Set mFilePos = 0");
-////        }
-//		break;
-//	}
-
-//	if (this->mFileNames.size() > 0)
-//	{
-//		//if (this->mFileName.compare(this->mFileNames.at(step)) != 0)
-//		{
-//			this->setFileName(this->mFileNames.at(step));
-//			this->initialise();
-//		}
-//	}
-//	NMDebugAI(<< "FileName is '" << this->mFileName.toStdString() << "'" << endl);
-
     QVariant param = this->getParameter("FileNames");
     if (param.isValid())
     {
@@ -1127,39 +1221,6 @@ void NMImageReader::instantiateObject(void)
 		this->setRasdamanConnector(0);
 	}
 #endif	
-
-    // instantiate the reader with  the image which is being read
-    // later on
-//    unsigned int step = 0;
-//    NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
-//    NMIterableComponent* hosthost = 0;
-//    // that's when we run in 'model mode' (i.e. image reader is part of a model)
-//    if (host)
-//    {
-//        step = host->getIterationStep()-1;
-//        hosthost = host->getHostComponent();
-//        if (hosthost)
-//        {
-//            step = hosthost->getIterationStep()-1;
-//        }
-
-//        step = this->mapHostIndexToPolicyIndex(step, this->getFileNames().size());
-
-//        if (step > this->getFileNames().size()-1)
-//        {
-//            NMMfwException nme(NMMfwException::NMProcess_InvalidParameter);
-//            std::stringstream msgstr;
-//            msgstr << "Step Size #" << step << " is out of bounds!";
-//            nme.setMsg(msgstr.str());
-//            NMDebugCtx(ctxNMImageReader, << "done!");
-//            throw nme;
-//            return;
-//        }
-//        else
-//        {
-//            this->setFileName(this->getFileNames().at(step));
-//        }
-//    }
 
     QVariant param = this->getParameter("FileNames");
     if (param.isValid())

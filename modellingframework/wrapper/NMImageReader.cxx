@@ -80,17 +80,17 @@
             if (numBands == 1)
             {
                 ReaderType *r = dynamic_cast<ReaderType*>(procObj);
-                return r->GetAttributeTable(band);
+                return r->getRasterAttributeTable(band);
             }
             else if (rgbMode && numBands == 3)
             {
                 RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
-                return r->GetAttributeTable(band);
+                return r->getRasterAttributeTable(band);
             }
             else
             {
                 VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
-                return r->GetAttributeTable(band);
+                return r->getRasterAttributeTable(band);
             }
         }
 
@@ -173,7 +173,7 @@
                 if (idx == 0)
                     img = r->GetOutput(idx);
                 else if (idx == 1)
-                    img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
+                    img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
             }
             else if (rgbMode && numBands == 3)
             {
@@ -181,7 +181,7 @@
                 if (idx == 0)
                     img = r->GetOutput(idx);
                 else if (idx == 1)
-                    img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
+                    img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
             }
             else
             {
@@ -189,7 +189,7 @@
                 if (idx == 0)
                     img = vr->GetOutput(idx);
                 else if (idx == 1)
-                    img = dynamic_cast<itk::DataObject*>(vr->GetAttributeTable(1).GetPointer());
+                    img = dynamic_cast<itk::DataObject*>(vr->getRasterAttributeTable(1).GetPointer());
             }
             return img;
         }
@@ -201,8 +201,8 @@
             if (numBands == 1)
             {
                 ReaderTypePointer reader = ReaderType::New();
-                otb::GDALRATImageIO *gio = dynamic_cast<otb::GDALRATImageIO*>(imgIOBase);
-                reader->SetImageIO(imgIOBase);
+                otb::RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(imgIOBase);
+                reader->SetImageIO(rio);
                 reader->SetFileName(imgName.toStdString().c_str());
 
                 // keep references to the exporter and the reader
@@ -212,8 +212,8 @@
             else if (rgbMode && numBands == 3)
             {
                 RGBReaderTypePointer reader = RGBReaderType::New();
-                otb::GDALRATImageIO *gio = dynamic_cast<otb::GDALRATImageIO*>(imgIOBase);
-                reader->SetImageIO(imgIOBase);
+                otb::RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(imgIOBase);
+                reader->SetImageIO(rio);
                 reader->SetFileName(imgName.toStdString().c_str());
 
                 // keep references to the exporter and the reader
@@ -223,7 +223,7 @@
             else
             {
                 VecReaderTypePointer reader = VecReaderType::New();
-                otb::GDALRATImageIO *gio = dynamic_cast<otb::GDALRATImageIO*>(imgIOBase);
+                otb::RasdamanImageIO* rio = dynamic_cast<otb::RasdamanImageIO*>(imgIOBase);
                 reader->SetImageIO(imgIOBase);
                 reader->SetFileName(imgName.toStdString().c_str());
 

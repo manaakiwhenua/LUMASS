@@ -98,7 +98,8 @@ public:
 			NM_LEGEND_SINGLESYMBOL,
 			NM_LEGEND_RAMP,
 			NM_LEGEND_INDEXED,
-			NM_LEGEND_CLRTAB
+            NM_LEGEND_CLRTAB,
+            NM_LEGEND_RGB
 		};
 	enum NMLegendClassType
 		{
@@ -427,6 +428,7 @@ protected:
 	virtual void mapColourTable(void);
 	virtual void mapValueClasses(void);
 	virtual void mapValueRamp(void);
+    virtual void mapRGBImage(void){}
 
     //	vtkSmartPointer<vtkColorTransferFunctionSpecialNodes> getColorTransferFunc(
     //			const NMLayer::NMColourRamp& ramp,

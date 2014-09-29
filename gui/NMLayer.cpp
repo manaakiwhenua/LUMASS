@@ -42,6 +42,8 @@
 #include "NMQtOtbAttributeTableModel.h"
 #include "vtkDiscretizableColorTransferFunction.h"
 #include "NMVtkLookupTable.h"
+#include "NMVtkOpenGLImageSliceMapper.h"
+#include "vtkImageSlice.h"
 
 #define VALUE_MARGIN 0.0000001
 
@@ -103,7 +105,8 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	mLegendTypeStr << "NM_LEGEND_SINGLESYMBOL"
 			       << "NM_LEGEND_RAMP"
 			       << "NM_LEGEND_INDEXED"
-	               << "NM_LEGEND_CLRTAB";
+                   << "NM_LEGEND_CLRTAB"
+                   << "NM_LEGEND_RGB";
 
 	mLegendClassTypeStr << "NM_CLASS_UNIQUE"
 			    << "NM_CLASS_EQINT"
@@ -305,8 +308,10 @@ NMLayer::initiateLegend(void)
 	// ----------------------------------------------------------------------------------
 	// GATHER IMAGE LAYER INFORMATION
     bool brawpixels = false;
+    bool bRGB = false;
     NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
     if (   (il && mTableModel == 0)
+        || (il && il->getNumBands() == 3)
         || (    il
             &&  (   il->getITKComponentType() == otb::ImageIOBase::FLOAT
                  || il->getITKComponentType() == otb::ImageIOBase::DOUBLE
@@ -329,7 +334,8 @@ NMLayer::initiateLegend(void)
         setNodata(il->getDefaultNodata());
         setLower(mStats[0]);
         setUpper(mStats[1]);
-        brawpixels = true;
+        brawpixels = il->getNumBands() == 1 ? true : false;
+        bRGB = il->getNumBands() == 3 ? true : false;
 	}
 	else
 	{
@@ -338,7 +344,7 @@ NMLayer::initiateLegend(void)
 
 
 	// do we have a table
-    if (mTableModel && !brawpixels)
+    if (mTableModel && !brawpixels && !bRGB)
 	{
 		NMDebugAI(<< "TableModel-based legend ..." << std::endl);
 		// do we have a colour table
@@ -467,14 +473,27 @@ NMLayer::initiateLegend(void)
 	{
 		NMDebugAI(<< "... mapping pixel values ..." << std::endl);
 
-		mNumClasses = 256;
-		// +4: description (field); nodata; > upper; < lower
-		mNumLegendRows = mNumClasses + 4;
+        if (bRGB)
+        {
+            this->mLegendType = NMLayer::NM_LEGEND_RGB;
+            mLegendValueField = "RGB";
+            mLegendDescrField = "Band Number";
 
-		mLegendValueField = "Pixel Values";
-		mLegendDescrField = "Pixel Values";
+            mNumClasses = 3;
+            // +4: description (field); red; green; blue
+            mNumLegendRows = mNumClasses + 1;
+        }
+        else
+        {
+            this->mLegendType = NMLayer::NM_LEGEND_RAMP;
+            mLegendValueField = "Pixel Values";
+            mLegendDescrField = "Pixel Values";
 
-		this->mLegendType = NMLayer::NM_LEGEND_RAMP;
+            mNumClasses = 256;
+            // +4: description (field); nodata; > upper; < lower
+            mNumLegendRows = 4;
+        }
+
 		this->mColourRamp = NMLayer::NM_RAMP_BLUE2RED_DIV;
 	}
 
@@ -501,6 +520,12 @@ NMLayer::updateMapping(void)
 	switch(mLegendType)
 	{
 	case NM_LEGEND_RAMP:
+        // need to call mapRGBImage to set the band min max
+        // before we build the ramp
+        if (mLegendValueField.startsWith(QString("Band #")))
+        {
+            this->mapRGBImage();
+        }
         this->mapValueRamp();
         clrfunc = mLookupTable.GetPointer() != 0 ? false : true;
 		break;
@@ -524,25 +549,38 @@ NMLayer::updateMapping(void)
 		this->mapColourTable();
 		break;
 
+    case NM_LEGEND_RGB:
+        {
+            this->mapRGBImage();
+        }
+        break;
+
 	case NM_LEGEND_SINGLESYMBOL:
 	default:
 		this->mapSingleSymbol();
 		break;
 	}
 
-	if (mLayerType == NM_IMAGE_LAYER)
+    if (mLayerType == NM_IMAGE_LAYER)
 	{
         NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
         vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-        iprop->SetUseLookupTableScalarRange(1);
-        if (!clrfunc)
+        if (mLegendValueField != "RGB")
         {
-            iprop->SetLookupTable(mLookupTable);
+            iprop->SetUseLookupTableScalarRange(1);
+            if (!clrfunc)
+            {
+                iprop->SetLookupTable(mLookupTable);
 
+            }
+            else
+                iprop->SetLookupTable(mClrFunc);
         }
         else
-            iprop->SetLookupTable(mClrFunc);
-	}
+        {
+            ;
+        }
+    }
 	else
 	{
 		vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
@@ -963,19 +1001,50 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
 
 	case NM_RAMP_MANUAL:
 		{
-			for (int c=0; c < userNodes.size(); ++c)
-			{
-				cf->AddRGBPoint(
-						userNodes.at(c),
-						userColours.at(c).redF(),
-						userColours.at(c).greenF(),
-						userColours.at(c).blueF()
-						);
-			}
+            if (userNodes.size() == userColours.size())
+            {
+                for (int c=0; c < userNodes.size(); ++c)
+                {
+                    cf->AddRGBPoint(
+                            userNodes.at(c),
+                            userColours.at(c).redF(),
+                            userColours.at(c).greenF(),
+                            userColours.at(c).blueF()
+                            );
+                }
+            }
 		}
 		break;
 
 	case NM_RAMP_ALTITUDE:
+        {
+            QList<QColor> uc;
+            uc << QColor(252,255,73)
+               << QColor(0,111,1)
+               << QColor(255,153,0)
+               << QColor(133,76,7)
+               << QColor(57,34,4)
+               << QColor(255,255,255)
+               << QColor(74,243,255)
+               << QColor(255,124,235);
+
+            const int ncls = uc.size();
+            double range = abs(upper-lower);
+            // note: ncls, but ncls-1 steps up
+            double step  = range/((double)ncls-1.0);
+
+            for (int i=0; i < ncls; ++i)
+            {
+                const double f= invertRamp ? -1.0 : 1.0;
+                cf->AddRGBPoint(lower+(double)i*step*f, uc.at(i).redF(),
+                                                      uc.at(i).greenF(),
+                                                      uc.at(i).blueF());
+                NMDebugAI(<< "#" << i+1
+                          << " - " << lower+(double)i*step*f << std::endl);
+            }
+        }
+        break;
+
 	case NM_RAMP_GREY:
 	default:
 		cf->AddRGBPoint(lower, 0.0, 0.0, 0.0);
@@ -1326,21 +1395,50 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 		}
 		break;
 
+    case NM_LEGEND_RGB:
 	case NM_LEGEND_RAMP:
-		if (legendRow == 3)
-		{
-			rgba[0] = mClrLowerMar.redF();
-			rgba[1] = mClrLowerMar.greenF();
-			rgba[2] = mClrLowerMar.blueF();
-			rgba[3] = mClrLowerMar.alphaF();
-		}
-		else if (legendRow == 1)
-		{
-			rgba[0] = mClrUpperMar.redF();
-			rgba[1] = mClrUpperMar.greenF();
-			rgba[2] = mClrUpperMar.blueF();
-			rgba[3] = mClrUpperMar.alphaF();
-		}
+        if (mLegendValueField != "RGB")
+        {
+            if (legendRow == 3)
+            {
+                rgba[0] = mClrLowerMar.redF();
+                rgba[1] = mClrLowerMar.greenF();
+                rgba[2] = mClrLowerMar.blueF();
+                rgba[3] = mClrLowerMar.alphaF();
+            }
+            else if (legendRow == 1)
+            {
+                rgba[0] = mClrUpperMar.redF();
+                rgba[1] = mClrUpperMar.greenF();
+                rgba[2] = mClrUpperMar.blueF();
+                rgba[3] = mClrUpperMar.alphaF();
+            }
+        }
+        else
+        {
+            const int row = legendRow;
+            switch(row)
+            {
+            case 1:
+                rgba[0] = 1.0;
+                rgba[1] = 0.0;
+                rgba[2] = 0.0;
+                rgba[3] = 1.0;
+                break;
+            case 2:
+                rgba[0] = 0.0;
+                rgba[1] = 1.0;
+                rgba[2] = 0.0;
+                rgba[3] = 1.0;
+                break;
+            case 3:
+                rgba[0] = 0.0;
+                rgba[1] = 0.0;
+                rgba[2] = 1.0;
+                rgba[3] = 1.0;
+                break;
+            }
+        }
 		break;
 
 	case NM_LEGEND_SINGLESYMBOL:
@@ -1852,16 +1950,42 @@ QString  NMLayer::getLegendName(const int legendRow)
 		}
 		break;
 
-	case NM_LEGEND_RAMP:
+    case NM_LEGEND_RGB:
+    case NM_LEGEND_RAMP:
 		{
 			//name = "";
-			switch (legendRow)
-			{
-				//case 1:	name = tr("Nodata"); break;
-				case 1: name = tr("> Upper"); break;
-				case 3: name = tr("< Lower"); break;
-				default: name = tr(""); break;
-			}
+            if (mLegendValueField != "RGB")
+            {
+                switch (legendRow)
+                {
+                    //case 1:	name = tr("Nodata"); break;
+                    case 1: name = tr("> Upper"); break;
+                    case 3: name = tr("< Lower"); break;
+                    default: name = tr(""); break;
+                }
+            }
+            else
+            {
+                NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+                std::vector<int> bm;
+                if (il)
+                {
+                    bm = il->getBandMap();
+                }
+                switch (legendRow)
+                {
+                    case 1:
+                        name = QString(tr("Band #%1")).arg(bm.size() >= 1 ? bm[0] : 1);
+                        break;
+                    case 2:
+                        name = QString(tr("Band #%1")).arg(bm.size() >= 2 ? bm[1] : 2);
+                        break;
+                    case 3:
+                        name = QString(tr("Band #%1")).arg(bm.size() >= 3 ? bm[2] : 3);
+                        break;
+                    default: name = tr(""); break;
+                }
+            }
 		}
 		break;
 

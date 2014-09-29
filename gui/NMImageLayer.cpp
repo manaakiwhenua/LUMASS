@@ -201,6 +201,9 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
     this->mOverviewIdx = -1; // (loading original image)
     this->mbUseOverviews = true;
+    this->mBandMap.clear();
+    this->mBandMinMax.clear();
+    this->mScalarBand = 1;
 
     //vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
     //this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
@@ -217,39 +220,21 @@ NMImageLayer::~NMImageLayer()
 		delete this->mReader;
 	if (this->mPipeconn)
 		delete this->mPipeconn;
-
-//	if (this->mTableView)
-//	{
-//		this->mTableView->close();
-//		delete this->mTableView;
-//	}
 }
-
-//void
-//NMImageLayer::computeStats(void)
-//{
-//	NMDebugCtx(ctxNMImageLayer, << "...");
-//    if (true)//this->mbStatsAvailable)
-//	{
-//		QtConcurrent::run(this, &NMImageLayer::updateStats);
-//	}
-
-//	NMDebugAI(<< "Image Statistics for '" << this->objectName().toStdString() << "' ... " << std::endl);
-//	NMDebugAI(<< "min:     " << mImgStats[0] << std::endl);
-//	NMDebugAI(<< "max:     " << mImgStats[1] << std::endl);
-//	NMDebugAI(<< "mean:    " << mImgStats[2] << std::endl);
-//	NMDebugAI(<< "median:  " << mImgStats[3] << std::endl);
-//	NMDebugAI(<< "std.dev: " << mImgStats[4] << std::endl);
-
-//	//vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
-
-//	NMDebugCtx(ctxNMImageLayer, << "done!");
-//}
 
 std::vector<double>
 NMImageLayer::getWindowStatistics(void)
 {
     std::vector<double> ret;
+
+    if (this->mNumBands > 1)
+    {
+        for (int i=0; i < 7; ++i)
+        {
+            ret.push_back(-9999);
+        }
+        return ret;
+    }
 
     emit layerProcessingStart();
 
@@ -260,9 +245,6 @@ NMImageLayer::getWindowStatistics(void)
     vtkSmartPointer<vtkImageHistogramStatistics> stats =
             vtkSmartPointer<vtkImageHistogramStatistics>::New();
     stats->SetInputConnection(cast->GetOutputPort());
-    //stats->GenerateHistogramImageOn();
-    //stats->SetHistogramImageScaleToSqrt();
-    //stats->SetHistogramImageSize(256,256);
     stats->Update();
 
     ret.push_back(stats->GetMinimum());
@@ -281,6 +263,15 @@ std::vector<double>
 NMImageLayer::getWholeImageStatistics(void)
 {
     std::vector<double> ret;
+
+    if (this->mNumBands > 1)
+    {
+        for (int i=0; i < 7; ++i)
+        {
+            ret.push_back(-9999);
+            return ret;
+        }
+    }
 
     NMImageReader* imgReader = 0;
     NMItk2VtkConnector* vtkConn = 0;
@@ -357,7 +348,7 @@ double NMImageLayer::getDefaultNodata()
 	switch(this->mComponentType)
 	{
 		case otb::ImageIOBase::UCHAR:
-			nodata = std::numeric_limits<unsigned short>::max();//255;
+            nodata = std::numeric_limits<unsigned char>::max();//255;
 			break;
 		case otb::ImageIOBase::CHAR:
 			nodata = -std::numeric_limits<char>::max();
@@ -484,14 +475,9 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
 void NMImageLayer::createTableView(void)
 {
-	//if (this->mRATVec.size() < 1)
-	//	return;
-
 	if (this->mTableView != 0)
 	{
 		return;
-		//delete this->mTableView;
-		//this->mTableView = 0;
 	}
 
 	if (this->mOtbRAT.IsNull())
@@ -511,12 +497,6 @@ void NMImageLayer::createTableView(void)
 	connect(this, SIGNAL(selectabilityChanged(bool)), mTableView, SLOT(setSelectable(bool)));
 	connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SLOT(forwardLastClickedRowSignal(long)));
 
-	// connect layer signals to tableview slots and model components list
-	//this->connect(this, SIGNAL(attributeTableChanged(vtkTable*)),
-	//		this->mTableView, SLOT(setTable(vtkTable*)));
-
-	//TODO: connect to signal/slots for table updates
-
 }
 
 int
@@ -525,8 +505,6 @@ NMImageLayer::updateAttributeTable()
 	if (this->mTableModel != 0)
 		return 1;
 
-    //disconnectTableSel();
-
     this->mOtbRAT = this->getRasterAttributeTable(1);
     if (    mOtbRAT.IsNull()
         ||  mOtbRAT->GetNumRows() == 0
@@ -534,7 +512,7 @@ NMImageLayer::updateAttributeTable()
        )
 	{
         mOtbRAT = 0;
-		NMWarn(ctxNMImageLayer, << "No attribute table available!");
+        NMDebugAI(<< "No attribute table available!");
 		return 0;
 	}
 	NMQtOtbAttributeTableModel* otbModel;
@@ -563,36 +541,6 @@ NMImageLayer::updateAttributeTable()
 	return 1;
 }
 
-//void
-//NMImageLayer::updateDataSet(QStringList& slAlteredColumns,
-//		QStringList& slDeletedColumns)
-//{
-//	/* for image layers this means we write back any changes
-//	 * made to table by the associated tableview (vtktable)
-//	 *
-//	 *
-//	 */
-//
-//	NMDebugCtx(ctxNMImageLayer, << "...");
-//
-//	if (slDeletedColumns.size() == 0 && slAlteredColumns.size() == 0)
-//	{
-//		NMDebugAI(<< "nothing to save!" << endl);
-//		NMDebugCtx(ctxNMImageLayer, << "done!");
-//		return;
-//	}
-//
-//
-//
-//
-//
-//	// vtkDataArray::ExportToVoidPointer(void* out_ptr);
-//
-//
-//
-//	NMDebugCtx(ctxNMImageLayer, << "done!");
-//}
-
 bool
 NMImageLayer::setFileName(QString filename)
 {
@@ -609,6 +557,9 @@ NMImageLayer::setFileName(QString filename)
     if (this->mReader == 0)
     {
         this->mReader = new NMImageReader(this);
+        // we always set the RGBMode here, 'cause we never
+        // display more than 3 bands at a time
+        this->mReader->setRGBMode(true);
     }
 
 	// TODO: find a more unambiguous way of determining
@@ -619,7 +570,6 @@ NMImageLayer::setFileName(QString filename)
 		NMRasdamanConnectorWrapper raswrap;
 		raswrap.setConnector(this->mpRasconn);
 		this->mReader->setRasConnector(&raswrap);
-		//->setRasdamanConnector(this->mpRasconn);
 	}
 
 #endif
@@ -645,23 +595,23 @@ NMImageLayer::setFileName(QString filename)
     this->mReader->getSpacing(this->mSpacing);
     this->mReader->getOrigin(this->mOrigin);
 
-	// let's store some meta data, in case someone needs it
+    // let's store some meta data, in case someone needs it
 	this->mComponentType = this->mReader->getOutputComponentType();
 	this->mNodata = this->getDefaultNodata();
 	this->mNumBands = this->mReader->getOutputNumBands();
+    this->mTotalNumBands = this->mReader->getInputNumBands();
 	this->mNumDimensions = this->mReader->getOutputNumDimensions();
 
-    // ==> set the desired overview and requested region,
-    //     if supported
-    this->mapExtentChanged();
+    if (mNumBands == 3)
+    {
+        mBandMap.clear();
+        mBandMap.push_back(1);
+        mBandMap.push_back(2);
+        mBandMap.push_back(3);
+    }
 
-	if (this->mNumBands != 1)
-	{
-		emit layerProcessingEnd();
-		NMErr(ctxNMImageLayer, << "we currently only support single band images!");
-		NMDebugCtx(ctxNMImageLayer, << "done!");
-		return false;
-	}
+    // ==> set the desired overview and requested region, if supported
+    this->mapExtentChanged();
 
 	// concatenate the pipeline
     this->mPipeconn->setInput(this->mReader->getOutput(0));
@@ -671,7 +621,6 @@ NMImageLayer::setFileName(QString filename)
     m->SetNMLayer(this);
     m->SetBorder(1);
 
-    //vtkSmartPointer<vtkImageActor> a = vtkSmartPointer<vtkImageActor>::New();
     vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
     a->SetMapper(m);
 
@@ -873,6 +822,10 @@ NMImageLayer::mapExtentChanged(void)
         //        NMDebugAI(<< "wext: " << wext[0] << "," << wext[2] << " "
         //                              << wext[1] << "x" << wext[3] << std::endl);
 
+        //        if (this->mNumBands == 3 && this->mBandMap.size() == 3)
+        //        {
+        //            this->mReader->setBandMap(this->mBandMap);
+        //        }
         this->mReader->setOverviewIdx(ovidx, wext);
         this->mMapper->UpdateInformation();
 
@@ -884,10 +837,152 @@ NMImageLayer::mapExtentChanged(void)
     }
     else
     {
+        //        if (this->mNumBands == 3 && this->mBandMap.size() == 3)
+        //        {
+        //            this->mReader->setBandMap(this->mBandMap);
+        //        }
         this->mReader->setOverviewIdx(ovidx, 0);
     }
 
     this->mOverviewIdx = ovidx;
+    //NMDebugCtx(ctxNMImageLayer, << "done!");
+}
+
+void
+NMImageLayer::setBandMap(const std::vector<int> map)
+{
+    this->mBandMap = map;
+    if (this->mReader != 0 && this->mReader->isInitialised())
+    {
+        this->mReader->setBandMap(mBandMap);
+    }
+}
+
+void
+NMImageLayer::mapRGBImage(void)
+{
+    // need three bands
+    if (this->getNumBands() != 3)
+    {
+        return;
+    }
+
+    vtkImageData* img = vtkImageData::SafeDownCast(const_cast<vtkDataSet*>(this->getDataSet()));
+    vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
+    vtkDataArray* inScalars = img->GetPointData()->GetArray(0);
+    int numComp = inScalars->GetNumberOfComponents();
+
+    if (mBandMinMax.size() == 0)
+    {
+        for (int n=0; n < numComp; ++n)
+        {
+            double* range = inScalars->GetRange(n);
+            mBandMinMax.push_back(range[0]);
+            mBandMinMax.push_back(range[1]);
+        }
+    }
+
+    if (this->mLegendValueField.startsWith(QString("Band #")))
+    {
+        if (mLastLegendType == NMLayer::NM_LEGEND_RGB)
+        {
+            // mScalarBand refers to mTotalNumBand
+            int idx = mScalarBand % numComp;
+            idx = idx == 0 ? 2 : idx - 1;
+
+            double* range = inScalars->GetRange(idx);
+            if (range)
+            {
+                setLower(range[0]);
+                setUpper(range[1]);
+            }
+        }
+        setLegendType(NMLayer::NM_LEGEND_RAMP);
+        mLastLegendType = NMLayer::NM_LEGEND_RAMP;
+    }
+    else
+    {
+        mNumClasses = 3;
+        mNumLegendRows = 4;
+        setLegendValueField(QString("RGB"));
+        setLegendDescrField(QString("Band Number"));
+        setLegendType(NMLayer::NM_LEGEND_RGB);
+        mImgProp->SetUseLookupTableScalarRange(0);
+        mImgProp->SetLookupTable(0);
+        this->mLookupTable = 0;
+        this->mClrFunc = 0;
+
+        mLastLegendType = NMLayer::NM_LEGEND_RGB;
+    }
+}
+
+void
+NMImageLayer::mapRGBImageScalars(vtkImageData* img)
+{
+    //NMDebugCtx(ctxNMImageLayer, << "...");
+    if (    this->mComponentType == otb::ImageIOBase::UCHAR
+        &&  this->mLegendValueField == "RGB"
+       )
+    {
+        // we're done - nothing to do!
+        return;
+    }
+
+    vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
+    vtkDataArray* inScalars = img->GetPointData()->GetArray(0);
+    void* in = inScalars->GetVoidPointer(0);
+    int numComp = inScalars->GetNumberOfComponents();
+    int numPix = inScalars->GetNumberOfTuples();
+
+    if (this->mLegendValueField == "RGB")
+    {
+        // we create an rgb out put array and map the input value component per component ot UCHAR
+        vtkSmartPointer<vtkUnsignedCharArray> rgbAr = vtkSmartPointer<vtkUnsignedCharArray>::New();
+        rgbAr->SetName("RGBColours");
+        rgbAr->SetNumberOfComponents(numComp);
+        rgbAr->SetNumberOfTuples(numPix);
+        unsigned char* out = static_cast<unsigned char*>(rgbAr->GetVoidPointer(0));
+
+        switch(inScalars->GetDataType())
+        {
+        vtkTemplateMacro(mapScalarsToRGB(static_cast<VTK_TT*>(in),
+                                         out, numPix, numComp, mBandMinMax));
+        default:
+            NMErr(ctxNMImageLayer, << "Invalid input pixel type!");
+            break;
+        }
+
+        dsa->AddArray(rgbAr);
+        dsa->SetActiveAttribute(rgbAr->GetName(), vtkDataSetAttributes::SCALARS);
+        vtkInformation* info = img->GetInformation();
+        img->SetNumberOfScalarComponents(numComp, info);
+    }
+    else if (this->mLegendValueField.startsWith(QString("Band #")))
+    {
+        vtkSmartPointer<vtkDataArray> da = vtkDataArray::CreateDataArray(inScalars->GetDataType());
+        QString name = QString("Band_%1").arg(mScalarBand);
+        da->SetName(name.toStdString().c_str());
+        da->SetNumberOfComponents(1);
+        da->SetNumberOfTuples(numPix);
+        void* out = da->GetVoidPointer(0);
+
+        switch(inScalars->GetDataType())
+        {
+        vtkTemplateMacro(setComponentScalars(static_cast<VTK_TT*>(in),
+                                             static_cast<VTK_TT*>(out),
+                                             numPix));
+        default:
+            NMErr(ctxNMImageLayer, << "Invalid Data Type!");
+            return;
+        }
+
+        dsa->AddArray(da);
+        dsa->SetActiveAttribute(da->GetName(), vtkDataSetAttributes::SCALARS);
+        vtkInformation* info = img->GetInformation();
+        img->SetNumberOfScalarComponents(1, info);
+
+    }
+
     //NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
@@ -909,7 +1004,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
     vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
     void* buf = idxScalars->GetVoidPointer(0);
-    int numPix = idxScalars->GetSize();
+    int numPix = idxScalars->GetNumberOfTuples();
     int maxidx = mOtbRAT->GetNumRows()-1;
 
     switch(mOtbRAT->GetColumnType(colidx))
@@ -918,9 +1013,8 @@ NMImageLayer::setScalars(vtkImageData* img)
         {
             vtkSmartPointer<vtkDoubleArray> ar = vtkSmartPointer<vtkDoubleArray>::New();
             ar->SetName(mLegendValueField.toStdString().c_str());
-            ar->SetNumberOfValues(numPix);
             ar->SetNumberOfComponents(1);
-
+            ar->SetNumberOfTuples(numPix);
 
             double* out = static_cast<double*>(ar->GetVoidPointer(0));
             double* tabCol = static_cast<double*>(mOtbRAT->GetColumnPointer(colidx));
@@ -980,7 +1074,7 @@ NMImageLayer::setScalars(vtkImageData* img)
         }
         break;
     default:
-        NMErr(ctxNMImageLayer, << "Invalid ColumnType!" << std::endl);
+        NMErr(ctxNMImageLayer, << "Invalid ColumnType!");
         //NMDebugCtx(ctxNMImageLayer, << "done!");
         return;
     }
@@ -990,6 +1084,16 @@ NMImageLayer::setScalars(vtkImageData* img)
 
     mbUpdateScalars = false;
     //NMDebugCtx(ctxNMImageLayer, << "done!");
+}
+
+template<class T>
+void
+NMImageLayer::setComponentScalars(T* in, T* out, int numPix)
+{
+    for (int i=0; i < numPix; ++i)
+    {
+        out[i] = in[i+(mScalarBand-1)*numPix];
+    }
 }
 
 // worker function for scalars setting
@@ -1019,6 +1123,27 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
     }
 }
 
+template<class T>
+void
+NMImageLayer::mapScalarsToRGB(T* in, unsigned char* out, int numPix, int numComp,
+                              const std::vector<double>& minmax)
+{
+    const double* mm = &minmax[0];
+    // the mapping is according to itk::RescaleIntensityImageFilter<...>
+    for (int i=0; i < numPix; ++i)
+    {
+        // components don't seem to be interleaved but rather one after another
+        // for the whole image
+        for (int c=0; c < numComp; ++c)
+        {
+            // ToDo: double check scaling; more options?
+            const double cr = (static_cast<double>(in[i+c*numPix]) - mm[c*2]) * (255.0 / (mm[c*2+1] - mm[c*2]));
+            //const double cr = 255.0 / static_cast<double>(in[i+c*numPix]) * 255.0 + 0.5;
+            out[i+c*numPix] = static_cast<unsigned char>(cr < 0 ? 0 : cr > 255 ? 255 : cr);
+        }
+    }
+}
+
 void
 NMImageLayer::updateSourceBuffer(void)
 {
@@ -1044,6 +1169,16 @@ NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
 	this->mComponentType = imgWrapper->getItkComponentType();
 	this->mNumDimensions = imgWrapper->getNumDimensions();
 	this->mNumBands = imgWrapper->getNumBands();
+
+    if (mNumBands > 1)
+    {
+        // currently don't handle this case
+        NMMsg(<< "don't display multi-band image buffers, for now ...!");
+        mImage = 0;
+        mOtbRAT = 0;
+        mRenderer = 0;
+        return;
+    }
 
     // concatenate the pipeline
 	this->mPipeconn->setInput(imgWrapper);
@@ -1184,13 +1319,6 @@ NMImageLayer::getRasterAttributeTable(int band)
     }
 }
 
-//void NMImageLayer::fetchRATs(void)
-//{
-//	// fetch attribute tables, if applicable
-//	this->mRATVec.resize(this->mReader->getOutputNumBands());
-//	for (int b=0; b < this->mReader->getOutputNumBands(); ++b)
-//		this->mRATVec[b] = this->mReader->getRasterAttributeTable(b+1);
-//}
 
 NMItkDataObjectWrapper* NMImageLayer::getOutput(unsigned int idx)
 {
@@ -1289,227 +1417,3 @@ NMImageLayer::writeDataSet(void)
 
 	NMDebugCtx(ctxNMImageLayer, << "done!");
 }
-
-//void
-//NMImageLayer::windowLevelReset(vtkObject* obj)
-//{
-//	double window = this->mImgProp->GetColorWindow();
-//	double level = this->mImgProp->GetColorLevel();
-
-//	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
-
-//}
-
-//void
-//NMImageLayer::windowLevelChanged(vtkObject* obj)
-//{
-//	double window = this->mImgProp->GetColorWindow();
-//	double level = this->mImgProp->GetColorLevel();
-
-//	//NMDebugAI(<< "window: " << window << " level: " << level << std::endl);
-//}
-
-
-//void
-//NMImageLayer::mapUniqueValues()
-//{
-//	NMDebugCtx(ctxNMImageLayer, << "...");
-//
-//	//if (this->mRATVec.size() == 0)
-//	if (mOtbRAT.IsNull())
-//	{
-//		if (!this->updateAttributeTable())
-//		{
-//			NMDebugAI(<< "trouble getting an attribute table!");
-//			return;
-//		}
-//	}
-//
-//	// make a list of available attributes
-//	//otb::AttributeTable::Pointer tab = this->mRATVec.at(0);
-//	int idxField = mOtbRAT->ColumnExists(mLegendValueField.toStdString());
-//	if (idxField < 0)
-//	{
-//		NMErr(ctxNMImageLayer, << "the specified attribute does not exist!");
-//		return;
-//	}
-//
-//	// let's find out about the attribute
-//	// if we've got doubles, we refuse to map unique values ->
-//	// doesn't make sense, does it?
-//	bool bNum = true;
-//	if (mOtbRAT->GetColumnType(idxField) == otb::AttributeTable::ATTYPE_STRING)
-//	{
-//		bNum = false;
-//	}
-//	else if (mOtbRAT->GetColumnType(idxField) != otb::AttributeTable::ATTYPE_INT)
-//	{
-//		NMDebugAI( << "oh no, not with doubles!" << endl);
-//		return;
-//	}
-//
-//	// let's get the statistics if not done already
-//	if (!this->mbStatsAvailable)
-//	{
-//		this->updateStats();
-//	}
-//	double min = this->mImgStats[0];
-//	double max = this->mImgStats[1];
-//	bool bMinIncluded = false;
-//	bool bMaxIncluded = false;
-//
-//	// we create a new look-up table and set the number of entries we need
-//	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
-//	mLookupTable->Allocate(mOtbRAT->GetNumRows()+1);
-//	mLookupTable->SetNumberOfTableValues(mOtbRAT->GetNumRows()+1);
-//
-//	// let's create a new legend info table
-//	//this->resetLegendInfo();
-//
-//
-//	// we iterate over the number of tuples in the user specified attribute array
-//	// and assign each unique categorical value its own (hopefully unique)
-//	// random colour, which is then inserted into the layer's lookup table; we further
-//	// specify a default name for each colour and put it together with the
-//	// chosen colour into a LengendInfo-Table, which basically holds the legend
-//	// category to display; for linking attribute values to table-info and lookup-table
-//	// indices, we fill the HashMap mHashValueIndices (s. Header file for further descr.)
-//	bool bConvOk;
-//	int clrCount = 0, val;
-//	std::string fn = mLegendValueField.toStdString();
-//	QString sVal;
-//	vtkMath::RandomSeed(QTime::currentTime().msec());
-//	for (int t=0; t < mOtbRAT->GetNumRows(); ++t)
-//	{
-//		int pixval = mOtbRAT->GetIntValue("rowidx", t);
-//		if (pixval == min)
-//		{
-//			bMinIncluded = true;
-//		}
-//		else if (pixval == max)
-//		{
-//			bMaxIncluded = true;
-//		}
-//
-//		if (bNum)
-//		{
-//			int val = mOtbRAT->GetIntValue(fn, t);
-//			sVal = QString(tr("%1")).arg(val);
-//		}
-//		else
-//		{
-//			sVal = QString(mOtbRAT->GetStrValue(fn, t).c_str());
-//		}
-//
-//		QHash<QString, QVector<int> >::iterator it = this->mHashValueIndices.find(sVal);
-//		if (it == this->mHashValueIndices.end())
-//		{
-//			// add the key value pair to the hash map
-//			QVector<int> idxVec;
-//			idxVec.append(clrCount);
-//			this->mHashValueIndices.insert(sVal, idxVec);
-//
-//			// add a new row to the legend_info table
-//			vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
-//
-//			// add the value to the index map
-//			double lowup[2];
-//			lowup[0] = val;
-//			lowup[1] = val;
-//
-//			vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
-//					this->mLegendInfo->GetColumnByName("range"));
-//			lowupAbstrAr->SetTuple(newidx, lowup);
-//
-//			// generate a random triple of uchar values
-//			double rgba[4];
-//			for (int i=0; i < 3; i++)
-//				rgba[i] = vtkMath::Random();
-//			rgba[3] = 1;
-//
-//			// add the color spec to the colour map
-//			vtkDoubleArray* rgbaAr = vtkDoubleArray::SafeDownCast(
-//					this->mLegendInfo->GetColumnByName("rgba"));
-//			rgbaAr->SetTuple(newidx, rgba);
-//
-//			// add the name (sVal) to the name column of the legendinfo table
-//			vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
-//					this->mLegendInfo->GetColumnByName("name"));
-//			nameAr->SetValue(newidx, sVal.toStdString().c_str());
-//
-//			// add the color spec to the mapper's color table
-//			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
-//			//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
-//			//					<< " " << rgba[1] << " " << rgba[2] << endl);
-//
-//			clrCount++;
-//		}
-//		else
-//		{
-//			// add the index to the index map
-//			int tabInfoIdx = this->mHashValueIndices.find(sVal).value()[0];
-//			this->mHashValueIndices.find(sVal).value().append(t);
-//
-//			// add the colour to the real color table
-//			vtkDoubleArray* dblAr = vtkDoubleArray::SafeDownCast(this->mLegendInfo->GetColumnByName("rgba"));
-//			double tmprgba[4];
-//			dblAr->GetTuple(tabInfoIdx, tmprgba);
-//
-//			mLookupTable->SetTableValue(t, tmprgba[0], tmprgba[1], tmprgba[2]);
-//		}
-//	}
-//
-//	if (!bMinIncluded && !bMaxIncluded)
-//	{
-//		// the nodata value
-//		double val = bMinIncluded ? max : (bMaxIncluded ? val : max);
-//
-//		// add the key value pair to the hash map
-//		QVector<int> idxVec;
-//		idxVec.append(clrCount);
-//		this->mHashValueIndices.insert("nodata", idxVec);
-//
-//		// add a new row to the legend_info table
-//		vtkIdType newidx = this->mLegendInfo->InsertNextBlankRow(-9);
-//
-//		// add the value to the index map
-//		double lowup[2];
-//		lowup[0] = val;
-//		lowup[1] = val;
-//
-//		vtkDoubleArray* lowupAbstrAr = vtkDoubleArray::SafeDownCast(
-//				this->mLegendInfo->GetColumnByName("range"));
-//		lowupAbstrAr->SetTuple(newidx, lowup);
-//
-//		// generate a random triple of uchar values
-//		double rgba[4];
-//		for (int i=0; i < 3; i++)
-//			rgba[i] = 0;
-//		rgba[3] = 0;
-//
-//		// add the color spec to the colour map
-//		vtkDoubleArray* rgbaAr = vtkDoubleArray::SafeDownCast(
-//				this->mLegendInfo->GetColumnByName("rgba"));
-//		rgbaAr->SetTuple(newidx, rgba);
-//
-//		// add the name (sVal) to the name column of the legendinfo table
-//		vtkStringArray* nameAr = vtkStringArray::SafeDownCast(
-//				this->mLegendInfo->GetColumnByName("name"));
-//		nameAr->SetValue(newidx, sVal.toStdString().c_str());
-//
-//		// add the color spec to the mapper's color table
-//		mLookupTable->SetTableValue(mOtbRAT->GetNumRows(), rgba[0], rgba[1], rgba[2], rgba[3]);
-//		//			NMDebugAI( << clrCount << ": " << sVal.toStdString() << " = " << rgba[0]
-//		//					<< " " << rgba[1] << " " << rgba[2] << endl);
-//
-//	}
-//
-//	//this->mImgProp->SetLookupTable(mLookupTable);
-//	//this->mImgProp->UseLookupTableScalarRangeOn();
-//    //
-//	//emit visibilityChanged(this);
-//	//emit legendChanged(this);
-//
-//	NMDebugCtx(ctxNMImageLayer, << "done!");
-//	return;
-//}

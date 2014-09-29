@@ -104,14 +104,16 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActImageStats = new QAction(this->mMenu);
     mActImageStats->setText(tr("Whole Image Pixel Statistics"));
 
-	QAction* actUniqueValues = new QAction(this->mMenu);
-	actUniqueValues->setText(tr("Map Unique Values ..."));
-	QAction* actSingleSymbol = new QAction(this->mMenu);
-	actSingleSymbol->setText(tr("Map Single Symbol"));
-	QAction* actClrTab = new QAction(this->mMenu);
-	actClrTab->setText(tr("Map Colour Table"));
-	QAction* actClrRamp = new QAction(this->mMenu);
-	actClrRamp->setText(tr("Map Value Ramp"));
+    mActUniqueValues = new QAction(this->mMenu);
+    mActUniqueValues->setText(tr("Map Unique Values ..."));
+    mActSingleSymbol = new QAction(this->mMenu);
+    mActSingleSymbol->setText(tr("Map Single Symbol"));
+    mActClrTab = new QAction(this->mMenu);
+    mActClrTab->setText(tr("Map Colour Table"));
+    mActClrRamp = new QAction(this->mMenu);
+    mActClrRamp->setText(tr("Map Value Ramp"));
+    mActRGBImg = new QAction(this->mMenu);
+    mActRGBImg->setText(tr("Map RGB Image"));
 
 	this->mMenu->addAction(actTable);
 
@@ -121,10 +123,11 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->mMenu->addAction(mActValueStats);
     this->mMenu->addAction(mActImageStats);
 	this->mMenu->addSeparator();
-	this->mMenu->addAction(actSingleSymbol);
-	this->mMenu->addAction(actClrTab);
-	this->mMenu->addAction(actUniqueValues);
-	this->mMenu->addAction(actClrRamp);
+    this->mMenu->addAction(mActSingleSymbol);
+    this->mMenu->addAction(mActClrTab);
+    this->mMenu->addAction(mActUniqueValues);
+    this->mMenu->addAction(mActClrRamp);
+    this->mMenu->addAction(mActRGBImg);
 
 	this->mMenu->addSeparator();
 	this->mMenu->addAction(actSaveChanges);
@@ -133,10 +136,11 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actZoom, SIGNAL(triggered()), this, SLOT(zoomToLayer()));
 	this->connect(actTable, SIGNAL(triggered()), this, SLOT(openAttributeTable()));
 	this->connect(actRemove, SIGNAL(triggered()), this, SLOT(removeCurrentLayer()));
-	this->connect(actSingleSymbol, SIGNAL(triggered()), this, SLOT(mapSingleSymbol()));
-	this->connect(actUniqueValues, SIGNAL(triggered()), this, SLOT(mapUniqueValues()));
-	this->connect(actClrTab, SIGNAL(triggered()), this, SLOT(mapColourTable()));
-	this->connect(actClrRamp, SIGNAL(triggered()), this, SLOT(mapColourRamp()));
+    this->connect(mActSingleSymbol, SIGNAL(triggered()), this, SLOT(mapSingleSymbol()));
+    this->connect(mActUniqueValues, SIGNAL(triggered()), this, SLOT(mapUniqueValues()));
+    this->connect(mActClrTab, SIGNAL(triggered()), this, SLOT(mapColourTable()));
+    this->connect(mActClrRamp, SIGNAL(triggered()), this, SLOT(mapColourRamp()));
+    this->connect(mActRGBImg, SIGNAL(triggered()), this, SLOT(mapRGBImage()));
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
     this->connect(mActValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
@@ -507,9 +511,10 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 
 		if (level == 1 && idx.row() > 0)
 		{
-			if ( !(		l->getLegendType() == NMLayer::NM_LEGEND_RAMP
-					&&  idx.row() == NM_LEGEND_RAMP_ROW
-				  )
+            if (      !(	l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+                        &&  idx.row() == NM_LEGEND_RAMP_ROW
+                       )
+                 &&   l->getLegendType() != NMLayer::NM_LEGEND_RGB
 			   )
 			{
 				double rgba[4];
@@ -526,10 +531,6 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
                 // ToDo: improve! alpha should work with all layers and
                 //       legned options!
                 if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-                    //                    ||  (   l->getLegendType() == NMLayer::NM_LEGEND_RAMP
-                    //                         && l->getTable() != 0
-                    //                        )
-                    //				   )
 				{
 					clr = QColorDialog::getColor(curclr, this, title);
 				}
@@ -539,17 +540,14 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 							QColorDialog::ShowAlphaChannel);
 				}
 
-                //				NMDebugAI(<< "new colour: "
-                //						<< clr.redF() << " "
-                //						<< clr.greenF() << " "
-                //						<< clr.blueF() << " "
-                //						<< clr.alphaF() << std::endl);
-
-				rgba[0] = clr.redF();
-				rgba[1] = clr.greenF();
-				rgba[2] = clr.blueF();
-				rgba[3] = clr.alphaF();
-				l->setLegendColour(idx.row(), rgba);
+                if (clr.isValid())
+                {
+                    rgba[0] = clr.redF();
+                    rgba[1] = clr.greenF();
+                    rgba[2] = clr.blueF();
+                    rgba[3] = clr.alphaF();
+                    l->setLegendColour(idx.row(), rgba);
+                }
 			}
 			else
 			{
@@ -630,20 +628,43 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
             NMLayer* l = this->getCurrentLayer();
             if (l != 0 && l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
             {
-                    if (    mActValueStats->text() == "Value Field Statistics"
-                        ||  mActValueStats->text() == "Visible Pixels' Statistics")
+                    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+                    if (il && il->getNumBands() == 1)
                     {
-                        if (l->getLegendValueField() == "Pixel Values")
+                        if (    mActValueStats->text() == "Value Field Statistics"
+                                ||  mActValueStats->text() == "Visible Pixels' Statistics")
                         {
-                            mActValueStats->setText("Visible Pixel Statistics");
+                            if (l->getLegendValueField() == "Pixel Values")
+                            {
+                                mActValueStats->setText("Visible Pixel Statistics");
+                            }
+                            else
+                            {
+                                mActValueStats->setText("Value Field Statistics");
+                            }
                         }
-                        else
-                        {
-                            mActValueStats->setText("Value Field Statistics");
-                        }
+                        mActImageStats->setEnabled(true);
+                        mActImageStats->setVisible(true);
+
+                        mActUniqueValues->setVisible(true);
+                        mActSingleSymbol->setVisible(true);
+                        mActClrTab->setVisible(true);
+                        mActRGBImg->setVisible(false);
+
+                        mActClrRamp->setText("Map Value Ramp");
                     }
-                    mActImageStats->setEnabled(true);
-                    mActImageStats->setVisible(true);
+                    else
+                    {
+                        mActImageStats->setEnabled(false);
+                        mActImageStats->setVisible(false);
+
+                        mActUniqueValues->setVisible(false);
+                        mActSingleSymbol->setVisible(false);
+                        mActClrTab->setVisible(false);
+                        mActRGBImg->setVisible(true);
+
+                        mActClrRamp->setText("Map Band Value Ramp");
+                    }
             }
             else
             {
@@ -658,6 +679,20 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 	}
 
     //NMDebugCtx(ctx, << "done!");
+}
+
+void ModelComponentList::mapRGBImage()
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    il->setLegendValueField(QString("RGB"));
+    il->setLegendDescrField(QString("Band Number"));
+    il->setLegendType(NMLayer::NM_LEGEND_RGB);
+
+    il->updateMapping();
 }
 
 void ModelComponentList::processSelection(bool toggle)
@@ -1096,7 +1131,25 @@ void ModelComponentList::mapColourRamp()
     }
 
 	l->setLegendType(NMLayer::NM_LEGEND_RAMP);
-	l->updateMapping();
+
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il && il->getNumBands() == 3)
+    {
+        const int nband = il->getScalarBand();
+
+        QString sband = QString("Band #%1").arg(nband);
+        il->setLegendValueField(sband);
+        il->setLegendDescrField(sband);
+
+        std::vector<int> bandmap;
+        for (int b=0; b < 3; ++b)
+        {
+            bandmap.push_back(nband);
+        }
+        il->setBandMap(bandmap);
+    }
+    l->updateMapping();
+
 }
 
 void ModelComponentList::mapUniqueValues()

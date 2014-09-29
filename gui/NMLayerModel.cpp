@@ -406,13 +406,16 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 				case 1:	col == 0 ? retVar = "Descr Field" : retVar = pl->getLegendDescrField(); break;
 				case 2: col == 0 ? retVar = "Legend Type"
 						: retVar = pl->getLegendTypeStr(pl->getLegendType()); break;
-				case 3: col == 0 ? retVar = "Legend Class Type"
-						: retVar = pl->getLegendClassTypeStr(pl->getLegendClassType()); break;
-				case 4: col == 0 ? retVar = "Colour Ramp"
+
+                // ToDo: Change once we implement classifications, for now we take it out and adjust the
+                //       the row counting further down
+                //				case 3: col == 0 ? retVar = "Legend Class Type"
+                //						: retVar = pl->getLegendClassTypeStr(pl->getLegendClassType()); break;
+                case 3: col == 0 ? retVar = "Colour Ramp"
 						: retVar = pl->getColourRampStr(pl->getColourRamp()); break;
-				case 5: col == 0 ? retVar = "Upper" : retVar = QVariant(pl->getUpper()); break;
-				case 6: col == 0 ? retVar = "Lower" : retVar = QVariant(pl->getLower()); break;
-				case 7: col == 0 ? retVar = "Nodata" : retVar = QVariant(pl->getNodata()); break;
+                case 4: col == 0 ? retVar = "Upper" : retVar = QVariant(pl->getUpper()); break;
+                case 5: col == 0 ? retVar = "Lower" : retVar = QVariant(pl->getLower()); break;
+                case 6: col == 0 ? retVar = "Nodata" : retVar = QVariant(pl->getNodata()); break;
 				}
 			}
 			break;
@@ -538,7 +541,23 @@ int NMLayerModel::rowCount(const QModelIndex& parent) const
 
 	if (level == 1 && parent.row() == 0)
 	{
-		ret = 8;
+        // this was 8 rows:
+        // 0: legend value
+        // 1: legend descr
+        // 2: legend type
+        // 3: legend classification
+        // 4: legend ramp
+        // 5: upper
+        // 6: lower
+        // 7: nodata
+        // => we've taken out the classification and nodata, since
+        // they have no impact of anything currently implemented
+        // ==> consequently all other rows moved one position up
+        //     and row count reduced from 8 to 6
+
+        // see also data() and the NMComponentListItemDelegate::createEditor(); and perhaps more
+
+        ret = 6;
 	}
 	else if (level == 0)
 	{

@@ -236,7 +236,15 @@ NMVtkOpenGLImageSliceMapper::Render(vtkRenderer *ren, vtkImageSlice *prop)
     {
         this->mLayer->mapExtentChanged();
         vtkImageData* img = this->GetInput();
-        this->mLayer->setScalars(img);
+        if (this->mLayer->getLegendType() == NMLayer::NM_LEGEND_RGB)
+        {
+            this->ColorEnable = true;
+            this->mLayer->mapRGBImageScalars(img);
+        }
+        else
+        {
+            this->mLayer->setScalars(img);
+        }
     }
 
     this->Superclass::Render(ren, prop);

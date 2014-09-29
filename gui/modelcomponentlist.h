@@ -92,6 +92,7 @@ public slots:
 	void saveLayerChanges();
 	void mapColourTable();
 	void mapColourRamp();
+    void mapRGBImage();
 	void showValueStats();
 
 	void test();
@@ -116,6 +117,12 @@ private:
     QMenu* mMenu;
     QModelIndex mIndicatorIdx;
 	static const std::string ctx;
+
+    QAction* mActUniqueValues;
+    QAction* mActSingleSymbol;
+    QAction* mActClrTab;
+    QAction* mActClrRamp;
+    QAction* mActRGBImg;
 
     QAction* mActValueStats;
     QAction* mActImageStats;

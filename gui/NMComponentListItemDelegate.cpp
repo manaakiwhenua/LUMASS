@@ -136,10 +136,28 @@ NMComponentListItemDelegate::sizeHint(const QStyleOptionViewItem& option,
 		const QModelIndex& index) const
 {
 	QSize ret;
-	if (index.isValid())
+    if (!index.isValid())
 	{
-		ret = QSize(option.rect.width(), index.data(Qt::SizeHintRole).toSize().height());
-	}
+        return ret;
+    }
+
+    const int level = index.internalId() % 100;
+    const int row = index.row();
+
+    NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
+    if (    l
+         && level == 1
+         && row == NM_LEGEND_RAMP_ROW
+         && l->getLegendType() == NMLayer::NM_LEGEND_RAMP
+       )
+    {
+        ret = QSize(index.data(Qt::SizeHintRole).toSize().width(),
+                    index.data(Qt::SizeHintRole).toSize().height());
+    }
+    else
+    {
+        ret = QStyledItemDelegate::sizeHint(option, index);
+    }
 
 	return ret;
 }
@@ -149,7 +167,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		const QStyleOptionViewItem& option,
 		const QModelIndex& index) const
 {
-	NMDebugCtx(ctxCompLID, << "...");
+    //NMDebugCtx(ctxCompLID, << "...");
 
 	QWidget* widget = 0;
 
@@ -187,9 +205,12 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 	{
         QLineEdit* lineedit = new QLineEdit(parent);
 
+
+        int shwidth = index.data(Qt::SizeHintRole).toSize().width();
+
         QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &option, lineedit);
-        QRect upperRect(textRect.x(), option.rect.top(), option.rect.width(), textRect.height()/2.0);
-        QRect lowerRect(textRect.x(), option.rect.bottom()-upperRect.height(), option.rect.width(), textRect.height()/2.0);
+        QRect upperRect(textRect.x()+shwidth+5, option.rect.top(), option.rect.width()-shwidth-10, textRect.height()/3.0);
+        QRect lowerRect(textRect.x()+shwidth+5, option.rect.bottom()-upperRect.height(), option.rect.width()-shwidth-10, textRect.height()/3.0);
 
         //        qDebug() << "mouse pos:   " << mLastMousePos;
         //        qDebug() << "option rect: " << option.rect;
@@ -228,6 +249,31 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		}
 
 	}
+    else if (level == 1 && l->getLegendType() == NMLayer::NM_LEGEND_RGB && row > 0)
+    {
+        QStringList bands;
+        for (int b=0; b < il->getTotalNumBands(); ++b)
+        {
+            bands << QString(tr("Band #%1")).arg(b+1);
+        }
+
+        // find the currently selected item
+        int curidx = 0;
+        for (int p=0; p < bands.size(); ++p)
+        {
+            if (bands.at(p).compare(il->getLegendName(row)) == 0)
+            {
+                curidx = p;
+                break;
+            }
+        }
+
+        QComboBox* box = new QComboBox(parent);
+        box->addItems(bands);
+        box->setCurrentIndex(curidx);
+
+        return box;
+    }
 	//=============================== LEGEND META DATA ============================================
 	else if (level == 2)
 	{
@@ -246,7 +292,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 				   )
 				{
 					QStringList cols;
-					if (row == 1) // legend value field
+                    if (row == 1) // legend descr field
 					{
 						if (legendtype == NMLayer::NM_LEGEND_CLRTAB)
 						{
@@ -258,7 +304,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 							NMDebugAI(<< "can edit legend description field only when "
 									<< "mapping table colours!" << std::endl);
 
-							NMDebugCtx(ctxCompLID, << "done!");
+                            //NMDebugCtx(ctxCompLID, << "done!");
 							return widget;
 						}
 					}
@@ -275,7 +321,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 						NMDebugAI(<< "cannot edit the legend value field when "
 								<< "mapping table colours!" << std::endl);
 
-						NMDebugCtx(ctxCompLID, << "done!");
+                        //NMDebugCtx(ctxCompLID, << "done!");
 						return widget;
 					}
 					else
@@ -298,16 +344,50 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 					box->addItems(cols);
 					box->setCurrentIndex(current);
 
-					NMDebugCtx(ctxCompLID, << "done!");
+                    //NMDebugCtx(ctxCompLID, << "done!");
 					return box;
 				}
+                else if (   row == 0
+                         && (   legendtype == NMLayer::NM_LEGEND_RGB
+                             || l->getLegendValueField().startsWith(QString("Band #"))
+                            )
+                        )
+                {
+                    QStringList options;
+                    options << QString(tr("RGB"));
+                    for (int b=0; b < il->getTotalNumBands(); ++b)
+                    {
+                        options << QString(tr("Band #%1")).arg(b+1);
+                    }
+
+                    // find the currently selected item
+                    int curidx = 0;
+                    for (int p=0; p < options.size(); ++p)
+                    {
+                        if (options.at(p).compare(il->getLegendValueField()) == 0)
+                        {
+                            curidx = p;
+                            break;
+                        }
+                    }
+
+                    QComboBox* box = new QComboBox(parent);
+                    box->addItems(options);
+                    box->setCurrentIndex(curidx);
+
+                    return box;
+                }
 			}
 			break;
 
-		case 4:
+        // we don't support classification as yet, so this legend admin item has moved up
+        // one row for now ...
+        case 3: // was case 4:
 			if (legendtype == NMLayer::NM_LEGEND_RAMP)
 			{
 				QStringList ramps = l->getColourRampStrings();
+                // for now remove the manual ramp
+                ramps.removeLast();
 
 				int current = 0;
 				QString currentRamp = l->getColourRampStr(l->getColourRamp());
@@ -323,25 +403,30 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 				box->addItems(ramps);
 				box->setCurrentIndex(current);
 
-				NMDebugCtx(ctxCompLID, << "done!");
+                //NMDebugCtx(ctxCompLID, << "done!");
 				return box;
 			}
 			break;
 
-		case 5:
-		case 6:
-		case 7:
+        case 4: // upper // was case 5:
+        case 5: // lower // was case 6:
+        //case 6:
+        //case 7: // this the original nodata row, howeve, nodata is nowhere else used to any effect,
+                  // we just display the 'data type's default' no data setting
 			{
 				if (	(legendtype == NMLayer::NM_LEGEND_INDEXED && classtype != NMLayer::NM_CLASS_UNIQUE)
 					||  legendtype == NMLayer::NM_LEGEND_RAMP
 				   )
 				{
 					QLineEdit* lineedit = new QLineEdit(parent);
-					int base = Qt::UserRole-4;
+                    // needs adjustment because of the mess above
+                    // note: we have one user row less
+                    //int base = Qt::UserRole-4;
+                    int base = Qt::UserRole-3;
 					QString curVal = index.data(base+index.row()).toString();
 					lineedit->setText(curVal);
 
-					NMDebugCtx(ctxCompLID, << "done!");
+                    //NMDebugCtx(ctxCompLID, << "done!");
 					return lineedit;
 				}
 			}
@@ -353,7 +438,7 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 		}
 	}
 
-	NMDebugCtx(ctxCompLID, << "done!");
+    //NMDebugCtx(ctxCompLID, << "done!");
 	return widget;
 }
 
@@ -392,6 +477,28 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 			l->updateMapping();
 		}
 	}
+    else if (level == 1 && l->getLegendType() == NMLayer::NM_LEGEND_RGB)
+    {
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+        if (il == 0)
+            return;
+
+        if (row >=1 && row <= 3)
+        {
+            std::vector<int> bandmap = il->getBandMap();
+            if (bandmap.size() != 3)
+            {
+                bandmap.resize(3, 1);
+            }
+
+            QComboBox* box = static_cast<QComboBox*>(editor);
+            int band = box->currentIndex() + 1;
+
+            bandmap[row-1] = band;
+            il->setBandMap(bandmap);
+            l->updateMapping();
+        }
+    }
 	else if (level == 2)
 	{
 		switch(row)
@@ -414,11 +521,40 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 						if (l->getLegendClassType() != NMLayer::NM_CLASS_UNIQUE)
 							l->setLegendDescrField(valuefield);
 
-                        std::vector<double> stats = l->getValueFieldStatistics();
-                        if (stats.size() >= 2)
+                        NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+                        if (valuefield == "RGB")
                         {
-                            l->setLower(stats[0]);
-                            l->setUpper(stats[1]);
+                            l->setLegendType(NMLayer::NM_LEGEND_RGB);
+                            l->setLegendDescrField("Band Number");
+                            std::vector<int> bandmap = il->getBandMap();
+                            if (bandmap.size() == 0)
+                            {
+                                for (int b=0; b < 3; ++b)
+                                {
+                                    bandmap.push_back(b+1);
+                                }
+                            }
+                            il->setBandMap(bandmap);
+                        }
+                        else if (valuefield.startsWith(QString("Band #")))
+                        {
+                            l->setLegendType(NMLayer::NM_LEGEND_RAMP);
+                            il->setScalarBand(box->currentIndex());
+                            std::vector<int> bandmap;
+                            for (int b=0; b < 3; ++b)
+                            {
+                                bandmap.push_back(box->currentIndex());
+                            }
+                            il->setBandMap(bandmap);
+                        }
+                        else
+                        {
+                            std::vector<double> stats = l->getValueFieldStatistics();
+                            if (stats.size() >= 2)
+                            {
+                                l->setLower(stats[0]);
+                                l->setUpper(stats[1]);
+                            }
                         }
                         l->updateMapping();
                         l->updateLegend();
@@ -436,24 +572,33 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 			}
 			break;
 
-			case 4:
+            // this is the legend ramp row
+            // since we don't support classfication of values yet, and have consequently taken
+            // out the particular row depicting any type of classification, this one moves up
+            // one row
+            case 3: // was case 4:
 				{
 					QComboBox* box = static_cast<QComboBox*>(editor);
 					QString curVal = box->currentText();
-					model->setData(index, QVariant(curVal), Qt::UserRole+4);
+                    // was Qt:UserRole+4 for 8 rows
+                    model->setData(index, QVariant(curVal), Qt::UserRole+4);
 					//NMLayer::NMColourRamp ramp = l->getColourRampFromStr(curVal);
 					//l->setColourRamp(ramp);
 					//l->updateMapping();
 				}
 				break;
 
+            // because of the above, we've just one more row here:
+            case 4:
+
 			case 5:
 			case 6:
-			case 7:
+            case 7:
 				{
 					QLineEdit* lineedit = static_cast<QLineEdit*>(editor);
 					QString curVal = lineedit->text();
-					int base = Qt::UserRole-4;
+                    // base was Qt::UserRole-4; when legend classification was still in there
+                    int base = Qt::UserRole-3;
 					if (!curVal.isEmpty())
 					{
 						model->setData(index, QVariant(curVal), base+index.row());
@@ -473,28 +618,7 @@ void
 NMComponentListItemDelegate::setEditorData(QWidget* editor,
 		const QModelIndex& index) const
 {
-	NMDebugCtx(ctxCompLID, << "...");
-
-	//const int level = index.internalId() % 100;
-    //
-	//if (level != 2)
-	//	return;
-    //
-	//NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
-    //
-	//const int row = index.row();
-	//switch(row)
-	//{
-	//	case 0:
-	//	{
-	//	}
-	//	break;
-    //
-	//default:
-	//	break;
-	//}
-
-	NMDebugCtx(ctxCompLID, << "done!");
+    // done in createEditor
 }
 
 void
@@ -505,15 +629,27 @@ NMComponentListItemDelegate::updateEditorGeometry(QWidget* editor,
 	NMDebugCtx(ctxCompLID, << "...");
 
 	const int level = index.internalId() % 100;
-	QRect geom;
-	if (level == 1)
-	{
-		geom = editor->geometry();
-	}
-	else if (level == 2)
-	{
-		geom = option.rect;
-	}
+
+    NMLayer* l = static_cast<NMLayer*>(index.data(Qt::UserRole+100).value<void*>());
+    QSize shint = index.data(Qt::SizeHintRole).toSize();
+
+    QRect geom;
+    if (level == 1 && l->getLegendType() != NMLayer::NM_LEGEND_RGB)
+    {
+        geom = editor->geometry();
+    }
+    else if (level == 1 && l->getLegendType() == NMLayer::NM_LEGEND_RGB)
+    {
+        QRect erect = option.rect;
+        erect.setWidth(erect.width()-shint.width());
+        erect.setLeft(erect.left()+shint.width()+5);
+
+        geom = erect;
+    }
+    else if (level == 2)
+    {
+        geom = option.rect;
+    }
 	geom.adjust(0, -2, 0, 2);
 	editor->setGeometry(geom);
 

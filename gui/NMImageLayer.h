@@ -59,15 +59,18 @@ public:
 
 	otb::ImageIOBase::IOComponentType getITKComponentType(void);
 	unsigned int getNumDimensions(void)
-		{return this->mNumDimensions;};
+        {return this->mNumDimensions;}
 	unsigned int getNumBands(void)
-			{return this->mNumBands;};
+            {return this->mNumBands;}
+    unsigned int getTotalNumBands(void)
+            {return this->mTotalNumBands;}
+
 
 	bool setFileName(QString filename);
 
 #ifdef BUILD_RASSUPPORT	
 	void setRasdamanConnector(RasdamanConnector* rasconn)
-		{this->mpRasconn = rasconn;};
+        {this->mpRasconn = rasconn;}
 #endif
 
 	const vtkDataSet* getDataSet(void);
@@ -99,7 +102,7 @@ public:
 	NMProcess* getProcess(void)
 		{return this->mReader;}
 
-	bool isRasLayer(void) {return this->mReader->isRasMode();};
+    bool isRasLayer(void) {return this->mReader->isRasMode();}
 	//void mapUniqueValues();
 
 	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
@@ -112,6 +115,13 @@ public:
 		{return this->mImgProp;}
 
 	double getDefaultNodata(void);
+
+    void setBandMap(const std::vector<int> map);// {this->mBandMap = map;}
+    std::vector<int> getBandMap(void) {return this->mBandMap;}
+
+    void setScalarBand(const int& band)
+        {this->mScalarBand = band >= 1 && band <= this->mTotalNumBands ? band : 1;}
+    int getScalarBand(void) {return this->mScalarBand;}
 
 
 public slots:
@@ -126,8 +136,8 @@ public slots:
     void setUpdateScalars()
         {this->mbUpdateScalars = true;}
     void setScalars(vtkImageData* img);
-
-
+    void mapRGBImageScalars(vtkImageData* img);
+    void mapRGBImage(void);
 
 protected:
 
@@ -141,6 +151,14 @@ protected:
     void setDoubleScalars(T* buf, double* out, double* tabCol,
                         int numPix, int maxid,
                         double nodata);
+
+    template<class T>
+    void mapScalarsToRGB(T* in, unsigned char* out, int numPix, int numComp,
+                         const std::vector<double>& minmax);
+
+    template<class T>
+    void setComponentScalars(T* in, T* out, int numPix);
+
 
     NMDataComponent* mSourceBuffer;
 	NMImageReader* mReader;
@@ -158,6 +176,12 @@ protected:
 
     unsigned int mNumDimensions;
 	unsigned int mNumBands;
+    unsigned int mTotalNumBands;
+    std::vector<int> mBandMap;
+    std::vector<double> mBandMinMax;
+    int mScalarBand;
+
+    NMLayer::NMLegendType mLastLegendType;
 
     double mSpacing[3];
     double mOrigin[3];
@@ -195,12 +219,6 @@ protected:
 
 protected slots:
 	int updateAttributeTable(void);
-//	void windowLevelReset(vtkObject* obj);
-//	void windowLevelChanged(vtkObject* obj);
-
-
-	//virtual void updateDataSet(QStringList& slAlteredColumns,
-	//		QStringList& slDeletedColumns);
 };
 
 #endif // ifndef NMIMAGELAYER_H_

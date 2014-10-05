@@ -245,6 +245,7 @@ NMImageLayer::getWindowStatistics(void)
     vtkSmartPointer<vtkImageHistogramStatistics> stats =
             vtkSmartPointer<vtkImageHistogramStatistics>::New();
     stats->SetInputConnection(cast->GetOutputPort());
+
     stats->Update();
 
     ret.push_back(stats->GetMinimum());
@@ -281,7 +282,7 @@ NMImageLayer::getWholeImageStatistics(void)
         emit layerProcessingStart();
 
         vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-        cast->SetOutputScalarTypeToFloat();
+        cast->SetOutputScalarTypeToDouble();
         if (this->mFileName.isEmpty())
         {
             cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
@@ -512,7 +513,7 @@ NMImageLayer::updateAttributeTable()
        )
 	{
         mOtbRAT = 0;
-        NMDebugAI(<< "No attribute table available!");
+        //NMDebugAI(<< "No attribute table available!");
 		return 0;
 	}
 	NMQtOtbAttributeTableModel* otbModel;
@@ -1334,6 +1335,7 @@ NMItkDataObjectWrapper* NMImageLayer::getImage(void)
 	NMItkDataObjectWrapper* imgW = new NMItkDataObjectWrapper(this,
 			img, this->mComponentType, this->mNumDimensions,
 			this->mNumBands);
+    imgW->setOTBTab(this->mOtbRAT);
 	return imgW;
 }
 
@@ -1400,6 +1402,7 @@ NMImageLayer::writeDataSet(void)
 
 		otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
 		gio->SetFileName(fn);
+
 		if (gio->CanWriteFile(fn))
 		{
 			gio->WriteRAT(this->mOtbRAT, band);

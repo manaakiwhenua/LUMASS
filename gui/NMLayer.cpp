@@ -1039,8 +1039,6 @@ NMLayer::getColorTransferFunc(const NMColourRamp& ramp,
                 cf->AddRGBPoint(lower+(double)i*step*f, uc.at(i).redF(),
                                                       uc.at(i).greenF(),
                                                       uc.at(i).blueF());
-                NMDebugAI(<< "#" << i+1
-                          << " - " << lower+(double)i*step*f << std::endl);
             }
         }
         break;

@@ -172,6 +172,29 @@ NMModelController::identifyRootComponent(void)
 	return root;
 }
 
+//void
+//NMModelController::executeAndDestroy(NMModelComponent *comp)
+//{
+//    QString cname = this->addComponent(comp);
+//    this->executeModel(cname);
+//    this->removeComponent(cname);
+//}
+
+void
+NMModelController::deleteLater(QStringList compNames)
+{
+    if (this->isModelRunning())
+    {
+        this->mToBeDeleted.append(compNames);
+        return;
+    }
+
+    foreach(const QString& name, compNames)
+    {
+        this->removeComponent(name);
+    }
+}
+
 void
 NMModelController::executeModel(const QString& compName)
 {
@@ -274,6 +297,13 @@ NMModelController::executeModel(const QString& compName)
 	// running
 	this->resetExecutionStack();
 	//this->resetComponent(compName);
+
+    // remove objects scheduled for deletion
+    foreach(const QString& name, this->mToBeDeleted)
+    {
+        this->removeComponent(name);
+    }
+    this->mToBeDeleted.clear();
 
 	NMDebugCtx(ctx, << "done!");
 }

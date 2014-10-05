@@ -33,6 +33,7 @@
 #include <QMap>
 #include <QStack>
 #include <QString>
+#include <QStringList>
 #include <QDateTime>
 
 #include <string>
@@ -87,6 +88,12 @@ public slots:
 
 	/*! Requests the execution of the named component. */
 	void executeModel(const QString& compName);
+
+    /*! Component destruction at the next suitble opportunity
+     *  (i.e. either directly, or once the current model run has
+     *  finished) */
+    void deleteLater(QStringList compNames);
+
 
 	/*! Resets the named model component and (recursively!)
 	 *  all of its sub components, i.e. reset is called on
@@ -161,7 +168,6 @@ protected:
 	QStack<QString> mExecutionStack;
 	NMIterableComponent* mRootComponent;
 
-	//NMModelComponent* mRunningModelComponent;
 	bool mbModelIsRunning;
 	bool mbAbortionRequested;
 
@@ -169,6 +175,8 @@ protected:
 	QDateTime mModelStopped;
 
 	NMModelController* mModelController;
+
+    QStringList mToBeDeleted;
 
 private:
 	static const std::string ctx;

@@ -112,7 +112,14 @@ public:
 
 	virtual void instantiateObject(void) = 0;
 	bool isInitialised(void)
-		{return this->mbIsInitialised;};
+        {return this->mbIsInitialised;}
+
+    /*! Convenience method to set the input/output/(in- & output)
+     *  image type specification from a NMItkDataObjectWrapper */
+    void setInputImgTypeSpec(NMItkDataObjectWrapper* dw);
+    void setOutputImgTypeSpec(NMItkDataObjectWrapper* dw);
+    void setImgTypeSpec(NMItkDataObjectWrapper* dw);
+
 
 	QDateTime getModifiedTime(void)
 		{return mMTime;}
@@ -142,7 +149,7 @@ public:
             unsigned short size);
 
 
-     QVariant getParameter(const QString& property);
+    QVariant getParameter(const QString& property);
 
 
 public slots:

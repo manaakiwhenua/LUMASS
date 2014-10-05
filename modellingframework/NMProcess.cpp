@@ -605,6 +605,35 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 	this->mbLinked = false;
 }
 
+void
+NMProcess::setImgTypeSpec(NMItkDataObjectWrapper* dw)
+{
+    this->setInputImgTypeSpec(dw);
+    this->setOutputImgTypeSpec(dw);
+}
+
+void
+NMProcess::setInputImgTypeSpec(NMItkDataObjectWrapper* dw)
+{
+    if (dw == 0)
+        return;
+
+    this->setInputNMComponentType(dw->getNMComponentType());
+    this->setInputNumBands(dw->getNumBands());
+    this->setInputNumDimensions(dw->getNumDimensions());
+}
+
+void
+NMProcess::setOutputImgTypeSpec(NMItkDataObjectWrapper* dw)
+{
+    if (dw == 0)
+        return;
+
+    this->setOutputNMComponentType(dw->getNMComponentType());
+    this->setOutputNumBands(dw->getNumBands());
+    this->setOutputNumDimensions(dw->getNumDimensions());
+}
+
 NMItkDataObjectWrapper::NMComponentType
 NMProcess::getInputNMComponentType()
 {

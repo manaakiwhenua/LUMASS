@@ -83,7 +83,7 @@ public:
 	  typedef typename InputImageType::SpacingType  InputImageSpacingType;
 	  typedef typename OutputImageType::SpacingType OutputImageSpacingType;
 
-	  typedef int ZoneKeyType;
+      typedef long ZoneKeyType;
 
 	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
 	  typedef typename ZoneMapType::iterator 						 ZoneMapTypeIterator;

@@ -187,6 +187,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
 			&&	val == static_cast<double>(m_NodataValue)
 		   )
 		{
+            ++zoneIt;
+            ++valueIt;
+
+            progress.CompletedPixel();
 			continue;
 		}
 
@@ -326,8 +330,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
 			count += params[4];
 		}
 
-		mean = sum_Zone / (double)count;
-		sd = ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) );
+        mean = sum_Zone / ((double)count > 0 ? (double)count : 1);
+        sd = mean != sum_Zone
+                ? ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) )
+                : 0;
 
         //mZoneTable->SetValue("rowidx", rowid, rowid);
         //mZoneTable->SetValue("rowidx", rowid, lz);

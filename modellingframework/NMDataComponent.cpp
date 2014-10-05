@@ -85,11 +85,23 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 	}
 
 
-	if (mInputs.size() == 0)
+    if (mInputs.size() == 0)
 	{
-		e.setMsg("List of input specs is empty!");
-		NMDebugCtx(ctx, << "done!");
-		throw e;
+        // if we haven't got an input component set-up,
+        // we're also happy with data which was set from
+        // outside the pipeline
+        if (mDataWrapper != 0)
+        {
+            mbLinked = true;
+            NMDebugCtx(ctx, << "...");
+            return;
+        }
+        else
+        {
+            e.setMsg("List of input specs is empty!");
+            NMDebugCtx(ctx, << "done!");
+            throw e;
+        }
 	}
 
 	// we apply the NM_USE_UP parameter handling

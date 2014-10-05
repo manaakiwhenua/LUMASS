@@ -55,11 +55,19 @@ class NMStreamingImageFileWriterWrapper: public NMProcess
 	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
 #endif	
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
+    Q_PROPERTY(QStringList InputTables READ getInputTables WRITE setInputTables)
     Q_PROPERTY(bool UpdateMode READ getUpdateMode WRITE setUpdateMode)
+    Q_PROPERTY(QString PyramidResamplingType READ getPyramidResamplingType WRITE setPyramidResamplingType)
+    Q_PROPERTY(QStringList PyramidResamplingEnum READ getPyramidResamplingEnum)
+    Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
 
 public:
     NMPropertyGetSet( FileNames, QStringList )
+    NMPropertyGetSet( InputTables, QStringList )
     NMPropertyGetSet( UpdateMode, bool )
+    NMPropertyGetSet( PyramidResamplingType, QString )
+    NMPropertyGetSet( PyramidResamplingEnum, QStringList )
+    NMPropertyGetSet( RGBMode, bool)
 
 
 #ifdef BUILD_RASSUPPORT
@@ -94,8 +102,13 @@ public:
 
 protected:
 
+    QString mPyramidResamplingType;
+    QStringList mPyramidResamplingEnum;
+
 	QStringList mFileNames;
+    QStringList mInputTables;
     bool mUpdateMode;
+    bool mRGBMode;
 
 #ifdef BUILD_RASSUPPORT
 	NMRasdamanConnectorWrapper* mRasConnector;
@@ -111,6 +124,9 @@ protected:
 			const QMap<QString, NMModelComponent*>& repo);
 
     void setInternalUpdateMode();
+    void setInternalResamplingType();
+    void setInternalInputTable(const QString& tabelSpec,
+                               const QMap<QString, NMModelComponent*>& repo);
 
 };
 

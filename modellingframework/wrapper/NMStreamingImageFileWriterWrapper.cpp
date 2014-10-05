@@ -43,21 +43,34 @@ template <class PixelType, class PixelType2, unsigned int Dimension>
 class NMStreamingImageFileWriterWrapper_Internal
 {
 public:
+
+    typedef itk::RGBPixel< PixelType >                  RGBPixelType;
+    typedef otb::Image< RGBPixelType, Dimension >       RGBImgType;
+
 	typedef otb::Image<PixelType, Dimension> 			ImgType;
 	typedef otb::VectorImage<PixelType, Dimension> 		VecImgType;
-	typedef otb::StreamingRATImageFileWriter<ImgType> 		FilterType;
+
+    typedef otb::StreamingRATImageFileWriter<RGBImgType>    RGBFilterType;
+    typedef otb::StreamingRATImageFileWriter<ImgType> 		FilterType;
 	typedef otb::StreamingRATImageFileWriter<VecImgType> 	VecFilterType;
-	typedef typename FilterType::Pointer 				FilterTypePointer;
+
+    typedef typename RGBFilterType::Pointer             RGBFilterTypePointer;
+    typedef typename FilterType::Pointer 				FilterTypePointer;
 	typedef typename VecFilterType::Pointer 			VecFilterTypePointer;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands)
+            unsigned int numBands, bool rgbMode)
 		{
 			if (numBands == 1)
 			{
 				FilterTypePointer f = FilterType::New();
 				otbFilter = f;
 			}
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterTypePointer r = RGBFilterType::New();
+                otbFilter = r;
+            }
 			else
 			{
 				VecFilterTypePointer v = VecFilterType::New();
@@ -66,11 +79,16 @@ public:
 		}
 
     static void setUpdateMode(itk::ProcessObject::Pointer& otbFilter,
-                              unsigned int numBands, bool updateMode)
+                              unsigned int numBands, bool updateMode, bool rgbMode)
         {
             if (numBands == 1)
             {
                 FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetUpdateMode(updateMode);
+            }
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
                 filter->SetUpdateMode(updateMode);
             }
             else
@@ -81,13 +99,13 @@ public:
         }
 
 	static void setFileName(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, QString& fileName
+            unsigned int numBands, QString& fileName,
 
 #ifdef BUILD_RASSUPPORT
-			,
-			otb::RasdamanImageIO::Pointer& rio
+
+            otb::RasdamanImageIO::Pointer& rio,
 #endif
-			)
+            bool rgbMode)
 		{
 			if (numBands == 1)
 			{
@@ -99,6 +117,16 @@ public:
 					filter->SetImageIO(rio);
 #endif
 			}
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetFileName(fileName.toStdString());
+
+#ifdef BUILD_RASSUPPORT
+                if (rio.IsNotNull())
+                    filter->SetImageIO(rio);
+#endif
+            }
 			else
 			{
 				VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
@@ -112,7 +140,7 @@ public:
 		}
 
 	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
+            unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, bool rgbMode)
 		{
 			if (numBands == 1)
 			{
@@ -120,6 +148,12 @@ public:
 				ImgType* img = dynamic_cast<ImgType*>(dataObj);
 				filter->SetInput(img);
 			}
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj);
+                filter->SetInput(img);
+            }
 			else
 			{
 				VecImgType* img = dynamic_cast<VecImgType*>(dataObj);
@@ -129,13 +163,18 @@ public:
 		}
 
 	static void setNthAttributeTable(itk::ProcessObject::Pointer& otbFilter,
-			unsigned int numBands, unsigned int idx, otb::AttributeTable::Pointer& tab)
+            unsigned int numBands, unsigned int idx, otb::AttributeTable::Pointer& tab, bool rgbMode)
 		{
 			if (numBands == 1)
 			{
 				FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
 				filter->SetInputRAT(tab);
 			}
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetInputRAT(tab);
+            }
 			else
 			{
 				VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
@@ -143,6 +182,25 @@ public:
 			}
 		}
 
+    static void setResamplingType(itk::ProcessObject::Pointer& otbFilter,
+                                  unsigned int numBands, const QString& resamplingType, bool rgbMode)
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetResamplingType(resamplingType.toStdString());
+            }
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetResamplingType(resamplingType.toStdString());
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetResamplingType(resamplingType.toStdString());
+            }
+        }
 };
 
 #ifdef BUILD_RASSUPPORT
@@ -150,34 +208,34 @@ public:
 		if (this->mOutputNumDimensions == 1)                                    \
 		{                                                                   \
 			wrapName<PixelType, PixelType, 1>::setFileName(this->mOtbProcess,   \
-					this->mOutputNumBands, fileName, rio);                  \
+                    this->mOutputNumBands, fileName, rio, mRGBMode);                  \
 		}                                                                   \
 		else if (this->mOutputNumDimensions == 2)                               \
 		{                                                                   \
 			wrapName<PixelType, PixelType, 2>::setFileName(this->mOtbProcess,   \
-					this->mOutputNumBands, fileName, rio);                  \
+                    this->mOutputNumBands, fileName, rio, mRGBMode);                  \
 		}                                                                   \
 		else if (this->mOutputNumDimensions == 3)                               \
 		{                                                                   \
 			wrapName<PixelType, PixelType, 3>::setFileName(this->mOtbProcess,   \
-					this->mOutputNumBands, fileName, rio);                  \
+                    this->mOutputNumBands, fileName, rio, mRGBMode);                  \
 		}
 #else
 	#define callSetFileName( PixelType, wrapName ) \
 		if (this->mOutputNumDimensions == 1)                                    \
 		{                                                                   \
 			wrapName<PixelType, PixelType, 1>::setFileName(this->mOtbProcess,   \
-					this->mOutputNumBands, fileName);                  \
+                    this->mOutputNumBands, fileName, mRGBMode);                  \
 		}                                                                   \
 		else if (this->mOutputNumDimensions == 2)                               \
 		{                                                                   \
 			wrapName<PixelType, PixelType, 2>::setFileName(this->mOtbProcess,   \
-					this->mOutputNumBands, fileName);                  \
+                    this->mOutputNumBands, fileName, mRGBMode);                  \
 		}                                                                   \
 		else if (this->mOutputNumDimensions == 3)                               \
 		{                                                                   \
 			wrapName<PixelType, PixelType, 3>::setFileName(this->mOtbProcess,   \
-					this->mOutputNumBands, fileName);                  \
+                    this->mOutputNumBands, fileName, mRGBMode);                  \
 		}
 #endif // BUILD_RASSUPPORT
 
@@ -186,17 +244,17 @@ public:
 	if (this->mOutputNumDimensions == 1) \
 	{ \
 		wrapName< imgType, imgType, 1 >::setNthAttributeTable( \
-				this->mOtbProcess, this->mOutputNumBands, tabIdx, tab); \
+                this->mOtbProcess, this->mOutputNumBands, tabIdx, tab, mRGBMode); \
 	} \
 	else if (this->mOutputNumDimensions == 2) \
 	{ \
 		wrapName< imgType, imgType, 2 >::setNthAttributeTable( \
-				this->mOtbProcess, this->mOutputNumBands, tabIdx, tab); \
+                this->mOtbProcess, this->mOutputNumBands, tabIdx, tab, mRGBMode); \
 	} \
 	else if (this->mOutputNumDimensions == 3) \
 	{ \
 		wrapName< imgType, imgType, 3 >::setNthAttributeTable( \
-				this->mOtbProcess, this->mOutputNumBands, tabIdx, tab); \
+                this->mOtbProcess, this->mOutputNumBands, tabIdx, tab, mRGBMode); \
 	}\
 }
 
@@ -205,17 +263,17 @@ public:
 	if (this->mOutputNumDimensions == 1) \
 	{ \
 		wrapName< imgType, imgType, 1 >::setNthInput( \
-				this->mOtbProcess, this->mOutputNumBands, numInput, img); \
+                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode); \
 	} \
 	else if (this->mOutputNumDimensions == 2) \
 	{ \
 		wrapName< imgType, imgType, 2 >::setNthInput( \
-				this->mOtbProcess, this->mOutputNumBands, numInput, img); \
+                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode); \
 	} \
 	else if (this->mOutputNumDimensions == 3) \
 	{ \
 		wrapName< imgType, imgType, 3 >::setNthInput( \
-				this->mOtbProcess, this->mOutputNumBands, numInput, img); \
+                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode); \
 	}\
 }
 
@@ -224,23 +282,60 @@ public:
     if (this->mOutputNumDimensions == 1) \
     { \
         wrapName< imgType, imgType, 1 >::setUpdateMode( \
-                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode); \
+                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode, mRGBMode); \
     } \
     else if (this->mOutputNumDimensions == 2) \
     { \
         wrapName< imgType, imgType, 2 >::setUpdateMode( \
-                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode); \
+                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode, mRGBMode); \
     } \
     else if (this->mOutputNumDimensions == 3) \
     { \
         wrapName< imgType, imgType, 3 >::setUpdateMode( \
-                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode); \
+                this->mOtbProcess, this->mOutputNumBands, this->mUpdateMode, mRGBMode); \
     }\
 }
 
-InstantiateObjectWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
-//SetNthInputWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
+#define callSetResamplingType( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setResamplingType( \
+                this->mOtbProcess, this->mOutputNumBands, mPyramidResamplingType, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setResamplingType( \
+                this->mOtbProcess, this->mOutputNumBands, mPyramidResamplingType, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setResamplingType( \
+                this->mOtbProcess, this->mOutputNumBands, mPyramidResamplingType, mRGBMode); \
+    }\
+}
 
+#define callInitWriter( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::createInstance( \
+                this->mOtbProcess, this->mOutputNumBands, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::createInstance( \
+                this->mOtbProcess, this->mOutputNumBands, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::createInstance( \
+                this->mOtbProcess, this->mOutputNumBands, mRGBMode); \
+    }\
+}
+
+//InstantiateObjectWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
+//SetNthInputWrap( NMStreamingImageFileWriterWrapper, NMStreamingImageFileWriterWrapper_Internal )
 
 NMStreamingImageFileWriterWrapper
 ::NMStreamingImageFileWriterWrapper(QObject* parent)
@@ -255,6 +350,14 @@ NMStreamingImageFileWriterWrapper
 	this->mInputNumDimensions = 2;
 	this->mOutputNumDimensions = 2;
     this->mUpdateMode = false;
+    this->mRGBMode = false;
+
+    this->mPyramidResamplingType = QString(tr("NONE"));
+    mPyramidResamplingEnum.clear();
+    mPyramidResamplingEnum
+            << "NONE" << "NEAREST" << "GAUSS" << "CUBIC"
+            << "AVERAGE" << "MODE";
+
 #ifdef BUILD_RASSUPPORT
 	this->mRasConnector = 0;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
@@ -276,6 +379,7 @@ NMStreamingImageFileWriterWrapper
 	this->mOutputNumBands = numBands;
 	this->mInputNumDimensions = numDims;
 	this->mOutputNumDimensions = numDims;
+    this->mRGBMode = false;
 #ifdef BUILD_RASSUPPORT
 	this->mRasConnector = 0;
 #endif
@@ -312,6 +416,40 @@ NMStreamingImageFileWriterWrapper
 
 void
 NMStreamingImageFileWriterWrapper
+::instantiateObject(void)
+{
+    if (this->mbIsInitialised)
+        return;
+
+    bool init = true;
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callInitWriter, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        init = false;
+        break;
+    }
+    this->mbIsInitialised = init;
+    NMDebugAI( << "... " << this->objectName().toStdString() << " - " << init << std::endl);
+}
+
+void
+NMStreamingImageFileWriterWrapper
+::setInternalResamplingType()
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callSetResamplingType, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
+}
+
+void
+NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
     //if (step > this->mFileNames.size()-1)
@@ -329,7 +467,14 @@ NMStreamingImageFileWriterWrapper
         this->setInternalFileName(param.toString());
     }
 
+    QVariant param2 = this->getParameter("InputTables");
+    if (param2.isValid())
+    {
+        this->setInternalInputTable(param2.toString(), repo);
+    }
+
     this->setInternalUpdateMode();
+    this->setInternalResamplingType();
 }
 
 void
@@ -347,6 +492,45 @@ NMStreamingImageFileWriterWrapper
     }
 }
 
+void
+NMStreamingImageFileWriterWrapper
+::setInternalInputTable(const QString &tabelSpec,
+                        const QMap<QString, NMModelComponent*>& repo)
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    QStringList speclst = tabelSpec.split(":");
+    QString compName = speclst.at(0);
+    if (repo.contains(compName))
+    {
+        int idx = 0;
+        if (speclst.size() == 2)
+        {
+            bool bok;
+            idx = speclst.at(1).toInt(&bok);
+        }
+        NMModelComponent* comp = repo.value(compName);
+        NMItkDataObjectWrapper* dw = comp->getOutput(idx);
+
+        if (dw != 0)
+        {
+            otb::AttributeTable::Pointer tab =
+                    comp->getOutput(idx)->getOTBTab();
+
+            unsigned int tabIdx = 1;
+            if (tab.IsNotNull())
+            {
+                switch(this->mOutputComponentType)
+                {
+                MacroPerType( callOutputTypeSetTab, NMStreamingImageFileWriterWrapper_Internal )
+                default:
+                    break;
+                }
+            }
+        }
+    }
+}
 
 void
 NMStreamingImageFileWriterWrapper
@@ -364,17 +548,23 @@ NMStreamingImageFileWriterWrapper
 		break;
 	}
 
-	otb::AttributeTable::Pointer tab = imgWrapper->getOTBTab();
-	unsigned int tabIdx = 1;
-	if (tab.IsNotNull())
-	{
-		switch(this->mOutputComponentType)
-		{
-		MacroPerType( callOutputTypeSetTab, NMStreamingImageFileWriterWrapper_Internal )
-		default:
-			break;
-		}
-	}
+    // only if we haven't got an externally specified table,
+    // we use the one, which comes with the data object
+    QVariant param = this->getParameter("InputTables");
+    if (!param.isValid())
+    {
+        otb::AttributeTable::Pointer tab = imgWrapper->getOTBTab();
+        unsigned int tabIdx = 1;
+        if (tab.IsNotNull())
+        {
+            switch(this->mOutputComponentType)
+            {
+            MacroPerType( callOutputTypeSetTab, NMStreamingImageFileWriterWrapper_Internal )
+            default:
+                break;
+            }
+        }
+    }
 }
 
 #ifdef BUILD_RASSUPPORT

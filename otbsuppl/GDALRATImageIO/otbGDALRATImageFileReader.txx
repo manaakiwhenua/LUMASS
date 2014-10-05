@@ -157,10 +157,10 @@ void GDALRATImageFileReader<TOutputImage>::GenerateOutputInformation(void)
 		// NEW in the GDALRATImageFileRader compared to otb::ImageFileReader<...>
 		// since the ImageIOFactory mechanism relies on the file extension, we
 		// have to manually check, whether the current image can be read by GDAL and if so,
-		otb::ImageIOBase::Pointer aio = ImageIOFactory::CreateImageIO(
-				this->GetFileName(), otb::ImageIOFactory::ReadMode);
-
-		gio = dynamic_cast<GDALRATImageIO*>(aio.GetPointer());
+        //		otb::ImageIOBase::Pointer aio = ImageIOFactory::CreateImageIO(
+        //				this->GetFileName(), otb::ImageIOFactory::ReadMode);
+        otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+        //gio = dynamic_cast<GDALRATImageIO*>(aio.GetPointer());
 		if (gio.IsNotNull())
 		{
 			this->SetImageIO(gio);
@@ -170,29 +170,30 @@ void GDALRATImageFileReader<TOutputImage>::GenerateOutputInformation(void)
 		}
 	}
 
-	if (this->GetImageIO() == 0)
-	{
-		this->Print(std::cerr);
-		ImageFileReaderException e(__FILE__, __LINE__);
-		std::ostringstream msg;
-		msg << " Could not create IO object for file "
-				<< this->GetFileName() << std::endl;
-		msg << "  Tried to create one of the following:" << std::endl;
-		std::list<itk::LightObject::Pointer> allobjects =
-				itk::ObjectFactoryBase::CreateAllInstance("otbImageIOBase");
-		for (std::list<itk::LightObject::Pointer>::iterator i =
-				allobjects.begin(); i != allobjects.end(); ++i)
-		{
-			otb::ImageIOBase* io =
-					dynamic_cast<otb::ImageIOBase*>(i->GetPointer());
-			msg << "    " << io->GetNameOfClass() << std::endl;
-		}
-		msg << "  You probably failed to set a file suffix, or" << std::endl;
-		msg << "    set the suffix to an unsupported type." << std::endl;
-		e.SetDescription(msg.str().c_str());
-		throw e;
-		return;
-	}
+    // The whole point of this class is to use the GDALRATImageIO, so let's disable this
+    //	if (this->GetImageIO() == 0)
+    //	{
+    //		this->Print(std::cerr);
+    //		ImageFileReaderException e(__FILE__, __LINE__);
+    //		std::ostringstream msg;
+    //		msg << " Could not create IO object for file "
+    //				<< this->GetFileName() << std::endl;
+    //		msg << "  Tried to create one of the following:" << std::endl;
+    //		std::list<itk::LightObject::Pointer> allobjects =
+    //				itk::ObjectFactoryBase::CreateAllInstance("otbImageIOBase");
+    //		for (std::list<itk::LightObject::Pointer>::iterator i =
+    //				allobjects.begin(); i != allobjects.end(); ++i)
+    //		{
+    //			otb::ImageIOBase* io =
+    //					dynamic_cast<otb::ImageIOBase*>(i->GetPointer());
+    //			msg << "    " << io->GetNameOfClass() << std::endl;
+    //		}
+    //		msg << "  You probably failed to set a file suffix, or" << std::endl;
+    //		msg << "    set the suffix to an unsupported type." << std::endl;
+    //		e.SetDescription(msg.str().c_str());
+    //		throw e;
+    //		return;
+    //	}
 
 	// Special actions for the gdal image IO
 	if (strcmp(this->GetImageIO()->GetNameOfClass(), "GDALRATImageIO") == 0)

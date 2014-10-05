@@ -27,12 +27,17 @@
 #include "itkImageRegion.h"
 #include "otbImage.h"
 #include "otbVectorImage.h"
+#include "itkRGBPixel.h"
 #include "NMMacros.h"
 
 template <class PixelType, unsigned int ImageDimension>
 class NMItkDataObjectWrapper_Internal
 {
 public:
+    typedef itk::RGBPixel< PixelType >                  RGBPixelType;
+    typedef otb::Image< RGBPixelType, ImageDimension >  RGBImgType;
+    typedef typename RGBImgType::RegionType             RGBImgRegType;
+
     typedef otb::Image<PixelType, ImageDimension> ImgType;
     typedef typename ImgType::RegionType ImgRegType;
     typedef otb::VectorImage<PixelType, ImageDimension> VecType;
@@ -40,12 +45,30 @@ public:
 
     static void setRegion(itk::DataObject::Pointer& dataObj,
                           NMItkDataObjectWrapper::NMRegionType& regType,
-                          void* regObj, unsigned int numBands)
+                          void* regObj, unsigned int numBands, bool rgbMode)
     {
         if (numBands == 1)
         {
             ImgType* img = dynamic_cast<ImgType*>(dataObj.GetPointer());
             ImgRegType* reg = (ImgRegType*)regObj;
+
+            switch(regType)
+            {
+                case NMItkDataObjectWrapper::NM_BUFFERED_REGION:
+                    img->SetBufferedRegion(*reg);
+                    break;
+                case NMItkDataObjectWrapper::NM_REQUESTED_REGION:
+                    img->SetRequestedRegion(*reg);
+                    break;
+                case NMItkDataObjectWrapper::NM_LARGESTPOSSIBLE_REGION:
+                    img->SetLargestPossibleRegion(*reg);
+                    break;
+            }
+        }
+        else if (numBands == 3 && rgbMode)
+        {
+            RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj.GetPointer());
+            RGBImgRegType* reg = (RGBImgRegType*)regObj;
 
             switch(regType)
             {
@@ -87,15 +110,15 @@ public:
     { \
     case 1: \
         NMItkDataObjectWrapper_Internal<comptype, 1>::setRegion( \
-            mDataObject, regType, regObj, mNumBands); \
+            mDataObject, regType, regObj, mNumBands, mIsRGBImage); \
         break; \
     case 2: \
         NMItkDataObjectWrapper_Internal<comptype, 2>::setRegion( \
-            mDataObject, regType, regObj, mNumBands); \
+            mDataObject, regType, regObj, mNumBands, mIsRGBImage); \
         break; \
     case 3: \
         NMItkDataObjectWrapper_Internal<comptype, 3>::setRegion( \
-            mDataObject, regType, regObj, mNumBands); \
+            mDataObject, regType, regObj, mNumBands, mIsRGBImage); \
         break; \
     }\
 }
@@ -106,6 +129,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent)//, itk::DataObje
 	this->mDataObject = 0;
 	this->mNumBands = 0;
 	this->mNumDimensions = 1;
+    this->mIsRGBImage = false;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
@@ -115,6 +139,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
 	this->mStringObject = str;
 	this->mNumBands = 0;
 	this->mNumDimensions = 0;
+    this->mIsRGBImage = false;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject *parent, itk::DataObject* obj,
@@ -125,6 +150,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject *parent, itk::DataObject*
 	this->setItkComponentType(type);
 	this->setNumDimensions(numDims);
 	this->setNumBands(numBands);
+    this->mIsRGBImage = false;
 }
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(
@@ -137,6 +163,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(
 	this->mNMComponentType = w->getNMComponentType();
 	this->mNumDimensions = w->getNumDimensions();
 	this->mNumBands = w->getNumBands();
+    this->mIsRGBImage = w->getIsRGBImage();
 }
 
 NMItkDataObjectWrapper::~NMItkDataObjectWrapper()
@@ -152,6 +179,7 @@ NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectW
 	this->mNMComponentType = w->getNMComponentType();
 	this->mNumDimensions = w->getNumDimensions();
 	this->mNumBands = w->getNumBands();
+    this->mIsRGBImage = w->getIsRGBImage();
 
 	return *this;
 }

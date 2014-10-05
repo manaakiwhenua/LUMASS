@@ -60,6 +60,7 @@ class NMImageReader : public NMProcess
 {
 	Q_OBJECT
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
+    Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
 
 #ifdef BUILD_RASSUPPORT	
 	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)

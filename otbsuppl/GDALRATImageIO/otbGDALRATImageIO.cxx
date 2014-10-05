@@ -1,4 +1,4 @@
- /****************************	**************************************************
+ /******************************************************************************
  * Created by Alexander Herzig;
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd
  *
@@ -40,6 +40,8 @@
 #include "otbMacro.h"
 #include "otbSystem.h"
 #include "otbImage.h"
+#include "vcl_numeric.h"
+#include "vcl_algorithm.h"
 #include "itkVariableLengthVector.h"
 
 #include "itkMetaDataObject.h"
@@ -364,6 +366,7 @@ void GDALRATImageIO::CloseDataset(void)
 	if (m_Dataset.IsNotNull())
 	{
 		m_Dataset->CloseDataSet();
+        m_Dataset = 0;
 	}
 }
 
@@ -1333,17 +1336,20 @@ void GDALRATImageIO::Write(const void* buffer)
 	GDALDataset* pDs = 0;
 	if (m_ImageUpdateMode && m_CanStreamWrite)
 	{
-		pDs = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
-		if (pDs != 0)
+        // if we use the drivermanagerwrapper class here and the data set has
+        // not been created, it'd throw an exception and the program aborts,
+        // which is not what we want, so therefore this hack ...
+        pDs = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+        if (pDs != 0)
 		{
-			GDALClose(pDs);
-			// in case we've worked on the data set in non-update mode before
-			if (m_Dataset.IsNotNull())
-			{
-				m_Dataset->CloseDataSet();
-			}
-			m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
-					m_FileName);
+            GDALClose(pDs);
+            // in case we've worked on the data set in non-update mode before
+            if (m_Dataset.IsNotNull())
+            {
+                m_Dataset->CloseDataSet();
+            }
+            m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
+                    m_FileName);
 			pDs = m_Dataset->GetDataSet();
 			//NMDebugAI(<< "opened " << m_FileName.c_str() << " in update mode!" << std::endl);
 			otbDebugMacro(<< "opened '" << m_FileName << "' in update mode.");
@@ -1504,44 +1510,105 @@ void GDALRATImageIO::Write(const void* buffer)
 	{
 		// We only wrote data to the memory dataset
 		// Now write it to the real file with CreateCopy()
-		std::string gdalDriverShortName = FilenameToGdalDriverShortName(
-				m_FileName);
-		std::string realFileName = GetGdalWriteImageFileName(
-				gdalDriverShortName, m_FileName);
+        //		std::string gdalDriverShortName = FilenameToGdalDriverShortName(
+        //				m_FileName);
+        //		std::string realFileName = GetGdalWriteImageFileName(
+        //				gdalDriverShortName, m_FileName);
 
-		GDALDriver* driver =
-				GDALDriverManagerWrapper::GetInstance().GetDriverByName(
-						gdalDriverShortName);
-		if (driver == NULL)
-		{
-			itkExceptionMacro(
-					<< "Unable to instantiate driver " << gdalDriverShortName << " to write " << m_FileName);
-		}
+        //		GDALDriver* driver =
+        //				GDALDriverManagerWrapper::GetInstance().GetDriverByName(
+        //						gdalDriverShortName);
+        //		if (driver == NULL)
+        //		{
+        //			itkExceptionMacro(
+        //                    << "Unable to instantiate driver " << gdalDriverShortName
+        //                        << " to write " << m_FileName);
+        //		}
 
-		// handle creation options
-		char ** option = 0;
-		if (gdalDriverShortName.compare("JPEG") == 0)
-		{
-			// If JPEG, set the JPEG compression quality to 95.
-			option = CSLAddNameValue(option, "QUALITY", "95");
+        //		// handle creation options
+        //		char ** option = 0;
+        //		if (gdalDriverShortName.compare("JPEG") == 0)
+        //		{
+        //			// If JPEG, set the JPEG compression quality to 95.
+        //			option = CSLAddNameValue(option, "QUALITY", "95");
 
-		}
-		else if (gdalDriverShortName.compare("HFA") == 0)
-		{
-			option = CSLAddNameValue(option, "COMPRESSED", "YES");
-			option = CSLAddNameValue(option, "IGNOREUTM", "YES");
-		}
-		else if (gdalDriverShortName.compare("GTiff") == 0)
-		{
-			option = CSLAddNameValue(option, "COMPRESS", "LZW");
-		}
+        //		}
+        //		else if (gdalDriverShortName.compare("HFA") == 0)
+        //		{
+        //			option = CSLAddNameValue(option, "COMPRESSED", "YES");
+        //			option = CSLAddNameValue(option, "IGNOREUTM", "YES");
+        //		}
+        //		else if (gdalDriverShortName.compare("GTiff") == 0)
+        //		{
+        //			option = CSLAddNameValue(option, "COMPRESS", "LZW");
+        //		}
 
-		GDALDataset* hOutputDS = driver->CreateCopy(realFileName.c_str(),
-				m_Dataset->GetDataSet(), FALSE, option, NULL, NULL);
+        GDALDataset* hOutputDS = CreateCopy();
+        //                driver->CreateCopy(realFileName.c_str(),
+        //				m_Dataset->GetDataSet(), FALSE, option, NULL, NULL);
+
+        //        if (gdalDriverShortName.compare("HFA") == 0)
+        //        {
+        //            for (int t=0; t < this->m_vecRAT.size(); ++t)
+        //            {
+        //                hOutputDS->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE",
+        //                                                                             "thematic");
+        //                hOutputDS->GetRasterBand(t+1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
+        //                                                                             "direct");
+        //            }
+        //        }
+
+
 		GDALClose(hOutputDS);
 	}
 
 	//NMDebugCtx(ctx, << "done!");
+}
+
+void
+GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
+{
+    if (resamplingType.compare("NONE") == 0)
+    {
+        return;
+    }
+
+    if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+    {
+        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+        if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+        {
+            std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+            return;
+        }
+     }
+
+    GDALDataset* ds = m_Dataset->GetDataSet();
+    if (ds->GetRasterCount() == 0)
+    {
+        return;
+    }
+
+    int pix = vcl_min(ds->GetRasterXSize(), ds->GetRasterYSize());
+
+    std::vector<int> factorList;
+    double exp = 1;
+    double factor = static_cast<int>(vcl_pow(2,exp));
+    while ((pix / factor) > 32 )
+    {
+        factorList.push_back(factor);
+        ++exp;
+        factor = static_cast<int>(vcl_pow(2,exp));
+    }
+
+    ds->BuildOverviews(resamplingType.c_str(),
+                       factorList.size(),
+                       (int*)(&factorList[0]),
+                       0,
+                       0,
+                       GDALDummyProgress,
+                       0);
+
 }
 
 /** TODO : Methode WriteImageInformation non implementee */
@@ -1749,13 +1816,13 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     	if (this->m_UseCompression)
     		papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "YES");
     	papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "YES");
+
      }
 
     m_Dataset = GDALDriverManagerWrapper::GetInstance().Create(
                      driverShortName,
                      GetGdalWriteImageFileName(driverShortName, m_FileName),
                      totalRegionCols, totalRegionLines,
-                     //m_Dimensions[0], m_Dimensions[1],
                      m_NbBands, m_PxType->pixType,
                      papszOptions);
     }
@@ -1768,8 +1835,6 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     std::ostringstream stream;
     stream << "MEM:::"
            <<  "DATAPOINTER=" << (unsigned long)(buffer) << ","
-           //<<  "PIXELS=" << m_Dimensions[0] << ","
-           //<<  "LINES=" << m_Dimensions[1] << ","
            <<  "PIXELS=" << totalRegionCols << ","
            <<  "LINES=" << totalRegionLines << ","
            <<  "BANDS=" << m_NbBands << ","
@@ -1790,6 +1855,21 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   /*----------------------------------------------------------------------*/
   /*-------------------------- METADATA ----------------------------------*/
   /*----------------------------------------------------------------------*/
+
+  /* -------------------------------------------------------------------- */
+  /* Set the LAYER_TYPE for HFA-based raster bands                        */
+  /* -------------------------------------------------------------------- */
+  if (driverShortName.compare("HFA") == 0)
+  {
+      for (int t=0; t < this->m_vecRAT.size(); ++t)
+      {
+          m_Dataset->GetDataSet()->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE",
+                                                                       "thematic");
+          m_Dataset->GetDataSet()->GetRasterBand(t+1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
+                                                                       "direct");
+      }
+  }
+
 
   // Now initialize the itk dictionary
   itk::MetaDataDictionary& dict = this->GetMetaDataDictionary();
@@ -2258,6 +2338,101 @@ GDALRATImageIO::setRasterAttributeTable(AttributeTable* rat, int band)
 	this->m_vecRAT[band-1] = rat;
 }
 
+
+bool
+GDALRATImageIO::TableStructureChanged(AttributeTable::Pointer tab, unsigned int iBand)
+{
+    m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+    if (m_Dataset->GetDataSet() == 0)
+        return false;
+
+#ifdef GDAL_NEWRATAPI
+    GDALRasterAttributeTable* gdaltab = m_Dataset->GetDataSet()->GetRasterBand(iBand)->GetDefaultRAT();
+#else
+    const GDALRasterAttributeTable* gdaltab = m_Dataset->GetDataSet()->GetRasterBand(iBand)->GetDefaultRAT();
+#endif
+
+    if (gdaltab == 0)
+    {
+        m_Dataset->CloseDataSet();
+        return false;
+    }
+
+    int curNumCols = gdaltab->GetColumnCount();
+    int newNumCols = tab->GetNumCols();
+    if (curNumCols != newNumCols)
+    {
+        m_Dataset->CloseDataSet();
+        return true;
+    }
+
+    for (int c=0; c < curNumCols; ++c)
+    {
+        if (tab->GetColumnName(c).compare(gdaltab->GetNameOfCol(c)) != 0)
+        {
+            m_Dataset->CloseDataSet();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+GDALDataset* GDALRATImageIO::CreateCopy()
+{
+    // We only wrote data to the memory dataset
+    // Now write it to the real file with CreateCopy()
+    std::string gdalDriverShortName = FilenameToGdalDriverShortName(
+            m_FileName);
+    std::string realFileName = GetGdalWriteImageFileName(
+            gdalDriverShortName, m_FileName);
+
+    GDALDriver* driver =
+            GDALDriverManagerWrapper::GetInstance().GetDriverByName(
+                    gdalDriverShortName);
+    if (driver == NULL)
+    {
+        itkExceptionMacro(
+                << "Unable to instantiate driver " << gdalDriverShortName
+                    << " to write " << m_FileName);
+    }
+
+    // handle creation options
+    char ** option = 0;
+    if (gdalDriverShortName.compare("JPEG") == 0)
+    {
+        // If JPEG, set the JPEG compression quality to 95.
+        option = CSLAddNameValue(option, "QUALITY", "95");
+
+    }
+    else if (gdalDriverShortName.compare("HFA") == 0)
+    {
+        option = CSLAddNameValue(option, "COMPRESSED", "YES");
+        option = CSLAddNameValue(option, "IGNOREUTM", "YES");
+    }
+    else if (gdalDriverShortName.compare("GTiff") == 0)
+    {
+        option = CSLAddNameValue(option, "COMPRESS", "LZW");
+    }
+
+    GDALDataset* hOutputDS = driver->CreateCopy(realFileName.c_str(),
+            m_Dataset->GetDataSet(), FALSE, option, NULL, NULL);
+
+    if (gdalDriverShortName.compare("HFA") == 0 && hOutputDS != 0)
+    {
+        for (int t=0; t < this->m_vecRAT.size(); ++t)
+        {
+            hOutputDS->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE",
+                                                                         "thematic");
+            hOutputDS->GetRasterBand(t+1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
+                                                                         "direct");
+        }
+    }
+
+    return hOutputDS;
+}
+
+
 void
 GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 {
@@ -2265,21 +2440,25 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	// we just do an independent write of the RAT into the data set
 	// (i.e. outside any pipeline activities ...)
 	GDALDataset* ds;
-	if (m_Dataset.IsNull())
+    if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
 	{
-		m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
-		if (m_Dataset.IsNull())
-			return;
+        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+        if (m_Dataset.IsNull())
+        {
+            std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+            return;
+        }
 	}
 
 	// data set already available?
-	ds = m_Dataset->GetDataSet();
-	if (ds == 0)
-	{
-		//itkWarningMacro(<< "ReadRAT: unable to access data set!");
-		//itkExceptionMacro(<< "ReadRAT: unable to access data set!");
-		return;
-	}
+    ds = m_Dataset->GetDataSet();
+    if (ds == 0)
+    {
+        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+        itkWarningMacro(<< "ReadRAT: unable to access data set!");
+        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+        return;
+    }
 
 	// how many bands? (band index is 1-based)
 	if (ds->GetRasterCount() < iBand)
@@ -2299,7 +2478,19 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
     GDALRasterAttributeTable* gdaltab = new GDALRasterAttributeTable();
 #endif
 
-    gdaltab->SetRowCount(tab->GetNumRows());
+
+    int rowcount = tab->GetNumRows();
+    // if we've got an IMAGINE file with UCHAR data type, we create
+    // a table with at least 256 rows, otherwise ERDAS Imagine wouldn't like it
+    GDALDriverH driver = GDALGetDatasetDriver(m_Dataset->GetDataSet());
+    std::string dsn = GDALGetDriverShortName(driver);
+    if (dsn.compare("HFA") == 0 && this->m_ComponentType == otb::ImageIOBase::UCHAR)
+    {
+        rowcount = rowcount < 256 ? 256 : rowcount;
+    }
+
+    //gdaltab->SetRowCount(tab->GetNumRows());
+    gdaltab->SetRowCount(rowcount);
 
 	// add the category field "Value"
 	//gdaltab->CreateColumn("Value", GFT_Integer, GFU_MinMax);
@@ -2363,7 +2554,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	}
 
 	// associate the table with the band
-	err = band->SetDefaultRAT(gdaltab);
+    err = band->SetDefaultRAT(gdaltab);
 	if (err == CE_Failure)
 	{
         delete gdaltab;
@@ -2371,14 +2562,15 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	}
 	ds->FlushCache();
 
-	// if we don't close the data set here, the RAT is not written properly to disk
-	// (not quite sure why that's not done when m_Dataset runs out of scope(?)
-	m_Dataset->CloseDataSet();
+    // if we don't close the data set here, the RAT is not written properly to disk
+    // (not quite sure why that's not done when m_Dataset runs out of scope(?)
+    m_Dataset->CloseDataSet();
 
-	// need an open data set for writing the actual image later on;
-	// when we're only updating the RAT, the data sets gets closed as soon as
-	// the data set run's out of scope
-	m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+    // need an open data set for writing the actual image later on;
+    // when we're only updating the RAT, the data sets gets closed as soon as
+    // the data set run's out of scope
+    m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+
 	delete gdaltab;
 }
 

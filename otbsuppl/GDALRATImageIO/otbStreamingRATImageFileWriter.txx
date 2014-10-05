@@ -88,6 +88,8 @@ StreamingRATImageFileWriter<TInputImage>
   //this->SetAutomaticTiledStreaming();
   this->SetAutomaticStrippedStreaming();
 
+  m_ResamplingType = "NONE";
+
   m_RATHaveBeenWritten = false;
   m_UseForcedLPR = false;
   m_UseUpdateRegion = false;
@@ -740,6 +742,15 @@ StreamingRATImageFileWriter<TInputImage>
     // Start writing stream region in the image file
     this->GenerateData();
     }
+
+  /** build overviews */
+  if (m_ResamplingType.compare("NONE") != 0)
+  {
+      if (gio != 0)
+      {
+          gio->BuildOverviews(m_ResamplingType);
+      }
+  }
 
   /**
    * If we ended due to aborting, push the progress up to 1.0 (since

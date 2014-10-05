@@ -193,6 +193,8 @@ public:
    */
   void WriteRAT(AttributeTable::Pointer tab, unsigned int iBand=1);
 
+  /** Builds overviews for all available bands in the file */
+  void BuildOverviews(const std::string& resamplingType);
 
   unsigned int* getLPR(void)
   {return this->m_LPRDimensions;}
@@ -259,6 +261,11 @@ private:
   std::string GetGdalWriteImageFileName(const std::string& gdalDriverShortName, const std::string& filename) const;
 
   std::string FilenameToGdalDriverShortName(const std::string& name) const;
+
+  /** if we're editing solely the RAT, we perform this check */
+  bool TableStructureChanged(AttributeTable::Pointer tab, unsigned int iBand);
+
+  GDALDataset* CreateCopy();
 
 
   /** GDAL parameters. */

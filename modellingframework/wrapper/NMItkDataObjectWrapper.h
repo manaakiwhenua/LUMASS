@@ -56,6 +56,7 @@ public:
 	NMPropertyGetSet(NMComponentType, NMComponentType);
 	NMPropertyGetSet(NumDimensions, unsigned int);
 	NMPropertyGetSet(NumBands, unsigned int);
+    NMPropertyGetSet(IsRGBImage, bool)
 
 	void setDataObject(itk::DataObject* obj)
 		{this->mDataObject = obj;}
@@ -95,6 +96,7 @@ private:
 	NMComponentType mNMComponentType;
 	unsigned int mNumDimensions;
 	unsigned int mNumBands;
+    bool mIsRGBImage;
 
 	QString mStringObject;
 

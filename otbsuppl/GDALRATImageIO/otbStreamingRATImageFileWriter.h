@@ -212,10 +212,16 @@ public:
     this->Modified();
   }
 
+  /** Set the resampling type for building pyramids
+      (note: currently ignored for rasdaman) */
+  itkSetStringMacro(ResamplingType)
+  itkGetStringMacro(ResamplingType)
+
+
   /** Specify the region to write. If left NULL, then the whole image
    * is written. */
   void SetIORegion(const itk::ImageIORegion& region);
-  itkGetConstReferenceMacro(IORegion, itk::ImageIORegion);
+  itkGetConstReferenceMacro(IORegion, itk::ImageIORegion)
 
   /** Set the compression On or Off */
   itkSetMacro(UseCompression, bool);
@@ -327,6 +333,7 @@ private:
 
   /** ImageFileWriter Parameters */
   std::string m_FileName;
+  std::string m_ResamplingType;
 
   otb::ImageIOBase::Pointer m_ImageIO;
 

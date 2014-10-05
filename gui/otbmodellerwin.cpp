@@ -142,6 +142,11 @@
 #include "itkVectorContainer.h"
 #include "itkStreamingImageFilter.h"
 
+// FOR ::test function
+#include "itkFloodFilledImageFunctionConditionalIterator.h"
+#include "itkBinaryThresholdImageFunction.h"
+#include "otbDEMSlopeAspectFilter.h"
+
 
 
 // VTK
@@ -316,6 +321,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionRemoveAllObjects, SIGNAL(triggered()), this, SLOT(removeAllObjects()));
     connect(ui->actionFullExtent, SIGNAL(triggered()), this, SLOT(zoomFullExtent()));
     connect(ui->actionSaveAsVTKPolyData, SIGNAL(triggered()), this, SLOT(saveAsVtkPolyData()));
+    connect(ui->actionSave_As_Image_File, SIGNAL(triggered()), this ,SLOT(saveImageFile()));
+    connect(ui->actionSave_Visible_Extent_Overview_As, SIGNAL(triggered()), this ,SLOT(saveImageFile()));
     connect(ui->actionTest, SIGNAL(triggered()), this, SLOT(test()));
     connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
     connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
@@ -922,6 +929,110 @@ void OtbModellerWin::saveAsVectorLayerOGR(void)
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
+void
+OtbModellerWin::saveImageFile()
+{
+    QObject* obj = this->sender();
+    QAction* aobj = qobject_cast<QAction*>(obj);
+    if (aobj->text().compare(QString("Save Visible Extent/Overview As ...")) == 0)
+    {
+        this->saveAsImageFile(true);
+    }
+    else
+    {
+        this->saveAsImageFile(false);
+    }
+}
+
+void OtbModellerWin::saveAsImageFile(bool onlyVisImg)
+{
+    // get the selected layer
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l == 0)
+        return;
+
+    // make sure, we've got a vector layer
+    if (l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+        return;
+
+    // get the vector layer
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+
+    QString fileName = QFileDialog::getSaveFileName(this,
+            QString("Save As Image File"),
+            QString("~/%1.kea").arg(l->objectName()));
+    if (fileName.isNull())
+        return;
+
+    NMModelController* ctrl = NMModelController::getInstance();
+
+    // ---------------- SET UP INPUT ----------------------
+    NMItkDataObjectWrapper* dw = il->getImage();
+    NMDataComponent* dc = new NMDataComponent();
+    dc->setObjectName("DataBuffer");
+    QString bufCompName = ctrl->addComponent(dc);
+    dc->setInput(dw);
+
+    // ----------------- SET UP READER IF APPLICABLE--------
+    QString srcFileName = il->getFileName();
+    QFileInfo fifo(srcFileName);
+    QString readerCompName;
+    bool bReader = false;
+    if (!onlyVisImg && fifo.isFile() && fifo.isReadable())
+    {
+        bReader = true;
+
+        // SET UP THE READER Process
+        NMImageReader* readerProc = new NMImageReader();
+        readerProc->setFileNames(QStringList(srcFileName));
+        readerProc->setImgTypeSpec(dw);
+
+        NMSequentialIterComponent* readerComp =
+                new NMSequentialIterComponent();
+        readerComp->setObjectName("ImageReader");
+        readerComp->setProcess(readerProc);
+        readerCompName = ctrl->addComponent(readerComp);
+    }
+
+    // ---------------- SET UP WRITER ---------------------
+    // create the process
+    NMStreamingImageFileWriterWrapper* writerProc =
+                new NMStreamingImageFileWriterWrapper();
+    writerProc->setFileNames(QStringList(fileName));
+    writerProc->setImgTypeSpec(dw);
+    writerProc->setInputTables(QStringList(bufCompName));
+    writerProc->setPyramidResamplingType(QString("NEAREST"));
+
+    // create host component
+    NMSequentialIterComponent* writerComp =
+                new NMSequentialIterComponent();
+    writerComp->setObjectName("ImageWriter");
+    writerComp->setProcess(writerProc);
+
+    QString writerCompName = ctrl->addComponent(writerComp);
+    QList<QStringList> llst;
+    QStringList lst;
+
+    if (bReader)
+    {
+        lst << readerCompName;
+    }
+    else
+    {
+        lst << bufCompName;
+    }
+
+    llst << lst;
+    writerComp->setInputs(llst);
+
+    // ---- CONTROLLER DOES THE REST ------
+    ctrl->executeModel(writerComp->objectName());
+    QStringList del;
+    del << readerCompName << bufCompName << writerCompName;
+    ctrl->deleteLater(del);
+
+}
+
 void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 {
 	//NMDebugCtx(ctxOtbModellerWin, << "...");
@@ -1054,17 +1165,91 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    QString test = QInputDialog::getText(this, "", "test string=", QLineEdit::Normal,
-                                         "/home/file/rad_$AggrComp5$_$AggrComp13$.kea");
+    QString fileName = QFileDialog::getOpenFileName(this,
+         tr("Open Image"), "~", tr("All Image Files (*.*)"));
+    if (fileName.isNull())
+        return;
 
-    QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]?)(\\d*)\\$");
-    int pos = 0; //rex.indexIn(test); //) != -1)
-    while((pos = rex.indexIn(test, pos)) != -1)
-    {
-        QStringList m = rex.capturedTexts();
-        NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
-        pos += rex.matchedLength();
-    }
+//    QFileInfo fifo(fileName);
+//    QString path = fifo.dir().absolutePath();
+//    QString outfilename = QString("%1/flood.kea").arg(path);
+
+    //QString fileName = "/home/alex/img/a-flood.kea";
+    QString outfilename = "/home/alex/img/a-test_out.kea";
+
+    typedef otb::Image< float, 2 > ImgType;
+    typedef otb::GDALRATImageFileReader< ImgType > ReaderType;
+    typedef otb::StreamingRATImageFileWriter< ImgType > WriterType;
+    typedef itk::BinaryThresholdImageFunction< ImgType, float > ImgFuncType;
+    typedef itk::FloodFilledImageFunctionConditionalIterator< ImgType, ImgFuncType > FloodItType;
+    typedef otb::DEMSlopeAspectFilter< ImgType, ImgType > SlopeFilterType;
+
+    // =========== READ INPUT ======================
+    typename ReaderType::Pointer reader = ReaderType::New();
+    otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+    gio->SetFileName(fileName.toStdString());
+    reader->SetImageIO(gio);
+    reader->SetFileName(fileName.toStdString());
+    //reader->Update();
+    ImgType::Pointer inImg = reader->GetOutput();
+    ImgType::SpacingType outspacing = inImg->GetSpacing();
+    ImgType::PointType origin = inImg->GetOrigin();
+
+
+    // =========== CREATE OUTPUT IMAGE ======================
+    //    ImgType::Pointer outImg = ImgType::New();
+    //    outImg->SetRegions(inImg->GetLargestPossibleRegion());
+    //    outImg->SetSpacing(outspacing);
+    //    outImg->SetOrigin(origin);
+    //    outImg->Allocate();
+    //    outImg->FillBuffer(0);
+    //    float* outbuf = outImg->GetBufferPointer();
+
+
+    // =============== DO FLOOD MAGIC ====================
+    //    ImgFuncType::Pointer func = ImgFuncType::New();
+    //    func->SetInputImage(inImg);
+    //    func->ThresholdBetween(0,40);
+
+    //    itk::Index<2> sp;
+    //    sp[0] = 12;
+    //    sp[1] = 3;
+
+    //    itk::Index<2> sp2;
+    //    sp2[0] = 20;
+    //    sp2[1] = 0;
+
+    //    std::vector<itk::Index<2> > seeds;
+    //    seeds.push_back(sp);
+    //    //seeds.push_back(sp2);
+
+    //    FloodItType it(inImg, func);//, seeds);
+    //    it.FindSeedPixels();
+    //    it.GoToBegin();
+
+    //    while(!it.IsAtEnd())
+    //    {
+    //        ImgType::OffsetValueType offset = inImg->ComputeOffset(it.GetIndex());
+    //        outbuf[offset] = 1;
+    //        ++it;
+    //    }
+
+    typename SlopeFilterType::Pointer slopeFilter = SlopeFilterType::New();
+    slopeFilter->SetGradientAlgorithm(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_HORN);
+    slopeFilter->SetGradientUnit(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_ASPECT);
+    slopeFilter->SetInput(reader->GetOutput());
+
+    // ================ WRITE RESULTS ======================
+
+    WriterType::Pointer writer = WriterType::New();
+    otb::GDALRATImageIO::Pointer outgio = otb::GDALRATImageIO::New();
+    outgio->SetFileName(outfilename.toStdString());
+    writer->SetImageIO(outgio);
+    writer->SetFileName(outfilename.toStdString());
+    //writer->SetInput(outImg);
+    writer->SetInput(slopeFilter->GetOutput());
+    writer->SetResamplingType("NEAREST");
+    writer->Update();
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");

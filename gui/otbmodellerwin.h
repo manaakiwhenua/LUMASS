@@ -132,6 +132,7 @@ public slots:
 	void saveAsVtkPolyData();
 	void test();
 	void saveAsVectorLayerOGR();
+    void saveImageFile();
 	void updateLayerInfo(NMLayer* l, double cellId);
 	void importODBC();
 	void aboutLUMASS();
@@ -143,7 +144,9 @@ public slots:
 
 
 protected:
-//	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
+    void saveAsImageFile(bool onlyVisImg);
+
+    //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
 	vtkSmartPointer<vtkPolyData> OgrToVtkPolyData(OGRDataSource& ds);
 
 	// those conversion functions are dealing as well with the particular "Multi-"

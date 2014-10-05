@@ -209,6 +209,8 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         for (unsigned int p=0; p < nprop; ++p)
         {
             QMetaProperty property = meta->property(p);
+            if (QString(property.name()).endsWith("Enum"))
+                continue;
             this->createPropertyEdit(property, obj);
         }
 
@@ -268,6 +270,8 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         for (unsigned int p=0; p < nprop; ++p)
         {
             QMetaProperty property = procmeta->property(p);
+            if (QString(property.name()).endsWith("Enum"))
+                continue;
             this->createPropertyEdit(property, proc);
         }
     }
@@ -468,6 +472,23 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         value = QVariant::fromValue(bracedList);
         prop = manager->addProperty(QVariant::StringList, propName);
         propToolTip = tr("QList<QList<QStringList> >");
+    }
+    else if (QString("QString").compare(property.typeName()) == 0
+             && propName.endsWith("Type")
+             && obj->property(QString("%1Enum")
+                              .arg(propName.left(propName.size()-4)
+                                   ).toStdString().c_str())
+                != QVariant::Invalid)
+    {
+        // let's see whether we've got Type/Enum property pair
+        QString tname(property.name());
+        QString enumProp = QString("%1Enum").arg(tname.left(tname.size()-4));
+        QStringList typeList = obj->property(enumProp.toStdString().c_str()).toStringList();
+
+        propType = QtVariantPropertyManager::enumTypeId();
+        prop = manager->addProperty(propType, propName);
+        prop->setAttribute("enumNames", typeList);
+        value = obj->property(property.name());
     }
     else
     {

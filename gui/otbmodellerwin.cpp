@@ -146,6 +146,7 @@
 #include "itkFloodFilledImageFunctionConditionalIterator.h"
 #include "itkBinaryThresholdImageFunction.h"
 #include "otbDEMSlopeAspectFilter.h"
+#include "otbFlowAccumulationFilter.h"
 
 
 
@@ -1028,7 +1029,11 @@ void OtbModellerWin::saveAsImageFile(bool onlyVisImg)
     // ---- CONTROLLER DOES THE REST ------
     ctrl->executeModel(writerComp->objectName());
     QStringList del;
-    del << readerCompName << bufCompName << writerCompName;
+    del << bufCompName << writerCompName;
+    if (!onlyVisImg)
+    {
+        del << readerCompName;
+    }
     ctrl->deleteLater(del);
 
 }
@@ -1165,16 +1170,16 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    QString fileName = QFileDialog::getOpenFileName(this,
-         tr("Open Image"), "~", tr("All Image Files (*.*)"));
-    if (fileName.isNull())
-        return;
+//    QString fileName = QFileDialog::getOpenFileName(this,
+//         tr("Open Image"), "~", tr("All Image Files (*.*)"));
+//    if (fileName.isNull())
+//        return;
 
 //    QFileInfo fifo(fileName);
 //    QString path = fifo.dir().absolutePath();
 //    QString outfilename = QString("%1/flood.kea").arg(path);
 
-    //QString fileName = "/home/alex/img/a-flood.kea";
+    QString fileName = "/home/alex/img/a-flood.kea";
     QString outfilename = "/home/alex/img/a-test_out.kea";
 
     typedef otb::Image< float, 2 > ImgType;
@@ -1182,7 +1187,9 @@ void OtbModellerWin::test()
     typedef otb::StreamingRATImageFileWriter< ImgType > WriterType;
     typedef itk::BinaryThresholdImageFunction< ImgType, float > ImgFuncType;
     typedef itk::FloodFilledImageFunctionConditionalIterator< ImgType, ImgFuncType > FloodItType;
+
     typedef otb::DEMSlopeAspectFilter< ImgType, ImgType > SlopeFilterType;
+    typedef otb::FlowAccumulationFilter< ImgType, ImgType > FlowAccFilterType;
 
     // =========== READ INPUT ======================
     typename ReaderType::Pointer reader = ReaderType::New();
@@ -1234,22 +1241,29 @@ void OtbModellerWin::test()
     //        ++it;
     //    }
 
-    typename SlopeFilterType::Pointer slopeFilter = SlopeFilterType::New();
-    slopeFilter->SetGradientAlgorithm(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_HORN);
-    slopeFilter->SetGradientUnit(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_ASPECT);
-    slopeFilter->SetInput(reader->GetOutput());
+    //    typename SlopeFilterType::Pointer slopeFilter = SlopeFilterType::New();
+    //    slopeFilter->SetGradientAlgorithm(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_HORN);
+    //    slopeFilter->SetGradientUnit(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_ASPECT);
+    //    slopeFilter->SetInput(reader->GetOutput());
+
+    typename FlowAccFilterType::Pointer flowFilter = FlowAccFilterType::New();
+    flowFilter->SetInput(reader->GetOutput());
+    flowFilter->SetOutputFileName(outfilename.toStdString());
+
+    flowFilter->Update();
+
 
     // ================ WRITE RESULTS ======================
 
-    WriterType::Pointer writer = WriterType::New();
-    otb::GDALRATImageIO::Pointer outgio = otb::GDALRATImageIO::New();
-    outgio->SetFileName(outfilename.toStdString());
-    writer->SetImageIO(outgio);
-    writer->SetFileName(outfilename.toStdString());
-    //writer->SetInput(outImg);
-    writer->SetInput(slopeFilter->GetOutput());
-    writer->SetResamplingType("NEAREST");
-    writer->Update();
+//    WriterType::Pointer writer = WriterType::New();
+//    otb::GDALRATImageIO::Pointer outgio = otb::GDALRATImageIO::New();
+//    outgio->SetFileName(outfilename.toStdString());
+//    writer->SetImageIO(outgio);
+//    writer->SetFileName(outfilename.toStdString());
+//    //writer->SetInput(outImg);
+//    writer->SetInput(slopeFilter->GetOutput());
+//    writer->SetResamplingType("NEAREST");
+//    writer->Update();
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
@@ -2077,9 +2091,10 @@ void OtbModellerWin::saveAsVtkPolyData()
 	QFileDialog dlg(this);
 	dlg.setAcceptMode(QFileDialog::AcceptSave);
 	dlg.setFileMode(QFileDialog::AnyFile);
-	dlg.setWindowTitle(tr("Save As VTK PolyData File (binary/XML)"));
+    dlg.setWindowTitle(tr("Save As VTK PolyData File"));
 	dlg.setDirectory("~/");
-    dlg.setNameFilter("XML PolyData (*.vtp);;Binary PolyData (*.vtk)");
+    //dlg.setNameFilter("XML PolyData (*.vtp);;Binary PolyData (*.vtk)");
+    dlg.setNameFilter("VTK PolyData File (*.vtk)");
 
 	QString selectedFilter;
 	QString fileName;
@@ -2096,32 +2111,34 @@ void OtbModellerWin::saveAsVtkPolyData()
 	else
 		return;
 
-	if (selectedFilter == "XML PolyData (*.vtp)")
+//	if (selectedFilter == "XML PolyData (*.vtp)")
+//	{
+//		NMDebugAI(<< "writing XML-file " << fileName.toStdString() << " ..." << endl);
+//		vtkSmartPointer<vtkXMLPolyDataWriter> xw = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+//		//if (xw.GetPointer() == 0)
+//		//{
+//		//	NMDebugAI(<< "XML PolyDataWriter is NULL!");
+//		//	return;
+//		//}
+//        vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+//        vtkPolyData* pd = vtkPolyData::SafeDownCast(ds);
+//        xw->SetInputData(pd);//const_cast<vtkDataSet*>();
+//		xw->SetFileName(fileName.toStdString().c_str());
+//		xw->Write();
+//		//xw->Update();
+//	}
+//	else
+
+    // until we've resolved the issue with the vtkXMLPolyDataWriter we
+    // use the *.vtk ASCII format for its portability across platforms
 	{
-		NMDebugAI(<< "writing XML-file " << fileName.toStdString() << " ..." << endl);
-		vtkSmartPointer<vtkXMLPolyDataWriter> xw = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-		//if (xw.GetPointer() == 0)
-		//{
-		//	NMDebugAI(<< "XML PolyDataWriter is NULL!");
-		//	return;
-		//}
-        xw->SetInputData(const_cast<vtkDataSet*>(l->getDataSet()));
-		xw->SetFileName(fileName.toStdString().c_str());
-		//xw->SetDataModeToAscii();
-		xw->Write();
-		//xw->Update();
-	}
-	else
-	{
-		NMDebugAI(<< "saving binary *.vtk file ..." << endl);
+        NMDebugAI(<< "writing ASCII *.vtk file ..." << endl);
 		vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
 		writer->SetFileName(fileName.toStdString().c_str());
         writer->SetInputData(const_cast<vtkDataSet*>(l->getDataSet()));
-		writer->SetFileTypeToBinary();
+        writer->SetFileTypeToASCII();
 		writer->Update();
 	}
-
-
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

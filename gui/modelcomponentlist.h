@@ -94,6 +94,10 @@ public slots:
 	void mapColourRamp();
     void mapRGBImage();
 	void showValueStats();
+    void mapVectorContoursOnly();
+    void editContourColour();
+    void editContourWidth();
+    void editContourStyle();
 
 	void test();
 
@@ -115,14 +119,17 @@ private:
     NMComponentListItemDelegate* mDelegate;
     QPoint dragStartPosition;
     QMenu* mMenu;
+    QMenu* mContourMenu;
     QModelIndex mIndicatorIdx;
 	static const std::string ctx;
+
 
     QAction* mActUniqueValues;
     QAction* mActSingleSymbol;
     QAction* mActClrTab;
     QAction* mActClrRamp;
     QAction* mActRGBImg;
+    QAction* mActVecContourOnly;
 
     QAction* mActValueStats;
     QAction* mActImageStats;

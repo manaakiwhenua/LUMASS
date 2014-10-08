@@ -60,6 +60,7 @@
 #include "vtkObject.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
+#include "vtkProperty.h"
 #include "QVTKWidget.h"
 
 const std::string ModelComponentList::ctx = "ModelComponentList";
@@ -87,7 +88,14 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	this->reset();
 
-	// init the popup menu
+    // do some stuff we can't do here
+    mDelegate = new NMComponentListItemDelegate(this);
+    this->setItemDelegate(mDelegate);
+
+
+    /* =============================================================
+                        GENERAL LAYER CONTEXT MENU
+    ================================================================ */
 	this->mMenu = new QMenu(this);
 
 	QAction* actZoom = new QAction(this->mMenu);
@@ -124,8 +132,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->mMenu->addAction(mActImageStats);
 	this->mMenu->addSeparator();
     this->mMenu->addAction(mActSingleSymbol);
-    this->mMenu->addAction(mActClrTab);
     this->mMenu->addAction(mActUniqueValues);
+    this->mMenu->addAction(mActClrTab);
     this->mMenu->addAction(mActClrRamp);
     this->mMenu->addAction(mActRGBImg);
 
@@ -145,6 +153,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->connect(mActValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
 
+
 #ifdef DEBUG
 
 	QAction* testing = new QAction(this->mMenu);
@@ -156,23 +165,34 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 #endif
 
-	// do some stuff we can't do here
-	//initView();
-	mDelegate = new NMComponentListItemDelegate(this);
-	this->setItemDelegate(mDelegate);
+
+    /* =============================================================
+                        VECTOR CONTOUR MENU
+    ================================================================ */
+
+    this->mContourMenu = new QMenu(this);
+
+    QAction* actContourColour = new QAction(this->mContourMenu);
+    actContourColour->setText(tr("Contour Colour ..."));
+    QAction* actContourWidth = new QAction(this->mContourMenu);
+    actContourWidth->setText(tr("Contour Width ..."));
+    QAction* actContourStyle = new QAction(this->mContourMenu);
+    actContourStyle->setText(tr("Contour Style ..."));
+    mActVecContourOnly = new QAction(this->mContourMenu);
+    mActVecContourOnly->setText(tr("Map Contours Only"));
+    mActVecContourOnly->setCheckable(true);
+    mActVecContourOnly->setChecked(false);
+
+    this->mContourMenu->addAction(actContourColour);
+    this->mContourMenu->addAction(actContourWidth);
+    this->mContourMenu->addAction(actContourStyle);
+    this->mContourMenu->addAction(mActVecContourOnly);
 
 
-	// connect to some of the qvtkWidget events
-	//OtbModellerWin* win = qobject_cast<OtbModellerWin*>(this->topLevelWidget());
-	//m_vtkConns = vtkSmartPointer<vtkEventQtSlotConnect>::New();
-	//QVTKWidget* vtkWidget = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
-    //
-	//this->m_vtkConns->Connect(vtkWidget->GetRenderWindow()->GetInteractor(),
-    //		vtkCommand::MouseWheelForwardEvent,
-    //		this, SLOT(zoomChanged(vtkObject*)));
-    //this->m_vtkConns->Connect(vtkWidget->GetRenderWindow()->GetInteractor(),
-    //		vtkCommand::MouseWheelBackwardEvent,
-    //		this, SLOT(zoomChanged(vtkObject*)));
+    this->connect(mActVecContourOnly, SIGNAL(triggered()), this, SLOT(mapVectorContoursOnly()));
+    this->connect(actContourColour, SIGNAL(triggered()), this, SLOT(editContourColour()));
+    this->connect(actContourWidth, SIGNAL(triggered()), this, SLOT(editContourWidth()));
+    this->connect(actContourStyle, SIGNAL(triggered()), this, SLOT(editContourStyle()));
 
 }
 
@@ -589,7 +609,11 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		return;
 	}
 
-	if (!idx.parent().isValid())
+    // see whether we've got a layer on the hook
+    NMLayer* l = this->getCurrentLayer();
+    const int level = idx.internalId() % 100;
+
+    if (!idx.parent().isValid())
 	{
 		this->setCurrentIndex(idx);
 
@@ -625,7 +649,6 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
             this->processSelection(false);
 
             // update the menu if we've got an image layer
-            NMLayer* l = this->getCurrentLayer();
             if (l != 0 && l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
             {
                     NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
@@ -665,9 +688,23 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 
                         mActClrRamp->setText("Map Band Value Ramp");
                     }
+
+                    mActVecContourOnly->setVisible(false);
             }
             else
             {
+                NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+                if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+                {
+                    this->mActVecContourOnly->setVisible(true);
+                }
+                else
+                {
+                    this->mActVecContourOnly->setVisible(false);
+                }
+
+                mActRGBImg->setVisible(false);
+
                 mActImageStats->setEnabled(false);
                 mActImageStats->setVisible(false);
                 mActValueStats->setText("Value Field Statistics");
@@ -676,9 +713,146 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 			this->mMenu->move(event->globalPos());
 			this->mMenu->exec();
 		}
-	}
+
+    }
+    else if (   level == 1
+             && idx.row() > 0
+             && l->getLayerType() == NMLayer::NM_VECTOR_LAYER
+            )
+    {
+        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+        if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+        {
+            this->mContourMenu->move(event->globalPos());
+            this->mContourMenu->exec();
+        }
+    }
 
     //NMDebugCtx(ctx, << "done!");
+}
+
+void
+ModelComponentList::editContourColour()
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+    if (   vl == 0
+        || vl->getFeatureType() != NMVectorLayer::NM_POLYGON_FEAT
+       )
+        return;
+
+    QString title = QString("Contour Colour for %1")
+            .arg(l->objectName());
+
+    QColor curclr = vl->getContourColour();
+    QColor clr = QColorDialog::getColor(curclr, this, title);
+
+    if (clr.isValid())
+    {
+        vl->setContourColour(clr);
+    }
+
+    NMGlobalHelper h;
+    h.getVTKWidget()->update();
+}
+
+void
+ModelComponentList::editContourWidth()
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+    if (   vl == 0
+        || vl->getFeatureType() != NMVectorLayer::NM_POLYGON_FEAT
+       )
+        return;
+
+    vtkActor* a = const_cast<vtkActor*>(vl->getContourActor());
+    if (a == 0)
+        return;
+
+    double curWidth = a->GetProperty()->GetLineWidth();
+
+    bool bok;
+    double newWidth = QInputDialog::getDouble(this,
+                        tr("Set Contour Width"),
+                        "Width in Pixel", curWidth, 0, 50, 1, &bok);
+    if (bok)
+    {
+        a->GetProperty()->SetLineWidth(static_cast<float>(newWidth));
+
+        NMGlobalHelper h;
+        h.getVTKWidget()->update();
+    }
+
+}
+
+void
+ModelComponentList::editContourStyle()
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+    if (   vl == 0
+        || vl->getFeatureType() != NMVectorLayer::NM_POLYGON_FEAT
+       )
+        return;
+
+    vtkActor* a = const_cast<vtkActor*>(vl->getContourActor());
+    if (a == 0)
+        return;
+
+    QStringList options;
+    options << "Solid" << "Dashed" << "Dotted";
+
+    bool bok;
+    QString style = QInputDialog::getItem(this,
+                   tr("Select Contour Style"), "",
+                   options, 0, false, &bok);
+
+    if (bok)
+    {
+        if (style == "Solid")
+        {
+            a->GetProperty()->SetLineStipplePattern(0xffff);
+        }
+        else if (style == "Dashed")
+        {
+            a->GetProperty()->SetLineStipplePattern(0xf0f0);
+        }
+        else if (style == "Dotted")
+        {
+            a->GetProperty()->SetLineStipplePattern(0xf00);
+        }
+
+        NMGlobalHelper h;
+        h.getVTKWidget()->update();
+    }
+}
+
+
+void
+ModelComponentList::mapVectorContoursOnly()
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+    if (vl == 0)
+        return;
+
+    vl->setFeaturesVisible(!this->mActVecContourOnly->isChecked());
+
+    NMGlobalHelper h;
+    h.getVTKWidget()->update();
 }
 
 void ModelComponentList::mapRGBImage()

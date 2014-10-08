@@ -77,6 +77,7 @@ NMVectorLayer::NMVectorLayer(vtkRenderWindow* renWin,
 	this->mContourColour = QColor(0, 0, 0, 255);
 
 	this->mLayerIcon = QIcon(":vector_layer.png");
+    this->mContourOnly = false;
 }
 
 NMVectorLayer::~NMVectorLayer()
@@ -173,6 +174,32 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 	this->mRenderer->AddActor(a);
 }
 
+void
+NMVectorLayer::setContourColour(QColor clr)
+{
+    if (this->getFeatureType() != NMVectorLayer::NM_POLYGON_FEAT)
+        return;
+
+    if (this->mContourActor.GetPointer() == 0)
+        return;
+
+    if (clr.isValid())
+    {
+        this->mContourColour = clr;
+    }
+
+    vtkLookupTable* cclrs = vtkLookupTable::SafeDownCast(mContourMapper->GetLookupTable());
+    for(int a=0; a < cclrs->GetNumberOfTableValues(); ++a)
+    {
+        cclrs->SetTableValue(a,
+                             mContourColour.redF(),
+                             mContourColour.greenF(),
+                             mContourColour.blueF(),
+                             mContourColour.alphaF());
+    }
+    this->mContourMapper->Update();
+}
+
 void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 {
 	// set the polydata
@@ -258,7 +285,7 @@ const vtkActor* NMVectorLayer::getContourActor(void)
 
 void NMVectorLayer::setVisible(bool visible)
 {
-	NMDebugCtx(ctxNMVectorLayer, << "...");
+    //NMDebugCtx(ctxNMVectorLayer, << "...");
 
 	if (this->mDataSet == 0)
 		return;
@@ -271,16 +298,22 @@ void NMVectorLayer::setVisible(bool visible)
 		{
 			// now handle all additional parts, that have to
 			// change visibility
-			if (this->mContourActor != 0)
+            if (this->mContourActor != 0)
+            {
 				this->mContourActor->SetVisibility(vis);
+            }
 
-			this->mActor->SetVisibility(vis);
-			this->mIsVisible = visible;
+            if (!mContourOnly)
+            {
+                this->mActor->SetVisibility(vis);
+            }
+
+            this->mIsVisible = visible;
 			emit visibilityChanged(this);
 		}
 	}
 
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
+    //NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
 
 /*double NMVectorLayer::getArea()
@@ -752,13 +785,47 @@ void NMVectorLayer::writeDataSet(void)
 			vtkPolyDataWriter>::New();
 	writer->SetFileName(this->mFileName.toStdString().c_str());
     writer->SetInputData(this->mDataSet);
-	writer->SetFileTypeToBinary();
+    //writer->SetFileTypeToBinary();
+    writer->SetFileTypeToASCII();
 	writer->Update();
 
 	this->mHasChanged = false;
 	//emit legendChanged(this);
 
 	NMDebugCtx(ctxNMVectorLayer, << "done!");
+}
+
+void
+NMVectorLayer::setContoursVisible(bool vis)
+{
+    if (this->mContourActor.GetPointer() != 0)
+    {
+        if (vis && this->isVisible())
+        {
+            this->mContourActor->SetVisibility(true);
+        }
+        else
+        {
+            this->mContourActor->SetVisibility(false);
+        }
+    }
+}
+
+void
+NMVectorLayer::setFeaturesVisible(bool vis)
+{
+    if (this->mActor.GetPointer() != 0)
+    {
+        if (vis && this->isVisible())
+        {
+            this->mActor->SetVisibility(true);
+        }
+        else
+        {
+            this->mActor->SetVisibility(false);
+        }
+    }
+    mContourOnly = !vis;
 }
 
 void

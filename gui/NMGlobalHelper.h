@@ -3,12 +3,14 @@
 
 #include "vtkRenderWindow.h"
 #include "otbmodellerwin.h"
+#include "ui_otbmodellerwin.h"
 
 class NMGlobalHelper
 {
 public:
     OtbModellerWin* getMainWindow(void);
     vtkRenderWindow* getRenderWindow(void);
+    QVTKWidget* getVTKWidget(void);
 };
 
 #endif // NMGLOBALHELPER_H

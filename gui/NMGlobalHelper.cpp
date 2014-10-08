@@ -25,3 +25,9 @@ NMGlobalHelper::getRenderWindow()
 {
    return getMainWindow()->getRenderWindow();
 }
+
+QVTKWidget*
+NMGlobalHelper::getVTKWidget()
+{
+    return this->getMainWindow()->ui->qvtkWidget;
+}

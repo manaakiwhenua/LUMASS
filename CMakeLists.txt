@@ -243,13 +243,12 @@ add_definitions(-Wno-deprecated)
 # ADD SUBDIRECTORIES
 #====================================================================
 
-ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
 ADD_SUBDIRECTORY(shared ${lumass_BINARY_DIR}/shared)
 ADD_SUBDIRECTORY(otbsuppl ${lumass_BINARY_DIR}/otbsuppl)
 ADD_SUBDIRECTORY(utils ${lumass_BINARY_DIR}/utils)
 ADD_SUBDIRECTORY(optimisation ${lumass_BINARY_DIR}/optimisation)
 ADD_SUBDIRECTORY(modellingframework ${lumass_BINARY_DIR}/modellingframework)
 ADD_SUBDIRECTORY(gui ${lumass_BINARY_DIR}/gui)
-
+ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
 
 

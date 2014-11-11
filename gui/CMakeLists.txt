@@ -23,9 +23,7 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
         ${QT5_INCLUDE_DIRS}
         ${QT5CORE_PRIVATE_DIR}
-        #${CMAKE_PREFIX_PATH}/include/QtCore/5.2.1/QtCore
-        #${CMAKE_PREFIX_PATH}/include/QtGui/5.2.1/QtGui
-	${opt_SOURCE_DIR}
+        ${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
         ${gui_BINARY_DIR}
 	${utils_SOURCE_DIR}/QtPropertyBrowser/src
@@ -116,8 +114,7 @@ set(LUMASS_LINKLIBS
         Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml
         #Qt5Declarative Qt5Qml Qt5Quick
         QtPropertyBrowser
-	RasImageIO OTBGDALRATImageIO NMModFrame 
-        OTBCommon OTBIO OTBBasicFilters
+        NMModFrame
         #QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
         ${VTK_LIBRARIES}
         ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
@@ -125,14 +122,9 @@ set(LUMASS_LINKLIBS
 )
 
 set(LUMASS_DEPLIBS
-    NMModFrame RasImageIO OTBGDALRATImageIO
+    NMModFrame
     QtPropertyBrowser 
 )
-
-IF(NOT RASSUPPORT)
-  list(REMOVE_ITEM LUMASS_LINKLIBS RasImageIO)
-  list(REMOVE_ITEM LUMASS_DEPLIBS RasImageIO)
-ENDIF()
 
 IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)

@@ -7,7 +7,7 @@
  * published by the Free Software Foundation, either version 3 of the License, 
  * or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This programs distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -49,6 +49,8 @@ NMProcess::NMProcess(QObject *parent)
 	this->mParamPos = 0;
 	this->mProgress = 0.0;
 	this->mMTime.setMSecsSinceEpoch(0);
+    this->mIsSink = false;
+    this->mStepIndex = 0;
 }
 
 NMProcess::~NMProcess()
@@ -91,7 +93,10 @@ NMProcess::linkInPipeline(unsigned int step,
 		this->mOtbProcess->AddObserver(itk::StartEvent(), mObserver);
 		this->mOtbProcess->AddObserver(itk::EndEvent(), mObserver);
 		this->mOtbProcess->AddObserver(itk::AbortEvent(), mObserver);
-        this->mOtbProcess->ReleaseDataFlagOn();
+        if (mIsSink)
+        {
+            this->mOtbProcess->ReleaseDataFlagOn();
+        }
 	}
 
     // ATTENTION:
@@ -158,7 +163,7 @@ NMProcess::mapHostIndexToPolicyIndex(unsigned short step,
 {
     // attention, this relies on ::linkInPipeline() having been
     // called already when this function is called
-    step = this->mStepIndex;
+    step = this->mbLinked ? this->mStepIndex : step;
 
 	unsigned short idx = 0;
 	if (size == 0)
@@ -200,6 +205,9 @@ NMProcess::getParameter(const QString& property)
         {
             int step = this->mapHostIndexToPolicyIndex(mStepIndex, lst.size());
             retStr = lst.at(step);
+            NMDebugAI( << step << " = mapToHostPolicyIndex(" << mStepIndex
+                       << ", " << lst.size() << ")" << std::endl);
+            NMDebugAI( << "input parameter to by analysed: " << retStr.toStdString() << std::endl);
 
             QString tStr = retStr;
             QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]?)(\\d*)\\$");
@@ -212,7 +220,7 @@ NMProcess::getParameter(const QString& property)
                 // 3: integer number
                 QStringList m = rex.capturedTexts();
                 NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
-                NMDebugAI(<< "---------------" << std::endl);
+                //NMDebugAI(<< "---------------" << std::endl);
                 pos += rex.matchedLength();
 
                 NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(
@@ -265,52 +273,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 		NMDebugCtx(ctxNMProcess, << "done!");
 		return;
 	}
-
-	// set the step parameter according to the ParameterHandling mode set for this process
-//	switch(this->mParameterHandling)
-//	{
-//	case NM_USE_UP:
-//		if (this->mParamPos < this->mInputComponents.size())
-//		{
-//			step = this->mParamPos;
-//			// this is better done in the update function, so that it only
-//			// get's incremented after an actual processing step
-//			++this->mParamPos;
-//		}
-//		else if (this->mParamPos >= this->mInputComponents.size())
-//		{
-//			this->mParamPos = this->mInputComponents.size()-1;
-//			step = this->mParamPos;
-//		}
-//		break;
-//	case NM_CYCLE:
-//		if (this->mParamPos < this->mInputComponents.size())
-//		{
-//			step = this->mParamPos;
-//			++this->mParamPos;
-//		}
-//		else if (this->mParamPos >= this->mInputComponents.size())
-//		{
-//			step = 0;
-//			this->mParamPos = 1;
-//		}
-//		break;
-//	case NM_SYNC_WITH_HOST:
-//		if (step < this->mInputComponents.size())
-//		{
-//			this->mParamPos = step;
-//		}
-////		else
-////		{
-////			step = 0;
-////			this->mParamPos = 0;
-////			NMErr(ctxNMProcess, << "mParamPos and host's step out of sync!! Set step / mParamPos = 0");
-////		}
-
-//		break;
-//	}
     step = this->mapHostIndexToPolicyIndex(inputstep, this->mInputComponents.size());
-
 
 	NMIterableComponent* parentComp = qobject_cast<NMIterableComponent*>(this->parent());
 	NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(this->parent());
@@ -355,110 +318,44 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 			{
 				NMModelComponent*& ic =
 						const_cast<NMModelComponent*&>(it.value());
-				NMIterableComponent* procComp = qobject_cast<NMIterableComponent*>(ic);
-				NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(ic);
+                //NMIterableComponent* procComp = qobject_cast<NMIterableComponent*>(ic);
+                //NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(ic);
 
-				// don't link everything ...
-                // ===========DEPRECATED DEPRECATED
-                //				if (parentComp->getTimeLevel() == ic->getTimeLevel()
-                //                    && parentIter == 1// && dataComp == 0
-                //				   )
-                // ===========
+                // note: we're linking anything here! It means the user is responsible for deciding
+                //       whether or not it is a good idea to build a pipeline across timelevels or
+                //       not! -> gives greater flexibility
+                NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
+                          << ic->objectName().toStdString()
+                          << "[" << outIdx << "] ... " << std::endl);
 
-                // we cannot link to siblings (i.e. same component) on lower time levels
-                // (-> execution list should account for that)
-                // otherwise, just link in!
-                // and we ever only grab from data buffers, we don't ask them to
-                // fetch anything
-//                if (dataComp == 0)
-//                {
-                    NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
-                            << ic->objectName().toStdString()
-                            << "[" << outIdx << "] ... " << std::endl);
-
-//					// when we've got a process component here, we give it the
-//					// opportunity to put itself in order and link in
-                    if (procComp != 0 && !procComp->getProcess()->isInitialised())
-                    {
-                        // since we're on the same time level, we can safely ask
-                        // the input process to link itself into the pipeline
-                        procComp->getProcess()->linkInPipeline(inputstep, repo);
-                    }
-                    else //if (dataComp == 0)
-                        ic->linkComponents(inputstep, repo);
-
-                    NMItkDataObjectWrapper* iw = ic->getOutput(outIdx);
-                    if (iw == 0 || iw->getDataObject() == 0)
-                    {
-                        NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-                        stringstream ss;
-                        ss << ic->objectName().toStdString() << "::getOutput("
-                           << outIdx << ") has not been initialised!" << endl;
-                        e.setMsg(ss.str());
-                        NMDebugCtx(ctxNMProcess, << "done!");
-                        throw e;
-                    }
-
-                    // since we're on the same time level, we're in pipeline here
-                    // connect output to input
-                    this->setNthInput(ii, iw);//ic->getOutput(outIdx));
-//                }
-//                else
-//                {
-//                    NMDebugAI(<< parentComp->objectName().toStdString() << "(" << ii
-//                            << ") <-||- " << ic->objectName().toStdString()
-//                            << "[" << outIdx << "] ... " << std::endl);
+                // when we've got a process component here, we give it the
+                // opportunity to put itself in order and link in
+                //                if (procComp != 0 && !procComp->getProcess()->isInitialised())
+                //                {
+                //                    // since we're on the same time level, we can safely ask
+                //                    // the input process to link itself into the pipeline
+                //                    procComp->getProcess()->linkInPipeline(inputstep, repo);
+                //                }
+                //                else //if (dataComp == 0)
+                ic->linkComponents(inputstep, repo);
 
 
-//					// when we've got a process component here, we give it the
-//					// opportunity to put itself in order and link in
-//                    if (procComp != 0 && !procComp->getProcess()->isInitialised())
-//                    {
-//                        // since we're on the same time level, we can safely ask
-//                        // the input process to link itself into the pipeline
-//                        procComp->getProcess()->linkInPipeline(inputstep, repo);
-//                    }
-//                    //else if (dataComp != 0)
-//                        //ic->linkComponents(inputstep, repo); //dataComp->linkComponents(inputstep, repo);
+                QSharedPointer<NMItkDataObjectWrapper> iw = ic->getOutput(outIdx);
+                if (iw.isNull() || iw->getDataObject() == 0)
+                {
+                    NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
+                    stringstream ss;
+                    ss << ic->objectName().toStdString() << "::getOutput("
+                       << outIdx << ") has not been initialised!" << endl;
+                    e.setMsg(ss.str());
+                    NMDebugCtx(ctxNMProcess, << "done!");
+                    throw e;
+                }
 
-//					// we've got a
-//					// 'disconnected' pipeline and have to fetch the data
-//					// 'physically', disconnect it from the source, and
-//					// then chuck it into the input slot of this component
-//                    if (procComp != 0)
-//                        procComp->getProcess()->update();
-//                    //else if (dataComp != 0)
-//                        //ic->update(repo);//dataComp->update(repo);
-//					//else
-//                    //	ic->update(repo);
-
-//					if (ic->getOutput(outIdx) != 0)
-//					{
-//                        NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(
-//                                *ic->getOutput(outIdx));
-//                        if (dw->getDataObject() == 0)
-//                        {
-//                            NMDebug(<< "failed!" << std::endl);
-//                            NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-//                            stringstream ss;
-//                            ss << ic->objectName().toStdString() << "::getOutput("
-//                               << outIdx << ") has not been initialised!" << endl;
-//                            e.setMsg(ss.str());
-//                            NMDebugAI(<< ss.str() << endl);
-//                            //NMDebugCtx(ctxNMProcess, << "done!");
-//                            throw e;
-//                        }
-//                        NMDebugAI(<< "... ok!" << std::endl);
-
-//                        if (procComp != 0)
-//                        {
-//                            dw->setParent(parentComp);
-//                            dw->getDataObject()->DisconnectPipeline();
-//                        }
-//                        this->setNthInput(ii, dw);
-//					}
-//                }
-			}
+                // since we're on the same time level, we're in pipeline here
+                // connect output to input
+                this->setNthInput(ii, iw);//ic->getOutput(outIdx));
+            }
             else
             {
                 NMMfwException e(NMMfwException::NMProcess_InvalidInput);
@@ -492,13 +389,14 @@ NMProcess::getInputComponentType(void)
 
 void NMProcess::reset(void)
 {
-	NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
+    //NMDebugCtx(this->parent()->objectName().toStdString(), << "...");
 	this->mParamPos = 0;
 	this->mbIsInitialised = false;
 	this->mbLinked = false;
 	this->mMTime.setMSecsSinceEpoch(0);
 	this->mOtbProcess = 0;
-	NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+    this->mStepIndex = 0;
+    //NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
 void NMProcess::update(void)
@@ -514,9 +412,23 @@ void NMProcess::update(void)
         catch (itk::ExceptionObject& err)
         {
             NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
-            std::string msg = err.GetDescription();
-            rerr.setMsg(msg);
-            NMErr(this->parent()->objectName().toStdString(), << err.GetDescription());
+
+            NMIterableComponent* pc = qobject_cast<NMIterableComponent*>(this->parent());
+            if (pc)
+            {
+                NMIterableComponent* hc = pc->getHostComponent();
+
+                std::stringstream msg;
+                msg << hc->objectName().toStdString() << " step #" << hc->getIterationStep() << ": "
+                    << pc->objectName().toStdString() << " step #" << pc->getIterationStep()
+                    << ": " << err.GetDescription();
+                rerr.setMsg(msg.str());
+            }
+            else
+            {
+                rerr.setMsg(err.GetDescription());
+            }
+            //NMErr(this->parent()->objectName().toStdString(), << msg.str());
             NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
             emit signalExecutionStopped(this->parent()->objectName());
             emit signalProgress(0);
@@ -606,16 +518,16 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 }
 
 void
-NMProcess::setImgTypeSpec(NMItkDataObjectWrapper* dw)
+NMProcess::setImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw)
 {
     this->setInputImgTypeSpec(dw);
     this->setOutputImgTypeSpec(dw);
 }
 
 void
-NMProcess::setInputImgTypeSpec(NMItkDataObjectWrapper* dw)
+NMProcess::setInputImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw)
 {
-    if (dw == 0)
+    if (dw.isNull())
         return;
 
     this->setInputNMComponentType(dw->getNMComponentType());
@@ -624,9 +536,9 @@ NMProcess::setInputImgTypeSpec(NMItkDataObjectWrapper* dw)
 }
 
 void
-NMProcess::setOutputImgTypeSpec(NMItkDataObjectWrapper* dw)
+NMProcess::setOutputImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw)
 {
-    if (dw == 0)
+    if (dw.isNull())
         return;
 
     this->setOutputNMComponentType(dw->getNMComponentType());

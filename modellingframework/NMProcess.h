@@ -48,9 +48,13 @@
 #include "itkCommand.h"
 #include "itkEventObject.h"
 
+class NMProcessFactory;
+
 class NMProcess : public QObject
 {
-	Q_OBJECT
+    friend class NMProcessFactory;
+
+    Q_OBJECT
 	Q_ENUMS(AdvanceParameter)
 	Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents)
 	Q_PROPERTY(NMProcess::AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
@@ -61,7 +65,6 @@ class NMProcess : public QObject
 	Q_PROPERTY(unsigned int OutputNumDimensions READ getOutputNumDimensions WRITE setOutputNumDimensions NOTIFY NMProcessChanged)
 	Q_PROPERTY(unsigned int InputNumBands READ getInputNumBands WRITE setInputNumBands NOTIFY NMProcessChanged)
 	Q_PROPERTY(unsigned int OutputNumBands READ getOutputNumBands WRITE setOutputNumBands NOTIFY NMProcessChanged)
-
 
 public:
 	/*! Defines the supported ways of (input) parameter supply to a process component upon
@@ -103,10 +106,10 @@ public:
     otb::ImageIOBase::IOComponentType getInputComponentType(void);
 
 	virtual void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* img) = 0;
-    void setInput (NMItkDataObjectWrapper* img)
+			QSharedPointer<NMItkDataObjectWrapper> img) = 0;
+    void setInput (QSharedPointer<NMItkDataObjectWrapper> img)
     		{this->setNthInput(0, img);}
-    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx) = 0;
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx) = 0;
     virtual void update(void);
     void reset(void);
 
@@ -114,11 +117,13 @@ public:
 	bool isInitialised(void)
         {return this->mbIsInitialised;}
 
+    bool isSink(void) {return mIsSink;}
+
     /*! Convenience method to set the input/output/(in- & output)
      *  image type specification from a NMItkDataObjectWrapper */
-    void setInputImgTypeSpec(NMItkDataObjectWrapper* dw);
-    void setOutputImgTypeSpec(NMItkDataObjectWrapper* dw);
-    void setImgTypeSpec(NMItkDataObjectWrapper* dw);
+    void setInputImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
+    void setOutputImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
+    void setImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
 
 
 	QDateTime getModifiedTime(void)
@@ -220,6 +225,7 @@ protected:
 
 private:
     unsigned int mStepIndex;
+    bool mIsSink;
 
 };
 

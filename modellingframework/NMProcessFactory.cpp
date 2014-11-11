@@ -135,48 +135,57 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
 //       registration of supported classes;
 NMProcess* NMProcessFactory::createProcess(const QString& procClass)
 {
-	if (procClass.compare("NMImageReader") == 0)
+    NMProcess* proc = 0;
+
+    if (procClass.compare("NMImageReader") == 0)
 	{
-		return new NMImageReader(this);
+        proc =  new NMImageReader(this);
 	}
 	else if (procClass.compare("NMRATBandMathImageFilterWrapper") == 0)
 	{
-		return new NMRATBandMathImageFilterWrapper(this);
+        proc =  new NMRATBandMathImageFilterWrapper(this);
 	}
 	else if (procClass.compare("NMStreamingImageFileWriterWrapper") == 0)
 	{
-		return new NMStreamingImageFileWriterWrapper(this);
+        proc =  new NMStreamingImageFileWriterWrapper(this);
 	}
 	else if (procClass.compare("NMNeighbourhoodCountingWrapper") == 0)
 	{
-		return new NMNeighbourhoodCountingWrapper(this);
+        proc =  new NMNeighbourhoodCountingWrapper(this);
 	}
 	else if (procClass.compare("NMRandomImageSourceWrapper") == 0)
 	{
-		return new NMRandomImageSourceWrapper(this);
+        proc =  new NMRandomImageSourceWrapper(this);
 	}
 	else if (procClass.compare("NMCostDistanceBufferImageWrapper") == 0)
 	{
-		return new NMCostDistanceBufferImageWrapper(this);
+        proc =  new NMCostDistanceBufferImageWrapper(this);
 	}
 	else if (procClass.compare("NMFocalNeighbourhoodDistanceWeightingWrapper") == 0)
 	{
-		return new NMFocalNeighbourhoodDistanceWeightingWrapper(this);
+        proc =  new NMFocalNeighbourhoodDistanceWeightingWrapper(this);
 	}
 	else if (procClass.compare("NMSumZonesFilterWrapper") == 0)
 	{
-		return new NMSumZonesFilterWrapper(this);
+        proc =  new NMSumZonesFilterWrapper(this);
 	}
     else if (procClass.compare("NMItkCastImageFilterWrapper") == 0)
     {
-        return new NMItkCastImageFilterWrapper(this);
+        proc =  new NMItkCastImageFilterWrapper(this);
     }
     else if (procClass.compare("NMResampleImageFilterWrapper") == 0)
     {
-        return new NMResampleImageFilterWrapper(this);
+        proc =  new NMResampleImageFilterWrapper(this);
     }
     else
-		return 0;
+        proc =  0;
+
+    if(isSink(proc->objectName()))
+    {
+        proc->mIsSink = true;
+    }
+
+    return proc;
 }
 
 NMProcess*

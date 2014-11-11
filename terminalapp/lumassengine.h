@@ -25,13 +25,10 @@
 #ifndef LUMASSENGINE_H_
 #define LUMASSENGINE_H_
 
-#include <string>
 #include <QString>
-#include <QScopedPointer>
-
-#include "NMMosra.h"
 
 // DECLARATIONS
+void doModel(const QString& modelFile);
 void doMOSO(const QString& losFileName);
 void doMOSObatch(const QString& losFileName);
 //void doMOSOrun(const QString& dsfileName,
@@ -40,5 +37,7 @@ void doMOSObatch(const QString& losFileName);
 //		float level,
 //		int startIdx, int numruns);
 
+
+bool isFileAccessible(const QString& fileName);
 
 #endif /* LUMASSENGINE_H_ */

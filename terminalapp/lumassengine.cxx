@@ -35,6 +35,7 @@
 #include <QFileInfo>
 #include <QThread>
 #include <QFuture>
+#include <QScopedPointer>
 
 #include "vtkSmartPointer.h"
 #include "vtkPolyDataReader.h"
@@ -43,7 +44,10 @@
 #include "vtkTable.h"
 #include "vtkDelimitedTextWriter.h"
 
+#include "NMMosra.h"
 #include "MOSORunnable.h"
+#include "NMModelController.h"
+#include "NMModelSerialiser.h"
 
 static const std::string ctx = "LUMASS_engine";
 
@@ -182,10 +186,44 @@ void doMOSObatch(const QString& losFileName)
 	}
 }
 
+void doModel(const QString& modelFile)
+{
+    NMDebugCtx(ctx, << "...");
+
+
+
+    NMModelController* ctrl = NMModelController::getInstance();
+
+
+
+    NMDebugCtx(ctx, << "done!");
+}
+
 void showHelp()
 {
     std::cout << std::endl << "LUMASS (lumassengine) 0.9.0" << std::endl << std::endl;
-    std::cout << "Usage: lumassengine --moso <settings file (*.los)>" << std::endl << std::endl;
+    std::cout << "Usage: lumassengine --moso <settings file (*.los)> | "
+                                  << "--model <LUMASS model file (*.lmx)>"
+                                  << std::endl << std::endl;
+}
+
+bool isFileAccessible(const QString& fileName)
+{
+    if (fileName.isNull() || fileName.isEmpty())
+    {
+        NMErr(ctx, << "No settings file has been specified!");
+        showHelp();
+        return false;
+    }
+
+    QFileInfo losInfo(fileName);
+    if (!losInfo.isReadable())
+    {
+        NMErr(ctx, << "Specified file could not be read!");
+        return false;
+    }
+
+    return true;
 }
 
 int main(int argc, char** argv)
@@ -201,12 +239,13 @@ int main(int argc, char** argv)
 
 	enum WhatToDo {
 			NM_ENGINE_MOSO,
-			NM_ENGINE_SESDM,
+            NM_ENGINE_MODEL,
 			NM_ENGINE_NOPLAN
 	};
 
 	WhatToDo todo = NM_ENGINE_NOPLAN;
-	QString losFileName = "";
+    QString losFileName;
+    QString modelFileName;
 
 	int arg = 1;
 	while (arg < argc-1)
@@ -216,28 +255,36 @@ int main(int argc, char** argv)
 
 		if (theArg == "--moso")
 		{
-			losFileName = argv[arg+1];
-			if (losFileName.isNull() || losFileName.isEmpty())
+            losFileName = argv[arg+1];
+            if (!isFileAccessible(losFileName))
 			{
-				NMErr(ctx, << "No settings file has been specified!");
-				showHelp();
 				NMDebugCtx(ctx, << "done!");
-				return EXIT_SUCCESS;
+                return EXIT_SUCCESS;
 			}
-
-			QFileInfo losInfo(losFileName);
-			if (!losInfo.isReadable())
-			{
-				NMErr(ctx, << "Specified file could not be read!");
-				NMDebugCtx(ctx, << "done!");
-				return EXIT_FAILURE;
-			}
-
-			todo = NM_ENGINE_MOSO;
+            todo = NM_ENGINE_MOSO;
 		}
+        else if (theArg == "--model")
+        {
+            modelFileName = argv[arg+1];
+            if (!isFileAccessible(modelFileName))
+            {
+                NMDebugCtx(ctx, << "done!");
+                return EXIT_SUCCESS;
+            }
+            todo = NM_ENGINE_MODEL;
+        }
 
 		++arg;
 	}
+
+    if (!losFileName.isEmpty() && !modelFileName.isEmpty())
+    {
+        NMWarn(ctx, << "Please select either --moso or --model!"
+               << std::endl);
+        showHelp();
+        NMDebugCtx(ctx, << "done!");
+        return EXIT_SUCCESS;
+    }
 
 
 	switch(todo)
@@ -245,8 +292,13 @@ int main(int argc, char** argv)
 	case NM_ENGINE_MOSO:
 		doMOSO(losFileName);
 		break;
+    case NM_ENGINE_MODEL:
+        doModel(modelFileName);
+        break;
 	default:
-		NMDebugAI(<< "Can someone tell me what to do?" << std::endl);
+        NMWarn(ctx, << "Please specify either an optimisation "
+                    << " settings file or a model file!"
+                    << std::endl);
 		break;
 	}
 

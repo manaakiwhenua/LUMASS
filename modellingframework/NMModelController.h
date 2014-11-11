@@ -84,6 +84,8 @@ public:
 
 	static NMModelController* getInstance(void);
 
+    static QString getComponentNameFromInputSpec(const QString& inputSpec);
+
 public slots:
 
 	/*! Requests the execution of the named component. */

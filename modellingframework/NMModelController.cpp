@@ -418,6 +418,15 @@ NMModelController::contains(const QString& compName)
 	return ret;
 }
 
+QString NMModelController::getComponentNameFromInputSpec(const QString& inputSpec)
+{
+    if (inputSpec.isEmpty())
+        return QString();
+
+    QStringList specList = inputSpec.split(":");
+    return specList.at(0);
+}
+
 bool NMModelController::removeComponent(const QString& name)
 {
 	NMModelComponent* comp = this->getComponent(name);

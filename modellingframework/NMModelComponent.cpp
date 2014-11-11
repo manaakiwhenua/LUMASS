@@ -55,11 +55,12 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
     int compstep = step;
 
-    // what if we're an NMProcess? and have an index policy set?
+    // what if we are an NMProcess? and have an index policy set?
     NMIterableComponent* weIc = qobject_cast<NMIterableComponent*>(this);
     if (weIc && weIc->getProcess() != 0)
     {
-        compstep = weIc->getProcess()->mapHostIndexToPolicyIndex(compstep, this->mInputs.size());
+        compstep = weIc->getProcess()->mapHostIndexToPolicyIndex(
+                    compstep, this->mInputs.size());
     }
     else
     {
@@ -68,18 +69,18 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
                         : step);
     }
 
-	if (compstep != step)
-	{
-		// ToDo: this needs to be adjusted as soon as
-		// we implement the choice of how to map
-		// step size to input list index (i.e. use_up, cycle, strict step);
-		// for now, we go for the NM_USE_UP policy
-        NMDebugAI(<< "mind you, we've adjusted the step parameter "
-                  << " from " << step << " to " << compstep << " to select"
-				<< " an input component from '" << this->objectName().toStdString()
-				<< "'" << std::endl);
-		//compstep = this->mInputs.size()-1;
-	}
+    //	if (compstep != step)
+    //	{
+    //		// ToDo: this needs to be adjusted as soon as
+    //		// we implement the choice of how to map
+    //		// step size to input list index (i.e. use_up, cycle, strict step);
+    //		// for now, we go for the NM_USE_UP policy
+    //        NMDebugAI(<< "mind you, we've adjusted the step parameter "
+    //                  << " from " << step << " to " << compstep << " to select"
+    //				<< " an input component from '" << this->objectName().toStdString()
+    //				<< "'" << std::endl);
+    //		//compstep = this->mInputs.size()-1;
+    //	}
 
 	QStringList inputs = this->mInputs.at(compstep);
 	if (inputs.size() == 0)
@@ -114,12 +115,14 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
         // -> and are not a subcomponent of this one
 
         bool bGoUp = false;
+        bool bShareHost = false;
         NMModelComponent* comp = NMModelController::getInstance()->getComponent(in);
         NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(comp);
         if (comp != 0 && dataComp == 0)
         {
             if (this->getHostComponent()->objectName().compare(comp->getHostComponent()->objectName()) == 0)
             {
+                bShareHost = true;
                 if (this->getTimeLevel() == comp->getTimeLevel())
                 {
                     bGoUp = true;
@@ -159,11 +162,22 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
                 }
             }
 
+            // determine the relevant step parameter for the input component:
+            // - if input and this component share the host, we use the stepping
+            //   determined by the shared host, otherwise
+            // - if the input component has different host than this component,
+            //   we use the input's host component stepping parameter
+            //   NOTE: if the input component is not a direct subcomponent of this
+            //   component's host, the input's stepping parameter being used will
+            //   most likely be 0
+            int instep = bShareHost ? step : ic != 0 ? ic->getIterationStep()-1 : step;
             if (ic != 0 && ic->getProcess() != 0 && ic->getProcess()->getInternalProc() != 0)
             {
-				//NMDebugAI(<< "... and higher ... " << std::endl);
+                // add the process component to the pipeline, and
+                // investigate its inputs using the passed step parameter
+                // of the calling component
 				upstreamPipe.push_front(ic->objectName());
-                ic->getUpstreamPipe(hydra, upstreamPipe, compstep);
+                ic->getUpstreamPipe(hydra, upstreamPipe, instep);
 			}
 			else
 			{
@@ -193,7 +207,7 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 				{
 					QStringList upstreamUpstreamPipe;
 					upstreamUpstreamPipe.push_front(comp->objectName());
-                    comp->getUpstreamPipe(hydra, upstreamUpstreamPipe, compstep);
+                    comp->getUpstreamPipe(hydra, upstreamUpstreamPipe, instep);
 					hydra.push_back(upstreamUpstreamPipe);
 				}
 			}

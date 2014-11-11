@@ -62,5 +62,16 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         ++mIterationStepRun;
 	}
     mIterationStepRun = mIterationStep;
+
+    // reset aggregate components
+    //    if (this->mProcess == 0)
+    //    {
+    //       NMModelComponent* mc = this->getInternalStartComponent();
+    //       while(mc)
+    //       {
+    //           mc->reset();
+    //           mc = this->getNextInternalComponent();
+    //       }
+    //    }
 }
 

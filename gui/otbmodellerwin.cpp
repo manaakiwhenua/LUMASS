@@ -143,12 +143,10 @@
 #include "itkStreamingImageFilter.h"
 
 // FOR ::test function
-#include "itkFloodFilledImageFunctionConditionalIterator.h"
-#include "itkBinaryThresholdImageFunction.h"
-#include "otbDEMSlopeAspectFilter.h"
-#include "otbFlowAccumulationFilter.h"
-
-
+//#include "itkFloodFilledImageFunctionConditionalIterator.h"
+//#include "itkBinaryThresholdImageFunction.h"
+//#include "otbDEMSlopeAspectFilter.h"
+//#include "otbFlowAccumulationFilter.h"
 
 // VTK
 #include "vtkAbstractArray.h"
@@ -1180,28 +1178,28 @@ void OtbModellerWin::test()
 //    QString path = fifo.dir().absolutePath();
 //    QString outfilename = QString("%1/flood.kea").arg(path);
 
-    QString fileName = "/home/alex/img/a-flood.kea";
-    QString outfilename = "/home/alex/img/a-test_out.kea";
+//    QString fileName = "/home/alex/img/a-flood.kea";
+//    QString outfilename = "/home/alex/img/a-test_out.kea";
 
-    typedef otb::Image< float, 2 > ImgType;
-    typedef otb::GDALRATImageFileReader< ImgType > ReaderType;
-    typedef otb::StreamingRATImageFileWriter< ImgType > WriterType;
-    typedef itk::BinaryThresholdImageFunction< ImgType, float > ImgFuncType;
-    typedef itk::FloodFilledImageFunctionConditionalIterator< ImgType, ImgFuncType > FloodItType;
+//    typedef otb::Image< float, 2 > ImgType;
+//    typedef otb::GDALRATImageFileReader< ImgType > ReaderType;
+//    typedef otb::StreamingRATImageFileWriter< ImgType > WriterType;
+//    typedef itk::BinaryThresholdImageFunction< ImgType, float > ImgFuncType;
+//    typedef itk::FloodFilledImageFunctionConditionalIterator< ImgType, ImgFuncType > FloodItType;
 
-    typedef otb::DEMSlopeAspectFilter< ImgType, ImgType > SlopeFilterType;
-    typedef otb::FlowAccumulationFilter< ImgType, ImgType > FlowAccFilterType;
+//    typedef otb::DEMSlopeAspectFilter< ImgType, ImgType > SlopeFilterType;
+//    typedef otb::FlowAccumulationFilter< ImgType, ImgType > FlowAccFilterType;
 
-    // =========== READ INPUT ======================
-    typename ReaderType::Pointer reader = ReaderType::New();
-    otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
-    gio->SetFileName(fileName.toStdString());
-    reader->SetImageIO(gio);
-    reader->SetFileName(fileName.toStdString());
-    //reader->Update();
-    ImgType::Pointer inImg = reader->GetOutput();
-    ImgType::SpacingType outspacing = inImg->GetSpacing();
-    ImgType::PointType origin = inImg->GetOrigin();
+//    // =========== READ INPUT ======================
+//    typename ReaderType::Pointer reader = ReaderType::New();
+//    otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
+//    gio->SetFileName(fileName.toStdString());
+//    reader->SetImageIO(gio);
+//    reader->SetFileName(fileName.toStdString());
+//    //reader->Update();
+//    ImgType::Pointer inImg = reader->GetOutput();
+//    ImgType::SpacingType outspacing = inImg->GetSpacing();
+//    ImgType::PointType origin = inImg->GetOrigin();
 
 
     // =========== CREATE OUTPUT IMAGE ======================
@@ -1247,11 +1245,11 @@ void OtbModellerWin::test()
     //    slopeFilter->SetGradientUnit(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_ASPECT);
     //    slopeFilter->SetInput(reader->GetOutput());
 
-    typename FlowAccFilterType::Pointer flowFilter = FlowAccFilterType::New();
-    flowFilter->SetInput(reader->GetOutput());
-    flowFilter->SetOutputFileName(outfilename.toStdString());
+//    typename FlowAccFilterType::Pointer flowFilter = FlowAccFilterType::New();
+//    flowFilter->SetInput(reader->GetOutput());
+//    flowFilter->SetOutputFileName(outfilename.toStdString());
 
-    flowFilter->Update();
+//    flowFilter->Update();
 
 
     // ================ WRITE RESULTS ======================

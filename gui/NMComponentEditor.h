@@ -65,8 +65,7 @@ signals:
 
 public slots:
     void update(void);
-    void clear(void)
-        {if(mPropBrowser) mPropBrowser->clear();}
+    void clear(void);
 
 private slots:
     void applySettings(QtProperty* prop, const QVariant& val);
@@ -97,6 +96,10 @@ private:
     static const std::string ctx;
     NMCompEditorMode mEditorMode;
     QtAbstractPropertyBrowser* mPropBrowser;
+
+    // keep track of managers and editorFactories
+    QList<QtVariantPropertyManager*> mManagers;
+    QList<QtVariantEditorFactory*> mFactories;
 
     int debugCounter;
 

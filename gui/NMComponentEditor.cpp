@@ -187,10 +187,32 @@ NMComponentEditor::setObject(QObject* obj)
 //      NMDebugCtx(ctx, << "done!");
 }
 
+void NMComponentEditor::clear()
+{
+    if (mPropBrowser)
+    {
+        mPropBrowser->clear();
+        foreach(QtVariantPropertyManager* man, mManagers)
+        {
+            mPropBrowser->unsetFactoryForManager(man);
+            man->clear();
+            delete man;
+        }
+        mManagers.clear();
+
+
+        foreach(QtVariantEditorFactory* fac, mFactories)
+        {
+            delete fac;
+        }
+        mFactories.clear();
+    }
+}
+
 void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* comp,
         NMProcess* proc)
 {
-    mPropBrowser->clear();
+    this->clear();
 
     //NMDebugAI(<< ">>>> #" << debugCounter << " - START: " << mObj->objectName().toStdString() << " >>>>>>>>>>>>>>>>>>" << std::endl);
 
@@ -240,7 +262,9 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
             strCompChain << "}";
 
             QtVariantEditorFactory* ed = new QtVariantEditorFactory();
+            mFactories.append(ed);
             QtVariantPropertyManager* man = new QtVariantPropertyManager();
+            mManagers.append(man);
             QtVariantProperty* vprop;
 
             //connect(man, SIGNAL(valueChanged(QtProperty*, const QVariant &)),
@@ -312,6 +336,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     parammodes << "NM_USE_UP" << "NM_CYCLE" << "NM_SYNC_WITH_HOST";
 
     QtVariantPropertyManager* manager = new QtVariantPropertyManager();
+    mManagers.append(manager);
     QtVariantProperty* prop;
 
     // assign replacement types for the not supported variant
@@ -488,7 +513,16 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         propType = QtVariantPropertyManager::enumTypeId();
         prop = manager->addProperty(propType, propName);
         prop->setAttribute("enumNames", typeList);
-        value = obj->property(property.name());
+
+        QString stype = obj->property(property.name()).toString();
+        for (int i=0; i < typeList.size(); ++i)
+        {
+            if (stype.compare(typeList.at(i)) == 0)
+            {
+                value = QVariant::fromValue(i);
+                break;
+            }
+        }
     }
     else
     {
@@ -501,6 +535,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     if (prop != 0)
     {
         QtVariantEditorFactory* editor = new QtVariantEditorFactory();
+        mFactories.append(editor);
 
         if (!value.isNull())
             prop->setValue(value);
@@ -782,6 +817,18 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
 
            updatedValue = emptyValue;
         }
+    }
+    else if (    propName.endsWith("Type")
+             &&  obj->property(QString("%1Enum")
+                      .arg(propName.left(propName.size()-4))
+                      .toStdString().c_str())
+                 != QVariant::Invalid
+            )
+    {
+        QString enumProp = QString("%1Enum").arg(propName.left(propName.size()-4));
+        QStringList typeList = obj->property(enumProp.toStdString().c_str()).toStringList();
+
+        updatedValue = QVariant::fromValue(typeList.at(value.toInt()));
     }
     else
     {

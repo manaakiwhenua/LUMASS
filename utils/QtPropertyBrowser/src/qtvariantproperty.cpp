@@ -296,7 +296,7 @@ void QtVariantProperty::setValue(const QVariant &value)
     Sets the \a attribute of property to \a value.
 
     QtVariantPropertyManager provides the related
-    \l{QtVariantPropertyManager::setAttribute()}{setAttribute()}
+    \l{QtVariantPropertyManager::d()}{setAttribute()}
     function.
 
     \sa attributeValue()

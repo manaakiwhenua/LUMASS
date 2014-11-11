@@ -89,11 +89,11 @@ public:
     NMRATBandMathImageFilterWrapper(QObject *parent=0);
     ~NMRATBandMathImageFilterWrapper ( );
 
-    NMItkDataObjectWrapper* getOutput(unsigned int idx);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-    		NMItkDataObjectWrapper* imgWrapper);
+    		QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
     void setNthAttributeTable(unsigned int idx,
     		otb::AttributeTable::Pointer table,
     		std::vector<std::string> tableColumns);

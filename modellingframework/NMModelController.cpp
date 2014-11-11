@@ -51,10 +51,11 @@ NMModelController::getInstance(void)
 	return &controller;
 }
 
-NMItkDataObjectWrapper*
+QSharedPointer<NMItkDataObjectWrapper>
 NMModelController::getOutputFromSource(const QString& inputSrc)
 {
-	NMItkDataObjectWrapper* w = 0;
+    QSharedPointer<NMItkDataObjectWrapper> w;
+    w.clear();
 
 	// parse the input source string
 	QStringList inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);

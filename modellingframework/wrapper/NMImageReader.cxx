@@ -25,6 +25,7 @@
 #define ctxNMImageReader "NMImageReader"
 
 #include <limits>
+#include <QFileInfo>
 
 #include "NMImageReader.h"
 #include "otbGDALRATImageIO.h"
@@ -1007,7 +1008,7 @@ NMImageReader::UpdateProgressInfo(itk::Object* obj, const itk::EventObject& even
 	NMProcess::UpdateProgressInfo(obj, event);
 }
 
-NMItkDataObjectWrapper* NMImageReader::getOutput(unsigned int idx)
+QSharedPointer<NMItkDataObjectWrapper> NMImageReader::getOutput(unsigned int idx)
 {
 	if (!this->mbIsInitialised)
 	{
@@ -1059,8 +1060,8 @@ NMItkDataObjectWrapper* NMImageReader::getOutput(unsigned int idx)
 		break;
 	}
 
-	NMItkDataObjectWrapper* dw = new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,
-			this->mOutputNumDimensions, this->mOutputNumBands);
+    QSharedPointer<NMItkDataObjectWrapper> dw(new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,
+            this->mOutputNumDimensions, this->mOutputNumBands));
 
 	// in case we've got an attribute table, we fetch it
 	dw->setOTBTab(this->getRasterAttributeTable(1));
@@ -1187,7 +1188,7 @@ NMImageReader::linkParameters(unsigned int step,
 	// set the step parameter according to the ParameterHandling mode set for this process
 
     QVariant param = this->getParameter("FileNames");
-    if (param.isValid())
+    if (param.isValid() && !param.toString().isEmpty())
     {
         this->setFileName(param.toString());
     }
@@ -1200,7 +1201,7 @@ NMImageReader::linkParameters(unsigned int step,
 }
 
 void NMImageReader::setNthInput(unsigned int numInput,
-		NMItkDataObjectWrapper* img)
+        QSharedPointer<NMItkDataObjectWrapper> img)
 {
 	// don't need file input for the reader
 }
@@ -1223,11 +1224,23 @@ void NMImageReader::instantiateObject(void)
 #endif	
 
     QVariant param = this->getParameter("FileNames");
-    if (param.isValid())
+    if (param.isValid() && !param.toString().isEmpty())
     {
         QString fn = param.toString();
-        if (!fn.isEmpty())
+        QFileInfo fifo(fn);
+        if (fifo.isFile() && fifo.isReadable())
+        {
             this->setFileName(param.toString());
+        }
+        else
+        {
+            NMMfwException ex(NMMfwException::NMProcess_InvalidParameter);
+            QString msg = QString(tr("File %1 does not exists or is not readable!"))
+                    .arg(fn);
+            ex.setMsg(msg.toStdString());
+            NMDebugCtx(ctxNMImageReader, << "done!");
+            throw ex;
+        }
     }
 
     NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);

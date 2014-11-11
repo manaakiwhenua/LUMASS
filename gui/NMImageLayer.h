@@ -90,7 +90,7 @@ public:
 	void getBBox(double bbox[6]);
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 
-	void setImage(NMItkDataObjectWrapper* imgWrapper);
+	void setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     void setUseOverviews(bool useOvv)
     {this->mbUseOverviews = useOvv;}
@@ -98,15 +98,15 @@ public:
     {return this->mbUseOverviews;}
 
 	itk::DataObject *getITKImage(void);
-	NMItkDataObjectWrapper* getImage(void);
+	QSharedPointer<NMItkDataObjectWrapper> getImage(void);
 	NMProcess* getProcess(void)
 		{return this->mReader;}
 
     bool isRasLayer(void) {return this->mReader->isRasMode();}
 	//void mapUniqueValues();
 
-	void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+	void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
+	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
     std::vector<double> getWindowStatistics(void);
     std::vector<double> getWholeImageStatistics(void);

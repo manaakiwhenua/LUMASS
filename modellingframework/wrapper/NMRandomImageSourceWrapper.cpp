@@ -321,5 +321,3 @@ void NMRandomImageSourceWrapper::setVecParam(QString param, std::vector<double>&
 
 
 
-
-

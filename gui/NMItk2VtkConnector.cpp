@@ -176,7 +176,7 @@ NMItk2VtkConnector::~NMItk2VtkConnector()
 {
 }
 
-void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapper* imgWrapper)
+void NMItk2VtkConnector::setNthInput(unsigned int numInput, QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
     //NMDebugCtx(ctxNMItk2VtkConnector, << "...");
 
@@ -187,10 +187,10 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
         return;
     }
 
-	this->mInputImg = imgWrapper->getDataObject();
-	this->mInputComponentType = imgWrapper->getItkComponentType();
-	this->mInputNumDimensions = imgWrapper->getNumDimensions();
-	this->mInputNumBands = imgWrapper->getNumBands();
+    this->mInputImg = imgWrapper->getDataObject();
+    this->mInputComponentType = imgWrapper->getItkComponentType();
+    this->mInputNumDimensions = imgWrapper->getNumDimensions();
+    this->mInputNumBands = imgWrapper->getNumBands();
 
 	this->mVtkImgImp = vtkSmartPointer<vtkImageImport>::New();
     //this->mVtkImgChangeInfo = vtkSmartPointer<vtkImageChangeInformation>::New();
@@ -212,9 +212,9 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, NMItkDataObjectWrapp
 }
 
 void
-NMItk2VtkConnector::updateInput(NMItkDataObjectWrapper* imgWrapper)
+NMItk2VtkConnector::updateInput(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
-    if (imgWrapper)
+    if (!imgWrapper.isNull())
     {
         if (    imgWrapper->getDataObject()
             &&  this->mInputComponentType == imgWrapper->getItkComponentType()
@@ -287,3 +287,10 @@ void NMItk2VtkConnector::instantiateObject(void)
 {
 }
 
+QSharedPointer<NMItkDataObjectWrapper>
+NMItk2VtkConnector::getOutput(unsigned int idx)
+{
+    QSharedPointer<NMItkDataObjectWrapper> dw;
+    dw.clear();
+    return dw;
+}

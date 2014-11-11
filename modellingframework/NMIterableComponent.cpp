@@ -162,9 +162,13 @@ NMIterableComponent::createExecSequence(QList<QStringList>& execList,
 	// respect to the container's time level
 	QStringList deadEnds = this->findExecutableComponents(timeLevel, step);
 
-	// find for each of those ends the upstream pipeline until they
-	// hit the next upstream non-piped component
-	//QList<QStringList> subPipes;
+    // find for each of those ends the upstream components
+    // constituting the pipeline
+
+    // Deprecated
+        // until they
+        // hit the next upstream non-piped component
+        //QList<QStringList> subPipes;
 	foreach(const QString de, deadEnds)
 	{
 		NMModelComponent* comp = NMModelController::getInstance()->getComponent(de);
@@ -478,7 +482,7 @@ void NMIterableComponent::destroySubComponents(QMap<QString, NMModelComponent*>&
 	this->setInternalStartComponent(0);
 }
 
-void NMIterableComponent::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg)
+void NMIterableComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
 {
 	if (this->mProcess != 0)
 	{
@@ -615,9 +619,10 @@ NMModelComponent* NMIterableComponent::getEndOfTimeLevel(void)
 }
 */
 
-NMItkDataObjectWrapper*
+QSharedPointer<NMItkDataObjectWrapper>
 NMIterableComponent::getOutput(unsigned int idx)
 {
+    QSharedPointer<NMItkDataObjectWrapper> ret;
 	// check, whether we've got a 'single' process component
 	if (this->mProcess != 0)
 	{
@@ -635,7 +640,7 @@ NMIterableComponent::getOutput(unsigned int idx)
 
 	NMErr(this->objectName().toStdString(), << this->objectName().toStdString() <<
 			" - Couldn't fetch any output!");
-	return 0;
+    return ret;
 
 }
 
@@ -711,9 +716,9 @@ void NMIterableComponent::linkComponents(unsigned int step,
 
 	if (this->mProcess != 0)
 	{
-		this->mProcess->linkInPipeline(step, repo);
-		NMDebugCtx(this->objectName().toStdString(), << "done!");
-		return;
+        this->mProcess->linkInPipeline(step, repo);
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+        return;
 	}
 
 	//NMModelComponent* mc = this->getInternalStartComponent();
@@ -882,6 +887,12 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 
 	NMDebugAI(<< ">>>> START ITERATION #" << i+1 << std::endl);
 
+
+    // some info we can use later for debug in the event of an exception
+    NMModelComponent* comp = 0;
+    QString hostName;
+    int hostStep;
+
     try
     {
 
@@ -898,7 +909,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		return;
 	}
 
-
 	// we identify and execute processing pipelines and components
 	// on each individual time level separately, from the highest
 	// timelevel to the  lowest timelevel
@@ -908,6 +918,14 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		 level > -1 && level >= minLevel && !controller->isModelAbortionRequested();
 		 --level)
 	{
+        //        if (this->objectName().compare(QString("AggrComp")) == 0 && level == 15)
+        //        {
+        //            const int a = 0;
+        //            NMDebugAI(<< "here" << std::endl);
+
+        //        }
+
+
 		// we initialise all involved components, so we can actually
 		// identify, which one is an ITK/OTB-derived process component
 		// or  not
@@ -916,13 +934,15 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		this->initialiseComponents((unsigned int)level);
 
 		QList<QStringList> execList;
-		this->createExecSequence(execList, level, step);
+        this->createExecSequence(execList, level, step);
 
 		///////////////// DEBUG
 		// let's have a look what we've got so far ...
 		NMDebug(<< endl);
 		NMDebugAI(<< "PIPELINES AND EXECUTION ORDER ON LEVEL "
-                  << level << " ------------" << endl);
+                  << level
+                  << " STEP " << this->getIterationStep()
+                  <<  " ------------" << endl);
 		int cnt = 0;
 		foreach(const QStringList& sp, execList)
 		{
@@ -937,7 +957,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		// last (i.e. executable) component of the pipeline
 		foreach(const QStringList& pipeline, execList)
 		{
-			NMModelComponent* comp = 0;
+            comp = 0;
 			foreach(const QString in, pipeline)
 			{
 				comp = controller->getComponent(in);
@@ -951,10 +971,19 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                     emit signalExecutionStopped();
 					throw e;
 				}
+
+                // gather some info, we could use for debugging purposes in case
+                // the execution fails
+                if (comp->getHostComponent())
+                {
+                    hostName = comp->getHostComponent()->objectName();
+                    hostStep = comp->getHostComponent()->getIterationStep();
+                }
+
                 comp->linkComponents(step, repo);
 			}
 
-			// calling update on the last component of the pipeline
+            // calling update on the last component of the pipeline
 			// (the most downstream)
 			if (!controller->isModelAbortionRequested())
 			{
@@ -978,23 +1007,40 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     catch (itk::ExceptionObject& err)
     {
         NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
-        rerr.setMsg(err.GetDescription());
+        std::stringstream msg;
+        msg << hostName.toStdString() << " step #" << hostStep << ": "
+            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
+            << ": " << err.GetDescription();
+        rerr.setMsg(msg.str());
 
-        NMErr(this->objectName().toStdString(), << err.GetDescription() << std::endl);
+        //        NMErr(this->objectName().toStdString(), << msg.str());
         NMDebugCtx(this->objectName().toStdString(), << "done!");
+        emit signalExecutionStopped();
         throw rerr;
     }
     catch (NMMfwException& nmerr)
     {
-        NMErr(this->objectName().toStdString(), << nmerr.what() << std::endl);
+        std::stringstream msg;
+        msg << hostName.toStdString() << " step #" << hostStep << ": "
+            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
+            << ": " << nmerr.what();
+
+
+        NMErr(this->objectName().toStdString(), << msg.str());
         NMDebugCtx(this->objectName().toStdString(), << "done!");
-        throw nmerr;
+        emit signalExecutionStopped();
+        //throw nmerr;
     }
     catch (std::exception& e)
     {
+        std::stringstream msg;
+        msg << hostName.toStdString() << " step #" << hostStep << ": "
+            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
+            << ": " << e.what();
+
         NMMfwException re(NMMfwException::Unspecified);
         re.setMsg(e.what());
-        NMErr(this->objectName().toStdString(), << e.what() << std::endl);
+        //NMErr(this->objectName().toStdString(), << msg.str());
         NMDebugCtx(this->objectName().toStdString(), << "done!");
         emit signalExecutionStopped();
         throw re;

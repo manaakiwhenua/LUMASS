@@ -49,9 +49,8 @@ public:
 	NMItk2VtkConnector(QObject* parent=0);
 	virtual ~NMItk2VtkConnector();
 
-	void setNthInput(unsigned int numInput, NMItkDataObjectWrapper* imgWrapper);
-	NMItkDataObjectWrapper* getOutput(unsigned int idx)
-		{return 0;}
+	void setNthInput(unsigned int numInput, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
 	vtkImageData *getVtkImage(void);
 	vtkAlgorithmOutput *getVtkAlgorithmOutput(void);
@@ -60,7 +59,7 @@ public:
 
 	void instantiateObject(void);
 
-    void updateInput(NMItkDataObjectWrapper* imgWrapper);
+    void updateInput(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     void update(void);
 

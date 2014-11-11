@@ -752,10 +752,12 @@ void ClassName::instantiateObject(void)                                 \
  *  over the OUTPUT component type of this wrapper class
  */
 #define GetOutputTypeOutputWrap( ClassName, InternalWrapper )                     \
-NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)							      \
 {                                                                                 \
-	if (!this->mbIsInitialised)                                                   \
-		return 0;                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
                                                                                   \
 	itk::DataObject* img = 0;                                                     \
                                                                                   \
@@ -766,9 +768,9 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
 		break;                                                                    \
 	}                                                                             \
                                                                                   \
-	NMItkDataObjectWrapper* dw =                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
 			new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,     \
-			this->mOutputNumDimensions, this->mOutputNumBands);                   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                   \
                                                                                   \
 	return dw;																	  \
 }
@@ -777,10 +779,12 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
  *  over the INPUT component type of this wrapper class
  */
 #define GetInputTypeOutputWrap( ClassName, InternalWrapper )                     \
-NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)							      \
 {                                                                                 \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
 	if (!this->mbIsInitialised)                                                   \
-		return 0;                                                                 \
+        return ret;                                                                 \
                                                                                   \
 	itk::DataObject* img = 0;                                                     \
                                                                                   \
@@ -791,9 +795,9 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
 		break;                                                                    \
 	}                                                                             \
                                                                                   \
-	NMItkDataObjectWrapper* dw =                                                  \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                    \
 			new NMItkDataObjectWrapper(this, img, this->mInputComponentType,     \
-			this->mInputNumDimensions, this->mInputNumBands);                   \
+            this->mInputNumDimensions, this->mInputNumBands));                   \
                                                                                   \
 	return dw;																	  \
 }
@@ -802,10 +806,12 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)							      \
  *  over the INPUT and OUTPUT component type of this wrapper class
  */
 #define GetOutputWrap( ClassName, InternalWrapper )                                              \
-NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)					\
 {                                                                               \
-	if (!this->mbIsInitialised)                                                 \
-		return 0;                                                               \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
                                                                                 \
 	itk::DataObject* img = 0;                                                   \
                                                                                 \
@@ -845,9 +851,9 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
 		break;                                                                  \
 	}                                                                           \
                                                                                 \
-	NMItkDataObjectWrapper* dw =                                                \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
 			new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
-			this->mOutputNumDimensions, this->mOutputNumBands);                 \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
                                                                                 \
 	return dw;																	\
 }
@@ -856,10 +862,12 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
  *  over the INPUT and OUTPUT component type of this wrapper class
  */
 #define GetOutputRATWrap( ClassName, InternalWrapper )                                              \
-NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)					\
 {                                                                               \
-    if (!this->mbIsInitialised)                                                 \
-        return 0;                                                               \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
                                                                                 \
     itk::DataObject* img = 0;                                                   \
     otb::AttributeTable::Pointer rat = 0;                                       \
@@ -900,9 +908,9 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
         break;                                                                  \
     }                                                                           \
                                                                                 \
-    NMItkDataObjectWrapper* dw =                                                \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
             new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
-            this->mOutputNumDimensions, this->mOutputNumBands);                 \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
                                                                                 \
     dw->setOTBTab(this->getRAT(idx)->getOTBTab());                                           \
                                                                                 \
@@ -915,7 +923,7 @@ NMItkDataObjectWrapper* ClassName::getOutput(unsigned int idx)					\
  */
 #define SetNthInputWrap( ClassName, InternalWrapper )						\
 void ClassName::setNthInput(unsigned int numInput,  		\
-		NMItkDataObjectWrapper* imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
 {                                                           \
 	if (!this->mbIsInitialised)                             \
 		return;                                             \
@@ -964,7 +972,7 @@ void ClassName::setNthInput(unsigned int numInput,  		\
  */
 #define SetInputTypeNthInputWrap( ClassName, InternalWrapper )						\
 void ClassName::setNthInput(unsigned int numInput,  		\
-		NMItkDataObjectWrapper* imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
 {                                                           \
 	if (!this->mbIsInitialised)                             \
 		return;                                             \
@@ -983,10 +991,12 @@ void ClassName::setNthInput(unsigned int numInput,  		\
  *  of this wrapper class
  */
 #define GetRATWrap( ClassName, InternalWrapper )                                              \
-NMItkDataObjectWrapper* ClassName::getRAT(unsigned int idx)					\
+QSharedPointer<NMItkDataObjectWrapper> ClassName::getRAT(unsigned int idx)					\
 {                                                                               \
-    if (!this->mbIsInitialised)                                                 \
-        return 0;                                                               \
+    QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
+    ret.clear();                                                                    \
+    if (!this->mbIsInitialised)                                                   \
+        return ret;                                                                 \
                                                                                 \
     otb::AttributeTable::Pointer rat = 0;                                       \
                                                                                 \
@@ -1026,9 +1036,9 @@ NMItkDataObjectWrapper* ClassName::getRAT(unsigned int idx)					\
         break;                                                                  \
     }                                                                           \
                                                                                 \
-    NMItkDataObjectWrapper* dw =                                                \
+    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
             new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,     \
-            this->mOutputNumDimensions, this->mOutputNumBands);                 \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
     dw->setOTBTab(rat);                                                         \
                                                                                 \
     return dw;																	\
@@ -1040,10 +1050,10 @@ NMItkDataObjectWrapper* ClassName::getRAT(unsigned int idx)					\
  */
 #define SetRATWrap( ClassName, InternalWrapper )						\
 void ClassName::setRAT(unsigned int numInput,  		\
-        NMItkDataObjectWrapper* imgWrapper)                 \
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)                 \
 {                                                                               \
     if (!this->mbIsInitialised)                                                 \
-        return 0;                                                               \
+        return;                                                               \
                                                                                 \
     otb::AttributeTable::Pointer rat = imgWrapper->getOTBTab();                 \
                                                                                 \

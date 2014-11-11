@@ -332,8 +332,8 @@ NMRATBandMathImageFilterWrapper
 		foreach (const QString& input, currentInputs)
 		{
 
-            NMItkDataObjectWrapper* dw = NMModelController::getInstance()->getOutputFromSource(input);
-			if (dw == 0)
+            QSharedPointer<NMItkDataObjectWrapper> dw = NMModelController::getInstance()->getOutputFromSource(input);
+            if (dw.isNull())
 			{
 
 //                NMModelComponent* reqComp = NMModelController::getInstance()->getComponent(input);

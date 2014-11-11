@@ -125,7 +125,7 @@ public:
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent)//, itk::DataObject* obj)
 {
-	this->setParent(parent);
+    //this->setParent(parent);
 	this->mDataObject = 0;
 	this->mNumBands = 0;
 	this->mNumDimensions = 1;
@@ -134,7 +134,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent)//, itk::DataObje
 
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
 {
-	this->setParent(parent);
+    //this->setParent(parent);
 	this->mDataObject = 0;
 	this->mStringObject = str;
 	this->mNumBands = 0;
@@ -145,7 +145,7 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject* parent, QString str)
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject *parent, itk::DataObject* obj,
 		otb::ImageIOBase::IOComponentType type, unsigned int numDims, unsigned int numBands)
 {
-	this->setParent(parent);
+    //this->setParent(parent);
 	this->mDataObject = obj;
 	this->setItkComponentType(type);
 	this->setNumDimensions(numDims);
@@ -156,8 +156,8 @@ NMItkDataObjectWrapper::NMItkDataObjectWrapper(QObject *parent, itk::DataObject*
 NMItkDataObjectWrapper::NMItkDataObjectWrapper(
 		const NMItkDataObjectWrapper& dataObjectWrapper)
 {
-	NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dataObjectWrapper);
-	this->setParent(w->parent());
+    NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dataObjectWrapper);
+    //this->setParent(w->parent());
 	this->mDataObject = w->getDataObject();
     this->mOTBTab = w->getOTBTab();
 	this->mNMComponentType = w->getNMComponentType();
@@ -172,8 +172,8 @@ NMItkDataObjectWrapper::~NMItkDataObjectWrapper()
 
 NMItkDataObjectWrapper& NMItkDataObjectWrapper::operator=(const NMItkDataObjectWrapper& dw)
 {
-	this->setParent(dw.parent());
-	NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dw);
+    //this->setParent(dw.parent());
+    NMItkDataObjectWrapper* w = const_cast<NMItkDataObjectWrapper*>(&dw);
 	this->mDataObject = w->getDataObject();
     this->mOTBTab = w->getOTBTab();
 	this->mNMComponentType = w->getNMComponentType();

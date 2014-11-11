@@ -497,7 +497,6 @@ void NMImageLayer::createTableView(void)
 
 	connect(this, SIGNAL(selectabilityChanged(bool)), mTableView, SLOT(setSelectable(bool)));
 	connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SLOT(forwardLastClickedRowSignal(long)));
-
 }
 
 int
@@ -1159,9 +1158,9 @@ NMImageLayer::updateSourceBuffer(void)
 }
 
 void
-NMImageLayer::setImage(NMItkDataObjectWrapper* imgWrapper)
+NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
-	if (imgWrapper == 0)
+    if (imgWrapper.data() == 0)
 		return;
 
     this->mbUseOverviews = false;
@@ -1321,20 +1320,26 @@ NMImageLayer::getRasterAttributeTable(int band)
 }
 
 
-NMItkDataObjectWrapper* NMImageLayer::getOutput(unsigned int idx)
+QSharedPointer<NMItkDataObjectWrapper>
+NMImageLayer::getOutput(unsigned int idx)
 {
-	return 0;//return this->getImage();
+    QSharedPointer<NMItkDataObjectWrapper> dw;
+    dw.clear();
+    return dw;
 }
 
-NMItkDataObjectWrapper* NMImageLayer::getImage(void)
+QSharedPointer<NMItkDataObjectWrapper> NMImageLayer::getImage(void)
 {
+    QSharedPointer<NMItkDataObjectWrapper> dw;
+    dw.clear();
+
 	itk::DataObject* img = this->getITKImage();
 	if (img == 0)
-		return 0;
+        return dw;
 
-	NMItkDataObjectWrapper* imgW = new NMItkDataObjectWrapper(this,
+    QSharedPointer<NMItkDataObjectWrapper> imgW(new NMItkDataObjectWrapper(0,
 			img, this->mComponentType, this->mNumDimensions,
-			this->mNumBands);
+            this->mNumBands));
     imgW->setOTBTab(this->mOtbRAT);
 	return imgW;
 }
@@ -1352,7 +1357,9 @@ otb::ImageIOBase::IOComponentType NMImageLayer::getITKComponentType(void)
 	return this->mComponentType;
 }
 
-void NMImageLayer::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg)
+void
+NMImageLayer::setNthInput(unsigned int idx,
+          QSharedPointer<NMItkDataObjectWrapper> inputImg)
 {
 	this->setImage(inputImg);
 }

@@ -88,14 +88,14 @@ public:
 	virtual ~NMImageReader();
 
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* img);//,
+			QSharedPointer<NMItkDataObjectWrapper> img);//,
 
 	// get the associated raster attribute table
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 
 	// get the ITK Image Base
 	itk::DataObject* getItkImage(void);
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
     // file name getter and setter
 	void setFileName(QString filename);

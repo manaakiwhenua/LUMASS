@@ -71,7 +71,7 @@ class NMModelController: public QObject
 
 public:
 
-	NMItkDataObjectWrapper* getOutputFromSource(const QString& inputSrc);
+	QSharedPointer<NMItkDataObjectWrapper> getOutputFromSource(const QString& inputSrc);
 	NMModelComponent* getComponent(const QString& name);
 	QString addComponent(NMModelComponent* comp,
 			NMModelComponent* host=0);

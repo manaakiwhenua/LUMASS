@@ -67,11 +67,11 @@ public:
     template<class TInputImage, class TOutputImage, unsigned int Dimension>
     friend class NMResampleImageFilterWrapper_Internal;
 
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper);
+			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     /*$<RATGetSupportDecl>$*/
 

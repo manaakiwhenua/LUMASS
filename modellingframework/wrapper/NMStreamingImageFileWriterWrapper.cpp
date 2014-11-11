@@ -511,12 +511,12 @@ NMStreamingImageFileWriterWrapper
             idx = speclst.at(1).toInt(&bok);
         }
         NMModelComponent* comp = repo.value(compName);
-        NMItkDataObjectWrapper* dw = comp->getOutput(idx);
+        QSharedPointer<NMItkDataObjectWrapper> dw = comp->getOutput(idx);
 
-        if (dw != 0)
+        if (!dw.isNull())
         {
-            otb::AttributeTable::Pointer tab =
-                    comp->getOutput(idx)->getOTBTab();
+            otb::AttributeTable::Pointer tab = dw->getOTBTab();
+                    //comp->getOutput(idx)->getOTBTab();
 
             unsigned int tabIdx = 1;
             if (tab.IsNotNull())
@@ -535,7 +535,7 @@ NMStreamingImageFileWriterWrapper
 void
 NMStreamingImageFileWriterWrapper
 ::setNthInput(unsigned int numInput,
-		NMItkDataObjectWrapper* imgWrapper)
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
 	if (!this->mbIsInitialised)
 		return;
@@ -567,6 +567,17 @@ NMStreamingImageFileWriterWrapper
     }
 }
 
+
+QSharedPointer<NMItkDataObjectWrapper>
+NMStreamingImageFileWriterWrapper::getOutput(unsigned int idx)
+{
+    QSharedPointer<NMItkDataObjectWrapper> dw;
+    dw.clear();
+    return dw;
+}
+
+
+
 #ifdef BUILD_RASSUPPORT
 void NMStreamingImageFileWriterWrapper::setRasConnector(NMRasdamanConnectorWrapper* rw)
 {
@@ -581,7 +592,6 @@ NMRasdamanConnectorWrapper* NMStreamingImageFileWriterWrapper::getRasConnector(v
 {
     return this->mRasConnector;
 }
-
 #endif
 
 

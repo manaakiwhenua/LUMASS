@@ -59,11 +59,11 @@ public:
 	template<class InPixelType, class OutPixelType, unsigned int Dimension>
 	friend class NMFocalNeighbourhoodDistanceWeightingWrapper_Internal;
 
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper);
+			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 protected:
     void linkParameters(unsigned int step,

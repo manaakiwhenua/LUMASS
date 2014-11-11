@@ -52,15 +52,15 @@ public:
 	NMDataComponent(QObject* parent=0);
 	virtual ~NMDataComponent(void);
 
-    virtual void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
     virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
-    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx);
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
     virtual void update(const QMap<QString, NMModelComponent*>& repo);
     virtual void reset(void);
 
 protected:
 
-    NMItkDataObjectWrapper* mDataWrapper;
+    QSharedPointer<NMItkDataObjectWrapper> mDataWrapper;
 	//QStringList mInputSpec;
 
 	unsigned int mParamPos;
@@ -80,6 +80,7 @@ private:
 
 };
 
+//Q_DECLARE_METATYPE(QSharedPointer<NMItkDataObjectWrapper>)
 Q_DECLARE_METATYPE(NMDataComponent)
 Q_DECLARE_METATYPE(NMDataComponent*)
 

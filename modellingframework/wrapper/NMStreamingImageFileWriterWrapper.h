@@ -97,8 +97,8 @@ public:
 
 	// NMProcess interface methods
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper);
-	NMItkDataObjectWrapper* getOutput(unsigned int idx){return 0;}
+			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
 protected:
 

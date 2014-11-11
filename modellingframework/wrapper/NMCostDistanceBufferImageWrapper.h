@@ -85,11 +85,11 @@ public:
 	template<class InPixelType, unsigned int Dimension>
 	friend class NMCostDistanceBufferImageWrapper_Internal;
 
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper);
+			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 #ifdef BUILD_RASSUPPORT
     void setRasConnector(NMRasdamanConnectorWrapper* rw);

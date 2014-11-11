@@ -104,11 +104,11 @@ public:
     void reset(void);
 
 
-    //void setInput(NMItkDataObjectWrapper* inputImg)
+    //void setInput(QSharedPointer<NMItkDataObjectWrapper> inputImg)
     //	{this->setNthInput(0, inputImg);};
-    virtual void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg);
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
 
-    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx);
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
     virtual void changeTimeLevel(int diff);
     virtual void setProcess(NMProcess* proc);

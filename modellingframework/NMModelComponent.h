@@ -123,7 +123,7 @@ public:
     	{this->mUpComponent = comp;}
 
 
-    void setInput(NMItkDataObjectWrapper* inputImg)
+    void setInput(QSharedPointer<NMItkDataObjectWrapper> inputImg)
         {this->setNthInput(0, inputImg);}
 
     // virtual functions, defining sub-class specific behaviour
@@ -131,9 +131,9 @@ public:
         {mInputs = inputs;}
     virtual const QList<QStringList> getInputs(void)
         {return mInputs;}
-    virtual void setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg)=0;//{};
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)=0;//{};
     virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)=0;//{};
-    virtual NMItkDataObjectWrapper* getOutput(unsigned int idx)=0;//{return 0;};
+    virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx)=0;//{return 0;};
     virtual void update(const QMap<QString, NMModelComponent*>& repo)=0;//{};
     virtual void reset(void){}
 

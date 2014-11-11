@@ -62,11 +62,11 @@ public:
 	NMNeighbourhoodCountingWrapper(QObject* parent = 0);
 	virtual ~NMNeighbourhoodCountingWrapper();
 
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper);
+			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 protected:
     void linkParameters(unsigned int step,

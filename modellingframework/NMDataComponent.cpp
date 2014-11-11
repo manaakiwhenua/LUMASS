@@ -50,7 +50,7 @@ NMDataComponent::initAttributes(void)
 	mInputCompName.clear();
 	mLastInputCompName.clear();
 	mSourceMTime.setMSecsSinceEpoch(0);
-	mDataWrapper = 0;
+    mDataWrapper.clear();
 	mInputOutputIdx = 0;
 	mLastInputOutputIdx = 0;
 	mParamPos = 0;
@@ -59,13 +59,16 @@ NMDataComponent::initAttributes(void)
 }
 
 void
-NMDataComponent::setNthInput(unsigned int idx, NMItkDataObjectWrapper* inputImg)
+NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
 {
-	if (mDataWrapper)
-		delete mDataWrapper;
+    if (!mDataWrapper.isNull())
+        mDataWrapper.clear();
 
 	mDataWrapper = inputImg;
-	mDataWrapper->setParent(this);
+    // note QSharedPointer takes care of management, so no
+    // parent required, actually if we had a parent
+    // we'd get crash with double free error
+    //mDataWrapper->setParent(this);
 	emit NMDataComponentChanged();
 }
 
@@ -90,7 +93,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
         // if we haven't got an input component set-up,
         // we're also happy with data which was set from
         // outside the pipeline
-        if (mDataWrapper != 0)
+        if (!mDataWrapper.isNull())
         {
             mbLinked = true;
             NMDebugCtx(ctx, << "...");
@@ -174,7 +177,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 
 	//// request largest possible region
 	//NMModelComponent* comp = it.value();
-	//NMItkDataObjectWrapper* dw = comp->getOutput(mInputOutputIdx);
+    //QSharedPointer<NMItkDataObjectWrapper> dw = comp->getOutput(mInputOutputIdx);
 	//if (dw != 0)
 	//{
 	//	itk::DataObject* dobj = dw->getDataObject();
@@ -255,8 +258,8 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 	//		itComp->getProcess()->getInternalProc()->ReleaseDataBeforeUpdateFlagOn();
 	//}
 
-	NMItkDataObjectWrapper* to = comp->getOutput(mInputOutputIdx);
-	if (to == 0)
+    QSharedPointer<NMItkDataObjectWrapper> to = comp->getOutput(mInputOutputIdx);
+    if (to.isNull())
 	{
 		NMErr(ctx, << "Got NULL output so far, but could be all right.");
 		NMMfwException de(NMMfwException::NMProcess_UninitialisedDataObject);
@@ -284,12 +287,12 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 	//to->getDataObject()->Print(std::cout, itk::Indent(2));
 	//NMDebug(<< endl);
 
-	this->setInput(to);
+    this->setInput(to);
 
 	NMDebugCtx(ctx, << "done!");
 }
 
-NMItkDataObjectWrapper*
+QSharedPointer<NMItkDataObjectWrapper>
 NMDataComponent::getOutput(unsigned int idx)
 {
 	return mDataWrapper;
@@ -334,10 +337,9 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
 void
 NMDataComponent::reset(void)
 {
-	if (mDataWrapper)
+    if (!mDataWrapper.isNull())
 	{
-		delete mDataWrapper;
-		mDataWrapper = 0;
+        mDataWrapper.clear();
 	}
 	this->mbLinked = false;
 	this->mInputCompName.clear();

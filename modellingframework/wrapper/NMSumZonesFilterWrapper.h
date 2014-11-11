@@ -61,13 +61,13 @@ public:
     template<class TInputImage, class TOutputImage, unsigned int Dimension>
     friend class NMSumZonesFilterWrapper_Internal;
 
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper);
+			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
-    NMItkDataObjectWrapper* getRAT(unsigned int idx);
+    QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
 
     /*$<RATSetSupportDecl>$*/

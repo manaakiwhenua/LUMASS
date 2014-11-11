@@ -57,11 +57,11 @@ public:
 	NMRandomImageSourceWrapper(QObject* parent=0);
 	~NMRandomImageSourceWrapper();
 
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
+	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 	void instantiateObject(void);
 
 	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper){};
+            QSharedPointer<NMItkDataObjectWrapper> imgWrapper){}
 
 protected:
 

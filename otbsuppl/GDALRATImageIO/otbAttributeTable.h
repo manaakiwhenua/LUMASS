@@ -109,7 +109,6 @@ public:
 	void PrintStructure(std::ostream& os, itk::Indent indent);
 
 
-
 protected:
 	AttributeTable();
 	virtual

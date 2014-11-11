@@ -37,6 +37,7 @@
 #define __otbStreamingRATImageFileWriter_txx
 
 #include "nmlog.h"
+#define ctxSIFR "StreamingRATImageFileWriter"
 
 #include "otbStreamingRATImageFileWriter.h"
 #include "itkImageFileWriter.h"
@@ -67,10 +68,6 @@
 
 namespace otb
 {
-
-//template<class TInputImage>
-//const std::string otb::StreamingRATImageFileWriter<TInputImage>::ctx = "StreamingRATImageFileWriter";
-
 
 /**
  *
@@ -391,7 +388,7 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::GenerateInputRequestedRegion()
  {
-	//NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctxSIFR, << "...");
   Superclass::GenerateInputRequestedRegion();
 
   InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
@@ -414,7 +411,7 @@ StreamingRATImageFileWriter<TInputImage>
 
   inputPtr->SetRequestedRegion(lregion);
 
-	//NMDebugCtx(ctx, << "done!");
+    //NMDebugCtx(ctxSIFR, << "done!");
 }
 
 template<class TInputImage>
@@ -477,7 +474,7 @@ void
 StreamingRATImageFileWriter<TInputImage>
 ::UpdateOutputData(itk::DataObject *itkNotUsed(output))
 {
-	//NMDebugCtx(ctx, << "...");
+    //    NMDebugCtx(ctxSIFR, << "...");
 
   unsigned int idx;
   /**
@@ -741,6 +738,7 @@ StreamingRATImageFileWriter<TInputImage>
 
     // Start writing stream region in the image file
     this->GenerateData();
+    //this->ReleaseInputs();
     }
 
   /** build overviews */
@@ -788,12 +786,19 @@ StreamingRATImageFileWriter<TInputImage>
   /**
    * Release any inputs if marked for release
    */
+
   this->ReleaseInputs();
 
   // Mark that we are no longer updating the data in this filter
   this->m_Updating = false;
 
-	//NMDebugCtx(ctx, << "done!");
+  // close the GDALDataset
+  if (gio != 0)
+  {
+      gio->CloseDataset();
+  }
+
+  //NMDebugCtx(ctxSIFR, << "done!");
 
 }
 

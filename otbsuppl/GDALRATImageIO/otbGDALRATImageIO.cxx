@@ -126,18 +126,20 @@ public:
   /** Easy access to the internal GDALDataset object.
    *  Don't close it, it will be automatic */
   GDALDataset* GetDataSet() const
-    {
-    return m_Dataset;
-    }
-
-  void CloseDataSet(void)
   {
-	  if (m_Dataset)
-	  {
-		  GDALClose(m_Dataset);
-		  m_Dataset = 0;
-	  }
+      return m_Dataset;
   }
+
+    //  void CloseDataSet(void)
+    //  {
+    //      if (m_Dataset)
+    //      {
+    //          std::string descr = m_Dataset->GetDescription();
+    //          std::cout << descr << "DS::close" << std::endl;
+    //          GDALClose(m_Dataset);
+    //          m_Dataset = NULL;
+    //      }
+    //  }
 
   //void SetDataSet(GDALDataset* dataset)
   //	  {	m_Dataset = dataset;}
@@ -150,9 +152,10 @@ protected :
 
   ~GDALDatasetWrapper()
   {
-    if (m_Dataset)
+      if (m_Dataset)
       {
-      GDALClose(m_Dataset);
+          GDALClose(m_Dataset);
+          m_Dataset = NULL;
       }
   }
 
@@ -222,7 +225,6 @@ public:
                                             nXSize, nYSize,
                                             nBands, eType,
                                             papszOptions );
-
       if (dataset != NULL)
         {
         datasetWrapper = GDALDatasetWrapper::New();
@@ -343,6 +345,7 @@ bool GDALRATImageIO::CanReadFile(const char* file)
     itkDebugMacro(<< "No filename specified.");
     return false;
     }
+  m_Dataset = 0;
   m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(file);
   return m_Dataset.IsNotNull();
 }
@@ -363,11 +366,7 @@ void GDALRATImageIO::ReadVolume(void*)
 
 void GDALRATImageIO::CloseDataset(void)
 {
-	if (m_Dataset.IsNotNull())
-	{
-		m_Dataset->CloseDataSet();
-        m_Dataset = 0;
-	}
+    m_Dataset = 0;
 }
 
 void
@@ -404,6 +403,10 @@ void GDALRATImageIO::Read(void* buffer)
   int lNbLines = lNbBufLines;
   int lNbColumns = lNbBufColumns;
 
+  if (m_Dataset.IsNull())
+  {
+      this->CanReadFile(m_FileName.c_str());
+  }
   GDALDataset* dataset = m_Dataset->GetDataSet();
   // make sure we know about any spcified overviews!
   if (dataset == 0)// || this->m_OverviewIdx >= 0)
@@ -557,9 +560,8 @@ void GDALRATImageIO::Read(void* buffer)
     //printDataBuffer(p, m_PxType->pixType, m_NbBands, lNbColumns*lNbLines);
     }
 
-   // let's close the GDALDataset now, it could be that we want to write on
-   // it further down the track
-  m_Dataset->CloseDataSet();
+   // closes the underlying dataset
+   m_Dataset = 0;
 }
 
 bool GDALRATImageIO::GetSubDatasetInfo(std::vector<std::string> &names, std::vector<std::string> &desc)
@@ -1334,19 +1336,22 @@ void GDALRATImageIO::Write(const void* buffer)
 	// we're only really updating, when we've written the imageinformation
 	// at least once
 	GDALDataset* pDs = 0;
-	if (m_ImageUpdateMode && m_CanStreamWrite)
+    if (m_ImageUpdateMode && m_CanStreamWrite)
 	{
         // if we use the drivermanagerwrapper class here and the data set has
         // not been created, it'd throw an exception and the program aborts,
         // which is not what we want, so therefore this hack ...
         pDs = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+        std::cout << m_FileName << "-raw::update" << std::endl;
         if (pDs != 0)
 		{
             GDALClose(pDs);
+            std::cout << m_FileName << "-raw::close" << std::endl;
             // in case we've worked on the data set in non-update mode before
-            if (m_Dataset.IsNotNull())
+            if (m_Dataset && m_Dataset->GetDataSet() != 0)
             {
-                m_Dataset->CloseDataSet();
+                //m_Dataset->CloseDataSet();
+                m_Dataset = 0;
             }
             m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
                     m_FileName);
@@ -1499,11 +1504,13 @@ void GDALRATImageIO::Write(const void* buffer)
 				this->WriteRAT(tab, ti + 1);
 			}
 
-			m_Dataset->CloseDataSet();
+            //m_Dataset->CloseDataSet();
+            m_Dataset = 0;
 		}
 		else
 		{
 			m_Dataset->GetDataSet()->FlushCache();
+            //m_Dataset= 0;
 		}
 	}
 	else
@@ -1546,6 +1553,7 @@ void GDALRATImageIO::Write(const void* buffer)
         GDALDataset* hOutputDS = CreateCopy();
         //                driver->CreateCopy(realFileName.c_str(),
         //				m_Dataset->GetDataSet(), FALSE, option, NULL, NULL);
+        std::cout << "raw DS::copy" << std::endl;
 
         //        if (gdalDriverShortName.compare("HFA") == 0)
         //        {
@@ -1560,6 +1568,7 @@ void GDALRATImageIO::Write(const void* buffer)
 
 
 		GDALClose(hOutputDS);
+        std::cout << "raw DS::close" << std::endl;
 	}
 
 	//NMDebugCtx(ctx, << "done!");
@@ -1893,7 +1902,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     // If there is no ProjectionRef, and the GeoTransform is not the identity,
     // then saving also GCPs is undefined behavior for GDAL, and a WGS84 projection crs
     // is assigned arbitrarily
-    itkWarningMacro(<< "Skipping GCPs saving to prevent GDAL from assigning a WGS84 projection ref to the file")
+    //itkWarningMacro(<< "Skipping GCPs saving to prevent GDAL from assigning a WGS84 projection ref to the file")
     }
   else
     {
@@ -2129,7 +2138,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 #endif
 	if (rat == 0)
 	{
-		img = 0;
+        //img = 0;
 		return 0;
 	}
 
@@ -2316,8 +2325,8 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     }
 #endif
 
-	rat = 0;
-	img = 0;
+    //rat = 0;
+    //img = 0;
 
 	//NMDebug(<< std::endl);
 	//NMDebugAI(<< "now pritn' the actual Table ...");
@@ -2354,7 +2363,8 @@ GDALRATImageIO::TableStructureChanged(AttributeTable::Pointer tab, unsigned int 
 
     if (gdaltab == 0)
     {
-        m_Dataset->CloseDataSet();
+        //m_Dataset->CloseDataSet();
+        m_Dataset = 0;
         return false;
     }
 
@@ -2362,7 +2372,8 @@ GDALRATImageIO::TableStructureChanged(AttributeTable::Pointer tab, unsigned int 
     int newNumCols = tab->GetNumCols();
     if (curNumCols != newNumCols)
     {
-        m_Dataset->CloseDataSet();
+        //m_Dataset->CloseDataSet();
+        m_Dataset = 0;
         return true;
     }
 
@@ -2370,7 +2381,8 @@ GDALRATImageIO::TableStructureChanged(AttributeTable::Pointer tab, unsigned int 
     {
         if (tab->GetColumnName(c).compare(gdaltab->GetNameOfCol(c)) != 0)
         {
-            m_Dataset->CloseDataSet();
+            //m_Dataset->CloseDataSet();
+            m_Dataset = 0;
             return true;
         }
     }
@@ -2564,7 +2576,8 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 
     // if we don't close the data set here, the RAT is not written properly to disk
     // (not quite sure why that's not done when m_Dataset runs out of scope(?)
-    m_Dataset->CloseDataSet();
+    //m_Dataset->CloseDataSet();
+    m_Dataset = 0;
 
     // need an open data set for writing the actual image later on;
     // when we're only updating the RAT, the data sets gets closed as soon as

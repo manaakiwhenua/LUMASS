@@ -1515,8 +1515,9 @@ NMTableView::selectionQuery(void)
 
 	bool bOk = false;
 	QString query = QInputDialog::getText(this, tr("Selection Query"),
-	                                          tr("Where Clause"), QLineEdit::Normal,
-	                                          tr(""), &bOk);
+                         tr("Where Clause"), QLineEdit::Normal,
+                         QString("%1 == ").arg(this->mLastClickedColumn),
+                         &bOk);
 	if (!bOk || query.isEmpty())
 	{
 		NMDebugCtx(__ctxtabview, << "done!");

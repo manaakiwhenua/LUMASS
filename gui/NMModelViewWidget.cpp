@@ -472,6 +472,19 @@ void NMModelViewWidget::initItemContextMenu()
 	ungroupItems->setText(ungroupItemsText);
 	this->mActionMap.insert(ungroupItemsText, ungroupItems);
 
+    QAction* actGroupTimeLevel = new QAction(this->mItemContextMenu);
+    QString actGroupTimeLevelText = "Set Time Level ...";
+    actGroupTimeLevel->setEnabled(false);
+    actGroupTimeLevel->setText(actGroupTimeLevelText);
+    this->mActionMap.insert(actGroupTimeLevelText, actGroupTimeLevel);
+
+    QAction* actDeltaTimeLevel = new QAction(this->mItemContextMenu);
+    QString actDeltaTimeLevelText = "Increase/Decrease Time Level ...";
+    actDeltaTimeLevel->setEnabled(false);
+    actDeltaTimeLevel->setText(actDeltaTimeLevelText);
+    this->mActionMap.insert(actDeltaTimeLevelText, actDeltaTimeLevel);
+
+
 	QAction* delComp = new QAction(this->mItemContextMenu);
 	delComp->setText(tr("Delete"));
 	this->mActionMap.insert("Delete", delComp);
@@ -493,9 +506,8 @@ void NMModelViewWidget::initItemContextMenu()
     clrAct->setText(tr("Change Colour ..."));
     this->mActionMap.insert("Change Colour ...", clrAct);
 
-	this->mItemContextMenu->addAction(runComp);
-	this->mItemContextMenu->addAction(resetComp);
-	this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(actDeltaTimeLevel);
+    this->mItemContextMenu->addAction(actGroupTimeLevel);
 	this->mItemContextMenu->addAction(groupSeqItems);
 	this->mItemContextMenu->addAction(groupCondItems);
 	this->mItemContextMenu->addAction(ungroupItems);
@@ -507,11 +519,17 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addSeparator();
     this->mItemContextMenu->addAction(fontAct);
     this->mItemContextMenu->addAction(clrAct);
+    this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(resetComp);
+    this->mItemContextMenu->addAction(runComp);
+
 
 	connect(runComp, SIGNAL(triggered()), this, SLOT(executeModel()));
 	connect(resetComp, SIGNAL(triggered()), this, SLOT(resetModel()));
 	connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
-	connect(groupSeqItems, SIGNAL(triggered()), this, SLOT(createSequentialIterComponent()));
+    connect(actDeltaTimeLevel, SIGNAL(triggered()), this, SLOT(addDeltaTimeLevel()));
+    connect(actGroupTimeLevel, SIGNAL(triggered()), this, SLOT(setGroupTimeLevel()));
+    connect(groupSeqItems, SIGNAL(triggered()), this, SLOT(createSequentialIterComponent()));
 	connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
 	connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
@@ -630,6 +648,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 
         if ((ai != 0 && selection.count() == 0) || selection.count() == 1)
         {
+            this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
+            this->mActionMap.value("Set Time Level ...")->setEnabled(false);
             this->mActionMap.value("Ungroup Components")->setEnabled(true);
             this->mActionMap.value("Create Sequential Group")->setEnabled(false);
             //this->mActionMap.value("Create Conditional Group")->setEnabled(true);
@@ -639,15 +659,25 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			this->mActionMap.value("Create Sequential Group")->setEnabled(true);
 			//this->mActionMap.value("Create Conditional Group")->setEnabled(true);
 			if (levelIndi > 0)
+            {
+                this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(true);
+                this->mActionMap.value("Set Time Level ...")->setEnabled(true);
 				this->mActionMap.value("Ungroup Components")->setEnabled(true);
+            }
 			else
+            {
+                this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
+                this->mActionMap.value("Set Time Level ...")->setEnabled(false);
 				this->mActionMap.value("Ungroup Components")->setEnabled(false);
+            }
 		}
 		else
 		{
 			this->mActionMap.value("Create Sequential Group")->setEnabled(false);
 			this->mActionMap.value("Create Conditional Group")->setEnabled(false);
 			this->mActionMap.value("Ungroup Components")->setEnabled(false);
+            this->mActionMap.value("Set Time Level ...")->setEnabled(false);
+            this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
 		}
 	}
 	else
@@ -655,6 +685,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		this->mActionMap.value("Create Sequential Group")->setEnabled(false);
 		this->mActionMap.value("Create Conditional Group")->setEnabled(false);
 		this->mActionMap.value("Ungroup Components")->setEnabled(false);
+        this->mActionMap.value("Set Time Level ...")->setEnabled(false);
+        this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
 	}
 
 	// DELETE & SAVE AS
@@ -1456,8 +1488,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 		lmv >> readType;
 		//NMDebugAI(<< "item type is: " << (int)readType << endl);
 
-		NMProcessComponentItem* pi;
-		NMAggregateComponentItem* ai;
+        NMProcessComponentItem* pi;
+        NMAggregateComponentItem* ai;
         QGraphicsTextItem* ti;
         switch(readType)
 		{
@@ -1476,11 +1508,23 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
         case (qint32)NMProcessComponentItem::Type:
 				{
-					pi = new NMProcessComponentItem(0, this->mModelScene);
+                    pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
 					QString itemTitle = nameRegister.value(pi->getTitle());
 					pi->setTitle(itemTitle);
                     importItems << itemTitle;
+
+                    QRegExp digDetec("(\\d+$)");
+                    if (digDetec.indexIn(itemTitle) != -1)
+                    {
+                        bool bok;
+                        int typeId = digDetec.cap(1).toInt(&bok);
+                        if (bok)
+                        {
+                            pi->setTypeID(typeId);
+                        }
+                    }
+
 
 					if (!pi->getIsDataBufferItem())
 					{
@@ -1615,6 +1659,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         case (qint32)QGraphicsTextItem::Type:
             ti = new QGraphicsTextItem();
             lmv >> *ti;
+            delete ti;
+            ti = 0;
             break;
 
 		case (qint32)NMComponentLinkItem::Type:
@@ -1658,6 +1704,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 		case (qint32)NMProcessComponentItem::Type:
                 pi = new NMProcessComponentItem(0,0);
                 lmv >> *pi;
+                delete pi;
+                pi = 0;
 				break;
 
 		case (qint32)NMAggregateComponentItem::Type:
@@ -2046,6 +2094,99 @@ int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 	}
 
 	return ret;
+}
+
+void
+NMModelViewWidget::addDeltaTimeLevel()
+{
+    NMModelController* ctrl = NMModelController::getInstance();
+    if (ctrl->isModelRunning())
+    {
+        NMDebugAI(<< "Cannot edit components while model is running!" << std::endl);
+        return;
+    }
+
+    QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
+    if (selection.size() == 0)
+    {
+        NMDebugAI(<< "No group available for which to alter the time level!" << std::endl);
+        return;
+    }
+
+    // get the minimum time level allowed
+    NMModelComponent* pcomp;// = this->componentFromItem(selection.at(0));
+//    if (pcomp == 0)
+//    {
+//        return;
+//    }
+//    int minLevel = pcomp->getHostComponent()->getTimeLevel();
+
+    bool bok;
+    int levelDelta = QInputDialog::getInt(this,
+                         tr("Increase/Decrease Time Level"),
+                         tr("Change time level by (+/-)"),
+                         1,
+                         -2147483647, 2147483647,
+                         1,
+                         &bok);
+    if (bok)
+    {
+        foreach(QGraphicsItem* item, selection)
+        {
+            pcomp = this->componentFromItem(item);
+            if (pcomp)
+            {
+                pcomp->setTimeLevel(pcomp->getTimeLevel() + levelDelta);
+            }
+        }
+    }
+
+}
+
+void
+NMModelViewWidget::setGroupTimeLevel()
+{
+    NMModelController* ctrl = NMModelController::getInstance();
+    if (ctrl->isModelRunning())
+    {
+        NMDebugAI(<< "Cannot edit components while model is running!" << std::endl);
+        return;
+    }
+
+    QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
+    if (selection.size() == 0)
+    {
+        NMDebugAI(<< "No group available to set the time level for!" << std::endl);
+        return;
+    }
+
+    // get the minimum time level allowed
+    NMModelComponent* pcomp = this->componentFromItem(selection.at(0));
+    if (pcomp == 0)
+    {
+        return;
+    }
+    int minLevel = pcomp->getHostComponent()->getTimeLevel();
+
+    bool bok;
+    int userLevel = QInputDialog::getInt(this,
+                         tr("Set Time Level"),
+                         tr("Time Level"),
+                         minLevel,
+                         minLevel, 2147483647,
+                         1,
+                         &bok);
+    if (bok)
+    {
+        foreach(QGraphicsItem* item, selection)
+        {
+            pcomp = this->componentFromItem(item);
+            if (pcomp)
+            {
+                pcomp->setTimeLevel(userLevel);
+            }
+        }
+    }
 }
 
 void NMModelViewWidget::ungroupComponents()
@@ -2624,6 +2765,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		++cnt;
 	}
 	NMDebugAI(<< "finale name of component is '" << tname.toStdString() << "'" << endl);
+    procItem->setTypeID(cnt-1);
 
 	NMModelComponent* comp = 0;
 	NMDataComponent* dataComp = 0;

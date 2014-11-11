@@ -77,6 +77,9 @@ public slots:
 	void createSequentialIterComponent();
 	void createConditionalIterComponent();
 	void ungroupComponents();
+    void setGroupTimeLevel();
+    void addDeltaTimeLevel();
+
 
 	void editRootComponent();
     //void compProcChanged();

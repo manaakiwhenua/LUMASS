@@ -66,7 +66,12 @@ public:
 
 	bool containsComponent(QString name);
 
-    QRectF boundingRect(void) const;
+    QRectF boundingRect(void) const
+    {
+        QRectF bnd = this->childrenBoundingRect();
+        bnd.adjust(-this->dx1,-this->dy1, this->dx2, this->dy2);
+        return bnd;
+    }
 
     void normaliseAt(const QPointF& pos);
 
@@ -127,8 +132,6 @@ private:
     QRectF mTimeLevelRect;
     QRectF mNumIterRect;
     QRectF mDescrRect;
-
-    QPainterPath mIterSymbol;
 
     QRectF mIterSymbolRect;
     QLineF mHeadLeft;

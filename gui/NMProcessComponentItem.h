@@ -70,7 +70,12 @@ public:
 	int type(void) const
 		{return Type;}
 
-    QRectF boundingRect() const;
+    QRectF boundingRect() const
+    {
+        return mIconBnd.united(mTextRect);
+    }
+
+
 	void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 			QWidget* widget);
 
@@ -92,6 +97,11 @@ public:
         {this->mTimeLevel = level;}
     short getTimeLevel(void)
         {return this->mTimeLevel;}
+
+    int getTypeID()
+        {return this->mTypeID;}
+    void setTypeID(const int& num)
+        {this->mTypeID = num;}
 
 	void addInputLink(int idx, NMComponentLinkItem* link);
 	void addOutputLink(int idx, NMComponentLinkItem* link);
@@ -126,6 +136,9 @@ private:
 	static const std::string ctx;
 
 	bool mbIsDataBuffer;
+    bool mbShowUniqueObjectID;
+
+    int mTypeID;
 
 	float mProgress;
 	bool mbIsExecuting;
@@ -143,6 +156,7 @@ private:
 	QRectF mIconBnd;
 	QRectF mTextRect;
     QRectF mTimeLevelRect;
+    QRectF mIDRect;
     QRectF mClockRect;
     QLineF mPointer1;
     QLineF mPointer2;

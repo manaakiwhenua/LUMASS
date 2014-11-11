@@ -26,6 +26,8 @@
 #include "NMAggregateComponentItem.h"
 #include "nmlog.h"
 
+//#include "valgrind/callgrind.h"
+
 NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     : mProgress(0), mIsExecuting(false)
 {
@@ -44,6 +46,9 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     mSpanAngle  = -315 * 16;
     mHeadAngleLeft = -165;
     mHeadAngleRight = -60;
+
+    mDescription = this->objectName();
+    //this->preparePainting();
 }
 
 NMAggregateComponentItem::~NMAggregateComponentItem()
@@ -106,12 +111,12 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     }
 }
 
-QRectF NMAggregateComponentItem::boundingRect() const
-{
-    QRectF bnd = this->childrenBoundingRect();
-    bnd.adjust(-dx1,-dy1,dx2,dy2);
-    return bnd;
-}
+//QRectF NMAggregateComponentItem::boundingRect() const
+//{
+//    QRectF bnd = this->childrenBoundingRect();
+//    bnd.adjust(-dx1,-dy1,dx2,dy2);
+//    return bnd;
+//}
 
 void
 NMAggregateComponentItem::updateDescription(const QString& descr)
@@ -119,7 +124,7 @@ NMAggregateComponentItem::updateDescription(const QString& descr)
     if (descr.compare(this->mDescription) != 0)
     {
         this->mDescription = descr;
-        //NMDebugAI(<< mTitle.toStdString() << " description: " << mDescription.toStdString() << std::endl);
+        //this->preparePainting();
         this->update();
     }
 }
@@ -130,6 +135,7 @@ NMAggregateComponentItem::updateTimeLevel(short level)
     if (level != this->mTimeLevel)
     {
         this->mTimeLevel = level;
+        //this->preparePainting();
         this->update();
     }
 }
@@ -140,7 +146,7 @@ NMAggregateComponentItem::updateNumIterations(unsigned int iter)
     if (this->mNumIterations != iter)
     {
         this->mNumIterations = iter;
-        //NMDebugAI(<< mTitle.toStdString() << " # iterations: " << mNumIterations << std::endl);
+        //this->preparePainting();
         this->update();
     }
 }
@@ -173,20 +179,6 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 
     mIterSymbolRect = QRectF(mTimeLevelRect.right()+2+(headBase/2.0), mDash.top()+9, 8,8);
 
-    mIterSymbol.moveTo(mIterSymbolRect.center());
-    mIterSymbol.arcTo(mIterSymbolRect, (this->mStartAngle/16.0), (this->mSpanAngle/16.0));
-
-    QPointF arcEnd = mIterSymbol.currentPosition();
-
-    mHeadLeft = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
-    mHeadRight = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
-
-    mHeadLeft.setAngle(mHeadAngleLeft);
-    mHeadRight.setAngle(mHeadAngleRight);
-
-    mIterSymbol.lineTo(mHeadLeft.p2());
-    mIterSymbol.moveTo(arcEnd);
-    mIterSymbol.lineTo(mHeadRight.p2());
 
     qreal numIterWidth = fm.width(QString("%1").arg(mNumIterations));
     if (mIsExecuting)
@@ -215,7 +207,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // short cuts && preparations
     // ============================================================================
 
+    //CALLGRIND_START_INSTRUMENTATION;
+
     QRectF bnd = this->boundingRect();
+
 
 //    QTransform wt = painter->worldTransform();
 //    wt.translate(bnd.right(), 0);
@@ -252,7 +247,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
     painter->setCompositionMode(QPainter::CompositionMode_DestinationIn);
 
     // blend the corners
-    QRadialGradient cornerglare;                                                             
+    QRadialGradient cornerglare;
     cornerglare.setColorAt(0.00, QColor(255,255,255,255));
     cornerglare.setColorAt(0.50, QColor(255,255,255,200));
     cornerglare.setColorAt(0.75, QColor(255,255,255,180));
@@ -272,9 +267,9 @@ NMAggregateComponentItem::paint(QPainter* painter,
     painter->drawPie(tl, start, span);
 
     // top right
-    QRect tr(QPoint(r-15, t), size);                              
+    QRect tr(QPoint(r-15, t), size);
     cornerglare.setCenter(QPoint(r-7, t+9));
-    cornerglare.setFocalPoint(QPoint(r-7, t+9));                     
+    cornerglare.setFocalPoint(QPoint(r-7, t+9));
     painter->setBrush(cornerglare);
     start = 0;
     painter->drawPie(tr, start, span);
@@ -283,20 +278,20 @@ NMAggregateComponentItem::paint(QPainter* painter,
     QRect bl(QPoint(l,b-15), size);
     cornerglare.setCenter(QPoint(l+9, b-8));
     cornerglare.setFocalPoint(QPoint(l+9, b-8));
-    painter->setBrush(cornerglare);                                                      
+    painter->setBrush(cornerglare);
     start = 16*180;
     painter->drawPie(bl, start, span);
 
     // bottom right
-    QRect br(QPoint(r-15, b-15), size);               
+    QRect br(QPoint(r-15, b-15), size);
     cornerglare.setCenter(QPoint(r-7, b-8));
     cornerglare.setFocalPoint(QPoint(r-7, b-8));
     painter->setBrush(cornerglare);
-    start = 16*270;                                    
+    start = 16*270;
     painter->drawPie(br, start, span);
     
     // ----------------------------------------------------------------------
-    // glare the edges on top of it    
+    // glare the edges on top of it
     
     QLinearGradient glare(l+(w/2.0), t+8, l+(w/2.0), t);
     glare.setColorAt(0.00, QColor(255,255,255,255));
@@ -331,9 +326,9 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	// ============================================================================
     // other stuff
 	// ============================================================================
-    painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+    painter->setCompositionMode(QPainter::CompositionMode_Source);//Over);
 
-    QRectF wr = QRectF(bnd.left()+10, bnd.top()+12, bnd.width()-20,
+    QRectF wr = QRectF(l+10, t+12, bnd.width()-20,
                        mDash.height());
 
     if (mIsExecuting)
@@ -379,10 +374,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
     // the iteration icon
     painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
-    //painter->drawPath(mIterSymbol);
     painter->drawArc(mIterSymbolRect, mStartAngle, mSpanAngle);
     painter->drawLine(mHeadLeft);
     painter->drawLine(mHeadRight);
+
 
     // the actual number of iterations
     if (mNumIterations > 0)
@@ -416,13 +411,24 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // DRAW SELECTION MARKER
     // ------------------------------------------------
 
-    if(this->isSelected())
+    if(this->isSelected() || mIsExecuting)
 	{
-		painter->setPen(QPen(QBrush(Qt::red), 2, Qt::SolidLine));
-		QPainterPath selRect;
+        if (mIsExecuting)
+        {
+            painter->setPen(QPen(QBrush(Qt::red), 4, Qt::SolidLine));
+        }
+        else
+        {
+            painter->setPen(QPen(QBrush(Qt::red), 2, Qt::SolidLine));
+        }
+        QPainterPath selRect;
         selRect.addRoundedRect(bnd.adjusted(3,3,-3,-3), 5, 5);
 		painter->drawPolygon(selRect.toFillPolygon());
 	}
+
+    //CALLGRIND_STOP_INSTRUMENTATION;
+    //CALLGRIND_DUMP_STATS;
+
 }
 
 bool

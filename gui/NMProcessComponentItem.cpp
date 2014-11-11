@@ -28,6 +28,8 @@
 #include <QFontMetrics>
 #include "nmlog.h"
 
+//#include "valgrind/callgrind.h"
+
 const std::string NMProcessComponentItem::ctx = "NMProcessComponentItem";
 
 NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
@@ -77,6 +79,9 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 
     QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
                              mClockRect.top() +(mClockRect.height()/2.0));
+
+    mIDRect = QRectF(mIconBnd.right()-47, mIconBnd.top()+1.5, 45, 15);
+
 
     mPointer1 = QLineF(center, QPointF(mClockRect.left()+(mClockRect.width()/2.0),
                                        mClockRect.top()+1));
@@ -233,11 +238,12 @@ void NMProcessComponentItem::setTitle(const QString& title)
     }
 }
 
-QRectF
-NMProcessComponentItem::boundingRect(void) const
-{
-	return this->getShapeAsPolygon().boundingRect();
-}
+//QRectF
+//NMProcessComponentItem::boundingRect(void) const
+//{
+//    return jointPoly.united(txtPoly);
+//    //return this->getShapeAsPolygon().boundingRect();
+//}
 
 QPolygonF
 NMProcessComponentItem::getShapeAsPolygon(void) const
@@ -338,6 +344,9 @@ NMProcessComponentItem::paint(QPainter* painter,
 		const QStyleOptionGraphicsItem* option,
 		QWidget* widget)
 {
+
+    //CALLGRIND_START_INSTRUMENTATION;
+
     painter->setRenderHint(QPainter::Antialiasing, true);
 
     this->updateDescription();
@@ -367,7 +376,8 @@ NMProcessComponentItem::paint(QPainter* painter,
 
 		// draw boundary
 		painter->setBrush(Qt::NoBrush);
-        QPen pen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
+        //QPen pen = QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine);
+        QPen pen = QPen(QBrush(Qt::darkRed), 2, Qt::SolidLine);
 		painter->setPen(pen);
 		painter->drawRoundRect(mIconBnd, 10, 10);
 
@@ -413,21 +423,24 @@ NMProcessComponentItem::paint(QPainter* painter,
     painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
     mFont.setItalic(false);
 
-    //if (!this->mbIsDataBuffer)
-    {
-        // the clock icon
-        painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
-        painter->drawEllipse(mClockRect);
-        painter->drawLine(mPointer1);
-        painter->drawLine(mPointer2);
+    // the clock icon
+    painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
+    painter->drawEllipse(mClockRect);
+    painter->drawLine(mPointer1);
+    painter->drawLine(mPointer2);
 
-        // the time level
-        painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+    // the time level
+    painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
 
-        mFont.setBold(false);
-        painter->setFont(mFont);
-        painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
-    }
+    mFont.setBold(false);
+    painter->setFont(mFont);
+    painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
+
+
+    // the type id
+    painter->setPen(QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine));
+    painter->drawText(mIDRect, Qt::AlignRight, QString("%1").arg(mTypeID));
+    painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
 
     // the description
     mFont.setBold(true);
@@ -440,6 +453,9 @@ NMProcessComponentItem::paint(QPainter* painter,
                       mDescription);
 
     //mTextLayout.draw(painter, QPointF(mTextRect.left(), mTextRect.top()));
+
+    //CALLGRIND_STOP_INSTRUMENTATION;
+    //CALLGRIND_DUMP_STATS;
 
 }
 

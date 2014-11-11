@@ -30,7 +30,6 @@
 #include <QMetaProperty>
 #include <QList>
 #include <QStringList>
-#include <QMessageBox>
 
 #include "NMModelSerialiser.h"
 #include "NMModelComponentFactory.h"
@@ -70,7 +69,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 	// as registered with model controller
 	QMap<QString, QString> nameRegister;
 
-	QFile* file = new QFile(fileName);
+    QScopedPointer<QFile> file(new QFile(fileName));
 	if (!file->open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
@@ -80,7 +79,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 	}
 
 	QDomDocument doc;
-	if (!doc.setContent(file))
+    if (!doc.setContent(file.data()))
 	{
 		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
 				<< "'!");
@@ -125,7 +124,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		if (compName.isEmpty())
 		{
 			NMErr(ctx, << "detected unnamed component!");
-//			NMDebugCtx(ctx, << "done!");
+            //			NMDebugCtx(ctx, << "done!");
             return;// nameRegister;
 		}
 		else if (compName.compare("root") == 0)
@@ -134,25 +133,14 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
                 ||  (importHost != 0 && importHost->objectName().compare("root", Qt::CaseInsensitive) == 0)
                )
             {
+                // NOTE: we always overrite the root component here!
                 comp = controller->getComponent("root");
-                QMessageBox::StandardButton resp =
-                   QMessageBox::question(0, QString::fromUtf8("Overwrite root properties?"),
-                      QString::fromUtf8("Do you want to overwrite 'root' component properties with value in the file?"));
-
-                if (resp == QMessageBox::No)
-                {
-//                    NMDebugAI(<< "naa, don't overwrite root!" << std::endl);
-                    continue;
-                }
-                else
-                {
-                    nameRegister.insert("root", "root");
-                }
+                nameRegister.insert("root", "root");
             }
             else
             {
-//                NMDebugAI(<< "Ignored 'root' component! Cannot import 'root' "
-//                          << "component into higher level aggregate component!" << std::endl);
+                //                NMDebugAI(<< "Ignored 'root' component! Cannot import 'root' "
+                //                          << "component into higher level aggregate component!" << std::endl);
                 continue;
             }
 		}

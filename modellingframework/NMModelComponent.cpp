@@ -95,7 +95,11 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
 	foreach(const QString& in, inputs)
 	{
-		//NMDebugAI(<< this->objectName().toStdString()
+        // make sure that we strip off any input index, e.g. MapAlgebra:1, should
+        // be turned into MapAlgebra
+        QString inName = NMModelController::getComponentNameFromInputSpec(in);
+
+        //NMDebugAI(<< this->objectName().toStdString()
 		//		<< "::getUpstreamPipe: investigating input '"
 		//		<< in.toStdString() << "' ..." << endl);
 
@@ -103,9 +107,9 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 		// updating data buffer components), we have to make sure
 		// we don't include the root (executable) element again
 		// in the same pipeline
-		if (upstreamPipe.contains(in))
+        if (upstreamPipe.contains(inName))
 		{
-			NMDebug(<< endl);
+            //NMDebug(<< endl);
 			continue;
 		}
 
@@ -116,7 +120,7 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
         bool bGoUp = false;
         bool bShareHost = false;
-        NMModelComponent* comp = NMModelController::getInstance()->getComponent(in);
+        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inName);
         NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(comp);
         if (comp != 0 && dataComp == 0)
         {

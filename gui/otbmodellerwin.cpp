@@ -228,9 +228,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif
 	qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
+    //qRegisterMetaType<QSharedPointer<NMItkDataObjectWrapper> >("QSharedPointer<NMItkDataObjectWrapper>");
 	qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
-	//qRegisterMetaType<NMModelComponent>("NMModelComponent");
-	//qRegisterMetaType<NMModelComponent*>("NMModelComponent*");
+    //qRegisterMetaType<NMDataComponent>("NMDataComponent");
+    //qRegisterMetaType<NMDataComponent*>("NMDataComponent*");
 
 	// **********************************************************************
     // *                    MAIN WINDOW - MENU BAR AND DOCKS                *
@@ -968,7 +969,7 @@ void OtbModellerWin::saveAsImageFile(bool onlyVisImg)
     NMModelController* ctrl = NMModelController::getInstance();
 
     // ---------------- SET UP INPUT ----------------------
-    NMItkDataObjectWrapper* dw = il->getImage();
+    QSharedPointer<NMItkDataObjectWrapper> dw = il->getImage();
     NMDataComponent* dc = new NMDataComponent();
     dc->setObjectName("DataBuffer");
     QString bufCompName = ctrl->addComponent(dc);
@@ -1417,8 +1418,11 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		QList<long> lstNMId;
 		if (vIds.size() == 0)
 		{
-			//l->updateLayerSelection(lstCellId,lstNMId, NMLayer::NM_SEL_CLEAR);
-			l->selectCell(0, NMLayer::NM_SEL_CLEAR);
+            // this is mean if you're in a tedious selection process
+            // and only because the bloody picking algorithm doesn't
+            // work, you've got to start again - so we don't do it
+            // note, the user can deselect via the table view
+            //l->selectCell(0, NMLayer::NM_SEL_CLEAR);
 			this->updateLayerInfo(l, -1);
 			return;
 		}
@@ -1928,7 +1932,7 @@ void OtbModellerWin::doMOSO()
 			vtkQtTableModelAdapter* tabModel = new vtkQtTableModelAdapter(this);
 			NMFastTrackSelectionModel* ftsm = new NMFastTrackSelectionModel(tabModel, this);
 			tabModel->setTable(resTab);
-			NMTableView* tv = new NMTableView(tabModel, this);
+            NMTableView* tv = new NMTableView(tabModel, 0);
 			tv->setSelectionModel(ftsm);
 			tv->setTitle(tr("Optimisation results!"));
 			tv->show();

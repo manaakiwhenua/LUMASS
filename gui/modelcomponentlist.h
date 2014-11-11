@@ -98,6 +98,7 @@ public slots:
     void editContourColour();
     void editContourWidth();
     void editContourStyle();
+    void editLayerOpacity();
 
 	void test();
 
@@ -130,6 +131,7 @@ private:
     QAction* mActClrRamp;
     QAction* mActRGBImg;
     QAction* mActVecContourOnly;
+    QAction* mActOpacity;
 
     QAction* mActValueStats;
     QAction* mActImageStats;

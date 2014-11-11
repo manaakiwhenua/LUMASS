@@ -33,6 +33,7 @@
 
 #include "vtkPointData.h"
 #include "vtkMapper.h"
+#include "vtkProperty.h"
 #include "vtkLongArray.h"
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
@@ -507,6 +508,60 @@ NMLayer::initiateLegend(void)
 	NMDebugCtx(ctxNMLayer, << "done!");
 	this->updateMapping();
 }
+
+double
+NMLayer::getLayerOpacity()
+{
+    if (this->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+    {
+        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+        vtkActor* actor = vtkActor::SafeDownCast(
+                    const_cast<vtkProp3D*>(vl->getActor()));
+        return actor->GetProperty()->GetOpacity();
+    }
+    else
+    {
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+        if (il)
+        {
+            vtkImageSlice* slice = vtkImageSlice::SafeDownCast(
+                        const_cast<vtkProp3D*>(il->getActor()));
+            return slice->GetProperty()->GetOpacity();
+        }
+
+    }
+}
+
+
+void
+NMLayer::setLayerOpacity(const double& opacity)
+{
+    if (    this->mActor.GetPointer() != 0
+        &&  opacity >= 0
+        &&  opacity <= 1
+       )
+    {
+        if (this->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+        {
+            NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+            vtkActor* actor = vtkActor::SafeDownCast(
+                        const_cast<vtkProp3D*>(vl->getActor()));
+            actor->GetProperty()->SetOpacity(opacity);
+        }
+        else
+        {
+            NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+            if (il)
+            {
+                vtkImageSlice* slice = vtkImageSlice::SafeDownCast(
+                            const_cast<vtkProp3D*>(il->getActor()));
+                slice->GetProperty()->SetOpacity(opacity);
+            }
+        }
+    }
+}
+
+
 
 void
 NMLayer::updateMapping(void)
@@ -1443,14 +1498,14 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 		{
 			if (mLayerType == NMLayer::NM_IMAGE_LAYER)
 			{
-				if (legendRow == 1)
-				{
-					if (mLookupTable->GetTableRange()[1] == mNodata)
-						mLookupTable->GetTableValue(1, rgba);
-					else
-						mLookupTable->GetTableValue(0, rgba);
-				}
-				else
+                if (legendRow == 1)
+                {
+                    if (mLookupTable->GetTableRange()[1] == mNodata)
+                        mLookupTable->GetTableValue(1, rgba);
+                    else
+                        mLookupTable->GetTableValue(0, rgba);
+                }
+                else
 				{
 					if (mLookupTable->GetTableRange()[1] == mNodata)
 						mLookupTable->GetTableValue(0, rgba);
@@ -1675,19 +1730,23 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 		{
 			if (mLayerType == NMLayer::NM_IMAGE_LAYER)
 			{
-				if (legendRow == 1)
+                if (legendRow == 1)
+                {
+                    mLookupTable->SetTableValue(0, rgba);
+                }
+                else
 				{
-					if (mLookupTable->GetTableRange()[1] == mNodata)
-						mLookupTable->SetTableValue(1, rgba);
-					else
-						mLookupTable->SetTableValue(0, rgba);
-				}
-				else
-				{
-					if (mLookupTable->GetTableRange()[1] == mNodata)
-						mLookupTable->SetTableValue(0, rgba);
-					else
-						mLookupTable->SetTableValue(1, rgba);
+                    if (mTableModel)
+                    {
+                        for (int i=1; i <= mTableModel->rowCount(); ++i)
+                        {
+                            mLookupTable->SetTableValue(i, rgba);
+                        }
+                    }
+                    else
+                    {
+                        mLookupTable->SetTableValue(1, rgba);
+                    }
 				}
 			}
 			else

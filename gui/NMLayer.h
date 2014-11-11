@@ -199,6 +199,11 @@ public:
 	// covered pixel area
 	virtual double getArea(void);
 
+    /*! get/set the whole layer's opacity [0,1] */
+    double getLayerOpacity();
+    void setLayerOpacity(const double& opacity);
+
+
 	int setLayerPos(int pos);
 	int getLayerPos(void);
 

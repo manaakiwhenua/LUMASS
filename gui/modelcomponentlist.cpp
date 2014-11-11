@@ -123,22 +123,30 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActRGBImg = new QAction(this->mMenu);
     mActRGBImg->setText(tr("Map RGB Image"));
 
-	this->mMenu->addAction(actTable);
+    mActOpacity = new QAction(this->mMenu);
+    mActOpacity->setText(tr("Layer Opacity ..."));
 
+	this->mMenu->addAction(actTable);
 	this->mMenu->addSeparator();
-	this->mMenu->addAction(actZoom);
+
+    this->mMenu->addAction(actZoom);
 	this->mMenu->addSeparator();
+
     this->mMenu->addAction(mActValueStats);
     this->mMenu->addAction(mActImageStats);
 	this->mMenu->addSeparator();
+
     this->mMenu->addAction(mActSingleSymbol);
     this->mMenu->addAction(mActUniqueValues);
     this->mMenu->addAction(mActClrTab);
     this->mMenu->addAction(mActClrRamp);
     this->mMenu->addAction(mActRGBImg);
+    this->mMenu->addSeparator();
 
+    this->mMenu->addAction(mActOpacity);
 	this->mMenu->addSeparator();
-	this->mMenu->addAction(actSaveChanges);
+
+    this->mMenu->addAction(actSaveChanges);
 	this->mMenu->addAction(actRemove);
 
 	this->connect(actZoom, SIGNAL(triggered()), this, SLOT(zoomToLayer()));
@@ -152,6 +160,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
     this->connect(mActValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
+    this->connect(mActOpacity, SIGNAL(triggered()), this, SLOT(editLayerOpacity()));
 
 
 #ifdef DEBUG
@@ -647,7 +656,11 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		else if (event->button() == Qt::RightButton)
 		{
             this->processSelection(false);
-
+            if (l == 0)
+            {
+                NMMsg(<< "Please Select a Layer!");
+                return;
+            }
             // update the menu if we've got an image layer
             if (l != 0 && l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
             {
@@ -690,6 +703,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                     }
 
                     mActVecContourOnly->setVisible(false);
+                    mActOpacity->setVisible(true);
             }
             else
             {
@@ -704,6 +718,12 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                 }
 
                 mActRGBImg->setVisible(false);
+                mActOpacity->setVisible(false);
+
+                mActUniqueValues->setVisible(true);
+                mActSingleSymbol->setVisible(true);
+                mActClrTab->setVisible(true);
+                mActClrRamp->setText("Map Value Ramp");
 
                 mActImageStats->setEnabled(false);
                 mActImageStats->setVisible(false);
@@ -715,20 +735,52 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 		}
 
     }
-    else if (   level == 1
+    else if (   event->button() == Qt::RightButton
+             && level == 1
              && idx.row() > 0
-             && l->getLayerType() == NMLayer::NM_VECTOR_LAYER
+             && this->getCurrentLayer() != 0
             )
     {
-        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
-        if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+        if(l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
         {
-            this->mContourMenu->move(event->globalPos());
-            this->mContourMenu->exec();
+            NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
+            if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
+            {
+                this->mContourMenu->move(event->globalPos());
+                this->mContourMenu->exec();
+            }
+        }
+        else
+        {
+
         }
     }
 
     //NMDebugCtx(ctx, << "done!");
+}
+
+void
+ModelComponentList::editLayerOpacity()
+{
+    NMLayer* l = this->getCurrentLayer();
+    if (l == 0)
+        return;
+
+    double curOpacity = l->getLayerOpacity();
+    curOpacity *= 100;
+
+    bool bok;
+    double newOpacity = (double)QInputDialog::getInt(this,
+                        tr("Set Layer Opacity"),
+                        tr("Opacity [%]"), (int)curOpacity, 0, 100, 5, &bok);
+
+    newOpacity /= 100.0;
+    if (bok)
+    {
+        l->setLayerOpacity(newOpacity);
+        NMGlobalHelper h;
+        h.getVTKWidget()->update();
+    }
 }
 
 void
@@ -1090,7 +1142,8 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
         NMModelComponent* comp = NMModelController::getInstance()->getComponent(dropLayer);
         if (comp != 0)
         {
-            if (comp->getOutput(0) == 0 || comp->getOutput(0)->getDataObject() == 0)
+            QSharedPointer<NMItkDataObjectWrapper> dw = comp->getOutput(0);
+            if (dw.isNull() || dw->getDataObject() == 0)
             {
                 NMDebugAI(<< "empty data object!" << std::endl);
             }

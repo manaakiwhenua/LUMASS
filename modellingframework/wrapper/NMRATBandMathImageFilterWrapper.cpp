@@ -331,32 +331,28 @@ NMRATBandMathImageFilterWrapper
 		int cnt = 0;
 		foreach (const QString& input, currentInputs)
 		{
+            QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);
+            NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);
+            if (comp == 0)
+            {
+                NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
+                std::stringstream msg;
+                msg << "'" << inputCompName.toStdString() << "'";
+                e.setMsg(msg.str());
+                NMDebugCtx(ctx, << "done!");
+                throw e;
+            }
+
+            // make sure the input is linked into the pipeline properly, otherwise, we might get
+            // an exception here, especially if a sink process component is being executed individually
+            // for testing purposes
+            comp->linkComponents(step, repo);
 
             QSharedPointer<NMItkDataObjectWrapper> dw = NMModelController::getInstance()->getOutputFromSource(input);
             if (dw.isNull())
 			{
-
-//                NMModelComponent* reqComp = NMModelController::getInstance()->getComponent(input);
-//                NMIterableComponent* reqItComp = qobject_cast<NMIterableComponent*>(reqComp);
-//                if (reqItComp)
-//                {
-//                    NMProcess* reqProc = reqItComp->getProcess();
-//                    if (!reqProc->isInitialised())
-//                    {
-//                        reqItComp->initialiseComponents(reqItComp->getTimeLevel());
-//                    }
-//                    // we just set any value for the step parameter, since
-//                    // the process figures out itself which step its at
-//                    reqProc->linkInPipeline(0, repo);
-//                }
-
-//                dw = NMModelController::getInstance()->getOutputFromSource(input);
-
-//                if (dw == 0)
-                {
-                    ++cnt;
-                    continue;
-                }
+                ++cnt;
+                continue;
 			}
 
 			otb::AttributeTable::Pointer tab = dw->getOTBTab();
@@ -378,7 +374,6 @@ NMRATBandMathImageFilterWrapper
 
             // we check, whether the input has a UserID defined, and if so, we set it as the
             // nth input variable name
-            NMModelComponent* comp = NMModelController::getInstance()->getComponent(input);
             if (!comp->getUserID().isEmpty())
             {
                 this->setInternalNthInputName(cnt, comp->getUserID());
@@ -386,9 +381,6 @@ NMRATBandMathImageFilterWrapper
 			++cnt;
 		}
 	}
-
-
-
 
 	//we've got some tables and associated variable names
 	// in any case, we need the same amount of tables and table column names

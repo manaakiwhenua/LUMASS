@@ -133,6 +133,7 @@ private:
     QRectF mNumIterRect;
     QRectF mDescrRect;
 
+    QPainterPath mIterSymbol;
     QRectF mIterSymbolRect;
     QLineF mHeadLeft;
     QLineF mHeadRight;

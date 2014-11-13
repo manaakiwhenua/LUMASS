@@ -179,6 +179,20 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 
     mIterSymbolRect = QRectF(mTimeLevelRect.right()+2+(headBase/2.0), mDash.top()+9, 8,8);
 
+    mIterSymbol.moveTo(mIterSymbolRect.center());
+    mIterSymbol.arcTo(mIterSymbolRect, (this->mStartAngle/16.0),
+                      (this->mSpanAngle/16.0));
+    QPointF arcEnd = mIterSymbol.currentPosition();
+
+    mHeadLeft = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
+    mHeadRight = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
+
+    mHeadLeft.setAngle(mHeadAngleLeft);
+    mHeadRight.setAngle(mHeadAngleRight);
+
+    mIterSymbol.lineTo(mHeadLeft.p2());
+    mIterSymbol.moveTo(arcEnd);
+    mIterSymbol.lineTo(mHeadRight.p2());
 
     qreal numIterWidth = fm.width(QString("%1").arg(mNumIterations));
     if (mIsExecuting)
@@ -187,6 +201,7 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     }
 
     mNumIterRect = QRectF(mIterSymbolRect.right()+2, mDash.top()+4, numIterWidth,15);
+
 
     qreal descrWidth = fm.width(mDescription);
 
@@ -208,7 +223,6 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // ============================================================================
 
     //CALLGRIND_START_INSTRUMENTATION;
-
     QRectF bnd = this->boundingRect();
 
 
@@ -218,7 +232,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
 //    bnd.setLeft(-bnd.width());
 //    bnd.setRight(0);
-
+    //prepareGeometryChange();
     preparePainting(bnd);
 
     int l,r,t,b,h,w;
@@ -326,7 +340,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 	// ============================================================================
     // other stuff
 	// ============================================================================
-    painter->setCompositionMode(QPainter::CompositionMode_Source);//Over);
+    painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
 
     QRectF wr = QRectF(l+10, t+12, bnd.width()-20,
                        mDash.height());
@@ -374,6 +388,7 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
     // the iteration icon
     painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
+    //painter->drawPath(mIterSymbol);
     painter->drawArc(mIterSymbolRect, mStartAngle, mSpanAngle);
     painter->drawLine(mHeadLeft);
     painter->drawLine(mHeadRight);

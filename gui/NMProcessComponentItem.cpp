@@ -70,8 +70,8 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     mIconBnd = QRectF(mIconRect.left()-12, mIconRect.top()-16,
                       mIconRect.width()+24, mIconRect.height()+24);
 
-	mTextRect = QRectF(mIconBnd.left(), mIconBnd.bottom()+5,
-			           mIconBnd.width(), mSingleLineHeight);
+    mTextRect = QRectF(mIconBnd.left(), mIconBnd.bottom()+5,
+                       mIconBnd.width(), mSingleLineHeight);
 
     mTimeLevelRect = QRectF(mIconBnd.left()+12,mIconBnd.top()+1.5,30,15);
 
@@ -238,13 +238,6 @@ void NMProcessComponentItem::setTitle(const QString& title)
     }
 }
 
-//QRectF
-//NMProcessComponentItem::boundingRect(void) const
-//{
-//    return jointPoly.united(txtPoly);
-//    //return this->getShapeAsPolygon().boundingRect();
-//}
-
 QPolygonF
 NMProcessComponentItem::getShapeAsPolygon(void) const
 {
@@ -257,21 +250,13 @@ NMProcessComponentItem::getShapeAsPolygon(void) const
 	return jointPoly.united(txtPoly);
 }
 
-//QPainterPath NMProcessComponentItem::shape(void) const
-//{
-//	QPainterPath path;
-//	path.addPolygon(this->getShapeAsPolygon());
-//	return path;
-//}
-
-
 void
 NMProcessComponentItem::reportExecutionStarted(const QString& proc)
 {
 	if (proc.compare(this->mTitle) != 0)
 		return;
 	this->mbIsExecuting = true;
-	this->update();
+    this->update();
 }
 
 void
@@ -280,7 +265,7 @@ NMProcessComponentItem::reportExecutionStopped(const QString& proc)
 	if (proc.compare(this->mTitle) != 0)
 		return;
 	this->mbIsExecuting = false;
-	this->update();
+    this->update();
 }
 
 void
@@ -296,6 +281,8 @@ NMProcessComponentItem::setDescription(const QString& descr)
     if (descr.compare(this->mDescription) != 0)
     {
         this->mDescription = descr;
+        prepareGeometryChange();
+        this->updateDescription();
         this->update();
     }
 }
@@ -330,11 +317,7 @@ NMProcessComponentItem::updateDescription()
     }
     mTextLayout.endLayout();
 
-    // let model scene know that we're about to
-    // (indirectly) change the geometry
-    prepareGeometryChange();
     mTextRect = mTextLayout.boundingRect();
-
     mTextRect.moveTopLeft(QPointF(-(0.5*mTextRect.width())-4,
                           mIconBnd.bottom()+0.5*mSingleLineHeight));
 }
@@ -348,8 +331,6 @@ NMProcessComponentItem::paint(QPainter* painter,
     //CALLGRIND_START_INSTRUMENTATION;
 
     painter->setRenderHint(QPainter::Antialiasing, true);
-
-    this->updateDescription();
 
 	if(mbIsExecuting)
 	{
@@ -382,12 +363,6 @@ NMProcessComponentItem::paint(QPainter* painter,
 		painter->drawRoundRect(mIconBnd, 10, 10);
 
 		// draw icon
-		//QImage execIcon(mIcon.toImage());
-		//QPainter iconPainter(&execIcon);
-		//iconPainter.fillRect(QRectF(QPointF(0,0), mIcon.size()), QColor(255,0,0,128));
-		//iconPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-		////iconPainter.fillRect(QRectF(QPointF(0,0), mIcon.size()), QColor(0,0,0,128));
-		//painter->drawImage(QRectF(-40,-40,64,64), execIcon);
         painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64)); // 0,0,64,64
 
         if (mProgress > 0)
@@ -445,8 +420,6 @@ NMProcessComponentItem::paint(QPainter* painter,
     // the description
     mFont.setBold(true);
 	painter->setFont(mFont);
-    //painter->drawText(mTextRect, Qt::AlignCenter | Qt::TextWordWrap,
-    //			mDescription);
     painter->drawText(mTextRect,
                       Qt::AlignTop | Qt::AlignHCenter | Qt::TextWordWrap |
                       Qt::ElideRight,

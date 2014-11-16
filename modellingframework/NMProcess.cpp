@@ -236,14 +236,35 @@ NMProcess::getParameter(const QString& property)
                             delta = t;
                     }
 
-                    unsigned int itStep = ic->getIterationStep();
+                    int itStep = ic->getIterationStep();
                     if (QString::fromLatin1("+").compare(m.at(2)) == 0)
                     {
+                        // could only bound  this, if we restricted to the use
+                        // of SequentialIterComponent here, not quite sure,
+                        // we want to do that
                         itStep += delta;
                     }
                     else if (QString::fromLatin1("-").compare(m.at(2)) == 0)
                     {
-                        itStep -= delta;
+                        // prevent 'negative' iStep; could occur in 'instantiation phase'
+                        // of the pipeline, when the correct step parameter has not
+                        // been established yet (thereby always assuming that the
+                        // configuration by the user was correct, in which case the
+                        // a wrong parameter would be created during the 'link phase'
+                        // of the pipeline establishment)
+
+                        if (itStep - delta >= 0)
+                        {
+                            itStep -= delta;
+                        }
+                        else
+                        {
+                            NMWarn(this->objectName().toStdString(),
+                                   << "Expression based parameter retreival "
+                                   << "prevented a NEGATIVE PARAMETER INDEX!!"
+                                   << "  Double check whether the correct "
+                                   << "parameter was used and the results are OK!");
+                        }
                     }
 
                     tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));

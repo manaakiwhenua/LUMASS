@@ -1208,7 +1208,7 @@ void NMImageReader::setNthInput(unsigned int numInput,
 
 void NMImageReader::instantiateObject(void)
 {
-	NMDebugCtx(ctxNMImageReader, << "...");
+    NMDebugCtx(this->objectName().toStdString(), << "...");
 	// grab properties and feed member vars for successful initialisation
 #ifdef BUILD_RASSUPPORT
 	if (this->mRasConnector != 0)
@@ -1238,7 +1238,7 @@ void NMImageReader::instantiateObject(void)
             QString msg = QString(tr("File %1 does not exists or is not readable!"))
                     .arg(fn);
             ex.setMsg(msg.toStdString());
-            NMDebugCtx(ctxNMImageReader, << "done!");
+            NMDebugCtx(this->objectName().toStdString(), << "done!");
             throw ex;
         }
     }
@@ -1246,7 +1246,7 @@ void NMImageReader::instantiateObject(void)
     NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
     this->initialise();
 
-    NMDebugCtx(ctxNMImageReader, << "done!");
+    NMDebugCtx(this->objectName().toStdString(), << "done!");
 }
 
 #ifdef BUILD_RASSUPPORT

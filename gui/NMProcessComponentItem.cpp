@@ -36,7 +36,7 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
     : QGraphicsItem(parent), //mContextMenu(0) ,
       mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false),
-      mTimeLevel(0)
+      mTimeLevel(0), mTypeID(0)
 {
 	this->mScene = scene;
 
@@ -413,9 +413,12 @@ NMProcessComponentItem::paint(QPainter* painter,
 
 
     // the type id
-    painter->setPen(QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine));
-    painter->drawText(mIDRect, Qt::AlignRight, QString("%1").arg(mTypeID));
-    painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+    if (this->mTypeID > 0)
+    {
+        painter->setPen(QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine));
+        painter->drawText(mIDRect, Qt::AlignRight, QString("%1").arg(mTypeID));
+        painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+    }
 
     // the description
     mFont.setBold(true);

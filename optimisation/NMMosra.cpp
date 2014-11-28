@@ -2546,7 +2546,7 @@ int NMMosra::addCriCons(void)
 	return 1;
 }
 
-vtkSmartPointer<vtkTable> NMMosra::sumResults()
+vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeMatrix)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
@@ -2579,6 +2579,10 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 		}
 		optValArs.append(optvalar);
 	}
+
+    /* ##################################################################################
+     *                          CREATE PERFORMANCE SUMMARY TABLE
+     * ################################################################################## */
 
 	/* create the vtkTable, which will hold the summarised optimisation results
 	 * - the column sequence is area, criteria, constraints and for each of those categories we've
@@ -2730,8 +2734,51 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 		}
 	}
 
-    //NMDebugAI(<< "dump table structure...." << std::endl);
-    //restab->Dump(10, resNumRows);
+    /* ##################################################################################
+     *                          CREATE RESOURCE CHANGE MATRIX
+     * ################################################################################## */
+    changeMatrix = vtkSmartPointer<vtkTable>::New();
+    changeMatrix->SetNumberOfRows(this->miNumOptions+2);
+
+    // add the row header array (land use options) + total
+    vtkSmartPointer<vtkStringArray> chngheads = vtkSmartPointer<vtkStringArray>::New();
+    chngheads->SetName("from/to");
+    chngheads->SetNumberOfComponents(1);
+    chngheads->SetNumberOfTuples(this->miNumOptions+2);
+
+    for (int no=0; no < this->miNumOptions; ++no)
+    {
+        chngheads->SetValue(no, (const char*)this->mslOptions.at(no).toLatin1());
+    }
+    chngheads->SetValue(this->miNumOptions, "other");
+    chngheads->SetValue(this->miNumOptions+1, "SUM");
+    changeMatrix->AddColumn(chngheads);
+
+    for (int no=0; no < this->miNumOptions+2; ++no)
+    {
+        vtkSmartPointer<vtkDoubleArray> car = vtkSmartPointer<vtkDoubleArray>::New();
+        if (no < this->miNumOptions)
+        {
+            car->SetName((const char*)this->mslOptions.at(no).toLatin1());
+        }
+        else if (no == this->miNumOptions)
+        {
+            car->SetName("other");
+        }
+        else //if (no == this->miNumOptions+1)
+        {
+            car->SetName("SUM");
+        }
+        car->SetNumberOfComponents(1);
+        car->SetNumberOfTuples(this->miNumOptions+2);
+        car->FillComponent(0,0);
+        changeMatrix->AddColumn(car);
+    }
+
+
+    /* ##################################################################################
+     *                          SUMMARISE PERFORMANCES AND FILL CHANGE MATRIX
+     * ################################################################################## */
 
 	NMDebugAI(<< "summarising results ..." << std::endl << std::endl);
 
@@ -2757,15 +2804,60 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 		QString optResource = (const char*)optStrAr->GetValue(cell);
 		QStringList optResList = optResource.split(tr(" "), QString::SkipEmptyParts);
 
-		// DEBUG
-//		NMDebugInd(ind, << "curResource: " << curResource.toStdString() << endl);
-//		NMDebugInd(ind, << "optResource: " << optResource.toStdString() << endl);
-//		NMDebugInd(ind, << "optResList: ");
-//		for (int r=0; r < optResList.size(); ++r)
-//		{
-//			NMDebug(<< "-" << optResList.at(r).toStdString() << "-");
-//		}
-//		NMDebug(<< endl << endl);
+        // ===============================================================================
+        //                      CHANGE ANALYSIS
+        // ===============================================================================
+
+        QVector<int> toIdx;
+
+        // set from initially to 'other'
+        int fromIdx = this->miNumOptions;
+        for (int no=0; no < this->miNumOptions; ++no)
+        {
+            if (curResource.compare(this->mslOptions.at(no), Qt::CaseInsensitive) == 0)
+            {
+                fromIdx = no;
+            }
+
+            if (optResList.contains(this->mslOptions.at(no)))
+            {
+                toIdx.push_back(no);
+            }
+        }
+        toIdx.push_back(this->miNumOptions+1);
+
+        int coloff = 1;
+        for (int t=0; t < toIdx.size(); ++t)
+        {
+            double chngVal = changeMatrix->GetValue(fromIdx, toIdx.at(t)+coloff).ToDouble();
+            double newValue = 0;
+            if (toIdx.at(t) < this->miNumOptions)
+            {
+                newValue = optValArs.at(toIdx.at(t))->GetTuple1(cell);
+            }
+            else   // get the area value from the AreaHa field
+            {
+                newValue = areaAr->GetTuple1(cell);
+            }
+
+            chngVal += newValue;
+            changeMatrix->SetValue(fromIdx, toIdx.at(t)+coloff, vtkVariant(chngVal));
+        }
+
+        // DEBUG
+        //		NMDebugInd(ind, << "curResource: " << curResource.toStdString() << endl);
+        //		NMDebugInd(ind, << "optResource: " << optResource.toStdString() << endl);
+        //		NMDebugInd(ind, << "optResList: ");
+        //		for (int r=0; r < optResList.size(); ++r)
+        //		{
+        //			NMDebug(<< "-" << optResList.at(r).toStdString() << "-");
+        //		}
+        //		NMDebug(<< endl << endl);
+
+        // ===============================================================================
+        //                      PERFORMANCE ANALYSIS (TOTAL and per ZONE)
+        // ===============================================================================
+
         for (int zone=0; zone < numZones; ++zone)
         {
             rec = zone * (this->miNumOptions+1);
@@ -3033,6 +3125,11 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
 	}
 	NMDebug(<< " finished!" << std::endl);
 
+    // ===============================================================================
+    //                  CALCULATE PERFORMANCE TOTALS
+    // ===============================================================================
+
+
     // sum totals
     int ncols = restab->GetNumberOfColumns();
     for (int sp=1; sp < ncols; ++sp)
@@ -3070,6 +3167,32 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults()
             }
             ++rec;
         }
+    }
+
+    // ===============================================================================
+    //                      CALCULATE CHANGE TOTALS
+    // ===============================================================================
+
+    // calc row totals
+    int coloff = 1;
+    for (int r=0; r < this->miNumOptions+1; ++r)
+    {
+        double val = 0;
+        for (int c=0; c < this->miNumOptions+1; ++c)
+        {
+            val += changeMatrix->GetValue(r, c+coloff).ToDouble();
+        }
+        changeMatrix->SetValue(r, this->miNumOptions+1+coloff, vtkVariant(val));
+    }
+
+    for (int c=0; c < this->miNumOptions+2; ++c)
+    {
+        double val = 0;
+        for (int r=0; r < this->miNumOptions+1; ++r)
+        {
+            val += changeMatrix->GetValue(r, c+coloff).ToDouble();
+        }
+        changeMatrix->SetValue(this->miNumOptions+1, c+coloff, vtkVariant(val));
     }
 
 

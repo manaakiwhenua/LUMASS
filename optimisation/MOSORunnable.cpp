@@ -85,7 +85,8 @@ MOSORunnable::run()
 		if (!mosra->mapLp())
 			continue;
 
-		vtkSmartPointer<vtkTable> sumres = mosra->sumResults();
+        vtkSmartPointer<vtkTable> chngmatrix;
+        vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
 
 		// get rid of admin fields
 		tab->RemoveColumnByName("nm_id");
@@ -104,6 +105,9 @@ MOSORunnable::run()
 		QString resName = QString("%1/res_%2_p%3-%4.csv").arg(dsInfo.path())
 						.arg(dsInfo.baseName()).arg(level).arg(runs);
 
+        QString chngName = QString("%1/chng_%2_p%3-%4.csv").arg(dsInfo.path())
+                .arg(dsInfo.baseName()).arg(level).arg(runs);
+
 		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");
 
@@ -114,6 +118,10 @@ MOSORunnable::run()
         writer->SetInputData(sumres);
 		writer->SetFileName(resName.toStdString().c_str());
 		writer->Update();
+
+        writer->SetInputData(chngmatrix);
+        writer->SetFileName(chngName.toStdString().c_str());
+        writer->Update();
 
 		writer->Delete();
 	}

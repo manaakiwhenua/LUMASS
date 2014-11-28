@@ -97,7 +97,7 @@ public:
 	int solveLp(void);
 	int mapLp(void);
 	HLpHelper* getLp();
-	vtkSmartPointer<vtkTable> sumResults(void);
+    vtkSmartPointer<vtkTable> sumResults(vtkSmartPointer<vtkTable>& changeMatrix);
 
 	// enquire batch processing set up
 	bool doBatch(void);

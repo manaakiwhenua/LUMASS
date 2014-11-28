@@ -1812,7 +1812,8 @@ void OtbModellerWin::doMOSObatch()
 		if (!mosra->mapLp())
 			continue;
 
-		vtkSmartPointer<vtkTable> sumres = mosra->sumResults();
+        vtkSmartPointer<vtkTable> chngmatrix;
+        vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
 
 		// get rid of admin fields
 		tab->RemoveColumnByName("nm_id");
@@ -1923,7 +1924,8 @@ void OtbModellerWin::doMOSO()
 	if (solved)
 	{
 		NMDebugAI( << "visualising optimisation results ..." << endl);
-		vtkSmartPointer<vtkTable> resTab = mosra->sumResults();
+        vtkSmartPointer<vtkTable> changeTab;
+        vtkSmartPointer<vtkTable> resTab = mosra->sumResults(changeTab);
 		// show table if we got one
 		if (resTab.GetPointer() != 0)
 		{
@@ -1935,6 +1937,17 @@ void OtbModellerWin::doMOSO()
 			tv->setTitle(tr("Optimisation results!"));
 			tv->show();
 		}
+
+        if (changeTab.GetPointer() != 0)
+        {
+            vtkQtTableModelAdapter* tabModel = new vtkQtTableModelAdapter(this);
+            NMFastTrackSelectionModel* ftsm = new NMFastTrackSelectionModel(tabModel, this);
+            tabModel->setTable(changeTab);
+            NMTableView* tv = new NMTableView(tabModel, 0);
+            tv->setSelectionModel(ftsm);
+            tv->setTitle(tr("Change Matrix!"));
+            tv->show();
+        }
 
         // obviously, we have to prepare the table a bit better
 // TODO: need to switch the NMChartWidget to VTK's new chart framework!

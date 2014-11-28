@@ -378,6 +378,16 @@ NMRATBandMathImageFilterWrapper
             {
                 this->setInternalNthInputName(cnt, comp->getUserID());
             }
+            else
+            {
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                std::stringstream msg;
+                msg << "'" << inputCompName.toStdString() << "'"
+                    << " Missing UserID!";
+                e.setMsg(msg.str());
+                NMDebugCtx(ctx, << "done!");
+                throw e;
+            }
 			++cnt;
 		}
 	}

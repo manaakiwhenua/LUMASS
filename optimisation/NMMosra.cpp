@@ -2824,7 +2824,12 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                 toIdx.push_back(no);
             }
         }
-        toIdx.push_back(this->miNumOptions+1);
+        // add 'other' land use as recipient, if the optResList doesn't
+        // contain curResource
+        if (toIdx.size() == 0)
+        {
+            toIdx.push_back(this->miNumOptions);
+        }
 
         int coloff = 1;
         for (int t=0; t < toIdx.size(); ++t)
@@ -2835,7 +2840,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
             {
                 newValue = optValArs.at(toIdx.at(t))->GetTuple1(cell);
             }
-            else   // get the area value from the AreaHa field
+            else   // get the area value from the AreaHa field for 'other' land uses
             {
                 newValue = areaAr->GetTuple1(cell);
             }
@@ -3178,14 +3183,14 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
     for (int r=0; r < this->miNumOptions+1; ++r)
     {
         double val = 0;
-        for (int c=0; c < this->miNumOptions+1; ++c)
+        for (int c=0; c < this->miNumOptions+1+coloff; ++c)
         {
             val += changeMatrix->GetValue(r, c+coloff).ToDouble();
         }
         changeMatrix->SetValue(r, this->miNumOptions+1+coloff, vtkVariant(val));
     }
 
-    for (int c=0; c < this->miNumOptions+2; ++c)
+    for (int c=0; c < this->miNumOptions+1+coloff; ++c)
     {
         double val = 0;
         for (int r=0; r < this->miNumOptions+1; ++r)

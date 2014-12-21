@@ -346,7 +346,7 @@ void
 //NMTableView::setSelectionModel(QItemSelectionModel* selectionModel)
 NMTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
 {
-	this->printSelRanges(selectionModel->getSelection(), selectionModel->objectName());
+    //this->printSelRanges(selectionModel->getSelection(), selectionModel->objectName());
 	if (mSelectionModel != 0)
 		this->connectSelModels(false);
 
@@ -740,6 +740,7 @@ void NMTableView::joinAttributes()
 	tabReader->SetFileName(fileName.toStdString().c_str());
 	tabReader->SetHaveHeaders(true);
 	tabReader->DetectNumericColumnsOn();
+    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
 	tabReader->SetFieldDelimiterCharacters(",\t");
 	tabReader->Update();
 
@@ -822,6 +823,7 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 	NMDebugAI(<< "checking column names ... " << std::endl);
 	QStringList copyNames;
 	QList<int> copyIdx;
+    QList<QVariant::Type> copyType;
 	QStringList writeNames;
 	for (int i=0; i < srcTable->columnCount(QModelIndex()); ++i)
 	{
@@ -843,6 +845,8 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 		{
 			copyNames.push_back(name);
 			copyIdx.push_back(i);
+            const QModelIndex smi = srcTable->index(0, i);
+            copyType.push_back(srcTable->data(smi).type());
 			writeNames.push_back(writeName);
 		}
 	}
@@ -905,27 +909,6 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 	{
 		const QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
 		const QString sTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole).toString();//tarJoin->GetVariantValue(row);
-		//long search = row < srcnumrows ? row : 0;
-		//long cnt = 0;
-		//bool foundyou = false;
-		//while (cnt < srcnumrows)
-		//{
-		//	const QModelIndex srcJoinIdx = srcTable->index(search, srcJoinColIdx, QModelIndex());
-		//	const QVariant vSrcJoin = srcTable->data(srcJoinIdx, Qt::DisplayRole);
-		//	//if (vSrcJoin.toString().compare(vTarJoin.toString(), Qt::CaseInsensitive) == 0)// == vTarJoin.toString())
-		//	if (vSrcJoin == vTarJoin)
-		//	{
-		//		foundyou = true;
-		//		++havefound;
-		//		break;
-		//	}
-        //
-		//	++search;
-		//	if (search >= srcnumrows)
-		//		search = 0;
-        //
-		//	++cnt;
-		//}
 
 		const int foundyou = srchash.value(sTarJoin, -1);
 		if (foundyou >= 0)
@@ -935,9 +918,36 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 			{
 				const QModelIndex srcIdx = srcTable->index(foundyou, copyIdx.at(c), QModelIndex());
 				const QVariant srcVal = srcTable->data(srcIdx, Qt::DisplayRole);
+                const QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
+                const QVariant::Type colType = copyType.at(c);
 
-				const QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
-				mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
+                switch(colType)
+                {
+                case QVariant::String:
+                    // strip single quotes (may come from vtk CSV to vtkTable import)
+                    {
+                        const QString sVal = srcVal.toString();
+                        if (    (    sVal.startsWith("'")
+                                 &&  sVal.endsWith("'")
+                                )
+                            ||  (    sVal.startsWith("""")
+                                     &&  sVal.endsWith("""")
+                                )
+                           )
+                        {
+                            QVariant vsVal = sVal.mid(1, sVal.size()-2);
+                            mModel->setData(tarIdx, vsVal, Qt::DisplayRole);
+                        }
+                        else
+                        {
+                            mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
+                        }
+                    }
+                    break;
+
+                default:
+                    mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
+                }
 			}
 			++havefound;
 		}

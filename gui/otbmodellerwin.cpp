@@ -447,7 +447,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	// set-up the background renderer
 	this->mBkgRenderer = vtkSmartPointer<vtkRenderer>::New();
 	this->mBkgRenderer->SetLayer(0);
-	this->mBkgRenderer->SetBackground(0.7,0.7,0.7);
+    //this->mBkgRenderer->SetBackground(1,1,1);
+    this->mBkgRenderer->SetBackground(0.7,0.7,0.7);
 	//this->mBkgRenderer->SetUseDepthPeeling(1);
 	//this->mBkgRenderer->SetMaximumNumberOfPeels(100);
 	//this->mBkgRenderer->SetOcclusionRatio(0.1);
@@ -1056,7 +1057,7 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
         //dw->setWindowTitle(tr("Layer Info"));
 		ti->setColumnCount(0);
 		ti->setRowCount(0);
-		NMDebugCtx(ctxOtbModellerWin, << "done!");
+        //NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return;
 	}
 
@@ -1367,7 +1368,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		QList<vtkIdType> vIds;
 		QList<vtkIdType> holeIds;
 		QList<vtkIdType> vnmIds;
-		NMDebugAI(<< "analysing cells ..." << endl);
+        //NMDebugAI(<< "analysing cells ..." << endl);
 		for (long c = 0; c < ncells; c++)
 		{
 			if (hole->GetTuple1(c) == 0)
@@ -1418,26 +1419,31 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		{
             // this is mean if you're in a tedious selection process
             // and only because the bloody picking algorithm doesn't
-            // work, you've got to start again - so we don't do it
+            // work, you've got to start again - so we don't do it;
             // note, the user can deselect via the table view
             //l->selectCell(0, NMLayer::NM_SEL_CLEAR);
 			this->updateLayerInfo(l, -1);
 			return;
 		}
 
-		// select cell
-		NMLayer::NMLayerSelectionType seltype;
-		if (iren->GetControlKey())
-			seltype = NMLayer::NM_SEL_ADD;
-		else
-			seltype = NMLayer::NM_SEL_NEW;
-
 		cellId = vIds.last();
 		long nmid = nmids->GetTuple1(cellId);
 		lstCellId.push_back(cellId);
 		lstNMId.push_back(nmid);
-		this->updateLayerInfo(l, cellId);
-		l->selectCell(cellId, seltype);
+
+        // select cell if the user pressed the Ctrl key,
+        // otherwise just show the layer info,
+        // this allows the user to be able to inspect
+        // selected cells - much more useful this way round,
+        // I guess ... ?
+        if (iren->GetControlKey())
+        {
+            l->selectCell(cellId, NMLayer::NM_SEL_ADD);
+        }
+        else
+        {
+            this->updateLayerInfo(l, cellId);
+        }
 	}
 	// ==========================================================================
 	// 									PIXEL PICKING
@@ -1859,15 +1865,43 @@ void OtbModellerWin::doMOSO()
 
 	QFileInfo fileinfo(fileName);
 
-	QString path = fileinfo.path();
+    //QDir parentDir = fileinfo.absoluteDir();
+    //parentDir.cdUp();
+    QString path = fileinfo.absoluteDir().path();
 	QString baseName = fileinfo.baseName();
 	if (!fileinfo.isReadable())
 	{
 		NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
 		return;
 	}
 
-	NMDebugAI( << "reading settings from " << fileName.toStdString() << endl);
+    QString tresPath = ::getenv("MOSO_RESULT_PATH");
+    if (tresPath.isEmpty())
+    {
+        tresPath = path;
+    }
+    QFileInfo pathInfo(tresPath);
+    QDir parentDir(pathInfo.path());
+
+    QStringList dirList;
+    dirList << "opt_report" << "opt_lucmatrix" << "opt_result"
+            << "opt_relative" << "opt_total" << "opt_lp";
+
+    for (int d=0; d < dirList.size(); ++d)
+    {
+        QString dir = dirList.at(d);
+        NMDebugAI(<< dirList.at(d).toStdString() << " -> ");
+        if (!parentDir.exists(dir))
+        {
+            if (!parentDir.mkdir(dir))
+            {
+                dir = fileinfo.dir().dirName();
+                dirList.replace(d, dir);
+            }
+        }
+        NMDebug(<< dirList.at(d).toStdString() << endl );
+    }
 
 	// create a new optimisation object
 	NMMosra* mosra = new NMMosra(this);
@@ -1886,34 +1920,61 @@ void OtbModellerWin::doMOSO()
 
 	// now set the layer, do moso and clean up
 	//mosra->setLayer(layer);
-	mosra->setDataSet(layer->getDataSet());
+    mosra->setDataSet(layer->getDataSet());
+    mosra->setTimeOut(0); // clears any time out setting ...
+    mosra->setBreakAtFirst(true);
+    //NMDebugAI(<< "split off solving to seperate thread ... " << endl);
 
-//	NMDebugAI(<< "split off solving to seperate thread ... " << endl);
-//	QFuture<int> future = QtConcurrent::run(mosra, &NMMosra::solveLp);
-//
-//	NMDebugAI(<< "waiting 10 secs ..." << endl);
-//	::sleep(10);
-//
-//	NMDebugAI(<< "cancel solving ..." << endl);
-//	mosra->cancelSolving();
+    QDateTime started = QDateTime::currentDateTime();
 
+    //QFuture<int> future = QtConcurrent::run(mosra, &NMMosra::solveLp);
 
-	// asking the user for the lp timeout
-	bool timeok;
-	int timeout = QInputDialog::getInt(this, tr("lp_solve timeout"), tr("timeout in secs:"), 60, 5, 86400, 30, &timeok);
-	if (!timeok)
-		return;
-	mosra->setTimeOut(timeout);
+    //    NMDebugAI(<< "waiting 10 secs ..." << endl);
+    //    ::sleep(10);
 
-	//	if (!future.result())
-	if (!mosra->solveLp())
+    //    QMessageBox::StandardButton btn = QMessageBox::question(this, "Abort Optimisation?",
+    //                    "Press 'Yes' to abort the current optimisation run!");
+    //    if (btn == QMessageBox::Yes)
+    //    {
+    //        NMDebugAI(<< "cancel solving ..." << endl);
+    //        mosra->cancelSolving();
+    //    }
+
+    //    // asking the user for the lp timeout
+    //    bool timeok;
+    //    int timeout = QInputDialog::getInt(this, tr("lp_solve timeout"), tr("timeout in secs:"), 60, 5, 86400, 30, &timeok);
+    //    if (!timeok)
+    //        return;
+    //    mosra->setTimeOut(timeout);
+
+    QString sRepName = QString(tr("%1/%2/report_%3.txt")).arg(pathInfo.path())
+            .arg(dirList.at(0))
+            .arg(baseName);
+
+    //if (!future.result())
+    if (!mosra->solveLp())
 	{
-		NMDebugAI(<< "encountered trouble setting/solving the problem!" << std::endl);
-		delete mosra;
+        NMDebugAI(<< "We encountered trouble setting/solving the problem or the optimisation was aborted!" << std::endl);
+        NMDebugAI( << "write report to '" << sRepName.toStdString() << "'" << endl);
+        mosra->writeReport(sRepName);
+
+        delete mosra;
 		return;
 	}
 
+    QDateTime stopped = QDateTime::currentDateTime();
+    int msec = started.msecsTo(stopped);
+    int min = msec / 60000;
+    double sec = (msec % 60000) / 1000.0;
+
+    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    NMDebugAI(<< "Optimisation took (min:sec): " << elapsedTime.toStdString() << endl);
+    NMMsg(<< "Optimisation took (min:sec): " << elapsedTime.toStdString() << endl);
+
+
 	// ============================================================================
+    NMDebugAI( << "write report to '" << sRepName.toStdString() << "'" << endl);
+    mosra->writeReport(sRepName);
 
 
 	int solved = mosra->mapLp();
@@ -1924,18 +1985,73 @@ void OtbModellerWin::doMOSO()
 	if (solved)
 	{
 		NMDebugAI( << "visualising optimisation results ..." << endl);
+
+
+        QString resName = QString("%1/%2/res_%3.csv").arg(pathInfo.path())
+                .arg(dirList.at(2))
+                .arg(baseName);
+
+        // once we've got a feasible result, we write the change matrix and
+        // the optimisation result table out
+        vtkSmartPointer<vtkDelimitedTextWriter> writer =
+                vtkSmartPointer<vtkDelimitedTextWriter>::New();
+        writer->SetFieldDelimiter(",");
+
         vtkSmartPointer<vtkTable> changeTab;
         vtkSmartPointer<vtkTable> resTab = mosra->sumResults(changeTab);
 		// show table if we got one
 		if (resTab.GetPointer() != 0)
 		{
-			vtkQtTableModelAdapter* tabModel = new vtkQtTableModelAdapter(this);
-			NMFastTrackSelectionModel* ftsm = new NMFastTrackSelectionModel(tabModel, this);
-			tabModel->setTable(resTab);
+            NMDebugAI(<< "writing optimisation results -> '"
+                      << resName.toStdString() << "'" << std::endl);
+            writer->SetInputData(resTab);
+            writer->SetFileName(resName.toStdString().c_str());
+            writer->Update();
+
+            int ncols = resTab->GetNumberOfColumns();
+            int numCri = (ncols-1)/4;
+
+            // create table only containing the absolute performance
+            // after this optimisation run
+            vtkSmartPointer<vtkTable> optTab = vtkSmartPointer<vtkTable>::New();
+            optTab->AddColumn(resTab->GetColumn(0));
+            for (int i=0, off=2; i < numCri; ++i, off += 4)
+            {
+                optTab->AddColumn(resTab->GetColumn(off));
+            }
+
+            QString totalName = QString("%1/%2/tot_%3.csv").arg(pathInfo.path())
+                    .arg(dirList.at(4))
+                    .arg(baseName);
+            writer->SetInputData(optTab);
+            writer->SetFileName(totalName.toStdString().c_str());
+            writer->Update();
+
+
+            // create table only containing relative changes (%)
+            // from original result table
+            for (int i=0; i < numCri; ++i)
+            {
+                for (int re=0; re < 3; ++re)
+                {
+                    resTab->RemoveColumn(i+1);
+                }
+            }
+
+            QString relName = QString("%1/%2/rel_%3.csv").arg(pathInfo.path())
+                    .arg(dirList.at(3))
+                    .arg(baseName);
+            writer->SetInputData(resTab);
+            writer->SetFileName(relName.toStdString().c_str());
+            writer->Update();
+
+            vtkQtTableModelAdapter* tabModel = new vtkQtTableModelAdapter(this);
+            NMFastTrackSelectionModel* ftsm = new NMFastTrackSelectionModel(tabModel, this);
+            tabModel->setTable(resTab);
             NMTableView* tv = new NMTableView(tabModel, 0);
-			tv->setSelectionModel(ftsm);
-			tv->setTitle(tr("Optimisation results!"));
-			tv->show();
+            tv->setSelectionModel(ftsm);
+            tv->setTitle(tr("Performance Change!"));
+            tv->show();
 		}
 
         if (changeTab.GetPointer() != 0)
@@ -1947,25 +2063,33 @@ void OtbModellerWin::doMOSO()
             tv->setSelectionModel(ftsm);
             tv->setTitle(tr("Change Matrix!"));
             tv->show();
+
+            QString chgName = QString("%1/%2/chg_%3.csv").arg(pathInfo.path())
+                    .arg(dirList.at(1))
+                    .arg(baseName);
+
+            NMDebugAI(<< "writing change matrix -> '"
+                      << chgName.toStdString() << "'" << std::endl);
+            writer->SetInputData(changeTab);
+            writer->SetFileName(chgName.toStdString().c_str());
+            writer->Update();
         }
 
         // obviously, we have to prepare the table a bit better
-// TODO: need to switch the NMChartWidget to VTK's new chart framework!
-//		QStandardItemModel* model = this->prepareResChartModel(resTab);
-//		if (model != 0)
-//		{
-//			NMChartWidget* cw = new NMChartWidget(this);
-//			cw->setChartModel(model);
-//			cw->setWinTitle(tr("Optimisation Change Chart"));
-//			cw->show();
-//		}
+        // TODO: need to switch the NMChartWidget to VTK's new chart framework!
+        //		QStandardItemModel* model = this->prepareResChartModel(resTab);
+        //		if (model != 0)
+        //		{
+        //			NMChartWidget* cw = new NMChartWidget(this);
+        //			cw->setChartModel(model);
+        //			cw->setWinTitle(tr("Optimisation Change Chart"));
+        //			cw->show();
+        //		}
 	}
 
-	QString sRepName = path + QString(tr("/report_%1.%2")).arg(baseName).arg(tr("txt"));
-	NMDebugAI( << "write report to '" << sRepName.toStdString() << "'" << endl);
-	mosra->writeReport(sRepName);
-
-	QString lpName = path + QString(tr("/lp_%1.lp")).arg(baseName);
+    QString lpName = QString(tr("%1/%2/lp_%3.lp")).arg(pathInfo.path())
+            .arg(dirList.at(5))
+            .arg(baseName);
 	mosra->getLp()->WriteLp(lpName.toStdString());
 	delete mosra;
 

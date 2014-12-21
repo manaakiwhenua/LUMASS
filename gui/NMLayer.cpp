@@ -37,6 +37,7 @@
 #include "vtkLongArray.h"
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
+#include "vtkShortArray.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkMath.h"
 #include "vtkQtEditableTableModelAdapter.h"
@@ -45,6 +46,8 @@
 #include "NMVtkLookupTable.h"
 #include "NMVtkOpenGLImageSliceMapper.h"
 #include "vtkImageSlice.h"
+#include "vtkDelimitedTextReader.h"
+#include "vtkDelimitedTextWriter.h"
 
 #define VALUE_MARGIN 0.0000001
 
@@ -130,7 +133,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 NMLayer::~NMLayer()
 {
-	NMDebugCtx(ctxNMLayer, << " - " << this->objectName().toStdString());
+    //NMDebugCtx(ctxNMLayer, << " - " << this->objectName().toStdString());
 
 	if (this->mRenderer != 0)
 	{
@@ -151,7 +154,7 @@ NMLayer::~NMLayer()
 
 
 
-	NMDebugCtx(ctxNMLayer, << "done!");
+    //NMDebugCtx(ctxNMLayer, << "done!");
 }
 
 //void NMLayer::emitDataSetChanged()
@@ -735,6 +738,266 @@ NMLayer::mapSingleSymbol()
 }
 
 void
+NMLayer::loadLegend(const QString& filename)
+{
+    if (this->mTableModel == 0)
+    {
+        NMErr(ctxNMLayer, << "Need an attribute table for mapping!");
+        return;
+    }
+
+    if (    this->mLegendType != NMLayer::NM_LEGEND_INDEXED
+        &&  this->mLegendClassType != NMLayer::NM_CLASS_UNIQUE
+        )
+    {
+        return;
+    }
+
+    if (this->mLookupTable.GetPointer() == 0)
+        return;
+
+    // load the table
+    vtkSmartPointer<vtkDelimitedTextReader> tabReader =
+                        vtkSmartPointer<vtkDelimitedTextReader>::New();
+
+    tabReader->SetFileName(filename.toStdString().c_str());
+    tabReader->SetHaveHeaders(true);
+    tabReader->DetectNumericColumnsOn();
+    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
+    tabReader->SetFieldDelimiterCharacters(",\t");
+    tabReader->SetUseStringDelimiter(1);
+    tabReader->Update();
+
+    vtkSmartPointer<vtkTable> clrTab = tabReader->GetOutput();
+
+    //    for (int c=0; c < clrTab->GetNumberOfColumns(); ++c)
+    //    {
+    //        NMDebugAI(<< clrTab->GetColumn(c)->GetName() << ": "
+    //                  << clrTab->GetColumn(c)->GetDataTypeAsString()
+    //                  << std::endl);
+    //    }
+
+    //    vtkStringArray* cat = vtkStringArray::SafeDownCast(
+    //                clrTab->GetColumnByName("Category"));
+    vtkAbstractArray* cat = clrTab->GetColumnByName("Category");
+    vtkDataArray* red = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("red"));
+    vtkDataArray* green = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("green"));
+    vtkDataArray* blue = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("blue"));
+    vtkDataArray* alpha = vtkDataArray::SafeDownCast(
+                clrTab->GetColumnByName("alpha"));
+
+    if (cat == 0 || red == 0 || green == 0 || blue == 0)
+        return;
+
+    int valIdx = this->getColumnIndex(mLegendValueField);
+    vtkDataSetAttributes* dsa = 0;
+    vtkUnsignedCharArray* hole = 0;
+    vtkAbstractArray* valar = 0;
+    long ncells = 0;
+    int numComp = 3;
+    QList<vtkDataArray*> arList;
+    arList << red << green << blue;
+    if (alpha)
+    {
+        numComp = 4;
+        arList << alpha;
+    }
+
+    bool bIsNumeric = true;
+    if (this->mLayerType == NMLayer::NM_VECTOR_LAYER)
+    {
+        dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+        hole = vtkUnsignedCharArray::SafeDownCast(dsa->GetArray("nm_hole"));
+        valar = dsa->GetAbstractArray(
+                    this->getColumnIndex(mLegendValueField));
+        if (valar->GetDataType() == VTK_STRING)
+        {
+            bIsNumeric = false;
+        }
+        ncells = valar->GetNumberOfTuples();
+    }
+    else
+    {
+        ncells = mTableModel->rowCount();
+        if (this->getColumnType(valIdx) == QVariant::String)
+        {
+            bIsNumeric = false;
+        }
+    }
+
+    // build hash structure
+    QHash<QString, int> clridx;
+    for (int r=0; r < clrTab->GetNumberOfRows(); ++r)
+    {
+        QString valCat(cat->GetVariantValue(r).ToString().c_str());//cat->GetValue(r).c_str();
+        clridx.insert(valCat, r);
+    }
+
+    QHash<QString, int>::const_iterator it;
+    QString sVal;
+    qlonglong val;
+    double rgba[] = {0.0,0.0,0.0,1.0};
+    QModelIndex vi;
+    for (int t=0; t < ncells; ++t)
+    {
+        if (hole && hole->GetValue(t))
+        {
+            mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+            continue;
+        }
+
+        if (!bIsNumeric)
+        {
+            if (valar)
+            {
+                sVal = valar->GetVariantValue(t).ToString().c_str();
+            }
+            else
+            {
+                vi = mTableModel->index(t, valIdx);
+                sVal = vi.data().toString();
+            }
+        }
+        else
+        {
+            if (valar)
+            {
+                val = valar->GetVariantValue(t).ToLongLong();
+                sVal = QString("%1").arg(val);
+            }
+            else
+            {
+                vi = mTableModel->index(t, valIdx);
+                val = vi.data().toLongLong();
+                sVal = QString("%1").arg(val);
+            }
+        }
+
+        it = clridx.find(sVal);
+        if (it != clridx.cend())
+        {
+            int id = clridx.value(sVal);
+
+            for (int i=0; i < numComp; ++i)
+            {
+                rgba[i] = arList.at(i)->GetTuple1(id) / 255.0;
+            }
+        }
+        else
+        {
+            for (int i=0; i < numComp; ++i)
+            {
+                rgba[i] = arList.at(i)->GetTuple1(0) / 255.0;
+            }
+        }
+        this->mLookupTable->SetTableValue(t,
+                          rgba[0], rgba[1], rgba[2], rgba[3]);
+    }
+
+    emit legendChanged(this);
+    emit visibilityChanged(this);
+}
+
+void
+NMLayer::saveLegend(const QString &filename)
+{
+    if (this->mLookupTable == 0)
+    {
+        return;
+    }
+
+    int numCat = this->mMapValueIndices.size();
+    if (numCat == 0)
+    {
+        return;
+    }
+
+    vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
+
+    vtkSmartPointer<vtkStringArray> cat = vtkSmartPointer<vtkStringArray>::New();
+    cat->SetNumberOfComponents(1);
+    cat->SetNumberOfTuples(numCat+1);
+    cat->SetName("Category");
+    vtkSmartPointer<vtkShortArray> red = vtkSmartPointer<vtkShortArray>::New();
+    red->SetNumberOfComponents(1);
+    red->SetNumberOfTuples(numCat+1);
+    red->SetName("red");
+    vtkSmartPointer<vtkShortArray> green = vtkSmartPointer<vtkShortArray>::New();
+    green->SetNumberOfComponents(1);
+    green->SetNumberOfTuples(numCat+1);
+    green->SetName("green");
+    vtkSmartPointer<vtkShortArray> blue = vtkSmartPointer<vtkShortArray>::New();
+    blue->SetNumberOfComponents(1);
+    blue->SetNumberOfTuples(numCat+1);
+    blue->SetName("blue");
+    vtkSmartPointer<vtkShortArray> alpha = vtkSmartPointer<vtkShortArray>::New();
+    alpha->SetNumberOfComponents(1);
+    alpha->SetNumberOfTuples(numCat+1);
+    alpha->SetName("alpha");
+
+    // fill nodata value with white colour
+    // TODO: add a nodata value setting option via the user interface
+
+    red->SetValue(0, 255);
+    green->SetValue(0, 255);
+    blue->SetValue(0, 255);
+    alpha->SetValue(0, 255);
+
+
+    QList<vtkShortArray*> arList;
+    arList << red << green << blue;
+
+    //NMDebugAI(<< "going to save " << numCat << " colours ..." << std::endl);
+
+    QMap<QString, QVector<int> >::const_iterator it = this->mMapValueIndices.cbegin();
+    int count = 1;
+    while(it != this->mMapValueIndices.cend())
+    {
+        cat->SetValue(count, it.key().toStdString().c_str());
+
+        double clr[4];
+        mLookupTable->GetColor(it.value().at(0), clr);
+
+        //NMDebugAI(<< cat->GetValue(count).c_str() << ": ");
+        for (int i=0; i < 3; ++i)
+        {
+            double scaledClr = clr[i] * 255.0 + 0.5;
+            short shortClr = scaledClr > 255.0 ? (short)255 : (short)scaledClr;
+            //NMDebug(<< clr[i] << "->" << shortClr << " ");
+
+            arList.at(i)->SetValue(count, shortClr);//(short) (clr[i] * 255.0 + 0.5));
+
+        }
+        double dop = mLookupTable->GetOpacity(it.value().at(0)) * 255.0 + 0.5;
+        short opacity = dop > 255.0 ? (short)255 : (short)dop;
+        //NMDebug(<< dop << "->" << opacity << std::endl);
+
+        alpha->SetValue(count, opacity);
+
+        ++count;
+        it++;
+    }
+
+    tab->AddColumn(cat);
+    tab->AddColumn(red);
+    tab->AddColumn(green);
+    tab->AddColumn(blue);
+    tab->AddColumn(alpha);
+
+    vtkSmartPointer<vtkDelimitedTextWriter> writer =
+            vtkSmartPointer<vtkDelimitedTextWriter>::New();
+    writer->SetFieldDelimiter(",");
+
+    writer->SetInputData(tab);
+    writer->SetFileName(filename.toStdString().c_str());
+    writer->Update();
+
+}
+
+void
 NMLayer::mapUniqueValues(void)
 {
 	if (mTableModel == 0)
@@ -787,7 +1050,8 @@ NMLayer::mapUniqueValues(void)
 	else
 	{
 		ncells = mTableModel->rowCount(QModelIndex());
-		mLookupTable->SetNumberOfTableValues(ncells+2);
+        //mLookupTable->SetNumberOfTableValues(ncells+2);
+        mLookupTable->SetNumberOfTableValues(ncells);
 	}
 
 	// value index
@@ -847,49 +1111,50 @@ NMLayer::mapUniqueValues(void)
 			// and store a reference into the LookupTable for the
 			// given value;
 			QVector<int> ids;
-			if (valar)
+            //if (valar)
 			{
 				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
 				ids.push_back(t);
 				this->mMapValueIndices.insert(sVal, ids);
 			}
-			else
-			{
-				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
-				ids.push_back(t+1);
-				this->mMapValueIndices.insert(sVal, ids);
-			}
+            //			else
+            //			{
+            //				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
+            //				ids.push_back(t+1);
+            //				this->mMapValueIndices.insert(sVal, ids);
+            //			}
 		}
 		else
 		{
 			mLookupTable->GetTableValue(it.value().at(0), rgba);
-			if (valar)
+            //if (valar)
 			{
 				it.value().push_back(t);
 				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
 			}
-			else
-			{
-				it.value().push_back(t+1);
-				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
-			}
+            //			else
+            //			{
+            //				it.value().push_back(t+1);
+            //				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
+            //			}
 		}
 	}
 
-	if (valar == 0)
-	{
-		mLookupTable->SetTableValue(0, 0, 0, 0, 0);
-		mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
-		mLookupTable->SetTableRange(-1, ncells);
-		QVector<int> ov;
-		ov.push_back(0);
-		mMapValueIndices.insert("other", ov);
-	}
-	else
+//	if (valar == 0)
+//	{
+//		mLookupTable->SetTableValue(0, 0, 0, 0, 0);
+//		mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
+//		mLookupTable->SetTableRange(-1, ncells);
+//		QVector<int> ov;
+//		ov.push_back(0);
+//		mMapValueIndices.insert("other", ov);
+//	}
+//	else
 		mLookupTable->SetTableRange(0, ncells-1);
 
 	mNumClasses = mMapValueIndices.size();
-	mNumLegendRows = mNumClasses + (valar ? 1 : 2);
+    //mNumLegendRows = mNumClasses + (valar ? 1 : 2);
+    mNumLegendRows = mNumClasses + 1;//(valar ? 1 : 2);
 }
 
 void

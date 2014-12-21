@@ -62,6 +62,8 @@
 #include "vtkCamera.h"
 #include "vtkProperty.h"
 #include "QVTKWidget.h"
+#include "vtkCell.h"
+#include "vtkPolygon.h"
 
 const std::string ModelComponentList::ctx = "ModelComponentList";
 
@@ -126,6 +128,12 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActOpacity = new QAction(this->mMenu);
     mActOpacity->setText(tr("Layer Opacity ..."));
 
+    QAction* actLoadLegend = new QAction(this->mMenu);
+    actLoadLegend->setText(tr("Load Legend ..."));
+
+    QAction* actSaveLegend = new QAction(this->mMenu);
+    actSaveLegend->setText(tr("Save Legend ..."));
+
 	this->mMenu->addAction(actTable);
 	this->mMenu->addSeparator();
 
@@ -146,9 +154,13 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->mMenu->addAction(mActOpacity);
 	this->mMenu->addSeparator();
 
+    this->mMenu->addAction(actLoadLegend);
+    this->mMenu->addAction(actSaveLegend);
     this->mMenu->addAction(actSaveChanges);
 	this->mMenu->addAction(actRemove);
 
+    this->connect(actLoadLegend, SIGNAL(triggered()), this, SLOT(loadLegend()));
+    this->connect(actSaveLegend, SIGNAL(triggered()), this, SLOT(saveLegend()));
 	this->connect(actZoom, SIGNAL(triggered()), this, SLOT(zoomToLayer()));
 	this->connect(actTable, SIGNAL(triggered()), this, SLOT(openAttributeTable()));
 	this->connect(actRemove, SIGNAL(triggered()), this, SLOT(removeCurrentLayer()));
@@ -270,6 +282,45 @@ void ModelComponentList::removeCurrentLayer()
 	}
 
 	this->removeLayer(l);
+}
+
+void ModelComponentList::loadLegend()
+{
+    NMLayer* l = this->getSelectedLayer();
+    if (l == 0)
+        return;
+
+    QString fileName = QFileDialog::getOpenFileName(this,
+         tr("Select Legend Colour Table"), "~", tr("Delimited Text File (*.csv)"));
+    QFileInfo info(fileName);
+
+    if (!info.isReadable())
+    {
+        return;
+    }
+
+    l->loadLegend(fileName);
+
+}
+
+void ModelComponentList::saveLegend()
+{
+    NMLayer* l = this->getSelectedLayer();
+    if (l == 0)
+        return;
+
+    QString fileName = QFileDialog::getSaveFileName(this,
+         tr("Save Legend File"), "~", tr("Delimited Text File (*.csv)"));
+
+    if (fileName.isEmpty())
+    {
+        NMBoxErr("Save Legend File",
+                  "Invalid File Name!");
+        return;
+    }
+
+    l->saveLegend(fileName);
+
 }
 
 void ModelComponentList::updateLegend(const NMLayer* layer)
@@ -1463,6 +1514,54 @@ void ModelComponentList::mapUniqueValues()
 void ModelComponentList::test()
 {
 	NMDebugCtx(ctx, << "...");
+
+    NMLayer* l = this->getSelectedLayer();
+    if (l->getLayerType() != NMLayer::NM_VECTOR_LAYER)
+        return;
+
+    QItemSelection sel = l->getSelection();
+
+    // pick the poly on top of the list
+    long cellId = sel.at(0).top();
+
+    // query the neighbours
+    vtkPolyData* pd = vtkPolyData::SafeDownCast(
+                const_cast<vtkDataSet*>(l->getDataSet()));
+
+    vtkPolygon* poly = vtkPolygon::SafeDownCast(pd->GetCell(cellId));
+//    double normal[3];
+//    poly->ComputeNormal(poly->GetPoints(),
+//                        normal);
+    double area = poly->ComputeArea();
+
+    NMDebugAI( << "cellId: " << cellId << " | area: " << area << std::endl);
+
+
+    std::set<vtkIdType> nids;
+    for (int v=0; v < poly->GetPointIds()->GetNumberOfIds(); ++v)
+    {
+        vtkSmartPointer<vtkIdList> idList = vtkSmartPointer<vtkIdList>::New();
+        idList->InsertNextId(poly->GetPointIds()->GetId(v));
+
+        vtkSmartPointer<vtkIdList> vnids = vtkSmartPointer<vtkIdList>::New();
+        pd->GetCellNeighbors(cellId, idList, vnids);
+
+        for (int id=0; id < vnids->GetNumberOfIds(); ++id)
+        {
+            nids.insert(vnids->GetId(id));
+        }
+    }
+
+    NMDebugAI(<< "neighbours: ");
+    std::set<vtkIdType>::const_iterator it = nids.begin();
+    while(it != nids.end())
+    {
+        NMDebug( << *it << " ");
+        ++it;
+    }
+    NMDebug( << std::endl);
+
+
 	NMDebugCtx(ctx, << "done!");
 }
 

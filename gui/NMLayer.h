@@ -188,6 +188,9 @@ public:
 	const QItemSelection getSelection(void);
 
 
+    void loadLegend(const QString& filename);
+    void saveLegend(const QString& filename);
+
 	virtual void setBBox(double bbox[6]);
 	const double* getBBox(void);
 	virtual void getBBox(double bbox[6]);
@@ -347,7 +350,9 @@ protected:
 	QMap<QString, QVector<int> > mMapValueIndices;
 	QMap<double, QColor> mUserClrNodes;
 
-	/*! Auxiliary legend category information used in conjunction
+    /*! DEPRECATED - not in actual use at the moment
+     *
+     *  Auxiliary legend category information used in conjunction
 	 *  with the layer's lookup table for NMLegendType == NM_LEGEND_INDEXED
 	 *  and NMLegendClassType != NM_CLASS_UNIQUE. The table holds
 	 *  three vtkAbstractArrays:

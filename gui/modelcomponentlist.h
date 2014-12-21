@@ -99,6 +99,8 @@ public slots:
     void editContourWidth();
     void editContourStyle();
     void editLayerOpacity();
+    void saveLegend();
+    void loadLegend();
 
 	void test();
 

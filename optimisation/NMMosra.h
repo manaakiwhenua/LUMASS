@@ -121,7 +121,10 @@ public:
 	 * the problem
 	 */
 	void setTimeOut(int secs)
-		{this->muiTimeOut = secs >= 0 ? secs : 0;};
+        {this->muiTimeOut = secs >= 0 ? secs : 0;}
+
+    void setBreakAtFirst(bool breakAtFirst)
+        {this->mbBreakAtFirst = breakAtFirst;}
 
 	/*	\brief add uncertainty to performance scores
 	 *
@@ -171,9 +174,11 @@ private:
 	NMMosoDVType meDVType;
 	NMMosoScalMeth meScalMeth;
 
+    bool mbBreakAtFirst;
 	unsigned int muiTimeOut;
 	int miNumOptions;
 	QStringList mslOptions;
+    QStringList mslPerfSumZones;
 
 	// <objective> <min | max> <weight>
 	QMap<QString, QStringList> mmslObjectives;
@@ -190,7 +195,7 @@ private:
 	QMap<QString, QStringList> mmslEvalFields;
 
 	// maps areal constraints onto options
-	// <constr label>, <option[:zonefield]> < >= | <= > < number > < percent_of_total | percent_of_selected | map_units >
+    // <constr label>, <option[,option[,...]][:zonefield]> < >= | <= > < number > < percent_of_total | percent_of_selected | map_units >
 	QMap<QString, QStringList> mmslAreaCons;
 	QMap<QString, QStringList> mmslAreaZoneCons;
 	QStringList mmslAreaConsLabel;

@@ -78,9 +78,22 @@ MOSORunnable::run()
 		mosra->perturbCriterion(perturbItem, level);
 		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
 
+        // let's write a report
+        QString sRepName = QString("%1/report_%2_p%3-%4.txt").arg(dsInfo.path())
+                        .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+        // let's write the actual optimisation problem in lp format
+        QString lpName = QString("%1/lp_%2_p%3-%4.lp").arg(dsInfo.path())
+                .arg(dsInfo.baseName()).arg(level).arg(runs);
+
 		mosra->setTimeOut(mosra->getTimeOut());
 		if (!mosra->solveLp())
+        {
+            mosra->writeReport(sRepName);
 			continue;
+        }
+        mosra->writeReport(sRepName);
+        mosra->getLp()->WriteLp(lpName.toStdString());
 
 		if (!mosra->mapLp())
 			continue;
@@ -93,10 +106,6 @@ MOSORunnable::run()
 		tab->RemoveColumnByName("nm_hole");
 		tab->RemoveColumnByName("nm_sel");
 
-		// let's write a report
-		QString sRepName = QString("%1/report_%2_p%3-%4.txt").arg(dsInfo.path())
-						.arg(dsInfo.baseName()).arg(level).arg(runs);
-		mosra->writeReport(sRepName);
 
 		// now write the input and the result table
 		QString perturbName = QString("%1/%2_p%3-%4.csv").arg(dsInfo.path())

@@ -28,6 +28,7 @@
 #endif
 
 #include "lumassengine.h"
+#include "LUMASSConfig.h"
 #include <tr1/functional>
 
 
@@ -201,7 +202,11 @@ void doModel(const QString& modelFile)
 
 void showHelp()
 {
-    std::cout << std::endl << "LUMASS (lumassengine) 0.9.0" << std::endl << std::endl;
+    std::cout << std::endl << "LUMASS (lumassengine) "
+                           << _lumass_version_major << "."
+                           << _lumass_version_minor << "."
+                           << _lumass_version_revision
+                           << std::endl << std::endl;
     std::cout << "Usage: lumassengine --moso <settings file (*.los)> | "
                                   << "--model <LUMASS model file (*.lmx)>"
                                   << std::endl << std::endl;

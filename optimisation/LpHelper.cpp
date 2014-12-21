@@ -567,6 +567,16 @@ void HLpHelper::SetTimeout(int secs)
 		set_timeout(this->m_pLp, secs);
 }
 
+void HLpHelper::SetBreakAtFirst(bool breakAtFirst)
+{
+    set_break_at_first(this->m_pLp, breakAtFirst);
+}
+
+bool HLpHelper::IsBreakAtFirst()
+{
+    return is_break_at_first(this->m_pLp);
+}
+
 void HLpHelper::SetAbortFunc(void *owningObject, int (*abortfunc)(lprec*, void*))
 {
 	put_abortfunc(this->m_pLp, abortfunc, owningObject);

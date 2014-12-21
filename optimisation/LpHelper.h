@@ -57,8 +57,10 @@ public:
 	bool IsMaxim();
 	bool IsNegative(int column);
 	bool IsFeasible(double *values, double threshold);
+    bool IsBreakAtFirst();
 
 	void SetTimeout(int secs);
+    void SetBreakAtFirst(bool breakAtFirst);
 
 	void SetAbortFunc(void *owningObject, int (*abortfunc)(lprec*,void*));
 	void SetMinim();

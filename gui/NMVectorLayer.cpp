@@ -855,7 +855,7 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 	scalars->SetNumberOfTuples(selcnt);
 	clrtab->SetNumberOfTableValues(selcnt);
 
-	this->printSelRanges(newSel, "incoming update selection");
+    //this->printSelRanges(newSel, "incoming update selection");
 
 	int clrcnt = 0;
 	foreach(const QItemSelectionRange& range, newSel)
@@ -893,8 +893,8 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 	mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
 	mCellSelection->GetCellData()->SetScalars(scalars);
 
-	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
-			<< " cells in selection" << std::endl);
+    //	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
+    //			<< " cells in selection" << std::endl);
 
     mSelectionMapper->SetInputData(mCellSelection);
 	mSelectionMapper->SetLookupTable(clrtab);

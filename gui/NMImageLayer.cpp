@@ -992,7 +992,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     //NMDebugCtx(ctxNMImageLayer, << "...");
 
 
-    const int colidx = this->getColumnIndex(mLegendValueField);
+    int colidx = this->getColumnIndex(mLegendValueField);
 
     if (colidx < 0 || this->mOtbRAT.IsNull())
     {
@@ -1039,6 +1039,8 @@ NMImageLayer::setScalars(vtkImageData* img)
                 }
             }
             dsa->AddArray(ar);
+            dsa->SetActiveAttribute(mLegendValueField.toStdString().c_str(),
+                                    vtkDataSetAttributes::SCALARS);
         }
         break;
     case otb::AttributeTable::ATTYPE_INT:
@@ -1071,16 +1073,13 @@ NMImageLayer::setScalars(vtkImageData* img)
                 }
             }
             dsa->AddArray(ar);
+            dsa->SetActiveAttribute(mLegendValueField.toStdString().c_str(),
+                                    vtkDataSetAttributes::SCALARS);
         }
         break;
     default:
-        NMErr(ctxNMImageLayer, << "Invalid ColumnType!");
-        //NMDebugCtx(ctxNMImageLayer, << "done!");
-        return;
+        dsa->SetActiveAttribute(0, vtkDataSetAttributes::SCALARS);
     }
-
-    dsa->SetActiveAttribute(mLegendValueField.toStdString().c_str(),
-                            vtkDataSetAttributes::SCALARS);
 
     mbUpdateScalars = false;
     //NMDebugCtx(ctxNMImageLayer, << "done!");

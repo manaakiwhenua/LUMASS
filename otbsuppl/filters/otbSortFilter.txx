@@ -42,12 +42,16 @@ SortFilter<TInputImage, TOutputImage>
 ::SortFilter()
  	 : m_SortAscending(false)
 {
+    mArrayOffsets.clear();
+    mChunkSize.clear();
 }
 
 template <class TInputImage, class TOutputImage>
 SortFilter<TInputImage, TOutputImage>
 ::~SortFilter()
 {
+    mArrayOffsets.clear();
+    mChunkSize.clear();
 }
 
 template <class TInputImage, class TOutputImage>
@@ -55,7 +59,7 @@ void SortFilter<TInputImage, TOutputImage>
 ::PrintSelf(std::ostream& os, itk::Indent indent) const
 {
 	Superclass::PrintSelf(os, indent);
-	os << indent << "SortFilter - sorting " << this->GetNumberOfInputs()
+    os << indent << "SortFilter - sorting " << this->GetNumberOfIndexedInputs()
 		<< " layers." << std::endl;
 }
 
@@ -131,16 +135,16 @@ template <class TInputImage, class TOutputImage>
 void SortFilter<TInputImage, TOutputImage>
 ::AllocateOutputs(void)
 {
-	NMDebugCtx(ctxSortFilter, << "...");
+//	NMDebugCtx(ctxSortFilter, << "...");
 
 	// first let's set the number of outputs we're producing
-	this->SetNumberOfOutputs(this->GetNumberOfInputs() + 1);
+    this->SetNumberOfIndexedOutputs(this->GetNumberOfIndexedInputs());
 
 	// we get the first input image and use its props as stencil for
 	// outputs, except for the index layer;
 	InputImagePointer input = const_cast<InputImageType*>(this->GetInput(0));
 
-	for (int i=0; i < this->GetNumberOfInputs(); ++i)
+    for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
 	{
 		OutputImagePointer output = OutputImageType::New();
 		output->CopyInformation(input);
@@ -155,10 +159,9 @@ void SortFilter<TInputImage, TOutputImage>
 	indexImg->SetRequestedRegion(input->GetRequestedRegion());
 	indexImg->SetBufferedRegion(input->GetBufferedRegion());
 	indexImg->Allocate();
-	this->SetNthOutput(this->GetNumberOfOutputs()-1,
-			dynamic_cast<itk::DataObject*>(indexImg.GetPointer()));
+    this->SetOutput("IndexImage", indexImg.GetPointer());
 
-	NMDebugCtx(ctxSortFilter, << "done!");
+//	NMDebugCtx(ctxSortFilter, << "done!");
 }
 
 
@@ -166,7 +169,7 @@ template <class TInputImage, class TOutputImage>
 void SortFilter<TInputImage, TOutputImage>
 ::BeforeThreadedGenerateData(void)
 {
-	NMDebugCtx(ctxSortFilter, << "...");
+//	NMDebugCtx(ctxSortFilter, << "...");
 
 	OutputImagePointer out = dynamic_cast<OutputImageType*>(this->GetOutput());
 	OutputImageRegionType orr = out->GetBufferedRegion();
@@ -185,42 +188,37 @@ void SortFilter<TInputImage, TOutputImage>
 	int numThreads = this->GetNumberOfThreads();
 	long numchunks = numThreads;
 	long lenchunk = numpix / numchunks;
-	if (numpix % numThreads)
-		lenchunk = numpix / (numchunks-1);
-	long rest = numpix - ((numchunks-1) * lenchunk);
-	if (rest == 0)
-		numchunks -= 1;
+    long lastchunk = numpix - ((numchunks-1) * lenchunk);
 
 	long offset = 0;
 	long chunklen = lenchunk;
 	for (int s=0; s < numchunks; ++s)
 	{
-		mArrayOffsets.push_back(offset);
+        if (s == numchunks - 1)
+        {
+            chunklen = lastchunk;
+        }
+
+        mArrayOffsets.push_back(offset);
 		mChunkSize.push_back(chunklen);
 		offset += chunklen;
-		if (s == numchunks - 2 && rest > 0)
-		{
-			chunklen = rest;
-		}
 	}
 
 
-	if (rest > 0)
-	{
-		NMDebugAI(<< "numpix = lenchunk * numchunks-1 + rest" << endl);
-		NMDebugAI(<< numpix << " = " << lenchunk << " * " << numchunks
-				<< " - 1 " << " + " << rest << endl);
-	}
-	else
-	{
-		NMDebugAI(<< "numpix = lenchunk * numchunks" << endl);
-		NMDebugAI(<< numpix << " = " << lenchunk << " * " << numchunks
-				 << endl);
-	}
-	NMDebugAI(<< "pixsize: " << pixsize << " bytes" << endl);
-	NMDebugAI(<< "arraysize: " << arraysize << " bytes" << endl);
+//    NMDebugAI(<< "numpix = lenchunk * (numchunks-1) + lastchunk" << endl);
+//    NMDebugAI(<< numpix << " = " << lenchunk << " * (" << numchunks
+//            << " - 1)" << " + " << lastchunk << endl);
+//    NMDebugAI(<< "pixsize:           " << pixsize << " bytes" << endl);
+//    NMDebugAI(<< "arraysize:         " << arraysize << " bytes" << endl);
+//    NMDebugAI(<< "total size (MiB):  "
+//              << ((  arraysize * (this->GetNumberOfIndexedOutputs())
+//                   + (2 * numpix * sizeof(long))
+//                  )
+//                  / 1024^2
+//                 )
+//              << endl);
 
-	NMDebugCtx(ctxSortFilter, << "done!");
+//	NMDebugCtx(ctxSortFilter, << "done!");
 }
 
 template <class TInputImage, class TOutputImage>
@@ -236,7 +234,7 @@ void SortFilter<TInputImage, TOutputImage>
 	// input and index image data, this thread is responsible for
 	std::vector<InputImagePixelType*> inputArrays;
 	IndexImagePixelType* idxArray;
-	for (int i=0; i < this->GetNumberOfInputs(); ++i)
+    for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
 	{
 		InputImagePointer img = const_cast<InputImageType*>(this->GetInput(i));
 		InputImagePixelType* buf =
@@ -347,10 +345,13 @@ template <class TInputImage, class TOutputImage>
 void SortFilter<TInputImage, TOutputImage>
 ::AfterThreadedGenerateData(void)
 {
-	// create a vector of array pointers, pointing at the very chunk of the
+//    NMDebugCtx(ctxSortFilter, << "...");
+
+//    NMDebugAI(<< "create vector of input array pointers ..." << endl);
+    // create a vector of array pointers, pointing at the very chunk of the
 	// input and index image data, this thread is responsible for
 	std::vector<InputImagePixelType*> inputArrays;
-	for (int i=0; i < this->GetNumberOfInputs(); ++i)
+    for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
 	{
 		InputImagePointer img = const_cast<InputImageType*>(this->GetInput(i));
 		InputImagePixelType* buf =
@@ -358,9 +359,10 @@ void SortFilter<TInputImage, TOutputImage>
 		inputArrays.push_back(buf);
 	}
 
+//    NMDebugAI(<< "create vector of output array pointers ..." << endl);
 	std::vector<OutputImagePixelType*> outputArrays;
 	OutputImagePointer out;
-	for (int i=0; i < this->GetNumberOfInputs(); ++i)
+    for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
 	{
 		//InputImagePointer img = const_cast<InputImageType*>(this->GetInput(i));
 		//this->GraftNthOutput(i, img);
@@ -370,6 +372,7 @@ void SortFilter<TInputImage, TOutputImage>
 		outputArrays.push_back(obuf);
 	}
 
+//    NMDebugAI(<< "allocate index output image ..." << std::endl);
 	IndexImagePointer idxIn = this->GetIndexImage();
 	IndexImagePointer idxOut = IndexImageType::New();
 	idxOut->CopyInformation(idxIn);
@@ -377,19 +380,21 @@ void SortFilter<TInputImage, TOutputImage>
 	idxOut->SetBufferedRegion(idxIn->GetBufferedRegion());
 	idxOut->Allocate();
 
-	IndexImagePixelType* idxBufIn = idxIn->GetBufferPointer();
-	IndexImagePixelType* idxBufOut = idxOut->GetBufferPointer();
+    IndexImagePixelType* idxBufIn = static_cast<IndexImagePixelType*>(idxIn->GetBufferPointer());
+    IndexImagePixelType* idxBufOut = static_cast<IndexImagePixelType*>(idxOut->GetBufferPointer());
 
 	int numchunks = mArrayOffsets.size();
-	long numpix = out->GetBufferedRegion().GetNumberOfPixels();
+    long numpix = out->GetBufferedRegion().GetNumberOfPixels();
 
 	std::vector<long> offcnts;
 	for (int r=0; r < numchunks; ++r)
 		offcnts.push_back(0);
 
+//    NMDebugAI(<< "merging pre-sorted image chunks ...");
 	// do the merging of the pre-sorted pieces
 	OutputImagePixelType val, tmp;
-	long pixcnt = 0;
+
+    long pixcnt = 0;
 	if (m_SortAscending)
 	{
 		while(pixcnt < numpix && !this->GetAbortGenerateData())
@@ -410,9 +415,9 @@ void SortFilter<TInputImage, TOutputImage>
 					}
 				}
 			}
-			++offcnts[valIdx];
+            ++offcnts[valIdx];
 
-			for (int i=0; i < this->GetNumberOfInputs(); ++i)
+            for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
 			{
 				outputArrays[i][pixcnt] = inputArrays[i][offset];
 			}
@@ -424,7 +429,7 @@ void SortFilter<TInputImage, TOutputImage>
 	{
 		while(pixcnt < numpix && !this->GetAbortGenerateData())
 		{
-			val = itk::NumericTraits<OutputImagePixelType>::min();
+            val = itk::NumericTraits<OutputImagePixelType>::NonpositiveMin();
 			int valIdx = -1;
 			long offset = -1;
 			for (int c=0; c < numchunks; ++c)
@@ -440,9 +445,10 @@ void SortFilter<TInputImage, TOutputImage>
 					}
 				}
 			}
-			++offcnts[valIdx];
+            ++offcnts[valIdx];
 
-			for (int i=0; i < this->GetNumberOfInputs(); ++i)
+
+            for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
 			{
 					outputArrays[i][pixcnt] = inputArrays[i][offset];
 			}
@@ -450,9 +456,13 @@ void SortFilter<TInputImage, TOutputImage>
 			++pixcnt;
 		}
 	}
+//    NMDebug( << "finisehd!" << endl);
 
-	//graft the overriden index image on the 'last' output slot
-	this->GraftNthOutput(this->GetNumberOfInputs(), idxOut);
+    idxIn->ReleaseData();
+    this->SetOutput("IndexImage", idxOut);
+
+
+//    NMDebugCtx(ctxSortFilter, << "done!");
 }
 
 } // end namespace

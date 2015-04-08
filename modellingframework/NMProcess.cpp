@@ -317,7 +317,9 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 				ii < this->mInputComponents.at(step).size();
 				++ii)
 		{
-			// parse the input source string
+            // (re-)set default ouput index of input component
+            outIdx = 0;
+            // parse the input source string
 			inputSrc = this->mInputComponents.at(step).at(
 					ii);
 			inputSrcParams = inputSrc.split(":", QString::SkipEmptyParts);
@@ -376,6 +378,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 // since we're on the same time level, we're in pipeline here
                 // connect output to input
                 this->setNthInput(ii, iw);//ic->getOutput(outIdx));
+                NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString() << std::endl);
             }
             else
             {
@@ -430,7 +433,7 @@ void NMProcess::update(void)
         {
             this->mOtbProcess->Update();
         }
-        catch (itk::ExceptionObject& err)
+        catch (std::exception& err)//itk::ExceptionObject& err)
         {
             NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
 
@@ -442,12 +445,12 @@ void NMProcess::update(void)
                 std::stringstream msg;
                 msg << hc->objectName().toStdString() << " step #" << hc->getIterationStep() << ": "
                     << pc->objectName().toStdString() << " step #" << pc->getIterationStep()
-                    << ": " << err.GetDescription();
+                    << ": " << err.what();
                 rerr.setMsg(msg.str());
             }
             else
             {
-                rerr.setMsg(err.GetDescription());
+                rerr.setMsg(err.what());
             }
             //NMErr(this->parent()->objectName().toStdString(), << msg.str());
             NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");

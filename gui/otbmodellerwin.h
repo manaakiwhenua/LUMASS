@@ -20,6 +20,7 @@
 
 #define ctxOtbModellerWin "OtbModellerWin"
 
+#include <QMdiArea>
 #include <QMainWindow>
 #include <QMouseEvent>
 #include <QActionEvent>
@@ -137,6 +138,9 @@ public slots:
 	void importODBC();
 	void aboutLUMASS();
 	void addLayerToCompList();
+    void Image2PolyData();
+    void toggleRubberBandZoom(bool);
+    void setMapBackgroundColour();
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 
@@ -144,6 +148,8 @@ public slots:
 
 
 protected:
+
+    bool eventFilter(QObject *obj, QEvent *event);
     void saveAsImageFile(bool onlyVisImg);
 
     //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
@@ -262,7 +268,14 @@ private:
     QLabel* m_coordLabel;
     // for showing pixel values
     QLabel* mPixelValLabel;
+
+    QMdiArea* mMdiArea;
     QMainWindow* mModelBuilderWindow;
+    QMainWindow* mMapWindow;
+
+    QToolBar* mMapToolBar;
+
+
     unsigned int mBusyProcCounter;
     QProgressBar* mProgressBar;
 

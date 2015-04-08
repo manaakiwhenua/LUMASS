@@ -149,6 +149,7 @@
 //#include "otbFlowAccumulationFilter.h"
 
 // VTK
+#include "vtkNew.h"
 #include "vtkAbstractArray.h"
 #include "vtkAxesActor.h"
 #include "vtkCamera.h"
@@ -167,12 +168,15 @@
 #include "vtkInteractorObserver.h"
 #include "vtkInteractorStyle.h"
 #include "vtkInteractorStyleImage.h"
+#include "vtkInteractorStyleRubberBandZoom.h"
+#include "vtkInteractorStyleRubberBand2D.h"
 #include "vtkLongArray.h"
 #include "vtkMath.h"
 #include "vtkMergePoints.h"
 #include "vtkObject.h"
 #include "vtkOrientationMarkerWidget.h"
 #include "vtkPoints.h"
+#include "vtkPolygon.h"
 #include "vtkPointData.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataReader.h"
@@ -190,11 +194,53 @@
 #include "vtkXMLPolyDataReader.h"
 #include "vtkXMLPolyDataWriter.h"
 #include "vtkInteractorStyleTrackballCamera.h"
+#include "vtkExtractPolyDataGeometry.h"
+#include "vtkCylinder.h"
+#include "vtkTransform.h"
+#include "vtkSphere.h"
+#include "vtkImageDataGeometryFilter.h"
+#include "vtkGeometryFilter.h"
+#include "vtkTransformPolyDataFilter.h"
+#include "vtkImageWrapPad.h"
+#include "vtkGreedyTerrainDecimation.h"
+#include "vtkPolyDataNormals.h"
 
 #include "vtkCoordinate.h"
 
+#include "otbSortFilter.h"
+#include "otbExternalSortFilter.h"
+#include "itkImageRegionSplitterMultidimensional.h"
+#include "itkNMImageRegionSplitterMaxSize.h"
+
 
 //#include "valgrind/callgrind.h"
+
+class NMMdiSubWindow : public QMdiSubWindow
+{
+    public:
+        NMMdiSubWindow(QWidget* parent=0)
+            : QMdiSubWindow(parent)
+        {
+        }
+        ~NMMdiSubWindow()
+        {
+            const QObjectList& kids = this->children();
+            QObject *child;
+
+            foreach (child, kids)
+            {
+                if (child)
+                    delete child;
+                child = 0;
+            }
+        }
+
+        void closeEvent(QCloseEvent *closeEvent)
+        {
+            closeEvent->ignore();
+            this->hide();
+        }
+};
 
 
 OtbModellerWin::OtbModellerWin(QWidget *parent)
@@ -272,6 +318,28 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // BAR(s) SETUP - MENU - PROGRESS - STATUS
     // ================================================
 
+    this->mMapToolBar = new QToolBar("View Tools");
+
+    QAction* rubberBandZoom = new QAction("Zoom In", this->mMapToolBar);
+    rubberBandZoom->setCheckable(true);
+    rubberBandZoom->setChecked(false);
+    this->mMapToolBar->addAction(rubberBandZoom);
+
+    connect(rubberBandZoom, SIGNAL(triggered(bool)), this, SLOT(toggleRubberBandZoom(bool)));
+
+    this->mMdiArea = new QMdiArea(this);
+    this->setCentralWidget(mMdiArea);
+
+    NMMdiSubWindow* mapSub = new NMMdiSubWindow(mMdiArea);
+    this->mMapWindow = new QMainWindow(mapSub);
+    this->mMapWindow->setWindowTitle("Map View");
+    this->mMapWindow->setWindowFlags(Qt::Widget);
+    this->mMapWindow->setMouseTracking(true);
+    this->mMapWindow->addToolBar(this->mMapToolBar);
+    this->mMapWindow->setCentralWidget(this->ui->qvtkWidget);
+    mapSub->setWidget(mMapWindow);
+    mapSub->setWindowTitle(mMapWindow->windowTitle());
+
 
     // we remove the rasdaman import option, when we haven't
     // rasdaman suppor
@@ -327,6 +395,8 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
     connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
     connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
+    connect(ui->actionBackground_Colour, SIGNAL(triggered()), this,
+            SLOT(setMapBackgroundColour()));
 
     connect(ui->actionShow_Map_View, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
     connect(ui->actionShow_Model_View, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
@@ -338,17 +408,44 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->componentInfoDock, SIGNAL(visibilityChanged(bool)),
             ui->actionShow_Components_Info, SLOT(setChecked(bool)));
 
+    // TEST TEST TEST
+    connect(ui->actionImage_Polydata, SIGNAL(triggered()), this, SLOT(Image2PolyData()));
+
     // **********************************************************************
 	// *                    MODEL BUILDER WINDOW                            *
 	// **********************************************************************
 
-    mModelBuilderWindow = new QMainWindow(this);
+    NMMdiSubWindow* modelSub = new NMMdiSubWindow(mMdiArea);
+    mModelBuilderWindow = new QMainWindow(modelSub);
+    mModelBuilderWindow->setWindowTitle("Model Builder");
     mModelBuilderWindow->setWindowFlags(Qt::Widget);
     mModelBuilderWindow->setMouseTracking(true);
     mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
     mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
+    modelSub->setWidget(mModelBuilderWindow);
+    modelSub->setWindowTitle(mModelBuilderWindow->windowTitle());
+
+
     //ui->modelViewWidget->setMouseTracking(true);
     //ui->modelViewWidget->setParent(this);
+
+    //mModelBuilderWindow->setAttribute(Qt::WA_DeleteOnClose, false);
+    //mMapWindow->setAttribute(Qt::WA_DeleteOnClose, false);
+
+
+    this->mMdiArea->addSubWindow(modelSub);
+    this->mMdiArea->addSubWindow(mapSub);
+    this->mMdiArea->tileSubWindows();
+
+
+    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
+    foreach (QMdiSubWindow* s, wl)
+    {
+        s->installEventFilter(this);
+        s->setWindowFlags(s->windowFlags() |
+                          Qt::CustomizeWindowHint |
+                          Qt::WindowMinMaxButtonsHint);
+    }
 
     // =============================================================
     // set up the tool bar
@@ -438,6 +535,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     // create the render window
     vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+    renwin->SetStereoCapableWindow(1);
+    renwin->SetStereoTypeToCrystalEyes();
+    //renwin->SetStereoRender(1);
+    //NMDebugAI(<< renwin->ReportCapabilities() << std::endl);
 
     // set the number of allowed layers in the window
     renwin->SetAlphaBitPlanes(1);
@@ -454,13 +555,18 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	//this->mBkgRenderer->SetOcclusionRatio(0.1);
 
 
-	//	this->mBkgRenderer->SetBackground(0,0,0);
+    //renwin->SetStereoTypeToCrystalEyes();
+    //this->mBkgRenderer->SetBackground(0,0,0);
 	renwin->AddRenderer(this->mBkgRenderer);
 
     // set the render window
 		// for supporting 3D mice (3DConnexion Devices)
 		//this->ui->qvtkWidget->SetUseTDx(true);
     this->ui->qvtkWidget->SetRenderWindow(renwin);
+
+    // listen in on events received by the QtVTKWidget
+    this->ui->qvtkWidget->installEventFilter(this);
+
 
     this->m_b3D = false;
     this->ui->actionToggle3DStereoMode->setChecked(false);
@@ -498,17 +604,17 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // *                    CENTRAL WIDGET                                  *
     // **********************************************************************
 
-    QVBoxLayout* boxL = new QVBoxLayout();
-    if (ui->centralWidget->layout())
-        delete ui->centralWidget->layout();
+//    QVBoxLayout* boxL = new QVBoxLayout();
+//    if (ui->centralWidget->layout())
+//        delete ui->centralWidget->layout();
 
-    ui->centralWidget->setLayout(boxL);
+//    ui->centralWidget->setLayout(boxL);
 
-    QSplitter* splitter = new QSplitter(Qt::Vertical);
-    splitter->setChildrenCollapsible(true);
-    splitter->addWidget(ui->qvtkWidget);
-    splitter->addWidget(mModelBuilderWindow);
-    boxL->addWidget(splitter);
+//    QSplitter* splitter = new QSplitter(Qt::Vertical);
+//    splitter->setChildrenCollapsible(true);
+//    splitter->addWidget(ui->qvtkWidget);
+//    splitter->addWidget(mModelBuilderWindow);
+//    boxL->addWidget(splitter);
 
     // ================================================
     // INITIAL WIDGET's VISIBILITY
@@ -555,7 +661,8 @@ OtbModellerWin::~OtbModellerWin()
 	{
 //		NMDebugAI(<< child->objectName().toStdString() << ": "
 //				<< child->metaObject()->className() << endl);
-		delete child;
+        if (child)
+            delete child;
 		child = 0;
 	}
 
@@ -577,6 +684,110 @@ OtbModellerWin::notify(QObject* receiver, QEvent* event)
 	return true;
 }
 
+bool
+OtbModellerWin::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::Wheel && !this->m_b3D)
+    {
+        vtkInteractorStyleImage* iai =
+                vtkInteractorStyleImage::SafeDownCast(
+                    this->ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+
+        QWheelEvent* we = static_cast<QWheelEvent*>(event);
+        if (    we != 0
+            &&  we->modifiers().testFlag(Qt::ControlModifier)
+            &&  we->modifiers().testFlag(Qt::ShiftModifier)
+           )
+        {
+            iai->SetMotionFactor(0.2);
+        }
+        else if (   we != 0
+                 && we->modifiers().testFlag(Qt::ControlModifier)
+                )
+        {
+            iai->SetMotionFactor(1.0);
+        }
+        else
+        {
+            iai->SetMotionFactor(10.0);
+        }
+    }
+    else if (event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent* ke = static_cast<QKeyEvent*>(event);
+        if (!ke)
+            return false;
+
+        vtkRenderWindow* renwin = this->ui->qvtkWidget->GetRenderWindow();
+        if (!renwin)
+            return false;
+
+        if (    ke->modifiers().testFlag(Qt::ControlModifier)
+            &&  ke->modifiers().testFlag(Qt::AltModifier)
+            &&  this->m_b3D && renwin->GetStereoRender())
+        {
+
+            if (ke->key() == Qt::Key_C)
+            {
+                renwin->SetStereoTypeToCrystalEyes();
+                renwin->StereoUpdate();
+                NMDebugAI(<< "Stereo mode switched to Crystal Eye" << std::endl);
+            }
+            else if (ke->key() == Qt::Key_Y)
+            {
+                renwin->SetStereoTypeToAnaglyph();
+                renwin->StereoUpdate();
+                NMDebugAI(<< "Stereo mode switched to Anaglyph" << std::endl);
+            }
+            else if (ke->key() == Qt::Key_I)
+            {
+                renwin->SetStereoTypeToInterlaced();
+                renwin->StereoUpdate();
+                NMDebugAI(<< "Stereo mode switched to Interlaced" << std::endl);
+            }
+            else if (ke->key() == Qt::Key_B)
+            {
+                renwin->SetStereoTypeToRedBlue();
+                renwin->StereoUpdate();
+                NMDebugAI(<< "Stereo mode switched to Interlaced" << std::endl);
+            }
+        }
+    }
+    else if (event->type() == QEvent::Close)
+    {
+        QMdiSubWindow* sub = qobject_cast<QMdiSubWindow*>(obj);
+        if (!sub)
+        {
+            return false;
+        }
+
+        if (sub->windowTitle().compare("Map View") == 0)
+        {
+            this->showMapView(false);
+            ui->actionShow_Map_View->setChecked(false);
+        }
+        else if (sub->windowTitle().compare("Model Builder") == 0)
+        {
+            this->showModelView(false);
+            ui->actionShow_Model_View->setChecked(false);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+void
+OtbModellerWin::setMapBackgroundColour()
+{
+    double* bc = this->mBkgRenderer->GetBackground();
+    QColor bclr;
+    bclr.setRgbF(bc[0], bc[1], bc[2]);
+    bclr = QColorDialog::getColor(bclr, this, "Background Colour");
+    this->mBkgRenderer->SetBackground(bclr.redF(),
+                                      bclr.greenF(),
+                                      bclr.blueF());
+}
 
 vtkRenderWindow*
 OtbModellerWin::getRenderWindow(void)
@@ -584,15 +795,163 @@ OtbModellerWin::getRenderWindow(void)
     return this->ui->qvtkWidget->GetRenderWindow();
 }
 
+void
+OtbModellerWin::toggleRubberBandZoom(bool bzoom)
+{
+    if (this->m_b3D || !bzoom)
+    {
+        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
+                    vtkInteractorStyleImage::New());
+    }
+     else
+    {
+        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
+                    vtkInteractorStyleRubberBand2D::New());
+    }
+}
+
+void
+OtbModellerWin::Image2PolyData()
+{
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    // check, whether we've got a selected image
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l == 0)
+    {
+        NMDebugAI(<< "No layer selected!" << std::endl);
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == 0)
+    {
+        NMDebugAI(<< "No image layer selected!" << std::endl);
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    vtkDataSet* ids = const_cast<vtkDataSet*>(il->getDataSet());
+    vtkImageData* id = vtkImageData::SafeDownCast(ids);
+    double spacing[3];
+    id->GetSpacing(spacing);
+    int* extent = id->GetExtent();
+
+    // pad the image by 1
+    // to be able to create cells afterwards
+    // not: imdate data stores points at cell
+    // centres
+    vtkNew<vtkImageWrapPad> pad;
+    pad->SetInputData(ids);
+    pad->SetOutputWholeExtent(
+                extent[0], extent[1] + 1,
+                extent[2], extent[3] + 1,
+                extent[4], extent[5]);
+
+    // convert to polydata
+    vtkNew<vtkImageDataGeometryFilter> imgConv;
+    //vtkNew<vtkGreedyTerrainDecimation> imgConv;
+    imgConv->SetInputConnection(pad->GetOutputPort());
+
+    // translate by -dx/2, -dy/2
+    vtkNew<vtkTransform> transform;
+    transform->Translate(-spacing[0]/2.0, -spacing[1]/2.0, 0);
+    vtkNew<vtkTransformPolyDataFilter> transformFilter;
+    transformFilter->SetTransform(transform.GetPointer());
+    transformFilter->SetInputConnection(imgConv->GetOutputPort());
+    transformFilter->Update();
+
+    // get polygons
+    vtkPolyData* pdraw = transformFilter->GetOutput();
+    int ncells = pdraw->GetNumberOfCells();
+
+    //  ----------------------------------------------------
+    //  CREATE NEW POLYDATA OBJECTS
+    //  ----------------------------------------------------
+    vtkNew<vtkPolyData> pd;
+    pd->Allocate(ncells);
+
+    vtkNew<vtkCellArray> polys;
+    polys->Allocate(ncells*5 + ncells);
+
+    // create attr table
+    vtkNew<vtkLongArray> nmid;
+    nmid->SetName("nm_id");
+    nmid->Allocate(ncells);
+
+    vtkNew<vtkUnsignedCharArray> nmhole;
+    nmhole->SetName("nm_hole");
+    nmhole->Allocate(ncells);
+
+    vtkNew<vtkUnsignedCharArray> nmsel;
+    nmsel->SetName("nm_sel");
+    nmsel->Allocate(ncells);
+
+    vtkNew<vtkLongArray> polyid;
+    polyid->SetName("PolyID");
+    polyid->Allocate(ncells);
+
+
+    //  ----------------------------------------------------
+    //  COPY PTS AND CLOSE POLYS
+    //  ----------------------------------------------------
+
+
+    for (int p=0; p < ncells; ++p)
+    {
+        vtkCell* cell = pdraw->GetCell(p);
+        const int npts = cell->GetNumberOfPoints();
+        vtkIdList* ids = cell->GetPointIds();
+
+        polys->InsertNextCell(npts+1);
+        polys->InsertCellPoint(ids->GetId(0));
+        for (int i=npts-1; i >= 0; --i)
+        {
+            polys->InsertCellPoint(ids->GetId(i));
+        }
+
+        // the attributes
+        nmid->InsertNextValue(p+1);
+        nmhole->InsertNextValue(0);
+        nmsel->InsertNextValue(0);
+        polyid->InsertNextValue(p+1);
+    }
+
+    pd->SetPoints(pdraw->GetPoints());
+    pd->SetPolys(polys.GetPointer());
+    pd->GetCellData()->SetScalars(nmid.GetPointer());
+    pd->GetCellData()->AddArray(nmhole.GetPointer());
+    pd->GetCellData()->AddArray(nmsel.GetPointer());
+    pd->GetCellData()->AddArray(polyid.GetPointer());
+
+    pd->BuildCells();
+    pd->BuildLinks();
+
+    //  ----------------------------------------------------
+    //  ADD LAYER TO LUMASS
+    //  ----------------------------------------------------
+
+    NMVectorLayer* newPolys = new NMVectorLayer(this->getRenderWindow());
+    QString name = il->objectName() + QString("_polys");
+    newPolys->setObjectName(name);
+    newPolys->setDataSet(pd.GetPointer());
+    newPolys->setVisible(true);
+    this->mLayerList->addLayer(newPolys);
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
 
 void
 OtbModellerWin::mapViewMode()
 {
-    ui->qvtkWidget->setVisible(true);
+    //ui->qvtkWidget->setVisible(true);
     ui->actionShow_Map_View->setChecked(true);
+    this->showMapView(true);
 
-    ui->modelViewWidget->parentWidget()->setVisible(false);
     ui->actionShow_Model_View->setChecked(false);
+    this->showModelView(false);
+    //ui->modelViewWidget->parentWidget()->setVisible(false);
 
     ui->infoDock->setVisible(true);
     ui->actionShow_Components_Info->setChecked(true);
@@ -610,11 +969,13 @@ OtbModellerWin::mapViewMode()
 void
 OtbModellerWin::modelViewMode()
 {
-    ui->qvtkWidget->setVisible(false);
+    //ui->qvtkWidget->setVisible(false);
     ui->actionShow_Map_View->setChecked(false);
+    this->showMapView(false);
 
-    ui->modelViewWidget->parentWidget()->setVisible(true);
+    //ui->modelViewWidget->parentWidget()->setVisible(true);
     ui->actionShow_Model_View->setChecked(true);
+    this->showModelView(true);
 
     ui->componentsWidget->setVisible(true);
     ui->actionComponents_View->setChecked(true);
@@ -632,13 +993,39 @@ OtbModellerWin::modelViewMode()
 void
 OtbModellerWin::showMapView(bool vis)
 {
-    ui->qvtkWidget->setVisible(vis);
+    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
+    foreach (QMdiSubWindow* s, wl)
+    {
+        if (s->windowTitle().compare("Map View") == 0)
+        {
+            vis ? ui->actionMap_View_Mode->isChecked()
+                  ? s->setWindowState(
+                        s->windowState() |
+                        Qt::WindowMaximized |
+                        Qt::WindowActive)
+                    : s->showNormal()
+                : s->hide();
+        }
+    }
 }
 
 void
 OtbModellerWin::showModelView(bool vis)
 {
-    ui->modelViewWidget->parentWidget()->setVisible(vis);
+    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
+    foreach (QMdiSubWindow* s, wl)
+    {
+        if (s->windowTitle().compare("Model Builder") == 0)
+        {
+            vis ? ui->actionMap_View_Mode->isChecked()
+                    ? s->setWindowState(
+                          s->windowState() |
+                          Qt::WindowMaximized |
+                          Qt::WindowActive)
+                    : s->showNormal()
+                : s->hide();
+        }
+    }
 }
 
 const vtkRenderer*
@@ -769,11 +1156,13 @@ OtbModellerWin::getRasdamanConnector(void)
 
 void OtbModellerWin::aboutLUMASS(void)
 {
-	QString vinfo = QString("Version %1.%2.%3 - %4\nlast updated %5").arg(_lumass_version_major)
-												  .arg(_lumass_version_minor)
-												  .arg(_lumass_version_revision)
-												  .arg(_lumass_commit_hash)
-												  .arg(_lumass_commit_date);
+    QString vinfo = QString("Version %2.%3.%4 (%1)\nCommit %5\nLast updated %6")
+                      .arg(_lumass_build_type)
+                      .arg(_lumass_version_major)
+                      .arg(_lumass_version_minor)
+                      .arg(_lumass_version_revision)
+                      .arg(_lumass_commit_hash)
+                      .arg(_lumass_commit_date);
 
 	QString year = QString(_lumass_commit_date).split(" ").at(4);
 	QString title = tr("About LUMASS");
@@ -1170,101 +1559,69 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-//    QString fileName = QFileDialog::getOpenFileName(this,
-//         tr("Open Image"), "~", tr("All Image Files (*.*)"));
-//    if (fileName.isNull())
-//        return;
+    NMLayer* l = this->mLayerList->getLayer(0);
+    NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
 
-//    QFileInfo fifo(fileName);
-//    QString path = fifo.dir().absolutePath();
-//    QString outfilename = QString("%1/flood.kea").arg(path);
+    if (vl == 0)
+        return;
 
-//    QString fileName = "/home/alex/img/a-flood.kea";
-//    QString outfilename = "/home/alex/img/a-test_out.kea";
+    if (vl->getSelection().size() == 0)
+        return;
 
-//    typedef otb::Image< float, 2 > ImgType;
-//    typedef otb::GDALRATImageFileReader< ImgType > ReaderType;
-//    typedef otb::StreamingRATImageFileWriter< ImgType > WriterType;
-//    typedef itk::BinaryThresholdImageFunction< ImgType, float > ImgFuncType;
-//    typedef itk::FloodFilledImageFunctionConditionalIterator< ImgType, ImgFuncType > FloodItType;
-
-//    typedef otb::DEMSlopeAspectFilter< ImgType, ImgType > SlopeFilterType;
-//    typedef otb::FlowAccumulationFilter< ImgType, ImgType > FlowAccFilterType;
-
-//    // =========== READ INPUT ======================
-//    typename ReaderType::Pointer reader = ReaderType::New();
-//    otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
-//    gio->SetFileName(fileName.toStdString());
-//    reader->SetImageIO(gio);
-//    reader->SetFileName(fileName.toStdString());
-//    //reader->Update();
-//    ImgType::Pointer inImg = reader->GetOutput();
-//    ImgType::SpacingType outspacing = inImg->GetSpacing();
-//    ImgType::PointType origin = inImg->GetOrigin();
+    vtkIdType cellId = vl->getSelection().at(0).top();
 
 
-    // =========== CREATE OUTPUT IMAGE ======================
-    //    ImgType::Pointer outImg = ImgType::New();
-    //    outImg->SetRegions(inImg->GetLargestPossibleRegion());
-    //    outImg->SetSpacing(outspacing);
-    //    outImg->SetOrigin(origin);
-    //    outImg->Allocate();
-    //    outImg->FillBuffer(0);
-    //    float* outbuf = outImg->GetBufferPointer();
+    vtkDataSet* ds = const_cast<vtkDataSet*>(vl->getDataSet());
+    vtkPolyData* pd = vtkPolyData::SafeDownCast(ds);
+
+    vtkCell* cell = pd->GetCell(cellId);
+
+    double cbnds[6];
+    cell->GetBounds(cbnds);
+
+    NMDebugAI( << fixed << setprecision(0)
+               << "cell bounds: "
+               << cbnds[0] << " " << cbnds[1] << " "
+               << cbnds[2] << " " << cbnds[3]
+               << std::endl
+             );
+
+    double centre[3];
+    double pc[3];
+    double* weights = new double[ds->GetMaxCellSize()];
+    int subId = cell->GetParametricCenter(pc);
+    cell->EvaluateLocation(subId, pc, centre, weights);
 
 
-    // =============== DO FLOOD MAGIC ====================
-    //    ImgFuncType::Pointer func = ImgFuncType::New();
-    //    func->SetInputImage(inImg);
-    //    func->ThresholdBetween(0,40);
+    NMDebugAI(<< "#" << cellId << "'s centre: "
+              << centre[0] << " " << centre[1]
+                           << " " << centre[2]
+                           << std::endl);
 
-    //    itk::Index<2> sp;
-    //    sp[0] = 12;
-    //    sp[1] = 3;
-
-    //    itk::Index<2> sp2;
-    //    sp2[0] = 20;
-    //    sp2[1] = 0;
-
-    //    std::vector<itk::Index<2> > seeds;
-    //    seeds.push_back(sp);
-    //    //seeds.push_back(sp2);
-
-    //    FloodItType it(inImg, func);//, seeds);
-    //    it.FindSeedPixels();
-    //    it.GoToBegin();
-
-    //    while(!it.IsAtEnd())
-    //    {
-    //        ImgType::OffsetValueType offset = inImg->ComputeOffset(it.GetIndex());
-    //        outbuf[offset] = 1;
-    //        ++it;
-    //    }
-
-    //    typename SlopeFilterType::Pointer slopeFilter = SlopeFilterType::New();
-    //    slopeFilter->SetGradientAlgorithm(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_HORN);
-    //    slopeFilter->SetGradientUnit(otb::DEMSlopeAspectFilter<ImgType,ImgType>::GRADIENT_ASPECT);
-    //    slopeFilter->SetInput(reader->GetOutput());
-
-//    typename FlowAccFilterType::Pointer flowFilter = FlowAccFilterType::New();
-//    flowFilter->SetInput(reader->GetOutput());
-//    flowFilter->SetOutputFileName(outfilename.toStdString());
-
-//    flowFilter->Update();
+    delete[] weights;
 
 
-    // ================ WRITE RESULTS ======================
+    int radius = QInputDialog::getInt(this, "", "radius", 3000, 1);
 
-//    WriterType::Pointer writer = WriterType::New();
-//    otb::GDALRATImageIO::Pointer outgio = otb::GDALRATImageIO::New();
-//    outgio->SetFileName(outfilename.toStdString());
-//    writer->SetImageIO(outgio);
-//    writer->SetFileName(outfilename.toStdString());
-//    //writer->SetInput(outImg);
-//    writer->SetInput(slopeFilter->GetOutput());
-//    writer->SetResamplingType("NEAREST");
-//    writer->Update();
+    vtkNew<vtkSphere> cylinder;
+    cylinder->SetCenter(centre);
+    cylinder->SetRadius(radius);
 
+    //    vtkSmartPointer<vtkIdList> selIds =
+    //            NMMosra::getCellsByFunction(ds, cylinder.GetPointer(), true);
+
+    vtkNew<vtkIdList> selIds;
+    selIds->Allocate(20);
+    vtkIdList* ids = selIds.GetPointer();
+
+    NMMosra::getCellsByFunction(pd, ids, cylinder.GetPointer(), true);
+
+    //NMMosra::getAdjacentCells(pd, ids, cellId, 1);
+
+    for (int i=0; i < selIds->GetNumberOfIds(); ++i)
+    {
+        vl->selectCell(selIds->GetId(i), NMVectorLayer::NM_SEL_ADD);
+    }
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -1328,7 +1685,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 	if (!l->isSelectable())
 		return;
 
-	double wPt[3];
+	double wPt[4];
 
 	//	vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
 	//	picker->Pick(event_pos[0], event_pos[1], 0, const_cast<vtkRenderer*>(l->getRenderer()));
@@ -1368,6 +1725,7 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 		QList<vtkIdType> vIds;
 		QList<vtkIdType> holeIds;
 		QList<vtkIdType> vnmIds;
+
         //NMDebugAI(<< "analysing cells ..." << endl);
 		for (long c = 0; c < ncells; c++)
 		{
@@ -1375,8 +1733,17 @@ void OtbModellerWin::pickObject(vtkObject* obj)
 			{
 				//		NMDebugAI( << "cell (nmid) " << nmids->GetTuple1(c) << ":" << endl);
 				cell = pd->GetCell(c);
-				in = this->ptInPoly2D(wPt, cell);
-				if (in)
+                in = this->ptInPoly2D(wPt, cell);
+//                vtkPolygon* poly = vtkPolygon::SafeDownCast(cell);
+//                double n[3];
+//                double* pts = static_cast<vtkDoubleArray*>(cell->GetPoints()->GetData())->GetPointer(0);
+//                poly->ComputeNormal(poly->GetNumberOfPoints(), pts, n);
+//                in = vtkPolygon::PointInPolygon(
+//                            wPt, cell->GetNumberOfPoints(),
+//                            pts,
+//                            cell->GetBounds(),
+//                            n);
+                if (in)
 				{
 					vIds.push_back(c);
 					vnmIds.push_back(nmids->GetTuple1(c));
@@ -1522,13 +1889,13 @@ OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
 
 	pt[2] = 0;
 	double bnd[6];
-	double delta[] = {0,0,0};
+    double delta[] = {0,0,0};
 	cell->GetBounds(bnd);
 	bnd[4] = -1;
 	bnd[5] = 1;
 
-	if (!vtkMath::PointIsWithinBounds(pt, bnd, delta))
-		return false;
+    if (!vtkMath::PointIsWithinBounds(pt, bnd, delta))
+        return false;
 
 	// alloc memory
 	double* x = new double[2]; // the load vector taking the 'b' coefficient of the ray function
@@ -1536,8 +1903,8 @@ OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
 	for (int i=0; i < 2; ++i)
 		a[i] = new double[2];
 
-//	NMDebugAI(<< "test point: " << pt[0] << " " << pt[1] << " "
-//	          << pt[3] <<  endl);
+    //        NMDebugAI(<< "test point: " << pt[0] << " " << pt[1] << " "
+    //                  << pt[3] <<  endl);
 
 	// we assume here, that the points are ordered either anti-clockwise or clockwise
 	// iterate over polygon points, create line segments
@@ -1546,6 +1913,7 @@ OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
 	double bs;
 	double as;
 	double segbnd[4];
+    double dy, dx;
 	int onseg = 0;
 	int retcnt = 0;
 	for (int i=0; i < cell->GetNumberOfPoints()-1; ++i)
@@ -1563,23 +1931,38 @@ OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
 
 
 		// calc as and bs
-		/// TODO: account for 0 slope of ray
-		as = (s2[1] - s1[1]) / (s2[0] - s1[0]);
-		bs = s1[1] - (as * s1[0]);
+        // avoid 0 slope of ray
+        dy = s2[1] - s1[1];
+        dx = s2[0] - s1[0];
+
+
+        a[1][1] = 1;                                // coefficient for y of polygon segment
+        if (dx == 0)
+        {
+            bs = s1[0];
+            as = -1;
+            a[1][1] = 0;
+        }
+        else
+        {
+            as = dy / dx;
+            bs = s1[1] - (as * s1[0]);
+        }
 
 		// fill load vector and parameter matrix
 		x[0] = pt[1];								// b of test ray
 		x[1] = bs;      							// b of polygon segment
-		a[0][0] = 0; 		 a[0][1] = 1;			// coefficients for x and y of test ray
-		a[1][0] = as * (-1); a[1][1] = 1;			// coefficients for x and y of polygon segment
+        a[0][0] = 0; 		 a[0][1] = 1;			// coefficients for x and y of test ray
+        a[1][0] = as * (-1);            	    	// coefficient for x
 
-		// DEBUG
-//		NMDebugAI(<< "S-" << i+1 << ": " << "S1(" << s1[0] << ", " << s1[1] << ") "
-//				  << "S2(" << s2[0] << ", " << s2[1] << "): y = " << as << "x + " << bs);
+        //		// DEBUG
+        //        NMDebugAI(<< "S-" << i+1 << ": " << "S1(" << s1[0] << ", " << s1[1] << ") "
+        //                  << "S2(" << s2[0] << ", " << s2[1] << "): y = " << as << "x + "
+        //                  << bs << std::endl);
 
-//		NMDebugAI(<< "Linear System: ..." << endl);
-//		NMDebugAI(<< x[0] << " = " << a[0][0] << " " << a[0][1] << endl);
-//		NMDebugAI(<< x[1] << " = " << a[1][0] << " " << a[1][1] << endl);
+        //        NMDebugAI(<< "      Linear System: ..." << endl);
+        //        NMDebugAI(<< "      " << x[0] << " = " << a[0][0] << " " << a[0][1] << endl);
+        //        NMDebugAI(<< "      " << x[1] << " = " << a[1][0] << " " << a[1][1] << endl);
 
 		onseg = 0;
 		if (vtkMath::SolveLinearSystem(a, x, 2))
@@ -1592,10 +1975,10 @@ OtbModellerWin::ptInPoly2D(double pt[3], vtkCell* cell)
 				++retcnt;
 			}
 		}
-//		NMDebug( << "\t\thit: " << onseg << endl);
+        //        NMDebug( << "\t\thit: " << onseg << endl);
 
 	}
-	//NMDebugAI(<< "total hits: " << retcnt << endl << endl);
+    //    NMDebugAI(<< "total hits: " << retcnt << endl << endl);
 
 	// check whether retcnt is odd (=inside) or even (=outside)
 	if (retcnt > 0 && retcnt % 2 != 0)
@@ -1643,7 +2026,7 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 	int event_pos[2];
 	iren->GetEventPosition(event_pos);
 
-	double wPt[3];
+	double wPt[4];
 	vtkInteractorObserver::ComputeDisplayToWorld(this->mBkgRenderer,
 			event_pos[0], event_pos[1], 0, wPt);
 	wPt[2] = 0;
@@ -2096,13 +2479,14 @@ void OtbModellerWin::doMOSO()
 	if (solved)
 	{
 		NMDebugAI( << "mapping unique values ..." << endl);
-		//NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(layer);
-		//vl->mapUniqueValues(tr("OPT_STR"));
+        //        NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(layer);
+        //        vl->mapUniqueValues(tr("OPT_STR"));
 		layer->setLegendType(NMLayer::NM_LEGEND_INDEXED);
 		layer->setLegendClassType(NMLayer::NM_CLASS_UNIQUE);
 		layer->setLegendValueField("OPT_STR");
 		layer->setLegendDescrField("OPT_STR");
-		layer->updateLegend();
+        //layer->updateLegend();
+        layer->updateMapping();
 	}
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
@@ -2339,9 +2723,9 @@ void OtbModellerWin::import3DPointSet()
     	line = in.readLine();
     	entr = line.split(splitter);
 
-//        // skip incomplete data sets
-//        if (entr.size() < 3)
-//         continue;
+        // skip incomplete data sets
+        if (entr.size() < 3)
+         continue;
 
     	x = entr.at(0).toDouble(&bx);
         y = entr.at(1).toDouble(&by);
@@ -3307,7 +3691,7 @@ void OtbModellerWin::toggle3DSimpleMode()
 
 void OtbModellerWin::toggle3DStereoMode()
 {
-		this->ui->qvtkWidget->GetRenderWindow()->SetStereoRender(
+        this->ui->qvtkWidget->GetRenderWindow()->SetStereoRender(
 	    		!this->ui->qvtkWidget->GetRenderWindow()->GetStereoRender());
 }
 

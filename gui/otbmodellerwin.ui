@@ -91,6 +91,7 @@
     <addaction name="actionToggle3DSimpleMode"/>
     <addaction name="actionToggle3DStereoMode"/>
     <addaction name="separator"/>
+    <addaction name="actionBackground_Colour"/>
    </widget>
    <widget class="QMenu" name="menuMOSO">
     <property name="title">
@@ -119,8 +120,15 @@
     </property>
     <addaction name="actionLUMASS"/>
    </widget>
+   <widget class="QMenu" name="menuGIS_ish">
+    <property name="title">
+     <string>GIS</string>
+    </property>
+    <addaction name="actionImage_Polydata"/>
+   </widget>
    <addaction name="menuObject"/>
    <addaction name="menuMOSO"/>
+   <addaction name="menuGIS_ish"/>
    <addaction name="menu3D_Vis"/>
    <addaction name="menuView"/>
    <addaction name="menuAbout"/>
@@ -410,6 +418,16 @@
    </property>
    <property name="text">
     <string>Save Visible Extent/Overview As ...</string>
+   </property>
+  </action>
+  <action name="actionImage_Polydata">
+   <property name="text">
+    <string>Image -&gt; Polydata</string>
+   </property>
+  </action>
+  <action name="actionBackground_Colour">
+   <property name="text">
+    <string>Background Colour ...</string>
    </property>
   </action>
  </widget>

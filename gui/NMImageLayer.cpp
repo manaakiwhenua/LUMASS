@@ -702,8 +702,8 @@ NMImageLayer::mapExtentChanged(void)
     double wminx, wmaxx, wminy, wmaxy;
     if (ren)
     {
-        double wbr[] = {-1,-1,-1};
-        double wtl[] = {-1,-1,-1};
+        double wbr[] = {-1,-1,-1,-1};
+        double wtl[] = {-1,-1,-1,-1};
 
         size = ren->GetSize();
 
@@ -1345,7 +1345,7 @@ QSharedPointer<NMItkDataObjectWrapper> NMImageLayer::getImage(void)
 
 itk::DataObject* NMImageLayer::getITKImage(void)
 {
-	if (mReader->getImageIOBase() == 0)
+    if (mReader == 0 || mReader->getImageIOBase() == 0)
 		return this->mImage;
 	else
 		return this->mReader->getItkImage();

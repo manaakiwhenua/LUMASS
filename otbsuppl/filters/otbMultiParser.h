@@ -21,6 +21,8 @@
 #include "itkLightObject.h"
 #include "itkObjectFactory.h"
 
+#include "otbsupplfilters_export.h"
+
 namespace otb
 {
 
@@ -34,7 +36,7 @@ class MultiParserImpl;
  * \sa BandMathImageFilter
  *
  */
-class ITK_EXPORT MultiParser : public itk::LightObject
+class OTBSUPPLFILTERS_EXPORT MultiParser : public itk::LightObject
 {
 public:
   /** Standard class typedefs. */

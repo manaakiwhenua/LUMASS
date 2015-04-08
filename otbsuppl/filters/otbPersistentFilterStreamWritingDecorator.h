@@ -22,6 +22,8 @@
 #include "itkProcessObject.h"
 #include "otbStreamingRATImageFileWriter.h"
 
+#include "otbsupplfilters_export.h"
+
 namespace otb
 {
 /** \class PersistentFilterStreamWritingDecorator
@@ -40,7 +42,7 @@ namespace otb
  * \sa StreamingStatisticsVectorImageFilter
  */
 template <class TFilter>
-class ITK_EXPORT PersistentFilterStreamWritingDecorator
+class OTBSUPPLFILTERS_EXPORT PersistentFilterStreamWritingDecorator
   : public itk::ProcessObject
 {
 public:

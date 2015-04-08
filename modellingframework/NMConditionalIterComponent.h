@@ -30,10 +30,11 @@
 #include "NMProcess.h"
 
 #include <NMIterableComponent.h>
-
 #include <QMap>
 
-class NMConditionalIterComponent: public NMIterableComponent
+#include "nmmodframe_export.h"
+
+class NMMODFRAME_EXPORT NMConditionalIterComponent: public NMIterableComponent
 {
 	Q_OBJECT
 

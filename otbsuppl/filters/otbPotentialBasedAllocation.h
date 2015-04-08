@@ -27,10 +27,12 @@
 #include "itkImage.h"
 #include "itkNumericTraits.h"
 
+#include "otbsupplfilters_export.h"
+
 namespace otb
 {
 template <class TInputImage, class TOutputImage>
-class ITK_EXPORT PotentialBasedAllocation :
+class OTBSUPPLFILTERS_EXPORT PotentialBasedAllocation :
     public itk::InPlaceImageFilter< TInputImage, TOutputImage >
 {
 public:

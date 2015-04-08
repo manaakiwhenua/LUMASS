@@ -32,10 +32,12 @@
 #include <sstream>
 #include <iostream>
 
+#ifndef _WIN32
 namespace nmlog
 {
 extern int nmindent;
 }
+#endif
 
 // DEBUG MACROs
 #ifdef DEBUG
@@ -46,6 +48,7 @@ extern int nmindent;
 			std::cout << str.str(); \
 		}
 
+#ifndef _WIN32
 #define NMDebugAI(arg) \
 		{ \
 			std::ostringstream str; \
@@ -56,6 +59,14 @@ extern int nmindent;
 			str arg; \
 			std::cout << str.str(); \
 		}
+#else
+#define NMDebugAI(arg) \
+		{ \
+			std::ostringstream str; \
+			str << "  " arg; \
+			std::cout << str.str(); \
+		}
+#endif
 
 #define NMDebugInd(level, arg) \
 		{ \
@@ -86,6 +97,7 @@ extern int nmindent;
 			std::cout << str.str(); \
 		}
 
+#ifndef _WIN32
 #define NMDebugCtx(context, arg)  \
 		{ \
 			std::string tmp;\
@@ -105,6 +117,23 @@ extern int nmindent;
 			if (tmp == "done!") \
 				nmlog::nmindent--; \
 		}
+#else
+#define NMDebugCtx(context, arg)  \
+		{ \
+			std::string tmp;\
+			std::ostringstream str; \
+			str arg;\
+			tmp = str.str();\
+			str.str(""); \
+			for (int q=1; q <= 2; q++) \
+			{\
+				str << "--"; \
+			}\
+			str << context << "::" << \
+			       __FUNCTION__ << ": " arg; \
+			std::cout << str.str() << std::endl; \
+		}
+#endif
 
 #define NMDebugTimeCtx(context, arg)  \
 		{ \

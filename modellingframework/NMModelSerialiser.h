@@ -42,9 +42,11 @@
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 
+#include "nmmodframe_export.h"
+
 class NMModelController;
 
-class NMModelSerialiser: public QObject
+class NMMODFRAME_EXPORT NMModelSerialiser: public QObject
 {
 	Q_OBJECT
 

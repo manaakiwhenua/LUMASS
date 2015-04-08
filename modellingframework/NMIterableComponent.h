@@ -34,14 +34,14 @@
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
-
+#include "nmmodframe_export.h"
 
 /*! \brief NMIterableComponent
  *
  *	\see NMModelComponent, NMDataComponent, NMProcess, NMModelController
  */
 
-class NMIterableComponent : public NMModelComponent
+class NMMODFRAME_EXPORT NMIterableComponent : public NMModelComponent
 {
 	Q_OBJECT
 

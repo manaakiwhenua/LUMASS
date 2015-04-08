@@ -28,7 +28,11 @@
 #include "vtkQtTableModelAdapter.h"
 #include "vtkTable.h"
 
-class QVTK_EXPORT vtkQtEditableTableModelAdapter: public vtkQtTableModelAdapter
+//#ifndef _WIN32
+//class QVTK_EXPORT vtkQtEditableTableModelAdapter: public vtkQtTableModelAdapter
+//#elif
+class vtkQtEditableTableModelAdapter: public vtkQtTableModelAdapter
+//#endif
 {
 	Q_OBJECT
 

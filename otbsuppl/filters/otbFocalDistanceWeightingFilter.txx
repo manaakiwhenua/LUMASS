@@ -1,4 +1,4 @@
- /*****************************i*************************************************
+ /******************************************************************************
  * Created by Alexander Herzig st
  * Copyright 2013 Landcare Research New Zealand Ltd
  *
@@ -205,7 +205,7 @@ FocalDistanceWeightingFilter< TInputImage, TOutputImage>
 			{
 				typename ShapedIteratorType::OffsetType off;
 
-				float dist = ::sqrt(x * x + y * y);
+				float dist = ::sqrt((double)(x * x + y * y));
 				if (dist <= radius)
 				{
 					off[0] = static_cast<int>(x);

@@ -56,6 +56,8 @@
 #include "itkImage.h"
 #include "itkNumericTraits.h"
 
+#include "otbsupplfilters_export.h"
+
 namespace otb
 {
 /*  \brief Counts occurrence of a particular pixel value in the central's pixel

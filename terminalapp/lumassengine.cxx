@@ -17,20 +17,30 @@
 #endif
 #endif
 
-#ifdef RMANDEBUG
-	int indentLevel;
-	bool debugOutput;
-#endif
-
-#include "nmlog.h"
 #ifdef DEBUG
-	int nmlog::nmindent = 1;
+    // required for LUMASS debug output
+    #ifndef _WIN32
+        #include "nmlog.h"
+        int nmlog::nmindent = 1;
+    #endif
+
+    #ifdef RMANDEBUG
+        int indentLevel;
+        bool debugOutput;
+    #endif
+#else
+    #ifdef RMANDEBUG
+        #ifndef _WIN32
+            #include "nmlog.h"
+            int nmlog::nmindent = 1;
+        #endif
+        int indentLevel;
+        bool debugOutput;
+    #endif
 #endif
 
 #include "lumassengine.h"
 #include "LUMASSConfig.h"
-#include <tr1/functional>
-
 
 #include <QtCore>
 #include <QFileInfo>

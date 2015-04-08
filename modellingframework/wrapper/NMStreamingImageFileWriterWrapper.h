@@ -47,8 +47,9 @@
  #include "otbRasdamanImageIO.h"
  #include "RasdamanConnector.hh"
 #endif
+#include "nmmodframe_export.h"
 
-class NMStreamingImageFileWriterWrapper: public NMProcess
+class NMMODFRAME_EXPORT NMStreamingImageFileWriterWrapper: public NMProcess
 {
 	Q_OBJECT
 #ifdef BUILD_RASSUPPORT	

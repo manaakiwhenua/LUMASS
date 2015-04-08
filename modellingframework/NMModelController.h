@@ -39,9 +39,7 @@
 #include <string>
 #include <iostream>
 
-//#ifdef BUILD_RASSUPPORT
-//  #include "NMRasdamanConnectorWrapper.h"
-//#endif
+#include "nmmodframe_export.h"
 
 class NMItkDataObjectWrapper;
 class NMModelComponent;
@@ -65,7 +63,7 @@ class NMProcess;
  *
  */
 
-class NMModelController: public QObject
+class NMMODFRAME_EXPORT NMModelController: public QObject
 {
 	Q_OBJECT
 

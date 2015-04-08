@@ -2,13 +2,30 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-cmake_minimum_required(VERSION 2.8.7)
+cmake_minimum_required(VERSION 2.8.9)
 cmake_policy(SET CMP0003 NEW)
+# from version 2.8.11 onwards
+if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.11")
+	cmake_policy(SET CMP0020 NEW)
+endif()
+# from version 2.8.12 onwards
+if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.12")
+	cmake_policy(SET CMP0045 OLD)
+endif()
 
 PROJECT(lumass)
 
 INCLUDE_REGULAR_EXPRESSION("^.*$")
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules")
+SET(CMAKE_MODULE_PATH
+    ${CMAKE_MODULE_PATH}
+    ${CMAKE_ROOT}/Modules
+    ${CMAKE_SOURCE_DIR}/cmake/Modules
+)
+
+######### DEBUG DEBUG DEBUG ########
+#set(CMAKE_VERBOSE_MAKEFILE on)
+####################################
+
 INCLUDE(GetGitRevisionDescription)
 
 # set some paths for binary output and install
@@ -17,13 +34,16 @@ SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
 
 # we're setting some more variables
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
-SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC")
 
-# this cmake variable doesn't seem to be honoured with this CMAKE version
-#SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIE")
+IF(NOT WIN32)
+	SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC")
 
-SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g")
-SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+	# this cmake variable doesn't seem to be honoured with this CMAKE version
+	#SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIE")
+
+	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g")
+	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+ENDIF(NOT WIN32)
 
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	SET(CMAKE_INSTALL_PREFIX "/opt/lumass" 
@@ -63,6 +83,29 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #ENDIF("${isSystemDir}" STREQUAL "-1")
 
 #==================================================================
+# THE DEFAULT BUILD TYPE
+# credit to http://vtk.org/gitweb?p=VTK.git;a=blob;f=CMakeLists.txt;h=a57fd66ef333fc26bf74fe658c88c3c634f54c3a;hb=HEAD#l12
+#==================================================================
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Debug' as none was specified.")
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+    "MinSizeRel" "RelWithDebInfo")
+endif()
+
+message(STATUS "LUMASS build type: ${CMAKE_BUILD_TYPE}")
+
+# define the DEBUG symbol, if we're in debug mode
+string(TOLOWER "${CMAKE_BUILD_TYPE}" testvar_in)
+set(testvar_target "debug")
+if (testvar_in STREQUAL testvar_target)
+        ADD_DEFINITIONS(-DDEBUG)
+endif (testvar_in STREQUAL testvar_target)
+
+
+#==================================================================
 # LUMASS VERSION AND REVISION 
 #==================================================================
 
@@ -79,28 +122,6 @@ configure_file("${CMAKE_SOURCE_DIR}/LUMASSConfig.h.in"
 message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}"
                " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")               
 
-#==================================================================
-# THE DEFAULT BUILD TYPE 
-# credit to http://vtk.org/gitweb?p=VTK.git;a=blob;f=CMakeLists.txt;h=a57fd66ef333fc26bf74fe658c88c3c634f54c3a;hb=HEAD#l12
-#==================================================================
-
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to 'Debug' as none was specified.")
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-    "MinSizeRel" "RelWithDebInfo")
-endif()  
-
-message(STATUS "LUMASS build type: ${CMAKE_BUILD_TYPE}")
-
-# define the DEBUG symbol, if we're in debug mode
-string(TOLOWER "${CMAKE_BUILD_TYPE}" testvar_in)
-set(testvar_target "debug")         
-if (testvar_in STREQUAL testvar_target)
-	ADD_DEFINITIONS(-DDEBUG)
-endif (testvar_in STREQUAL testvar_target)
-
 #====================================================================
 # QT 5
 #====================================================================
@@ -110,16 +131,18 @@ IF(NOT CMAKE_PREFIX_PATH)
 	message(FATAL_ERROR "Need to specify Qt5 install DIR!")
 ENDIF()
 
-
-
 #====================================================================
 # OpenGL 
 #====================================================================
 
-FIND_PACKAGE(OpenGL)
+FIND_PACKAGE(LUMASSOpenGL)
 
 if(NOT OPENGL_INCLUDE_DIR)
-  message(FATAL_ERROR "LUMASS requires OpenGL's GL/glu.h !")
+  if(WIN32)
+	set(OPENGL_INCLUDE_DIR "C:/Program Files/Microsoft SDKs/Windows/v7.1/Include")
+  else()
+	message(FATAL_ERROR "LUMASS requires OpenGL's GL/glu.h !")
+  endif()
 endif()
 
 message(STATUS "OpenGL's include dir: ${OPENGL_INCLUDE_DIR}")
@@ -128,6 +151,14 @@ message(STATUS "OpenGL's GLU library: ${OPENGL_glu_LIBRARY}")
 #====================================================================
 # Orfeo Toolbox 
 #====================================================================
+
+# if on windows, ask for the OSGEO4W_ROOT PATH
+if(WIN32)
+		FIND_PACKAGE(LUMASSOSGeo4W)
+		if(NOT OSGEO4W_ROOT)
+			message(FATAL_ERROR "Specify the OSGeo4W installation directory!")
+		endif()
+endif()
 
 FIND_PACKAGE(LUMASSOTB)  
 INCLUDE(${OTB_USE_FILE})
@@ -143,7 +174,8 @@ endif(NOT OTB_FOUND)
 # available; set up specifics later with respect to the
 # different executables
 
-FIND_PACKAGE(LUMASSVTK)
+#FIND_PACKAGE(LUMASSVTK)
+FIND_PACKAGE(VTK)
 
 if(NOT VTK_DIR)
     message(FATAL_ERROR "Couldn't find VTK!")
@@ -154,7 +186,7 @@ if(VTK_MAJOR_VERSION LESS 6)
   message(FATAL_ERROR "LUMASS requires VTK 6 or greater!")
 endif()
 
-message(STATUS "found VTK!")
+message(STATUS "found VTK at ${VTK_DIR}")
 
 #====================================================================
 # GDAL SUPPORT - always required otherwise we pull out
@@ -199,45 +231,49 @@ message(STATUS "lp_solve library: ${LPSOLVE_LIBRARY}")
 # RASDAMAN SUPPORT - optional (requires PostgreSQL support)
 #====================================================================
 
-OPTION(RASSUPPORT "Build lumass with rasdaman support?" OFF )
-IF(RASSUPPORT)
-  FIND_PACKAGE(Rasdaman)
-  IF(RASDAMAN_FOUND)
-     message(STATUS "rasdaman source dir: ${RASDAMAN_SOURCE_DIR}")
-     message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
-  ENDIF()
-  
-  # when we use rasdaman, we need postgres as well!
-  FIND_PACKAGE(LUMASSPostgreSQL)
-  IF(PostgreSQL_FOUND)
-     message(STATUS "postgres include dirs: ${PostgreSQL_INCLUDE_DIRS}")
-     message(STATUS "postgres libraries dirs: ${PostgreSQL_LIBRARY_DIRS}")
-  ENDIF()
+# rasdaman is only available on linux
+IF(UNIX)
+    OPTION(RASSUPPORT "Build lumass with rasdaman support?" OFF )
+    IF(RASSUPPORT)
+      FIND_PACKAGE(Rasdaman)
+      IF(RASDAMAN_FOUND)
+         message(STATUS "rasdaman source dir: ${RASDAMAN_SOURCE_DIR}")
+         message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
+      ENDIF()
 
-  IF(PostgreSQL_FOUND AND RASDAMAN_FOUND)
-#    OPTION(RASDEBUG "Is rasdaman running in debug mode?" OFF)
-#    IF(RASDEBUG)
-#        ADD_DEFINITIONS(-DRMANDEBUG)
-#    ENDIF(RASDEBUG)
-    ADD_DEFINITIONS(-DBUILD_RASSUPPORT)
-    message(STATUS "building with rasdaman support and define BUILD_RASSUPPORT")
-  ELSE(PostgreSQL_FOUND AND RASDAMAN_FOUND)          
-    set(RASSUPPORT OFF)
-    message(STATUS "building without rasdaman support because either rasdaman
-         or PostgreSQL support is mising!")
-  ENDIF(PostgreSQL_FOUND AND RASDAMAN_FOUND)
-ENDIF()
+      # when we use rasdaman, we need postgres as well!
+      FIND_PACKAGE(LUMASSPostgreSQL)
+      IF(PostgreSQL_FOUND)
+         message(STATUS "postgres include dirs: ${PostgreSQL_INCLUDE_DIRS}")
+         message(STATUS "postgres libraries dirs: ${PostgreSQL_LIBRARY_DIRS}")
+      ENDIF()
 
-message(STATUS "rasdaman support: ${RASSUPPORT}")
-message(STATUS "rasdaman source dir: ${RASDAMAN_SOURCE_DIR}")
-message(STATUS "rasdaman include dir: ${RASDAMAN_INCLUDE_DIR}")
-message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
+      IF(PostgreSQL_FOUND AND RASDAMAN_FOUND)
+        OPTION(RASDEBUG "Is rasdaman running in debug mode?" OFF)
+        IF(RASDEBUG)
+            ADD_DEFINITIONS(-DRMANDEBUG)
+        ENDIF(RASDEBUG)
+
+        ADD_DEFINITIONS(-DBUILD_RASSUPPORT)
+        message(STATUS "building with rasdaman support and define BUILD_RASSUPPORT")
+      ELSE(PostgreSQL_FOUND AND RASDAMAN_FOUND)
+        set(RASSUPPORT OFF)
+        message(STATUS "building without rasdaman support because either rasdaman
+             or PostgreSQL support is mising!")
+      ENDIF(PostgreSQL_FOUND AND RASDAMAN_FOUND)
+    ENDIF()
+
+    message(STATUS "rasdaman support: ${RASSUPPORT}")
+    message(STATUS "rasdaman source dir: ${RASDAMAN_SOURCE_DIR}")
+    message(STATUS "rasdaman include dir: ${RASDAMAN_INCLUDE_DIR}")
+    message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
+ENDIF(UNIX)
 
 #====================================================================
 # SOME OTHER STUFF WE WANNA USE GLOBALLY
 #====================================================================
 
-add_definitions(-Wno-deprecated)
+add_definitions(-DWno-deprecated)
 
 #====================================================================
 # ADD SUBDIRECTORIES

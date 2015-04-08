@@ -29,7 +29,9 @@
 
 #include "NMProcess.h"
 
-class NMProcessFactory: public QObject
+#include "nmmodframe_export.h"
+
+class NMMODFRAME_EXPORT NMProcessFactory: public QObject
 {
 public:
 	static NMProcessFactory& instance(void);

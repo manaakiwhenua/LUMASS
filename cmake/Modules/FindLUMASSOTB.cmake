@@ -45,7 +45,7 @@ IF(NOT OTB_DIR)
     SET(OTB_DIR_SEARCH ${OTB_DIR_SEARCH} "${dir}/../lib/otb")
   ENDFOREACH(dir)
   
-  # add some paths, which might seem unsual, but I'm actually using them ...
+  # add some paths, which might seem unusual, but I'm actually using them ...
   SET (OTB_DIR_SEARCH 
       ${OTB_DIR_SEARCH}
       /opt/OTB-bin
@@ -53,6 +53,12 @@ IF(NOT OTB_DIR)
       /opt/otb
       /opt/otb-bin
       /opt/*
+	  C:/build/OTB-debug
+	  C:/opt/OTB-debug
+	  C:/build/OTB-reldebinfo
+	  C:/opt/OTB-reldebinfo	  
+	  C:/build/OTB-bin
+	  C:/opt/OTB-bin
   )
 
   #

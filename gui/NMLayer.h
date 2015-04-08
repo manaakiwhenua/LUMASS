@@ -63,7 +63,8 @@
 #define ctxNMLayer "NMLayer"
 #define NM_LEGEND_RAMP_ROW 2
 
-class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
+//class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
+class NMLayer : public QObject
 {
 	Q_OBJECT
 	Q_ENUMS(NMLegendClassType NMLayerType NMLayerSelectionType NMLegendType)

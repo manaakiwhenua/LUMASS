@@ -48,9 +48,11 @@
 #include "itkCommand.h"
 #include "itkEventObject.h"
 
+#include "nmmodframe_export.h"
+
 class NMProcessFactory;
 
-class NMProcess : public QObject
+class NMMODFRAME_EXPORT NMProcess : public QObject
 {
     friend class NMProcessFactory;
 

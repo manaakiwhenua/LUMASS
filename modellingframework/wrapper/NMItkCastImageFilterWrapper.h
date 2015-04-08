@@ -35,11 +35,13 @@
 #include <QStringList>
 #include <QList>
 
+#include "nmmodframe_export.h"
+
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMItkCastImageFilterWrapper_Internal;
 
 class
-NMItkCastImageFilterWrapper
+NMMODFRAME_EXPORT NMItkCastImageFilterWrapper
 		: public NMProcess
 {
 	Q_OBJECT

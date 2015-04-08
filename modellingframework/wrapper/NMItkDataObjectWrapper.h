@@ -30,8 +30,9 @@
 #include "itkDataObject.h"
 #include "otbImageIOBase.h"
 #include "otbAttributeTable.h"
+#include "nmmodframe_export.h"
 
-class NMItkDataObjectWrapper: public QObject
+class NMMODFRAME_EXPORT NMItkDataObjectWrapper: public QObject
 {
 	Q_OBJECT
     Q_ENUMS(NMComponentType NMRegionType)

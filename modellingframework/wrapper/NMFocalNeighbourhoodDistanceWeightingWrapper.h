@@ -35,11 +35,13 @@
 #include <QStringList>
 #include <QList>
 
+#include "nmmodframe_export.h"
+
 template<class InPixelType, class OutPixelType, unsigned int Dimension>
 class NMFocalNeighbourhoodDistanceWeightingWrapper_Internal;
 
 class
-NMFocalNeighbourhoodDistanceWeightingWrapper
+NMMODFRAME_EXPORT NMFocalNeighbourhoodDistanceWeightingWrapper
 		: public NMProcess
 {
 	Q_OBJECT

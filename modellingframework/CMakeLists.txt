@@ -14,8 +14,10 @@ INCLUDE_DIRECTORIES(
     ${mfw_wrapper_SOURCE_DIR}
     ${shared_SOURCE_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
+	${GDALRATImageIO_BINARY_DIR}
     ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
+	${filters_BINARY_DIR}
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
 )
@@ -24,6 +26,7 @@ LINK_DIRECTORIES(
     ${QT5_LINK_DIRS}
     ${RASDAMAN_LIBRARIES_DIR}
     ${LIBRARY_OUTPUT_PATH}
+	${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
 )
 
 file(GLOB MFW_CPP
@@ -35,6 +38,7 @@ file(GLOB MFW_CPP
 
 file(GLOB MFW_H
    ${mfw_SOURCE_DIR}/*.h
+   ${mfw_BINARY_DIR}/*.h
    ${mfw_wrapper_SOURCE_DIR}/*.h
 )
 
@@ -78,14 +82,28 @@ IF(RASSUPPORT)
     LIST(APPEND MFW_DEP_LIBS RasImageIO)
 ENDIF()
 
+add_definitions(-DNMModFrame_EXPORTS)
 
+include(GenerateExportHeader)
+	# not quite sure whether we need the below
+	#set (EXTRA_FLAGS "-fvisibility=hidden")
 ADD_LIBRARY(NMModFrame SHARED ${MFW_CPP} ${MFW_MOC_CPP})
+
+generate_export_header(NMModFrame)
+
 #QT5_USE_MODULES(NMModFrame Core Xml Concurrent)
 TARGET_LINK_LIBRARIES(NMModFrame ${MFW_LINK_LIBS})
 ADD_DEPENDENCIES(NMModFrame ${MFW_DEP_LIBS})
 
-install(FILES ${MFW_H} DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
-install(TARGETS NMModFrame LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+install(FILES ${MFW_H} DESTINATION include)
+if(WIN32)
+	install(TARGETS NMModFrame 
+		LIBRARY DESTINATION lib
+		RUNTIME DESTINATION lib
+	)
+else()
+	install(TARGETS NMModFrame LIBRARY DESTINATION lib)
+endif()
 
 
 

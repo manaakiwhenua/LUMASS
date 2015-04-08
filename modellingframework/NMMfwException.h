@@ -27,11 +27,11 @@
 
 #include <string>
 #include <exception>
-//#include <QObject>
+#include "nmmodframe_export.h"
 
 using namespace std;
 
-class NMMfwException: public std::exception
+class NMMODFRAME_EXPORT NMMfwException: public std::exception
 {
 public:
 

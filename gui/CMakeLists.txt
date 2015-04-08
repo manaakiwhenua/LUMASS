@@ -1,54 +1,61 @@
 PROJECT(gui)
 
 find_package(VTK COMPONENTS
-vtkCommonCore
-vtkCommonDataModel
-vtkFiltersGeneric
-vtkRenderingCore
-vtkRenderingAnnotation
-vtkRenderingImage
-vtkGUISupportQt
-vtkImagingStatistics
-vtkInteractionWidgets
-vtkIOCore
-vtkIOInfovis
-vtkIOSQL
-vtkIOLegacy
-vtkIOXML
+	vtkCommonDataModel
+	vtkCommonCore
+	vtkFiltersGeneric
+	vtkRenderingCore
+	vtkRenderingAnnotation
+	vtkRenderingImage
+	vtkRenderingOpenGL
+	vtkGUISupportQt
+	vtkImagingStatistics
+	vtkInteractionWidgets
+	vtkInteractionStyle
+	vtkRenderingFreeTypeOpenGL
+	vtkIOCore
+	vtkIOInfovis
+	vtkIOSQL
+	vtkIOLegacy
+	vtkIOXML
+	NO_MODULE
 )
 
 include(${VTK_USE_FILE})
 
 
 INCLUDE_DIRECTORIES(
-        ${QT5_INCLUDE_DIRS}
-        ${QT5CORE_PRIVATE_DIR}
-        ${opt_SOURCE_DIR}
+    ${QT5_INCLUDE_DIRS}
+    ${QT5CORE_PRIVATE_DIR}
+    ${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
-        ${gui_BINARY_DIR}
+    ${gui_BINARY_DIR}
 	${utils_SOURCE_DIR}/QtPropertyBrowser/src
 	${NMVtk_SOURCE_DIR}
 	${GDALRATImageIO_SOURCE_DIR}
+	${GDALRATImageIO_BINARY_DIR}
 	${gui_SOURCE_DIR}
 	${filters_SOURCE_DIR}
+        ${otbsuppl_core_SOURCE_DIR}
+	${filters_BINARY_DIR}
 	${shared_SOURCE_DIR}
 	${rimageio_SOURCE_DIR}
-	${mfw_SOURCE_DIR}    
+	${mfw_SOURCE_DIR}
+	${mfw_BINARY_DIR}    
 	${mfw_wrapper_SOURCE_DIR}
-        ${LPSOLVE_INCLUDE_DIR}
-        #${VTK_INCLUDE_DIRS}
+    ${LPSOLVE_INCLUDE_DIR}
 	${OTB_INCLUDE_DIRS}
 	${RASDAMAN_INCLUDE_DIR}                                   
 	${RASDAMAN_INCLUDE_DIR}/raslib	
 	${RASDAMAN_SOURCE_DIR}/applications/rasgeo
 	${PostgreSQL_INCLUDE_DIRS}
-        ${lumass_SOURCE_DIR}/utils/ITK
+    ${lumass_SOURCE_DIR}/utils/ITK
+	${GDALRATImageIO_BINARY_DIR}
 )     
 
 LINK_DIRECTORIES(
-        ${QT5_LINK_DIRS}
+    ${QT5_LINK_DIRS}
 	${OTB_LIBRARY_DIRS}
-        #${VTK_LIBRARY_DIRS}
 	${LIBRARY_OUTPUT_PATH}
 	${mfw_BINARY_DIR}
 	${mfw_BINRAY_DIR}/lib
@@ -71,7 +78,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMLayerModel.h
         ${gui_SOURCE_DIR}/NMQtOtbAttributeTableModel.h
         ${gui_SOURCE_DIR}/NMTableView.h
-        #${gui_SOURCE_DIR}/NMChartWidget.h
+#        ${gui_SOURCE_DIR}/NMChartWidget.h
         ${gui_SOURCE_DIR}/NMAddColumnDialog.h
         ${gui_SOURCE_DIR}/NMTableCalculator.h
         ${gui_SOURCE_DIR}/NMSelectableSortFilterProxyModel.h

@@ -34,9 +34,11 @@
 #include "NMMacros.h"
 #include "NMModelComponent.h"
 #include "NMItkDataObjectWrapper.h"
+#include "nmmodframe_export.h"
 
 
-class NMDataComponent: public NMModelComponent
+
+class NMMODFRAME_EXPORT NMDataComponent: public NMModelComponent
 {
 	Q_OBJECT
 	//Q_PROPERTY(QStringList InputSpec READ getInputSpec WRITE setInputSpec NOTIFY NMDataComponentChanged)

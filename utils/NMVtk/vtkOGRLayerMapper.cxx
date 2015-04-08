@@ -58,6 +58,10 @@
 #include "vtkImageData.h"
 #include "vtkLookupTable.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 #ifndef VTK_IMPLEMENT_MESA_CXX
 # include "vtkOpenGL.h"
 # include <GL/glu.h>	// for glu tesselation functions

@@ -164,7 +164,7 @@ public:
 			{
 				// get the first row to check the number of columns
 				QStringList firstRow = strMatrix.at(0);
-				int ncols = firstRow.size();
+				const int ncols = firstRow.size();
 				NMDebugAI(<< "... we've got " << ncols << " columns ..." << std::endl);
 
 				if (ncols > 0)
@@ -183,8 +183,8 @@ public:
 							throw e;
 						}
 
-						//std::vector<typename FilterType::WeightType> vw;
-						typename FilterType::WeightType vw[ncols];
+						std::vector<typename FilterType::WeightType> vw;
+						//typename FilterType::WeightType vw[numcols];
 						for (int col=0; col < ncols; ++col)
 						{
 							QString w = strCols.at(col);
@@ -194,13 +194,17 @@ public:
 										static_cast<typename FilterType::WeightType>(w.toFloat(&bok));
 								if (bok)
 								{
-									vw[col] = weight; //vw.push_back(weight);
+									//vw[col] = weight; 
+									vw.push_back(weight);
 								}
 								else
-									vw[col] = 0; // vw.push_back(0);
+								{
+									//vw[col] = 0; 
+									vw.push_back(0);
+								}
 							}
 						}
-						weights.set_row(row, vw); //vw.data());
+						weights.set_row(row, (typename FilterType::WeightType*)&vw.at(0)); //vw.data());
 					}
 					f->SetWeights(weights);
 				}

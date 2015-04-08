@@ -203,7 +203,9 @@ NMLayer::getNumericColumns(bool onlyints)
 {
 	QStringList cols;
 	if (mTableModel == 0)
+	{
 		return cols;
+	}
 
 	int ncols = mTableModel->columnCount(QModelIndex());
 	for (int c=0; c < ncols; ++c)
@@ -214,7 +216,9 @@ NMLayer::getNumericColumns(bool onlyints)
 			if (onlyints)
 			{
 				if (type != QVariant::Double)
+				{
 					cols << this->getColumnName(c);
+				}
 			}
 			else
 			{
@@ -222,6 +226,8 @@ NMLayer::getNumericColumns(bool onlyints)
 			}
 		}
 	}
+
+	return cols;
 }
 
 QStringList
@@ -229,14 +235,20 @@ NMLayer::getStringColumns(void)
 {
 	QStringList cols;
 	if (mTableModel == 0)
+	{
 		return cols;
+	}
 
 	int ncols = mTableModel->columnCount(QModelIndex());
 	for (int c=0; c < ncols; ++c)
 	{
 		if (this->getColumnType(c) == QVariant::String)
+		{
 			cols << this->getColumnName(c);
+		}
 	}
+
+	return cols;
 }
 
 void NMLayer::resetLegendInfo(void)
@@ -307,6 +319,12 @@ void
 NMLayer::initiateLegend(void)
 {
 	NMDebugCtx(ctxNMLayer, << "...");
+
+    // bail out of point sets for now
+    NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
+    if (vl && vl->getFeatureType() == NMVectorLayer::NM_POINT_FEAT)
+        return;
+
 	this->updateAttributeTable();
 
 	// ----------------------------------------------------------------------------------
@@ -412,7 +430,7 @@ NMLayer::initiateLegend(void)
 		if (mLegendValueField.isEmpty())
 		{
 			NMDebugAI(<< "... mapping all to one single symbol ..." << std::endl);
-			mLegendType == NMLayer::NM_LEGEND_SINGLESYMBOL;
+			mLegendType = NMLayer::NM_LEGEND_SINGLESYMBOL;
 			mNumClasses = 1;
 			// +1: description (field)
 			mNumLegendRows = mNumClasses + 1;

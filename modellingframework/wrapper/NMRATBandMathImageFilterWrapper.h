@@ -33,6 +33,7 @@
 #include "NMOtbAttributeTableWrapper.h"
 
 #include "otbImageIOBase.h"
+#include "nmmodframe_export.h"
 
 /**
   * class NMRATBandMathImageFilterWrapper
@@ -61,7 +62,7 @@
   *
   */
 
-class NMRATBandMathImageFilterWrapper : public NMProcess
+class NMMODFRAME_EXPORT NMRATBandMathImageFilterWrapper : public NMProcess
 {
 	Q_OBJECT
 

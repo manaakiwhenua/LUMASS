@@ -27,8 +27,9 @@
 
 #include <qobject.h>
 #include "NMModelComponent.h"
+#include "nmmodframe_export.h"
 
-class NMModelComponentFactory: public QObject
+class NMMODFRAME_EXPORT NMModelComponentFactory: public QObject
 {
 public:
 	static NMModelComponentFactory& instance(void);

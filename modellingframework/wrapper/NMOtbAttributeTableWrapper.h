@@ -28,8 +28,9 @@
 #include <qobject.h>
 #include <QMetaType>
 #include "otbAttributeTable.h"
+#include "nmmodframe_export.h"
 
-class NMOtbAttributeTableWrapper: public QObject
+class NMMODFRAME_EXPORT NMOtbAttributeTableWrapper: public QObject
 {
 	Q_OBJECT
 public:

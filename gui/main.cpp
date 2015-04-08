@@ -36,20 +36,25 @@
 //#include "LUMASS_TemplateInst.h"
 //#endif
 
-//#ifdef RMANDEBUG
-//	int indentLevel;
-//	bool debugOutput;
-//#endif
-
-
 #ifdef DEBUG
-	// required for rasdaman debug output
-	int indentLevel;
-	bool debugOutput;
-
-	// required for LUMASS debug output
-	#include "nmlog.h"
-	int nmlog::nmindent = 1;
+    // required for LUMASS debug output
+    #ifndef _WIN32
+        #include "nmlog.h"
+        int nmlog::nmindent = 1;
+    #endif
+    #ifdef RMANDEBUG
+        int indentLevel;
+        bool debugOutput;
+    #endif
+#else
+    #ifdef RMANDEBUG
+        #ifndef _WIN32
+            #include "nmlog.h"
+            int nmlog::nmindent = 1;
+        #endif
+        int indentLevel;
+        bool debugOutput;
+    #endif
 #endif
 
 int main(int argc, char *argv[])

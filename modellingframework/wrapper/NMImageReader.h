@@ -49,6 +49,8 @@
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 
+#include "nmmodframe_export.h"
+
 /**
  *  \brief Type independent image reader class.
  *
@@ -56,7 +58,7 @@
  *  data type templated GDALRATImageFileReader class.
  */
 
-class NMImageReader : public NMProcess
+class NMMODFRAME_EXPORT NMImageReader : public NMProcess
 {
 	Q_OBJECT
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)

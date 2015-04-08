@@ -32,7 +32,7 @@
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMItkDataObjectWrapper.h"
-
+#include "nmmodframe_export.h"
 
 class NMIterableComponent;
 
@@ -62,7 +62,7 @@ class NMIterableComponent;
  *	\see NMProcess, NMModelController
  */
 
-class NMModelComponent : public QObject
+class NMMODFRAME_EXPORT NMModelComponent : public QObject
 {
 	Q_OBJECT
     Q_PROPERTY(QString UserID READ getUserID WRITE setUserID)

@@ -53,7 +53,7 @@ class vtkImageProperty;
 class vtkImageData;
 class NMImageLayer;
 
-class VTKRENDERINGOPENGL_EXPORT NMVtkOpenGLImageSliceMapper :
+class NMVtkOpenGLImageSliceMapper :
   public vtkOpenGLImageSliceMapper
 {
 public:

@@ -343,6 +343,8 @@ NMRATBandMathImageFilterWrapper
                 throw e;
             }
 
+            NMDebugAI(<< "img-name #" << cnt << ": " << inputCompName.toStdString() << std::endl;)
+
             // make sure the input is linked into the pipeline properly, otherwise, we might get
             // an exception here, especially if a sink process component is being executed individually
             // for testing purposes

@@ -10,11 +10,13 @@
 
 FIND_PATH(VTK_DIR VTKConfig.cmake
 PATH_SUFFIXES
-  vtk
-  vtk-bin
-  VTK
+  VTK-debug
+  VTK-reldebinfo
   VTK-bin
-
+  vtk-bin
+  vtk
+  VTK
+  
 PATHS
   /opt
   /usr/local
@@ -22,5 +24,9 @@ PATHS
   /usr/local/src
   /usr/lib
   /usr/share
+  c:/opt
+  c:/build
+  "c:/Programm Files (x86)"
+  "c:/Programm Files"
 )
 

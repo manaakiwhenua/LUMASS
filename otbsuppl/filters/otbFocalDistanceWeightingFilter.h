@@ -49,6 +49,8 @@
 #include "itkNumericTraits.h"
 #include "itkArray2D.h"
 
+#include "otbsupplfilters_export.h"
+
 namespace otb
 {
 /*  \brief Implements the neighbourhood weighting parameter m_kd as described
@@ -77,7 +79,7 @@ namespace otb
  *
  */
 template <class TInputImage, class TOutputImage>
-class ITK_EXPORT FocalDistanceWeightingFilter :
+class OTBSUPPLFILTERS_EXPORT FocalDistanceWeightingFilter :
     public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

@@ -12,18 +12,21 @@ vtkIOXML
 include(${VTK_USE_FILE})
 
 INCLUDE_DIRECTORIES(
-        ${QT5_INCLUDE_DIRS}
+    ${QT5_INCLUDE_DIRS}
 	${opt_SOURCE_DIR}
 	${gui_SOURCE_DIR}
 	${shared_SOURCE_DIR}
 	${lumass_BINARY_DIR}
  	${GDALRATImageIO_SOURCE_DIR}
+	${GDALRATImageIO_BINARY_DIR}
 	${filters_SOURCE_DIR}
+	${filters_BINARY_DIR}
 	${shared_SOURCE_DIR}
 	${rimageio_SOURCE_DIR}
 	${mfw_SOURCE_DIR}    
+	${mfw_BINARY_DIR}
 	${mfw_wrapper_SOURCE_DIR}
-        ${LPSOLVE_INCLUDE_DIR}
+    ${LPSOLVE_INCLUDE_DIR}
 	${OTB_INCLUDE_DIRS}
 	${RASDAMAN_INCLUDE_DIR}                                   
 	${RASDAMAN_INCLUDE_DIR}/raslib	
@@ -32,7 +35,7 @@ INCLUDE_DIRECTORIES(
 )     
 
 LINK_DIRECTORIES(
-        ${QT5_LINK_DIRS}
+    ${QT5_LINK_DIRS}
 	${OTB_LIBRARY_DIRS}
 	${LIBRARY_OUTPUT_PATH}
 	${muparser_BINARY_DIR}  

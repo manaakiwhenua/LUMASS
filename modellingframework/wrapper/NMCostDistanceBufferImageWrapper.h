@@ -34,6 +34,8 @@
 #include "NMProcess.h"
 
 #include "itkObject.h"
+#include "nmmodframe_export.h"
+
 //#include "itkCommand.h"
 //#include "itkEventObject.h"
 
@@ -46,7 +48,7 @@
 template<class InPixelType, unsigned int Dimension>
 class NMCostDistanceBufferImageWrapper_Internal;
 
-class NMCostDistanceBufferImageWrapper : public NMProcess
+class NMMODFRAME_EXPORT NMCostDistanceBufferImageWrapper : public NMProcess
 {
 	Q_OBJECT
 	//Q_PROPERTY(int MemoryMax READ getMemoryMax WRITE setMemoryMax)

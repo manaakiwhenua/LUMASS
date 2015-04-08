@@ -269,6 +269,7 @@ public:
    */
 #ifdef BUILD_RASSUPPORT
   void SetRasdamanConnector(RasdamanConnector* rascon);
+  RasdamanConnector* GetRasdamanConnector() {return mRasconn;}
 #endif
 
   /** Specifiy a user specified largest possible region to be written as
@@ -280,6 +281,7 @@ public:
    */
    //itkSetObjectMacro(ForceLargestPossibleRegion, itk::Region);
   void SetForcedLargestPossibleRegion(const itk::ImageIORegion& forcedReg);
+  itk::ImageIORegion GetForcedLargestPossibleRegion() {return m_ForcedLargestPossibleRegion;}
 
   /** specify the update region valid for the current call of this writer
    *  class; NOTE: this is supposed to be used in conjunction of the

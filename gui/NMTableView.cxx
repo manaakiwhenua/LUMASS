@@ -930,8 +930,8 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
                         if (    (    sVal.startsWith("'")
                                  &&  sVal.endsWith("'")
                                 )
-                            ||  (    sVal.startsWith("""")
-                                     &&  sVal.endsWith("""")
+                            ||  (    sVal.startsWith("\"")
+                                     &&  sVal.endsWith("\"")
                                 )
                            )
                         {

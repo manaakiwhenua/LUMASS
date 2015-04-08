@@ -44,6 +44,8 @@
 #include "NMIterableComponent.h"
 #include "itkRGBPixel.h"
 
+#include "otbNMImageReader.h"
+
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageIO.h"
   #include "otbRasdamanImageReader.h"
@@ -57,20 +59,20 @@
 	{
 	public:
 		typedef otb::Image< PixelType, ImageDimension > ImgType;
-		typedef otb::RasdamanImageReader< ImgType > 	ReaderType;
+        typedef otb::NMImageReader< ImgType > 	ReaderType;
 		typedef typename ReaderType::Pointer			ReaderTypePointer;
 		typedef typename ImgType::PointType				ImgOriginType;
 		typedef typename ImgType::SpacingType			ImgSpacingType;
 
         typedef itk::RGBPixel< PixelType >                  RGBPixelType;
         typedef otb::Image< RGBPixelType, ImageDimension >  RGBImageType;
-        typedef otb::RasdamanImageReader< RGBImageType >    RGBReaderType;
+        typedef otb::NMImageReader< RGBImageType >    RGBReaderType;
         typedef typename RGBReaderType::Pointer             RGBReaderTypePointer;
         typedef typename RGBReaderType::ImageRegionType     RGBReaderRegionType;
 
 
         typedef otb::VectorImage< PixelType, ImageDimension > 		VecImgType;
-		typedef otb::RasdamanImageReader< VecImgType > 				VecReaderType;
+        typedef otb::NMImageReader< VecImgType > 				VecReaderType;
 		typedef typename VecReaderType::Pointer						VecReaderTypePointer;
 
 
@@ -81,17 +83,20 @@
             if (numBands == 1)
             {
                 ReaderType *r = dynamic_cast<ReaderType*>(procObj);
-                return r->getRasterAttributeTable(band);
+                //return r->getRasterAttributeTable(band);
+                return r->GetAttributeTable(band);
             }
             else if (rgbMode && numBands == 3)
             {
                 RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
-                return r->getRasterAttributeTable(band);
+                //return r->getRasterAttributeTable(band);
+                return r->GetAttributeTable(band);
             }
             else
             {
                 VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
-                return r->getRasterAttributeTable(band);
+                //return r->getRasterAttributeTable(band);
+                return r->GetAttributeTable(band);
             }
         }
 
@@ -174,7 +179,8 @@
                 if (idx == 0)
                     img = r->GetOutput(idx);
                 else if (idx == 1)
-                    img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
+                    //img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
+                    img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
             }
             else if (rgbMode && numBands == 3)
             {
@@ -182,7 +188,8 @@
                 if (idx == 0)
                     img = r->GetOutput(idx);
                 else if (idx == 1)
-                    img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
+                    //img = dynamic_cast<itk::DataObject*>(r->getRasterAttributeTable(1).GetPointer());
+                    img = dynamic_cast<itk::DataObject*>(r->GetAttributeTable(1).GetPointer());
             }
             else
             {
@@ -190,7 +197,8 @@
                 if (idx == 0)
                     img = vr->GetOutput(idx);
                 else if (idx == 1)
-                    img = dynamic_cast<itk::DataObject*>(vr->getRasterAttributeTable(1).GetPointer());
+                    //img = dynamic_cast<itk::DataObject*>(vr->getRasterAttributeTable(1).GetPointer());
+                    img = dynamic_cast<itk::DataObject*>(vr->GetAttributeTable(1).GetPointer());
             }
             return img;
         }
@@ -241,18 +249,21 @@ class FileReader
 {
 public:
 	typedef otb::Image< PixelType, ImageDimension > 	ImgType;
-	typedef otb::GDALRATImageFileReader< ImgType > 		ReaderType;
+    //typedef otb::GDALRATImageFileReader< ImgType > 		ReaderType;
+    typedef otb::NMImageReader< ImgType > 		ReaderType;
 	typedef typename ReaderType::Pointer				ReaderTypePointer;
     typedef typename ReaderType::ImageRegionType        ReaderRegionType;
 
     typedef itk::RGBPixel< PixelType >                  RGBPixelType;
     typedef otb::Image< RGBPixelType, ImageDimension >  RGBImageType;
-    typedef otb::GDALRATImageFileReader< RGBImageType > RGBReaderType;
+    //typedef otb::GDALRATImageFileReader< RGBImageType > RGBReaderType;
+    typedef otb::NMImageReader< RGBImageType > RGBReaderType;
     typedef typename RGBReaderType::Pointer             RGBReaderTypePointer;
     typedef typename RGBReaderType::ImageRegionType     RGBReaderRegionType;
 
 	typedef otb::VectorImage< PixelType, ImageDimension > VecImgType;
-	typedef otb::GDALRATImageFileReader< VecImgType > 	  VecReaderType;
+    //typedef otb::GDALRATImageFileReader< VecImgType > 	  VecReaderType;
+    typedef otb::NMImageReader< VecImgType > 	  VecReaderType;
 	typedef typename VecReaderType::Pointer				  VecReaderTypePointer;
     typedef typename VecReaderType::ImageRegionType       VecReaderRegionType;
 

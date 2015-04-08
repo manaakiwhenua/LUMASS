@@ -556,6 +556,11 @@ StreamingRATImageFileWriter<TInputImage>
     {
 	  // if the image io hasn't been set, we're using the GDALRATImageIO by default;
 	  GDALRATImageIO::Pointer gio = GDALRATImageIO::New();
+      if (gio.IsNull())
+      {
+          itkExceptionMacro(<< "Failed to create instance of GDALRATImageIO");
+      }
+
 	  gio->SetFileName(this->m_FileName);
 	  this->m_ImageIO = gio;
 

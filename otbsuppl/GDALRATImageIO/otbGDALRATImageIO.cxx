@@ -1342,11 +1342,11 @@ void GDALRATImageIO::Write(const void* buffer)
         // not been created, it'd throw an exception and the program aborts,
         // which is not what we want, so therefore this hack ...
         pDs = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
-        std::cout << m_FileName << "-raw::update" << std::endl;
+        //std::cout << m_FileName << "-raw::update" << std::endl;
         if (pDs != 0)
 		{
             GDALClose(pDs);
-            std::cout << m_FileName << "-raw::close" << std::endl;
+            //std::cout << m_FileName << "-raw::close" << std::endl;
             // in case we've worked on the data set in non-update mode before
             if (m_Dataset && m_Dataset->GetDataSet() != 0)
             {

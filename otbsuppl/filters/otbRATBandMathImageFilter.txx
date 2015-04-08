@@ -144,7 +144,16 @@ void RATBandMathImageFilter<TImage>
 		}
 	}
 
-	if (this->m_VAttrTypes.size() == idx)
+    for (int i=this->m_VRAT.size(); i < idx; ++i)
+    {
+        this->m_VRAT.push_back(0);
+        std::vector<int> columns;
+        this->m_VTabAttr.push_back(columns);
+        std::vector<ColumnType> types;
+        this->m_VAttrTypes.push_back(types);
+    }
+
+    if (this->m_VAttrTypes.size() == idx)
 	{
 		this->m_VAttrTypes.push_back(types);
 		this->m_VRAT.push_back(tab);
@@ -152,7 +161,7 @@ void RATBandMathImageFilter<TImage>
 	}
 	else
 	{
-		this->m_VAttrTypes[idx] = types;
+        this->m_VAttrTypes[idx] = types;
 		this->m_VRAT[idx] = tab;
 		this->m_VTabAttr[idx] = columns;
 	}
@@ -191,18 +200,35 @@ template <class TImage>
 void RATBandMathImageFilter<TImage>
 ::SetNthInput(unsigned int idx, const ImageType * image)
 {  
-  this->SetInput(idx, const_cast<TImage *>( image ));
-  unsigned int nbInput = idx+1;//this->GetNumberOfInputs();
+    this->SetInput(idx, const_cast<TImage *>( image ));
+    unsigned int nbInput = idx+1;
+    while (nbInput < this->GetNumberOfInputs())
+    {
+        this->RemoveInput(this->GetNumberOfInputs()-1);
+    }
 
-  m_VVarName.resize(nbInput+4);
-  std::ostringstream varName; 
-  varName << "b" << nbInput;
+    m_VVarName.resize(nbInput+4);
+    std::ostringstream varName;
+    varName << "b" << nbInput;
+    m_VVarName[idx] = varName.str();
+    m_VVarName[idx+1] = "idxX";
+    m_VVarName[idx+2] = "idxY";
+    m_VVarName[idx+3] = "idxPhyX";
+    m_VVarName[idx+4] = "idxPhyY";
 
-//  m_VVarName[idx+1] = "idxX";
-//  m_VVarName[idx+2] = "idxY";
-//  m_VVarName[idx+3] = "idxPhyX";
-//  m_VVarName[idx+4] = "idxPhyY";
-  this->Modified();
+
+    // increase the RAT related vectors according to the
+    // given idx, if necessary
+    for (int i=this->m_VRAT.size(); i <= idx; ++i)
+    {
+        this->m_VRAT.push_back(0);
+        std::vector<int> columns;
+        this->m_VTabAttr.push_back(columns);
+        std::vector<ColumnType> types;
+        this->m_VAttrTypes.push_back(types);
+    }
+
+    this->Modified();
 
 }
 
@@ -210,15 +236,32 @@ template <class TImage>
 void RATBandMathImageFilter<TImage>
 ::SetNthInput(unsigned int idx, const ImageType * image, const std::string& varName)
 {
-  this->SetInput(idx, const_cast<TImage *>( image ));
-  m_VVarName.resize(idx+1);
-  m_VVarName[idx] = varName;
-  
-//  m_VVarName[idx+1] = "idxX";
-//  m_VVarName[idx+2] = "idxY";
-//  m_VVarName[idx+3] = "idxPhyX";
-//  m_VVarName[idx+4] = "idxPhyY";
-  this->Modified();
+    this->SetInput(idx, const_cast<TImage *>( image ));
+    unsigned int nbInput = idx+1;
+    while (nbInput < this->GetNumberOfInputs())
+    {
+        this->RemoveInput(this->GetNumberOfInputs()-1);
+    }
+
+    m_VVarName.resize(nbInput);
+    m_VVarName[idx] = varName;
+    m_VVarName[idx+1] = "idxX";
+    m_VVarName[idx+2] = "idxY";
+    m_VVarName[idx+3] = "idxPhyX";
+    m_VVarName[idx+4] = "idxPhyY";
+
+    // increase the RAT related vectors according to the
+    // given idx, if necessary
+    for (int i=this->m_VRAT.size(); i <= idx; ++i)
+    {
+        this->m_VRAT.push_back(0);
+        std::vector<int> columns;
+        this->m_VTabAttr.push_back(columns);
+        std::vector<ColumnType> types;
+        this->m_VAttrTypes.push_back(types);
+    }
+
+    this->Modified();
 }
 
 template <class TImage>
@@ -267,8 +310,21 @@ void RATBandMathImageFilter<TImage>
   typename std::vector<ParserType::Pointer>::iterator        itParser;
   typename std::vector< std::vector<PixelType> >::iterator   itVImage;
   unsigned int nbThreads = this->GetNumberOfThreads();
-  unsigned int nbInputImages = this->GetNumberOfInputs();
-  unsigned int nbAccessIndex = 4; //to give access to image and physical index 
+  //unsigned int nbInputImages = this->GetNumberOfInputs();
+
+  unsigned int nbAccessIndex = 4; //to give access to image and physical index
+  unsigned int nbInputImages = m_VVarName.size() - nbAccessIndex;
+  if (nbInputImages > this->GetNumberOfInputs())
+  {
+      itkExceptionMacro(<< "The number of referenced images (" << nbInputImages << ")"
+                        << "exceeds the number of actual input images (" << this->GetNumberOfInputs()
+                        << ")!" << std::endl);
+      itk::ExceptionObject e(__FILE__, __LINE__);
+      e.SetLocation(ITK_LOCATION);
+      e.SetDescription("Expression doesn't fit actual filter configuration!");
+      throw e;
+  }
+
   unsigned int i, j;
   unsigned int inputSize[2];
   std::vector< std::string > tmpIdxVarNames;
@@ -313,7 +369,7 @@ void RATBandMathImageFilter<TImage>
   m_VParser.resize(nbThreads);
   m_AImage.resize(nbThreads);
   m_NbVar = nbInputImages+nbAccessIndex;
-  m_VVarName.resize(m_NbVar);
+  //m_VVarName.resize(m_NbVar);
 
   // replace default varnames with user names, if applicable
   for (int n=0; n < m_UserNames.size(); ++n)
@@ -342,15 +398,18 @@ void RATBandMathImageFilter<TImage>
     m_VParser.at(i)->SetExpr(m_Expression);
 
     // debug
+    if (i==0)
+    {
     //std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
-    //std::cout << "no. of vars: " << m_NbVar << std::endl;
-    //std::cout << "parser expression: " << m_VParser[i]->GetExpr() << std::endl << std::endl;
+    std::cout << ">>> no. of vars: " << m_NbVar << std::endl;
+    std::cout << ">>> parser expression: " << m_VParser[i]->GetExpr() << std::endl;
+    }
   
     //std::cout << "image loop ----------------------------------------------" << std::endl << std::endl;
     for(j=0; j < nbInputImages; j++)
     {
       m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
-      //std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img #" << j << std::endl;
+      if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
 
       //attribute table support
       if (m_VRAT.size() > 0)
@@ -368,7 +427,7 @@ void RATBandMathImageFilter<TImage>
       }
 
     }
-    //std::cout << std::endl;
+    std::cout << std::endl;
 
     //std::cout << "image idx loop ----------------------------------------------" << std::endl << std::endl;
     for(j=nbInputImages; j < nbInputImages+nbAccessIndex; j++)

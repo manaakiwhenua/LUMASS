@@ -46,12 +46,14 @@
 #include "otbMultiParser.h"
 #include "otbAttributeTable.h"
 
+#include "otbsupplfilters_export.h"
+
 namespace otb
 {
 /** \class RATBandMathImageFilter
  * \brief Extension to the BandMathImageFilter which performs a mathematical
- * operation on the input images according to the formula specified by the user,
- * the RAT extension allows to integrate raster attributes into those
+ * operation on the input images according to the formula specified by the user.
+ * This extension allows to integrate raster attributes into those
  * mathematical expressions. Attribute Values within an expression are
  * referenced by combining the band name with the band's attributes in the
  * following manner:
@@ -61,7 +63,7 @@ namespace otb
  * This filter is based on the mathematical parser library muParser.
  * The built in functions and operators list is available at:
  * http://muparser.sourceforge.net/mup_features.html#idDef2
- * 
+ *
  * OTB additional functions:
  * ndvi(r, niri)
  * 
@@ -92,6 +94,13 @@ namespace otb
  * This functionality assumes that all the band involved have the same
  * spacing and origin.
  * 
+ * NOTE:
+ * The inputs to this filter, if more than one, need to be specified in
+ * sequential order, i.e. starting with index 0: 0,1,...,n
+ * the reason is that the filter may be used as part of a LUMASS model
+ * and may be subsequnently executed with a varying number of inputs.
+ * When ever an indexed input is specified, all potentially previously
+ * set input images are removed from the input list.
  * 
  * \sa Parser
  * 
@@ -100,7 +109,7 @@ namespace otb
  */
 
 template< class TImage >
-class ITK_EXPORT RATBandMathImageFilter
+class OTBSUPPLFILTERS_EXPORT RATBandMathImageFilter
   : public itk::InPlaceImageFilter< TImage >
 {
 public:

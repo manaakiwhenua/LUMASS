@@ -246,7 +246,11 @@ NMModelController::executeModel(const QString& compName)
 	this->mModelStarted = QDateTime::currentDateTime();
 
 #ifdef DEBUG
+#ifndef _WIN32
     int ind = nmlog::nmindent;
+#else
+	int ind = 2;
+#endif
 #endif
 
 	// we catch all exceptions thrown by ITK/OTB, rasdaman
@@ -261,7 +265,9 @@ NMModelController::executeModel(const QString& compName)
     catch (NMMfwException& nmerr)
     {
 #ifdef DEBUG
+#ifndef _WIN32
     nmlog::nmindent = ind;
+#endif
 #endif
         NMDebugAI(<< nmerr.what() << std::endl);
         NMDebugCtx(ctx, << "done!");
@@ -269,7 +275,9 @@ NMModelController::executeModel(const QString& compName)
     catch (std::exception& e)
 	{
 #ifdef DEBUG
+#ifndef _WIN32
     nmlog::nmindent = ind;
+#endif
 #endif
         NMDebugAI(<< e.what() << endl);
 		NMDebugCtx(ctx, << "done!");
@@ -277,7 +285,9 @@ NMModelController::executeModel(const QString& compName)
 
 
 #ifdef DEBUG
+#ifndef _WIN32
     nmlog::nmindent = ind;
+#endif
 #endif
 
 	this->mModelStopped = QDateTime::currentDateTime();

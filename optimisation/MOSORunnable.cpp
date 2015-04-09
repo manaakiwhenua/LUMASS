@@ -117,6 +117,13 @@ MOSORunnable::run()
         QString chngName = QString("%1/chng_%2_p%3-%4.csv").arg(dsInfo.path())
                 .arg(dsInfo.baseName()).arg(level).arg(runs);
 
+        QString relName = QString("%1/rel_%2_p%3-%4.csv").arg(dsInfo.path())
+                .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+        QString totName = QString("%1/tot_%2_p%3-%4.csv").arg(dsInfo.path())
+                .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+
 		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");
 
@@ -131,6 +138,38 @@ MOSORunnable::run()
         writer->SetInputData(chngmatrix);
         writer->SetFileName(chngName.toStdString().c_str());
         writer->Update();
+
+        //create 'totals only table'
+        int ncols = sumres->GetNumberOfColumns();
+        int numCri = (ncols-1)/4;
+
+        // create table only containing the absolute performance
+        // after this optimisation run
+        vtkSmartPointer<vtkTable> totals = vtkSmartPointer<vtkTable>::New();
+        totals->AddColumn(sumres->GetColumn(0));
+        for (int i=0, off=2; i < numCri; ++i, off += 4)
+        {
+            totals->AddColumn(sumres->GetColumn(off));
+        }
+
+        writer->SetInputData(totals);
+        writer->SetFileName(totName.toStdString().c_str());
+        writer->Update();
+
+        // create table only containing relative changes (%)
+        // from original result table
+        for (int i=0; i < numCri; ++i)
+        {
+            for (int re=0; re < 3; ++re)
+            {
+                sumres->RemoveColumn(i+1);
+            }
+        }
+
+        writer->SetInputData(sumres);
+        writer->SetFileName(relName.toStdString().c_str());
+        writer->Update();
+
 
 		writer->Delete();
 	}

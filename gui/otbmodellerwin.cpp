@@ -1559,69 +1559,6 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    NMLayer* l = this->mLayerList->getLayer(0);
-    NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
-
-    if (vl == 0)
-        return;
-
-    if (vl->getSelection().size() == 0)
-        return;
-
-    vtkIdType cellId = vl->getSelection().at(0).top();
-
-
-    vtkDataSet* ds = const_cast<vtkDataSet*>(vl->getDataSet());
-    vtkPolyData* pd = vtkPolyData::SafeDownCast(ds);
-
-    vtkCell* cell = pd->GetCell(cellId);
-
-    double cbnds[6];
-    cell->GetBounds(cbnds);
-
-    NMDebugAI( << fixed << setprecision(0)
-               << "cell bounds: "
-               << cbnds[0] << " " << cbnds[1] << " "
-               << cbnds[2] << " " << cbnds[3]
-               << std::endl
-             );
-
-    double centre[3];
-    double pc[3];
-    double* weights = new double[ds->GetMaxCellSize()];
-    int subId = cell->GetParametricCenter(pc);
-    cell->EvaluateLocation(subId, pc, centre, weights);
-
-
-    NMDebugAI(<< "#" << cellId << "'s centre: "
-              << centre[0] << " " << centre[1]
-                           << " " << centre[2]
-                           << std::endl);
-
-    delete[] weights;
-
-
-    int radius = QInputDialog::getInt(this, "", "radius", 3000, 1);
-
-    vtkNew<vtkSphere> cylinder;
-    cylinder->SetCenter(centre);
-    cylinder->SetRadius(radius);
-
-    //    vtkSmartPointer<vtkIdList> selIds =
-    //            NMMosra::getCellsByFunction(ds, cylinder.GetPointer(), true);
-
-    vtkNew<vtkIdList> selIds;
-    selIds->Allocate(20);
-    vtkIdList* ids = selIds.GetPointer();
-
-    NMMosra::getCellsByFunction(pd, ids, cylinder.GetPointer(), true);
-
-    //NMMosra::getAdjacentCells(pd, ids, cellId, 1);
-
-    for (int i=0; i < selIds->GetNumberOfIds(); ++i)
-    {
-        vl->selectCell(selIds->GetId(i), NMVectorLayer::NM_SEL_ADD);
-    }
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

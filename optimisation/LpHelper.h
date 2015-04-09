@@ -42,7 +42,8 @@ public:
 	bool GetVariables(double* pVariables);
 	bool GetPtrSensitivityRHS(double** ppDuals, double** ppDualsFrom,
 			double** ppDualsTill);
-	bool AddColumnEx(int count, double *column, int *rowno);
+    bool AddColumn(double* column);
+    bool AddColumnEx(int count, double *column, int *rowno);
 	bool AddConstraintEx(int count, double *row, int *colno, int constr_type, double rh);
 	bool SetColumnEx(int col_no, int count, double *column, int *rowno);
 	bool SetRowEx(int row_no, int count, double *row, int *colno);
@@ -61,12 +62,14 @@ public:
 
 	void SetTimeout(int secs);
     void SetBreakAtFirst(bool breakAtFirst);
+    void SetPresolve(int presolveFlags, int maxloops=-1);
 
 	void SetAbortFunc(void *owningObject, int (*abortfunc)(lprec*,void*));
 	void SetMinim();
 	void SetMaxim();
 
 	int GetSolutionCount();
+    int GetNOrigColumns();
 	int GetNColumns();
 	int GetNRows();
 	int GetNameIndex(std::string sName, bool bIsRow);
@@ -78,7 +81,9 @@ public:
 
 	std::string GetLpName();
 	std::string GetStatusText();	//gets the status code after solving the problem
-	std::string GetColName(int column);
+    std::string GetOrigColName(int column);
+    std::string GetColName(int column);
+    std::string GetOrigRowName(int row);
 	std::string GetRowName(int row);
 
 private:

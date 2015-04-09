@@ -164,6 +164,22 @@ bool HLpHelper::GetPtrSensitivityRHS(double** ppDuals, double** ppDualsFrom,
 	return ret;
 }
 
+std::string HLpHelper::GetOrigRowName(int row)
+{
+    std::string ret = "error";
+
+    //check valid lp
+    if (!this->CheckLp())
+        return ret;
+
+    //get the variables
+    const char* sr = get_origrow_name(this->m_pLp, row);
+    if (sr == NULL)
+        return ret;
+
+    return sr;
+}
+
 std::string HLpHelper::GetRowName(int row)
 {
 	std::string ret = "error";
@@ -228,6 +244,16 @@ int HLpHelper::GetSolutionCount()
 	return get_solutioncount(this->m_pLp);
 }
 
+int HLpHelper::GetNOrigColumns()
+{
+
+    //check valid lp
+    if (!this->CheckLp())
+        return -9;
+
+    return get_Norig_columns(this->m_pLp);
+}
+
 int HLpHelper::GetNColumns()
 {
 
@@ -275,13 +301,31 @@ std::string HLpHelper::GetStatusText()
 	return get_statustext(this->m_pLp, this->m_iLastReturnFromSolve);
 }
 
+std::string HLpHelper::GetOrigColName(int column)
+{
+    //check valid lp
+    if (!this->CheckLp())
+        return std::string("error");
+
+    char* name = get_origcol_name(this->m_pLp, column);
+    if (name == 0)
+        return std::string("");
+    else
+        return std::string(name);
+
+}
+
 std::string HLpHelper::GetColName(int column)
 {
 	//check valid lp
 	if (!this->CheckLp())
 		return std::string("error");
 
-	return get_col_name(this->m_pLp, column);
+    char* name = get_col_name(this->m_pLp, column);
+    if (name == 0)
+        return std::string("");
+    else
+        return std::string(name);
 }
 
 int HLpHelper::GetNameIndex(std::string sName, bool bIsRow)
@@ -292,6 +336,18 @@ int HLpHelper::GetNameIndex(std::string sName, bool bIsRow)
 
 	return get_nameindex(this->m_pLp,
 			const_cast<char*>(sName.c_str()), bIsRow);
+}
+
+bool HLpHelper::AddColumn(double* column)
+{
+    //check valid lp
+    if (!this->CheckLp())
+        return false;
+
+    if (add_column(this->m_pLp, (REAL*)column))
+        return true;
+    else
+        return false;
 }
 
 bool HLpHelper::AddColumnEx(int count, double *column, int *rowno)
@@ -388,6 +444,21 @@ bool HLpHelper::SetBinary(int column, bool must_be_bin)
 		return true;
 	else
 		return false;	
+}
+
+void HLpHelper::SetPresolve(int presolveFlags, int maxloops)
+{
+    //check valid lp
+    if (!this->CheckLp())
+        return;
+
+    int nloops = get_presolveloops(this->m_pLp);
+    if (maxloops == -1)
+    {
+        maxloops = nloops;
+    }
+
+    set_presolve(this->m_pLp, presolveFlags, maxloops);
 }
 
 void HLpHelper::SetMinim()

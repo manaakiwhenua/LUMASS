@@ -114,6 +114,10 @@ public:
 			if (numBands == 1)
 			{
                 ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
+                if (theimg == 0)
+                {
+                    return;
+                }
                 RegionType reg = theimg->GetLargestPossibleRegion();//theimg->GetBufferedRegion();
 
                 // problem here is that we could also be dealing with an
@@ -150,6 +154,10 @@ public:
 			else if (numBands > 1)
 			{
                 VecImgType* theimg = dynamic_cast<VecImgType*>(img.GetPointer());
+                if (theimg == 0)
+                {
+                    return;
+                }
                 VecRegionType reg = theimg->GetLargestPossibleRegion();//theimg->GetBufferedRegion();
 
                 bbox[0] = theimg->GetOrigin()[0];

@@ -1598,8 +1598,9 @@ void OtbModellerWin::test()
 
     //uri << "file:/home/alex/projects/SWE-VRI/data/JagathsTestWSN/xserve_sqlite_1.db";//?mode=rw&cache=shared";
            //"file:/home/alex/tmp/mfs.db?mode=rwc&cache=shared";
-    //uri << "file:" << getenv("HOME") << "/" << m_dbFileName << ".db?mode=rwc&cache=shared";
-    uri << "file:" << m_dbFileName << ".db?mode=rwc&cache=shared";
+    //uri << "file://" << getenv("HOME") << "/tmp/" << m_dbFileName << ".db?mode=rwc&cache=shared";
+    //uri << "file:" << m_dbFileName << ".db?mode=rwc&cache=shared";
+    uri << "file:xserve_sqlite_3.db?mode=rwc&cache=shared";
 
     NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);
 
@@ -1625,14 +1626,15 @@ void OtbModellerWin::test()
     }
 
     uri.str("");
-    uri << "begin transaction;";
-    uri << "CREATE TABLE atable(acol, bcol, ccol);";
-    uri << "insert into atable (acol, bcol, ccol) values (10, 'bettina', 0.3);";
-    uri << "insert into atable (acol, bcol, ccol) values (0 , 'alex'  , 1.3);";
-    uri << "insert into atable (acol, bcol, ccol) values (40, 'linn', 10e-3);";
-    uri << "commit;";
+//    uri << "begin transaction;";
+//    uri << "CREATE TABLE atable(acol, bcol, ccol);";
+//    uri << "insert into atable (acol, bcol, ccol) values (10, 'bettina', 0.3);";
+//    uri << "insert into atable (acol, bcol, ccol) values (0 , 'alex'  , 1.3);";
+//    uri << "insert into atable (acol, bcol, ccol) values (40, 'linn', 10e-3);";
+//    uri << "commit;";
 
-    uri << "select * from atable;";
+    uri << "select sqlite_version();";
+    uri << "select count(nodeId) from et161_sensor_results;";
 
     char* errMsg = 0;
     rc = ::sqlite3_exec(m_db, uri.str().c_str(), &OtbModellerWin::sqlite_resCallback, 0, &errMsg);

@@ -136,6 +136,8 @@ protected:
 
     inline void setSqlValue(const std::string& col, int row);
 
+    inline bool sqliteError(const int& rc);
+
 
 	// admin vectors holding header infos about columns
 

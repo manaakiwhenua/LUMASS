@@ -1582,7 +1582,7 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    sqlite3* m_db;
+    sqlite3* m_db = 0;
     std::string m_dbFileName;
 
     std::stringstream uri;
@@ -1594,7 +1594,7 @@ void OtbModellerWin::test()
     size_t len = m_dbFileName.size() - pos;
     m_dbFileName = m_dbFileName.substr(pos, len);
 
-    NMDebugAI(<< "random base name: " << m_dbFileName << std::endl);
+
 
     //uri << "file:/home/alex/projects/SWE-VRI/data/JagathsTestWSN/xserve_sqlite_1.db";//?mode=rw&cache=shared";
            //"file:/home/alex/tmp/mfs.db?mode=rwc&cache=shared";
@@ -1602,53 +1602,65 @@ void OtbModellerWin::test()
     //uri << "file:/" << m_dbFileName << ".db?mode=rwc&cache=shared";
     //uri << "file:/home/alex/tmp/" << m_dbFileName << ".db";
 
-    NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);
+    NMDebugAI(<< "temp database: " << uri.str() << std::endl);
 
-    int rc = ::sqlite3_open_v2(uri.str().c_str(),
-                               &m_db,
-                               SQLITE_OPEN_URI |
-                               SQLITE_OPEN_READWRITE |
-                               SQLITE_OPEN_CREATE |
-                               SQLITE_OPEN_SHAREDCACHE,
-                               0);
-    if (rc != SQLITE_OK)
-    {
-        std::string errmsg = sqlite3_errmsg(m_db);
-        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
-        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
-        m_dbFileName.clear();
-        ::sqlite3_close(m_db);
-        m_db = 0;
-    }
-    else
-    {
-        NMDebugAI(<< "db created!" << std::endl);
-    }
+    otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
 
-    uri.str("");
-    uri << "begin transaction;";
-    uri << "CREATE TABLE btable(acol, bcol, ccol);";
-    uri << "insert into btable (acol, bcol, ccol) values (4, 'apfel', 0.3);";
-    uri << "insert into btable (acol, bcol, ccol) values (0 , 'banane'  , 1.3);";
-    uri << "insert into btable (acol, bcol, ccol) values (40, 'kiwi', 10e-3);";
-    uri << "commit;";
-
-    //uri << "select sqlite_version();";
-    uri << "attach database 'file:/home/alex/tmp/fileqAXO6c.db?mode=rw&cache=shared' as adb;";
-    uri << "select * from atable;";
-    uri << "select * from btable;";
-
-    char* errMsg = 0;
-    rc = ::sqlite3_exec(m_db, uri.str().c_str(), &OtbModellerWin::sqlite_resCallback, 0, &errMsg);
-
-    if (rc != SQLITE_OK)
-    {
-        std::string errmsg = sqlite3_errmsg(m_db);
-        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
-    }
+    tab->AddColumn("name", otb::AttributeTable::ATTYPE_STRING);
+    tab->AddColumn("age", otb::AttributeTable::ATTYPE_INT);
+    tab->AddColumn("weight", otb::AttributeTable::ATTYPE_DOUBLE);
 
 
-    ::sqlite3_close(m_db);
+
+
+
+//    NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);
+
+//    int rc = ::sqlite3_open_v2(uri.str().c_str(),
+//                               &m_db,
+//                               SQLITE_OPEN_URI |
+//                               SQLITE_OPEN_READWRITE |
+//                               SQLITE_OPEN_CREATE |
+//                               SQLITE_OPEN_SHAREDCACHE,
+//                               0);
+//    if (rc != SQLITE_OK)
+//    {
+//        std::string errmsg = sqlite3_errmsg(m_db);
+//        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
+//        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+//        m_dbFileName.clear();
+//        ::sqlite3_close(m_db);
+//        m_db = 0;
+//    }
+//    else
+//    {
+//        NMDebugAI(<< "db created!" << std::endl);
+//    }
+
+//    uri.str("");
+//    uri << "begin transaction;";
+//    uri << "CREATE TABLE btable(acol, bcol, ccol);";
+//    uri << "insert into btable (acol, bcol, ccol) values (4, 'apfel', 0.3);";
+//    uri << "insert into btable (acol, bcol, ccol) values (0 , 'banane'  , 1.3);";
+//    uri << "insert into btable (acol, bcol, ccol) values (40, 'kiwi', 10e-3);";
+//    uri << "commit;";
+
+//    //uri << "select sqlite_version();";
+//    uri << "attach database 'file:/home/alex/tmp/fileqAXO6c.db?mode=rw&cache=shared' as adb;";
+//    uri << "select * from atable;";
+//    uri << "select * from btable;";
+
+//    char* errMsg = 0;
+//    rc = ::sqlite3_exec(m_db, uri.str().c_str(), &OtbModellerWin::sqlite_resCallback, 0, &errMsg);
+
+//    if (rc != SQLITE_OK)
+//    {
+//        std::string errmsg = sqlite3_errmsg(m_db);
+//        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
+//    }
+
+
+//    ::sqlite3_close(m_db);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

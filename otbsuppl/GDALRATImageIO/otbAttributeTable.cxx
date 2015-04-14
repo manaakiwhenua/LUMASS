@@ -46,20 +46,71 @@ int AttributeTable::GetNumRows()
 	return m_iNumRows;
 }
 
+bool
+AttributeTable::sqliteError(const int& rc)
+{
+    if (rc != SQLITE_OK)
+    {
+        std::string errmsg = sqlite3_errmsg(m_db);
+        itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+        return true;
+    }
+    return false;
+}
+
 int
 AttributeTable::ColumnExists(const std::string& sColName)
 {
-    //std::string colname = sColName;
-    //std::transform(sColName.begin(), sColName.end(), colname.begin(), ::tolower);
-	int idx = -1;
-	for (int c=0; c < m_vNames.size(); ++c)
-	{
-		if (::strcmp(m_vNames[c].c_str(), sColName.c_str()) == 0)
-		{
-			idx = c;
-			break;
-		}
-	}
+    // returns -1 if column doesn't exist, otherwise 1
+
+    int idx = -1;
+    const char** pszDataType = 0;
+    const char** pszCollSeq = 0;
+    int* pbNotNull = 0;
+    int* pbPrimaryKey = 0;
+    int* pbAutoinc = 0;
+
+    if (m_db == 0)
+    {
+        return idx;
+    }
+
+    int rc = ::sqlite3_table_column_metadata(
+                m_db,
+                "main",
+                "nmtab",
+                sColName.c_str(),
+                pszDataType,
+                pszCollSeq,
+                pbNotNull,
+                pbPrimaryKey,
+                pbAutoinc);
+
+    if (sqliteError(rc))
+    {
+        itkWarningMacro(<< "column " << sColName
+                        << " does not exist!");
+        return idx;
+    }
+    else
+    {
+        return 1;
+    }
+
+    itkDebugMacro(<< std::endl
+                  << "column: " << sColName << " | "
+                  << "data type: " << pszDataType);
+
+    // =================================================================
+    // old implementation
+    //    for (int c=0; c < m_vNames.size(); ++c)
+    //    {
+    //        if (::strcmp(m_vNames[c].c_str(), sColName.c_str()) == 0)
+    //        {
+    //            idx = c;
+    //            break;
+    //        }
+    //    }
 	return idx;
 }
 
@@ -77,46 +128,69 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 	}
 
 
-	std::vector<std::string>* vstr;
-	std::vector<long>* vint;
-	std::vector<double>* vdbl;
-	// create a new vector for the column's values
-	switch(eType)
-	{
-	case ATTYPE_STRING:
-		try{
-		vstr = new std::vector<std::string>();
-		vstr->resize(m_iNumRows, m_sNodata);
-		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+    std::string sType;
+    switch (eType)
+    {
+    case ATTYPE_INT:
+        sType = "INTEGER";
+        break;
+    case ATTYPE_DOUBLE:
+        sType = "REAL";
+        break;
+    default:
+        sType = "TEXT";
+    }
 
-		this->m_mStringCols.push_back(vstr);
-		this->m_vPosition.push_back(m_mStringCols.size()-1);
-		break;
-	case ATTYPE_INT:
-		try{
-		vint = new std::vector<long>();
-		vint->resize(m_iNumRows, m_iNodata);
-		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+    std::stringstream ssql;
+    ssql << "ALTER TABLE main.nmtab ADD COLUMN "
+         << sColName << " " << sType << ";";
 
-		this->m_mIntCols.push_back(vint);
-		this->m_vPosition.push_back(m_mIntCols.size()-1);
-		break;
-	case ATTYPE_DOUBLE:
-		try{
-		vdbl = new std::vector<double>();
-		vdbl->resize(m_iNumRows, m_dNodata);
-		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+    int rc = ::sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    if (sqliteError(rc))
+    {
+        return false;
+    }
 
-		this->m_mDoubleCols.push_back(vdbl);
-		this->m_vPosition.push_back(m_mDoubleCols.size()-1);
-		break;
-	default:
-		break;
-	}
+    //	std::vector<std::string>* vstr;
+    //	std::vector<long>* vint;
+    //	std::vector<double>* vdbl;
+    //	// create a new vector for the column's values
+    //	switch(eType)
+    //	{
+    //	case ATTYPE_STRING:
+    //		try{
+    //		vstr = new std::vector<std::string>();
+    //		vstr->resize(m_iNumRows, m_sNodata);
+    //		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
 
-	// update admin infos
-	this->m_vNames.push_back(sColName);
-	this->m_vTypes.push_back(eType);
+    //		this->m_mStringCols.push_back(vstr);
+    //		this->m_vPosition.push_back(m_mStringCols.size()-1);
+    //		break;
+    //	case ATTYPE_INT:
+    //		try{
+    //		vint = new std::vector<long>();
+    //		vint->resize(m_iNumRows, m_iNodata);
+    //		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+
+    //		this->m_mIntCols.push_back(vint);
+    //		this->m_vPosition.push_back(m_mIntCols.size()-1);
+    //		break;
+    //	case ATTYPE_DOUBLE:
+    //		try{
+    //		vdbl = new std::vector<double>();
+    //		vdbl->resize(m_iNumRows, m_dNodata);
+    //		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+
+    //		this->m_mDoubleCols.push_back(vdbl);
+    //		this->m_vPosition.push_back(m_mDoubleCols.size()-1);
+    //		break;
+    //	default:
+    //		break;
+    //	}
+
+    //	// update admin infos
+    //	this->m_vNames.push_back(sColName);
+    //	this->m_vTypes.push_back(eType);
 
 	return true;
 }
@@ -858,32 +932,15 @@ AttributeTable::valid(const std::string& sColName, int idx)
 void
 AttributeTable::createTable(std::string filename)
 {
-    //this->DebugOn();
+    this->DebugOn();
 
     std::stringstream uri;
     m_dbFileName = std::tmpnam(0);
+    m_dbFileName += ".db";
 
-    //itkDebugMacro(<< "random file name: " << m_dbFileName);
+    itkDebugMacro(<< "temp database: " << m_dbFileName);
 
-    size_t pos = m_dbFileName.find_last_of('/') + 1;
-    size_t len = m_dbFileName.size() - pos;
-    m_dbFileName = m_dbFileName.substr(pos, len);
-
-    //itkDebugMacro(<< "random base name: " << m_dbFileName);
-
-    //uri << "file::memory:?cache=shared";
-    if (filename.empty())
-    {
-        uri << "file:" << getenv("HOME") << "/" << m_dbFileName << ".db";//?cache=shared";
-    }
-    else
-    {
-        uri << "file:" << filename << ".db";
-    }
-
-    itkDebugMacro(<< "otb::AttributeTable::createDb(): try to open " << uri.str());
-
-    int rc = ::sqlite3_open_v2(uri.str().c_str(),
+    int rc = ::sqlite3_open_v2(m_dbFileName.c_str(),
                                &m_db,
                                SQLITE_OPEN_URI |
                                SQLITE_OPEN_READWRITE |
@@ -898,12 +955,25 @@ AttributeTable::createTable(std::string filename)
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
         m_db = 0;
+        return;
     }
 
     uri.str("");
     uri << "begin transaction;";
-    uri << "CREATE TABLE nmtab (rowidx "
+    uri << "CREATE TABLE nmtab (rowidx INTEGER PRIMARY KEY);";
+    uri << "commit;";
 
+    char* errMsg = 0;
+    rc = ::sqlite3_exec(m_db, uri.str().c_str(), 0, 0, &errMsg);
+
+    if (rc != SQLITE_OK)
+    {
+        std::string errmsg = sqlite3_errmsg(m_db);
+        itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+        m_dbFileName.clear();
+        ::sqlite3_close(m_db);
+        m_db = 0;
+    }
 }
 
 AttributeTable::AttributeTable()
@@ -914,13 +984,16 @@ AttributeTable::AttributeTable()
       m_sNodata("NULL"),
       m_db(0)
 {
-    this->createDb();
+    this->createTable("");
 }
 
 // clean up
 AttributeTable::~AttributeTable()
 {
-    ::sqlite3_close(m_db);
+    if (m_db != 0)
+    {
+        ::sqlite3_close(m_db);
+    }
     m_db = 0;
 
 

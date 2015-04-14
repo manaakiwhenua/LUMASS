@@ -112,6 +112,8 @@ public:
 
     /// SQLite support functions
     std::string getDbFileName() {return this->m_dbFileName;}
+    sqlite3* getDbConnection() {return this->m_db;}
+    void createTable(std::string filename);
 
 
 protected:
@@ -127,8 +129,6 @@ protected:
     std::string m_dbFileName;
 
     sqlite3_stmt* m_stmt;
-
-    void createDb(void);
 
     inline int getSqlIntValue(const std::string& col, int row);
     inline double getSqlDblValue(const std::string& col, int row);

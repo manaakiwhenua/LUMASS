@@ -856,7 +856,7 @@ AttributeTable::valid(const std::string& sColName, int idx)
 }
 
 void
-AttributeTable::createDb()
+AttributeTable::createTable(std::string filename)
 {
     //this->DebugOn();
 
@@ -872,14 +872,24 @@ AttributeTable::createDb()
     //itkDebugMacro(<< "random base name: " << m_dbFileName);
 
     //uri << "file::memory:?cache=shared";
-    uri << "file:" << getenv("HOME") << "/" << m_dbFileName << ".db";//?cache=shared";
+    if (filename.empty())
+    {
+        uri << "file:" << getenv("HOME") << "/" << m_dbFileName << ".db";//?cache=shared";
+    }
+    else
+    {
+        uri << "file:" << filename << ".db";
+    }
 
     itkDebugMacro(<< "otb::AttributeTable::createDb(): try to open " << uri.str());
 
-    int rc = ::sqlite3_open(uri.str().c_str(),
-                               &m_db);//,
-                               //SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
-                               //0);
+    int rc = ::sqlite3_open_v2(uri.str().c_str(),
+                               &m_db,
+                               SQLITE_OPEN_URI |
+                               SQLITE_OPEN_READWRITE |
+                               SQLITE_OPEN_CREATE |
+                               SQLITE_OPEN_SHAREDCACHE,
+                               0);
     if (rc != SQLITE_OK)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
@@ -889,6 +899,11 @@ AttributeTable::createDb()
         ::sqlite3_close(m_db);
         m_db = 0;
     }
+
+    uri.str("");
+    uri << "begin transaction;";
+    uri << "CREATE TABLE nmtab (rowidx "
+
 }
 
 AttributeTable::AttributeTable()

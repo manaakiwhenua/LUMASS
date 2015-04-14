@@ -1598,19 +1598,19 @@ void OtbModellerWin::test()
 
     //uri << "file:/home/alex/projects/SWE-VRI/data/JagathsTestWSN/xserve_sqlite_1.db";//?mode=rw&cache=shared";
            //"file:/home/alex/tmp/mfs.db?mode=rwc&cache=shared";
-    //uri << "file://" << getenv("HOME") << "/tmp/" << m_dbFileName << ".db?mode=rwc&cache=shared";
-    //uri << "file:" << m_dbFileName << ".db?mode=rwc&cache=shared";
-    uri << "file:xserve_sqlite_3.db?mode=rwc&cache=shared";
+    uri << "file:" << getenv("HOME") << "/tmp/" << m_dbFileName << ".db";
+    //uri << "file:/" << m_dbFileName << ".db?mode=rwc&cache=shared";
+    //uri << "file:/home/alex/tmp/" << m_dbFileName << ".db";
 
     NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);
 
-    int rc = ::sqlite3_open(uri.str().c_str(),
-                               &m_db);/*,
+    int rc = ::sqlite3_open_v2(uri.str().c_str(),
+                               &m_db,
+                               SQLITE_OPEN_URI |
                                SQLITE_OPEN_READWRITE |
                                SQLITE_OPEN_CREATE |
-                               SQLITE_OPEN_SHAREDCACHE |
-                               SQLITE_OPEN_FULLMUTEX,
-                               0); */
+                               SQLITE_OPEN_SHAREDCACHE,
+                               0);
     if (rc != SQLITE_OK)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
@@ -1626,15 +1626,17 @@ void OtbModellerWin::test()
     }
 
     uri.str("");
-//    uri << "begin transaction;";
-//    uri << "CREATE TABLE atable(acol, bcol, ccol);";
-//    uri << "insert into atable (acol, bcol, ccol) values (10, 'bettina', 0.3);";
-//    uri << "insert into atable (acol, bcol, ccol) values (0 , 'alex'  , 1.3);";
-//    uri << "insert into atable (acol, bcol, ccol) values (40, 'linn', 10e-3);";
-//    uri << "commit;";
+    uri << "begin transaction;";
+    uri << "CREATE TABLE btable(acol, bcol, ccol);";
+    uri << "insert into btable (acol, bcol, ccol) values (4, 'apfel', 0.3);";
+    uri << "insert into btable (acol, bcol, ccol) values (0 , 'banane'  , 1.3);";
+    uri << "insert into btable (acol, bcol, ccol) values (40, 'kiwi', 10e-3);";
+    uri << "commit;";
 
-    uri << "select sqlite_version();";
-    uri << "select count(nodeId) from et161_sensor_results;";
+    //uri << "select sqlite_version();";
+    uri << "attach database 'file:/home/alex/tmp/fileqAXO6c.db?mode=rw&cache=shared' as adb;";
+    uri << "select * from atable;";
+    uri << "select * from btable;";
 
     char* errMsg = 0;
     rc = ::sqlite3_exec(m_db, uri.str().c_str(), &OtbModellerWin::sqlite_resCallback, 0, &errMsg);

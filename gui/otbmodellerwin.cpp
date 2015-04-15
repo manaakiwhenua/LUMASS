@@ -1610,6 +1610,12 @@ void OtbModellerWin::test()
     tab->AddColumn("age", otb::AttributeTable::ATTYPE_INT);
     tab->AddColumn("weight", otb::AttributeTable::ATTYPE_DOUBLE);
 
+    tab->beginTransaction();
+    for (int i=0; i < 10; ++i)
+    {
+        tab->AddRow();
+    }
+    tab->endTransaction();
 
 
 

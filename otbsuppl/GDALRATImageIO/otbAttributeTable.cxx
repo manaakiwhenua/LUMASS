@@ -86,20 +86,18 @@ AttributeTable::ColumnExists(const std::string& sColName)
                 pbPrimaryKey,
                 pbAutoinc);
 
-    if (sqliteError(rc))
-    {
-        itkWarningMacro(<< "column " << sColName
-                        << " does not exist!");
-        return idx;
-    }
-    else
+    if (rc == SQLITE_OK)
     {
         return 1;
     }
+    else
+    {
+        return -1;
+    }
 
-    itkDebugMacro(<< std::endl
-                  << "column: " << sColName << " | "
-                  << "data type: " << pszDataType);
+    //    itkDebugMacro(<< std::endl
+    //                  << "column: " << sColName << " | "
+    //                  << "data type: " << pszDataType);
 
     // =================================================================
     // old implementation
@@ -197,141 +195,266 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 
 bool AttributeTable::AddRows(long numRows)
 {
+    // connection open?
+    if (m_db == 0)
+    {
+        return false;
+    }
+
 	// check for presence of columns
-	if (this->m_vNames.size() == 0)
+    if (this->ColumnExists("rowidx") == -1)
 		return false;
 
-	for (int colidx = 0; colidx < this->m_vNames.size(); ++colidx)
-	{
-		const int& tidx = m_vPosition[colidx];
-		switch (this->m_vTypes[colidx])
-		{
-		case ATTYPE_STRING:
-			{
-			m_mStringCols.at(tidx)->resize(m_iNumRows+numRows, m_sNodata);
-			break;
-			}
-		case ATTYPE_INT:
-			{
-			m_mIntCols.at(tidx)->resize(m_iNumRows+numRows, m_iNodata);
-			break;
-			}
-		case ATTYPE_DOUBLE:
-			{
-			m_mDoubleCols.at(tidx)->resize(m_iNumRows+numRows, m_dNodata);
-			break;
-			}
-		default:
-			return false;
-		}
-	}
+    int rc;
+    int bufSize = 256;
+    std::string ssql = "INSERT INTO main.nmtab (rowidx) VALUES (?1)";
+
+    char* tail = 0;
+    sqlite3_stmt* stmt;
+    rc = sqlite3_prepare_v2(m_db, ssql.c_str(), bufSize, &stmt, 0);
+    if (sqliteError(rc)) return false;
+
+    rc = ::sqlite3_exec(m_db, "BEGIN TRANSACTION;", 0, 0, 0);
+    if (sqliteError(rc)) return false;
+
+    for (long r=0; r < numRows; ++r, ++m_iNumRows)
+    {
+        sqlite3_bind_int(stmt, 1, m_iNumRows);
+        sqlite3_step(stmt);
+        sqlite3_clear_bindings(stmt);
+        sqlite3_reset(stmt);
+    }
+
+    rc = ::sqlite3_exec(m_db, "END TRANSACTION;", 0, 0, 0);
+    if (sqliteError(rc)) return false;
+
+    // clean up the prepared statement
+    sqlite3_finalize(stmt);
+
+    //	for (int colidx = 0; colidx < this->m_vNames.size(); ++colidx)
+    //	{
+    //		const int& tidx = m_vPosition[colidx];
+    //		switch (this->m_vTypes[colidx])
+    //		{
+    //		case ATTYPE_STRING:
+    //			{
+    //			m_mStringCols.at(tidx)->resize(m_iNumRows+numRows, m_sNodata);
+    //			break;
+    //			}
+    //		case ATTYPE_INT:
+    //			{
+    //			m_mIntCols.at(tidx)->resize(m_iNumRows+numRows, m_iNodata);
+    //			break;
+    //			}
+    //		case ATTYPE_DOUBLE:
+    //			{
+    //			m_mDoubleCols.at(tidx)->resize(m_iNumRows+numRows, m_dNodata);
+    //			break;
+    //			}
+    //		default:
+    //			return false;
+    //		}
+    //	}
 
 	// increase the row number counter
-	this->m_iNumRows += numRows;
+    //this->m_iNumRows += numRows;
 
 	return true;
 }
 
 bool AttributeTable::AddRow()
 {
-	// check for presence of columns
-	if (this->m_vNames.size() == 0)
-		return false;
+    // connection open?
+    if (m_db == 0)
+    {
+        return false;
+    }
 
-	for (int colidx = 0; colidx < this->m_vNames.size(); ++colidx)
-	{
-		const int& tidx = m_vPosition[colidx];
-		switch (this->m_vTypes[colidx])
-		{
-		case ATTYPE_STRING:
-			{
-			m_mStringCols.at(tidx)->push_back(this->m_sNodata);
-			break;
-			}
-		case ATTYPE_INT:
-			{
-			m_mIntCols.at(tidx)->push_back(this->m_iNodata);
-			break;
-			}
-		case ATTYPE_DOUBLE:
-			{
-			m_mDoubleCols.at(tidx)->push_back(this->m_dNodata);
-			break;
-			}
-		default:
-			return false;
-		}
-	}
+    // check for presence of columns
+    if (this->ColumnExists("rowidx") == -1)
+        return false;
 
-	// increase the row number counter
-	++this->m_iNumRows;
+    std::stringstream ssql;
+    ssql << "INSERT INTO main.nmtab (rowidx) VALUES ("
+         << m_iNumRows << ");";
+
+    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    if (sqliteError(rc)) return false;
+
+    ++m_iNumRows;
+
+
+//	// check for presence of columns
+//	if (this->m_vNames.size() == 0)
+//		return false;
+
+//	for (int colidx = 0; colidx < this->m_vNames.size(); ++colidx)
+//	{
+//		const int& tidx = m_vPosition[colidx];
+//		switch (this->m_vTypes[colidx])
+//		{
+//		case ATTYPE_STRING:
+//			{
+//			m_mStringCols.at(tidx)->push_back(this->m_sNodata);
+//			break;
+//			}
+//		case ATTYPE_INT:
+//			{
+//			m_mIntCols.at(tidx)->push_back(this->m_iNodata);
+//			break;
+//			}
+//		case ATTYPE_DOUBLE:
+//			{
+//			m_mDoubleCols.at(tidx)->push_back(this->m_dNodata);
+//			break;
+//			}
+//		default:
+//			return false;
+//		}
+//	}
+
+//	// increase the row number counter
+//	++this->m_iNumRows;
 
 	return true;
 }
 
+bool
+AttributeTable::beginTransaction()
+{
+    if (m_db == 0)
+    {
+        otbWarningMacro(<< "No database connection!");
+        return false;
+    }
+
+    int rc = sqlite3_exec(m_db, "BEGIN TRANSACTION;", 0, 0, 0);
+    if (sqliteError(rc))
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+bool
+AttributeTable::endTransaction()
+{
+    if (m_db == 0)
+    {
+        otbWarningMacro(<< "No database connection!");
+        return false;
+    }
+
+    int rc = sqlite3_exec(m_db, "END TRANSACTION;", 0, 0, 0);
+    if (sqliteError(rc))
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+
 void
 AttributeTable::SetValue(const std::string& sColName, int idx, double value)
 {
-	// get the column index
-	int colIdx = this->valid(sColName, idx);
-	if (colIdx < 0)
-		return;
+    if (m_db == 0)
+    {
+        return;
+    }
 
-	const int& tidx = m_vPosition[colIdx];
-	switch (m_vTypes[colIdx])
-	{
-		case ATTYPE_STRING:
-		{
-			std::stringstream sval;
-			sval << value;
-			this->m_mStringCols.at(tidx)->at(idx) = sval.str();
-			break;
-		}
-		case ATTYPE_INT:
-		{
-			this->m_mIntCols.at(tidx)->at(idx) = value;
-			break;
-		}
-		case ATTYPE_DOUBLE:
-		{
-			this->m_mDoubleCols.at(tidx)->at(idx) = value;
-			break;
-		}
-		default:
-			break;
-	}
+    std::stringstream ssql;
+    ssql << "UPDATE main.nmtab SET "
+         << sColName << " = "
+         << value
+         << " where rowidx = "
+         << idx << ";";
+
+    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    sqliteError(rc);
+
+
+//	// get the column index
+//	int colIdx = this->valid(sColName, idx);
+//	if (colIdx < 0)
+//		return;
+
+//	const int& tidx = m_vPosition[colIdx];
+//	switch (m_vTypes[colIdx])
+//	{
+//		case ATTYPE_STRING:
+//		{
+//			std::stringstream sval;
+//			sval << value;
+//			this->m_mStringCols.at(tidx)->at(idx) = sval.str();
+//			break;
+//		}
+//		case ATTYPE_INT:
+//		{
+//			this->m_mIntCols.at(tidx)->at(idx) = value;
+//			break;
+//		}
+//		case ATTYPE_DOUBLE:
+//		{
+//			this->m_mDoubleCols.at(tidx)->at(idx) = value;
+//			break;
+//		}
+//		default:
+//			break;
+//	}
 }
 
 void
 AttributeTable::SetValue(const std::string& sColName, int idx, long value)
 {
-	int colIdx = this->valid(sColName, idx);
-	if (colIdx < 0)
-		return;
+    if (m_db == 0)
+    {
+        return;
+    }
 
-	const int& tidx = m_vPosition[colIdx];
-	switch (m_vTypes[colIdx])
-	{
-		case ATTYPE_STRING:
-		{
-			std::stringstream sval;
-			sval << value;
-			this->m_mStringCols.at(tidx)->at(idx) = sval.str();
-			break;
-		}
-		case ATTYPE_INT:
-		{
-			this->m_mIntCols.at(tidx)->at(idx) = value;
-			break;
-		}
-		case ATTYPE_DOUBLE:
-		{
-			this->m_mDoubleCols.at(tidx)->at(idx) = value;
-			break;
-		}
-		default:
-			break;
-	}
+    std::stringstream ssql;
+    ssql << "UPDATE main.nmtab SET "
+         << sColName << " = "
+         << value
+         << " where rowidx = "
+         << idx << ";";
+
+    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    sqliteError(rc);
+
+
+//	int colIdx = this->valid(sColName, idx);
+//	if (colIdx < 0)
+//		return;
+
+//	const int& tidx = m_vPosition[colIdx];
+//	switch (m_vTypes[colIdx])
+//	{
+//		case ATTYPE_STRING:
+//		{
+//			std::stringstream sval;
+//			sval << value;
+//			this->m_mStringCols.at(tidx)->at(idx) = sval.str();
+//			break;
+//		}
+//		case ATTYPE_INT:
+//		{
+//			this->m_mIntCols.at(tidx)->at(idx) = value;
+//			break;
+//		}
+//		case ATTYPE_DOUBLE:
+//		{
+//			this->m_mDoubleCols.at(tidx)->at(idx) = value;
+//			break;
+//		}
+//		default:
+//			break;
+//	}
 }
 
 void

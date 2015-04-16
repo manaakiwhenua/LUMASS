@@ -130,16 +130,23 @@ protected:
     sqlite3* m_db;
     std::string m_dbFileName;
 
-    sqlite3_stmt* m_stmt;
+    std::vector<sqlite3_stmt*> m_vStmtUpdate;
+    //sqlite3_stmt* m_StmtAddColl;
+    sqlite3_stmt* m_StmtBegin;
+    sqlite3_stmt* m_StmtEnd;
+    sqlite3_stmt* m_StmtRollback;
+    bool m_InTransaction;
 
     void createTable(std::string filename);
-    inline int getSqlIntValue(const std::string& col, int row);
-    inline double getSqlDblValue(const std::string& col, int row);
-    inline std::string getSqlStrValue(const std::string& col, int row);
+    inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
+    inline void sqliteStepCheck(const int& rc);
 
-    inline void setSqlValue(const std::string& col, int row);
+    //    inline int getSqlIntValue(const std::string& col, int row);
+    //    inline double getSqlDblValue(const std::string& col, int row);
+    //    inline std::string getSqlStrValue(const std::string& col, int row);
+    //    inline void setSqlValue(const std::string& col, int row);
 
-    inline bool sqliteError(const int& rc);
+
 
 
 	// admin vectors holding header infos about columns

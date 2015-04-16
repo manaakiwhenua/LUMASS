@@ -1604,17 +1604,30 @@ void OtbModellerWin::test()
 
     NMDebugAI(<< "temp database: " << uri.str() << std::endl);
 
+    QList<QString> sn;
+    sn << "''Hans''" << "''Franz''" << "''Ganz''" << "''Maus''" << "''Haus''";
+    QList<long> sa;
+    sa << 50 << 4 << 35 << 17 << 42;
+    QList<double> sw;
+    sw << 78.3 << 16.5 << 90.2 << 65 << 70;
+
     otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
+
+    tab->beginTransaction();
 
     tab->AddColumn("name", otb::AttributeTable::ATTYPE_STRING);
     tab->AddColumn("age", otb::AttributeTable::ATTYPE_INT);
     tab->AddColumn("weight", otb::AttributeTable::ATTYPE_DOUBLE);
 
-    tab->beginTransaction();
-    for (int i=0; i < 10; ++i)
+    tab->AddRows(5);
+
+    for (int r=0; r < tab->GetNumRows(); ++r)
     {
-        tab->AddRow();
+        tab->SetValue("name", r, sn.at(r).toStdString());
+        tab->SetValue("age", r, (long)sa.at(r));
+        tab->SetValue("weight", r, (double)sw.at(r));
     }
+
     tab->endTransaction();
 
 

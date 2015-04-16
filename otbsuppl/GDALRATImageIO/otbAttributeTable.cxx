@@ -47,12 +47,17 @@ int AttributeTable::GetNumRows()
 }
 
 bool
-AttributeTable::sqliteError(const int& rc)
+AttributeTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
 {
     if (rc != SQLITE_OK)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
         itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+        if (stmt)
+        {
+            sqlite3_clear_bindings(*stmt);
+            sqlite3_reset(*stmt);
+        }
         return true;
     }
     return false;
@@ -64,51 +69,57 @@ AttributeTable::ColumnExists(const std::string& sColName)
     // returns -1 if column doesn't exist, otherwise 1
 
     int idx = -1;
-    const char** pszDataType = 0;
-    const char** pszCollSeq = 0;
-    int* pbNotNull = 0;
-    int* pbPrimaryKey = 0;
-    int* pbAutoinc = 0;
+    //    const char** pszDataType = 0;
+    //    const char** pszCollSeq = 0;
+    //    int* pbNotNull = 0;
+    //    int* pbPrimaryKey = 0;
+    //    int* pbAutoinc = 0;
 
-    if (m_db == 0)
-    {
-        return idx;
-    }
+    //    if (m_db == 0)
+    //    {
+    //        return idx;
+    //    }
 
-    int rc = ::sqlite3_table_column_metadata(
-                m_db,
-                "main",
-                "nmtab",
-                sColName.c_str(),
-                pszDataType,
-                pszCollSeq,
-                pbNotNull,
-                pbPrimaryKey,
-                pbAutoinc);
+    //    int rc = ::sqlite3_table_column_metadata(
+    //                m_db,
+    //                "main",
+    //                "nmtab",
+    //                sColName.c_str(),
+    //                pszDataType,
+    //                pszCollSeq,
+    //                pbNotNull,
+    //                pbPrimaryKey,
+    //                pbAutoinc);
 
-    if (rc == SQLITE_OK)
-    {
-        return 1;
-    }
-    else
-    {
-        return -1;
-    }
+    //    if (rc == SQLITE_OK)
+    //    {
+    //        return 1;
+    //    }
+    //    else
+    //    {
+    //        return -1;
+    //    }
 
     //    itkDebugMacro(<< std::endl
     //                  << "column: " << sColName << " | "
     //                  << "data type: " << pszDataType);
 
+
+    // we do store column availability information for backward compatility
+    // with the old vector-based interface (to support the idx-based
+    // column specification in Get/Set functions), so why don't we use it
+    // then?
     // =================================================================
     // old implementation
-    //    for (int c=0; c < m_vNames.size(); ++c)
-    //    {
-    //        if (::strcmp(m_vNames[c].c_str(), sColName.c_str()) == 0)
-    //        {
-    //            idx = c;
-    //            break;
-    //        }
-    //    }
+    // =================================================================
+    for (int c=0; c < m_vNames.size(); ++c)
+    {
+        if (::strcmp(m_vNames[c].c_str(), sColName.c_str()) == 0)
+        {
+            idx = c;
+            break;
+        }
+    }
 	return idx;
 }
 
@@ -140,14 +151,25 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
     }
 
     std::stringstream ssql;
-    ssql << "ALTER TABLE main.nmtab ADD COLUMN "
-         << sColName << " " << sType << ";";
+    ssql << "ALTER TABLE main.nmtab ADD " << sColName << " "
+         << sType << ";";
 
-    int rc = ::sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
-    if (sqliteError(rc))
-    {
-        return false;
-    }
+    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    sqliteError(rc, 0);
+
+    // update admin infos
+    this->m_vNames.push_back(sColName);
+    this->m_vTypes.push_back(eType);
+
+    sqlite3_stmt* stmt;
+    ssql.str("");
+    ssql <<  "UPDATE main.nmtab SET " << sColName << " = "
+         <<  "@VAL WHERE rowidx = @IDX ;";
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            1024, &stmt, 0);
+    sqliteError(rc, &stmt);
+
+    this->m_vStmtUpdate.push_back(stmt);
 
     //	std::vector<std::string>* vstr;
     //	std::vector<long>* vint;
@@ -212,10 +234,16 @@ bool AttributeTable::AddRows(long numRows)
     char* tail = 0;
     sqlite3_stmt* stmt;
     rc = sqlite3_prepare_v2(m_db, ssql.c_str(), bufSize, &stmt, 0);
-    if (sqliteError(rc)) return false;
+    if (sqliteError(rc, 0)) return false;
 
-    rc = ::sqlite3_exec(m_db, "BEGIN TRANSACTION;", 0, 0, 0);
-    if (sqliteError(rc)) return false;
+    if (!m_InTransaction)
+    {
+        if (!this->beginTransaction())
+        {
+            sqlite3_finalize(stmt);
+            return false;
+        }
+    }
 
     for (long r=0; r < numRows; ++r, ++m_iNumRows)
     {
@@ -225,8 +253,10 @@ bool AttributeTable::AddRows(long numRows)
         sqlite3_reset(stmt);
     }
 
-    rc = ::sqlite3_exec(m_db, "END TRANSACTION;", 0, 0, 0);
-    if (sqliteError(rc)) return false;
+    if (!m_InTransaction)
+    {
+        this->endTransaction();
+    }
 
     // clean up the prepared statement
     sqlite3_finalize(stmt);
@@ -279,7 +309,7 @@ bool AttributeTable::AddRow()
          << m_iNumRows << ");";
 
     int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
-    if (sqliteError(rc)) return false;
+    if (sqliteError(rc, 0)) return false;
 
     ++m_iNumRows;
 
@@ -322,19 +352,21 @@ bool AttributeTable::AddRow()
 bool
 AttributeTable::beginTransaction()
 {
-    if (m_db == 0)
+    if (m_db == 0 || m_InTransaction)
     {
         otbWarningMacro(<< "No database connection!");
         return false;
     }
 
     int rc = sqlite3_exec(m_db, "BEGIN TRANSACTION;", 0, 0, 0);
-    if (sqliteError(rc))
+    if (sqliteError(rc, 0))
     {
+        m_InTransaction = false;
         return false;
     }
     else
     {
+        m_InTransaction = true;
         return true;
     }
 }
@@ -349,13 +381,34 @@ AttributeTable::endTransaction()
     }
 
     int rc = sqlite3_exec(m_db, "END TRANSACTION;", 0, 0, 0);
-    if (sqliteError(rc))
+    if (sqliteError(rc, 0))
     {
         return false;
     }
     else
     {
+        m_InTransaction = false;
         return true;
+    }
+}
+
+void
+AttributeTable::sqliteStepCheck(const int& rc)
+{
+    switch(rc)
+    {
+    case SQLITE_BUSY:
+        sqlite3_step(m_StmtRollback);
+        sqlite3_reset(m_StmtRollback);
+        break;
+
+    case SQLITE_ERROR:
+        sqliteError(rc, 0);
+        break;
+
+    case SQLITE_DONE:
+    default:
+        break;
     }
 }
 
@@ -363,20 +416,44 @@ AttributeTable::endTransaction()
 void
 AttributeTable::SetValue(const std::string& sColName, int idx, double value)
 {
+    // we just check for the database and leave the rest
+    // to sqlite3
     if (m_db == 0)
     {
         return;
     }
 
-    std::stringstream ssql;
-    ssql << "UPDATE main.nmtab SET "
-         << sColName << " = "
-         << value
-         << " where rowidx = "
-         << idx << ";";
+    const int& colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+    {
+        return;
+    }
+    sqlite3_stmt* stmt = m_vStmtUpdate.at(colidx);
 
-    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
-    sqliteError(rc);
+    //    int rc = sqlite3_bind_text(m_vStmtUpdate.at(colidx), 1, sColName.c_str(), -1, 0);
+    //    if (sqliteError(rc, &m_StmtUpdate)) return;
+
+    int rc = sqlite3_bind_double(stmt, 1, value);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_bind_int(stmt, 2, idx);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_step(stmt);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    //    std::stringstream ssql;
+    //    ssql << "UPDATE main.nmtab SET "
+    //         << sColName << " = "
+    //         << value
+    //         << " where rowidx = "
+    //         << idx << ";";
+
+    //    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    //    sqliteError(rc);
 
 
 //	// get the column index
@@ -417,15 +494,29 @@ AttributeTable::SetValue(const std::string& sColName, int idx, long value)
         return;
     }
 
-    std::stringstream ssql;
-    ssql << "UPDATE main.nmtab SET "
-         << sColName << " = "
-         << value
-         << " where rowidx = "
-         << idx << ";";
+    const int& colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+    {
+        return;
+    }
+    sqlite3_stmt* stmt = m_vStmtUpdate.at(colidx);
 
-    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
-    sqliteError(rc);
+
+    //    int rc = sqlite3_bind_text(m_StmtUpdate, 1, sColName.c_str(), -1, 0);
+    //    if (sqliteError(rc, &m_StmtUpdate)) return;
+
+    int rc = sqlite3_bind_int(stmt, 1, value);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_bind_int(stmt, 2, idx);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_step(stmt);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
 
 
 //	int colIdx = this->valid(sColName, idx);
@@ -460,32 +551,70 @@ AttributeTable::SetValue(const std::string& sColName, int idx, long value)
 void
 AttributeTable::SetValue(const std::string& sColName, int idx, std::string value)
 {
-	int colIdx = this->valid(sColName, idx);
-	if (colIdx < 0)
-		return;
+    if (m_db == 0)
+    {
+        return;
+    }
 
-	const int& tidx = m_vPosition[colIdx];
+    const int& colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+    {
+        return;
+    }
+    sqlite3_stmt* stmt = m_vStmtUpdate.at(colidx);
 
-	switch (m_vTypes[colIdx])
-	{
-		case ATTYPE_STRING:
-		{
-			this->m_mStringCols.at(tidx)->at(idx) = value;
-			break;
-		}
-		case ATTYPE_INT:
-		{
-			this->m_mIntCols.at(tidx)->at(idx) = ::strtol(value.c_str(),0,10);
-			break;
-		}
-		case ATTYPE_DOUBLE:
-		{
-			this->m_mDoubleCols.at(tidx)->at(idx) = ::strtod(value.c_str(),0);
-			break;
-		}
-		default:
-			break;
-	}
+    //    int rc = sqlite3_bind_text(m_StmtUpdate, 1, sColName.c_str(), -1, 0);
+    //    if (sqliteError(rc, &m_StmtUpdate)) return;
+
+    int rc = sqlite3_bind_text(stmt, 1, value.c_str(), -1, 0);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_bind_int(stmt, 2, idx);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_step(stmt);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+
+//    std::stringstream ssql;
+//    ssql << "UPDATE main.nmtab SET "
+//         << sColName << " = "
+//         << value
+//         << " where rowidx = "
+//         << idx << ";";
+
+//    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+//    sqliteError(rc);
+
+    //	int colIdx = this->valid(sColName, idx);
+    //	if (colIdx < 0)
+    //		return;
+
+    //	const int& tidx = m_vPosition[colIdx];
+
+    //	switch (m_vTypes[colIdx])
+    //	{
+    //		case ATTYPE_STRING:
+    //		{
+    //			this->m_mStringCols.at(tidx)->at(idx) = value;
+    //			break;
+    //		}
+    //		case ATTYPE_INT:
+    //		{
+    //			this->m_mIntCols.at(tidx)->at(idx) = ::strtol(value.c_str(),0,10);
+    //			break;
+    //		}
+    //		case ATTYPE_DOUBLE:
+    //		{
+    //			this->m_mDoubleCols.at(tidx)->at(idx) = ::strtod(value.c_str(),0);
+    //			break;
+    //		}
+    //		default:
+    //			break;
+    //	}
 }
 
 double AttributeTable::GetDblValue(const std::string& sColName, int idx)
@@ -711,41 +840,43 @@ AttributeTable::RemoveColumn(int col)
 	if (col < 0 || col > this->m_vNames.size()-1)
 		return false;
 
-	int tidx = m_vPosition[col];
-	switch(this->m_vTypes[col])
-	{
-	case ATTYPE_INT:
-		delete this->m_mIntCols.at(tidx);
-		this->m_mIntCols.erase(this->m_mIntCols.begin()+tidx);
-		break;
-	case ATTYPE_DOUBLE:
-		delete this->m_mDoubleCols.at(tidx);
-		this->m_mDoubleCols.erase(this->m_mDoubleCols.begin()+tidx);
-		break;
-	case ATTYPE_STRING:
-		delete this->m_mStringCols.at(tidx);
-		this->m_mStringCols.erase(this->m_mStringCols.begin()+tidx);
-		break;
-	default:
-		return false;
-		break;
-	}
+    this->RemoveColumn(m_vNames[col]);
 
-	// house keeping: adjust type specific array indices
-	// for each column of the same type to the right of
-	// the one being removed
-	for (int c=col+1; c < this->m_vNames.size(); ++c)
-	{
-		if (m_vTypes[c] == m_vTypes[col])
-		{
-			--m_vPosition[c];
-		}
-	}
+    //	int tidx = m_vPosition[col];
+    //	switch(this->m_vTypes[col])
+    //	{
+    //	case ATTYPE_INT:
+    //		delete this->m_mIntCols.at(tidx);
+    //		this->m_mIntCols.erase(this->m_mIntCols.begin()+tidx);
+    //		break;
+    //	case ATTYPE_DOUBLE:
+    //		delete this->m_mDoubleCols.at(tidx);
+    //		this->m_mDoubleCols.erase(this->m_mDoubleCols.begin()+tidx);
+    //		break;
+    //	case ATTYPE_STRING:
+    //		delete this->m_mStringCols.at(tidx);
+    //		this->m_mStringCols.erase(this->m_mStringCols.begin()+tidx);
+    //		break;
+    //	default:
+    //		return false;
+    //		break;
+    //	}
+
+    //	// house keeping: adjust type specific array indices
+    //	// for each column of the same type to the right of
+    //	// the one being removed
+    //	for (int c=col+1; c < this->m_vNames.size(); ++c)
+    //	{
+    //		if (m_vTypes[c] == m_vTypes[col])
+    //		{
+    //			--m_vPosition[c];
+    //		}
+    //	}
 
 	// now remove any traces of the column in the admin arrays
-	this->m_vNames.erase(this->m_vNames.begin() + col);
-	this->m_vTypes.erase(this->m_vTypes.begin() + col);
-	this->m_vPosition.erase(this->m_vPosition.begin() + col);
+    //	this->m_vNames.erase(this->m_vNames.begin() + col);
+    //	this->m_vTypes.erase(this->m_vTypes.begin() + col);
+    //	this->m_vPosition.erase(this->m_vPosition.begin() + col);
 
 	return true;
 }
@@ -753,11 +884,53 @@ AttributeTable::RemoveColumn(int col)
 bool
 AttributeTable::RemoveColumn(const std::string& name)
 {
-	int idx = this->ColumnExists(name);
-	if (idx < 0)
-		return false;
+    const int idx = ColumnExists(name);
+    if (idx < 0)
+    {
+        return true;
+    }
 
-	return this->RemoveColumn(idx);
+    std::vector<std::string> colsvec = this->m_vNames;
+    colsvec.erase(colsvec.begin()+idx);
+
+    std::stringstream collist;
+    std::stringstream ssql;
+
+    for (int c=0; c < colsvec.size(); ++c)
+    {
+        ssql << colsvec.at(c);
+        if (c < colsvec.size()-1)
+        {
+            collist << ",";
+        }
+    }
+
+    ssql << "BEGIN TRANSACTION;"
+         << "CREATE TEMPORARY TABLE main.t1_backup(" << collist << ");"
+         << "INSERT INTO main.t1_backup SELECT "     << collist << " FROM main.nmtab;"
+         << "DROP TABLE main.nmtab;"
+         << "CREATE TABLE main.nmtab(" << collist << ");"
+         << "INSERT INTO main.nmtab SELECT " << collist << " FROM main.t1_backup;"
+         << "DROP TABLE t1_backup"
+         << "END TRANSACTION";
+
+    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    if (sqliteError(rc, 0))
+    {
+        return false;
+    }
+
+    this->m_vNames.erase(m_vNames.begin()+idx);
+    this->m_vTypes.erase(m_vTypes.begin()+idx);
+
+    return true;
+
+
+//	int idx = this->ColumnExists(name);
+//	if (idx < 0)
+//		return false;
+
+//	return this->RemoveColumn(idx);
 }
 
 void AttributeTable::SetValue(int col, int row, double value)
@@ -1063,6 +1236,9 @@ AttributeTable::createTable(std::string filename)
 
     itkDebugMacro(<< "temp database: " << m_dbFileName);
 
+    // ============================================================
+    // create the host data base
+    // ============================================================
     int rc = ::sqlite3_open_v2(m_dbFileName.c_str(),
                                &m_db,
                                SQLITE_OPEN_URI |
@@ -1081,6 +1257,9 @@ AttributeTable::createTable(std::string filename)
         return;
     }
 
+    // ============================================================
+    // create the nmtab table
+    // ============================================================
     uri.str("");
     uri << "begin transaction;";
     uri << "CREATE TABLE nmtab (rowidx INTEGER PRIMARY KEY);";
@@ -1097,6 +1276,27 @@ AttributeTable::createTable(std::string filename)
         ::sqlite3_close(m_db);
         m_db = 0;
     }
+
+    // ============================================================
+    // prepare statements for recurring tasks
+    // ============================================================
+    //    rc = sqlite3_prepare_v2(m_db, "ALTER TABLE main.nmtab ADD @COL @TYP ;",
+    //                                256, &m_StmtAddColl, 0);
+    //    sqliteError(rc, &m_StmtAddColl);
+
+    //    rc = sqlite3_prepare_v2(m_db, "UPDATE main.nmtab SET @COL = @VAL WHERE rowidx = @IDX ;",
+    //                            1024, &m_StmtUpdate, 0);
+    //    sqliteError(rc, &m_StmtUpdate);
+
+    rc = sqlite3_prepare_v2(m_db, "BEGIN TRANSACTION;", 100, &m_StmtBegin, 0);
+    sqliteError(rc, &m_StmtBegin);
+
+    rc = sqlite3_prepare_v2(m_db, "END TRANSACTION;", 100, &m_StmtEnd, 0);
+    sqliteError(rc, &m_StmtEnd);
+
+    rc = sqlite3_prepare_v2(m_db, "ROLLBACK TRANSACTION;", 100, &m_StmtRollback, 0);
+    sqliteError(rc, &m_StmtRollback);
+
 }
 
 AttributeTable::AttributeTable()
@@ -1105,7 +1305,8 @@ AttributeTable::AttributeTable()
 	  m_iNodata(-std::numeric_limits<long>::max()),
 	  m_dNodata(-std::numeric_limits<double>::max()),
       m_sNodata("NULL"),
-      m_db(0)
+      m_db(0),
+      m_InTransaction(false)
 {
     this->createTable("");
 }
@@ -1113,6 +1314,17 @@ AttributeTable::AttributeTable()
 // clean up
 AttributeTable::~AttributeTable()
 {
+    //sqlite3_finalize(m_StmtAddColl);
+    //sqlite3_finalize(m_StmtUpdate);
+    sqlite3_finalize(m_StmtBegin);
+    sqlite3_finalize(m_StmtEnd);
+    sqlite3_finalize(m_StmtRollback);
+
+    for (int v=0; v < m_vStmtUpdate.size(); ++v)
+    {
+        sqlite3_finalize(m_vStmtUpdate.at(v));
+    }
+
     if (m_db != 0)
     {
         ::sqlite3_close(m_db);

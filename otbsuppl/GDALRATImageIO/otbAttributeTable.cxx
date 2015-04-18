@@ -49,6 +49,8 @@ int AttributeTable::GetNumRows()
 bool
 AttributeTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
 {
+    this->DebugOn();
+
     if (rc != SQLITE_OK)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
@@ -161,15 +163,36 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
     this->m_vNames.push_back(sColName);
     this->m_vTypes.push_back(eType);
 
-    sqlite3_stmt* stmt;
+    // prepare an update statement for this column
+    sqlite3_stmt* stmt_upd;
     ssql.str("");
     ssql <<  "UPDATE main.nmtab SET " << sColName << " = "
          <<  "@VAL WHERE rowidx = @IDX ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            1024, &stmt, 0);
-    sqliteError(rc, &stmt);
+                            1024, &stmt_upd, 0);
+    sqliteError(rc, &stmt_upd);
+    this->m_vStmtUpdate.push_back(stmt_upd);
 
-    this->m_vStmtUpdate.push_back(stmt);
+    // prepare a get value statement for this column
+    sqlite3_stmt* stmt_sel;
+    ssql.str("");
+    ssql <<  "SELECT " << sColName << " from main.nmtab"
+         <<  " WHERE rowidx = @IDX ;";
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            1024, &stmt_sel, 0);
+    sqliteError(rc, &stmt_sel);
+    this->m_vStmtSelect.push_back(stmt_sel);
+
+    // prepare a get rowidx by value statement for this column
+    sqlite3_stmt* stmt_rowidx;
+    ssql.str("");
+    ssql <<  "SELECT rowidx from main.nmtab"
+         <<  " WHERE " << sColName << " = @IDX ;";
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            1024, &stmt_rowidx, 0);
+    sqliteError(rc, &stmt_rowidx);
+    this->m_vStmtGetRowidx.push_back(stmt_rowidx);
+
 
     //	std::vector<std::string>* vstr;
     //	std::vector<long>* vint;
@@ -229,13 +252,14 @@ bool AttributeTable::AddRows(long numRows)
 
     int rc;
     int bufSize = 256;
-    std::string ssql = "INSERT INTO main.nmtab (rowidx) VALUES (?1)";
+    std::string ssql = "INSERT INTO main.nmtab (rowidx) VALUES (@IDX)";
 
     char* tail = 0;
     sqlite3_stmt* stmt;
     rc = sqlite3_prepare_v2(m_db, ssql.c_str(), bufSize, &stmt, 0);
     if (sqliteError(rc, 0)) return false;
 
+    bool bEndTransaction = false;
     if (!m_InTransaction)
     {
         if (!this->beginTransaction())
@@ -243,6 +267,7 @@ bool AttributeTable::AddRows(long numRows)
             sqlite3_finalize(stmt);
             return false;
         }
+        bEndTransaction = true;
     }
 
     for (long r=0; r < numRows; ++r, ++m_iNumRows)
@@ -253,7 +278,7 @@ bool AttributeTable::AddRows(long numRows)
         sqlite3_reset(stmt);
     }
 
-    if (!m_InTransaction)
+    if (bEndTransaction)
     {
         this->endTransaction();
     }
@@ -624,25 +649,45 @@ double AttributeTable::GetDblValue(const std::string& sColName, int idx)
 	if (colidx < 0 || idx < 0 || idx > m_iNumRows)
 		return m_dNodata;
 
-	const int& tidx = m_vPosition[colidx];
-	double ret;
-	switch(m_vTypes[colidx])
-	{
-		case ATTYPE_STRING:
-			ret = ::strtod(this->m_mStringCols.at(tidx)->at(idx).c_str(),0);
-			break;
-		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(tidx)->at(idx);
-			break;
-		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(tidx)->at(idx);
-			break;
-		default:
-			ret = this->m_dNodata;
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtSelect.at(colidx);
+    int rc = sqlite3_bind_int(stmt, 1, idx);
+    if (sqliteError(rc, &stmt)) return m_dNodata;
 
-	return ret;
+    double ret = m_dNodata;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        ret = sqlite3_column_double(stmt, 0);
+    }
+    else
+    {
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    return ret;
+
+    //	const int& tidx = m_vPosition[colidx];
+    //	double ret;
+    //	switch(m_vTypes[colidx])
+    //	{
+    //		case ATTYPE_STRING:
+    //			ret = ::strtod(this->m_mStringCols.at(tidx)->at(idx).c_str(),0);
+    //			break;
+    //		case ATTYPE_INT:
+    //			ret = this->m_mIntCols.at(tidx)->at(idx);
+    //			break;
+    //		case ATTYPE_DOUBLE:
+    //			ret = this->m_mDoubleCols.at(tidx)->at(idx);
+    //			break;
+    //		default:
+    //			ret = this->m_dNodata;
+    //			break;
+    //	}
+
+    //	return ret;
 }
 
 long
@@ -653,25 +698,45 @@ AttributeTable::GetIntValue(const std::string& sColName, int idx)
 	if (colidx < 0 || idx < 0 || idx > m_iNumRows)
 		return m_iNodata;
 
-	const int& tidx = m_vPosition[colidx];
-	long ret;
-	switch(m_vTypes[colidx])
-	{
-		case ATTYPE_STRING:
-			ret = ::strtol(this->m_mStringCols.at(tidx)->at(idx).c_str(),0,10);
-			break;
-		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(tidx)->at(idx);
-			break;
-		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(tidx)->at(idx);
-			break;
-		default:
-			ret = this->m_iNodata;
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtSelect.at(colidx);
+    int rc = sqlite3_bind_int(stmt, 1, idx);
+    if (sqliteError(rc, &stmt)) return m_iNodata;
 
-	return ret;
+    long ret = m_iNodata;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        ret = sqlite3_column_int(stmt, 0);
+    }
+    else
+    {
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    return ret;
+
+    //	const int& tidx = m_vPosition[colidx];
+    //	long ret;
+    //	switch(m_vTypes[colidx])
+    //	{
+    //		case ATTYPE_STRING:
+    //			ret = ::strtol(this->m_mStringCols.at(tidx)->at(idx).c_str(),0,10);
+    //			break;
+    //		case ATTYPE_INT:
+    //			ret = this->m_mIntCols.at(tidx)->at(idx);
+    //			break;
+    //		case ATTYPE_DOUBLE:
+    //			ret = this->m_mDoubleCols.at(tidx)->at(idx);
+    //			break;
+    //		default:
+    //			ret = this->m_iNodata;
+    //			break;
+    //	}
+
+    //	return ret;
 }
 
 std::string
@@ -682,25 +747,48 @@ AttributeTable::GetStrValue(const std::string& sColName, int idx)
 	if (colidx < 0 || idx < 0 || idx > m_iNumRows)
 		return m_sNodata;
 
-	const int& tidx = m_vPosition[colidx];
-	std::stringstream ret;
-	switch(m_vTypes[colidx])
-	{
-		case ATTYPE_STRING:
-			ret << this->m_mStringCols.at(tidx)->at(idx);
-			break;
-		case ATTYPE_INT:
-			ret << this->m_mIntCols.at(tidx)->at(idx);
-			break;
-		case ATTYPE_DOUBLE:
-			ret << this->m_mDoubleCols.at(tidx)->at(idx);
-			break;
-		default:
-			ret << this->m_sNodata;
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtSelect.at(colidx);
+    int rc = sqlite3_bind_int(stmt, 1, idx);
+    if (sqliteError(rc, &stmt)) return m_sNodata;
 
-	return ret.str();
+    std::stringstream ret;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        const unsigned char* sval = sqlite3_column_text(stmt, 0);
+        ret << sval;
+    }
+    else
+    {
+        ret << m_sNodata;
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    return ret.str();
+
+
+    //	const int& tidx = m_vPosition[colidx];
+    //	std::stringstream ret;
+    //	switch(m_vTypes[colidx])
+    //	{
+    //		case ATTYPE_STRING:
+    //			ret << this->m_mStringCols.at(tidx)->at(idx);
+    //			break;
+    //		case ATTYPE_INT:
+    //			ret << this->m_mIntCols.at(tidx)->at(idx);
+    //			break;
+    //		case ATTYPE_DOUBLE:
+    //			ret << this->m_mDoubleCols.at(tidx)->at(idx);
+    //			break;
+    //		default:
+    //			ret << this->m_sNodata;
+    //			break;
+    //	}
+
+    //	return ret.str();
 }
 
 void*
@@ -742,55 +830,93 @@ AttributeTable::GetRowIdx(const std::string& column, void* value)
 	if (colidx < 0)
 		return idx;
 
-	switch(m_vTypes[colidx])
-	{
-	case ATTYPE_STRING:
-		{
-			std::string* strings = static_cast<std::string*>(GetColumnPointer(colidx));
-			std::string* strVal = static_cast<std::string*>(value);
-			for (int r=0; r < m_iNumRows; ++r)
-			{
-				if (*strVal == strings[r])
-				{
-					idx = r;
-					break;
-				}
-			}
-		}
-		break;
+    sqlite3_stmt* stmt = m_vStmtGetRowidx.at(colidx);
+    int rc;
+    switch(m_vTypes[colidx])
+    {
+    case ATTYPE_DOUBLE:
+        rc = sqlite3_bind_double(stmt, 1, *(static_cast<double*>(value)));
+        break;
+    case ATTYPE_INT:
+        rc = sqlite3_bind_int(stmt, 1, *(static_cast<long*>(value)));
+        break;
+    case ATTYPE_STRING:
+        rc = sqlite3_bind_text(stmt, 1,
+                               (static_cast<std::string*>(value))->c_str(),
+                               -1, 0);
+        break;
+    default:
+        return idx;
+        break;
+    }
 
-	case ATTYPE_INT:
-		{
-			long* longValues = static_cast<long*>(GetColumnPointer(colidx));
-			long* longVal = static_cast<long*>(value);
-			for (int r=0; r < m_iNumRows; ++r)
-			{
-				if (*longVal == longValues[r])
-				{
-					idx = r;
-					break;
-				}
-			}
-		}
-		break;
+    if (sqliteError(rc, &stmt)) return idx;
 
-	case ATTYPE_DOUBLE:
-		{
-			double* doubleValues = static_cast<double*>(GetColumnPointer(colidx));
-			double* doubleVal = static_cast<double*>(value);
-			for (int r=0; r < m_iNumRows; ++r)
-			{
-				if (*doubleVal == doubleValues[r])
-				{
-					idx = r;
-					break;
-				}
-			}
-		}
-		break;
-	}
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        idx = sqlite3_column_int(stmt, 0);
+    }
+    else
+    {
+        sqliteStepCheck(rc);
+    }
 
-	return idx;
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    return idx;
+
+
+    //	switch(m_vTypes[colidx])
+    //	{
+    //	case ATTYPE_STRING:
+    //		{
+    //			std::string* strings = static_cast<std::string*>(GetColumnPointer(colidx));
+    //			std::string* strVal = static_cast<std::string*>(value);
+    //			for (int r=0; r < m_iNumRows; ++r)
+    //			{
+    //				if (*strVal == strings[r])
+    //				{
+    //					idx = r;
+    //					break;
+    //				}
+    //			}
+    //		}
+    //		break;
+
+    //	case ATTYPE_INT:
+    //		{
+    //			long* longValues = static_cast<long*>(GetColumnPointer(colidx));
+    //			long* longVal = static_cast<long*>(value);
+    //			for (int r=0; r < m_iNumRows; ++r)
+    //			{
+    //				if (*longVal == longValues[r])
+    //				{
+    //					idx = r;
+    //					break;
+    //				}
+    //			}
+    //		}
+    //		break;
+
+    //	case ATTYPE_DOUBLE:
+    //		{
+    //			double* doubleValues = static_cast<double*>(GetColumnPointer(colidx));
+    //			double* doubleVal = static_cast<double*>(value);
+    //			for (int r=0; r < m_iNumRows; ++r)
+    //			{
+    //				if (*doubleVal == doubleValues[r])
+    //				{
+    //					idx = r;
+    //					break;
+    //				}
+    //			}
+    //		}
+    //		break;
+    //	}
+
+    //	return idx;
 }
 
 
@@ -941,29 +1067,44 @@ void AttributeTable::SetValue(int col, int row, double value)
 	if (row < 0 || row >= m_iNumRows)
 		return;
 
-	const int& tidx = m_vPosition[col];
-	switch (m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-		{
-			std::stringstream sval;
-			sval << value;
-			this->m_mStringCols.at(tidx)->at(row) = sval.str();
-			break;
-		}
-		case ATTYPE_INT:
-		{
-			this->m_mIntCols.at(tidx)->at(row) = value;
-			break;
-		}
-		case ATTYPE_DOUBLE:
-		{
-			this->m_mDoubleCols.at(tidx)->at(row) = value;
-			break;
-		}
-		default:
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtUpdate.at(col);
+
+    int rc = sqlite3_bind_double(stmt, 1, value);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_bind_int(stmt, 2, row);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_step(stmt);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+
+//	const int& tidx = m_vPosition[col];
+//	switch (m_vTypes[col])
+//	{
+//		case ATTYPE_STRING:
+//		{
+//			std::stringstream sval;
+//			sval << value;
+//			this->m_mStringCols.at(tidx)->at(row) = sval.str();
+//			break;
+//		}
+//		case ATTYPE_INT:
+//		{
+//			this->m_mIntCols.at(tidx)->at(row) = value;
+//			break;
+//		}
+//		case ATTYPE_DOUBLE:
+//		{
+//			this->m_mDoubleCols.at(tidx)->at(row) = value;
+//			break;
+//		}
+//		default:
+//			break;
+//	}
 }
 
 void AttributeTable::SetValue(int col, int row, long value)
@@ -974,29 +1115,44 @@ void AttributeTable::SetValue(int col, int row, long value)
 	if (row < 0 || row >= m_iNumRows)
 		return;
 
-	const int& tidx = m_vPosition[col];
-	switch (m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-		{
-			std::stringstream sval;
-			sval << value;
-			this->m_mStringCols.at(tidx)->at(row) = sval.str();
-			break;
-		}
-		case ATTYPE_INT:
-		{
-			this->m_mIntCols.at(tidx)->at(row) = value;
-			break;
-		}
-		case ATTYPE_DOUBLE:
-		{
-			this->m_mDoubleCols.at(tidx)->at(row) = value;
-			break;
-		}
-		default:
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtUpdate.at(col);
+
+    int rc = sqlite3_bind_int(stmt, 1, value);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_bind_int(stmt, 2, row);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_step(stmt);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+
+    //	const int& tidx = m_vPosition[col];
+    //	switch (m_vTypes[col])
+    //	{
+    //		case ATTYPE_STRING:
+    //		{
+    //			std::stringstream sval;
+    //			sval << value;
+    //			this->m_mStringCols.at(tidx)->at(row) = sval.str();
+    //			break;
+    //		}
+    //		case ATTYPE_INT:
+    //		{
+    //			this->m_mIntCols.at(tidx)->at(row) = value;
+    //			break;
+    //		}
+    //		case ATTYPE_DOUBLE:
+    //		{
+    //			this->m_mDoubleCols.at(tidx)->at(row) = value;
+    //			break;
+    //		}
+    //		default:
+    //			break;
+    //	}
 }
 
 void AttributeTable::SetValue(int col, int row, std::string value)
@@ -1007,27 +1163,42 @@ void AttributeTable::SetValue(int col, int row, std::string value)
 	if (row < 0 || row >= m_iNumRows)
 		return;
 
-	const int& tidx = m_vPosition[col];
-	switch (m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-		{
-			this->m_mStringCols.at(tidx)->at(row) = value;
-			break;
-		}
-		case ATTYPE_INT:
-		{
-			this->m_mIntCols.at(tidx)->at(row) = ::strtol(value.c_str(), 0, 10);
-			break;
-		}
-		case ATTYPE_DOUBLE:
-		{
-			this->m_mDoubleCols.at(tidx)->at(row) = ::strtod(value.c_str(), 0);
-			break;
-		}
-		default:
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtUpdate.at(col);
+
+    int rc = sqlite3_bind_text(stmt, 1, value.c_str(), -1, 0);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_bind_int(stmt, 2, row);
+    if (sqliteError(rc, &stmt)) return;
+
+    rc = sqlite3_step(stmt);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+
+//	const int& tidx = m_vPosition[col];
+//	switch (m_vTypes[col])
+//	{
+//		case ATTYPE_STRING:
+//		{
+//			this->m_mStringCols.at(tidx)->at(row) = value;
+//			break;
+//		}
+//		case ATTYPE_INT:
+//		{
+//			this->m_mIntCols.at(tidx)->at(row) = ::strtol(value.c_str(), 0, 10);
+//			break;
+//		}
+//		case ATTYPE_DOUBLE:
+//		{
+//			this->m_mDoubleCols.at(tidx)->at(row) = ::strtod(value.c_str(), 0);
+//			break;
+//		}
+//		default:
+//			break;
+//	}
 }
 
 double AttributeTable::GetDblValue(int col, int row)
@@ -1038,25 +1209,46 @@ double AttributeTable::GetDblValue(int col, int row)
 	if (row < 0 || row >= m_iNumRows)
 		return m_dNodata;
 
-	const int& tidx = m_vPosition[col];
-	double ret;
-	switch(m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-			ret = ::strtod(this->m_mStringCols.at(tidx)->at(row).c_str(),0);
-			break;
-		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(tidx)->at(row);
-			break;
-		default:
-			ret = this->m_dNodata;
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtSelect.at(col);
+    int rc = sqlite3_bind_int(stmt, 1, row);
+    if (sqliteError(rc, &stmt)) return m_dNodata;
 
-	return ret;
+    double ret = m_dNodata;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        ret = sqlite3_column_double(stmt, 0);
+    }
+    else
+    {
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    return ret;
+
+
+//	const int& tidx = m_vPosition[col];
+//	double ret;
+//	switch(m_vTypes[col])
+//	{
+//		case ATTYPE_STRING:
+//			ret = ::strtod(this->m_mStringCols.at(tidx)->at(row).c_str(),0);
+//			break;
+//		case ATTYPE_INT:
+//			ret = this->m_mIntCols.at(tidx)->at(row);
+//			break;
+//		case ATTYPE_DOUBLE:
+//			ret = this->m_mDoubleCols.at(tidx)->at(row);
+//			break;
+//		default:
+//			ret = this->m_dNodata;
+//			break;
+//	}
+
+//	return ret;
 }
 
 long AttributeTable::GetIntValue(int col, int row)
@@ -1067,25 +1259,46 @@ long AttributeTable::GetIntValue(int col, int row)
 	if (row < 0 || row >= m_iNumRows)
 		return m_iNodata;
 
-	const int& tidx = m_vPosition[col];
-	long ret;
-	switch(m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-			ret = ::strtol(this->m_mStringCols.at(tidx)->at(row).c_str(),0,10);
-			break;
-		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(tidx)->at(row);
-			break;
-		default:
-			ret = this->m_iNodata;
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtSelect.at(col);
+    int rc = sqlite3_bind_int(stmt, 1, row);
+    if (sqliteError(rc, &stmt)) return m_iNodata;
 
-	return ret;
+    long ret = m_iNodata;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        ret = sqlite3_column_int(stmt, 0);
+    }
+    else
+    {
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    return ret;
+
+
+    //	const int& tidx = m_vPosition[col];
+    //	long ret;
+    //	switch(m_vTypes[col])
+    //	{
+    //		case ATTYPE_STRING:
+    //			ret = ::strtol(this->m_mStringCols.at(tidx)->at(row).c_str(),0,10);
+    //			break;
+    //		case ATTYPE_INT:
+    //			ret = this->m_mIntCols.at(tidx)->at(row);
+    //			break;
+    //		case ATTYPE_DOUBLE:
+    //			ret = this->m_mDoubleCols.at(tidx)->at(row);
+    //			break;
+    //		default:
+    //			ret = this->m_iNodata;
+    //			break;
+    //	}
+
+    //	return ret;
 
 }
 
@@ -1097,25 +1310,48 @@ std::string AttributeTable::GetStrValue(int col, int row)
 	if (row < 0 || row >= m_iNumRows)
 		return m_sNodata;
 
-	const int& tidx = m_vPosition[col];
-	std::stringstream ret;
-	switch(m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-			ret << this->m_mStringCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_INT:
-			ret << this->m_mIntCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_DOUBLE:
-			ret << this->m_mDoubleCols.at(tidx)->at(row);
-			break;
-		default:
-			ret << this->m_sNodata;
-			break;
-	}
+    sqlite3_stmt* stmt = m_vStmtSelect.at(col);
+    int rc = sqlite3_bind_int(stmt, 1, row);
+    if (sqliteError(rc, &stmt)) return m_sNodata;
 
-	return ret.str();
+    std::stringstream ret;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        const unsigned char* sval = sqlite3_column_text(stmt, 0);
+        ret << sval;
+    }
+    else
+    {
+        ret << m_sNodata;
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    return ret.str();
+
+
+//	const int& tidx = m_vPosition[col];
+//	std::stringstream ret;
+//	switch(m_vTypes[col])
+//	{
+//		case ATTYPE_STRING:
+//			ret << this->m_mStringCols.at(tidx)->at(row);
+//			break;
+//		case ATTYPE_INT:
+//			ret << this->m_mIntCols.at(tidx)->at(row);
+//			break;
+//		case ATTYPE_DOUBLE:
+//			ret << this->m_mDoubleCols.at(tidx)->at(row);
+//			break;
+//		default:
+//			ret << this->m_sNodata;
+//			break;
+//	}
+
+//	return ret.str();
 
 }
 
@@ -1277,6 +1513,41 @@ AttributeTable::createTable(std::string filename)
         m_db = 0;
     }
 
+    // add rowidx column to list of columns
+    m_vNames.push_back("rowidx");
+    m_vTypes.push_back(AttributeTable::ATTYPE_INT);
+
+    //==================================================
+    // 'dummy' statements for rowidx set/get
+    //==================================================
+
+    // we prepare those  statements simply for synchorinsing
+    // column index with vector indices for the prepared
+    // statements (update & select); actually it doesn't really
+    // make sense to use those, however you never know what the
+    // user wants and this ways we avoid any segfaults
+
+    // prepare an update statement for this column
+    sqlite3_stmt* stmt_upd;
+    std::stringstream ssql;
+    ssql <<  "UPDATE main.nmtab SET rowidx = "
+         <<  "@VAL WHERE rowidx = @IDX ;";
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            1024, &stmt_upd, 0);
+    sqliteError(rc, &stmt_upd);
+    this->m_vStmtUpdate.push_back(stmt_upd);
+
+    // prepare a get value statement for this column
+    sqlite3_stmt* stmt_sel;
+    ssql.str("");
+    ssql <<  "SELECT rowidx from main.nmtab"
+         <<  " WHERE rowidx = @IDX ;";
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            1024, &stmt_sel, 0);
+    sqliteError(rc, &stmt_sel);
+    this->m_vStmtSelect.push_back(stmt_sel);
+
+
     // ============================================================
     // prepare statements for recurring tasks
     // ============================================================
@@ -1323,6 +1594,7 @@ AttributeTable::~AttributeTable()
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {
         sqlite3_finalize(m_vStmtUpdate.at(v));
+        sqlite3_finalize(m_vStmtSelect.at(v));
     }
 
     if (m_db != 0)

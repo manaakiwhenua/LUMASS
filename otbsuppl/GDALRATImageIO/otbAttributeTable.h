@@ -131,7 +131,9 @@ protected:
     std::string m_dbFileName;
 
     std::vector<sqlite3_stmt*> m_vStmtUpdate;
-    //sqlite3_stmt* m_StmtAddColl;
+    std::vector<sqlite3_stmt*> m_vStmtSelect;
+    std::vector<sqlite3_stmt*> m_vStmtGetRowidx;
+
     sqlite3_stmt* m_StmtBegin;
     sqlite3_stmt* m_StmtEnd;
     sqlite3_stmt* m_StmtRollback;

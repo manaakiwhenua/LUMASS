@@ -1605,7 +1605,7 @@ void OtbModellerWin::test()
     NMDebugAI(<< "temp database: " << uri.str() << std::endl);
 
     QList<QString> sn;
-    sn << "''Hans''" << "''Franz''" << "''Ganz''" << "''Maus''" << "''Haus''";
+    sn << "Hans" << "Franz" << "Ganz" << "Maus" << "Haus";
     QList<long> sa;
     sa << 50 << 4 << 35 << 17 << 42;
     QList<double> sw;
@@ -1615,22 +1615,51 @@ void OtbModellerWin::test()
 
     tab->beginTransaction();
 
+    NMDebugAI(<< "adding columns ..." << std::endl);
     tab->AddColumn("name", otb::AttributeTable::ATTYPE_STRING);
     tab->AddColumn("age", otb::AttributeTable::ATTYPE_INT);
     tab->AddColumn("weight", otb::AttributeTable::ATTYPE_DOUBLE);
 
-    tab->AddRows(5);
+    NMDebugAI(<< "adding rows ... " << std::endl);
+    tab->AddRows(100000);
 
-    for (int r=0; r < tab->GetNumRows(); ++r)
+    NMDebugAI(<< "setting values ..." << std::endl);
+    int i=0;
+    for (int r=0; r < tab->GetNumRows(); ++r, ++i)
     {
-        tab->SetValue("name", r, sn.at(r).toStdString());
-        tab->SetValue("age", r, (long)sa.at(r));
-        tab->SetValue("weight", r, (double)sw.at(r));
+        if (i == 5) i = 0;
+        tab->SetValue("name", r, sn.at(i).toStdString());
+        tab->SetValue("age", r, (long)sa.at(i));
+        tab->SetValue("weight", r, (double)sw.at(i));
     }
 
     tab->endTransaction();
 
-
+    for (int r=0; r < tab->GetNumRows(); ++r)
+    {
+        NMDebugAI(<< "row #" << r << std::endl);
+        NMDebugAI(<< "------------------------" << std::endl);
+        for (int col=0; col < tab->GetNumCols(); ++col)
+        {
+            std::string colname = tab->GetColumnName(col);
+            switch(tab->GetColumnType(col))
+            {
+            case otb::AttributeTable::ATTYPE_DOUBLE:
+                NMDebugAI( << colname << "="
+                           << tab->GetDblValue(colname, r) << std::endl);
+                break;
+            case otb::AttributeTable::ATTYPE_INT:
+                NMDebugAI( << colname << "="
+                           << tab->GetIntValue(colname, r) << std::endl);
+                break;
+            case otb::AttributeTable::ATTYPE_STRING:
+                NMDebugAI( << colname << "="
+                           << tab->GetStrValue(colname, r) << std::endl);
+                break;
+            }
+        }
+        NMDebug(<< std::endl);
+    }
 
 
 //    NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);

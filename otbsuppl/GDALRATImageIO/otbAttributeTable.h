@@ -113,7 +113,8 @@ public:
     /// SQLite support functions
     std::string getDbFileName() {return this->m_dbFileName;}
     sqlite3* getDbConnection() {return this->m_db;}
-
+    bool prepareBulkSet(const std::vector<std::string>& colNames, const bool& bInsert);
+    bool doBulkSet(const std::vector<std::string>& values, const int& row);
     bool beginTransaction();
     bool endTransaction();
 
@@ -133,11 +134,15 @@ protected:
     std::vector<sqlite3_stmt*> m_vStmtUpdate;
     std::vector<sqlite3_stmt*> m_vStmtSelect;
     std::vector<sqlite3_stmt*> m_vStmtGetRowidx;
+    sqlite3_stmt* m_StmtBulkSet;
+    std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkSet;
 
     sqlite3_stmt* m_StmtBegin;
     sqlite3_stmt* m_StmtEnd;
     sqlite3_stmt* m_StmtRollback;
     bool m_InTransaction;
+
+    const char* m_CurPrepStmt;
 
     void createTable(std::string filename);
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);

@@ -55,7 +55,7 @@ AttributeTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
         itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
-        if (stmt)
+        if (*stmt)
         {
             sqlite3_clear_bindings(*stmt);
             sqlite3_reset(*stmt);
@@ -236,6 +236,142 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
     //	this->m_vTypes.push_back(eType);
 
 	return true;
+}
+
+bool
+AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
+                             const bool& bInsert)
+{
+    if (m_db == 0)
+    {
+        return false;
+    }
+
+    m_vTypesBulkSet.clear();
+    for (int i=0; i < colNames.size(); ++i)
+    {
+        const int idx = this->ColumnExists(colNames.at(i));
+        if (idx < 0)
+        {
+            otbWarningMacro(<< "Column '" << colNames.at(i)
+                            << "' does not exist in the table!");
+            return false;
+        }
+        m_vTypesBulkSet.push_back(this->GetColumnType(idx));
+    }
+
+    std::stringstream ssql;
+    if (bInsert)
+    {
+        ssql << "INSERT INTO main.nmtab (";
+        for (int c=0; c < colNames.size(); ++c)
+        {
+            ssql << colNames.at(c);
+            if (c < colNames.size()-1)
+            {
+                ssql << ",";
+            }
+        }
+        ssql << ") VALUES (";
+        for (int c=0; c < colNames.size(); ++c)
+        {
+            ssql << "?" << c+1;
+            if (c < colNames.size()-1)
+            {
+                ssql << ",";
+            }
+        }
+        ssql << ");";
+    }
+    else
+    {
+        ssql << "UPDATE main.nmtab SET ";
+        for (int c=0; c < colNames.size(); ++c)
+        {
+            ssql << colNames.at(c) << " = "
+                 << "?" << c+1;
+            if (c < colNames.size()-1)
+            {
+                ssql << ",";
+            }
+        }
+        ssql << " WHERE rowidx = ?" << colNames.size()+1
+             << " ;";
+    }
+
+    // we finalise any bulk set statement, that might have
+    // been prepared earlier, but whose execution or binding
+    // failed and hasn't been cleaned up
+    sqlite3_finalize(m_StmtBulkSet);
+
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &m_StmtBulkSet, 0);
+    if (sqliteError(rc, &m_StmtBulkSet))
+    {
+        sqlite3_finalize(m_StmtBulkSet);
+        m_StmtBulkSet = 0;
+        return false;
+    }
+
+    return true;
+}
+
+bool
+AttributeTable::doBulkSet(const std::vector<std::string> &values, const int &row)
+{
+    if (    m_db == 0
+        ||  m_StmtBulkSet == 0
+        ||  values.size() != m_vTypesBulkSet.size()
+       )
+    {
+        return false;
+    }
+
+    int rc;
+    for (int i=0; i < values.size(); ++i)
+    {
+        switch(m_vTypesBulkSet.at(i))
+        {
+        case ATTYPE_DOUBLE:
+            {
+                const double val = ::atof(values.at(i).c_str());
+                rc = sqlite3_bind_double(m_StmtBulkSet, i+1, val);
+                if (sqliteError(rc, &m_StmtBulkSet)) return false;
+            }
+            break;
+        case ATTYPE_INT:
+            {
+                const long val = ::atol(values.at(i).c_str());
+                rc = sqlite3_bind_int(m_StmtBulkSet, i+1, val);
+                if (sqliteError(rc, &m_StmtBulkSet)) return false;
+            }
+            break;
+        case ATTYPE_STRING:
+            {
+                const char* val = values.at(i).c_str();
+                rc = sqlite3_bind_text(m_StmtBulkSet, i+1, val, -1, 0);
+                if (sqliteError(rc, &m_StmtBulkSet)) return false;
+            }
+            break;
+        default:
+            return false;
+        }
+    }
+
+    if (row >= 0)
+    {
+        rc = sqlite3_bind_int(m_StmtBulkSet, values.size()+1, row);
+        if (sqliteError(rc, &m_StmtBulkSet)) return false;
+    }
+
+    rc = sqlite3_step(m_StmtBulkSet);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(m_StmtBulkSet);
+    sqlite3_reset(m_StmtBulkSet);
+
+    return true;
 }
 
 bool AttributeTable::AddRows(long numRows)
@@ -1577,7 +1713,11 @@ AttributeTable::AttributeTable()
 	  m_dNodata(-std::numeric_limits<double>::max()),
       m_sNodata("NULL"),
       m_db(0),
-      m_InTransaction(false)
+      m_InTransaction(false),
+      m_StmtBegin(0),
+      m_StmtEnd(0),
+      m_StmtRollback(0),
+      m_StmtBulkSet(0)
 {
     this->createTable("");
 }
@@ -1590,6 +1730,7 @@ AttributeTable::~AttributeTable()
     sqlite3_finalize(m_StmtBegin);
     sqlite3_finalize(m_StmtEnd);
     sqlite3_finalize(m_StmtRollback);
+    sqlite3_finalize(m_StmtBulkSet);
 
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {

@@ -1611,6 +1611,39 @@ void OtbModellerWin::test()
     QList<double> sw;
     sw << 78.3 << 16.5 << 90.2 << 65 << 70;
 
+    std::string s1[] = {"Hans", "50", "78.3"};
+    std::vector<std::string> r1;
+    for (int i=0; i < 3; ++i) r1.push_back(s1[i]);
+
+    std::string s2[] = {"Franz", "4", "16.5"};
+    std::vector<std::string> r2;
+    for (int i=0; i < 3; ++i) r2.push_back(s2[i]);
+
+    std::string s3[] = {"Ganz", "35", "90.2"};
+    std::vector<std::string> r3;
+    for (int i=0; i < 3; ++i) r3.push_back(s3[i]);
+
+    std::string s4[] = {"Maus", "17", "65"};
+    std::vector<std::string> r4;
+    for (int i=0; i < 3; ++i) r4.push_back(s4[i]);
+
+    std::string s5[] = {"Haus", "42", "70"};
+    std::vector<std::string> r5;
+    for (int i=0; i < 3; ++i) r5.push_back(s5[i]);
+
+    std::vector< std::vector< std::string > > vRows;
+    vRows.push_back(r1);
+    vRows.push_back(r2);
+    vRows.push_back(r3);
+    vRows.push_back(r4);
+    vRows.push_back(r5);
+
+    std::string cn[] = {"name", "age", "weight"};
+    std::vector<std::string> colNames;
+    for (int i=0; i < 3; ++i) colNames.push_back(cn[i]);
+    // ================================================================
+    QDateTime startTest = QDateTime::currentDateTime();
+
     otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
 
     tab->beginTransaction();
@@ -1620,46 +1653,69 @@ void OtbModellerWin::test()
     tab->AddColumn("age", otb::AttributeTable::ATTYPE_INT);
     tab->AddColumn("weight", otb::AttributeTable::ATTYPE_DOUBLE);
 
-    NMDebugAI(<< "adding rows ... " << std::endl);
-    tab->AddRows(100000);
+
+
+    //    NMDebugAI(<< "adding rows ... " << std::endl);
+    //    tab->AddRows(100000);
+
+    tab->prepareBulkSet(colNames, true);
 
     NMDebugAI(<< "setting values ..." << std::endl);
     int i=0;
-    for (int r=0; r < tab->GetNumRows(); ++r, ++i)
+    //for (int r=0; r < tab->GetNumRows(); ++r, ++i)
+    for (int r=0; r < 1000000; ++r, ++i)
     {
         if (i == 5) i = 0;
-        tab->SetValue("name", r, sn.at(i).toStdString());
-        tab->SetValue("age", r, (long)sa.at(i));
-        tab->SetValue("weight", r, (double)sw.at(i));
+        tab->doBulkSet(vRows.at(i), -1);
+        //        tab->SetValue("name", r, sn.at(i).toStdString());
+        //        tab->SetValue("age", r, (long)sa.at(i));
+        //        tab->SetValue("weight", r, (double)sw.at(i));
+        //        tab->SetValue(1, r, sn.at(i).toStdString());
+        //        tab->SetValue(2, r, (long)sa.at(i));
+        //        tab->SetValue(3, r, (double)sw.at(i));
     }
 
     tab->endTransaction();
 
-    for (int r=0; r < tab->GetNumRows(); ++r)
-    {
-        NMDebugAI(<< "row #" << r << std::endl);
-        NMDebugAI(<< "------------------------" << std::endl);
-        for (int col=0; col < tab->GetNumCols(); ++col)
-        {
-            std::string colname = tab->GetColumnName(col);
-            switch(tab->GetColumnType(col))
-            {
-            case otb::AttributeTable::ATTYPE_DOUBLE:
-                NMDebugAI( << colname << "="
-                           << tab->GetDblValue(colname, r) << std::endl);
-                break;
-            case otb::AttributeTable::ATTYPE_INT:
-                NMDebugAI( << colname << "="
-                           << tab->GetIntValue(colname, r) << std::endl);
-                break;
-            case otb::AttributeTable::ATTYPE_STRING:
-                NMDebugAI( << colname << "="
-                           << tab->GetStrValue(colname, r) << std::endl);
-                break;
-            }
-        }
-        NMDebug(<< std::endl);
-    }
+    QDateTime endTest = QDateTime::currentDateTime();
+
+
+    //    for (int r=0; r < tab->GetNumRows(); ++r)
+    //    {
+    //        NMDebugAI(<< "row #" << r << std::endl);
+    //        NMDebugAI(<< "------------------------" << std::endl);
+    //        for (int col=0; col < tab->GetNumCols(); ++col)
+    //        {
+    //            std::string colname = tab->GetColumnName(col);
+    //            switch(tab->GetColumnType(col))
+    //            {
+    //            case otb::AttributeTable::ATTYPE_DOUBLE:
+    //                NMDebugAI( << colname << "="
+    //                           //<< tab->GetDblValue(colname, r) << std::endl);
+    //                           << tab->GetDblValue(col, r) << std::endl);
+    //                break;
+    //            case otb::AttributeTable::ATTYPE_INT:
+    //                NMDebugAI( << colname << "="
+    //                           //<< tab->GetIntValue(colname, r) << std::endl);
+    //                           << tab->GetIntValue(col, r) << std::endl);
+    //                break;
+    //            case otb::AttributeTable::ATTYPE_STRING:
+    //                NMDebugAI( << colname << "="
+    //                           //<< tab->GetStrValue(colname, r) << std::endl);
+    //                           << tab->GetStrValue(col, r) << std::endl);
+    //                break;
+    //            }
+    //        }
+    //        NMDebug(<< std::endl);
+    //    }
+
+    int msec = startTest.msecsTo(endTest);
+    int min = msec / 60000;
+    double sec = (msec % 60000) / 1000.0;
+
+    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    NMDebugAI(<< "Test run took (min:sec): " << elapsedTime.toStdString() << endl);
+    // ====================================================================
 
 
 //    NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);

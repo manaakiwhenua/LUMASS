@@ -1587,8 +1587,9 @@ void OtbModellerWin::test()
 
     std::stringstream uri;
     m_dbFileName = std::tmpnam(0);
+    //    m_dbFileName = "/tmp/filejowkmq.db";
 
-    NMDebugAI(<< "random file name: " << m_dbFileName << std::endl);
+    //NMDebugAI(<< "random file name: " << m_dbFileName << std::endl);
 
     size_t pos = m_dbFileName.find_last_of('/') + 1;
     size_t len = m_dbFileName.size() - pos;
@@ -1598,7 +1599,7 @@ void OtbModellerWin::test()
 
     //uri << "file:/home/alex/projects/SWE-VRI/data/JagathsTestWSN/xserve_sqlite_1.db";//?mode=rw&cache=shared";
            //"file:/home/alex/tmp/mfs.db?mode=rwc&cache=shared";
-    uri << "file:" << getenv("HOME") << "/tmp/" << m_dbFileName << ".db";
+    //uri << "file:" << getenv("HOME") << "/tmp/" << m_dbFileName << ".db";
     //uri << "file:/" << m_dbFileName << ".db?mode=rwc&cache=shared";
     //uri << "file:/home/alex/tmp/" << m_dbFileName << ".db";
 
@@ -1680,34 +1681,34 @@ void OtbModellerWin::test()
     QDateTime endTest = QDateTime::currentDateTime();
 
 
-    //    for (int r=0; r < tab->GetNumRows(); ++r)
-    //    {
-    //        NMDebugAI(<< "row #" << r << std::endl);
-    //        NMDebugAI(<< "------------------------" << std::endl);
-    //        for (int col=0; col < tab->GetNumCols(); ++col)
-    //        {
-    //            std::string colname = tab->GetColumnName(col);
-    //            switch(tab->GetColumnType(col))
-    //            {
-    //            case otb::AttributeTable::ATTYPE_DOUBLE:
-    //                NMDebugAI( << colname << "="
-    //                           //<< tab->GetDblValue(colname, r) << std::endl);
-    //                           << tab->GetDblValue(col, r) << std::endl);
-    //                break;
-    //            case otb::AttributeTable::ATTYPE_INT:
-    //                NMDebugAI( << colname << "="
-    //                           //<< tab->GetIntValue(colname, r) << std::endl);
-    //                           << tab->GetIntValue(col, r) << std::endl);
-    //                break;
-    //            case otb::AttributeTable::ATTYPE_STRING:
-    //                NMDebugAI( << colname << "="
-    //                           //<< tab->GetStrValue(colname, r) << std::endl);
-    //                           << tab->GetStrValue(col, r) << std::endl);
-    //                break;
-    //            }
-    //        }
-    //        NMDebug(<< std::endl);
-    //    }
+//    //    for (int r=0; r < tab->GetNumRows(); ++r)
+//    //    {
+//    //        NMDebugAI(<< "row #" << r << std::endl);
+//    //        NMDebugAI(<< "------------------------" << std::endl);
+//    //        for (int col=0; col < tab->GetNumCols(); ++col)
+//    //        {
+//    //            std::string colname = tab->GetColumnName(col);
+//    //            switch(tab->GetColumnType(col))
+//    //            {
+//    //            case otb::AttributeTable::ATTYPE_DOUBLE:
+//    //                NMDebugAI( << colname << "="
+//    //                           //<< tab->GetDblValue(colname, r) << std::endl);
+//    //                           << tab->GetDblValue(col, r) << std::endl);
+//    //                break;
+//    //            case otb::AttributeTable::ATTYPE_INT:
+//    //                NMDebugAI( << colname << "="
+//    //                           //<< tab->GetIntValue(colname, r) << std::endl);
+//    //                           << tab->GetIntValue(col, r) << std::endl);
+//    //                break;
+//    //            case otb::AttributeTable::ATTYPE_STRING:
+//    //                NMDebugAI( << colname << "="
+//    //                           //<< tab->GetStrValue(colname, r) << std::endl);
+//    //                           << tab->GetStrValue(col, r) << std::endl);
+//    //                break;
+//    //            }
+//    //        }
+//    //        NMDebug(<< std::endl);
+//    //    }
 
     int msec = startTest.msecsTo(endTest);
     int min = msec / 60000;
@@ -1720,51 +1721,83 @@ void OtbModellerWin::test()
 
 //    NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);
 
-//    int rc = ::sqlite3_open_v2(uri.str().c_str(),
-//                               &m_db,
-//                               SQLITE_OPEN_URI |
-//                               SQLITE_OPEN_READWRITE |
-//                               SQLITE_OPEN_CREATE |
-//                               SQLITE_OPEN_SHAREDCACHE,
-//                               0);
-//    if (rc != SQLITE_OK)
-//    {
-//        std::string errmsg = sqlite3_errmsg(m_db);
-//        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
-//        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
-//        m_dbFileName.clear();
-//        ::sqlite3_close(m_db);
-//        m_db = 0;
-//    }
-//    else
-//    {
-//        NMDebugAI(<< "db created!" << std::endl);
-//    }
+    //    int rc = ::sqlite3_open_v2(,
+    //                               &m_db,
+    //                               SQLITE_OPEN_URI |
+    //                               SQLITE_OPEN_READWRITE |
+    //                               SQLITE_OPEN_CREATE |
+    //                               SQLITE_OPEN_SHAREDCACHE,
+    //                               0);
+    //    if (rc != SQLITE_OK)
+    //    {
+    //        std::string errmsg = sqlite3_errmsg(m_db);
+    //        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
+    //        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+    //        m_dbFileName.clear();
+    //        ::sqlite3_close(m_db);
+    //        m_db = 0;
+    //    }
+    //    else
+    //    {
+    //        NMDebugAI(<< "db created!" << std::endl);
+    //    }
 
-//    uri.str("");
-//    uri << "begin transaction;";
-//    uri << "CREATE TABLE btable(acol, bcol, ccol);";
-//    uri << "insert into btable (acol, bcol, ccol) values (4, 'apfel', 0.3);";
-//    uri << "insert into btable (acol, bcol, ccol) values (0 , 'banane'  , 1.3);";
-//    uri << "insert into btable (acol, bcol, ccol) values (40, 'kiwi', 10e-3);";
-//    uri << "commit;";
+    m_db = tab->getDbConnection();
 
-//    //uri << "select sqlite_version();";
-//    uri << "attach database 'file:/home/alex/tmp/fileqAXO6c.db?mode=rw&cache=shared' as adb;";
-//    uri << "select * from atable;";
-//    uri << "select * from btable;";
+    std::stringstream ssql;
+    ssql << "SELECT name, age, weight from main.nmtab;";
 
-//    char* errMsg = 0;
-//    rc = ::sqlite3_exec(m_db, uri.str().c_str(), &OtbModellerWin::sqlite_resCallback, 0, &errMsg);
+    sqlite3_stmt* stmt;
 
-//    if (rc != SQLITE_OK)
-//    {
-//        std::string errmsg = sqlite3_errmsg(m_db);
-//        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
-//    }
+    int rc = ::sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1, &stmt, 0);
+    if (rc != SQLITE_OK)
+    {
+        NMDebugAI(<< "Somthing wrong with statement" << std::endl);
+        sqlite3_finalize(stmt);
+        return;
+    }
 
 
-//    ::sqlite3_close(m_db);
+    NMDebugAI(<< "Going to read " << tab->GetNumRows() << " records ..." << std::endl);
+    startTest = QDateTime::currentDateTime();
+
+    tab->beginTransaction();
+
+    std::stringstream ssName;
+    for (int i=0; i < tab->GetNumRows(); ++i)
+    {
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_ROW)
+        {
+            ssName.str("");
+            ssName << sqlite3_column_text(stmt, 0);
+            int age = sqlite3_column_int(stmt, 1);
+            double weight = sqlite3_column_double(stmt, 2);
+
+            //            NMDebugAI( << "#" << i << ": " << ssName.str() << "\t"
+            //                       << age << "\t" << weight << std::endl);
+        }
+        else
+        {
+            //            NMDebugAI(<< "We're done!" << std::endl);
+            break;
+        }
+    }
+
+    tab->endTransaction();
+
+    endTest = QDateTime::currentDateTime();
+
+
+    //::sqlite3_close(m_db);
+
+    msec = startTest.msecsTo(endTest);
+    min = msec / 60000;
+    sec = (msec % 60000) / 1000.0;
+
+    elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    NMDebugAI(<< "Test run took (min:sec): " << elapsedTime.toStdString() << endl);
+
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

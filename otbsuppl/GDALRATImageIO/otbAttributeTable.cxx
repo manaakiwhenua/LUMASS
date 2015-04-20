@@ -364,6 +364,10 @@ AttributeTable::doBulkSet(const std::vector<std::string> &values, const int &row
         rc = sqlite3_bind_int(m_StmtBulkSet, values.size()+1, row);
         if (sqliteError(rc, &m_StmtBulkSet)) return false;
     }
+    else
+    {
+        ++m_iNumRows;
+    }
 
     rc = sqlite3_step(m_StmtBulkSet);
     sqliteStepCheck(rc);

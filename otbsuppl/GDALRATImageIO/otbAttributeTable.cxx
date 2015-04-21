@@ -239,6 +239,55 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 }
 
 bool
+AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
+                               const std::string& whereClause)
+{
+    if (m_db == 0)
+    {
+        return false;
+    }
+
+    std::stringstream ssql;
+    ssql << "SELECT ";
+    for (int c=0; c < colNames.size(); ++c)
+    {
+        ssql << colNames.at(c);
+        if (c < colNames.size()-1)
+        {
+            ssql << ",";
+        }
+    }
+    ssql << " from main.nmtab";
+
+    if (whereClause.empty())
+    {
+        ssql << ";";
+    }
+    else
+    {
+        ssql << " " << whereClause
+             << ";";
+    }
+
+    // we finalise any bulk get statement, that might have
+    // been prepared earlier, but whose execution and hasn't
+    // been cleaned up
+    sqlite3_finalize(m_StmtBulkGet);
+
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &m_StmtBulkGet, 0);
+    if (sqliteError(rc, &m_StmtBulkGet))
+    {
+        sqlite3_finalize(m_StmtBulkGet);
+        m_StmtBulkGet = 0;
+        return false;
+    }
+
+    return true;
+}
+
+bool
 AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
                              const bool& bInsert)
 {
@@ -316,6 +365,37 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
 
     return true;
 }
+
+bool
+AttributeTable::doBulkGet(std::vector<std::string> & retStr)
+{
+    if (    m_db == 0
+        ||  m_StmtBulkGet == 0
+       )
+    {
+        return false;
+    }
+
+    int rc = sqlite3_step(m_StmtBulkGet);
+    sqliteStepCheck(rc);
+
+    if (rc == SQLITE_ROW)
+    {
+        for (int col=0; col < this->m_vNames.size(); ++col)
+        {
+            std::stringstream ssVal;
+            ssVal << sqlite3_column_text(m_StmtBulkGet, col);
+            retStr.push_back(ssVal.str());
+        }
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+}
+
 
 bool
 AttributeTable::doBulkSet(const std::vector<std::string> &values, const int &row)
@@ -1721,7 +1801,8 @@ AttributeTable::AttributeTable()
       m_StmtBegin(0),
       m_StmtEnd(0),
       m_StmtRollback(0),
-      m_StmtBulkSet(0)
+      m_StmtBulkSet(0),
+      m_StmtBulkGet(0)
 {
     this->createTable("");
 }
@@ -1735,6 +1816,7 @@ AttributeTable::~AttributeTable()
     sqlite3_finalize(m_StmtEnd);
     sqlite3_finalize(m_StmtRollback);
     sqlite3_finalize(m_StmtBulkSet);
+    sqlite3_finalize(m_StmtBulkGet);
 
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {

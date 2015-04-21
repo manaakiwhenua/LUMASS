@@ -1742,45 +1742,34 @@ void OtbModellerWin::test()
     //        NMDebugAI(<< "db created!" << std::endl);
     //    }
 
-    m_db = tab->getDbConnection();
 
-    std::stringstream ssql;
-    ssql << "SELECT name, age, weight from main.nmtab;";
-
-    sqlite3_stmt* stmt;
-
-    int rc = ::sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1, &stmt, 0);
-    if (rc != SQLITE_OK)
-    {
-        NMDebugAI(<< "Somthing wrong with statement" << std::endl);
-        sqlite3_finalize(stmt);
-        return;
-    }
-
-
-    NMDebugAI(<< "Going to read " << tab->GetNumRows() << " records ..." << std::endl);
     startTest = QDateTime::currentDateTime();
+
+
+    std::vector<std::string> queryCols;
+    queryCols.push_back("name");
+    queryCols.push_back("age");
+    queryCols.push_back("weight");
 
     tab->beginTransaction();
 
-    std::stringstream ssName;
-    for (int i=0; i < tab->GetNumRows(); ++i)
-    {
-        rc = sqlite3_step(stmt);
-        if (rc == SQLITE_ROW)
-        {
-            ssName.str("");
-            ssName << sqlite3_column_text(stmt, 0);
-            int age = sqlite3_column_int(stmt, 1);
-            double weight = sqlite3_column_double(stmt, 2);
+    tab->prepareBulkGet(queryCols, "");
 
-            //            NMDebugAI( << "#" << i << ": " << ssName.str() << "\t"
-            //                       << age << "\t" << weight << std::endl);
-        }
-        else
+    std::vector<std::string> retVal;
+
+    //for (int i=0; i < tab->GetNumRows(); ++i)
+    for (int i=0; i < 100; ++i)
+    {
+        retVal.clear();
+        if (!tab->doBulkGet(retVal))
         {
-            //            NMDebugAI(<< "We're done!" << std::endl);
             break;
+        }
+        for (int s=0; s < queryCols.size(); ++s)
+        {
+            NMDebugAI( << queryCols.at(s) << "="
+                       << retVal.at(s) << std::endl);
+
         }
     }
 

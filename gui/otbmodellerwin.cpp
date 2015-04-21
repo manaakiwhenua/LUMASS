@@ -1747,13 +1747,14 @@ void OtbModellerWin::test()
 
 
     std::vector<std::string> queryCols;
+    queryCols.push_back("rowidx");
     queryCols.push_back("name");
     queryCols.push_back("age");
     queryCols.push_back("weight");
 
     tab->beginTransaction();
 
-    tab->prepareBulkGet(queryCols, "");
+    tab->prepareBulkGet(queryCols, "order by weight");
 
     std::vector<std::string> retVal;
 
@@ -1765,12 +1766,15 @@ void OtbModellerWin::test()
         {
             break;
         }
-        for (int s=0; s < queryCols.size(); ++s)
+        NMDebugAI(<< "row #" << retVal.at(0) << std::endl);
+        NMDebugAI(<< "========================" << std::endl);
+        for (int s=1; s < queryCols.size(); ++s)
         {
             NMDebugAI( << queryCols.at(s) << "="
                        << retVal.at(s) << std::endl);
 
         }
+        NMDebugAI(<< std::endl);
     }
 
     tab->endTransaction();

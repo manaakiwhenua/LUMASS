@@ -367,6 +367,42 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
 }
 
 bool
+AttributeTable::createIndex(const std::vector<std::string> &colNames)
+{
+    if (m_db == 0)
+    {
+        return false;
+    }
+
+    std::stringstream ssql;
+    ssql << "CREATE INDEX main.nmtab_index_" << m_IndexNames.size()
+         << " on nmtab (";
+    for (int s=0; s < colNames.size(); ++s)
+    {
+        if (this->ColumnExists(colNames.at(s)) < 0)
+        {
+            otbWarningMacro(<< "Invalid Column Name!");
+            return false;
+        }
+
+        ssql << colNames.at(s);
+        if (s < colNames.size()-1)
+        {
+            ssql << ", ";
+        }
+    }
+    ssql << ");";
+
+    int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    if (sqliteError(rc, 0))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool
 AttributeTable::doBulkGet(std::vector<std::string> & retStr)
 {
     if (    m_db == 0

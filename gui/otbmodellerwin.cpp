@@ -1742,6 +1742,7 @@ void OtbModellerWin::test()
     //        NMDebugAI(<< "db created!" << std::endl);
     //    }
 
+    tab->beginTransaction();
 
     startTest = QDateTime::currentDateTime();
 
@@ -1752,7 +1753,12 @@ void OtbModellerWin::test()
     queryCols.push_back("age");
     queryCols.push_back("weight");
 
-    tab->beginTransaction();
+    std::vector<std::string> idxCols;
+    idxCols.push_back("weight");
+
+
+    //    NMDebugAI(<< "creating index ..." << std::endl);
+    //    tab->createIndex(idxCols);
 
     tab->prepareBulkGet(queryCols, "order by weight");
 
@@ -1777,10 +1783,9 @@ void OtbModellerWin::test()
         NMDebugAI(<< std::endl);
     }
 
-    tab->endTransaction();
-
     endTest = QDateTime::currentDateTime();
 
+    tab->endTransaction();
 
     //::sqlite3_close(m_db);
 

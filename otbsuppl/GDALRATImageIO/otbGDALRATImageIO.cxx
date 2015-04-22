@@ -2157,8 +2157,10 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	//NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
 	otbTab->SetImgFileName(this->GetFileName());
 
-	otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
+    //otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
     std::vector< std::string > colnames;
+    std::vector< std::string > colValues;
+    colValues.resize(ncols);
 
     // go and check the column names against the SQL standard, in case
     // they don't match it, we enclose in double quotes.
@@ -2167,6 +2169,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     	colnames.push_back(rat->GetNameOfCol(c));
     }
 
+    otbTab->beginTransaction();
 
 	// copy table
 	::GDALRATFieldType gdaltype;
@@ -2192,7 +2195,9 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 		}
 		otbTab->AddColumn(colname, otbtabtype);
 	}
-	otbTab->AddRows(nrows);
+    //otbTab->AddRows(nrows);
+
+    otbTab->prepareBulkSet(colnames, true);
 
 #ifdef GDAL_NEWRATAPI
     // the new way - chunk of rows by chunk of rows
@@ -2225,24 +2230,24 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         for (int col=0; col < ncols; ++col)
         {
             gdaltype = rat->GetTypeOfCol(col);
-            void* colPtr = 0;
+            //void* colPtr = 0;
 
-            if (col == 0)
-            {
-                colPtr = otbTab->GetColumnPointer(col);
-                long* valPtr = static_cast<long*>(colPtr);
-                for (int r=s; r < e; ++r)
-                {
-                    valPtr[r] = r;
-                }
-            }
-            colPtr = otbTab->GetColumnPointer(col+1);
+            //            if (col == 0)
+            //            {
+            //                colPtr = otbTab->GetColumnPointer(col);
+            //                long* valPtr = static_cast<long*>(colPtr);
+            //                for (int r=s; r < e; ++r)
+            //                {
+            //                    valPtr[r] = r;
+            //                }
+            //            }
+            //colPtr = otbTab->GetColumnPointer(col+1);
 
             switch(gdaltype)
             {
             case GFT_Integer:
             {
-                long* valPtr = static_cast<long*>(colPtr);
+                //long* valPtr = static_cast<long*>(colPtr);
                 int* tptr = (int*)CPLCalloc(sizeof(int), chunksize);
                 rat->ValuesIO(GF_Read, col, s, chunksize, tptr);
                 for (int k=0; k < chunksize; ++k)
@@ -2331,6 +2336,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	//NMDebug(<< std::endl);
 	//NMDebugAI(<< "now pritn' the actual Table ...");
 	//otbTab->Print(std::cout, itk::Indent(0), 100);
+    otbTab->endTransaction();
 
 	return otbTab;
 }

@@ -119,6 +119,7 @@ public:
     bool doBulkGet(std::vector<std::string>& retStr);
     bool beginTransaction();
     bool endTransaction();
+    bool createIndex(const std::vector<std::string>& colNames);
 
 
 protected:
@@ -140,6 +141,7 @@ protected:
     sqlite3_stmt* m_StmtBulkGet;
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkSet;
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkGet;
+    std::vector<std::string> m_IndexNames;
 
     sqlite3_stmt* m_StmtBegin;
     sqlite3_stmt* m_StmtEnd;

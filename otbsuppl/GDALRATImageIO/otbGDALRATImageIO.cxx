@@ -2157,7 +2157,10 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	//NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
 	otbTab->SetImgFileName(this->GetFileName());
 
-    //otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
+    // the rowidx field is handled internally in otb::AttributeTable's slqite-based
+    // implementation
+        //otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
+
     std::vector< std::string > colnames;
     std::vector< std::string > colValues;
     colValues.resize(ncols);
@@ -2222,68 +2225,52 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     int procrows = 0;
     int s=0;
     int e=0;
+    int*    intptr  = (int*)CPLCalloc(sizeof(int), 1);
+    double* dblptr  = (double*)CPLCalloc(sizeof(double), 1);
+    char**  charPtr = (char**)CPLCalloc(sizeof(char*), 1);
+
     for (int chunk = 0; chunk < numChunks+1; ++chunk)
     {
         s = procrows;
         e = s + chunksize;// - 1;
 
-        for (int col=0; col < ncols; ++col)
+        for (int k=0; k < chunksize; ++k)
         {
-            gdaltype = rat->GetTypeOfCol(col);
-            //void* colPtr = 0;
-
-            //            if (col == 0)
-            //            {
-            //                colPtr = otbTab->GetColumnPointer(col);
-            //                long* valPtr = static_cast<long*>(colPtr);
-            //                for (int r=s; r < e; ++r)
-            //                {
-            //                    valPtr[r] = r;
-            //                }
-            //            }
-            //colPtr = otbTab->GetColumnPointer(col+1);
-
-            switch(gdaltype)
+            for (int col=0; col < ncols; ++col)
             {
-            case GFT_Integer:
-            {
-                //long* valPtr = static_cast<long*>(colPtr);
-                int* tptr = (int*)CPLCalloc(sizeof(int), chunksize);
-                rat->ValuesIO(GF_Read, col, s, chunksize, tptr);
-                for (int k=0; k < chunksize; ++k)
+                gdaltype = rat->GetTypeOfCol(col);
+                std::stringstream colVal;
+
+                switch(gdaltype)
                 {
-                    valPtr[s+k] = static_cast<long>(tptr[k]);
+                case GFT_Integer:
+                {
+                    rat->ValuesIO(GF_Read, col, s+k, 1, intptr);
+                    colVal << *intptr;
+                    CPLFree(intptr);
                 }
-                CPLFree(tptr);
-            }
-                break;
-            case GFT_Real:
-            {
-                double* valPtr = static_cast<double*>(colPtr);
-                rat->ValuesIO(GF_Read, col, s, chunksize, (valPtr+s));
-            }
-                break;
-            case GFT_String:
-            {
-                char** valPtr = (char**)CPLCalloc(sizeof(char*), chunksize);
-                if (valPtr == 0)
-                {
-                    itkExceptionMacro(<< "Not enough memory to allocate chunk of string records!");
                     break;
-                }
-                rat->ValuesIO(GF_Read, col, s, chunksize, valPtr);
-                for (int k=0; k < chunksize; ++k)
+                case GFT_Real:
                 {
-                    const char* ccv = valPtr[k] != 0 ? valPtr[k] : "NULL";
-                    otbTab->SetValue(col+1, s+k, ccv);
-                    CPLFree(valPtr[k]);
+                    rat->ValuesIO(GF_Read, col, s+k, 1, dblptr);
+                    colVal << *dblptr;
+                    CPLFree(dblptr);
                 }
-                CPLFree(valPtr);
+                    break;
+                case GFT_String:
+                {
+                    rat->ValuesIO(GF_Read, col, s+k, 1, valPtr);
+                    colVal << (valPtr[0] != 0 ? valPtr[0] : "NULL");
+                    CPLFree(valPtr[0]);
+                }
+                    break;
+                default:
+                    continue;
+                }
+
+                colValues[col] = colVal.str();
             }
-                break;
-            default:
-                continue;
-            }
+            otbTab->doBulkSet(colValues, -1);
         }
 
         procrows += chunksize;
@@ -2302,31 +2289,33 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     }
 #else
     // the old way - row by row
-    for (int c=0; c < ncols; ++c)
-    {
-        gdaltype = rat->GetTypeOfCol(c);
-        for (int r=0; r < nrows; ++r)
-        {
-            if (c==0)
-            {
-                otbTab->SetValue(c, r, (long)r);
-            }
 
+    for (int r=0; r < nrows; ++r)
+    {
+        for (int c=0; c < ncols; ++c)
+        {
+            std::stringstream colVal;
+            gdaltype = rat->GetTypeOfCol(c);
             switch (gdaltype)
             {
             case GFT_Integer:
-                otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
+                colVal << rat->GetValueAsInt(r, c);
+                //otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
                 break;
             case GFT_Real:
-                otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
+                colVal << rat->GetValueAsDouble(r, c);
+                //otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
                 break;
             case GFT_String:
-                otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
+                colVal << rat->GetValueAsString(r, c);
+                //otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
                 break;
             default:
                 continue;
             }
+            colValues[c] = colVal.str();
         }
+        otbTab->doBulkSet(colValues, -1);
     }
 #endif
 
@@ -2507,13 +2496,10 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
         rowcount = rowcount < 256 ? 256 : rowcount;
     }
 
-    //gdaltab->SetRowCount(tab->GetNumRows());
     gdaltab->SetRowCount(rowcount);
+    std::vector<std::string> colnames;
 
-	// add the category field "Value"
-	//gdaltab->CreateColumn("Value", GFT_Integer, GFU_MinMax);
 	CPLErr err;
-
 
 	// add all but the 'rowidx' column to the table
 	for (int col = 1; col < tab->GetNumCols(); ++col)
@@ -2540,27 +2526,44 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 			itkExceptionMacro(<< "Failed creating column #" << col
 					<< " '" << tab->GetColumnName(col).c_str() << "!");
 		}
+
+        colnames.push_back(tab->GetColumnName(col));
+
 		itkDebugMacro(<< "Created column #" << col << " '"
 				<< tab->GetColumnName(col).c_str() << "'");
 	}
 
+    tab->beginTransaction();
+    tab->prepareBulkGet(colnames, "order by rowidx");
+
+    int intval;
+    double dblval;
 	// copy values row by row
 	for (long row=0; row < tab->GetNumRows(); ++row)
 	{
+        std::vector<std::string> values;
+        if (!tab->doBulkGet(values))
+        {
+            itkWarningMacro(<< "Copying records failed at " << row+1
+                            << " of " << tab->GetNumRows() << "!");
+            break;
+        }
 		for (int col=1; col < tab->GetNumCols(); ++col)
 		{
-			itkDebugMacro(<< "Setting value: col=" << col
-					<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
+            //			itkDebugMacro(<< "Setting value: col=" << col
+            //					<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
 			switch(tab->GetColumnType(col))
 			{
 			case otb::AttributeTable::ATTYPE_INT:
-				gdaltab->SetValue(row, col-1, (int)tab->GetIntValue(col, row));
-				break;
+                intval = ::atoi(values.at(col-1).c_str());
+                gdaltab->SetValue(row, col-1, intval);//(int)tab->GetIntValue(col, row));
+                break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
-				gdaltab->SetValue(row, col-1, tab->GetDblValue(col, row));
-				break;
+                dblval = ::atof(values.at(col-1).c_str());
+                gdaltab->SetValue(row, col-1, dblval); //tab->GetDblValue(col, row));
+                break;
 			case otb::AttributeTable::ATTYPE_STRING:
-				gdaltab->SetValue(row, col-1, tab->GetStrValue(col, row).c_str());
+                gdaltab->SetValue(row, col-1, values.at(col-1).c_str()); //tab->GetStrValue(col, row).c_str());
 				break;
 			default:
                 delete gdaltab;
@@ -2570,6 +2573,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 			}
 		}
 	}
+    tab->endTransaction();
 
 	// associate the table with the band
     err = band->SetDefaultRAT(gdaltab);

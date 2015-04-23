@@ -915,6 +915,35 @@ AttributeTable::SetValue(const std::string& sColName, int idx, std::string value
     //	}
 }
 
+bool
+AttributeTable::prepareColumnIterator(const std::string &colname,
+                                      const std::string &whereClause)
+{
+    if (m_db == 0)
+    {
+        return 0;
+    }
+
+    sqlite3_finalize(m_StmtColIter);
+
+    std::stringstream ssql;
+    ssql << "SELECT " << colname
+         << " from main.nmtab";
+
+    if (!whereClause.empty())
+    {
+        ssql << " " << whereClause << ";";
+    }
+    else
+    {
+        ssql << ";";
+    }
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &m_StmtColIter, 0);
+    if (sqliteError(rc, &m_StmtColIter)) false;
+}
+
 double AttributeTable::GetDblValue(const std::string& sColName, int idx)
 {
 	//check for valid name and index parameters

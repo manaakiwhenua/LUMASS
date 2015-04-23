@@ -1113,17 +1113,12 @@ NMImageLayer::setLongScalars(T* buf, long* out, long* tabCol,
 {
     //CALLGRIND_START_INSTRUMENTATION;
     mOtbRAT->beginTransaction();
-    std::vector<std::string> colnames;
-    colnames.push_back(mLegendValueField.toStdString());
-    std::vector<void*> colVals;
-    colVals.resize(1);
-    mOtbRAT->prepareBulkGet(colnames, "");
+    mOtbRAT->prepareColumnIterator(mLegendValueField.toStdString(), "");
     for (int i=0; i < numPix; ++i)
     {
-        mOtbRAT->doBulkGet(colVals);
         buf[i] < 0 || buf[i] > maxidx
                 ? out[i] = nodata
-                : out[i] = *static_cast<long*>(colVals[0]);
+                : out[i] = mOtbRAT->nextIntValue();
     }
     mOtbRAT->endTransaction();
     //    CALLGRIND_STOP_INSTRUMENTATION;
@@ -1137,17 +1132,12 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
 {
     //CALLGRIND_START_INSTRUMENTATION;
     mOtbRAT->beginTransaction();
-    std::vector<std::string> colnames;
-    colnames.push_back(mLegendValueField.toStdString());
-    std::vector<void*> colVals;
-    colVals.resize(1);
-    mOtbRAT->prepareBulkGet(colnames, "");
+    mOtbRAT->prepareColumnIterator(mLegendValueField.toStdString(), "");
     for (int i=0; i < numPix; ++i)
     {
-        mOtbRAT->doBulkGet(colVals);
         buf[i] < 0 || buf[i] > maxidx
                 ? out[i] = nodata
-                : out[i] = *static_cast<double*>(colVals[0]);
+                : out[i] = mOtbRAT->nextDoubleValue();
     }
     mOtbRAT->endTransaction();
     //    CALLGRIND_STOP_INSTRUMENTATION;

@@ -122,6 +122,40 @@ public:
     bool createIndex(const std::vector<std::string>& colNames);
 
 
+    /// FAST INLINE ACCESS TO COLUMN VALUES
+    bool prepareColumnIterator(const std::string& colname, const std::string& whereClause);
+
+    double nextDoubleValue()
+    {
+        if (sqlite3_step(m_StmtColIter) == SQLITE_ROW)
+        {
+            return sqlite3_column_double(m_StmtColIter, 0);
+        }
+
+        return m_dNodata;
+    }
+
+    int nextIntValue()
+    {
+        if (sqlite3_step(m_StmtColIter) == SQLITE_ROW)
+        {
+            return sqlite3_column_int(m_StmtColIter, 0);
+        }
+
+        return m_iNodata;
+    }
+
+    const unsigned char* nextTextValue()
+    {
+        if (sqlite3_step(m_StmtColIter) == SQLITE_ROW)
+        {
+            return sqlite3_column_text(m_StmtColIter, 0);
+        }
+
+        char* v = "NULL";
+        return reinterpret_cast<unsigned char*>(v);
+    }
+
 protected:
 	AttributeTable();
 	virtual
@@ -142,6 +176,8 @@ protected:
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkSet;
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkGet;
     std::vector<std::string> m_IndexNames;
+
+    sqlite3_stmt* m_StmtColIter;
 
     sqlite3_stmt* m_StmtBegin;
     sqlite3_stmt* m_StmtEnd;

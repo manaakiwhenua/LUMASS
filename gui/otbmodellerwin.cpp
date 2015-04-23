@@ -1762,26 +1762,28 @@ void OtbModellerWin::test()
 
     tab->prepareBulkGet(queryCols, "order by weight");
 
-    std::vector<std::string> retVal;
+    std::vector<void*> retVal;
+    retVal.resize(queryCols.size());
 
     //for (int i=0; i < tab->GetNumRows(); ++i)
-    for (int i=0; i < 100; ++i)
-    {
-        retVal.clear();
-        if (!tab->doBulkGet(retVal))
-        {
-            break;
-        }
-        NMDebugAI(<< "row #" << retVal.at(0) << std::endl);
-        NMDebugAI(<< "========================" << std::endl);
-        for (int s=1; s < queryCols.size(); ++s)
-        {
-            NMDebugAI( << queryCols.at(s) << "="
-                       << retVal.at(s) << std::endl);
+//    for (int i=0; i < 100; ++i)
+//    {
+//        retVal.clear();
+//        if (!tab->doBulkGet(retVal))
+//        {
+//            break;
+//        }
+//        NMDebugAI(<< "row #" << (unsigned char*)retVal[0] << std::endl);
+//        NMDebugAI(<< "========================" << std::endl);
+//        for (int s=1; s < queryCols.size(); ++s)
+//        {
 
-        }
-        NMDebugAI(<< std::endl);
-    }
+//            NMDebugAI( << queryCols.at(s) << "="
+//                       << retVal.at(s) << std::endl);
+
+//        }
+//        NMDebugAI(<< std::endl);
+//    }
 
     endTest = QDateTime::currentDateTime();
 

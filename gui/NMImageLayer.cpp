@@ -91,6 +91,8 @@
 #include "vtkLongLongArray.h"
 #include "vtkSetGet.h"
 
+#include "valgrind/callgrind.h";
+
 template<class PixelType, unsigned int Dimension>
 class InternalImageHelper
 {
@@ -1025,7 +1027,7 @@ NMImageLayer::setScalars(vtkImageData* img)
             ar->SetNumberOfTuples(numPix);
 
             double* out = static_cast<double*>(ar->GetVoidPointer(0));
-            double* tabCol = static_cast<double*>(mOtbRAT->GetColumnPointer(colidx));
+            double* tabCol = 0; //static_cast<double*>(mOtbRAT->GetColumnPointer(colidx));
             const double nodata = this->getNodata();
 
             switch(idxScalars->GetDataType())
@@ -1059,7 +1061,7 @@ NMImageLayer::setScalars(vtkImageData* img)
             ar->SetNumberOfComponents(1);
 
             long* out = static_cast<long*>(ar->GetVoidPointer(0));
-            long* tabCol = static_cast<long*>(mOtbRAT->GetColumnPointer(colidx));
+            long* tabCol = 0;//static_cast<long*>(mOtbRAT->GetColumnPointer(colidx));
             long nodata = static_cast<long>(this->getNodata());
 
             switch(idxScalars->GetDataType())
@@ -1109,12 +1111,23 @@ void
 NMImageLayer::setLongScalars(T* buf, long* out, long* tabCol,
                              int numPix, int maxidx, long nodata)
 {
+    //CALLGRIND_START_INSTRUMENTATION;
+    mOtbRAT->beginTransaction();
+    std::vector<std::string> colnames;
+    colnames.push_back(mLegendValueField.toStdString());
+    std::vector<void*> colVals;
+    colVals.resize(1);
+    mOtbRAT->prepareBulkGet(colnames, "");
     for (int i=0; i < numPix; ++i)
     {
+        mOtbRAT->doBulkGet(colVals);
         buf[i] < 0 || buf[i] > maxidx
                 ? out[i] = nodata
-                : out[i] = tabCol[static_cast<long>(buf[i])];
+                : out[i] = *static_cast<long*>(colVals[0]);
     }
+    mOtbRAT->endTransaction();
+    //    CALLGRIND_STOP_INSTRUMENTATION;
+    //    CALLGRIND_DUMP_STATS;
 }
 
 template<class T>
@@ -1122,12 +1135,23 @@ void
 NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
                                int numPix, int maxidx, double nodata)
 {
+    //CALLGRIND_START_INSTRUMENTATION;
+    mOtbRAT->beginTransaction();
+    std::vector<std::string> colnames;
+    colnames.push_back(mLegendValueField.toStdString());
+    std::vector<void*> colVals;
+    colVals.resize(1);
+    mOtbRAT->prepareBulkGet(colnames, "");
     for (int i=0; i < numPix; ++i)
     {
+        mOtbRAT->doBulkGet(colVals);
         buf[i] < 0 || buf[i] > maxidx
                 ? out[i] = nodata
-                : out[i] = tabCol[static_cast<long>(buf[i])];
+                : out[i] = *static_cast<double*>(colVals[0]);
     }
+    mOtbRAT->endTransaction();
+    //    CALLGRIND_STOP_INSTRUMENTATION;
+    //    CALLGRIND_DUMP_STATS;
 }
 
 template<class T>

@@ -403,7 +403,7 @@ AttributeTable::createIndex(const std::vector<std::string> &colNames)
 }
 
 bool
-AttributeTable::doBulkGet(std::vector<std::string> & retStr)
+AttributeTable::doBulkGet(std::vector<void*>& values)
 {
     if (    m_db == 0
         ||  m_StmtBulkGet == 0
@@ -411,21 +411,38 @@ AttributeTable::doBulkGet(std::vector<std::string> & retStr)
     {
         return false;
     }
+    double dblVal;
+    int intVal;
+    char* charVal;
 
     int rc = sqlite3_step(m_StmtBulkGet);
-    sqliteStepCheck(rc);
-
     if (rc == SQLITE_ROW)
     {
-        for (int col=0; col < this->m_vNames.size(); ++col)
+        for (int col=0; col < m_vTypesBulkGet.size(); ++col)
         {
-            std::stringstream ssVal;
-            ssVal << sqlite3_column_text(m_StmtBulkGet, col);
-            retStr.push_back(ssVal.str());
+            switch(m_vTypesBulkGet[col])
+            {
+            case ATTYPE_DOUBLE:
+                dblVal = sqlite3_column_double(m_StmtBulkGet, col);
+                values[col] = (void*)&dblVal;
+                break;
+            case ATTYPE_INT:
+                intVal = sqlite3_column_int(m_StmtBulkGet, col);
+                values[col] = (void*)&intVal;
+                break;
+            case ATTYPE_STRING:
+                {
+                    unsigned char* sval = const_cast<unsigned char*>(
+                                sqlite3_column_text(m_StmtBulkGet, col));
+                    values[col] = (void*)sval;
+                }
+                break;
+            }
         }
     }
     else
     {
+        sqliteStepCheck(rc);
         return false;
     }
 
@@ -488,7 +505,7 @@ AttributeTable::doBulkSet(const std::vector<std::string> &values, const int &row
     rc = sqlite3_step(m_StmtBulkSet);
     sqliteStepCheck(rc);
 
-    sqlite3_clear_bindings(m_StmtBulkSet);
+    //sqlite3_clear_bindings(m_StmtBulkSet);
     sqlite3_reset(m_StmtBulkSet);
 
     return true;

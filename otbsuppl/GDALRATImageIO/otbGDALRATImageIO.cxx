@@ -2534,14 +2534,17 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	}
 
     tab->beginTransaction();
-    tab->prepareBulkGet(colnames, "order by rowidx");
+    tab->prepareBulkGet(colnames, "");
+
+    std::vector<void*> values;
+    values.resize(tab->GetNumCols()-1);
 
     int intval;
     double dblval;
+    char* strval;
 	// copy values row by row
 	for (long row=0; row < tab->GetNumRows(); ++row)
 	{
-        std::vector<std::string> values;
         if (!tab->doBulkGet(values))
         {
             itkWarningMacro(<< "Copying records failed at " << row+1
@@ -2555,15 +2558,16 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 			switch(tab->GetColumnType(col))
 			{
 			case otb::AttributeTable::ATTYPE_INT:
-                intval = ::atoi(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col-1, intval);//(int)tab->GetIntValue(col, row));
+                //intval = ::atoi(values.at(col-1).c_str());
+                gdaltab->SetValue(row, col-1, *static_cast<int*>(values[col-1]));//(int)tab->GetIntValue(col, row));
                 break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
-                dblval = ::atof(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col-1, dblval); //tab->GetDblValue(col, row));
+                //dblval = ::atof(values.at(col-1).c_str());
+                gdaltab->SetValue(row, col-1, *static_cast<double*>(values[col-1])); //tab->GetDblValue(col, row));
                 break;
 			case otb::AttributeTable::ATTYPE_STRING:
-                gdaltab->SetValue(row, col-1, values.at(col-1).c_str()); //tab->GetStrValue(col, row).c_str());
+                gdaltab->SetValue(row, col-1, reinterpret_cast<char*>(
+                                            static_cast<unsigned char*>(values[col-1]))); //tab->GetStrValue(col, row).c_str());
 				break;
 			default:
                 delete gdaltab;

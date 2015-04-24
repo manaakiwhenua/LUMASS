@@ -916,8 +916,8 @@ AttributeTable::SetValue(const std::string& sColName, int idx, std::string value
 }
 
 bool
-AttributeTable::prepareColumnIterator(const std::string &colname,
-                                      const std::string &whereClause)
+AttributeTable::prepareColumnByIndex(const std::string &colname)//,
+                                      //const std::string &whereClause)
 {
     if (m_db == 0)
     {
@@ -928,16 +928,16 @@ AttributeTable::prepareColumnIterator(const std::string &colname,
 
     std::stringstream ssql;
     ssql << "SELECT " << colname
-         << " from main.nmtab";
+         << " from main.nmtab where rowidx = @ROW;";
 
-    if (!whereClause.empty())
-    {
-        ssql << " " << whereClause << ";";
-    }
-    else
-    {
-        ssql << ";";
-    }
+    //    if (!whereClause.empty())
+    //    {
+    //        ssql << " " << whereClause << ";";
+    //    }
+    //    else
+    //    {
+    //        ssql << ";";
+    //    }
 
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
                                 &m_StmtColIter, 0);
@@ -1793,6 +1793,12 @@ AttributeTable::createTable(std::string filename)
         ::sqlite3_close(m_db);
         m_db = 0;
         return;
+    }
+
+    rc = sqlite3_exec(m_db, "PRAGMA cache_size = 70000;", 0, 0, 0);
+    if (sqliteError(rc, 0))
+    {
+        itkDebugMacro(<< "Failed to adjust cache_size!");
     }
 
     // ============================================================

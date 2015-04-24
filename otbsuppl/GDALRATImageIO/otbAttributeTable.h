@@ -123,37 +123,50 @@ public:
 
 
     /// FAST INLINE ACCESS TO COLUMN VALUES
-    bool prepareColumnIterator(const std::string& colname, const std::string& whereClause);
+    bool prepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);
 
-    double nextDoubleValue()
+    double nextDoubleValue(const int& row)
     {
-        if (sqlite3_step(m_StmtColIter) == SQLITE_ROW)
+        sqlite3_bind_int(m_StmtColIter, 1, row);
+        if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
         {
-            return sqlite3_column_double(m_StmtColIter, 0);
+            sqlite3_reset(m_StmtColIter);
+            return m_dNodata;
         }
+        double v = sqlite3_column_double(m_StmtColIter, 0);
+        sqlite3_reset(m_StmtColIter);
 
-        return m_dNodata;
+        return v;
+
     }
 
-    int nextIntValue()
+    int nextIntValue(const int& row)
     {
-        if (sqlite3_step(m_StmtColIter) == SQLITE_ROW)
+        sqlite3_bind_int(m_StmtColIter, 1, row);
+        if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
         {
-            return sqlite3_column_int(m_StmtColIter, 0);
+            sqlite3_reset(m_StmtColIter);
+            return m_iNodata;
         }
+        int v = sqlite3_column_int(m_StmtColIter, 0);
+        sqlite3_reset(m_StmtColIter);
 
-        return m_iNodata;
+        return v;
     }
 
-    const unsigned char* nextTextValue()
+    const unsigned char* nextTextValue(const int& row)
     {
-        if (sqlite3_step(m_StmtColIter) == SQLITE_ROW)
+        sqlite3_bind_int(m_StmtColIter, 1, row);
+        if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
         {
-            return sqlite3_column_text(m_StmtColIter, 0);
+            sqlite3_reset(m_StmtColIter);
+            char* err = const_cast<char*>(m_sNodata.c_str());
+            return reinterpret_cast<unsigned char*>(err);
         }
+        const unsigned char* v = sqlite3_column_text(m_StmtColIter, 0);
+        sqlite3_reset(m_StmtColIter);
 
-        char* v = "NULL";
-        return reinterpret_cast<unsigned char*>(v);
+        return v;
     }
 
 protected:

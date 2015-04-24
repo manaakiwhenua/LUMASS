@@ -1113,12 +1113,12 @@ NMImageLayer::setLongScalars(T* buf, long* out, long* tabCol,
 {
     //CALLGRIND_START_INSTRUMENTATION;
     mOtbRAT->beginTransaction();
-    mOtbRAT->prepareColumnIterator(mLegendValueField.toStdString(), "");
+    mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString());
     for (int i=0; i < numPix; ++i)
     {
         buf[i] < 0 || buf[i] > maxidx
                 ? out[i] = nodata
-                : out[i] = mOtbRAT->nextIntValue();
+                : out[i] = mOtbRAT->nextIntValue(buf[i]);
     }
     mOtbRAT->endTransaction();
     //    CALLGRIND_STOP_INSTRUMENTATION;
@@ -1132,12 +1132,12 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
 {
     //CALLGRIND_START_INSTRUMENTATION;
     mOtbRAT->beginTransaction();
-    mOtbRAT->prepareColumnIterator(mLegendValueField.toStdString(), "");
+    mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString());
     for (int i=0; i < numPix; ++i)
     {
         buf[i] < 0 || buf[i] > maxidx
                 ? out[i] = nodata
-                : out[i] = mOtbRAT->nextDoubleValue();
+                : out[i] = mOtbRAT->nextDoubleValue(buf[i]);
     }
     mOtbRAT->endTransaction();
     //    CALLGRIND_STOP_INSTRUMENTATION;

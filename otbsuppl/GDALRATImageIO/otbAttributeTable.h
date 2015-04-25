@@ -115,7 +115,7 @@ public:
     sqlite3* getDbConnection() {return this->m_db;}
     bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause);
     bool prepareBulkSet(const std::vector<std::string>& colNames, const bool& bInsert);
-    bool doBulkSet(const std::vector<std::string>& values, const int& row);
+    bool doBulkSet(std::vector<void*>& values, const int& row);
     bool doBulkGet(std::vector<void*>& values);
     bool beginTransaction();
     bool endTransaction();

@@ -2162,7 +2162,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         //otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 
     std::vector< std::string > colnames;
-    std::vector< std::string > colValues;
+    std::vector< void* > colValues;
     colValues.resize(ncols);
 
     // go and check the column names against the SQL standard, in case
@@ -2227,7 +2227,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     int e=0;
     int*    intptr  = (int*)CPLCalloc(sizeof(int), 1);
     double* dblptr  = (double*)CPLCalloc(sizeof(double), 1);
-    char**  charPtr = (char**)CPLCalloc(sizeof(char*), 1);
+    char*   charPtr = (char*)CPLCalloc(sizeof(char*), 1);
 
     for (int chunk = 0; chunk < numChunks+1; ++chunk)
     {
@@ -2239,36 +2239,30 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
             for (int col=0; col < ncols; ++col)
             {
                 gdaltype = rat->GetTypeOfCol(col);
-                std::stringstream colVal;
 
                 switch(gdaltype)
                 {
                 case GFT_Integer:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, intptr);
-                    colVal << *intptr;
-                    CPLFree(intptr);
+                    colValues[col] = static_cast<void*>(intptr);
                 }
                     break;
                 case GFT_Real:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, dblptr);
-                    colVal << *dblptr;
-                    CPLFree(dblptr);
+                    colValues[col] = static_cast<void*>(dlbptr);
                 }
                     break;
                 case GFT_String:
                 {
-                    rat->ValuesIO(GF_Read, col, s+k, 1, valPtr);
-                    colVal << (valPtr[0] != 0 ? valPtr[0] : "NULL");
-                    CPLFree(valPtr[0]);
+                    rat->ValuesIO(GF_Read, col, s+k, 1, &charPtr);
+                    colValues[col] = static_cast<void*>(charPtr);
                 }
                     break;
                 default:
                     continue;
                 }
-
-                colValues[col] = colVal.str();
             }
             otbTab->doBulkSet(colValues, -1);
         }
@@ -2287,47 +2281,47 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
             }
         }
     }
+    CPLFree(intptr);
+    CPLFree(dblptr);
+    CPLFree(charPtr);
+
 #else
     // the old way - row by row
 
+    char* tval;
+    double dval;
+    int ival;
     for (int r=0; r < nrows; ++r)
     {
         for (int c=0; c < ncols; ++c)
         {
-            std::stringstream colVal;
+            //std::stringstream colVal;
             gdaltype = rat->GetTypeOfCol(c);
             switch (gdaltype)
             {
             case GFT_Integer:
-                colVal << rat->GetValueAsInt(r, c);
-                //otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
+                ival = rat->GetValueAsInt(r, c);
+                colValues[c] = static_cast<void*>(&ival);
                 break;
             case GFT_Real:
-                colVal << rat->GetValueAsDouble(r, c);
-                //otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
+                dval = rat->GetValueAsDouble(r, c);
+                colValues[c] = static_cast<void*>(&dval);
                 break;
             case GFT_String:
-                colVal << rat->GetValueAsString(r, c);
-                //otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
+                tval = const_cast<char*>(rat->GetValueAsString(r, c));
+                colValues[c] = static_cast<void*>(tval);
                 break;
             default:
                 continue;
             }
-            colValues[c] = colVal.str();
         }
         otbTab->doBulkSet(colValues, -1);
     }
 #endif
 
-    //rat = 0;
-    //img = 0;
-
-	//NMDebug(<< std::endl);
-	//NMDebugAI(<< "now pritn' the actual Table ...");
-	//otbTab->Print(std::cout, itk::Indent(0), 100);
     otbTab->endTransaction();
 
-	return otbTab;
+    return otbTab;
 }
 
 void

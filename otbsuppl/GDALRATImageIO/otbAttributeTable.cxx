@@ -451,15 +451,15 @@ AttributeTable::doBulkGet(std::vector<void*>& values)
 
 
 bool
-AttributeTable::doBulkSet(const std::vector<std::string> &values, const int &row)
+AttributeTable::doBulkSet(std::vector<void*> &values, const int &row)
 {
-    if (    m_db == 0
-        ||  m_StmtBulkSet == 0
-        ||  values.size() != m_vTypesBulkSet.size()
-       )
-    {
-        return false;
-    }
+    //    if (    m_db == 0
+    //        ||  m_StmtBulkSet == 0
+    //        ||  values.size() != m_vTypesBulkSet.size()
+    //       )
+    //    {
+    //        return false;
+    //    }
 
     int rc;
     for (int i=0; i < values.size(); ++i)
@@ -468,23 +468,27 @@ AttributeTable::doBulkSet(const std::vector<std::string> &values, const int &row
         {
         case ATTYPE_DOUBLE:
             {
-                const double val = ::atof(values.at(i).c_str());
-                rc = sqlite3_bind_double(m_StmtBulkSet, i+1, val);
-                if (sqliteError(rc, &m_StmtBulkSet)) return false;
+                //const double val = ::atof(values.at(i).c_str());
+                rc = sqlite3_bind_double(m_StmtBulkSet, i+1,
+                                         *static_cast<double*>(values[i]));
+                //if (sqliteError(rc, &m_StmtBulkSet)) return false;
             }
             break;
         case ATTYPE_INT:
             {
-                const long val = ::atol(values.at(i).c_str());
-                rc = sqlite3_bind_int(m_StmtBulkSet, i+1, val);
-                if (sqliteError(rc, &m_StmtBulkSet)) return false;
+                //const long val = ::atol(values.at(i).c_str());
+                rc = sqlite3_bind_int(m_StmtBulkSet, i+1,
+                                      *static_cast<int*>(values[i]));
+                //if (sqliteError(rc, &m_StmtBulkSet)) return false;
             }
             break;
         case ATTYPE_STRING:
             {
-                const char* val = values.at(i).c_str();
-                rc = sqlite3_bind_text(m_StmtBulkSet, i+1, val, -1, 0);
-                if (sqliteError(rc, &m_StmtBulkSet)) return false;
+                //const char* val = values.at(i).c_str();
+                rc = sqlite3_bind_text(m_StmtBulkSet, i+1,
+                                       static_cast<char*>(values[i]),
+                                       -1, 0);
+                //if (sqliteError(rc, &m_StmtBulkSet)) return false;
             }
             break;
         default:
@@ -495,7 +499,7 @@ AttributeTable::doBulkSet(const std::vector<std::string> &values, const int &row
     if (row >= 0)
     {
         rc = sqlite3_bind_int(m_StmtBulkSet, values.size()+1, row);
-        if (sqliteError(rc, &m_StmtBulkSet)) return false;
+        //if (sqliteError(rc, &m_StmtBulkSet)) return false;
     }
     else
     {
@@ -1890,7 +1894,8 @@ AttributeTable::AttributeTable()
       m_StmtEnd(0),
       m_StmtRollback(0),
       m_StmtBulkSet(0),
-      m_StmtBulkGet(0)
+      m_StmtBulkGet(0),
+      m_StmtColIter(0)
 {
     this->createTable("");
 }

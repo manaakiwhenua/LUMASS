@@ -241,8 +241,8 @@ if(NOT SQLITE3_FOUND)
   message(FATAL_ERROR "You have to install SQLite3 prior to compiling LUMASS!")
 endif()
 
-message(STATUS "SQLite3 include dir: "${SQLITE3_INCLUDE_DIR})
-message(STATUS "SQLite3 library: "${SQLITE3_LIBRARY})
+message(STATUS "SQLite3 include dir: ${SQLITE3_INCLUDE_DIR}")
+message(STATUS "SQLite3 library: ${SQLITE3_LIBRARY}")
 
 #====================================================================
 # RASDAMAN SUPPORT - optional (requires PostgreSQL support)

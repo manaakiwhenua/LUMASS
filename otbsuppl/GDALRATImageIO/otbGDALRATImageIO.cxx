@@ -2251,7 +2251,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
                 case GFT_Real:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, dblptr);
-                    colValues[col] = static_cast<void*>(dlbptr);
+                    colValues[col] = static_cast<void*>(dblptr);
                 }
                     break;
                 case GFT_String:

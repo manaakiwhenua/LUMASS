@@ -143,6 +143,8 @@ protected:
 
 	void createTableView(void);
 
+    void updateScalarBuffer();
+
     template<class T>
     void setLongScalars(T* buf, long* out, long* tabCol,
                         int numPix, int maxid,
@@ -214,6 +216,9 @@ protected:
     double mImgStats[6];
 
     bool mbUseOverviews;
+
+    int mScalarColIdx;
+    FILE* mScalarBufferFile;
 
 	//void fetchRATs(void);
 

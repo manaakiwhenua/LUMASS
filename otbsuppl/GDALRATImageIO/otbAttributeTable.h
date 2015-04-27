@@ -57,6 +57,19 @@ public:
 		ATTYPE_UNKNOWN
 	} TableColumnType;
 
+    // field value data structure
+    typedef struct
+    {
+        TableColumnType type;
+        union
+        {
+            int    ival;
+            double dval;
+            char*  tval;
+        };
+    } ColumnValue;
+
+
 	itkNewMacro(Self);
 	itkTypeMacro(AttributeTable, Superclass);
 
@@ -113,10 +126,10 @@ public:
     /// SQLite support functions
     std::string getDbFileName() {return this->m_dbFileName;}
     sqlite3* getDbConnection() {return this->m_db;}
-    bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause);
-    bool prepareBulkSet(const std::vector<std::string>& colNames, const bool& bInsert);
-    bool doBulkSet(std::vector<void*>& values, const int& row);
-    bool doBulkGet(std::vector<void*>& values);
+    bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
+    bool prepareBulkSet(const std::vector<std::string>& colNames, const bool& bInsert=true);
+    bool doBulkSet(std::vector< ColumnValue >& values, const int& row=-1);
+    bool doBulkGet(std::vector< ColumnValue >& values);
     bool beginTransaction();
     bool endTransaction();
     bool createIndex(const std::vector<std::string>& colNames);

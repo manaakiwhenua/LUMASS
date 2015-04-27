@@ -2162,8 +2162,8 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         //otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 
     std::vector< std::string > colnames;
-    std::vector< void* > colValues;
-    colValues.resize(ncols);
+    std::vector< AttributeTable::ColumnValue > colValues;
+    colValues.resize(ncols+1);
 
     // go and check the column names against the SQL standard, in case
     // they don't match it, we enclose in double quotes.
@@ -2180,7 +2180,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	for (int c=0; c < ncols; ++c)
 	{
 		gdaltype = rat->GetTypeOfCol(c);
-		std::string colname = colnames[c];
+        std::string colname = colnames[c];
 
 		switch(gdaltype)
 		{
@@ -2200,6 +2200,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	}
     //otbTab->AddRows(nrows);
 
+    colnames.insert(colnames.begin(), "rowidx");
     otbTab->prepareBulkSet(colnames, true);
 
 #ifdef GDAL_NEWRATAPI
@@ -2245,19 +2246,22 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
                 case GFT_Integer:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, intptr);
-                    colValues[col] = static_cast<void*>(intptr);
+                    colValues[col].type = AttributeTable::ATTYPE_INT;
+                    colValues[col].ival = *intptr;
                 }
                     break;
                 case GFT_Real:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, dblptr);
-                    colValues[col] = static_cast<void*>(dblptr);
+                    colValues[col].type = AttributeTable::ATTYPE_DOUBLE;
+                    colValues[col].dval = *dblptr;
                 }
                     break;
                 case GFT_String:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, &charPtr);
-                    colValues[col] = static_cast<void*>(charPtr);
+                    colValues[col].type = AttributeTable::ATTYPE_STRING;
+                    colValues[col].tval = charPtr;
                 }
                     break;
                 default:
@@ -2288,28 +2292,26 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 #else
     // the old way - row by row
 
-    char* tval;
-    double dval;
-    int ival;
     for (int r=0; r < nrows; ++r)
     {
+        colValues[0].type = AttributeTable::ATTYPE_INT;
+        colValues[0].ival = r;
         for (int c=0; c < ncols; ++c)
         {
-            //std::stringstream colVal;
             gdaltype = rat->GetTypeOfCol(c);
             switch (gdaltype)
             {
             case GFT_Integer:
-                ival = rat->GetValueAsInt(r, c);
-                colValues[c] = static_cast<void*>(&ival);
+                colValues[c+1].type = AttributeTable::ATTYPE_INT;
+                colValues[c+1].ival = rat->GetValueAsInt(r, c);
                 break;
             case GFT_Real:
-                dval = rat->GetValueAsDouble(r, c);
-                colValues[c] = static_cast<void*>(&dval);
+                colValues[c+1].type = AttributeTable::ATTYPE_DOUBLE;
+                colValues[c+1].dval = rat->GetValueAsDouble(r, c);
                 break;
             case GFT_String:
-                tval = const_cast<char*>(rat->GetValueAsString(r, c));
-                colValues[c] = static_cast<void*>(tval);
+                colValues[c+1].type = AttributeTable::ATTYPE_STRING;
+                colValues[c+1].tval = const_cast<char*>(rat->GetValueAsString(r, c));
                 break;
             default:
                 continue;
@@ -2530,7 +2532,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
     tab->beginTransaction();
     tab->prepareBulkGet(colnames, "");
 
-    std::vector<void*> values;
+    std::vector< otb::AttributeTable::ColumnValue > values;
     values.resize(tab->GetNumCols()-1);
 
     int intval;
@@ -2553,15 +2555,14 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 			{
 			case otb::AttributeTable::ATTYPE_INT:
                 //intval = ::atoi(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col-1, *static_cast<int*>(values[col-1]));//(int)tab->GetIntValue(col, row));
+                gdaltab->SetValue(row, col-1, values[col-1].ival);//(int)tab->GetIntValue(col, row));
                 break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
                 //dblval = ::atof(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col-1, *static_cast<double*>(values[col-1])); //tab->GetDblValue(col, row));
+                gdaltab->SetValue(row, col-1, values[col-1].dval); //tab->GetDblValue(col, row));
                 break;
 			case otb::AttributeTable::ATTYPE_STRING:
-                gdaltab->SetValue(row, col-1, reinterpret_cast<char*>(
-                                            static_cast<unsigned char*>(values[col-1]))); //tab->GetStrValue(col, row).c_str());
+                gdaltab->SetValue(row, col-1, values[col-1].tval); //tab->GetStrValue(col, row).c_str());
 				break;
 			default:
                 delete gdaltab;

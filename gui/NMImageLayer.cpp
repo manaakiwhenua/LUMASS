@@ -91,7 +91,7 @@
 #include "vtkLongLongArray.h"
 #include "vtkSetGet.h"
 
-#include "valgrind/callgrind.h";
+//#include "valgrind/callgrind.h"
 
 template<class PixelType, unsigned int Dimension>
 class InternalImageHelper
@@ -215,6 +215,9 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
     this->mBandMinMax.clear();
     this->mScalarBand = 1;
 
+    this->mScalarColIdx = -1;
+    this->mScalarBufferFile = 0;
+
     //vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
     //this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
 
@@ -226,6 +229,10 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 NMImageLayer::~NMImageLayer()
 {
+    if (mScalarBufferFile != 0)
+    {
+        fclose(mScalarBufferFile);
+    }
 	if (this->mReader)
 		delete this->mReader;
 	if (this->mPipeconn)
@@ -1010,6 +1017,11 @@ NMImageLayer::setScalars(vtkImageData* img)
         //NMDebugCtx(ctxNMImageLayer, << "done!");
         return;
     }
+    if (colidx != mScalarColIdx)
+    {
+        mScalarColIdx = colidx;
+        updateScalarBuffer();
+    }
 
     vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
     vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
@@ -1042,9 +1054,15 @@ NMImageLayer::setScalars(vtkImageData* img)
                     for (int i=0; i < numPix; ++i)
                     {
                         const long idx = idxScalars->GetVariantValue(i).ToLong();
-                        idx < 0 || idx > maxidx
-                                ? out[i] = nodata
-                                : out[i] = tabCol[idx];
+                        if (idx < 0 || idx > maxidx)
+                        {
+                            out[i] = nodata;
+                        }
+                        else
+                        {
+                            fseek(mScalarBufferFile, sizeof(long)*idx, SEEK_SET);
+                            fread(out+i, sizeof(double), 1, mScalarBufferFile);
+                        }
                     }
                 }
             }
@@ -1076,9 +1094,15 @@ NMImageLayer::setScalars(vtkImageData* img)
                     for (int i=0; i < numPix; ++i)
                     {
                         const long idx = idxScalars->GetVariantValue(i).ToLong();
-                        idx < 0 || idx > maxidx
-                                ? out[i] = nodata
-                                : out[i] = tabCol[idx];
+                        if (idx < 0 || idx > maxidx)
+                        {
+                            out[i] = nodata;
+                        }
+                        else
+                        {
+                            fseek(mScalarBufferFile, sizeof(long)*idx, SEEK_SET);
+                            fread(out+i, sizeof(long), 1, mScalarBufferFile);
+                        }
                     }
                 }
             }
@@ -1105,6 +1129,51 @@ NMImageLayer::setComponentScalars(T* in, T* out, int numPix)
     }
 }
 
+void
+NMImageLayer::updateScalarBuffer()
+{
+    if (mScalarBufferFile != 0)
+    {
+        fclose(mScalarBufferFile);
+    }
+
+    std::vector< std::string > colnames;
+    colnames.push_back(mLegendValueField.toStdString());
+
+    std::vector< otb::AttributeTable::ColumnValue > values;
+    values.resize(1);
+
+    mScalarBufferFile = tmpfile();
+    rewind(mScalarBufferFile);
+
+    double dnodata = 0;
+    int    inodata = 0;
+
+    mOtbRAT->beginTransaction();
+    mOtbRAT->prepareBulkGet(colnames, "");
+    for (int r=0; r < mOtbRAT->GetNumRows(); ++r)
+    {
+        switch(mOtbRAT->GetColumnType(mScalarColIdx))
+        {
+        case otb::AttributeTable::ATTYPE_INT:
+            if (mOtbRAT->doBulkGet(values))
+                fwrite(&(values[0].ival), sizeof(long), 1, mScalarBufferFile);
+            else
+                fwrite(&inodata, sizeof(long), 1, mScalarBufferFile);
+            break;
+        case otb::AttributeTable::ATTYPE_DOUBLE:
+            if (mOtbRAT->doBulkGet(values))
+                fwrite(&(values[0].dval), sizeof(double), 1, mScalarBufferFile);
+            else
+                fwrite(&dnodata, sizeof(double), 1, mScalarBufferFile);
+            break;
+        default:
+            break;
+        }
+    }
+    mOtbRAT->endTransaction();
+}
+
 // worker function for scalars setting
 template<class T>
 void
@@ -1112,15 +1181,18 @@ NMImageLayer::setLongScalars(T* buf, long* out, long* tabCol,
                              int numPix, int maxidx, long nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-    mOtbRAT->beginTransaction();
-    mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString());
     for (int i=0; i < numPix; ++i)
     {
-        buf[i] < 0 || buf[i] > maxidx
-                ? out[i] = nodata
-                : out[i] = mOtbRAT->nextIntValue(buf[i]);
+        if (buf[i] < 0 || buf[i] > maxidx)
+        {
+            out[i] = nodata;
+        }
+        else
+        {
+            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
+            fread(out+i, sizeof(long), 1, mScalarBufferFile);
+        }
     }
-    mOtbRAT->endTransaction();
     //    CALLGRIND_STOP_INSTRUMENTATION;
     //    CALLGRIND_DUMP_STATS;
 }
@@ -1131,15 +1203,18 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
                                int numPix, int maxidx, double nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-    mOtbRAT->beginTransaction();
-    mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString());
     for (int i=0; i < numPix; ++i)
     {
-        buf[i] < 0 || buf[i] > maxidx
-                ? out[i] = nodata
-                : out[i] = mOtbRAT->nextDoubleValue(buf[i]);
+        if (buf[i] < 0 || buf[i] > maxidx)
+        {
+            out[i] = nodata;
+        }
+        else
+        {
+            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
+            fread(out+i, sizeof(double), 1, mScalarBufferFile);
+        }
     }
-    mOtbRAT->endTransaction();
     //    CALLGRIND_STOP_INSTRUMENTATION;
     //    CALLGRIND_DUMP_STATS;
 }

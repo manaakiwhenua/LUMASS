@@ -153,11 +153,10 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
     }
 
     std::stringstream ssql;
-    ssql << "ALTER TABLE main.nmtab ADD " << sColName << " "
+    ssql << "ALTER TABLE main.nmtab ADD \"" << sColName << "\" "
          << sType << ";";
 
     int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
-    sqliteError(rc, 0);
 
     // update admin infos
     this->m_vNames.push_back(sColName);
@@ -166,7 +165,7 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
     // prepare an update statement for this column
     sqlite3_stmt* stmt_upd;
     ssql.str("");
-    ssql <<  "UPDATE main.nmtab SET " << sColName << " = "
+    ssql <<  "UPDATE main.nmtab SET \"" << sColName << "\" = "
          <<  "@VAL WHERE rowidx = @IDX ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             1024, &stmt_upd, 0);
@@ -176,7 +175,7 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
     // prepare a get value statement for this column
     sqlite3_stmt* stmt_sel;
     ssql.str("");
-    ssql <<  "SELECT " << sColName << " from main.nmtab"
+    ssql <<  "SELECT \"" << sColName << "\" from main.nmtab"
          <<  " WHERE rowidx = @IDX ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             1024, &stmt_sel, 0);
@@ -187,7 +186,7 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
     sqlite3_stmt* stmt_rowidx;
     ssql.str("");
     ssql <<  "SELECT rowidx from main.nmtab"
-         <<  " WHERE " << sColName << " = @IDX ;";
+         <<  " WHERE \"" << sColName << "\" = @IDX ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             1024, &stmt_rowidx, 0);
     sqliteError(rc, &stmt_rowidx);
@@ -247,11 +246,23 @@ AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
         return false;
     }
 
+    m_vTypesBulkGet.clear();
     std::stringstream ssql;
     ssql << "SELECT ";
     for (int c=0; c < colNames.size(); ++c)
     {
-        ssql << colNames.at(c);
+        int colidx = this->ColumnExists(colNames[c]);
+        if (colidx < 0)
+        {
+            sqlite3_finalize(m_StmtBulkGet);
+            m_StmtBulkGet = 0;
+            return false;
+        }
+        else
+        {
+            m_vTypesBulkGet.push_back(this->GetColumnType(colidx));
+        }
+        ssql << "\"" << colNames.at(c) << "\"";
         if (c < colNames.size()-1)
         {
             ssql << ",";
@@ -302,8 +313,8 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         const int idx = this->ColumnExists(colNames.at(i));
         if (idx < 0)
         {
-            otbWarningMacro(<< "Column '" << colNames.at(i)
-                            << "' does not exist in the table!");
+            otbWarningMacro(<< "Column \"" << colNames.at(i)
+                            << "\" does not exist in the table!");
             return false;
         }
         m_vTypesBulkSet.push_back(this->GetColumnType(idx));
@@ -315,7 +326,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         ssql << "INSERT INTO main.nmtab (";
         for (int c=0; c < colNames.size(); ++c)
         {
-            ssql << colNames.at(c);
+            ssql << "\"" << colNames.at(c) << "\"";
             if (c < colNames.size()-1)
             {
                 ssql << ",";
@@ -337,7 +348,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         ssql << "UPDATE main.nmtab SET ";
         for (int c=0; c < colNames.size(); ++c)
         {
-            ssql << colNames.at(c) << " = "
+            ssql << "\"" << colNames.at(c) << "\" = "
                  << "?" << c+1;
             if (c < colNames.size()-1)
             {
@@ -403,7 +414,7 @@ AttributeTable::createIndex(const std::vector<std::string> &colNames)
 }
 
 bool
-AttributeTable::doBulkGet(std::vector<void*>& values)
+AttributeTable::doBulkGet(std::vector< ColumnValue >& values)
 {
     if (    m_db == 0
         ||  m_StmtBulkGet == 0
@@ -411,9 +422,6 @@ AttributeTable::doBulkGet(std::vector<void*>& values)
     {
         return false;
     }
-    double dblVal;
-    int intVal;
-    char* charVal;
 
     int rc = sqlite3_step(m_StmtBulkGet);
     if (rc == SQLITE_ROW)
@@ -423,19 +431,18 @@ AttributeTable::doBulkGet(std::vector<void*>& values)
             switch(m_vTypesBulkGet[col])
             {
             case ATTYPE_DOUBLE:
-                dblVal = sqlite3_column_double(m_StmtBulkGet, col);
-                values[col] = (void*)&dblVal;
+                values[col].type = ATTYPE_DOUBLE;
+                values[col].dval = sqlite3_column_double(m_StmtBulkGet, col);
                 break;
             case ATTYPE_INT:
-                intVal = sqlite3_column_int(m_StmtBulkGet, col);
-                values[col] = (void*)&intVal;
+                values[col].type = ATTYPE_INT;
+                values[col].ival = sqlite3_column_int(m_StmtBulkGet, col);
                 break;
             case ATTYPE_STRING:
-                {
-                    unsigned char* sval = const_cast<unsigned char*>(
-                                sqlite3_column_text(m_StmtBulkGet, col));
-                    values[col] = (void*)sval;
-                }
+                values[col].type = ATTYPE_STRING;
+                values[col].tval = reinterpret_cast<char*>(
+                                    const_cast<unsigned char*>(
+                                      sqlite3_column_text(m_StmtBulkGet, col)));
                 break;
             }
         }
@@ -451,15 +458,15 @@ AttributeTable::doBulkGet(std::vector<void*>& values)
 
 
 bool
-AttributeTable::doBulkSet(std::vector<void*> &values, const int &row)
+AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const int &row)
 {
-    //    if (    m_db == 0
-    //        ||  m_StmtBulkSet == 0
-    //        ||  values.size() != m_vTypesBulkSet.size()
-    //       )
-    //    {
-    //        return false;
-    //    }
+    if (    m_db == 0
+        ||  m_StmtBulkSet == 0
+        ||  values.size() != m_vTypesBulkSet.size()
+       )
+    {
+        return false;
+    }
 
     int rc;
     for (int i=0; i < values.size(); ++i)
@@ -468,17 +475,15 @@ AttributeTable::doBulkSet(std::vector<void*> &values, const int &row)
         {
         case ATTYPE_DOUBLE:
             {
-                //const double val = ::atof(values.at(i).c_str());
-                rc = sqlite3_bind_double(m_StmtBulkSet, i+1,
-                                         *static_cast<double*>(values[i]));
+                //const double val = *(static_cast<double*>(values[i]));
+                rc = sqlite3_bind_double(m_StmtBulkSet, i+1, values[i].dval);
                 //if (sqliteError(rc, &m_StmtBulkSet)) return false;
             }
             break;
         case ATTYPE_INT:
             {
-                //const long val = ::atol(values.at(i).c_str());
-                rc = sqlite3_bind_int(m_StmtBulkSet, i+1,
-                                      *static_cast<int*>(values[i]));
+                //const int ival = *(static_cast<int*>(values[i]));
+                rc = sqlite3_bind_int(m_StmtBulkSet, i+1, values[i].ival);
                 //if (sqliteError(rc, &m_StmtBulkSet)) return false;
             }
             break;
@@ -486,7 +491,7 @@ AttributeTable::doBulkSet(std::vector<void*> &values, const int &row)
             {
                 //const char* val = values.at(i).c_str();
                 rc = sqlite3_bind_text(m_StmtBulkSet, i+1,
-                                       static_cast<char*>(values[i]),
+                                       values[i].tval,
                                        -1, 0);
                 //if (sqliteError(rc, &m_StmtBulkSet)) return false;
             }
@@ -509,7 +514,7 @@ AttributeTable::doBulkSet(std::vector<void*> &values, const int &row)
     rc = sqlite3_step(m_StmtBulkSet);
     sqliteStepCheck(rc);
 
-    //sqlite3_clear_bindings(m_StmtBulkSet);
+    sqlite3_clear_bindings(m_StmtBulkSet);
     sqlite3_reset(m_StmtBulkSet);
 
     return true;

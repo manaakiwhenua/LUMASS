@@ -20,6 +20,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <cstdio>
 #include <list>
 #include <deque>
 #include <map>
@@ -752,7 +753,25 @@ OtbModellerWin::eventFilter(QObject *obj, QEvent *event)
             {
                 renwin->SetStereoTypeToRedBlue();
                 renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to Interlaced" << std::endl);
+                NMDebugAI(<< "Stereo mode switched to RedBlue" << std::endl);
+            }
+            else if (ke->key() == Qt::Key_G)
+            {
+                renwin->SetStereoTypeToSplitViewportHorizontal();
+                renwin->StereoUpdate();
+                NMDebugAI(<< "Stereo mode switched to Split Viewport Horizontal" << std::endl);
+            }
+            else if (ke->key() == Qt::Key_D)
+            {
+                renwin->SetStereoTypeToDresden();
+                renwin->StereoUpdate();
+                NMDebugAI(<< "Stereo mode switched to Dresden" << std::endl);
+            }
+            else if (ke->key() == Qt::Key_U)
+            {
+                renwin->SetStereoTypeToCheckerboard();
+                renwin->StereoUpdate();
+                NMDebugAI(<< "Stereo mode switched to Checkerboard" << std::endl);
             }
         }
     }
@@ -1582,236 +1601,54 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-//    char* text = "hallo";
+    QList<QString> sn;
+    sn << "Hans" << "Franz" << "Ganz" << "Maus" << "Haus";
+    QList<long> sa;
+    sa << 50 << 4 << 35 << 17 << 42;
+    QList<double> sw;
+    sw << 78.3 << 16.5 << 90.2 << 65 << 70;
 
-//    std::vector<void*> myVec;
-//    myVec.resize(3);
+    std::string cn[] = {"rowidx", "name", "1234", "weight of person"};
+    std::vector<std::string> colNames;
+    for (int i=0; i < 4; ++i) colNames.push_back(cn[i]);
 
-//    *((int*)myVec[0]) = 4;
-//    *((double*)myVec[1]) = 0.5;
-//    ((char*)myVec[2]) = const_cast<char*>(text);
+    otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
 
-//    NMDebugAI(<< *static_cast<int*>(myVec[0]) << std::endl
-//              << *static_cast<double*>(myVec[1]) << std::endl
-//              << myVec[2] << std::endl);
+    tab->beginTransaction();
 
+    NMDebugAI(<< "adding columns ..." << std::endl);
+    tab->AddColumn("name", otb::AttributeTable::ATTYPE_STRING);
+    tab->AddColumn("1234", otb::AttributeTable::ATTYPE_INT);
+    tab->AddColumn("weight of person", otb::AttributeTable::ATTYPE_DOUBLE);
 
+    tab->endTransaction();
 
-//    sqlite3* m_db = 0;
-//    std::string m_dbFileName;
+    tab->beginTransaction();
+    tab->prepareBulkSet(colNames);
 
-//    std::stringstream uri;
-//    m_dbFileName = std::tmpnam(0);
-//    //    m_dbFileName = "/tmp/filejowkmq.db";
+    std::vector< otb::AttributeTable::ColumnValue > values;
+    values.resize(4);
+    for (int r=0; r < 5; ++r)
+    {
+        values[0].type = otb::AttributeTable::ATTYPE_INT;
+        values[0].ival = r;
 
-//    //NMDebugAI(<< "random file name: " << m_dbFileName << std::endl);
+        values[1].type = otb::AttributeTable::ATTYPE_STRING;
+        values[1].tval = const_cast<char*>(sn.at(r).toStdString().c_str());
 
-//    size_t pos = m_dbFileName.find_last_of('/') + 1;
-//    size_t len = m_dbFileName.size() - pos;
-//    m_dbFileName = m_dbFileName.substr(pos, len);
+        values[2].type = otb::AttributeTable::ATTYPE_INT;
+        values[2].ival = sa.at(r);
 
+        values[3].type = otb::AttributeTable::ATTYPE_DOUBLE;
+        values[3].dval = sw.at(r);
 
+        tab->doBulkSet(values);
+    }
+    tab->endTransaction();
 
-//    //uri << "file:/home/alex/projects/SWE-VRI/data/JagathsTestWSN/xserve_sqlite_1.db";//?mode=rw&cache=shared";
-//           //"file:/home/alex/tmp/mfs.db?mode=rwc&cache=shared";
-//    //uri << "file:" << getenv("HOME") << "/tmp/" << m_dbFileName << ".db";
-//    //uri << "file:/" << m_dbFileName << ".db?mode=rwc&cache=shared";
-//    //uri << "file:/home/alex/tmp/" << m_dbFileName << ".db";
-
-//    NMDebugAI(<< "temp database: " << uri.str() << std::endl);
-
-//    QList<QString> sn;
-//    sn << "Hans" << "Franz" << "Ganz" << "Maus" << "Haus";
-//    QList<long> sa;
-//    sa << 50 << 4 << 35 << 17 << 42;
-//    QList<double> sw;
-//    sw << 78.3 << 16.5 << 90.2 << 65 << 70;
-
-//    std::string s1[] = {"Hans", "50", "78.3"};
-//    std::vector<std::string> r1;
-//    for (int i=0; i < 3; ++i) r1.push_back(s1[i]);
-
-//    std::string s2[] = {"Franz", "4", "16.5"};
-//    std::vector<std::string> r2;
-//    for (int i=0; i < 3; ++i) r2.push_back(s2[i]);
-
-//    std::string s3[] = {"Ganz", "35", "90.2"};
-//    std::vector<std::string> r3;
-//    for (int i=0; i < 3; ++i) r3.push_back(s3[i]);
-
-//    std::string s4[] = {"Maus", "17", "65"};
-//    std::vector<std::string> r4;
-//    for (int i=0; i < 3; ++i) r4.push_back(s4[i]);
-
-//    std::string s5[] = {"Haus", "42", "70"};
-//    std::vector<std::string> r5;
-//    for (int i=0; i < 3; ++i) r5.push_back(s5[i]);
-
-//    std::vector< std::vector< std::string > > vRows;
-//    vRows.push_back(r1);
-//    vRows.push_back(r2);
-//    vRows.push_back(r3);
-//    vRows.push_back(r4);
-//    vRows.push_back(r5);
-
-//    std::string cn[] = {"name", "age", "weight"};
-//    std::vector<std::string> colNames;
-//    for (int i=0; i < 3; ++i) colNames.push_back(cn[i]);
-//    // ================================================================
-//    QDateTime startTest = QDateTime::currentDateTime();
-
-//    otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
-
-//    tab->beginTransaction();
-
-//    NMDebugAI(<< "adding columns ..." << std::endl);
-//    tab->AddColumn("name", otb::AttributeTable::ATTYPE_STRING);
-//    tab->AddColumn("age", otb::AttributeTable::ATTYPE_INT);
-//    tab->AddColumn("weight", otb::AttributeTable::ATTYPE_DOUBLE);
+    //tab->Print(std::cout, 2, 5);
 
 
-
-//    //    NMDebugAI(<< "adding rows ... " << std::endl);
-//    //    tab->AddRows(100000);
-
-//    tab->prepareBulkSet(colNames, true);
-
-//    NMDebugAI(<< "setting values ..." << std::endl);
-//    int i=0;
-//    //for (int r=0; r < tab->GetNumRows(); ++r, ++i)
-//    for (int r=0; r < 1000000; ++r, ++i)
-//    {
-//        if (i == 5) i = 0;
-//        tab->doBulkSet(vRows.at(i), -1);
-//        //        tab->SetValue("name", r, sn.at(i).toStdString());
-//        //        tab->SetValue("age", r, (long)sa.at(i));
-//        //        tab->SetValue("weight", r, (double)sw.at(i));
-//        //        tab->SetValue(1, r, sn.at(i).toStdString());
-//        //        tab->SetValue(2, r, (long)sa.at(i));
-//        //        tab->SetValue(3, r, (double)sw.at(i));
-//    }
-
-//    tab->endTransaction();
-
-//    QDateTime endTest = QDateTime::currentDateTime();
-
-
-//    //    for (int r=0; r < tab->GetNumRows(); ++r)
-//    //    {
-//    //        NMDebugAI(<< "row #" << r << std::endl);
-//    //        NMDebugAI(<< "------------------------" << std::endl);
-//    //        for (int col=0; col < tab->GetNumCols(); ++col)
-//    //        {
-//    //            std::string colname = tab->GetColumnName(col);
-//    //            switch(tab->GetColumnType(col))
-//    //            {
-//    //            case otb::AttributeTable::ATTYPE_DOUBLE:
-//    //                NMDebugAI( << colname << "="
-//    //                           //<< tab->GetDblValue(colname, r) << std::endl);
-//    //                           << tab->GetDblValue(col, r) << std::endl);
-//    //                break;
-//    //            case otb::AttributeTable::ATTYPE_INT:
-//    //                NMDebugAI( << colname << "="
-//    //                           //<< tab->GetIntValue(colname, r) << std::endl);
-//    //                           << tab->GetIntValue(col, r) << std::endl);
-//    //                break;
-//    //            case otb::AttributeTable::ATTYPE_STRING:
-//    //                NMDebugAI( << colname << "="
-//    //                           //<< tab->GetStrValue(colname, r) << std::endl);
-//    //                           << tab->GetStrValue(col, r) << std::endl);
-//    //                break;
-//    //            }
-//    //        }
-//    //        NMDebug(<< std::endl);
-//    //    }
-
-//    int msec = startTest.msecsTo(endTest);
-//    int min = msec / 60000;
-//    double sec = (msec % 60000) / 1000.0;
-
-//    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
-//    NMDebugAI(<< "Test run took (min:sec): " << elapsedTime.toStdString() << endl);
-    // ====================================================================
-
-
-//    NMDebugAI(<< "otb::AttributeTable::createDb(): try to open " << uri.str() << std::endl);
-
-    //    int rc = ::sqlite3_open_v2(,
-    //                               &m_db,
-    //                               SQLITE_OPEN_URI |
-    //                               SQLITE_OPEN_READWRITE |
-    //                               SQLITE_OPEN_CREATE |
-    //                               SQLITE_OPEN_SHAREDCACHE,
-    //                               0);
-    //    if (rc != SQLITE_OK)
-    //    {
-    //        std::string errmsg = sqlite3_errmsg(m_db);
-    //        NMErr(ctxOtbModellerWin, << "SQLite3 ERROR #" << rc << ": " << errmsg);
-    //        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
-    //        m_dbFileName.clear();
-    //        ::sqlite3_close(m_db);
-    //        m_db = 0;
-    //    }
-    //    else
-    //    {
-    //        NMDebugAI(<< "db created!" << std::endl);
-    //    }
-
-//    tab->beginTransaction();
-
-//    startTest = QDateTime::currentDateTime();
-
-
-//    std::vector<std::string> queryCols;
-//    queryCols.push_back("rowidx");
-//    queryCols.push_back("name");
-//    queryCols.push_back("age");
-//    queryCols.push_back("weight");
-
-//    std::vector<std::string> idxCols;
-//    idxCols.push_back("weight");
-
-
-//    //    NMDebugAI(<< "creating index ..." << std::endl);
-//    //    tab->createIndex(idxCols);
-
-//    tab->prepareBulkGet(queryCols, "order by weight");
-
-//    std::vector<void*> retVal;
-//    retVal.resize(queryCols.size());
-
-    //for (int i=0; i < tab->GetNumRows(); ++i)
-//    for (int i=0; i < 100; ++i)
-//    {
-//        retVal.clear();
-//        if (!tab->doBulkGet(retVal))
-//        {
-//            break;
-//        }
-//        NMDebugAI(<< "row #" << (unsigned char*)retVal[0] << std::endl);
-//        NMDebugAI(<< "========================" << std::endl);
-//        for (int s=1; s < queryCols.size(); ++s)
-//        {
-
-//            NMDebugAI( << queryCols.at(s) << "="
-//                       << retVal.at(s) << std::endl);
-
-//        }
-//        NMDebugAI(<< std::endl);
-//    }
-
-//    endTest = QDateTime::currentDateTime();
-
-//    tab->endTransaction();
-
-//    //::sqlite3_close(m_db);
-
-//    msec = startTest.msecsTo(endTest);
-//    min = msec / 60000;
-//    sec = (msec % 60000) / 1000.0;
-
-//    elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
-//    NMDebugAI(<< "Test run took (min:sec): " << elapsedTime.toStdString() << endl);
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

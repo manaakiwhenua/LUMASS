@@ -68,7 +68,7 @@ class vtkCommand;
 class vtkTable;
 class NMLayer;
 class NMTableView;
-
+class NMVectorLayer;
 
 namespace Ui
 {
@@ -160,6 +160,8 @@ protected:
 	vtkSmartPointer<vtkPolyData> wkbPointToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
+
+    void vtkPolygonPolydataToOGR(OGRDataSource* ds, NMVectorLayer *vectorLayer);
 
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out);

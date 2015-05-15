@@ -1294,7 +1294,7 @@ void OtbModellerWin::saveAsVectorLayerOGR(void)
 
 	NMDebugAI( << "new file name is: " << fileName.toStdString() << endl);
 
-	// create the data set
+    // create the data set
 	// ToDo: adjust code for DB-based formats
 	// (i.e. do we need port information, host, user, passwd, etc.)
 	OGRSFDriver* theDriver = reg->GetDriverByName(theDriverName.toStdString().c_str());
@@ -1302,17 +1302,19 @@ void OtbModellerWin::saveAsVectorLayerOGR(void)
 	// create the new data source
 	OGRDataSource* ds = theDriver->CreateDataSource(fileName.toStdString().c_str(), 0);
 
-	// create the output layer
-//	OGRLayer* outLayer = ds->CreateLayer(l->objectName().toStdString().c_str(), 0,
-//			)
+    switch(vL->getFeatureType())
+    {
+    case NMVectorLayer::NM_POLYGON_FEAT:
+        this->vtkPolygonPolydataToOGR(ds, vL);
+        break;
+    default:
+        NMDebugAI( << "Export of this feature type is not supported!" << std::endl);
+        break;
 
-	// make a list of available attributes
-	vtkDataSet* vtkDS = const_cast<vtkDataSet*>(vL->getDataSet());
-	vtkDataSetAttributes* dsAttr = vtkDS->GetAttributes(vtkDataSet::CELL);
+    }
 
-	int numFields = dsAttr->GetNumberOfArrays();
 
-	// clean up OGR stuff
+    // clean up OGR stuff
 	// destroy the data source object
 	OGRDataSource::DestroyDataSource(ds);
 
@@ -3158,6 +3160,213 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 	return vtkVect;
 }
 
+
+void
+OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vectorLayer)
+{
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    // create the output layer
+    NMDebugAI(<< "Create output layer ..." << std::endl);
+    OGRLayer* ogrLayer = ds->CreateLayer(vectorLayer->objectName().toStdString().c_str(),
+                                         0, wkbPolygon, 0);
+    if (ogrLayer == 0)
+    {
+        NMDebugAI(<< "Failed creating the OGR polygon layer!" << std::endl);
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    // make a list of available attributes
+    vtkDataSet* vtkDS = const_cast<vtkDataSet*>(vectorLayer->getDataSet());
+    vtkDataSetAttributes* dsAttr = vtkDS->GetAttributes(vtkDataSet::CELL);
+
+    QStringList origFieldNames;
+    QStringList writeFieldNames;
+
+    NMDebugAI(<< "Add attributes to output layer ..." << std::endl);
+    int numFields = dsAttr->GetNumberOfArrays();
+    for (int f=0; f < numFields; ++f)
+    {
+        vtkAbstractArray* aa = dsAttr->GetAbstractArray(f);
+        QString fieldName = aa->GetName();
+        origFieldNames << fieldName;
+        if (fieldName.length() > 10)
+        {
+            bool bok;
+            QString newName = QInputDialog::getText(this, "Confirm Field Name",
+                                                    "Please enter field name with max. 10 characters.",
+                                                    QLineEdit::Normal, fieldName, &bok);
+            if (!bok)
+            {
+                NMDebugAI(<< "No valid new field name entered! Field name gets mangled!" << std::endl);
+                writeFieldNames << fieldName.left(10);
+            }
+            else
+            {
+                if (newName.length() <= 10)
+                {
+                    writeFieldNames << newName;
+                }
+                else
+                {
+                    NMDebugAI(<< "No valid new field name entered! Field name gets mangled!" << std::endl);
+                    writeFieldNames << fieldName.left(10);
+                }
+            }
+        }
+        else
+        {
+            writeFieldNames << fieldName;
+        }
+
+
+        if (aa->IsNumeric())
+        {
+            if (    aa->GetDataType() == VTK_FLOAT
+                 || aa->GetDataType() == VTK_DOUBLE
+               )
+            {
+                OGRFieldDefn field(writeFieldNames.at(f).toStdString().c_str(), OFTReal);
+                if (ogrLayer->CreateField(&field) != OGRERR_NONE)
+                {
+                    NMDebugAI(<< "Failed crating double field '" << aa->GetName() << "'!"
+                              << std::endl);
+                }
+
+            }
+            else
+            {
+                OGRFieldDefn field(writeFieldNames.at(f).toStdString().c_str(), OFTInteger);
+                if (ogrLayer->CreateField(&field) != OGRERR_NONE)
+                {
+                    NMDebugAI(<< "Failed crating integer field '" << aa->GetName() << "'!"
+                              << std::endl);
+                }
+            }
+        }
+        else
+        {
+            OGRFieldDefn field(writeFieldNames.at(f).toStdString().c_str(), OFTString);
+            if (ogrLayer->CreateField(&field) != OGRERR_NONE)
+            {
+                NMDebugAI(<< "Failed crating string field '" << aa->GetName() << "'!"
+                          << std::endl);
+                continue;
+            }
+        }
+    }
+
+    NMDebugAI(<< "Copy data feature by feature ... " << std::endl);
+
+    // now we're looping over the polygons, define OGRFeatures, and
+    // write them out
+    vtkDataArray* hole = dsAttr->GetArray("nm_hole");
+    vtkPolyData* pd = vtkPolyData::SafeDownCast(vtkDS);
+    vtkIdType ncells = pd->GetNumberOfCells();
+    vtkPoints* pts = pd->GetPoints();
+    vtkCellArray* ca = pd->GetPolys();
+    ca->InitTraversal();
+
+    vtkIdType npts;
+    vtkIdType* cpts;
+    double* xyz;
+    for (int cell=0; cell < ncells; ++cell)
+    {
+        OGRFeature* feat = OGRFeature::CreateFeature(ogrLayer->GetLayerDefn());
+
+        // ===============================================================
+        // create the geometry
+        if (ca->GetNextCell(npts, cpts) == 0)
+        {
+            break;
+        }
+
+        OGRPolygon poly;
+        OGRLinearRing outerRing;
+        for (int n=0; n < npts; ++n)
+        {
+            xyz = pts->GetPoint(cpts[n]);
+            outerRing.addPoint(xyz[0], xyz[1], xyz[2]);
+        }
+
+        poly.addRing(&outerRing);
+
+        while (cell < ncells-1)
+        {
+            if (hole->GetTuple1(cell+1))
+            {
+                if (ca->GetNextCell(npts, cpts) == 0)
+                {
+                    break;
+                }
+                OGRLinearRing innerRing;
+                for (int n=0; n < npts; ++n)
+                {
+                    xyz = pts->GetPoint(cpts[n]);
+                    innerRing.addPoint(xyz[0], xyz[1], xyz[2]);
+                }
+                poly.addRing(&innerRing);
+
+                ++cell;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (feat->SetGeometry(&poly) != OGRERR_NONE)
+        {
+            NMDebugAI(<< "Failed adding polygon #" << cell << "!" << std::endl);
+            break;
+        }
+
+        // ================================================================
+        // add the attributes to the layer
+        for (int f=0; f < numFields; ++f)
+        {
+            vtkAbstractArray* aa = dsAttr->GetAbstractArray(f);
+            QString fieldName = writeFieldNames.at(f);
+            if (aa->IsNumeric())
+            {
+                vtkDataArray* da = vtkDataArray::SafeDownCast(aa);
+                if (    aa->GetDataType() == VTK_FLOAT
+                     || aa->GetDataType() == VTK_DOUBLE
+                   )
+                {
+                    feat->SetField(fieldName.toStdString().c_str(), static_cast<double>(da->GetTuple1(cell)));
+                }
+                else
+                {
+                    feat->SetField(fieldName.toStdString().c_str(), static_cast<int>(da->GetTuple1(cell)));
+                }
+            }
+            else
+            {
+                vtkStringArray* sa = vtkStringArray::SafeDownCast(aa);
+                feat->SetField(fieldName.toStdString().c_str(), sa->GetValue(cell).c_str());
+            }
+        }
+
+        // ================================================================
+        // finally, we add the local feature to the data set feature
+        if (ogrLayer->CreateFeature(feat) != OGRERR_NONE)
+        {
+            NMDebugAI(<< "Failed crating feature #" << cell << "!" << std::endl);
+        }
+
+        OGRFeature::DestroyFeature(feat);
+
+        if (cell % 500 == 0)
+        {
+            NMDebug( << ".");
+        }
+    }
+    NMDebug(<< std::endl);
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
 
 vtkSmartPointer<vtkPolyData> OtbModellerWin::OgrToVtkPolyData(OGRDataSource& ds)
 {

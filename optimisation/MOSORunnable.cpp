@@ -101,12 +101,6 @@ MOSORunnable::run()
         vtkSmartPointer<vtkTable> chngmatrix;
         vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
 
-		// get rid of admin fields
-		tab->RemoveColumnByName("nm_id");
-		tab->RemoveColumnByName("nm_hole");
-		tab->RemoveColumnByName("nm_sel");
-
-
 		// now write the input and the result table
 		QString perturbName = QString("%1/%2_p%3-%4.csv").arg(dsInfo.path())
 				.arg(dsInfo.baseName()).arg(level).arg(runs);
@@ -127,9 +121,39 @@ MOSORunnable::run()
 		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");
 
+        // ------------------------------------------------------
+        // export attribute table
+        vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(
+                    tab->GetColumnByName("nm_hole"));
+
+        // filter 'hole' polygons
+        int nrows = tab->GetNumberOfRows();
+        int r = 0;
+        while(r < nrows)
+        {
+            if (hole->GetValue(r))
+            {
+                tab->RemoveRow(r);
+                --nrows;
+            }
+            else
+            {
+                ++r;
+            }
+        }
+
+        // get rid of admin fields
+        tab->RemoveColumnByName("nm_id");
+        tab->RemoveColumnByName("nm_hole");
+        tab->RemoveColumnByName("nm_sel");
+
+
         writer->SetInputData(tab);
 		writer->SetFileName(perturbName.toStdString().c_str());
 		writer->Update();
+
+        // ---------------------------------------------------------
+        // export summaries and land use change matrix
 
         writer->SetInputData(sumres);
 		writer->SetFileName(resName.toStdString().c_str());

@@ -569,6 +569,7 @@ int NMMosra::loadSettings(QString fileName)
 				{
                     if (sValueStr.compare("break_at_first", Qt::CaseInsensitive) == 0)
                     {
+                        this->muiTimeOut = 0;
                         this->mbBreakAtFirst = true;
                     }
                     else
@@ -577,6 +578,7 @@ int NMMosra::loadSettings(QString fileName)
                         unsigned int timeout = sValueStr.toUInt(&bok);
                         if (bok)
                         {
+                            this->mbBreakAtFirst = false;
                             this->muiTimeOut = timeout;
                             NMDebugAI(<< "Solver timeout: " << timeout << endl);
                         }
@@ -2880,8 +2882,9 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 	NMDebugAI(<< "summarising results ..." << std::endl << std::endl);
 
 
-	int ind = nmlog::nmindent + 1;
-	int ind2 = ind+1;
+// don't need these really, and it only breaks the WIN32 compilation
+//	int ind = nmlog::nmindent + 1;
+//	int ind2 = ind+1;
 
     int resRec = 0;
     int rec = 0;

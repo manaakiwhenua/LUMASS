@@ -14,13 +14,15 @@ if(WIN32)
 		C:/Qt
 	)
 else()
-	set(QT5_CORE_LIB "lib/libQt5Core.la")
+        set(QT5_CORE_LIB "libQt5Core.so")
 	set(QT5_PATHS
 		/opt
 		/opt/qt
 		/usr
 		/usr/qt
 		/usr/local
+                /usr/lib
+                /usr/lib/x86_64-linux-gnu
 	)
 endif()
 
@@ -72,9 +74,9 @@ else()
 	    "Qt5Xml"
 	    "Qt5Gui"
 	    "Qt5Concurrent"
-	    "Qt5Declarative"
-	    "Qt5Qml"
-	    "Qt5Quick"
+	    #"Qt5Declarative"
+	    #"Qt5Qml"
+	    #"Qt5Quick"
 	)
 	
 	foreach(QT5COMP ${QT5_COMP_LIST})
@@ -127,6 +129,8 @@ foreach(INCLDIR ${QT5_INCLUDE_DIRS})
             5.3.0/QtCore
             5.3.1/QtCore
             5.3/QtCore
+            5.4.0/QtCore
+            5.4.1/QtCore
         PATHS ${INCLDIR}
         NO_DEFAULT_PATH
     )

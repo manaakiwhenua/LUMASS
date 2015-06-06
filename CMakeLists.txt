@@ -174,8 +174,8 @@ endif(NOT OTB_FOUND)
 # available; set up specifics later with respect to the
 # different executables
 
-#FIND_PACKAGE(LUMASSVTK)
-FIND_PACKAGE(VTK)
+FIND_PACKAGE(LUMASSVTK)
+#FIND_PACKAGE(VTK)
 
 if(NOT VTK_DIR)
     message(FATAL_ERROR "Couldn't find VTK!")

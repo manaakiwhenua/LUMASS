@@ -60,7 +60,7 @@
 //#include <itksys/SystemTools.hxx>
 //#include <fstream>
 //
-//#include "otbCurlHelper.h"
+#include "otbCurlHelper.h"
 
 namespace otb
 {

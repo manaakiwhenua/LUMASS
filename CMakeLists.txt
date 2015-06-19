@@ -9,7 +9,7 @@ if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.11")
 	cmake_policy(SET CMP0020 NEW)
 endif()
 # from version 2.8.12 onwards
-if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.12")
+if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.13")
 	cmake_policy(SET CMP0045 OLD)
 endif()
 

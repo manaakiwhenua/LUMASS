@@ -141,3 +141,7 @@ if(NOT QT5CORE_PRIVATE_DIR)
 else()
     message(STATUS "QT5CORE_PRIVATE_DIR=${QT5CORE_PRIVATE_DIR}")
 endif()
+
+# finally, we determine the qt5 version
+include(${CMAKE_PREFIX_PATH}/lib/cmake/Qt5/Qt5ConfigVersion.cmake)
+set(QT5_VERSION_STRING "${PACKAGE_VERSION}")

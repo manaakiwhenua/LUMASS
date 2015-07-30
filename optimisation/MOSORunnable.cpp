@@ -5,8 +5,11 @@
  *      Author: alex
  */
 
+
 #include <QScopedPointer>
 #include <QFileInfo>
+#include <QDir>
+#include <QObject>
 
 #include "nmlog.h"
 #include "NMMosra.h"
@@ -33,15 +36,15 @@ MOSORunnable::~MOSORunnable()
 
 void
 MOSORunnable::setData(QString dsfileName,
-			QString losSettingsFileName,
-			QString perturbItem,
-			float level,
-			int startIdx, int numruns)
+            QString losSettingsFileName,
+            QString perturbItem,
+            const QList<float> &levels,
+            int startIdx, int numruns)
 {
 	mDsFileName = dsfileName;
 	mLosFileName = losSettingsFileName;
 	mPerturbItem = perturbItem;
-	mLevel = level;
+    mflLevels = levels;
 	mStartIdx = startIdx;
 	mNumRuns = numruns;
 }
@@ -53,7 +56,19 @@ MOSORunnable::run()
 
 	int startIdx = mStartIdx;
 	int numruns = mNumRuns;
-	float level = mLevel;
+    // join items levels by '+'
+    QString level;
+    for (int l=0; l < mflLevels.size(); ++l)
+    {
+        if (l == 0)
+        {
+            level = QString("%1").arg(mflLevels.at(l));
+        }
+        else
+        {
+            level = QString("%1+%2").arg(level).arg(mflLevels.at(l));
+        }
+    }
 	QString dsfileName = mDsFileName;
 	QString losSettingsFileName = mLosFileName;
 	QString perturbItem = mPerturbItem;
@@ -75,48 +90,114 @@ MOSORunnable::run()
 
 		vtkPolyData* pd = reader->GetOutput();
 		mosra->setDataSet(pd);
-		mosra->perturbCriterion(perturbItem, level);
+        if (!mPerturbItem.isEmpty())
+        {
+            mosra->perturbCriterion(perturbItem, mflLevels);
+        }
 		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
 
-        // let's write a report
-        QString sRepName = QString("%1/report_%2_p%3-%4.txt").arg(dsInfo.path())
-                        .arg(dsInfo.baseName()).arg(level).arg(runs);
+        // --------------------------------------------------------------------------
+        // names for output files
+        QString sRepName, lpName, perturbName, resName, chngName, relName, totName;
 
-        // let's write the actual optimisation problem in lp format
-        QString lpName = QString("%1/lp_%2_p%3-%4.lp").arg(dsInfo.path())
-                .arg(dsInfo.baseName()).arg(level).arg(runs);
+        if (mosra->doBatch())
+        {
+            // let's write a report
+            sRepName = QString("%1/report_%2_p%3-%4.txt").arg(dsInfo.path())
+                            .arg(dsInfo.baseName()).arg(level).arg(runs);
 
-		mosra->setTimeOut(mosra->getTimeOut());
-		if (!mosra->solveLp())
+            // let's write the actual optimisation problem in lp format
+            lpName = QString("%1/lp_%2_p%3-%4.lp").arg(dsInfo.path())
+                    .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+
+            perturbName = QString("%1/%2_p%3-%4.csv").arg(dsInfo.path())
+                    .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+            resName = QString("%1/res_%2_p%3-%4.csv").arg(dsInfo.path())
+                            .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+            chngName = QString("%1/chng_%2_p%3-%4.csv").arg(dsInfo.path())
+                    .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+            relName = QString("%1/rel_%2_p%3-%4.csv").arg(dsInfo.path())
+                    .arg(dsInfo.baseName()).arg(level).arg(runs);
+
+            totName = QString("%1/tot_%2_p%3-%4.csv").arg(dsInfo.path())
+                    .arg(dsInfo.baseName()).arg(level).arg(runs);
+        }
+        else
+        {
+            QDir parentDir(dsInfo.path());
+            QFileInfo losFileInfo(mLosFileName);
+            QString losFileName = losFileInfo.baseName();
+
+            QStringList dirList;
+            dirList << "opt_report" << "opt_lucmatrix" << "opt_result"
+                    << "opt_relative" << "opt_total" << "opt_lp" << "opt_tab";
+
+            for (int d=0; d < dirList.size(); ++d)
+            {
+                QString dir = dirList.at(d);
+                NMDebugAI(<< dirList.at(d).toStdString() << " -> ");
+                if (!parentDir.exists(dir))
+                {
+                    if (!parentDir.mkdir(dir))
+                    {
+                        dir = dsInfo.dir().dirName();
+                        dirList.replace(d, dir);
+                    }
+                }
+                NMDebug(<< dirList.at(d).toStdString() << endl );
+            }
+
+
+            sRepName = QString("%1/%2/report_%3.txt").arg(dsInfo.path())
+                    .arg(dirList.at(0))
+                    .arg(losFileName);
+
+            lpName = QString("%1/%2/lp_%3.lp").arg(dsInfo.path())
+                    .arg(dirList.at(5))
+                    .arg(losFileName);
+
+            perturbName = QString("%1/%2/tab_%3.csv").arg(dsInfo.path())
+                    .arg(dirList.at(6))
+                    .arg(losFileName);
+
+            resName = QString("%1/%2/res_%3.csv").arg(dsInfo.path())
+                    .arg(dirList.at(2))
+                    .arg(losFileName);
+
+            chngName = QString("%1/%2/chg_%3.csv").arg(dsInfo.path())
+                    .arg(dirList.at(1))
+                    .arg(losFileName);
+
+            relName = relName = QString("%1/%2/rel_%3.csv").arg(dsInfo.path())
+                    .arg(dirList.at(3))
+                    .arg(losFileName);
+
+            totName = QString("%1/%2/tot_%3.csv").arg(dsInfo.path())
+                    .arg(dirList.at(4))
+                    .arg(losFileName);
+        }
+
+        // --------------------------------------------------------------------------
+
+        mosra->setTimeOut(mosra->getTimeOut());
+        mosra->getLp()->WriteLp(lpName.toStdString());
+        if (!mosra->solveLp())
         {
             mosra->writeReport(sRepName);
 			continue;
         }
         mosra->writeReport(sRepName);
-        mosra->getLp()->WriteLp(lpName.toStdString());
+
 
 		if (!mosra->mapLp())
 			continue;
 
         vtkSmartPointer<vtkTable> chngmatrix;
         vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
-
-		// now write the input and the result table
-		QString perturbName = QString("%1/%2_p%3-%4.csv").arg(dsInfo.path())
-				.arg(dsInfo.baseName()).arg(level).arg(runs);
-
-		QString resName = QString("%1/res_%2_p%3-%4.csv").arg(dsInfo.path())
-						.arg(dsInfo.baseName()).arg(level).arg(runs);
-
-        QString chngName = QString("%1/chng_%2_p%3-%4.csv").arg(dsInfo.path())
-                .arg(dsInfo.baseName()).arg(level).arg(runs);
-
-        QString relName = QString("%1/rel_%2_p%3-%4.csv").arg(dsInfo.path())
-                .arg(dsInfo.baseName()).arg(level).arg(runs);
-
-        QString totName = QString("%1/tot_%2_p%3-%4.csv").arg(dsInfo.path())
-                .arg(dsInfo.baseName()).arg(level).arg(runs);
-
 
 		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");

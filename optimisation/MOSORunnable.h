@@ -21,7 +21,7 @@ public:
 	void setData(QString dsfileName,
 			QString losSettingsFileName,
 			QString perturbItem,
-			float level,
+            const QList<float>& levels,
 			int startIdx, int numruns);
 	void run();
 
@@ -29,7 +29,7 @@ private:
 	QString mDsFileName;
 	QString mLosFileName;
 	QString mPerturbItem;
-	float mLevel;
+    QList<float> mflLevels;
 	int mStartIdx;
 	int mNumRuns;
 };

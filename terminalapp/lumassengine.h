@@ -31,6 +31,7 @@
 void doModel(const QString& modelFile);
 void doMOSO(const QString& losFileName);
 void doMOSObatch(const QString& losFileName);
+void doMOSOsingle(const QString& losFileName);
 //void doMOSOrun(const QString& dsfileName,
 //		const QString& losSettingsFileName,
 //		const QString& perturbItem,

@@ -76,80 +76,14 @@ void doMOSO(const QString& losFileName)
 	if (mosra->doBatch())
 	{
 		doMOSObatch(losFileName);
-		return;
 	}
-
+    else
+    {
+        doMOSOsingle(losFileName);
+    }
 
 	NMDebugCtx(ctx, << "done!");
 }
-
-//void doMOSOrun(const QString& dsfileName,
-//		const QString& losSettingsFileName,
-//		const QString& perturbItem,
-//		float level,
-//		int startIdx, int numruns)
-//{
-//	NMDebugAI( << "run=" << startIdx << endl);
-//	QScopedPointer<NMMosra> mosra(new NMMosra());
-//
-//	NMMsg(<< "Starting run=" << startIdx);
-//
-//	QFileInfo dsInfo(dsfileName);
-//
-//	for (int runs=startIdx; runs <= numruns; ++runs)
-//	{
-//		NMDebugAI(<< endl << "******** PERTURBATION #" << runs << " *************" << endl);
-//		// load the file with optimisation settings
-//		mosra->loadSettings(losSettingsFileName);
-//
-//		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
-//		reader->SetFileName(dsfileName.toStdString().c_str());
-//		reader->Update();
-//		vtkPolyData* pd = reader->GetOutput();
-//		mosra->setDataSet(pd);
-//		mosra->perturbCriterion(perturbItem, level);
-//		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
-//
-//		mosra->setTimeOut(mosra->getTimeOut());
-//		if (!mosra->solveLp())
-//			continue;
-//
-//		if (!mosra->mapLp())
-//			continue;
-//
-//		vtkSmartPointer<vtkTable> sumres = mosra->sumResults();
-//
-//		// get rid of admin fields
-//		tab->RemoveColumnByName("nm_id");
-//		tab->RemoveColumnByName("nm_hole");
-//		tab->RemoveColumnByName("nm_sel");
-//
-//		// let's write a report
-//		QString sRepName = QString("%1/report_%2_p%3-%4.txt").arg(dsInfo.path())
-//						.arg(dsInfo.baseName()).arg(level).arg(runs);
-//		mosra->writeReport(sRepName);
-//
-//		// now write the input and the result table
-//		QString perturbName = QString("%1/%2_p%3-%4.csv").arg(dsInfo.path())
-//				.arg(dsInfo.baseName()).arg(level).arg(runs);
-//
-//		QString resName = QString("%1/res_%2_p%3-%4.csv").arg(dsInfo.path())
-//						.arg(dsInfo.baseName()).arg(level).arg(runs);
-//
-//		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
-//		writer->SetFieldDelimiter(",");
-//
-//		writer->SetInput(tab);
-//		writer->SetFileName(perturbName.toStdString().c_str());
-//		writer->Update();
-//
-//		writer->SetInput(sumres);
-//		writer->SetFileName(resName.toStdString().c_str());
-//		writer->Update();
-//
-//		writer->Delete();
-//	}
-//}
 
 void doMOSObatch(const QString& losFileName)
 {
@@ -172,29 +106,73 @@ void doMOSObatch(const QString& losFileName)
 		return;
 	}
 
-	int nthreads = 1;//QThread::idealThreadCount();
-	int chunksize = mosra->getNumberOfPerturbations() / nthreads;
-	int rest = chunksize - (nthreads * chunksize);
 
-	foreach(const QString& item, mosra->getPerturbationItems())
-	{
-		foreach(const float& level, mosra->getUncertaintyLevels())
-		{
-			int runstart = 1;
-			for (int t=0; t < nthreads; ++t)
-			{
-				if (t == nthreads-1)
-					chunksize += rest;
+    int nReps = mosra->getNumberOfPerturbations();
+    if (nReps > 1)
+    {
+        int nthreads = QThread::idealThreadCount();
+        int chunksize = mosra->getNumberOfPerturbations() / nthreads;
+        int rest = chunksize - (nthreads * chunksize);
 
-				MOSORunnable* m = new MOSORunnable();
-				m->setData(dsFileName, mosra->getLosFileName(),
-						item, level, runstart, chunksize);
-				QThreadPool::globalInstance()->start(m);
+        int cnt = 0;
+        foreach(const QString& item, mosra->getPerturbationItems())
+        {
+            QList<float> levels = mosra->getUncertaintyLevels(cnt);
+            int runstart = 1;
+            for (int t=0; t < nthreads; ++t)
+            {
+                if (t == nthreads-1)
+                    chunksize += rest;
 
-				runstart += chunksize;
-			}
-		}
-	}
+                MOSORunnable* m = new MOSORunnable();
+                m->setData(dsFileName, mosra->getLosFileName(),
+                        item, levels, runstart, chunksize);
+                QThreadPool::globalInstance()->start(m);
+
+                runstart += chunksize;
+            }
+            ++cnt;
+        }
+    }
+    // we paralise over the uncertainty levels
+    else
+    {
+        foreach(const QString& item, mosra->getPerturbationItems())
+        {
+            QList< QList<float> > levels = mosra->getAllUncertaintyLevels();
+            for (int l=0; l < levels.size(); ++l)
+            {
+                QList<float> itemUncertainties = levels.at(l);
+                MOSORunnable* m = new MOSORunnable();
+                m->setData(dsFileName, mosra->getLosFileName(),
+                        item, itemUncertainties, 1, 1);
+                QThreadPool::globalInstance()->start(m);
+            }
+        }
+    }
+}
+
+void doMOSOsingle(const QString& losFileName)
+{
+    QScopedPointer<NMMosra> mosra(new NMMosra());
+    mosra->loadSettings(losFileName);
+    QString dsFileName = QString("%1/%2.vtk").arg(mosra->getDataPath())
+            .arg(mosra->getLayerName());
+
+    QFileInfo dsinfo(dsFileName);
+
+    if (!dsinfo.isReadable())
+    {
+        NMErr(ctx, << "Could not read file '" << dsFileName.toStdString() << "'!");
+        return;
+    }
+
+    QList<float> levels;
+    levels << 0;
+    MOSORunnable* m = new MOSORunnable();
+    m->setData(dsFileName, mosra->getLosFileName(),
+               "", levels, 1, 1);
+    QThreadPool::globalInstance()->start(m);
 }
 
 void doModel(const QString& modelFile)

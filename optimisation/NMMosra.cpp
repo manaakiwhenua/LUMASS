@@ -115,6 +115,7 @@ void NMMosra::reset(void)
 
 	msDataPath = std::getenv("HOME");
 	mslPerturbItems.clear();
+    mlflPerturbUncertainties.clear();
 	mflUncertainties.clear();
 	mlReps=1;
 
@@ -130,7 +131,7 @@ NMMosra::doBatch()
 
 	if (   !msDataPath.isEmpty()
 		&& mslPerturbItems.size() > 0
-		&& mflUncertainties.size() > 0
+        && mlflPerturbUncertainties.size() > 0
 	   )
 	{
 		ret = true;
@@ -527,22 +528,37 @@ int NMMosra::loadSettings(QString fileName)
 			else if (sVarName.compare("UNCERTAINTIES", Qt::CaseInsensitive) == 0)
 			{
 				QStringList lunsure = sValueStr.split(" ");
-				bool bok;
+                bool bok;
 				float val;
 				foreach(const QString& vstr, lunsure)
 				{
-					val = vstr.toFloat(&bok);
-					if (bok)
-						this->mflUncertainties.push_back(val);
+                    QStringList levels = vstr.split(",");
+                    QList<float> lstUncertainties;
+                    foreach(const QString& l, levels)
+                    {
+                        val = l.toFloat(&bok);
+                        if (bok)
+                        {
+                            lstUncertainties.push_back(val);
+                        }
+                    }
+                    if (lstUncertainties.size() > 0)
+                    {
+                        this->mlflPerturbUncertainties.push_back(lstUncertainties);
+                    }
 				}
 
-				if (this->mflUncertainties.size() > 0)
+                if (this->mlflPerturbUncertainties.size() > 0)
 				{
 					NMDebugAI(<< "Perturbation levels: ");
-					foreach(const float& f, this->mflUncertainties)
-					{
-						NMDebug(<< f << " ");
-					}
+                    foreach(const QList<float>& lf, mlflPerturbUncertainties)
+                    {
+                        foreach(const float& f, lf)
+                        {
+                            NMDebug(<< f << " ");
+                        }
+                        NMDebug(<< " | ");
+                    }
 					NMDebug(<< endl);
 				}
 				else
@@ -681,6 +697,19 @@ int NMMosra::solveLp(void)
     }
     this->mbCanceled = false;
 	this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
+
+
+
+    this->mLp->SetPresolve(PRESOLVE_COLS |
+                           PRESOLVE_ROWS |
+                           PRESOLVE_IMPLIEDFREE |
+                           PRESOLVE_REDUCEGCD |
+                           PRESOLVE_MERGEROWS |
+                           PRESOLVE_ROWDOMINATE |
+                           PRESOLVE_COLDOMINATE |
+                           PRESOLVE_KNAPSACK |
+                           PRESOLVE_PROBEFIX);
+
 
 	this->mLp->Solve();
 
@@ -1273,10 +1302,10 @@ int NMMosra::checkSettings(void)
 			<< this->mlNumArealDVar << " = " << this->miNumOptions << " * "
 			<< this->mlNumOptFeat << endl;
 
-	this->mlNumDVar =  this->mlNumArealDVar + this->mlNumOptFeat;
+    this->mlNumDVar =  this->mlNumArealDVar;// + this->mlNumOptFeat;
 	sstr << "mlNumDvar =  mlNumArealDVar + mlNumOptFeat = "
-			<< this->mlNumDVar << " = " << this-> mlNumArealDVar
-			<< " + " << this->mlNumOptFeat << endl;
+            << this->mlNumDVar << " = " << this-> mlNumArealDVar << endl;
+            //<< " + " << this->mlNumOptFeat << endl;
 
 	// number of columns of the decision matrix
 	this->mlLpCols = this->mlNumDVar + 1;
@@ -1477,9 +1506,9 @@ int NMMosra::makeLp(void)
 			}
 		}
 
-		colname = QString(tr("b_%1")).arg(of);
-		this->mLp->SetColName(colPos, colname.toStdString());
-		this->mLp->SetBinary(colPos, true);
+        //		colname = QString(tr("b_%1")).arg(of);
+        //		this->mLp->SetColName(colPos, colname.toStdString());
+        //		this->mLp->SetBinary(colPos, true);
 	}
 
 //	// initiate the objective function to zero; note that all unspecified
@@ -1510,7 +1539,7 @@ NMMosra::getDataSetAsTable()
 
 void
 NMMosra::perturbCriterion(const QString& criterion,
-		float percent)
+        const QList<float>& percent)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
@@ -1531,9 +1560,12 @@ NMMosra::perturbCriterion(const QString& criterion,
 		// constraint
 		// check, whether we've more than one
 		QStringList metaList = criterion.split(",");
-		foreach(const QString& cri, metaList)
+        for (int cri=0; cri < metaList.size(); ++cri)
 		{
-			this->varyConstraint(cri, percent);
+            float perc = percent.last();
+            if (cri < percent.size())
+                perc = percent.at(cri);
+            this->varyConstraint(metaList.at(cri), perc);
 		}
 	}
 	else
@@ -1549,15 +1581,23 @@ NMMosra::perturbCriterion(const QString& criterion,
 
 		// perturb field values by +/- percent of field value
 		srand(time(0));
-		foreach(const QString field, fields)
+        for (int f=0; f < fields.size(); ++f)
 		{
-			vtkDataArray* srcAr = vtkDataArray::SafeDownCast(
+            const QString& field = fields.at(f);
+
+            // grab corresponding uncertainty level, or re-use
+            // the last one, if there aren't any more
+            float perc = percent.last();
+            if (f < percent.size())
+                perc = percent.at(f);
+
+            vtkDataArray* srcAr = vtkDataArray::SafeDownCast(
 					tabCalc->GetColumnByName(field.toStdString().c_str()));
 
 			for (int r=0; r < tabCalc->GetNumberOfRows(); ++r)
 			{
 				double inval = srcAr->GetTuple1(r);
-				double uncval = inval * ((rand() % ((int)percent+1))/100.0);
+                double uncval = inval * ((rand() % ((int)perc+1))/100.0);
 				double newval;
 				if (rand() % 2)
 					newval = inval + uncval;
@@ -1573,7 +1613,8 @@ NMMosra::perturbCriterion(const QString& criterion,
 }
 
 void
-NMMosra::varyConstraint(const QString& constraint, float percent)
+NMMosra::varyConstraint(const QString& constraint,
+                        float percent)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
@@ -2119,7 +2160,11 @@ int NMMosra::addExplicitAreaCons(void)
             double oval = this->convertAreaUnits(dUserVal, it.value().at(3), ozspec);
             dtval = oval > dtval ? oval : dtval;
 
-            int zonelen = this->mmslZoneLength.find(zone).value().find(options.at(no)).value();
+            int zonelen = 0;
+            if (!zone.isEmpty())
+            {
+                zonelen = this->mmslZoneLength.find(zone).value().find(options.at(no)).value();
+            }
             maxzonelen = zonelen > maxzonelen ? zonelen : maxzonelen;
         }
         vvnOptionIndex.push_back(noptidx);
@@ -2313,7 +2358,7 @@ int NMMosra::addImplicitAreaCons(void)
 	// we cover each feature separately, so we need miNumOptions coefficients
 	// plus the binary conditional to realise the either zero or all area
 	// constraint for each feature
-	double* pdRow = new double[this->miNumOptions + 1];
+    double* pdRow = new double[this->miNumOptions + 1];
 	int* piColno = new int[this->miNumOptions + 1];
 
 	// get the hole array
@@ -2376,11 +2421,15 @@ int NMMosra::addImplicitAreaCons(void)
 		// add the first constraint: SUM(x_i_r) - A_i * b_i >= 0
 
 		// set the coefficient for the binary decision variable for the current feature
-		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
-		piColno[this->miNumOptions] = colpos;
+//		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
+//		piColno[this->miNumOptions] = colpos;
 
-		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
-				piColno, 2, 0);
+//		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
+//				piColno, 2, 0);
+
+        this->mLp->AddConstraintEx(this->miNumOptions, pdRow,
+                piColno, 1, ::atof(sConsVal.toStdString().c_str()));
+
 
 		// increment row (constraint) counter
 		lRowCounter++;
@@ -2389,16 +2438,16 @@ int NMMosra::addImplicitAreaCons(void)
 		QString sRowName = QString(tr("Feature_%1a")).arg(f);
 		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
 
-		// ......................................................................................
-		// add the second constraint: SUM(x_i_r) - A_i * b_i <= 0
-		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
+//		// ......................................................................................
+//		// add the second constraint: SUM(x_i_r) - A_i * b_i <= 0
+//		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
 
-		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
-				piColno, 1, 0);
-		lRowCounter++;
+//		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
+//				piColno, 1, 0);
+//		lRowCounter++;
 
-		sRowName = QString(tr("Feature_%1b")).arg(f);
-		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
+//		sRowName = QString(tr("Feature_%1b")).arg(f);
+//		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
 
 		// ........................................................................................
 		// column position counter

@@ -93,7 +93,7 @@ public:
 		{return this->mDataSet;}
 	vtkSmartPointer<vtkTable> getDataSetAsTable();
 
-	void cancelSolving(void) {this->mbCanceled = true;};
+    void cancelSolving(void) {this->mbCanceled = true;}
 	int solveLp(void);
 	int mapLp(void);
 	HLpHelper* getLp();
@@ -105,8 +105,10 @@ public:
 		{return this->msDataPath;}
 	QStringList getPerturbationItems()
 		{return this->mslPerturbItems;}
-	QList<float> getUncertaintyLevels()
-		{return this->mflUncertainties;}
+    const QList< QList<float> >& getAllUncertaintyLevels()
+        {return this->mlflPerturbUncertainties;}
+    const QList<float>& getUncertaintyLevels(const int& perturbItemIdx)
+        {return this->mlflPerturbUncertainties.at(perturbItemIdx);}
 	long getNumberOfPerturbations()
 		{return this->mlReps;}
 	QString getLosFileName(void)
@@ -134,14 +136,16 @@ public:
 	 *  (uniform distribution) adds an uncertainty value
 	 *  of +/- 0 to percent.
 	 */
-	void perturbCriterion(const QString& criterion, float percent);
+    void perturbCriterion(const QString& criterion,
+                          const QList<float>& percent);
 
 	/* \brief varies a constraint by a given percent
 	 *
 	 *  This function varies the named criterion by the given
 	 *  percentage.
 	 */
-	void varyConstraint(const QString& constraint, float percent);
+    void varyConstraint(const QString& constraint,
+                        float percent);
 
 	/* lp_solve callback function to check for user abortion ->
 	 * i.e. interactive cancellation of solving process rather
@@ -168,6 +172,7 @@ private:
 
 	QString msDataPath;
 	QStringList mslPerturbItems;
+    QList< QList<float> > mlflPerturbUncertainties;
 	QList<float> mflUncertainties;
 	long mlReps;
 

@@ -259,7 +259,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 			if ((mZones.insert(mapIt->first)).second)
 			{
                 maxKey = mapIt->first > maxKey ? mapIt->first : maxKey;
-				NMDebug(<< mapIt->first << " ");
+                //NMDebug(<< mapIt->first << " ");
 				++newzones;
 			}
 			++mapIt;

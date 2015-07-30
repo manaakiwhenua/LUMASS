@@ -1822,9 +1822,9 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       }
     else if (driverShortName.compare("HFA") == 0)
      {
-    	if (this->m_UseCompression)
-    		papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "YES");
-    	papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "YES");
+        //if (this->m_UseCompression)
+            papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "TRUE");
+        papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "TRUE");
 
      }
 
@@ -2220,7 +2220,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     for (int chunk = 0; chunk < numChunks+1; ++chunk)
     {
         s = procrows;
-        e = s + chunksize - 1;
+        e = s + chunksize;// - 1;
 
         for (int col=0; col < ncols; ++col)
         {

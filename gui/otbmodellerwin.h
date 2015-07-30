@@ -119,7 +119,7 @@ public slots:
 	void loadVTKPolyData();			// loads VTK *vtp PolyData
 	void loadVectorLayer();
 	void doMOSO();
-	void doMOSObatch();
+    //void doMOSObatch();
     void showComponentsView(bool);
     void showComponentsInfoView(bool);
     void showMapView(bool);
@@ -131,6 +131,7 @@ public slots:
 	void pickObject(vtkObject* obj);
 	void zoomFullExtent();
 	void saveAsVtkPolyData();
+    void saveSelectionAsVtkPolyData();
 	void test();
 	void saveAsVectorLayerOGR();
     void saveImageFile();

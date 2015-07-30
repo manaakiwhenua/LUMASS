@@ -2088,89 +2088,89 @@ void OtbModellerWin::showComponentsInfoView(bool vis)
 }
 
 
-void OtbModellerWin::doMOSObatch()
-{
-	return;
+//void OtbModellerWin::doMOSObatch()
+//{
+//	return;
 
-	NMDebugCtx(ctxOtbModellerWin, << "...");
+//	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-	QString fileName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/scenario_files/r1_minNleach_ConstAgrProd.los";
-	QString dsName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/data/r1sens.vtk";
-	//QString fileName = QFileDialog::getOpenFileName(this,
-	//     tr("Open Optimisation Settings"), "~", tr("LUMASS Optimisation Settings (*.los)"));
-    //
-	//if (fileName.isNull())
-	//{
-	//	NMDebugAI( << "Please provide a filename!" << endl);
-	//	return;
-	//}
+//	QString fileName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/scenario_files/r1_minNleach_ConstAgrProd.los";
+//	QString dsName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/data/r1sens.vtk";
+//	//QString fileName = QFileDialog::getOpenFileName(this,
+//	//     tr("Open Optimisation Settings"), "~", tr("LUMASS Optimisation Settings (*.los)"));
+//    //
+//	//if (fileName.isNull())
+//	//{
+//	//	NMDebugAI( << "Please provide a filename!" << endl);
+//	//	return;
+//	//}
 
-	QFileInfo fileinfo(fileName);
-	QFileInfo dsInfo(dsName);
+//	QFileInfo fileinfo(fileName);
+//	QFileInfo dsInfo(dsName);
 
-	QString path = fileinfo.path();
-	QString baseName = fileinfo.baseName();
-	if (!fileinfo.isReadable())
-	{
-		NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
-		return;
-	}
+//	QString path = fileinfo.path();
+//	QString baseName = fileinfo.baseName();
+//	if (!fileinfo.isReadable())
+//	{
+//		NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
+//		return;
+//	}
 
-	// create a new optimisation object
-	NMMosra* mosra = new NMMosra(this);
+//	// create a new optimisation object
+//	NMMosra* mosra = new NMMosra(this);
 
-	for (int runs=5; runs < 7; ++runs)
-	{
-		NMDebugAI(<< "******** PERTURBATION #" << runs+1 << " *************" << endl);
-		// load the file with optimisation settings
-		mosra->loadSettings(fileName);
+//	for (int runs=5; runs < 7; ++runs)
+//	{
+//		NMDebugAI(<< "******** PERTURBATION #" << runs+1 << " *************" << endl);
+//		// load the file with optimisation settings
+//		mosra->loadSettings(fileName);
 
-		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
-		reader->SetFileName(dsName.toStdString().c_str());
-		reader->Update();
-		vtkPolyData* pd = reader->GetOutput();
-		mosra->setDataSet(pd);
-		mosra->perturbCriterion("Nleach", 5);
-		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
+//		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
+//		reader->SetFileName(dsName.toStdString().c_str());
+//		reader->Update();
+//		vtkPolyData* pd = reader->GetOutput();
+//		mosra->setDataSet(pd);
+//		mosra->perturbCriterion("Nleach", 5);
+//		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
 
-		mosra->setTimeOut(180);
-		if (!mosra->solveLp())
-			continue;
+//		mosra->setTimeOut(180);
+//		if (!mosra->solveLp())
+//			continue;
 
-		if (!mosra->mapLp())
-			continue;
+//		if (!mosra->mapLp())
+//			continue;
 
-        vtkSmartPointer<vtkTable> chngmatrix;
-        vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
+//        vtkSmartPointer<vtkTable> chngmatrix;
+//        vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
 
-		// get rid of admin fields
-		tab->RemoveColumnByName("nm_id");
-		tab->RemoveColumnByName("nm_hole");
-		tab->RemoveColumnByName("nm_sel");
+//		// get rid of admin fields
+//		tab->RemoveColumnByName("nm_id");
+//		tab->RemoveColumnByName("nm_hole");
+//		tab->RemoveColumnByName("nm_sel");
 
-		// now write the input and the result table
-		QString perturbName = QString("%1/%2_p%3.csv").arg(dsInfo.path())
-				.arg(dsInfo.baseName()).arg(runs+1);
+//		// now write the input and the result table
+//		QString perturbName = QString("%1/%2_p%3.csv").arg(dsInfo.path())
+//				.arg(dsInfo.baseName()).arg(runs+1);
 
-		QString resName = QString("%1/res_%2_p%3.csv").arg(dsInfo.path())
-						.arg(dsInfo.baseName()).arg(runs+1);
+//		QString resName = QString("%1/res_%2_p%3.csv").arg(dsInfo.path())
+//						.arg(dsInfo.baseName()).arg(runs+1);
 
-		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
-		writer->SetFieldDelimiter(",");
+//		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
+//		writer->SetFieldDelimiter(",");
 
-        writer->SetInputData(tab);
-		writer->SetFileName(perturbName.toStdString().c_str());
-		writer->Update();
+//        writer->SetInputData(tab);
+//		writer->SetFileName(perturbName.toStdString().c_str());
+//		writer->Update();
 
-        writer->SetInputData(sumres);
-		writer->SetFileName(resName.toStdString().c_str());
-		writer->Update();
+//        writer->SetInputData(sumres);
+//		writer->SetFileName(resName.toStdString().c_str());
+//		writer->Update();
 
-		writer->Delete();
-	}
+//		writer->Delete();
+//	}
 
-	NMDebugCtx(ctxOtbModellerWin, << "done!");
-}
+//	NMDebugCtx(ctxOtbModellerWin, << "done!");
+//}
 
 void OtbModellerWin::doMOSO()
 {
@@ -2208,7 +2208,7 @@ void OtbModellerWin::doMOSO()
 
     QStringList dirList;
     dirList << "opt_report" << "opt_lucmatrix" << "opt_result"
-            << "opt_relative" << "opt_total" << "opt_lp";
+            << "opt_relative" << "opt_total" << "opt_lp" << "opt_tab";
 
     for (int d=0; d < dirList.size(); ++d)
     {
@@ -2306,6 +2306,58 @@ void OtbModellerWin::doMOSO()
 
 	if (solved)
 	{
+        // ==========================================================================
+        // SUMMARISE THE DATA BEFORE WE MESS AROUND WITH IT
+        // once we've got a feasible result, we write the change matrix and
+        // the optimisation result table out
+        vtkSmartPointer<vtkTable> changeTab;
+        vtkSmartPointer<vtkTable> resTab = mosra->sumResults(changeTab);
+
+        // =========================================================================
+        // export attribute table
+
+        vtkSmartPointer<vtkTable> origtab = mosra->getDataSetAsTable();
+        vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
+        tab->DeepCopy(origtab);
+
+        vtkUnsignedCharArray* hole = vtkUnsignedCharArray::SafeDownCast(
+                    tab->GetColumnByName("nm_hole"));
+
+        // filter 'hole' polygons
+        int nrows = tab->GetNumberOfRows();
+        int r = 0;
+        while(r < nrows)
+        {
+            if (hole->GetValue(r))
+            {
+                tab->RemoveRow(r);
+                --nrows;
+            }
+            else
+            {
+                ++r;
+            }
+        }
+
+        // get rid of admin fields
+        tab->RemoveColumnByName("nm_id");
+        tab->RemoveColumnByName("nm_hole");
+        tab->RemoveColumnByName("nm_sel");
+
+        // setup the writer
+        vtkSmartPointer<vtkDelimitedTextWriter> writer =
+                vtkSmartPointer<vtkDelimitedTextWriter>::New();
+        writer->SetFieldDelimiter(",");
+
+        QString tabName = QString("%1/%2/tab_%3.csv").arg(pathInfo.path())
+                .arg(dirList.at(6))
+                .arg(baseName);
+
+        writer->SetInputData(tab);
+        writer->SetFileName(tabName.toStdString().c_str());
+        writer->Update();
+
+        // =========================================================================
 		NMDebugAI( << "visualising optimisation results ..." << endl);
 
 
@@ -2313,14 +2365,6 @@ void OtbModellerWin::doMOSO()
                 .arg(dirList.at(2))
                 .arg(baseName);
 
-        // once we've got a feasible result, we write the change matrix and
-        // the optimisation result table out
-        vtkSmartPointer<vtkDelimitedTextWriter> writer =
-                vtkSmartPointer<vtkDelimitedTextWriter>::New();
-        writer->SetFieldDelimiter(",");
-
-        vtkSmartPointer<vtkTable> changeTab;
-        vtkSmartPointer<vtkTable> resTab = mosra->sumResults(changeTab);
 		// show table if we got one
 		if (resTab.GetPointer() != 0)
 		{
@@ -2532,6 +2576,57 @@ void OtbModellerWin::loadVTKPolyData()
     this->mLayerList->addLayer(layer);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
+
+void OtbModellerWin::saveSelectionAsVtkPolyData()
+{
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+//    // get the selected layer
+//    NMLayer* l = this->mLayerList->getSelectedLayer();
+//    if (l == 0)
+//        return;
+
+//    // make sure, we've got a vector layer
+//    if (l->getLayerType() != NMLayer::NM_VECTOR_LAYER)
+//        return;
+
+//    QString layerName = l->objectName();
+
+//    // take the first layer and save as vtkpolydata
+//    QFileDialog dlg(this);
+//    dlg.setAcceptMode(QFileDialog::AcceptSave);
+//    dlg.setFileMode(QFileDialog::AnyFile);
+//    dlg.setWindowTitle(tr("Save As VTK PolyData File"));
+//    dlg.setDirectory("~/");
+//    dlg.setNameFilter("VTK PolyData File (*.vtk)");
+
+//    QString selectedFilter;
+//    QString fileName;
+//    if (dlg.exec())
+//    {
+//        fileName = dlg.selectedFiles().at(0);
+//        if (fileName.isNull() || fileName.isEmpty())
+//            return;
+//        selectedFilter = dlg.selectedNameFilter();
+//    }
+//    else
+//        return;
+
+//    const QItemSelection sel = l->getSelection();
+
+
+
+
+//    NMDebugAI(<< "writing ASCII *.vtk file ..." << endl);
+//    vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
+//    writer->SetFileName(fileName.toStdString().c_str());
+//    writer->SetInputData(const_cast<vtkDataSet*>(l->getDataSet()));
+//    writer->SetFileTypeToASCII();
+//    writer->Update();
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+
 }
 
 void OtbModellerWin::saveAsVtkPolyData()
@@ -3284,7 +3379,8 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
 
         OGRPolygon poly;
         OGRLinearRing outerRing;
-        for (int n=0; n < npts; ++n)
+        //for (int n=0; n < npts; ++n)
+        for (int n=npts-1; n >= 0; --n)
         {
             xyz = pts->GetPoint(cpts[n]);
             outerRing.addPoint(xyz[0], xyz[1], xyz[2]);
@@ -3301,7 +3397,8 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
                     break;
                 }
                 OGRLinearRing innerRing;
-                for (int n=0; n < npts; ++n)
+                //for (int n=0; n < npts; ++n)
+                for (int n=npts-1; n >= 0; --n)
                 {
                     xyz = pts->GetPoint(cpts[n]);
                     innerRing.addPoint(xyz[0], xyz[1], xyz[2]);

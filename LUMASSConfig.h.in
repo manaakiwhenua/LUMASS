@@ -24,6 +24,13 @@
  #define LUMASS_COMMIT_HASH "@GIT_SHA1@"
  #define LUMASS_BINARY_DIR "@lumass_BINARY_DIR@"
  #define LUMASS_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+
+ // underpinning libraries
+ #define LUMASS_QT_VERSION "@QT5_VERSION_STRING@"
+ #define LUMASS_OTB_VERSION "@OTB_VERSION_STRING@"
+ #define LUMASS_GDAL_VERSION "@GDAL_VERSION@"
+ #define LUMASS_VTK_VERSION "@VTK_VERSION_STRING@"
+
  
  const char _lumass_commit_hash[] = LUMASS_COMMIT_HASH;
  const char _lumass_commit_date[] = LUMASS_COMMIT_DATE;
@@ -32,3 +39,8 @@
  const char _lumass_version_revision[] = LUMASS_VERSION_REVISION;
  const char _lumass_binary_dir[] = LUMASS_BINARY_DIR;
  const char _lumass_build_type[] = LUMASS_BUILD_TYPE;
+
+ const char _lumass_qt_version[] = LUMASS_QT_VERSION;
+ const char _lumass_otb_version[] = LUMASS_OTB_VERSION;
+ const char _lumass_gdal_version[] = LUMASS_GDAL_VERSION;
+ const char _lumass_vtk_version[] = LUMASS_VTK_VERSION;

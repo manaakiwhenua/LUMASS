@@ -1175,9 +1175,27 @@ void OtbModellerWin::aboutLUMASS(void)
 			<< "LUMASS is free software and licenced under the GPL v3." << endl
 			<< "Contact: herziga@landcareresearch.co.nz" << endl
 			<< "Code: http://code.scenzgrid.org/index.php/p/lumass/" << endl
-			<< "User group: https://groups.google.com/forum/#!forum/lumass-users" << endl;
+            << "User group: https://groups.google.com/forum/#!forum/lumass-users" << endl
+            << endl
+            << "LUMASS builds on the following open source libraries " << endl
+            << "Qt " << _lumass_qt_version << " - http://www.qt.io/" << endl
+            << "OTB " << _lumass_otb_version << " - https://www.orfeo-toolbox.org/" << endl
+            << "VTK " << _lumass_vtk_version << " - http://www.vtk.org/ " << endl
+            << "GDAL " << _lumass_gdal_version << " - http://www.gdal.org/ " << endl
+            << "lp_solve 5.5 - http://sourceforge.net/projects/lpsolve/ " << endl
+#ifdef BUILD_RASSUPPORT
+  #ifdef PACKAGE_STRING
+            << PACKAGE_STRING
+  #else
+            << "Rasdaman ?.?.?"
+  #endif
+            << " - http://www.rasdaman.org/ " << endl
+#endif
+            << "";
 
-	QString text(textstr.str().c_str());
+
+
+    QString text(textstr.str().c_str());
 	QMessageBox::about(this, title, text);
 
 }

@@ -112,13 +112,11 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 38)
+SET(LUMASS_VERSION_REVISION 39)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
-configure_file("${CMAKE_SOURCE_DIR}/LUMASSConfig.h.in"
-               "${lumass_BINARY_DIR}/LUMASSConfig.h" @ONLY)
-               
+
 message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.${LUMASS_VERSION_REVISION}"
                " - commit ${GIT_SHA1} from ${LUMASS_COMMIT_DATE}")               
 
@@ -186,7 +184,9 @@ if(VTK_MAJOR_VERSION LESS 6)
   message(FATAL_ERROR "LUMASS requires VTK 6 or greater!")
 endif()
 
-message(STATUS "found VTK at ${VTK_DIR}")
+set(VTK_VERSION_STRING "${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}.${VTK_BUILD_VERSION}")
+
+message(STATUS "found VTK ${VTK_VERSION_STRING} at ${VTK_DIR}")
 
 #====================================================================
 # GDAL SUPPORT - always required otherwise we pull out
@@ -268,6 +268,13 @@ IF(UNIX)
     message(STATUS "rasdaman include dir: ${RASDAMAN_INCLUDE_DIR}")
     message(STATUS "rasdaman libraries dir: ${RASDAMAN_LIBRARIES_DIR}")
 ENDIF(UNIX)
+
+#====================================================================
+# THE RIGHT TIME TO POPULATE THE LUMASSConfig.h FILE
+#====================================================================
+
+configure_file("${CMAKE_SOURCE_DIR}/LUMASSConfig.h.in"
+               "${lumass_BINARY_DIR}/LUMASSConfig.h" @ONLY)
 
 #====================================================================
 # SOME OTHER STUFF WE WANNA USE GLOBALLY

@@ -143,5 +143,25 @@ else()
 endif()
 
 # finally, we determine the qt5 version
-include(${CMAKE_PREFIX_PATH}/lib/cmake/Qt5/Qt5ConfigVersion.cmake)
-set(QT5_VERSION_STRING "${PACKAGE_VERSION}")
+# let's find the path to Qt5ConfigVersion
+FIND_PATH(QT5_CONFIG_PATH Qt5ConfigVersion.cmake
+        PATH_SUFFIXES
+           cmake/Qt5
+           lib/cmake/Qt5
+
+        PATHS
+            ${CMAKE_PREFIX_PATH}
+            ${CMAKE_PREFIX_PATH}/..
+        NO_DEFAULT_PATH
+)
+message(STATUS "QT5_CONFIG_PATH: ${QT5_CONFIG_PATH}")
+
+if(QT5_CONFIG_PATH-NOTFOUND)
+    message(STATUS "Couldn't find Qt5ConfigVersion.cmake!")
+    set(QT5_VERSION_STRING "5.?.?")
+else()
+    include(${QT5_CONFIG_PATH}/Qt5ConfigVersion.cmake)
+    set(QT5_VERSION_STRING "${PACKAGE_VERSION}")
+    message(STATUS "Qt5 version: ${QT5_VERSION_STRING}")
+endif()
+

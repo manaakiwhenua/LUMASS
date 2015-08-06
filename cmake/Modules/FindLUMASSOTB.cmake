@@ -98,6 +98,7 @@ ENDIF(NOT OTB_DIR)
 IF(OTB_DIR)
   SET(OTB_FOUND 1)
   INCLUDE(${OTB_DIR}/OTBConfig.cmake)
+  
 
   # Set USE_OTB_FILE for backward-compatability.
   SET(USE_OTB_FILE ${OTB_USE_FILE})

@@ -18,6 +18,7 @@ LINK_DIRECTORIES(
 	${OTB_BINARY_DIR}/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
+	${OTB_DIR}/lib
 )
 
 file(GLOB OTBSUPPL_FILTERS
@@ -46,9 +47,13 @@ set_target_properties(OTBSupplFilters PROPERTIES
 
 generate_export_header(OTBSupplFilters)
 
-target_link_libraries(OTBSupplFilters 
-	OTBCommon OTBBasicFilters OTBIO
-)
+if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
+	target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO)
+else()
+	target_link_libraries(OTBSupplFilters OTBCommon OTBIOGDAL 
+	OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase 
+	OTBMathParser OTBStreaming)
+endif()
 
 #set_property(TARGET OTBSupplFilters PROPERTY POSITION_INDEPENDENT_CODE 1)
 

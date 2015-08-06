@@ -138,6 +138,13 @@ public:
   /** close the gdal data set incase it is still open */
   void CloseDataset(void);
 
+
+  /** define some stubs here for abstract methods inherited from base clase */
+  virtual unsigned int GetOverviewsCount() {return (unsigned int)0;} 
+  virtual std::vector<std::string> GetOverviewsInfo() {return std::vector<std::string>();}
+  virtual void SetOutputImagePixelType( bool isComplexInternalPixelType, 
+	  bool isVectorImage) {}
+
   /*-------- This part of the interface deals with reading data. ------ */
 
   /** Determine the file type. Returns true if this ImageIO can read the

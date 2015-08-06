@@ -164,6 +164,9 @@ if(NOT OTB_FOUND)
   message(FATAL_ERROR "You have to install Orfeo Toolbox prior to compiling LUMASS!")
 endif(NOT OTB_FOUND)
 
+SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
+message(STATUS "found OTB ${LUMASS_OTB_VERSION}")
+
 #====================================================================
 # VTK 
 #====================================================================

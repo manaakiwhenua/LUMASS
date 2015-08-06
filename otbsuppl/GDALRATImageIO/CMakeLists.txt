@@ -14,6 +14,7 @@ INCLUDE_DIRECTORIES(
 LINK_DIRECTORIES(
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
+	${OTB_DIR}/lib
 )                                                        
 
 #message(STATUS "Looking for OTB libs in: ${OTB_DIR}/bin and ${OTB_DIR}/bin/Release and ${OTB_DIR}/bin/Deubg ... ")
@@ -40,8 +41,14 @@ set_property(TARGET OTBGDALRATImageIO PROPERTY LINKER_LANGUAGE CXX)
 
 generate_export_header(OTBGDALRATImageIO)
 
-TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} OTBCommon OTBIO)
-
+if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
+	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIO ... ")
+	TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} OTBCommon OTBIO)
+else()
+	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIOGDAL ... ")
+	TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} 
+		OTBCommon OTBIOGDAL)
+endif()
 
 # define where to install what
 install(FILES ${GDALRATIO_HEADER} DESTINATION include)

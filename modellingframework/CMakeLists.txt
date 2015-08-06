@@ -20,9 +20,12 @@ INCLUDE_DIRECTORIES(
 	${filters_BINARY_DIR}
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
+	${OTB_INCLUDE_DIRS}
 )
 
 LINK_DIRECTORIES(
+	${OTB_DIR}/lib
+	${OTB_DIR}/bin
     ${QT5_LINK_DIRS}
     ${RASDAMAN_LIBRARIES_DIR}
     ${LIBRARY_OUTPUT_PATH}
@@ -59,14 +62,27 @@ endif()
 SET(MFW_MOC_H ${MFW_H})
 LIST(REMOVE_ITEM MFW_MOC_H ${mfw_SOURCE_DIR}/NMMfwException.h)
 
-set(MFW_LINK_LIBS
-    OTBGDALRATImageIO
-    OTBSupplFilters
-    #RasImageIO
-    Qt5Xml
-    Qt5Core
-    Qt5Concurrent
-)
+
+if (OTB_VERSION_STRING VERSION_LESS "5.0.0")
+	set(MFW_LINK_LIBS
+		OTBGDALRATImageIO
+		OTBSupplFilters
+		#RasImageIO
+		Qt5Xml
+		Qt5Core
+		Qt5Concurrent
+	)
+else()
+	set(MFW_LINK_LIBS
+		OTBGDALRATImageIO
+		OTBMathParser
+		OTBSupplFilters
+		#RasImageIO
+		Qt5Xml
+		Qt5Core
+		Qt5Concurrent
+	)
+endif()
 
 set(MFW_DEP_LIBS
     OTBGDALRATImageIO

@@ -53,6 +53,7 @@ IF(NOT OTB_DIR)
       /opt/otb
       /opt/otb-bin
       /opt/*
+      /usr/lib/cmake
 	  C:/build/OTB-debug
 	  C:/opt/OTB-debug
 	  C:/build/OTB-reldebinfo
@@ -65,6 +66,13 @@ IF(NOT OTB_DIR)
   # Look for an installation or build tree.
   #
   FIND_PATH(OTB_DIR OTBConfig.cmake
+    PATH_SUFFIXES
+        OTB-5.0
+        OTB-4.4
+        OTB-5.1
+        OTB-5.2
+        OTB-5.3
+    PATHS
     # Look for an environment variable OTB_DIR.
     $ENV{OTB_DIR}
 

@@ -37,8 +37,7 @@
 
 #include "otbImageFileReader.h"
 #include "otbAttributeTable.h"
-
-class CurlHelperInterface;
+#include "otbCurlHelperInterface.h"
 
 namespace otb
 {

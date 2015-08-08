@@ -16,6 +16,10 @@ PATH_SUFFIXES
   vtk-bin
   vtk
   VTK
+  vtk-6.1
+  vtk-6.2
+  vtk-6.3
+  vtk-6.4
   
 PATHS
   /opt
@@ -23,6 +27,7 @@ PATHS
   /usr/local/lib
   /usr/local/src
   /usr/lib
+  /usr/lib/cmake
   /usr/share
   c:/opt
   c:/build

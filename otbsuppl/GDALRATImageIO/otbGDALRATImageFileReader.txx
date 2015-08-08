@@ -54,13 +54,14 @@
 //#include "projection/ossimProjectionFactoryRegistry.h"
 //#include "ossim/ossimPluginProjectionFactory.h"
 //
-//#include "otbTileMapImageIO.h" //FIXME find a better way
 //#include "projection/ossimTileMapModel.h"
 //
 //#include <itksys/SystemTools.hxx>
 //#include <fstream>
 //
+#include "otbTileMapImageIO.h" //FIXME find a better way
 #include "otbCurlHelper.h"
+
 
 namespace otb
 {

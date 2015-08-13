@@ -245,6 +245,19 @@ message(STATUS "SQLite3 include dir: ${SQLITE3_INCLUDE_DIR}")
 message(STATUS "SQLite3 library: ${SQLITE3_LIBRARY}")
 
 #====================================================================
+# FIND TOKYO CABINET
+#====================================================================
+
+find_package(TokyoCabient)
+if(NOT TCADB_FOUND)
+  message(FATAL_ERROR "You have to install Tokyo Cabient prior to compiling LUMASS!")
+endif()
+
+message(STATUS "Tokyo Cabient include dir: ${TCADB_INCLUDE_DIR}")
+message(STATUS "Tokyo Cabient library dir: ${TCADB_LIB_DIR}")
+
+
+#====================================================================
 # RASDAMAN SUPPORT - optional (requires PostgreSQL support)
 #====================================================================
 

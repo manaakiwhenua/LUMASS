@@ -1461,6 +1461,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 		return;
     }
 
+    // that's the one we used for writing
+    lmv.setVersion(13);
 
     // check whether we can read the header and if so, what the lmv file version is
     lmv >> fileIdentifier;
@@ -1577,7 +1579,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					ai->setColor(color);
                     importItems <<  ai->getTitle();
 
-					for (unsigned v=0; v < nkids; ++v)
+                    for (qint32 v=0; v < nkids; ++v)
 					{
 						QString dummy;
 						lmv >> dummy;

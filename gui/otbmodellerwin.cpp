@@ -1,4 +1,4 @@
- /******************************************************************************
+/******************************************************************************
  * Created by Alexander Herzig
  * Copyright 2010,2011,2012,2013,2014 Landcare Research New Zealand Ltd
  *
@@ -224,15 +224,6 @@ class NMMdiSubWindow : public QMdiSubWindow
         }
         ~NMMdiSubWindow()
         {
-            const QObjectList& kids = this->children();
-            QObject *child;
-
-            foreach (child, kids)
-            {
-                if (child)
-                    delete child;
-                child = 0;
-            }
         }
 
         void closeEvent(QCloseEvent *closeEvent)
@@ -332,6 +323,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     NMMdiSubWindow* mapSub = new NMMdiSubWindow(mMdiArea);
     this->mMapWindow = new QMainWindow(mapSub);
+    this->mMapWindow->setParent(this);
     this->mMapWindow->setWindowTitle("Map View");
     this->mMapWindow->setWindowFlags(Qt::Widget);
     this->mMapWindow->setMouseTracking(true);
@@ -653,18 +645,19 @@ OtbModellerWin::~OtbModellerWin()
 	NMDebugAI(<< "delete ui ..." << endl);
 	delete ui;
 
-	const QObjectList& kids = this->children();
-	QObject *child;
+//    const QObjectList& kids = this->children();
+//    QObject *child;
 
-	NMDebugAI(<< "going to delete child objects ..." << endl);
-	foreach (child, kids)
-	{
-//		NMDebugAI(<< child->objectName().toStdString() << ": "
-//				<< child->metaObject()->className() << endl);
-        if (child)
-            delete child;
-		child = 0;
-	}
+//    NMDebugAI(<< "going to delete child objects ..." << endl);
+//    foreach (child, kids)
+//    {
+//        if (child->metaObject()->className() != "NMMdiSubWindow")
+//        {
+//            NMDebugAI( << "... " << child->metaObject()->className() << endl);
+//            delete child;
+//            child = 0;
+//        }
+//    }
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

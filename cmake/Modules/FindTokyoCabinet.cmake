@@ -1,4 +1,4 @@
-### FindTokyoCabient.cmake ############
+### FindTokyoCabinet.cmake ############
 #
 ### author: Alexander Herzig
 ### copyright: Landcare Research New Zealand Ltd
@@ -29,9 +29,9 @@ FIND_PATH(TCADB_INCLUDE_DIR tcadb.h
 )
 
 if(WIN32)
-        set(TCADB_LIB libtokyocabient.lib)
+        set(TCADB_LIB libtokyocabinet.lib)
 else()
-        set(TCADB_LIB libtokyocabient.so)
+        set(TCADB_LIB libtokyocabinet.so)
 endif()
 
 FIND_PATH(TCADB_LIB_DIR

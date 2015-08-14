@@ -126,7 +126,7 @@ set(LUMASS_LINKLIBS
         #QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
         ${VTK_LIBRARIES}
         ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-	${OPENGL_glu_LIBRARY} 
+        ${OPENGL_glu_LIBRARY}
         ${SQLITE3_LIBRARY}
 )
 
@@ -142,8 +142,10 @@ ENDIF()
 # Qt5 requirement
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE")
 
+message(STATUS "vtk definitions: ${VTK_DEFINITIONS}")
+
 # VTK6 requirement
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${VTK_DEFINITIONS})
+set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS "${VTK_DEFINITIONS} ")
 
 ADD_EXECUTABLE(lumass ${QT_SRC} ${MOC_CPP} ${UI_CPP} ${NM_RES})
 #QT5_USE_MODULES(lumass Widgets Xml Gui Concurrent Core Declarative Qml Quick)

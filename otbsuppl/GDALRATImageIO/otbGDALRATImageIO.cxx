@@ -51,6 +51,8 @@
 #include "itkRGBAPixel.h"
 #include "itkTimeProbe.h"
 
+#include "valgrind/callgrind.h"
+
 const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
 
 namespace otb
@@ -2106,6 +2108,8 @@ bool GDALRATImageIO::GDALInfoReportCorner(const char * /*corner_name*/, double x
 
 AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 {
+    CALLGRIND_START_INSTRUMENTATION;
+
 	// if m_Dataset hasn't been instantiated before, we do it here, because
 	// we might want to fetch the attribute table before the pipeline has
 	// been executed
@@ -2201,6 +2205,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     //otbTab->AddRows(nrows);
 
     colnames.insert(colnames.begin(), "rowidx");
+    colValues[0].type = AttributeTable::ATTYPE_INT;
     otbTab->prepareBulkSet(colnames, true);
 
 #ifdef GDAL_NEWRATAPI
@@ -2237,7 +2242,10 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 
         for (int k=0; k < chunksize; ++k)
         {
-            for (int col=0; col < ncols; ++col)
+            // set the rowidx
+            colValues[0].ival = s+k;
+
+            for (int col=0, tcol=1; col < ncols; ++col, ++tcol)
             {
                 gdaltype = rat->GetTypeOfCol(col);
 
@@ -2246,22 +2254,22 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
                 case GFT_Integer:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, intptr);
-                    colValues[col].type = AttributeTable::ATTYPE_INT;
-                    colValues[col].ival = *intptr;
+                    colValues[tcol].type = AttributeTable::ATTYPE_INT;
+                    colValues[tcol].ival = *intptr;
                 }
                     break;
                 case GFT_Real:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, dblptr);
-                    colValues[col].type = AttributeTable::ATTYPE_DOUBLE;
-                    colValues[col].dval = *dblptr;
+                    colValues[tcol].type = AttributeTable::ATTYPE_DOUBLE;
+                    colValues[tcol].dval = *dblptr;
                 }
                     break;
                 case GFT_String:
                 {
                     rat->ValuesIO(GF_Read, col, s+k, 1, &charPtr);
-                    colValues[col].type = AttributeTable::ATTYPE_STRING;
-                    colValues[col].tval = charPtr;
+                    colValues[tcol].type = AttributeTable::ATTYPE_STRING;
+                    colValues[tcol].tval = charPtr;
                 }
                     break;
                 default:
@@ -2322,6 +2330,9 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 #endif
 
     otbTab->endTransaction();
+
+    CALLGRIND_STOP_INSTRUMENTATION;
+    CALLGRIND_DUMP_STATS;
 
     return otbTab;
 }

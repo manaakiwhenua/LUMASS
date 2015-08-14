@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstdio>
+#include <ctime>
 #include <list>
 #include <deque>
 #include <map>
@@ -1601,53 +1602,82 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    QList<QString> sn;
-    sn << "Hans" << "Franz" << "Ganz" << "Maus" << "Haus";
-    QList<long> sa;
-    sa << 50 << 4 << 35 << 17 << 42;
-    QList<double> sw;
-    sw << 78.3 << 16.5 << 90.2 << 65 << 70;
+    QDateTime startTest = QDateTime::currentDateTime();
 
-    std::string cn[] = {"rowidx", "name", "1234", "weight of person"};
+    //    QList<QString> sn;
+    //    sn << "Hans" << "Franz" << "Ganz" << "Maus" << "Haus";
+    //    QList<long> sa;
+    //    sa << 50 << 4 << 35 << 17 << 42;
+    //    QList<double> sw;
+    //    sw << 78.3 << 16.5 << 90.2 << 65 << 70;
+
+    //    std::string cn[] = {"rowidx", "name", "1234", "weight of person"};
     std::vector<std::string> colNames;
-    for (int i=0; i < 4; ++i) colNames.push_back(cn[i]);
+    //for (int i=0; i < 4; ++i) colNames.push_back(cn[i]);
 
+    NMDebugAI(<< "creating table ..." << std::endl);
     otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
 
+    NMDebugAI(<< "adding columns ..." << std::endl);
     tab->beginTransaction();
 
-    NMDebugAI(<< "adding columns ..." << std::endl);
-    tab->AddColumn("name", otb::AttributeTable::ATTYPE_STRING);
-    tab->AddColumn("1234", otb::AttributeTable::ATTYPE_INT);
-    tab->AddColumn("weight of person", otb::AttributeTable::ATTYPE_DOUBLE);
+    colNames.push_back("rowidx");
+    tab->AddColumn(colNames[0], otb::AttributeTable::ATTYPE_INT);
 
+    std::vector<otb::AttributeTable::TableColumnType> coltypes;
+    coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
+    coltypes.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+    coltypes.push_back(otb::AttributeTable::ATTYPE_STRING);
+
+    for (int col=0; col < 16; ++col)
+    {
+        for (int ty=0; ty < 3; ++ty)
+        {
+            QString cname = QString("col%1").arg(col*3+1+ty);
+            colNames.push_back(cname.toStdString());
+            tab->AddColumn(colNames[col*3+1+ty], coltypes[ty]);
+        }
+    }
     tab->endTransaction();
 
+    std::srand(std::time(0));
+
+    NMDebugAI(<< "adding rows ..." << std::endl);
     tab->beginTransaction();
     tab->prepareBulkSet(colNames);
 
     std::vector< otb::AttributeTable::ColumnValue > values;
-    values.resize(4);
-    for (int r=0; r < 5; ++r)
+    values.resize(3*16+1);
+    for (int r=0; r < 1000000; ++r)
     {
-        values[0].type = otb::AttributeTable::ATTYPE_INT;
         values[0].ival = r;
+        for (int c=0; c < 16; ++c)
+        {
+            values[c*3+1].type = otb::AttributeTable::ATTYPE_INT;
+            values[c*3+1].ival = r+c;
 
-        values[1].type = otb::AttributeTable::ATTYPE_STRING;
-        values[1].tval = const_cast<char*>(sn.at(r).toStdString().c_str());
+            values[c*3+2].type = otb::AttributeTable::ATTYPE_DOUBLE;
+            double drmax = RAND_MAX;
+            values[c*3+2].dval = ((double)rand() / drmax);
 
-        values[2].type = otb::AttributeTable::ATTYPE_INT;
-        values[2].ival = sa.at(r);
-
-        values[3].type = otb::AttributeTable::ATTYPE_DOUBLE;
-        values[3].dval = sw.at(r);
-
-        tab->doBulkSet(values);
+            values[c*3+3].type = otb::AttributeTable::ATTYPE_STRING;
+            std::string nam = std::tmpnam(0);
+            values[c*3+3].tval = const_cast<char*>(nam.c_str());
+        }
+        tab->doBulkSet(values, -1);
     }
+    NMDebug( << " finished!" << std::endl);
     tab->endTransaction();
 
     //tab->Print(std::cout, 2, 5);
 
+    QDateTime endTest = QDateTime::currentDateTime();
+    int msec = startTest.msecsTo(endTest);
+    int min = msec / 60000;
+    double sec = (msec % 60000) / 1000.0;
+
+    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    NMDebugAI(<< "Test run took (min:sec): " << elapsedTime.toStdString() << endl);
 
 
 

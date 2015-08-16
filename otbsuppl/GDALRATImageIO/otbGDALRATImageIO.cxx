@@ -2166,52 +2166,26 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         //otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 
     std::vector< std::string > colnames;
-    std::vector< AttributeTable::ColumnValue > colValues;
-    colValues.resize(ncols+1);
-
-    // go and check the column names against the SQL standard, in case
-    // they don't match it, we enclose in double quotes.
-    for (int c=0; c < ncols; ++c)
-    {
-    	colnames.push_back(rat->GetNameOfCol(c));
-    }
-
-    otbTab->beginTransaction();
-
-	// copy table
-	::GDALRATFieldType gdaltype;
-	AttributeTable::TableColumnType otbtabtype;
-	for (int c=0; c < ncols; ++c)
-	{
-		gdaltype = rat->GetTypeOfCol(c);
-        std::string colname = colnames[c];
-
-		switch(gdaltype)
-		{
-		case GFT_Integer:
-			otbtabtype = AttributeTable::ATTYPE_INT;
-			break;
-		case GFT_Real:
-			otbtabtype = AttributeTable::ATTYPE_DOUBLE;
-			break;
-		case GFT_String:
-            otbtabtype = AttributeTable::ATTYPE_STRING;
-			break;
-		default:
-			return 0;
-		}
-		otbTab->AddColumn(colname, otbtabtype);
-	}
-    //otbTab->AddRows(nrows);
-
-    colnames.insert(colnames.begin(), "rowidx");
-    colValues[0].type = AttributeTable::ATTYPE_INT;
-    otbTab->prepareBulkSet(colnames, true);
+    std::vector< otb::AttributeTable::TableColumnType > coltypes;
 
 #ifdef GDAL_NEWRATAPI
+    std::vector< int > colpos;
+    //std::vector< AttributeTable::ColumnValue > colValues;
+    //colValues.resize(ncols+1);
+
+    // pointer to column value stores
+    std::vector< int* > int_cols;
+    std::vector< double* > dbl_cols;
+    std::vector< char** > chr_cols;
+
+
+    // prepare iteration over the RAT when employing the
+    // new GDAL RAT API
+
     // the new way - chunk of rows by chunk of rows
     // might want to turn that into a user-specified variable
     int chunksize = nrows < 5000 ? nrows : 5000;
+    int _chunksize = chunksize;
     int rest=0;
     int numChunks=0;
     if (nrows <= chunksize)
@@ -2228,55 +2202,139 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         }
     }
 
+    // store admin info about the cols to be read
+
+    colnames.push_back("rowidx");
+    coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
+    int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
+    int_cols.push_back(iptr);
+    colpos.push_back(0);
+
+#else
+    int chunksize = nrows;
+    colnames.push_back("rowidx");
+#endif
+
+    otbTab->beginTransaction();
+    otbTab->AddColumn(colnames[0], coltypes[0]);
+
+    for (int c=0; c < ncols; ++c)
+    {
+    	colnames.push_back(rat->GetNameOfCol(c));
+#ifdef GDAL_NEWRATAPI
+        switch(rat->GetTypeOfCol(c))
+        {
+            case GFT_Integer:
+            {
+                coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
+                int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
+                int_cols.push_back(iptr);
+                colpos.push_back(int_cols.size()-1);
+            }
+            break;
+
+            case GFT_Real:
+            {
+                coltypes.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+                double* dptr = (double*)CPLCalloc(sizeof(double), chunksize);
+                dbl_cols.push_back(dptr);
+                colpos.push_back(dbl_cols.size()-1);
+            }
+            break;
+
+            case GFT_String:
+            {
+                coltypes.push_back(otb::AttributeTable::ATTYPE_STRING);
+                char** cptr = (char**)CPLCalloc(sizeof(char*), chunksize);
+                chr_cols.push_back(cptr);
+                colpos.push_back(chr_cols.size()-1);
+            }
+            break;
+        }
+#else
+        switch(rat->GetTypeOfCol(c))
+        {
+        case GFT_Integer: coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
+            break;
+        case GFT_Real: coltypes.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+            break;
+        case GFT_String: coltypes.push_back(otb::AttributeTable::ATTYPE_STRING);
+            break;
+        }
+#endif
+        // NOTE: with 'rowidx' we've got one addtional columnn
+        // over the actual columns in the table
+        otbTab->AddColumn(colnames[c+1], coltypes[c+1]);
+    }
+    otbTab->endTransaction();
+
+    otbTab->prepareBulkSet(colnames, true);
+    otbTab->beginTransaction();
+
+#ifdef GDAL_NEWRATAPI
     int procrows = 0;
     int s=0;
     int e=0;
-    int*    intptr  = (int*)CPLCalloc(sizeof(int), 1);
-    double* dblptr  = (double*)CPLCalloc(sizeof(double), 1);
-    char*   charPtr = (char*)CPLCalloc(sizeof(char*), 1);
 
+    ::GDALRATFieldType gdaltype;
     for (int chunk = 0; chunk < numChunks+1; ++chunk)
     {
         s = procrows;
         e = s + chunksize;// - 1;
 
-        for (int k=0; k < chunksize; ++k)
+        for (int col=0, tcol=1; col < ncols; ++col, ++tcol)
         {
-            // set the rowidx
-            colValues[0].ival = s+k;
-
-            for (int col=0, tcol=1; col < ncols; ++col, ++tcol)
+            gdaltype = rat->GetTypeOfCol(col);
+            // at the start, we add the rowidx
+            if (col == 0)
             {
-                gdaltype = rat->GetTypeOfCol(col);
-
-                switch(gdaltype)
+                for (int r=s, ch=0; r < e; ++r, ++ch)
                 {
-                case GFT_Integer:
-                {
-                    rat->ValuesIO(GF_Read, col, s+k, 1, intptr);
-                    colValues[tcol].type = AttributeTable::ATTYPE_INT;
-                    colValues[tcol].ival = *intptr;
-                }
-                    break;
-                case GFT_Real:
-                {
-                    rat->ValuesIO(GF_Read, col, s+k, 1, dblptr);
-                    colValues[tcol].type = AttributeTable::ATTYPE_DOUBLE;
-                    colValues[tcol].dval = *dblptr;
-                }
-                    break;
-                case GFT_String:
-                {
-                    rat->ValuesIO(GF_Read, col, s+k, 1, &charPtr);
-                    colValues[tcol].type = AttributeTable::ATTYPE_STRING;
-                    colValues[tcol].tval = charPtr;
-                }
-                    break;
-                default:
-                    continue;
+                    int_cols[0][ch] = r;
                 }
             }
-            otbTab->doBulkSet(colValues, -1);
+
+            switch(gdaltype)
+            {
+                case GFT_Integer:
+                {
+                    // NOTE: with 'rowidx' we've got one
+                    // additional int col over the int columns
+                    // in the actual table
+                    rat->ValuesIO(GF_Read, col, s, chunksize,
+                                  int_cols[colpos[tcol]]);
+                }
+                break;
+
+                case GFT_Real:
+                {
+                    rat->ValuesIO(GF_Read, col, s, chunksize,
+                                  dbl_cols[colpos[tcol]]);
+                }
+                break;
+
+                case GFT_String:
+                {
+                    rat->ValuesIO(GF_Read, col, s, chunksize,
+                                  chr_cols[colpos[tcol]]);
+                }
+                break;
+
+            default:
+                continue;
+            }
+        }
+
+        for (int k=0; k < chunksize; ++k)
+        {
+            otbTab->doPtrBulkSet(int_cols, dbl_cols, chr_cols,
+                              colpos, k);
+
+            // clear strings allocated by GDAL
+            for (int g=0; g < chr_cols.size(); ++g)
+            {
+                CPLFree(chr_cols[g][k]);
+            }
         }
 
         procrows += chunksize;
@@ -2293,12 +2351,31 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
             }
         }
     }
-    CPLFree(intptr);
-    CPLFree(dblptr);
-    CPLFree(charPtr);
+
+
+    // release memory
+    for (int c=0; c < coltypes.size(); ++c)
+    {
+        switch(coltypes[c])
+        {
+        case otb::AttributeTable::ATTYPE_INT:
+            CPLFree(int_cols[colpos[c]]);
+            break;
+
+        case otb::AttributeTable::ATTYPE_STRING:
+            CPLFree(chr_cols[colpos[c]]);
+            break;
+
+        case otb::AttributeTable::ATTYPE_DOUBLE:
+            CPLFree(dbl_cols[colpos[c]]);
+            break;
+        }
+    }
 
 #else
     // the old way - row by row
+    std::vector< otb::AttributeTable::ColumnValue > colValues;
+    colValues.resize(ncols+1);
 
     for (int r=0; r < nrows; ++r)
     {

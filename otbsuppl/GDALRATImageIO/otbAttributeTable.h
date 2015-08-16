@@ -128,7 +128,16 @@ public:
     sqlite3* getDbConnection() {return this->m_db;}
     bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
     bool prepareBulkSet(const std::vector<std::string>& colNames, const bool& bInsert=true);
+
+    bool doPtrBulkSet(std::vector< int* >& intVals,
+                      std::vector< double* >& dblVals,
+                      std::vector< char** >& chrVals,
+                      std::vector< int >& colpos,
+                      const int & chunkrow,
+                      const int &row=-1);
+
     bool doBulkSet(std::vector< ColumnValue >& values, const int& row=-1);
+
     bool doBulkGet(std::vector< ColumnValue >& values);
     bool beginTransaction();
     bool endTransaction();

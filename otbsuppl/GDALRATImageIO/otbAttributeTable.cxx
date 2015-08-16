@@ -377,6 +377,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
     return true;
 }
 
+
 bool
 AttributeTable::createIndex(const std::vector<std::string> &colNames)
 {
@@ -456,6 +457,75 @@ AttributeTable::doBulkGet(std::vector< ColumnValue >& values)
     return true;
 }
 
+bool
+AttributeTable::doPtrBulkSet(std::vector<int *> &intVals,
+                             std::vector<double *> &dblVals,
+                             std::vector<char **> &chrVals,
+                             std::vector<int> &colpos,
+                             const int &chunkrow,
+                             const int &row)
+{
+    if (    m_db == 0
+        ||  m_StmtBulkSet == 0
+        ||  colpos.size() != m_vTypesBulkSet.size()
+       )
+    {
+        return false;
+    }
+
+    int rc;
+    for (int i=0; i < colpos.size(); ++i)
+    {
+        switch(m_vTypesBulkSet.at(i))
+        {
+        case ATTYPE_DOUBLE:
+            {
+                //const double val = *(static_cast<double*>(values[i]));
+                rc = sqlite3_bind_double(m_StmtBulkSet, i+1,
+                                         dblVals[colpos[i]][chunkrow]);
+                //if (sqliteError(rc, &m_StmtBulkSet)) return false;
+            }
+            break;
+        case ATTYPE_INT:
+            {
+                //const int ival = *(static_cast<int*>(values[i]));
+                rc = sqlite3_bind_int(m_StmtBulkSet, i+1,
+                                      intVals[colpos[i]][chunkrow]);
+                //if (sqliteError(rc, &m_StmtBulkSet)) return false;
+            }
+            break;
+        case ATTYPE_STRING:
+            {
+                //const char* val = values.at(i).c_str();
+                rc = sqlite3_bind_text(m_StmtBulkSet, i+1,
+                                       chrVals[colpos[i]][chunkrow],
+                                       -1, 0);
+                //if (sqliteError(rc, &m_StmtBulkSet)) return false;
+            }
+            break;
+        default:
+            return false;
+        }
+    }
+
+    if (row >= 0)
+    {
+        rc = sqlite3_bind_int(m_StmtBulkSet, colpos.size()+1, row);
+        //if (sqliteError(rc, &m_StmtBulkSet)) return false;
+    }
+    else
+    {
+        ++m_iNumRows;
+    }
+
+    rc = sqlite3_step(m_StmtBulkSet);
+    sqliteStepCheck(rc);
+
+    sqlite3_clear_bindings(m_StmtBulkSet);
+    sqlite3_reset(m_StmtBulkSet);
+
+    return true;
+}
 
 bool
 AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const int &row)

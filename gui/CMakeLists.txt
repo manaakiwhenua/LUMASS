@@ -79,6 +79,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMLayerModel.h
         ${gui_SOURCE_DIR}/NMQtOtbAttributeTableModel.h
         ${gui_SOURCE_DIR}/NMTableView.h
+        ${gui_SOURCE_DIR}/NMSqlTableView.h
 #        ${gui_SOURCE_DIR}/NMChartWidget.h
         ${gui_SOURCE_DIR}/NMAddColumnDialog.h
         ${gui_SOURCE_DIR}/NMTableCalculator.h
@@ -119,7 +120,7 @@ list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
-        Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml
+        Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
         #Qt5Declarative Qt5Qml Qt5Quick
         QtPropertyBrowser
         NMModFrame

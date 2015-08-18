@@ -74,6 +74,7 @@ else()
 	    "Qt5Xml"
 	    "Qt5Gui"
 	    "Qt5Concurrent"
+            "Qt5Sql"
 	    #"Qt5Declarative"
 	    #"Qt5Qml"
 	    #"Qt5Quick"

@@ -40,6 +40,7 @@
 #include "NMVectorLayer.h"
 #include "NMMosra.h"
 #include "NMTableView.h"
+#include "NMSqlTableView.h"
 //#include "NMChartWidget.h"
 #include "NMImageReader.h"
 #include "NMItk2VtkConnector.h"
@@ -215,6 +216,9 @@
 #include "itkNMImageRegionSplitterMaxSize.h"
 
 #include <sqlite3.h>
+
+#include <QSqlTableModel>
+#include <QSqlDatabase>
 
 //#include "valgrind/callgrind.h"
 
@@ -1602,84 +1606,26 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    QDateTime startTest = QDateTime::currentDateTime();
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    db.setDatabaseName("/tmp/filedOxKY7.db");
 
-    //    QList<QString> sn;
-    //    sn << "Hans" << "Franz" << "Ganz" << "Maus" << "Haus";
-    //    QList<long> sa;
-    //    sa << 50 << 4 << 35 << 17 << 42;
-    //    QList<double> sw;
-    //    sw << 78.3 << 16.5 << 90.2 << 65 << 70;
-
-    //    std::string cn[] = {"rowidx", "name", "1234", "weight of person"};
-    std::vector<std::string> colNames;
-    //for (int i=0; i < 4; ++i) colNames.push_back(cn[i]);
-
-    NMDebugAI(<< "creating table ..." << std::endl);
-    otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
-
-    NMDebugAI(<< "adding columns ..." << std::endl);
-    tab->beginTransaction();
-
-    colNames.push_back("rowidx");
-    tab->AddColumn(colNames[0], otb::AttributeTable::ATTYPE_INT);
-
-    std::vector<otb::AttributeTable::TableColumnType> coltypes;
-    coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
-    coltypes.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
-    coltypes.push_back(otb::AttributeTable::ATTYPE_STRING);
-
-    for (int col=0; col < 16; ++col)
+    if (!db.open())
     {
-        for (int ty=0; ty < 3; ++ty)
-        {
-            QString cname = QString("col%1").arg(col*3+1+ty);
-            colNames.push_back(cname.toStdString());
-            tab->AddColumn(colNames[col*3+1+ty], coltypes[ty]);
-        }
+        NMBoxErr("Open SqlTable", "Ey, lad' die Nade los!" << endl);
+        return;
     }
-    tab->endTransaction();
 
-    std::srand(std::time(0));
+    QSqlTableModel* model = new QSqlTableModel(this, db);
+    model->setTable("nmtab");
+    model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    model->select();
 
-    NMDebugAI(<< "adding rows ..." << std::endl);
-    tab->beginTransaction();
-    tab->prepareBulkSet(colNames);
+    NMSqlTableView* tabView = new NMSqlTableView(model, 0);
 
-    std::vector< otb::AttributeTable::ColumnValue > values;
-    values.resize(3*16+1);
-    for (int r=0; r < 1000000; ++r)
-    {
-        values[0].ival = r;
-        for (int c=0; c < 16; ++c)
-        {
-            values[c*3+1].type = otb::AttributeTable::ATTYPE_INT;
-            values[c*3+1].ival = r+c;
+    //tabView->setModel(filter);
+    //tabView->resizeColumnsToContents();
 
-            values[c*3+2].type = otb::AttributeTable::ATTYPE_DOUBLE;
-            double drmax = RAND_MAX;
-            values[c*3+2].dval = ((double)rand() / drmax);
-
-            values[c*3+3].type = otb::AttributeTable::ATTYPE_STRING;
-            std::string nam = std::tmpnam(0);
-            values[c*3+3].tval = const_cast<char*>(nam.c_str());
-        }
-        tab->doBulkSet(values, -1);
-    }
-    NMDebug( << " finished!" << std::endl);
-    tab->endTransaction();
-
-    //tab->Print(std::cout, 2, 5);
-
-    QDateTime endTest = QDateTime::currentDateTime();
-    int msec = startTest.msecsTo(endTest);
-    int min = msec / 60000;
-    double sec = (msec % 60000) / 1000.0;
-
-    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
-    NMDebugAI(<< "Test run took (min:sec): " << elapsedTime.toStdString() << endl);
-
-
+    tabView->show();
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

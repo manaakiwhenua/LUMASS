@@ -31,3 +31,15 @@ NMGlobalHelper::getVTKWidget()
 {
     return this->getMainWindow()->ui->qvtkWidget;
 }
+
+void
+NMGlobalHelper::startBusy()
+{
+    this->getMainWindow()->showBusyStart();
+}
+
+void
+NMGlobalHelper::endBusy()
+{
+    this->getMainWindow()->showBusyEnd();
+}

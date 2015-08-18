@@ -11,6 +11,8 @@ public:
     OtbModellerWin* getMainWindow(void);
     vtkRenderWindow* getRenderWindow(void);
     QVTKWidget* getVTKWidget(void);
+    void startBusy(void);
+    void endBusy(void);
 };
 
 #endif // NMGLOBALHELPER_H

@@ -61,6 +61,7 @@
 #include <QCheckBox>
 
 #include <QSqlQuery>
+#include <QSqlResult>
 
 //#include "valgrind/callgrind.h"
 
@@ -73,19 +74,20 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
     this->mTableView = new QTableView(this);
 	this->initView();
 
-    this->mSortFilter = new QSortFilterProxyModel(this);//NMSelectableSortFilterProxyModel(this);
-    this->mSortFilter->setDynamicSortFilter(true);
-    this->mSortFilter->setSourceModel(mModel);
+    mSortFilter = 0;
+//    this->mSortFilter = new QSortFilterProxyModel(this);//NMSelectableSortFilterProxyModel(this);
+//    this->mSortFilter->setDynamicSortFilter(true);
+//    this->mSortFilter->setSourceModel(mModel);
 
-    this->mTableView->setModel(this->mSortFilter);
-    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
-    this->mProxySelModel->setObjectName("FastProxySelection");
-    this->mTableView->setSelectionModel(mProxySelModel);
+    this->mTableView->setModel(mModel);
+    this->mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
+    this->mSelectionModel->setObjectName("FastProxySelection");
+    this->mTableView->setSelectionModel(mSelectionModel);
 
     /*** DIRTY HACK
      *
      */
-    this->mSelectionModel = this->mProxySelModel;
+    //this->mSelectionModel = this->mProxySelModel;
 }
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* parent)
@@ -96,19 +98,24 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
     this->mTableView = new QTableView(this);
 	this->initView();
 
-    this->mSortFilter = new QSortFilterProxyModel(this);//NMSelectableSortFilterProxyModel(this);
-    this->mSortFilter->setDynamicSortFilter(true);
-    this->mSortFilter->setSourceModel(mModel);
+//    this->mSortFilter = new QSortFilterProxyModel(this);//NMSelectableSortFilterProxyModel(this);
+//    this->mSortFilter->setDynamicSortFilter(true);
+//    this->mSortFilter->setSourceModel(mModel);
 
-    this->mTableView->setModel(this->mSortFilter);
-    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
-    this->mProxySelModel->setObjectName("FastProxySelection");
-    this->mTableView->setSelectionModel(mProxySelModel);
+//    this->mTableView->setModel(this->mSortFilter);
+//    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+//    this->mProxySelModel->setObjectName("FastProxySelection");
+//    this->mTableView->setSelectionModel(mProxySelModel);
+
+    this->mTableView->setModel(mModel);
+    this->mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
+    this->mSelectionModel->setObjectName("FastProxySelection");
+    this->mTableView->setSelectionModel(mSelectionModel);
 
     /*** DIRTY HACK
      *
      */
-    this->mSelectionModel = this->mProxySelModel;
+    //this->mSelectionModel = this->mProxySelModel;
 }
 
 
@@ -280,6 +287,13 @@ void NMSqlTableView::initView()
 	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
 
+
+    // query the number of records in the table
+    QSqlQuery q("Select count(rowidx) from nmtab", mModel->database());
+    q.setForwardOnly(true);
+    q.next();
+    this->mlNumRecs = q.value(0).toInt();
+    this->updateSelectionAdmin(mlNumRecs);
 }
 
 //void
@@ -461,7 +475,8 @@ void NMSqlTableView::normalise()
 
 	const int ncols = columnNames.size();
     //const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mSortFilter->sourceRowCount() * ncols;
-    const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mSortFilter->rowCount() * ncols;
+    //const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mSortFilter->rowCount() * ncols;
+    const int maxrange = mlNumSelRecs ? mlNumSelRecs * ncols : mlNumRecs * ncols;
 
 	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
 	calc->setRowFilter(mSelectionModel->selection());
@@ -521,7 +536,8 @@ NMSqlTableView::prepareProgressDlg(NMTableCalculator* obj, const QString& msg, i
 	if (maxrange == 0)
     {
         //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
-        maxrange = mlNumSelRecs == 0 ? this->mSortFilter->rowCount() : mlNumSelRecs;
+        //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->rowCount() : mlNumSelRecs;
+        maxrange = mlNumSelRecs == 0 ? mlNumRecs : mlNumSelRecs;
     }
 
 	mProgressDialog->setWindowModality(Qt::WindowModal);
@@ -536,7 +552,8 @@ void NMSqlTableView::cleanupProgressDlg(NMTableCalculator* obj, int maxrange)
 	if (maxrange == 0)
     {
         //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
-        maxrange = mlNumSelRecs == 0 ? this->mSortFilter->rowCount() : mlNumSelRecs;
+        //maxrange = mlNumSelRecs == 0 ? this->mSortFilter->rowCount() : mlNumSelRecs;
+        maxrange = mlNumSelRecs == 0 ? mlNumRecs : mlNumSelRecs;
     }
 
 	mProgressDialog->setValue(maxrange);
@@ -596,16 +613,9 @@ void
 NMSqlTableView::updateSelectionAdmin(long numSel)
 {
 	this->mBtnClearSelection->setEnabled(numSel);
-
-
-    QSqlQuery q(mModel->database());
-    q.exec("SELECT rowidx FROM nmtab");
-
-
     this->mRecStatusLabel->setText(
             QString(tr("%1 of %2 records selected")).arg(numSel).arg(
-                    q.value(0).toInt()));
-
+                    mlNumRecs));
 	mlNumSelRecs = numSel;
 }
 
@@ -699,16 +709,19 @@ void NMSqlTableView::addColumn()
 
 	delete dlg;
 
-	int ncols = this->mSortFilter->columnCount();
+    //int ncols = this->mSortFilter->columnCount();
+    int ncols = this->mModel->columnCount();
 
 	NMDebugAI(<< "add column ? " << ret << endl);
 	NMDebugAI(<< "name: " << name.toStdString() << endl);
 	NMDebugAI(<< "type: " << type << endl);
 	NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
-	if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
+    //if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
+    if (this->mModel->insertColumns(0, type, QModelIndex()))
 	{
-		this->mSortFilter->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
+        //this->mSortFilter->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
+        this->mModel->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
 		this->updateProxySelection(QItemSelection(), QItemSelection());
 	}
 
@@ -733,7 +746,8 @@ void NMSqlTableView::deleteColumn()
 	if (col < 0)
 		return;
 
-	if (this->mSortFilter->removeColumns(col, 1, QModelIndex()))
+    //if (this->mSortFilter->removeColumns(col, 1, QModelIndex()))
+    if (this->mModel->removeColumns(col, 1, QModelIndex()))
 	{
 		this->updateProxySelection(QItemSelection(), QItemSelection());
 	}
@@ -974,14 +988,16 @@ NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColId
 
 	NMDebugAI(<< "did find " << havefound << " matching recs!" << std::endl);
     //this->mSortFilter->notifyLayoutUpdate();
-    mSortFilter->layoutChanged();
+    //mSortFilter->layoutChanged();
+    mModel->layoutChanged();
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 
 void NMSqlTableView::hideRow(int row)
 {
-	if (row < 0 || row > this->mModel->rowCount()-1)
+    //if (row < 0 || row > this->mModel->rowCount()-1)
+    if (row < 0 || row > mlNumRecs - 1)
 		return;
 
 	this->mTableView->hideRow(row);
@@ -1047,7 +1063,8 @@ void NMSqlTableView::colStats()
 
 	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
     //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->sourceRowCount()*2;
-    const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->rowCount()*2;
+    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->rowCount()*2;
+    const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : mlNumRecs*2;
 	prepareProgressDlg(calc.data(), "Calculate Column Statistics ...", maxrange);
 
     //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
@@ -1099,8 +1116,10 @@ void
 NMSqlTableView::loadRasLayer(void)
 {
 	int srcRow = this->mlLastClickedRow;
-	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
-	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
+//	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
+//	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
+    QModelIndex sortIdx = this->mModel->index(this->mlLastClickedRow, 0, QModelIndex());
+    QModelIndex srcIdx = sortIdx;
 	srcRow = srcIdx.row();
 
 	int oid_coll = this->getColumnIndex("oid");
@@ -1125,8 +1144,10 @@ void
 NMSqlTableView::deleteRasLayer(void)
 {
 	int srcRow = this->mlLastClickedRow;
-	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
-	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
+//	QModelIndex sortIdx = this->mSortFilter->index(this->mlLastClickedRow, 0, QModelIndex());
+//	QModelIndex srcIdx = this->mSortFilter->mapToSource(sortIdx);
+    QModelIndex sortIdx = this->mModel->index(this->mlLastClickedRow, 0, QModelIndex());
+    QModelIndex srcIdx = sortIdx;
 	srcRow = srcIdx.row();
 
 	int oid_coll = this->getColumnIndex("oid");
@@ -1163,7 +1184,8 @@ bool NMSqlTableView::writeDelimTxt(const QString& fileName,
 //	const QItemSelection& inputSelection = mlNumSelRecs > 0 ? this->mSelectionModel->selection()
 //			: this->mSortFilter->getSourceSelection(true);
     //const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : this->mSortFilter->sourceRowCount();
-    const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : this->mSortFilter->rowCount();
+    //const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : this->mSortFilter->rowCount();
+    const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : mlNumRecs;
 	const int ncols = mModel->columnCount(QModelIndex());
 
 	mProgressDialog->setWindowModality(Qt::WindowModal);
@@ -1393,8 +1415,10 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 		}
 
 		// ---------------------- MEMORISE CURRENTLY CLICKED COLUMN -------------------------------------
-		this->mLastClickedColumn = this->mSortFilter->
-				headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+//		this->mLastClickedColumn = this->mSortFilter->
+//				headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+        this->mLastClickedColumn = this->mModel->
+                headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
 
 		// let's see what kind of mouse button we've got
 		// --------------------- RIGHT BUTTON calls CONTEXT MENU ----------------------------------------
@@ -1425,8 +1449,10 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 			if (row != -1)
 			{
 				int srcRow = row;
-				QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
-				QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
+//				QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
+//				QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
+                QModelIndex indx = this->mModel->index(row, 0, QModelIndex());
+                QModelIndex srcIndx = indx;
 				NMDebugAI(<< "proxy --> source : " << indx.row() << " --> " << srcIndx.row() << std::endl);
 				srcRow = srcIndx.row();
 				if (this->mbIsSelectable)
@@ -1457,8 +1483,10 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 					return true;
 
 				this->mlLastClickedRow = row;
-				const QModelIndex ridx = mSortFilter->index(row, 0, QModelIndex());
-				const int srcRow = mSortFilter->mapToSource(ridx).row();
+//				const QModelIndex ridx = mSortFilter->index(row, 0, QModelIndex());
+//				const int srcRow = mSortFilter->mapToSource(ridx).row();
+                const QModelIndex ridx = mModel->index(row, 0, QModelIndex());
+                const int srcRow = ridx.row();
 				emit notifyLastClickedRow((long)srcRow);
 				this->mManageLayerMenu->move(me->globalPos());
 				this->mManageLayerMenu->exec();
@@ -1475,7 +1503,8 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 				int col = this->mTableView->columnAt(me->pos().x());
 				if (row && col)
 				{
-					QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
+                    //QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
+                    QModelIndex idx = this->mModel->index(row, col, QModelIndex());
 					this->mTableView->edit(idx);
 				}
 			}
@@ -1500,32 +1529,37 @@ NMSqlTableView::sortColumn(int col)
 	this->mTableView->selectionModel()->clear();
 
 	Qt::SortOrder order;
+    QString orderStr;
 	QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
 	if (it != mMapColSortAsc.end())
 	{
 		if (it.value())
 		{
 			order = Qt::DescendingOrder;
+            orderStr = "Descending";
 			mMapColSortAsc.insert(col, false);
 		}
 		else
 		{
 			order = Qt::AscendingOrder;
+            orderStr = "Ascending";
 			mMapColSortAsc.insert(col, true);
 		}
 	}
 	else
 	{
 		order = Qt::AscendingOrder;
+        orderStr = "Ascending";
 		mMapColSortAsc.insert(col, true);
 	}
 	this->mTableView->horizontalHeader()->setSortIndicator(col, order);
 	this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
 
 	NMDebugAI(<< "... actually sorting the column" << std::endl);
-	this->mSortFilter->sort(col, order);
+    //this->mSortFilter->sort(col, order);
+    this->mModel->sort(col, order);
 
-	if (this->mChkSelectedRecsOnly->isChecked())
+    if (this->mChkSelectedRecsOnly->isChecked())
 	{
 		this->updateSelRecsOnly(Qt::Checked);
 	}

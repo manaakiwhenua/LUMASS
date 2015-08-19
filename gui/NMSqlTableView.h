@@ -184,6 +184,7 @@ protected:
 	QProgressDialog* mProgressDialog;
 	ViewMode mViewMode;
 
+    long mlNumRecs;
 	long mlNumSelRecs;
 	int mRowKeyColIndex;
 	QString mLastClickedColumn;

@@ -136,10 +136,12 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 	// merge any outstanding current selections
 	d->cleanup();
 
-	const int& maxcol = column < 0  || column > model()->columnCount(parent)
-			?  model()->columnCount(parent) : column;
-	const int& mincol = maxcol != column ? 0 : column;
-	const int& maxrow = model()->rowCount(QModelIndex())-1;
+//	const int& maxcol = column < 0  || column > model()->columnCount(parent)
+//			?  model()->columnCount(parent) : column;
+//	const int& mincol = maxcol != column ? 0 : column;
+    const int& maxcol = model()->columnCount(parent)-1;
+    const int& mincol = 0;
+    const int& maxrow = model()->rowCount(QModelIndex())-1;
 
 	// iterate through the current selection, check if row was
 	// selected and adjust selection accordingly

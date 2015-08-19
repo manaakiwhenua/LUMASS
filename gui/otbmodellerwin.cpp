@@ -219,6 +219,8 @@
 
 #include <QSqlTableModel>
 #include <QSqlDatabase>
+#include <QSqlQuery>
+#include "NMSqlTableModel.h"
 
 //#include "valgrind/callgrind.h"
 
@@ -1607,17 +1609,27 @@ void OtbModellerWin::test()
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("/tmp/fileD8jwwY.db");
+    db.setDatabaseName("/tmp/fileqwqDtk.db");
 
     if (!db.open())
     {
-        NMBoxErr("Open SqlTable", "Ey, lad' die Nade los!" << endl);
+        NMErr(ctxOtbModellerWin, << "Open database failed!" << endl);
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
     }
 
-    QSqlTableModel* model = new QSqlTableModel(this, db);
-    model->setTable("nmtab");
-    model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    // create a view of the table
+    QSqlQuery q("CREATE VIEW IF NOT EXISTS daitab AS SELECT * FROM nmtab where FTYPE = 'DAI'", db);
+    if (!q.isActive())
+    {
+        NMErr(ctxOtbModellerWin, "Create view failed!" << endl);
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    NMSqlTableModel* model = new NMSqlTableModel(this, db);
+    model->setTable("daitab");
+    //model->setEditStrategy(QSqlTableModel::OnManualSubmit);
     model->select();
 
     NMSqlTableView* tabView = new NMSqlTableView(model, 0);

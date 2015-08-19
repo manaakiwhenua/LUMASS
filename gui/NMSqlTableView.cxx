@@ -62,6 +62,7 @@
 
 #include <QSqlQuery>
 #include <QSqlResult>
+#include <QSqlIndex>
 
 //#include "valgrind/callgrind.h"
 
@@ -288,8 +289,11 @@ void NMSqlTableView::initView()
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
 
 
-    // query the number of records in the table
-    QSqlQuery q("Select count(rowidx) from nmtab", mModel->database());
+    // query the number of records in the tabl
+    QString fieldStr = mModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+    QString qstr = QString("Select count(%1) from %2").arg(fieldStr)
+                                                      .arg(mModel->tableName());
+    QSqlQuery q(qstr, mModel->database());
     q.setForwardOnly(true);
     q.next();
     this->mlNumRecs = q.value(0).toInt();

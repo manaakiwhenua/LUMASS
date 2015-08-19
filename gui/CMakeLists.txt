@@ -80,6 +80,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMQtOtbAttributeTableModel.h
         ${gui_SOURCE_DIR}/NMTableView.h
         ${gui_SOURCE_DIR}/NMSqlTableView.h
+        ${gui_SOURCE_DIR}/NMSqlTableModel.h
 #        ${gui_SOURCE_DIR}/NMChartWidget.h
         ${gui_SOURCE_DIR}/NMAddColumnDialog.h
         ${gui_SOURCE_DIR}/NMTableCalculator.h

@@ -329,12 +329,12 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     this->mMapToolBar = new QToolBar("View Tools");
 
-    QAction* rubberBandZoom = new QAction("Zoom In", this->mMapToolBar);
-    rubberBandZoom->setCheckable(true);
-    rubberBandZoom->setChecked(false);
-    this->mMapToolBar->addAction(rubberBandZoom);
+////    QAction* rubberBandZoom = new QAction("Zoom In", this->mMapToolBar);
+////    rubberBandZoom->setCheckable(true);
+////    rubberBandZoom->setChecked(false);
+////    this->mMapToolBar->addAction(rubberBandZoom);
 
-    connect(rubberBandZoom, SIGNAL(triggered(bool)), this, SLOT(toggleRubberBandZoom(bool)));
+//    connect(rubberBandZoom, SIGNAL(triggered(bool)), this, SLOT(toggleRubberBandZoom(bool)));
 
     this->mMdiArea = new QMdiArea(this);
     this->setCentralWidget(mMdiArea);
@@ -1609,7 +1609,7 @@ void OtbModellerWin::test()
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("/tmp/fileqwqDtk.db");
+    db.setDatabaseName("/tmp/fileTPq2ff.db");
 
     if (!db.open())
     {
@@ -2145,7 +2145,7 @@ OtbModellerWin::showBusyStart()
 	this->mProgressBar->reset();
 	this->mProgressBar->setVisible(true);
 	this->mProgressBar->setMinimum(0);
-	this->mProgressBar->setMaximum(0);
+    this->mProgressBar->setMaximum(0);
     this->mBusyProcCounter++;
 }
 
@@ -3930,14 +3930,12 @@ void OtbModellerWin::loadImageLayer()
 	vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
 	NMImageLayer* layer = new NMImageLayer(renWin, 0, this);
 
-//	QThread* loader = new QThread;
-//	layer->moveToThread(loader);
-//	connect(layer, SIGNAL(layerProcessingEnd(const QString &)),
-//			loader, SLOT())
+//    connect(layer, SIGNAL(layerProcessingEnd(const QString &)),
+//            loader, SLOT());
 
-	layer->setObjectName(layerName);
-	this->connectImageLayerProcSignals(layer);
-	QtConcurrent::run(layer, &NMImageLayer::setFileName, fileName);
+    QThread t;
+    this->connectImageLayerProcSignals(layer);
+    QtConcurrent::run(layer, &NMImageLayer::setFileName, fileName);
 
 //	if (layer->setFileName(fileName))
 //	{

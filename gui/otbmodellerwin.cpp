@@ -2139,14 +2139,18 @@ void OtbModellerWin::updateCoords(vtkObject* obj)
 void
 OtbModellerWin::showBusyStart()
 {
-	NMDebugAI(<< this->sender()->objectName().toStdString() << " - turned busy!" << std::endl);
+    if (this->sender())
+    {
+        NMDebugAI(<< this->sender()->objectName().toStdString() << " - turned busy!" << std::endl);
+    }
     QString msg = QString("processing ..."); //.arg(this->sender()->objectName());
 	this->m_StateMsg->setText(msg);
 	this->mProgressBar->reset();
-	this->mProgressBar->setVisible(true);
-	this->mProgressBar->setMinimum(0);
+    this->mProgressBar->setMinimum(0);
     this->mProgressBar->setMaximum(0);
+    this->mProgressBar->setVisible(true);
     this->mBusyProcCounter++;
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 }
 
 void
@@ -2155,9 +2159,22 @@ OtbModellerWin::showBusyEnd()
     this->mBusyProcCounter--;
     if (mBusyProcCounter == 0)
     {
-        NMDebugAI(<< this->sender()->objectName().toStdString() << " - stopped processing!" << std::endl);
+        if (this->sender())
+        {
+            NMDebugAI(<< this->sender()->objectName().toStdString() << " - stopped processing!" << std::endl);
+        }
         this->m_StateMsg->setText("");
         this->mProgressBar->setVisible(false);
+    }
+    QApplication::restoreOverrideCursor();
+}
+
+void
+OtbModellerWin::showBusyValue(int value)
+{
+    if (this->mBusyProcCounter)
+    {
+        this->mProgressBar->setValue(value);
     }
 }
 
@@ -3933,7 +3950,6 @@ void OtbModellerWin::loadImageLayer()
 //    connect(layer, SIGNAL(layerProcessingEnd(const QString &)),
 //            loader, SLOT());
 
-    QThread t;
     this->connectImageLayerProcSignals(layer);
     QtConcurrent::run(layer, &NMImageLayer::setFileName, fileName);
 

@@ -29,6 +29,7 @@
 #include "NMStreamingImageFileWriterWrapper.h"
 #include "NMRasdamanConnectorWrapper.h"
 #include "NMMacros.h"
+#include "NMGlobalHelper.h"
 
 #include <QTime>
 #include <QtCore>
@@ -591,9 +592,9 @@ NMImageLayer::setFileName(QString filename)
 
 #endif
 
-	emit layerProcessingStart();
+    emit layerProcessingStart();
 
-	this->mReader->setFileName(filename);
+    this->mReader->setFileName(filename);
 	this->mReader->instantiateObject();
 	if (!this->mReader->isInitialised())
 	{
@@ -603,7 +604,6 @@ NMImageLayer::setFileName(QString filename)
 		return false;
 	}
     this->mReader->getInternalProc()->ReleaseDataFlagOn();
-
 
     // get original image attributes before we muck
     // around with scaling and overviews
@@ -626,7 +626,6 @@ NMImageLayer::setFileName(QString filename)
         mBandMap.push_back(2);
         mBandMap.push_back(3);
     }
-
     // ==> set the desired overview and requested region, if supported
     this->mapExtentChanged();
 
@@ -655,10 +654,9 @@ NMImageLayer::setFileName(QString filename)
     this->mMapper->Update();
     this->initiateLegend();
 
-
-	emit layerProcessingEnd();
-	emit layerLoaded();
-	NMDebugCtx(ctxNMImageLayer, << "done!");
+    emit layerProcessingEnd();
+    emit layerLoaded();
+    NMDebugCtx(ctxNMImageLayer, << "done!");
 	return true;
 }
 

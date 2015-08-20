@@ -111,6 +111,7 @@ public slots:
 #endif
 	void connectImageLayerProcSignals(NMLayer* layer);
 	void showBusyStart();
+    void showBusyValue(int);
 	void showBusyEnd();
 	void loadImageLayer();
 	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)

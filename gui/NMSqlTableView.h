@@ -108,6 +108,9 @@ public:
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);
 	void setTitle(const QString& title) {this->setWindowTitle(title);}
+    void setBaseFilter(const QString& baseFilter)
+        {mBaseFilter = baseFilter;}
+
 	void hideRow(int row);
     //void hideSource(const QList<int>& rows);
 //	const QList<int>* getRaw2Source(void)
@@ -196,6 +199,8 @@ protected:
 
 	QMap<int, bool> mMapColSortAsc;
 	QStringList mHiddenColumns;
+
+    QString mBaseFilter;
 
 	QTableView* mTableView;
         QSqlTableModel* mModel;

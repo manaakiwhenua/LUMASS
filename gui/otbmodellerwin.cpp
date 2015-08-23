@@ -1609,7 +1609,7 @@ void OtbModellerWin::test()
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("/tmp/fileTPq2ff.db");
+    db.setDatabaseName("/tmp/fileJ59ZcV.db");
 
     if (!db.open())
     {
@@ -1619,20 +1619,21 @@ void OtbModellerWin::test()
     }
 
     // create a view of the table
-    QSqlQuery q("CREATE VIEW IF NOT EXISTS daitab AS SELECT * FROM nmtab where FTYPE = 'DAI'", db);
-    if (!q.isActive())
-    {
-        NMErr(ctxOtbModellerWin, "Create view failed!" << endl);
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
+    //    QSqlQuery q("CREATE VIEW IF NOT EXISTS daitab AS SELECT * FROM nmtab where FTYPE = 'DAI'", db);
+    //    if (!q.isActive())
+    //    {
+    //        NMErr(ctxOtbModellerWin, "Create view failed!" << endl);
+    //        NMDebugCtx(ctxOtbModellerWin, << "done!");
+    //        return;
+    //    }
 
     NMSqlTableModel* model = new NMSqlTableModel(this, db);
-    model->setTable("daitab");
+    model->setTable("nmtab");
     //model->setEditStrategy(QSqlTableModel::OnManualSubmit);
     model->select();
 
     NMSqlTableView* tabView = new NMSqlTableView(model, 0);
+    tabView->setBaseFilter("FTYPE <> 'DAI'");
 
     //tabView->setModel(filter);
     //tabView->resizeColumnsToContents();

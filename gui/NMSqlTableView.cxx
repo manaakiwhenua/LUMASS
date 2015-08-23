@@ -1584,56 +1584,118 @@ NMSqlTableView::selectionQuery(void)
     NMDebugCtx(__ctxsqltabview, << "...");
 
 	bool bOk = false;
-	QString query = QInputDialog::getText(this, tr("Selection Query"),
+    QString queryStr = QInputDialog::getText(this, tr("Selection Query"),
                          tr("Where Clause"), QLineEdit::Normal,
-                         QString("%1 == ").arg(this->mLastClickedColumn),
+                         QString("%1 = ").arg(this->mLastClickedColumn),
                          &bOk);
-	if (!bOk || query.isEmpty())
+    if (!bOk || queryStr.isEmpty())
 	{
         NMDebugCtx(__ctxsqltabview, << "done!");
 		return;
 	}
 
-	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(this->mModel));
-	prepareProgressDlg(selector.data(), QString("Looking for matching records ..."));
+    QString filter2 = "";
+    if (!mBaseFilter.isEmpty())
+    {
+        filter2 = QString("AND %1").arg(mBaseFilter);
+    }
 
-	selector->setFunction(query);
-	selector->setRowFilter(this->mSelectionModel->selection());
-	selector->setSelectionMode(true);
-    //selector->setRaw2Source(const_cast<QList<int>* >(this->mSortFilter->getRaw2Source()));
+    queryStr = QString("SELECT rowidx from nmtab where %1 %2").arg(queryStr).arg(filter2);
 
-	try
-	{
-		if (!selector->calculate())
-		{
-			//QMessageBox::critical(this,
-			//		"Selection Query Failed",
-			//		"Error parsing the query!");
+    QSqlQuery query(mModel->database());
+    if (!query.exec(queryStr))
+    {
+        NMDebugAI(<< "Invalid query!" << std::endl);
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
 
-            NMErr(__ctxsqltabview, << "Selection Query failed!");
-            NMDebugCtx(__ctxsqltabview, << "done!");
-			//return;
-		}
-	}
-	catch (itk::ExceptionObject& err)
-	{
-		cleanupProgressDlg(selector.data());
-		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-				      .arg(err.GetDescription());
-		NMBoxErr("Selection Query Failed!", "Invalid Query String!");
-        NMErr(__ctxsqltabview, << "Calculation failed!"
-				<< errmsg.toStdString());
-		return;
-	}
-	cleanupProgressDlg(selector.data());
+    NMDebugAI(<< "Got " << query.numRowsAffected() << " affected rows!"
+              << std::endl);
 
-	const QItemSelection* srcSel = selector->getSelection();
-	long selectorcount = selector->getSelectionCount();
-	NMDebugAI(<< __FUNCTION__ << ": calculator reports "
-			<< selectorcount << " selected rows" << std::endl);
+    query.setForwardOnly(true);
+    query.next();
+    if (!query.isValid())
+    {
+        NMDebugAI(<< "Query produced empty selection set!" << std::endl);
+        mSelectionModel->clearSelection();
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
 
-	mbColumnCalc = true;
-	mSelectionModel->setSelection(*srcSel);
+
+    int mincol = 0;
+    int maxcol = mModel->columnCount()-1;
+
+    QItemSelection sel;
+    long top = query.value(0).toInt();
+    long bottom = top;
+
+    while(query.isActive() && query.next())
+    {
+        const int v = query.value(0).toInt();
+        // extend the selection range
+        if (v == bottom + 1)
+        {
+            bottom = v;
+        }
+        // write selection range and start new
+        else
+        {
+            const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
+            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
+            sel.append(QItemSelectionRange(tl, br));
+            top = v;
+            bottom = v;
+        }
+    }
+
+    mSelectionModel->setSelection(sel);
+
+//    mModel->setFilter(query);
+//    mModel->select();
+
+
+//	QScopedPointer<NMTableCalculator> selector(new NMTableCalculator(this->mModel));
+//	prepareProgressDlg(selector.data(), QString("Looking for matching records ..."));
+
+//	selector->setFunction(query);
+//	selector->setRowFilter(this->mSelectionModel->selection());
+//	selector->setSelectionMode(true);
+//    //selector->setRaw2Source(const_cast<QList<int>* >(this->mSortFilter->getRaw2Source()));
+
+//	try
+//	{
+//		if (!selector->calculate())
+//		{
+//			//QMessageBox::critical(this,
+//			//		"Selection Query Failed",
+//			//		"Error parsing the query!");
+
+//            NMErr(__ctxsqltabview, << "Selection Query failed!");
+//            NMDebugCtx(__ctxsqltabview, << "done!");
+//			//return;
+//		}
+//	}
+//	catch (itk::ExceptionObject& err)
+//	{
+//		cleanupProgressDlg(selector.data());
+//		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+//				      .arg(err.GetDescription());
+//		NMBoxErr("Selection Query Failed!", "Invalid Query String!");
+//        NMErr(__ctxsqltabview, << "Calculation failed!"
+//				<< errmsg.toStdString());
+//		return;
+//	}
+//	cleanupProgressDlg(selector.data());
+
+//	const QItemSelection* srcSel = selector->getSelection();
+//	long selectorcount = selector->getSelectionCount();
+//	NMDebugAI(<< __FUNCTION__ << ": calculator reports "
+//			<< selectorcount << " selected rows" << std::endl);
+
+//	mbColumnCalc = true;
+//	mSelectionModel->setSelection(*srcSel);
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }

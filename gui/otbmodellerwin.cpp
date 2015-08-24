@@ -1609,7 +1609,7 @@ void OtbModellerWin::test()
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("/tmp/fileJ59ZcV.db");
+    db.setDatabaseName("/tmp/fileReYzIt.db");
 
     if (!db.open())
     {

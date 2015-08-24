@@ -298,6 +298,14 @@ void NMSqlTableView::initView()
     q.next();
     this->mlNumRecs = q.value(0).toInt();
     this->updateSelectionAdmin(mlNumRecs);
+
+    /// connect table model with slots
+    this->connect(mModel, SIGNAL(layoutChanged(QList<QPersistentModelIndex>,
+                                               QAbstractItemModel::LayoutChangeHint)),
+                  this, SLOT(procLayoutChanged(QList<QPersistentModelIndex>,
+                                               QAbstractItemModel::LayoutChangeHint)));
+    this->connect(mModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
+                  this, SLOT(procRowsInserted(QModelIndex, int, int)));
 }
 
 //void
@@ -1597,12 +1605,13 @@ NMSqlTableView::selectionQuery(void)
     QString filter2 = "";
     if (!mBaseFilter.isEmpty())
     {
-        filter2 = QString("AND %1").arg(mBaseFilter);
+        //filter2 = QString("AND %1").arg(mBaseFilter);
     }
 
     queryStr = QString("SELECT rowidx from nmtab where %1 %2").arg(queryStr).arg(filter2);
+    //queryStr = QString("SELECT rowidx from nmtab where %1").arg(queryStr);
 
-    QSqlQuery query(mModel->database());
+    QSqlQuery query(queryStr, this->mModel->database());
     if (!query.exec(queryStr))
     {
         NMDebugAI(<< "Invalid query!" << std::endl);
@@ -1610,30 +1619,38 @@ NMSqlTableView::selectionQuery(void)
         return;
     }
 
-    NMDebugAI(<< "Got " << query.numRowsAffected() << " affected rows!"
-              << std::endl);
+    //    query.setForwardOnly(true);
+        //query.next();
+    //    if (!query.isValid())
+    //    {
+    //        NMDebugAI(<< "Query produced empty selection set!" << std::endl);
+    //        mSelectionModel->clearSelection();
+    //        NMDebugCtx(__ctxsqltabview, << "done!");
+    //        return;
+    //    }
 
-    query.setForwardOnly(true);
-    query.next();
-    if (!query.isValid())
-    {
-        NMDebugAI(<< "Query produced empty selection set!" << std::endl);
-        mSelectionModel->clearSelection();
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
-
-
+    QItemSelection sel;
+    int cnt = 0;
     int mincol = 0;
     int maxcol = mModel->columnCount()-1;
 
-    QItemSelection sel;
-    long top = query.value(0).toInt();
+    long top = -1;
+    if (query.next())
+    {
+        top = query.value(0).toInt();
+    }
+    else
+    {
+        NMDebugAI(<< "Failed fetching first record of result set!" << std::endl);
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
     long bottom = top;
 
-    while(query.isActive() && query.next())
+    while(query.next())
     {
         const int v = query.value(0).toInt();
+
         // extend the selection range
         if (v == bottom + 1)
         {
@@ -1642,13 +1659,22 @@ NMSqlTableView::selectionQuery(void)
         // write selection range and start new
         else
         {
+            NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
             const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
             const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
             sel.append(QItemSelectionRange(tl, br));
             top = v;
             bottom = v;
         }
+        ++cnt;
     }
+
+    // add the last open selection
+    NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+    const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
+    const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
+    sel.append(QItemSelectionRange(tl, br));
+
 
     mSelectionModel->setSelection(sel);
 
@@ -1749,6 +1775,23 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 //		}
 
 //	}
+    NMDebugCtx(__ctxsqltabview, << "done!");
+}
+
+
+void
+NMSqlTableView::procRowsInserted(QModelIndex parent, int first, int last)
+{
+    NMDebugCtx(__ctxsqltabview, << "...");
+    this->mTableView->setSelectionModel(this->mSelectionModel);
+    NMDebugCtx(__ctxsqltabview, << "done!");
+}
+
+void
+NMSqlTableView::procLayoutChanged(const QList<QPersistentModelIndex> parents,
+                       QAbstractItemModel::LayoutChangeHint hint)
+{
+    NMDebugCtx(__ctxsqltabview, << "...");
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 

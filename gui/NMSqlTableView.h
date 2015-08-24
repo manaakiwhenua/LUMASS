@@ -138,6 +138,9 @@ public slots:
 	void callHideColumn(void);
 	void callUnHideColumn(void);
 	void setSelectable(bool);
+    void procLayoutChanged(const QList<QPersistentModelIndex> parents,
+                           QAbstractItemModel::LayoutChangeHint hint);
+    void procRowsInserted(QModelIndex parent, int first, int last);
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);

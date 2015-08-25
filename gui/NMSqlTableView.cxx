@@ -1561,9 +1561,28 @@ NMSqlTableView::sortColumn(int col)
 	this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
 
     //NMDebugAI(<< "... actually sorting the column" << std::endl);
+//    this->mSortFilter->sort(col, order);
+
+    QItemSelection sel = this->mSelectionModel->selection();
+    this->printSelRanges(sel, "before source sort");
+    this->mModel->sort(col, order);
+
+    this->mSortFilter->setSourceModel(mModel);
+    QItemSelection sortSel = this->mSortFilter->mapSelectionFromSource(
+                sel);
+    this->printSelRanges(sortSel, "sorted? proxy sel");
+    this->mProxySelModel->setSelection(sortSel, true);
+
+    //this->update();
+
+
+//    this->printSelRanges(this->mSelectionModel->sele);
+
+//    QItemSelection proxySel = this->mSortFilter->mapSelectionFromSource(
+//                this->mSelectionModel->selection());
+//    this->mProxySelModel->setSelection(proxySel, true);
+
     //this->mSortFilter->sort(col, order);
-    //this->mModel->sort(col, order);
-    this->mSortFilter->sort(col, order);
 
 
 //    if (this->mChkSelectedRecsOnly->isChecked())
@@ -1656,17 +1675,18 @@ NMSqlTableView::selectionQuery(void)
         else
         {
             NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+            cnt += bottom - top + 1;
             const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
             const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
             sel.append(QItemSelectionRange(tl, br));
             top = v;
             bottom = v;
         }
-        ++cnt;
     }
 
     // add the last open selection
     NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+    cnt += bottom - top + 1;
     const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
     const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
     sel.append(QItemSelectionRange(tl, br));
@@ -1715,11 +1735,10 @@ NMSqlTableView::selectionQuery(void)
 //	}
 //	cleanupProgressDlg(selector.data());
 
-    long selectorcount = cnt+1;
     NMDebugAI(<< __FUNCTION__ << ": calculator reports "
-            << selectorcount << " selected rows" << std::endl);
+            << cnt << " selected rows" << std::endl);
 
-//	mbColumnCalc = true;
+    mbColumnCalc = true;
 //	smSelectionModel->setSelection(*srcSel);
 
     NMDebugCtx(__ctxsqltabview, << "done!");
@@ -1770,13 +1789,14 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
         {
             const QItemSelection& proxySel = this->mSortFilter->mapSelectionFromSource(
                         mSelectionModel->selection());
+            this->printSelRanges(proxySel, "Proxy");
             mProxySelModel->setSelection(proxySel, true);
         }
 
     }
 
     this->printSelRanges(this->mSelectionModel->selection(), "Source");
-    this->printSelRanges(this->mProxySelModel->selection(), "Proxy");
+
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }

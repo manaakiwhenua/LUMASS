@@ -88,6 +88,7 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel,
                         maxcol);
             expSel.append(QItemSelectionRange(tl, br));
         }
+        d->ranges.append(expSel);
     }
     else
     {

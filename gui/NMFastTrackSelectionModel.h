@@ -37,7 +37,8 @@ public:
 	NMFastTrackSelectionModel(QAbstractItemModel* model, QObject* parent=0);
 	virtual ~NMFastTrackSelectionModel();
 
-	void setSelection(const QItemSelection& newSel);
+    void setSelection(const QItemSelection& newSel,
+                      bool expToRows=false);
 	QItemSelection getSelection(void);
 	void toggleRow(int row, int column,
 			const QModelIndex& parent=QModelIndex());

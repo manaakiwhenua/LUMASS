@@ -70,53 +70,43 @@
 NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
 	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
-	  mSelectionModel(0), mbIsSelectable(true)
+      mSelectionModel(0), mbIsSelectable(true), mSortFilter(0)
 {
     this->mTableView = new QTableView(this);
 	this->initView();
 
-    mSortFilter = 0;
-//    this->mSortFilter = new QSortFilterProxyModel(this);//NMSelectableSortFilterProxyModel(this);
-//    this->mSortFilter->setDynamicSortFilter(true);
-//    this->mSortFilter->setSourceModel(mModel);
+    mSortFilter = new QSortFilterProxyModel(this);
+    mSortFilter->setDynamicSortFilter(true);
+    mSortFilter->setSourceModel(mModel);
 
-    this->mTableView->setModel(mModel);
-    this->mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
-    this->mSelectionModel->setObjectName("FastProxySelection");
-    this->mTableView->setSelectionModel(mSelectionModel);
+    this->mTableView->setModel(mSortFilter);
 
-    /*** DIRTY HACK
-     *
-     */
-    //this->mSelectionModel = this->mProxySelModel;
+    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+    this->mProxySelModel->setObjectName("FastProxySelection");
+    this->mTableView->setSelectionModel(mProxySelModel);
+
+   mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
+   this->connectSelModels(true);
 }
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* parent)
 	: QWidget(parent), mViewMode(mode),
 	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
-	  mSelectionModel(0), mbIsSelectable(true)
+      mSelectionModel(0), mbIsSelectable(true), mSortFilter(0)
 {
     this->mTableView = new QTableView(this);
 	this->initView();
 
-//    this->mSortFilter = new QSortFilterProxyModel(this);//NMSelectableSortFilterProxyModel(this);
-//    this->mSortFilter->setDynamicSortFilter(true);
-//    this->mSortFilter->setSourceModel(mModel);
+    mSortFilter = new QSortFilterProxyModel(this);
+    mSortFilter->setSourceModel(mModel);
 
-//    this->mTableView->setModel(this->mSortFilter);
-//    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
-//    this->mProxySelModel->setObjectName("FastProxySelection");
-//    this->mTableView->setSelectionModel(mProxySelModel);
+    this->mTableView->setModel(mSortFilter);
+    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+    this->mProxySelModel->setObjectName("FastProxySelection");
+    this->mTableView->setSelectionModel(mProxySelModel);
 
-    this->mTableView->setModel(mModel);
-    this->mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
-    this->mSelectionModel->setObjectName("FastProxySelection");
-    this->mTableView->setSelectionModel(mSelectionModel);
-
-    /*** DIRTY HACK
-     *
-     */
-    //this->mSelectionModel = this->mProxySelModel;
+    mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
+    this->connectSelModels(true);
 }
 
 
@@ -373,8 +363,11 @@ NMSqlTableView::update(void)
 void
 NMSqlTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
 {
-	if (mSelectionModel != 0)
+    if (selectionModel && mSelectionModel != 0)
+    {
 		this->connectSelModels(false);
+        delete mSelectionModel;
+    }
 
 	this->mSelectionModel = selectionModel;
 	this->connectSelModels(true);
@@ -1537,10 +1530,10 @@ NMSqlTableView::sortColumn(int col)
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
-	NMDebugAI(<< "... clear current table view selection" << std::endl);
-	this->mTableView->selectionModel()->clear();
+    //NMDebugAI(<< "... clear current table view selection" << std::endl);
+    //this->mTableView->selectionModel()->clear();
 
-	Qt::SortOrder order;
+    Qt::SortOrder order;
     QString orderStr;
 	QMap<int, bool>::iterator it = mMapColSortAsc.find(col);
 	if (it != mMapColSortAsc.end())
@@ -1567,21 +1560,23 @@ NMSqlTableView::sortColumn(int col)
 	this->mTableView->horizontalHeader()->setSortIndicator(col, order);
 	this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
 
-	NMDebugAI(<< "... actually sorting the column" << std::endl);
+    //NMDebugAI(<< "... actually sorting the column" << std::endl);
     //this->mSortFilter->sort(col, order);
-    this->mModel->sort(col, order);
+    //this->mModel->sort(col, order);
+    this->mSortFilter->sort(col, order);
 
-    if (this->mChkSelectedRecsOnly->isChecked())
-	{
-		this->updateSelRecsOnly(Qt::Checked);
-	}
-	else
-	{
-		// re-apply any existing selection
-		NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
-		this->updateProxySelection(QItemSelection(), QItemSelection());
-	}
-	NMDebugAI(<< "SORTING DONE!" << std::endl);
+
+//    if (this->mChkSelectedRecsOnly->isChecked())
+//	{
+//		this->updateSelRecsOnly(Qt::Checked);
+//	}
+//	else
+//	{
+//		// re-apply any existing selection
+//		NMDebugAI(<< "... mapping source selection to sorted model" << std::endl);
+//		this->updateProxySelection(QItemSelection(), QItemSelection());
+//	}
+    //NMDebugAI(<< "SORTING DONE!" << std::endl);
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
@@ -1605,11 +1600,12 @@ NMSqlTableView::selectionQuery(void)
     QString filter2 = "";
     if (!mBaseFilter.isEmpty())
     {
-        //filter2 = QString("AND %1").arg(mBaseFilter);
+        filter2 = QString("AND %1").arg(mBaseFilter);
     }
 
-    queryStr = QString("SELECT rowidx from nmtab where %1 %2").arg(queryStr).arg(filter2);
-    //queryStr = QString("SELECT rowidx from nmtab where %1").arg(queryStr);
+    queryStr = QString("SELECT rowidx from %1 where %2 %3")
+            .arg(this->mModel->tableName())
+            .arg(queryStr).arg(filter2);
 
     QSqlQuery query(queryStr, this->mModel->database());
     if (!query.exec(queryStr))
@@ -1675,8 +1671,12 @@ NMSqlTableView::selectionQuery(void)
     const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
     sel.append(QItemSelectionRange(tl, br));
 
-
+    this->printSelRanges(sel, "just selected ...");
     mSelectionModel->setSelection(sel);
+
+    //this->updateSelectionAdmin(cnt+1);
+
+//    this->printSelRanges(mBackupSel);
 
 //    mModel->setFilter(query);
 //    mModel->select();
@@ -1715,13 +1715,12 @@ NMSqlTableView::selectionQuery(void)
 //	}
 //	cleanupProgressDlg(selector.data());
 
-//	const QItemSelection* srcSel = selector->getSelection();
-//	long selectorcount = selector->getSelectionCount();
-//	NMDebugAI(<< __FUNCTION__ << ": calculator reports "
-//			<< selectorcount << " selected rows" << std::endl);
+    long selectorcount = cnt+1;
+    NMDebugAI(<< __FUNCTION__ << ": calculator reports "
+            << selectorcount << " selected rows" << std::endl);
 
 //	mbColumnCalc = true;
-//	mSelectionModel->setSelection(*srcSel);
+//	smSelectionModel->setSelection(*srcSel);
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
@@ -1738,43 +1737,47 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
-    NMDebugAI(<< "DEACTIVATED FOR NOW! SELECTION REVIEW REQUIRED!!" << endl);
-    NMDebugAI(<< "DEACTIVATED FOR NOW! SELECTION REVIEW REQUIRED!!" << endl);
+    this->printSelRanges(this->mSelectionModel->selection(), "Source");
+    this->printSelRanges(this->mProxySelModel->selection(), "Proxy");
 
-//	if (mbClearSelection)
-//	{
-//		this->mbClearSelection = false;
+    if (mbClearSelection)
+    {
+        this->mbClearSelection = false;
 
-//		if (this->mChkSelectedRecsOnly->isChecked())
-//		{
-//			this->updateSelRecsOnly(Qt::Checked);
-//		}
-//		else
-//		{
-//			mProxySelModel->clearSelection();
-//		}
-//	}
-//	else
-//	{
-//		// probably don't need this anymore
-//		if (mbSwitchSelection || mbColumnCalc)
-//		{
-//			mbSwitchSelection = false;
-//			mbColumnCalc = false;
-//		}
+        if (this->mChkSelectedRecsOnly->isChecked())
+        {
+            this->updateSelRecsOnly(Qt::Checked);
+        }
+        else
+        {
+            mProxySelModel->clearSelection();
+        }
+    }
+    else
+    {
+        // probably don't need this anymore
+        if (mbSwitchSelection || mbColumnCalc)
+        {
+            mbSwitchSelection = false;
+            mbColumnCalc = false;
+        }
 
-//		if (this->mChkSelectedRecsOnly->isChecked())
-//		{
-//			this->updateSelRecsOnly(Qt::Checked);
-//		}
-//		else
-//		{
-//			const QItemSelection& proxySel = this->mSortFilter->mapRowSelectionFromSource(
-//					mSelectionModel->selection(), false);
-//			mProxySelModel->setSelection(proxySel);
-//		}
+        if (this->mChkSelectedRecsOnly->isChecked())
+        {
+            this->updateSelRecsOnly(Qt::Checked);
+        }
+        else
+        {
+            const QItemSelection& proxySel = this->mSortFilter->mapSelectionFromSource(
+                        mSelectionModel->selection());
+            mProxySelModel->setSelection(proxySel, true);
+        }
 
-//	}
+    }
+
+    this->printSelRanges(this->mSelectionModel->selection(), "Source");
+    this->printSelRanges(this->mProxySelModel->selection(), "Proxy");
+
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 
@@ -1783,7 +1786,11 @@ void
 NMSqlTableView::procRowsInserted(QModelIndex parent, int first, int last)
 {
     NMDebugCtx(__ctxsqltabview, << "...");
-    this->mTableView->setSelectionModel(this->mSelectionModel);
+
+    this->printSelRanges(this->mSelectionModel->selection(), QString("new rows: %1 - %2").arg(first).arg(last));
+
+    //this->mSelectionModel->setSelection(mBackupSel);
+
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 

@@ -23,7 +23,7 @@
  */
 
 #include "NMFastTrackSelectionModel.h"
-#include <private/qitemselectionmodel_p.h>
+#include "private/qitemselectionmodel_p.h"
 #include "nmlog.h"
 
 
@@ -58,7 +58,8 @@ NMFastTrackSelectionModel::~NMFastTrackSelectionModel()
 }
 
 void
-NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel)
+NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel,
+                                        bool expToRows)
 {
 	//NMDebugCtx(this->objectName().toStdString(), << "...");
 
@@ -70,8 +71,29 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel)
 	QItemSelection old = d->ranges;
 
 	d->ranges.clear();
-	d->ranges.append(newSel);
-	//d->ranges.clear();
+
+    int mincol = 0;
+    int maxcol = model()->columnCount()-1;
+
+    if (expToRows)
+    {
+        QItemSelection expSel;
+        foreach(QItemSelectionRange range, newSel)
+        {
+            QModelIndex tl = model()->index(
+                        range.topLeft().row(),
+                        mincol);
+            QModelIndex br = model()->index(
+                        range.bottomRight().row(),
+                        maxcol);
+            expSel.append(QItemSelectionRange(tl, br));
+        }
+    }
+    else
+    {
+        d->ranges.append(newSel);
+    }
+    //d->ranges.clear();
 	//long numin = 0;
 	//foreach(QItemSelectionRange range, newSel)
 	//{

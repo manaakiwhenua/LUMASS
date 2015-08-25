@@ -1609,7 +1609,7 @@ void OtbModellerWin::test()
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("/tmp/fileReYzIt.db");
+    db.setDatabaseName("/tmp/filepAyd5d.db");
 
     if (!db.open())
     {
@@ -1633,7 +1633,10 @@ void OtbModellerWin::test()
     model->select();
 
     NMSqlTableView* tabView = new NMSqlTableView(model, 0);
-    tabView->setBaseFilter("FTYPE <> 'DAI'");
+    //tabView->setBaseFilter("FTYPE <> 'DAI'");
+
+    NMFastTrackSelectionModel* selModel = new NMFastTrackSelectionModel(model, this);
+    tabView->setSelectionModel(selModel);
 
     //tabView->setModel(filter);
     //tabView->resizeColumnsToContents();

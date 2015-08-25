@@ -97,6 +97,7 @@ public:
         virtual ~NMSqlTableView();
 
 	void setSelectionModel(NMFastTrackSelectionModel* selectionModel);
+
 	//void setSelectionModel(QItemSelectionModel* selectionModel);
 
 
@@ -203,10 +204,11 @@ protected:
 	QMap<int, bool> mMapColSortAsc;
 	QStringList mHiddenColumns;
 
-    QString mBaseFilter;
+    QItemSelection mBackupSel;
 
+    QString mBaseFilter;
 	QTableView* mTableView;
-        QSqlTableModel* mModel;
+    QSqlTableModel* mModel;
     //NMSelectableSortFilterProxyModel* mSortFilter;
     QSortFilterProxyModel* mSortFilter;
     NMFastTrackSelectionModel* mSelectionModel;

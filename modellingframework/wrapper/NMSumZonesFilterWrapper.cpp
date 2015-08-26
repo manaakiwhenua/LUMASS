@@ -54,12 +54,12 @@ public:
                     unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
     {
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        if (idx == 0)
+        if (idx == 1)
         {
             InImgType* img = dynamic_cast<InImgType*>(dataObj);
             filter->SetValueImage(img);
         }
-        else if (idx == 1)
+        else if (idx == 0)
         {
             OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
             filter->SetZoneImage(img);

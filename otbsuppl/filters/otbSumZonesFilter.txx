@@ -38,7 +38,7 @@ template< class TInputImage, class TOutputImage >
 SumZonesFilter< TInputImage, TOutputImage >
 ::SumZonesFilter()
 {
-	this->SetNumberOfRequiredInputs(2);
+    this->SetNumberOfRequiredInputs(1);
 	this->SetNumberOfRequiredOutputs(1);
 
 	m_IgnoreNodataValue = true;
@@ -67,7 +67,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::SetValueImage(const InputImageType* image)
 {
 	mValueImage = const_cast<TInputImage*>(image);
-	this->SetNthInput(0, const_cast<TInputImage*>(image));
+    this->SetNthInput(1, const_cast<TInputImage*>(image));
 }
 
 template< class TInputImage, class TOutputImage >
@@ -75,7 +75,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::SetZoneImage(const OutputImageType* image)
 {
 	mZoneImage = const_cast<TOutputImage*>(image);
-	this->SetNthInput(1, const_cast<TOutputImage*>(image));
+    this->SetNthInput(0, const_cast<TOutputImage*>(image));
 	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
 }
 
@@ -99,9 +99,9 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 	if (mValueImage.IsNull())
 	{
-		itkExceptionMacro(<< "Value Image has not been specified!");
-		NMDebugCtx(ctx, << "done!");
-		return;
+        itkDebugMacro(<< "Just summarising the zone imgae itself!");
+        NMDebugCtx(ctx, << "done!");
+        return;
 	}
 
 	unsigned int numThreads = this->GetNumberOfThreads();
@@ -117,7 +117,9 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 		NMDebugAI(<< "creating new attribute table ..." << std::endl);
 		//mZoneTable = AttributeTable::New();
-		mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
+
+        mZoneTable->beginTransaction();
+        mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
@@ -126,23 +128,25 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mZoneTable->AddColumn("stddev", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
 		//mZoneTable->AddColumn("sum2", AttributeTable::ATTYPE_DOUBLE);
+        mZoneTable->endTransaction();
 
 		mStreamingProc = true;
 	}
 
-
-
 	// for now, the size of the input regions must be exactly the same
-	if (	(	mZoneImage->GetLargestPossibleRegion().GetSize(0)
-			 !=  mValueImage->GetLargestPossibleRegion().GetSize(0))
-		||  (   mZoneImage->GetLargestPossibleRegion().GetSize(1)
-			 !=  mValueImage->GetLargestPossibleRegion().GetSize(1))
-	   )
-	{
-		itkExceptionMacro(<< "ZoneImage and ValueImage dimensions don't match!");
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+    if (mValueImage.IsNotNull())
+    {
+        if (	(	mZoneImage->GetLargestPossibleRegion().GetSize(0)
+                 !=  mValueImage->GetLargestPossibleRegion().GetSize(0))
+            ||  (   mZoneImage->GetLargestPossibleRegion().GetSize(1)
+                 !=  mValueImage->GetLargestPossibleRegion().GetSize(1))
+           )
+        {
+            itkExceptionMacro(<< "ZoneImage and ValueImage dimensions don't match!");
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
+    }
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -163,9 +167,6 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	typedef itk::ImageRegionConstIterator<TOutputImage> InputIterType;
 	InputIterType zoneIt(mZoneImage, outputRegionForThread);
 
-	typedef itk::ImageRegionConstIterator<TInputImage> OutputIterType;
-	OutputIterType valueIt(mValueImage, outputRegionForThread);
-
 	ZoneMapType& vMap = mThreadValueStore[threadId];
 	ZoneMapTypeIterator mapIt;
 
@@ -178,45 +179,80 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	}
 
 	zoneIt.GoToBegin();
-	valueIt.GoToBegin();
-	while (!zoneIt.IsAtEnd() && !valueIt.IsAtEnd() && !this->GetAbortGenerateData())
-	{
-		const ZoneKeyType zone = static_cast<ZoneKeyType>(zoneIt.Get());
-		const double val = static_cast<double>(valueIt.Get());
-		if (	m_IgnoreNodataValue
-			&&	val == static_cast<double>(m_NodataValue)
-		   )
-		{
+
+    if (mValueImage.IsNotNull())
+    {
+        typedef itk::ImageRegionConstIterator<TInputImage> OutputIterType;
+        OutputIterType valueIt(mValueImage, outputRegionForThread);
+
+        valueIt.GoToBegin();
+        while (!zoneIt.IsAtEnd() && !valueIt.IsAtEnd() && !this->GetAbortGenerateData())
+        {
+            const ZoneKeyType zone = static_cast<ZoneKeyType>(zoneIt.Get());
+            const double val = static_cast<double>(valueIt.Get());
+            if (	m_IgnoreNodataValue
+                &&	val == static_cast<double>(m_NodataValue)
+               )
+            {
+                ++zoneIt;
+                ++valueIt;
+
+                progress.CompletedPixel();
+                continue;
+            }
+
+            mapIt = vMap.find(zone);
+            if (mapIt == vMap.end())
+            {
+                vMap[zone] = std::vector<double>(5,0);
+            }
+            std::vector<double>& params = vMap[zone];
+
+            // min
+            params[0] = params[0] < val ? params[0] : val;
+            // max
+            params[1] = params[1] > val ? params[1] : val;
+            // sum_val
+            params[2] += val;
+            // sum_val^2
+            params[3] += (val * val);
+            // count
+            params[4] += 1;
+
             ++zoneIt;
             ++valueIt;
 
             progress.CompletedPixel();
-			continue;
-		}
+        }
+    }
+    else
+    {
+        while (!zoneIt.IsAtEnd() && !this->GetAbortGenerateData())
+        {
+            const ZoneKeyType zone = static_cast<ZoneKeyType>(zoneIt.Get());
+            double val = static_cast<double>(zone);
+            mapIt = vMap.find(zone);
+            if (mapIt == vMap.end())
+            {
+                vMap[zone] = std::vector<double>(5,0);
+            }
+            std::vector<double>& params = vMap[zone];
 
-		mapIt = vMap.find(zone);
-		if (mapIt == vMap.end())
-		{
-			vMap[zone] = std::vector<double>(5,0);
-		}
-		std::vector<double>& params = vMap[zone];
+            // min
+            params[0] = params[0] < val ? params[0] : val;
+            // max
+            params[1] = params[1] > val ? params[1] : val;
+            // sum_val
+            params[2] += val;
+            // sum_val^2
+            params[3] += (val * val);
+            // count
+            params[4] += 1;
 
-		// min
-		params[0] = params[0] < val ? params[0] : val;
-		// max
-		params[1] = params[1] > val ? params[1] : val;
-		// sum_val
-		params[2] += val;
-		// sum_val^2
-		params[3] += (val * val);
-		// count
-		params[4] += 1;
-
-		++zoneIt;
-		++valueIt;
-
-		progress.CompletedPixel();
-	}
+            ++zoneIt;
+            progress.CompletedPixel();
+        }
+    }
 
 	if (threadId == 0)
 	{

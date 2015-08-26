@@ -35,9 +35,9 @@ namespace otb
  *  \brief Summarises zones
  *
  *  This filter requires at least two inputs:
- *  	1. INPUT-1: a zone image defining the zones for which to compute the
+ *  	1. INPUT-0: a zone image defining the zones for which to compute the
  *  	   summary (type = TOutputImage);
- *  	2. INPUT-0: an image containing the values to be summarised (type = TInputImage)
+ *  	2. INPUT-1: an image containing the values to be summarised (type = TInputImage)
  *
  */
 

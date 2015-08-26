@@ -51,7 +51,7 @@
 #include "itkRGBAPixel.h"
 #include "itkTimeProbe.h"
 
-#include "valgrind/callgrind.h"
+//#include "valgrind/callgrind.h"
 
 const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
 
@@ -2108,7 +2108,7 @@ bool GDALRATImageIO::GDALInfoReportCorner(const char * /*corner_name*/, double x
 
 AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 {
-    CALLGRIND_START_INSTRUMENTATION;
+    //CALLGRIND_START_INSTRUMENTATION;
 
 	// if m_Dataset hasn't been instantiated before, we do it here, because
 	// we might want to fetch the attribute table before the pipeline has
@@ -2408,8 +2408,8 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 
     otbTab->endTransaction();
 
-    CALLGRIND_STOP_INSTRUMENTATION;
-    CALLGRIND_DUMP_STATS;
+    //CALLGRIND_STOP_INSTRUMENTATION;
+    //CALLGRIND_DUMP_STATS;
 
     return otbTab;
 }

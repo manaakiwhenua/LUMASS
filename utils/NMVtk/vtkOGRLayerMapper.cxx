@@ -1994,7 +1994,7 @@ void vtkOGRLayerMapper::DrawGLUTessPolys(vtkPolyData* data)
 		}
 		//NMDebug(<< endl);
 
-		if (cc < ncells-1 && hole->GetValue(cc+1))
+        if (hole && (cc < ncells-1 && hole->GetValue(cc+1)))
 		{
 			gluTessEndContour(tess);
 		}

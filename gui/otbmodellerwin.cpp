@@ -3138,6 +3138,9 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 	int nfields = pFeat->GetFieldCount();
 
 	std::vector<vtkSmartPointer<vtkAbstractArray> > attr;
+    // keeps track of the features to copy
+    // we filter all "nm_*" by default
+    std::vector<int> fieldIdx;
 
 	vtkSmartPointer<vtkLongArray> nm_id = vtkSmartPointer<vtkLongArray>::New();
 	nm_id->SetName("nm_id");
@@ -3155,10 +3158,18 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 	vtkSmartPointer<vtkIntArray> iarr;
 	vtkSmartPointer<vtkDoubleArray> darr;
 	vtkSmartPointer<vtkStringArray> sarr;
+
 	for (int f=0; f < nfields; ++f)
 	{
 		OGRFieldDefn* fdef = pFeat->GetFieldDefnRef(f);
-//		NMDebugAI( << fdef->GetNameRef() << ": " << fdef->GetFieldTypeName(fdef->GetType()) << endl);
+        //		NMDebugAI( << fdef->GetNameRef() << ": " << fdef->GetFieldTypeName(fdef->GetType()) << endl);
+        if (::strcmp(fdef->GetNameRef(), "nm_id") == 0  ||
+            ::strcmp(fdef->GetNameRef(), "nm_hole") == 0 ||
+            ::strcmp(fdef->GetNameRef(), "nm_sel") == 0)
+        {
+            continue;
+        }
+        fieldIdx.push_back(f);
 
 		switch(fdef->GetType())
 		{
@@ -3279,21 +3290,21 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 				vtkIntArray* iar;
 				vtkDoubleArray* dar;
 				vtkStringArray* sar;
-				for (int f=0; f < nfields; ++f)
+                for (int fidx=0; fidx < fieldIdx.size(); ++fidx)
 				{
-					switch(pFeat->GetFieldDefnRef(f)->GetType())
+                    switch(pFeat->GetFieldDefnRef(fieldIdx[fidx])->GetType())
 					{
 					case OFTInteger:
-						iar = vtkIntArray::SafeDownCast(attr[f]);
-						iar->InsertNextValue(pFeat->GetFieldAsInteger(f));
+                        iar = vtkIntArray::SafeDownCast(attr[fidx]);
+                        iar->InsertNextValue(pFeat->GetFieldAsInteger(fieldIdx[fidx]));
 						break;
 					case OFTReal:
-						dar = vtkDoubleArray::SafeDownCast(attr[f]);
-						dar->InsertNextValue(pFeat->GetFieldAsDouble(f));
+                        dar = vtkDoubleArray::SafeDownCast(attr[fidx]);
+                        dar->InsertNextValue(pFeat->GetFieldAsDouble(fieldIdx[fidx]));
 						break;
 					default:
-						sar = vtkStringArray::SafeDownCast(attr[f]);
-						sar->InsertNextValue(pFeat->GetFieldAsString(f));
+                        sar = vtkStringArray::SafeDownCast(attr[fidx]);
+                        sar->InsertNextValue(pFeat->GetFieldAsString(fieldIdx[fidx]));
 						break;
 					}
 				}
@@ -3357,7 +3368,7 @@ vtkSmartPointer<vtkPolyData> OtbModellerWin::wkbPolygonToPolyData(OGRLayer& l)
 	vtkVect->GetCellData()->SetScalars(nm_id);
 	vtkVect->GetCellData()->AddArray(nm_hole);
 	vtkVect->GetCellData()->AddArray(nm_sel);
-	for (int f=0; f < nfields; ++f)
+    for (int f=0; f < fieldIdx.size(); ++f)
 		vtkVect->GetCellData()->AddArray(attr[f]);
 
 	vtkVect->BuildCells();
@@ -3389,6 +3400,20 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
     // make a list of available attributes
     vtkDataSet* vtkDS = const_cast<vtkDataSet*>(vectorLayer->getDataSet());
     vtkDataSetAttributes* dsAttr = vtkDS->GetAttributes(vtkDataSet::CELL);
+
+    // check, whether we've got some info about donut polygons ...
+    vtkDataArray* hole = dsAttr->GetArray("nm_hole");
+    if (hole == 0)
+    {
+        NMDebugAI(<< "Failed creating the OGR polygon layer!" << std::endl);
+        NMErr(ctxOtbModellerWin, << "Lacking info on donut polygons - bailing out!");
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    //=================================================================================
+    // copying attribute table structure
+    //=================================================================================
 
     QStringList origFieldNames;
     QStringList writeFieldNames;
@@ -3466,11 +3491,13 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
         }
     }
 
-    NMDebugAI(<< "Copy data feature by feature ... " << std::endl);
+    //=================================================================================
+    // copying the geometries and fill the attribute table
+    //=================================================================================
 
+    NMDebugAI(<< "Copy data feature by feature ... " << std::endl);
     // now we're looping over the polygons, define OGRFeatures, and
     // write them out
-    vtkDataArray* hole = dsAttr->GetArray("nm_hole");
     vtkPolyData* pd = vtkPolyData::SafeDownCast(vtkDS);
     vtkIdType ncells = pd->GetNumberOfCells();
     vtkPoints* pts = pd->GetPoints();
@@ -3480,6 +3507,7 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
     vtkIdType npts;
     vtkIdType* cpts;
     double* xyz;
+    int holecell = -1;
     for (int cell=0; cell < ncells; ++cell)
     {
         OGRFeature* feat = OGRFeature::CreateFeature(ogrLayer->GetLayerDefn());
@@ -3502,9 +3530,10 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
 
         poly.addRing(&outerRing);
 
-        while (cell < ncells-1)
+        holecell = cell;
+        while (holecell < ncells-1)
         {
-            if (hole->GetTuple1(cell+1))
+            if (hole->GetTuple1(holecell+1))
             {
                 if (ca->GetNextCell(npts, cpts) == 0)
                 {
@@ -3519,7 +3548,7 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
                 }
                 poly.addRing(&innerRing);
 
-                ++cell;
+                ++holecell;
             }
             else
             {
@@ -3559,6 +3588,8 @@ OtbModellerWin::vtkPolygonPolydataToOGR(OGRDataSource *ds, NMVectorLayer* vector
                 feat->SetField(fieldName.toStdString().c_str(), sa->GetValue(cell).c_str());
             }
         }
+        // re-align cell with holecell
+        cell = holecell;
 
         // ================================================================
         // finally, we add the local feature to the data set feature

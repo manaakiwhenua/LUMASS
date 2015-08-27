@@ -409,13 +409,13 @@ def formatRATGetSupportWrap(className):
 # ===============================================================================
 def formatRATGetSupportDecl():
 
-    return "NMItkDataObjectWrapper* getRAT(unsigned int idx);\n"
+    return "QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);\n"
 
 # ===============================================================================
 def formatRATSetSupportDecl():
 
     s = "void setRAT(unsigned int idx, \n" \
-        "        NMItkDataObjectWrapper* imgWrapper);\n"
+        "        QSharedPointer<NMItkDataObjectWrapper> imgWrapper);\n"
     return s
 
 # ===============================================================================

@@ -36,6 +36,15 @@
 #include "itkObjectFactory.h"
 #include "otbgdalratimageio_export.h"
 
+/** \brief Attribute table implementation based on
+ *         sqlite database.
+ *
+ *
+ *
+ *
+ *
+ */
+
 namespace otb
 {
 
@@ -124,6 +133,7 @@ public:
 	void PrintStructure(std::ostream& os, itk::Indent indent);
 
     /// SQLite support functions
+    bool createTable(std::string filename);
     std::string getDbFileName() {return this->m_dbFileName;}
     sqlite3* getDbConnection() {return this->m_db;}
     bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
@@ -217,11 +227,9 @@ protected:
     sqlite3_stmt* m_StmtBegin;
     sqlite3_stmt* m_StmtEnd;
     sqlite3_stmt* m_StmtRollback;
-    bool m_InTransaction;
 
     const char* m_CurPrepStmt;
 
-    void createTable(std::string filename);
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
     inline void sqliteStepCheck(const int& rc);
 

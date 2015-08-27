@@ -39,6 +39,9 @@ namespace otb
  *  	   summary (type = TOutputImage);
  *  	2. INPUT-1: an image containing the values to be summarised (type = TInputImage)
  *
+ *  NOTE: if only the zone image (of some integer type in most cases) is specified
+ *        this filter can be used to create an attribute table
+ *
  */
 
 template< class TInputImage, class TOutputImage = TInputImage >
@@ -96,6 +99,36 @@ public:
 	  itkGetMacro(IgnoreNodataValue, bool);
 	  itkBooleanMacro(IgnoreNodataValue);
 
+          /** Enforces the zone table to have MaxKey rows with a
+           *  0-based index. Note: this options overrides KeyIsRowIdx;
+           *  The default value is 'false'.
+           */
+          itkSetMacro(HaveMaxKeyRows, bool);
+          itkGetMacro(HaveMaxKeyRows, bool);
+          itkBooleanMacro(HaveMaxKeyRows);
+
+          /** Determines whether the row index of the zone table
+           *  is populated 0-based or just uses the key values
+           *  instead.
+           *  The default value is 'true'.
+           */
+          itkSetMacro(KeyIsRowIdx, bool);
+          itkGetMacro(KeyIsRowIdx, bool);
+          itkBooleanMacro(KeyIsRowIdx);
+
+          /** Zone table file name
+           *
+           *  This option is only required if the zone table is
+           *  shall be written as persistent database to disk,
+           *  rather than just being consumed by any subsequent
+           *  filter, which may then write the table to disk
+           *  or whatever.
+           *  The default value is '', which creates a temporary
+           *  database in /tmp/*.ldb
+           */
+          itkSetMacro(ZoneTableFileName, std::string);
+          itkGetMacro(ZoneTableFileName, std::string);
+
 	  /** Set the input images */
 	  void SetZoneImage(const OutputImageType* image);
 	  void SetValueImage(const InputImageType* image);
@@ -106,7 +139,7 @@ public:
 	  //void SetZoneTable(AttributeTable::Pointer);
 
 	  AttributeTable::Pointer GetZoneTable(void) {return mZoneTable;}
-      AttributeTable::Pointer getRAT(unsigned int idx) {return mZoneTable;}
+          AttributeTable::Pointer getRAT(unsigned int idx) {return mZoneTable;}
 
 	  virtual void ResetPipeline();
 
@@ -116,7 +149,7 @@ protected:
 	  virtual void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
 	  void BeforeThreadedGenerateData();
-      void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
+          void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
 	  void AfterThreadedGenerateData();
 
 
@@ -130,14 +163,15 @@ private:
 	  // this image contains the values to be summarised for the individual zones
 	  InputImagePointerType mValueImage;
 
-	  typename std::vector<ZoneMapType> mThreadValueStore;
+          bool m_KeyIsRowIdx;           // DEFAULT: true
+          bool m_HaveMaxKeyRows;        // DEFAULT: false
+          bool m_IgnoreNodataValue;     // DEFAULT: true
+          std::string m_ZoneTableFileName; // DEFAULT: ""
 
-	  bool mStreamingProc;
-
+          bool mStreamingProc;
+          InputPixelType m_NodataValue;
 	  std::set<ZoneKeyType> mZones;
-
-	  bool m_IgnoreNodataValue;
-	  InputPixelType m_NodataValue;
+          typename std::vector<ZoneMapType> mThreadValueStore;
 
       static const std::string ctx;
 

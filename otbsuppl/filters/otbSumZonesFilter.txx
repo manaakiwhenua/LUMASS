@@ -41,11 +41,13 @@ SumZonesFilter< TInputImage, TOutputImage >
     this->SetNumberOfRequiredInputs(1);
 	this->SetNumberOfRequiredOutputs(1);
 
+    m_KeyIsRowIdx = true;
+    m_HaveMaxKeyRows = false;
 	m_IgnoreNodataValue = true;
 	m_NodataValue = itk::NumericTraits<InputPixelType>::NonpositiveMin();
 
 	mStreamingProc = false;
-
+    m_ZoneTableFileName = "";
 	mZoneTable = AttributeTable::New();
 }
 
@@ -100,11 +102,13 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	if (mValueImage.IsNull())
 	{
         itkDebugMacro(<< "Just summarising the zone imgae itself!");
-        NMDebugCtx(ctx, << "done!");
-        return;
+        NMDebugAI(<< "Just summarising the zone imgae itself!" << std::endl);
 	}
 
 	unsigned int numThreads = this->GetNumberOfThreads();
+
+    // create the zone table (db)
+    mZoneTable->createTable(m_ZoneTableFileName);
 
 	if (!mStreamingProc)
 	{
@@ -305,19 +309,24 @@ void SumZonesFilter< TInputImage, TOutputImage >
     NMDebugAI(<< "added " << newzones << " new zones, which gives total of "
               << numzones+newzones << " ..."<< std::endl;)
 
-	// add a chunk of rows
-	if (newzones > 0)
+    if (this->GetHaveMaxKeyRows())
     {
-        if (mZoneTable->GetNumRows() < maxKey+1)
+        mZoneTable->beginTransaction();
+        // add a chunk of rows
+        if (newzones > 0)
         {
-            long numOldRows = mZoneTable->GetNumRows();
-            long numNewRows = maxKey+1 - numOldRows;
-            mZoneTable->AddRows(numNewRows);
-            for (long i = numOldRows; i < maxKey+1; ++i)
+            if (mZoneTable->GetNumRows() < maxKey+1)
             {
-                mZoneTable->SetValue("rowidx", i, i);
+                long numOldRows = mZoneTable->GetNumRows();
+                long numNewRows = maxKey+1 - numOldRows;
+                mZoneTable->AddRows(numNewRows);
+                for (long i = numOldRows; i < maxKey+1; ++i)
+                {
+                    mZoneTable->SetValue("rowidx", i, i);
+                }
             }
         }
+        mZoneTable->endTransaction();
     }
 
 	typename std::set<ZoneKeyType>::const_iterator zoneIt =
@@ -331,8 +340,42 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	double sd        ;
 	long   count     ;
 
+    std::vector<std::string> colnames;
+    colnames.push_back("rowidx");
+    colnames.push_back("zone");
+    colnames.push_back("count");
+    colnames.push_back("min");
+    colnames.push_back("max");
+    colnames.push_back("mean");
+    colnames.push_back("stddev");
+    colnames.push_back("sum");
+
+    std::vector<otb::AttributeTable::ColumnValue> values;
+    for (int i=0; i < 3; ++i)
+    {
+        otb::AttributeTable::ColumnValue v;
+        v.type = otb::AttributeTable::ATTYPE_INT;
+        values.push_back(v);
+    }
+
+    for (int i=0; i < 5; ++i)
+    {
+        otb::AttributeTable::ColumnValue v;
+        v.type = otb::AttributeTable::ATTYPE_DOUBLE;
+        values.push_back(v);
+    }
+
 	NMDebugAI(<< "updating zone table ..." << std::endl);
-	long rowid = 0;
+    mZoneTable->beginTransaction();
+    if (this->GetHaveMaxKeyRows())
+    {
+        mZoneTable->prepareBulkSet(colnames, false);
+    }
+    else
+    {
+        mZoneTable->prepareBulkSet(colnames, true);
+    }
+    long rowid = mZoneTable->GetNumRows();
 	long tr = -1;
 	while(zoneIt != mZones.end())
 	{
@@ -371,20 +414,44 @@ void SumZonesFilter< TInputImage, TOutputImage >
                 ? ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) )
                 : 0;
 
-        //mZoneTable->SetValue("rowidx", rowid, rowid);
-        //mZoneTable->SetValue("rowidx", rowid, lz);
-        mZoneTable->SetValue("zone",   lz, lz);
-        mZoneTable->SetValue("count",  lz, count);
-        mZoneTable->SetValue("min",    lz, min);
-        mZoneTable->SetValue("max",    lz, max);
-        mZoneTable->SetValue("mean",   lz, mean);
-        mZoneTable->SetValue("stddev", lz, sd);
-        mZoneTable->SetValue("sum",    lz, sum_Zone);
-		//mZoneTable->SetValue("sum2",   rowid, sum_Zone2);
+        if (    this->GetHaveMaxKeyRows()
+            ||  this->GetKeyIsRowIdx()
+           )
+        {
+            values[0].ival = lz;
+        }
+        else
+        {
+            values[0].ival = rowid;
+        }
+        //mZoneTable->SetValue("zone",   lz, lz);
+        values[1].ival = lz;
+        //mZoneTable->SetValue("count",  lz, count);
+        values[2].ival = count;
+        //mZoneTable->SetValue("min",    lz, min);
+        values[3].dval = min;
+        //mZoneTable->SetValue("max",    lz, max);
+        values[4].dval = max;
+        //mZoneTable->SetValue("mean",   lz, mean);
+        values[5].dval = mean;
+        //mZoneTable->SetValue("stddev", lz, sd);
+        values[6].dval = sd;
+        //mZoneTable->SetValue("sum",    lz, sum_Zone);
+        values[7].dval = sum_Zone;
+
+        if (this->GetHaveMaxKeyRows())
+        {
+            mZoneTable->doBulkSet(values, lz);
+        }
+        else
+        {
+            mZoneTable->doBulkSet(values);
+        }
 
 		++rowid;
 		++zoneIt;
 	}
+    mZoneTable->endTransaction();
 
 	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
 

@@ -34,6 +34,7 @@
 #include <iostream>
 #include <QStringList>
 #include <QList>
+#include "nmmodframe_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class /*$<WrapperClassName>$*/_Internal;
@@ -57,11 +58,11 @@ public:
     template<class TInputImage, class TOutputImage, unsigned int Dimension>
     friend class /*$<WrapperClassName>$*/_Internal;
 
-	NMItkDataObjectWrapper* getOutput(unsigned int idx);
-	void instantiateObject(void);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    void instantiateObject(void);
 
-	void setNthInput(unsigned int numInput,
-			NMItkDataObjectWrapper* imgWrapper);
+    void setNthInput(unsigned int numInput,
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     /*$<RATGetSupportDecl>$*/
 

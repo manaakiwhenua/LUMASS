@@ -128,7 +128,18 @@ AttributeTable::ColumnExists(const std::string& sColName)
 bool
 AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 {
-	if ((	 eType != ATTYPE_STRING
+    // check, whether the db is valid, and try to create a tmp one
+    // if it hasn't been created yet
+    if (m_db == 0)
+    {
+        // create a table if there's none
+        if (!createTable(""))
+        {
+            return false;
+        }
+    }
+
+    if ((	 eType != ATTYPE_STRING
 		 &&  eType != ATTYPE_INT
 		 &&  eType != ATTYPE_DOUBLE
 		)
@@ -323,7 +334,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
     std::stringstream ssql;
     if (bInsert)
     {
-        ssql << "INSERT INTO main.nmtab (";
+        ssql << "INSERT OR REPLACE INTO main.nmtab (";
         for (int c=0; c < colNames.size(); ++c)
         {
             ssql << "\"" << colNames.at(c) << "\"";
@@ -612,7 +623,7 @@ bool AttributeTable::AddRows(long numRows)
     if (sqliteError(rc, 0)) return false;
 
     bool bEndTransaction = false;
-    if (!m_InTransaction)
+    if (sqlite3_get_autocommit(m_db))
     {
         if (!this->beginTransaction())
         {
@@ -729,21 +740,25 @@ bool AttributeTable::AddRow()
 bool
 AttributeTable::beginTransaction()
 {
-    if (m_db == 0 || m_InTransaction)
+    if (m_db == 0)
     {
         otbWarningMacro(<< "No database connection!");
         return false;
     }
 
+    if (sqlite3_get_autocommit(m_db) == 0)
+    {
+        otbWarningMacro(<< "Transaction alrady in progress - bail out!");
+        return true;
+    }
+
     int rc = sqlite3_exec(m_db, "BEGIN TRANSACTION;", 0, 0, 0);
     if (sqliteError(rc, 0))
     {
-        m_InTransaction = false;
         return false;
     }
     else
     {
-        m_InTransaction = true;
         return true;
     }
 }
@@ -764,7 +779,6 @@ AttributeTable::endTransaction()
     }
     else
     {
-        m_InTransaction = false;
         return true;
     }
 }
@@ -1842,16 +1856,22 @@ AttributeTable::valid(const std::string& sColName, int idx)
 	return colidx;
 }
 
-void
-AttributeTable::createTable(std::string filename)
+bool AttributeTable::createTable(std::string filename)
 {
     this->DebugOn();
 
     std::stringstream uri;
-    m_dbFileName = std::tmpnam(0);
-    m_dbFileName += ".db";
+    if (filename.empty())
+    {
+        m_dbFileName = std::tmpnam(0);
+        m_dbFileName += ".ldb";
+    }
+    else
+    {
+        m_dbFileName = filename;
+    }
 
-    itkDebugMacro(<< "temp database: " << m_dbFileName);
+    itkDebugMacro(<< "using '" << m_dbFileName << "' as filename for the db");
 
     // ============================================================
     // create the host data base
@@ -1871,7 +1891,7 @@ AttributeTable::createTable(std::string filename)
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
         m_db = 0;
-        return;
+        return false;
     }
 
     rc = sqlite3_exec(m_db, "PRAGMA cache_size = 70000;", 0, 0, 0);
@@ -1955,6 +1975,8 @@ AttributeTable::createTable(std::string filename)
     rc = sqlite3_prepare_v2(m_db, "ROLLBACK TRANSACTION;", 100, &m_StmtRollback, 0);
     sqliteError(rc, &m_StmtRollback);
 
+    return true;
+
 }
 
 AttributeTable::AttributeTable()
@@ -1964,7 +1986,6 @@ AttributeTable::AttributeTable()
 	  m_dNodata(-std::numeric_limits<double>::max()),
       m_sNodata("NULL"),
       m_db(0),
-      m_InTransaction(false),
       m_StmtBegin(0),
       m_StmtEnd(0),
       m_StmtRollback(0),
@@ -1972,7 +1993,7 @@ AttributeTable::AttributeTable()
       m_StmtBulkGet(0),
       m_StmtColIter(0)
 {
-    this->createTable("");
+    //this->createTable("");
 }
 
 // clean up

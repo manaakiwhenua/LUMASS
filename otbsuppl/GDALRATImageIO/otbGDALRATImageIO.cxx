@@ -2153,10 +2153,21 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         return 0;
 
     // copy gdal tab into otbAttributeTable
+    std::string imgFN = this->m_FileName;
+    size_t pos = imgFN.find_last_of('.');
+    std::string dbFN = imgFN.substr(0, pos);
+    dbFN =+ ".ldb";
+
 	AttributeTable::Pointer otbTab = AttributeTable::New();
+    if (!otbTab->createTable(dbFN))
+    {
+        itkWarningMacro(<< "Couldn't create attribute table '"
+                        << dbFN << "'!")
+        return 0;
+    }
 
 	// set filename and band number
-	otbTab->SetBandNumber(iBand);
+    otbTab->SetBandNumber(iBand);
 
 	//NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
 	otbTab->SetImgFileName(this->GetFileName());
@@ -2280,12 +2291,19 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     for (int chunk = 0; chunk < numChunks+1; ++chunk)
     {
         s = procrows;
-        e = s + chunksize;// - 1;
+        e = s + chunksize;
 
+        // NOTE: because of 'rowidx' we've got one
+        // additional col over the columns
+        // in the actual table, hence, we've got tcol
+        // for accessing the correct column index stored in
+        // colpos[]
         for (int col=0, tcol=1; col < ncols; ++col, ++tcol)
         {
             gdaltype = rat->GetTypeOfCol(col);
-            // at the start, we add the rowidx
+
+            // populate the 'rowidx' column with
+            // zero-based index
             if (col == 0)
             {
                 for (int r=s, ch=0; r < e; ++r, ++ch)
@@ -2298,9 +2316,6 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
             {
                 case GFT_Integer:
                 {
-                    // NOTE: with 'rowidx' we've got one
-                    // additional int col over the int columns
-                    // in the actual table
                     rat->ValuesIO(GF_Read, col, s, chunksize,
                                   int_cols[colpos[tcol]]);
                 }
@@ -2631,8 +2646,8 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	{
         if (!tab->doBulkGet(values))
         {
-            itkWarningMacro(<< "Copying records failed at " << row+1
-                            << " of " << tab->GetNumRows() << "!");
+            itkWarningMacro(<< "Copying records failed at row idx=" << row
+                            << " of 0-" << tab->GetNumRows()-1 << "!");
             break;
         }
 		for (int col=1; col < tab->GetNumCols(); ++col)

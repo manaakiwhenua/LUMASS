@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2014 Landcare Research New Zealand Ltd
+ * Copyright 2014, 2015 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -18,7 +18,7 @@
 /*
  * NMSumZonesFilterWrapper.h
  *
- *  Created on: 2014-03-27
+ *  Created on: 2014-03-27, 2015-08-27
  *      Author: Alexander Herzig
  */
 
@@ -40,20 +40,26 @@ template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMSumZonesFilterWrapper_Internal;
 
 class
-NMMODFRAME_EXPORT NMSumZonesFilterWrapper
+NMSumZonesFilterWrapper
 		: public NMProcess
 {
 	Q_OBJECT
 
     
-    Q_PROPERTY(QStringList IgnoreNodataValue READ getIgnoreNodataValue WRITE setIgnoreNodataValue);
-    Q_PROPERTY(QStringList NodataValue READ getNodataValue WRITE setNodataValue);
+    Q_PROPERTY(QStringList IgnoreNodataValue READ getIgnoreNodataValue WRITE setIgnoreNodataValue)
+    Q_PROPERTY(QStringList NodataValue READ getNodataValue WRITE setNodataValue)
+    Q_PROPERTY(QStringList HaveMaxKeyRows READ getHaveMaxKeyRows WRITE setHaveMaxKeyRows)
+    Q_PROPERTY(QStringList KeyIsRowIdx READ getKeyIsRowIdx WRITE setKeyIsRowIdx)
+    Q_PROPERTY(QStringList ZoneTableFileName READ getZoneTableFileName WRITE setZoneTableFileName)
 
 public:
 
     
-    NMPropertyGetSet( IgnoreNodataValue, QStringList );
-    NMPropertyGetSet( NodataValue, QStringList );
+    NMPropertyGetSet( IgnoreNodataValue, QStringList )
+    NMPropertyGetSet( NodataValue, QStringList )
+    NMPropertyGetSet( HaveMaxKeyRows, QStringList )
+    NMPropertyGetSet( KeyIsRowIdx, QStringList )
+    NMPropertyGetSet( ZoneTableFileName, QStringList )
 
 public:
     NMSumZonesFilterWrapper(QObject* parent=0);
@@ -62,11 +68,11 @@ public:
     template<class TInputImage, class TOutputImage, unsigned int Dimension>
     friend class NMSumZonesFilterWrapper_Internal;
 
-	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
-	void instantiateObject(void);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    void instantiateObject(void);
 
-	void setNthInput(unsigned int numInput,
-			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    void setNthInput(unsigned int numInput,
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     QSharedPointer<NMItkDataObjectWrapper> getRAT(unsigned int idx);
 
@@ -80,6 +86,9 @@ protected:
     
     QStringList mIgnoreNodataValue;
     QStringList mNodataValue;
+    QStringList mHaveMaxKeyRows;
+    QStringList mKeyIsRowIdx;
+    QStringList mZoneTableFileName;
 
 };
 

@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2014 Landcare Research New Zealand Ltd
+ * Copyright 2014, 2015 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -18,7 +18,7 @@
 /*
  *  NMSumZonesFilterWrapper.cpp
  *
- *  Created on: 2014-03-27
+ *  Created on: 2014-03-27, 2015-08-27
  *      Author: Alexander Herzig
  */
 
@@ -38,10 +38,20 @@ template<class TInputImage, class TOutputImage, unsigned int Dimension>
 class NMSumZonesFilterWrapper_Internal
 {
 public:
-	typedef otb::Image<TInputImage, Dimension> InImgType;
-	typedef otb::Image<TOutputImage, Dimension> OutImgType;
-	typedef typename otb::SumZonesFilter<InImgType, OutImgType> FilterType;
-	typedef typename FilterType::Pointer FilterTypePointer;
+    typedef otb::Image<TInputImage, Dimension>  InImgType;
+    typedef otb::Image<TOutputImage, Dimension> OutImgType;
+    typedef typename otb::SumZonesFilter<InImgType, OutImgType>      FilterType;
+    typedef typename FilterType::Pointer        FilterTypePointer;
+
+    // more typedefs
+    typedef typename InImgType::PixelType  InImgPixelType;
+    typedef typename OutImgType::PixelType OutImgPixelType;
+
+    typedef typename OutImgType::SpacingType      OutSpacingType;
+    typedef typename OutImgType::SpacingValueType OutSpacingValueType;
+    typedef typename OutImgType::PointType        OutPointType;
+    typedef typename OutImgType::PointValueType   OutPointValueType;
+    typedef typename OutImgType::SizeValueType    SizeValueType;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands)
@@ -54,15 +64,15 @@ public:
                     unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
     {
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        if (idx == 1)
-        {
-            InImgType* img = dynamic_cast<InImgType*>(dataObj);
-            filter->SetValueImage(img);
-        }
-        else if (idx == 0)
+        if (idx == 0)
         {
             OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
             filter->SetZoneImage(img);
+        }
+        else if (idx == 1)
+        {
+            InImgType* img = dynamic_cast<InImgType*>(dataObj);
+            filter->SetValueImage(img);
         }
         else
         {
@@ -122,7 +132,7 @@ public:
             curIgnoreNodataValue = p->mIgnoreNodataValue.at(step).toInt(&bok);
             if (bok)
             {
-                f->SetIgnoreNodataValue(curIgnoreNodataValue);
+                f->SetIgnoreNodataValue((curIgnoreNodataValue));
             }
             else
             {
@@ -140,7 +150,7 @@ public:
             curNodataValue = p->mNodataValue.at(step).toDouble(&bok);
             if (bok)
             {
-                f->SetNodataValue(curNodataValue);
+                f->SetNodataValue((curNodataValue));
             }
             else
             {
@@ -149,6 +159,50 @@ public:
                 e.setMsg("Invalid value for 'NodataValue'!");
                 throw e;
             }
+        }
+
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mHaveMaxKeyRows.size());
+        bool curHaveMaxKeyRows;
+        if (step < p->mHaveMaxKeyRows.size())
+        {
+            curHaveMaxKeyRows = p->mHaveMaxKeyRows.at(step).toInt(&bok);
+            if (bok)
+            {
+                f->SetHaveMaxKeyRows((curHaveMaxKeyRows));
+            }
+            else
+            {
+                NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'HaveMaxKeyRows'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setMsg("Invalid value for 'HaveMaxKeyRows'!");
+                throw e;
+            }
+        }
+
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mKeyIsRowIdx.size());
+        bool curKeyIsRowIdx;
+        if (step < p->mKeyIsRowIdx.size())
+        {
+            curKeyIsRowIdx = p->mKeyIsRowIdx.at(step).toInt(&bok);
+            if (bok)
+            {
+                f->SetKeyIsRowIdx((curKeyIsRowIdx));
+            }
+            else
+            {
+                NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'KeyIsRowIdx'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setMsg("Invalid value for 'KeyIsRowIdx'!");
+                throw e;
+            }
+        }
+
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mZoneTableFileName.size());
+        std::string curZoneTableFileName;
+        if (step < p->mZoneTableFileName.size())
+        {
+            curZoneTableFileName = p->mZoneTableFileName.at(step).toStdString().c_str();
+            f->SetZoneTableFileName(curZoneTableFileName);
         }
 
 

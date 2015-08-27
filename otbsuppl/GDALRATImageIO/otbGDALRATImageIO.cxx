@@ -2154,9 +2154,14 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 
     // copy gdal tab into otbAttributeTable
     std::string imgFN = this->m_FileName;
-    size_t pos = imgFN.find_last_of('.');
-    std::string dbFN = imgFN.substr(0, pos);
-    dbFN =+ ".ldb";
+    std::string dbFN = imgFN;
+    size_t pos = dbFN.find_last_of('.');
+    if (pos > 0)
+    {
+        dbFN = dbFN.substr(0, pos);
+    }
+    dbFN += ".ldb";
+
 
 	AttributeTable::Pointer otbTab = AttributeTable::New();
     if (!otbTab->createTable(dbFN))

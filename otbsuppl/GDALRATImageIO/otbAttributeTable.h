@@ -212,6 +212,8 @@ protected:
      */
     sqlite3* m_db;
     std::string m_dbFileName;
+    std::string m_tableName;
+    std::string m_idColName;
 
     std::vector<sqlite3_stmt*> m_vStmtUpdate;
     std::vector<sqlite3_stmt*> m_vStmtSelect;

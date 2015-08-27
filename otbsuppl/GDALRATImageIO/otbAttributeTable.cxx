@@ -27,6 +27,7 @@
 #include <limits>
 #include <cstring>
 #include <cstdio>
+#include "libgen.h"
 #include <sstream>
 #include <algorithm>
 #include "otbMacro.h"
@@ -54,7 +55,7 @@ AttributeTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
     if (rc != SQLITE_OK)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
-        itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+        itkWarningMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
         if (*stmt)
         {
             sqlite3_clear_bindings(*stmt);
@@ -769,6 +770,12 @@ AttributeTable::endTransaction()
     if (m_db == 0)
     {
         otbWarningMacro(<< "No database connection!");
+        return false;
+    }
+
+    if (sqlite3_get_autocommit(m_db))
+    {
+        otbWarningMacro(<< "Cannot commit, no active transaction!");
         return false;
     }
 
@@ -1860,7 +1867,8 @@ bool AttributeTable::createTable(std::string filename)
 {
     this->DebugOn();
 
-    std::stringstream uri;
+    NMDebugCtx(_ctxotbtab, << "...");
+
     if (filename.empty())
     {
         m_dbFileName = std::tmpnam(0);
@@ -1871,10 +1879,12 @@ bool AttributeTable::createTable(std::string filename)
         m_dbFileName = filename;
     }
 
-    itkDebugMacro(<< "using '" << m_dbFileName << "' as filename for the db");
+    m_idColName = "";
+    NMDebugAI(<< "using '" << m_dbFileName
+              << "' as filename for the db" << std::endl);
 
     // ============================================================
-    // create the host data base
+    // open or create the host data base
     // ============================================================
     int rc = ::sqlite3_open_v2(m_dbFileName.c_str(),
                                &m_db,
@@ -1887,10 +1897,10 @@ bool AttributeTable::createTable(std::string filename)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
         itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
-        //itkExceptionMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
         m_db = 0;
+        NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -1900,33 +1910,194 @@ bool AttributeTable::createTable(std::string filename)
         itkDebugMacro(<< "Failed to adjust cache_size!");
     }
 
-    // ============================================================
-    // create the nmtab table
-    // ============================================================
-    uri.str("");
-    uri << "begin transaction;";
-    uri << "CREATE TABLE nmtab (rowidx INTEGER PRIMARY KEY);";
-    uri << "commit;";
 
+    // ============================================================
+    // check, whether we've already got a table
+    // ============================================================
     char* errMsg = 0;
-    rc = ::sqlite3_exec(m_db, uri.str().c_str(), 0, 0, &errMsg);
+    std::stringstream ssql;
+    ssql.str("");
 
-    if (rc != SQLITE_OK)
+    std::string fullname = m_dbFileName;
+    m_tableName = basename(const_cast<char*>(fullname.c_str()));
+    size_t pos = m_tableName.find_last_of('.');
+    if (pos > 0)
     {
-        std::string errmsg = sqlite3_errmsg(m_db);
-        itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+        m_tableName = m_tableName.substr(0, pos);
+    }
+
+    NMDebugAI( << "looking for table '" << m_tableName << "' ..."
+               << std::endl);
+
+    sqlite3_stmt* stmt_exists;
+    ssql << "SELECT count(name) FROM sqlite_master WHERE "
+        << "type='table' AND name='" << m_tableName << "';";
+
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_exists, 0);
+    if (sqliteError(rc, &stmt_exists))
+    {
+        sqlite3_finalize(stmt_exists);
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
         m_db = 0;
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
     }
 
-    // add rowidx column to list of columns
-    m_vNames.push_back("rowidx");
-    m_vTypes.push_back(AttributeTable::ATTYPE_INT);
+    int bTableExists = 0;
+    if (sqlite3_step(stmt_exists) == SQLITE_ROW)
+    {
+        bTableExists = sqlite3_column_int(stmt_exists, 0);
+    }
+    sqlite3_finalize(stmt_exists);
+
+    // ============================================================
+    // populate table info, if we've got one already
+    // ============================================================
+
+    if (bTableExists)
+    {
+        NMDebugAI( << "found table '"
+                   << m_tableName << "'" << std::endl);
+        ssql.str("");
+        ssql << "pragma table_info(" << m_tableName << ")";
+
+        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                                -1, &stmt_exists, 0);
+        if (sqliteError(rc, &stmt_exists))
+        {
+            sqlite3_finalize(stmt_exists);
+            m_dbFileName.clear();
+            ::sqlite3_close(m_db);
+            m_db = 0;
+            NMDebugCtx(_ctxotbtab, << "done!");
+            return false;
+        }
+
+        m_vNames.clear();
+        m_vTypes.clear();
+
+        NMDebugAI(<< "analysing table structure ..." << std::endl);
+        while (sqlite3_step(stmt_exists) == SQLITE_ROW)
+        {
+            std::string name = reinterpret_cast<char*>(
+                        const_cast<unsigned char*>(
+                          sqlite3_column_text(stmt_exists, 1)));
+            std::string type = reinterpret_cast<char*>(
+                        const_cast<unsigned char*>(
+                          sqlite3_column_text(stmt_exists, 2)));
+            int pk = sqlite3_column_int(stmt_exists, 5);
+
+            NMDebugAI( << "   "
+                       << name << " | "
+                       << type << " | "
+                       << pk << std::endl);
+
+            // pick the first PRIMARY KEY column as THE PK
+            if (pk && m_idColName.empty())
+            {
+                m_idColName = name;
+            }
+
+            m_vNames.push_back(name);
+            if (type.compare("INTEGER") == 0)
+            {
+                m_vTypes.push_back(ATTYPE_INT);
+            }
+            else if (type.compare("REAL") == 0)
+            {
+                m_vTypes.push_back(ATTYPE_DOUBLE);
+            }
+            else
+            {
+                m_vTypes.push_back(ATTYPE_STRING);
+            }
+        }
+        sqlite3_finalize(stmt_exists);
+
+        // well, if we haven't got any names/types, we'd better bail
+        // out here, something seems to be wrong
+        if (    m_vNames.size() == 0
+            ||  m_idColName.empty()
+           )
+        {
+            itkWarningMacro(<< "Failed fetching column info or unsupported table structure!");
+            m_dbFileName.clear();
+            ::sqlite3_close(m_db);
+            m_db = 0;
+            NMDebugCtx(_ctxotbtab, << "done!");
+            return false;
+        }
+
+        // now we count the number of records in the table
+        ssql.str("");
+        ssql << "SELECT count(" << m_idColName << ") "
+             << "from " << m_tableName << ";";
+
+        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                                -1, &stmt_exists, 0);
+        if (sqliteError(rc, &stmt_exists))
+        {
+            itkWarningMacro(<< "Failed fetching number of records!");
+            sqlite3_finalize(stmt_exists);
+            m_dbFileName.clear();
+            ::sqlite3_close(m_db);
+            m_db = 0;
+            NMDebugCtx(_ctxotbtab, << "done!");
+            return false;
+        }
+
+        if (sqlite3_step(stmt_exists) == SQLITE_ROW)
+        {
+            m_iNumRows = sqlite3_column_int(stmt_exists, 0);
+        }
+        NMDebugAI( << m_tableName << " has " << m_iNumRows
+                   << " records" << std::endl);
+        sqlite3_finalize(stmt_exists);
+    }
+
+
+    // ============================================================
+    // create the nmtab table, if not already exist
+    // ============================================================
+    if (!bTableExists)
+    {
+        NMDebugAI( << "no '" << m_tableName << "' found!"
+                   << std::endl << "creating one ..." << std::endl);
+        ssql.str("");
+        ssql << "begin transaction;";
+        ssql << "CREATE TABLE " << m_tableName << " "
+            << "(rowidx INTEGER PRIMARY KEY);";
+        ssql << "commit;";
+
+        char* errMsg = 0;
+        rc = ::sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, &errMsg);
+
+        if (rc != SQLITE_OK)
+        {
+            std::string errmsg = sqlite3_errmsg(m_db);
+            itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+            itkWarningMacro(<< "Failed creating the table!");
+            m_dbFileName.clear();
+            ::sqlite3_close(m_db);
+            m_db = 0;
+            NMDebugCtx(_ctxotbtab, << "done!");
+            return false;
+        }
+
+        // add rowidx column to list of columns
+        m_idColName = "rowidx";
+        m_vNames.push_back("rowidx");
+        m_vTypes.push_back(AttributeTable::ATTYPE_INT);
+        NMDebugAI(<< m_tableName << " successfully created" << std::endl);
+    }
 
     //==================================================
     // 'dummy' statements for rowidx set/get
     //==================================================
+    NMDebugAI( << "create prepared statements for recurring tasks ... "
+               << std::endl);
 
     // we prepare those  statements simply for synchorinsing
     // column index with vector indices for the prepared
@@ -1936,11 +2107,11 @@ bool AttributeTable::createTable(std::string filename)
 
     // prepare an update statement for this column
     sqlite3_stmt* stmt_upd;
-    std::stringstream ssql;
-    ssql <<  "UPDATE main.nmtab SET rowidx = "
+    ssql.str("");
+    ssql <<  "UPDATE main." << m_tableName << " SET rowidx = "
          <<  "@VAL WHERE rowidx = @IDX ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            1024, &stmt_upd, 0);
+                            -1, &stmt_upd, 0);
     sqliteError(rc, &stmt_upd);
     this->m_vStmtUpdate.push_back(stmt_upd);
 
@@ -1950,7 +2121,7 @@ bool AttributeTable::createTable(std::string filename)
     ssql <<  "SELECT rowidx from main.nmtab"
          <<  " WHERE rowidx = @IDX ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            1024, &stmt_sel, 0);
+                            -1, &stmt_sel, 0);
     sqliteError(rc, &stmt_sel);
     this->m_vStmtSelect.push_back(stmt_sel);
 
@@ -1966,15 +2137,17 @@ bool AttributeTable::createTable(std::string filename)
     //                            1024, &m_StmtUpdate, 0);
     //    sqliteError(rc, &m_StmtUpdate);
 
-    rc = sqlite3_prepare_v2(m_db, "BEGIN TRANSACTION;", 100, &m_StmtBegin, 0);
+    rc = sqlite3_prepare_v2(m_db, "BEGIN TRANSACTION;", -1, &m_StmtBegin, 0);
     sqliteError(rc, &m_StmtBegin);
 
-    rc = sqlite3_prepare_v2(m_db, "END TRANSACTION;", 100, &m_StmtEnd, 0);
+    rc = sqlite3_prepare_v2(m_db, "END TRANSACTION;", -1, &m_StmtEnd, 0);
     sqliteError(rc, &m_StmtEnd);
 
-    rc = sqlite3_prepare_v2(m_db, "ROLLBACK TRANSACTION;", 100, &m_StmtRollback, 0);
+    rc = sqlite3_prepare_v2(m_db, "ROLLBACK TRANSACTION;", -1, &m_StmtRollback, 0);
     sqliteError(rc, &m_StmtRollback);
 
+    NMDebugAI(<< "all good!" << std::endl);
+    NMDebugCtx(_ctxotbtab, << "done!");
     return true;
 
 }
@@ -1991,7 +2164,9 @@ AttributeTable::AttributeTable()
       m_StmtRollback(0),
       m_StmtBulkSet(0),
       m_StmtBulkGet(0),
-      m_StmtColIter(0)
+      m_StmtColIter(0),
+      m_idColName(""),
+      m_tableName("")
 {
     //this->createTable("");
 }

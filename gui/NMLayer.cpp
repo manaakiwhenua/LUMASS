@@ -54,7 +54,7 @@
 NMLayer::NMLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
 	: QObject(parent), mSelectionModel(0), mTableModel(0), mTableView(0),
-	  mDataSet(0), mActor(0), mMapper(0),
+      mSqlTableView(0), mDataSet(0), mActor(0), mMapper(0),
       mIsVisible(false), mIsSelectable(true),
       mIsSelected(false), mHasChanged(false),
 	  mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
@@ -146,7 +146,13 @@ NMLayer::~NMLayer()
 		delete this->mTableView;
 	}
 
-	if (mSelectionModel != 0)
+    if (this->mSqlTableView != 0)
+    {
+        this->mSqlTableView->close();
+        delete this->mSqlTableView;
+    }
+
+    if (mSelectionModel != 0)
 		delete mSelectionModel;
 
 	if (mTableModel != 0)
@@ -2563,14 +2569,20 @@ bool NMLayer::isImageLayer(void)
 
 void NMLayer::showAttributeTable(void)
 {
-	if (this->mTableView == 0)
+    if (this->mTableView == 0 && this->mSqlTableView == 0)
 		this->createTableView();
 
 	if (this->mTableView != 0)
 	{
 		this->mTableView->show();
 		this->mTableView->update();
-	}
+    }
+
+    if (this->mSqlTableView != 0)
+    {
+        this->mSqlTableView->show();
+        this->mSqlTableView->update();
+    }
 }
 
 void NMLayer::createTableView(void)

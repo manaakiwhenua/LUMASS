@@ -279,9 +279,18 @@ void NMSqlTableView::initView()
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
 
 
-    // query the number of records in the tabl
-    QString fieldStr = mModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
-    QString qstr = QString("Select count(%1) from %2").arg(fieldStr)
+    // query the number of records in the table
+
+    QSqlIndex pk = mModel->primaryKey();
+    if (!pk.isEmpty())
+    {
+        mPrimaryKey = pk.name();
+    }
+    else
+    {
+        mPrimaryKey = mModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+    }
+    QString qstr = QString("Select count(%1) from %2").arg(mPrimaryKey)
                                                       .arg(mModel->tableName());
     QSqlQuery q(qstr, mModel->database());
     q.setForwardOnly(true);

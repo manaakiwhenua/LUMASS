@@ -206,6 +206,7 @@ protected:
 
     QItemSelection mBackupSel;
 
+    QString mPrimaryKey;
     QString mBaseFilter;
 	QTableView* mTableView;
     QSqlTableModel* mModel;

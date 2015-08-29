@@ -2162,14 +2162,22 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     }
     dbFN += ".ldb";
 
+    std::stringstream tag;
+    tag << iBand;
 
 	AttributeTable::Pointer otbTab = AttributeTable::New();
-    if (!otbTab->createTable(dbFN))
+    switch(otbTab->createTable(dbFN, tag.str()))
     {
+    case AttributeTable::ATCREATE_ERROR:
         itkWarningMacro(<< "Couldn't create attribute table '"
                         << dbFN << "'!")
         return 0;
+        break;
+    case AttributeTable::ATCREATE_READ:
+        return otbTab;
+        break;
     }
+
 
 	// set filename and band number
     otbTab->SetBandNumber(iBand);

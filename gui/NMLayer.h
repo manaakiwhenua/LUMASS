@@ -31,6 +31,7 @@
 #include "nmlog.h"
 #include "NMModelComponent.h"
 #include "NMTableView.h"
+#include "NMSqlTableView.h"
 
 #include "QVTKWin32Header.h"
 #include "vtkConfigure.h"
@@ -333,6 +334,7 @@ protected:
 	vtkSmartPointer<vtkProp3D>	mSelectionActor;
 
 	NMTableView* mTableView;
+    NMSqlTableView* mSqlTableView;
 	NMFastTrackSelectionModel* mSelectionModel;
 	QAbstractItemModel* mTableModel;
 
@@ -462,6 +464,7 @@ protected slots:
 
 
 private:
+
 
 
 };

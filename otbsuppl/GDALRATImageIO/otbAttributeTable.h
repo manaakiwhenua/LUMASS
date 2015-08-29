@@ -57,7 +57,16 @@ public:
 	typedef itk::SmartPointer<Self>			Pointer;
 	typedef itk::SmartPointer<const Self>	ConstPointer;
 
-	// supported column types
+    /** Indicates table status after open/create */
+    typedef enum
+    {
+        ATCREATE_CREATED = 0,
+        ATCREATE_READ,
+        ATCREATE_ERROR
+    } TableCreateStatus;
+
+
+    // supported column types
 	typedef enum
 	{
 		ATTYPE_STRING = 0,
@@ -77,7 +86,6 @@ public:
             char*  tval;
         };
     } ColumnValue;
-
 
 	itkNewMacro(Self);
 	itkTypeMacro(AttributeTable, Superclass);
@@ -133,9 +141,13 @@ public:
 	void PrintStructure(std::ostream& os, itk::Indent indent);
 
     /// SQLite support functions
-    bool createTable(std::string filename);
+    TableCreateStatus createTable(std::string filename, std::string tag="");
+
     std::string getDbFileName() {return this->m_dbFileName;}
+    std::string getTableName() {return this->m_tableName;}
+    std::string getPrimaryKey() {return this->m_idColName;}
     sqlite3* getDbConnection() {return this->m_db;}
+
     bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
     bool prepareBulkSet(const std::vector<std::string>& colNames, const bool& bInsert=true);
 
@@ -151,7 +163,7 @@ public:
     bool doBulkGet(std::vector< ColumnValue >& values);
     bool beginTransaction();
     bool endTransaction();
-    bool createIndex(const std::vector<std::string>& colNames);
+    bool createIndex(const std::vector<std::string>& colNames, bool unique);
 
 
     /// FAST INLINE ACCESS TO COLUMN VALUES

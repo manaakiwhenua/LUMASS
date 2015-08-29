@@ -45,7 +45,7 @@ NMProcess::NMProcess(QObject *parent)
 	this->mInputNumBands = 1;
 	this->mOutputNumBands = 1;
 	this->mbIsInitialised = false;
-	this->mParameterHandling = NM_SYNC_WITH_HOST;
+    this->mParameterHandling = NM_USE_UP;
 	this->mParamPos = 0;
 	this->mProgress = 0.0;
 	this->mMTime.setMSecsSinceEpoch(0);
@@ -188,6 +188,7 @@ NMProcess::mapHostIndexToPolicyIndex(unsigned short step,
 	}
 	return idx;
 }
+
 
 QVariant
 NMProcess::getParameter(const QString& property)

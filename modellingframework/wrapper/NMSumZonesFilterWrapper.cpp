@@ -197,14 +197,19 @@ public:
             }
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mZoneTableFileName.size());
-        std::string curZoneTableFileName;
-        if (step < p->mZoneTableFileName.size())
-        {
-            curZoneTableFileName = p->mZoneTableFileName.at(step).toStdString().c_str();
-            f->SetZoneTableFileName(curZoneTableFileName);
-        }
+        //        step = p->mapHostIndexToPolicyIndex(givenStep, p->mZoneTableFileName.size());
+        //        std::string curZoneTableFileName;
+        //        if (step < p->mZoneTableFileName.size())
+        //        {
+        //            curZoneTableFileName = p->mZoneTableFileName.at(step).toStdString().c_str();
+        //            f->SetZoneTableFileName(curZoneTableFileName);
+        //        }
 
+        QVariant ztparam = p->getParameter("ZoneTableFileName");
+        if (ztparam.isValid())
+        {
+            f->SetZoneTableFileName(ztparam.toString().toStdString());
+        }
 
 		NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "done!");
 	}

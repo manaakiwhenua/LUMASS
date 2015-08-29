@@ -30,6 +30,8 @@
 #include "NMRasdamanConnectorWrapper.h"
 #include "NMMacros.h"
 #include "NMGlobalHelper.h"
+#include "NMSqlTableModel.h"
+#include "NMSqlTableView.h"
 
 #include <QTime>
 #include <QtCore>
@@ -494,7 +496,7 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
 void NMImageLayer::createTableView(void)
 {
-	if (this->mTableView != 0)
+    if (this->mSqlTableView != 0)
 	{
 		return;
 	}
@@ -508,13 +510,15 @@ void NMImageLayer::createTableView(void)
 	if (this->mTableModel == 0)
 		return;
 
+    this->mSqlTableView = new NMSqlTableView(
+                qobject_cast<NMSqlTableModel*>(mTableModel), 0);
+    this->mSqlTableView->setSelectionModel(this->mSelectionModel);
+    this->mSqlTableView->setTitle(tr("Attributes of ") + this->objectName());
 
-	this->mTableView = new NMTableView(this->mTableModel, 0);
-	this->mTableView->setSelectionModel(this->mSelectionModel);
-	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
-
-	connect(this, SIGNAL(selectabilityChanged(bool)), mTableView, SLOT(setSelectable(bool)));
-	connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SLOT(forwardLastClickedRowSignal(long)));
+    connect(this, SIGNAL(selectabilityChanged(bool)),
+            mSqlTableView, SLOT(setSelectable(bool)));
+    connect(mSqlTableView, SIGNAL(notifyLastClickedRow(long)),
+            this, SLOT(forwardLastClickedRowSignal(long)));
 }
 
 int
@@ -533,28 +537,50 @@ NMImageLayer::updateAttributeTable()
         //NMDebugAI(<< "No attribute table available!");
 		return 0;
 	}
-	NMQtOtbAttributeTableModel* otbModel;
+
+    //NMQtOtbAttributeTableModel* otbModel;
+    NMSqlTableModel* tabModel = 0;
 	if (this->mTableModel == 0)
 	{
-		otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
+        //otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+        db.setDatabaseName(QString(mOtbRAT->getDbFileName().c_str()));
+        if (!db.open())
+        {
+            NMErr(ctxNMImageLayer, << "Open database failed!" << endl);
+        }
+        else
+        {
+            tabModel = new NMSqlTableModel(this, db);
+            tabModel->setTable(QString(mOtbRAT->getTableName().c_str()));
+            tabModel->select();
+        }
 	}
 	else
 	{
-		otbModel = qobject_cast<NMQtOtbAttributeTableModel*>(this->mTableModel);
-		otbModel->setTable(this->mOtbRAT);
-		otbModel->setKeyColumn("rowidx");
+        tabModel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
+        //		otbModel = qobject_cast<NMQtOtbAttributeTableModel*>(this->mTableModel);
+        //		otbModel->setTable(this->mOtbRAT);
+        //		otbModel->setKeyColumn("rowidx");
 	}
-	otbModel->setKeyColumn("rowidx");
+    //otbModel->setKeyColumn("rowidx");
 
 	// in any case, we create a new item selection model
-	if (this->mSelectionModel == 0)
+    if (this->mSelectionModel == 0 && tabModel != 0)
 	{
-		this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
+        //this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
+        this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
 	}
-	this->mTableModel = otbModel;
+    //this->mTableModel = otbModel;
+    this->mTableModel = tabModel;
+    tabModel = 0;
 
-	connectTableSel();
-	emit legendChanged(this);
+    if (mSelectionModel)
+    {
+        connectTableSel();
+    }
+
+    emit legendChanged(this);
 
 	return 1;
 }

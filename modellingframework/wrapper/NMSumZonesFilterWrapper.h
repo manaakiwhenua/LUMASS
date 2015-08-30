@@ -49,7 +49,6 @@ NMSumZonesFilterWrapper
     Q_PROPERTY(QStringList IgnoreNodataValue READ getIgnoreNodataValue WRITE setIgnoreNodataValue)
     Q_PROPERTY(QStringList NodataValue READ getNodataValue WRITE setNodataValue)
     Q_PROPERTY(QStringList HaveMaxKeyRows READ getHaveMaxKeyRows WRITE setHaveMaxKeyRows)
-    Q_PROPERTY(QStringList KeyIsRowIdx READ getKeyIsRowIdx WRITE setKeyIsRowIdx)
     Q_PROPERTY(QStringList ZoneTableFileName READ getZoneTableFileName WRITE setZoneTableFileName)
 
 public:
@@ -58,7 +57,6 @@ public:
     NMPropertyGetSet( IgnoreNodataValue, QStringList )
     NMPropertyGetSet( NodataValue, QStringList )
     NMPropertyGetSet( HaveMaxKeyRows, QStringList )
-    NMPropertyGetSet( KeyIsRowIdx, QStringList )
     NMPropertyGetSet( ZoneTableFileName, QStringList )
 
 public:
@@ -87,7 +85,6 @@ protected:
     QStringList mIgnoreNodataValue;
     QStringList mNodataValue;
     QStringList mHaveMaxKeyRows;
-    QStringList mKeyIsRowIdx;
     QStringList mZoneTableFileName;
 
 };

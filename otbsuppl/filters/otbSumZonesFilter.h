@@ -107,14 +107,6 @@ public:
           itkGetMacro(HaveMaxKeyRows, bool);
           itkBooleanMacro(HaveMaxKeyRows);
 
-          /** Determines whether the row index of the zone table
-           *  is populated 0-based or just uses the key values
-           *  instead.
-           *  The default value is 'true'.
-           */
-          itkSetMacro(KeyIsRowIdx, bool);
-          itkGetMacro(KeyIsRowIdx, bool);
-          itkBooleanMacro(KeyIsRowIdx);
 
           /** Zone table file name
            *
@@ -163,7 +155,6 @@ private:
 	  // this image contains the values to be summarised for the individual zones
 	  InputImagePointerType mValueImage;
 
-          bool m_KeyIsRowIdx;           // DEFAULT: true
           bool m_HaveMaxKeyRows;        // DEFAULT: false
           bool m_IgnoreNodataValue;     // DEFAULT: true
           std::string m_ZoneTableFileName; // DEFAULT: ""

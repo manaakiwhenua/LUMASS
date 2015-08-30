@@ -107,7 +107,8 @@ public:
 	//long GetRowIdx(const std::string& column, const std::string& value);
 
 	// managing the attribute table's content
-	bool AddColumn(const std::string& sColName, TableColumnType type);
+    bool AddColumn(const std::string& sColName, TableColumnType type,
+                   const std::string& sColConstraint="");
 	bool AddRow();
 	bool AddRows(long numRows);
 	void SetValue(const std::string& sColName, int idx, double value);
@@ -149,7 +150,9 @@ public:
     sqlite3* getDbConnection() {return this->m_db;}
 
     bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
-    bool prepareBulkSet(const std::vector<std::string>& colNames, const bool& bInsert=true);
+    bool prepareBulkSet(const std::vector<std::string>& colNames,
+                        const std::vector<std::string>& autoValue,
+                        const bool& bInsert=true);
 
     bool doPtrBulkSet(std::vector< int* >& intVals,
                       std::vector< double* >& dblVals,
@@ -234,7 +237,7 @@ protected:
     sqlite3_stmt* m_StmtBulkGet;
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkSet;
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkGet;
-    std::vector<std::string> m_IndexNames;
+    std::vector<std::string> m_vIndexNames;
 
     sqlite3_stmt* m_StmtColIter;
 

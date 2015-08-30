@@ -23,5 +23,4 @@ InputTypeFunc_1             = 1:InImgType:SetValueImage
 Property_1                  = IgnoreNodataValue:1:bool
 Property_2                  = NodataValue:1:double 
 Property_3                  = HaveMaxKeyRows:1:bool
-Property_4                  = KeyIsRowIdx:1:bool
-Property_5                  = ZoneTableFileName:1:string
+Property_4                  = ZoneTableFileName:1:string

@@ -129,7 +129,9 @@ AttributeTable::ColumnExists(const std::string& sColName)
 }
 
 bool
-AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
+AttributeTable::AddColumn(const std::string& sColName,
+                          TableColumnType eType,
+                          const std::string &sColConstraint)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     // check, whether the db is valid, and try to create a tmp one
@@ -173,9 +175,15 @@ AttributeTable::AddColumn(const std::string& sColName, TableColumnType eType)
 
     std::stringstream ssql;
     ssql << "ALTER TABLE main." << m_tableName << " ADD \"" << sColName << "\" "
-         << sType << ";";
+         << sType;
+    if (!sColConstraint.empty())
+    {
+        ssql << " " << sColConstraint;
+    }
+    ssql << ";";
 
     int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
+    sqliteError(rc, 0);
 
     // update admin infos
     this->m_vNames.push_back(sColName);
@@ -326,7 +334,8 @@ AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
 
 bool
 AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
-                             const bool& bInsert)
+                               const std::vector<std::string> &autoValue,
+                               const bool& bInsert)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
@@ -351,6 +360,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         m_vTypesBulkSet.push_back(this->GetColumnType(idx));
     }
 
+    int valCounter = 1;
     std::stringstream ssql;
     if (bInsert)
     {
@@ -366,7 +376,17 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         ssql << ") VALUES (";
         for (int c=0; c < colNames.size(); ++c)
         {
-            ssql << "?" << c+1;
+            if (c < autoValue.size() && !autoValue.at(c).empty())
+            {
+                ssql << autoValue.at(c);
+
+            }
+            else
+            {
+                ssql << "?" << valueCounter;
+                ++valueCounter;
+            }
+
             if (c < colNames.size()-1)
             {
                 ssql << ",";
@@ -379,8 +399,18 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         ssql << "UPDATE main." << m_tableName << " SET ";
         for (int c=0; c < colNames.size(); ++c)
         {
-            ssql << "\"" << colNames.at(c) << "\" = "
-                 << "?" << c+1;
+            ssql << "\"" << colNames.at(c) << "\" = ";
+
+            if (c < autoValue.size() && !autoValue.at(c).empty())
+            {
+                ssql << autoValue.at(c);
+            }
+            else
+            {
+                 ssql << "?" << valueCounter;
+                 ++valueCounter;
+            }
+
             if (c < colNames.size()-1)
             {
                 ssql << ",";
@@ -463,6 +493,7 @@ AttributeTable::createIndex(const std::vector<std::string> &colNames,
     {
         return false;
     }
+    this->m_vIndexNames.push_back(idxName);
 
     return true;
 }

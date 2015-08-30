@@ -179,31 +179,13 @@ public:
             }
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mKeyIsRowIdx.size());
-        bool curKeyIsRowIdx;
-        if (step < p->mKeyIsRowIdx.size())
-        {
-            curKeyIsRowIdx = p->mKeyIsRowIdx.at(step).toInt(&bok);
-            if (bok)
-            {
-                f->SetKeyIsRowIdx((curKeyIsRowIdx));
-            }
-            else
-            {
-                NMErr("NMSumZonesFilterWrapper_Internal", << "Invalid value for 'KeyIsRowIdx'!");
-                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setMsg("Invalid value for 'KeyIsRowIdx'!");
-                throw e;
-            }
-        }
-
-        //        step = p->mapHostIndexToPolicyIndex(givenStep, p->mZoneTableFileName.size());
-        //        std::string curZoneTableFileName;
-        //        if (step < p->mZoneTableFileName.size())
-        //        {
-        //            curZoneTableFileName = p->mZoneTableFileName.at(step).toStdString().c_str();
-        //            f->SetZoneTableFileName(curZoneTableFileName);
-        //        }
+//        step = p->mapHostIndexToPolicyIndex(givenStep, p->mZoneTableFileName.size());
+//        std::string curZoneTableFileName;
+//        if (step < p->mZoneTableFileName.size())
+//        {
+//            curZoneTableFileName = p->mZoneTableFileName.at(step).toStdString().c_str();
+//            f->SetZoneTableFileName(curZoneTableFileName);
+//        }
 
         QVariant ztparam = p->getParameter("ZoneTableFileName");
         if (ztparam.isValid())

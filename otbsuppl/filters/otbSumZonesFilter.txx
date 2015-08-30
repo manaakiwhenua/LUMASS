@@ -41,7 +41,6 @@ SumZonesFilter< TInputImage, TOutputImage >
     this->SetNumberOfRequiredInputs(1);
 	this->SetNumberOfRequiredOutputs(1);
 
-    m_KeyIsRowIdx = true;
     m_HaveMaxKeyRows = false;
 	m_IgnoreNodataValue = true;
 	m_NodataValue = itk::NumericTraits<InputPixelType>::NonpositiveMin();
@@ -105,6 +104,9 @@ void SumZonesFilter< TInputImage, TOutputImage >
         NMDebugAI(<< "Just summarising the zone imgae itself!" << std::endl);
 	}
 
+    // for debug only
+    //this->SetNumberOfThreads(1);
+
 	unsigned int numThreads = this->GetNumberOfThreads();
 
     // create the zone table (db)
@@ -128,7 +130,17 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
         mZoneTable->beginTransaction();
         //mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
-		mZoneTable->AddColumn("zone", AttributeTable::ATTYPE_INT);
+
+        if (m_HaveMaxKeyRows)
+        {
+            mZoneTable->AddColumn("zone_id", AttributeTable::ATTYPE_INT);
+        }
+        else
+        {
+            mZoneTable->AddColumn("zone_id",
+                AttributeTable::ATTYPE_INT, "PRIMARY KEY");
+        }
+
 		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("max", AttributeTable::ATTYPE_DOUBLE);
@@ -138,16 +150,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		//mZoneTable->AddColumn("sum2", AttributeTable::ATTYPE_DOUBLE);
         mZoneTable->endTransaction();
 
-        if (!m_KeyIsRowIdx)
-        {
-            std::vector<std::string> zidx;
-            zidx.push_back("zone");
-            if (!mZoneTable->createIndex(zidx, true))
-            {
-                itkExceptionMacro(<< "Failed to create unique index on zone field!");
-                return;
-            }
-        }
+//        if (!m_HaveMaxKeyRows)
+//        {
+//            std::vector<std::string> zidx;
+//            zidx.push_back("zone_id");
+//            if (!mZoneTable->createIndex(zidx, true))
+//            {
+//                itkExceptionMacro(<< "Failed to create unique index on zone field!");
+//                return;
+//            }
+//        }
 
 		mStreamingProc = true;
 	}
@@ -328,8 +340,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
     {
         mZoneTable->beginTransaction();
         std::vector<std::string> setnames;
-        setnames.push_back("rowidx");
-        setnames.push_back("zone");
+        setnames.push_back(mZoneTable->getPrimaryKey());
+        setnames.push_back("zone_id");
         std::vector<otb::AttributeTable::ColumnValue> setvals;
         otb::AttributeTable::ColumnValue rv, zv;
         rv.type = otb::AttributeTable::ATTYPE_INT;
@@ -357,9 +369,6 @@ void SumZonesFilter< TInputImage, TOutputImage >
         mZoneTable->endTransaction();
     }
 
-	typename std::set<ZoneKeyType>::const_iterator zoneIt =
-			mZones.begin();
-
 	double min 		 ;
 	double max 		 ;
 	double sum_Zone  ;
@@ -370,7 +379,36 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
     std::vector<std::string> colnames;
     colnames.push_back(mZoneTable->getPrimaryKey());
-    colnames.push_back("zone");
+    colnames.push_back("zone_id");
+
+    std::vector<std::string> autoValue;
+    autoValue.push_back("");
+
+    // leave the zone_id to the index function of sqlite
+    int cor = 0;
+    int nintcols = 3;
+    if (!this->GetHaveMaxKeyRows())
+    {
+        cor = -1;
+        nintcols = 2;
+        std::string pk = mZoneTable->getPrimaryKey();
+        std::stringstream sav;
+//        sav << "(SELECT CASE zone_id "
+//            <<  "WHEN IFNULL(zone_id) THEN 0"
+//            <<  "WHEN " << pk << " < "
+
+/*
+        insert or replace into lcdb1_1 (rowidx, zone_id, Red) values (259, (select
+            case when rowidx < max(rowidx) then zone_id
+                      else  max(zone_id) + 1
+               end
+               from lcdb1_1), 5);
+
+*/
+
+        autoValue.push_back(sav.str());
+    }
+
     colnames.push_back("count");
     colnames.push_back("min");
     colnames.push_back("max");
@@ -379,7 +417,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
     colnames.push_back("sum");
 
     std::vector<otb::AttributeTable::ColumnValue> values;
-    for (int i=0; i < 3; ++i)
+    for (int i=0; i < nintcols; ++i)
     {
         otb::AttributeTable::ColumnValue v;
         v.type = otb::AttributeTable::ATTYPE_INT;
@@ -393,20 +431,19 @@ void SumZonesFilter< TInputImage, TOutputImage >
         values.push_back(v);
     }
 
-    if (!this->m_KeyIsRowIdx)
+    NMDebugAI(<< "setting these attributes ... " << std::endl);
+    for (int c=0; c < colnames.size(); ++c)
     {
-        values.erase(values.begin());
-        colnames.erase(colnames.begin());
+        NMDebugAI( << colnames[c] << std::endl);
     }
-
-
 
 	NMDebugAI(<< "updating zone table ..." << std::endl);
     mZoneTable->beginTransaction();
     mZoneTable->prepareBulkSet(colnames, true);
-    //long rowid = mZoneTable->GetNumRows();
-	long tr = -1;
-    int cor = -1;
+
+
+    typename std::set<ZoneKeyType>::const_iterator zoneIt =
+            mZones.begin();
 	while(zoneIt != mZones.end())
 	{
 		ZoneKeyType zone = *zoneIt;
@@ -444,13 +481,15 @@ void SumZonesFilter< TInputImage, TOutputImage >
                 ? ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) )
                 : 0;
 
-        if (this->m_KeyIsRowIdx)
-        {
-            values[0].ival = lz;
-            cor = 0;
-        }
+        // rowidx
+        values[0].ival = lz;
+
         //mZoneTable->SetValue("zone",   lz, lz);
-        values[1+cor].ival = lz;
+        if (this->m_HaveMaxKeyRows)
+        {
+            values[1].ival = lz;
+        }
+
         //mZoneTable->SetValue("count",  lz, count);
         values[2+cor].ival = count;
         //mZoneTable->SetValue("min",    lz, min);
@@ -466,7 +505,6 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
         mZoneTable->doBulkSet(values);
 
-        //++rowid;
 		++zoneIt;
 	}
     mZoneTable->endTransaction();

@@ -360,7 +360,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         m_vTypesBulkSet.push_back(this->GetColumnType(idx));
     }
 
-    int valCounter = 1;
+    int valueCounter = 1;
     std::stringstream ssql;
     if (bInsert)
     {
@@ -378,8 +378,18 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
         {
             if (c < autoValue.size() && !autoValue.at(c).empty())
             {
-                ssql << autoValue.at(c);
+                std::string av = autoValue.at(c);
+                size_t pos = 0;
+                while ((pos = av.find('?', pos)) != std::string::npos)
+                {
+                    std::stringstream v;
+                    v << valueCounter;
 
+                    av = av.insert(pos+1, v.str().c_str());
+                    ++valueCounter;
+                    ++pos;
+                }
+                ssql << av;
             }
             else
             {
@@ -403,7 +413,18 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
 
             if (c < autoValue.size() && !autoValue.at(c).empty())
             {
-                ssql << autoValue.at(c);
+                std::string av = autoValue.at(c);
+                size_t pos = 0;//av.find('?');
+                while ((pos = av.find('?', pos)) != std::string::npos)
+                {
+                    std::stringstream v;
+                    v << valueCounter;
+
+                    av = av.insert(pos+1, v.str().c_str());
+                    ++valueCounter;
+                    ++pos;
+                }
+                ssql << av;
             }
             else
             {

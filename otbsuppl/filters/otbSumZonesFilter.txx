@@ -131,15 +131,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
         mZoneTable->beginTransaction();
         //mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
 
-        if (m_HaveMaxKeyRows)
-        {
-            mZoneTable->AddColumn("zone_id", AttributeTable::ATTYPE_INT);
-        }
-        else
-        {
-            mZoneTable->AddColumn("zone_id",
-                AttributeTable::ATTYPE_INT, "PRIMARY KEY");
-        }
+        mZoneTable->AddColumn("zone_id", AttributeTable::ATTYPE_INT);
+
 
 		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
@@ -348,7 +341,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
         zv.type = rv.type;
         zv.ival = -1;
 
-        mZoneTable->prepareBulkSet(setnames);
+        std::vector<std::string> av;
+        mZoneTable->prepareBulkSet(setnames, av);
 
         // add a chunk of rows
         if (newzones > 0)
@@ -386,25 +380,22 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
     // leave the zone_id to the index function of sqlite
     int cor = 0;
-    int nintcols = 3;
-    if (!this->GetHaveMaxKeyRows())
+    //if (!this->GetHaveMaxKeyRows())
     {
-        cor = -1;
-        nintcols = 2;
         std::string pk = mZoneTable->getPrimaryKey();
         std::stringstream sav;
-//        sav << "(SELECT CASE zone_id "
-//            <<  "WHEN IFNULL(zone_id) THEN 0"
-//            <<  "WHEN " << pk << " < "
+        sav << "SELECT CASE WHEN IFNULL(max(zone_id)) THEN 0"
+               " WHEN count(zone_id)-1 <= max(zone_id) THEN zone_id"
+            << " ELSE max(zone_id) + 1 END from " << mZoneTable->getTableName() << ")";
 
-/*
+        cor = -1;
+        /*
         insert or replace into lcdb1_1 (rowidx, zone_id, Red) values (259, (select
             case when rowidx < max(rowidx) then zone_id
                       else  max(zone_id) + 1
                end
                from lcdb1_1), 5);
-
-*/
+         */
 
         autoValue.push_back(sav.str());
     }
@@ -417,7 +408,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
     colnames.push_back("sum");
 
     std::vector<otb::AttributeTable::ColumnValue> values;
-    for (int i=0; i < nintcols; ++i)
+    for (int i=0; i < 2; ++i)
     {
         otb::AttributeTable::ColumnValue v;
         v.type = otb::AttributeTable::ATTYPE_INT;
@@ -439,7 +430,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 	NMDebugAI(<< "updating zone table ..." << std::endl);
     mZoneTable->beginTransaction();
-    mZoneTable->prepareBulkSet(colnames, true);
+    std::vector<std::string> av;
+    mZoneTable->prepareBulkSet(colnames, av, true);
 
 
     typename std::set<ZoneKeyType>::const_iterator zoneIt =
@@ -485,10 +477,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
         values[0].ival = lz;
 
         //mZoneTable->SetValue("zone",   lz, lz);
-        if (this->m_HaveMaxKeyRows)
-        {
-            values[1].ival = lz;
-        }
+        //if ()
+        //values[1].ival = lz;
 
         //mZoneTable->SetValue("count",  lz, count);
         values[2+cor].ival = count;

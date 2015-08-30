@@ -2291,8 +2291,8 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         otbTab->AddColumn(colnames[c+1], coltypes[c+1]);
     }
     otbTab->endTransaction();
-
-    otbTab->prepareBulkSet(colnames, true);
+    std::vector<std::string> av;
+    otbTab->prepareBulkSet(colnames, av, true);
     otbTab->beginTransaction();
 
 #ifdef GDAL_NEWRATAPI

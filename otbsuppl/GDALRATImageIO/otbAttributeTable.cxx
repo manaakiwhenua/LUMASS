@@ -648,7 +648,8 @@ AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const int &row)
         ||  values.size() != m_vTypesBulkSet.size()
        )
     {
-        //NMDebugCtx(_ctxotbtab, << "done!");
+        NMErr(_ctxotbtab, << "Number of types doesn't match "
+                          << "the number of values provided!");
         return false;
     }
 

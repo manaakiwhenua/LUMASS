@@ -150,8 +150,13 @@ public:
     sqlite3* getDbConnection() {return this->m_db;}
 
     bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
-    bool prepareBulkSet(const std::vector<std::string>& colNames,
+
+    bool prepareAutoBulkSet(const std::vector<std::string>& colNames,
                         const std::vector<std::string>& autoValue,
+                        const std::vector<std::vector<TableColumnType> >& autoTypes,
+                        const bool& bInsert=true);
+
+    bool prepareBulkSet(const std::vector<std::string>& colNames,
                         const bool& bInsert=true);
 
     bool doPtrBulkSet(std::vector< int* >& intVals,

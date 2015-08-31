@@ -334,7 +334,6 @@ AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
 
 bool
 AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
-                               const std::vector<std::string> &autoValue,
                                const bool& bInsert)
 {
     NMDebugCtx(_ctxotbtab, << "...");
@@ -358,6 +357,173 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
             return false;
         }
         m_vTypesBulkSet.push_back(this->GetColumnType(idx));
+    }
+
+    int valueCounter = 1;
+    std::stringstream ssql;
+    if (bInsert)
+    {
+        ssql << "INSERT OR REPLACE INTO main." << m_tableName << " (";
+        for (int c=0; c < colNames.size(); ++c)
+        {
+            ssql << "\"" << colNames.at(c) << "\"";
+            if (c < colNames.size()-1)
+            {
+                ssql << ",";
+            }
+        }
+        ssql << ") VALUES (";
+        for (int c=0; c < colNames.size(); ++c)
+        {
+            //            if (c < autoValue.size() && !autoValue.at(c).empty())
+            //            {
+            //                std::string av = autoValue.at(c);
+            //                size_t pos = 0;
+            //                while ((pos = av.find('?', pos)) != std::string::npos)
+            //                {
+            //                    std::stringstream v;
+            //                    v << valueCounter;
+
+            //                    av = av.insert(pos+1, v.str().c_str());
+            //                    ++valueCounter;
+            //                    ++pos;
+            //                }
+            //                ssql << av;
+            //            }
+            //            else
+            {
+                ssql << "?" << valueCounter;
+                ++valueCounter;
+            }
+
+            if (c < colNames.size()-1)
+            {
+                ssql << ",";
+            }
+        }
+        ssql << ");";
+    }
+    else
+    {
+        ssql << "UPDATE main." << m_tableName << " SET ";
+        for (int c=0; c < colNames.size(); ++c)
+        {
+            ssql << "\"" << colNames.at(c) << "\" = ";
+
+            //            if (c < autoValue.size() && !autoValue.at(c).empty())
+            //            {
+            //                std::string av = autoValue.at(c);
+            //                size_t pos = 0;//av.find('?');
+            //                while ((pos = av.find('?', pos)) != std::string::npos)
+            //                {
+            //                    std::stringstream v;
+            //                    v << valueCounter;
+
+            //                    av = av.insert(pos+1, v.str().c_str());
+            //                    ++valueCounter;
+            //                    ++pos;
+            //                }
+            //                ssql << av;
+            //            }
+            //            else
+            {
+                 ssql << "?" << valueCounter;
+                 ++valueCounter;
+            }
+
+            if (c < colNames.size()-1)
+            {
+                ssql << ",";
+            }
+        }
+        ssql << " WHERE " << m_idColName << " = ?" << colNames.size()+1
+             << " ;";
+    }
+
+    // we finalise any bulk set statement, that might have
+    // been prepared earlier, but whose execution or binding
+    // failed and hasn't been cleaned up
+    sqlite3_finalize(m_StmtBulkSet);
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &m_StmtBulkSet, 0);
+    if (sqliteError(rc, &m_StmtBulkSet))
+    {
+        sqlite3_finalize(m_StmtBulkSet);
+        m_StmtBulkSet = 0;
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    NMDebugCtx(_ctxotbtab, << "done!");
+    return true;
+}
+
+bool
+AttributeTable::prepareAutoBulkSet(const std::vector<std::string>& colNames,
+                    const std::vector<std::string> &autoValue,
+                    const std::vector<std::vector<AttributeTable::TableColumnType> >& autoTypes,
+                    const bool& bInsert)
+{
+    NMDebugCtx(_ctxotbtab, << "...");
+    if (m_db == 0)
+    {
+        NMDebugAI(<< "Database is NULL!" << std::endl);
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    m_vTypesBulkSet.clear();
+    for (int i=0; i < colNames.size(); ++i)
+    {
+        const int idx = this->ColumnExists(colNames.at(i));
+        if (idx < 0)
+        {
+            otbWarningMacro(<< "Column \"" << colNames.at(i)
+                            << "\" does not exist in the table!");
+            NMDebugAI(<< "Column '" << colNames.at(i) << "' not found!" << std::endl);
+            NMDebugCtx(_ctxotbtab, << "done!");
+            return false;
+        }
+
+        if (i < autoValue.size() && !autoValue.at(i).empty() && i < autoTypes.size())
+        {
+            std::string av = autoValue.at(i);
+            size_t pos = 0;
+            std::vector<AttributeTable::TableColumnType>::const_iterator typeIt =
+                    autoTypes.at(i).begin();
+            int cnt = 0;
+            while (     (pos = av.find('?', pos)) != std::string::npos
+                    &&  typeIt != autoTypes.at(i).end()
+                  )
+            {
+                m_vTypesBulkSet.push_back(*typeIt);
+
+                ++typeIt;
+                ++pos;
+                ++cnt;
+            }
+            if (cnt != autoTypes.at(i).size())
+            {
+                NMErr(_ctxotbtab, << "Number of provided types doesn't match "
+                                  << "the number of expression values for "
+                                  << "column '" << colNames.at(i) << "'");
+
+                itkExceptionMacro(<< "Number of provided types doesn't match "
+                                  << "the number of expression values for "
+                                  << "column '" << colNames.at(i) << "'");
+                m_vTypesBulkSet.clear();
+                sqlite3_finalize(m_StmtBulkSet);
+                m_StmtBulkSet = 0;
+                NMDebugCtx(_ctxotbtab, << "done!");
+                return false;
+            }
+
+        }
+        else
+        {
+            m_vTypesBulkSet.push_back(this->GetColumnType(idx));
+        }
     }
 
     int valueCounter = 1;
@@ -446,6 +612,8 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
     // failed and hasn't been cleaned up
     sqlite3_finalize(m_StmtBulkSet);
 
+    NMDebugAI(<< "Preparing the expression ..." << std::endl);
+    NMDebug(<< ssql.str() << std::endl);
 
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
                                 &m_StmtBulkSet, 0);
@@ -460,6 +628,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
     NMDebugCtx(_ctxotbtab, << "done!");
     return true;
 }
+
 
 
 bool

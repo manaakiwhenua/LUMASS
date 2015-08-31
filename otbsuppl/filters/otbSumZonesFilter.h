@@ -93,9 +93,11 @@ public:
 	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
 	  typedef typename ZoneMapType::iterator 						 ZoneMapTypeIterator;
 
-	  itkSetMacro(NodataValue, InputPixelType);
+          //itkSetMacro(NodataValue, InputPixelType);
+          void SetNodataValue(InputPixelType nodata);
 	  itkGetMacro(NodataValue, InputPixelType);
-	  itkSetMacro(IgnoreNodataValue, bool);
+          //itkSetMacro(IgnoreNodataValue, bool);
+          void SetIgnoreNodataValue(bool ignore);
 	  itkGetMacro(IgnoreNodataValue, bool);
 	  itkBooleanMacro(IgnoreNodataValue);
 
@@ -103,7 +105,8 @@ public:
            *  0-based index. Note: this options overrides KeyIsRowIdx;
            *  The default value is 'false'.
            */
-          itkSetMacro(HaveMaxKeyRows, bool);
+          //itkSetMacro(HaveMaxKeyRows, bool);
+          void SetHaveMaxKeyRows(bool maxkeyrows);
           itkGetMacro(HaveMaxKeyRows, bool);
           itkBooleanMacro(HaveMaxKeyRows);
 
@@ -118,7 +121,8 @@ public:
            *  The default value is '', which creates a temporary
            *  database in /tmp/*.ldb
            */
-          itkSetMacro(ZoneTableFileName, std::string);
+          //itkSetMacro(ZoneTableFileName, std::string);
+          void SetZoneTableFileName(const std::string& tableFileName);
           itkGetMacro(ZoneTableFileName, std::string);
 
 	  /** Set the input images */

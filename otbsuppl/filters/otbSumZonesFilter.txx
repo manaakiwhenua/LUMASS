@@ -80,12 +80,37 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
 }
 
-//template< class TInputImage, class TOutputImage >
-//void SumZonesFilter< TInputImage, TOutputImage >
-//::SetZoneTable(AttributeTable::Pointer tab)
-// {
-//	//mZoneTable = tab;
-// }
+template< class TInputImage, class TOutputImage >
+void SumZonesFilter< TInputImage, TOutputImage >
+::SetZoneTableFileName(const std::string &tableFileName)
+{
+    m_ZoneTableFileName = tableFileName;
+    this->ResetPipeline();
+}
+
+template< class TInputImage, class TOutputImage >
+void SumZonesFilter< TInputImage, TOutputImage >
+::SetHaveMaxKeyRows(bool maxkeyrows)
+{
+    m_HaveMaxKeyRows = maxkeyrows;
+    this->ResetPipeline();
+}
+
+template< class TInputImage, class TOutputImage >
+void SumZonesFilter< TInputImage, TOutputImage >
+::SetIgnoreNodataValue(bool ignore)
+{
+    m_IgnoreNodataValue = ignore;
+    this->ResetPipeline();
+}
+
+template< class TInputImage, class TOutputImage >
+void SumZonesFilter< TInputImage, TOutputImage >
+::SetNodataValue(InputPixelType nodata)
+{
+    m_NodataValue = nodata;
+    this->ResetPipeline();
+}
 
 template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
@@ -103,9 +128,6 @@ void SumZonesFilter< TInputImage, TOutputImage >
         itkDebugMacro(<< "Just summarising the zone imgae itself!");
         NMDebugAI(<< "Just summarising the zone imgae itself!" << std::endl);
 	}
-
-    // for debug only
-    //this->SetNumberOfThreads(1);
 
 	unsigned int numThreads = this->GetNumberOfThreads();
 
@@ -341,8 +363,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
         zv.type = rv.type;
         zv.ival = -1;
 
-        std::vector<std::string> av;
-        mZoneTable->prepareBulkSet(setnames, av);
+        mZoneTable->prepareBulkSet(setnames);
 
         // add a chunk of rows
         if (newzones > 0)
@@ -371,38 +392,59 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	double sd        ;
 	long   count     ;
 
+    // ==========================================================================
+    // prepare prepared update/insert statements for summary table
+    // ==========================================================================
+
+    typedef otb::AttributeTable::TableColumnType ColType;
+
     std::vector<std::string> colnames;
-    colnames.push_back(mZoneTable->getPrimaryKey());
-    colnames.push_back("zone_id");
-
     std::vector<std::string> autoValue;
+    std::vector<std::vector<ColType> > autoTypes;
+    std::vector<ColType> emptyType;
+
+    colnames.push_back(mZoneTable->getPrimaryKey());
     autoValue.push_back("");
+    autoTypes.push_back(emptyType);
 
-    // leave the zone_id to the index function of sqlite
+    // ----------------------------------------------
+    // zone_id update/insert statement
+    // using this expression example
+    /*
+        insert or replace into t_1 ("rowidx", "zone_id")
+             values (69,
+                   (select case
+                       when
+                   count(zone_id) = 0 then 0
+                       when
+                   (Select zone_id from t_1 where rowidx = 69) is null then max(zone_id) + 1
+                       else
+                   (Select zone_id from t_1 where rowidx = 69)
+                       end
+                       from t_1)
+               );
+     */
 
-    //if (!this->GetHaveMaxKeyRows())
-    {
-        std::string pk = mZoneTable->getPrimaryKey();
-        std::string tn = mZoneTable->getTableName();
-        std::stringstream sav;
-        sav << "(select case when "
-                << "(select zone_id from " << tn
-                  << " where " << pk << " = ? ) is null then max(zone_id) + 1"
-                << " else (select zone_id from " << tn
-                  << " where " << pk << " = ? ) end " << tn << ")";
+    colnames.push_back("zone_id");
+    std::vector<ColType> zoneTypes;
 
-        /*
-            insert or replace into t_1 ("rowidx", "zone_id")
-                 values (69,
-                       (select case when
-                        (Select zone_id from t_1 where rowidx = 69) is null then max(zone_id) + 1
-                                           else (Select zone_id from t_1 where rowidx = 69)
-                               end from t_1)
-                   );
-         */
+    std::string pk = mZoneTable->getPrimaryKey();
+    std::string tn = mZoneTable->getTableName();
+    std::stringstream sav;
+    sav << "(select case when count(zone_id) = 0 then 0"
+                    << " when (select zone_id from " << tn
+                          << " where " << pk << " = ? ) "
+                         << " is null then max(zone_id) + 1"
+                    << " else (select zone_id from " << tn
+                          << " where " << pk << " = ? )"
+                    << " end from " << tn << ")";
 
-        autoValue.push_back(sav.str());
-    }
+    autoValue.push_back(sav.str());
+    zoneTypes.push_back(otb::AttributeTable::ATTYPE_INT);
+    zoneTypes.push_back(otb::AttributeTable::ATTYPE_INT);
+    autoTypes.push_back(zoneTypes);
+
+    // ----------------------------------------------------------
 
     colnames.push_back("count");
     colnames.push_back("min");
@@ -426,15 +468,11 @@ void SumZonesFilter< TInputImage, TOutputImage >
         values.push_back(v);
     }
 
-    NMDebugAI(<< "setting these attributes ... " << std::endl);
-    for (int c=0; c < colnames.size(); ++c)
-    {
-        NMDebugAI( << colnames[c] << std::endl);
-    }
-
 	NMDebugAI(<< "updating zone table ..." << std::endl);
     mZoneTable->beginTransaction();
-    mZoneTable->prepareBulkSet(colnames, autoValue, true);
+    mZoneTable->prepareAutoBulkSet(colnames,
+                                   autoValue,
+                                   autoTypes, true);
 
 
     typename std::set<ZoneKeyType>::const_iterator zoneIt =

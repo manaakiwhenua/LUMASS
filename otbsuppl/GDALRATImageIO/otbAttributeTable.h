@@ -143,6 +143,9 @@ public:
 
     /// SQLite support functions
     TableCreateStatus createTable(std::string filename, std::string tag="");
+    void closeTable();
+
+    bool SetRowIDColName(const std::string& name);
 
     std::string getDbFileName() {return this->m_dbFileName;}
     std::string getTableName() {return this->m_tableName;}

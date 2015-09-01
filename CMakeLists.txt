@@ -248,13 +248,13 @@ message(STATUS "SQLite3 library: ${SQLITE3_LIBRARY}")
 # FIND TOKYO CABINET
 #====================================================================
 
-#find_package(TokyoCabinet)
-#if(NOT TCADB_FOUND)
-#  message(FATAL_ERROR "You have to install Tokyo Cabient prior to compiling LUMASS!")
-#endif()
+find_package(TokyoCabinet)
+if(NOT TCADB_FOUND)
+  message(FATAL_ERROR "You have to install Tokyo Cabient prior to compiling LUMASS!")
+endif()
 
-#message(STATUS "Tokyo Cabinet include dir: ${TCADB_INCLUDE_DIR}")
-#message(STATUS "Tokyo Cabinet library dir: ${TCADB_LIB_DIR}")
+message(STATUS "Tokyo Cabinet include dir: ${TCADB_INCLUDE_DIR}")
+message(STATUS "Tokyo Cabinet library dir: ${TCADB_LIB_DIR}")
 
 
 #====================================================================

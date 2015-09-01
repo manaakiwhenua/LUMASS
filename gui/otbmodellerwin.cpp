@@ -1608,40 +1608,7 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("/tmp/fileuPkNE5.db");
 
-    if (!db.open())
-    {
-        NMErr(ctxOtbModellerWin, << "Open database failed!" << endl);
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
-
-    // create a view of the table
-    //    QSqlQuery q("CREATE VIEW IF NOT EXISTS daitab AS SELECT * FROM nmtab where FTYPE = 'DAI'", db);
-    //    if (!q.isActive())
-    //    {
-    //        NMErr(ctxOtbModellerWin, "Create view failed!" << endl);
-    //        NMDebugCtx(ctxOtbModellerWin, << "done!");
-    //        return;
-    //    }
-
-    NMSqlTableModel* model = new NMSqlTableModel(this, db);
-    model->setTable("nmtab");
-    //model->setEditStrategy(QSqlTableModel::OnManualSubmit);
-    model->select();
-
-    NMSqlTableView* tabView = new NMSqlTableView(model, 0);
-    //tabView->setBaseFilter("FTYPE <> 'DAI'");
-
-    NMFastTrackSelectionModel* selModel = new NMFastTrackSelectionModel(model, this);
-    tabView->setSelectionModel(selModel);
-
-    //tabView->setModel(filter);
-    //tabView->resizeColumnsToContents();
-
-    tabView->show();
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

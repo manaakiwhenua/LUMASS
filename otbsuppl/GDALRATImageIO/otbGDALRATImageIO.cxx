@@ -2152,6 +2152,18 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     if (nrows == 0 || ncols == 0)
         return 0;
 
+    // establish, whether we need an extra rowidx or whether
+    // it is already included
+    bool bRowIdx = false;
+    for (int c=0; c < ncols; ++c)
+    {
+        if (::strcmp(rat->GetNameOfCol(c), "rowidx") == 0)
+        {
+            bRowIdx = true;
+            break;
+        }
+    }
+
     // copy gdal tab into otbAttributeTable
     std::string imgFN = this->m_FileName;
     std::string dbFN = imgFN;
@@ -2166,6 +2178,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     tag << iBand;
 
 	AttributeTable::Pointer otbTab = AttributeTable::New();
+    otbTab->SetRowIDColName("rowidx");
     switch(otbTab->createTable(dbFN, tag.str()))
     {
     case AttributeTable::ATCREATE_ERROR:
@@ -2227,20 +2240,32 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     }
 
     // store admin info about the cols to be read
-
-    colnames.push_back("rowidx");
-    coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
-    int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
-    int_cols.push_back(iptr);
-    colpos.push_back(0);
+    // check, whether we've got a 'rowidx' to be read
+    // or whether we let the db popluate it for us
+    if (!bRowIdx)
+    {
+        colnames.push_back("rowidx");
+        coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
+        int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
+        int_cols.push_back(iptr);
+        colpos.push_back(0);
+    }
 
 #else
     int chunksize = nrows;
-    colnames.push_back("rowidx");
+    if (!bRowIdx)
+    {
+        colnames.push_back("rowidx");
+    }
 #endif
 
     otbTab->beginTransaction();
-    otbTab->AddColumn(colnames[0], coltypes[0]);
+    int idxCorr = 0;
+    if (!bRowIdx)
+    {
+        otbTab->AddColumn(colnames[0], coltypes[0]);
+        idxCorr = 1;
+    }
 
     for (int c=0; c < ncols; ++c)
     {
@@ -2288,7 +2313,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 #endif
         // NOTE: with 'rowidx' we've got one addtional columnn
         // over the actual columns in the table
-        otbTab->AddColumn(colnames[c+1], coltypes[c+1]);
+        otbTab->AddColumn(colnames[c+idxCorr], coltypes[c+idxCorr]);
     }
     otbTab->endTransaction();
     otbTab->prepareBulkSet(colnames, true);
@@ -2310,13 +2335,14 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         // in the actual table, hence, we've got tcol
         // for accessing the correct column index stored in
         // colpos[]
-        for (int col=0, tcol=1; col < ncols; ++col, ++tcol)
+        int tcol = idxCorr;
+        for (int col=0; col < ncols; ++col, ++tcol)
         {
             gdaltype = rat->GetTypeOfCol(col);
 
             // populate the 'rowidx' column with
             // zero-based index
-            if (col == 0)
+            if (col == 0 && !bRowIdx)
             {
                 for (int r=s, ch=0; r < e; ++r, ++ch)
                 {
@@ -2402,28 +2428,34 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 #else
     // the old way - row by row
     std::vector< otb::AttributeTable::ColumnValue > colValues;
-    colValues.resize(ncols+1);
+    if (!bRowIdx)
+    {
+        colValues.resize(ncols+1);
+    }
 
     for (int r=0; r < nrows; ++r)
     {
-        colValues[0].type = AttributeTable::ATTYPE_INT;
-        colValues[0].ival = r;
+        if (!bRowIdx)
+        {
+            colValues[0].type = AttributeTable::ATTYPE_INT;
+            colValues[0].ival = r;
+        }
         for (int c=0; c < ncols; ++c)
         {
             gdaltype = rat->GetTypeOfCol(c);
             switch (gdaltype)
             {
             case GFT_Integer:
-                colValues[c+1].type = AttributeTable::ATTYPE_INT;
-                colValues[c+1].ival = rat->GetValueAsInt(r, c);
+                colValues[c+idxCorr].type = AttributeTable::ATTYPE_INT;
+                colValues[c+idxCorr].ival = rat->GetValueAsInt(r, c);
                 break;
             case GFT_Real:
-                colValues[c+1].type = AttributeTable::ATTYPE_DOUBLE;
-                colValues[c+1].dval = rat->GetValueAsDouble(r, c);
+                colValues[c+idxCorr].type = AttributeTable::ATTYPE_DOUBLE;
+                colValues[c+idxCorr].dval = rat->GetValueAsDouble(r, c);
                 break;
             case GFT_String:
-                colValues[c+1].type = AttributeTable::ATTYPE_STRING;
-                colValues[c+1].tval = const_cast<char*>(rat->GetValueAsString(r, c));
+                colValues[c+idxCorr].type = AttributeTable::ATTYPE_STRING;
+                colValues[c+idxCorr].tval = const_cast<char*>(rat->GetValueAsString(r, c));
                 break;
             default:
                 continue;
@@ -2602,10 +2634,10 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
     // a table with at least 256 rows, otherwise ERDAS Imagine wouldn't like it
     GDALDriverH driver = GDALGetDatasetDriver(m_Dataset->GetDataSet());
     std::string dsn = GDALGetDriverShortName(driver);
-    if (dsn.compare("HFA") == 0 && this->m_ComponentType == otb::ImageIOBase::UCHAR)
-    {
-        rowcount = rowcount < 256 ? 256 : rowcount;
-    }
+//    if (dsn.compare("HFA") == 0 && this->m_ComponentType == otb::ImageIOBase::UCHAR)
+//    {
+//        rowcount = rowcount < 256 ? 256 : rowcount;
+//    }
 
     gdaltab->SetRowCount(rowcount);
     std::vector<std::string> colnames;
@@ -2613,7 +2645,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 	CPLErr err;
 
 	// add all but the 'rowidx' column to the table
-	for (int col = 1; col < tab->GetNumCols(); ++col)
+    for (int col = 0; col < tab->GetNumCols(); ++col)
 	{
 		GDALRATFieldType type;
 		switch(tab->GetColumnType(col))
@@ -2648,7 +2680,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
     tab->prepareBulkGet(colnames, "");
 
     std::vector< otb::AttributeTable::ColumnValue > values;
-    values.resize(tab->GetNumCols()-1);
+    values.resize(tab->GetNumCols());
 
     int intval;
     double dblval;
@@ -2662,7 +2694,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
                             << " of 0-" << tab->GetNumRows()-1 << "!");
             break;
         }
-		for (int col=1; col < tab->GetNumCols(); ++col)
+        for (int col=0; col < tab->GetNumCols(); ++col)
 		{
             //			itkDebugMacro(<< "Setting value: col=" << col
             //					<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
@@ -2670,14 +2702,14 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 			{
 			case otb::AttributeTable::ATTYPE_INT:
                 //intval = ::atoi(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col-1, values[col-1].ival);//(int)tab->GetIntValue(col, row));
+                gdaltab->SetValue(row, col, values[col].ival);//(int)tab->GetIntValue(col, row));
                 break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
                 //dblval = ::atof(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col-1, values[col-1].dval); //tab->GetDblValue(col, row));
+                gdaltab->SetValue(row, col, values[col].dval); //tab->GetDblValue(col, row));
                 break;
 			case otb::AttributeTable::ATTYPE_STRING:
-                gdaltab->SetValue(row, col-1, values[col-1].tval); //tab->GetStrValue(col, row).c_str());
+                gdaltab->SetValue(row, col, values[col].tval); //tab->GetStrValue(col, row).c_str());
 				break;
 			default:
                 delete gdaltab;

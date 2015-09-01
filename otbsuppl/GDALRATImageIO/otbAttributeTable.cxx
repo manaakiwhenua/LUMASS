@@ -486,7 +486,7 @@ AttributeTable::prepareAutoBulkSet(const std::vector<std::string>& colNames,
             return false;
         }
 
-        if (i < autoValue.size() && !autoValue.at(i).empty() && i < autoTypes.size())
+        if (i < autoValue.size() && autoValue.at(i) != "" && i < autoTypes.size())
         {
             std::string av = autoValue.at(i);
             size_t pos = 0;
@@ -2273,6 +2273,20 @@ AttributeTable::valid(const std::string& sColName, int idx)
 	return colidx;
 }
 
+bool
+AttributeTable::SetRowIDColName(const std::string& name)
+{
+    // only makes sense before creation of the data base or
+    // reading another one from disk
+    if (m_db == 0)
+    {
+        this->m_idColName = name;
+        return true;
+    }
+
+    return false;
+}
+
 AttributeTable::TableCreateStatus
 AttributeTable::createTable(std::string filename, std::string tag)
 {
@@ -2280,17 +2294,16 @@ AttributeTable::createTable(std::string filename, std::string tag)
 
     NMDebugCtx(_ctxotbtab, << "...");
 
-    //    if (filename.empty())
-    //    {
-    //        m_dbFileName = "";
-    //        //        m_dbFileName = std::tmpnam(0);
-    //        //        m_dbFileName += ".ldb";
-    //    }
-    //    else
-    //    {
-    //        m_dbFileName = filename;
-    //    }
-    m_dbFileName = filename;
+    if (filename.empty())
+    {
+        m_dbFileName = std::tmpnam(0);
+        m_dbFileName += ".ldb";
+    }
+    else
+    {
+        m_dbFileName = filename;
+    }
+    //m_dbFileName = filename;
 
     m_idColName = "";
     NMDebugAI(<< "using '" << m_dbFileName
@@ -2333,18 +2346,25 @@ AttributeTable::createTable(std::string filename, std::string tag)
     std::stringstream ssql;
     ssql.str("");
 
-    std::string fullname = m_dbFileName;
-    m_tableName = basename(const_cast<char*>(fullname.c_str()));
-    size_t pos = m_tableName.find_last_of('.');
-    if (pos > 0)
+    if (!m_dbFileName.empty())
     {
-        m_tableName = m_tableName.substr(0, pos);
+        std::string fullname = m_dbFileName;
+        m_tableName = basename(const_cast<char*>(fullname.c_str()));
+        size_t pos = m_tableName.find_last_of('.');
+        if (pos > 0)
+        {
+            m_tableName = m_tableName.substr(0, pos);
+        }
+        std::locale loc;
+        if (std::isdigit(m_tableName[0], loc))
+        {
+            std::string prefix = "nm_";
+            m_tableName = prefix + m_tableName;
+        }
     }
-    std::locale loc;
-    if (std::isdigit(m_tableName[0], loc))
+    else
     {
-        std::string prefix = "nm_";
-        m_tableName = prefix + m_tableName;
+        m_tableName = "nm_tab";
     }
 
     if (!tag.empty())
@@ -2607,38 +2627,108 @@ AttributeTable::AttributeTable()
     //this->createTable("");
 }
 
-// clean up
-AttributeTable::~AttributeTable()
+void
+AttributeTable::closeTable()
 {
-    //sqlite3_finalize(m_StmtAddColl);
-    //sqlite3_finalize(m_StmtUpdate);
+    // clean up
+
     sqlite3_finalize(m_StmtBegin);
     sqlite3_finalize(m_StmtEnd);
     sqlite3_finalize(m_StmtRollback);
     sqlite3_finalize(m_StmtBulkSet);
     sqlite3_finalize(m_StmtBulkGet);
+    sqlite3_finalize(m_StmtColIter);
 
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {
         sqlite3_finalize(m_vStmtUpdate.at(v));
-        sqlite3_finalize(m_vStmtSelect.at(v));
     }
+
+    for (int s=0; s < m_vStmtSelect.size(); ++s)
+    {
+        sqlite3_finalize(m_vStmtSelect.at(s));
+    }
+
+    for (int v=0; v < m_mStringCols.size(); ++v)
+        delete m_mStringCols[v];
+
+    for (int v=0; v < m_mIntCols.size(); ++v)
+        delete m_mIntCols[v];
+
+    for (int v=0; v < m_mDoubleCols.size(); ++v)
+        delete m_mDoubleCols[v];
 
     if (m_db != 0)
     {
         ::sqlite3_close(m_db);
     }
+
+    // and reset
     m_db = 0;
 
+    m_mDoubleCols.clear();;
+    m_mIntCols.clear();
+    m_mStringCols.clear();
+    m_vTypes.clear();
+    m_vIndexNames.clear();
+    m_vNames.clear();
+    m_vPosition.clear();
+    m_vTypesBulkGet.clear();
+    m_vTypesBulkSet.clear();
+    m_vStmtUpdate.clear();
+    m_vStmtSelect.clear();
 
-	for (int v=0; v < m_mStringCols.size(); ++v)
-		delete m_mStringCols[v];
+    m_iNumRows = 0;
+    m_iBand = 1;
+    m_iNodata = -std::numeric_limits<long>::max();
+    m_dNodata = -std::numeric_limits<double>::max();
+    m_sNodata = "NULL";
+    m_db = 0;
+    m_StmtBegin = 0;
+    m_StmtEnd = 0;
+    m_StmtRollback = 0;
+    m_StmtBulkSet = 0;
+    m_StmtBulkGet = 0;
+    m_StmtColIter = 0;
+    m_CurPrepStmt = "";
+    m_idColName = "";
+    m_tableName = "";
+}
 
-	for (int v=0; v < m_mIntCols.size(); ++v)
-		delete m_mIntCols[v];
+// clean up
+AttributeTable::~AttributeTable()
+{
+    this->closeTable();
 
-	for (int v=0; v < m_mDoubleCols.size(); ++v)
-		delete m_mDoubleCols[v];
+//    //sqlite3_finalize(m_StmtAddColl);
+//    //sqlite3_finalize(m_StmtUpdate);
+//    sqlite3_finalize(m_StmtBegin);
+//    sqlite3_finalize(m_StmtEnd);
+//    sqlite3_finalize(m_StmtRollback);
+//    sqlite3_finalize(m_StmtBulkSet);
+//    sqlite3_finalize(m_StmtBulkGet);
+
+//    for (int v=0; v < m_vStmtUpdate.size(); ++v)
+//    {
+//        sqlite3_finalize(m_vStmtUpdate.at(v));
+//        sqlite3_finalize(m_vStmtSelect.at(v));
+//    }
+
+//    if (m_db != 0)
+//    {
+//        ::sqlite3_close(m_db);
+//    }
+//    m_db = 0;
+
+
+//	for (int v=0; v < m_mStringCols.size(); ++v)
+//		delete m_mStringCols[v];
+
+//	for (int v=0; v < m_mIntCols.size(); ++v)
+//		delete m_mIntCols[v];
+
+//	for (int v=0; v < m_mDoubleCols.size(); ++v)
+//		delete m_mDoubleCols[v];
 }
 
 

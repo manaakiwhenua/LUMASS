@@ -126,12 +126,21 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	if (mValueImage.IsNull())
 	{
         itkDebugMacro(<< "Just summarising the zone imgae itself!");
-        NMDebugAI(<< "Just summarising the zone imgae itself!" << std::endl);
+        NMDebugAI(<< "Just summarising the zone imgae itself..." << std::endl);
 	}
+    else
+    {
+        NMDebugAI(<< "Summarise values per zone..." << std::endl);
+    }
+
+    NMDebugAI( << "  IgnoreNodataValues = " << m_IgnoreNodataValue << std::endl);
+    NMDebugAI( << "  NodataValue        = " << m_NodataValue << std::endl);
+    NMDebugAI( << "  HaveMaxKeyRows     = " << m_HaveMaxKeyRows << std::endl);
 
 	unsigned int numThreads = this->GetNumberOfThreads();
 
     // create the zone table (db)
+    NMDebugAI( << "Loading / creating the zone table ..." << std::endl);
     if (mZoneTable->createTable(m_ZoneTableFileName) == otb::AttributeTable::ATCREATE_ERROR)
     {
         itkExceptionMacro(<< "Failed to create the zone table!");
@@ -147,34 +156,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
 			mThreadValueStore.push_back(ZoneMapType());
 		}
 
-		NMDebugAI(<< "creating new attribute table ..." << std::endl);
-		//mZoneTable = AttributeTable::New();
-
+        NMDebugAI(<< "Adding columns to zone table ..." << std::endl);
         mZoneTable->beginTransaction();
-        //mZoneTable->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
-
         mZoneTable->AddColumn("zone_id", AttributeTable::ATTYPE_INT);
-
-
 		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("max", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("mean", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("stddev", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
-		//mZoneTable->AddColumn("sum2", AttributeTable::ATTYPE_DOUBLE);
         mZoneTable->endTransaction();
-
-//        if (!m_HaveMaxKeyRows)
-//        {
-//            std::vector<std::string> zidx;
-//            zidx.push_back("zone_id");
-//            if (!mZoneTable->createIndex(zidx, true))
-//            {
-//                itkExceptionMacro(<< "Failed to create unique index on zone field!");
-//                return;
-//            }
-//        }
 
 		mStreamingProc = true;
 	}
@@ -362,6 +353,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
         rv.type = otb::AttributeTable::ATTYPE_INT;
         zv.type = rv.type;
         zv.ival = -1;
+        setvals.push_back(rv);
+        setvals.push_back(zv);
 
         mZoneTable->prepareBulkSet(setnames);
 
@@ -409,7 +402,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
     // ----------------------------------------------
     // zone_id update/insert statement
-    // using this expression example
+    // using this expression example (HaveMaxKeyRows = 0)
     /*
         insert or replace into t_1 ("rowidx", "zone_id")
              values (69,
@@ -424,6 +417,13 @@ void SumZonesFilter< TInputImage, TOutputImage >
                        from t_1)
                );
      */
+     // or this one ... (HaveMaxKeyRows = 1)
+    /*
+        insert or replace into t_1 ("rowidx", "zone_id") values (6,
+            (select case when
+                (select zone_id from t_1 where rowidx = 6)  = -1 then max(zone_id) + 1
+                        else (select zone_id from t_1 where rowidx = 6) end from t_1));
+    */
 
     colnames.push_back("zone_id");
     std::vector<ColType> zoneTypes;
@@ -431,13 +431,28 @@ void SumZonesFilter< TInputImage, TOutputImage >
     std::string pk = mZoneTable->getPrimaryKey();
     std::string tn = mZoneTable->getTableName();
     std::stringstream sav;
-    sav << "(select case when count(zone_id) = 0 then 0"
-                    << " when (select zone_id from " << tn
-                          << " where " << pk << " = ? ) "
-                         << " is null then max(zone_id) + 1"
-                    << " else (select zone_id from " << tn
-                          << " where " << pk << " = ? )"
-                    << " end from " << tn << ")";
+
+    if (this->GetHaveMaxKeyRows())
+    {
+        sav << "(select case "
+             << "when "
+              << "(select zone_id from " << tn
+               << " where " << pk << " = ? )"
+               << " = -1 then max(zone_id) + 1 "
+             << "else "
+              << "(select zone_id from " << tn
+               << " where " << pk << " = ? ) end from " << tn << ")";
+    }
+    else
+    {
+        sav << "(select case when count(zone_id) = 0 then 0"
+                        << " when (select zone_id from " << tn
+                              << " where " << pk << " = ? ) "
+                             << " is null then max(zone_id) + 1"
+                        << " else (select zone_id from " << tn
+                              << " where " << pk << " = ? )"
+                        << " end from " << tn << ")";
+    }
 
     autoValue.push_back(sav.str());
     zoneTypes.push_back(otb::AttributeTable::ATTYPE_INT);
@@ -543,6 +558,11 @@ void SumZonesFilter< TInputImage, TOutputImage >
 {
 	NMDebugCtx(ctx, << "...");
 	mStreamingProc = false;
+    mZoneTable->closeTable();
+    mZoneTable = 0;
+
+
+    mZones.clear();
 	mZoneTable = AttributeTable::New();
 
 	Superclass::ResetPipeline();

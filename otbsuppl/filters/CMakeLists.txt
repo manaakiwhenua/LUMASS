@@ -11,6 +11,7 @@ INCLUDE_DIRECTORIES(
         ${utils_SOURCE_DIR}
 	${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
 	${lumass_SOURCE_DIR}/utils/ITK
+        ${TCADB_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -19,6 +20,7 @@ LINK_DIRECTORIES(
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/lib
+        ${TCADB_LIB_DIR}
 )
 
 file(GLOB OTBSUPPL_FILTERS
@@ -48,11 +50,11 @@ set_target_properties(OTBSupplFilters PROPERTIES
 generate_export_header(OTBSupplFilters)
 
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
-	target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO)
+        target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO tokyocabinet)
 else()
 	target_link_libraries(OTBSupplFilters OTBCommon OTBIOGDAL 
 	OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase 
-	OTBMathParser OTBStreaming)
+        OTBMathParser OTBStreaming tokyocabinet)
 endif()
 
 #set_property(TARGET OTBSupplFilters PROPERTY POSITION_INDEPENDENT_CODE 1)

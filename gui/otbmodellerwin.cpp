@@ -222,6 +222,12 @@
 #include <QSqlQuery>
 #include "NMSqlTableModel.h"
 
+#include "tcutil.h"
+#include "tchdb.h"
+#include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
+
 //#include "valgrind/callgrind.h"
 
 class NMMdiSubWindow : public QMdiSubWindow
@@ -1608,7 +1614,51 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+    TCHDB* hdb;
+    int ecode;
+    char* key, *value;
 
+    hdb = tchdbnew();
+
+    std::string dbName = "/home/alex/garage/testing/hdb.tch";
+
+    if (!tchdbopen(hdb, dbName.c_str(), HDBOWRITER | HDBOCREAT))
+    {
+        ecode = tchdbecode(hdb);
+        NMDebugAI(<< "ERROR: " << tchdberrmsg(ecode) << std::endl);
+    }
+
+    int st = std::time(0);
+
+    ::srand(::time(NULL));
+
+
+    NMDebugAI(<< "storing stuff ..." << std::endl);
+    // store records
+    for (int i=0; i < 10000000; ++i)
+    {
+        int64_t v = (int64_t)(i * rand() % 1000000);
+
+        if (!tchdbputkeep(hdb, static_cast<void*>(&v), sizeof(int64_t),
+                     static_cast<void*>(&v), sizeof(int64_t)))
+        {
+            //            ecode = tchdbecode(hdb);
+            //            NMDebugAI(<< "ERROR storing value: "
+            //                      << tchdberrmsg(ecode) << std::endl);
+        }
+    }
+    NMDebug(<< std::endl);
+
+    int et = std::time(0);
+    int dur = (et-st);
+
+    NMDebugAI(<< "storing took " << dur << " time" << std::endl);
+
+    uint64_t nrows = tchdbrnum(hdb);
+
+    NMDebugAI( << "stored " << nrows << " key-value pairs in the db!" << std::endl);
+
+    tchdbclose(hdb);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

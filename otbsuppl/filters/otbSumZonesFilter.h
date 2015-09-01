@@ -168,7 +168,8 @@ private:
 	  std::set<ZoneKeyType> mZones;
           typename std::vector<ZoneMapType> mThreadValueStore;
 
-      static const std::string ctx;
+
+          static const std::string ctx;
 
 };
 

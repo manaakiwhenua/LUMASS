@@ -95,6 +95,15 @@ template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::SetZoneTableFileName(const std::string &tableFileName)
 {
+    if (tableFileName.empty())
+    {
+        m_dropTmpDBs = true;
+    }
+    else
+    {
+        m_dropTmpDBs = false;
+    }
+
     m_ZoneTableFileName = tableFileName;
     this->ResetPipeline();
 }
@@ -104,7 +113,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::SetHaveMaxKeyRows(bool maxkeyrows)
 {
     m_HaveMaxKeyRows = maxkeyrows;
-    this->ResetPipeline();
+    //this->ResetPipeline();
 }
 
 template< class TInputImage, class TOutputImage >
@@ -112,7 +121,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::SetIgnoreNodataValue(bool ignore)
 {
     m_IgnoreNodataValue = ignore;
-    this->ResetPipeline();
+    //this->ResetPipeline();
 }
 
 template< class TInputImage, class TOutputImage >
@@ -120,7 +129,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 ::SetNodataValue(InputPixelType nodata)
 {
     m_NodataValue = nodata;
-    this->ResetPipeline();
+    //this->ResetPipeline();
 }
 
 template< class TInputImage, class TOutputImage >
@@ -158,10 +167,15 @@ void SumZonesFilter< TInputImage, TOutputImage >
         return;
     }
 
+
     if (!mStreamingProc)
     {
         // if we're using a temp data base, we want to know the name for
         // to open the same table again during sequential processing
+        if (m_ZoneTableFileName.empty())
+        {
+            m_dropTmpDBs = true;
+        }
         m_ZoneTableFileName = mZoneTable->getDbFileName();
         size_t pos = m_ZoneTableFileName.find_last_of('.');
         if (pos != std::string::npos)
@@ -441,8 +455,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
                 params[3] += mapIt->second[3];
                 // count
                 params[4] += mapIt->second[4];
-                //zone_id
-                params[5] = mapIt->second[5];
+                // we keep the already asigned zone_id
+                //params[5] = mapIt->second[5];
 
                 // ------------------------------------------------
                 // put data into key-value store
@@ -472,8 +486,11 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		}
 	}
 	NMDebug(<< std::endl);
-    NMDebugAI(<< "added " << newzones << " new zones, which gives total of "
-              << numzones+newzones << " ..."<< std::endl;)
+    NMDebugAI(<< "Merged threads ... " << std::endl);
+    NMDebugAI(<< "... new zones  = " << newzones << std::endl);
+    NMDebugAI(<< "... num zones  = " << numzones+newzones << std::endl);
+    NMDebugAI(<< "... maxKey     = " << maxKey << std::endl);
+    NMDebugAI(<< "... NextZoneId = " << m_NextZoneId << std::endl);
 
     // =============================================================
     // BUMPING UP THE NUMBER OF ROWS IN THE DB (if required)
@@ -571,27 +588,35 @@ void SumZonesFilter< TInputImage, TOutputImage >
         // skip if just a fill record (i.e. when HaveMaxKeyRows = true)
         if (zoneRec[5] == -1)
         {
-            continue;
+            values[0].ival = zone;
+            values[1].ival = -1;
+            values[2].ival = 0;
+            for (int v=3; v < 8; ++v)
+            {
+                values[v].dval = 0.0;
+            }
         }
+        else
+        {
+            // mean = sum_Zone / (count > 0 ? count : 1);
+            values[5].dval = zoneRec[2] / ((double)zoneRec[4] > 0 ?
+                                           (double)zoneRec[4] : 1);
+            // stddev =
+            values[6].dval = values[5].dval != zoneRec[2]
+                    ? ::sqrt( (zoneRec[3] / (double)zoneRec[4])
+                              - (values[5].dval * values[5].dval) )
+                    : 0;
 
-        // mean = sum_Zone / (count > 0 ? count : 1);
-        values[5].dval = zoneRec[2] / ((double)zoneRec[4] > 0 ?
-                                       (double)zoneRec[4] : 1);
-        // stddev =
-        values[6].dval = values[5].dval != zoneRec[2]
-                ? ::sqrt( (zoneRec[3] / (double)zoneRec[4])
-                          - (values[5].dval * values[5].dval) )
-                : 0;
 
-
-        values[0].ival = zone;          // rowidx
-        values[1].ival = zoneRec[5];    // zone_id
-        values[2].ival = zoneRec[4];    // count
-        values[3].dval = zoneRec[0];    // min;
-        values[4].dval = zoneRec[1];    // max;
-        //values[5].dval = mean;
-        //values[6].dval = sd;
-        values[7].dval = zoneRec[2];    // sum_Zone;
+            values[0].ival = zone;          // rowidx
+            values[1].ival = zoneRec[5];    // zone_id
+            values[2].ival = zoneRec[4];    // count
+            values[3].dval = zoneRec[0];    // min;
+            values[4].dval = zoneRec[1];    // max;
+            //values[5].dval = mean;
+            //values[6].dval = sd;
+            values[7].dval = zoneRec[2];    // sum_Zone;
+        }
 
         mZoneTable->doBulkSet(values);
 
@@ -610,13 +635,24 @@ void SumZonesFilter< TInputImage, TOutputImage >
 {
 	NMDebugCtx(ctx, << "...");
 	mStreamingProc = false;
-    mZoneTable->closeTable();
+
+    if (m_dropTmpDBs)
+    {
+        mZoneTable->closeTable(true);
+    }
+    else
+    {
+        mZoneTable->closeTable();
+    }
     mZoneTable = 0;
     m_NextZoneId = 0;
 
     if (m_HDB)
     {
-        tchdbvanish(m_HDB);
+        if (m_dropTmpDBs)
+        {
+            tchdbvanish(m_HDB);
+        }
         tchdbclose(m_HDB);
     }
 

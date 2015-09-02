@@ -191,7 +191,8 @@ NMQtOtbAttributeTableModel::setData(const QModelIndex& index,
 		{
 		case QVariant::Char:
 		case QVariant::Int:
-			mTable->SetValue(index.column(), index.row(), (long)value.toInt(&bok));
+            mTable->SetValue(index.column(), index.row(),
+                             value.toLongLong(&bok));
 			break;
 
 		case QVariant::Double:

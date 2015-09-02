@@ -166,6 +166,7 @@ private:
           bool m_HaveMaxKeyRows;        // DEFAULT: false
           bool m_IgnoreNodataValue;     // DEFAULT: true
           std::string m_ZoneTableFileName; // DEFAULT: ""
+          bool m_dropTmpDBs;
 
           bool mStreamingProc;
           InputPixelType m_NodataValue;

@@ -2686,7 +2686,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
     double dblval;
     char* strval;
 	// copy values row by row
-	for (long row=0; row < tab->GetNumRows(); ++row)
+    for (long long row=0; row < tab->GetNumRows(); ++row)
 	{
         if (!tab->doBulkGet(values))
         {
@@ -2702,7 +2702,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 			{
 			case otb::AttributeTable::ATTYPE_INT:
                 //intval = ::atoi(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col, values[col].ival);//(int)tab->GetIntValue(col, row));
+                gdaltab->SetValue(row, col, static_cast<int>(values[col].ival));//(int)tab->GetIntValue(col, row));
                 break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
                 //dblval = ::atof(values.at(col-1).c_str());

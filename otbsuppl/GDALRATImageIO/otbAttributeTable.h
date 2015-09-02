@@ -81,9 +81,9 @@ public:
         TableColumnType type;
         union
         {
-            int    ival;
-            double dval;
-            char*  tval;
+            long long ival;
+            double    dval;
+            char*     tval;
         };
     } ColumnValue;
 
@@ -92,15 +92,15 @@ public:
 
 	// getting info about the table
 	int GetNumCols();
-	int GetNumRows();
+    long long GetNumRows();
 	int ColumnExists(const std::string& sColName);
 
 	std::string GetColumnName(int idx);
 	TableColumnType GetColumnType(int idx);
 
-	void* GetColumnPointer(int idx);
+    //void* GetColumnPointer(int idx);
 
-	long GetRowIdx(const std::string& column, void* value);
+    long long GetRowIdx(const std::string& column, void* value);
 
 	//long GetRowIdx(const std::string& column, const double& value);
 	//long GetRowIdx(const std::string& column, const long& value);
@@ -109,24 +109,24 @@ public:
 	// managing the attribute table's content
     bool AddColumn(const std::string& sColName, TableColumnType type,
                    const std::string& sColConstraint="");
-	bool AddRow();
-	bool AddRows(long numRows);
-	void SetValue(const std::string& sColName, int idx, double value);
-	void SetValue(const std::string& sColName, int idx, long value);
-	void SetValue(const std::string& sColName, int idx, std::string value);
-	double GetDblValue(const std::string& sColName, int idx);
-	long GetIntValue(const std::string& sColName, int idx);
-	std::string GetStrValue(const std::string& sColName, int idx);
+    //bool AddRow();
+    //bool AddRows(long long numRows);
+    void SetValue(const std::string& sColName, long long idx, double value);
+    void SetValue(const std::string& sColName, long long idx, long long value);
+    void SetValue(const std::string& sColName, long long idx, std::string value);
+    double GetDblValue(const std::string& sColName, long long idx);
+    long long GetIntValue(const std::string& sColName, long long idx);
+    std::string GetStrValue(const std::string& sColName, long long idx);
 
-	void SetValue(int col, int row, double value);
-	void SetValue(int col, int row, long value);
-	void SetValue(int col, int row, std::string value);
+    void SetValue(int col, long long row, double value);
+    void SetValue(int col, long long row, long long value);
+    void SetValue(int col, long long row, std::string value);
 
 	void SetColumnName(int col, const std::string& name);
 
-	double GetDblValue(int col, int row);
-	long GetIntValue(int col, int row);
-	std::string GetStrValue(int col, int row);
+    double GetDblValue(int col, long long row);
+    long long GetIntValue(int col, long long row);
+    std::string GetStrValue(int col, long long row);
 
 	bool RemoveColumn(int col);
 	bool RemoveColumn(const std::string& name);
@@ -143,8 +143,7 @@ public:
 
     /// SQLite support functions
     TableCreateStatus createTable(std::string filename, std::string tag="");
-    void closeTable();
-
+    void closeTable(bool drop=false);
     bool SetRowIDColName(const std::string& name);
 
     std::string getDbFileName() {return this->m_dbFileName;}
@@ -167,9 +166,9 @@ public:
                       std::vector< char** >& chrVals,
                       std::vector< int >& colpos,
                       const int & chunkrow,
-                      const int &row=-1);
+                      const long long &row=-1);
 
-    bool doBulkSet(std::vector< ColumnValue >& values, const int& row=-1);
+    bool doBulkSet(std::vector< ColumnValue >& values, const long long& row=-1);
 
     bool doBulkGet(std::vector< ColumnValue >& values);
     bool beginTransaction();
@@ -180,9 +179,9 @@ public:
     /// FAST INLINE ACCESS TO COLUMN VALUES
     bool prepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);
 
-    double nextDoubleValue(const int& row)
+    double nextDoubleValue(const long long& row)
     {
-        sqlite3_bind_int(m_StmtColIter, 1, row);
+        sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
         {
             sqlite3_reset(m_StmtColIter);
@@ -195,23 +194,23 @@ public:
 
     }
 
-    int nextIntValue(const int& row)
+    long long nextIntValue(const long long& row)
     {
-        sqlite3_bind_int(m_StmtColIter, 1, row);
+        sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
         {
             sqlite3_reset(m_StmtColIter);
             return m_iNodata;
         }
-        int v = sqlite3_column_int(m_StmtColIter, 0);
+        int v = sqlite3_column_int64(m_StmtColIter, 0);
         sqlite3_reset(m_StmtColIter);
 
         return v;
     }
 
-    const unsigned char* nextTextValue(const int& row)
+    const unsigned char* nextTextValue(const long long& row)
     {
-        sqlite3_bind_int(m_StmtColIter, 1, row);
+        sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
         {
             sqlite3_reset(m_StmtColIter);
@@ -226,13 +225,25 @@ public:
 
 protected:
 	AttributeTable();
-	virtual
-	~AttributeTable();
-
+    virtual ~AttributeTable();
 
     /*! SQLite foundation of otbAttributeTable
      *
      */
+
+    bool dropTable(const std::string& tablename="");
+    void resetTableAdmin();
+    void disconnectDB();
+    inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
+    inline void sqliteStepCheck(const int& rc);
+
+    //    inline int getSqlIntValue(const std::string& col, int row);
+    //    inline double getSqlDblValue(const std::string& col, int row);
+    //    inline std::string getSqlStrValue(const std::string& col, int row);
+    //    inline void setSqlValue(const std::string& col, int row);
+
+
+
     sqlite3* m_db;
     std::string m_dbFileName;
     std::string m_tableName;
@@ -254,17 +265,6 @@ protected:
     sqlite3_stmt* m_StmtRollback;
 
     const char* m_CurPrepStmt;
-
-    inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
-    inline void sqliteStepCheck(const int& rc);
-
-    //    inline int getSqlIntValue(const std::string& col, int row);
-    //    inline double getSqlDblValue(const std::string& col, int row);
-    //    inline std::string getSqlStrValue(const std::string& col, int row);
-    //    inline void setSqlValue(const std::string& col, int row);
-
-
-
 
 	// admin vectors holding header infos about columns
 
@@ -299,7 +299,7 @@ protected:
 	std::vector<std::vector<double>* > m_mDoubleCols;
 
 
-	int m_iNumRows;
+    long long m_iNumRows;
 	std::string m_sNodata;
 	long m_iNodata;
 	double m_dNodata;

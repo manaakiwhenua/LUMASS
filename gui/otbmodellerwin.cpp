@@ -222,6 +222,7 @@
 #include <QSqlQuery>
 #include "NMSqlTableModel.h"
 
+// TOKYO CABINET
 #include "tcutil.h"
 #include "tchdb.h"
 #include <stdlib.h>
@@ -1619,6 +1620,7 @@ void OtbModellerWin::test()
     char* key, *value;
 
     hdb = tchdbnew();
+    //tchdbsetcache(hdb, 1000000);
 
     std::string dbName = "/home/alex/garage/testing/hdb.tch";
 
@@ -1628,37 +1630,69 @@ void OtbModellerWin::test()
         NMDebugAI(<< "ERROR: " << tchdberrmsg(ecode) << std::endl);
     }
 
-    int st = std::time(0);
+    time_t start, end;
+    time(&start);
 
     ::srand(::time(NULL));
 
+//    int p0 = 0;
+//    int p1 = sizeof(double);
+//    int p2 = 2 * sizeof(double);
+//    int p3 = 3 * sizeof(double);
+//    int p4 = 4 * sizeof(double);
+//    int p5 = p4 + sizeof(long long);
+//    int pLen = p5 + sizeof(long long);
+
+//    char* params = new char(pLen);
+
+//    *static_cast<double*>(params+p0) = itk::NumericTraits<double>::max();
+//    *static_cast<double*>(params+p1) = itk::NumericTraits<double>::NonpositiveMin();
+//    *static_cast<long long*>(params+p5) = -1;
+
+    std::vector<double> params(5,0);
 
     NMDebugAI(<< "storing stuff ..." << std::endl);
     // store records
     for (int i=0; i < 10000000; ++i)
     {
-        int64_t v = (int64_t)(i * rand() % 1000000);
-
-        if (!tchdbputkeep(hdb, static_cast<void*>(&v), sizeof(int64_t),
-                     static_cast<void*>(&v), sizeof(int64_t)))
+        for (int p=0; p < 5; ++p)
         {
-            //            ecode = tchdbecode(hdb);
-            //            NMDebugAI(<< "ERROR storing value: "
-            //                      << tchdberrmsg(ecode) << std::endl);
+            params[p] = rand() % 1000;
+        }
+
+        if (!tchdbput(hdb, static_cast<void*>(&i), sizeof(int),
+                     static_cast<void*>(&params[0]), sizeof(double)*5))
+        {
+                        ecode = tchdbecode(hdb);
+                        NMDebugAI(<< "ERROR storing value: "
+                                  << tchdberrmsg(ecode) << std::endl);
         }
     }
     NMDebug(<< std::endl);
 
-    int et = std::time(0);
-    int dur = (et-st);
+    NMDebugAI(<< "reading stuff ..." << std::endl);
 
-    NMDebugAI(<< "storing took " << dur << " time" << std::endl);
+    std::vector<double> pdout(5,0);
+    unsigned long long nrecs = tchdbrnum(hdb);
+    for (int r=0; r < nrecs; ++r)
+    {
+        int ret = tchdbget3(hdb, static_cast<void*>(&r), sizeof(int),
+                            static_cast<void*>(&pdout[0]), sizeof(double)*5);
 
-    uint64_t nrows = tchdbrnum(hdb);
+        //NMDebugAI( << "");
+        for (int e=0; e < 5; ++e)
+        {
+           double out = pdout[e];
+        }
+        //NMDebug(<< std::endl);
 
-    NMDebugAI( << "stored " << nrows << " key-value pairs in the db!" << std::endl);
+    }
 
     tchdbclose(hdb);
+    time(&end);
+    double dur = difftime(start, end);
+
+    NMDebugAI(<< "this took " << dur << " time" << std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

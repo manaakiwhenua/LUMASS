@@ -27,6 +27,9 @@
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
+// TOKYO CABINET
+#include "tchdb.h"
+
 #include "otbsupplfilters_export.h"
 
 namespace otb
@@ -88,7 +91,7 @@ public:
 	  typedef typename InputImageType::SpacingType  InputImageSpacingType;
 	  typedef typename OutputImageType::SpacingType OutputImageSpacingType;
 
-      typedef long ZoneKeyType;
+          typedef long long ZoneKeyType;
 
 	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
 	  typedef typename ZoneMapType::iterator 						 ZoneMapTypeIterator;
@@ -159,6 +162,7 @@ private:
 	  // this image contains the values to be summarised for the individual zones
 	  InputImagePointerType mValueImage;
 
+          ZoneKeyType m_NextZoneId;
           bool m_HaveMaxKeyRows;        // DEFAULT: false
           bool m_IgnoreNodataValue;     // DEFAULT: true
           std::string m_ZoneTableFileName; // DEFAULT: ""
@@ -168,6 +172,8 @@ private:
 	  std::set<ZoneKeyType> mZones;
           typename std::vector<ZoneMapType> mThreadValueStore;
 
+          TCHDB* m_HDB;
+          std::string m_HDBFileName;
 
           static const std::string ctx;
 

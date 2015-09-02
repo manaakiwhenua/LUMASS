@@ -2367,7 +2367,7 @@ AttributeTable::createTable(std::string filename, std::string tag)
         m_tableName = "nm_tab";
     }
 
-    if (!tag.empty())
+    if (!tag.empty() && tag.compare("drop") != 0)
     {
         m_tableName += "_";
         m_tableName += tag;

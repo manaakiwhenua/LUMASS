@@ -29,7 +29,12 @@
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
 
-//#define ctx "otb::SumZonesFilter"
+// TOKYO CABINET
+//#include "tcutil.h"
+#include "tchdb.h"
+#include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 namespace otb
 {
@@ -45,15 +50,21 @@ SumZonesFilter< TInputImage, TOutputImage >
 	m_IgnoreNodataValue = true;
 	m_NodataValue = itk::NumericTraits<InputPixelType>::NonpositiveMin();
 
+    m_NextZoneId = 0;
 	mStreamingProc = false;
     m_ZoneTableFileName = "";
-	mZoneTable = AttributeTable::New();
+    m_HDBFileName = "";
+    m_HDB = tchdbnew();
+
+    mZoneTable = AttributeTable::New();
 }
 
 template< class TInputImage, class TOutputImage >
 SumZonesFilter< TInputImage, TOutputImage >
 ::~SumZonesFilter()
 {
+    if (m_HDB)
+        tchdbdel(m_HDB);
 }
 
 template< class TInputImage, class TOutputImage >
@@ -146,18 +157,38 @@ void SumZonesFilter< TInputImage, TOutputImage >
         itkExceptionMacro(<< "Failed to create the zone table!");
         return;
     }
-    // if we're using a temp data base, we want to know the name for
-    // to open the same table again during sequential processing
-    m_ZoneTableFileName = mZoneTable->getDbFileName();
 
-	if (!mStreamingProc)
-	{
+    if (!mStreamingProc)
+    {
+        // if we're using a temp data base, we want to know the name for
+        // to open the same table again during sequential processing
+        m_ZoneTableFileName = mZoneTable->getDbFileName();
+        size_t pos = m_ZoneTableFileName.find_last_of('.');
+        if (pos != std::string::npos)
+        {
+            m_HDBFileName = m_ZoneTableFileName.substr(0,pos);
+            m_HDBFileName += ".tchdb";
+        }
+        NMDebugAI( << "Tokyo cabinet file: '"
+                   << m_HDBFileName << "'" << std::endl);
+
+
 		NMDebugAI(<< "clearing mThreadValueStore ..." << std::endl);
 		mThreadValueStore.clear();
 		for (int t=0; t < numThreads; ++t)
 		{
 			mThreadValueStore.push_back(ZoneMapType());
 		}
+
+        // open the key-value store
+        if (!tchdbopen(m_HDB, m_HDBFileName.c_str(),
+                       HDBOWRITER | HDBOCREAT))
+        {
+            int ecode = tchdbecode(m_HDB);
+            itkExceptionMacro( << "ERROR: " << tchdberrmsg(ecode));
+            return;
+        }
+        tchdbvanish(m_HDB);
 
         NMDebugAI(<< "Adding columns to zone table ..." << std::endl);
         mZoneTable->beginTransaction();
@@ -170,10 +201,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
         mZoneTable->endTransaction();
 
-        std::vector<std::string> idxCols;
-        idxCols.push_back(mZoneTable->getPrimaryKey());
-        idxCols.push_back("zone_id");
-        mZoneTable->createIndex(idxCols, true);
+        //        std::vector<std::string> idxCols;
+        //        idxCols.push_back(mZoneTable->getPrimaryKey());
+        //        idxCols.push_back("zone_id");
+        //        mZoneTable->createIndex(idxCols, true);
 
 
 		mStreamingProc = true;
@@ -250,7 +281,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(5,0);
+                vMap[zone] = std::vector<double>(6,0);
             }
             std::vector<double>& params = vMap[zone];
 
@@ -264,6 +295,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[3] += (val * val);
             // count
             params[4] += 1;
+            // id -> take care about that later
 
             ++zoneIt;
             ++valueIt;
@@ -280,7 +312,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(5,0);
+                vMap[zone] = std::vector<double>(6,0);
             }
             std::vector<double>& params = vMap[zone];
 
@@ -294,6 +326,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[3] += (val * val);
             // count
             params[4] += 1;
+            // id -> take care about that later
 
             ++zoneIt;
             progress.CompletedPixel();
@@ -321,29 +354,120 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		throw eo;
 	}
 
-	// ToDo:: mmh, is there a better way of doing this?
-	//        we need a list of all zones to pull together the
-	//        zone maps of individual threads; for small images
-	//        this might prove more inefficient than just doing
-	//        it on one thread in the first place ... ??
-	NMDebugAI(<< "update set of zones - adding: ");
-	long numzones = mZones.size();
-	long newzones = 0;
-    long maxKey = 0;
+
+    // =============================================================
+    // MERGING THREAD DATA
+    // =============================================================
+
+    // merging the data gathered in different threads into one
+    // key-value store for a RAM independent (but still fast)
+    // record of what to put in the proper data base
+
+    NMDebugAI(<< "update set of zones - adding: ");
+    //long numzones = mZones.size();
+    ZoneKeyType numzones = tchdbrnum(m_HDB);
+    ZoneKeyType newzones = 0;
+    ZoneKeyType maxKey = 0;
     ZoneMapTypeIterator mapIt;
-	for (int t=0; t < this->GetNumberOfThreads(); ++t)
+
+
+    /*  keep track of zones ...
+     *  0: min
+     *  1: max
+     *  2: sum_val
+     *  3: sum_val^2
+     *  4: count
+     *  5: zone_id
+     */
+    int lenTCRec = 6;
+    std::vector<double> params(lenTCRec,0);
+    params[0] = itk::NumericTraits<double>::max();
+    params[1] = itk::NumericTraits<double>::NonpositiveMin();
+    params[5] = -1;
+
+    for (int t=0; t < this->GetNumberOfThreads(); ++t)
 	{
 		ZoneMapType& vMap = mThreadValueStore[t];
 		mapIt = vMap.begin();
 		while(mapIt != vMap.end())
 		{
-			// add zone to set if not already present
-			if ((mZones.insert(mapIt->first)).second)
-			{
+            // --------------------------------------------------
+            // read values for KEY from db
+            // --------------------------------------------------
+            ZoneKeyType zone = mapIt->first;
+            if (tchdbget3(m_HDB,
+                          static_cast<void*>(&zone),
+                          sizeof(ZoneKeyType),
+                          &params[0],
+                          sizeof(double)*lenTCRec)
+                == -1)
+            {
+                // .................................
+                // KEY not present! -> put it in db
+                // .................................
+                mapIt->second[5] = m_NextZoneId;
+                if (!tchdbput(m_HDB,
+                              static_cast<void*>(&zone),
+                              sizeof(ZoneKeyType),
+                              &mapIt->second[0],
+                              sizeof(double)*lenTCRec))
+                {
+                    itkWarningMacro(<< "Failed setting record for key "
+                                    << mapIt->first << " while merging "
+                                    << "thread values");
+                    continue;
+                }
+                // keep track of max key and number of new keys
                 maxKey = mapIt->first > maxKey ? mapIt->first : maxKey;
-                //NMDebug(<< mapIt->first << " ");
-				++newzones;
-			}
+                ++newzones;
+                ++m_NextZoneId;
+            }
+            else
+            {
+                // ..................................
+                // update parameters for current KEY
+                // ..................................
+
+                // update stats parameter
+                // min
+                params[0] = params[0] < mapIt->second[0] ?
+                            params[0] : mapIt->second[0];
+                // max
+                params[1] = params[1] > mapIt->second[0] ?
+                            params[1] : mapIt->second[1];
+                // sum_val
+                params[2] += mapIt->second[2];
+                // sum_val^2
+                params[3] += mapIt->second[3];
+                // count
+                params[4] += mapIt->second[4];
+                //zone_id
+                params[5] = mapIt->second[5];
+
+                // ------------------------------------------------
+                // put data into key-value store
+                if (!tchdbput(m_HDB,
+                              static_cast<void*>(&zone),
+                              sizeof(ZoneKeyType),
+                              &params[0],
+                              sizeof(double)*lenTCRec))
+                {
+                    itkWarningMacro(<< "Failed setting record for key "
+                                    << mapIt->first << " while merging "
+                                    << "thread values");
+                    continue;
+                }
+            }
+
+            //std::vector<double>& param =
+
+			// add zone to set if not already present
+            //			if ((mZones.insert(mapIt->first)).second)
+            //			{
+            //                maxKey = mapIt->first > maxKey ? mapIt->first : maxKey;
+            //                //NMDebug(<< mapIt->first << " ");
+            //				++newzones;
+            //			}
 			++mapIt;
 		}
 	}
@@ -351,131 +475,52 @@ void SumZonesFilter< TInputImage, TOutputImage >
     NMDebugAI(<< "added " << newzones << " new zones, which gives total of "
               << numzones+newzones << " ..."<< std::endl;)
 
+    // =============================================================
+    // BUMPING UP THE NUMBER OF ROWS IN THE DB (if required)
+    // =============================================================
+    std::vector<double> fillRec(lenTCRec,0);
+    fillRec[5] = -1;
     if (this->GetHaveMaxKeyRows())
     {
-        mZoneTable->beginTransaction();
-        std::vector<std::string> setnames;
-        setnames.push_back(mZoneTable->getPrimaryKey());
-        setnames.push_back("zone_id");
-        std::vector<otb::AttributeTable::ColumnValue> setvals;
-        otb::AttributeTable::ColumnValue rv, zv;
-        rv.type = otb::AttributeTable::ATTYPE_INT;
-        zv.type = rv.type;
-        setvals.push_back(rv);
-        setvals.push_back(zv);
-
-        mZoneTable->prepareBulkSet(setnames);
-
-        // add a chunk of rows
-        if (newzones > 0)
+        if (maxKey+1 > numzones + newzones)
         {
-            if (mZoneTable->GetNumRows() < maxKey+1)
+            ZoneKeyType addzones = maxKey+1 - (numzones + newzones);
+            NMDebugAI(<< "Adding " << addzones
+                      << " recs to match the max key size (+1)" << std::endl);
+            for (ZoneKeyType nz = 0; nz < maxKey+1; ++nz)
             {
-                long numOldRows = mZoneTable->GetNumRows();
-                long numNewRows = maxKey+1 - numOldRows;
-                //mZoneTable->AddRows(numNewRows);
-                for (long i = numOldRows; i < maxKey+1; ++i)
-                {
-                    setvals[0].ival = i;
-                    setvals[1].ival = i;
-                    mZoneTable->doBulkSet(setvals);
-                }
+                tchdbputkeep(m_HDB, static_cast<void*>(&nz),
+                             sizeof(ZoneKeyType),
+                             static_cast<void*>(&fillRec),
+                             sizeof(double)*lenTCRec);
             }
         }
-        mZoneTable->endTransaction();
     }
 
-	double min 		 ;
-	double max 		 ;
-	double sum_Zone  ;
-	double sum_Zone2 ;
-	double mean      ;
-	double sd        ;
-	long   count     ;
+    numzones = tchdbrnum(m_HDB);
+    NMDebugAI(<< "Got " << numzones << " zones on record now ..." << std::endl);
+
+    //	double min 		 ;
+    //	double max 		 ;
+    //	double sum_Zone  ;
+    //	double sum_Zone2 ;
+    //	double mean      ;
+    //	double sd        ;
+    //	long   count     ;
 
     // ==========================================================================
     // prepare prepared update/insert statements for summary table
     // ==========================================================================
 
-    typedef otb::AttributeTable::TableColumnType ColType;
-
     std::vector<std::string> colnames;
-    std::vector<std::string> autoValue;
-    std::vector<std::vector<ColType> > autoTypes;
-    std::vector<ColType> emptyType;
-
-    colnames.push_back(mZoneTable->getPrimaryKey());
-    autoValue.push_back("");
-    autoTypes.push_back(emptyType);
-
-    // ----------------------------------------------
-    // zone_id update/insert statement
-    // using this expression example (HaveMaxKeyRows = 0)
-    /*
-        insert or replace into t_1 ("rowidx", "zone_id")
-             values (69,
-                   (select case
-                       when
-                   count(zone_id) = 0 then 0
-                       when
-                   (Select zone_id from t_1 where rowidx = 69) is null then max(zone_id) + 1
-                       else
-                   (Select zone_id from t_1 where rowidx = 69)
-                       end
-                       from t_1)
-               );
-     */
-     // or this one ... (HaveMaxKeyRows = 1)
-    /*
-        insert or replace into t_1 ("rowidx", "zone_id") values (6,
-            (select case when
-                (select zone_id from t_1 where rowidx = 6)  = -1 then max(zone_id) + 1
-                        else (select zone_id from t_1 where rowidx = 6) end from t_1));
-    */
-
-    colnames.push_back("zone_id");
-    std::vector<ColType> zoneTypes;
-
-    std::string pk = mZoneTable->getPrimaryKey();
-    std::string tn = mZoneTable->getTableName();
-    std::stringstream sav;
-
-    if (!this->GetHaveMaxKeyRows())
-    {
-//        sav << "(IF"
-        //        sav << "(select case "
-        //             << "when "
-        //              << "(select zone_id from " << tn
-        //               << " where " << pk << " = ? )"
-        //               << " = -1 then max(zone_id) + 1 "
-        //             << "else "
-        //              << "(select zone_id from " << tn
-        //               << " where " << pk << " = ? ) end from " << tn << ")";
-    }
-    //    else
-    //    {
-    //        sav << "(select case when count(zone_id) = 0 then 0"
-    //                        << " when (select zone_id from " << tn
-    //                              << " where " << pk << " = ? ) "
-    //                             << " is null then max(zone_id) + 1"
-    //                        << " else (select zone_id from " << tn
-    //                              << " where " << pk << " = ? )"
-    //                        << " end from " << tn << ")";
-    //    }
-
-    autoValue.push_back(sav.str());
-//    zoneTypes.push_back(otb::AttributeTable::ATTYPE_INT);
-//    zoneTypes.push_back(otb::AttributeTable::ATTYPE_INT);
-//    autoTypes.push_back(zoneTypes);
-
-    // ----------------------------------------------------------
-
-    colnames.push_back("count");
-    colnames.push_back("min");
-    colnames.push_back("max");
-    colnames.push_back("mean");
-    colnames.push_back("stddev");
-    colnames.push_back("sum");
+    colnames.push_back(mZoneTable->getPrimaryKey()); // 0
+    colnames.push_back("zone_id");                   // 1
+    colnames.push_back("count");                     // 2
+    colnames.push_back("min");                       // 3
+    colnames.push_back("max");                       // 4
+    colnames.push_back("mean");                      // 5
+    colnames.push_back("stddev");                    // 6
+    colnames.push_back("sum");                       // 7
 
     int numIntCols = 3;
     std::vector<otb::AttributeTable::ColumnValue> values;
@@ -495,69 +540,62 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 	NMDebugAI(<< "updating zone table ..." << std::endl);
     mZoneTable->beginTransaction();
-    mZoneTable->prepareAutoBulkSet(colnames,
-                                   autoValue,
-                                   autoTypes, true);
+    mZoneTable->prepareBulkSet(colnames, true);
 
-//    mZoneTable->prepareBulkSet(colnames, true);
+    if (!tchdbiterinit(m_HDB))
+    {
+        int ecode = tchdbecode(m_HDB);
+        itkExceptionMacro(<< "ERROR writing zone table: "
+                          << tchdberrmsg(ecode));
+        return;
+    }
 
-    typename std::set<ZoneKeyType>::const_iterator zoneIt =
-            mZones.begin();
-	while(zoneIt != mZones.end())
+    int sizeKey = 0;
+    void* nextKey = 0;
+    std::vector<double> zoneRec(lenTCRec,0);
+
+    while(nextKey = tchdbiternext(m_HDB, &sizeKey))
 	{
-		ZoneKeyType zone = *zoneIt;
-		long lz = static_cast<long>(zone);
+        ZoneKeyType zone = *static_cast<ZoneKeyType*>(nextKey);
+        if (tchdbget3(m_HDB, nextKey, sizeKey,
+                      static_cast<void*>(&zoneRec[0]),
+                      sizeof(double)*lenTCRec)
+            == -1)
+        {
+            itkWarningMacro(<< "Failed reading "
+                            << "zone db record for zone " << zone);
+            free(nextKey);
+            continue;
+        }
 
-		min 	  = itk::NumericTraits<double>::max();
-		max       = itk::NumericTraits<double>::NonpositiveMin();
-		sum_Zone  = 0;
-		sum_Zone2 = 0;
-		count     = 0;
+        // skip if just a fill record (i.e. when HaveMaxKeyRows = true)
+        if (zoneRec[5] == -1)
+        {
+            continue;
+        }
 
-		for (int t=0; t < this->GetNumberOfThreads(); ++t)
-		{
-			ZoneMapType& vMap = mThreadValueStore[t];
-			mapIt = vMap.find(zone);
-			if (mapIt == vMap.end())
-			{
-				continue;
-			}
-			std::vector<double>& params = mapIt->second;
-			// min
-			min = params[0] < min ? params[0] : min;
-			// max
-			max = params[1] > max ? params[1] : max;
-			// sum_val
-			sum_Zone += params[2];
-			// sum_val^2
-			sum_Zone2 += params[3];
-			// count
-			count += params[4];
-		}
-
-        mean = sum_Zone / ((double)count > 0 ? (double)count : 1);
-        sd = mean != sum_Zone
-                ? ::sqrt( (sum_Zone2 / (double)count) - (mean * mean) )
+        // mean = sum_Zone / (count > 0 ? count : 1);
+        values[5].dval = zoneRec[2] / ((double)zoneRec[4] > 0 ?
+                                       (double)zoneRec[4] : 1);
+        // stddev =
+        values[6].dval = values[5].dval != zoneRec[2]
+                ? ::sqrt( (zoneRec[3] / (double)zoneRec[4])
+                          - (values[5].dval * values[5].dval) )
                 : 0;
 
-        // note we need the rowidx 3 times in a row
-        values[0].ival = lz;    // proper rowidx
 
-
-        values[1].ival = lz;    // embedded query #1 for zone_id
-
-        //values[2].ival = lz;    // embedded query #2 for zone_id
-
-        values[2].ival = count;
-        values[3].dval = min;
-        values[4].dval = max;
-        values[5].dval = mean;
-        values[6].dval = sd;
-        values[7].dval = sum_Zone;
+        values[0].ival = zone;          // rowidx
+        values[1].ival = zoneRec[5];    // zone_id
+        values[2].ival = zoneRec[4];    // count
+        values[3].dval = zoneRec[0];    // min;
+        values[4].dval = zoneRec[1];    // max;
+        //values[5].dval = mean;
+        //values[6].dval = sd;
+        values[7].dval = zoneRec[2];    // sum_Zone;
 
         mZoneTable->doBulkSet(values);
 
-		++zoneIt;
+        free(nextKey);
 	}
     mZoneTable->endTransaction();
 
@@ -574,10 +612,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	mStreamingProc = false;
     mZoneTable->closeTable();
     mZoneTable = 0;
+    m_NextZoneId = 0;
+
+    if (m_HDB)
+    {
+        tchdbvanish(m_HDB);
+        tchdbclose(m_HDB);
+    }
 
     mZones.clear();
 	mZoneTable = AttributeTable::New();
-    m_ZoneTableFileName = "";
 
 	Superclass::ResetPipeline();
 	NMDebugCtx(ctx, << "done!");

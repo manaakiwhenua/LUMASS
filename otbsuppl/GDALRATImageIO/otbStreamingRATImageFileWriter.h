@@ -217,6 +217,14 @@ public:
   itkSetStringMacro(ResamplingType)
   itkGetStringMacro(ResamplingType)
 
+  /** Set the streaming type */
+  itkSetStringMacro(StreamingMethod)
+  itkGetStringMacro(StreamingMethod)
+
+  /** Set the max streaming size */
+  itkSetMacro(StreamingSize, int)
+  itkGetMacro(StreamingSize, int)
+
 
   /** Specify the region to write. If left NULL, then the whole image
    * is written. */
@@ -336,6 +344,8 @@ private:
   /** ImageFileWriter Parameters */
   std::string m_FileName;
   std::string m_ResamplingType;
+  std::string m_StreamingMethod;  // TILED | STRIPPED
+  int m_StreamingSize;          // MB streaming pieces
 
   otb::ImageIOBase::Pointer m_ImageIO;
 

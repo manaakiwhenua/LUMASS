@@ -81,11 +81,15 @@ StreamingRATImageFileWriter<TInputImage>
   m_FactorySpecifiedImageIO = false;
 
   // By default, we use tiled streaming, with automatic tile size
-  // We don't set any parameter, so the memory size is retrieved from the OTB configuration options
-  //this->SetAutomaticTiledStreaming();
-  this->SetAutomaticStrippedStreaming();
+  // We don't set any parameter, so the memory size is retrieved from
+  // the OTB configuration options
+  // this->SetAutomaticTiledStreaming();
+  this->SetAutomaticStrippedStreaming(512);
 
-  m_ResamplingType = "NONE";
+  m_ResamplingType = "NEAREST";
+  m_StreamingMethod = "STRIPPED";
+  m_StreamingSize = 512;
+
 
   m_RATHaveBeenWritten = false;
   m_UseForcedLPR = false;
@@ -529,29 +533,6 @@ StreamingRATImageFileWriter<TInputImage>
 	  m_ImageIO->SetFileName(m_FileName.c_str());
   }
 
-  //if (m_ImageIO.IsNull())   //try creating via factory
-  //  {
-  //  itkDebugMacro(<< "Attempting factory creation of ImageIO for file: "
-  //                << m_FileName);
-  //  this->SetImageIO(ImageIOFactory::CreateImageIO(m_FileName.c_str(),
-  //                                                 itk::ImageIOFactory::WriteMode));
-  //
-  //  m_FactorySpecifiedImageIO = true;
-  //  }
-  //else
-  //  {
-  //  if (m_FactorySpecifiedImageIO && !m_ImageIO->CanWriteFile(m_FileName.c_str()))
-  //    {
-  //    itkDebugMacro(<< "ImageIO exists but doesn't know how to write file:"
-  //                  << m_FileName);
-  //    itkDebugMacro(<< "Attempting creation of ImageIO with a factory for file:"
-  //                  << m_FileName);
-  //    m_ImageIO = ImageIOFactory::CreateImageIO(m_FileName.c_str(),
-  //                                              itk::ImageIOFactory::WriteMode);
-  //    m_FactorySpecifiedImageIO = true;
-  //    }
-  //  }
-
   if (m_ImageIO.IsNull())
     {
 	  // if the image io hasn't been set, we're using the GDALRATImageIO by default;
@@ -564,25 +545,6 @@ StreamingRATImageFileWriter<TInputImage>
 	  gio->SetFileName(this->m_FileName);
 	  this->m_ImageIO = gio;
 
-
-    //itk::ImageFileWriterException e(__FILE__, __LINE__);
-    //std::ostringstream msg;
-    //msg << " Could not create IO object for file "
-    //    << m_FileName.c_str() << std::endl;
-    //msg << "  Tried to create one of the following:" << std::endl;
-    //std::list<itk::LightObject::Pointer> allobjects =
-    //  itk::ObjectFactoryBase::CreateAllInstance("itkImageIOBase");
-    //for (std::list<itk::LightObject::Pointer>::iterator i = allobjects.begin();
-    //     i != allobjects.end(); ++i)
-    //  {
-    //  itk::ImageIOBase* io = dynamic_cast<itk::ImageIOBase*>(i->GetPointer());
-    //  msg << "    " << io->GetNameOfClass() << std::endl;
-    //  }
-    //msg << "  You probably failed to set a file suffix, or" << std::endl;
-    //msg << "    set the suffix to an unsupported type." << std::endl;
-    //e.SetDescription(msg.str().c_str());
-    //e.SetLocation(ITK_LOCATION);
-    //throw e;
     }
   /** End of Prepare ImageIO  : create ImageFactory */
 
@@ -647,6 +609,18 @@ StreamingRATImageFileWriter<TInputImage>
    */
   InputImagePointer inputPtr =
     const_cast<InputImageType *>(this->GetInput(0));
+
+  /**
+   * Set the user's streaming preferences
+   */
+  if (m_StreamingMethod.compare("STRIPPED") == 0)
+  {
+      this->SetAutomaticStrippedStreaming(m_StreamingSize);
+  }
+  else
+  {
+      this->SetAutomaticTiledStreaming(m_StreamingSize);
+  }
 
 
   /**

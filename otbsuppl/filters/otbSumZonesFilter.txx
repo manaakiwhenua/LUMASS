@@ -508,7 +508,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             {
                 tchdbputkeep(m_HDB, static_cast<void*>(&nz),
                              sizeof(ZoneKeyType),
-                             static_cast<void*>(&fillRec),
+                             static_cast<void*>(&fillRec[0]),
                              sizeof(double)*lenTCRec);
             }
         }

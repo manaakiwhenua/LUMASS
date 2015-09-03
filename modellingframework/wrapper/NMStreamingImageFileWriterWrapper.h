@@ -58,6 +58,9 @@ class NMMODFRAME_EXPORT NMStreamingImageFileWriterWrapper: public NMProcess
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
     Q_PROPERTY(QStringList InputTables READ getInputTables WRITE setInputTables)
     Q_PROPERTY(bool UpdateMode READ getUpdateMode WRITE setUpdateMode)
+    Q_PROPERTY(QString StreamingMethodType READ getStreamingMethodType WRITE setStreamingMethodType)
+    Q_PROPERTY(QStringList StreamingMethodEnum READ getStreamingMethodEnum)
+    Q_PROPERTY(int StreamingSize READ getStreamingSize WRITE setStreamingSize)
     Q_PROPERTY(QString PyramidResamplingType READ getPyramidResamplingType WRITE setPyramidResamplingType)
     Q_PROPERTY(QStringList PyramidResamplingEnum READ getPyramidResamplingEnum)
     Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
@@ -69,6 +72,9 @@ public:
     NMPropertyGetSet( PyramidResamplingType, QString )
     NMPropertyGetSet( PyramidResamplingEnum, QStringList )
     NMPropertyGetSet( RGBMode, bool)
+    NMPropertyGetSet( StreamingMethodType, QString )
+    NMPropertyGetSet( StreamingMethodEnum, QStringList)
+    NMPropertyGetSet( StreamingSize, int )
 
 
 #ifdef BUILD_RASSUPPORT
@@ -106,6 +112,10 @@ protected:
     QString mPyramidResamplingType;
     QStringList mPyramidResamplingEnum;
 
+    int mStreamingSize;
+    QString mStreamingMethodType;
+    QStringList mStreamingMethodEnum;
+
 	QStringList mFileNames;
     QStringList mInputTables;
     bool mUpdateMode;
@@ -128,6 +138,8 @@ protected:
     void setInternalResamplingType();
     void setInternalInputTable(const QString& tabelSpec,
                                const QMap<QString, NMModelComponent*>& repo);
+    void setInternalStreamingMethod();
+    void setInternalStreamingSize();
 
 };
 

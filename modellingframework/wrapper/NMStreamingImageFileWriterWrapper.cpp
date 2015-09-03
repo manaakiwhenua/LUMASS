@@ -201,6 +201,27 @@ public:
                 filter->SetResamplingType(resamplingType.toStdString());
             }
         }
+
+    static void setStreamingMethod(itk::ProcessObject::Pointer& otbFilter,
+                                  unsigned int numBands, const QString& StreamingMethod, bool rgbMode)
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetStreamingMethod(StreamingMethod.toStdString());
+            }
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetStreamingMethod(StreamingMethod.toStdString());
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetStreamingMethod(StreamingMethod.toStdString());
+            }
+        }
+
 };
 
 #ifdef BUILD_RASSUPPORT
@@ -315,6 +336,26 @@ public:
     }\
 }
 
+#define callSetStreamingMethod( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setStreamingMethod( \
+                this->mOtbProcess, this->mOutputNumBands, mStreamingMethodType, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setStreamingMethod( \
+                this->mOtbProcess, this->mOutputNumBands, mStreamingMethodType, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setStreamingMethod( \
+                this->mOtbProcess, this->mOutputNumBands, mStreamingMethodType, mRGBMode); \
+    }\
+}
+
+
 #define callInitWriter( imgType, wrapName ) \
 { \
     if (this->mOutputNumDimensions == 1) \
@@ -352,11 +393,17 @@ NMStreamingImageFileWriterWrapper
     this->mUpdateMode = false;
     this->mRGBMode = false;
 
-    this->mPyramidResamplingType = QString(tr("NONE"));
+    this->mStreamingSize = 512;
+
+    this->mPyramidResamplingType = QString(tr("NEAREST"));
     mPyramidResamplingEnum.clear();
     mPyramidResamplingEnum
             << "NONE" << "NEAREST" << "GAUSS" << "CUBIC"
             << "AVERAGE" << "MODE";
+
+    this->mStreamingMethodType = QString(tr("STRIPPED"));
+    this->mStreamingMethodEnum.clear();
+    this->mStreamingMethodEnum << "STRIPPED" << "TILED";
 
 #ifdef BUILD_RASSUPPORT
 	this->mRasConnector = 0;
@@ -379,9 +426,26 @@ NMStreamingImageFileWriterWrapper
 	this->mOutputNumBands = numBands;
 	this->mInputNumDimensions = numDims;
 	this->mOutputNumDimensions = numDims;
+    this->mUpdateMode = false;
     this->mRGBMode = false;
+
+    this->mStreamingSize = 512;
+
+    this->mPyramidResamplingType = QString(tr("NEAREST"));
+    mPyramidResamplingEnum.clear();
+    mPyramidResamplingEnum
+            << "NONE" << "NEAREST" << "GAUSS" << "CUBIC"
+            << "AVERAGE" << "MODE";
+
+    this->mStreamingMethodType = QString(tr("STRIPPED"));
+    this->mStreamingMethodEnum.clear();
+    this->mStreamingMethodEnum << "STRIPPED" << "TILED";
+
+
 #ifdef BUILD_RASSUPPORT
 	this->mRasConnector = 0;
+    this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mParamPos = 0;
 #endif
 }
 
@@ -450,6 +514,21 @@ NMStreamingImageFileWriterWrapper
 
 void
 NMStreamingImageFileWriterWrapper
+::setInternalStreamingMethod()
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callSetStreamingMethod, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
+}
+
+void
+NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
     //if (step > this->mFileNames.size()-1)
@@ -475,6 +554,7 @@ NMStreamingImageFileWriterWrapper
 
     this->setInternalUpdateMode();
     this->setInternalResamplingType();
+    this->setInternalStreamingMethod();
 }
 
 void

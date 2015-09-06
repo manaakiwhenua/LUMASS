@@ -81,7 +81,7 @@ public:
         TableColumnType type;
         union
         {
-            long long ival;
+            long long int ival;
             double    dval;
             char*     tval;
         };
@@ -92,7 +92,7 @@ public:
 
 	// getting info about the table
 	int GetNumCols();
-    long long GetNumRows();
+    long long int GetNumRows();
 	int ColumnExists(const std::string& sColName);
 
 	std::string GetColumnName(int idx);
@@ -100,7 +100,7 @@ public:
 
     //void* GetColumnPointer(int idx);
 
-    long long GetRowIdx(const std::string& column, void* value);
+    long long int GetRowIdx(const std::string& column, void* value);
 
 	//long GetRowIdx(const std::string& column, const double& value);
 	//long GetRowIdx(const std::string& column, const long& value);
@@ -110,23 +110,23 @@ public:
     bool AddColumn(const std::string& sColName, TableColumnType type,
                    const std::string& sColConstraint="");
     //bool AddRow();
-    //bool AddRows(long long numRows);
-    void SetValue(const std::string& sColName, long long idx, double value);
-    void SetValue(const std::string& sColName, long long idx, long long value);
-    void SetValue(const std::string& sColName, long long idx, std::string value);
-    double GetDblValue(const std::string& sColName, long long idx);
-    long long GetIntValue(const std::string& sColName, long long idx);
-    std::string GetStrValue(const std::string& sColName, long long idx);
+    //bool AddRows(long long int numRows);
+    void SetValue(const std::string& sColName, long long int idx, double value);
+    void SetValue(const std::string& sColName, long long int idx, long long int value);
+    void SetValue(const std::string& sColName, long long int idx, std::string value);
+    double GetDblValue(const std::string& sColName, long long int idx);
+    long long int GetIntValue(const std::string& sColName, long long int idx);
+    std::string GetStrValue(const std::string& sColName, long long int idx);
 
-    void SetValue(int col, long long row, double value);
-    void SetValue(int col, long long row, long long value);
-    void SetValue(int col, long long row, std::string value);
+    void SetValue(int col, long long int row, double value);
+    void SetValue(int col, long long int row, long long int value);
+    void SetValue(int col, long long int row, std::string value);
 
 	void SetColumnName(int col, const std::string& name);
 
-    double GetDblValue(int col, long long row);
-    long long GetIntValue(int col, long long row);
-    std::string GetStrValue(int col, long long row);
+    double GetDblValue(int col, long long int row);
+    long long int GetIntValue(int col, long long int row);
+    std::string GetStrValue(int col, long long int row);
 
 	bool RemoveColumn(int col);
 	bool RemoveColumn(const std::string& name);
@@ -166,9 +166,9 @@ public:
                       std::vector< char** >& chrVals,
                       std::vector< int >& colpos,
                       const int & chunkrow,
-                      const long long &row=-1);
+                      const long long int &row=-1);
 
-    bool doBulkSet(std::vector< ColumnValue >& values, const long long& row=-1);
+    bool doBulkSet(std::vector< ColumnValue >& values, const long long int& row=-1);
 
     bool doBulkGet(std::vector< ColumnValue >& values);
     bool beginTransaction();
@@ -179,7 +179,7 @@ public:
     /// FAST INLINE ACCESS TO COLUMN VALUES
     bool prepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);
 
-    double nextDoubleValue(const long long& row)
+    double nextDoubleValue(const long long int& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -194,7 +194,7 @@ public:
 
     }
 
-    long long nextIntValue(const long long& row)
+    long long int nextIntValue(const long long int& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -208,7 +208,7 @@ public:
         return v;
     }
 
-    const unsigned char* nextTextValue(const long long& row)
+    const unsigned char* nextTextValue(const long long int& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -299,7 +299,7 @@ protected:
 	std::vector<std::vector<double>* > m_mDoubleCols;
 
 
-    long long m_iNumRows;
+    long long int m_iNumRows;
 	std::string m_sNodata;
 	long m_iNodata;
 	double m_dNodata;

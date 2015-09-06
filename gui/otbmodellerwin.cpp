@@ -1615,6 +1615,33 @@ void OtbModellerWin::test()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+
+    //    NMDebugAI(<< "long long - max: " << itk::NumericTraits<long long>::max()<< std::endl);
+    //    NMDebugAI(<< "int - max:       " << itk::NumericTraits<int>::max() << std::endl);
+
+    //    NMDebug(<< std::endl);
+    //    NMDebugAI(<< "unsigned long long - max: "
+    //              << itk::NumericTraits<unsigned long long>::max() << std::endl);
+    //    NMDebugAI(<< "unsigned int - max: "
+    //              << itk::NumericTraits<unsigned int>::max() << std::endl);
+
+    long long llmax = itk::NumericTraits<long long>::max();
+
+    QString input = QInputDialog::getText(0, "Test Index",
+                                       "Enter #layers & 2D img dimension");
+
+    if (input.isEmpty())
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    QStringList inputList = input.split(' ');
+
+    // -------------------------------------------------------
+    // setup the key-value store
+    // -------------------------------------------------------
+
     TCHDB* hdb;
     int ecode;
     char* key, *value;
@@ -1630,63 +1657,151 @@ void OtbModellerWin::test()
         NMDebugAI(<< "ERROR: " << tchdberrmsg(ecode) << std::endl);
     }
 
+
+    // -----------------------------------------------------
+    // set the number of unique values per layer
+    // -----------------------------------------------------
+
+
     time_t start, end;
     time(&start);
 
     ::srand(::time(NULL));
 
-//    int p0 = 0;
-//    int p1 = sizeof(double);
-//    int p2 = 2 * sizeof(double);
-//    int p3 = 3 * sizeof(double);
-//    int p4 = 4 * sizeof(double);
-//    int p5 = p4 + sizeof(long long);
-//    int pLen = p5 + sizeof(long long);
+    // max number of layers, i.e. dimensions
+    int nlayers = inputList.at(0).toInt();
 
-//    char* params = new char(pLen);
+    // specify the size of each dimension
+    // (i.e. the number of unique values per layer)
+    long long id1 = inputList.at(1).toLongLong();
+    long long id2 = inputList.at(2).toLongLong();
 
-//    *static_cast<double*>(params+p0) = itk::NumericTraits<double>::max();
-//    *static_cast<double*>(params+p1) = itk::NumericTraits<double>::NonpositiveMin();
-//    *static_cast<long long*>(params+p5) = -1;
-
-    std::vector<double> params(5,0);
-
-    NMDebugAI(<< "storing stuff ..." << std::endl);
-    // store records
-    for (int i=0; i < 10000000; ++i)
+    // check, whether we can handle the proble numerically
+    if (id1 > llmax / id2)
     {
-        for (int p=0; p < 5; ++p)
+        NMErr(ctxOtbModellerWin, << "Number of possible unique combinations"
+              << " is too big - we cannot handle the problem!");
+        tchdbclose(hdb);
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+
+    long long muvi = id1 * id2;
+    std::vector<long long int> sdom;
+    NMDebugAI(<< "layer dimensions: ");
+
+
+    long long testnumeric = 1;
+    for (int l=0; l < nlayers; ++l)
+    {
+        long long int d = rand() % 25000 + 10;
+
+        if (testnumeric > llmax/d)
         {
-            params[p] = rand() % 1000;
+            NMErr(ctxOtbModellerWin, << "Hyperspace overflow!");
+            tchdbclose(hdb);
+            NMDebugCtx(ctxOtbModellerWin, << "done!");
+            return;
         }
 
-        if (!tchdbput(hdb, static_cast<void*>(&i), sizeof(int),
-                     static_cast<void*>(&params[0]), sizeof(double)*5))
-        {
-                        ecode = tchdbecode(hdb);
-                        NMDebugAI(<< "ERROR storing value: "
-                                  << tchdberrmsg(ecode) << std::endl);
-        }
+        sdom.push_back(d);
+        NMDebug(<< d << " ");
     }
     NMDebug(<< std::endl);
 
-    NMDebugAI(<< "reading stuff ..." << std::endl);
 
-    std::vector<double> pdout(5,0);
-    unsigned long long nrecs = tchdbrnum(hdb);
-    for (int r=0; r < nrecs; ++r)
+    std::vector<long long> strides(sdom.size(),0);
+    strides[0] = 1;
+
+    NMDebugAI(<< "STRIDES TABLE" << std::endl);
+    NMDebugAI(<< "#0 - 1" << std::endl);
+
+    // calc the stride table
+    for (int d=1; d < nlayers; ++d)
     {
-        int ret = tchdbget3(hdb, static_cast<void*>(&r), sizeof(int),
-                            static_cast<void*>(&pdout[0]), sizeof(double)*5);
+        strides[d] = strides[d-1] * sdom[d-1];
+        NMDebugAI(<< "#" << d << " - " << strides[d] << std::endl);
+    }
 
-        //NMDebugAI( << "");
-        for (int e=0; e < 5; ++e)
+
+    //    QString idx = QInputDialog::getText(0, "test", "idx into img");
+
+    //    QStringList vIdx = idx.split(' ');
+    //    std::vector<long long> tidx(vIdx.size(), 0);
+    //    for (int q=0; q < vIdx.size(); ++q)
+    //    {
+    //        tidx[q] = vIdx[q].toLongLong();
+    //    }
+
+
+    NMDebugAI(<< "Maximum possible number of unique combinations: "
+              << id1 << " x " << id2 << " = " << muvi << std::endl);
+
+
+    NMDebugAI(<< "do combinatorial analysis ..." << std::endl);
+    std::vector<long long int> params(nlayers,0);
+
+    NMDebugAI(<< "Processing ");
+    int cnt = 1;
+    long long int uId = 0;
+    long long progresDiv = muvi / 50LL;
+    for (long long int i=0; i < muvi; ++i)
+    {
+        long long to;
+
+        // get a random index for each layer
+        for (int p=0; p < nlayers; ++p)
         {
-           double out = pdout[e];
+            params[p] = rand() % sdom[p];
+            if (p == 0)
+                to = params[p];
+            else
+                to += params[p] * strides[p];
+
         }
-        //NMDebug(<< std::endl);
+
+
+        tchdbputkeep(hdb, static_cast<void*>(&to), sizeof(long long int),
+                     static_cast<void*>(&params[0]), sizeof(long long int)*nlayers);
+
+        if (i % progresDiv == 0)
+        {
+            //            if (cnt % 10 == 0)
+            //            {
+            //                NMDebug(<< cnt);
+            //            }
+            //            else
+            {
+                NMDebug(<< ".");
+            }
+            ++cnt;
+        }
 
     }
+    NMDebug(<< cnt << std::endl);
+
+    long long int nrecs = tchdbrnum(hdb);
+    NMDebugAI(<< "Detected " << nrecs << " unique combinations" << std::endl);
+
+
+    //    NMDebugAI(<< "reading stuff ..." << std::endl);
+
+    //    std::vector<double> pdout(5,0);
+    //    unsigned long long int nrecs = tchdbrnum(hdb);
+    //    for (int r=0; r < nrecs; ++r)
+    //    {
+    //        int ret = tchdbget3(hdb, static_cast<void*>(&r), sizeof(int),
+    //                            static_cast<void*>(&pdout[0]), sizeof(double)*5);
+
+    //        //NMDebugAI( << "");
+    //        for (int e=0; e < 5; ++e)
+    //        {
+    //           double out = pdout[e];
+    //        }
+    //        //NMDebug(<< std::endl);
+
+    //    }
 
     tchdbclose(hdb);
     time(&end);

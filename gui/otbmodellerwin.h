@@ -261,6 +261,41 @@ protected:
 		if (right > le) quicksort(ar, le, right, asc);
 	}
 
+    void
+    offset2index(const long long int& offset,
+                 const std::vector<long long int>& sdom, const int& ndim,
+                 std::vector<long long int>& idx)
+    {
+        long long int off = offset;
+        for (int d=0; d < ndim; ++d)
+        {
+            idx[d] = off % sdom[d];
+            off /= sdom[d];
+        }
+    }
+
+    long long int
+    index2offset(const std::vector<long long int>& sdom, const int& ndim,
+                 const std::vector<long long int>& index)
+    {
+        long long int offset = 0;
+        long long int mult = 1;
+        for (int d=ndim-1; d >=0; --d)
+        {
+            for (int r=d; r >=0; --r)
+            {
+                if (r == d)
+                    mult = index[d];
+                else
+                    mult *= sdom[r];
+            }
+            offset += mult;
+        }
+
+        return offset;
+    }
+
+
 
 private:
 

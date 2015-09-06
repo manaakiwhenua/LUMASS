@@ -43,7 +43,7 @@ int AttributeTable::GetNumCols()
 	return this->m_vNames.size();
 }
 
-long long AttributeTable::GetNumRows()
+long long int AttributeTable::GetNumRows()
 {
 	return m_iNumRows;
 }
@@ -740,7 +740,7 @@ AttributeTable::doPtrBulkSet(std::vector<int *> &intVals,
                              std::vector<char **> &chrVals,
                              std::vector<int> &colpos,
                              const int &chunkrow,
-                             const long long &row)
+                             const long long int &row)
 {
     //NMDebugCtx(_ctxotbtab, << "done!");
     if (    m_db == 0
@@ -809,7 +809,7 @@ AttributeTable::doPtrBulkSet(std::vector<int *> &intVals,
 }
 
 bool
-AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const long long &row)
+AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const long long int &row)
 {
     //NMDebugCtx(_ctxotbtab, << "...");
     if (    m_db == 0
@@ -877,7 +877,7 @@ AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const long long &row
     return true;
 }
 
-//bool AttributeTable::AddRows(long long numRows)
+//bool AttributeTable::AddRows(long long int numRows)
 //{
 //    //NMDebugCtx(_ctxotbtab, << "...");
 //    // connection open?
@@ -917,7 +917,7 @@ AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const long long &row
 //        bEndTransaction = true;
 //    }
 
-//    for (long long r=0; r < numRows; ++r, ++m_iNumRows)
+//    for (long long int r=0; r < numRows; ++r, ++m_iNumRows)
 //    {
 //        sqlite3_bind_int(stmt, 1, m_iNumRows);
 //        sqlite3_step(stmt);
@@ -1123,7 +1123,7 @@ AttributeTable::sqliteStepCheck(const int& rc)
 
 
 void
-AttributeTable::SetValue(const std::string& sColName, long long idx, double value)
+AttributeTable::SetValue(const std::string& sColName, long long int idx, double value)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     // we just check for the database and leave the rest
@@ -1210,7 +1210,7 @@ AttributeTable::SetValue(const std::string& sColName, long long idx, double valu
 }
 
 void
-AttributeTable::SetValue(const std::string& sColName, long long idx, long long value)
+AttributeTable::SetValue(const std::string& sColName, long long int idx, long long int value)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
@@ -1283,7 +1283,7 @@ AttributeTable::SetValue(const std::string& sColName, long long idx, long long v
 }
 
 void
-AttributeTable::SetValue(const std::string& sColName, long long idx, std::string value)
+AttributeTable::SetValue(const std::string& sColName, long long int idx, std::string value)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
@@ -1402,7 +1402,7 @@ AttributeTable::prepareColumnByIndex(const std::string &colname)//,
     return true;
 }
 
-double AttributeTable::GetDblValue(const std::string& sColName, long long idx)
+double AttributeTable::GetDblValue(const std::string& sColName, long long int idx)
 {
 	//check for valid name and index parameters
 	int colidx = this->ColumnExists(sColName);
@@ -1450,8 +1450,8 @@ double AttributeTable::GetDblValue(const std::string& sColName, long long idx)
     //	return ret;
 }
 
-long long
-AttributeTable::GetIntValue(const std::string& sColName, long long idx)
+long long int
+AttributeTable::GetIntValue(const std::string& sColName, long long int idx)
 {
 	// check given index and column name
 	int colidx = this->ColumnExists(sColName);
@@ -1462,7 +1462,7 @@ AttributeTable::GetIntValue(const std::string& sColName, long long idx)
     int rc = sqlite3_bind_int64(stmt, 1, idx);
     if (sqliteError(rc, &stmt)) return m_iNodata;
 
-    long long ret = m_iNodata;
+    long long int ret = m_iNodata;
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW)
     {
@@ -1500,7 +1500,7 @@ AttributeTable::GetIntValue(const std::string& sColName, long long idx)
 }
 
 std::string
-AttributeTable::GetStrValue(const std::string& sColName, long long idx)
+AttributeTable::GetStrValue(const std::string& sColName, long long int idx)
 {
 	// check given index and column name
 	int colidx = this->ColumnExists(sColName);
@@ -1581,10 +1581,10 @@ AttributeTable::GetStrValue(const std::string& sColName, long long idx)
 //	return ret;
 //}
 
-long long
+long long int
 AttributeTable::GetRowIdx(const std::string& column, void* value)
 {
-    long long idx = -1;
+    long long int idx = -1;
 
 	int colidx = ColumnExists(column);
 	if (colidx < 0)
@@ -1819,7 +1819,7 @@ AttributeTable::RemoveColumn(const std::string& name)
 //	return this->RemoveColumn(idx);
 }
 
-void AttributeTable::SetValue(int col, long long row, double value)
+void AttributeTable::SetValue(int col, long long int row, double value)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
@@ -1884,7 +1884,7 @@ void AttributeTable::SetValue(int col, long long row, double value)
 //	}
 }
 
-void AttributeTable::SetValue(int col, long long row, long long value)
+void AttributeTable::SetValue(int col, long long int row, long long int value)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
@@ -1948,7 +1948,7 @@ void AttributeTable::SetValue(int col, long long row, long long value)
     //	}
 }
 
-void AttributeTable::SetValue(int col, long long row, std::string value)
+void AttributeTable::SetValue(int col, long long int row, std::string value)
 {
     NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
@@ -2012,7 +2012,7 @@ void AttributeTable::SetValue(int col, long long row, std::string value)
 //	}
 }
 
-double AttributeTable::GetDblValue(int col, long long row)
+double AttributeTable::GetDblValue(int col, long long int row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_dNodata;
@@ -2062,8 +2062,8 @@ double AttributeTable::GetDblValue(int col, long long row)
 //	return ret;
 }
 
-long long
-AttributeTable::GetIntValue(int col, long long row)
+long long int
+AttributeTable::GetIntValue(int col, long long int row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_iNodata;
@@ -2075,7 +2075,7 @@ AttributeTable::GetIntValue(int col, long long row)
     int rc = sqlite3_bind_int64(stmt, 1, row);
     if (sqliteError(rc, &stmt)) return m_iNodata;
 
-    long long ret = m_iNodata;
+    long long int ret = m_iNodata;
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW)
     {
@@ -2114,7 +2114,7 @@ AttributeTable::GetIntValue(int col, long long row)
 
 }
 
-std::string AttributeTable::GetStrValue(int col, long long row)
+std::string AttributeTable::GetStrValue(int col, long long int row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_sNodata;

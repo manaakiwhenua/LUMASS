@@ -1697,6 +1697,7 @@ void OtbModellerWin::test()
     for (int l=0; l < nlayers; ++l)
     {
         long long int d = rand() % 100000 + 10;
+        NMDebugAI(<< "#" << l << " size: " << d << std::endl);
 
         if (testnumeric > llmax/d)
         {
@@ -1725,10 +1726,6 @@ void OtbModellerWin::test()
     }
 
 
-
-
-
-return;
 
 /*
     std::vector<long long> strides(sdom.size(),0);

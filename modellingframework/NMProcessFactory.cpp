@@ -33,6 +33,7 @@
 #include "NMSumZonesFilterWrapper.h"
 #include "NMItkCastImageFilterWrapper.h"
 #include "NMResampleImageFilterWrapper.h"
+#include "NMUniqueCombinationFilterWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -51,6 +52,8 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("SummarizeZones")       ;
     mProcRegister << QString::fromLatin1("CastImage")            ;
     mProcRegister << QString::fromLatin1("ResampleImage")        ;
+    mProcRegister << QString::fromLatin1("UniqueCombination")    ;
+
 
     mSinks << QString::fromLatin1("ImageWriter");
     mSinks << QString::fromLatin1("CostDistanceBuffer");
@@ -128,6 +131,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMResampleImageFilterWrapper";
     }
+    else if (alias.compare("UniqueCombination") == 0)
+    {
+        return "NMUniqueCombinationFilterWrapper";
+    }
     else return proc;
 }
 
@@ -176,6 +183,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMResampleImageFilterWrapper") == 0)
     {
         proc =  new NMResampleImageFilterWrapper(this);
+    }
+    else if (procClass.compare("NMUniqueCombinationFilterWrapper") == 0)
+    {
+        proc =  new NMUniqueCombinationFilterWrapper(this);
     }
     else
         proc =  0;

@@ -1055,6 +1055,7 @@ void ClassName::setRAT(unsigned int numInput,  		\
     if (!this->mbIsInitialised)                                                 \
         return;                                                               \
                                                                                 \
+    unsigned int idx = numInput;                                                \
     otb::AttributeTable::Pointer rat = imgWrapper->getOTBTab();                 \
                                                                                 \
     switch (this->mInputComponentType)                                          \

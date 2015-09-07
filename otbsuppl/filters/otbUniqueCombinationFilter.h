@@ -93,7 +93,7 @@ public:
 protected:
     UniqueCombinationFilter();
     virtual ~UniqueCombinationFilter();
-    virtual void PrintSelf(std::ostream &os, Indent indent) const;
+    //virtual void PrintSelf(std::ostream &os, itk::Indent indent) const;
 
     void BeforeThreadedGenerateData();
     void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
@@ -103,14 +103,14 @@ protected:
 
 
 private:
-    static std::string ctx;
+    static const std::string ctx;
 
 };
 
 }
 
 template< class TInputImage, class TOutputImage>
-const std::string otb::SumZonesFilter<TInputImage, TOutputImage>::ctx = "otb::UniqueCombinationFilter";
+const std::string otb::UniqueCombinationFilter<TInputImage, TOutputImage>::ctx = "otb::UniqueCombinationFilter";
 
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbUniqueCombinationFilter.txx"

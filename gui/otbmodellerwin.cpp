@@ -1642,20 +1642,20 @@ void OtbModellerWin::test()
     // setup the key-value store
     // -------------------------------------------------------
 
-    TCHDB* hdb;
-    int ecode;
-    char* key, *value;
+//    TCHDB* hdb;
+//    int ecode;
+//    char* key, *value;
 
-    hdb = tchdbnew();
-    //tchdbsetcache(hdb, 1000000);
+//    hdb = tchdbnew();
+//    //tchdbsetcache(hdb, 1000000);
 
-    std::string dbName = "/home/alex/garage/testing/hdb.tch";
+//    std::string dbName = "/home/alex/garage/testing/hdb.tch";
 
-    if (!tchdbopen(hdb, dbName.c_str(), HDBOWRITER | HDBOCREAT))
-    {
-        ecode = tchdbecode(hdb);
-        NMDebugAI(<< "ERROR: " << tchdberrmsg(ecode) << std::endl);
-    }
+//    if (!tchdbopen(hdb, dbName.c_str(), HDBOWRITER | HDBOCREAT))
+//    {
+//        ecode = tchdbecode(hdb);
+//        NMDebugAI(<< "ERROR: " << tchdberrmsg(ecode) << std::endl);
+//    }
 
 
     // -----------------------------------------------------
@@ -1681,7 +1681,7 @@ void OtbModellerWin::test()
     {
         NMErr(ctxOtbModellerWin, << "Number of possible unique combinations"
               << " is too big - we cannot handle the problem!");
-        tchdbclose(hdb);
+        //tchdbclose(hdb);
         NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
     }
@@ -1693,24 +1693,44 @@ void OtbModellerWin::test()
 
 
     long long testnumeric = 1;
+    std::vector<int> layergroups;
     for (int l=0; l < nlayers; ++l)
     {
-        long long int d = rand() % 25000 + 10;
+        long long int d = rand() % 100000 + 10;
 
         if (testnumeric > llmax/d)
         {
-            NMErr(ctxOtbModellerWin, << "Hyperspace overflow!");
-            tchdbclose(hdb);
-            NMDebugCtx(ctxOtbModellerWin, << "done!");
-            return;
+            NMDebugAI(<< "overflow at l=" << l << std::endl);
+            //NMErr(ctxOtbModellerWin, << "Hyperspace overflow!");
+            //tchdbclose(hdb);
+            //NMDebugCtx(ctxOtbModellerWin, << "done!");
+            //return;
+            --l;
+            layergroups.push_back(l);
+            testnumeric = 1;
         }
-
-        sdom.push_back(d);
-        NMDebug(<< d << " ");
+        else
+        {
+            testnumeric *= d;
+            //sdom.push_back(d);
+        }
+        //NMDebug(<< d << " ");
     }
     NMDebug(<< std::endl);
 
+    NMDebugAI(<< "max group indices ..." << std::endl);
+    for (int i=0; i < layergroups.size(); ++ i)
+    {
+        NMDebugAI(<< layergroups.at(i) << std::endl);
+    }
 
+
+
+
+
+return;
+
+/*
     std::vector<long long> strides(sdom.size(),0);
     strides[0] = 1;
 
@@ -1808,7 +1828,7 @@ void OtbModellerWin::test()
     double dur = difftime(start, end);
 
     NMDebugAI(<< "this took " << dur << " time" << std::endl);
-
+*/
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 

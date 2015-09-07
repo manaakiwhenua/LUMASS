@@ -20,7 +20,7 @@
 #define __otbUniqueCombinationFilter_txx
 
 #include "nmlog.h"
-#include "UniqueCombinationFilter.h"
+#include "otbUniqueCombinationFilter.h"
 
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
@@ -59,7 +59,7 @@ void
 UniqueCombinationFilter< TInputImage, TOutputImage >
 ::SetNthInput(unsigned int idx, const TInputImage* image)
 {
-    this->SetInput(idx, const_cast<TImage *>( image ));
+    this->SetInput(idx, const_cast<TInputImage *>( image ));
 
     // let's make sure, we've got the same size for
     // this vector that we've got for the images
@@ -82,7 +82,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
 
     this->m_vRAT[idx] = table;
-
 }
 
 template< class TInputImage, class TOutputImage >
@@ -111,20 +110,20 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // (... and hopefully also the same projection - but
     // we don't check that ...)
     unsigned long long inputSize[2];
-    inputSize[0] = this->GetNthInput(0)->GetLargestPossibleRegion().GetSize(0);
-    inputSize[1] = this->GetNthInput(1)->GetLargestPossibleRegion().GetSize(1);
+    inputSize[0] = this->GetInput(0)->GetLargestPossibleRegion().GetSize(0);
+    inputSize[1] = this->GetInput(0)->GetLargestPossibleRegion().GetSize(1);
 
     unsigned int nbInputs = this->GetNumberOfValidRequiredInputs();
     for (unsigned int p=0; p < nbInputs; ++p)
     {
-        if((inputSize[0] != this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(0))
-           || (inputSize[1] != this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(1)))
+        if((inputSize[0] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(0))
+           || (inputSize[1] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(1)))
           {
           itkExceptionMacro(<< "Input images must have the same dimensions." << std::endl
                             << "image #1 is [" << inputSize[0] << ";" << inputSize[1] << "]" << std::endl
                             << "image #" << p+1 << " is ["
-                            << this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(0) << ";"
-                            << this->GetNthInput(p)->GetLargestPossibleRegion().GetSize(1) << "]");
+                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(0) << ";"
+                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(1) << "]");
 
           itk::ExceptionObject e(__FILE__, __LINE__);
           e.SetLocation(ITK_LOCATION);
@@ -132,9 +131,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
           throw e;
           }
     }
-
-
-
 
 }
 
@@ -149,21 +145,38 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typedef itk::ImageRegionIterator<TOutputImage> ImageRegionIteratorType;
 
     unsigned int nbInputs = this->GetNumberOfValidRequiredInputs();
-    std::vector<ImageRegionConstIteratorType> inputIterators(nbInputs);
+    if (nbInputs == 0)
+    {
+        itkExceptionMacro(<< "Well, we do need some input tough!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
+    std::vector<ImageRegionConstIteratorType> inputIterators(nbInputs);
     for (unsigned int in=0; in < nbInputs; ++in)
     {
-        inputIterators[in] = ImageRegionConstIteratorType(this->GetNthInput(in),
+        inputIterators[in] = ImageRegionConstIteratorType(this->GetInput(in),
                                         outputRegionForThread);
+        inputIterators[in].GoToBegin();
     }
     ImageRegionIteratorType outIt(this->GetOutput(0),
                          outputRegionForThread);
+    outIt.GoToBegin();
 
 
     itk::ProgressReporter progress(this, threadId,
                                    outputRegionForThread.GetNumberOfPixels());
 
-
+    while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
+    {
+        outIt.Set(static_cast<OutputPixelType>(inputIterators[0].Get()));
+        progress.CompletedPixel();
+        ++outIt;
+        for (unsigned int in=0; in < nbInputs; ++in)
+        {
+            ++inputIterators[in];
+        }
+    }
 
 }
 
@@ -177,4 +190,4 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
 }   // end namespace otb
 
-#endif /* __otbUniqueCombinationFilter_txx
+#endif /* __otbUniqueCombinationFilter_txx */

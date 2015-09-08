@@ -87,7 +87,7 @@ public:
     void SetNthInput(unsigned int idx, const InputImageType * image);
 
     void setRAT(unsigned int idx, AttributeTable::Pointer table);
-    AttributeTable::Pointer getRAT(unsigned int idx);
+    AttributeTable::Pointer getRAT(unsigned int idx) {return m_UVTable;}
 
     void SetUVTableName(const std::string& name);
 

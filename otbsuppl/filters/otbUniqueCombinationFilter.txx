@@ -164,7 +164,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typename TOutputImage::RegionType outRegion = outImg->GetBufferedRegion();
 
     // ======================================================================
-    // KEY STORES FOR THREADS
+    // PREPARE OUPUT TABLE AND KEY-VALUE STORE
     // ======================================================================
     //    int nbThreads = 1;//this->GetNumberOfThreads();
     //    for (int t=0; t < nbThreads; ++t)
@@ -250,7 +250,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
 
     // ======================================================================
-    // DO'IN THE REAL STUFF
+    // IDENTIFY UNIQUE COMBINATIONS
     // ======================================================================
     itk::ProgressReporter progress(this, 0,
                                    outRegion.GetNumberOfPixels());
@@ -258,7 +258,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typename TOutputImage::PixelType outIdx = 0;
     typename TOutputImage::PixelType readIdx = 0;
     std::vector<typename TInputImage::PixelType> combo(nbInputs, 0);
-    std::vector<typename TInputImage::PixelType> readCombo(nbInputs, 0);
+    //std::vector<typename TInputImage::PixelType> readCombo(nbInputs, 0);
     while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
     {
         for (unsigned int in=0; in < nbInputs; ++in)
@@ -268,24 +268,19 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         }
 
         if (tchdbget3(m_tcHDB,
-                      static_cast<void*>(&readCombo[0]),
+                      static_cast<void*>(&combo[0]),
                       sizeof(typename TInputImage::PixelType) * nbInputs,
                       static_cast<void*>(&readIdx),
                       sizeof(typename TOutputImage::PixelType))
             == -1)
         {
-            if (tchdbputkeep(m_tcHDB,
+            tchdbputkeep(m_tcHDB,
                           static_cast<void*>(&combo[0]),
                           sizeof(typename TInputImage::PixelType) * nbInputs,
                           static_cast<void*>(&outIdx),
-                          sizeof(typename TOutputImage::PixelType)))
-            {
-                outIt.Set(outIdx);
-                ++outIdx;
-            }
-
-
-
+                          sizeof(typename TOutputImage::PixelType));
+            outIt.Set(outIdx);
+            ++outIdx;
         }
         else
         {
@@ -357,16 +352,18 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // just close the table
         m_UVTable->closeTable();
 
-        // set the output RAT table
-        if (m_vOutRAT.size())
-        {
-            m_vOutRAT[0] = m_UVTable;
-        }
-        else
-        {
-            m_vOutRAT.push_back(m_UVTable);
-        }
     }
+
+    // set the output RAT table
+    if (m_vOutRAT.size())
+    {
+        m_vOutRAT[0] = m_UVTable;
+    }
+    else
+    {
+        m_vOutRAT.push_back(m_UVTable);
+    }
+
 
     // clean up the hdbc
     //    for (int d=0; d < m_threadHDB.size(); ++d)
@@ -424,6 +421,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             this->m_UVTable->closeTable(false);
         }
     }
+    m_UVTable = 0;
+    m_UVTable = AttributeTable::New();
 
     Superclass::ResetPipeline();
     NMDebugCtx(ctx, << "done!")

@@ -46,10 +46,12 @@ NMUniqueCombinationFilterWrapper
 	Q_OBJECT
 
     
+    Q_PROPERTY(QStringList UVTableName READ getUVTableName WRITE setUVTableName)
 
 public:
 
     
+    NMPropertyGetSet( UVTableName, QStringList )
 
 public:
     NMUniqueCombinationFilterWrapper(QObject* parent=0);
@@ -76,6 +78,7 @@ protected:
     		const QMap<QString, NMModelComponent*>& repo);
 
     
+    QStringList mUVTableName;
 
 };
 

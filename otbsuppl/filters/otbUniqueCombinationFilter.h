@@ -89,17 +89,33 @@ public:
     void setRAT(unsigned int idx, AttributeTable::Pointer table);
     AttributeTable::Pointer getRAT(unsigned int idx);
 
+    void SetUVTableName(const std::string& name);
+
+    virtual void ResetPipeline();
 
 protected:
     UniqueCombinationFilter();
     virtual ~UniqueCombinationFilter();
     //virtual void PrintSelf(std::ostream &os, itk::Indent indent) const;
 
-    void BeforeThreadedGenerateData();
-    void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
-    void AfterThreadedGenerateData();
+    //void BeforeThreadedGenerateData();
+    //void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
+    //void AfterThreadedGenerateData();
+    void GenerateData();
 
-    std::vector<AttributeTable::Pointer> m_vRAT;
+    std::vector<AttributeTable::Pointer> m_vInRAT;
+    std::vector<AttributeTable::Pointer> m_vOutRAT;
+
+    std::vector<TCHDB*> m_threadHDB;
+    TCHDB* m_tcHDB;
+
+    std::string m_UVTableName;
+    AttributeTable::Pointer m_UVTable;
+
+    bool m_StreamingProc;
+    bool m_DropTmpTables;
+
+    long long m_TotalStreamedPix;
 
 
 private:

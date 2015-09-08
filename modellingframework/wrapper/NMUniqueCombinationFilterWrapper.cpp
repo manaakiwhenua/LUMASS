@@ -120,6 +120,14 @@ public:
 		int givenStep = step;
 
 		
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mUVTableName.size());
+        std::string curUVTableName;
+        if (step < p->mUVTableName.size())
+        {
+            curUVTableName = p->mUVTableName.at(step).toStdString().c_str();
+            f->SetUVTableName(curUVTableName);
+        }
+
 
 		NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "done!");
 	}

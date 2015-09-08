@@ -2467,6 +2467,7 @@ AttributeTable::createTable(std::string filename, std::string tag)
 
         m_vNames.clear();
         m_vTypes.clear();
+        m_idColName.clear();
 
         NMDebugAI(<< "analysing table structure ..." << std::endl);
         while (sqlite3_step(stmt_exists) == SQLITE_ROW)
@@ -2485,9 +2486,17 @@ AttributeTable::createTable(std::string filename, std::string tag)
                        << pk << std::endl);
 
             // pick the first PRIMARY KEY column as THE PK
-            if (pk && m_idColName.empty())
+            if (pk)// && m_idColName.empty())
             {
-                m_idColName = name;
+                if (m_idColName.empty())
+                {
+                    m_idColName = name;
+                }
+                else
+                {
+                    m_idColName += ",";
+                    m_idColName += name;
+                }
             }
 
             m_vNames.push_back(name);
@@ -2557,7 +2566,10 @@ AttributeTable::createTable(std::string filename, std::string tag)
                    << std::endl);
         NMDebugAI(<< "creating one ..." << std::endl);
 
-        m_idColName = "rowidx";
+        if (m_idColName.empty())
+        {
+            m_idColName = "rowidx";
+        }
         ssql.str("");
         ssql << "begin transaction;";
         ssql << "CREATE TABLE " << m_tableName << " "

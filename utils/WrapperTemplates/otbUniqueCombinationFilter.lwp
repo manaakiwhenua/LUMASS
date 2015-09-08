@@ -19,3 +19,4 @@ FilterClassFileName         = otbUniqueCombinationFilter
 FilterTypeDef               = otb::UniqueCombinationFilter<InImgType, OutImgType>
 RATGetSupport               = 1
 RATSetSupport               = 1
+Property_1                  = UVTableName:1:string

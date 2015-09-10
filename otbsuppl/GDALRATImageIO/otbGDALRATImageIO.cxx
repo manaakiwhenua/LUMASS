@@ -2134,6 +2134,17 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 	if (img->GetRasterCount() < iBand)
 		return 0;
 
+    // format the database filename for the external lumass db file
+    // copy gdal tab into otbAttributeTable
+    std::string imgFN = this->m_FileName;
+    std::string dbFN = imgFN;
+    size_t pos = dbFN.find_last_of('.');
+    if (pos > 0)
+    {
+        dbFN = dbFN.substr(0, pos);
+    }
+    dbFN += ".ldb";
+
 	// get the RAT for the specified band
 #ifdef GDAL_NEWRATAPI
     GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
@@ -2142,7 +2153,13 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 #endif
 	if (rat == 0)
 	{
-        //img = 0;
+        // double check, whether there's an external lumass db file out there,
+        // which we could use instead
+        AttributeTable::Pointer ldbTab = AttributeTable::New();
+        if (ldbTab->createTable(dbFN) == AttributeTable::ATCREATE_READ)
+        {
+            return ldbTab;
+        }
 		return 0;
 	}
 
@@ -2164,15 +2181,6 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
         }
     }
 
-    // copy gdal tab into otbAttributeTable
-    std::string imgFN = this->m_FileName;
-    std::string dbFN = imgFN;
-    size_t pos = dbFN.find_last_of('.');
-    if (pos > 0)
-    {
-        dbFN = dbFN.substr(0, pos);
-    }
-    dbFN += ".ldb";
 
     std::stringstream tag;
     tag << iBand;

@@ -120,7 +120,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 //::BeforeThreadedGenerateData()
 ::GenerateData()
 {
-    NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
     // ======================================================================
     // IMAGE AXES DIMENSION CHECK
     // ======================================================================
@@ -133,7 +133,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     inputSize[1] = this->GetInput(0)->GetLargestPossibleRegion().GetSize(1);
 
     unsigned int nbInputs = this->GetNumberOfIndexedInputs();//this->GetNumberOfValidRequiredInputs();
-    NMDebugAI(<< "nbInputs = " << nbInputs << std::endl);
+   // NMDebugAI(<< "nbInputs = " << nbInputs << std::endl);
     for (unsigned int p=0; p < nbInputs; ++p)
     {
         if((inputSize[0] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(0))
@@ -190,7 +190,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // PREPARE UNIQUE VALUE (i.e. COMBINATION) TABLE
         // -------------------------------------------------------------
 
-        if (this->m_UVTable->createTable(m_UVTableName) == otb::AttributeTable::ATCREATE_ERROR)
+        // note the "1" is to indicate the band this table is for
+        if (this->m_UVTable->createTable(m_UVTableName, "1") == otb::AttributeTable::ATCREATE_ERROR)
         {
             itkExceptionMacro(<< "Failed creating output table!");
             return;
@@ -250,6 +251,10 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         }
 
         m_tcHDB = tchdbnew();
+        tchdbtune(m_tcHDB, 200000000, 8, 10, HDBTLARGE | HDBTDEFLATE);
+        tchdbsetcache(m_tcHDB, 700000);
+        tchdbsetxmsiz(m_tcHDB, 536870912);
+
         std::string hdbName = std::tmpnam(0);
         if (!tchdbopen(m_tcHDB, hdbName.c_str(), HDBOWRITER | HDBOCREAT))
         {
@@ -342,7 +347,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ++m_TotalStreamedPix;
     }
 
-    NMDebugAI(<< m_OutIdx << " unique combinations found so far ... " << std::endl);
+    //NMDebugAI(<< m_OutIdx << " unique combinations found so far ... " << std::endl);
 
     //}
 
@@ -372,9 +377,11 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
                               << tchdberrmsg(ecode));
             tchdbclose(m_tcHDB);
             this->m_UVTable->closeTable();
-            NMDebugCtx(ctx, << "done!");
+            //NMDebugCtx(ctx, << "done!");
             return;
         }
+
+        itk::ProgressReporter writeProgress(this, 0, m_OutIdx);
 
         m_UVTable->beginTransaction();
         while(nextKey = tchdbiternext(m_tcHDB, &sizeKey))
@@ -397,6 +404,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             m_UVTable->doBulkSet(inVals);
 
             free(nextKey);
+            writeProgress.CompletedPixel();
         }
         m_UVTable->endTransaction();
 
@@ -429,7 +437,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     //    }
     //    m_threadHDB.clear();
 
-    NMDebugCtx(ctx, << "done!");
+    //NMDebugCtx(ctx, << "done!");
 }
 
 

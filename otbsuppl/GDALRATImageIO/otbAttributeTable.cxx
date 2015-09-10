@@ -145,7 +145,7 @@ AttributeTable::AddColumn(const std::string& sColName,
                           TableColumnType eType,
                           const std::string &sColConstraint)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+    //NMDebugCtx(_ctxotbtab, << "...");
     // check, whether the db is valid, and try to create a tmp one
     // if it hasn't been created yet
     if (m_db == 0)
@@ -153,7 +153,7 @@ AttributeTable::AddColumn(const std::string& sColName,
         // create a table if there's none
         if (createTable("") == ATCREATE_ERROR)
         {
-            NMDebugCtx(_ctxotbtab, << "done!");
+            //NMDebugCtx(_ctxotbtab, << "done!");
             return false;
         }
     }
@@ -167,7 +167,7 @@ AttributeTable::AddColumn(const std::string& sColName,
 	{
         NMDebugAI( << "Column '" << sColName << "'"
                    << " already exists!" << std::endl);
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
 		return false;
 	}
 
@@ -231,7 +231,7 @@ AttributeTable::AddColumn(const std::string& sColName,
     sqliteError(rc, &stmt_rowidx);
     this->m_vStmtGetRowidx.push_back(stmt_rowidx);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+    //NMDebugCtx(_ctxotbtab, << "done!");
 
     //	std::vector<std::string>* vstr;
     //	std::vector<long>* vint;
@@ -281,11 +281,11 @@ bool
 AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
                                const std::string& whereClause)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+    //NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
         NMDebugAI(<< "Database is NULL!" << std::endl);
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -299,7 +299,7 @@ AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
         {
             sqlite3_finalize(m_StmtBulkGet);
             m_StmtBulkGet = 0;
-            NMDebugCtx(_ctxotbtab, << "done!");
+            //NMDebugCtx(_ctxotbtab, << "done!");
             return false;
         }
         else
@@ -336,11 +336,11 @@ AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
     {
         sqlite3_finalize(m_StmtBulkGet);
         m_StmtBulkGet = 0;
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+    //NMDebugCtx(_ctxotbtab, << "done!");
     return true;
 }
 
@@ -348,11 +348,11 @@ bool
 AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
                                const bool& bInsert)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+    //NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
         NMDebugAI(<< "Database is NULL!" << std::endl);
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -365,7 +365,7 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
             otbWarningMacro(<< "Column \"" << colNames.at(i)
                             << "\" does not exist in the table!");
             NMDebugAI(<< "Column '" << colNames.at(i) << "' not found!" << std::endl);
-            NMDebugCtx(_ctxotbtab, << "done!");
+            //NMDebugCtx(_ctxotbtab, << "done!");
             return false;
         }
         m_vTypesBulkSet.push_back(this->GetColumnType(idx));
@@ -463,11 +463,11 @@ AttributeTable::prepareBulkSet(const std::vector<std::string>& colNames,
     {
         sqlite3_finalize(m_StmtBulkSet);
         m_StmtBulkSet = 0;
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+   // NMDebugCtx(_ctxotbtab, << "done!");
     return true;
 }
 
@@ -1048,12 +1048,12 @@ AttributeTable::doBulkSet(std::vector<ColumnValue> &values, const long long int 
 bool
 AttributeTable::beginTransaction()
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+   // NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
         otbWarningMacro(<< "No database connection!");
         NMWarn(_ctxotbtab, << "No database connection!");
-        NMDebugCtx(_ctxotbtab, << "done!");
+       // NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -1061,7 +1061,7 @@ AttributeTable::beginTransaction()
     {
         otbWarningMacro(<< "Transaction alrady in progress - bail out!");
         NMWarn(_ctxotbtab, << "Transaction already in progress - bail out!");
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return true;
     }
 
@@ -1069,12 +1069,12 @@ AttributeTable::beginTransaction()
     if (sqliteError(rc, 0))
     {
         NMErr(_ctxotbtab, << "Failed starting transaction!");
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
     else
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return true;
     }
 }
@@ -1082,12 +1082,12 @@ AttributeTable::beginTransaction()
 bool
 AttributeTable::endTransaction()
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+    //NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
         NMWarn(_ctxotbtab, << "No datbase connection!");
         otbWarningMacro(<< "No database connection!");
-        NMDebugCtx(_ctxotbtab, << "done!");
+       // NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -1095,7 +1095,7 @@ AttributeTable::endTransaction()
     {
         otbWarningMacro(<< "Cannot commit, no active transaction!");
         NMWarn(_ctxotbtab, << "Nothing to commit - no active transaction!");
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -1103,12 +1103,12 @@ AttributeTable::endTransaction()
     if (sqliteError(rc, 0))
     {
         NMErr(_ctxotbtab, << "Failed commit!");
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
     else
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return true;
     }
 }

@@ -128,6 +128,29 @@ public:
             f->SetUVTableName(curUVTableName);
         }
 
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputNodata.size());
+        std::vector<long long> vecInputNodata;
+        long long curInputNodata;
+        if (step < p->mInputNodata.size())
+        {
+            for (int i=0; i < p->mInputNodata.at(step).size(); ++i) 
+            {
+                curInputNodata = p->mInputNodata.at(step).at(i).toLongLong(&bok);
+                if (bok)
+                {
+                    vecInputNodata.push_back((curInputNodata));
+                }
+                else
+                {
+                    NMErr("NMUniqueCombinationFilterWrapper_Internal", << "Invalid value for 'InputNodata'!");
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setMsg("Invalid value for 'InputNodata'!");
+                    throw e;
+                }
+            }
+            f->SetInputNodata(vecInputNodata);
+        }
+
 
 		NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "done!");
 	}

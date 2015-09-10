@@ -91,6 +91,11 @@ public:
 
     void SetUVTableName(const std::string& name);
 
+
+
+    void SetInputNodata(std::vector<long long>& inNodata)
+    {m_InputNodata = inNodata;}
+
     virtual void ResetPipeline();
 
 protected:
@@ -116,6 +121,10 @@ protected:
     bool m_DropTmpTables;
 
     long long m_TotalStreamedPix;
+    OutputPixelType m_OutIdx;
+    long long m_UVTableIndex;
+
+    std::vector<long long> m_InputNodata;
 
 
 private:

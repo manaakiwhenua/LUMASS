@@ -259,6 +259,7 @@ protected:
     std::vector<std::string> m_vIndexNames;
 
     sqlite3_stmt* m_StmtColIter;
+    sqlite3_stmt* m_StmtRowCount;
 
     sqlite3_stmt* m_StmtBegin;
     sqlite3_stmt* m_StmtEnd;

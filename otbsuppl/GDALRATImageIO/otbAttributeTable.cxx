@@ -45,7 +45,19 @@ int AttributeTable::GetNumCols()
 
 long long int AttributeTable::GetNumRows()
 {
-	return m_iNumRows;
+    if (m_db == 0)
+    {
+        return 0;
+    }
+
+
+    if (sqlite3_step(m_StmtRowCount) == SQLITE_ROW)
+    {
+        m_iNumRows = sqlite3_column_int64(m_StmtRowCount, 0);
+    }
+    sqlite3_reset(m_StmtRowCount);
+
+    return m_iNumRows;
 }
 
 bool
@@ -713,7 +725,7 @@ AttributeTable::doBulkGet(std::vector< ColumnValue >& values)
                 break;
             case ATTYPE_INT:
                 values[col].type = ATTYPE_INT;
-                values[col].ival = sqlite3_column_int(m_StmtBulkGet, col);
+                values[col].ival = sqlite3_column_int64(m_StmtBulkGet, col);
                 break;
             case ATTYPE_STRING:
                 values[col].type = ATTYPE_STRING;
@@ -2549,7 +2561,7 @@ AttributeTable::createTable(std::string filename, std::string tag)
 
         if (sqlite3_step(stmt_exists) == SQLITE_ROW)
         {
-            m_iNumRows = sqlite3_column_int(stmt_exists, 0);
+            m_iNumRows = sqlite3_column_int64(stmt_exists, 0);
         }
         NMDebugAI( << m_tableName << " has " << m_iNumRows
                    << " records" << std::endl);
@@ -2633,13 +2645,11 @@ AttributeTable::createTable(std::string filename, std::string tag)
     // ============================================================
     // prepare statements for recurring tasks
     // ============================================================
-    //    rc = sqlite3_prepare_v2(m_db, "ALTER TABLE main." << m_tableName << " ADD @COL @TYP ;",
-    //                                256, &m_StmtAddColl, 0);
-    //    sqliteError(rc, &m_StmtAddColl);
-
-    //    rc = sqlite3_prepare_v2(m_db, "UPDATE main." << m_tableName << " SET @COL = @VAL WHERE " << m_idColName << " = @IDX ;",
-    //                            1024, &m_StmtUpdate, 0);
-    //    sqliteError(rc, &m_StmtUpdate);
+    ssql.str("");
+    ssql << "SELECT count(" << this->m_idColName << ") "
+         << "FROM " << this->m_tableName << ";";
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1, &m_StmtRowCount, 0);
+    sqliteError(rc, &m_StmtRowCount);
 
     rc = sqlite3_prepare_v2(m_db, "BEGIN TRANSACTION;", -1, &m_StmtBegin, 0);
     sqliteError(rc, &m_StmtBegin);
@@ -2666,7 +2676,7 @@ AttributeTable::createTable(std::string filename, std::string tag)
 AttributeTable::AttributeTable()
 	: m_iNumRows(0),
 	  m_iBand(1),
-	  m_iNodata(-std::numeric_limits<long>::max()),
+      m_iNodata(-std::numeric_limits<long long>::max()),
 	  m_dNodata(-std::numeric_limits<double>::max()),
       m_sNodata("NULL"),
       m_db(0),
@@ -2703,6 +2713,7 @@ AttributeTable::resetTableAdmin(void)
     sqlite3_finalize(m_StmtBulkSet);
     sqlite3_finalize(m_StmtBulkGet);
     sqlite3_finalize(m_StmtColIter);
+    sqlite3_finalize(m_StmtRowCount);
 
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {
@@ -2739,7 +2750,7 @@ AttributeTable::resetTableAdmin(void)
 
     m_iNumRows = 0;
     m_iBand = 1;
-    m_iNodata = -std::numeric_limits<long>::max();
+    m_iNodata = -std::numeric_limits<long long>::max();
     m_dNodata = -std::numeric_limits<double>::max();
     m_sNodata = "NULL";
     m_db = 0;

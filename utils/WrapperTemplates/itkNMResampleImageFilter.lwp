@@ -29,6 +29,6 @@ InputTypeFunc_1             = 1:OutImgType:SetReferenceImage
 # wrapper properties / filter parameters
 Property_1                  = InterpolationMethod:1:string
 Property_2                  = DefaultPixelValue:1:double:OutImgPixelType
-Property_3                  = OutputSpacing:2:double:OutSpacingValueType
-Property_4                  = OutputOrigin:2:double:OutPointValueType
-Property_5                  = Size:2:long:SizeValueType
+Property_3                  = OutputSpacing:2:double:OutSpacingValueType:pointer
+Property_4                  = OutputOrigin:2:double:OutPointValueType:pointer
+Property_5                  = Size:2:long:SizeValueType:pointer

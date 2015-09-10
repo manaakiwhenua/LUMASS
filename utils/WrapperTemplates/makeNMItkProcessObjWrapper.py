@@ -150,6 +150,8 @@ def formatTypeConversion(type):
         typeConv = ".toDouble(&bok)"
     elif type == "long":
         typeConv = ".toLong(&bok)"
+    elif type == "long long":
+        typeConv = ".toLongLong(&bok)"
     elif type == "bool":
         typeConv = ".toInt(&bok)"
     elif type == "std::string" or type == "string":
@@ -204,10 +206,17 @@ def formatInternalParamSetting(propertyList, className):
         varTargetType = propVarType
         varTargetCast = ''
         varTargetPointerCast = ''
-        if len(prop) == 4:
-            varTargetType = prop[3]
-            varTargetCast = "static_cast<%s>" % varTargetType
-            varTargetPointerCast = "static_cast<%s*>" % varTargetType
+        propTypeVector = False
+
+        if propDim == 2:
+            if len(prop) == 4:
+                varTargetType = prop[3]
+                varTargetCast = "static_cast<%s>" % varTargetType
+                varTargetPointerCast = "static_cast<%s*>" % varTargetType
+            elif len(prop) == 5:
+                if prop[4] == 'vector':
+                    propTypeVector = True
+
 
         if propDim == 0:
             tmp = \
@@ -285,18 +294,25 @@ def formatInternalParamSetting(propertyList, className):
                 % (propName, propName)
                 tmp = tmp + test
 
-            tmp = tmp + \
-            "            }\n"                              \
-            "            if (vec%s.size() > 0)\n"          \
-            "            {\n"                              \
-            "                f->Set%s(%s(&vec%s[0]));\n"   \
-            "            }\n"                              \
-            "            else\n"                           \
-            "            {\n"                              \
-            "                f->Set%s(0);\n"               \
-            "            }\n"                              \
-            "        }\n"                                  \
-            % (propName, propName, varTargetPointerCast, propName, propName)
+            if propTypeVector:
+                tmp = tmp + \
+                "            }\n"                              \
+                "            f->Set%s(vec%s);\n"               \
+                "        }\n"                                  \
+                % (propName, propName)
+            else:
+                tmp = tmp + \
+                "            }\n"                              \
+                "            if (vec%s.size() > 0)\n"          \
+                "            {\n"                              \
+                "                f->Set%s(%s(&vec%s[0]));\n"   \
+                "            }\n"                              \
+                "            else\n"                           \
+                "            {\n"                              \
+                "                f->Set%s(0);\n"               \
+                "            }\n"                              \
+                "        }\n"                                  \
+                % (propName, propName, varTargetPointerCast, propName, propName)
 
         else:
             print "WARNING - cannot format multi-dimensional parameter settings yet!!"

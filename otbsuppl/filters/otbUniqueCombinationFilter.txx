@@ -44,7 +44,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     : m_StreamingProc(false),
       m_DropTmpTables(true),
       m_UVTable(0),
-      m_UVTableName("")
+      m_UVTableIndex(0),
+      m_UVTableName(""),
+      m_OutIdx(0)
 {
     this->SetNumberOfRequiredInputs(1);
     this->SetNumberOfRequiredOutputs(1);
@@ -83,17 +85,17 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     this->m_vInRAT[idx] = table;
 }
 
-template< class TInputImage, class TOutputImage >
-AttributeTable::Pointer
-UniqueCombinationFilter< TInputImage, TOutputImage >
-::getRAT(unsigned int idx)
-{
-    if (idx < this->m_vOutRAT.size())
-    {
-        return this->m_vOutRAT.at(idx);
-    }
-    return 0;
-}
+//template< class TInputImage, class TOutputImage >
+//AttributeTable::Pointer
+//UniqueCombinationFilter< TInputImage, TOutputImage >
+//::getRAT(unsigned int idx)
+//{
+//    if (idx < this->m_vOutRAT.size())
+//    {
+//        return this->m_vOutRAT.at(idx);
+//    }
+//    return 0;
+//}
 
 template< class TInputImage, class TOutputImage >
 void
@@ -183,12 +185,18 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         m_TotalStreamedPix = 0;
 
+
+        // -------------------------------------------------------------
+        // PREPARE UNIQUE VALUE (i.e. COMBINATION) TABLE
+        // -------------------------------------------------------------
+
         if (this->m_UVTable->createTable(m_UVTableName) == otb::AttributeTable::ATCREATE_ERROR)
         {
             itkExceptionMacro(<< "Failed creating output table!");
             return;
         }
 
+        // ad columns (rowidx, L0, L1, L2, ... L<nbInputs-1>)
         m_UVTable->beginTransaction();
         std::vector<std::string> vColNames;
         vColNames.push_back(m_UVTable->getPrimaryKey());
@@ -202,8 +210,37 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             vColNames.push_back(colname.str());
         }
         m_UVTable->endTransaction();
-
         m_UVTable->prepareBulkSet(vColNames, true);
+
+
+        // reserve first row for nodata values
+        std::vector<AttributeTable::ColumnValue> nodatVals;
+        AttributeTable::ColumnValue ndv;
+        ndv.type = AttributeTable::ATTYPE_INT;
+        ndv.ival = m_OutIdx;
+        nodatVals.push_back(ndv);
+        ++m_OutIdx;
+
+        // make sure, we've got as many nodata values
+        // as inputs
+        m_InputNodata.resize(nbInputs);
+
+        for (int nd=1; nd < vColNames.size(); ++nd)
+        {
+            AttributeTable::ColumnValue ndv;
+            ndv.type = AttributeTable::ATTYPE_INT;
+            if (nd-1 < m_InputNodata.size())
+            {
+                ndv.ival = m_InputNodata.at(nd-1);
+            }
+            nodatVals.push_back(ndv);
+        }
+        m_UVTable->doBulkSet(nodatVals);
+
+
+        // -------------------------------------------------------------
+        // PREPARE KEY-VALUE STORE KEEPING TRACK OF UNIQUE COMBINATIONS
+        // -------------------------------------------------------------
 
         if (m_tcHDB != 0)
         {
@@ -255,42 +292,57 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     itk::ProgressReporter progress(this, 0,
                                    outRegion.GetNumberOfPixels());
 
-    typename TOutputImage::PixelType outIdx = 0;
-    typename TOutputImage::PixelType readIdx = 0;
-    std::vector<typename TInputImage::PixelType> combo(nbInputs, 0);
-    //std::vector<typename TInputImage::PixelType> readCombo(nbInputs, 0);
+    OutputPixelType readIdx = 0;
+    InputPixelType curVal;
+    bool nodata = false;
+    std::vector<InputPixelType> combo(nbInputs, 0);
     while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
     {
+        nodata = false;
         for (unsigned int in=0; in < nbInputs; ++in)
         {
-            combo[in] = inputIterators[in].Get();
+            curVal = inputIterators[in].Get();
+            if (curVal == m_InputNodata[in])
+            {
+                nodata = true;
+            }
+            combo[in] = curVal;
             ++inputIterators[in];
         }
 
-        if (tchdbget3(m_tcHDB,
-                      static_cast<void*>(&combo[0]),
-                      sizeof(typename TInputImage::PixelType) * nbInputs,
-                      static_cast<void*>(&readIdx),
-                      sizeof(typename TOutputImage::PixelType))
-            == -1)
+        if (!nodata)
         {
-            tchdbputkeep(m_tcHDB,
+            if (tchdbget3(m_tcHDB,
                           static_cast<void*>(&combo[0]),
-                          sizeof(typename TInputImage::PixelType) * nbInputs,
-                          static_cast<void*>(&outIdx),
-                          sizeof(typename TOutputImage::PixelType));
-            outIt.Set(outIdx);
-            ++outIdx;
+                          sizeof(InputPixelType) * nbInputs,
+                          static_cast<void*>(&readIdx),
+                          sizeof(OutputPixelType))
+                == -1)
+            {
+                tchdbputkeep(m_tcHDB,
+                              static_cast<void*>(&combo[0]),
+                              sizeof(typename TInputImage::PixelType) * nbInputs,
+                              static_cast<void*>(&m_OutIdx),
+                              sizeof(typename TOutputImage::PixelType));
+                outIt.Set(m_OutIdx);//outIt.Set(outIdx);
+                ++m_OutIdx;
+            }
+            else
+            {
+                outIt.Set(readIdx);
+            }
         }
         else
         {
-            outIt.Set(readIdx);
+            outIt.Set(0);
         }
 
         progress.CompletedPixel();
         ++outIt;
         ++m_TotalStreamedPix;
     }
+
+    NMDebugAI(<< m_OutIdx << " unique combinations found so far ... " << std::endl);
 
     //}
 
@@ -350,19 +402,19 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
 
         // just close the table
-        m_UVTable->closeTable();
+        //m_UVTable->closeTable();
 
     }
 
     // set the output RAT table
-    if (m_vOutRAT.size())
-    {
-        m_vOutRAT[0] = m_UVTable;
-    }
-    else
-    {
-        m_vOutRAT.push_back(m_UVTable);
-    }
+    //    if (m_vOutRAT.size())
+    //    {
+    //        m_vOutRAT[0] = m_UVTable;
+    //    }
+    //    else
+    //    {
+    //        m_vOutRAT.push_back(m_UVTable);
+    //    }
 
 
     // clean up the hdbc
@@ -423,6 +475,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
     m_UVTable = 0;
     m_UVTable = AttributeTable::New();
+    m_OutIdx = 0;
+    m_UVTableIndex = 0;
 
     Superclass::ResetPipeline();
     NMDebugCtx(ctx, << "done!")

@@ -47,11 +47,13 @@ NMUniqueCombinationFilterWrapper
 
     
     Q_PROPERTY(QStringList UVTableName READ getUVTableName WRITE setUVTableName)
+    Q_PROPERTY(QList<QStringList> InputNodata READ getInputNodata WRITE setInputNodata)
 
 public:
 
     
     NMPropertyGetSet( UVTableName, QStringList )
+    NMPropertyGetSet( InputNodata, QList<QStringList> )
 
 public:
     NMUniqueCombinationFilterWrapper(QObject* parent=0);
@@ -79,6 +81,7 @@ protected:
 
     
     QStringList mUVTableName;
+    QList<QStringList> mInputNodata;
 
 };
 

@@ -2424,6 +2424,11 @@ AttributeTable::createTable(std::string filename, std::string tag)
 
     if (!tag.empty())
     {
+        int b = atoi(tag.c_str());
+        if (b > 0)
+        {
+            this->m_iBand = b;
+        }
         m_tableName += "_";
         m_tableName += tag;
     }

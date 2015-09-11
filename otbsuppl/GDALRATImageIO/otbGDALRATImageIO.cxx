@@ -2153,13 +2153,6 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 #endif
 	if (rat == 0)
 	{
-        // double check, whether there's an external lumass db file out there,
-        // which we could use instead
-        AttributeTable::Pointer ldbTab = AttributeTable::New();
-        if (ldbTab->createTable(dbFN) == AttributeTable::ATCREATE_READ)
-        {
-            return ldbTab;
-        }
 		return 0;
 	}
 
@@ -2167,7 +2160,18 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     int nrows = rat->GetRowCount();
     int ncols = rat->GetColumnCount();
     if (nrows == 0 || ncols == 0)
+    {
+        std::stringstream ssband;
+        ssband << iBand;
+        // double check, whether there's an external lumass db file out there,
+        // which we could use instead
+        AttributeTable::Pointer ldbTab = AttributeTable::New();
+        if (ldbTab->createTable(dbFN, ssband.str()) == AttributeTable::ATCREATE_READ)
+        {
+            return ldbTab;
+        }
         return 0;
+    }
 
     // establish, whether we need an extra rowidx or whether
     // it is already included

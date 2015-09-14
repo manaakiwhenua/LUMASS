@@ -82,96 +82,66 @@ public:
 	  typedef typename InputImageType::SpacingType  InputImageSpacingType;
 	  typedef typename OutputImageType::SpacingType OutputImageSpacingType;
 
-          typedef long long ZoneKeyType;
+          typedef long long ComboIndexType;
 
-	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
-          typedef typename ZoneMapType::iterator ZoneMapTypeIterator;
-
-          //itkSetMacro(NodataValue, InputPixelType);
-          void SetNodataValue(InputPixelType nodata);
-	  itkGetMacro(NodataValue, InputPixelType);
-          //itkSetMacro(IgnoreNodataValue, bool);
-          void SetIgnoreNodataValue(bool ignore);
-	  itkGetMacro(IgnoreNodataValue, bool);
-	  itkBooleanMacro(IgnoreNodataValue);
-
-          /** Enforces the zone table to have MaxKey rows with a
-           *  0-based index. Note: this options overrides KeyIsRowIdx;
-           *  The default value is 'false'.
+          /*! Keeps track of unique combinations.
+           *  Map key: index of unique combination (0-based)
+           *  Map value: vector containing the following information:
+           *    0: count - number of occurrances of this combination
+           *    1: original value of layer 0
+           *    2: original value of layer 1
            */
-          //itkSetMacro(HaveMaxKeyRows, bool);
-          void SetHaveMaxKeyRows(bool maxkeyrows);
-          itkGetMacro(HaveMaxKeyRows, bool);
-          itkBooleanMacro(HaveMaxKeyRows);
+          typedef typename std::unordered_map< ComboIndexType,
+                                std::vector<ComboIndexType> >  ComboMapType;
+          typedef typename ComboMapType::iterator ComboMapTypeIterator;
 
 
-          /** Zone table file name
-           *
-           *  This option is only required if the zone table is
-           *  shall be written as persistent database to disk,
-           *  rather than just being consumed by any subsequent
-           *  filter, which may then write the table to disk
-           *  or whatever.
-           *  The default value is '', which creates a temporary
-           *  database in /tmp/*.ldb
-           */
-          //itkSetMacro(ZoneTableFileName, std::string);
-          void SetZoneTableFileName(const std::string& tableFileName);
-          itkGetMacro(ZoneTableFileName, std::string);
-
-	  /** Set the input images */
-	  void SetZoneImage(const OutputImageType* image);
-	  void SetValueImage(const InputImageType* image);
-	  OutputImageType* GetZoneImage()
-	  	  {return dynamic_cast<OutputImageType*>(this->GetOutput());}
-
-	  /** Specify the table to store the zone values */
-	  //void SetZoneTable(AttributeTable::Pointer);
+          AttributeTable::Pointer getRAT(unsigned int idx) {return m_ComboTable;}
+          void setRAT(unsigned int idx, AttributeTable::Pointer);
 
           void SetInputNodata(std::vector<long long>& inNodata)
-          {m_InputNodata = inNodata;}
+            {m_InputNodata = inNodata;}
 
-          AttributeTable::Pointer getRAT(unsigned int idx) {return mZoneTable;}
 
-	  virtual void ResetPipeline();
+          virtual void ResetPipeline();
 
 protected:
           CombineTwoFilter();
           virtual ~CombineTwoFilter();
 	  virtual void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
-	  void BeforeThreadedGenerateData();
-          void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
-	  void AfterThreadedGenerateData();
+            //	  void BeforeThreadedGenerateData();
+            //          void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
+            //	  void AfterThreadedGenerateData();
+          void GenerateData();
 
 
 private:
           CombineTwoFilter(const Self&); //purposely not implemented
 	  void operator=(const Self&); //purposely not implemented
 
-	  AttributeTable::Pointer mZoneTable;
-	  // this image defines the zones for which to do the summary
-	  OutputImagePointerType mZoneImage;
-	  // this image contains the values to be summarised for the individual zones
-	  InputImagePointerType mValueImage;
-
-          ZoneKeyType m_NextZoneId;
-          bool m_HaveMaxKeyRows;        // DEFAULT: false
-          bool m_IgnoreNodataValue;     // DEFAULT: true
-          std::string m_ZoneTableFileName; // DEFAULT: ""
+          AttributeTable::Pointer m_ComboTable;
           bool m_dropTmpDBs;
 
-          bool mStreamingProc;
-          std::vector<long long> m_InputNodata;
-          InputPixelType m_NodataValue;
+          bool m_StreamingProc;
+          std::vector<InputPixelType> m_InputNodata;
 
-          std::set<ZoneKeyType> mZones;
-          typename std::vector<ZoneMapType> mThreadValueStore;
+          //std::set<ZoneKeyType> mZones;
+          //typename std::vector<ComboMapType> m_ThreadComboStore;
+          ComboMapType m_ComboMap;
+          OutputPixelType m_UniqueComboIdx;
+          OutputPixelType m_NodataCount;
+          ComboIndexType m_TotalPixCount;
+
 
           TCHDB* m_HDB;
           std::string m_HDBFileName;
 
+          std::vector<AttributeTable::Pointer> m_vRAT;
+
           static const std::string ctx;
+
+
 };
 
 } // end namespace otb

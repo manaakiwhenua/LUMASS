@@ -201,12 +201,54 @@ AttributeTable::AddColumn(const std::string& sColName,
     this->m_vNames.push_back(sColName);
     this->m_vTypes.push_back(eType);
 
+    this->createPreparedColumnStatements(sColName);
+
+//    // prepare an update statement for this column
+//    sqlite3_stmt* stmt_upd;
+//    ssql.str("");
+//    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+//         <<  "@VAL WHERE " << m_idColName << " = @IDX ;";
+//    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+//                            1024, &stmt_upd, 0);
+//    sqliteError(rc, &stmt_upd);
+//    this->m_vStmtUpdate.push_back(stmt_upd);
+
+//    // prepare a get value statement for this column
+//    sqlite3_stmt* stmt_sel;
+//    ssql.str("");
+//    ssql <<  "SELECT \"" << sColName << "\" from main." << m_tableName << ""
+//         <<  " WHERE " << m_idColName << " = @IDX ;";
+//    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+//                            1024, &stmt_sel, 0);
+//    sqliteError(rc, &stmt_sel);
+//    this->m_vStmtSelect.push_back(stmt_sel);
+
+//    // prepare a get rowidx by value statement for this column
+//    sqlite3_stmt* stmt_rowidx;
+//    ssql.str("");
+//    ssql <<  "SELECT " << m_idColName << " from main." << m_tableName << ""
+//         <<  " WHERE \"" << sColName << "\" = @IDX ;";
+//    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+//                            1024, &stmt_rowidx, 0);
+//    sqliteError(rc, &stmt_rowidx);
+//    this->m_vStmtGetRowidx.push_back(stmt_rowidx);
+
+    //NMDebugCtx(_ctxotbtab, << "done!");
+
+	return true;
+}
+
+void
+AttributeTable::createPreparedColumnStatements(const std::string& colname)
+{
+    std::string sColName = colname;
+
     // prepare an update statement for this column
     sqlite3_stmt* stmt_upd;
-    ssql.str("");
+    std::stringstream ssql;
     ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
          <<  "@VAL WHERE " << m_idColName << " = @IDX ;";
-    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             1024, &stmt_upd, 0);
     sqliteError(rc, &stmt_upd);
     this->m_vStmtUpdate.push_back(stmt_upd);
@@ -230,51 +272,6 @@ AttributeTable::AddColumn(const std::string& sColName,
                             1024, &stmt_rowidx, 0);
     sqliteError(rc, &stmt_rowidx);
     this->m_vStmtGetRowidx.push_back(stmt_rowidx);
-
-    //NMDebugCtx(_ctxotbtab, << "done!");
-
-    //	std::vector<std::string>* vstr;
-    //	std::vector<long>* vint;
-    //	std::vector<double>* vdbl;
-    //	// create a new vector for the column's values
-    //	switch(eType)
-    //	{
-    //	case ATTYPE_STRING:
-    //		try{
-    //		vstr = new std::vector<std::string>();
-    //		vstr->resize(m_iNumRows, m_sNodata);
-    //		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
-
-    //		this->m_mStringCols.push_back(vstr);
-    //		this->m_vPosition.push_back(m_mStringCols.size()-1);
-    //		break;
-    //	case ATTYPE_INT:
-    //		try{
-    //		vint = new std::vector<long>();
-    //		vint->resize(m_iNumRows, m_iNodata);
-    //		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
-
-    //		this->m_mIntCols.push_back(vint);
-    //		this->m_vPosition.push_back(m_mIntCols.size()-1);
-    //		break;
-    //	case ATTYPE_DOUBLE:
-    //		try{
-    //		vdbl = new std::vector<double>();
-    //		vdbl->resize(m_iNumRows, m_dNodata);
-    //		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
-
-    //		this->m_mDoubleCols.push_back(vdbl);
-    //		this->m_vPosition.push_back(m_mDoubleCols.size()-1);
-    //		break;
-    //	default:
-    //		break;
-    //	}
-
-    //	// update admin infos
-    //	this->m_vNames.push_back(sColName);
-    //	this->m_vTypes.push_back(eType);
-
-	return true;
 }
 
 bool
@@ -2529,6 +2526,7 @@ AttributeTable::createTable(std::string filename, std::string tag)
             {
                 m_vTypes.push_back(ATTYPE_STRING);
             }
+
         }
         sqlite3_finalize(stmt_exists);
 
@@ -2546,10 +2544,17 @@ AttributeTable::createTable(std::string filename, std::string tag)
             return ATCREATE_ERROR;
         }
 
+        // prepare Prepared statements for the detected columns
+        for (int c=0; c < m_vNames.size(); ++c)
+        {
+            this->createPreparedColumnStatements(m_vNames.at(c));
+        }
+
         // now we count the number of records in the table
         ssql.str("");
         ssql << "SELECT count(" << m_idColName << ") "
              << "from " << m_tableName << ";";
+
 
         rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                                 -1, &stmt_exists, 0);
@@ -2626,26 +2631,28 @@ AttributeTable::createTable(std::string filename, std::string tag)
     // make sense to use those, however you never know what the
     // user wants and this way we avoid any segfaults
 
-    // prepare an update statement for this column
-    sqlite3_stmt* stmt_upd;
-    ssql.str("");
-    ssql <<  "UPDATE main." << m_tableName << " SET " << m_idColName << " = "
-         <<  "@VAL WHERE " << m_idColName << " = @IDX ;";
-    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            -1, &stmt_upd, 0);
-    sqliteError(rc, &stmt_upd);
-    this->m_vStmtUpdate.push_back(stmt_upd);
+    if (!bTableExists)
+    {
+        // prepare an update statement for this column
+        sqlite3_stmt* stmt_upd;
+        ssql.str("");
+        ssql <<  "UPDATE main." << m_tableName << " SET " << m_idColName << " = "
+             <<  "@VAL WHERE " << m_idColName << " = @IDX ;";
+        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                                -1, &stmt_upd, 0);
+        sqliteError(rc, &stmt_upd);
+        this->m_vStmtUpdate.push_back(stmt_upd);
 
-    // prepare a get value statement for this column
-    sqlite3_stmt* stmt_sel;
-    ssql.str("");
-    ssql <<  "SELECT " << m_idColName << " from main." << m_tableName << ""
-         <<  " WHERE " << m_idColName << " = @IDX ;";
-    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            -1, &stmt_sel, 0);
-    sqliteError(rc, &stmt_sel);
-    this->m_vStmtSelect.push_back(stmt_sel);
-
+        // prepare a get value statement for this column
+        sqlite3_stmt* stmt_sel;
+        ssql.str("");
+        ssql <<  "SELECT " << m_idColName << " from main." << m_tableName << ""
+             <<  " WHERE " << m_idColName << " = @IDX ;";
+        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                                -1, &stmt_sel, 0);
+        sqliteError(rc, &stmt_sel);
+        this->m_vStmtSelect.push_back(stmt_sel);
+    }
 
     // ============================================================
     // prepare statements for recurring tasks
@@ -2712,13 +2719,34 @@ AttributeTable::resetTableAdmin(void)
 {
     // clean up
 
-    sqlite3_finalize(m_StmtBegin);
-    sqlite3_finalize(m_StmtEnd);
-    sqlite3_finalize(m_StmtRollback);
-    sqlite3_finalize(m_StmtBulkSet);
-    sqlite3_finalize(m_StmtBulkGet);
-    sqlite3_finalize(m_StmtColIter);
-    sqlite3_finalize(m_StmtRowCount);
+    if (m_StmtBegin != 0)
+    {
+        sqlite3_finalize(m_StmtBegin);
+    }
+    if (m_StmtEnd != 0)
+    {
+        sqlite3_finalize(m_StmtEnd);
+    }
+    if (m_StmtRollback != 0)
+    {
+        sqlite3_finalize(m_StmtRollback);
+    }
+    if (m_StmtBulkSet != 0)
+    {
+        sqlite3_finalize(m_StmtBulkSet);
+    }
+    if (m_StmtBulkGet != 0)
+    {
+        sqlite3_finalize(m_StmtBulkGet);
+    }
+    if (m_StmtColIter != 0)
+    {
+        sqlite3_finalize(m_StmtColIter);
+    }
+    if (m_StmtRowCount != 0)
+    {
+        sqlite3_finalize(m_StmtRowCount);
+    }
 
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {
@@ -2765,6 +2793,7 @@ AttributeTable::resetTableAdmin(void)
     m_StmtBulkSet = 0;
     m_StmtBulkGet = 0;
     m_StmtColIter = 0;
+    m_StmtRowCount = 0;
     m_CurPrepStmt = "";
     m_idColName = "";
     m_tableName = "";

@@ -231,6 +231,7 @@ protected:
      *
      */
 
+    void createPreparedColumnStatements(const std::string& colname);
     bool dropTable(const std::string& tablename="");
     void resetTableAdmin();
     void disconnectDB();

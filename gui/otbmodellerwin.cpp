@@ -1679,7 +1679,7 @@ void OtbModellerWin::test()
     long long d = 0;
     for (int l=0; l < nlayers; ++l)
     {
-        d = rand() % 255 + 5;
+        d = rand() % 128 + 5;
         NMDebugAI(<< "#" << l << " size: " << d << std::endl);
 
         if (testnumeric > llmax/d)
@@ -1702,7 +1702,7 @@ void OtbModellerWin::test()
         }
         //NMDebug(<< d << " ");
     }
-    if (layergroups.back() < nlayers-1)
+    if (layergroups.size() == 0 || layergroups.back() < nlayers-1)
     {
         layergroups.push_back(nlayers-1);
         groupSdoms.push_back(sdom);
@@ -1760,9 +1760,9 @@ void OtbModellerWin::test()
     colnames.push_back(uvcolname);
     tabvals[0].type = otb::AttributeTable::ATTYPE_INT;
 
-    tab->AddColumn("count", otb::AttributeTable::ATTYPE_INT);
-    colnames.push_back("count");
-    tabvals[1].type = otb::AttributeTable::ATTYPE_INT;
+    //tab->AddColumn("count", otb::AttributeTable::ATTYPE_INT);
+    //colnames.push_back("count");
+    //tabvals[1].type = otb::AttributeTable::ATTYPE_INT;
 
     for (int g=0; g < groupSdoms.at(0).size(); ++ g)
     {
@@ -1770,12 +1770,15 @@ void OtbModellerWin::test()
         ssn << "L" << g+1;
         tab->AddColumn(ssn.str(), otb::AttributeTable::ATTYPE_INT);
         colnames.push_back(ssn.str());
-        tabvals[g+2].type = otb::AttributeTable::ATTYPE_INT;
+        tabvals[g+1].type = otb::AttributeTable::ATTYPE_INT;
     }
     tab->prepareBulkSet(colnames);
 
-    //tab->beginTransaction();
+    NMDebugAI( << "processing: ");
+    tab->beginTransaction();
     long long uv = 0;
+    long long rep = muvi / 50;
+    long long cnt = 0;
     for (long long pix=0; pix < muvi; ++pix)
     {
         for (int g=0; g < gsize; ++g)
@@ -1789,23 +1792,29 @@ void OtbModellerWin::test()
             {
                 uv += gvals[g] * gstride[g];
             }
-            tabvals[g+2].ival = gvals[g];
+            tabvals[g+1].ival = gvals[g];
         }
         tabvals[0].ival = uv;
-        tabvals[1].ival = 1;
+        //tabvals[1].ival = 1;
 
         if (tab->GetRowIdx(uvcolname, static_cast<void*>(&uv)) == -1)
         {
             tab->doBulkSet(tabvals);
         }
-        else
+        //        else
+        //        {
+        //            tabvals[1].ival += tab->GetIntValue(1, uv);
+        //            tab->doBulkSet(tabvals);
+        //        }
+        if (pix % rep == 0)
         {
-            tabvals[1].ival += tab->GetIntValue(1, uv);
-            tab->doBulkSet(tabvals);
+            NMDebug(<< ".");
         }
     }
-    //tab->endTransaction();
+    tab->endTransaction();
     tab->closeTable();
+
+    NMDebug(<< std::endl);
 
     // ======================================================================
     // TEST CALC THE INDEX

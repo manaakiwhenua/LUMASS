@@ -1610,7 +1610,7 @@ AttributeTable::GetRowIdx(const std::string& column, void* value)
         rc = sqlite3_bind_double(stmt, 1, *(static_cast<double*>(value)));
         break;
     case ATTYPE_INT:
-        rc = sqlite3_bind_int(stmt, 1, *(static_cast<long*>(value)));
+        rc = sqlite3_bind_int64(stmt, 1, *(static_cast<long long*>(value)));
         break;
     case ATTYPE_STRING:
         rc = sqlite3_bind_text(stmt, 1,

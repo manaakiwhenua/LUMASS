@@ -1638,25 +1638,6 @@ void OtbModellerWin::test()
 
     QStringList inputList = input.split(' ');
 
-    // -------------------------------------------------------
-    // setup the key-value store
-    // -------------------------------------------------------
-
-//    TCHDB* hdb;
-//    int ecode;
-//    char* key, *value;
-
-//    hdb = tchdbnew();
-//    //tchdbsetcache(hdb, 1000000);
-
-//    std::string dbName = "/home/alex/garage/testing/hdb.tch";
-
-//    if (!tchdbopen(hdb, dbName.c_str(), HDBOWRITER | HDBOCREAT))
-//    {
-//        ecode = tchdbecode(hdb);
-//        NMDebugAI(<< "ERROR: " << tchdberrmsg(ecode) << std::endl);
-//    }
-
 
     // -----------------------------------------------------
     // set the number of unique values per layer
@@ -1688,15 +1669,17 @@ void OtbModellerWin::test()
 
 
     long long muvi = id1 * id2;
-    std::vector<long long int> sdom;
-    NMDebugAI(<< "layer dimensions: ");
+    std::vector<long long> sdom;
+    NMDebugAI(<< "layer dimensions: " << std::endl);
 
 
     long long testnumeric = 1;
+    std::vector<std::vector<long long> > groupSdoms;
     std::vector<int> layergroups;
+    long long d = 0;
     for (int l=0; l < nlayers; ++l)
     {
-        long long int d = rand() % 100000 + 10;
+        d = rand() % 255 + 5;
         NMDebugAI(<< "#" << l << " size: " << d << std::endl);
 
         if (testnumeric > llmax/d)
@@ -1709,123 +1692,164 @@ void OtbModellerWin::test()
             --l;
             layergroups.push_back(l);
             testnumeric = 1;
+            groupSdoms.push_back(sdom);
+            sdom.clear();
         }
         else
         {
             testnumeric *= d;
-            //sdom.push_back(d);
+            sdom.push_back(d);
         }
         //NMDebug(<< d << " ");
     }
+    if (layergroups.back() < nlayers-1)
+    {
+        layergroups.push_back(nlayers-1);
+        groupSdoms.push_back(sdom);
+    }
+
     NMDebug(<< std::endl);
 
+    // ======================================================================
+    // groups layers & calcuate strides table for each group
+    // ======================================================================
+    std::vector<std::vector<long long> > groupStrides;
     NMDebugAI(<< "max group indices ..." << std::endl);
     for (int i=0; i < layergroups.size(); ++ i)
     {
-        NMDebugAI(<< layergroups.at(i) << std::endl);
-    }
+        std::vector<long long> strides(groupSdoms.at(i).size(),0);
+        strides[0] = 1;
 
-
-
-/*
-    std::vector<long long> strides(sdom.size(),0);
-    strides[0] = 1;
-
-    NMDebugAI(<< "STRIDES TABLE" << std::endl);
-    NMDebugAI(<< "#0 - 1" << std::endl);
-
-    // calc the stride table
-    for (int d=1; d < nlayers; ++d)
-    {
-        strides[d] = strides[d-1] * sdom[d-1];
-        NMDebugAI(<< "#" << d << " - " << strides[d] << std::endl);
-    }
-
-
-    //    QString idx = QInputDialog::getText(0, "test", "idx into img");
-
-    //    QStringList vIdx = idx.split(' ');
-    //    std::vector<long long> tidx(vIdx.size(), 0);
-    //    for (int q=0; q < vIdx.size(); ++q)
-    //    {
-    //        tidx[q] = vIdx[q].toLongLong();
-    //    }
-
-
-    NMDebugAI(<< "Maximum possible number of unique combinations: "
-              << id1 << " x " << id2 << " = " << muvi << std::endl);
-
-
-    NMDebugAI(<< "do combinatorial analysis ..." << std::endl);
-    std::vector<long long int> params(nlayers,0);
-
-    NMDebugAI(<< "Processing ");
-    int cnt = 1;
-    long long int uId = 0;
-    long long progresDiv = muvi / 50LL;
-    for (long long int i=0; i < muvi; ++i)
-    {
-        long long to;
-
-        // get a random index for each layer
-        for (int p=0; p < nlayers; ++p)
+        NMDebugAI(<< ">>>> grp #" << layergroups.at(i) << std::endl);
+        if (i < groupSdoms.at(i).size())
         {
-            params[p] = rand() % sdom[p];
-            if (p == 0)
-                to = params[p];
-            else
-                to += params[p] * strides[p];
-
-        }
-
-
-        tchdbputkeep(hdb, static_cast<void*>(&to), sizeof(long long int),
-                     static_cast<void*>(&params[0]), sizeof(long long int)*nlayers);
-
-        if (i % progresDiv == 0)
-        {
-            //            if (cnt % 10 == 0)
-            //            {
-            //                NMDebug(<< cnt);
-            //            }
-            //            else
+            NMDebugAI(<< "  dims: ");
+            for (int s=0; s < groupSdoms.at(i).size(); ++s)
             {
-                NMDebug(<< ".");
+                NMDebug(<< groupSdoms.at(i).at(s) << " ");
             }
-            ++cnt;
+            NMDebug(<< std::endl);
+
+            NMDebugAI( << "  strides: 1 ");
+            for (int s=1; s < groupSdoms.at(i).size(); ++s)
+            {
+                strides[s] = strides[s-1] * groupSdoms.at(i).at(s-1);
+                NMDebug(<< strides[s] << " ");
+            }
+            NMDebugAI( << std::endl);
         }
-
+        NMDebug(<< std::endl);
+        groupStrides.push_back(strides);
     }
-    NMDebug(<< cnt << std::endl);
 
-    long long int nrecs = tchdbrnum(hdb);
-    NMDebugAI(<< "Detected " << nrecs << " unique combinations" << std::endl);
+    // ======================================================================
+    // PUT SOME DATA INTO THE DATABASE
+    // ======================================================================
+    std::vector<long long> gstride = groupStrides.at(0);
+    std::vector<long long> gdoms = groupSdoms.at(0);
+    std::vector<long long> gvals(gdoms.size(), 0);
+    int gsize = gdoms.size();
+
+    otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
+    tab->createTable("/home/alex/tmp/g.ldb");
+    std::string uvcolname = tab->getPrimaryKey();
+
+    std::vector<std::string> colnames;
+    std::vector< otb::AttributeTable::ColumnValue > tabvals(gsize+2);
+
+    colnames.push_back(uvcolname);
+    tabvals[0].type = otb::AttributeTable::ATTYPE_INT;
+
+    tab->AddColumn("count", otb::AttributeTable::ATTYPE_INT);
+    colnames.push_back("count");
+    tabvals[1].type = otb::AttributeTable::ATTYPE_INT;
+
+    for (int g=0; g < groupSdoms.at(0).size(); ++ g)
+    {
+        std::stringstream ssn;
+        ssn << "L" << g+1;
+        tab->AddColumn(ssn.str(), otb::AttributeTable::ATTYPE_INT);
+        colnames.push_back(ssn.str());
+        tabvals[g+2].type = otb::AttributeTable::ATTYPE_INT;
+    }
+    tab->prepareBulkSet(colnames);
+
+    //tab->beginTransaction();
+    long long uv = 0;
+    for (long long pix=0; pix < muvi; ++pix)
+    {
+        for (int g=0; g < gsize; ++g)
+        {
+            gvals[g] = rand() % gdoms[g];
+            if (g == 0)
+            {
+                uv = gvals[g];
+            }
+            else
+            {
+                uv += gvals[g] * gstride[g];
+            }
+            tabvals[g+2].ival = gvals[g];
+        }
+        tabvals[0].ival = uv;
+        tabvals[1].ival = 1;
+
+        if (tab->GetRowIdx(uvcolname, static_cast<void*>(&uv)) == -1)
+        {
+            tab->doBulkSet(tabvals);
+        }
+        else
+        {
+            tabvals[1].ival += tab->GetIntValue(1, uv);
+            tab->doBulkSet(tabvals);
+        }
+    }
+    //tab->endTransaction();
+    tab->closeTable();
+
+    // ======================================================================
+    // TEST CALC THE INDEX
+    // ======================================================================
+
+//    QString idx = QInputDialog::getText(0, "test", "idx into img");
+
+//    QStringList vIdx = idx.split(' ');
+//    std::vector<long long> tidx(vIdx.size(), 0);
+//    for (int q=0; q < vIdx.size(); ++q)
+//    {
+//        tidx[q] = vIdx[q].toLongLong();
+//    }
 
 
-    //    NMDebugAI(<< "reading stuff ..." << std::endl);
+//    NMDebugAI(<< "do combinatorial analysis ..." << std::endl);
+//    std::vector<long long> params(nlayers,0);
 
-    //    std::vector<double> pdout(5,0);
-    //    unsigned long long int nrecs = tchdbrnum(hdb);
-    //    for (int r=0; r < nrecs; ++r)
-    //    {
-    //        int ret = tchdbget3(hdb, static_cast<void*>(&r), sizeof(int),
-    //                            static_cast<void*>(&pdout[0]), sizeof(double)*5);
+//    NMDebugAI(<< "Processing ");
+//    int cnt = 1;
+//    long long uId = 0;
+//    long long progresDiv = muvi / 50LL;
+//    for (long long int i=0; i < muvi; ++i)
+//    {
+//        long long to;
 
-    //        //NMDebugAI( << "");
-    //        for (int e=0; e < 5; ++e)
-    //        {
-    //           double out = pdout[e];
-    //        }
-    //        //NMDebug(<< std::endl);
+//        // get a random index for each layer
+//        for (int p=0; p < nlayers; ++p)
+//        {
+//            params[p] = rand() % sdom[p];
+//            if (p == 0)
+//                to = params[p];
+//            else
+//                to += params[p] * strides[p];
 
-    //    }
+//        }
+//    }
+//    NMDebug(<< cnt << std::endl);
 
-    tchdbclose(hdb);
     time(&end);
     double dur = difftime(start, end);
 
     NMDebugAI(<< "this took " << dur << " time" << std::endl);
-*/
+
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 

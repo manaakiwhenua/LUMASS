@@ -128,6 +128,10 @@ public:
     long long int GetIntValue(int col, long long int row);
     std::string GetStrValue(int col, long long int row);
 
+    double GetDblNodata(void) {return m_dNodata;}
+    long long GetIntNodata(void) {return m_iNodata;}
+    std::string GetStrNodata(void) {return m_sNodata;}
+
 	bool RemoveColumn(int col);
 	bool RemoveColumn(const std::string& name);
 
@@ -301,9 +305,9 @@ protected:
 	std::vector<std::vector<double>* > m_mDoubleCols;
 
 
-    long long int m_iNumRows;
+    long long m_iNumRows;
 	std::string m_sNodata;
-	long m_iNodata;
+    long long m_iNodata;
 	double m_dNodata;
 	int m_iBand;
 	std::string m_sImgName;

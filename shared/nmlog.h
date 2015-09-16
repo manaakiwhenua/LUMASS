@@ -143,13 +143,13 @@ extern int nmindent;
 			std::cout << str.str() << std::endl; \
 		}
 #else
-#define NMDebug(arg)
-#define NMDebugAI(arg)
-#define NMDebugInd(level, arg)
-#define NMDebugTime(arg)
-#define NMDebugTimeInd(level, arg)
-#define NMDebugCtx(ctx, arg)
-#define NMDebugTimeCtx(ctx, arg)
+#define NMDebug(arg)            // just debug
+#define NMDebugAI(arg)          // just AI debug
+#define NMDebugInd(level, arg)  // just debug
+#define NMDebugTime(arg)        // >>>
+#define NMDebugTimeInd(level, arg)  // ...
+#define NMDebugCtx(ctx, arg)    // ...
+#define NMDebugTimeCtx(ctx, arg)    // ...
 #endif
 
 // ERROR MACRO

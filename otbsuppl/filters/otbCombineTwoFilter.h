@@ -91,17 +91,16 @@ public:
            *    1: original value of layer 0
            *    2: original value of layer 1
            */
-          typedef typename std::unordered_map< ComboIndexType,
-                                std::vector<ComboIndexType> >  ComboMapType;
-          typedef typename ComboMapType::iterator ComboMapTypeIterator;
+//          typedef typename std::unordered_map< ComboIndexType,
+//                                std::vector<ComboIndexType> >  ComboMapType;
+//          typedef typename ComboMapType::iterator ComboMapTypeIterator;
 
 
           AttributeTable::Pointer getRAT(unsigned int idx) {return m_ComboTable;}
           void setRAT(unsigned int idx, AttributeTable::Pointer);
 
-          void SetInputNodata(std::vector<long long>& inNodata)
-            {m_InputNodata = inNodata;}
-
+          void SetInputNodata(const std::vector<long long>& inNodata);
+          void SetImgNames(const std::vector<std::string>& imgNames);
 
           virtual void ResetPipeline();
 
@@ -125,10 +124,14 @@ private:
 
           bool m_StreamingProc;
           std::vector<InputPixelType> m_InputNodata;
+          std::vector<ComboIndexType> m_vHyperSpaceDomains;
+          std::vector<ComboIndexType> m_vHyperStrides;
+          std::vector<std::string>    m_vColnames;
+          std::vector<std::string>    m_ImgNames;
 
           //std::set<ZoneKeyType> mZones;
           //typename std::vector<ComboMapType> m_ThreadComboStore;
-          ComboMapType m_ComboMap;
+          //ComboMapType m_ComboMap;
           OutputPixelType m_UniqueComboIdx;
           OutputPixelType m_NodataCount;
           ComboIndexType m_TotalPixCount;

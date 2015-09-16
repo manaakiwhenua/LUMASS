@@ -1628,7 +1628,9 @@ void OtbModellerWin::test()
     long long llmax = itk::NumericTraits<long long>::max();
 
     QString input = QInputDialog::getText(0, "Test Index",
-                                       "Enter #layers & 2D img dimension");
+                                       "Enter: #layers & xdim & ydim & maxHYPDom",
+                                          QLineEdit::Normal,
+                                          "2 10000 10000 256");
 
     if (input.isEmpty())
     {
@@ -1637,6 +1639,11 @@ void OtbModellerWin::test()
     }
 
     QStringList inputList = input.split(' ');
+    if (inputList.size() < 4)
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
 
 
     // -----------------------------------------------------
@@ -1656,6 +1663,7 @@ void OtbModellerWin::test()
     // (i.e. the number of unique values per layer)
     long long id1 = inputList.at(1).toLongLong();
     long long id2 = inputList.at(2).toLongLong();
+    int maxHYPSdom = inputList.at(3).toLong();
 
     // check, whether we can handle the proble numerically
     if (id1 > llmax / id2)
@@ -1679,7 +1687,7 @@ void OtbModellerWin::test()
     long long d = 0;
     for (int l=0; l < nlayers; ++l)
     {
-        d = rand() % 128 + 5;
+        d = rand() % maxHYPSdom + 5;
         NMDebugAI(<< "#" << l << " size: " << d << std::endl);
 
         if (testnumeric > llmax/d)
@@ -1755,7 +1763,7 @@ void OtbModellerWin::test()
     std::string uvcolname = tab->getPrimaryKey();
 
     std::vector<std::string> colnames;
-    std::vector< otb::AttributeTable::ColumnValue > tabvals(gsize+2);
+    std::vector< otb::AttributeTable::ColumnValue > tabvals(gsize+1);
 
     colnames.push_back(uvcolname);
     tabvals[0].type = otb::AttributeTable::ATTYPE_INT;
@@ -1772,6 +1780,7 @@ void OtbModellerWin::test()
         colnames.push_back(ssn.str());
         tabvals[g+1].type = otb::AttributeTable::ATTYPE_INT;
     }
+
     tab->prepareBulkSet(colnames);
 
     NMDebugAI( << "processing: ");
@@ -1779,11 +1788,16 @@ void OtbModellerWin::test()
     long long uv = 0;
     long long rep = muvi / 50;
     long long cnt = 0;
+
     for (long long pix=0; pix < muvi; ++pix)
     {
         for (int g=0; g < gsize; ++g)
         {
-            gvals[g] = rand() % gdoms[g];
+            //gvals[g] = rand() % gdoms[g];
+            gvals[g] = cnt++;
+            //            sseed = (sseed * 168087) % 2147483647L;
+            //            u = sseed / 2147483711LL;
+            //            gvals[g] = u * gdoms[g];
             if (g == 0)
             {
                 uv = gvals[g];
@@ -1794,22 +1808,24 @@ void OtbModellerWin::test()
             }
             tabvals[g+1].ival = gvals[g];
         }
-        tabvals[0].ival = uv;
+        tabvals[0].ival = pix;
         //tabvals[1].ival = 1;
 
-        if (tab->GetRowIdx(uvcolname, static_cast<void*>(&uv)) == -1)
+        //if (tab->GetRowIdx(uvcolname, static_cast<void*>(&uv)) == -1)
         {
             tab->doBulkSet(tabvals);
         }
+        if (cnt > maxHYPSdom)
+            cnt = 0;
         //        else
         //        {
         //            tabvals[1].ival += tab->GetIntValue(1, uv);
         //            tab->doBulkSet(tabvals);
         //        }
-        if (pix % rep == 0)
-        {
-            NMDebug(<< ".");
-        }
+        //        if (pix % rep == 0)
+        //        {
+        //            NMDebug(<< ".");
+        //        }
     }
     tab->endTransaction();
     tab->closeTable();
@@ -1855,9 +1871,10 @@ void OtbModellerWin::test()
 //    NMDebug(<< cnt << std::endl);
 
     time(&end);
-    double dur = difftime(start, end);
+    double dur = difftime(end, start);
+    double min = ((int)dur / 60) + ((dur/60.0) - min);
 
-    NMDebugAI(<< "this took " << dur << " time" << std::endl);
+    NMDebugAI(<< "this took " << min << " minutes " << std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

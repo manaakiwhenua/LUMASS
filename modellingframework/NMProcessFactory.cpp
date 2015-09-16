@@ -34,6 +34,7 @@
 #include "NMItkCastImageFilterWrapper.h"
 #include "NMResampleImageFilterWrapper.h"
 #include "NMUniqueCombinationFilterWrapper.h"
+#include "NMCombineTwoFilterWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -53,6 +54,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("CastImage")            ;
     mProcRegister << QString::fromLatin1("ResampleImage")        ;
     mProcRegister << QString::fromLatin1("UniqueCombination")    ;
+    mProcRegister << QString::fromLatin1("CombineTwo")    ;
 
 
     mSinks << QString::fromLatin1("ImageWriter");
@@ -135,6 +137,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMUniqueCombinationFilterWrapper";
     }
+    else if (alias.compare("CombineTwo") == 0)
+    {
+        return "NMCombineTwoFilterWrapper";
+    }
     else return proc;
 }
 
@@ -187,6 +193,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMUniqueCombinationFilterWrapper") == 0)
     {
         proc =  new NMUniqueCombinationFilterWrapper(this);
+    }
+    else if (procClass.compare("NMCombineTwoFilterWrapper") == 0)
+    {
+        proc =  new NMCombineTwoFilterWrapper(this);
     }
     else
         proc =  0;

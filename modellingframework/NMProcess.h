@@ -166,6 +166,9 @@ public slots:
 	QList<QStringList> getInputComponents(void)
 			{return this->mInputComponents;}
 
+    virtual void setRAT(unsigned idx,
+                        QSharedPointer<NMItkDataObjectWrapper> imgWrapper) {}
+
 signals:
 		void NMProcessChanged();
         void nmChanged();
@@ -224,6 +227,7 @@ protected:
 	 *	processing step (i.e. iteration of host component) to the underlying process object.
 	 */
 	virtual void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
+
 
 private:
     unsigned int mStepIndex;

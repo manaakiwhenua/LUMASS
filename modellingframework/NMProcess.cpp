@@ -35,7 +35,7 @@
 
 
 NMProcess::NMProcess(QObject *parent)
-	: mbAbortExecution(false), mbLinked(false)
+    : mbAbortExecution(false), mbLinked(false)
 {
 	this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
@@ -380,6 +380,9 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 // connect output to input
                 this->setNthInput(ii, iw);//ic->getOutput(outIdx));
                 NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString() << std::endl);
+
+                // note: this method does nothing, if it is not reimplemented by the subclass
+                this->setRAT(ii, iw);
             }
             else
             {

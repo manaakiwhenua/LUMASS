@@ -160,10 +160,11 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         m_TotalPixCount = 0;
         m_NodataCount = 0;
 
+        m_sComboTracker.clear();
         m_vHyperStrides.clear();
         m_vHyperStrides.resize(m_vHyperSpaceDomains.size());
         m_vHyperStrides[0] = 1;
-        for (int s=1; m_vHyperSpaceDomains.size(); ++s)
+        for (int s=1; s < m_vHyperSpaceDomains.size(); ++s)
         {
             m_vHyperStrides[s] = m_vHyperStrides[s-1] * m_vHyperSpaceDomains[s-1];
         }
@@ -178,8 +179,8 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         m_vColnames.push_back(m_ComboTable->getPrimaryKey());
 
         m_ComboTable->beginTransaction();
-        //m_ComboTable->AddColumn("rowidx");
-        //m_ComboTable->AddColumn("count");
+        //        m_ComboTable->AddColumn("rowidx");
+        //        m_ComboTable->AddColumn("count");
         std::stringstream sscolname;
         for (int i=0; i < nbInputImages; ++i)
         {
@@ -273,7 +274,12 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         {
             outIter.Set(static_cast<OutputPixelType>(curVal));
             setVals[0].ival = curVal;
-            m_ComboTable->doBulkSet(setVals);
+
+            if (m_sComboTracker.find(curVal) == m_sComboTracker.end())
+            {
+                m_sComboTracker.insert(curVal);
+                m_ComboTable->doBulkSet(setVals);
+            }
         }
 
         progress.CompletedPixel();
@@ -374,7 +380,8 @@ void CombineTwoFilter< TInputImage, TOutputImage >
     m_StreamingProc = false;
     m_ComboTable = AttributeTable::New();
 
-    this->m_vHyperSpaceDomains.clear();
+    m_vHyperSpaceDomains.clear();
+    m_sComboTracker.clear();
 
     Superclass::ResetPipeline();
     NMDebugCtx(ctx, << "done!");

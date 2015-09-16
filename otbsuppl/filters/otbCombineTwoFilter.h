@@ -126,13 +126,14 @@ private:
           std::vector<InputPixelType> m_InputNodata;
           std::vector<ComboIndexType> m_vHyperSpaceDomains;
           std::vector<ComboIndexType> m_vHyperStrides;
+          std::set<ComboIndexType>    m_sComboTracker;
           std::vector<std::string>    m_vColnames;
           std::vector<std::string>    m_ImgNames;
 
           //std::set<ZoneKeyType> mZones;
           //typename std::vector<ComboMapType> m_ThreadComboStore;
           //ComboMapType m_ComboMap;
-          OutputPixelType m_UniqueComboIdx;
+          ComboIndexType m_UniqueComboIdx;
           OutputPixelType m_NodataCount;
           ComboIndexType m_TotalPixCount;
 

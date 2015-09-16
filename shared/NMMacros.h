@@ -1044,7 +1044,7 @@ QSharedPointer<NMItkDataObjectWrapper> ClassName::getRAT(unsigned int idx)					\
     return dw;																	\
 }
 
-/** get the raster attribute table (RAT) of the process object,
+/** set the raster attribute table (RAT) of the process object,
  *  which is templated over the INPUT and OUTPUT component type
  *  of this wrapper class
  */
@@ -1064,19 +1064,19 @@ void ClassName::setRAT(unsigned int numInput,  		\
         outputTypeSwitch( unsigned char, callSetRAT, InternalWrapper );         \
         break;                                                                  \
     case otb::ImageIOBase::CHAR:                                                \
-        outputTypeSwitch( char, callGetRAT, InternalWrapper );                  \
+        outputTypeSwitch( char, callSetRAT, InternalWrapper );                  \
         break;                                                                  \
     case otb::ImageIOBase::USHORT:                                              \
         outputTypeSwitch( unsigned short, callSetRAT, InternalWrapper );        \
         break;                                                                  \
     case otb::ImageIOBase::SHORT:                                               \
-        outputTypeSwitch( short, callGetRAT, InternalWrapper );                 \
+        outputTypeSwitch( short, callSetRAT, InternalWrapper );                 \
         break;                                                                  \
     case otb::ImageIOBase::UINT:                                                \
         outputTypeSwitch( unsigned int, callSetRAT, InternalWrapper );          \
         break;                                                                  \
     case otb::ImageIOBase::INT:                                                 \
-        outputTypeSwitch( int, callGetRAT, InternalWrapper );                   \
+        outputTypeSwitch( int, callSetRAT, InternalWrapper );                   \
         break;                                                                  \
     case otb::ImageIOBase::ULONG:                                               \
         outputTypeSwitch( unsigned long, callSetRAT, InternalWrapper );         \

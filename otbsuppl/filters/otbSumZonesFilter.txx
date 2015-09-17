@@ -636,14 +636,14 @@ void SumZonesFilter< TInputImage, TOutputImage >
 	NMDebugCtx(ctx, << "...");
 	mStreamingProc = false;
 
-    if (m_dropTmpDBs)
-    {
-        mZoneTable->closeTable(true);
-    }
-    else
-    {
-        mZoneTable->closeTable();
-    }
+//    if (m_dropTmpDBs)
+//    {
+//        mZoneTable->closeTable(true);
+//    }
+//    else
+//    {
+//        mZoneTable->closeTable();
+//    }
     mZoneTable = 0;
     m_NextZoneId = 0;
 

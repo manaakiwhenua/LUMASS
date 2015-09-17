@@ -107,6 +107,8 @@ public:
 			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
     QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
+    void setRAT(unsigned idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+
 protected:
 
     QString mPyramidResamplingType;

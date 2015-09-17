@@ -222,6 +222,26 @@ public:
             }
         }
 
+    static void setStreamingSize(itk::ProcessObject::Pointer& otbFilter,
+                                  unsigned int numBands, const int streamSize, bool rgbMode)
+        {
+            if (numBands == 1)
+            {
+                FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+                filter->SetStreamingSize(streamSize);
+            }
+            else if (numBands == 3 && rgbMode)
+            {
+                RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
+                filter->SetStreamingSize(streamSize);
+            }
+            else
+            {
+                VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
+                filter->SetStreamingSize(streamSize);
+            }
+        }
+
 };
 
 #ifdef BUILD_RASSUPPORT
@@ -355,6 +375,24 @@ public:
     }\
 }
 
+#define callSetStreamingSize( imgType, wrapName ) \
+{ \
+    if (this->mOutputNumDimensions == 1) \
+    { \
+        wrapName< imgType, imgType, 1 >::setStreamingSize( \
+                this->mOtbProcess, this->mOutputNumBands, mStreamingSize, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 2) \
+    { \
+        wrapName< imgType, imgType, 2 >::setStreamingSize( \
+                this->mOtbProcess, this->mOutputNumBands, mStreamingSize, mRGBMode); \
+    } \
+    else if (this->mOutputNumDimensions == 3) \
+    { \
+        wrapName< imgType, imgType, 3 >::setStreamingSize( \
+                this->mOtbProcess, this->mOutputNumBands, mStreamingSize, mRGBMode); \
+    }\
+}
 
 #define callInitWriter( imgType, wrapName ) \
 { \
@@ -529,6 +567,21 @@ NMStreamingImageFileWriterWrapper
 
 void
 NMStreamingImageFileWriterWrapper
+::setInternalStreamingSize()
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    switch(this->mOutputComponentType)
+    {
+    MacroPerType( callSetStreamingSize, NMStreamingImageFileWriterWrapper_Internal )
+    default:
+        break;
+    }
+}
+
+void
+NMStreamingImageFileWriterWrapper
 ::linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
     //if (step > this->mFileNames.size()-1)
@@ -555,6 +608,7 @@ NMStreamingImageFileWriterWrapper
     this->setInternalUpdateMode();
     this->setInternalResamplingType();
     this->setInternalStreamingMethod();
+    this->setInternalStreamingSize();
 }
 
 void
@@ -569,6 +623,27 @@ NMStreamingImageFileWriterWrapper
     MacroPerType( callSetUpdateMode, NMStreamingImageFileWriterWrapper_Internal )
     default:
         break;
+    }
+}
+
+void
+NMStreamingImageFileWriterWrapper
+::setRAT(unsigned idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
+{
+    if (!imgWrapper.isNull())
+    {
+        otb::AttributeTable::Pointer tab = imgWrapper->getOTBTab();
+
+        unsigned int tabIdx = 1;
+        if (tab.IsNotNull())
+        {
+            switch(this->mOutputComponentType)
+            {
+            MacroPerType( callOutputTypeSetTab, NMStreamingImageFileWriterWrapper_Internal )
+            default:
+                break;
+            }
+        }
     }
 }
 

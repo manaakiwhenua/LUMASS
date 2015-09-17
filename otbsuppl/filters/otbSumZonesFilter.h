@@ -28,7 +28,7 @@
 #include "otbImage.h"
 
 // TOKYO CABINET
-#include "tchdb.h"
+//#include "tchdb.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -94,7 +94,7 @@ public:
           typedef long long ZoneKeyType;
 
 	  typedef typename std::map< ZoneKeyType, std::vector<double> >  ZoneMapType;
-	  typedef typename ZoneMapType::iterator 						 ZoneMapTypeIterator;
+          typedef typename ZoneMapType::iterator                         ZoneMapTypeIterator;
 
           //itkSetMacro(NodataValue, InputPixelType);
           void SetNodataValue(InputPixelType nodata);
@@ -173,8 +173,12 @@ private:
 	  std::set<ZoneKeyType> mZones;
           typename std::vector<ZoneMapType> mThreadValueStore;
 
-          TCHDB* m_HDB;
-          std::string m_HDBFileName;
+          // need to keep track of zone(key), min, max, count, sum for each zone
+          ZoneMapType mGlobalValueStore;
+
+
+//          TCHDB* m_HDB;
+//          std::string m_HDBFileName;
 
           static const std::string ctx;
 

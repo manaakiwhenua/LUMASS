@@ -29,12 +29,12 @@
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
 
-// TOKYO CABINET
-//#include "tcutil.h"
-#include "tchdb.h"
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
+//// TOKYO CABINET
+////#include "tcutil.h"
+//#include "tchdb.h"
+//#include <stdlib.h>
+//#include <stdbool.h>
+//#include <stdint.h>
 
 namespace otb
 {
@@ -53,8 +53,8 @@ SumZonesFilter< TInputImage, TOutputImage >
     m_NextZoneId = 0;
 	mStreamingProc = false;
     m_ZoneTableFileName = "";
-    m_HDBFileName = "";
-    m_HDB = tchdbnew();
+//    m_HDBFileName = "";
+//    m_HDB = tchdbnew();
 
     mZoneTable = AttributeTable::New();
 }
@@ -63,8 +63,8 @@ template< class TInputImage, class TOutputImage >
 SumZonesFilter< TInputImage, TOutputImage >
 ::~SumZonesFilter()
 {
-    if (m_HDB)
-        tchdbdel(m_HDB);
+//    if (m_HDB)
+//        tchdbdel(m_HDB);
 }
 
 template< class TInputImage, class TOutputImage >
@@ -177,32 +177,33 @@ void SumZonesFilter< TInputImage, TOutputImage >
             m_dropTmpDBs = true;
         }
         m_ZoneTableFileName = mZoneTable->getDbFileName();
-        size_t pos = m_ZoneTableFileName.find_last_of('.');
-        if (pos != std::string::npos)
-        {
-            m_HDBFileName = m_ZoneTableFileName.substr(0,pos);
-            m_HDBFileName += ".tchdb";
-        }
-        NMDebugAI( << "Tokyo cabinet file: '"
-                   << m_HDBFileName << "'" << std::endl);
+        //        size_t pos = m_ZoneTableFileName.find_last_of('.');
+        //        if (pos != std::string::npos)
+        //        {
+        //            m_HDBFileName = m_ZoneTableFileName.substr(0,pos);
+        //            m_HDBFileName += ".tchdb";
+        //        }
+        //        NMDebugAI( << "Tokyo cabinet file: '"
+        //                   << m_HDBFileName << "'" << std::endl);
 
 
-		NMDebugAI(<< "clearing mThreadValueStore ..." << std::endl);
+        NMDebugAI(<< "clearing value stores ..." << std::endl);
 		mThreadValueStore.clear();
 		for (int t=0; t < numThreads; ++t)
 		{
 			mThreadValueStore.push_back(ZoneMapType());
 		}
+        mGlobalValueStore.clear();
 
-        // open the key-value store
-        if (!tchdbopen(m_HDB, m_HDBFileName.c_str(),
-                       HDBOWRITER | HDBOCREAT))
-        {
-            int ecode = tchdbecode(m_HDB);
-            itkExceptionMacro( << "ERROR: " << tchdberrmsg(ecode));
-            return;
-        }
-        tchdbvanish(m_HDB);
+        //        // open the key-value store
+        //        if (!tchdbopen(m_HDB, m_HDBFileName.c_str(),
+        //                       HDBOWRITER | HDBOCREAT))
+        //        {
+        //            int ecode = tchdbecode(m_HDB);
+        //            itkExceptionMacro( << "ERROR: " << tchdberrmsg(ecode));
+        //            return;
+        //        }
+        //        tchdbvanish(m_HDB);
 
         NMDebugAI(<< "Adding columns to zone table ..." << std::endl);
         mZoneTable->beginTransaction();
@@ -295,7 +296,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(6,0);
+                vMap[zone] = std::vector<double>(4,0);
             }
             std::vector<double>& params = vMap[zone];
 
@@ -305,11 +306,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[1] = params[1] > val ? params[1] : val;
             // sum_val
             params[2] += val;
-            // sum_val^2
-            params[3] += (val * val);
+                // sum_val^2
+                //params[3] += (val * val);
             // count
-            params[4] += 1;
-            // id -> take care about that later
+            params[3] += 1;
 
             ++zoneIt;
             ++valueIt;
@@ -326,7 +326,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(6,0);
+                vMap[zone] = std::vector<double>(4,0);
             }
             std::vector<double>& params = vMap[zone];
 
@@ -336,11 +336,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[1] = params[1] > val ? params[1] : val;
             // sum_val
             params[2] += val;
-            // sum_val^2
-            params[3] += (val * val);
+                // sum_val^2
+                //params[3] += (val * val);
             // count
-            params[4] += 1;
-            // id -> take care about that later
+            params[3] += 1;
 
             ++zoneIt;
             progress.CompletedPixel();
@@ -383,21 +382,23 @@ void SumZonesFilter< TInputImage, TOutputImage >
     ZoneKeyType newzones = 0;
     ZoneKeyType maxKey = 0;
     ZoneMapTypeIterator mapIt;
+    ZoneMapTypeIterator globalIt;
 
 
     /*  keep track of zones ...
      *  0: min
      *  1: max
      *  2: sum_val
-     *  3: sum_val^2
-     *  4: count
-     *  5: zone_id
+     *      DEPRECATED 3: sum_val^2
+     *  3              4: count
+     *  4              5: zone_id
      */
-    int lenTCRec = 6;
-    std::vector<double> params(lenTCRec,0);
+    //int lenTCRec = 6;
+    std::vector<double> params(5,0);
+
     params[0] = itk::NumericTraits<double>::max();
     params[1] = itk::NumericTraits<double>::NonpositiveMin();
-    params[5] = -1;
+    params[4] = -1;
 
     for (int t=0; t < this->GetNumberOfThreads(); ++t)
 	{
@@ -409,30 +410,35 @@ void SumZonesFilter< TInputImage, TOutputImage >
             // read values for KEY from db
             // --------------------------------------------------
             ZoneKeyType zone = mapIt->first;
-            if (tchdbget3(m_HDB,
-                          static_cast<void*>(&zone),
-                          sizeof(ZoneKeyType),
-                          &params[0],
-                          sizeof(double)*lenTCRec)
-                == -1)
+            //            if (tchdbget3(m_HDB,
+            //                          static_cast<void*>(&zone),
+            //                          sizeof(ZoneKeyType),
+            //                          &params[0],
+            //                          sizeof(double)*lenTCRec)
+            //                == -1)
+            globalIt = mGlobalValueStore.find(zone);
+            if (globalIt == mGlobalValueStore.end())
             {
                 // .................................
                 // KEY not present! -> put it in db
                 // .................................
-                mapIt->second[5] = m_NextZoneId;
-                if (!tchdbput(m_HDB,
-                              static_cast<void*>(&zone),
-                              sizeof(ZoneKeyType),
-                              &mapIt->second[0],
-                              sizeof(double)*lenTCRec))
-                {
-                    itkWarningMacro(<< "Failed setting record for key "
-                                    << mapIt->first << " while merging "
-                                    << "thread values");
-                    continue;
-                }
+                //                mapIt->second[5] = m_NextZoneId;
+                //                if (!tchdbput(m_HDB,
+                //                              static_cast<void*>(&zone),
+                //                              sizeof(ZoneKeyType),
+                //                              &mapIt->second[0],
+                //                              sizeof(double)*lenTCRec))
+                //                {
+                //                    itkWarningMacro(<< "Failed setting record for key "
+                //                                    << mapIt->first << " while merging "
+                //                                    << "thread values");
+                //                    continue;
+                //                }
+
+
+
                 // keep track of max key and number of new keys
-                maxKey = mapIt->first > maxKey ? mapIt->first : maxKey;
+                maxKey = zone > maxKey ? zone : maxKey;
                 ++newzones;
                 ++m_NextZoneId;
             }
@@ -516,6 +522,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
     numzones = tchdbrnum(m_HDB);
     NMDebugAI(<< "Got " << numzones << " zones on record now ..." << std::endl);
+
+/*
 
     //	double min 		 ;
     //	double max 		 ;
@@ -623,7 +631,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
         free(nextKey);
 	}
     mZoneTable->endTransaction();
-
+*/
 	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
 
 	NMDebugCtx(ctx, << "done!");

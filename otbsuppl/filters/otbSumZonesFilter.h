@@ -27,9 +27,6 @@
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
-// TOKYO CABINET
-//#include "tchdb.h"
-
 #include "otbsupplfilters_export.h"
 
 namespace otb
@@ -170,15 +167,14 @@ private:
 
           bool mStreamingProc;
           InputPixelType m_NodataValue;
-	  std::set<ZoneKeyType> mZones;
           typename std::vector<ZoneMapType> mThreadValueStore;
 
           // need to keep track of zone(key), min, max, count, sum for each zone
           ZoneMapType mGlobalValueStore;
+          std::vector<long long> mThreadPixCount;
+          long long mTotalPixCount;
+          long long mLPRPixCount;
 
-
-//          TCHDB* m_HDB;
-//          std::string m_HDBFileName;
 
           static const std::string ctx;
 

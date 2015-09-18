@@ -29,13 +29,6 @@
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
 
-// TOKYO CABINET
-//#include "tcutil.h"
-#include "tchdb.h"
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
-
 namespace otb
 {
 
@@ -48,9 +41,6 @@ CombineTwoFilter< TInputImage, TOutputImage >
 
     m_UniqueComboIdx = 0;
     m_StreamingProc = false;
-    m_HDBFileName = "";
-    m_HDB = 0;
-    //m_HDB = tchdbnew();
 
     m_ComboTable = AttributeTable::New();
 }
@@ -59,8 +49,6 @@ template< class TInputImage, class TOutputImage >
 CombineTwoFilter< TInputImage, TOutputImage >
 ::~CombineTwoFilter()
 {
-    if (m_HDB)
-        tchdbdel(m_HDB);
 }
 
 template< class TInputImage, class TOutputImage >
@@ -154,9 +142,9 @@ void CombineTwoFilter< TInputImage, TOutputImage >
 
     if (!m_StreamingProc)
     {
-        //m_ComboMap.clear();
+        m_ComboMap.clear();
         m_StreamingProc = true;
-        m_UniqueComboIdx = 0;
+        m_UniqueComboIdx = 1;
         m_TotalPixCount = 0;
         m_NodataCount = 0;
 
@@ -179,8 +167,6 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         m_vColnames.push_back(m_ComboTable->getPrimaryKey());
 
         m_ComboTable->beginTransaction();
-        //        m_ComboTable->AddColumn("rowidx");
-        //        m_ComboTable->AddColumn("count");
         std::stringstream sscolname;
         for (int i=0; i < nbInputImages; ++i)
         {
@@ -196,21 +182,6 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         {
             m_InputNodata.push_back(m_ComboTable->GetIntNodata());
         }
-
-        //        if (m_HDB != 0)
-        //        {
-        //            tchdbvanish(m_HDB);
-        //            tchdbclose(m_HDB);
-        //            m_HDB = 0;
-        //        }
-
-        //        m_HDB = tchdbnew();
-        //        m_HDBFileName = std::tmpnam(0);
-        //        if (!tchdbopen(m_HDB, m_HDBFileName.c_str(), HDBOWRITER | HDBOCREAT))
-        //        {
-        //            itkExceptionMacro(<< "Failed creating key-value store!");
-        //            return;
-        //        }
     }
 
 
@@ -241,9 +212,17 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         setVals[i].type = AttributeTable::ATTYPE_INT;
         setVals[i].ival = m_InputNodata[i-1];
     }
+    setVals[0].ival = 0;
 
     m_ComboTable->prepareBulkSet(m_vColnames);
-    m_ComboTable->beginTransaction();
+    //m_ComboTable->beginTransaction();
+
+    if (!mStreamProc)
+    {
+//        m_ComboTable->doBulkSet(setVals);
+    }
+
+    ComboMapTypeIterator ctIter;
     while (!outIter.IsAtEnd() && !this->GetAbortGenerateData())
     {
         nodata = false;
@@ -272,13 +251,18 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         }
         else
         {
-            outIter.Set(static_cast<OutputPixelType>(curVal));
-            setVals[0].ival = curVal;
-
-            if (m_sComboTracker.find(curVal) == m_sComboTracker.end())
+            ctIter = m_ComboMap.find(curVal);
+            if (ctIter != m_ComboMap.end())
             {
-                m_sComboTracker.insert(curVal);
-                m_ComboTable->doBulkSet(setVals);
+                outIter.Set(static_cast<OutputPixelType>(ctIter->second));
+            }
+            else
+            {
+                m_ComboMap[m_UniqueComboIdx] = curVal;
+                outIter.Set(static_cast<OutputPixelType>(m_UniqueComboIdx));
+                //setVals[0].ival = curVal;
+
+                //m_ComboTable->doBulkSet(setVals);
             }
         }
 
@@ -286,63 +270,9 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         ++outIter;
         ++m_TotalPixCount;
     }
-    m_ComboTable->endTransaction();
+    //m_ComboTable->endTransaction();
 
-
-    //    void* nextKey = 0;
-    //    int sizeKey = 0;
-    //    if (m_TotalPixCount == lprCtrl.GetNumberOfPixels())
-    //    {
-    //        std::vector<otb::AttributeTable::ColumnValue> inVals(nbInputImages+2);
-    //        for (int i=0; i < nbInputImages+2; ++i)
-    //        {
-    //            inVals[i].type = AttributeTable::ATTYPE_INT;
-    //        }
-
-    //        if (!tchdbiterinit(m_HDB))
-    //        {
-    //            int ecode = tchdbecode(m_HDB);
-    //            itkExceptionMacro(<< "ERROR writing unique value table: "
-    //                              << tchdberrmsg(ecode));
-    //            tchdbclose(m_HDB);
-    //            this->m_ComboTable->closeTable();
-    //            //NMDebugCtx(ctx, << "done!");
-    //            return;
-    //        }
-
-    //        //itk::ProgressReporter writeProgress(this, 0, m_OutIdx);
-
-    //        m_ComboTable->beginTransaction();
-    //        while(nextKey = tchdbiternext(m_HDB, &sizeKey))
-    //        {
-    //            if (tchdbget3(m_HDB, nextKey, sizeKey,
-    //                          static_cast<void*>(&comboValue),
-    //                          sizeof(typename TOutputImage::PixelType))
-    //                == -1)
-    //            {
-    //                itkWarningMacro(<< "Failed reading Tokyo Cabinet Record!");
-    //                free(nextKey);
-    //                continue;
-    //            }
-
-    //            inVals[0].ival = comboValue[0];
-    //            inVals[1].ival = comboValue[1];
-    //            for (int i=0; i < nbInputImages; ++i)
-    //            {
-    //                inVals[i+2].ival = static_cast<InputPixelType*>(nextKey)[i];
-    //            }
-    //            m_ComboTable->doBulkSet(inVals);
-
-    //            free(nextKey);
-    //            //writeProgress.CompletedPixel();
-    //        }
-    //        m_ComboTable->endTransaction();
-
-
-    //        // just close the table
-    //        //m_UVTable->closeTable();
-
-    //    }
+    // set property max ComboIdx
 
 
     NMDebugCtx(ctx, << "done!");
@@ -355,29 +285,12 @@ void CombineTwoFilter< TInputImage, TOutputImage >
 {
 	NMDebugCtx(ctx, << "...");
 
-//    if (m_dropTmpDBs)
-//    {
-//        mZoneTable->closeTable(true);
-//    }
-//    else
-//    {
-//        mZoneTable->closeTable();
-//    }
-//    mZoneTable = 0;
-//    m_NextZoneId = 0;
-
-    //    if (m_HDB)
-    //    {
-    //        if (m_dropTmpDBs)
-    //        {
-    //            tchdbvanish(m_HDB);
-    //        }
-    //        tchdbclose(m_HDB);
-    //    }
-
+    m_ComboMap.clear();
     m_TotalPixCount = 0;
     m_UniqueComboIdx = 0;
     m_StreamingProc = false;
+
+    m_ComboTable = 0;
     m_ComboTable = AttributeTable::New();
 
     m_vHyperSpaceDomains.clear();

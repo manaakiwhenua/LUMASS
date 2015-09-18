@@ -2642,6 +2642,14 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 
 
     int rowcount = tab->GetNumRows();
+    if (rowcount == 0)
+    {
+        itkWarningMacro(<< "Refused to write empty table (0 records!)");
+        delete gdaltab;
+        gdaltab = 0;
+        return;
+    }
+
     // if we've got an IMAGINE file with UCHAR data type, we create
     // a table with at least 256 rows, otherwise ERDAS Imagine wouldn't like it
     GDALDriverH driver = GDALGetDatasetDriver(m_Dataset->GetDataSet());

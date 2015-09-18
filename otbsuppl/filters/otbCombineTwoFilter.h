@@ -84,17 +84,12 @@ public:
 
           typedef long long ComboIndexType;
 
-          /*! Keeps track of unique combinations.
-           *  Map key: index of unique combination (0-based)
-           *  Map value: vector containing the following information:
-           *    0: count - number of occurrances of this combination
-           *    1: original value of layer 0
-           *    2: original value of layer 1
+          /*! maps the hyperspace index to the 0-based image index
+           *  Map key: hyperspace index
+           *  Map value: index of unique combination (0-based)
            */
-//          typedef typename std::unordered_map< ComboIndexType,
-//                                std::vector<ComboIndexType> >  ComboMapType;
-//          typedef typename ComboMapType::iterator ComboMapTypeIterator;
-
+          typedef typename std::map< ComboIndexType,  ComboIndexType > ComboMapType;
+          typedef typename ComboMapType::iterator ComboMapTypeIterator;
 
           AttributeTable::Pointer getRAT(unsigned int idx) {return m_ComboTable;}
           void setRAT(unsigned int idx, AttributeTable::Pointer);
@@ -132,14 +127,11 @@ private:
 
           //std::set<ZoneKeyType> mZones;
           //typename std::vector<ComboMapType> m_ThreadComboStore;
-          //ComboMapType m_ComboMap;
+          ComboMapType m_ComboMap;
           ComboIndexType m_UniqueComboIdx;
           OutputPixelType m_NodataCount;
           ComboIndexType m_TotalPixCount;
 
-
-          TCHDB* m_HDB;
-          std::string m_HDBFileName;
 
           std::vector<AttributeTable::Pointer> m_vRAT;
 

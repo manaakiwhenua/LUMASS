@@ -97,6 +97,8 @@ public:
           void SetInputNodata(const std::vector<long long>& inNodata);
           void SetImgNames(const std::vector<std::string>& imgNames);
 
+          ComboIndexType GetNumUniqueCombinations(void) {return m_NumUniqueCombinations-1;}
+
           virtual void ResetPipeline();
 
 protected:
@@ -128,7 +130,7 @@ private:
           //std::set<ZoneKeyType> mZones;
           //typename std::vector<ComboMapType> m_ThreadComboStore;
           ComboMapType m_ComboMap;
-          ComboIndexType m_UniqueComboIdx;
+          ComboIndexType m_NumUniqueCombinations;
           OutputPixelType m_NodataCount;
           ComboIndexType m_TotalPixCount;
 

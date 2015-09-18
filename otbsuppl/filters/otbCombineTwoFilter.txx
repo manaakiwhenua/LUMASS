@@ -39,7 +39,7 @@ CombineTwoFilter< TInputImage, TOutputImage >
     this->SetNumberOfRequiredInputs(1);
 	this->SetNumberOfRequiredOutputs(1);
 
-    m_UniqueComboIdx = 0;
+    m_NumUniqueCombinations = 0;
     m_StreamingProc = false;
 
     m_ComboTable = AttributeTable::New();
@@ -144,7 +144,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
     {
         m_ComboMap.clear();
         m_StreamingProc = true;
-        m_UniqueComboIdx = 1;
+        m_NumUniqueCombinations = 1;
         m_TotalPixCount = 0;
         m_NodataCount = 0;
 
@@ -217,10 +217,10 @@ void CombineTwoFilter< TInputImage, TOutputImage >
     m_ComboTable->prepareBulkSet(m_vColnames);
     //m_ComboTable->beginTransaction();
 
-    if (!mStreamProc)
-    {
+//    if (!m_StreamingProc)
+//    {
 //        m_ComboTable->doBulkSet(setVals);
-    }
+//    }
 
     ComboMapTypeIterator ctIter;
     while (!outIter.IsAtEnd() && !this->GetAbortGenerateData())
@@ -258,8 +258,9 @@ void CombineTwoFilter< TInputImage, TOutputImage >
             }
             else
             {
-                m_ComboMap[m_UniqueComboIdx] = curVal;
-                outIter.Set(static_cast<OutputPixelType>(m_UniqueComboIdx));
+                m_ComboMap[m_NumUniqueCombinations] = curVal;
+                outIter.Set(static_cast<OutputPixelType>(m_NumUniqueCombinations));
+                ++m_NumUniqueCombinations;
                 //setVals[0].ival = curVal;
 
                 //m_ComboTable->doBulkSet(setVals);
@@ -287,7 +288,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
 
     m_ComboMap.clear();
     m_TotalPixCount = 0;
-    m_UniqueComboIdx = 0;
+    m_NumUniqueCombinations = 0;
     m_StreamingProc = false;
 
     m_ComboTable = 0;

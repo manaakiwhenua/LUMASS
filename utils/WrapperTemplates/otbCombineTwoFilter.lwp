@@ -22,4 +22,4 @@ RATGetSupport               = 1
 RATSetSupport               = 1
 Property_1                  = ImgNames:2:string:string:vector
 Property_2                  = InputNodata:2:long long:InputPixelType:vector
-#Property_3                  = NumUniqueCombinations:1:long long:ComboIndexType
+Property_3                  = OutputTableFileName:1:string:string

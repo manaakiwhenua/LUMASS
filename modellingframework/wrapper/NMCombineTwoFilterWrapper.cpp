@@ -156,6 +156,14 @@ public:
             f->SetInputNodata(vecInputNodata);
         }
 
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mOutputTableFileName.size());
+        std::string curOutputTableFileName;
+        if (step < p->mOutputTableFileName.size())
+        {
+            curOutputTableFileName = p->mOutputTableFileName.at(step).toStdString().c_str();
+            f->SetOutputTableFileName(curOutputTableFileName);
+        }
+
 
 		NMDebugCtx("NMCombineTwoFilterWrapper_Internal", << "done!");
 	}

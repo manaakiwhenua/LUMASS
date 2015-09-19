@@ -57,6 +57,7 @@ class NMMODFRAME_EXPORT NMStreamingImageFileWriterWrapper: public NMProcess
 #endif	
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
     Q_PROPERTY(QStringList InputTables READ getInputTables WRITE setInputTables)
+    Q_PROPERTY(bool WriteTable READ getWriteTable WRITE setWriteTable)
     Q_PROPERTY(bool UpdateMode READ getUpdateMode WRITE setUpdateMode)
     Q_PROPERTY(QString StreamingMethodType READ getStreamingMethodType WRITE setStreamingMethodType)
     Q_PROPERTY(QStringList StreamingMethodEnum READ getStreamingMethodEnum)
@@ -69,6 +70,7 @@ public:
     NMPropertyGetSet( FileNames, QStringList )
     NMPropertyGetSet( InputTables, QStringList )
     NMPropertyGetSet( UpdateMode, bool )
+    NMPropertyGetSet( WriteTable, bool )
     NMPropertyGetSet( PyramidResamplingType, QString )
     NMPropertyGetSet( PyramidResamplingEnum, QStringList )
     NMPropertyGetSet( RGBMode, bool)
@@ -120,6 +122,7 @@ protected:
 
 	QStringList mFileNames;
     QStringList mInputTables;
+    bool mWriteTable;
     bool mUpdateMode;
     bool mRGBMode;
 

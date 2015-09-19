@@ -27,9 +27,6 @@
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
-// TOKYO CABINET
-#include "tchdb.h"
-
 #include "otbsupplfilters_export.h"
 
 namespace otb
@@ -91,6 +88,9 @@ public:
           typedef typename std::map< ComboIndexType,  ComboIndexType > ComboMapType;
           typedef typename ComboMapType::iterator ComboMapTypeIterator;
 
+          typedef typename std::set< ComboIndexType > ComboTrackerType;
+          typedef typename ComboTrackerType::iterator ComboTrackerTypeIterator;
+
           AttributeTable::Pointer getRAT(unsigned int idx) {return m_ComboTable;}
           void setRAT(unsigned int idx, AttributeTable::Pointer);
 
@@ -101,21 +101,26 @@ public:
 
           virtual void ResetPipeline();
 
+          itkGetMacro(OutputTableFileName, std::string)
+          void SetOutputTableFileName(const std::string& outtablename)
+            {m_OutputTableFileName = outtablename;}
+
 protected:
           CombineTwoFilter();
           virtual ~CombineTwoFilter();
 	  virtual void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
-            //	  void BeforeThreadedGenerateData();
-            //          void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
-            //	  void AfterThreadedGenerateData();
-          void GenerateData();
+          void BeforeThreadedGenerateData();
+          void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
+          void AfterThreadedGenerateData();
+          //void GenerateData();
 
 
 private:
           CombineTwoFilter(const Self&); //purposely not implemented
 	  void operator=(const Self&); //purposely not implemented
 
+          std::string m_OutputTableFileName;
           AttributeTable::Pointer m_ComboTable;
           bool m_dropTmpDBs;
 
@@ -130,9 +135,11 @@ private:
           //std::set<ZoneKeyType> mZones;
           //typename std::vector<ComboMapType> m_ThreadComboStore;
           ComboMapType m_ComboMap;
+          std::vector<ComboTrackerType> m_vThreadComboTracker;
           ComboIndexType m_NumUniqueCombinations;
           OutputPixelType m_NodataCount;
           ComboIndexType m_TotalPixCount;
+          std::vector<ComboIndexType> m_vThreadPixCount;
 
 
           std::vector<AttributeTable::Pointer> m_vRAT;

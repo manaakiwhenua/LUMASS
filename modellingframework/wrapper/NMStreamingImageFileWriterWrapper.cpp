@@ -464,6 +464,7 @@ NMStreamingImageFileWriterWrapper
 	this->mOutputNumBands = numBands;
 	this->mInputNumDimensions = numDims;
 	this->mOutputNumDimensions = numDims;
+    this->mWriteTable = true;
     this->mUpdateMode = false;
     this->mRGBMode = false;
 
@@ -630,7 +631,7 @@ void
 NMStreamingImageFileWriterWrapper
 ::setRAT(unsigned idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
-    if (!imgWrapper.isNull())
+    if (mWriteTable && !imgWrapper.isNull())
     {
         otb::AttributeTable::Pointer tab = imgWrapper->getOTBTab();
 

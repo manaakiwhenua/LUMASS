@@ -42,6 +42,8 @@ CombineTwoFilter< TInputImage, TOutputImage >
     m_NumUniqueCombinations = 0;
     m_StreamingProc = false;
 
+    m_OutputTableFileName = "";
+    m_ComboTable = 0;
     m_ComboTable = AttributeTable::New();
 }
 
@@ -93,9 +95,10 @@ void CombineTwoFilter< TInputImage, TOutputImage >
 
 template< class TInputImage, class TOutputImage >
 void CombineTwoFilter< TInputImage, TOutputImage >
-::GenerateData()
+//::GenerateData()
+::BeforeThreadedGenerateData()
 {
-	NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
 
     int nbInputImages = this->GetNumberOfIndexedInputs();
 
@@ -122,19 +125,26 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         }
     }
 
+    m_vThreadPixCount.clear();
+    m_vThreadComboTracker.clear();
+    for (int t=0; t < this->GetNumberOfThreads(); ++t)
+    {
+        m_vThreadComboTracker.push_back(ComboTrackerType());
+        m_vThreadPixCount.push_back(0);
+    }
 
     // ======================================================================
     // ALLOCATE THE OUTPUT IMAGE
     // ======================================================================
-    InputImagePointerType inImg = inputImages[0];
-    OutputImagePointerType outImg = this->GetOutput();
-    outImg->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
-    outImg->SetBufferedRegion(inImg->GetBufferedRegion());
-    outImg->SetRequestedRegion(inImg->GetRequestedRegion());
-    outImg->Allocate();
+    //    InputImagePointerType inImg = inputImages[0];
+    //    OutputImagePointerType outImg = this->GetOutput();
+    //    outImg->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
+    //    outImg->SetBufferedRegion(inImg->GetBufferedRegion());
+    //    outImg->SetRequestedRegion(inImg->GetRequestedRegion());
+    //    outImg->Allocate();
 
-    ComboIndexType lprPixNum = lprCtrl.GetNumberOfPixels();
-    OutputImageRegionType outRegion = outImg->GetBufferedRegion();
+    //    ComboIndexType lprPixNum = lprCtrl.GetNumberOfPixels();
+    //    OutputImageRegionType outRegion = outImg->GetBufferedRegion();
 
     // ======================================================================
     // Set up the output table (ComboTable)
@@ -148,25 +158,44 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         m_TotalPixCount = 0;
         m_NodataCount = 0;
 
-        m_sComboTracker.clear();
+        //m_sComboTracker.clear();
+
+        ComboIndexType maxIdx = itk::NumericTraits<ComboIndexType>::max()-1;
         m_vHyperStrides.clear();
         m_vHyperStrides.resize(m_vHyperSpaceDomains.size());
         m_vHyperStrides[0] = 1;
         for (int s=1; s < m_vHyperSpaceDomains.size(); ++s)
         {
+            if (m_vHyperStrides[s-1] > maxIdx / m_vHyperSpaceDomains[s-1])
+            {
+                itkExceptionMacro(<< "Type overflow! The possible number of unique "
+                                  << " combinations exceeds the data type limits! "
+                                  << " Choose fewers input layers or reduce the "
+                                  << " number of unique values per input layer.");
+            }
             m_vHyperStrides[s] = m_vHyperStrides[s-1] * m_vHyperSpaceDomains[s-1];
         }
 
         m_vColnames.clear();
-        if (m_ComboTable->createTable("", "1") == AttributeTable::ATCREATE_ERROR)
+        if (!m_OutputTableFileName.empty())
+        {
+            m_dropTmpDBs = true;
+        }
+        else
+        {
+            m_dropTmpDBs = false;
+        }
+        if (m_ComboTable->createTable(m_OutputTableFileName, "1") == AttributeTable::ATCREATE_ERROR)
         {
             NMDebugCtx(ctx, << "done!");
             itkExceptionMacro("Failed creating unique combination attribute table!");
             return;
         }
         m_vColnames.push_back(m_ComboTable->getPrimaryKey());
+        m_vColnames.push_back("UvId");
 
         m_ComboTable->beginTransaction();
+        m_ComboTable->AddColumn("UvId", AttributeTable::ATTYPE_INT);
         std::stringstream sscolname;
         for (int i=0; i < nbInputImages; ++i)
         {
@@ -183,64 +212,55 @@ void CombineTwoFilter< TInputImage, TOutputImage >
             m_InputNodata.push_back(m_ComboTable->GetIntNodata());
         }
     }
+}
 
-
+template< class TInputImage, class TOutputImage >
+void CombineTwoFilter< TInputImage, TOutputImage >
+::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId )
+{
     // ======================================================================
     // Identify unique combinations
     // ======================================================================
-    itk::ProgressReporter progress(this, 0, outRegion.GetNumberOfPixels());
+    int nbInputImages = this->GetNumberOfIndexedInputs();
+    itk::ProgressReporter progress(this, 0, outputRegionForThread.GetNumberOfPixels());
+
+    m_vThreadPixCount[threadId] = outputRegionForThread.GetNumberOfPixels();
 
     typedef itk::ImageRegionConstIterator<InputImageType> InIteratorType;
     std::vector<InIteratorType> vInIters;
     for (int i=0; i < nbInputImages; ++i)
     {
-        InIteratorType ii(inputImages[i], outRegion);
+        InIteratorType ii(this->GetInput(i), outputRegionForThread);
         vInIters.push_back(ii);
         ii.GoToBegin();
     }
-    itk::ImageRegionIterator<OutputImageType> outIter(this->GetOutput(), outRegion);
+    itk::ImageRegionIterator<OutputImageType> outIter(this->GetOutput(), outputRegionForThread);
     outIter.GoToBegin();
 
     bool nodata;
     ComboIndexType curVal;
-    std::vector<AttributeTable::ColumnValue> setVals(nbInputImages+1);
-    setVals[0].type = AttributeTable::ATTYPE_INT;
-    setVals[0].ival = 0;
 
-    for (int i=1; i < nbInputImages; ++i)
-    {
-        setVals[i].type = AttributeTable::ATTYPE_INT;
-        setVals[i].ival = m_InputNodata[i-1];
-    }
-    setVals[0].ival = 0;
+    ComboTrackerType& comboTracker = m_vThreadComboTracker[threadId];
+    std::vector<ComboIndexType> setVals(nbInputImages, 0);
 
-    m_ComboTable->prepareBulkSet(m_vColnames);
-    //m_ComboTable->beginTransaction();
-
-//    if (!m_StreamingProc)
-//    {
-//        m_ComboTable->doBulkSet(setVals);
-//    }
-
-    ComboMapTypeIterator ctIter;
     while (!outIter.IsAtEnd() && !this->GetAbortGenerateData())
     {
         nodata = false;
-        for (int in=0, va=1; in < nbInputImages; ++in, ++va)
+        for (int in=0, va=0; in < nbInputImages; ++in, ++va)
         {
-            setVals[va].ival = static_cast<ComboIndexType>(vInIters[in].Get());
-            if (setVals[va].ival == m_InputNodata[in])
+            setVals[va] = static_cast<ComboIndexType>(vInIters[in].Get());
+            if (setVals[va] == m_InputNodata[in])
             {
-                nodata = true;
+               nodata = true;
             }
 
             if (in == 0)
             {
-                curVal = setVals[va].ival;
+                curVal = setVals[va];
             }
             else
             {
-                curVal += setVals[va].ival * m_vHyperStrides[in];
+                curVal += setVals[va] * m_vHyperStrides[in];
             }
             ++vInIters[in];
         }
@@ -251,32 +271,90 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         }
         else
         {
-            ctIter = m_ComboMap.find(curVal);
-            if (ctIter != m_ComboMap.end())
-            {
-                outIter.Set(static_cast<OutputPixelType>(ctIter->second));
-            }
-            else
-            {
-                m_ComboMap[m_NumUniqueCombinations] = curVal;
-                outIter.Set(static_cast<OutputPixelType>(m_NumUniqueCombinations));
-                ++m_NumUniqueCombinations;
-                //setVals[0].ival = curVal;
-
-                //m_ComboTable->doBulkSet(setVals);
-            }
+            comboTracker.insert(curVal+1);
+            outIter.Set(static_cast<OutputPixelType>(curVal+1));
         }
 
         progress.CompletedPixel();
         ++outIter;
-        ++m_TotalPixCount;
+        //++m_TotalPixCount;
     }
-    //m_ComboTable->endTransaction();
 
-    // set property max ComboIdx
+    //NMDebugCtx(ctx, << "done!");
+}
 
 
-    NMDebugCtx(ctx, << "done!");
+template< class TInputImage, class TOutputImage >
+void CombineTwoFilter< TInputImage, TOutputImage >
+::AfterThreadedGenerateData()
+{
+    // ===============================================
+    // merge thread observations
+    // ===============================================
+    ComboTrackerTypeIterator ctIter;
+    for (int t=0; t < m_vThreadComboTracker.size(); ++t)
+    {
+        ComboTrackerType& ct = m_vThreadComboTracker[t];
+        ctIter = ct.begin();
+        while (ctIter != ct.end())
+        {
+            if (m_ComboMap.find(*ctIter) == m_ComboMap.end())
+            {
+                m_ComboMap[*ctIter] = m_NumUniqueCombinations;
+                ++m_NumUniqueCombinations;
+            }
+            ++ctIter;
+        }
+        m_TotalPixCount += m_vThreadPixCount[t];
+    }
+
+    int nbInputImages = this->GetNumberOfIndexedInputs();
+    long long npix = this->GetInput(0)->GetLargestPossibleRegion().GetNumberOfPixels();
+    if (m_TotalPixCount == npix)
+    {
+        std::vector<AttributeTable::ColumnValue> setVals(nbInputImages+2);
+        setVals[0].type = AttributeTable::ATTYPE_INT;
+        setVals[0].ival = 0;
+        setVals[1].type = AttributeTable::ATTYPE_INT;
+        setVals[1].ival = 0;
+
+        for (int i=0; i < nbInputImages; ++i)
+        {
+            setVals[i+2].type = AttributeTable::ATTYPE_INT;
+            setVals[i+2].ival = m_InputNodata[i];
+        }
+
+        m_ComboTable->prepareBulkSet(m_vColnames);
+        m_ComboTable->beginTransaction();
+
+        m_ComboTable->doBulkSet(setVals);
+
+        int nbInputImages = this->GetNumberOfIndexedInputs();
+
+        ComboMapTypeIterator comboIter = m_ComboMap.begin();
+        while (comboIter != m_ComboMap.end() && !this->GetAbortGenerateData())
+        {
+            // note: we've used '0' to indicate null values
+            // and hence calculated the hyperspace index as 'offset+1'
+            // ergo, to get the proper 0-based input index, we've got
+            // to use offset-1 here;
+            ComboIndexType offset = comboIter->first;
+            setVals[0].ival = offset;
+            setVals[1].ival = comboIter->second;
+
+            --offset;
+            for (int i=0; i < nbInputImages; ++i)
+            {
+                setVals[i+2].ival = offset % m_vHyperSpaceDomains[i];
+                offset /= m_vHyperSpaceDomains[i];
+            }
+
+            m_ComboTable->doBulkSet(setVals);
+
+            ++comboIter;
+        }
+        m_ComboTable->endTransaction();
+    }
 }
 
 
@@ -291,11 +369,16 @@ void CombineTwoFilter< TInputImage, TOutputImage >
     m_NumUniqueCombinations = 0;
     m_StreamingProc = false;
 
+    if (m_dropTmpDBs)
+    {
+        m_ComboTable->closeTable(true);
+    }
     m_ComboTable = 0;
     m_ComboTable = AttributeTable::New();
 
     m_vHyperSpaceDomains.clear();
     m_sComboTracker.clear();
+    m_vThreadComboTracker.clear();
 
     Superclass::ResetPipeline();
     NMDebugCtx(ctx, << "done!");

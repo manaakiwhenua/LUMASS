@@ -2644,7 +2644,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
     int rowcount = tab->GetNumRows();
     if (rowcount == 0)
     {
-        itkWarningMacro(<< "Refused to write empty table (0 records!)");
+        //itkWarningMacro(<< "Refused to write empty table (0 records!)");
         delete gdaltab;
         gdaltab = 0;
         return;

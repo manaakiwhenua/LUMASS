@@ -146,9 +146,9 @@ protected:
     void updateScalarBuffer();
 
     template<class T>
-    void setLongScalars(T* buf, long* out, long* tabCol,
+    void setLongScalars(T* buf, long long* out, long* tabCol,
                         int numPix, int maxid,
-                        long nodata);
+                        long long nodata);
     template<class T>
     void setDoubleScalars(T* buf, double* out, double* tabCol,
                         int numPix, int maxid,
@@ -219,6 +219,9 @@ protected:
 
     int mScalarColIdx;
     FILE* mScalarBufferFile;
+
+    std::map<long long, long long> mScalarLongLongMap;
+    std::map<long long, double> mScalarDoubleMap;
 
 	//void fetchRATs(void);
 

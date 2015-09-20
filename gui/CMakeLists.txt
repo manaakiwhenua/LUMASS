@@ -52,7 +52,7 @@ INCLUDE_DIRECTORIES(
     ${lumass_SOURCE_DIR}/utils/ITK
     ${GDALRATImageIO_BINARY_DIR}
     ${SQLITE3_INCLUDE_DIR}
-    ${TCADB_INCLUDE_DIR}
+#    ${TCADB_INCLUDE_DIR}
 )     
 
 LINK_DIRECTORIES(
@@ -65,7 +65,7 @@ LINK_DIRECTORIES(
 	${muparser_BINARY_DIR}  
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
-        ${TCADB_LIB_DIR}
+#        ${TCADB_LIB_DIR}
 )
 
 QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
@@ -132,7 +132,7 @@ set(LUMASS_LINKLIBS
         ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
         ${OPENGL_glu_LIBRARY}
         ${SQLITE3_LIBRARY}
-        tokyocabinet
+        #tokyocabinet
 )
 
 set(LUMASS_DEPLIBS

@@ -25,7 +25,7 @@
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
-#include "tchdb.h"
+//#include "tchdb.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -111,8 +111,8 @@ protected:
     std::vector<AttributeTable::Pointer> m_vInRAT;
     std::vector<AttributeTable::Pointer> m_vOutRAT;
 
-    std::vector<TCHDB*> m_threadHDB;
-    TCHDB* m_tcHDB;
+//    std::vector<TCHDB*> m_threadHDB;
+//    TCHDB* m_tcHDB;
 
     std::string m_UVTableName;
     AttributeTable::Pointer m_UVTable;

@@ -53,7 +53,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("SummarizeZones")       ;
     mProcRegister << QString::fromLatin1("CastImage")            ;
     mProcRegister << QString::fromLatin1("ResampleImage")        ;
-    mProcRegister << QString::fromLatin1("UniqueCombination")    ;
+    //mProcRegister << QString::fromLatin1("UniqueCombination")    ;
     mProcRegister << QString::fromLatin1("CombineTwo")    ;
 
 
@@ -133,10 +133,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMResampleImageFilterWrapper";
     }
-    else if (alias.compare("UniqueCombination") == 0)
-    {
-        return "NMUniqueCombinationFilterWrapper";
-    }
+//    else if (alias.compare("UniqueCombination") == 0)
+//    {
+//        return "NMUniqueCombinationFilterWrapper";
+//    }
     else if (alias.compare("CombineTwo") == 0)
     {
         return "NMCombineTwoFilterWrapper";
@@ -190,10 +190,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     {
         proc =  new NMResampleImageFilterWrapper(this);
     }
-    else if (procClass.compare("NMUniqueCombinationFilterWrapper") == 0)
-    {
-        proc =  new NMUniqueCombinationFilterWrapper(this);
-    }
+//    else if (procClass.compare("NMUniqueCombinationFilterWrapper") == 0)
+//    {
+//        proc =  new NMUniqueCombinationFilterWrapper(this);
+//    }
     else if (procClass.compare("NMCombineTwoFilterWrapper") == 0)
     {
         proc =  new NMCombineTwoFilterWrapper(this);

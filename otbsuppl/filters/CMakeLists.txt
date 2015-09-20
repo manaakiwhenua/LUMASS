@@ -50,7 +50,9 @@ set_target_properties(OTBSupplFilters PROPERTIES
 generate_export_header(OTBSupplFilters)
 
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
-        target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO tokyocabinet)
+        target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO
+        #tokyocabinet
+        )
 else()
 	target_link_libraries(OTBSupplFilters OTBCommon OTBIOGDAL 
 	OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase 

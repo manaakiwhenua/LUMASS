@@ -28,12 +28,12 @@
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
 
-// TOKYO CABINET
-//#include "tcutil.h"
-#include "tchdb.h"
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
+//// TOKYO CABINET
+////#include "tcutil.h"
+//#include "tchdb.h"
+//#include <stdlib.h>
+//#include <stdbool.h>
+//#include <stdint.h>
 
 namespace otb
 {
@@ -243,24 +243,24 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // PREPARE KEY-VALUE STORE KEEPING TRACK OF UNIQUE COMBINATIONS
         // -------------------------------------------------------------
 
-        if (m_tcHDB != 0)
-        {
-            tchdbvanish(m_tcHDB);
-            tchdbclose(m_tcHDB);
-            m_tcHDB = 0;
-        }
+        //        if (m_tcHDB != 0)
+        //        {
+        //            tchdbvanish(m_tcHDB);
+        //            tchdbclose(m_tcHDB);
+        //            m_tcHDB = 0;
+        //        }
 
-        m_tcHDB = tchdbnew();
-        tchdbtune(m_tcHDB, 200000000, 8, 10, HDBTLARGE | HDBTDEFLATE);
-        tchdbsetcache(m_tcHDB, 700000);
-        tchdbsetxmsiz(m_tcHDB, 536870912);
+        //        m_tcHDB = tchdbnew();
+        //        tchdbtune(m_tcHDB, 200000000, 8, 10, HDBTLARGE | HDBTDEFLATE);
+        //        tchdbsetcache(m_tcHDB, 700000);
+        //        tchdbsetxmsiz(m_tcHDB, 536870912);
 
-        std::string hdbName = std::tmpnam(0);
-        if (!tchdbopen(m_tcHDB, hdbName.c_str(), HDBOWRITER | HDBOCREAT))
-        {
-            itkExceptionMacro(<< "Failed creating main key-value store!");
-            return;
-        }
+        //        std::string hdbName = std::tmpnam(0);
+        //        if (!tchdbopen(m_tcHDB, hdbName.c_str(), HDBOWRITER | HDBOCREAT))
+        //        {
+        //            itkExceptionMacro(<< "Failed creating main key-value store!");
+        //            return;
+        //        }
     }
 
     // ======================================================================
@@ -315,29 +315,29 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             ++inputIterators[in];
         }
 
-        if (!nodata)
-        {
-            if (tchdbget3(m_tcHDB,
-                          static_cast<void*>(&combo[0]),
-                          sizeof(InputPixelType) * nbInputs,
-                          static_cast<void*>(&readIdx),
-                          sizeof(OutputPixelType))
-                == -1)
-            {
-                tchdbputkeep(m_tcHDB,
-                              static_cast<void*>(&combo[0]),
-                              sizeof(typename TInputImage::PixelType) * nbInputs,
-                              static_cast<void*>(&m_OutIdx),
-                              sizeof(typename TOutputImage::PixelType));
-                outIt.Set(m_OutIdx);//outIt.Set(outIdx);
-                ++m_OutIdx;
-            }
-            else
-            {
-                outIt.Set(readIdx);
-            }
-        }
-        else
+//        if (!nodata)
+//        {
+//            if (tchdbget3(m_tcHDB,
+//                          static_cast<void*>(&combo[0]),
+//                          sizeof(InputPixelType) * nbInputs,
+//                          static_cast<void*>(&readIdx),
+//                          sizeof(OutputPixelType))
+//                == -1)
+//            {
+//                tchdbputkeep(m_tcHDB,
+//                              static_cast<void*>(&combo[0]),
+//                              sizeof(typename TInputImage::PixelType) * nbInputs,
+//                              static_cast<void*>(&m_OutIdx),
+//                              sizeof(typename TOutputImage::PixelType));
+//                outIt.Set(m_OutIdx);//outIt.Set(outIdx);
+//                ++m_OutIdx;
+//            }
+//            else
+//            {
+//                outIt.Set(readIdx);
+//            }
+//        }
+//        else
         {
             outIt.Set(0);
         }
@@ -360,59 +360,59 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // ======================================================================
     // Creating the output unique value table
     // ======================================================================
-    void* nextKey = 0;
-    int sizeKey = 0;
-    if (m_TotalStreamedPix == lprPixNum)
-    {
-        std::vector<otb::AttributeTable::ColumnValue> inVals(nbInputs+1);
-        for (int i=0; i < nbInputs+1; ++i)
-        {
-            inVals[i].type = AttributeTable::ATTYPE_INT;
-        }
+//    void* nextKey = 0;
+//    int sizeKey = 0;
+//    if (m_TotalStreamedPix == lprPixNum)
+//    {
+//        std::vector<otb::AttributeTable::ColumnValue> inVals(nbInputs+1);
+//        for (int i=0; i < nbInputs+1; ++i)
+//        {
+//            inVals[i].type = AttributeTable::ATTYPE_INT;
+//        }
 
-        if (!tchdbiterinit(m_tcHDB))
-        {
-            int ecode = tchdbecode(m_tcHDB);
-            itkExceptionMacro(<< "ERROR writing unique value table: "
-                              << tchdberrmsg(ecode));
-            tchdbclose(m_tcHDB);
-            this->m_UVTable->closeTable();
-            //NMDebugCtx(ctx, << "done!");
-            return;
-        }
+//        if (!tchdbiterinit(m_tcHDB))
+//        {
+//            int ecode = tchdbecode(m_tcHDB);
+//            itkExceptionMacro(<< "ERROR writing unique value table: "
+//                              << tchdberrmsg(ecode));
+//            tchdbclose(m_tcHDB);
+//            this->m_UVTable->closeTable();
+//            //NMDebugCtx(ctx, << "done!");
+//            return;
+//        }
 
-        itk::ProgressReporter writeProgress(this, 0, m_OutIdx);
+//        itk::ProgressReporter writeProgress(this, 0, m_OutIdx);
 
-        m_UVTable->beginTransaction();
-        while(nextKey = tchdbiternext(m_tcHDB, &sizeKey))
-        {
-            if (tchdbget3(m_tcHDB, nextKey, sizeKey,
-                          static_cast<void*>(&readIdx),
-                          sizeof(typename TOutputImage::PixelType))
-                == -1)
-            {
-                itkWarningMacro(<< "Failed reading Tokyo Cabinet Record!");
-                free(nextKey);
-                continue;
-            }
+//        m_UVTable->beginTransaction();
+//        while(nextKey = tchdbiternext(m_tcHDB, &sizeKey))
+//        {
+//            if (tchdbget3(m_tcHDB, nextKey, sizeKey,
+//                          static_cast<void*>(&readIdx),
+//                          sizeof(typename TOutputImage::PixelType))
+//                == -1)
+//            {
+//                itkWarningMacro(<< "Failed reading Tokyo Cabinet Record!");
+//                free(nextKey);
+//                continue;
+//            }
 
-            inVals[0].ival = static_cast<long long>(readIdx);
-            for (int i=0; i < nbInputs; ++i)
-            {
-                inVals[i+1].ival = static_cast<typename TInputImage::PixelType*>(nextKey)[i];
-            }
-            m_UVTable->doBulkSet(inVals);
+//            inVals[0].ival = static_cast<long long>(readIdx);
+//            for (int i=0; i < nbInputs; ++i)
+//            {
+//                inVals[i+1].ival = static_cast<typename TInputImage::PixelType*>(nextKey)[i];
+//            }
+//            m_UVTable->doBulkSet(inVals);
 
-            free(nextKey);
-            writeProgress.CompletedPixel();
-        }
-        m_UVTable->endTransaction();
+//            free(nextKey);
+//            writeProgress.CompletedPixel();
+//        }
+//        m_UVTable->endTransaction();
 
 
-        // just close the table
-        //m_UVTable->closeTable();
+//        // just close the table
+//        //m_UVTable->closeTable();
 
-    }
+//    }
 
     // set the output RAT table
     //    if (m_vOutRAT.size())
@@ -463,12 +463,12 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     //    }
     //    m_threadHDB.clear();
 
-    if (m_tcHDB != 0)
-    {
-        tchdbvanish(m_tcHDB);
-        tchdbclose(m_tcHDB);
-        m_tcHDB = 0;
-    }
+//    if (m_tcHDB != 0)
+//    {
+//        tchdbvanish(m_tcHDB);
+//        tchdbclose(m_tcHDB);
+//        m_tcHDB = 0;
+//    }
 
     if (this->m_UVTable.IsNotNull())
     {

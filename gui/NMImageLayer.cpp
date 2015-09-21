@@ -207,6 +207,7 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 	this->mNumBands = 0;
 	this->mNumDimensions = 0;
+    this->mNumRecords = 0;
 	this->mComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mbStatsAvailable = false;
 
@@ -528,15 +529,19 @@ NMImageLayer::updateAttributeTable()
 		return 1;
 
     this->mOtbRAT = this->getRasterAttributeTable(1);
-    if (    mOtbRAT.IsNull()
-        ||  mOtbRAT->GetNumRows() == 0
-        ||  mOtbRAT->GetNumCols() == 0
-       )
+    if (mOtbRAT.IsNull())
 	{
         mOtbRAT = 0;
         //NMDebugAI(<< "No attribute table available!");
 		return 0;
 	}
+
+    mNumRecords = mOtbRAT->GetNumRows();
+    if (mNumRecords == 0)
+    {
+        mOtbRAT = 0;
+        return 0;
+    }
 
     //NMQtOtbAttributeTableModel* otbModel;
     NMSqlTableModel* tabModel = 0;
@@ -1045,12 +1050,17 @@ NMImageLayer::setScalars(vtkImageData* img)
     if (colidx != mScalarColIdx)
     {
         mScalarColIdx = colidx;
-        //updateScalarBuffer();
-
-        if (!mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString()))
+        if (mNumRecords <= 1e6)
         {
-            NMErr(ctxNMImageLayer, << "Failed preparing fast scalar column access!");
-            return;
+            updateScalarBuffer();
+        }
+        else
+        {
+            if (!mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString()))
+            {
+                NMErr(ctxNMImageLayer, << "Failed preparing fast scalar column access!");
+                return;
+            }
         }
 
         //        std::vector<std::string> colnames;
@@ -1065,8 +1075,11 @@ NMImageLayer::setScalars(vtkImageData* img)
     vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
     void* buf = idxScalars->GetVoidPointer(0);
     int numPix = idxScalars->GetNumberOfTuples();
-    int maxidx = mOtbRAT->GetNumRows()-1;
-    mOtbRAT->beginTransaction();
+    int maxidx = mNumRecords;//mOtbRAT->GetNumRows()-1;
+    if (mNumRecords > 1e6)
+    {
+        mOtbRAT->beginTransaction();
+    }
 
     switch(mOtbRAT->GetColumnType(colidx))
     {
@@ -1173,7 +1186,13 @@ NMImageLayer::setScalars(vtkImageData* img)
     default:
         dsa->SetActiveAttribute(0, vtkDataSetAttributes::SCALARS);
     }
-    mOtbRAT->endTransaction();
+    // end read transaction, if we're accessing the table directly
+    // rather than using a RAM buffer
+    if (mNumRecords > 1e6)
+    {
+        mOtbRAT->endTransaction();
+    }
+
     mbUpdateScalars = false;
     //NMDebugCtx(ctxNMImageLayer, << "done!");
 }
@@ -1270,30 +1289,40 @@ NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
                              int numPix, int maxidx, long long nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-    for (int i=0; i < numPix; ++i)
+    if (mNumRecords > 1e6)
     {
-          out[i] = mOtbRAT->nextIntValue(static_cast<T*>(buf)[i]);
+        for (int i=0; i < numPix; ++i)
+        {
+              out[i] = mOtbRAT->nextIntValue(static_cast<T*>(buf)[i]);
+        }
+    }
+    else
+    {
+        std::map<long long, long long>::iterator it;
+        for (int i=0; i < numPix; ++i)
+        {
+            it = mScalarLongLongMap.find(static_cast<T*>(buf)[i]);
+            if (it != mScalarLongLongMap.end())
+            {
+                out[i] = it->second;
+            }
+            else
+            {
+                out[i] = nodata;
+            }
 
-//        it = mScalarLongLongMap.find(static_cast<T*>(buf)[i]);
-//        if (it != mScalarLongLongMap.end())
-//        {
-//            out[i] = it->second;
-//        }
-//        else
-//        {
-//            out[i] = nodata;
-//        }
 
-// this is really deprecated
-//        if (buf[i] < 0 || buf[i] > maxidx)
-//        {
-//            out[i] = nodata;
-//        }
-//        else
-//        {
-//            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
-//            fread(out+i, sizeof(long), 1, mScalarBufferFile);
-//        }
+            // this is really deprecated
+            //        if (buf[i] < 0 || buf[i] > maxidx)
+            //        {
+            //            out[i] = nodata;
+            //        }
+            //        else
+            //        {
+            //            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
+            //            fread(out+i, sizeof(long), 1, mScalarBufferFile);
+            //        }
+        }
     }
     //    CALLGRIND_STOP_INSTRUMENTATION;
     //    CALLGRIND_DUMP_STATS;
@@ -1305,30 +1334,39 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
                                int numPix, int maxidx, double nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-    std::map<long long, double>::iterator it;
-    for (int i=0; i < numPix; ++i)
+
+    if (mNumRecords > 1e6)
     {
-          out[i] = mOtbRAT->nextDoubleValue(static_cast<T*>(buf)[i]);
+        for (int i=0; i < numPix; ++i)
+        {
+              out[i] = mOtbRAT->nextDoubleValue(static_cast<T*>(buf)[i]);
+        }
+    }
+    else
+    {
+        std::map<long long, double>::iterator it;
+        for (int i=0; i < numPix; ++i)
+        {
+            it = mScalarDoubleMap.find(static_cast<T*>(buf)[i]);
+            if (it != mScalarDoubleMap.end())
+            {
+                out[i] = it->second;
+            }
+            else
+            {
+                out[i] = nodata;
+            }
 
-//        it = mScalarDoubleMap.find(static_cast<T*>(buf)[i]);
-//        if (it != mScalarDoubleMap.end())
-//        {
-//            out[i] = it->second;
-//        }
-//        else
-//        {
-//            out[i] = nodata;
-//        }
-
-        //        if (buf[i] < 0 || buf[i] > maxidx)
-        //        {
-        //            out[i] = nodata;
-        //        }
-        //        else
-        //        {
-        //            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
-        //            fread(out+i, sizeof(double), 1, mScalarBufferFile);
-        //        }
+            //        if (buf[i] < 0 || buf[i] > maxidx)
+            //        {
+            //            out[i] = nodata;
+            //        }
+            //        else
+            //        {
+            //            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
+            //            fread(out+i, sizeof(double), 1, mScalarBufferFile);
+            //        }
+        }
     }
     //    CALLGRIND_STOP_INSTRUMENTATION;
     //    CALLGRIND_DUMP_STATS;
@@ -1516,18 +1554,35 @@ const vtkDataSet* NMImageLayer::getDataSet()
 otb::AttributeTable::Pointer
 NMImageLayer::getRasterAttributeTable(int band)
 {
+    otb::AttributeTable::Pointer tab = 0;
     if (this->mReader != 0 && this->mReader->isInitialised())
     {
-
         if (band < 1 || band > this->mReader->getOutputNumBands())
             return 0;
 
-        return this->mReader->getRasterAttributeTable(band);
+        // note: we can have a valid table object with no records; no
+        // columns shouldn't occur at all, but doesn't do any harm
+        // anyway ...
+        tab = this->mReader->getRasterAttributeTable(band);
+        mNumRecords = tab->GetNumRows();
+        if (    mNumRecords == 0
+            ||  tab->GetNumCols() == 0
+           )
+        {
+            tab = 0;
+            mOtbRAT = 0;
+        }
+        else
+        {
+            mOtbRAT = tab;
+        }
     }
     else
     {
-        return this->mOtbRAT;
+        tab = this->mOtbRAT;
     }
+
+    return tab;
 }
 
 

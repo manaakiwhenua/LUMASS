@@ -176,6 +176,7 @@ protected:
     itk::DataObject::Pointer mImage;
 	vtkSmartPointer<vtkImageProperty> mImgProp;
 
+    unsigned int mNumRecords;
     unsigned int mNumDimensions;
 	unsigned int mNumBands;
     unsigned int mTotalNumBands;

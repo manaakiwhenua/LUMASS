@@ -1436,7 +1436,7 @@ AttributeTable::prepareColumnByIndex(const std::string &colname)//,
     std::stringstream ssql;
     ssql << "SELECT " << colname
          << " from main." << m_tableName
-         << " where " << m_idColName << " = @ROW;";
+         << " where " << m_idColName << " = ?1;";
 
     //    if (!whereClause.empty())
     //    {

@@ -192,6 +192,7 @@ public:
             return m_dNodata;
         }
         double v = sqlite3_column_double(m_StmtColIter, 0);
+        sqlite3_clear_bindings(m_StmtColIter);
         sqlite3_reset(m_StmtColIter);
 
         return v;
@@ -207,6 +208,7 @@ public:
             return m_iNodata;
         }
         int v = sqlite3_column_int64(m_StmtColIter, 0);
+        sqlite3_clear_bindings(m_StmtColIter);
         sqlite3_reset(m_StmtColIter);
 
         return v;
@@ -222,6 +224,7 @@ public:
             return reinterpret_cast<unsigned char*>(err);
         }
         const unsigned char* v = sqlite3_column_text(m_StmtColIter, 0);
+        sqlite3_clear_bindings(m_StmtColIter);
         sqlite3_reset(m_StmtColIter);
 
         return v;

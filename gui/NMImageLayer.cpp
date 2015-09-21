@@ -1041,10 +1041,24 @@ NMImageLayer::setScalars(vtkImageData* img)
         //NMDebugCtx(ctxNMImageLayer, << "done!");
         return;
     }
+
     if (colidx != mScalarColIdx)
     {
         mScalarColIdx = colidx;
-        updateScalarBuffer();
+        //updateScalarBuffer();
+
+        if (!mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString()))
+        {
+            NMErr(ctxNMImageLayer, << "Failed preparing fast scalar column access!");
+            return;
+        }
+
+        //        std::vector<std::string> colnames;
+        //        colnames.push_back(mOtbRAT->getPrimaryKey());
+        //        colnames.push_back(mLegendValueField.toStdString());
+        //        std::stringstream where;
+        //        where << "where " << mOtbRAT->getPrimaryKey() << " = ?1";
+        //        mOtbRAT->prepareBulkGet(colnames, where.str());
     }
 
     vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
@@ -1052,6 +1066,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     void* buf = idxScalars->GetVoidPointer(0);
     int numPix = idxScalars->GetNumberOfTuples();
     int maxidx = mOtbRAT->GetNumRows()-1;
+    mOtbRAT->beginTransaction();
 
     switch(mOtbRAT->GetColumnType(colidx))
     {
@@ -1158,7 +1173,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     default:
         dsa->SetActiveAttribute(0, vtkDataSetAttributes::SCALARS);
     }
-
+    mOtbRAT->endTransaction();
     mbUpdateScalars = false;
     //NMDebugCtx(ctxNMImageLayer, << "done!");
 }
@@ -1238,7 +1253,7 @@ NMImageLayer::updateScalarBuffer()
             break;
         }
 
-        if (r % rep == 0)
+        if (r % (rep > 0 ? rep : 1) == 0)
         {
             NMDebug(<< ".");
         }
@@ -1255,19 +1270,21 @@ NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
                              int numPix, int maxidx, long long nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-    std::map<long long ,long long>::iterator it;
     for (int i=0; i < numPix; ++i)
     {
-        it = mScalarLongLongMap.find(static_cast<T*>(buf)[i]);
-        if (it != mScalarLongLongMap.end())
-        {
-            out[i] = it->second;
-        }
-        else
-        {
-            out[i] = nodata;
-        }
+          out[i] = mOtbRAT->nextIntValue(static_cast<T*>(buf)[i]);
 
+//        it = mScalarLongLongMap.find(static_cast<T*>(buf)[i]);
+//        if (it != mScalarLongLongMap.end())
+//        {
+//            out[i] = it->second;
+//        }
+//        else
+//        {
+//            out[i] = nodata;
+//        }
+
+// this is really deprecated
 //        if (buf[i] < 0 || buf[i] > maxidx)
 //        {
 //            out[i] = nodata;
@@ -1291,15 +1308,17 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
     std::map<long long, double>::iterator it;
     for (int i=0; i < numPix; ++i)
     {
-        it = mScalarDoubleMap.find(static_cast<T*>(buf)[i]);
-        if (it != mScalarDoubleMap.end())
-        {
-            out[i] = it->second;
-        }
-        else
-        {
-            out[i] = nodata;
-        }
+          out[i] = mOtbRAT->nextDoubleValue(static_cast<T*>(buf)[i]);
+
+//        it = mScalarDoubleMap.find(static_cast<T*>(buf)[i]);
+//        if (it != mScalarDoubleMap.end())
+//        {
+//            out[i] = it->second;
+//        }
+//        else
+//        {
+//            out[i] = nodata;
+//        }
 
         //        if (buf[i] < 0 || buf[i] > maxidx)
         //        {

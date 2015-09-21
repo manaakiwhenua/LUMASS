@@ -222,12 +222,12 @@
 #include <QSqlQuery>
 #include "NMSqlTableModel.h"
 
-// TOKYO CABINET
-#include "tcutil.h"
-#include "tchdb.h"
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
+//// TOKYO CABINET
+//#include "tcutil.h"
+//#include "tchdb.h"
+//#include <stdlib.h>
+//#include <stdbool.h>
+//#include <stdint.h>
 
 //#include "valgrind/callgrind.h"
 

@@ -286,6 +286,17 @@ AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
         return false;
     }
 
+    // scan where clause for '?' indicating number of
+    // where clause parameters, i.e. columns and associated
+    // values
+    std::string::size_type pos = 0;
+    m_iStmtBulkGetNumParam = 0;
+    while ((pos = whereClause.find('?', pos) != std::string::npos))
+    {
+        ++m_iStmtBulkGetNumParam;
+        ++pos;
+    }
+
     m_vTypesBulkGet.clear();
     std::stringstream ssql;
     ssql << "SELECT ";
@@ -317,6 +328,7 @@ AttributeTable::prepareBulkGet(const std::vector<std::string> &colNames,
     }
     else
     {
+
         ssql << " " << whereClause
              << ";";
     }
@@ -709,10 +721,43 @@ AttributeTable::doBulkGet(std::vector< ColumnValue >& values)
         return false;
     }
 
-    int rc = sqlite3_step(m_StmtBulkGet);
+    int rc;
+    if (m_iStmtBulkGetNumParam)
+    {
+        int parIdx = m_vTypesBulkGet.size() - m_iStmtBulkGetNumParam;
+        for (int i=parIdx, si=1; i < m_iStmtBulkGetNumParam; ++i, ++si)
+        {
+            switch(values[i].type)
+            {
+            case ATTYPE_INT:
+                {
+                    rc = sqlite3_bind_int64(m_StmtBulkGet, si, values[i].ival);
+                }
+                break;
+            case ATTYPE_DOUBLE:
+                {
+                    rc = sqlite3_bind_int64(m_StmtBulkGet, si, values[i].dval);
+                }
+                break;
+
+            case ATTYPE_STRING:
+                {
+                    rc = sqlite3_bind_text(m_StmtBulkGet, si,
+                                           values[i].tval,
+                                           -1, 0);
+                }
+                break;
+            default:
+                NMErr(_ctxotbtab, << "UNKNOWN data type!");
+                return false;
+            }
+        }
+    }
+
+    rc = sqlite3_step(m_StmtBulkGet);
     if (rc == SQLITE_ROW)
     {
-        for (int col=0; col < m_vTypesBulkGet.size(); ++col)
+        for (int col=0; col < m_vTypesBulkGet.size()-m_iStmtBulkGetNumParam; ++col)
         {
             switch(m_vTypesBulkGet[col])
             {
@@ -739,6 +784,9 @@ AttributeTable::doBulkGet(std::vector< ColumnValue >& values)
         //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
+
+    sqlite3_clear_bindings(m_StmtBulkGet);
+    sqlite3_reset(m_StmtBulkGet);
     //NMDebugCtx(_ctxotbtab, << "done!");
     return true;
 }

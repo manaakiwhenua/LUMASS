@@ -201,7 +201,7 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else
         proc =  0;
 
-    if(isSink(proc->objectName()))
+    if(proc && isSink(proc->objectName()))
     {
         proc->mIsSink = true;
     }

@@ -150,6 +150,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		{
 			comp = NMModelComponentFactory::instance().createModelComponent(compType);
 
+
 			// add new component to the model controller and make sure it has a unique name
             // note: we're sorting out the host component later (see below)
 			comp->setObjectName(compName);
@@ -180,9 +181,9 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 				value = QVariant(nameRegister.value(value.toString()));
 			suc = comp->setProperty(propElem.attribute("name").toStdString().c_str(), value);
 
-//			NMDebugInd(ind+2, << "setting " << propElem.attribute("name").toStdString()
-//					<< "=" << value.toString().toStdString()
-//					<< " - " << suc << endl);
+            //			NMDebugInd(ind+2, << "setting " << propElem.attribute("name").toStdString()
+            //					<< "=" << value.toString().toStdString()
+            //					<< " - " << suc << endl);
 		}
 
 		// --------------------------------------------------------------------------------------
@@ -196,22 +197,39 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 			QString procName = procElem.attribute("name");
 			if (!procName.isEmpty())
 			{
-//				NMDebugInd(ind+2, << "setting process '" << procName.toStdString()
-//						<< "'" << endl);
+                //				NMDebugInd(ind+2, << "setting process '" << procName.toStdString()
+                //						<< "'" << endl);
 
 				proc = NMProcessFactory::instance().createProcess(procName);
+                if (proc == 0)
+                {
+                    // all right, obviously lumass couldn't produce the requested
+                    // process componente - what do we do ...
+                    NMWarn(ctx, << "Failed to create process component '"
+                           << compName.toStdString()
+                           << "(" << procName.toStdString() << ") - skipping it!");
+
+                    // remove component from register and model controller and carry on ...
+                    QMap<QString, QString>::Iterator it = nameRegister.find(compName);
+                    nameRegister.erase(it);
+                    if (!controller->removeComponent(compName))
+                    {
+                        NMWarn(ctx, << "Failed to remove NULL Process Component '"
+                               << compName.toStdString() << "' from model controller!");
+                    }
+                    continue;
+                }
 				
 				proc->setObjectName(procName);
-
 				QDomElement procPropElem = procElem.firstChildElement("Property");
 				for (; !procPropElem.isNull(); procPropElem = procPropElem.nextSiblingElement("Property"))
 				{
 					QVariant value = this->extractPropertyValue(procPropElem);
 					bool suc = proc->setProperty(procPropElem.attribute("name").toStdString().c_str(), value);
 
-//					NMDebugInd(ind+3, << "setting " << procPropElem.attribute("name").toStdString()
-//							<< "=" << value.toString().toStdString()
-//							<< " - " << suc << endl);
+                    //					NMDebugInd(ind+3, << "setting " << procPropElem.attribute("name").toStdString()
+                    //							<< "=" << value.toString().toStdString()
+                    //							<< " - " << suc << endl);
 				}
 			}
 			ic->setProcess(proc);
@@ -235,7 +253,11 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 			continue;
 
 		NMModelComponent* itComp = 0;
-		QString finalName = nameRegister[itCompName];
+        QMap<QString, QString>::Iterator it = nameRegister.find(itCompName);
+        if (it == nameRegister.end())
+            continue;
+
+        QString finalName = it.value();
 		itComp = controller->getComponent(finalName);
 		if (itComp == 0)
 			continue;

@@ -1513,6 +1513,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
 					QString itemTitle = nameRegister.value(pi->getTitle());
+
+                    // check, if we got a valid item (must have name!)
+                    if (itemTitle.isEmpty())
+                    {
+                        continue;
+                    }
 					pi->setTitle(itemTitle);
                     importItems << itemTitle;
 
@@ -1533,11 +1539,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 						// establish across-thread-communication between GUI item and process component
 						itComp = qobject_cast<NMIterableComponent*>(
 								this->mModelController->getComponent(itemTitle));
-
-						if (itComp != 0 && itComp->getProcess() == 0)
-						{
-							NMErr(ctx, << "Couldn't find the process component for item '"
+                        if (itComp == 0 || itComp->getProcess() == 0)
+                        {
+                            NMErr(ctx, << "Ivalid process component detected '"
 									<< itemTitle.toStdString() << "'!");
+                            continue;
 						}
 						pi->setDescription(itComp->getDescription());
                         pi->setTimeLevel(itComp->getTimeLevel());
@@ -1549,6 +1555,13 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					else
 					{
                         NMModelComponent* mcomp = this->mModelController->getComponent(itemTitle);
+                        if (mcomp == 0)
+                        {
+                            NMErr(ctx, << "Ivalid data buffer component detected '"
+                                    << itemTitle.toStdString() << "'!");
+                            continue;
+                        }
+
 						connect(mcomp, SIGNAL(ComponentDescriptionChanged(const QString &)),
                                 pi, SLOT(setDescription(const QString &)));
                         connect(mcomp, SIGNAL(TimeLevelChanged(short)),
@@ -1778,6 +1791,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         else
                         {
                             kname = nameRegister.value(kname);
+                            if (kname.isEmpty())
+                            {
+                                NMWarn(ctx, << kname.toStdString()
+                                       << " is not a registered model component - we skip it!");
+                                continue;
+                            }
 
                             ipi = qgraphicsitem_cast<NMProcessComponentItem*>(
                                     this->mModelScene->getComponentItem(kname));

@@ -257,8 +257,11 @@ protected:
     std::vector<sqlite3_stmt*> m_vStmtUpdate;
     std::vector<sqlite3_stmt*> m_vStmtSelect;
     std::vector<sqlite3_stmt*> m_vStmtGetRowidx;
+
     sqlite3_stmt* m_StmtBulkSet;
     sqlite3_stmt* m_StmtBulkGet;
+    int m_iStmtBulkGetNumParam;
+
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkSet;
     std::vector<otb::AttributeTable::TableColumnType> m_vTypesBulkGet;
     std::vector<std::string> m_vIndexNames;

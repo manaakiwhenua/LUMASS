@@ -50,6 +50,14 @@ long long int AttributeTable::GetNumRows()
         return 0;
     }
 
+    // note: we're currently only really supporting one table,
+    // although, we're actually hosting a whole db, rather than
+    // just a table; anyway, so we're safe to give it away
+    // since it is reset once we close the table (db)
+    if (m_iNumRows > 0)
+    {
+        return m_iNumRows;
+    }
 
     if (sqlite3_step(m_StmtRowCount) == SQLITE_ROW)
     {
@@ -721,11 +729,20 @@ AttributeTable::doBulkGet(std::vector< ColumnValue >& values)
         return false;
     }
 
+    // NOTE: the where clause parameters, if any, can optinally be
+    // changed at any point, which requires to provide a values
+    // vector containing extra 'values' which are then bound to the
+    // prepared parameters in the statement; if the values vector's
+    // equals the size of the m_vTypesBulkGet vector, either no
+    // parameters have been set at all (i.e. m_iStmtBulkGetNumParam == 0)
+    // or they won't changed, instead another row from the query result set
+    // is fetched from sqlite3
     int rc;
+    int parIdx = values.size();
     if (m_iStmtBulkGetNumParam)
     {
-        int parIdx = m_vTypesBulkGet.size() - m_iStmtBulkGetNumParam;
-        for (int i=parIdx, si=1; i < m_iStmtBulkGetNumParam; ++i, ++si)
+        parIdx = values.size() - m_iStmtBulkGetNumParam;
+        for (int i=parIdx, si=1; i < values.size(); ++i, ++si)
         {
             switch(values[i].type)
             {
@@ -785,8 +802,15 @@ AttributeTable::doBulkGet(std::vector< ColumnValue >& values)
         return false;
     }
 
-    sqlite3_clear_bindings(m_StmtBulkGet);
-    sqlite3_reset(m_StmtBulkGet);
+    // only if we've changed the where clause parameters, we
+    // have to reset the prepared statement and clear the bindings;
+    // otherwise, we just fetch the next row in the next call
+    // of this function
+    if (parIdx < values.size())
+    {
+        sqlite3_clear_bindings(m_StmtBulkGet);
+        sqlite3_reset(m_StmtBulkGet);
+    }
     //NMDebugCtx(_ctxotbtab, << "done!");
     return true;
 }

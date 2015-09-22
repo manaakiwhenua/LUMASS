@@ -1052,6 +1052,8 @@ NMImageLayer::setScalars(vtkImageData* img)
         mScalarColIdx = colidx;
         if (mNumRecords <= 1e6)
         {
+            mScalarDoubleMap.clear();
+            mScalarLongLongMap.clear();
             updateScalarBuffer();
         }
         else
@@ -1062,13 +1064,6 @@ NMImageLayer::setScalars(vtkImageData* img)
                 return;
             }
         }
-
-        //        std::vector<std::string> colnames;
-        //        colnames.push_back(mOtbRAT->getPrimaryKey());
-        //        colnames.push_back(mLegendValueField.toStdString());
-        //        std::stringstream where;
-        //        where << "where " << mOtbRAT->getPrimaryKey() << " = ?1";
-        //        mOtbRAT->prepareBulkGet(colnames, where.str());
     }
 
     vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
@@ -1216,9 +1211,6 @@ NMImageLayer::updateScalarBuffer()
     //        fclose(mScalarBufferFile);
     //    }
 
-    mScalarDoubleMap.clear();
-    mScalarLongLongMap.clear();
-
     std::vector< std::string > colnames;
     colnames.push_back(mOtbRAT->getPrimaryKey());
     colnames.push_back(mLegendValueField.toStdString());
@@ -1230,7 +1222,7 @@ NMImageLayer::updateScalarBuffer()
     //    rewind(mScalarBufferFile);
 
     double dnodata = 0;
-    long long    inodata = 0;
+    long long inodata = 0;
 
     mOtbRAT->beginTransaction();
     mOtbRAT->prepareBulkGet(colnames, "");
@@ -1293,7 +1285,7 @@ NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
     {
         for (int i=0; i < numPix; ++i)
         {
-              out[i] = mOtbRAT->nextIntValue(static_cast<T*>(buf)[i]);
+              out[i] = mOtbRAT->nextIntValue(buf[i]);
         }
     }
     else
@@ -1301,7 +1293,7 @@ NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
         std::map<long long, long long>::iterator it;
         for (int i=0; i < numPix; ++i)
         {
-            it = mScalarLongLongMap.find(static_cast<T*>(buf)[i]);
+            it = mScalarLongLongMap.find(buf[i]);
             if (it != mScalarLongLongMap.end())
             {
                 out[i] = it->second;
@@ -1339,7 +1331,7 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
     {
         for (int i=0; i < numPix; ++i)
         {
-              out[i] = mOtbRAT->nextDoubleValue(static_cast<T*>(buf)[i]);
+              out[i] = mOtbRAT->nextDoubleValue(buf[i]);
         }
     }
     else
@@ -1347,7 +1339,7 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
         std::map<long long, double>::iterator it;
         for (int i=0; i < numPix; ++i)
         {
-            it = mScalarDoubleMap.find(static_cast<T*>(buf)[i]);
+            it = mScalarDoubleMap.find(buf[i]);
             if (it != mScalarDoubleMap.end())
             {
                 out[i] = it->second;
@@ -1554,6 +1546,17 @@ const vtkDataSet* NMImageLayer::getDataSet()
 otb::AttributeTable::Pointer
 NMImageLayer::getRasterAttributeTable(int band)
 {
+    // it could very well be that this function is called
+    // multiple times, so in view of potentially large tables,
+    // let's not double any efforts and just return what we've got
+    // (should be safe, since we don't really allow for chaning
+    // tables anyway, so: she'll be right!
+    if (mOtbRAT.IsNotNull())
+    {
+       return mOtbRAT;
+    }
+
+
     otb::AttributeTable::Pointer tab = 0;
     if (this->mReader != 0 && this->mReader->isInitialised())
     {

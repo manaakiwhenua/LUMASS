@@ -183,7 +183,7 @@ public:
     /// FAST INLINE ACCESS TO COLUMN VALUES
     bool prepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);
 
-    double nextDoubleValue(const long long int& row)
+    double nextDoubleValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -199,7 +199,7 @@ public:
 
     }
 
-    long long int nextIntValue(const long long int& row)
+    long long nextIntValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -207,14 +207,14 @@ public:
             sqlite3_reset(m_StmtColIter);
             return m_iNodata;
         }
-        int v = sqlite3_column_int64(m_StmtColIter, 0);
+        long long v = sqlite3_column_int(m_StmtColIter, 0);
         sqlite3_clear_bindings(m_StmtColIter);
         sqlite3_reset(m_StmtColIter);
 
         return v;
     }
 
-    const unsigned char* nextTextValue(const long long int& row)
+    const unsigned char* nextTextValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)

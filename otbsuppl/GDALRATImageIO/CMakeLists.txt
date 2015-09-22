@@ -9,13 +9,15 @@ INCLUDE_DIRECTORIES(
 	${OTB_DIR}/Code/Common
 	${OTB_DIR}/Code/IO
 	${OTB_DIR}/Utilities/ITK/Code/Common
+        ${SQLite_SOURCE_DIR}
 ) 
 
 LINK_DIRECTORIES(
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/lib
-        ${SQLITE3_INCLUDE_DIR}
+        #${SQLITE3_INCLUDE_DIR}
+        ${SQLite_BINARY_DIR}
 )                                                         
 
 
@@ -37,19 +39,30 @@ include(GenerateExportHeader)
 # define build target: shared library 
 ADD_LIBRARY(OTBGDALRATImageIO SHARED ${GDALRATIO})
 set_property(TARGET OTBGDALRATImageIO PROPERTY LINKER_LANGUAGE CXX)
+
 #set_property(TARGET OTBGDALRATImageIO PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 generate_export_header(OTBGDALRATImageIO)
 
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIO ... ")
-        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} ${SQLITE3_LIBRARY} OTBCommon OTBIO)
+        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+            ${GDAL_LIBRARY}
+            #${SQLITE3_LIBRARY}
+            SQLite
+            OTBCommon OTBIO
+        )
 else()
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIOGDAL ... ")
-        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO ${GDAL_LIBRARY} ${SQLITE3_LIBRARY}
-		OTBCommon OTBIOGDAL)
+        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+                ${GDAL_LIBRARY}
+                #${SQLITE3_LIBRARY}
+                SQLite
+                OTBCommon OTBIOGDAL
+        )
 endif()
 
+ADD_DEPENDENCIES(OTBGDALRATImageIO SQLite)
 
 # define where to install what
 install(FILES ${GDALRATIO_HEADER} DESTINATION include)

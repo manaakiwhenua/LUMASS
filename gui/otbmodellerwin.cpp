@@ -1219,6 +1219,7 @@ void OtbModellerWin::aboutLUMASS(void)
             << "VTK " << _lumass_vtk_version << " - http://www.vtk.org/ " << endl
             << "GDAL " << _lumass_gdal_version << " - http://www.gdal.org/ " << endl
             << "lp_solve 5.5 - http://sourceforge.net/projects/lpsolve/ " << endl
+            << "SQLite " << _lumass_sqlite_version << " - http://www.sqlite.org" << endl
 #ifdef BUILD_RASSUPPORT
   #ifdef PACKAGE_STRING
             << PACKAGE_STRING

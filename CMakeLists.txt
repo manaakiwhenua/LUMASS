@@ -236,13 +236,16 @@ message(STATUS "lp_solve library: ${LPSOLVE_LIBRARY}")
 # FIND SQLite3
 #====================================================================
 
-find_package(Sqlite3)
-if(NOT SQLITE3_FOUND)
-  message(FATAL_ERROR "You have to install SQLite3 prior to compiling LUMASS!")
-endif()
+# just define the current version included in the source tree
+set(NM_SQLite_VERSION "3.8.11.1")
 
-message(STATUS "SQLite3 include dir: ${SQLITE3_INCLUDE_DIR}")
-message(STATUS "SQLite3 library: ${SQLITE3_LIBRARY}")
+#find_package(Sqlite3)
+#if(NOT SQLITE3_FOUND)
+#  message(FATAL_ERROR "You have to install SQLite3 prior to compiling LUMASS!")
+#endif()
+
+#message(STATUS "SQLite3 include dir: ${SQLITE3_INCLUDE_DIR}")
+#message(STATUS "SQLite3 library: ${SQLITE3_LIBRARY}")
 
 #====================================================================
 # FIND TOKYO CABINET

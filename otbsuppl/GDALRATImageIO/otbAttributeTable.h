@@ -47,6 +47,13 @@ public:
 	typedef itk::SmartPointer<Self>			Pointer;
 	typedef itk::SmartPointer<const Self>	ConstPointer;
 
+    // table types
+    typedef enum
+    {
+        ATTABLE_TYPE_RAM = 0,
+        ATTABLE_TYPE_SQLITE
+    } TableType;
+
 	// supported column types
 	typedef enum
 	{
@@ -56,10 +63,11 @@ public:
 		ATTYPE_UNKNOWN
 	} TableColumnType;
 
-	itkNewMacro(Self);
+    //itkNewMacro(Self);
 	itkTypeMacro(AttributeTable, Superclass);
 
 	// getting info about the table
+    TableType GetTableType(void) {return m_ATType;}
     int GetNumCols();
     virtual long long GetNumRows();
     int ColumnExists(const std::string& sColName);
@@ -83,21 +91,25 @@ public:
     virtual void SetValue(const std::string& sColName, long long idx, long value) = 0;
     virtual void SetValue(const std::string& sColName, long long idx, std::string value) = 0;
     virtual double GetDblValue(const std::string& sColName, long long idx) = 0;
-    virtual long GetIntValue(const std::string& sColName, long long idx) = 0;
+    virtual long long GetIntValue(const std::string& sColName, long long idx) = 0;
     virtual std::string GetStrValue(const std::string& sColName, long long idx) = 0;
 
     virtual void SetValue(int col, long long row, double value) = 0;
     virtual void SetValue(int col, long long row, long value) = 0;
     virtual void SetValue(int col, long long row, std::string value) = 0;
 
-	void SetColumnName(int col, const std::string& name);
+    virtual void SetColumnName(int col, const std::string& name) {}
 
-	double GetDblValue(int col, int row);
-	long GetIntValue(int col, int row);
-	std::string GetStrValue(int col, int row);
+    virtual double GetDblValue(int col, long long row) = 0;
+    virtual long long GetIntValue(int col, long long row) = 0;
+    virtual std::string GetStrValue(int col, long long row) = 0;
 
-	bool RemoveColumn(int col);
-	bool RemoveColumn(const std::string& name);
+    double GetDblNodata(void) {return m_dNodata;}
+    long long GetIntNodata(void) {return m_iNodata;}
+    std::string GetStrNodata(void) {return m_sNodata;}
+
+    virtual bool RemoveColumn(int col) = 0;
+    virtual bool RemoveColumn(const std::string& name) = 0;
 
 	// manage table meta data
     void SetBandNumber(int iBand);
@@ -147,7 +159,7 @@ protected:
     //	std::vector<std::vector<long>* > m_mIntCols;
     //	std::vector<std::vector<double>* > m_mDoubleCols;
 
-
+    TableType m_ATType;
     long long m_iNumRows;
 	std::string m_sNodata;
     long long m_iNodata;

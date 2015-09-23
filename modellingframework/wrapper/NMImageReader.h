@@ -62,6 +62,8 @@ class NMMODFRAME_EXPORT NMImageReader : public NMProcess
 {
 	Q_OBJECT
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
+    Q_PROPERTY(QString RATType READ getRATType WRITE setRATType)
+    Q_PROPERTY(QStringList RATEnum READ getRATEnum)
     Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
 
 #ifdef BUILD_RASSUPPORT	
@@ -71,6 +73,8 @@ class NMMODFRAME_EXPORT NMImageReader : public NMProcess
 public:
     NMPropertyGetSet(FileNames, QStringList)
     NMPropertyGetSet(RGBMode, bool)
+    NMPropertyGetSet(RATType, QString)
+    NMPropertyGetSet(RATEnum, QStringList)
     //NMPropertyGetSet(BandMap, std::vector<int>)
 
 //#ifdef BUILD_RASSUPPORT
@@ -145,6 +149,7 @@ private:
 
 	bool initialise();
 	void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
+    void setInternalRATType(void);
 
 	QString mFileName;
 	QStringList mFileNames;
@@ -159,6 +164,8 @@ private:
     bool mRGBMode;
     std::vector<int> mBandMap;
 
+    QString mRATType;
+    QStringList mRATTEnum;
 
     otb::ImageIOBase::Pointer mItkImgIOBase;
 

@@ -376,35 +376,35 @@ AttributeTable::ColumnExists(const std::string& sColName)
 //	return ret.str();
 //}
 
-void*
-AttributeTable::GetColumnPointer(int col)
-{
-	void* ret = 0;
+//void*
+//AttributeTable::GetColumnPointer(int col)
+//{
+//	void* ret = 0;
 
-	if (col < 0 || col >= m_vNames.size())
-		return ret;
+//	if (col < 0 || col >= m_vNames.size())
+//		return ret;
 
-	if (m_iNumRows == 0)
-		return ret;
+//	if (m_iNumRows == 0)
+//		return ret;
 
-	const int& tidx = m_vPosition[col];
-	switch(m_vTypes[col])
-	{
-	case ATTYPE_STRING:
-		ret = (void*)&this->m_mStringCols.at(tidx)->at(0);
-		break;
-	case ATTYPE_INT:
-		ret = (void*)&this->m_mIntCols.at(tidx)->at(0);
-		break;
-	case ATTYPE_DOUBLE:
-		ret = (void*)&this->m_mDoubleCols.at(tidx)->at(0);
-		break;
-	default:
-		break;
-	}
+//	const int& tidx = m_vPosition[col];
+//	switch(m_vTypes[col])
+//	{
+//	case ATTYPE_STRING:
+//		ret = (void*)&this->m_mStringCols.at(tidx)->at(0);
+//		break;
+//	case ATTYPE_INT:
+//		ret = (void*)&this->m_mIntCols.at(tidx)->at(0);
+//		break;
+//	case ATTYPE_DOUBLE:
+//		ret = (void*)&this->m_mDoubleCols.at(tidx)->at(0);
+//		break;
+//	default:
+//		break;
+//	}
 
-	return ret;
-}
+//	return ret;
+//}
 
 //long long AttributeTable::GetRowIdx(const std::string& column, void* value)
 //{
@@ -494,72 +494,72 @@ AttributeTable::GetColumnType(int idx)
 	return m_vTypes.at(idx);
 }
 
-void
-AttributeTable::SetColumnName(int col, const std::string& name)
-{
-	if (	col < 0
-		||  col > this->m_vNames.size()-1
-		||  name.empty()
-	   )
-		return;
+//void
+//AttributeTable::SetColumnName(int col, const std::string& name)
+//{
+//	if (	col < 0
+//		||  col > this->m_vNames.size()-1
+//		||  name.empty()
+//	   )
+//		return;
 
-	this->m_vNames[col] = name;
-}
+//	this->m_vNames[col] = name;
+//}
 
-bool
-AttributeTable::RemoveColumn(int col)
-{
-	if (col < 0 || col > this->m_vNames.size()-1)
-		return false;
+//bool
+//AttributeTable::RemoveColumn(int col)
+//{
+//	if (col < 0 || col > this->m_vNames.size()-1)
+//		return false;
 
-	int tidx = m_vPosition[col];
-	switch(this->m_vTypes[col])
-	{
-	case ATTYPE_INT:
-		delete this->m_mIntCols.at(tidx);
-		this->m_mIntCols.erase(this->m_mIntCols.begin()+tidx);
-		break;
-	case ATTYPE_DOUBLE:
-		delete this->m_mDoubleCols.at(tidx);
-		this->m_mDoubleCols.erase(this->m_mDoubleCols.begin()+tidx);
-		break;
-	case ATTYPE_STRING:
-		delete this->m_mStringCols.at(tidx);
-		this->m_mStringCols.erase(this->m_mStringCols.begin()+tidx);
-		break;
-	default:
-		return false;
-		break;
-	}
+//	int tidx = m_vPosition[col];
+//	switch(this->m_vTypes[col])
+//	{
+//	case ATTYPE_INT:
+//		delete this->m_mIntCols.at(tidx);
+//		this->m_mIntCols.erase(this->m_mIntCols.begin()+tidx);
+//		break;
+//	case ATTYPE_DOUBLE:
+//		delete this->m_mDoubleCols.at(tidx);
+//		this->m_mDoubleCols.erase(this->m_mDoubleCols.begin()+tidx);
+//		break;
+//	case ATTYPE_STRING:
+//		delete this->m_mStringCols.at(tidx);
+//		this->m_mStringCols.erase(this->m_mStringCols.begin()+tidx);
+//		break;
+//	default:
+//		return false;
+//		break;
+//	}
 
-	// house keeping: adjust type specific array indices
-	// for each column of the same type to the right of
-	// the one being removed
-	for (int c=col+1; c < this->m_vNames.size(); ++c)
-	{
-		if (m_vTypes[c] == m_vTypes[col])
-		{
-			--m_vPosition[c];
-		}
-	}
+//	// house keeping: adjust type specific array indices
+//	// for each column of the same type to the right of
+//	// the one being removed
+//	for (int c=col+1; c < this->m_vNames.size(); ++c)
+//	{
+//		if (m_vTypes[c] == m_vTypes[col])
+//		{
+//			--m_vPosition[c];
+//		}
+//	}
 
-	// now remove any traces of the column in the admin arrays
-	this->m_vNames.erase(this->m_vNames.begin() + col);
-	this->m_vTypes.erase(this->m_vTypes.begin() + col);
-	this->m_vPosition.erase(this->m_vPosition.begin() + col);
+//	// now remove any traces of the column in the admin arrays
+//	this->m_vNames.erase(this->m_vNames.begin() + col);
+//	this->m_vTypes.erase(this->m_vTypes.begin() + col);
+//	this->m_vPosition.erase(this->m_vPosition.begin() + col);
 
-	return true;
-}
+//	return true;
+//}
 
-bool
-AttributeTable::RemoveColumn(const std::string& name)
-{
-	int idx = this->ColumnExists(name);
-	if (idx < 0)
-		return false;
+//bool
+//AttributeTable::RemoveColumn(const std::string& name)
+//{
+//	int idx = this->ColumnExists(name);
+//	if (idx < 0)
+//		return false;
 
-	return this->RemoveColumn(idx);
-}
+//	return this->RemoveColumn(idx);
+//}
 
 //void AttributeTable::SetValue(int col, int row, double value)
 //{
@@ -658,94 +658,94 @@ AttributeTable::RemoveColumn(const std::string& name)
 //	}
 //}
 
-double AttributeTable::GetDblValue(int col, int row)
-{
-	if (col < 0 || col >= m_vNames.size())
-		return m_dNodata;
+//double AttributeTable::GetDblValue(int col, int row)
+//{
+//	if (col < 0 || col >= m_vNames.size())
+//		return m_dNodata;
 
-	if (row < 0 || row >= m_iNumRows)
-		return m_dNodata;
+//	if (row < 0 || row >= m_iNumRows)
+//		return m_dNodata;
 
-	const int& tidx = m_vPosition[col];
-	double ret;
-	switch(m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-			ret = ::strtod(this->m_mStringCols.at(tidx)->at(row).c_str(),0);
-			break;
-		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(tidx)->at(row);
-			break;
-		default:
-			ret = this->m_dNodata;
-			break;
-	}
+//	const int& tidx = m_vPosition[col];
+//	double ret;
+//	switch(m_vTypes[col])
+//	{
+//		case ATTYPE_STRING:
+//			ret = ::strtod(this->m_mStringCols.at(tidx)->at(row).c_str(),0);
+//			break;
+//		case ATTYPE_INT:
+//			ret = this->m_mIntCols.at(tidx)->at(row);
+//			break;
+//		case ATTYPE_DOUBLE:
+//			ret = this->m_mDoubleCols.at(tidx)->at(row);
+//			break;
+//		default:
+//			ret = this->m_dNodata;
+//			break;
+//	}
 
-	return ret;
-}
+//	return ret;
+//}
 
-long AttributeTable::GetIntValue(int col, int row)
-{
-	if (col < 0 || col >= m_vNames.size())
-		return m_iNodata;
+//long AttributeTable::GetIntValue(int col, int row)
+//{
+//	if (col < 0 || col >= m_vNames.size())
+//		return m_iNodata;
 
-	if (row < 0 || row >= m_iNumRows)
-		return m_iNodata;
+//	if (row < 0 || row >= m_iNumRows)
+//		return m_iNodata;
 
-	const int& tidx = m_vPosition[col];
-	long ret;
-	switch(m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-			ret = ::strtol(this->m_mStringCols.at(tidx)->at(row).c_str(),0,10);
-			break;
-		case ATTYPE_INT:
-			ret = this->m_mIntCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_DOUBLE:
-			ret = this->m_mDoubleCols.at(tidx)->at(row);
-			break;
-		default:
-			ret = this->m_iNodata;
-			break;
-	}
+//	const int& tidx = m_vPosition[col];
+//	long ret;
+//	switch(m_vTypes[col])
+//	{
+//		case ATTYPE_STRING:
+//			ret = ::strtol(this->m_mStringCols.at(tidx)->at(row).c_str(),0,10);
+//			break;
+//		case ATTYPE_INT:
+//			ret = this->m_mIntCols.at(tidx)->at(row);
+//			break;
+//		case ATTYPE_DOUBLE:
+//			ret = this->m_mDoubleCols.at(tidx)->at(row);
+//			break;
+//		default:
+//			ret = this->m_iNodata;
+//			break;
+//	}
 
-	return ret;
+//	return ret;
 
-}
+//}
 
-std::string AttributeTable::GetStrValue(int col, int row)
-{
-	if (col < 0 || col >= m_vNames.size())
-		return m_sNodata;
+//std::string AttributeTable::GetStrValue(int col, int row)
+//{
+//	if (col < 0 || col >= m_vNames.size())
+//		return m_sNodata;
 
-	if (row < 0 || row >= m_iNumRows)
-		return m_sNodata;
+//	if (row < 0 || row >= m_iNumRows)
+//		return m_sNodata;
 
-	const int& tidx = m_vPosition[col];
-	std::stringstream ret;
-	switch(m_vTypes[col])
-	{
-		case ATTYPE_STRING:
-			ret << this->m_mStringCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_INT:
-			ret << this->m_mIntCols.at(tidx)->at(row);
-			break;
-		case ATTYPE_DOUBLE:
-			ret << this->m_mDoubleCols.at(tidx)->at(row);
-			break;
-		default:
-			ret << this->m_sNodata;
-			break;
-	}
+//	const int& tidx = m_vPosition[col];
+//	std::stringstream ret;
+//	switch(m_vTypes[col])
+//	{
+//		case ATTYPE_STRING:
+//			ret << this->m_mStringCols.at(tidx)->at(row);
+//			break;
+//		case ATTYPE_INT:
+//			ret << this->m_mIntCols.at(tidx)->at(row);
+//			break;
+//		case ATTYPE_DOUBLE:
+//			ret << this->m_mDoubleCols.at(tidx)->at(row);
+//			break;
+//		default:
+//			ret << this->m_sNodata;
+//			break;
+//	}
 
-	return ret.str();
+//	return ret.str();
 
-}
+//}
 
 int AttributeTable::GetBandNumber(void)
 {
@@ -789,7 +789,7 @@ void AttributeTable::Print(std::ostream& os, itk::Indent indent, int nrows)
 				::sprintf(val, "%g", this->GetDblValue(c, r));
 				break;
 			case ATTYPE_INT:
-				::sprintf(val, "%ld", this->GetIntValue(c, r));
+                ::sprintf(val, "%lld", this->GetIntValue(c, r));
 				break;
 			case ATTYPE_STRING:
 				::sprintf(val, "%s", this->GetStrValue(c, r).c_str());
@@ -866,14 +866,14 @@ AttributeTable::AttributeTable()
 // clean up
 AttributeTable::~AttributeTable()
 {
-	for (int v=0; v < m_mStringCols.size(); ++v)
-		delete m_mStringCols[v];
+//	for (int v=0; v < m_mStringCols.size(); ++v)
+//		delete m_mStringCols[v];
 
-	for (int v=0; v < m_mIntCols.size(); ++v)
-		delete m_mIntCols[v];
+//	for (int v=0; v < m_mIntCols.size(); ++v)
+//		delete m_mIntCols[v];
 
-	for (int v=0; v < m_mDoubleCols.size(); ++v)
-		delete m_mDoubleCols[v];
+//	for (int v=0; v < m_mDoubleCols.size(); ++v)
+//		delete m_mDoubleCols[v];
 }
 
 

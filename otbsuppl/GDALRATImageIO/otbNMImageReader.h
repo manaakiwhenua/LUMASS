@@ -128,6 +128,10 @@ public:
 //    {return this->m_FileName.c_str();}
 
 
+  itkGetMacro(RATType, otb::AttributeTable::TableType);
+  itkSetMacro(RATType, otb::AttributeTable::TableType);
+
+
   /** get the RAT from the reader*/
   AttributeTable::Pointer GetAttributeTable(int band);
 
@@ -169,6 +173,7 @@ protected:
   bool mbRasMode;
   bool m_RGBMode;
   bool m_RATSupport;
+  otb::AttributeTable::TableType m_RATType;
 
 private:
 

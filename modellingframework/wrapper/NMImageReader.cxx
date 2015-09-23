@@ -289,6 +289,28 @@ public:
 		}
 	}
 
+    static void
+        setRATType(itk::ProcessObject* procObj, unsigned int numBands,
+                   otb::AttributeTable::TableType ttype)
+    {
+        if (numBands == 1)
+        {
+            ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            r->SetRATType(ttype);
+        }
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
+            r->SetRATType(ttype);
+        }
+        else
+        {
+            VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
+            r->SetRATType(ttype);
+        }
+    }
+
+
     static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
                                  unsigned int numBands, int ovvidx, int* userLPR,
                                bool rgbMode)
@@ -668,6 +690,26 @@ public:
         }\
      }
 
+    /*! Macro for setting the RAT type to be read upon fetch
+     */
+    #define SetRATType( PixelType ) \
+    {\
+        switch (this->mOutputNumDimensions) \
+        { \
+        case 1: \
+            FileReader<PixelType, 1 >::setRATType( \
+                    this->mOtbProcess, this->mOutputNumBands, ttype); \
+            break; \
+        case 3: \
+            FileReader<PixelType, 3 >::setRATType( \
+                    this->mOtbProcess, this->mOutputNumBands, ttype); \
+            break; \
+        default: \
+            FileReader<PixelType, 2 >::setRATType( \
+                    this->mOtbProcess, this->mOutputNumBands, ttype); \
+        }\
+     }
+
 
 	/* Helper macro for calling the right class to fetch the attribute table
 	 * from the reader
@@ -710,6 +752,8 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mbRasMode = false;
     this->mRGBMode = false;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mRATType = QString("ATTABLE_TYPE_RAM");
+    mRATTEnum << "ATTABLE_TYPE_RAM" << "ATTABLE_TYPE_SQLITE";
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
@@ -953,6 +997,36 @@ bool NMImageReader::initialise()
 	NMDebugCtx(ctxNMImageReader, << "done!");
 
 	return ret;
+}
+
+void
+NMImageReader::setInternalRATType()
+{
+    if (!mbRasMode)
+    {
+        otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                    this->mItkImgIOBase.GetPointer());
+        if (gio)
+        {
+            otb::AttributeTable::TableType ttype;
+            if(mRATType.compare(QString("ATTABLE_TYPE_RAM")) == 0)
+            {
+                ttype = otb::AttributeTable::ATTABLE_TYPE_RAM;
+            }
+            else
+            {
+                ttype = otb::AttributeTable::ATTABLE_TYPE_SQLITE;
+            }
+
+
+            switch(this->mOutputComponentType)
+            {
+            LocalMacroPerSingleType( SetRATType )
+            default:
+                break;
+            }
+        }
+    }
 }
 
 void
@@ -1204,12 +1278,14 @@ NMImageReader::linkParameters(unsigned int step,
         this->setFileName(param.toString());
     }
 
+    this->setInternalRATType();
+
     NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
     this->initialise();
 
-
 	NMDebugCtx(ctxNMImageReader, << "done!");
 }
+
 
 void NMImageReader::setNthInput(unsigned int numInput,
         QSharedPointer<NMItkDataObjectWrapper> img)

@@ -88,7 +88,7 @@ public:
         };
     } ColumnValue;
 
-	itkNewMacro(Self);
+    //itkNewMacro(Self);
         itkTypeMacro(SQLiteTable, Superclass);
 
 	// getting info about the table
@@ -116,35 +116,25 @@ public:
     void SetValue(const std::string& sColName, long long idx, long long int value);
     void SetValue(const std::string& sColName, long long idx, std::string value);
     double GetDblValue(const std::string& sColName, long long idx);
-    long long int GetIntValue(const std::string& sColName, long long idx);
+    long long GetIntValue(const std::string& sColName, long long idx);
     std::string GetStrValue(const std::string& sColName, long long idx);
 
     void SetValue(int col, long long int row, double value);
     void SetValue(int col, long long int row, long long int value);
     void SetValue(int col, long long int row, std::string value);
 
-	void SetColumnName(int col, const std::string& name);
+    //void SetColumnName(int col, const std::string& name);
 
-    double GetDblValue(int col, long long int row);
-    long long int GetIntValue(int col, long long int row);
-    std::string GetStrValue(int col, long long int row);
-
-    double GetDblNodata(void) {return m_dNodata;}
-    long long GetIntNodata(void) {return m_iNodata;}
-    std::string GetStrNodata(void) {return m_sNodata;}
+    double GetDblValue(int col, long long row);
+    long long GetIntValue(int col, long long row);
+    std::string GetStrValue(int col, long long row);
 
 	bool RemoveColumn(int col);
 	bool RemoveColumn(const std::string& name);
 
-	// manage table meta data
-        //void SetBandNumber(int iBand);
-        //void SetImgFileName(const std::string& sFileName);
-	int GetBandNumber(void);
-	std::string GetImgFileName(void);
-
-	// print the table
-	void Print(std::ostream& os, itk::Indent indent, int nrows);
-	void PrintStructure(std::ostream& os, itk::Indent indent);
+//	// print the table
+//	void Print(std::ostream& os, itk::Indent indent, int nrows);
+//	void PrintStructure(std::ostream& os, itk::Indent indent);
 
     /// SQLite support functions
     TableCreateStatus createTable(std::string filename, std::string tag="");
@@ -322,8 +312,8 @@ protected:
 	// validate column name and row index; if
 	// parameters are valid then the column index
 	// is returned otherwise -1;
-	inline int valid(const std::string& sColName, int idx);
-	std::string typestr(TableColumnType type);
+    //inline int valid(const std::string& sColName, int idx);
+    //std::string typestr(TableColumnType type);
 
 };
 

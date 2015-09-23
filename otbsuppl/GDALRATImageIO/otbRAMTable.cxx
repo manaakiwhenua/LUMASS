@@ -77,7 +77,7 @@ RAMTable::AddColumn(const std::string& sColName, TableColumnType eType)
 
 
 	std::vector<std::string>* vstr;
-	std::vector<long>* vint;
+    std::vector<long long>* vint;
 	std::vector<double>* vdbl;
 	// create a new vector for the column's values
 	switch(eType)
@@ -93,7 +93,7 @@ RAMTable::AddColumn(const std::string& sColName, TableColumnType eType)
 		break;
 	case ATTYPE_INT:
 		try{
-		vint = new std::vector<long>();
+        vint = new std::vector<long long>();
 		vint->resize(m_iNumRows, m_iNodata);
 		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
 
@@ -318,7 +318,7 @@ double RAMTable::GetDblValue(const std::string& sColName, long long idx)
 	return ret;
 }
 
-long
+long long
 RAMTable::GetIntValue(const std::string& sColName, long long idx)
 {
 	// check given index and column name
@@ -434,7 +434,7 @@ RAMTable::GetRowIdx(const std::string& column, void* value)
 
 	case ATTYPE_INT:
 		{
-                        long long* longValues = static_cast<long*>(GetColumnPointer(colidx));
+                        long long* longValues = static_cast<long long*>(GetColumnPointer(colidx));
                         long long* longVal = static_cast<long long*>(value);
                         for (long long r=0; r < m_iNumRows; ++r)
 			{
@@ -659,7 +659,7 @@ void RAMTable::SetValue(int col, long long row, std::string value)
 	}
 }
 
-double RAMTable::GetDblValue(int col, int row)
+double RAMTable::GetDblValue(int col, long long row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_dNodata;
@@ -688,7 +688,7 @@ double RAMTable::GetDblValue(int col, int row)
 	return ret;
 }
 
-long RAMTable::GetIntValue(int col, int row)
+long long RAMTable::GetIntValue(int col, long long row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_iNodata;
@@ -718,7 +718,7 @@ long RAMTable::GetIntValue(int col, int row)
 
 }
 
-std::string RAMTable::GetStrValue(int col, int row)
+std::string RAMTable::GetStrValue(int col, long long row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_sNodata;
@@ -748,120 +748,107 @@ std::string RAMTable::GetStrValue(int col, int row)
 
 }
 
-int RAMTable::GetBandNumber(void)
-{
-	return this->m_iBand;
-}
 
-std::string RAMTable::GetImgFileName(void)
-{
-	return this->m_sImgName;
-}
+//// ------------------------------------------------------- other useful public functions
+//void RAMTable::Print(std::ostream& os, itk::Indent indent, int nrows)
+//{
+//	os << indent << "\n";
+//	os << indent << "OTB raster attribute table print-out\n";
+//	os << indent << "File: " <<	this->m_sImgName << "\n";
+//	os << indent << "Band: " << this->m_iBand << "\n";
+//	os << indent << "Columns: " << this->m_vNames.size() << "\n";
+//	os << indent << "Rows: " << this->m_iNumRows << "\n";
+//	os << "\n";
 
-// ------------------------------------------------------- other useful public functions
-void RAMTable::Print(std::ostream& os, itk::Indent indent, int nrows)
-{
-	os << indent << "\n";
-	os << indent << "OTB raster attribute table print-out\n";
-	os << indent << "File: " <<	this->m_sImgName << "\n";
-	os << indent << "Band: " << this->m_iBand << "\n";
-	os << indent << "Columns: " << this->m_vNames.size() << "\n";
-	os << indent << "Rows: " << this->m_iNumRows << "\n";
-	os << "\n";
+//	itk::Indent ii = indent.GetNextIndent();
+//	itk::Indent iii = ii.GetNextIndent();
 
-	itk::Indent ii = indent.GetNextIndent();
-	itk::Indent iii = ii.GetNextIndent();
+//	os << indent << "Columns:\n";
+//	for (int c = 0; c < this->m_vNames.size(); c++)
+//		os << ii << c << ": " << this->m_vNames[c] << " (" << typestr(this->m_vTypes[c]) << ")\n";
 
-	os << indent << "Columns:\n";
-	for (int c = 0; c < this->m_vNames.size(); c++)
-		os << ii << c << ": " << this->m_vNames[c] << " (" << typestr(this->m_vTypes[c]) << ")\n";
+//	os << indent << "Rows:\n";
+//	char val[256];
+//	nrows = nrows < this->m_iNumRows ? nrows : this->m_iNumRows;
+//	for (int r=0; r < nrows; ++r)
+//	{
+//		os << ii << "#" << r << " - ROW\n";
+//		for (int c=0; c < this->m_vNames.size(); c++)
+//		{
+//			switch (this->GetColumnType(c))
+//			{
+//			case ATTYPE_DOUBLE:
+//				::sprintf(val, "%g", this->GetDblValue(c, r));
+//				break;
+//			case ATTYPE_INT:
+//				::sprintf(val, "%ld", this->GetIntValue(c, r));
+//				break;
+//			case ATTYPE_STRING:
+//				::sprintf(val, "%s", this->GetStrValue(c, r).c_str());
+//				break;
+//			default:
+//				::sprintf(val, "%s", this->m_sNodata.c_str());
+//			}
+//			os << iii << this->m_vNames[c] << ": " << val << "\n";
+//		}
+//	}
+//}
 
-	os << indent << "Rows:\n";
-	char val[256];
-	nrows = nrows < this->m_iNumRows ? nrows : this->m_iNumRows;
-	for (int r=0; r < nrows; ++r)
-	{
-		os << ii << "#" << r << " - ROW\n";
-		for (int c=0; c < this->m_vNames.size(); c++)
-		{
-			switch (this->GetColumnType(c))
-			{
-			case ATTYPE_DOUBLE:
-				::sprintf(val, "%g", this->GetDblValue(c, r));
-				break;
-			case ATTYPE_INT:
-				::sprintf(val, "%ld", this->GetIntValue(c, r));
-				break;
-			case ATTYPE_STRING:
-				::sprintf(val, "%s", this->GetStrValue(c, r).c_str());
-				break;
-			default:
-				::sprintf(val, "%s", this->m_sNodata.c_str());
-			}
-			os << iii << this->m_vNames[c] << ": " << val << "\n";
-		}
-	}
-}
+//void RAMTable::PrintStructure(std::ostream& os, itk::Indent indent)
+//{
+//	  itk::Indent i = indent;
+//	  itk::Indent ii = i.GetNextIndent();
+//	  itk::Indent iii = ii.GetNextIndent();
+//	  os << i << "Raster Attribute Table, band #" << this->GetBandNumber() << " ('" <<
+//			  this->GetImgFileName() << "')\n";
+//	  os << ii << "#columns: " << this->GetNumCols() << ", #rows: " << this->GetNumRows() << "\n";
+//	  os << ii << "ColumnIndex: ColumnName (ColumnType):\n";
 
-void RAMTable::PrintStructure(std::ostream& os, itk::Indent indent)
-{
-	  itk::Indent i = indent;
-	  itk::Indent ii = i.GetNextIndent();
-	  itk::Indent iii = ii.GetNextIndent();
-	  os << i << "Raster Attribute Table, band #" << this->GetBandNumber() << " ('" <<
-			  this->GetImgFileName() << "')\n";
-	  os << ii << "#columns: " << this->GetNumCols() << ", #rows: " << this->GetNumRows() << "\n";
-	  os << ii << "ColumnIndex: ColumnName (ColumnType):\n";
-
-	  for (int c = 0; c < m_vNames.size(); c++)
-		  os << iii << c << ": " << m_vNames[c] << " (" << typestr(m_vTypes[c]) << ")\n";
-}
+//	  for (int c = 0; c < m_vNames.size(); c++)
+//		  os << iii << c << ": " << m_vNames[c] << " (" << typestr(m_vTypes[c]) << ")\n";
+//}
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ---------------------  PROTECTED FUNCTIONS -----------------------------------------------
 
-std::string RAMTable::typestr(TableColumnType type)
-{
-	switch(type)
-	{
-	case ATTYPE_DOUBLE:
-		return "double";
-		break;
-	case ATTYPE_INT:
-		return "integer";
-		break;
-	case ATTYPE_STRING:
-		return "string";
-		break;
-	default:
-		return "unknown";
-	}
-}
+//std::string RAMTable::typestr(TableColumnType type)
+//{
+//	switch(type)
+//	{
+//	case ATTYPE_DOUBLE:
+//		return "double";
+//		break;
+//	case ATTYPE_INT:
+//		return "integer";
+//		break;
+//	case ATTYPE_STRING:
+//		return "string";
+//		break;
+//	default:
+//		return "unknown";
+//	}
+//}
 
-int
-RAMTable::valid(const std::string& sColName, int idx)
-{
-	//check if the column exists -> column exists returns the zero-based index of the
-	//particular column within the set of columns or -1 if the column does not exist
-	int colidx = ColumnExists(sColName);
-	if (colidx < 0)
-		return -1;
+//int
+//RAMTable::valid(const std::string& sColName, int idx)
+//{
+//	//check if the column exists -> column exists returns the zero-based index of the
+//	//particular column within the set of columns or -1 if the column does not exist
+//	int colidx = ColumnExists(sColName);
+//	if (colidx < 0)
+//		return -1;
 
-	//check for the index
-	if (idx > m_iNumRows - 1 || idx < 0)
-		return -1;
+//	//check for the index
+//	if (idx > m_iNumRows - 1 || idx < 0)
+//		return -1;
 
-	return colidx;
-}
+//	return colidx;
+//}
 
 
 RAMTable::RAMTable()
-	: m_iNumRows(0),
-	  m_iBand(1),
-	  m_iNodata(-std::numeric_limits<long>::max()),
-	  m_dNodata(-std::numeric_limits<double>::max()),
-	  m_sNodata("NULL")
 {
+    this->m_ATType = ATTABLE_TYPE_RAM;
 }
 
 // clean up

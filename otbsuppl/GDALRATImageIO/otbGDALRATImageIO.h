@@ -44,6 +44,8 @@
 
 #include "nmlog.h"
 #include "otbAttributeTable.h"
+#include "otbRAMTable.h"
+#include "otbSQLiteTable.h"
 
 /* GDAL Libraries */
 #include "gdal.h"
@@ -129,6 +131,9 @@ public:
   itkGetMacro(OverviewIdx, int);
   void SetOverviewIdx(int idx);
 
+  itkGetMacro(RATType, otb::AttributeTable::TableType);
+  itkSetMacro(RATType, otb::AttributeTable::TableType);
+
   std::vector<unsigned int> GetOverviewSize(int ovv);
 
 
@@ -199,7 +204,7 @@ public:
   /** Writes an attribute table to the nth band of the specified
    *  GDALDataset
    */
-  void WriteRAT(AttributeTable::Pointer tab, unsigned int iBand=1);
+  void WriteRAT(AttributeTable::Pointer intab, unsigned int iBand=1);
 
   /** Builds overviews for all available bands in the file */
   void BuildOverviews(const std::string& resamplingType);
@@ -221,6 +226,14 @@ protected:
   void InternalReadImageInformation();
   /** Write all information on the image*/
   void InternalWriteImageInformation(const void* buffer);
+  /** Read RAT into the desired underlying implementation of AttributeTable */
+  SQLiteTable::Pointer InternalReadSQLiteRAT(unsigned int iBand);
+  RAMTable::Pointer InternalReadRAMRAT(unsigned int iBand);
+
+  /** Write specified RAT type into the image */
+  void InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int iBand);
+  void InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned int iBand);
+
   /** Number of bands of the image*/
   int m_NbBands;
   /** map of band numbers to be read/written */
@@ -231,6 +244,7 @@ protected:
   int m_NbOverviews;
   std::vector<std::vector<unsigned int > > m_OvvSize;
   int m_OverviewIdx;
+
 
   unsigned int m_LPRDimensions[2];
   double m_LPRSpacing[2];
@@ -247,6 +261,10 @@ protected:
 
   /** indicates whether RAT support is switched on or not */
   bool m_RATSupport;
+
+  /** preferred output RAT type */
+  otb::AttributeTable::TableType m_RATType;
+
 
   /** keeps pointers to the RAT of individual bands */
   std::vector<otb::AttributeTable::Pointer> m_vecRAT;

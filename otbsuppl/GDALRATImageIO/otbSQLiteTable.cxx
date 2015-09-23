@@ -1406,7 +1406,7 @@ double SQLiteTable::GetDblValue(const std::string& sColName, long long int idx)
     return ret;
 }
 
-long long int
+long long
 SQLiteTable::GetIntValue(const std::string& sColName, long long int idx)
 {
 	// check given index and column name
@@ -1513,17 +1513,17 @@ SQLiteTable::GetRowIdx(const std::string& column, void* value)
     return idx;
 }
 
-void
-SQLiteTable::SetColumnName(int col, const std::string& name)
-{
-	if (	col < 0
-		||  col > this->m_vNames.size()-1
-		||  name.empty()
-	   )
-		return;
+//void
+//SQLiteTable::SetColumnName(int col, const std::string& name)
+//{
+//	if (	col < 0
+//		||  col > this->m_vNames.size()-1
+//		||  name.empty()
+//	   )
+//		return;
 
-	this->m_vNames[col] = name;
-}
+//	this->m_vNames[col] = name;
+//}
 
 bool
 SQLiteTable::RemoveColumn(int col)
@@ -1817,7 +1817,7 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
 //	}
 }
 
-double SQLiteTable::GetDblValue(int col, long long int row)
+double SQLiteTable::GetDblValue(int col, long long row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_dNodata;
@@ -1844,31 +1844,10 @@ double SQLiteTable::GetDblValue(int col, long long int row)
     sqlite3_reset(stmt);
 
     return ret;
-
-
-//	const int& tidx = m_vPosition[col];
-//	double ret;
-//	switch(m_vTypes[col])
-//	{
-//		case ATTYPE_STRING:
-//			ret = ::strtod(this->m_mStringCols.at(tidx)->at(row).c_str(),0);
-//			break;
-//		case ATTYPE_INT:
-//			ret = this->m_mIntCols.at(tidx)->at(row);
-//			break;
-//		case ATTYPE_DOUBLE:
-//			ret = this->m_mDoubleCols.at(tidx)->at(row);
-//			break;
-//		default:
-//			ret = this->m_dNodata;
-//			break;
-//	}
-
-//	return ret;
 }
 
-long long int
-SQLiteTable::GetIntValue(int col, long long int row)
+long long
+SQLiteTable::GetIntValue(int col, long long row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_iNodata;
@@ -1880,7 +1859,7 @@ SQLiteTable::GetIntValue(int col, long long int row)
     int rc = sqlite3_bind_int64(stmt, 1, row);
     if (sqliteError(rc, &stmt)) return m_iNodata;
 
-    long long int ret = m_iNodata;
+    long long ret = m_iNodata;
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW)
     {
@@ -1895,31 +1874,9 @@ SQLiteTable::GetIntValue(int col, long long int row)
     sqlite3_reset(stmt);
 
     return ret;
-
-
-    //	const int& tidx = m_vPosition[col];
-    //	long ret;
-    //	switch(m_vTypes[col])
-    //	{
-    //		case ATTYPE_STRING:
-    //			ret = ::strtol(this->m_mStringCols.at(tidx)->at(row).c_str(),0,10);
-    //			break;
-    //		case ATTYPE_INT:
-    //			ret = this->m_mIntCols.at(tidx)->at(row);
-    //			break;
-    //		case ATTYPE_DOUBLE:
-    //			ret = this->m_mDoubleCols.at(tidx)->at(row);
-    //			break;
-    //		default:
-    //			ret = this->m_iNodata;
-    //			break;
-    //	}
-
-    //	return ret;
-
 }
 
-std::string SQLiteTable::GetStrValue(int col, long long int row)
+std::string SQLiteTable::GetStrValue(int col, long long row)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return m_sNodata;
@@ -1948,135 +1905,104 @@ std::string SQLiteTable::GetStrValue(int col, long long int row)
     sqlite3_reset(stmt);
 
     return ret.str();
+}
 
 
-//	const int& tidx = m_vPosition[col];
-//	std::stringstream ret;
-//	switch(m_vTypes[col])
+//// ------------------------------------------------------- other useful public functions
+//void SQLiteTable::Print(std::ostream& os, itk::Indent indent, int nrows)
+//{
+//	os << indent << "\n";
+//	os << indent << "OTB raster attribute table print-out\n";
+//	os << indent << "File: " <<	this->m_sImgName << "\n";
+//	os << indent << "Band: " << this->m_iBand << "\n";
+//	os << indent << "Columns: " << this->m_vNames.size() << "\n";
+//	os << indent << "Rows: " << this->m_iNumRows << "\n";
+//	os << "\n";
+
+//	itk::Indent ii = indent.GetNextIndent();
+//	itk::Indent iii = ii.GetNextIndent();
+
+//	os << indent << "Columns:\n";
+//	for (int c = 0; c < this->m_vNames.size(); c++)
+//		os << ii << c << ": " << this->m_vNames[c] << " (" << typestr(this->m_vTypes[c]) << ")\n";
+
+//	os << indent << "Rows:\n";
+//	char val[256];
+//	nrows = nrows < this->m_iNumRows ? nrows : this->m_iNumRows;
+//	for (int r=0; r < nrows; ++r)
 //	{
-//		case ATTYPE_STRING:
-//			ret << this->m_mStringCols.at(tidx)->at(row);
-//			break;
-//		case ATTYPE_INT:
-//			ret << this->m_mIntCols.at(tidx)->at(row);
-//			break;
-//		case ATTYPE_DOUBLE:
-//			ret << this->m_mDoubleCols.at(tidx)->at(row);
-//			break;
-//		default:
-//			ret << this->m_sNodata;
-//			break;
+//		os << ii << "#" << r << " - ROW\n";
+//		for (int c=0; c < this->m_vNames.size(); c++)
+//		{
+//			switch (this->GetColumnType(c))
+//			{
+//			case ATTYPE_DOUBLE:
+//				::sprintf(val, "%g", this->GetDblValue(c, r));
+//				break;
+//			case ATTYPE_INT:
+//				::sprintf(val, "%ld", this->GetIntValue(c, r));
+//				break;
+//			case ATTYPE_STRING:
+//				::sprintf(val, "%s", this->GetStrValue(c, r).c_str());
+//				break;
+//			default:
+//				::sprintf(val, "%s", this->m_sNodata.c_str());
+//			}
+//			os << iii << this->m_vNames[c] << ": " << val << "\n";
+//		}
 //	}
+//}
 
-//	return ret.str();
+//void SQLiteTable::PrintStructure(std::ostream& os, itk::Indent indent)
+//{
+//	  itk::Indent i = indent;
+//	  itk::Indent ii = i.GetNextIndent();
+//	  itk::Indent iii = ii.GetNextIndent();
+//	  os << i << "Raster Attribute Table, band #" << this->GetBandNumber() << " ('" <<
+//			  this->GetImgFileName() << "')\n";
+//	  os << ii << "#columns: " << this->GetNumCols() << ", #rows: " << this->GetNumRows() << "\n";
+//	  os << ii << "ColumnIndex: ColumnName (ColumnType):\n";
 
-}
-
-int SQLiteTable::GetBandNumber(void)
-{
-	return this->m_iBand;
-}
-
-std::string SQLiteTable::GetImgFileName(void)
-{
-	return this->m_sImgName;
-}
-
-// ------------------------------------------------------- other useful public functions
-void SQLiteTable::Print(std::ostream& os, itk::Indent indent, int nrows)
-{
-	os << indent << "\n";
-	os << indent << "OTB raster attribute table print-out\n";
-	os << indent << "File: " <<	this->m_sImgName << "\n";
-	os << indent << "Band: " << this->m_iBand << "\n";
-	os << indent << "Columns: " << this->m_vNames.size() << "\n";
-	os << indent << "Rows: " << this->m_iNumRows << "\n";
-	os << "\n";
-
-	itk::Indent ii = indent.GetNextIndent();
-	itk::Indent iii = ii.GetNextIndent();
-
-	os << indent << "Columns:\n";
-	for (int c = 0; c < this->m_vNames.size(); c++)
-		os << ii << c << ": " << this->m_vNames[c] << " (" << typestr(this->m_vTypes[c]) << ")\n";
-
-	os << indent << "Rows:\n";
-	char val[256];
-	nrows = nrows < this->m_iNumRows ? nrows : this->m_iNumRows;
-	for (int r=0; r < nrows; ++r)
-	{
-		os << ii << "#" << r << " - ROW\n";
-		for (int c=0; c < this->m_vNames.size(); c++)
-		{
-			switch (this->GetColumnType(c))
-			{
-			case ATTYPE_DOUBLE:
-				::sprintf(val, "%g", this->GetDblValue(c, r));
-				break;
-			case ATTYPE_INT:
-				::sprintf(val, "%ld", this->GetIntValue(c, r));
-				break;
-			case ATTYPE_STRING:
-				::sprintf(val, "%s", this->GetStrValue(c, r).c_str());
-				break;
-			default:
-				::sprintf(val, "%s", this->m_sNodata.c_str());
-			}
-			os << iii << this->m_vNames[c] << ": " << val << "\n";
-		}
-	}
-}
-
-void SQLiteTable::PrintStructure(std::ostream& os, itk::Indent indent)
-{
-	  itk::Indent i = indent;
-	  itk::Indent ii = i.GetNextIndent();
-	  itk::Indent iii = ii.GetNextIndent();
-	  os << i << "Raster Attribute Table, band #" << this->GetBandNumber() << " ('" <<
-			  this->GetImgFileName() << "')\n";
-	  os << ii << "#columns: " << this->GetNumCols() << ", #rows: " << this->GetNumRows() << "\n";
-	  os << ii << "ColumnIndex: ColumnName (ColumnType):\n";
-
-	  for (int c = 0; c < m_vNames.size(); c++)
-		  os << iii << c << ": " << m_vNames[c] << " (" << typestr(m_vTypes[c]) << ")\n";
-}
+//	  for (int c = 0; c < m_vNames.size(); c++)
+//		  os << iii << c << ": " << m_vNames[c] << " (" << typestr(m_vTypes[c]) << ")\n";
+//}
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ---------------------  PROTECTED FUNCTIONS -----------------------------------------------
 
-std::string SQLiteTable::typestr(TableColumnType type)
-{
-	switch(type)
-	{
-	case ATTYPE_DOUBLE:
-		return "double";
-		break;
-	case ATTYPE_INT:
-		return "integer";
-		break;
-	case ATTYPE_STRING:
-		return "string";
-		break;
-	default:
-		return "unknown";
-	}
-}
+//std::string SQLiteTable::typestr(TableColumnType type)
+//{
+//	switch(type)
+//	{
+//	case ATTYPE_DOUBLE:
+//		return "double";
+//		break;
+//	case ATTYPE_INT:
+//		return "integer";
+//		break;
+//	case ATTYPE_STRING:
+//		return "string";
+//		break;
+//	default:
+//		return "unknown";
+//	}
+//}
 
-int
-SQLiteTable::valid(const std::string& sColName, int idx)
-{
-	//check if the column exists -> column exists returns the zero-based index of the
-	//particular column within the set of columns or -1 if the column does not exist
-	int colidx = ColumnExists(sColName);
-	if (colidx < 0)
-		return -1;
+//int
+//SQLiteTable::valid(const std::string& sColName, int idx)
+//{
+//	//check if the column exists -> column exists returns the zero-based index of the
+//	//particular column within the set of columns or -1 if the column does not exist
+//	int colidx = ColumnExists(sColName);
+//	if (colidx < 0)
+//		return -1;
 
-	//check for the index
-	if (idx > m_iNumRows - 1 || idx < 0)
-		return -1;
+//	//check for the index
+//	if (idx > m_iNumRows - 1 || idx < 0)
+//		return -1;
 
-	return colidx;
-}
+//	return colidx;
+//}
 
 bool
 SQLiteTable::SetRowIDColName(const std::string& name)
@@ -2482,12 +2408,7 @@ SQLiteTable::createTable(std::string filename, std::string tag)
 }
 
 SQLiteTable::SQLiteTable()
-	: m_iNumRows(0),
-	  m_iBand(1),
-      m_iNodata(-std::numeric_limits<long long>::max()),
-	  m_dNodata(-std::numeric_limits<double>::max()),
-      m_sNodata("NULL"),
-      m_db(0),
+    : m_db(0),
       m_StmtBegin(0),
       m_StmtEnd(0),
       m_StmtRollback(0),
@@ -2498,6 +2419,7 @@ SQLiteTable::SQLiteTable()
       m_tableName("")
 {
     //this->createTable("");
+    this->m_ATType = ATTABLE_TYPE_SQLITE;
 }
 
 void
@@ -2571,7 +2493,7 @@ SQLiteTable::resetTableAdmin(void)
     m_vTypes.clear();
     m_vIndexNames.clear();
     m_vNames.clear();
-    m_vPosition.clear();
+    //m_vPosition.clear();
     m_vTypesBulkGet.clear();
     m_vTypesBulkSet.clear();
     m_vStmtUpdate.clear();

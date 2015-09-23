@@ -40,6 +40,8 @@
 #include "otbMacro.h"
 #include "otbSystem.h"
 #include "otbImage.h"
+#include "otbSQLiteTable.h"
+#include "otbRAMTable.h"
 #include "vcl_numeric.h"
 #include "vcl_algorithm.h"
 #include "itkVariableLengthVector.h"
@@ -2108,6 +2110,254 @@ bool GDALRATImageIO::GDALInfoReportCorner(const char * /*corner_name*/, double x
 
 AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 {
+    switch(m_RATType)
+    {
+    case AttributeTable::ATTABLE_TYPE_RAM:
+        return InternalReadRAMRAT(iBand);
+        break;
+    case AttributeTable::ATTABLE_TYPE_SQLITE:
+        return InternalReadSQLiteRAT(iBand);
+        break;
+    default:
+        return 0;
+    }
+}
+
+
+RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
+{
+    // if m_Dataset hasn't been instantiated before, we do it here, because
+    // we might want to fetch the attribute table before the pipeline has
+    // been executed
+    GDALDataset* img;
+    if (m_Dataset.IsNull())
+    {
+        m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+        if (m_Dataset.IsNull())
+            return 0;
+    }
+
+    // data set already available?
+    img = m_Dataset->GetDataSet();
+    if (img == 0)
+    {
+        //itkWarningMacro(<< "ReadRAT: unable to access data set!");
+        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+        return 0;
+    }
+
+    // how many bands? (band index is 1-based)
+    if (img->GetRasterCount() < iBand)
+        return 0;
+
+    // get the RAT for the specified band
+#ifdef GDAL_NEWRATAPI
+    GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+#else
+    const GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+#endif
+    if (rat == 0)
+    {
+        //img = 0;
+        return 0;
+    }
+
+    // double check, whether the table actually contains some data
+    int nrows = rat->GetRowCount();
+    int ncols = rat->GetColumnCount();
+    if (nrows == 0 || ncols == 0)
+        return 0;
+
+    // copy gdal tab into otbAttributeTable
+    RAMTable::Pointer otbTab = RAMTable::New();
+
+    // set filename and band number
+    otbTab->SetBandNumber(iBand);
+
+    //NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
+    otbTab->SetImgFileName(this->GetFileName());
+
+    otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
+    std::vector< std::string > colnames;
+
+    // go and check the column names against the SQL standard, in case
+    // they don't match it, we enclose in double quotes.
+    for (int c=0; c < ncols; ++c)
+    {
+        colnames.push_back(rat->GetNameOfCol(c));
+    }
+
+
+    // copy table
+    ::GDALRATFieldType gdaltype;
+    AttributeTable::TableColumnType otbtabtype;
+    for (int c=0; c < ncols; ++c)
+    {
+        gdaltype = rat->GetTypeOfCol(c);
+        std::string colname = colnames[c];
+
+        switch(gdaltype)
+        {
+        case GFT_Integer:
+            otbtabtype = AttributeTable::ATTYPE_INT;
+            break;
+        case GFT_Real:
+            otbtabtype = AttributeTable::ATTYPE_DOUBLE;
+            break;
+        case GFT_String:
+            otbtabtype = AttributeTable::ATTYPE_STRING;
+            break;
+        default:
+            return 0;
+        }
+        otbTab->AddColumn(colname, otbtabtype);
+    }
+    otbTab->AddRows(nrows);
+
+#ifdef GDAL_NEWRATAPI
+    // the new way - chunk of rows by chunk of rows
+    // might want to turn that into a user-specified variable
+    int chunksize = nrows < 5000 ? nrows : 5000;
+    int rest=0;
+    int numChunks=0;
+    if (nrows <= chunksize)
+    {
+        numChunks = 1;
+    }
+    else
+    {
+        numChunks =  nrows / chunksize;
+        rest = nrows - (numChunks * chunksize);
+        if (rest == 0)
+        {
+            ++numChunks;
+        }
+    }
+
+    int procrows = 0;
+    int s=0;
+    int e=0;
+    for (int chunk = 0; chunk < numChunks+1; ++chunk)
+    {
+        s = procrows;
+        e = s + chunksize;// - 1;
+
+        for (int col=0; col < ncols; ++col)
+        {
+            gdaltype = rat->GetTypeOfCol(col);
+            void* colPtr = 0;
+
+            if (col == 0)
+            {
+                colPtr = otbTab->GetColumnPointer(col);
+                long* valPtr = static_cast<long*>(colPtr);
+                for (int r=s; r < e; ++r)
+                {
+                    valPtr[r] = r;
+                }
+            }
+            colPtr = otbTab->GetColumnPointer(col+1);
+
+            switch(gdaltype)
+            {
+            case GFT_Integer:
+            {
+                long* valPtr = static_cast<long*>(colPtr);
+                int* tptr = (int*)CPLCalloc(sizeof(int), chunksize);
+                rat->ValuesIO(GF_Read, col, s, chunksize, tptr);
+                for (int k=0; k < chunksize; ++k)
+                {
+                    valPtr[s+k] = static_cast<long>(tptr[k]);
+                }
+                CPLFree(tptr);
+            }
+                break;
+            case GFT_Real:
+            {
+                double* valPtr = static_cast<double*>(colPtr);
+                rat->ValuesIO(GF_Read, col, s, chunksize, (valPtr+s));
+            }
+                break;
+            case GFT_String:
+            {
+                char** valPtr = (char**)CPLCalloc(sizeof(char*), chunksize);
+                if (valPtr == 0)
+                {
+                    itkExceptionMacro(<< "Not enough memory to allocate chunk of string records!");
+                    break;
+                }
+                rat->ValuesIO(GF_Read, col, s, chunksize, valPtr);
+                for (int k=0; k < chunksize; ++k)
+                {
+                    const char* ccv = valPtr[k] != 0 ? valPtr[k] : "NULL";
+                    otbTab->SetValue(col+1, s+k, ccv);
+                    CPLFree(valPtr[k]);
+                }
+                CPLFree(valPtr);
+            }
+                break;
+            default:
+                continue;
+            }
+        }
+
+        procrows += chunksize;
+
+        if (chunk == numChunks-1)
+        {
+            if (rest > 0)
+            {
+                chunksize = rest;
+            }
+            else
+            {
+                chunk = numChunks;
+            }
+        }
+    }
+#else
+    // the old way - row by row
+    for (int c=0; c < ncols; ++c)
+    {
+        gdaltype = rat->GetTypeOfCol(c);
+        for (int r=0; r < nrows; ++r)
+        {
+            if (c==0)
+            {
+                otbTab->SetValue(c, r, (long)r);
+            }
+
+            switch (gdaltype)
+            {
+            case GFT_Integer:
+                otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
+                break;
+            case GFT_Real:
+                otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
+                break;
+            case GFT_String:
+                otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
+                break;
+            default:
+                continue;
+            }
+        }
+    }
+#endif
+
+    //rat = 0;
+    //img = 0;
+
+    //NMDebug(<< std::endl);
+    //NMDebugAI(<< "now pritn' the actual Table ...");
+    //otbTab->Print(std::cout, itk::Indent(0), 100);
+
+    return otbTab;
+}
+
+
+SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
+{
     //CALLGRIND_START_INSTRUMENTATION;
 
 	// if m_Dataset hasn't been instantiated before, we do it here, because
@@ -2189,7 +2439,7 @@ AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
     std::stringstream tag;
     tag << iBand;
 
-	AttributeTable::Pointer otbTab = AttributeTable::New();
+    SQLiteTable::Pointer otbTab = SQLiteTable::New();
     otbTab->SetRowIDColName("rowidx");
     switch(otbTab->createTable(dbFN, tag.str()))
     {
@@ -2596,7 +2846,170 @@ GDALDataset* GDALRATImageIO::CreateCopy()
 
 
 void
-GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
+GDALRATImageIO::WriteRAT(AttributeTable::Pointer intab, unsigned int iBand)
+{
+    if (tab.IsNull())
+    {
+        return;
+    }
+
+    switch(tab->GetTableType())
+    {
+    case AttributeTable::ATTABLE_TYPE_RAM:
+        return InternalWriteRAMRAT(intab, iBand);
+        break;
+    case AttributeTable::ATTABLE_TYPE_SQLITE:
+        return InternalWriteSQLiteRAT(intab, iBand);
+        break;
+    default:
+        return 0;
+    }
+}
+
+void
+GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int iBand)
+{
+    // if m_Dataset hasn't been instantiated before, we do it here, because
+    // we just do an independent write of the RAT into the data set
+    // (i.e. outside any pipeline activities ...)
+    GDALDataset* ds;
+    if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+    {
+        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+        if (m_Dataset.IsNull())
+        {
+            std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+            return;
+        }
+    }
+
+    // data set already available?
+    ds = m_Dataset->GetDataSet();
+    if (ds == 0)
+    {
+        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+        itkWarningMacro(<< "ReadRAT: unable to access data set!");
+        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+        return;
+    }
+
+    // how many bands? (band index is 1-based)
+    if (ds->GetRasterCount() < iBand)
+        return;
+
+    // fetch the band
+    GDALRasterBand* band = ds->GetRasterBand(iBand);
+
+    // create a new raster attribute table
+    // note: we just create a whole new table and replace the
+    // current one; we don't bother with just writing changed
+    // values (too lazy for doing the required housekeeping
+    // beforehand) ...
+#ifdef GDAL_NEWRATAPI
+    GDALDefaultRasterAttributeTable* gdaltab = new GDALDefaultRasterAttributeTable();
+#else
+    GDALRasterAttributeTable* gdaltab = new GDALRasterAttributeTable();
+#endif
+
+    RAMTable::Pointer tab = static_cast<otb::RAMTable*>(intab.GetPointer());
+    int rowcount = tab->GetNumRows();
+    // if we've got an IMAGINE file with UCHAR data type, we create
+    // a table with at least 256 rows, otherwise ERDAS Imagine wouldn't like it
+    GDALDriverH driver = GDALGetDatasetDriver(m_Dataset->GetDataSet());
+    std::string dsn = GDALGetDriverShortName(driver);
+    if (dsn.compare("HFA") == 0 && this->m_ComponentType == otb::ImageIOBase::UCHAR)
+    {
+        rowcount = rowcount < 256 ? 256 : rowcount;
+    }
+
+    //gdaltab->SetRowCount(tab->GetNumRows());
+    gdaltab->SetRowCount(rowcount);
+
+    // add the category field "Value"
+    //gdaltab->CreateColumn("Value", GFT_Integer, GFU_MinMax);
+    CPLErr err;
+
+
+    // add all but the 'rowidx' column to the table
+    for (int col = 1; col < tab->GetNumCols(); ++col)
+    {
+        GDALRATFieldType type;
+        switch(tab->GetColumnType(col))
+        {
+        case otb::AttributeTable::ATTYPE_INT:
+            type = GFT_Integer;
+            break;
+        case otb::AttributeTable::ATTYPE_DOUBLE:
+            type = GFT_Real;
+            break;
+        case otb::AttributeTable::ATTYPE_STRING:
+            type = GFT_String;
+            break;
+        }
+
+        GDALRATFieldUsage usage = GFU_Generic;
+        err = gdaltab->CreateColumn(tab->GetColumnName(col).c_str(),
+                            type, usage);
+        if (err == CE_Failure)
+        {
+            itkExceptionMacro(<< "Failed creating column #" << col
+                    << " '" << tab->GetColumnName(col).c_str() << "!");
+        }
+        itkDebugMacro(<< "Created column #" << col << " '"
+                << tab->GetColumnName(col).c_str() << "'");
+    }
+
+    // copy values row by row
+    for (long row=0; row < tab->GetNumRows(); ++row)
+    {
+        for (int col=1; col < tab->GetNumCols(); ++col)
+        {
+            itkDebugMacro(<< "Setting value: col=" << col
+                    << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
+            switch(tab->GetColumnType(col))
+            {
+            case otb::AttributeTable::ATTYPE_INT:
+                gdaltab->SetValue(row, col-1, (int)tab->GetIntValue(col, row));
+                break;
+            case otb::AttributeTable::ATTYPE_DOUBLE:
+                gdaltab->SetValue(row, col-1, tab->GetDblValue(col, row));
+                break;
+            case otb::AttributeTable::ATTYPE_STRING:
+                gdaltab->SetValue(row, col-1, tab->GetStrValue(col, row).c_str());
+                break;
+            default:
+                delete gdaltab;
+                itkExceptionMacro(<< "Unrecognised field type! Couldn't set value col=" << col
+                        << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
+                break;
+            }
+        }
+    }
+
+    // associate the table with the band
+    err = band->SetDefaultRAT(gdaltab);
+    if (err == CE_Failure)
+    {
+        delete gdaltab;
+        itkExceptionMacro(<< "Failed writing table to band!");
+    }
+    ds->FlushCache();
+
+    // if we don't close the data set here, the RAT is not written properly to disk
+    // (not quite sure why that's not done when m_Dataset runs out of scope(?)
+    //m_Dataset->CloseDataSet();
+    m_Dataset = 0;
+
+    // need an open data set for writing the actual image later on;
+    // when we're only updating the RAT, the data sets gets closed as soon as
+    // the data set run's out of scope
+    m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+
+    delete gdaltab;
+}
+
+void
+GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned int iBand)
 {
 	// if m_Dataset hasn't been instantiated before, we do it here, because
 	// we just do an independent write of the RAT into the data set
@@ -2641,6 +3054,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer tab, unsigned int iBand)
 #endif
 
 
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(intab.GetPointer());
     int rowcount = tab->GetNumRows();
     if (rowcount == 0)
     {

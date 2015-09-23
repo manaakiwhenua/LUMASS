@@ -40,6 +40,7 @@
 
 #include "itkDataObject.h"
 #include "otbImage.h"
+#include "otbSQLiteTable.h"
 #include "otbVectorImage.h"
 #include "itkImageRegion.h"
 #include "itkPoint.h"
@@ -545,11 +546,12 @@ NMImageLayer::updateAttributeTable()
 
     //NMQtOtbAttributeTableModel* otbModel;
     NMSqlTableModel* tabModel = 0;
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
 	if (this->mTableModel == 0)
 	{
         //otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-        db.setDatabaseName(QString(mOtbRAT->getDbFileName().c_str()));
+        db.setDatabaseName(QString(tab->getDbFileName().c_str()));
         if (!db.open())
         {
             NMErr(ctxNMImageLayer, << "Open database failed!" << endl);
@@ -557,7 +559,7 @@ NMImageLayer::updateAttributeTable()
         else
         {
             tabModel = new NMSqlTableModel(this, db);
-            tabModel->setTable(QString(mOtbRAT->getTableName().c_str()));
+            tabModel->setTable(QString(tab->getTableName().c_str()));
             tabModel->select();
         }
 	}
@@ -609,6 +611,10 @@ NMImageLayer::setFileName(QString filename)
         // we always set the RGBMode here, 'cause we never
         // display more than 3 bands at a time
         this->mReader->setRGBMode(true);
+
+        // also we set the type of RAT we'd like to get from
+        // the reader
+        this->mReader->setRATType("ATTABLE_TYPE_SQLITE");
     }
 
 	// TODO: find a more unambiguous way of determining
@@ -1047,6 +1053,7 @@ NMImageLayer::setScalars(vtkImageData* img)
         return;
     }
 
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     if (colidx != mScalarColIdx)
     {
         mScalarColIdx = colidx;
@@ -1058,7 +1065,7 @@ NMImageLayer::setScalars(vtkImageData* img)
         }
         else
         {
-            if (!mOtbRAT->prepareColumnByIndex(mLegendValueField.toStdString()))
+            if (!tab->prepareColumnByIndex(mLegendValueField.toStdString()))
             {
                 NMErr(ctxNMImageLayer, << "Failed preparing fast scalar column access!");
                 return;
@@ -1073,10 +1080,10 @@ NMImageLayer::setScalars(vtkImageData* img)
     int maxidx = mNumRecords;//mOtbRAT->GetNumRows()-1;
     if (mNumRecords > 1e6)
     {
-        mOtbRAT->beginTransaction();
+        tab->beginTransaction();
     }
 
-    switch(mOtbRAT->GetColumnType(colidx))
+    switch(tab->GetColumnType(colidx))
     {
     case otb::AttributeTable::ATTYPE_DOUBLE:
         {
@@ -1185,7 +1192,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     // rather than using a RAM buffer
     if (mNumRecords > 1e6)
     {
-        mOtbRAT->endTransaction();
+        tab->endTransaction();
     }
 
     mbUpdateScalars = false;
@@ -1210,9 +1217,9 @@ NMImageLayer::updateScalarBuffer()
     //    {
     //        fclose(mScalarBufferFile);
     //    }
-
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     std::vector< std::string > colnames;
-    colnames.push_back(mOtbRAT->getPrimaryKey());
+    colnames.push_back(tab->getPrimaryKey());
     colnames.push_back(mLegendValueField.toStdString());
 
     std::vector< otb::AttributeTable::ColumnValue > values;
@@ -1224,8 +1231,8 @@ NMImageLayer::updateScalarBuffer()
     double dnodata = 0;
     long long inodata = 0;
 
-    mOtbRAT->beginTransaction();
-    mOtbRAT->prepareBulkGet(colnames, "");
+    tab->beginTransaction();
+    tab->prepareBulkGet(colnames, "");
     const int nrows = mOtbRAT->GetNumRows();
     const int rep = nrows / 20;
     for (int r=0; r < nrows; ++r)
@@ -1233,7 +1240,7 @@ NMImageLayer::updateScalarBuffer()
         switch(mOtbRAT->GetColumnType(mScalarColIdx))
         {
         case otb::AttributeTable::ATTYPE_INT:
-            if (mOtbRAT->doBulkGet(values))
+            if (tab->doBulkGet(values))
             {
                 mScalarLongLongMap.insert(
                             std::pair<long long, long long>(
@@ -1248,7 +1255,7 @@ NMImageLayer::updateScalarBuffer()
             //            }
             break;
         case otb::AttributeTable::ATTYPE_DOUBLE:
-            if (mOtbRAT->doBulkGet(values))
+            if (tab->doBulkGet(values))
             {
                 mScalarDoubleMap.insert(
                             std::pair<long long, double>(
@@ -1269,7 +1276,7 @@ NMImageLayer::updateScalarBuffer()
             NMDebug(<< ".");
         }
     }
-    mOtbRAT->endTransaction();
+    tab->endTransaction();
     NMDebug(<< std::endl);
     NMDebugCtx(ctxNMImageLayer, << "done!");
 }
@@ -1281,11 +1288,12 @@ NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
                              int numPix, int maxidx, long long nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     if (mNumRecords > 1e6)
     {
         for (int i=0; i < numPix; ++i)
         {
-              out[i] = mOtbRAT->nextIntValue(buf[i]);
+              out[i] = tab->nextIntValue(buf[i]);
         }
     }
     else
@@ -1326,12 +1334,12 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
                                int numPix, int maxidx, double nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     if (mNumRecords > 1e6)
     {
         for (int i=0; i < numPix; ++i)
         {
-              out[i] = mOtbRAT->nextDoubleValue(buf[i]);
+              out[i] = tab->nextDoubleValue(buf[i]);
         }
     }
     else

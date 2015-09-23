@@ -69,6 +69,7 @@ NMImageReader<TOutputImage>
     : otb::ImageFileReader<TOutputImage>(),
       mbRasMode(false),
       m_RATSupport(true),
+      m_RATType(otb::AttributeTable::ATTABLE_TYPE_RAM),
       m_Curl(CurlHelper::New()),
       //m_FilenameHelper(FNameHelperType::New()),
       m_OverviewIdx(-1),
@@ -463,6 +464,7 @@ NMImageReader<TOutputImage>
                     gio->SetFileName(this->GetFileName());
                     gio->SetOverviewIdx(this->m_OverviewIdx);
                     gio->SetRATSupport(this->m_RATSupport);
+                    gio->SetRATType(this->m_RATType);
                     gio->SetRGBMode(m_RGBMode);
                     this->m_RAT = gio->ReadRAT(1);
                 }

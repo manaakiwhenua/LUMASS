@@ -84,7 +84,7 @@ public:
         void SetValue(const std::string& sColName, long long idx, long value);
         void SetValue(const std::string& sColName, long long idx, std::string value);
         double GetDblValue(const std::string& sColName, long long idx);
-        long GetIntValue(const std::string& sColName, long long idx);
+        long long GetIntValue(const std::string& sColName, long long idx);
         std::string GetStrValue(const std::string& sColName, long long idx);
 
         void SetValue(int col, long long row, double value);
@@ -93,22 +93,16 @@ public:
 
 	void SetColumnName(int col, const std::string& name);
 
-	double GetDblValue(int col, int row);
-	long GetIntValue(int col, int row);
-	std::string GetStrValue(int col, int row);
+    double GetDblValue(int col, long long row);
+    long long GetIntValue(int col, long long row);
+    std::string GetStrValue(int col, long long row);
 
 	bool RemoveColumn(int col);
 	bool RemoveColumn(const std::string& name);
 
-	// manage table meta data
-        //void SetBandNumber(int iBand);
-        //void SetImgFileName(const std::string& sFileName);
-	int GetBandNumber(void);
-	std::string GetImgFileName(void);
-
-	// print the table
-	void Print(std::ostream& os, itk::Indent indent, int nrows);
-	void PrintStructure(std::ostream& os, itk::Indent indent);
+//	// print the table
+//	void Print(std::ostream& os, itk::Indent indent, int nrows);
+//	void PrintStructure(std::ostream& os, itk::Indent indent);
 
 
 protected:
@@ -159,8 +153,8 @@ protected:
 	// validate column name and row index; if
 	// parameters are valid then the column index
 	// is returned otherwise -1;
-	inline int valid(const std::string& sColName, int idx);
-	std::string typestr(TableColumnType type);
+    //inline int valid(const std::string& sColName, int idx);
+    //std::string typestr(TableColumnType type);
 
 };
 

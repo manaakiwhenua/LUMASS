@@ -16,20 +16,21 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * AttributeTable.h
+ * RAMTable.h
  *
  *  Created on: 23/09/2015
  *      Author: Alexander Herzig
  */
 
-#ifndef ATTRIBUTETABLE_H_
-#define ATTRIBUTETABLE_H_
+#ifndef RAMTABLE_H_
+#define RAMTABLE_H_
 
 #include <string>
 #include <map>
 #include <vector>
 #include <fstream>
 
+#include "otbAttributeTable.h"
 #include "itkObject.h"
 #include "itkDataObject.h"
 #include "itkObjectFactory.h"
@@ -38,57 +39,57 @@
 namespace otb
 {
 
-class OTBGDALRATIMAGEIO_EXPORT AttributeTable : public itk::DataObject
+class OTBGDALRATIMAGEIO_EXPORT RAMTable : public AttributeTable
 {
 public:
 	/** Standard class typedefs. */
-	typedef AttributeTable				Self;
+        typedef RAMTable				Self;
 	typedef itk::DataObject					Superclass;
 	typedef itk::SmartPointer<Self>			Pointer;
 	typedef itk::SmartPointer<const Self>	ConstPointer;
 
 	// supported column types
-	typedef enum
-	{
-		ATTYPE_STRING = 0,
-		ATTYPE_INT,
-		ATTYPE_DOUBLE ,
-		ATTYPE_UNKNOWN
-	} TableColumnType;
+//	typedef enum
+//	{
+//		ATTYPE_STRING = 0,
+//		ATTYPE_INT,
+//		ATTYPE_DOUBLE ,
+//		ATTYPE_UNKNOWN
+//	} TableColumnType;
 
 	itkNewMacro(Self);
-	itkTypeMacro(AttributeTable, Superclass);
+        itkTypeMacro(RAMTable, Superclass);
 
 	// getting info about the table
-    int GetNumCols();
-    virtual long long GetNumRows();
-    int ColumnExists(const std::string& sColName);
+        //int GetNumCols();
+        //int GetNumRows();
+        //int ColumnExists(const std::string& sColName);
 
-	std::string GetColumnName(int idx);
-	TableColumnType GetColumnType(int idx);
+        //	std::string GetColumnName(int idx);
+        //	TableColumnType GetColumnType(int idx);
 
-    //void* GetColumnPointer(int idx);
+	void* GetColumnPointer(int idx);
 
-    virtual long long GetRowIdx(const std::string& column, void* value) = 0;
+        long long GetRowIdx(const std::string& column, void* value);
 
 	//long GetRowIdx(const std::string& column, const double& value);
 	//long GetRowIdx(const std::string& column, const long& value);
 	//long GetRowIdx(const std::string& column, const std::string& value);
 
 	// managing the attribute table's content
-    virtual bool AddColumn(const std::string& sColName, TableColumnType type) = 0;
-    //bool AddRow();
-    //bool AddRows(long numRows);
-    virtual void SetValue(const std::string& sColName, long long idx, double value) = 0;
-    virtual void SetValue(const std::string& sColName, long long idx, long value) = 0;
-    virtual void SetValue(const std::string& sColName, long long idx, std::string value) = 0;
-    virtual double GetDblValue(const std::string& sColName, long long idx) = 0;
-    virtual long GetIntValue(const std::string& sColName, long long idx) = 0;
-    virtual std::string GetStrValue(const std::string& sColName, long long idx) = 0;
+	bool AddColumn(const std::string& sColName, TableColumnType type);
+	bool AddRow();
+        bool AddRows(long long numRows);
+        void SetValue(const std::string& sColName, long long idx, double value);
+        void SetValue(const std::string& sColName, long long idx, long value);
+        void SetValue(const std::string& sColName, long long idx, std::string value);
+        double GetDblValue(const std::string& sColName, long long idx);
+        long GetIntValue(const std::string& sColName, long long idx);
+        std::string GetStrValue(const std::string& sColName, long long idx);
 
-    virtual void SetValue(int col, long long row, double value) = 0;
-    virtual void SetValue(int col, long long row, long value) = 0;
-    virtual void SetValue(int col, long long row, std::string value) = 0;
+        void SetValue(int col, long long row, double value);
+        void SetValue(int col, long long row, long value);
+        void SetValue(int col, long long row, std::string value);
 
 	void SetColumnName(int col, const std::string& name);
 
@@ -100,8 +101,8 @@ public:
 	bool RemoveColumn(const std::string& name);
 
 	// manage table meta data
-    void SetBandNumber(int iBand);
-	void SetImgFileName(const std::string& sFileName);
+        //void SetBandNumber(int iBand);
+        //void SetImgFileName(const std::string& sFileName);
 	int GetBandNumber(void);
 	std::string GetImgFileName(void);
 
@@ -111,9 +112,9 @@ public:
 
 
 protected:
-	AttributeTable();
+        RAMTable();
 	virtual
-	~AttributeTable();
+        ~RAMTable();
 
 	// admin vectors holding header infos about columns
 
@@ -122,8 +123,8 @@ protected:
 	 *  in the order as columns are added to
 	 *  the table;
 	 */
-	std::vector<std::string> m_vNames;
-	std::vector<TableColumnType> m_vTypes;
+        //std::vector<std::string> m_vNames;
+        //std::vector<TableColumnType> m_vTypes;
 
 	/** Holds the index of the respective type specific
 	 *  vector containing the data of the column
@@ -137,23 +138,23 @@ protected:
 	 *  and its content is stored in m_mIntCols[3];
 	 *
 	 */
-    //std::vector<int> m_vPosition;
+	std::vector<int> m_vPosition;
 
 	// maps holding table columns
 	//std::map<int, std::vector<std::string> > m_mStringCols;
 	//std::map<int, std::vector<long> > m_mIntCols;
 	//std::map<int, std::vector<double> > m_mDoubleCols;
-    //	std::vector<std::vector<std::string>* > m_mStringCols;
-    //	std::vector<std::vector<long>* > m_mIntCols;
-    //	std::vector<std::vector<double>* > m_mDoubleCols;
+	std::vector<std::vector<std::string>* > m_mStringCols;
+        std::vector<std::vector<long long>* > m_mIntCols;
+	std::vector<std::vector<double>* > m_mDoubleCols;
 
 
-    long long m_iNumRows;
-	std::string m_sNodata;
-    long long m_iNodata;
-	double m_dNodata;
-	int m_iBand;
-	std::string m_sImgName;
+        //int m_iNumRows;
+        //std::string m_sNodata;
+        //long long m_iNodata;
+        //double m_dNodata;
+        //int m_iBand;
+        //std::string m_sImgName;
 
 	// validate column name and row index; if
 	// parameters are valid then the column index
@@ -165,4 +166,4 @@ protected:
 
 }
 
-#endif /* ATTRIBUTETABLE_H_ */
+#endif /* RAMTABLE_H_ */

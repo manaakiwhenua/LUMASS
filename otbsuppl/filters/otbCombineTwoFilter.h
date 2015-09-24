@@ -23,7 +23,7 @@
 #include <set>
 #include <string>
 
-#include "otbAttributeTable.h"
+#include "otbSQLiteTable.h"
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
@@ -91,7 +91,7 @@ public:
           typedef typename std::set< ComboIndexType > ComboTrackerType;
           typedef typename ComboTrackerType::iterator ComboTrackerTypeIterator;
 
-          AttributeTable::Pointer getRAT(unsigned int idx) {return m_ComboTable;}
+          AttributeTable::Pointer getRAT(unsigned int idx);
           void setRAT(unsigned int idx, AttributeTable::Pointer);
 
           void SetInputNodata(const std::vector<long long>& inNodata);
@@ -121,7 +121,7 @@ private:
 	  void operator=(const Self&); //purposely not implemented
 
           std::string m_OutputTableFileName;
-          AttributeTable::Pointer m_ComboTable;
+          SQLiteTable::Pointer m_ComboTable;
           bool m_dropTmpDBs;
 
           bool m_StreamingProc;

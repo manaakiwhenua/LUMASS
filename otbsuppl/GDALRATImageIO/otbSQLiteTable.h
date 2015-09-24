@@ -53,7 +53,7 @@ class OTBGDALRATIMAGEIO_EXPORT SQLiteTable : public AttributeTable
 {
 public:
 	/** Standard class typedefs. */
-        typedef SQLiteTable				Self;
+    typedef SQLiteTable             		Self;
 	typedef itk::DataObject					Superclass;
 	typedef itk::SmartPointer<Self>			Pointer;
 	typedef itk::SmartPointer<const Self>	ConstPointer;
@@ -76,20 +76,20 @@ public:
 //		ATTYPE_UNKNOWN
 //	} TableColumnType;
 
-    // field value data structure
-    typedef struct
-    {
-        TableColumnType type;
-        union
-        {
-            long long int ival;
-            double    dval;
-            char*     tval;
-        };
-    } ColumnValue;
+//    // field value data structure
+//    typedef struct
+//    {
+//        TableColumnType type;
+//        union
+//        {
+//            long long int ival;
+//            double    dval;
+//            char*     tval;
+//        };
+//    } ColumnValue;
 
-    //itkNewMacro(Self);
-        itkTypeMacro(SQLiteTable, Superclass);
+    itkNewMacro(Self);
+    itkTypeMacro(SQLiteTable, Superclass);
 
 	// getting info about the table
         //int GetNumCols();
@@ -108,20 +108,22 @@ public:
 	//long GetRowIdx(const std::string& column, const std::string& value);
 
 	// managing the attribute table's content
-    bool AddColumn(const std::string& sColName, TableColumnType type,
+    bool AddColumn(const std::string &sColName, TableColumnType type)
+        {AddConstrainedColumn(sColName, type, "");}
+    bool AddConstrainedColumn(const std::string& sColName, TableColumnType type,
                    const std::string& sColConstraint="");
     //bool AddRow();
     //bool AddRows(long long int numRows);
     void SetValue(const std::string& sColName, long long idx, double value);
-    void SetValue(const std::string& sColName, long long idx, long long int value);
+    void SetValue(const std::string& sColName, long long idx, long long value);
     void SetValue(const std::string& sColName, long long idx, std::string value);
     double GetDblValue(const std::string& sColName, long long idx);
     long long GetIntValue(const std::string& sColName, long long idx);
     std::string GetStrValue(const std::string& sColName, long long idx);
 
-    void SetValue(int col, long long int row, double value);
-    void SetValue(int col, long long int row, long long int value);
-    void SetValue(int col, long long int row, std::string value);
+    void SetValue(int col, long long row, double value);
+    void SetValue(int col, long long row, long long value);
+    void SetValue(int col, long long row, std::string value);
 
     //void SetColumnName(int col, const std::string& name);
 

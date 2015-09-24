@@ -149,7 +149,7 @@ SQLiteTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
 //}
 
 bool
-SQLiteTable::AddColumn(const std::string& sColName,
+SQLiteTable::AddConstrainedColumn(const std::string& sColName,
                           TableColumnType eType,
                           const std::string &sColConstraint)
 {

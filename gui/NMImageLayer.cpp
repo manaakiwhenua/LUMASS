@@ -1575,17 +1575,26 @@ NMImageLayer::getRasterAttributeTable(int band)
         // columns shouldn't occur at all, but doesn't do any harm
         // anyway ...
         tab = this->mReader->getRasterAttributeTable(band);
-        mNumRecords = tab->GetNumRows();
-        if (    mNumRecords == 0
-            ||  tab->GetNumCols() == 0
-           )
+        if (tab.IsNull())
         {
             tab = 0;
             mOtbRAT = 0;
+            mNumRecords = 0;
         }
         else
         {
-            mOtbRAT = tab;
+            mNumRecords = tab->GetNumRows();
+            if (    mNumRecords == 0
+                ||  tab->GetNumCols() == 0
+               )
+            {
+                tab = 0;
+                mOtbRAT = 0;
+            }
+            else
+            {
+                mOtbRAT = tab;
+            }
         }
     }
     else

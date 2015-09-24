@@ -51,7 +51,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     this->SetNumberOfRequiredInputs(1);
     this->SetNumberOfRequiredOutputs(1);
 
-    m_UVTable = otb::AttributeTable::New();
+    m_UVTable = otb::SQLiteTable::New();
 }
 
 template< class TInputImage, class TOutputImage >
@@ -67,6 +67,15 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 ::SetNthInput(unsigned int idx, const TInputImage* image)
 {
     this->SetInput(idx, const_cast<TInputImage *>( image ));
+}
+
+template< class TInputImage, class TOutputImage >
+AttributeTable::Pointer
+UniqueCombinationFilter< TInputImage, TOutputImage >
+::getRAT(unsigned int idx)
+{
+    AttributeTable::Pointer tab = m_UVTable.GetPointer();
+    return tab;
 }
 
 
@@ -191,7 +200,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // -------------------------------------------------------------
 
         // note the "1" is to indicate the band this table is for
-        if (this->m_UVTable->createTable(m_UVTableName, "1") == otb::AttributeTable::ATCREATE_ERROR)
+        if (this->m_UVTable->createTable(m_UVTableName, "1") == otb::SQLiteTable::ATCREATE_ERROR)
         {
             itkExceptionMacro(<< "Failed creating output table!");
             return;
@@ -482,7 +491,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         }
     }
     m_UVTable = 0;
-    m_UVTable = AttributeTable::New();
+    m_UVTable = SQLiteTable::New();
     m_OutIdx = 0;
     m_UVTableIndex = 0;
 

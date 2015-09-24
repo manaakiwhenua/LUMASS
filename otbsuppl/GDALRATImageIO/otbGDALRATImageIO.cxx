@@ -309,6 +309,7 @@ GDALRATImageIO::GDALRATImageIO()
   //m_hDriver     = NULL;
   //m_poDataset   = NULL;
 
+  m_RATType = AttributeTable::ATTABLE_TYPE_RAM;
   m_RATSupport = false;
   m_ImageUpdateMode = false;
   m_UseForcedLPR = false;
@@ -2110,17 +2111,24 @@ bool GDALRATImageIO::GDALInfoReportCorner(const char * /*corner_name*/, double x
 
 AttributeTable::Pointer GDALRATImageIO::ReadRAT(unsigned int iBand)
 {
+    AttributeTable::Pointer tab = 0;
+    RAMTable::Pointer rtab = 0;
+    SQLiteTable::Pointer stab = 0;
     switch(m_RATType)
     {
     case AttributeTable::ATTABLE_TYPE_RAM:
-        return InternalReadRAMRAT(iBand);
+        rtab = InternalReadRAMRAT(iBand);
+        tab = rtab.GetPointer();//static_cast<AttributeTable*>(rtab.GetPointer());
         break;
     case AttributeTable::ATTABLE_TYPE_SQLITE:
-        return InternalReadSQLiteRAT(iBand);
+        stab = InternalReadSQLiteRAT(iBand);
+        tab = stab.GetPointer();//static_cast<AttributetTable*>(stab.GetPointer());
         break;
     default:
         return 0;
     }
+
+    return tab;
 }
 
 
@@ -2415,8 +2423,8 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
         ssband << iBand;
         // double check, whether there's an external lumass db file out there,
         // which we could use instead
-        AttributeTable::Pointer ldbTab = AttributeTable::New();
-        if (ldbTab->createTable(dbFN, ssband.str()) == AttributeTable::ATCREATE_READ)
+        SQLiteTable::Pointer ldbTab = SQLiteTable::New();
+        if (ldbTab->createTable(dbFN, ssband.str()) == SQLiteTable::ATCREATE_READ)
         {
             return ldbTab;
         }
@@ -2443,12 +2451,12 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     otbTab->SetRowIDColName("rowidx");
     switch(otbTab->createTable(dbFN, tag.str()))
     {
-    case AttributeTable::ATCREATE_ERROR:
+    case SQLiteTable::ATCREATE_ERROR:
         itkWarningMacro(<< "Couldn't create attribute table '"
                         << dbFN << "'!")
         return 0;
         break;
-    case AttributeTable::ATCREATE_READ:
+    case SQLiteTable::ATCREATE_READ:
         return otbTab;
         break;
     }
@@ -2848,12 +2856,12 @@ GDALDataset* GDALRATImageIO::CreateCopy()
 void
 GDALRATImageIO::WriteRAT(AttributeTable::Pointer intab, unsigned int iBand)
 {
-    if (tab.IsNull())
+    if (intab.IsNull())
     {
         return;
     }
 
-    switch(tab->GetTableType())
+    switch(intab->GetTableType())
     {
     case AttributeTable::ATTABLE_TYPE_RAM:
         return InternalWriteRAMRAT(intab, iBand);
@@ -2862,7 +2870,7 @@ GDALRATImageIO::WriteRAT(AttributeTable::Pointer intab, unsigned int iBand)
         return InternalWriteSQLiteRAT(intab, iBand);
         break;
     default:
-        return 0;
+        return;
     }
 }
 

@@ -44,7 +44,7 @@ CombineTwoFilter< TInputImage, TOutputImage >
 
     m_OutputTableFileName = "";
     m_ComboTable = 0;
-    m_ComboTable = AttributeTable::New();
+    m_ComboTable = SQLiteTable::New();
 }
 
 template< class TInputImage, class TOutputImage >
@@ -69,6 +69,14 @@ void CombineTwoFilter< TInputImage, TOutputImage >
 
     m_vHyperSpaceDomains.resize(idx+1);
     m_vHyperSpaceDomains[idx] = tab->GetNumRows();
+}
+
+template< class TInputImage, class TOutputImage >
+AttributeTable::Pointer CombineTwoFilter< TInputImage, TOutputImage >
+::getRAT(unsigned int idx)
+{
+    AttributeTable::Pointer tab = m_ComboTable.GetPointer();
+    return tab;
 }
 
 template< class TInputImage, class TOutputImage >
@@ -185,7 +193,8 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         {
             m_dropTmpDBs = false;
         }
-        if (m_ComboTable->createTable(m_OutputTableFileName, "1") == AttributeTable::ATCREATE_ERROR)
+        if (m_ComboTable->createTable(m_OutputTableFileName, "1")
+                == SQLiteTable::ATCREATE_ERROR)
         {
             NMDebugCtx(ctx, << "done!");
             itkExceptionMacro("Failed creating unique combination attribute table!");
@@ -374,7 +383,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         m_ComboTable->closeTable(true);
     }
     m_ComboTable = 0;
-    m_ComboTable = AttributeTable::New();
+    m_ComboTable = SQLiteTable::New();
 
     m_vHyperSpaceDomains.clear();
     m_sComboTracker.clear();

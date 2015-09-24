@@ -472,6 +472,10 @@ NMImageReader<TOutputImage>
         }
 
     }
+    else
+    {
+        gio->SetRATType(m_RATType);
+    }
 
     if ( this->GetImageIO() == 0 )
     {
@@ -758,6 +762,8 @@ NMImageReader< TOutputImage >
 
             if (gio != 0)
             {
+                gio->SetRATSupport(m_RATSupport);
+                gio->SetRATType(m_RATType);
                 this->m_RAT = gio->ReadRAT(band);
                 return this->m_RAT;
             }

@@ -81,14 +81,14 @@ public:
 	bool AddRow();
         bool AddRows(long long numRows);
         void SetValue(const std::string& sColName, long long idx, double value);
-        void SetValue(const std::string& sColName, long long idx, long value);
+        void SetValue(const std::string& sColName, long long idx, long long value);
         void SetValue(const std::string& sColName, long long idx, std::string value);
         double GetDblValue(const std::string& sColName, long long idx);
         long long GetIntValue(const std::string& sColName, long long idx);
         std::string GetStrValue(const std::string& sColName, long long idx);
 
         void SetValue(int col, long long row, double value);
-        void SetValue(int col, long long row, long value);
+        void SetValue(int col, long long row, long long value);
         void SetValue(int col, long long row, std::string value);
 
 	void SetColumnName(int col, const std::string& name);

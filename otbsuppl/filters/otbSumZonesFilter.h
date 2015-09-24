@@ -23,7 +23,7 @@
 #include <set>
 #include <string>
 
-#include "otbAttributeTable.h"
+#include "otbSQLiteTable.h"
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
@@ -134,8 +134,8 @@ public:
 	  /** Specify the table to store the zone values */
 	  //void SetZoneTable(AttributeTable::Pointer);
 
-	  AttributeTable::Pointer GetZoneTable(void) {return mZoneTable;}
-          AttributeTable::Pointer getRAT(unsigned int idx) {return mZoneTable;}
+          AttributeTable::Pointer GetZoneTable(void);// {return mZoneTable;}
+          AttributeTable::Pointer getRAT(unsigned int idx);// {return mZoneTable;}
 
 	  virtual void ResetPipeline();
 
@@ -153,7 +153,7 @@ private:
 	  SumZonesFilter(const Self&); //purposely not implemented
 	  void operator=(const Self&); //purposely not implemented
 
-	  AttributeTable::Pointer mZoneTable;
+          SQLiteTable::Pointer mZoneTable;
 	  // this image defines the zones for which to do the summary
 	  OutputImagePointerType mZoneImage;
 	  // this image contains the values to be summarised for the individual zones

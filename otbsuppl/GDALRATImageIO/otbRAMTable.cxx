@@ -228,7 +228,7 @@ RAMTable::SetValue(const std::string& sColName, long long idx, double value)
 }
 
 void
-RAMTable::SetValue(const std::string& sColName, long long idx, long value)
+RAMTable::SetValue(const std::string& sColName, long long idx, long long value)
 {
 	int colIdx = this->valid(sColName, idx);
 	if (colIdx < 0)
@@ -595,7 +595,7 @@ void RAMTable::SetValue(int col, long long row, double value)
 	}
 }
 
-void RAMTable::SetValue(int col, long long row, long value)
+void RAMTable::SetValue(int col, long long row, long long value)
 {
 	if (col < 0 || col >= m_vNames.size())
 		return;

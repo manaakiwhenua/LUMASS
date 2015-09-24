@@ -124,6 +124,13 @@ void RATBandMathImageFilter<TImage>
 		return;
 	}
 
+    if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+    {
+        itkExceptionMacro(<< "SQLiteTables are currently not supported! "
+                          << "Please use ATTABLE_TYPE_RAM-based tables!");
+        return;
+    }
+
 	std::vector<int> columns;
 	std::vector<ColumnType> types;
 	if (tab.IsNotNull())

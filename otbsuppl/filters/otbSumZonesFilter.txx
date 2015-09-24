@@ -47,7 +47,7 @@ SumZonesFilter< TInputImage, TOutputImage >
 	mStreamingProc = false;
     m_ZoneTableFileName = "";
 
-    mZoneTable = AttributeTable::New();
+    mZoneTable = SQLiteTable::New();
 }
 
 template< class TInputImage, class TOutputImage >
@@ -98,6 +98,23 @@ void SumZonesFilter< TInputImage, TOutputImage >
 }
 
 template< class TInputImage, class TOutputImage >
+AttributeTable::Pointer SumZonesFilter< TInputImage, TOutputImage >
+::GetZoneTable(void)
+{
+    AttributeTable::Pointer tab = mZoneTable.GetPointer();
+    return tab;
+}
+
+template< class TInputImage, class TOutputImage >
+AttributeTable::Pointer SumZonesFilter< TInputImage, TOutputImage >
+::getRAT(unsigned int idx)
+{
+    AttributeTable::Pointer tab = mZoneTable.GetPointer();
+    return tab;
+}
+
+
+template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::SetHaveMaxKeyRows(bool maxkeyrows)
 {
@@ -145,7 +162,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
     // create the zone table (db)
     NMDebugAI( << "Loading / creating the zone table ..." << std::endl);
-    if (mZoneTable->createTable(m_ZoneTableFileName) == otb::AttributeTable::ATCREATE_ERROR)
+    if (mZoneTable->createTable(m_ZoneTableFileName) == otb::SQLiteTable::ATCREATE_ERROR)
     {
         itkExceptionMacro(<< "Failed to create the zone table!");
         return;
@@ -506,7 +523,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
     mZoneTable = 0;
     m_NextZoneId = 0;
 
-	mZoneTable = AttributeTable::New();
+    mZoneTable = SQLiteTable::New();
 
 	Superclass::ResetPipeline();
 	NMDebugCtx(ctx, << "done!");

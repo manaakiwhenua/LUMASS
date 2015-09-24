@@ -165,7 +165,7 @@ private:
     std::vector<int> mBandMap;
 
     QString mRATType;
-    QStringList mRATTEnum;
+    QStringList mRATEnum;
 
     otb::ImageIOBase::Pointer mItkImgIOBase;
 

@@ -63,6 +63,19 @@ public:
 		ATTYPE_UNKNOWN
 	} TableColumnType;
 
+    // field value data structure
+    typedef struct
+    {
+        TableColumnType type;
+        union
+        {
+            long long int ival;
+            double    dval;
+            char*     tval;
+        };
+    } ColumnValue;
+
+
     //itkNewMacro(Self);
 	itkTypeMacro(AttributeTable, Superclass);
 
@@ -88,14 +101,14 @@ public:
     //bool AddRow();
     //bool AddRows(long numRows);
     virtual void SetValue(const std::string& sColName, long long idx, double value) = 0;
-    virtual void SetValue(const std::string& sColName, long long idx, long value) = 0;
+    virtual void SetValue(const std::string& sColName, long long idx, long long value) = 0;
     virtual void SetValue(const std::string& sColName, long long idx, std::string value) = 0;
     virtual double GetDblValue(const std::string& sColName, long long idx) = 0;
     virtual long long GetIntValue(const std::string& sColName, long long idx) = 0;
     virtual std::string GetStrValue(const std::string& sColName, long long idx) = 0;
 
     virtual void SetValue(int col, long long row, double value) = 0;
-    virtual void SetValue(int col, long long row, long value) = 0;
+    virtual void SetValue(int col, long long row, long long value) = 0;
     virtual void SetValue(int col, long long row, std::string value) = 0;
 
     virtual void SetColumnName(int col, const std::string& name) {}
@@ -170,7 +183,7 @@ protected:
 	// validate column name and row index; if
 	// parameters are valid then the column index
 	// is returned otherwise -1;
-	inline int valid(const std::string& sColName, int idx);
+    int valid(const std::string& sColName, int idx);
 	std::string typestr(TableColumnType type);
 
 };

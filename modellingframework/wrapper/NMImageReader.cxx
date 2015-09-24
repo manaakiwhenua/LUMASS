@@ -291,7 +291,7 @@ public:
 
     static void
         setRATType(itk::ProcessObject* procObj, unsigned int numBands,
-                   otb::AttributeTable::TableType ttype)
+                   otb::AttributeTable::TableType ttype, bool rgbMode)
     {
         if (numBands == 1)
         {
@@ -692,21 +692,21 @@ public:
 
     /*! Macro for setting the RAT type to be read upon fetch
      */
-    #define SetRATType( PixelType ) \
+    #define SetHelperRATType( PixelType ) \
     {\
         switch (this->mOutputNumDimensions) \
         { \
         case 1: \
             FileReader<PixelType, 1 >::setRATType( \
-                    this->mOtbProcess, this->mOutputNumBands, ttype); \
+                    this->mOtbProcess, this->mOutputNumBands, ttype, mRGBMode); \
             break; \
         case 3: \
             FileReader<PixelType, 3 >::setRATType( \
-                    this->mOtbProcess, this->mOutputNumBands, ttype); \
+                    this->mOtbProcess, this->mOutputNumBands, ttype, mRGBMode); \
             break; \
         default: \
             FileReader<PixelType, 2 >::setRATType( \
-                    this->mOtbProcess, this->mOutputNumBands, ttype); \
+                    this->mOtbProcess, this->mOutputNumBands, ttype, mRGBMode); \
         }\
      }
 
@@ -753,7 +753,7 @@ NMImageReader::NMImageReader(QObject * parent)
     this->mRGBMode = false;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
     this->mRATType = QString("ATTABLE_TYPE_RAM");
-    mRATTEnum << "ATTABLE_TYPE_RAM" << "ATTABLE_TYPE_SQLITE";
+    this->mRATEnum << "ATTABLE_TYPE_RAM" << "ATTABLE_TYPE_SQLITE";
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
@@ -868,6 +868,15 @@ bool NMImageReader::initialise()
 		NMDebugAI(<< "we're not in ras mode ..." << endl);
 		otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
 		gio->SetRATSupport(true);
+        if (mRATType.compare(QString("ATTABLE_TYPE_RAM")) == 0)
+        {
+            gio->SetRATType(otb::AttributeTable::ATTABLE_TYPE_RAM);
+        }
+        else
+        {
+            gio->SetRATType(otb::AttributeTable::ATTABLE_TYPE_SQLITE);
+        }
+
         gio->SetRGBMode(mRGBMode);
         gio->SetBandMap(mBandMap);
 		this->mItkImgIOBase = gio;
@@ -985,6 +994,8 @@ bool NMImageReader::initialise()
 	}
 	this->mbIsInitialised = ret;
 
+    this->setInternalRATType();
+
 	// set the observer
 	ReaderObserverType::Pointer observer = ReaderObserverType::New();
 	observer->SetCallbackFunction(this,
@@ -1021,7 +1032,7 @@ NMImageReader::setInternalRATType()
 
             switch(this->mOutputComponentType)
             {
-            LocalMacroPerSingleType( SetRATType )
+            LocalMacroPerSingleType( SetHelperRATType )
             default:
                 break;
             }

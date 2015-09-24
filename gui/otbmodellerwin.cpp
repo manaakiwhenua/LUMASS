@@ -1759,7 +1759,7 @@ void OtbModellerWin::test()
     std::vector<long long> gvals(gdoms.size(), 0);
     int gsize = gdoms.size();
 
-    otb::AttributeTable::Pointer tab = otb::AttributeTable::New();
+    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
     tab->createTable("/home/alex/tmp/g.ldb");
     std::string uvcolname = tab->getPrimaryKey();
 

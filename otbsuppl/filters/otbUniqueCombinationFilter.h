@@ -21,7 +21,8 @@
 
 #include <map>
 
-#include "otbAttributeTable.h"
+//#include "otbAttributeTable.h"
+#include "otbSQLiteTable.h"
 #include "itkImageToImageFilter.h"
 #include "otbImage.h"
 
@@ -87,7 +88,7 @@ public:
     void SetNthInput(unsigned int idx, const InputImageType * image);
 
     void setRAT(unsigned int idx, AttributeTable::Pointer table);
-    AttributeTable::Pointer getRAT(unsigned int idx) {return m_UVTable;}
+    AttributeTable::Pointer getRAT(unsigned int idx);
 
     void SetUVTableName(const std::string& name);
 
@@ -115,7 +116,7 @@ protected:
 //    TCHDB* m_tcHDB;
 
     std::string m_UVTableName;
-    AttributeTable::Pointer m_UVTable;
+    SQLiteTable::Pointer m_UVTable;
 
     bool m_StreamingProc;
     bool m_DropTmpTables;

@@ -52,6 +52,53 @@
 
 class NMProcessFactory;
 
+/*!
+ * \brief The NMProcess class - the working horse of modelling framework
+ *
+ * NMProcess subclasses
+ * - encapsulate/wraps either an itk::ProcessObject doing some
+ *   number crunching on otb::Image or otb::AttributeTable data,
+ * - provide their own little processing capabilities
+ * - or wrap some other processing capabilities coming from elsewhere
+ *
+ * Since NMProcess is an abstract class, the following pure virtual functions need
+ * to be implemented in order to create an instance of a processing object
+ *
+ * setNthInput
+ * getOutput
+ * instantiateObject
+ *
+ * A number of other classes can be overridden, to account for process-specific
+ * behaviour, especially interms of linking inputs and parameters
+ *
+ * public methods
+ *
+ * update
+ *      This methods needs to be overridden to implement any non itk::ProcessObject-
+ *      based processing capabilities
+ *
+ * linkInPipeline
+ *      Standard implementation caters for linking requirements of itk::ProcessObject-
+ *      based classes; however it also encapsulates a carefully crafted mechanism of
+ *      how to behave within the different time levels of the modelling framework;
+ *      I recommend looking at the next two protected members for overriding any
+ *      of the linking logic
+ *
+ * protected methods
+ *
+ * linkInputs
+ *      links all user defined inputs to this process component
+ *
+ * linkParameters
+ *      sets all necessary parameters of the itk::ProcessObject underneath
+ *
+ * abortExecution
+ *       deals with user requested abortion of the processing
+ *
+ *
+ */
+
+
 class NMMODFRAME_EXPORT NMProcess : public QObject
 {
     friend class NMProcessFactory;

@@ -45,6 +45,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("SummarizeZones"));
     //this->addItem(QString::fromLatin1("UniqueCombination"));
     this->addItem(QString::fromLatin1("CombineTwo"));
+    this->addItem(QString::fromLatin1("ExternalExec"));
     this->addItem(QString::fromLatin1("TextLabel"));
 }
 

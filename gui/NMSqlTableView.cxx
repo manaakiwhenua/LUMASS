@@ -1635,6 +1635,8 @@ NMSqlTableView::selectionQuery(void)
             .arg(this->mModel->tableName())
             .arg(queryStr).arg(filter2);
 
+
+
     QSqlQuery query(queryStr, this->mModel->database());
     if (!query.exec(queryStr))
     {
@@ -1642,6 +1644,7 @@ NMSqlTableView::selectionQuery(void)
         NMDebugCtx(__ctxsqltabview, << "done!");
         return;
     }
+
 
     //    query.setForwardOnly(true);
         //query.next();
@@ -1703,7 +1706,11 @@ NMSqlTableView::selectionQuery(void)
     this->printSelRanges(sel, "just selected ...");
     mSelectionModel->setSelection(sel);
 
-    //this->updateSelectionAdmin(cnt+1);
+
+
+// ====================================================
+
+//this->updateSelectionAdmin(cnt+1);
 
 //    this->printSelRanges(mBackupSel);
 

@@ -35,6 +35,7 @@
 #include "NMResampleImageFilterWrapper.h"
 #include "NMUniqueCombinationFilterWrapper.h"
 #include "NMCombineTwoFilterWrapper.h"
+#include "NMExternalExecWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -55,10 +56,12 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("ResampleImage")        ;
     //mProcRegister << QString::fromLatin1("UniqueCombination")    ;
     mProcRegister << QString::fromLatin1("CombineTwo")    ;
+    mProcRegister << QString::fromLatin1("ExternalExec");
 
 
     mSinks << QString::fromLatin1("ImageWriter");
     mSinks << QString::fromLatin1("CostDistanceBuffer");
+    mSinks << QString::fromLatin1("ExternalExec");
 
 }
 
@@ -141,6 +144,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMCombineTwoFilterWrapper";
     }
+    else if (alias.compare("ExternalExec") == 0)
+    {
+        return "NMExternalExecWrapper";
+    }
     else return proc;
 }
 
@@ -197,6 +204,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMCombineTwoFilterWrapper") == 0)
     {
         proc =  new NMCombineTwoFilterWrapper(this);
+    }
+    else if (procClass.compare("NMExternalExecWrapper") == 0)
+    {
+        proc =  new NMExternalExecWrapper(this);
     }
     else
         proc =  0;

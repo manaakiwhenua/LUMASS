@@ -220,6 +220,7 @@
 #include <QSqlTableModel>
 #include <QSqlDatabase>
 #include <QSqlQuery>
+#include <QProcess>
 #include "NMSqlTableModel.h"
 
 //// TOKYO CABINET
@@ -1614,268 +1615,21 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 
 void OtbModellerWin::test()
 {
-	NMDebugCtx(ctxOtbModellerWin, << "...");
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    //QProcess cmdline = new QProcess(this);
+    //cmdline.setProgram("/home/alex/garage/testing/extexec1");
+    //cmdline.waitForFinished();
+
+    //QProcess exe2 = new QProcess(this);
+    //exe2.setProgram("/home/alex/garage/testing/extexec2");
+    //exe2.waitForFinished();
+
+    QProcess::execute("/home/alex/garage/testing/extexec1");
+    QProcess::execute("/home/alex/garage/testing/extexec2");
 
 
-    //    NMDebugAI(<< "long long - max: " << itk::NumericTraits<long long>::max()<< std::endl);
-    //    NMDebugAI(<< "int - max:       " << itk::NumericTraits<int>::max() << std::endl);
 
-    //    NMDebug(<< std::endl);
-    //    NMDebugAI(<< "unsigned long long - max: "
-    //              << itk::NumericTraits<unsigned long long>::max() << std::endl);
-    //    NMDebugAI(<< "unsigned int - max: "
-    //              << itk::NumericTraits<unsigned int>::max() << std::endl);
-
-    long long llmax = itk::NumericTraits<long long>::max();
-
-    QString input = QInputDialog::getText(0, "Test Index",
-                                       "Enter: #layers & xdim & ydim & maxHYPDom",
-                                          QLineEdit::Normal,
-                                          "2 10000 10000 256");
-
-    if (input.isEmpty())
-    {
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
-
-    QStringList inputList = input.split(' ');
-    if (inputList.size() < 4)
-    {
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
-
-
-    // -----------------------------------------------------
-    // set the number of unique values per layer
-    // -----------------------------------------------------
-
-
-    time_t start, end;
-    time(&start);
-
-    ::srand(::time(NULL));
-
-    // max number of layers, i.e. dimensions
-    int nlayers = inputList.at(0).toInt();
-
-    // specify the size of each dimension
-    // (i.e. the number of unique values per layer)
-    long long id1 = inputList.at(1).toLongLong();
-    long long id2 = inputList.at(2).toLongLong();
-    int maxHYPSdom = inputList.at(3).toLong();
-
-    // check, whether we can handle the proble numerically
-    if (id1 > llmax / id2)
-    {
-        NMErr(ctxOtbModellerWin, << "Number of possible unique combinations"
-              << " is too big - we cannot handle the problem!");
-        //tchdbclose(hdb);
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
-
-
-    long long muvi = id1 * id2;
-    std::vector<long long> sdom;
-    NMDebugAI(<< "layer dimensions: " << std::endl);
-
-
-    long long testnumeric = 1;
-    std::vector<std::vector<long long> > groupSdoms;
-    std::vector<int> layergroups;
-    long long d = 0;
-    for (int l=0; l < nlayers; ++l)
-    {
-        d = rand() % maxHYPSdom + 5;
-        NMDebugAI(<< "#" << l << " size: " << d << std::endl);
-
-        if (testnumeric > llmax/d)
-        {
-            NMDebugAI(<< "overflow at l=" << l << std::endl);
-            //NMErr(ctxOtbModellerWin, << "Hyperspace overflow!");
-            //tchdbclose(hdb);
-            //NMDebugCtx(ctxOtbModellerWin, << "done!");
-            //return;
-            --l;
-            layergroups.push_back(l);
-            testnumeric = 1;
-            groupSdoms.push_back(sdom);
-            sdom.clear();
-        }
-        else
-        {
-            testnumeric *= d;
-            sdom.push_back(d);
-        }
-        //NMDebug(<< d << " ");
-    }
-    if (layergroups.size() == 0 || layergroups.back() < nlayers-1)
-    {
-        layergroups.push_back(nlayers-1);
-        groupSdoms.push_back(sdom);
-    }
-
-    NMDebug(<< std::endl);
-
-    // ======================================================================
-    // groups layers & calcuate strides table for each group
-    // ======================================================================
-    std::vector<std::vector<long long> > groupStrides;
-    NMDebugAI(<< "max group indices ..." << std::endl);
-    for (int i=0; i < layergroups.size(); ++ i)
-    {
-        std::vector<long long> strides(groupSdoms.at(i).size(),0);
-        strides[0] = 1;
-
-        NMDebugAI(<< ">>>> grp #" << layergroups.at(i) << std::endl);
-        if (i < groupSdoms.at(i).size())
-        {
-            NMDebugAI(<< "  dims: ");
-            for (int s=0; s < groupSdoms.at(i).size(); ++s)
-            {
-                NMDebug(<< groupSdoms.at(i).at(s) << " ");
-            }
-            NMDebug(<< std::endl);
-
-            NMDebugAI( << "  strides: 1 ");
-            for (int s=1; s < groupSdoms.at(i).size(); ++s)
-            {
-                strides[s] = strides[s-1] * groupSdoms.at(i).at(s-1);
-                NMDebug(<< strides[s] << " ");
-            }
-            NMDebugAI( << std::endl);
-        }
-        NMDebug(<< std::endl);
-        groupStrides.push_back(strides);
-    }
-
-    // ======================================================================
-    // PUT SOME DATA INTO THE DATABASE
-    // ======================================================================
-    std::vector<long long> gstride = groupStrides.at(0);
-    std::vector<long long> gdoms = groupSdoms.at(0);
-    std::vector<long long> gvals(gdoms.size(), 0);
-    int gsize = gdoms.size();
-
-    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
-    tab->createTable("/home/alex/tmp/g.ldb");
-    std::string uvcolname = tab->getPrimaryKey();
-
-    std::vector<std::string> colnames;
-    std::vector< otb::AttributeTable::ColumnValue > tabvals(gsize+1);
-
-    colnames.push_back(uvcolname);
-    tabvals[0].type = otb::AttributeTable::ATTYPE_INT;
-
-    //tab->AddColumn("count", otb::AttributeTable::ATTYPE_INT);
-    //colnames.push_back("count");
-    //tabvals[1].type = otb::AttributeTable::ATTYPE_INT;
-
-    for (int g=0; g < groupSdoms.at(0).size(); ++ g)
-    {
-        std::stringstream ssn;
-        ssn << "L" << g+1;
-        tab->AddColumn(ssn.str(), otb::AttributeTable::ATTYPE_INT);
-        colnames.push_back(ssn.str());
-        tabvals[g+1].type = otb::AttributeTable::ATTYPE_INT;
-    }
-
-    tab->prepareBulkSet(colnames);
-
-    NMDebugAI( << "processing: ");
-    tab->beginTransaction();
-    long long uv = 0;
-    long long rep = muvi / 50;
-    long long cnt = 0;
-
-    for (long long pix=0; pix < muvi; ++pix)
-    {
-        for (int g=0; g < gsize; ++g)
-        {
-            //gvals[g] = rand() % gdoms[g];
-            gvals[g] = cnt++;
-            //            sseed = (sseed * 168087) % 2147483647L;
-            //            u = sseed / 2147483711LL;
-            //            gvals[g] = u * gdoms[g];
-            if (g == 0)
-            {
-                uv = gvals[g];
-            }
-            else
-            {
-                uv += gvals[g] * gstride[g];
-            }
-            tabvals[g+1].ival = gvals[g];
-        }
-        tabvals[0].ival = pix;
-        //tabvals[1].ival = 1;
-
-        //if (tab->GetRowIdx(uvcolname, static_cast<void*>(&uv)) == -1)
-        {
-            tab->doBulkSet(tabvals);
-        }
-        if (cnt > maxHYPSdom)
-            cnt = 0;
-        //        else
-        //        {
-        //            tabvals[1].ival += tab->GetIntValue(1, uv);
-        //            tab->doBulkSet(tabvals);
-        //        }
-        //        if (pix % rep == 0)
-        //        {
-        //            NMDebug(<< ".");
-        //        }
-    }
-    tab->endTransaction();
-    tab->closeTable();
-
-    NMDebug(<< std::endl);
-
-    // ======================================================================
-    // TEST CALC THE INDEX
-    // ======================================================================
-
-//    QString idx = QInputDialog::getText(0, "test", "idx into img");
-
-//    QStringList vIdx = idx.split(' ');
-//    std::vector<long long> tidx(vIdx.size(), 0);
-//    for (int q=0; q < vIdx.size(); ++q)
-//    {
-//        tidx[q] = vIdx[q].toLongLong();
-//    }
-
-
-//    NMDebugAI(<< "do combinatorial analysis ..." << std::endl);
-//    std::vector<long long> params(nlayers,0);
-
-//    NMDebugAI(<< "Processing ");
-//    int cnt = 1;
-//    long long uId = 0;
-//    long long progresDiv = muvi / 50LL;
-//    for (long long int i=0; i < muvi; ++i)
-//    {
-//        long long to;
-
-//        // get a random index for each layer
-//        for (int p=0; p < nlayers; ++p)
-//        {
-//            params[p] = rand() % sdom[p];
-//            if (p == 0)
-//                to = params[p];
-//            else
-//                to += params[p] * strides[p];
-
-//        }
-//    }
-//    NMDebug(<< cnt << std::endl);
-
-    time(&end);
-    double dur = difftime(end, start);
-    double min = ((int)dur / 60) + ((dur/60.0) - min);
-
-    NMDebugAI(<< "this took " << min << " minutes " << std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

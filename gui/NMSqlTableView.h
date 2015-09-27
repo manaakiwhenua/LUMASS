@@ -164,6 +164,9 @@ protected:
 
 	void initView();
 	void sortColumn(int col);
+    void updateModelSelection();
+    void updateInternalSelection(const QSqlQuery& query);
+
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
 //	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
@@ -198,15 +201,18 @@ protected:
 	long mlLastClickedRow;
 	bool mbSwitchSelection;
 	bool mbClearSelection;
-	bool mbColumnCalc;
+    //bool mbColumnCalc;
 	bool mbIsSelectable;
 
 	QMap<int, bool> mMapColSortAsc;
 	QStringList mHiddenColumns;
 
-    QItemSelection mBackupSel;
+    std::vector<std::vector<long long > > mvFullSel;
+
+    //QItemSelection mBackupSel;
 
     QString mPrimaryKey;
+    QString mCurrentQuery;
     QString mBaseFilter;
 	QTableView* mTableView;
     QSqlTableModel* mModel;

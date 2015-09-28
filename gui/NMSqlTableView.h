@@ -28,6 +28,7 @@
 
 #include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
+#include "NMSelSortSqlTableProxyModel.h"
 #include "NMFastTrackSelectionModel.h"
 #include "NMTableCalculator.h"
 
@@ -165,7 +166,7 @@ protected:
 	void initView();
 	void sortColumn(int col);
     void updateModelSelection();
-    void updateInternalSelection(const QSqlQuery& query);
+    void updateInternalSelection(QSqlQuery& query);
 
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
@@ -217,7 +218,7 @@ protected:
 	QTableView* mTableView;
     QSqlTableModel* mModel;
     //NMSelectableSortFilterProxyModel* mSortFilter;
-    QSortFilterProxyModel* mSortFilter;
+    NMSelSortSqlTableProxyModel* mSortFilter;
     NMFastTrackSelectionModel* mSelectionModel;
 	NMFastTrackSelectionModel* mProxySelModel;
 

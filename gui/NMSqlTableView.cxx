@@ -31,6 +31,7 @@
 #include "NMSqlTableView.h"
 #include "NMAddColumnDialog.h"
 #include "NMTableCalculator.h"
+#include "NMSelSortSqlTableProxyModel.h"
 
 #include "vtkQtTableModelAdapter.h"
 #include "vtkDelimitedTextReader.h"
@@ -75,8 +76,8 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
     this->mTableView = new QTableView(this);
 	this->initView();
 
-    mSortFilter = new QSortFilterProxyModel(this);
-    mSortFilter->setDynamicSortFilter(true);
+    mSortFilter = new NMSelSortSqlTableProxyModel(this);
+    //mSortFilter->setDynamicSortFilter(true);
     mSortFilter->setSourceModel(mModel);
 
     this->mTableView->setModel(mSortFilter);
@@ -99,18 +100,18 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
     this->mTableView = new QTableView(this);
 	this->initView();
 
-//    mSortFilter = new QSortFilterProxyModel(this);
-//    mSortFilter->setSourceModel(mModel);
+    mSortFilter = new NMSelSortSqlTableProxyModel(this);
+    mSortFilter->setSourceModel(mModel);
 
-//    this->mTableView->setModel(mSortFilter);
-    this->mTableView->setModel(mModel);
-//    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
-//    this->mProxySelModel->setObjectName("FastProxySelection");
-//    this->mTableView->setSelectionModel(mProxySelModel);
+    this->mTableView->setModel(mSortFilter);
+//    this->mTableView->setModel(mModel);
+    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+    this->mProxySelModel->setObjectName("FastProxySelection");
+    this->mTableView->setSelectionModel(mProxySelModel);
 
 
-    mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
-    this->mTableView->setSelectionModel(mSelectionModel);
+    //mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
+//    this->mTableView->setSelectionModel(mSelectionModel);
     this->connectSelModels(true);
 }
 
@@ -349,10 +350,10 @@ NMSqlTableView::connectSelModels(bool bconnect)
 				this, SLOT(updateSelectionAdmin(const QItemSelection &,
 						                        const QItemSelection &)));
 
-//		connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-//				                                         const QItemSelection &)),
-//				this, SLOT(updateProxySelection(const QItemSelection &,
-//						                        const QItemSelection &)));
+        connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
+                                                         const QItemSelection &)),
+                this, SLOT(updateProxySelection(const QItemSelection &,
+                                                const QItemSelection &)));
 	}
 	else
 	{
@@ -361,17 +362,17 @@ NMSqlTableView::connectSelModels(bool bconnect)
 				this, SLOT(updateSelectionAdmin(const QItemSelection &,
 						                        const QItemSelection &)));
 
-//		disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-//				                                         const QItemSelection &)),
-//				this, SLOT(updateProxySelection(const QItemSelection &,
-//						                        const QItemSelection &)));
+        disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
+                                                         const QItemSelection &)),
+                this, SLOT(updateProxySelection(const QItemSelection &,
+                                                const QItemSelection &)));
 	}
 }
 
 void
 NMSqlTableView::update(void)
 {
-    //this->updateProxySelection(QItemSelection(), QItemSelection());
+    this->updateProxySelection(QItemSelection(), QItemSelection());
 }
 
 void
@@ -1579,7 +1580,8 @@ NMSqlTableView::sortColumn(int col)
 	this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
 
     //NMDebugAI(<< "... actually sorting the column" << std::endl);
-    this->mModel->sort(col, order);
+    //this->mModel->sort(col, order);
+    mSortFilter->sort(col, order);
 
 
     if (mlNumRecs == 0)
@@ -1588,29 +1590,7 @@ NMSqlTableView::sortColumn(int col)
         return;
     }
 
-    // ====================================================================
-    // re-select any prior selection, if applicable
-
-    this->mSelectionModel->clear();
-
-    // the order by phrase for reflecting the order
-
-    // any base selection? (e.g. in case of 'admin rows')
-    QString baseFilter = "";
-    if (!mBaseFilter.isEmpty())
-    {
-        baseFilter = QString("AND %1").arg(mBaseFilter);
-    }
-
-    QString queryStr = QString("SELECT rowidx from %1 where %2 %3 %4")
-                        .arg(mModel->tableName())
-                        .arg(mCurrentQuery)
-                        .arg(baseFilter)
-                        .arg(order by )
-
-
-
-    this->updateInternalSelection();
+    //this->updateInternalSelection();
 
 
     NMDebugCtx(__ctxsqltabview, << "done!");
@@ -1762,10 +1742,10 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
     else
     {
         // probably don't need this anymore
-        if (mbSwitchSelection || mbColumnCalc)
+        if (mbSwitchSelection)// || mbColumnCalc)
         {
             mbSwitchSelection = false;
-            mbColumnCalc = false;
+            //mbColumnCalc = false;
         }
 
         if (this->mChkSelectedRecsOnly->isChecked())
@@ -1790,7 +1770,7 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 
 
 void
-NMSqlTableView::updateInternalSelection(const QSqlQuery &query)
+NMSqlTableView::updateInternalSelection(QSqlQuery &query)
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 

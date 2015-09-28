@@ -87,6 +87,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMAddColumnDialog.h
         ${gui_SOURCE_DIR}/NMTableCalculator.h
         ${gui_SOURCE_DIR}/NMSelectableSortFilterProxyModel.h
+        ${gui_SOURCE_DIR}/NMSelSortSqlTableProxyModel.h
         ${gui_SOURCE_DIR}/NMItk2VtkConnector.h
         ${gui_SOURCE_DIR}/NMProcCompList.h
         ${gui_SOURCE_DIR}/NMEditModelComponentDialog.h

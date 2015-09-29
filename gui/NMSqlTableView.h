@@ -140,9 +140,8 @@ public slots:
 	void callHideColumn(void);
 	void callUnHideColumn(void);
 	void setSelectable(bool);
-    void procLayoutChanged(const QList<QPersistentModelIndex> parents,
-                           QAbstractItemModel::LayoutChangeHint hint);
-    void procRowsInserted(QModelIndex parent, int first, int last);
+    //    void procLayoutChanged(const QList<QPersistentModelIndex> parents,
+    //                           QAbstractItemModel::LayoutChangeHint hint);
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);
@@ -155,7 +154,8 @@ signals:
 	void notifyDeleteRasLayer(const QString& imagespec);
 
 protected slots:
-	void updateProxySelection(const QItemSelection& selected,
+    void procRowsInserted(QModelIndex parent, int first, int last);
+    void updateProxySelection(const QItemSelection& selected,
 			const QItemSelection& deselected);
 	void updateSelRecsOnly(int state);
 	void updateSelectionAdmin(const QItemSelection&

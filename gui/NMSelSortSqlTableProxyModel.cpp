@@ -27,6 +27,7 @@
 
 #include <QSqlDatabase>
 #include <QSqlQuery>
+#include <QSqlIndex>
 
 const std::string NMSelSortSqlTableProxyModel::ctx = "NMSelSortSqlTableProxyModel";
 
@@ -43,11 +44,16 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
 
 NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
 {
+    if (mProxyDb.isOpen())
+    {
+        mProxyDb.close();
+    }
 }
 
 void
 NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
 {
+    // disconnect current model from proxy signals
     if (mSourceModel)
     {
         disconnect(mSourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
@@ -62,20 +68,38 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
     }
 
     mSourceModel = qobject_cast<QSqlTableModel*>(sourceModel);
-    if (mSourceModel)
+    if (mSourceModel == 0)
     {
-        QAbstractProxyModel::setSourceModel(sourceModel);
-
-        connect(sourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-                   this, SIGNAL(rowsInserted(QModelIndex,int,int)));
-        connect(sourceModel, SIGNAL(columnsInserted(QModelIndex,int,int)),
-                   this, SIGNAL(columnsInserted(QModelIndex,int,int)));
-
-        connect(sourceModel, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-                   this, SIGNAL(rowsRemoved(QModelIndex,int,int)));
-        connect(sourceModel, SIGNAL(columnsRemoved(QModelIndex,int,int)),
-                   this, SIGNAL(columnsRemoved(QModelIndex,int,int)));
+        return;
     }
+
+
+    // connect new model to proxy signals
+    QAbstractProxyModel::setSourceModel(sourceModel);
+    connect(sourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
+               this, SIGNAL(rowsInserted(QModelIndex,int,int)));
+    connect(sourceModel, SIGNAL(columnsInserted(QModelIndex,int,int)),
+               this, SIGNAL(columnsInserted(QModelIndex,int,int)));
+
+    connect(sourceModel, SIGNAL(rowsRemoved(QModelIndex,int,int)),
+               this, SIGNAL(rowsRemoved(QModelIndex,int,int)));
+    connect(sourceModel, SIGNAL(columnsRemoved(QModelIndex,int,int)),
+               this, SIGNAL(columnsRemoved(QModelIndex,int,int)));
+
+//    QStringList conNames = mSourceModel->database().connectionNames();
+//    QString curname = mSourceModel->database().connectionName();
+//    QString proxname = curname + "_proxy";
+
+//    // just in case ... you never know ...
+//    int cnt = 1;
+//    while(conNames.contains(proxname))
+//    {
+//        proxname = QString("%1_proxy%2").arg(curname).arg(cnt);
+//    }
+
+//    mProxyDb = QSqlDatabase::cloneDatabase(mSourceModel->database(), proxname);
+//    mProxyDb.open();
+//    mProxyTable = mSourceModel->tableName();
 }
 
 void
@@ -154,7 +178,7 @@ NMSelSortSqlTableProxyModel::resetSourceModel()
 }
 
 void
-NMSelSortSqlTableProxyModel::clearSelection()
+NMSelSortSqlTableProxyModel::clearSelection(void)
 {
     if (mSourceModel)
     {
@@ -432,6 +456,52 @@ NMSelSortSqlTableProxyModel::rowCount(const QModelIndex& parent) const
 
     return mSourceModel->rowCount(parent);
 }
+
+int
+NMSelSortSqlTableProxyModel::getNumTableRecords()
+{
+    int rows = -1;
+
+    if (mSourceModel == 0)
+    {
+        return rows;
+    }
+
+    QSqlIndex pk = mSourceModel->primaryKey();
+    QString primaryKey;
+    if (!pk.isEmpty())
+    {
+        primaryKey = pk.name();
+    }
+    else
+    {
+        primaryKey = mSourceModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+    }
+    QString qstr = QString("Select count(%1) from %2").arg(primaryKey)
+                                                      .arg(mSourceModel->tableName());
+    QSqlQuery q(qstr, mSourceModel->database());
+    q.setForwardOnly(true);
+    q.next();
+
+    rows = q.value(0).toInt();
+    //this->mlNumRecs = q.value(0).toInt();
+    //this->updateSelectionAdmin(mlNumRecs);
+
+
+//    QString qstr = QString("Select * from %1").arg(mProxyTable);
+//    QSqlQuery q(mProxyDb);
+//    if (q.exec(qstr))
+//    {
+//        rows = q.size();
+//    }
+//    else
+//    {
+//        rows = mSourceModel->rowCount();
+//    }
+
+    return rows;
+}
+
 
 int
 NMSelSortSqlTableProxyModel::columnCount(const QModelIndex& parent) const

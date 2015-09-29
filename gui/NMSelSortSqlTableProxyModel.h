@@ -42,8 +42,12 @@ public:
     NMSelSortSqlTableProxyModel(QObject *parent=0);
     ~NMSelSortSqlTableProxyModel();
 
+    /*
+     * Re-implemented methods
+     *
+     */
+
     void setSourceModel(QAbstractItemModel *sourceModel);
-    QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
 
     QModelIndex index(int row, int column, const QModelIndex& parent=QModelIndex()) const;
     QModelIndex parent(const QModelIndex& idx) const;
@@ -60,10 +64,17 @@ public:
     //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
     //    QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
 
-
     void sort(int column, Qt::SortOrder order);
+
+
+    /*
+     *  extended NM-API
+     */
+
+    QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
     QItemSelection selectRows(const QString& queryString, bool showSelRecsOnly);
-    void clearSelection();
+    void clearSelection(void);
+    int getNumTableRecords(void);
 
 protected slots:
 
@@ -77,10 +88,11 @@ protected:
     std::pair<int, Qt::SortOrder> mLastColSort;
     QString mLastFilter;
 
-    //std::vector< std::pair<int, int> > mInternalSelection;
     QItemSelection mInternalSelection;
+    QSqlDatabase mProxyDb;
     QSqlTableModel* mSourceModel;
     QString mTempTableName;
+    QString mProxyTable;
 
     bool mLastSelRecsOnly;
 

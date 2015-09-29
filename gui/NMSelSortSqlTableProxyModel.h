@@ -45,24 +45,44 @@ public:
     void setSourceModel(QAbstractItemModel *sourceModel);
     QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
 
-    QModelIndex mapFromSource(const QModelIndex& srcIdx) const;
-    QModelIndex mapToSource(const QModelIndex& proxyIdx) const;
-
-//    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
-//    QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
-
     QModelIndex index(int row, int column, const QModelIndex& parent=QModelIndex()) const;
     QModelIndex parent(const QModelIndex& idx) const;
     int rowCount(const QModelIndex& parent=QModelIndex()) const;
     int columnCount(const QModelIndex& parent=QModelIndex()) const;
+    QVariant headerData(int section, Qt::Orientation orientation,
+            int role) const;
+    QVariant data(const QModelIndex& index, int role=Qt::DisplayRole) const;
+    Qt::ItemFlags flags(const QModelIndex &index) const;
+
+    QModelIndex mapFromSource(const QModelIndex& srcIdx) const;
+    QModelIndex mapToSource(const QModelIndex& proxyIdx) const;
+
+    //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
+    //    QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
+
 
     void sort(int column, Qt::SortOrder order);
+    QItemSelection selectRows(const QString& queryString, bool showSelRecsOnly);
+    void clearSelection();
+
+protected slots:
+
+
 
 protected:
-    std::pair<int, Qt::SortOrder> mLastColSort;
 
+    void updateInternalSelection();
+    void resetSourceModel();
+
+    std::pair<int, Qt::SortOrder> mLastColSort;
+    QString mLastFilter;
+
+    //std::vector< std::pair<int, int> > mInternalSelection;
+    QItemSelection mInternalSelection;
     QSqlTableModel* mSourceModel;
     QString mTempTableName;
+
+    bool mLastSelRecsOnly;
 
 
 private:

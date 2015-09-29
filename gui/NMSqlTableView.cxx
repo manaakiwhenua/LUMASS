@@ -81,15 +81,15 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
     mSortFilter->setSourceModel(mModel);
 
     this->mTableView->setModel(mSortFilter);
-//    this->mTableView->setModel(mModel);
+    //    this->mTableView->setModel(mModel);
 
     this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
     this->mProxySelModel->setObjectName("FastProxySelection");
     this->mTableView->setSelectionModel(mProxySelModel);
 
-//   mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
-//   mTableView->setSelectionModel(mSelectionModel);
-   this->connectSelModels(true);
+   //mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
+   //mTableView->setSelectionModel(mSelectionModel);
+   //this->connectSelModels(true);
 }
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* parent)
@@ -101,6 +101,7 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
 	this->initView();
 
     mSortFilter = new NMSelSortSqlTableProxyModel(this);
+    //mSortFilter->setDynamicSortFilter(true);
     mSortFilter->setSourceModel(mModel);
 
     this->mTableView->setModel(mSortFilter);
@@ -112,7 +113,7 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
 
     //mSelectionModel = new NMFastTrackSelectionModel(mModel, this);
 //    this->mTableView->setSelectionModel(mSelectionModel);
-    this->connectSelModels(true);
+    //this->connectSelModels(true);
 }
 
 
@@ -1580,9 +1581,8 @@ NMSqlTableView::sortColumn(int col)
 	this->mTableView->horizontalHeader()->setSortIndicatorShown(true);
 
     //NMDebugAI(<< "... actually sorting the column" << std::endl);
-    //this->mModel->sort(col, order);
     mSortFilter->sort(col, order);
-
+    this->mTableView->reset();
 
     if (mlNumRecs == 0)
     {
@@ -1624,81 +1624,91 @@ NMSqlTableView::selectionQuery(void)
         baseQuery = QString(" AND %1").arg(mBaseFilter);
     }
 
-    queryStr = QString("SELECT rowidx from %1 where %2 %3 %4")
-            .arg(this->mModel->tableName())
+    //queryStr = QString("SELECT rowidx from %1 where %2 %3 %4")
+    queryStr = QString("%1 %2 %3")
+            //.arg(this->mModel->tableName())
             .arg(queryStr).arg(recentQuery).arg(baseQuery);
 
-    QSqlQuery query(queryStr, this->mModel->database());
-    if (!query.exec(queryStr))
-    {
-        NMDebugAI(<< "Invalid query!" << std::endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
+//    QSqlQuery query(queryStr, this->mModel->database());
+//    if (!query.exec(queryStr))
+//    {
+//        NMDebugAI(<< "Invalid query!" << std::endl);
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
     mCurrentQuery = queryStr + recentQuery;
 
     // we always add to the selection
     //mvFullSel.clear();
-    QItemSelection sel = this->mSelectionModel->getSelection();
-    int cnt = 0;
-    int mincol = 0;
-    int maxcol = mModel->columnCount()-1;
+//    QItemSelection sel = this->mSelectionModel->getSelection();
+//    int cnt = 0;
+//    int mincol = 0;
+//    int maxcol = mModel->columnCount()-1;
 
-    long top = -1;
-    if (query.next())
-    {
-        top = query.value(0).toInt();
-    }
-    else
-    {
-        NMDebugAI(<< "Failed fetching first record of result set!" << std::endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
-    long bottom = top;
+//    long top = -1;
+//    if (query.next())
+//    {
+//        top = query.value(0).toInt();
+//    }
+//    else
+//    {
+//        NMDebugAI(<< "Failed fetching first record of result set!" << std::endl);
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
+//    long bottom = top;
 
-    while(query.next())
-    {
-        const int v = query.value(0).toInt();
+//    while(query.next())
+//    {
+//        const int v = query.value(0).toInt();
 
-        // extend the selection range
-        if (v == bottom + 1)
-        {
-            bottom = v;
-        }
-        // write selection range and start new
-        else
-        {
-            NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-            cnt += bottom - top + 1;
-            const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-            std::vector<long long> selr;
-            selr.push_back(top);
-            selr.push_back(bottom);
-            mvFullSel.push_back(selr);
-            sel.append(QItemSelectionRange(tl, br));
-            top = v;
-            bottom = v;
-        }
-    }
+//        // extend the selection range
+//        if (v == bottom + 1)
+//        {
+//            bottom = v;
+//        }
+//        // write selection range and start new
+//        else
+//        {
+//            NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+//            cnt += bottom - top + 1;
+//            const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
+//            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
+//            std::vector<long long> selr;
+//            selr.push_back(top);
+//            selr.push_back(bottom);
+//            mvFullSel.push_back(selr);
+//            sel.append(QItemSelectionRange(tl, br));
+//            top = v;
+//            bottom = v;
+//        }
+//    }
 
-    // add the last open selection
-    NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-    cnt += bottom - top + 1;
-    std::vector<long long> selr;
-    selr.push_back(top);
-    selr.push_back(bottom);
-    mvFullSel.push_back(selr);
-    const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-    const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-    sel.append(QItemSelectionRange(tl, br));
+//    // add the last open selection
+//    NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+//    cnt += bottom - top + 1;
+//    std::vector<long long> selr;
+//    selr.push_back(top);
+//    selr.push_back(bottom);
+//    mvFullSel.push_back(selr);
+//    const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
+//    const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
+//    sel.append(QItemSelectionRange(tl, br));
+
+    QItemSelection sel = mSortFilter->selectRows(queryStr,
+                      this->mChkSelectedRecsOnly->isChecked());
 
     this->printSelRanges(sel, "just selected ...");
     mSelectionModel->setSelection(sel);
 
+    this->mTableView->reset();
 
-    NMDebugAI(<< cnt << " selected rows" << std::endl);
+    if (sel.size() == 0)
+    {
+        this->updateSelectionAdmin(mSortFilter->rowCount());
+    }
+
+    //NMDebugAI(<< cnt << " selected rows" << std::endl);
 
     //mbColumnCalc = true;
 

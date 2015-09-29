@@ -396,7 +396,7 @@ NMSelectableSortFilterProxyModel::removeFromFilter(const QItemSelection& srcSel)
 		return;
 
     // added due to qt4 to qt5 transition
-    emit beginResetModel();
+    //emit beginResetModel();
 
     foreach(const QItemSelectionRange& range, srcSel)
 	{
@@ -410,7 +410,7 @@ NMSelectableSortFilterProxyModel::removeFromFilter(const QItemSelection& srcSel)
 	}
 
     // added due to qt4 to qt5 transition
-    emit endResetModel();
+    //emit endResetModel();
 
     // commented due to qt4 to qt5 transition
     //emit this->reset();

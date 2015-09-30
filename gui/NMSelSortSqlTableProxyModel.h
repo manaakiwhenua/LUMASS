@@ -28,6 +28,7 @@
 #include <qabstractproxymodel.h>
 
 #include "nmlog.h"
+#include "NMSqlTableModel.h"
 
 #include <QObject>
 #include <QSqlTableModel>
@@ -97,7 +98,7 @@ protected:
 
     QItemSelection mProxySelection;
     QItemSelection mSourceSelection;
-    QSqlTableModel* mSourceModel;
+    NMSqlTableModel* mSourceModel;
     QString mSourcePK;
     QString mProxyPK;
 

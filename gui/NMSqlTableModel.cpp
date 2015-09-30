@@ -32,33 +32,32 @@ NMSqlTableModel::NMSqlTableModel(QObject *parent, QSqlDatabase db)
 QVariant
 NMSqlTableModel::data(const QModelIndex &idx, int role) const
 {
-    if (!idx.isValid())
-    {
-        return QVariant();
-    }
+    QVariant var = QSqlTableModel::data(idx, role);
 
-    switch(role)
+    if (idx.isValid())
     {
-    case Qt::TextAlignmentRole:
+        switch(role)
         {
-            QVariant value = QSqlTableModel::data(idx, Qt::DisplayRole);
-            switch(value.type())
+        case Qt::TextAlignmentRole:
             {
-            case QVariant::Double:
-            case QVariant::Int:
-            case QVariant::UInt:
-            case QVariant::LongLong:
-            case QVariant::ULongLong:
-                return QVariant(Qt::AlignRight | Qt::AlignVCenter);
-                break;
-            default:
-                    return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
+                QVariant value = QSqlTableModel::data(idx, Qt::DisplayRole);
+                switch(value.type())
+                {
+                case QVariant::Double:
+                case QVariant::Int:
+                case QVariant::UInt:
+                case QVariant::LongLong:
+                case QVariant::ULongLong:
+                    return QVariant(Qt::AlignRight | Qt::AlignVCenter);
                     break;
+                default:
+                        return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
+                        break;
+                }
             }
+            break;
         }
-        break;
-
-    default:
-        return QSqlTableModel::data(idx, role);
     }
+
+    return var;
 }

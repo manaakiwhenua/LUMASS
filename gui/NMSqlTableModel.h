@@ -36,7 +36,7 @@ class NMSqlTableModel : public QSqlTableModel
 public:
     NMSqlTableModel(QObject* parent=0, QSqlDatabase db=QSqlDatabase());
 
-    virtual QVariant data(const QModelIndex &idx, int role) const;
+    QVariant data(const QModelIndex &idx, int role) const;
 };
 
 #endif // NMSQLTABLEMODEL_H

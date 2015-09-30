@@ -53,6 +53,7 @@ NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
 void
 NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
 {
+
     // disconnect current model from proxy signals
     if (mSourceModel)
     {
@@ -67,7 +68,7 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
                    this, SIGNAL(columnsRemoved(QModelIndex,int,int)));
     }
 
-    mSourceModel = qobject_cast<QSqlTableModel*>(sourceModel);
+    mSourceModel = qobject_cast<NMSqlTableModel*>(sourceModel);
     if (mSourceModel == 0)
     {
         return;
@@ -730,10 +731,10 @@ NMSelSortSqlTableProxyModel::columnCount(const QModelIndex& parent) const
 Qt::ItemFlags
 NMSelSortSqlTableProxyModel::flags(const QModelIndex &index) const
 {
-    //if (index.isValid())
+    if (index.isValid())
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
-    //else
-      //  return 0;
+    else
+        return 0;
 }
 
 QVariant
@@ -761,6 +762,7 @@ NMSelSortSqlTableProxyModel::data(const QModelIndex& index, int role) const
     {
         return QVariant();
     }
+
     return this->mSourceModel->data(mapToSource(index), role);
 }
 

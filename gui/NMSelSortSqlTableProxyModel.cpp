@@ -33,9 +33,13 @@ const std::string NMSelSortSqlTableProxyModel::ctx = "NMSelSortSqlTableProxyMode
 
 NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
     : mSourceModel(0),
-      mTempTableName(""),
       mLastFilter(""),
-      mLastSelRecsOnly(false)
+      mLastSelRecsOnly(false),
+      mLastSelCount(0),
+      mTempTableName("tmp_proxy_source_ids"),
+      mSourcePK(""),
+      mProxyPK("")
+
 {
     this->setParent(parent);
     mLastColSort.first = -1;
@@ -44,10 +48,6 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
 
 NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
 {
-    if (mProxyDb.isOpen())
-    {
-        mProxyDb.close();
-    }
 }
 
 void
@@ -73,7 +73,6 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
         return;
     }
 
-
     // connect new model to proxy signals
     QAbstractProxyModel::setSourceModel(sourceModel);
     connect(sourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
@@ -86,20 +85,28 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
     connect(sourceModel, SIGNAL(columnsRemoved(QModelIndex,int,int)),
                this, SIGNAL(columnsRemoved(QModelIndex,int,int)));
 
-//    QStringList conNames = mSourceModel->database().connectionNames();
-//    QString curname = mSourceModel->database().connectionName();
-//    QString proxname = curname + "_proxy";
+    mSourcePK = getSourcePK();
+    mProxyPK = "nm_proxy_id";
+}
 
-//    // just in case ... you never know ...
-//    int cnt = 1;
-//    while(conNames.contains(proxname))
-//    {
-//        proxname = QString("%1_proxy%2").arg(curname).arg(cnt);
-//    }
+QItemSelection
+NMSelSortSqlTableProxyModel::getProxySelection()
+{
+    if (mUpdateProxySelection)
+    {
+        updateSelection(mProxySelection, true);
+    }
+    return mProxySelection;
+}
 
-//    mProxyDb = QSqlDatabase::cloneDatabase(mSourceModel->database(), proxname);
-//    mProxyDb.open();
-//    mProxyTable = mSourceModel->tableName();
+QItemSelection
+NMSelSortSqlTableProxyModel::getSourceSelection()
+{
+    if (mUpdateSourceSelection)
+    {
+        updateSelection(mSourceSelection, false);
+    }
+    return mSourceSelection;
 }
 
 void
@@ -122,19 +129,32 @@ NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
     mLastColSort.second = order;
 
     emit layoutChanged();
+
+    mUpdateProxySelection = true;
+    mUpdateSourceSelection = true;
+
+    // create new mapping table here
+    if (!createMappingTable())
+    {
+        // complain ...
+
+        return;
+    }
 }
 
-QItemSelection
+bool
 NMSelSortSqlTableProxyModel::selectRows(const QString &queryString, bool showSelRecsOnly)
 {
     if (mSourceModel == 0)
     {
-        return QItemSelection();
+        return false;
     }
 
     QString qstr = queryString;
 
     bool chngLayout = showSelRecsOnly ? true : mLastSelRecsOnly ? true : false;
+    mLastSelRecsOnly = showSelRecsOnly;
+
     if (chngLayout)
     {
         emit layoutAboutToBeChanged();
@@ -146,27 +166,24 @@ NMSelSortSqlTableProxyModel::selectRows(const QString &queryString, bool showSel
         {
             mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
         }
-        mSourceModel->select();
-        mLastFilter = qstr;
+
+        // if the filter is invalid, we just re-set
+        // the previous selection and get out of here
+        if (!mSourceModel->select())
+        {
+            mSourceModel->setFilter(mLastFilter);
+            mSourceModel->select();
+            emit layoutChanged();
+            return false;
+        }
 
         emit layoutChanged();
-
-        if (!showSelRecsOnly)
-        {
-            updateInternalSelection();
-            return mInternalSelection;
-        }
-    }
-    // "selection only query"
-    else
-    {
-        mLastFilter = qstr;
-
-        updateInternalSelection();
-        return mInternalSelection;
     }
 
-    return QItemSelection();
+    mLastFilter = qstr;
+    mUpdateProxySelection = true;
+    mUpdateSourceSelection = true;
+    return true;
 }
 
 void
@@ -185,36 +202,228 @@ NMSelSortSqlTableProxyModel::clearSelection(void)
         emit layoutAboutToBeChanged();
         this->resetSourceModel();
         mLastFilter = "";
+        mProxySelection.clear();
+        mSourceSelection.clear();
+        mUpdateProxySelection = false;
+        mUpdateSourceSelection = false;
         emit layoutChanged();
     }
 }
 
-void
-NMSelSortSqlTableProxyModel::updateInternalSelection()
+QString
+NMSelSortSqlTableProxyModel::getSourcePK()
 {
+    QString primaryKey = "";
+    if (mSourceModel == 0)
+    {
+        return primaryKey;
+    }
 
+    QSqlIndex pk = mSourceModel->primaryKey();
+    if (!pk.isEmpty())
+    {
+        primaryKey = pk.fieldName(0);
+    }
+    else
+    {
+        primaryKey = mSourceModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+    }
+
+    return primaryKey;
 }
 
-//bool
-//NMSelSortSqlTableProxyModel::canFetchMore(const QModelIndex &parent) const
-//{
-//    if (mSourceModel == 0)
-//    {
-//        return false;
-//    }
+bool
+NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySelection)
+{
+    // ==========================================================================
+    //  DEFINE SELECTION UPDATE QUERY
+    // ==========================================================================
 
-//    return mSourceModel->canFetchMore(parent);
-//}
+    // check, whether we've got a mapping table at all
+    bool tmpTable = false;
+    QStringList allTables = mSourceModel->database().tables();
+    if (allTables.contains(mTempTableName))
+    {
+        tmpTable = true;
+    }
 
-//void
-//NMSelSortSqlTableProxyModel::fetchMore(const QModelIndex &parent)
-//{
-//    if (mSourceModel && mSourceModel->canFetchMore(parent))
-//    {
-//        mSourceModel->fetchMore(parent);
-//        this->resetInternalData();
-//    }
-//}
+    QString selectColumn = mProxyPK;
+    QString orderByClause = "";
+    QAbstractItemModel* model = this;
+    QString tableName = mTempTableName;
+    int proxyCorr = -1;
+    if (!bProxySelection || !tmpTable)
+    {
+        model = mSourceModel;
+        selectColumn = mSourcePK;
+        orderByClause = QString("order by %1 asc").arg(selectColumn);
+        proxyCorr = 0;
+        if (!tmpTable)
+        {
+            tableName = mSourceModel->tableName();
+        }
+    }
+
+    QString queryStr = QString("select %1 from %2 where %3 %4")
+                       .arg(selectColumn)
+                       .arg(tableName)
+                       .arg(mLastFilter)
+                       .arg(orderByClause);
+
+    QSqlQuery queryObj(mSourceModel->database());
+    queryObj.setForwardOnly(true);
+    if (!queryObj.exec(queryStr))
+    {
+        //NMErr(ctx, << "Updating internal selection failed!");
+        return false;
+    }
+
+    // ==========================================================================
+    //  UPDATE ITEM SELECTION
+    // ==========================================================================
+
+    // init some vars
+    sel.clear();
+    mLastSelCount = 0;
+    int mincol = 0;
+    int maxcol = model->columnCount()-1;
+
+    // select the first row
+    queryObj.next();
+    int top = queryObj.value(0).toInt() + proxyCorr;
+    int bottom = top;
+
+    // extend selection as appropriate and/or create new ones
+    while (queryObj.next())
+    {
+        const int v = queryObj.value(0).toInt() + proxyCorr;
+        if (v == bottom + 1)
+        {
+            bottom = v;
+        }
+        // write selection range and start new
+        else
+        {
+            //NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+            mLastSelCount += bottom - top + 1;
+            const QModelIndex tl = model->index(top, mincol, QModelIndex());
+            const QModelIndex br = model->index(bottom, maxcol, QModelIndex());
+            sel.append(QItemSelectionRange(tl, br));
+            top = v;
+            bottom = v;
+        }
+    }
+
+    // close the last open selection
+    //NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+    mLastSelCount += bottom - top + 1;
+    const QModelIndex tl = model->index(top, mincol, QModelIndex());
+    const QModelIndex br = model->index(bottom, maxcol, QModelIndex());
+    sel.append(QItemSelectionRange(tl, br));
+
+    if (bProxySelection)
+    {
+        mUpdateProxySelection = false;
+    }
+    else
+    {
+        mUpdateSourceSelection = false;
+    }
+
+    return true;
+}
+
+bool
+NMSelSortSqlTableProxyModel::createMappingTable(void)
+{
+    // ==================================================================
+    // drop any previously created mapping tables
+    // ==================================================================
+    if (!mTempTableName.isEmpty())
+    {
+        QStringList tables = mSourceModel->database().tables();
+        if (tables.contains(mTempTableName, Qt::CaseInsensitive))
+        {
+            QString qstr = QString("Drop table if exists %1").arg(mTempTableName);
+            QSqlQuery qobj(mSourceModel->database());
+            if (!qobj.exec(qstr))
+            {
+                //                NMErr(ctx, << "Failed dropping previous mapping table"
+                //                           << " '" << mTempTableName.toStdString() << "'!");
+                //                NMDebugCtx(ctx, << "done!");
+                return false;
+            }
+        }
+    }
+
+    // ==================================================================
+    // query the table creating SQL and use for creating temp table
+    // ==================================================================
+    QString tmpStruct = QString("Select sql from sqlite_master where type='table' and name='%1'")
+                            .arg(mSourceModel->tableName());
+    QSqlQuery queryStruct(mSourceModel->database());
+    if (!queryStruct.exec(tmpStruct))
+    {
+        return false;
+    }
+    queryStruct.next();
+    QString orgTableSql = queryStruct.value(0).toString();
+
+    int pos = orgTableSql.indexOf(',');
+    orgTableSql.right(orgTableSql.length()-pos);
+    QString tmpCreate = QString("Create temp table if not exists %1 ")
+                        .arg(mTempTableName);
+    tmpCreate += QString("(%1 integer primary key, %2").arg(mProxyPK)
+                                                       .arg(mSourcePK);
+    tmpCreate += orgTableSql;
+
+    QSqlQuery queryTmpCreate(mSourceModel->database());
+    if (!queryTmpCreate.exec(tmpCreate))
+    {
+        // complain here
+        // ....
+
+        return false;
+    }
+
+    // ==================================================================
+    // populate the table
+    // ==================================================================
+
+    // list of original columns
+    QString columns = "(";
+    for (int c=0; c < mSourceModel->columnCount(); ++c)
+    {
+        columns += mSourceModel->headerData(c, Qt::Horizontal).toString();
+        if (c < mSourceModel->columnCount() - 1)
+        {
+            columns += ", ";
+        }
+    }
+
+    // order by clause
+    QString orderByClause = "";
+    if (mLastColSort.first >= 0)
+    {
+        QString sOrderColumn = mSourceModel->headerData(mLastColSort.first, Qt::Horizontal).toString();
+        QString qsSortOrder = mLastColSort.second == Qt::AscendingOrder ? "ASC" : "DESC";
+        orderByClause = QString("order by %1 %2").arg(sOrderColumn).arg(qsSortOrder);
+    }
+
+    QString tmpInsert = QString("Intert into %1 %2 select * from %3 %4")
+                        .arg(mTempTableName)
+                        .arg(columns)
+                        .arg(mSourceModel->tableName())
+                        .arg(orderByClause);
+
+    QSqlQuery queryInsert(mSourceModel->database());
+    if (!queryInsert.exec(tmpInsert))
+    {
+        return false;
+    }
+
+    return true;
+}
 
 /*
 void
@@ -337,17 +546,18 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
         return QModelIndex();
     }
 
-    return this->mSourceModel->index(srcIdx.row(), srcIdx.column(), srcIdx.parent());
+    //return this->mSourceModel->index(srcIdx.row(), srcIdx.column(), srcIdx.parent());
 
-    /*
     // no need of expensive mapping unless the model has been sorted
     if (mTempTableName.isEmpty())
     {
         return this->mSourceModel->index(srcIdx.row(), srcIdx.column(), srcIdx.parent());
     }
 
-    QString qstr = QString("Select proxy from %1 where source = %2;")
+    QString qstr = QString("Select %1 from %2 where %3 = %4;")
+                   .arg(mProxyPK)
                    .arg(mTempTableName)
+                   .arg(mSourcePK)
                    .arg(srcIdx.row());
 
     QSqlQuery qProxy(mSourceModel->database());
@@ -366,7 +576,6 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
     }
 
     return QModelIndex();
-    */
 }
 
 QModelIndex
@@ -377,9 +586,9 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
         return QModelIndex();
     }
 
-    return mSourceModel->index(proxyIdx.row(), proxyIdx.column(), proxyIdx.parent());
+    //return mSourceModel->index(proxyIdx.row(), proxyIdx.column(), proxyIdx.parent());
 
-    /*
+
     // no need of expensive mapping unless the model has been sorted
     if (mTempTableName.isEmpty())
     {
@@ -388,8 +597,10 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
 
     // NOTE: since we utilise the autoincrementing primary key, the
     // proxy index in the mapping-table is 1-based!
-    QString qstr = QString("Select source from %1 where proxy = %2;")
+    QString qstr = QString("Select %1 from %2 where %3 = %4;")
+                   .arg(mSourcePK)
                    .arg(mTempTableName)
+                   .arg(mProxyPK)
                    .arg(proxyIdx.row()+1);
 
     QSqlQuery qProxy(qstr, mSourceModel->database());
@@ -406,7 +617,6 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
     }
 
     return QModelIndex();
-    */
 }
 
 //QItemSelection NMSelSortSqlTableProxyModel::mapSelectionFromSource(const QItemSelection& sourceSelection) const
@@ -479,11 +689,14 @@ NMSelSortSqlTableProxyModel::getNumTableRecords()
     }
     QString qstr = QString("Select count(%1) from %2").arg(primaryKey)
                                                       .arg(mSourceModel->tableName());
-    QSqlQuery q(qstr, mSourceModel->database());
+    QSqlQuery q(mSourceModel->database());
     q.setForwardOnly(true);
-    q.next();
+    if (q.exec(qstr))
+    {
+        q.next();
 
-    rows = q.value(0).toInt();
+        rows = q.value(0).toInt();
+    }
     //this->mlNumRecs = q.value(0).toInt();
     //this->updateSelectionAdmin(mlNumRecs);
 
@@ -517,10 +730,10 @@ NMSelSortSqlTableProxyModel::columnCount(const QModelIndex& parent) const
 Qt::ItemFlags
 NMSelSortSqlTableProxyModel::flags(const QModelIndex &index) const
 {
-    if (index.isValid())
-        return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-    else
-        return 0;
+    //if (index.isValid())
+        return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
+    //else
+      //  return 0;
 }
 
 QVariant

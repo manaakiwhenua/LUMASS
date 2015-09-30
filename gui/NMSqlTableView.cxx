@@ -127,6 +127,7 @@ void NMSqlTableView::initView()
 
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
+    this->mTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
 
 	this->setWindowFlags(Qt::Window);
@@ -387,7 +388,7 @@ NMSqlTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
     }
 
 	this->mSelectionModel = selectionModel;
-	this->connectSelModels(true);
+    //this->connectSelModels(true);
 	if (this->mSelectionModel)
 	{
         //this->mTableView->setSelectionModel(mSelectionModel);
@@ -1625,106 +1626,29 @@ NMSqlTableView::selectionQuery(void)
         baseQuery = QString(" AND %1").arg(mBaseFilter);
     }
 
-    //queryStr = QString("SELECT rowidx from %1 where %2 %3 %4")
     queryStr = QString("%1 %2 %3")
-            //.arg(this->mModel->tableName())
             .arg(queryStr).arg(recentQuery).arg(baseQuery);
 
-//    QSqlQuery query(queryStr, this->mModel->database());
-//    if (!query.exec(queryStr))
-//    {
-//        NMDebugAI(<< "Invalid query!" << std::endl);
-//        NMDebugCtx(__ctxsqltabview, << "done!");
-//        return;
-//    }
     mCurrentQuery = queryStr + recentQuery;
 
-    // we always add to the selection
-    //mvFullSel.clear();
-//    QItemSelection sel = this->mSelectionModel->getSelection();
-//    int cnt = 0;
-//    int mincol = 0;
-//    int maxcol = mModel->columnCount()-1;
-
-//    long top = -1;
-//    if (query.next())
-//    {
-//        top = query.value(0).toInt();
-//    }
-//    else
-//    {
-//        NMDebugAI(<< "Failed fetching first record of result set!" << std::endl);
-//        NMDebugCtx(__ctxsqltabview, << "done!");
-//        return;
-//    }
-//    long bottom = top;
-
-//    while(query.next())
-//    {
-//        const int v = query.value(0).toInt();
-
-//        // extend the selection range
-//        if (v == bottom + 1)
-//        {
-//            bottom = v;
-//        }
-//        // write selection range and start new
-//        else
-//        {
-//            NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-//            cnt += bottom - top + 1;
-//            const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-//            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-//            std::vector<long long> selr;
-//            selr.push_back(top);
-//            selr.push_back(bottom);
-//            mvFullSel.push_back(selr);
-//            sel.append(QItemSelectionRange(tl, br));
-//            top = v;
-//            bottom = v;
-//        }
-//    }
-
-//    // add the last open selection
-//    NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-//    cnt += bottom - top + 1;
-//    std::vector<long long> selr;
-//    selr.push_back(top);
-//    selr.push_back(bottom);
-//    mvFullSel.push_back(selr);
-//    const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-//    const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-//    sel.append(QItemSelectionRange(tl, br));
-
-    QItemSelection sel = mSortFilter->selectRows(queryStr,
-                      this->mChkSelectedRecsOnly->isChecked());
-
-    this->printSelRanges(sel, "just selected ...");
-    mSelectionModel->setSelection(sel);
+    if (mSortFilter->selectRows(queryStr,
+                      this->mChkSelectedRecsOnly->isChecked()))
+    {
+        mProxySelModel->setSelection(mSortFilter->getProxySelection());
+        this->updateSelectionAdmin(mSortFilter->getSelCount());
+    }
 
     this->mTableView->reset();
 
-    if (sel.size() == 0)
-    {
-        this->updateSelectionAdmin(mSortFilter->getNumTableRecords());
-    }
-
     //NMDebugAI(<< cnt << " selected rows" << std::endl);
-
-    //mbColumnCalc = true;
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 
 void NMSqlTableView::clearSelection()
 {
-//	mbClearSelection = true;
-//	if (this->mSelectionModel)
-//    {
-//		this->mSelectionModel->clearSelection();
-//    }
-//    mvFullSel.clear();
-    this->mSortFilter->clearSelection();
+    this->mProxySelModel->clearSelection();
+    this->updateSelectionAdmin(0);
     this->mTableView->reset();
     mCurrentQuery.clear();
 }

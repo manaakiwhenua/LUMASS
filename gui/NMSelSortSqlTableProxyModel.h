@@ -72,27 +72,34 @@ public:
      */
 
     QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
-    QItemSelection selectRows(const QString& queryString, bool showSelRecsOnly);
+    bool selectRows(const QString& queryString, bool showSelRecsOnly);
     void clearSelection(void);
     int getNumTableRecords(void);
-
-protected slots:
-
+    long getSelCount(void) {return mLastSelCount;}
+    QItemSelection getProxySelection(void);
+    QItemSelection getSourceSelection(void);
 
 
 protected:
 
-    void updateInternalSelection();
+    bool updateSelection(QItemSelection& sel, bool bProxySelection=true);
     void resetSourceModel();
+    bool createMappingTable();
+    QString getSourcePK(void);
 
     std::pair<int, Qt::SortOrder> mLastColSort;
     QString mLastFilter;
-
-    QItemSelection mInternalSelection;
-    QSqlDatabase mProxyDb;
-    QSqlTableModel* mSourceModel;
     QString mTempTableName;
-    QString mProxyTable;
+    long mLastSelCount;
+
+    bool mUpdateProxySelection;
+    bool mUpdateSourceSelection;
+
+    QItemSelection mProxySelection;
+    QItemSelection mSourceSelection;
+    QSqlTableModel* mSourceModel;
+    QString mSourcePK;
+    QString mProxyPK;
 
     bool mLastSelRecsOnly;
 

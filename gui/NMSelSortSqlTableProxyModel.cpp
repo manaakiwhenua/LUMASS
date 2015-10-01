@@ -237,6 +237,12 @@ NMSelSortSqlTableProxyModel::getSourcePK()
 bool
 NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySelection)
 {
+    if (mLastFilter.isEmpty())
+    {
+        // nothing to update here, really
+        return true;
+    }
+
     // ==========================================================================
     //  DEFINE SELECTION UPDATE QUERY
     // ==========================================================================
@@ -250,6 +256,7 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     }
 
     QString selectColumn = mProxyPK;
+    QString whereClause = QString("where %1").arg(mLastFilter);
     QString orderByClause = "";
     QAbstractItemModel* model = this;
     QString tableName = mTempTableName;
@@ -266,17 +273,17 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
         }
     }
 
-    QString queryStr = QString("select %1 from %2 where %3 %4")
+    QString queryStr = QString("select %1 from %2 %3 %4")
                        .arg(selectColumn)
                        .arg(tableName)
-                       .arg(mLastFilter)
+                       .arg(whereClause)
                        .arg(orderByClause);
 
     QSqlQuery queryObj(mSourceModel->database());
     queryObj.setForwardOnly(true);
     if (!queryObj.exec(queryStr))
     {
-        //NMErr(ctx, << "Updating internal selection failed!");
+        NMErr(ctx, << queryObj.lastError().text().toStdString() << std::endl);
         return false;
     }
 
@@ -291,9 +298,15 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     int maxcol = model->columnCount()-1;
 
     // select the first row
-    queryObj.next();
-    int top = queryObj.value(0).toInt() + proxyCorr;
-    int bottom = top;
+    int top = -1;
+    int bottom = -1;
+
+    // select the first reported record
+    if (queryObj.next())
+    {
+        top = queryObj.value(0).toInt() + proxyCorr;
+        bottom = top;
+    }
 
     // extend selection as appropriate and/or create new ones
     while (queryObj.next())
@@ -303,7 +316,7 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
         {
             bottom = v;
         }
-        // write selection range and start new
+        // write selection range and start new range
         else
         {
             //NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
@@ -315,13 +328,16 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
             bottom = v;
         }
     }
+    queryObj.finish();
 
-    // close the last open selection
-    //NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-    mLastSelCount += bottom - top + 1;
-    const QModelIndex tl = model->index(top, mincol, QModelIndex());
-    const QModelIndex br = model->index(bottom, maxcol, QModelIndex());
-    sel.append(QItemSelectionRange(tl, br));
+    // close the last open selection, if any ...
+    if (top != -1 && bottom != -1)
+    {
+        mLastSelCount += bottom - top + 1;
+        const QModelIndex tl = model->index(top, mincol, QModelIndex());
+        const QModelIndex br = model->index(bottom, maxcol, QModelIndex());
+        sel.append(QItemSelectionRange(tl, br));
+    }
 
     if (bProxySelection)
     {
@@ -351,9 +367,6 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
             if (!qobj.exec(qstr))
             {
                 NMErr(ctx, << qobj.lastError().text().toStdString() << std::endl);
-                //                NMErr(ctx, << "Failed dropping previous mapping table"
-                //                           << " '" << mTempTableName.toStdString() << "'!");
-                //                NMDebugCtx(ctx, << "done!");
                 return false;
             }
         }
@@ -367,6 +380,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryStruct(mSourceModel->database());
     if (!queryStruct.exec(tmpStruct))
     {
+        NMErr(ctx, << queryStruct.lastError().text().toStdString() << std::endl);
         return false;
     }
     queryStruct.next();
@@ -383,9 +397,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryTmpCreate(mSourceModel->database());
     if (!queryTmpCreate.exec(tmpCreate))
     {
-        // complain here
-        // ....
-
+        NMErr(ctx, << queryTmpCreate.lastError().text().toStdString() << std::endl);
         return false;
     }
 
@@ -403,6 +415,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
             columns += ", ";
         }
     }
+    columns += ")";
 
     // order by clause
     QString orderByClause = "";
@@ -413,7 +426,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
         orderByClause = QString("order by %1 %2").arg(sOrderColumn).arg(qsSortOrder);
     }
 
-    QString tmpInsert = QString("Intert into %1 %2 select * from %3 %4")
+    QString tmpInsert = QString("Insert into %1 %2 select * from %3 %4")
                         .arg(mTempTableName)
                         .arg(columns)
                         .arg(mSourceModel->tableName())
@@ -422,6 +435,8 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryInsert(mSourceModel->database());
     if (!queryInsert.exec(tmpInsert))
     {
+        NMErr(ctx, << queryInsert.lastError().text().toStdString() << std::endl);
+        queryInsert.finish();
         return false;
     }
 
@@ -566,7 +581,7 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
     QSqlQuery qProxy(mSourceModel->database());
     if (!qProxy.exec(qstr))
     {
-        //NMErr(ctx, << "Failed mapping source to proxy index!");
+        NMErr(ctx, << qProxy.lastError().text().toStdString() << std::endl);
         return QModelIndex();
     }
 
@@ -697,9 +712,11 @@ NMSelSortSqlTableProxyModel::getNumTableRecords()
     if (q.exec(qstr))
     {
         q.next();
-
         rows = q.value(0).toInt();
     }
+
+
+
     //this->mlNumRecs = q.value(0).toInt();
     //this->updateSelectionAdmin(mlNumRecs);
 

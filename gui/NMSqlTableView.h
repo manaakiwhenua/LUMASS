@@ -165,8 +165,8 @@ protected:
 
 	void initView();
 	void sortColumn(int col);
-    void updateModelSelection();
-    void updateInternalSelection(QSqlQuery& query);
+//    void updateModelSelection();
+//    void updateInternalSelection(QSqlQuery& query);
 
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);

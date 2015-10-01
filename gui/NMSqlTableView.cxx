@@ -75,21 +75,19 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
       mSelectionModel(0), mbIsSelectable(true), mSortFilter(0)
 {
     this->mTableView = new QTableView(this);
-    this->initView();
 
     mSortFilter = new NMSelSortSqlTableProxyModel(this);
     mSortFilter->setSourceModel(mModel);
 
-    this->mTableView->setModel(mSortFilter);
+    //this->mTableView->setModel(mSortFilter);
+    this->mTableView->setModel(mModel);
 
-    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+    //this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+    this->mProxySelModel = new NMFastTrackSelectionModel(mModel, this);
     this->mProxySelModel->setObjectName("FastProxySelection");
     this->mTableView->setSelectionModel(mProxySelModel);
 
-    mlNumRecs = mSortFilter->getNumTableRecords();
-    this->updateSelectionAdmin(0);
-    connect(mSortFilter, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            this, SLOT(procRowsInserted(QModelIndex,int,int)));
+    this->initView();
 }
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* parent)
@@ -98,19 +96,18 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
       mSelectionModel(0), mbIsSelectable(true), mSortFilter(0)
 {
     this->mTableView = new QTableView(this);
-    this->initView();
 
     mSortFilter = new NMSelSortSqlTableProxyModel(this);
     mSortFilter->setSourceModel(mModel);
 
-    this->mTableView->setModel(mSortFilter);
-    this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
+
+    this->mTableView->setModel(mModel);
+
+    this->mProxySelModel = new NMFastTrackSelectionModel(mModel, this);
     this->mProxySelModel->setObjectName("FastProxySelection");
     this->mTableView->setSelectionModel(mProxySelModel);
 
-    this->updateSelectionAdmin(mSortFilter->getNumTableRecords());
-    connect(mSortFilter, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            this, SLOT(procRowsInserted(QModelIndex,int,int)));
+    this->initView();
 }
 
 
@@ -124,20 +121,6 @@ void NMSqlTableView::initView()
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-
-//    QPalette p = mTableView->palette();
-//    QColor hc = p.color(QPalette::Highlight);
-//    NMDebugAI(<< "highlight colour: "
-//              << hc.red() << hc.green() << hc.blue() << std::endl);
-//    QColor tc = p.color(QPalette::HighlightedText);
-//    NMDebugAI(<< "highlighted text colour: "
-//              << tc.red() << tc.green() << tc.blue() << std::endl);
-
-//    p.setColor(QPalette::Highlight, QColor(0,0,255));
-//    p.setColor(QPalette::HighlightedText, QColor(255,255,255));
-//    mTableView->setPalette(p);
-
-
 
 	this->setWindowFlags(Qt::Window);
 	this->setWindowTitle(tr("Attributes"));
@@ -167,8 +150,14 @@ void NMSqlTableView::initView()
 	this->mChkSelectedRecsOnly->setCheckState(Qt::Unchecked);
 	this->mStatusBar->addWidget(this->mChkSelectedRecsOnly);
 
-        // ---------------- NMSqlTableView - Layout ------------------------------
+    // ----------------- SOME STATUS BAR INFORMATION ------------------------------
+    this->mlNumRecs = mSortFilter->getNumTableRecords();//q.value(0).toInt();
+    this->updateSelectionAdmin(mlNumRecs);
+    this->connect(mModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
+                  this, SLOT(procRowsInserted(QModelIndex, int, int)));
 
+
+    // ---------------- NMSqlTableView - Layout ------------------------------
 	this->mLayout = new QVBoxLayout(this);
 	this->mLayout->addWidget(this->mTableView);
 	this->mLayout->addWidget(this->mStatusBar);
@@ -176,14 +165,14 @@ void NMSqlTableView::initView()
 
 	// install an event filter on the widget underlying the
 	// horizontal header area
-	this->mTableView->horizontalHeader()->viewport()->installEventFilter(this);
+    this->mTableView->horizontalHeader()->viewport()->installEventFilter(this);
 
 	// install an event filter on the widget underlying the
 	// vertical header area
-	this->mTableView->verticalHeader()->viewport()->installEventFilter(this);
+    this->mTableView->verticalHeader()->viewport()->installEventFilter(this);
 
 	// install an event filter on the itemWidget
-	this->mTableView->viewport()->installEventFilter(this);
+    this->mTableView->viewport()->installEventFilter(this);
 
 	// init the context menu of column headers
 	this->mColHeadMenu = new QMenu(this);
@@ -295,34 +284,6 @@ void NMSqlTableView::initView()
 
 	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
-
-
-    // query the number of records in the table
-
-    //    QSqlIndex pk = mModel->primaryKey();
-    //    if (!pk.isEmpty())
-    //    {
-    //        mPrimaryKey = pk.name();
-    //    }
-    //    else
-    //    {
-    //        mPrimaryKey = mModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
-    //    }
-    //    QString qstr = QString("Select count(%1) from %2").arg(mPrimaryKey)
-    //                                                      .arg(mModel->tableName());
-    //    QSqlQuery q(qstr, mModel->database());
-    //    q.setForwardOnly(true);
-    //    q.next();
-//    this->mlNumRecs = mSortFilter->getNumTableRecords();//q.value(0).toInt();
-//    this->updateSelectionAdmin(mlNumRecs);
-
-//    /// connect table model with slots
-//    //    this->connect(mModel, SIGNAL(layoutChanged(QList<QPersistentModelIndex>,
-//    //                                               QAbstractItemModel::LayoutChangeHint)),
-//    //                  this, SLOT(procLayoutChanged(QList<QPersistentModelIndex>,
-//    //                                               QAbstractItemModel::LayoutChangeHint)));
-//    this->connect(mSortFilter, SIGNAL(rowsInserted(QModelIndex,int,int)),
-//                  this, SLOT(procRowsInserted(QModelIndex, int, int)));
 }
 
 //void
@@ -657,7 +618,8 @@ NMSqlTableView::updateSelectionAdmin(const QItemSelection& sel,
 		const QItemSelection& desel)
 {
     NMDebugCtx(__ctxsqltabview, << "...");
-    if (this->mSelectionModel == 0)
+    //if (this->mSelectionModel == 0)
+    if (this->mProxySelModel == 0)
     {
         NMDebugAI(<< "Haven't got any selectiom model set up!" << endl);
         this->updateSelectionAdmin(0);
@@ -665,20 +627,22 @@ NMSqlTableView::updateSelectionAdmin(const QItemSelection& sel,
         return;
     }
 
-//    const QItemSelection& srcSel = this->mSelectionModel->selection();
+    //const QItemSelection& srcSel = this->mSelectionModel->selection();
+    const QItemSelection& proxSel = mProxySelModel->selection();
 
 
-	long selcnt = 0;
-    for (int i=0; i < mvFullSel.size(); ++i)
+    //long selcnt = 0;
+    //    for (int i=0; i < mvFullSel.size(); ++i)
+    //    {
+    //        selcnt += mvFullSel[i][1] - mvFullSel[i][0] + 1;
+    //    }
+
+    long selcnt = 0;
+    foreach(const QItemSelectionRange& range, proxSel)
     {
-        selcnt += mvFullSel[i][1] - mvFullSel[i][0] + 1;
+        selcnt += range.bottom() - range.top() + 1;
     }
     mlNumSelRecs = selcnt;
-
-//	foreach(const QItemSelectionRange& range, srcSel)
-//	{
-//		selcnt += range.bottom() - range.top() + 1;
-//	}
 	NMDebugAI(<< "report " << selcnt << " selected records" << std::endl);
 	this->updateSelectionAdmin(selcnt);
     NMDebugCtx(__ctxsqltabview, << "done!");
@@ -1536,14 +1500,14 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 		else if (	me->button() == Qt::LeftButton
 				 && event->type() == QEvent::MouseButtonDblClick)
 		{
-                        if (this->mViewMode == NMSqlTableView::NMTABVIEW_ATTRTABLE)
+            if (this->mViewMode == NMSqlTableView::NMTABVIEW_ATTRTABLE)
 			{
 				int row = this->mTableView->rowAt(me->pos().y());
 				int col = this->mTableView->columnAt(me->pos().x());
 				if (row && col)
 				{
-                    //QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
-                    QModelIndex idx = this->mModel->index(row, col, QModelIndex());
+                    QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
+                    //QModelIndex idx = this->mModel->index(row, col, QModelIndex());
 					this->mTableView->edit(idx);
 				}
 			}
@@ -1593,13 +1557,16 @@ NMSqlTableView::sortColumn(int col)
 
     //NMDebugAI(<< "... actually sorting the column" << std::endl);
     mSortFilter->sort(col, order);
-    this->mTableView->reset();
+    //this->mTableView->reset();
 
-    if (mlNumRecs == 0)
-    {
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
+    updateProxySelection(QItemSelection(), QItemSelection());
+
+
+//    if (mlNumRecs == 0)
+//    {
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
 
     //this->updateInternalSelection();
 
@@ -1669,11 +1636,12 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 
     // DEPRECATED
 
-    this->printSelRanges(this->mSelectionModel->selection(), "Source");
-    this->printSelRanges(this->mProxySelModel->selection(), "Proxy");
+    //this->printSelRanges(this->mSelectionModel->selection(), "Source");
+    //this->printSelRanges(this->mProxySelModel->selection(), "Proxy");
 
     this->mProxySelModel->setSelection(mSortFilter->getProxySelection());
 
+    this->printSelRanges(this->mProxySelModel->selection(), "new selection ...");
 
 //    if (mbClearSelection)
 //    {
@@ -1718,117 +1686,118 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 }
 
 
-void
-NMSqlTableView::updateInternalSelection(QSqlQuery &query)
-{
-    NMDebugCtx(__ctxsqltabview, << "...");
+//void
+//NMSqlTableView::updateInternalSelection(QSqlQuery &query)
+//{
+//    NMDebugCtx(__ctxsqltabview, << "...");
 
-    QItemSelection sel = this->mSelectionModel->getSelection();
-    int cnt = 0;
-    int mincol = 0;
-    int maxcol = mModel->columnCount()-1;
+//    QItemSelection sel = this->mSelectionModel->getSelection();
+//    int cnt = 0;
+//    int mincol = 0;
+//    int maxcol = mModel->columnCount()-1;
 
-    long top = -1;
-    if (query.next())
-    {
-        top = query.value(0).toInt();
-    }
-    else
-    {
-        NMDebugAI(<< "Failed fetching first record of result set!" << std::endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
-    long bottom = top;
+//    long top = -1;
+//    if (query.next())
+//    {
+//        top = query.value(0).toInt();
+//    }
+//    else
+//    {
+//        NMDebugAI(<< "Failed fetching first record of result set!" << std::endl);
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
+//    long bottom = top;
 
-    while(query.next())
-    {
-        const int v = query.value(0).toInt();
+//    while(query.next())
+//    {
+//        const int v = query.value(0).toInt();
 
-        // extend the selection range
-        if (v == bottom + 1)
-        {
-            bottom = v;
-        }
-        // write selection range and start new
-        else
-        {
-            NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-            cnt += bottom - top + 1;
-            const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-            std::vector<long long> selr;
-            selr.push_back(top);
-            selr.push_back(bottom);
-            mvFullSel.push_back(selr);
-            sel.append(QItemSelectionRange(tl, br));
-            top = v;
-            bottom = v;
-        }
-    }
+//        // extend the selection range
+//        if (v == bottom + 1)
+//        {
+//            bottom = v;
+//        }
+//        // write selection range and start new
+//        else
+//        {
+//            NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+//            cnt += bottom - top + 1;
+//            const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
+//            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
+//            std::vector<long long> selr;
+//            selr.push_back(top);
+//            selr.push_back(bottom);
+//            mvFullSel.push_back(selr);
+//            sel.append(QItemSelectionRange(tl, br));
+//            top = v;
+//            bottom = v;
+//        }
+//    }
 
-    // add the last open selection
-    NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-    cnt += bottom - top + 1;
-    std::vector<long long> selr;
-    selr.push_back(top);
-    selr.push_back(bottom);
-    mvFullSel.push_back(selr);
-    const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-    const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-    sel.append(QItemSelectionRange(tl, br));
+//    // add the last open selection
+//    NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
+//    cnt += bottom - top + 1;
+//    std::vector<long long> selr;
+//    selr.push_back(top);
+//    selr.push_back(bottom);
+//    mvFullSel.push_back(selr);
+//    const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
+//    const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
+//    sel.append(QItemSelectionRange(tl, br));
 
-    this->printSelRanges(sel, "just selected ...");
-    mSelectionModel->setSelection(sel);
+//    this->printSelRanges(sel, "just selected ...");
+//    mSelectionModel->setSelection(sel);
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
-}
+//    NMDebugCtx(__ctxsqltabview, << "done!");
+//}
 
-void
-NMSqlTableView::updateModelSelection(void)
-{
-    NMDebugCtx(__ctxsqltabview, << "...");
+//void
+//NMSqlTableView::updateModelSelection(void)
+//{
+//    NMDebugCtx(__ctxsqltabview, << "...");
 
-    int mincol = 0;
-    int maxcol = mModel->columnCount()-1;
-    int bottom = -1;
-    int first = 0;
-    int last = mModel->rowCount();
+//    int mincol = 0;
+//    int maxcol = mModel->columnCount()-1;
+//    int bottom = -1;
+//    int first = 0;
+//    int last = mModel->rowCount();
 
-    bool done = false;
-    QItemSelection isel = this->mSelectionModel->getSelection();
-    for (int i=0; i < mvFullSel.size() && !done; ++i)
-    {
-        if (mvFullSel[i][0] >= first)
-        {
-            const QModelIndex tl = mModel->index(mvFullSel[i][0], mincol, QModelIndex());
-            if (mvFullSel[i][1] < last)
-            {
-                bottom = mvFullSel[i][1];
-            }
-            else
-            {
-                bottom = last;
-                done = true;
-            }
+//    bool done = false;
+//    QItemSelection isel = this->mSelectionModel->getSelection();
+//    for (int i=0; i < mvFullSel.size() && !done; ++i)
+//    {
+//        if (mvFullSel[i][0] >= first)
+//        {
+//            const QModelIndex tl = mModel->index(mvFullSel[i][0], mincol, QModelIndex());
+//            if (mvFullSel[i][1] < last)
+//            {
+//                bottom = mvFullSel[i][1];
+//            }
+//            else
+//            {
+//                bottom = last;
+//                done = true;
+//            }
 
-            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-            isel.append(QItemSelectionRange(tl, br));
-        }
-    }
-    mSelectionModel->setSelection(isel);
-    NMDebugCtx(__ctxsqltabview, << "done!");
-}
+//            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
+//            isel.append(QItemSelectionRange(tl, br));
+//        }
+//    }
+//    mSelectionModel->setSelection(isel);
+//    NMDebugCtx(__ctxsqltabview, << "done!");
+//}
 
 void
 NMSqlTableView::procRowsInserted(QModelIndex parent, int first, int last)
 {
-    //NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(__ctxsqltabview, << "...");
 
-    this->mProxySelModel->setSelection(mSortFilter->getProxySelection());
+    //this->mProxySelModel->setSelection(mSortFilter->getProxySelection());
+    this->updateProxySelection(QItemSelection(), QItemSelection());
 
 
-    //NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(__ctxsqltabview, << "done!");
 }
 
 //void
@@ -1911,6 +1880,7 @@ NMSqlTableView::toggleRow(int row)
     if (this->mProxySelModel)
 	{
         this->mProxySelModel->toggleRow(row, 0, QModelIndex());
+        this->updateSelectionAdmin(QItemSelection(), QItemSelection());
 	}
 }
 

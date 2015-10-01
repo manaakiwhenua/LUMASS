@@ -28,6 +28,7 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlIndex>
+#include <QSqlError>
 
 const std::string NMSelSortSqlTableProxyModel::ctx = "NMSelSortSqlTableProxyModel";
 
@@ -349,6 +350,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
             QSqlQuery qobj(mSourceModel->database());
             if (!qobj.exec(qstr))
             {
+                NMErr(ctx, << qobj.lastError().text().toStdString() << std::endl);
                 //                NMErr(ctx, << "Failed dropping previous mapping table"
                 //                           << " '" << mTempTableName.toStdString() << "'!");
                 //                NMDebugCtx(ctx, << "done!");
@@ -371,7 +373,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QString orgTableSql = queryStruct.value(0).toString();
 
     int pos = orgTableSql.indexOf(',');
-    orgTableSql.right(orgTableSql.length()-pos);
+    orgTableSql = orgTableSql.right(orgTableSql.length()-pos);
     QString tmpCreate = QString("Create temp table if not exists %1 ")
                         .arg(mTempTableName);
     tmpCreate += QString("(%1 integer primary key, %2").arg(mProxyPK)

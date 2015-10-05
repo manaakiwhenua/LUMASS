@@ -99,6 +99,8 @@ protected:
     QItemSelection mProxySelection;
     QItemSelection mSourceSelection;
     NMSqlTableModel* mSourceModel;
+    NMSqlTableModel* mTempTableModel;
+    QSqlDatabase mTempDb;
     QString mSourcePK;
     QString mProxyPK;
 

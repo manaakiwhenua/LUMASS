@@ -29,6 +29,7 @@
 #include <QSqlQuery>
 #include <QSqlIndex>
 #include <QSqlError>
+#include <QUuid>
 
 const std::string NMSelSortSqlTableProxyModel::ctx = "NMSelSortSqlTableProxyModel";
 
@@ -37,18 +38,33 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
       mLastFilter(""),
       mLastSelRecsOnly(false),
       mLastSelCount(0),
-      mTempTableName("tmp_proxy_source_ids"),
+      mTempTableName(""),
       mSourcePK(""),
-      mProxyPK("")
+      mProxyPK(""),
+      mTempTableModel(0)
 
 {
     this->setParent(parent);
     mLastColSort.first = -1;
     mLastColSort.second = Qt::AscendingOrder;
+    mTempTableName = std::tmpnam;
+    mTempTableName = mTempTableName.right(
+                mTempTableName.size() - mTempTableName.lastIndexOf('/') - 1);
 }
 
 NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
 {
+//    if (mTempTableModel)
+//    {
+//        mTempTableModel->clear();
+//        delete mTempTableModel;
+//    }
+
+    if (mTempDb.isOpen())
+    {
+        mTempDb.close();
+        QSqlDatabase::removeDatabase(mTempDb.connectionName());
+    }
 }
 
 void
@@ -329,6 +345,8 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
         }
     }
     queryObj.finish();
+    queryObj.clear();
+
 
     // close the last open selection, if any ...
     if (top != -1 && bottom != -1)
@@ -357,19 +375,29 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     // ==================================================================
     // drop any previously created mapping tables
     // ==================================================================
-    if (!mTempTableName.isEmpty())
+    if (mTempDb.isOpen())
     {
-        QStringList tables = mSourceModel->database().tables();
+        //mTempTableModel->clear();
+        //mTempDb.close();
+        //mTempDb.open();
+        QStringList tables = mTempDb->database().tables();
         if (tables.contains(mTempTableName, Qt::CaseInsensitive))
         {
             QString qstr = QString("Drop table if exists %1").arg(mTempTableName);
-            QSqlQuery qobj(mSourceModel->database());
+            QSqlQuery qobj(mTempDb);
             if (!qobj.exec(qstr))
             {
                 NMErr(ctx, << qobj.lastError().text().toStdString() << std::endl);
                 return false;
             }
         }
+    }
+    else
+    {
+        mTempDb = QSqlDatabase::cloneDatabase(mSourceModel->database(),
+                                          QUuid::createUuid().toString());
+        mTempDb.open();
+        //mTempTableModel = new NMSqlTableModel(this, mTempDb);
     }
 
     // ==================================================================
@@ -385,6 +413,8 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     }
     queryStruct.next();
     QString orgTableSql = queryStruct.value(0).toString();
+    queryStruct.finish();
+    queryStruyt.clear();
 
     int pos = orgTableSql.indexOf(',');
     orgTableSql = orgTableSql.right(orgTableSql.length()-pos);

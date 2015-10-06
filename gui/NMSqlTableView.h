@@ -166,7 +166,7 @@ protected:
 	void initView();
 	void sortColumn(int col);
 //    void updateModelSelection();
-//    void updateInternalSelection(QSqlQuery& query);
+    void updateSelection();
 
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
@@ -215,7 +215,9 @@ protected:
     QString mPrimaryKey;
     QString mCurrentQuery;
     QString mBaseFilter;
-	QTableView* mTableView;
+    QList<int> mPickedRows;
+
+    QTableView* mTableView;
     QSqlTableModel* mModel;
     //NMSelectableSortFilterProxyModel* mSortFilter;
     NMSelSortSqlTableProxyModel* mSortFilter;

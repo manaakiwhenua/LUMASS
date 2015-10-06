@@ -1590,43 +1590,82 @@ NMSqlTableView::selectionQuery(void)
 		return;
 	}
 
-    QString recentQuery = "";
     if (!mCurrentQuery.isEmpty())
     {
-        recentQuery = QString(" AND %1").arg(mCurrentQuery);
+        mCurrentQuery += QString(" AND %1").arg(mCurrentQuery);
     }
-
-    QString baseQuery = "";
-    if (!mBaseFilter.isEmpty())
+    else
     {
-        baseQuery = QString(" AND %1").arg(mBaseFilter);
+        mCurrentQuery = queryStr;
     }
 
-    queryStr = QString("%1 %2 %3")
-            .arg(queryStr).arg(recentQuery).arg(baseQuery);
-
-    mCurrentQuery = queryStr + recentQuery;
-
-    if (mSortFilter->selectRows(queryStr,
-                      this->mChkSelectedRecsOnly->isChecked()))
-    {
-        //this->mTableView->reset();
-        mProxySelModel->setSelection(mSortFilter->getProxySelection());
-        this->updateSelectionAdmin(mSortFilter->getSelCount());
-    }
-
+    this->updateSelection();
 
     //NMDebugAI(<< cnt << " selected rows" << std::endl);
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 
+void
+NMSqlTableView::updateSelection()
+{
+    // we build the final query from the
+    // user's selection query (comprising the entire history of
+    // seletion queries since the last selection clearance;
+
+    QString queryStr = mCurrentQuery.simplified();
+    if (!mBaseFilter.isEmpty())
+    {
+        if (!queryStr.isEmpty())
+        {
+            queryStr += QString(" AND %1").arg(mBaseFilter.simplified());
+        }
+        else
+        {
+            queryStr = mBaseFilter.simplified();
+        }
+    }
+
+
+    if (!mPickedRows.isEmpty())
+    {
+        QString handPicked = "rowidx in (";
+        for (int r=0; r < mPickedRows.size(); ++r)
+        {
+            handPicked += QString("%1").arg(mPickedRows.at(r));
+            if (r < mPickedRows.size() - 1)
+            {
+                handPicked += ",";
+            }
+        }
+        handPicked += ")";
+
+        if (!queryStr.isEmpty())
+        {
+            queryStr += QString(" AND %1").arg(handPicked);
+        }
+        else
+        {
+            queryStr = handPicked;
+        }
+    }
+
+    if (mSortFilter->selectRows(queryStr,
+                      this->mChkSelectedRecsOnly->isChecked()))
+    {
+        mProxySelModel->setSelection(mSortFilter->getProxySelection());
+        this->updateSelectionAdmin(mSortFilter->getSelCount());
+    }
+}
+
 void NMSqlTableView::clearSelection()
 {
-    this->mProxySelModel->clearSelection();
-    this->updateSelectionAdmin(0);
-    this->mTableView->reset();
+    mSortFilter->clearSelection();
+    mProxySelModel->clearSelection();
+    updateSelectionAdmin(0);
+    mTableView->reset();
     mCurrentQuery.clear();
+    mPickedRows.clear();
 }
 
 void
@@ -1876,12 +1915,32 @@ NMSqlTableView::showEvent(QShowEvent* event)
 void
 NMSqlTableView::toggleRow(int row)
 {
-    //QModelIndex srcIndex = this->mModel->index(row,0,QModelIndex());
-    if (this->mProxySelModel)
-	{
-        this->mProxySelModel->toggleRow(row, 0, QModelIndex());
-        this->updateSelectionAdmin(QItemSelection(), QItemSelection());
-	}
+    QModelIndex proxyIdx = mSortFilter->index(row, 0);
+    QModelIndex srcIdx = mSortFilter->mapToSource(proxyIdx);
+    if (!srcIdx.isValid())
+    {
+        return;
+    }
+
+    int srcRow = srcIdx.row();
+    int idx = mPickedRows.indexOf(srcRow);
+    if (idx == -1)
+    {
+        mPickedRows << srcRow;
+    }
+    else
+    {
+        mPickedRows.removeAt(idx);
+    }
+
+    this->updateSelection();
+
+//    if (this->mProxySelModel)
+//	{
+//        this->mProxySelModel->toggleRow(row, 0, QModelIndex());
+
+//        this->updateSelectionAdmin(QItemSelection(), QItemSelection());
+//	}
 }
 
 

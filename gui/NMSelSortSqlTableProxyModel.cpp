@@ -215,7 +215,7 @@ void
 NMSelSortSqlTableProxyModel::resetSourceModel()
 {
     mSourceModel->setFilter("");
-    mSourceModel->setSort(0, Qt::AscendingOrder);
+    //mSourceModel->setSort(0, Qt::AscendingOrder);
     mSourceModel->select();
 }
 
@@ -261,8 +261,9 @@ NMSelSortSqlTableProxyModel::getSourcePK()
 bool
 NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySelection)
 {
-    if (mLastFilter.isEmpty() && mLastColSort.first == -1)
+    if (mLastFilter.isEmpty())// && mLastColSort.first == -1)
     {
+        sel.clear();
         // nothing to update here, really
         return true;
     }
@@ -616,6 +617,15 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
                    .arg(mTempTableName)
                    .arg(mSourcePK)
                    .arg(srcIdx.row());
+
+
+    /// debug
+    NMDebugAI(<< "mTempDb.isOpen() = " << mTempDb.isOpen() << std::endl);
+    if (mTempDb.isOpen())
+    {
+        NMDebugAI(<< "  tables: " << mTempDb.tables().join(' ').toStdString() << std::endl);
+    }
+
 
     QSqlQuery qProxy(mTempDb);
     if (!qProxy.exec(qstr))

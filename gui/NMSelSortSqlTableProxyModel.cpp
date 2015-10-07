@@ -179,7 +179,15 @@ NMSelSortSqlTableProxyModel::selectRows(const QString &queryString, bool showSel
 
         this->resetSourceModel();
 
-        mSourceModel->setFilter(qstr);
+        if (showSelRecsOnly)
+        {
+            mSourceModel->setFilter(qstr);
+        }
+        else
+        {
+            mSourceModel->setFilter(QString(""));
+        }
+
         if (mLastColSort.first >= 0)
         {
             mSourceModel->setSort(mLastColSort.first, mLastColSort.second);

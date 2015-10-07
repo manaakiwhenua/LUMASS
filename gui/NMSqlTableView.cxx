@@ -419,6 +419,8 @@ void NMSqlTableView::switchSelection()
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
+    updateSelection(true);
+
 //	mbSwitchSelection = true;
 
 //	if (mSelectionModel != 0)
@@ -1615,13 +1617,23 @@ NMSqlTableView::selectionQuery(void)
 }
 
 void
-NMSqlTableView::updateSelection()
+NMSqlTableView::updateSelection(bool swap)
 {
     // we build the final query from the
     // user's selection query (comprising the entire history of
     // seletion queries since the last selection clearance;
 
     QString queryStr = mCurrentQuery.simplified();
+    if (swap)
+    {
+        if (!queryStr.isEmpty())
+        {
+            queryStr = queryStr.prepend("NOT (");
+            queryStr = queryStr.append(")");
+        }
+    }
+
+
     if (!mBaseFilter.isEmpty())
     {
         if (!queryStr.isEmpty())
@@ -1638,6 +1650,10 @@ NMSqlTableView::updateSelection()
     if (!mPickedRows.isEmpty())
     {
         QString handPicked = "rowidx in (";
+        if (swap)
+        {
+            handPicked = "rowidx not in (";
+        }
         for (int r=0; r < mPickedRows.size(); ++r)
         {
             handPicked += QString("%1").arg(mPickedRows.at(r));
@@ -1650,7 +1666,7 @@ NMSqlTableView::updateSelection()
 
         if (!queryStr.isEmpty())
         {
-            queryStr += QString(" AND %1").arg(handPicked);
+            queryStr += QString(" OR %1").arg(handPicked);
         }
         else
         {
@@ -1662,13 +1678,18 @@ NMSqlTableView::updateSelection()
     {
         mProxySelModel->clearSelection();
         mSortFilter->selectRows(queryStr, true);
-
+        this->updateSelectionAdmin(mSortFilter->getSelCount());
     }
     else
     {
         mSortFilter->selectRows(queryStr, false);
         mProxySelModel->setSelection(mSortFilter->getProxySelection());
         this->updateSelectionAdmin(mSortFilter->getSelCount());
+    }
+
+    if (mSortFilter->getSelCount() == 0 && !mCurrentQuery.isEmpty())
+    {
+        this->clearSelection();
     }
 }
 

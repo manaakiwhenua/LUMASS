@@ -166,7 +166,7 @@ protected:
 	void initView();
 	void sortColumn(int col);
 //    void updateModelSelection();
-    void updateSelection();
+    void updateSelection(bool swap=false);
 
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);

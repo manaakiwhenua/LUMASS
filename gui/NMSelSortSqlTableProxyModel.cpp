@@ -304,8 +304,6 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
                        .arg(whereClause)
                        .arg(orderByClause);
 
-
-
     QSqlQuery queryObj(mTempDb);
     if (!tmpTable)
     {
@@ -606,6 +604,7 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
         return QModelIndex();
     }
 
+    QModelIndex retIdx;
     // no need of expensive mapping unless the model has been sorted
     if (mLastColSort.first == -1)
     {
@@ -619,19 +618,19 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
                    .arg(srcIdx.row());
 
 
-    /// debug
-    NMDebugAI(<< "mTempDb.isOpen() = " << mTempDb.isOpen() << std::endl);
-    if (mTempDb.isOpen())
-    {
-        NMDebugAI(<< "  tables: " << mTempDb.tables().join(' ').toStdString() << std::endl);
-    }
+    //    /// debug
+    //    NMDebugAI(<< "mTempDb.isOpen() = " << mTempDb.isOpen() << std::endl);
+    //    if (mTempDb.isOpen())
+    //    {
+    //        NMDebugAI(<< "  tables: " << mTempDb.tables().join(' ').toStdString() << std::endl);
+    //    }
 
 
     QSqlQuery qProxy(mTempDb);
     if (!qProxy.exec(qstr))
     {
         NMErr(ctx, << qProxy.lastError().text().toStdString() << std::endl);
-        return QModelIndex();
+        return retIdx;
     }
 
     if (qProxy.next())
@@ -639,10 +638,10 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
         // NOTE: since we utilise the autoincrementing primary key, the
         // proxy index in the mapping-table is 1-based!
         int r = qProxy.value(0).toInt() - 1;
-        return this->createIndex(r, srcIdx.column());
+        retIdx = this->createIndex(r, srcIdx.column());
     }
 
-    return QModelIndex();
+    return retIdx;
 }
 
 QModelIndex
@@ -653,6 +652,7 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
         return QModelIndex();
     }
 
+    QModelIndex retIdx;
     // no need of expensive mapping unless the source table has been sorted
     if (mLastColSort.first == -1)
     {
@@ -668,19 +668,19 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
                    .arg(proxyIdx.row()+1);
 
     QSqlQuery qProxy(mTempDb);
-    if (!qProxy.exec())
+    if (!qProxy.exec(qstr))
     {
         NMErr(ctx, << qProxy.lastError().text().toStdString() << std::endl);
-        return QModelIndex();
+        return retIdx;
     }
 
     if (qProxy.next())
     {
         int r = qProxy.value(0).toInt();
-        return this->mSourceModel->index(r, proxyIdx.column(), proxyIdx.parent());
+        retIdx = this->createIndex(r, proxyIdx.column());
     }
 
-    return QModelIndex();
+    return retIdx;
 }
 
 //QItemSelection NMSelSortSqlTableProxyModel::mapSelectionFromSource(const QItemSelection& sourceSelection) const

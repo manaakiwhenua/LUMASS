@@ -388,6 +388,14 @@ NMSqlTableView::setViewMode(ViewMode mode)
 void NMSqlTableView::updateSelRecsOnly(int state)
 {
     NMDebugCtx(__ctxsqltabview, << "...");
+
+    if (!this->mChkSelectedRecsOnly->isEnabled())
+    {
+        return;
+    }
+
+    this->updateSelection();
+
 //	if (state == Qt::Checked)
 //	{
 //		this->mSortFilter->setFilterOn(false);
@@ -1650,9 +1658,15 @@ NMSqlTableView::updateSelection()
         }
     }
 
-    if (mSortFilter->selectRows(queryStr,
-                      this->mChkSelectedRecsOnly->isChecked()))
+    if (mChkSelectedRecsOnly->isChecked())
     {
+        mProxySelModel->clearSelection();
+        mSortFilter->selectRows(queryStr, true);
+
+    }
+    else
+    {
+        mSortFilter->selectRows(queryStr, false);
         mProxySelModel->setSelection(mSortFilter->getProxySelection());
         this->updateSelectionAdmin(mSortFilter->getSelCount());
     }
@@ -1666,6 +1680,7 @@ void NMSqlTableView::clearSelection()
     mTableView->reset();
     mCurrentQuery.clear();
     mPickedRows.clear();
+    mChkSelectedRecsOnly->setChecked(false);
 }
 
 void
@@ -1915,6 +1930,16 @@ NMSqlTableView::showEvent(QShowEvent* event)
 void
 NMSqlTableView::toggleRow(int row)
 {
+    // don't do any row toggling when 'selected records only'
+    // mode is turned on
+    // note that this mode can be turned on mandatorily when
+    // then number of records gets to big to to handle the
+    // queying overhead involved with that!
+    if (this->mChkSelectedRecsOnly->isChecked())
+    {
+        return;
+    }
+
     QModelIndex proxyIdx = mSortFilter->index(row, 0);
     QModelIndex srcIdx = mSortFilter->mapToSource(proxyIdx);
     if (!srcIdx.isValid())

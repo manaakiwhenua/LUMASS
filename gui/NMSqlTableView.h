@@ -99,9 +99,6 @@ public:
 
 	void setSelectionModel(NMFastTrackSelectionModel* selectionModel);
 
-	//void setSelectionModel(QItemSelectionModel* selectionModel);
-
-
 	ViewMode getViewMode() {return mViewMode;}
 	void setViewMode(ViewMode mode);
 
@@ -113,10 +110,7 @@ public:
     void setBaseFilter(const QString& baseFilter)
         {mBaseFilter = baseFilter;}
 
-	void hideRow(int row);
-    //void hideSource(const QList<int>& rows);
-//	const QList<int>* getRaw2Source(void)
-//			{return mSortFilter->getRaw2Source();}
+    //void hideRow(int row);
     const QList<int>* getRaw2Source(void)
             {return 0;}
 
@@ -127,7 +121,7 @@ public slots:
 	void deleteColumn();
 	void exportTable();
 	void colStats();
-	//void userQuery();
+    void userQuery();
 	void normalise();
 	void selectionQuery();
 	void clearSelection();
@@ -140,8 +134,6 @@ public slots:
 	void callHideColumn(void);
 	void callUnHideColumn(void);
 	void setSelectable(bool);
-    //    void procLayoutChanged(const QList<QPersistentModelIndex> parents,
-    //                           QAbstractItemModel::LayoutChangeHint hint);
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);
@@ -212,8 +204,10 @@ protected:
 
     //QItemSelection mBackupSel;
 
+    int mQueryCounter;
     QString mPrimaryKey;
     QString mCurrentQuery;
+    QString mCurrentSwapQuery;
     QString mBaseFilter;
     QList<int> mPickedRows;
 
@@ -235,9 +229,6 @@ protected:
 	QMenu* mManageLayerMenu;
 
 	QAction* mActSel;
-
-
-
 
 	//vtkSmartPointer<vtkTable> mBaseTable;
 	//otb::AttributeTable::Pointer mOtbTable;

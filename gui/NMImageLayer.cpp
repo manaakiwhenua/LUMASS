@@ -512,10 +512,11 @@ void NMImageLayer::createTableView(void)
 	if (this->mTableModel == 0)
 		return;
 
-    this->mSqlTableView = new NMSqlTableView(
-                qobject_cast<NMSqlTableModel*>(mTableModel), 0);
+    NMSqlTableModel* tabModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+    this->mSqlTableView = new NMSqlTableView(tabModel, 0);
     this->mSqlTableView->setSelectionModel(this->mSelectionModel);
-    this->mSqlTableView->setTitle(tr("Attributes of ") + this->objectName());
+    //this->mSqlTableView->setTitle(tr("Attributes of ") + this->objectName());
+    this->mSqlTableView->setTitle(tabModel->tableName());
 
     connect(this, SIGNAL(selectabilityChanged(bool)),
             mSqlTableView, SLOT(setSelectable(bool)));

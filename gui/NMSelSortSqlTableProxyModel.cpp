@@ -127,6 +127,21 @@ NMSelSortSqlTableProxyModel::getSourceSelection()
     return mSourceSelection;
 }
 
+QItemSelection
+NMSelSortSqlTableProxyModel::getSelectAll()
+{
+    QItemSelection sel;
+    if (mSourceModel == 0)
+    {
+        return sel;
+    }
+
+    QModelIndex top = this->createIndex(0, 0);
+    QModelIndex bottom = this->createIndex(getNumTableRecords()-1, mSourceModel->columnCount()-1);
+    sel.append(QItemSelectionRange(top, bottom));
+    return sel;
+}
+
 void
 NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
 {

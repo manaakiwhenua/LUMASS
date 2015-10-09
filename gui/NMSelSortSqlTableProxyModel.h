@@ -79,6 +79,7 @@ public:
     long getSelCount(void) {return mLastSelCount;}
     QItemSelection getProxySelection(void);
     QItemSelection getSourceSelection(void);
+    QItemSelection getSelectAll(void);
 
 
 protected:

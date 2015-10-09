@@ -32,6 +32,7 @@
 #include "NMAddColumnDialog.h"
 #include "NMTableCalculator.h"
 #include "NMSelSortSqlTableProxyModel.h"
+#include "NMGlobalHelper.h"
 
 #include "vtkQtTableModelAdapter.h"
 #include "vtkDelimitedTextReader.h"
@@ -386,7 +387,7 @@ void NMSqlTableView::updateSelRecsOnly(int state)
         return;
     }
 
-    this->updateSelection();
+    updateSelection(mbSwitchSelection);
 
 //	if (state == Qt::Checked)
 //	{
@@ -506,9 +507,14 @@ void NMSqlTableView::userQuery()
     // ask for the name and the type of the new data field
     bool bOk = false;
     QString queryTemplate = QString("select * from %1").arg(mModel->tableName());
-    QString sqlStmt = QInputDialog::getText(this, tr("SQL Query"),"", QLineEdit::Normal,
-                                              queryTemplate, &bOk);
-    if (!bOk || sqlStmt.isEmpty())
+
+//    QString sqlStmt = QInputDialog::getText(this, tr("Arbitrary SQL-SELECT Query"),"", QLineEdit::Normal,
+//                                              queryTemplate, &bOk);
+
+    NMGlobalHelper helper;
+    QString sqlStmt = helper.getMultiLineInput("Arbitrary SQL-SELECT Query",
+                                               queryTemplate, this);
+    if (sqlStmt.compare("0") == 0 || sqlStmt.isEmpty())
     {
         NMDebugCtx(__ctxsqltabview, << "done!");
         return;
@@ -528,6 +534,7 @@ void NMSqlTableView::userQuery()
     if (!userQuery.exec(queryStr))
     {
         NMErr(__ctxsqltabview, << userQuery.lastError().text().toStdString() << std::endl);
+        NMDebugCtx(__ctxsqltabview, << "done!");
         return;
     }
     ++mQueryCounter;
@@ -536,7 +543,7 @@ void NMSqlTableView::userQuery()
     restab->setTable(tableName);
     restab->select();
 
-    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
+    NMSqlTableView *resview = new NMSqlTableView(restab, this);
     resview->setWindowFlags(Qt::Window);
     resview->setTitle(tableName);
     resview->show();
@@ -1193,7 +1200,8 @@ NMSqlTableView::deleteRasLayer(void)
 }
 
 
-bool NMSqlTableView::writeDelimTxt(const QString& fileName,
+bool
+NMSqlTableView::writeDelimTxt(const QString& fileName,
 		bool bselectedRecs)
 {
     NMDebugCtx(__ctxsqltabview, << "...");
@@ -1207,12 +1215,22 @@ bool NMSqlTableView::writeDelimTxt(const QString& fileName,
 	}
 	QTextStream out(&file);
 
-    const QItemSelection& inputSelection = this->mSelectionModel->selection();
+    // get either the selected or all records
+    QItemSelection inputSelection = mSortFilter->getSelectAll();
+    //    if (bselectedRecs && mSortFilter->getSelCount())
+    //    {
+    //        inputSelection = mSortFilter->getSourceSelection();
+    //    }
 
-//	const QItemSelection& inputSelection = mlNumSelRecs > 0 ? this->mSelectionModel->selection()
-//			: this->mSortFilter->getSourceSelection(true);
-    //const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : this->mSortFilter->sourceRowCount();
-    //const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : this->mSortFilter->rowCount();
+    QString qStr = QString("select * from %1").arg(mModel->tableName());
+    QSqlQuery qTable(mModel->database());
+    if (!qTable.exec(qStr))
+    {
+        NMBoxErr("Export Table", qTable.lastError().text().toStdString());
+        file.close();
+        return false;
+    }
+
     const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : mlNumRecs;
 	const int ncols = mModel->columnCount(QModelIndex());
 
@@ -1221,69 +1239,84 @@ bool NMSqlTableView::writeDelimTxt(const QString& fileName,
 	mProgressDialog->setRange(0, maxrange);
 
 	// write header first
+    int pkIdx = -1;
 	long progress = 0;
 	for (int col=0; col < ncols; ++col)
 	{
 		QString cN = mModel->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+        //        if (cN.compare(mPrimaryKey, Qt::CaseInsensitive) == 0)
+        //        {
+        //            pkIdx = col;
+        //        }
 		out << "\"" << cN << "\"";
 		if (col < ncols-1)
 			out << ",";
 	}
 	out << endl;
+    out.setRealNumberNotation(QTextStream::SmartNotation);
 
-	out.setRealNumberNotation(QTextStream::SmartNotation);
-	foreach(const QItemSelectionRange& range, inputSelection)
-	{
-		const int top = range.top();
-		const int bottom = range.bottom();
-		for (int row=top; row <= bottom; ++row)
-		{
-			for (int col=0; col < ncols; ++col)
-			{
-				QModelIndex idx = mModel->index(row, col, QModelIndex());
-				QVariant val = mModel->data(idx, Qt::DisplayRole);
-				if (val.type() == QVariant::String)
-				{
-					out << "'" << val.toString() << "'";
-				}
-				else
-				{
-					out << val.toString();
-				}
+    //    if (pkIdx == -1)
+    //    {
+    //        NMErr(__ctxsqltabview, << "Export aborted! Failed identifying the primary key!");
+    //        file.close();
+    //        NMDebugCtx(__ctxsqltabview, << "done!");
+    //        return false;
+    //    }
 
-				if (col < ncols-1)
-					out << ",";
-			}
-			out << "\n";
-			++progress;
-			if (progress % 100 == 0)
-			{
-				out.flush();
-				mProgressDialog->setValue(progress);
-			}
-		}
-	}
-	mProgressDialog->setValue(maxrange);
+    if (!qTable.next())
+    {
+        file.close();
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return false;
+    }
+    //int rowIdx = qTable.value(pkIdx).toInt();
+
+
+    foreach(const QItemSelectionRange& range, inputSelection)
+    {
+        const int top = range.top();
+        const int bottom = range.bottom();
+        //while (rowIdx >= top && rowIdx <= bottom)
+        for (int r=top; r <= bottom; ++r)
+        {
+            for (int col=0; col < ncols; ++col)
+            {
+                //QModelIndex idx = mModel->index(row, col, QModelIndex());
+                //QVariant val = mModel->data(idx, Qt::DisplayRole);
+                QVariant val = qTable.value(col);
+                if (val.type() == QVariant::String)
+                {
+                    out << "'" << val.toString() << "'";
+                }
+                else
+                {
+                    out << val.toString();
+                }
+
+                if (col < ncols-1)
+                    out << ",";
+            }
+            out << "\n";
+            ++progress;
+            if (progress % 100 == 0)
+            {
+                out.flush();
+                mProgressDialog->setValue(progress);
+            }
+
+            if (!qTable.next())
+            {
+                break;
+            }
+
+            //rowIdx = qTable.value(pkIdx).toInt();
+        }
+    }
+
+    mProgressDialog->setValue(maxrange);
 	out.flush();
 	file.close();
     NMDebugCtx(__ctxsqltabview, << "done!");
-	return true;
-
-
-//
-//	// ToDo: account for selected rows i.e. filter before export
-//
-//	vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
-//	writer->SetInput(this->mVtkTableAdapter->GetVTKDataObject());
-//	writer->SetFieldDelimiter(",");
-//
-//	NMDebugAI( << "field delimiter: '" << writer->GetFieldDelimiter() << "'" << endl);
-//	writer->SetFileName(fileName.toStdString().c_str());
-//	writer->Update();
-//
-//	writer->Delete();
-//
-
 	return true;
 }
 
@@ -1615,18 +1648,19 @@ NMSqlTableView::selectionQuery(void)
 		return;
 	}
 
-//    if (!mCurrentQuery.isEmpty())
-//    {
-//        mCurrentQuery += QString(" AND %1").arg(mCurrentQuery);
-//    }
-//    else
+    //    if (!mCurrentQuery.isEmpty())
+    //    {
+    //        mCurrentQuery += QString(" AND %1").arg(mCurrentQuery);
+    //    }
+    //    else
     {
         mCurrentQuery = queryStr;
     }
 
     mCurrentSwapQuery = QString("NOT (%1)").arg(queryStr);
 
-    this->updateSelection();
+    mbSwitchSelection = false;
+    this->updateSelection(false);
 
     //NMDebugAI(<< cnt << " selected rows" << std::endl);
 
@@ -1660,10 +1694,10 @@ NMSqlTableView::updateSelection(bool swap)
 
     if (!mPickedRows.isEmpty())
     {
-        QString handPicked = "rowidx in (";
+        QString handPicked = QString("%1 in (").arg(mPrimaryKey);
         if (swap)
         {
-            handPicked = "rowidx not in (";
+            handPicked = QString("%1 not in (").arg(mPrimaryKey);
         }
         for (int r=0; r < mPickedRows.size(); ++r)
         {
@@ -1836,13 +1870,10 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 void
 NMSqlTableView::procRowsInserted(QModelIndex parent, int first, int last)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
-
-    //this->mProxySelModel->setSelection(mSortFilter->getProxySelection());
-    this->updateProxySelection(QItemSelection(), QItemSelection());
-
-
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    if (!this->mChkSelectedRecsOnly->isChecked())
+    {
+        this->updateProxySelection(QItemSelection(), QItemSelection());
+    }
 }
 
 void
@@ -1905,7 +1936,7 @@ NMSqlTableView::toggleRow(int row)
         mPickedRows.removeAt(idx);
     }
 
-    this->updateSelection();
+    updateSelection(mbSwitchSelection);
 }
 
 

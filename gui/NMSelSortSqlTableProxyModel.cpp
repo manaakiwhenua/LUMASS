@@ -175,6 +175,24 @@ NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
     }
 }
 
+//bool
+//NMSelSortSqlTableProxyModel::insertColumn(int column, const QModelIndex &parent)
+//{
+//    if (mSourceModel == 0)
+//    {
+//        return false;
+//    }
+
+//    bool ret = false;
+//    if (mSourceModel->insertColumn(column, parent))
+//    {
+//        mUpdateProxySelection = true;
+//        mUpdateSourceSelection = true;
+//        ret = true;
+//    }
+//    return ret;
+//}
+
 bool
 NMSelSortSqlTableProxyModel::selectRows(const QString &queryString, bool showSelRecsOnly)
 {
@@ -400,6 +418,82 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     }
 
     return true;
+}
+
+bool
+NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
+                                          const QVariant::Type& type)
+{
+    if (mSourceModel == 0)
+    {
+        return false;
+    }
+
+    if (    name.isEmpty()
+        ||  type == QVariant::Invalid
+       )
+    {
+        return false;
+    }
+
+    int colidx = mSourceModel->columnCount();
+    QString table = mSourceModel->tableName();
+    QString typeStr;
+    switch (type)
+    {
+    case QVariant::Int:
+    case QVariant::LongLong:
+        typeStr = "INTEGER";
+        break;
+    case QVariant::Double:
+        typeStr = "REAL";
+        break;
+
+    case QVariant::String:
+    default:
+        typeStr = "TEXT";
+        break;
+    }
+
+    QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
+                                                  QUuid::createUuid().toString());
+    if (!db.open())
+    {
+        NMErr(ctx, << "Couldn't open 'edit' data base!");
+        return false;
+    }
+
+    mSourceModel->database().close();
+    mSourceModel->clear();
+    mSourceModel = 0;
+
+    QString qStr = QString("Alter table %1 add column %2 %3")
+                        .arg(table)
+                        .arg(name)
+                        .arg(typeStr);
+
+    QSqlQuery q(db);
+    bool ret = true;
+    if (!q.exec(qStr))
+    {
+        NMErr(ctx, << q.lastError().text().toStdString());
+        ret = false;
+    }
+    mSourceModel = new NMSqlTableModel(this, db);
+    mSourceModel->setTable(table);
+    if (mLastColSort.first >= 0)
+    {
+        mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
+    }
+    mSourceModel->setFilter(mLastFilter);
+    mSourceModel->select();
+    mUpdateProxySelection = true;
+    mUpdateSourceSelection = true;
+
+    //this->setHeaderData(colidx, Qt::Horizontal, QVariant(name));
+    //this->resetInternalData();
+
+    return ret;
 }
 
 bool

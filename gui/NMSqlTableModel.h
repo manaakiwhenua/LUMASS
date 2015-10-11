@@ -37,6 +37,10 @@ public:
     NMSqlTableModel(QObject* parent=0, QSqlDatabase db=QSqlDatabase());
 
     QVariant data(const QModelIndex &idx, int role) const;
+
+
+private:
+    static const std::string ctx;
 };
 
 #endif // NMSQLTABLEMODEL_H

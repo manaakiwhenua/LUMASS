@@ -62,6 +62,14 @@ public:
     QModelIndex mapFromSource(const QModelIndex& srcIdx) const;
     QModelIndex mapToSource(const QModelIndex& proxyIdx) const;
 
+    /*! inserts a column into the data base table
+     *  note: the column parameter denotes the type of the column
+     *  coded as QVariant::Type
+     */
+
+    bool insertColumn(const QString& name, const QVariant::Type& type);
+
+
     //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
     //    QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
 

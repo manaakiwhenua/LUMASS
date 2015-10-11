@@ -82,6 +82,7 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
     mSortFilter->setSourceModel(mModel);
 
     //this->mTableView->setModel(mSortFilter);
+    mModel->setEditStrategy(QSqlTableModel::OnFieldChange);
     this->mTableView->setModel(mModel);
 
     //this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
@@ -543,7 +544,7 @@ void NMSqlTableView::userQuery()
     restab->setTable(tableName);
     restab->select();
 
-    NMSqlTableView *resview = new NMSqlTableView(restab, this);
+    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
     resview->setWindowFlags(Qt::Window);
     resview->setTitle(tableName);
     resview->show();
@@ -753,10 +754,10 @@ void NMSqlTableView::addColumn()
 	NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
     //if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
-    if (this->mModel->insertColumns(0, type, QModelIndex()))
+
+    if (mSortFilter->insertColumn(name, type))
 	{
         //this->mSortFilter->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
-        this->mModel->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
 		this->updateProxySelection(QItemSelection(), QItemSelection());
 	}
 

@@ -56,32 +56,6 @@
 #include <QProgressDialog>
 
 #include "vtkTable.h"
-/*
-#include "vtkAbstractArray.h"
-#include "vtkDataArray.h"
-#include "QVTKWin32Header.h"
-#include "vtkConfigure.h"
-#include "vtkSmartPointer.h"
-#include "vtkSQLiteDatabase.h"
-
-#include "vtkBitArray.h"
-#include "vtkCharArray.h"
-#include "vtkSignedCharArray.h"
-#include "vtkUnsignedCharArray.h"
-#include "vtkShortArray.h"
-#include "vtkUnsignedShortArray.h"
-#include "vtkIntArray.h"
-#include "vtkUnsignedIntArray.h"
-#include "vtkLongArray.h"
-#include "vtkUnsignedLongArray.h"
-#include "vtkFloatArray.h"
-#include "vtkDoubleArray.h"
-#include "vtkStringArray.h"
-#include "vtkVariantArray.h"
-#include "vtkUnicodeStringArray.h"
-*/
-
-//class NMLayer;
 
 class NMSqlTableView : public QWidget
 {
@@ -103,14 +77,12 @@ public:
 	void setViewMode(ViewMode mode);
 
 	void hideAttribute(const QString& attr);
-    //void filterAttribute(const QString& attr, const QString& regexp);
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);
 	void setTitle(const QString& title) {this->setWindowTitle(title);}
     void setBaseFilter(const QString& baseFilter)
         {mBaseFilter = baseFilter;}
 
-    //void hideRow(int row);
     const QList<int>* getRaw2Source(void)
             {return 0;}
 
@@ -157,15 +129,18 @@ protected:
 
 	void initView();
 	void sortColumn(int col);
-//    void updateModelSelection();
+    void processUserQuery(const QString& queryName,
+                          const QString& sql);
+
+    //    void updateModelSelection();
     void updateSelection(bool swap=false);
 
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
-//	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
-//			const QString& dbName,
-//			const QString& tableName,
-//			bool bselectedRecs);
+    //	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
+    //			const QString& dbName,
+    //			const QString& tableName,
+    //			bool bselectedRecs);
 
 	//vtkSmartPointer<vtkTable> queryTable(const QString& sqlStmt);
 
@@ -202,8 +177,6 @@ protected:
 
     std::vector<std::vector<long long > > mvFullSel;
 
-    //QItemSelection mBackupSel;
-
     int mQueryCounter;
     QString mPrimaryKey;
     QString mCurrentQuery;
@@ -213,7 +186,6 @@ protected:
 
     QTableView* mTableView;
     QSqlTableModel* mModel;
-    //NMSelectableSortFilterProxyModel* mSortFilter;
     NMSelSortSqlTableProxyModel* mSortFilter;
     NMFastTrackSelectionModel* mSelectionModel;
 	NMFastTrackSelectionModel* mProxySelModel;
@@ -229,13 +201,6 @@ protected:
 	QMenu* mManageLayerMenu;
 
 	QAction* mActSel;
-
-	//vtkSmartPointer<vtkTable> mBaseTable;
-	//otb::AttributeTable::Pointer mOtbTable;
-	//NMLayer* mLayer;
-
-	//QStringList mDeletedColumns;
-	//QStringList mAlteredColumns;
 
 };
 

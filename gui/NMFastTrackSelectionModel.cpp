@@ -22,10 +22,10 @@
  *      Author: alex
  */
 
-#include "NMFastTrackSelectionModel.h"
-#include "private/qitemselectionmodel_p.h"
 #include "nmlog.h"
 
+#include "NMFastTrackSelectionModel.h"
+#include "private/qitemselectionmodel_p.h"
 
 class NMFastTrackSelectionModelPrivate : public QItemSelectionModelPrivate
 {
@@ -41,17 +41,29 @@ public:
 };
 
 NMFastTrackSelectionModel::NMFastTrackSelectionModel(QAbstractItemModel* model)
-	: QItemSelectionModel(*new NMFastTrackSelectionModelPrivate, model)
+    : QItemSelectionModel(*new NMFastTrackSelectionModelPrivate, model),
+      mSqlModel(0), mProxyModel(0)
 {
-
+    mSqlModel = qobject_cast<QSqlTableModel*>(model);
+    if (mSqlModel)
+    {
+        mProxyModel = new NMSelSortSqlTableProxyModel(this);
+        mProxyModel->setSourceModel(mSqlModel);
+    }
 }
 
 NMFastTrackSelectionModel::NMFastTrackSelectionModel(QAbstractItemModel* model, QObject* parent)
-	: QItemSelectionModel(*new NMFastTrackSelectionModelPrivate, model)
+    : QItemSelectionModel(*new NMFastTrackSelectionModelPrivate, model),
+      mSqlModel(0), mProxyModel(0)
 {
 	this->setParent(parent);
+    mSqlModel = qobject_cast<QSqlTableModel*>(model);
+    if (mSqlModel)
+    {
+        mProxyModel = new NMSelSortSqlTableProxyModel(this);
+        mProxyModel->setSourceModel(mSqlModel);
+    }
 }
-
 
 NMFastTrackSelectionModel::~NMFastTrackSelectionModel()
 {
@@ -63,7 +75,13 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel,
 {
 	//NMDebugCtx(this->objectName().toStdString(), << "...");
 
-	Q_D(NMFastTrackSelectionModel);
+    QAbstractItemModel* model = const_cast<QAbstractItemModel*>(this->model());
+    if (mProxyModel)
+    {
+        model = mProxyModel;
+    }
+
+    Q_D(NMFastTrackSelectionModel);
 
 	d->currentSelection.clear();
 	d->currentCommand = QItemSelectionModel::NoUpdate;
@@ -73,17 +91,17 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel,
 	d->ranges.clear();
 
     int mincol = 0;
-    int maxcol = model()->columnCount()-1;
+    int maxcol = model->columnCount()-1;
 
     if (expToRows)
     {
         QItemSelection expSel;
         foreach(QItemSelectionRange range, newSel)
         {
-            QModelIndex tl = model()->index(
+            QModelIndex tl = model->index(
                         range.topLeft().row(),
                         mincol);
-            QModelIndex br = model()->index(
+            QModelIndex br = model->index(
                         range.bottomRight().row(),
                         maxcol);
             expSel.append(QItemSelectionRange(tl, br));
@@ -94,25 +112,7 @@ NMFastTrackSelectionModel::setSelection(const QItemSelection& newSel,
     {
         d->ranges.append(newSel);
     }
-    //d->ranges.clear();
-	//long numin = 0;
-	//foreach(QItemSelectionRange range, newSel)
-	//{
-	//	//numin += range.bottom() - range.top() + 1;
-	//	d->ranges.append(range);
-	//}
 
-	//long numidx=0;
-	//foreach(const QItemSelectionRange& r, d->ranges)
-	//{
-	//	numidx += r.bottom() - r.top() + 1;
-	//}
-	//if (numidx < 0)
-	//	numidx = 0;
-
-	//NMDebugAI(<< "set " << numidx << " rows (->selection)" << std::endl);
-
-	//NMDebugCtx(this->objectName().toStdString(), << "done!");
 	emit selectionChanged(d->ranges, old);
 }
 
@@ -123,25 +123,6 @@ NMFastTrackSelectionModel::getSelection(void)
 
 	Q_D(NMFastTrackSelectionModel);
 
-	//d->cleanup();
-	//d->currentSelection.clear();
-	//d->currentCommand = NoUpdate;
-
-	//NMDebugAI(<< "FASTTRACK: ranges num: " << d->ranges.indexes().size() << std::endl);
-	//NMDebugAI(<< "FASTTRACK: curSel num: " << d->currentSelection.indexes().size() << std::endl);
-
-	//long numidx=0;
-	//foreach(const QItemSelectionRange& r, d->ranges)
-	//{
-	//	numidx += r.bottom() - r.top() + 1;
-	//}
-	//if (numidx < 0)
-	//	numidx = 0;
-    //
-	//NMDebugAI(<< "got " << numidx << " selected rows (selection->)" << std::endl);
-    //
-	//NMDebugCtx(this->objectName().toStdString(), << "done!");
-
 	QItemSelection ret = d->ranges;
 	return ret;
 }
@@ -149,27 +130,32 @@ NMFastTrackSelectionModel::getSelection(void)
 void
 NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& parent)
 {
+
 	Q_D(NMFastTrackSelectionModel);
 
-	if (row < 0 || row > model()->rowCount(parent)-1)
-		return;
+    QAbstractItemModel* model = const_cast<QAbstractItemModel*>(this->model());
+    int maxrow = model->rowCount(parent)-1;
+    if (mProxyModel)
+    {
+        maxrow = mProxyModel->getNumTableRecords();
+        model = mProxyModel;
+    }
 
-	//NMDebugCtx(this->objectName().toStdString(), << "...");
+    if (row < 0 || row > maxrow)
+		return;
 
 	// merge any outstanding current selections
 	d->cleanup();
 
-//	const int& maxcol = column < 0  || column > model()->columnCount(parent)
-//			?  model()->columnCount(parent) : column;
-//	const int& mincol = maxcol != column ? 0 : column;
-    const int& maxcol = model()->columnCount(parent)-1;
+    const int& maxcol = model->columnCount(parent)-1;
     const int& mincol = 0;
-    const int& maxrow = model()->rowCount(QModelIndex())-1;
+    //const int& maxrow = model()->rowCount(QModelIndex())-1;
 
 	// iterate through the current selection, check if row was
 	// selected and adjust selection accordingly
 	bool bRowWasSelected = false;
 	QItemSelection newSel;
+
 	foreach(const QItemSelectionRange& old, d->ranges)
 	{
 		if (old.parent() != parent)
@@ -189,8 +175,8 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 				ntop = top+1 > maxrow || top+1 > bottom ? -1 : top+1;
 				if (ntop > 0)
 				{
-					const QModelIndex sidx = model()->index(ntop, mincol, parent);
-					const QModelIndex eidx = model()->index(bottom, maxcol, parent);
+                    const QModelIndex sidx = model->index(ntop, mincol, parent);
+                    const QModelIndex eidx = model->index(bottom, maxcol, parent);
 					newSel.append(QItemSelectionRange(sidx, eidx));
 					bRowWasSelected = true;
 				}
@@ -198,19 +184,19 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 			else if (row == bottom)
 			{
 				nbottom = bottom-1;
-				const QModelIndex sidx = model()->index(top, mincol, parent);
-				const QModelIndex eidx = model()->index(nbottom, maxcol, parent);
+                const QModelIndex sidx = model->index(top, mincol, parent);
+                const QModelIndex eidx = model->index(nbottom, maxcol, parent);
 				newSel.append(QItemSelectionRange(sidx, eidx));
 				bRowWasSelected = true;
 			}
 			else if (row > top && row < bottom)
 			{
-				const QModelIndex sidx1 = model()->index(top, mincol, parent);
-				const QModelIndex eidx1 = model()->index(row-1, maxcol, parent);
+                const QModelIndex sidx1 = model->index(top, mincol, parent);
+                const QModelIndex eidx1 = model->index(row-1, maxcol, parent);
 				newSel.append(QItemSelectionRange(sidx1, eidx1));
 
-				const QModelIndex sidx = model()->index(row+1, mincol, parent);
-				const QModelIndex eidx = model()->index(bottom, maxcol, parent);
+                const QModelIndex sidx = model->index(row+1, mincol, parent);
+                const QModelIndex eidx = model->index(bottom, maxcol, parent);
 				newSel.append(QItemSelectionRange(sidx, eidx));
 				bRowWasSelected = true;
 			}
@@ -233,8 +219,8 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 	}
 
 
-	const QModelIndex sidx = model()->index(row, mincol, parent);
-	const QModelIndex eidx = model()->index(row, maxcol, parent);
+    const QModelIndex sidx = model->index(row, mincol, parent);
+    const QModelIndex eidx = model->index(row, maxcol, parent);
 	QItemSelectionRange rowrange(sidx, eidx);
 
 	if (!bRowWasSelected)
@@ -247,7 +233,6 @@ NMFastTrackSelectionModel::toggleRow(int row, int column, const QModelIndex& par
 	QItemSelection old = d->ranges;
 	d->ranges = newSel;
 
-	//NMDebugCtx(this->objectName().toStdString(), << "done!");
 	emit selectionChanged(newSel, old);
 }
 

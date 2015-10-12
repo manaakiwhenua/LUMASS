@@ -54,12 +54,6 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
 
 NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
 {
-//    if (mTempTableModel)
-//    {
-//        mTempTableModel->clear();
-//        delete mTempTableModel;
-//    }
-
     if (mTempDb.isOpen())
     {
         mTempDb.close();
@@ -90,6 +84,8 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
     {
         return;
     }
+
+
 
     // connect new model to proxy signals
     QAbstractProxyModel::setSourceModel(sourceModel);
@@ -174,24 +170,6 @@ NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
         return;
     }
 }
-
-//bool
-//NMSelSortSqlTableProxyModel::insertColumn(int column, const QModelIndex &parent)
-//{
-//    if (mSourceModel == 0)
-//    {
-//        return false;
-//    }
-
-//    bool ret = false;
-//    if (mSourceModel->insertColumn(column, parent))
-//    {
-//        mUpdateProxySelection = true;
-//        mUpdateSourceSelection = true;
-//        ret = true;
-//    }
-//    return ret;
-//}
 
 bool
 NMSelSortSqlTableProxyModel::selectRows(const QString &queryString, bool showSelRecsOnly)
@@ -455,43 +433,41 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
         break;
     }
 
-    QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-                                                  QUuid::createUuid().toString());
-    if (!db.open())
-    {
-        NMErr(ctx, << "Couldn't open 'edit' data base!");
-        return false;
-    }
-
-    mSourceModel->database().close();
+    // release any locks on the table
+    // to be modified
     mSourceModel->clear();
-    mSourceModel = 0;
 
     QString qStr = QString("Alter table %1 add column %2 %3")
                         .arg(table)
                         .arg(name)
                         .arg(typeStr);
 
-    QSqlQuery q(db);
+    QSqlQuery q(mSourceModel->database());
     bool ret = true;
     if (!q.exec(qStr))
     {
         NMErr(ctx, << q.lastError().text().toStdString());
         ret = false;
     }
-    mSourceModel = new NMSqlTableModel(this, db);
+
+    // reset the source model with the
+    // modified table
     mSourceModel->setTable(table);
     if (mLastColSort.first >= 0)
     {
         mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
     }
-    mSourceModel->setFilter(mLastFilter);
+    if (mLastSelRecsOnly)
+    {
+        mSourceModel->setFilter(mLastFilter);
+    }
+    else
+    {
+        mSourceModel->setFilter("");
+    }
     mSourceModel->select();
     mUpdateProxySelection = true;
     mUpdateSourceSelection = true;
-
-    //this->setHeaderData(colidx, Qt::Horizontal, QVariant(name));
-    //this->resetInternalData();
 
     return ret;
 }

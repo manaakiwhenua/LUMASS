@@ -128,6 +128,8 @@ void NMSqlTableView::initView()
 	this->setWindowFlags(Qt::Window);
 	this->mHiddenColumns.clear();
 
+    mPrimaryKey = mSortFilter->getSourcePK();
+
 	// ---------------------------- THE PROGRESS DIALOG -------------------
 	mProgressDialog = new QProgressDialog(this);
 
@@ -152,7 +154,7 @@ void NMSqlTableView::initView()
 	this->mStatusBar->addWidget(this->mChkSelectedRecsOnly);
 
     // ----------------- SOME STATUS BAR INFORMATION ------------------------------
-    this->mlNumRecs = mSortFilter->getNumTableRecords();//q.value(0).toInt();
+    this->mlNumRecs = mSortFilter->getNumTableRecords();
     this->updateSelectionAdmin(mlNumRecs);
     this->connect(mModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
                   this, SLOT(procRowsInserted(QModelIndex, int, int)));
@@ -231,7 +233,7 @@ void NMSqlTableView::initView()
 	if (mViewMode == NMTABVIEW_ATTRTABLE)
 	{
 		this->mColHeadMenu->addAction(actCalc);
-		this->mColHeadMenu->addAction(actNorm);
+        //this->mColHeadMenu->addAction(actNorm);
 		this->mColHeadMenu->addSeparator();
 		this->mColHeadMenu->addAction(actAdd);
 		this->mColHeadMenu->addAction(actDelete);
@@ -312,10 +314,10 @@ NMSqlTableView::connectSelModels(bool bconnect)
 {
 	if (bconnect)
 	{
-		connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-				                                         const QItemSelection &)),
-				this, SLOT(updateSelectionAdmin(const QItemSelection &,
-						                        const QItemSelection &)));
+//		connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
+//				                                         const QItemSelection &)),
+//				this, SLOT(updateSelectionAdmin(const QItemSelection &,
+//						                        const QItemSelection &)));
 
         connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
                                                          const QItemSelection &)),
@@ -324,10 +326,10 @@ NMSqlTableView::connectSelModels(bool bconnect)
 	}
 	else
 	{
-		disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-				                                         const QItemSelection &)),
-				this, SLOT(updateSelectionAdmin(const QItemSelection &,
-						                        const QItemSelection &)));
+//		disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
+//				                                         const QItemSelection &)),
+//				this, SLOT(updateSelectionAdmin(const QItemSelection &,
+//						                        const QItemSelection &)));
 
         disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
                                                          const QItemSelection &)),
@@ -352,7 +354,7 @@ NMSqlTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
     }
 
 	this->mSelectionModel = selectionModel;
-    //this->connectSelModels(true);
+    this->connectSelModels(true);
 	if (this->mSelectionModel)
 	{
         //this->mTableView->setSelectionModel(mSelectionModel);
@@ -509,9 +511,6 @@ void NMSqlTableView::userQuery()
     bool bOk = false;
     QString queryTemplate = QString("select * from %1").arg(mModel->tableName());
 
-//    QString sqlStmt = QInputDialog::getText(this, tr("Arbitrary SQL-SELECT Query"),"", QLineEdit::Normal,
-//                                              queryTemplate, &bOk);
-
     NMGlobalHelper helper;
     QString sqlStmt = helper.getMultiLineInput("Arbitrary SQL-SELECT Query",
                                                queryTemplate, this);
@@ -521,20 +520,26 @@ void NMSqlTableView::userQuery()
         return;
     }
 
+    this->processUserQuery("query", sqlStmt);
+}
+
+void
+NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
+{
     // create a unique temp table visisble to the source model's
     // database connection
-    QString tableName = QString("query_%1").arg(mQueryCounter);
+    QString tableName = QString("%1").arg(queryName);
     QStringList allTables = mModel->database().tables();
     while (allTables.contains(tableName))
     {
-        tableName = QString("query_%1").arg(++mQueryCounter);
+        tableName = QString("%1_%2").arg(queryName).arg(++mQueryCounter);
     }
 
-    QString queryStr = QString("Create temp table %1 as %2").arg(tableName).arg(sqlStmt);
+    QString queryStr = QString("Create temp table %1 as %2").arg(tableName).arg(sql);
     QSqlQuery userQuery(mModel->database());
     if (!userQuery.exec(queryStr))
     {
-        NMErr(__ctxsqltabview, << userQuery.lastError().text().toStdString() << std::endl);
+        NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
         NMDebugCtx(__ctxsqltabview, << "done!");
         return;
     }
@@ -600,34 +605,59 @@ void NMSqlTableView::calcColumn()
 		return;
 	}
 
-	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(this->mModel));
-	prepareProgressDlg(calc.data(), QString("Calculate %1 ...").arg(mLastClickedColumn));
-    //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
-	calc->setResultColumn(this->mLastClickedColumn);
+    QString whereClause = "";
+    if (!mSortFilter->getFilter().isEmpty())
+    {
+        whereClause = QString("where %1").arg(mSortFilter->getFilter());
+    }
 
-	if (this->mSelectionModel->selection().count() > 0)
-		calc->setRowFilter(this->mSelectionModel->selection());
+    QString uStr = QString("update %1 set %2 = %3 %4")
+                    .arg(mModel->tableName())
+                    .arg(mLastClickedColumn)
+                    .arg(func)
+                    .arg(whereClause);
 
-	try
-	{
-		calc->setFunction(func);
-		if (!calc->calculate())
-		{
-            NMErr(__ctxsqltabview, << "Something went wrong!");
-		}
-	}
-	catch (itk::ExceptionObject& err)
-	{
-		cleanupProgressDlg(calc.data());
-		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-				      .arg(err.GetDescription());
+    QSqlQuery qUpdate(mModel->database());
+    if (!qUpdate.exec(uStr))
+    {
+        NMBoxErr("Calculate Column", qUpdate.lastError().text().toStdString());
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
 
-        NMErr(__ctxsqltabview, << "Calculation failed!"
-				<< errmsg.toStdString());
+    mModel->select();
+    updateProxySelection(QItemSelection(), QItemSelection());
 
-		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-	}
-	cleanupProgressDlg(calc.data());
+
+
+    //	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(this->mModel));
+    //	prepareProgressDlg(calc.data(), QString("Calculate %1 ...").arg(mLastClickedColumn));
+    //    //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
+    //	calc->setResultColumn(this->mLastClickedColumn);
+
+    //	if (this->mSelectionModel->selection().count() > 0)
+    //		calc->setRowFilter(this->mSelectionModel->selection());
+
+    //	try
+    //	{
+    //		calc->setFunction(func);
+    //		if (!calc->calculate())
+    //		{
+    //            NMErr(__ctxsqltabview, << "Something went wrong!");
+    //		}
+    //	}
+    //	catch (itk::ExceptionObject& err)
+    //	{
+    //		cleanupProgressDlg(calc.data());
+    //		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
+    //				      .arg(err.GetDescription());
+
+    //        NMErr(__ctxsqltabview, << "Calculation failed!"
+    //				<< errmsg.toStdString());
+
+    //		QMessageBox::critical(this, "Table Calculation Error", errmsg);
+    //	}
+    //	cleanupProgressDlg(calc.data());
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 
@@ -1097,53 +1127,76 @@ void NMSqlTableView::colStats()
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
-	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
-    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->sourceRowCount()*2;
-    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->rowCount()*2;
-    const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : mlNumRecs*2;
-	prepareProgressDlg(calc.data(), "Calculate Column Statistics ...", maxrange);
+    if (mLastClickedColumn.isEmpty() || mModel == 0)
+    {
+        return;
+    }
 
-    //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
-	calc->setRowFilter(mSelectionModel->selection());
-	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
+    QString name = QString("%1_stats").arg(mLastClickedColumn);
 
-	if (stats.size() < 4)
-	{
-		NMDebugAI(<< "Couldn't calc stats for a reason!" << std::endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
-		return;
-	}
-	cleanupProgressDlg(calc.data(), maxrange);
+    std::string col = mLastClickedColumn.toStdString();
+    std::stringstream sql;
 
-	// min, max, mean, std. dev, sum
-	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
-	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
-	QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
-	QString smedi = QString("%1").arg(stats[3], 0, 'f', 4);
-	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
-	QString ssum  = QString("%1").arg(stats[6], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
-	QString ssample = QString("Sample Size: %1").arg(stats[5]);
+    sql << "select min(" << col << ") as minimum, "
+        << "max(" << col << ") as maximum, "
+        << "avg(" << col << ") as mean, "
+        << "sum(" << col << ") as sum from "
+        << mModel->tableName().toStdString();
 
-	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
-	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
-	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
-	QString strmedi ("Median: ");
-	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
-	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
+    if (mSortFilter->getSelCount())
+    {
+        sql << " where " << mSortFilter->getFilter().toStdString();
+    }
+
+    this->processUserQuery(name, QString(sql.str().c_str()));
+
+    //	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
+    //    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->sourceRowCount()*2;
+    //    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->rowCount()*2;
+    //    const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : mlNumRecs*2;
+    //	prepareProgressDlg(calc.data(), "Calculate Column Statistics ...", maxrange);
+
+    //    //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
+    //	calc->setRowFilter(mSelectionModel->selection());
+    //	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
+
+    //	if (stats.size() < 4)
+    //	{
+    //		NMDebugAI(<< "Couldn't calc stats for a reason!" << std::endl);
+    //        NMDebugCtx(__ctxsqltabview, << "done!");
+    //		return;
+    //	}
+    //	cleanupProgressDlg(calc.data(), maxrange);
+
+    //	// min, max, mean, std. dev, sum
+    //	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
+    //	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
+    //	QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
+    //	QString smedi = QString("%1").arg(stats[3], 0, 'f', 4);
+    //	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
+    //	QString ssum  = QString("%1").arg(stats[6], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
+    //	QString ssample = QString("Sample Size: %1").arg(stats[5]);
+
+    //	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
+    //	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
+    //	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
+    //	QString strmedi ("Median: ");
+    //	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
+    //	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
 
 
-	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11%12\n%13")
-			.arg(strmin).arg(smin)
-			.arg(strmax).arg(smax)
-			.arg(strmean).arg(smean)
-			.arg(strmedi).arg(smedi)
-			.arg(strsdev).arg(ssdev)
-			.arg(strsum).arg(ssum)
-			.arg(ssample);
+    //	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11%12\n%13")
+    //			.arg(strmin).arg(smin)
+    //			.arg(strmax).arg(smax)
+    //			.arg(strmean).arg(smean)
+    //			.arg(strmedi).arg(smedi)
+    //			.arg(strsdev).arg(ssdev)
+    //			.arg(strsum).arg(ssum)
+    //			.arg(ssample);
 
-	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
+    //	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
 
-	QMessageBox::information(this, title, res);
+    //	QMessageBox::information(this, title, res);
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
@@ -1216,14 +1269,18 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
 	}
 	QTextStream out(&file);
 
+    QString whereClause = "";
     // get either the selected or all records
-    QItemSelection inputSelection = mSortFilter->getSelectAll();
-    //    if (bselectedRecs && mSortFilter->getSelCount())
-    //    {
-    //        inputSelection = mSortFilter->getSourceSelection();
-    //    }
+    int maxrange = mlNumRecs;
+    if (mSortFilter->getSelCount() > 0)
+    {
+        maxrange = mSortFilter->getSelCount();
+        whereClause = QString("where %1").arg(mSortFilter->getFilter());
+    }
 
-    QString qStr = QString("select * from %1").arg(mModel->tableName());
+    QString qStr = QString("select * from %1 %2")
+                .arg(mModel->tableName())
+                .arg(whereClause);
     QSqlQuery qTable(mModel->database());
     if (!qTable.exec(qStr))
     {
@@ -1232,23 +1289,18 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
         return false;
     }
 
-    const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : mlNumRecs;
 	const int ncols = mModel->columnCount(QModelIndex());
 
-	mProgressDialog->setWindowModality(Qt::WindowModal);
-	mProgressDialog->setLabelText("Export Table ...");
-	mProgressDialog->setRange(0, maxrange);
+    mProgressDialog->setWindowModality(Qt::WindowModal);
+    mProgressDialog->setLabelText("Export Table ...");
+    mProgressDialog->setRange(0, maxrange);
 
 	// write header first
     int pkIdx = -1;
-	long progress = 0;
+    long progress = 0;
 	for (int col=0; col < ncols; ++col)
 	{
 		QString cN = mModel->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
-        //        if (cN.compare(mPrimaryKey, Qt::CaseInsensitive) == 0)
-        //        {
-        //            pkIdx = col;
-        //        }
 		out << "\"" << cN << "\"";
 		if (col < ncols-1)
 			out << ",";
@@ -1256,66 +1308,35 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
 	out << endl;
     out.setRealNumberNotation(QTextStream::SmartNotation);
 
-    //    if (pkIdx == -1)
-    //    {
-    //        NMErr(__ctxsqltabview, << "Export aborted! Failed identifying the primary key!");
-    //        file.close();
-    //        NMDebugCtx(__ctxsqltabview, << "done!");
-    //        return false;
-    //    }
-
-    if (!qTable.next())
+    //int progInterval = maxrange / 50;
+    while (qTable.next())
     {
-        file.close();
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return false;
-    }
-    //int rowIdx = qTable.value(pkIdx).toInt();
-
-
-    foreach(const QItemSelectionRange& range, inputSelection)
-    {
-        const int top = range.top();
-        const int bottom = range.bottom();
-        //while (rowIdx >= top && rowIdx <= bottom)
-        for (int r=top; r <= bottom; ++r)
+        for (int col=0; col < ncols; ++col)
         {
-            for (int col=0; col < ncols; ++col)
+            QVariant val = qTable.value(col);
+            if (val.type() == QVariant::String)
             {
-                //QModelIndex idx = mModel->index(row, col, QModelIndex());
-                //QVariant val = mModel->data(idx, Qt::DisplayRole);
-                QVariant val = qTable.value(col);
-                if (val.type() == QVariant::String)
-                {
-                    out << "'" << val.toString() << "'";
-                }
-                else
-                {
-                    out << val.toString();
-                }
-
-                if (col < ncols-1)
-                    out << ",";
+                out << "'" << val.toString() << "'";
             }
-            out << "\n";
-            ++progress;
-            if (progress % 100 == 0)
+            else
             {
-                out.flush();
-                mProgressDialog->setValue(progress);
+                out << val.toString();
             }
 
-            if (!qTable.next())
-            {
-                break;
-            }
-
-            //rowIdx = qTable.value(pkIdx).toInt();
+            if (col < ncols-1)
+                out << ",";
+        }
+        out << "\n";
+        ++progress;
+        mProgressDialog->setValue(progress);
+        if (progress % 1000 == 0)
+        {
+            out.flush();
         }
     }
 
     mProgressDialog->setValue(maxrange);
-	out.flush();
+    out.flush();
 	file.close();
     NMDebugCtx(__ctxsqltabview, << "done!");
 	return true;
@@ -1410,46 +1431,6 @@ NMSqlTableView::unhideAttribute(const QString& attr)
 	this->mTableView->showColumn(colidx);
 }
 
-//void NMSqlTableView::filterAttribute(const QString& attr,
-//		const QString& regexp)
-//{
-//    NMDebugCtx(__ctxsqltabview, << "...");
-
-//	// apply the provided filter
-//	int colidx;
-
-//	// if the column index is -1, all colmuns are used as key columns
-//	// in the filter expression
-//	if (attr.compare(tr("-1")) == 0)
-//		colidx = -1;
-//	else
-//	{
-//		// get getColumnIndex returns -1 if column is not found and in
-//		// this case, we have to quit
-//		colidx = this->getColumnIndex(attr);
-
-//		if (colidx < 0)
-//		{
-//			NMDebugAI(<< "couldn't find column '" << attr.toStdString()
-//					<< "'!" << std::endl);
-//            NMDebugCtx(__ctxsqltabview, << "done!");
-//			return;
-//		}
-//	}
-
-//	this->mSortFilter->setFilterRegExp(QRegExp(regexp, Qt::CaseInsensitive,
-//			QRegExp::FixedString));
-//	this->mSortFilter->setFilterKeyColumn(colidx);
-
-//	// set the number of rows and the row header index
-//	int nrows = this->mSortFilter->rowCount();
-
-//	QString nrecords = QString(tr("%1 records")).arg(nrows);
-//	this->mStatusBar->showMessage(nrecords);
-
-//    NMDebugCtx(__ctxsqltabview, << "done!");
-//}
-
 bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 {
 	// ======================== COLUMN HEADER + MOUSE BUTTON ==================================================
@@ -1508,20 +1489,16 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 		{
 			int row = this->mTableView->rowAt(me->pos().y());
 			this->mlLastClickedRow = row;
-			if (row != -1)
+            if (row != -1 && mbIsSelectable)
 			{
-                //int srcRow = row;
-//				QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
-//				QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
-                //QModelIndex indx = mSortFilter->index(row, 0, QModelIndex());
-                //QModelIndex srcIndx = indx;
-                //NMDebugAI(<< "proxy --> source : " << indx.row() << " --> " << srcIndx.row() << std::endl);
-                //srcRow = indx.row();
-				if (this->mbIsSelectable)
+//                QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
+//                QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
+//                long srcRow = srcIndx.row();
+                //if (this->mbIsSelectable)
 				{
                     this->toggleRow(row);
 				}
-                emit notifyLastClickedRow((long)row);
+//                emit notifyLastClickedRow(srcRow);
 			}
 		}
 		return true;
@@ -1616,18 +1593,7 @@ NMSqlTableView::sortColumn(int col)
 
     //NMDebugAI(<< "... actually sorting the column" << std::endl);
     mSortFilter->sort(col, order);
-    //this->mTableView->reset();
-
     updateProxySelection(QItemSelection(), QItemSelection());
-
-
-//    if (mlNumRecs == 0)
-//    {
-//        NMDebugCtx(__ctxsqltabview, << "done!");
-//        return;
-//    }
-
-    //this->updateInternalSelection();
 
 
     NMDebugCtx(__ctxsqltabview, << "done!");
@@ -1660,6 +1626,9 @@ NMSqlTableView::selectionQuery(void)
 
     mCurrentSwapQuery = QString("NOT (%1)").arg(queryStr);
 
+    // this clears any manually selected rows ...
+    mPickedRows.clear();
+
     mbSwitchSelection = false;
     this->updateSelection(false);
 
@@ -1680,6 +1649,8 @@ NMSqlTableView::updateSelection(bool swap)
     {
         queryStr = mCurrentSwapQuery.simplified();
     }
+
+
     if (!mBaseFilter.isEmpty())
     {
         if (!queryStr.isEmpty())
@@ -1720,6 +1691,8 @@ NMSqlTableView::updateSelection(bool swap)
         }
     }
 
+    NMGlobalHelper h;
+    h.startBusy();
     if (mChkSelectedRecsOnly->isChecked())
     {
         mProxySelModel->clearSelection();
@@ -1737,6 +1710,7 @@ NMSqlTableView::updateSelection(bool swap)
     {
         this->clearSelection();
     }
+    h.endBusy();
 }
 
 void NMSqlTableView::clearSelection()
@@ -1756,117 +1730,30 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
-    //this->printSelRanges(this->mSelectionModel->selection(), "Source");
-    //this->printSelRanges(this->mProxySelModel->selection(), "Proxy");
+    if (mSelectionModel && sel.count() > 0)
+    {
+        mCurrentQuery.clear();
+        mCurrentSwapQuery.clear();
+        mbSwitchSelection = false;
+        mPickedRows.clear();
+        foreach(const QItemSelectionRange& range, sel)
+        {
+            for (int r=range.top(); r <= range.bottom(); ++r)
+            {
+                mPickedRows << r;
+            }
+        }
+        this->updateSelection(false);
+    }
+    else
+    {
+        this->mProxySelModel->setSelection(mSortFilter->getProxySelection());
+    }
 
-    this->mProxySelModel->setSelection(mSortFilter->getProxySelection());
     this->printSelRanges(this->mProxySelModel->selection(), "new selection ...");
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
-
-
-//void
-//NMSqlTableView::updateInternalSelection(QSqlQuery &query)
-//{
-//    NMDebugCtx(__ctxsqltabview, << "...");
-
-//    QItemSelection sel = this->mSelectionModel->getSelection();
-//    int cnt = 0;
-//    int mincol = 0;
-//    int maxcol = mModel->columnCount()-1;
-
-//    long top = -1;
-//    if (query.next())
-//    {
-//        top = query.value(0).toInt();
-//    }
-//    else
-//    {
-//        NMDebugAI(<< "Failed fetching first record of result set!" << std::endl);
-//        NMDebugCtx(__ctxsqltabview, << "done!");
-//        return;
-//    }
-//    long bottom = top;
-
-//    while(query.next())
-//    {
-//        const int v = query.value(0).toInt();
-
-//        // extend the selection range
-//        if (v == bottom + 1)
-//        {
-//            bottom = v;
-//        }
-//        // write selection range and start new
-//        else
-//        {
-//            NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-//            cnt += bottom - top + 1;
-//            const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-//            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-//            std::vector<long long> selr;
-//            selr.push_back(top);
-//            selr.push_back(bottom);
-//            mvFullSel.push_back(selr);
-//            sel.append(QItemSelectionRange(tl, br));
-//            top = v;
-//            bottom = v;
-//        }
-//    }
-
-//    // add the last open selection
-//    NMDebugAI(<< "#" << cnt << ": " << top << " - " << bottom << std::endl);
-//    cnt += bottom - top + 1;
-//    std::vector<long long> selr;
-//    selr.push_back(top);
-//    selr.push_back(bottom);
-//    mvFullSel.push_back(selr);
-//    const QModelIndex tl = mModel->index(top, mincol, QModelIndex());
-//    const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-//    sel.append(QItemSelectionRange(tl, br));
-
-//    this->printSelRanges(sel, "just selected ...");
-//    mSelectionModel->setSelection(sel);
-
-//    NMDebugCtx(__ctxsqltabview, << "done!");
-//}
-
-//void
-//NMSqlTableView::updateModelSelection(void)
-//{
-//    NMDebugCtx(__ctxsqltabview, << "...");
-
-//    int mincol = 0;
-//    int maxcol = mModel->columnCount()-1;
-//    int bottom = -1;
-//    int first = 0;
-//    int last = mModel->rowCount();
-
-//    bool done = false;
-//    QItemSelection isel = this->mSelectionModel->getSelection();
-//    for (int i=0; i < mvFullSel.size() && !done; ++i)
-//    {
-//        if (mvFullSel[i][0] >= first)
-//        {
-//            const QModelIndex tl = mModel->index(mvFullSel[i][0], mincol, QModelIndex());
-//            if (mvFullSel[i][1] < last)
-//            {
-//                bottom = mvFullSel[i][1];
-//            }
-//            else
-//            {
-//                bottom = last;
-//                done = true;
-//            }
-
-//            const QModelIndex br = mModel->index(bottom, maxcol, QModelIndex());
-//            isel.append(QItemSelectionRange(tl, br));
-//        }
-//    }
-//    mSelectionModel->setSelection(isel);
-//    NMDebugCtx(__ctxsqltabview, << "done!");
-//}
 
 void
 NMSqlTableView::procRowsInserted(QModelIndex parent, int first, int last)
@@ -1906,9 +1793,6 @@ NMSqlTableView::showEvent(QShowEvent* event)
 void
 NMSqlTableView::toggleRow(int row)
 {
-
-    return;
-
     // don't do any row toggling when 'selected records only'
     // mode is turned on
     // note that this mode can be turned on mandatorily when
@@ -1926,6 +1810,10 @@ NMSqlTableView::toggleRow(int row)
         return;
     }
 
+    mCurrentQuery.clear();
+    mCurrentSwapQuery.clear();
+    mbSwitchSelection = false;
+
     int srcRow = srcIdx.row();
     int idx = mPickedRows.indexOf(srcRow);
     if (idx == -1)
@@ -1936,8 +1824,8 @@ NMSqlTableView::toggleRow(int row)
     {
         mPickedRows.removeAt(idx);
     }
-
-    updateSelection(mbSwitchSelection);
+    emit notifyLastClickedRow(srcRow);
+    updateSelection(false);
 }
 
 

@@ -80,11 +80,15 @@ public:
      *  extended NM-API
      */
 
-    QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
+
     bool selectRows(const QString& queryString, bool showSelRecsOnly);
     void clearSelection(void);
     int getNumTableRecords(void);
     long getSelCount(void) {return mLastSelCount;}
+
+    QString getFilter(void){return mLastFilter;}
+    QString getSourcePK(void);
+    QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
     QItemSelection getProxySelection(void);
     QItemSelection getSourceSelection(void);
     QItemSelection getSelectAll(void);
@@ -95,7 +99,6 @@ protected:
     bool updateSelection(QItemSelection& sel, bool bProxySelection=true);
     void resetSourceModel();
     bool createMappingTable();
-    QString getSourcePK(void);
 
     std::pair<int, Qt::SortOrder> mLastColSort;
     QString mLastFilter;

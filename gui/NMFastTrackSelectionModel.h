@@ -26,6 +26,9 @@
 #define NMFASTTRACKSELECTIONMODEL_H_
 
 #include <qitemselectionmodel.h>
+#include <QSqlTableModel>
+#include "NMSelSortSqlTableProxyModel.h"
+
 class NMFastTrackSelectionModelPrivate;
 class NMFastTrackSelectionModel: public QItemSelectionModel
 {
@@ -33,6 +36,7 @@ class NMFastTrackSelectionModel: public QItemSelectionModel
 	Q_DECLARE_PRIVATE(NMFastTrackSelectionModel)
 
 public:
+
 	NMFastTrackSelectionModel(QAbstractItemModel* model);
 	NMFastTrackSelectionModel(QAbstractItemModel* model, QObject* parent=0);
 	virtual ~NMFastTrackSelectionModel();
@@ -42,23 +46,17 @@ public:
 	QItemSelection getSelection(void);
 	void toggleRow(int row, int column,
 			const QModelIndex& parent=QModelIndex());
+
+    //void setFullTableSelection(const QItemSelection& sel);
+    //QItemSelection getFullTableSelection(void);
+
+protected:
+
+    QSqlTableModel* mSqlModel;
+    NMSelSortSqlTableProxyModel* mProxyModel;
+    QItemSelection mFullTableSelection;
+
 };
 
 #endif /* NMFASTTRACKSELECTIONMODEL_H_ */
 
-
-
-//#ifndef NMFASTTRACKSELECTIONMODEL_P_H_
-//#define NMFASTTRACKSELECTIONMODEL_P_H_
-//
-//#include <private/qitemselectionmodel_p.h>
-//class NMFastTrackSelectionModelPrivate : public QItemSelectionModelPrivate
-//{
-//	Q_DECLARE_PUBLIC(NMFastTrackSelectionModel)
-//public:
-//	NMFastTrackSelectionModelPrivate() {}
-//
-//};
-//
-//
-//#endif /* NMFASTTRACKSELECTIONMODEL_P_H_ */

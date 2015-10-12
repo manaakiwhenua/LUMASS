@@ -433,22 +433,42 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
         break;
     }
 
+    NMDebugAI(<< "available database connections ..." << std::endl);
+    QStringList conns = QSqlDatabase::connectionNames();
+    foreach(const QString& con, conns)
+    {
+        NMDebugAI(<< con.toStdString() << std::endl);
+    }
+
+    QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
+                                                  QUuid::createUuid().toString());
+
+    NMDebugAI(<< "new connection: " << db.connectionName().toStdString() << std::endl);
+
     // release any locks on the table
     // to be modified
+    mSourceModel->database().close();
     mSourceModel->clear();
 
     QString qStr = QString("Alter table %1 add column %2 %3")
                         .arg(table)
                         .arg(name)
                         .arg(typeStr);
+    if (!db.open())
+    {
+        NMErr(ctx, << "Failed to open edit connection to database!");
+        return false;
+    }
 
-    QSqlQuery q(mSourceModel->database());
+    QSqlQuery q(db);
     bool ret = true;
     if (!q.exec(qStr))
     {
         NMErr(ctx, << q.lastError().text().toStdString());
         ret = false;
     }
+    db.close();
+    mSourceModel->database().open();
 
     // reset the source model with the
     // modified table
@@ -749,7 +769,7 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
     // no need of expensive mapping unless the source table has been sorted
     if (mLastColSort.first == -1)
     {
-        return this->index(proxyIdx.row(), proxyIdx.column(), proxyIdx.parent());
+        return this->index(proxyIdx.row(), proxyIdx.column(), QModelIndex());
     }
 
     // NOTE: since we utilise the autoincrementing primary key, the

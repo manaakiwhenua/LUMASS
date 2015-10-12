@@ -1137,10 +1137,15 @@ void NMSqlTableView::colStats()
     std::string col = mLastClickedColumn.toStdString();
     std::stringstream sql;
 
-    sql << "select min(" << col << ") as minimum, "
+    sql << "select count(" << col << ") as count, "
+        << "min(" << col << ") as minimum, "
         << "max(" << col << ") as maximum, "
         << "avg(" << col << ") as mean, "
-        << "sum(" << col << ") as sum from "
+        << "(sum(" << col << " * " << col << ") / count(" << col << ") "
+        << "- (avg(" << col << ") * avg(" << col << "))) as stddev, "
+
+        << "sum(" << col << ") as sum "
+        << " from "
         << mModel->tableName().toStdString();
 
     if (mSortFilter->getSelCount())

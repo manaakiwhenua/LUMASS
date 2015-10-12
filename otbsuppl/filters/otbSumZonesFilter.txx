@@ -280,7 +280,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(4,0);
+                vMap[zone] = std::vector<double>(5,0);
                 vMap[zone][0] = itk::NumericTraits<double>::max();
                 vMap[zone][1] = itk::NumericTraits<double>::NonpositiveMin();
             }
@@ -294,6 +294,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[2] += val;
             // count
             params[3] += 1;
+            // sum_val^2
+            params[4] += val * val;
 
             ++zoneIt;
             ++valueIt;
@@ -310,7 +312,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(4,0);
+                vMap[zone] = std::vector<double>(5,0);
             }
             std::vector<double>& params = vMap[zone];
 
@@ -322,6 +324,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[2] += val;
             // count
             params[3] += 1;
+            // sum_val^2
+            params[4] += val * val;
 
             ++zoneIt;
             progress.CompletedPixel();
@@ -366,8 +370,9 @@ void SumZonesFilter< TInputImage, TOutputImage >
     /*  keep track of zones ...
      *  0: min
      *  1: max
-     *  2: sum
+     *  2: sum_v
      *  3: count
+     *  4: sum_v^2
      */
 
     for (int t=0; t < this->GetNumberOfThreads(); ++t)
@@ -405,6 +410,9 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
                 // count
                 params[3] += mapIt->second[3];
+
+                // sum_val^2
+                params[4] += mapIt->second[4];
             }
 
             ++mapIt;
@@ -490,10 +498,11 @@ void SumZonesFilter< TInputImage, TOutputImage >
             values[3].dval = p[0];                           // min
             values[4].dval = p[1];                           // max
             values[5].dval = p[2] / (p[3] > 0 ? p[3] : 1.0); // mean
-            values[6].dval = values[4].dval != p[2]
-                             ? ::sqrt( ((p[2] * p[2]) / p[3]) - (values[4].dval * values[4].dval))
-                             : 0;                            // stddev
-            values[6].dval = p[2];                           // sum
+//            values[6].dval = values[5].dval != p[2]
+//                             ? ::sqrt( (p[4] / p[3]) - (values[5].dval * values[5].dval))
+//                             : 0;                            // stddev
+            values[6].dval = ::sqrt((p[4] / (p[3] > 0 ? p[3] : 1.0)) - (values[5].dval * values[5].dval));
+            values[7].dval = p[2];                           // sum
 
             mZoneTable->doBulkSet(values);
             ++globalIt;

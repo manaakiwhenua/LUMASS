@@ -1828,10 +1828,17 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     else if (driverShortName.compare("HFA") == 0)
      {
         //if (this->m_UseCompression)
-            papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "TRUE");
+        papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "TRUE");
         papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "TRUE");
 
      }
+    else if (driverShortName.compare("KEA") == 0)
+    {
+        std::stringstream cl;
+        cl << this->m_CompressionLevel;
+        papszOptions = CSLAddNameValue(papszOptions, "DEFLATE", cl.str().c_str());
+    }
+
 
     m_Dataset = GDALDriverManagerWrapper::GetInstance().Create(
                      driverShortName,
@@ -2829,6 +2836,12 @@ GDALDataset* GDALRATImageIO::CreateCopy()
     {
         option = CSLAddNameValue(option, "COMPRESSED", "YES");
         option = CSLAddNameValue(option, "IGNOREUTM", "YES");
+    }
+    else if (gdalDriverShortName.compare("KEA") == 0)
+    {
+        std::stringstream cl;
+        cl << this->m_CompressionLevel;
+        option = CSLAddNameValue(option, "DEFLATE", cl.str().c_str());
     }
     else if (gdalDriverShortName.compare("GTiff") == 0)
     {

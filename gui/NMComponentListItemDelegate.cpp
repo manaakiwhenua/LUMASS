@@ -327,6 +327,10 @@ NMComponentListItemDelegate::createEditor(QWidget* parent,
 					else
 					{
 						cols.append(l->getNumericColumns(false));
+                        if (il)
+                        {
+                            cols.prepend(QString("Pixel Values"));
+                        }
 					}
 
 					int current = 0;

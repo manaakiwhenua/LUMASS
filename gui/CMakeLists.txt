@@ -51,7 +51,8 @@ INCLUDE_DIRECTORIES(
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
     ${GDALRATImageIO_BINARY_DIR}
-    ${SQLITE3_INCLUDE_DIR}
+    #${SQLITE3_INCLUDE_DIR}
+	${SQLite_SOURCE_DIR}
 #    ${TCADB_INCLUDE_DIR}
 )     
 
@@ -62,6 +63,7 @@ LINK_DIRECTORIES(
 	${mfw_BINARY_DIR}
 	${mfw_BINRAY_DIR}/lib
 	${gui_BINARY_DIR}/lib
+	${SQLite_BINARY_DIR}/lib
 	${muparser_BINARY_DIR}  
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
@@ -132,13 +134,15 @@ set(LUMASS_LINKLIBS
         ${VTK_LIBRARIES}
         ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
         ${OPENGL_glu_LIBRARY}
-        ${SQLITE3_LIBRARY}
+        #${SQLITE3_LIBRARY}
+		SQLite
         #tokyocabinet
 )
 
 set(LUMASS_DEPLIBS
     NMModFrame
     QtPropertyBrowser 
+	SQLite
 )
 
 IF(RASSUPPORT)

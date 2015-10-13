@@ -48,8 +48,14 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
     mLastColSort.first = -1;
     mLastColSort.second = Qt::AscendingOrder;
     mTempTableName = std::tmpnam(0);
+#ifndef _WIN32
     mTempTableName = mTempTableName.right(
                 mTempTableName.size() - mTempTableName.lastIndexOf('/') - 1);
+#else
+	mTempTableName = mTempTableName.right(
+               mTempTableName.size() - mTempTableName.lastIndexOf('\\') - 1);
+	mTempTableName = mTempTableName.replace(QString('.'), QString('_'));
+#endif
 }
 
 NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
@@ -416,6 +422,7 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
 
     int colidx = mSourceModel->columnCount();
     QString table = mSourceModel->tableName();
+
     QString typeStr;
     switch (type)
     {
@@ -440,8 +447,23 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
         NMDebugAI(<< con.toStdString() << std::endl);
     }
 
-    QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-                                                  QUuid::createUuid().toString());
+#ifndef _WIN32
+        QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
+								QUuid::createUuid().toString());
+#else
+		char* tn = new char(256);
+		tn = tmpnam(0);
+		//char* bn = new char(256);
+		//_splitpath(tn, 0, 0, bn, 0);
+
+		std::string stn = tn;
+		std::string stn2 = stn.substr(1, stn.size()-1);
+
+        QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
+								QString(stn2.c_str()));
+		delete tn;
+		//delete bn;
+#endif
 
     NMDebugAI(<< "new connection: " << db.connectionName().toStdString() << std::endl);
 
@@ -517,8 +539,23 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     }
     else
     {
+#ifndef _WIN32
         mTempDb = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-                                          QUuid::createUuid().toString());
+								QUuid::createUuid().toString());
+#else
+		char* tn = new char(256);
+		tn = tmpnam(0);
+		std::string stn = tn;
+		std::string stn2 = stn.substr(1, stn.size()-1);
+	
+		//char* bn = new char(256);
+		//_splitpath(tn, 0, 0, bn, 0);
+
+        mTempDb = QSqlDatabase::cloneDatabase(mSourceModel->database(),
+								QString(stn2.c_str()));
+		delete tn;
+		//delete bn;
+#endif
         mTempDb.open();
         //mTempTableModel = new NMSqlTableModel(this, mTempDb);
     }
@@ -547,10 +584,13 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
                                                        .arg(mSourcePK);
     tmpCreate += orgTableSql;
 
+	NMMsg(<< "queryStr: " << tmpCreate.toStdString() << std::endl);
+
     QSqlQuery queryTmpCreate(mTempDb);
     if (!queryTmpCreate.exec(tmpCreate))
     {
         NMErr(ctx, << queryTmpCreate.lastError().text().toStdString() << std::endl);
+		//mTempDb.close();
         return false;
     }
 
@@ -590,9 +630,10 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     {
         NMErr(ctx, << queryInsert.lastError().text().toStdString() << std::endl);
         queryInsert.finish();
+		//mTempDb.close();
         return false;
     }
-
+	//mTempDb.close();
     return true;
 }
 
@@ -779,6 +820,8 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
                    .arg(mTempTableName)
                    .arg(mProxyPK)
                    .arg(proxyIdx.row()+1);
+
+	NMMsg(<< "mapToSource: qstr: " << qstr.toStdString() << std::endl);
 
     QSqlQuery qProxy(mTempDb);
     if (!qProxy.exec(qstr))

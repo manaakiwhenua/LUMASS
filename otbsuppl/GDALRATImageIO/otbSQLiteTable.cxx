@@ -27,7 +27,11 @@
 #include <limits>
 #include <cstring>
 #include <cstdio>
-#include "libgen.h"
+#ifndef _WIN32
+	#include "libgen.h"
+#else
+	#include <stdlib.h>
+#endif
 #include <sstream>
 #include <locale>
 #include <algorithm>
@@ -2123,8 +2127,16 @@ SQLiteTable::createTable(std::string filename, std::string tag)
     if (!m_dbFileName.empty())
     {
         std::string fullname = m_dbFileName;
-        m_tableName = basename(const_cast<char*>(fullname.c_str()));
-        size_t pos = m_tableName.find_last_of('.');
+
+#ifndef _WIN32
+		m_tableName = basename(const_cast<char*>(fullname.c_str()));
+#else
+		char fname[256];
+		_splitpath(fullname.c_str(), 0, 0, fname, 0);
+		m_tableName = fname;
+#endif
+
+		size_t pos = m_tableName.find_last_of('.');
         if (pos > 0)
         {
             m_tableName = m_tableName.substr(0, pos);

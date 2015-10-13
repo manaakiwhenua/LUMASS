@@ -109,7 +109,7 @@ public:
 
 	// managing the attribute table's content
     bool AddColumn(const std::string &sColName, TableColumnType type)
-        {AddConstrainedColumn(sColName, type, "");}
+        {return AddConstrainedColumn(sColName, type, "");}
     bool AddConstrainedColumn(const std::string& sColName, TableColumnType type,
                    const std::string& sColConstraint="");
     //bool AddRow();

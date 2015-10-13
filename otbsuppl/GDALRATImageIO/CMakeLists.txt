@@ -9,15 +9,15 @@ INCLUDE_DIRECTORIES(
 	${OTB_DIR}/Code/Common
 	${OTB_DIR}/Code/IO
 	${OTB_DIR}/Utilities/ITK/Code/Common
-        ${SQLite_SOURCE_DIR}
+    ${SQLite_SOURCE_DIR}
 ) 
 
 LINK_DIRECTORIES(
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/lib
-        #${SQLITE3_INCLUDE_DIR}
-        ${SQLite_BINARY_DIR}
+    #${SQLITE3_INCLUDE_DIR}
+    ${SQLite_BINARY_DIR}/lib
 )                                                         
 
 

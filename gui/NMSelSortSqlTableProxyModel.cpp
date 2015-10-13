@@ -47,15 +47,7 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
     this->setParent(parent);
     mLastColSort.first = -1;
     mLastColSort.second = Qt::AscendingOrder;
-    mTempTableName = std::tmpnam(0);
-#ifndef _WIN32
-    mTempTableName = mTempTableName.right(
-                mTempTableName.size() - mTempTableName.lastIndexOf('/') - 1);
-#else
-	mTempTableName = mTempTableName.right(
-               mTempTableName.size() - mTempTableName.lastIndexOf('\\') - 1);
-	mTempTableName = mTempTableName.replace(QString('.'), QString('_'));
-#endif
+    mTempTableName = this->getRandomString();
 }
 
 NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
@@ -404,6 +396,48 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     return true;
 }
 
+QString
+NMSelSortSqlTableProxyModel::getRandomString(void)
+{
+    ::srand(time(0));
+    char nam[15];
+    for (int i=0; i < 15; ++i)
+    {
+        if (i == 0)
+        {
+            if (::rand() % 2 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+        }
+        else
+        {
+            if (::rand() % 7 == 0)
+            {
+                nam[i] = '_';
+            }
+            else if (::rand() % 5 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else if (::rand() % 3 == 0)
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+            else
+            {
+                nam[i] = ::rand() % 10 + 48;
+            }
+        }
+    }
+
+    return QString(nam);
+}
+
 bool
 NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
                                           const QVariant::Type& type)
@@ -440,47 +474,36 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
         break;
     }
 
-    NMDebugAI(<< "available database connections ..." << std::endl);
-    QStringList conns = QSqlDatabase::connectionNames();
-    foreach(const QString& con, conns)
-    {
-        NMDebugAI(<< con.toStdString() << std::endl);
-    }
+    //    NMDebugAI(<< "available database connections ..." << std::endl);
+    //    QStringList conns = QSqlDatabase::connectionNames();
+    //    foreach(const QString& con, conns)
+    //    {
+    //        NMDebugAI(<< con.toStdString() << std::endl);
+    //    }
 
-#ifndef _WIN32
-        QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-								QUuid::createUuid().toString());
-#else
-		char* tn = new char(256);
-		tn = tmpnam(0);
-		//char* bn = new char(256);
-		//_splitpath(tn, 0, 0, bn, 0);
+//    QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
+//                            this->getRandomString());
 
-		std::string stn = tn;
-		std::string stn2 = stn.substr(1, stn.size()-1);
-
-        QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-								QString(stn2.c_str()));
-		delete tn;
-		//delete bn;
-#endif
-
-    NMDebugAI(<< "new connection: " << db.connectionName().toStdString() << std::endl);
+//    NMDebugAI(<< "new connection: " << db.connectionName().toStdString() << std::endl);
 
     // release any locks on the table
     // to be modified
-    mSourceModel->database().close();
+//    mSourceModel->database().close();
     mSourceModel->clear();
 
     QString qStr = QString("Alter table %1 add column %2 %3")
                         .arg(table)
                         .arg(name)
                         .arg(typeStr);
-    if (!db.open())
-    {
-        NMErr(ctx, << "Failed to open edit connection to database!");
-        return false;
-    }
+
+    const QSqlDatabase& db = mSourceModel->database();
+
+
+//    if (!db.open())
+//    {
+//        NMErr(ctx, << "Failed to open edit connection to database!");
+//        return false;
+//    }
 
     QSqlQuery q(db);
     bool ret = true;
@@ -489,8 +512,8 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
         NMErr(ctx, << q.lastError().text().toStdString());
         ret = false;
     }
-    db.close();
-    mSourceModel->database().open();
+//    db.close();
+//    mSourceModel->database().open();
 
     // reset the source model with the
     // modified table
@@ -539,25 +562,9 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     }
     else
     {
-#ifndef _WIN32
         mTempDb = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-								QUuid::createUuid().toString());
-#else
-		char* tn = new char(256);
-		tn = tmpnam(0);
-		std::string stn = tn;
-		std::string stn2 = stn.substr(1, stn.size()-1);
-	
-		//char* bn = new char(256);
-		//_splitpath(tn, 0, 0, bn, 0);
-
-        mTempDb = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-								QString(stn2.c_str()));
-		delete tn;
-		//delete bn;
-#endif
+                                this->getRandomString());
         mTempDb.open();
-        //mTempTableModel = new NMSqlTableModel(this, mTempDb);
     }
 
     // ==================================================================
@@ -584,13 +591,10 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
                                                        .arg(mSourcePK);
     tmpCreate += orgTableSql;
 
-	NMMsg(<< "queryStr: " << tmpCreate.toStdString() << std::endl);
-
     QSqlQuery queryTmpCreate(mTempDb);
     if (!queryTmpCreate.exec(tmpCreate))
     {
         NMErr(ctx, << queryTmpCreate.lastError().text().toStdString() << std::endl);
-		//mTempDb.close();
         return false;
     }
 
@@ -630,10 +634,8 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     {
         NMErr(ctx, << queryInsert.lastError().text().toStdString() << std::endl);
         queryInsert.finish();
-		//mTempDb.close();
         return false;
     }
-	//mTempDb.close();
     return true;
 }
 

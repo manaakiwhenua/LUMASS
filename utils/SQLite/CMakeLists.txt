@@ -7,7 +7,11 @@ INCLUDE_DIRECTORIES(
 #add_definitions(-DSQLITE_EXPORTS)
 #include(GenerateExportHeader)
 
-ADD_LIBRARY(SQLite STATIC sqlite3.c)
+if(WIN32)
+    ADD_LIBRARY(SQLite STATIC sqlite3.c)
+else()
+    ADD_LIBRARY(SQLite SHARED sqlite3.c)
+endif()
 
 #generate_export_header(SQLite)
 
@@ -22,5 +26,5 @@ if(WIN32)
                 #RUNTIME DESTINATION lib
         )
 else()
-        install(TARGETS SQLite ARCHIVE DESTINATION lib)
+        install(TARGETS SQLite LIBRARY DESTINATION lib)
 endif()

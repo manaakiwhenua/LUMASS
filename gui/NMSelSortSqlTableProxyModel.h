@@ -96,6 +96,7 @@ public:
 
 protected:
 
+    QString getRandomString(void);
     bool updateSelection(QItemSelection& sel, bool bProxySelection=true);
     void resetSourceModel();
     bool createMappingTable();

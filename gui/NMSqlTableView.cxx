@@ -554,7 +554,7 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
     resview->setTitle(tableName);
     resview->show();
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    //NMDebugCtx(__ctxsqltabview, << "done!");
 }
 
 void
@@ -1153,7 +1153,61 @@ void NMSqlTableView::colStats()
         sql << " where " << mSortFilter->getFilter().toStdString();
     }
 
-    this->processUserQuery(name, QString(sql.str().c_str()));
+    //this->processUserQuery(name, QString(sql.str().c_str()));
+
+    QString tableName = QString("%1").arg(name);
+    QStringList allTables = mModel->database().tables();
+    while (allTables.contains(tableName))
+    {
+        tableName = QString("%1_%2").arg(name).arg(++mQueryCounter);
+    }
+
+    QString queryStr = QString("Create temp table %1 as %2").arg(tableName)
+            .arg(sql.str().c_str());
+    QSqlQuery userQuery(mModel->database());
+    if (!userQuery.exec(queryStr))
+    {
+        NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+    ++mQueryCounter;
+
+    queryStr = QString("Select stddev from %1").arg(tableName);
+    QSqlQuery qRes(mModel->database());
+    if (!qRes.exec(queryStr))
+    {
+         NMDebugCtx(__ctxsqltabview, << "done!");
+         return;
+    }
+    if (!qRes.next())
+    {
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+    double var = qRes.value(0).toDouble();
+    double sdev = std::sqrt(var);
+
+    queryStr = QString("Update %1 set stddev = %2")
+            .arg(tableName)
+            .arg(sdev);
+    QSqlQuery qUpd(mModel->database());
+    if (!qUpd.exec(queryStr))
+    {
+        NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+
+    NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
+    restab->setTable(tableName);
+    restab->select();
+
+    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
+    resview->setWindowFlags(Qt::Window);
+    resview->setTitle(tableName);
+    resview->show();
+
 
     //	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
     //    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->sourceRowCount()*2;

@@ -25,6 +25,7 @@
 #include "NMSelSortSqlTableProxyModel.h"
 #include "nmlog.h"
 #include <cstdio>
+#include <ctime>
 
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -399,7 +400,7 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
 QString
 NMSelSortSqlTableProxyModel::getRandomString(void)
 {
-    ::srand(time(0));
+    std::srand(std::time(0));
     char nam[15];
     for (int i=0; i < 15; ++i)
     {

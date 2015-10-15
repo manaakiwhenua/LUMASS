@@ -215,7 +215,9 @@
 #include "itkImageRegionSplitterMultidimensional.h"
 #include "itkNMImageRegionSplitterMaxSize.h"
 
+
 #include <sqlite3.h>
+#include "sqlite3extfunc.h"
 
 #include <QSqlTableModel>
 #include <QSqlDatabase>
@@ -292,6 +294,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // *                    SQLITE3                                         *
     // **********************************************************************
 
+    //sqlite3_auto_extension((void(*)(void))sqlite3_extmathstrfunc_init);
     sqlite3_temp_directory = getenv("HOME");
 
 	// **********************************************************************

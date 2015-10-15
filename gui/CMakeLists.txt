@@ -136,6 +136,7 @@ set(LUMASS_LINKLIBS
         ${OPENGL_glu_LIBRARY}
         #${SQLITE3_LIBRARY}
 		SQLite
+                SQLiteExtFunc
         #tokyocabinet
 )
 
@@ -143,6 +144,7 @@ set(LUMASS_DEPLIBS
     NMModFrame
     QtPropertyBrowser 
 	SQLite
+        SQLiteExtFunc
 )
 
 IF(RASSUPPORT)

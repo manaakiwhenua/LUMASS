@@ -4,27 +4,40 @@ INCLUDE_DIRECTORIES(
         ${SQLite_SOURCE_DIR}
 )
 
-#add_definitions(-DSQLITE_EXPORTS)
-#include(GenerateExportHeader)
+LINK_DIRECTORIES(
+    ${SQLite_BRINARY_DIR}/lib
+)
 
-if(WIN32)
-    ADD_LIBRARY(SQLite STATIC sqlite3.c)
-else()
+#add_definitions(-DSQLITE_CORE)
+ADD_LIBRARY(SQLiteExtFunc STATIC sqlite3extfunc.c)
+
+#if(WIN32)
+#    ADD_LIBRARY(SQLite STATIC sqlite3.c)
+#else()
     ADD_LIBRARY(SQLite SHARED sqlite3.c)
-endif()
+#endif()
 
-#generate_export_header(SQLite)
-
-#install(TARGETS SQLite LIBRARY DESTINATION
-#        ${CMAKE_INSTALL_PREFIX}/lib)
+target_link_libraries(SQLite SQLiteExtFunc)
 
 
 install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
 if(WIN32)
-        install(TARGETS SQLite
+        install(TARGETS SQLiteExtFunc
+#                LIBRARY DESTINATION lib
+#                RUNTIME DESTINATION lib
                 ARCHIVE DESTINATION lib
-                #RUNTIME DESTINATION lib
         )
+
+        install(TARGETS SQLite
+                LIBRARY DESTINATION lib
+                RUNTIME DESTINATION lib
+        )
+
+
+#        install(TARGETS SQLite
+#                ARCHIVE DESTINATION lib
+#        )
 else()
+        install(TARGETS SQLiteExtFunc ARCHIVE DESTINATION lib)
         install(TARGETS SQLite LIBRARY DESTINATION lib)
 endif()

@@ -778,6 +778,18 @@ void GDALRATImageIO::InternalReadImageInformation()
   if (m_PxType->pixType == GDT_Byte)
     {
     SetComponentType(UCHAR);
+
+    // need to check for 'SIGNEDBYTE'!
+    const char* meta = dataset->GetMetadataItem("PIXELTYPE", "IMAGE_STRUCTURE");
+
+    if (meta != 0)
+    {
+        if (strcmp(meta, "SIGNEDBYTE") == 0)
+        {
+            SetComponentType(CHAR);
+            std::cout << "Got a hidden SIGNEDBYTE!" << std::endl;
+        }
+    }
     }
   else if (m_PxType->pixType == GDT_UInt16)
     {

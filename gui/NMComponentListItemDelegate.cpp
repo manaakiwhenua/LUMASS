@@ -551,6 +551,15 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
                             }
                             il->setBandMap(bandmap);
                         }
+                        else if (valuefield.compare(QString("Pixel Values")) == 0)
+                        {
+                            std::vector<double> stats = il->getWindowStatistics();//l->getValueFieldStatistics();
+                            if (stats.size() >= 2)
+                            {
+                                l->setLower(stats[0]);
+                                l->setUpper(stats[1]);
+                            }
+                        }
                         else
                         {
                             std::vector<double> stats = l->getValueFieldStatistics();

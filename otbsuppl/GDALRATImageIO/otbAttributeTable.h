@@ -120,6 +120,8 @@ public:
     double GetDblNodata(void) {return m_dNodata;}
     long long GetIntNodata(void) {return m_iNodata;}
     std::string GetStrNodata(void) {return m_sNodata;}
+    std::string GetPrimaryKey() {return this->m_idColName;}
+
 
     virtual bool RemoveColumn(int col) = 0;
     virtual bool RemoveColumn(const std::string& name) = 0;
@@ -127,7 +129,9 @@ public:
 	// manage table meta data
     void SetBandNumber(int iBand);
 	void SetImgFileName(const std::string& sFileName);
-	int GetBandNumber(void);
+    virtual bool SetRowIdColName(const std::string& idCol)
+        {m_idColName = idCol; return true;}
+    int GetBandNumber(void);
 	std::string GetImgFileName(void);
 
 	// print the table
@@ -179,6 +183,7 @@ protected:
 	double m_dNodata;
 	int m_iBand;
 	std::string m_sImgName;
+    std::string m_idColName;
 
 	// validate column name and row index; if
 	// parameters are valid then the column index

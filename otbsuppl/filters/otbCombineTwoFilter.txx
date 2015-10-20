@@ -193,17 +193,17 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         {
             m_dropTmpDBs = false;
         }
-        if (m_ComboTable->createTable(m_OutputTableFileName, "1")
+        if (m_ComboTable->CreateTable(m_OutputTableFileName, "1")
                 == SQLiteTable::ATCREATE_ERROR)
         {
             NMDebugCtx(ctx, << "done!");
             itkExceptionMacro("Failed creating unique combination attribute table!");
             return;
         }
-        m_vColnames.push_back(m_ComboTable->getPrimaryKey());
+        m_vColnames.push_back(m_ComboTable->GetPrimaryKey());
         m_vColnames.push_back("UvId");
 
-        m_ComboTable->beginTransaction();
+        m_ComboTable->BeginTransaction();
         m_ComboTable->AddColumn("UvId", AttributeTable::ATTYPE_INT);
         std::stringstream sscolname;
         for (int i=0; i < nbInputImages; ++i)
@@ -213,7 +213,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
             m_ComboTable->AddColumn(sscolname.str(), AttributeTable::ATTYPE_INT);
             m_vColnames.push_back(sscolname.str());
         }
-        m_ComboTable->endTransaction();
+        m_ComboTable->EndTransaction();
 
         // nodata values as required
         for (int n = m_InputNodata.size(); n < nbInputImages; ++n)
@@ -333,10 +333,10 @@ void CombineTwoFilter< TInputImage, TOutputImage >
             setVals[i+2].ival = m_InputNodata[i];
         }
 
-        m_ComboTable->prepareBulkSet(m_vColnames);
-        m_ComboTable->beginTransaction();
+        m_ComboTable->PrepareBulkSet(m_vColnames);
+        m_ComboTable->BeginTransaction();
 
-        m_ComboTable->doBulkSet(setVals);
+        m_ComboTable->DoBulkSet(setVals);
 
         int nbInputImages = this->GetNumberOfIndexedInputs();
 
@@ -358,11 +358,11 @@ void CombineTwoFilter< TInputImage, TOutputImage >
                 offset /= m_vHyperSpaceDomains[i];
             }
 
-            m_ComboTable->doBulkSet(setVals);
+            m_ComboTable->DoBulkSet(setVals);
 
             ++comboIter;
         }
-        m_ComboTable->endTransaction();
+        m_ComboTable->EndTransaction();
     }
 }
 
@@ -380,7 +380,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
 
     if (m_dropTmpDBs)
     {
-        m_ComboTable->closeTable(true);
+        m_ComboTable->CloseTable(true);
     }
     m_ComboTable = 0;
     m_ComboTable = SQLiteTable::New();

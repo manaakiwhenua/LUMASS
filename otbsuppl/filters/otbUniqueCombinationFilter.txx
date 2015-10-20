@@ -200,16 +200,16 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // -------------------------------------------------------------
 
         // note the "1" is to indicate the band this table is for
-        if (this->m_UVTable->createTable(m_UVTableName, "1") == otb::SQLiteTable::ATCREATE_ERROR)
+        if (this->m_UVTable->CreateTable(m_UVTableName, "1") == otb::SQLiteTable::ATCREATE_ERROR)
         {
             itkExceptionMacro(<< "Failed creating output table!");
             return;
         }
 
         // ad columns (rowidx, L0, L1, L2, ... L<nbInputs-1>)
-        m_UVTable->beginTransaction();
+        m_UVTable->BeginTransaction();
         std::vector<std::string> vColNames;
-        vColNames.push_back(m_UVTable->getPrimaryKey());
+        vColNames.push_back(m_UVTable->GetPrimaryKey());
         std::stringstream colname;
         for (int l=0; l < nbInputs; ++l)
         {
@@ -219,8 +219,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
                                  AttributeTable::ATTYPE_INT);
             vColNames.push_back(colname.str());
         }
-        m_UVTable->endTransaction();
-        m_UVTable->prepareBulkSet(vColNames, true);
+        m_UVTable->EndTransaction();
+        m_UVTable->PrepareBulkSet(vColNames, true);
 
 
         // reserve first row for nodata values
@@ -245,7 +245,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             }
             nodatVals.push_back(ndv);
         }
-        m_UVTable->doBulkSet(nodatVals);
+        m_UVTable->DoBulkSet(nodatVals);
 
 
         // -------------------------------------------------------------
@@ -483,11 +483,11 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     {
         if (m_DropTmpTables)
         {
-            this->m_UVTable->closeTable(true);
+            this->m_UVTable->CloseTable(true);
         }
         else
         {
-            this->m_UVTable->closeTable(false);
+            this->m_UVTable->CloseTable(false);
         }
     }
     m_UVTable = 0;

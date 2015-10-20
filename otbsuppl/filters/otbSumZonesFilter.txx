@@ -162,7 +162,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
     // create the zone table (db)
     NMDebugAI( << "Loading / creating the zone table ..." << std::endl);
-    if (mZoneTable->createTable(m_ZoneTableFileName) == otb::SQLiteTable::ATCREATE_ERROR)
+    if (mZoneTable->CreateTable(m_ZoneTableFileName) == otb::SQLiteTable::ATCREATE_ERROR)
     {
         itkExceptionMacro(<< "Failed to create the zone table!");
         return;
@@ -186,7 +186,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
         {
             m_dropTmpDBs = true;
         }
-        m_ZoneTableFileName = mZoneTable->getDbFileName();
+        m_ZoneTableFileName = mZoneTable->GetDbFileName();
 
         NMDebugAI(<< "clearing value stores ..." << std::endl);
         mGlobalValueStore.clear();
@@ -194,7 +194,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
         mLPRPixCount = mZoneImage->GetLargestPossibleRegion().GetNumberOfPixels();
 
         NMDebugAI(<< "Adding columns to zone table ..." << std::endl);
-        mZoneTable->beginTransaction();
+        mZoneTable->BeginTransaction();
         mZoneTable->AddColumn("zone_id", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("count", AttributeTable::ATTYPE_INT);
 		mZoneTable->AddColumn("min", AttributeTable::ATTYPE_DOUBLE);
@@ -202,7 +202,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mZoneTable->AddColumn("mean", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("stddev", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
-        mZoneTable->endTransaction();
+        mZoneTable->EndTransaction();
 
 
 		mStreamingProc = true;
@@ -442,7 +442,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
         // --------------------------------------------------------------------------
 
         std::vector<std::string> colnames;
-        colnames.push_back(mZoneTable->getPrimaryKey()); // 0
+        colnames.push_back(mZoneTable->GetPrimaryKey()); // 0
         colnames.push_back("zone_id");                   // 1
         colnames.push_back("count");                     // 2
         colnames.push_back("min");                       // 3
@@ -474,8 +474,8 @@ void SumZonesFilter< TInputImage, TOutputImage >
         }
 
         NMDebugAI(<< "writing zone table ..." << std::endl);
-        mZoneTable->beginTransaction();
-        mZoneTable->prepareBulkSet(colnames, true);
+        mZoneTable->BeginTransaction();
+        mZoneTable->PrepareBulkSet(colnames, true);
         globalIt = mGlobalValueStore.begin();
 
         m_NextZoneId = 0;
@@ -486,7 +486,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
                 while (globalIt->first > m_NextZoneId)
                 {
                     fillIns[0].ival = m_NextZoneId;
-                    mZoneTable->doBulkSet(fillIns);
+                    mZoneTable->DoBulkSet(fillIns);
                     ++m_NextZoneId;
                 }
             }
@@ -504,11 +504,11 @@ void SumZonesFilter< TInputImage, TOutputImage >
             values[6].dval = ::sqrt((p[4] / (p[3] > 0 ? p[3] : 1.0)) - (values[5].dval * values[5].dval));
             values[7].dval = p[2];                           // sum
 
-            mZoneTable->doBulkSet(values);
+            mZoneTable->DoBulkSet(values);
             ++globalIt;
             ++m_NextZoneId;
         }
-        mZoneTable->endTransaction();
+        mZoneTable->EndTransaction();
     }
 
     NMDebugAI(<< "Got " << numzones << " zones on record now ..." << std::endl);
@@ -527,7 +527,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
     if (m_dropTmpDBs)
     {
-        mZoneTable->closeTable(true);
+        mZoneTable->CloseTable(true);
     }
     mZoneTable = 0;
     m_NextZoneId = 0;

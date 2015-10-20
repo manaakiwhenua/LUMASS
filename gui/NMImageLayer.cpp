@@ -247,6 +247,7 @@ NMImageLayer::~NMImageLayer()
 std::vector<double>
 NMImageLayer::getWindowStatistics(void)
 {
+    this->mapExtentChanged();
     std::vector<double> ret;
 
     if (this->mNumBands > 1)
@@ -551,7 +552,7 @@ NMImageLayer::updateAttributeTable()
 	{
         //otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-        db.setDatabaseName(QString(tab->getDbFileName().c_str()));
+        db.setDatabaseName(QString(tab->GetDbFileName().c_str()));
         if (!db.open())
         {
             NMErr(ctxNMImageLayer, << "Open database failed!" << endl);
@@ -559,7 +560,7 @@ NMImageLayer::updateAttributeTable()
         else
         {
             tabModel = new NMSqlTableModel(this, db);
-            tabModel->setTable(QString(tab->getTableName().c_str()));
+            tabModel->setTable(QString(tab->GetTableName().c_str()));
             tabModel->select();
         }
 	}
@@ -1065,7 +1066,7 @@ NMImageLayer::setScalars(vtkImageData* img)
         }
         else
         {
-            if (!tab->prepareColumnByIndex(mLegendValueField.toStdString()))
+            if (!tab->PrepareColumnByIndex(mLegendValueField.toStdString()))
             {
                 NMErr(ctxNMImageLayer, << "Failed preparing fast scalar column access!");
                 return;
@@ -1080,7 +1081,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     int maxidx = mNumRecords;//mOtbRAT->GetNumRows()-1;
     if (mNumRecords > 1e6)
     {
-        tab->beginTransaction();
+        tab->BeginTransaction();
     }
 
     switch(tab->GetColumnType(colidx))
@@ -1192,7 +1193,7 @@ NMImageLayer::setScalars(vtkImageData* img)
     // rather than using a RAM buffer
     if (mNumRecords > 1e6)
     {
-        tab->endTransaction();
+        tab->EndTransaction();
     }
 
     mbUpdateScalars = false;
@@ -1219,7 +1220,7 @@ NMImageLayer::updateScalarBuffer()
     //    }
     otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     std::vector< std::string > colnames;
-    colnames.push_back(tab->getPrimaryKey());
+    colnames.push_back(tab->GetPrimaryKey());
     colnames.push_back(mLegendValueField.toStdString());
 
     std::vector< otb::AttributeTable::ColumnValue > values;
@@ -1231,8 +1232,8 @@ NMImageLayer::updateScalarBuffer()
     double dnodata = 0;
     long long inodata = 0;
 
-    tab->beginTransaction();
-    tab->prepareBulkGet(colnames, "");
+    tab->BeginTransaction();
+    tab->PrepareBulkGet(colnames, "");
     const int nrows = mOtbRAT->GetNumRows();
     const int rep = nrows / 20;
     for (int r=0; r < nrows; ++r)
@@ -1240,7 +1241,7 @@ NMImageLayer::updateScalarBuffer()
         switch(mOtbRAT->GetColumnType(mScalarColIdx))
         {
         case otb::AttributeTable::ATTYPE_INT:
-            if (tab->doBulkGet(values))
+            if (tab->DoBulkGet(values))
             {
                 mScalarLongLongMap.insert(
                             std::pair<long long, long long>(
@@ -1255,7 +1256,7 @@ NMImageLayer::updateScalarBuffer()
             //            }
             break;
         case otb::AttributeTable::ATTYPE_DOUBLE:
-            if (tab->doBulkGet(values))
+            if (tab->DoBulkGet(values))
             {
                 mScalarDoubleMap.insert(
                             std::pair<long long, double>(
@@ -1276,7 +1277,7 @@ NMImageLayer::updateScalarBuffer()
             NMDebug(<< ".");
         }
     }
-    tab->endTransaction();
+    tab->EndTransaction();
     NMDebug(<< std::endl);
     NMDebugCtx(ctxNMImageLayer, << "done!");
 }
@@ -1293,7 +1294,7 @@ NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
     {
         for (int i=0; i < numPix; ++i)
         {
-              out[i] = tab->nextIntValue(buf[i]);
+              out[i] = tab->NextIntValue(buf[i]);
         }
     }
     else
@@ -1339,7 +1340,7 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
     {
         for (int i=0; i < numPix; ++i)
         {
-              out[i] = tab->nextDoubleValue(buf[i]);
+              out[i] = tab->NextDoubleValue(buf[i]);
         }
     }
     else

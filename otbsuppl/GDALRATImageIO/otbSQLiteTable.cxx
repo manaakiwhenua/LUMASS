@@ -82,7 +82,7 @@ SQLiteTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
         std::string errmsg = sqlite3_errmsg(m_db);
         itkWarningMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
         NMErr(_ctxotbtab, << "SQLite3 ERROR #" << rc << ": " << errmsg);
-        if (*stmt)
+        if (stmt != 0 && *stmt != 0)
         {
             sqlite3_clear_bindings(*stmt);
             sqlite3_reset(*stmt);
@@ -163,7 +163,7 @@ SQLiteTable::AddConstrainedColumn(const std::string& sColName,
     if (m_db == 0)
     {
         // create a table if there's none
-        if (createTable("") == ATCREATE_ERROR)
+        if (CreateTable("") == ATCREATE_ERROR)
         {
             //NMDebugCtx(_ctxotbtab, << "done!");
             return false;
@@ -287,7 +287,7 @@ SQLiteTable::createPreparedColumnStatements(const std::string& colname)
 }
 
 bool
-SQLiteTable::prepareBulkGet(const std::vector<std::string> &colNames,
+SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
                                const std::string& whereClause)
 {
     //NMDebugCtx(_ctxotbtab, << "...");
@@ -366,7 +366,7 @@ SQLiteTable::prepareBulkGet(const std::vector<std::string> &colNames,
 }
 
 bool
-SQLiteTable::prepareBulkSet(const std::vector<std::string>& colNames,
+SQLiteTable::PrepareBulkSet(const std::vector<std::string>& colNames,
                                const bool& bInsert)
 {
     //NMDebugCtx(_ctxotbtab, << "...");
@@ -493,7 +493,7 @@ SQLiteTable::prepareBulkSet(const std::vector<std::string>& colNames,
 }
 
 bool
-SQLiteTable::prepareAutoBulkSet(const std::vector<std::string>& colNames,
+SQLiteTable::PrepareAutoBulkSet(const std::vector<std::string>& colNames,
                     const std::vector<std::string> &autoValue,
                     const std::vector<std::vector<SQLiteTable::TableColumnType> >& autoTypes,
                     const bool& bInsert)
@@ -665,7 +665,7 @@ SQLiteTable::prepareAutoBulkSet(const std::vector<std::string>& colNames,
 
 
 bool
-SQLiteTable::createIndex(const std::vector<std::string> &colNames,
+SQLiteTable::CreateIndex(const std::vector<std::string> &colNames,
                             bool unique)
 {
     if (m_db == 0)
@@ -722,7 +722,7 @@ SQLiteTable::createIndex(const std::vector<std::string> &colNames,
 }
 
 bool
-SQLiteTable::doBulkGet(std::vector< ColumnValue >& values)
+SQLiteTable::DoBulkGet(std::vector< ColumnValue >& values)
 {
    //NMDebugCtx(_ctxotbtab, << "...");
    if (    m_db == 0
@@ -820,7 +820,7 @@ SQLiteTable::doBulkGet(std::vector< ColumnValue >& values)
 }
 
 bool
-SQLiteTable::doPtrBulkSet(std::vector<int *> &intVals,
+SQLiteTable::DoPtrBulkSet(std::vector<int *> &intVals,
                              std::vector<double *> &dblVals,
                              std::vector<char **> &chrVals,
                              std::vector<int> &colpos,
@@ -894,7 +894,7 @@ SQLiteTable::doPtrBulkSet(std::vector<int *> &intVals,
 }
 
 bool
-SQLiteTable::doBulkSet(std::vector<ColumnValue> &values, const long long int &row)
+SQLiteTable::DoBulkSet(std::vector<ColumnValue> &values, const long long int &row)
 {
     //NMDebugCtx(_ctxotbtab, << "...");
     if (    m_db == 0
@@ -1119,7 +1119,7 @@ SQLiteTable::doBulkSet(std::vector<ColumnValue> &values, const long long int &ro
 //}
 
 bool
-SQLiteTable::beginTransaction()
+SQLiteTable::BeginTransaction()
 {
    // NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
@@ -1153,7 +1153,7 @@ SQLiteTable::beginTransaction()
 }
 
 bool
-SQLiteTable::endTransaction()
+SQLiteTable::EndTransaction()
 {
     //NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
@@ -1344,7 +1344,7 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, std::strin
 }
 
 bool
-SQLiteTable::prepareColumnByIndex(const std::string &colname)//,
+SQLiteTable::PrepareColumnByIndex(const std::string &colname)//,
                                       //const std::string &whereClause)
 {
     NMDebugCtx(_ctxotbtab, << "...");
@@ -2039,10 +2039,10 @@ SQLiteTable::dropTable(const std::string &tablename)
 
     std::stringstream ssql;
 
-    ssql << "Drop table;";
+    ssql << "Drop table ";
     if (!tablename.empty())
     {
-        ssql << tablename;
+        ssql << tablename << ";";
     }
     else
     {
@@ -2065,8 +2065,15 @@ SQLiteTable::dropTable(const std::string &tablename)
     return true;
 }
 
+bool
+SQLiteTable::DeleteDatabase()
+{
+    this->CloseTable(true);
+    return !remove(m_dbFileName.c_str());
+}
+
 SQLiteTable::TableCreateStatus
-SQLiteTable::createTable(std::string filename, std::string tag)
+SQLiteTable::CreateTable(std::string filename, std::string tag)
 {
     //this->DebugOn();
 
@@ -2083,7 +2090,7 @@ SQLiteTable::createTable(std::string filename, std::string tag)
     }
     //m_dbFileName = filename;
 
-    m_idColName = "";
+    //m_idColName = "";
     NMDebugAI(<< "using '" << m_dbFileName
               << "' as filename for the db" << std::endl);
 
@@ -2314,7 +2321,7 @@ SQLiteTable::createTable(std::string filename, std::string tag)
 
 
     // ============================================================
-    // create the nmtab table, if not already exist
+    // create the table, if not already exist
     // ============================================================
     if (!bTableExists)
     {
@@ -2348,7 +2355,8 @@ SQLiteTable::createTable(std::string filename, std::string tag)
         }
 
         // add rowidx column to list of columns
-        m_vNames.push_back("rowidx");
+        //m_vNames.push_back("rowidx");
+        m_vNames.push_back(m_idColName);
         m_vTypes.push_back(SQLiteTable::ATTYPE_INT);
         NMDebugAI(<< m_tableName << " successfully created" << std::endl);
     }
@@ -2427,7 +2435,7 @@ SQLiteTable::SQLiteTable()
       m_StmtBulkSet(0),
       m_StmtBulkGet(0),
       m_StmtColIter(0),
-      m_idColName(""),
+      //m_idColName(""),
       m_tableName("")
 {
     //this->createTable("");
@@ -2530,7 +2538,7 @@ SQLiteTable::resetTableAdmin(void)
 }
 
 void
-SQLiteTable::closeTable(bool drop)
+SQLiteTable::CloseTable(bool drop)
 {
     if (drop)
     {
@@ -2544,7 +2552,7 @@ SQLiteTable::closeTable(bool drop)
 // clean up
 SQLiteTable::~SQLiteTable()
 {
-    this->closeTable();
+    this->CloseTable();
 }
 
 

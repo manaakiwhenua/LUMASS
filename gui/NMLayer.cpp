@@ -402,6 +402,7 @@ NMLayer::initiateLegend(void)
 				QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
 				if (	mLegendValueField.isEmpty()
 					&&  fieldName != "rowidx"
+                    &&  fieldName != "rowid"
 					&&  fieldName != "nm_id"
 					&&  fieldName != "nm_hole"
 					&&  fieldName != "nm_sel"

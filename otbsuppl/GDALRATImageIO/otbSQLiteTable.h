@@ -139,44 +139,45 @@ public:
 //	void PrintStructure(std::ostream& os, itk::Indent indent);
 
     /// SQLite support functions
-    TableCreateStatus createTable(std::string filename, std::string tag="");
-    void closeTable(bool drop=false);
+    TableCreateStatus CreateTable(std::string filename, std::string tag="");
+    void CloseTable(bool drop=false);
     bool SetRowIDColName(const std::string& name);
+    bool DeleteDatabase(void);
 
-    std::string getDbFileName() {return this->m_dbFileName;}
-    std::string getTableName() {return this->m_tableName;}
-    std::string getPrimaryKey() {return this->m_idColName;}
-    sqlite3* getDbConnection() {return this->m_db;}
+    std::string GetDbFileName() {return this->m_dbFileName;}
+    std::string GetTableName() {return this->m_tableName;}
+    //std::string getPrimaryKey() {return this->m_idColName;}
+    sqlite3* GetDbConnection() {return this->m_db;}
 
-    bool prepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
+    bool PrepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
 
-    bool prepareAutoBulkSet(const std::vector<std::string>& colNames,
+    bool PrepareAutoBulkSet(const std::vector<std::string>& colNames,
                         const std::vector<std::string>& autoValue,
                         const std::vector<std::vector<TableColumnType> >& autoTypes,
                         const bool& bInsert=true);
 
-    bool prepareBulkSet(const std::vector<std::string>& colNames,
+    bool PrepareBulkSet(const std::vector<std::string>& colNames,
                         const bool& bInsert=true);
 
-    bool doPtrBulkSet(std::vector< int* >& intVals,
+    bool DoPtrBulkSet(std::vector< int* >& intVals,
                       std::vector< double* >& dblVals,
                       std::vector< char** >& chrVals,
                       std::vector< int >& colpos,
                       const int & chunkrow,
                       const long long int &row=-1);
 
-    bool doBulkSet(std::vector< ColumnValue >& values, const long long int& row=-1);
+    bool DoBulkSet(std::vector< ColumnValue >& values, const long long int& row=-1);
 
-    bool doBulkGet(std::vector< ColumnValue >& values);
-    bool beginTransaction();
-    bool endTransaction();
-    bool createIndex(const std::vector<std::string>& colNames, bool unique);
+    bool DoBulkGet(std::vector< ColumnValue >& values);
+    bool BeginTransaction();
+    bool EndTransaction();
+    bool CreateIndex(const std::vector<std::string>& colNames, bool unique);
 
 
     /// FAST INLINE ACCESS TO COLUMN VALUES
-    bool prepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);
+    bool PrepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);
 
-    double nextDoubleValue(const long long& row)
+    double NextDoubleValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -192,7 +193,7 @@ public:
 
     }
 
-    long long nextIntValue(const long long& row)
+    long long NextIntValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -207,7 +208,7 @@ public:
         return v;
     }
 
-    const unsigned char* nextTextValue(const long long& row)
+    const unsigned char* NextTextValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
@@ -248,7 +249,7 @@ protected:
     sqlite3* m_db;
     std::string m_dbFileName;
     std::string m_tableName;
-    std::string m_idColName;
+   // std::string m_idColName;
 
     std::vector<sqlite3_stmt*> m_vStmtUpdate;
     std::vector<sqlite3_stmt*> m_vStmtSelect;

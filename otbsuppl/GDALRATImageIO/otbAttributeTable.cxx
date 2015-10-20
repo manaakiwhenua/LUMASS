@@ -859,7 +859,8 @@ AttributeTable::AttributeTable()
 	  m_iBand(1),
 	  m_iNodata(-std::numeric_limits<long>::max()),
 	  m_dNodata(-std::numeric_limits<double>::max()),
-	  m_sNodata("NULL")
+      m_sNodata("NULL"),
+      m_idColName("")
 {
 }
 

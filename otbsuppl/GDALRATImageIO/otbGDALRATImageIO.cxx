@@ -2204,15 +2204,39 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
     //NMDebugAI(<< "filename we want to set: '" << this->GetFileName() << "'" << std::endl);
     otbTab->SetImgFileName(this->GetFileName());
 
-    otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
+    //otbTab->AddColumn("rowidx", AttributeTable::ATTYPE_INT);
     std::vector< std::string > colnames;
 
     // go and check the column names against the SQL standard, in case
     // they don't match it, we enclose in double quotes.
+    std::string colIdName;
+    int fstIntIdx = -1;
     for (int c=0; c < ncols; ++c)
     {
+        if (rat->GetTypeOfCol(c) == GFT_Integer)
+        {
+            if (    strcmp(rat->GetNameOfCol(c), "rowid") == 0
+                ||  strcmp(rat->GetNameOfCol(c), "rowidx") == 0
+               )
+            {
+                    colIdName = rat->GetNameOfCol(c);
+            }
+
+            if (fstIntIdx == -1)
+            {
+                fstIntIdx = c;
+            }
+        }
+
         colnames.push_back(rat->GetNameOfCol(c));
     }
+
+    if (colIdName.empty())
+    {
+        colIdName = rat->GetNameOfCol(fstIntIdx);
+    }
+
+    otbTab->AddColumn(colIdName, AttributeTable::ATTYPE_INT);
 
 
     // copy table
@@ -2443,32 +2467,45 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
         // double check, whether there's an external lumass db file out there,
         // which we could use instead
         SQLiteTable::Pointer ldbTab = SQLiteTable::New();
-        if (ldbTab->createTable(dbFN, ssband.str()) == SQLiteTable::ATCREATE_READ)
+        if (ldbTab->CreateTable(dbFN, ssband.str()) == SQLiteTable::ATCREATE_READ)
         {
             return ldbTab;
         }
+        ldbTab->DeleteDatabase();
+        ldbTab = 0;
         return 0;
     }
 
     // establish, whether we need an extra rowidx or whether
     // it is already included
     bool bRowIdx = false;
+    std::string idColName;
     for (int c=0; c < ncols; ++c)
     {
-        if (::strcmp(rat->GetNameOfCol(c), "rowidx") == 0)
+        if (rat->GetTypeOfCol(c) == GFT_Integer)
         {
-            bRowIdx = true;
-            break;
+            if (    strcmp(rat->GetNameOfCol(c), "rowidx") == 0
+                ||  strcmp(rat->GetNameOfCol(c), "rowid") == 0
+               )
+            {
+                bRowIdx = true;
+                idColName = rat->GetNameOfCol(c);
+                break;
+            }
+
+            if (idColName.empty())
+            {
+                idColName = rat->GetNameOfCol(c);
+            }
         }
     }
-
 
     std::stringstream tag;
     tag << iBand;
 
     SQLiteTable::Pointer otbTab = SQLiteTable::New();
-    otbTab->SetRowIDColName("rowidx");
-    switch(otbTab->createTable(dbFN, tag.str()))
+    otbTab->SetRowIDColName(idColName);
+    switch(otbTab->CreateTable(dbFN, tag.str()))
     {
     case SQLiteTable::ATCREATE_ERROR:
         itkWarningMacro(<< "Couldn't create attribute table '"
@@ -2531,30 +2568,31 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     // store admin info about the cols to be read
     // check, whether we've got a 'rowidx' to be read
     // or whether we let the db popluate it for us
-    if (!bRowIdx)
-    {
-        colnames.push_back("rowidx");
-        coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
-        int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
-        int_cols.push_back(iptr);
-        colpos.push_back(0);
-    }
+    //if (!bRowIdx)
+//    {
+//        colnames.push_back(idColName);
+//        coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
+//        int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
+//        int_cols.push_back(iptr);
+//        colpos.push_back(0);
+//    }
 
 #else
     int chunksize = nrows;
-    if (!bRowIdx)
-    {
-        colnames.push_back("rowidx");
-    }
+    //if (!bRowIdx)
+//    {
+//        //colnames.push_back("rowidx");
+//        colnames.push_back(idColName);
+//    }
 #endif
 
-    otbTab->beginTransaction();
+    otbTab->BeginTransaction();
     int idxCorr = 0;
-    if (!bRowIdx)
-    {
-        otbTab->AddColumn(colnames[0], coltypes[0]);
-        idxCorr = 1;
-    }
+    //if (!bRowIdx)
+//    {
+//        otbTab->AddColumn(colnames[0], coltypes[0]);
+//        idxCorr = 1;
+//    }
 
     for (int c=0; c < ncols; ++c)
     {
@@ -2602,11 +2640,14 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 #endif
         // NOTE: with 'rowidx' we've got one addtional columnn
         // over the actual columns in the table
-        otbTab->AddColumn(colnames[c+idxCorr], coltypes[c+idxCorr]);
+        //if (colnames[c+idxCorr].compare(idColName) != 0)
+        {
+            otbTab->AddColumn(colnames[c+idxCorr], coltypes[c+idxCorr]);
+        }
     }
-    otbTab->endTransaction();
-    otbTab->prepareBulkSet(colnames, true);
-    otbTab->beginTransaction();
+    otbTab->EndTransaction();
+    otbTab->PrepareBulkSet(colnames, true);
+    otbTab->BeginTransaction();
 
 #ifdef GDAL_NEWRATAPI
     int procrows = 0;
@@ -2631,13 +2672,13 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
             // populate the 'rowidx' column with
             // zero-based index
-            if (col == 0 && !bRowIdx)
-            {
-                for (int r=s, ch=0; r < e; ++r, ++ch)
-                {
-                    int_cols[0][ch] = r;
-                }
-            }
+            //            if (col == 0)// && !bRowIdx)
+            //            {
+            //                for (int r=s, ch=0; r < e; ++r, ++ch)
+            //                {
+            //                    int_cols[0][ch] = r;
+            //                }
+            //            }
 
             switch(gdaltype)
             {
@@ -2669,7 +2710,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
         for (int k=0; k < chunksize; ++k)
         {
-            otbTab->doPtrBulkSet(int_cols, dbl_cols, chr_cols,
+            otbTab->DoPtrBulkSet(int_cols, dbl_cols, chr_cols,
                               colpos, k);
 
             // clear strings allocated by GDAL
@@ -2717,18 +2758,18 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 #else
     // the old way - row by row
     std::vector< otb::AttributeTable::ColumnValue > colValues;
-    if (!bRowIdx)
-    {
-        colValues.resize(ncols+1);
-    }
+    //if (!bRowIdx)
+//    {
+//        colValues.resize(ncols+1);
+//    }
 
     for (int r=0; r < nrows; ++r)
     {
-        if (!bRowIdx)
-        {
-            colValues[0].type = AttributeTable::ATTYPE_INT;
-            colValues[0].ival = r;
-        }
+        //if (!bRowIdx)
+//        {
+//            colValues[0].type = AttributeTable::ATTYPE_INT;
+//            colValues[0].ival = r;
+//        }
         for (int c=0; c < ncols; ++c)
         {
             gdaltype = rat->GetTypeOfCol(c);
@@ -2750,11 +2791,11 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
                 continue;
             }
         }
-        otbTab->doBulkSet(colValues, -1);
+        otbTab->DoBulkSet(colValues, -1);
     }
 #endif
 
-    otbTab->endTransaction();
+    otbTab->EndTransaction();
 
     //CALLGRIND_STOP_INSTRUMENTATION;
     //CALLGRIND_DUMP_STATS;
@@ -3143,8 +3184,8 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 				<< tab->GetColumnName(col).c_str() << "'");
 	}
 
-    tab->beginTransaction();
-    tab->prepareBulkGet(colnames, "");
+    tab->BeginTransaction();
+    tab->PrepareBulkGet(colnames, "");
 
     std::vector< otb::AttributeTable::ColumnValue > values;
     values.resize(tab->GetNumCols());
@@ -3155,7 +3196,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 	// copy values row by row
     for (long long row=0; row < tab->GetNumRows(); ++row)
 	{
-        if (!tab->doBulkGet(values))
+        if (!tab->DoBulkGet(values))
         {
             itkWarningMacro(<< "Copying records failed at row idx=" << row
                             << " of 0-" << tab->GetNumRows()-1 << "!");
@@ -3186,7 +3227,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 			}
 		}
 	}
-    tab->endTransaction();
+    tab->EndTransaction();
 
 	// associate the table with the band
     err = band->SetDefaultRAT(gdaltab);

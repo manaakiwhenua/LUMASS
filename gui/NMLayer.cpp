@@ -1074,7 +1074,10 @@ NMLayer::mapUniqueValues(void)
 	}
 	else
 	{
-		ncells = mTableModel->rowCount(QModelIndex());
+        //ncells = mTableModel->rowCount(QModelIndex());
+        //ncells = mTableModel-
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+        ncells = il->getRasterAttributeTable(1)->GetNumRows();
         //mLookupTable->SetNumberOfTableValues(ncells+2);
         mLookupTable->SetNumberOfTableValues(ncells);
 	}

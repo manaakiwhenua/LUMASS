@@ -247,7 +247,6 @@ NMImageLayer::~NMImageLayer()
 std::vector<double>
 NMImageLayer::getWindowStatistics(void)
 {
-    this->mapExtentChanged();
     std::vector<double> ret;
 
     if (this->mNumBands > 1)

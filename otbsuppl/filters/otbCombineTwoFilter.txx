@@ -209,7 +209,14 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         for (int i=0; i < nbInputImages; ++i)
         {
             sscolname.str("");
-            sscolname << "L" << i;
+            if (i < m_ImgNames.size())
+            {
+                sscolname << m_ImgNames.at(i);
+            }
+            else
+            {
+                sscolname << "L" << i;
+            }
             m_ComboTable->AddColumn(sscolname.str(), AttributeTable::ATTYPE_INT);
             m_vColnames.push_back(sscolname.str());
         }

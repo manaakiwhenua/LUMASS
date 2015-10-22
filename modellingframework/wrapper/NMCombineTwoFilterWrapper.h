@@ -46,14 +46,12 @@ NMCombineTwoFilterWrapper
 	Q_OBJECT
 
     
-    Q_PROPERTY(QList<QStringList> ImgNames READ getImgNames WRITE setImgNames)
     Q_PROPERTY(QList<QStringList> InputNodata READ getInputNodata WRITE setInputNodata)
     Q_PROPERTY(QStringList OutputTableFileName READ getOutputTableFileName WRITE setOutputTableFileName)
 
 public:
 
     
-    NMPropertyGetSet( ImgNames, QList<QStringList> )
     NMPropertyGetSet( InputNodata, QList<QStringList> )
     NMPropertyGetSet( OutputTableFileName, QStringList )
 
@@ -82,7 +80,6 @@ protected:
     		const QMap<QString, NMModelComponent*>& repo);
 
     
-    QList<QStringList> mImgNames;
     QList<QStringList> mInputNodata;
     QStringList mOutputTableFileName;
 

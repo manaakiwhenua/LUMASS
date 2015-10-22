@@ -78,8 +78,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     return tab;
 }
 
-
-
 template< class TInputImage, class TOutputImage >
 void
 UniqueCombinationFilter< TInputImage, TOutputImage >

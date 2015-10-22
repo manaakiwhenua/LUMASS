@@ -17,7 +17,8 @@ def buildDict(profileFile):
     # define keywords to look for
     keys = ["Year", "WrapperClassName", "FileDate", "Author", 
             "FilterClassFileName", "FilterTypeDef",
-            "RATGetSupport", "RATSetSupport"]
+            "RATGetSupport", "RATSetSupport",
+            "ForwardInputUserIDs"]
 
     pdict = {}
     # initialise list elements
@@ -325,6 +326,46 @@ def formatInternalParamSetting(propertyList, className):
     return paramSetting
 
 # ===============================================================================
+def formatForwardInputUserIDs(funcName):
+
+    s = "\n"\
+    "	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				\n"  \
+    "	    std::vector<std::string> userIDs;                                                                       \n"  \
+    "	    QStringList currentInputs;                                                                              \n"  \
+    "	    if (step < p->mInputComponents.size())                                                                  \n"  \
+    "	    {                                                                                                       \n"  \
+    "		    currentInputs = p->mInputComponents.at(step);                                                   \n"  \
+    "		    int cnt=0;                                                                                      \n"  \
+    "		    foreach (const QString& input, currentInputs)                                                   \n"  \
+    "		    {                                                                                               \n"  \
+    "		        std::stringstream uid;                                                                      \n"  \
+    "		        uid << \"L\" << cnt;                                                                          \n"  \
+    "		        QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);            \n"  \
+    "		        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);     \n"  \
+    "		        if (comp != 0)                                                                              \n"  \
+    "		        {                                                                                           \n"  \
+    "			        if (comp->getUserID().isEmpty())                                                        \n"  \
+    "			        {                                                                                       \n"  \
+    "				        userIDs.push_back(uid.str());                                                   \n"  \
+    "			        }                                                                                       \n"  \
+    "			        else                                                                                    \n"  \
+    "			        {                                                                                       \n"  \
+    "				        userIDs.push_back(comp->getUserID().toStdString());                             \n"  \
+    "			        }                                                                                       \n"  \
+    "		        }                                                                                           \n"  \
+    "		        else                                                                                        \n"  \
+    "		        {                                                                                           \n"  \
+    "			        userIDs.push_back(uid.str());                                                           \n"  \
+    "		        }                                                                                           \n"  \
+    "		        ++cnt;                                                                                      \n"  \
+    "		    }                                                                                               \n"  \
+    "	    }                                                                                                       \n"  \
+    "	    f->%s(userIDs);" % (funcName)
+    return s
+
+
+
+# ===============================================================================
 def formatInternalRATGetSupport():
 
     s = \
@@ -537,7 +578,7 @@ if __name__ == '__main__':
             elif key != 'InputTypeFunc':
                 keyword = "/*$<%s>$*/" % str(key)
                 hStr = hStr.replace(keyword, pDict[key])
-                
+
         # check whether there is any keyword left unreplaced ...
         if hStr.find("/*$<") != -1:
             print "WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (hPath)
@@ -572,7 +613,6 @@ if __name__ == '__main__':
             stdsetinput = formatInternalStdSetNthInput()
             cppStr = cppStr.replace("/*$<InternalSetNthInput>$*/", stdsetinput)
 
-
         for key in pDict:
             if key == 'Property':
                 propList = pDict[key]
@@ -602,6 +642,12 @@ if __name__ == '__main__':
                 # internal setNthInput formatting
                 setinput = formatInternalSetNthInput(typefuncs)
                 cppStr = cppStr.replace("/*$<InternalSetNthInput>$*/", setinput)
+
+            elif key == 'ForwardInputUserIDs':
+                if len(pDict['ForwardInputUserIDs']) > 0:
+                    cppStr = cppStr.replace("/*$<ForwardInputUserIDs_Include>$*/", '#include \"NMModelController.h\"')
+                    forwardUserIDsStr = formatForwardInputUserIDs(pDict['ForwardInputUserIDs'])
+                    cppStr = cppStr.replace("/*$<ForwardInputUserIDs_Body>$*/", forwardUserIDsStr)
 
             else:
                 keyword = "/*$<%s>$*/" % str(key)

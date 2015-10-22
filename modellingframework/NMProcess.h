@@ -276,6 +276,20 @@ protected:
 	virtual void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
 
 
+    /*!
+     * \brief processStringParameter
+     * \param str
+     * \return
+     *
+     * Parses str for references to other model components, enclosed by '$', e.g. $AggrComp1$,
+     * and replaces the identifier with the current step index of the particular component;
+     * the reference expression may also contain simple +/- arithmetics to adjust the
+     * step index, e.g. $AggrComp1-1$; note that component identifiers do not contain
+     * any '-' or '+', hence the above expression is not ambigous; the order of the
+     * expression has to be like given above <component-identifier><operator(+|-)><number>
+     */
+    QString processStringParameter(const QString& str);
+
 private:
     unsigned int mStepIndex;
     bool mIsSink;

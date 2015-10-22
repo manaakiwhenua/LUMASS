@@ -2056,7 +2056,7 @@ SQLiteTable::dropTable(const std::string &tablename)
     if (errmsg)
     {
         itkWarningMacro( << "ERROR - DropTable: " << errmsg);
-        free(errmsg);
+        sqlite3_free(errmsg);
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
@@ -2455,8 +2455,15 @@ SQLiteTable::disconnectDB(void)
 void
 SQLiteTable::resetTableAdmin(void)
 {
-    // clean up
+    // if there's no db connection any more
+    // it is very likely one of the below finalization
+    // statements will cause a segfault
+    if (m_db == 0)
+    {
+        return;
+    }
 
+    // clean up
     if (m_StmtBegin != 0)
     {
         sqlite3_finalize(m_StmtBegin);

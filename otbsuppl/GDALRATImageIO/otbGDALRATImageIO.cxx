@@ -2236,7 +2236,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
         colIdName = rat->GetNameOfCol(fstIntIdx);
     }
 
-    otbTab->AddColumn(colIdName, AttributeTable::ATTYPE_INT);
+    //otbTab->AddColumn(colIdName, AttributeTable::ATTYPE_INT);
 
 
     // copy table
@@ -2298,16 +2298,17 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
             gdaltype = rat->GetTypeOfCol(col);
             void* colPtr = 0;
 
-            if (col == 0)
-            {
-                colPtr = otbTab->GetColumnPointer(col);
-                long* valPtr = static_cast<long*>(colPtr);
-                for (int r=s; r < e; ++r)
-                {
-                    valPtr[r] = r;
-                }
-            }
-            colPtr = otbTab->GetColumnPointer(col+1);
+            //            if (col == 0)
+            //            {
+            //                colPtr = otbTab->GetColumnPointer(col);
+            //                long* valPtr = static_cast<long*>(colPtr);
+            //                for (int r=s; r < e; ++r)
+            //                {
+            //                    valPtr[r] = r;
+            //                }
+            //            }
+            //colPtr = otbTab->GetColumnPointer(col+1);
+            colPtr = otbTab->GetColumnPointer(col);
 
             switch(gdaltype)
             {
@@ -2341,7 +2342,8 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
                 for (int k=0; k < chunksize; ++k)
                 {
                     const char* ccv = valPtr[k] != 0 ? valPtr[k] : "NULL";
-                    otbTab->SetValue(col+1, s+k, ccv);
+                    //otbTab->SetValue(col+1, s+k, ccv);
+                    otbTab->SetValue(col, s+k, ccv);
                     CPLFree(valPtr[k]);
                 }
                 CPLFree(valPtr);
@@ -2373,21 +2375,24 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
         gdaltype = rat->GetTypeOfCol(c);
         for (int r=0; r < nrows; ++r)
         {
-            if (c==0)
-            {
-                otbTab->SetValue(c, r, (long)r);
-            }
+            //            if (c==0)
+            //            {
+            //                otbTab->SetValue(c, r, (long)r);
+            //            }
 
             switch (gdaltype)
             {
             case GFT_Integer:
-                otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
+                //otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
+                otbTab->SetValue(c, r, (long)rat->GetValueAsInt(r, c));
                 break;
             case GFT_Real:
-                otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
+                //otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));
+                otbTab->SetValue(c, r, rat->GetValueAsDouble(r, c));
                 break;
             case GFT_String:
-                otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
+                //otbTab->SetValue(c+1, r, rat->GetValueAsString(r, c));
+                otbTab->SetValue(c, r, rat->GetValueAsString(r, c));
                 break;
             default:
                 continue;
@@ -2462,6 +2467,18 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     int ncols = rat->GetColumnCount();
     if (nrows == 0 || ncols == 0)
     {
+        // just test whether we've got an external ldb file here before
+        // we attempt to actually create a proper SQLiteTable
+        std::ifstream filestr(dbFN.c_str());
+        if (filestr)
+        {
+            filestr.close();
+        }
+        else
+        {
+            return 0;
+        }
+
         std::stringstream ssband;
         ssband << iBand;
         // double check, whether there's an external lumass db file out there,
@@ -3004,8 +3021,8 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     CPLErr err;
 
 
-    // add all but the 'rowidx' column to the table
-    for (int col = 1; col < tab->GetNumCols(); ++col)
+    // write all columns to the output table
+    for (int col = 0; col < tab->GetNumCols(); ++col)
     {
         GDALRATFieldType type;
         switch(tab->GetColumnType(col))
@@ -3036,10 +3053,10 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     // copy values row by row
     for (long row=0; row < tab->GetNumRows(); ++row)
     {
-        for (int col=1; col < tab->GetNumCols(); ++col)
+        for (int col=0; col < tab->GetNumCols(); ++col)
         {
-            itkDebugMacro(<< "Setting value: col=" << col
-                    << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
+//            itkDebugMacro(<< "Setting value: col=" << col
+//                    << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
             switch(tab->GetColumnType(col))
             {
             case otb::AttributeTable::ATTYPE_INT:
@@ -3053,7 +3070,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
                 break;
             default:
                 delete gdaltab;
-                itkExceptionMacro(<< "Unrecognised field type! Couldn't set value col=" << col
+                itkWarningMacro(<< "Unrecognised field type! Couldn't set value col=" << col
                         << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
                 break;
             }
@@ -3152,7 +3169,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 
 	CPLErr err;
 
-	// add all but the 'rowidx' column to the table
+    // add all columns to the table
     for (int col = 0; col < tab->GetNumCols(); ++col)
 	{
 		GDALRATFieldType type;

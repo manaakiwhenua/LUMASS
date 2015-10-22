@@ -36,6 +36,7 @@
 #include "NMUniqueCombinationFilterWrapper.h"
 #include "NMCombineTwoFilterWrapper.h"
 #include "NMExternalExecWrapper.h"
+#include "NMSQLProcessor.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -57,11 +58,13 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     //mProcRegister << QString::fromLatin1("UniqueCombination")    ;
     mProcRegister << QString::fromLatin1("CombineTwo")    ;
     mProcRegister << QString::fromLatin1("ExternalExec");
+    mProcRegister << QString::fromLatin1("SQLProcessor");
 
 
     mSinks << QString::fromLatin1("ImageWriter");
     mSinks << QString::fromLatin1("CostDistanceBuffer");
     mSinks << QString::fromLatin1("ExternalExec");
+    mSinks << QString::fromLatin1("SQLProcessor");
 
 }
 
@@ -148,6 +151,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMExternalExecWrapper";
     }
+    else if (alias.compare("SQLProcessor") == 0)
+    {
+        return "NMSQLProcessor";
+    }
     else return proc;
 }
 
@@ -208,6 +215,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMExternalExecWrapper") == 0)
     {
         proc =  new NMExternalExecWrapper(this);
+    }
+    else if (procClass.compare("NMSQLProcessor") == 0)
+    {
+        proc =  new NMSQLProcessor(this);
     }
     else
         proc =  0;

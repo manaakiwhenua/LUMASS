@@ -26,6 +26,7 @@
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
+#include "NMModelController.h"
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
@@ -120,19 +121,6 @@ public:
 		int givenStep = step;
 
 		
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mImgNames.size());
-        std::vector<std::string> vecImgNames;
-        std::string curImgNames;
-        if (step < p->mImgNames.size())
-        {
-            for (int i=0; i < p->mImgNames.at(step).size(); ++i) 
-            {
-                curImgNames = p->mImgNames.at(step).at(i).toStdString().c_str();
-            vecImgNames.push_back(curImgNames);
-            }
-            f->SetImgNames(vecImgNames);
-        }
-
         step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputNodata.size());
         std::vector<long long> vecInputNodata;
         long long curInputNodata;
@@ -163,6 +151,41 @@ public:
             curOutputTableFileName = p->mOutputTableFileName.at(step).toStdString().c_str();
             f->SetOutputTableFileName(curOutputTableFileName);
         }
+
+
+                
+	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
+	    std::vector<std::string> userIDs;                                                                       
+	    QStringList currentInputs;                                                                              
+	    if (step < p->mInputComponents.size())                                                                  
+	    {                                                                                                       
+		    currentInputs = p->mInputComponents.at(step);                                                   
+		    int cnt=0;                                                                                      
+		    foreach (const QString& input, currentInputs)                                                   
+		    {                                                                                               
+		        std::stringstream uid;                                                                      
+		        uid << "L" << cnt;                                                                          
+		        QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);            
+		        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);     
+		        if (comp != 0)                                                                              
+		        {                                                                                           
+			        if (comp->getUserID().isEmpty())                                                        
+			        {                                                                                       
+				        userIDs.push_back(uid.str());                                                   
+			        }                                                                                       
+			        else                                                                                    
+			        {                                                                                       
+				        userIDs.push_back(comp->getUserID().toStdString());                             
+			        }                                                                                       
+		        }                                                                                           
+		        else                                                                                        
+		        {                                                                                           
+			        userIDs.push_back(uid.str());                                                           
+		        }                                                                                           
+		        ++cnt;                                                                                      
+		    }                                                                                               
+	    }                                                                                                       
+	    f->SetImgNames(userIDs);
 
 
 		NMDebugCtx("NMCombineTwoFilterWrapper_Internal", << "done!");

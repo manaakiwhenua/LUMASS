@@ -33,6 +33,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
 	ctx = "NMProcCompList";
 
     this->addItem(QString::fromLatin1("CastImage"));
+    this->addItem(QString::fromLatin1("CombineTwo"));
     this->addItem(QString::fromLatin1("CostDistanceBuffer"));
     this->addItem(QString::fromLatin1("DataBuffer"));
     this->addItem(QString::fromLatin1("FocalDistanceWeight"));
@@ -42,9 +43,9 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("NeighbourCounter"));
     this->addItem(QString::fromLatin1("RandomImage"));
     this->addItem(QString::fromLatin1("ResampleImage"));
+    this->addItem(QString::fromLatin1("SQLProcessor"));
     this->addItem(QString::fromLatin1("SummarizeZones"));
     //this->addItem(QString::fromLatin1("UniqueCombination"));
-    this->addItem(QString::fromLatin1("CombineTwo"));
     this->addItem(QString::fromLatin1("ExternalExec"));
     this->addItem(QString::fromLatin1("TextLabel"));
 }

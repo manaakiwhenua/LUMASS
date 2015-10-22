@@ -26,6 +26,7 @@
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
+/*$<ForwardInputUserIDs_Include>$*/
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
@@ -98,6 +99,9 @@ public:
 		int givenStep = step;
 
 		/*$<InternalFilterParamSetter>$*/
+
+                /*$<ForwardInputUserIDs_Body>$*/
+
 
 		NMDebugCtx("/*$<WrapperClassName>$*/_Internal", << "done!");
 	}

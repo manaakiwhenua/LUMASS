@@ -21,6 +21,12 @@
 
 #include "nmlog.h"
 #include "otbUniqueCombinationFilter.h"
+#include "otbCombineTwoFilter.h"
+#include "otbNMImageReader.h"
+#include "otbStreamingImageFileWriter.h"
+#include "otbRATBandMathImageFilter.h"
+#include "otbSQLiteTable.h"
+
 
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
@@ -124,10 +130,33 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 template< class TInputImage, class TOutputImage >
 void
 UniqueCombinationFilter< TInputImage, TOutputImage >
+::InternalAllocateOutput()
+{
+    typename TInputImage::ConstPointer inImg = this->GetInput();
+    typename TOutputImage::Pointer outImg = this->GetOutput();
+    outImg->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
+    outImg->SetBufferedRegion(inImg->GetBufferedRegion());
+    outImg->SetRequestedRegion(inImg->GetRequestedRegion());
+    outImg->Allocate();
+
+}
+
+template< class TInputImage, class TOutputImage >
+void
+UniqueCombinationFilter< TInputImage, TOutputImage >
 //::BeforeThreadedGenerateData()
 ::GenerateData()
 {
     //NMDebugCtx(ctx, << "...");
+
+    unsigned int nbInputs = this->GetNumberOfIndexedInputs();
+    unsigned int nbRAT = this->m_vInRAT.size();
+    if (nbInputs < 2 || nbRAT < 2)
+    {
+        itkExceptionMacro(<< "Need at least two input layers to work!");
+        return;
+    }
+
     // ======================================================================
     // IMAGE AXES DIMENSION CHECK
     // ======================================================================
@@ -135,12 +164,11 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // check, whether all inputs have the same dimension
     // (... and hopefully also the same projection - but
     // we don't check that ...)
-    unsigned long long inputSize[2];
+    IndexType inputSize[2];
     inputSize[0] = this->GetInput(0)->GetLargestPossibleRegion().GetSize(0);
     inputSize[1] = this->GetInput(0)->GetLargestPossibleRegion().GetSize(1);
 
-    unsigned int nbInputs = this->GetNumberOfIndexedInputs();//this->GetNumberOfValidRequiredInputs();
-   // NMDebugAI(<< "nbInputs = " << nbInputs << std::endl);
+    // NMDebugAI(<< "nbInputs = " << nbInputs << std::endl);
     for (unsigned int p=0; p < nbInputs; ++p)
     {
         if((inputSize[0] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(0))
@@ -164,289 +192,111 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // ======================================================================
     typename TInputImage::ConstPointer inImg = this->GetInput();
     typename TOutputImage::Pointer outImg = this->GetOutput();
-    outImg->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
-    outImg->SetBufferedRegion(inImg->GetBufferedRegion());
-    outImg->SetRequestedRegion(inImg->GetRequestedRegion());
-    outImg->Allocate();
+    this->InternalAllocateOutput();
 
-    long long lprPixNum = inImg->GetLargestPossibleRegion().GetNumberOfPixels();
+    IndexType lprPixNum = inImg->GetLargestPossibleRegion().GetNumberOfPixels();
     typename TOutputImage::RegionType outRegion = outImg->GetBufferedRegion();
 
-    // ======================================================================
-    // PREPARE OUPUT TABLE AND KEY-VALUE STORE
-    // ======================================================================
-    //    int nbThreads = 1;//this->GetNumberOfThreads();
-    //    for (int t=0; t < nbThreads; ++t)
-    //    {
-    //        TCHDB* hdb = tchdbnew();
-    //        std::string hdbName = std::tmpnam(0);
-    //        if (!tchdbopen(hdb, hdbName.c_str(), HDBOWRITER | HDBOCREAT))
-    //        {
-    //            m_threadHDB.push_back(hdb);
-    //        }
-    //    }
 
-    if (!m_StreamingProc)
+    /// here's what we do:
+    /// - make a list of all intputs
+    /// - make a list of combination iterations
+    /// - according to the above iterate over internal pipeline
+    ///   which does the following:
+    ///   - take the first n images and combine them using otbCombineTwo
+    ///     - set a name for the resulting table
+    ///   - normalise the resulting image of the above:
+    ///     use a another internal pipeline: reader->BandMath->writer
+    ///     - use b_1__UvId as the output image values
+    ///   - join the CombineTwo result table onto the new BandMath output
+    ///
+    ///   - take the next n additional images from the list and repeat the
+    ///     iteration
+
+    // set up objects for the first pipline
+    typedef typename otb::RATBandMathImageFilter<TInputImage, TOutputImage> MathFilterType;
+    typedef typename otb::CombineTwoFilter<TInputImage, TOutputImage> CombFilterType;
+    typedef typename otb::NMImageReader<TInputImage> ReaderType;
+    typedef typename otb::StreamingImageFileWriter<TOutputImage> WriterType;
+
+
+    IndexType maxIdx = itk::NumericTraits<IndexType>::max();
+    IndexType accIdx = static_cast<IndexType>(this->getRAT(0)->GetNumRows());
+    unsigned int cnt = 0;
+    while (   cnt+1 < nbRAT
+           && (accIdx > maxIdx / (this->getRAT(cnt+1) > 0 ? this->getRAT(cnt+1) : 1))
+          )
     {
-        this->m_StreamingProc = true;
-
-        m_TotalStreamedPix = 0;
-
-
-        // -------------------------------------------------------------
-        // PREPARE UNIQUE VALUE (i.e. COMBINATION) TABLE
-        // -------------------------------------------------------------
-
-        // note the "1" is to indicate the band this table is for
-        if (this->m_UVTable->CreateTable(m_UVTableName, "1") == otb::SQLiteTable::ATCREATE_ERROR)
-        {
-            itkExceptionMacro(<< "Failed creating output table!");
-            return;
-        }
-
-        // ad columns (rowidx, L0, L1, L2, ... L<nbInputs-1>)
-        m_UVTable->BeginTransaction();
-        std::vector<std::string> vColNames;
-        vColNames.push_back(m_UVTable->GetPrimaryKey());
-        std::stringstream colname;
-        for (int l=0; l < nbInputs; ++l)
-        {
-            colname.str("");
-            colname << "L" << l;
-            m_UVTable->AddColumn(colname.str(),
-                                 AttributeTable::ATTYPE_INT);
-            vColNames.push_back(colname.str());
-        }
-        m_UVTable->EndTransaction();
-        m_UVTable->PrepareBulkSet(vColNames, true);
-
-
-        // reserve first row for nodata values
-        std::vector<AttributeTable::ColumnValue> nodatVals;
-        AttributeTable::ColumnValue ndv;
-        ndv.type = AttributeTable::ATTYPE_INT;
-        ndv.ival = m_OutIdx;
-        nodatVals.push_back(ndv);
-        ++m_OutIdx;
-
-        // make sure, we've got as many nodata values
-        // as inputs
-        m_InputNodata.resize(nbInputs);
-
-        for (int nd=1; nd < vColNames.size(); ++nd)
-        {
-            AttributeTable::ColumnValue ndv;
-            ndv.type = AttributeTable::ATTYPE_INT;
-            if (nd-1 < m_InputNodata.size())
-            {
-                ndv.ival = m_InputNodata.at(nd-1);
-            }
-            nodatVals.push_back(ndv);
-        }
-        m_UVTable->DoBulkSet(nodatVals);
-
-
-        // -------------------------------------------------------------
-        // PREPARE KEY-VALUE STORE KEEPING TRACK OF UNIQUE COMBINATIONS
-        // -------------------------------------------------------------
-
-        //        if (m_tcHDB != 0)
-        //        {
-        //            tchdbvanish(m_tcHDB);
-        //            tchdbclose(m_tcHDB);
-        //            m_tcHDB = 0;
-        //        }
-
-        //        m_tcHDB = tchdbnew();
-        //        tchdbtune(m_tcHDB, 200000000, 8, 10, HDBTLARGE | HDBTDEFLATE);
-        //        tchdbsetcache(m_tcHDB, 700000);
-        //        tchdbsetxmsiz(m_tcHDB, 536870912);
-
-        //        std::string hdbName = std::tmpnam(0);
-        //        if (!tchdbopen(m_tcHDB, hdbName.c_str(), HDBOWRITER | HDBOCREAT))
-        //        {
-        //            itkExceptionMacro(<< "Failed creating main key-value store!");
-        //            return;
-        //        }
+        accIdx *= this->getRAT(cnt);
+        ++cnt;
     }
 
-    // ======================================================================
-    // SETTING UP REGION ITERATION
-    // ======================================================================
-    //}
-
-    //template< class TInputImage, class TOutputImage >
-    //void
-    //UniqueCombinationFilter< TInputImage, TOutputImage >
-    //::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
-    //                       itk::ThreadIdType threadId )
-    //{
-
-    typedef itk::ImageRegionConstIterator<TInputImage> ImageRegionConstIteratorType;
-    typedef itk::ImageRegionIterator<TOutputImage> ImageRegionIteratorType;
-
-    std::vector<ImageRegionConstIteratorType> inputIterators(nbInputs);
-    for (unsigned int in=0; in < nbInputs; ++in)
+    int fstImg = 0;
+    int lastImg = cnt;
+    while (lastImg+1 < nbRAT)
     {
-        inputIterators[in] = ImageRegionConstIteratorType(this->GetInput(in),
-                                        outRegion);
-        inputIterators[in].GoToBegin();
-    }
-    ImageRegionIteratorType outIt(this->GetOutput(0),
-                         outRegion);
-    outIt.GoToBegin();
-
-
-
-    // ======================================================================
-    // IDENTIFY UNIQUE COMBINATIONS
-    // ======================================================================
-    itk::ProgressReporter progress(this, 0,
-                                   outRegion.GetNumberOfPixels());
-
-    OutputPixelType readIdx = 0;
-    InputPixelType curVal;
-    bool nodata = false;
-    std::vector<InputPixelType> combo(nbInputs, 0);
-    while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
-    {
-        nodata = false;
-        for (unsigned int in=0; in < nbInputs; ++in)
+        CombFilterType::Pointer ctFilter = CombFilterType::New();
+        for (int i=fstImg; i <= lastImg; ++i)
         {
-            curVal = inputIterators[in].Get();
-            if (curVal == m_InputNodata[in])
-            {
-                nodata = true;
-            }
-            combo[in] = curVal;
-            ++inputIterators[in];
+            ctFilter->SetInput(i, this->GetInput(i));
+            ctFilter->setRAT(i, this->getRAT(i));
         }
 
-//        if (!nodata)
-//        {
-//            if (tchdbget3(m_tcHDB,
-//                          static_cast<void*>(&combo[0]),
-//                          sizeof(InputPixelType) * nbInputs,
-//                          static_cast<void*>(&readIdx),
-//                          sizeof(OutputPixelType))
-//                == -1)
-//            {
-//                tchdbputkeep(m_tcHDB,
-//                              static_cast<void*>(&combo[0]),
-//                              sizeof(typename TInputImage::PixelType) * nbInputs,
-//                              static_cast<void*>(&m_OutIdx),
-//                              sizeof(typename TOutputImage::PixelType));
-//                outIt.Set(m_OutIdx);//outIt.Set(outIdx);
-//                ++m_OutIdx;
-//            }
-//            else
-//            {
-//                outIt.Set(readIdx);
-//            }
-//        }
-//        else
-        {
-            outIt.Set(0);
-        }
-
-        progress.CompletedPixel();
-        ++outIt;
-        ++m_TotalStreamedPix;
     }
 
-    //NMDebugAI(<< m_OutIdx << " unique combinations found so far ... " << std::endl);
-
-    //}
-
-    //template< class TInputImage, class TOutputImage >
-    //void
-    //UniqueCombinationFilter< TInputImage, TOutputImage >
-    //::AfterThreadedGenerateData()
-    //{
-
-    // ======================================================================
-    // Creating the output unique value table
-    // ======================================================================
-//    void* nextKey = 0;
-//    int sizeKey = 0;
-//    if (m_TotalStreamedPix == lprPixNum)
-//    {
-//        std::vector<otb::AttributeTable::ColumnValue> inVals(nbInputs+1);
-//        for (int i=0; i < nbInputs+1; ++i)
-//        {
-//            inVals[i].type = AttributeTable::ATTYPE_INT;
-//        }
-
-//        if (!tchdbiterinit(m_tcHDB))
-//        {
-//            int ecode = tchdbecode(m_tcHDB);
-//            itkExceptionMacro(<< "ERROR writing unique value table: "
-//                              << tchdberrmsg(ecode));
-//            tchdbclose(m_tcHDB);
-//            this->m_UVTable->closeTable();
-//            //NMDebugCtx(ctx, << "done!");
-//            return;
-//        }
-
-//        itk::ProgressReporter writeProgress(this, 0, m_OutIdx);
-
-//        m_UVTable->beginTransaction();
-//        while(nextKey = tchdbiternext(m_tcHDB, &sizeKey))
-//        {
-//            if (tchdbget3(m_tcHDB, nextKey, sizeKey,
-//                          static_cast<void*>(&readIdx),
-//                          sizeof(typename TOutputImage::PixelType))
-//                == -1)
-//            {
-//                itkWarningMacro(<< "Failed reading Tokyo Cabinet Record!");
-//                free(nextKey);
-//                continue;
-//            }
-
-//            inVals[0].ival = static_cast<long long>(readIdx);
-//            for (int i=0; i < nbInputs; ++i)
-//            {
-//                inVals[i+1].ival = static_cast<typename TInputImage::PixelType*>(nextKey)[i];
-//            }
-//            m_UVTable->doBulkSet(inVals);
-
-//            free(nextKey);
-//            writeProgress.CompletedPixel();
-//        }
-//        m_UVTable->endTransaction();
-
-
-//        // just close the table
-//        //m_UVTable->closeTable();
-
-//    }
-
-    // set the output RAT table
-    //    if (m_vOutRAT.size())
-    //    {
-    //        m_vOutRAT[0] = m_UVTable;
-    //    }
-    //    else
-    //    {
-    //        m_vOutRAT.push_back(m_UVTable);
-    //    }
-
-
-    // clean up the hdbc
-    //    for (int d=0; d < m_threadHDB.size(); ++d)
-    //    {
-    //        if (m_threadHDB[d] != 0)
-    //        {
-    //            tchdbvanish(hdb);
-    //            tchdbclose(m_threadHDB[d]);
-    //            m_threadHDB[d] = 0;
-    //        }
-    //    }
-    //    m_threadHDB.clear();
 
     //NMDebugCtx(ctx, << "done!");
 }
 
+template< class TInputImage, class TOutputImage >
+std::string
+UniqueCombinationFilter< TInputImage, TOutputImage >
+::getRandomString(int length)
+{
+    int len = length;
+    if (len < 8)
+        len = 8;
+
+    std::srand(std::time(0));
+    char nam[len];
+    for (int i=0; i < len; ++i)
+    {
+        if (i == 0)
+        {
+            if (::rand() % 2 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+        }
+        else
+        {
+            if (::rand() % 7 == 0)
+            {
+                nam[i] = '_';
+            }
+            else if (::rand() % 5 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else if (::rand() % 3 == 0)
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+            else
+            {
+                nam[i] = ::rand() % 10 + 48;
+            }
+        }
+    }
+
+    std::string ret = nam;
+
+    return ret;
+}
 
 template< class TInputImage, class TOutputImage >
 void
@@ -456,26 +306,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     NMDebugCtx(ctx, << "...");
 
     m_StreamingProc = false;
-
-    // check whether there are any open
-    // dbs which need closing
-    //    for (int d=0; d < m_threadHDB.size(); ++d)
-    //    {
-    //        if (m_threadHDB[d] != 0)
-    //        {
-    //            tchdbvanish(hdb);
-    //            tchdbclose(m_threadHDB[d]);
-    //            m_threadHDB[d] = 0;
-    //        }
-    //    }
-    //    m_threadHDB.clear();
-
-//    if (m_tcHDB != 0)
-//    {
-//        tchdbvanish(m_tcHDB);
-//        tchdbclose(m_tcHDB);
-//        m_tcHDB = 0;
-//    }
 
     if (this->m_UVTable.IsNotNull())
     {

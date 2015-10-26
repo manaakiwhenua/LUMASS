@@ -72,6 +72,7 @@ IF(NOT OTB_DIR)
         OTB-5.1
         OTB-5.2
         OTB-5.3
+        OTB/build
     PATHS
     # Look for an environment variable OTB_DIR.
     $ENV{OTB_DIR}

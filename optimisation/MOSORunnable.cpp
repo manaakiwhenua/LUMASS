@@ -6,10 +6,10 @@
  */
 
 
-#include <QScopedPointer>
 #include <QFileInfo>
 #include <QDir>
 #include <QObject>
+#include <QScopedPointer>
 
 #include "nmlog.h"
 #include "NMMosra.h"

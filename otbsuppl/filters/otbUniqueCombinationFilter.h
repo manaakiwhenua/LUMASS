@@ -80,21 +80,21 @@ public:
     typedef typename InputImageType::SpacingType  InputImageSpacingType;
     typedef typename OutputImageType::SpacingType OutputImageSpacingType;
 
-    typedef long long UniqueValueType;
+    typedef unsigned long IndexType;
 
-    typedef typename std::map< UniqueValueType, std::vector<long long> >  CombinationPedigreeMap;
-    typedef typename CombinationPedigreeMap::iterator 		          CombinationPedigreeIterator;
+    //typedef typename std::map< UniqueValueType, std::vector<long long> >  CombinationPedigreeMap;
+    //typedef typename CombinationPedigreeMap::iterator 		          CombinationPedigreeIterator;
 
     void SetNthInput(unsigned int idx, const InputImageType * image);
 
     void setRAT(unsigned int idx, AttributeTable::Pointer table);
-    AttributeTable::Pointer getRAT(unsigned int idx);
+    AttributeTable::Pointer GetRAT(unsigned int idx);
 
     void SetUVTableName(const std::string& name);
 
 
 
-    void SetInputNodata(std::vector<long long>& inNodata)
+    void SetInputNodata(std::vector<InputPixelType>& inNodata)
     {m_InputNodata = inNodata;}
 
     virtual void ResetPipeline();
@@ -108,6 +108,9 @@ protected:
     //void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
     //void AfterThreadedGenerateData();
     void GenerateData();
+
+    void InternalAllocateOutput();
+    std::string getRandomString(int length=15);
 
     std::vector<AttributeTable::Pointer> m_vInRAT;
     std::vector<AttributeTable::Pointer> m_vOutRAT;

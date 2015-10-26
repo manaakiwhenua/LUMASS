@@ -1,5 +1,6 @@
 PROJECT(gui)
 
+if (${VTK_VERSION_STRING} VERSION_LESS "6.3")
 find_package(VTK COMPONENTS
 	vtkCommonDataModel
 	vtkCommonCore
@@ -12,7 +13,8 @@ find_package(VTK COMPONENTS
 	vtkImagingStatistics
 	vtkInteractionWidgets
 	vtkInteractionStyle
-	vtkRenderingFreeTypeOpenGL
+        vtkRenderingFreeTypeOpenGL
+        #vtkRenderingFreeType
 	vtkIOCore
 	vtkIOInfovis
 	vtkIOSQL
@@ -20,6 +22,29 @@ find_package(VTK COMPONENTS
 	vtkIOXML
 	NO_MODULE
 )
+else()
+find_package(VTK COMPONENTS
+        vtkCommonDataModel
+        vtkCommonCore
+        vtkFiltersGeneric
+        vtkRenderingCore
+        vtkRenderingAnnotation
+        vtkRenderingImage
+        vtkRenderingOpenGL
+        vtkGUISupportQt
+        vtkImagingStatistics
+        vtkInteractionWidgets
+        vtkInteractionStyle
+        #vtkRenderingFreeTypeOpenGL
+        vtkRenderingFreeType
+        vtkIOCore
+        vtkIOInfovis
+        vtkIOSQL
+        vtkIOLegacy
+        vtkIOXML
+        NO_MODULE
+)
+endif()
 
 include(${VTK_USE_FILE})
 
@@ -152,7 +177,7 @@ IF(RASSUPPORT)
 ENDIF()
 
 # Qt5 requirement
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 
 message(STATUS "vtk definitions: ${VTK_DEFINITIONS}")
 

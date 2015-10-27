@@ -48,6 +48,7 @@
 #include "otbImageIOFactory.h"
 #include "otbImageKeywordlist.h"
 #include "otbMetaDataKey.h"
+#include "otbCurlHelper.h"
 
 #include "otbGDALRATImageIO.h"
 #include "otbAttributeTable.h"

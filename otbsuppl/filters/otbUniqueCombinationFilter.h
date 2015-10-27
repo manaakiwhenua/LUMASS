@@ -80,7 +80,7 @@ public:
     typedef typename InputImageType::SpacingType  InputImageSpacingType;
     typedef typename OutputImageType::SpacingType OutputImageSpacingType;
 
-    typedef unsigned long IndexType;
+    typedef long long IndexType;
 
     //typedef typename std::map< UniqueValueType, std::vector<long long> >  CombinationPedigreeMap;
     //typedef typename CombinationPedigreeMap::iterator 		          CombinationPedigreeIterator;
@@ -88,14 +88,17 @@ public:
     void SetNthInput(unsigned int idx, const InputImageType * image);
 
     void setRAT(unsigned int idx, AttributeTable::Pointer table);
-    AttributeTable::Pointer GetRAT(unsigned int idx);
+    AttributeTable::Pointer getRAT(unsigned int idx);
 
     void SetUVTableName(const std::string& name);
 
 
 
-    void SetInputNodata(std::vector<InputPixelType>& inNodata)
-    {m_InputNodata = inNodata;}
+    void SetInputNodata(const std::vector<long long>& inNodata);
+
+
+    void SetImageNames(std::vector<std::string> imgNames)
+    {m_ImageNames = imgNames;}
 
     virtual void ResetPipeline();
 
@@ -111,6 +114,7 @@ protected:
 
     void InternalAllocateOutput();
     std::string getRandomString(int length=15);
+    unsigned int nextUpperIterationIdx(unsigned int idx, IndexType& accIdx);
 
     std::vector<AttributeTable::Pointer> m_vInRAT;
     std::vector<AttributeTable::Pointer> m_vOutRAT;
@@ -119,6 +123,7 @@ protected:
 //    TCHDB* m_tcHDB;
 
     std::string m_UVTableName;
+    std::string m_WorkingDirectory;
     SQLiteTable::Pointer m_UVTable;
 
     bool m_StreamingProc;
@@ -126,9 +131,10 @@ protected:
 
     long long m_TotalStreamedPix;
     OutputPixelType m_OutIdx;
-    long long m_UVTableIndex;
+    IndexType m_UVTableIndex;
 
-    std::vector<long long> m_InputNodata;
+    std::vector<InputPixelType> m_InputNodata;
+    std::vector<std::string> m_ImageNames;
 
 
 private:
@@ -139,7 +145,7 @@ private:
 }
 
 template< class TInputImage, class TOutputImage>
-const std::string otb::UniqueCombinationFilter<TInputImage, TOutputImage>::ctx = "otb::UniqueCombinationFilter";
+const std::string otb::UniqueCombinationFilter<TInputImage, TOutputImage>::ctx = "UniqueCombinationFilter";
 
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbUniqueCombinationFilter.txx"

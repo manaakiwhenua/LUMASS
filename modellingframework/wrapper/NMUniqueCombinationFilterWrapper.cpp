@@ -26,6 +26,7 @@
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
+#include "NMModelController.h"
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
@@ -150,6 +151,41 @@ public:
             }
             f->SetInputNodata(vecInputNodata);
         }
+
+
+                
+	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
+	    std::vector<std::string> userIDs;                                                                       
+	    QStringList currentInputs;                                                                              
+	    if (step < p->mInputComponents.size())                                                                  
+	    {                                                                                                       
+		    currentInputs = p->mInputComponents.at(step);                                                   
+		    int cnt=0;                                                                                      
+		    foreach (const QString& input, currentInputs)                                                   
+		    {                                                                                               
+		        std::stringstream uid;                                                                      
+		        uid << "L" << cnt;                                                                          
+		        QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);            
+		        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);     
+		        if (comp != 0)                                                                              
+		        {                                                                                           
+			        if (comp->getUserID().isEmpty())                                                        
+			        {                                                                                       
+				        userIDs.push_back(uid.str());                                                   
+			        }                                                                                       
+			        else                                                                                    
+			        {                                                                                       
+				        userIDs.push_back(comp->getUserID().toStdString());                             
+			        }                                                                                       
+		        }                                                                                           
+		        else                                                                                        
+		        {                                                                                           
+			        userIDs.push_back(uid.str());                                                           
+		        }                                                                                           
+		        ++cnt;                                                                                      
+		    }                                                                                               
+	    }                                                                                                       
+	    f->SetImageNames(userIDs);
 
 
 		NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "done!");

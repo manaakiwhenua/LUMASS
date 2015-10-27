@@ -20,5 +20,7 @@ FilterClassFileName         = otbUniqueCombinationFilter
 FilterTypeDef               = otb::UniqueCombinationFilter<InImgType, OutImgType>
 RATGetSupport               = 1
 RATSetSupport               = 1
+ForwardInputUserIDs         = SetImageNames
 Property_1                  = UVTableName:1:string
 Property_2                  = InputNodata:2:long long:InputPixelType:vector
+

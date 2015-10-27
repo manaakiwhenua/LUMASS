@@ -81,18 +81,18 @@ AttributeTable::Pointer CombineTwoFilter< TInputImage, TOutputImage >
 
 template< class TInputImage, class TOutputImage >
 void CombineTwoFilter< TInputImage, TOutputImage >
-::SetInputNodata(const std::vector<long long>& inNodata)
+::SetInputNodata(const std::vector<long long> &inNodata)
 {
     m_InputNodata.clear();
     for (int i=0; i < inNodata.size(); ++i)
     {
-        m_InputNodata.push_back(inNodata.at(i));
+        m_InputNodata.push_back(static_cast<InputPixelType>(inNodata.at(i)));
     }
 }
 
 template< class TInputImage, class TOutputImage >
 void CombineTwoFilter< TInputImage, TOutputImage >
-::SetImgNames(const std::vector<std::string>& imgNames)
+::SetImageNames(const std::vector<std::string>& imgNames)
 {
     m_ImgNames.clear();
     for (int i=0; i < imgNames.size(); ++i)

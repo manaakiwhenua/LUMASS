@@ -23,7 +23,7 @@
 #include "otbUniqueCombinationFilter.h"
 #include "otbCombineTwoFilter.h"
 #include "otbNMImageReader.h"
-#include "otbStreamingImageFileWriter.h"
+#include "otbStreamingRATImageFileWriter.h"
 #include "otbRATBandMathImageFilter.h"
 #include "otbSQLiteTable.h"
 
@@ -34,12 +34,7 @@
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
 
-//// TOKYO CABINET
-////#include "tcutil.h"
-//#include "tchdb.h"
-//#include <stdlib.h>
-//#include <stdbool.h>
-//#include <stdint.h>
+#include <ctime>
 
 namespace otb
 {
@@ -52,6 +47,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
       m_UVTable(0),
       m_UVTableIndex(0),
       m_UVTableName(""),
+      m_WorkingDirectory(""),
       m_OutIdx(0)
 {
     this->SetNumberOfRequiredInputs(1);
@@ -96,6 +92,18 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
 
     this->m_vInRAT[idx] = table;
+}
+
+template< class TInputImage, class TOutputImage >
+void
+UniqueCombinationFilter< TInputImage, TOutputImage >
+::SetInputNodata(const std::vector<long long>& inNodata)
+{
+    m_InputNodata.clear();
+    for (int i=0; i < inNodata.size(); ++i)
+    {
+        m_InputNodata.push_back(static_cast<InputPixelType>(inNodata.at(i)));
+    }
 }
 
 //template< class TInputImage, class TOutputImage >
@@ -199,8 +207,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
 
     /// here's what we do:
-    /// - make a list of all intputs
-    /// - make a list of combination iterations
+    /// - determine the number of images for the initial iteration
     /// - according to the above iterate over internal pipeline
     ///   which does the following:
     ///   - take the first n images and combine them using otbCombineTwo
@@ -210,42 +217,132 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     ///     - use b_1__UvId as the output image values
     ///   - join the CombineTwo result table onto the new BandMath output
     ///
-    ///   - take the next n additional images from the list and repeat the
-    ///     iteration
+    ///   - determine the next n images for the next iteration
 
     // set up objects for the first pipline
-    typedef typename otb::RATBandMathImageFilter<TInputImage, TOutputImage> MathFilterType;
     typedef typename otb::CombineTwoFilter<TInputImage, TOutputImage> CombFilterType;
-    typedef typename otb::NMImageReader<TInputImage> ReaderType;
-    typedef typename otb::StreamingImageFileWriter<TOutputImage> WriterType;
+    typedef typename otb::RATBandMathImageFilter<TOutputImage> MathFilterType;
+    typedef typename otb::NMImageReader<TOutputImage> ReaderType;
+    typedef typename otb::StreamingRATImageFileWriter<TOutputImage> WriterType;
 
-
-    IndexType maxIdx = itk::NumericTraits<IndexType>::max();
+    int numIter = 1;
     IndexType accIdx = static_cast<IndexType>(this->getRAT(0)->GetNumRows());
-    unsigned int cnt = 0;
-    while (   cnt+1 < nbRAT
-           && (accIdx > maxIdx / (this->getRAT(cnt+1) > 0 ? this->getRAT(cnt+1) : 1))
-          )
-    {
-        accIdx *= this->getRAT(cnt);
-        ++cnt;
-    }
-
     int fstImg = 0;
-    int lastImg = cnt;
+    int lastImg = this->nextUpperIterationIdx(static_cast<unsigned int>(fstImg), accIdx);
     while (lastImg+1 < nbRAT)
     {
-        CombFilterType::Pointer ctFilter = CombFilterType::New();
+        // ------------------------------------------------------------------------
+        // do  the combinatorial analysis ...
+
+        // set up the combination filter
+        std::vector<long long> nodata;
+        std::vector<std::string> names;
+        typename CombFilterType::Pointer ctFilter = CombFilterType::New();
         for (int i=fstImg; i <= lastImg; ++i)
         {
             ctFilter->SetInput(i, this->GetInput(i));
             ctFilter->setRAT(i, this->getRAT(i));
-        }
 
+            if (i < m_InputNodata.size())
+            {
+                nodata.push_back(static_cast<long long>(m_InputNodata.at(i)));
+            }
+            else
+            {
+               nodata.push_back(static_cast<long long>(m_InputNodata.at(m_InputNodata.size()-1)));
+            }
+
+            if (i < m_ImageNames.size())
+            {
+                names.push_back(m_ImageNames.at(i));
+            }
+            else
+            {
+                std::stringstream n;
+                n << "L" << i+1;
+                names.push_back(n.str());
+            }
+        }
+        ctFilter->SetInputNodata(nodata);
+        ctFilter->SetImageNames(names);
+        std::string ctTableName;// = getenv("HOME");
+        ctTableName = this->getRandomString();
+        ctFilter->SetOutputTableFileName(ctTableName);
+
+        typename WriterType::Pointer ctWriter = WriterType::New();
+        std::stringstream ctImgNameStr;
+        ctImgNameStr << "ct_" << numIter << this->getRandomString(8) << ".kea";
+        ctWriter->SetFileName(ctImgNameStr.str());
+        ctWriter->SetResamplingType("NONE");
+        ctWriter->SetUpdateMode(true);
+        ctWriter->SetInputRAT(ctFilter->getRAT(0));
+        ctWriter->SetInput(ctFilter->GetOutput());
+        ctWriter->Update();
+
+        // ------------------------------------------------------------------------
+        // do the normalisation
+
+
+        // ...................................
+        // tweak the ctTable into the normTable
+        // and write it out with the normWriter
+
+        // ...................................
+
+        // no exece the normalisation pipeline
+        typename ReaderType::Pointer imgReader = ReaderType::New();
+        imgReader->SetFileName(ctImgNameStr.str());
+        imgReader->SetRATSupport(true);
+        imgReader->SetRATType(otb::AttributeTable::ATTABLE_TYPE_RAM);
+        otb::AttributeTable::Pointer uvTable = imgReader->GetAttributeTable(1);
+        accIdx = static_cast<IndexType>(uvTable->GetNumRows());
+
+        typename MathFilterType::Pointer normFilter = MathFilterType::New();
+        normFilter->SetInput(imgReader->GetOutput(0));
+        std::vector<std::string> vColumns;
+        vColumns.push_back("UvId");
+        normFilter->SetNthAttributeTable(0, uvTable, vColumns);
+        normFilter->SetExpression("b1__UvId");
+
+        typename WriterType::Pointer normWriter = WriterType::New();
+        std::stringstream normImgNameStr;
+        ctImgNameStr << "norm_" << numIter << this->getRandomString(8) << ".kea";
+        normWriter->SetFileName(normImgNameStr.str());
+        normWriter->SetResamplingType("NEAREST");
+        normWriter->Update();
+
+        uvTable = 0;
+
+        // prepare for the next iteration
+        // get the normalised accIdx from the normalised image's RAT
+        accIdx = static_cast<IndexType>(uvTable->GetNumRows());
+
+        fstImg = lastImg+1;
+        lastImg = this->nextUpperIterationIdx(fstImg, accIdx);
+        ++numIter;
     }
 
-
     //NMDebugCtx(ctx, << "done!");
+}
+
+
+template< class TInputImage, class TOutputImage >
+unsigned int
+UniqueCombinationFilter< TInputImage, TOutputImage >
+::nextUpperIterationIdx(unsigned int idx, IndexType &accIdx)
+{
+    unsigned int cnt = idx;
+    unsigned int nbRAT = m_vInRAT.size();
+    IndexType maxIdx = itk::NumericTraits<IndexType>::max();
+    while (   cnt+1 < nbRAT
+           && (accIdx > maxIdx / (this->getRAT(cnt+1)->GetNumRows() > 0 ? this->getRAT(cnt+1)->GetNumRows() : 1))
+          )
+    {
+        accIdx *= this->getRAT(cnt)->GetNumRows();
+        ++cnt;
+    }
+
+    return cnt;
 }
 
 template< class TInputImage, class TOutputImage >

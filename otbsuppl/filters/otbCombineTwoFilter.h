@@ -95,7 +95,7 @@ public:
           void setRAT(unsigned int idx, AttributeTable::Pointer);
 
           void SetInputNodata(const std::vector<long long>& inNodata);
-          void SetImgNames(const std::vector<std::string>& imgNames);
+          void SetImageNames(const std::vector<std::string>& imgNames);
 
           ComboIndexType GetNumUniqueCombinations(void) {return m_NumUniqueCombinations-1;}
 

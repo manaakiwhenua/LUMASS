@@ -185,7 +185,7 @@ public:
 		        ++cnt;                                                                                      
 		    }                                                                                               
 	    }                                                                                                       
-	    f->SetImgNames(userIDs);
+	    f->SetImageNames(userIDs);
 
 
 		NMDebugCtx("NMCombineTwoFilterWrapper_Internal", << "done!");

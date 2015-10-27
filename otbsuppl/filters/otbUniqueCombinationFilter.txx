@@ -226,7 +226,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typedef typename otb::StreamingRATImageFileWriter<TOutputImage> WriterType;
 
     int numIter = 1;
-    IndexType accIdx = static_cast<IndexType>(this->getRAT(0)->GetNumRows());
+    IndexType accIdx = static_cast<IndexType>(m_vInRAT.at(0)->GetNumRows());
     int fstImg = 0;
     int lastImg = this->nextUpperIterationIdx(static_cast<unsigned int>(fstImg), accIdx);
     while (lastImg+1 < nbRAT)
@@ -241,7 +241,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         for (int i=fstImg; i <= lastImg; ++i)
         {
             ctFilter->SetInput(i, this->GetInput(i));
-            ctFilter->setRAT(i, this->getRAT(i));
+            ctFilter->setRAT(i, m_vInRAT.at(i));
 
             if (i < m_InputNodata.size())
             {
@@ -335,10 +335,10 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     unsigned int nbRAT = m_vInRAT.size();
     IndexType maxIdx = itk::NumericTraits<IndexType>::max();
     while (   cnt+1 < nbRAT
-           && (accIdx > maxIdx / (this->getRAT(cnt+1)->GetNumRows() > 0 ? this->getRAT(cnt+1)->GetNumRows() : 1))
+           && (accIdx > maxIdx / (m_vInRAT.at(cnt+1)->GetNumRows() > 0 ? m_vInRAT.at(cnt+1)->GetNumRows() : 1))
           )
     {
-        accIdx *= this->getRAT(cnt)->GetNumRows();
+        accIdx *= m_vInRAT.at(cnt)->GetNumRows();
         ++cnt;
     }
 

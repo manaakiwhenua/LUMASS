@@ -41,6 +41,8 @@
 
 #include "otbImageFileReader.h"
 #include "otbAttributeTable.h"
+#include "otbCurlHelper.h"
+#include "otbCurlHelperInterface.h"
 
 #ifdef BUILD_RASSUPPORT
     #include "RasdamanConnector.hh"

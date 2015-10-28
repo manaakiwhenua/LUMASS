@@ -1620,59 +1620,22 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    //QProcess cmdline = new QProcess(this);
-    //cmdline.setProgram("/home/alex/garage/testing/extexec1");
-    //cmdline.waitForFinished();
+    NMLayer* l = mLayerList->getSelectedLayer();
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
 
-    //QProcess exe2 = new QProcess(this);
-    //exe2.setProgram("/home/alex/garage/testing/extexec2");
-    //exe2.waitForFinished();
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(il->getRasterAttributeTable(1).GetPointer());
 
-    //    QProcess::execute("/home/alex/garage/testing/extexec1");
-    //    QProcess::execute("/home/alex/garage/testing/extexec2");
+    int test[] = {0,1,6,8,9,10,14,15,16,17,18,20,21,22,23,24,26,27,28,29,30,32,33,34,35,36};
 
-    // 48 - 57 digits 0-9           (10 + 48)
-    // 65 - 90 (upper case letters) (26 + 65)
-    // 95 '_' under score
-    // 97 - 122 (lower case letters) (26 + 97)
+    int nrows = tab->GetNumRows();
 
-    ::srand(time(0));
-    char nam[15];
-    for (int i=0; i < 15; ++i)
+    for (int r=0; r < 26; ++r)
     {
-        if (i == 0)
-        {
-            if (::rand() % 2 == 0)
-            {
-                nam[i] = ::rand() % 26 + 65;
-            }
-            else
-            {
-                nam[i] = ::rand() % 26 + 97;
-            }
-        }
-        else
-        {
-            if (::rand() % 7 == 0)
-            {
-                nam[i] = '_';
-            }
-            else if (::rand() % 5 == 0)
-            {
-                nam[i] = ::rand() % 26 + 65;
-            }
-            else if (::rand() % 3 == 0)
-            {
-                nam[i] = ::rand() % 26 + 97;
-            }
-            else
-            {
-                nam[i] = ::rand() % 10 + 48;
-            }
-        }
-    }
+        double rid = static_cast<double>(tab->GetIntValue("rowidx", test[r]));
+        double uv  = static_cast<double>(tab->GetIntValue("UvId", test[r]));
 
-    NMDebugAI(<< "temp string: " << nam << std::endl);
+        NMDebugAI(<< "#" << r << ": rowidx=" << rid << "\tUvId=" << uv << std::endl);
+    }
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

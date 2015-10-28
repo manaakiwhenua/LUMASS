@@ -205,7 +205,8 @@ private :
   itk::Array<long>                      m_ThreadOverflow;
 
   /** Attribute Table support */
-  std::vector<TablePointer> 	m_VRAT;
+  //std::vector<TablePointer> m_VRAT;
+  std::vector<std::vector<TablePointer > > m_VRAT; //m_VThreadRAT;
   std::vector< std::vector<int> > 	m_VTabAttr;
   std::vector< std::vector< ColumnType > > m_VAttrTypes;
   std::vector< std::vector< std::vector<double> > >	m_VAttrValues;

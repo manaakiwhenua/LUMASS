@@ -278,7 +278,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetUpdateMode(true);
-        //ctWriter->SetInputRAT(ctFilter->getRAT(0));
+        ctWriter->SetInputRAT(ctFilter->getRAT(0));
         ctWriter->SetInput(ctFilter->GetOutput());
         NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
         ctWriter->Update();

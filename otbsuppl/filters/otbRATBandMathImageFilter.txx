@@ -46,6 +46,7 @@
 #include "otbMacro.h"
 #include "itkMacro.h"
 #include "otbAttributeTable.h"
+#include "otbSQLiteTable.h"
 
 #include <iostream>
 #include <string>
@@ -69,6 +70,12 @@ RATBandMathImageFilter<TImage>
   m_ThreadUnderflow.SetSize(1);
   m_ThreadOverflow.SetSize(1);
   m_ConcatChar = "__";
+
+  for (int t=0; t < this->GetNumberOfThreads(); ++t)
+  {
+      std::vector<TablePointer> vT;
+      m_VRAT.push_back(vT);
+  }
 }
 
 /** Destructor */
@@ -151,9 +158,15 @@ void RATBandMathImageFilter<TImage>
 		}
 	}
 
-    for (int i=this->m_VRAT.size(); i < idx; ++i)
+    int nt = this->GetNumberOfThreads();
+
+    for (int i=this->m_VRAT[0].size(); i < idx; ++i)
     {
-        this->m_VRAT.push_back(0);
+        for (int t=0; t < nt; ++t)
+        {
+            this->m_VRAT[t].push_back(0);
+        }
+
         std::vector<int> columns;
         this->m_VTabAttr.push_back(columns);
         std::vector<ColumnType> types;
@@ -161,17 +174,57 @@ void RATBandMathImageFilter<TImage>
     }
 
     if (this->m_VAttrTypes.size() == idx)
-	{
-		this->m_VAttrTypes.push_back(types);
-		this->m_VRAT.push_back(tab);
-		this->m_VTabAttr.push_back(columns);
-	}
-	else
-	{
+    {
+        for (int t=0; t < nt; ++t)
+        {
+            if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_RAM)
+            {
+                this->m_VRAT[t].push_back(tab);
+            }
+            else
+            {
+                otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+                otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
+                stab->SetSharedCache(false);
+                if (stab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
+                {
+                    itkExceptionMacro(<< "Failed creating table connection for thread!");
+                    return;
+                }
+                otb::AttributeTable::Pointer ctp = static_cast<otb::AttributeTable*>(thtab.GetPointer());
+                this->m_VRAT[t].push_back(ctp);
+            }
+        }
+
+        this->m_VAttrTypes.push_back(types);
+        this->m_VTabAttr.push_back(columns);
+    }
+    else
+    {
+        for (int t=0; t < nt; ++t)
+        {
+            if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_RAM)
+            {
+                this->m_VRAT[t][idx] = tab;
+            }
+            else
+            {
+                otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+                otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
+                stab->SetSharedCache(false);
+                if (stab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
+                {
+                    itkExceptionMacro(<< "Failed creating table connection for thread!");
+                    return;
+                }
+                this->m_VRAT[t][idx] = thtab;
+            }
+        }
+
         this->m_VAttrTypes[idx] = types;
-		this->m_VRAT[idx] = tab;
-		this->m_VTabAttr[idx] = columns;
-	}
+        this->m_VTabAttr[idx] = columns;
+    }
+
 
 	this->Modified();
 }
@@ -180,10 +233,10 @@ template<class TImage>
 AttributeTable::Pointer RATBandMathImageFilter<TImage>
 ::GetNthAttributeTable(unsigned int idx)
 {
-	if (idx < 0 || idx >= m_VRAT.size())
+    if (idx < 0 || idx >= m_VRAT[0].size())
 		return 0;
 
-	return m_VRAT[idx];
+    return m_VRAT[0][idx];
 }
 
 template<class TImage>
@@ -197,7 +250,7 @@ std::vector<std::string> RATBandMathImageFilter<TImage>
 	}
 
 	for (int i=0; i < m_VTabAttr[idx].size(); ++i)
-		ret.push_back(m_VRAT[idx]->GetColumnName(m_VTabAttr[idx][i]));
+        ret.push_back(m_VRAT[0][idx]->GetColumnName(m_VTabAttr[idx][i]));
 
 	return ret;
 }
@@ -226,9 +279,13 @@ void RATBandMathImageFilter<TImage>
 
     // increase the RAT related vectors according to the
     // given idx, if necessary
-    for (int i=this->m_VRAT.size(); i <= idx; ++i)
+    for (int i=this->m_VRAT[0].size(); i <= idx; ++i)
     {
-        this->m_VRAT.push_back(0);
+        for (int t=0; t < this->GetNumberOfThreads(); ++t)
+        {
+            this->m_VRAT[t].push_back(0);
+        }
+
         std::vector<int> columns;
         this->m_VTabAttr.push_back(columns);
         std::vector<ColumnType> types;
@@ -259,9 +316,12 @@ void RATBandMathImageFilter<TImage>
 
     // increase the RAT related vectors according to the
     // given idx, if necessary
-    for (int i=this->m_VRAT.size(); i <= idx; ++i)
+    for (int i=this->m_VRAT[0].size(); i <= idx; ++i)
     {
-        this->m_VRAT.push_back(0);
+        for (int t=0; t < this->GetNumberOfThreads(); ++t)
+        {
+            this->m_VRAT[t].push_back(0);
+        }
         std::vector<int> columns;
         this->m_VTabAttr.push_back(columns);
         std::vector<ColumnType> types;
@@ -316,8 +376,8 @@ void RATBandMathImageFilter<TImage>
 {
   typename std::vector<ParserType::Pointer>::iterator        itParser;
   typename std::vector< std::vector<PixelType> >::iterator   itVImage;
-  this->SetNumberOfThreads(1);
-  unsigned int nbThreads = 1;//this->GetNumberOfThreads();
+  //this->SetNumberOfThreads(1);
+  unsigned int nbThreads = this->GetNumberOfThreads();
   //unsigned int nbInputImages = this->GetNumberOfInputs();
 
   unsigned int nbAccessIndex = 4; //to give access to image and physical index
@@ -420,15 +480,15 @@ void RATBandMathImageFilter<TImage>
       if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
 
       //attribute table support
-      if (m_VRAT.size() > 0)
+      if (m_VRAT[0].size() > 0)
       {
-    	  if (&m_VRAT[j] != 0)
+          if (&m_VRAT[0][j] != 0)
     	  {
 			  m_VAttrValues[i][j].resize(m_VTabAttr[j].size());
 			  std::string bname = this->GetNthInputName(j) + m_ConcatChar;
 			  for (int c=0; c < m_VTabAttr[j].size(); ++c)
 			  {
-				  std::string vname = bname + m_VRAT[j]->GetColumnName(m_VTabAttr[j][c]);
+                  std::string vname = bname + m_VRAT[0][j]->GetColumnName(m_VTabAttr[j][c]);
 				  m_VParser[i]->DefineVar(vname, &(m_VAttrValues[i][j][c]));
 			  }
     	  }
@@ -495,11 +555,11 @@ void RATBandMathImageFilter<TImage>
 	vTabAvail.resize(nbInputImages);
 	for (unsigned int ii = 0; ii < nbInputImages; ii++)
 	{
-		if (m_VRAT.size() > 0)
+        if (m_VRAT[threadId].size() > 0)
 		{
-			if (&m_VRAT[ii] != 0)
+            if (&m_VRAT[threadId][ii] != 0)
 			{
-				if (m_VRAT[ii].IsNotNull())
+                if (m_VRAT[threadId][ii].IsNotNull())
 					vTabAvail[ii] = true;
 				else
 					vTabAvail[ii] = false;
@@ -544,12 +604,12 @@ void RATBandMathImageFilter<TImage>
 					{
 					case AttributeTable::ATTYPE_DOUBLE://2:
 						m_VAttrValues[threadId][j][c] =
-								static_cast<double>(m_VRAT[j]->GetDblValue(
+                                static_cast<double>(m_VRAT[threadId][j]->GetDblValue(
 										m_VTabAttr[j][c], Vit[j].Get()));
 						break;
 					case AttributeTable::ATTYPE_INT:
 						m_VAttrValues[threadId][j][c] =
-								static_cast<double>(m_VRAT[j]->GetIntValue(
+                                static_cast<double>(m_VRAT[threadId][j]->GetIntValue(
 										m_VTabAttr[j][c], Vit[j].Get()));
 						break;
 					}

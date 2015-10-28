@@ -67,40 +67,11 @@ public:
     } TableCreateStatus;
 
 
-    // supported column types
-//	typedef enum
-//	{
-//		ATTYPE_STRING = 0,
-//		ATTYPE_INT,
-//		ATTYPE_DOUBLE ,
-//		ATTYPE_UNKNOWN
-//	} TableColumnType;
-
-//    // field value data structure
-//    typedef struct
-//    {
-//        TableColumnType type;
-//        union
-//        {
-//            long long int ival;
-//            double    dval;
-//            char*     tval;
-//        };
-//    } ColumnValue;
-
     itkNewMacro(Self);
     itkTypeMacro(SQLiteTable, Superclass);
 
 	// getting info about the table
-        //int GetNumCols();
-        long long GetNumRows();
-        //int ColumnExists(const std::string& sColName);
-
-        //	std::string GetColumnName(int idx);
-        //	TableColumnType GetColumnType(int idx);
-
-    //void* GetColumnPointer(int idx);
-
+    long long GetNumRows();
     long long int GetRowIdx(const std::string& column, void* value);
 
 	//long GetRowIdx(const std::string& column, const double& value);
@@ -112,8 +83,6 @@ public:
         {return AddConstrainedColumn(sColName, type, "");}
     bool AddConstrainedColumn(const std::string& sColName, TableColumnType type,
                    const std::string& sColConstraint="");
-    //bool AddRow();
-    //bool AddRows(long long int numRows);
     void SetValue(const std::string& sColName, long long idx, double value);
     void SetValue(const std::string& sColName, long long idx, long long value);
     void SetValue(const std::string& sColName, long long idx, std::string value);
@@ -139,6 +108,7 @@ public:
 //	void PrintStructure(std::ostream& os, itk::Indent indent);
 
     /// SQLite support functions
+    void SetSharedCache(bool shared) {m_bSharedCache = shared;}
     TableCreateStatus CreateTable(std::string filename, std::string tag="");
     void CloseTable(bool drop=false);
     bool SetRowIDColName(const std::string& name);
@@ -146,7 +116,6 @@ public:
 
     std::string GetDbFileName() {return this->m_dbFileName;}
     std::string GetTableName() {return this->m_tableName;}
-    //std::string getPrimaryKey() {return this->m_idColName;}
     sqlite3* GetDbConnection() {return this->m_db;}
 
     bool PrepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
@@ -239,17 +208,11 @@ protected:
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
     inline void sqliteStepCheck(const int& rc);
 
-    //    inline int getSqlIntValue(const std::string& col, int row);
-    //    inline double getSqlDblValue(const std::string& col, int row);
-    //    inline std::string getSqlStrValue(const std::string& col, int row);
-    //    inline void setSqlValue(const std::string& col, int row);
 
-
-
+    bool m_bSharedCache;
     sqlite3* m_db;
     std::string m_dbFileName;
     std::string m_tableName;
-   // std::string m_idColName;
 
     std::vector<sqlite3_stmt*> m_vStmtUpdate;
     std::vector<sqlite3_stmt*> m_vStmtSelect;

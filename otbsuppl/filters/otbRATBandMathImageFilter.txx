@@ -124,12 +124,12 @@ void RATBandMathImageFilter<TImage>
 		return;
 	}
 
-    if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
-    {
-        itkExceptionMacro(<< "SQLiteTables are currently not supported! "
-                          << "Please use ATTABLE_TYPE_RAM-based tables!");
-        return;
-    }
+    //    if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+    //    {
+    //        itkExceptionMacro(<< "SQLiteTables are currently not supported! "
+    //                          << "Please use ATTABLE_TYPE_RAM-based tables!");
+    //        return;
+    //    }
 
 	std::vector<int> columns;
 	std::vector<ColumnType> types;
@@ -316,7 +316,8 @@ void RATBandMathImageFilter<TImage>
 {
   typename std::vector<ParserType::Pointer>::iterator        itParser;
   typename std::vector< std::vector<PixelType> >::iterator   itVImage;
-  unsigned int nbThreads = this->GetNumberOfThreads();
+  this->SetNumberOfThreads(1);
+  unsigned int nbThreads = 1;//this->GetNumberOfThreads();
   //unsigned int nbInputImages = this->GetNumberOfInputs();
 
   unsigned int nbAccessIndex = 4; //to give access to image and physical index

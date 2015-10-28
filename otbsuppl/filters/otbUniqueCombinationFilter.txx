@@ -152,10 +152,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 template< class TInputImage, class TOutputImage >
 void
 UniqueCombinationFilter< TInputImage, TOutputImage >
-//::BeforeThreadedGenerateData()
 ::GenerateData()
 {
-    //NMDebugCtx(ctx, << "...");
+    NMDebugCtx(ctx, << "...");
 
     unsigned int nbInputs = this->GetNumberOfIndexedInputs();
     unsigned int nbRAT = this->m_vInRAT.size();
@@ -225,14 +224,18 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typedef typename otb::NMImageReader<TOutputImage> ReaderType;
     typedef typename otb::StreamingRATImageFileWriter<TOutputImage> WriterType;
 
+    std::string temppath = "/home/alex/garage/testing/";
+
     int numIter = 1;
-    IndexType accIdx = static_cast<IndexType>(m_vInRAT.at(0)->GetNumRows());
+    OutputPixelType accIdx = static_cast<OutputPixelType>(m_vInRAT.at(0)->GetNumRows());
     int fstImg = 0;
     int lastImg = this->nextUpperIterationIdx(static_cast<unsigned int>(fstImg), accIdx);
-    while (lastImg+1 < nbRAT)
+    while (lastImg+1 <= nbRAT)
     {
         // ------------------------------------------------------------------------
         // do  the combinatorial analysis ...
+        NMDebugAI( << "Iteration 1 ..." << std::endl);
+        NMDebugAI( << "  combining imgs #" << fstImg << " to #" << lastImg << std::endl);
 
         // set up the combination filter
         std::vector<long long> nodata;
@@ -265,23 +268,26 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         }
         ctFilter->SetInputNodata(nodata);
         ctFilter->SetImageNames(names);
-        std::string ctTableName;// = getenv("HOME");
-        ctTableName = this->getRandomString();
-        ctFilter->SetOutputTableFileName(ctTableName);
+        std::stringstream ctTableNameStr;
+        ctTableNameStr << temppath << "cttab_" << this->getRandomString() << ".ldb";
+        ctFilter->SetOutputTableFileName(ctTableNameStr.str());
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
-        ctImgNameStr << "ct_" << numIter << this->getRandomString(8) << ".kea";
+        ctImgNameStr << temppath << "ctimg_" << numIter << this->getRandomString() << ".kea";
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetUpdateMode(true);
-        ctWriter->SetInputRAT(ctFilter->getRAT(0));
+        //ctWriter->SetInputRAT(ctFilter->getRAT(0));
         ctWriter->SetInput(ctFilter->GetOutput());
+        NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
         ctWriter->Update();
+
+        otb::AttributeTable::Pointer uvTable = ctFilter->getRAT(0);
+        accIdx = ctFilter->GetNumUniqueCombinations();
 
         // ------------------------------------------------------------------------
         // do the normalisation
-
 
         // ...................................
         // tweak the ctTable into the normTable
@@ -294,11 +300,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         imgReader->SetFileName(ctImgNameStr.str());
         imgReader->SetRATSupport(true);
         imgReader->SetRATType(otb::AttributeTable::ATTABLE_TYPE_RAM);
-        otb::AttributeTable::Pointer uvTable = imgReader->GetAttributeTable(1);
-        accIdx = static_cast<IndexType>(uvTable->GetNumRows());
 
         typename MathFilterType::Pointer normFilter = MathFilterType::New();
-        normFilter->SetInput(imgReader->GetOutput(0));
+        normFilter->SetNthInput(0, imgReader->GetOutput());
         std::vector<std::string> vColumns;
         vColumns.push_back("UvId");
         normFilter->SetNthAttributeTable(0, uvTable, vColumns);
@@ -306,36 +310,38 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         typename WriterType::Pointer normWriter = WriterType::New();
         std::stringstream normImgNameStr;
-        ctImgNameStr << "norm_" << numIter << this->getRandomString(8) << ".kea";
-        normWriter->SetFileName(normImgNameStr.str());
+        normImgNameStr << temppath << "norm_" << numIter << this->getRandomString() << ".kea";
         normWriter->SetResamplingType("NEAREST");
+        normWriter->SetInput(normFilter->GetOutput());
+        normWriter->SetFileName(normImgNameStr.str());
+        NMDebugAI( << "  normalise the image ..." << std::endl);
         normWriter->Update();
-
-        uvTable = 0;
 
         // prepare for the next iteration
         // get the normalised accIdx from the normalised image's RAT
-        accIdx = static_cast<IndexType>(uvTable->GetNumRows());
+        accIdx = static_cast<OutputPixelType>(uvTable->GetNumRows());
+        uvTable = 0;
 
         fstImg = lastImg+1;
         lastImg = this->nextUpperIterationIdx(fstImg, accIdx);
         ++numIter;
     }
 
-    //NMDebugCtx(ctx, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 
 template< class TInputImage, class TOutputImage >
 unsigned int
 UniqueCombinationFilter< TInputImage, TOutputImage >
-::nextUpperIterationIdx(unsigned int idx, IndexType &accIdx)
+::nextUpperIterationIdx(unsigned int idx, OutputPixelType &accIdx)
 {
     unsigned int cnt = idx;
     unsigned int nbRAT = m_vInRAT.size();
-    IndexType maxIdx = itk::NumericTraits<IndexType>::max();
+    //IndexType maxIdx = itk::NumericTraits<IndexType>::max();
+    OutputPixelType maxIdx = itk::NumericTraits<OutputPixelType>::max();
     while (   cnt+1 < nbRAT
-           && (accIdx > maxIdx / (m_vInRAT.at(cnt+1)->GetNumRows() > 0 ? m_vInRAT.at(cnt+1)->GetNumRows() : 1))
+           && (accIdx <= maxIdx / (m_vInRAT.at(cnt+1)->GetNumRows() > 0 ? m_vInRAT.at(cnt+1)->GetNumRows() : 1))
           )
     {
         accIdx *= m_vInRAT.at(cnt)->GetNumRows();

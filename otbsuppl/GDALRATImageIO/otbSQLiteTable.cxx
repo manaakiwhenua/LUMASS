@@ -1411,7 +1411,7 @@ double SQLiteTable::GetDblValue(const std::string& sColName, long long int idx)
 }
 
 long long
-SQLiteTable::GetIntValue(const std::string& sColName, long long int idx)
+SQLiteTable::GetIntValue(const std::string& sColName, long long idx)
 {
 	// check given index and column name
 	int colidx = this->ColumnExists(sColName);
@@ -1426,6 +1426,10 @@ SQLiteTable::GetIntValue(const std::string& sColName, long long int idx)
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW)
     {
+        //        int ncols = sqlite3_column_count(stmt);
+        //        std::string name = sqlite3_column_name(stmt, 0);
+        //        NMDebugAI(<< "#cols: " << ncols << std::endl);
+        //        NMDebugAI(<< "#name: " << name << std::endl);
         ret = sqlite3_column_int64(stmt, 0);
     }
     else
@@ -1440,7 +1444,7 @@ SQLiteTable::GetIntValue(const std::string& sColName, long long int idx)
 }
 
 std::string
-SQLiteTable::GetStrValue(const std::string& sColName, long long int idx)
+SQLiteTable::GetStrValue(const std::string& sColName, long long idx)
 {
 	// check given index and column name
 	int colidx = this->ColumnExists(sColName);

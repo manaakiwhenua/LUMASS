@@ -140,8 +140,6 @@ private:
           OutputPixelType m_NodataCount;
           ComboIndexType m_TotalPixCount;
           std::vector<ComboIndexType> m_vThreadPixCount;
-
-
           std::vector<AttributeTable::Pointer> m_vRAT;
 
           static const std::string ctx;

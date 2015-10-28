@@ -114,7 +114,7 @@ protected:
 
     void InternalAllocateOutput();
     std::string getRandomString(int length=15);
-    unsigned int nextUpperIterationIdx(unsigned int idx, IndexType& accIdx);
+    unsigned int nextUpperIterationIdx(unsigned int idx, OutputPixelType& accIdx);
 
     std::vector<AttributeTable::Pointer> m_vInRAT;
     std::vector<AttributeTable::Pointer> m_vOutRAT;

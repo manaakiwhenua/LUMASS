@@ -175,7 +175,8 @@ void RATBandMathImageFilter<TImage>
 
     if (this->m_VAttrTypes.size() == idx)
     {
-        for (int t=0; t < nt; ++t)
+        this->m_VRAT[0].push_back(tab);
+        for (int t=1; t < nt; ++t)
         {
             if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_RAM)
             {
@@ -185,8 +186,8 @@ void RATBandMathImageFilter<TImage>
             {
                 otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
                 otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
-                stab->SetSharedCache(false);
-                if (stab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
+                thtab->SetSharedCache(false);
+                if (thtab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
                 {
                     itkExceptionMacro(<< "Failed creating table connection for thread!");
                     return;
@@ -201,7 +202,8 @@ void RATBandMathImageFilter<TImage>
     }
     else
     {
-        for (int t=0; t < nt; ++t)
+        this->m_VRAT[0][idx] = tab;
+        for (int t=1; t < nt; ++t)
         {
             if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_RAM)
             {
@@ -211,8 +213,8 @@ void RATBandMathImageFilter<TImage>
             {
                 otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
                 otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
-                stab->SetSharedCache(false);
-                if (stab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
+                thtab->SetSharedCache(false);
+                if (thtab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
                 {
                     itkExceptionMacro(<< "Failed creating table connection for thread!");
                     return;
@@ -469,8 +471,8 @@ void RATBandMathImageFilter<TImage>
     if (i==0)
     {
     //std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
-    std::cout << ">>> no. of vars: " << m_NbVar << std::endl;
-    std::cout << ">>> parser expression: " << m_VParser[i]->GetExpr() << std::endl;
+    std::cout << "\t>>> no. of vars: " << m_NbVar << std::endl;
+    std::cout << "\t>>> parser expression: " << m_VParser[i]->GetExpr() << std::endl;
     }
   
     //std::cout << "image loop ----------------------------------------------" << std::endl << std::endl;
@@ -513,6 +515,8 @@ template< typename TImage >
 void RATBandMathImageFilter<TImage>
 ::AfterThreadedGenerateData()
 {
+  std::cout << "\tBandMath: Done with the calucation!\n" << std::endl;
+
   unsigned int nbThreads = this->GetNumberOfThreads();
   unsigned int i;
   

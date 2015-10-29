@@ -142,6 +142,10 @@ public:
     bool EndTransaction();
     bool CreateIndex(const std::vector<std::string>& colNames, bool unique);
 
+    bool SqlExec(const std::string& sqlstr);
+    bool AttachDatabase(const std::string &fileName, const std::string& dbName);
+    bool DetachDatabase(const std::string& dbName);
+
 
     /// FAST INLINE ACCESS TO COLUMN VALUES
     bool PrepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);

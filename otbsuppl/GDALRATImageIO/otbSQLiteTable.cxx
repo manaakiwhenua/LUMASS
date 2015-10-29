@@ -1386,7 +1386,7 @@ double SQLiteTable::GetDblValue(const std::string& sColName, long long int idx)
 {
 	//check for valid name and index parameters
 	int colidx = this->ColumnExists(sColName);
-    if (colidx < 0 || idx < 0)// || idx > m_iNumRows)
+    if (colidx < 0)// || idx < 0)// || idx > m_iNumRows)
 		return m_dNodata;
 
     sqlite3_stmt* stmt = m_vStmtSelect.at(colidx);
@@ -1415,7 +1415,7 @@ SQLiteTable::GetIntValue(const std::string& sColName, long long idx)
 {
 	// check given index and column name
 	int colidx = this->ColumnExists(sColName);
-    if (colidx < 0 || idx < 0)// || idx > m_iNumRows)
+    if (colidx < 0)// || idx < 0)// || idx > m_iNumRows)
 		return m_iNodata;
 
     sqlite3_stmt* stmt = m_vStmtSelect.at(colidx);
@@ -1448,7 +1448,7 @@ SQLiteTable::GetStrValue(const std::string& sColName, long long idx)
 {
 	// check given index and column name
 	int colidx = this->ColumnExists(sColName);
-    if (colidx < 0 || idx < 0)// || idx > m_iNumRows)
+    if (colidx < 0)// || idx < 0)// || idx > m_iNumRows)
 		return m_sNodata;
 
     sqlite3_stmt* stmt = m_vStmtSelect.at(colidx);
@@ -1480,7 +1480,7 @@ SQLiteTable::GetRowIdx(const std::string& column, void* value)
     long long int idx = m_iNodata;
 
 	int colidx = ColumnExists(column);
-    if (colidx < 0 || value == 0)
+    if (colidx < 0)// || value == 0)
 		return idx;
 
     sqlite3_stmt* stmt = m_vStmtGetRowidx.at(colidx);
@@ -1827,7 +1827,7 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
 
 double SQLiteTable::GetDblValue(int col, long long row)
 {
-    if (col < 0 || row < 0 || col >= m_vNames.size())
+    if (col < 0 || col >= m_vNames.size())
 		return m_dNodata;
 
     //	if (row < 0 || row >= m_iNumRows)
@@ -1857,7 +1857,7 @@ double SQLiteTable::GetDblValue(int col, long long row)
 long long
 SQLiteTable::GetIntValue(int col, long long row)
 {
-    if (col < 0 || row < 0 || col >= m_vNames.size())
+    if (col < 0 || col >= m_vNames.size())
 		return m_iNodata;
 
     //	if (row < 0 || row >= m_iNumRows)
@@ -1886,7 +1886,7 @@ SQLiteTable::GetIntValue(int col, long long row)
 
 std::string SQLiteTable::GetStrValue(int col, long long row)
 {
-    if (col < 0 || row < 0 || col >= m_vNames.size())
+    if (col < 0 || col >= m_vNames.size())
 		return m_sNodata;
 
     //	if (row < 0 || row >= m_iNumRows)
@@ -2541,6 +2541,7 @@ SQLiteTable::resetTableAdmin(void)
     m_dNodata = -std::numeric_limits<double>::max();
     m_sNodata = "NULL";
     m_db = 0;
+    m_bSharedCache = true;
     m_StmtBegin = 0;
     m_StmtEnd = 0;
     m_StmtRollback = 0;
@@ -2552,6 +2553,40 @@ SQLiteTable::resetTableAdmin(void)
     m_idColName = "";
     m_tableName = "";
 }
+
+bool
+SQLiteTable::SqlExec(const std::string& sqlstr)
+{
+    bool ret = true;
+
+    char* errMsg;
+    if (sqlite3_exec(m_db, sqlstr.c_str(), 0, 0, &errMsg) != 0)
+    {
+        itkWarningMacro(<< "SQLite3 ERROR: " << errMsg);
+        sqlite3_free((void*)errMsg);
+        ret = false;
+    }
+
+    return ret;
+}
+
+bool
+SQLiteTable::AttachDatabase(const std::string& fileName, const std::string &dbName)
+{
+    std::stringstream sql;
+    sql << "ATTACH DATABASE " << fileName
+        << " AS " << dbName << ";";
+    return SqlExec(sql.str());
+}
+
+bool
+SQLiteTable::DetachDatabase(const std::string &dbName)
+{
+    std::stringstream sql;
+    sql << "DETACH DATABASE " << dbName << ";";
+    return SqlExec(sql.str());
+}
+
 
 void
 SQLiteTable::CloseTable(bool drop)

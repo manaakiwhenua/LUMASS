@@ -2027,7 +2027,7 @@ SQLiteTable::SetRowIDColName(const std::string& name)
 }
 
 bool
-SQLiteTable::dropTable(const std::string &tablename)
+SQLiteTable::DropTable(const std::string &tablename)
 {
     NMDebugCtx(_ctxotbtab, << "...");
 
@@ -2555,8 +2555,58 @@ SQLiteTable::resetTableAdmin(void)
 }
 
 bool
+SQLiteTable::FindTable(const std::string &tableName)
+{
+    if (m_db == 0)
+    {
+        return false;
+    }
+
+    int bTableExists = 0;
+    sqlite3_stmt* stmt_exists;
+    std::stringstream ssql;
+    ssql << "SELECT count(name) FROM sqlite_master WHERE "
+        << "type='table' AND name='" << tableName << "';";
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_exists, 0);
+    if (sqliteError(rc, &stmt_exists))
+    {
+        sqlite3_finalize(stmt_exists);
+        return false;
+    }
+
+    if (sqlite3_step(stmt_exists) == SQLITE_ROW)
+    {
+        bTableExists = sqlite3_column_int(stmt_exists, 0);
+    }
+    sqlite3_finalize(stmt_exists);
+
+    return bTableExists;
+}
+
+
+bool
+SQLiteTable::SetTableName(const std::string &tableName)
+{
+    bool ret = false;
+    if (FindTable(tableName))
+    {
+        m_tableName = tableName;
+        ret = true;
+    }
+    return ret;
+}
+
+
+bool
 SQLiteTable::SqlExec(const std::string& sqlstr)
 {
+    if (m_db == 0)
+    {
+        return false;
+    }
+
     bool ret = true;
 
     char* errMsg;
@@ -2574,8 +2624,8 @@ bool
 SQLiteTable::AttachDatabase(const std::string& fileName, const std::string &dbName)
 {
     std::stringstream sql;
-    sql << "ATTACH DATABASE " << fileName
-        << " AS " << dbName << ";";
+    sql << "ATTACH DATABASE \"" << fileName << "\" "
+        << "AS " << dbName << ";";
     return SqlExec(sql.str());
 }
 
@@ -2593,7 +2643,7 @@ SQLiteTable::CloseTable(bool drop)
 {
     if (drop)
     {
-        this->dropTable();
+        this->DropTable();
     }
 
     this->resetTableAdmin();

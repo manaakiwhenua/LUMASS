@@ -142,9 +142,13 @@ public:
     bool EndTransaction();
     bool CreateIndex(const std::vector<std::string>& colNames, bool unique);
 
+    /// more 'free-style' sql support
+    bool SetTableName(const std::string& tableName);
     bool SqlExec(const std::string& sqlstr);
     bool AttachDatabase(const std::string &fileName, const std::string& dbName);
     bool DetachDatabase(const std::string& dbName);
+    bool DropTable(const std::string& tablename="");
+    bool FindTable(const std::string& tableName);
 
 
     /// FAST INLINE ACCESS TO COLUMN VALUES
@@ -206,7 +210,6 @@ protected:
      */
 
     void createPreparedColumnStatements(const std::string& colname);
-    bool dropTable(const std::string& tablename="");
     void resetTableAdmin();
     void disconnectDB();
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);

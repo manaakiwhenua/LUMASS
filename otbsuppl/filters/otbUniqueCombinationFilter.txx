@@ -54,6 +54,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     this->SetNumberOfRequiredOutputs(1);
 
     m_UVTable = otb::SQLiteTable::New();
+
+    // seed the random number generator
+    std::srand(std::time(0));
 }
 
 template< class TInputImage, class TOutputImage >
@@ -225,9 +228,15 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typedef typename otb::StreamingRATImageFileWriter<TOutputImage> WriterType;
 
     typename CombFilterType::Pointer ctFilter = CombFilterType::New();
-    otb::SQLiteTable::Pointer uvTable = 0;
-
-    std::string temppath = "/home/alex/garage/testing/";
+    otb::SQLiteTable::Pointer uvTable = otb::SQLiteTable::New();
+    std::string temppath = "/home/alex/garage/testing/uvIter/";
+    std::stringstream uvTableName;
+    uvTableName << temppath << "uv_" << this->getRandomString() << ".ldb";
+    if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
+    {
+        itkExceptionMacro(<< "Combinatorial analysis failed!");
+        return;
+    }
 
     int numIter = 1;
     OutputPixelType accIdx = static_cast<OutputPixelType>(m_vInRAT.at(0)->GetNumRows());
@@ -283,8 +292,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctImgNameStr << temppath << "ctimg_" << numIter << this->getRandomString() << ".kea";
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
-        //ctWriter->SetUpdateMode(true);
-        //ctWriter->SetInputRAT(ctFilter->getRAT(0));
         ctWriter->SetInput(ctFilter->GetOutput());
         NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
         ctWriter->Update();
@@ -293,74 +300,92 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         accIdx = ctFilter->GetNumUniqueCombinations();
 
         // ------------------------------------------------------------------------
+        // TABLE MAGIC
+
         // update the final table
         NMDebugAI( << "  do table magic ..." << std::endl);
         otb::SQLiteTable::Pointer sqlTemp = static_cast<otb::SQLiteTable*>(tempUvTable.GetPointer());
 
-        // copy the UvId into the rowidx column
+        // create some shortcut strings for programmer's readability ....
+        // most recent table incl. 'uvimg'
+        std::string tt = sqlTemp->GetTableName();
+        // tab from prev. iter cont. rowidx: -> tt.uvimg = uv.rowidx
+        std::string uv = uvTable->GetTableName();
+
+        // list of images already combined ...
         std::stringstream sql;
-        sql << "Update " << sqlTemp->GetTableName()
-            << " SET " << sqlTemp->GetPrimaryKey()
-            << " = UvId;";
-        if (!sqlTemp->SqlExec(sql.str()))
+        std::stringstream uv_doneColsStr;
+        std::stringstream tt_doneColsStr;
+        for (int n=0; n < doneNames.size(); ++n)
+        {
+            uv_doneColsStr << uv << "." << doneNames.at(n);
+            tt_doneColsStr << tt << "." << doneNames.at(n);
+            if (n < doneNames.size()-1)
+            {
+                uv_doneColsStr << ",";
+                tt_doneColsStr << ",";
+            }
+        }
+
+
+        if (!sqlTemp->AttachDatabase(uvTable->GetDbFileName(), "uvdb"))
         {
             itkExceptionMacro(<< "Combinatorial analysis failed!");
             return;
         }
 
-        if (uvTable.IsNotNull())
+        // if this is the second round of combinations, join the
+        // signature (= index columns denoted by images' name)
+        // of previously processed images to the result set of the
+        // current round
+        if (numIter > 1)
         {
-            // ..................................................................
-            // attach the db from the previous iteration to the one
-            // just created by the CombineTwo filter
-
-            if (!sqlTemp->AttachDatabase(uvTable->GetDbFileName(), "uvdb"))
-            {
-                itkExceptionMacro(<< "Combinatorial analysis failed!");
-                return;
-            }
-
-            // create some shortcut strings for programmer's readability ....
-            // most recent table incl. 'uvimg'
-            std::string tt = sqlTemp->GetTableName();
-            // tab from prev. iter cont. 'rowidx = UvId'
-            std::string uv = uvTable->GetTableName();
-            // list of images already combined ...
-            std::stringstream doneColsStr;
-            for (int n=0; n < doneNames.size(); ++n)
-            {
-                doneColsStr << uv << "." << doneNames.at(n);
-                if (n < doneNames.size()-1)
-                {
-                    doneColsStr << ",";
-                }
-            }
-
+            NMDebugAI(<< "JOINING CURRENT & PREVIOUS RESULTS ... " << std::endl);
             sql.str("");
-            sql << "CREATE TEMP TABLE _uv_tmp_ AS SELECT "
-                    << tt << ".rowidx, " << doneColsStr.str()
-                    << " FROM " << tt << " INNER JOIN " << uv
-                    << " ON " << tt << ".uvimg = "<< uv << ".rowidx; ";
+            sql << "CREATE TEMP TABLE _uv_tmp_ AS "
+                <<  "SELECT "
+                    << tt << ".rowidx, " << tt << ".UvId, " << uv_doneColsStr.str()
+                << " FROM " << tt << " INNER JOIN " << uv
+                << " ON " << tt << ".uvimg = "<< uv << ".rowidx; ";
             sql << "DROP TABLE " << tt << "; ";
             sql << "CREATE TABLE " << tt << " AS SELECT * FROM _uv_tmp_;";
             sql << "DROP TABLE _uv_tmp_;";
+
+            NMDebugAI(<< sql.str() << std::endl);
 
             if (!sqlTemp->SqlExec(sql.str()))
             {
                     itkExceptionMacro(<< "Combinatorial analysis failed!");
                     return;
             }
-
-            sqlTemp->DetachDatabase(uvTable->GetDbFileName());
         }
-        uvTable = sqlTemp;
-        sqlTemp = 0;
 
-        // if uvtab != 0
-        // -> create temp table _tmp_ select * from tempUvTable join select (*) from uvtable
-        //                                     on tempUvTable.uvimg = uvtable.rowidx
-        // -> drop table uvtabName;
-        // -> create table uvtabName as select * from _tmp_;
+        NMDebugAI(<< "\nCREATING NORMALISED UV TABLE ... \n");
+
+        // create a normalised unique value table including results from
+        // all previous combination iterations
+        sql.str("");
+        sql << "DROP TABLE IF EXISTS uvdb." << uv << ";";
+        sql << "CREATE TABLE uvdb." << uv << " AS "
+             << " SELECT UvId as rowidx, " << tt_doneColsStr.str()
+             << " FROM main." << tt << ";";
+
+        NMDebugAI(<< sql.str() << std::endl);
+
+        if (!sqlTemp->SqlExec(sql.str()))
+        {
+            itkExceptionMacro(<< "Combinatorial analysis failed!");
+            return;
+        }
+
+        if (!sqlTemp->DetachDatabase("uvdb"))
+        {
+            {
+                NMDebugAI(<< "Detaching database uvdb from sqlTemp failed!\n");
+                itkExceptionMacro(<< "Combinatorial analysis failed!");
+                return;
+            }
+        }
 
         // ------------------------------------------------------------------------
         // do the normalisation
@@ -449,7 +474,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     if (len < 8)
         len = 8;
 
-    std::srand(std::time(0));
     char nam[len];
     for (int i=0; i < len; ++i)
     {
@@ -495,28 +519,28 @@ void
 UniqueCombinationFilter< TInputImage, TOutputImage >
 ::ResetPipeline()
 {
-    NMDebugCtx(ctx, << "...");
+//    NMDebugCtx(ctx, << "...");
 
-    m_StreamingProc = false;
+//    m_StreamingProc = false;
 
-    if (this->m_UVTable.IsNotNull())
-    {
-        if (m_DropTmpTables)
-        {
-            this->m_UVTable->CloseTable(true);
-        }
-        else
-        {
-            this->m_UVTable->CloseTable(false);
-        }
-    }
-    m_UVTable = 0;
-    m_UVTable = SQLiteTable::New();
-    m_OutIdx = 0;
-    m_UVTableIndex = 0;
+//    if (this->m_UVTable.IsNotNull())
+//    {
+//        if (m_DropTmpTables)
+//        {
+//            this->m_UVTable->CloseTable(true);
+//        }
+//        else
+//        {
+//            this->m_UVTable->CloseTable(false);
+//        }
+//    }
+//    m_UVTable = 0;
+//    m_UVTable = SQLiteTable::New();
+//    m_OutIdx = 0;
+//    m_UVTableIndex = 0;
 
-    Superclass::ResetPipeline();
-    NMDebugCtx(ctx, << "done!")
+//    Superclass::ResetPipeline();
+//    NMDebugCtx(ctx, << "done!")
 }
 
 

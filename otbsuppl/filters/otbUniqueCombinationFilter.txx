@@ -328,11 +328,11 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         }
 
 
-        if (!sqlTemp->AttachDatabase(uvTable->GetDbFileName(), "uvdb"))
-        {
-            itkExceptionMacro(<< "Combinatorial analysis failed!");
-            return;
-        }
+        //        if (!sqlTemp->AttachDatabase(uvTable->GetDbFileName(), "uvdb"))
+        //        {
+        //            itkExceptionMacro(<< "Combinatorial analysis failed!");
+        //            return;
+        //        }
 
         // if this is the second round of combinations, join the
         // signature (= index columns denoted by images' name)
@@ -340,8 +340,15 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // current round
         if (numIter > 1)
         {
+            if (!sqlTemp->AttachDatabase(uvTable->GetDbFileName(), "uvdb"))
+            {
+                itkExceptionMacro(<< "Combinatorial analysis failed!");
+                return;
+            }
+
             NMDebugAI(<< "JOINING CURRENT & PREVIOUS RESULTS ... " << std::endl);
             sql.str("");
+            sql << "BEGIN TRANSACTION;";
             sql << "CREATE TEMP TABLE _uv_tmp_ AS "
                 <<  "SELECT "
                     << tt << ".rowidx, " << tt << ".UvId, " << uv_doneColsStr.str()
@@ -350,35 +357,54 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             sql << "DROP TABLE " << tt << "; ";
             sql << "CREATE TABLE " << tt << " AS SELECT * FROM _uv_tmp_;";
             sql << "DROP TABLE _uv_tmp_;";
+            sql << "END TRANSACTION;";
 
             NMDebugAI(<< sql.str() << std::endl);
 
             if (!sqlTemp->SqlExec(sql.str()))
             {
-                    itkExceptionMacro(<< "Combinatorial analysis failed!");
-                    return;
+                NMDebugAI(<< "Failed joining previous with current results!\n");
+                itkExceptionMacro(<< "Combinatorial analysis failed!");
+                return;
+            }
+
+            if (!sqlTemp->DetachDatabase("uvdb"))
+            {
+                NMDebugAI(<< "Failed detaching uvdb database!\n");
+                itkExceptionMacro(<< "Combinatorial analysis failed!");
+                return;
             }
         }
 
         NMDebugAI(<< "\nCREATING NORMALISED UV TABLE ... \n");
 
-        // create a normalised unique value table including results from
-        // all previous combination iterations
-        sql.str("");
-        sql << "DROP TABLE IF EXISTS uvdb." << uv << ";";
-        sql << "CREATE TABLE uvdb." << uv << " AS "
-             << " SELECT UvId as rowidx, " << tt_doneColsStr.str()
-             << " FROM main." << tt << ";";
-
-        NMDebugAI(<< sql.str() << std::endl);
-
-        if (!sqlTemp->SqlExec(sql.str()))
+        if (!uvTable->AttachDatabase(sqlTemp->GetDbFileName(), "sqltmp"))
         {
+            NMDebugAI(<< "Failed attaching sqltmp database!\n");
             itkExceptionMacro(<< "Combinatorial analysis failed!");
             return;
         }
 
-        if (!sqlTemp->DetachDatabase("uvdb"))
+        // create a normalised unique value table including results from
+        // all previous combination iterations
+        sql.str("");
+        sql << "BEGIN TRANSACTION;";
+        sql << "DROP TABLE IF EXISTS main." << uv << ";";
+        sql << "CREATE TABLE main." << uv << " AS "
+             << " SELECT UvId as rowidx, " << tt_doneColsStr.str()
+             << " FROM sqltmp." << tt << ";";
+        sql << "END TRANSACTION;";
+
+        NMDebugAI(<< sql.str() << std::endl);
+
+        if (!uvTable->SqlExec(sql.str()))
+        {
+            NMDebugAI(<< "Failed updating normalised unique value table!\n");
+            itkExceptionMacro(<< "Combinatorial analysis failed!");
+            return;
+        }
+
+        if (!uvTable->DetachDatabase("sqltmp"))
         {
             {
                 NMDebugAI(<< "Detaching database uvdb from sqlTemp failed!\n");
@@ -386,6 +412,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
                 return;
             }
         }
+
+        // repopulate the table admin structures
+        uvTable->PopulateTableAdmin();
 
         // ------------------------------------------------------------------------
         // do the normalisation

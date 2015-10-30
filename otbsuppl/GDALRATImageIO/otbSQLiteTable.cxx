@@ -2182,28 +2182,11 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     NMDebugAI( << "looking for table '" << m_tableName << "' ..."
                << std::endl);
 
-    sqlite3_stmt* stmt_exists;
-    ssql << "SELECT count(name) FROM sqlite_master WHERE "
-        << "type='table' AND name='" << m_tableName << "';";
-
-    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            -1, &stmt_exists, 0);
-    if (sqliteError(rc, &stmt_exists))
-    {
-        sqlite3_finalize(stmt_exists);
-        m_dbFileName.clear();
-        ::sqlite3_close(m_db);
-        m_db = 0;
-        NMDebugCtx(_ctxotbtab, << "done!");
-        return ATCREATE_ERROR;
-    }
-
     int bTableExists = 0;
-    if (sqlite3_step(stmt_exists) == SQLITE_ROW)
+    if (FindTable(m_tableName))
     {
-        bTableExists = sqlite3_column_int(stmt_exists, 0);
+        bTableExists = 1;
     }
-    sqlite3_finalize(stmt_exists);
 
     // ============================================================
     // populate table info, if we've got one already
@@ -2213,118 +2196,120 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     {
         NMDebugAI( << "found table '"
                    << m_tableName << "'" << std::endl);
-        ssql.str("");
-        ssql << "pragma table_info(" << m_tableName << ")";
 
-        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                                -1, &stmt_exists, 0);
-        if (sqliteError(rc, &stmt_exists))
-        {
-            sqlite3_finalize(stmt_exists);
-            m_dbFileName.clear();
-            ::sqlite3_close(m_db);
-            m_db = 0;
-            NMDebugCtx(_ctxotbtab, << "done!");
-            return ATCREATE_ERROR;
-        }
+        this->PopulateTableAdmin();
+        //        ssql.str("");
+        //        ssql << "pragma table_info(" << m_tableName << ")";
 
-        m_vNames.clear();
-        m_vTypes.clear();
-        m_idColName.clear();
+        //        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+        //                                -1, &stmt_exists, 0);
+        //        if (sqliteError(rc, &stmt_exists))
+        //        {
+        //            sqlite3_finalize(stmt_exists);
+        //            m_dbFileName.clear();
+        //            ::sqlite3_close(m_db);
+        //            m_db = 0;
+        //            NMDebugCtx(_ctxotbtab, << "done!");
+        //            return ATCREATE_ERROR;
+        //        }
 
-        NMDebugAI(<< "analysing table structure ..." << std::endl);
-        while (sqlite3_step(stmt_exists) == SQLITE_ROW)
-        {
-            std::string name = reinterpret_cast<char*>(
-                        const_cast<unsigned char*>(
-                          sqlite3_column_text(stmt_exists, 1)));
-            std::string type = reinterpret_cast<char*>(
-                        const_cast<unsigned char*>(
-                          sqlite3_column_text(stmt_exists, 2)));
-            int pk = sqlite3_column_int(stmt_exists, 5);
+        //        m_vNames.clear();
+        //        m_vTypes.clear();
+        //        m_idColName.clear();
 
-            NMDebugAI( << "   "
-                       << name << " | "
-                       << type << " | "
-                       << pk << std::endl);
+        //        NMDebugAI(<< "analysing table structure ..." << std::endl);
+        //        while (sqlite3_step(stmt_exists) == SQLITE_ROW)
+        //        {
+        //            std::string name = reinterpret_cast<char*>(
+        //                        const_cast<unsigned char*>(
+        //                          sqlite3_column_text(stmt_exists, 1)));
+        //            std::string type = reinterpret_cast<char*>(
+        //                        const_cast<unsigned char*>(
+        //                          sqlite3_column_text(stmt_exists, 2)));
+        //            int pk = sqlite3_column_int(stmt_exists, 5);
 
-            // pick the first PRIMARY KEY column as THE PK
-            if (pk)// && m_idColName.empty())
-            {
-                if (m_idColName.empty())
-                {
-                    m_idColName = name;
-                }
-                else
-                {
-                    m_idColName += ",";
-                    m_idColName += name;
-                }
-            }
+        //            NMDebugAI( << "   "
+        //                       << name << " | "
+        //                       << type << " | "
+        //                       << pk << std::endl);
 
-            m_vNames.push_back(name);
-            if (type.compare("INTEGER") == 0)
-            {
-                m_vTypes.push_back(ATTYPE_INT);
-            }
-            else if (type.compare("REAL") == 0)
-            {
-                m_vTypes.push_back(ATTYPE_DOUBLE);
-            }
-            else
-            {
-                m_vTypes.push_back(ATTYPE_STRING);
-            }
+        //            // pick the first PRIMARY KEY column as THE PK
+        //            if (pk)// && m_idColName.empty())
+        //            {
+        //                if (m_idColName.empty())
+        //                {
+        //                    m_idColName = name;
+        //                }
+        //                else
+        //                {
+        //                    m_idColName += ",";
+        //                    m_idColName += name;
+        //                }
+        //            }
 
-        }
-        sqlite3_finalize(stmt_exists);
+        //            m_vNames.push_back(name);
+        //            if (type.compare("INTEGER") == 0)
+        //            {
+        //                m_vTypes.push_back(ATTYPE_INT);
+        //            }
+        //            else if (type.compare("REAL") == 0)
+        //            {
+        //                m_vTypes.push_back(ATTYPE_DOUBLE);
+        //            }
+        //            else
+        //            {
+        //                m_vTypes.push_back(ATTYPE_STRING);
+        //            }
 
-        // well, if we haven't got any names/types, we'd better bail
-        // out here, something seems to be wrong
-        if (    m_vNames.size() == 0
-            ||  m_idColName.empty()
-           )
-        {
-            itkWarningMacro(<< "Failed fetching column info or unsupported table structure!");
-            m_dbFileName.clear();
-            ::sqlite3_close(m_db);
-            m_db = 0;
-            NMDebugCtx(_ctxotbtab, << "done!");
-            return ATCREATE_ERROR;
-        }
+        //        }
+        //        sqlite3_finalize(stmt_exists);
 
-        // prepare Prepared statements for the detected columns
-        for (int c=0; c < m_vNames.size(); ++c)
-        {
-            this->createPreparedColumnStatements(m_vNames.at(c));
-        }
+        //        // well, if we haven't got any names/types, we'd better bail
+        //        // out here, something seems to be wrong
+        //        if (    m_vNames.size() == 0
+        //            ||  m_idColName.empty()
+        //           )
+        //        {
+        //            itkWarningMacro(<< "Failed fetching column info or unsupported table structure!");
+        //            m_dbFileName.clear();
+        //            ::sqlite3_close(m_db);
+        //            m_db = 0;
+        //            NMDebugCtx(_ctxotbtab, << "done!");
+        //            return ATCREATE_ERROR;
+        //        }
 
-        // now we count the number of records in the table
-        ssql.str("");
-        ssql << "SELECT count(" << m_idColName << ") "
-             << "from " << m_tableName << ";";
+        //        // prepare Prepared statements for the detected columns
+        //        for (int c=0; c < m_vNames.size(); ++c)
+        //        {
+        //            this->createPreparedColumnStatements(m_vNames.at(c));
+        //        }
+
+        //        // now we count the number of records in the table
+        //        ssql.str("");
+        //        ssql << "SELECT count(" << m_idColName << ") "
+        //             << "from " << m_tableName << ";";
 
 
-        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                                -1, &stmt_exists, 0);
-        if (sqliteError(rc, &stmt_exists))
-        {
-            itkWarningMacro(<< "Failed fetching number of records!");
-            sqlite3_finalize(stmt_exists);
-            m_dbFileName.clear();
-            ::sqlite3_close(m_db);
-            m_db = 0;
-            NMDebugCtx(_ctxotbtab, << "done!");
-            return ATCREATE_ERROR;
-        }
+        //        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+        //                                -1, &stmt_exists, 0);
+        //        if (sqliteError(rc, &stmt_exists))
+        //        {
+        //            itkWarningMacro(<< "Failed fetching number of records!");
+        //            sqlite3_finalize(stmt_exists);
+        //            m_dbFileName.clear();
+        //            ::sqlite3_close(m_db);
+        //            m_db = 0;
+        //            NMDebugCtx(_ctxotbtab, << "done!");
+        //            return ATCREATE_ERROR;
+        //        }
 
-        if (sqlite3_step(stmt_exists) == SQLITE_ROW)
-        {
-            m_iNumRows = sqlite3_column_int64(stmt_exists, 0);
-        }
-        NMDebugAI( << m_tableName << " has " << m_iNumRows
-                   << " records" << std::endl);
-        sqlite3_finalize(stmt_exists);
+        //        if (sqlite3_step(stmt_exists) == SQLITE_ROW)
+        //        {
+        //            m_iNumRows = sqlite3_column_int64(stmt_exists, 0);
+        //        }
+        //        NMDebugAI( << m_tableName << " has " << m_iNumRows
+        //                   << " records" << std::endl);
+        //        sqlite3_finalize(stmt_exists);
     }
 
 
@@ -2443,6 +2428,7 @@ SQLiteTable::SQLiteTable()
       m_StmtBulkSet(0),
       m_StmtBulkGet(0),
       m_StmtColIter(0),
+      m_StmtRowCount(0),
       //m_idColName(""),
       m_tableName(""),
       m_bSharedCache(true)
@@ -2504,32 +2490,23 @@ SQLiteTable::resetTableAdmin(void)
 
     for (int v=0; v < m_vStmtUpdate.size(); ++v)
     {
-        sqlite3_finalize(m_vStmtUpdate.at(v));
+        if (m_vStmtUpdate.at(v) != 0)
+        {
+            sqlite3_finalize(m_vStmtUpdate.at(v));
+        }
     }
 
     for (int s=0; s < m_vStmtSelect.size(); ++s)
     {
-        sqlite3_finalize(m_vStmtSelect.at(s));
+        if (m_vStmtSelect.at(s) != 0)
+        {
+            sqlite3_finalize(m_vStmtSelect.at(s));
+        }
     }
 
-    //    for (int v=0; v < m_mStringCols.size(); ++v)
-    //    {
-    //        delete m_mStringCols[v];
-    //    }
-
-    //    for (int v=0; v < m_mIntCols.size(); ++v)
-    //        delete m_mIntCols[v];
-
-    //    for (int v=0; v < m_mDoubleCols.size(); ++v)
-    //        delete m_mDoubleCols[v];
-
-    //    m_mDoubleCols.clear();;
-    //    m_mIntCols.clear();
-    //    m_mStringCols.clear();
     m_vTypes.clear();
     m_vIndexNames.clear();
     m_vNames.clear();
-    //m_vPosition.clear();
     m_vTypesBulkGet.clear();
     m_vTypesBulkSet.clear();
     m_vStmtUpdate.clear();
@@ -2540,7 +2517,7 @@ SQLiteTable::resetTableAdmin(void)
     m_iNodata = -std::numeric_limits<long long>::max();
     m_dNodata = -std::numeric_limits<double>::max();
     m_sNodata = "NULL";
-    m_db = 0;
+    //m_db = 0;
     m_bSharedCache = true;
     m_StmtBegin = 0;
     m_StmtEnd = 0;
@@ -2552,6 +2529,166 @@ SQLiteTable::resetTableAdmin(void)
     m_CurPrepStmt = "";
     m_idColName = "";
     m_tableName = "";
+}
+
+bool
+SQLiteTable::PopulateTableAdmin()
+{
+    NMDebugCtx(_ctxotbtab, << "...");
+
+    if (!FindTable(this->m_tableName))
+    {
+        itkWarningMacro(<< "Couldn't find table '" << m_tableName << "' in the database!");
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    const std::string tableName = m_tableName;
+    this->resetTableAdmin();
+
+    m_tableName = tableName;
+
+    // -------------------------------------------------
+    // get table info
+    // -------------------------------------------------
+    std::stringstream ssql;
+    ssql.str("");
+    ssql << "pragma table_info(" << m_tableName << ")";
+
+    sqlite3_stmt* stmt_exists;
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_exists, 0);
+    if (sqliteError(rc, &stmt_exists))
+    {
+        sqlite3_finalize(stmt_exists);
+        m_dbFileName.clear();
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    // -------------------------------------------------
+    // analyse structure
+    // -------------------------------------------------
+
+    NMDebugAI(<< "analysing table structure ..." << std::endl);
+    bool browidx = false;
+    std::string fstIntCol = "";
+    while (sqlite3_step(stmt_exists) == SQLITE_ROW)
+    {
+        std::string name = reinterpret_cast<char*>(
+                    const_cast<unsigned char*>(
+                      sqlite3_column_text(stmt_exists, 1)));
+        std::string type = reinterpret_cast<char*>(
+                    const_cast<unsigned char*>(
+                      sqlite3_column_text(stmt_exists, 2)));
+        int pk = sqlite3_column_int(stmt_exists, 5);
+
+        NMDebugAI( << "   "
+                   << name << " | "
+                   << type << " | "
+                   << pk << std::endl);
+
+        if (name.compare("rowidx") == 0)
+        {
+            browidx = true;
+        }
+
+        // pick the first PRIMARY KEY column as THE PK
+        if (pk && m_idColName.empty())
+        {
+            m_idColName = name;
+        }
+
+        m_vNames.push_back(name);
+        if (type.compare("INTEGER") == 0)
+        {
+            if (fstIntCol.empty())
+            {
+                fstIntCol = name;
+            }
+            m_vTypes.push_back(ATTYPE_INT);
+        }
+        else if (type.compare("REAL") == 0)
+        {
+            m_vTypes.push_back(ATTYPE_DOUBLE);
+        }
+        else
+        {
+            m_vTypes.push_back(ATTYPE_STRING);
+        }
+
+    }
+    sqlite3_finalize(stmt_exists);
+
+    // if we haven't got an id column yet, let's
+    // whether we can persuade any of the others ...
+    if (m_idColName.empty())
+    {
+        std::vector<std::string> ic;
+        if (browidx)
+        {
+            ic.push_back("rowidx");
+            CreateIndex(ic, false);
+            m_idColName = "rowidx";
+        }
+        else if (!fstIntCol.empty())
+        {
+            ic.push_back(fstIntCol);
+            CreateIndex(ic, false);
+            m_idColName = fstIntCol;
+        }
+        else
+        {
+            m_idColName = "rowid";
+        }
+    }
+
+    // well, if we haven't got any names/types, we'd better bail
+    // out here, something seems to be wrong
+    if (m_vNames.size() == 0)
+    {
+        itkWarningMacro(<< "Failed fetching column info or unsupported table structure!");
+        m_dbFileName.clear();
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    // prepare Prepared statements for the detected columns
+    for (int c=0; c < m_vNames.size(); ++c)
+    {
+        this->createPreparedColumnStatements(m_vNames.at(c));
+    }
+
+    // -------------------------------------------------
+    // number of records
+    // -------------------------------------------------
+
+    // now we count the number of records in the table
+    ssql.str("");
+    ssql << "SELECT count(" << m_idColName << ") "
+         << "from " << m_tableName << ";";
+
+
+    rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_exists, 0);
+    if (sqliteError(rc, &stmt_exists))
+    {
+        itkWarningMacro(<< "Failed fetching number of records!");
+        sqlite3_finalize(stmt_exists);
+        m_dbFileName.clear();
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    if (sqlite3_step(stmt_exists) == SQLITE_ROW)
+    {
+        m_iNumRows = sqlite3_column_int64(stmt_exists, 0);
+    }
+    NMDebugAI( << m_tableName << " has " << m_iNumRows
+               << " records" << std::endl);
+    sqlite3_finalize(stmt_exists);
+
+    return true;
 }
 
 bool

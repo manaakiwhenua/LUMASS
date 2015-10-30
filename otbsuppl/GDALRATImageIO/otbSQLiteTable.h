@@ -149,6 +149,8 @@ public:
     bool DetachDatabase(const std::string& dbName);
     bool DropTable(const std::string& tablename="");
     bool FindTable(const std::string& tableName);
+    // repopulates the admin structures for the current table (e.g. SetTableName);
+    bool PopulateTableAdmin();
 
 
     /// FAST INLINE ACCESS TO COLUMN VALUES

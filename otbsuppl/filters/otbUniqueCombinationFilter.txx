@@ -227,11 +227,13 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typedef typename otb::NMImageReader<TOutputImage> ReaderType;
     typedef typename otb::StreamingRATImageFileWriter<TOutputImage> WriterType;
 
+    typename ReaderType::Pointer iterReader = 0;
     typename CombFilterType::Pointer ctFilter = CombFilterType::New();
     otb::SQLiteTable::Pointer uvTable = otb::SQLiteTable::New();
+
     std::string temppath = "/home/alex/garage/testing/uvIter/";
     std::stringstream uvTableName;
-    uvTableName << temppath << "uv_" << this->getRandomString() << ".ldb";
+    uvTableName << temppath << "uv_" << this->getRandomString(5) << ".ldb";
     if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
     {
         itkExceptionMacro(<< "Combinatorial analysis failed!");
@@ -246,12 +248,15 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     std::vector<long long> nodata;
     std::vector<std::string> names;
     std::vector<std::string> doneNames;
-    bool goon;
-    while ((goon = lastImg+1 <= nbRAT))
+
+    while (lastImg < nbRAT)
     {
         // ------------------------------------------------------------------------
+        //      SET UP THE COMBINE-TWO-FILTER  - THE WORKHORSE OF THE ANALYSIS
+        // ------------------------------------------------------------------------
+
         // do  the combinatorial analysis ...
-        NMDebugAI( << "Iteration 1 ..." << std::endl);
+        NMDebugAI( << ">>>>> Iteration " << numIter << " <<<<<<" << std::endl);
         NMDebugAI( << "  combining imgs #" << fstImg << " to #" << lastImg << std::endl);
         // set up the combination filter
 
@@ -272,7 +277,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             if (i < m_ImageNames.size())
             {
                 names.push_back(m_ImageNames.at(i));
-                doneNames.push_back(m_ImageNames.at(i));
             }
             else
             {
@@ -284,12 +288,12 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctFilter->SetInputNodata(nodata);
         ctFilter->SetImageNames(names);
         std::stringstream ctTableNameStr;
-        ctTableNameStr << temppath << "cttab_" << numIter << this->getRandomString() << ".ldb";
+        ctTableNameStr << temppath << "cttab_" << numIter << this->getRandomString(5) << ".ldb";
         ctFilter->SetOutputTableFileName(ctTableNameStr.str());
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
-        ctImgNameStr << temppath << "ctimg_" << numIter << this->getRandomString() << ".kea";
+        ctImgNameStr << temppath << "ctimg_" << numIter << this->getRandomString(5) << ".kea";
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
@@ -298,9 +302,16 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         otb::AttributeTable::Pointer tempUvTable = ctFilter->getRAT(0);
         accIdx = ctFilter->GetNumUniqueCombinations();
+        ctFilter = 0;
+        iterReader = 0;
 
         // ------------------------------------------------------------------------
-        // TABLE MAGIC
+        //          CREATE/UDATE THE NORMALISED UNIQUE VALUE ATTRIBUTE TABLE
+        // ------------------------------------------------------------------------
+
+        // .........................
+        // some prep work
+        // .........................
 
         // update the final table
         NMDebugAI( << "  do table magic ..." << std::endl);
@@ -314,25 +325,31 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         // list of images already combined ...
         std::stringstream sql;
-        std::stringstream uv_doneColsStr;
-        std::stringstream tt_doneColsStr;
+        std::stringstream uv_doneNamesStr;
+        std::stringstream tt_newNamesStr;
+
+        for (int n=0; n < names.size(); ++n)
+        {
+            tt_newNamesStr << tt << "." << names.at(n);
+            if (n < names.size()-1)
+            {
+                tt_newNamesStr << ", ";
+            }
+        }
+
         for (int n=0; n < doneNames.size(); ++n)
         {
-            uv_doneColsStr << uv << "." << doneNames.at(n);
-            tt_doneColsStr << tt << "." << doneNames.at(n);
+            uv_doneNamesStr << uv << "." << doneNames.at(n);
             if (n < doneNames.size()-1)
             {
-                uv_doneColsStr << ",";
-                tt_doneColsStr << ",";
+                uv_doneNamesStr << ", ";
             }
         }
 
 
-        //        if (!sqlTemp->AttachDatabase(uvTable->GetDbFileName(), "uvdb"))
-        //        {
-        //            itkExceptionMacro(<< "Combinatorial analysis failed!");
-        //            return;
-        //        }
+        // .........................
+        // join new and previous results
+        // .........................
 
         // if this is the second round of combinations, join the
         // signature (= index columns denoted by images' name)
@@ -351,13 +368,16 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             sql << "BEGIN TRANSACTION;";
             sql << "CREATE TEMP TABLE _uv_tmp_ AS "
                 <<  "SELECT "
-                    << tt << ".rowidx, " << tt << ".UvId, " << uv_doneColsStr.str()
-                << " FROM " << tt << " INNER JOIN " << uv
+                    << tt << ".rowidx, " << tt << ".UvId, "
+                    << uv_doneNamesStr.str() << ", " << tt_newNamesStr.str()
+                << " FROM " << tt <<  " INNER JOIN " << uv
                 << " ON " << tt << ".uvimg = "<< uv << ".rowidx; ";
             sql << "DROP TABLE " << tt << "; ";
             sql << "CREATE TABLE " << tt << " AS SELECT * FROM _uv_tmp_;";
             sql << "DROP TABLE _uv_tmp_;";
             sql << "END TRANSACTION;";
+
+            // ", "<< uv <<
 
             NMDebugAI(<< sql.str() << std::endl);
 
@@ -375,8 +395,30 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
                 return;
             }
         }
+        // add the current image names to the list of already processed ones
+        // note: we don't add 'uvimg' since we're only interested in the
+        // original normalised image values of the input layers
+        int startid = numIter == 1 ? 0 : 1;
+        for (int n=startid; n < names.size(); ++n)
+        {
+            doneNames.push_back(names.at(n));
+        }
+
+
+        // .........................
+        // (re-)create the normalised unique combination attribute table
+        // .........................
 
         NMDebugAI(<< "\nCREATING NORMALISED UV TABLE ... \n");
+        std::stringstream tt_doneColsStr;
+        for (int n=0; n < doneNames.size(); ++n)
+        {
+            tt_doneColsStr << tt << "." << doneNames.at(n);
+            if (n < doneNames.size()-1)
+            {
+                tt_doneColsStr << ", ";
+            }
+        }
 
         if (!uvTable->AttachDatabase(sqlTemp->GetDbFileName(), "sqltmp"))
         {
@@ -391,7 +433,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         sql << "BEGIN TRANSACTION;";
         sql << "DROP TABLE IF EXISTS main." << uv << ";";
         sql << "CREATE TABLE main." << uv << " AS "
-             << " SELECT UvId as rowidx, " << tt_doneColsStr.str()
+             << " SELECT UvId as rowidx, " << (numIter == 1 ? tt_newNamesStr.str() : tt_doneColsStr.str())
              << " FROM sqltmp." << tt << ";";
         sql << "END TRANSACTION;";
 
@@ -417,6 +459,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         uvTable->PopulateTableAdmin();
 
         // ------------------------------------------------------------------------
+        //      CREATE THE NORMALISED RESULT IMAGE
+        // ------------------------------------------------------------------------
+
         // do the normalisation
 
         // no exece the normalisation pipeline
@@ -432,7 +477,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         typename WriterType::Pointer normWriter = WriterType::New();
         std::stringstream normImgNameStr;
-        normImgNameStr << temppath << "norm_" << numIter << this->getRandomString() << ".kea";
+        normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(5) << ".kea";
         normWriter->SetFileName(normImgNameStr.str());
         normWriter->SetResamplingType("NEAREST");
         normWriter->SetInput(normFilter->GetOutput());
@@ -441,19 +486,26 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         normWriter->Update();
 
         // ------------------------------------------------------------
-        // prepare the next iteration
+        //      PREPARE THE NEXT ITERATION STEP
+        // ------------------------------------------------------------
 
         fstImg = lastImg+1;
         lastImg = this->nextUpperIterationIdx(fstImg, accIdx);
         ++numIter;
 
-        typename ReaderType::Pointer iterReader = ReaderType::New();
+        iterReader = ReaderType::New();
         iterReader->RATSupportOn();
         iterReader->SetRATType(otb::AttributeTable::ATTABLE_TYPE_SQLITE);
         iterReader->SetFileName(normImgNameStr.str());
 
         ctFilter = CombFilterType::New();
         ctFilter->SetInput(0, iterReader->GetOutput());
+        //        // we need another non-shared connection to the uv table
+        //        // otherwise we'll suffer database 'locked
+        //        otb::SQLiteTable::Pointer uv2tab = otb::SQLiteTable::New();
+        //        uv2tab->SetSharedCache(false);
+        //        uv2tab->CreateTable(uvTable->GetDbFileName());
+        ctFilter->setRAT(0, static_cast<otb::AttributeTable*>(uvTable.GetPointer()));
 
         nodata.clear();
         names.clear();
@@ -475,7 +527,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     unsigned int nbRAT = m_vInRAT.size();
 
 
-    cnt = cnt + 1 < nbRAT ? cnt + 1 : nbRAT-1;
+    cnt = cnt + 1 < nbRAT ? cnt + 1 : nbRAT;
 
     return cnt;
 
@@ -484,7 +536,10 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     //IndexType maxIdx = itk::NumericTraits<IndexType>::max();
     OutputPixelType maxIdx = itk::NumericTraits<OutputPixelType>::max();
     while (   cnt+1 < nbRAT
-           && (accIdx <= maxIdx / (m_vInRAT.at(cnt+1)->GetNumRows() > 0 ? m_vInRAT.at(cnt+1)->GetNumRows() : 1))
+           && (accIdx <= maxIdx / (m_vInRAT.at(cnt+1)->GetNumRows() > 0
+                                    ? m_vInRAT.at(cnt+1)->GetNumRows()
+                                    : 1)
+              )
           )
     {
         accIdx *= m_vInRAT.at(cnt)->GetNumRows();
@@ -499,12 +554,13 @@ std::string
 UniqueCombinationFilter< TInputImage, TOutputImage >
 ::getRandomString(int length)
 {
-    int len = length;
-    if (len < 8)
-        len = 8;
+    if (length < 1)
+    {
+        return "";
+    }
 
-    char nam[len];
-    for (int i=0; i < len; ++i)
+    char nam[length+1];
+    for (int i=0; i < length; ++i)
     {
         if (i == 0)
         {
@@ -537,7 +593,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             }
         }
     }
-
+    nam[length] = '\0';
     std::string ret = nam;
 
     return ret;

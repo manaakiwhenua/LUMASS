@@ -2076,6 +2076,7 @@ SQLiteTable::DeleteDatabase()
     return !remove(m_dbFileName.c_str());
 }
 
+
 SQLiteTable::TableCreateStatus
 SQLiteTable::CreateTable(std::string filename, std::string tag)
 {
@@ -2600,7 +2601,9 @@ SQLiteTable::PopulateTableAdmin()
         }
 
         m_vNames.push_back(name);
-        if (type.compare("INTEGER") == 0)
+        if (    type.compare("INTEGER") == 0
+            ||  type.compare("INT") == 0
+           )
         {
             if (fstIntCol.empty())
             {

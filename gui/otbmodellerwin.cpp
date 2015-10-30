@@ -1645,7 +1645,7 @@ void OtbModellerWin::test()
     for (int n=0; n < 50; ++n)
     {
         int len = ::rand() % 20 + 2;
-        char nam[len];
+        char* nam = new char(len);
         for (int i=0; i < len; ++i)
         {
             if (i == 0)
@@ -1680,6 +1680,7 @@ void OtbModellerWin::test()
             }
         }
         NMDebugAI(<< "#" << n << " ("  << len << "): " << nam << std::endl);
+        delete nam;
     }
 
 

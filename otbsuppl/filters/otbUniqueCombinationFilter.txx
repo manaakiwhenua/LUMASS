@@ -230,6 +230,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typename ReaderType::Pointer iterReader = 0;
     typename CombFilterType::Pointer ctFilter = CombFilterType::New();
     otb::SQLiteTable::Pointer uvTable = otb::SQLiteTable::New();
+    uvTable->SetUseSharedCache(false);
+    otb::SQLiteTable::Pointer uvTable2 = 0;
 
     std::string temppath = "/home/alex/garage/testing/uvIter/";
     std::stringstream uvTableName;
@@ -288,12 +290,12 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctFilter->SetInputNodata(nodata);
         ctFilter->SetImageNames(names);
         std::stringstream ctTableNameStr;
-        ctTableNameStr << temppath << "cttab_" << numIter << this->getRandomString(5) << ".ldb";
+        ctTableNameStr << temppath << "cttab" << numIter << "_" << this->getRandomString(5) << ".ldb";
         ctFilter->SetOutputTableFileName(ctTableNameStr.str());
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
-        ctImgNameStr << temppath << "ctimg_" << numIter << this->getRandomString(5) << ".kea";
+        ctImgNameStr << temppath << "ctimg" << numIter << "_"  << this->getRandomString(5) << ".kea";
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
@@ -302,8 +304,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         otb::AttributeTable::Pointer tempUvTable = ctFilter->getRAT(0);
         accIdx = ctFilter->GetNumUniqueCombinations();
-        ctFilter = 0;
-        iterReader = 0;
 
         // ------------------------------------------------------------------------
         //          CREATE/UDATE THE NORMALISED UNIQUE VALUE ATTRIBUTE TABLE
@@ -357,7 +357,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // current round
         if (numIter > 1)
         {
-            if (!sqlTemp->AttachDatabase(uvTable->GetDbFileName(), "uvdb"))
+            uvTable->CloseTable();
+
+            if (!sqlTemp->AttachDatabase(uvTableName.str(), "uvdb"))
             {
                 itkExceptionMacro(<< "Combinatorial analysis failed!");
                 return;
@@ -420,7 +422,10 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             }
         }
 
-        if (!uvTable->AttachDatabase(sqlTemp->GetDbFileName(), "sqltmp"))
+
+        if (    !uvTable->CreateTable(uvTableName.str())
+            ||  !uvTable->AttachDatabase(sqlTemp->GetDbFileName(), "sqltmp")
+           )
         {
             NMDebugAI(<< "Failed attaching sqltmp database!\n");
             itkExceptionMacro(<< "Combinatorial analysis failed!");
@@ -457,6 +462,17 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         // repopulate the table admin structures
         uvTable->PopulateTableAdmin();
+
+        //        uvTable2 = otb::SQLiteTable::New();
+        //        uvTable2->SetUseSharedCache(false);
+        //        uvTable2->SetOpenReadOnly(true);
+        //        uvTable2->CreateTable(uvTable->GetDbFileName());
+
+        //        otb::SQLiteTable::Pointer uvRead = otb::SQLiteTable::New();
+        //        uvRead->SetUseSharedCache(false);
+        //        uvRead->SetOpenReadOnly(true);
+        //        uvRead->CreateTable(uvTable->GetDbFileName());
+
 
         // ------------------------------------------------------------------------
         //      CREATE THE NORMALISED RESULT IMAGE

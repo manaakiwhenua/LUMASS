@@ -186,7 +186,7 @@ void RATBandMathImageFilter<TImage>
             {
                 otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
                 otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
-                thtab->SetSharedCache(false);
+                thtab->SetUseSharedCache(false);
                 if (thtab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
                 {
                     itkExceptionMacro(<< "Failed creating table connection for thread!");
@@ -213,7 +213,7 @@ void RATBandMathImageFilter<TImage>
             {
                 otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
                 otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
-                thtab->SetSharedCache(false);
+                thtab->SetUseSharedCache(false);
                 if (thtab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
                 {
                     itkExceptionMacro(<< "Failed creating table connection for thread!");

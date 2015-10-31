@@ -2103,10 +2103,18 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     // open or create the host data base
     // ============================================================
     int openFlags = SQLITE_OPEN_URI |
-                    SQLITE_OPEN_READWRITE |
                     SQLITE_OPEN_CREATE;
 
-    if (m_bSharedCache)
+    if (m_bOpenReadOnly)
+    {
+        openFlags |= SQLITE_OPEN_READONLY;
+    }
+    else
+    {
+        openFlags |= SQLITE_OPEN_READWRITE;
+    }
+
+    if (m_bUseSharedCache)
     {
         openFlags |= SQLITE_OPEN_SHAREDCACHE;
     }
@@ -2432,7 +2440,8 @@ SQLiteTable::SQLiteTable()
       m_StmtRowCount(0),
       //m_idColName(""),
       m_tableName(""),
-      m_bSharedCache(true)
+      m_bUseSharedCache(true),
+      m_bOpenReadOnly(false)
 {
     //this->createTable("");
     this->m_ATType = ATTABLE_TYPE_SQLITE;
@@ -2519,7 +2528,7 @@ SQLiteTable::resetTableAdmin(void)
     m_dNodata = -std::numeric_limits<double>::max();
     m_sNodata = "NULL";
     //m_db = 0;
-    m_bSharedCache = true;
+    m_bUseSharedCache = true;
     m_StmtBegin = 0;
     m_StmtEnd = 0;
     m_StmtRollback = 0;

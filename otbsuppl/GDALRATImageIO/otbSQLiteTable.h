@@ -108,7 +108,8 @@ public:
 //	void PrintStructure(std::ostream& os, itk::Indent indent);
 
     /// SQLite support functions
-    void SetSharedCache(bool shared) {m_bSharedCache = shared;}
+    void SetUseSharedCache(bool shared) {m_bUseSharedCache = shared;}
+    void SetOpenReadOnly(bool readonly) {m_bOpenReadOnly = readonly;}
     TableCreateStatus CreateTable(std::string filename, std::string tag="");
     void CloseTable(bool drop=false);
     bool SetRowIDColName(const std::string& name);
@@ -218,7 +219,8 @@ protected:
     inline void sqliteStepCheck(const int& rc);
 
 
-    bool m_bSharedCache;
+    bool m_bUseSharedCache;
+    bool m_bOpenReadOnly;
     sqlite3* m_db;
     std::string m_dbFileName;
     std::string m_tableName;

@@ -1620,69 +1620,42 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    //    NMLayer* l = mLayerList->getSelectedLayer();
-    //    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-
-    //    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(il->getRasterAttributeTable(1).GetPointer());
-
-    //    int test[] = {0,1,6,8,9,10,14,15,16,17,18,20,21,22,23,24,26,27,28,29,30,32,33,34,35,36};
-
-    //    int nrows = tab->GetNumRows();
-
-    //    for (int r=0; r < 26; ++r)
-    //    {
-    //        double rid = static_cast<double>(tab->GetIntValue("rowidx", test[r]));
-    //        double uv  = static_cast<double>(tab->GetIntValue("UvId", test[r]));
-
-    //        NMDebugAI(<< "#" << r << ": rowidx=" << rid << "\tUvId=" << uv << std::endl);
-    //    }
-
-    NMDebugAI( << "may random strings ..." << std::endl);
-
     std::srand(std::time(0));
 
 
-    for (int n=0; n < 50; ++n)
-    {
-        int len = ::rand() % 20 + 2;
-        char* nam = new char(len);
-        for (int i=0; i < len; ++i)
-        {
-            if (i == 0)
-            {
-                if (::rand() % 2 == 0)
-                {
-                    nam[i] = ::rand() % 26 + 65;
-                }
-                else
-                {
-                    nam[i] = ::rand() % 26 + 97;
-                }
-            }
-            else
-            {
-                if (::rand() % 7 == 0)
-                {
-                    nam[i] = '_';
-                }
-                else if (::rand() % 5 == 0)
-                {
-                    nam[i] = ::rand() % 26 + 65;
-                }
-                else if (::rand() % 3 == 0)
-                {
-                    nam[i] = ::rand() % 26 + 97;
-                }
-                else
-                {
-                    nam[i] = ::rand() % 10 + 48;
-                }
-            }
-        }
-        NMDebugAI(<< "#" << n << " ("  << len << "): " << nam << std::endl);
-        delete nam;
-    }
+    unsigned int maxIdx = itk::NumericTraits<unsigned int>::max();
 
+    NMDebugAI( << "max index = " << maxIdx << std::endl);
+    unsigned int accIdx = ::rand() % 200 + 3;
+
+    std::vector<unsigned int> log;
+    log.push_back(accIdx);
+    for (int i=0; i < 35; ++i)
+    {
+        unsigned int dim = ::rand() % 200 + 3;
+
+        if (accIdx <= maxIdx / dim)
+        {
+            accIdx *= dim;
+            log.push_back(dim);
+        }
+        else
+        {
+            NMDebugAI( << "hit bnd before " << dim << "! ");
+            for (int d=0; d < log.size(); ++d)
+            {
+                NMDebug(<< log.at(d));
+                if (d+1 < log.size())
+                {
+                    NMDebug(<< " * ");
+                }
+            }
+            NMDebug(<< " = " << accIdx << std::endl);
+
+            log.clear();
+            accIdx = 1;
+        }
+    }
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

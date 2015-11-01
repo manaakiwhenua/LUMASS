@@ -357,6 +357,10 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // current round
         if (numIter > 1)
         {
+            // we just close the uv table here for a minute,
+            // so we ('unlock' the database and) don't have
+            // a locked data base later when we try to
+            // re-create/update the unique value attribute table
             uvTable->CloseTable();
 
             if (!sqlTemp->AttachDatabase(uvTableName.str(), "uvdb"))
@@ -463,17 +467,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // repopulate the table admin structures
         uvTable->PopulateTableAdmin();
 
-        //        uvTable2 = otb::SQLiteTable::New();
-        //        uvTable2->SetUseSharedCache(false);
-        //        uvTable2->SetOpenReadOnly(true);
-        //        uvTable2->CreateTable(uvTable->GetDbFileName());
-
-        //        otb::SQLiteTable::Pointer uvRead = otb::SQLiteTable::New();
-        //        uvRead->SetUseSharedCache(false);
-        //        uvRead->SetOpenReadOnly(true);
-        //        uvRead->CreateTable(uvTable->GetDbFileName());
-
-
         // ------------------------------------------------------------------------
         //      CREATE THE NORMALISED RESULT IMAGE
         // ------------------------------------------------------------------------
@@ -516,11 +509,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         ctFilter = CombFilterType::New();
         ctFilter->SetInput(0, iterReader->GetOutput());
-        //        // we need another non-shared connection to the uv table
-        //        // otherwise we'll suffer database 'locked
-        //        otb::SQLiteTable::Pointer uv2tab = otb::SQLiteTable::New();
-        //        uv2tab->SetSharedCache(false);
-        //        uv2tab->CreateTable(uvTable->GetDbFileName());
         ctFilter->setRAT(0, static_cast<otb::AttributeTable*>(uvTable.GetPointer()));
 
         nodata.clear();
@@ -542,18 +530,14 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     unsigned int cnt = idx;
     unsigned int nbRAT = m_vInRAT.size();
 
-
-    cnt = cnt + 1 < nbRAT ? cnt + 1 : nbRAT;
-
-    return cnt;
-
-
+    //    cnt = cnt + 1 < nbRAT ? cnt + 1 : nbRAT;
+    //    return cnt;
 
     //IndexType maxIdx = itk::NumericTraits<IndexType>::max();
     OutputPixelType maxIdx = itk::NumericTraits<OutputPixelType>::max();
-    while (   cnt+1 < nbRAT
-           && (accIdx <= maxIdx / (m_vInRAT.at(cnt+1)->GetNumRows() > 0
-                                    ? m_vInRAT.at(cnt+1)->GetNumRows()
+    while (   cnt < nbRAT
+           && (accIdx <= maxIdx / (m_vInRAT.at(cnt)->GetNumRows() > 0
+                                    ? m_vInRAT.at(cnt)->GetNumRows()
                                     : 1)
               )
           )
@@ -562,7 +546,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ++cnt;
     }
 
-    return cnt;
+    return cnt-1;
 }
 
 template< class TInputImage, class TOutputImage >

@@ -111,6 +111,7 @@ protected:
     //void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
     //void AfterThreadedGenerateData();
     void GenerateData();
+    void AllocateOutputs(){this->InternalAllocateOutput();}
 
     void InternalAllocateOutput();
     std::string getRandomString(int length=15);

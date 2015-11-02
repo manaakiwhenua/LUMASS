@@ -148,7 +148,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     outImg->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
     outImg->SetBufferedRegion(inImg->GetBufferedRegion());
     outImg->SetRequestedRegion(inImg->GetRequestedRegion());
-    outImg->Allocate();
+    //outImg->Allocate();
 
 }
 
@@ -202,7 +202,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // ======================================================================
     typename TInputImage::ConstPointer inImg = this->GetInput();
     typename TOutputImage::Pointer outImg = this->GetOutput();
-    this->InternalAllocateOutput();
+    //this->InternalAllocateOutput();
 
     IndexType lprPixNum = inImg->GetLargestPossibleRegion().GetNumberOfPixels();
     typename TOutputImage::RegionType outRegion = outImg->GetBufferedRegion();

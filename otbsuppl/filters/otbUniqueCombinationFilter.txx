@@ -69,9 +69,19 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 template< class TInputImage, class TOutputImage >
 void
 UniqueCombinationFilter< TInputImage, TOutputImage >
-::SetNthInput(unsigned int idx, const TInputImage* image)
+::SetInput(unsigned int idx, const TInputImage* image)
 {
-    this->SetInput(idx, const_cast<TInputImage *>( image ));
+    //this->SetInput(idx, const_cast<TInputImage *>( image ));
+    typename TInputImage::Pointer img = TInputImage::New();
+    img = const_cast<TInputImage*>(image);// ->Graft(const_cast<TInputImage*>(image));
+    if (idx < this->m_InputImages.size())
+    {
+        m_InputImages[idx] = img;
+    }
+    else
+    {
+        m_InputImages.push_back(img);
+    }
 }
 
 template< class TInputImage, class TOutputImage >
@@ -143,11 +153,11 @@ void
 UniqueCombinationFilter< TInputImage, TOutputImage >
 ::InternalAllocateOutput()
 {
-    typename TInputImage::ConstPointer inImg = this->GetInput();
-    typename TOutputImage::Pointer outImg = this->GetOutput();
-    outImg->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
-    outImg->SetBufferedRegion(inImg->GetBufferedRegion());
-    outImg->SetRequestedRegion(inImg->GetRequestedRegion());
+//    typename TInputImage::ConstPointer inImg = this->GetInput();
+//    typename TOutputImage::Pointer outImg = this->GetOutput();
+//    outImg->SetLargestPossibleRegion(inImg->GetLargestPossibleRegion());
+//    outImg->SetBufferedRegion(inImg->GetBufferedRegion());
+//    outImg->SetRequestedRegion(inImg->GetRequestedRegion());
     //outImg->Allocate();
 
 }
@@ -159,10 +169,11 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 {
     NMDebugCtx(ctx, << "...");
 
-    unsigned int nbInputs = this->GetNumberOfIndexedInputs();
+    unsigned int nbInputs = m_InputImages.size(); //this->GetNumberOfIndexedInputs();
     unsigned int nbRAT = this->m_vInRAT.size();
     if (nbInputs < 2 || nbRAT < 2)
     {
+        NMDebugCtx(ctx, << "done!");
         itkExceptionMacro(<< "Need at least two input layers to work!");
         return;
     }
@@ -175,24 +186,29 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // (... and hopefully also the same projection - but
     // we don't check that ...)
     IndexType inputSize[2];
-    inputSize[0] = this->GetInput(0)->GetLargestPossibleRegion().GetSize(0);
-    inputSize[1] = this->GetInput(0)->GetLargestPossibleRegion().GetSize(1);
+    inputSize[0] = m_InputImages.at(0)->GetLargestPossibleRegion().GetSize(0); //this->GetInput(0)->GetLargestPossibleRegion().GetSize(0);
+    inputSize[1] = m_InputImages.at(0)->GetLargestPossibleRegion().GetSize(1); //this->GetInput(0)->GetLargestPossibleRegion().GetSize(1);
 
     // NMDebugAI(<< "nbInputs = " << nbInputs << std::endl);
     for (unsigned int p=0; p < nbInputs; ++p)
     {
-        if((inputSize[0] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(0))
-           || (inputSize[1] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(1)))
+            //        if((inputSize[0] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(0))
+            //           || (inputSize[1] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(1)))
+        if((inputSize[0] != m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(0))
+           || (inputSize[1] != m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(1)))
           {
           itkExceptionMacro(<< "Input images must have the same dimensions." << std::endl
                             << "image #1 is [" << inputSize[0] << ";" << inputSize[1] << "]" << std::endl
                             << "image #" << p+1 << " is ["
-                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(0) << ";"
-                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(1) << "]");
+                            << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(0) << ";"
+                            << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(1) << "]");
+//                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(0) << ";"
+//                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(1) << "]");
 
           itk::ExceptionObject e(__FILE__, __LINE__);
           e.SetLocation(ITK_LOCATION);
           e.SetDescription("Input regions don't match in size!");
+          NMDebugCtx(ctx, << "done!");
           throw e;
           }
     }
@@ -200,12 +216,12 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // ======================================================================
     // ALLOCATE THE OUTPUT IMAGE
     // ======================================================================
-    typename TInputImage::ConstPointer inImg = this->GetInput();
-    typename TOutputImage::Pointer outImg = this->GetOutput();
+    //    typename TInputImage::ConstPointer inImg = this->GetInput();
+    //    typename TOutputImage::Pointer outImg = this->GetOutput();
     //this->InternalAllocateOutput();
 
-    IndexType lprPixNum = inImg->GetLargestPossibleRegion().GetNumberOfPixels();
-    typename TOutputImage::RegionType outRegion = outImg->GetBufferedRegion();
+    //IndexType lprPixNum = m_InputImages.at(p)->GetLargestPossibleRegion().GetNumberOfPixels();
+    //typename TOutputImage::RegionType outRegion = outImg->GetBufferedRegion();
 
 
     /// here's what we do:
@@ -239,6 +255,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
     {
         itkExceptionMacro(<< "Combinatorial analysis failed!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -251,7 +268,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     std::vector<std::string> names;
     std::vector<std::string> doneNames;
 
-    while (lastImg < nbRAT)
+    while (lastImg < nbRAT && !this->GetAbortGenerateData())
     {
         // ------------------------------------------------------------------------
         //      SET UP THE COMBINE-TWO-FILTER  - THE WORKHORSE OF THE ANALYSIS
@@ -264,7 +281,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         for (int i=fstImg; i <= lastImg; ++i, ++pos)
         {
-            ctFilter->SetInput(pos, this->GetInput(i));
+            ctFilter->SetInput(pos, m_InputImages.at(i));
             ctFilter->setRAT(pos, m_vInRAT.at(i));
 
             if (i < m_InputNodata.size())
@@ -292,6 +309,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         std::stringstream ctTableNameStr;
         ctTableNameStr << temppath << "cttab" << numIter << "_" << this->getRandomString(5) << ".ldb";
         ctFilter->SetOutputTableFileName(ctTableNameStr.str());
+        ctFilter->ReleaseDataFlagOn();
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
@@ -299,16 +317,24 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
+        ctWriter->ReleaseDataFlagOn();
         NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
         ctWriter->Update();
 
         otb::AttributeTable::Pointer tempUvTable = ctFilter->getRAT(0);
         accIdx = ctFilter->GetNumUniqueCombinations();
 
+        this->UpdateProgress((float)lastImg/(float)nbRAT*0.33);
+
         // ------------------------------------------------------------------------
         //          CREATE/UDATE THE NORMALISED UNIQUE VALUE ATTRIBUTE TABLE
         // ------------------------------------------------------------------------
 
+        if (this->GetAbortGenerateData())
+        {
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
         // .........................
         // some prep work
         // .........................
@@ -467,9 +493,17 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // repopulate the table admin structures
         uvTable->PopulateTableAdmin();
 
+        this->UpdateProgress((float)lastImg/(float)nbRAT*0.66);
+
         // ------------------------------------------------------------------------
         //      CREATE THE NORMALISED RESULT IMAGE
         // ------------------------------------------------------------------------
+
+        if (this->GetAbortGenerateData())
+        {
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
 
         // do the normalisation
 
@@ -493,6 +527,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         normWriter->SetInputRAT(uvTable);
         NMDebugAI( << "  normalise the image ..." << std::endl);
         normWriter->Update();
+
+        this->UpdateProgress((float)lastImg/(float)nbRAT);
 
         // ------------------------------------------------------------
         //      PREPARE THE NEXT ITERATION STEP
@@ -518,6 +554,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         pos = 1;
     }
 
+    this->UpdateProgress(1.0);
     NMDebugCtx(ctx, << "done!");
 }
 

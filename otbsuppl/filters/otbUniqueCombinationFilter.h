@@ -85,7 +85,7 @@ public:
     //typedef typename std::map< UniqueValueType, std::vector<long long> >  CombinationPedigreeMap;
     //typedef typename CombinationPedigreeMap::iterator 		          CombinationPedigreeIterator;
 
-    void SetNthInput(unsigned int idx, const InputImageType * image);
+    void SetInput(unsigned int idx, const InputImageType * image);
 
     void setRAT(unsigned int idx, AttributeTable::Pointer table);
     AttributeTable::Pointer getRAT(unsigned int idx);
@@ -101,6 +101,9 @@ public:
     {m_ImageNames = imgNames;}
 
     virtual void ResetPipeline();
+
+    // un-orthodox short-cut to enable un-orthodox composite filter ...
+    void Update() {this->GenerateData();}
 
 protected:
     UniqueCombinationFilter();
@@ -134,6 +137,7 @@ protected:
     OutputPixelType m_OutIdx;
     IndexType m_UVTableIndex;
 
+    std::vector<typename InputImageType::Pointer> m_InputImages;
     std::vector<InputPixelType> m_InputNodata;
     std::vector<std::string> m_ImageNames;
 

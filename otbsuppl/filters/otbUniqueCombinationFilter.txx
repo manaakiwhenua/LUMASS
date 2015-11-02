@@ -566,6 +566,10 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 {
     unsigned int cnt = idx;
     unsigned int nbRAT = m_vInRAT.size();
+    if (idx >= nbRAT-1)
+    {
+        return nbRAT;
+    }
 
     //    cnt = cnt + 1 < nbRAT ? cnt + 1 : nbRAT;
     //    return cnt;

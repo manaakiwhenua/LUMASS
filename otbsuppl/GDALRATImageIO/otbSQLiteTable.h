@@ -143,6 +143,9 @@ public:
     bool EndTransaction();
     bool CreateIndex(const std::vector<std::string>& colNames, bool unique);
 
+    bool GreedyNumericFetch(const std::vector<std::string>& columns,
+                            std::map<int, std::map<long, double> >& valstore);
+
     /// more 'free-style' sql support
     bool SetTableName(const std::string& tableName);
     bool SqlExec(const std::string& sqlstr);

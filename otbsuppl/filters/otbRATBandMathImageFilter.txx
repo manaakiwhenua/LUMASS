@@ -227,8 +227,77 @@ void RATBandMathImageFilter<TImage>
         this->m_VTabAttr[idx] = columns;
     }
 
+    if (m_UseTableColumnCache)
+    {
+        CacheTableColumns(idx);
+    }
 
 	this->Modified();
+}
+
+
+template<class TImage>
+void RATBandMathImageFilter<TImage>
+::CacheTableColumns(int idx)
+{
+    if (idx < m_VRAT[0].size())
+    {
+        int t = idx;
+        otb::AttributeTable::Pointer tab = m_VRAT[0].at(t);
+
+        // there's no point in using a cache for an already cached
+        // RAM-based table, really
+        if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_RAM)
+        {
+            m_UseTableColumnCache = false;
+            m_TableColumnCache.clear();
+            return;
+        }
+
+
+        otb::SQLiteTable::Pointer dbtab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+
+        std::map<int, std::map<long, double> > tab_map;
+        std::vector<std::string> colnames;
+        colnames.push_back(dbtab->GetPrimaryKey());
+
+        for (int c=0; c < m_VTabAttr.at(t).size(); ++c)
+        {
+            std::string col_name = m_VTabAttr.at(t).at(c);
+            if (col_name.compare(colnames[0]) != 0)
+            {
+                colnames.push_back(tab->GetColumnName(col_name));
+            }
+
+            std::map<long, double> col_map;
+            tab_map.insert(std::pair<int, std::map<long, double> >(
+                                                m_VTabAttr.at(t).at(c), col_map));
+        }
+
+
+        if (!dbtab->GreedyNumericFetch(colnames, tab_map))
+        {
+            m_UseTableColumnCache = false;
+            m_TableColumnCache.clear();
+            return;
+        }
+
+
+        for (int i=m_TableColumnCache.size(); i < t; ++i)
+        {
+            std::map<int, std::map<long, double> > tm;
+            m_TableColumnCache.push_back(tm);
+        }
+
+        if (t < m_TableColumnCache.size())
+        {
+            m_TableColumnCache[t] = tab_map;
+        }
+        else if (t == m_TableColumnCache.size())
+        {
+            m_TableColumnCache.push_back(tab_map);
+        }
+    }
 }
 
 template<class TImage>
@@ -602,22 +671,33 @@ void RATBandMathImageFilter<TImage>
 			// raster attribute table support ......................................................................
 			if (vTabAvail[j])
 			{
-				for (unsigned int c = 0; c < m_VTabAttr[j].size(); c++)
-				{
-					switch (m_VAttrTypes[j][c])
-					{
-					case AttributeTable::ATTYPE_DOUBLE://2:
-						m_VAttrValues[threadId][j][c] =
-                                static_cast<double>(m_VRAT[threadId][j]->GetDblValue(
-										m_VTabAttr[j][c], Vit[j].Get()));
-						break;
-					case AttributeTable::ATTYPE_INT:
-						m_VAttrValues[threadId][j][c] =
-                                static_cast<double>(m_VRAT[threadId][j]->GetIntValue(
-										m_VTabAttr[j][c], Vit[j].Get()));
-						break;
-					}
-				}
+                if (m_UseTableColumnCache)
+                {
+                    for (unsigned int c = 0; c < m_VTabAttr[j].size(); c++)
+                    {
+                        m_VAttrValues[threadId][j][c] =
+                                m_TableColumnCache[j][m_VTabAttr[j][c]][static_cast<long>(Vit[j].Get())];
+                    }
+                }
+                else
+                {
+                    for (unsigned int c = 0; c < m_VTabAttr[j].size(); c++)
+                    {
+                        switch (m_VAttrTypes[j][c])
+                        {
+                        case AttributeTable::ATTYPE_DOUBLE://2:
+                            m_VAttrValues[threadId][j][c] =
+                                    static_cast<double>(m_VRAT[threadId][j]->GetDblValue(
+                                            m_VTabAttr[j][c], Vit[j].Get()));
+                            break;
+                        case AttributeTable::ATTYPE_INT:
+                            m_VAttrValues[threadId][j][c] =
+                                    static_cast<double>(m_VRAT[threadId][j]->GetIntValue(
+                                            m_VTabAttr[j][c], Vit[j].Get()));
+                            break;
+                        }
+                    }
+                }
 			}
 			// .......................................................................................................
 

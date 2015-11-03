@@ -171,6 +171,10 @@ public:
   itkGetMacro(NbExpr, int);
   void SetNbExpr(int numExpr);
 
+  itkSetMacro(UseTableColumnCache, bool)
+  itkGetMacro(UseTableColumnCache, bool)
+  itkBooleanMacro(UseTableColumnCache)
+
 protected :
   RATBandMathImageFilter();
   virtual ~RATBandMathImageFilter();
@@ -179,6 +183,8 @@ protected :
   void BeforeThreadedGenerateData();
   void ThreadedGenerateData(const ImageRegionType& outputRegionForThread, itk::ThreadIdType threadId );
   void AfterThreadedGenerateData();
+
+  void CacheTableColumns(int idx);
 
 private :
   RATBandMathImageFilter(const Self&); //purposely not implemented
@@ -199,6 +205,8 @@ private :
   SpacingType                           m_Spacing;
   OrigineType                           m_Origin;
 
+  bool                                  m_UseTableColumnCache;
+  std::vector<std::map<int, std::map<long, double> > >  m_TableColumnCache;
   long                                  m_UnderflowCount;
   long                                  m_OverflowCount;
   itk::Array<long>                      m_ThreadUnderflow;

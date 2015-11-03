@@ -820,6 +820,57 @@ SQLiteTable::DoBulkGet(std::vector< ColumnValue >& values)
 }
 
 bool
+SQLiteTable::GreedyNumericFetch(const std::vector<std::string> &columns,
+                                std::map<int, std::map<long, double> > &valstore)
+{
+    bool ret = false;
+    if (m_db == 0)
+    {
+        return ret;
+    }
+
+    std::stringstream ssql;
+    ssql << "SELECT ";
+    for (int c=0; c < columns.size(); ++c)
+    {
+        ssql << columns[c];
+        if (c < columns.size()-1)
+        {
+            ssql << ", ";
+        }
+    }
+
+    ssql << " FROM main." << m_tableName << ";";
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1, &stmt, 0);
+    if (sqliteError(rc, &stmt))
+    {
+        sqlite3_finalize(stmt);
+        return false;
+    }
+
+
+    std::map<int, std::map<long, double> >::iterator storeIter;
+
+    while(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        long id = static_cast<long>(sqlite3_column_int64(stmt, 0));
+
+        storeIter = valstore.begin();
+        for (int c=1; c < columns.size() && storeIter != valstore.end(); ++c, ++storeIter)
+        {
+            const double val = sqlite3_column_double(stmt, c);
+            (*storeIter).insert(std::pair<long, double>(id, val));
+        }
+
+    }
+
+
+    return true;
+}
+
+bool
 SQLiteTable::DoPtrBulkSet(std::vector<int *> &intVals,
                              std::vector<double *> &dblVals,
                              std::vector<char **> &chrVals,

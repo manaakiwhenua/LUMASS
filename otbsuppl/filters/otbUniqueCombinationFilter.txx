@@ -566,6 +566,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         typename MathFilterType::Pointer normFilter = MathFilterType::New();
         normFilter->SetReleaseDataFlag(true);
+        normFilter->SetUseTableColumnCache(true);
         normFilter->SetNthInput(0, imgReader->GetOutput());
         std::vector<std::string> vColumns;
         vColumns.push_back("UvId");
@@ -577,7 +578,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // image file name for the final output (if specified)
         // otherwise we just keep using temp filenames!
         std::stringstream normImgNameStr;
-        if (    this->nextUpperIterationIdx(lastImg+1, accIdx) >= nbRAT
+        OutputPixelType tmpIdx = accIdx;
+        if (    this->nextUpperIterationIdx(lastImg+1, tmpIdx) >= nbRAT
             &&  !m_OutputImageFileName.empty()
            )
         {

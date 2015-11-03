@@ -91,8 +91,7 @@ public:
     AttributeTable::Pointer getRAT(unsigned int idx);
 
     void SetUVTableName(const std::string& name);
-
-
+    void SetOutputImageFileName(const std::string& name) {m_OutputImageFileName = name;}
 
     void SetInputNodata(const std::vector<long long>& inNodata);
 
@@ -103,7 +102,7 @@ public:
     virtual void ResetPipeline();
 
     // un-orthodox short-cut to enable un-orthodox composite filter ...
-    void Update() {this->GenerateData();}
+    void Update();
 
 protected:
     UniqueCombinationFilter();
@@ -120,6 +119,7 @@ protected:
     std::string getRandomString(int length=15);
     unsigned int nextUpperIterationIdx(unsigned int idx, OutputPixelType& accIdx);
 
+    std::string m_OutputImageFileName;
     std::vector<AttributeTable::Pointer> m_vInRAT;
     std::vector<AttributeTable::Pointer> m_vOutRAT;
 

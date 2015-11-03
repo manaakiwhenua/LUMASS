@@ -48,6 +48,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
       m_UVTableIndex(0),
       m_UVTableName(""),
       m_WorkingDirectory(""),
+      m_OutputImageFileName(""),
       m_OutIdx(0)
 {
     this->SetNumberOfRequiredInputs(1);
@@ -165,6 +166,43 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 template< class TInputImage, class TOutputImage >
 void
 UniqueCombinationFilter< TInputImage, TOutputImage >
+::Update()
+{
+    // the code below is an adapted part of the
+    // original itk::ProcessObject::UpdateOutputData() code
+
+    this->InvokeEvent(itk::StartEvent());
+
+    this->SetAbortGenerateData(false);
+    this->SetProgress(0.0f);
+
+    try
+    {
+        this->GenerateData();
+    }
+    catch(itk::ProcessAborted&)
+    {
+        this->InvokeEvent(itk::AbortEvent());
+        throw;
+    }
+    catch(...)
+    {
+        throw;
+    }
+
+    if (this->GetAbortGenerateData())
+    {
+        this->UpdateProgress(1.0f);
+    }
+
+    this->InvokeEvent(itk::EndEvent());
+
+}
+
+
+template< class TInputImage, class TOutputImage >
+void
+UniqueCombinationFilter< TInputImage, TOutputImage >
 ::GenerateData()
 {
     NMDebugCtx(ctx, << "...");
@@ -249,7 +287,15 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     uvTable->SetUseSharedCache(false);
     otb::SQLiteTable::Pointer uvTable2 = 0;
 
-    std::string temppath = "/home/alex/garage/testing/uvIter/";
+
+    std::string temppath = std::tmpnam(0);//"/home/alex/garage/testing/LENZ25/";
+    int posDiv = 0;
+#ifndef _WIN32
+    posDiv = temppath.rfind('/');
+#else
+    posDiv = temppath.rfind('\\');
+#endif
+    temppath = temppath.substr(0, posDiv+1);
     std::stringstream uvTableName;
     uvTableName << temppath << "uv_" << this->getRandomString(5) << ".ldb";
     if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
@@ -267,6 +313,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     std::vector<long long> nodata;
     std::vector<std::string> names;
     std::vector<std::string> doneNames;
+
+    float progrChunk = 0.33f / (float)nbRAT;
 
     while (lastImg < nbRAT && !this->GetAbortGenerateData())
     {
@@ -309,7 +357,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         std::stringstream ctTableNameStr;
         ctTableNameStr << temppath << "cttab" << numIter << "_" << this->getRandomString(5) << ".ldb";
         ctFilter->SetOutputTableFileName(ctTableNameStr.str());
-        ctFilter->ReleaseDataFlagOn();
+        //ctFilter->SetReleaseDataFlag(true);
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
@@ -317,14 +365,16 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
-        ctWriter->ReleaseDataFlagOn();
+        //ctWriter->SetInputRAT(ctFilter->getRAT(0));
+        //ctWriter->SetUpdateMode(true);
+        //ctWriter->SetReleaseDataFlag(true);
         NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
         ctWriter->Update();
 
         otb::AttributeTable::Pointer tempUvTable = ctFilter->getRAT(0);
         accIdx = ctFilter->GetNumUniqueCombinations();
 
-        this->UpdateProgress((float)lastImg/(float)nbRAT*0.33);
+        this->UpdateProgress(((float)(lastImg+1))*progrChunk);
 
         // ------------------------------------------------------------------------
         //          CREATE/UDATE THE NORMALISED UNIQUE VALUE ATTRIBUTE TABLE
@@ -493,7 +543,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // repopulate the table admin structures
         uvTable->PopulateTableAdmin();
 
-        this->UpdateProgress((float)lastImg/(float)nbRAT*0.66);
+        this->UpdateProgress(((float)(lastImg+1))*2.0f*progrChunk);
 
         // ------------------------------------------------------------------------
         //      CREATE THE NORMALISED RESULT IMAGE
@@ -509,18 +559,40 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         // no exece the normalisation pipeline
         typename ReaderType::Pointer imgReader = ReaderType::New();
+        imgReader->SetReleaseDataFlag(true);
         imgReader->SetFileName(ctImgNameStr.str());
+        //imgReader->RATSupportOn();
+        //imgReader->SetRATType(otb::AttributeTable::ATTABLE_TYPE_RAM);
 
         typename MathFilterType::Pointer normFilter = MathFilterType::New();
+        normFilter->SetReleaseDataFlag(true);
         normFilter->SetNthInput(0, imgReader->GetOutput());
         std::vector<std::string> vColumns;
         vColumns.push_back("UvId");
+        //normFilter->SetNthAttributeTable(0, imgReader->GetAttributeTable(1), vColumns);
         normFilter->SetNthAttributeTable(0, tempUvTable, vColumns);
         normFilter->SetExpression("b1__UvId");
 
-        typename WriterType::Pointer normWriter = WriterType::New();
+        // if this is the last iteration, we use the user specified
+        // image file name for the final output (if specified)
+        // otherwise we just keep using temp filenames!
         std::stringstream normImgNameStr;
-        normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(5) << ".kea";
+        if (    this->nextUpperIterationIdx(lastImg+1, accIdx) >= nbRAT
+            &&  !m_OutputImageFileName.empty()
+           )
+        {
+            normImgNameStr << m_OutputImageFileName;
+        }
+        else
+        {
+
+            normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(5) << ".kea";
+        }
+
+        typename WriterType::Pointer normWriter = WriterType::New();
+        normWriter->SetReleaseDataFlag(true);
+        //        std::stringstream normImgNameStr;
+        //        normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(5) << ".kea";
         normWriter->SetFileName(normImgNameStr.str());
         normWriter->SetResamplingType("NEAREST");
         normWriter->SetInput(normFilter->GetOutput());
@@ -528,7 +600,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         NMDebugAI( << "  normalise the image ..." << std::endl);
         normWriter->Update();
 
-        this->UpdateProgress((float)lastImg/(float)nbRAT);
+        this->UpdateProgress(((float)(lastImg+1))*3.0f*progrChunk);
 
         // ------------------------------------------------------------
         //      PREPARE THE NEXT ITERATION STEP
@@ -539,11 +611,13 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ++numIter;
 
         iterReader = ReaderType::New();
+        iterReader->SetReleaseDataFlag(true);
         iterReader->RATSupportOn();
         iterReader->SetRATType(otb::AttributeTable::ATTABLE_TYPE_SQLITE);
         iterReader->SetFileName(normImgNameStr.str());
 
         ctFilter = CombFilterType::New();
+        ctFilter->SetReleaseDataFlag(true);
         ctFilter->SetInput(0, iterReader->GetOutput());
         ctFilter->setRAT(0, static_cast<otb::AttributeTable*>(uvTable.GetPointer()));
 
@@ -554,7 +628,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         pos = 1;
     }
 
-    this->UpdateProgress(1.0);
+    this->UpdateProgress(1.0f);
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -566,7 +640,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 {
     unsigned int cnt = idx;
     unsigned int nbRAT = m_vInRAT.size();
-    if (idx >= nbRAT-1)
+    if (idx >= nbRAT)
     {
         return nbRAT;
     }

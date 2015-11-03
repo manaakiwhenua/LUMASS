@@ -121,12 +121,12 @@ public:
 		int givenStep = step;
 
 		
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mUVTableName.size());
-        std::string curUVTableName;
-        if (step < p->mUVTableName.size())
+        step = p->mapHostIndexToPolicyIndex(givenStep, p->mOutputImageFileName.size());
+        std::string curOutputImageFileName;
+        if (step < p->mOutputImageFileName.size())
         {
-            curUVTableName = p->mUVTableName.at(step).toStdString().c_str();
-            f->SetUVTableName(curUVTableName);
+            curOutputImageFileName = p->mOutputImageFileName.at(step).toStdString().c_str();
+            f->SetOutputImageFileName(curOutputImageFileName);
         }
 
         step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputNodata.size());

@@ -46,13 +46,13 @@ NMUniqueCombinationFilterWrapper
 	Q_OBJECT
 
     
-    Q_PROPERTY(QStringList UVTableName READ getUVTableName WRITE setUVTableName)
+    Q_PROPERTY(QStringList OutputImageFileName READ getOutputImageFileName WRITE setOutputImageFileName)
     Q_PROPERTY(QList<QStringList> InputNodata READ getInputNodata WRITE setInputNodata)
 
 public:
 
     
-    NMPropertyGetSet( UVTableName, QStringList )
+    NMPropertyGetSet( OutputImageFileName, QStringList )
     NMPropertyGetSet( InputNodata, QList<QStringList> )
 
 public:
@@ -80,7 +80,7 @@ protected:
     		const QMap<QString, NMModelComponent*>& repo);
 
     
-    QStringList mUVTableName;
+    QStringList mOutputImageFileName;
     QList<QStringList> mInputNodata;
 
 };

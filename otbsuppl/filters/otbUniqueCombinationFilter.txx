@@ -706,7 +706,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         return "";
     }
 
-    char nam[length+1];
+    const int arlen = length+1;
+    char* nam = new char(arlen);
     for (int i=0; i < length; ++i)
     {
         if (i == 0)
@@ -742,6 +743,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
     nam[length] = '\0';
     std::string ret = nam;
+    delete nam;
 
     return ret;
 }

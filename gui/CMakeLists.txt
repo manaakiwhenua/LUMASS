@@ -150,27 +150,52 @@ file(GLOB QT_SRC
 list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 
 # have taken out ${QT_LIBRARIES} here
-set(LUMASS_LINKLIBS
-        Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
-        #Qt5Declarative Qt5Qml Qt5Quick
-        QtPropertyBrowser
-        NMModFrame
-        #QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
-        ${VTK_LIBRARIES}
-        ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-        ${OPENGL_glu_LIBRARY}
-        #${SQLITE3_LIBRARY}
-		SQLite
-                SQLiteExtFunc
-        #tokyocabinet
-)
+if(WIN32)
+	set(LUMASS_LINKLIBS
+			Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+			#Qt5Declarative Qt5Qml Qt5Quick
+			QtPropertyBrowser
+			NMModFrame
+			#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
+			${VTK_LIBRARIES}
+			${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+			${OPENGL_glu_LIBRARY}
+			#${SQLITE3_LIBRARY}
+			SQLite
+			#SQLiteExtFunc
+	)
 
-set(LUMASS_DEPLIBS
-    NMModFrame
-    QtPropertyBrowser 
-	SQLite
-        SQLiteExtFunc
-)
+	set(LUMASS_DEPLIBS
+		NMModFrame
+		QtPropertyBrowser 
+		SQLite
+		#SQLiteExtFunc
+	)
+else()
+	set(LUMASS_LINKLIBS
+			Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+			#Qt5Declarative Qt5Qml Qt5Quick
+			QtPropertyBrowser
+			NMModFrame
+			#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
+			${VTK_LIBRARIES}
+			${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+			${OPENGL_glu_LIBRARY}
+			#${SQLITE3_LIBRARY}
+			SQLite
+			SQLiteExtFunc
+	)
+
+	set(LUMASS_DEPLIBS
+		NMModFrame
+		QtPropertyBrowser 
+		SQLite
+			SQLiteExtFunc
+	)
+endif()
+
+
+
 
 IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)

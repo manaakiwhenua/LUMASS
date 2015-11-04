@@ -263,10 +263,10 @@ void RATBandMathImageFilter<TImage>
 
         for (int c=0; c < m_VTabAttr.at(t).size(); ++c)
         {
-            std::string col_name = m_VTabAttr.at(t).at(c);
+            std::string col_name = tab->GetColumnName(m_VTabAttr.at(t).at(c));
             if (col_name.compare(colnames[0]) != 0)
             {
-                colnames.push_back(tab->GetColumnName(col_name));
+                colnames.push_back(col_name);
             }
 
             std::map<long, double> col_map;
@@ -584,8 +584,6 @@ template< typename TImage >
 void RATBandMathImageFilter<TImage>
 ::AfterThreadedGenerateData()
 {
-  std::cout << "\tBandMath: Done with the calucation!\n" << std::endl;
-
   unsigned int nbThreads = this->GetNumberOfThreads();
   unsigned int i;
   

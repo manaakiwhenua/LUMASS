@@ -1622,6 +1622,8 @@ void OtbModellerWin::test()
 
     std::srand(std::time(0));
 
+    std::map<int, int> amap;
+
 
     unsigned int maxIdx = itk::NumericTraits<unsigned int>::max();
 
@@ -1633,6 +1635,7 @@ void OtbModellerWin::test()
     for (int i=0; i < 35; ++i)
     {
         unsigned int dim = ::rand() % 200 + 3;
+        amap.insert(std::pair<int, int>(dim, i));
 
         if (accIdx <= maxIdx / dim)
         {
@@ -1657,6 +1660,14 @@ void OtbModellerWin::test()
         }
     }
 
+
+    NMDebugAI(<< "\nrandom dims in asc order: " << std::endl);
+    std::map<int,int>::iterator it = amap.begin();
+    while (it != amap.end())
+    {
+        NMDebugAI(<< "#" << it->second << " dim=" << it->first << std::endl);
+        ++it;
+    }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

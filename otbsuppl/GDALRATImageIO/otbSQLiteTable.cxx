@@ -861,11 +861,9 @@ SQLiteTable::GreedyNumericFetch(const std::vector<std::string> &columns,
         for (int c=1; c < columns.size() && storeIter != valstore.end(); ++c, ++storeIter)
         {
             const double val = sqlite3_column_double(stmt, c);
-            (*storeIter).insert(std::pair<long, double>(id, val));
+            storeIter->second.insert(std::pair<long, double>(id, val));
         }
-
     }
-
 
     return true;
 }
@@ -2751,6 +2749,7 @@ SQLiteTable::PopulateTableAdmin()
                << " records" << std::endl);
     sqlite3_finalize(stmt_exists);
 
+    NMDebugCtx(_ctxotbtab, << "done!");
     return true;
 }
 

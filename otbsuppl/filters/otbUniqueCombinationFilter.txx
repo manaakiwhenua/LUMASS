@@ -199,6 +199,25 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
 }
 
+template< class TInputImage, class TOutputImage >
+void
+UniqueCombinationFilter< TInputImage, TOutputImage >
+::determineProcOrder()
+{
+    std::multimap<long, int> orderMap;
+    for (int i=0; i < m_vInRAT.size(); ++i)
+    {
+        orderMap.insert(std::pair<long ,int>(m_vInRAT.at(i)->GetNumRows(), i));
+    }
+
+    m_ProcOrder.clear();
+    std::multimap<long, int>::iterator it = orderMap.begin();
+    while (it != orderMap.end())
+    {
+        m_ProcOrder.push_back(it->second);
+        ++it;
+    }
+}
 
 template< class TInputImage, class TOutputImage >
 void
@@ -274,6 +293,9 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     ///   - join the CombineTwo result table onto the new BandMath output
     ///
     ///   - determine the next n images for the next iteration
+    ///
+
+    determineProcOrder();
 
     // set up objects for the first pipline
     typedef typename otb::CombineTwoFilter<TInputImage, TOutputImage> CombFilterType;
@@ -285,7 +307,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typename CombFilterType::Pointer ctFilter = CombFilterType::New();
     otb::SQLiteTable::Pointer uvTable = otb::SQLiteTable::New();
     uvTable->SetUseSharedCache(false);
-    otb::SQLiteTable::Pointer uvTable2 = 0;
 
 
     std::string temppath = std::tmpnam(0);//"/home/alex/garage/testing/LENZ25/";
@@ -306,7 +327,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
 
     int numIter = 1;
-    OutputPixelType accIdx = static_cast<OutputPixelType>(m_vInRAT.at(0)->GetNumRows());
+    OutputPixelType accIdx = static_cast<OutputPixelType>(m_vInRAT.at(m_ProcOrder.at(0))->GetNumRows());
     int fstImg = 0;
     int lastImg = this->nextUpperIterationIdx(static_cast<unsigned int>(fstImg), accIdx);
     int pos = fstImg;
@@ -314,13 +335,17 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     std::vector<std::string> names;
     std::vector<std::string> doneNames;
 
-    float progrChunk = 0.33f / (float)nbRAT;
+    float progr = 0.0f;
+    float chunk;
 
     while (lastImg < nbRAT && !this->GetAbortGenerateData())
     {
         // ------------------------------------------------------------------------
         //      SET UP THE COMBINE-TWO-FILTER  - THE WORKHORSE OF THE ANALYSIS
         // ------------------------------------------------------------------------
+
+        chunk = (float)(lastImg - fstImg + 1) / (float)nbRAT;
+        chunk *= 0.33;
 
         // do  the combinatorial analysis ...
         NMDebugAI( << ">>>>> Iteration " << numIter << " <<<<<<" << std::endl);
@@ -329,21 +354,21 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         for (int i=fstImg; i <= lastImg; ++i, ++pos)
         {
-            ctFilter->SetInput(pos, m_InputImages.at(i));
-            ctFilter->setRAT(pos, m_vInRAT.at(i));
+            ctFilter->SetInput(pos, m_InputImages.at(m_ProcOrder.at(i)));
+            ctFilter->setRAT(pos, m_vInRAT.at(m_ProcOrder.at(i)));
 
-            if (i < m_InputNodata.size())
+            if (m_ProcOrder.at(i) < m_InputNodata.size())
             {
-                nodata.push_back(static_cast<long long>(m_InputNodata.at(i)));
+                nodata.push_back(static_cast<long long>(m_InputNodata.at(m_ProcOrder.at(i))));
             }
             else
             {
                nodata.push_back(static_cast<long long>(m_InputNodata.at(m_InputNodata.size()-1)));
             }
 
-            if (i < m_ImageNames.size())
+            if (m_ProcOrder.at(i) < m_ImageNames.size())
             {
-                names.push_back(m_ImageNames.at(i));
+                names.push_back(m_ImageNames.at(m_ProcOrder.at(i)));
             }
             else
             {
@@ -374,7 +399,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         otb::AttributeTable::Pointer tempUvTable = ctFilter->getRAT(0);
         accIdx = ctFilter->GetNumUniqueCombinations();
 
-        this->UpdateProgress(((float)(lastImg+1))*progrChunk);
+        progr += chunk;
+        this->UpdateProgress(progr);
 
         // ------------------------------------------------------------------------
         //          CREATE/UDATE THE NORMALISED UNIQUE VALUE ATTRIBUTE TABLE
@@ -543,7 +569,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // repopulate the table admin structures
         uvTable->PopulateTableAdmin();
 
-        this->UpdateProgress(((float)(lastImg+1))*2.0f*progrChunk);
+        progr += chunk;
+        this->UpdateProgress(progr);
 
         // ------------------------------------------------------------------------
         //      CREATE THE NORMALISED RESULT IMAGE
@@ -602,7 +629,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         NMDebugAI( << "  normalise the image ..." << std::endl);
         normWriter->Update();
 
-        this->UpdateProgress(((float)(lastImg+1))*3.0f*progrChunk);
+        progr += chunk;
+        this->UpdateProgress(progr);
 
         // ------------------------------------------------------------
         //      PREPARE THE NEXT ITERATION STEP
@@ -647,23 +675,25 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         return nbRAT;
     }
 
-    //    cnt = cnt + 1 < nbRAT ? cnt + 1 : nbRAT;
-    //    return cnt;
-
     //IndexType maxIdx = itk::NumericTraits<IndexType>::max();
     OutputPixelType maxIdx = itk::NumericTraits<OutputPixelType>::max();
     while (   cnt < nbRAT
-           && (accIdx <= maxIdx / (m_vInRAT.at(cnt)->GetNumRows() > 0
-                                    ? m_vInRAT.at(cnt)->GetNumRows()
+           && (accIdx <= maxIdx / (m_vInRAT.at(m_ProcOrder.at(cnt))->GetNumRows() > 0
+                                    ? m_vInRAT.at(m_ProcOrder.at(cnt))->GetNumRows()
                                     : 1)
               )
           )
     {
-        accIdx *= m_vInRAT.at(cnt)->GetNumRows();
+        accIdx *= m_vInRAT.at(m_ProcOrder.at(cnt))->GetNumRows();
         ++cnt;
     }
 
-    return cnt-1;
+    if (cnt > idx)
+    {
+        --cnt;
+    }
+
+    return cnt;
 }
 
 template< class TInputImage, class TOutputImage >

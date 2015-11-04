@@ -118,6 +118,7 @@ protected:
     void InternalAllocateOutput();
     std::string getRandomString(int length=15);
     unsigned int nextUpperIterationIdx(unsigned int idx, OutputPixelType& accIdx);
+    void determineProcOrder(void);
 
     std::string m_OutputImageFileName;
     std::vector<AttributeTable::Pointer> m_vInRAT;
@@ -140,6 +141,7 @@ protected:
     std::vector<typename InputImageType::Pointer> m_InputImages;
     std::vector<InputPixelType> m_InputNodata;
     std::vector<std::string> m_ImageNames;
+    std::vector<int> m_ProcOrder;
 
 
 private:

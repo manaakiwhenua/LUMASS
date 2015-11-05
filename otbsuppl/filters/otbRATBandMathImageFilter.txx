@@ -235,6 +235,13 @@ void RATBandMathImageFilter<TImage>
 	this->Modified();
 }
 
+template<class TImage>
+void RATBandMathImageFilter<TImage>
+::ResetPipeline()
+{
+    m_TableColumnCache.clear();
+}
+
 
 template<class TImage>
 void RATBandMathImageFilter<TImage>

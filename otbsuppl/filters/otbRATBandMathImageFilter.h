@@ -175,6 +175,8 @@ public:
   itkGetMacro(UseTableColumnCache, bool)
   itkBooleanMacro(UseTableColumnCache)
 
+  void ResetPipeline();
+
 protected :
   RATBandMathImageFilter();
   virtual ~RATBandMathImageFilter();

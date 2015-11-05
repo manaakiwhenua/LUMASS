@@ -71,13 +71,15 @@ class NMMODFRAME_EXPORT NMRATBandMathImageFilterWrapper : public NMProcess
 	Q_PROPERTY(QList<QList<QStringList> > InputTableVarNames READ getInputTableVarNames WRITE setInputTableVarNames)
 	Q_PROPERTY(QStringList MapExpressions READ getMapExpressions WRITE setMapExpressions )
 	Q_PROPERTY(QStringList NumExpressions READ getNumExpressions WRITE setNumExpressions )
+    Q_PROPERTY(bool UseTableColumnCache READ getUseTableColumnCache WRITE setUseTableColumnCache )
 
 public:
 //	NMPropertyGetSet( InputImgVarNames, QList<QStringList> )
-	NMPropertyGetSet( InputTables, QList<QStringList> );
-	NMPropertyGetSet( InputTableVarNames, QList<QList<QStringList> > );
-	NMPropertyGetSet( MapExpressions, QStringList );
-	NMPropertyGetSet( NumExpressions, QStringList );
+    NMPropertyGetSet( InputTables, QList<QStringList> )
+    NMPropertyGetSet( InputTableVarNames, QList<QList<QStringList> > )
+    NMPropertyGetSet( MapExpressions, QStringList )
+    NMPropertyGetSet( NumExpressions, QStringList )
+    NMPropertyGetSet( UseTableColumnCache, bool )
 
 signals:
 //	void InputImgVarNamesChanged(QList<QStringList>);
@@ -105,6 +107,7 @@ protected:
     void setInternalExpression(QString expression);
     void setInternalNumExpression(unsigned int numExpr);
     void setInternalNthInputName(unsigned int idx, const QString& varName);
+    void setInternalUseTableCache(bool useCache);
 
     std::string ctx;
     QList<QStringList> 		   mInputImgVarNames;
@@ -112,6 +115,7 @@ protected:
     QList<QList<QStringList> > mInputTableVarNames;
     QStringList 			   mMapExpressions;
     QStringList				   mNumExpressions;
+    bool                mUseTableColumnCache;
 
 //    void setTableParams( const QMap<QString,
 //    		NMModelComponent*>& repo);

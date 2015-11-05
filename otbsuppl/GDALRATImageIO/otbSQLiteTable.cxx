@@ -864,6 +864,7 @@ SQLiteTable::GreedyNumericFetch(const std::vector<std::string> &columns,
             storeIter->second.insert(std::pair<long, double>(id, val));
         }
     }
+    sqlite3_finalize(stmt);
 
     return true;
 }

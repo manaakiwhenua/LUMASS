@@ -70,6 +70,13 @@ public:
 			filter->SetNbExpr(numExpr);
 		}
 
+    static void setUseTableColumnCache(itk::ProcessObject::Pointer& otbFilter,
+            bool useCache)
+        {
+            FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
+            filter->SetUseTableColumnCache(useCache);
+        }
+
 	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)//, QString varName)
 		{
@@ -171,6 +178,26 @@ else if (this->mInputNumDimensions == 3)                                        
 }
 
 
+#define callSetUseTableCache( filterPixelType, wrapName ) \
+{ \
+    if (this->mInputNumDimensions == 1) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 1 >::setUseTableColumnCache( \
+                this->mOtbProcess, useCache); \
+    } \
+    else if (this->mInputNumDimensions == 2) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 2 >::setUseTableColumnCache( \
+                this->mOtbProcess, useCache); \
+    } \
+    else if (this->mInputNumDimensions == 3) \
+    { \
+        NMRATBandMathImageFilterWrapper_Internal< filterPixelType, filterPixelType, 3 >::setUseTableColumnCache( \
+                this->mOtbProcess, useCache); \
+    }\
+}
+
+
 #define callSetNthInputName( filterPixelType, wrapName ) \
 { \
     if (this->mInputNumDimensions == 1) \
@@ -207,6 +234,7 @@ NMRATBandMathImageFilterWrapper::NMRATBandMathImageFilterWrapper(QObject* parent
 	this->mInputNumBands = 1;
 	this->mOutputNumBands = 1;
 	this->mParamPos = 0;
+    this->mUseTableColumnCache = false;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 }
 
@@ -245,6 +273,21 @@ NMRATBandMathImageFilterWrapper
 	default:
 		break;
 	}
+}
+
+void
+NMRATBandMathImageFilterWrapper
+::setInternalUseTableCache(bool useCache)
+{
+    if (!this->mbIsInitialised)
+        return;
+
+    switch(this->mInputComponentType)
+    {
+    MacroPerType( callSetUseTableCache, NMRATBandMathImageFilterWrapper_Internal )
+    default:
+        break;
+    }
 }
 
 void
@@ -317,6 +360,8 @@ NMRATBandMathImageFilterWrapper
 		NMDebugAI(<< "no number of expressions given, so we assume,"
 				<< " we've got one expression!" << std::endl);
 	}
+
+    this->setInternalUseTableCache(mUseTableColumnCache);
 
 	// we go through every input image, check, whether a table is
 	// available for this step, and then we identify the

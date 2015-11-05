@@ -243,14 +243,12 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     // (... and hopefully also the same projection - but
     // we don't check that ...)
     IndexType inputSize[2];
-    inputSize[0] = m_InputImages.at(0)->GetLargestPossibleRegion().GetSize(0); //this->GetInput(0)->GetLargestPossibleRegion().GetSize(0);
-    inputSize[1] = m_InputImages.at(0)->GetLargestPossibleRegion().GetSize(1); //this->GetInput(0)->GetLargestPossibleRegion().GetSize(1);
+    inputSize[0] = m_InputImages.at(0)->GetLargestPossibleRegion().GetSize(0);
+    inputSize[1] = m_InputImages.at(0)->GetLargestPossibleRegion().GetSize(1);
 
     // NMDebugAI(<< "nbInputs = " << nbInputs << std::endl);
     for (unsigned int p=0; p < nbInputs; ++p)
     {
-            //        if((inputSize[0] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(0))
-            //           || (inputSize[1] != this->GetInput(p)->GetLargestPossibleRegion().GetSize(1)))
         if((inputSize[0] != m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(0))
            || (inputSize[1] != m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(1)))
           {
@@ -259,8 +257,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
                             << "image #" << p+1 << " is ["
                             << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(0) << ";"
                             << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(1) << "]");
-//                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(0) << ";"
-//                            << this->GetInput(p)->GetLargestPossibleRegion().GetSize(1) << "]");
 
           itk::ExceptionObject e(__FILE__, __LINE__);
           e.SetLocation(ITK_LOCATION);
@@ -269,17 +265,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
           throw e;
           }
     }
-
-    // ======================================================================
-    // ALLOCATE THE OUTPUT IMAGE
-    // ======================================================================
-    //    typename TInputImage::ConstPointer inImg = this->GetInput();
-    //    typename TOutputImage::Pointer outImg = this->GetOutput();
-    //this->InternalAllocateOutput();
-
-    //IndexType lprPixNum = m_InputImages.at(p)->GetLargestPossibleRegion().GetNumberOfPixels();
-    //typename TOutputImage::RegionType outRegion = outImg->GetBufferedRegion();
-
 
     /// here's what we do:
     /// - determine the number of images for the initial iteration
@@ -305,18 +290,21 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
     typename ReaderType::Pointer iterReader = 0;
     typename CombFilterType::Pointer ctFilter = CombFilterType::New();
+    ctFilter->SetReleaseDataFlag(true);
     otb::SQLiteTable::Pointer uvTable = otb::SQLiteTable::New();
     uvTable->SetUseSharedCache(false);
 
 
-    std::string temppath = std::tmpnam(0);//"/home/alex/garage/testing/LENZ25/";
-    int posDiv = 0;
+    std::string temppath = "";
 #ifndef _WIN32
-    posDiv = temppath.rfind('/');
-#else
-    posDiv = temppath.rfind('\\');
-#endif
+    temppath = std::tmpnam(0);
+    int posDiv = temppath.rfind('/');
     temppath = temppath.substr(0, posDiv+1);
+#else
+    char s[MAX_PATH];
+    GetTempPath(MAX_PATH, s);
+    temppath = s;
+#endif
     std::stringstream uvTableName;
     uvTableName << temppath << "uv_" << this->getRandomString(5) << ".ldb";
     if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
@@ -382,7 +370,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         std::stringstream ctTableNameStr;
         ctTableNameStr << temppath << "cttab" << numIter << "_" << this->getRandomString(5) << ".ldb";
         ctFilter->SetOutputTableFileName(ctTableNameStr.str());
-        //ctFilter->SetReleaseDataFlag(true);
+
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
@@ -390,14 +378,23 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
-        //ctWriter->SetInputRAT(ctFilter->getRAT(0));
-        //ctWriter->SetUpdateMode(true);
-        //ctWriter->SetReleaseDataFlag(true);
+        ctWriter->SetReleaseDataFlag(true);
         NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
         ctWriter->Update();
 
         otb::AttributeTable::Pointer tempUvTable = ctFilter->getRAT(0);
         accIdx = ctFilter->GetNumUniqueCombinations();
+
+        for (int d=fstImg; d <= lastImg; ++d)
+        {
+            m_InputImages.at(m_ProcOrder.at(d))->ReleaseData();
+        }
+        ctFilter->GetOutput()->ReleaseData();
+        ctFilter = 0;
+        ctWriter = 0;
+
+
+
 
         progr += chunk;
         this->UpdateProgress(progr);
@@ -629,6 +626,14 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         NMDebugAI( << "  normalise the image ..." << std::endl);
         normWriter->Update();
 
+        imgReader->GetOutput()->ReleaseData();
+        normFilter->GetOutput()->ReleaseData();
+        normWriter = 0;
+        normFilter = 0;
+        imgReader = 0;
+        sqlTemp->CloseTable();
+
+
         progr += chunk;
         this->UpdateProgress(progr);
 
@@ -640,23 +645,27 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         lastImg = this->nextUpperIterationIdx(fstImg, accIdx);
         ++numIter;
 
-        iterReader = ReaderType::New();
-        iterReader->SetReleaseDataFlag(true);
-        iterReader->RATSupportOn();
-        iterReader->SetRATType(otb::AttributeTable::ATTABLE_TYPE_SQLITE);
-        iterReader->SetFileName(normImgNameStr.str());
-
-        ctFilter = CombFilterType::New();
-        ctFilter->SetReleaseDataFlag(true);
-        ctFilter->SetInput(0, iterReader->GetOutput());
-        ctFilter->setRAT(0, static_cast<otb::AttributeTable*>(uvTable.GetPointer()));
-
         nodata.clear();
         names.clear();
-        nodata.push_back(0);
-        names.push_back("uvimg");
         pos = 1;
+        if (lastImg < nbRAT)
+        {
+            iterReader = ReaderType::New();
+            iterReader->SetReleaseDataFlag(true);
+            iterReader->RATSupportOn();
+            iterReader->SetRATType(otb::AttributeTable::ATTABLE_TYPE_SQLITE);
+            iterReader->SetFileName(normImgNameStr.str());
+
+            ctFilter = CombFilterType::New();
+            ctFilter->SetReleaseDataFlag(true);
+            ctFilter->SetInput(0, iterReader->GetOutput());
+            ctFilter->setRAT(0, static_cast<otb::AttributeTable*>(uvTable.GetPointer()));
+
+            nodata.push_back(0);
+            names.push_back("uvimg");
+        }
     }
+    uvTable->CloseTable();
 
     this->UpdateProgress(1.0f);
     NMDebugCtx(ctx, << "done!");

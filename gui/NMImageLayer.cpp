@@ -484,6 +484,8 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     }
 }
 
+
+
 void
 NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)

@@ -543,19 +543,19 @@ void RATBandMathImageFilter<TImage>
     m_VAttrValues.at(i).resize(nbInputImages);
     m_VParser.at(i)->SetExpr(m_Expression);
 
-    // debug
-    if (i==0)
-    {
-    //std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
-    std::cout << "\t>>> no. of vars: " << m_NbVar << std::endl;
-    std::cout << "\t>>> parser expression: " << m_VParser[i]->GetExpr() << std::endl;
-    }
+//    // debug
+//    if (i==0)
+//    {
+//    //std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
+//    std::cout << "\t>>> no. of vars: " << m_NbVar << std::endl;
+//    std::cout << "\t>>> parser expression: " << m_VParser[i]->GetExpr() << std::endl;
+//    }
   
     //std::cout << "image loop ----------------------------------------------" << std::endl << std::endl;
     for(j=0; j < nbInputImages; j++)
     {
       m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
-      if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
+//      if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
 
       //attribute table support
       if (m_VRAT[0].size() > 0)

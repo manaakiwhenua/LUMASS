@@ -1477,7 +1477,9 @@ void ModelComponentList::mapUniqueValues()
 	{
 		iL = qobject_cast<NMImageLayer*>(l);
 		otb::AttributeTable::Pointer rat = iL->getRasterAttributeTable(1);
-		if (rat.IsNull())
+        if (    rat.IsNull()
+            ||  rat->GetNumRows() > 256
+           )
 		{
 			return;
 		}

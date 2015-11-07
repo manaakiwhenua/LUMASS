@@ -19,5 +19,6 @@
         <file alias="model-pause-icon.png">resources/model-pause.png</file>
         <file alias="model-reset-icon.png">resources/model-reset.png</file>
         <file alias="model-stop-icon.png">resources/model-stop.png</file>
+        <file alias="SQLite_Logo_4.png">resources/SQLite_Logo_4.png</file>
     </qresource>
 </RCC>

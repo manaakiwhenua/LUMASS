@@ -36,7 +36,7 @@
 #include "NMUniqueCombinationFilterWrapper.h"
 #include "NMCombineTwoFilterWrapper.h"
 #include "NMExternalExecWrapper.h"
-#include "NMSQLProcessor.h"
+#include "NMSQLiteProcessorWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -154,7 +154,7 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     }
     else if (alias.compare("SQLProcessor") == 0)
     {
-        return "NMSQLProcessor";
+        return "NMSQLiteProcessorWrapper";
     }
     else return proc;
 }
@@ -217,9 +217,9 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     {
         proc =  new NMExternalExecWrapper(this);
     }
-    else if (procClass.compare("NMSQLProcessor") == 0)
+    else if (procClass.compare("NMSQLiteProcessorWrapper") == 0)
     {
-        proc =  new NMSQLProcessor(this);
+        proc =  new NMSQLiteProcessorWrapper(this);
     }
     else
         proc =  0;

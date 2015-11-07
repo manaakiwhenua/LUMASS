@@ -33,7 +33,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
 	ctx = "NMProcCompList";
 
     this->addItem(QString::fromLatin1("CastImage"));
-    this->addItem(QString::fromLatin1("CombineTwo"));
+    //this->addItem(QString::fromLatin1("CombineTwo"));
     this->addItem(QString::fromLatin1("CostDistanceBuffer"));
     this->addItem(QString::fromLatin1("DataBuffer"));
     this->addItem(QString::fromLatin1("FocalDistanceWeight"));

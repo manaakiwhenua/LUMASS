@@ -44,19 +44,23 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     mDoubleLineHeight = 30;
     mMaxTextWidth = 150;
 
-    if (this->objectName().contains("Reader", Qt::CaseInsensitive))
-    {
-        mIcon.load(":data-read-icon.png");
-    }
-    else if (this->objectName().contains("Writer", Qt::CaseInsensitive))
-    {
-        mIcon.load(":data-write-icon.png");
-    }
-    else if (this->objectName().contains("DataBuffer", Qt::CaseInsensitive))
-    {
-        mIcon.load(":image_layer.png");
-    }
-    else
+//    if (this->objectName().contains("Reader", Qt::CaseInsensitive))
+//    {
+//        mIcon.load(":data-read-icon.png");
+//    }
+//    else if (this->objectName().contains("Writer", Qt::CaseInsensitive))
+//    {
+//        mIcon.load(":data-write-icon.png");
+//    }
+//    else if (this->objectName().contains("DataBuffer", Qt::CaseInsensitive))
+//    {
+//        mIcon.load(":image_layer.png");
+//    }
+//    else if (this->objectName().contains("SQL", Qt::CaseInsensitive))
+//    {
+//        mIcon.load(":SQLite_Logo_4.png");
+//    }
+//    else
     {
         mIcon.load(":model-icon.png");
     }
@@ -231,6 +235,10 @@ void NMProcessComponentItem::setTitle(const QString& title)
     else if (title.contains("DataBuffer", Qt::CaseInsensitive))
     {
         mIcon.load(":image_layer.png");
+    }
+    else if (title.contains("SQL", Qt::CaseInsensitive))
+    {
+        mIcon.load(":SQLite_Logo_4.png");
     }
     else
     {

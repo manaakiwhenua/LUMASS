@@ -1,0 +1,24 @@
+# LUMASS otb::SQLiteProcessor wrapper profile
+# recognised (filter variable) types: double, long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+Year                        = 2015
+WrapperClassName            = NMSQLiteProcessorWrapper
+FileDate                    = 2015-11-08
+Author                      = Alexander Herzig
+FilterClassFileName         = otbSQLiteProcessor
+FilterTypeDef               = otb::SQLiteProcessor<InImgType, OutImgType>
+RATGetSupport               = 1
+RATSetSupport               = 1
+ForwardInputUserIDs         = SetImageNames
+Property_1                  = SQLStatement:1:string
+

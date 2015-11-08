@@ -204,6 +204,7 @@ public:
 
 
     QVariant getParameter(const QString& property);
+    QStringList getPropertyList(void);
 
 
 public slots:

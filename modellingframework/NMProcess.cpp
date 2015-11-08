@@ -29,6 +29,8 @@
 #include "NMModelController.h"
 
 #include <QDateTime>
+#include <QMetaObject>
+#include <QMetaProperty>
 
 #include "otbImage.h"
 #include "otbImageIOBase.h"
@@ -189,6 +191,19 @@ NMProcess::mapHostIndexToPolicyIndex(unsigned short step,
 	return idx;
 }
 
+QStringList
+NMProcess::getPropertyList(void)
+{
+    QStringList propList;
+    const QMetaObject* meta = this->metaObject();
+    for (int i=0; i < meta->propertyCount(); ++i)
+    {
+        QMetaProperty prop = meta->property(i);
+        propList << prop.name();
+    }
+
+    return propList;
+}
 
 QVariant
 NMProcess::getParameter(const QString& property)

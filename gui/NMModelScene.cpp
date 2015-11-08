@@ -106,7 +106,8 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
             if (url.isLocalFile())
             {
                 fileName = url.toLocalFile();
-                break;
+                NMDebugAI(<< fileName.toStdString() << std::endl);
+                //break;
             }
         }
 
@@ -118,7 +119,7 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
             ||  !fileName.isEmpty()
            )
         {
-            NMDebug(<< " - supported!" << std::endl);
+            NMDebug(<< mimeText.toStdString() << " - supported!" << std::endl);
             event->acceptProposedAction();
         }
         else
@@ -133,20 +134,12 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
 void
 NMModelScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
 {
-//    QGraphicsScene::dragMoveEvent(event);
-//    NMDebugCtx(ctx, << "...");
-    if (event->mimeData()->hasFormat("text/plain"))
+    if (    event->mimeData()->hasFormat("text/plain")
+        ||  event->mimeData()->hasUrls()
+       )
+    {
         event->acceptProposedAction();
-
-//    NMDebugCtx(ctx, << "done!");
-//    else
-//    {
-//        QGraphicsItem* i = this->getComponentItem(event->mimeData()->text());
-//        if (i != 0)
-//        {
-//            event->acceptProposedAction();
-//        }
-//    }
+    }
 }
 
 void
@@ -340,13 +333,14 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         // do something depending on the source of the object
 
         // internal drag'n'drop for copying or moving of objects
-        if (dropItem.isEmpty())
-        {
-            NMDebugAI(<< "nothing to be done - no drop item provided!" << std::endl);
-            NMDebugCtx(ctx, << "done!");
-            return;
-        }
-        else if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
+        //        if (dropItem.isEmpty())
+        //        {
+        //            NMDebugAI(<< "nothing to be done - no drop item provided!" << std::endl);
+        //            NMDebugCtx(ctx, << "done!");
+        //            return;
+        //        }
+        //else
+        if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
         {
             //event->acceptProposedAction();
             QPointF dropPos = event->scenePos();
@@ -442,9 +436,11 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             {
                 // check whether the procItem has got a fileName property
                 NMModelComponent* comp = NMModelController::getInstance()->getComponent(procItem->getTitle());
-                if (comp != 0)
+                NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(comp);
+                NMProcess* proc = itComp->getProcess();
+                if (itComp != 0)
                 {
-                    QStringList propList = comp->getPropertyList();
+                    QStringList propList = proc->getPropertyList();
                     QStringList fnProps;
                     foreach(const QString& p, propList)
                     {
@@ -460,14 +456,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                         QStringList fileNames;
                         foreach(const QUrl& url, event->mimeData()->urls())
                         {
-                            if (    url.isLocalFile()
-                                &&  (   url.toLocalFile().endsWith(QString::fromLatin1("lmv"))
-                                     || url.toLocalFile().endsWith(QString::fromLatin1("lmx"))
-                                    )
-                               )
-                            {
                                 fileNames << url.toLocalFile();
-                            }
                         }
 
                         QString theProperty = fnProps.at(0);
@@ -483,11 +472,21 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
                         if (bOk)
                         {
-                            QVariant propVal = comp->property(theProperty.toStdString().c_str());
+                            QVariant propVal = proc->property(theProperty.toStdString().c_str());
                             if (propVal.type() == QVariant::StringList)
                             {
-                                QVariant newVal = QVariant::fromValue(fileNames);
-                                comp->setProperty(theProperty.toStdString().c_str(), newVal);
+                                QStringList fnList = propVal.toStringList();
+                                if (event->modifiers() & Qt::ControlModifier)
+                                {
+                                    fnList.append(fileNames);
+                                }
+                                else
+                                {
+                                    fnList = fileNames;
+                                }
+
+                                QVariant newVal = QVariant::fromValue(fnList);
+                                proc->setProperty(theProperty.toStdString().c_str(), newVal);
                             }
                         }
                     }

@@ -107,6 +107,8 @@ public:
     QString getDescription()
     	{return this->mDescription;}
 
+    QStringList getPropertyList(void);
+
     /*! Allows for recursive identification of
      *  components, which belong to the same
      *  host component, i.e. which are part of the

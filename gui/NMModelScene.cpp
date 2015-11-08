@@ -30,6 +30,7 @@
 #include <QGraphicsLineItem>
 #include <QMessageBox>
 #include <QDebug>
+#include <QInputDialog>
 
 #include "NMModelScene.h"
 #include "NMModelViewWidget.h"
@@ -102,11 +103,7 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
         QString fileName;
         foreach(const QUrl& url, event->mimeData()->urls())
         {
-            if (    url.isLocalFile()
-                &&  (   url.toLocalFile().endsWith(QString::fromLatin1("lmv"))
-                     || url.toLocalFile().endsWith(QString::fromLatin1("lmx"))
-                    )
-               )
+            if (url.isLocalFile())
             {
                 fileName = url.toLocalFile();
                 break;
@@ -408,30 +405,92 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         }
         else if (event->mimeData()->hasUrls())
         {
-            // we grab the first we can get hold of
+            QGraphicsItem* item = this->itemAt(mMousePos, this->views()[0]->transform());
+            NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+
+            // we grab the first we can get hold of and check the ending ...
             QString fileName;
-            foreach(const QUrl& url, event->mimeData()->urls())
+            if (event->mimeData()->urls().at(0).isLocalFile())
             {
-                if (    url.isLocalFile()
-                    &&  (   url.toLocalFile().endsWith(QString::fromLatin1("lmv"))
-                         || url.toLocalFile().endsWith(QString::fromLatin1("lmx"))
-                        )
-                   )
-                {
-                    fileName = url.toLocalFile();
-                    break;
-                }
+                fileName = event->mimeData()->urls().at(0).toLocalFile();
             }
 
-            if (!fileName.isEmpty())
-            {
-                QFileInfo finfo(fileName);
-                if (finfo.isFile())
-                {
-                    NMDebugAI(<< "gonna import model file: " << fileName.toStdString() << std::endl);
-                    //event->acceptProposedAction();
+            // =============================================================
+            // DROPED LUMASS MODEL FILE
+            // =============================================================
 
-                    emit signalModelFileDropped(fileName);
+            if (    fileName.endsWith(QString::fromLatin1("lmv"))
+                ||  fileName.endsWith(QString::fromLatin1("lmx"))
+               )
+            {
+                if (!fileName.isEmpty())
+                {
+                    QFileInfo finfo(fileName);
+                    if (finfo.isFile())
+                    {
+                        NMDebugAI(<< "gonna import model file: " << fileName.toStdString() << std::endl);
+                        //event->acceptProposedAction();
+
+                        emit signalModelFileDropped(fileName);
+                    }
+                }
+            }
+            // =============================================================
+            // DROPED LIST OF IMAGE/TABLE FILENAMES
+            // =============================================================
+            else if (procItem != 0)
+            {
+                // check whether the procItem has got a fileName property
+                NMModelComponent* comp = NMModelController::getInstance()->getComponent(procItem->getTitle());
+                if (comp != 0)
+                {
+                    QStringList propList = comp->getPropertyList();
+                    QStringList fnProps;
+                    foreach(const QString& p, propList)
+                    {
+                        if (p.contains(QString::fromLatin1("FileName"), Qt::CaseInsensitive))
+                        {
+                            fnProps << p;
+                        }
+                    }
+
+
+                    if (fnProps.size() > 0)
+                    {
+                        QStringList fileNames;
+                        foreach(const QUrl& url, event->mimeData()->urls())
+                        {
+                            if (    url.isLocalFile()
+                                &&  (   url.toLocalFile().endsWith(QString::fromLatin1("lmv"))
+                                     || url.toLocalFile().endsWith(QString::fromLatin1("lmx"))
+                                    )
+                               )
+                            {
+                                fileNames << url.toLocalFile();
+                            }
+                        }
+
+                        QString theProperty = fnProps.at(0);
+                        bool bOk = true;
+                        if (fnProps.size() > 1)
+                        {
+
+                            theProperty = QInputDialog::getItem(0,
+                                                                QString::fromLatin1("Set Filenames"),
+                                                                QString::fromLatin1("Select target property:"),
+                                                                fnProps, 0, false, &bOk);
+                        }
+
+                        if (bOk)
+                        {
+                            QVariant propVal = comp->property(theProperty.toStdString().c_str());
+                            if (propVal.type() == QVariant::StringList)
+                            {
+                                QVariant newVal = QVariant::fromValue(fileNames);
+                                comp->setProperty(theProperty.toStdString().c_str(), newVal);
+                            }
+                        }
+                    }
                 }
             }
         }

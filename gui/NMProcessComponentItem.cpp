@@ -239,6 +239,7 @@ void NMProcessComponentItem::setTitle(const QString& title)
     else if (title.contains("SQL", Qt::CaseInsensitive))
     {
         mIcon.load(":SQLite_Logo_4.png");
+        mIcon = mIcon.scaledToWidth(64, Qt::SmoothTransformation);
     }
     else
     {

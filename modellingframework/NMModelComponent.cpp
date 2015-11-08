@@ -15,6 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
+
+#include <QMetaObject>
+#include <QMetaProperty>
+
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
 #include "NMDataComponent.h"
@@ -44,6 +48,20 @@ void NMModelComponent::initAttributes(void)
 
 NMModelComponent::~NMModelComponent(void)
 {
+}
+
+QStringList
+NMModelComponent::getPropertyList(void)
+{
+    QStringList propList;
+    const QMetaObject* meta = this->metaObject();
+    for (int i=0; i < meta->propertyCount(); ++i)
+    {
+        QMetaProperty prop = meta->property(i);
+        propList << prop.name();
+    }
+
+    return propList;
 }
 
 void

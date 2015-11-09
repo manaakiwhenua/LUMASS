@@ -55,5 +55,5 @@ source: GNOME Icon Theme <http://art.gnome.org>
 license: http://creativecommons.org/licenses/GPL/2.0/
 
 --- lumass/gui/resources/SQLite_Logo_4.png
-source: https://commons.wikimedia.org/wiki/File:SQLite_Logo_4.png
+adapted from source: https://commons.wikimedia.org/wiki/File:SQLite_Logo_4.png
 license: public domain

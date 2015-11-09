@@ -491,8 +491,10 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
 
+
+
 	// call the base class implementation to do datatype agnostic stuff
-	NMLayer::selectionChanged(newSel, oldSel);
+    //NMLayer::selectionChanged(newSel, oldSel);
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);

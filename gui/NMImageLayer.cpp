@@ -491,10 +491,78 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
 
+//    mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
+//    vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
+//    vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
+//    vtkSmartPointer<vtkLongArray> scalars = vtkSmartPointer<vtkLongArray>::New();
+
+//    int selcnt = 0;
+//    foreach(const QItemSelectionRange& range, newSel)
+//    {
+//        const int top = range.top();
+//        const int bottom = range.bottom();
+//        for (int row=top; row<=bottom; ++row)
+//        {
+//            ++selcnt;
+//        }
+//    }
+//    selCellIds->SetNumberOfIds(selcnt);
+//    scalars->SetNumberOfTuples(selcnt);
+//    clrtab->SetNumberOfTableValues(selcnt);
+
+//    //this->printSelRanges(newSel, "incoming update selection");
+
+//    int clrcnt = 0;
+//    foreach(const QItemSelectionRange& range, newSel)
+//    {
+//        const int top = range.top();
+//        const int bottom = range.bottom();
+//        for (int row=top; row<=bottom; ++row)
+//        {
+//            scalars->SetValue(clrcnt, clrcnt);
+//            selCellIds->SetId(clrcnt, row);
+//            clrtab->SetTableValue(clrcnt, 1, 0, 0);
+//            ++clrcnt;
+//        }
+//    }
+
+//    //NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
+
+//    if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
+//    {
+//        NMDebugAI(<< "removed old selection" << std::endl);
+//        this->mRenderer->RemoveActor(mSelectionActor);
+//    }
+
+//    vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
+//    extractor->SetInputData(mDataSet);
+//    extractor->SetCellList(selCellIds);
+
+//    vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
+//    geoFilter->SetInputConnection(extractor->GetOutputPort());
+//    geoFilter->Update();
+
+//    mCellSelection = vtkSmartPointer<vtkPolyData>::New();
+
+//    mCellSelection->SetPoints(geoFilter->GetOutput()->GetPoints());
+//    mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
+//    mCellSelection->GetCellData()->SetScalars(scalars);
+
+//    //	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
+//    //			<< " cells in selection" << std::endl);
+
+//    mSelectionMapper->SetInputData(mCellSelection);
+//    mSelectionMapper->SetLookupTable(clrtab);
+
+//    vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
+//    a->SetMapper(mSelectionMapper);
+
+//    mSelectionActor = a;
+//    mRenderer->AddActor(a);
 
 
 	// call the base class implementation to do datatype agnostic stuff
-    //NMLayer::selectionChanged(newSel, oldSel);
+    NMLayer::selectionChanged(newSel, oldSel);
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);

@@ -716,18 +716,18 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
 
     const int arlen = length+1;
-    char* nam = new char(arlen);
+    char* nam = new char[arlen];
     for (int i=0; i < length; ++i)
     {
         if (i == 0)
         {
             if (::rand() % 2 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = static_cast<char>(::rand() % 26 + 65);
             }
             else
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = static_cast<char>(::rand() % 26 + 97);
             }
         }
         else
@@ -738,21 +738,21 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             }
             else if (::rand() % 5 == 0)
             {
-                nam[i] = ::rand() % 26 + 65;
+                nam[i] = static_cast<char>(::rand() % 26 + 65);
             }
             else if (::rand() % 3 == 0)
             {
-                nam[i] = ::rand() % 26 + 97;
+                nam[i] = static_cast<char>(::rand() % 26 + 97);
             }
             else
             {
-                nam[i] = ::rand() % 10 + 48;
+                nam[i] = static_cast<char>(::rand() % 10 + 48);
             }
         }
     }
     nam[length] = '\0';
     std::string ret = nam;
-    delete nam;
+    delete[] nam;
 
     return ret;
 }

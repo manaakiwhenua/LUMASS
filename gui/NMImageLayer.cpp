@@ -37,6 +37,7 @@
 #include <QtCore>
 #include <QtConcurrent>
 #include <QInputDialog>
+#include <QMessageBox>
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -722,6 +723,18 @@ NMImageLayer::setFileName(QString filename)
 		return false;
 	}
     this->mReader->getInternalProc()->ReleaseDataFlagOn();
+
+    if (this->mReader->getNumberOfOverviews() == 0)
+    {
+        NMWarn(ctxNMImageLayer, << "No overviews present for this layer!");
+        QMessageBox::StandardButton yesno =
+                QMessageBox::question(0, QString::fromLatin1("Overviews missing"),
+                                      QString::fromLatin1("Do you want to build overviews for this image?"));
+        if (yesno == QMessageBox::Yes)
+        {
+            mReader->buildOverviews("NEAREST");
+        }
+    }
 
     // get original image attributes before we muck
     // around with scaling and overviews

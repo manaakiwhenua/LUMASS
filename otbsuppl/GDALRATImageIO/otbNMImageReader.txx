@@ -210,6 +210,21 @@ void NMImageReader<TOutputImage>
 //    }
 //}
 
+
+template <class TOutputImage>
+void
+NMImageReader<TOutputImage>
+::BuildOverviews(const std::string& method)
+{
+    GDALRATImageIO* gio = static_cast<GDALRATImageIO*>(this->GetImageIO());
+    if (gio == 0)
+    {
+        return;
+    }
+
+    gio->BuildOverviews(method);
+}
+
 template <class TOutputImage>
 void
 NMImageReader<TOutputImage>

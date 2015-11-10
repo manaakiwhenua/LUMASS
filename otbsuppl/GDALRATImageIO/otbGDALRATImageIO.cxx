@@ -1599,17 +1599,41 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
         return;
     }
 
-    if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+    // don't know whether the DS was opened in update mode or not
+    // so to be sure we can write to it, we just close it and
+    // re-open it read-write
+    bool bopen = false;
+    if (m_Dataset.IsNotNull())
     {
+        bopen = true;
+        m_Dataset = 0;
+    }
+
+    GDALDataset* ds = 0;
+    //if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+    {
+        //        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+        //        if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+        //        {
+        //            itkWarningMacro(<< "Failed opening dataset for overview generation!");
+        //            return;
+        //        }
         m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
         if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
         {
-            std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+            itkWarningMacro(<< "Failed opening dataset for overview generation!");
+            // in case the data set was open before we tried building overivews,
+            // we try to re-opening it again in ReadOnly mode (note: many drivers don't
+            // support writing)
+            if (bopen)
+            {
+                m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+            }
             return;
         }
-     }
+        ds = m_Dataset->GetDataSet();
+    }
 
-    GDALDataset* ds = m_Dataset->GetDataSet();
     if (ds->GetRasterCount() == 0)
     {
         return;

@@ -310,6 +310,27 @@ public:
         }
     }
 
+    static void
+        buildOverviews(itk::ProcessObject* procObj, unsigned int numBands,
+                   const std::string& resamplingType, bool rgbMode)
+    {
+        if (numBands == 1)
+        {
+            ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            r->BuildOverviews(resamplingType);
+        }
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
+            r->BuildOverviews(resamplingType);
+        }
+        else
+        {
+            VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
+            r->BuildOverviews(resamplingType);
+        }
+    }
+
 
     static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
                                  unsigned int numBands, int ovvidx, int* userLPR,
@@ -711,6 +732,27 @@ public:
      }
 
 
+    /*! Macro for setting the RAT type to be read upon fetch
+     */
+    #define CallBuildOverviews( PixelType ) \
+    {\
+        switch (this->mOutputNumDimensions) \
+        { \
+        case 1: \
+            FileReader<PixelType, 1 >::buildOverviews( \
+                    this->mOtbProcess, this->mOutputNumBands, resamplingType, mRGBMode); \
+            break; \
+        case 3: \
+            FileReader<PixelType, 3 >::buildOverviews( \
+                    this->mOtbProcess, this->mOutputNumBands, resamplingType, mRGBMode); \
+            break; \
+        default: \
+            FileReader<PixelType, 2 >::buildOverviews( \
+                    this->mOtbProcess, this->mOutputNumBands, resamplingType, mRGBMode); \
+        }\
+     }
+
+
 	/* Helper macro for calling the right class to fetch the attribute table
 	 * from the reader
 	 */
@@ -1009,6 +1051,27 @@ bool NMImageReader::initialise()
 
 	return ret;
 }
+
+void
+NMImageReader::buildOverviews(const std::string& resamplingType)
+{
+    // CallBuildOverivews
+    if (!mbRasMode)
+    {
+        otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                    this->mItkImgIOBase.GetPointer());
+        if (gio)
+        {
+            switch(this->mOutputComponentType)
+            {
+            LocalMacroPerSingleType( CallBuildOverviews )
+            default:
+                break;
+            }
+        }
+    }
+}
+
 
 void
 NMImageReader::setInternalRATType()

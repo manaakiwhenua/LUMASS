@@ -129,6 +129,8 @@ public:
     int getNumberOfOverviews(void);
     std::vector<unsigned int> getOverviewSize(int ovvidx);
 
+    void buildOverviews(const std::string& resamplingType);
+
     std::vector<int> getBandMap() {return this->mBandMap;}
     void setBandMap(const std::vector<int> map);
 

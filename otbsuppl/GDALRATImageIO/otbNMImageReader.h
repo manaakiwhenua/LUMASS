@@ -97,6 +97,9 @@ public:
   itkGetMacro(OverviewIdx, int)
   void SetOverviewIdx(int ovvidx);
 
+  /** Allow for retro-fitting of overviews, in case not present */
+  void BuildOverviews(const std::string& method);
+
   /** Allow the user to set a custom largest possible region
       to help with customised overview region loading */
 

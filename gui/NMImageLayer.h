@@ -88,6 +88,8 @@ public:
         bool bOnLPR, bool bImgConstrained);
 
 	void getBBox(double bbox[6]);
+    const double* getBBox(){return (double*)&mBBox[0];}
+    const double* getSpacing(){return (double*)&mSpacing[0];}
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
 
 	void setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
@@ -96,6 +98,8 @@ public:
     {this->mbUseOverviews = useOvv;}
     bool getUseOverviews(void)
     {return this->mbUseOverviews;}
+
+    int getOverviewIndex(void) {return mOverviewIdx;}
 
 	itk::DataObject *getITKImage(void);
 	QSharedPointer<NMItkDataObjectWrapper> getImage(void);
@@ -118,6 +122,7 @@ public:
 
     void setBandMap(const std::vector<int> map);// {this->mBandMap = map;}
     std::vector<int> getBandMap(void) {return this->mBandMap;}
+    std::vector<std::vector<int> > getOverviewSizes(void);
 
     void setScalarBand(const int& band)
         {this->mScalarBand = band >= 1 && band <= this->mTotalNumBands ? band : 1;}

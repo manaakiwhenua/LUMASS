@@ -880,7 +880,7 @@ OtbModellerWin::Image2PolyData()
 
     // pad the image by 1
     // to be able to create cells afterwards
-    // not: imdate data stores points at cell
+    // note: image data stores points at cell
     // centres
     vtkNew<vtkImageWrapPad> pad;
     pad->SetInputData(ids);

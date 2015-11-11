@@ -1602,37 +1602,27 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
     // don't know whether the DS was opened in update mode or not
     // so to be sure we can write to it, we just close it and
     // re-open it read-write
-    bool bopen = false;
     if (m_Dataset.IsNotNull())
     {
-        bopen = true;
         m_Dataset = 0;
     }
 
     GDALDataset* ds = 0;
-    //if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+    GDALDatasetWrapper::Pointer dw = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+    if (dw.IsNull() || dw->GetDataSet() == 0)
     {
-        //        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
-        //        if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
-        //        {
-        //            itkWarningMacro(<< "Failed opening dataset for overview generation!");
-        //            return;
-        //        }
-        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
-        if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+        itkWarningMacro(<< "Failed opening dataset for overview generation!");
+        // in case the data set was open before we tried building overivews,
+        // we try to re-opening it again in ReadOnly mode (note: many drivers don't
+        // support writing)
+        if (m_ImgInfoHasBeenRead)
         {
-            itkWarningMacro(<< "Failed opening dataset for overview generation!");
-            // in case the data set was open before we tried building overivews,
-            // we try to re-opening it again in ReadOnly mode (note: many drivers don't
-            // support writing)
-            if (bopen)
-            {
-                m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
-            }
-            return;
+            m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
         }
-        ds = m_Dataset->GetDataSet();
+        return;
     }
+    ds = dw->GetDataSet();
+
 
     if (ds->GetRasterCount() == 0)
     {
@@ -1659,6 +1649,25 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
                        GDALDummyProgress,
                        0);
 
+    dw = 0;
+
+    // if this ImageIO is in reading mode, we re-open the data set
+    // in readonly mode to leave everything as we found it; and
+    // we also update the overview information
+    if (m_ImgInfoHasBeenRead)
+    {
+        m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+
+        this->m_NbOverviews = m_Dataset->GetDataSet()->GetRasterBand(1)->GetOverviewCount();
+        this->m_OvvSize.clear();
+        for (int ov=0; ov < m_NbOverviews; ++ov)
+        {
+            std::vector<unsigned int> s;
+            s.push_back(m_Dataset->GetDataSet()->GetRasterBand(1)->GetOverview(ov)->GetXSize());
+            s.push_back(m_Dataset->GetDataSet()->GetRasterBand(1)->GetOverview(ov)->GetYSize());
+            this->m_OvvSize.push_back(s);
+        }
+    }
 }
 
 /** TODO : Methode WriteImageInformation non implementee */

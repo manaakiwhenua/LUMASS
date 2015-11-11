@@ -113,6 +113,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActValueStats->setText(tr("Value Field Statistics"));
     mActImageStats = new QAction(this->mMenu);
     mActImageStats->setText(tr("Whole Image Pixel Statistics"));
+    mActImageInfo = new QAction(this->mMenu);
+    mActImageInfo->setText(tr("Show Image Information"));
 
     mActUniqueValues = new QAction(this->mMenu);
     mActUniqueValues->setText(tr("Map Unique Values ..."));
@@ -140,6 +142,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->mMenu->addAction(actZoom);
 	this->mMenu->addSeparator();
 
+    this->mMenu->addAction(mActImageInfo);
     this->mMenu->addAction(mActValueStats);
     this->mMenu->addAction(mActImageStats);
 	this->mMenu->addSeparator();
@@ -173,6 +176,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->connect(mActValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
     this->connect(mActOpacity, SIGNAL(triggered()), this, SLOT(editLayerOpacity()));
+    this->connect(mActImageInfo, SIGNAL(triggered()), this, SLOT(showImageInfo()));
 
 
 #ifdef DEBUG
@@ -254,6 +258,86 @@ void ModelComponentList::saveLayerChanges()
 		NMDebugAI(<< "going to save changes to the data set..." << endl);
 		l->writeDataSet();
 	}
+}
+
+void
+ModelComponentList::showImageInfo()
+{
+    NMLayer* l = this->getSelectedLayer();
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == 0)
+    {
+        return;
+    }
+
+    const double* bbox = il->getBBox();
+    const double* spac = il->getSpacing();
+
+    std::stringstream bandorder;
+    std::vector<int> bands = il->getBandMap();
+    if (bands.size())
+    {
+        for (int i=0; i < bands.size(); ++i)
+        {
+            bandorder << bands.at(i);
+            if (i < bands.size()-1)
+            {
+                bandorder << ", ";
+            }
+        }
+    }
+    else
+    {
+        bandorder << "1";
+    }
+
+    std::stringstream ovv;
+    std::vector<std::vector<int> > oss = il->getOverviewSizes();
+    if (oss.size())
+    {
+        for (int s=0; s < oss.size(); ++s)
+        {
+            ovv << oss.at(s).at(0) << "x" << oss.at(s).at(1);
+            if (s < oss.size()-1)
+            {
+                ovv << " ";
+            }
+        }
+    }
+    else
+    {
+        ovv << "n/a";
+    }
+
+    std::stringstream ovidx;
+    if (il->getOverviewIndex() >= 0)
+    {
+        ovidx << il->getOverviewIndex()+1;
+    }
+    else
+    {
+        ovidx << "n/a";
+    }
+
+    std::stringstream ii;
+    ii << setprecision(0) << fixed;
+
+    ii << "Size: " << (bbox[1] - bbox[0]) / ::abs(spac[0])
+          << " x " << (bbox[3] - bbox[2]) / ::abs(spac[1]) << std::endl
+       << setprecision(2)
+       << "Top Left: " << bbox[0] << ", " << bbox[3]  << std::endl
+       << "Bottom Right: " << bbox[1] << ", " << bbox[2] << std::endl
+       << setprecision(0)
+       << "Total Number of Bands: " << il->getTotalNumBands() << std::endl
+       << "Bands Displayed: " << bandorder.str() << std::endl
+       << "Current Overview: " << ovidx.str() << std::endl
+       << "Available Overviews: " << ovv.str() << std::endl
+       << "File Name: " << il->getFileName().toStdString() << std::endl;
+
+
+   QMessageBox::information(this, il->objectName(),
+                            QString(ii.str().c_str()));
+
 }
 
 void ModelComponentList::removeCurrentLayer()

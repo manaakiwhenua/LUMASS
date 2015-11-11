@@ -101,6 +101,7 @@ public slots:
     void editLayerOpacity();
     void saveLegend();
     void loadLegend();
+    void showImageInfo();
 
 	void test();
 
@@ -137,6 +138,7 @@ private:
 
     QAction* mActValueStats;
     QAction* mActImageStats;
+    QAction* mActImageInfo;
     bool mbWholeImgStats;
 
     // keeps track of future watchers being created for stats creation survaillance

@@ -486,8 +486,6 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     }
 }
 
-
-
 void
 NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
@@ -508,7 +506,7 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
             ++selcnt;
         }
     }
-    //    selCellIds->SetNumberOfIds(selcnt);
+    selCellIds->SetNumberOfIds(selcnt);
     //    scalars->SetNumberOfTuples(selcnt);
     //    clrtab->SetNumberOfTableValues(selcnt);
 
@@ -538,6 +536,7 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
     //        NMDebugAI(<< "removed old selection" << std::endl);
     //        this->mRenderer->RemoveActor(mSelectionActor);
     //    }
+
 
     vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
     extractor->SetInputData(mDataSet);
@@ -722,19 +721,21 @@ NMImageLayer::setFileName(QString filename)
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
 	}
-    this->mReader->getInternalProc()->ReleaseDataFlagOn();
-
     if (this->mReader->getNumberOfOverviews() == 0)
     {
+        emit layerProcessingEnd();
         NMWarn(ctxNMImageLayer, << "No overviews present for this layer!");
         QMessageBox::StandardButton yesno =
-                QMessageBox::question(0, QString::fromLatin1("Overviews missing"),
-                                      QString::fromLatin1("Do you want to build overviews for this image?"));
+                QMessageBox::question(0, QString::fromLatin1("No overviews found!"),
+                                      QString::fromLatin1("Do you want to build image overviews?"));
+        emit layerProcessingStart();
         if (yesno == QMessageBox::Yes)
         {
             mReader->buildOverviews("NEAREST");
         }
     }
+
+    this->mReader->getInternalProc()->ReleaseDataFlagOn();
 
     // get original image attributes before we muck
     // around with scaling and overviews
@@ -789,6 +790,23 @@ NMImageLayer::setFileName(QString filename)
     emit layerLoaded();
     NMDebugCtx(ctxNMImageLayer, << "done!");
 	return true;
+}
+
+std::vector<std::vector<int> >
+NMImageLayer::getOverviewSizes()
+{
+    std::vector<std::vector<int> > sizes;
+
+    for (int i=0; i < this->mReader->getNumberOfOverviews(); ++i)
+    {
+        std::vector<int> os;
+        os.push_back(this->mReader->getOverviewSize(i)[0]);
+        os.push_back(this->mReader->getOverviewSize(i)[1]);
+        sizes.push_back(os);
+    }
+
+
+    return sizes;
 }
 
 void

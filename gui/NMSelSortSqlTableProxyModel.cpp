@@ -539,6 +539,84 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
 }
 
 bool
+NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
+{
+    if (mSourceModel == 0)
+    {
+        return false;
+    }
+
+    if (name.isEmpty())
+    {
+        return false;
+    }
+
+    int ncols = mSourceModel->columnCount();
+    std::stringstream collist;
+    for (int i=0; i < ncols; ++i)
+    {
+        QVariant vcol = this->mSourceModel->headerData(i, Qt::Horizontal, Qt::DisplayRole);
+        if (vcol.isValid())
+        {
+            QString colname = vcol.toString();
+            if (colname.compare(name, Qt::CaseInsensitive) != 0)
+            {
+                collist << colname.toStdString();
+                if (i < this->mSourceModel->columnCount()-1)
+                {
+                    collist << ",";
+                }
+            }
+        }
+    }
+
+    std::string backuptable = this->getRandomString().toStdString();
+    std::string tablename = mSourceModel->tableName().toStdString();
+    std::stringstream ssql;
+    ssql << "BEGIN TRANSACTION;"
+         << "CREATE TABLE main." << backuptable << " AS SELECT " << collist << " FROM main." << tablename << ";"
+         << "DROP TABLE main." << tablename << ";"
+         << "CREATE TABLE main." << tablename << " as SELECT * FROM " << backuptable << ";"
+         << "DROP TABLE " << backuptable << ";"
+         << "END TRANSACTION;";
+
+    QStringList queries = QString::fromLatin1(ssql.str().c_str()).split(';', QString::SkipEmptyParts);
+
+    bool ret = true;
+    mSourceModel->clear();
+    const QSqlDatabase& db = mSourceModel->database();
+    QSqlQuery dml(db);
+    foreach (const QString& q, queries)
+    {
+        if (!dml.exec(q))
+        {
+            dml.exec("ROLLBACK TRANSACTION");
+            NMErr(ctx, << dml.lastError().text().toStdString());
+            ret = false;
+        }
+    }
+
+    mSourceModel->setTable(QString(tablename.c_str()));
+    if (mLastColSort.first >= 0)
+    {
+        mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
+    }
+    if (mLastSelRecsOnly)
+    {
+        mSourceModel->setFilter(mLastFilter);
+    }
+    else
+    {
+        mSourceModel->setFilter("");
+    }
+    mSourceModel->select();
+    mUpdateProxySelection = true;
+    mUpdateSourceSelection = true;
+
+    return ret;
+}
+
+bool
 NMSelSortSqlTableProxyModel::createMappingTable(void)
 {
     // ==================================================================

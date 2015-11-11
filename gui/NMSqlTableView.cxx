@@ -808,15 +808,14 @@ void NMSqlTableView::deleteColumn()
 	if (ret == QMessageBox::Cancel)
 		return;
 
-	int col = this->getColumnIndex(this->mLastClickedColumn);
-	if (col < 0)
-		return;
+    int col = this->getColumnIndex(this->mLastClickedColumn);
+    if (col < 0)
+        return;
 
-    //if (this->mSortFilter->removeColumns(col, 1, QModelIndex()))
-    if (this->mModel->removeColumns(col, 1, QModelIndex()))
-	{
-		this->updateProxySelection(QItemSelection(), QItemSelection());
-	}
+    if (!mSortFilter->removeColumn(mLastClickedColumn))
+    {
+        NMBoxErr("Delete Column", "Failed to delete column!");
+    }
 }
 
 void NMSqlTableView::joinAttributes()

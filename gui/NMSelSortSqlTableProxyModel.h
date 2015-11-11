@@ -68,6 +68,7 @@ public:
      */
 
     bool insertColumn(const QString& name, const QVariant::Type& type);
+    bool removeColumn(const QString& name);
 
 
     //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;

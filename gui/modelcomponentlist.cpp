@@ -836,7 +836,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 
                         mActClrRamp->setText("Map Band Value Ramp");
                     }
-
+                    mActImageInfo->setVisible(true);
                     mActVecContourOnly->setVisible(false);
                     mActOpacity->setVisible(true);
             }
@@ -860,6 +860,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                 mActClrTab->setVisible(true);
                 mActClrRamp->setText("Map Value Ramp");
 
+                mActImageInfo->setVisible(false);
                 mActImageStats->setEnabled(false);
                 mActImageStats->setVisible(false);
                 mActValueStats->setText("Value Field Statistics");

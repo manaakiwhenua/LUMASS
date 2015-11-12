@@ -65,18 +65,18 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
 {
 
     // disconnect current model from proxy signals
-    if (mSourceModel)
-    {
-        disconnect(mSourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-                   this, SIGNAL(rowsInserted(QModelIndex,int,int)));
-        disconnect(mSourceModel, SIGNAL(columnsInserted(QModelIndex,int,int)),
-                   this, SIGNAL(columnsInserted(QModelIndex,int,int)));
+//    if (mSourceModel)
+//    {
+//        disconnect(mSourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
+//                   this, SIGNAL(rowsInserted(QModelIndex,int,int)));
+//        disconnect(mSourceModel, SIGNAL(columnsInserted(QModelIndex,int,int)),
+//                   this, SIGNAL(columnsInserted(QModelIndex,int,int)));
 
-        disconnect(mSourceModel, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-                   this, SIGNAL(rowsRemoved(QModelIndex,int,int)));
-        disconnect(mSourceModel, SIGNAL(columnsRemoved(QModelIndex,int,int)),
-                   this, SIGNAL(columnsRemoved(QModelIndex,int,int)));
-    }
+//        disconnect(mSourceModel, SIGNAL(rowsRemoved(QModelIndex,int,int)),
+//                   this, SIGNAL(rowsRemoved(QModelIndex,int,int)));
+//        disconnect(mSourceModel, SIGNAL(columnsRemoved(QModelIndex,int,int)),
+//                   this, SIGNAL(columnsRemoved(QModelIndex,int,int)));
+//    }
 
     mSourceModel = qobject_cast<NMSqlTableModel*>(sourceModel);
     if (mSourceModel == 0)
@@ -84,19 +84,17 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
         return;
     }
 
-
-
     // connect new model to proxy signals
     QAbstractProxyModel::setSourceModel(sourceModel);
-    connect(sourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-               this, SIGNAL(rowsInserted(QModelIndex,int,int)));
-    connect(sourceModel, SIGNAL(columnsInserted(QModelIndex,int,int)),
-               this, SIGNAL(columnsInserted(QModelIndex,int,int)));
+    connect(this, SIGNAL(rowsInserted(QModelIndex,int,int)),
+               sourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)));
+    connect(this, SIGNAL(columnsInserted(QModelIndex,int,int)),
+               sourceModel, SIGNAL(columnsInserted(QModelIndex,int,int)));
 
-    connect(sourceModel, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-               this, SIGNAL(rowsRemoved(QModelIndex,int,int)));
-    connect(sourceModel, SIGNAL(columnsRemoved(QModelIndex,int,int)),
-               this, SIGNAL(columnsRemoved(QModelIndex,int,int)));
+    connect(this, SIGNAL(rowsRemoved(QModelIndex,int,int)),
+               sourceModel, SIGNAL(rowsRemoved(QModelIndex,int,int)));
+    connect(this, SIGNAL(columnsRemoved(QModelIndex,int,int)),
+               sourceModel, SIGNAL(columnsRemoved(QModelIndex,int,int)));
 
     mSourcePK = getSourcePK();
     mProxyPK = "nm_proxy_id";
@@ -535,6 +533,9 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
     mUpdateProxySelection = true;
     mUpdateSourceSelection = true;
 
+    QModelIndex mi = this->createIndex(0, colidx);
+    emit dataChanged(mi, mi);
+
     return ret;
 }
 
@@ -630,6 +631,9 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
     mSourceModel->select();
     mUpdateProxySelection = true;
     mUpdateSourceSelection = true;
+
+    QModelIndex mi = this->createIndex(0, delidx);
+    emit dataChanged(mi, mi);
 
     return ret;
 }

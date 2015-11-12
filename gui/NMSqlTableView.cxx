@@ -787,8 +787,7 @@ void NMSqlTableView::addColumn()
 
     if (mSortFilter->insertColumn(name, type))
 	{
-        //this->mSortFilter->setHeaderData(ncols, Qt::Horizontal, name, Qt::DisplayRole);
-		this->updateProxySelection(QItemSelection(), QItemSelection());
+        updateSelection(mbSwitchSelection);
 	}
 
     NMDebugCtx(__ctxsqltabview, << "done!");
@@ -796,7 +795,14 @@ void NMSqlTableView::addColumn()
 
 void NMSqlTableView::deleteColumn()
 {
-	// ask the user whether he really wants to delete the current field
+    // we don't delete the primary key ... , oh no!
+    if (mLastClickedColumn.compare(mPrimaryKey, Qt::CaseInsensitive) == 0)
+    {
+        NMBoxErr("Delete Column", "The primary key cannot be deleted!");
+        return;
+    }
+
+    // ask the user whether he really wants to delete the current field
 	QMessageBox msgBox;
 	QString text = QString(tr("Delete Field '%1'?")).arg(this->mLastClickedColumn);
 	msgBox.setText(text);
@@ -815,6 +821,10 @@ void NMSqlTableView::deleteColumn()
     if (!mSortFilter->removeColumn(mLastClickedColumn))
     {
         NMBoxErr("Delete Column", "Failed to delete column!");
+    }
+    else
+    {
+        updateSelection(mbSwitchSelection);
     }
 }
 
@@ -1651,7 +1661,8 @@ NMSqlTableView::sortColumn(int col)
 
     //NMDebugAI(<< "... actually sorting the column" << std::endl);
     mSortFilter->sort(col, order);
-    updateProxySelection(QItemSelection(), QItemSelection());
+    //updateProxySelection(QItemSelection(), QItemSelection());
+    updateSelection(mbSwitchSelection);
 
 
     NMDebugCtx(__ctxsqltabview, << "done!");

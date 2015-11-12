@@ -1,4 +1,4 @@
-/******************************************************************************
+﻿/******************************************************************************
 * Created by Alexander Herzig
 * Copyright 2015 Landcare Research New Zealand Ltd
 *
@@ -552,33 +552,32 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
     }
 
     int ncols = mSourceModel->columnCount();
-    std::stringstream collist;
+    int delidx = -1;
+    QStringList remainCols;
     for (int i=0; i < ncols; ++i)
     {
         QVariant vcol = this->mSourceModel->headerData(i, Qt::Horizontal, Qt::DisplayRole);
         if (vcol.isValid())
         {
-            QString colname = vcol.toString();
-            if (colname.compare(name, Qt::CaseInsensitive) != 0)
+            if (vcol.toString().compare(name, Qt::CaseInsensitive) == 0)
             {
-                collist << colname.toStdString();
-                if (i < this->mSourceModel->columnCount()-1)
-                {
-                    collist << ",";
-                }
+                delidx = i;
+            }
+            else
+            {
+                remainCols << vcol.toString();
             }
         }
     }
 
+    std::string collist = remainCols.join(',').toStdString();
     std::string backuptable = this->getRandomString().toStdString();
     std::string tablename = mSourceModel->tableName().toStdString();
     std::stringstream ssql;
-    ssql << "BEGIN TRANSACTION;"
-         << "CREATE TABLE main." << backuptable << " AS SELECT " << collist << " FROM main." << tablename << ";"
+    ssql << "CREATE TEMPORARY TABLE " << backuptable << " AS SELECT " << collist << " FROM main." << tablename << ";"
          << "DROP TABLE main." << tablename << ";"
          << "CREATE TABLE main." << tablename << " as SELECT * FROM " << backuptable << ";"
-         << "DROP TABLE " << backuptable << ";"
-         << "END TRANSACTION;";
+         << "DROP TABLE " << backuptable << ";";
 
     QStringList queries = QString::fromLatin1(ssql.str().c_str()).split(';', QString::SkipEmptyParts);
 
@@ -588,14 +587,33 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
     QSqlQuery dml(db);
     foreach (const QString& q, queries)
     {
+        NMDebugAI(<< "Query: " << q.toStdString() << std::endl);
         if (!dml.exec(q))
         {
-            dml.exec("ROLLBACK TRANSACTION");
             NMErr(ctx, << dml.lastError().text().toStdString());
             ret = false;
+            break;
+        }
+        else
+        {
+            NMDebugAI(<< "Successful!" << std::endl);
         }
     }
 
+    // adjust selection and ordering if applicable
+    if (mLastColSort.first == delidx)
+    {
+        mLastColSort.first = -1;
+    }
+    // if the column just deleted featured in the last
+    // filter expression in any capacity, we just clear the filter
+    if (mLastFilter.contains(name, Qt::CaseInsensitive))
+    {
+        mLastFilter.clear();
+    }
+
+
+    // repopulate the table model
     mSourceModel->setTable(QString(tablename.c_str()));
     if (mLastColSort.first >= 0)
     {

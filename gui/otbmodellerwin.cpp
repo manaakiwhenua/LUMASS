@@ -1620,54 +1620,26 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    std::srand(std::time(0));
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (!il)
+        return;
 
-    std::map<int, int> amap;
+    bool bok;
+    QString name = QInputDialog::getText(this, "Delete Col",
+                                         "", QLineEdit::Normal, "",
+                                         &bok);
 
+    if (!bok)
+        return;
 
-    unsigned int maxIdx = itk::NumericTraits<unsigned int>::max();
+    otb::AttributeTable::Pointer otab = il->getRasterAttributeTable(1);
+    if (otab.IsNull())
+        return;
 
-    NMDebugAI( << "max index = " << maxIdx << std::endl);
-    unsigned int accIdx = ::rand() % 200 + 3;
+    otb::SQLiteTable* stab = static_cast<otb::SQLiteTable*>(otab.GetPointer());
+    stab->RemoveColumn(name.toStdString());
 
-    std::vector<unsigned int> log;
-    log.push_back(accIdx);
-    for (int i=0; i < 35; ++i)
-    {
-        unsigned int dim = ::rand() % 200 + 3;
-        amap.insert(std::pair<int, int>(dim, i));
-
-        if (accIdx <= maxIdx / dim)
-        {
-            accIdx *= dim;
-            log.push_back(dim);
-        }
-        else
-        {
-            NMDebugAI( << "hit bnd before " << dim << "! ");
-            for (int d=0; d < log.size(); ++d)
-            {
-                NMDebug(<< log.at(d));
-                if (d+1 < log.size())
-                {
-                    NMDebug(<< " * ");
-                }
-            }
-            NMDebug(<< " = " << accIdx << std::endl);
-
-            log.clear();
-            accIdx = 1;
-        }
-    }
-
-
-    NMDebugAI(<< "\nrandom dims in asc order: " << std::endl);
-    std::map<int,int>::iterator it = amap.begin();
-    while (it != amap.end())
-    {
-        NMDebugAI(<< "#" << it->second << " dim=" << it->first << std::endl);
-        ++it;
-    }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

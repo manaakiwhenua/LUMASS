@@ -1647,7 +1647,7 @@ SQLiteTable::RemoveColumn(const std::string& name)
 
     for (int c=0; c < colsvec.size(); ++c)
     {
-        ssql << colsvec.at(c);
+        collist << colsvec.at(c);
         if (c < colsvec.size()-1)
         {
             collist << ",";
@@ -1655,12 +1655,12 @@ SQLiteTable::RemoveColumn(const std::string& name)
     }
 
     ssql << "BEGIN TRANSACTION;"
-         << "CREATE TEMPORARY TABLE main.t1_backup(" << collist << ");"
-         << "INSERT INTO main.t1_backup SELECT "     << collist << " FROM main." << m_tableName << ";"
+         << "CREATE TEMPORARY TABLE " << m_tableName << "_backup(" << collist.str() << ");"
+         << "INSERT INTO " << m_tableName << "_backup SELECT "  << collist.str() << " FROM main." << m_tableName << ";"
          << "DROP TABLE main." << m_tableName << ";"
-         << "CREATE TABLE main." << m_tableName << "(" << collist << ");"
-         << "INSERT INTO main." << m_tableName << " SELECT " << collist << " FROM main.t1_backup;"
-         << "DROP TABLE t1_backup"
+         << "CREATE TABLE main." << m_tableName << "(" << collist.str() << ");"
+         << "INSERT INTO main." << m_tableName << " SELECT " << collist.str() << " FROM " << m_tableName << "_backup;"
+         << "DROP TABLE " << m_tableName << "_backup;"
          << "END TRANSACTION";
 
     int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
@@ -1673,13 +1673,6 @@ SQLiteTable::RemoveColumn(const std::string& name)
     this->m_vTypes.erase(m_vTypes.begin()+idx);
 
     return true;
-
-
-//	int idx = this->ColumnExists(name);
-//	if (idx < 0)
-//		return false;
-
-//	return this->RemoveColumn(idx);
 }
 
 void SQLiteTable::SetValue(int col, long long int row, double value)

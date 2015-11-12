@@ -783,8 +783,6 @@ void NMSqlTableView::addColumn()
 	NMDebugAI(<< "type: " << type << endl);
 	NMDebugAI(<< "ncols in tab: " << ncols << endl);
 
-    //if (this->mSortFilter->insertColumns(0, type, QModelIndex()))
-
     if (mSortFilter->insertColumn(name, type))
 	{
         updateSelection(mbSwitchSelection);
@@ -824,6 +822,12 @@ void NMSqlTableView::deleteColumn()
     }
     else
     {
+        // update hidden columns
+        mHiddenColumns.removeAll(mLastClickedColumn);
+        foreach (const QString& col, mHiddenColumns)
+        {
+            this->hideAttribute(col);
+        }
         updateSelection(mbSwitchSelection);
     }
 }

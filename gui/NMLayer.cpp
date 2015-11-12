@@ -338,7 +338,12 @@ NMLayer::initiateLegend(void)
     bool brawpixels = false;
     bool bRGB = false;
     NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-    otb::AttributeTable::Pointer rat = il->getRasterAttributeTable(1);
+    otb::AttributeTable::Pointer rat;
+    if (il != 0)
+    {
+        rat = il->getRasterAttributeTable(1);
+    }
+
     if (   (    il
             &&  (    mTableModel == 0
                  ||  (rat.IsNotNull() && rat->GetNumRows() > 256)

@@ -605,59 +605,30 @@ void NMSqlTableView::calcColumn()
 		return;
 	}
 
-    QString whereClause = "";
-    if (!mSortFilter->getFilter().isEmpty())
+    QString error;
+    int colidx = this->getColumnIndex(mLastClickedColumn);
+    int rowsAffected = mSortFilter->updateData(colidx, mLastClickedColumn, func, error);
+    if (!error.isEmpty())
     {
-        whereClause = QString("where %1").arg(mSortFilter->getFilter());
-    }
-
-    QString uStr = QString("update %1 set %2 = %3 %4")
-                    .arg(mModel->tableName())
-                    .arg(mLastClickedColumn)
-                    .arg(func)
-                    .arg(whereClause);
-
-    QSqlQuery qUpdate(mModel->database());
-    if (!qUpdate.exec(uStr))
-    {
-        NMBoxErr("Calculate Column", qUpdate.lastError().text().toStdString());
+        NMBoxErr("Calculate Column", "Calculation Failed!");
         NMDebugCtx(__ctxsqltabview, << "done!");
         return;
     }
-
-    mModel->select();
+    NMDebugAI(<< rowsAffected << " records updated!" << std::endl);
     updateProxySelection(QItemSelection(), QItemSelection());
 
 
+//    QSqlQuery qUpdate(mModel->database());
+//    if (!qUpdate.exec(uStr))
+//    {
+//        NMBoxErr("Calculate Column", qUpdate.lastError().text().toStdString());
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
 
-    //	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(this->mModel));
-    //	prepareProgressDlg(calc.data(), QString("Calculate %1 ...").arg(mLastClickedColumn));
-    //    //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
-    //	calc->setResultColumn(this->mLastClickedColumn);
+//    mModel->select();
+//    updateProxySelection(QItemSelection(), QItemSelection());
 
-    //	if (this->mSelectionModel->selection().count() > 0)
-    //		calc->setRowFilter(this->mSelectionModel->selection());
-
-    //	try
-    //	{
-    //		calc->setFunction(func);
-    //		if (!calc->calculate())
-    //		{
-    //            NMErr(__ctxsqltabview, << "Something went wrong!");
-    //		}
-    //	}
-    //	catch (itk::ExceptionObject& err)
-    //	{
-    //		cleanupProgressDlg(calc.data());
-    //		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
-    //				      .arg(err.GetDescription());
-
-    //        NMErr(__ctxsqltabview, << "Calculation failed!"
-    //				<< errmsg.toStdString());
-
-    //		QMessageBox::critical(this, "Table Calculation Error", errmsg);
-    //	}
-    //	cleanupProgressDlg(calc.data());
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
 

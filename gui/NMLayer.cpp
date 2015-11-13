@@ -2787,8 +2787,8 @@ NMLayer::selectionChanged(const QItemSelection& newSel,
 void
 NMLayer::tableDataChanged(const QModelIndex& tl, const QModelIndex& br)
 {
-	//NMDebugAI(<< this->objectName().toStdString()
-	//		<< ": data changed at " << tl.column() << ", " << tl.row() << std::endl);
+    NMDebugAI(<< this->objectName().toStdString()
+            << ": data changed at " << tl.column() << ", " << tl.row() << std::endl);
 	this->mHasChanged = true;
 	emit dataSetChanged(this);
 }

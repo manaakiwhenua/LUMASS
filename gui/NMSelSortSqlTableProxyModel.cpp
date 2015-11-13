@@ -90,6 +90,8 @@ NMSelSortSqlTableProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
                sourceModel, SIGNAL(rowsInserted(QModelIndex,int,int)));
     connect(this, SIGNAL(columnsInserted(QModelIndex,int,int)),
                sourceModel, SIGNAL(columnsInserted(QModelIndex,int,int)));
+    connect(this, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
+               sourceModel, SIGNAL(dataChanged(QModelIndex,QModelIndex)));
 
     connect(this, SIGNAL(rowsRemoved(QModelIndex,int,int)),
                sourceModel, SIGNAL(rowsRemoved(QModelIndex,int,int)));
@@ -473,37 +475,15 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
         break;
     }
 
-    //    NMDebugAI(<< "available database connections ..." << std::endl);
-    //    QStringList conns = QSqlDatabase::connectionNames();
-    //    foreach(const QString& con, conns)
-    //    {
-    //        NMDebugAI(<< con.toStdString() << std::endl);
-    //    }
+    beginInsertColumns(QModelIndex(), colidx, colidx);
 
-//    QSqlDatabase db = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-//                            this->getRandomString());
-
-//    NMDebugAI(<< "new connection: " << db.connectionName().toStdString() << std::endl);
-
-    // release any locks on the table
-    // to be modified
-//    mSourceModel->database().close();
     mSourceModel->clear();
-
     QString qStr = QString("Alter table %1 add column %2 %3")
                         .arg(table)
                         .arg(name)
                         .arg(typeStr);
 
     const QSqlDatabase& db = mSourceModel->database();
-
-
-//    if (!db.open())
-//    {
-//        NMErr(ctx, << "Failed to open edit connection to database!");
-//        return false;
-//    }
-
     QSqlQuery q(db);
     bool ret = true;
     if (!q.exec(qStr))
@@ -511,8 +491,6 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
         NMErr(ctx, << q.lastError().text().toStdString());
         ret = false;
     }
-//    db.close();
-//    mSourceModel->database().open();
 
     // reset the source model with the
     // modified table
@@ -533,9 +511,46 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
     mUpdateProxySelection = true;
     mUpdateSourceSelection = true;
 
-    QModelIndex mi = this->createIndex(0, colidx);
-    emit dataChanged(mi, mi);
+    endInsertColumns();
 
+    return ret;
+}
+
+int
+NMSelSortSqlTableProxyModel::updateData(int colidx, const QString &column,
+                                        const QString& expr,
+                                        QString &error)
+{
+    int ret = 0;
+    if (mSourceModel == 0 || column.isEmpty() || expr.isEmpty())
+    {
+        return ret;
+    }
+
+    QString whereClause = "";
+    if (!mLastFilter.isEmpty())
+    {
+        whereClause = QString("where %1").arg(mLastFilter);
+    }
+
+    QString uStr = QString("update %1 set %2 = %3 %4")
+                    .arg(mSourceModel->tableName())
+                    .arg(column)
+                    .arg(expr)
+                    .arg(whereClause);
+
+    QSqlQuery qUpdate(mSourceModel->database());
+    if (!qUpdate.exec(uStr))
+    {
+        error = qUpdate.lastError().text();
+        return ret;
+    }
+    mSourceModel->select();
+    ret = qUpdate.numRowsAffected();
+
+    QModelIndex tl = createIndex(0, colidx);
+    QModelIndex br = createIndex(ret-1, colidx);
+    emit dataChanged(tl, br);
     return ret;
 }
 
@@ -581,6 +596,8 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
          << "DROP TABLE " << backuptable << ";";
 
     QStringList queries = QString::fromLatin1(ssql.str().c_str()).split(';', QString::SkipEmptyParts);
+
+    beginRemoveColumns(QModelIndex(), delidx, delidx);
 
     bool ret = true;
     mSourceModel->clear();
@@ -632,9 +649,7 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
     mUpdateProxySelection = true;
     mUpdateSourceSelection = true;
 
-    QModelIndex mi = this->createIndex(0, delidx);
-    emit dataChanged(mi, mi);
-
+    endRemoveColumns();
     return ret;
 }
 

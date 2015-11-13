@@ -69,6 +69,7 @@ public:
 
     bool insertColumn(const QString& name, const QVariant::Type& type);
     bool removeColumn(const QString& name);
+    int updateData(int colidx, const QString& column, const QString &expr, QString& error);
 
 
     //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;

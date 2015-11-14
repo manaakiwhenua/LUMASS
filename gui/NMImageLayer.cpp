@@ -579,7 +579,9 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
 void NMImageLayer::createTableView(void)
 {
-    if (this->mSqlTableView != 0)
+    if (    this->mSqlTableView != 0
+        ||  this->mTableView != 0
+       )
 	{
 		return;
 	}
@@ -593,15 +595,30 @@ void NMImageLayer::createTableView(void)
 	if (this->mTableModel == 0)
 		return;
 
-    NMSqlTableModel* tabModel = qobject_cast<NMSqlTableModel*>(mTableModel);
-    this->mSqlTableView = new NMSqlTableView(tabModel, 0);
-    this->mSqlTableView->setSelectionModel(this->mSelectionModel);
-    this->mSqlTableView->setTitle(tabModel->tableName());
+    NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+    NMQtOtbAttributeTableModel* ramModel = qobject_cast<NMQtOtbAttributeTableModel*>(mTableModel);
 
-    connect(this, SIGNAL(selectabilityChanged(bool)),
-            mSqlTableView, SLOT(setSelectable(bool)));
-    connect(mSqlTableView, SIGNAL(notifyLastClickedRow(long)),
-            this, SLOT(forwardLastClickedRowSignal(long)));
+    if (ramModel != 0)
+    {
+        this->mTableView = new NMTableView(ramModel, 0);
+        this->mTableView->setSelectionModel(mSelectionModel);
+        QString tabletitle = QString("Attributes of %1").arg(this->objectName());
+        this->mTableView->setTitle(tabletitle);
+        connect(this, SIGNAL(selectabilityChanged(bool)),
+                mTableView, SLOT(setSelectable(bool)));
+        connect(mTableView, SIGNAL(notifyLastClickedRow(long)),
+                this, SLOT(forwardLastClickedRowSignal(long)));
+    }
+    else if (sqlModel != 0)
+    {
+        this->mSqlTableView = new NMSqlTableView(sqlModel, 0);
+        this->mSqlTableView->setSelectionModel(this->mSelectionModel);
+        this->mSqlTableView->setTitle(sqlModel->tableName());
+        connect(this, SIGNAL(selectabilityChanged(bool)),
+                mSqlTableView, SLOT(setSelectable(bool)));
+        connect(mSqlTableView, SIGNAL(notifyLastClickedRow(long)),
+                this, SLOT(forwardLastClickedRowSignal(long)));
+    }
 }
 
 int
@@ -625,43 +642,77 @@ NMImageLayer::updateAttributeTable()
         return 0;
     }
 
-    //NMQtOtbAttributeTableModel* otbModel;
-    NMSqlTableModel* tabModel = 0;
-    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
-	if (this->mTableModel == 0)
+    NMQtOtbAttributeTableModel* ramModel = 0;
+    NMSqlTableModel* sqlModel = 0;
+    otb::SQLiteTable::Pointer sqlTable = 0;
+    otb::RAMTable::Pointer ramTable = 0;
+    if (mOtbRAT->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_RAM)
+    {
+        ramTable = static_cast<otb::RAMTable*>(mOtbRAT.GetPointer());
+    }
+    else
+    {
+        sqlTable = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
+    }
+
+    //if (this->mTableModel == 0)
 	{
-        //otbModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
-        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-        db.setDatabaseName(QString(tab->GetDbFileName().c_str()));
-        if (!db.open())
+        if (ramTable.IsNotNull())
         {
-            NMErr(ctxNMImageLayer, << "Open database failed!" << endl);
+            ramModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
         }
         else
         {
-            tabModel = new NMSqlTableModel(this, db);
-            tabModel->setTable(QString(tab->GetTableName().c_str()));
-            tabModel->select();
+            QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+            db.setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
+            if (!db.open())
+            {
+                NMErr(ctxNMImageLayer, << "Open database failed!" << endl);
+            }
+            else
+            {
+                sqlModel = new NMSqlTableModel(this, db);
+                sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
+                sqlModel->select();
+            }
         }
 	}
-	else
-	{
-        tabModel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
-        //		otbModel = qobject_cast<NMQtOtbAttributeTableModel*>(this->mTableModel);
-        //		otbModel->setTable(this->mOtbRAT);
-        //		otbModel->setKeyColumn("rowidx");
-	}
+    //	else
+    //	{
+    //        if (ramTable.IsNotNull())
+    //        {
+
+    //        }
+    //        else
+    //        {
+    //            tabModel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
+    //        }
+
+    //        //		otbModel = qobject_cast<NMQtOtbAttributeTableModel*>(this->mTableModel);
+    //        //		otbModel->setTable(this->mOtbRAT);
+    //        //		otbModel->setKeyColumn("rowidx");
+    //	}
     //otbModel->setKeyColumn("rowidx");
 
 	// in any case, we create a new item selection model
-    if (this->mSelectionModel == 0 && tabModel != 0)
+    if (    this->mSelectionModel == 0
+        &&  (sqlModel != 0 || ramModel != 0)
+       )
 	{
-        //this->mSelectionModel = new NMFastTrackSelectionModel(otbModel, this);
-        this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
+        if (ramModel != 0)
+        {
+            this->mSelectionModel = new NMFastTrackSelectionModel(ramModel, this);
+            this->mTableModel = ramModel;
+        }
+        else
+        {
+            this->mSelectionModel = new NMFastTrackSelectionModel(sqlModel, this);
+            this->mTableModel = sqlModel;
+        }
+
 	}
-    //this->mTableModel = otbModel;
-    this->mTableModel = tabModel;
-    tabModel = 0;
+    ramModel = 0;
+    sqlModel = 0;
 
     if (mSelectionModel)
     {

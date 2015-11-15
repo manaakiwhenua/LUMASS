@@ -398,10 +398,10 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
 }
 
 QString
-NMSelSortSqlTableProxyModel::getRandomString(void)
+NMSelSortSqlTableProxyModel::getRandomString(int len)
 {
     std::srand(std::time(0));
-    char nam[15];
+    char* nam = new char[len+1];
     for (int i=0; i < 15; ++i)
     {
         if (i == 0)
@@ -435,8 +435,11 @@ NMSelSortSqlTableProxyModel::getRandomString(void)
             }
         }
     }
+    nam[len] = '\0';
+    QString ret = nam;
+    delete[] nam;
 
-    return QString(nam);
+    return ret;
 }
 
 bool
@@ -651,6 +654,27 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
 
     endRemoveColumns();
     return ret;
+}
+
+bool
+NMSelSortSqlTableProxyModel::joinTable(const QString &sourceFileName,
+                                       const QString &joinField,
+                                       const QStringList &joinSrcFields)
+{
+    if (mSourceModel == 0)
+    {
+        return false;
+    }
+
+    QString vttablename = this->getRandomString();
+
+    std::stringstream ssql;
+    ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+         << " USING VirtualText('" << sourceFileName.toStdString() << "', "
+         << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
+
+
+
 }
 
 bool

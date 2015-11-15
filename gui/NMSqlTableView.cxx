@@ -815,72 +815,99 @@ void NMSqlTableView::joinAttributes()
 		return;
 	}
 
-	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
-						vtkSmartPointer<vtkDelimitedTextReader>::New();
 
-	tabReader->SetFileName(fileName.toStdString().c_str());
-	tabReader->SetHaveHeaders(true);
-	tabReader->DetectNumericColumnsOn();
-    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
-	tabReader->SetFieldDelimiterCharacters(",\t");
-	tabReader->Update();
+    QString vttablename = "myvttable";
+    QString sourceFileName = fileName;
 
-	QScopedPointer<vtkQtTableModelAdapter> srcModel(new vtkQtTableModelAdapter);
-	srcModel->setTable(tabReader->GetOutput());
+    std::stringstream ssql;
+    ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+         << " USING VirtualText('" << sourceFileName.toStdString() << "', "
+         << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
 
-	int numJoinCols = srcModel->columnCount(QModelIndex());
-	NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
-	QStringList srcJoinFields;
-	for (int i=0; i < numJoinCols; ++i)
-	{
-		QModelIndex idx = srcModel->index(0, i, QModelIndex());
-		QVariant::Type type = srcModel->data(idx, Qt::DisplayRole).type();
-		if (type != QVariant::Invalid)
-		{
-			srcJoinFields.append(srcModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
-		}
-	}
+    QSqlQuery vttabquery(mModel->database());
+    if (!vttabquery.exec(QString(ssql.str().c_str())))
+    {
+        NMErr(__ctxsqltabview, << vttabquery.lastError().text().toStdString());
+        return;
+    }
 
-	int numTarCols = this->mModel->columnCount(QModelIndex());
-	QStringList tarJoinFields;
-	for (int i=0; i < numTarCols; ++i)
-	{
-		QModelIndex idx = this->mModel->index(0, i, QModelIndex());
-		QVariant::Type type = this->mModel->data(idx, Qt::DisplayRole).type();
-		if (type != QVariant::Invalid)
-		{
-			tarJoinFields.append(this->mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
-		}
-	}
+    NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
+    restab->setTable(vttablename);
+    restab->select();
 
-	// ask the user for semantically common fields
-	bool bOk = false;
-	QString tarFieldName = QInputDialog::getItem(this,
-			tr("Select Target Join Field"), tr("Select Target Join Field"),
-			tarJoinFields, 0, false, &bOk, 0);
-	int tarJoinColIdx = tarJoinFields.indexOf(tarFieldName);
-	if (!bOk || tarJoinColIdx < 0)
-	{
-        NMDebugCtx(__ctxsqltabview, << "done!");
-		return;
-	}
-	NMDebugAI(<< "target field name=" << tarFieldName.toStdString()
-			  << " at index " << tarJoinColIdx << std::endl);
+    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
+    resview->setWindowFlags(Qt::Window);
+    resview->setTitle(vttablename);
+    resview->show();
 
 
-	QString srcFieldName = QInputDialog::getItem(this,
-			tr("Select Source Join Field"), tr("Select Source Join Field"),
-			srcJoinFields, 0, false, &bOk, 0);
-	int srcJoinColIdx = srcJoinFields.indexOf(srcFieldName);
-	if (!bOk || srcJoinColIdx < 0)
-	{
-        NMDebugCtx(__ctxsqltabview, << "done!");
-		return;
-	}
-	NMDebugAI(<< "source field name=" << srcFieldName.toStdString()
-			  << " at index " << srcJoinColIdx << std::endl);
 
-	this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
+//	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
+//						vtkSmartPointer<vtkDelimitedTextReader>::New();
+
+//	tabReader->SetFileName(fileName.toStdString().c_str());
+//	tabReader->SetHaveHeaders(true);
+//	tabReader->DetectNumericColumnsOn();
+//    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
+//	tabReader->SetFieldDelimiterCharacters(",\t");
+//	tabReader->Update();
+
+//	QScopedPointer<vtkQtTableModelAdapter> srcModel(new vtkQtTableModelAdapter);
+//	srcModel->setTable(tabReader->GetOutput());
+
+//	int numJoinCols = srcModel->columnCount(QModelIndex());
+//	NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
+//	QStringList srcJoinFields;
+//	for (int i=0; i < numJoinCols; ++i)
+//	{
+//		QModelIndex idx = srcModel->index(0, i, QModelIndex());
+//		QVariant::Type type = srcModel->data(idx, Qt::DisplayRole).type();
+//		if (type != QVariant::Invalid)
+//		{
+//			srcJoinFields.append(srcModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+//		}
+//	}
+
+//	int numTarCols = this->mModel->columnCount(QModelIndex());
+//	QStringList tarJoinFields;
+//	for (int i=0; i < numTarCols; ++i)
+//	{
+//		QModelIndex idx = this->mModel->index(0, i, QModelIndex());
+//		QVariant::Type type = this->mModel->data(idx, Qt::DisplayRole).type();
+//		if (type != QVariant::Invalid)
+//		{
+//			tarJoinFields.append(this->mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+//		}
+//	}
+
+//	// ask the user for semantically common fields
+//	bool bOk = false;
+//	QString tarFieldName = QInputDialog::getItem(this,
+//			tr("Select Target Join Field"), tr("Select Target Join Field"),
+//			tarJoinFields, 0, false, &bOk, 0);
+//	int tarJoinColIdx = tarJoinFields.indexOf(tarFieldName);
+//	if (!bOk || tarJoinColIdx < 0)
+//	{
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//		return;
+//	}
+//	NMDebugAI(<< "target field name=" << tarFieldName.toStdString()
+//			  << " at index " << tarJoinColIdx << std::endl);
+
+
+//	QString srcFieldName = QInputDialog::getItem(this,
+//			tr("Select Source Join Field"), tr("Select Source Join Field"),
+//			srcJoinFields, 0, false, &bOk, 0);
+//	int srcJoinColIdx = srcJoinFields.indexOf(srcFieldName);
+//	if (!bOk || srcJoinColIdx < 0)
+//	{
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//		return;
+//	}
+//	NMDebugAI(<< "source field name=" << srcFieldName.toStdString()
+//			  << " at index " << srcJoinColIdx << std::endl);
+
+//	this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }

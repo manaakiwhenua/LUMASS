@@ -70,6 +70,7 @@ public:
     bool insertColumn(const QString& name, const QVariant::Type& type);
     bool removeColumn(const QString& name);
     int updateData(int colidx, const QString& column, const QString &expr, QString& error);
+    bool joinTable(const QString& sourceFileName, const QString& joinField, const QStringList& joinSrcFields);
 
 
     //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
@@ -98,7 +99,7 @@ public:
 
 protected:
 
-    QString getRandomString(void);
+    QString getRandomString(int len=15);
     bool updateSelection(QItemSelection& sel, bool bProxySelection=true);
     void resetSourceModel();
     bool createMappingTable();

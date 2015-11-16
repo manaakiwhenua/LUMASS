@@ -674,11 +674,11 @@ NMImageLayer::updateAttributeTable()
             else
             {
 				// load the spatialite extension for this connection
-				std::stringstream ssql;
-				ssql << "Select load_extension(\'spatialite.dll\');";
-				//QSqlQuery q(db);
-				//if (!q.exec(QString(ssql.str().c_str())))
-				if (!sqlTable->SqlExec(ssql.str()))
+                //std::stringstream ssql;
+                //ssql << "Select load_extension(\'/usr/lib/x86_64-linux-gnu/libspatialite\');";
+                //QSqlQuery q(db);
+                //if (!q.exec(QString(ssql.str().c_str())))
+                if (!sqlTable->loadExtension("libspatialite", "sqlite3_spatialite_init"))
 				{
 					NMErr(ctxNMImageLayer, << "nope! sql extension not loaded!");
 				}

@@ -10,6 +10,7 @@ INCLUDE_DIRECTORIES(
 	${OTB_DIR}/Code/IO
 	${OTB_DIR}/Utilities/ITK/Code/Common
     ${SQLite_SOURCE_DIR}
+    ${SPATIALITE_INCLUDE_DIR}
 ) 
 
 LINK_DIRECTORIES(
@@ -18,6 +19,7 @@ LINK_DIRECTORIES(
 	${OTB_DIR}/lib
     #${SQLITE3_INCLUDE_DIR}
     ${SQLite_BINARY_DIR}/lib
+    ${SPATIALITE_LIB_DIR}
 )                                                         
 
 
@@ -49,7 +51,7 @@ if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
         TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
             ${GDAL_LIBRARY}
             #${SQLITE3_LIBRARY}
-            SQLite
+            SQLite spatialite
             OTBCommon OTBIO
         )
 else()
@@ -57,7 +59,7 @@ else()
         TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
                 ${GDAL_LIBRARY}
                 #${SQLITE3_LIBRARY}
-                SQLite
+                SQLite spatialite
                 OTBCommon OTBIOGDAL
         )
 endif()

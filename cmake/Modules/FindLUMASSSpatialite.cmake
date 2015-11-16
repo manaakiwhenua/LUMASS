@@ -20,7 +20,7 @@ FIND_PATH(SPATIALITE_INCLUDE_DIR spatialite.h
         /usr/local
         /usr
         /usr/share
-		${OSGEO4W_ROOT}
+        ${OSGEO4W_ROOT}
         "c:/opt"
         "c:/build"
     DOC "Path to Tokyo Cabient include directory"
@@ -37,14 +37,14 @@ FIND_PATH(SPATIALITE_LIB_DIR
     PATH_SUFFIXES
         lib
         lib/x86_64-linux-gnu
-		bin
+        bin
     PATHS
         /opt
         /opt/local
         /usr
         /usr/local
         /usr/share
-		${OSGEO4W_ROOT}
+        ${OSGEO4W_ROOT}
         "c:/opt"
         "c:/build"
     DOC "Path to the spatialite library (e.g. /usr/lib/libspatilite.so)"
@@ -56,9 +56,9 @@ FIND_PATH(SPATIALITE_LIBLIB_DIR
 	NAMES spatialite_i.lib
     PATH_SUFFIXES
         lib
-		bin
+        bin
     PATHS
-		${OSGEO4W_ROOT}
+        ${OSGEO4W_ROOT}
         "c:/opt"
         "c:/build"
     DOC "Path to the spatialite library (e.g. C:/OSGEO4W/lib/spatialite.lib)"
@@ -71,8 +71,6 @@ FIND_PATH(SPATIALITE_LIBLIB_DIR
 			CACHE FILEPATH "Spatialite link directories" FORCE)		
 	endif()
 endif()
-
-message(STATUS "the dir ${WSQNEW_LIB_DIR}")
 
 IF (SPATIALITE_LIB_DIR AND SPATIALITE_INCLUDE_DIR)
   set(SPATIALITE_FOUND TRUE)

@@ -37,6 +37,7 @@
 #include <algorithm>
 #include "otbMacro.h"
 
+
 namespace otb
 {
 
@@ -2184,6 +2185,12 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     }
 
 
+    // =============
+    // enable loading extensions?
+    // =============
+    sqlite3_enable_load_extension(m_db, 1);
+
+
     // ============================================================
     // check, whether we've already got a table
     // ============================================================
@@ -2582,6 +2589,22 @@ SQLiteTable::resetTableAdmin(void)
     m_CurPrepStmt = "";
     m_idColName = "";
     m_tableName = "";
+}
+
+bool
+SQLiteTable::loadExtension(const std::string &lib, const std::string &entry)
+{
+    char* errMsg;
+    int rc = sqlite3_load_extension(m_db, lib.c_str(), entry.c_str(), &errMsg);
+    if (rc)
+    {
+        NMErr(_ctxotbtab, << errMsg);
+        sqlite3_free(errMsg);
+        return false;
+    }
+
+    NMDebugAI(<< "LOADED SPATIALITE !!!" << std::endl);
+    return true;
 }
 
 bool

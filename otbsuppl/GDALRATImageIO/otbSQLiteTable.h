@@ -155,6 +155,8 @@ public:
     bool FindTable(const std::string& tableName);
     // repopulates the admin structures for the current table (e.g. SetTableName);
     bool PopulateTableAdmin();
+    bool loadExtension(const std::string& lib, const std::string& entry);
+
 
 
     /// FAST INLINE ACCESS TO COLUMN VALUES

@@ -38,6 +38,8 @@
 #include <QtConcurrent>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QSqlQuery>
+#include <QSqlError>
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -671,6 +673,19 @@ NMImageLayer::updateAttributeTable()
             }
             else
             {
+				// load the spatialite extension for this connection
+				std::stringstream ssql;
+				ssql << "Select load_extension(\'spatialite.dll\');";
+				//QSqlQuery q(db);
+				//if (!q.exec(QString(ssql.str().c_str())))
+				if (!sqlTable->SqlExec(ssql.str()))
+				{
+					NMErr(ctxNMImageLayer, << "nope! sql extension not loaded!");
+				}
+				else
+				{
+					NMDebugAI(<< "spatialite extension successfully loaded!" << std::endl);
+				}
                 sqlModel = new NMSqlTableModel(this, db);
                 sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
                 sqlModel->select();

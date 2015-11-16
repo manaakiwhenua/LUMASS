@@ -78,6 +78,7 @@ INCLUDE_DIRECTORIES(
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}
 	${SQLite_SOURCE_DIR}
+	${SPATIALITE_INCLUDE_DIR}
 #    ${TCADB_INCLUDE_DIR}
 )     
 
@@ -92,6 +93,7 @@ LINK_DIRECTORIES(
 	${muparser_BINARY_DIR}  
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
+	${SPATIALITE_LIB_DIR}
 #        ${TCADB_LIB_DIR}
 )
 
@@ -152,17 +154,17 @@ list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 # have taken out ${QT_LIBRARIES} here
 if(WIN32)
 	set(LUMASS_LINKLIBS
-			Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
-			#Qt5Declarative Qt5Qml Qt5Quick
-			QtPropertyBrowser
-			NMModFrame
-			#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
-			${VTK_LIBRARIES}
-			${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-			${OPENGL_glu_LIBRARY}
-			#${SQLITE3_LIBRARY}
-			SQLite
-			#SQLiteExtFunc
+		Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+		#Qt5Declarative Qt5Qml Qt5Quick
+		QtPropertyBrowser
+		NMModFrame
+		#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
+		${VTK_LIBRARIES}
+		${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+		${OPENGL_glu_LIBRARY}
+		#${SQLITE3_LIBRARY}
+		SQLite spatialite
+		#SQLiteExtFunc
 	)
 
 	set(LUMASS_DEPLIBS
@@ -173,24 +175,24 @@ if(WIN32)
 	)
 else()
 	set(LUMASS_LINKLIBS
-			Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
-			#Qt5Declarative Qt5Qml Qt5Quick
-			QtPropertyBrowser
-			NMModFrame
-			#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
-			${VTK_LIBRARIES}
-			${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-			${OPENGL_glu_LIBRARY}
-			#${SQLITE3_LIBRARY}
-			SQLite
-			SQLiteExtFunc
+		Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+		#Qt5Declarative Qt5Qml Qt5Quick
+		QtPropertyBrowser
+		NMModFrame
+		#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
+		${VTK_LIBRARIES}
+		${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+		${OPENGL_glu_LIBRARY}
+		#${SQLITE3_LIBRARY}
+		SQLite spatialite
+		#SQLiteExtFunc
 	)
 
 	set(LUMASS_DEPLIBS
 		NMModFrame
 		QtPropertyBrowser 
 		SQLite
-			SQLiteExtFunc
+		#SQLiteExtFunc
 	)
 endif()
 

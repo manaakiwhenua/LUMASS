@@ -46,3 +46,4 @@
  const char _lumass_gdal_version[] = LUMASS_GDAL_VERSION;
  const char _lumass_vtk_version[] = LUMASS_VTK_VERSION;
  const char _lumass_sqlite_version[] = LUMASS_SQLITE_VERSION;
+ 

@@ -785,7 +785,9 @@ void NMSqlTableView::deleteColumn()
 
     int col = this->getColumnIndex(this->mLastClickedColumn);
     if (col < 0)
+	{
         return;
+	}
 
     if (!mSortFilter->removeColumn(mLastClickedColumn))
     {
@@ -828,6 +830,7 @@ void NMSqlTableView::joinAttributes()
     if (!vttabquery.exec(QString(ssql.str().c_str())))
     {
         NMErr(__ctxsqltabview, << vttabquery.lastError().text().toStdString());
+		NMDebugCtx(__ctxsqltabview, << "done!");
         return;
     }
 

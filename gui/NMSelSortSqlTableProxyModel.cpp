@@ -673,7 +673,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString &sourceFileName,
          << " USING VirtualText('" << sourceFileName.toStdString() << "', "
          << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
 
-
+	return true;
 
 }
 

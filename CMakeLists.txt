@@ -112,7 +112,7 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 40)
+SET(LUMASS_VERSION_REVISION 41)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -234,7 +234,7 @@ message(STATUS "lp_solve include dir: ${LPSOLVE_INCLUDE_DIR}")
 message(STATUS "lp_solve library: ${LPSOLVE_LIBRARY}")
 
 #====================================================================
-# FIND SQLite3
+# FIND SQLite3 / Spatialite
 #====================================================================
 
 # just define the current version included in the source tree
@@ -247,6 +247,15 @@ set(NM_SQLite_VERSION "3.8.11.1")
 
 #message(STATUS "SQLite3 include dir: ${SQLITE3_INCLUDE_DIR}")
 #message(STATUS "SQLite3 library: ${SQLITE3_LIBRARY}")
+
+# loof for spatialite
+find_package(LUMASSSpatialite)
+if(NOT SPATIALITE_FOUND)
+	message(FATAL_ERROR "Please install Spatialite prior to installing LUMASS!")
+endif()
+
+message(STATUS "Spatialite include dir: ${SPATIALITE_INCLUDE_DIR}")
+message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
 
 #====================================================================
 # FIND TOKYO CABINET

@@ -41,6 +41,8 @@ LINK_DIRECTORIES(
 	${muparser_BINARY_DIR}  
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
+	${SPATIALITE_LIB_DIR}
+	${SPATIALITE_LIBLIB_DIR}
 )
 
 # Qt5 requirement
@@ -57,11 +59,15 @@ file(GLOB ENGINE_SRC
 )
 
 set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
-        NMModFrame
-        ${VTK_LIBRARIES}
-	${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+	NMModFrame ${VTK_LIBRARIES} ${PostgreSQL_LIBRARIES}
+	${LPSOLVE_LIBRARY} spatialite
 )
 
+# need to add the import library on windows
+if(WIN32)
+	LIST(APPEND ENGINE_LINKLIBS spatialite_i)
+endif()
+	
 set(ENGINE_DEPLIBS
     NMModFrame
 )

@@ -20,6 +20,7 @@ LINK_DIRECTORIES(
     #${SQLITE3_INCLUDE_DIR}
     ${SQLite_BINARY_DIR}/lib
     ${SPATIALITE_LIB_DIR}
+	${SPATIALITE_LIBLIB_DIR}
 )                                                         
 
 
@@ -48,20 +49,38 @@ generate_export_header(OTBGDALRATImageIO)
 
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIO ... ")
-        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
-            ${GDAL_LIBRARY}
-            #${SQLITE3_LIBRARY}
-            SQLite spatialite
-            OTBCommon OTBIO
-        )
+        if(WIN32)
+			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+				${GDAL_LIBRARY}
+				#${SQLITE3_LIBRARY}
+				SQLite spatialite spatialite_i
+				OTBCommon OTBIO
+			)
+		else()
+			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+				${GDAL_LIBRARY}
+				#${SQLITE3_LIBRARY}
+				SQLite spatialite
+				OTBCommon OTBIO
+			)
+		endif()
 else()
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIOGDAL ... ")
-        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
-                ${GDAL_LIBRARY}
-                #${SQLITE3_LIBRARY}
-                SQLite spatialite
-                OTBCommon OTBIOGDAL
-        )
+		if(WIN32)
+			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+					${GDAL_LIBRARY}
+					#${SQLITE3_LIBRARY}
+					SQLite spatialite spatialite_i
+					OTBCommon OTBIOGDAL
+			)
+		else()
+			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+					${GDAL_LIBRARY}
+					#${SQLITE3_LIBRARY}
+					SQLite spatialite
+					OTBCommon OTBIOGDAL
+			)
+		endif()
 endif()
 
 ADD_DEPENDENCIES(OTBGDALRATImageIO SQLite)

@@ -12,56 +12,65 @@ if(WIN32)
 		C:/qt
 		C:/
 		C:/Qt
+		C:/opt
+		C:/opt/qt
+		C:/opt/Qt
 	)
 else()
-        set(QT5_CORE_LIB "libQt5Core.so")
+    set(QT5_CORE_LIB "libQt5Core.so")
 	set(QT5_PATHS
 		/opt
 		/opt/qt
-                /opt/Qt
+        /opt/Qt
 		/usr
 		/usr/qt
 		/usr/local
-                /usr/lib
-                /usr/lib/x86_64-linux-gnu
+        /usr/lib
+        /usr/lib/x86_64-linux-gnu
 	)
 endif()
 
 # brute force
 FIND_PATH(CMAKE_PREFIX_PATH ${QT5_CORE_LIB}
         PATH_SUFFIXES
-                Qt5.0.0/5.0.0/gcc
-                Qt5.0.0/5.0.0/gcc_64
-                Qt5.0.1/5.0.1/gcc
-                Qt5.0.1/5.0.1/gcc_64
-                Qt5.0.2/5.0.2/gcc
-                Qt5.0.2/5.0.2/gcc_64
-                Qt5.1.0/5.1.0/gcc
-                Qt5.1.0/5.1.0/gcc_64
-                Qt5.1.1/5.1.1/gcc
-                Qt5.1.1/5.1.1/gcc_64
-                Qt5.2.0/5.2.0/gcc
-                Qt5.2.0/5.2.0/gcc_64
-                Qt5.2.1/5.2.1/gcc
-                Qt5.2.1/5.2.1/gcc_64
-                Qt5.3.0/5.3.0/gcc
-                Qt5.3.0/5.3.0/gcc_64
-                Qt5.3.1/5.3.1/gcc
-                Qt5.3.1/5.3.1/gcc_64
-               
-                qt/5.3/gcc
-                qt/5.3/gcc_64
-                5.3/gcc
-                5.3/gcc_64
-                5.4/gcc_64
-                5.4/gcc
-				
-                Qt5.3.1/qtbase
-                Qt5.3.1/5.3/qtbase
-                5.3.1/qtbase
-                5.3.1/5.3/qtbase
+			Qt5.0.0/5.0.0/gcc
+			Qt5.0.0/5.0.0/gcc_64
+			Qt5.0.1/5.0.1/gcc
+			Qt5.0.1/5.0.1/gcc_64
+			Qt5.0.2/5.0.2/gcc
+			Qt5.0.2/5.0.2/gcc_64
+			Qt5.1.0/5.1.0/gcc
+			Qt5.1.0/5.1.0/gcc_64
+			Qt5.1.1/5.1.1/gcc
+			Qt5.1.1/5.1.1/gcc_64
+			Qt5.2.0/5.2.0/gcc
+			Qt5.2.0/5.2.0/gcc_64
+			Qt5.2.1/5.2.1/gcc
+			Qt5.2.1/5.2.1/gcc_64
+			Qt5.3.0/5.3.0/gcc
+			Qt5.3.0/5.3.0/gcc_64
+			Qt5.3.1/5.3.1/gcc
+			Qt5.3.1/5.3.1/gcc_64
+		   
+			qt/5.3/gcc
+			qt/5.3/gcc_64
+			5.3/gcc
+			5.3/gcc_64
+			5.4/gcc_64
+			5.4/gcc
+			5.5/gcc_64
+			5.5/gcc
+			
+			Qt5.3.1/qtbase
+			Qt5.3.1/5.3/qtbase
+			Qt5.5.0/5.5/qtbase
+			Qt5.5.0/qtbase
+			5.3.1/qtbase
+			5.3.1/5.3/qtbase
+			5.5.0/5.5/qtbase
+			5.5.0/qtbase
 	PATHS		
-                ${QT5_PATHS}
+            ${QT5_PATHS}
 )
 message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
 
@@ -69,7 +78,7 @@ if(NOT CMAKE_PREFIX_PATH)
 	SET(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" CACHE PATH "Qt5 install dir")
 else()
 
-        SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH}/../ CACHE PATH "Qt5 install dir")
+    SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH}/../ CACHE PATH "Qt5 install dir")
 
 	SET(QT5_COMP_LIST
 	    "Qt5Core"
@@ -77,7 +86,7 @@ else()
 	    "Qt5Xml"
 	    "Qt5Gui"
 	    "Qt5Concurrent"
-            "Qt5Sql"
+        "Qt5Sql"
 	    #"Qt5Declarative"
 	    #"Qt5Qml"
 	    #"Qt5Quick"
@@ -164,7 +173,11 @@ foreach(INCLSQL ${QT5_INCLUDE_DIRS})
             5.4.0/QtSql
             5.4.1/QtSql
             5.4.2/QtSql
-        PATHS ${INCLSQL}
+			5.5.0/QtSql
+        PATHS 
+			${INCLSQL}
+			c:/qt/5.5.0/qtbase/include/QtSql
+			c:/Qt/5.5.0/qtbase/include/QtSql
         NO_DEFAULT_PATH
     )
 endforeach()
@@ -172,11 +185,14 @@ endforeach()
 FIND_PATH(QT5SQL_SRC_DIR drivers/sqlite/qsql_sqlite.cpp
     PATH_SUFFIXES
         Src/qtbase/src/sql
+		src/sql
     PATHS
         /opt/Qt/5.4
         /opt/qt/5.4
-        c:/Qt/5.4
-        c:/qt/5.4
+		/opt/qt/5.5
+        c:/Qt/5.4/qtbase
+        c:/qt/5.4/qtbase
+		c:/qt/5.5.0/qtbase
 )
 
 if(NOT QT5SQL_PRIVATE_DIR)

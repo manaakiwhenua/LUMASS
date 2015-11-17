@@ -13,8 +13,8 @@ find_package(VTK COMPONENTS
 	vtkImagingStatistics
 	vtkInteractionWidgets
 	vtkInteractionStyle
-        vtkRenderingFreeTypeOpenGL
-        #vtkRenderingFreeType
+    vtkRenderingFreeTypeOpenGL
+    #vtkRenderingFreeType
 	vtkIOCore
 	vtkIOInfovis
 	vtkIOSQL
@@ -24,25 +24,25 @@ find_package(VTK COMPONENTS
 )
 else()
 find_package(VTK COMPONENTS
-        vtkCommonDataModel
-        vtkCommonCore
-        vtkFiltersGeneric
-        vtkRenderingCore
-        vtkRenderingAnnotation
-        vtkRenderingImage
-        vtkRenderingOpenGL
-        vtkGUISupportQt
-        vtkImagingStatistics
-        vtkInteractionWidgets
-        vtkInteractionStyle
-        #vtkRenderingFreeTypeOpenGL
-        vtkRenderingFreeType
-        vtkIOCore
-        vtkIOInfovis
-        vtkIOSQL
-        vtkIOLegacy
-        vtkIOXML
-        NO_MODULE
+	vtkCommonDataModel
+	vtkCommonCore
+	vtkFiltersGeneric
+	vtkRenderingCore
+	vtkRenderingAnnotation
+	vtkRenderingImage
+	vtkRenderingOpenGL
+	vtkGUISupportQt
+	vtkImagingStatistics
+	vtkInteractionWidgets
+	vtkInteractionStyle
+	#vtkRenderingFreeTypeOpenGL
+	vtkRenderingFreeType
+	vtkIOCore
+	vtkIOInfovis
+	vtkIOSQL
+	vtkIOLegacy
+	vtkIOXML
+	NO_MODULE
 )
 endif()
 
@@ -96,7 +96,8 @@ LINK_DIRECTORIES(
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
 	${SPATIALITE_LIB_DIR}
-#        ${TCADB_LIB_DIR}
+	${SPATIALTE_LIBLIB_DIR}
+	#${TCADB_LIB_DIR}
 )
 
 QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
@@ -156,51 +157,31 @@ file(GLOB QT_SRC
 list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 
 # have taken out ${QT_LIBRARIES} here
+set(LUMASS_LINKLIBS
+	Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+	#Qt5Declarative Qt5Qml Qt5Quick
+	QtPropertyBrowser
+	NMModFrame
+	#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
+	${VTK_LIBRARIES}
+	${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+	${OPENGL_glu_LIBRARY}
+	#${SQLITE3_LIBRARY}
+	SQLite spatialite
+	#SQLiteExtFunc
+)
+
+# need to add the import library on windows
 if(WIN32)
-	set(LUMASS_LINKLIBS
-		Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
-		#Qt5Declarative Qt5Qml Qt5Quick
-		QtPropertyBrowser
-		NMModFrame
-		#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
-		${VTK_LIBRARIES}
-		${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-		${OPENGL_glu_LIBRARY}
-		#${SQLITE3_LIBRARY}
-		SQLite spatialite
-		#SQLiteExtFunc
-	)
-
-	set(LUMASS_DEPLIBS
-		NMModFrame
-		QtPropertyBrowser 
-		SQLite
-		#SQLiteExtFunc
-	)
-else()
-	set(LUMASS_LINKLIBS
-		Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
-		#Qt5Declarative Qt5Qml Qt5Quick
-		QtPropertyBrowser
-		NMModFrame
-		#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
-		${VTK_LIBRARIES}
-		${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-		${OPENGL_glu_LIBRARY}
-		#${SQLITE3_LIBRARY}
-		SQLite spatialite
-		#SQLiteExtFunc
-	)
-
-	set(LUMASS_DEPLIBS
-		NMModFrame
-		QtPropertyBrowser 
-		SQLite
-		#SQLiteExtFunc
-	)
+	LIST(APPEND LUMASS_LINKLIBS spatialite_i)
 endif()
 
-
+set(LUMASS_DEPLIBS
+	NMModFrame
+	QtPropertyBrowser 
+	SQLite
+	#SQLiteExtFunc
+)
 
 
 IF(RASSUPPORT)

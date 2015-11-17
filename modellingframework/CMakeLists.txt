@@ -30,6 +30,8 @@ LINK_DIRECTORIES(
     ${RASDAMAN_LIBRARIES_DIR}
     ${LIBRARY_OUTPUT_PATH}
 	${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
+	${SPATIALITE_LIB_DIR}
+	${SPATIALITE_LIBLIB_DIR}
 )
 
 file(GLOB MFW_CPP
@@ -71,6 +73,7 @@ if (OTB_VERSION_STRING VERSION_LESS "5.0.0")
 		Qt5Xml
 		Qt5Core
 		Qt5Concurrent
+		spatialite
 	)
 else()
 	set(MFW_LINK_LIBS
@@ -81,7 +84,13 @@ else()
 		Qt5Xml
 		Qt5Core
 		Qt5Concurrent
+		spatialite
 	)
+endif()
+
+# need to add the import library on windows
+if(WIN32)
+	LIST(APPEND MFW_LINK_LIBS spatialite_i)
 endif()
 
 set(MFW_DEP_LIBS

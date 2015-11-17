@@ -18,6 +18,7 @@ else()
 	set(QT5_PATHS
 		/opt
 		/opt/qt
+                /opt/Qt
 		/usr
 		/usr/qt
 		/usr/local
@@ -52,13 +53,15 @@ FIND_PATH(CMAKE_PREFIX_PATH ${QT5_CORE_LIB}
                 qt/5.3/gcc_64
                 5.3/gcc
                 5.3/gcc_64
+                5.4/gcc_64
+                5.4/gcc
 				
-				Qt5.3.1/qtbase
-				Qt5.3.1/5.3/qtbase
-				5.3.1/qtbase
-				5.3.1/5.3/qtbase
+                Qt5.3.1/qtbase
+                Qt5.3.1/5.3/qtbase
+                5.3.1/qtbase
+                5.3.1/5.3/qtbase
 	PATHS		
-				${QT5_PATHS}
+                ${QT5_PATHS}
 )
 message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
 
@@ -132,6 +135,7 @@ foreach(INCLDIR ${QT5_INCLUDE_DIRS})
             5.3/QtCore
             5.4.0/QtCore
             5.4.1/QtCore
+            5.4.2/QtCore
         PATHS ${INCLDIR}
         NO_DEFAULT_PATH
     )
@@ -141,6 +145,50 @@ if(NOT QT5CORE_PRIVATE_DIR)
     message(STATUS "couldn't find QT5CORE_PRIVATE_DIR!")
 else()
     message(STATUS "QT5CORE_PRIVATE_DIR=${QT5CORE_PRIVATE_DIR}")
+endif()
+
+# find the private header dir for QtSql
+foreach(INCLSQL ${QT5_INCLUDE_DIRS})
+    FIND_PATH(QT5SQL_PRIVATE_DIR private/qsql_sqlite_p.h
+        PATH_SUFFIXES
+            5.0.0/QtSql
+            5.0.1/QtSql
+            5.0.2/QtSql
+            5.1.0/QtSql
+            5.1.1/QtSql
+            5.2.0/QtSql
+            5.2.1/QtSql
+            5.3.0/QtSql
+            5.3.1/QtSql
+            5.3/QtSql
+            5.4.0/QtSql
+            5.4.1/QtSql
+            5.4.2/QtSql
+        PATHS ${INCLSQL}
+        NO_DEFAULT_PATH
+    )
+endforeach()
+
+FIND_PATH(QT5SQL_SRC_DIR drivers/sqlite/qsql_sqlite.cpp
+    PATH_SUFFIXES
+        Src/qtbase/src/sql
+    PATHS
+        /opt/Qt/5.4
+        /opt/qt/5.4
+        c:/Qt/5.4
+        c:/qt/5.4
+)
+
+if(NOT QT5SQL_PRIVATE_DIR)
+    message(STATUS "couldn't find QT5SQL_PRIVATE_DIR!")
+else()
+    message(STATUS "QT5SQL_PRIVATE_DIR=${QT5SQL_PRIVATE_DIR}")
+endif()
+
+if(NOT QT5SQL_SRC_DIR)
+    message(STATUS "couldn't find QT5SQL_SRC_DIR!")
+else()
+    message(STATUS "QT5SQL_SRC_DIR=${QT5SQL_SRC_DIR}")
 endif()
 
 # finally, we determine the qt5 version

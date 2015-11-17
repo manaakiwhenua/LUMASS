@@ -27,15 +27,19 @@
 #include <limits>
 #include <cstring>
 #include <cstdio>
-#ifndef _WIN32
-	#include "libgen.h"
-#else
-	#include <stdlib.h>
-#endif
 #include <sstream>
 #include <locale>
 #include <algorithm>
 #include "otbMacro.h"
+
+#ifndef _WIN32
+    #include "libgen.h"
+    #define NM_SPATIALITE_LIB "libspatialite"
+#else
+    #include <stdlib.h>
+    #define NM_SPATIALITE_LIB "spatialite"
+#endif
+#define NM_SPATIALITE_INIT "spatialite_init_ex"
 
 
 namespace otb
@@ -2189,12 +2193,21 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     // enable loading extensions?
     // =============
     sqlite3_enable_load_extension(m_db, 1);
-
+    char* errMsg;
+    if (sqlite3_load_extension(m_db,
+                               NM_SPATIALITE_LIB,
+                               NM_SPATIALITE_INIT,
+                               &errMsg
+       ) != 0)
+    {
+        NMWarn(_ctxotbtab, << errMsg);
+        sqlite3_free(errMsg);
+    }
 
     // ============================================================
     // check, whether we've already got a table
     // ============================================================
-    char* errMsg = 0;
+    errMsg = 0;
     std::stringstream ssql;
     ssql.str("");
 
@@ -2603,7 +2616,6 @@ SQLiteTable::loadExtension(const std::string &lib, const std::string &entry)
         return false;
     }
 
-    NMDebugAI(<< "LOADED SPATIALITE !!!" << std::endl);
     return true;
 }
 

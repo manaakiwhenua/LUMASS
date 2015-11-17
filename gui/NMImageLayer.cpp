@@ -40,6 +40,8 @@
 #include <QMessageBox>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QSqlDriver>
+#include "private/qsql_sqlite_p.h"
 
 #include "itkDataObject.h"
 #include "otbImage.h"
@@ -657,57 +659,20 @@ NMImageLayer::updateAttributeTable()
         sqlTable = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     }
 
-    //if (this->mTableModel == 0)
-	{
-        if (ramTable.IsNotNull())
-        {
-            ramModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
-        }
-        else
-        {
-            QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-            db.setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
-            if (!db.open())
-            {
-                NMErr(ctxNMImageLayer, << "Open database failed!" << endl);
-            }
-            else
-            {
-				// load the spatialite extension for this connection
-                //std::stringstream ssql;
-                //ssql << "Select load_extension(\'/usr/lib/x86_64-linux-gnu/libspatialite\');";
-                //QSqlQuery q(db);
-                //if (!q.exec(QString(ssql.str().c_str())))
-                if (!sqlTable->loadExtension("libspatialite", "sqlite3_spatialite_init"))
-				{
-					NMErr(ctxNMImageLayer, << "nope! sql extension not loaded!");
-				}
-				else
-				{
-					NMDebugAI(<< "spatialite extension successfully loaded!" << std::endl);
-				}
-                sqlModel = new NMSqlTableModel(this, db);
-                sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
-                sqlModel->select();
-            }
-        }
-	}
-    //	else
-    //	{
-    //        if (ramTable.IsNotNull())
-    //        {
 
-    //        }
-    //        else
-    //        {
-    //            tabModel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
-    //        }
+    if (ramTable.IsNotNull())
+    {
+        ramModel = new NMQtOtbAttributeTableModel(this->mOtbRAT);
+    }
+    else
+    {
+        QSQLiteDriver* drv = new QSQLiteDriver(sqlTable->GetDbConnection(), 0);
+        QSqlDatabase db = QSqlDatabase::addDatabase(drv);
+        sqlModel = new NMSqlTableModel(this, db);
+        sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
+        sqlModel->select();
+    }
 
-    //        //		otbModel = qobject_cast<NMQtOtbAttributeTableModel*>(this->mTableModel);
-    //        //		otbModel->setTable(this->mOtbRAT);
-    //        //		otbModel->setKeyColumn("rowidx");
-    //	}
-    //otbModel->setKeyColumn("rowidx");
 
 	// in any case, we create a new item selection model
     if (    this->mSelectionModel == 0

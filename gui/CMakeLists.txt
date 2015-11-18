@@ -52,8 +52,9 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${QT5CORE_PRIVATE_DIR}
-    ${QT5SQL_PRIVATE_DIR}
+    #${QT5SQL_PRIVATE_DIR}/private
     ${QT5SQL_PRIVATE_DIR}/..
+    ${utils_SOURCE_DIR}/Qt/drivers/sqlite
     ${opt_SOURCE_DIR}
     ${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
@@ -104,7 +105,7 @@ QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 QT5_WRAP_CPP(MOC_CPP
         ${NMVtk_SOURCE_DIR}/vtkQtEditableTableModelAdapter.h
-        ${QT5SQL_PRIVATE_DIR}/private/qsql_sqlite_p.h
+        ${utils_SOURCE_DIR}/Qt/drivers/sqlite/qsql_sqlite_p.h
         ${opt_SOURCE_DIR}/NMMosra.h
         ${gui_SOURCE_DIR}/otbmodellerwin.h
         ${gui_SOURCE_DIR}/modelcomponentlist.h
@@ -143,7 +144,7 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp 
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx 
-    ${QT5SQL_SRC_DIR}/drivers/sqlite/qsql_sqlite.cpp
+    ${QT5SQL_SRC_DIR}/qsql_sqlite.cpp
     
     # we also add some other stuff here
     # want to be included

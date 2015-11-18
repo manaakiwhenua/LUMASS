@@ -1,0 +1,4 @@
+This folder stores Qt source files downloaded from https://github.com/qtproject .
+Files are only downloaded on demand in case cmake/Modules/FindLUMASSQt5.cmake
+couldn't find the required resources for building LUMASS locally.
+We recommend to not add these resources to your private lumass repository.

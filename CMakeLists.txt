@@ -129,6 +129,7 @@ IF(NOT CMAKE_PREFIX_PATH)
 	message(FATAL_ERROR "Need to specify Qt5 install DIR!")
 ENDIF()
 
+
 #====================================================================
 # OpenGL 
 #====================================================================

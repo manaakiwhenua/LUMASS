@@ -41,7 +41,11 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QSqlDriver>
-#include "private/qsql_sqlite_p.h" // QSQLiteDriver
+
+// QSQLiteDriver
+//#include "private/qsql_sqlite_p.h"
+#include "qsql_sqlite.cpp"
+
 
 #include "itkDataObject.h"
 #include "otbImage.h"

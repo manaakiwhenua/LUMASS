@@ -52,7 +52,8 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${QT5CORE_PRIVATE_DIR}
-    ${QT5SQL_PRIVATE_DIR}
+    ${QT5SQL_PRIVATE_DIR}/..
+    ${QT5SQL_PRIVATE_DIR}/private
     ${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
@@ -79,11 +80,10 @@ INCLUDE_DIRECTORIES(
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}
 	${SQLite_SOURCE_DIR}
+    ${NMQSQLite_SRC_DIR}
 	${SPATIALITE_INCLUDE_DIR}
 #    ${TCADB_INCLUDE_DIR}
 )     
-
-message(STATUS "spatialite.lib dir: ${SPATIALITE_LIBLIB_DIR}")
 
 LINK_DIRECTORIES(
     ${QT5_LINK_DIRS}
@@ -98,7 +98,7 @@ LINK_DIRECTORIES(
 	${PostgreSQL_LIBRARY_DIRS}
 	${SPATIALITE_LIB_DIR}
 	${SPATIALTE_LIBLIB_DIR}
-	${QT5SQL_PLUGINS_DIR}
+    #${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
 	${OSGEO4W_ROOT}/lib
 	${OSGEO4W_ROOT}/bin
 	#${TCADB_LIB_DIR}
@@ -149,7 +149,7 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp 
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx 
-    #${NMQSQLite_SRC_DIR}/qsql_sqlite.cpp
+    ${NMQSQLite_SRC_DIR}/*.cpp
     
     # we also add some other stuff here
     # want to be included
@@ -158,16 +158,15 @@ file(GLOB QT_SRC
     ${lumass_SOURCE_DIR}/utils/ITK/itkVTKImageExportBase.cxx
 )
 
-message(STATUS "lumass src: ${QT_SRC}")
-
 # take the ChartsWidget out until we've switched to the new VTK Charts
 # framework
 list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
-	Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql qsqlite qsqlited
-	#Qt5Declarative Qt5Qml Qt5Quick
+    Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+    #qsqlite
+    #Qt5Declarative Qt5Qml Qt5Quick
 	QtPropertyBrowser
 	NMModFrame
 	#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart

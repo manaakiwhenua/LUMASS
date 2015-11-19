@@ -101,6 +101,17 @@ else()
 				LIST(APPEND QT5_LIB_LIST "${QT5COMP}_LIBRARIES")
 		    endif(WIN32)
 	        LIST(APPEND QT5_INCLUDE_DIRS ${${QT5COMP}_INCLUDE_DIRS})
+			
+			string(COMPARE EQUAL "${QT5COMP}" Qt5Sql _cmp)
+			if (_cmp)
+				list(GET Qt5Sql_PLUGINS 0 plugin)
+				get_target_property(_loc ${plugin} LOCATION)
+				get_filename_component(_loc_path ${_loc} DIRECTORY)
+				message("Plugin ${plugin} is at location ${_loc_path}")
+				set(QT5SQL_PLUGINS_DIR ${_loc_path} CACHE FILEPATH
+					"Path to Qt5's qsqlite.<so | dll | lib> plugin library" FORCE)
+				#endforeach()
+			endif()
 	    endif(${QT5COMP}_FOUND)
 	endforeach(QT5COMP)
 	list(REMOVE_DUPLICATES QT5_INCLUDE_DIRS)
@@ -128,6 +139,10 @@ else()
 	message(STATUS "Qt5 link directories: ${QT5_LINK_DIRS}")
 endif()
 
+if(NOT QT5SQL_PLUGINS_DIR)
+	message(FATAL_ERROR "Please specify the location to Qt5's qsqlite plugin library (*.dll, *.so, *.lib)")
+endif()
+
 # find the private header dir for QtCore and QtGui
 foreach(INCLDIR ${QT5_INCLUDE_DIRS})
     FIND_PATH(QT5CORE_PRIVATE_DIR private/qitemselectionmodel_p.h
@@ -145,7 +160,11 @@ foreach(INCLDIR ${QT5_INCLUDE_DIRS})
             5.4.0/QtCore
             5.4.1/QtCore
             5.4.2/QtCore
-        PATHS ${INCLDIR}
+			5.5.0/QtCore
+        PATHS 
+			${INCLDIR}
+			c:/qt/5.5.0/qtbase/include/QtCore
+			c:/Qt/5.5.0/qtbase/include/QtCore			
         NO_DEFAULT_PATH
     )
 endforeach()
@@ -169,7 +188,7 @@ foreach(INCLSQL ${QT5_INCLUDE_DIRS})
             5.2.1/QtSql
             5.3.0/QtSql
             5.3.1/QtSql
-            5.3/QtSql
+              5.3/QtSql
             5.4.0/QtSql
             5.4.1/QtSql
             5.4.2/QtSql
@@ -182,54 +201,61 @@ foreach(INCLSQL ${QT5_INCLUDE_DIRS})
     )
 endforeach()
 
-FIND_PATH(QT5SQL_SRC_DIR drivers/sqlite/qsql_sqlite.cpp
-    PATH_SUFFIXES
-        Src/qtbase/src/sql
-		src/sql
-    PATHS
-        /opt/Qt/5.4
-        /opt/qt/5.4
-		/opt/qt/5.5
-        c:/Qt/5.4/qtbase
-        c:/qt/5.4/qtbase
-		c:/qt/5.5.0/qtbase
-)
-
 if(NOT QT5SQL_PRIVATE_DIR)
     set(QT5SQL_PRIVATE_DIR ${QT5SQL_PRIVATE_DIR}
         CACHE FILEPATH "Path to QSQLiteDirver's private header file!" FORCE)
     message(STATUS "Couldn't find QSQLiteDriver's private header file!")
-else()
-    file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/utils/Qt/drivers/sqlite)
-    file(COPY ${QT5SQL_PRIVATE_DIR}/private/qsql_sqlite_p.h
-         DESTINATION ${CMAKE_SOURCE_DIR}/utils/Qt/drivers/sqlite)
-    message(STATUS "QT5SQL_PRIVATE_DIR=${QT5SQL_PRIVATE_DIR}")
 endif()
 
-# if we couldn't find the QSQLiteDriver's source file locally,
-# we try to download it
-if(NOT QT5SQL_SRC_DIR)
-    file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/utils/Qt/drivers/sqlite)
-    file(DOWNLOAD
-         https://github.com/qtproject/qtbase/raw/dev/src/sql/drivers/sqlite/qsql_sqlite.cpp
-         ${CMAKE_SOURCE_DIR}/utils/Qt/drivers/sqlite/qsql_sqlite.cpp
-         STATUS status SHOW_PROGRESS)
-    list(GET status 0 statvar)
 
-    if(NOT statvar)
-        set(QT5SQL_SRC_DIR ${CMAKE_SOURCE_DIR}/utils/Qt/drivers/sqlite
-            CACHE FILEPATH "Path to QSQLiteDriver source file" FORCE)
-        message(STATUS "QT5SQL_SRC_DIR=${QT5SQL_SRC_DIR}")
-    endif()
-endif()
+# have a look around whether we can find a source 
+# directory hosting the QSQLiteDriver code
+# FIND_PATH(QT5SQLite_SRC_DIR qsql_sqlite.cpp
+    # PATH_SUFFIXES
+        # Src/qtbase/src/sql/drivers/sqlite
+		# src/sql/drivers/sqlite
+    # PATHS
+        # /opt/Qt/5.4
+        # /opt/qt/5.4
+		# /opt/qt/5.5
+        # c:/Qt/5.4/qtbase
+        # c:/qt/5.4/qtbase
+		# c:/qt/5.5.0/qtbase
+# )
 
-if (NOT QT5SQL_SRC_DIR)
-        set(QT5SQL_SRC_DIR ${QT5SQL_SRC_DIR}
-            CACHE FILEPATH "Path to QSQLiteDriver source file" FORCE)
-        message(STATUS "Couldn't find or fetch qsql_sqlite.cpp!")
-else()
-    message(STATUS "QT5SQL_SRC_DIR=${QT5SQL_SRC_DIR}")
-endif()
+# if we've got sources for the QSQLiteDriver installed
+# we copy the appropriate files into the lumass source tree
+# for compilation
+# IF(QT5SQLite_SRC_DIR)
+    # file(COPY ${QT5SQLite_SRC_DIR}/qsql_sqlite_p.h
+			  # ${QT5SQLite_SRC_DIR}/qsql_sqlite.cpp
+         # DESTINATION ${utils_SOURCE_DIR}/Qt/drivers/sqlite)
+		 
+	# set(NMQSQLite_SRC_DIR ${utils_SOURCE_DIR}/Qt/drivers/sqlite
+		# CACHE FILEPATH "Path to QSQLiteDriver source file" FORCE)	
+# ENDIF()
+
+# if we couldn't find the QSQLiteDriver's source files locally,
+# we try to download them from github.com/qtproject
+# file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/utils/Qt/drivers/sqlite)
+# if(NOT NMQSQLite_SRC_DIR)
+    # file(DOWNLOAD
+         # https://github.com/qtproject/qtbase/raw/dev/src/sql/drivers/sqlite/qsql_sqlite.cpp
+         # ${utils_SOURCE_DIR}/Qt/drivers/sqlite/qsql_sqlite.cpp
+         # STATUS down_cpp SHOW_PROGRESS)
+    # file(DOWNLOAD
+         # https://github.com/qtproject/qtbase/raw/dev/src/sql/drivers/sqlite/qsql_sqlite_p.h
+         # ${utils_SOURCE_DIR}/Qt/drivers/sqlite/qsql_sqlite_p.h
+         # STATUS down_h SHOW_PROGRESS)    
+	
+	# list(GET down_cpp 0 down_cpp_err)
+	# list(GET down_h 0 down_h_err)
+
+    # if(NOT down_cpp_err AND NOT down_h_err)
+        # set(NMQSQLite_SRC_DIR ${utils_SOURCE_DIR}/Qt/drivers/sqlite
+            # CACHE FILEPATH "Path to QSQLiteDriver source file" FORCE)
+    # endif()
+# endif()
 
 
 # finally, we determine the qt5 version

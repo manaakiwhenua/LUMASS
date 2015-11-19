@@ -52,11 +52,9 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${QT5CORE_PRIVATE_DIR}
-    #${QT5SQL_PRIVATE_DIR}/private
-    ${QT5SQL_PRIVATE_DIR}/..
-    ${utils_SOURCE_DIR}/Qt/drivers/sqlite
+    ${QT5SQL_PRIVATE_DIR}
     ${opt_SOURCE_DIR}
-    ${lumass_BINARY_DIR}
+	${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
     ${utils_SOURCE_DIR}/QtPropertyBrowser/src
     ${NMVtk_SOURCE_DIR}
@@ -85,6 +83,8 @@ INCLUDE_DIRECTORIES(
 #    ${TCADB_INCLUDE_DIR}
 )     
 
+message(STATUS "spatialite.lib dir: ${SPATIALITE_LIBLIB_DIR}")
+
 LINK_DIRECTORIES(
     ${QT5_LINK_DIRS}
 	${OTB_LIBRARY_DIRS}
@@ -98,14 +98,19 @@ LINK_DIRECTORIES(
 	${PostgreSQL_LIBRARY_DIRS}
 	${SPATIALITE_LIB_DIR}
 	${SPATIALTE_LIBLIB_DIR}
+	${QT5SQL_PLUGINS_DIR}
+	${OSGEO4W_ROOT}/lib
+	${OSGEO4W_ROOT}/bin
 	#${TCADB_LIB_DIR}
 )
+
+
 
 QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 QT5_WRAP_CPP(MOC_CPP
         ${NMVtk_SOURCE_DIR}/vtkQtEditableTableModelAdapter.h
-        ${utils_SOURCE_DIR}/Qt/drivers/sqlite/qsql_sqlite_p.h
+        #${NMQSQLite_SRC_DIR}/qsql_sqlite_p.h
         ${opt_SOURCE_DIR}/NMMosra.h
         ${gui_SOURCE_DIR}/otbmodellerwin.h
         ${gui_SOURCE_DIR}/modelcomponentlist.h
@@ -144,7 +149,7 @@ file(GLOB QT_SRC
     ${gui_SOURCE_DIR}/*.cpp 
     ${gui_SOURCE_DIR}/*.cxx
     ${gui_SOURCE_DIR}/*.txx 
-    ${QT5SQL_SRC_DIR}/qsql_sqlite.cpp
+    #${NMQSQLite_SRC_DIR}/qsql_sqlite.cpp
     
     # we also add some other stuff here
     # want to be included
@@ -153,13 +158,15 @@ file(GLOB QT_SRC
     ${lumass_SOURCE_DIR}/utils/ITK/itkVTKImageExportBase.cxx
 )
 
+message(STATUS "lumass src: ${QT_SRC}")
+
 # take the ChartsWidget out until we've switched to the new VTK Charts
 # framework
 list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
 
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
-	Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+	Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql qsqlite qsqlited
 	#Qt5Declarative Qt5Qml Qt5Quick
 	QtPropertyBrowser
 	NMModFrame
@@ -168,14 +175,15 @@ set(LUMASS_LINKLIBS
 	${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
 	${OPENGL_glu_LIBRARY}
 	#${SQLITE3_LIBRARY}
-	SQLite spatialite
+	SQLite 
 	#SQLiteExtFunc
 )
 
 # need to add the import library on windows
-if(WIN32)
-	LIST(APPEND LUMASS_LINKLIBS spatialite_i)
-endif()
+#if(WIN32)
+#	LIST(REMOVE_ITEM LUMASS_LINKLIBS spatialite)
+#	LIST(APPEND LUMASS_LINKLIBS spatialite_i)
+#endif()
 
 set(LUMASS_DEPLIBS
 	NMModFrame

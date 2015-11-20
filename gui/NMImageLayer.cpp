@@ -43,8 +43,9 @@
 #include <QSqlDriver>
 
 // QSQLiteDriver
-//#include "private/qsql_sqlite_p.h"
-#include "qsql_sqlite.cpp"
+#include "nmqsql_sqlite_p.h"
+#include "nmqsqlcachedresult_p.h"
+//#include "qsql_sqlite.cpp"
 
 
 #include "itkDataObject.h"

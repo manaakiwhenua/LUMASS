@@ -52,12 +52,13 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${QT5CORE_PRIVATE_DIR}
-    ${QT5SQL_PRIVATE_DIR}/..
-    ${QT5SQL_PRIVATE_DIR}/private
+    ${QT5SQL_INCLUDE_DIR}
+    #${QT5SQL_PRIVATE_DIR}/private
     ${opt_SOURCE_DIR}
 	${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
     ${utils_SOURCE_DIR}/QtPropertyBrowser/src
+    ${NMQSQLite_SRC_DIR}
     ${NMVtk_SOURCE_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
@@ -110,7 +111,6 @@ QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 QT5_WRAP_CPP(MOC_CPP
         ${NMVtk_SOURCE_DIR}/vtkQtEditableTableModelAdapter.h
-        #${NMQSQLite_SRC_DIR}/qsql_sqlite_p.h
         ${opt_SOURCE_DIR}/NMMosra.h
         ${gui_SOURCE_DIR}/otbmodellerwin.h
         ${gui_SOURCE_DIR}/modelcomponentlist.h
@@ -139,6 +139,8 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMComponentListItemDelegate.h
         ${gui_SOURCE_DIR}/NMComponentEditor.h
         ${gui_SOURCE_DIR}/NMWidgetListView.h
+        ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
+        ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
 )
 
 file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)

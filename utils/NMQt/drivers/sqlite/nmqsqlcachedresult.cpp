@@ -32,8 +32,9 @@
 ****************************************************************************/
 
 /*
+ *  original class/file: QSqlCachedResult
  *  adapted 2015 by Alexander Herzig
- *  for compiling as part of LUMASS
+ *  for compiling together with LUMASS source code
  *
  */
 
@@ -46,11 +47,11 @@
 QT_BEGIN_NAMESPACE
 
 /*
-   QSqlCachedResult is a convenience class for databases that only allow
+   NMQSqlCachedResult is a convenience class for databases that only allow
    forward only fetching. It will cache all the results so we can iterate
    backwards over the results again.
 
-   All you need to do is to inherit from QSqlCachedResult and reimplement
+   All you need to do is to inherit from NMQSqlCachedResult and reimplement
    gotoNext(). gotoNext() will have a reference to the internal cache and
    will give you an index where you can start filling in your data. Special
    case: If the user actually wants a forward-only query, idx will be -1
@@ -59,10 +60,10 @@ QT_BEGIN_NAMESPACE
 
 static const uint initial_cache_size = 128;
 
-class QSqlCachedResultPrivate
+class NMQSqlCachedResultPrivate
 {
 public:
-    QSqlCachedResultPrivate();
+    NMQSqlCachedResultPrivate();
     bool canSeek(int i) const;
     inline int cacheCount() const;
     void init(int count, bool fo);
@@ -70,19 +71,19 @@ public:
     int nextIndex();
     void revertLast();
 
-    QSqlCachedResult::ValueCache cache;
+    NMQSqlCachedResult::ValueCache cache;
     int rowCacheEnd;
     int colCount;
     bool forwardOnly;
     bool atEnd;
 };
 
-QSqlCachedResultPrivate::QSqlCachedResultPrivate():
+NMQSqlCachedResultPrivate::NMQSqlCachedResultPrivate():
     rowCacheEnd(0), colCount(0), forwardOnly(false), atEnd(false)
 {
 }
 
-void QSqlCachedResultPrivate::cleanup()
+void NMQSqlCachedResultPrivate::cleanup()
 {
     cache.clear();
     forwardOnly = false;
@@ -91,7 +92,7 @@ void QSqlCachedResultPrivate::cleanup()
     rowCacheEnd = 0;
 }
 
-void QSqlCachedResultPrivate::init(int count, bool fo)
+void NMQSqlCachedResultPrivate::init(int count, bool fo)
 {
     Q_ASSERT(count);
     cleanup();
@@ -105,7 +106,7 @@ void QSqlCachedResultPrivate::init(int count, bool fo)
     }
 }
 
-int QSqlCachedResultPrivate::nextIndex()
+int NMQSqlCachedResultPrivate::nextIndex()
 {
     if (forwardOnly)
         return 0;
@@ -117,21 +118,21 @@ int QSqlCachedResultPrivate::nextIndex()
     return newIdx;
 }
 
-bool QSqlCachedResultPrivate::canSeek(int i) const
+bool NMQSqlCachedResultPrivate::canSeek(int i) const
 {
     if (forwardOnly || i < 0)
         return false;
     return rowCacheEnd >= (i + 1) * colCount;
 }
 
-void QSqlCachedResultPrivate::revertLast()
+void NMQSqlCachedResultPrivate::revertLast()
 {
     if (forwardOnly)
         return;
     rowCacheEnd -= colCount;
 }
 
-inline int QSqlCachedResultPrivate::cacheCount() const
+inline int NMQSqlCachedResultPrivate::cacheCount() const
 {
     Q_ASSERT(!forwardOnly);
     Q_ASSERT(colCount);
@@ -140,22 +141,22 @@ inline int QSqlCachedResultPrivate::cacheCount() const
 
 //////////////
 
-QSqlCachedResult::QSqlCachedResult(const QSqlDriver * db): QSqlResult (db)
+NMQSqlCachedResult::NMQSqlCachedResult(const QSqlDriver * db): QSqlResult (db)
 {
-    d = new QSqlCachedResultPrivate();
+    d = new NMQSqlCachedResultPrivate();
 }
 
-QSqlCachedResult::~QSqlCachedResult()
+NMQSqlCachedResult::~NMQSqlCachedResult()
 {
     delete d;
 }
 
-void QSqlCachedResult::init(int colCount)
+void NMQSqlCachedResult::init(int colCount)
 {
     d->init(colCount, isForwardOnly());
 }
 
-bool QSqlCachedResult::fetch(int i)
+bool NMQSqlCachedResult::fetch(int i)
 {
     if ((!isActive()) || (i < 0))
         return false;
@@ -193,7 +194,7 @@ bool QSqlCachedResult::fetch(int i)
     return true;
 }
 
-bool QSqlCachedResult::fetchNext()
+bool NMQSqlCachedResult::fetchNext()
 {
     if (d->canSeek(at() + 1)) {
         setAt(at() + 1);
@@ -202,12 +203,12 @@ bool QSqlCachedResult::fetchNext()
     return cacheNext();
 }
 
-bool QSqlCachedResult::fetchPrevious()
+bool NMQSqlCachedResult::fetchPrevious()
 {
     return fetch(at() - 1);
 }
 
-bool QSqlCachedResult::fetchFirst()
+bool NMQSqlCachedResult::fetchFirst()
 {
     if (d->forwardOnly && at() != QSql::BeforeFirstRow) {
         return false;
@@ -219,7 +220,7 @@ bool QSqlCachedResult::fetchFirst()
     return cacheNext();
 }
 
-bool QSqlCachedResult::fetchLast()
+bool NMQSqlCachedResult::fetchLast()
 {
     if (d->atEnd) {
         if (d->forwardOnly)
@@ -239,7 +240,7 @@ bool QSqlCachedResult::fetchLast()
     }
 }
 
-QVariant QSqlCachedResult::data(int i)
+QVariant NMQSqlCachedResult::data(int i)
 {
     int idx = d->forwardOnly ? i : at() * d->colCount + i;
     if (i >= d->colCount || i < 0 || at() < 0 || idx >= d->rowCacheEnd)
@@ -248,7 +249,7 @@ QVariant QSqlCachedResult::data(int i)
     return d->cache.at(idx);
 }
 
-bool QSqlCachedResult::isNull(int i)
+bool NMQSqlCachedResult::isNull(int i)
 {
     int idx = d->forwardOnly ? i : at() * d->colCount + i;
     if (i >= d->colCount || i < 0 || at() < 0 || idx >= d->rowCacheEnd)
@@ -257,21 +258,21 @@ bool QSqlCachedResult::isNull(int i)
     return d->cache.at(idx).isNull();
 }
 
-void QSqlCachedResult::cleanup()
+void NMQSqlCachedResult::cleanup()
 {
     setAt(QSql::BeforeFirstRow);
     setActive(false);
     d->cleanup();
 }
 
-void QSqlCachedResult::clearValues()
+void NMQSqlCachedResult::clearValues()
 {
     setAt(QSql::BeforeFirstRow);
     d->rowCacheEnd = 0;
     d->atEnd = false;
 }
 
-bool QSqlCachedResult::cacheNext()
+bool NMQSqlCachedResult::cacheNext()
 {
     if (d->atEnd)
         return false;
@@ -290,27 +291,27 @@ bool QSqlCachedResult::cacheNext()
     return true;
 }
 
-int QSqlCachedResult::colCount() const
+int NMQSqlCachedResult::colCount() const
 {
     return d->colCount;
 }
 
-QSqlCachedResult::ValueCache &QSqlCachedResult::cache()
+NMQSqlCachedResult::ValueCache &NMQSqlCachedResult::cache()
 {
     return d->cache;
 }
 
-void QSqlCachedResult::virtual_hook(int id, void *data)
+void NMQSqlCachedResult::virtual_hook(int id, void *data)
 {
     QSqlResult::virtual_hook(id, data);
 }
 
-void QSqlCachedResult::detachFromResultSet()
+void NMQSqlCachedResult::detachFromResultSet()
 {
     cleanup();
 }
 
-void QSqlCachedResult::setNumericalPrecisionPolicy(QSql::NumericalPrecisionPolicy policy)
+void NMQSqlCachedResult::setNumericalPrecisionPolicy(QSql::NumericalPrecisionPolicy policy)
 {
     QSqlResult::setNumericalPrecisionPolicy(policy);
     cleanup();

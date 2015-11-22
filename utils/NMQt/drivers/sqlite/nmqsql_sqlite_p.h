@@ -31,8 +31,8 @@
 **
 ****************************************************************************/
 
-#ifndef QSQL_SQLITE_H
-#define QSQL_SQLITE_H
+#ifndef NMQSQL_SQLITE_H
+#define NMQSQL_SQLITE_H
 
 //
 //  W A R N I N G
@@ -58,18 +58,18 @@ struct sqlite3;
 
 QT_BEGIN_NAMESPACE
 
-class QSQLiteDriverPrivate;
-class QSQLiteDriver;
+class NMQSQLiteDriverPrivate;
+class NMQSQLiteDriver;
 
-class Q_EXPORT_SQLDRIVER_SQLITE QSQLiteDriver : public QSqlDriver
+class Q_EXPORT_SQLDRIVER_SQLITE NMQSQLiteDriver : public QSqlDriver
 {
-    Q_DECLARE_PRIVATE(QSQLiteDriver)
+    Q_DECLARE_PRIVATE(NMQSQLiteDriver)
     Q_OBJECT
-    friend class QSQLiteResult;
+    friend class NMQSQLiteResult;
 public:
-    explicit QSQLiteDriver(QObject *parent = 0);
-    explicit QSQLiteDriver(sqlite3 *connection, QObject *parent = 0);
-    ~QSQLiteDriver();
+    explicit NMQSQLiteDriver(QObject *parent = 0);
+    explicit NMQSQLiteDriver(sqlite3 *connection, QObject *parent = 0);
+    ~NMQSQLiteDriver();
     bool hasFeature(DriverFeature f) const Q_DECL_OVERRIDE;
     bool open(const QString & db,
                    const QString & user,
@@ -92,4 +92,4 @@ public:
 
 QT_END_NAMESPACE
 
-#endif // QSQL_SQLITE_H
+#endif // NMQSQL_SQLITE_H

@@ -671,7 +671,7 @@ NMImageLayer::updateAttributeTable()
     }
     else
     {
-        QSQLiteDriver* drv = new QSQLiteDriver(sqlTable->GetDbConnection(), 0);
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
         QSqlDatabase db = QSqlDatabase::addDatabase(drv);
         sqlModel = new NMSqlTableModel(this, db);
         sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));

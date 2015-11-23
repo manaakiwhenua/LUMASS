@@ -1176,12 +1176,12 @@ SQLiteTable::DoBulkSet(std::vector<ColumnValue> &values, const long long int &ro
 bool
 SQLiteTable::BeginTransaction()
 {
-   // NMDebugCtx(_ctxotbtab, << "...");
+	//NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
         otbWarningMacro(<< "No database connection!");
         NMWarn(_ctxotbtab, << "No database connection!");
-       // NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -1203,6 +1203,7 @@ SQLiteTable::BeginTransaction()
     else
     {
         //NMDebugCtx(_ctxotbtab, << "done!");
+		NMDebugAI(<< "NMSQLiteTable --> started new transaction!" << std::endl);
         return true;
     }
 }
@@ -1237,6 +1238,7 @@ SQLiteTable::EndTransaction()
     else
     {
         //NMDebugCtx(_ctxotbtab, << "done!");
+		NMDebugAI(<< "NMSQLiteTable --> ended current transaction!" << std::endl);
         return true;
     }
 }

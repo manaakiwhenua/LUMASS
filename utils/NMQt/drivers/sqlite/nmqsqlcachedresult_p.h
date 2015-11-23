@@ -54,7 +54,7 @@ template <typename T> class QVector;
 
 class NMQSqlCachedResultPrivate;
 
-class Q_SQL_EXPORT NMQSqlCachedResult: public QSqlResult
+class NMQSqlCachedResult: public QSqlResult
 {
 public:
     virtual ~NMQSqlCachedResult();

@@ -671,6 +671,8 @@ NMImageLayer::updateAttributeTable()
     }
     else
     {
+		sqlTable->EndTransaction();
+		NMDebugAI(<< "-----> re-using SQLite connection, now .... !" << std::endl);
         NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
         QSqlDatabase db = QSqlDatabase::addDatabase(drv);
         sqlModel = new NMSqlTableModel(this, db);

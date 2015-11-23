@@ -50,18 +50,20 @@
 
 struct sqlite3;
 
+/*
 #ifdef QT_PLUGIN
 #define Q_EXPORT_SQLDRIVER_SQLITE
 #else
 #define Q_EXPORT_SQLDRIVER_SQLITE Q_SQL_EXPORT
 #endif
+*/
 
 QT_BEGIN_NAMESPACE
 
 class NMQSQLiteDriverPrivate;
 class NMQSQLiteDriver;
 
-class Q_EXPORT_SQLDRIVER_SQLITE NMQSQLiteDriver : public QSqlDriver
+class NMQSQLiteDriver : public QSqlDriver
 {
     Q_DECLARE_PRIVATE(NMQSQLiteDriver)
     Q_OBJECT

@@ -672,9 +672,52 @@ NMImageLayer::updateAttributeTable()
     else
     {
 		sqlTable->EndTransaction();
+
+#ifndef _WIN32
 		NMDebugAI(<< "-----> re-using SQLite connection, now .... !" << std::endl);
         NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-        QSqlDatabase db = QSqlDatabase::addDatabase(drv);
+		QSqlDatabase db = QSqlDatabase::addDatabase(drv);
+#else
+		std::cout << "-----> using WIN32 Qt with extension loading enabled ... " << std::endl;
+		QSqlDatabase db = QSqlDatabase::addDatabase("QSLITE");
+		db.setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
+
+		//QVariant vHandle = db.driver()->handle();
+		//if (vHandle.isValid())
+		//{
+		//	sqlite3* handle = *static_cast<sqlite3**>(vHandle.data());
+		//	if (handle != 0)
+		//	{
+		//		char* errMsg;
+		//		sqlite3_enable_load_extension(handle, 1);
+		//		if (sqlite3_load_extension(handle,
+		//									"spatialite.dll",
+		//									"spatialite_init_ext",
+		//									&errMsg) == 0
+		//		   )
+		//		{
+		//			std::cout << "ALL GOOD! DID IT ON WIN!!!" << std::endl;
+		//		}
+		//		else
+		//		{
+		//			std::cout << errMsg << std::endl;
+		//			std::cout << "Back to square one!! Hurry!" << std::endl;
+		//			sqlite3_free(errMsg);
+		//		}
+		//	}
+		//}
+
+		if (!db.open())
+		{
+			NMErr(ctxNMImageLayer, << "Open database failed!" << std::endl);
+			mOtbRAT = 0;
+			return 0;
+		}
+
+
+
+#endif
+
         sqlModel = new NMSqlTableModel(this, db);
         sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
         sqlModel->select();

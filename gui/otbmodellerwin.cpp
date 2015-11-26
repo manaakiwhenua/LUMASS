@@ -63,6 +63,10 @@
 #include "NMModelScene.h"
 #include "NMWidgetListView.h"
 
+#include "nmqsql_sqlite_p.h"
+#include "nmqsqlcachedresult_p.h"
+#include "otbSQLiteTable.h"
+
 #include "LpHelper.h"
 
 // QT stuff
@@ -109,6 +113,7 @@
 #include <QToolButton>
 #include <QActionGroup>
 #include <QScopedPointer>
+#include <QSqlDriver>
 
 // orfeo
 //#include "ImageReader.h"
@@ -1620,25 +1625,56 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    NMLayer* l = this->mLayerList->getSelectedLayer();
-    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-    if (!il)
+
+    QString filename = "d:\\esspace\\uvIter\\acidp.ldb";
+    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+    sqlTable->CreateTable(filename.toStdString().c_str(), "1");
+
+    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
+    QSqlDatabase db = QSqlDatabase::addDatabase(drv);
+    //QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    //    db.setDatabaseName(filename);
+    if (!db.open())
+    {
+        NMErr(ctxNMImageLayer, << "Open database failed!" << std::endl);
         return;
+    }
 
-    bool bok;
-    QString name = QInputDialog::getText(this, "Delete Col",
-                                         "", QLineEdit::Normal, "",
-                                         &bok);
 
-    if (!bok)
-        return;
 
-    otb::AttributeTable::Pointer otab = il->getRasterAttributeTable(1);
-    if (otab.IsNull())
-        return;
 
-    otb::SQLiteTable* stab = static_cast<otb::SQLiteTable*>(otab.GetPointer());
-    stab->RemoveColumn(name.toStdString());
+//    QVariant vHandle = db.driver()->handle();
+//    if (vHandle.isValid())
+//    {
+//        sqlite3* handle = *static_cast<sqlite3**>(vHandle.data());
+//        if (handle != 0)
+//        {
+//            char* errMsg;
+//            sqlite3_enable_load_extension(handle, 1);
+//            if (sqlite3_load_extension(handle,
+//                                        "spatialite",
+//                                        "sqlite3_spatialite_init",
+//                                        &errMsg) == 0
+//               )
+//            {
+//                std::cout << "ALL GOOD! DID IT ON WIN!!!" << std::endl;
+//            }
+//            else
+//            {
+//                std::cout << errMsg << std::endl;
+//                std::cout << "Back to square one!! Hurry!" << std::endl;
+//                sqlite3_free(errMsg);
+//            }
+//        }
+//    }
+
+    NMSqlTableModel* sqlModel = new NMSqlTableModel(this, db);
+    sqlModel->setTable(QString("acidp_1"));
+    sqlModel->select();
+
+    NMSqlTableView* tv = new NMSqlTableView(sqlModel, this);
+    tv->show();
+
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

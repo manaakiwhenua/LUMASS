@@ -4020,7 +4020,8 @@ void OtbModellerWin::loadImageLayer()
 //            loader, SLOT());
 
     this->connectImageLayerProcSignals(layer);
-    QtConcurrent::run(layer, &NMImageLayer::setFileName, fileName);
+    //QtConcurrent::run(layer, &NMImageLayer::setFileName, fileName);
+    layer->setFileName(fileName);
 
 //	if (layer->setFileName(fileName))
 //	{

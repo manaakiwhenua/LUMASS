@@ -681,6 +681,7 @@ NMImageLayer::updateAttributeTable()
 		std::cout << "-----> using WIN32 Qt with extension loading enabled ... " << std::endl;
 		QSqlDatabase db = QSqlDatabase::addDatabase("QSLITE");
 		db.setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
+        sqlTable->CloseTable();
 
 		//QVariant vHandle = db.driver()->handle();
 		//if (vHandle.isValid())
@@ -709,7 +710,9 @@ NMImageLayer::updateAttributeTable()
 
 		if (!db.open())
 		{
+            std::string dberrmsg = db.lastError().text().toStdString();
 			NMErr(ctxNMImageLayer, << "Open database failed!" << std::endl);
+            std:cout << "Opening SqlTable failed: " << dberrmsg << std::endl;
 			mOtbRAT = 0;
 			return 0;
 		}

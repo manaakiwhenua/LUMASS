@@ -31,6 +31,7 @@
 #include <locale>
 #include <algorithm>
 #include "otbMacro.h"
+#include <spatialite.h>
 
 #ifndef _WIN32
     #include "libgen.h"
@@ -2153,7 +2154,11 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     // ============================================================
     // open or create the host data base
     // ============================================================
-    int openFlags = SQLITE_OPEN_URI |
+    
+	// alloc spatialite caches
+	void* spatialite_cache = spatialite_alloc_connection();
+	
+	int openFlags = SQLITE_OPEN_URI |
                     SQLITE_OPEN_CREATE;
 
     if (m_bOpenReadOnly)
@@ -2197,15 +2202,18 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     // =============
     sqlite3_enable_load_extension(m_db, 1);
     char* errMsg;
-    if (sqlite3_load_extension(m_db,
-                               NM_SPATIALITE_LIB,
-                               NM_SPATIALITE_INIT,
-                               &errMsg
-       ) != 0)
-    {
-        NMWarn(_ctxotbtab, << errMsg);
-        sqlite3_free(errMsg);
-    }
+    //if (sqlite3_load_extension(m_db,
+    //                           NM_SPATIALITE_LIB,
+    //                           NM_SPATIALITE_INIT,
+    //                           &errMsg
+    //   ) != 0)
+    //{
+    //    NMWarn(_ctxotbtab, << errMsg);
+    //    sqlite3_free(errMsg);
+    //}
+
+	spatialite_init_ex(m_db, spatialite_cache, 1);
+
 
     // ============================================================
     // check, whether we've already got a table

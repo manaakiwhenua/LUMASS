@@ -44,6 +44,7 @@
 #include <QSqlDriver>
 
 #include <sqlite3.h>
+#include <spatialite.h>
 // QSQLiteDriver
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -674,7 +675,7 @@ NMImageLayer::updateAttributeTable()
     else
     {
 		//sqlTable->EndTransaction();
-
+		void* spatialite_cache = spatialite_alloc_connection();
 		sqlite3* conn = 0;
 		int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(), &conn, 
 					SQLITE_OPEN_URI | 
@@ -691,21 +692,22 @@ NMImageLayer::updateAttributeTable()
 
 		rc = sqlite3_enable_load_extension(conn, 1);
 		cout << ">>>>>>>>>> return code enable load extension: " << rc << endl;
-		char* errMsg;
-		if (sqlite3_load_extension(conn,
-								   "spatialite",
-								   //"sqlite3_extension_init",
-								   //"init_spatialite_extension",
-								   "spatialite_init_ex",
-								   &errMsg
-		   ) != 0)
-		{
-			std::string ms = errMsg;
-			cout << ms << endl;
-			//NMMsg(<< errMsg);
-			//NMBoxInfo("Load spatialite", ms);
-			sqlite3_free(errMsg);
-		}
+		//char* errMsg;
+		//if (sqlite3_load_extension(conn,
+		//						   "spatialite",
+		//						   //"sqlite3_extension_init",
+		//						   //"init_spatialite_extension",
+		//						   "spatialite_init_ex",
+		//						   &errMsg
+		//   ) != 0)
+		//{
+		//	std::string ms = errMsg;
+		//	cout << ms << endl;
+		//	//NMMsg(<< errMsg);
+		//	//NMBoxInfo("Load spatialite", ms);
+		//	sqlite3_free(errMsg);
+		//}
+		spatialite_init_ex(conn, spatialite_cache, 1);
 
 
 //#ifndef _WIN32

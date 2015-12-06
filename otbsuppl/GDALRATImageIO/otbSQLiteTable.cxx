@@ -39,9 +39,9 @@
     #include <stdlib.h>
     #define NM_SPATIALITE_LIB "spatialite"
 #endif
-//#define NM_SPATIALITE_INIT "spatialite_init_ex"
-#define NM_SPATIALITE_INIT "init_spatialite_extension"
-
+#define NM_SPATIALITE_INIT "spatialite_init_ex"
+//#define NM_SPATIALITE_INIT "init_spatialite_extension"
+//#define NM_SPATIALITE_INIT "sqlite3_extension_init"
 
 namespace otb
 {

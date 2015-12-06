@@ -1626,7 +1626,7 @@ void OtbModellerWin::test()
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
 
-    QString filename = "d:\\esspace\\uvIter\\acidp.ldb";
+    QString filename = "C:/Users/alex/garage/testing/district.ldb";
     otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
     sqlTable->CreateTable(filename.toStdString().c_str(), "1");
 

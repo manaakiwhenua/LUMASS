@@ -32,25 +32,22 @@
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
-   <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
-    <property name="geometry">
-     <rect>
-      <x>60</x>
-      <y>250</y>
-      <width>291</width>
-      <height>281</height>
-     </rect>
-    </property>
-    <property name="mouseTracking">
-     <bool>false</bool>
-    </property>
-   </widget>
    <widget class="QVTKWidget" name="qvtkWidget" native="true">
     <property name="geometry">
      <rect>
-      <x>30</x>
-      <y>30</y>
-      <width>251</width>
+      <x>60</x>
+      <y>40</y>
+      <width>120</width>
+      <height>80</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>220</y>
+      <width>191</width>
       <height>191</height>
      </rect>
     </property>
@@ -62,7 +59,7 @@
      <x>0</x>
      <y>0</y>
      <width>725</width>
-     <height>22</height>
+     <height>35</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -189,8 +186,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>208</width>
-          <height>248</height>
+          <width>76</width>
+          <height>233</height>
          </rect>
         </property>
        </widget>
@@ -224,8 +221,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>208</width>
-          <height>247</height>
+          <width>76</width>
+          <height>233</height>
          </rect>
         </property>
        </widget>

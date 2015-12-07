@@ -352,19 +352,20 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
 //    connect(rubberBandZoom, SIGNAL(triggered(bool)), this, SLOT(toggleRubberBandZoom(bool)));
 
-    this->mMdiArea = new QMdiArea(this);
-    this->setCentralWidget(mMdiArea);
+    //this->mMdiArea = new QMdiArea(this);
+    //this->setCentralWidget(mMdiArea);
 
-    NMMdiSubWindow* mapSub = new NMMdiSubWindow(mMdiArea);
-    this->mMapWindow = new QMainWindow(mapSub);
-    this->mMapWindow->setParent(this);
-    this->mMapWindow->setWindowTitle("Map View");
-    this->mMapWindow->setWindowFlags(Qt::Widget);
-    this->mMapWindow->setMouseTracking(true);
-    this->mMapWindow->addToolBar(this->mMapToolBar);
-    this->mMapWindow->setCentralWidget(this->ui->qvtkWidget);
-    mapSub->setWidget(mMapWindow);
-    mapSub->setWindowTitle(mMapWindow->windowTitle());
+    //this->mMdiArea->addSubWindow(this->ui->qvtkWidget);
+//    NMMdiSubWindow* mapSub = new NMMdiSubWindow(mMdiArea);
+//    this->mMapWindow = new QMainWindow(mapSub);
+//    this->mMapWindow->setParent(this);
+//    this->mMapWindow->setWindowTitle("Map View");
+//    this->mMapWindow->setWindowFlags(Qt::Widget);
+//    this->mMapWindow->setMouseTracking(true);
+//    this->mMapWindow->addToolBar(this->mMapToolBar);
+//    this->mMapWindow->setCentralWidget(this->ui->qvtkWidget);
+//    mapSub->setWidget(mMapWindow);
+//    mapSub->setWindowTitle(mMapWindow->windowTitle());
 
 
     // we remove the rasdaman import option, when we haven't
@@ -441,15 +442,18 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	// *                    MODEL BUILDER WINDOW                            *
 	// **********************************************************************
 
-    NMMdiSubWindow* modelSub = new NMMdiSubWindow(mMdiArea);
-    mModelBuilderWindow = new QMainWindow(modelSub);
-    mModelBuilderWindow->setWindowTitle("Model Builder");
+//    NMMdiSubWindow* modelSub = new NMMdiSubWindow(mMdiArea);
+
+
+//    mModelBuilderWindow = new QMainWindow(modelSub);
+    mModelBuilderWindow = new QMainWindow(this);
+//    mModelBuilderWindow->setWindowTitle("Model Builder");
     mModelBuilderWindow->setWindowFlags(Qt::Widget);
     mModelBuilderWindow->setMouseTracking(true);
     mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
     mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
-    modelSub->setWidget(mModelBuilderWindow);
-    modelSub->setWindowTitle(mModelBuilderWindow->windowTitle());
+//    modelSub->setWidget(mModelBuilderWindow);
+//    modelSub->setWindowTitle(mModelBuilderWindow->windowTitle());
 
 
     //ui->modelViewWidget->setMouseTracking(true);
@@ -459,19 +463,20 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     //mMapWindow->setAttribute(Qt::WA_DeleteOnClose, false);
 
 
-    this->mMdiArea->addSubWindow(modelSub);
-    this->mMdiArea->addSubWindow(mapSub);
-    this->mMdiArea->tileSubWindows();
+//    this->mMdiArea->addSubWindow(modelSub);
+//    this->mMdiArea->addSubWindow(mapSub);
+//    this->mMdiArea->addSubWindow(this->ui->modelViewWidget);
+//    this->mMdiArea->tileSubWindows();
 
 
-    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
-    foreach (QMdiSubWindow* s, wl)
-    {
-        s->installEventFilter(this);
-        s->setWindowFlags(s->windowFlags() |
-                          Qt::CustomizeWindowHint |
-                          Qt::WindowMinMaxButtonsHint);
-    }
+//    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
+//    foreach (QMdiSubWindow* s, wl)
+//    {
+//        s->installEventFilter(this);
+//        s->setWindowFlags(s->windowFlags() |
+//                          Qt::CustomizeWindowHint |
+//                          Qt::WindowMinMaxButtonsHint);
+//    }
 
     // =============================================================
     // set up the tool bar
@@ -635,17 +640,17 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // *                    CENTRAL WIDGET                                  *
     // **********************************************************************
 
-//    QVBoxLayout* boxL = new QVBoxLayout();
-//    if (ui->centralWidget->layout())
-//        delete ui->centralWidget->layout();
+    QVBoxLayout* boxL = new QVBoxLayout();
+    if (ui->centralWidget->layout())
+        delete ui->centralWidget->layout();
 
-//    ui->centralWidget->setLayout(boxL);
+    ui->centralWidget->setLayout(boxL);
 
-//    QSplitter* splitter = new QSplitter(Qt::Vertical);
-//    splitter->setChildrenCollapsible(true);
-//    splitter->addWidget(ui->qvtkWidget);
-//    splitter->addWidget(mModelBuilderWindow);
-//    boxL->addWidget(splitter);
+    QSplitter* splitter = new QSplitter(Qt::Horizontal);
+    splitter->setChildrenCollapsible(true);
+    splitter->addWidget(ui->qvtkWidget);
+    splitter->addWidget(mModelBuilderWindow);
+    boxL->addWidget(splitter);
 
     // ================================================
     // INITIAL WIDGET's VISIBILITY
@@ -1043,39 +1048,41 @@ OtbModellerWin::modelViewMode()
 void
 OtbModellerWin::showMapView(bool vis)
 {
-    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
-    foreach (QMdiSubWindow* s, wl)
-    {
-        if (s->windowTitle().compare("Map View") == 0)
-        {
-            vis ? ui->actionMap_View_Mode->isChecked()
-                  ? s->setWindowState(
-                        s->windowState() |
-                        Qt::WindowMaximized |
-                        Qt::WindowActive)
-                    : s->showNormal()
-                : s->hide();
-        }
-    }
+//    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
+//    foreach (QMdiSubWindow* s, wl)
+//    {
+//        if (s->windowTitle().compare("Map View") == 0)
+//        {
+//            vis ? ui->actionMap_View_Mode->isChecked()
+//                  ? s->setWindowState(
+//                        s->windowState() |
+//                        Qt::WindowMaximized |
+//                        Qt::WindowActive)
+//                    : s->showNormal()
+//                : s->hide();
+//        }
+//    }
+    ui->qvtkWidget->setVisible(vis);
 }
 
 void
 OtbModellerWin::showModelView(bool vis)
 {
-    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
-    foreach (QMdiSubWindow* s, wl)
-    {
-        if (s->windowTitle().compare("Model Builder") == 0)
-        {
-            vis ? ui->actionMap_View_Mode->isChecked()
-                    ? s->setWindowState(
-                          s->windowState() |
-                          Qt::WindowMaximized |
-                          Qt::WindowActive)
-                    : s->showNormal()
-                : s->hide();
-        }
-    }
+//    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
+//    foreach (QMdiSubWindow* s, wl)
+//    {
+//        if (s->windowTitle().compare("Model Builder") == 0)
+//        {
+//            vis ? ui->actionMap_View_Mode->isChecked()
+//                    ? s->setWindowState(
+//                          s->windowState() |
+//                          Qt::WindowMaximized |
+//                          Qt::WindowActive)
+//                    : s->showNormal()
+//                : s->hide();
+//        }
+//    }
+    ui->modelViewWidget->parentWidget()->setVisible(vis);
 }
 
 const vtkRenderer*

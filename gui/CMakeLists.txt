@@ -198,6 +198,11 @@ IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
 ENDIF()
 
+# Define a special indicator for Qt Version >= 5.4 (for NMSqliteDriver copy ..)
+if (${QT5_VERSION_STRING} VERSION_LESS "5.4.0")
+	add_definitions(-DQTVERSION_LT_FIVE_FOUR)
+endif()
+
 # Qt5 requirement
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 

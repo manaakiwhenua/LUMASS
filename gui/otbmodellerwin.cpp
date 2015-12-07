@@ -559,6 +559,11 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	// *                    VTK DISPLAY WIDGET                              *
 	// **********************************************************************
 
+	// suppress the vtkOutputWindow to pop up
+#ifdef _WIN32
+	vtkObject::GlobalWarningDisplayOff();
+#endif
+
     // create the render window
     vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
     renwin->SetStereoCapableWindow(1);

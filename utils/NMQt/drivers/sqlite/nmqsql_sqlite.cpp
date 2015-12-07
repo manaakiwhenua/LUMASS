@@ -131,7 +131,13 @@ private:
 class NMQSQLiteDriverPrivate : public QSqlDriverPrivate
 {
 public:
+
+#ifdef QTVERSION_LT_FIVE_FOUR
+	inline NMQSQLiteDriverPrivate() : QSqlDriverPrivate(), access(0) { dbmsType = SQLite; }
+#else
     inline NMQSQLiteDriverPrivate() : QSqlDriverPrivate(), access(0) { dbmsType = QSqlDriver::SQLite; }
+#endif
+
     sqlite3 *access;
     QList <NMQSQLiteResult *> results;
 };

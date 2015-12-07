@@ -40,7 +40,7 @@
     #include <stdlib.h>
     #define NM_SPATIALITE_LIB "spatialite"
 #endif
-#define NM_SPATIALITE_INIT "spatialite_init_ex"
+//#define NM_SPATIALITE_INIT "spatialite_init_ex"
 //#define NM_SPATIALITE_INIT "init_spatialite_extension"
 //#define NM_SPATIALITE_INIT "sqlite3_extension_init"
 
@@ -2156,7 +2156,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     // ============================================================
     
 	// alloc spatialite caches
-	void* spatialite_cache = spatialite_alloc_connection();
+	m_SpatialiteCache = spatialite_alloc_connection();
 	
 	int openFlags = SQLITE_OPEN_URI |
                     SQLITE_OPEN_CREATE;
@@ -2198,27 +2198,15 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
 
 
     // =============
-    // enable loading extensions?
+    // enable loading extension & register spatialite 
     // =============
     sqlite3_enable_load_extension(m_db, 1);
-    char* errMsg;
-    //if (sqlite3_load_extension(m_db,
-    //                           NM_SPATIALITE_LIB,
-    //                           NM_SPATIALITE_INIT,
-    //                           &errMsg
-    //   ) != 0)
-    //{
-    //    NMWarn(_ctxotbtab, << errMsg);
-    //    sqlite3_free(errMsg);
-    //}
-
-	spatialite_init_ex(m_db, spatialite_cache, 1);
-
+	spatialite_init_ex(m_db, m_SpatialiteCache, 1);
 
     // ============================================================
     // check, whether we've already got a table
     // ============================================================
-    errMsg = 0;
+    char* errMsg = 0;
     std::stringstream ssql;
     ssql.str("");
 
@@ -2512,6 +2500,7 @@ SQLiteTable::SQLiteTable()
       m_StmtBulkGet(0),
       m_StmtColIter(0),
       m_StmtRowCount(0),
+	  m_SpatialiteCache(0),
       //m_idColName(""),
       m_tableName(""),
       m_bUseSharedCache(true),
@@ -2527,6 +2516,8 @@ SQLiteTable::disconnectDB(void)
     if (m_db != 0)
     {
         sqlite3_close(m_db);
+		spatialite_cleanup_ex(m_SpatialiteCache);
+		m_SpatialiteCache = 0;
         m_db = 0;
     }
 }

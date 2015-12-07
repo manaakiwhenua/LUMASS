@@ -55,6 +55,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
 	: QObject(parent), mSelectionModel(0), mTableModel(0), mTableView(0),
       mSqlTableView(0), mDataSet(0), mActor(0), mMapper(0),
+	  mSqlViewConn(0), mSpatialiteCache(0),
       mIsVisible(false), mIsSelectable(true),
       mIsSelected(false), mHasChanged(false),
 	  mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
@@ -150,6 +151,10 @@ NMLayer::~NMLayer()
     {
         this->mSqlTableView->close();
         delete this->mSqlTableView;
+		sqlite3_close(mSqlViewConn);
+		spatialite_cleanup_ex(mSpatialiteCache);
+		mSpatialiteCache = 0;
+		mSqlViewConn = 0;
     }
 
     if (mSelectionModel != 0)

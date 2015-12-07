@@ -33,6 +33,9 @@
 #include "NMTableView.h"
 #include "NMSqlTableView.h"
 
+#include <sqlite3.h>
+#include <spatialite.h>
+
 #include "QVTKWin32Header.h"
 #include "vtkConfigure.h"
 
@@ -333,6 +336,8 @@ protected:
 	vtkSmartPointer<vtkOGRLayerMapper> mSelectionMapper;
 	vtkSmartPointer<vtkProp3D>	mSelectionActor;
 
+	void* mSpatialiteCache;
+	sqlite3* mSqlViewConn;
 	NMTableView* mTableView;
     NMSqlTableView* mSqlTableView;
 	NMFastTrackSelectionModel* mSelectionModel;

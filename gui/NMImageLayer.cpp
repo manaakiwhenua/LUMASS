@@ -21,7 +21,6 @@
  *  Created on: 18/01/2012
  *      Author: alex
  */
-#include "nmmacros.h"
 #include "NMImageLayer.h"
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMFastTrackSelectionModel.h"
@@ -43,8 +42,6 @@
 #include <QSqlError>
 #include <QSqlDriver>
 
-#include <sqlite3.h>
-#include <spatialite.h>
 // QSQLiteDriver
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -674,100 +671,29 @@ NMImageLayer::updateAttributeTable()
     }
     else
     {
-		//sqlTable->EndTransaction();
-		void* spatialite_cache = spatialite_alloc_connection();
-		sqlite3* conn = 0;
-		int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(), &conn, 
+		mSpatialiteCache = spatialite_alloc_connection();
+		int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(), 
+					&mSqlViewConn, 
 					SQLITE_OPEN_URI | 
 					SQLITE_OPEN_READWRITE | 
 					SQLITE_OPEN_SHAREDCACHE, 0);
 		if (rc != SQLITE_OK)
 		{
-			std::string errmsg = sqlite3_errmsg(conn);
-			NMMsg( << errmsg);
-			::sqlite3_close(conn);
-			conn = 0;
+			NMErr(ctxNMImageLayer, 
+				<< "Failed opening SqlTableView connection!");
+			::sqlite3_close(mSqlViewConn);
+			spatialite_cleanup_ex(mSpatialiteCache);
+			mSpatialiteCache = 0;
+			mSqlViewConn = 0;
 			return 0;
 		}
 
-		rc = sqlite3_enable_load_extension(conn, 1);
-		cout << ">>>>>>>>>> return code enable load extension: " << rc << endl;
-		//char* errMsg;
-		//if (sqlite3_load_extension(conn,
-		//						   "spatialite",
-		//						   //"sqlite3_extension_init",
-		//						   //"init_spatialite_extension",
-		//						   "spatialite_init_ex",
-		//						   &errMsg
-		//   ) != 0)
-		//{
-		//	std::string ms = errMsg;
-		//	cout << ms << endl;
-		//	//NMMsg(<< errMsg);
-		//	//NMBoxInfo("Load spatialite", ms);
-		//	sqlite3_free(errMsg);
-		//}
-		spatialite_init_ex(conn, spatialite_cache, 1);
+		rc = sqlite3_enable_load_extension(mSqlViewConn, 1);
+		spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
 
-
-//#ifndef _WIN32
-		NMDebugAI(<< "-----> re-using SQLite connection, now .... !" << std::endl);
-        NMQSQLiteDriver* drv = new NMQSQLiteDriver(conn, 0);
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver(mSqlViewConn, 0);
 		QSqlDatabase db = QSqlDatabase::addDatabase(drv);
 		
-//#else
-//		std::cout << "-----> using WIN32 Qt with extension loading enabled ... " << std::endl;
-//        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-//		db.setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
-//        //sqlTable->CloseTable();
-
-//		//QVariant vHandle = db.driver()->handle();
-//		//if (vHandle.isValid())
-//		//{
-//		//	sqlite3* handle = *static_cast<sqlite3**>(vHandle.data());
-//		//	if (handle != 0)
-//		//	{
-//		//		char* errMsg;
-//		//		sqlite3_enable_load_extension(handle, 1);
-//		//		if (sqlite3_load_extension(handle,
-//		//									"spatialite.dll",
-//		//									"spatialite_init_ext",
-//		//									&errMsg) == 0
-//		//		   )
-//		//		{
-//		//			std::cout << "ALL GOOD! DID IT ON WIN!!!" << std::endl;
-//		//		}
-//		//		else
-//		//		{
-//		//			std::cout << errMsg << std::endl;
-//		//			std::cout << "Back to square one!! Hurry!" << std::endl;
-//		//			sqlite3_free(errMsg);
-//		//		}
-//		//	}
-//		//}
-
-//		if (!db.open())
-//		{
-//            std::string dberrmsg = db.lastError().text().toStdString();
-//			NMErr(ctxNMImageLayer, << "Open database failed!" << std::endl);
-//            std:cout << "Opening SqlTable failed: " << dberrmsg << std::endl;
-//			mOtbRAT = 0;
-//			return 0;
-//		}
-
-//        //        QSqlQuery q(db);
-//        //        if (!q.exec("SELECT load_extension('spatialite','init_spatialite_extension');"))
-//        //        {
-//        //            std::string dberrmsg = db.lastError().text().toStdString();
-//        //            NMErr(ctxNMImageLayer, << "Ext load failed" << std::endl);
-//        //            NMMsg(<< "Ext load failed: " << dberrmsg);
-//        //            mOtbRAT = 0;
-//        //            return 0;
-//        //        }
-
-
-//#endif
-
         sqlModel = new NMSqlTableModel(this, db);
         sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
         sqlModel->select();

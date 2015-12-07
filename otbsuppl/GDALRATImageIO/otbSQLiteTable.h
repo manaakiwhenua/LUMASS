@@ -250,55 +250,10 @@ protected:
     sqlite3_stmt* m_StmtRollback;
 
     const char* m_CurPrepStmt;
-
-	// admin vectors holding header infos about columns
-
-	/**
-	 *  Hold the name and type of a column,
-	 *  in the order as columns are added to
-	 *  the table;
-	 */
-        //std::vector<std::string> m_vNames;
-        //std::vector<TableColumnType> m_vTypes;
-
-	/** Holds the index of the respective type specific
-	 *  vector containing the data of the column
-	 *  denoted by the index in this vector;
-	 *  e.g.:
-	 *  		m_vNames[2]    = "Column_3";
-	 *  		m_vTypes[2]    = ATTYPE_INT;
-	 *  		m_vPosition[2] = 3;
-	 *
-	 *  Column "Column_3" is the third column in the table
-	 *  and its content is stored in m_mIntCols[3];
-	 *
-	 */
-        //std::vector<int> m_vPosition;
-
-	// maps holding table columns
-	//std::map<int, std::vector<std::string> > m_mStringCols;
-	//std::map<int, std::vector<long> > m_mIntCols;
-	//std::map<int, std::vector<double> > m_mDoubleCols;
-        //	std::vector<std::vector<std::string>* > m_mStringCols;
-        //	std::vector<std::vector<long>* > m_mIntCols;
-        //	std::vector<std::vector<double>* > m_mDoubleCols;
-
-
-        //long long m_iNumRows;
-        //	std::string m_sNodata;
-        //      long long m_iNodata;
-        //	double m_dNodata;
-        //	int m_iBand;
-        //	std::string m_sImgName;
-
-	// validate column name and row index; if
-	// parameters are valid then the column index
-	// is returned otherwise -1;
-    //inline int valid(const std::string& sColName, int idx);
-    //std::string typestr(TableColumnType type);
+	void* m_SpatialiteCache;
 
 };
 
 }
 
-#endif /* ATTRIBUTETABLE_H_ */
+#endif /* SQLITETABLE_H_ */

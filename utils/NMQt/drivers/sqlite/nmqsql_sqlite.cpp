@@ -32,7 +32,7 @@
 ****************************************************************************/
 
 #include "nmqsql_sqlite_p.h"
-
+#include <qsqldriver.h>
 #include <qcoreapplication.h>
 #include <qdatetime.h>
 #include <qvariant.h>
@@ -97,8 +97,8 @@ static QSqlError qMakeError(sqlite3 *access, const QString &descr, QSqlError::Er
                             int errorCode = -1)
 {
     return QSqlError(descr,
-                     QString(reinterpret_cast<const QChar *>(sqlite3_errmsg16(access))),
-                     type, QString::number(errorCode));
+                     QString(reinterpret_cast<const QChar *>(sqlite3_errmsg16(access))), 
+					 type, errorCode);
 }
 
 class NMQSQLiteResultPrivate;

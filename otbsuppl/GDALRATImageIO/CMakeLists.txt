@@ -53,14 +53,14 @@ if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
 			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
 				${GDAL_LIBRARY}
 				#${SQLITE3_LIBRARY}
-				SQLite spatialite spatialite_i
+                SQLite spatialite geos_c freexl_i libxml2 proj_i iconv
 				OTBCommon OTBIO
 			)
 		else()
 			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
 				${GDAL_LIBRARY}
 				#${SQLITE3_LIBRARY}
-				SQLite spatialite
+                SQLite spatialite
 				OTBCommon OTBIO
 			)
 		endif()
@@ -70,7 +70,7 @@ else()
 			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
 					${GDAL_LIBRARY}
 					#${SQLITE3_LIBRARY}
-					SQLite spatialite spatialite_i
+					SQLite spatialite geos_c freexl_i libxml2 proj_i iconv
 					OTBCommon OTBIOGDAL
 			)
 		else()

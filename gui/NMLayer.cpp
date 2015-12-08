@@ -151,10 +151,10 @@ NMLayer::~NMLayer()
     {
         this->mSqlTableView->close();
         delete this->mSqlTableView;
-		sqlite3_close(mSqlViewConn);
-		spatialite_cleanup_ex(mSpatialiteCache);
-		mSpatialiteCache = 0;
-		mSqlViewConn = 0;
+        //sqlite3_close(mSqlViewConn);
+        //spatialite_cleanup_ex(mSpatialiteCache);
+        //mSpatialiteCache = 0;
+        //mSqlViewConn = 0;
     }
 
     if (mSelectionModel != 0)

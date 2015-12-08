@@ -671,27 +671,27 @@ NMImageLayer::updateAttributeTable()
     }
     else
     {
-		mSpatialiteCache = spatialite_alloc_connection();
-		int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(), 
-					&mSqlViewConn, 
-					SQLITE_OPEN_URI | 
-					SQLITE_OPEN_READWRITE | 
-					SQLITE_OPEN_SHAREDCACHE, 0);
-		if (rc != SQLITE_OK)
-		{
-			NMErr(ctxNMImageLayer, 
-				<< "Failed opening SqlTableView connection!");
-			::sqlite3_close(mSqlViewConn);
-			spatialite_cleanup_ex(mSpatialiteCache);
-			mSpatialiteCache = 0;
-			mSqlViewConn = 0;
-			return 0;
-		}
+        //		mSpatialiteCache = spatialite_alloc_connection();
+        //		int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(),
+        //					&mSqlViewConn,
+        //					SQLITE_OPEN_URI |
+        //					SQLITE_OPEN_READWRITE |
+        //					SQLITE_OPEN_SHAREDCACHE, 0);
+        //		if (rc != SQLITE_OK)
+        //		{
+        //			NMErr(ctxNMImageLayer,
+        //				<< "Failed opening SqlTableView connection!");
+        //			::sqlite3_close(mSqlViewConn);
+        //			spatialite_cleanup_ex(mSpatialiteCache);
+        //			mSpatialiteCache = 0;
+        //			mSqlViewConn = 0;
+        //			return 0;
+        //		}
 
-		rc = sqlite3_enable_load_extension(mSqlViewConn, 1);
-		spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
+        //		rc = sqlite3_enable_load_extension(mSqlViewConn, 1);
+        //		spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
 
-        NMQSQLiteDriver* drv = new NMQSQLiteDriver(mSqlViewConn, 0);
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
 		QSqlDatabase db = QSqlDatabase::addDatabase(drv);
 		
         sqlModel = new NMSqlTableModel(this, db);
@@ -1836,8 +1836,12 @@ NMImageLayer::writeDataSet(void)
 		return;
 	}
 
+    otb::SQLiteTable::Pointer sqlTab = static_cast<otb::SQLiteTable*>(this->mOtbRAT.GetPointer());
+    sqlTab->PopulateTableAdmin();
+
 	bool berr = false;
-    const char* fn = this->mFileName.toUtf8().constData();
+    //const char* fn = this->mFileName.toUtf8().constData();
+    std::string fn = this->mFileName.toStdString();
 	unsigned int band = this->mOtbRAT->GetBandNumber();
 
 #ifdef BUILD_RASSUPPORT
@@ -1866,7 +1870,7 @@ NMImageLayer::writeDataSet(void)
 		otb::GDALRATImageIO::Pointer gio = otb::GDALRATImageIO::New();
 		gio->SetFileName(fn);
 
-		if (gio->CanWriteFile(fn))
+        if (gio->CanWriteFile(fn.c_str()))
 		{
 			gio->WriteRAT(this->mOtbRAT, band);
 		}

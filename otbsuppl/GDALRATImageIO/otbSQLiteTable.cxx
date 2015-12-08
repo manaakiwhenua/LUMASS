@@ -936,10 +936,6 @@ SQLiteTable::DoPtrBulkSet(std::vector<int *> &intVals,
         rc = sqlite3_bind_int64(m_StmtBulkSet, colpos.size()+1, row);
         //if (sqliteError(rc, &m_StmtBulkSet)) return false;
     }
-    else
-    {
-        ++m_iNumRows;
-    }
 
     rc = sqlite3_step(m_StmtBulkSet);
     sqliteStepCheck(rc);

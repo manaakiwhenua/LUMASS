@@ -671,27 +671,27 @@ NMImageLayer::updateAttributeTable()
     }
     else
     {
-        //		mSpatialiteCache = spatialite_alloc_connection();
-        //		int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(),
-        //					&mSqlViewConn,
-        //					SQLITE_OPEN_URI |
-        //					SQLITE_OPEN_READWRITE |
-        //					SQLITE_OPEN_SHAREDCACHE, 0);
-        //		if (rc != SQLITE_OK)
-        //		{
-        //			NMErr(ctxNMImageLayer,
-        //				<< "Failed opening SqlTableView connection!");
-        //			::sqlite3_close(mSqlViewConn);
-        //			spatialite_cleanup_ex(mSpatialiteCache);
-        //			mSpatialiteCache = 0;
-        //			mSqlViewConn = 0;
-        //			return 0;
-        //		}
+        mSpatialiteCache = spatialite_alloc_connection();
+        int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(),
+        			&mSqlViewConn,
+        			SQLITE_OPEN_URI |
+        			SQLITE_OPEN_READWRITE |
+        			SQLITE_OPEN_SHAREDCACHE, 0);
+        if (rc != SQLITE_OK)
+        {
+        	NMErr(ctxNMImageLayer,
+        		<< "Failed opening SqlTableView connection!");
+        	::sqlite3_close(mSqlViewConn);
+        	spatialite_cleanup_ex(mSpatialiteCache);
+        	mSpatialiteCache = 0;
+        	mSqlViewConn = 0;
+        	return 0;
+        }
 
-        //		rc = sqlite3_enable_load_extension(mSqlViewConn, 1);
-        //		spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
+        rc = sqlite3_enable_load_extension(mSqlViewConn, 1);
+        spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
 
-        NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver(mSqlViewConn, 0);
 		QSqlDatabase db = QSqlDatabase::addDatabase(drv);
 		
         sqlModel = new NMSqlTableModel(this, db);

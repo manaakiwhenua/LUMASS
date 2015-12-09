@@ -67,6 +67,7 @@ public:
 
     OtbModellerWin* getMainWindow(void);
     void addWidget(QWidget* w);
+    void addItem(QGraphicsItem* item);
 
 public slots:
 

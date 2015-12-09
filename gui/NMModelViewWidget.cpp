@@ -224,6 +224,12 @@ NMModelViewWidget::addWidget(QWidget* w)
     this->mModelScene->addWidget(w);
 }
 
+void
+NMModelViewWidget::addItem(QGraphicsItem* item)
+{
+    this->mModelScene->addItem(item);
+}
+
 
 void
 NMModelViewWidget::reportIsModelControllerBusy(bool busy)

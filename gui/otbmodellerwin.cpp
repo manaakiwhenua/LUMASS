@@ -1641,14 +1641,54 @@ void OtbModellerWin::test()
     if (l == 0)
         return;
 
-    vtkRenderer* ren = const_cast<vtkRenderer*>(l->getRenderer());
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == 0)
+        return;
 
-    QVTKWidget* viewer = new QVTKWidget(0);
-    viewer->GetRenderWindow()->SetNumberOfLayers(2);
+    //vtkRenderer* ren = const_cast<vtkRenderer*>(l->getRenderer());
 
-    viewer->GetRenderWindow()->AddRenderer(ren);
 
-    ui->modelViewWidget->addWidget(viewer);
+    QVTKWidget* viewer = new QVTKWidget(this);
+    viewer->setMinimumWidth(300);
+    viewer->setMinimumHeight(400);
+    vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+    renwin->SetNumberOfLayers(1);
+
+    vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
+    ren->SetLayer(0);
+    ren->SetBackground(0.7,0.7,0.7);
+
+    vtkProp3D* prop = const_cast<vtkProp3D*>(il->getActor());
+    ren->AddActor(prop);
+    renwin->AddRenderer(ren);
+    viewer->SetRenderWindow(renwin);
+
+    QGraphicsPixmapItem gpi;
+    gpi.setPixmap(viewer->grab());
+
+    ui->modelViewWidget->addItem(&gpi);
+
+
+
+//    QString filename = "/home/alex/garage/testing/drainage.ldb";
+//    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+//    sqlTable->CreateTable(filename.toStdString().c_str(), "1");
+
+//    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+//    db.setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
+//    db.open();
+
+
+//    NMSqlTableModel* sqlModel = new NMSqlTableModel(this, db);
+//    sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
+//    sqlModel->select();
+
+
+//    NMFastTrackSelectionModel* selModel = new NMFastTrackSelectionModel(sqlModel, 0);
+//    NMSqlTableView* tabView = new NMSqlTableView(sqlModel, 0);
+//    tabView->setSelectionModel(selModel);
+
+//    ui->modelViewWidget->addWidget(tabView);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

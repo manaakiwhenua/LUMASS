@@ -219,6 +219,13 @@ NMModelViewWidget::~NMModelViewWidget()
 }
 
 void
+NMModelViewWidget::addWidget(QWidget* w)
+{
+    this->mModelScene->addWidget(w);
+}
+
+
+void
 NMModelViewWidget::reportIsModelControllerBusy(bool busy)
 {
 	this->mbControllerIsBusy = busy;

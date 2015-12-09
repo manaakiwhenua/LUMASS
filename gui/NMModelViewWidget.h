@@ -66,6 +66,7 @@ public:
 	virtual ~NMModelViewWidget();
 
     OtbModellerWin* getMainWindow(void);
+    void addWidget(QWidget* w);
 
 public slots:
 

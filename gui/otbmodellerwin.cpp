@@ -212,8 +212,8 @@
 #include "vtkImageWrapPad.h"
 #include "vtkGreedyTerrainDecimation.h"
 #include "vtkPolyDataNormals.h"
-
 #include "vtkCoordinate.h"
+#include "QVTKWidget.h"
 
 #include "otbSortFilter.h"
 #include "otbExternalSortFilter.h"
@@ -1637,57 +1637,18 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-
-    QString filename = "C:/Users/alex/garage/testing/district.ldb";
-    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
-    sqlTable->CreateTable(filename.toStdString().c_str(), "1");
-
-    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-    QSqlDatabase db = QSqlDatabase::addDatabase(drv);
-    //QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    //    db.setDatabaseName(filename);
-    if (!db.open())
-    {
-        NMErr(ctxNMImageLayer, << "Open database failed!" << std::endl);
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l == 0)
         return;
-    }
 
+    vtkRenderer* ren = const_cast<vtkRenderer*>(l->getRenderer());
 
+    QVTKWidget* viewer = new QVTKWidget(0);
+    viewer->GetRenderWindow()->SetNumberOfLayers(2);
 
+    viewer->GetRenderWindow()->AddRenderer(ren);
 
-//    QVariant vHandle = db.driver()->handle();
-//    if (vHandle.isValid())
-//    {
-//        sqlite3* handle = *static_cast<sqlite3**>(vHandle.data());
-//        if (handle != 0)
-//        {
-//            char* errMsg;
-//            sqlite3_enable_load_extension(handle, 1);
-//            if (sqlite3_load_extension(handle,
-//                                        "spatialite",
-//                                        "sqlite3_spatialite_init",
-//                                        &errMsg) == 0
-//               )
-//            {
-//                std::cout << "ALL GOOD! DID IT ON WIN!!!" << std::endl;
-//            }
-//            else
-//            {
-//                std::cout << errMsg << std::endl;
-//                std::cout << "Back to square one!! Hurry!" << std::endl;
-//                sqlite3_free(errMsg);
-//            }
-//        }
-//    }
-
-    NMSqlTableModel* sqlModel = new NMSqlTableModel(this, db);
-    sqlModel->setTable(QString("acidp_1"));
-    sqlModel->select();
-
-    NMSqlTableView* tv = new NMSqlTableView(sqlModel, this);
-    tv->show();
-
-
+    ui->modelViewWidget->addWidget(viewer);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

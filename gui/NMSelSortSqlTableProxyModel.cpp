@@ -400,9 +400,14 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
 QString
 NMSelSortSqlTableProxyModel::getRandomString(int len)
 {
+    if (len < 1)
+    {
+        return QString();
+    }
+
     std::srand(std::time(0));
     char* nam = new char[len+1];
-    for (int i=0; i < 15; ++i)
+    for (int i=0; i < len; ++i)
     {
         if (i == 0)
         {
@@ -517,6 +522,78 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
     endInsertColumns();
 
     return ret;
+}
+
+bool
+NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
+                                       const QString& joinFieldName,
+                                       const QString& tarFieldName)
+{
+    if (mSourceModel == 0)
+    {
+        return false;
+    }
+
+    int colidx = mSourceModel->columnCount();
+    QString tarTableName = mSourceModel->tableName();
+
+    beginInsertColumns(QModelIndex(), colidx, colidx);
+    mSourceModel->clear();
+
+
+    QString tempTableName = this->getRandomString(5);
+
+    std::stringstream ssql;
+    ssql << "CREATE TEMP TABLE " << tempTableName.toStdString() << " AS "
+         << "SELECT * FROM " << tarTableName.toStdString() << " "
+         << "INNER JOIN " << joinTableName.toStdString() << " "
+         << "ON " << joinFieldName.toStdString() << " = " << tarFieldName.toStdString()
+         << ";";
+
+    QSqlQuery query(mSourceModel->database());
+    if (!query.exec(QString(ssql.str().c_str())))
+    {
+        NMErr(ctx, << query.lastError().text().toStdString());
+        return false;
+    }
+
+    ssql.str("");
+    ssql << "DROP TABLE " << tarTableName.toStdString() << ";";
+    if (!query.exec(QString(ssql.str().c_str())))
+    {
+        NMErr(ctx, << query.lastError().text().toStdString());
+        return false;
+    }
+
+    ssql.str("");
+    ssql << "CREATE TABLE " << tarTableName.toStdString() << " AS "
+         << "SELECT * FROM " << tempTableName.toStdString() << ";";
+    if (!query.exec(QString(ssql.str().c_str())))
+    {
+        NMErr(ctx, << query.lastError().text().toStdString());
+        return false;
+    }
+
+    mSourceModel->setTable(tarTableName);
+    if (mLastColSort.first >= 0)
+    {
+        mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
+    }
+    if (mLastSelRecsOnly)
+    {
+        mSourceModel->setFilter(mLastFilter);
+    }
+    else
+    {
+        mSourceModel->setFilter("");
+    }
+    mSourceModel->select();
+    mUpdateProxySelection = true;
+    mUpdateSourceSelection = true;
+
+    endInsertColumns();
+
+    return true;
 }
 
 int

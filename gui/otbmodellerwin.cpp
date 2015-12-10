@@ -1637,36 +1637,37 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    NMLayer* l = this->mLayerList->getSelectedLayer();
-    if (l == 0)
-        return;
+//    NMLayer* l = this->mLayerList->getSelectedLayer();
+//    if (l == 0)
+//        return;
 
-    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-    if (il == 0)
-        return;
+//    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+//    if (il == 0)
+//        return;
 
     //vtkRenderer* ren = const_cast<vtkRenderer*>(l->getRenderer());
 
 
-    QVTKWidget* viewer = new QVTKWidget(this);
-    viewer->setMinimumWidth(300);
-    viewer->setMinimumHeight(400);
-    vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
-    renwin->SetNumberOfLayers(1);
+//    QVTKWidget* viewer = new QVTKWidget(0);
+//    viewer->setMinimumWidth(300);
+//    viewer->setMinimumHeight(400);
+//    vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+//    renwin->SetNumberOfLayers(1);
 
-    vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
-    ren->SetLayer(0);
-    ren->SetBackground(0.7,0.7,0.7);
+//    vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
+//    ren->SetLayer(0);
+//    ren->SetBackground(0.7,0.7,0.7);
 
-    vtkProp3D* prop = const_cast<vtkProp3D*>(il->getActor());
-    ren->AddActor(prop);
-    renwin->AddRenderer(ren);
-    viewer->SetRenderWindow(renwin);
+//    vtkProp3D* prop = const_cast<vtkProp3D*>(il->getActor());
+//    ren->AddActor(prop);
+//    renwin->AddRenderer(ren);
+//    viewer->SetRenderWindow(renwin);
+//    viewer->show();
 
-    QGraphicsPixmapItem gpi;
-    gpi.setPixmap(viewer->grab());
+//    QGraphicsPixmapItem gpi;
+//    gpi.setPixmap(viewer->grab());
 
-    ui->modelViewWidget->addItem(&gpi);
+//    ui->modelViewWidget->addItem(&gpi);
 
 
 

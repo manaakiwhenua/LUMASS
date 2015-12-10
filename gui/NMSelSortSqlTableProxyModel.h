@@ -89,6 +89,10 @@ public:
     int getNumTableRecords(void);
     long getSelCount(void) {return mLastSelCount;}
 
+    bool joinTable(const QString& joinTableName, const QString& joinFieldName,
+                   const QString& tarFieldName);
+
+    QString getRandomString(int len=15);
     QString getFilter(void){return mLastFilter;}
     QString getSourcePK(void);
     QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
@@ -97,9 +101,12 @@ public:
     QItemSelection getSelectAll(void);
 
 
+
+
+
 protected:
 
-    QString getRandomString(int len=15);
+
     bool updateSelection(QItemSelection& sel, bool bProxySelection=true);
     void resetSourceModel();
     bool createMappingTable();

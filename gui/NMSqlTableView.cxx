@@ -817,8 +817,7 @@ void NMSqlTableView::joinAttributes()
 		return;
 	}
 
-
-    QString vttablename = "myvttable";
+    QString vttablename = mSortFilter->getRandomString(5);
     QString sourceFileName = fileName;
 
     std::stringstream ssql;
@@ -834,83 +833,99 @@ void NMSqlTableView::joinAttributes()
         return;
     }
 
-    NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
-    restab->setTable(vttablename);
-    restab->select();
-
-    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
-    resview->setWindowFlags(Qt::Window);
-    resview->setTitle(vttablename);
-    resview->show();
+    QScopedPointer<NMSqlTableModel> srcModel(new NMSqlTableModel(0, mModel->database()));
+    srcModel->setTable(vttablename);
+    srcModel->select();
 
 
-
-//	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
-//						vtkSmartPointer<vtkDelimitedTextReader>::New();
-
-//	tabReader->SetFileName(fileName.toStdString().c_str());
-//	tabReader->SetHaveHeaders(true);
-//	tabReader->DetectNumericColumnsOn();
-//    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
-//	tabReader->SetFieldDelimiterCharacters(",\t");
-//	tabReader->Update();
-
-//	QScopedPointer<vtkQtTableModelAdapter> srcModel(new vtkQtTableModelAdapter);
-//	srcModel->setTable(tabReader->GetOutput());
-
-//	int numJoinCols = srcModel->columnCount(QModelIndex());
-//	NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
-//	QStringList srcJoinFields;
-//	for (int i=0; i < numJoinCols; ++i)
-//	{
-//		QModelIndex idx = srcModel->index(0, i, QModelIndex());
-//		QVariant::Type type = srcModel->data(idx, Qt::DisplayRole).type();
-//		if (type != QVariant::Invalid)
-//		{
-//			srcJoinFields.append(srcModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
-//		}
-//	}
-
-//	int numTarCols = this->mModel->columnCount(QModelIndex());
-//	QStringList tarJoinFields;
-//	for (int i=0; i < numTarCols; ++i)
-//	{
-//		QModelIndex idx = this->mModel->index(0, i, QModelIndex());
-//		QVariant::Type type = this->mModel->data(idx, Qt::DisplayRole).type();
-//		if (type != QVariant::Invalid)
-//		{
-//			tarJoinFields.append(this->mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
-//		}
-//	}
-
-//	// ask the user for semantically common fields
-//	bool bOk = false;
-//	QString tarFieldName = QInputDialog::getItem(this,
-//			tr("Select Target Join Field"), tr("Select Target Join Field"),
-//			tarJoinFields, 0, false, &bOk, 0);
-//	int tarJoinColIdx = tarJoinFields.indexOf(tarFieldName);
-//	if (!bOk || tarJoinColIdx < 0)
-//	{
-//        NMDebugCtx(__ctxsqltabview, << "done!");
-//		return;
-//	}
-//	NMDebugAI(<< "target field name=" << tarFieldName.toStdString()
-//			  << " at index " << tarJoinColIdx << std::endl);
+    //    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
+    //    resview->setWindowFlags(Qt::Window);
+    //    resview->setTitle(vttablename);
+    //    resview->show();
 
 
-//	QString srcFieldName = QInputDialog::getItem(this,
-//			tr("Select Source Join Field"), tr("Select Source Join Field"),
-//			srcJoinFields, 0, false, &bOk, 0);
-//	int srcJoinColIdx = srcJoinFields.indexOf(srcFieldName);
-//	if (!bOk || srcJoinColIdx < 0)
-//	{
-//        NMDebugCtx(__ctxsqltabview, << "done!");
-//		return;
-//	}
-//	NMDebugAI(<< "source field name=" << srcFieldName.toStdString()
-//			  << " at index " << srcJoinColIdx << std::endl);
 
-//	this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
+    //	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
+    //						vtkSmartPointer<vtkDelimitedTextReader>::New();
+
+    //	tabReader->SetFileName(fileName.toStdString().c_str());
+    //	tabReader->SetHaveHeaders(true);
+    //	tabReader->DetectNumericColumnsOn();
+    //    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
+    //	tabReader->SetFieldDelimiterCharacters(",\t");
+    //	tabReader->Update();
+
+    //	QScopedPointer<vtkQtTableModelAdapter> srcModel(new vtkQtTableModelAdapter);
+    //	srcModel->setTable(tabReader->GetOutput());
+
+    int numJoinCols = srcModel->columnCount(QModelIndex());
+    NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
+    QStringList srcJoinFields;
+    for (int i=0; i < numJoinCols; ++i)
+    {
+        QModelIndex idx = srcModel->index(0, i, QModelIndex());
+        QVariant::Type type = srcModel->data(idx, Qt::DisplayRole).type();
+        if (type != QVariant::Invalid)
+        {
+            srcJoinFields.append(srcModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+        }
+    }
+
+    int numTarCols = this->mModel->columnCount(QModelIndex());
+    QStringList tarJoinFields;
+    for (int i=0; i < numTarCols; ++i)
+    {
+        QModelIndex idx = this->mModel->index(0, i, QModelIndex());
+        QVariant::Type type = this->mModel->data(idx, Qt::DisplayRole).type();
+        if (type != QVariant::Invalid)
+        {
+            tarJoinFields.append(this->mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+        }
+    }
+
+    // ask the user for semantically common fields
+    bool bOk = false;
+    QString tarFieldName = QInputDialog::getItem(this,
+            tr("Select Target Join Field"), tr("Select Target Join Field"),
+            tarJoinFields, 0, false, &bOk, 0);
+    int tarJoinColIdx = tarJoinFields.indexOf(tarFieldName);
+    if (!bOk || tarJoinColIdx < 0)
+    {
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+    NMDebugAI(<< "target field name=" << tarFieldName.toStdString()
+              << " at index " << tarJoinColIdx << std::endl);
+
+
+    QString srcFieldName = QInputDialog::getItem(this,
+            tr("Select Source Join Field"), tr("Select Source Join Field"),
+            srcJoinFields, 0, false, &bOk, 0);
+    int srcJoinColIdx = srcJoinFields.indexOf(srcFieldName);
+    if (!bOk || srcJoinColIdx < 0)
+    {
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+    NMDebugAI(<< "source field name=" << srcFieldName.toStdString()
+              << " at index " << srcJoinColIdx << std::endl);
+
+
+
+    if (mSortFilter->joinTable(vttablename, srcFieldName, tarFieldName))
+    {
+        updateSelection(mbSwitchSelection);
+    }
+
+
+//    NMSqlTableView *resview = new NMSqlTableView(joinModel, this->parentWidget());
+//    resview->setWindowFlags(Qt::Window);
+//    resview->setTitle(tempTableName);
+//    resview->show();
+
+
+
+//    this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }
@@ -921,61 +936,63 @@ NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColId
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
-	QStringList allTarFields;
-	for (int i=0; i < mModel->columnCount(QModelIndex()); ++i)
-	{
-		QString fN = mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-		allTarFields.push_back(fN);
-	}
 
-	// we determine which columns to copy, and which name + index they have
-	QRegExp nameRegExp("^[\"A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
 
-	NMDebugAI(<< "checking column names ... " << std::endl);
-	QStringList copyNames;
-	QList<int> copyIdx;
-    QList<QVariant::Type> copyType;
-	QStringList writeNames;
-	for (int i=0; i < srcTable->columnCount(QModelIndex()); ++i)
-	{
-		QString name = srcTable->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-		QString writeName = name;
-		if (i == srcJoinColIdx || allTarFields.contains(name))
-		{
-			continue;
-		}
-		//else if (allTarFields.contains(name, Qt::CaseInsensitive))
-		//{
-		//	// come up with a new name for the column to appended
-		//	writeName = QString(tr("copy_%1")).arg(name);
-		//}
+    //	QStringList allTarFields;
+    //	for (int i=0; i < mModel->columnCount(QModelIndex()); ++i)
+    //	{
+    //		QString fN = mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+    //		allTarFields.push_back(fN);
+    //	}
 
-		int pos = -1;
-		pos = nameRegExp.indexIn(name);
-		if (pos >= 0)
-		{
-			copyNames.push_back(name);
-			copyIdx.push_back(i);
-            const QModelIndex smi = srcTable->index(0, i);
-            copyType.push_back(srcTable->data(smi).type());
-			writeNames.push_back(writeName);
-		}
-	}
+    //	// we determine which columns to copy, and which name + index they have
+    //	QRegExp nameRegExp("^[\"A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
 
-	NMDebugAI( << "adding new columns to target table ..." << std::endl);
-	// create new output columns for join fields
-	QList<int> writeIdx;
-	long tarnumrows = mModel->rowCount(QModelIndex());
-	for (int t=0; t < copyNames.size(); ++t)
-	{
-		QModelIndex srcidx = srcTable->index(0, copyIdx.at(t), QModelIndex());
-		QVariant::Type type = srcTable->data(srcidx, Qt::DisplayRole).type();
+    //	NMDebugAI(<< "checking column names ... " << std::endl);
+    //	QStringList copyNames;
+    //	QList<int> copyIdx;
+    //    QList<QVariant::Type> copyType;
+    //	QStringList writeNames;
+    //	for (int i=0; i < srcTable->columnCount(QModelIndex()); ++i)
+    //	{
+    //		QString name = srcTable->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+    //		QString writeName = name;
+    //		if (i == srcJoinColIdx || allTarFields.contains(name))
+    //		{
+    //			continue;
+    //		}
+    //		//else if (allTarFields.contains(name, Qt::CaseInsensitive))
+    //		//{
+    //		//	// come up with a new name for the column to appended
+    //		//	writeName = QString(tr("copy_%1")).arg(name);
+    //		//}
 
-		mModel->insertColumns(0, type, QModelIndex());
-		int colnum = mModel->columnCount(QModelIndex());
-		mModel->setHeaderData(colnum-1, Qt::Horizontal, QVariant(writeNames.at(t)), Qt::DisplayRole);
-		writeIdx.push_back(colnum-1);
-	}
+    //		int pos = -1;
+    //		pos = nameRegExp.indexIn(name);
+    //		if (pos >= 0)
+    //		{
+    //			copyNames.push_back(name);
+    //			copyIdx.push_back(i);
+    //            const QModelIndex smi = srcTable->index(0, i);
+    //            copyType.push_back(srcTable->data(smi).type());
+    //			writeNames.push_back(writeName);
+    //		}
+    //	}
+
+    //	NMDebugAI( << "adding new columns to target table ..." << std::endl);
+    //	// create new output columns for join fields
+    //	QList<int> writeIdx;
+    //	long tarnumrows = mModel->rowCount(QModelIndex());
+    //	for (int t=0; t < copyNames.size(); ++t)
+    //	{
+    //		QModelIndex srcidx = srcTable->index(0, copyIdx.at(t), QModelIndex());
+    //		QVariant::Type type = srcTable->data(srcidx, Qt::DisplayRole).type();
+
+    //		mModel->insertColumns(0, type, QModelIndex());
+    //		int colnum = mModel->columnCount(QModelIndex());
+    //		mModel->setHeaderData(colnum-1, Qt::Horizontal, QVariant(writeNames.at(t)), Qt::DisplayRole);
+    //		writeIdx.push_back(colnum-1);
+    //	}
 
 	// DEBUG
 	//NMDebugAI(<< "SOURCE TABLE 0 to 10 ..." << std::endl);
@@ -992,11 +1009,11 @@ NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColId
 	//	NMDebug(<< std::endl);
 	//}
     //
-	NMDebugAI(<< "copying field contents ...." << std::endl);
+    //	NMDebugAI(<< "copying field contents ...." << std::endl);
 
-	mProgressDialog->setWindowModality(Qt::WindowModal);
-	mProgressDialog->setLabelText("Joining Attributes ...");
-	mProgressDialog->setRange(0, tarnumrows);
+    //	mProgressDialog->setWindowModality(Qt::WindowModal);
+    //	mProgressDialog->setLabelText("Joining Attributes ...");
+    //	mProgressDialog->setRange(0, tarnumrows);
 
 	// copy field values
 	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
@@ -1005,71 +1022,71 @@ NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColId
 
 	// let's create a hash index into the src key column to
 	// quickly find corresponding records
-	QHash<QString, int> srchash;
-	for (int sr=0; sr < srcTable->rowCount(QModelIndex()); ++sr)
-	{
-		const QModelIndex idx = srcTable->index(sr, srcJoinColIdx, QModelIndex());
-		const QString key = srcTable->data(idx, Qt::DisplayRole).toString();
-		srchash.insert(key, sr);
-	}
+//	QHash<QString, int> srchash;
+//	for (int sr=0; sr < srcTable->rowCount(QModelIndex()); ++sr)
+//	{
+//		const QModelIndex idx = srcTable->index(sr, srcJoinColIdx, QModelIndex());
+//		const QString key = srcTable->data(idx, Qt::DisplayRole).toString();
+//		srchash.insert(key, sr);
+//	}
 
 
-	long srcnumrows = srcTable->rowCount(QModelIndex());
-	long havefound = 0;
-	for (long row=0; row < tarnumrows && !mProgressDialog->wasCanceled(); ++row)
-	{
-		const QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
-		const QString sTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole).toString();//tarJoin->GetVariantValue(row);
+//	long srcnumrows = srcTable->rowCount(QModelIndex());
+//	long havefound = 0;
+//	for (long row=0; row < tarnumrows && !mProgressDialog->wasCanceled(); ++row)
+//	{
+//		const QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
+//		const QString sTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole).toString();//tarJoin->GetVariantValue(row);
 
-		const int foundyou = srchash.value(sTarJoin, -1);
-		if (foundyou >= 0)
-		{
-			// copy columns for current row
-			for (int c=0; c < copyIdx.size(); ++c)
-			{
-				const QModelIndex srcIdx = srcTable->index(foundyou, copyIdx.at(c), QModelIndex());
-				const QVariant srcVal = srcTable->data(srcIdx, Qt::DisplayRole);
-                const QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
-                const QVariant::Type colType = copyType.at(c);
+//		const int foundyou = srchash.value(sTarJoin, -1);
+//		if (foundyou >= 0)
+//		{
+//			// copy columns for current row
+//			for (int c=0; c < copyIdx.size(); ++c)
+//			{
+//				const QModelIndex srcIdx = srcTable->index(foundyou, copyIdx.at(c), QModelIndex());
+//				const QVariant srcVal = srcTable->data(srcIdx, Qt::DisplayRole);
+//                const QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
+//                const QVariant::Type colType = copyType.at(c);
 
-                switch(colType)
-                {
-                case QVariant::String:
-                    // strip single quotes (may come from vtk CSV to vtkTable import)
-                    {
-                        const QString sVal = srcVal.toString();
-                        if (    (    sVal.startsWith("'")
-                                 &&  sVal.endsWith("'")
-                                )
-                            ||  (    sVal.startsWith("\"")
-                                     &&  sVal.endsWith("\"")
-                                )
-                           )
-                        {
-                            QVariant vsVal = sVal.mid(1, sVal.size()-2);
-                            mModel->setData(tarIdx, vsVal, Qt::DisplayRole);
-                        }
-                        else
-                        {
-                            mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
-                        }
-                    }
-                    break;
+//                switch(colType)
+//                {
+//                case QVariant::String:
+//                    // strip single quotes (may come from vtk CSV to vtkTable import)
+//                    {
+//                        const QString sVal = srcVal.toString();
+//                        if (    (    sVal.startsWith("'")
+//                                 &&  sVal.endsWith("'")
+//                                )
+//                            ||  (    sVal.startsWith("\"")
+//                                     &&  sVal.endsWith("\"")
+//                                )
+//                           )
+//                        {
+//                            QVariant vsVal = sVal.mid(1, sVal.size()-2);
+//                            mModel->setData(tarIdx, vsVal, Qt::DisplayRole);
+//                        }
+//                        else
+//                        {
+//                            mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
+//                        }
+//                    }
+//                    break;
 
-                default:
-                    mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
-                }
-			}
-			++havefound;
-		}
+//                default:
+//                    mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
+//                }
+//			}
+//			++havefound;
+//		}
 
-		mProgressDialog->setValue(row+1);
-	}
+//		mProgressDialog->setValue(row+1);
+//	}
 
-	NMDebugAI(<< "did find " << havefound << " matching recs!" << std::endl);
-    //this->mSortFilter->notifyLayoutUpdate();
-    //mSortFilter->layoutChanged();
-    mModel->layoutChanged();
+//	NMDebugAI(<< "did find " << havefound << " matching recs!" << std::endl);
+//    //this->mSortFilter->notifyLayoutUpdate();
+//    //mSortFilter->layoutChanged();
+//    mModel->layoutChanged();
 
     NMDebugCtx(__ctxsqltabview, << "done!");
 }

@@ -150,6 +150,10 @@ public slots:
 
     static int sqlite_resCallback(void *NotUsed, int argc, char **argv, char **azColName);
 
+    inline bool checkTree(const int& rootId, const int& idIdx,
+                   const int& dnIdx, QList<int>& idHistory,
+                   QAbstractItemModel* tableModel, const int &nrows);
+
 
 protected:
 

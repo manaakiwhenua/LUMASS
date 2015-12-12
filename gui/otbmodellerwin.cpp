@@ -1637,62 +1637,129 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-//    NMLayer* l = this->mLayerList->getSelectedLayer();
-//    if (l == 0)
-//        return;
+    // =======================================================================
+    // get selected layer
+    // =======================================================================
 
-//    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-//    if (il == 0)
-//        return;
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l == 0)
+        return;
 
-    //vtkRenderer* ren = const_cast<vtkRenderer*>(l->getRenderer());
+    QAbstractItemModel* tableModel = const_cast<QAbstractItemModel*>(l->getTable());
 
+    int nrows = tableModel->rowCount();
+    int ncols = tableModel->columnCount();
 
-//    QVTKWidget* viewer = new QVTKWidget(0);
-//    viewer->setMinimumWidth(300);
-//    viewer->setMinimumHeight(400);
-//    vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
-//    renwin->SetNumberOfLayers(1);
+    int stopIdx = 0;
+    int idIdx = -1;
+    int dnIdx = -1;
 
-//    vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
-//    ren->SetLayer(0);
-//    ren->SetBackground(0.7,0.7,0.7);
+    QStringList colnames;
+    QMap<QString, int> nameIdxMap;
 
-//    vtkProp3D* prop = const_cast<vtkProp3D*>(il->getActor());
-//    ren->AddActor(prop);
-//    renwin->AddRenderer(ren);
-//    viewer->SetRenderWindow(renwin);
-//    viewer->show();
+    for (int i=0; i < ncols; i++)
+    {
+        QString colname = tableModel->headerData(i, Qt::Horizontal,
+                                                 Qt::DisplayRole).toString();
+        colnames.append(colname);
+        nameIdxMap.insert(colname, i);
+    }
 
-//    QGraphicsPixmapItem gpi;
-//    gpi.setPixmap(viewer->grab());
+    // =======================================================================
+    // ask users for id columns
+    // =======================================================================
+    bool ok;
+    QString idColName = QInputDialog::getItem(this, tr("Tree Check"),
+                                             tr("ID column:"), colnames,
+                                             0, false, &ok, 0);
+    if (ok && !idColName.isEmpty())
+    {
+        idIdx = nameIdxMap.find(idColName).value();
+    }
 
-//    ui->modelViewWidget->addItem(&gpi);
-
-
-
-//    QString filename = "/home/alex/garage/testing/drainage.ldb";
-//    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
-//    sqlTable->CreateTable(filename.toStdString().c_str(), "1");
-
-//    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-//    db.setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
-//    db.open();
-
-
-//    NMSqlTableModel* sqlModel = new NMSqlTableModel(this, db);
-//    sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
-//    sqlModel->select();
+    colnames.removeOne(idColName);
 
 
-//    NMFastTrackSelectionModel* selModel = new NMFastTrackSelectionModel(sqlModel, 0);
-//    NMSqlTableView* tabView = new NMSqlTableView(sqlModel, 0);
-//    tabView->setSelectionModel(selModel);
+    QString dnColName = QInputDialog::getItem(this, tr("Tree Check"),
+                                             tr("DownID column:"), colnames,
+                                             0, false, &ok, 0);
+    if (ok && !dnColName.isEmpty())
+    {
+        dnIdx = nameIdxMap.find(dnColName).value();
+    }
 
-//    ui->modelViewWidget->addWidget(tabView);
+
+    if (idIdx == -1 || dnIdx == -1)
+        return;
+
+
+    // =======================================================================
+    // initiate tree check
+    // =======================================================================
+
+
+    for (int r=0; r < nrows; ++r)
+    {
+        QList<int> idHistory;
+        if (!checkTree(r, idIdx, dnIdx, idHistory, tableModel, nrows))
+        {
+            NMErr(ctxOtbModellerWin, << "loop in tree: " << r);
+            foreach (const int& id, idHistory)
+            {
+                NMDebug( << id << " ");
+            }
+            NMDebug(<< std::endl << std::endl);
+        }
+        else
+        {
+            NMDebugAI(<< "tree " << r << " is fine!" << std::endl);
+        }
+    }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
+
+
+bool
+OtbModellerWin::checkTree(const int& rootId, const int& idIdx,
+                          const int& dnIdx, QList<int>& idHistory,
+                          QAbstractItemModel *tableModel, const int& nrows)
+{
+    // still everything fine!
+    bool ret = true;
+
+    for (int r=0; r < nrows; ++r)
+    {
+        const QModelIndex midx = tableModel->index(r, idIdx);
+        int id = tableModel->data(midx).toInt();
+        if (id == rootId)
+        {
+            const QModelIndex midx2 = tableModel->index(id, dnIdx);
+            int dn = tableModel->data(midx2).toInt();
+            if (dn == 0)
+            {
+                idHistory.append(dn);
+                return true;
+            }
+            else
+            {
+                if (idHistory.contains(dn))
+                {
+                    idHistory.append(dn);
+                    return false;
+                }
+                else
+                {
+                    idHistory.append(dn);
+                    return checkTree(dn, idIdx, dnIdx, idHistory, tableModel, nrows);
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
 
 /// only for debug and testing purposes
 int

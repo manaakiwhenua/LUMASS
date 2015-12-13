@@ -70,7 +70,7 @@ public:
     bool insertColumn(const QString& name, const QVariant::Type& type);
     bool removeColumn(const QString& name);
     int updateData(int colidx, const QString& column, const QString &expr, QString& error);
-    bool joinTable(const QString& sourceFileName, const QString& joinField, const QStringList& joinSrcFields);
+    //bool joinTable(const QString& sourceFileName, const QString& joinField, const QStringList& joinSrcFields);
 
 
     //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;

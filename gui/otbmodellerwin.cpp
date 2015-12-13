@@ -1647,6 +1647,16 @@ void OtbModellerWin::test()
 
     QAbstractItemModel* tableModel = const_cast<QAbstractItemModel*>(l->getTable());
 
+    QSqlTableModel* sqlModel = qobject_cast<QSqlTableModel*>(tableModel);
+    if (sqlModel)
+    {
+        while(sqlModel->canFetchMore())
+        {
+            sqlModel->fetchMore();
+        }
+    }
+
+
     int nrows = tableModel->rowCount();
     int ncols = tableModel->columnCount();
 
@@ -1697,16 +1707,45 @@ void OtbModellerWin::test()
     // initiate tree check
     // =======================================================================
 
+    // -------------------------
+    // create a hash map for looking up next down ids
+    // to speed up things a bit ...
+    NMDebugAI( << "memorizing where all the ")
+    QMap<int, int> treeMap;
+    for (int r=0; r < nrows; ++r)
+    {
+        const QModelIndex mid = tableModel->index(r, idIdx);
+        const QModelIndex mdn = tableModel->index(r, dnIdx);
+        const int id = tableModel->data(mid).toInt();
+        const int dn = tableModel->data(mdn).toInt();
+        treeMap.insert(id, dn);
+    }
+
+    // -------------------------------
+    // let's get rolling ...
+    QSet<int> allLoops;
 
     for (int r=0; r < nrows; ++r)
     {
         QList<int> idHistory;
-        if (!checkTree(r, idIdx, dnIdx, idHistory, tableModel, nrows))
+        //if (!checkTree(r, idIdx, dnIdx, idHistory, tableModel, nrows))
+        if (!checkTree(r, idHistory, treeMap))
         {
-            NMErr(ctxOtbModellerWin, << "loop in tree: " << r);
-            foreach (const int& id, idHistory)
+            allLoops.insert(idHistory.last());
+            NMDebugAI(<< "loop in tree: " << r << " tail: ");
+            QList<int> ph;
+            for (int i=idHistory.size()-1; i >= 0; --i)
             {
+                const int id = idHistory.at(i);
                 NMDebug( << id << " ");
+                if (ph.contains(id))
+                {
+                    break;
+                }
+                else
+                {
+                    ph << id;
+                }
             }
             NMDebug(<< std::endl << std::endl);
         }
@@ -1716,46 +1755,74 @@ void OtbModellerWin::test()
         }
     }
 
+    NMDebugAI(<< "all loop bottoms ... " << std::endl);
+    foreach (const int& tail, allLoops)
+    {
+        NMDebug(<< tail << " ");
+    }
+    NMDebugAI(<< std::endl);
+
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 
 bool
-OtbModellerWin::checkTree(const int& rootId, const int& idIdx,
-                          const int& dnIdx, QList<int>& idHistory,
-                          QAbstractItemModel *tableModel, const int& nrows)
+OtbModellerWin::checkTree(const int& rootId, QList<int>& idHistory,
+                          const QMap<int, int> &treeMap)
 {
     // still everything fine!
     bool ret = true;
 
-    for (int r=0; r < nrows; ++r)
+    const int dn = treeMap.find(rootId).value();
+    if (dn == 0)
     {
-        const QModelIndex midx = tableModel->index(r, idIdx);
-        int id = tableModel->data(midx).toInt();
-        if (id == rootId)
+        idHistory.append(dn);
+        return true;
+    }
+    else
+    {
+        if (idHistory.contains(dn))
         {
-            const QModelIndex midx2 = tableModel->index(id, dnIdx);
-            int dn = tableModel->data(midx2).toInt();
-            if (dn == 0)
-            {
-                idHistory.append(dn);
-                return true;
-            }
-            else
-            {
-                if (idHistory.contains(dn))
-                {
-                    idHistory.append(dn);
-                    return false;
-                }
-                else
-                {
-                    idHistory.append(dn);
-                    return checkTree(dn, idIdx, dnIdx, idHistory, tableModel, nrows);
-                }
-            }
+            idHistory.append(dn);
+            return false;
+        }
+        else
+        {
+            idHistory.append(dn);
+            return checkTree(dn, idHistory, treeMap);
         }
     }
+
+    return ret;
+
+//    for (int r=0; r < nrows; ++r)
+//    {
+//        const QModelIndex midx = tableModel->index(r, idIdx);
+//        int id = tableModel->data(midx).toInt();
+//        if (id == rootId)
+//        {
+//            const QModelIndex midx2 = tableModel->index(id, treeMap);
+//            int dn = tableModel->data(midx2).toInt();
+//            if (dn == 0)
+//            {
+//                idHistory.append(dn);
+//                return true;
+//            }
+//            else
+//            {
+//                if (idHistory.contains(dn))
+//                {
+//                    idHistory.append(dn);
+//                    return false;
+//                }
+//                else
+//                {
+//                    idHistory.append(dn);
+//                    return checkTree(dn, idIdx, treeMap, idHistory, tableModel, nrows);
+//                }
+//            }
+//        }
+//    }
 
     return ret;
 }

@@ -546,9 +546,12 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     std::stringstream ssql;
     ssql << "CREATE TEMP TABLE " << tempTableName.toStdString() << " AS "
          << "SELECT * FROM " << tarTableName.toStdString() << " "
-         << "INNER JOIN " << joinTableName.toStdString() << " "
-         << "ON " << joinFieldName.toStdString() << " = " << tarFieldName.toStdString()
+         << "LEFT OUTER JOIN " << joinTableName.toStdString() << " "
+         << " ON " << tarTableName.toStdString() << "." << tarFieldName.toStdString()
+         << " = " << joinTableName.toStdString() << "." << joinFieldName.toStdString()
          << ";";
+
+
 
     QSqlQuery query(mSourceModel->database());
     if (!query.exec(QString(ssql.str().c_str())))
@@ -733,26 +736,26 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
     return ret;
 }
 
-bool
-NMSelSortSqlTableProxyModel::joinTable(const QString &sourceFileName,
-                                       const QString &joinField,
-                                       const QStringList &joinSrcFields)
-{
-    if (mSourceModel == 0)
-    {
-        return false;
-    }
+//bool
+//NMSelSortSqlTableProxyModel::joinTable(const QString &sourceFileName,
+//                                       const QString &joinField,
+//                                       const QStringList &joinSrcFields)
+//{
+//    if (mSourceModel == 0)
+//    {
+//        return false;
+//    }
 
-    QString vttablename = this->getRandomString();
+//    QString vttablename = this->getRandomString();
 
-    std::stringstream ssql;
-    ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-         << " USING VirtualText('" << sourceFileName.toStdString() << "', "
-         << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
+//    std::stringstream ssql;
+//    ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+//         << " USING VirtualText('" << sourceFileName.toStdString() << "', "
+//         << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
 
-	return true;
+//	return true;
 
-}
+//}
 
 bool
 NMSelSortSqlTableProxyModel::createMappingTable(void)

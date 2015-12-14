@@ -65,6 +65,15 @@
 #include "vtkCell.h"
 #include "vtkPolygon.h"
 
+
+// for testing
+#include "NMSqlTableView.h"
+
+#include "nmqsql_sqlite_p.h"
+#include "nmqsqlcachedresult_p.h"
+
+// end
+
 const std::string ModelComponentList::ctx = "ModelComponentList";
 
 ModelComponentList::ModelComponentList(QWidget *parent)
@@ -1603,50 +1612,92 @@ void ModelComponentList::test()
 	NMDebugCtx(ctx, << "...");
 
     NMLayer* l = this->getSelectedLayer();
-    if (l->getLayerType() != NMLayer::NM_VECTOR_LAYER)
+
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == 0)
+    {
+        NMDebugCtx(ctx, << "done!");
         return;
-
-    QItemSelection sel = l->getSelection();
-
-    // pick the poly on top of the list
-    long cellId = sel.at(0).top();
-
-    // query the neighbours
-    vtkPolyData* pd = vtkPolyData::SafeDownCast(
-                const_cast<vtkDataSet*>(l->getDataSet()));
-
-    vtkPolygon* poly = vtkPolygon::SafeDownCast(pd->GetCell(cellId));
-//    double normal[3];
-//    poly->ComputeNormal(poly->GetPoints(),
-//                        normal);
-    double area = poly->ComputeArea();
-
-    NMDebugAI( << "cellId: " << cellId << " | area: " << area << std::endl);
-
-
-    std::set<vtkIdType> nids;
-    for (int v=0; v < poly->GetPointIds()->GetNumberOfIds(); ++v)
-    {
-        vtkSmartPointer<vtkIdList> idList = vtkSmartPointer<vtkIdList>::New();
-        idList->InsertNextId(poly->GetPointIds()->GetId(v));
-
-        vtkSmartPointer<vtkIdList> vnids = vtkSmartPointer<vtkIdList>::New();
-        pd->GetCellNeighbors(cellId, idList, vnids);
-
-        for (int id=0; id < vnids->GetNumberOfIds(); ++id)
-        {
-            nids.insert(vnids->GetId(id));
-        }
     }
 
-    NMDebugAI(<< "neighbours: ");
-    std::set<vtkIdType>::const_iterator it = nids.begin();
-    while(it != nids.end())
+
+    otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
+    if (tab.IsNull())
     {
-        NMDebug( << *it << " ");
-        ++it;
+        NMDebugCtx(ctx, << "done!");
+        return;
     }
-    NMDebug( << std::endl);
+
+    otb::SQLiteTable::Pointer sqlTable = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+
+    QString fileName = QFileDialog::getOpenFileName(this,
+         tr("Select Source Attribute Table"), "~",
+         tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+    if (fileName.isNull())
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    QFileInfo finfo(fileName);
+
+
+    QString vttablename = finfo.baseName();
+    QString sourceFileName = fileName;
+
+    std::stringstream ssql;
+
+    if (fileName.endsWith(".csv") || fileName.endsWith(".txt"))
+    {
+        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+             << " USING VirtualText('" << sourceFileName.toStdString() << "', "
+             << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
+    }
+    else if (fileName.endsWith(".shp") || fileName.endsWith(".shx"))
+    {
+//        ssql << "Select ImportSHP('" << sourceFileName.toStdString() << "', "
+//             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
+        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+             << " USING VirtualSHAPE('" << sourceFileName.toStdString() << "', "
+             << "'CP1252')";
+    }
+    else if (fileName.endsWith(".dbf"))
+    {
+        ssql << "Select ImportDBF('" << sourceFileName.toStdString() << "', "
+             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
+    }
+    else if (fileName.endsWith(".xls"))
+    {
+        ssql << "Select ImportXLS('" << sourceFileName.toStdString() << "', "
+             << "'" << vttablename.toStdString() << "')";
+    }
+    else
+    {
+        NMErr(ctx, << "File format not supported!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    if (!sqlTable->SqlExec(ssql.str()))
+    {
+        NMErr(ctx, << "Table import failed!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+
+    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
+    QSqlDatabase db = QSqlDatabase::addDatabase(drv);
+
+    QScopedPointer<NMSqlTableModel> srcModel(new NMSqlTableModel(0, db));
+    srcModel->setTable(vttablename);
+    srcModel->select();
+
+
+    NMSqlTableView *resview = new NMSqlTableView(srcModel.data(), this->parentWidget());
+    resview->setWindowFlags(Qt::Window);
+    resview->setTitle(vttablename);
+    resview->show();
 
 
 	NMDebugCtx(ctx, << "done!");

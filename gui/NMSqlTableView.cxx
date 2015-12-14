@@ -34,6 +34,9 @@
 #include "NMSelSortSqlTableProxyModel.h"
 #include "NMGlobalHelper.h"
 
+#include "nmqsql_sqlite_p.h"
+#include "nmqsqlcachedresult_p.h"
+
 #include "vtkQtTableModelAdapter.h"
 #include "vtkDelimitedTextReader.h"
 #include "vtkSmartPointer.h"
@@ -809,27 +812,76 @@ void NMSqlTableView::joinAttributes()
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
-	QString fileName = QFileDialog::getOpenFileName(this,
-	     tr("Select Source Attribute Table"), "~", tr("Delimited Text File (*.csv)"));
-	if (fileName.isNull())
-	{
+    QString fileName = QFileDialog::getOpenFileName(this,
+         tr("Select Source Attribute Table"), "~",
+         tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+    if (fileName.isNull())
+    {
         NMDebugCtx(__ctxsqltabview, << "done!");
-		return;
-	}
+        return;
+    }
 
     QString vttablename = mSortFilter->getRandomString(5);
     QString sourceFileName = fileName;
 
     std::stringstream ssql;
-    ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-         << " USING VirtualText('" << sourceFileName.toStdString() << "', "
-         << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
+
+    if (fileName.endsWith(".csv") || fileName.endsWith(".txt"))
+    {
+        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+             << " USING VirtualText('" << sourceFileName.toStdString() << "', "
+             << "'UTF-8', 1, POINT, DOUBLEQUOTE, ',')";
+    }
+    else if (fileName.endsWith(".shp") || fileName.endsWith(".shx"))
+    {
+        //        ssql << "Select ImportSHP('" << sourceFileName.toStdString() << "', "
+        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
+        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+             << " USING VirtualShape('" << sourceFileName.toStdString() << "', "
+             << "'UTF-8', 2193)";
+    }
+    else if (fileName.endsWith(".dbf"))
+    {
+        //        ssql << "Select ('" << sourceFileName.toStdString() << "', "
+        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
+        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+             << " USING VirtualDbf('" << sourceFileName.toStdString() << "', "
+             << "'UTF-8')";
+    }
+    else if (fileName.endsWith(".xls"))
+    {
+        //        ssql << "Select ImportXLS('" << sourceFileName.toStdString() << "', "
+        //             << "'" << vttablename.toStdString() << "')";
+        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+             << " USING VirtualXL('" << sourceFileName.toStdString() << "', 1, 1)";
+    }
+    else
+    {
+        NMErr(__ctxsqltabview, << "File format not supported!");
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+
+//    QString tableName = mModel->tableName();
+//    mModel->clear();
+
+//    sqlite3* conn = 0;
+//    QVariant vDrv = mModel->database().driver()->handle();
+//    if (vDrv.isValid() && qstrcmp(v.typeName(), "sqlite3*") == 0)
+//    {
+//        conn = *satatic_cast<sqlite3**>(v.data());
+//    }
+
+//    int rc = sqlite3_exec()
 
     QSqlQuery vttabquery(mModel->database());
+    //vttabquery.exec(QString(ssql.str().c_str()));
+
+    //if (!mModel->database().tables().contains(vttablename))
     if (!vttabquery.exec(QString(ssql.str().c_str())))
     {
         NMErr(__ctxsqltabview, << vttabquery.lastError().text().toStdString());
-		NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(__ctxsqltabview, << "done!");
         return;
     }
 
@@ -838,10 +890,10 @@ void NMSqlTableView::joinAttributes()
     srcModel->select();
 
 
-    //    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
-    //    resview->setWindowFlags(Qt::Window);
-    //    resview->setTitle(vttablename);
-    //    resview->show();
+//    NMSqlTableView *resview = new NMSqlTableView(srcModel, this->parentWidget());
+//    resview->setWindowFlags(Qt::Window);
+//    resview->setTitle(vttablename);
+//    resview->show();
 
 
 
@@ -912,6 +964,7 @@ void NMSqlTableView::joinAttributes()
 
 
 
+    srcModel->clear();
     if (mSortFilter->joinTable(vttablename, srcFieldName, tarFieldName))
     {
         updateSelection(mbSwitchSelection);

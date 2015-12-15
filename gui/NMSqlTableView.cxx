@@ -853,7 +853,7 @@ void NMSqlTableView::joinAttributes()
         //        ssql << "Select ImportXLS('" << sourceFileName.toStdString() << "', "
         //             << "'" << vttablename.toStdString() << "')";
         ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualXL('" << sourceFileName.toStdString() << "', 1, 1)";
+             << " USING VirtualXL('" << sourceFileName.toStdString() << "', 0, 1)";
     }
     else
     {

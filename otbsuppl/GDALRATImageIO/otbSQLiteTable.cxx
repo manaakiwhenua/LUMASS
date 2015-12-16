@@ -2248,8 +2248,8 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     m_tableName = vinfo[1];
     std::string ext = vinfo[2];
 
-    std::string vname = m_tableName;
-    vname += "_vt";
+    std::string vname = "vt_";
+    vname += m_tableName;
 
     // ------------------------------
     // create the database
@@ -2270,19 +2270,19 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
 
     if (ext.compare(".csv") == 0 || ext.compare(".txt") == 0)
     {
-        ssql << "VirtualText('" << fileName << "', " << encoding
-             << ", 1, POINT, DOUBLEQUOTE, ',');";
+        ssql << "VirtualText('" << fileName << "', '" << encoding
+             << "', 1, POINT, DOUBLEQUOTE, ',');";
     }
     else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
     {
         std::string sname = vinfo[0];
         sname += m_tableName;
-        ssql << "VirtualShape('" << sname << "', " << encoding
-             << ", -1);";
+        ssql << "VirtualShape('" << sname << "', '" << encoding
+             << "', -1);";
     }
     else if (ext.compare(".dbf") == 0)
     {
-        ssql << "VirtualDbf('" << fileName << "', " << encoding << ");";
+        ssql << "VirtualDbf('" << fileName << "', '" << encoding << "');";
     }
     else if (ext.compare(".xls") == 0)
     {
@@ -2295,12 +2295,65 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         return false;
     }
 
+    // create the virtual table first ...
+    if (!SqlExec(ssql.str()))
+    {
+        NMErr(_ctxotbtab, << "Creating virtual table from "
+              << m_tableName << "." << ext << " failed!");
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    // double check whether we've got any records here, since
+    // spatialite creates empty tables if the import fails ...
+    ssql.str("");
+    ssql << "SELECT COUNT(*) FROM " << vname << ";";
+
+    sqlite3_stmt* rcnt = 0;
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                                -1, &rcnt, 0);
+    if (sqliteError(rc, &rcnt))
+    {
+        itkWarningMacro(<< "Failed querying the number of records in the VT!");
+        sqlite3_finalize(rcnt);
+        m_dbFileName.clear();
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    if (sqlite3_step(rcnt) == SQLITE_ROW)
+    {
+        m_iNumRows = sqlite3_column_int64(rcnt, 0);
+    }
+    NMDebugAI( << vname << " has " << m_iNumRows
+               << " records" << std::endl);
+    sqlite3_finalize(rcnt);
+
+    if (m_iNumRows < 1)
+    {
+        itkWarningMacro("Import failed or VT is empty!")
+        m_dbFileName.clear();
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    // ... and then make a proper one of it ...
+    ssql.str("");
     ssql << "CREATE TABLE " << m_tableName << " AS SELECT * FROM " << vname << ";";
     ssql << "DROP TABLE " << vname << ";";
 
-    return this->SqlExec(ssql.str());
+    if (SqlExec(ssql.str()))
+    {
+        return PopulateTableAdmin();
+    }
+    else
+    {
+        return false;
+    }
 
     NMDebugCtx(_ctxotbtab, << "done!");
+
+    return true;
 }
 
 std::vector<std::string>

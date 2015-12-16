@@ -2124,37 +2124,67 @@ SQLiteTable::DeleteDatabase()
     return !remove(m_dbFileName.c_str());
 }
 
-
-SQLiteTable::TableCreateStatus
-SQLiteTable::CreateTable(std::string filename, std::string tag)
+std::string
+SQLiteTable::GetRandomString(int len)
 {
-    //this->DebugOn();
-
-    NMDebugCtx(_ctxotbtab, << "...");
-
-    if (filename.empty())
+    if (len < 1)
     {
-        m_dbFileName = std::tmpnam(0);
-        m_dbFileName += ".ldb";
+        return "";
     }
-    else
+
+    std::srand(std::time(0));
+    char* nam = new char[len+1];
+    for (int i=0; i < len; ++i)
     {
-        m_dbFileName = filename;
+        if (i == 0)
+        {
+            if (::rand() % 2 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+        }
+        else
+        {
+            if (::rand() % 7 == 0)
+            {
+                nam[i] = '_';
+            }
+            else if (::rand() % 5 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else if (::rand() % 3 == 0)
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+            else
+            {
+                nam[i] = ::rand() % 10 + 48;
+            }
+        }
     }
-    //m_dbFileName = filename;
+    nam[len] = '\0';
+    std::string ret = nam;
+    delete[] nam;
 
-    //m_idColName = "";
-    NMDebugAI(<< "using '" << m_dbFileName
-              << "' as filename for the db" << std::endl);
+    return ret;
+}
 
+bool
+SQLiteTable::openConnection(void)
+{
     // ============================================================
     // open or create the host data base
     // ============================================================
-    
-	// alloc spatialite caches
-	m_SpatialiteCache = spatialite_alloc_connection();
-	
-	int openFlags = SQLITE_OPEN_URI |
+
+    // alloc spatialite caches
+    m_SpatialiteCache = spatialite_alloc_connection();
+
+    int openFlags = SQLITE_OPEN_URI |
                     SQLITE_OPEN_CREATE;
 
     if (m_bOpenReadOnly)
@@ -2182,7 +2212,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
         ::sqlite3_close(m_db);
         m_db = 0;
         NMDebugCtx(_ctxotbtab, << "done!");
-        return ATCREATE_ERROR;
+        return false;
     }
 
     rc = sqlite3_exec(m_db, "PRAGMA cache_size = 70000;", 0, 0, 0);
@@ -2194,10 +2224,149 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
 
 
     // =============
-    // enable loading extension & register spatialite 
+    // enable loading extension & register spatialite
     // =============
     sqlite3_enable_load_extension(m_db, 1);
-	spatialite_init_ex(m_db, m_SpatialiteCache, 1);
+    spatialite_init_ex(m_db, m_SpatialiteCache, 1);
+
+    return true;
+}
+
+bool
+SQLiteTable::CreateFromVirtual(const std::string &fileName,
+                               const std::string &encoding, const int &srid)
+{
+    NMDebugCtx(_ctxotbtab, << "...");
+
+    std::vector<std::string> vinfo = GetFilenameInfo(fileName);
+    if (vinfo.size() == 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    m_tableName = vinfo[1];
+    std::string ext = vinfo[2];
+
+    std::string vname = m_tableName;
+    vname += "_vt";
+
+    // ------------------------------
+    // create the database
+    // ----------------------------
+    m_dbFileName = vinfo[0];
+    m_dbFileName += "/";
+    m_dbFileName += GetRandomString(5);
+    m_dbFileName += ".ldb";
+
+    if (!openConnection())
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    std::stringstream ssql;
+    ssql << "CREATE VIRTUAL TABLE " << vname << " USING ";
+
+    if (ext.compare(".csv") == 0 || ext.compare(".txt") == 0)
+    {
+        ssql << "VirtualText('" << fileName << "', " << encoding
+             << ", 1, POINT, DOUBLEQUOTE, ',');";
+    }
+    else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
+    {
+        std::string sname = vinfo[0];
+        sname += m_tableName;
+        ssql << "VirtualShape('" << sname << "', " << encoding
+             << ", -1);";
+    }
+    else if (ext.compare(".dbf") == 0)
+    {
+        ssql << "VirtualDbf('" << fileName << "', " << encoding << ");";
+    }
+    else if (ext.compare(".xls") == 0)
+    {
+        ssql << "VirtualXL('" << fileName << "', 0, 1);";
+    }
+    else
+    {
+        NMErr(_ctxotbtab, << "File format not supported!");
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    ssql << "CREATE TABLE " << m_tableName << " AS SELECT * FROM " << vname << ";";
+    ssql << "DROP TABLE " << vname << ";";
+
+    return this->SqlExec(ssql.str());
+
+    NMDebugCtx(_ctxotbtab, << "done!");
+}
+
+std::vector<std::string>
+SQLiteTable::GetFilenameInfo(const std::string& fileName)
+{
+    /*! content of filename info vector
+     *  0: path
+     *  1: basename
+     *  2: (lower case) extension
+     */
+    std::vector<std::string> vinfo;
+
+    if (fileName.empty())
+    {
+        return vinfo;
+    }
+
+    size_t lwin = fileName.find_last_of('\\');
+    size_t lunx = fileName.find_last_of('/');
+    lwin = lwin == std::string::npos ? 0 : lwin;
+    lunx = lunx == std::string::npos ? 0 : lunx;
+    size_t pos = lwin > lunx ? lwin : lunx;
+    std::string path = fileName.substr(0, pos);
+
+    size_t epos = fileName.find_last_of('.');
+    std::string ext = fileName.substr(epos, fileName.length()-epos);
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    ++pos;
+    std::string bname = fileName.substr(pos, fileName.length()-pos-ext.length());
+
+    vinfo.push_back(path);
+    vinfo.push_back(bname);
+    vinfo.push_back(ext);
+
+    return vinfo;
+}
+
+SQLiteTable::TableCreateStatus
+SQLiteTable::CreateTable(std::string filename, std::string tag)
+{
+    //this->DebugOn();
+
+    NMDebugCtx(_ctxotbtab, << "...");
+
+    if (filename.empty())
+    {
+        m_dbFileName = GetRandomString(5);
+        m_dbFileName += ".ldb";
+    }
+    else
+    {
+        m_dbFileName = filename;
+    }
+
+    NMDebugAI(<< "using '" << m_dbFileName
+              << "' as filename for the db" << std::endl);
+
+    // ============================================================
+    // open / create the data base with spatialte support
+    // ============================================================
+
+    if (!openConnection())
+    {
+        return ATCREATE_ERROR;
+    }
 
     // ============================================================
     // check, whether we've already got a table
@@ -2265,124 +2434,13 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
                    << m_tableName << "'" << std::endl);
 
         this->PopulateTableAdmin();
-        //        ssql.str("");
-        //        ssql << "pragma table_info(" << m_tableName << ")";
-
-        //        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-        //                                -1, &stmt_exists, 0);
-        //        if (sqliteError(rc, &stmt_exists))
-        //        {
-        //            sqlite3_finalize(stmt_exists);
-        //            m_dbFileName.clear();
-        //            ::sqlite3_close(m_db);
-        //            m_db = 0;
-        //            NMDebugCtx(_ctxotbtab, << "done!");
-        //            return ATCREATE_ERROR;
-        //        }
-
-        //        m_vNames.clear();
-        //        m_vTypes.clear();
-        //        m_idColName.clear();
-
-        //        NMDebugAI(<< "analysing table structure ..." << std::endl);
-        //        while (sqlite3_step(stmt_exists) == SQLITE_ROW)
-        //        {
-        //            std::string name = reinterpret_cast<char*>(
-        //                        const_cast<unsigned char*>(
-        //                          sqlite3_column_text(stmt_exists, 1)));
-        //            std::string type = reinterpret_cast<char*>(
-        //                        const_cast<unsigned char*>(
-        //                          sqlite3_column_text(stmt_exists, 2)));
-        //            int pk = sqlite3_column_int(stmt_exists, 5);
-
-        //            NMDebugAI( << "   "
-        //                       << name << " | "
-        //                       << type << " | "
-        //                       << pk << std::endl);
-
-        //            // pick the first PRIMARY KEY column as THE PK
-        //            if (pk)// && m_idColName.empty())
-        //            {
-        //                if (m_idColName.empty())
-        //                {
-        //                    m_idColName = name;
-        //                }
-        //                else
-        //                {
-        //                    m_idColName += ",";
-        //                    m_idColName += name;
-        //                }
-        //            }
-
-        //            m_vNames.push_back(name);
-        //            if (type.compare("INTEGER") == 0)
-        //            {
-        //                m_vTypes.push_back(ATTYPE_INT);
-        //            }
-        //            else if (type.compare("REAL") == 0)
-        //            {
-        //                m_vTypes.push_back(ATTYPE_DOUBLE);
-        //            }
-        //            else
-        //            {
-        //                m_vTypes.push_back(ATTYPE_STRING);
-        //            }
-
-        //        }
-        //        sqlite3_finalize(stmt_exists);
-
-        //        // well, if we haven't got any names/types, we'd better bail
-        //        // out here, something seems to be wrong
-        //        if (    m_vNames.size() == 0
-        //            ||  m_idColName.empty()
-        //           )
-        //        {
-        //            itkWarningMacro(<< "Failed fetching column info or unsupported table structure!");
-        //            m_dbFileName.clear();
-        //            ::sqlite3_close(m_db);
-        //            m_db = 0;
-        //            NMDebugCtx(_ctxotbtab, << "done!");
-        //            return ATCREATE_ERROR;
-        //        }
-
-        //        // prepare Prepared statements for the detected columns
-        //        for (int c=0; c < m_vNames.size(); ++c)
-        //        {
-        //            this->createPreparedColumnStatements(m_vNames.at(c));
-        //        }
-
-        //        // now we count the number of records in the table
-        //        ssql.str("");
-        //        ssql << "SELECT count(" << m_idColName << ") "
-        //             << "from " << m_tableName << ";";
-
-
-        //        rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-        //                                -1, &stmt_exists, 0);
-        //        if (sqliteError(rc, &stmt_exists))
-        //        {
-        //            itkWarningMacro(<< "Failed fetching number of records!");
-        //            sqlite3_finalize(stmt_exists);
-        //            m_dbFileName.clear();
-        //            ::sqlite3_close(m_db);
-        //            m_db = 0;
-        //            NMDebugCtx(_ctxotbtab, << "done!");
-        //            return ATCREATE_ERROR;
-        //        }
-
-        //        if (sqlite3_step(stmt_exists) == SQLITE_ROW)
-        //        {
-        //            m_iNumRows = sqlite3_column_int64(stmt_exists, 0);
-        //        }
-        //        NMDebugAI( << m_tableName << " has " << m_iNumRows
-        //                   << " records" << std::endl);
-        //        sqlite3_finalize(stmt_exists);
     }
 
 
     // ============================================================
     // create the table, if not already exist
     // ============================================================
+    int rc;
     if (!bTableExists)
     {
         NMDebugAI( << "no '" << m_tableName << "' found!"

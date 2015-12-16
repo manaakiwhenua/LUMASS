@@ -119,6 +119,7 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
 
 NMSqlTableView::~NMSqlTableView()
 {
+
 }
 
 void NMSqlTableView::initView()
@@ -836,9 +837,10 @@ void NMSqlTableView::joinAttributes()
     {
         //        ssql << "Select ImportSHP('" << sourceFileName.toStdString() << "', "
         //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
+        QString filename = sourceFileName.left(sourceFileName.length()-4);
         ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualShape('" << sourceFileName.toStdString() << "', "
-             << "'UTF-8', 2193)";
+             << " USING VirtualShape('" << fileName.toStdString() << "', "
+             << "'UTF-8', -1)";
     }
     else if (fileName.endsWith(".dbf"))
     {

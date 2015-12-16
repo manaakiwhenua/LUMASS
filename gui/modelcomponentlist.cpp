@@ -1611,24 +1611,26 @@ void ModelComponentList::test()
 {
 	NMDebugCtx(ctx, << "...");
 
-    NMLayer* l = this->getSelectedLayer();
+//    NMLayer* l = this->getSelectedLayer();
 
-    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-    if (il == 0)
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
+//    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+//    if (il == 0)
+//    {
+//        NMDebugCtx(ctx, << "done!");
+//        return;
+//    }
 
 
-    otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
-    if (tab.IsNull())
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
+//    otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
+//    if (tab.IsNull())
+//    {
+//        NMDebugCtx(ctx, << "done!");
+//        return;
+//    }
 
-    otb::SQLiteTable::Pointer sqlTable = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+//    otb::SQLiteTable::Pointer sqlTable = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+
+
 
     QString fileName = QFileDialog::getOpenFileName(this,
          tr("Select Source Attribute Table"), "~",
@@ -1639,64 +1641,26 @@ void ModelComponentList::test()
         return;
     }
 
-    QFileInfo finfo(fileName);
-
-
-    QString vttablename = finfo.baseName();
-    QString sourceFileName = fileName;
-
-    std::stringstream ssql;
-
-    if (fileName.endsWith(".csv") || fileName.endsWith(".txt"))
+    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+    if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
     {
-        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualText('" << sourceFileName.toStdString() << "', "
-             << "'CP1252', 1, POINT, DOUBLEQUOTE, ',')";
-    }
-    else if (fileName.endsWith(".shp") || fileName.endsWith(".shx"))
-    {
-//        ssql << "Select ImportSHP('" << sourceFileName.toStdString() << "', "
-//             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
-        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualSHAPE('" << sourceFileName.toStdString() << "', "
-             << "'CP1252')";
-    }
-    else if (fileName.endsWith(".dbf"))
-    {
-        ssql << "Select ImportDBF('" << sourceFileName.toStdString() << "', "
-             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
-    }
-    else if (fileName.endsWith(".xls"))
-    {
-        ssql << "Select ImportXLS('" << sourceFileName.toStdString() << "', "
-             << "'" << vttablename.toStdString() << "')";
-    }
-    else
-    {
-        NMErr(ctx, << "File format not supported!");
         NMDebugCtx(ctx, << "done!");
         return;
     }
 
-    if (!sqlTable->SqlExec(ssql.str()))
-    {
-        NMErr(ctx, << "Table import failed!");
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
-
+    QString conname = sqlTable->GetRandomString(5).c_str();
 
     NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-    QSqlDatabase db = QSqlDatabase::addDatabase(drv);
+    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
 
-    QScopedPointer<NMSqlTableModel> srcModel(new NMSqlTableModel(0, db));
-    srcModel->setTable(vttablename);
+    NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
+    srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
     srcModel->select();
 
 
-    NMSqlTableView *resview = new NMSqlTableView(srcModel.data(), this->parentWidget());
+    NMSqlTableView *resview = new NMSqlTableView(srcModel, this->parentWidget());
     resview->setWindowFlags(Qt::Window);
-    resview->setTitle(vttablename);
+    resview->setTitle(QString(sqlTable->GetTableName().c_str()));
     resview->show();
 
 

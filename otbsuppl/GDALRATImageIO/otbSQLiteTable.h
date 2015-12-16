@@ -111,12 +111,17 @@ public:
     void SetUseSharedCache(bool shared) {m_bUseSharedCache = shared;}
     void SetOpenReadOnly(bool readonly) {m_bOpenReadOnly = readonly;}
     TableCreateStatus CreateTable(std::string filename, std::string tag="");
+    bool CreateFromVirtual(const std::string& fileName, const std::string& encoding =
+            "UTF8-1", const int& srid = -1);
     void CloseTable(bool drop=false);
     bool SetRowIDColName(const std::string& name);
     bool DeleteDatabase(void);
 
+    std::string GetRandomString(int len);
     std::string GetDbFileName() {return this->m_dbFileName;}
     std::string GetTableName() {return this->m_tableName;}
+    std::vector<std::string> GetFilenameInfo(const std::string& fileName);
+
     sqlite3* GetDbConnection() {return this->m_db;}
 
     bool PrepareBulkGet(const std::vector<std::string>& colNames, const std::string& whereClause="");
@@ -216,6 +221,8 @@ protected:
     /*! SQLite foundation of otbSQLiteTable
      *
      */
+
+    bool openConnection();
 
     void createPreparedColumnStatements(const std::string& colname);
     void resetTableAdmin();

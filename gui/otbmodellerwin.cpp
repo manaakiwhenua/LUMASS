@@ -601,6 +601,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->ui->qvtkWidget->SetRenderWindow(renwin);
 
     // listen in on events received by the QtVTKWidget
+    this->ui->qvtkWidget->setAcceptDrops(true);
     this->ui->qvtkWidget->installEventFilter(this);
 
 
@@ -635,6 +636,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
     		vtkCommand::LeftButtonPressEvent,
     		this, SLOT(pickObject(vtkObject*)));
+
 
     // **********************************************************************
     // *                    CENTRAL WIDGET                                  *
@@ -808,26 +810,51 @@ OtbModellerWin::eventFilter(QObject *obj, QEvent *event)
             }
         }
     }
-    else if (event->type() == QEvent::Close)
+    else if (event->type() == QEvent::DragEnter)
     {
-        QMdiSubWindow* sub = qobject_cast<QMdiSubWindow*>(obj);
-        if (!sub)
+        QDragEnterEvent* dee = static_cast<QDragEnterEvent*>(event);
+        if (dee)
         {
-            return false;
+            this->mLayerList->dragEnterEvent(dee);
         }
-
-        if (sub->windowTitle().compare("Map View") == 0)
-        {
-            this->showMapView(false);
-            ui->actionShow_Map_View->setChecked(false);
-        }
-        else if (sub->windowTitle().compare("Model Builder") == 0)
-        {
-            this->showModelView(false);
-            ui->actionShow_Model_View->setChecked(false);
-        }
-        return true;
     }
+    else if (event->type() == QEvent::DragMove)
+    {
+        QDragMoveEvent* dme = static_cast<QDragMoveEvent*>(event);
+        if (dme)
+        {
+            this->mLayerList->dragMoveEvent(dme);
+        }
+    }
+    else if (event->type() == QEvent::Drop)
+    {
+        QDropEvent* de = static_cast<QDropEvent*>(event);
+        if (de)
+        {
+            this->mLayerList->dropEvent(de);
+        }
+    }
+
+    //    else if (event->type() == QEvent::Close)
+    //    {
+    //        QMdiSubWindow* sub = qobject_cast<QMdiSubWindow*>(obj);
+    //        if (!sub)
+    //        {
+    //            return false;
+    //        }
+
+    //        if (sub->windowTitle().compare("Map View") == 0)
+    //        {
+    //            this->showMapView(false);
+    //            ui->actionShow_Map_View->setChecked(false);
+    //        }
+    //        else if (sub->windowTitle().compare("Model Builder") == 0)
+    //        {
+    //            this->showModelView(false);
+    //            ui->actionShow_Model_View->setChecked(false);
+    //        }
+    //        return true;
+    //    }
 
     return false;
 }

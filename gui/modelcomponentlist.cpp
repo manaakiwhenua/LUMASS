@@ -1242,14 +1242,42 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 
             QFileInfo finfo(fileName);
 
-            NMGlobalHelper h;
-            vtkRenderWindow* renWin = h.getRenderWindow();
-            NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
-            fLayer->setObjectName(finfo.baseName());
-            h.getMainWindow()->connectImageLayerProcSignals(fLayer);
-            fLayer->setFileName(fileName);
-            //QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
+            QStringList tabFormats;
+            tabFormats << "dbf" << "csv" << "txt" << "xls";
+            QString ext = finfo.suffix().toLower();
+            if (tabFormats.contains(ext))
+            {
+                otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+                sqlTable->SetUseSharedCache(false);
+                if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+                {
+                    return;
+                }
 
+                QString conname = sqlTable->GetRandomString(5).c_str();
+
+                NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
+                QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+
+                NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
+                srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
+                srcModel->select();
+
+                NMSqlTableView *resview = new NMSqlTableView(srcModel, this);
+                resview->setWindowFlags(Qt::Window);
+                resview->setTitle(QString(sqlTable->GetTableName().c_str()));
+                resview->show();
+            }
+            else
+            {
+                NMGlobalHelper h;
+                vtkRenderWindow* renWin = h.getRenderWindow();
+                NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
+                fLayer->setObjectName(finfo.baseName());
+                h.getMainWindow()->connectImageLayerProcSignals(fLayer);
+                fLayer->setFileName(fileName);
+            }
+            //QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
         }
     }
     //event->setAccepted(true);
@@ -1634,7 +1662,8 @@ void ModelComponentList::test()
 
     QString fileName = QFileDialog::getOpenFileName(this,
          tr("Select Source Attribute Table"), "~",
-         tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+         //tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+         tr("Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
     if (fileName.isNull())
     {
         NMDebugCtx(ctx, << "done!");

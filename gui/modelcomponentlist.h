@@ -46,11 +46,14 @@
 #include "vtkSmartPointer.h"
 #include "vtkEventQtSlotConnect.h"
 
+class OtbModellerWin;
 class NMLayer;
 
 class ModelComponentList : public QTreeView
 {
 	Q_OBJECT
+
+friend class OtbModellerWin;
 
 public:
     ModelComponentList(QWidget *parent);

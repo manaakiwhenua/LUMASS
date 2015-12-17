@@ -79,7 +79,6 @@ class OtbModellerWin : public QMainWindow
 {
     Q_OBJECT
 
-
 public:
     OtbModellerWin(QWidget *parent = 0);
     ~OtbModellerWin();

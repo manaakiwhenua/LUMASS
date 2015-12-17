@@ -2268,21 +2268,27 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     std::stringstream ssql;
     ssql << "CREATE VIRTUAL TABLE " << vname << " USING ";
 
+    std::string ecode = "'";
+    ecode += encoding;
+    ecode += "'";
+
     if (ext.compare(".csv") == 0 || ext.compare(".txt") == 0)
     {
-        ssql << "VirtualText('" << fileName << "', '" << encoding
-             << "', 1, POINT, DOUBLEQUOTE, ',');";
+        ssql << "VirtualText('" << fileName << "', " << ecode
+             << ", 1, POINT, DOUBLEQUOTE, ',');";
     }
-    else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
-    {
-        std::string sname = vinfo[0];
-        sname += m_tableName;
-        ssql << "VirtualShape('" << sname << "', '" << encoding
-             << "', -1);";
-    }
+    //    else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
+    //    {
+    //        std::string sname = "'";
+    //        sname += vinfo[0];
+    //        sname += m_tableName;
+    //        sname += "'";
+    //        ssql << "VirtualShape(" << sname << ", " << ecode
+    //             << ", " << srid << ");";
+    //    }
     else if (ext.compare(".dbf") == 0)
     {
-        ssql << "VirtualDbf('" << fileName << "', '" << encoding << "');";
+        ssql << "VirtualDbf('" << fileName << "', " << ecode << ");";
     }
     else if (ext.compare(".xls") == 0)
     {
@@ -2294,6 +2300,8 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
+
+    std::string teststring = ssql.str();
 
     // create the virtual table first ...
     if (!SqlExec(ssql.str()))
@@ -2321,21 +2329,21 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         return false;
     }
 
-    if (sqlite3_step(rcnt) == SQLITE_ROW)
-    {
-        m_iNumRows = sqlite3_column_int64(rcnt, 0);
-    }
-    NMDebugAI( << vname << " has " << m_iNumRows
-               << " records" << std::endl);
-    sqlite3_finalize(rcnt);
+    //    if (sqlite3_step(rcnt) == SQLITE_ROW)
+    //    {
+    //        m_iNumRows = sqlite3_column_int64(rcnt, 0);
+    //    }
+    //    NMDebugAI( << vname << " has " << m_iNumRows
+    //               << " records" << std::endl);
+    //    sqlite3_finalize(rcnt);
 
-    if (m_iNumRows < 1)
-    {
-        itkWarningMacro("Import failed or VT is empty!")
-        m_dbFileName.clear();
-        NMDebugCtx(_ctxotbtab, << "done!");
-        return false;
-    }
+    //    if (m_iNumRows < 1)
+    //    {
+    //        itkWarningMacro("Import failed or VT is empty!")
+    //        m_dbFileName.clear();
+    //        NMDebugCtx(_ctxotbtab, << "done!");
+    //        return false;
+    //    }
 
     // ... and then make a proper one of it ...
     ssql.str("");

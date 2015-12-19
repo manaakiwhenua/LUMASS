@@ -2256,7 +2256,8 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     // ----------------------------
     m_dbFileName = vinfo[0];
     m_dbFileName += "/";
-    m_dbFileName += GetRandomString(5);
+    m_dbFileName += m_tableName;//GetRandomString(5);
+    m_dbFileName += ext;
     m_dbFileName += ".ldb";
 
     if (!openConnection())
@@ -2264,6 +2265,16 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
+
+
+    if (FindTable(m_tableName))
+    {
+        NMDebugAI(<< "There's already a table '" << m_tableName
+                  << "' - so we just use that ..." << std::endl);
+        PopulateTableAdmin();
+        return true;
+    }
+
 
     std::stringstream ssql;
     ssql << "CREATE VIRTUAL TABLE " << vname << " USING ";
@@ -2300,8 +2311,6 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
-
-    std::string teststring = ssql.str();
 
     // create the virtual table first ...
     if (!SqlExec(ssql.str()))

@@ -1243,30 +1243,60 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             QFileInfo finfo(fileName);
 
             QStringList tabFormats;
-            tabFormats << "dbf" << "csv" << "txt" << "xls";
+            tabFormats << "dbf" << "csv" << "txt" << "xls";//<< "shp" << "shx";
             QString ext = finfo.suffix().toLower();
             if (tabFormats.contains(ext))
             {
-                otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
-                sqlTable->SetUseSharedCache(false);
-                if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
-                {
-                    return;
-                }
+                //                otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+                //                std::vector<std::string> finfo = sqlTable->GetFilenameInfo(fileName.toStdString());
 
-                QString conname = sqlTable->GetRandomString(5).c_str();
+                NMGlobalHelper hlp;
+                OtbModellerWin* mainWin = hlp.getMainWindow();
+                mainWin->importTable(fileName);
 
-                NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-                QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+                //                QMap<QString, QPair<otb::SQLiteTable::Pointer, NMSqlTableView*> >& tlist =
+                //                        mainWin->getTableList();
 
-                NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
-                srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
-                srcModel->select();
+                //                NMSqlTableView *resview = 0;
+                //                if (tlist.contains(QString(finfo.at(1).c_str())))
+                //                {
+                //                    NMBoxInfo("Import Table Data", "Table has already been imported!");
 
-                NMSqlTableView *resview = new NMSqlTableView(srcModel, this);
-                resview->setWindowFlags(Qt::Window);
-                resview->setTitle(QString(sqlTable->GetTableName().c_str()));
-                resview->show();
+                //                    resview = tlist.find(QString(finfo.at(1).c_str())).value().second;
+                //                    resview->show();
+                //                    resview->raise();
+                //                    return;
+                //                }
+
+
+                //                sqlTable->SetUseSharedCache(false);
+                //                if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+                //                {
+                //                    return;
+                //                }
+
+
+                //                QString conname = sqlTable->GetRandomString(5).c_str();
+
+                //                NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
+                //                QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+
+                //                NMSqlTableModel* srcModel = new NMSqlTableModel(mainWin, db);
+                //                srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
+                //                srcModel->select();
+
+                //                resview = new NMSqlTableView(srcModel, mainWin);
+
+                //                QPair<otb::SQLiteTable::Pointer, NMSqlTableView*> tabPair;
+                //                tabPair.first = sqlTable;
+                //                tabPair.second = resview;
+
+                //                tlist.insert(srcModel->tableName(), tabPair);
+
+
+                //                resview->setWindowFlags(Qt::Window);
+                //                resview->setTitle(QString(sqlTable->GetTableName().c_str()));
+                //                resview->show();
             }
             else
             {
@@ -1660,37 +1690,37 @@ void ModelComponentList::test()
 
 
 
-    QString fileName = QFileDialog::getOpenFileName(this,
-         tr("Select Source Attribute Table"), "~",
-         //tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
-         tr("Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
-    if (fileName.isNull())
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
+//    QString fileName = QFileDialog::getOpenFileName(this,
+//         tr("Select Source Attribute Table"), "~",
+//         //tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+//         tr("Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+//    if (fileName.isNull())
+//    {
+//        NMDebugCtx(ctx, << "done!");
+//        return;
+//    }
 
-    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
-    if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
+//    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+//    if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+//    {
+//        NMDebugCtx(ctx, << "done!");
+//        return;
+//    }
 
-    QString conname = sqlTable->GetRandomString(5).c_str();
+//    QString conname = sqlTable->GetRandomString(5).c_str();
 
-    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+//    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
+//    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
 
-    NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
-    srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
-    srcModel->select();
+//    NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
+//    srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
+//    srcModel->select();
 
 
-    NMSqlTableView *resview = new NMSqlTableView(srcModel, this->parentWidget());
-    resview->setWindowFlags(Qt::Window);
-    resview->setTitle(QString(sqlTable->GetTableName().c_str()));
-    resview->show();
+//    NMSqlTableView *resview = new NMSqlTableView(srcModel, this->parentWidget());
+//    resview->setWindowFlags(Qt::Window);
+//    resview->setTitle(QString(sqlTable->GetTableName().c_str()));
+//    resview->show();
 
 
 	NMDebugCtx(ctx, << "done!");

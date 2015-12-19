@@ -114,6 +114,7 @@
 #include <QActionGroup>
 #include <QScopedPointer>
 #include <QSqlDriver>
+#include <QSplitter>
 
 // orfeo
 //#include "ImageReader.h"
@@ -239,23 +240,23 @@
 
 //#include "valgrind/callgrind.h"
 
-class NMMdiSubWindow : public QMdiSubWindow
-{
-    public:
-        NMMdiSubWindow(QWidget* parent=0)
-            : QMdiSubWindow(parent)
-        {
-        }
-        ~NMMdiSubWindow()
-        {
-        }
+//class NMMdiSubWindow : public QMdiSubWindow
+//{
+//    public:
+//        NMMdiSubWindow(QWidget* parent=0)
+//            : QMdiSubWindow(parent)
+//        {
+//        }
+//        ~NMMdiSubWindow()
+//        {
+//        }
 
-        void closeEvent(QCloseEvent *closeEvent)
-        {
-            closeEvent->ignore();
-            this->hide();
-        }
-};
+//        void closeEvent(QCloseEvent *closeEvent)
+//        {
+//            closeEvent->ignore();
+//            this->hide();
+//        }
+//};
 
 
 OtbModellerWin::OtbModellerWin(QWidget *parent)
@@ -379,7 +380,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     // since we havent' go an implementation for odbc import
     // we just remove the action for now
-    ui->menuObject->removeAction(ui->actionImportODBC);
+    //ui->menuObject->removeAction(ui->actionImportODBC);
 
     // add a label to the status bar for displaying
     // the coordinates of the map window
@@ -429,6 +430,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionShow_Model_View, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
     connect(ui->actionMap_View_Mode, SIGNAL(triggered()), this, SLOT(mapViewMode()));
     connect(ui->actionModel_View_Mode, SIGNAL(triggered()), this, SLOT(modelViewMode()));
+    connect(ui->actionShowTable, SIGNAL(triggered()), this, SLOT(showTable()));
 
     connect(ui->componentsWidget, SIGNAL(visibilityChanged(bool)),
             ui->actionComponents_View, SLOT(setChecked(bool)));
@@ -653,6 +655,12 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     splitter->addWidget(ui->qvtkWidget);
     splitter->addWidget(mModelBuilderWindow);
     boxL->addWidget(splitter);
+    QSize totalSize = splitter->size();
+    QList<int> sizes;
+    sizes << totalSize.width() / 2 << totalSize.width() / 2;
+    splitter->setSizes(sizes);
+
+
 
     // ================================================
     // INITIAL WIDGET's VISIBILITY
@@ -857,6 +865,32 @@ OtbModellerWin::eventFilter(QObject *obj, QEvent *event)
     //    }
 
     return false;
+}
+
+void
+OtbModellerWin::showTable()
+{
+    if (mTableList.size() == 0)
+    {
+        return;
+    }
+
+    QStringList tables = mTableList.keys();
+
+
+    bool bOk = false;
+    QString tableName = QInputDialog::getItem(this,
+            tr("Show Table"), tr("Select table to show"),
+            tables, 0, false, &bOk, 0);
+    if (!bOk || tableName.isEmpty())
+    {
+        return;
+    }
+
+    NMSqlTableView* tview = mTableList.find(tableName).value().second.data();
+    tview->show();
+    tview->raise();
+
 }
 
 void
@@ -1289,58 +1323,113 @@ void OtbModellerWin::importODBC(void)
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
-//	QString fileName = QFileDialog::getOpenFileName(this,
-//	     tr("Import ODBC Data Base Table"), "~", tr("ODBC supported DB (*.*)"));
-//	if (fileName.isNull()) return;
-//
-//	NMDebugAI( << "opening '" << fileName.toStdString() << "' ..." << endl);
-//
-//	QString dsn = QString("odbc://%1").arg(fileName);
-//	NMDebugAI(<< "DSN: " << dsn.toStdString() << endl);
+    QString fileName = QFileDialog::getOpenFileName(this,
+         tr("Import Table Data"), "~",
+         tr("Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+    if (fileName.isNull())
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
 
-	// ask for the name and the type of the new data field
-	bool bOk = false;
-#ifdef BUILD_RASSUPPORT
-	QString dsn = QInputDialog::getText(this, tr("ODBC Data Source Name"),
-			tr("..."),
-			QLineEdit::Normal, tr("psql://rasdaman:rasdaman@localhost:5432/RASBASE"), &bOk);
-#else
-	QString dsn = "";
-#endif
-	if (!bOk || dsn.isEmpty())
-	{
-		NMDebugCtx(ctxOtbModellerWin, << "done!");
-		return;
-	}
-
-	vtkSmartPointer<vtkSQLDatabase> db =
-			vtkSQLDatabase::CreateFromURL(dsn.toStdString().c_str());
-	if (db.GetPointer() == 0)
-	{
-		NMErr(ctxOtbModellerWin, << "create from URL failed!");
-		NMDebugCtx(ctxOtbModellerWin, << "done!");
-		return;
-	}
-
-	if (!db->Open(0))
-	{
-		NMErr(ctxOtbModellerWin, << "couldn't open db!");
-		NMDebugCtx(ctxOtbModellerWin, << "done!");
-		return;
-	}
-
-
-//	QFileInfo finfo(fileName);
-//	QString dbName = finfo.baseName();
-//	NMDebugAI(<< "db name: " << dbName.toStdString() << endl);
-
-	db->Print(std::cout);
-	db->Close();
-
-
+    this->importTable(fileName);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
+
+void
+OtbModellerWin::importTable(const QString& fileName)
+{
+    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+    std::vector<std::string> vinfo = sqlTable->GetFilenameInfo(fileName.toStdString());
+
+    NMSqlTableView* resview = 0;
+    QString viewName;
+    if (mTableList.contains(QString(vinfo.at(1).c_str())))
+    {
+        bool dbpresent = false;
+        QString ldbName = QString("%1/%2%3.ldb")
+                            .arg(vinfo[0].c_str())
+                            .arg(vinfo[1].c_str())
+                            .arg(vinfo[2].c_str());
+
+        QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::const_iterator it =
+                mTableList.constBegin();
+
+        while (it != mTableList.constEnd())
+        {
+            if (ldbName.compare(it.value().first->GetDbFileName().c_str(), Qt::CaseInsensitive) == 0)
+            {
+                dbpresent = true;
+                break;
+            }
+
+            ++it;
+        }
+
+        if (dbpresent)
+        {
+            NMBoxInfo("Import Table Data", "Table has already been imported!");
+
+            resview = mTableList.find(QString(vinfo.at(1).c_str())).value().second.data();
+            resview->show();
+            resview->raise();
+            return;
+        }
+        else
+        {
+            int lfd = 2;
+            viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
+            while(mTableList.contains(viewName))
+            {
+                ++lfd;
+                viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
+            }
+        }
+    }
+
+
+    sqlTable->SetUseSharedCache(false);
+    if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+
+
+    QString conname = sqlTable->GetRandomString(5).c_str();
+
+    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
+    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+
+    NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
+    srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
+    srcModel->select();
+
+    if (viewName.isEmpty())
+    {
+        viewName = QString(sqlTable->GetTableName().c_str());
+    }
+
+    QSharedPointer<NMSqlTableView> tabview(new NMSqlTableView(srcModel, this));
+    //resview = new NMSqlTableView(srcModel, this->parentWidget());
+    tabview->setWindowFlags(Qt::Window);
+    tabview->setTitle(viewName);
+
+
+    QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > tabPair;
+    tabPair.first = sqlTable;
+    tabPair.second = tabview;
+
+    mTableList.insert(viewName, tabPair);
+
+    tabview->show();
+    tabview->raise();
+
+}
+
+
 
 void OtbModellerWin::saveAsVectorLayerOGR(void)
 {
@@ -1899,6 +1988,8 @@ void OtbModellerWin::removeAllObjects()
 		if (seccounter > 100) break;
 		seccounter++;
 	}
+
+    mTableList.clear();
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

@@ -50,6 +50,10 @@
 #include "LUMASSConfig.h"
 //#include "NMLayer.h"
 
+#include "NMSqlTableView.h"
+
+#include "otbSQLiteTable.h"
+
 
 // rasdaman
 #ifdef BUILD_RASSUPPORT
@@ -91,6 +95,11 @@ public:
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
 
+    void importTable(const QString& fileName);
+
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&
+        getTableList(void) {return mTableList;}
+
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
@@ -124,6 +133,7 @@ public slots:
     void showComponentsInfoView(bool);
     void showMapView(bool);
     void showModelView(bool);
+    void showTable();
     void mapViewMode();
     void modelViewMode();
 	void updateCoords(vtkObject* obj);
@@ -346,6 +356,10 @@ private:
     // the petascope metadata table
     NMTableView* mpPetaView;
     QAbstractItemModel* mPetaMetaModel;
+
+    // keep track of any imported table data (GIS mode)
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > > mTableList;
+
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

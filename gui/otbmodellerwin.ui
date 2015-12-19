@@ -116,6 +116,8 @@
     <addaction name="separator"/>
     <addaction name="actionComponents_View"/>
     <addaction name="actionShow_Components_Info"/>
+    <addaction name="separator"/>
+    <addaction name="actionShowTable"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -187,7 +189,7 @@
           <x>0</x>
           <y>0</y>
           <width>76</width>
-          <height>233</height>
+          <height>515</height>
          </rect>
         </property>
        </widget>
@@ -201,7 +203,7 @@
     <string>Att&amp;ributes &amp;&amp; Properties</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>1</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="infoDock">
     <property name="sizePolicy">
@@ -222,7 +224,7 @@
           <x>0</x>
           <y>0</y>
           <width>76</width>
-          <height>233</height>
+          <height>515</height>
          </rect>
         </property>
        </widget>
@@ -338,7 +340,7 @@
   </action>
   <action name="actionImportODBC">
    <property name="text">
-    <string>Import Table (&amp;ODBC) ...</string>
+    <string>Import Table &amp;Data ...</string>
    </property>
    <property name="toolTip">
     <string>Import ODBC Data Base Table</string>
@@ -431,6 +433,11 @@
   <action name="actionBackground_Colour">
    <property name="text">
     <string>&amp;Background Colour ...</string>
+   </property>
+  </action>
+  <action name="actionShowTable">
+   <property name="text">
+    <string>&amp;Show Standalone Table ...</string>
    </property>
   </action>
  </widget>

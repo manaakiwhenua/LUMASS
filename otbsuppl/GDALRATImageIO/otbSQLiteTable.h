@@ -112,7 +112,7 @@ public:
     void SetOpenReadOnly(bool readonly) {m_bOpenReadOnly = readonly;}
     TableCreateStatus CreateTable(std::string filename, std::string tag="");
     bool CreateFromVirtual(const std::string& fileName, const std::string& encoding =
-            "UTF8-1", const int& srid = -1);
+            "UTF-8", const int& srid = -1);
     void CloseTable(bool drop=false);
     bool SetRowIDColName(const std::string& name);
     bool DeleteDatabase(void);

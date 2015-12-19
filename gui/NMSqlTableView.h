@@ -86,6 +86,8 @@ public:
     const QList<int>* getRaw2Source(void)
             {return 0;}
 
+    QSqlTableModel* getModel(void) {return mModel;}
+
 public slots:
 
 	void calcColumn();

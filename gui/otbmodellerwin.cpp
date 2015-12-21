@@ -683,6 +683,8 @@ OtbModellerWin::~OtbModellerWin()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
+	this->removeAllObjects();
+
 #ifdef BUILD_RASSUPPORT
 	// close the table view and delete;
 	if (this->mpPetaView != 0)
@@ -1395,25 +1397,45 @@ OtbModellerWin::importTable(const QString& fileName)
         NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
     }
-
-
-
+	QString tablename = sqlTable->GetTableName().c_str();
     QString conname = sqlTable->GetRandomString(5).c_str();
+	QString dbfilename = sqlTable->GetDbFileName().c_str();
+	sqlTable->CloseTable();
 
-    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+	sqlite3* tabconn = 0;
+	void* splCache = spatialite_alloc_connection();
+	int rc = ::sqlite3_open_v2(dbfilename.toStdString().c_str(), 
+			&tabconn, 
+        			SQLITE_OPEN_URI |
+        			SQLITE_OPEN_READWRITE, 0);
+    if (rc != SQLITE_OK)
+    {
+        NMErr(ctxOtbModellerWin,
+        	<< "Failed opening SqlTableView connection!");
+        ::sqlite3_close(tabconn);
+        spatialite_cleanup_ex(splCache);
+        splCache = 0;
+        tabconn = 0;
+		NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    rc = sqlite3_enable_load_extension(tabconn, 1);
+    spatialite_init_ex(tabconn, splCache, 1);
+
+    NMQSQLiteDriver* drv = new NMQSQLiteDriver(tabconn, 0);
+	QSqlDatabase db = QSqlDatabase::addDatabase(drv);
 
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
-    srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
+    srcModel->setTable(tablename);
     srcModel->select();
 
     if (viewName.isEmpty())
     {
-        viewName = QString(sqlTable->GetTableName().c_str());
+        viewName = QString(tablename);
     }
 
     QSharedPointer<NMSqlTableView> tabview(new NMSqlTableView(srcModel, this));
-    //resview = new NMSqlTableView(srcModel, this->parentWidget());
     tabview->setWindowFlags(Qt::Window);
     tabview->setTitle(viewName);
 
@@ -1424,7 +1446,14 @@ OtbModellerWin::importTable(const QString& fileName)
 
     mTableList.insert(viewName, tabPair);
 
-    tabview->show();
+	QPair<void*, sqlite3*> adminPair;
+	adminPair.first = splCache;
+	adminPair.second = tabconn;
+
+	mTableAdminObjects.insert(viewName, adminPair);
+	
+	
+	tabview->show();
     tabview->raise();
 
 }
@@ -1988,8 +2017,20 @@ void OtbModellerWin::removeAllObjects()
 		if (seccounter > 100) break;
 		seccounter++;
 	}
-
     mTableList.clear();
+
+	QMap<QString, QPair<void*, sqlite3*> >::iterator it = mTableAdminObjects.begin();
+	while (it != mTableAdminObjects.end())
+	{
+		void* cache = it.value().first;
+		sqlite3* conn = it.value().second;
+
+		sqlite3_close(conn);
+		spatialite_cleanup_ex(cache);
+		cache = 0;
+		conn = 0;
+		++it;
+	}
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

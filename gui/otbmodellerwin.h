@@ -358,8 +358,11 @@ private:
     QAbstractItemModel* mPetaMetaModel;
 
     // keep track of any imported table data (GIS mode)
+	//   (unique) table name        
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > > mTableList;
 
+	// (unique) table name
+	QMap<QString, QPair<void*, sqlite3*> > mTableAdminObjects;
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

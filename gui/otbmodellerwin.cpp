@@ -1435,7 +1435,7 @@ OtbModellerWin::importTable(const QString& fileName)
         viewName = QString(tablename);
     }
 
-    QSharedPointer<NMSqlTableView> tabview(new NMSqlTableView(srcModel, this));
+    QSharedPointer<NMSqlTableView> tabview(new NMSqlTableView(srcModel, 0));
     tabview->setWindowFlags(Qt::Window);
     tabview->setTitle(viewName);
 

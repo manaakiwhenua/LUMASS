@@ -2245,7 +2245,18 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         return false;
     }
 
-    m_tableName = vinfo[1];
+	std::string tmp = vinfo[1];
+	std::string torepl = "-+&=*(){}[]€%$#@!~/\\";
+	for (int i=0; i < torepl.size(); ++i)
+	{
+		size_t pos = tmp.find(torepl[i]);
+		if (pos != std::string::npos)
+		{
+			tmp = tmp.replace(pos, 1, "_");
+		}
+	}
+
+    m_tableName = tmp;//vinfo[1];
     std::string ext = vinfo[2];
 
     std::string vname = "vt_";

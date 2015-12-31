@@ -215,6 +215,9 @@
 #include "vtkPolyDataNormals.h"
 #include "vtkCoordinate.h"
 #include "QVTKWidget.h"
+#include "vtkWindowToImageFilter.h"
+#include "vtkPNGWriter.h"
+#include "vtkJPEGWriter.h"
 
 #include "otbSortFilter.h"
 #include "otbExternalSortFilter.h"
@@ -418,6 +421,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionFullExtent, SIGNAL(triggered()), this, SLOT(zoomFullExtent()));
     connect(ui->actionSaveAsVTKPolyData, SIGNAL(triggered()), this, SLOT(saveAsVtkPolyData()));
     connect(ui->actionSave_As_Image_File, SIGNAL(triggered()), this ,SLOT(saveImageFile()));
+    connect(ui->actionSaveAsImage, SIGNAL(triggered()), this, SLOT(saveMapAsImage()));
     connect(ui->actionSave_Visible_Extent_Overview_As, SIGNAL(triggered()), this ,SLOT(saveImageFile()));
     connect(ui->actionTest, SIGNAL(triggered()), this, SLOT(test()));
     connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
@@ -925,6 +929,45 @@ OtbModellerWin::toggleRubberBandZoom(bool bzoom)
     {
         this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
                     vtkInteractorStyleRubberBand2D::New());
+    }
+}
+
+void
+OtbModellerWin::saveMapAsImage()
+{
+
+    QString fileName = QFileDialog::getSaveFileName(this,
+            QString("Save Map As Image File"),
+            QString("map.png"), tr("Portable Network Graphic (*.png);;JPEG Image (*.jpg)"));
+    if (fileName.isEmpty())
+    {
+        return;
+    }
+
+    vtkRenderWindow* renwin = this->ui->qvtkWidget->GetRenderWindow();
+
+    vtkNew<vtkWindowToImageFilter> imgFilter;
+    imgFilter->SetInput(renwin);
+
+    QString tmpName = fileName.toLower();
+
+    if (tmpName.endsWith(".jpg") || tmpName.endsWith("jpeg"))
+    {
+        vtkNew<vtkJPEGWriter> writer;
+        writer->SetInputConnection(imgFilter->GetOutputPort());
+        writer->SetFileName(fileName.toStdString().c_str());
+        writer->Write();
+    }
+    else if (tmpName.endsWith(".png"))
+    {
+        vtkNew<vtkPNGWriter> writer;
+        writer->SetInputConnection(imgFilter->GetOutputPort());
+        writer->SetFileName(fileName.toStdString().c_str());
+        writer->Write();
+    }
+    else
+    {
+        NMErr("Save Map As Image File", "Unsupported image format!");
     }
 }
 

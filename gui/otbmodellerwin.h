@@ -145,6 +145,7 @@ public slots:
 	void test();
 	void saveAsVectorLayerOGR();
     void saveImageFile();
+    void saveMapAsImage();
 	void updateLayerInfo(NMLayer* l, double cellId);
 	void importODBC();
 	void aboutLUMASS();

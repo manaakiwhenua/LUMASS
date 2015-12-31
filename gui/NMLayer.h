@@ -239,6 +239,7 @@ public:
 	bool getLegendColour(const int legendRow, double* rgba);
 	QIcon getLegendIcon(const int legendRow);
 	QIcon getColourRampIcon(void);
+    QPixmap getColourRampPix(int width, int height);
 	QString getLegendName(const int legendRow);
 	int getLegendItemCount(void);
 	double getLegendItemUpperValue(const int legendRow);

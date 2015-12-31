@@ -218,6 +218,7 @@
 #include "vtkWindowToImageFilter.h"
 #include "vtkPNGWriter.h"
 #include "vtkJPEGWriter.h"
+#include "vtkLegendScaleActor.h"
 
 #include "otbSortFilter.h"
 #include "otbExternalSortFilter.h"
@@ -595,6 +596,16 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	//this->mBkgRenderer->SetUseDepthPeeling(1);
 	//this->mBkgRenderer->SetMaximumNumberOfPeels(100);
 	//this->mBkgRenderer->SetOcclusionRatio(0.1);
+
+    vtkSmartPointer<vtkLegendScaleActor> legendActor =
+            vtkSmartPointer<vtkLegendScaleActor>::New();
+
+    legendActor->AllAxesOff();
+    legendActor->SetLegendVisibility(1);
+    legendActor->DragableOn();
+    //legendActor->SetLabelModeToDistance();
+
+    this->mBkgRenderer->AddViewProp(legendActor);
 
 
     //renwin->SetStereoTypeToCrystalEyes();

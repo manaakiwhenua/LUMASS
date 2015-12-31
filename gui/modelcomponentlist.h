@@ -105,6 +105,7 @@ public slots:
     void saveLegend();
     void loadLegend();
     void showImageInfo();
+    void exportColourRamp();
 
 	void test();
 
@@ -142,6 +143,7 @@ private:
     QAction* mActValueStats;
     QAction* mActImageStats;
     QAction* mActImageInfo;
+    QAction* mActExportColourRamp;
     bool mbWholeImgStats;
 
     // keeps track of future watchers being created for stats creation survaillance

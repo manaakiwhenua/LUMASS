@@ -2204,42 +2204,50 @@ QIcon NMLayer::getColourRampIcon()
 {
 	QIcon rampIcon;
 
-	QPixmap pix(18, 60);
-	QPainter p(&pix);
-
-	QLinearGradient ramp;
-	ramp.setCoordinateMode(QGradient::StretchToDeviceMode);
-	ramp.setStart(0.5, 1.0);
-	ramp.setFinalStop(0.5, 0.0);
-
-	// here, we just sample the colour transfer function 256 times
-	// to build the colour ramp
-	double* rgb;
-	double lower = mLower;// = min(mLower, mUpper);
-	double upper = mUpper; //max(mLower, mUpper);
-	double range = upper - lower;
-	double step = range/255.0;
-	QColor clr;
-
-	for (int i=0; i < 256; ++i)
-	{
-		double incr = ((double)i * step);
-		double sample = lower + incr;
-		double pos = abs(incr/range);
-        if (pos < 0 || pos > 1)
-            continue;
-
-		rgb = mClrFunc->GetColor(sample);
-		clr.setRedF((qreal)rgb[0]);
-		clr.setGreenF((qreal)rgb[1]);
-		clr.setBlueF((qreal)rgb[2]);
-		ramp.setColorAt(pos, clr);
-	}
-
-	p.fillRect(pix.rect(), ramp);
+    QPixmap pix = this->getColourRampPix(18,60);
 
 	rampIcon = QIcon(pix);
 	return rampIcon;
+}
+
+QPixmap
+NMLayer::getColourRampPix(int width, int height)
+{
+    QPixmap pix(width, height);
+    QPainter p(&pix);
+
+    QLinearGradient ramp;
+    ramp.setCoordinateMode(QGradient::StretchToDeviceMode);
+    ramp.setStart(0.5, 1.0);
+    ramp.setFinalStop(0.5, 0.0);
+
+    // here, we just sample the colour transfer function 256 times
+    // to build the colour ramp
+    double* rgb;
+    double lower = mLower;// = min(mLower, mUpper);
+    double upper = mUpper; //max(mLower, mUpper);
+    double range = upper - lower;
+    double step = range/255.0;
+    QColor clr;
+
+    for (int i=0; i < 256; ++i)
+    {
+        double incr = ((double)i * step);
+        double sample = lower + incr;
+        double pos = abs(incr/range);
+        if (pos < 0 || pos > 1)
+            continue;
+
+        rgb = mClrFunc->GetColor(sample);
+        clr.setRedF((qreal)rgb[0]);
+        clr.setGreenF((qreal)rgb[1]);
+        clr.setBlueF((qreal)rgb[2]);
+        ramp.setColorAt(pos, clr);
+    }
+
+    p.fillRect(pix.rect(), ramp);
+
+    return pix;
 }
 
 int NMLayer::getLegendItemCount(void)

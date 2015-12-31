@@ -132,7 +132,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActClrTab = new QAction(this->mMenu);
     mActClrTab->setText(tr("Map Colour Table"));
     mActClrRamp = new QAction(this->mMenu);
-    mActClrRamp->setText(tr("Map Value Ramp"));
+    mActClrRamp->setText(tr("Map Value Range"));
     mActRGBImg = new QAction(this->mMenu);
     mActRGBImg->setText(tr("Map RGB Image"));
 
@@ -144,6 +144,9 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
     QAction* actSaveLegend = new QAction(this->mMenu);
     actSaveLegend->setText(tr("Save Legend ..."));
+
+    this->mActExportColourRamp = new QAction(this->mMenu);
+    mActExportColourRamp->setText(tr("Save Colour Ramp ..."));
 
 	this->mMenu->addAction(actTable);
 	this->mMenu->addSeparator();
@@ -168,6 +171,8 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
     this->mMenu->addAction(actLoadLegend);
     this->mMenu->addAction(actSaveLegend);
+    this->mMenu->addAction(mActExportColourRamp);
+    this->mMenu->addSeparator();
     this->mMenu->addAction(actSaveChanges);
 	this->mMenu->addAction(actRemove);
 
@@ -186,6 +191,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
     this->connect(mActOpacity, SIGNAL(triggered()), this, SLOT(editLayerOpacity()));
     this->connect(mActImageInfo, SIGNAL(triggered()), this, SLOT(showImageInfo()));
+    this->connect(mActExportColourRamp, SIGNAL(triggered()), this, SLOT(exportColourRamp()));
 
 
 #ifdef DEBUG
@@ -254,6 +260,18 @@ void ModelComponentList::openAttributeTable()
 		l->showAttributeTable();
 
 //	NMDebugCtx(ctx, << "done!");
+}
+
+void ModelComponentList::exportColourRamp()
+{
+    NMLayer* l = this->getSelectedLayer();
+
+    QPixmap pix = l->getColourRampPix(600,600);
+
+    QFile rampFile("/home/alex/tmp/ramp.png");
+    rampFile.open(QIODevice::WriteOnly);
+    pix.save(&rampFile, "PNG");
+    rampFile.close();
 }
 
 void ModelComponentList::saveLayerChanges()
@@ -831,7 +849,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                         mActClrTab->setVisible(true);
                         mActRGBImg->setVisible(false);
 
-                        mActClrRamp->setText("Map Value Ramp");
+                        mActClrRamp->setText("Map Value Range");
                     }
                     else
                     {
@@ -843,7 +861,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                         mActClrTab->setVisible(false);
                         mActRGBImg->setVisible(true);
 
-                        mActClrRamp->setText("Map Band Value Ramp");
+                        mActClrRamp->setText("Map Band Value Range");
                     }
                     mActImageInfo->setVisible(true);
                     mActVecContourOnly->setVisible(false);
@@ -867,12 +885,21 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                 mActUniqueValues->setVisible(true);
                 mActSingleSymbol->setVisible(true);
                 mActClrTab->setVisible(true);
-                mActClrRamp->setText("Map Value Ramp");
+                mActClrRamp->setText("Map Value Range");
 
                 mActImageInfo->setVisible(false);
                 mActImageStats->setEnabled(false);
                 mActImageStats->setVisible(false);
                 mActValueStats->setText("Value Field Statistics");
+            }
+
+            if (l->getLegendType() == NMLayer::NM_LEGEND_RAMP)
+            {
+                mActExportColourRamp->setVisible(true);
+            }
+            else
+            {
+                mActExportColourRamp->setVisible(false);
             }
 
 			this->mMenu->move(event->globalPos());

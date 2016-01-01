@@ -55,6 +55,7 @@
 #include <QGraphicsItem>
 #include <QFileInfo>
 #include <QtConcurrent>
+#include <QFileDialog>
 
 #include "vtkSmartPointer.h"
 #include "vtkObject.h"
@@ -266,9 +267,62 @@ void ModelComponentList::exportColourRamp()
 {
     NMLayer* l = this->getSelectedLayer();
 
-    QPixmap pix = l->getColourRampPix(600,600);
+    bool bok;
 
-    QFile rampFile("/home/alex/tmp/ramp.png");
+    QString rampFileName = QFileDialog::getSaveFileName(this,
+                                        tr("Export Colour Ramp"),
+                                        "~/ColourRamp.png",
+                                        tr("Portable Network Graphic (*.png)"));
+
+    if (rampFileName.isEmpty())
+    {
+        return;
+    }
+
+
+    QString sizeStr = QInputDialog::getText(this, tr("Export Colour Ramp"),
+                                           tr("Colour ramp image size: "),
+                                            QLineEdit::Normal,
+                                            QString("100, 600"), &bok);
+    int width = 100;
+    int height = 600;
+    bool userSize = bok ? true : false;
+    if (bok)
+    {
+        QStringList sizes = sizeStr.split(QString(","));
+        if (sizes.size() >= 2)
+        {
+            int tw = sizes.at(0).toInt(&bok);
+            if (bok)
+            {
+                width = tw;
+            }
+            else
+            {
+                userSize = false;
+            }
+
+            tw = sizes.at(1).toInt(&bok);
+            if (bok)
+            {
+                height = tw;
+            }
+            else
+            {
+                userSize = false;
+            }
+        }
+    }
+
+    if (!userSize)
+    {
+        NMBoxErr("Export Colour Ramp", "Invalid image size specified - using default values!" );
+    }
+
+
+    QPixmap pix = l->getColourRampPix(width,height);
+
+    QFile rampFile(rampFileName);
     rampFile.open(QIODevice::WriteOnly);
     pix.save(&rampFile, "PNG");
     rampFile.close();

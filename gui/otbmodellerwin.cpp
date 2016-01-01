@@ -219,6 +219,7 @@
 #include "vtkPNGWriter.h"
 #include "vtkJPEGWriter.h"
 #include "vtkLegendScaleActor.h"
+#include "vtkImageResample.h"
 
 #include "otbSortFilter.h"
 #include "otbExternalSortFilter.h"
@@ -957,22 +958,42 @@ OtbModellerWin::saveMapAsImage()
 
     vtkRenderWindow* renwin = this->ui->qvtkWidget->GetRenderWindow();
 
-    vtkNew<vtkWindowToImageFilter> imgFilter;
-    imgFilter->SetInput(renwin);
+    NMDebugAI(<< "renwin size: " << renwin->GetSize()[0] << " x "
+              << renwin->GetSize()[1] << std::endl);
+
+    QString label = "Output size with magnification factor 1 is ";
+    label = QString("%1 %2x%3. Current factor: ")
+            .arg(label)
+            .arg(renwin->GetSize()[0])
+            .arg(renwin->GetSize()[1]);
+
+    bool bok;
+    int factor = QInputDialog::getInt(this, "Output Magnification Factor",
+                             label, 1, 1, 10, 1, &bok);
+    if (!bok)
+    {
+        return;
+    }
+
+
+    vtkNew<vtkWindowToImageFilter> win2ImgFilter;
+
+    win2ImgFilter->SetInput(renwin);
+    win2ImgFilter->SetMagnification(factor);
+    win2ImgFilter->SetFixBoundary(true);
 
     QString tmpName = fileName.toLower();
-
     if (tmpName.endsWith(".jpg") || tmpName.endsWith("jpeg"))
     {
         vtkNew<vtkJPEGWriter> writer;
-        writer->SetInputConnection(imgFilter->GetOutputPort());
+        writer->SetInputConnection(win2ImgFilter->GetOutputPort());
         writer->SetFileName(fileName.toStdString().c_str());
         writer->Write();
     }
     else if (tmpName.endsWith(".png"))
     {
         vtkNew<vtkPNGWriter> writer;
-        writer->SetInputConnection(imgFilter->GetOutputPort());
+        writer->SetInputConnection(win2ImgFilter->GetOutputPort());
         writer->SetFileName(fileName.toStdString().c_str());
         writer->Write();
     }

@@ -1841,6 +1841,7 @@ NMLayer::setLegendValueField(QString field)
 {
 	if (field == "Colour Table")
 	{
+        this->updateMapping();
 		return;
 	}
 

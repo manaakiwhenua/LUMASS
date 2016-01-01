@@ -517,7 +517,6 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 				{
 					if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
 					{
-						l->setLegendValueField(valuefield);
 
 						// we also adjust the description field; it makes only sense
 						// to be different from the value field if we're mapping
@@ -569,7 +568,8 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
                                 l->setUpper(stats[1]);
                             }
                         }
-                        l->updateMapping();
+                        l->setLegendValueField(valuefield);
+                        //l->updateMapping();
                         l->updateLegend();
 					}
 				}

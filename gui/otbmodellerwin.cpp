@@ -950,7 +950,7 @@ OtbModellerWin::saveMapAsImage()
 
     QString fileName = QFileDialog::getSaveFileName(this,
             QString("Save Map As Image File"),
-            QString("map.png"), tr("Portable Network Graphic (*.png);;JPEG Image (*.jpg)"));
+            QString("map.png"), tr("Portable Network Graphic (*.png);;JPEG Image (*.jpg *.jpeg)"));
     if (fileName.isEmpty())
     {
         return;

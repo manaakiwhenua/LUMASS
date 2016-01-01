@@ -268,11 +268,11 @@ void ModelComponentList::exportColourRamp()
     NMLayer* l = this->getSelectedLayer();
 
     bool bok;
-
+    QString theDir = getenv("HOME");
     QString rampFileName = QFileDialog::getSaveFileName(this,
-                                        tr("Export Colour Ramp"),
-                                        "~/ColourRamp.png",
-                                        tr("Portable Network Graphic (*.png)"));
+                           tr("Export Colour Ramp"),
+                           theDir,
+                           tr("Portable Network Graphic (*.png);;JPEG Image (*.jpg *.jpeg)"));
 
     if (rampFileName.isEmpty())
     {
@@ -303,7 +303,7 @@ void ModelComponentList::exportColourRamp()
             }
 
             tw = sizes.at(1).toInt(&bok);
-            if (bok)
+            if (bok && userSize)
             {
                 height = tw;
             }
@@ -316,15 +316,19 @@ void ModelComponentList::exportColourRamp()
 
     if (!userSize)
     {
-        NMBoxErr("Export Colour Ramp", "Invalid image size specified - using default values!" );
+        NMBoxErr("Export Colour Ramp", "Invalid image size specified!" );
+        return;
     }
 
 
     QPixmap pix = l->getColourRampPix(width,height);
 
+    QFileInfo nameInfo(rampFileName);
+    QString format = nameInfo.suffix().toUpper();
+
     QFile rampFile(rampFileName);
     rampFile.open(QIODevice::WriteOnly);
-    pix.save(&rampFile, "PNG");
+    pix.save(&rampFile, format.toStdString().c_str());
     rampFile.close();
 }
 
@@ -797,6 +801,7 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 			else
 			{
 				mDelegate->setLastMousePos(event->pos());
+                this->setState(QAbstractItemView::NoState);
 				this->edit(idx);
 			}
 		}
@@ -806,6 +811,7 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 			QString itemstr = idx.data(Qt::DisplayRole).toString();
 			NMDebugAI(<< "trying to edit '" << itemstr.toStdString() << "' of "
 					<< l->objectName().toStdString() << std::endl);
+            this->setState(QAbstractItemView::NoState);
 			this->edit(idx);
 		}
 	}

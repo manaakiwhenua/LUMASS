@@ -91,6 +91,7 @@ public:
 
     vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
+    const vtkRenderer* getScaleRenderer(void);
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
@@ -134,6 +135,7 @@ public slots:
     void showMapView(bool);
     void showModelView(bool);
     void showTable();
+    void showScaleBar(bool);
     void mapViewMode();
     void modelViewMode();
 	void updateCoords(vtkObject* obj);
@@ -164,7 +166,7 @@ public slots:
 //                   const int& dnIdx, QList<int>& idHistory,
 //                   QAbstractItemModel* tableModel, const int &nrows);
 
-    inline bool checkTree(const int& rootId, QList<int>& idHistory,
+    bool checkTree(const int& rootId, QList<int>& idHistory,
                    const QMap<int, int>& treeMap);
 
 
@@ -347,6 +349,9 @@ private:
 
     // the background renderer (layer 0)
     vtkSmartPointer<vtkRenderer> mBkgRenderer;
+    // the scale bar renderer (layer n+1)
+    vtkSmartPointer<vtkRenderer> mScaleRenderer;
+
     // connection between vtk and qt event mechanism
     vtkSmartPointer<vtkEventQtSlotConnect> m_vtkConns;
     // orientation marker

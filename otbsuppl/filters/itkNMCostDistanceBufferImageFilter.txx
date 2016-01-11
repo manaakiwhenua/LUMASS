@@ -19,7 +19,7 @@
 #ifndef __itkNMCostDistanceBufferImageFilter_txx
 #define __itkNMCostDistanceBufferImageFilter_txx
 
-#define ctx "NMCostDistanceBufferImageFilter"
+//#define ctx "NMCostDistanceBufferImageFilter"
 #include "nmlog.h"
 
 #include <iostream>
@@ -32,6 +32,9 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkConstNeighborhoodIterator.h"
 #include "itkNeighborhoodIterator.h"
+
+template <class TInputImage,class TOutputImage>
+const std::string itk::NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>::ctx = "NMCostDistanceBufferImageFilter";
 
 namespace itk
 {

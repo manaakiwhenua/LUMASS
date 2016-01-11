@@ -218,8 +218,11 @@
 #include "vtkWindowToImageFilter.h"
 #include "vtkPNGWriter.h"
 #include "vtkJPEGWriter.h"
-#include "vtkLegendScaleActor.h"
+//#include "vtkLegendScaleActor.h"
+#include "NMVtkMapScale.h"
 #include "vtkImageResample.h"
+#include "vtkAxisActor2D.h"
+#include "vtkTextProperty.h"
 
 #include "otbSortFilter.h"
 #include "otbExternalSortFilter.h"
@@ -419,6 +422,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionComponents_View, SIGNAL(toggled(bool)), this, SLOT(showComponentsView(bool)));
     connect(ui->actionShow_Components_Info, SIGNAL(toggled(bool)), this, SLOT(showComponentsInfoView(bool)));
     //connect(ui->actionModel_View, SIGNAL(triggered()), this, SLOT(showModelView()));
+    connect(ui->actionShowScaleBar, SIGNAL(toggled(bool)), this, SLOT(showScaleBar(bool)));
     connect(ui->actionRemoveAllObjects, SIGNAL(triggered()), this, SLOT(removeAllObjects()));
     connect(ui->actionFullExtent, SIGNAL(triggered()), this, SLOT(zoomFullExtent()));
     connect(ui->actionSaveAsVTKPolyData, SIGNAL(triggered()), this, SLOT(saveAsVtkPolyData()));
@@ -598,20 +602,31 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 	//this->mBkgRenderer->SetMaximumNumberOfPeels(100);
 	//this->mBkgRenderer->SetOcclusionRatio(0.1);
 
-    vtkSmartPointer<vtkLegendScaleActor> legendActor =
-            vtkSmartPointer<vtkLegendScaleActor>::New();
+    this->mScaleRenderer = vtkSmartPointer<vtkRenderer>::New();
+    this->mScaleRenderer->SetActiveCamera(mBkgRenderer->GetActiveCamera());
+    this->mScaleRenderer->SetLayer(1);
+
+    vtkSmartPointer<NMVtkMapScale> legendActor =
+            vtkSmartPointer<NMVtkMapScale>::New();
 
     legendActor->AllAxesOff();
     legendActor->SetLegendVisibility(1);
-    legendActor->DragableOn();
+    legendActor->GetLegendTitleProperty()->SetFontSize(12);
+    legendActor->GetLegendTitleProperty()->SetItalic(0);
+    legendActor->GetLegendLabelProperty()->SetFontSize(10);
+    legendActor->GetLegendLabelProperty()->SetItalic(0);
+    legendActor->SetVisibility(0);
+
+
     //legendActor->SetLabelModeToDistance();
 
-    this->mBkgRenderer->AddViewProp(legendActor);
+    this->mScaleRenderer->AddViewProp(legendActor);
 
 
     //renwin->SetStereoTypeToCrystalEyes();
     //this->mBkgRenderer->SetBackground(0,0,0);
 	renwin->AddRenderer(this->mBkgRenderer);
+    renwin->AddRenderer(this->mScaleRenderer);
 
     // set the render window
 		// for supporting 3D mice (3DConnexion Devices)
@@ -883,6 +898,16 @@ OtbModellerWin::eventFilter(QObject *obj, QEvent *event)
     //    }
 
     return false;
+}
+
+void
+OtbModellerWin::showScaleBar(bool bshow)
+{
+    vtkProp* prop = this->mScaleRenderer->GetViewProps()->GetLastProp();
+    if (prop)
+    {
+        prop->SetVisibility(bshow ? 1 : 0);
+    }
 }
 
 void
@@ -1227,6 +1252,12 @@ const vtkRenderer*
 OtbModellerWin::getBkgRenderer(void)
 {
 	return this->mBkgRenderer;
+}
+
+const vtkRenderer*
+OtbModellerWin::getScaleRenderer(void)
+{
+    return this->mScaleRenderer;
 }
 
 const NMComponentEditor*
@@ -1734,7 +1765,7 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
                 QString::fromUtf8("layerInfoTable"));
     if (ti == 0)
     {
-        NMWarn(ctx, << "Couldn't find 'layerInfoTable'!");
+        NMWarn(ctxOtbModellerWin, << "Couldn't find 'layerInfoTable'!");
         return;
     }
 	ti->clear();
@@ -1857,130 +1888,18 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    // =======================================================================
-    // get selected layer
-    // =======================================================================
+    int nlayers = this->mLayerList->getLayerCount();
+    NMDebugAI(<< "# item layers: " << nlayers  << std::endl);
 
-    NMLayer* l = this->mLayerList->getSelectedLayer();
-    if (l == 0)
-        return;
-
-    QAbstractItemModel* tableModel = const_cast<QAbstractItemModel*>(l->getTable());
-
-    QSqlTableModel* sqlModel = qobject_cast<QSqlTableModel*>(tableModel);
-    if (sqlModel)
+    for (int i=0; i < nlayers; ++i)
     {
-        while(sqlModel->canFetchMore())
-        {
-            sqlModel->fetchMore();
-        }
+        int pos = this->mLayerList->getLayer(i)->getLayerPos();
+        NMDebugAI(<< "# item layer " << i << " - layer pos: " << pos  << std::endl);
     }
 
 
-    int nrows = tableModel->rowCount();
-    int ncols = tableModel->columnCount();
-
-    int stopIdx = 0;
-    int idIdx = -1;
-    int dnIdx = -1;
-
-    QStringList colnames;
-    QMap<QString, int> nameIdxMap;
-
-    for (int i=0; i < ncols; i++)
-    {
-        QString colname = tableModel->headerData(i, Qt::Horizontal,
-                                                 Qt::DisplayRole).toString();
-        colnames.append(colname);
-        nameIdxMap.insert(colname, i);
-    }
-
-    // =======================================================================
-    // ask users for id columns
-    // =======================================================================
-    bool ok;
-    QString idColName = QInputDialog::getItem(this, tr("Tree Check"),
-                                             tr("ID column:"), colnames,
-                                             0, false, &ok, 0);
-    if (ok && !idColName.isEmpty())
-    {
-        idIdx = nameIdxMap.find(idColName).value();
-    }
-
-    colnames.removeOne(idColName);
-
-
-    QString dnColName = QInputDialog::getItem(this, tr("Tree Check"),
-                                             tr("DownID column:"), colnames,
-                                             0, false, &ok, 0);
-    if (ok && !dnColName.isEmpty())
-    {
-        dnIdx = nameIdxMap.find(dnColName).value();
-    }
-
-
-    if (idIdx == -1 || dnIdx == -1)
-        return;
-
-
-    // =======================================================================
-    // initiate tree check
-    // =======================================================================
-
-    // -------------------------
-    // create a hash map for looking up next down ids
-    // to speed up things a bit ...
-    NMDebugAI( << "memorizing where all the ")
-    QMap<int, int> treeMap;
-    for (int r=0; r < nrows; ++r)
-    {
-        const QModelIndex mid = tableModel->index(r, idIdx);
-        const QModelIndex mdn = tableModel->index(r, dnIdx);
-        const int id = tableModel->data(mid).toInt();
-        const int dn = tableModel->data(mdn).toInt();
-        treeMap.insert(id, dn);
-    }
-
-    // -------------------------------
-    // let's get rolling ...
-    QSet<int> allLoops;
-
-    for (int r=0; r < nrows; ++r)
-    {
-        QList<int> idHistory;
-        //if (!checkTree(r, idIdx, dnIdx, idHistory, tableModel, nrows))
-        if (!checkTree(r, idHistory, treeMap))
-        {
-            allLoops.insert(idHistory.last());
-            NMDebugAI(<< "loop in tree: " << r << " tail: ");
-            QList<int> ph;
-            for (int i=idHistory.size()-1; i >= 0; --i)
-            {
-                const int id = idHistory.at(i);
-                NMDebug( << id << " ");
-                if (ph.contains(id))
-                {
-                    break;
-                }
-                else
-                {
-                    ph << id;
-                }
-            }
-            NMDebug(<< std::endl << std::endl);
-        }
-        else
-        {
-            NMDebugAI(<< "tree " << r << " is fine!" << std::endl);
-        }
-    }
-
-    NMDebugAI(<< "all loop bottoms ... " << std::endl);
-    foreach (const int& tail, allLoops)
-    {
-        NMDebug(<< tail << " ");
-    }
-    NMDebugAI(<< std::endl);
+    int renlayers = this->getRenderWindow()->GetNumberOfLayers();
+    NMDebugAI(<< "# render layers: " << renlayers  << std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -2012,37 +1931,6 @@ OtbModellerWin::checkTree(const int& rootId, QList<int>& idHistory,
             return checkTree(dn, idHistory, treeMap);
         }
     }
-
-    return ret;
-
-//    for (int r=0; r < nrows; ++r)
-//    {
-//        const QModelIndex midx = tableModel->index(r, idIdx);
-//        int id = tableModel->data(midx).toInt();
-//        if (id == rootId)
-//        {
-//            const QModelIndex midx2 = tableModel->index(id, treeMap);
-//            int dn = tableModel->data(midx2).toInt();
-//            if (dn == 0)
-//            {
-//                idHistory.append(dn);
-//                return true;
-//            }
-//            else
-//            {
-//                if (idHistory.contains(dn))
-//                {
-//                    idHistory.append(dn);
-//                    return false;
-//                }
-//                else
-//                {
-//                    idHistory.append(dn);
-//                    return checkTree(dn, idIdx, treeMap, idHistory, tableModel, nrows);
-//                }
-//            }
-//        }
-//    }
 
     return ret;
 }

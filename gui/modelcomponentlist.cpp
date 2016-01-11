@@ -593,7 +593,13 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 	this->mLayerModel->removeLayer(layer);
 	this->reset();
 	// update the map display window
-	this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+    this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+
+    NMGlobalHelper helper;
+    OtbModellerWin* mwin = helper.getMainWindow();
+    mwin->getRenderWindow()->SetNumberOfLayers(mLayerModel->getItemLayerCount()+2);
+    vtkRenderer* scaleRenderer = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
+    scaleRenderer->SetLayer(this->mLayerModel->getItemLayerCount()+1);
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -667,8 +673,13 @@ void ModelComponentList::addLayer(NMLayer* layer)
 
 	// we keep one layer more than required (and keep in mind that we've got the
 	// the background layer as well
-	qvtk->GetRenderWindow()->SetNumberOfLayers(nlayers+2);
-	qvtk->GetRenderWindow()->AddRenderer(ren);
+    qvtk->GetRenderWindow()->SetNumberOfLayers(nlayers+2);
+
+    //layer->setLayerPos(nlayers-1);
+    vtkRenderer* scaleRen = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
+    scaleRen->SetLayer(nlayers+1);
+
+    qvtk->GetRenderWindow()->AddRenderer(ren);
 	qvtk->update();
 
 	this->reset();

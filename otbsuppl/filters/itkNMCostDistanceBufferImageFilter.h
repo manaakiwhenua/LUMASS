@@ -228,6 +228,8 @@ private:
   bool m_ProcessUpward;
   int  m_BufferZoneIndicator;
 
+  static const std::string ctx;
+
 }; // end of NMCostDistanceBufferImageFilter class
 
 template <class TInputImage, class TOutputImage>

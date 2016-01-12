@@ -29,7 +29,7 @@ NMVtkMapScale::NMVtkMapScale()
       mBarHeight(5),
       mBottomPos(12),
       mNumSegments(4),
-      mUnits("m")
+      mUnits("")
 {
 }
 
@@ -60,7 +60,7 @@ NMVtkMapScale::BuildRepresentation(vtkViewport *viewport)
         // calc final position and nice length & interval for scale bar
         int ilen = vtkMath::Round(rlen);
         int divisor = 1e6;
-        while ((ilen % divisor) >= ilen)
+        while (ilen > 0 && (ilen % divisor) >= ilen)
         {
             divisor /= 10;
         }
@@ -100,18 +100,23 @@ NMVtkMapScale::BuildRepresentation(vtkViewport *viewport)
         this->LabelActors[5]->SetPosition(0.5*size[0],mBottomPos+mBarHeight+2);
         double *x = 0;
         char buf[256];
-        //double dispratio = (double)ilen / (dlen; // meter map per num display pixel
-        double dpm = mDPI * 2.54;
-        double scale = (double)ilen / (dpm * 100.0 * dlen);
+        double scale = (double)ilen / ((dlen > 0 ? dlen : 1e-12) / ((double)mDPI/2.54*100));
 
-        NMDebugAI(<< "DPI=" << mDPI
-                  << " dpm=" << dpm
-                  << " ilen=" << ilen
-                  << " dlen=" << dlen
-                  << std::endl);
+        //        NMDebugAI(<< "DPI=" << mDPI
+        //                  << " dpm=" << (mDPI*100/2.54)
+        //                  << " ilen=" << ilen
+        //                  << " dlen=" << dlen
+        //                  << std::endl);
 
-        sprintf(buf,"1 : %d",vtkMath::Round(scale));
-        this->LabelMappers[5]->SetInput(buf);
+        if (mUnits == "m")
+        {
+            sprintf(buf,"1 : %d",vtkMath::Round(scale));
+            this->LabelMappers[5]->SetInput(buf);
+        }
+        else
+        {
+            this->LabelMappers[5]->SetInput("");
+        }
 
         // Now specify the position of the legend labels
         x = this->LegendPoints->GetPoint(0);

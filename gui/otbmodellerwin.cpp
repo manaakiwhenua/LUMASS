@@ -423,6 +423,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionShow_Components_Info, SIGNAL(toggled(bool)), this, SLOT(showComponentsInfoView(bool)));
     //connect(ui->actionModel_View, SIGNAL(triggered()), this, SLOT(showModelView()));
     connect(ui->actionShowScaleBar, SIGNAL(toggled(bool)), this, SLOT(showScaleBar(bool)));
+    connect(ui->actionShowCoordinateAxes, SIGNAL(toggled(bool)), this, SLOT(showCoordinateAxes(bool)));
     connect(ui->actionRemoveAllObjects, SIGNAL(triggered()), this, SLOT(removeAllObjects()));
     connect(ui->actionFullExtent, SIGNAL(triggered()), this, SLOT(zoomFullExtent()));
     connect(ui->actionSaveAsVTKPolyData, SIGNAL(triggered()), this, SLOT(saveAsVtkPolyData()));
@@ -610,13 +611,14 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
             vtkSmartPointer<NMVtkMapScale>::New();
 
     legendActor->AllAxesOff();
-    legendActor->SetLegendVisibility(1);
+    legendActor->SetLabelModeToXYCoordinates();
+    legendActor->SetLegendVisibility(0);
     legendActor->GetLegendTitleProperty()->SetFontSize(12);
     legendActor->GetLegendTitleProperty()->SetItalic(0);
     legendActor->GetLegendLabelProperty()->SetFontSize(10);
     legendActor->GetLegendLabelProperty()->SetItalic(0);
-    legendActor->SetVisibility(0);
-
+    legendActor->SetVisibility(1);
+    legendActor->SetDPI(renwin->GetDPI());
 
     //legendActor->SetLabelModeToDistance();
 
@@ -906,7 +908,26 @@ OtbModellerWin::showScaleBar(bool bshow)
     vtkProp* prop = this->mScaleRenderer->GetViewProps()->GetLastProp();
     if (prop)
     {
-        prop->SetVisibility(bshow ? 1 : 0);
+        NMVtkMapScale* ms = NMVtkMapScale::SafeDownCast(prop);
+        ms->SetLegendVisibility(bshow ? 1 : 0);
+    }
+}
+
+void
+OtbModellerWin::showCoordinateAxes(bool bshow)
+{
+    vtkProp* prop = this->mScaleRenderer->GetViewProps()->GetLastProp();
+    if (prop)
+    {
+        NMVtkMapScale* ms = NMVtkMapScale::SafeDownCast(prop);
+        if (bshow)
+        {
+            ms->AllAxesOn();
+        }
+        else
+        {
+            ms->AllAxesOff();
+        }
     }
 }
 

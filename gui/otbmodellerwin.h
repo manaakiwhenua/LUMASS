@@ -136,6 +136,7 @@ public slots:
     void showModelView(bool);
     void showTable();
     void showScaleBar(bool);
+    void showCoordinateAxes(bool);
     void mapViewMode();
     void modelViewMode();
 	void updateCoords(vtkObject* obj);

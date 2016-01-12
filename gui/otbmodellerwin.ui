@@ -95,6 +95,7 @@
     <addaction name="actionToggle3DStereoMode"/>
     <addaction name="separator"/>
     <addaction name="actionShowScaleBar"/>
+    <addaction name="actionShowCoordinateAxes"/>
     <addaction name="separator"/>
     <addaction name="actionBackground_Colour"/>
     <addaction name="actionSaveAsImage"/>
@@ -454,6 +455,14 @@
    </property>
    <property name="text">
     <string>Show Scale Bar</string>
+   </property>
+  </action>
+  <action name="actionShowCoordinateAxes">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Coordinate Axes</string>
    </property>
   </action>
  </widget>

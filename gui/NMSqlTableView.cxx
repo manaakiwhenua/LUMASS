@@ -815,7 +815,7 @@ void NMSqlTableView::joinAttributes()
 
     QString fileName = QFileDialog::getOpenFileName(this,
          tr("Select Source Attribute Table"), "~",
-         tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+         tr("Shapefile (*.shp *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
     if (fileName.isNull())
     {
         NMDebugCtx(__ctxsqltabview, << "done!");

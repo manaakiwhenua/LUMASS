@@ -405,7 +405,7 @@ NMSelSortSqlTableProxyModel::getRandomString(int len)
         return QString();
     }
 
-    std::srand(std::time(0));
+    //std::srand(std::time(0));
     char* nam = new char[len+1];
     for (int i=0; i < len; ++i)
     {
@@ -540,20 +540,54 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     beginInsertColumns(QModelIndex(), colidx, colidx);
     mSourceModel->clear();
 
+    // -------------------------------------------------------------
+    // first, we create a real sqlite temporary table from the
+    // spatialite virtualtable
+
+    QString tempJoinTableName = this->getRandomString(5);
+
+    std::stringstream ssql;
+    ssql << "CREATE TEMP TABLE " << tempJoinTableName.toStdString() << " AS "
+         << "SELECT * FROM " << joinTableName.toStdString() << ";";
+
+    QSqlQuery query(mSourceModel->database());
+    if (!query.exec(QString(ssql.str().c_str())))
+    {
+        NMDebugAI(<< "last query:\n" << ssql.str() << std::endl);
+        NMErr(ctx, << query.lastError().text().toStdString());
+        return false;
+    }
+
+    QString idxName = QString("%1_idx").arg(joinFieldName);
+    ssql.str("");
+    ssql << "CREATE INDEX IF NOT EXISTS " << idxName.toStdString()
+         << " on " << tempJoinTableName.toStdString()
+         << " (" << joinFieldName.toStdString() << ");";
+
+    if (!query.exec(QString(ssql.str().c_str())))
+    {
+        NMDebugAI(<< "last query:\n" << ssql.str() << std::endl);
+        NMErr(ctx, << query.lastError().text().toStdString());
+        return false;
+    }
+
+
+    // ---------------------------------------------------------------
+    // now, we create temporary join table ...
 
     QString tempTableName = this->getRandomString(5);
 
-    std::stringstream ssql;
+    ssql.str("");
     ssql << "CREATE TEMP TABLE " << tempTableName.toStdString() << " AS "
          << "SELECT * FROM " << tarTableName.toStdString() << " "
-         << "LEFT OUTER JOIN " << joinTableName.toStdString() << " "
+         << "LEFT OUTER JOIN " << tempJoinTableName.toStdString() << " "
          << " ON " << tarTableName.toStdString() << "." << tarFieldName.toStdString()
-         << " = " << joinTableName.toStdString() << "." << joinFieldName.toStdString()
+         << " = " << tempJoinTableName.toStdString() << "." << joinFieldName.toStdString()
          << ";";
 
 
 
-    QSqlQuery query(mSourceModel->database());
+    //QSqlQuery query(mSourceModel->database());
     if (!query.exec(QString(ssql.str().c_str())))
     {
         NMErr(ctx, << query.lastError().text().toStdString());

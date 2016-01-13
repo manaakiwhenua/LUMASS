@@ -304,6 +304,9 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     //qRegisterMetaType<NMDataComponent>("NMDataComponent");
     //qRegisterMetaType<NMDataComponent*>("NMDataComponent*");
 
+    // seed the std random number generator
+    std::srand(std::time(0));
+
     // **********************************************************************
     // *                    SQLITE3                                         *
     // **********************************************************************

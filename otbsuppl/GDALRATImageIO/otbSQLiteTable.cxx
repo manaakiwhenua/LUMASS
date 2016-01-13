@@ -2246,7 +2246,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     }
 
 	std::string tmp = vinfo[1];
-	std::string torepl = "-+&=*(){}[]€%$#@!~/\\";
+	std::string torepl = "-+&=*(){}[]%$#@!~/\\";
 	for (int i=0; i < torepl.size(); ++i)
 	{
 		size_t pos = tmp.find(torepl[i]);

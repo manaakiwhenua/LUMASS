@@ -2132,7 +2132,7 @@ SQLiteTable::GetRandomString(int len)
         return "";
     }
 
-    std::srand(std::time(0));
+    //std::srand(std::time(0));
     char* nam = new char[len+1];
     for (int i=0; i < len; ++i)
     {

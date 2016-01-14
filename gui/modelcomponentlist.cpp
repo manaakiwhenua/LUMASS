@@ -65,6 +65,7 @@
 #include "QVTKWidget.h"
 #include "vtkCell.h"
 #include "vtkPolygon.h"
+#include "vtkPolyDataReader.h"
 
 
 // for testing
@@ -589,7 +590,7 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 			layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
 	// remove layer from the model (which updates as well the layer position
-	// hold by each layer in the layer stack)
+    // held by each layer in the layer stack)
 	this->mLayerModel->removeLayer(layer);
 	this->reset();
 	// update the map display window
@@ -1336,67 +1337,21 @@ void ModelComponentList::dropEvent(QDropEvent* event)
 
         if (!fileName.isEmpty())
         {
-            //event->acceptProposedAction();
-
             QFileInfo finfo(fileName);
 
             QStringList tabFormats;
             tabFormats << "dbf" << "csv" << "txt" << "xls";//<< "shp" << "shx";
+            QStringList imgFormats;
+            imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
+                       << "png" << "gif" << "adf" << "hdr" << "sdat";
             QString ext = finfo.suffix().toLower();
             if (tabFormats.contains(ext))
             {
-                //                otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
-                //                std::vector<std::string> finfo = sqlTable->GetFilenameInfo(fileName.toStdString());
-
                 NMGlobalHelper hlp;
                 OtbModellerWin* mainWin = hlp.getMainWindow();
                 mainWin->importTable(fileName);
-
-                //                QMap<QString, QPair<otb::SQLiteTable::Pointer, NMSqlTableView*> >& tlist =
-                //                        mainWin->getTableList();
-
-                //                NMSqlTableView *resview = 0;
-                //                if (tlist.contains(QString(finfo.at(1).c_str())))
-                //                {
-                //                    NMBoxInfo("Import Table Data", "Table has already been imported!");
-
-                //                    resview = tlist.find(QString(finfo.at(1).c_str())).value().second;
-                //                    resview->show();
-                //                    resview->raise();
-                //                    return;
-                //                }
-
-
-                //                sqlTable->SetUseSharedCache(false);
-                //                if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
-                //                {
-                //                    return;
-                //                }
-
-
-                //                QString conname = sqlTable->GetRandomString(5).c_str();
-
-                //                NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-                //                QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
-
-                //                NMSqlTableModel* srcModel = new NMSqlTableModel(mainWin, db);
-                //                srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
-                //                srcModel->select();
-
-                //                resview = new NMSqlTableView(srcModel, mainWin);
-
-                //                QPair<otb::SQLiteTable::Pointer, NMSqlTableView*> tabPair;
-                //                tabPair.first = sqlTable;
-                //                tabPair.second = resview;
-
-                //                tlist.insert(srcModel->tableName(), tabPair);
-
-
-                //                resview->setWindowFlags(Qt::Window);
-                //                resview->setTitle(QString(sqlTable->GetTableName().c_str()));
-                //                resview->show();
             }
-            else
+            else if (imgFormats.contains(ext))
             {
                 NMGlobalHelper h;
                 vtkRenderWindow* renWin = h.getRenderWindow();
@@ -1404,6 +1359,25 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                 fLayer->setObjectName(finfo.baseName());
                 h.getMainWindow()->connectImageLayerProcSignals(fLayer);
                 fLayer->setFileName(fileName);
+            }
+            else if (ext.compare(QString("vtk")) == 0)
+            {
+                vtkSmartPointer<vtkPolyData> pd;
+                vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
+                reader->SetFileName(fileName.toStdString().c_str());
+                reader->Update();
+                pd = reader->GetOutput();
+
+                NMGlobalHelper h;
+                vtkRenderWindow* renWin = h.getRenderWindow();
+                NMVectorLayer* vl = new NMVectorLayer(renWin);
+                vl->setFileName(fileName);
+                vl->setObjectName(finfo.baseName());
+                vl->setDataSet(pd);
+                vl->setVisible(true);
+
+                h.getMainWindow()->addLayerToCompList(vl);
+
             }
             //QtConcurrent::run(fLayer, &NMImageLayer::setFileName, fileName);
         }

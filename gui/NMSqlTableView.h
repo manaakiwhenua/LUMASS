@@ -118,6 +118,7 @@ signals:
 	void notifyLoadRasLayer(const QString& imagespec,
 			const QString& covname);
 	void notifyDeleteRasLayer(const QString& imagespec);
+    void tableViewClosed();
 
 protected slots:
     void procRowsInserted(QModelIndex parent, int first, int last);
@@ -160,6 +161,8 @@ protected:
 	void prepareProgressDlg(NMTableCalculator* obj,
 			const QString& msg, int maxrange=0);
 	void cleanupProgressDlg(NMTableCalculator* obj, int maxrange=0);
+
+    void closeEvent(QCloseEvent *event);
 
 	QProgressDialog* mProgressDialog;
 	ViewMode mViewMode;

@@ -119,12 +119,12 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
 
 NMSqlTableView::~NMSqlTableView()
 {
-
+    NMDebugAI(<< this->windowTitle().toStdString() << " destructs itself ..." << std::endl);
+    this->mModel->database().close();
 }
 
 void NMSqlTableView::initView()
 {
-
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -291,6 +291,13 @@ void NMSqlTableView::initView()
 
 	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
+}
+
+void
+NMSqlTableView::closeEvent(QCloseEvent *event)
+{
+    emit tableViewClosed();
+    event->accept();
 }
 
 void
@@ -815,7 +822,8 @@ void NMSqlTableView::joinAttributes()
 
     QString fileName = QFileDialog::getOpenFileName(this,
          tr("Select Source Attribute Table"), "~",
-         tr("Shapefile (*.shp *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+         //tr("Shapefile (*.shp *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+         tr("Delimited Text (*.csv *.txt);;dBASE (*.dbf);;Excel File (*.xls)"));
     if (fileName.isNull())
     {
         NMDebugCtx(__ctxsqltabview, << "done!");

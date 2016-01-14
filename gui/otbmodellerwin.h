@@ -32,6 +32,7 @@
 #include <QStandardItemModel>
 #include <QProgressBar>
 #include <QToolBox>
+#include <QListWidget>
 
 // OGR
 #include "ogrsf_frmts.h"
@@ -153,9 +154,13 @@ public slots:
 	void importODBC();
 	void aboutLUMASS();
 	void addLayerToCompList();
+    void addLayerToCompList(NMLayer* layer);
     void Image2PolyData();
     void toggleRubberBandZoom(bool);
     void setMapBackgroundColour();
+    void tableObjectVisibility(QListWidgetItem* item);
+    void removeTableObject(QListWidgetItem* item);
+    void tableObjectViewClosed();
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 
@@ -370,6 +375,8 @@ private:
 
 	// (unique) table name
 	QMap<QString, QPair<void*, sqlite3*> > mTableAdminObjects;
+
+    QListWidget* mTableListWidget;
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

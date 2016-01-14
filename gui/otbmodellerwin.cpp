@@ -345,6 +345,15 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     mLayerList->setObjectName(QString::fromUtf8("modelCompList"));
     ui->compWidgetList->addWidgetItem(mLayerList, QString::fromUtf8("Map Layers"));
 
+    mTableListWidget = new QListWidget(ui->compWidgetList);
+    mTableListWidget->setObjectName(QString::fromUtf8("tableListWidgets"));
+    connect(mTableListWidget, SIGNAL(itemClicked(QListWidgetItem*)),
+            this, SLOT(tableObjectVisibility(QListWidgetItem*)));
+    connect(mTableListWidget, SIGNAL(itemPressed(QListWidgetItem*)),
+            this, SLOT(removeTableObject(QListWidgetItem*)));
+
+    ui->compWidgetList->addWidgetItem(mTableListWidget, QString::fromUtf8("Table Objects"));
+
     NMProcCompList* procList = new NMProcCompList(ui->compWidgetList);
     procList->setObjectName(QString::fromUtf8("processComponents"));
     ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
@@ -946,10 +955,17 @@ OtbModellerWin::showTable()
 
 
     bool bOk = false;
-    QString tableName = QInputDialog::getItem(this,
-            tr("Show Table"), tr("Select table to show"),
-            tables, 0, false, &bOk, 0);
-    if (!bOk || tableName.isEmpty())
+    QInputDialog ipd(this);
+    ipd.setOption(QInputDialog::UseListViewForComboBoxItems);
+    ipd.setComboBoxItems(tables);
+    ipd.setComboBoxEditable(false);
+    ipd.setWindowTitle("Show Table");
+    ipd.setLabelText("Select table");
+    int ret = ipd.exec();
+
+    QString tableName = ipd.textValue();
+
+    if (!ret || tableName.isEmpty())
     {
         return;
     }
@@ -1477,6 +1493,7 @@ OtbModellerWin::importTable(const QString& fileName)
 
     NMSqlTableView* resview = 0;
     QString viewName;
+    int lfd = 1;
     if (mTableList.contains(QString(vinfo.at(1).c_str())))
     {
         bool dbpresent = false;
@@ -1499,6 +1516,7 @@ OtbModellerWin::importTable(const QString& fileName)
             ++it;
         }
 
+        lfd++;
         if (dbpresent)
         {
             NMBoxInfo("Import Table Data", "Table has already been imported!");
@@ -1510,7 +1528,6 @@ OtbModellerWin::importTable(const QString& fileName)
         }
         else
         {
-            int lfd = 2;
             viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
             while(mTableList.contains(viewName))
             {
@@ -1528,7 +1545,7 @@ OtbModellerWin::importTable(const QString& fileName)
         return;
     }
 	QString tablename = sqlTable->GetTableName().c_str();
-    QString conname = sqlTable->GetRandomString(5).c_str();
+    QString conname = QString("%1_%2").arg(vinfo[1].c_str()).arg(lfd);//sqlTable->GetRandomString(5).c_str();
 	QString dbfilename = sqlTable->GetDbFileName().c_str();
 	sqlTable->CloseTable();
 
@@ -1554,7 +1571,7 @@ OtbModellerWin::importTable(const QString& fileName)
     spatialite_init_ex(tabconn, splCache, 1);
 
     NMQSQLiteDriver* drv = new NMQSQLiteDriver(tabconn, 0);
-	QSqlDatabase db = QSqlDatabase::addDatabase(drv);
+    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
 
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
     srcModel->setTable(tablename);
@@ -1568,6 +1585,7 @@ OtbModellerWin::importTable(const QString& fileName)
     QSharedPointer<NMSqlTableView> tabview(new NMSqlTableView(srcModel, 0));
     tabview->setWindowFlags(Qt::Window);
     tabview->setTitle(viewName);
+    connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
 
 
     QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > tabPair;
@@ -1581,11 +1599,102 @@ OtbModellerWin::importTable(const QString& fileName)
 	adminPair.second = tabconn;
 
 	mTableAdminObjects.insert(viewName, adminPair);
-	
-	
+
+    QPixmap pm;
+    pm.load(":table_object.png");
+
+    QListWidgetItem* wi = new QListWidgetItem(QIcon(pm), viewName, mTableListWidget);
+    mTableListWidget->addItem(wi);
+
 	tabview->show();
     tabview->raise();
 
+}
+
+void
+OtbModellerWin::tableObjectVisibility(QListWidgetItem* item)
+{
+   NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    QString name = item->text();
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator it =
+               mTableList.find(name);
+    if (it == mTableList.end())
+    {
+        return;
+    }
+
+    QPixmap pm;
+    NMSqlTableView* tview = it.value().second.data();
+    if (tview->isVisible())
+    {
+        tview->close();
+        pm.load(":table_object_invisible.png");
+    }
+    else
+    {
+        tview->show();
+        tview->raise();
+        pm.load(":table_object.png");
+    }
+    item->setIcon(QIcon(pm));
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
+
+void
+OtbModellerWin::tableObjectViewClosed()
+{
+    QObject* obj = this->sender();
+    NMSqlTableView* tv = qobject_cast<NMSqlTableView*>(obj);
+    if (tv == 0)
+    {
+        return;
+    }
+
+    QList<QListWidgetItem*> items = mTableListWidget->findItems(tv->windowTitle(), Qt::MatchFixedString);
+    if (items.size() == 1)
+    {
+        this->tableObjectVisibility(items.at(0));
+    }
+}
+
+void
+OtbModellerWin::removeTableObject(QListWidgetItem* item)
+{
+
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    QObject* obj = this->sender();
+    NMDebugAI(<< "remove request from: " << obj->objectName().toStdString() << std::endl);
+
+
+
+//    QString name = item->text();
+
+//    QMap<QString, QPair<void*, sqlite3*> >::iterator itAdmin =
+//            mTableAdminObjects.find(name);
+//    if (itAdmin != mTableAdminObjects.end())
+//    {
+//        void* cache = itAdmin.value().first;
+//        sqlite3* conn = itAdmin.value().second;
+
+//        sqlite3_close(conn);
+//        spatialite_cleanup_ex(cache);
+//        cache = 0;
+//        conn = 0;
+//        mTableAdminObjects.remove(itAdmin);
+//    }
+
+
+//    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
+//               mTableList.find(name);
+//    if (itList != mTableList.end())
+//    {
+//        mTableList.remove(itList);
+//    }
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 
@@ -1912,18 +2021,13 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    int nlayers = this->mLayerList->getLayerCount();
-    NMDebugAI(<< "# item layers: " << nlayers  << std::endl);
+    NMDebugAI(<< "Currently available QSql connections ..." << std::endl);
 
-    for (int i=0; i < nlayers; ++i)
+    QStringList conns = QSqlDatabase::connectionNames();
+    foreach(const QString& c, conns)
     {
-        int pos = this->mLayerList->getLayer(i)->getLayerPos();
-        NMDebugAI(<< "# item layer " << i << " - layer pos: " << pos  << std::endl);
+        NMDebugAI(<< c.toStdString()<< std::endl);
     }
-
-
-    int renlayers = this->getRenderWindow()->GetNumberOfLayers();
-    NMDebugAI(<< "# render layers: " << renlayers  << std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -2018,6 +2122,9 @@ void OtbModellerWin::removeAllObjects()
 		conn = 0;
 		++it;
 	}
+    mTableAdminObjects.clear();
+
+    mTableListWidget->clear();
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -4336,6 +4443,15 @@ OtbModellerWin::addLayerToCompList()
 		return;
 
 	layer->setVisible(true);
+    this->mLayerList->addLayer(layer);
+}
+
+void
+OtbModellerWin::addLayerToCompList(NMLayer* layer)
+{
+    if (layer == 0)
+        return;
+
     this->mLayerList->addLayer(layer);
 }
 

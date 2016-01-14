@@ -39,6 +39,7 @@ license: http://creativecommons.org/licenses/LGPL/2.1/
 --- lumass/gui/resources/model-execute.png (modified)
 --- lumass/gui/resources/model-pause.png (modified)
 --- lumass/gui/resources/model-stop.png (modified)
+--- lumass/gui/resources/table_object.png
 source: Oxygen Icons <http://www.oxygen-icons.org>
 license: http://creativecommons.org/licenses/by-sa/3.0/
 
@@ -57,3 +58,8 @@ license: http://creativecommons.org/licenses/GPL/2.0/
 --- lumass/gui/resources/SQLite_Logo_4.png
 adapted from source: https://commons.wikimedia.org/wiki/File:SQLite_Logo_4.png
 license: public domain
+
+
+NOTE: The Oxygen icons website (http://www.oxygen-icons.org) is now defunct!
+You may want to look here for the icon library: http://sourceforge.net/projects/openiconlibrary/
+

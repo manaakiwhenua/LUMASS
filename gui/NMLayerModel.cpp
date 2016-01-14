@@ -119,7 +119,10 @@ void NMLayerModel::removeLayer(NMLayer* layer)
 
 	// remove layer from internal list
 	QString ln = layer->objectName();
-	this->mLayers.removeAt(layerPos);
+    QSharedPointer<NMLayer> ptL = mLayers.takeAt(layerPos);
+    ptL.clear();
+
+    //this->mLayers.removeAt(layerPos);
 	this->removeRow(treeRow);
     // due to qt4 to qt5 transition
     //this->reset();

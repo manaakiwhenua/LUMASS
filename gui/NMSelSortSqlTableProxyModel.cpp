@@ -540,6 +540,8 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     beginInsertColumns(QModelIndex(), colidx, colidx);
     mSourceModel->clear();
 
+
+
     // -------------------------------------------------------------
     // first, we create a real sqlite temporary table from the
     // spatialite virtualtable

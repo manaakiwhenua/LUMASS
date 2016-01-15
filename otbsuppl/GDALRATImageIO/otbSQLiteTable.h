@@ -146,7 +146,8 @@ public:
     bool DoBulkGet(std::vector< ColumnValue >& values);
     bool BeginTransaction();
     bool EndTransaction();
-    bool CreateIndex(const std::vector<std::string>& colNames, bool unique);
+    bool CreateIndex(const std::vector<std::string>& colNames, bool unique,
+                     const std::string& table="", const std::string& db = "main");
 
     bool GreedyNumericFetch(const std::vector<std::string>& columns,
                             std::map<int, std::map<long, double> >& valstore);
@@ -158,6 +159,12 @@ public:
     bool DetachDatabase(const std::string& dbName);
     bool DropTable(const std::string& tablename="");
     bool FindTable(const std::string& tableName);
+    bool JoinAttributes(const std::string& targetTable,
+                        const std::string& targetJoinField,
+                        const std::string& sourceDbFileName,
+                        const std::string& sourceTable,
+                        const std::string& sourceJoinField,
+                        std::vector<std::string> sourceFields);
     // repopulates the admin structures for the current table (e.g. SetTableName);
     bool PopulateTableAdmin();
     bool loadExtension(const std::string& lib, const std::string& entry);

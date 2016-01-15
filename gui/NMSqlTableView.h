@@ -76,6 +76,9 @@ public:
 	ViewMode getViewMode() {return mViewMode;}
 	void setViewMode(ViewMode mode);
 
+    void setLayerName(const QString& layer){mLayerName = layer;}
+    QString getLayerName(){return mLayerName;}
+
 	void hideAttribute(const QString& attr);
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);
@@ -189,6 +192,7 @@ protected:
     QString mBaseFilter;
     QList<int> mPickedRows;
 
+    QString mLayerName;
     QTableView* mTableView;
     QSqlTableModel* mModel;
     NMSelSortSqlTableProxyModel* mSortFilter;

@@ -673,17 +673,24 @@ SQLiteTable::PrepareAutoBulkSet(const std::vector<std::string>& colNames,
 
 bool
 SQLiteTable::CreateIndex(const std::vector<std::string> &colNames,
-                            bool unique)
+                            bool unique, const std::string &table, const std::string &db)
 {
     if (m_db == 0)
     {
         return false;
     }
 
-    std::string idxName = "main.";
+    std::string tableName = table;
+    if (table.empty())
+    {
+        tableName = m_tableName;
+    }
+
+    std::string idxName = db;//"main.";
+    idxName += ".";
     for (int n=0; n < colNames.size(); ++n)
     {
-        if (this->ColumnExists(colNames.at(n)) < 0)
+        if (db.compare("main") == 0 && this->ColumnExists(colNames.at(n)) < 0)
         {
             otbWarningMacro(<< "Invalid Column Name!");
             return false;
@@ -707,7 +714,7 @@ SQLiteTable::CreateIndex(const std::vector<std::string> &colNames,
     }
 
     ssql << " INDEX IF NOT EXISTS " << idxName
-         << " on " << m_tableName << " (";
+         << " on " << tableName << " (";
     for (int s=0; s < colNames.size(); ++s)
     {
         ssql << colNames.at(s);
@@ -2980,6 +2987,94 @@ SQLiteTable::SqlExec(const std::string& sqlstr)
         itkWarningMacro(<< "SQLite3 ERROR: " << errMsg);
         sqlite3_free((void*)errMsg);
         ret = false;
+    }
+
+    return ret;
+}
+
+bool
+SQLiteTable::JoinAttributes(const std::string& targetTable,
+                    const std::string& targetJoinField,
+                    const std::string& sourceDbFileName,
+                    const std::string& sourceTable,
+                    const std::string& sourceJoinField,
+                    std::vector<std::string> sourceFields)
+{
+    bool ret = true;
+
+    if (m_db == 0)
+    {
+        return false;
+    }
+
+    // attach database if necessary
+    std::string sourceDb = "main";
+    if (!this->FindTable(sourceTable))
+    {
+        sourceDb = this->GetRandomString(3);
+        this->AttachDatabase(sourceDbFileName, sourceDb);
+    }
+
+    // create indices for join fields
+    std::vector<std::string> vIdxCol;
+    vIdxCol.push_back(sourceJoinField);
+    this->CreateIndex(vIdxCol, false, sourceTable, sourceDb);
+
+    vIdxCol.clear();
+    vIdxCol.push_back(targetJoinField);
+    this->CreateIndex(vIdxCol, false, targetTable);
+
+    /*
+     * SAMPLE QUERY: JOIN WITH SUBQUERY
+        Select * from main.zz3_1 as t LEFT OUTER JOIN
+               (Select srcDB.TANK_rec2ws.AreaHa, srcDB.TANK_rec2ws.SedNetID from srcDB.TANK_rec2ws)
+                                      as s on t.rowidx = s.SedNetID;
+    */
+
+    std::stringstream srcFieldStr;
+    for (int i=0; i < sourceFields.size(); ++i)
+    {
+        srcFieldStr << sourceDb << "." << sourceFields[i];
+        if (i < sourceFields.size()-1)
+        {
+            srcFieldStr << ", ";
+        }
+    }
+
+    // create join expression
+    std::string tempJoinTable = this->GetRandomString(5);
+    std::stringstream ssql;
+    ssql << "CREATE TEMP TABLE " << tempJoinTable << " AS "
+         << "SELECT * FROM main." << targetTable << " AS t "
+         << "LEFT OUTER JOIN "
+         << "(SELECT " << srcFieldStr.str()
+              << " FROM " << sourceDb << "." << sourceTable << ") AS s "
+         << "ON t." << targetJoinField << " = " << " s." << sourceJoinField << ";";
+
+    NMDebugAI(<< "THE QUERY:\n" << ssql.str() << std::endl);
+
+    if (!this->SqlExec(ssql.str()))
+    {
+        itkWarningMacro(<< "something went wrong!");
+        this->DetachDatabase(sourceDb);
+        return false;
+    }
+
+    ssql.str("");
+    ssql << "DROP TABLE main." << targetTable << ";";
+    ssql << "CREATE TABLE " << targetTable
+         << " AS SELECT * FROM " << tempJoinTable << ";";
+
+    ret = this->SqlExec(ssql.str());
+
+    if (ret && targetTable.compare(m_tableName) == 0)
+    {
+        this->PopulateTableAdmin();
+    }
+
+    if (sourceDb.compare("main") != 0)
+    {
+        this->DetachDatabase(sourceDb);
     }
 
     return ret;

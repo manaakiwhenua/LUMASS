@@ -101,6 +101,7 @@ public:
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&
         getTableList(void) {return mTableList;}
+    ModelComponentList* getLayerList(){return this->mLayerList;}
 
 
 #ifdef BUILD_RASSUPPORT
@@ -159,7 +160,7 @@ public slots:
     void toggleRubberBandZoom(bool);
     void setMapBackgroundColour();
     void tableObjectVisibility(QListWidgetItem* item);
-    void removeTableObject(QListWidgetItem* item);
+    void removeTableObject(QListWidgetItem* item, QPoint globalPos);
     void tableObjectViewClosed();
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
@@ -377,6 +378,11 @@ private:
 	QMap<QString, QPair<void*, sqlite3*> > mTableAdminObjects;
 
     QListWidget* mTableListWidget;
+
+    // the last event objects filtered by otbmodellerwin
+    QObject* mLastSender;
+    QEvent* mLastEvent;
+
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

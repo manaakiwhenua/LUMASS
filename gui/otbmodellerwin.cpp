@@ -341,23 +341,27 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     // MODEL COMPONENT DOCK (Source)
     // ================================================
 
+    // set up the layer list
     mLayerList = new ModelComponentList(ui->compWidgetList);
     mLayerList->setObjectName(QString::fromUtf8("modelCompList"));
     ui->compWidgetList->addWidgetItem(mLayerList, QString::fromUtf8("Map Layers"));
 
+    // set up the table list
+    qreal pratio = qApp->devicePixelRatio();
     mTableListWidget = new QListWidget(ui->compWidgetList);
-    mTableListWidget->setObjectName(QString::fromUtf8("tableListWidgets"));
-    connect(mTableListWidget, SIGNAL(itemClicked(QListWidgetItem*)),
-            this, SLOT(tableObjectVisibility(QListWidgetItem*)));
-    connect(mTableListWidget, SIGNAL(itemPressed(QListWidgetItem*)),
-            this, SLOT(removeTableObject(QListWidgetItem*)));
-
+    mTableListWidget->setObjectName(QString::fromUtf8("tableListWidget"));
+    mTableListWidget->setSelectionMode(QAbstractItemView::NoSelection);
+    mTableListWidget->setIconSize(QSize((int)16*pratio,(int)16*pratio));
+    //    connect(mTableListWidget, SIGNAL(itemClicked(QListWidgetItem*)),
+    //            this, SLOT(tableObjectClicked(QListWidgetItem*)));
+    mTableListWidget->viewport()->setObjectName("tableListView");
+    mTableListWidget->viewport()->installEventFilter(this);
     ui->compWidgetList->addWidgetItem(mTableListWidget, QString::fromUtf8("Table Objects"));
 
+    // set up the process component list
     NMProcCompList* procList = new NMProcCompList(ui->compWidgetList);
     procList->setObjectName(QString::fromUtf8("processComponents"));
     ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
-
     ui->componentsWidget->setMinimumWidth(150);
 
     // ================================================
@@ -781,136 +785,160 @@ OtbModellerWin::notify(QObject* receiver, QEvent* event)
 bool
 OtbModellerWin::eventFilter(QObject *obj, QEvent *event)
 {
-    if (event->type() == QEvent::Wheel && !this->m_b3D)
-    {
-        vtkInteractorStyleImage* iai =
-                vtkInteractorStyleImage::SafeDownCast(
-                    this->ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+//    NMDebugAI(<< obj->objectName().toStdString() << " sends "
+//              << event->type() << std::endl);
 
-        QWheelEvent* we = static_cast<QWheelEvent*>(event);
-        if (    we != 0
-            &&  we->modifiers().testFlag(Qt::ControlModifier)
-            &&  we->modifiers().testFlag(Qt::ShiftModifier)
-           )
+    // ===========================================================
+    //                      QVTKWIDGET EVENTS
+    // ===========================================================
+    if (obj->objectName().compare(QString("qvtkWidget")) == 0)
+    {
+        if (event->type() == QEvent::Wheel && !this->m_b3D)
         {
-            iai->SetMotionFactor(0.2);
+            vtkInteractorStyleImage* iai =
+                    vtkInteractorStyleImage::SafeDownCast(
+                        this->ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+
+            QWheelEvent* we = static_cast<QWheelEvent*>(event);
+            if (    we != 0
+                    &&  we->modifiers().testFlag(Qt::ControlModifier)
+                    &&  we->modifiers().testFlag(Qt::ShiftModifier)
+                    )
+            {
+                iai->SetMotionFactor(0.2);
+            }
+            else if (   we != 0
+                        && we->modifiers().testFlag(Qt::ControlModifier)
+                        )
+            {
+                iai->SetMotionFactor(1.0);
+            }
+            else
+            {
+                iai->SetMotionFactor(10.0);
+            }
         }
-        else if (   we != 0
-                 && we->modifiers().testFlag(Qt::ControlModifier)
-                )
+        else if (event->type() == QEvent::KeyPress)
         {
-            iai->SetMotionFactor(1.0);
+            QKeyEvent* ke = static_cast<QKeyEvent*>(event);
+            if (!ke)
+                return false;
+
+            vtkRenderWindow* renwin = this->ui->qvtkWidget->GetRenderWindow();
+            if (!renwin)
+                return false;
+
+            if (    ke->modifiers().testFlag(Qt::ControlModifier)
+                    &&  ke->modifiers().testFlag(Qt::AltModifier)
+                    &&  this->m_b3D && renwin->GetStereoRender())
+            {
+
+                if (ke->key() == Qt::Key_C)
+                {
+                    renwin->SetStereoTypeToCrystalEyes();
+                    renwin->StereoUpdate();
+                    NMDebugAI(<< "Stereo mode switched to Crystal Eye" << std::endl);
+                }
+                else if (ke->key() == Qt::Key_Y)
+                {
+                    renwin->SetStereoTypeToAnaglyph();
+                    renwin->StereoUpdate();
+                    NMDebugAI(<< "Stereo mode switched to Anaglyph" << std::endl);
+                }
+                else if (ke->key() == Qt::Key_I)
+                {
+                    renwin->SetStereoTypeToInterlaced();
+                    renwin->StereoUpdate();
+                    NMDebugAI(<< "Stereo mode switched to Interlaced" << std::endl);
+                }
+                else if (ke->key() == Qt::Key_B)
+                {
+                    renwin->SetStereoTypeToRedBlue();
+                    renwin->StereoUpdate();
+                    NMDebugAI(<< "Stereo mode switched to RedBlue" << std::endl);
+                }
+                else if (ke->key() == Qt::Key_G)
+                {
+                    renwin->SetStereoTypeToSplitViewportHorizontal();
+                    renwin->StereoUpdate();
+                    NMDebugAI(<< "Stereo mode switched to Split Viewport Horizontal" << std::endl);
+                }
+                else if (ke->key() == Qt::Key_D)
+                {
+                    renwin->SetStereoTypeToDresden();
+                    renwin->StereoUpdate();
+                    NMDebugAI(<< "Stereo mode switched to Dresden" << std::endl);
+                }
+                else if (ke->key() == Qt::Key_U)
+                {
+                    renwin->SetStereoTypeToCheckerboard();
+                    renwin->StereoUpdate();
+                    NMDebugAI(<< "Stereo mode switched to Checkerboard" << std::endl);
+                }
+            }
         }
-        else
+        else if (event->type() == QEvent::DragEnter)
         {
-            iai->SetMotionFactor(10.0);
+            QDragEnterEvent* dee = static_cast<QDragEnterEvent*>(event);
+            if (dee)
+            {
+                this->mLayerList->dragEnterEvent(dee);
+            }
+        }
+        else if (event->type() == QEvent::DragMove)
+        {
+            QDragMoveEvent* dme = static_cast<QDragMoveEvent*>(event);
+            if (dme)
+            {
+                this->mLayerList->dragMoveEvent(dme);
+            }
+        }
+        else if (event->type() == QEvent::Drop)
+        {
+            QDropEvent* de = static_cast<QDropEvent*>(event);
+            if (de)
+            {
+                this->mLayerList->dropEvent(de);
+            }
         }
     }
-    else if (event->type() == QEvent::KeyPress)
+    // ===========================================================
+    //                      TableListWidget
+    // ===========================================================
+    else if (obj->objectName().compare(QString("tableListView")) == 0)
     {
-        QKeyEvent* ke = static_cast<QKeyEvent*>(event);
-        if (!ke)
-            return false;
-
-        vtkRenderWindow* renwin = this->ui->qvtkWidget->GetRenderWindow();
-        if (!renwin)
-            return false;
-
-        if (    ke->modifiers().testFlag(Qt::ControlModifier)
-            &&  ke->modifiers().testFlag(Qt::AltModifier)
-            &&  this->m_b3D && renwin->GetStereoRender())
+        if (event->type() == QEvent::MouseButtonPress)
         {
-
-            if (ke->key() == Qt::Key_C)
+            QMouseEvent* me = static_cast<QMouseEvent*>(event);
+            Qt::MouseButton mbtn = me->button();
+            QPoint gpos = me->globalPos();
+            QPoint lpos = me->pos();
+            if (me)
             {
-                renwin->SetStereoTypeToCrystalEyes();
-                renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to Crystal Eye" << std::endl);
-            }
-            else if (ke->key() == Qt::Key_Y)
-            {
-                renwin->SetStereoTypeToAnaglyph();
-                renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to Anaglyph" << std::endl);
-            }
-            else if (ke->key() == Qt::Key_I)
-            {
-                renwin->SetStereoTypeToInterlaced();
-                renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to Interlaced" << std::endl);
-            }
-            else if (ke->key() == Qt::Key_B)
-            {
-                renwin->SetStereoTypeToRedBlue();
-                renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to RedBlue" << std::endl);
-            }
-            else if (ke->key() == Qt::Key_G)
-            {
-                renwin->SetStereoTypeToSplitViewportHorizontal();
-                renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to Split Viewport Horizontal" << std::endl);
-            }
-            else if (ke->key() == Qt::Key_D)
-            {
-                renwin->SetStereoTypeToDresden();
-                renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to Dresden" << std::endl);
-            }
-            else if (ke->key() == Qt::Key_U)
-            {
-                renwin->SetStereoTypeToCheckerboard();
-                renwin->StereoUpdate();
-                NMDebugAI(<< "Stereo mode switched to Checkerboard" << std::endl);
+                QListWidgetItem* item = mTableListWidget->itemAt(me->pos());
+                if (item)
+                {
+                    if (mbtn == Qt::RightButton)
+                    {
+                        this->removeTableObject(item, gpos);
+                    }
+                    else if (mbtn == Qt::LeftButton)
+                    {
+                        NMDebugAI(<< "got the left button!\n");
+                        QRect rect = mTableListWidget->visualItemRect(item);
+                        QSize isize = mTableListWidget->iconSize();
+                        if (lpos.x() <= rect.x() + isize.width())
+                        {
+                            this->tableObjectVisibility(item);
+                        }
+                    }
+                }
             }
         }
-    }
-    else if (event->type() == QEvent::DragEnter)
-    {
-        QDragEnterEvent* dee = static_cast<QDragEnterEvent*>(event);
-        if (dee)
-        {
-            this->mLayerList->dragEnterEvent(dee);
-        }
-    }
-    else if (event->type() == QEvent::DragMove)
-    {
-        QDragMoveEvent* dme = static_cast<QDragMoveEvent*>(event);
-        if (dme)
-        {
-            this->mLayerList->dragMoveEvent(dme);
-        }
-    }
-    else if (event->type() == QEvent::Drop)
-    {
-        QDropEvent* de = static_cast<QDropEvent*>(event);
-        if (de)
-        {
-            this->mLayerList->dropEvent(de);
-        }
-    }
 
-    //    else if (event->type() == QEvent::Close)
-    //    {
-    //        QMdiSubWindow* sub = qobject_cast<QMdiSubWindow*>(obj);
-    //        if (!sub)
-    //        {
-    //            return false;
-    //        }
-
-    //        if (sub->windowTitle().compare("Map View") == 0)
-    //        {
-    //            this->showMapView(false);
-    //            ui->actionShow_Map_View->setChecked(false);
-    //        }
-    //        else if (sub->windowTitle().compare("Model Builder") == 0)
-    //        {
-    //            this->showModelView(false);
-    //            ui->actionShow_Model_View->setChecked(false);
-    //        }
-    //        return true;
-    //    }
-
+        //        mLastSender = obj;
+        //        mLastEvent = event;
+    }
     return false;
 }
 
@@ -1614,11 +1642,11 @@ OtbModellerWin::importTable(const QString& fileName)
 void
 OtbModellerWin::tableObjectVisibility(QListWidgetItem* item)
 {
-   NMDebugCtx(ctxOtbModellerWin, << "...");
+    NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QString name = item->text();
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator it =
-               mTableList.find(name);
+            mTableList.find(name);
     if (it == mTableList.end())
     {
         return;
@@ -1660,39 +1688,69 @@ OtbModellerWin::tableObjectViewClosed()
 }
 
 void
-OtbModellerWin::removeTableObject(QListWidgetItem* item)
+OtbModellerWin::removeTableObject(QListWidgetItem* item, QPoint globalPos)
 {
-
     NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    QObject* obj = this->sender();
-    NMDebugAI(<< "remove request from: " << obj->objectName().toStdString() << std::endl);
+    //    QObject* obj = this->sender();
+    //    QContextMenuEvent* cme = static_cast<QContextMenuEvent*>(mLastEvent);
+    //    if (    obj->objectName().compare(mTableListWidget->objectName()) != 0
+    //         || cme == 0
+    //       )
+    //    {
+    //        NMDebugCtx(ctxOtbModellerWin, << "done!");
+    //        return;
+    //    }
+
+    QString name = item->text();
+    if (!mTableList.keys().contains(name))
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    QScopedPointer<QMenu> menu(new QMenu(this));
+    QAction* act = new QAction(menu.data());
+    QString actText = QString("Remove '%1'").arg(item->text());
+    act->setText(actText);
+    menu->addAction(act);
+
+    QAction* ret = menu->exec(globalPos);
+
+    //    QString msg = QString("Do you want to remove table '%1'?").arg(name);
+    //    QMessageBox::StandardButton btn =
+    //            QMessageBox::question(this, "Remove Table Object",
+    //                                  msg);
+    if (ret == 0)
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    QMap<QString, QPair<void*, sqlite3*> >::iterator itAdmin =
+            mTableAdminObjects.find(name);
+    if (itAdmin != mTableAdminObjects.end())
+    {
+        void* cache = itAdmin.value().first;
+        sqlite3* conn = itAdmin.value().second;
+
+        sqlite3_close(conn);
+        spatialite_cleanup_ex(cache);
+        cache = 0;
+        conn = 0;
+        mTableAdminObjects.erase(itAdmin);
+    }
 
 
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
+               mTableList.find(name);
+    if (itList != mTableList.end())
+    {
+        mTableList.erase(itList);
+    }
 
-//    QString name = item->text();
-
-//    QMap<QString, QPair<void*, sqlite3*> >::iterator itAdmin =
-//            mTableAdminObjects.find(name);
-//    if (itAdmin != mTableAdminObjects.end())
-//    {
-//        void* cache = itAdmin.value().first;
-//        sqlite3* conn = itAdmin.value().second;
-
-//        sqlite3_close(conn);
-//        spatialite_cleanup_ex(cache);
-//        cache = 0;
-//        conn = 0;
-//        mTableAdminObjects.remove(itAdmin);
-//    }
-
-
-//    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
-//               mTableList.find(name);
-//    if (itList != mTableList.end())
-//    {
-//        mTableList.remove(itList);
-//    }
+    mTableListWidget->removeItemWidget(item);
+    delete item;
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

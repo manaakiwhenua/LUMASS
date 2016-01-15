@@ -33,6 +33,9 @@
 #include "NMTableCalculator.h"
 #include "NMSelSortSqlTableProxyModel.h"
 #include "NMGlobalHelper.h"
+#include "modelcomponentlist.h"
+#include "NMLayer.h"
+#include "NMImageLayer.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -125,6 +128,8 @@ NMSqlTableView::~NMSqlTableView()
 
 void NMSqlTableView::initView()
 {
+    mLayerName.clear();
+
 	this->mTableView->setCornerButtonEnabled(false);
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -820,57 +825,57 @@ void NMSqlTableView::joinAttributes()
 {
     NMDebugCtx(__ctxsqltabview, << "...");
 
-    QString fileName = QFileDialog::getOpenFileName(this,
-         tr("Select Source Attribute Table"), "~",
-         //tr("Shapefile (*.shp *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
-         tr("Delimited Text (*.csv *.txt);;dBASE (*.dbf);;Excel File (*.xls)"));
-    if (fileName.isNull())
-    {
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
+//    QString fileName = QFileDialog::getOpenFileName(this,
+//         tr("Select Source Attribute Table"), "~",
+//         //tr("Shapefile (*.shp *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+//         tr("Delimited Text (*.csv *.txt);;dBASE (*.dbf);;Excel File (*.xls)"));
+//    if (fileName.isNull())
+//    {
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
 
-    QString vttablename = mSortFilter->getRandomString(5);
-    QString sourceFileName = fileName;
+//    QString vttablename = mSortFilter->getRandomString(5);
+//    QString sourceFileName = fileName;
 
-    std::stringstream ssql;
+//    std::stringstream ssql;
 
-    if (fileName.endsWith(".csv") || fileName.endsWith(".txt"))
-    {
-        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualText('" << sourceFileName.toStdString() << "', "
-             << "'UTF-8', 1, POINT, DOUBLEQUOTE, ',')";
-    }
-    else if (fileName.endsWith(".shp") || fileName.endsWith(".shx"))
-    {
-        //        ssql << "Select ImportSHP('" << sourceFileName.toStdString() << "', "
-        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
-        QString filename = sourceFileName.left(sourceFileName.length()-4);
-        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualShape('" << fileName.toStdString() << "', "
-             << "'UTF-8', -1)";
-    }
-    else if (fileName.endsWith(".dbf"))
-    {
-        //        ssql << "Select ('" << sourceFileName.toStdString() << "', "
-        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
-        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualDbf('" << sourceFileName.toStdString() << "', "
-             << "'UTF-8')";
-    }
-    else if (fileName.endsWith(".xls"))
-    {
-        //        ssql << "Select ImportXLS('" << sourceFileName.toStdString() << "', "
-        //             << "'" << vttablename.toStdString() << "')";
-        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-             << " USING VirtualXL('" << sourceFileName.toStdString() << "', 0, 1)";
-    }
-    else
-    {
-        NMErr(__ctxsqltabview, << "File format not supported!");
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
+//    if (fileName.endsWith(".csv") || fileName.endsWith(".txt"))
+//    {
+//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+//             << " USING VirtualText('" << sourceFileName.toStdString() << "', "
+//             << "'UTF-8', 1, POINT, DOUBLEQUOTE, ',')";
+//    }
+//    else if (fileName.endsWith(".shp") || fileName.endsWith(".shx"))
+//    {
+//        //        ssql << "Select ImportSHP('" << sourceFileName.toStdString() << "', "
+//        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
+//        QString filename = sourceFileName.left(sourceFileName.length()-4);
+//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+//             << " USING VirtualShape('" << fileName.toStdString() << "', "
+//             << "'UTF-8', -1)";
+//    }
+//    else if (fileName.endsWith(".dbf"))
+//    {
+//        //        ssql << "Select ('" << sourceFileName.toStdString() << "', "
+//        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
+//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+//             << " USING VirtualDbf('" << sourceFileName.toStdString() << "', "
+//             << "'UTF-8')";
+//    }
+//    else if (fileName.endsWith(".xls"))
+//    {
+//        //        ssql << "Select ImportXLS('" << sourceFileName.toStdString() << "', "
+//        //             << "'" << vttablename.toStdString() << "')";
+//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
+//             << " USING VirtualXL('" << sourceFileName.toStdString() << "', 0, 1)";
+//    }
+//    else
+//    {
+//        NMErr(__ctxsqltabview, << "File format not supported!");
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
 
 //    QString tableName = mModel->tableName();
 //    mModel->clear();
@@ -884,20 +889,20 @@ void NMSqlTableView::joinAttributes()
 
 //    int rc = sqlite3_exec()
 
-    QSqlQuery vttabquery(mModel->database());
+//    QSqlQuery vttabquery(mModel->database());
     //vttabquery.exec(QString(ssql.str().c_str()));
 
     //if (!mModel->database().tables().contains(vttablename))
-    if (!vttabquery.exec(QString(ssql.str().c_str())))
-    {
-        NMErr(__ctxsqltabview, << vttabquery.lastError().text().toStdString());
-        NMDebugCtx(__ctxsqltabview, << "done!");
-        return;
-    }
+//    if (!vttabquery.exec(QString(ssql.str().c_str())))
+//    {
+//        NMErr(__ctxsqltabview, << vttabquery.lastError().text().toStdString());
+//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        return;
+//    }
 
-    QScopedPointer<NMSqlTableModel> srcModel(new NMSqlTableModel(0, mModel->database()));
-    srcModel->setTable(vttablename);
-    srcModel->select();
+//    QScopedPointer<NMSqlTableModel> srcModel(new NMSqlTableModel(0, mModel->database()));
+//    srcModel->setTable(vttablename);
+//    srcModel->select();
 
 
 //    NMSqlTableView *resview = new NMSqlTableView(srcModel, this->parentWidget());
@@ -919,6 +924,134 @@ void NMSqlTableView::joinAttributes()
 
     //	QScopedPointer<vtkQtTableModelAdapter> srcModel(new vtkQtTableModelAdapter);
     //	srcModel->setTable(tabReader->GetOutput());
+
+    // ============================================================
+    //          List of TABLES : names & models
+    // ============================================================
+
+    NMGlobalHelper h;
+    QStringList tableNameList;
+    QMap<QString, NMSqlTableModel*> tableModelList;
+
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > > tableList =
+            h.getMainWindow()->getTableList();
+    ModelComponentList* layerList = h.getMainWindow()->getLayerList();
+
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator it =
+            tableList.begin();
+    while(it != tableList.end())
+    {
+        if (it.key().compare(this->windowTitle()) != 0)
+        {
+            tableNameList.append(it.key());
+            tableModelList.insert(it.key(), qobject_cast<NMSqlTableModel*>(it.value().second->getModel()));
+        }
+        ++it;
+    }
+
+    int nlayers = layerList->getLayerCount();
+    for (int i=0; i < nlayers; ++i)
+    {
+        NMLayer* l = layerList->getLayer(i);
+        if (     l->getLayerType() == NMLayer::NM_IMAGE_LAYER
+            &&   l->objectName().compare(this->getLayerName()) != 0
+           )
+        {
+            QAbstractItemModel* im = const_cast<QAbstractItemModel*>(l->getTable());
+            if (im)
+            {
+                NMSqlTableModel* nmsqlmodel = qobject_cast<NMSqlTableModel*>(im);
+                if (nmsqlmodel)
+                {
+                    tableNameList.append(nmsqlmodel->tableName());
+                    tableModelList.insert(nmsqlmodel->tableName(), nmsqlmodel);
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    //          LET THE USER PICK THE SOURCE TABLE
+    // ============================================================
+
+
+    bool bOk = false;
+    QInputDialog ipd(this);
+    ipd.setOption(QInputDialog::UseListViewForComboBoxItems);
+    ipd.setComboBoxItems(tableNameList);
+    ipd.setComboBoxEditable(false);
+    ipd.setWindowTitle("Source Tables");
+    ipd.setLabelText("Select the source table:");
+    int ret = ipd.exec();
+
+    QString tableName = ipd.textValue();
+
+    if (!ret || tableName.isEmpty())
+    {
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+
+    NMSqlTableModel* srcModel = 0;
+    QMap<QString, NMSqlTableModel*>::iterator mit =
+            tableModelList.find(tableName);
+    if (mit != tableModelList.end())
+    {
+        srcModel = mit.value();
+    }
+
+    if (srcModel == 0)
+    {
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+
+    QString srcDbFileName = "";
+    QString srcTableName = "";
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator srcIt =
+            tableList.find(tableName);
+    if (srcIt != tableList.end())
+    {
+        srcDbFileName = srcIt.value().first->GetDbFileName().c_str();
+        srcTableName = srcIt.value().first->GetTableName().c_str();
+    }
+
+    if (srcDbFileName.isEmpty())
+    {
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+
+    otb::SQLiteTable::Pointer tarOtbTable;
+    if (tableList.keys().contains(this->getLayerName()))
+    {
+        srcIt = tableList.find(this->windowTitle());
+        if (srcIt != tableList.end())
+        {
+            tarOtbTable = srcIt.value().first.GetPointer();
+        }
+    }
+    else
+    {
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(layerList->getLayer(this->getLayerName()));
+        if (il)
+        {
+            //otb::AttributeTable* ttab = static_cast<otb::AttributeTable*>(il->getRasterAttributeTable(1).GetPointer());
+            tarOtbTable = static_cast<otb::SQLiteTable*>(il->getRasterAttributeTable(1).GetPointer());
+        }
+    }
+
+    if (tarOtbTable.IsNull())
+    {
+        NMDebugAI(<< "tarOtbTable is NULL!\n");
+        NMDebugCtx(__ctxsqltabview, << "done!");
+        return;
+    }
+
+    // ==========================================================================
+    //                  ASK FOR JOIN FIELDS
+    // ==========================================================================
+
 
     int numJoinCols = srcModel->columnCount(QModelIndex());
     NMDebugAI( << "Analyse CSV Table Structure ... " << endl);
@@ -946,7 +1079,7 @@ void NMSqlTableView::joinAttributes()
     }
 
     // ask the user for semantically common fields
-    bool bOk = false;
+    bOk = false;
     QString tarFieldName = QInputDialog::getItem(this,
             tr("Select Target Join Field"), tr("Select Target Join Field"),
             tarJoinFields, 0, false, &bOk, 0);
@@ -973,12 +1106,67 @@ void NMSqlTableView::joinAttributes()
               << " at index " << srcJoinColIdx << std::endl);
 
 
+    NMDebugAI(<< "src data base: " << srcDbFileName.toStdString()
+              << std::endl);
 
-    srcModel->clear();
-    if (mSortFilter->joinTable(vttablename, srcFieldName, tarFieldName))
+
+    // ======================================================================
+    //              otb::SQLiteTable is doing the join
+    // ======================================================================
+
+
+    QString tarTableName = this->mModel->tableName();
+    this->mModel->clear();
+
+    NMDebugAI(<< "Joining fields from " << srcDbFileName.toStdString()
+              << " to " << tarOtbTable->GetDbFileName() << std::endl);
+
+
+    std::vector<std::string> vJnFields;
+    foreach(const QString& f, srcJoinFields)
     {
-        updateSelection(mbSwitchSelection);
+        vJnFields.push_back(f.toStdString());
     }
+
+    NMDebugAI(<< "tarTableName = " << tarTableName.toStdString() << std::endl);
+    NMDebugAI(<< "tarFieldName = " << tarFieldName.toStdString() << std::endl);
+    NMDebugAI(<< "srcDbFileName = " << srcDbFileName.toStdString() << std::endl);
+    NMDebugAI(<< "srcTableName = " << srcTableName.toStdString() << std::endl);
+    NMDebugAI(<< "srcFieldName = " << srcFieldName.toStdString() << std::endl);
+
+    bool ret2 = tarOtbTable->JoinAttributes(tarTableName.toStdString(),
+                                tarFieldName.toStdString(),
+                                srcDbFileName.toStdString(),
+                                srcTableName.toStdString(),
+                                srcFieldName.toStdString(),
+                                vJnFields);
+
+    if (ret2)
+    {
+        this->mModel->select();
+        this->updateSelection();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //srcModel->clear();
+//    if (mSortFilter->joinTable(srcDbFileName, srcFieldName, tarFieldName))
+//    {
+//        updateSelection(mbSwitchSelection);
+//    }
 
 
 //    NMSqlTableView *resview = new NMSqlTableView(joinModel, this->parentWidget());

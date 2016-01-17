@@ -1575,7 +1575,7 @@ OtbModellerWin::importTable(const QString& fileName)
 	QString tablename = sqlTable->GetTableName().c_str();
     QString conname = QString("%1_%2").arg(vinfo[1].c_str()).arg(lfd);//sqlTable->GetRandomString(5).c_str();
 	QString dbfilename = sqlTable->GetDbFileName().c_str();
-	sqlTable->CloseTable();
+    sqlTable->CloseTable();
 
 	sqlite3* tabconn = 0;
 	void* splCache = spatialite_alloc_connection();

@@ -1008,12 +1008,23 @@ void NMSqlTableView::joinAttributes()
 
     QString srcDbFileName = "";
     QString srcTableName = "";
+    NMSqlTableView* srcView = 0;
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator srcIt =
             tableList.find(tableName);
     if (srcIt != tableList.end())
     {
         srcDbFileName = srcIt.value().first->GetDbFileName().c_str();
-        srcTableName = srcIt.value().first->GetTableName().c_str();
+        srcView = srcIt.value().second.data();
+        if (srcView)
+        {
+            QSqlTableModel* m = srcView->getModel();
+            if (m)
+            {
+                srcTableName = m->tableName();
+            }
+        }
+
+        //srcTableName = srcIt.value().first->GetTableName().c_str();
     }
 
     if (srcDbFileName.isEmpty())
@@ -1117,6 +1128,7 @@ void NMSqlTableView::joinAttributes()
 
     QString tarTableName = this->mModel->tableName();
     this->mModel->clear();
+    srcModel->clear();
 
     NMDebugAI(<< "Joining fields from " << srcDbFileName.toStdString()
               << " to " << tarOtbTable->GetDbFileName() << std::endl);
@@ -1141,13 +1153,19 @@ void NMSqlTableView::joinAttributes()
                                 srcFieldName.toStdString(),
                                 vJnFields);
 
-    if (ret2)
+    if (!ret2)
     {
-        this->mModel->select();
-        this->updateSelection();
+        NMDebugAI(<< "join failed!" << std::endl);
     }
 
 
+    this->mModel->setTable(tarTableName);
+    this->mModel->select();
+    this->update();
+
+    srcModel->setTable(srcTableName);
+    srcModel->select();
+    srcView->update();
 
 
 

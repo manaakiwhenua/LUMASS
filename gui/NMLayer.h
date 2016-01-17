@@ -173,8 +173,8 @@ public:
 
 	virtual void setDataSet(vtkDataSet* dataset);
 	virtual bool setFileName(QString filename)
-		{this->mFileName = filename; return true;};
-	QString getFileName() {return this->mFileName;};
+        {this->mFileName = filename; return true;}
+    QString getFileName() {return this->mFileName;}
 	virtual const vtkDataSet* getDataSet(void)=0;
 
 	const vtkAbstractMapper* getMapper(void);

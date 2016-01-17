@@ -702,6 +702,7 @@ SQLiteTable::CreateIndex(const std::vector<std::string> &colNames,
             idxName += "_";
         }
     }
+    idxName += "_idx";
 
     std::stringstream ssql;
     if (unique)
@@ -3012,17 +3013,30 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     if (!this->FindTable(sourceTable))
     {
         sourceDb = this->GetRandomString(3);
-        this->AttachDatabase(sourceDbFileName, sourceDb);
+        if (!this->AttachDatabase(sourceDbFileName, sourceDb))
+        {
+            itkWarningMacro(<< "Couldn't attach source database!");
+            return false;
+        }
     }
 
     // create indices for join fields
     std::vector<std::string> vIdxCol;
     vIdxCol.push_back(sourceJoinField);
-    this->CreateIndex(vIdxCol, false, sourceTable, sourceDb);
+    if (!this->CreateIndex(vIdxCol, false, sourceTable, sourceDb))
+    {
+        itkWarningMacro(<< "indexing '" << sourceTable << "."
+                        << vIdxCol[0] << "' failed!");
+    }
 
     vIdxCol.clear();
     vIdxCol.push_back(targetJoinField);
-    this->CreateIndex(vIdxCol, false, targetTable);
+    if (!this->CreateIndex(vIdxCol, false, targetTable))
+    {
+        itkWarningMacro(<< "indexing '" << targetTable << "."
+                        << vIdxCol[0] << "' failed!");
+    }
+
 
     /*
      * SAMPLE QUERY: JOIN WITH SUBQUERY
@@ -3034,7 +3048,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     std::stringstream srcFieldStr;
     for (int i=0; i < sourceFields.size(); ++i)
     {
-        srcFieldStr << sourceDb << "." << sourceFields[i];
+        srcFieldStr << sourceDb << "." << sourceTable << "." << sourceFields[i];
         if (i < sourceFields.size()-1)
         {
             srcFieldStr << ", ";
@@ -3045,11 +3059,12 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     std::string tempJoinTable = this->GetRandomString(5);
     std::stringstream ssql;
     ssql << "CREATE TEMP TABLE " << tempJoinTable << " AS "
-         << "SELECT * FROM main." << targetTable << " AS t "
+         << "SELECT * FROM main." << targetTable << " "
          << "LEFT OUTER JOIN "
          << "(SELECT " << srcFieldStr.str()
-              << " FROM " << sourceDb << "." << sourceTable << ") AS s "
-         << "ON t." << targetJoinField << " = " << " s." << sourceJoinField << ";";
+              << " FROM " << sourceDb << "." << sourceTable << ") "
+         << "ON main." << targetTable << "." << targetJoinField << " = "
+         << sourceDb << "." << sourceTable << "." << sourceJoinField << ";";
 
     NMDebugAI(<< "THE QUERY:\n" << ssql.str() << std::endl);
 

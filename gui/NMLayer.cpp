@@ -2604,12 +2604,14 @@ void NMLayer::showAttributeTable(void)
 	{
 		this->mTableView->show();
 		this->mTableView->update();
+        this->mTableView->raise();
     }
 
     if (this->mSqlTableView != 0)
     {
         this->mSqlTableView->show();
         this->mSqlTableView->update();
+        this->mSqlTableView->raise();
     }
 }
 

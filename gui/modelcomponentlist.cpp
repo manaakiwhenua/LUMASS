@@ -1340,7 +1340,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             QFileInfo finfo(fileName);
 
             QStringList tabFormats;
-            tabFormats << "dbf" << "csv" << "txt" << "xls";//<< "shp" << "shx";
+            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "csv" << "txt" << "xls";
             QStringList imgFormats;
             imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
                        << "png" << "gif" << "adf" << "hdr" << "sdat";
@@ -1349,7 +1349,23 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             {
                 NMGlobalHelper hlp;
                 OtbModellerWin* mainWin = hlp.getMainWindow();
-                mainWin->importTable(fileName);
+
+                QStringList sqliteformats;
+                sqliteformats << "db" << "sqlite" << "ldb";
+
+                QString tableName;
+                if (sqliteformats.contains(ext))
+                {
+                    tableName = mainWin->selectSqliteTable(fileName);
+                    if (!tableName.isEmpty())
+                    {
+                        mainWin->importTable(fileName, tableName);
+                    }
+                }
+                else
+                {
+                    mainWin->importTable(fileName);
+                }
             }
             else if (imgFormats.contains(ext))
             {

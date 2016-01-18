@@ -87,7 +87,6 @@ SQLiteTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
     if (rc != SQLITE_OK)
     {
         std::string errmsg = sqlite3_errmsg(m_db);
-        itkWarningMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
         NMErr(_ctxotbtab, << "SQLite3 ERROR #" << rc << ": " << errmsg);
         if (stmt != 0 && *stmt != 0)
         {
@@ -2975,7 +2974,7 @@ bool
 SQLiteTable::SetDbFileName(const std::string &dbFileName)
 {
     bool ret = true;
-    if (m_db == 0)
+    if (m_db != 0)
     {
         ret = false;
     }
@@ -3008,6 +3007,7 @@ SQLiteTable::GetTableList(void)
         return vtables;
     }
 
+    //std::cout << "THE QUERY: " << ssql.str() << std::endl;
     std::stringstream tnamestr;
     while (sqlite3_step(stmt_tablelist) == SQLITE_ROW)
     {
@@ -3016,6 +3016,9 @@ SQLiteTable::GetTableList(void)
         tnamestr << sval;
         vtables.push_back(tnamestr.str());
     }
+
+    //sqliteError(rc, &stmt_tablelist);
+
     sqlite3_finalize(stmt_tablelist);
 
     return vtables;

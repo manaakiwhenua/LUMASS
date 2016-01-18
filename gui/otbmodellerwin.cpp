@@ -1495,19 +1495,19 @@ void OtbModellerWin::aboutLUMASS(void)
 
 }
 
-void OtbModellerWin::importODBC(void)
+void OtbModellerWin::importODBC()
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     QString fileName = QFileDialog::getOpenFileName(this,
-         tr("Import Table Data"), "~",
-         tr("dBASE (*.dbf);;Delimited Text (*.csv *.txt);;SQLite Table (*.db *.sqlite *.ldb);;Excel File (*.xls)"));
-    if (fileName.isNull())
+             tr("Import Table Data"), "~",
+             tr("dBASE (*.dbf);;Delimited Text (*.csv *.txt);;SQLite Table (*.db *.sqlite *.ldb);;Excel File (*.xls)"));
+
+    if (fileName.isEmpty())
     {
         NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
     }
-
 
     QStringList sqliteformats;
     sqliteformats << "db" << "sqlite" << "ldb";
@@ -1517,14 +1517,18 @@ void OtbModellerWin::importODBC(void)
     QFileInfo fifo(fileName);
     if (sqliteformats.contains(fifo.suffix().toLower()))
     {
-        std::string tname = this->selectSqliteTable(fileName);
-        if (!tname.empty())
+        tableName = this->selectSqliteTable(fileName);
+        if (!tableName.isEmpty())
         {
-            tableName = tname.c_str();
+            this->importTable(fileName, tableName);
         }
     }
+    else
+    {
+        this->importTable(fileName);
+    }
 
-    this->importTable(fileName, tableName);
+
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -2153,6 +2157,26 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
+
+
+    QString fn = QFileDialog::getOpenFileName(this, "", "~");
+
+    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
+    tab->SetDbFileName(fn.toStdString());
+    if (!tab->openConnection())
+    {
+        NMErr("oops", "error");
+    }
+
+    std::vector<std::string> names = tab->GetTableList();
+    for (int i=0; i < names.size(); ++i)
+    {
+        NMDebugAI(<< names[i] << std::endl);
+    }
+
+
+
+
 
     NMDebugAI(<< "Currently available QSql connections ..." << std::endl);
 

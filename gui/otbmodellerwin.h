@@ -97,7 +97,8 @@ public:
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
 
-    void importTable(const QString& fileName);
+    void importTable(const QString& fileName, const QString& tableName="");
+    QString selectSqliteTable(const QString& dbFileName);
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&
         getTableList(void) {return mTableList;}

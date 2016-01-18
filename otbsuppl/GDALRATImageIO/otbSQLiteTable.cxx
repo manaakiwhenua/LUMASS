@@ -2971,6 +2971,55 @@ SQLiteTable::SetTableName(const std::string &tableName)
     return ret;
 }
 
+bool
+SQLiteTable::SetDbFileName(const std::string &dbFileName)
+{
+    bool ret = true;
+    if (m_db == 0)
+    {
+        ret = false;
+    }
+    else
+    {
+        this->m_dbFileName = dbFileName;
+    }
+}
+
+std::vector<std::string>
+SQLiteTable::GetTableList(void)
+{
+    std::vector<std::string> vtables;
+
+    if (m_db == 0)
+    {
+        return vtables;
+    }
+
+    sqlite3_stmt* stmt_tablelist;
+    std::stringstream ssql;
+    ssql << "SELECT name FROM sqlite_master WHERE "
+        << "type = 'table';";
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_tablelist, 0);
+    if (sqliteError(rc, &stmt_tablelist))
+    {
+        sqlite3_finalize(stmt_tablelist);
+        return vtables;
+    }
+
+    std::stringstream tnamestr;
+    while (sqlite3_step(stmt_tablelist) == SQLITE_ROW)
+    {
+        tnamestr.str("");
+        const unsigned char* sval = sqlite3_column_text(stmt_tablelist, 0);
+        tnamestr << sval;
+        vtables.push_back(tnamestr.str());
+    }
+    sqlite3_finalize(stmt_tablelist);
+
+    return vtables;
+}
 
 bool
 SQLiteTable::SqlExec(const std::string& sqlstr)
@@ -3062,9 +3111,10 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
          << "SELECT * FROM main." << targetTable << " "
          << "LEFT OUTER JOIN "
          << "(SELECT " << srcFieldStr.str()
-              << " FROM " << sourceDb << "." << sourceTable << ") "
+              << " FROM " << sourceDb << "." << sourceTable << ") AS s "
          << "ON main." << targetTable << "." << targetJoinField << " = "
-         << sourceDb << "." << sourceTable << "." << sourceJoinField << ";";
+         //<< sourceDb << "." << sourceTable << "." << sourceJoinField << ";";
+         << " s." << sourceJoinField << ";";
 
     NMDebugAI(<< "THE QUERY:\n" << ssql.str() << std::endl);
 

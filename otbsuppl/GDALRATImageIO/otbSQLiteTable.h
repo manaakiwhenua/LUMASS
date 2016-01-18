@@ -153,7 +153,11 @@ public:
                             std::map<int, std::map<long, double> >& valstore);
 
     /// more 'free-style' sql support
+    std::vector<std::string> GetTableList(void);
+    bool openConnection();
+    void disconnectDB();
     bool SetTableName(const std::string& tableName);
+    bool SetDbFileName(const std::string& dbFileName);
     bool SqlExec(const std::string& sqlstr);
     bool AttachDatabase(const std::string &fileName, const std::string& dbName);
     bool DetachDatabase(const std::string& dbName);
@@ -229,11 +233,9 @@ protected:
      *
      */
 
-    bool openConnection();
-
     void createPreparedColumnStatements(const std::string& colname);
     void resetTableAdmin();
-    void disconnectDB();
+
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
     inline void sqliteStepCheck(const int& rc);
 

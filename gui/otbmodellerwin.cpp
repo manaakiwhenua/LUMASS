@@ -1501,26 +1501,90 @@ void OtbModellerWin::importODBC(void)
 
     QString fileName = QFileDialog::getOpenFileName(this,
          tr("Import Table Data"), "~",
-         tr("Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
+         tr("dBASE (*.dbf);;Delimited Text (*.csv *.txt);;SQLite Table (*.db *.sqlite *.ldb);;Excel File (*.xls)"));
     if (fileName.isNull())
     {
         NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
     }
 
-    this->importTable(fileName);
+
+    QStringList sqliteformats;
+    sqliteformats << "db" << "sqlite" << "ldb";
+
+    QString tableName;
+
+    QFileInfo fifo(fileName);
+    if (sqliteformats.contains(fifo.suffix().toLower()))
+    {
+        std::string tname = this->selectSqliteTable(fileName);
+        if (!tname.empty())
+        {
+            tableName = tname.c_str();
+        }
+    }
+
+    this->importTable(fileName, tableName);
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
+
+QString
+OtbModellerWin::selectSqliteTable(const QString &dbFileName)
+{
+    QString tableName;
+
+    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
+    sqlTable->SetUseSharedCache(false);
+    sqlTable->SetDbFileName(dbFileName.toStdString());
+    if (sqlTable->openConnection())
+    {
+        std::vector<std::string> tables = sqlTable->GetTableList();
+        QStringList qtables;
+        for (int i=0; i < tables.size(); ++i)
+        {
+            qtables << tables[i].c_str();
+        }
+
+        QInputDialog ipd(this);
+        ipd.setOption(QInputDialog::UseListViewForComboBoxItems);
+        ipd.setComboBoxItems(qtables);
+        ipd.setComboBoxEditable(false);
+        ipd.setWindowTitle("Database Tables");
+        ipd.setLabelText("Select table to open:");
+        int ret = ipd.exec();
+
+        if (ret)
+        {
+            tableName = ipd.textValue();
+        }
+
+        sqlTable->disconnectDB();
+
+    }
+    else
+    {
+        NMBoxErr("Open sqlite database",
+                 "Couldn't open database '"
+                 << dbFileName.toStdString() << "'!");
+    }
+
+    return tableName;
+}
+
 void
-OtbModellerWin::importTable(const QString& fileName)
+OtbModellerWin::importTable(const QString& fileName, const QString &tableName)
 {
     otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
     std::vector<std::string> vinfo = sqlTable->GetFilenameInfo(fileName.toStdString());
 
     NMSqlTableView* resview = 0;
-    QString viewName;
+    QString viewName = QString(vinfo.at(1).c_str());
+    if (!tableName.isEmpty())
+    {
+        viewName = tableName;
+    }
     int lfd = 1;
     if (mTableList.contains(QString(vinfo.at(1).c_str())))
     {
@@ -1529,6 +1593,10 @@ OtbModellerWin::importTable(const QString& fileName)
                             .arg(vinfo[0].c_str())
                             .arg(vinfo[1].c_str())
                             .arg(vinfo[2].c_str());
+        if (!tableName.isEmpty())
+        {
+            ldbName = fileName;
+        }
 
         QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::const_iterator it =
                 mTableList.constBegin();
@@ -1549,7 +1617,7 @@ OtbModellerWin::importTable(const QString& fileName)
         {
             NMBoxInfo("Import Table Data", "Table has already been imported!");
 
-            resview = mTableList.find(QString(vinfo.at(1).c_str())).value().second.data();
+            resview = mTableList.find(viewName).value().second.data();
             resview->show();
             resview->raise();
             return;
@@ -1567,15 +1635,22 @@ OtbModellerWin::importTable(const QString& fileName)
 
 
     sqlTable->SetUseSharedCache(false);
-    if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+
+    QString tablename = tableName;
+    QString dbfilename = fileName;
+    if (tableName.isEmpty())
     {
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
+        if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+        {
+            NMDebugCtx(ctxOtbModellerWin, << "done!");
+            return;
+        }
+        tablename = sqlTable->GetTableName().c_str();
+        dbfilename = sqlTable->GetDbFileName().c_str();
+        sqlTable->CloseTable();
     }
-	QString tablename = sqlTable->GetTableName().c_str();
-    QString conname = QString("%1_%2").arg(vinfo[1].c_str()).arg(lfd);//sqlTable->GetRandomString(5).c_str();
-	QString dbfilename = sqlTable->GetDbFileName().c_str();
-    sqlTable->CloseTable();
+
+    QString conname = QString("%1_%2").arg(tablename).arg(lfd);
 
 	sqlite3* tabconn = 0;
 	void* splCache = spatialite_alloc_connection();

@@ -2982,6 +2982,8 @@ SQLiteTable::SetDbFileName(const std::string &dbFileName)
     {
         this->m_dbFileName = dbFileName;
     }
+
+	return ret;
 }
 
 std::vector<std::string>

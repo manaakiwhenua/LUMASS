@@ -434,6 +434,10 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionLoad_VTK_PolyData, SIGNAL(triggered()), this, SLOT(loadVTKPolyData()));
     connect(ui->actionLoad_Vector_Layer, SIGNAL(triggered()), this, SLOT(loadVectorLayer()));
     connect(ui->actionMOSO, SIGNAL(triggered()), this, SLOT(doMOSO()));
+    connect(ui->actionTreeFindLoops, SIGNAL(triggered()), this, SLOT(treeFindLoops()));
+    connect(ui->actionTreeTopDown, SIGNAL(triggered()), this, SLOT(treeSelTopDown()));
+    connect(ui->actionTreeBottomUp, SIGNAL(triggered()), this, SLOT(treeSelBottomUp()));
+
     //connect(ui->actionMOSO_batch, SIGNAL(triggered()), this, SLOT(doMOSObatch()));
     connect(ui->actionComponents_View, SIGNAL(toggled(bool)), this, SLOT(showComponentsView(bool)));
     connect(ui->actionShow_Components_Info, SIGNAL(toggled(bool)), this, SLOT(showComponentsInfoView(bool)));
@@ -2154,40 +2158,162 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 	//NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
-void OtbModellerWin::test()
+void
+OtbModellerWin::treeSelTopDown(void)
+{
+
+}
+
+void
+OtbModellerWin::treeSelBottomUp(void)
+{
+
+}
+
+void
+OtbModellerWin::treeFindLoops(void)
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
+    // =======================================================================
+    // get selected layer
+    // =======================================================================
 
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l == 0)
+        return;
 
-    QString fn = QFileDialog::getOpenFileName(this, "", "~");
+    QAbstractItemModel* tableModel = const_cast<QAbstractItemModel*>(l->getTable());
 
-    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
-    tab->SetDbFileName(fn.toStdString());
-    if (!tab->openConnection())
+    QSqlTableModel* sqlModel = qobject_cast<QSqlTableModel*>(tableModel);
+    if (sqlModel)
     {
-        NMErr("oops", "error");
+        while(sqlModel->canFetchMore())
+        {
+            sqlModel->fetchMore();
+        }
     }
 
-    std::vector<std::string> names = tab->GetTableList();
-    for (int i=0; i < names.size(); ++i)
+
+    int nrows = tableModel->rowCount();
+    int ncols = tableModel->columnCount();
+
+    int stopIdx = 0;
+    int idIdx = -1;
+    int dnIdx = -1;
+
+    QStringList colnames;
+    QMap<QString, int> nameIdxMap;
+
+    for (int i=0; i < ncols; i++)
     {
-        NMDebugAI(<< names[i] << std::endl);
+        QString colname = tableModel->headerData(i, Qt::Horizontal,
+                                                 Qt::DisplayRole).toString();
+        colnames.append(colname);
+        nameIdxMap.insert(colname, i);
+    }
+
+    // =======================================================================
+    // ask users for id columns
+    // =======================================================================
+    bool ok;
+    QString idColName = QInputDialog::getItem(this, tr("Tree Check"),
+                                             tr("ID column:"), colnames,
+                                             0, false, &ok, 0);
+    if (ok && !idColName.isEmpty())
+    {
+        idIdx = nameIdxMap.find(idColName).value();
+    }
+
+    colnames.removeOne(idColName);
+
+
+    QString dnColName = QInputDialog::getItem(this, tr("Tree Check"),
+                                             tr("DownID column:"), colnames,
+                                             0, false, &ok, 0);
+    if (ok && !dnColName.isEmpty())
+    {
+        dnIdx = nameIdxMap.find(dnColName).value();
     }
 
 
+    if (idIdx == -1 || dnIdx == -1)
+        return;
 
+    // =======================================================================
+    // initiate tree check
+    // =======================================================================
 
+    // -------------------------
+    // create a hash map for looking up next down ids
+    // to speed up things a bit ...
 
-    NMDebugAI(<< "Currently available QSql connections ..." << std::endl);
-
-    QStringList conns = QSqlDatabase::connectionNames();
-    foreach(const QString& c, conns)
+    NMDebugAI( << "memorizing where all the ");
+    QMap<int, int> treeMap;
+    for (int r=0; r < nrows; ++r)
     {
-        NMDebugAI(<< c.toStdString()<< std::endl);
+        const QModelIndex mid = tableModel->index(r, idIdx);
+        const QModelIndex mdn = tableModel->index(r, dnIdx);
+        const int id = tableModel->data(mid).toInt();
+        const int dn = tableModel->data(mdn).toInt();
+        treeMap.insert(id, dn);
     }
+
+    // -------------------------------
+    // let's get rolling ...
+    QSet<int> allLoops;
+
+    for (int r=0; r < nrows; ++r)
+    {
+        QList<int> idHistory;
+        //if (!checkTree(r, idIdx, dnIdx, idHistory, tableModel, nrows))
+        if (!checkTree(r, idHistory, treeMap))
+        {
+            allLoops.insert(idHistory.last());
+            NMDebugAI(<< "loop in tree: " << r << " tail: ");
+            QList<int> ph;
+            for (int i=idHistory.size()-1; i >= 0; --i)
+            {
+                const int id = idHistory.at(i);
+                NMDebug( << id << " ");
+                if (ph.contains(id))
+                {
+                    break;
+                }
+                else
+                {
+                    ph << id;
+                }
+            }
+            NMDebug(<< std::endl << std::endl);
+        }
+        else
+        {
+            NMDebugAI(<< "tree " << r << " is fine!" << std::endl);
+        }
+    }
+
+    NMDebugAI(<< "all loop bottoms ... " << std::endl);
+
+    l->selectCell(0, NMLayer::NM_SEL_CLEAR);
+    foreach (const int& tail, allLoops)
+    {
+        l->selectCell(tail, NMLayer::NM_SEL_ADD);
+        NMDebug(<< tail << " ");
+    }
+    NMDebugAI(<< std::endl);
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!")
+}
+
+void OtbModellerWin::test()
+{
+    NMDebugCtx(ctxOtbModellerWin, << "...")
+
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
+
+
 
 
 bool

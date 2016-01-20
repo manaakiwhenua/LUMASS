@@ -163,6 +163,9 @@ public slots:
     void tableObjectVisibility(QListWidgetItem* item);
     void removeTableObject(QListWidgetItem* item, QPoint globalPos);
     void tableObjectViewClosed();
+    void treeSelTopDown(void);
+    void treeSelBottomUp(void);
+    void treeFindLoops(void);
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 

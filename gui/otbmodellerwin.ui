@@ -82,6 +82,8 @@
     <addaction name="separator"/>
     <addaction name="actionImportODBC"/>
     <addaction name="separator"/>
+    <addaction name="actionImage_Polydata"/>
+    <addaction name="separator"/>
     <addaction name="actionRemoveAllObjects"/>
     <addaction name="separator"/>
    </widget>
@@ -105,6 +107,10 @@
      <string>A&amp;nalysis</string>
     </property>
     <addaction name="actionMOSO"/>
+    <addaction name="separator"/>
+    <addaction name="actionTreeFindLoops"/>
+    <addaction name="actionTreeBottomUp"/>
+    <addaction name="actionTreeTopDown"/>
     <addaction name="separator"/>
     <addaction name="actionTest"/>
    </widget>
@@ -133,7 +139,6 @@
     <property name="title">
      <string>&amp;GIS</string>
     </property>
-    <addaction name="actionImage_Polydata"/>
    </widget>
    <addaction name="menuObject"/>
    <addaction name="menuMOSO"/>
@@ -463,6 +468,21 @@
    </property>
    <property name="text">
     <string>Show Coordinate Axes</string>
+   </property>
+  </action>
+  <action name="actionTreeTopDown">
+   <property name="text">
+    <string>Tree Query: top -&gt; down ...</string>
+   </property>
+  </action>
+  <action name="actionTreeBottomUp">
+   <property name="text">
+    <string>Tree Query: bottom -&gt; up ...</string>
+   </property>
+  </action>
+  <action name="actionTreeFindLoops">
+   <property name="text">
+    <string>Tree Check: find loops ... </string>
    </property>
   </action>
  </widget>

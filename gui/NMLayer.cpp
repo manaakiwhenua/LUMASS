@@ -2850,6 +2850,12 @@ NMLayer::selectCell(int cellID, NMLayerSelectionType type)
 }
 
 void
+NMLayer::setSelection(const QItemSelection &sel)
+{
+    mSelectionModel->setSelection(sel);
+}
+
+void
 NMLayer::tableColumnsRemoved(const QModelIndex& parent, int startsection,
 		int endsection)
 {

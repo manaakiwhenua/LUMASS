@@ -62,6 +62,7 @@
 #include "NMEditModelComponentDialog.h"
 #include "NMModelScene.h"
 #include "NMWidgetListView.h"
+#include "NMGlobalHelper.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -2243,12 +2244,16 @@ OtbModellerWin::treeFindLoops(void)
     // initiate tree check
     // =======================================================================
 
+    NMGlobalHelper h;
+    h.startBusy();
+
     // -------------------------
     // create a hash map for looking up next down ids
     // to speed up things a bit ...
 
     NMDebugAI( << "memorizing where all the ");
     QMap<int, int> treeMap;
+    QMap<int, int> rowMap;
     for (int r=0; r < nrows; ++r)
     {
         const QModelIndex mid = tableModel->index(r, idIdx);
@@ -2256,6 +2261,7 @@ OtbModellerWin::treeFindLoops(void)
         const int id = tableModel->data(mid).toInt();
         const int dn = tableModel->data(mdn).toInt();
         treeMap.insert(id, dn);
+        rowMap.insert(id, r);
     }
 
     // -------------------------------
@@ -2265,42 +2271,25 @@ OtbModellerWin::treeFindLoops(void)
     for (int r=0; r < nrows; ++r)
     {
         QList<int> idHistory;
-        //if (!checkTree(r, idIdx, dnIdx, idHistory, tableModel, nrows))
         if (!checkTree(r, idHistory, treeMap))
         {
-            allLoops.insert(idHistory.last());
-            NMDebugAI(<< "loop in tree: " << r << " tail: ");
-            QList<int> ph;
-            for (int i=idHistory.size()-1; i >= 0; --i)
+            QMap<int,int>::const_iterator it =
+                    rowMap.find(idHistory.last());
+            if (it != rowMap.cend())
             {
-                const int id = idHistory.at(i);
-                NMDebug( << id << " ");
-                if (ph.contains(id))
-                {
-                    break;
-                }
-                else
-                {
-                    ph << id;
-                }
+                allLoops.insert(it.value());
             }
-            NMDebug(<< std::endl << std::endl);
-        }
-        else
-        {
-            NMDebugAI(<< "tree " << r << " is fine!" << std::endl);
         }
     }
 
-    NMDebugAI(<< "all loop bottoms ... " << std::endl);
 
-    l->selectCell(0, NMLayer::NM_SEL_CLEAR);
-    foreach (const int& tail, allLoops)
-    {
-        l->selectCell(tail, NMLayer::NM_SEL_ADD);
-        NMDebug(<< tail << " ");
-    }
-    NMDebugAI(<< std::endl);
+    QList<int> btms = allLoops.toList();
+    quicksort(btms, 0, btms.size()-1, true);
+
+    QItemSelection newsel = h.selectRows(l->getTable(), btms);
+    l->setSelection(newsel);
+
+    h.endBusy();
 
     NMDebugCtx(ctxOtbModellerWin, << "done!")
 }

@@ -191,6 +191,7 @@ public:
 	QStringList getStringColumns(void);
 
 	const QItemSelection getSelection(void);
+    void setSelection(const QItemSelection& sel);
 
 
     void loadLegend(const QString& filename);

@@ -875,7 +875,7 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 
 	if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
 	{
-		NMDebugAI(<< "removed old selection" << std::endl);
+        //NMDebugAI(<< "removed old selection" << std::endl);
 		this->mRenderer->RemoveActor(mSelectionActor);
 	}
 

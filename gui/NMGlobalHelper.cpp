@@ -68,6 +68,49 @@ NMGlobalHelper::getMainWindow()
     return mainWin;
 }
 
+QItemSelection
+NMGlobalHelper::selectRows(const QAbstractItemModel* model,
+                          QList<int>& ids)
+{
+    QItemSelection newsel;
+
+    if (model == 0 || ids.size() == 0)
+    {
+        return newsel;
+    }
+
+    int maxcolidx = model->columnCount();
+
+    int start = ids[0];
+    int end = start;
+    for (int i=1; i < ids.size(); ++i)
+    {
+        if (ids[i] > end+1)
+        {
+            const QModelIndex& tl = model->index(start, maxcolidx);
+            const QModelIndex& br = model->index(end, maxcolidx);
+            newsel.append(QItemSelectionRange(tl, br));
+
+            start = ids[i];
+            end = start;
+        }
+        else
+        {
+            ++end;
+        }
+    }
+
+    //if (end != ids.last())
+    {
+        const QModelIndex& tl = model->index(start, maxcolidx);
+        const QModelIndex& br = model->index(ids.last(), maxcolidx);
+        newsel.append(QItemSelectionRange(tl, br));
+
+    }
+
+    return newsel;
+}
+
 vtkRenderWindow*
 NMGlobalHelper::getRenderWindow()
 {

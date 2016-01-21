@@ -351,7 +351,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     qreal pratio = qApp->devicePixelRatio();
     mTableListWidget = new QListWidget(ui->compWidgetList);
     mTableListWidget->setObjectName(QString::fromUtf8("tableListWidget"));
-    mTableListWidget->setSelectionMode(QAbstractItemView::NoSelection);
+    mTableListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     mTableListWidget->setIconSize(QSize((int)16*pratio,(int)16*pratio));
     //    connect(mTableListWidget, SIGNAL(itemClicked(QListWidgetItem*)),
     //            this, SLOT(tableObjectClicked(QListWidgetItem*)));
@@ -2160,32 +2160,71 @@ void OtbModellerWin::updateLayerInfo(NMLayer* l, double cellId)
 }
 
 void
+OtbModellerWin::treeFindLoops(void)
+{
+    this->treeAnalysis(0);
+}
+
+void
 OtbModellerWin::treeSelTopDown(void)
 {
-
+    this->treeAnalysis(1);
 }
 
 void
 OtbModellerWin::treeSelBottomUp(void)
 {
-
+    this->treeAnalysis(2);
 }
 
 void
-OtbModellerWin::treeFindLoops(void)
+OtbModellerWin::treeAdmin(QAbstractItemModel *&model,
+                          int& parIdx, int& childIdx,
+                          void *&obj, int& type)
 {
-    NMDebugCtx(ctxOtbModellerWin, << "...");
     // =======================================================================
     // get selected layer
     // =======================================================================
 
+    model = 0;
+    type = -1;
     NMLayer* l = this->mLayerList->getSelectedLayer();
-    if (l == 0)
+    if (l != 0)
+    {
+        model = const_cast<QAbstractItemModel*>(l->getTable());
+        obj = l;
+        type = 0;
+    }
+
+    if (model == 0)
+    {
+        QList<QListWidgetItem*> itms = this->mTableListWidget->selectedItems();
+        if (itms.size() > 0)
+        {
+            QString viewname = itms.at(0)->text();
+            QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer< NMSqlTableView > > >::const_iterator it =
+                    mTableList.find(viewname);
+            if (it != mTableList.cend())
+            {
+                model = it.value().second->getModel();
+                obj = it.value().second.data();
+                type = 1;
+            }
+        }
+    }
+
+    if (model == 0)
+    {
+        NMBoxInfo("Tree Analysis",
+                  "Please select either a Map Layer or a Table Object!");
+        parIdx = -1;
+        childIdx = -1;
+        type = -1;
+        obj = 0;
         return;
+    }
 
-    QAbstractItemModel* tableModel = const_cast<QAbstractItemModel*>(l->getTable());
-
-    QSqlTableModel* sqlModel = qobject_cast<QSqlTableModel*>(tableModel);
+    QSqlTableModel* sqlModel = qobject_cast<QSqlTableModel*>(model);
     if (sqlModel)
     {
         while(sqlModel->canFetchMore())
@@ -2195,19 +2234,16 @@ OtbModellerWin::treeFindLoops(void)
     }
 
 
-    int nrows = tableModel->rowCount();
-    int ncols = tableModel->columnCount();
-
-    int stopIdx = 0;
-    int idIdx = -1;
-    int dnIdx = -1;
+    int ncols = model->columnCount();
+    parIdx = -1;
+    childIdx = -1;
 
     QStringList colnames;
     QMap<QString, int> nameIdxMap;
 
     for (int i=0; i < ncols; i++)
     {
-        QString colname = tableModel->headerData(i, Qt::Horizontal,
+        QString colname = model->headerData(i, Qt::Horizontal,
                                                  Qt::DisplayRole).toString();
         colnames.append(colname);
         nameIdxMap.insert(colname, i);
@@ -2217,32 +2253,114 @@ OtbModellerWin::treeFindLoops(void)
     // ask users for id columns
     // =======================================================================
     bool ok;
-    QString idColName = QInputDialog::getItem(this, tr("Tree Check"),
-                                             tr("ID column:"), colnames,
+    QString idColName = QInputDialog::getItem(this, tr("Tree Analysis"),
+                                             tr("Please select Parent column:"), colnames,
                                              0, false, &ok, 0);
     if (ok && !idColName.isEmpty())
     {
-        idIdx = nameIdxMap.find(idColName).value();
+        parIdx = nameIdxMap.find(idColName).value();
     }
-
+    else
+    {
+        model = 0;
+        type = -1;
+        obj = 0;
+        return;
+    }
     colnames.removeOne(idColName);
 
-
-    QString dnColName = QInputDialog::getItem(this, tr("Tree Check"),
-                                             tr("DownID column:"), colnames,
+    QString dnColName = QInputDialog::getItem(this, tr("Tree Analysis"),
+                                             tr("Please select Child column:"), colnames,
                                              0, false, &ok, 0);
     if (ok && !dnColName.isEmpty())
     {
-        dnIdx = nameIdxMap.find(dnColName).value();
+        childIdx = nameIdxMap.find(dnColName).value();
+    }
+    else
+    {
+        parIdx = -1;
+        model = 0;
+        type = -1;
+        obj = 0;
+    }
+}
+
+void
+OtbModellerWin::treeAnalysis(const int& mode)
+{
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    // ===============================================
+    // prepare some variables
+    // ===============================================
+    int stopId = 0;
+
+    QAbstractItemModel* model;
+    int idIdx;
+    int dnIdx;
+    int type = -1;
+    void* obj = 0;
+
+
+    // ===============================================
+    // ask user for stree structure
+    // ===============================================
+    this->treeAdmin(model, idIdx, dnIdx, obj, type);
+    if (model == 0 || idIdx < 0 || dnIdx < 0 || obj == 0 || type < 0)
+    {
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
+    }
+
+    // ===============================================
+    // determine start id of analysis (if applicable)
+    // ===============================================
+
+    // if we're in tree selection mode, we insist on a startId, otherwise
+    // we bail out!
+    NMLayer* l = 0;
+    NMSqlTableView* view = 0;
+    QItemSelection isel;
+    if (type == 0)
+    {
+        l = static_cast<NMLayer*>(obj);
+        if (l)
+        {
+            isel = l->getSelection();
+        }
+    }
+    else if (type == 1)
+    {
+        view = static_cast<NMSqlTableView*>(obj);
+        if (view)
+        {
+            isel = view->getSelection();
+        }
+    }
+
+    int startId = 1;
+    if (mode > 0 && isel.size() == 0)
+    {
+        NMBoxInfo("Tree Selection",
+                  "Please select an item indicating the starting "
+                  "position of the tree selection!");
+        return;
+    }
+    else if (mode > 0)
+    {
+        int startRow = isel.at(0).topLeft().row();
+        QModelIndex sidx;
+        if (mode == 1)
+            sidx = model->index(startRow, idIdx);
+        else
+            sidx = model->index(startRow, dnIdx);
+        startId = model->data(sidx).toInt();
     }
 
 
-    if (idIdx == -1 || dnIdx == -1)
-        return;
-
-    // =======================================================================
-    // initiate tree check
-    // =======================================================================
+    // ===============================================
+    // do the actual analysis
+    // ===============================================
 
     NMGlobalHelper h;
     h.startBusy();
@@ -2251,84 +2369,195 @@ OtbModellerWin::treeFindLoops(void)
     // create a hash map for looking up next down ids
     // to speed up things a bit ...
 
-    NMDebugAI( << "memorizing where all the ");
-    QMap<int, int> treeMap;
-    QMap<int, int> rowMap;
+    QList<int> btms = this->processTree(model, idIdx, dnIdx,
+                                        startId, stopId, mode);
+
+    // ===============================================
+    // select items in the table / layer
+    // ===============================================
+
+    QItemSelection newsel = h.selectRows(model, btms);
+    if (l)
+    {
+        l->setSelection(newsel);
+    }
+    else if (view)
+    {
+        view->setSelection(newsel);
+    }
+
+    h.endBusy();
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
+
+QList<int>
+OtbModellerWin::processTree(QAbstractItemModel*& model, int& parIdx,
+                       int& childIdx, int startId, int stopId, int mode)
+{
+    /// mode:
+    /// 0 - find loops
+    /// 1 - sel top down
+    /// 2 - sel bottom up
+
+    QMultiMap<int, int> treeMap;
+    QMultiMap<int, int> rowMap;
+    int nrows = model->rowCount();
+
+    int idIdx = parIdx;
+    int dnIdx = childIdx;
+    if (mode == 2)
+    {
+        idIdx = childIdx;
+        dnIdx = parIdx;
+    }
+
     for (int r=0; r < nrows; ++r)
     {
-        const QModelIndex mid = tableModel->index(r, idIdx);
-        const QModelIndex mdn = tableModel->index(r, dnIdx);
-        const int id = tableModel->data(mid).toInt();
-        const int dn = tableModel->data(mdn).toInt();
+        const QModelIndex mid = model->index(r, idIdx);
+        const QModelIndex mdn = model->index(r, dnIdx);
+        const int id = model->data(mid).toInt();
+        const int dn = model->data(mdn).toInt();
         treeMap.insert(id, dn);
         rowMap.insert(id, r);
     }
 
     // -------------------------------
     // let's get rolling ...
-    QSet<int> allLoops;
+    QSet<int> recordIdList;
 
-    for (int r=0; r < nrows; ++r)
+    QMultiMap<int,int>::const_iterator idIter;
+    if (mode == 0)
     {
+        idIter = treeMap.cbegin();
+    }
+    else if (mode == 1 || mode == 2)
+    {
+        idIter = treeMap.find(startId);
+    }
+
+    QMultiMap<int,int>::const_iterator resIt;
+    while (idIter != treeMap.cend())
+    {
+        int id = idIter.key();
         QList<int> idHistory;
-        if (!checkTree(r, idHistory, treeMap))
+
+        if (mode == 0 && !checkTree(id, stopId, idHistory, treeMap))
         {
-            QMap<int,int>::const_iterator it =
-                    rowMap.find(idHistory.last());
-            if (it != rowMap.cend())
+            // get the table record id of
+            // last (looping) item
+            resIt = rowMap.find(idHistory.last());
+            if (resIt != rowMap.cend())
             {
-                allLoops.insert(it.value());
+                recordIdList.insert(resIt.value());
             }
+        }
+        else if (mode == 1 || mode == 2)
+        {
+            idHistory.append(id);
+            checkTree(id, stopId, idHistory, treeMap);
+            {
+                // get record ids of all items in the
+                // tree
+                foreach (const int& hid, idHistory)
+                {
+                    //resIt = rowMap.find(hid);
+                    QList<int> rows = rowMap.values(hid);
+                    foreach (const int& r, rows)
+                    {
+                        recordIdList.insert(r);
+                    }
+                }
+                idIter = treeMap.cend();
+            }
+        }
+
+        if (mode == 0)
+        {
+            ++idIter;
         }
     }
 
 
-    QList<int> btms = allLoops.toList();
-    quicksort(btms, 0, btms.size()-1, true);
+    QList<int> btms = recordIdList.toList();
+    if (btms.size() > 1)
+    {
+        quicksort(btms, 0, btms.size()-1, true);
+    }
 
-    QItemSelection newsel = h.selectRows(l->getTable(), btms);
-    l->setSelection(newsel);
-
-    h.endBusy();
-
-    NMDebugCtx(ctxOtbModellerWin, << "done!")
+    return btms;
 }
 
 void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
+    NMSqlTableView* tv = mTableList.begin().value().second.data();
+    void* tvObj = 0;
+    tvObj = tv;
+
+    void* obj = 0;
+    obj = mTableList.begin().value().second.data();
+
+    QAbstractItemModel* aim1 = 0;
+    if (tvObj)
+    {
+        NMSqlTableView* mv = static_cast<NMSqlTableView*>(tvObj);
+        aim1 = mv->getModel();
+        NMDebugAI(<< "mv: " << mv->windowTitle().toStdString() << std::endl);
+    }
+    if (aim1)
+    {
+        NMDebugAI(<< "... has " << aim1->columnCount() << " columns" << std::endl);
+    }
+
+
+    aim1 = 0;
+    if (obj)
+    {
+        NMSqlTableView* mv2 = static_cast<NMSqlTableView*>(obj);
+        aim1 = mv2->getModel();
+        NMDebugAI(<< "mv2: " << mv2->windowTitle().toStdString() << std::endl);
+    }
+    if (aim1)
+    {
+        NMDebugAI(<< "... has " << aim1->columnCount() << " columns" << std::endl);
+    }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 
 
-
 bool
-OtbModellerWin::checkTree(const int& rootId, QList<int>& idHistory,
-                          const QMap<int, int> &treeMap)
+OtbModellerWin::checkTree(const int& rootId, const int &stopId,
+                          QList<int>& idHistory,
+                          const QMultiMap<int, int> &treeMap)
 {
     // still everything fine!
     bool ret = true;
 
-    const int dn = treeMap.find(rootId).value();
-    if (dn == 0)
+    //const int dn = treeMap.find(rootId).value();
+    QList<int> dnList = treeMap.values(rootId);
+    foreach(const int& dn, dnList)
     {
-        idHistory.append(dn);
-        return true;
-    }
-    else
-    {
-        if (idHistory.contains(dn))
+        if (dn == stopId)
         {
             idHistory.append(dn);
-            return false;
+            //return true;
         }
         else
         {
-            idHistory.append(dn);
-            return checkTree(dn, idHistory, treeMap);
+            if (idHistory.contains(dn))
+            {
+                idHistory.append(dn);
+                return false;
+            }
+            else
+            {
+                idHistory.append(dn);
+                ret = ret == false ? false : checkTree(dn, stopId, idHistory, treeMap);
+            }
         }
     }
 
@@ -4796,5 +5025,4 @@ void OtbModellerWin::toggle3DStereoMode()
         this->ui->qvtkWidget->GetRenderWindow()->SetStereoRender(
 	    		!this->ui->qvtkWidget->GetRenderWindow()->GetStereoRender());
 }
-
 

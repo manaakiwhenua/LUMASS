@@ -104,7 +104,6 @@ public:
         getTableList(void) {return mTableList;}
     ModelComponentList* getLayerList(){return this->mLayerList;}
 
-
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
 #endif
@@ -177,8 +176,62 @@ public slots:
 //                   const int& dnIdx, QList<int>& idHistory,
 //                   QAbstractItemModel* tableModel, const int &nrows);
 
-    bool checkTree(const int& rootId, QList<int>& idHistory,
-                   const QMap<int, int>& treeMap);
+    /*!
+     * \brief treeAnalysis - calls specific tree analysis functions
+     *        depending on the mode
+     * \param mode - specifies type of tree analysis
+     *        0: finding loops \sa treeFindLoops()
+     *        1: select from top to bottom \sa treeSelTopDown()
+     *        2: select from bottom to top \sa treeSelBottomUp()
+     */
+    void treeAnalysis(const int& mode);
+
+    /*!
+     * \brief treeAdmin - gather user input for tree analysis
+     *        the method assigns provided variable references
+     *        with meaningful data or marks them as invalid
+     * \param model - table model to be analysed
+     * \param parIdx - column index denoting the parent id
+     * \param childIdx - column index denoting the child id (down id)
+     * \param obj - pointer to either NMLayer or NMSqlTableView
+     *              hosting the table object
+     * \param type - indicating the type of obj pointer
+     *               -1: invalid
+     *                0: NMLayer*
+     *                1: NMSqlTableView*
+     *               >1: undefined
+     */
+    void treeAdmin(QAbstractItemModel*& model, int& parIdx,
+                   int& childIdx, void*& obj, int &type);
+
+    /*!
+     * \brief processTree - prepares the use of \sa checkTree()
+     * \param model
+     * \param parIdx
+     * \param childIdx
+     * \param startId - for mode 1 & 2 only; specifies at which
+     *        position in the tree to start the analysis
+     * \param endId - specifies any items in the table, which are
+     *        outside a valid tree (analysis stops here)
+     * \param mode - specifies type of tree analysis
+     *        0: finding loops \sa treeFindLoops()
+     *        1: select from top to bottom \sa treeSelTopDown()
+     *        2: select from bottom to top \sa treeSelBottomUp()
+     *
+     * \return a sorted list with record IDs (numbers) identified by tree analysis
+     */
+    QList<int> processTree(QAbstractItemModel*& model, int& parIdx,
+                           int& childIdx, int startId, int stopId, int mode);
+
+    /*!
+     * \brief checkTree - recursive working horse of tree analysis
+     * \param rootId
+     * \param idHistory
+     * \param treeMap
+     * \return
+     */
+    bool checkTree(const int& rootId, const int& stopId, QList<int>& idHistory,
+                   const QMultiMap<int, int> &treeMap);
 
 
 protected:

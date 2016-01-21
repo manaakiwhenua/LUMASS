@@ -2085,6 +2085,19 @@ void NMSqlTableView::clearSelection()
     mChkSelectedRecsOnly->setChecked(false);
 }
 
+const QItemSelection
+NMSqlTableView::getSelection()
+{
+    return this->mSelectionModel->getSelection();
+}
+
+void
+NMSqlTableView::setSelection(const QItemSelection &isel)
+{
+    this->clearSelection();
+    this->mSelectionModel->setSelection(isel);
+}
+
 void
 NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
 {

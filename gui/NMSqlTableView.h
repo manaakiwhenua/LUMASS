@@ -72,6 +72,8 @@ public:
         virtual ~NMSqlTableView();
 
 	void setSelectionModel(NMFastTrackSelectionModel* selectionModel);
+    void setSelection(const QItemSelection& isel);
+    const QItemSelection getSelection();
 
 	ViewMode getViewMode() {return mViewMode;}
 	void setViewMode(ViewMode mode);

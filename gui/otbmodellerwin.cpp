@@ -2339,6 +2339,7 @@ OtbModellerWin::treeAnalysis(const int& mode)
     }
 
     int startId = 1;
+    int startRow = -1;
     if (mode > 0 && isel.size() == 0)
     {
         NMBoxInfo("Tree Selection",
@@ -2348,12 +2349,8 @@ OtbModellerWin::treeAnalysis(const int& mode)
     }
     else if (mode > 0)
     {
-        int startRow = isel.at(0).topLeft().row();
-        QModelIndex sidx;
-        if (mode == 1)
-            sidx = model->index(startRow, idIdx);
-        else
-            sidx = model->index(startRow, dnIdx);
+        startRow = isel.at(0).topLeft().row();
+        QModelIndex sidx = model->index(startRow, idIdx);
         startId = model->data(sidx).toInt();
     }
 
@@ -2365,16 +2362,22 @@ OtbModellerWin::treeAnalysis(const int& mode)
     NMGlobalHelper h;
     h.startBusy();
 
-    // -------------------------
-    // create a hash map for looking up next down ids
-    // to speed up things a bit ...
-
     QList<int> btms = this->processTree(model, idIdx, dnIdx,
                                         startId, stopId, mode);
+    if (startRow >= 0)
+    {
+        btms.append(startRow);
+    }
 
     // ===============================================
     // select items in the table / layer
     // ===============================================
+
+    if (btms.size() > 1)
+    {
+        quicksort(btms, 0, btms.size()-1, true);
+    }
+
 
     QItemSelection newsel = h.selectRows(model, btms);
     if (l)
@@ -2478,14 +2481,7 @@ OtbModellerWin::processTree(QAbstractItemModel*& model, int& parIdx,
         }
     }
 
-
-    QList<int> btms = recordIdList.toList();
-    if (btms.size() > 1)
-    {
-        quicksort(btms, 0, btms.size()-1, true);
-    }
-
-    return btms;
+    return recordIdList.toList();
 }
 
 void OtbModellerWin::test()
@@ -2539,7 +2535,7 @@ OtbModellerWin::checkTree(const int& rootId, const int &stopId,
 
     //const int dn = treeMap.find(rootId).value();
     QList<int> dnList = treeMap.values(rootId);
-    foreach(const int& dn, dnList)
+    foreach (const int& dn, dnList)
     {
         if (dn == stopId)
         {
@@ -2551,12 +2547,12 @@ OtbModellerWin::checkTree(const int& rootId, const int &stopId,
             if (idHistory.contains(dn))
             {
                 idHistory.append(dn);
-                return false;
+                ret = false;
             }
             else
             {
                 idHistory.append(dn);
-                ret = ret == false ? false : checkTree(dn, stopId, idHistory, treeMap);
+                ret = checkTree(dn, stopId, idHistory, treeMap);
             }
         }
     }

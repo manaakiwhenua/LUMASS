@@ -96,7 +96,7 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
         }
         else
         {
-            ++end;
+            end = ids[i];
         }
     }
 

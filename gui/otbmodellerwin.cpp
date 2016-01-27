@@ -2540,7 +2540,7 @@ OtbModellerWin::checkTree(const int& rootId, const int &stopId,
         if (dn == stopId)
         {
             idHistory.append(dn);
-            //return true;
+            ret = true;
         }
         else
         {

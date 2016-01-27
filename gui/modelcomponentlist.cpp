@@ -594,10 +594,12 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 
     // we're looking for data base connections for layer attribute table
     QString dbConnName = layer->getSqlTableConnectionName();
-    if (!dbConnName.isEmpty())
+    if (    !dbConnName.isEmpty()
+        &&  QSqlDatabase::connectionNames().contains(dbConnName)
+       )
     {
-        QSqlDatabase db = QSqlDatabase::database(dbConnName);
-        db.close();
+        QSqlDatabase::database(dbConnName).close();
+        QSqlDatabase::removeDatabase(dbConnName);
     }
 
 

@@ -184,6 +184,7 @@ public:
 	virtual void showAttributeTable(void);
 	//virtual const vtkTable* getTable(void);
 	virtual const QAbstractItemModel* getTable(void);
+    QString getSqlTableConnectionName(void){return mQSqlConnectionName;}
 	int getColumnIndex(const QString& fieldname);
 	QVariant::Type getColumnType(int colidx);
 	QString getColumnName(const int idx);
@@ -342,6 +343,7 @@ protected:
 	sqlite3* mSqlViewConn;
 	NMTableView* mTableView;
     NMSqlTableView* mSqlTableView;
+    QString mQSqlConnectionName;
 	NMFastTrackSelectionModel* mSelectionModel;
 	QAbstractItemModel* mTableModel;
 

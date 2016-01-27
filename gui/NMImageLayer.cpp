@@ -692,10 +692,10 @@ NMImageLayer::updateAttributeTable()
         rc = sqlite3_enable_load_extension(mSqlViewConn, 1);
         spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
 
-        QString conname = QString("%1_%2").arg(sqlTable->GetTableName().c_str())
+        mQSqlConnectionName = QString("%1_%2").arg(sqlTable->GetTableName().c_str())
                 .arg(sqlTable->GetRandomString(5).c_str());
         NMQSQLiteDriver* drv = new NMQSQLiteDriver(mSqlViewConn, 0);
-        QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+        QSqlDatabase db = QSqlDatabase::addDatabase(drv, mQSqlConnectionName);
 		
         sqlModel = new NMSqlTableModel(this, db);
         sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));

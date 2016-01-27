@@ -2529,7 +2529,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
     // establish, whether we need an extra rowidx or whether
     // it is already included
-    //bool bRowIdx = false;
+    bool bRowIdx = false;
     std::string idColName = "";
     for (int c=0; c < ncols; ++c)
     {
@@ -2540,9 +2540,11 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
             if (    strcmp(colName.c_str(), "rowidx") == 0
                 ||  strcmp(colName.c_str(), "rowid") == 0
                 ||  strcmp(colName.c_str(), "rowno") == 0
+                ||  strcmp(colName.c_str(), "row") == 0
+                ||  strcmp(colName.c_str(), "value") == 0
                )
             {
-                //bRowIdx = true;
+                bRowIdx = true;
                 idColName = rat->GetNameOfCol(c);
                 break;
             }
@@ -2579,6 +2581,8 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
     std::vector< std::string > colnames;
     std::vector< otb::AttributeTable::TableColumnType > coltypes;
+
+    idColName = otbTab->GetPrimaryKey();
 
 #ifdef GDAL_NEWRATAPI
     std::vector< int > colpos;
@@ -2617,31 +2621,31 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     // store admin info about the cols to be read
     // check, whether we've got a 'rowidx' to be read
     // or whether we let the db popluate it for us
-    //if (!bRowIdx)
-//    {
-//        colnames.push_back(idColName);
-//        coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
-//        int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
-//        int_cols.push_back(iptr);
-//        colpos.push_back(0);
-//    }
+    if (!bRowIdx)
+    {
+        colnames.push_back(idColName);
+        coltypes.push_back(otb::AttributeTable::ATTYPE_INT);
+        int* iptr = (int*)CPLCalloc(sizeof(int), chunksize);
+        int_cols.push_back(iptr);
+        colpos.push_back(0);
+    }
 
 #else
     int chunksize = nrows;
-    //if (!bRowIdx)
-//    {
-//        //colnames.push_back("rowidx");
-//        colnames.push_back(idColName);
-//    }
+    if (!bRowIdx)
+    {
+        //colnames.push_back("rowidx");
+        colnames.push_back(idColName);
+    }
 #endif
 
     otbTab->BeginTransaction();
     int idxCorr = 0;
-    //if (!bRowIdx)
-//    {
-//        otbTab->AddColumn(colnames[0], coltypes[0]);
-//        idxCorr = 1;
-//    }
+    if (!bRowIdx)
+    {
+        //otbTab->AddColumn(colnames[0], coltypes[0]);
+        idxCorr = 1;
+    }
 
     for (int c=0; c < ncols; ++c)
     {
@@ -2721,13 +2725,13 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
             // populate the 'rowidx' column with
             // zero-based index
-            //            if (col == 0)// && !bRowIdx)
-            //            {
-            //                for (int r=s, ch=0; r < e; ++r, ++ch)
-            //                {
-            //                    int_cols[0][ch] = r;
-            //                }
-            //            }
+            if (col == 0 && !bRowIdx)
+            {
+                for (int r=s, ch=0; r < e; ++r, ++ch)
+                {
+                    int_cols[0][ch] = r;
+                }
+            }
 
             switch(gdaltype)
             {
@@ -2807,18 +2811,22 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 #else
     // the old way - row by row
     std::vector< otb::AttributeTable::ColumnValue > colValues;
-    //if (!bRowIdx)
-//    {
-//        colValues.resize(ncols+1);
-//    }
+    if (!bRowIdx)
+    {
+        colValues.resize(ncols+1);
+    }
+    else
+    {
+        colValues.resize(ncols);
+    }
 
     for (int r=0; r < nrows; ++r)
     {
-        //if (!bRowIdx)
-//        {
-//            colValues[0].type = AttributeTable::ATTYPE_INT;
-//            colValues[0].ival = r;
-//        }
+        if (!bRowIdx)
+        {
+            colValues[0].type = AttributeTable::ATTYPE_INT;
+            colValues[0].ival = r;
+        }
         for (int c=0; c < ncols; ++c)
         {
             gdaltype = rat->GetTypeOfCol(c);

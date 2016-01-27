@@ -591,6 +591,16 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 
 	// remove layer from the model (which updates as well the layer position
     // held by each layer in the layer stack)
+
+    // we're looking for data base connections for layer attribute table
+    QString dbConnName = layer->getSqlTableConnectionName();
+    if (!dbConnName.isEmpty())
+    {
+        QSqlDatabase db = QSqlDatabase::database(dbConnName);
+        db.close();
+    }
+
+
 	this->mLayerModel->removeLayer(layer);
 	this->reset();
 	// update the map display window

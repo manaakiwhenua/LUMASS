@@ -35,6 +35,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 
 #include "otbGDALRATImageIO.h"
 #include "otbMacro.h"
@@ -2528,24 +2529,22 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
     // establish, whether we need an extra rowidx or whether
     // it is already included
-    bool bRowIdx = false;
-    std::string idColName;
+    //bool bRowIdx = false;
+    std::string idColName = "";
     for (int c=0; c < ncols; ++c)
     {
+        std::string colName = rat->GetNameOfCol(c);
+        std::transform(colName.begin(), colName.end(), colName.begin(), tolower);
         if (rat->GetTypeOfCol(c) == GFT_Integer)
         {
-            if (    strcmp(rat->GetNameOfCol(c), "rowidx") == 0
-                ||  strcmp(rat->GetNameOfCol(c), "rowid") == 0
+            if (    strcmp(colName.c_str(), "rowidx") == 0
+                ||  strcmp(colName.c_str(), "rowid") == 0
+                ||  strcmp(colName.c_str(), "rowno") == 0
                )
             {
-                bRowIdx = true;
+                //bRowIdx = true;
                 idColName = rat->GetNameOfCol(c);
                 break;
-            }
-
-            if (idColName.empty())
-            {
-                idColName = rat->GetNameOfCol(c);
             }
         }
     }
@@ -3084,22 +3083,24 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     }
 
     // copy values row by row
-    for (long row=0; row < tab->GetNumRows(); ++row)
+    // ... and got to go with what GDAL offers ...
+    int nrows = static_cast<int>(tab->GetNumRows());
+    for (int row=0; row < nrows; ++row)
     {
         for (int col=0; col < tab->GetNumCols(); ++col)
         {
-//            itkDebugMacro(<< "Setting value: col=" << col
-//                    << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
+            //            itkDebugMacro(<< "Setting value: col=" << col
+            //                    << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
             switch(tab->GetColumnType(col))
             {
             case otb::AttributeTable::ATTYPE_INT:
-                gdaltab->SetValue(row, col-1, (int)tab->GetIntValue(col, row));
+                gdaltab->SetValue(row, col, (int)tab->GetIntValue(col, row));
                 break;
             case otb::AttributeTable::ATTYPE_DOUBLE:
-                gdaltab->SetValue(row, col-1, tab->GetDblValue(col, row));
+                gdaltab->SetValue(row, col, tab->GetDblValue(col, row));
                 break;
             case otb::AttributeTable::ATTYPE_STRING:
-                gdaltab->SetValue(row, col-1, tab->GetStrValue(col, row).c_str());
+                gdaltab->SetValue(row, col, tab->GetStrValue(col, row).c_str());
                 break;
             default:
                 delete gdaltab;

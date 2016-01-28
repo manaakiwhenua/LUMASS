@@ -58,6 +58,7 @@ NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
         mTempDb.close();
         QSqlDatabase::removeDatabase(mTempDb.connectionName());
     }
+    this->mSourceModel = 0;
 }
 
 void

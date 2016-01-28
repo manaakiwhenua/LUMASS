@@ -245,6 +245,12 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 NMImageLayer::~NMImageLayer()
 {
+    if (this->mOtbRAT.IsNotNull())
+    {
+        otb::SQLiteTable::Pointer st = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
+        st->CloseTable();
+    }
+
     if (mScalarBufferFile != 0)
     {
         fclose(mScalarBufferFile);
@@ -676,12 +682,13 @@ NMImageLayer::updateAttributeTable()
         int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(),
         			&mSqlViewConn,
         			SQLITE_OPEN_URI |
-        			SQLITE_OPEN_READWRITE |
-        			SQLITE_OPEN_SHAREDCACHE, 0);
+                    SQLITE_OPEN_READWRITE, 0);// |
+                    //SQLITE_OPEN_SHAREDCACHE, 0);
         if (rc != SQLITE_OK)
         {
         	NMErr(ctxNMImageLayer,
-        		<< "Failed opening SqlTableView connection!");
+                << "Failed opening SqlTableView connection!"
+                << " - rc = " << rc);
         	::sqlite3_close(mSqlViewConn);
         	spatialite_cleanup_ex(mSpatialiteCache);
         	mSpatialiteCache = 0;

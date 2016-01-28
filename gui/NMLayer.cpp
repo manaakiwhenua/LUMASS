@@ -151,6 +151,16 @@ NMLayer::~NMLayer()
     {
         this->mSqlTableView->close();
         delete this->mSqlTableView;
+        QSqlTableModel* tmodel = qobject_cast<QSqlTableModel*>(this->mTableModel);
+        tmodel->clear();
+        //tmodel->database().close();
+        delete mTableModel;
+        mTableModel = 0;
+        {
+        QSqlDatabase::database(mQSqlConnectionName).close();
+        }
+        QSqlDatabase::removeDatabase(mQSqlConnectionName);
+
         sqlite3_close(mSqlViewConn);
         spatialite_cleanup_ex(mSpatialiteCache);
         mSpatialiteCache = 0;

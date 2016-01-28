@@ -2488,37 +2488,29 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    NMSqlTableView* tv = mTableList.begin().value().second.data();
-    void* tvObj = 0;
-    tvObj = tv;
+    NMDebugAI(<< "all db connections ... " << std::endl);
 
-    void* obj = 0;
-    obj = mTableList.begin().value().second.data();
+    QStringList dbs = QSqlDatabase::connectionNames();
+    foreach(const QString& db, dbs)
+    {
+        NMDebugAI(<< db.toStdString() << std::endl);
+    }
+    NMDebugAI(<< std::endl);
 
-    QAbstractItemModel* aim1 = 0;
-    if (tvObj)
+    QString fn = QInputDialog::getText(this, "", "", QLineEdit::Normal, "/home/alex/tmp/district_100m.ldb");
+            //QFileDialog::getOpenFileName(this, "", "~", tr("All files (*.*)"));
+    if (!fn.isEmpty())
     {
-        NMSqlTableView* mv = static_cast<NMSqlTableView*>(tvObj);
-        aim1 = mv->getModel();
-        NMDebugAI(<< "mv: " << mv->windowTitle().toStdString() << std::endl);
+        if (access(fn.toStdString().c_str(), F_OK) != -1)
+        {
+            NMDebugAI(<< fn.toStdString() << " is definately there!" << std::endl);
+        }
+        else
+        {
+            NMDebugAI(<< fn.toStdString() << " is nowhere to be seen!" << std::endl);
+        }
     }
-    if (aim1)
-    {
-        NMDebugAI(<< "... has " << aim1->columnCount() << " columns" << std::endl);
-    }
-
-
-    aim1 = 0;
-    if (obj)
-    {
-        NMSqlTableView* mv2 = static_cast<NMSqlTableView*>(obj);
-        aim1 = mv2->getModel();
-        NMDebugAI(<< "mv2: " << mv2->windowTitle().toStdString() << std::endl);
-    }
-    if (aim1)
-    {
-        NMDebugAI(<< "... has " << aim1->columnCount() << " columns" << std::endl);
-    }
+    NMDebugAI(<< std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

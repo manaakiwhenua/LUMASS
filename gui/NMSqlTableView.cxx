@@ -123,7 +123,8 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
 NMSqlTableView::~NMSqlTableView()
 {
     NMDebugAI(<< this->windowTitle().toStdString() << " destructs itself ..." << std::endl);
-    this->mModel->database().close();
+    //this->mModel->database().close();
+    this->mModel = 0;
 }
 
 void NMSqlTableView::initView()

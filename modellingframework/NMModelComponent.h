@@ -103,6 +103,19 @@ public:
     QString getUserID()
         {return this->mUserID;}
 
+    /*!
+     * \brief getModelParameter fetches model component property values;
+     *        in contrast to NMProcess::getParameter() this function also looks
+     *        for paramSpec in external components; the search order starts
+     *        at the component itself, and then successively comprises its siblings
+     *        and progresses upward the hierarchy until it has found the first
+     *        component matching the specified component name (i.e. UserID)
+     *        NOTE: NMParameterComponent
+     * \param paramSpec
+     * \return
+     */
+    QVariant getModelParameter(const QString& paramSpec);
+
     void setDescription(QString descr);
     QString getDescription()
     	{return this->mDescription;}

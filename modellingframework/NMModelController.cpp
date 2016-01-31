@@ -338,6 +338,25 @@ NMModelController::resetComponent(const QString& compName)
 //	NMDebugCtx(ctx, << "done!");
 }
 
+QList<NMModelComponent*>
+NMModelController::getComponents(const QString &userId)
+{
+    QList<NMModelComponent*> ret;
+
+    QMultiMap<QString, NMModelComponent*>::const_iterator it =
+            mUserIdMap.cbegin();
+    while (it != mUserIdMap.end())
+    {
+        if (it.key().compare(userId) == 0)
+        {
+            ret << it.value();
+        }
+        ++it;
+    }
+
+    return ret;
+}
+
 QString NMModelController::addComponent(NMModelComponent* comp,
 		NMModelComponent* host)
 {
@@ -402,6 +421,9 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 	comp->setParent(this);
 
 	this->mComponentMap.insert(tname, comp);
+    this->mUserIdMap.insertMulti(comp->getUserID(), comp);
+    connect(comp, SIGNAL(ComponentUserIDChanged(QString)),
+            this, SLOT(setUserId(QString)));
 
 	// check, whether we've go a valid host
 	if (ihost != 0)
@@ -414,6 +436,29 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 
 //	NMDebugCtx(ctx, << "done!");
 	return tname;
+}
+
+void NMModelController::setUserId(const QString& userId)
+{
+    NMModelComponent* comp = qobject_cast<NMModelComponent*>(this->sender());
+    if (comp == 0)
+    {
+        return;
+    }
+
+    QMultiMap<QString, NMModelComponent*>::iterator it =
+            mUserIdMap.begin();
+    while (it != mUserIdMap.end())
+    {
+        if (it.value() == comp)
+        {
+            mUserIdMap.remove(it.key(), comp);
+            mUserIdMap.insert(userId, comp);
+            break;
+        }
+
+        ++it;
+    }
 }
 
 bool

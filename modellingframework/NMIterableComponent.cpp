@@ -396,6 +396,20 @@ NMModelComponent* NMIterableComponent::findModelComponent(const QString& compNam
 	return curComp;
 }
 
+NMModelComponent*
+NMIterableComponent::findComponentByUserId(const QString& userId)
+{
+    NMModelComponent* curComp = this->getInternalStartComponent();
+    while (curComp != 0)
+    {
+        if (curComp->getUserID().compare(userId, Qt::CaseInsensitive) == 0)
+            break;
+        curComp = this->getNextInternalComponent();
+    }
+
+    return curComp;
+}
+
 
 NMModelComponent* NMIterableComponent::removeModelComponent(const QString& compName)
 {

@@ -419,6 +419,11 @@ NMRATBandMathImageFilterWrapper
                 this->setNthAttributeTable(cnt, tab, vcolnames);
 			}
 
+
+            // replace any LookupParameters with their actual formula value
+            // internal func wich looks after that!
+
+
             // we check, whether the input has a UserID defined, and if so, we set it as the
             // nth input variable name
             if (!comp->getUserID().isEmpty())

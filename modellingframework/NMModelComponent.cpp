@@ -64,6 +64,58 @@ NMModelComponent::getPropertyList(void)
     return propList;
 }
 
+QVariant
+NMModelComponent::getModelParameter(const QString &paramSpec)
+{
+    QVariant param;
+
+    if (paramSpec.isEmpty())
+    {
+        return param;
+    }
+
+    //  <userId>:<parameterName>[:<indexNumber>]
+    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+    if (specList.size() < 2)
+    {
+        return param;
+
+    }
+
+    NMModelComponent* providerComp = 0;
+    const QString& userId = specList.at(0);
+
+    QList<NMModelComponent*> comps = NMModelController::getInstance()->getComponents(userId);
+    if (comps == 1)
+    {
+        providerComp = comps.at(0);
+    }
+    // looking for hosts of the provider component going up the nested model hierarchy
+    // --> will find the closest provider
+    else
+    {
+        NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this);//->getHostComponent();
+        while (host != 0 && providerComp == 0)
+        {
+            providerComp = host->findComponentByUserId(userId);
+            if (providerComp == 0)
+            {
+                host = host->getHostComponent();
+            }
+        }
+    }
+
+    if (specList == 3)
+    {
+
+    }
+
+
+
+
+    return param;
+}
+
 void
 NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 		QStringList& upstreamPipe, int step)

@@ -71,6 +71,7 @@ public:
 
 	QSharedPointer<NMItkDataObjectWrapper> getOutputFromSource(const QString& inputSrc);
 	NMModelComponent* getComponent(const QString& name);
+    QList<NMModelComponent*> getComponents(const QString& userId);
 	QString addComponent(NMModelComponent* comp,
 			NMModelComponent* host=0);
 	bool removeComponent(const QString& name);
@@ -149,6 +150,8 @@ public slots:
 	bool isModelAbortionRequested(void)
 		{return this->mbAbortionRequested;}
 
+    void setUserId(const QString& userId);
+
 signals:
 	/*! Signals whether any of the process components controlled
 	 *  by this controller is currently running or not */
@@ -165,6 +168,8 @@ protected:
 	void resetExecutionStack(void);
 
 	QMap<QString, NMModelComponent*> mComponentMap;
+    QMultiMap<QString, NMModelComponent*> mUserIdMap;
+
 	QStack<QString> mExecutionStack;
 	NMIterableComponent* mRootComponent;
 

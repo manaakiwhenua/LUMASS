@@ -2541,7 +2541,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
                 ||  strcmp(colName.c_str(), "rowid") == 0
                 ||  strcmp(colName.c_str(), "rowno") == 0
                 ||  strcmp(colName.c_str(), "row") == 0
-                ||  strcmp(colName.c_str(), "value") == 0
+                //||  strcmp(colName.c_str(), "value") == 0
                )
             {
                 bRowIdx = true;

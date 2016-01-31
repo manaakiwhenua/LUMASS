@@ -95,6 +95,9 @@ public:
     /*! Looks for the named sub component and either returns a valid pointer or NULL.*/
     NMModelComponent* findModelComponent(const QString& compName );
 
+    /*! Looks for a subcomponent with the given userId */
+    NMModelComponent* findComponentByUserId(const QString& userId);
+
     /*! Removes the named sub component from this host.*/
     NMModelComponent* removeModelComponent(const QString& compName);
 

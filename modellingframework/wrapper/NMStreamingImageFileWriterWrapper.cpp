@@ -631,7 +631,14 @@ void
 NMStreamingImageFileWriterWrapper
 ::setRAT(unsigned idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
-    if (mWriteTable && !imgWrapper.isNull())
+    // we only set the RAT from the input component, if
+    // - we're supposed to write a table at all
+    // - we're not writing a table provided by a non-input component
+    // - and the wrapper we've received is actually not null
+    if (    mWriteTable
+        &&  !this->getParameter("InputTables").isValid()
+        &&  !imgWrapper.isNull()
+       )
     {
         otb::AttributeTable::Pointer tab = imgWrapper->getOTBTab();
 

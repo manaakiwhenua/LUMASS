@@ -82,6 +82,12 @@ NMMfwException::type2string(void) const
     case NMModelComponent_InvalidUserID:
         ret = "NMModelComponent: Invalid UserID.";
         break;
+    case NMModelComponent_InvalidParameter:
+        ret = "NMModelComponent: Ivalid parameter.";
+        break;
+    case NMModelComponent_UninitialisedDataObject:
+        ret = "NMModelComponent: Uninitialised data object.";
+        break;
 	case Unspecified:
 		ret = "Unspecified problem.";
 		break;

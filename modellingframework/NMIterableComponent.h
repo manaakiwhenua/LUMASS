@@ -98,6 +98,9 @@ public:
     /*! Looks for a subcomponent with the given userId */
     NMModelComponent* findComponentByUserId(const QString& userId);
 
+    /*! Find upstream component by user id */
+    NMModelComponent* findUpstreamComponentByUserId(const QString& userId);
+
     /*! Removes the named sub component from this host.*/
     NMModelComponent* removeModelComponent(const QString& compName);
 
@@ -105,6 +108,8 @@ public:
     int countComponents(void);
 
     void reset(void);
+
+    virtual QVariant getModelParameter(const QString& paramSpec);
 
 
     //void setInput(QSharedPointer<NMItkDataObjectWrapper> inputImg)
@@ -116,7 +121,7 @@ public:
     virtual void changeTimeLevel(int diff);
     virtual void setProcess(NMProcess* proc);
     virtual NMProcess* getProcess(void)
-    	{return this->mProcess;};
+        {return this->mProcess;}
 
     virtual void setInputs(const QList<QStringList>& inputs);
     virtual const QList<QStringList> getInputs(void);

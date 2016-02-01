@@ -114,7 +114,7 @@ public:
      * \param paramSpec
      * \return
      */
-    QVariant getModelParameter(const QString& paramSpec);
+    virtual QVariant getModelParameter(const QString& paramSpec);
 
     void setDescription(QString descr);
     QString getDescription()

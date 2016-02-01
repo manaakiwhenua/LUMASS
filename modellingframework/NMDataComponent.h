@@ -74,6 +74,8 @@ protected:
 	unsigned int mInputOutputIdx;
 	unsigned int mLastInputOutputIdx;
 
+    virtual QVariant getModelParameter(const QString &paramSpec);
+
 	virtual void initAttributes(void);
 	void fetchData(NMModelComponent* comp);
 

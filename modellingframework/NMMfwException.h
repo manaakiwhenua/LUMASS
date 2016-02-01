@@ -47,6 +47,8 @@ public:
         NMModelController_UnregisteredModelComponent,
         NMMosra_InvalidParameter,
         NMModelComponent_InvalidUserID,
+        NMModelComponent_InvalidParameter,
+        NMModelComponent_UninitialisedDataObject,
         Unspecified
     } ExceptionType;
 

@@ -197,6 +197,65 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 	NMDebugCtx(ctx, << "done!");
 }
 
+QVariant
+NMDataComponent::getModelParameter(const QString &paramSpec)
+{
+    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+    if (specList.size() < 2)
+    {
+        specList << "0";
+    }
+
+    QVariant param;
+    if (mDataWrapper.isNull() || mDataWrapper->getOTBTab().IsNull())
+    {
+        NMMfwException me(NMMfwException::NMModelComponent_UninitialisedDataObject);
+        QString msg = QString("'%1' has not been initialised!").arg(this->objectName());
+        me.setMsg(msg);
+        throw me;
+        return param;
+    }
+
+    otb::AttributeTable::Pointer tab = mDataWrapper->getOTBTab();
+    int idx = tab->ColumnExists(paramSpec.at(1).toStdString());
+    if (idx < 0)
+    {
+        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        QString msg = QString("'%1' has no column '%2'")
+                .arg(this->objectName())
+                .arg(specList.at(1));
+        me.setMsg(msg);
+        throw me;
+        return param;
+    }
+
+    bool bok = false;
+    long long row = specList.at(1).toLongLong(&bok);
+    if (!bok)
+    {
+        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        me.setMsg("Invalid parameter index!");
+        throw me;
+        return param;
+    }
+
+    row = row > tab->GetNumRows() ? tab->GetNumRows() : row;
+    switch(tab->GetColumnType(idx))
+    {
+    case otb::AttributeTable::ATTYPE_DOUBLE:
+        param = QVariant::fromValue(tab->GetDblValue(idx, row));
+        break;
+    case otb::AttributeTable::ATTYPE_INT:
+        param = QVariant::fromValue(tab->GetIntValue(idx, row));
+        break;
+    case otb::AttributeTable::ATTYPE_STRING:
+        param = QVariant::fromValue(tab->GetStrValue(idx, row));
+        break;
+    }
+
+    return param;
+}
+
 void
 NMDataComponent::fetchData(NMModelComponent* comp)
 {

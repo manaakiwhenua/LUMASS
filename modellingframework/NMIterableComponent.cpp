@@ -66,6 +66,21 @@ void NMIterableComponent::setProcess(NMProcess* proc)
 	emit NMModelComponentChanged();
 }
 
+QVariant
+NMIterableComponent::getModelParameter(const QString& paramSpec)
+{
+    QString fullSpec = paramSpec;
+    QStringList spec = paramSpec.split(":", QString::SkipEmptyParts);
+    if (spec.size() < 2)
+    {
+        fullSpec = QString("%1:%2").arg(paramSpec)
+                                   .arg(static_cast<int>(this->getIterationStep()));
+    }
+
+    return NMModelComponent::getModelParameter(fullSpec);
+}
+
+
 void
 NMIterableComponent::setInputs(const QList<QStringList>& inputs)
 {
@@ -403,11 +418,30 @@ NMIterableComponent::findComponentByUserId(const QString& userId)
     while (curComp != 0)
     {
         if (curComp->getUserID().compare(userId, Qt::CaseInsensitive) == 0)
+        {
             break;
+        }
         curComp = this->getNextInternalComponent();
     }
 
     return curComp;
+}
+
+NMModelComponent*
+NMIterableComponent::findUpstreamComponentByUserId(const QString& userId)
+{
+    NMIterableComponent* host = this;
+    NMModelComponent* mc = 0;
+    while (host != 0 && mc == 0)
+    {
+        mc = host->findComponentByUserId(userId);
+        if (mc == 0)
+        {
+            host = host->getHostComponent();
+        }
+    }
+
+    return mc;
 }
 
 

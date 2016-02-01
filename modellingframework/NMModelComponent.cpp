@@ -74,44 +74,59 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
         return param;
     }
 
-    //  <userId>:<parameterName>[:<indexNumber>]
+    //  <parameterName>:<indexNumber>
     QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
     if (specList.size() < 2)
     {
-        return param;
-
+        specList << "0";
     }
 
-    NMModelComponent* providerComp = 0;
-    const QString& userId = specList.at(0);
-
-    QList<NMModelComponent*> comps = NMModelController::getInstance()->getComponents(userId);
-    if (comps == 1)
+    QStringList propList = this->getPropertyList();
+    if (!propList.contains(specList.at(0)))
     {
-        providerComp = comps.at(0);
+        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        QString msg = QString("'%1' doesn't have a parameter '%2'!")
+                .arg(this->objectName()).arg(specList.at(1));
+        me.setMsg(msg);
+        throw me;
+        return param;
     }
-    // looking for hosts of the provider component going up the nested model hierarchy
-    // --> will find the closest provider
+
+    // if we've got an explict idex given, we just see what we've got
+    // (employing the 'use_up' strategy, s. NMProcess)
+    bool bok = true;
+    int listIdx = specList.at(1).toInt(&bok);
+    if (!bok)
+    {
+        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        me.setMsg("Invalid parameter index specified!");
+        throw me;
+        return param;
+    }
+
+    QVariant paramList = this->property(specList.at(0).toStdString().c_str());
+    if (QString::fromLatin1("QStringList").compare(paramList.typeName()) == 0)
+    {
+        QStringList tl = paramList.toStringList();
+        if (listIdx >= tl.size())
+        {
+            listIdx = tl.size();
+        }
+        param = QVariant::fromValue(tl.at(listIdx));
+    }
+    else if (QString::fromLatin1("QList<QStringList>").compare(paramList.typeName()) == 0)
+    {
+        QList<QStringList> tll = paramList.value<QList<QStringList> >();
+        if (listIdx >= tll.size())
+        {
+            listIdx = tll.size();
+        }
+        param = QVariant::fromValue(tll.at(listIdx));
+    }
     else
     {
-        NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this);//->getHostComponent();
-        while (host != 0 && providerComp == 0)
-        {
-            providerComp = host->findComponentByUserId(userId);
-            if (providerComp == 0)
-            {
-                host = host->getHostComponent();
-            }
-        }
+        param = paramList;
     }
-
-    if (specList == 3)
-    {
-
-    }
-
-
-
 
     return param;
 }

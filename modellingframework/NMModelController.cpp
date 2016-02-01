@@ -446,19 +446,15 @@ void NMModelController::setUserId(const QString& userId)
         return;
     }
 
-    QMultiMap<QString, NMModelComponent*>::iterator it =
-            mUserIdMap.begin();
-    while (it != mUserIdMap.end())
-    {
-        if (it.value() == comp)
-        {
-            mUserIdMap.remove(it.key(), comp);
-            mUserIdMap.insert(userId, comp);
-            break;
-        }
+    QMap<QString, NMModelComponent*>::iterator it =
+            mUserIdMap.find(userId, comp);
 
-        ++it;
+    if (it != mUserIdMap.end())
+    {
+        mUserIdMap.remove(it.key(), comp);
     }
+
+    mUserIdMap.insert(userId, comp);
 }
 
 bool

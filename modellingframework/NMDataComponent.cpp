@@ -211,20 +211,20 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     {
         NMMfwException me(NMMfwException::NMModelComponent_UninitialisedDataObject);
         QString msg = QString("'%1' has not been initialised!").arg(this->objectName());
-        me.setMsg(msg);
+        me.setMsg(msg.toStdString());
         throw me;
         return param;
     }
 
     otb::AttributeTable::Pointer tab = mDataWrapper->getOTBTab();
-    int idx = tab->ColumnExists(paramSpec.at(1).toStdString());
+    int idx = tab->ColumnExists(specList.at(1).toStdString());
     if (idx < 0)
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
         QString msg = QString("'%1' has no column '%2'")
                 .arg(this->objectName())
                 .arg(specList.at(1));
-        me.setMsg(msg);
+        me.setMsg(msg.toStdString());
         throw me;
         return param;
     }
@@ -249,7 +249,7 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
         param = QVariant::fromValue(tab->GetIntValue(idx, row));
         break;
     case otb::AttributeTable::ATTYPE_STRING:
-        param = QVariant::fromValue(tab->GetStrValue(idx, row));
+        param = QVariant::fromValue(QString(tab->GetStrValue(idx, row).c_str()));
         break;
     }
 

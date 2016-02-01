@@ -2488,29 +2488,29 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    NMDebugAI(<< "all db connections ... " << std::endl);
+    QString str = QInputDialog::getText(this, "", "", QLineEdit::Normal, "$$");
 
-    QStringList dbs = QSqlDatabase::connectionNames();
-    foreach(const QString& db, dbs)
-    {
-        NMDebugAI(<< db.toStdString() << std::endl);
-    }
-    NMDebugAI(<< std::endl);
+    QRegExp rex("\\$([a-zA-Z]+\\d*)(^:[a-zA-Z_]+\\d*)(^:\\d*)?([\\+-]?)(\\d*)\\$");
+    int pos = 0;
+    pos = rex.indexIn(str, pos);
 
-    QString fn = QInputDialog::getText(this, "", "", QLineEdit::Normal, "/home/alex/tmp/district_100m.ldb");
-            //QFileDialog::getOpenFileName(this, "", "~", tr("All files (*.*)"));
-    if (!fn.isEmpty())
+
+    NMDebugAI(<< "here's what we've got ... " << std::endl);
+
+    if (pos == -1)
     {
-        if (access(fn.toStdString().c_str(), F_OK) != -1)
+        // 0: whole captured text
+        // 1: component name
+        // 2: operator
+        // 3: integer number
+        QStringList m = rex.capturedTexts();
+        foreach(const QString& s, m)
         {
-            NMDebugAI(<< fn.toStdString() << " is definately there!" << std::endl);
-        }
-        else
-        {
-            NMDebugAI(<< fn.toStdString() << " is nowhere to be seen!" << std::endl);
+            NMDebugAI(<< s.toStdString() << std::endl);
         }
     }
-    NMDebugAI(<< std::endl);
+
+    NMDebug(<< std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

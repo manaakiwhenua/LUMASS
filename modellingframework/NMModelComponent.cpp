@@ -87,7 +87,7 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
         QString msg = QString("'%1' doesn't have a parameter '%2'!")
                 .arg(this->objectName()).arg(specList.at(1));
-        me.setMsg(msg);
+        me.setMsg(msg.toStdString());
         throw me;
         return param;
     }

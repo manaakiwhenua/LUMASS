@@ -217,13 +217,13 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     }
 
     otb::AttributeTable::Pointer tab = mDataWrapper->getOTBTab();
-    int idx = tab->ColumnExists(specList.at(1).toStdString());
+    int idx = tab->ColumnExists(specList.at(0).toStdString());
     if (idx < 0)
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
         QString msg = QString("'%1' has no column '%2'")
                 .arg(this->objectName())
-                .arg(specList.at(1));
+                .arg(specList.at(0));
         me.setMsg(msg.toStdString());
         throw me;
         return param;

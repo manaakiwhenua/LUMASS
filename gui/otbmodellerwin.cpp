@@ -2488,29 +2488,62 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
+    NMModelController* ctrl = NMModelController::getInstance();
+    QStringList componentList = ctrl->getRepository().keys();
+
+    QInputDialog ipd(this);
+    ipd.setOption(QInputDialog::UseListViewForComboBoxItems);
+    ipd.setComboBoxItems(tableNameList);
+    ipd.setComboBoxEditable(false);
+    ipd.setWindowTitle("Source Tables");
+    ipd.setLabelText("Select the source table:");
+    int ret = ipd.exec();
+
+    QString startComp = ipd.textValue();
+
+
     QString str = QInputDialog::getText(this, "", "", QLineEdit::Normal, "$$");
 
-    QRegExp rex("\\$([a-zA-Z]+\\d*)(^:[a-zA-Z_]+\\d*)(^:\\d*)?([\\+-]?)(\\d*)\\$");
+    QRegExp rex("\\$([a-zA-Z]+\\d*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
     int pos = 0;
-    pos = rex.indexIn(str, pos);
-
-
-    NMDebugAI(<< "here's what we've got ... " << std::endl);
-
-    if (pos == -1)
+    while((pos = rex.indexIn(str, pos) != -1))
     {
+
+        NMDebugAI(<< "here's what we've got ... " << std::endl);
+
         // 0: whole captured text
-        // 1: component name
-        // 2: operator
-        // 3: integer number
+        // 1: component name  | or user Id
+        // 2: [: property name]
+        // 3: [: property index]
+        // 4: [operator]
+        // 5: [integer number]
         QStringList m = rex.capturedTexts();
+        pos += rex.matchedLength();
+        int c=0;
         foreach(const QString& s, m)
         {
-            NMDebugAI(<< s.toStdString() << std::endl);
+            NMDebugAI(<< c << ": " << s.toStdString() << std::endl);
+            ++c;
         }
-    }
 
-    NMDebug(<< std::endl);
+        // first check, whether there's a component we get by name
+        NMModelComponent* c = ctrl->getComponent(m.at(1));
+        if (c == 0)
+        {
+            NMIterableComponent* host = qobject_cast<NMIterableComponent*>(ctrl->getComponent(startComp));
+            if (host == 0)
+            {
+                host = qobject_cast<NMIterableComponent*>(ctrl->getComponent(startComp)->getHostComponent());
+            }
+            c = host->findUpstreamComponentByUserId(m.at(1));
+        }
+
+        if (!m.at(2).isEmpty())
+        {
+            QString paramName = m.at(2).remove(0,1);
+        }
+
+    }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

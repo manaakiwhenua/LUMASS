@@ -252,64 +252,129 @@ NMProcess::processStringParameter(const QString& str)
 {
     QString tStr = str;
 
-    QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]?)(\\d*)\\$");
+    // old: QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]?)(\\d*)\\$");
+    QRegExp rex("\\$([a-zA-Z]+\\d*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
     int pos = 0;
     while((pos = rex.indexIn(str, pos)) != -1)
     {
         // 0: whole captured text
-        // 1: component name
-        // 2: operator
-        // 3: integer number
+        // 1: component name  | or user Id
+        // 2: [: property name]
+        // 3: [: property index]
+        // 4: [operator]
+        // 5: [integer number]
         QStringList m = rex.capturedTexts();
         NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
         //NMDebugAI(<< "---------------" << std::endl);
         pos += rex.matchedLength();
 
-        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(
-                    NMModelController::getInstance()->getComponent(m.at(1)));
-        if (ic)
+        // --------------------------------------------------------------------------
+        // retrieve model component
+
+        NMModelComponent* mc = NMModelController::getInstance()->getComponent(m.at(1));
+
+        // if the component is specified by userId, we've got to dig a little deeper
+        if (mc == 0)
         {
-            bool bok;
-            int delta = 0;
-            if (!m.at(3).isEmpty())
+            NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
+            if (host)
             {
-                const int t = m.at(3).toInt(&bok);
-                if (bok)
-                    delta = t;
+                mc = host->findUpstreamComponentByUserId(m.at(1));
             }
-
-            int itStep = ic->getIterationStep();
-            if (QString::fromLatin1("+").compare(m.at(2)) == 0)
+            else
             {
-                // could only bound  this, if we restricted to the use
-                // of SequentialIterComponent here, not quite sure,
-                // we want to do that
-                itStep += delta;
+                NMWarn(this->objectName().toStdString(), "Process not embedded in model component!");
             }
-            else if (QString::fromLatin1("-").compare(m.at(2)) == 0)
-            {
-                // prevent 'negative' iStep; could occur in 'instantiation phase'
-                // of the pipeline, when the correct step parameter has not
-                // been established yet (thereby always assuming that the
-                // configuration by the user was correct, in which case the
-                // a wrong parameter would be created during the 'link phase'
-                // of the pipeline establishment)
+        }
 
-                if (itStep - delta >= 0)
+        // -----------------------------------------------------------------------------
+        // retrieve model parameter and process, if applicable
+        if (mc)
+        {
+            QVariant modelParam;
+            if (m.at(2).isEmpty())
+            {
+                NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+                if (ic)
                 {
-                    itStep -= delta;
+                    modelParam = QVariant::fromValue(ic->getIterationStep());
+                }
+            }
+            else
+            {
+                if (m.at(3).isEmpty())
+                {
+                    modelParam = mc->getModelParameter(m.at(2));
                 }
                 else
                 {
-                    NMWarn(this->objectName().toStdString(),
-                           << "Expression based parameter retreival "
-                           << "prevented a NEGATIVE PARAMETER INDEX!!"
-                           << "  Double check whether the correct "
-                           << "parameter was used and the results are OK!");
+                    QString paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
+                    modelParam = mc->getModelParameter(paramSpec);
                 }
             }
 
-            tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
+            // .........................................................
+            // if the model parameter is of integer type, we allow
+            // some arithemtic on it...
+
+            if (    (    modelParam.type() == QVariant::Int
+                     ||  modelParam.type() == QVariant::LongLong
+                     ||  modelParam.type() == QVariant::UInt
+                     ||  modelParam.type() == QVariant::ULongLong
+                    )
+                &&  !m.at(4).isEmpty() && !m.at(5).isEmpty()
+                )
+            {
+                bool bok;
+                long long delta = 0;
+                const long long t = m.at(5).toLongLong(&bok);
+                if (bok)
+                {
+                    delta = t;
+                }
+
+                //int itStep = ic->getIterationStep();
+                long long itStep = modelParam.toLongLong(&bok);
+
+                if (QString::fromLatin1("+").compare(m.at(4)) == 0)
+                {
+                    // could only bound  this, if we restricted to the use
+                    // of SequentialIterComponent here, not quite sure,
+                    // we want to do that
+                    itStep += delta;
+                }
+                else if (QString::fromLatin1("-").compare(m.at(4)) == 0)
+                {
+                    // prevent 'negative' iStep; could occur in 'instantiation phase'
+                    // of the pipeline, when the correct step parameter has not
+                    // been established yet (thereby always assuming that the
+                    // configuration by the user was correct, in which case the
+                    // a wrong parameter would be created during the 'link phase'
+                    // of the pipeline establishment)
+
+                    if (itStep - delta >= 0)
+                    {
+                        itStep -= delta;
+                    }
+                    else
+                    {
+                        NMWarn(this->objectName().toStdString(),
+                               << "Expression based parameter retreival "
+                               << "prevented a NEGATIVE PARAMETER INDEX!!"
+                               << "  Double check whether the correct "
+                               << "parameter was used and the results are OK!");
+                    }
+                }
+
+                tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
+            }
+            /// ToDo: how do we handle string lists ?
+            // no integer type, so ignore any potential arithemtic
+            else
+            {
+                tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(modelParam.toString()));
+            }
+
             NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
         }
     }

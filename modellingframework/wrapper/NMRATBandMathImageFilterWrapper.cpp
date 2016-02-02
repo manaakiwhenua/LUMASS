@@ -329,14 +329,25 @@ NMRATBandMathImageFilterWrapper
 	int givenStep = step;
 	// now let's set this process' special properties
 	// set the calculation expression
-	step = this->mapHostIndexToPolicyIndex(givenStep, this->mMapExpressions.size());
-	QString currentExpression;
-	if (step < this->mMapExpressions.size())
-	{
-		currentExpression = this->mMapExpressions.at(step);//.toLower();
-		this->setInternalExpression(currentExpression);
-	}
-	else
+//	step = this->mapHostIndexToPolicyIndex(givenStep, this->mMapExpressions.size());
+//	QString currentExpression;
+//	if (step < this->mMapExpressions.size())
+//	{
+//		currentExpression = this->mMapExpressions.at(step);//.toLower();
+//		this->setInternalExpression(currentExpression);
+//	}
+
+    // this now takes care of pre-processing the current map expression
+    // to fetch any constant epxression values (i.e. model parameters)
+    // from other model components
+    QVariant exprParam = this->getParameter("MapExpressions");
+    QString currentExpression;
+    if (exprParam.isValid())
+    {
+        currentExpression = exprParam.toString();
+        this->setInternalExpression(currentExpression);
+    }
+    else
 	{
 		NMMfwException e(NMMfwException::NMProcess_MissingParameter);
 		e.setMsg("NMRATBandMathImageWrapper: No map expression specified!");

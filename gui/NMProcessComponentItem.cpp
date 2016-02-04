@@ -245,6 +245,8 @@ void NMProcessComponentItem::setTitle(const QString& title)
     {
         mIcon.load(":model-icon.png");
     }
+
+    mIcon.scaledToWidth(64*qApp->devicePixelRatio());
 }
 
 QPolygonF

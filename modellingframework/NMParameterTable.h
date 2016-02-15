@@ -1,0 +1,58 @@
+/******************************************************************************
+ * Created by Alexander Herzig
+ * Copyright 2016 Landcare Research New Zealand Ltd
+ *
+ * This file is part of 'LUMASS', which is free software: you can redistribute
+ * it and/or modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************/
+/*
+ * NMParameterTable.h
+ *
+ *  Created on: 04/02/2016
+ *      Author: alex
+ */
+
+#ifndef NMPARAMETERTABLE_H
+#define NMPARAMETERTABLE_H
+
+#include <QObject>
+
+#include "NMMacros.h"
+#include "nmmodframe_export.h"
+
+class NMMODFRAME_EXPORT NMParameterTable : public NMDataComponent
+{
+    Q_OBJECT
+    Q_PROPERTY(QString FileName READ getFileName WRITE setFileName NOTIFY NMDataComponentChanged)
+
+public:
+
+    NMParameterTable(QObject* parent=0);
+    virtual ~NMParameterTable(void);
+
+    void setFileName(QString fn);
+    void getFileName(void){return mFileName;}
+
+    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputTable);
+
+    virtual void update(const QMap<QString, NMModelComponent*>& repo);
+    virtual void reset(void);
+
+protected:
+    QString mFileName;
+
+private:
+    static const std::string ctx;
+};
+
+#endif // NMPARAMETERTABLE_H

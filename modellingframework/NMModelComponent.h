@@ -154,7 +154,7 @@ public:
 
 protected:
     NMModelComponent(QObject* parent=0);
-    NMModelComponent(const NMModelComponent& modelComp){};
+    NMModelComponent(const NMModelComponent& modelComp){}
 
     QString mDescription;
     QString mUserID;

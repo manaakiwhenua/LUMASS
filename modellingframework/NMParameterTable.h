@@ -30,6 +30,14 @@
 #include "NMMacros.h"
 #include "nmmodframe_export.h"
 
+/*!
+ * \brief The NMParameterTable class is a specialised data component for parameter tables.
+ *        Given a file name to a xls csv or dbf file, the parameter creates SQLiteTable object
+ *        and allows access to individual cells via the \ref NMModelComponent::getModelParameter
+ *        interface.
+ *
+ */
+
 class NMMODFRAME_EXPORT NMParameterTable : public NMDataComponent
 {
     Q_OBJECT
@@ -42,6 +50,13 @@ public:
 
     void setFileName(QString fn);
     void getFileName(void){return mFileName;}
+
+    /**
+     * @brief getModelParameter fetches a
+     * @param paramSpec
+     * @return
+     */
+    virtual QVariant getModelParameter(const QString &paramSpec);
 
     virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputTable);
 

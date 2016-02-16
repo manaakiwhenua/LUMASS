@@ -202,7 +202,16 @@ public:
     unsigned short mapHostIndexToPolicyIndex(unsigned short step,
             unsigned short size);
 
-
+    /**
+     * @brief getParameter - Fetches the property value from this (NMProcess) object
+     *        for the current IterationStep.
+     *        Note: If the property type is QString, QStringList, or QList<QStringList>,
+     *        the parameter(s) are parsed by \ref NMProcess::processStringParameter
+     *        before it (they) is (are) passed on to the underlying itk::Process object
+     *        or processed in by \ref NMProcess::update()
+     * @param property - the name of the property
+     * @return QVariant wrapped property value
+     */
     QVariant getParameter(const QString& property);
     QStringList getPropertyList(void);
 

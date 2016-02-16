@@ -213,7 +213,13 @@ NMProcess::getParameter(const QString& property)
     QVariant ret;
     QVariant propVal = this->property(property.toStdString().c_str());
 
-    if (QString::fromLatin1("QStringList").compare(propVal.typeName()) == 0)
+    if (QString::fromLatin1("QString").compare(propVal.typeName()) == 0)
+    {
+        QString tStr = retStr;
+        retStr = processStringParameter(tStr);
+        ret = QVariant::fromValue(retStr);
+    }
+    else if (QString::fromLatin1("QStringList").compare(propVal.typeName()) == 0)
     {
         QString retStr;
         QStringList lst = propVal.toStringList();

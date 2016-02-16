@@ -48,7 +48,7 @@ public:
 	//NMPropertyGetSet( InputSpec, QStringList );
 
 	signals:
-	void NMDataComponentChanged();
+    void NMDataComponentChanged();
 
 public:
 	NMDataComponent(QObject* parent=0);

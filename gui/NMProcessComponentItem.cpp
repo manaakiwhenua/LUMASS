@@ -239,14 +239,14 @@ void NMProcessComponentItem::setTitle(const QString& title)
     else if (title.contains("SQL", Qt::CaseInsensitive))
     {
         mIcon.load(":SQLite_Logo_4.png");
-        mIcon = mIcon.scaledToWidth(64, Qt::SmoothTransformation);
+        //mIcon = mIcon.scaledToWidth(64, Qt::SmoothTransformation);
     }
     else
     {
         mIcon.load(":model-icon.png");
     }
 
-    mIcon.scaledToWidth(64*qApp->devicePixelRatio());
+    //mIcon.scaledToWidth(64*qApp->devicePixelRatio());
 }
 
 QPolygonF

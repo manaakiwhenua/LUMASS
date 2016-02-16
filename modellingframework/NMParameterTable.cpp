@@ -25,6 +25,8 @@
 #include <string>
 #include <sstream>
 
+#include <QVariant>
+
 #include "NMParameterTable.h"
 #include "NMDataComponent.h"
 #include "NMMfwException.h"
@@ -48,9 +50,18 @@ NMParameterTable::~NMParameterTable()
 void
 NMParameterTable::setFileName(QString fn)
 {
+    if (mFileName.compare(fn, Qt::CaseInsensitive) == 0)
+    {
+        return;
+    }
+
+    this->mFileName = fn;
+
+
+
     otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
     tab->SetUseSharedCache(false);
-    if (!tab->CreateFromVirtual(fn.toStdString()))
+    if (!tab->CreateFromVirtual(this->mFileName.toStdString()))
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
         QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
@@ -60,13 +71,15 @@ NMParameterTable::setFileName(QString fn)
         return;
     }
 
-    this->setUserID(tab->GetTableName());
-    this->setDescription(tab->GetTableName());
+    this->setUserID(tab->GetTableName().c_str());
+    this->setDescription(tab->GetTableName().c_str());
 
     QSharedPointer<NMItkDataObjectWrapper> wrapper(new NMItkDataObjectWrapper(this));
     wrapper->setDataObject(tab);
     this->setNthInput(0, wrapper);
 
+
+    emit NMDataComponentChanged();
 }
 
 
@@ -109,7 +122,10 @@ NMParameterTable::getModelParameter(const QString &paramSpec)
         switch (type)
         {
         case otb::AttributeTable::ATTYPE_STRING:
-            param = QVariant::fromValue(tab->GetStrValue(colidx, row));
+            {
+                QString strVal = tab->GetStrValue(colidx, row).c_str();
+                param = QVariant::fromValue(strVal);
+            }
             break;
         case otb::AttributeTable::ATTYPE_INT:
             param = QVariant::fromValue(tab->GetIntValue(colidx, row));

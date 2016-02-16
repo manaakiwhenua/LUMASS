@@ -27,6 +27,7 @@
 
 #include <QObject>
 
+#include "NMDataComponent.h"
 #include "NMMacros.h"
 #include "nmmodframe_export.h"
 
@@ -41,7 +42,7 @@
 class NMMODFRAME_EXPORT NMParameterTable : public NMDataComponent
 {
     Q_OBJECT
-    Q_PROPERTY(QString FileName READ getFileName WRITE setFileName NOTIFY NMDataComponentChanged)
+    Q_PROPERTY(QString FileName READ getFileName WRITE setFileName)
 
 public:
 
@@ -49,7 +50,7 @@ public:
     virtual ~NMParameterTable(void);
 
     void setFileName(QString fn);
-    void getFileName(void){return mFileName;}
+    QString getFileName(void){return mFileName;}
 
     /**
      * @brief getModelParameter fetches a

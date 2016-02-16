@@ -215,6 +215,7 @@ NMProcess::getParameter(const QString& property)
 
     if (QString::fromLatin1("QString").compare(propVal.typeName()) == 0)
     {
+        QString retStr = propVal.toString();
         QString tStr = retStr;
         retStr = processStringParameter(tStr);
         ret = QVariant::fromValue(retStr);

@@ -58,8 +58,7 @@ public:
      */
     virtual QVariant getModelParameter(const QString &paramSpec);
 
-    virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputTable);
-
+    virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
     virtual void update(const QMap<QString, NMModelComponent*>& repo);
     virtual void reset(void);
 

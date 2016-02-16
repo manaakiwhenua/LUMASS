@@ -41,6 +41,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("ImageWriter"));
     this->addItem(QString::fromLatin1("MapAlgebra"));
     this->addItem(QString::fromLatin1("NeighbourCounter"));
+    this->addItem(QString::fromLatin1("ParameterTable"));
     this->addItem(QString::fromLatin1("RandomImage"));
     this->addItem(QString::fromLatin1("ResampleImage"));
     this->addItem(QString::fromLatin1("SQLProcessor"));

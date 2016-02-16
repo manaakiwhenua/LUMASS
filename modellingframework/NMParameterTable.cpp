@@ -30,6 +30,7 @@
 #include "NMMfwException.h"
 
 #include "otbAttributeTable.h"
+#include "otbSQLiteTable.h"
 
 const std::string NMParameterTable::ctx = "NMParameterTable";
 
@@ -44,28 +45,30 @@ NMParameterTable::~NMParameterTable()
 
 }
 
-
 void
-NMParameterTable::setNthInput(unsigned int idx,
-                              QSharedPointer<NMItkDataObjectWrapper> inputTable)
+NMParameterTable::setFileName(QString fn)
 {
-//    if (!mDataWrapper.isNull())
-//    {
-//        mDataWrapper.clear();
-//    }
+    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
+    tab->SetUseSharedCache(false);
+    if (!tab->CreateFromVirtual(fn.toStdString()))
+    {
+        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
+                .arg(fn);
+        me.setMsg(msg.toStdString());
+        throw me;
+        return;
+    }
 
-//    if (mDataWrapper->getOTBTab().IsNotNull())
-//    {
-//        mDataWrapper.clear();
-//    }
+    this->setUserID(tab->GetTableName());
+    this->setDescription(tab->GetTableName());
 
-//    if (inputTable->getOTBTab().IsNotNull())
-//    {
-//        mDataWrapper = inputTable;
-//    }
+    QSharedPointer<NMItkDataObjectWrapper> wrapper(new NMItkDataObjectWrapper(this));
+    wrapper->setDataObject(tab);
+    this->setNthInput(0, wrapper);
 
-//    emit NMDataComponentChanged;
 }
+
 
 QVariant
 NMParameterTable::getModelParameter(const QString &paramSpec)
@@ -118,6 +121,12 @@ NMParameterTable::getModelParameter(const QString &paramSpec)
     }
 
     return param;
+}
+
+void
+NMParameterTable::linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+{
+
 }
 
 void

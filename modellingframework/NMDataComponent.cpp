@@ -200,60 +200,110 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 QVariant
 NMDataComponent::getModelParameter(const QString &paramSpec)
 {
-    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
-    if (specList.size() < 2)
-    {
-        specList << "0";
-    }
-
     QVariant param;
-    if (mDataWrapper.isNull() || mDataWrapper->getOTBTab().IsNull())
+
+    if (    paramSpec.isEmpty()
+        ||  this->mDataWrapper.isNull()
+        ||  this->mDataWrapper->getOTBTab().IsNull()
+       )
     {
-        NMMfwException me(NMMfwException::NMModelComponent_UninitialisedDataObject);
-        QString msg = QString("'%1' has not been initialised!").arg(this->objectName());
-        me.setMsg(msg.toStdString());
-        throw me;
         return param;
     }
 
-    otb::AttributeTable::Pointer tab = mDataWrapper->getOTBTab();
-    int idx = tab->ColumnExists(specList.at(0).toStdString());
-    if (idx < 0)
+    //  <columnName>:<rowNumber>
+    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+    long long row = 0;
+    if (specList.size() == 2)
     {
-        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        QString msg = QString("'%1' has no column '%2'")
-                .arg(this->objectName())
-                .arg(specList.at(0));
-        me.setMsg(msg.toStdString());
-        throw me;
-        return param;
+        bool bok;
+        row = specList.at(1).toLongLong(&bok);
+        if (!bok)
+        {
+            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            QString msg = QString("Specified row number '%1' is invalid!")
+                    .arg(this->objectName()).arg(specList.at(1));
+            me.setMsg(msg.toStdString());
+            throw me;
+            return param;
+        }
     }
 
-    bool bok = false;
-    long long row = specList.at(1).toLongLong(&bok);
-    if (!bok)
-    {
-        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        me.setMsg("Invalid parameter index!");
-        throw me;
-        return param;
-    }
+    otb::AttributeTable::Pointer tab = this->mDataWrapper->getOTBTab();
 
-    row = row > tab->GetNumRows() ? tab->GetNumRows() : row;
-    switch(tab->GetColumnType(idx))
+    int colidx = tab->ColumnExists(specList.at(0).toStdString().c_str());
+    if (colidx >= 0)
     {
-    case otb::AttributeTable::ATTYPE_DOUBLE:
-        param = QVariant::fromValue(tab->GetDblValue(idx, row));
-        break;
-    case otb::AttributeTable::ATTYPE_INT:
-        param = QVariant::fromValue(tab->GetIntValue(idx, row));
-        break;
-    case otb::AttributeTable::ATTYPE_STRING:
-        param = QVariant::fromValue(QString(tab->GetStrValue(idx, row).c_str()));
-        break;
+        const otb::AttributeTable::TableColumnType type = tab->GetColumnType(colidx);
+        switch (type)
+        {
+        case otb::AttributeTable::ATTYPE_STRING:
+            param = QVariant::fromValue(tab->GetStrValue(colidx, row).c_str());
+            break;
+        case otb::AttributeTable::ATTYPE_INT:
+            param = QVariant::fromValue(tab->GetIntValue(colidx, row));
+            break;
+        case otb::AttributeTable::ATTYPE_DOUBLE:
+            param = QVariant::fromValue(tab->GetDblValue(colidx, row));
+            break;
+        }
     }
 
     return param;
+
+    //    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+    //    if (specList.size() < 2)
+    //    {
+    //        specList << "0";
+    //    }
+
+    //    QVariant param;
+    //    if (mDataWrapper.isNull() || mDataWrapper->getOTBTab().IsNull())
+    //    {
+    //        NMMfwException me(NMMfwException::NMModelComponent_UninitialisedDataObject);
+    //        QString msg = QString("'%1' has not been initialised!").arg(this->objectName());
+    //        me.setMsg(msg.toStdString());
+    //        throw me;
+    //        return param;
+    //    }
+
+    //    otb::AttributeTable::Pointer tab = mDataWrapper->getOTBTab();
+    //    int idx = tab->ColumnExists(specList.at(0).toStdString());
+    //    if (idx < 0)
+    //    {
+    //        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+    //        QString msg = QString("'%1' has no column '%2'")
+    //                .arg(this->objectName())
+    //                .arg(specList.at(0));
+    //        me.setMsg(msg.toStdString());
+    //        throw me;
+    //        return param;
+    //    }
+
+    //    bool bok = false;
+    //    long long row = specList.at(1).toLongLong(&bok);
+    //    if (!bok)
+    //    {
+    //        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+    //        me.setMsg("Invalid parameter index!");
+    //        throw me;
+    //        return param;
+    //    }
+
+    //    row = row > tab->GetNumRows() ? tab->GetNumRows() : row;
+    //    switch(tab->GetColumnType(idx))
+    //    {
+    //    case otb::AttributeTable::ATTYPE_DOUBLE:
+    //        param = QVariant::fromValue(tab->GetDblValue(idx, row));
+    //        break;
+    //    case otb::AttributeTable::ATTYPE_INT:
+    //        param = QVariant::fromValue(tab->GetIntValue(idx, row));
+    //        break;
+    //    case otb::AttributeTable::ATTYPE_STRING:
+    //        param = QVariant::fromValue(QString(tab->GetStrValue(idx, row).c_str()));
+    //        break;
+    //    }
+
+    //    return param;
 }
 
 void

@@ -57,7 +57,7 @@ public:
      * @param paramSpec
      * @return
      */
-    virtual QVariant getModelParameter(const QString &paramSpec);
+    //virtual QVariant getModelParameter(const QString &paramSpec);
 
     virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
     virtual void update(const QMap<QString, NMModelComponent*>& repo);

@@ -44,7 +44,7 @@ NMParameterTable::NMParameterTable(QObject* parent)
 
 NMParameterTable::~NMParameterTable()
 {
-
+    reset();
 }
 
 void
@@ -57,29 +57,8 @@ NMParameterTable::setFileName(QString fn)
 
     this->mFileName = fn;
 
-
-
-    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
-    tab->SetUseSharedCache(false);
-    if (!tab->CreateFromVirtual(this->mFileName.toStdString()))
-    {
-        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
-                .arg(fn);
-        me.setMsg(msg.toStdString());
-        throw me;
-        return;
-    }
-
-    this->setUserID(tab->GetTableName().c_str());
-    this->setDescription(tab->GetTableName().c_str());
-
-    QSharedPointer<NMItkDataObjectWrapper> wrapper(new NMItkDataObjectWrapper(this));
-    wrapper->setDataObject(tab);
-    this->setNthInput(0, wrapper);
-
-
     emit NMDataComponentChanged();
+
 }
 
 
@@ -142,13 +121,63 @@ NMParameterTable::setFileName(QString fn)
 void
 NMParameterTable::linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
-
+    // we're self sufficienct - no need to link anything in
 }
 
 void
 NMParameterTable::update(const QMap<QString, NMModelComponent*>& repo)
 {
+    NMDebugCtx(ctx, << "...");
 
+    if (mFileName.isEmpty())
+    {
+        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        QString msg = QString("Invalid FileName specified!").arg(this->objectName())
+                .arg(mFileName);
+        me.setMsg(msg.toStdString());
+        NMDebugCtx(ctx, << "done!");
+        throw me;
+        return;
+    }
+
+    if (!mDataWrapper.isNull() && mDataWrapper->getOTBTab().IsNotNull())
+    {
+        otb::SQLiteTable* theTab = static_cast<otb::SQLiteTable*>(mDataWrapper->getOTBTab().GetPointer());
+        if (theTab != 0)
+        {
+            if (mFileName.compare(QString(theTab->GetDbFileName().c_str()), Qt::CaseInsensitive) == 0)
+            {
+                NMDebugAI(<< "No need to update, still pointing to the same data base!" << std::endl);
+                NMDebugCtx(ctx, << "done!");
+                return;
+            }
+        }
+    }
+
+    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
+    tab->SetUseSharedCache(false);
+    if (!tab->CreateFromVirtual(this->mFileName.toStdString()))
+    {
+        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
+                .arg(mFileName);
+        me.setMsg(msg.toStdString());
+        NMDebugCtx(ctx, << "done!");
+        throw me;
+        return;
+    }
+
+    this->setUserID(tab->GetTableName().c_str());
+    this->setDescription(tab->GetTableName().c_str());
+
+    QSharedPointer<NMItkDataObjectWrapper> wrapper(new NMItkDataObjectWrapper(this));
+    wrapper->setDataObject(tab);
+    this->setNthInput(0, wrapper);
+
+
+    this->mSourceMTime.setMSecsSinceEpoch(QDateTime::currentMSecsSinceEpoch());
+
+    NMDebugCtx(ctx, << "done!");
 }
 
 void

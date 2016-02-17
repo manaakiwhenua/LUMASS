@@ -237,7 +237,7 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
         switch (type)
         {
         case otb::AttributeTable::ATTYPE_STRING:
-            param = QVariant::fromValue(tab->GetStrValue(colidx, row).c_str());
+            param = QVariant::fromValue(QString(tab->GetStrValue(colidx, row).c_str()));
             break;
         case otb::AttributeTable::ATTYPE_INT:
             param = QVariant::fromValue(tab->GetIntValue(colidx, row));

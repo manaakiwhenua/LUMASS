@@ -45,11 +45,13 @@
  * NMProcessComponentItem = UserType + 20
  * NMComponentLinkItem = UserType + 30
  *
+ *
  */
 
 class NMComponentLinkItem;
 class NMProcessComponentItem;
 class NMAggregateComponentItem;
+class NMSqlTableView;
 
 class NMModelScene: public QGraphicsScene
 {
@@ -73,6 +75,10 @@ public:
         {return mMousePos;}
 
     void updateComponentItemFlags(QGraphicsItem* item);
+
+    void addParameterTable(NMSqlTableView* tv,
+                           NMAggregateComponentItem* ai,
+                           NMModelComponent* host);
 
 public slots:
 	void toggleLinkToolButton(bool);

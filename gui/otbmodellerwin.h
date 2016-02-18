@@ -91,10 +91,10 @@ public:
 
     friend class NMGlobalHelper;
 
-    enum {NM_TABVIEW_SCENE,
-          NM_TABVIEW_STANDALONE
+    typedef enum {NM_TABVIEW_SCENE,
+                  NM_TABVIEW_STANDALONE
 
-    }TableViewType;
+                 }TableViewType;
 
     vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
@@ -103,10 +103,11 @@ public:
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
 
-    void importODBC(TableViewType tvType=NM_TABVIEW_STANDALONE,
-                    NMModelComponent* host);
+    NMSqlTableView *importODBC(TableViewType tvType=NM_TABVIEW_STANDALONE);
 
-    void importTable(const QString& fileName, TableViewType tvType, NMModelComponent *host, const QString& tableName="");
+    NMSqlTableView* importTable(const QString& fileName, TableViewType tvType,
+                                const QString& tableName="");
+
     QString selectSqliteTable(const QString& dbFileName);
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&

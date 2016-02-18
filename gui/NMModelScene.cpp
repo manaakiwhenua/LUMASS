@@ -32,12 +32,15 @@
 #include <QDebug>
 #include <QInputDialog>
 #include <QFileInfo>
+#include <QGraphicsProxyWidget>
 
 #include "NMGlobalHelper.h"
 #include "NMModelScene.h"
 #include "NMModelViewWidget.h"
 #include "NMProcessComponentItem.h"
 #include "NMAggregateComponentItem.h"
+#include "NMParameterTable.h"
+#include "NMSqlTableModel.h"
 #include "otbmodellerwin.h"
 #include "nmlog.h"
 
@@ -304,6 +307,30 @@ NMModelScene::getComponentItem(const QString& name)
 	return retItem;
 }
 
+void
+NMModelScene::addParameterTable(NMSqlTableView* tv,
+                                NMAggregateComponentItem* ai,
+                                NMModelComponent* host)
+{
+    if (tv == 0 || ai == 0)
+    {
+        return;
+    }
+
+    QString dbFN = tv->getModel()->database().databaseName();
+
+    NMParameterTable* pt = new NMParameterTable(host);
+    pt->setFileName(dbFN);
+    pt->setUserID(tv->getModel()->tableName());
+    pt->setDescription(tv->getModel()->tableName());
+    pt->setTimeLevel(host->getTimeLevel());
+    NMModelController::getInstance()->addComponent(pt, host);
+
+    QGraphicsProxyWidget* proxyWidget = this->addWidget(tv, Qt::Window);
+    proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
+    ai->addToGroup(proxyWidget);
+}
+
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
 	NMDebugCtx(ctx, << "...");
@@ -389,13 +416,28 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             // ============================
             //  PARAMETER TABLE
             // =============================
-            else if (dropItem.compare(QString::fromLatin1("ParameterTable")) == 0)
+            else if (   ai
+                     && dropItem.compare(QString::fromLatin1("ParameterTable")) == 0
+                    )
             {
+                NMModelComponent* comp = NMModelController::getInstance()->getComponent(ai->getTitle());
 
+                if (comp)
+                {
+                    NMGlobalHelper h;
+                    NMSqlTableView* tv = h.getMainWindow()->importODBC(OtbModellerWin::NM_TABVIEW_SCENE);
 
+                    this->addParameterTable(tv, ai, comp);
+                    //                    QString dbFN = tv->getModel()->database().databaseName();
+                    //                    NMParameterTable* pt = new NMParameterTable();
+                    //                    pt->setFileName(dbFN);
+                    //                    pt->setUserID(tv->getModel()->tableName());
+                    //                    pt->setDescription(tv->getModel()->tableName());
+                    //                    NMModelController::getInstance()->addComponent(pt, comp);
 
-                NMGlobalHelper h;
-                h.getMainWindow()->importODBC(OtbModellerWin::NM_TABVIEW_SCENE);
+                    //                    QGraphicsProxyWidget* proxyWidget = this->addWidget(tv);
+                    //                    ai->addToGroup(proxyWidget);
+                }
             }
             // ============================
             //  PROCESS COMPONENT
@@ -421,6 +463,8 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         {
             QGraphicsItem* item = this->itemAt(mMousePos, this->views()[0]->transform());
             NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+            NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+
 
             // supported formats for parameter tables
             QStringList tabFormats;
@@ -456,32 +500,39 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 }
             }
             // =============================================================
-            // DROPED PARAMETER TABLE FILENAME on to iterable model component
+            // DROPED PARAMETER TABLE FILENAME on aggregate component
             // =============================================================
             else if (   tabFormats.contains(suffix, Qt::CaseInsensitive)
-                     && procItem == 0
+                     && aggrItem
                     )
             {
-                NMGlobalHelper h;
-                OtbModellerWin* mWin = h.getMainWindow();
-
-                QStringList sqliteformats;
-                sqliteformats << "db" << "sqlite" << "ldb";
-
-                QString tableName;
-                if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
+                NMModelComponent* comp = NMModelController::getInstance()->getComponent(aggrItem->getTitle());
+                if (comp)
                 {
-                    tableName = h->selectSqliteTable(fileName);
-                    if (!tableName.isEmpty())
+                    NMGlobalHelper h;
+                    OtbModellerWin* mwin = h.getMainWindow();
+                    NMSqlTableView* tv = 0;
+                    QStringList sqliteformats;
+                    sqliteformats << "db" << "sqlite" << "ldb";
+
+                    QString tableName;
+                    if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
                     {
-                        h->importTable(fileName,
-                                          OtbModellerWin::NM_TABVIEW_SCENE,
-                                          tableName);
+                        tableName = mwin->selectSqliteTable(fileName);
+                        if (!tableName.isEmpty())
+                        {
+                            tv = mwin->importTable(fileName,
+                                              OtbModellerWin::NM_TABVIEW_SCENE,
+                                              tableName);
+                        }
                     }
-                }
-                else
-                {
-                    h->importTable(fileName, OtbModellerWin::NM_TABVIEW_SCENE);
+                    else
+                    {
+                        tv = mwin->importTable(fileName, OtbModellerWin::NM_TABVIEW_SCENE);
+                    }
+
+                    this->addParameterTable(tv, aggrItem, comp);
+
                 }
             }
             // =============================================================

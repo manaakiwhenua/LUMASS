@@ -1504,12 +1504,15 @@ void OtbModellerWin::aboutLUMASS(void)
 void
 OtbModellerWin::importTableObject()
 {
-    this->importODBC(NM_TABVIEW_STANDALONE, 0);
+    this->importODBC(NM_TABVIEW_STANDALONE);
 }
 
-void OtbModellerWin::importODBC(TableViewType tvType, NMModelComponent* host)
+NMSqlTableView*
+OtbModellerWin::importODBC(TableViewType tvType)
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    NMSqlTableView* tv = 0;
 
     QString fileName = QFileDialog::getOpenFileName(this,
              tr("Import Table Data"), "~",
@@ -1518,7 +1521,7 @@ void OtbModellerWin::importODBC(TableViewType tvType, NMModelComponent* host)
     if (fileName.isEmpty())
     {
         NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
+        return tv;
     }
 
     QStringList sqliteformats;
@@ -1532,16 +1535,16 @@ void OtbModellerWin::importODBC(TableViewType tvType, NMModelComponent* host)
         tableName = this->selectSqliteTable(fileName);
         if (!tableName.isEmpty())
         {
-            this->importTable(fileName, tvType, host, tableName);
+            tv = this->importTable(fileName, tvType, tableName);
         }
     }
     else
     {
-        this->importTable(fileName, tvType, host);
+        tv = this->importTable(fileName, tvType);
     }
 
-
-	NMDebugCtx(ctxOtbModellerWin, << "done!");
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+    return tv;
 }
 
 
@@ -1588,10 +1591,9 @@ OtbModellerWin::selectSqliteTable(const QString &dbFileName)
     return tableName;
 }
 
-void
+NMSqlTableView*
 OtbModellerWin::importTable(const QString& fileName,
-                            TableViewType tvType,
-                            NMModelComponent* host, const QString &tableName)
+                            TableViewType tvType, const QString &tableName)
 {
     otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
     std::vector<std::string> vinfo = sqlTable->GetFilenameInfo(fileName.toStdString());
@@ -1630,23 +1632,36 @@ OtbModellerWin::importTable(const QString& fileName,
         }
 
         lfd++;
-        if (dbpresent)
+        if (tvType == NM_TABVIEW_STANDALONE)
         {
-            NMBoxInfo("Import Table Data", "Table has already been imported!");
-
-            resview = mTableList.find(viewName).value().second.data();
-            resview->show();
-            resview->raise();
-            return;
-        }
-        else
-        {
-            viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
-            while(mTableList.contains(viewName))
+            if (dbpresent)
             {
-                ++lfd;
-                viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
+
+                    NMBoxInfo("Import Table Data", "Table has already been imported!");
+
+                    resview = mTableList.find(viewName).value().second.data();
+                    resview->show();
+                    resview->raise();
+                    return resview;
             }
+            else
+            {
+                viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
+                while(mTableList.contains(viewName))
+                {
+                    ++lfd;
+                    viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
+                }
+            }
+        }
+        else if (tvType == NM_TABVIEW_SCENE)
+        {
+            std::stringstream msg;
+            msg << "The model already contains a ParameterTable '"
+                << viewName.toStdString() << "'!";
+
+            NMBoxInfo("Add ParameterTable", msg.str());
+            return 0;
         }
     }
 
@@ -1660,7 +1675,7 @@ OtbModellerWin::importTable(const QString& fileName,
         if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
         {
             NMDebugCtx(ctxOtbModellerWin, << "done!");
-            return;
+            return 0;
         }
         tablename = sqlTable->GetTableName().c_str();
         dbfilename = sqlTable->GetDbFileName().c_str();
@@ -1684,7 +1699,7 @@ OtbModellerWin::importTable(const QString& fileName,
         splCache = 0;
         tabconn = 0;
 		NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
+        return 0;
     }
 
     rc = sqlite3_enable_load_extension(tabconn, 1);
@@ -1731,19 +1746,8 @@ OtbModellerWin::importTable(const QString& fileName,
         tabview->show();
         tabview->raise();
     }
-    else
-    {
-        NMParameterTable* ptab = new NMParameterTable();
-        ptab->setFileName(dbFileName);
-        ptab->setUserID(tableName);
-        ptab->setDescription(tableName);
 
-        QString finalName = NMModelController::getInstance()->addComponent(tabview, host);
-
-
-
-        ui->modelViewWidget->addWidget(tabView);
-    }
+    return tabview.data();
 }
 
 void

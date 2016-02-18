@@ -31,7 +31,9 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QInputDialog>
+#include <QFileInfo>
 
+#include "NMGlobalHelper.h"
 #include "NMModelScene.h"
 #include "NMModelViewWidget.h"
 #include "NMProcessComponentItem.h"
@@ -359,10 +361,14 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         }
         else if (dropSource.startsWith(QString::fromLatin1("_NMProcCompList_")))
         {
+            QGraphicsItem* pi = this->itemAt(event->scenePos(), this->views()[0]->transform());
+            NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
+
+            // ============================
+            //  TEXT LABEL
+            // =============================
             if (dropItem.compare(QString::fromLatin1("TextLabel")) == 0)
             {
-                QGraphicsItem* pi = this->itemAt(event->scenePos(), this->views()[0]->transform());
-                NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
                 QGraphicsTextItem* labelItem = new QGraphicsTextItem(ai);
                 labelItem->setHtml(QString::fromLatin1("<b>Text Label</b>"));
                 labelItem->setTextInteractionFlags(Qt::NoTextInteraction);
@@ -380,6 +386,20 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 }
                 //event->acceptProposedAction();
             }
+            // ============================
+            //  PARAMETER TABLE
+            // =============================
+            else if (dropItem.compare(QString::fromLatin1("ParameterTable")) == 0)
+            {
+
+
+
+                NMGlobalHelper h;
+                h.getMainWindow()->importODBC(OtbModellerWin::NM_TABVIEW_SCENE);
+            }
+            // ============================
+            //  PROCESS COMPONENT
+            // =============================
             else
             {
                 NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
@@ -402,6 +422,10 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             QGraphicsItem* item = this->itemAt(mMousePos, this->views()[0]->transform());
             NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 
+            // supported formats for parameter tables
+            QStringList tabFormats;
+            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "csv" << "txt" << "xls";
+
             // we grab the first we can get hold of and check the ending ...
             QString fileName;
             if (event->mimeData()->urls().at(0).isLocalFile())
@@ -409,6 +433,8 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 fileName = event->mimeData()->urls().at(0).toLocalFile();
             }
 
+            QFileInfo fifo(fileName);
+            QString suffix = fifo.suffix();
             // =============================================================
             // DROPED LUMASS MODEL FILE
             // =============================================================
@@ -430,7 +456,36 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 }
             }
             // =============================================================
-            // DROPED LIST OF IMAGE/TABLE FILENAMES
+            // DROPED PARAMETER TABLE FILENAME on to iterable model component
+            // =============================================================
+            else if (   tabFormats.contains(suffix, Qt::CaseInsensitive)
+                     && procItem == 0
+                    )
+            {
+                NMGlobalHelper h;
+                OtbModellerWin* mWin = h.getMainWindow();
+
+                QStringList sqliteformats;
+                sqliteformats << "db" << "sqlite" << "ldb";
+
+                QString tableName;
+                if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
+                {
+                    tableName = h->selectSqliteTable(fileName);
+                    if (!tableName.isEmpty())
+                    {
+                        h->importTable(fileName,
+                                          OtbModellerWin::NM_TABVIEW_SCENE,
+                                          tableName);
+                    }
+                }
+                else
+                {
+                    h->importTable(fileName, OtbModellerWin::NM_TABVIEW_SCENE);
+                }
+            }
+            // =============================================================
+            // DROPED LIST OF IMAGE/TABLE FILENAMES ON PROCESS COMP ITEM
             // =============================================================
             else if (procItem != 0)
             {

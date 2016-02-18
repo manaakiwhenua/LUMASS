@@ -63,6 +63,7 @@
 #include "NMModelScene.h"
 #include "NMWidgetListView.h"
 #include "NMGlobalHelper.h"
+#include "NMParameterTable.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -453,7 +454,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
     connect(ui->actionSave_Visible_Extent_Overview_As, SIGNAL(triggered()), this ,SLOT(saveImageFile()));
     connect(ui->actionTest, SIGNAL(triggered()), this, SLOT(test()));
     connect(ui->actionSaveAsVectorLayerOGR, SIGNAL(triggered()), this, SLOT(saveAsVectorLayerOGR()));
-    connect(ui->actionImportODBC, SIGNAL(triggered()), this, SLOT(importODBC()));
+    connect(ui->actionImportTableObject, SIGNAL(triggered()), this, SLOT(importTableObject()));
     connect(ui->actionLUMASS, SIGNAL(triggered()), this, SLOT(aboutLUMASS()));
     connect(ui->actionBackground_Colour, SIGNAL(triggered()), this,
             SLOT(setMapBackgroundColour()));
@@ -1500,7 +1501,13 @@ void OtbModellerWin::aboutLUMASS(void)
 
 }
 
-void OtbModellerWin::importODBC()
+void
+OtbModellerWin::importTableObject()
+{
+    this->importODBC(NM_TABVIEW_STANDALONE, 0);
+}
+
+void OtbModellerWin::importODBC(TableViewType tvType, NMModelComponent* host)
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
@@ -1525,14 +1532,13 @@ void OtbModellerWin::importODBC()
         tableName = this->selectSqliteTable(fileName);
         if (!tableName.isEmpty())
         {
-            this->importTable(fileName, tableName);
+            this->importTable(fileName, tvType, host, tableName);
         }
     }
     else
     {
-        this->importTable(fileName);
+        this->importTable(fileName, tvType, host);
     }
-
 
 
 	NMDebugCtx(ctxOtbModellerWin, << "done!");
@@ -1583,7 +1589,9 @@ OtbModellerWin::selectSqliteTable(const QString &dbFileName)
 }
 
 void
-OtbModellerWin::importTable(const QString& fileName, const QString &tableName)
+OtbModellerWin::importTable(const QString& fileName,
+                            TableViewType tvType,
+                            NMModelComponent* host, const QString &tableName)
 {
     otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
     std::vector<std::string> vinfo = sqlTable->GetFilenameInfo(fileName.toStdString());
@@ -1712,15 +1720,30 @@ OtbModellerWin::importTable(const QString& fileName, const QString &tableName)
 
 	mTableAdminObjects.insert(viewName, adminPair);
 
-    QPixmap pm;
-    pm.load(":table_object.png");
+    if (tvType == NM_TABVIEW_STANDALONE)
+    {
+        QPixmap pm;
+        pm.load(":table_object.png");
 
-    QListWidgetItem* wi = new QListWidgetItem(QIcon(pm), viewName, mTableListWidget);
-    mTableListWidget->addItem(wi);
+        QListWidgetItem* wi = new QListWidgetItem(QIcon(pm), viewName, mTableListWidget);
+        mTableListWidget->addItem(wi);
 
-	tabview->show();
-    tabview->raise();
+        tabview->show();
+        tabview->raise();
+    }
+    else
+    {
+        NMParameterTable* ptab = new NMParameterTable();
+        ptab->setFileName(dbFileName);
+        ptab->setUserID(tableName);
+        ptab->setDescription(tableName);
 
+        QString finalName = NMModelController::getInstance()->addComponent(tabview, host);
+
+
+
+        ui->modelViewWidget->addWidget(tabView);
+    }
 }
 
 void

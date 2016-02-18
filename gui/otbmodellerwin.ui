@@ -59,7 +59,7 @@
      <x>0</x>
      <y>0</y>
      <width>725</width>
-     <height>21</height>
+     <height>35</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -80,7 +80,7 @@
     <addaction name="separator"/>
     <addaction name="actionImportRasdamanLayer"/>
     <addaction name="separator"/>
-    <addaction name="actionImportODBC"/>
+    <addaction name="actionImportTableObject"/>
     <addaction name="separator"/>
     <addaction name="actionImage_Polydata"/>
     <addaction name="separator"/>
@@ -197,8 +197,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>69</width>
-          <height>542</height>
+          <width>76</width>
+          <height>515</height>
          </rect>
         </property>
        </widget>
@@ -232,8 +232,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>69</width>
-          <height>542</height>
+          <width>76</width>
+          <height>515</height>
          </rect>
         </property>
        </widget>
@@ -347,12 +347,12 @@
     <string>Field Calculator ...</string>
    </property>
   </action>
-  <action name="actionImportODBC">
+  <action name="actionImportTableObject">
    <property name="text">
     <string>Import Table &amp;Data ...</string>
    </property>
    <property name="toolTip">
-    <string>Import ODBC Data Base Table</string>
+    <string>Import Table Data</string>
    </property>
   </action>
   <action name="actionSaveAsVectorLayerOGR">
@@ -436,7 +436,7 @@
   </action>
   <action name="actionImage_Polydata">
    <property name="text">
-    <string>&amp;Image -&gt; Polydata</string>
+    <string>Image -&gt; P&amp;olydata</string>
    </property>
   </action>
   <action name="actionBackground_Colour">
@@ -459,7 +459,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Scale Bar</string>
+    <string>S&amp;how Scale Bar</string>
    </property>
   </action>
   <action name="actionShowCoordinateAxes">
@@ -467,22 +467,22 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Coordinate Axes</string>
+    <string>Show &amp;Coordinate Axes</string>
    </property>
   </action>
   <action name="actionTreeTopDown">
    <property name="text">
-    <string>Tree Query: top -&gt; down ...</string>
+    <string>Tree Query: top -&gt; &amp;down ...</string>
    </property>
   </action>
   <action name="actionTreeBottomUp">
    <property name="text">
-    <string>Tree Query: bottom -&gt; up ...</string>
+    <string>Tree &amp;Query: bottom -&gt; up ...</string>
    </property>
   </action>
   <action name="actionTreeFindLoops">
    <property name="text">
-    <string>Tree Check: find loops ... </string>
+    <string>Tree &amp;Check: find loops ... </string>
    </property>
   </action>
  </widget>

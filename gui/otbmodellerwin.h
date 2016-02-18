@@ -64,6 +64,7 @@
   #include "otbRasdamanImageIOFactory.h"
 #endif
 
+class NMModelComponent;
 class NMComponentEditor;
 class ModelComponentList;
 class vtkRenderer;
@@ -90,6 +91,11 @@ public:
 
     friend class NMGlobalHelper;
 
+    enum {NM_TABVIEW_SCENE,
+          NM_TABVIEW_STANDALONE
+
+    }TableViewType;
+
     vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
     const vtkRenderer* getScaleRenderer(void);
@@ -97,7 +103,10 @@ public:
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
 
-    void importTable(const QString& fileName, const QString& tableName="");
+    void importODBC(TableViewType tvType=NM_TABVIEW_STANDALONE,
+                    NMModelComponent* host);
+
+    void importTable(const QString& fileName, TableViewType tvType, NMModelComponent *host, const QString& tableName="");
     QString selectSqliteTable(const QString& dbFileName);
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&
@@ -152,7 +161,7 @@ public slots:
     void saveImageFile();
     void saveMapAsImage();
 	void updateLayerInfo(NMLayer* l, double cellId);
-	void importODBC();
+    void importTableObject();
 	void aboutLUMASS();
 	void addLayerToCompList();
     void addLayerToCompList(NMLayer* layer);

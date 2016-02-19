@@ -326,7 +326,9 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     pt->setTimeLevel(host->getTimeLevel());
     NMModelController::getInstance()->addComponent(pt, host);
 
-    QGraphicsProxyWidget* proxyWidget = this->addWidget(tv, Qt::Window);
+    //tv->setWindowFlags(Qt::CustomizeWindowHint);
+    QGraphicsProxyWidget* proxyWidget = this->addWidget(tv,
+                   Qt::CustomizeWindowHint | Qt::WindowTitleHint);
     proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
     ai->addToGroup(proxyWidget);
 }
@@ -666,6 +668,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
     mMousePos = event->scenePos();
     mDragItemList.clear();
     QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
+    QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
     QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
     NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -729,16 +732,23 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 	}
 	else if (event->button() == Qt::RightButton)
 	{
-		QGraphicsItem* sendItem = 0;
-
-		// first, we check, whether we've got a link on the hook
-		sendItem = this->getLinkItem(event->scenePos());
-		if (sendItem == 0 && item != 0)
+        if (widgetItem)
         {
-			sendItem = item;
+            QGraphicsScene::mousePressEvent(event);
         }
+        else
+        {
+            QGraphicsItem* sendItem = 0;
 
-		emit itemRightBtnClicked(event, sendItem);
+            // first, we check, whether we've got a link on the hook
+            sendItem = this->getLinkItem(event->scenePos());
+            if (sendItem == 0 && item != 0)
+            {
+                sendItem = item;
+            }
+
+            emit itemRightBtnClicked(event, sendItem);
+        }
 	}
 	else
 	{

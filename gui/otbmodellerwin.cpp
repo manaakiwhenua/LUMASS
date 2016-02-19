@@ -1718,7 +1718,7 @@ OtbModellerWin::importTable(const QString& fileName,
     }
 
     QSharedPointer<NMSqlTableView> tabview(new NMSqlTableView(srcModel, 0));
-    tabview->setWindowFlags(Qt::Window);
+    //tabview->setWindowFlags(Qt::Window);
     tabview->setTitle(viewName);
     connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
 

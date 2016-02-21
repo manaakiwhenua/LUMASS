@@ -64,7 +64,8 @@ class NMSqlTableView : public QWidget
 public:
 
 	enum ViewMode{NMTABVIEW_ATTRTABLE,
-		NMTABVIEW_RASMETADATA
+                  NMTABVIEW_RASMETADATA,
+                  NMTABVIEW_PARATABLE
 	};
 
         NMSqlTableView(QSqlTableModel* model, QWidget* parent=0);

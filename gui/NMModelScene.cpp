@@ -324,12 +324,13 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     pt->setUserID(tv->getModel()->tableName());
     pt->setDescription(tv->getModel()->tableName());
     pt->setTimeLevel(host->getTimeLevel());
-    NMModelController::getInstance()->addComponent(pt, host);
+    QString ptName = NMModelController::getInstance()->addComponent(pt, host);
 
-    //tv->setWindowFlags(Qt::CustomizeWindowHint);
+
     QGraphicsProxyWidget* proxyWidget = this->addWidget(tv,
-                   Qt::CustomizeWindowHint | Qt::WindowTitleHint);
+                   Qt::CustomizeWindowHint | Qt::Window | Qt::WindowTitleHint);
     proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
+    proxyWidget->setObjectName(ptName);
     ai->addToGroup(proxyWidget);
 }
 
@@ -704,7 +705,11 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                     {
                         this->views().at(0)->setCursor(Qt::ClosedHandCursor);
 
-                        if (procItem)
+                        if (widgetItem)
+                        {
+                            emit itemLeftClicked(widgetItem->objectName());
+                        }
+                        else if (procItem)
                         {
                             emit itemLeftClicked(procItem->getTitle());
                         }

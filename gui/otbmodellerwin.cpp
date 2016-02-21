@@ -1712,6 +1712,10 @@ OtbModellerWin::importTable(const QString& fileName,
     srcModel->setTable(tablename);
     srcModel->select();
 
+    NMDebugAI(<< "db name from srcModel: "
+              << srcModel->database().databaseName().toStdString()
+              << std::endl);
+
     if (viewName.isEmpty())
     {
         viewName = QString(tablename);

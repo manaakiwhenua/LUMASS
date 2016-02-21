@@ -302,8 +302,18 @@ void NMSqlTableView::initView()
 void
 NMSqlTableView::closeEvent(QCloseEvent *event)
 {
-    emit tableViewClosed();
-    event->accept();
+    switch(mViewMode)
+    {
+    case NMTABVIEW_ATTRTABLE:
+        emit tableViewClosed();
+        event->accept();
+        break;
+    case NMTABVIEW_RASMETADATA:
+        event->accept();
+        break;
+    case NMTABVIEW_PARATABLE:
+        break;
+    }
 }
 
 void

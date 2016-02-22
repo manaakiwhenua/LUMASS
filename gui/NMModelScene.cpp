@@ -317,9 +317,11 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
         return;
     }
 
-    QString dbFN = tv->getModel()->database().databaseName();
+    NMSqlTableModel* tabModel = qobject_cast<NMSqlTableModel*>(tv->getModel());
+    QString dbFN = tabModel->getDatabaseName();
 
     NMParameterTable* pt = new NMParameterTable(host);
+    pt->setTableName(tv->getModel()->tableName());
     pt->setFileName(dbFN);
     pt->setUserID(tv->getModel()->tableName());
     pt->setDescription(tv->getModel()->tableName());

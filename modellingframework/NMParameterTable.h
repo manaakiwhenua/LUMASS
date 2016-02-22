@@ -43,9 +43,12 @@ class NMMODFRAME_EXPORT NMParameterTable : public NMDataComponent
 {
     Q_OBJECT
     Q_PROPERTY(QString FileName READ getFileName WRITE setFileName)
+    Q_PROPERTY(QString TableName READ getTableName WRITE setTableName)
 
 public:
+    NMPropertyGetSet( TableName, QString )
 
+public:
     NMParameterTable(QObject* parent=0);
     virtual ~NMParameterTable(void);
 
@@ -65,6 +68,7 @@ public:
 
 protected:
     QString mFileName;
+    QString mTableName;
 
 private:
     static const std::string ctx;

@@ -26,6 +26,7 @@
 #include <sstream>
 
 #include <QVariant>
+#include <QFileInfo>
 
 #include "NMParameterTable.h"
 #include "NMDataComponent.h"
@@ -74,26 +75,67 @@ NMParameterTable::setFileName(QString fn)
         otb::SQLiteTable* theTab = static_cast<otb::SQLiteTable*>(mDataWrapper->getOTBTab().GetPointer());
         if (theTab != 0)
         {
-            if (mFileName.compare(QString(theTab->GetDbFileName().c_str()), Qt::CaseInsensitive) == 0)
+            if (    mFileName.compare(QString(theTab->GetDbFileName().c_str()), Qt::CaseInsensitive) == 0
+                &&  mTableName.compare(QString(theTab->GetTableName().c_str()), Qt::CaseInsensitive) == 0
+               )
             {
-                NMDebugAI(<< "No need to update, still pointing to the same data base!" << std::endl);
+                NMDebugAI(<< "No need to update, still pointing to the same data base table!" << std::endl);
                 NMDebugCtx(ctx, << "done!");
                 return;
             }
         }
     }
 
+    QStringList dbFormats;
+    dbFormats << "ldb" << "db" << "sqlite";
+    QFileInfo finfo(mFileName);
+
     otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
     tab->SetUseSharedCache(false);
-    if (!tab->CreateFromVirtual(this->mFileName.toStdString()))
+    if (!dbFormats.contains(finfo.suffix()))
     {
-        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
-                .arg(mFileName);
-        me.setMsg(msg.toStdString());
-        NMDebugCtx(ctx, << "done!");
-        throw me;
-        return;
+        if (!tab->CreateFromVirtual(this->mFileName.toStdString()))
+        {
+            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
+                    .arg(mFileName);
+            me.setMsg(msg.toStdString());
+            NMDebugCtx(ctx, << "done!");
+            throw me;
+            return;
+        }
+    }
+    else
+    {
+        if (mTableName.isEmpty())
+        {
+            this->setTableName(tab->GetFilenameInfo(mFileName.toStdString()).at(1).c_str());
+        }
+        else
+
+        if (!tab->openConnection())
+        {
+            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
+                    .arg(mFileName);
+            me.setMsg(msg.toStdString());
+            NMDebugCtx(ctx, << "done!");
+            throw me;
+            return;
+        }
+
+        if (    !tab->SetTableName(mTableName.toStdString())
+            ||  !tab->PopulateTableAdmin()
+           )
+        {
+            NMMfwException me(NMMfwException::NMModelComponent_UninitialisedDataObject);
+            QString msg = QString("Failed populating table '%1' of '%2'!").arg(mTableName)
+                    .arg(mFileName);
+            me.setMsg(msg.toStdString());
+            NMDebugCtx(ctx, << "done!");
+            throw me;
+            return;
+        }
     }
 
     //    this->setUserID(tab->GetTableName().c_str());

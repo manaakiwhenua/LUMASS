@@ -31,7 +31,7 @@
 const std::string NMSqlTableModel::ctx = "NMSqlTableModel";
 
 NMSqlTableModel::NMSqlTableModel(QObject *parent, QSqlDatabase db)
-    : QSqlTableModel(parent, db)
+    : QSqlTableModel(parent, db), mDatabaseName("")
 {
 }
 

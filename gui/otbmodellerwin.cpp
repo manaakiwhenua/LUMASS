@@ -1709,12 +1709,10 @@ OtbModellerWin::importTable(const QString& fileName,
     QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
 
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
+    // note: setting the db name here is just for reference purposes
+    srcModel->setDatabaseName(dbfilename);
     srcModel->setTable(tablename);
     srcModel->select();
-
-    NMDebugAI(<< "db name from srcModel: "
-              << srcModel->database().databaseName().toStdString()
-              << std::endl);
 
     if (viewName.isEmpty())
     {

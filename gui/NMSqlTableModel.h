@@ -38,6 +38,17 @@ public:
 
     QVariant data(const QModelIndex &idx, int role) const;
 
+    /*!
+     * \brief setDatabaseName - handy to save the DB name somewhere
+     *                          accessible and where it is not
+     *                          accidentally used by another Qt object
+     * \param dbName
+     */
+    void setDatabaseName(const QString& dbName){mDatabaseName = dbName;}
+    QString getDatabaseName(){return mDatabaseName;}
+
+protected:
+    QString mDatabaseName;
 
 private:
     static const std::string ctx;

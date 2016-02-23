@@ -111,8 +111,13 @@ NMParameterTable::setFileName(QString fn)
         {
             this->setTableName(tab->GetFilenameInfo(mFileName.toStdString()).at(1).c_str());
         }
-        else
 
+        // here's how it goes:
+        // 1: set the db file name
+        // 2: open a connection
+        // 3: set the table name
+        // 4: populate the table admin data
+        tab->SetDbFileName(mFileName.toStdString());
         if (!tab->openConnection())
         {
             NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);

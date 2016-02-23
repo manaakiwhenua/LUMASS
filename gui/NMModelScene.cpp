@@ -312,7 +312,9 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
                                 NMAggregateComponentItem* ai,
                                 NMModelComponent* host)
 {
-    if (tv == 0 || ai == 0)
+    if (    tv == 0
+        ||  (ai == 0 && host == 0)
+       )
     {
         return;
     }
@@ -333,7 +335,14 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
                    Qt::CustomizeWindowHint | Qt::Window | Qt::WindowTitleHint);
     proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
     proxyWidget->setObjectName(ptName);
-    ai->addToGroup(proxyWidget);
+    if (ai)
+    {
+        ai->addToGroup(proxyWidget);
+    }
+    else
+    {
+        this->addItem(proxyWidget);
+    }
 }
 
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
@@ -421,18 +430,33 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             // ============================
             //  PARAMETER TABLE
             // =============================
-            else if (   ai
-                     && dropItem.compare(QString::fromLatin1("ParameterTable")) == 0
-                    )
+            else if (dropItem.compare(QString::fromLatin1("ParameterTable")) == 0)
             {
-                NMModelComponent* comp = NMModelController::getInstance()->getComponent(ai->getTitle());
+                NMModelComponent* host = 0;
 
-                if (comp)
+                if (ai)
+                {
+                    host = NMModelController::getInstance()->getComponent(ai->getTitle());
+                }
+                else
+                {
+                    NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(pi);
+                    if (procItem)
+                    {
+                        host = NMModelController::getInstance()->getComponent(procItem->getTitle())->getHostComponent();
+                    }
+                    else
+                    {
+                        host = NMModelController::getInstance()->getComponent("root");
+                    }
+                }
+
+                if (host)
                 {
                     NMGlobalHelper h;
                     NMSqlTableView* tv = h.getMainWindow()->importODBC(OtbModellerWin::NM_TABVIEW_SCENE);
 
-                    this->addParameterTable(tv, ai, comp);
+                    this->addParameterTable(tv, ai, host);
                     //                    QString dbFN = tv->getModel()->database().databaseName();
                     //                    NMParameterTable* pt = new NMParameterTable();
                     //                    pt->setFileName(dbFN);

@@ -312,9 +312,7 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
                                 NMAggregateComponentItem* ai,
                                 NMModelComponent* host)
 {
-    if (    tv == 0
-        ||  (ai == 0 && host == 0)
-       )
+    if (tv == 0)
     {
         return;
     }
@@ -327,7 +325,10 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     pt->setFileName(dbFN);
     pt->setUserID(tv->getModel()->tableName());
     pt->setDescription(tv->getModel()->tableName());
-    pt->setTimeLevel(host->getTimeLevel());
+    if (host)
+    {
+        pt->setTimeLevel(host->getTimeLevel());
+    }
     QString ptName = NMModelController::getInstance()->addComponent(pt, host);
 
 
@@ -335,6 +336,11 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
                    Qt::CustomizeWindowHint | Qt::Window | Qt::WindowTitleHint);
     proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
     proxyWidget->setObjectName(ptName);
+    this->updateComponentItemFlags(proxyWidget);
+
+    connect(this, SIGNAL(itemRightBtnClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
+            tv, SLOT(processParaTableRightClick(QGraphicsSceneMouseEvent*,QGraphicsItem*)));
+
     if (ai)
     {
         ai->addToGroup(proxyWidget);
@@ -445,28 +451,12 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     {
                         host = NMModelController::getInstance()->getComponent(procItem->getTitle())->getHostComponent();
                     }
-                    else
-                    {
-                        host = NMModelController::getInstance()->getComponent("root");
-                    }
                 }
 
-                if (host)
-                {
-                    NMGlobalHelper h;
-                    NMSqlTableView* tv = h.getMainWindow()->importODBC(OtbModellerWin::NM_TABVIEW_SCENE);
+                NMGlobalHelper h;
+                NMSqlTableView* tv = h.getMainWindow()->openCreateTable(OtbModellerWin::NM_TABVIEW_SCENE, false);
 
-                    this->addParameterTable(tv, ai, host);
-                    //                    QString dbFN = tv->getModel()->database().databaseName();
-                    //                    NMParameterTable* pt = new NMParameterTable();
-                    //                    pt->setFileName(dbFN);
-                    //                    pt->setUserID(tv->getModel()->tableName());
-                    //                    pt->setDescription(tv->getModel()->tableName());
-                    //                    NMModelController::getInstance()->addComponent(pt, comp);
-
-                    //                    QGraphicsProxyWidget* proxyWidget = this->addWidget(tv);
-                    //                    ai->addToGroup(proxyWidget);
-                }
+                this->addParameterTable(tv, ai, host);
             }
             // ============================
             //  PROCESS COMPONENT
@@ -532,37 +522,39 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             // DROPED PARAMETER TABLE FILENAME on aggregate component
             // =============================================================
             else if (   tabFormats.contains(suffix, Qt::CaseInsensitive)
-                     && aggrItem
+                     //&& aggrItem
                     )
             {
-                NMModelComponent* comp = NMModelController::getInstance()->getComponent(aggrItem->getTitle());
-                if (comp)
+                NMModelComponent* host = 0;
+                if (aggrItem)
                 {
-                    NMGlobalHelper h;
-                    OtbModellerWin* mwin = h.getMainWindow();
-                    NMSqlTableView* tv = 0;
-                    QStringList sqliteformats;
-                    sqliteformats << "db" << "sqlite" << "ldb";
-
-                    QString tableName;
-                    if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
-                    {
-                        tableName = mwin->selectSqliteTable(fileName);
-                        if (!tableName.isEmpty())
-                        {
-                            tv = mwin->importTable(fileName,
-                                              OtbModellerWin::NM_TABVIEW_SCENE,
-                                              tableName);
-                        }
-                    }
-                    else
-                    {
-                        tv = mwin->importTable(fileName, OtbModellerWin::NM_TABVIEW_SCENE);
-                    }
-
-                    this->addParameterTable(tv, aggrItem, comp);
-
+                    host = NMModelController::getInstance()->getComponent(aggrItem->getTitle());
                 }
+
+                NMGlobalHelper h;
+                OtbModellerWin* mwin = h.getMainWindow();
+                NMSqlTableView* tv = 0;
+                QStringList sqliteformats;
+                sqliteformats << "db" << "sqlite" << "ldb";
+
+                QString tableName;
+                if (sqliteformats.contains(suffix, Qt::CaseInsensitive))
+                {
+                    tableName = mwin->selectSqliteTable(fileName);
+                    if (!tableName.isEmpty())
+                    {
+                        tv = mwin->importTable(fileName,
+                                          OtbModellerWin::NM_TABVIEW_SCENE,
+                                          true,
+                                          tableName);
+                    }
+                }
+                else
+                {
+                    tv = mwin->importTable(fileName, OtbModellerWin::NM_TABVIEW_SCENE, true);
+                }
+
+                this->addParameterTable(tv, aggrItem, host);
             }
             // =============================================================
             // DROPED LIST OF IMAGE/TABLE FILENAMES ON PROCESS COMP ITEM
@@ -763,23 +755,21 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 	}
 	else if (event->button() == Qt::RightButton)
 	{
+        QGraphicsItem* sendItem = 0;
         if (widgetItem)
         {
-            QGraphicsScene::mousePressEvent(event);
+            sendItem = qgraphicsitem_cast<QGraphicsItem*>(widgetItem);
         }
         else
         {
-            QGraphicsItem* sendItem = 0;
-
             // first, we check, whether we've got a link on the hook
             sendItem = this->getLinkItem(event->scenePos());
             if (sendItem == 0 && item != 0)
             {
                 sendItem = item;
             }
-
-            emit itemRightBtnClicked(event, sendItem);
         }
+        emit itemRightBtnClicked(event, sendItem);
 	}
 	else
 	{

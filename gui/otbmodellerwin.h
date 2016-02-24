@@ -103,10 +103,11 @@ public:
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
 
-    NMSqlTableView *importODBC(TableViewType tvType=NM_TABVIEW_STANDALONE);
+    NMSqlTableView *openCreateTable(TableViewType tvType=NM_TABVIEW_STANDALONE,
+                                    bool bOpen=true);
 
     NMSqlTableView* importTable(const QString& fileName, TableViewType tvType,
-                                const QString& tableName="");
+                                bool bOpen, const QString& tableName="");
 
     QString selectSqliteTable(const QString& dbFileName);
 

@@ -406,7 +406,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
 
     // since we havent' go an implementation for odbc import
     // we just remove the action for now
-    //ui->menuObject->removeAction(ui->actionImportODBC);
+    //ui->menuObject->removeAction(ui->actionopenCreateTable);
 
     // add a label to the status bar for displaying
     // the coordinates of the map window
@@ -1504,19 +1504,29 @@ void OtbModellerWin::aboutLUMASS(void)
 void
 OtbModellerWin::importTableObject()
 {
-    this->importODBC(NM_TABVIEW_STANDALONE);
+    this->openCreateTable(NM_TABVIEW_STANDALONE);
 }
 
 NMSqlTableView*
-OtbModellerWin::importODBC(TableViewType tvType)
+OtbModellerWin::openCreateTable(TableViewType tvType,
+                                bool bOpen)
 {
 	NMDebugCtx(ctxOtbModellerWin, << "...");
 
     NMSqlTableView* tv = 0;
 
-    QString fileName = QFileDialog::getOpenFileName(this,
+    QString fileName;
+    if (bOpen)
+    {
+        fileName = QFileDialog::getOpenFileName(this,
              tr("Import Table Data"), "~",
              tr("dBASE (*.dbf);;Delimited Text (*.csv *.txt);;SQLite Table (*.db *.sqlite *.ldb);;Excel File (*.xls)"));
+    }
+    else
+    {
+        fileName = QFileDialog::getSaveFileName(this, tr("Create Parameter Table")),
+                    "~", tr("SQLiteTable (*.ldb *.db *.sqlite);;");
+    }
 
     if (fileName.isEmpty())
     {
@@ -1530,17 +1540,17 @@ OtbModellerWin::importODBC(TableViewType tvType)
     QString tableName;
 
     QFileInfo fifo(fileName);
-    if (sqliteformats.contains(fifo.suffix().toLower()))
+    if (bOpen && sqliteformats.contains(fifo.suffix().toLower()))
     {
         tableName = this->selectSqliteTable(fileName);
         if (!tableName.isEmpty())
         {
-            tv = this->importTable(fileName, tvType, tableName);
+            tv = this->importTable(fileName, tvType, bOpen, tableName);
         }
     }
     else
     {
-        tv = this->importTable(fileName, tvType);
+        tv = this->importTable(fileName, tvType, bOpen);
     }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
@@ -1579,7 +1589,6 @@ OtbModellerWin::selectSqliteTable(const QString &dbFileName)
         }
 
         sqlTable->disconnectDB();
-
     }
     else
     {
@@ -1593,7 +1602,9 @@ OtbModellerWin::selectSqliteTable(const QString &dbFileName)
 
 NMSqlTableView*
 OtbModellerWin::importTable(const QString& fileName,
-                            TableViewType tvType, const QString &tableName)
+                            TableViewType tvType,
+                            bool bOpen,
+                            const QString &tableName)
 {
     otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
     std::vector<std::string> vinfo = sqlTable->GetFilenameInfo(fileName.toStdString());
@@ -1672,10 +1683,21 @@ OtbModellerWin::importTable(const QString& fileName,
     QString dbfilename = fileName;
     if (tableName.isEmpty())
     {
-        if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+        if (bOpen)
         {
-            NMDebugCtx(ctxOtbModellerWin, << "done!");
-            return 0;
+            if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
+            {
+                NMDebugCtx(ctxOtbModellerWin, << "done!");
+                return 0;
+            }
+        }
+        else
+        {
+            if (!sqlTable->CreateTable(fileName.toStdString()))
+            {
+                NMDebugCtx(ctxOtbModellerWin, << "done!");
+                return 0;
+            }
         }
         tablename = sqlTable->GetTableName().c_str();
         dbfilename = sqlTable->GetDbFileName().c_str();
@@ -1719,8 +1741,24 @@ OtbModellerWin::importTable(const QString& fileName,
         viewName = QString(tablename);
     }
 
-    QSharedPointer<NMSqlTableView> tabview(new NMSqlTableView(srcModel, 0));
-    //tabview->setWindowFlags(Qt::Window);
+    QSharedPointer<NMSqlTableView> tabview;
+
+    if (tvType == NM_TABVIEW_STANDALONE)
+    {
+        tabview = QSharedPointer<NMSqlTableView>(
+                    new NMSqlTableView(srcModel,
+                        NMSqlTableView::NMTABVIEW_ATTRTABLE, 0)
+                    );
+    }
+    else if (tvType == NM_TABVIEW_SCENE)
+    {
+        tabview = QSharedPointer<NMSqlTableView>(
+                    new NMSqlTableView(srcModel,
+                        NMSqlTableView::NMTABVIEW_PARATABLE, 0)
+                    );
+    }
+
+
     tabview->setTitle(viewName);
     connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
 

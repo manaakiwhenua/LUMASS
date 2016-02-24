@@ -587,7 +587,13 @@ NMModelViewWidget::changeColour(void)
 void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		QGraphicsItem* item)
 {
-	bool running = NMModelController::getInstance()->isModelRunning();
+    QGraphicsProxyWidget* wi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
+    if (wi)
+    {
+        return;
+    }
+
+    bool running = NMModelController::getInstance()->isModelRunning();
 
 	this->mLastScenePos = event->scenePos();
 	this->mLastItem = item;
@@ -598,6 +604,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
     NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
     QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(item);
+
 
     QString title;
     bool dataBuffer = false;

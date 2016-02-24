@@ -68,6 +68,9 @@
 #include <QRegExp>
 #include <QCheckBox>
 #include <QStyledItemDelegate>
+#include <QGraphicsItem>
+#include <QGraphicsSceneMouseEvent>
+#include <QGraphicsProxyWidget>
 
 #include <QSqlQuery>
 #include <QSqlResult>
@@ -75,6 +78,8 @@
 #include <QSqlError>
 
 //#include "valgrind/callgrind.h"
+
+const std::string NMSqlTableView::ctx = "NMSqlTableView";
 
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
@@ -410,7 +415,7 @@ NMSqlTableView::setViewMode(ViewMode mode)
 
 void NMSqlTableView::updateSelRecsOnly(int state)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
     if (!this->mChkSelectedRecsOnly->isEnabled())
     {
@@ -435,12 +440,12 @@ void NMSqlTableView::updateSelRecsOnly(int state)
 //		this->mSortFilter->clearFilter();
 //		this->updateProxySelection(QItemSelection(), QItemSelection());
 //	}
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void NMSqlTableView::switchSelection()
 {
-    //NMDebugCtx(__ctxsqltabview, << "...");
+    //NMDebugCtx(ctx, << "...");
 
     mbSwitchSelection = !mbSwitchSelection;
     updateSelection(mbSwitchSelection);
@@ -455,14 +460,14 @@ void NMSqlTableView::switchSelection()
 //		mSelectionModel->setSelection(toggledSelection);
 //	}
 
-    //NMDebugCtx(__ctxsqltabview, << "done!");
+    //NMDebugCtx(ctx, << "done!");
 }
 
 void NMSqlTableView::normalise()
 {
 	// NOTE: for progress maxrange needs to be ncols * rows!
 
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	// -----------------------------------------------------------------------
 	// get user input
@@ -475,7 +480,7 @@ void NMSqlTableView::normalise()
 	if (!bOk || fieldNames.isEmpty())
 	{
 		NMDebugAI(<< "No input fields for normalisation specified!" << endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -490,7 +495,7 @@ void NMSqlTableView::normalise()
 	if (!bOk)
 	{
 		NMDebugAI(<< "No normalisation mode specified!" << endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 	bool bCostCriterion = sMode == "Cost Criterion" ? true : false;
@@ -521,13 +526,13 @@ void NMSqlTableView::normalise()
 	// inform listeners
 	//emit tableDataChanged(this->mAlteredColumns, this->mDeletedColumns);
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 
 void NMSqlTableView::userQuery()
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
     if (mModel == 0)
     {
@@ -543,7 +548,7 @@ void NMSqlTableView::userQuery()
                                                queryTemplate, this);
     if (sqlStmt.compare("0") == 0 || sqlStmt.isEmpty())
     {
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -567,7 +572,7 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
     if (!userQuery.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
     ++mQueryCounter;
@@ -581,7 +586,7 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
     resview->setTitle(tableName);
     resview->show();
 
-    //NMDebugCtx(__ctxsqltabview, << "done!");
+    //NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -617,7 +622,7 @@ void NMSqlTableView::cleanupProgressDlg(NMTableCalculator* obj, int maxrange)
 
 void NMSqlTableView::calcColumn()
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	// get user input
 
@@ -628,7 +633,7 @@ void NMSqlTableView::calcColumn()
 	                                          tr(""), &bOk);
 	if (!bOk || func.isEmpty())
 	{
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -638,7 +643,7 @@ void NMSqlTableView::calcColumn()
     if (!error.isEmpty())
     {
         NMBoxErr("Calculate Column", "Calculation Failed!");
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
     NMDebugAI(<< rowsAffected << " records updated!" << std::endl);
@@ -649,14 +654,14 @@ void NMSqlTableView::calcColumn()
 //    if (!qUpdate.exec(uStr))
 //    {
 //        NMBoxErr("Calculate Column", qUpdate.lastError().text().toStdString());
-//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        NMDebugCtx(ctx, << "done!");
 //        return;
 //    }
 
 //    mModel->select();
 //    updateProxySelection(QItemSelection(), QItemSelection());
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -687,12 +692,12 @@ void
 NMSqlTableView::updateSelectionAdmin(const QItemSelection& sel,
 		const QItemSelection& desel)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
     if (this->mProxySelModel == 0)
     {
         NMDebugAI(<< "Haven't got any selectiom model set up!" << endl);
         this->updateSelectionAdmin(0);
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -706,12 +711,12 @@ NMSqlTableView::updateSelectionAdmin(const QItemSelection& sel,
     mlNumSelRecs = selcnt;
 	NMDebugAI(<< "report " << selcnt << " selected records" << std::endl);
 	this->updateSelectionAdmin(selcnt);
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void NMSqlTableView::addColumn()
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	NMAddColumnDialog* dlg = new NMAddColumnDialog();
 	int ret = 0;
@@ -767,7 +772,7 @@ void NMSqlTableView::addColumn()
 
 	if (!ret)
 	{
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -786,7 +791,7 @@ void NMSqlTableView::addColumn()
         updateSelection(mbSwitchSelection);
 	}
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void NMSqlTableView::deleteColumn()
@@ -834,7 +839,7 @@ void NMSqlTableView::deleteColumn()
 
 void NMSqlTableView::joinAttributes()
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 //    QString fileName = QFileDialog::getOpenFileName(this,
 //         tr("Select Source Attribute Table"), "~",
@@ -842,7 +847,7 @@ void NMSqlTableView::joinAttributes()
 //         tr("Delimited Text (*.csv *.txt);;dBASE (*.dbf);;Excel File (*.xls)"));
 //    if (fileName.isNull())
 //    {
-//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        NMDebugCtx(ctx, << "done!");
 //        return;
 //    }
 
@@ -883,8 +888,8 @@ void NMSqlTableView::joinAttributes()
 //    }
 //    else
 //    {
-//        NMErr(__ctxsqltabview, << "File format not supported!");
-//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        NMErr(ctx, << "File format not supported!");
+//        NMDebugCtx(ctx, << "done!");
 //        return;
 //    }
 
@@ -906,8 +911,8 @@ void NMSqlTableView::joinAttributes()
     //if (!mModel->database().tables().contains(vttablename))
 //    if (!vttabquery.exec(QString(ssql.str().c_str())))
 //    {
-//        NMErr(__ctxsqltabview, << vttabquery.lastError().text().toStdString());
-//        NMDebugCtx(__ctxsqltabview, << "done!");
+//        NMErr(ctx, << vttabquery.lastError().text().toStdString());
+//        NMDebugCtx(ctx, << "done!");
 //        return;
 //    }
 
@@ -999,7 +1004,7 @@ void NMSqlTableView::joinAttributes()
 
     if (!ret || tableName.isEmpty())
     {
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -1013,7 +1018,7 @@ void NMSqlTableView::joinAttributes()
 
     if (srcModel == 0)
     {
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -1040,7 +1045,7 @@ void NMSqlTableView::joinAttributes()
 
     if (srcDbFileName.isEmpty())
     {
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -1066,7 +1071,7 @@ void NMSqlTableView::joinAttributes()
     if (tarOtbTable.IsNull())
     {
         NMDebugAI(<< "tarOtbTable is NULL!\n");
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -1108,7 +1113,7 @@ void NMSqlTableView::joinAttributes()
     int tarJoinColIdx = tarJoinFields.indexOf(tarFieldName);
     if (!bOk || tarJoinColIdx < 0)
     {
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
     NMDebugAI(<< "target field name=" << tarFieldName.toStdString()
@@ -1121,7 +1126,7 @@ void NMSqlTableView::joinAttributes()
     int srcJoinColIdx = srcJoinFields.indexOf(srcFieldName);
     if (!bOk || srcJoinColIdx < 0)
     {
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
     NMDebugAI(<< "source field name=" << srcFieldName.toStdString()
@@ -1207,14 +1212,14 @@ void NMSqlTableView::joinAttributes()
 
 //    this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
 NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 		QAbstractItemModel* srcTable)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 
 
@@ -1368,7 +1373,7 @@ NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColId
 //    //mSortFilter->layoutChanged();
 //    mModel->layoutChanged();
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 //void NMSqlTableView::hideRow(int row)
@@ -1383,7 +1388,7 @@ NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColId
 
 void NMSqlTableView::exportTable()
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	QString tabName = this->windowTitle().split(" ", QString::SkipEmptyParts).last();
 	QString proposedName = QString(tr("%1/%2.csv")).arg(getenv("HOME")).arg(tabName);
@@ -1397,7 +1402,7 @@ void NMSqlTableView::exportTable()
 	if (fileName.isNull())
 	{
 		NMDebugAI( << "got an empty filename from the user!" << endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -1425,18 +1430,18 @@ void NMSqlTableView::exportTable()
 	//	}
 	//	else
 	//	{
-    //		NMErr(__ctxsqltabview, << "invalid database and table name!");
+    //		NMErr(ctx, << "invalid database and table name!");
 	//		return;
 	//	}
     //
 	//	this->writeSqliteDb(dbName, tableName, false);
 	//}
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 void NMSqlTableView::colStats()
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
     if (mLastClickedColumn.isEmpty() || mModel == 0)
     {
@@ -1479,7 +1484,7 @@ void NMSqlTableView::colStats()
     if (!userQuery.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
     ++mQueryCounter;
@@ -1488,12 +1493,12 @@ void NMSqlTableView::colStats()
     QSqlQuery qRes(mModel->database());
     if (!qRes.exec(queryStr))
     {
-         NMDebugCtx(__ctxsqltabview, << "done!");
+         NMDebugCtx(ctx, << "done!");
          return;
     }
     if (!qRes.next())
     {
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
     double var = qRes.value(0).toDouble();
@@ -1506,7 +1511,7 @@ void NMSqlTableView::colStats()
     if (!qUpd.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 
@@ -1533,7 +1538,7 @@ void NMSqlTableView::colStats()
     //	if (stats.size() < 4)
     //	{
     //		NMDebugAI(<< "Couldn't calc stats for a reason!" << std::endl);
-    //        NMDebugCtx(__ctxsqltabview, << "done!");
+    //        NMDebugCtx(ctx, << "done!");
     //		return;
     //	}
     //	cleanupProgressDlg(calc.data(), maxrange);
@@ -1568,7 +1573,7 @@ void NMSqlTableView::colStats()
 
     //	QMessageBox::information(this, title, res);
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -1628,13 +1633,13 @@ bool
 NMSqlTableView::writeDelimTxt(const QString& fileName,
 		bool bselectedRecs)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	QFile file(fileName);
 	if (!file.open(QIODevice::WriteOnly))
 	{
 		NMBoxErr("Export Table", "Couldn't create file '" << fileName.toStdString() << "'!");
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return false;
 	}
 	QTextStream out(&file);
@@ -1708,7 +1713,7 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
     mProgressDialog->setValue(maxrange);
     out.flush();
 	file.close();
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 	return true;
 }
 
@@ -1801,7 +1806,32 @@ NMSqlTableView::unhideAttribute(const QString& attr)
 	this->mTableView->showColumn(colidx);
 }
 
-bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
+void
+NMSqlTableView::processParaTableRightClick(QGraphicsSceneMouseEvent* gsme, QGraphicsItem* gi)
+{
+    NMDebugCtx(ctx, << "...");
+
+    // translate the scene based event into a local table view one ...
+
+    QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(gi);
+    if (pwi == 0)
+    {
+        return;
+    }
+    QPoint localPos = this->mapFromGlobal(gsme->screenPos());
+
+    QScopedPointer<QMouseEvent> me(new QMouseEvent(
+                                       QEvent::MouseButtonPress,
+                                       localPos, Qt::RightButton,
+                                       Qt::RightButton, gsme->modifiers()));
+
+    this->eventFilter(mTableView->horizontalHeader()->viewport(), me.data());
+
+    NMDebugCtx(ctx, << "done!");
+}
+
+bool
+NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 {
 	// ======================== COLUMN HEADER + MOUSE BUTTON ==================================================
 	if (	object == this->mTableView->horizontalHeader()->viewport()
@@ -1885,7 +1915,7 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 		// ----------------------- RIGHT BUTTON CALLS META MENU ------------------------------------------------
 		if (me->button() == Qt::RightButton)
 		{
-                        if (this->mViewMode == NMSqlTableView::NMTABVIEW_RASMETADATA)
+            if (this->mViewMode == NMSqlTableView::NMTABVIEW_RASMETADATA)
 			{
 				int row = this->mTableView->rowAt(me->pos().y());
 				if (!row)
@@ -1932,7 +1962,7 @@ bool NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 void
 NMSqlTableView::sortColumn(int col)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
     Qt::SortOrder order;
     QString orderStr;
@@ -1967,13 +1997,13 @@ NMSqlTableView::sortColumn(int col)
     updateSelection(mbSwitchSelection);
 
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
 NMSqlTableView::selectionQuery(void)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
 	bool bOk = false;
     QString queryStr = QInputDialog::getText(this, tr("Selection Query"),
@@ -1982,7 +2012,7 @@ NMSqlTableView::selectionQuery(void)
                          &bOk);
     if (!bOk || queryStr.isEmpty())
 	{
-        NMDebugCtx(__ctxsqltabview, << "done!");
+        NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
@@ -2005,7 +2035,7 @@ NMSqlTableView::selectionQuery(void)
 
     //NMDebugAI(<< cnt << " selected rows" << std::endl);
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -2112,7 +2142,7 @@ NMSqlTableView::setSelection(const QItemSelection &isel)
 void
 NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
 {
-    NMDebugCtx(__ctxsqltabview, << "...");
+    NMDebugCtx(ctx, << "...");
 
     if (mSelectionModel && sel.count() > 0)
     {
@@ -2136,7 +2166,7 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
 
     this->printSelRanges(this->mProxySelModel->selection(), "new selection ...");
 
-    NMDebugCtx(__ctxsqltabview, << "done!");
+    NMDebugCtx(ctx, << "done!");
 }
 
 void

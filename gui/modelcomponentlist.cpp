@@ -1372,12 +1372,12 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                     tableName = mainWin->selectSqliteTable(fileName);
                     if (!tableName.isEmpty())
                     {
-                        mainWin->importTable(fileName, OtbModellerWin::NM_TABVIEW_STANDALONE, tableName);
+                        mainWin->importTable(fileName, OtbModellerWin::NM_TABVIEW_STANDALONE, true, tableName);
                     }
                 }
                 else
                 {
-                    mainWin->importTable(fileName, OtbModellerWin::NM_TABVIEW_STANDALONE);
+                    mainWin->importTable(fileName, OtbModellerWin::NM_TABVIEW_STANDALONE, true);
                 }
             }
             else if (imgFormats.contains(ext))

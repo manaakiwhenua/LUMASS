@@ -24,7 +24,7 @@
 
 #ifndef NMSqlTableView_H_
 #define NMSqlTableView_H_
-#define __ctxsqltabview "NMSqlTableView"
+//#define __ctxsqltabview "NMSqlTableView"
 
 #include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
@@ -57,20 +57,23 @@
 
 #include "vtkTable.h"
 
+class QGraphicsItem;
+class QGraphicsSceneMouseEvent;
+
 class NMSqlTableView : public QWidget
 {
 	Q_OBJECT
 
 public:
 
-	enum ViewMode{NMTABVIEW_ATTRTABLE,
-                  NMTABVIEW_RASMETADATA,
-                  NMTABVIEW_PARATABLE
-	};
+    typedef enum {  NMTABVIEW_ATTRTABLE,
+                    NMTABVIEW_RASMETADATA,
+                    NMTABVIEW_PARATABLE
+                  }ViewMode;
 
-        NMSqlTableView(QSqlTableModel* model, QWidget* parent=0);
-        NMSqlTableView(QSqlTableModel* model, ViewMode mode, QWidget* parent=0);
-        virtual ~NMSqlTableView();
+    NMSqlTableView(QSqlTableModel* model, QWidget* parent=0);
+    NMSqlTableView(QSqlTableModel* model, ViewMode mode, QWidget* parent=0);
+    virtual ~NMSqlTableView();
 
 	void setSelectionModel(NMFastTrackSelectionModel* selectionModel);
     void setSelection(const QItemSelection& isel);
@@ -114,6 +117,7 @@ public slots:
 	void callHideColumn(void);
 	void callUnHideColumn(void);
 	void setSelectable(bool);
+    void processParaTableRightClick(QGraphicsSceneMouseEvent *gsme, QGraphicsItem *gi);
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);
@@ -213,6 +217,9 @@ protected:
 	QMenu* mManageLayerMenu;
 
 	QAction* mActSel;
+
+private:
+    static const std::string ctx;
 
 };
 

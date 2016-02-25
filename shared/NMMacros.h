@@ -70,6 +70,16 @@ QMessageBox::critical(this,               \
 		QString(strmsg.str().c_str()));
 
 
+#define NMBoxErr2( parent, title, message )        \
+std::stringstream strtitle;               \
+strtitle << title;                        \
+std::stringstream strmsg;                 \
+strmsg << message;                        \
+QMessageBox::critical(parent,               \
+        QString(strtitle.str().c_str()),  \
+        QString(strmsg.str().c_str()));
+
+
 /**
  * PROPERTY GETTER & SETTER METHODS
  */

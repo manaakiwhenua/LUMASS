@@ -1693,8 +1693,10 @@ OtbModellerWin::importTable(const QString& fileName,
         }
         else
         {
-            if (!sqlTable->CreateTable(fileName.toStdString()))
+            if (sqlTable->CreateTable(fileName.toStdString()) != otb::SQLiteTable::ATCREATE_CREATED)
             {
+                NMBoxErr("Create Table", "Failed creating LUMASS data base table '"
+                          << fileName.toStdString() << "'!");
                 NMDebugCtx(ctxOtbModellerWin, << "done!");
                 return 0;
             }

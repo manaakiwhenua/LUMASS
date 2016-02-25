@@ -687,7 +687,7 @@ void NMSqlTableView::calcColumn()
     int rowsAffected = mSortFilter->updateData(colidx, mLastClickedColumn, func, error);
     if (!error.isEmpty())
     {
-        NMBoxErr("Calculate Column", "Calculation Failed!");
+        NMBoxErr2(NMGlobalHelper::getMainWindow(), "Calculate Column", "Calculation Failed!");
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1859,10 +1859,18 @@ NMSqlTableView::processParaTableDblClick(const QString &tab)
         return;
     }
 
-    QPoint localPos = this->mapFromGlobal(QCursor::pos());
+    QPoint p0 = QCursor::pos();
+    QPoint p1 = this->mTableView->viewport()->mapFromGlobal(QCursor::pos());
+    QPoint p2 = this->mTableView->mapFromGlobal(QCursor::pos());
+    QPoint p3 = this->mapFromGlobal(QCursor::pos());
+
+    int r0 = mTableView->rowAt(p0.y());
+    int r1 = mTableView->rowAt(p1.y());
+    int r2 = mTableView->rowAt(p2.y());
+    int r3 = mTableView->rowAt(p3.y());
     QScopedPointer<QMouseEvent> me(new QMouseEvent(
                                        QEvent::MouseButtonDblClick,
-                                       localPos, Qt::LeftButton,
+                                       p3, Qt::LeftButton,
                                        Qt::LeftButton, Qt::NoModifier));
 
     this->eventFilter(mTableView->viewport(), me.data());
@@ -2002,14 +2010,10 @@ NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 			{
 				int row = this->mTableView->rowAt(me->pos().y());
 				int col = this->mTableView->columnAt(me->pos().x());
-				if (row && col)
+                if (row && col >= 0)
 				{
-                    if (mViewMode == NMTABVIEW_PARATABLE)
-                    {
-                       // --row;
-                    }
-                    //QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
-                    QModelIndex idx = this->mModel->index(row, col, QModelIndex());
+                    QModelIndex idx = this->mSortFilter->index(row, col, QModelIndex());
+                    //QModelIndex idx = this->mModel->index(row, col, QModelIndex());
 					this->mTableView->edit(idx);
 				}
 			}

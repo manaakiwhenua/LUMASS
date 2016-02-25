@@ -636,6 +636,28 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     return true;
 }
 
+bool
+NMSelSortSqlTableProxyModel::addRow()
+{
+    if (mSourceModel == 0)
+    {
+        return false;
+    }
+
+    QString ssql = QString("INSERT INTO %1 DEFAULT VALUES")
+                    .arg(mSourceModel->tableName());
+    QSqlQuery qInsert(mSourceModel->database());
+    if (!qInsert.exec(ssql))
+    {
+        NMErr(ctx, << "Failed to add row - "
+              << qInsert.lastError().text().toStdString());
+        return false;
+    }
+    mSourceModel->select();
+
+    return true;
+}
+
 int
 NMSelSortSqlTableProxyModel::updateData(int colidx, const QString &column,
                                         const QString& expr,
@@ -1111,7 +1133,8 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
 QModelIndex
 NMSelSortSqlTableProxyModel::index(int row, int column, const QModelIndex& parent) const
 {
-    return this->createIndex(row, column);
+    return this->createIndex(row, column, (void*)this->mSourceModel);
+    //return this->mSourceModel->ind
 }
 
 QModelIndex

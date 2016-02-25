@@ -2984,8 +2984,12 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
 
 void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 {
-	if (compName.isEmpty())
+    if (    compName.isEmpty()
+        ||  compName.startsWith(QString::fromLatin1("ParameterTable"))
+       )
+    {
 		return;
+    }
 
 	NMModelComponent* comp = this->mModelController->getComponent(compName);
 	if (comp == 0)

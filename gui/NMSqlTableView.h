@@ -101,6 +101,7 @@ public slots:
 
 	void calcColumn();
 	void addColumn();
+    void addRow();
 	void deleteColumn();
 	void exportTable();
 	void colStats();
@@ -118,6 +119,7 @@ public slots:
 	void callUnHideColumn(void);
 	void setSelectable(bool);
     void processParaTableRightClick(QGraphicsSceneMouseEvent *gsme, QGraphicsItem *gi);
+    void processParaTableDblClick(const QString &tab);
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);

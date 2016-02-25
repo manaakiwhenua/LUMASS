@@ -13,14 +13,15 @@
 class NMGlobalHelper
 {
 public:
-    OtbModellerWin* getMainWindow(void);
-    vtkRenderWindow* getRenderWindow(void);
-    QVTKWidget* getVTKWidget(void);
-
-    void startBusy(void);
-    void endBusy(void);
 
     // static functions
+    static void startBusy(void);
+    static void endBusy(void);
+
+    static OtbModellerWin* getMainWindow(void);
+    static vtkRenderWindow* getRenderWindow(void);
+    static QVTKWidget* getVTKWidget(void);
+
     static QString getMultiLineInput(const QString& title,
                               const QString& suggestion, QWidget* parent=0);
 

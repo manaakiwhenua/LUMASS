@@ -114,23 +114,23 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
 vtkRenderWindow*
 NMGlobalHelper::getRenderWindow()
 {
-   return getMainWindow()->getRenderWindow();
+   return NMGlobalHelper::getMainWindow()->getRenderWindow();
 }
 
 QVTKWidget*
 NMGlobalHelper::getVTKWidget()
 {
-    return this->getMainWindow()->ui->qvtkWidget;
+    return NMGlobalHelper::getMainWindow()->ui->qvtkWidget;
 }
 
 void
 NMGlobalHelper::startBusy()
 {
-    this->getMainWindow()->showBusyStart();
+    NMGlobalHelper::getMainWindow()->showBusyStart();
 }
 
 void
 NMGlobalHelper::endBusy()
 {
-    this->getMainWindow()->showBusyEnd();
+    NMGlobalHelper::getMainWindow()->showBusyEnd();
 }

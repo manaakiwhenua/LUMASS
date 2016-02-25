@@ -367,14 +367,6 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 	{
 		ihost = qobject_cast<NMIterableComponent*>(host);
 	}
-    else
-    {
-        host = mComponentMap.value(QString::fromLatin1("root"));
-        if (host)
-        {
-            ihost = qobject_cast<NMIterableComponent*>(host);
-        }
-    }
 
     //	if (comp != 0 && ihost != 0)
     //	{

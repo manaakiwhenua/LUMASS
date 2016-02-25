@@ -325,10 +325,12 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     pt->setFileName(dbFN);
     pt->setUserID(tv->getModel()->tableName());
     pt->setDescription(tv->getModel()->tableName());
-    if (host)
+    if (host == 0)
     {
-        pt->setTimeLevel(host->getTimeLevel());
+        host = NMModelController::getInstance()->getComponent(QString::fromLatin1("root"));
     }
+
+    pt->setTimeLevel(host->getTimeLevel());
     QString ptName = NMModelController::getInstance()->addComponent(pt, host);
 
 
@@ -340,6 +342,8 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
 
     connect(this, SIGNAL(itemRightBtnClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
             tv, SLOT(processParaTableRightClick(QGraphicsSceneMouseEvent*,QGraphicsItem*)));
+    connect(this, SIGNAL(procAggregateCompDblClicked(const QString &)),
+            tv, SLOT(processParaTableDblClick(const QString &)));
 
     if (ai)
     {
@@ -648,6 +652,7 @@ NMModelScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 	if (event->button() == Qt::LeftButton)
 	{
         QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
+        QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
         QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
 		NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -655,6 +660,10 @@ NMModelScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 		{
 			emit rootComponentDblClicked();
 		}
+        else if (widgetItem != 0)
+        {
+            emit procAggregateCompDblClicked(widgetItem->objectName());
+        }
 		else if (procItem != 0)
 		{
 			emit procAggregateCompDblClicked(procItem->getTitle());

@@ -64,6 +64,7 @@ public:
 	NMModelScene(QObject* parent=0);
 	virtual ~NMModelScene();
 
+    QGraphicsProxyWidget* getWidgetAt(const QPointF& pos);
 	QGraphicsItem* getComponentItem(const QString& name);
 	NMComponentLinkItem* getLinkItem(QPointF pos);
 	void serialiseItems(QList<QGraphicsItem*> items,
@@ -96,6 +97,11 @@ signals:
 	void procAggregateCompDblClicked(const QString&);	// name
 	void itemRightBtnClicked(QGraphicsSceneMouseEvent *,
 			QGraphicsItem *);
+    void widgetTitleBarRightClicked(QGraphicsSceneMouseEvent *,
+                                    QGraphicsItem *);
+    void widgetViewPortRightClicked(QGraphicsSceneMouseEvent *,
+                                    QGraphicsItem *);
+    void itemDblClicked(QGraphicsSceneMouseEvent *);
     void itemLeftClicked(const QString& itemName);
     void zoom(int delta);
     void signalModelFileDropped(const QString& fileName);

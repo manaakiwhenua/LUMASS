@@ -291,6 +291,7 @@ NMModelScene::getComponentItem(const QString& name)
 		QGraphicsItem* item = it.next();
 		NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
 
 		if (procItem != 0)
 		{
@@ -302,6 +303,11 @@ NMModelScene::getComponentItem(const QString& name)
 			if (aggrItem->getTitle().compare(name) == 0)
 				return aggrItem;
 		}
+        else if (widgetItem != 0)
+        {
+            if (widgetItem->objectName().compare(name) == 0)
+                return widgetItem;
+        }
 	}
 
 	return retItem;
@@ -340,10 +346,10 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     proxyWidget->setObjectName(ptName);
     this->updateComponentItemFlags(proxyWidget);
 
-    connect(this, SIGNAL(itemRightBtnClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
+    connect(this, SIGNAL(widgetViewPortRightClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
             tv, SLOT(processParaTableRightClick(QGraphicsSceneMouseEvent*,QGraphicsItem*)));
-    connect(this, SIGNAL(procAggregateCompDblClicked(const QString &)),
-            tv, SLOT(processParaTableDblClick(const QString &)));
+    connect(this, SIGNAL(itemDblClicked(QGraphicsSceneMouseEvent*)),
+            tv, SLOT(processParaTableDblClick(QGraphicsSceneMouseEvent*)));
 
     if (ai)
     {
@@ -662,7 +668,8 @@ NMModelScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 		}
         else if (widgetItem != 0)
         {
-            emit procAggregateCompDblClicked(widgetItem->objectName());
+            //emit procAggregateCompDblClicked(widgetItem->objectName());
+            emit itemDblClicked(event);
         }
 		else if (procItem != 0)
 		{
@@ -690,13 +697,35 @@ NMModelScene::serialiseItems(QList<QGraphicsItem*> items, QDataStream& data)
 
 }
 
+QGraphicsProxyWidget*
+NMModelScene::getWidgetAt(const QPointF& pos)
+{
+    QGraphicsProxyWidget* ret = 0;
+    QList<QGraphicsItem*> allItems = this->items();
+    foreach (QGraphicsItem* gi, allItems)
+    {
+        ret = qgraphicsitem_cast<QGraphicsProxyWidget*>(gi);
+        if (ret)
+        {
+            QRectF wf = ret->mapRectToScene(ret->windowFrameRect());
+            if (wf.contains(pos))
+            {
+                break;
+            }
+            ret = 0;
+        }
+    }
+    return ret;
+}
+
 void
 NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     mMousePos = event->scenePos();
     mDragItemList.clear();
     QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
-    QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
+
+    //QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
     QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
     NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -728,15 +757,17 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                 else
                 {
                     this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
-                    if (item != 0)
+
+                    QGraphicsProxyWidget* pwi = this->getWidgetAt(event->scenePos());
+                    if (pwi)
                     {
                         this->views().at(0)->setCursor(Qt::ClosedHandCursor);
-
-                        if (widgetItem)
-                        {
-                            emit itemLeftClicked(widgetItem->objectName());
-                        }
-                        else if (procItem)
+                        emit itemLeftClicked(pwi->objectName());
+                    }
+                    else if (item != 0)
+                    {
+                        this->views().at(0)->setCursor(Qt::ClosedHandCursor);
+                        if (procItem)
                         {
                             emit itemLeftClicked(procItem->getTitle());
                         }
@@ -764,12 +795,25 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 	}
 	else if (event->button() == Qt::RightButton)
 	{
+        QPointF pt = event->scenePos();
         QGraphicsItem* sendItem = 0;
-        if (widgetItem)
+
+        QGraphicsProxyWidget* pwi = this->getWidgetAt(pt);
+        if (pwi)
         {
-            sendItem = qgraphicsitem_cast<QGraphicsItem*>(widgetItem);
+            QRectF wFrameRect = pwi->mapRectToScene(pwi->windowFrameRect());
+            QRectF wContentRect = pwi->mapRectToScene(pwi->contentsRect());
+            QRectF titleBar = wFrameRect.intersected(wContentRect);
+            if (!titleBar.contains(pt))
+            {
+                emit widgetTitleBarRightClicked(event, pwi);
+            }
+            else
+            {
+                emit widgetViewPortRightClicked(event, pwi);
+            }
         }
-        else
+        else if (item)
         {
             // first, we check, whether we've got a link on the hook
             sendItem = this->getLinkItem(event->scenePos());
@@ -777,8 +821,8 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
             {
                 sendItem = item;
             }
+            emit itemRightBtnClicked(event, sendItem);
         }
-        emit itemRightBtnClicked(event, sendItem);
 	}
 	else
 	{

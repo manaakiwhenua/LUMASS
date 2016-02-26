@@ -1133,7 +1133,7 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
 QModelIndex
 NMSelSortSqlTableProxyModel::index(int row, int column, const QModelIndex& parent) const
 {
-    return this->createIndex(row, column, (void*)this->mSourceModel);
+    return this->createIndex(row, column, (void*)this);
     //return this->mSourceModel->ind
 }
 

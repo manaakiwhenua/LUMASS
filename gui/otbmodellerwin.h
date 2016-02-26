@@ -176,6 +176,7 @@ public slots:
     void treeSelTopDown(void);
     void treeSelBottomUp(void);
     void treeFindLoops(void);
+    void deleteTableObject(const QString &);
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 

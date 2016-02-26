@@ -1841,6 +1841,32 @@ OtbModellerWin::tableObjectViewClosed()
 }
 
 void
+OtbModellerWin::deleteTableObject(const QString& name)
+{
+    QMap<QString, QPair<void*, sqlite3*> >::iterator itAdmin =
+            mTableAdminObjects.find(name);
+    if (itAdmin != mTableAdminObjects.end())
+    {
+        void* cache = itAdmin.value().first;
+        sqlite3* conn = itAdmin.value().second;
+
+        sqlite3_close(conn);
+        spatialite_cleanup_ex(cache);
+        cache = 0;
+        conn = 0;
+        mTableAdminObjects.erase(itAdmin);
+    }
+
+
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
+               mTableList.find(name);
+    if (itList != mTableList.end())
+    {
+        mTableList.erase(itList);
+    }
+}
+
+void
 OtbModellerWin::removeTableObject(QListWidgetItem* item, QPoint globalPos)
 {
     NMDebugCtx(ctxOtbModellerWin, << "...");
@@ -1880,27 +1906,7 @@ OtbModellerWin::removeTableObject(QListWidgetItem* item, QPoint globalPos)
         return;
     }
 
-    QMap<QString, QPair<void*, sqlite3*> >::iterator itAdmin =
-            mTableAdminObjects.find(name);
-    if (itAdmin != mTableAdminObjects.end())
-    {
-        void* cache = itAdmin.value().first;
-        sqlite3* conn = itAdmin.value().second;
-
-        sqlite3_close(conn);
-        spatialite_cleanup_ex(cache);
-        cache = 0;
-        conn = 0;
-        mTableAdminObjects.erase(itAdmin);
-    }
-
-
-    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
-               mTableList.find(name);
-    if (itList != mTableList.end())
-    {
-        mTableList.erase(itList);
-    }
+    this->deleteTableObject(name);
 
     mTableListWidget->removeItemWidget(item);
     delete item;

@@ -40,6 +40,7 @@
 #include <QtDebug>
 #include <QPropertyAnimation>
 #include <QDomDocument>
+#include <QGraphicsProxyWidget>
 
 #include "otbmodellerwin.h"
 #include "NMModelViewWidget.h"
@@ -51,6 +52,7 @@
 #include "NMSequentialIterComponent.h"
 #include "NMConditionalIterComponent.h"
 #include "NMComponentEditor.h"
+#include "NMGlobalHelper.h"
 
 const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 
@@ -129,6 +131,10 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	connect(mModelScene, SIGNAL(itemRightBtnClicked(QGraphicsSceneMouseEvent *,
 				QGraphicsItem *)), this, SLOT(callItemContextMenu(QGraphicsSceneMouseEvent *,
 				QGraphicsItem *)));
+    connect(mModelScene, SIGNAL(widgetTitleBarRightClicked(QGraphicsSceneMouseEvent *,
+                QGraphicsItem *)), this, SLOT(callItemContextMenu(QGraphicsSceneMouseEvent *,
+                QGraphicsItem *)));
+
 	connect(mModelScene, SIGNAL(linkItemCreated(NMComponentLinkItem*)),
 			this, SLOT(linkProcessComponents(NMComponentLinkItem*)));
 	connect(mModelScene, SIGNAL(processItemCreated(NMProcessComponentItem*,
@@ -587,12 +593,6 @@ NMModelViewWidget::changeColour(void)
 void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		QGraphicsItem* item)
 {
-    QGraphicsProxyWidget* wi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
-    if (wi)
-    {
-        return;
-    }
-
     bool running = NMModelController::getInstance()->isModelRunning();
 
 	this->mLastScenePos = event->scenePos();
@@ -604,10 +604,11 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
     NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
     QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(item);
-
+    QGraphicsProxyWidget* wi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
 
     QString title;
     bool dataBuffer = false;
+    bool paraTable = false;
     if (selection.count() > 0)
     {
         title = QString("%1 Components").arg(selection.count());
@@ -616,6 +617,11 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     {
         title = pi->getTitle();
         dataBuffer = pi->getIsDataBufferItem();
+    }
+    else if (wi != 0)
+    {
+        title = wi->widget()->windowTitle();
+        paraTable = true;
     }
     else if (ai != 0)
     {
@@ -722,7 +728,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
 
 	// SAVE & LOAD
-    if ((item != 0 && li == 0) || item == 0)
+    if ((item != 0 && li == 0 && wi == 0) || item == 0)
     {
         this->mActionMap.value("Save As ...")->setEnabled(true);
         mActionMap.value("Save As ...")->setText(QString("Save %1 As ...").arg(title));
@@ -733,7 +739,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         mActionMap.value("Save As ...")->setText(QString::fromUtf8("Save As ..."));
     }
 
-    if (!running && pi == 0 && li == 0 && selection.count() == 0 && ti == 0)
+    if (!running && pi == 0 && li == 0 && selection.count() == 0 && ti == 0 && wi == 0)
     {
 		this->mActionMap.value("Load ...")->setEnabled(true);
         mActionMap.value("Load ...")->setText(QString("Load Into %1 ...").arg(title));
@@ -2370,6 +2376,8 @@ void NMModelViewWidget::deleteItem()
 	NMAggregateComponentItem* aggrItem;
     NMComponentLinkItem* linkItem;
     QGraphicsTextItem* labelItem;
+    QGraphicsProxyWidget* proxyWidget = 0;
+    QList<QGraphicsProxyWidget*> widgetItems;
 
 	QStringList delList;
     QList<QGraphicsTextItem*> delLabels;
@@ -2380,6 +2388,7 @@ void NMModelViewWidget::deleteItem()
 			procItem = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
 			aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
             labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
+            proxyWidget = qgraphicsitem_cast<QGraphicsProxyWidget*>(gi);
 
 			if (procItem != 0)
 				delList.push_back(procItem->getTitle());
@@ -2389,6 +2398,10 @@ void NMModelViewWidget::deleteItem()
             // are dealt with in deleteAggregateComponent
             else if (labelItem != 0 && labelItem->parentItem() == 0)
                 delLabels.push_back(labelItem);
+            else if (proxyWidget != 0)
+            {
+                widgetItems.push_back(proxyWidget);
+            }
 		}
 	}
     else if (this->mLastItem != 0)
@@ -2397,6 +2410,7 @@ void NMModelViewWidget::deleteItem()
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(this->mLastItem);
 		linkItem = qgraphicsitem_cast<NMComponentLinkItem*>(this->mLastItem);
         labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(this->mLastItem);
+        proxyWidget = qgraphicsitem_cast<QGraphicsProxyWidget*>(this->mLastItem);
 		if (linkItem != 0)
         {
 			this->deleteLinkComponentItem(linkItem);
@@ -2415,6 +2429,10 @@ void NMModelViewWidget::deleteItem()
         {
             delLabels.push_back(labelItem);
         }
+        else if (proxyWidget != 0)
+        {
+            widgetItems.push_back(proxyWidget);
+        }
 	}
 
 
@@ -2424,6 +2442,20 @@ void NMModelViewWidget::deleteItem()
         this->mModelScene->removeItem(ti);
         delete ti;
         ti = 0;
+    }
+
+    foreach(QGraphicsProxyWidget* pw, widgetItems)
+    {
+        NMGlobalHelper::getMainWindow()->deleteTableObject(pw->windowTitle());
+        if (!NMModelController::getInstance()->removeComponent(pw->objectName()))
+        {
+            NMErr(ctx, << "Failed to delete '" << pw->windowTitle().toStdString() << "'!");
+        }
+        this->mModelScene->removeItem(pw);
+        if (pw)
+        {
+            pw->deleteLater();
+        }
     }
 
 	QStringListIterator sit(delList);

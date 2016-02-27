@@ -134,6 +134,7 @@ protected slots:
 	void deleteProcessComponentItem(NMProcessComponentItem* procItem);
 	void deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem);
 	void deleteEmptyComponent(NMModelComponent* comp);
+    void deleteProxyWidget(QGraphicsProxyWidget* pw);
 	int shareLevel(QList<QGraphicsItem*> list);
 	NMModelComponent* componentFromItem(QGraphicsItem* item);
 	QString getComponentItemTitle(QGraphicsItem* item);

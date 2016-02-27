@@ -2446,16 +2446,7 @@ void NMModelViewWidget::deleteItem()
 
     foreach(QGraphicsProxyWidget* pw, widgetItems)
     {
-        NMGlobalHelper::getMainWindow()->deleteTableObject(pw->windowTitle());
-        if (!NMModelController::getInstance()->removeComponent(pw->objectName()))
-        {
-            NMErr(ctx, << "Failed to delete '" << pw->windowTitle().toStdString() << "'!");
-        }
-        this->mModelScene->removeItem(pw);
-        if (pw)
-        {
-            pw->deleteLater();
-        }
+        this->deleteProxyWidget(pw);
     }
 
 	QStringListIterator sit(delList);
@@ -2708,6 +2699,7 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 		NMProcessComponentItem* procChildItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aggrChildItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
         QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
+        QGraphicsProxyWidget* proxyWidget = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
 
 		if (procChildItem != 0)
 		{
@@ -2731,6 +2723,10 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
             delete labelItem;
             labelItem = 0;
         }
+        else if (proxyWidget != 0)
+        {
+            this->deleteProxyWidget(proxyWidget);
+        }
 	}
 
 	// finally remove the component itself
@@ -2745,6 +2741,19 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 	this->deleteEmptyComponent(hostComp);
 
 	NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelViewWidget::deleteProxyWidget(QGraphicsProxyWidget *pw)
+{
+    QString name = pw->objectName();
+    QString title = pw->windowTitle();
+    if (!NMModelController::getInstance()->removeComponent(name))
+    {
+        NMErr(ctx, << "Failed to delete '" << pw->windowTitle().toStdString() << "'!");
+    }
+    NMGlobalHelper::getMainWindow()->deleteTableObject(title);
+    this->mModelScene->removeItem(pw);
 }
 
 void NMModelViewWidget::deleteEmptyComponent(NMModelComponent* comp)

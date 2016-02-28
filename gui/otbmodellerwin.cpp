@@ -2360,6 +2360,12 @@ OtbModellerWin::treeAdmin(QAbstractItemModel *&model,
     }
 }
 
+/**
+ * @brief OtbModellerWin::treeAnalysis analyses trees.
+ * @param mode - 0: find loops
+ *               1: top down
+ *               2: bottom up
+ */
 void
 OtbModellerWin::treeAnalysis(const int& mode)
 {
@@ -2422,7 +2428,7 @@ OtbModellerWin::treeAnalysis(const int& mode)
                   "position of the tree selection!");
         return;
     }
-    else if (mode > 0)
+    else if (isel.size() > 0)//(mode > 0)
     {
         startRow = isel.at(0).topLeft().row();
         QModelIndex sidx = model->index(startRow, idIdx);
@@ -2507,7 +2513,11 @@ OtbModellerWin::processTree(QAbstractItemModel*& model, int& parIdx,
     QMultiMap<int,int>::const_iterator idIter;
     if (mode == 0)
     {
-        idIter = treeMap.cbegin();
+        idIter = treeMap.find(startId);
+        if (idIter == treeMap.cend())
+        {
+            idIter = treeMap.cbegin();
+        }
     }
     else if (mode == 1 || mode == 2)
     {
@@ -2529,6 +2539,14 @@ OtbModellerWin::processTree(QAbstractItemModel*& model, int& parIdx,
             {
                 recordIdList.insert(resIt.value());
             }
+
+            // DEBUG
+            NMDebugAI(<< id << "- trail: " << std::endl);
+            foreach(const int& num, idHistory)
+            {
+                NMDebug(<< num << " ")
+            }
+            NMDebug(<< std::endl << std::endl);
         }
         else if (mode == 1 || mode == 2)
         {

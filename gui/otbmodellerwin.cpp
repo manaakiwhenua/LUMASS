@@ -2517,6 +2517,7 @@ OtbModellerWin::processTree(QAbstractItemModel*& model, int& parIdx,
         if (idIter == treeMap.cend())
         {
             idIter = treeMap.cbegin();
+            startId = -9999;
         }
     }
     else if (mode == 1 || mode == 2)
@@ -2568,7 +2569,7 @@ OtbModellerWin::processTree(QAbstractItemModel*& model, int& parIdx,
             }
         }
 
-        if (mode == 0)
+        if (mode == 0 && startId != -9999)
         {
             ++idIter;
         }
@@ -2746,10 +2747,13 @@ OtbModellerWin::checkTree(const int& rootId, const int &stopId,
     QList<int> dnList = treeMap.values(rootId);
     foreach (const int& dn, dnList)
     {
+        // reached the top (of the tree) ...
+        // ... or the bottom (of the catchment)
         if (dn == stopId)
         {
             idHistory.append(dn);
             ret = true;
+            break;
         }
         else
         {
@@ -2757,11 +2761,15 @@ OtbModellerWin::checkTree(const int& rootId, const int &stopId,
             {
                 idHistory.append(dn);
                 ret = false;
+                break;
             }
             else
             {
                 idHistory.append(dn);
-                ret = checkTree(dn, stopId, idHistory, treeMap);
+                if (!(ret = checkTree(dn, stopId, idHistory, treeMap)))
+                {
+                    break;
+                }
             }
         }
     }

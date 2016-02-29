@@ -2419,7 +2419,7 @@ OtbModellerWin::treeAnalysis(const int& mode)
         }
     }
 
-    int startId = 1;
+    int startId = -9999;
     int startRow = -1;
     if (mode > 0 && isel.size() == 0)
     {
@@ -2569,9 +2569,13 @@ OtbModellerWin::processTree(QAbstractItemModel*& model, int& parIdx,
             }
         }
 
-        if (mode == 0 && startId != -9999)
+        if (mode == 0 && startId == -9999)
         {
             ++idIter;
+        }
+        else
+        {
+            idIter = treeMap.cend();
         }
     }
 
@@ -2740,10 +2744,19 @@ OtbModellerWin::checkTree(const int& rootId, const int &stopId,
                           QList<int>& idHistory,
                           const QMultiMap<int, int> &treeMap)
 {
-    // still everything fine!
+    /// note:
+    /// this method checks tree's going down (upstream)
+    /// or up (downstream); bifurcations, e.g. when going
+    /// upstream, are supported by using the QMultiMap treeMap,
+    /// i.e. multiple keys are allowed (a catchment can occur
+    /// multiple times as downstream catchment); once a 'dead end'
+    /// is found it is marked by 'ret = false', preventing further
+    /// investigation following this id; however other possible
+    /// branches are still investigated by taking the next id from
+    /// the dnList ...
+
     bool ret = true;
 
-    //const int dn = treeMap.find(rootId).value();
     QList<int> dnList = treeMap.values(rootId);
     foreach (const int& dn, dnList)
     {
@@ -2752,23 +2765,22 @@ OtbModellerWin::checkTree(const int& rootId, const int &stopId,
         if (dn == stopId)
         {
             idHistory.append(dn);
-            ret = true;
-            break;
+            return true;
         }
         else
         {
+            // ... inspected this already ...
             if (idHistory.contains(dn))
             {
-                idHistory.append(dn);
                 ret = false;
-                break;
             }
             else
             {
+                // ... let's go up/down the tree ...
                 idHistory.append(dn);
                 if (!(ret = checkTree(dn, stopId, idHistory, treeMap)))
                 {
-                    break;
+                    ret = false;
                 }
             }
         }

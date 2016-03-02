@@ -2593,14 +2593,29 @@ void OtbModellerWin::test()
         return;
     }
 
-    QItemSelection* iSel = l->getSelection();
+    QItemSelection iSel = l->getSelection();
+    vtkNew<vtkIdList> idList;
 
-    NMImageLayer* il = static_cast<NMImageLayer*>(l);
+    for (int r=0; r < iSel.count(); ++r)
+    {
+        const QItemSelectionRange& range = iSel.at(r);
+        for (int id=range.top(); id <= range.bottom(); ++id)
+        {
+            idList->InsertNextId(id);
+        }
+    }
 
-    vtkDataSet* ds = il->getDataSet();
+    int nids = idList->GetNumberOfIds();
+    NMDebugAI(<< "We've got " << nids << " ids!" << std::endl);
 
-    vtkImageData* id = vtkImageData::SafeDownCast(ds);
 
+
+
+//    NMImageLayer* il = static_cast<NMImageLayer*>(l);
+
+//    vtkDataSet* ds = il->getDataSet();
+
+//    vtkImageData* id = vtkImageData::SafeDownCast(ds);
 
 
 

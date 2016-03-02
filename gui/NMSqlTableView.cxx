@@ -2154,12 +2154,14 @@ NMSqlTableView::updateSelection(bool swap)
     {
         mProxySelModel->clearSelection();
         mSortFilter->selectRows(queryStr, true);
+        mSelectionModel->setSelection(mSortFilter->getSourceSelection());
         this->updateSelectionAdmin(mSortFilter->getSelCount());
     }
     else
     {
         mSortFilter->selectRows(queryStr, false);
         mProxySelModel->setSelection(mSortFilter->getProxySelection());
+        mSelectionModel->setSelection(mSortFilter->getSourceSelection());
         this->updateSelectionAdmin(mSortFilter->getSelCount());
     }
 
@@ -2174,6 +2176,7 @@ void NMSqlTableView::clearSelection()
 {
     mSortFilter->clearSelection();
     mProxySelModel->clearSelection();
+    mSelectionModel->clearSelection();
     updateSelectionAdmin(0);
     mTableView->reset();
     mCurrentQuery.clear();

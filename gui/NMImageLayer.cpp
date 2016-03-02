@@ -106,6 +106,8 @@
 #include "vtkLongLongArray.h"
 #include "vtkSetGet.h"
 
+
+
 //#include "valgrind/callgrind.h"
 
 template<class PixelType, unsigned int Dimension>
@@ -507,7 +509,7 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 {
 
     //    mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
-    //    vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
+    vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
     vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
     //    vtkSmartPointer<vtkLongArray> scalars = vtkSmartPointer<vtkLongArray>::New();
 
@@ -516,35 +518,44 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
     {
         const int top = range.top();
         const int bottom = range.bottom();
-        for (int row=top; row<=bottom; ++row)
+        for (int row=top; row <= bottom; ++row)
         {
+            selCellIds->InsertNextId(row);
             ++selcnt;
         }
     }
-    selCellIds->SetNumberOfIds(selcnt);
+
+
+
+    //selCellIds->SetNumberOfIds(selcnt);
     //    scalars->SetNumberOfTuples(selcnt);
     //    clrtab->SetNumberOfTableValues(selcnt);
 
 //    //this->printSelRanges(newSel, "incoming update selection");
 
-    int clrcnt = 0;
-    foreach(const QItemSelectionRange& range, newSel)
-    {
-        const int top = range.top();
-        const int bottom = range.bottom();
-        for (int row=top; row<=bottom; ++row)
-        {
-            //scalars->SetValue(clrcnt, clrcnt);
-            selCellIds->SetId(clrcnt, row);
-            //clrtab->SetTableValue(clrcnt, 1, 0, 0);
-            ++clrcnt;
-        }
-    }
+    //    int clrcnt = 0;
+    //    foreach(const QItemSelectionRange& range, newSel)
+    //    {
+    //        const int top = range.top();
+    //        const int bottom = range.bottom();
+    //        for (int row=top; row<=bottom; ++row)
+    //        {
+    //            //scalars->SetValue(clrcnt, clrcnt);
+    //            selCellIds->SetId(clrcnt, row);
+    //            //clrtab->SetTableValue(clrcnt, 1, 0, 0);
+    //            ++clrcnt;
+    //        }
+    //    }
 
     //vtkImageData* id = vtkImageData::SafeDownCast(mDataSet);
     //id->getP
 
     NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
+    clrtab->SetNumberOfTableValues(selCellIds->GetNumberOfIds());
+    for(int a=0; a < clrtab->GetNumberOfTableValues(); ++a)
+    {
+        clrtab->SetTableValue(a,1,0,0,1);
+    }
 
     //    if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
     //    {
@@ -562,27 +573,33 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
     //ugrid->GetP
 
-//    vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-//    geoFilter->SetInputConnection(extractor->GetOutputPort());
-//    geoFilter->Update();
+    vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
+    geoFilter->SetInputData(ugrid);
+    //geoFilter->SetInputConnection(extractor->GetOutputPort());
+    geoFilter->Update();
 
-//    mCellSelection = vtkSmartPointer<vtkPolyData>::New();
+    mCellSelection = geoFilter->GetOutput(); //vtkSmartPointer<vtkPolyData>::New();
 
-//    mCellSelection->SetPoints(geoFilter->GetOutput()->GetPoints());
-//    mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
-//    mCellSelection->GetCellData()->SetScalars(scalars);
+    //    mCellSelection->SetPoints(geoFilter->GetOutput()->GetPoints());
+    //    mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
+    //mCellSelection->GetCellData()->SetScalars(scalars);
 
-//    //	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
-//    //			<< " cells in selection" << std::endl);
+    //	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
+    //			<< " cells in selection" << std::endl);
 
-//    mSelectionMapper->SetInputData(mCellSelection);
-//    mSelectionMapper->SetLookupTable(clrtab);
+    mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
 
-//    vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
-//    a->SetMapper(mSelectionMapper);
+    mSelectionMapper->SetInputData(mCellSelection);
+    mSelectionMapper->SetLookupTable(clrtab);
+    mSelectionMapper->UseLookupTableScalarRangeOn();
 
-//    mSelectionActor = a;
-//    mRenderer->AddActor(a);
+
+    vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
+    a->SetMapper(mSelectionMapper);
+
+
+    mSelectionActor = a;
+    mRenderer->AddActor(a);
 
 
 	// call the base class implementation to do datatype agnostic stuff

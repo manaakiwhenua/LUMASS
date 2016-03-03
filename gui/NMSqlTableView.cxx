@@ -2217,7 +2217,7 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
     if (mbSelectionInProgress)
     {
         NMDebugAI(<< "... already selection in progress ..."<< std::endl);
-        NMDebugCtx(ctx, << "...");
+        NMDebugCtx(ctx, << "done!");
         return;
     }
 

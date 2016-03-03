@@ -2517,15 +2517,31 @@ OtbModellerWin::treeAnalysis(const int& mode)
         quicksort(btms, 0, btms.size()-1, true);
     }
 
-
-    QItemSelection newsel = h.selectRows(model, btms);
-    if (l)
+    /// ToDo:
+    /// this shouldn't require the layer type dependend
+    /// treatment. however due to some issues with
+    /// the 'outside tableview' selection update
+    /// for image layers, we have it for now ..
+    if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
     {
-        l->setSelection(newsel);
+        QItemSelection newsel = h.selectRows(model, btms);
+        if (l)
+        {
+            l->setSelection(newsel);
+        }
+        else if (view)
+        {
+            view->setSelection(newsel);
+        }
     }
-    else if (view)
+    else
     {
-        view->setSelection(newsel);
+        btms.removeOne(0);
+
+        vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+        vtkImageData* id = vtkImageData::SafeDownCast(ds);
+
+        this->image2PolyData(id, btms);
     }
 
     h.endBusy();

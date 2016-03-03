@@ -28,6 +28,9 @@ public:
     static QItemSelection selectRows(const QAbstractItemModel *model,
                               QList<int>& ids);
 
+private:
+    static const std::string ctx;
+
 };
 
 #endif // NMGLOBALHELPER_H

@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 
+const std::string NMGlobalHelper::ctx = "NMGlobalHelper";
 
 QString
 NMGlobalHelper::getMultiLineInput(const QString& title,
@@ -72,10 +73,13 @@ QItemSelection
 NMGlobalHelper::selectRows(const QAbstractItemModel* model,
                           QList<int>& ids)
 {
+    NMDebugCtx(ctx, << "...");
+
     QItemSelection newsel;
 
     if (model == 0 || ids.size() == 0)
     {
+        NMDebugCtx(ctx, << "done!");
         return newsel;
     }
 
@@ -108,6 +112,7 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
 
     }
 
+    NMDebugCtx(ctx, << "done!");
     return newsel;
 }
 

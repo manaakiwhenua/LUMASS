@@ -133,6 +133,7 @@ NMSqlTableView::~NMSqlTableView()
 
 void NMSqlTableView::initView()
 {
+    mbSelectionInProgress = false;
     mLayerName.clear();
 
 	this->mTableView->setCornerButtonEnabled(false);
@@ -2150,6 +2151,8 @@ NMSqlTableView::updateSelection(bool swap)
 
     NMGlobalHelper h;
     h.startBusy();
+
+    mbSelectionInProgress = true;
     if (mChkSelectedRecsOnly->isChecked())
     {
         mProxySelModel->clearSelection();
@@ -2169,6 +2172,7 @@ NMSqlTableView::updateSelection(bool swap)
     {
         this->clearSelection();
     }
+    mbSelectionInProgress = false;
     h.endBusy();
 }
 
@@ -2202,6 +2206,20 @@ void
 NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
 {
     NMDebugCtx(ctx, << "...");
+
+    // note: to actually update the proxy selection, we run the internal
+    // selection process / method to ensure the mapping from source to proxy
+    // indices is update-to-date; however this selection process (::updateSelection(bool))
+    // also takes care of updating the source selection in mSelectionModel whose
+    // 'selectionChanged' signal is hooked up to this very method here ...
+    // long story short: to avoid an endless loop we track whether we're running
+    // the internal selection process AT THE MOMENT, and if so, we bail out !!!
+    if (mbSelectionInProgress)
+    {
+        NMDebugAI(<< "... already selection in progress ..."<< std::endl);
+        NMDebugCtx(ctx, << "...");
+        return;
+    }
 
     if (mSelectionModel && sel.count() > 0)
     {

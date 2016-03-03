@@ -225,6 +225,10 @@
 #include "vtkImageResample.h"
 #include "vtkAxisActor2D.h"
 #include "vtkTextProperty.h"
+#include "vtkTrivialProducer.h"
+#include "vtkExtractCells.h"
+#include "vtkInformation.h"
+#include "vtkGeometryFilter.h"
 
 #include "otbSortFilter.h"
 #include "otbExternalSortFilter.h"
@@ -471,7 +475,7 @@ OtbModellerWin::OtbModellerWin(QWidget *parent)
             ui->actionShow_Components_Info, SLOT(setChecked(bool)));
 
     // TEST TEST TEST
-    connect(ui->actionImage_Polydata, SIGNAL(triggered()), this, SLOT(Image2PolyData()));
+    connect(ui->actionImage_Polydata, SIGNAL(triggered()), this, SLOT(convertImageToPolyData()));
 
     // **********************************************************************
 	// *                    MODEL BUILDER WINDOW                            *
@@ -1103,10 +1107,8 @@ OtbModellerWin::saveMapAsImage()
 }
 
 void
-OtbModellerWin::Image2PolyData()
+OtbModellerWin::convertImageToPolyData()
 {
-    NMDebugCtx(ctxOtbModellerWin, << "...");
-
     // check, whether we've got a selected image
     NMLayer* l = this->mLayerList->getSelectedLayer();
     if (l == 0)
@@ -1126,6 +1128,38 @@ OtbModellerWin::Image2PolyData()
 
     vtkDataSet* ids = const_cast<vtkDataSet*>(il->getDataSet());
     vtkImageData* id = vtkImageData::SafeDownCast(ids);
+
+    QList<int> iSel;
+    image2PolyData(id, iSel);
+}
+
+void
+OtbModellerWin::image2PolyData(vtkImageData *img, QList<int> &unitIds)
+{
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    vtkImageData* id = img;
+
+    vtkNew<vtkIdList> pixIds;
+    vtkDataSetAttributes* dsa = 0;
+    vtkDataArray* idxScalars = 0;
+    if (unitIds.count() > 0)
+    {
+        dsa = id->GetAttributes(vtkDataSet::POINT);
+        idxScalars = id->GetPointData()->GetArray(0);
+
+        for (int pix=0; pix < idxScalars->GetNumberOfTuples(); ++pix)
+        {
+            const long val = idxScalars->GetVariantValue(pix).ToLong();
+            if (unitIds.contains(val))
+            {
+                pixIds->InsertNextId(pix);
+            }
+        }
+    }
+
+
+
     double spacing[3];
     id->GetSpacing(spacing);
     int* extent = id->GetExtent();
@@ -1135,7 +1169,7 @@ OtbModellerWin::Image2PolyData()
     // note: image data stores points at cell
     // centres
     vtkNew<vtkImageWrapPad> pad;
-    pad->SetInputData(ids);
+    pad->SetInputData(id);
     pad->SetOutputWholeExtent(
                 extent[0], extent[1] + 1,
                 extent[2], extent[3] + 1,
@@ -1156,7 +1190,16 @@ OtbModellerWin::Image2PolyData()
 
     // get polygons
     vtkPolyData* pdraw = transformFilter->GetOutput();
-    int ncells = pdraw->GetNumberOfCells();
+    int ncells = 0;
+    if (pixIds->GetNumberOfIds() > 0)
+    {
+        ncells = pixIds->GetNumberOfIds();
+    }
+    else
+    {
+        ncells = pdraw->GetNumberOfCells();
+    }
+
 
     //  ----------------------------------------------------
     //  CREATE NEW POLYDATA OBJECTS
@@ -1189,10 +1232,18 @@ OtbModellerWin::Image2PolyData()
     //  COPY PTS AND CLOSE POLYS
     //  ----------------------------------------------------
 
-
+    vtkCell* cell = 0;
     for (int p=0; p < ncells; ++p)
     {
-        vtkCell* cell = pdraw->GetCell(p);
+        //vtkCell* cell = pdraw->GetCell(p);
+        if (pixIds->GetNumberOfIds() > 0)
+        {
+            cell = pdraw->GetCell(pixIds->GetId(p));
+        }
+        else
+        {
+            cell = pdraw->GetCell(p);
+        }
         const int npts = cell->GetNumberOfPoints();
         vtkIdList* ids = cell->GetPointIds();
 
@@ -1225,7 +1276,14 @@ OtbModellerWin::Image2PolyData()
     //  ----------------------------------------------------
 
     NMVectorLayer* newPolys = new NMVectorLayer(this->getRenderWindow());
-    QString name = il->objectName() + QString("_polys");
+
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    QString name = "Image_polys";
+    if (l)
+    {
+        name = l->objectName() + QString("_polys");
+    }
+    newPolys->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
     newPolys->setObjectName(name);
     newPolys->setDataSet(pd.GetPointer());
     newPolys->setVisible(true);
@@ -2402,22 +2460,22 @@ OtbModellerWin::treeAnalysis(const int& mode)
     NMLayer* l = 0;
     NMSqlTableView* view = 0;
     QItemSelection isel;
-    if (type == 0)
-    {
+//    if (type == 0)
+//    {
         l = static_cast<NMLayer*>(obj);
         if (l)
         {
             isel = l->getSelection();
         }
-    }
-    else if (type == 1)
-    {
-        view = static_cast<NMSqlTableView*>(obj);
-        if (view)
-        {
-            isel = view->getSelection();
-        }
-    }
+//    }
+//    else if (type == 1)
+//    {
+//        view = static_cast<NMSqlTableView*>(obj);
+//        if (view)
+//        {
+//            isel = view->getSelection();
+//        }
+//    }
 
     int startId = -9999;
     int startRow = -1;
@@ -2594,28 +2652,27 @@ void OtbModellerWin::test()
     }
 
     QItemSelection iSel = l->getSelection();
-    vtkNew<vtkIdList> idList;
 
+
+
+    QList<int> unitIds;
     for (int r=0; r < iSel.count(); ++r)
     {
         const QItemSelectionRange& range = iSel.at(r);
         for (int id=range.top(); id <= range.bottom(); ++id)
         {
-            idList->InsertNextId(id);
+            unitIds << id;
+            //idList->InsertNextId(id);
         }
     }
 
-    int nids = idList->GetNumberOfIds();
-    NMDebugAI(<< "We've got " << nids << " ids!" << std::endl);
+    //int nids = idList->GetNumberOfIds();
+    //NMDebugAI(<< "We've got " << nids << " ids!" << std::endl);
 
+    vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+    vtkImageData* id = vtkImageData::SafeDownCast(ds);
 
-
-
-//    NMImageLayer* il = static_cast<NMImageLayer*>(l);
-
-//    vtkDataSet* ds = il->getDataSet();
-
-//    vtkImageData* id = vtkImageData::SafeDownCast(ds);
+    this->image2PolyData(id, unitIds);
 
 
 

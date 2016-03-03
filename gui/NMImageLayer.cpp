@@ -105,7 +105,7 @@
 #include "vtkLongArray.h"
 #include "vtkLongLongArray.h"
 #include "vtkSetGet.h"
-
+#include "vtkTrivialProducer.h"
 
 
 //#include "valgrind/callgrind.h"
@@ -507,7 +507,7 @@ void
 NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
-
+    return;
     //    mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
     vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
     vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
@@ -550,7 +550,7 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
     //vtkImageData* id = vtkImageData::SafeDownCast(mDataSet);
     //id->getP
 
-    NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
+    //NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
     clrtab->SetNumberOfTableValues(selCellIds->GetNumberOfIds());
     for(int a=0; a < clrtab->GetNumberOfTableValues(); ++a)
     {
@@ -563,19 +563,32 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
     //        this->mRenderer->RemoveActor(mSelectionActor);
     //    }
 
+    vtkSmartPointer<vtkTrivialProducer> producer = vtkSmartPointer<vtkTrivialProducer>::New();
+    producer->SetOutput(mDataSet);
+
+    vtkInformation* outInfo = producer->GetOutputPortInformation(0);
+    outInfo->Set(vtkDataObject::DATA_TYPE_NAME(), "vtkImageData");
+
+
+    //producer->FillOutputDataInformation(mDataSet);
+
+
+//    vtkSmartPointer<vtkInformation> outinfo = vtkSmartPointer<vtkInformation>::New();
+//    outinfo->Set(vtkAlgorithm)
+
 
     vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
-    extractor->SetInputData(mDataSet);
+    extractor->SetInputConnection(producer->GetOutputPort());
     extractor->SetCellList(selCellIds);
-    extractor->Update();
+    //extractor->Update();
 
-    vtkSmartPointer<vtkUnstructuredGrid> ugrid = extractor->GetOutput();
+    //vtkSmartPointer<vtkUnstructuredGrid> ugrid = extractor->GetOutput();
 
     //ugrid->GetP
 
     vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-    geoFilter->SetInputData(ugrid);
-    //geoFilter->SetInputConnection(extractor->GetOutputPort());
+    //geoFilter->SetInputData(ugrid);
+    geoFilter->SetInputConnection(extractor->GetOutputPort());
     geoFilter->Update();
 
     mCellSelection = geoFilter->GetOutput(); //vtkSmartPointer<vtkPolyData>::New();

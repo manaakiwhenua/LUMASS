@@ -167,7 +167,7 @@ public slots:
 	void aboutLUMASS();
 	void addLayerToCompList();
     void addLayerToCompList(NMLayer* layer);
-    void Image2PolyData();
+    void image2PolyData(vtkImageData* img, QList<int>& unitIds);
     void toggleRubberBandZoom(bool);
     void setMapBackgroundColour();
     void tableObjectVisibility(QListWidgetItem* item);
@@ -177,6 +177,7 @@ public slots:
     void treeSelBottomUp(void);
     void treeFindLoops(void);
     void deleteTableObject(const QString &);
+    void convertImageToPolyData();
 
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 

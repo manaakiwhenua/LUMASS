@@ -188,6 +188,7 @@ protected:
 	bool mbClearSelection;
     //bool mbColumnCalc;
 	bool mbIsSelectable;
+    bool mbSelectionInProgress;
 
 	QMap<int, bool> mMapColSortAsc;
 	QStringList mHiddenColumns;

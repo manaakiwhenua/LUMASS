@@ -64,6 +64,12 @@
 #include "NMWidgetListView.h"
 #include "NMGlobalHelper.h"
 #include "NMParameterTable.h"
+#include "NMModelViewWidget.h"
+#include "NMModelScene.h"
+#include "NMProcessComponentItem.h"
+#include "NMAggregateComponentItem.h"
+#include "NMComponentLinkItem.h"
+
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -2664,56 +2670,47 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    NMLayer* l = this->mLayerList->getSelectedLayer();
-    if (l == 0 || l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+    NMModelViewWidget* view = ui->modelViewWidget;
+    NMModelScene* scene = view->getScene();
+
+    QList<QGraphicsItem*> sel = scene->selectedItems();
+    if (sel.count() == 0)
     {
         NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
     }
 
-    QItemSelection iSel = l->getSelection();
-
-    QList<int> unitIds;
-    for (int r=0; r < iSel.count(); ++r)
+    QGraphicsItem* gi = sel.at(0);
+    NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+    if (pi == 0)
     {
-        const QItemSelectionRange& range = iSel.at(r);
-        for (int id=range.top(); id <= range.bottom(); ++id)
-        {
-            unitIds << id;
-            //idList->InsertNextId(id);
-        }
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
+        return;
     }
 
-    //int nids = idList->GetNumberOfIds();
-    //NMDebugAI(<< "We've got " << nids << " ids!" << std::endl);
+    QString hostName;
+    QGraphicsItem* host = pi->parentItem();
+    if (host)
+    {
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(host);
+        if (ai)
+        {
+            hostName = ai->getTitle();
+        }
+    }
+    else
+    {
+        hostName = "root";
+    }
 
-    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-    //NMImageReader* reader = qobject_cast<NMImageReader*>(il->getProcess());
+    QList<NMComponentLinkItem*> inItems = pi->getInputLinks();
+    foreach(NMComponentLinkItem* li, inItems)
+    {
 
-//    NMImageReader* reader = new NMImageReader();
-//    reader->setFileName(il->getFileName());
-//    reader->instantiateObject();
-
-
-//    NMItk2VtkConnector* conn = new NMItk2VtkConnector();
-//    conn->instantiateObject();
-//    conn->setInput(reader->getOutput(0));
-//    conn->update();
-//    //conn->getVtkImage()
+    }
 
 
-    NMImageLayer* tl = new NMImageLayer(this->getRenderWindow(), 0, 0);
-    tl->setUseOverviews(false);
-    tl->setFileName(il->getFileName());
 
-    vtkDataSet* ds = const_cast<vtkDataSet*>(tl->getDataSet());
-    vtkImageData* id = vtkImageData::SafeDownCast(ds);
-
-    this->image2PolyData(id, unitIds);
-
-    //NMLayer* l2 = this->mLayerList->getLayer()
-
-    delete tl;
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

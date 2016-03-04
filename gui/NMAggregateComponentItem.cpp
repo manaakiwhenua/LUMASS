@@ -82,6 +82,12 @@ NMAggregateComponentItem::collapse()
 {
     NMDebugCtx(ctx, << "...");
 
+    QList<QGraphicsItem*> kids = this->childItems();
+    foreach(QGraphicsItem* k, kids)
+    {
+        k->setVisible(false);
+    }
+
     mIsCollapsed = true;
 
     NMDebugCtx(ctx, << "done!");
@@ -92,6 +98,13 @@ void
 NMAggregateComponentItem::unfold()
 {
     NMDebugCtx(ctx, << "...");
+
+    QList<QGraphicsItem*> kids = this->childItems();
+    foreach(QGraphicsItem* k, kids)
+    {
+        k->setVisible(true);
+    }
+
 
     mIsCollapsed = false;
 

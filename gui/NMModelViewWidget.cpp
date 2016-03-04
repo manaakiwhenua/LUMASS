@@ -408,8 +408,10 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
             aggrItem, SLOT(slotExecutionStarted()));
     connect(aggrComp, SIGNAL(signalExecutionStopped()),
             aggrItem, SLOT(slotExecutionStopped()));
-    connect(this, SIGNAL(collapse()), aggrItem, SLOT(collapse()));
-    connect(this, SIGNAL(unfold()), aggrItem, SLOT(unfold()));
+    //    connect(this, SIGNAL(collapse(NMAggregateComponentItem*)),
+    //            aggrItem, SLOT(collapse(NMAggregateComponentItem*)));
+    //    connect(this, SIGNAL(unfold(NMAggregateComponentItem*)),
+    //            aggrItem, SLOT(unfold(NMAggregateComponentItem*)));
 
 	it.toFront();
 	while(it.hasNext())
@@ -459,6 +461,22 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 
 
 	NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelViewWidget::collapseAggrItem()
+{
+    NMAggregateComponentItem* ai =
+            qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+    ai->collapse();
+}
+
+void
+NMModelViewWidget::unfoldAggrItem()
+{
+    NMAggregateComponentItem* ai =
+            qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+    ai->unfold();
 }
 
 void NMModelViewWidget::initItemContextMenu()
@@ -567,8 +585,8 @@ void NMModelViewWidget::initItemContextMenu()
     connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
     connect(fontAct, SIGNAL(triggered()), this, SLOT(changeFont()));
     connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
-    connect(collapseComp, SIGNAL(triggered()), this, SIGNAL(collapse()));
-    connect(unfoldComp, SIGNAL(triggered()), this, SIGNAL(unfold()));
+    connect(collapseComp, SIGNAL(triggered()), this, SLOT(collapseAggrItem()));
+    connect(unfoldComp, SIGNAL(triggered()), this, SLOT(unfoldAggrItem()));
 }
 
 void
@@ -1894,8 +1912,10 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     connect(sic, SIGNAL(signalProgress(float)),
                             ai, SLOT(slotProgress(float)));
 
-                    connect(this, SIGNAL(collapse()), ai, SLOT(collapse()));
-                    connect(this, SIGNAL(unfold()), ai, SLOT(unfold()));
+                    //                    connect(this, SIGNAL(collapse(NMAggregateComponentItem*)),
+                    //                            ai, SLOT(collapse(NMAggregateComponentItem*)));
+                    //                    connect(this, SIGNAL(unfold(NMAggregateComponentItem*)),
+                    //                            ai, SLOT(unfold(NMAggregateComponentItem*)));
 
 				}
 				break;

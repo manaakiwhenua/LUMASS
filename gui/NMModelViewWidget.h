@@ -66,6 +66,7 @@ public:
 	virtual ~NMModelViewWidget();
 
     OtbModellerWin* getMainWindow(void);
+    NMModelScene* getScene(void){return mModelScene;}
     void addWidget(QWidget* w);
     void addItem(QGraphicsItem* item);
 
@@ -120,8 +121,8 @@ signals:
 	void requestModelReset(const QString& compName);
 	void requestModelAbortion(void);
 	void widgetIsExiting(void);
-    void collapse(void);
-    void unfold(void);
+    void collapse(NMAggregateComponentItem*);
+    void unfold(NMAggregateComponentItem*);
 
 
 protected:
@@ -150,6 +151,8 @@ protected slots:
                      QIODevice& device,
                      QDomDocument& doc,
                      bool bSaveRoot);
+    void collapseAggrItem();
+    void unfoldAggrItem();
 
 
 	void getSubComps(NMModelComponent* comp, QStringList& subs);

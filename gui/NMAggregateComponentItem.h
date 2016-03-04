@@ -65,6 +65,7 @@ public:
 			QWidget* widget);
 
 	bool containsComponent(QString name);
+    bool isCollapsed(){return mIsCollapsed;}
 
     QRectF boundingRect(void) const
     {
@@ -84,6 +85,8 @@ public slots:
     void slotExecutionStarted();
     void slotExecutionStopped();
     void slotProgress(float progress);
+    void collapse();
+    void unfold();
 
     // moves the group (i.e. all kids)
     // to the new target location, which
@@ -113,7 +116,6 @@ private:
         p.setWorldTransform(ot);
     }
 
-	std::string ctx;
 	QString mTitle;
 	QColor mColor;
 	int rgb[3];
@@ -125,6 +127,7 @@ private:
 
     float mProgress;
     bool mIsExecuting;
+    bool mIsCollapsed;
 
     QRectF mItemBnd;
     QRectF mDash;
@@ -150,6 +153,7 @@ private:
 
     int dx1, dy1, dx2, dy2;
 
+    static const std::string ctx;
 
 };
 

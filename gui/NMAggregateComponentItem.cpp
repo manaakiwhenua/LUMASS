@@ -28,12 +28,12 @@
 
 //#include "valgrind/callgrind.h"
 
+const std::string NMAggregateComponentItem::ctx = "NMAggregateComponentItem";
+
 NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
-    : mProgress(0), mIsExecuting(false)
+    : mProgress(0), mIsExecuting(false), mIsCollapsed(false)
 {
 	this->setParentItem(parent);
-	ctx = "NMAggregateComponentItem";
-
     this->mNumIterations = 0;
     this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
 
@@ -75,6 +75,27 @@ NMAggregateComponentItem::slotProgress(float progress)
     this->mProgress = progress;
     //NMDebugAI(<< mTitle.toStdString() << " progress: " << mProgress << std::endl);
     this->update();
+}
+
+void
+NMAggregateComponentItem::collapse()
+{
+    NMDebugCtx(ctx, << "...");
+
+    mIsCollapsed = true;
+
+    NMDebugCtx(ctx, << "done!");
+
+}
+
+void
+NMAggregateComponentItem::unfold()
+{
+    NMDebugCtx(ctx, << "...");
+
+    mIsCollapsed = false;
+
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -520,6 +541,7 @@ QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
 	data << i.getTitle();
     data << i.scenePos();
 	data << i.getColor();
+    data << i.isCollapsed();
 
 	QList<QGraphicsItem*> kids = i.childItems();
 	int nchild = kids.count();

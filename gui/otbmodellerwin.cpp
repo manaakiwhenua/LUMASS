@@ -1236,12 +1236,15 @@ OtbModellerWin::image2PolyData(vtkImageData *img, QList<int> &unitIds)
     for (int p=0; p < ncells; ++p)
     {
         //vtkCell* cell = pdraw->GetCell(p);
+        long id;
         if (pixIds->GetNumberOfIds() > 0)
         {
+            id = pixIds->GetId(p);
             cell = pdraw->GetCell(pixIds->GetId(p));
         }
         else
         {
+            id = p;
             cell = pdraw->GetCell(p);
         }
         const int npts = cell->GetNumberOfPoints();
@@ -1258,7 +1261,8 @@ OtbModellerWin::image2PolyData(vtkImageData *img, QList<int> &unitIds)
         nmid->InsertNextValue(p+1);
         nmhole->InsertNextValue(0);
         nmsel->InsertNextValue(0);
-        polyid->InsertNextValue(p+1);
+        const long val = idxScalars->GetVariantValue(id).ToLong();
+        polyid->InsertNextValue(val);
     }
 
     pd->SetPoints(pdraw->GetPoints());
@@ -2669,8 +2673,6 @@ void OtbModellerWin::test()
 
     QItemSelection iSel = l->getSelection();
 
-
-
     QList<int> unitIds;
     for (int r=0; r < iSel.count(); ++r)
     {
@@ -2685,13 +2687,33 @@ void OtbModellerWin::test()
     //int nids = idList->GetNumberOfIds();
     //NMDebugAI(<< "We've got " << nids << " ids!" << std::endl);
 
-    vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    //NMImageReader* reader = qobject_cast<NMImageReader*>(il->getProcess());
+
+//    NMImageReader* reader = new NMImageReader();
+//    reader->setFileName(il->getFileName());
+//    reader->instantiateObject();
+
+
+//    NMItk2VtkConnector* conn = new NMItk2VtkConnector();
+//    conn->instantiateObject();
+//    conn->setInput(reader->getOutput(0));
+//    conn->update();
+//    //conn->getVtkImage()
+
+
+    NMImageLayer* tl = new NMImageLayer(this->getRenderWindow(), 0, 0);
+    tl->setUseOverviews(false);
+    tl->setFileName(il->getFileName());
+
+    vtkDataSet* ds = const_cast<vtkDataSet*>(tl->getDataSet());
     vtkImageData* id = vtkImageData::SafeDownCast(ds);
 
     this->image2PolyData(id, unitIds);
 
+    //NMLayer* l2 = this->mLayerList->getLayer()
 
-
+    delete tl;
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

@@ -408,6 +408,8 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
             aggrItem, SLOT(slotExecutionStarted()));
     connect(aggrComp, SIGNAL(signalExecutionStopped()),
             aggrItem, SLOT(slotExecutionStopped()));
+    connect(this, SIGNAL(collapse()), aggrItem, SLOT(collapse()));
+    connect(this, SIGNAL(unfold()), aggrItem, SLOT(unfold()));
 
 	it.toFront();
 	while(it.hasNext())
@@ -504,6 +506,14 @@ void NMModelViewWidget::initItemContextMenu()
     this->mActionMap.insert(actDeltaTimeLevelText, actDeltaTimeLevel);
 
 
+    QAction* collapseComp = new QAction(this->mItemContextMenu);
+    collapseComp->setText(tr("Collapse"));
+    this->mActionMap.insert("Collapse", collapseComp);
+
+    QAction* unfoldComp = new QAction(this->mItemContextMenu);
+    unfoldComp->setText(tr("Unfold"));
+    this->mActionMap.insert("Unfold", unfoldComp);
+
 	QAction* delComp = new QAction(this->mItemContextMenu);
 	delComp->setText(tr("Delete"));
 	this->mActionMap.insert("Delete", delComp);
@@ -531,6 +541,8 @@ void NMModelViewWidget::initItemContextMenu()
 	this->mItemContextMenu->addAction(groupCondItems);
 	this->mItemContextMenu->addAction(ungroupItems);
 	this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(unfoldComp);
+    this->mItemContextMenu->addAction(collapseComp);
 	this->mItemContextMenu->addAction(delComp);
 	this->mItemContextMenu->addSeparator();
 	this->mItemContextMenu->addAction(loadComp);
@@ -555,6 +567,8 @@ void NMModelViewWidget::initItemContextMenu()
     connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
     connect(fontAct, SIGNAL(triggered()), this, SLOT(changeFont()));
     connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
+    connect(collapseComp, SIGNAL(triggered()), this, SIGNAL(collapse()));
+    connect(unfoldComp, SIGNAL(triggered()), this, SIGNAL(unfold()));
 }
 
 void
@@ -743,11 +757,33 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     {
 		this->mActionMap.value("Load ...")->setEnabled(true);
         mActionMap.value("Load ...")->setText(QString("Load Into %1 ...").arg(title));
+
+        if (ai)
+        {
+            mActionMap.value("Collapse")->setText(QString("Collapse %1").arg(title));
+            mActionMap.value("Unfold")->setText(QString("Unfold %1").arg(title));
+
+            if (ai->isCollapsed())
+            {
+                mActionMap.value("Collapse")->setEnabled(false);
+                mActionMap.value("Unfold")->setEnabled(true);
+            }
+            else
+            {
+                mActionMap.value("Collapse")->setEnabled(true);
+                mActionMap.value("Unfold")->setEnabled(false);
+            }
+        }
     }
 	else
     {
 		this->mActionMap.value("Load ...")->setEnabled(false);
         mActionMap.value("Load ...")->setText(QString::fromUtf8("Load ..."));
+
+        mActionMap.value("Collapse")->setText(QString("Collapse"));
+        mActionMap.value("Collapse")->setEnabled(false);
+        mActionMap.value("Unfold")->setText(QString("Unfold"));
+        mActionMap.value("Unfold")->setEnabled(false);
     }
 
     // CHANGE FONT & COLOUR
@@ -1488,7 +1524,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
     }
 
     // that's the one we used for writing
-    lmv.setVersion(13);
+    lmv.setVersion(14);
 
     // check whether we can read the header and if so, what the lmv file version is
     lmv >> fileIdentifier;
@@ -1609,8 +1645,16 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					QString title;
 					QPointF pos;
 					QColor color;
+                    bool bCollapsed = false;
 					qint32 nkids;
-					lmv >> title >> pos >> color >> nkids;
+                    lmv >> title >> pos >> color;
+
+                    if (lmv_version >= 14)
+                    {
+                        lmv >> bCollapsed;
+                    }
+
+                    lmv >> nkids;
 
 					ai->setTitle(nameRegister.value(title));
 					ai->setPos(pos);
@@ -1751,11 +1795,19 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
 		case (qint32)NMAggregateComponentItem::Type:
 				{
-					QString title;
-					QPointF pos;
-					QColor color;
-					qint32 nkids;
-					lmv >> title >> pos >> color >> nkids;
+                    QString title;
+                    QPointF pos;
+                    QColor color;
+                    bool bCollapsed = false;
+                    qint32 nkids;
+                    lmv >> title >> pos >> color;
+
+                    if (lmv_version >= 14)
+                    {
+                        lmv >> bCollapsed;
+                    }
+
+                    lmv >> nkids;
 
 					title = nameRegister.value(title);
 					ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
@@ -1773,21 +1825,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     }
                     else
                         ai->updateNumIterations(0);
-
-
-                    connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
-                            ai, SLOT(updateDescription(QString)));
-                    connect(c, SIGNAL(TimeLevelChanged(short)),
-                            ai, SLOT(updateTimeLevel(short)));
-                    connect(sic, SIGNAL(NumIterationsChanged(uint)),
-                            ai, SLOT(updateNumIterations(uint)));
-
-                    connect(c, SIGNAL(signalExecutionStarted()),
-                            ai, SLOT(slotExecutionStarted()));
-                    connect(c, SIGNAL(signalExecutionStopped()),
-                            ai, SLOT(slotExecutionStopped()));
-                    connect(sic, SIGNAL(signalProgress(float)),
-                            ai, SLOT(slotProgress(float)));
 
 
                     QStringList subNames;
@@ -1835,7 +1872,31 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                                 ai->addToGroup(iai);
                         }
 					}
-                    //ai->setHandlesChildEvents(false);
+
+
+                    if (bCollapsed)
+                    {
+                        ai->collapse();
+                    }
+
+
+                    connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
+                            ai, SLOT(updateDescription(QString)));
+                    connect(c, SIGNAL(TimeLevelChanged(short)),
+                            ai, SLOT(updateTimeLevel(short)));
+                    connect(sic, SIGNAL(NumIterationsChanged(uint)),
+                            ai, SLOT(updateNumIterations(uint)));
+
+                    connect(c, SIGNAL(signalExecutionStarted()),
+                            ai, SLOT(slotExecutionStarted()));
+                    connect(c, SIGNAL(signalExecutionStopped()),
+                            ai, SLOT(slotExecutionStopped()));
+                    connect(sic, SIGNAL(signalProgress(float)),
+                            ai, SLOT(slotProgress(float)));
+
+                    connect(this, SIGNAL(collapse()), ai, SLOT(collapse()));
+                    connect(this, SIGNAL(unfold()), ai, SLOT(unfold()));
+
 				}
 				break;
 

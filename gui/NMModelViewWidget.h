@@ -120,6 +120,8 @@ signals:
 	void requestModelReset(const QString& compName);
 	void requestModelAbortion(void);
 	void widgetIsExiting(void);
+    void collapse(void);
+    void unfold(void);
 
 
 protected:

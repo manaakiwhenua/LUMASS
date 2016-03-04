@@ -78,37 +78,55 @@ NMAggregateComponentItem::slotProgress(float progress)
 }
 
 void
-NMAggregateComponentItem::collapse()
+NMAggregateComponentItem::collapse(bool bCollapse)
 {
     NMDebugCtx(ctx, << "...");
 
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* k, kids)
     {
-        k->setVisible(false);
+//        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
+//        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
+
+        k->setVisible(!bCollapse);
+
+//        if (pi)
+//        {
+//            QList<NMComponentLinkItem*> inItems = pi->getInputLinks();
+//            foreach(NMComponentLinkItem* li, inItems)
+//            {
+//                if (kids.contains(li->sourceItem()))
+//                {
+//                    li->setVisible(!bCollapse);
+//                }
+//            }
+//        }
+//        else if (ai)
+//        {
+//            ai->collapse(bCollapse);
+//        }
     }
 
-    mIsCollapsed = true;
-
-    NMDebugCtx(ctx, << "done!");
-
-}
-
-void
-NMAggregateComponentItem::unfold()
-{
-    NMDebugCtx(ctx, << "...");
-
-    QList<QGraphicsItem*> kids = this->childItems();
-    foreach(QGraphicsItem* k, kids)
+    QList<QGraphicsItem*> allItems = this->scene()->items();
+    foreach(QGraphicsItem* item, allItems)
     {
-        k->setVisible(true);
+        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
+        if (li)
+        {
+            if (    (li->targetItem()->isVisible() == !bCollapse)
+                &&  (li->sourceItem()->isVisible() == !bCollapse)
+               )
+            {
+                li->setVisible(!bCollapse);
+            }
+        }
     }
 
 
-    mIsCollapsed = false;
+    mIsCollapsed = bCollapse;
 
     NMDebugCtx(ctx, << "done!");
+
 }
 
 void

@@ -408,10 +408,6 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
             aggrItem, SLOT(slotExecutionStarted()));
     connect(aggrComp, SIGNAL(signalExecutionStopped()),
             aggrItem, SLOT(slotExecutionStopped()));
-    //    connect(this, SIGNAL(collapse(NMAggregateComponentItem*)),
-    //            aggrItem, SLOT(collapse(NMAggregateComponentItem*)));
-    //    connect(this, SIGNAL(unfold(NMAggregateComponentItem*)),
-    //            aggrItem, SLOT(unfold(NMAggregateComponentItem*)));
 
 	it.toFront();
 	while(it.hasNext())
@@ -468,7 +464,7 @@ NMModelViewWidget::collapseAggrItem()
 {
     NMAggregateComponentItem* ai =
             qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
-    ai->collapse();
+    ai->collapse(true);
 }
 
 void
@@ -476,7 +472,7 @@ NMModelViewWidget::unfoldAggrItem()
 {
     NMAggregateComponentItem* ai =
             qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
-    ai->unfold();
+    ai->collapse(false);
 }
 
 void NMModelViewWidget::initItemContextMenu()
@@ -1795,6 +1791,26 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 						si->addOutputLink(srcIdx, li);
 						ti->addInputLink(tarIdx, li);
 						this->mModelScene->addItem(li);
+
+                        NMAggregateComponentItem* siParent = 0;
+                        NMAggregateComponentItem* tiParent = 0;
+                        if (si->parentItem())
+                        {
+                            siParent = qgraphicsitem_cast<NMAggregateComponentItem*>(si->parentItem());
+                        }
+
+                        if (ti->parentItem())
+                        {
+                            tiParent = qgraphicsitem_cast<NMAggregateComponentItem*>(ti->parentItem());
+                        }
+
+                        if (    tiParent && siParent
+                            &&  (siParent == tiParent)
+                            &&  siParent->isCollapsed()
+                           )
+                        {
+                            li->setVisible(false);
+                        }
 					}
 					else
 					{
@@ -1891,12 +1907,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         }
 					}
 
-
-                    if (bCollapsed)
-                    {
-                        ai->collapse();
-                    }
-
+                    ai->collapse(bCollapsed);
 
                     connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
                             ai, SLOT(updateDescription(QString)));
@@ -1911,12 +1922,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                             ai, SLOT(slotExecutionStopped()));
                     connect(sic, SIGNAL(signalProgress(float)),
                             ai, SLOT(slotProgress(float)));
-
-                    //                    connect(this, SIGNAL(collapse(NMAggregateComponentItem*)),
-                    //                            ai, SLOT(collapse(NMAggregateComponentItem*)));
-                    //                    connect(this, SIGNAL(unfold(NMAggregateComponentItem*)),
-                    //                            ai, SLOT(unfold(NMAggregateComponentItem*)));
-
 				}
 				break;
 
@@ -2209,7 +2214,7 @@ int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 			allLevel = false;
 			break;
 		}
-		++cnt;
+        ++cnt;
 	}
 
 	int ret = -1;

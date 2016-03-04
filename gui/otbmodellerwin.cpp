@@ -2689,27 +2689,20 @@ void OtbModellerWin::test()
     }
 
     QString hostName;
-    QGraphicsItem* host = pi->parentItem();
+    NMAggregateComponentItem* host = qgraphicsitem_cast<NMAggregateComponentItem*>(pi->parentItem());
     if (host)
     {
-        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(host);
-        if (ai)
+        QList<QGraphicsItem*> kids = host->childItems();
+
+        QList<NMComponentLinkItem*> inItems = pi->getInputLinks();
+        foreach(NMComponentLinkItem* li, inItems)
         {
-            hostName = ai->getTitle();
+            if (kids.contains(li->sourceItem()))
+            {
+                li->setVisible(!li->isVisible());
+            }
         }
     }
-    else
-    {
-        hostName = "root";
-    }
-
-    QList<NMComponentLinkItem*> inItems = pi->getInputLinks();
-    foreach(NMComponentLinkItem* li, inItems)
-    {
-
-    }
-
-
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

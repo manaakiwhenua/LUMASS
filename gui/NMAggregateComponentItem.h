@@ -85,8 +85,7 @@ public slots:
     void slotExecutionStarted();
     void slotExecutionStopped();
     void slotProgress(float progress);
-    void collapse();
-    void unfold();
+    void collapse(bool bCollapse);
 
     // moves the group (i.e. all kids)
     // to the new target location, which

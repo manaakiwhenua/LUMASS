@@ -121,8 +121,6 @@ signals:
 	void requestModelReset(const QString& compName);
 	void requestModelAbortion(void);
 	void widgetIsExiting(void);
-    void collapse(NMAggregateComponentItem*);
-    void unfold(NMAggregateComponentItem*);
 
 
 protected:

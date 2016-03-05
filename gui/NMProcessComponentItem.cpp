@@ -448,11 +448,13 @@ NMProcessComponentItem::paint(QPainter* painter,
 
 QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 {
-	NMProcessComponentItem& i = const_cast<NMProcessComponentItem&>(item);
+
+
+    NMProcessComponentItem& i = const_cast<NMProcessComponentItem&>(item);
 	data << i.getTitle();
-    //data << i.getTimeLevel();
 	data << i.scenePos();
 	data << i.getIsDataBufferItem();
+    data << i.isVisible();
 	return data;
 }
 
@@ -461,13 +463,11 @@ QDataStream& operator>>(QDataStream& data, NMProcessComponentItem& item)
 	QPointF pos;
 	QString title;
 	bool databuffer;
-    //short timelevel;
 
-    data >> title;// >> timelevel >> pos >> databuffer;
+    data >> title;
     data >> pos >> databuffer;
 
 	item.setTitle(title);
-    //item.setTimeLevel(timelevel);
 	item.setPos(pos);
 	item.setIsDataBufferItem(databuffer);
 	return data;

@@ -28,6 +28,8 @@ public:
     static QItemSelection selectRows(const QAbstractItemModel *model,
                               QList<int>& ids);
 
+    static qreal getLUMASSVersion(void);
+
 private:
     static const std::string ctx;
 

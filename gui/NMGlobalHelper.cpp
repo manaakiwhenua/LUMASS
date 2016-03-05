@@ -116,6 +116,17 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
     return newsel;
 }
 
+qreal
+NMGlobalHelper::getLUMASSVersion()
+{
+    QString vnumStr = QString("%1.%2%3")
+                        .arg(LUMASS_VERSION_MAJOR)
+                        .arg(LUMASS_VERSION_MINOR)
+                        .arg(LUMASS_VERSION_REVISION);
+    return (qreal)vnumStr.toDouble();
+
+}
+
 vtkRenderWindow*
 NMGlobalHelper::getRenderWindow()
 {

@@ -265,6 +265,15 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mDescrRect.setRight(dc+(descrWidth/2.0));
 }
 
+QRectF
+NMAggregateComponentItem::boundingRect(void) const
+{
+    QRectF bnd = this->childrenBoundingRect();
+    bnd.adjust(-this->dx1,-this->dy1, this->dx2, this->dy2);
+    return bnd;
+}
+
+
 void
 NMAggregateComponentItem::paint(QPainter* painter,
 		const QStyleOptionGraphicsItem* option,
@@ -545,6 +554,7 @@ QDataStream& operator<<(QDataStream& data, const QGraphicsTextItem& item)
     data << item.font();
     data << item.defaultTextColor();
     data << item.scenePos();
+    data << item.isVisible();
 
     return data;
 }
@@ -573,6 +583,7 @@ QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
     data << i.scenePos();
 	data << i.getColor();
     data << i.isCollapsed();
+    data << i.isVisible();
 
 	QList<QGraphicsItem*> kids = i.childItems();
 	int nchild = kids.count();

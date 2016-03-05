@@ -67,12 +67,7 @@ public:
 	bool containsComponent(QString name);
     bool isCollapsed(){return mIsCollapsed;}
 
-    QRectF boundingRect(void) const
-    {
-        QRectF bnd = this->childrenBoundingRect();
-        bnd.adjust(-this->dx1,-this->dy1, this->dx2, this->dy2);
-        return bnd;
-    }
+    QRectF boundingRect(void) const;
 
     void normaliseAt(const QPointF& pos);
 

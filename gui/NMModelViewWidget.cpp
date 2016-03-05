@@ -1071,7 +1071,8 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
     // ---------------
     // set LUMASS identifier
     lmv << QString::fromLatin1("LUMASS Model Visualisation File");
-    lmv << (qreal)0.93;
+    //lmv << (qreal)0.93;
+    lmv << NMGlobalHelper::getLUMASSVersion();
 
     lmv.setVersion(13);
     // --------------------------------------
@@ -1532,19 +1533,20 @@ NMModelViewWidget::importModel(QDataStream& lmv,
     {
         NMBoxErr("Unsupported File Version",
                  "This *.lmv file version is not supported "
-                 "by LUMASS version < 0.9.3!");
+                 "by LUMASS version > 0.9.3!");
         NMDebugCtx(ctx, << "done!");
 		return;
     }
 
     // that's the one we used for writing
-    lmv.setVersion(14);
+    lmv.setVersion(13);
 
     // check whether we can read the header and if so, what the lmv file version is
     lmv >> fileIdentifier;
     if (fileIdentifier.compare(QString::fromLatin1("LUMASS Model Visualisation File")) == 0)
     {
         lmv >> lmv_version;
+        NMDebugAI(<< "LUMASS lmv_version = " << lmv_version << std::endl);
     }
     else
     {
@@ -1575,6 +1577,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
             {
                 ti = new QGraphicsTextItem();
                 lmv >> *ti;
+                if (lmv_version >= 0.95)
+                {
+                    bool bvis;
+                    lmv >> bvis;
+                    ti->setVisible(bvis);
+                }
                 ti->setTextInteractionFlags(Qt::NoTextInteraction | Qt::TextBrowserInteraction);
                 ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                 ti->setOpenExternalLinks(true);
@@ -1588,6 +1596,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 				{
                     pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
+                    if (lmv_version >= 0.95)
+                    {
+                        bool bvis;
+                        lmv >> bvis;
+                        pi->setVisible(bvis);
+                    }
 					QString itemTitle = nameRegister.value(pi->getTitle());
 
                     // check, if we got a valid item (must have name!)
@@ -1660,14 +1674,15 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					QPointF pos;
 					QColor color;
                     bool bCollapsed = false;
-					qint32 nkids;
-                    lmv >> title >> pos >> color;
+                    bool bvis = true;
+                    qint32 nkids;
 
-                    if (lmv_version >= 14)
+                    lmv >> title >> pos >> color;
+                    if (lmv_version >= 0.95)
                     {
                         lmv >> bCollapsed;
+                        lmv >> bvis;
                     }
-
                     lmv >> nkids;
 
 					ai->setTitle(nameRegister.value(title));
@@ -1685,6 +1700,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             QGraphicsTextItem* textItemDummy = new QGraphicsTextItem(0);
                             lmv >> *textItemDummy;
+                            if (lmv_version >= (qreal)0.95)
+                            {
+                                bool bvis;
+                                lmv >> bvis;
+                            }
                             delete textItemDummy;
                             textItemDummy = 0;
                         }
@@ -1706,6 +1726,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     bool dyn;
                     if (lmv_version > (qreal)0.91)
                         lmv >> dyn;
+                    if (lmv_version >= (qreal)0.95)
+                    {
+                        bool bvis;
+                        lmv >> bvis;
+                    }
 				}
 				break;
 
@@ -1758,6 +1783,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         case (qint32)QGraphicsTextItem::Type:
             ti = new QGraphicsTextItem();
             lmv >> *ti;
+            if (lmv_version >= (qreal)0.95)
+            {
+                bool bv;
+                lmv >> bv;
+            }
             delete ti;
             ti = 0;
             break;
@@ -1768,9 +1798,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					QString srcName, tarName;
 					lmv >> srcIdx >> srcName >> tarIdx >> tarName;
 
-                    bool dyn;
+                    bool dyn, bvis;
                     if (lmv_version > (qreal)0.91)
                         lmv >> dyn;
+                    if (lmv_version >= (qreal)0.95)
+                        lmv >> bvis;
 
 					srcName = nameRegister.value(srcName);
 					tarName = nameRegister.value(tarName);
@@ -1824,6 +1856,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                 pi = new NMProcessComponentItem(0,0);
                 lmv >> *pi;
                 delete pi;
+                if (lmv_version >= (qreal)0.95)
+                {
+                    bool bvis;
+                    lmv >> bvis;
+                }
                 pi = 0;
 				break;
 
@@ -1833,12 +1870,14 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     QPointF pos;
                     QColor color;
                     bool bCollapsed = false;
+                    bool bvis = true;
                     qint32 nkids;
                     lmv >> title >> pos >> color;
 
-                    if (lmv_version >= 14)
+                    if (lmv_version >= 0.95)
                     {
                         lmv >> bCollapsed;
+                        lmv >> bvis;
                     }
 
                     lmv >> nkids;
@@ -1878,6 +1917,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             ti = new QGraphicsTextItem(ai);
                             lmv >> *ti;
+                            if (lmv_version >= (qreal)0.95)
+                            {
+                                bool bvis;
+                                lmv >> bvis;
+                                ti->setVisible(bvis);
+                            }
                             ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
                             ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                             ti->setOpenExternalLinks(true);

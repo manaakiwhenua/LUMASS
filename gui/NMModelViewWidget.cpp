@@ -1689,6 +1689,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					ai->setPos(pos);
                     ai->relocate(pos);
 					ai->setColor(color);
+                    ai->setVisible(bvis);
                     importItems <<  ai->getTitle();
 
                     for (qint32 v=0; v < nkids; ++v)

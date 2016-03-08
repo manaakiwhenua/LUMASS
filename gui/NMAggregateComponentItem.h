@@ -81,6 +81,7 @@ public slots:
     void slotExecutionStopped();
     void slotProgress(float progress);
     void collapse(bool bCollapse);
+    bool hasVisibleAncestor(void);
 
     // moves the group (i.e. all kids)
     // to the new target location, which

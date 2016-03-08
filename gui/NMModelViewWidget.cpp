@@ -1820,6 +1820,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 						li->setZValue(this->mModelScene->getLinkZLevel());
                         if (lmv_version > (qreal)0.91)
                             li->setIsDynamic(dyn);
+                        if (lmv_version >= (qreal)0.95)
+                            li->setVisible(bvis);
 
 						si->addOutputLink(srcIdx, li);
 						ti->addInputLink(tarIdx, li);
@@ -1835,14 +1837,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         if (ti->parentItem())
                         {
                             tiParent = qgraphicsitem_cast<NMAggregateComponentItem*>(ti->parentItem());
-                        }
-
-                        if (    tiParent && siParent
-                            &&  (siParent == tiParent)
-                            &&  siParent->isCollapsed()
-                           )
-                        {
-                            li->setVisible(false);
                         }
 					}
 					else
@@ -2180,6 +2174,44 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
     NMDebugCtx(ctx, << "done!");
     //this->mModelScene->invalidate();
+}
+
+void
+NMModelViewWidget::checkComponentLinkItemVisibility(
+        NMComponentLinkItem* link)
+{
+    if (link == 0)
+    {
+        return;
+    }
+
+    NMAggregateComponentItem* sourceHost =
+            qgraphicsitem_cast<NMAggregateComponentItem*>(
+                link->sourceItem()->parentItem());
+
+    NMAggregateComponentItem* targetHost =
+            qgraphicsitem_cast<NMAggregateComponentItem*>(
+                link->sourceItem()->parentItem());
+
+    if (sourceHost && targetHost)
+    {
+        if (    sourceHost->hasVisibleAncestor()
+            ||  targetHost->hasVisibleAncestor()
+           )
+        {
+            link->setVisible(true);
+        }
+        else
+        {
+            link->setVisible(false);
+        }
+    }
+    else
+    {
+        link->setVisible(true);
+    }
+
+
 }
 
 std::string

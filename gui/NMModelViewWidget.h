@@ -111,6 +111,8 @@ public slots:
 	 *  links between components)*/
 	void processProcInputChanged(QList<QStringList> inputs);
 
+    void checkComponentLinkItemVisibility(NMComponentLinkItem *link);
+
 
 
 signals:

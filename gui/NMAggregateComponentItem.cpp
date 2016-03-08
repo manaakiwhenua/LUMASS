@@ -507,6 +507,24 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
 }
 
+
+bool
+NMAggregateComponentItem::hasVisibleAncestor(void)
+{
+    if (parentItem())
+    {
+        NMAggregateComponentItem* ai =
+                qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
+        if (ai && !ai->isVisible())
+        {
+            return ai->hasVisibleAncestor();
+        }
+    }
+
+    return true;
+}
+
+
 bool
 NMAggregateComponentItem::containsComponent(QString name)
 {

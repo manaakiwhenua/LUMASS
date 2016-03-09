@@ -2180,36 +2180,36 @@ void
 NMModelViewWidget::checkComponentLinkItemVisibility(
         NMComponentLinkItem* link)
 {
-    if (link == 0)
-    {
-        return;
-    }
+//    if (link == 0)
+//    {
+//        return;
+//    }
 
-    NMAggregateComponentItem* sourceHost =
-            qgraphicsitem_cast<NMAggregateComponentItem*>(
-                link->sourceItem()->parentItem());
+//    NMAggregateComponentItem* sourceHost =
+//            qgraphicsitem_cast<NMAggregateComponentItem*>(
+//                link->sourceItem()->parentItem());
 
-    NMAggregateComponentItem* targetHost =
-            qgraphicsitem_cast<NMAggregateComponentItem*>(
-                link->sourceItem()->parentItem());
+//    NMAggregateComponentItem* targetHost =
+//            qgraphicsitem_cast<NMAggregateComponentItem*>(
+//                link->sourceItem()->parentItem());
 
-    if (sourceHost && targetHost)
-    {
-        if (    sourceHost->hasVisibleAncestor()
-            ||  targetHost->hasVisibleAncestor()
-           )
-        {
-            link->setVisible(true);
-        }
-        else
-        {
-            link->setVisible(false);
-        }
-    }
-    else
-    {
-        link->setVisible(true);
-    }
+//    if (sourceHost && targetHost)
+//    {
+//        if (    sourceHost->hasVisibleAncestor()
+//            ||  targetHost->hasVisibleAncestor()
+//           )
+//        {
+//            link->setVisible(true);
+//        }
+//        else
+//        {
+//            link->setVisible(false);
+//        }
+//    }
+//    else
+//    {
+//        link->setVisible(true);
+//    }
 
 
 }

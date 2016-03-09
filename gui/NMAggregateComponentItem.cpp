@@ -77,6 +77,8 @@ NMAggregateComponentItem::slotProgress(float progress)
     this->update();
 }
 
+
+
 void
 NMAggregateComponentItem::collapse(bool bCollapse)
 {
@@ -85,26 +87,7 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* k, kids)
     {
-//        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
-//        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
-
         k->setVisible(!bCollapse);
-
-//        if (pi)
-//        {
-//            QList<NMComponentLinkItem*> inItems = pi->getInputLinks();
-//            foreach(NMComponentLinkItem* li, inItems)
-//            {
-//                if (kids.contains(li->sourceItem()))
-//                {
-//                    li->setVisible(!bCollapse);
-//                }
-//            }
-//        }
-//        else if (ai)
-//        {
-//            ai->collapse(bCollapse);
-//        }
     }
 
     QList<QGraphicsItem*> allItems = this->scene()->items();
@@ -113,11 +96,31 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
         if (li)
         {
-            if (    (li->targetItem()->isVisible() == !bCollapse)
-                &&  (li->sourceItem()->isVisible() == !bCollapse)
-               )
+            NMAggregateComponentItem* sourceHost =
+                    qgraphicsitem_cast<NMAggregateComponentItem*>(
+                        li->sourceItem()->parentItem());
+
+            NMAggregateComponentItem* targetHost =
+                    qgraphicsitem_cast<NMAggregateComponentItem*>(
+                        li->targetItem()->parentItem());
+
+
+            if (sourceHost && targetHost)
             {
-                li->setVisible(!bCollapse);
+                if (    sourceHost->hasVisibleAncestor(this)
+                    ||  targetHost->hasVisibleAncestor(this)
+                   )
+                {
+                    li->setVisible(true);
+                }
+                else
+                {
+                    li->setVisible(false);
+                }
+            }
+            else
+            {
+                li->setVisible(true);
             }
         }
     }
@@ -509,18 +512,25 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
 
 bool
-NMAggregateComponentItem::hasVisibleAncestor(void)
+NMAggregateComponentItem::hasVisibleAncestor(NMAggregateComponentItem* exceptItem)
 {
-    if (parentItem())
+    NMAggregateComponentItem* parent = qgraphicsitem_cast<NMAggregateComponentItem*>(this->parentItem());
+    if (parent == 0)
     {
-        NMAggregateComponentItem* ai =
-                qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
-        if (ai && !ai->isVisible())
-        {
-            return ai->hasVisibleAncestor();
-        }
+        return true;
     }
 
+    if (parent == exceptItem)
+    {
+        return false;
+    }
+    else
+    {
+        if (!parent->isVisible())
+        {
+            return parent->hasVisibleAncestor(exceptItem);
+        }
+    }
     return true;
 }
 

@@ -71,6 +71,11 @@ public:
 
     void normaliseAt(const QPointF& pos);
 
+    void getAncestors(QList<NMAggregateComponentItem*>& ancestors);
+
+signals:
+    void itemCollapsed();
+
 
 public slots:
     void updateDescription(const QString& descr);
@@ -81,7 +86,7 @@ public slots:
     void slotExecutionStopped();
     void slotProgress(float progress);
     void collapse(bool bCollapse);
-    bool hasVisibleAncestor(NMAggregateComponentItem *exceptItem);
+
 
     // moves the group (i.e. all kids)
     // to the new target location, which
@@ -111,7 +116,8 @@ private:
         p.setWorldTransform(ot);
     }
 
-	QString mTitle;
+    QIcon mIcon;
+    QString mTitle;
 	QColor mColor;
 	int rgb[3];
 

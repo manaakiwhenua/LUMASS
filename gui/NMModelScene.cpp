@@ -361,6 +361,49 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     }
 }
 
+void
+NMModelScene::checkLinkVisibility()
+{
+    foreach (QGraphicsItem* gi, items())
+    {
+        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
+        if (li)
+        {
+            NMAggregateComponentItem* sourceHost =
+                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->sourceItem()->parentItem());
+
+            NMAggregateComponentItem* targetHost =
+                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->targetItem()->parentItem());
+
+            QList<NMAggregateComponentItem*> sourceAncestors;
+            sourceAncestors << sourceHost;
+            QList<NMAggregateComponentItem*> targetAncestors;
+            targetAncestors << targetHost;
+
+            sourceHost->getAncestors(sourceAncestors);
+            targetHost->getAncestors(targetAncestors);
+
+            bool oneCollapsed = false;
+            foreach (NMAggregateComponentItem* si, sourceAncestors)
+            {
+                if (targetAncestors.contains(si) && si->isCollapsed())
+                {
+                    oneCollapsed = true;
+                }
+            }
+
+            if (oneCollapsed)
+            {
+                li->setVisible(false);
+            }
+            else
+            {
+                li->setVisible(true);
+            }
+        }
+    }
+}
+
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
 	NMDebugCtx(ctx, << "...");

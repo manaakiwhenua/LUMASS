@@ -47,6 +47,9 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     mHeadAngleLeft = -165;
     mHeadAngleRight = -60;
 
+    mIcon.load(":model-icon.png");
+    mIcon.scaledToWidth(64*qApp->devicePixelRatio());
+
     mDescription = this->objectName();
     //this->preparePainting();
 }
@@ -89,47 +92,11 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     {
         k->setVisible(!bCollapse);
     }
-
-    QList<QGraphicsItem*> allItems = this->scene()->items();
-    foreach(QGraphicsItem* item, allItems)
-    {
-        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(item);
-        if (li)
-        {
-            NMAggregateComponentItem* sourceHost =
-                    qgraphicsitem_cast<NMAggregateComponentItem*>(
-                        li->sourceItem()->parentItem());
-
-            NMAggregateComponentItem* targetHost =
-                    qgraphicsitem_cast<NMAggregateComponentItem*>(
-                        li->targetItem()->parentItem());
-
-
-            if (sourceHost && targetHost)
-            {
-                if (    sourceHost->hasVisibleAncestor(this)
-                    ||  targetHost->hasVisibleAncestor(this)
-                   )
-                {
-                    li->setVisible(true);
-                }
-                else
-                {
-                    li->setVisible(false);
-                }
-            }
-            else
-            {
-                li->setVisible(true);
-            }
-        }
-    }
-
-
     mIsCollapsed = bCollapse;
 
-    NMDebugCtx(ctx, << "done!");
+    emit itemCollapsed();
 
+    NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -271,7 +238,15 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 QRectF
 NMAggregateComponentItem::boundingRect(void) const
 {
-    QRectF bnd = this->childrenBoundingRect();
+    QRectF bnd;
+    if (mbIsCollapsed)
+    {
+        QSize asize = mIcon.actualSize();
+    }
+    else
+    {
+        bnd = this->childrenBoundingRect();
+    }
     bnd.adjust(-this->dx1,-this->dy1, this->dx2, this->dy2);
     return bnd;
 }
@@ -510,30 +485,17 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
 }
 
-
-bool
-NMAggregateComponentItem::hasVisibleAncestor(NMAggregateComponentItem* exceptItem)
+void
+NMAggregateComponentItem::getAncestors(QList<NMAggregateComponentItem*>& ancestors)
 {
-    NMAggregateComponentItem* parent = qgraphicsitem_cast<NMAggregateComponentItem*>(this->parentItem());
-    if (parent == 0)
+    NMAggregateComponentItem* ai =
+            qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
+    if (ai)
     {
-        return true;
+        ancestors.append(ai);
+        ai->getAncestors(ancestors);
     }
-
-    if (parent == exceptItem)
-    {
-        return false;
-    }
-    else
-    {
-        if (!parent->isVisible())
-        {
-            return parent->hasVisibleAncestor(exceptItem);
-        }
-    }
-    return true;
 }
-
 
 bool
 NMAggregateComponentItem::containsComponent(QString name)

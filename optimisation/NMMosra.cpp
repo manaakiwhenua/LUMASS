@@ -1506,6 +1506,7 @@ int NMMosra::makeLp(void)
 			}
 		}
 
+        --colPos;
         //		colname = QString(tr("b_%1")).arg(of);
         //		this->mLp->SetColName(colPos, colname.toStdString());
         //		this->mLp->SetBinary(colPos, true);

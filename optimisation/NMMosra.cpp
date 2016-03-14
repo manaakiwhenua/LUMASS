@@ -1486,13 +1486,15 @@ int NMMosra::makeLp(void)
 	// column names and column types; note: the default type is REAL
 	this->mLp->MakeLp(0,this->mlLpCols);
 	long colPos = 1;
-	for (int of=0; of < this->mlNumOptFeat; ++of, ++colPos)
+    for (int of=0; of < this->mlNumOptFeat; ++of)//, ++colPos)
 	{
 		QString colname;
 		for (int opt=1; opt <= this->miNumOptions; ++opt, ++colPos)
 		{
 			colname = QString(tr("X_%1_%2")).arg(of).arg(opt);
 			this->mLp->SetColName(colPos, colname.toStdString());
+
+            //NMDebugAI(<< "#" << colPos << ": " << colname.toStdString() << std::endl);
 
 			// set variable type for areal decision variables
 			switch(this->meDVType)
@@ -1506,10 +1508,10 @@ int NMMosra::makeLp(void)
 			}
 		}
 
-        --colPos;
         //		colname = QString(tr("b_%1")).arg(of);
         //		this->mLp->SetColName(colPos, colname.toStdString());
         //		this->mLp->SetBinary(colPos, true);
+        //  ++colPos;
 	}
 
 //	// initiate the objective function to zero; note that all unspecified
@@ -1889,7 +1891,7 @@ int NMMosra::addObjFn(void)
 
 			// increment the column number counter to the next areal decision variable
 			// (leaping one binary deciscion var associated with each areal decision variable)
-			colPos++;
+            //colPos++;
 
 			if (f % 500 == 0)
 				NMDebug(<< ".");
@@ -2051,7 +2053,7 @@ int NMMosra::addObjCons(void)
 			}
 
 			// leap frog the binary decision variable for this feature
-			colpos++;
+            //colpos++;
 
 			if (f % 100 == 0)
 				NMDebug(<< ".");
@@ -2215,7 +2217,8 @@ int NMMosra::addExplicitAreaCons(void)
 	// calc the offset required to jump from one feature-option-column to the next
 	// one; since we've got one binary conditional decision variable for each feature
 	// we've got to add 1 to the offset;
-	int iOffset = this->miNumOptions + 1;
+    //int iOffset = this->miNumOptions + 1;
+    int iOffset = this->miNumOptions;
 
 	it = this->mmslAreaCons.constBegin();
 	// ------------------------------------------------ for each constraint
@@ -2359,8 +2362,11 @@ int NMMosra::addImplicitAreaCons(void)
 	// we cover each feature separately, so we need miNumOptions coefficients
 	// plus the binary conditional to realise the either zero or all area
 	// constraint for each feature
-    double* pdRow = new double[this->miNumOptions + 1];
-	int* piColno = new int[this->miNumOptions + 1];
+    //    double* pdRow = new double[this->miNumOptions + 1];
+    //	int* piColno = new int[this->miNumOptions + 1];
+
+    double* pdRow = new double[this->miNumOptions];
+    int* piColno = new int[this->miNumOptions];
 
 	// get the hole array
 	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
@@ -2452,7 +2458,7 @@ int NMMosra::addImplicitAreaCons(void)
 
 		// ........................................................................................
 		// column position counter
-		colpos++;
+        //colpos++;
 
 		if (f % 500 == 0)
 			NMDebug(<< ".");
@@ -2667,7 +2673,8 @@ int NMMosra::addCriCons(void)
 
 			// jump to the first option of the next feature (keep in mind that we've got
 			// one binary decision var (i.e. column) per feature, hence the +1
-			colPos += this->miNumOptions + 1;
+            //colPos += this->miNumOptions + 1;
+            colPos += this->miNumOptions;
 		}
 		NMDebug(<< " finished!" << std::endl);
 

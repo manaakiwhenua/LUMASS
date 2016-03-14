@@ -116,7 +116,8 @@ private:
         p.setWorldTransform(ot);
     }
 
-    QIcon mIcon;
+    QPixmap mCollapsedPix;
+
     QString mTitle;
 	QColor mColor;
 	int rgb[3];
@@ -153,6 +154,8 @@ private:
     QLineF mPointer2;
 
     int dx1, dy1, dx2, dy2;
+
+
 
     static const std::string ctx;
 

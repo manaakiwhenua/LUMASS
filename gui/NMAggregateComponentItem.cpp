@@ -22,6 +22,7 @@
  *      Author: alex
  */
 
+#include <QApplication>
 #include <QDebug>
 #include "NMAggregateComponentItem.h"
 #include "nmlog.h"
@@ -47,8 +48,8 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     mHeadAngleLeft = -165;
     mHeadAngleRight = -60;
 
-    mIcon.load(":model-icon.png");
-    mIcon.scaledToWidth(64*qApp->devicePixelRatio());
+    mCollapsedPix.load(":model-icon.png");
+    mCollapsedPix.scaledToWidth(64*qApp->devicePixelRatio());
 
     mDescription = this->objectName();
     //this->preparePainting();
@@ -180,7 +181,34 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mItemBnd = bnd;
     mItemBnd.adjust(dx1,dy1,-dx2,-dy2);
 
+    mFont = QFont("Arial", 11);
+    QFontMetrics fm(mFont);
+
+    qreal descrWidth = fm.width(mDescription);
+    qreal descrHeight = fm.height();
+
+    if (descrWidth > mItemBnd.width())
+    {
+        qreal diff = descrWidth - mItemBnd.width();
+        mItemBnd.setLeft(mItemBnd.x()-(diff/2.0)-2);
+        mItemBnd.setWidth(descrWidth+2);
+    }
+
+
     mDash = QRectF(mItemBnd.left(), bnd.top()+12, mItemBnd.width(),25);
+
+
+
+    qreal width = (mDash.right()-2) - (mNumIterRect.right()+2);
+
+
+
+    mDescrRect = QRectF(mNumIterRect.right()+2, mDash.top()+3.5,
+                        width, descrHeight);//20);
+    qreal dc = mDescrRect.center().x();
+    mDescrRect.setLeft(dc-(descrWidth/2.0));
+    mDescrRect.setRight(dc+(descrWidth/2.0));
+
 
     mClockRect = QRectF(mDash.left()+2, mDash.top()+9,8,8);
     QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
@@ -193,8 +221,6 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mPointer2.setLength(0.6*mPointer1.length());
     mPointer2.setAngle((qreal)-27.5);
 
-    mFont = QFont("Arial", 11);
-    QFontMetrics fm(mFont);
     qreal levelWidth = fm.width(QString("%1").arg(mTimeLevel));
 
     mTimeLevelRect = QRectF(mClockRect.right()+2, mDash.top()+4, levelWidth,15);
@@ -217,35 +243,33 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mIterSymbol.lineTo(mHeadRight.p2());
 
     qreal numIterWidth = fm.width(QString("%1").arg(mNumIterations));
+    qreal numIterHeight = fm.height();
     if (mIsExecuting)
     {
         numIterWidth = fm.width(QString("%1 of %2").arg(mProgress).arg(mNumIterations));
     }
 
-    mNumIterRect = QRectF(mIterSymbolRect.right()+2, mDash.top()+4, numIterWidth,15);
+    mNumIterRect = QRectF(mIterSymbolRect.right()+2, mDash.top()+4,
+                          numIterWidth, numIterHeight); //15);
 
-
-    qreal descrWidth = fm.width(mDescription);
-
-    qreal width = (mDash.right()-2) - (mNumIterRect.right()+2);
-    mDescrRect = QRectF(mNumIterRect.right()+2, mDash.top()+3.5,
-                        width, 20);
-    qreal dc = mDescrRect.center().x();
-    mDescrRect.setLeft(dc-(descrWidth/2.0));
-    mDescrRect.setRight(dc+(descrWidth/2.0));
 }
 
 QRectF
 NMAggregateComponentItem::boundingRect(void) const
 {
     QRectF bnd;
-    if (mbIsCollapsed)
+    if (mIsCollapsed)
     {
-        QSize asize = mIcon.actualSize();
+        QRectF fb = this->childrenBoundingRect();
+
+        bnd = QRectF(fb.center().x() - (mCollapsedPix.width()/2.0),
+                     fb.center().y() - (mCollapsedPix.height()/2.0),
+                     mCollapsedPix.width(), mCollapsedPix.height());
     }
     else
     {
         bnd = this->childrenBoundingRect();
+
     }
     bnd.adjust(-this->dx1,-this->dy1, this->dx2, this->dy2);
     return bnd;
@@ -460,6 +484,14 @@ NMAggregateComponentItem::paint(QPainter* painter,
     //painter->drawText(mDescrRect, Qt::AlignCenter, mDescription);
     this->renderText(mDescrRect, Qt::AlignCenter, mDescription, *painter);
 
+
+    // ------------------------------------------------
+    // DRAW ICON , IF COLLAPSED
+    // ------------------------------------------------
+    if (mIsCollapsed)
+    {
+        painter->drawPixmap(mItemBnd.toRect(), mCollapsedPix);
+    }
 
     // ------------------------------------------------
     // DRAW SELECTION MARKER

@@ -23,6 +23,7 @@
  */
 
 #include "NMProcessComponentItem.h"
+#include <QApplication>
 #include <QTime>
 #include <QDebug>
 #include <QFontMetrics>
@@ -246,7 +247,7 @@ void NMProcessComponentItem::setTitle(const QString& title)
         mIcon.load(":model-icon.png");
     }
 
-    //mIcon.scaledToWidth(64*qApp->devicePixelRatio());
+    mIcon.scaledToWidth(64*qApp->devicePixelRatio());
 }
 
 QPolygonF
@@ -374,7 +375,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 		painter->drawRoundRect(mIconBnd, 10, 10);
 
 		// draw icon
-        painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64)); // 0,0,64,64
+        painter->drawPixmap(mIconRect.toRect(), mIcon);//, QRectF(0,0,64,64)); // 0,0,64,64
 
         if (mProgress > 0)
 		{

@@ -148,10 +148,14 @@ private:
     qreal mHeadAngleLeft;
     qreal mHeadAngleRight;
 
+    qreal dpr;
+    qreal smallGap;
+    qreal bigGap;
 
     QRectF mClockRect;
     QLineF mPointer1;
     QLineF mPointer2;
+
 
     int dx1, dy1, dx2, dy2;
 

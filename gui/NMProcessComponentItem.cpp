@@ -66,27 +66,45 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
         mIcon.load(":model-icon.png");
     }
 
+    qreal dpr = qApp->devicePixelRatio();
+    qreal smallGap = 2*dpr;
+    qreal bigGap = 5*dpr;
+
+    mIcon.scaledToWidth(64*dpr);
+
+    mFont = QFont("Arial", 10);
+
+    QFontMetrics fm(mFont);
+
     //mIconRect = QRectF(-37, -37, 74, 74);
-    mIconRect = QRectF(-30, -26, 50, 50);
+    mIconRect = QRectF(-30*dpr, -26*dpr, 50*dpr, 50*dpr);
 
     //	mIconBnd = QRectF(mIconRect.left()-5, mIconRect.top()-5,
     //			          mIconRect.width()+10, mIconRect.height()+10);
 
-    mIconBnd = QRectF(mIconRect.left()-12, mIconRect.top()-16,
-                      mIconRect.width()+24, mIconRect.height()+24);
+    mIconBnd = QRectF(mIconRect.left()-12*dpr, mIconRect.top()-16*dpr,
+                      mIconRect.width()+24*dpr, mIconRect.height()+24*dpr);
 
-    mTextRect = QRectF(mIconBnd.left(), mIconBnd.bottom()+5,
-                       mIconBnd.width(), mSingleLineHeight);
 
-    mTimeLevelRect = QRectF(mIconBnd.left()+12,mIconBnd.top()+1.5,30,15);
+    //qreal textwidth = fm.width(mDescription);
+    //    qreal lefttrect = mIconBnd.left() - ((mMaxTextWidth - mIconBnd.width())/2.0);
+    //    mTextRect = QRectF(lefttrect, mIconBnd.bottom()+bigGap,
+    //                       mMaxTextWidth, fm.height());
+    updateDescription();
 
-    mClockRect = QRectF(mIconBnd.left()+2, mIconBnd.top()+5,8,8);
+    mClockRect = QRectF(mIconBnd.left()+smallGap, mIconBnd.top()+bigGap,
+                        fm.height()*0.6,fm.height()*0.6);
+
+    qreal timewidth = fm.width(QString("%1").arg(9999));
+    mTimeLevelRect = QRectF(mClockRect.right()+smallGap,mIconBnd.top()+1.5,
+                            timewidth,fm.height());
+
+    qreal idwidth = fm.width(QString("%1").arg(9999));
+    mIDRect = QRectF(mIconBnd.right()-idwidth-bigGap, mIconBnd.top()+1.5,
+                     idwidth, fm.height());
 
     QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
                              mClockRect.top() +(mClockRect.height()/2.0));
-
-    mIDRect = QRectF(mIconBnd.right()-47, mIconBnd.top()+1.5, 45, 15);
-
 
     mPointer1 = QLineF(center, QPointF(mClockRect.left()+(mClockRect.width()/2.0),
                                        mClockRect.top()+1));
@@ -95,7 +113,6 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     mPointer2.setLength(0.6*mPointer1.length());
     mPointer2.setAngle((qreal)-27.5);
 
-	mFont = QFont("Arial", 10);
 }
 
 NMProcessComponentItem::~NMProcessComponentItem()
@@ -296,6 +313,7 @@ NMProcessComponentItem::setDescription(const QString& descr)
         prepareGeometryChange();
         this->updateDescription();
         this->update();
+        //this->scene()->update();//mapRectToScene(boundingRect()));
     }
 }
 
@@ -341,6 +359,8 @@ NMProcessComponentItem::paint(QPainter* painter,
 {
 
     //CALLGRIND_START_INSTRUMENTATION;
+    qreal dpr = qApp->devicePixelRatio();
+    QFontMetrics fm(mFont);
 
     painter->setRenderHint(QPainter::Antialiasing, true);
 
@@ -375,7 +395,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 		painter->drawRoundRect(mIconBnd, 10, 10);
 
 		// draw icon
-        painter->drawPixmap(mIconRect.toRect(), mIcon);//, QRectF(0,0,64,64)); // 0,0,64,64
+        painter->drawPixmap(mIconRect.toRect(), mIcon, QRectF(0,0,64*dpr,64*dpr)); // 0,0,64,64
 
         if (mProgress > 0)
 		{
@@ -384,7 +404,8 @@ NMProcessComponentItem::paint(QPainter* painter,
             mFont.setItalic(false);
 			painter->setFont(mFont);
             QString strProg = QString("%1\%").arg(this->mProgress, 3, 'f', 0);
-            painter->drawText(QRectF(mIconBnd.right()-40,mIconBnd.top()+1.5,40,15),
+            painter->drawText(QRectF(mIconBnd.right()-40*dpr,mIconBnd.top()+1.5,
+                              fm.width(strProg),fm.height()),
                     Qt::AlignRight, strProg);
 		}
 	}
@@ -401,7 +422,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 		painter->drawRoundRect(mIconBnd, 10, 10);
 
 		// draw icon
-		painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64,64));
+        painter->drawPixmap(mIconRect, mIcon, QRectF(0,0,64*dpr,64*dpr));
 	}
 
     // -----------------------------
@@ -409,6 +430,14 @@ NMProcessComponentItem::paint(QPainter* painter,
 	painter->setBrush(Qt::NoBrush);
     painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
     mFont.setItalic(false);
+
+    // the type id
+    if (this->mTypeID > 0)
+    {
+        painter->setPen(QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine));
+        painter->drawText(mIDRect, Qt::AlignRight, QString("%1").arg(mTypeID));
+        painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
+    }
 
     // the clock icon
     painter->setPen(QPen(QBrush(Qt::black), 0.5, Qt::SolidLine));
@@ -424,13 +453,7 @@ NMProcessComponentItem::paint(QPainter* painter,
     painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
 
 
-    // the type id
-    if (this->mTypeID > 0)
-    {
-        painter->setPen(QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine));
-        painter->drawText(mIDRect, Qt::AlignRight, QString("%1").arg(mTypeID));
-        painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
-    }
+
 
     // the description
     mFont.setBold(true);

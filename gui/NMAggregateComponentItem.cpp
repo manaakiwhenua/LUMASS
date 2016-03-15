@@ -38,21 +38,28 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     this->mNumIterations = 0;
     this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
 
-    dx1 = 10;
-    dy1 = 43;
-    dx2 = 10;
-    dy2 = 43;
+    dpr = qApp->devicePixelRatio();
+
+    dx1 = 10*dpr;
+    dy1 = 43*dpr;
+    dx2 = 10*dpr;
+    dy2 = 43*dpr;
     headBase = 3;
     mStartAngle = 95 * 16;
     mSpanAngle  = -315 * 16;
     mHeadAngleLeft = -165;
     mHeadAngleRight = -60;
 
+
+
+    smallGap = 2*dpr;
+    bigGap = 4*dpr;
+
     mCollapsedPix.load(":model-icon.png");
-    mCollapsedPix.scaledToWidth(64*qApp->devicePixelRatio());
+    mCollapsedPix.scaledToWidth(64*dpr);
 
     mDescription = this->objectName();
-    //this->preparePainting();
+    mFont = QFont("Arial", 11);
 }
 
 NMAggregateComponentItem::~NMAggregateComponentItem()
@@ -88,6 +95,8 @@ NMAggregateComponentItem::collapse(bool bCollapse)
 {
     NMDebugCtx(ctx, << "...");
 
+    QRectF oldBnd = this->mapRectToScene(this->boundingRect());
+
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* k, kids)
     {
@@ -95,8 +104,10 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     }
     mIsCollapsed = bCollapse;
 
-    emit itemCollapsed();
+    this->update();
+    this->scene()->update(oldBnd);
 
+    emit itemCollapsed();
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -149,6 +160,7 @@ NMAggregateComponentItem::updateDescription(const QString& descr)
         this->mDescription = descr;
         //this->preparePainting();
         this->update();
+        this->scene()->update(mapRectToScene(boundingRect()));
     }
 }
 
@@ -169,7 +181,6 @@ NMAggregateComponentItem::updateNumIterations(unsigned int iter)
     if (this->mNumIterations != iter)
     {
         this->mNumIterations = iter;
-        //this->preparePainting();
         this->update();
     }
 }
@@ -181,36 +192,24 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mItemBnd = bnd;
     mItemBnd.adjust(dx1,dy1,-dx2,-dy2);
 
-    mFont = QFont("Arial", 11);
     QFontMetrics fm(mFont);
 
     qreal descrWidth = fm.width(mDescription);
     qreal descrHeight = fm.height();
 
-    if (descrWidth > mItemBnd.width())
-    {
-        qreal diff = descrWidth - mItemBnd.width();
-        mItemBnd.setLeft(mItemBnd.x()-(diff/2.0)-2);
-        mItemBnd.setWidth(descrWidth+2);
-    }
+    //    if (descrWidth > mItemBnd.width())
+    //    {
+    //        qreal diff = descrWidth - mItemBnd.width();
+    //        mItemBnd.setLeft(mItemBnd.x()-(diff/2.0)-2);
+    //        mItemBnd.setWidth(descrWidth+2);
+    //        //mItemBnd.adjust
+    //    }
 
+    mDash = QRectF(mItemBnd.left(), bnd.top()+12*dpr, mItemBnd.width(),25*dpr);
+    qreal width = (mDash.right()-smallGap) - (mNumIterRect.right()+bigGap);
 
-    mDash = QRectF(mItemBnd.left(), bnd.top()+12, mItemBnd.width(),25);
-
-
-
-    qreal width = (mDash.right()-2) - (mNumIterRect.right()+2);
-
-
-
-    mDescrRect = QRectF(mNumIterRect.right()+2, mDash.top()+3.5,
-                        width, descrHeight);//20);
-    qreal dc = mDescrRect.center().x();
-    mDescrRect.setLeft(dc-(descrWidth/2.0));
-    mDescrRect.setRight(dc+(descrWidth/2.0));
-
-
-    mClockRect = QRectF(mDash.left()+2, mDash.top()+9,8,8);
+    mClockRect = QRectF(mDash.left()+smallGap, mDash.top()+2*bigGap,
+                        descrHeight*0.6, descrHeight*0.6);
     QPointF center = QPointF(mClockRect.left()+(mClockRect.width()/2.0),
                              mClockRect.top() +(mClockRect.height()/2.0));
 
@@ -223,9 +222,12 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 
     qreal levelWidth = fm.width(QString("%1").arg(mTimeLevel));
 
-    mTimeLevelRect = QRectF(mClockRect.right()+2, mDash.top()+4, levelWidth,15);
+    mTimeLevelRect = QRectF(mClockRect.right()+smallGap, mDash.top()+bigGap,
+                            levelWidth, descrHeight);
 
-    mIterSymbolRect = QRectF(mTimeLevelRect.right()+2+(headBase/2.0), mDash.top()+9, 8,8);
+    mIterSymbolRect = QRectF(mTimeLevelRect.right()+bigGap+(headBase/2.0),
+                             mDash.top()+2*bigGap,
+                             descrHeight*0.6, descrHeight*0.6);
 
     mIterSymbol.moveTo(mIterSymbolRect.center());
     mIterSymbol.arcTo(mIterSymbolRect, (this->mStartAngle/16.0),
@@ -249,9 +251,14 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
         numIterWidth = fm.width(QString("%1 of %2").arg(mProgress).arg(mNumIterations));
     }
 
-    mNumIterRect = QRectF(mIterSymbolRect.right()+2, mDash.top()+4,
+    mNumIterRect = QRectF(mIterSymbolRect.right()+smallGap, mDash.top()+bigGap,
                           numIterWidth, numIterHeight); //15);
 
+    mDescrRect = QRectF(mNumIterRect.right()+bigGap, mDash.top()+bigGap,
+                        width, descrHeight);//20);
+    qreal dc = mDescrRect.center().x();
+    mDescrRect.setLeft(dc-(descrWidth/2.0));
+    mDescrRect.setRight(dc+(descrWidth/2.0));
 }
 
 QRectF
@@ -261,7 +268,6 @@ NMAggregateComponentItem::boundingRect(void) const
     if (mIsCollapsed)
     {
         QRectF fb = this->childrenBoundingRect();
-
         bnd = QRectF(fb.center().x() - (mCollapsedPix.width()/2.0),
                      fb.center().y() - (mCollapsedPix.height()/2.0),
                      mCollapsedPix.width(), mCollapsedPix.height());
@@ -271,6 +277,20 @@ NMAggregateComponentItem::boundingRect(void) const
         bnd = this->childrenBoundingRect();
 
     }
+
+    QFontMetrics fm(mFont);
+    qreal minWidth = fm.height() + smallGap + fm.width(QString("%1").arg(mTimeLevel)) + bigGap +
+                     fm.height() + smallGap + fm.width(QString("%1").arg(mNumIterations)) + bigGap +
+                     fm.width(mDescription);
+
+    if (minWidth > bnd.width())
+    {
+        qreal diff = minWidth - bnd.width();
+        bnd.adjust(-(diff/2.0), 0, (diff/2.0), 0);
+    }
+
+
+
     bnd.adjust(-this->dx1,-this->dy1, this->dx2, this->dy2);
     return bnd;
 }
@@ -490,7 +510,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // ------------------------------------------------
     if (mIsCollapsed)
     {
-        painter->drawPixmap(mItemBnd.toRect(), mCollapsedPix);
+        QRectF trex = QRectF(mDash.center().x()-32*dpr,
+                             mDash.bottom()+3*bigGap,
+                             64*dpr, 64*dpr);
+        painter->drawPixmap(trex, mCollapsedPix, QRectF(0,0,64*dpr,64*dpr));
     }
 
     // ------------------------------------------------

@@ -1662,6 +1662,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         pi->setTimeLevel(mcomp->getTimeLevel());
 					}
                     //pi->setFlag(QGraphicsItem::ItemIsMovable, true);
+                    pi->update();
+                    this->mModelScene->update(pi->mapRectToScene(pi->boundingRect()));
                     this->mModelScene->updateComponentItemFlags(pi);
                     this->mModelScene->addItem(pi);
 				}

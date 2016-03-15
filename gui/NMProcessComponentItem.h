@@ -121,6 +121,8 @@ public:
     QList<NMComponentLinkItem*> getInputLinks(void)
         {return this->mInputLinks;}
 
+    void collapse(bool bCollapse, const QPointF& pos);
+
 public slots:
     void setDescription(const QString& descr);
     void updateProgress(float progr);
@@ -162,6 +164,10 @@ private:
     QLineF mPointer2;
 
     QTextLayout mTextLayout;
+
+    QPointF mUnfoldedPos;
+    QPointF mCollapsedPos;
+    bool mIsCollapsed;
 
 
     short mTimeLevel;

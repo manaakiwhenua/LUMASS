@@ -159,8 +159,6 @@ private:
 
     int dx1, dy1, dx2, dy2;
 
-
-
     static const std::string ctx;
 
 };

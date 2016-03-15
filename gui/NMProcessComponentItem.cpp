@@ -37,7 +37,7 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
     : QGraphicsItem(parent), //mContextMenu(0) ,
       mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false),
-      mTimeLevel(0), mTypeID(0)
+      mTimeLevel(0), mTypeID(0), mIsCollapsed(false)
 {
 	this->mScene = scene;
 
@@ -351,6 +351,34 @@ NMProcessComponentItem::updateDescription()
     mTextRect.moveTopLeft(QPointF(-(0.5*mTextRect.width())-4,
                           mIconBnd.bottom()+0.5*mSingleLineHeight));
 }
+
+void
+NMProcessComponentItem::collapse(bool bCollapse, const QPointF &pos)
+{
+    if (bCollapse)
+    {
+        if (!mIsCollapsed)
+        {
+            this->mUnfoldedPos = this->pos();
+        }
+        mIsCollapsed = true;
+        this->setPos(pos);
+    }
+    else
+    {
+        // got to check actual parent here, since the command
+        // could come from further back in the ancestory, in
+        // which case we ignore the command do what mummy says ...
+        NMAggregateComponentItem* ai =
+                qgraphicsitem_cast<NMAggregateComponentItem*>(this->parentItem());
+        if (ai && !ai->isCollapsed())
+        {
+            this->setPos(mUnfoldedPos);
+            mIsCollapsed = false;
+        }
+    }
+}
+
 
 void
 NMProcessComponentItem::paint(QPainter* painter,

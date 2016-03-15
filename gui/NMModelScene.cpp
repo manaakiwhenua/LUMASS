@@ -364,10 +364,27 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
 void
 NMModelScene::checkLinkVisibility()
 {
+    NMAggregateComponentItem* ai =
+            qobject_cast<NMAggregateComponentItem*>(sender());
+    if (ai == 0)
+    {
+        return;
+    }
+
+    bool bCollapse = ai->isCollapsed();
+
     foreach (QGraphicsItem* gi, items())
     {
         NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
-        if (li)
+        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+        if (pi)
+        {
+            if (ai->isAncestorOf(pi))
+            {
+                pi->collapse(bCollapse, ai->boundingRect().center());
+            }
+        }
+        else if (li)
         {
             NMAggregateComponentItem* sourceHost =
                     qgraphicsitem_cast<NMAggregateComponentItem*>(li->sourceItem()->parentItem());

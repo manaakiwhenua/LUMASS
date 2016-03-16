@@ -381,7 +381,9 @@ NMModelScene::checkLinkVisibility()
         {
             if (ai->isAncestorOf(pi))
             {
-                pi->collapse(bCollapse, ai->boundingRect().center());
+                QGraphicsItem* piParent = pi->parentItem();
+                QPointF npos = piParent->mapFromScene(ai->sceneBoundingRect().center());
+                pi->collapse(bCollapse, npos);
             }
         }
         else if (li)

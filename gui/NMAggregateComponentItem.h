@@ -69,6 +69,8 @@ public:
 
     QRectF boundingRect(void) const;
 
+    QRectF iconRect(void);// const {return mIconRect;}
+
     void normaliseAt(const QPointF& pos);
 
     void getAncestors(QList<NMAggregateComponentItem*>& ancestors);
@@ -155,6 +157,8 @@ private:
     QRectF mClockRect;
     QLineF mPointer1;
     QLineF mPointer2;
+
+    QRectF mIconRect;
 
 
     int dx1, dy1, dx2, dy2;

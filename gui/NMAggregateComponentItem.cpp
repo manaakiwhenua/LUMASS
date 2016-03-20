@@ -50,8 +50,6 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     mHeadAngleLeft = -165;
     mHeadAngleRight = -60;
 
-
-
     smallGap = 2*dpr;
     bigGap = 4*dpr;
 
@@ -93,7 +91,7 @@ NMAggregateComponentItem::slotProgress(float progress)
 void
 NMAggregateComponentItem::collapse(bool bCollapse)
 {
-    NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
 
     QRectF oldBnd = this->mapRectToScene(this->boundingRect());
 
@@ -104,11 +102,16 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     }
     mIsCollapsed = bCollapse;
 
+    QPointF centre = this->childrenBoundingRect().center();
+    mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+                       64*dpr, 64*dpr);
+
+
     this->update();
     this->scene()->update(oldBnd);
 
     emit itemCollapsed();
-    NMDebugCtx(ctx, << "done!");
+   // NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -259,6 +262,19 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     qreal dc = mDescrRect.center().x();
     mDescrRect.setLeft(dc-(descrWidth/2.0));
     mDescrRect.setRight(dc+(descrWidth/2.0));
+
+    QPointF centre = this->childrenBoundingRect().center();
+    mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+                       64*dpr, 64*dpr);
+
+}
+
+QRectF
+NMAggregateComponentItem::iconRect(void)
+{
+    QPointF centre = this->childrenBoundingRect().center();
+    return QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+                       64*dpr, 64*dpr);
 }
 
 QRectF
@@ -267,10 +283,13 @@ NMAggregateComponentItem::boundingRect(void) const
     QRectF bnd;
     if (mIsCollapsed)
     {
-        QRectF fb = this->childrenBoundingRect();
-        bnd = QRectF(fb.center().x() - (mCollapsedPix.width()/2.0),
-                     fb.center().y() - (mCollapsedPix.height()/2.0),
-                     mCollapsedPix.width(), mCollapsedPix.height());
+        //        QRectF fb = this->childrenBoundingRect();
+        //        bnd = QRectF(fb.center().x() - (mCollapsedPix.width()/2.0),
+        //                     fb.center().y() - (mCollapsedPix.height()/2.0),
+        //                     mCollapsedPix.width(), mCollapsedPix.height());
+        QPointF centre = this->childrenBoundingRect().center();
+        bnd = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+                           64*dpr, 64*dpr);
     }
     else
     {
@@ -288,8 +307,6 @@ NMAggregateComponentItem::boundingRect(void) const
         qreal diff = minWidth - bnd.width();
         bnd.adjust(-(diff/2.0), 0, (diff/2.0), 0);
     }
-
-
 
     bnd.adjust(-this->dx1,-this->dy1, this->dx2, this->dy2);
     return bnd;
@@ -510,10 +527,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // ------------------------------------------------
     if (mIsCollapsed)
     {
-        QRectF trex = QRectF(mDash.center().x()-32*dpr,
-                             mDash.bottom()+3*bigGap,
-                             64*dpr, 64*dpr);
-        painter->drawPixmap(trex, mCollapsedPix, QRectF(0,0,64*dpr,64*dpr));
+        //        mIconRect = QRectF(mDash.center().x()-32*dpr,
+        //                             mDash.bottom()+3*bigGap,
+        //                             64*dpr, 64*dpr);
+        painter->drawPixmap(mIconRect, mCollapsedPix, QRectF(0,0,64*dpr,64*dpr));
     }
 
     // ------------------------------------------------

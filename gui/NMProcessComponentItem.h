@@ -93,6 +93,8 @@ public:
 	bool getIsDataBufferItem(void)
 		{return mbIsDataBuffer;}
 
+    bool isCollapsed(void){return mIsCollapsed;}
+
     void setTimeLevel(short level)
         {this->mTimeLevel = level;}
     short getTimeLevel(void)

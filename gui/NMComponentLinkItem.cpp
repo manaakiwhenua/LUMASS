@@ -92,32 +92,47 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
     //	QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
     //	this->mBndBox = srcBnd.united(tarBnd);
 
+    QLineF linkLine(sp, tp);
+    QLineF polyEdge;
+    QPointF p1, p2;
+
 	// determine target intersection point
 	QPointF ip;
-	QPolygonF poly(mapFromItem(mTargetItem, mTargetItem->getShapeAsPolygon()));
-	QLineF linkLine(sp, tp);
-	QLineF polyEdge;
-	QPointF p1, p2;
-	for (unsigned int i=0; i < poly.count()-1; ++i)
-	{
-		p1 = poly.at(i);
-		p2 = poly.at(i+1);
-		polyEdge = QLineF(p1, p2);
-		if (polyEdge.intersect(linkLine, &ip) == QLineF::BoundedIntersection)
-				break;
-	}
+    if (mTargetItem->isCollapsed())
+    {
+        ip = mapFromItem(mTargetItem, mTargetItem->boundingRect().center());
+    }
+    else
+    {
+        QPolygonF poly(mapFromItem(mTargetItem, mTargetItem->getShapeAsPolygon()));
+        for (unsigned int i=0; i < poly.count()-1; ++i)
+        {
+            p1 = poly.at(i);
+            p2 = poly.at(i+1);
+            polyEdge = QLineF(p1, p2);
+            if (polyEdge.intersect(linkLine, &ip) == QLineF::BoundedIntersection)
+                    break;
+        }
+    }
 
 	// determine source intersection point
 	QPointF sip;
-	QPolygonF spoly(mapFromItem(mSourceItem, mSourceItem->getShapeAsPolygon()));
-	for (unsigned int i=0; i < spoly.count()-1; ++i)
-	{
-		p1 = spoly.at(i);
-		p2 = spoly.at(i+1);
-		polyEdge = QLineF(p1, p2);
-		if (polyEdge.intersect(linkLine, &sip) == QLineF::BoundedIntersection)
-				break;
-	}
+    if (mSourceItem->isCollapsed())
+    {
+        sip = mapFromItem(mSourceItem, mSourceItem->boundingRect().center());
+    }
+    else
+    {
+        QPolygonF spoly(mapFromItem(mSourceItem, mSourceItem->getShapeAsPolygon()));
+        for (unsigned int i=0; i < spoly.count()-1; ++i)
+        {
+            p1 = spoly.at(i);
+            p2 = spoly.at(i+1);
+            polyEdge = QLineF(p1, p2);
+            if (polyEdge.intersect(linkLine, &sip) == QLineF::BoundedIntersection)
+                    break;
+        }
+    }
 
 	// create the head
 	QLineF shortBase(ip, sp);

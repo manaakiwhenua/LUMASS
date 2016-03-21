@@ -106,10 +106,11 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     //NMDebugCtx(ctx, << "...");
     QRectF oldBnd = this->mapRectToScene(this->boundingRect());
 
-    QPointF centre = this->childrenBoundingRect().center();
-    mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-                       64*dpr, 64*dpr);
+    //    QPointF centre = this->childrenBoundingRect().center();
+    //    mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+    //                       64*dpr, 64*dpr);
 
+    QRectF irect = iconRect();
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* k, kids)
     {
@@ -118,21 +119,22 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         k->setVisible(!bCollapse);
         if (pi)
         {
-            pi->collapse(bCollapse, this->mapToScene(centre));
+            pi->collapse(bCollapse, iconRect().center());
         }
         else if (bCollapse && ai)
         {
-            ai->collapseProcItems(bCollapse, this->mapToScene(centre));
+            ai->collapseProcItems(bCollapse, iconRect().center());
         }
     }
 
     mIsCollapsed = bCollapse;
 
-    this->update();
+    emit itemCollapsed();
+
+    //this->update();
     this->scene()->update(oldBnd);
 
-    emit itemCollapsed();
-   // NMDebugCtx(ctx, << "done!");
+    // NMDebugCtx(ctx, << "done!");
 }
 
 void
@@ -284,18 +286,35 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     mDescrRect.setLeft(dc-(descrWidth/2.0));
     mDescrRect.setRight(dc+(descrWidth/2.0));
 
-    QPointF centre = this->childrenBoundingRect().center();
-    mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-                       64*dpr, 64*dpr);
+    //QPointF centre = this->childrenBoundingRect().center();
+    mIconRect = mapRectFromScene(iconRect());
+            /*QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+                       64*dpr, 64*dpr);*/
 
 }
 
 QRectF
-NMAggregateComponentItem::iconRect(void)
+NMAggregateComponentItem::iconRect(void) const
 {
-    QPointF centre = this->childrenBoundingRect().center();
-    return QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-                       64*dpr, 64*dpr);
+    QList<QGraphicsItem*> kids = this->childItems();
+    QRectF rect = kids.at(0)->mapRectToScene(kids.at(0)->boundingRect());
+    for (int i=1; i < kids.count(); ++i)
+    {
+        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(i));
+        if (pi)
+        {
+            rect = rect.united(pi->mapRectToScene(pi->boundingRect()));
+        }
+    }
+
+    QRectF irect = QRectF(rect.center().x()-32*dpr, rect.center().y()-32*dpr,
+                          64*dpr, 64*dpr);
+
+    return irect;
+
+//    QPointF centre = this->childrenBoundingRect().center();
+//    return QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+//                       64*dpr, 64*dpr);
 }
 
 QRectF
@@ -308,9 +327,10 @@ NMAggregateComponentItem::boundingRect(void) const
         //        bnd = QRectF(fb.center().x() - (mCollapsedPix.width()/2.0),
         //                     fb.center().y() - (mCollapsedPix.height()/2.0),
         //                     mCollapsedPix.width(), mCollapsedPix.height());
-        QPointF centre = this->childrenBoundingRect().center();
-        bnd = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-                           64*dpr, 64*dpr);
+        //        QPointF centre = this->childrenBoundingRect().center();
+        //        bnd = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
+        //                           64*dpr, 64*dpr);
+        bnd = mapRectFromScene(iconRect());
     }
     else
     {

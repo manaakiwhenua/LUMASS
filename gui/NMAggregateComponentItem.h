@@ -69,7 +69,7 @@ public:
 
     QRectF boundingRect(void) const;
 
-    QRectF iconRect(void);// const {return mIconRect;}
+    QRectF iconRect(void) const;// const {return mIconRect;}
 
     void normaliseAt(const QPointF& pos);
 

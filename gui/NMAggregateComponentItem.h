@@ -88,6 +88,8 @@ public slots:
     void slotExecutionStopped();
     void slotProgress(float progress);
     void collapse(bool bCollapse);
+    /// pos is in scene coordinates
+    void collapseProcItems(bool bCollapse, const QPointF& pos);
 
 
     // moves the group (i.e. all kids)

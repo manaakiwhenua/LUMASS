@@ -86,26 +86,47 @@ NMAggregateComponentItem::slotProgress(float progress)
     this->update();
 }
 
-
+void
+NMAggregateComponentItem::collapseProcItems(bool bCollapse, const QPointF& pos)
+{
+    QList<QGraphicsItem*> kids = this->childItems();
+    foreach(QGraphicsItem* k, kids)
+    {
+        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
+        if (pi)
+        {
+            pi->collapse(bCollapse, pos);
+        }
+    }
+}
 
 void
 NMAggregateComponentItem::collapse(bool bCollapse)
 {
     //NMDebugCtx(ctx, << "...");
-
     QRectF oldBnd = this->mapRectToScene(this->boundingRect());
-
-    QList<QGraphicsItem*> kids = this->childItems();
-    foreach(QGraphicsItem* k, kids)
-    {
-        k->setVisible(!bCollapse);
-    }
-    mIsCollapsed = bCollapse;
 
     QPointF centre = this->childrenBoundingRect().center();
     mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
                        64*dpr, 64*dpr);
 
+    QList<QGraphicsItem*> kids = this->childItems();
+    foreach(QGraphicsItem* k, kids)
+    {
+        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
+        k->setVisible(!bCollapse);
+        if (pi)
+        {
+            pi->collapse(bCollapse, this->mapToScene(centre));
+        }
+        else if (bCollapse && ai)
+        {
+            ai->collapseProcItems(bCollapse, this->mapToScene(centre));
+        }
+    }
+
+    mIsCollapsed = bCollapse;
 
     this->update();
     this->scene()->update(oldBnd);

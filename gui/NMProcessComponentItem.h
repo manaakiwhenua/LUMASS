@@ -123,6 +123,7 @@ public:
     QList<NMComponentLinkItem*> getInputLinks(void)
         {return this->mInputLinks;}
 
+    /// note: pos is in scene coordinates
     void collapse(bool bCollapse, const QPointF& pos);
 
 public slots:

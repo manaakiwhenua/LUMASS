@@ -376,19 +376,20 @@ NMModelScene::checkLinkVisibility()
     foreach (QGraphicsItem* gi, items())
     {
         NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
-        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-        if (pi)
-        {
-            if (ai->isAncestorOf(pi))
-            {
-                QGraphicsItem* piParent = pi->parentItem();
+        //        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+        //        if (pi)
+        //        {
+        //            if (ai->isAncestorOf(pi))
+        //            {
+        //                QGraphicsItem* piParent = pi->parentItem();
 
-                QPointF npos = piParent->mapFromScene(ai->mapToScene(ai->iconRect().center()));
-                //QPointF npos = piParent->mapFromItem(ai, ai->iconRect().center());
-                pi->collapse(bCollapse, npos);
-            }
-        }
-        else if (li)
+        //                QPointF npos = piParent->mapFromScene(ai->mapToScene(ai->iconRect().center()));
+        //                //QPointF npos = piParent->mapFromItem(ai, ai->iconRect().center());
+        //                pi->collapse(bCollapse, npos);
+        //            }
+        //        }
+        //        else
+        if (li)
         {
             NMAggregateComponentItem* sourceHost =
                     qgraphicsitem_cast<NMAggregateComponentItem*>(li->sourceItem()->parentItem());

@@ -362,7 +362,12 @@ NMProcessComponentItem::collapse(bool bCollapse, const QPointF &pos)
             this->mUnfoldedPos = this->pos();
         }
         mIsCollapsed = true;
-        this->setPos(pos);
+        QPointF npos = pos;
+        if (this->parentItem())
+        {
+            npos = this->parentItem()->mapFromScene(pos);
+        }
+        this->setPos(npos);
     }
     else
     {

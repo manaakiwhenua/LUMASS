@@ -98,11 +98,11 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
 	// determine target intersection point
 	QPointF ip;
-    if (mTargetItem->isCollapsed())
-    {
-        ip = mapFromItem(mTargetItem, mTargetItem->boundingRect().center());
-    }
-    else
+//    if (mTargetItem->isCollapsed())
+//    {
+//        ip = mapFromItem(mTargetItem, mTargetItem->boundingRect().center());
+//    }
+//    else
     {
         QPolygonF poly(mapFromItem(mTargetItem, mTargetItem->getShapeAsPolygon()));
         for (unsigned int i=0; i < poly.count()-1; ++i)
@@ -117,11 +117,11 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
 	// determine source intersection point
 	QPointF sip;
-    if (mSourceItem->isCollapsed())
-    {
-        sip = mapFromItem(mSourceItem, mSourceItem->boundingRect().center());
-    }
-    else
+//    if (mSourceItem->isCollapsed())
+//    {
+//        sip = mapFromItem(mSourceItem, mSourceItem->boundingRect().center());
+//    }
+//    else
     {
         QPolygonF spoly(mapFromItem(mSourceItem, mSourceItem->getShapeAsPolygon()));
         for (unsigned int i=0; i < spoly.count()-1; ++i)

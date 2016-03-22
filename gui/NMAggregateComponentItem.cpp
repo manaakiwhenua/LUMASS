@@ -115,21 +115,21 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     //    mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
     //                       64*dpr, 64*dpr);
 
-    QRectF irect = iconRect();
+    //mIconRect = iconRect();
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* k, kids)
     {
         NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
         k->setVisible(!bCollapse);
-        if (pi)
-        {
-            pi->collapse(bCollapse, iconRect().center());
-        }
-        else if (ai)
-        {
-            ai->collapseProcItems(bCollapse, iconRect().center());
-        }
+//        if (pi)
+//        {
+//            pi->collapse(bCollapse, iconRect().center());
+//        }
+//        else if (ai)
+//        {
+//            ai->collapseProcItems(bCollapse, iconRect().center());
+//        }
     }
 
     mIsCollapsed = bCollapse;
@@ -302,8 +302,8 @@ QRectF
 NMAggregateComponentItem::iconRect(void) const
 {
     QList<QGraphicsItem*> kids = this->childItems();
-    QRectF rect = kids.at(0)->mapRectToScene(kids.at(0)->boundingRect());
-    for (int i=1; i < kids.count(); ++i)
+    QRectF rect;
+    for (int i=0; i < kids.count(); ++i)
     {
         NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(i));
         if (pi)
@@ -314,12 +314,7 @@ NMAggregateComponentItem::iconRect(void) const
 
     QRectF irect = QRectF(rect.center().x()-32*dpr, rect.center().y()-32*dpr,
                           64*dpr, 64*dpr);
-
     return irect;
-
-//    QPointF centre = this->childrenBoundingRect().center();
-//    return QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-//                       64*dpr, 64*dpr);
 }
 
 QRectF

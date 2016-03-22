@@ -111,32 +111,53 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     //NMDebugCtx(ctx, << "...");
     QRectF oldBnd = this->mapRectToScene(this->boundingRect());
 
-    //    QPointF centre = this->childrenBoundingRect().center();
-    //    mIconRect = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-    //                       64*dpr, 64*dpr);
+    if (bCollapse)
+    {
+        mAggrCompPos.clear();
+    }
 
-    //mIconRect = iconRect();
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* k, kids)
     {
-        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
+        QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(k);
+        if (bCollapse)
+        {
+            if (ai)
+            {
+                mAggrCompPos.insert(ai, ai->pos());
+            }
+            else if (ti)
+            {
+                mTextItems.append(ti);
+                this->scene()->removeItem(ti);
+            }
+        }
+        else
+        {
+            if (ai)
+            {
+                ai->setPos(mAggrCompPos.value(ai));
+            }
+        }
+
+
         k->setVisible(!bCollapse);
-//        if (pi)
-//        {
-//            pi->collapse(bCollapse, iconRect().center());
-//        }
-//        else if (ai)
-//        {
-//            ai->collapseProcItems(bCollapse, iconRect().center());
-//        }
+    }
+
+    if (!bCollapse)
+    {
+        foreach (QGraphicsTextItem* ti, mTextItems)
+        {
+            this->addToGroup(ti);
+        }
+        mTextItems.clear();
     }
 
     mIsCollapsed = bCollapse;
 
     emit itemCollapsed();
 
-    //this->update();
     this->scene()->update(oldBnd);
 
     // NMDebugCtx(ctx, << "done!");

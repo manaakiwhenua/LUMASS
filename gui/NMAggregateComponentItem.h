@@ -162,6 +162,9 @@ private:
 
     QRectF mIconRect;
 
+    QMap<NMAggregateComponentItem*, QPointF> mAggrCompPos;
+    QList<QGraphicsTextItem*> mTextItems;
+
 
     int dx1, dy1, dx2, dy2;
 

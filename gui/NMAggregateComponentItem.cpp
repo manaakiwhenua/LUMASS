@@ -93,9 +93,14 @@ NMAggregateComponentItem::collapseProcItems(bool bCollapse, const QPointF& pos)
     foreach(QGraphicsItem* k, kids)
     {
         NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
         if (pi)
         {
             pi->collapse(bCollapse, pos);
+        }
+        else if (ai)
+        {
+            ai->collapseProcItems(bCollapse, pos);
         }
     }
 }
@@ -121,7 +126,7 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         {
             pi->collapse(bCollapse, iconRect().center());
         }
-        else if (bCollapse && ai)
+        else if (ai)
         {
             ai->collapseProcItems(bCollapse, iconRect().center());
         }

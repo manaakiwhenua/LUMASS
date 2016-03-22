@@ -75,6 +75,7 @@ public:
         return mIconBnd.united(mTextRect);
     }
 
+    QPointF unfoldedScenePos(void);
 
 	void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 			QWidget* widget);

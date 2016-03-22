@@ -503,6 +503,17 @@ NMProcessComponentItem::paint(QPainter* painter,
 
 }
 
+QPointF
+NMProcessComponentItem::unfoldedScenePos(void)
+{
+    QPointF ret = mUnfoldedPos;
+    if (this->parentItem())
+    {
+        ret = this->parentItem()->mapToScene(mUnfoldedPos);
+    }
+    return ret;
+}
+
 QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 {
 
@@ -512,6 +523,7 @@ QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 	data << i.scenePos();
 	data << i.getIsDataBufferItem();
     data << i.isVisible();
+    //data << i.unfoldedScenePos();
 	return data;
 }
 

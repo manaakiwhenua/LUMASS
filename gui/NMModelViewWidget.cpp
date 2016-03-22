@@ -1600,6 +1600,9 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     if (lmv_version >= 0.95)
                     {
                         bool bvis;
+                        //QPointF ufpos;
+                        //lmv >> bvis >> ufpos;
+                        //pi->setPos(ufpos);
                         lmv >> bvis;
                         pi->setVisible(bvis);
                     }
@@ -1884,6 +1887,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
 							this->mModelScene->getComponentItem(title));
 
+                    if (lmv_version >= 0.95)
+                    {
+                        ai->collapse(bCollapsed);
+                    }
+
 
                     NMIterableComponent* c = qobject_cast<NMIterableComponent*>(
                                 NMModelController::getInstance()->getComponent(title));
@@ -1950,7 +1958,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         }
 					}
 
-                    ai->collapse(bCollapsed);
+                    //ai->collapse(bCollapsed);
 
                     connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
                             ai, SLOT(updateDescription(QString)));

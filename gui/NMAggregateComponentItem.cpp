@@ -123,21 +123,21 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(k);
         if (bCollapse)
         {
-            if (ai)
+            if (ai && ai->isCollapsed())
             {
-                mAggrCompPos.insert(ai, ai->pos());
+                mAggrCompPos.insert(ai->getTitle(), ai->mapToParent(ai->boundingRect().center()));
             }
             else if (ti)
             {
-                mTextItems.append(ti);
+                mTextItems.append(qMakePair(ti, ti->pos()));
                 this->scene()->removeItem(ti);
             }
         }
         else
         {
-            if (ai)
+            if (ai && ai->isCollapsed())
             {
-                ai->setPos(mAggrCompPos.value(ai));
+                ai->relocate(mAggrCompPos.value(ai->getTitle()));
             }
         }
 
@@ -147,9 +147,12 @@ NMAggregateComponentItem::collapse(bool bCollapse)
 
     if (!bCollapse)
     {
-        foreach (QGraphicsTextItem* ti, mTextItems)
+        for (int i=0; i < mTextItems.count(); ++i)
         {
-            this->addToGroup(ti);
+            QPair<QGraphicsItem*, QPointF> tip = mTextItems.at(i);
+            this->addToGroup(tip.first);
+            tip.first->setPos(tip.second);
+            tip.first->setVisible(true);
         }
         mTextItems.clear();
     }
@@ -179,10 +182,16 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     }
 
     QList<QPointF> npos;
+    QList<QPointF> ufpos;
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* ci, kids)
     {
         npos << nt + (ci->scenePos() - centre);
+        NMProcessComponentItem* proci = qgraphicsitem_cast<NMProcessComponentItem*>(ci);
+        if (proci)
+        {
+            ufpos << nt + (proci->unfoldedScenePos() - centre);
+        }
         //ci->setPos(this->mapFromScene(target + posDelta));
     }
 
@@ -191,9 +200,16 @@ NMAggregateComponentItem::relocate(const QPointF &target)
 //                               target.y() - (sceneBnd.height()/2.0));
 
     QGraphicsItemGroup::setPos(this->mapFromScene(nt));
+    int u=0;
     for(int i=0; i < kids.count(); ++i)
     {
         kids.at(i)->setPos(this->mapFromScene(npos.at(i)));
+        NMProcessComponentItem* pri = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(i));
+        if (pri)
+        {
+            pri->setUnfoldedPos(this->mapFromScene(ufpos.at(u)));
+            ++u;
+        }
     }
 }
 

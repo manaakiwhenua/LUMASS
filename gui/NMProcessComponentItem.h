@@ -76,6 +76,8 @@ public:
     }
 
     QPointF unfoldedScenePos(void);
+    void setUnfoldedPos(const QPointF& ufPos)
+    {mUnfoldedPos = ufPos;}
 
 	void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 			QWidget* widget);

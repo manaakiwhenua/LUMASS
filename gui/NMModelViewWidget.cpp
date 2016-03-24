@@ -1122,87 +1122,121 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
 			continue;
 		}
 
+        // if the item is not on the scene, it's probably
+        // hidden (in a collapsed component) and we'll get it
+        // as a child of one of the
+        // other ones (if it's not we've got a bug ...)
         if (item == 0)
         {
-            NMWarn(ctx, << "couldn't find item '" << itemName.toStdString()
-                        << "' on the scene - skip saving!" << std::endl);
             continue;
         }
-
-		switch (item->type())
-		{
-		case NMProcessComponentItem::Type:
-			pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
-			comp = this->mModelController->getComponent(pi->getTitle());
-			if (comp == 0)
-			{
-				NMErr(ctx, << "couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
-                //NMDebugCtx(ctx, << "done!");
-				return;
-			}
-
-            //xmlS.serialiseComponent(comp, fnLmx, 4, append);
-            xmlS.serialiseComponent(comp, doc);
-            lmv << (qint32)NMProcessComponentItem::Type;
-			lmv << *pi;
-
-			// save links
-			{
-				QList<NMComponentLinkItem*> inputLinks = pi->getInputLinks();
-				foreach(NMComponentLinkItem* link, inputLinks)
-				{
-					if (!writtenLinks.contains(link))
-					{
-						writtenLinks.push_back(link);
-						if (savecomps.contains(link->sourceItem()->getTitle()) &&
-							savecomps.contains(link->targetItem()->getTitle()))
-						{
-							lmv << (qint32)NMComponentLinkItem::Type;
-							lmv << *link;
-						}
-					}
-				}
-
-				QList<NMComponentLinkItem*> outputLinks = pi->getOutputLinks();
-				foreach(NMComponentLinkItem* link, outputLinks)
-				{
-					if (!writtenLinks.contains(link))
-					{
-						writtenLinks.push_back(link);
-						if (savecomps.contains(link->sourceItem()->getTitle()) &&
-							savecomps.contains(link->targetItem()->getTitle()))
-						{
-							lmv << (qint32)NMComponentLinkItem::Type;
-							lmv << *link;
-						}
-					}
-				}
-			}
-			break;
-
-		case NMAggregateComponentItem::Type:
-			ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
-			comp = this->mModelController->getComponent(ai->getTitle());
-			if (comp == 0)
-			{
-				NMErr(ctx, << "couldn't write '" << ai->getTitle().toStdString() << "' - skip it!");
-                //NMDebugCtx(ctx, << "done!");
-				return;
-			}
-            //xmlS.serialiseComponent(comp, fnLmx, 4, append);
-            xmlS.serialiseComponent(comp, doc);
-            lmv << (qint32)NMAggregateComponentItem::Type;
-			lmv << *ai;
-			break;
-
-		default:
-			break;
-		}
-	}
+        // if we've got hold of the item, let's just go ahead with
+        // the export ...
+        else
+        {
+            NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+            if (ai && ai->isCollapsed())
+            {
+                QList<QGraphicsItem*> aos;
+                ai->getAllModelOffSprings(aos);
+                foreach(QGraphicsItem* oi, aos)
+                {
+                    exportComponent(oi, lmv, doc, writtenLinks, savecomps);
+                }
+            }
+            else
+            {
+                exportComponent(item, lmv, doc, writtenLinks, savecomps);
+            }
+        }
+    }
 
     //fileLmv.close();
 
     //NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelViewWidget::exportComponent(QGraphicsItem* item,
+                                   QDataStream &lmv,
+                                   QDomDocument& doc,
+                                   QList<NMComponentLinkItem *> &writtenLinks,
+                                   QStringList& savecomps)
+{
+    NMModelSerialiser xmlS;
+    NMModelComponent* comp = 0;
+    switch (item->type())
+    {
+    case NMProcessComponentItem::Type:
+        {
+            NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+            comp = this->mModelController->getComponent(pi->getTitle());
+            if (comp == 0)
+            {
+                NMErr(ctx, << "couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
+                //NMDebugCtx(ctx, << "done!");
+                return;
+            }
+
+            //xmlS.serialiseComponent(comp, fnLmx, 4, append);
+            xmlS.serialiseComponent(comp, doc);
+            lmv << (qint32)NMProcessComponentItem::Type;
+            lmv << *pi;
+
+            // save links
+            QList<NMComponentLinkItem*> inputLinks = pi->getInputLinks();
+            foreach(NMComponentLinkItem* link, inputLinks)
+            {
+                if (!writtenLinks.contains(link))
+                {
+                    writtenLinks.push_back(link);
+                    if (savecomps.contains(link->sourceItem()->getTitle()) &&
+                        savecomps.contains(link->targetItem()->getTitle()))
+                    {
+                        lmv << (qint32)NMComponentLinkItem::Type;
+                        lmv << *link;
+                    }
+                }
+            }
+
+            QList<NMComponentLinkItem*> outputLinks = pi->getOutputLinks();
+            foreach(NMComponentLinkItem* link, outputLinks)
+            {
+                if (!writtenLinks.contains(link))
+                {
+                    writtenLinks.push_back(link);
+                    if (savecomps.contains(link->sourceItem()->getTitle()) &&
+                        savecomps.contains(link->targetItem()->getTitle()))
+                    {
+                        lmv << (qint32)NMComponentLinkItem::Type;
+                        lmv << *link;
+                    }
+                }
+            }
+        }
+        break;
+
+    case NMAggregateComponentItem::Type:
+        {
+            NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+            comp = this->mModelController->getComponent(ai->getTitle());
+            if (comp == 0)
+            {
+                NMErr(ctx, << "couldn't write '" << ai->getTitle().toStdString() << "' - skip it!");
+                //NMDebugCtx(ctx, << "done!");
+                return;
+            }
+
+            //xmlS.serialiseComponent(comp, fnLmx, 4, append);
+            xmlS.serialiseComponent(comp, doc);
+            lmv << (qint32)NMAggregateComponentItem::Type;
+            lmv << *ai;
+        }
+        break;
+
+    default:
+        break;
+    }
 }
 
 void
@@ -1577,12 +1611,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
             {
                 ti = new QGraphicsTextItem();
                 lmv >> *ti;
-                if (lmv_version >= 0.95)
-                {
-                    bool bvis;
-                    lmv >> bvis;
-                    ti->setVisible(bvis);
-                }
+//                if (lmv_version >= 0.95)
+//                {
+//                    bool bvis;
+//                    lmv >> bvis;
+//                    ti->setVisible(bvis);
+//                }
                 ti->setTextInteractionFlags(Qt::NoTextInteraction | Qt::TextBrowserInteraction);
                 ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                 ti->setOpenExternalLinks(true);
@@ -1596,12 +1630,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 				{
                     pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
-                    if (lmv_version >= 0.95)
-                    {
-                        bool bvis;
-                        lmv >> bvis;
-                        pi->setVisible(bvis);
-                    }
+//                    if (lmv_version >= 0.95)
+//                    {
+//                        bool bvis;
+//                        lmv >> bvis;
+//                        pi->setVisible(bvis);
+//                    }
 					QString itemTitle = nameRegister.value(pi->getTitle());
 
                     // check, if we got a valid item (must have name!)
@@ -1676,22 +1710,23 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					QPointF pos;
 					QColor color;
                     bool bCollapsed = false;
-                    bool bvis = true;
+                    //bool bvis = true;
                     qint32 nkids;
 
                     lmv >> title >> pos >> color;
                     if (lmv_version >= 0.95)
                     {
                         lmv >> bCollapsed;
-                        lmv >> bvis;
+                        //lmv >> bvis;
                     }
                     lmv >> nkids;
 
 					ai->setTitle(nameRegister.value(title));
 					ai->setPos(pos);
+                    ai->setIsCollapsed(bCollapsed);
                     ai->relocate(pos);
 					ai->setColor(color);
-                    ai->setVisible(bvis);
+                    //ai->setVisible(bvis);
                     importItems <<  ai->getTitle();
 
                     for (qint32 v=0; v < nkids; ++v)
@@ -1703,11 +1738,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             QGraphicsTextItem* textItemDummy = new QGraphicsTextItem(0);
                             lmv >> *textItemDummy;
-                            if (lmv_version >= (qreal)0.95)
-                            {
-                                bool bvis;
-                                lmv >> bvis;
-                            }
+//                            if (lmv_version >= (qreal)0.95)
+//                            {
+//                                bool bvis;
+//                                lmv >> bvis;
+//                            }
                             delete textItemDummy;
                             textItemDummy = 0;
                         }
@@ -1729,11 +1764,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     bool dyn;
                     if (lmv_version > (qreal)0.91)
                         lmv >> dyn;
-                    if (lmv_version >= (qreal)0.95)
-                    {
-                        bool bvis;
-                        lmv >> bvis;
-                    }
+//                    if (lmv_version >= (qreal)0.95)
+//                    {
+//                        bool bvis;
+//                        lmv >> bvis;
+//                    }
 				}
 				break;
 
@@ -1786,11 +1821,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         case (qint32)QGraphicsTextItem::Type:
             ti = new QGraphicsTextItem();
             lmv >> *ti;
-            if (lmv_version >= (qreal)0.95)
-            {
-                bool bv;
-                lmv >> bv;
-            }
+//            if (lmv_version >= (qreal)0.95)
+//            {
+//                bool bv;
+//                lmv >> bv;
+//            }
             delete ti;
             ti = 0;
             break;
@@ -1803,9 +1838,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
                     bool dyn, bvis;
                     if (lmv_version > (qreal)0.91)
+                    {
                         lmv >> dyn;
-                    if (lmv_version >= (qreal)0.95)
-                        lmv >> bvis;
+                    }
+//                    if (lmv_version >= (qreal)0.95)
+//                        lmv >> bvis;
 
 					srcName = nameRegister.value(srcName);
 					tarName = nameRegister.value(tarName);
@@ -1821,9 +1858,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 						li = new NMComponentLinkItem(si, ti, 0);
 						li->setZValue(this->mModelScene->getLinkZLevel());
                         if (lmv_version > (qreal)0.91)
+                        {
                             li->setIsDynamic(dyn);
-                        if (lmv_version >= (qreal)0.95)
-                            li->setVisible(bvis);
+                        }
+//                        if (lmv_version >= (qreal)0.95)
+//                            li->setVisible(bvis);
 
 						si->addOutputLink(srcIdx, li);
 						ti->addInputLink(tarIdx, li);
@@ -1853,11 +1892,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                 pi = new NMProcessComponentItem(0,0);
                 lmv >> *pi;
                 delete pi;
-                if (lmv_version >= (qreal)0.95)
-                {
-                    bool bvis;
-                    lmv >> bvis;
-                }
+//                if (lmv_version >= (qreal)0.95)
+//                {
+//                    bool bvis;
+//                    lmv >> bvis;
+//                }
                 pi = 0;
 				break;
 
@@ -1867,14 +1906,14 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     QPointF pos;
                     QColor color;
                     bool bCollapsed = false;
-                    bool bvis = true;
+                    //bool bvis = true;
                     qint32 nkids;
                     lmv >> title >> pos >> color;
 
                     if (lmv_version >= 0.95)
                     {
                         lmv >> bCollapsed;
-                        lmv >> bvis;
+                      //  lmv >> bvis;
                     }
 
                     lmv >> nkids;
@@ -1885,7 +1924,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
                     if (lmv_version >= 0.95)
                     {
-                        ai->collapse(bCollapsed);
+                        ai->setIsCollapsed(bCollapsed);
                     }
 
 
@@ -1910,6 +1949,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
                     NMProcessComponentItem* ipi = 0;
 					NMAggregateComponentItem* iai = 0;
+                    QList<QGraphicsItem*> modelChildren;
                     for (unsigned int c=0; c < nkids; ++c)
 					{
                         QString kname;
@@ -1919,18 +1959,26 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             ti = new QGraphicsTextItem(ai);
                             lmv >> *ti;
-                            if (lmv_version >= (qreal)0.95)
-                            {
-                                bool bvis;
-                                lmv >> bvis;
-                                ti->setVisible(bvis);
-                            }
+//                            if (lmv_version >= (qreal)0.95)
+//                            {
+//                                bool bvis;
+//                                lmv >> bvis;
+//                                ti->setVisible(bvis);
+//                            }
                             ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
                             ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                             ti->setOpenExternalLinks(true);
                             mModelScene->addItem(ti);
                             ti->setPos(ai->mapFromScene(ti->pos()));
-                            ai->addToGroup(ti);
+
+                            if (ai->isCollapsed())
+                            {
+                                modelChildren.append(ti);
+                            }
+                            else
+                            {
+                                ai->addToGroup(ti);
+                            }
                         }
                         else
                         {
@@ -1947,14 +1995,24 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                             iai = qgraphicsitem_cast<NMAggregateComponentItem*>(
                                     this->mModelScene->getComponentItem(kname));
 
-                            if (ipi != 0)
-                                ai->addToGroup(ipi);
-                            else if (iai != 0)
-                                ai->addToGroup(iai);
+                            if (ai->isCollapsed())
+                            {
+                               if (ipi)
+                                   modelChildren.append(ipi);
+                               else if (iai)
+                                   modelChildren.append(iai);
+                            }
+                            else
+                            {
+                                if (ipi != 0)
+                                    ai->addToGroup(ipi);
+                                else if (iai != 0)
+                                    ai->addToGroup(iai);
+                            }
                         }
 					}
 
-                    //ai->collapse(bCollapsed);
+                    ai->setModelChildren(modelChildren);
 
                     connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
                             ai, SLOT(updateDescription(QString)));

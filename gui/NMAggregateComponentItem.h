@@ -66,6 +66,7 @@ public:
 
 	bool containsComponent(QString name);
     bool isCollapsed(){return mIsCollapsed;}
+    void setIsCollapsed(const bool& bCollapsed){mIsCollapsed = bCollapsed;}
 
     QRectF boundingRect(void) const;
 
@@ -83,6 +84,8 @@ public:
     QList<QGraphicsItem*> getModelChildren(void);
     void setModelChildren(QList<QGraphicsItem*> modelChildren)
     {mHiddenItems = modelChildren;}
+
+    void getAllModelOffSprings(QList<QGraphicsItem*>& offsprings);
 
 
 public slots:
@@ -169,7 +172,8 @@ private:
 
 //    QMap<QString, QPointF> mAggrCompPos;
 //    QList< QPair<QGraphicsTextItem*, QPointF> > mTextItems;
-    QMap< QGraphicsItem*, QPointF> mHiddenItems;
+    //QMap< QGraphicsItem*, QPointF> mHiddenItems;
+    QList<QGraphicsItem*> mHiddenItems;
 
     NMAggregateComponentItem* mModelParent;
 

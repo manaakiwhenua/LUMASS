@@ -88,6 +88,19 @@ NMAggregateComponentItem::slotProgress(float progress)
     this->update();
 }
 
+void
+NMAggregateComponentItem::getAllModelOffSprings(QList<QGraphicsItem*>& offsprings)
+{
+    foreach(QGraphicsItem* item, getModelChildren())
+    {
+        offsprings.append(item);
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        if (ai)
+        {
+            ai->getAllModelOffSprings(offsprings);
+        }
+    }
+}
 
 QList<QGraphicsItem*>
 NMAggregateComponentItem::getModelChildren(void)
@@ -121,7 +134,8 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         QList<QGraphicsItem*> kids = this->childItems();
         foreach(QGraphicsItem* k, kids)
         {
-            mHiddenItems.insert(k, k->pos());
+            //mHiddenItems.insert(k, k->pos());
+            mHiddenItems.append(k);
             this->removeFromGroup(k);
             scene()->removeItem(k);
             NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
@@ -138,10 +152,11 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     }
     else
     {
-        QMap<QGraphicsItem*, QPointF>::iterator it = mHiddenItems.begin();
+        //QMap<QGraphicsItem*, QPointF>::iterator it = mHiddenItems.begin();
+        QList<QGraphicsItem*>::iterator it = mHiddenItems.begin();
         while (it != mHiddenItems.end())
         {
-            QGraphicsItem* item = it.key();
+            QGraphicsItem* item = *it;
             this->addToGroup(item);
             NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -650,7 +665,6 @@ QDataStream& operator<<(QDataStream& data, const QGraphicsTextItem& item)
     data << item.font();
     data << item.defaultTextColor();
     data << item.scenePos();
-    data << item.isVisible();
 
     return data;
 }
@@ -679,9 +693,9 @@ QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
     data << i.scenePos();
 	data << i.getColor();
     data << i.isCollapsed();
-    data << i.isVisible();
 
-	QList<QGraphicsItem*> kids = i.childItems();
+    //	QList<QGraphicsItem*> kids = i.childItems();
+    QList<QGraphicsItem*> kids = i.getModelChildren();
 	int nchild = kids.count();
 	data << (qint32)nchild;
 

@@ -276,7 +276,7 @@ QDataStream& operator<<(QDataStream &data, const NMComponentLinkItem &item)
 	data << i.targetItem()->getTitle();
 
     data << i.getIsDynamic();
-    data << i.isVisible();
+    //data << i.isVisible();
 
 	return data;
 }

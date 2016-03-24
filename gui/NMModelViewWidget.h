@@ -151,6 +151,14 @@ protected slots:
                      QIODevice& device,
                      QDomDocument& doc,
                      bool bSaveRoot);
+    void exportComponent(QGraphicsItem* item,
+                         QDataStream& lmv,
+                         QDomDocument& doc,
+                         QList<NMComponentLinkItem*>& writtenLinks,
+                         QStringList &savecomps);
+
+
+
     void collapseAggrItem();
     void unfoldAggrItem();
 

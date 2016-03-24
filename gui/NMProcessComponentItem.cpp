@@ -489,7 +489,6 @@ QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 	data << i.getTitle();
 	data << i.scenePos();
 	data << i.getIsDataBufferItem();
-    data << i.isVisible();
 	return data;
 }
 

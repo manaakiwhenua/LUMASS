@@ -89,7 +89,7 @@ public slots:
     void clearDragItems(void)
         {this->mDragItemList.clear();}
 
-    void checkLinkVisibility();
+    //void checkLinkVisibility();
 
 signals:
 	void linkItemCreated(NMComponentLinkItem*);

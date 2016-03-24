@@ -76,10 +76,6 @@ public:
         return mIconBnd.united(mTextRect);
     }
 
-    QPointF unfoldedScenePos(void);
-    void setUnfoldedPos(const QPointF& ufPos)
-    {mUnfoldedPos = ufPos;}
-
 	void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 			QWidget* widget);
 
@@ -88,7 +84,6 @@ public:
 		{return this->mTitle;}
 
 	QPolygonF getShapeAsPolygon(void) const;
-	//QPainterPath shape(void) const;
 
 	QString getDescription(void)
 		{return this->mDescription;}
@@ -97,7 +92,6 @@ public:
 	bool getIsDataBufferItem(void)
 		{return mbIsDataBuffer;}
 
-    bool isCollapsed(void){return mIsCollapsed;}
 
     void setTimeLevel(short level)
         {this->mTimeLevel = level;}
@@ -129,9 +123,6 @@ public:
 
     NMAggregateComponentItem* getModelParent(void);
     void setModelParent(NMAggregateComponentItem* parent){mModelParent = parent;}
-
-    /// note: pos is in scene coordinates
-    void collapse(bool bCollapse, const QPointF& pos);
 
 public slots:
     void setDescription(const QString& descr);
@@ -175,9 +166,9 @@ private:
 
     QTextLayout mTextLayout;
 
-    QPointF mUnfoldedPos;
-    QPointF mCollapsedPos;
-    bool mIsCollapsed;
+//    QPointF mUnfoldedPos;
+//    QPointF mCollapsedPos;
+//    bool mIsCollapsed;
 
     NMAggregateComponentItem* mModelParent;
 

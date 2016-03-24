@@ -37,7 +37,9 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
     : QGraphicsItem(parent), //mContextMenu(0) ,
       mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false),
-      mTimeLevel(0), mTypeID(0), mIsCollapsed(false), mModelParent(0)
+      mTimeLevel(0), mTypeID(0),
+      //mIsCollapsed(false),
+      mModelParent(0)
 {
 	this->mScene = scene;
 
@@ -364,39 +366,6 @@ NMProcessComponentItem::getModelParent(void)
 }
 
 void
-NMProcessComponentItem::collapse(bool bCollapse, const QPointF &pos)
-{
-    if (bCollapse)
-    {
-        if (!mIsCollapsed)
-        {
-            this->mUnfoldedPos = this->pos();
-        }
-        mIsCollapsed = true;
-        QPointF npos = pos;
-        if (this->parentItem())
-        {
-            npos = this->parentItem()->mapFromScene(pos);
-        }
-        this->setPos(npos);
-    }
-    else
-    {
-        // got to check actual parent here, since the command
-        // could come from further back in the ancestory, in
-        // which case we ignore the command do what mummy says ...
-        NMAggregateComponentItem* ai =
-                qgraphicsitem_cast<NMAggregateComponentItem*>(this->parentItem());
-        if (ai && !ai->isCollapsed())
-        {
-            this->setPos(mUnfoldedPos);
-            mIsCollapsed = false;
-        }
-    }
-}
-
-
-void
 NMProcessComponentItem::paint(QPainter* painter,
 		const QStyleOptionGraphicsItem* option,
 		QWidget* widget)
@@ -507,23 +476,10 @@ NMProcessComponentItem::paint(QPainter* painter,
                       Qt::ElideRight,
                       mDescription);
 
-    //mTextLayout.draw(painter, QPointF(mTextRect.left(), mTextRect.top()));
-
     //CALLGRIND_STOP_INSTRUMENTATION;
     //CALLGRIND_DUMP_STATS;
-
 }
 
-QPointF
-NMProcessComponentItem::unfoldedScenePos(void)
-{
-    QPointF ret = mUnfoldedPos;
-    if (this->parentItem())
-    {
-        ret = this->parentItem()->mapToScene(mUnfoldedPos);
-    }
-    return ret;
-}
 
 QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 {
@@ -534,7 +490,6 @@ QDataStream& operator<<(QDataStream& data, const NMProcessComponentItem& item)
 	data << i.scenePos();
 	data << i.getIsDataBufferItem();
     data << i.isVisible();
-    //data << i.unfoldedScenePos();
 	return data;
 }
 

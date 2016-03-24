@@ -452,7 +452,6 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
         npos = aggrItem->sceneBoundingRect().center();
         aggrItem->relocate(npos);
     }
-    connect(aggrItem, SIGNAL(itemCollapsed()), this->mModelScene, SLOT(checkLinkVisibility()));
 
     this->mModelScene->invalidate();
 
@@ -1600,9 +1599,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     if (lmv_version >= 0.95)
                     {
                         bool bvis;
-                        //QPointF ufpos;
-                        //lmv >> bvis >> ufpos;
-                        //pi->setPos(ufpos);
                         lmv >> bvis;
                         pi->setVisible(bvis);
                     }
@@ -1973,8 +1969,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                             ai, SLOT(slotExecutionStopped()));
                     connect(sic, SIGNAL(signalProgress(float)),
                             ai, SLOT(slotProgress(float)));
-                    connect(ai, SIGNAL(itemCollapsed()),
-                            this->mModelScene, SLOT(checkLinkVisibility()));
 				}
 				break;
 

@@ -84,7 +84,9 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 		QWidget* widget)
 {
     if (mSourceItem->collidesWithItem(mTargetItem))
+    {
         return;
+    }
 
     // ----------------------------------------------------------
     //                  some variables
@@ -117,7 +119,8 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
     if (eldestCollapsedTarget)
     {
-        poly = QPolygonF(mapRectFromItem(eldestCollapsedTarget, eldestCollapsedTarget->iconRect()));
+        poly = QPolygonF(mapRectFromItem(eldestCollapsedTarget,
+                                         eldestCollapsedTarget->iconRect()));
         tp = mapFromItem(eldestCollapsedTarget, 0, 0);
     }
     else
@@ -144,13 +147,27 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
     if (eldestCollapsedSource)
     {
-        spoly = QPolygonF(mapRectFromItem(eldestCollapsedSource, eldestCollapsedSource->iconRect()));
+        spoly = QPolygonF(mapRectFromItem(eldestCollapsedSource,
+                                          eldestCollapsedSource->iconRect()));
         sp = mapFromItem(eldestCollapsedSource, 0, 0);
     }
     else
     {
         spoly = QPolygonF(mapFromItem(mSourceItem, mSourceItem->getShapeAsPolygon()));
         sp = mapFromItem(mSourceItem, 0, 0);
+    }
+
+
+    // check if link is between components inside the same
+    // collapsed component, we don't have to draw anything
+    if (    eldestCollapsedSource
+        &&  eldestCollapsedTarget
+        &&  (   eldestCollapsedSource
+             == eldestCollapsedTarget
+            )
+       )
+    {
+        return;
     }
 
 

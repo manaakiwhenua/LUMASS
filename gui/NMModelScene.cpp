@@ -361,77 +361,77 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     }
 }
 
-void
-NMModelScene::checkLinkVisibility()
-{
-    NMAggregateComponentItem* ai =
-            qobject_cast<NMAggregateComponentItem*>(sender());
-    if (ai == 0)
-    {
-        return;
-    }
+//void
+//NMModelScene::checkLinkVisibility()
+//{
+//    NMAggregateComponentItem* ai =
+//            qobject_cast<NMAggregateComponentItem*>(sender());
+//    if (ai == 0)
+//    {
+//        return;
+//    }
 
-    bool bCollapse = ai->isCollapsed();
-    QPointF npos = ai->iconRect().center();
+//    bool bCollapse = ai->isCollapsed();
+//    QPointF npos = ai->iconRect().center();
 
-    foreach (QGraphicsItem* gi, items())
-    {
-        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
-//        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-//        if (pi)
+//    foreach (QGraphicsItem* gi, items())
+//    {
+//        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
+////        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+////        if (pi)
+////        {
+////            if (ai->isAncestorOf(pi))
+////            {
+////                pi->collapse(bCollapse, npos);
+////            }
+////        }
+//        // double checking the visibility of link items; a link item is invisible
+//        // if it's source and target have a common ancestor which is collapsed,
+//        // otherwise, the link is visible
+//        //else
+//        if (li)
 //        {
-//            if (ai->isAncestorOf(pi))
+//            NMAggregateComponentItem* sourceHost =
+//                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->sourceItem()->parentItem());
+
+//            NMAggregateComponentItem* targetHost =
+//                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->targetItem()->parentItem());
+
+//            QList<NMAggregateComponentItem*> sourceAncestors;
+//            QList<NMAggregateComponentItem*> targetAncestors;
+
+//            if (sourceHost)
 //            {
-//                pi->collapse(bCollapse, npos);
+//                sourceAncestors << sourceHost;
+//                sourceHost->getAncestors(sourceAncestors);
+//            }
+
+//            if (targetHost)
+//            {
+//                targetAncestors << targetHost;
+//                targetHost->getAncestors(targetAncestors);
+//            }
+
+//            bool oneCollapsed = false;
+//            foreach (NMAggregateComponentItem* si, sourceAncestors)
+//            {
+//                if (targetAncestors.contains(si) && si->isCollapsed())
+//                {
+//                    oneCollapsed = true;
+//                }
+//            }
+
+//            if (oneCollapsed)
+//            {
+//                li->setVisible(false);
+//            }
+//            else
+//            {
+//                li->setVisible(true);
 //            }
 //        }
-        // double checking the visibility of link items; a link item is invisible
-        // if it's source and target have a common ancestor which is collapsed,
-        // otherwise, the link is visible
-        //else
-        if (li)
-        {
-            NMAggregateComponentItem* sourceHost =
-                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->sourceItem()->parentItem());
-
-            NMAggregateComponentItem* targetHost =
-                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->targetItem()->parentItem());
-
-            QList<NMAggregateComponentItem*> sourceAncestors;
-            QList<NMAggregateComponentItem*> targetAncestors;
-
-            if (sourceHost)
-            {
-                sourceAncestors << sourceHost;
-                sourceHost->getAncestors(sourceAncestors);
-            }
-
-            if (targetHost)
-            {
-                targetAncestors << targetHost;
-                targetHost->getAncestors(targetAncestors);
-            }
-
-            bool oneCollapsed = false;
-            foreach (NMAggregateComponentItem* si, sourceAncestors)
-            {
-                if (targetAncestors.contains(si) && si->isCollapsed())
-                {
-                    oneCollapsed = true;
-                }
-            }
-
-            if (oneCollapsed)
-            {
-                li->setVisible(false);
-            }
-            else
-            {
-                li->setVisible(true);
-            }
-        }
-    }
-}
+//    }
+//}
 
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {

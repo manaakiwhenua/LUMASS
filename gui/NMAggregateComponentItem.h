@@ -77,10 +77,12 @@ public:
     void getEldestCollapsedAncestor(NMAggregateComponentItem*& eldest);
 
     NMAggregateComponentItem* getModelParent(void);
-    void setModelParent(NMAggregateComponentItem* parent){mModelParent = parent;}
+    void setModelParent(NMAggregateComponentItem* parent)
+    {mModelParent = parent;}
 
-signals:
-    void itemCollapsed();
+    QList<QGraphicsItem*> getModelChildren(void);
+    void setModelChildren(QList<QGraphicsItem*> modelChildren)
+    {mHiddenItems = modelChildren;}
 
 
 public slots:
@@ -92,9 +94,6 @@ public slots:
     void slotExecutionStopped();
     void slotProgress(float progress);
     void collapse(bool bCollapse);
-    /// pos is in scene coordinates
-    void collapseProcItems(bool bCollapse, const QPointF& pos);
-
 
     // moves the group (i.e. all kids)
     // to the new target location, which
@@ -168,8 +167,8 @@ private:
 
     QRectF mIconRect;
 
-    QMap<QString, QPointF> mAggrCompPos;
-    QList< QPair<QGraphicsTextItem*, QPointF> > mTextItems;
+//    QMap<QString, QPointF> mAggrCompPos;
+//    QList< QPair<QGraphicsTextItem*, QPointF> > mTextItems;
     QMap< QGraphicsItem*, QPointF> mHiddenItems;
 
     NMAggregateComponentItem* mModelParent;

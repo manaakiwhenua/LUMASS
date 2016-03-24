@@ -41,7 +41,7 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     dpr = qApp->devicePixelRatio();
 
     dx1 = 10*dpr;
-    dy1 = 43*dpr;
+    dy1 = 50*dpr;
     dx2 = 10*dpr;
     dy2 = 43*dpr;
     headBase = 3;
@@ -58,6 +58,8 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
 
     mDescription = this->objectName();
     mFont = QFont("Arial", 11);
+
+    mHiddenItems.clear();
 }
 
 NMAggregateComponentItem::~NMAggregateComponentItem()
@@ -86,23 +88,16 @@ NMAggregateComponentItem::slotProgress(float progress)
     this->update();
 }
 
-void
-NMAggregateComponentItem::collapseProcItems(bool bCollapse, const QPointF& pos)
+
+QList<QGraphicsItem*>
+NMAggregateComponentItem::getModelChildren(void)
 {
-    QList<QGraphicsItem*> kids = this->childItems();
-    foreach(QGraphicsItem* k, kids)
+    if (!mHiddenItems.isEmpty())
     {
-        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
-        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
-        if (pi)
-        {
-            pi->collapse(bCollapse, pos);
-        }
-        else if (ai)
-        {
-            ai->collapseProcItems(bCollapse, pos);
-        }
+        return mHiddenItems;
     }
+
+    return this->childItems();
 }
 
 void
@@ -127,6 +122,7 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         foreach(QGraphicsItem* k, kids)
         {
             mHiddenItems.insert(k, k->pos());
+            this->removeFromGroup(k);
             scene()->removeItem(k);
             NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
@@ -143,15 +139,10 @@ NMAggregateComponentItem::collapse(bool bCollapse)
     else
     {
         QMap<QGraphicsItem*, QPointF>::iterator it = mHiddenItems.begin();
-
-        NMDebugAI(<< "scene pos: " << this->scenePos().x() << ", " << this->scenePos().y() << std::endl);
-
-        //foreach (QGraphicsItem* item, mHiddenItems)
         while (it != mHiddenItems.end())
         {
             QGraphicsItem* item = it.key();
             this->addToGroup(item);
-            //item->setPos(it.value());
             NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
             if (pi)
@@ -165,6 +156,8 @@ NMAggregateComponentItem::collapse(bool bCollapse)
 
             ++it;
         }
+
+        mHiddenItems.clear();
     }
 
     mIsCollapsed = bCollapse;
@@ -174,8 +167,7 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         this->relocate(pos);
     }
 
-    emit itemCollapsed();
-    this->scene()->update(updateRect);
+    this->scene()->update();
 
     // NMDebugCtx(ctx, << "done!");
 }
@@ -207,43 +199,23 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     }
 
     QList<QPointF> npos;
-    QList<QPointF> ufpos;
     QList<QGraphicsItem*> kids = this->childItems();
     foreach(QGraphicsItem* ci, kids)
     {
         npos << nt + (ci->scenePos() - centre);
-//        NMProcessComponentItem* proci = qgraphicsitem_cast<NMProcessComponentItem*>(ci);
-//        if (proci)
-//        {
-//            ufpos << nt + (proci->unfoldedScenePos() - centre);
-//        }
-        //ci->setPos(this->mapFromScene(target + posDelta));
     }
 
 
-//    QGraphicsItemGroup::setPos(target.x() - (sceneBnd.width()/2.0),
-//                               target.y() - (sceneBnd.height()/2.0));
+    //    QGraphicsItemGroup::setPos(target.x() - (sceneBnd.width()/2.0),
+    //                               target.y() - (sceneBnd.height()/2.0));
 
     QGraphicsItemGroup::setPos(this->mapFromScene(nt));
     int u=0;
     for(int i=0; i < kids.count(); ++i)
     {
         kids.at(i)->setPos(this->mapFromScene(npos.at(i)));
-//        NMProcessComponentItem* pri = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(i));
-//        if (pri)
-//        {
-//            pri->setUnfoldedPos(this->mapFromScene(ufpos.at(u)));
-//            ++u;
-//        }
     }
 }
-
-//QRectF NMAggregateComponentItem::boundingRect() const
-//{
-//    QRectF bnd = this->childrenBoundingRect();
-//    bnd.adjust(-dx1,-dy1,dx2,dy2);
-//    return bnd;
-//}
 
 void
 NMAggregateComponentItem::updateDescription(const QString& descr)
@@ -251,7 +223,6 @@ NMAggregateComponentItem::updateDescription(const QString& descr)
     if (descr.compare(this->mDescription) != 0)
     {
         this->mDescription = descr;
-        //this->preparePainting();
         this->update();
         this->scene()->update(mapRectToScene(boundingRect()));
     }
@@ -263,7 +234,6 @@ NMAggregateComponentItem::updateTimeLevel(short level)
     if (level != this->mTimeLevel)
     {
         this->mTimeLevel = level;
-        //this->preparePainting();
         this->update();
     }
 }
@@ -289,14 +259,6 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
 
     qreal descrWidth = fm.width(mDescription);
     qreal descrHeight = fm.height();
-
-    //    if (descrWidth > mItemBnd.width())
-    //    {
-    //        qreal diff = descrWidth - mItemBnd.width();
-    //        mItemBnd.setLeft(mItemBnd.x()-(diff/2.0)-2);
-    //        mItemBnd.setWidth(descrWidth+2);
-    //        //mItemBnd.adjust
-    //    }
 
     mDash = QRectF(mItemBnd.left(), bnd.top()+12*dpr, mItemBnd.width(),25*dpr);
     qreal width = (mDash.right()-smallGap) - (mNumIterRect.right()+bigGap);
@@ -371,7 +333,6 @@ NMAggregateComponentItem::boundingRect(void) const
     else
     {
         bnd = this->childrenBoundingRect();
-
     }
 
     QFontMetrics fm(mFont);

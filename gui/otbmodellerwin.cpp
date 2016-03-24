@@ -2673,34 +2673,35 @@ void OtbModellerWin::test()
     NMModelViewWidget* view = ui->modelViewWidget;
     NMModelScene* scene = view->getScene();
 
-    QList<QGraphicsItem*> sel = scene->selectedItems();
-    if (sel.count() == 0)
+    QString name = QInputDialog::getText(this, "", "");
+    if (name.isEmpty())
     {
         NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
     }
 
-    QGraphicsItem* gi = sel.at(0);
-    NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-    if (pi == 0)
+    foreach(QGraphicsItem* gi, scene->items())
     {
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
+        NMProcessComponentItem* pi =
+                qgraphicsitem_cast<NMProcessComponentItem*>(gi);
 
-    QString hostName;
-    NMAggregateComponentItem* host = qgraphicsitem_cast<NMAggregateComponentItem*>(pi->parentItem());
-    if (host)
-    {
-        QList<QGraphicsItem*> kids = host->childItems();
+        NMAggregateComponentItem* ai =
+                qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
 
-        QList<NMComponentLinkItem*> inItems = pi->getInputLinks();
-        foreach(NMComponentLinkItem* li, inItems)
+        NMAggregateComponentItem* eci = 0;
+        if (pi && pi->getTitle().compare(name) == 0)
         {
-            if (kids.contains(li->sourceItem()))
-            {
-                li->setVisible(!li->isVisible());
-            }
+            NMAggregateComponentItem* hi = pi->getModelParent();
+            hi->getEldestCollapsedAncestor(eci);
+        }
+        else if (ai && ai->getTitle().compare(name) == 0)
+        {
+            ai->getEldestCollapsedAncestor(eci);
+        }
+
+        if (eci)
+        {
+            NMDebugAI(<< "eci = " << eci->getTitle().toStdString() << std::endl);
         }
     }
 

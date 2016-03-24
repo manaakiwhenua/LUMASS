@@ -50,6 +50,7 @@
 
 class NMModelScene;
 class NMComponentLinkItem;
+class NMAggregateComponentItem;
 
 class NMProcessComponentItem: public QObject, public QGraphicsItem
 {
@@ -126,6 +127,9 @@ public:
     QList<NMComponentLinkItem*> getInputLinks(void)
         {return this->mInputLinks;}
 
+    NMAggregateComponentItem* getModelParent(void);
+    void setModelParent(NMAggregateComponentItem* parent){mModelParent = parent;}
+
     /// note: pos is in scene coordinates
     void collapse(bool bCollapse, const QPointF& pos);
 
@@ -174,6 +178,8 @@ private:
     QPointF mUnfoldedPos;
     QPointF mCollapsedPos;
     bool mIsCollapsed;
+
+    NMAggregateComponentItem* mModelParent;
 
 
     short mTimeLevel;

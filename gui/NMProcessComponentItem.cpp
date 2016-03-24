@@ -37,7 +37,7 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
     : QGraphicsItem(parent), //mContextMenu(0) ,
       mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false),
-      mTimeLevel(0), mTypeID(0), mIsCollapsed(false)
+      mTimeLevel(0), mTypeID(0), mIsCollapsed(false), mModelParent(0)
 {
 	this->mScene = scene;
 
@@ -350,6 +350,17 @@ NMProcessComponentItem::updateDescription()
     mTextRect = mTextLayout.boundingRect();
     mTextRect.moveTopLeft(QPointF(-(0.5*mTextRect.width())-4,
                           mIconBnd.bottom()+0.5*mSingleLineHeight));
+}
+
+NMAggregateComponentItem*
+NMProcessComponentItem::getModelParent(void)
+{
+    if (mModelParent)
+    {
+        return mModelParent;
+    }
+
+    return qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
 }
 
 void

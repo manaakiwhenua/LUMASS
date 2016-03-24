@@ -377,15 +377,19 @@ NMModelScene::checkLinkVisibility()
     foreach (QGraphicsItem* gi, items())
     {
         NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
-        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-        if (pi)
-        {
-            if (ai->isAncestorOf(pi))
-            {
-                pi->collapse(bCollapse, npos);
-            }
-        }
-        else if (li)
+//        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+//        if (pi)
+//        {
+//            if (ai->isAncestorOf(pi))
+//            {
+//                pi->collapse(bCollapse, npos);
+//            }
+//        }
+        // double checking the visibility of link items; a link item is invisible
+        // if it's source and target have a common ancestor which is collapsed,
+        // otherwise, the link is visible
+        //else
+        if (li)
         {
             NMAggregateComponentItem* sourceHost =
                     qgraphicsitem_cast<NMAggregateComponentItem*>(li->sourceItem()->parentItem());
@@ -394,12 +398,19 @@ NMModelScene::checkLinkVisibility()
                     qgraphicsitem_cast<NMAggregateComponentItem*>(li->targetItem()->parentItem());
 
             QList<NMAggregateComponentItem*> sourceAncestors;
-            sourceAncestors << sourceHost;
             QList<NMAggregateComponentItem*> targetAncestors;
-            targetAncestors << targetHost;
 
-            sourceHost->getAncestors(sourceAncestors);
-            targetHost->getAncestors(targetAncestors);
+            if (sourceHost)
+            {
+                sourceAncestors << sourceHost;
+                sourceHost->getAncestors(sourceAncestors);
+            }
+
+            if (targetHost)
+            {
+                targetAncestors << targetHost;
+                targetHost->getAncestors(targetAncestors);
+            }
 
             bool oneCollapsed = false;
             foreach (NMAggregateComponentItem* si, sourceAncestors)

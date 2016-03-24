@@ -32,7 +32,7 @@
 const std::string NMAggregateComponentItem::ctx = "NMAggregateComponentItem";
 
 NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
-    : mProgress(0), mIsExecuting(false), mIsCollapsed(false)
+    : mProgress(0), mIsExecuting(false), mIsCollapsed(false), mModelParent(0)
 {
 	this->setParentItem(parent);
     this->mNumIterations = 0;
@@ -109,61 +109,86 @@ void
 NMAggregateComponentItem::collapse(bool bCollapse)
 {
     //NMDebugCtx(ctx, << "...");
-    QRectF oldBnd = this->mapRectToScene(this->boundingRect());
+    QRectF updateRect = this->mapRectToScene(this->boundingRect());
+    if (this->parentItem())
+    {
+        updateRect = parentItem()->mapRectToScene(parentItem()->boundingRect());
+    }
 
+    QPointF pos = mapToParent(this->boundingRect().center());
     if (bCollapse)
     {
-        mAggrCompPos.clear();
+        QPointF cP = this->childrenBoundingRect().center();
+        this->setPos(mapToParent(cP));
+        mIconRect = QRectF(-32*dpr, -32*dpr, 64*dpr, 64*dpr);
+
+        mHiddenItems.clear();
+        QList<QGraphicsItem*> kids = this->childItems();
+        foreach(QGraphicsItem* k, kids)
+        {
+            mHiddenItems.insert(k, k->pos());
+            scene()->removeItem(k);
+            NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(k);
+            NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
+            if (pi)
+            {
+                pi->setModelParent(this);
+            }
+            else if (ai)
+            {
+                ai->setModelParent(this);
+            }
+        }
     }
-
-    QList<QGraphicsItem*> kids = this->childItems();
-    foreach(QGraphicsItem* k, kids)
+    else
     {
-        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
-        QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(k);
-        if (bCollapse)
-        {
-            if (ai && ai->isCollapsed())
-            {
-                mAggrCompPos.insert(ai->getTitle(), ai->mapToParent(ai->boundingRect().center()));
-            }
-            else if (ti)
-            {
-                mTextItems.append(qMakePair(ti, ti->pos()));
-                this->scene()->removeItem(ti);
-            }
-        }
-        else
-        {
-            if (ai && ai->isCollapsed())
-            {
-                ai->relocate(mAggrCompPos.value(ai->getTitle()));
-            }
-        }
+        QMap<QGraphicsItem*, QPointF>::iterator it = mHiddenItems.begin();
 
+        NMDebugAI(<< "scene pos: " << this->scenePos().x() << ", " << this->scenePos().y() << std::endl);
 
-        k->setVisible(!bCollapse);
-    }
-
-    if (!bCollapse)
-    {
-        for (int i=0; i < mTextItems.count(); ++i)
+        //foreach (QGraphicsItem* item, mHiddenItems)
+        while (it != mHiddenItems.end())
         {
-            QPair<QGraphicsItem*, QPointF> tip = mTextItems.at(i);
-            this->addToGroup(tip.first);
-            tip.first->setPos(tip.second);
-            tip.first->setVisible(true);
+            QGraphicsItem* item = it.key();
+            this->addToGroup(item);
+            //item->setPos(it.value());
+            NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+            NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+            if (pi)
+            {
+                pi->setModelParent(0);
+            }
+            else if (ai)
+            {
+                ai->setModelParent(0);
+            }
+
+            ++it;
         }
-        mTextItems.clear();
     }
 
     mIsCollapsed = bCollapse;
 
-    emit itemCollapsed();
+    if (!mIsCollapsed)
+    {
+        this->relocate(pos);
+    }
 
-    this->scene()->update(oldBnd);
+    emit itemCollapsed();
+    this->scene()->update(updateRect);
 
     // NMDebugCtx(ctx, << "done!");
+}
+
+NMAggregateComponentItem*
+NMAggregateComponentItem::getModelParent(void)
+{
+    if (mModelParent)
+    {
+        return mModelParent;
+    }
+
+    return qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
 }
 
 void
@@ -187,11 +212,11 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     foreach(QGraphicsItem* ci, kids)
     {
         npos << nt + (ci->scenePos() - centre);
-        NMProcessComponentItem* proci = qgraphicsitem_cast<NMProcessComponentItem*>(ci);
-        if (proci)
-        {
-            ufpos << nt + (proci->unfoldedScenePos() - centre);
-        }
+//        NMProcessComponentItem* proci = qgraphicsitem_cast<NMProcessComponentItem*>(ci);
+//        if (proci)
+//        {
+//            ufpos << nt + (proci->unfoldedScenePos() - centre);
+//        }
         //ci->setPos(this->mapFromScene(target + posDelta));
     }
 
@@ -204,12 +229,12 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     for(int i=0; i < kids.count(); ++i)
     {
         kids.at(i)->setPos(this->mapFromScene(npos.at(i)));
-        NMProcessComponentItem* pri = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(i));
-        if (pri)
-        {
-            pri->setUnfoldedPos(this->mapFromScene(ufpos.at(u)));
-            ++u;
-        }
+//        NMProcessComponentItem* pri = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(i));
+//        if (pri)
+//        {
+//            pri->setUnfoldedPos(this->mapFromScene(ufpos.at(u)));
+//            ++u;
+//        }
     }
 }
 
@@ -327,31 +352,12 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
     qreal dc = mDescrRect.center().x();
     mDescrRect.setLeft(dc-(descrWidth/2.0));
     mDescrRect.setRight(dc+(descrWidth/2.0));
-
-    //QPointF centre = this->childrenBoundingRect().center();
-    mIconRect = mapRectFromScene(iconRect());
-            /*QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-                       64*dpr, 64*dpr);*/
-
 }
 
 QRectF
 NMAggregateComponentItem::iconRect(void) const
 {
-    QList<QGraphicsItem*> kids = this->childItems();
-    QRectF rect;
-    for (int i=0; i < kids.count(); ++i)
-    {
-        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(i));
-        if (pi)
-        {
-            rect = rect.united(pi->mapRectToScene(pi->boundingRect()));
-        }
-    }
-
-    QRectF irect = QRectF(rect.center().x()-32*dpr, rect.center().y()-32*dpr,
-                          64*dpr, 64*dpr);
-    return irect;
+    return mIconRect;
 }
 
 QRectF
@@ -360,14 +366,7 @@ NMAggregateComponentItem::boundingRect(void) const
     QRectF bnd;
     if (mIsCollapsed)
     {
-        //        QRectF fb = this->childrenBoundingRect();
-        //        bnd = QRectF(fb.center().x() - (mCollapsedPix.width()/2.0),
-        //                     fb.center().y() - (mCollapsedPix.height()/2.0),
-        //                     mCollapsedPix.width(), mCollapsedPix.height());
-        //        QPointF centre = this->childrenBoundingRect().center();
-        //        bnd = QRectF(centre.x()-32*dpr, centre.y()-32*dpr,
-        //                           64*dpr, 64*dpr);
-        bnd = mapRectFromScene(iconRect());
+        bnd = mIconRect;
     }
     else
     {
@@ -403,14 +402,6 @@ NMAggregateComponentItem::paint(QPainter* painter,
     //CALLGRIND_START_INSTRUMENTATION;
     QRectF bnd = this->boundingRect();
 
-
-//    QTransform wt = painter->worldTransform();
-//    wt.translate(bnd.right(), 0);
-//    painter->setWorldTransform(wt);
-
-//    bnd.setLeft(-bnd.width());
-//    bnd.setRight(0);
-    //prepareGeometryChange();
     preparePainting(bnd);
 
     int l,r,t,b,h,w;
@@ -561,7 +552,6 @@ NMAggregateComponentItem::paint(QPainter* painter,
     mFont.setBold(false);
     painter->setFont(mFont);
 
-    //painter->drawText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel));
     this->renderText(mTimeLevelRect, Qt::AlignLeft, QString("%1").arg(mTimeLevel), *painter);
 
     // the iteration icon
@@ -577,11 +567,6 @@ NMAggregateComponentItem::paint(QPainter* painter,
     {
         if (mIsExecuting)
         {
-            //            mFont.setBold(true);
-            //            painter->setPen(QPen(QBrush(Qt::darkRed), 2, Qt::SolidLine));
-            //painter->drawText(mNumIterRect, Qt::AlignLeft,
-              // QString("%1 of %2").arg(mProgress).arg(mNumIterations));
-
             this->renderText(mNumIterRect, Qt::AlignLeft,
                QString("%1 of %2").arg(mProgress).arg(mNumIterations), *painter);
 
@@ -590,13 +575,11 @@ NMAggregateComponentItem::paint(QPainter* painter,
         else
         {
             painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));
-            //painter->drawText(mNumIterRect, Qt::AlignLeft, QString("%1").arg(mNumIterations));
             this->renderText(mNumIterRect, Qt::AlignLeft, QString("%1").arg(mNumIterations), *painter);
         }
     }
 
     // the description
-    //painter->drawText(mDescrRect, Qt::AlignCenter, mDescription);
     this->renderText(mDescrRect, Qt::AlignCenter, mDescription, *painter);
 
 
@@ -605,9 +588,6 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // ------------------------------------------------
     if (mIsCollapsed)
     {
-        //        mIconRect = QRectF(mDash.center().x()-32*dpr,
-        //                             mDash.bottom()+3*bigGap,
-        //                             64*dpr, 64*dpr);
         painter->drawPixmap(mIconRect, mCollapsedPix, QRectF(0,0,64*dpr,64*dpr));
     }
 
@@ -636,10 +616,25 @@ NMAggregateComponentItem::paint(QPainter* painter,
 }
 
 void
+NMAggregateComponentItem::getEldestCollapsedAncestor(NMAggregateComponentItem *&eldest)
+{
+    NMAggregateComponentItem* ai = this->getModelParent();
+            //qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
+    if (ai)
+    {
+        if (ai->isCollapsed())
+        {
+            eldest = ai;
+        }
+        ai->getEldestCollapsedAncestor(eldest);
+    }
+}
+
+void
 NMAggregateComponentItem::getAncestors(QList<NMAggregateComponentItem*>& ancestors)
 {
-    NMAggregateComponentItem* ai =
-            qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
+    NMAggregateComponentItem* ai = this->getModelParent();
+           // qgraphicsitem_cast<NMAggregateComponentItem*>(parentItem());
     if (ai)
     {
         ancestors.append(ai);

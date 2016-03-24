@@ -74,6 +74,10 @@ public:
     void normaliseAt(const QPointF& pos);
 
     void getAncestors(QList<NMAggregateComponentItem*>& ancestors);
+    void getEldestCollapsedAncestor(NMAggregateComponentItem*& eldest);
+
+    NMAggregateComponentItem* getModelParent(void);
+    void setModelParent(NMAggregateComponentItem* parent){mModelParent = parent;}
 
 signals:
     void itemCollapsed();
@@ -105,7 +109,9 @@ private:
 
     void preparePainting(const QRectF& bndRect);
 
-    inline void renderText(const QRectF& rect, const Qt::AlignmentFlag& flag, const QString& text, QPainter& p)
+    inline void renderText(const QRectF& rect,
+                           const Qt::AlignmentFlag& flag,
+                           const QString& text, QPainter& p)
     {
         QTransform ot = p.worldTransform();
         QTransform wt = p.worldTransform();
@@ -164,6 +170,9 @@ private:
 
     QMap<QString, QPointF> mAggrCompPos;
     QList< QPair<QGraphicsTextItem*, QPointF> > mTextItems;
+    QMap< QGraphicsItem*, QPointF> mHiddenItems;
+
+    NMAggregateComponentItem* mModelParent;
 
 
     int dx1, dy1, dx2, dy2;

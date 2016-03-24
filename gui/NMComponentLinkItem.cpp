@@ -27,6 +27,7 @@
 #include "math.h"
 #include <QDebug>
 #include <QTime>
+#include "NMAggregateComponentItem.h"
 
 NMComponentLinkItem::NMComponentLinkItem(NMProcessComponentItem* sourceItem,
 		NMProcessComponentItem* targetItem,
@@ -85,56 +86,102 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
     if (mSourceItem->collidesWithItem(mTargetItem))
         return;
 
-	// determine coordinates and bounding rectangle
-	QPointF sp = mapFromItem(mSourceItem, 0, 0);
-	QPointF tp = mapFromItem(mTargetItem, 0, 0);
-    //	QRectF srcBnd = mapFromItem(mSourceItem, mSourceItem->boundingRect()).boundingRect();
-    //	QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
-    //	this->mBndBox = srcBnd.united(tarBnd);
-
-    QLineF linkLine(sp, tp);
+    // ----------------------------------------------------------
+    //                  some variables
+    // ----------------------------------------------------------
+    QPointF sp;
+    QPointF tp;
     QLineF polyEdge;
     QPointF p1, p2;
 
-	// determine target intersection point
-	QPointF ip;
-//    if (mTargetItem->isCollapsed())
-//    {
-//        ip = mapFromItem(mTargetItem, mTargetItem->boundingRect().center());
-//    }
-//    else
+    QPointF ip;
+    QPolygonF poly;
+    QPointF sip;
+    QPolygonF spoly;
+
+    // ----------------------------------------------------------
+    //                  determine target shape
+    // ----------------------------------------------------------
+    NMAggregateComponentItem* eldestCollapsedTarget = 0;
+    NMAggregateComponentItem* th = mTargetItem->getModelParent();
+    if (th)
     {
-        QPolygonF poly(mapFromItem(mTargetItem, mTargetItem->getShapeAsPolygon()));
-        for (unsigned int i=0; i < poly.count()-1; ++i)
+        if (th->getTitle().compare("AggrComp333331") == 0)
         {
-            p1 = poly.at(i);
-            p2 = poly.at(i+1);
-            polyEdge = QLineF(p1, p2);
-            if (polyEdge.intersect(linkLine, &ip) == QLineF::BoundedIntersection)
-                    break;
+            int a = 5;
         }
+
+        eldestCollapsedTarget = th->isCollapsed() ? th : 0;
+        th->getEldestCollapsedAncestor(eldestCollapsedTarget);
+    }
+
+    if (eldestCollapsedTarget)
+    {
+        poly = QPolygonF(mapRectFromItem(eldestCollapsedTarget, eldestCollapsedTarget->iconRect()));
+        tp = mapFromItem(eldestCollapsedTarget, 0, 0);
+    }
+    else
+    {
+        poly = QPolygonF(mapFromItem(mTargetItem, mTargetItem->getShapeAsPolygon()));
+        tp = mapFromItem(mTargetItem, 0, 0);
+    }
+
+    // ----------------------------------------------------------
+    //                  determine source shape
+    // ----------------------------------------------------------
+    //QGraphicsItem* sourceHost = mSourceItem->parentItem();
+    NMAggregateComponentItem* eldestCollapsedSource = 0;
+    NMAggregateComponentItem* ts = mSourceItem->getModelParent();
+    if (ts)
+    {
+        if (ts->getTitle().compare("AggrComp10") == 0)
+        {
+            int a = 5;
+        }
+        eldestCollapsedSource = ts->isCollapsed() ? ts : 0;
+        ts->getEldestCollapsedAncestor(eldestCollapsedSource);
+    }
+
+    if (eldestCollapsedSource)
+    {
+        spoly = QPolygonF(mapRectFromItem(eldestCollapsedSource, eldestCollapsedSource->iconRect()));
+        sp = mapFromItem(eldestCollapsedSource, 0, 0);
+    }
+    else
+    {
+        spoly = QPolygonF(mapFromItem(mSourceItem, mSourceItem->getShapeAsPolygon()));
+        sp = mapFromItem(mSourceItem, 0, 0);
+    }
+
+
+    // ----------------------------------------------------------
+    //      determine source & target intersection points
+    // ----------------------------------------------------------
+    QLineF linkLine(sp, tp);
+
+    // target intersection point
+    for (unsigned int i=0; i < poly.count()-1; ++i)
+    {
+        p1 = poly.at(i);
+        p2 = poly.at(i+1);
+        polyEdge = QLineF(p1, p2);
+        if (polyEdge.intersect(linkLine, &ip) == QLineF::BoundedIntersection)
+                break;
     }
 
 	// determine source intersection point
-	QPointF sip;
-//    if (mSourceItem->isCollapsed())
-//    {
-//        sip = mapFromItem(mSourceItem, mSourceItem->boundingRect().center());
-//    }
-//    else
+    for (unsigned int i=0; i < spoly.count()-1; ++i)
     {
-        QPolygonF spoly(mapFromItem(mSourceItem, mSourceItem->getShapeAsPolygon()));
-        for (unsigned int i=0; i < spoly.count()-1; ++i)
-        {
-            p1 = spoly.at(i);
-            p2 = spoly.at(i+1);
-            polyEdge = QLineF(p1, p2);
-            if (polyEdge.intersect(linkLine, &sip) == QLineF::BoundedIntersection)
-                    break;
-        }
+        p1 = spoly.at(i);
+        p2 = spoly.at(i+1);
+        polyEdge = QLineF(p1, p2);
+        if (polyEdge.intersect(linkLine, &sip) == QLineF::BoundedIntersection)
+                break;
     }
 
-	// create the head
+    // ----------------------------------------------------------
+    //              draw link
+    // ----------------------------------------------------------
 	QLineF shortBase(ip, sp);
 	shortBase.setLength(mHeadSize);
 	QLineF shortBase2(shortBase.p2(), shortBase.p1());
@@ -172,9 +219,6 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
 
 	// draw elements
 	QPen pen;
-    //if (this->isSelected())
-    //	pen = QPen(QBrush(Qt::red), 2);
-    //else
     if (this->mIsDynamic)
         pen = QPen(QBrush(QColor(80,80,80)), 1.8, Qt::DashLine);
     else

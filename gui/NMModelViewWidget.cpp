@@ -1138,6 +1138,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
             if (ai && ai->isCollapsed())
             {
                 QList<QGraphicsItem*> aos;
+                aos.append(ai);
                 ai->getAllModelOffSprings(aos);
                 foreach(QGraphicsItem* oi, aos)
                 {
@@ -1720,6 +1721,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         //lmv >> bvis;
                     }
                     lmv >> nkids;
+
+                    if (title.compare("AggrComp") == 0)
+                    {
+                        int a = 5;
+                    }
 
 					ai->setTitle(nameRegister.value(title));
 					ai->setPos(pos);

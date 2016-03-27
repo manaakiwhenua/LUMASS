@@ -67,6 +67,7 @@ public:
     QGraphicsProxyWidget* getWidgetAt(const QPointF& pos);
 	QGraphicsItem* getComponentItem(const QString& name);
 	NMComponentLinkItem* getLinkItem(QPointF pos);
+
 	void serialiseItems(QList<QGraphicsItem*> items,
 			QDataStream& data);
 	qreal getLinkZLevel(void)
@@ -143,6 +144,7 @@ private:
     bool mbSceneMove;
 
     QList<QGraphicsItem*> mDragItemList;
+    QMap<QString, QGraphicsItem*> mHiddenModelItems;
     QPointF mDragStartPos;
     QPointF mMousePos;
 };

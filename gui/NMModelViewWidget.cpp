@@ -1107,10 +1107,10 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
 
 		QGraphicsItem* item = this->mModelScene->getComponentItem(itemName);
 		NMModelComponent* comp;
-		NMProcessComponentItem* pi;
-		NMAggregateComponentItem* ai;
+        //NMProcessComponentItem* pi;
+        //NMAggregateComponentItem* ai;
         //NMComponentLinkItem* li;
-        QGraphicsTextItem* ti;
+        //QGraphicsTextItem* ti;
 
 		// we treat root differently, because it hasn't got an item
 		// associated with it
@@ -1594,6 +1594,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
     // --------------------------------------
 
     QList<QString> importItems;
+    QList<NMAggregateComponentItem*> collapsedItems;
+    QList<QPointF> collapsedPos;
     QList<QGraphicsTextItem*> importLabels;
 	NMIterableComponent* itComp = 0;
 	NMProcess* procComp;
@@ -1612,12 +1614,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
             {
                 ti = new QGraphicsTextItem();
                 lmv >> *ti;
-//                if (lmv_version >= 0.95)
-//                {
-//                    bool bvis;
-//                    lmv >> bvis;
-//                    ti->setVisible(bvis);
-//                }
                 ti->setTextInteractionFlags(Qt::NoTextInteraction | Qt::TextBrowserInteraction);
                 ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                 ti->setOpenExternalLinks(true);
@@ -1631,12 +1627,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 				{
                     pi = new NMProcessComponentItem(0, this->mModelScene);
 					lmv >> *pi;
-//                    if (lmv_version >= 0.95)
-//                    {
-//                        bool bvis;
-//                        lmv >> bvis;
-//                        pi->setVisible(bvis);
-//                    }
 					QString itemTitle = nameRegister.value(pi->getTitle());
 
                     // check, if we got a valid item (must have name!)
@@ -1711,29 +1701,30 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					QPointF pos;
 					QColor color;
                     bool bCollapsed = false;
-                    //bool bvis = true;
                     qint32 nkids;
 
                     lmv >> title >> pos >> color;
                     if (lmv_version >= 0.95)
                     {
                         lmv >> bCollapsed;
-                        //lmv >> bvis;
                     }
                     lmv >> nkids;
 
-                    if (title.compare("AggrComp") == 0)
-                    {
-                        int a = 5;
-                    }
-
 					ai->setTitle(nameRegister.value(title));
 					ai->setPos(pos);
-                    ai->setIsCollapsed(bCollapsed);
                     ai->relocate(pos);
 					ai->setColor(color);
-                    //ai->setVisible(bvis);
                     importItems <<  ai->getTitle();
+
+                    // we treat each component as
+                    // unfolded for now, but keep
+                    // an eye on those which are
+                    // actually collapsed
+                    if (bCollapsed)
+                    {
+                        collapsedItems << ai;
+                        collapsedPos << pos;
+                    }
 
                     for (qint32 v=0; v < nkids; ++v)
 					{
@@ -1744,11 +1735,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             QGraphicsTextItem* textItemDummy = new QGraphicsTextItem(0);
                             lmv >> *textItemDummy;
-//                            if (lmv_version >= (qreal)0.95)
-//                            {
-//                                bool bvis;
-//                                lmv >> bvis;
-//                            }
                             delete textItemDummy;
                             textItemDummy = 0;
                         }
@@ -1770,11 +1756,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     bool dyn;
                     if (lmv_version > (qreal)0.91)
                         lmv >> dyn;
-//                    if (lmv_version >= (qreal)0.95)
-//                    {
-//                        bool bvis;
-//                        lmv >> bvis;
-//                    }
 				}
 				break;
 
@@ -1827,11 +1808,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         case (qint32)QGraphicsTextItem::Type:
             ti = new QGraphicsTextItem();
             lmv >> *ti;
-//            if (lmv_version >= (qreal)0.95)
-//            {
-//                bool bv;
-//                lmv >> bv;
-//            }
             delete ti;
             ti = 0;
             break;
@@ -1847,8 +1823,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     {
                         lmv >> dyn;
                     }
-//                    if (lmv_version >= (qreal)0.95)
-//                        lmv >> bvis;
 
 					srcName = nameRegister.value(srcName);
 					tarName = nameRegister.value(tarName);
@@ -1867,10 +1841,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             li->setIsDynamic(dyn);
                         }
-//                        if (lmv_version >= (qreal)0.95)
-//                            li->setVisible(bvis);
 
-						si->addOutputLink(srcIdx, li);
+                        si->addOutputLink(srcIdx, li);
 						ti->addInputLink(tarIdx, li);
 						this->mModelScene->addItem(li);
 
@@ -1898,11 +1870,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                 pi = new NMProcessComponentItem(0,0);
                 lmv >> *pi;
                 delete pi;
-//                if (lmv_version >= (qreal)0.95)
-//                {
-//                    bool bvis;
-//                    lmv >> bvis;
-//                }
                 pi = 0;
 				break;
 
@@ -1912,27 +1879,19 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     QPointF pos;
                     QColor color;
                     bool bCollapsed = false;
-                    //bool bvis = true;
                     qint32 nkids;
                     lmv >> title >> pos >> color;
 
                     if (lmv_version >= 0.95)
                     {
                         lmv >> bCollapsed;
-                      //  lmv >> bvis;
                     }
 
                     lmv >> nkids;
 
 					title = nameRegister.value(title);
-					ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
-							this->mModelScene->getComponentItem(title));
-
-                    if (lmv_version >= 0.95)
-                    {
-                        ai->setIsCollapsed(bCollapsed);
-                    }
-
+                    ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
+                            this->mModelScene->getComponentItem(title));
 
                     NMIterableComponent* c = qobject_cast<NMIterableComponent*>(
                                 NMModelController::getInstance()->getComponent(title));
@@ -1955,7 +1914,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
                     NMProcessComponentItem* ipi = 0;
 					NMAggregateComponentItem* iai = 0;
-                    QList<QGraphicsItem*> modelChildren;
                     for (unsigned int c=0; c < nkids; ++c)
 					{
                         QString kname;
@@ -1965,26 +1923,13 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             ti = new QGraphicsTextItem(ai);
                             lmv >> *ti;
-//                            if (lmv_version >= (qreal)0.95)
-//                            {
-//                                bool bvis;
-//                                lmv >> bvis;
-//                                ti->setVisible(bvis);
-//                            }
                             ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
                             ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                             ti->setOpenExternalLinks(true);
                             mModelScene->addItem(ti);
                             ti->setPos(ai->mapFromScene(ti->pos()));
 
-                            if (ai->isCollapsed())
-                            {
-                                modelChildren.append(ti);
-                            }
-                            else
-                            {
-                                ai->addToGroup(ti);
-                            }
+                            ai->addToGroup(ti);
                         }
                         else
                         {
@@ -2001,24 +1946,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                             iai = qgraphicsitem_cast<NMAggregateComponentItem*>(
                                     this->mModelScene->getComponentItem(kname));
 
-                            if (ai->isCollapsed())
-                            {
-                               if (ipi)
-                                   modelChildren.append(ipi);
-                               else if (iai)
-                                   modelChildren.append(iai);
-                            }
-                            else
-                            {
-                                if (ipi != 0)
-                                    ai->addToGroup(ipi);
-                                else if (iai != 0)
-                                    ai->addToGroup(iai);
-                            }
+                            if (ipi != 0)
+                                ai->addToGroup(ipi);
+                            else if (iai != 0)
+                                ai->addToGroup(iai);
                         }
 					}
-
-                    ai->setModelChildren(modelChildren);
 
                     connect(c, SIGNAL(ComponentDescriptionChanged(QString)),
                             ai, SLOT(updateDescription(QString)));
@@ -2040,6 +1973,38 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 			break;
 		}
 	}
+
+
+    // now we collapse all collapsed aggregate component items
+    NMDebugAI(<< "establishing ancestory of ... " << std::endl);
+    QList<NMAggregateComponentItem*> orderedItems;
+    QList<QPointF> orderedPos;
+    for (int a=0; a < collapsedItems.count(); ++a)
+    {
+        NMAggregateComponentItem* ai = collapsedItems.at(a);
+        NMDebugAI( << "  ... " << ai->getTitle().toStdString() << std::endl);
+        int pos = 0;
+        for (int i=0; i < orderedItems.count(); ++i)
+        {
+            if (ai->isAncestorOf(orderedItems.at(i)))
+            {
+                ++pos;
+            }
+        }
+        orderedItems.insert(pos, ai);
+        orderedPos.insert(pos, collapsedPos.at(a));
+    }
+
+    NMDebug(<< std::endl);
+    NMDebugAI(<< "kids to grand parents  ... " << std::endl);
+    for (int i=0; i < orderedItems.count(); ++i)
+    {
+        NMAggregateComponentItem* ai = orderedItems.at(i);
+        NMDebugAI(<< ai->getTitle().toStdString() << std::endl);
+        ai->collapse(true);
+        ai->setPos(ai->mapToParent(ai->mapFromScene(orderedPos.at(i))));
+    }
+
     this->mModelScene->invalidate();
 
     if (move)
@@ -2070,220 +2035,9 @@ NMModelViewWidget::importModel(QDataStream& lmv,
     }
 
 
-//    NMAggregateComponentItem* ai = 0;
-//    if (importHost != 0)
-//    {
-//        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
-//                    mModelScene->getComponentItem(importHost->objectName()));
-//    }
-
-//    QScopedPointer<QGraphicsItemGroup> importGroup(new QGraphicsItemGroup());
-//    foreach(QGraphicsItem* ii, importItems)
-//    {
-//        importGroup->addToGroup(ii);
-//    }
-//    importGroup->setPos(mLastScenePos.x()-(importGroup->boundingRect().width()/2.0),
-//                        mLastScenePos.y()-(importGroup->boundingRect().height()/2.0));
-
-//    foreach(QGraphicsItem* ii, importItems)
-//    {
-//        importGroup->removeFromGroup(ii);
-
-//        if (ai != 0)
-//            ai->addToGroup(ii);
-//    }
-
-
-
-//    NMDebug(<< std::endl << std::endl);
-//    NMDebugAI(<< "REGROUP AND SHIFT ======================================" << std::endl);
-//    // re-group and shift imported graphics items to
-//    // appear as part of their new import host
-//    // - if importHost  = NULL -> root
-//    // - if importHost != NULL -> NMIterableComponent* --> NMAggregateComponentItem*
-//    NMAggregateComponentItem* ai = 0;
-//    QList<QGraphicsItem*> siblings;
-//    QRectF hostImportRect;
-//    if (importHost != 0)
-//    {
-//        ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
-//                    mModelScene->getComponentItem(importHost->objectName()));
-
-//        siblings = ai->childItems();
-
-//        NMDebugAI(<< reportRect(importRegion, "importRegion") << std::endl);
-//        QRectF translocRect = importRegion;
-//        translocRect.moveCenter(mLastScenePos);
-//        NMDebugAI(<< reportRect(translocRect, "translocRect") << std::endl);
-//        hostImportRect = ai->mapRectFromScene(translocRect);
-//        NMDebugAI(<< reportRect(hostImportRect, "hostImportRect") << std::endl);
-//    }
-//    else
-//    {
-//        NMDebugAI(<< reportRect(importRegion, "importRegion") << std::endl);
-//        NMDebugAI(<< reportPoint(mLastScenePos, "lastScenePos") << std::endl);
-
-//        //importRegion.moveCenter(mLastScenePos);
-//        hostImportRect = importRegion;
-//        hostImportRect.moveCenter(mLastScenePos);
-//        NMDebugAI(<< reportPoint(hostImportRect.center(), "hostImportRect.center:") << std::endl);
-//        siblings = mModelScene->items();
-//    }
-
-//    QLineF longDiag(hostImportRect.center(), hostImportRect.topLeft());
-//    qreal refLength = longDiag.length();
-//    if (refLength == 0)
-//    {
-//        refLength == 1;
-//    }
-//    NMDebugAI(<< ">>> hostImportRect diagonale length: " << refLength << std::endl);
-
-//    NMDebug(<< std::endl);
-//    NMDebugAI(<< ">>> repositioning import graphics ..." << std::endl);
-//    // position the import items within the hostImportRect
-//    foreach(QGraphicsItem* ii, importItems)
-//    {
-//        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ii);
-//        NMModelComponent* c = this->componentFromItem(ii);
-//        if (    (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
-//            ||  labelItem != 0
-//           )
-//        {
-//            QRectF iiRect = ii->mapRectToScene(ii->boundingRect());
-//            QPointF move = iiRect.center() - importRegion.center();
-
-//            QPointF newPos(hostImportRect.center() + move);
-
-//            if (ai != 0)
-//                ai->addToGroup(ii);
-
-
-//            ii->setPos(newPos.x() - (ii->boundingRect().width()/2.0),
-//                       newPos.y() - (ii->boundingRect().height()/2.0));
-
-//            //            NMDebugAI(<< reportRect(importRegion, "orig importRegion:") << std::endl);
-//            //            NMDebugAI(<< c->objectName().toStdString() << "'s cur shape: " << reportRect(iiRect, "curShape:") << std::endl);
-//            //            NMDebugAI(<< c->objectName().toStdString() << " sugg. move: " << reportPoint(move, "")
-//            //                      << " = " << reportPoint(iiRect.center(), "") << " - " << reportPoint(importRegion.center(), "") << std::endl);
-//            //            NMDebugAI(<< c->objectName().toStdString() << "'s new pos: "
-//            //                      << reportPoint(ii->pos(), "") << std::endl);
-//        }
-//    }
-
-
-//    NMDebugAI(<< ">>> repositioning kids ..." << std::endl);
-//    // make some space in the importHost item
-//    // (all operations in importHost's coordinate space)
-//    foreach(QGraphicsItem* ki, siblings)
-//    {
-//        if (importItems.contains(ki)) continue;
-
-//        QGraphicsTextItem* labelItem = qgraphicsitem_cast<QGraphicsTextItem*>(ki);
-//        NMModelComponent* c = this->componentFromItem(ki);
-
-//        //        NMProcessComponentItem* piki = qgraphicsitem_cast<NMProcessComponentItem*>(ki);
-//        //        NMAggregateComponentItem* aiki = qgraphicsitem_cast<NMAggregateComponentItem*>(ki);
-//        //        QString name;
-//        //        if (piki != 0)
-//        //            name = piki->getTitle();
-//        //        else if (aiki != 0)
-//        //            name = aiki->getTitle();
-//        //        else
-//        //            continue;
-
-//        // since QGraphicsItem functions all operate in the item's
-//        // coordinate space (except setPos), we have to transform it
-//        // into it's parent's coordinate space
-//        QRectF kiRect = ki->mapRectToParent(ki->boundingRect());
-//        if (     (   (c != 0 && c->getHostComponent()->objectName().compare(importHostName) == 0)
-//                  || labelItem != 0
-//                 )
-//             &&  kiRect.intersects(hostImportRect)
-//           )
-//        {
-//            //NMDebugAI(<< reportRect(kiRect, name.toStdString().c_str()) << " " << reportRect(hostImportRect, "hostImportRect: ") << std::endl);
-
-//            QLineF movePath(hostImportRect.center(), kiRect.center());
-//            movePath.setLength(refLength + (refLength * 0.1));
-//            QPointF itsct;
-//            QList<QPointF> verts;
-//            verts << hostImportRect.topLeft() << hostImportRect.topRight()
-//                     << hostImportRect.bottomRight() << hostImportRect.bottomLeft();
-//            for(int k=0; k < 4; ++k)
-//            {
-//                QLineF tl;
-//                tl.setP1(verts.at(k));
-//                if (k < 3)
-//                {
-//                    tl.setP2(verts.at(k+1));
-//                }
-//                else
-//                {
-//                    tl.setP2(verts.at(0));
-//                }
-
-//                QPointF tp;
-//                if (movePath.intersect(tl, &tp) == QLineF::BoundedIntersection)
-//                {
-//                    itsct = tp;
-//                    break;
-//                }
-//            }
-
-//            movePath.setP2(itsct);
-//            movePath.setLength(movePath.length()+(kiRect.width()));
-
-//            //            NMDebugAI(<< name.toStdString().c_str() << "'s new pos: "
-//            //                      << reportPoint(movePath.p2(), "new ki center:") << std::endl);
-
-//            ki->setPos(movePath.p2().x()-(kiRect.width()/2.0),
-//                       movePath.p2().y()-(kiRect.height()/2.0));
-
-//            //            NMDebug(<< std::endl);
-//        }
-//    }
-
     NMDebugCtx(ctx, << "done!");
-    //this->mModelScene->invalidate();
 }
 
-void
-NMModelViewWidget::checkComponentLinkItemVisibility(
-        NMComponentLinkItem* link)
-{
-//    if (link == 0)
-//    {
-//        return;
-//    }
-
-//    NMAggregateComponentItem* sourceHost =
-//            qgraphicsitem_cast<NMAggregateComponentItem*>(
-//                link->sourceItem()->parentItem());
-
-//    NMAggregateComponentItem* targetHost =
-//            qgraphicsitem_cast<NMAggregateComponentItem*>(
-//                link->sourceItem()->parentItem());
-
-//    if (sourceHost && targetHost)
-//    {
-//        if (    sourceHost->hasVisibleAncestor()
-//            ||  targetHost->hasVisibleAncestor()
-//           )
-//        {
-//            link->setVisible(true);
-//        }
-//        else
-//        {
-//            link->setVisible(false);
-//        }
-//    }
-//    else
-//    {
-//        link->setVisible(true);
-//    }
-
-
-}
 
 std::string
 NMModelViewWidget::reportRect(const QRectF& rect, const char* msg)

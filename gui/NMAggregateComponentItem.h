@@ -66,11 +66,12 @@ public:
 
 	bool containsComponent(QString name);
     bool isCollapsed(){return mIsCollapsed;}
-    void setIsCollapsed(const bool& bCollapsed){mIsCollapsed = bCollapsed;}
+    //void setIsCollapsed(const bool& bCollapsed){mIsCollapsed = bCollapsed;}
 
     QRectF boundingRect(void) const;
 
-    QRectF iconRect(void) const;// const {return mIconRect;}
+    QRectF iconRect(void) const;
+    //void setIconRect(const QRectF& rect){mIconRect = rect;}
 
     void normaliseAt(const QPointF& pos);
 

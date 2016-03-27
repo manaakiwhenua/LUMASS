@@ -58,6 +58,7 @@ NMModelScene::NMModelScene(QObject* parent)
     mLinkHitTolerance = 15;
 	mLinkZLevel = 10000;
 	mLinkLine = 0;
+    mHiddenModelItems.clear();
 }
 
 NMModelScene::~NMModelScene()

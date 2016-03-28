@@ -1272,8 +1272,10 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         bool isTopLevel = true;
         foreach(QGraphicsItem* gii, moveList)
         {
+            NMAggregateComponentItem* aii = qgraphicsitem_cast<NMAggregateComponentItem*>(gii);
             // check, whether move is possible
-            if (gii->childItems().contains(targetItem))
+            //if (gii->childItems().contains(targetItem))
+            if (aii && aii->getModelChildren().contains(targetItem))
             {
                 // ouch we can't do that
                 NMBoxErr("Move Components", "Cannot move components into itself!");
@@ -1281,7 +1283,8 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
                 return;
             }
 
-            if (gii->childItems().contains(gi))
+            //if (gii->childItems().contains(gi))
+            if (aii && aii->getModelChildren().contains(gi))
             {
                 isTopLevel = false;
                 break;
@@ -2234,7 +2237,8 @@ void NMModelViewWidget::ungroupComponents()
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
         if (ai != 0)
         {
-            QList<QGraphicsItem*> kids = ai->childItems();
+            //QList<QGraphicsItem*> kids = ai->childItems();
+            QList<QGraphicsItem*> kids = ai->getModelChildren();
             QList<QGraphicsItem*>::iterator iit = kids.begin();
             while(iit != kids.end())
             {
@@ -2679,7 +2683,8 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 	NMModelComponent* hostComp = comp->getHostComponent();
 
 	// iterate over all subcomponents and delete them
-	QList<QGraphicsItem*> childItems = aggrItem->childItems();
+    //QList<QGraphicsItem*> childItems = aggrItem->childItems();
+    QList<QGraphicsItem*> childItems = aggrItem->getModelChildren();
     QMutableListIterator<QGraphicsItem*> it(childItems);
 	NMModelComponent* pcomp = 0;
 	while(it.hasNext())

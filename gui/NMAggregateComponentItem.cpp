@@ -222,7 +222,8 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     }
 
     QList<QPointF> npos;
-    QList<QGraphicsItem*> kids = this->childItems();
+    //QList<QGraphicsItem*> kids = this->childItems();
+    QList<QGraphicsItem*> kids = this->getModelChildren();
     foreach(QGraphicsItem* ci, kids)
     {
         npos << nt + (ci->scenePos() - centre);
@@ -634,7 +635,8 @@ NMAggregateComponentItem::containsComponent(QString name)
 {
 	bool ret = false;
 
-	foreach(QGraphicsItem* kid, this->childItems())
+    //foreach(QGraphicsItem* kid, this->childItems())
+    foreach(QGraphicsItem* kid, this->getModelChildren())
 	{
 		NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(kid);
 		NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(kid);

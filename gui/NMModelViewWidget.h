@@ -163,6 +163,8 @@ protected slots:
 	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
     bool eventFilter(QObject* obj, QEvent* e);
 
+    void test();
+
 private:
 	void initItemContextMenu();
     // identifies members of any one list, which are not present

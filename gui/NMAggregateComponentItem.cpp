@@ -142,18 +142,12 @@ NMAggregateComponentItem::collapse(bool bCollapse)
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(k);
             if (pi)
             {
-                //mscene->hideModelItem(pi->getTitle());
                 pi->setModelParent(this);
             }
             else if (ai)
             {
-                //mscene->hideModelItem(ai->getTitle());
                 ai->setModelParent(this);
             }
-//            else
-//            {
-
-//            }
         }
     }
     else
@@ -168,12 +162,10 @@ NMAggregateComponentItem::collapse(bool bCollapse)
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
             if (pi)
             {
-//                mscene->unhideModelItem(pi->getTitle());
                 pi->setModelParent(0);
             }
             else if (ai)
             {
-//                mscene->unhideModelItem(ai->getTitle());
                 ai->setModelParent(0);
             }
 
@@ -190,6 +182,7 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         this->relocate(pos);
     }
 
+    this->update();
     this->scene()->update();
 
     // NMDebugCtx(ctx, << "done!");

@@ -519,7 +519,6 @@ void NMModelViewWidget::initItemContextMenu()
     actDeltaTimeLevel->setText(actDeltaTimeLevelText);
     this->mActionMap.insert(actDeltaTimeLevelText, actDeltaTimeLevel);
 
-
     QAction* collapseComp = new QAction(this->mItemContextMenu);
     collapseComp->setText(tr("Collapse"));
     this->mActionMap.insert("Collapse", collapseComp);
@@ -583,6 +582,27 @@ void NMModelViewWidget::initItemContextMenu()
     connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
     connect(collapseComp, SIGNAL(triggered()), this, SLOT(collapseAggrItem()));
     connect(unfoldComp, SIGNAL(triggered()), this, SLOT(unfoldAggrItem()));
+
+    // DEBUG
+#ifdef DEBUG
+    QAction* testAct = new QAction(this->mItemContextMenu);
+    testAct->setText("test");
+    this->mActionMap.insert("test", testAct);
+    this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(testAct);
+    connect(testAct, SIGNAL(triggered()), this, SLOT(test()));
+#endif
+    // DEBUG
+
+}
+
+void
+NMModelViewWidget::test()
+{
+   NMDebugAI(<< this->reportPoint(mLastItem->pos(), "item's pos") << std::endl);
+   NMDebugAI(<< this->reportPoint(mLastItem->scenePos(), "item's scene pos") << std::endl);
+   NMDebugAI(<< this->reportRect(mLastItem->boundingRect(), "item's rect") << std::endl);
+   NMDebugAI(<< this->reportRect(mLastItem->sceneBoundingRect(), "item's scene rect") << std::endl);
 }
 
 void
@@ -1977,6 +1997,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 		}
 	}
 
+    NMDebugAI(<< "exploded rect: " << this->reportRect(mModelScene->itemsBoundingRect(), ""));
+
 
     // now we collapse all collapsed aggregate component items
     NMDebugAI(<< "establishing ancestory of ... " << std::endl);
@@ -2010,6 +2032,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
     this->mModelScene->invalidate();
 
+    NMDebugAI(<< "collapsed rect: " << this->reportRect(mModelScene->itemsBoundingRect(), ""));
+
     if (move)
     {
         // determine import region
@@ -2037,6 +2061,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         this->moveComponents(moveItems, importRegion.center(), mLastScenePos);
     }
 
+    NMDebugAI(<< "moved & collapsed rect: " << this->reportRect(mModelScene->itemsBoundingRect(), ""));
 
     NMDebugCtx(ctx, << "done!");
 }

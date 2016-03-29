@@ -599,6 +599,31 @@ void NMModelViewWidget::initItemContextMenu()
 void
 NMModelViewWidget::test()
 {
+   NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+   NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(mLastItem);
+   QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(mLastItem);
+   QGraphicsProxyWidget* pw = qgraphicsitem_cast<QGraphicsProxyWidget*>(mLastItem);
+   std::string title;
+
+   if (ai)
+   {
+       title = ai->getTitle().toStdString();
+   }
+   else if (pi)
+   {
+       title = pi->getTitle().toStdString();
+   }
+   else if (ti)
+   {
+       title = QString("%1 ...").arg(ti->toPlainText().left(15)).toStdString();
+   }
+   else if (pw)
+   {
+       title = pw->objectName().toStdString();
+   }
+
+   NMDebugAI(<< "probing '" << title << "' ... " << std::endl);
+
    NMDebugAI(<< this->reportPoint(mLastItem->pos(), "item's pos") << std::endl);
    NMDebugAI(<< this->reportPoint(mLastItem->scenePos(), "item's scene pos") << std::endl);
    NMDebugAI(<< this->reportRect(mLastItem->boundingRect(), "item's rect") << std::endl);

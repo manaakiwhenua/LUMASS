@@ -536,8 +536,8 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     }
                 }
 
-                NMGlobalHelper h;
-                NMSqlTableView* tv = h.getMainWindow()->openCreateTable(OtbModellerWin::NM_TABVIEW_SCENE, false);
+                NMSqlTableView* tv = NMGlobalHelper::getMainWindow()->openCreateTable(
+                            OtbModellerWin::NM_TABVIEW_SCENE, false);
 
                 this->addParameterTable(tv, ai, host);
             }

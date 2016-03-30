@@ -360,6 +360,7 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     {
         this->addItem(proxyWidget);
     }
+    proxyWidget->setPos(proxyWidget->mapToParent(mMousePos));
 }
 
 //void

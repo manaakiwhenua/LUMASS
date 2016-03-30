@@ -68,7 +68,8 @@ public:
 
     typedef enum {  NMTABVIEW_ATTRTABLE,
                     NMTABVIEW_RASMETADATA,
-                    NMTABVIEW_PARATABLE
+                    NMTABVIEW_PARATABLE,
+                    NMTABVIEW_STANDALONE
                   }ViewMode;
 
     NMSqlTableView(QSqlTableModel* model, QWidget* parent=0);

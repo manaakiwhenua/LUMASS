@@ -1817,7 +1817,7 @@ OtbModellerWin::importTable(const QString& fileName,
     {
         tabview = QSharedPointer<NMSqlTableView>(
                     new NMSqlTableView(srcModel,
-                        NMSqlTableView::NMTABVIEW_ATTRTABLE, 0)
+                        NMSqlTableView::NMTABVIEW_STANDALONE, 0)
                     );
     }
     else if (tvType == NM_TABVIEW_SCENE)

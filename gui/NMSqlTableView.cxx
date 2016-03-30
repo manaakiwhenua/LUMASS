@@ -101,6 +101,9 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
     this->mProxySelModel->setObjectName("FastProxySelection");
     this->mTableView->setSelectionModel(mProxySelModel);
 
+    // we create our own 'source' selection model when not in ATTRTABLE mode
+    mSelectionModel = new NMFastTrackSelectionModel(model, this);
+
     this->initView();
 }
 
@@ -119,6 +122,12 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* pa
     this->mProxySelModel = new NMFastTrackSelectionModel(mModel, this);
     this->mProxySelModel->setObjectName("FastProxySelection");
     this->mTableView->setSelectionModel(mProxySelModel);
+
+    // we create our own 'source' selection model when not in ATTRTABLE mode
+    if (mViewMode != NMTABVIEW_ATTRTABLE)
+    {
+        mSelectionModel = new NMFastTrackSelectionModel(model, this);
+    }
 
     this->initView();
 }
@@ -228,7 +237,7 @@ void NMSqlTableView::initView()
 	actUnHide->setText(tr("Unhide Column ..."));
 
     QAction* actAddRow = 0;
-    if (mViewMode == NMTABVIEW_PARATABLE)
+    if (mViewMode == NMTABVIEW_PARATABLE || mViewMode == NMTABVIEW_STANDALONE)
     {
         actAddRow = new QAction(this->mColHeadMenu);
         actAddRow->setText(tr("Add Row"));
@@ -241,9 +250,7 @@ void NMSqlTableView::initView()
 	QAction* actNorm;
 	QAction* actJoin;
 
-    if (    mViewMode == NMTABVIEW_ATTRTABLE
-        ||  mViewMode == NMTABVIEW_PARATABLE
-       )
+    if (mViewMode != NMTABVIEW_RASMETADATA)
 	{
 		actDelete = new QAction(this->mColHeadMenu);
 		actDelete->setText(tr("Delete Column"));
@@ -267,15 +274,15 @@ void NMSqlTableView::initView()
 	this->mColHeadMenu->addSeparator();
 	this->mColHeadMenu->addAction(actStat);
 
-    if (    mViewMode == NMTABVIEW_ATTRTABLE
-        ||  mViewMode == NMTABVIEW_PARATABLE
-       )
+    if (mViewMode != NMTABVIEW_RASMETADATA)
 	{
 		this->mColHeadMenu->addAction(actCalc);
         //this->mColHeadMenu->addAction(actNorm);
 		this->mColHeadMenu->addSeparator();
 		this->mColHeadMenu->addAction(actAdd);
-        if (mViewMode == NMTABVIEW_PARATABLE)
+        if (    mViewMode == NMTABVIEW_PARATABLE
+            ||  mViewMode == NMTABVIEW_STANDALONE
+           )
         {
             this->mColHeadMenu->addAction(actAddRow);
         }
@@ -286,7 +293,9 @@ void NMSqlTableView::initView()
 	this->mColHeadMenu->addAction(actUnHide);
 
 	this->mColHeadMenu->addSeparator();
-	if (mViewMode == NMTABVIEW_ATTRTABLE)
+    if (    mViewMode == NMTABVIEW_ATTRTABLE
+        ||  mViewMode == NMTABVIEW_STANDALONE
+       )
 	{
 		this->mColHeadMenu->addAction(actJoin);
 	}
@@ -306,16 +315,22 @@ void NMSqlTableView::initView()
 	this->connect(actHide, SIGNAL(triggered()), this, SLOT(callHideColumn()));
 	this->connect(actUnHide, SIGNAL(triggered()), this, SLOT(callUnHideColumn()));
 
-    if (    mViewMode == NMTABVIEW_ATTRTABLE
-        ||  mViewMode == NMTABVIEW_PARATABLE
-       )
+    if (mViewMode != NMTABVIEW_RASMETADATA)
 	{
 		this->connect(actAdd, SIGNAL(triggered()), this, SLOT(addColumn()));
 		this->connect(actDelete, SIGNAL(triggered()), this, SLOT(deleteColumn()));
 		this->connect(actCalc, SIGNAL(triggered()), this, SLOT(calcColumn()));
 		this->connect(actNorm, SIGNAL(triggered()), this, SLOT(normalise()));
-		this->connect(actJoin, SIGNAL(triggered()), this, SLOT(joinAttributes()));
-        if (mViewMode == NMTABVIEW_PARATABLE)
+        if (    mViewMode == NMTABVIEW_ATTRTABLE
+            ||  mViewMode == NMTABVIEW_STANDALONE
+           )
+        {
+            this->connect(actJoin, SIGNAL(triggered()), this, SLOT(joinAttributes()));
+        }
+
+        if (    mViewMode == NMTABVIEW_PARATABLE
+            ||  mViewMode == NMTABVIEW_STANDALONE
+           )
         {
             this->connect(actAddRow, SIGNAL(triggered()), this, SLOT(addRow()));
         }
@@ -344,6 +359,7 @@ NMSqlTableView::closeEvent(QCloseEvent *event)
     switch(mViewMode)
     {
     case NMTABVIEW_ATTRTABLE:
+    case NMTABVIEW_STANDALONE:
         emit tableViewClosed();
         event->accept();
         break;
@@ -435,6 +451,8 @@ NMSqlTableView::setViewMode(ViewMode mode)
 	switch(mode)
 	{
 	case NMTABVIEW_ATTRTABLE:
+    case NMTABVIEW_STANDALONE:
+    case NMTABVIEW_PARATABLE:
 		this->mViewMode = mode;
 		this->mTableView->verticalHeader()->show();
 		break;

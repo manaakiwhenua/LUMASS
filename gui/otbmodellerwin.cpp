@@ -2673,37 +2673,43 @@ void OtbModellerWin::test()
     NMModelViewWidget* view = ui->modelViewWidget;
     NMModelScene* scene = view->getScene();
 
-    QString name = QInputDialog::getText(this, "", "");
-    if (name.isEmpty())
-    {
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
+    QRectF br = scene->itemsBoundingRect();
+    NMDebugAI( << "scene bnd rect: "
+               << br.center().x() << " " << br.center().y() << " | "
+               << br.width() << " " << br.height() << std::endl);
 
-    foreach(QGraphicsItem* gi, scene->items())
-    {
-        NMProcessComponentItem* pi =
-                qgraphicsitem_cast<NMProcessComponentItem*>(gi);
 
-        NMAggregateComponentItem* ai =
-                qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+//    QString name = QInputDialog::getText(this, "", "");
+//    if (name.isEmpty())
+//    {
+//        NMDebugCtx(ctxOtbModellerWin, << "done!");
+//        return;
+//    }
 
-        NMAggregateComponentItem* eci = 0;
-        if (pi && pi->getTitle().compare(name) == 0)
-        {
-            NMAggregateComponentItem* hi = pi->getModelParent();
-            hi->getEldestCollapsedAncestor(eci);
-        }
-        else if (ai && ai->getTitle().compare(name) == 0)
-        {
-            ai->getEldestCollapsedAncestor(eci);
-        }
+//    foreach(QGraphicsItem* gi, scene->items())
+//    {
+//        NMProcessComponentItem* pi =
+//                qgraphicsitem_cast<NMProcessComponentItem*>(gi);
 
-        if (eci)
-        {
-            NMDebugAI(<< "eci = " << eci->getTitle().toStdString() << std::endl);
-        }
-    }
+//        NMAggregateComponentItem* ai =
+//                qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+
+//        NMAggregateComponentItem* eci = 0;
+//        if (pi && pi->getTitle().compare(name) == 0)
+//        {
+//            NMAggregateComponentItem* hi = pi->getModelParent();
+//            hi->getEldestCollapsedAncestor(eci);
+//        }
+//        else if (ai && ai->getTitle().compare(name) == 0)
+//        {
+//            ai->getEldestCollapsedAncestor(eci);
+//        }
+
+//        if (eci)
+//        {
+//            NMDebugAI(<< "eci = " << eci->getTitle().toStdString() << std::endl);
+//        }
+//    }
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

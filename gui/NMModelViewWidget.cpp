@@ -2022,7 +2022,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 		}
 	}
 
-    NMDebugAI(<< "exploded rect: " << this->reportRect(mModelScene->itemsBoundingRect(), ""));
+    NMDebugAI(<< "exploded rect: " << this->reportRect(mModelScene->itemsBoundingRect(), "") << std::endl);
 
 
     // now we collapse all collapsed aggregate component items
@@ -2057,7 +2057,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
     this->mModelScene->invalidate();
 
-    NMDebugAI(<< "collapsed rect: " << this->reportRect(mModelScene->itemsBoundingRect(), ""));
+    NMDebugAI(<< "collapsed rect: " << this->reportRect(mModelScene->itemsBoundingRect(), "") << std::endl);
 
     if (move)
     {
@@ -2086,7 +2086,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         this->moveComponents(moveItems, importRegion.center(), mLastScenePos);
     }
 
-    NMDebugAI(<< "moved & collapsed rect: " << this->reportRect(mModelScene->itemsBoundingRect(), ""));
+    NMDebugAI(<< "moved & collapsed rect: " << this->reportRect(mModelScene->itemsBoundingRect(), "") << std::endl);
 
     NMDebugCtx(ctx, << "done!");
 }

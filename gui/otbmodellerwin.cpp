@@ -2673,44 +2673,72 @@ void OtbModellerWin::test()
     NMModelViewWidget* view = ui->modelViewWidget;
     NMModelScene* scene = view->getScene();
 
+
+
+
+
     QRectF br = scene->itemsBoundingRect();
     NMDebugAI( << "scene bnd rect: "
                << br.center().x() << " " << br.center().y() << " | "
                << br.width() << " " << br.height() << std::endl);
 
+    // array order: minx, maxx, miny, maxy
+    QList<qreal> coord;
+    coord << 100000 << -100000 << 100000 << -100000;
+    QList<std::string> comps;
+    comps << "c1" << "c2" << "c3" << "c4";
 
-//    QString name = QInputDialog::getText(this, "", "");
-//    if (name.isEmpty())
-//    {
-//        NMDebugCtx(ctxOtbModellerWin, << "done!");
-//        return;
-//    }
+    foreach(QGraphicsItem* gi, scene->items())
+    {
+        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
+        QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
 
-//    foreach(QGraphicsItem* gi, scene->items())
-//    {
-//        NMProcessComponentItem* pi =
-//                qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+        QString id = "";
+        if (pi)
+            id = pi->getTitle();
+        else if (ai)
+            id = ai->getTitle();
+        else if (ti)
+            id = ti->toPlainText().left(5);
+        else if (li)
+        {
+            QString src = li->sourceItem()->getTitle();
+            QString tar = li->targetItem()->getTitle();
+            id = QString("%1 --> %2").arg(src).arg(tar);
+        }
 
-//        NMAggregateComponentItem* ai =
-//                qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+        QRectF r = gi->mapRectToScene(gi->boundingRect());
+        if (r.left() < coord[0])
+        {
+            coord[0] = r.left();
+            comps[0] = id.toStdString();
+        }
 
-//        NMAggregateComponentItem* eci = 0;
-//        if (pi && pi->getTitle().compare(name) == 0)
-//        {
-//            NMAggregateComponentItem* hi = pi->getModelParent();
-//            hi->getEldestCollapsedAncestor(eci);
-//        }
-//        else if (ai && ai->getTitle().compare(name) == 0)
-//        {
-//            ai->getEldestCollapsedAncestor(eci);
-//        }
+        if (r.right() > coord[1])
+        {
+            coord[1] = r.right();
+            comps[1] = id.toStdString();
+        }
 
-//        if (eci)
-//        {
-//            NMDebugAI(<< "eci = " << eci->getTitle().toStdString() << std::endl);
-//        }
-//    }
+        if (r.top() < coord[2])
+        {
+            coord[2] = r.top();
+            comps[2] = id.toStdString();
+        }
 
+        if (r.bottom() > coord[3])
+        {
+            coord[3] = r.bottom();
+            comps[3] = id.toStdString();
+        }
+    }
+
+    NMDebugAI(<< "minx = " << coord[0] << "\t" << comps[0] << std::endl);
+    NMDebugAI(<< "maxx = " << coord[1] << "\t" << comps[1] << std::endl);
+    NMDebugAI(<< "miny = " << coord[2] << "\t" << comps[2] << std::endl);
+    NMDebugAI(<< "maxy = " << coord[3] << "\t" << comps[3] << std::endl);
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

@@ -71,11 +71,42 @@ QRectF
 NMComponentLinkItem::boundingRect(void) const
 {
     // determine coordinates and bounding rectangle
-    QPointF sp = mapFromItem(mSourceItem, 0, 0);
-    QPointF tp = mapFromItem(mTargetItem, 0, 0);
-    QRectF srcBnd = mapFromItem(mSourceItem, mSourceItem->boundingRect()).boundingRect();
-    QRectF tarBnd = mapFromItem(mTargetItem, mTargetItem->boundingRect()).boundingRect();
-    //this->mBndBox = srcBnd.united(tarBnd);
+    QRectF srcBnd, tarBnd;
+
+    NMAggregateComponentItem* eldestCollapsedTarget = 0;
+    NMAggregateComponentItem* th = mTargetItem->getModelParent();
+    if (th)
+    {
+        eldestCollapsedTarget = th->isCollapsed() ? th : 0;
+        th->getEldestCollapsedAncestor(eldestCollapsedTarget);
+
+        if (eldestCollapsedTarget)
+        {
+            tarBnd = mapRectFromItem(eldestCollapsedTarget, eldestCollapsedTarget->iconRect());
+        }
+        else
+        {
+            tarBnd = mapRectFromItem(mTargetItem, mTargetItem->boundingRect());
+        }
+    }
+
+    NMAggregateComponentItem* eldestCollapsedSource = 0;
+    NMAggregateComponentItem* ts = mSourceItem->getModelParent();
+    if (ts)
+    {
+        eldestCollapsedSource = ts->isCollapsed() ? ts : 0;
+        ts->getEldestCollapsedAncestor(eldestCollapsedSource);
+
+        if (eldestCollapsedSource)
+        {
+            srcBnd = mapRectFromItem(eldestCollapsedSource, eldestCollapsedSource->iconRect());
+        }
+        else
+        {
+            srcBnd = mapRectFromItem(mSourceItem, mSourceItem->boundingRect());
+        }
+    }
+
     return srcBnd.united(tarBnd);
 }
 
@@ -108,11 +139,6 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
     NMAggregateComponentItem* th = mTargetItem->getModelParent();
     if (th)
     {
-        if (th->getTitle().compare("AggrComp333331") == 0)
-        {
-            int a = 5;
-        }
-
         eldestCollapsedTarget = th->isCollapsed() ? th : 0;
         th->getEldestCollapsedAncestor(eldestCollapsedTarget);
     }
@@ -137,10 +163,6 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
     NMAggregateComponentItem* ts = mSourceItem->getModelParent();
     if (ts)
     {
-        if (ts->getTitle().compare("AggrComp10") == 0)
-        {
-            int a = 5;
-        }
         eldestCollapsedSource = ts->isCollapsed() ? ts : 0;
         ts->getEldestCollapsedAncestor(eldestCollapsedSource);
     }
@@ -169,7 +191,6 @@ NMComponentLinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
     {
         return;
     }
-
 
     // ----------------------------------------------------------
     //      determine source & target intersection points

@@ -157,6 +157,8 @@ NMAggregateComponentItem::collapse(bool bCollapse)
         while (it != mHiddenItems.end())
         {
             QGraphicsItem* item = *it;
+            NMModelScene* mscene = qobject_cast<NMModelScene*>(scene());
+            mscene->updateComponentItemFlags(item);
             this->addToGroup(item);
             NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);

@@ -175,20 +175,13 @@ NMModelScene::updateComponentItemFlags(QGraphicsItem *item)
     switch(mMode)
     {
     case NMS_LINK:
-        //item->setFlag(QGraphicsItem::ItemIsMovable, false);
         item->setFlag(QGraphicsItem::ItemIsSelectable, false);
         break;
-//    case NMS_MOVE:
-//        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-//        item->setFlag(QGraphicsItem::ItemIsMovable, false);
-//        break;
     case NMS_SELECT:
         item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-//        item->setFlag(QGraphicsItem::ItemIsMovable, true);
         break;
     case NMS_IDLE:
     default:
-//        item->setFlag(QGraphicsItem::ItemIsMovable, true);
         item->setFlag(QGraphicsItem::ItemIsSelectable, false);
         break;
     }
@@ -202,6 +195,8 @@ NMModelScene::updateComponentItemFlags(QGraphicsItem *item)
         item->setFlag(QGraphicsItem::ItemIsMovable, true);
     }
 }
+
+
 
 void NMModelScene::setProcCompSelectability(bool selectable)
 {

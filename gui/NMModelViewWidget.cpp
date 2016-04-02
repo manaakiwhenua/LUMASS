@@ -53,6 +53,7 @@
 #include "NMConditionalIterComponent.h"
 #include "NMComponentEditor.h"
 #include "NMGlobalHelper.h"
+#include "NMParameterTable.h"
 
 const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 
@@ -1280,6 +1281,26 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
         }
         break;
 
+    case QGraphicsProxyWidget::Type:
+        {
+            QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
+            comp = this->mModelController->getComponent(pwi->objectName());
+            if (comp == 0)
+            {
+                NMErr(ctx, << "couldn't write '" << pwi->objectName().toStdString() << "' - skip it!");
+                return;
+            }
+
+            NMParameterTable* pt = qobject_cast<NMParameterTable*>(comp);
+
+            xmlS.serialiseComponent(comp, doc);
+            lmv << (qint32)QGraphicsProxyWidget::Type;
+            lmv << pt->getFileName();
+            lmv << pt->getTableName();
+            lmv << pwi->scenePos();
+        }
+        break;
+
     default:
         break;
     }
@@ -1806,6 +1827,25 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         lmv >> dyn;
 				}
 				break;
+
+        case (qint32)QGraphicsProxyWidget::Type:
+                {
+                    NMSqlTableView* tv = 0;
+                    QString fileName;
+                    QString tableName;
+                    QPointF scenePos;
+
+                    lmv >> fileName >> tableName >> scenePos;
+
+                    tv = NMGlobalHelper::getMainWindow()->importTable(
+                                fileName,
+                                OtbModellerWin::NM_TABVIEW_SCENE,
+                                true,
+                                tableName);
+
+                    this->mModelScene->addParameterTable(tv, 0, host);
+                }
+                break;
 
 		default:
             NMBoxWarn("Unknown Graphics Item!",

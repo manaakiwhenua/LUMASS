@@ -204,6 +204,12 @@ NMAggregateComponentItem::getModelParent(void)
 void
 NMAggregateComponentItem::relocate(const QPointF &target)
 {
+    if (this->isCollapsed())
+    {
+        this->setPos(target);
+        return;
+    }
+
     // target comes in parent coord sys
     // target is new centre
     QRectF sceneBnd = this->mapToScene(this->boundingRect()).boundingRect();
@@ -223,10 +229,6 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     {
         npos << nt + (ci->scenePos() - centre);
     }
-
-
-    //    QGraphicsItemGroup::setPos(target.x() - (sceneBnd.width()/2.0),
-    //                               target.y() - (sceneBnd.height()/2.0));
 
     QGraphicsItemGroup::setPos(this->mapFromScene(nt));
     int u=0;

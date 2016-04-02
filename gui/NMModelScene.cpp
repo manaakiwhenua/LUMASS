@@ -229,12 +229,23 @@ void NMModelScene::setLinkCompSelectability(bool selectable)
 
 void NMModelScene::setProcCompMoveability(bool moveable)
 {
-	QList<QGraphicsItem*> allItems = this->items();
+    QList<QGraphicsItem*> allItems = this->items();
 	QListIterator<QGraphicsItem*> it(allItems);
     //NMProcessComponentItem* item;
 	while(it.hasNext())
 	{
-		it.next()->setFlag(QGraphicsItem::ItemIsMovable, moveable);
+        QGraphicsItem* ni = it.next();
+        QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(ni);
+        if (pwi)
+        {
+            //ni->setFlag(QGraphicsItem::ItemIsSelectable, moveable);
+            pwi->setFlag(QGraphicsItem::ItemIsSelectable, moveable);
+            pwi->setFlag(QGraphicsItem::ItemIsMovable, moveable);
+        }
+        else
+        {
+            ni->setFlag(QGraphicsItem::ItemIsMovable, moveable);
+        }
 	}
 }
 
@@ -358,77 +369,6 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     proxyWidget->setPos(proxyWidget->mapToParent(mMousePos));
 }
 
-//void
-//NMModelScene::checkLinkVisibility()
-//{
-//    NMAggregateComponentItem* ai =
-//            qobject_cast<NMAggregateComponentItem*>(sender());
-//    if (ai == 0)
-//    {
-//        return;
-//    }
-
-//    bool bCollapse = ai->isCollapsed();
-//    QPointF npos = ai->iconRect().center();
-
-//    foreach (QGraphicsItem* gi, items())
-//    {
-//        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
-////        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-////        if (pi)
-////        {
-////            if (ai->isAncestorOf(pi))
-////            {
-////                pi->collapse(bCollapse, npos);
-////            }
-////        }
-//        // double checking the visibility of link items; a link item is invisible
-//        // if it's source and target have a common ancestor which is collapsed,
-//        // otherwise, the link is visible
-//        //else
-//        if (li)
-//        {
-//            NMAggregateComponentItem* sourceHost =
-//                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->sourceItem()->parentItem());
-
-//            NMAggregateComponentItem* targetHost =
-//                    qgraphicsitem_cast<NMAggregateComponentItem*>(li->targetItem()->parentItem());
-
-//            QList<NMAggregateComponentItem*> sourceAncestors;
-//            QList<NMAggregateComponentItem*> targetAncestors;
-
-//            if (sourceHost)
-//            {
-//                sourceAncestors << sourceHost;
-//                sourceHost->getAncestors(sourceAncestors);
-//            }
-
-//            if (targetHost)
-//            {
-//                targetAncestors << targetHost;
-//                targetHost->getAncestors(targetAncestors);
-//            }
-
-//            bool oneCollapsed = false;
-//            foreach (NMAggregateComponentItem* si, sourceAncestors)
-//            {
-//                if (targetAncestors.contains(si) && si->isCollapsed())
-//                {
-//                    oneCollapsed = true;
-//                }
-//            }
-
-//            if (oneCollapsed)
-//            {
-//                li->setVisible(false);
-//            }
-//            else
-//            {
-//                li->setVisible(true);
-//            }
-//        }
-//    }
-//}
 
 void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 {
@@ -460,14 +400,9 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
         // do something depending on the source of the object
 
-        // internal drag'n'drop for copying or moving of objects
-        //        if (dropItem.isEmpty())
-        //        {
-        //            NMDebugAI(<< "nothing to be done - no drop item provided!" << std::endl);
-        //            NMDebugCtx(ctx, << "done!");
-        //            return;
-        //        }
-        //else
+        // =========================================================
+        //  MOVE / COPY COMPONENTS ON SCENE
+        // =========================================================
         if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
         {
             //event->acceptProposedAction();
@@ -485,14 +420,17 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             }
             this->mDragItemList.clear();
         }
+        // =========================================================
+        //  ADD NEW PROC COMP ITEMS
+        // =========================================================
         else if (dropSource.startsWith(QString::fromLatin1("_NMProcCompList_")))
         {
             QGraphicsItem* pi = this->itemAt(event->scenePos(), this->views()[0]->transform());
             NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(pi);
 
-            // ============================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             //  TEXT LABEL
-            // =============================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             if (dropItem.compare(QString::fromLatin1("TextLabel")) == 0)
             {
                 QGraphicsTextItem* labelItem = new QGraphicsTextItem(ai);
@@ -512,9 +450,9 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 }
                 //event->acceptProposedAction();
             }
-            // ============================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             //  PARAMETER TABLE
-            // =============================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             else if (dropItem.compare(QString::fromLatin1("ParameterTable")) == 0)
             {
                 NMModelComponent* host = 0;
@@ -537,9 +475,9 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
                 this->addParameterTable(tv, ai, host);
             }
-            // ============================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             //  PROCESS COMPONENT
-            // =============================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             else
             {
                 NMProcessComponentItem* procItem = new NMProcessComponentItem(0, this);
@@ -557,12 +495,14 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 emit processItemCreated(procItem, dropItem, event->scenePos());
             }
         }
+        // =========================================================
+        //  IMPORT FROM FILE
+        // =========================================================
         else if (event->mimeData()->hasUrls())
         {
             QGraphicsItem* item = this->itemAt(mMousePos, this->views()[0]->transform());
             NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
             NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
-
 
             // supported formats for parameter tables
             QStringList tabFormats;
@@ -577,10 +517,10 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
             QFileInfo fifo(fileName);
             QString suffix = fifo.suffix();
-            // =============================================================
-            // DROPED LUMASS MODEL FILE
-            // =============================================================
 
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // LUMASS MODEL FILE
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             if (    fileName.endsWith(QString::fromLatin1("lmv"))
                 ||  fileName.endsWith(QString::fromLatin1("lmx"))
                )
@@ -597,9 +537,9 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     }
                 }
             }
-            // =============================================================
-            // DROPED PARAMETER TABLE FILENAME on aggregate component
-            // =============================================================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // PARAMETER TABLE
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             else if (   tabFormats.contains(suffix, Qt::CaseInsensitive)
                      //&& aggrItem
                     )
@@ -635,9 +575,9 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
                 this->addParameterTable(tv, aggrItem, host);
             }
-            // =============================================================
-            // DROPED LIST OF IMAGE/TABLE FILENAMES ON PROCESS COMP ITEM
-            // =============================================================
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // LIST OF IMAGE/TABLE FILENAMES ON PROCESS COMP ITEM
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             else if (procItem != 0)
             {
                 // check whether the procItem has got a fileName property
@@ -794,7 +734,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
     mDragItemList.clear();
     QGraphicsItem* item = this->itemAt(event->scenePos(), this->views()[0]->transform());
 
-    //QGraphicsProxyWidget* widgetItem = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
+    QGraphicsProxyWidget* pwi = 0;
     QGraphicsTextItem* textItem = qgraphicsitem_cast<QGraphicsTextItem*>(item);
     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
     NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -827,7 +767,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                 {
                     this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
 
-                    QGraphicsProxyWidget* pwi = this->getWidgetAt(event->scenePos());
+                    pwi = this->getWidgetAt(event->scenePos());
                     if (pwi)
                     {
                         this->views().at(0)->setCursor(Qt::ClosedHandCursor);
@@ -867,7 +807,7 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
         QPointF pt = event->scenePos();
         QGraphicsItem* sendItem = 0;
 
-        QGraphicsProxyWidget* pwi = this->getWidgetAt(pt);
+        pwi = this->getWidgetAt(pt);
         if (pwi)
         {
             QRectF wFrameRect = pwi->mapRectToScene(pwi->windowFrameRect());
@@ -995,7 +935,13 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     default:
 
         {
-            QGraphicsItem* dragItem = this->itemAt(mMousePos, this->views()[0]->transform());
+            QGraphicsItem* dragItem = qgraphicsitem_cast<QGraphicsItem*>(this->getWidgetAt(mMousePos));
+            if (dragItem == 0)
+            {
+                dragItem = this->itemAt(mMousePos, this->views()[0]->transform());
+            }
+
+
             if (    (event->buttons() & Qt::LeftButton)
                 &&  dragItem != 0
                 &&  (   QApplication::keyboardModifiers() & Qt::AltModifier

@@ -533,7 +533,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                         NMDebugAI(<< "gonna import model file: " << fileName.toStdString() << std::endl);
                         //event->acceptProposedAction();
 
-                        emit signalModelFileDropped(fileName);
+                        emit signalModelFileDropped(fileName, mMousePos);
                     }
                 }
             }
@@ -940,8 +940,6 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             {
                 dragItem = this->itemAt(mMousePos, this->views()[0]->transform());
             }
-
-
             if (    (event->buttons() & Qt::LeftButton)
                 &&  dragItem != 0
                 &&  (   QApplication::keyboardModifiers() & Qt::AltModifier
@@ -980,12 +978,29 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                 }
                 else if (event->modifiers() & Qt::AltModifier)
                 {
-                   NMDebugAI(<< " >> copying ..." << std::endl);
-                   //drag->setDragCursor(dragPix, Qt::CopyAction);
-                   drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::CopyAction);
+                   if (dragItem->type() == QGraphicsProxyWidget::Type)
+                   {
+                       QMessageBox::information(qobject_cast<QWidget*>(this->parent()),
+                                                "Copy Item",
+                                                "Sorry, LUMASS doesn't support "
+                                                "(deep) copying parameter tables!");
+
+                       //NMBoxInfo("Copy Item", "Sorry, LUMASS doesn't support (deep) copying parameter tables!");
+                       return;
+                   }
+                   else
+                   {
+                       NMDebugAI(<< " >> copying ..." << std::endl);
+                       //drag->setDragCursor(dragPix, Qt::CopyAction);
+                       drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::CopyAction);
+                   }
                 }
                 NMDebugAI(<< "drag start - " << mimeText.toStdString() << std::endl);
                 this->setProcCompMoveability(false);
+            }
+            else if (dragItem && mbSceneMove)
+            {
+                return;
             }
         }
         this->invalidate();

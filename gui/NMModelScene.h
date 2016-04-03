@@ -105,7 +105,8 @@ signals:
     void itemDblClicked(QGraphicsSceneMouseEvent *);
     void itemLeftClicked(const QString& itemName);
     void zoom(int delta);
-    void signalModelFileDropped(const QString& fileName);
+    void signalModelFileDropped(const QString& fileName,
+                                const QPointF& scenePos);
     void signalItemCopy(const QList<QGraphicsItem*>& copyList,
                         const QPointF& sourcePos, const QPointF& targetPos);
     void signalItemMove(const QList<QGraphicsItem*>& moveList,

@@ -83,6 +83,9 @@ public slots:
     void setGroupTimeLevel();
     void addDeltaTimeLevel();
 
+    void processModelFileDrop(const QString& fileName,
+                              const QPointF& scenePos);
+
 
 	void editRootComponent();
     //void compProcChanged();

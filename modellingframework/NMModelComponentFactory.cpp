@@ -26,6 +26,7 @@
 #include "NMSequentialIterComponent.h"
 #include "NMConditionalIterComponent.h"
 #include "NMDataComponent.h"
+#include "NMParameterTable.h"
 
 NMModelComponentFactory::NMModelComponentFactory(QObject* parent)
 {
@@ -59,6 +60,10 @@ NMModelComponent* NMModelComponentFactory::createModelComponent(const QString& c
 		return qobject_cast<NMModelComponent*>(
 				new NMDataComponent(this));
 	}
-	else
-		return 0;
+    else if (compClass.compare("NMParameterTable") == 0)
+    {
+        return qobject_cast<NMModelComponent*>(
+                 new NMParameterTable(this));
+    }
+    return 0;
 }

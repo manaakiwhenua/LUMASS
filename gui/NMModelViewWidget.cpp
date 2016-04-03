@@ -149,8 +149,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     connect(mModelScene, SIGNAL(zoom(int)), this, SLOT(zoom(int)));
     connect(mModelScene, SIGNAL(itemLeftClicked(const QString &)), this,
             SLOT(updateTreeEditor(const QString &)));
-    connect(mModelScene, SIGNAL(signalModelFileDropped(const QString &)),
-            this, SLOT(loadItems(const QString &)));
+    connect(mModelScene, SIGNAL(signalModelFileDropped(const QString &, const QPointF &)),
+            this, SLOT(processModelFileDrop(const QString &, const QPointF &)));
     connect(mModelScene, SIGNAL(signalItemCopy(const QList<QGraphicsItem*> &, const QPointF &,
                                                const QPointF &)),
             this, SLOT(copyComponents(const QList<QGraphicsItem*> &, const QPointF &,
@@ -630,6 +630,16 @@ NMModelViewWidget::test()
    NMDebugAI(<< this->reportRect(mLastItem->boundingRect(), "item's rect") << std::endl);
    NMDebugAI(<< this->reportRect(mLastItem->sceneBoundingRect(), "item's scene rect") << std::endl);
 }
+
+
+void
+NMModelViewWidget::processModelFileDrop(const QString& fileName,
+                          const QPointF& scenePos)
+{
+    mLastScenePos = scenePos;
+    this->loadItems(fileName);
+}
+
 
 void
 NMModelViewWidget::changeFont(void)
@@ -1295,9 +1305,10 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
 
             xmlS.serialiseComponent(comp, doc);
             lmv << (qint32)QGraphicsProxyWidget::Type;
+            lmv << pwi->objectName();
             lmv << pt->getFileName();
             lmv << pt->getTableName();
-            lmv << pwi->scenePos();
+            lmv << pwi->pos();
         }
         break;
 
@@ -1831,11 +1842,12 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         case (qint32)QGraphicsProxyWidget::Type:
                 {
                     NMSqlTableView* tv = 0;
+                    QString ptName;
                     QString fileName;
                     QString tableName;
-                    QPointF scenePos;
+                    QPointF itemPos;
 
-                    lmv >> fileName >> tableName >> scenePos;
+                    lmv >> ptName >> fileName >> tableName >> itemPos;
 
                     tv = NMGlobalHelper::getMainWindow()->importTable(
                                 fileName,
@@ -1843,7 +1855,38 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                                 true,
                                 tableName);
 
-                    this->mModelScene->addParameterTable(tv, 0, host);
+                    // if importing the table failed, we have
+                    // to get rid of the model component as well
+                    if (tv == 0)
+                    {
+                        QString name = nameRegister.value(ptName);
+                        NMModelComponent* comp =
+                                this->mModelController->getComponent(name);
+                        if (comp)
+                        {
+                            mModelController->removeComponent(name);
+                            QMap<QString, QString>& nR = const_cast< QMap<QString, QString>& >(nameRegister);
+                            nR.remove(ptName);
+                        }
+                        NMErr(ctx, "Failed importing ParameterTable '"
+                                   << ptName.toStdString() << "/"
+                                   << name.toStdString() << "'!" << std::endl);
+                    }
+                    else
+                    {
+                        QGraphicsProxyWidget* proxyWidget =
+                                this->mModelScene->addWidget(tv, Qt::CustomizeWindowHint |
+                                                    Qt::Window | Qt::WindowTitleHint);
+                        proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
+                        proxyWidget->setObjectName(ptName);
+                        proxyWidget->setPos(itemPos);
+                        this->mModelScene->updateComponentItemFlags(proxyWidget);
+
+                        connect(this, SIGNAL(widgetViewPortRightClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
+                                tv, SLOT(processParaTableRightClick(QGraphicsSceneMouseEvent*,QGraphicsItem*)));
+                        connect(this, SIGNAL(itemDblClicked(QGraphicsSceneMouseEvent*)),
+                                tv, SLOT(processParaTableDblClick(QGraphicsSceneMouseEvent*)));
+                    }
                 }
                 break;
 
@@ -2002,6 +2045,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 
                     NMProcessComponentItem* ipi = 0;
 					NMAggregateComponentItem* iai = 0;
+                    QGraphicsProxyWidget* pwi = 0;
                     for (unsigned int c=0; c < nkids; ++c)
 					{
                         QString kname;
@@ -2033,11 +2077,15 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                                     this->mModelScene->getComponentItem(kname));
                             iai = qgraphicsitem_cast<NMAggregateComponentItem*>(
                                     this->mModelScene->getComponentItem(kname));
+                            pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(
+                                        this->mModelScene->getComponentItem(kname));
 
                             if (ipi != 0)
                                 ai->addToGroup(ipi);
                             else if (iai != 0)
                                 ai->addToGroup(iai);
+                            else if (pwi != 0)
+                                ai->addToGroup(pwi);
                         }
 					}
 
@@ -2057,6 +2105,16 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 				}
 				break;
 
+        case (qint32)QGraphicsProxyWidget::Type:
+                {
+                    QString ptName;
+                    QString fileName;
+                    QString tableName;
+                    QPointF scenePos;
+
+                    lmv >> ptName >> fileName >> tableName >> scenePos;
+                }
+                break;
 		default:
 			break;
 		}
@@ -2429,10 +2487,14 @@ NMModelComponent* NMModelViewWidget::componentFromItem(QGraphicsItem* item)
 	NMModelComponent* ret = 0;
 	NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 	NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
-	if (pi != 0)
+    QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
+
+    if (pi != 0)
 		ret = this->mModelController->getComponent(pi->getTitle());
 	else if (ai != 0)
 		ret = this->mModelController->getComponent(ai->getTitle());
+    else if (pwi != 0)
+        ret = this->mModelController->getComponent(pwi->objectName());
 
 	return ret;
 }
@@ -2442,11 +2504,14 @@ QString NMModelViewWidget::getComponentItemTitle(QGraphicsItem* item)
 	QString ret;
 	NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 	NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+    QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
 
 	if (pi != 0)
 		ret = pi->getTitle();
 	else if (ai != 0)
 		ret = ai->getTitle();
+    else if (pwi != 0)
+        ret = pwi->objectName();
 
 	return ret;
 }

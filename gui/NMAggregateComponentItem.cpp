@@ -24,8 +24,11 @@
 
 #include <QApplication>
 #include <QDebug>
+#include <QGraphicsProxyWidget>
+
 #include "NMAggregateComponentItem.h"
 #include "nmlog.h"
+
 
 //#include "valgrind/callgrind.h"
 
@@ -715,6 +718,7 @@ QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
 		NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(kids.at(c));
 		NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(kids.at(c));
         QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(kids.at(c));
+        QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(kids.at(c));
 		if (ai != 0)
         {
 			data << ai->getTitle();
@@ -727,6 +731,10 @@ QDataStream& operator<<(QDataStream &data, const NMAggregateComponentItem &item)
         {
             data << QString::fromLatin1("TextLabel");
             data << *ti;
+        }
+        else if (pwi != 0)
+        {
+            data << pwi->objectName();
         }
 	}
 

@@ -810,10 +810,10 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
         pwi = this->getWidgetAt(pt);
         if (pwi)
         {
-            QRectF wFrameRect = pwi->mapRectToScene(pwi->windowFrameRect());
-            QRectF wContentRect = pwi->mapRectToScene(pwi->contentsRect());
-            QRectF titleBar = wFrameRect.intersected(wContentRect);
-            if (!titleBar.contains(pt))
+            QRectF fr = pwi->mapRectToScene(pwi->windowFrameRect());
+            QRectF cr = pwi->mapRectToScene(pwi->contentsRect());
+            QRectF tb = fr.intersected(cr);
+            if (!tb.contains(pt))
             {
                 emit widgetTitleBarRightClicked(event, pwi);
             }

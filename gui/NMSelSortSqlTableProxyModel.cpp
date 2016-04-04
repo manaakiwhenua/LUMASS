@@ -654,6 +654,7 @@ NMSelSortSqlTableProxyModel::addRow()
         return false;
     }
     mSourceModel->select();
+	
 
     return true;
 }

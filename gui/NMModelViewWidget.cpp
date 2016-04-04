@@ -1882,9 +1882,9 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         proxyWidget->setPos(itemPos);
                         this->mModelScene->updateComponentItemFlags(proxyWidget);
 
-                        connect(this, SIGNAL(widgetViewPortRightClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
+                        connect(this->mModelScene, SIGNAL(widgetViewPortRightClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
                                 tv, SLOT(processParaTableRightClick(QGraphicsSceneMouseEvent*,QGraphicsItem*)));
-                        connect(this, SIGNAL(itemDblClicked(QGraphicsSceneMouseEvent*)),
+                        connect(this->mModelScene, SIGNAL(itemDblClicked(QGraphicsSceneMouseEvent*)),
                                 tv, SLOT(processParaTableDblClick(QGraphicsSceneMouseEvent*)));
                     }
                 }
@@ -2484,6 +2484,11 @@ void NMModelViewWidget::ungroupComponents()
 
 NMModelComponent* NMModelViewWidget::componentFromItem(QGraphicsItem* item)
 {
+	if (item == 0)
+	{
+		return 0;
+	}
+
 	NMModelComponent* ret = 0;
 	NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 	NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -2901,8 +2906,9 @@ NMModelViewWidget::deleteProxyWidget(QGraphicsProxyWidget *pw)
     {
         NMErr(ctx, << "Failed to delete '" << pw->windowTitle().toStdString() << "'!");
     }
-    NMGlobalHelper::getMainWindow()->deleteTableObject(title);
     this->mModelScene->removeItem(pw);
+	NMGlobalHelper::getMainWindow()->deleteTableObject(title);
+	
 }
 
 void NMModelViewWidget::deleteEmptyComponent(NMModelComponent* comp)

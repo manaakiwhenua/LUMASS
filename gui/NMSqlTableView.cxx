@@ -155,7 +155,7 @@ void NMSqlTableView::initView()
     mPrimaryKey = mSortFilter->getSourcePK();
 
 	// ---------------------------- THE PROGRESS DIALOG -------------------
-	mProgressDialog = new QProgressDialog(this);
+	//mProgressDialog = new QProgressDialog(this);
 
 
 	// ------------------ SET UP STATUS BAR ------------------------------
@@ -569,9 +569,9 @@ void NMSqlTableView::normalise()
 	calc->setRowFilter(mSelectionModel->selection());
     //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
 
-	prepareProgressDlg(calc.data(), "Normalise Columns ...", maxrange);
+	//prepareProgressDlg(calc.data(), "Normalise Columns ...", maxrange);
 	QStringList normCols = calc->normaliseColumns(columnNames, bCostCriterion);
-	cleanupProgressDlg(calc.data(), maxrange);
+	//cleanupProgressDlg(calc.data(), maxrange);
 
 	// since we've added columns, we want to make sure, that any selection is expanded to
 	// those columns as well
@@ -679,7 +679,11 @@ NMSqlTableView::addRow()
 {
     if (mSortFilter)
     {
-        mSortFilter->addRow();
+        if (mSortFilter->addRow())
+		{
+			mlNumRecs = mSortFilter->rowCount();
+			this->updateSelectionAdmin(mlNumRecs);
+		}
     }
 }
 
@@ -1730,9 +1734,9 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
 
 	const int ncols = mModel->columnCount(QModelIndex());
 
-    mProgressDialog->setWindowModality(Qt::WindowModal);
-    mProgressDialog->setLabelText("Export Table ...");
-    mProgressDialog->setRange(0, maxrange);
+    //mProgressDialog->setWindowModality(Qt::WindowModal);
+    //mProgressDialog->setLabelText("Export Table ...");
+    //mProgressDialog->setRange(0, maxrange);
 
 	// write header first
     int pkIdx = -1;
@@ -1767,14 +1771,14 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
         }
         out << "\n";
         ++progress;
-        mProgressDialog->setValue(progress);
+        //mProgressDialog->setValue(progress);
         if (progress % 1000 == 0)
         {
             out.flush();
         }
     }
 
-    mProgressDialog->setValue(maxrange);
+    //mProgressDialog->setValue(maxrange);
     out.flush();
 	file.close();
     NMDebugCtx(ctx, << "done!");

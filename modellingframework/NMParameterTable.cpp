@@ -147,7 +147,8 @@ NMParameterTable::setFileName(QString fn)
     //    this->setDescription(tab->GetTableName().c_str());
 
     QSharedPointer<NMItkDataObjectWrapper> wrapper(new NMItkDataObjectWrapper(this));
-    wrapper->setDataObject(tab);
+    otb::AttributeTable::Pointer stab = tab.GetPointer();
+    wrapper->setOTBTab(stab);
     this->setNthInput(0, wrapper);
 
 
@@ -224,6 +225,7 @@ NMParameterTable::linkComponents(unsigned int step, const QMap<QString, NMModelC
 void
 NMParameterTable::update(const QMap<QString, NMModelComponent*>& repo)
 {
+    this->setFileName(mFileName);
 }
 
 void

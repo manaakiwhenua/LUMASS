@@ -161,10 +161,13 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 	}
 
 	// fetch the data from the source object
-	QMap<QString, NMModelComponent*>::const_iterator it =
-			repo.find(mInputCompName);
-	if (it == repo.end())
-	{
+    NMModelComponent* inComp = NMModelController::getInstance()->getComponent(mInputCompName);
+
+//    QMap<QString, NMModelComponent*>::const_iterator it =
+//			repo.find(mInputCompName);
+//	if (it == repo.end())
+    if (inComp == 0)
+    {
 		msg << "The specified input component '"
 		    << mInputCompName.toStdString() << "' couldn't be found!";
 		e.setMsg(msg.str());
@@ -202,12 +205,23 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
 {
     QVariant param;
 
-    if (    paramSpec.isEmpty()
-        ||  this->mDataWrapper.isNull()
+    if (paramSpec.isEmpty())
+    {
+        return param;
+    }
+
+    if (    this->mDataWrapper.isNull()
         ||  this->mDataWrapper->getOTBTab().IsNull()
        )
     {
-        return param;
+        this->update(NMModelController::getInstance()->getRepository());
+
+        if (    this->mDataWrapper.isNull()
+            ||  this->mDataWrapper->getOTBTab().IsNull()
+           )
+        {
+            return param;
+        }
     }
 
     //  <columnName>:<rowNumber>
@@ -432,12 +446,15 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
         this->linkComponents(step, repo);
     }
 
-	QMap<QString, NMModelComponent*>::const_iterator it =
-			repo.find(mInputCompName);
+    NMModelComponent* inComp = NMModelController::getInstance()->getComponent(mInputCompName);
+//	QMap<QString, NMModelComponent*>::const_iterator it =
+//			repo.find(mInputCompName);
 
-	if (it != repo.end())
+//	if (it != repo.end())
+    if (inComp)
 	{
-		this->fetchData(it.value());
+        //this->fetchData(it.value());
+        this->fetchData(inComp);
 	}
 
 	NMDebugCtx(ctx, << "done!");

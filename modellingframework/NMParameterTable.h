@@ -67,6 +67,7 @@ public:
     virtual void reset(void);
 
 protected:
+
     QString mFileName;
     QString mTableName;
 

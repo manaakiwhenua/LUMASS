@@ -2670,75 +2670,156 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    NMModelViewWidget* view = ui->modelViewWidget;
-    NMModelScene* scene = view->getScene();
+    NMModelController* ctrl = NMModelController::getInstance();
+    QStringList componentList = ctrl->getRepository().keys();
 
+    QInputDialog ipd(this);
+    ipd.setOption(QInputDialog::UseListViewForComboBoxItems);
+    ipd.setComboBoxItems(componentList);
+    ipd.setComboBoxEditable(false);
+    ipd.setWindowTitle("Model Components");
+    ipd.setLabelText("pick one:");
+    int ret = ipd.exec();
 
-
-
-
-    QRectF br = scene->itemsBoundingRect();
-    NMDebugAI( << "scene bnd rect: "
-               << br.center().x() << " " << br.center().y() << " | "
-               << br.width() << " " << br.height() << std::endl);
-
-    // array order: minx, maxx, miny, maxy
-    QList<qreal> coord;
-    coord << 100000 << -100000 << 100000 << -100000;
-    QList<std::string> comps;
-    comps << "c1" << "c2" << "c3" << "c4";
-
-    foreach(QGraphicsItem* gi, scene->items())
+    QString startComp = ipd.textValue();
+    if (startComp.isEmpty())
     {
-        NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-        NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
-        NMComponentLinkItem* li = qgraphicsitem_cast<NMComponentLinkItem*>(gi);
-        QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
-
-        QString id = "";
-        if (pi)
-            id = pi->getTitle();
-        else if (ai)
-            id = ai->getTitle();
-        else if (ti)
-            id = ti->toPlainText().left(5);
-        else if (li)
-        {
-            QString src = li->sourceItem()->getTitle();
-            QString tar = li->targetItem()->getTitle();
-            id = QString("%1 --> %2").arg(src).arg(tar);
-        }
-
-        QRectF r = gi->mapRectToScene(gi->boundingRect());
-        if (r.left() < coord[0])
-        {
-            coord[0] = r.left();
-            comps[0] = id.toStdString();
-        }
-
-        if (r.right() > coord[1])
-        {
-            coord[1] = r.right();
-            comps[1] = id.toStdString();
-        }
-
-        if (r.top() < coord[2])
-        {
-            coord[2] = r.top();
-            comps[2] = id.toStdString();
-        }
-
-        if (r.bottom() > coord[3])
-        {
-            coord[3] = r.bottom();
-            comps[3] = id.toStdString();
-        }
+        NMDebugCtx(ctxOtbModellerWin, << "done!")
+        return;
     }
 
-    NMDebugAI(<< "minx = " << coord[0] << "\t" << comps[0] << std::endl);
-    NMDebugAI(<< "maxx = " << coord[1] << "\t" << comps[1] << std::endl);
-    NMDebugAI(<< "miny = " << coord[2] << "\t" << comps[2] << std::endl);
-    NMDebugAI(<< "maxy = " << coord[3] << "\t" << comps[3] << std::endl);
+
+    QString str = QInputDialog::getText(this, "", "", QLineEdit::Normal, "$$");
+
+    QString tStr = str;
+
+    QRegExp rex("\\$([a-zA-Z]+\\d*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
+    int pos = 0;
+    while((pos = rex.indexIn(str, pos) != -1))
+    {
+
+        NMDebugAI(<< "here's what we've got ... " << std::endl);
+
+        // 0: whole captured text
+        // 1: component name  | or user Id
+        // 2: [: property name]
+        // 3: [: property index]
+        // 4: [operator]
+        // 5: [integer number]
+        QStringList m = rex.capturedTexts();
+        pos += rex.matchedLength();
+        int c=0;
+        QString dbg;
+        foreach(const QString& s, m)
+        {
+            dbg = QString("%1\n%2").arg(dbg).arg(s);
+            NMDebugAI(<< c << ": " << s.toStdString() << std::endl);
+            ++c;
+        }
+        //NMBoxInfo("What we've got", dbg.toStdString());
+
+        // first check, whether there's a component we get by name
+        NMModelComponent* mc = ctrl->getComponent(m.at(1));
+        if (mc == 0)
+        {
+            NMIterableComponent* host = qobject_cast<NMIterableComponent*>(ctrl->getComponent(startComp));
+            if (host == 0)
+            {
+                host = qobject_cast<NMIterableComponent*>(ctrl->getComponent(startComp)->getHostComponent());
+            }
+            mc = host->findUpstreamComponentByUserId(m.at(1));
+        }
+
+        if (mc)
+        {
+            QVariant modelParam;
+            if (m.at(2).isEmpty())
+            {
+                NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+                if (ic)
+                {
+                    modelParam = QVariant::fromValue(ic->getIterationStep());
+                }
+            }
+            else
+            {
+                if (m.at(3).isEmpty())
+                {
+                    modelParam = mc->getModelParameter(m.at(2));
+                }
+                else
+                {
+                    QString paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
+                    modelParam = mc->getModelParameter(paramSpec);
+                }
+            }
+
+            // .........................................................
+            // if the model parameter is of integer type, we allow
+            // some arithemtic on it...
+
+            if (    (    modelParam.type() == QVariant::Int
+                     ||  modelParam.type() == QVariant::LongLong
+                     ||  modelParam.type() == QVariant::UInt
+                     ||  modelParam.type() == QVariant::ULongLong
+                    )
+                &&  !m.at(4).isEmpty() && !m.at(5).isEmpty()
+                )
+            {
+                bool bok;
+                long long delta = 0;
+                const long long t = m.at(5).toLongLong(&bok);
+                if (bok)
+                {
+                    delta = t;
+                }
+
+                //int itStep = ic->getIterationStep();
+                long long itStep = modelParam.toLongLong(&bok);
+
+                if (QString::fromLatin1("+").compare(m.at(4)) == 0)
+                {
+                    // could only bound  this, if we restricted to the use
+                    // of SequentialIterComponent here, not quite sure,
+                    // we want to do that
+                    itStep += delta;
+                }
+                else if (QString::fromLatin1("-").compare(m.at(4)) == 0)
+                {
+                    // prevent 'negative' iStep; could occur in 'instantiation phase'
+                    // of the pipeline, when the correct step parameter has not
+                    // been established yet (thereby always assuming that the
+                    // configuration by the user was correct, in which case the
+                    // a wrong parameter would be created during the 'link phase'
+                    // of the pipeline establishment)
+
+                    if (itStep - delta >= 0)
+                    {
+                        itStep -= delta;
+                    }
+                    else
+                    {
+                        NMWarn(this->objectName().toStdString(),
+                               << "Expression based parameter retreival "
+                               << "prevented a NEGATIVE PARAMETER INDEX!!"
+                               << "  Double check whether the correct "
+                               << "parameter was used and the results are OK!");
+                    }
+                }
+
+                tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
+            }
+            /// ToDo: how do we handle string lists ?
+            // no integer type, so ignore any potential arithemtic
+            else
+            {
+                tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(modelParam.toString()));
+            }
+            NMBoxInfo("generated param", tStr.toStdString());
+            NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
+        }
+
+    }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

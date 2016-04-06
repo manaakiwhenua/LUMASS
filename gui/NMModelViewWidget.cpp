@@ -725,9 +725,9 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
 
 	// Execute && Reset model
-    if (!running && ((ai != 0 || pi != 0 || mLastItem == 0) && li == 0 && ti == 0))
+    if (!running && ((ai != 0 || pi != 0 || paraTable || mLastItem == 0) && li == 0 && ti == 0))
 	{
-        if (dataBuffer)
+        if (dataBuffer || paraTable)
         {
             this->mActionMap.value("Execute")->setEnabled(true);
             mActionMap.value("Execute")->setText(QString::fromLatin1("Update %1").arg(title));
@@ -738,8 +738,15 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
             mActionMap.value("Execute")->setText(QString::fromUtf8("Execute %1").arg(title));
         }
 
-        this->mActionMap.value("Reset")->setEnabled(true);
-        mActionMap.value("Reset")->setText(QString("Reset %1").arg(title));
+        if (!paraTable)
+        {
+            this->mActionMap.value("Reset")->setEnabled(true);
+            mActionMap.value("Reset")->setText(QString("Reset %1").arg(title));
+        }
+        else
+        {
+            this->mActionMap.value("Reset")->setEnabled(false);
+        }
 	}
 	else
 	{

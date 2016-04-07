@@ -298,37 +298,42 @@ NMProcess::processStringParameter(const QString& str)
         // retrieve model parameter and process, if applicable
         if (mc)
         {
+            NMIterableComponent* ic = 0;
+
             QVariant modelParam;
             if (m.at(2).isEmpty())
             {
-                if (host)
+                ic = qobject_cast<NMIterableComponent*>(mc);
+                if (ic)
                 {
-                    modelParam = QVariant::fromValue(host->getIterationStep());
+                    modelParam = QVariant::fromValue(ic->getIterationStep());
                 }
                 else
                 {
-                    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
-                    if (ic)
-                    {
-                        modelParam = QVariant::fromValue(ic->getIterationStep());
-                    }
-                    else
-                    {
-                        modelParam = QVariant::fromValue(0);
-                    }
+                    modelParam = QVariant::fromValue(1);
                 }
             }
             else
             {
+                QString paramSpec;
                 if (m.at(3).isEmpty())
                 {
-                    modelParam = mc->getModelParameter(m.at(2));
+                    int pstep = 1;
+                    if (host->getHostComponent())
+                    {
+                        pstep = host->getHostComponent()->getIterationStep();
+                    }
+                    else if (ic->getHostComponent())
+                    {
+                        pstep = ic->getHostComponent()->getIterationStep();
+                    }
+                    paramSpec = QString("%1:%2").arg(m.at(2)).arg(pstep);
                 }
                 else
                 {
-                    QString paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
-                    modelParam = mc->getModelParameter(paramSpec);
+                    paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
                 }
+                modelParam = mc->getModelParameter(paramSpec);
             }
 
             // .........................................................

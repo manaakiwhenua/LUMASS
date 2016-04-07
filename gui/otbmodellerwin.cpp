@@ -2699,11 +2699,8 @@ void OtbModellerWin::test()
 
     QRegExp rex("\\$([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
     int pos = 0;
-    while((pos = rex.indexIn(str, pos) != -1))
+    while((pos = rex.indexIn(str, pos)) != -1)
     {
-
-        NMDebugAI(<< "here's what we've got ... " << std::endl);
-
         // 0: whole captured text
         // 1: component name  | or user Id
         // 2: [: property name]
@@ -2711,51 +2708,69 @@ void OtbModellerWin::test()
         // 4: [operator]
         // 5: [integer number]
         QStringList m = rex.capturedTexts();
+        NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
+        //NMDebugAI(<< "---------------" << std::endl);
         pos += rex.matchedLength();
-        int c=0;
-        QString dbg;
-        foreach(const QString& s, m)
-        {
-            dbg = QString("%1\n%2").arg(dbg).arg(s);
-            NMDebugAI(<< c << ": " << s.toStdString() << std::endl);
-            ++c;
-        }
-        //NMBoxInfo("What we've got", dbg.toStdString());
 
-        // first check, whether there's a component we get by name
-        NMModelComponent* mc = ctrl->getComponent(m.at(1));
+        // --------------------------------------------------------------------------
+        // retrieve model component
+
+        NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
+        NMModelComponent* mc = NMModelController::getInstance()->getComponent(m.at(1));
+
+        // if the component is specified by userId, we've got to dig a little deeper
         if (mc == 0)
         {
-            NMIterableComponent* host = qobject_cast<NMIterableComponent*>(ctrl->getComponent(startComp));
-            if (host == 0)
+            if (host)
             {
-                host = qobject_cast<NMIterableComponent*>(ctrl->getComponent(startComp)->getHostComponent());
+                mc = host->findUpstreamComponentByUserId(m.at(1));
             }
-            mc = host->findUpstreamComponentByUserId(m.at(1));
+            else
+            {
+                NMWarn(this->objectName().toStdString(), "Process not embedded in model component!");
+            }
         }
 
+        // -----------------------------------------------------------------------------
+        // retrieve model parameter and process, if applicable
         if (mc)
         {
+            NMIterableComponent* ic = 0;
+
             QVariant modelParam;
             if (m.at(2).isEmpty())
             {
-                NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+                ic = qobject_cast<NMIterableComponent*>(mc);
                 if (ic)
                 {
                     modelParam = QVariant::fromValue(ic->getIterationStep());
                 }
+                else
+                {
+                    modelParam = QVariant::fromValue(1);
+                }
             }
             else
             {
+                QString paramSpec;
                 if (m.at(3).isEmpty())
                 {
-                    modelParam = mc->getModelParameter(m.at(2));
+                    int pstep = 1;
+                    if (host->getHostComponent())
+                    {
+                        pstep = host->getHostComponent()->getIterationStep();
+                    }
+                    else if (ic->getHostComponent())
+                    {
+                        pstep = ic->getHostComponent()->getIterationStep();
+                    }
+                    paramSpec = QString("%1:%2").arg(m.at(2)).arg(pstep);
                 }
                 else
                 {
-                    QString paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
-                    modelParam = mc->getModelParameter(paramSpec);
+                    paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
                 }
+                modelParam = mc->getModelParameter(paramSpec);
             }
 
             // .........................................................
@@ -2819,7 +2834,7 @@ void OtbModellerWin::test()
             {
                 tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(modelParam.toString()));
             }
-            NMBoxInfo("generated param", tStr.toStdString());
+
             NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
         }
         else
@@ -2829,7 +2844,6 @@ void OtbModellerWin::test()
                        << m.at(1).toStdString() << "'!");
             return;
         }
-
     }
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

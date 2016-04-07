@@ -1308,13 +1308,13 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
                 return;
             }
 
-            NMParameterTable* pt = qobject_cast<NMParameterTable*>(comp);
+            //NMParameterTable* pt = qobject_cast<NMParameterTable*>(comp);
 
             xmlS.serialiseComponent(comp, doc);
             lmv << (qint32)QGraphicsProxyWidget::Type;
             lmv << pwi->objectName();
-            lmv << pt->getFileName();
-            lmv << pt->getTableName();
+            //lmv << pt->getFileName();
+            //lmv << pt->getTableName();
             lmv << pwi->pos();
         }
         break;
@@ -1854,30 +1854,38 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     QString tableName;
                     QPointF itemPos;
 
-                    lmv >> ptName >> fileName >> tableName >> itemPos;
+                    //lmv >> ptName >> fileName >> tableName >> itemPos;
+                    lmv >> ptName >> itemPos;
 
-                    tv = NMGlobalHelper::getMainWindow()->importTable(
-                                fileName,
-                                OtbModellerWin::NM_TABVIEW_SCENE,
-                                true,
-                                tableName);
+                    QString compName = nameRegister.value(ptName);
+                    NMModelComponent* comp =
+                            this->mModelController->getComponent(compName);
+                    NMParameterTable* pt = qobject_cast<NMParameterTable*>(comp);
+                    if (pt)
+                    {
+                        fileName = pt->getFileName();
+                        tableName = pt->getTableName();
+
+                        tv = NMGlobalHelper::getMainWindow()->importTable(
+                                    fileName,
+                                    OtbModellerWin::NM_TABVIEW_SCENE,
+                                    true,
+                                    tableName);
+                    }
 
                     // if importing the table failed, we have
                     // to get rid of the model component as well
                     if (tv == 0)
                     {
-                        QString name = nameRegister.value(ptName);
-                        NMModelComponent* comp =
-                                this->mModelController->getComponent(name);
                         if (comp)
                         {
-                            mModelController->removeComponent(name);
+                            mModelController->removeComponent(compName);
                             QMap<QString, QString>& nR = const_cast< QMap<QString, QString>& >(nameRegister);
                             nR.remove(ptName);
                         }
                         NMErr(ctx, "Failed importing ParameterTable '"
                                    << ptName.toStdString() << "/"
-                                   << name.toStdString() << "'!" << std::endl);
+                                   << compName.toStdString() << "'!" << std::endl);
                     }
                     else
                     {
@@ -1885,7 +1893,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                                 this->mModelScene->addWidget(tv, Qt::CustomizeWindowHint |
                                                     Qt::Window | Qt::WindowTitleHint);
                         proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
-                        proxyWidget->setObjectName(ptName);
+                        proxyWidget->setObjectName(compName);
                         proxyWidget->setPos(itemPos);
                         this->mModelScene->updateComponentItemFlags(proxyWidget);
 

@@ -260,7 +260,7 @@ NMProcess::processStringParameter(const QString& str)
     QString tStr = str;
 
     // old: QRegExp rex("\\$([a-zA-Z]+\\d*)([\\+-]?)(\\d*)\\$");
-    QRegExp rex("\\$([a-zA-Z]+\\d*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
+    QRegExp rex("\\$([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
     int pos = 0;
     while((pos = rex.indexIn(str, pos)) != -1)
     {
@@ -383,6 +383,13 @@ NMProcess::processStringParameter(const QString& str)
             }
 
             NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
+        }
+        else
+        {
+            // couldn't find the parameter table
+            NMErr(ctxNMProcess, << "Failed to find component '"
+                       << m.at(1).toStdString() << "'!");
+            return tStr;
         }
     }
 

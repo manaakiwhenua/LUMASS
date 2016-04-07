@@ -47,6 +47,7 @@ class NMMODFRAME_EXPORT NMParameterTable : public NMDataComponent
 
 public:
     NMPropertyGetSet( TableName, QString )
+//    NMPropertyGetSet( FileName, QString )
 
 public:
     NMParameterTable(QObject* parent=0);

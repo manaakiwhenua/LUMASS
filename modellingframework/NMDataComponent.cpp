@@ -225,12 +225,18 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     }
 
     //  <columnName>:<rowNumber>
+    otb::AttributeTable::Pointer tab = this->mDataWrapper->getOTBTab();
+
     QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
     long long row = 0;
+    long long recnum = tab->GetNumRows();
     if (specList.size() == 2)
     {
+        // empoly the use_up policy of getting index values here; also if the
+        // index is too small bound to 0
         bool bok;
         row = specList.at(1).toLongLong(&bok);
+        row = row-1 < 0 ? 0 : row > recnum ? recnum-1 : row-1;
         if (!bok)
         {
             NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
@@ -241,8 +247,6 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
             return param;
         }
     }
-
-    otb::AttributeTable::Pointer tab = this->mDataWrapper->getOTBTab();
 
     int colidx = tab->ColumnExists(specList.at(0).toStdString().c_str());
     if (colidx >= 0)

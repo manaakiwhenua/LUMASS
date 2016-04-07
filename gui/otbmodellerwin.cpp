@@ -1676,6 +1676,10 @@ OtbModellerWin::importTable(const QString& fileName,
 {
     otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
     std::vector<std::string> vinfo = sqlTable->GetFilenameInfo(fileName.toStdString());
+    if (vinfo.size() < 3)
+    {
+        return 0;
+    }
 
     NMSqlTableView* resview = 0;
     QString viewName = QString(vinfo.at(1).c_str());
@@ -2693,7 +2697,7 @@ void OtbModellerWin::test()
 
     QString tStr = str;
 
-    QRegExp rex("\\$([a-zA-Z]+\\d*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
+    QRegExp rex("\\$([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\$");
     int pos = 0;
     while((pos = rex.indexIn(str, pos) != -1))
     {
@@ -2817,6 +2821,13 @@ void OtbModellerWin::test()
             }
             NMBoxInfo("generated param", tStr.toStdString());
             NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
+        }
+        else
+        {
+            // couldn't find the parameter table
+            NMErr(ctxOtbModellerWin, << "Failed to find component '"
+                       << m.at(1).toStdString() << "'!");
+            return;
         }
 
     }

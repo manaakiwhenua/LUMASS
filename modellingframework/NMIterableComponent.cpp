@@ -73,8 +73,11 @@ NMIterableComponent::getModelParameter(const QString& paramSpec)
     QStringList spec = paramSpec.split(":", QString::SkipEmptyParts);
     if (spec.size() < 2)
     {
+        // convert 1-based iteration steps to 0-based index
+        int step = static_cast<int>(this->getIterationStep());
+        step = step-1 < 0 ? 0 : step-1;
         fullSpec = QString("%1:%2").arg(paramSpec)
-                                   .arg(static_cast<int>(this->getIterationStep()));
+                                   .arg(step);
     }
 
     return NMModelComponent::getModelParameter(fullSpec);

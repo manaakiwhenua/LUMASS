@@ -278,12 +278,12 @@ NMProcess::processStringParameter(const QString& str)
         // --------------------------------------------------------------------------
         // retrieve model component
 
+        NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
         NMModelComponent* mc = NMModelController::getInstance()->getComponent(m.at(1));
 
         // if the component is specified by userId, we've got to dig a little deeper
         if (mc == 0)
         {
-            NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
             if (host)
             {
                 mc = host->findUpstreamComponentByUserId(m.at(1));
@@ -301,10 +301,21 @@ NMProcess::processStringParameter(const QString& str)
             QVariant modelParam;
             if (m.at(2).isEmpty())
             {
-                NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
-                if (ic)
+                if (host)
                 {
-                    modelParam = QVariant::fromValue(ic->getIterationStep());
+                    modelParam = QVariant::fromValue(host->getIterationStep());
+                }
+                else
+                {
+                    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+                    if (ic)
+                    {
+                        modelParam = QVariant::fromValue(ic->getIterationStep());
+                    }
+                    else
+                    {
+                        modelParam = QVariant::fromValue(0);
+                    }
                 }
             }
             else

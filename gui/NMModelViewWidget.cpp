@@ -1854,7 +1854,6 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                     QString tableName;
                     QPointF itemPos;
 
-                    //lmv >> ptName >> fileName >> tableName >> itemPos;
                     lmv >> ptName >> itemPos;
 
                     QString compName = nameRegister.value(ptName);
@@ -1872,6 +1871,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                                     true,
                                     tableName);
                     }
+                    importItems << compName;
 
                     // if importing the table failed, we have
                     // to get rid of the model component as well
@@ -2123,11 +2123,9 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         case (qint32)QGraphicsProxyWidget::Type:
                 {
                     QString ptName;
-                    QString fileName;
-                    QString tableName;
                     QPointF scenePos;
 
-                    lmv >> ptName >> fileName >> tableName >> scenePos;
+                    lmv >> ptName >> scenePos;
                 }
                 break;
 		default:

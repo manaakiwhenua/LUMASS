@@ -41,6 +41,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QSqlDriver>
+#include <QApplication>
 
 // QSQLiteDriver
 #include "nmqsql_sqlite_p.h"
@@ -942,6 +943,8 @@ NMImageLayer::mapExtentChanged(void)
     double h_res;
     double v_res;
 
+    qreal dpr = qApp->devicePixelRatio();
+
     vtkRendererCollection* rencoll = this->mRenderWindow->GetRenderers();
     vtkRenderer* ren = 0;
     if (this->mRenderer->GetViewProps()->GetNumberOfItems() == 0)
@@ -960,14 +963,12 @@ NMImageLayer::mapExtentChanged(void)
         ren = this->mRenderer;
     }
 
-    int* size;
-    double wminx, wmaxx, wminy, wmaxy;
+    int* size = ren->GetSize();
+    double wminx, wmaxx, wminy, wmaxy, wwidth, wheight;
     if (ren)
     {
         double wbr[] = {-1,-1,-1,-1};
         double wtl[] = {-1,-1,-1,-1};
-
-        size = ren->GetSize();
 
         // top left (note: display origin is bottom left)
         vtkInteractorObserver::ComputeDisplayToWorld(ren, 0,size[1]-1,0, wtl);
@@ -983,34 +984,45 @@ NMImageLayer::mapExtentChanged(void)
         //this->world2pixel(wbr, pbr, true, false);
 
         // only works good if
-        h_res = (wmaxx - wminx) / (double)size[0];
-        v_res = (wmaxy - wminy) / (double)size[1];
+        wwidth = (wmaxx - wminx);
+        wheight = (wmaxy - wminy);
+
+        if (wwidth > 1 && wheight > 1)
+        {
+            h_res = wwidth / (double)size[0];
+            v_res = wheight / (double)size[1];
+        }
+        else
+        {
+            h_res = fullcols / size[0];
+            v_res = fullrows / size[1];
+        }
 
         //        NMDebugAI(<< "world: tl: " << wtl[0] << " " << wtl[1]
         //                  << " br: " << wbr[0] << " " << wbr[1] << std::endl);
     }
-    else
-    {
-        // full extent and overview according to window size
-        ren = this->mRenderWindow->GetRenderers()->GetFirstRenderer();
-        size = ren->GetSize();
+//    else
+//    {
+//        // full extent and overview according to window size
+//        ren = this->mRenderWindow->GetRenderers()->GetFirstRenderer();
+//        size = ren->GetSize();
 
-        h_res = h_ext / (double)size[0];
-        v_res = v_ext / (double)size[1];
-    }
+//        h_res = h_ext / (double)size[0];
+//        v_res = v_ext / (double)size[1];
+//    }
 
     int ovidx = -1;
     double target_res;
     double opt_res;
     if (size[0] > size[1])
     {
-        opt_res = mSpacing[0];
+        opt_res = mSpacing[0]*dpr;
         target_res = h_res;
     }
     else
     {
         target_res = v_res;
-        opt_res = mSpacing[1];
+        opt_res = ::fabs(mSpacing[1])*dpr;
     }
     double diff = ::fabs(opt_res-target_res);
 

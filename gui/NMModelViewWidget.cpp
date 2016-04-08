@@ -267,9 +267,9 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 
 	// get the selected items
 	QList<QGraphicsItem*> selItems = this->mModelScene->selectedItems();
-	if (selItems.count() < 2)
+    if (selItems.count() < 1)
 	{
-		NMDebugAI(<< "grouping one single component does not make sense!" << endl);
+        NMDebugAI(<< "grouping not a single component does not make sense!" << endl);
         NMDebugCtx(ctx, << "done!");
 		return;
 	}
@@ -286,10 +286,12 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 	{
 		NMProcessComponentItem* procItem = 0;
 		NMAggregateComponentItem* aggrItem = 0;
-		QGraphicsItem* item = it.next();
+        QGraphicsProxyWidget* proxyWidget = 0;
+        QGraphicsItem* item = it.next();
 
 		procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        proxyWidget = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
 
 		NMModelComponent* comp = 0;
 		QString itemTitle;
@@ -303,6 +305,11 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 			itemTitle = aggrItem->getTitle();
 			comp = this->mModelController->getComponent(itemTitle);
 		}
+        else if (proxyWidget != 0)
+        {
+            itemTitle = proxyWidget->objectName();
+            comp = this->mModelController->getComponent(itemTitle);
+        }
 
 		if (comp != 0)
 		{
@@ -417,6 +424,7 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
 		NMProcessComponentItem* pItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* aItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
         QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(item);
+        QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
 
 		if (pItem != 0)
 		{
@@ -429,6 +437,10 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
         else if (ti != 0)
         {
             aggrItem->addToGroup(ti);
+        }
+        else if (pwi != 0)
+        {
+            aggrItem->addToGroup(pwi);
         }
 	}
 
@@ -763,7 +775,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         if (selection.count() > 0)
             levelIndi = this->shareLevel(selection);
 
-        if ((ai != 0 && selection.count() == 0) || selection.count() == 1)
+        if ((ai != 0 && selection.count() == 0))// || selection.count() == 1)
         {
             this->mActionMap.value("Increase/Decrease Time Level ...")->setEnabled(false);
             this->mActionMap.value("Set Time Level ...")->setEnabled(false);
@@ -771,7 +783,7 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
             this->mActionMap.value("Create Sequential Group")->setEnabled(false);
             //this->mActionMap.value("Create Conditional Group")->setEnabled(true);
         }
-        else if (selection.count() > 1 && levelIndi >= 0)
+        else if (selection.count() >= 1 && levelIndi >= 0)
 		{
 			this->mActionMap.value("Create Sequential Group")->setEnabled(true);
 			//this->mActionMap.value("Create Conditional Group")->setEnabled(true);
@@ -2406,6 +2418,7 @@ void NMModelViewWidget::ungroupComponents()
                 if (    (*iit)->type() == NMAggregateComponentItem::Type
                     ||  (*iit)->type() == NMProcessComponentItem::Type
                     ||  (*iit)->type() == QGraphicsTextItem::Type
+                    ||  (*iit)->type() == QGraphicsProxyWidget::Type
                    )
                 {
                     selection.push_back(*iit);

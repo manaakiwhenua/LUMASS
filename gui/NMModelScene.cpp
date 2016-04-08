@@ -761,6 +761,12 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                     //this->setProcCompMoveability(false);
                     this->setProcCompSelectability(true);
                     this->setLinkCompSelectability(false);
+                    pwi = this->getWidgetAt(mMousePos);
+                    if (pwi)
+                    {
+                        pwi->setSelected(true);
+                        NMDebugAI(<< pwi->objectName().toStdString() << " selected!" << std::endl);
+                    }
                 }
                 // INFO/DRAG 'MODE'
                 else

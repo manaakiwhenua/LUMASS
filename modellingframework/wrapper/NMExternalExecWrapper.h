@@ -45,12 +45,12 @@ class NMMODFRAME_EXPORT NMExternalExecWrapper : public NMProcess
     Q_OBJECT
 
     Q_PROPERTY(QStringList Command READ getCommand WRITE setCommand)
-    Q_PROPERTY(QStringList Arguments READ getArguments WRITE setArguments)
+    Q_PROPERTY(QList<QStringList> Arguments READ getArguments WRITE setArguments)
 
 public:
 
     NMPropertyGetSet( Command, QStringList )
-    NMPropertyGetSet( Arguments, QStringList )
+    NMPropertyGetSet( Arguments, QList<QStringList> )
 
 public:
 
@@ -75,7 +75,7 @@ protected:
     QStringList mCurArgList;
 
     QStringList mCommand;
-    QStringList mArguments;
+    QList<QStringList> mArguments;
 
     QProcess mCmdProcess;
 

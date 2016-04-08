@@ -42,8 +42,8 @@
 class NMMODFRAME_EXPORT NMParameterTable : public NMDataComponent
 {
     Q_OBJECT
-    Q_PROPERTY(QString FileName READ getFileName WRITE setFileName)
     Q_PROPERTY(QString TableName READ getTableName WRITE setTableName)
+    Q_PROPERTY(QString FileName READ getFileName WRITE setFileName)
 
 public:
     NMPropertyGetSet( TableName, QString )

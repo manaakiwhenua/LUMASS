@@ -241,10 +241,14 @@ NMProcess::getParameter(const QString& property)
     {
         QList<QStringList> wholeParam = propVal.value<QList<QStringList> >();
         int step = this->mapHostIndexToPolicyIndex(mStepIndex, wholeParam.size());
-        QStringList curList = wholeParam.at(step);
-        for (int i=0; i < curList.size(); ++i)
+        QStringList curList;
+        if (step < wholeParam.size())
         {
-            curList.replace(i, this->processStringParameter(curList.at(i)));
+            curList = wholeParam.at(step);
+            for (int i=0; i < curList.size(); ++i)
+            {
+                curList.replace(i, this->processStringParameter(curList.at(i)));
+            }
         }
         ret = QVariant::fromValue(curList);
     }

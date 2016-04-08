@@ -72,13 +72,14 @@ NMExternalExecWrapper::update(void)
     QString objName = this->parent()->objectName();
     emit signalExecutionStarted(objName);
 
-    QProcess::execute(mCurCmd, mCurArgList);
+    //QProcess::execute(mCurCmd, mCurArgList);
+    QProcess::execute(mCurCmd);//, mCurArgList);
 
     emit signalExecutionStopped(objName);
 
     //NMDebugAI( << "finished!");
 
-
+    this->mbLinked = false;
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -102,20 +103,23 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
     mCurCmd = qvCmnd.toString();
     //mCmdProcess.setProgram(sCmd);
 
-    QVariant qvArguments = this->getParameter(QString::fromLatin1("Arguments"));
-    if (qvArguments.type() != QVariant::String)
-    {
-        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-        std::stringstream msg;
-        msg << "'" << this->objectName().toStdString() << "'";
-        e.setMsg(msg.str());
-        NMDebugCtx(ctx, << "done!");
-        throw e;
-    }
 
-    mCurArgs = qvArguments.toString();
-    mCurArgList = mCurArgs.split(' ');
-    mCmdProcess.setArguments(mCurArgList);
+//    QVariant qvArguments = this->getParameter(QString::fromLatin1("Arguments"));
+//    if (qvArguments.type() != QVariant::StringList)
+//    {
+//        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+//        std::stringstream msg;
+//        msg << "'" << this->objectName().toStdString() << "'";
+//        e.setMsg(msg.str());
+//        NMDebugCtx(ctx, << "done!");
+//        throw e;
+//    }
+
+//    //mCurArgs = qvArguments.toString();
+
+//    mCurArgList = qvArguments.toStringList();//mCurArgs.split(' ');
+//    mCmdProcess.setArguments(mCurArgList);
+
 
     NMDebugCtx(ctx, << "done!");
 }

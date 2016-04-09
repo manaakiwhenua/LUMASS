@@ -216,6 +216,12 @@ void NMSqlTableView::initView()
 
 	// init the context menu of column headers
 	this->mColHeadMenu = new QMenu(this);
+    //    if (this->mViewMode == NMTABVIEW_PARATABLE)
+    //    {
+    //        Qt::WindowFlags flags = mColHeadMenu->windowFlags();
+    //        flags |= Qt::BypassGraphicsProxyWidget;
+    //        this->mColHeadMenu->setWindowFlags(flags);
+    //    }
 
 	QAction* actStat = new QAction(this->mColHeadMenu);
 	actStat->setText(tr("Statistics ..."));
@@ -1900,7 +1906,13 @@ NMSqlTableView::processParaTableRightClick(QGraphicsSceneMouseEvent* gsme, QGrap
     {
         return;
     }
-    QPoint localPos = this->mapFromGlobal(gsme->screenPos());
+
+    NMDebugAI(<< "objectName: " << pwi->objectName().toStdString() << std::endl);
+    NMDebugAI(<< "windowTitle: " << this->windowTitle().toStdString() << std::endl);
+
+    //QCursor::pos();
+
+    QPoint localPos = this->mapFromGlobal(QCursor::pos());//this->mapFromGlobal(gsme->screenPos());
 
     QScopedPointer<QMouseEvent> me(new QMouseEvent(
                                        QEvent::MouseButtonPress,

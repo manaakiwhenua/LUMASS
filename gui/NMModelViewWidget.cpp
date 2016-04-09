@@ -910,6 +910,11 @@ NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
 {
 	NMDebugCtx(ctx, << "...");
 
+    NMProcessComponentItem* dpi = qgraphicsitem_cast<NMProcessComponentItem*>(mLastItem);
+    if (dpi == procItem)
+    {
+        mLastItem = 0;
+    }
 
 	// remove all outgoing links to other components
 	QList<NMComponentLinkItem*> outLinks = procItem->getOutputLinks();
@@ -2277,10 +2282,14 @@ int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 	{
 		NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(item);
 		NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+        QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(item);
+
 		if (pi != 0)
 			comp = this->mModelController->getComponent(pi->getTitle());
 		else if (ai != 0)
 			comp = this->mModelController->getComponent(ai->getTitle());
+        else if (pwi != 0)
+            comp = this->mModelController->getComponent(pwi->objectName());
         else
             // in case of label item
             continue;
@@ -2618,6 +2627,11 @@ void NMModelViewWidget::deleteItem()
     // remove labels first, then deal with the rest
     foreach(QGraphicsTextItem* ti, delLabels)
     {
+        QGraphicsTextItem* dti = qgraphicsitem_cast<QGraphicsTextItem*>(mLastItem);
+        if (dti == ti)
+        {
+            mLastItem = 0;
+        }
         this->mModelScene->removeItem(ti);
         delete ti;
         ti = 0;
@@ -2817,6 +2831,13 @@ NMModelViewWidget::processProcInputChanged(QList<QStringList> inputs)
 void
 NMModelViewWidget::deleteLinkComponentItem(NMComponentLinkItem* linkItem)
 {
+    NMComponentLinkItem* dli = qgraphicsitem_cast<NMComponentLinkItem*>(mLastItem);
+    if (dli == linkItem)
+    {
+        mLastItem = 0;
+    }
+
+
 	NMProcessComponentItem* targetItem = linkItem->targetItem();
 	NMProcessComponentItem* sourceItem = linkItem->sourceItem();
 	if (targetItem == 0 || sourceItem == 0)
@@ -2862,6 +2883,12 @@ void
 NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem)
 {
 	NMDebugCtx(ctx, << "...");
+
+    NMAggregateComponentItem* dai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
+    if (dai == aggrItem)
+    {
+        mLastItem = 0;
+    }
 
 	// object's context, we need further down the track
 	QString aggrTitle = aggrItem->getTitle();
@@ -2926,6 +2953,13 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 void
 NMModelViewWidget::deleteProxyWidget(QGraphicsProxyWidget *pw)
 {
+    QGraphicsProxyWidget* dpwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(mLastItem);
+    if (pw == dpwi)
+    {
+        mLastItem = 0;
+    }
+
+
     QString name = pw->objectName();
     QString title = pw->windowTitle();
     if (!NMModelController::getInstance()->removeComponent(name))
@@ -2955,6 +2989,8 @@ void NMModelViewWidget::deleteEmptyComponent(NMModelComponent* comp)
 		QGraphicsItem* item = mModelScene->getComponentItem(comp->objectName());
 		if (item != 0)
 			mModelScene->removeItem(item);
+        if (item == mLastItem)
+            mLastItem = 0;
 		mModelController->removeComponent(comp->objectName());
 	}
 

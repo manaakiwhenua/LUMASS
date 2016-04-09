@@ -353,8 +353,8 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     proxyWidget->setObjectName(ptName);
     this->updateComponentItemFlags(proxyWidget);
 
-    connect(this, SIGNAL(widgetViewPortRightClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
-            tv, SLOT(processParaTableRightClick(QGraphicsSceneMouseEvent*,QGraphicsItem*)));
+//    connect(this, SIGNAL(widgetViewPortRightClicked(QGraphicsSceneMouseEvent*,QGraphicsItem*)),
+//            tv, SLOT(processParaTableRightClick(QGraphicsSceneMouseEvent*,QGraphicsItem*)));
     connect(this, SIGNAL(itemDblClicked(QGraphicsSceneMouseEvent*)),
             tv, SLOT(processParaTableDblClick(QGraphicsSceneMouseEvent*)));
 
@@ -825,7 +825,9 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
             }
             else
             {
-                emit widgetViewPortRightClicked(event, pwi);
+                //emit widgetViewPortRightClicked(event, pwi);
+                NMSqlTableView* tv = qobject_cast<NMSqlTableView*>(pwi->widget());
+                tv->processParaTableRightClick(event, pwi);
             }
         }
         else if (item)

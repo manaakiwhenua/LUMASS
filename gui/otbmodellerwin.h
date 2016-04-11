@@ -179,6 +179,8 @@ public slots:
     void deleteTableObject(const QString &);
     void convertImageToPolyData();
 
+    QStringList getNextParamExpr(const QString& expr);
+
 	QStandardItemModel* prepareResChartModel(vtkTable* restab);
 
 	virtual bool notify(QObject* receiver, QEvent* event);

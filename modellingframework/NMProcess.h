@@ -300,6 +300,16 @@ protected:
      */
     QString processStringParameter(const QString& str);
 
+
+    /*!
+     * \brief getNextParamExpr Helper function to \ref processStringParameter
+     * \param expr (Nested) parameter expression
+     * \return List of (inner most) non-nested parameter expression
+     *
+     * Extracts non-nested parameter expressions from expr
+     */
+    QStringList getNextParamExpr(const QString& expr);
+
 private:
     unsigned int mStepIndex;
     bool mIsSink;

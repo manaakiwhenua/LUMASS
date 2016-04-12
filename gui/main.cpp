@@ -38,9 +38,9 @@
 
 // this prevents the console window to show up
 // under windows
-#ifdef _WIN32
-	#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
-#endif
+//#ifdef _WIN32
+//	#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+//#endif
 
 #ifdef DEBUG
     // required for LUMASS debug output

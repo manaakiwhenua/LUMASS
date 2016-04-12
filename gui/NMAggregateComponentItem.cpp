@@ -41,7 +41,7 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     this->mNumIterations = 0;
     this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
 
-    dpr = qApp->devicePixelRatio();
+    dpr = 1;//qApp->devicePixelRatio();
 
     dx1 = 10*dpr;
     dy1 = 50*dpr;

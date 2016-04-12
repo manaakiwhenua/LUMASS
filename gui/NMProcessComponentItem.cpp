@@ -68,7 +68,7 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
         mIcon.load(":model-icon.png");
     }
 
-    qreal dpr = qApp->devicePixelRatio();
+    qreal dpr = 1;//qApp->devicePixelRatio();
     qreal smallGap = 2*dpr;
     qreal bigGap = 5*dpr;
 
@@ -372,7 +372,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 {
 
     //CALLGRIND_START_INSTRUMENTATION;
-    qreal dpr = qApp->devicePixelRatio();
+    qreal dpr = 1;//qApp->devicePixelRatio();
     QFontMetrics fm(mFont);
 
     painter->setRenderHint(QPainter::Antialiasing, true);

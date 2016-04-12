@@ -2703,8 +2703,16 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
+    double dpr = -1;
+    dpr = static_cast<double>(qApp->devicePixelRatio());
+    NMMsg(<< "dpr=" << dpr << std::endl);
+    std::cout << "dpr=" << dpr << std::endl;
+    std::cerr << "dpr=" << dpr << std::endl;
 
-            NMModelController* ctrl = NMModelController::getInstance();
+    QString dprStr = QString("%1").arg(dpr);
+    NMBoxInfo("dpr", dprStr.toStdString());
+
+    NMModelController* ctrl = NMModelController::getInstance();
     QStringList componentList = ctrl->getRepository().keys();
 
     QInputDialog ipd(this);

@@ -644,8 +644,27 @@ NMSelSortSqlTableProxyModel::addRow()
         return false;
     }
 
-    QString ssql = QString("INSERT INTO %1 DEFAULT VALUES")
-                    .arg(mSourceModel->tableName());
+    int nrows = mSourceModel->rowCount();
+
+    QString ssql;
+
+    // in case we haven't got any records yet,
+    // we make sure that the row index is 0-based
+    if (nrows == 0)
+    {
+        QString idColName = this->getSourcePK();
+        ssql = QString("INSERT INTO %1 (%2) VALUES (%3)")
+                        .arg(mSourceModel->tableName())
+                        .arg(idColName)
+                        .arg(nrows);
+    }
+    else
+    {
+        ssql = QString("INSERT INTO %1 DEFAULT VALUES")
+                .arg(mSourceModel->tableName());
+    }
+
+
     QSqlQuery qInsert(mSourceModel->database());
     if (!qInsert.exec(ssql))
     {
@@ -746,10 +765,10 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
     mSourceModel->clear();
     const QSqlDatabase& db = mSourceModel->database();
     QSqlQuery dml(db);
-    foreach (const QString& q, queries)
+    foreach (const QString& qu, queries)
     {
-        NMDebugAI(<< "Query: " << q.toStdString() << std::endl);
-        if (!dml.exec(q))
+        NMDebugAI(<< "Query: " << qu.toStdString() << std::endl);
+        if (!dml.exec(qu))
         {
             NMErr(ctx, << dml.lastError().text().toStdString());
             ret = false;

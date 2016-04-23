@@ -1592,8 +1592,8 @@ OtbModellerWin::openCreateTable(TableViewType tvType,
     }
     else
     {
-        fileName = QFileDialog::getSaveFileName(this, tr("Create Parameter Table")),
-                    "~", tr("SQLiteTable (*.ldb *.db *.sqlite);;");
+        fileName = QFileDialog::getSaveFileName(this, tr("Create Parameter Table"),
+                    "~", tr("SQLiteTable (*.ldb *.db *.sqlite)"));
     }
 
     if (fileName.isEmpty())

@@ -1257,18 +1257,6 @@ void NMSqlTableView::joinAttributes()
     srcView->update();
 
 
-
-
-
-
-
-
-
-
-
-
-
-
     //srcModel->clear();
 //    if (mSortFilter->joinTable(srcDbFileName, srcFieldName, tarFieldName))
 //    {

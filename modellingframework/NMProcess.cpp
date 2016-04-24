@@ -247,7 +247,28 @@ NMProcess::getParameter(const QString& property)
             curList = wholeParam.at(step);
             for (int i=0; i < curList.size(); ++i)
             {
-                curList.replace(i, this->processStringParameter(curList.at(i)));
+                // we account for the case that a fetched string represents a
+                // a list of values in itself separated by ' ' (whitespaces)
+                QString fetched = this->processStringParameter(curList.at(i));
+                QStringList fetchedList = fetched.split(QString(" "), QString::SkipEmptyParts);
+                if (fetchedList.size() > 1)
+                {
+                    for (int t=0; t < fetchedList.size(); ++t)
+                    {
+                        if (t==0)
+                        {
+                            curList.replace(i+t, fetchedList.at(t));
+                        }
+                        else
+                        {
+                            curList.insert(i+t, fetchedList.at(t));
+                        }
+                    }
+                }
+                else
+                {
+                    curList.replace(i, fetched);
+                }
             }
         }
         ret = QVariant::fromValue(curList);

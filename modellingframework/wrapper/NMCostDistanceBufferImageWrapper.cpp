@@ -29,6 +29,7 @@
 #include "nmlog.h"
 #include "NMCostDistanceBufferImageWrapper.h"
 #include "NMItkDataObjectWrapper.h"
+#include "NMMfwException.h"
 
 #include <QObject>
 #include <QString>
@@ -92,7 +93,7 @@ public:
 		return dynamic_cast<OutputImgType*>(f->GetOutput(idx));
 	}
 
-	static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
+    static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, NMProcess* proc, unsigned int step,
 			const QMap<QString, NMModelComponent*>& repo)
 	{
@@ -110,22 +111,46 @@ public:
 		int ols = step;
 		bool bok;
 
-		if (p->mObjectValueList.size())
-		{
-            ols = p->mapHostIndexToPolicyIndex(step, p->mObjectValueList.size());
-            //if (ols >= p->mObjectValueList.size() || ols < 0)
-            //	ols = 0;
+        QVariant objVarList = p->getParameter("ObjectValueList");
+        if (objVarList.isValid())
+        {
+            std::vector<double> objValueVec;
+            QStringList objValueList = objVarList.toStringList();
+            foreach(const QString& vStr, objValueList)
+            {
+                double val = vStr.toDouble(&bok);
+                if (bok)
+                {
+                    objValueVec.push_back(val);
+                }
+                else
+                {
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setMsg("NMCostDistanceBufferImageWrapper: Invalid ObjectValue!");
+                    throw e;
 
-			std::vector<double> vObjValues;
-			QStringList strObjValues = p->mObjectValueList.at(ols);
-			foreach(const QString& strVal, strObjValues)
-			{
-				double val = strVal.toDouble(&bok);
-				if (bok)
-					vObjValues.push_back(val);
-			}
-			f->SetCategories(vObjValues);
-		}
+                    NMErr("NMCostDistanceBufferImageWrapper", << "Invalid ObjectValue!");
+                    return;
+                }
+            }
+            f->SetCategories(objValueVec);
+        }
+//		if (p->mObjectValueList.size())
+//		{
+//            ols = p->mapHostIndexToPolicyIndex(step, p->mObjectValueList.size());
+//            //if (ols >= p->mObjectValueList.size() || ols < 0)
+//            //	ols = 0;
+
+//			std::vector<double> vObjValues;
+//			QStringList strObjValues = p->mObjectValueList.at(ols);
+//			foreach(const QString& strVal, strObjValues)
+//			{
+//				double val = strVal.toDouble(&bok);
+//				if (bok)
+//					vObjValues.push_back(val);
+//			}
+//			f->SetCategories(vObjValues);
+//		}
 
 		// -------------------------------------------------------------------
 		// set max distances

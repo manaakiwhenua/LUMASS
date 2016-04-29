@@ -157,36 +157,102 @@ public:
         //ols = step;
         //if (ols >= p->mMaxDistance.size() || ols < 0)
         //	ols = 0;
-        ols = p->mapHostIndexToPolicyIndex(step, p->mMaxDistance.size());
 
-		double distance;
-		if (p->mMaxDistance.size())
-		{
-			distance = p->mMaxDistance.at(ols).toDouble(&bok);
-			if (bok)
-				f->SetMaxDistance(distance);
-		}
+//        ols = p->mapHostIndexToPolicyIndex(step, p->mMaxDistance.size());
+
+//		double distance;
+//		if (p->mMaxDistance.size())
+//		{
+//			distance = p->mMaxDistance.at(ols).toDouble(&bok);
+//			if (bok)
+//				f->SetMaxDistance(distance);
+//		}
+
+        QVariant curMaxDistanceVar = p->getParameter("MaxDistance");
+        if (curMaxDistanceVar.isValid())
+        {
+            if (!curMaxDistanceVar.toString().isEmpty())
+            {
+                double curMaxDistance = curMaxDistanceVar.toDouble(&bok);
+                if (bok)
+                {
+                    f->SetMaxDistance(curMaxDistance);
+                }
+            }
+            //            else
+            //            {
+            //                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+            //                e.setMsg("NMCostDistanceBufferImageWrapper: Invalid MaxDistance!");
+            //                throw e;
+
+            //                NMErr("NMCostDistanceBufferImageWrapper", << "Invalid MaxDistance!");
+            //                return;
+            //            }
+        }
 
 		// -------------------------------------------------------------------
 		// set buffer zone indicator
-        ols = step;
+        //ols = step;
         //if (ols >= p->mBufferZoneIndicator.size() || ols < 0)
         //	ols = 0;
 
+        QVariant curBufferZoneIndicatorVar = p->getParameter("BufferZoneIndicator");
+        if (curBufferZoneIndicatorVar.isValid())
+        {
+            if (!curBufferZoneIndicatorVar.toString().isEmpty())
+            {
+                int curBufferZoneIndicator = curBufferZoneIndicatorVar.toInt(&bok);
+                if (bok)
+                {
+                    f->SetBufferZoneIndicator(curBufferZoneIndicator);
+                }
+            }
+            //            else
+            //            {
+            //                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+            //                e.setMsg("NMCostDistanceBufferImageWrapper: Invalid BufferZoneIndicator!");
+            //                throw e;
 
-		int indicator;
-		if (p->mBufferZoneIndicator.size())
-		{
-            ols = p->mapHostIndexToPolicyIndex(step, p->mBufferZoneIndicator.size());
-			indicator = p->mBufferZoneIndicator.at(ols).toInt(&bok);
-			if (bok)
-				f->SetBufferZoneIndicator(indicator);
-		}
+            //                NMErr("NMCostDistanceBufferImageWrapper", << "Invalid BufferZoneIndicator!");
+            //                return;
+            //            }
+        }
+
+
+//		int indicator;
+//		if (p->mBufferZoneIndicator.size())
+//		{
+//            ols = p->mapHostIndexToPolicyIndex(step, p->mBufferZoneIndicator.size());
+//			indicator = p->mBufferZoneIndicator.at(ols).toInt(&bok);
+//			if (bok)
+//				f->SetBufferZoneIndicator(indicator);
+//		}
 
 		// -------------------------------------------------------------------
 		// set the other 'singular / fixed' parameters
-		f->SetUseImageSpacing(p->mUseImageSpacing);
-		f->SetCreateBuffer(p->mCreateBuffer);
+
+        QVariant curUseImgSpacVar = p->getParameter("UseImageSpacing");
+        if (curUseImgSpacVar.isValid())
+        {
+            if (!curUseImgSpacVar.toString().isEmpty())
+            {
+                bool useImgSpac = curUseImgSpacVar.toBool();
+                f->SetUseImageSpacing(useImgSpac);
+            }
+        }
+        //f->SetUseImageSpacing(p->mUseImageSpacing);
+
+        QVariant curCreateBufferVar = p->getParameter("CreateBuffer");
+        if (curCreateBufferVar.isValid())
+        {
+            if (!curCreateBufferVar.toString().isEmpty())
+            {
+                bool createBuffer = curCreateBufferVar.toBool();
+                f->SetCreateBuffer(createBuffer);
+            }
+        }
+
+        //f->SetCreateBuffer(p->mCreateBuffer);
 
 
 		// set the observer for this process object
@@ -213,14 +279,25 @@ public:
 
         //if (pos >= p->mInputImageFileName.size())
         //	pos = 0;
+
+        QVariant fileNameVar = p->getParameter("InputImageFileName");
         QString fileName;
-        if (p->mInputImageFileName.size())
+        if (fileNameVar.isValid())
         {
-            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mInputImageFileName.size());
-            fileName = p->mInputImageFileName.at(pos);
+            fileName = fileNameVar.toString();
         }
+
+        //        if (p->mInputImageFileName.size())
+        //        {
+        //            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mInputImageFileName.size());
+        //            fileName = p->mInputImageFileName.at(pos);
+        //        }
 		if (fileName.isEmpty())
 		{
+            NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+            e.setMsg("NMCostDistanceBufferImageWrapper: No input image filename!");
+            throw e;
+
 			NMErr("CostDistanceInternal", << "Please provide an input image file name!");
 			return;
 		}
@@ -230,38 +307,67 @@ public:
 			bInRas = true;
 
 		pos = p->mParamPos;
-		QString costFN;
-		bool bCostRas = false;
-		if (p->mCostImageFileName.size())
-		{
-            //if (pos >= p->mCostImageFileName.size())
-            //	pos = 0;
-            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mCostImageFileName.size());
-			costFN = p->mCostImageFileName.at(pos);
 
-			if (!costFN.contains('.'))
-				bCostRas = true;
-		}
+        QVariant costFNVar = p->getParameter("CostImageFileName");
+        QString costFN;
+        if (costFNVar.isValid())
+        {
+            costFN = costFNVar.toString();
+        }
+
+
+		bool bCostRas = false;
+        if (!costFN.contains('.'))
+        {
+            bCostRas = true;
+        }
+//		if (p->mCostImageFileName.size())
+//		{
+//            //if (pos >= p->mCostImageFileName.size())
+//            //	pos = 0;
+//            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mCostImageFileName.size());
+//			costFN = p->mCostImageFileName.at(pos);
+
+//			if (!costFN.contains('.'))
+//				bCostRas = true;
+//		}
 
 		pos = p->mParamPos;
+
+        QVariant outputImageFNVar = p->getParameter("OutputImageFileName");
 		QString out;
-		if (p->mOutputImageFileName.size())
-		{
-            //if (pos >= p->mOutputImageFileName.size())
-            //	pos = 0;
-            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mOutputImageFileName.size());
-			out = p->mOutputImageFileName.at(pos);
-			if (out.isEmpty())
-			{
-				NMErr("CostDistanceInternal", << "Please provide an output image file name!");
-				return;
-			}
-		}
-		else
-		{
-			NMErr("CostDistanceInternal", << "Please provide an output image file name!");
-			return;
-		}
+        if (outputImageFNVar.isValid())
+        {
+            out = outputImageFNVar.toString();
+        }
+
+        if (out.isEmpty())
+        {
+            NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+            e.setMsg("NMCostDistanceBufferImageWrapper: No output image filename!");
+            throw e;
+
+            NMErr("NMCostDistanceBufferImageWrapper", << "No output image filename!");
+            return;
+        }
+
+//		if (p->mOutputImageFileName.size())
+//		{
+//            //if (pos >= p->mOutputImageFileName.size())
+//            //	pos = 0;
+//            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mOutputImageFileName.size());
+//			out = p->mOutputImageFileName.at(pos);
+//			if (out.isEmpty())
+//			{
+//				NMErr("CostDistanceInternal", << "Please provide an output image file name!");
+//				return;
+//			}
+//		}
+//		else
+//		{
+//			NMErr("CostDistanceInternal", << "Please provide an output image file name!");
+//			return;
+//		}
 		bool bOutRas = false;
 		if (!out.contains('.'))
 			bOutRas = true;
@@ -273,9 +379,13 @@ public:
 		{
 			if (p->mRasConnector == 0)
 			{
-				NMErr("CostDistanceInternal", << "no valid RasdamanConnector object!");
-				return;
-			}
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setMsg("NMCostDistanceBufferImageWrapper: Invalid RasdamanConnector object!");
+                throw e;
+
+                NMErr("NMCostDistanceBufferImageWrapper", << "RasdamanConnector object!");
+                return;
+            }
 			else
 			{
 				rcon = const_cast<RasdamanConnector*>(

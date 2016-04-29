@@ -221,17 +221,30 @@ def formatInternalParamSetting(propertyList, className):
 
         if propDim == 0:
             tmp = \
-            "        f->Set%s(%s(m%s));\n" % (varTargetCast, propName, propName)
+            "        f->Set%s(%s(m%s));\n" % (propName, varTargetCast, propName)
 
         # ------------------------------------- QStringList -------------------------------------
         elif propDim == 1:
             tmp = \
-            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
+
+            "        QVariant cur%sVar = p->getParameter(\"%s\");\n" \
             "        %s cur%s;\n"                                                            \
-            "        if (step < p->m%s.size())\n"                                         \
-            "        {\n"                                                                    \
-            "            cur%s = p->m%s.at(step)%s;\n"                                   \
-            % (propName, propVarType, propName, propName, propName, propName, strToNumConv)
+            "        if (cur%sVar.isValid())\n" \
+            "        {\n" \
+            "           cur%s = cur%sVar%s;\n" \
+
+
+
+#            "           f->Set%s(%s(cur%s));\n" \
+#            "        }\n" \
+
+#            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
+#            "        %s cur%s;\n"                                                            \
+#            "        if (step < p->m%s.size())\n"                                         \
+#            "        {\n"                                                                    \
+#            "            cur%s = p->m%s.at(step)%s;\n"                                   \
+
+            % (propName, propName, propVarType, propName, propName, propName, propName, strToNumConv)
 
             test = ''
             if propVarType != "std::string":
@@ -262,16 +275,25 @@ def formatInternalParamSetting(propertyList, className):
         elif propDim == 2:
 
             tmp = \
-            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
-            "        std::vector<%s> vec%s;\n"                                         \
-            "        %s cur%s;\n"                                                      \
-            "        if (step < p->m%s.size())\n"                                      \
-            "        {\n"                                                              \
-            "            for (int i=0; i < p->m%s.at(step).size(); ++i) \n"            \
-            "            {\n"                                                          \
-            "                cur%s = p->m%s.at(step).at(i)%s;\n"                       \
-            % (propName, varTargetType, propName, propVarType, propName, propName,
-            propName, propName, propName, strToNumConv)
+#            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
+
+            "        QVariant cur%sVar = p->getParameter(\"%s\");\n" \
+            "        if (cur%sVar.isValid())\n"                      \
+            "        {\n"                                            \
+            "           std::vector<%s> vec%s;\n"                                         \
+            "           QStringList curValVarList = cur%Var.toStringList();\n"            \
+            "           foreach(const QString& vStr, curValVarList) \n"                   \
+            "           {\n"                                        \
+            "              %s cur%s = vStr%s;\n"                                          \
+
+
+#            "        if (step < p->m%s.size())\n"                                      \
+#            "        {\n"                                                              \
+#            "            for (int i=0; i < p->m%s.at(step).size(); ++i) \n"            \
+#            "            {\n"                                                          \
+#            "                cur%s = p->m%s.at(step).at(i)%s;\n"                       \
+            % (propName, propName, propName, propVarType, propName, propVarType,
+            propName, strToNumConv)
 
             test = ''
             if propVarType != "std::string":

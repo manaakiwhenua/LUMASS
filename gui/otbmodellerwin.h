@@ -265,6 +265,11 @@ protected:
 
     void vtkPolygonPolydataToOGR(OGRDataSource* ds, NMVectorLayer *vectorLayer);
 
+    void parseKernelForExpression(std::string& expr,
+                                  std::vector<int>& forSizeValues,
+                                  std::vector<std::string>& forCounterNames,
+                                  std::vector<otb::MultiParser::Pointer> &forParsers);
+
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out);
 

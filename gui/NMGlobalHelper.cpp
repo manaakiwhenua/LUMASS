@@ -37,14 +37,14 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     dlg->setLayout(vlayout);
 
     int ret = dlg->exec();
-    NMDebugAI(<< "dialog closed: " << ret << std::endl);
+    //NMDebugAI(<< "dialog closed: " << ret << std::endl);
 
     QString retText = textEdit->toPlainText();
     if (ret == 0)
     {
         retText = "0";
     }
-    NMDebugAI(<< "user text: " << retText.toStdString() << std::endl);
+    //NMDebugAI(<< "user text: " << retText.toStdString() << std::endl);
 
     dlg->deleteLater();
     return retText;

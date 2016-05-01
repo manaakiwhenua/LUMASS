@@ -2699,213 +2699,204 @@ OtbModellerWin::getNextParamExpr(const QString& expr)
     return innerExpr;
 }
 
+void
+OtbModellerWin::parseKernelForExpression(std::string& expr,
+                              std::vector<int>& forSizeValues,
+                              std::vector<std::string>& forCounterNames,
+                              std::vector<otb::MultiParser::Pointer>& forParsers)
+{
+
+}
+
+
 void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    double dpr = -1;
-    dpr = static_cast<double>(qApp->devicePixelRatio());
-    NMMsg(<< "dpr=" << dpr << std::endl);
-    std::cout << "dpr=" << dpr << std::endl;
-    std::cerr << "dpr=" << dpr << std::endl;
 
-    QString dprStr = QString("%1").arg(dpr);
-    NMBoxInfo("dpr", dprStr.toStdString());
+    QString scriptStr = NMGlobalHelper::getMultiLineInput(
+                "Kernel Script", "Enter commands", this);
 
-    NMModelController* ctrl = NMModelController::getInstance();
-    QStringList componentList = ctrl->getRepository().keys();
-
-    QInputDialog ipd(this);
-    ipd.setOption(QInputDialog::UseListViewForComboBoxItems);
-    ipd.setComboBoxItems(componentList);
-    ipd.setComboBoxEditable(false);
-    ipd.setWindowTitle("Model Components");
-    ipd.setLabelText("pick one:");
-    int ret = ipd.exec();
-
-    QString startComp = ipd.textValue();
-    if (startComp.isEmpty())
+    if (scriptStr.isEmpty())
     {
-        NMDebugCtx(ctxOtbModellerWin, << "done!")
-                return;
-    }
-    NMModelComponent* seedComp = NMModelController::getInstance()->getComponent(startComp);
-    if (seedComp == 0)
+        NMDebugCtx(ctxOtbModellerWin, << "done!");
         return;
+    }
 
-    QString str = QInputDialog::getText(this, "", "", QLineEdit::Normal, "$$");
-    QString nested = str;
+    // ======================================================
+    // break up script into individual commands
+    // ======================================================
 
-    QStringList innerExp = this->getNextParamExpr(nested);
-    int numExp = innerExp.size();
-
-    while (numExp > 0)
+    std::string script = scriptStr.toStdString();
+    std::vector<std::string> commands;
+    int start=0;
+    for (int z=0; z < script.size(); ++z)
     {
-
-        for (int inner=0; inner < numExp; ++inner)
+        if (script[z] == ';')
         {
-
-            QString tStr = innerExp.at(inner);
-
-            QRegExp rex("\\[([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\]");
+            std::string cmd = script.substr(start, z-start);
             int pos = 0;
-            while((pos = rex.indexIn(tStr, pos)) != -1)
+            while ((pos = cmd.find_first_of('\n', pos)) != std::string::npos)
             {
-                // 0: whole captured text
-                // 1: component name  | or user Id
-                // 2: [: property name]
-                // 3: [: property index]
-                // 4: [operator]
-                // 5: [integer number]
-                QStringList m = rex.capturedTexts();
-                NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
-                //NMDebugAI(<< "---------------" << std::endl);
-                pos += rex.matchedLength();
-
-                // --------------------------------------------------------------------------
-                // retrieve model component
-
-                NMIterableComponent* host = qobject_cast<NMIterableComponent*>(seedComp);
-                NMModelComponent* mc = NMModelController::getInstance()->getComponent(m.at(1));
-
-                // if the component is specified by userId, we've got to dig a little deeper
-                if (mc == 0)
-                {
-                    if (host)
-                    {
-                        mc = host->findUpstreamComponentByUserId(m.at(1));
-                    }
-                    else
-                    {
-                        NMWarn(this->objectName().toStdString(), "Process not embedded in model component!");
-                    }
-                }
-
-                // -----------------------------------------------------------------------------
-                // retrieve model parameter and process, if applicable
-                if (mc)
-                {
-                    NMIterableComponent* ic = 0;
-
-                    QVariant modelParam;
-                    if (m.at(2).isEmpty())
-                    {
-                        ic = qobject_cast<NMIterableComponent*>(mc);
-                        if (ic)
-                        {
-                            modelParam = QVariant::fromValue(ic->getIterationStep());
-                        }
-                        else
-                        {
-                            modelParam = QVariant::fromValue(1);
-                        }
-                    }
-                    else
-                    {
-                        QString paramSpec;
-                        if (m.at(3).isEmpty())
-                        {
-                            int pstep = 1;
-                            if (host->getHostComponent())
-                            {
-                                pstep = host->getHostComponent()->getIterationStep();
-                            }
-                            else if (ic->getHostComponent())
-                            {
-                                pstep = ic->getHostComponent()->getIterationStep();
-                            }
-                            paramSpec = QString("%1:%2").arg(m.at(2)).arg(pstep);
-                        }
-                        else
-                        {
-                            paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
-                        }
-                        modelParam = mc->getModelParameter(paramSpec);
-                    }
-
-                    // .........................................................
-                    // if the model parameter is of integer type, we allow
-                    // some arithemtic on it...
-
-                    if (    (    modelParam.type() == QVariant::Int
-                                 ||  modelParam.type() == QVariant::LongLong
-                                 ||  modelParam.type() == QVariant::UInt
-                                 ||  modelParam.type() == QVariant::ULongLong
-                                 )
-                            &&  !m.at(4).isEmpty() && !m.at(5).isEmpty()
-                            )
-                    {
-                        bool bok;
-                        long long delta = 0;
-                        const long long t = m.at(5).toLongLong(&bok);
-                        if (bok)
-                        {
-                            delta = t;
-                        }
-
-                        //int itStep = ic->getIterationStep();
-                        long long itStep = modelParam.toLongLong(&bok);
-
-                        if (QString::fromLatin1("+").compare(m.at(4)) == 0)
-                        {
-                            // could only bound  this, if we restricted to the use
-                            // of SequentialIterComponent here, not quite sure,
-                            // we want to do that
-                            itStep += delta;
-                        }
-                        else if (QString::fromLatin1("-").compare(m.at(4)) == 0)
-                        {
-                            // prevent 'negative' iStep; could occur in 'instantiation phase'
-                            // of the pipeline, when the correct step parameter has not
-                            // been established yet (thereby always assuming that the
-                            // configuration by the user was correct, in which case the
-                            // a wrong parameter would be created during the 'link phase'
-                            // of the pipeline establishment)
-
-                            if (itStep - delta >= 0)
-                            {
-                                itStep -= delta;
-                            }
-                            else
-                            {
-                                NMWarn(this->objectName().toStdString(),
-                                       << "Expression based parameter retreival "
-                                       << "prevented a NEGATIVE PARAMETER INDEX!!"
-                                       << "  Double check whether the correct "
-                                       << "parameter was used and the results are OK!");
-                            }
-                        }
-
-                        tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
-                    }
-                    /// ToDo: how do we handle string lists ?
-                    // no integer type, so ignore any potential arithemtic
-                    else
-                    {
-                        tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(modelParam.toString()));
-                    }
-
-                    NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
-                }
-                else
-                {
-                    // couldn't find the parameter table
-                    NMErr(ctxOtbModellerWin, << "Failed to find component '"
-                          << m.at(1).toStdString() << "'!");
-                    return;
-                }
+                cmd = cmd.replace(pos, 1, "");
+                ++pos;
             }
+            if (cmd.size() )
+            commands.push_back(cmd);
+            start = z+1;
+        }
+    }
+    if (start < script.size())
+    {
+        commands.push_back(script.substr(start, script.size()-start));
+    }
 
-            nested = nested.replace(innerExp.at(inner), tStr);
+    // ======================================================
+    // some 'external' variables
+    // ======================================================
+    std::vector<std::string> extNames;
+    std::vector<double> extValues;
+    extNames.push_back("apfel");
+    extNames.push_back("birne");
 
-        } // for
+    extValues.push_back(4);
+    extValues.push_back(5);
 
-        innerExp = this->getNextParamExpr(nested);
-        numExp = innerExp.size();
+    // ======================================================
+    // parse & initiate commands
+    // ======================================================
+    std::vector<otb::MultiParser::Pointer> parsers(commands.size(), 0);
+    std::vector<double> cmdVarValues(commands.size(), 0);
+    std::vector<std::string> cmdVarNames(commands.size());
 
-    } // while
+    std::vector<std::vector<int> > vecForSizeValues;
+    std::vector<std::vector<std::string> > vecForCounterNames;
+    std::vector<std::vector<otb::MultiParser::Pointer> vecForParsers;
 
-    NMBoxInfo("result", nested.toStdString());
+    NMDebugAI(<< std::endl << "parsing individual commands ... " << std::endl);
+    std::stringstream sstemp;
+    for (int c=0; c < commands.size(); ++c)
+    {
+        parsers[c] = otb::MultiParser::New();
+
+        // ---------------------------------
+        // extract result varname
+        // ---------------------------------
+        size_t pos = std::string::npos;
+        if ((pos = commands.at(c).find('=')) != std::string::npos)
+        {
+            std::string vname = commands.at(c).substr(0, pos);
+            cmdVarNames.at(c) = vname;
+
+            std::string expr = commands.at(c).substr(pos+1, commands.size()-pos+1);
+            parsers[c]->SetExpr(expr);
+
+            NMDebugAI(<< cmdVarNames.at(c) << "=" << expr << std::endl);
+        }
+        else
+        {
+            parsers[c]->SetExpr(commands.at(c));
+
+            sstemp.str("");
+            sstemp << "v" << c;
+            cmdVarNames.at(c) = sstemp.str();
+
+            NMDebugAI(<< cmdVarNames.at(c) << "=" << commands.at(c) << std::endl);
+        }
+
+        // define previous cmdVars for this parser
+        for (int v=0; v < c; ++v)
+        {
+            parsers.at(c)->DefineVar(cmdVarNames.at(v), &cmdVarValues.at(v));
+        }
+
+
+        // ------------------------------------
+        // define 'external' variables
+        // ------------------------------------
+        for (int ev=0; ev < extNames.size(); ++ev)
+        {
+            parsers.at(c)->DefineVar(extNames.at(ev), &extValues.at(ev));
+        }
+
+
+
+        // ------------------------------------
+        // parse for loop, if applicable
+        // ------------------------------------
+        std::vector<int> forSizeValues;//(commands.size(), -1);
+        std::vector<std::string> forCounterNames;//(commands.size());
+        std::vector<otb::MultiParser> forParsers;
+
+        if ((pos = commands.at(c).find("foreach")) != std::string::npos)
+        {
+            std::string counterName;
+            std::string loopsizeName;
+            std::string forExpression;
+            size_t openForAdmin;
+            size_t comma1, comma2;
+            size_t closeForAdmin;
+            if ((openForAdmin = commands.at(c).find('(', pos+7)) != std::string::npos)
+            {
+                if ((comma1 = commands.at(c).find(',', openForAdmin)) != std::string::npos)
+                {
+                    counterName = commands.at(c).substr(openForAdmin+1, comma1-openForAdmin+1);
+                }
+
+
+                if ((comma2 = commands.at(c).find(',', comma1+1)) != std::string::npos)
+                {
+                    loopsizeName = commands.at(c).substr(comma1+1, comma2-comma1+1);
+                }
+
+                if ((closeForAdmin = commands.at(c).find(')', comma2+1)) != std::string::npos)
+                {
+                    forExpression = commands.at(c).substr(comma2+1, closeForAdmin-comma2+1);
+                }
+
+                if (    !counterName.empty()
+                    &&  !loopsizeName.empty()
+                    &&  !forExpression.empty()
+                   )
+                {
+                    forCounterNames.push_back(counterName);
+
+                    std::string::iterator sit = loopsizeName.begin();
+                    while(::isdigit(*sit) && sit != loopsizeName.end())
+                    {
+                        ++sit;
+                    }
+                    if (sit == loopsizeName.end())
+                    {
+                        forSizeValues.push_back(::atoi(loopsizeName.c_str()));
+                    }
+
+                    NMDebugAI(<< "foreach(" << counterName
+                              << ", " << loopsizeName << ", "
+                              << forExpression);
+
+
+                }
+
+                forParsers.push_back(parsers.at(c));
+            }
+        }
+
+        vecForParsers.push_back(forParsers);
+        vecForCounterNames.push_back(forCounterNames);
+        vecForSizeValues.push_back(forSizeValues);
+
+    }
+
+
+    NMDebug(<< std::endl);
+    NMDebugAI(<< "commands ... " << std::endl);
+    for (int s=0; s < commands.size(); ++s)
+    {
+        NMDebugAI(<< "#" << s << ": " << commands.at(s) << std::endl);
+    }
+    NMDebug(<< std::endl);
+
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }

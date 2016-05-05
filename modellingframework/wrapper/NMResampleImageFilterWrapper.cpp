@@ -26,6 +26,7 @@
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
+/*$<ForwardInputUserIDs_Include>$*/
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
@@ -113,22 +114,22 @@ public:
 		int givenStep = step;
 
 		
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mInterpolationMethod.size());
+        QVariant curInterpolationMethodVar = p->getParameter("InterpolationMethod");
         std::string curInterpolationMethod;
-        if (step < p->mInterpolationMethod.size())
+        if (curInterpolationMethodVar.isValid())
         {
-            curInterpolationMethod = p->mInterpolationMethod.at(step).toStdString().c_str();
+           curInterpolationMethod = curInterpolationMethodVar.toString().toStdString();
             f->SetInterpolationMethod(curInterpolationMethod);
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mDefaultPixelValue.size());
+        QVariant curDefaultPixelValueVar = p->getParameter("DefaultPixelValue");
         double curDefaultPixelValue;
-        if (step < p->mDefaultPixelValue.size())
+        if (curDefaultPixelValueVar.isValid())
         {
-            curDefaultPixelValue = p->mDefaultPixelValue.at(step).toDouble(&bok);
+           curDefaultPixelValue = curDefaultPixelValueVar.toDouble(&bok);
             if (bok)
             {
-                f->SetDefaultPixelValue(static_cast<OutImgPixelType>(curDefaultPixelValue));
+                f->SetDefaultPixelValue((curDefaultPixelValue));
             }
             else
             {
@@ -139,14 +140,14 @@ public:
             }
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mOutputSpacing.size());
-        std::vector<OutSpacingValueType> vecOutputSpacing;
-        double curOutputSpacing;
-        if (step < p->mOutputSpacing.size())
+        QVariant curOutputSpacingVar = p->getParameter("OutputSpacing");
+        if (curOutputSpacingVar.isValid())
         {
-            for (int i=0; i < p->mOutputSpacing.at(step).size(); ++i) 
-            {
-                curOutputSpacing = p->mOutputSpacing.at(step).at(i).toDouble(&bok);
+           std::vector<OutSpacingValueType> vecOutputSpacing;
+           QStringList curValVarList = curOutputSpacingVar.toStringList();
+           foreach(const QString& vStr, curValVarList) 
+           {
+                double curOutputSpacing = vStr.toDouble(&bok);
                 if (bok)
                 {
                     vecOutputSpacing.push_back(static_cast<OutSpacingValueType>(curOutputSpacing));
@@ -169,14 +170,14 @@ public:
             }
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mOutputOrigin.size());
-        std::vector<OutPointValueType> vecOutputOrigin;
-        double curOutputOrigin;
-        if (step < p->mOutputOrigin.size())
+        QVariant curOutputOriginVar = p->getParameter("OutputOrigin");
+        if (curOutputOriginVar.isValid())
         {
-            for (int i=0; i < p->mOutputOrigin.at(step).size(); ++i) 
-            {
-                curOutputOrigin = p->mOutputOrigin.at(step).at(i).toDouble(&bok);
+           std::vector<OutPointValueType> vecOutputOrigin;
+           QStringList curValVarList = curOutputOriginVar.toStringList();
+           foreach(const QString& vStr, curValVarList) 
+           {
+                double curOutputOrigin = vStr.toDouble(&bok);
                 if (bok)
                 {
                     vecOutputOrigin.push_back(static_cast<OutPointValueType>(curOutputOrigin));
@@ -199,14 +200,14 @@ public:
             }
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mSize.size());
-        std::vector<SizeValueType> vecSize;
-        long curSize;
-        if (step < p->mSize.size())
+        QVariant curSizeVar = p->getParameter("Size");
+        if (curSizeVar.isValid())
         {
-            for (int i=0; i < p->mSize.at(step).size(); ++i) 
-            {
-                curSize = p->mSize.at(step).at(i).toLong(&bok);
+           std::vector<SizeValueType> vecSize;
+           QStringList curValVarList = curSizeVar.toStringList();
+           foreach(const QString& vStr, curValVarList) 
+           {
+                long curSize = vStr.toLong(&bok);
                 if (bok)
                 {
                     vecSize.push_back(static_cast<SizeValueType>(curSize));
@@ -228,6 +229,9 @@ public:
                 f->SetSize(0);
             }
         }
+
+
+                /*$<ForwardInputUserIDs_Body>$*/
 
 
 		NMDebugCtx("NMResampleImageFilterWrapper_Internal", << "done!");

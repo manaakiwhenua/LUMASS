@@ -156,7 +156,8 @@ def formatTypeConversion(type):
     elif type == "bool":
         typeConv = ".toInt(&bok)"
     elif type == "std::string" or type == "string":
-        typeConv = ".toStdString().c_str()"
+        typeConv = ".toString().toStdString()"
+        #typeConv = ".toStdString().c_str()"
 
     return typeConv
 
@@ -199,9 +200,9 @@ def formatInternalParamSetting(propertyList, className):
         if propVarType == 'string':
             propVarType = 'std::string'
 
-        # no long exclusively a string to number conversion,
+        # no longer exclusively a string to number conversion,
         # we forgot that we have to convert QString to std::string
-        # as welsl
+        # as well
         strToNumConv = formatTypeConversion(propVarType)
 
         varTargetType = propVarType
@@ -210,14 +211,22 @@ def formatInternalParamSetting(propertyList, className):
         propTypeVector = False
 
         if propDim == 2:
-            if len(prop) == 4:
+            if len(prop) >= 4:
                 varTargetType = prop[3]
                 varTargetCast = "static_cast<%s>" % varTargetType
                 varTargetPointerCast = "static_cast<%s*>" % varTargetType
-            elif len(prop) == 5:
+            elif len(prop) >= 5:
                 if prop[4] == 'vector':
                     propTypeVector = True
 
+
+        print "parsed property 'attributes' for %s: ..." % propName
+        elstr = ''
+        for elm in prop:
+            elstr = elstr + elm + ' '
+        print "raw list = %s" % elstr
+        print "propVarType=%s\nvarTargetType=%s\nvarTargetCast=%s\nvarTargetPointerCast=%s\npropTypeVector=%s\n" \
+                % (propVarType, varTargetType, varTargetCast, varTargetPointerCast, propTypeVector)
 
         if propDim == 0:
             tmp = \
@@ -226,24 +235,11 @@ def formatInternalParamSetting(propertyList, className):
         # ------------------------------------- QStringList -------------------------------------
         elif propDim == 1:
             tmp = \
-
             "        QVariant cur%sVar = p->getParameter(\"%s\");\n" \
             "        %s cur%s;\n"                                                            \
             "        if (cur%sVar.isValid())\n" \
             "        {\n" \
             "           cur%s = cur%sVar%s;\n" \
-
-
-
-#            "           f->Set%s(%s(cur%s));\n" \
-#            "        }\n" \
-
-#            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
-#            "        %s cur%s;\n"                                                            \
-#            "        if (step < p->m%s.size())\n"                                         \
-#            "        {\n"                                                                    \
-#            "            cur%s = p->m%s.at(step)%s;\n"                                   \
-
             % (propName, propName, propVarType, propName, propName, propName, propName, strToNumConv)
 
             test = ''
@@ -275,25 +271,15 @@ def formatInternalParamSetting(propertyList, className):
         elif propDim == 2:
 
             tmp = \
-#            "        step = p->mapHostIndexToPolicyIndex(givenStep, p->m%s.size());\n" \
-
             "        QVariant cur%sVar = p->getParameter(\"%s\");\n" \
             "        if (cur%sVar.isValid())\n"                      \
             "        {\n"                                            \
             "           std::vector<%s> vec%s;\n"                                         \
-            "           QStringList curValVarList = cur%Var.toStringList();\n"            \
+            "           QStringList curValVarList = cur%sVar.toStringList();\n"            \
             "           foreach(const QString& vStr, curValVarList) \n"                   \
             "           {\n"                                        \
-            "              %s cur%s = vStr%s;\n"                                          \
-
-
-#            "        if (step < p->m%s.size())\n"                                      \
-#            "        {\n"                                                              \
-#            "            for (int i=0; i < p->m%s.at(step).size(); ++i) \n"            \
-#            "            {\n"                                                          \
-#            "                cur%s = p->m%s.at(step).at(i)%s;\n"                       \
-            % (propName, propName, propName, propVarType, propName, propVarType,
-            propName, strToNumConv)
+            "                %s cur%s = vStr%s;\n"                                          \
+            % (propName, propName, propName, varTargetType, propName, propName, propVarType, propName, strToNumConv)
 
             test = ''
             if propVarType != "std::string":

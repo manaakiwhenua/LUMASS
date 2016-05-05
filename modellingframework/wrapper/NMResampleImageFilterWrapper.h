@@ -40,7 +40,7 @@ template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMResampleImageFilterWrapper_Internal;
 
 class
-NMMODFRAME_EXPORT NMResampleImageFilterWrapper
+NMResampleImageFilterWrapper
 		: public NMProcess
 {
 	Q_OBJECT
@@ -68,11 +68,11 @@ public:
     template<class TInputImage, class TOutputImage, unsigned int Dimension>
     friend class NMResampleImageFilterWrapper_Internal;
 
-	QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
-	void instantiateObject(void);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
+    void instantiateObject(void);
 
-	void setNthInput(unsigned int numInput,
-			QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+    void setNthInput(unsigned int numInput,
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     /*$<RATGetSupportDecl>$*/
 

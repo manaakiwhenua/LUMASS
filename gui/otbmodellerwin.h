@@ -75,6 +75,7 @@ class vtkTable;
 class NMLayer;
 class NMTableView;
 class NMVectorLayer;
+class otb::MultiParser;
 
 namespace Ui
 {
@@ -265,10 +266,29 @@ protected:
 
     void vtkPolygonPolydataToOGR(OGRDataSource* ds, NMVectorLayer *vectorLayer);
 
-    void parseKernelForExpression(std::string& expr,
-                                  std::vector<int>& forSizeValues,
-                                  std::vector<std::string>& forCounterNames,
-                                  std::vector<otb::MultiParser::Pointer> &forParsers);
+    void parseKernelScriptBlock(
+            std::string& expr,
+            std::map<std::string, double*>& mapExtNameValues,
+            std::vector<std::string>& vecNames,
+            std::vector<double*>& vecValues,
+            std::vector<otb::Multiparser::Pointer>& vecParsers,
+            std::vector<int>& vecBlockLen,
+            std::vector<int>& vecBlockEnd,
+            std::vector<int>& vecStartIter,
+            std::vector<int>& vecEndIter
+            );
+
+    void parseScriptCommand(
+            std::string& expr,
+            std::map<std::string, double*>& mapExtNameValues,
+            std::vector<std::string>& vecNames,
+            std::vector<double*>& vecValues,
+            std::vector<otb::Multiparser::Pointer>& vecParsers,
+            std::vector<int>& vecBlockLen,
+            std::vector<int>& vecBlockEnd,
+            std::vector<int>& vecStartIter,
+            std::vector<int>& vecEndIter
+            );
 
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out);

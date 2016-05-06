@@ -268,18 +268,18 @@ protected:
 
     void parseKernelScriptBlock(std::string& expr,
             std::map<std::string, double*>& mapNameValue,
-            std::map<otb::MultiParser *, std::string> &mapParserName,
-            std::vector<otb::MultiParser *> &vecParsers,
+            std::map<otb::MultiParser*, std::string> &mapParserName,
+            std::vector<otb::MultiParser*> &vecParsers,
             std::vector<int>& vecBlockLen
             );
 
     void parseScriptCommand(std::string& expr,
             std::map<std::string, double*>& mapNameValue,
             std::map<otb::MultiParser*, std::string>& mapParserName,
-            std::vector<otb::MultiParser* >& vecParsers
+            std::vector<otb::MultiParser*>& vecParsers
             );
 
-    void parserTest(otb::MultiParser::Pointer parser);
+    void parserTest(std::vector<otb::MultiParser*>& parsers);
 
 //    void parseForLoop(
 //            std::string& expr,

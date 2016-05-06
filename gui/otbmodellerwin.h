@@ -266,29 +266,30 @@ protected:
 
     void vtkPolygonPolydataToOGR(OGRDataSource* ds, NMVectorLayer *vectorLayer);
 
-    void parseKernelScriptBlock(
-            std::string& expr,
-            std::map<std::string, double*>& mapExtNameValues,
-            std::vector<std::string>& vecNames,
-            std::vector<double*>& vecValues,
-            std::vector<otb::Multiparser::Pointer>& vecParsers,
-            std::vector<int>& vecBlockLen,
-            std::vector<int>& vecBlockEnd,
-            std::vector<int>& vecStartIter,
-            std::vector<int>& vecEndIter
+    void parseKernelScriptBlock(std::string& expr,
+            std::map<std::string, double*>& mapNameValue,
+            std::map<otb::MultiParser *, std::string> &mapParserName,
+            std::vector<otb::MultiParser *> &vecParsers,
+            std::vector<int>& vecBlockLen
             );
 
-    void parseScriptCommand(
-            std::string& expr,
-            std::map<std::string, double*>& mapExtNameValues,
-            std::vector<std::string>& vecNames,
-            std::vector<double*>& vecValues,
-            std::vector<otb::Multiparser::Pointer>& vecParsers,
-            std::vector<int>& vecBlockLen,
-            std::vector<int>& vecBlockEnd,
-            std::vector<int>& vecStartIter,
-            std::vector<int>& vecEndIter
+    void parseScriptCommand(std::string& expr,
+            std::map<std::string, double*>& mapNameValue,
+            std::map<otb::MultiParser*, std::string>& mapParserName,
+            std::vector<otb::MultiParser* >& vecParsers
             );
+
+    void parserTest(otb::MultiParser::Pointer parser);
+
+//    void parseForLoop(
+//            std::string& expr,
+//            std::map<std::string, double*>& mapExtNameValues,
+//            std::vector<std::string>& vecNames,
+//            std::vector<double*>& vecValues,
+//            std::vector<otb::Multiparser::Pointer>& vecParsers,
+//            std::vector<int>& vecBlockLen,
+//            std::vector<int>& vecBlockEnd
+//            );
 
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out);

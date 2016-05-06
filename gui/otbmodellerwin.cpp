@@ -2701,223 +2701,222 @@ OtbModellerWin::getNextParamExpr(const QString& expr)
 }
 
 void
-OtbModellerWin::parseKernelScriptBlock(
-        std::string& expr,
-        std::map<std::string, double*>& mapExtNameValues,
-        std::vector<std::string>& vecNames,
-        std::vector<double*>& vecValues,
-        std::vector<otb::Multiparser::Pointer>& vecParsers,
-        std::vector<int>& vecBlockLen,
-        std::vector<int>& vecBlockEnd,
-        std::vector<int>& vecStartIter,
-        std::vector<int>& vecEndIter
+OtbModellerWin::parseScriptCommand(std::string& expr,
+        std::map<std::string, double*>& mapNameValue,
+        std::map<otb::MultiParser*, std::string>& mapParserName,
+        std::vector<otb::MultiParser *> &vecParsers
         )
 {
+    // create parser for this line
+    otb::MultiParser::Pointer parser = otb::MultiParser::New();
+    std::string name;
+    double* v = 0;
 
+    // extract result varname
+    size_t pos = std::string::npos;
+    if ((pos = expr.find('=')) != std::string::npos)
+    {
+        name = expr.substr(0, pos);
+
+        std::string rhs = expr.substr(pos+1, expr.size()-pos+1);
+        parser->SetExpr(rhs);
+
+        NMDebugAI(<< name << "=" << expr << std::endl);
+    }
+    else
+    {
+        parser->SetExpr(expr);
+        std::stringstream sstemp;
+        sstemp.str("");
+        sstemp << "v" << mapNameValue.size();
+        name = sstemp.str();
+
+        NMDebugAI(<< name << "=" << expr << std::endl);
+    }
+
+    // generate a value pointer for this command (equation)
+    double* value;
+    try
+    {
+         value = new double[1];
+    }
+    catch (std::exception& newValException)
+    {
+        // handle code here
+        std::string what = newValException.what();
+        std::string msg = "No memory to allocate result variable!";
+        NMErr(ctxOtbModellerWin, << msg << what);
+        return;
+    }
+    v = &value[0];
+
+    // so far, we believe, the result variable for
+    // this command hasn't been defined ...
+    bool bDefined = false;
+
+    // ... however, let's check ...
+    std::map<std::string, double*>::iterator extIter =
+            mapNameValue.begin();
+    while (extIter != mapNameValue.end())
+    {
+        if (name.compare(extIter->first) == 0)
+        {
+            bDefined = true;
+        }
+        parser->DefineVar(extIter->first, extIter->second);
+
+        ++extIter;
+    }
+
+    // define 'new' result variable for this command only
+    // if it hasn't been defined either externally or
+    // in any of the previous commands of this script
+    parser->Register();
+    otb::MultiParser* pparser = parser.GetPointer();
+    if (!bDefined)
+    {
+        pparser->DefineVar(name, v);
+        mapNameValue.insert(std::pair<std::string, double*>(name, v));
+        mapParserName.insert(std::pair<otb::MultiParser*, std::string>(pparser, name));
+    }
+    vecParsers.push_back(parser);
+}
+
+void
+OtbModellerWin::parseKernelScriptBlock(std::string& expr,
+        std::map<std::string, double*>& mapNameValue,
+        std::map<otb::MultiParser*, std::string>& mapParserName,
+        std::vector<otb::MultiParser*>& vecParsers,
+        std::vector<int>& vecBlockLen
+        )
+{
     // ======================================================
-    // break up script/block into individual commands
+    // break up parsing into for loops (blocks) and simple commands
     // ======================================================
 
     std::string script = expr;
     size_t scriptPos = 0;
-    size_t scriptEnd = script.size()-1;
-    size_t spos = 0;
-    size_t fpos = 0;
-    while(scriptPos < scriptEnd && scriptStart != std::string::npos)
+    while(scriptPos < script.size()-1 && scriptPos != std::string::npos)
     {
-        tpos = script.find(';', scriptPos);
-        fpos = script.find("for", scriptPos);
+        size_t tpos = script.find(';', scriptPos);
+        size_t fpos = script.find("for", scriptPos);
 
-        // parse for
-        if (fpos != std::string::npos)
+        // parse for loop
+        if (fpos != std::string::npos && fpos < tpos)
         {
+            // first for expr:  counter definition/initiation;
+            // second for expr: test loop test;
+            // third for expr:  counter increment;
 
-        }
+            int blockStart = vecParsers.size();
+            int blockLen = 0;
 
-        std::string command
-    }
+            size_t forBlockOpen = script.find('{', fpos);
+            size_t forBlockClose = script.find('}', forBlockOpen+1);
+            std::string forBlock = script.substr(forBlockOpen+1, forBlockOpen+1-forBlockClose);
 
-
-
-//    for (int z=0; z < script.size(); ++z)
-//    {
-//        if (script[z] == ';')
-//        {
-//            std::string cmd = script.substr(start, z-start);
-//            int pos = 0;
-//            while ((pos = cmd.find_first_of('\n', pos)) != std::string::npos)
-//            {
-//                cmd = cmd.replace(pos, 1, "");
-//                ++pos;
-//            }
-//            if (cmd.size() )
-//            commands.push_back(cmd);
-//            start = z+1;
-//        }
-//    }
-//    if (start < script.size())
-//    {
-//        commands.push_back(script.substr(start, script.size()-start));
-//    }
-
-
-
-    // ======================================================
-    // parse & initiate commands
-    // ======================================================
-
-    NMDebugAI(<< std::endl << "parsing individual commands ... " << std::endl);
-    std::stringstream sstemp;
-    for (int c=0; c < commands.size(); ++c)
-    {
-        vecParsers.push_back(otb::MultiParser::New());
-
-        // ---------------------------------
-        // extract result varname
-        // ---------------------------------
-        size_t pos = std::string::npos;
-        if ((pos = commands.at(c).find('=')) != std::string::npos)
-        {
-            std::string vname = commands.at(c).substr(0, pos);
-            vecNames.push_back(vname);
-
-            std::string expr = commands.at(c).substr(pos+1, commands.size()-pos+1);
-            vecParsers.at(c)->SetExpr(expr);
-
-            NMDebugAI(<< vecNames.at(c) << "=" << expr << std::endl);
-        }
-        else
-        {
-            vecParsers.at(c)->SetExpr(commands.at(c));
-
-            sstemp.str("");
-            sstemp << "v" << c;
-            vecNames.at(c) = sstemp.str();
-
-            NMDebugAI(<< vecNames.at(c) << "=" << commands.at(c) << std::endl);
-        }
-
-        // generate a value pointer for this command (equation)
-        double* vValue = 0;
-        double* vForCounter = 0;
-        try
-        {
-            vValue = new double;
-            vForCounter = new double;
-
-            vecValues.push_back(vValue);
-        }
-        catch (std::exception& newValException)
-        {
-            // handle code here
-            std::string what = newValException.what();
-            std::string msg = "Too many equations! ";
-            NMErr(ctxOtbModellerWin, << msg << what);
-            return;
-        }
-
-
-        // define previous cmdVars for this parser
-        for (int v=0; v < c; ++v)
-        {
-            vecParsers.at(c)->DefineVar(vecNames.at(v), &vecValues.at(v));
-        }
-
-
-        // ------------------------------------
-        // define 'external' variables
-        // ------------------------------------
-        std::map<std::string, double*>::const_iterator extIter =
-                mapExtNameValues.begin();
-
-        while (extIter != mapExtNameValues.end())
-        {
-            vecParsers.at(c)->DefineVar(extIter->first, extIter->second);
-        }
-
-        // ------------------------------------
-        // parse for loop, if applicable
-        // ------------------------------------
-        if ((pos = commands.at(c).find("foreach")) != std::string::npos)
-        {
-            std::string counterName;
-            std::string loopsizeName;
-            std::string forExpression;
-            size_t openForAdmin;
-            size_t comma1, comma2;
-            size_t closeForAdmin;
-
-            // look for counter name
-            if ((openForAdmin = commands.at(c).find('(', pos+7)) != std::string::npos)
+            // parse the for admin block
+            std::string forAdminBlock = script.substr(fpos+3, forBlockOpen-1-fpos+3);
+            size_t t = forAdminBlock.find_first_of('(');
+            const char* space = " ";
+            if (t != std::string::npos)
             {
-                if ((comma1 = commands.at(c).find(',', openForAdmin)) != std::string::npos)
-                {
-                    counterName = commands.at(c).substr(openForAdmin+1, comma1-openForAdmin+1);
-                }
-
-
-                if ((comma2 = commands.at(c).find(',', comma1+1)) != std::string::npos)
-                {
-                    loopsizeName = commands.at(c).substr(comma1+1, comma2-comma1+1);
-                }
-
-                if ((closeForAdmin = commands.at(c).rfind(')')) != std::string::npos)
-                {
-                    forExpression = commands.at(c).substr(comma2+1, closeForAdmin-comma2+1);
-                }
-
-                if (    !counterName.empty()
-                    &&  !loopsizeName.empty()
-                    &&  !forExpression.empty()
-                   )
-                {
-                    // check, whether we've got the names already defined earlier,
-                    // or whether they've got local scope
-                    extIter = mapExtNameValues.find(counterName);
-                    if (extIter == mapExtNameValues.end())
-                    {
-                        vecNames.push_back(counterName);
-                        vecValues.push_back()
-                    }
-
-                    std::string::iterator sit = loopsizeName.begin();
-                    while(::isdigit(*sit) && sit != loopsizeName.end())
-                    {
-                        ++sit;
-                    }
-                    if (sit == loopsizeName.end())
-                    {
-                        forSizeValues.push_back(::atoi(loopsizeName.c_str()));
-                    }
-
-                    NMDebugAI(<< "foreach(" << counterName
-                              << ", " << loopsizeName << ", "
-                              << forExpression);
-
-
-                }
-
-                forParsers.push_back(parsers.at(c));
+                forAdminBlock.replace(t, 1, space);
             }
+
+            t = forAdminBlock.find_last_of(')');
+            if (t != std::string::npos)
+            {
+                forAdminBlock.replace(t, 1, space);
+            }
+
+            this->parseKernelScriptBlock(forAdminBlock,
+                                         mapNameValue,
+                                         mapParserName,
+                                         vecParsers,
+                                         vecBlockLen
+                                         );
+
+            if (vecParsers.size()-blockStart != 3)
+            {
+                // throw exception here; invalid for loop header
+                NMErr(ctxOtbModellerWin, << "Invalid for-loop header: " << forAdminBlock);
+                return;
+            }
+
+            this->parseKernelScriptBlock(forBlock,
+                                         mapNameValue,
+                                         mapParserName,
+                                         vecParsers,
+                                         vecBlockLen
+                                         );
+
+            blockLen = vecParsers.size() - blockStart; // includes the admin block of len=3
+            vecBlockLen.push_back(blockLen);
+
+            scriptPos = forBlockClose+1;
         }
+        // if we're parsing the 3rd parameter of a for header,
+        // we don't have a ';' indicating the end of the statement
+        else if (   tpos != std::string::npos
+                 || vecBlockLen.size()-3 >= 0
+                )
+        {
+            size_t len = std::string::npos;
+            if (tpos != std::string::npos)
+            {
+                len = tpos-scriptPos;
+            }
 
-        vecForParsers.push_back(forParsers);
-        vecForCounterNames.push_back(forCounterNames);
-        vecForSizeValues.push_back(forSizeValues);
+            std::string expr = script.substr(scriptPos, len);
+            this->parseScriptCommand(
+                        expr,
+                        mapNameValue,
+                        mapParserName,
+                        vecParsers
+                        );
 
+            scriptPos = tpos+1;
+            vecBlockLen.push_back(1);
+        }
     }
+}
+
+void
+OtbModellerWin::parserTest(otb::MultiParser::Pointer parser)
+{
+    parser = otb::MultiParser::New();
+
+    double* v1 = new double;
+    *v1 = 5;
+
+    std::string myexpr = "v1 + 3";
+
+    parser->DefineVar("v1", v1);
+    parser->SetExpr(myexpr);
 
 
 }
-
 
 void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
+    otb::MultiParser::Pointer p;
+
+    this->parserTest(p);
+
+
+    double res = p->Eval();
+
+    NMDebugAI(<< "... = " << res << std::endl);
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+
+
+    return;
 
     QString scriptStr = NMGlobalHelper::getMultiLineInput(
-                "Kernel Script", "Enter commands", this);
+                "Kernel Script", "", this);
 
     if (scriptStr.isEmpty())
     {
@@ -2925,6 +2924,9 @@ void OtbModellerWin::test()
         return;
     }
 
+    scriptStr = scriptStr.replace(QChar('\r'), QChar(' '));
+    scriptStr = scriptStr.replace(QChar('\n'), QChar(' '));
+    std::string script = scriptStr.toStdString();
 
     // ======================================================
     // some 'external' variables
@@ -2933,44 +2935,70 @@ void OtbModellerWin::test()
     double birne = 5;
     double* kernel = new double[9];
     std::srand(time(0));
-    for (int i=0; i < 9; ++9)
+    for (int i=0; i < 9; ++i)
     {
         kernel[i] = ::rand() % 100 + 1;
     }
 
     // note: we still need to know the length of each external input data,
     // esp. for arrays
-    std::map<std::string, double*> mapExtNameValues;
-    mapExtNameValues.insert(std::pair<std::string, double*>("apfel", &apfel));
-    mapExtNameValues.insert(std::pair<std::string, double*>("birne", &birne));
-    mapExtNameValues.insert(std::pair<std::string, double*>("kernel", kernel));
+    std::map<std::string, double*> mapNameValue;
+    mapNameValue.insert(std::pair<std::string, double*>("apfel", &apfel));
+    mapNameValue.insert(std::pair<std::string, double*>("birne", &birne));
+    mapNameValue.insert(std::pair<std::string, double*>("kernel", kernel));
 
 
     // ======================================================
     // vars for storing script sequence, expr, parsers, and values
     // ======================================================
 
-    std::vector<std::string> vecNames;
-    std::vector<double*> vecValues;
-    std::vector<otb::Multiparser::Pointer> vecParsers;
+    std::map<otb::MultiParser*, std::string> mapParserName;
+    std::vector<otb::MultiParser*> vecParsers;
     std::vector<int> vecBlockLen;
-    std::vector<int> vecBlockEnd; // index
-    std::vector<int> vecStartIter;
-    std::vector<int> vecEndIter;
 
+    NMDebugAI(<< "Parsing ... " << std::endl);
     this->parseKernelScriptBlock(
                 script,
-                vecNames,
-                vecValues,
-                vecParser,
-                vecBlockLen,
-                vecBlockEnd,
-                vecStartIter,
-                vecEndIter
+                mapNameValue,
+                mapParserName,
+                vecParsers,
+                vecBlockLen
                 );
 
 
-
+    NMDebugAI(<< "Show your hand!\n\n");
+    std::string name;
+    for (int i=0; i < vecParsers.size(); ++i)
+    {
+        if (vecBlockLen.at(i) == 1)
+        {
+            name = mapParserName.find(vecParsers.at(i))->second;
+            NMDebug(<< name << " = " << vecParsers.at(i)->GetExpr() << ";" << std::endl);
+        }
+        else
+        {
+            NMDebug(<< "for (");
+            for (int b=0; b < 3; ++b)
+            {
+                name = mapParserName.find(vecParsers.at(i+b))->second;
+                if (b == 2)
+                {
+                    NMDebug(<< name << "=" << vecParsers.at(i+b)->GetExpr() << ")");
+                }
+                else
+                {
+                    NMDebug(<< name << "=" << vecParsers.at(i+b)->GetExpr() << "; ");
+                }
+            }
+            NMDebug(<< "\n{\n");
+            for (int bl=3; bl < vecBlockLen.at(i); ++bl)
+            {
+                name = mapParserName.find(vecParsers.at(bl))->second;
+                NMDebugAI(<< name << " = " << vecParsers.at(bl)->GetExpr() << ";" << std::endl);
+            }
+            NMDebug(<< "\n}\n\n");
+        }
+    }
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");

@@ -2759,17 +2759,26 @@ OtbModellerWin::parseScriptCommand(std::string& expr,
         return;
     }
 
-    mapNameValue.insert(std::pair<std::string, double*>(name, value));
-    mapParserName.insert(std::pair<otb::MultiParser*, std::string>(parser, name));
-    vecParsers.push_back(parser);
-
+    // check, whether we've defined this variable already;
+    // if so, we just associate the new parser with this
+    // variable; if not, we also add a new variable to the
+    // list
     std::map<std::string, double*>::iterator extIter =
-            mapNameValue.begin();
+            mapNameValue.find(name);
+    if (extIter == mapNameValue.end())
+    {
+        mapNameValue.insert(std::pair<std::string, double*>(name, value));
+    }
+
+    extIter = mapNameValue.begin();
     while (extIter != mapNameValue.end())
     {
         parser->DefineVar(extIter->first, extIter->second);
         ++extIter;
     }
+
+    mapParserName.insert(std::pair<otb::MultiParser*, std::string>(parser, name));
+    vecParsers.push_back(parser);
 }
 
 void
@@ -2845,7 +2854,7 @@ OtbModellerWin::parseKernelScriptBlock(std::string& expr,
 
             blockLen = vecParsers.size() - blockStart; // includes the admin block of len=3
             NMDebugAI(<< "blockLen: " << blockLen << std::endl);
-            vecBlockLen.at(vecBlockLen.size()-blockLen-1) = blockLen;
+            vecBlockLen.at(vecBlockLen.size()-blockLen) = blockLen;
 
             scriptPos = forBlockClose+1;
         }
@@ -2877,28 +2886,49 @@ OtbModellerWin::parseKernelScriptBlock(std::string& expr,
 }
 
 void
-OtbModellerWin::parserTest(std::vector<otb::MultiParser *> &parsers)
+OtbModellerWin::parserTest(std::vector<otb::MultiParser *> &parsers,
+                           std::map<otb::MultiParser *, std::string> &parsername,
+                           std::map<std::string, double *> &namevalue)
 {
     otb::MultiParser::Pointer smartparser = otb::MultiParser::New();
     otb::MultiParser* parser = smartparser.GetPointer();
     parser->Register();
 
     double* v1;
+    double* res;
+    double* res2;
     try
     {
         v1 = new double;
+        res = new double;
+        res2 = new double;
     }
     catch (...){}
 
     *v1 = 5;
 
-    std::string myexpr = "v1 + 3";
+    std::string myexpr = "v1 + 3"; // = res
+    std::string myexpr2 = "res + 2";
 
     parser->SetExpr(myexpr);
     parser->DefineVar("v1", v1);
 
-
     parsers.push_back(parser);
+    parsername.insert(std::pair<otb::MultiParser*, std::string>(parser, "res"));
+    namevalue.insert(std::pair<std::string, double*>("res", res));
+
+
+    otb::MultiParser::Pointer sp2 = otb::MultiParser::New();
+    otb::MultiParser* par2 = sp2.GetPointer();
+    par2->Register();
+    par2->DefineVar("res", res);
+    par2->SetExpr(myexpr2);
+
+    parsers.push_back(par2);
+
+    parsername.insert(std::pair<otb::MultiParser*, std::string>(par2, "res2"));
+    namevalue.insert(std::pair<std::string, double*>("res2", res2));
+
 
 
 }
@@ -2907,17 +2937,33 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    //std::vector<otb::MultiParser*> parsers;
+    //    std::vector<otb::MultiParser*> parsers;
+    //    std::map<otb::MultiParser*, std::string> parsername;
+    //    std::map<std::string, double*> namevalue;
 
-    //this->parserTest(parsers);
-    //double res = parsers[0]->Eval();
+    //    this->parserTest(parsers,
+    //                     parsername,
+    //                     namevalue);
 
-    //NMDebugAI(<< "... = " << res << std::endl);
-    //NMDebugCtx(ctxOtbModellerWin, << "done!");
+    //    for (int f=0; f < parsers.size(); ++f)
+    //    {
+    //        otb::MultiParser* parslip = parsers.at(f);
+    //        std::string name = parsername.find(parslip)->second;
+    //        double* resval = namevalue.find(name)->second;
+    //        *resval = parslip->Eval();
 
-    //parsers[0]->UnRegister();
+    //        NMDebugAI(<< " = " << *resval << std::endl);
+    //    }
 
-    //return;
+
+    //    NMDebugCtx(ctxOtbModellerWin, << "done!");
+
+    //    for (int p=0; p < parsers.size(); ++p)
+    //    {
+    //        parsers.at(p)->UnRegister();
+    //    }
+
+    //    return;
 
     QString scriptStr = NMGlobalHelper::getMultiLineInput(
                 "Kernel Script", "", this);
@@ -3031,34 +3077,51 @@ OtbModellerWin::runScript(
     for (int i=0; i < vecParsers.size(); ++i)
     {
         otb::MultiParser* parser = vecParsers.at(i);
-        double*& value = mapNameValue.find(mapParserName.find(parser)->second)->second;
+        std::string& name = mapParserName.find(parser)->second;
+        double* value = mapNameValue.find(name)->second;
         *value = parser->Eval();
 
-        NMDebugAI(<< *value << " = " << parser->GetExpr());
+        NMDebugAI(<< *value << " = " << parser->GetExpr() << std::endl);
 
         if (vecBlockLen.at(i) > 1)
         {
-            otb::MultiParser* testParser = vecParsers.at(i+1);
-            double*& testValue = mapNameValue.find(mapParserName.find(testParser)->second)->second;
+            const int numForExp = vecBlockLen.at(i)-3;
+            otb::MultiParser* testParser = vecParsers.at(++i);
+            std::string& testName = mapParserName.find(testParser)->second;
+            double* testValue = mapNameValue.find(testName)->second;
+            *testValue = testParser->Eval();
 
+            otb::MultiParser* counterParser = vecParsers.at(++i);
+            std::string& counterName = mapParserName.find(counterParser)->second;
+            double* counterValue = mapNameValue.find(counterName)->second;
 
-            otb::MultiParser* counterParser = vecParsers.at(i+2);
-            double*& counterValue = mapNameValue.find(mapParserName.find(counterParser)->second)->second;
-
-            while ((*testValue = testParser->Eval()))
+            while (*testValue)
             {
-                for (int exp=3; exp < vecBlockLen.at(i)-3; ++exp)
+                for (int exp=1; exp <= numForExp; ++exp)
                 {
-                    otb::MultiParser* forExp = vecParsers.at(i+exp);
-                    double*& forValue = mapNameValue.find(mapParserName.find(forExp)->second)->second;
-                    *forValue = forExp->Eval();
+                    if (i+exp < vecParsers.size())
+                    {
+                        otb::MultiParser* forExp = vecParsers.at(i+exp);
+                        std::string& forName = mapParserName.find(forExp)->second;
+                        double* forValue = mapNameValue.find(forName)->second;
+                        *forValue = forExp->Eval();
 
-                    NMDebugAI(<< "for #" << exp-3 << ": " << *forValue << " = " << parser->GetExpr());
+                        NMDebugAI(<< "for #" << exp << ": " << *forValue << " = " << parser->GetExpr() << std::endl);
+                    }
+                    else
+                    {
+                        // throw exception, something's wrong!
+                        NMErr(ctxOtbModellerWin, << "Not that many cmds in for-loop!");
+                        return;
+                    }
                 }
 
                 *counterValue = counterParser->Eval();
-                NMDebugAI(<< "   for-test: " << *counterValue << " = " << counterParser->GetExpr() << std::endl);
+                *testValue = testParser->Eval();
+                NMDebugAI(<< "   for-test: " << *counterValue << " = " << *testValue << std::endl);
             }
+            // continue with rest of expressions
+            i += numForExp;
         }
     }
 

@@ -281,15 +281,12 @@ protected:
 
     void parserTest(std::vector<otb::MultiParser*>& parsers);
 
-//    void parseForLoop(
-//            std::string& expr,
-//            std::map<std::string, double*>& mapExtNameValues,
-//            std::vector<std::string>& vecNames,
-//            std::vector<double*>& vecValues,
-//            std::vector<otb::Multiparser::Pointer>& vecParsers,
-//            std::vector<int>& vecBlockLen,
-//            std::vector<int>& vecBlockEnd
-//            );
+    void runScript(
+            std::map<std::string, double*>& mapNameValue,
+            std::map<otb::MultiParser*, std::string> &mapParserName,
+            std::vector<otb::MultiParser*> &vecParsers,
+            std::vector<int>& vecBlockLen
+            );
 
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out);

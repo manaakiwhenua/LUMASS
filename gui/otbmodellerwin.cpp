@@ -2817,21 +2817,7 @@ OtbModellerWin::parseKernelScriptBlock(std::string& expr,
                 NMErr(ctxOtbModellerWin, << "mal formed for expression!");
                 return;
             }
-
-
             forAdminBlock = forAdminBlock.substr(t+1, tt-1-t+1-1);
-
-            //            const char* space = " ";
-            //            if (t != std::string::npos)
-            //            {
-            //                forAdminBlock.replace(t, 1, space);
-            //            }
-
-            //            t = forAdminBlock.find_last_of(')');
-            //            if (t != std::string::npos)
-            //            {
-            //                forAdminBlock.replace(t, 1, space);
-            //            }
 
             NMDebugAI(<< "forAdminBlock: " << forAdminBlock << std::endl);
             NMDebugAI(<< "forBlock: " << forBlock << std::endl);
@@ -2859,7 +2845,7 @@ OtbModellerWin::parseKernelScriptBlock(std::string& expr,
 
             blockLen = vecParsers.size() - blockStart; // includes the admin block of len=3
             NMDebugAI(<< "blockLen: " << blockLen << std::endl);
-            vecBlockLen.push_back(blockLen);
+            vecBlockLen.at(vecBlockLen.size()-blockLen-1) = blockLen;
 
             scriptPos = forBlockClose+1;
         }
@@ -2984,6 +2970,13 @@ void OtbModellerWin::test()
                 );
 
 
+    this->runScript(mapNameValue,
+                    mapParserName,
+                    vecParsers,
+                    vecBlockLen
+                    );
+
+
 //    NMDebugAI(<< "Show your hand!\n\n");
 //    std::string name;
 //    for (int i=0; i < vecParsers.size(); ++i)
@@ -3022,6 +3015,56 @@ void OtbModellerWin::test()
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
+
+void
+OtbModellerWin::runScript(
+        std::map<string, double *> &mapNameValue,
+        std::map<otb::MultiParser *, string> &mapParserName,
+        std::vector<otb::MultiParser *> &vecParsers,
+        std::vector<int> &vecBlockLen
+        )
+{
+    NMDebugCtx(ctxOtbModellerWin, << "...");
+
+    NMDebugAI(<< "running script ..." << std::endl);
+
+    for (int i=0; i < vecParsers.size(); ++i)
+    {
+        otb::MultiParser* parser = vecParsers.at(i);
+        double*& value = mapNameValue.find(mapParserName.find(parser)->second)->second;
+        *value = parser->Eval();
+
+        NMDebugAI(<< *value << " = " << parser->GetExpr());
+
+        if (vecBlockLen.at(i) > 1)
+        {
+            otb::MultiParser* testParser = vecParsers.at(i+1);
+            double*& testValue = mapNameValue.find(mapParserName.find(testParser)->second)->second;
+
+
+            otb::MultiParser* counterParser = vecParsers.at(i+2);
+            double*& counterValue = mapNameValue.find(mapParserName.find(counterParser)->second)->second;
+
+            while ((*testValue = testParser->Eval()))
+            {
+                for (int exp=3; exp < vecBlockLen.at(i)-3; ++exp)
+                {
+                    otb::MultiParser* forExp = vecParsers.at(i+exp);
+                    double*& forValue = mapNameValue.find(mapParserName.find(forExp)->second)->second;
+                    *forValue = forExp->Eval();
+
+                    NMDebugAI(<< "for #" << exp-3 << ": " << *forValue << " = " << parser->GetExpr());
+                }
+
+                *counterValue = counterParser->Eval();
+                NMDebugAI(<< "   for-test: " << *counterValue << " = " << counterParser->GetExpr() << std::endl);
+            }
+        }
+    }
+
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!");
+}
 
 
 bool

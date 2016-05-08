@@ -2793,96 +2793,166 @@ OtbModellerWin::parseKernelScriptBlock(std::string& expr,
     // break up parsing into for loops (blocks) and simple commands
     // ======================================================
 
+    enum ScriptElem {CMD,
+                     FOR_ADMIN,
+                     FOR_BLOCK};
+
+    std::stack<int> forLoop;    // parser vector index of 1st for admin cmd
+
+    std::stack<int> bracketOpen;
+
     std::string script = expr;
     size_t scriptPos = 0;
-    while(scriptPos < script.size()-1 && scriptPos != std::string::npos)
+    ScriptElem curElem = CMD;
+
+
+    while(scriptPos < script.size() && scriptPos != std::string::npos)
     {
-        size_t tpos = script.find(';', scriptPos);
-        size_t fpos = script.find("for", scriptPos);
+        size_t cmdPos = script.find(';', scriptPos);
+        size_t forPos = script.find("for", scriptPos);
 
-        // parse for loop
-        if (fpos != std::string::npos && fpos < tpos)
+        if (curElem == FOR_ADMIN)
         {
-            // first for expr:  counter definition/initiation;
-            // second for expr: test loop test;
-            // third for expr:  counter increment;
-
-            int blockStart = vecParsers.size();
-            int blockLen = 0;
-
-            size_t forBlockOpen = script.find('{', fpos);
-            size_t forBlockClose = script.find('}', forBlockOpen+1);
-            std::string forBlock = script.substr(forBlockOpen+1, forBlockClose-1-forBlockOpen+1-1);
-
-            // parse the for admin block
-            std::string forAdminBlock = script.substr(fpos+3, forBlockOpen-1-fpos+3-1);
-            size_t t = forAdminBlock.find_first_of('(');
-            size_t tt = forAdminBlock.find_last_of(')');
-            if (    t == std::string::npos
-                ||  tt == std::string::npos
-               )
+            size_t bopen = script.find('(', scriptPos);
+            size_t bclose = script.find(')', scriptPos);
+            if (bopen < bclose)
             {
-                // need to raise an exception here!
-                NMErr(ctxOtbModellerWin, << "mal formed for expression!");
-                return;
-            }
-            forAdminBlock = forAdminBlock.substr(t+1, tt-1-t+1-1);
 
-            NMDebugAI(<< "forAdminBlock: " << forAdminBlock << std::endl);
-            NMDebugAI(<< "forBlock: " << forBlock << std::endl);
-
-            this->parseKernelScriptBlock(forAdminBlock,
-                                         mapNameValue,
-                                         mapParserName,
-                                         vecParsers,
-                                         vecBlockLen
-                                         );
-
-            if (vecParsers.size()-blockStart != 3)
-            {
-                // throw exception here; invalid for loop header
-                NMErr(ctxOtbModellerWin, << "Invalid for-loop header: " << forAdminBlock);
-                return;
             }
 
-            this->parseKernelScriptBlock(forBlock,
-                                         mapNameValue,
-                                         mapParserName,
-                                         vecParsers,
-                                         vecBlockLen
-                                         );
-
-            blockLen = vecParsers.size() - blockStart; // includes the admin block of len=3
-            NMDebugAI(<< "blockLen: " << blockLen << std::endl);
-            vecBlockLen.at(vecBlockLen.size()-blockLen) = blockLen;
-
-            scriptPos = forBlockClose+1;
+            if (bclose != std::string::npos && bclose < cmdPos)
+            {
+                cmdPos = bclose;
+                forPos = std::string::npos;
+                curElem = FOR_BLOCK;
+            }
         }
-        // if we're parsing the 3rd parameter of a for header,
-        // we don't have a ';' indicating the end of the statement
-        else if (   tpos != std::string::npos
-                 || vecBlockLen.size()-3 >= 0
-                )
+        else if (curElem == FOR_BLOCK)
         {
-            size_t len = std::string::npos;
-            if (tpos != std::string::npos)
-            {
-                len = tpos-scriptPos;
-            }
 
-            std::string cmd = script.substr(scriptPos, len);
-            NMDebugAI(<< "cmd: " << cmd << std::endl);
+        }
+
+
+        if (forPos != std::string::npos && forPos < cmdPos)
+        {
+            size_t p = script.find('(', forPos+3);
+            if (p == std::string::npos)
+            {
+                NMErr(ctxOtbModellerWin, << "Invalid for loop specification near " << forPos+3);
+                return;
+            }
+            bracketOpen.push(p);
+            curElem = FOR_ADMIN;
+
+            forLoop.push(vecParsers.size());
+            scriptPos = p+1;
+        }
+        else
+        {
+            std::string cmd = script.substr(scriptPos, cmdPos-scriptPos);
             this->parseScriptCommand(
                         cmd,
                         mapNameValue,
                         mapParserName,
-                        vecParsers
-                        );
-
-            scriptPos = tpos != std::string::npos ? tpos+1 : script.size();
+                        vecParsers);
             vecBlockLen.push_back(1);
+            scriptPos = cmdPos+1;
         }
+
     }
+
+
+
+//    }
+
+    //    while(scriptPos < script.size() && scriptPos != std::string::npos)
+    //    {
+    //        size_t tpos = script.find(';', scriptPos);
+    //        size_t fpos = script.find("for", scriptPos);
+
+    //        // parse for loop
+    //        if (fpos != std::string::npos && fpos < tpos)
+    //        {
+    //            // first for expr:  counter definition/initiation;
+    //            // second for expr: test loop test;
+    //            // third for expr:  counter increment;
+
+    //            int blockStart = vecParsers.size();
+    //            int blockLen = 0;
+
+    //            size_t forBlockOpen = script.find('{', fpos);
+    //            size_t forBlockClose = script.find('}', forBlockOpen+1);
+    //            std::string forBlock = script.substr(forBlockOpen+1, forBlockClose-1-forBlockOpen+1-1);
+
+    //            // parse the for admin block
+    //            std::string forAdminBlock = script.substr(fpos+3, forBlockOpen-1-fpos+3-1);
+    //            size_t t = forAdminBlock.find_first_of('(');
+    //            size_t tt = forAdminBlock.find_last_of(')');
+    //            if (    t == std::string::npos
+    //                ||  tt == std::string::npos
+    //               )
+    //            {
+    //                // need to raise an exception here!
+    //                NMErr(ctxOtbModellerWin, << "mal formed for expression!");
+    //                return;
+    //            }
+    //            forAdminBlock = forAdminBlock.substr(t+1, tt-1-t+1-1);
+
+    //            NMDebugAI(<< "forAdminBlock: " << forAdminBlock << std::endl);
+    //            NMDebugAI(<< "forBlock: " << forBlock << std::endl);
+
+    //            this->parseKernelScriptBlock(forAdminBlock,
+    //                                         mapNameValue,
+    //                                         mapParserName,
+    //                                         vecParsers,
+    //                                         vecBlockLen
+    //                                         );
+
+    //            if (vecParsers.size()-blockStart != 3)
+    //            {
+    //                // throw exception here; invalid for loop header
+    //                NMErr(ctxOtbModellerWin, << "Invalid for-loop header: " << forAdminBlock);
+    //                return;
+    //            }
+
+    //            this->parseKernelScriptBlock(forBlock,
+    //                                         mapNameValue,
+    //                                         mapParserName,
+    //                                         vecParsers,
+    //                                         vecBlockLen
+    //                                         );
+
+    //            blockLen = vecParsers.size() - blockStart; // includes the admin block of len=3
+    //            NMDebugAI(<< "blockLen: " << blockLen << std::endl);
+    //            vecBlockLen.at(vecBlockLen.size()-blockLen) = blockLen;
+
+    //            scriptPos = forBlockClose+1;
+    //        }
+    //        // if we're parsing the 3rd parameter of a for header,
+    //        // we don't have a ';' indicating the end of the statement
+    //        else if (   tpos != std::string::npos
+    //                 || vecBlockLen.size()-3 >= 0
+    //                )
+    //        {
+    //            size_t len = std::string::npos;
+    //            if (tpos != std::string::npos)
+    //            {
+    //                len = tpos-scriptPos;
+    //            }
+
+    //            std::string cmd = script.substr(scriptPos, len);
+    //            NMDebugAI(<< "cmd: " << cmd << std::endl);
+    //            this->parseScriptCommand(
+    //                        cmd,
+    //                        mapNameValue,
+    //                        mapParserName,
+    //                        vecParsers
+    //                        );
+
+    //            scriptPos = tpos != std::string::npos ? tpos+1 : script.size();
+    //            vecBlockLen.push_back(1);
+    //        }
+    //    }
 }
 
 void
@@ -3009,6 +3079,7 @@ void OtbModellerWin::test()
     NMDebugAI(<< "Parsing ... " << std::endl);
     this->parseKernelScriptBlock(
                 script,
+                parseAdmin,
                 mapNameValue,
                 mapParserName,
                 vecParsers,

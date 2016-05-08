@@ -267,6 +267,7 @@ protected:
     void vtkPolygonPolydataToOGR(OGRDataSource* ds, NMVectorLayer *vectorLayer);
 
     void parseKernelScriptBlock(std::string& expr,
+            //std::vector<std::pair<ScriptElem, int> >& parseAdmin,
             std::map<std::string, double*>& mapNameValue,
             std::map<otb::MultiParser*, std::string> &mapParserName,
             std::vector<otb::MultiParser*> &vecParsers,

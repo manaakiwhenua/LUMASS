@@ -75,7 +75,6 @@ class vtkTable;
 class NMLayer;
 class NMTableView;
 class NMVectorLayer;
-class otb::MultiParser;
 
 namespace Ui
 {
@@ -269,15 +268,19 @@ protected:
     void parseKernelScriptBlock(std::string& expr,
             //std::vector<std::pair<ScriptElem, int> >& parseAdmin,
             std::map<std::string, double*>& mapNameValue,
-            std::map<otb::MultiParser*, std::string> &mapParserName,
-            std::vector<otb::MultiParser*> &vecParsers,
+            //std::map<otb::MultiParser*, std::string> &mapParserName,
+            std::map<mup::ParserX*, std::string>& mapParserName,
+            //std::vector<otb::MultiParser*> &vecParsers,
+            std::vector<mup::ParserX*>& vecParsers,
             std::vector<int>& vecBlockLen
             );
 
     void parseScriptCommand(std::string& expr,
             std::map<std::string, double*>& mapNameValue,
-            std::map<otb::MultiParser*, std::string>& mapParserName,
-            std::vector<otb::MultiParser*>& vecParsers
+            //std::map<otb::MultiParser*, std::string>& mapParserName,
+            std::map<mup::ParserX*, std::string>& mapParserName,
+            //std::vector<otb::MultiParser*>& vecParsers
+            std::vector<mup::ParserX*>& vecParsers
             );
 
     void parserTest(std::vector<otb::MultiParser*>& parsers,
@@ -287,15 +290,19 @@ protected:
 
     void runScript(
             std::map<std::string, double*>& mapNameValue,
-            std::map<otb::MultiParser*, std::string> &mapParserName,
-            std::vector<otb::MultiParser*> &vecParsers,
+            //std::map<otb::MultiParser*, std::string> &mapParserName,
+            //std::vector<otb::MultiParser*> &vecParsers,
+            std::map<mup::ParserX*, std::string> &mapParserName,
+            std::vector<mup::ParserX*>& vecParsers,
             std::vector<int>& vecBlockLen
             );
 
     void runLoop(int i,
                  std::map<std::string, double*>& mapNameValue,
-                 std::map<otb::MultiParser*, std::string> &mapParserName,
-                 std::vector<otb::MultiParser*> &vecParsers,
+                 std::map<mup::ParserX*, string> &mapParserName,
+                 std::vector<mup::ParserX*> &vecParsers,
+//                 std::map<otb::MultiParser*, std::string> &mapParserName,
+//                 std::vector<otb::MultiParser*> &vecParsers,
                  std::vector<int>& vecBlockLen
                  );
 

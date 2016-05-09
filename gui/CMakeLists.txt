@@ -78,6 +78,7 @@ INCLUDE_DIRECTORIES(
     ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
+    ${lumass_SOURCE_DIR}/utils/muParserX
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}
 	${SQLite_SOURCE_DIR}
@@ -95,6 +96,7 @@ LINK_DIRECTORIES(
 	${gui_BINARY_DIR}/lib
 	${SQLite_BINARY_DIR}/lib
 	${muparser_BINARY_DIR}  
+    ${muparserx_BINARY_DIR}
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
 	${SPATIALITE_LIB_DIR}

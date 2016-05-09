@@ -7,11 +7,12 @@ INCLUDE_DIRECTORIES(
 	${shared_SOURCE_DIR}
 	${OTB_DIR}/Code/Common
 	${muparser_SOURCE_DIR}
-        ${otbsuppl_core_SOURCE_DIR}
-        ${utils_SOURCE_DIR}
+    ${muparserx_SOURCE_DIR}
+    ${otbsuppl_core_SOURCE_DIR}
+    ${utils_SOURCE_DIR}
 	${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
 	${lumass_SOURCE_DIR}/utils/ITK
-        #${TCADB_INCLUDE_DIR}
+    #${TCADB_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -20,14 +21,15 @@ LINK_DIRECTORIES(
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/lib
-        #${TCADB_LIB_DIR}
+    #${TCADB_LIB_DIR}
 )
 
 file(GLOB OTBSUPPL_FILTERS
 	${filters_SOURCE_DIR}/*.txx
 	${filters_SOURCE_DIR}/*.cxx
 	${muparser_SOURCE_DIR}/*.cpp
-        ${otbsuppl_core_SOURCE_DIR}/*.cxx
+    ${muparserx_SOURCE_DIR}/*.cpp
+    ${otbsuppl_core_SOURCE_DIR}/*.cxx
 )
 
 file(GLOB OTBSUPPL_HEADER

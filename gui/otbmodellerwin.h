@@ -292,6 +292,13 @@ protected:
             std::vector<int>& vecBlockLen
             );
 
+    void runLoop(int i,
+                 std::map<std::string, double*>& mapNameValue,
+                 std::map<otb::MultiParser*, std::string> &mapParserName,
+                 std::vector<otb::MultiParser*> &vecParsers,
+                 std::vector<int>& vecBlockLen
+                 );
+
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out);
 

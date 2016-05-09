@@ -23,7 +23,7 @@
 #include <cstdio>
 #include <ctime>
 #include <list>
-#include <deque>
+#include <stack>
 #include <map>
 #include "math.h"
 
@@ -2802,157 +2802,132 @@ OtbModellerWin::parseKernelScriptBlock(std::string& expr,
     std::stack<int> bracketOpen;
 
     std::string script = expr;
-    size_t scriptPos = 0;
+    size_t pos = 0;
+    size_t start = 0;
+    size_t next = 0;
     ScriptElem curElem = CMD;
 
-
-    while(scriptPos < script.size() && scriptPos != std::string::npos)
+    std::string cmd;
+    // we look for sequence points and decide what to do ...
+    while(pos < script.size() && pos != std::string::npos)
     {
-        size_t cmdPos = script.find(';', scriptPos);
-        size_t forPos = script.find("for", scriptPos);
-
-        if (curElem == FOR_ADMIN)
+        const char c = script[pos];
+        switch (c)
         {
-            size_t bopen = script.find('(', scriptPos);
-            size_t bclose = script.find(')', scriptPos);
-            if (bopen < bclose)
+            case ';':
             {
-
+                cmd = script.substr(start, pos-start);
+                start = pos+1;
             }
+            break;
 
-            if (bclose != std::string::npos && bclose < cmdPos)
+            case 'f':
             {
-                cmdPos = bclose;
-                forPos = std::string::npos;
-                curElem = FOR_BLOCK;
+                if (    script.find("for(", pos) == pos
+                    ||  script.find("for ", pos) == pos
+                   )
+                {
+                    next = script.find('(', pos+3);
+                    if (next != std::string::npos)
+                    {
+                        // store the parser idx starting this for loop
+                        forLoop.push(vecParsers.size());
+
+                        curElem = FOR_ADMIN;
+                        bracketOpen.push(next);
+                        pos = next;
+                        start = pos+1;
+                    }
+                    else
+                    {
+                        /// ToDo: throw exception
+                        NMErr(ctxOtbModellerWin,
+                              << "Malformed for-loop near pos "
+                              << pos << ". Missing '('.");
+                        return;
+                    }
+                }
             }
-        }
-        else if (curElem == FOR_BLOCK)
-        {
+            break;
 
-        }
-
-
-        if (forPos != std::string::npos && forPos < cmdPos)
-        {
-            size_t p = script.find('(', forPos+3);
-            if (p == std::string::npos)
+            case '(':
             {
-                NMErr(ctxOtbModellerWin, << "Invalid for loop specification near " << forPos+3);
-                return;
+                if (curElem == FOR_ADMIN)
+                {
+                    bracketOpen.push(pos);
+                }
             }
-            bracketOpen.push(p);
-            curElem = FOR_ADMIN;
+            break;
 
-            forLoop.push(vecParsers.size());
-            scriptPos = p+1;
+            case ')':
+            {
+                if (curElem == FOR_ADMIN)
+                {
+                    bracketOpen.pop();
+                    if (bracketOpen.size() == 0)
+                    {
+                        cmd = script.substr(start, pos-start);
+
+                        next = script.find('{', pos+1);
+                        if (next != std::string::npos)
+                        {
+                            start = next+1;
+                            curElem = FOR_BLOCK;
+                        }
+                        else
+                        {
+                            /// ToDo: throw exception
+                            NMErr(ctxOtbModellerWin,
+                                  << "malformed for-loop near pos "
+                                  << pos << "!");
+                            return;
+                        }
+                    }
+                }
+            }
+            break;
+
+            case '}':
+            {
+                if (curElem == FOR_BLOCK)
+                {
+                    if (forLoop.empty())
+                    {
+                        /// ToDo: throw exception
+                        NMErr(ctxOtbModellerWin,
+                              << "Parsing error! For loop without head near pos "
+                              << pos << "!");
+                        return;
+                    }
+
+                    int idx = forLoop.top();
+                    forLoop.pop();
+                    vecBlockLen.at(idx) = vecParsers.size() - idx;
+
+                    if (forLoop.empty())
+                    {
+                        curElem = CMD;
+                    }
+                    start = pos+1;
+                }
+            }
+            break;
         }
-        else
+
+
+        if (!cmd.empty())
         {
-            std::string cmd = script.substr(scriptPos, cmdPos-scriptPos);
             this->parseScriptCommand(
                         cmd,
                         mapNameValue,
                         mapParserName,
                         vecParsers);
             vecBlockLen.push_back(1);
-            scriptPos = cmdPos+1;
+            cmd.clear();
         }
 
+        ++pos;
     }
-
-
-
-//    }
-
-    //    while(scriptPos < script.size() && scriptPos != std::string::npos)
-    //    {
-    //        size_t tpos = script.find(';', scriptPos);
-    //        size_t fpos = script.find("for", scriptPos);
-
-    //        // parse for loop
-    //        if (fpos != std::string::npos && fpos < tpos)
-    //        {
-    //            // first for expr:  counter definition/initiation;
-    //            // second for expr: test loop test;
-    //            // third for expr:  counter increment;
-
-    //            int blockStart = vecParsers.size();
-    //            int blockLen = 0;
-
-    //            size_t forBlockOpen = script.find('{', fpos);
-    //            size_t forBlockClose = script.find('}', forBlockOpen+1);
-    //            std::string forBlock = script.substr(forBlockOpen+1, forBlockClose-1-forBlockOpen+1-1);
-
-    //            // parse the for admin block
-    //            std::string forAdminBlock = script.substr(fpos+3, forBlockOpen-1-fpos+3-1);
-    //            size_t t = forAdminBlock.find_first_of('(');
-    //            size_t tt = forAdminBlock.find_last_of(')');
-    //            if (    t == std::string::npos
-    //                ||  tt == std::string::npos
-    //               )
-    //            {
-    //                // need to raise an exception here!
-    //                NMErr(ctxOtbModellerWin, << "mal formed for expression!");
-    //                return;
-    //            }
-    //            forAdminBlock = forAdminBlock.substr(t+1, tt-1-t+1-1);
-
-    //            NMDebugAI(<< "forAdminBlock: " << forAdminBlock << std::endl);
-    //            NMDebugAI(<< "forBlock: " << forBlock << std::endl);
-
-    //            this->parseKernelScriptBlock(forAdminBlock,
-    //                                         mapNameValue,
-    //                                         mapParserName,
-    //                                         vecParsers,
-    //                                         vecBlockLen
-    //                                         );
-
-    //            if (vecParsers.size()-blockStart != 3)
-    //            {
-    //                // throw exception here; invalid for loop header
-    //                NMErr(ctxOtbModellerWin, << "Invalid for-loop header: " << forAdminBlock);
-    //                return;
-    //            }
-
-    //            this->parseKernelScriptBlock(forBlock,
-    //                                         mapNameValue,
-    //                                         mapParserName,
-    //                                         vecParsers,
-    //                                         vecBlockLen
-    //                                         );
-
-    //            blockLen = vecParsers.size() - blockStart; // includes the admin block of len=3
-    //            NMDebugAI(<< "blockLen: " << blockLen << std::endl);
-    //            vecBlockLen.at(vecBlockLen.size()-blockLen) = blockLen;
-
-    //            scriptPos = forBlockClose+1;
-    //        }
-    //        // if we're parsing the 3rd parameter of a for header,
-    //        // we don't have a ';' indicating the end of the statement
-    //        else if (   tpos != std::string::npos
-    //                 || vecBlockLen.size()-3 >= 0
-    //                )
-    //        {
-    //            size_t len = std::string::npos;
-    //            if (tpos != std::string::npos)
-    //            {
-    //                len = tpos-scriptPos;
-    //            }
-
-    //            std::string cmd = script.substr(scriptPos, len);
-    //            NMDebugAI(<< "cmd: " << cmd << std::endl);
-    //            this->parseScriptCommand(
-    //                        cmd,
-    //                        mapNameValue,
-    //                        mapParserName,
-    //                        vecParsers
-    //                        );
-
-    //            scriptPos = tpos != std::string::npos ? tpos+1 : script.size();
-    //            vecBlockLen.push_back(1);
-    //        }
-    //    }
 }
 
 void
@@ -3079,7 +3054,6 @@ void OtbModellerWin::test()
     NMDebugAI(<< "Parsing ... " << std::endl);
     this->parseKernelScriptBlock(
                 script,
-                parseAdmin,
                 mapNameValue,
                 mapParserName,
                 vecParsers,
@@ -3132,6 +3106,63 @@ void OtbModellerWin::test()
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
+void
+OtbModellerWin::runLoop(int i,
+        std::map<string, double *> &mapNameValue,
+        std::map<otb::MultiParser *, string> &mapParserName,
+        std::vector<otb::MultiParser *> &vecParsers,
+        std::vector<int> &vecBlockLen
+        )
+{
+    const int numForExp = vecBlockLen.at(i)-3;
+    otb::MultiParser* testParser = vecParsers.at(++i);
+    std::string& testName = mapParserName.find(testParser)->second;
+    double* testValue = mapNameValue.find(testName)->second;
+    *testValue = testParser->Eval();
+
+    otb::MultiParser* counterParser = vecParsers.at(++i);
+    std::string& counterName = mapParserName.find(counterParser)->second;
+    double* counterValue = mapNameValue.find(counterName)->second;
+
+    while (*testValue)
+    {
+        for (int exp=1; exp <= numForExp; ++exp)
+        {
+            if (i+exp < vecParsers.size())
+            {
+                otb::MultiParser* forExp = vecParsers.at(i+exp);
+                std::string& forName = mapParserName.find(forExp)->second;
+                double* forValue = mapNameValue.find(forName)->second;
+                *forValue = forExp->Eval();
+
+                if (vecBlockLen.at(i+exp) > 1)
+                {
+                    this->runLoop(i+exp,
+                                  mapNameValue,
+                                  mapParserName,
+                                  vecParsers,
+                                  vecBlockLen);
+                    exp += vecBlockLen.at(i+exp)-1;
+                }
+                else
+                {
+                    NMDebugAI(<< "for #" << exp << ": " << *forValue << " = " << forExp->GetExpr() << std::endl);
+                }
+            }
+            else
+            {
+                // throw exception, something's wrong!
+                NMErr(ctxOtbModellerWin, << "Not that many cmds in for-loop!");
+                return;
+            }
+        }
+
+        *counterValue = counterParser->Eval();
+        *testValue = testParser->Eval();
+        NMDebugAI(<< "   for-test: " << *counterValue << " = " << *testValue << std::endl);
+    }
+}
+
 
 void
 OtbModellerWin::runScript(
@@ -3156,43 +3187,12 @@ OtbModellerWin::runScript(
 
         if (vecBlockLen.at(i) > 1)
         {
-            const int numForExp = vecBlockLen.at(i)-3;
-            otb::MultiParser* testParser = vecParsers.at(++i);
-            std::string& testName = mapParserName.find(testParser)->second;
-            double* testValue = mapNameValue.find(testName)->second;
-            *testValue = testParser->Eval();
-
-            otb::MultiParser* counterParser = vecParsers.at(++i);
-            std::string& counterName = mapParserName.find(counterParser)->second;
-            double* counterValue = mapNameValue.find(counterName)->second;
-
-            while (*testValue)
-            {
-                for (int exp=1; exp <= numForExp; ++exp)
-                {
-                    if (i+exp < vecParsers.size())
-                    {
-                        otb::MultiParser* forExp = vecParsers.at(i+exp);
-                        std::string& forName = mapParserName.find(forExp)->second;
-                        double* forValue = mapNameValue.find(forName)->second;
-                        *forValue = forExp->Eval();
-
-                        NMDebugAI(<< "for #" << exp << ": " << *forValue << " = " << parser->GetExpr() << std::endl);
-                    }
-                    else
-                    {
-                        // throw exception, something's wrong!
-                        NMErr(ctxOtbModellerWin, << "Not that many cmds in for-loop!");
-                        return;
-                    }
-                }
-
-                *counterValue = counterParser->Eval();
-                *testValue = testParser->Eval();
-                NMDebugAI(<< "   for-test: " << *counterValue << " = " << *testValue << std::endl);
-            }
-            // continue with rest of expressions
-            i += numForExp;
+            this->runLoop(i,
+                          mapNameValue,
+                          mapParserName,
+                          vecParsers,
+                          vecBlockLen);
+            i += vecBlockLen.at(i)-1;
         }
     }
 

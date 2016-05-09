@@ -159,6 +159,8 @@
 #include "itkVectorContainer.h"
 #include "itkStreamingImageFilter.h"
 #include "otbMultiParser.h"
+#include "otbParserX.h"
+#include "mpParser.h"
 
 // FOR ::test function
 //#include "itkFloodFilledImageFunctionConditionalIterator.h"
@@ -2981,6 +2983,35 @@ OtbModellerWin::parserTest(std::vector<otb::MultiParser *> &parsers,
 void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
+
+    //otb::ParserX::Pointer  xptr = otb::ParserX::New();
+    mup::ParserX xpar;
+
+    mup::Value k(10,0);
+    xpar.DefineVar("k", mup::Variable(&k));
+
+    mup::Value i(0);
+    xpar.DefineVar("i", mup::Variable(&i));
+
+    xpar.SetExpr("k[i] = i+1");
+
+
+    for (int v=0; v < 10; ++v)
+    {
+        i = mup::Value(v);
+        mup::Value res = xpar.Eval();
+    }
+
+    for (int r=0; r < 10; ++r)
+    {
+        NMDebugAI(<< "k[" << r << "] = " << k.At(r));
+    }
+
+
+
+
+
+    return;
 
     //    std::vector<otb::MultiParser*> parsers;
     //    std::map<otb::MultiParser*, std::string> parsername;

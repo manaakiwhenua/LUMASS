@@ -55,7 +55,7 @@ INCLUDE_DIRECTORIES(
     ${QT5SQL_INCLUDE_DIR}
     #${QT5SQL_PRIVATE_DIR}/private
     ${opt_SOURCE_DIR}
-	${lumass_BINARY_DIR}
+    ${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
     ${utils_SOURCE_DIR}/QtPropertyBrowser/src
     ${NMQSQLite_SRC_DIR}
@@ -78,10 +78,10 @@ INCLUDE_DIRECTORIES(
     ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
-    ${lumass_SOURCE_DIR}/utils/muParserX
+    ${muParserX_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}
-	${SQLite_SOURCE_DIR}
+    ${SQLite_SOURCE_DIR}
     ${NMQSQLite_SRC_DIR}
 	${SPATIALITE_INCLUDE_DIR}
 #    ${TCADB_INCLUDE_DIR}

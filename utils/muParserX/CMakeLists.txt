@@ -1,4 +1,4 @@
-PROJECT(muparserx)
+PROJECT(muParserX)
 
 #INCLUDE_DIRECTORIES(
 #	${otbsuppl_SOURCE_DIR}/GDALRATImageIO
@@ -8,11 +8,11 @@ PROJECT(muparserx)
 #)
 
 file(GLOB UTILS_PARSERX
-    ${muparserx_SOURCE_DIR}/*.cpp
+    ${muParserX_SOURCE_DIR}/*.cpp
 )
 
 file(GLOB UTILS_PARSERX_HEADER
-    ${muparserx_SOURCE_DIR}/*.h
+    ${muParserX_SOURCE_DIR}/*.h
 )
 
 #ADD_LIBRARY(MuParser SHARED ${UTILS_PARSER})

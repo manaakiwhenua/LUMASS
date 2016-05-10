@@ -7,7 +7,7 @@ INCLUDE_DIRECTORIES(
 	${shared_SOURCE_DIR}
 	${OTB_DIR}/Code/Common
 	${muparser_SOURCE_DIR}
-    ${muparserx_SOURCE_DIR}
+    ${muParserX_SOURCE_DIR}
     ${otbsuppl_core_SOURCE_DIR}
     ${utils_SOURCE_DIR}
 	${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
@@ -28,7 +28,7 @@ file(GLOB OTBSUPPL_FILTERS
 	${filters_SOURCE_DIR}/*.txx
 	${filters_SOURCE_DIR}/*.cxx
 	${muparser_SOURCE_DIR}/*.cpp
-    ${muparserx_SOURCE_DIR}/*.cpp
+    ${muParserX_SOURCE_DIR}/*.cpp
     ${otbsuppl_core_SOURCE_DIR}/*.cxx
 )
 

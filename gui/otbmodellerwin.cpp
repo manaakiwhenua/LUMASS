@@ -3231,17 +3231,15 @@ OtbModellerWin::runLoop(int i,
 {
     const int numForExp = vecBlockLen.at(i)-3;
     mup::ParserX* testParser = vecParsers.at(++i);
-    //std::string& testName = mapParserName.find(testParser)->second;
-    //mup::Value* testValue = mapNameValue.find(testName)->second;
-    mup::Value testValue = testParser->Eval();
-
+    std::string& testName = mapParserName.find(testParser)->second;
+    mup::Value*& testValue = mapNameValue.find(testName)->second;
+    *testValue = testParser->Eval();
 
     mup::ParserX* counterParser = vecParsers.at(++i);
-    //    std::string& counterName = mapParserName.find(counterParser)->second;
-    //    mup::Value*& counterValue = mapNameValue.find(counterName)->second;
-    mup::Value cVal;
+    std::string& counterName = mapParserName.find(counterParser)->second;
+    mup::Value*& counterValue = mapNameValue.find(counterName)->second;
 
-    while (testValue.GetFloat())
+    while (testValue->GetFloat())
     {
         for (int exp=1; exp <= numForExp; ++exp)
         {
@@ -3250,7 +3248,14 @@ OtbModellerWin::runLoop(int i,
                 mup::ParserX* forExp = vecParsers.at(i+exp);
                 std::string& forName = mapParserName.find(forExp)->second;
                 mup::Value*& forValue = mapNameValue.find(forName)->second;
-                forExp->Eval();
+                if (forValue->GetRows() > 1 || forValue->GetCols() > 1)
+                {
+                    forExp->Eval();
+                }
+                else
+                {
+                    *forValue = forExp->Eval();
+                }
 
                 if (vecBlockLen.at(i+exp) > 1)
                 {
@@ -3274,10 +3279,8 @@ OtbModellerWin::runLoop(int i,
             }
         }
 
-        cVal = counterParser->Eval();
-        //counterParser->Eval();
-        testValue = testParser->Eval();
-        //testParser->Eval();
+        *counterValue = counterParser->Eval();
+        *testValue = testParser->Eval();
         NMDebugAI(<< "   for-test: " << cVal.GetFloat() << " = " << testValue.GetFloat() << std::endl);
     }
 }
@@ -3300,10 +3303,17 @@ OtbModellerWin::runScript(
     for (int i=0; i < vecParsers.size(); ++i)
     {
         mup::ParserX*& parser = vecParsers.at(i);
-                std::string& name = mapParserName.find(parser)->second;
-                mup::Value*& value = mapNameValue.find(name)->second;
-        //mup::Value hv = parser->Eval();
-                parser->Eval();
+        std::string& name = mapParserName.find(parser)->second;
+        mup::Value*& value = mapNameValue.find(name)->second;
+        std::string theexpr = parser->GetExpr();
+        if (value->GetRows() > 1 || value->GetCols() > 1)
+        {
+            parser->Eval();
+        }
+        else
+        {
+            *value = parser->Eval();
+        }
 
         NMDebugAI(<< value->GetFloat() << " = " << parser->GetExpr() << std::endl);
 

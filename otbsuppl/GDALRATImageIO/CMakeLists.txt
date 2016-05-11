@@ -50,28 +50,28 @@ generate_export_header(OTBGDALRATImageIO)
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIO ... ")
         if(WIN32)
-			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
-				${GDAL_LIBRARY}
-				#${SQLITE3_LIBRARY}
-                SQLite spatialite geos_c freexl_i libxml2 proj_i iconv
-				OTBCommon OTBIO
+                TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+                        ${GDAL_LIBRARY}
+                        #${SQLITE3_LIBRARY}
+                        SQLite spatialite geos_c freexl_i libxml2 proj_i iconv
+                        OTBCommon OTBIO
 			)
-		else()
-			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
-				${GDAL_LIBRARY}
-				#${SQLITE3_LIBRARY}
-                SQLite spatialite
-				OTBCommon OTBIO
+        else()
+                TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+                        ${GDAL_LIBRARY}
+                        #${SQLITE3_LIBRARY}
+                        SQLite spatialite
+                        OTBCommon OTBIO
 			)
 		endif()
 else()
 	message(STATUS "OTB ${OTB_VERSION_STRING} - OTBGDALRATImageIO: linking OTBIOGDAL ... ")
 		if(WIN32)
-			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
-					${GDAL_LIBRARY}
-					#${SQLITE3_LIBRARY}
-					SQLite spatialite geos_c freexl_i libxml2 proj_i iconv
-					OTBCommon OTBIOGDAL
+                        TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
+                            ${GDAL_LIBRARY}
+                            #${SQLITE3_LIBRARY}
+                            SQLite spatialite geos_c freexl_i libxml2 proj_i iconv
+                            OTBCommon OTBIOGDAL
 			)
 		else()
 			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO

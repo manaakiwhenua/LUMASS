@@ -14,24 +14,24 @@ INCLUDE_DIRECTORIES(
     ${mfw_wrapper_SOURCE_DIR}
     ${shared_SOURCE_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
-	${GDALRATImageIO_BINARY_DIR}
+    ${GDALRATImageIO_BINARY_DIR}
     ${rimageio_SOURCE_DIR}
     ${filters_SOURCE_DIR}
-	${filters_BINARY_DIR}
+    ${filters_BINARY_DIR}
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
-	${OTB_INCLUDE_DIRS}
+    ${OTB_INCLUDE_DIRS}
 )
 
 LINK_DIRECTORIES(
-	${OTB_DIR}/lib
-	${OTB_DIR}/bin
+    ${OTB_DIR}/lib
+    ${OTB_DIR}/bin
     ${QT5_LINK_DIRS}
     ${RASDAMAN_LIBRARIES_DIR}
     ${LIBRARY_OUTPUT_PATH}
-	${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
-	${SPATIALITE_LIB_DIR}
-	${SPATIALITE_LIBLIB_DIR}
+    ${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
+    ${SPATIALITE_LIB_DIR}
+    ${SPATIALITE_LIBLIB_DIR}
 )
 
 file(GLOB MFW_CPP
@@ -78,7 +78,7 @@ if (OTB_VERSION_STRING VERSION_LESS "5.0.0")
 else()
 	set(MFW_LINK_LIBS
 		OTBGDALRATImageIO
-		OTBMathParser
+                #OTBMathParser
 		OTBSupplFilters
 		#RasImageIO
 		Qt5Xml

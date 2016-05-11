@@ -1,40 +1,40 @@
 PROJECT(filters)
 
 INCLUDE_DIRECTORIES(
-	${GDALRATImageIO_SOURCE_DIR}
-	${filters_SOURCE_DIR}
-	${filters_BINARY_DIR}
-	${shared_SOURCE_DIR}
-	${OTB_DIR}/Code/Common
-	${muparser_SOURCE_DIR}
+    ${GDALRATImageIO_SOURCE_DIR}
+    ${filters_SOURCE_DIR}
+    ${filters_BINARY_DIR}
+    ${shared_SOURCE_DIR}
+    ${OTB_DIR}/Code/Common
+    ${muparser_SOURCE_DIR}
     ${muParserX_SOURCE_DIR}
     ${otbsuppl_core_SOURCE_DIR}
     ${utils_SOURCE_DIR}
-	${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
-	${lumass_SOURCE_DIR}/utils/ITK
+    ${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
+    ${lumass_SOURCE_DIR}/utils/ITK
     #${TCADB_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(
-	${OTB_BINARY_DIR}
-	${OTB_BINARY_DIR}/${CMAKE_BUILD_TYPE}
-	${OTB_DIR}/bin
-	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
-	${OTB_DIR}/lib
+    ${OTB_BINARY_DIR}
+    ${OTB_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+    ${OTB_DIR}/bin
+    ${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
+    ${OTB_DIR}/lib
     #${TCADB_LIB_DIR}
 )
 
 file(GLOB OTBSUPPL_FILTERS
-	${filters_SOURCE_DIR}/*.txx
-	${filters_SOURCE_DIR}/*.cxx
-	${muparser_SOURCE_DIR}/*.cpp
+    ${filters_SOURCE_DIR}/*.txx
+    ${filters_SOURCE_DIR}/*.cxx
+    ${muparser_SOURCE_DIR}/*.cpp
     ${muParserX_SOURCE_DIR}/*.cpp
     ${otbsuppl_core_SOURCE_DIR}/*.cxx
 )
 
 file(GLOB OTBSUPPL_HEADER
-	${filters_SOURCE_DIR}/*.h
-	${filters_BINARY_DIR}/*.h
+    ${filters_SOURCE_DIR}/*.h
+    ${filters_BINARY_DIR}/*.h
 )
 
 include(GenerateExportHeader)
@@ -58,7 +58,8 @@ if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
 else()
 	target_link_libraries(OTBSupplFilters OTBCommon OTBIOGDAL 
 	OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase 
-        OTBMathParser OTBStreaming
+        #OTBMathParser
+        OTBStreaming
         #tokyocabinet
         )
 endif()

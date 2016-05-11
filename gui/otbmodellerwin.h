@@ -270,7 +270,7 @@ protected:
     void parseKernelScriptBlock(std::string& expr,
             //std::vector<std::pair<ScriptElem, int> >& parseAdmin,
             //std::map<std::string, double*>& mapNameValue,
-            std::map<std::string, mup::Value*>& mapNameValue,
+            std::map<std::string, mup::Value>& mapNameValue,
             //std::map<otb::MultiParser*, std::string> &mapParserName,
             std::map<mup::ParserX*, std::string>& mapParserName,
             //std::vector<otb::MultiParser*> &vecParsers,
@@ -280,7 +280,7 @@ protected:
 
     void parseScriptCommand(std::string& expr,
             //std::map<std::string, double*>& mapNameValue,
-            std::map<std::string, mup::Value*>& mapNameValue,
+            std::map<std::string, mup::Value>& mapNameValue,
             //std::map<otb::MultiParser*, std::string>& mapParserName,
             std::map<mup::ParserX*, std::string>& mapParserName,
             //std::vector<otb::MultiParser*>& vecParsers
@@ -294,7 +294,7 @@ protected:
 
     void runScript(
             //std::map<std::string, double*>& mapNameValue,
-            std::map<std::string, mup::Value*>& mapNameValue,
+            std::map<std::string, mup::Value>& mapNameValue,
             //std::map<otb::MultiParser*, std::string> &mapParserName,
             //std::vector<otb::MultiParser*> &vecParsers,
             std::map<mup::ParserX*, std::string> &mapParserName,
@@ -304,7 +304,7 @@ protected:
 
     void runLoop(int i,
                  //std::map<std::string, double*>& mapNameValue,
-                 std::map<std::string, mup::Value*>& mapNameValue,
+                 std::map<std::string, mup::Value>& mapNameValue,
                  std::map<mup::ParserX*, std::string> &mapParserName,
                  std::vector<mup::ParserX*> &vecParsers,
 //                 std::map<otb::MultiParser*, std::string> &mapParserName,

@@ -261,7 +261,7 @@
 //#include <stdbool.h>
 //#include <stdint.h>
 
-//#include "valgrind/callgrind.h"
+#include "valgrind/callgrind.h"
 
 //class NMMdiSubWindow : public QMdiSubWindow
 //{
@@ -3044,83 +3044,6 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    //        std::vector<mup::ParserX*> vParsers;
-
-    //        mup::ParserX cnter(mup::pckCOMMON | mup::pckNON_COMPLEX);
-    //        mup::ParserX test(mup::pckCOMMON | mup::pckNON_COMPLEX);
-
-    //        mup::ParserX* xpar = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
-    //        vParsers.push_back(xpar);
-
-
-    //        std::map<std::string, mup::Value*> nv;
-
-    //        mup::Value kval(10,0);
-    //        nv.insert(std::pair<std::string, mup::Value*>("kval", &kval));
-    //        xpar->DefineVar("kval", mup::Variable(&kval));
-
-    //        mup::Value ival(0);
-    //        nv.insert(std::pair<std::string, mup::Value*>("ival", &ival));
-
-    //        cnter.DefineVar("ival", mup::Variable(&ival));
-    //        xpar->DefineVar("ival", mup::Variable(&ival));
-    //        test.DefineVar("ival", mup::Variable(&ival));
-
-    //        xpar->SetExpr("kval[ival] = ival^2");
-    //        cnter.SetExpr("ival = ival+1");
-    //        test.SetExpr("ival < 10");
-    //        mup::Value tv = test.Eval();
-
-
-    //        mup::ParserX*& myForParser = vParsers.at(0);
-    //        while(tv.GetBool())
-    //        {
-    //            myForParser->Eval();
-    //            cnter.Eval();
-    //            tv = test.Eval();
-
-    //            //NMDebugAI(<< "kval[" << v << "] = " << kval.At(v).GetFloat() << std::endl);
-    //        }
-
-
-    //        mup::Value* v = nv.find("kval")->second;
-    //        for (int r=0; r < 10; r++)
-    //        {
-    //            NMDebugAI(<< "kval[" << r << "] = " << v->At(r).GetFloat() << std::endl);
-    //        }
-
-    //        NMDebugCtx(ctxOtbModellerWin, << "done!")
-
-    //        return;
-
-    //    std::vector<otb::MultiParser*> parsers;
-    //    std::map<otb::MultiParser*, std::string> parsername;
-    //    std::map<std::string, double*> namevalue;
-
-    //    this->parserTest(parsers,
-    //                     parsername,
-    //                     namevalue);
-
-    //    for (int f=0; f < parsers.size(); ++f)
-    //    {
-    //        otb::MultiParser* parslip = parsers.at(f);
-    //        std::string name = parsername.find(parslip)->second;
-    //        double* resval = namevalue.find(name)->second;
-    //        *resval = parslip->Eval();
-
-    //        NMDebugAI(<< " = " << *resval << std::endl);
-    //    }
-
-
-    //    NMDebugCtx(ctxOtbModellerWin, << "done!");
-
-    //    for (int p=0; p < parsers.size(); ++p)
-    //    {
-    //        parsers.at(p)->UnRegister();
-    //    }
-
-    //    return;
-
     QString scriptStr = NMGlobalHelper::getMultiLineInput(
                 "Kernel Script", "", this);
 
@@ -3171,12 +3094,12 @@ void OtbModellerWin::test()
                 );
 
 
-    NMDebugAI(<< std::endl << "before ...\n\n");
-    for (int i=0; i < kernel.GetRows(); ++i)
-    {
-        NMDebugAI(<< "kernel[" << i << "] = "
-                  << kernel.At(i).GetFloat() << std::endl);
-    }
+    //*************************************************
+    // run LUMASS script
+    //*************************************************
+
+
+    QDateTime start = QDateTime::currentDateTime();
 
     this->runScript(mapNameValue,
                     mapParserName,
@@ -3184,68 +3107,74 @@ void OtbModellerWin::test()
                     vecBlockLen
                     );
 
-    // and after the computation?
-    mup::Value& k = mapNameValue.find("kernel")->second;
-    NMDebugAI(<< std::endl << "and afterwards? ...\n\n");
-    for (int i=0; i < k.GetRows(); ++i)
+    QDateTime stopped = QDateTime::currentDateTime();
+    int msec = start.msecsTo(stopped);
+    int min = msec / 60000;
+    double sec = (msec % 60000) / 1000.0;
+
+    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    NMMsg(<< "LUMASS script took (min:sec): " << elapsedTime.toStdString() << "\n");
+
+    std::map<std::string, mup::Value>::const_iterator vit = mapNameValue.begin();
+    while (vit != mapNameValue.end())
     {
-        NMDebugAI(<< "kernel[" << i << "] = "
-                  << k.At(i).GetFloat() << std::endl);
+        NMMsg(<< vit->first << "=" << vit->second.GetFloat());
+        ++vit;
     }
+    NMMsg(<< "\n");
 
 
-    // clean up
+    //*************************************************
+    // run native code ...
+    //*************************************************
+
+
+    start = QDateTime::currentDateTime();
+
+    //{
+        double aa = 0;
+        double ba = 0;
+        for (int i=0; i < 1000000; i=i+1)
+        {
+            for (int k=0; k < 3; k=k+1)
+            {
+                    aa = aa + sqrt(k);
+            }
+            ba = ba + 1;
+        }
+        double c = aa + ba;
+    //}
+
+
+    stopped = QDateTime::currentDateTime();
+    msec = start.msecsTo(stopped);
+    min = msec / 60000;
+    sec = (msec % 60000) / 1000.0;
+
+    elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+    NMMsg(<< "Native code took (min:sec): " << elapsedTime.toStdString() << "\n");
+
+    NMMsg(<< "aa=" << aa << " ba=" << ba << " c=" << c << "\n");
+
+    //*************************************************
+    // end native code ...
+    //*************************************************
+
+
+
+    // *****************
+    // clean up the parser admin
+    // *****************
     mapParserName.clear();
     for (int v=0; v < vecParsers.size(); ++v)
     {
         delete vecParsers[v];
     }
 
-    //    std::map<std::string, mup::Value*>::iterator lit = mapNameValue.begin();
-    //    while (lit != mapNameValue.end())
-    //    {
-    //        delete lit->second;
-    //        ++lit;
-    //    }
     mapNameValue.clear();
 
     vecParsers.clear();
     vecBlockLen.clear();
-
-//    NMDebugAI(<< "Show your hand!\n\n");
-//    std::string name;
-//    for (int i=0; i < vecParsers.size(); ++i)
-//    {
-//        if (vecBlockLen.at(i) == 1)
-//        {
-//            name = mapParserName.find(vecParsers.at(i))->second;
-//            NMDebug(<< name << " = " << vecParsers.at(i)->GetExpr() << ";" << std::endl);
-//        }
-//        else
-//        {
-//            NMDebug(<< "for (");
-//            for (int b=0; b < 3; ++b)
-//            {
-//                name = mapParserName.find(vecParsers.at(i+b))->second;
-//                if (b == 2)
-//                {
-//                    NMDebug(<< name << "=" << vecParsers.at(i+b)->GetExpr() << ")");
-//                }
-//                else
-//                {
-//                    NMDebug(<< name << "=" << vecParsers.at(i+b)->GetExpr() << "; ");
-//                }
-//            }
-//            NMDebug(<< "\n{\n");
-//            for (int bl=3; bl < vecBlockLen.at(i); ++bl)
-//            {
-//                name = mapParserName.find(vecParsers.at(bl))->second;
-//                NMDebugAI(<< name << " = " << vecParsers.at(bl)->GetExpr() << ";" << std::endl);
-//            }
-//            NMDebug(<< "\n}\n\n");
-//        }
-//    }
-
 
     NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
@@ -3260,35 +3189,35 @@ OtbModellerWin::runLoop(int i,
 {
     const int numForExp = vecBlockLen.at(i)-3;
     mup::ParserX* testParser = vecParsers.at(++i);
-    std::string& testName = mapParserName.find(testParser)->second;
-    mup::Value& testValue = mapNameValue.find(testName)->second;
+    //std::string& testName = mapParserName.find(testParser)->second;
+    mup::Value& testValue = mapNameValue.find(mapParserName.find(testParser)->second)->second;
     testValue = testParser->Eval();
 
-    mup::ParserX* counterParser = vecParsers.at(++i);
-    std::string& counterName = mapParserName.find(counterParser)->second;
-    mup::Value& counterValue = mapNameValue.find(counterName)->second;
+    const mup::ParserX* counterParser = vecParsers.at(++i);
+    //std::string& counterName = mapParserName.find(counterParser)->second;
+    //mup::Value& counterValue = mapNameValue.find(counterName)->second;
 
-    nmlog::nmindent++;
+    //nmlog::nmindent++;
     while (testValue.GetFloat())
     {
         for (int exp=1; exp <= numForExp; ++exp)
         {
-            if (i+exp < vecParsers.size())
-            {
-                mup::ParserX* forExp = vecParsers.at(i+exp);
-                std::string& forName = mapParserName.find(forExp)->second;
-                mup::Value& forValue = mapNameValue.find(forName)->second;
+//            if (i+exp < vecParsers.size())
+//            {
+                const mup::ParserX* forExp = vecParsers.at(i+exp);
+                //std::string& forName = mapParserName.find(forExp)->second;
+                //mup::Value& forValue = mapNameValue.find(forName)->second;
                 forExp->Eval();
 
-                NMDebugAI(<< "#" << counterValue.GetFloat() << ": ");
-                for (int m=0; m < forValue.GetRows(); ++m)
-                {
-                    for (int n=0; n < forValue.GetCols(); ++n)
-                    {
-                        NMDebug(<< forValue.At(m, n).GetFloat() << " ");
-                    }
-                }
-                NMDebug(<< std::endl);
+                //                NMDebugAI(<< "#" << counterValue.GetFloat() << ": ");
+                //                for (int m=0; m < forValue.GetRows(); ++m)
+                //                {
+                //                    for (int n=0; n < forValue.GetCols(); ++n)
+                //                    {
+                //                        NMDebug(<< forValue.At(m, n).GetFloat() << " ");
+                //                    }
+                //                }
+                //                NMDebug(<< std::endl);
 
                 if (vecBlockLen.at(i+exp) > 1)
                 {
@@ -3299,13 +3228,13 @@ OtbModellerWin::runLoop(int i,
                                   vecBlockLen);
                     exp += vecBlockLen.at(i+exp)-1;
                 }
-            }
-            else
-            {
-                // throw exception, something's wrong!
-                NMErr(ctxOtbModellerWin, << "Not that many cmds in for-loop!");
-                return;
-            }
+//            }
+//            else
+//            {
+//                // throw exception, something's wrong!
+//                NMErr(ctxOtbModellerWin, << "Not that many cmds in for-loop!");
+//                return;
+//            }
         }
 
         counterParser->Eval();
@@ -3314,7 +3243,7 @@ OtbModellerWin::runLoop(int i,
         // just in case ...
         testValue = testParser->Eval();
     }
-    nmlog::nmindent--;
+    //nmlog::nmindent--;
 }
 
 
@@ -3327,18 +3256,20 @@ OtbModellerWin::runScript(std::map<std::string, mup::Value> &mapNameValue,
         std::vector<int> &vecBlockLen
         )
 {
-    NMDebugCtx(ctxOtbModellerWin, << "...");
+    //NMDebugCtx(ctxOtbModellerWin, << "...");
 
-    NMDebugAI(<< "running script ..." << std::endl);
+    //NMDebugAI(<< "running script ..." << std::endl);
+
+    //CALLGRIND_START_INSTRUMENTATION;
 
     for (int i=0; i < vecParsers.size(); ++i)
     {
-        mup::ParserX* parser = vecParsers.at(i);
-        std::string& name = mapParserName.find(parser)->second;
-        mup::Value& value = mapNameValue.find(name)->second;
+        const mup::ParserX* parser = vecParsers.at(i);
+        //std::string& name = mapParserName.find(parser)->second;
+        //mup::Value& value = mapNameValue.find(name)->second;
         parser->Eval();
 
-        NMDebugAI(<< value.GetFloat() << " = " << parser->GetExpr() << std::endl);
+        //NMDebugAI(<< value.GetFloat() << " = " << parser->GetExpr() << std::endl);
 
         if (vecBlockLen.at(i) > 1)
         {
@@ -3351,8 +3282,11 @@ OtbModellerWin::runScript(std::map<std::string, mup::Value> &mapNameValue,
         }
     }
 
+    //CALLGRIND_STOP_INSTRUMENTATION;
+    //CALLGRIND_DUMP_STATS;
 
-    NMDebugCtx(ctxOtbModellerWin, << "done!");
+
+    //NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 

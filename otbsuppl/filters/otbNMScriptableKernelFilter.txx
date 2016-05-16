@@ -117,6 +117,10 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 {
     // update input data
     this->CacheInputData();
+
+    // parse the script
+
+
 }
 
 template <class TInputImage, class TOutputImage>
@@ -124,19 +128,71 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::CacheInputData()
 {
-    //std::map<std::string, mup::Value>::iterator nameAuxValueIt;
     for (int n=0; n < m_DataNames.size(); ++n)
     {
         const std::string& name = m_DataNames.at(n);
 
-        if (m_mapNameAuxValue.find(name) == m_mapNameAuxValue.end())
+        if (n < this->GetNumberOfIndexedInputs())
         {
-            if (n < this->GetNumberOfIndexedInputs())
-            {
-                otb::AttributeTable::Pointer tab = dynamic_cast<otb::AttributeTable*>(this->GetIndexedInputs().at(n));
-                if (tab.IsNotNull())
-                {
+            itk::DataObject* dataObject = this->GetIndexedInputs().at(n).GetPointer();
+            AttributeTable* tab = static_cast<otb::AttributeTable*>(dataObject);
+            TInputImage* img = static_cast<TInputImage*>(dataObject);
 
+            // if we've got a table here, we haven't dealt with, we
+            // just copy the content into a matrix type mup::Value
+            if (tab != 0 && m_mapNameAuxValue.find(name) == m_mapNameAuxValue.end())
+            {
+                int ncols = tab->GetNumCols();
+                int nrows = tab->GetNumRows();
+
+                // note: access is rows, columns
+                mup::Value tabValue(nrows, ncols);
+
+                for (int row = 0; row < nrows; ++row)
+                {
+                    for (int col=0; col < ncols; ++coll)
+                    {
+                        switch(tab->GetColumnType(col))
+                        {
+                        case AttributeTable::ATTYPE_INT:
+                            tabValue.At(row, col) = tab->GetIntValue(col, row);
+                            break;
+                        case AttributeTable::ATTYPE_DOUBLE:
+                            tabValue.At(row, col) = tab->GetDblValue(col, row);
+                            break;
+                        case AttributeTable::ATTYPE_STRING:
+                            tabValue.At(row, col) = tab->GetStrValue(col, row);
+                            break;
+                        }
+                    }
+                }
+
+                m_mapNameAuxValue.insert(std::pair<std::string, mup::Value>(name, tabValue));
+            }
+
+            // for images, we just prepare the map and put some placeholders in
+            // we'll redefine once we know the actual values
+            else if (img != 0)
+            {
+                if (m_mapNameImgValue.size() > 0)
+                {
+                    if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
+                    {
+                        for (int th=0; th < m_NumberOfThreads; ++th)
+                        {
+                            m_mapNameImgValue.at(th).insert(
+                                        std::pair<std::string, mup::Value>(name, mup::Value()));
+                        }
+                    }
+                }
+                else
+                {
+                    for (int th=0; th < m_NumberOfThreads; ++th)
+                    {
+                        std::map<std::string, mup::Value> thMap;
+                        thMap.insert(std::pair<std::string, mup::Value>(name, mup::Value()));
+                        m_mapNameImgValue.push_back(thMap);
+                    }
                 }
             }
         }

@@ -3044,6 +3044,21 @@ void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
+    mup::Value myVec('m');
+    for (int i=0; i < 10; ++i)
+    {
+        myVec.At(i) = i;
+    }
+
+    for (int i=0; i < 10; ++i)
+    {
+        NMDebugAI(<< "myVec[" << i << "]=" << myVec.At(i) << std::endl);
+    }
+
+
+    NMDebugCtx(ctxOtbModellerWin, << "done!")
+    return;
+
     QString scriptStr = NMGlobalHelper::getMultiLineInput(
                 "Kernel Script", "", this);
 

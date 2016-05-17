@@ -56,6 +56,14 @@
 
 #include "otbAttributeTable.h"
 
+namespace itk
+{
+class KernelScriptParserError : public itk::ExceptionObject
+{
+
+};
+}
+
 namespace otb
 {
 
@@ -81,6 +89,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::Reset()
 {
     m_PixelCounter = 0;
+    m_NumPixels = 0;
     for (int v=0; v < m_vecParsers.size(); ++v)
     {
         for (int p=0; p < m_vecParsers.at(v).size(); ++p)
@@ -115,13 +124,268 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::BeforeThreadedGenerateData()
 {
-    // update input data
-    this->CacheInputData();
 
-    // parse the script
 
+    // initiate the parser admin structures
+    if (m_PixelCounter == 0)
+    {
+        // update input data
+        this->CacheInputData();
+
+        // parse the script only once at the
+        // beginning
+        this->ParseScript();
+    }
 
 }
+
+template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter<TInputImage, TOutputImage>
+::ParseCommand()
+{
+    mup::ParserX* parser = 0;
+    try
+    {
+        parser = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
+    }
+    catch(std::exception& parexp)
+    {
+        itk::MemoryAllocationError pe;
+        pe.SetDescription("Failed allocating mup::ParserX object!");
+        pe.SetLocation(ITK_LOCATION);
+        throw pe;
+    }
+
+    std::string name = "";
+
+    // extract newly defined variables (i.e. lvalues)
+    std::map<std::string, mup::Value>::iterator extIter;
+    size_t pos = std::string::npos;
+    bool barray = false;
+    if ((pos = expr.find('=')) != std::string::npos)
+    {
+        name = expr.substr(0, pos);
+
+        // in case of += -= *= /= assignment operators
+        size_t assignpos = name.find_first_of("+-*/");
+        if (assignpos != std::string::npos)
+        {
+            name = name.substr(0, assignpos);
+        }
+
+        // check, if we've got an array as lhs
+        size_t bro = name.find('[', 0);
+        size_t bre = name.find(']', bro+1);
+        if (    bro != std::string::npos
+            &&  bre != std::string::npos
+           )
+        {
+            name = name.substr(0, bro);
+            barray = true;
+        }
+
+        name.erase(0, name.find_first_not_of(' '));
+        name.erase(name.find_last_not_of(' ')+1);
+    }
+
+    // always set the whole expression (- of course!)
+    std::string theexpr = expr;
+    theexpr.erase(0, theexpr.find_first_not_of(' '));
+    theexpr.erase(theexpr.find_last_not_of(' ')+1);
+
+    parser->SetExpr(theexpr);
+    if (name.empty())
+    {
+        std::stringstream sstemp;
+        sstemp.str("");
+        sstemp << "v" << mapNameValue.size();
+        name = sstemp.str();
+    }
+
+    // check, whether we've defined this variable already;
+    // if so, we just associate the new parser with this
+    // variable; if not, we also add a new variable to the
+    // list
+
+    // enter new variables into the name-variable map
+    extIter = mapNameValue.find(name);
+    if (!barray && extIter == mapNameValue.end())
+    {
+        // generate a value pointer for this command (equation)
+        //mup::Value* value = 0;
+        double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+        mup::Value value = v;
+        mapNameValue.insert(std::pair<std::string, mup::Value>(name, value));
+    }
+
+    // define all previously defined variables for this parser
+    extIter = mapNameValue.begin();
+    while (extIter != mapNameValue.end())
+    {
+        parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
+        ++extIter;
+    }
+
+    // associate this expression's parser with the name of the lvalue variable
+    mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
+    vecParsers.push_back(parser);
+}
+
+template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter<TInputImage, TOutputImage>
+::ParseScript()
+{
+    if (m_KernelScript.empty())
+    {
+        itk::ExceptionObject eo;
+        eo.SetDescription("Parsing Error: Empty KernelScript object!");
+        eo.SetLocation("ParseScript()");
+        throw eo;
+    }
+
+    enum ScriptElem {CMD,
+                     FOR_ADMIN,
+                     FOR_BLOCK};
+
+    std::stack<int> forLoop;    // parser vector index of 1st for admin cmd
+    std::stack<int> bracketOpen;
+
+    std::string script = m_KernelScript;
+    size_t pos = 0;
+    size_t start = 0;
+    size_t next = 0;
+    ScriptElem curElem = CMD;
+
+    std::string cmd;
+    // we look for sequence points and decide what to do ...
+    while(pos < script.size() && pos != std::string::npos)
+    {
+        const char c = script[pos];
+        switch (c)
+        {
+            case ';':
+            {
+                cmd = script.substr(start, pos-start);
+                start = pos+1;
+            }
+            break;
+
+            case 'f':
+            {
+                if (    script.find("for(", pos) == pos
+                    ||  script.find("for ", pos) == pos
+                   )
+                {
+                    next = script.find('(', pos+3);
+                    if (next != std::string::npos)
+                    {
+                        // store the parser idx starting this for loop
+                        forLoop.push(vecParsers.size());
+
+                        curElem = FOR_ADMIN;
+                        bracketOpen.push(next);
+                        pos = next;
+                        start = pos+1;
+                    }
+                    else
+                    {
+                        /// ToDo: throw exception
+                        std::stringstream exsstr;
+                        exsstr << "Malformed for-loop near pos "
+                               << pos << ". Missing '('.";
+                        itk::ExceptionObject pe;
+                        pe.SetDescription(exsstr);
+                        pe.SetLocation(ITK_LOCATION);
+                        throw pe;
+                    }
+                }
+            }
+            break;
+
+            case '(':
+            {
+                if (curElem == FOR_ADMIN)
+                {
+                    bracketOpen.push(pos);
+                }
+            }
+            break;
+
+            case ')':
+            {
+                if (curElem == FOR_ADMIN)
+                {
+                    bracketOpen.pop();
+                    if (bracketOpen.size() == 0)
+                    {
+                        cmd = script.substr(start, pos-start);
+
+                        next = script.find('{', pos+1);
+                        if (next != std::string::npos)
+                        {
+                            start = next+1;
+                            curElem = FOR_BLOCK;
+                        }
+                        else
+                        {
+                            /// ToDo: throw exception
+                            std::stringstream exsstr;
+                            exsstr << "Malformed for-loop near pos "
+                                   << pos << "!";
+                            itk::ExceptionObject pe;
+                            pe.SetDescription(exsstr);
+                            pe.SetLocation(ITK_LOCATION);
+                            throw pe;
+                        }
+                    }
+                }
+            }
+            break;
+
+            case '}':
+            {
+                if (curElem == FOR_BLOCK)
+                {
+                    if (forLoop.empty())
+                    {
+                        /// ToDo: throw exception
+                        std::stringstream exsstr;
+                        exsstr << "Parsing error! For loop without head near pos "
+                               << pos << "!";
+                        itk::ExceptionObject pe;
+                        pe.SetDescription(exsstr);
+                        pe.SetLocation(ITK_LOCATION);
+                        throw pe;
+                    }
+
+                    int idx = forLoop.top();
+                    forLoop.pop();
+                    vecBlockLen.at(idx) = vecParsers.size() - idx;
+
+                    if (forLoop.empty())
+                    {
+                        curElem = CMD;
+                    }
+                    start = pos+1;
+                }
+            }
+            break;
+        }
+
+
+        if (!cmd.empty())
+        {
+            this->ParseCommand();
+            vecBlockLen.push_back(1);
+            cmd.clear();
+        }
+
+        ++pos;
+    }
+}
+
 
 template <class TInputImage, class TOutputImage>
 void

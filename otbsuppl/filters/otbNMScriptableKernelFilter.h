@@ -149,6 +149,8 @@ protected:
   void BeforeThreadedGenerateData();
   void Reset();
   void CacheInputData();
+  void ParseScript();
+  void ParseCommand();
 
 private:
   NMScriptableKernelFilter(const Self&); //purposely not implemented

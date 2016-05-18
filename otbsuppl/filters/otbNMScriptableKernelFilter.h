@@ -54,11 +54,51 @@
 
 #include "otbsupplfilters_export.h"
 
+namespace itk
+{
+
+class KernelScriptParserError : public ExceptionObject
+{
+public:
+    KernelScriptParserError();
+    virtual ~KernelScriptParserError()
+    ITK_NOEXCEPT {}
+
+    KernelScriptParserError(const char* file, unsigned int lineNumber);
+    KernelScriptParserError(const std::string& file, unsigned int lineNumber);
+
+    KernelScriptParserError & operator=(const KernelScriptParserError& orig);
+
+    itkTypeMacro(KernelScriptParserError, ExceptionObject)
+};
+
+}
+
+
 namespace otb
 {
-/*  \brief scriptable kernel filter
+/*! \class NMScriptableKernelFilter
+ *  \brief A scriptable (optionally shaped neighborhood) filter
  *
+ *  This filter allows the user to run a custom script
+ *  on a pixel or a (optionally circular) kernel of user specified
+ *  size. The user-defined script represents a sequence of
+ *  muParserX-based expressions (completed by a semi-colon ';'),
+ *  with the added functionality of c-style for loops, e.g.
  *
+ *  size=10;
+ *  a=0;
+ *  b=0;
+ *  for (i=0; i < size; i = i+1)
+ *  {
+ *      a=i;
+ *  }
+ *  b=a;
+ *
+ *  A for loop may not be nested in a muParserX expression,
+ *  as for example
+ *
+ *  (a<0) ? for ... : 0;
  *
  */
 template <class TInputImage, class TOutputImage>
@@ -168,9 +208,14 @@ private:
   OutputPixelType m_Nodata;
 
   // admin objects for the scriptable kernel filter
+
+  // need a separate set of parsers and img variables
+  // for each individual thread
   std::vector<std::vector<mup::ParserX*> > m_vecParsers;
-  std::vector<std::map<mup::ParserX*, std::string> > m_mapParserName;
   std::vector<std::map<std::string, mup::Value> m_mapNameImgValue;
+
+  // can share those across threads
+  std::map<mup::ParserX*, std::string> m_mapParserName;
   std::map<std::string, mup::Value> m_mapNameAuxValue;
   std::vector<std::vector<int> > m_vecBlockLen;
 

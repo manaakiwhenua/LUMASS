@@ -58,11 +58,29 @@
 
 namespace itk
 {
-class KernelScriptParserError : public itk::ExceptionObject
-{
 
-};
+KernelScriptParserError::KernelScriptParserError()
+    : ExceptionObject()
+{}
+
+KernelScriptParserError::KernelScriptParserError(const char* file, unsigned int lineNumber)
+    : ExceptionObject(file, lineNumber)
+{}
+
+
+KernelScriptParserError::KernelScriptParserError(const std::string& file, unsigned int lineNumber)
+    : ExceptionObject(file, lineNumber)
+{}
+
+KernelScriptParserError &
+KernelScriptParserError::operator=(const KernelScriptParserError& orig)
+{
+    ExceptionObject::operator=(orig);
+    return *this;
 }
+
+}
+
 
 namespace otb
 {
@@ -72,6 +90,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::NMScriptableKernelFilter()
 {
     m_Radius.Fill(1);
+
+    // <Square> and <Circle>
     m_KernelShape = "Square";
 
     m_PixelCounter = 0;
@@ -124,18 +144,27 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::BeforeThreadedGenerateData()
 {
-
-
-    // initiate the parser admin structures
+    // initiate the parser admin structures if
+    // we've just started working on this image ...
     if (m_PixelCounter == 0)
     {
+        for (int th=0; th < this->m_NumberOfThreads; ++th)
+        {
+            std::vector<mup::ParserX*> mpvec;
+            m_vecParsers.push_back(mpvec);
+        }
+
         // update input data
         this->CacheInputData();
 
         // parse the script only once at the
         // beginning
         this->ParseScript();
+
+
     }
+
+    // make sure we've got all the input we need
 
 }
 
@@ -144,23 +173,9 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::ParseCommand()
 {
-    mup::ParserX* parser = 0;
-    try
-    {
-        parser = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
-    }
-    catch(std::exception& parexp)
-    {
-        itk::MemoryAllocationError pe;
-        pe.SetDescription("Failed allocating mup::ParserX object!");
-        pe.SetLocation(ITK_LOCATION);
-        throw pe;
-    }
-
     std::string name = "";
 
     // extract newly defined variables (i.e. lvalues)
-    std::map<std::string, mup::Value>::iterator extIter;
     size_t pos = std::string::npos;
     bool barray = false;
     if ((pos = expr.find('=')) != std::string::npos)
@@ -194,7 +209,6 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     theexpr.erase(0, theexpr.find_first_not_of(' '));
     theexpr.erase(theexpr.find_last_not_of(' ')+1);
 
-    parser->SetExpr(theexpr);
     if (name.empty())
     {
         std::stringstream sstemp;
@@ -209,27 +223,56 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // list
 
     // enter new variables into the name-variable map
-    extIter = mapNameValue.find(name);
-    if (!barray && extIter == mapNameValue.end())
+    // note: this only applies to 'auxillary' data and
+    // not to any of the pre-defined inputs ...
+    std::map<std::string, mup::Value>::iterator extIter = m_mapNameAuxValue.find(name);
+    if (!barray && extIter == m_mapNameAuxValue.end())
     {
-        // generate a value pointer for this command (equation)
-        //mup::Value* value = 0;
         double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
-        mup::Value value = v;
-        mapNameValue.insert(std::pair<std::string, mup::Value>(name, value));
+        mup::Value value(v);
+        m_mapNameAuxValue.insert(std::pair<std::string, mup::Value>(name, value));
     }
 
-    // define all previously defined variables for this parser
-    extIter = mapNameValue.begin();
-    while (extIter != mapNameValue.end())
+    // allocte a new parser for this command, set the expression and
+    // define all previously defined auxillirary and img variables
+    // for this parser
+    // note: this could possibly made smarter such that we only define
+    // those variables which actually feature in this expression,
+    // but performance gains would probably be minimal to non-existant
+    // anyway(?), so we don't bother for now
+    for (int th=0; th < this->m_NumberOfThreads; ++th)
     {
-        parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
-        ++extIter;
-    }
+        mup::ParserX* parser = 0;
+        try
+        {
+            parser = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
+        }
+        catch(std::exception& parexp)
+        {
+            itk::MemoryAllocationError pe;
+            pe.SetDescription("Failed allocating mup::ParserX object!");
+            pe.SetLocation(ITK_LOCATION);
+            throw pe;
+        }
+        parser->SetExpr(theexpr);
 
-    // associate this expression's parser with the name of the lvalue variable
-    mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
-    vecParsers.push_back(parser);
+        extIter = m_mapNameAuxValue.begin();
+        while (extIter != m_mapNameAuxValue.end())
+        {
+            parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
+            ++extIter;
+        }
+
+        extIter = m_mapNameImgValue.at(th).begin();
+        while (extIter != m_mapNameImgValue.at(th).end())
+        {
+            parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
+            ++extIter;
+        }
+
+        m_vecParsers.at(th).push_back(parser);
+        m_mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
+    }
 }
 
 template <class TInputImage, class TOutputImage>
@@ -239,9 +282,9 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 {
     if (m_KernelScript.empty())
     {
-        itk::ExceptionObject eo;
+        itk::KernelScriptParserError eo;
         eo.SetDescription("Parsing Error: Empty KernelScript object!");
-        eo.SetLocation("ParseScript()");
+        eo.SetLocation(ITK_LOCATION);
         throw eo;
     }
 
@@ -295,7 +338,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                         std::stringstream exsstr;
                         exsstr << "Malformed for-loop near pos "
                                << pos << ". Missing '('.";
-                        itk::ExceptionObject pe;
+                        itk::KernelScriptParserError pe;
                         pe.SetDescription(exsstr);
                         pe.SetLocation(ITK_LOCATION);
                         throw pe;
@@ -334,7 +377,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                             std::stringstream exsstr;
                             exsstr << "Malformed for-loop near pos "
                                    << pos << "!";
-                            itk::ExceptionObject pe;
+                            itk::KernelScriptParserError pe;
                             pe.SetDescription(exsstr);
                             pe.SetLocation(ITK_LOCATION);
                             throw pe;
@@ -354,7 +397,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                         std::stringstream exsstr;
                         exsstr << "Parsing error! For loop without head near pos "
                                << pos << "!";
-                        itk::ExceptionObject pe;
+                        itk::KernelScriptParserError pe;
                         pe.SetDescription(exsstr);
                         pe.SetLocation(ITK_LOCATION);
                         throw pe;

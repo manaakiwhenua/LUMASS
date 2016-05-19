@@ -1,10 +1,10 @@
- /****************************************************************************** 
- * Created by Alexander Herzig 
+/******************************************************************************
+ * Created by Alexander Herzig
  * Copyright 2016 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the License, 
+ * published by the Free Software Foundation, either version 3 of the License,
  * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -26,8 +26,8 @@
   Copyright (c) Insight Software Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
 
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
@@ -89,7 +89,7 @@ template <class TInputImage, class TOutputImage>
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::NMScriptableKernelFilter()
 {
-    m_Radius.Fill(1);
+    m_Radius.Fill(0);
 
     // <Square> and <Circle>
     m_KernelShape = "Square";
@@ -161,10 +161,39 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         // beginning
         this->ParseScript();
 
-
     }
 
-    // make sure we've got all the input we need
+    // make sure all images share the same size
+    int fstImg = 0;
+    InputSizeType refSize;
+    for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
+    {
+        InputImageType* img = static_cast<InputImageType*>(this->GetIndexedInputs().at(i));
+        if (img != 0)
+        {
+            if (fstImg == 0)
+            {
+                refSize = img->GetLargestPossibleRegion.GetSize();
+                fstImg = 1;
+            }
+            else
+            {
+                for (unsigned int d=0; d < refSize.GetSizeDimension(); ++d)
+                {
+                    if (refSize[d] != img->GetLargestPossibleRegion.GetSize(d))
+                    {
+                        itk::ExceptionObject e;
+                        e.SetLocation(ITK_LOCATION);
+                        e.SetDescription("Input images don't have the same size!");
+                        throw e;
+                    }
+                }
+            }
+        }
+    }
+
+
+
 
 }
 
@@ -193,8 +222,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         size_t bro = name.find('[', 0);
         size_t bre = name.find(']', bro+1);
         if (    bro != std::string::npos
-            &&  bre != std::string::npos
-           )
+                &&  bre != std::string::npos
+                )
         {
             name = name.substr(0, bro);
             barray = true;
@@ -308,112 +337,112 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         const char c = script[pos];
         switch (c)
         {
-            case ';':
-            {
-                cmd = script.substr(start, pos-start);
-                start = pos+1;
-            }
+        case ';':
+        {
+            cmd = script.substr(start, pos-start);
+            start = pos+1;
+        }
             break;
 
-            case 'f':
-            {
-                if (    script.find("for(", pos) == pos
+        case 'f':
+        {
+            if (    script.find("for(", pos) == pos
                     ||  script.find("for ", pos) == pos
-                   )
+                    )
+            {
+                next = script.find('(', pos+3);
+                if (next != std::string::npos)
                 {
-                    next = script.find('(', pos+3);
+                    // store the parser idx starting this for loop
+                    forLoop.push(vecParsers.size());
+
+                    curElem = FOR_ADMIN;
+                    bracketOpen.push(next);
+                    pos = next;
+                    start = pos+1;
+                }
+                else
+                {
+                    /// ToDo: throw exception
+                    std::stringstream exsstr;
+                    exsstr << "Malformed for-loop near pos "
+                           << pos << ". Missing '('.";
+                    itk::KernelScriptParserError pe;
+                    pe.SetDescription(exsstr);
+                    pe.SetLocation(ITK_LOCATION);
+                    throw pe;
+                }
+            }
+        }
+            break;
+
+        case '(':
+        {
+            if (curElem == FOR_ADMIN)
+            {
+                bracketOpen.push(pos);
+            }
+        }
+            break;
+
+        case ')':
+        {
+            if (curElem == FOR_ADMIN)
+            {
+                bracketOpen.pop();
+                if (bracketOpen.size() == 0)
+                {
+                    cmd = script.substr(start, pos-start);
+
+                    next = script.find('{', pos+1);
                     if (next != std::string::npos)
                     {
-                        // store the parser idx starting this for loop
-                        forLoop.push(vecParsers.size());
-
-                        curElem = FOR_ADMIN;
-                        bracketOpen.push(next);
-                        pos = next;
-                        start = pos+1;
+                        start = next+1;
+                        curElem = FOR_BLOCK;
                     }
                     else
                     {
                         /// ToDo: throw exception
                         std::stringstream exsstr;
                         exsstr << "Malformed for-loop near pos "
-                               << pos << ". Missing '('.";
-                        itk::KernelScriptParserError pe;
-                        pe.SetDescription(exsstr);
-                        pe.SetLocation(ITK_LOCATION);
-                        throw pe;
-                    }
-                }
-            }
-            break;
-
-            case '(':
-            {
-                if (curElem == FOR_ADMIN)
-                {
-                    bracketOpen.push(pos);
-                }
-            }
-            break;
-
-            case ')':
-            {
-                if (curElem == FOR_ADMIN)
-                {
-                    bracketOpen.pop();
-                    if (bracketOpen.size() == 0)
-                    {
-                        cmd = script.substr(start, pos-start);
-
-                        next = script.find('{', pos+1);
-                        if (next != std::string::npos)
-                        {
-                            start = next+1;
-                            curElem = FOR_BLOCK;
-                        }
-                        else
-                        {
-                            /// ToDo: throw exception
-                            std::stringstream exsstr;
-                            exsstr << "Malformed for-loop near pos "
-                                   << pos << "!";
-                            itk::KernelScriptParserError pe;
-                            pe.SetDescription(exsstr);
-                            pe.SetLocation(ITK_LOCATION);
-                            throw pe;
-                        }
-                    }
-                }
-            }
-            break;
-
-            case '}':
-            {
-                if (curElem == FOR_BLOCK)
-                {
-                    if (forLoop.empty())
-                    {
-                        /// ToDo: throw exception
-                        std::stringstream exsstr;
-                        exsstr << "Parsing error! For loop without head near pos "
                                << pos << "!";
                         itk::KernelScriptParserError pe;
                         pe.SetDescription(exsstr);
                         pe.SetLocation(ITK_LOCATION);
                         throw pe;
                     }
-
-                    int idx = forLoop.top();
-                    forLoop.pop();
-                    vecBlockLen.at(idx) = vecParsers.size() - idx;
-
-                    if (forLoop.empty())
-                    {
-                        curElem = CMD;
-                    }
-                    start = pos+1;
                 }
             }
+        }
+            break;
+
+        case '}':
+        {
+            if (curElem == FOR_BLOCK)
+            {
+                if (forLoop.empty())
+                {
+                    /// ToDo: throw exception
+                    std::stringstream exsstr;
+                    exsstr << "Parsing error! For loop without head near pos "
+                           << pos << "!";
+                    itk::KernelScriptParserError pe;
+                    pe.SetDescription(exsstr);
+                    pe.SetLocation(ITK_LOCATION);
+                    throw pe;
+                }
+
+                int idx = forLoop.top();
+                forLoop.pop();
+                vecBlockLen.at(idx) = vecParsers.size() - idx;
+
+                if (forLoop.empty())
+                {
+                    curElem = CMD;
+                }
+                start = pos+1;
+            }
+        }
             break;
         }
 
@@ -511,47 +540,56 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::GenerateInputRequestedRegion() throw (itk::InvalidRequestedRegionError)
 {
-  // call the superclass' implementation of this method
-  Superclass::GenerateInputRequestedRegion();
-  
-  // get pointers to the input and output
-  typename Superclass::InputImagePointer inputPtr = 
-    const_cast< TInputImage * >( this->GetInput() );
-  typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
-  
-  if ( !inputPtr || !outputPtr )
+    // call the superclass' implementation of this method
+    Superclass::GenerateInputRequestedRegion();
+
+    // don't need to do anything, if we're not in kernel mode
+    if (m_Radius == 0)
     {
-    return;
+        return;
     }
 
-  // get a copy of the input requested region (should equal the output
-  // requested region)
-  typename TInputImage::RegionType inputRequestedRegion;
-  inputRequestedRegion = inputPtr->GetRequestedRegion();
+    // get pointers to the input and output
+    typename Superclass::InputImagePointer inputPtr =
+            const_cast< TInputImage * >( this->GetInput() );
+    typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
 
-  // pad the input requested region by the operator radius
-  inputRequestedRegion.PadByRadius( m_Radius );
-
-  // crop the input requested region at the input's largest possible region
-  if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
+    if ( !inputPtr || !outputPtr )
     {
-    inputPtr->SetRequestedRegion( inputRequestedRegion );
-    return;
+        itk::DataObjectError de;
+        de.SetLocation(ITK_LOCATION);
+        de.SetDescription("Empty input/output detected!");
+        throw de;
     }
-  else
-    {
-    // Couldn't crop the region (requested region is outside the largest
-    // possible region).  Throw an exception.
 
-    // store what we tried to request (prior to trying to crop)
-    inputPtr->SetRequestedRegion( inputRequestedRegion );
-    
-    // build an exception
-    itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
-    e.SetLocation(ITK_LOCATION);
-    e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
-    e.SetDataObject(inputPtr);
-    throw e;
+    // get a copy of the input requested region (should equal the output
+    // requested region)
+    typename TInputImage::RegionType inputRequestedRegion;
+    inputRequestedRegion = inputPtr->GetRequestedRegion();
+
+    // pad the input requested region by the operator radius
+    inputRequestedRegion.PadByRadius( m_Radius );
+
+    // crop the input requested region at the input's largest possible region
+    if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
+    {
+        inputPtr->SetRequestedRegion( inputRequestedRegion );
+        return;
+    }
+    else
+    {
+        // Couldn't crop the region (requested region is outside the largest
+        // possible region).  Throw an exception.
+
+        // store what we tried to request (prior to trying to crop)
+        inputPtr->SetRequestedRegion( inputRequestedRegion );
+
+        // build an exception
+        itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
+        e.SetLocation(ITK_LOCATION);
+        e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
+        e.SetDataObject(inputPtr);
+        throw e;
     }
 }
 
@@ -562,47 +600,47 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
                        itk::ThreadIdType threadId)
 {
-  unsigned int i;
-  itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;
+    unsigned int i;
+    itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;
 
-  itk::ConstNeighborhoodIterator<InputImageType> bit;
-  itk::ImageRegionIterator<OutputImageType> it;
-  
-  // Allocate output
-  typename OutputImageType::Pointer output = this->GetOutput();
-  typename  InputImageType::ConstPointer input  = this->GetInput();
-  
-  // Find the data-set boundary "faces"
-  typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType faceList;
-  itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType> bC;
-  faceList = bC(input, outputRegionForThread, m_Radius);
+    itk::ConstNeighborhoodIterator<InputImageType> bit;
+    itk::ImageRegionIterator<OutputImageType> it;
 
-  typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType::iterator fit;
+    // Allocate output
+    typename OutputImageType::Pointer output = this->GetOutput();
+    typename  InputImageType::ConstPointer input  = this->GetInput();
 
-  // support progress methods/callbacks
-  itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
-  
-  int count;
-  int val;
+    // Find the data-set boundary "faces"
+    typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType faceList;
+    itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType> bC;
+    faceList = bC(input, outputRegionForThread, m_Radius);
 
-  // Process each of the boundary faces.  These are N-d regions which border
-  // the edge of the buffer.
-  for (fit=faceList.begin(); fit != faceList.end(); ++fit)
-    { 
-    bit = itk::ConstNeighborhoodIterator<InputImageType>(m_Radius,
-                                                    input, *fit);
-    unsigned int neighborhoodSize = bit.Size();
-    it = itk::ImageRegionIterator<OutputImageType>(output, *fit);
-    bit.OverrideBoundaryCondition(&nbc);
-    bit.GoToBegin();
+    typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType::iterator fit;
 
-    while ( ! bit.IsAtEnd() && !this->GetAbortGenerateData())
-      {
-      
-      ++bit;
-      ++it;
-      progress.CompletedPixel();
-      }
+    // support progress methods/callbacks
+    itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
+
+    int count;
+    int val;
+
+    // Process each of the boundary faces.  These are N-d regions which border
+    // the edge of the buffer.
+    for (fit=faceList.begin(); fit != faceList.end(); ++fit)
+    {
+        bit = itk::ConstNeighborhoodIterator<InputImageType>(m_Radius,
+                                                             input, *fit);
+        unsigned int neighborhoodSize = bit.Size();
+        it = itk::ImageRegionIterator<OutputImageType>(output, *fit);
+        bit.OverrideBoundaryCondition(&nbc);
+        bit.GoToBegin();
+
+        while ( ! bit.IsAtEnd() && !this->GetAbortGenerateData())
+        {
+
+            ++bit;
+            ++it;
+            progress.CompletedPixel();
+        }
     }
 }
 
@@ -613,11 +651,11 @@ template <class TInputImage, class TOutput>
 void
 NMScriptableKernelFilter<TInputImage, TOutput>
 ::PrintSelf(
-  std::ostream& os, 
-  itk::Indent indent) const
+        std::ostream& os,
+        itk::Indent indent) const
 {
-  Superclass::PrintSelf( os, indent );
-  os << indent << "Radius:    " << m_Radius << std::endl;
+    Superclass::PrintSelf( os, indent );
+    os << indent << "Radius:    " << m_Radius << std::endl;
 }
 
 } // end namespace otb

@@ -144,25 +144,6 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::BeforeThreadedGenerateData()
 {
-    // initiate the parser admin structures if
-    // we've just started working on this image ...
-    if (m_PixelCounter == 0)
-    {
-        for (int th=0; th < this->m_NumberOfThreads; ++th)
-        {
-            std::vector<mup::ParserX*> mpvec;
-            m_vecParsers.push_back(mpvec);
-        }
-
-        // update input data
-        this->CacheInputData();
-
-        // parse the script only once at the
-        // beginning
-        this->ParseScript();
-
-    }
-
     // make sure all images share the same size
     int fstImg = 0;
     InputSizeType refSize;
@@ -191,6 +172,29 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             }
         }
     }
+
+    // initiate the parser admin structures if
+    // we've just started working on this image ...
+    if (m_PixelCounter == 0)
+    {
+        for (int th=0; th < this->m_NumberOfThreads; ++th)
+        {
+            std::vector<mup::ParserX*> mpvec;
+            m_vecParsers.push_back(mpvec);
+        }
+
+        // update input data
+        this->CacheInputData();
+
+        // parse the script only once at the
+        // beginning
+        this->ParseScript();
+
+    }
+
+    // if we've got a shaped neighbourhood iterator,
+    // determine the active offsets
+
 
 
 
@@ -472,7 +476,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         {
             itk::DataObject* dataObject = this->GetIndexedInputs().at(n).GetPointer();
             AttributeTable* tab = static_cast<otb::AttributeTable*>(dataObject);
-            TInputImage* img = static_cast<TInputImage*>(dataObject);
+            InputImageType* img = static_cast<TInputImage*>(dataObject);
 
             // if we've got a table here, we haven't dealt with, we
             // just copy the content into a matrix type mup::Value
@@ -519,6 +523,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                             m_mapNameImgValue.at(th).insert(
                                         std::pair<std::string, mup::Value>(name, mup::Value()));
                         }
+                        m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
                     }
                 }
                 else
@@ -600,46 +605,68 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
                        itk::ThreadIdType threadId)
 {
-    unsigned int i;
-    itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;
-
-    itk::ConstNeighborhoodIterator<InputImageType> bit;
-    itk::ImageRegionIterator<OutputImageType> it;
-
-    // Allocate output
+    // allocate the output image
     typename OutputImageType::Pointer output = this->GetOutput();
-    typename  InputImageType::ConstPointer input  = this->GetInput();
-
-    // Find the data-set boundary "faces"
-    typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType faceList;
-    itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType> bC;
-    faceList = bC(input, outputRegionForThread, m_Radius);
-
-    typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType::iterator fit;
 
     // support progress methods/callbacks
     itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
 
-    int count;
-    int val;
+    //std::vector<mup::ParserX*> vParsers = m_vecParsers.at(threadId);
+    //std::map<std::string, mup::Value> mapNameImgValue = m_mapNameImgValue.at(threadId);
 
-    // Process each of the boundary faces.  These are N-d regions which border
-    // the edge of the buffer.
-    for (fit=faceList.begin(); fit != faceList.end(); ++fit)
+    if (m_Radius[0] == 0)
     {
-        bit = itk::ConstNeighborhoodIterator<InputImageType>(m_Radius,
-                                                             input, *fit);
-        unsigned int neighborhoodSize = bit.Size();
-        it = itk::ImageRegionIterator<OutputImageType>(output, *fit);
-        bit.OverrideBoundaryCondition(&nbc);
-        bit.GoToBegin();
 
-        while ( ! bit.IsAtEnd() && !this->GetAbortGenerateData())
+    }
+    else
+    {
+        std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
+        OutputRegionIterator outIt;
+
+        // Find the data-set boundary "faces"
+        itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;
+
+        std::map<std::string, InputImageType*>::const_iterator inImgIt = m_mapNameImg.begin();
+
+        typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType faceList;
+        itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType> bC;
+        faceList = bC(inImgIt->second, outputRegionForThread, m_Radius);
+
+        typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType::iterator fit;
+
+        // Process each of the boundary faces.  These are N-d regions which border
+        // the edge of the buffer.
+        for (fit=faceList.begin(); fit != faceList.end(); ++fit)
         {
+            // create an iterator for each input image and keep it
+            inImgIt = m_mapNameImg.begin();
+            int cnt=0;
+            while (inImgIt != m_mapNameImg.end())
+            {
+                vInputIt[cnt] = InputShapedIterator(m_Radius, inImgIt->second, *fit);
+                vInputIt[cnt].OverrideBoundaryCondition(&nbc);
+                vInputIt[cnt].GoToBegin();
 
-            ++bit;
-            ++it;
-            progress.CompletedPixel();
+                ++cnt;
+                ++intImgIt;
+            }
+
+            unsigned int neighborhoodSize = vInputIt[0].Size();
+            outIt = OutputRegionIterator(output, *fit);
+            outIt.GoToBegin();
+
+            while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
+            {
+
+
+                // prepare everything for the next pixel
+                for (int si=0; si < vInputIt.size(); ++si)
+                {
+                    ++vInputIt[si];
+                }
+                ++outIt;
+                progress.CompletedPixel();
+            }
         }
     }
 }
@@ -655,7 +682,32 @@ NMScriptableKernelFilter<TInputImage, TOutput>
         itk::Indent indent) const
 {
     Superclass::PrintSelf( os, indent );
+    int nimgs = m_mapNameImg.size();
     os << indent << "Radius:    " << m_Radius << std::endl;
+    os << indent << "KernelShape: " << m_KernelShape << std::endl;
+    os << indent << "No. Parser: " << m_mapParserName.size()  - nimgs << std::endl;
+    os << indent << "Images: ";
+
+    std::map<std::string, InputImageType*>::const_iterator imgIt =
+            m_mapNameImg.begin();
+    while (imgIt != m_mapNameImg.end())
+    {
+        os << imgIt->first << " ";
+        ++imgIt;
+    }
+    os << std::endl;
+
+    os << indent << "Tables: ";
+    std::map<std::string, mup::Value>::const_iterator auxIt =
+            m_mapNameAuxValue.begin();
+
+    while (auxIt != m_mapNameAuxValue.end())
+    {
+        os << auxIt->first << " ";
+        ++auxIt;
+    }
+    os << std::endl;
+
 }
 
 } // end namespace otb

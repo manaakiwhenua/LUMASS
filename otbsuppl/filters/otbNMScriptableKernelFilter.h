@@ -51,13 +51,14 @@
 #include "itkImage.h"
 #include "itkNumericTraits.h"
 #include "mpParser.h"
+#include "itkConstShapedNeighborhoodIterator.h"
 
 #include "otbsupplfilters_export.h"
 
 namespace itk
 {
 
-class KernelScriptParserError : public ExceptionObject
+class OTBSUPPLFILTERS_EXPORT KernelScriptParserError : public ExceptionObject
 {
 public:
     KernelScriptParserError();
@@ -136,6 +137,10 @@ public:
   typedef typename InputImageType::RegionType  InputImageRegionType;
   typedef typename OutputImageType::RegionType OutputImageRegionType;
   typedef typename InputImageType::SizeType    InputSizeType;
+
+  typedef typename itk::ConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
+  typedef typename itk::ImageRegionConstIterator<InputImageType> InputRegionIterator;
+  typedef typename itk::ImageRegionIterator<OutputImageType> OutputRegionIterator;
 
   /** Set the radius of the neighborhood . */
   itkSetMacro(Radius, InputSizeType)
@@ -217,6 +222,7 @@ private:
   // can share those across threads
   std::map<mup::ParserX*, std::string> m_mapParserName;
   std::map<std::string, mup::Value> m_mapNameAuxValue;
+  std::map<std::string, InputImageType*> m_mapNameImg;
   std::vector<std::vector<int> > m_vecBlockLen;
 
 };

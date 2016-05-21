@@ -137,9 +137,11 @@ public:
   typedef typename InputImageType::RegionType  InputImageRegionType;
   typedef typename OutputImageType::RegionType OutputImageRegionType;
   typedef typename InputImageType::SizeType    InputSizeType;
+  typedef typename InputImageType::IndexType   IndexType;
 
   typedef typename itk::ConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
   typedef typename itk::ImageRegionConstIterator<InputImageType> InputRegionIterator;
+  typedef typename itk::ConstNeighborhoodIterator<InputImageType> InputNeighborhoodIterator;
   typedef typename itk::ImageRegionIterator<OutputImageType> OutputRegionIterator;
 
   /** Set the radius of the neighborhood . */
@@ -208,6 +210,8 @@ private:
   std::string m_KernelScript;
 
   std::string m_KernelShape;
+  std::vector<InputImageType::IndexType>
+
   std::vector<std::string> m_DataNames;
 
   OutputPixelType m_Nodata;

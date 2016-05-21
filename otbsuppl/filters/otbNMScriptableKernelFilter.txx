@@ -194,9 +194,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
     // if we've got a shaped neighbourhood iterator,
     // determine the active offsets
-
-
-
+    /// ToDo: later ...
 
 
 }
@@ -643,8 +641,15 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
             int cnt=0;
             while (inImgIt != m_mapNameImg.end())
             {
+                // we set all indices to active per default
                 vInputIt[cnt] = InputShapedIterator(m_Radius, inImgIt->second, *fit);
                 vInputIt[cnt].OverrideBoundaryCondition(&nbc);
+                vInputIt[cnt].GoToBegin();
+                while (!vInputIt[cnt].IsAtEnd())
+                {
+                    vInputIt[cnt].ActivateIndex(vInputIt[cnt].GetIndex());
+                    ++vInputIt[cnt];
+                }
                 vInputIt[cnt].GoToBegin();
 
                 ++cnt;

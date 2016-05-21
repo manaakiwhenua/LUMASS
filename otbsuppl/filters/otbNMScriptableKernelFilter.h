@@ -156,6 +156,10 @@ public:
   /** Set the kernel shape <Square, Circle> */
   itkSetStringMacro(KernelShape)
 
+  /** Set the variable name associated with
+   *  the output image pixel(s) */
+  itkSetStringMacro(OutputVarName)
+
   /** Set the nodata value of the computation */
   itkSetMacro(Nodata, OutputPixelType)
 
@@ -198,6 +202,35 @@ protected:
   void CacheInputData();
   void ParseScript();
   void ParseCommand();
+  inline void Loop(int i, const int& threadId)
+  {
+      const int numForExp = m_vecBlockLen.at(i)-3;
+      const mup::ParserX* testParser = m_vecParsers.at(threadId).at(++i);
+      mup::Value& testValue = m_mapNameAuxValue.find(m_mapParserName.find(testParser)->second)->second;
+      testValue = testParser->Eval();
+      const mup::ParserX* counterParser = m_vecParsers.at(threadId).at(++i);
+
+      while (testValue.GetFloat())
+      {
+          for (int exp=1; exp <= numForExp; ++exp)
+          {
+              const mup::ParserX* forExp = m_vecParsers.at(threadId).at(i+exp);
+              forExp->Eval();
+
+              if (m_vecBlockLen.at(i+exp) > 1)
+              {
+                  Loop(i+exp, threadId);
+                  exp += m_vecBlockLen.at(i+exp)-1;
+              }
+          }
+
+          counterParser->Eval();
+          // since we don't impose the test expression of a for loop
+          // to include a result assignment,  we do it manually here,
+          // just in case ...
+          testValue = testParser->Eval();
+      }
+  }
 
 private:
   NMScriptableKernelFilter(const Self&); //purposely not implemented
@@ -208,13 +241,13 @@ private:
 
   InputSizeType m_Radius;
   std::string m_KernelScript;
-
   std::string m_KernelShape;
-  std::vector<InputImageType::IndexType>
+  std::string m_OutputVarName;
 
   std::vector<std::string> m_DataNames;
 
   OutputPixelType m_Nodata;
+  std::vector<mup::Value> m_vOutputValue;
 
   // admin objects for the scriptable kernel filter
 
@@ -227,7 +260,7 @@ private:
   std::map<mup::ParserX*, std::string> m_mapParserName;
   std::map<std::string, mup::Value> m_mapNameAuxValue;
   std::map<std::string, InputImageType*> m_mapNameImg;
-  std::vector<std::vector<int> > m_vecBlockLen;
+  std::vector<int> m_vecBlockLen;
 
 };
   

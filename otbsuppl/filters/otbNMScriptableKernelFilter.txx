@@ -95,6 +95,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     m_KernelShape = "Square";
 
     m_PixelCounter = 0;
+
+    m_OutputVarName = "out";
 }
 
 template <class TInputImage, class TOutputImage>
@@ -181,6 +183,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         {
             std::vector<mup::ParserX*> mpvec;
             m_vecParsers.push_back(mpvec);
+
+            m_vOutputValue.push_back(mup::Value('f'));
         }
 
         // update input data
@@ -300,6 +304,9 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
             ++extIter;
         }
+
+        // we also need to define a variable for the output image
+        parser->DefineVar(m_OutputVarName, mup::Variable(&m_vOutputValue.at(th)));
 
         m_vecParsers.at(th).push_back(parser);
         m_mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
@@ -436,7 +443,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
                 int idx = forLoop.top();
                 forLoop.pop();
-                vecBlockLen.at(idx) = vecParsers.size() - idx;
+                m_vecBlockLen.at(idx) = m_vecParsers[0].size() - idx;
 
                 if (forLoop.empty())
                 {
@@ -452,7 +459,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         if (!cmd.empty())
         {
             this->ParseCommand();
-            vecBlockLen.push_back(1);
+            m_vecBlockLen.push_back(1);
             cmd.clear();
         }
 
@@ -609,16 +616,14 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
     // support progress methods/callbacks
     itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
 
-    //std::vector<mup::ParserX*> vParsers = m_vecParsers.at(threadId);
-    //std::map<std::string, mup::Value> mapNameImgValue = m_mapNameImgValue.at(threadId);
-
     if (m_Radius[0] == 0)
     {
 
     }
     else
     {
-        std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
+        //std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
+        std::vector<InputNeighborhoodIterator> vInputIt(m_mapNameImg.size());
         OutputRegionIterator outIt;
 
         // Find the data-set boundary "faces"
@@ -632,6 +637,13 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
 
         typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType::iterator fit;
 
+        mup::int_type neipixels = 1;
+        for (int sd=0; sd < m_Radius.GetSizeDimension(); ++sd)
+        {
+            neipixels *= m_Radius[sd];
+        }
+        const mup::float_type noval = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+
         // Process each of the boundary faces.  These are N-d regions which border
         // the edge of the buffer.
         for (fit=faceList.begin(); fit != faceList.end(); ++fit)
@@ -642,26 +654,59 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
             while (inImgIt != m_mapNameImg.end())
             {
                 // we set all indices to active per default
-                vInputIt[cnt] = InputShapedIterator(m_Radius, inImgIt->second, *fit);
+                //vInputIt[cnt] = InputShapedIterator(m_Radius, inImgIt->second, *fit);
+                vInputIt[cnt] = InputNeighborhoodIterator(m_Radius, inImgIt->second, *fit);
                 vInputIt[cnt].OverrideBoundaryCondition(&nbc);
                 vInputIt[cnt].GoToBegin();
-                while (!vInputIt[cnt].IsAtEnd())
-                {
-                    vInputIt[cnt].ActivateIndex(vInputIt[cnt].GetIndex());
-                    ++vInputIt[cnt];
-                }
-                vInputIt[cnt].GoToBegin();
+                //                while (!vInputIt[cnt].IsAtEnd())
+                //                {
+                //                    vInputIt[cnt].ActivateIndex(vInputIt[cnt].GetIndex());
+                //                    ++vInputIt[cnt];
+                //                }
+                //                vInputIt[cnt].GoToBegin();
 
                 ++cnt;
-                ++intImgIt;
+                ++inImgIt;
             }
 
-            unsigned int neighborhoodSize = vInputIt[0].Size();
+            //unsigned int neighborhoodSize = vInputIt[0].Size();
             outIt = OutputRegionIterator(output, *fit);
             outIt.GoToBegin();
 
             while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
             {
+                // set the neigbourhood values of all input images
+                inImgIt = m_mapNameImg.begin();
+                cnt=0;
+                while (inImgIt != m_mapNameImg.end())
+                {
+                    mup::Value nv(neipixels, noval);
+                    for (int ncnt=0; ncnt < neipixels; ++ncnt)
+                    {
+                        bool bIsInBounds;
+                        InputPixelType pv = vInputIt[cnt].GetPixel(ncnt, bIsInBounds);
+                        if (bIsInBounds) nv.At(ncnt) = static_cast<mup::float_type>(pv);
+                    }
+                    m_mapNameImgValue.at(threadId).find(inImgIt->first)->second = nv;
+
+                    ++cnt;
+                    ++inImgIt;
+                }
+
+
+                // let's run the script now
+                for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
+                {
+                    m_vecParsers.at(threadId).at(p)->Eval();
+                    if (m_vecBlockLen.at(p) > 1)
+                    {
+                        Loop(p, threadId);
+                        p += m_vecBlockLen.at(p)-1;
+                    }
+                }
+
+                // now we set the result value for the
+                outIt.Set(static_cast<OutputPixelType>(m_vOutputValue.at(threadId).GetFloat()));
 
 
                 // prepare everything for the next pixel
@@ -670,6 +715,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                     ++vInputIt[si];
                 }
                 ++outIt;
+                ++m_PixelCounter;
                 progress.CompletedPixel();
             }
         }

@@ -66,7 +66,7 @@ public:
     {
         //InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        filter->SetInput(idx, dataObj);
+        filter->SetFilterInput(idx, dataObj);
     }
 
 

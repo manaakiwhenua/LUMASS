@@ -166,11 +166,13 @@ public:
   itkSetStringMacro(OutputVarName)
 
   /** Set the nodata value of the computation */
-  itkSetMacro(Nodata, OutputPixelType)
+  //itkSetMacro(Nodata, OutputPixelType)
   void SetNodata(const double& nodata);
 
   /** Forward component UserIDs to the filter*/
   void SetInputNames(const std::vector<std::string>& inputNames);
+
+  void SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj);
 
 
   /** The neighbourhood counting filter needs a larger input requested region than
@@ -207,7 +209,7 @@ protected:
   void Reset();
   void CacheInputData();
   void ParseScript();
-  void ParseCommand();
+  void ParseCommand(const std::string& expr);
   inline void Loop(int i, const int& threadId)
   {
       const int numForExp = m_vecBlockLen.at(i)-3;

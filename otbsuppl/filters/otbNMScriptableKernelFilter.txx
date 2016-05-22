@@ -114,7 +114,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     typename InputImageType::SizeValueType svt[TInputImage::ImageDimension];
     for (int i=0; i < TInputImage::ImageDimension; ++i)
     {
-        svt[i] = static_cast<InputImageType::SizeValueType>(radius[i]);
+        svt[i] = static_cast<typename InputImageType::SizeValueType>(radius[i]);
     }
     m_Radius.SetSize(svt);
 }
@@ -124,7 +124,7 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::SetNodata(const double &nodata)
 {
-    m_Nodata nd = static_cast<OutputPixelType>(nodata);
+    m_Nodata = static_cast<OutputPixelType>(nodata);
 }
 
 template <class TInputImage, class TOutputImage>
@@ -163,6 +163,15 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     }
 }
 
+
+template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter<TInputImage, TOutputImage>
+::SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj)
+{
+    itk::ProcessObject::SetNthInput(idx, dataObj);
+}
+
 template <class TInputImage, class TOutputImage>
 void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
@@ -170,22 +179,25 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 {
     // make sure all images share the same size
     int fstImg = 0;
-    InputSizeType refSize;
+    typename InputImageType::SizeValueType refSize[TInputImage::ImageDimension];
     for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
     {
-        InputImageType* img = static_cast<InputImageType*>(this->GetIndexedInputs().at(i));
+        InputImageType* img = static_cast<InputImageType*>(this->GetIndexedInputs().at(i).GetPointer());
         if (img != 0)
         {
             if (fstImg == 0)
             {
-                refSize = img->GetLargestPossibleRegion.GetSize();
+                for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
+                {
+                    refSize[d] = img->GetLargestPossibleRegion().GetSize(d);
+                }
                 fstImg = 1;
             }
             else
             {
-                for (unsigned int d=0; d < refSize.GetSizeDimension(); ++d)
+                for (unsigned int d=0; d < TInputImage::ImageDimension; ++d)
                 {
-                    if (refSize[d] != img->GetLargestPossibleRegion.GetSize(d))
+                    if (refSize[d] != img->GetLargestPossibleRegion().GetSize(d))
                     {
                         itk::ExceptionObject e;
                         e.SetLocation(ITK_LOCATION);
@@ -201,7 +213,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // we've just started working on this image ...
     if (m_PixelCounter == 0)
     {
-        for (int th=0; th < this->m_NumberOfThreads; ++th)
+        for (int th=0; th < this->GetNumberOfThreads(); ++th)
         {
             std::vector<mup::ParserX*> mpvec;
             m_vecParsers.push_back(mpvec);
@@ -228,7 +240,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 template <class TInputImage, class TOutputImage>
 void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
-::ParseCommand()
+::ParseCommand(const std::string &expr)
 {
     std::string name = "";
 
@@ -270,7 +282,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     {
         std::stringstream sstemp;
         sstemp.str("");
-        sstemp << "v" << mapNameValue.size();
+        sstemp << "v" << m_vecParsers.at(0).size();
         name = sstemp.str();
     }
 
@@ -297,7 +309,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // those variables which actually feature in this expression,
     // but performance gains would probably be minimal to non-existant
     // anyway(?), so we don't bother for now
-    for (int th=0; th < this->m_NumberOfThreads; ++th)
+    for (int th=0; th < this->GetNumberOfThreads(); ++th)
     {
         mup::ParserX* parser = 0;
         try
@@ -385,7 +397,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                 if (next != std::string::npos)
                 {
                     // store the parser idx starting this for loop
-                    forLoop.push(vecParsers.size());
+                    forLoop.push(m_vecParsers.at(0).size());
 
                     curElem = FOR_ADMIN;
                     bracketOpen.push(next);
@@ -399,7 +411,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                     exsstr << "Malformed for-loop near pos "
                            << pos << ". Missing '('.";
                     itk::KernelScriptParserError pe;
-                    pe.SetDescription(exsstr);
+                    pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
                 }
@@ -438,7 +450,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                         exsstr << "Malformed for-loop near pos "
                                << pos << "!";
                         itk::KernelScriptParserError pe;
-                        pe.SetDescription(exsstr);
+                        pe.SetDescription(exsstr.str());
                         pe.SetLocation(ITK_LOCATION);
                         throw pe;
                     }
@@ -458,7 +470,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                     exsstr << "Parsing error! For loop without head near pos "
                            << pos << "!";
                     itk::KernelScriptParserError pe;
-                    pe.SetDescription(exsstr);
+                    pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
                 }
@@ -480,7 +492,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
         if (!cmd.empty())
         {
-            this->ParseCommand();
+            this->ParseCommand(cmd);
             m_vecBlockLen.push_back(1);
             cmd.clear();
         }
@@ -505,6 +517,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             AttributeTable* tab = static_cast<otb::AttributeTable*>(dataObject);
             InputImageType* img = static_cast<TInputImage*>(dataObject);
 
+            long underflows = 0;
+            long overflows = 0;
             // if we've got a table here, we haven't dealt with, we
             // just copy the content into a matrix type mup::Value
             if (tab != 0 && m_mapNameAuxValue.find(name) == m_mapNameAuxValue.end())
@@ -517,21 +531,65 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
                 for (int row = 0; row < nrows; ++row)
                 {
-                    for (int col=0; col < ncols; ++coll)
+                    for (int col=0; col < ncols; ++col)
                     {
                         switch(tab->GetColumnType(col))
                         {
                         case AttributeTable::ATTYPE_INT:
-                            tabValue.At(row, col) = tab->GetIntValue(col, row);
+                        {
+                            const long long lv = tab->GetIntValue(col, row);
+                            if (lv < static_cast<long long>(itk::NumericTraits<mup::int_type>::NonpositiveMin()))
+                            {
+                                ++underflow;
+                            }
+                            else if (lv > static_cast<long long>(itk::NumericTraits<mup::int_type>::max()))
+                            {
+                                ++overflow;
+                            }
+                            else
+                            {
+                                tabValue.At(row, col) = static_cast<mup::int_type>(lv);
+                            }
+                        }
                             break;
                         case AttributeTable::ATTYPE_DOUBLE:
-                            tabValue.At(row, col) = tab->GetDblValue(col, row);
+                        {
+                            const double dv = tab->GetDblValue(col, row);
+                            if (dv < static_cast<double>(itk::NumericTraits<mup::float_type>::NonpositiveMin()))
+                            {
+                                ++underflow;
+                            }
+                            else if (dv > static_cast<double>(itk::NumericTraits<mup::float_type>::max()))
+                            {
+                                ++overflow;
+                            }
+                            else
+                            {
+                                tabValue.At(row, col) = static_cast<mup::float_type>(dv);
+                            }
+                        }
                             break;
                         case AttributeTable::ATTYPE_STRING:
-                            tabValue.At(row, col) = tab->GetStrValue(col, row);
+                            tabValue.At(row, col) =
+                                    static_cast<mup::string_type>(tab->GetStrValue(col, row));
                             break;
                         }
                     }
+                }
+
+                // report conversion errors
+                if (overflows > 0 || underflows > 0)
+                {
+                    std::stringstream sstr;
+                    sstr << "Data conversion errors: " << overflows
+                         << " overflows and " << underflows << " underflows; table "
+                         << name
+                         << "'s data values are outside the parser's value range!";
+
+                    itk::ExceptionObject oe;
+                    oe.SetLocation(ITK_LOCATION);
+                    oe.SetDescription(sstr.str());
+                    throw oe;
                 }
 
                 m_mapNameAuxValue.insert(std::pair<std::string, mup::Value>(name, tabValue));
@@ -545,7 +603,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                 {
                     if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
                     {
-                        for (int th=0; th < m_NumberOfThreads; ++th)
+                        for (int th=0; th < this->GetNumberOfThreads(); ++th)
                         {
                             m_mapNameImgValue.at(th).insert(
                                         std::pair<std::string, mup::Value>(name, mup::Value()));
@@ -555,7 +613,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                 }
                 else
                 {
-                    for (int th=0; th < m_NumberOfThreads; ++th)
+                    for (int th=0; th < this->GetNumberOfThreads(); ++th)
                     {
                         std::map<std::string, mup::Value> thMap;
                         thMap.insert(std::pair<std::string, mup::Value>(name, mup::Value()));
@@ -576,7 +634,16 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     Superclass::GenerateInputRequestedRegion();
 
     // don't need to do anything, if we're not in kernel mode
-    if (m_Radius == 0)
+    bool bNoRadius = true;
+    for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
+    {
+        if (m_Radius[d] > 0)
+        {
+            bNoRadius = false;
+        }
+    }
+
+    if (bNoRadius)
     {
         return;
     }
@@ -651,7 +718,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
         // Find the data-set boundary "faces"
         itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;
 
-        std::map<std::string, InputImageType*>::const_iterator inImgIt = m_mapNameImg.begin();
+        typename std::map<std::string, InputImageType*>::const_iterator inImgIt = m_mapNameImg.begin();
 
         typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType faceList;
         itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType> bC;
@@ -761,7 +828,7 @@ NMScriptableKernelFilter<TInputImage, TOutput>
     os << indent << "No. Parser: " << m_mapParserName.size()  - nimgs << std::endl;
     os << indent << "Images: ";
 
-    std::map<std::string, InputImageType*>::const_iterator imgIt =
+    typename std::map<std::string, InputImageType*>::const_iterator imgIt =
             m_mapNameImg.begin();
     while (imgIt != m_mapNameImg.end())
     {

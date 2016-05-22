@@ -46,12 +46,16 @@
 // This line can be removed once the optimized versions
 // gets integrated into the main directories.
 
-#include "nmlog.h"
+//#include "nmlog.h"
+
 #include "itkImageToImageFilter.h"
 #include "itkImage.h"
 #include "itkNumericTraits.h"
-#include "mpParser.h"
+#include "itkImageRegionIterator.h"
+#include "itkImageRegionConstIterator.h"
 #include "itkConstShapedNeighborhoodIterator.h"
+
+#include "mpParser.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -146,6 +150,7 @@ public:
 
   /** Set the radius of the neighborhood . */
   itkSetMacro(Radius, InputSizeType)
+  void SetRadius(const int* radius);
 
   /** Get the radius of the neighbourhood*/
   itkGetConstReferenceMacro(Radius, InputSizeType)
@@ -162,6 +167,7 @@ public:
 
   /** Set the nodata value of the computation */
   itkSetMacro(Nodata, OutputPixelType)
+  void SetNodata(const double& nodata);
 
   /** Forward component UserIDs to the filter*/
   void SetInputNames(const std::vector<std::string>& inputNames);
@@ -181,7 +187,7 @@ public:
 
 protected:
   NMScriptableKernelFilter();
-  virtual ~NMScriptableKernelFilter() {}
+  virtual ~NMScriptableKernelFilter();
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
   /** This filter can be implemented as a multithreaded filter.
@@ -205,7 +211,7 @@ protected:
   inline void Loop(int i, const int& threadId)
   {
       const int numForExp = m_vecBlockLen.at(i)-3;
-      const mup::ParserX* testParser = m_vecParsers.at(threadId).at(++i);
+      mup::ParserX* testParser = m_vecParsers.at(threadId).at(++i);
       mup::Value& testValue = m_mapNameAuxValue.find(m_mapParserName.find(testParser)->second)->second;
       testValue = testParser->Eval();
       const mup::ParserX* counterParser = m_vecParsers.at(threadId).at(++i);
@@ -254,7 +260,7 @@ private:
   // need a separate set of parsers and img variables
   // for each individual thread
   std::vector<std::vector<mup::ParserX*> > m_vecParsers;
-  std::vector<std::map<std::string, mup::Value> m_mapNameImgValue;
+  std::vector<std::map<std::string, mup::Value> > m_mapNameImgValue;
 
   // can share those across threads
   std::map<mup::ParserX*, std::string> m_mapParserName;

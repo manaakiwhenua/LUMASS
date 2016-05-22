@@ -64,9 +64,9 @@ public:
     static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
                     unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
     {
-        InImgType* img = dynamic_cast<InImgType*>(dataObj);
+        //InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        filter->SetInput(idx, img);
+        filter->SetInput(idx, dataObj);
     }
 
 
@@ -109,14 +109,14 @@ public:
         QVariant curRadiusVar = p->getParameter("Radius");
         if (curRadiusVar.isValid())
         {
-           std::vector<InputSizeType> vecRadius;
+           std::vector<int> vecRadius;
            QStringList curValVarList = curRadiusVar.toStringList();
            foreach(const QString& vStr, curValVarList) 
            {
-                int curRadius = vStr;
+                int curRadius = vStr.toInt(&bok);
                 if (bok)
                 {
-                    vecRadius.push_back(static_cast<InputSizeType>(curRadius));
+                    vecRadius.push_back(static_cast<int>(curRadius));
                 }
                 else
                 {
@@ -128,7 +128,7 @@ public:
             }
             if (vecRadius.size() > 0)
             {
-                f->SetRadius(static_cast<InputSizeType*>(&vecRadius[0]));
+                f->SetRadius(static_cast<int*>(&vecRadius[0]));
             }
             else
             {

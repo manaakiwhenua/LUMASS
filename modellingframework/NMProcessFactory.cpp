@@ -37,6 +37,7 @@
 #include "NMCombineTwoFilterWrapper.h"
 #include "NMExternalExecWrapper.h"
 #include "NMSQLiteProcessorWrapper.h"
+#include "NMScriptableKernelFilterWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -59,6 +60,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("CombineTwo")    ;
     mProcRegister << QString::fromLatin1("ExternalExec");
     mProcRegister << QString::fromLatin1("SQLProcessor");
+    mProcRegister << QString::fromLatin1("MapKernelScript");
 
 
     mSinks << QString::fromLatin1("ImageWriter");
@@ -156,6 +158,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMSQLiteProcessorWrapper";
     }
+    else if (alias.compare("MapKernelScript") == 0)
+    {
+        return "NMScriptableKernelFilterWrapper";
+    }
     else return proc;
 }
 
@@ -220,6 +226,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMSQLiteProcessorWrapper") == 0)
     {
         proc =  new NMSQLiteProcessorWrapper(this);
+    }
+    else if (procClass.compare("NMScriptableKernelFilterWrapper") == 0)
+    {
+        proc = new NMScriptableKernelFilterWrapper(this);
     }
     else
         proc =  0;

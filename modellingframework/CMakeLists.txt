@@ -12,6 +12,7 @@ INCLUDE_DIRECTORIES(
     ${mfw_BINARY_DIR}
     ${mfw_SOURCE_DIR}
     ${mfw_wrapper_SOURCE_DIR}
+    ${muParserX_SOURCE_DIR}
     ${shared_SOURCE_DIR}
     ${GDALRATImageIO_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}

@@ -107,6 +107,28 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 }
 
 template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter<TInputImage, TOutputImage>
+::SetRadius(const int *radius)
+{
+    typename InputImageType::SizeValueType svt[TInputImage::ImageDimension];
+    for (int i=0; i < TInputImage::ImageDimension; ++i)
+    {
+        svt[i] = static_cast<InputImageType::SizeValueType>(radius[i]);
+    }
+    m_Radius.SetSize(svt);
+}
+
+template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter<TInputImage, TOutputImage>
+::SetNodata(const double &nodata)
+{
+    m_Nodata nd = static_cast<OutputPixelType>(nodata);
+}
+
+template <class TInputImage, class TOutputImage>
+void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::Reset()
 {

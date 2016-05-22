@@ -147,7 +147,9 @@ def formatPropertyVariable(propertyList):
 def formatTypeConversion(type):
     
     typeConv = ''
-    if type == "double":
+    if type == "int":
+        typeConv = ".toInt(&bok)"
+    elif type == "double":
         typeConv = ".toDouble(&bok)"
     elif type == "long":
         typeConv = ".toLong(&bok)"
@@ -215,7 +217,8 @@ def formatInternalParamSetting(propertyList, className):
                 varTargetType = prop[3]
                 varTargetCast = "static_cast<%s>" % varTargetType
                 varTargetPointerCast = "static_cast<%s*>" % varTargetType
-            elif len(prop) >= 5:
+
+            if len(prop) >= 5:
                 if prop[4] == 'vector':
                     propTypeVector = True
 
@@ -409,9 +412,9 @@ def formatInternalStdSetNthInput():
     "    static void setNthInput(itk::ProcessObject::Pointer& otbFilter,\n"                     \
     "                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)\n"  \
     "    {\n"                                                                                   \
-    "        InImgType* img = dynamic_cast<InImgType*>(dataObj);\n"                             \
+    "        //InImgType* img = dynamic_cast<InImgType*>(dataObj);\n"                             \
     "        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());\n"         \
-    "        filter->SetInput(idx, img);\n"                                                     \
+    "        filter->SetInput(idx, dataObj);\n"                                                     \
     "    }\n"                                                                                   \
 
     return s

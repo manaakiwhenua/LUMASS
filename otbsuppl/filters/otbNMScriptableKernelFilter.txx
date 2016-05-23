@@ -97,6 +97,9 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     m_PixelCounter = 0;
 
     m_OutputVarName = "out";
+
+    // just for debug
+    this->SetNumberOfThreads(1);
 }
 
 template <class TInputImage, class TOutputImage>
@@ -134,6 +137,9 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 {
     m_PixelCounter = 0;
     m_NumPixels = 0;
+    m_NumOverflows.clear();
+    m_NumUnderflows.clear();
+
     for (int v=0; v < m_vecParsers.size(); ++v)
     {
         for (int p=0; p < m_vecParsers.at(v).size(); ++p)
@@ -199,7 +205,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                 {
                     if (refSize[d] != img->GetLargestPossibleRegion().GetSize(d))
                     {
-                        itk::ExceptionObject e;
+                        itk::KernelScriptParserError e;
                         e.SetLocation(ITK_LOCATION);
                         e.SetDescription("Input images don't have the same size!");
                         throw e;
@@ -220,6 +226,12 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
             m_vOutputValue.push_back(mup::Value('f'));
         }
+
+        m_NumOverflows.clear();
+        m_NumOverflows.resize(this->GetNumberOfThreads(), 0);
+
+        m_NumUnderflows.clear();
+        m_NumUnderflows.resize(this->GetNumberOfThreads(), 0);
 
         // update input data
         this->CacheInputData();
@@ -514,8 +526,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         if (n < this->GetNumberOfIndexedInputs())
         {
             itk::DataObject* dataObject = this->GetIndexedInputs().at(n).GetPointer();
-            AttributeTable* tab = static_cast<otb::AttributeTable*>(dataObject);
-            InputImageType* img = static_cast<TInputImage*>(dataObject);
+            AttributeTable* tab = dynamic_cast<otb::AttributeTable*>(dataObject);
+            InputImageType* img = dynamic_cast<TInputImage*>(dataObject);
 
             long underflows = 0;
             long overflows = 0;
@@ -540,11 +552,11 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                             const long long lv = tab->GetIntValue(col, row);
                             if (lv < static_cast<long long>(itk::NumericTraits<mup::int_type>::NonpositiveMin()))
                             {
-                                ++underflow;
+                                ++underflows;
                             }
                             else if (lv > static_cast<long long>(itk::NumericTraits<mup::int_type>::max()))
                             {
-                                ++overflow;
+                                ++overflows;
                             }
                             else
                             {
@@ -557,11 +569,11 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                             const double dv = tab->GetDblValue(col, row);
                             if (dv < static_cast<double>(itk::NumericTraits<mup::float_type>::NonpositiveMin()))
                             {
-                                ++underflow;
+                                ++underflows;
                             }
                             else if (dv > static_cast<double>(itk::NumericTraits<mup::float_type>::max()))
                             {
-                                ++overflow;
+                                ++overflows;
                             }
                             else
                             {
@@ -586,7 +598,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                          << name
                          << "'s data values are outside the parser's value range!";
 
-                    itk::ExceptionObject oe;
+                    itk::KernelScriptParserError oe;
                     oe.SetLocation(ITK_LOCATION);
                     oe.SetDescription(sstr.str());
                     throw oe;
@@ -610,6 +622,16 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                         }
                         m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
                     }
+                    else
+                    {
+                        std::stringstream sstr;
+                        sstr << "Image name conflict error: The name '"
+                             << name << "' has already been defined!";
+                        itk::KernelScriptParserError kspe;
+                        kspe.SetLocation(ITK_LOCATION);
+                        kspe.SetDescription(sstr.str());
+                        throw kspe;
+                    }
                 }
                 else
                 {
@@ -618,6 +640,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                         std::map<std::string, mup::Value> thMap;
                         thMap.insert(std::pair<std::string, mup::Value>(name, mup::Value()));
                         m_mapNameImgValue.push_back(thMap);
+                        m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
                     }
                 }
             }
@@ -705,11 +728,17 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
     // support progress methods/callbacks
     itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
 
-    if (m_Radius[0] == 0)
+    bool bKernel = false;
+    for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
     {
-
+        if (m_Radius[d] > 0)
+        {
+            bKernel = true;
+            break;
+        }
     }
-    else
+
+    if (bKernel)
     {
         //std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
         std::vector<InputNeighborhoodIterator> vInputIt(m_mapNameImg.size());
@@ -729,7 +758,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
         mup::int_type neipixels = 1;
         for (int sd=0; sd < m_Radius.GetSizeDimension(); ++sd)
         {
-            neipixels *= m_Radius[sd];
+            neipixels *= (m_Radius[sd] * 2 + 1);
         }
         const mup::float_type noval = itk::NumericTraits<mup::float_type>::NonpositiveMin();
 
@@ -773,8 +802,32 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                     for (int ncnt=0; ncnt < neipixels; ++ncnt)
                     {
                         bool bIsInBounds;
-                        InputPixelType pv = vInputIt[cnt].GetPixel(ncnt, bIsInBounds);
-                        if (bIsInBounds) nv.At(ncnt) = static_cast<mup::float_type>(pv);
+                        bool bDataTypeRangeError = false;
+                        const InputPixelType pv = vInputIt[cnt].GetPixel(ncnt, bIsInBounds);
+                        if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
+                        {
+                            bDataTypeRangeError = true;
+                        }
+                        else if (pv > itk::NumericTraits<mup::float_type>::max())
+                        {
+                            bDataTypeRangeError = true;
+                        }
+
+
+                        if (bIsInBounds && !bDataTypeRangeError)
+                        {
+                            nv.At(ncnt) = static_cast<mup::float_type>(pv);
+                        }
+                        else
+                        {
+                            std::stringstream sstr;
+                            sstr << "Data type range error: Image " << inImgIt->first
+                                 << "'s value is out of the parser's data type range!";
+                            itk::KernelScriptParserError dre;
+                            dre.SetLocation(ITK_LOCATION);
+                            dre.SetDescription(sstr.str());
+                            throw dre;
+                        }
                     }
                     m_mapNameImgValue.at(threadId).find(inImgIt->first)->second = nv;
 
@@ -795,8 +848,19 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 }
 
                 // now we set the result value for the
-                outIt.Set(static_cast<OutputPixelType>(m_vOutputValue.at(threadId).GetFloat()));
-
+                const mup::float_type outValue = m_vOutputValue.at(threadId).GetFloat();
+                if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
+                {
+                    ++m_NumUnderflows.at(threadId);
+                }
+                else if (outValue > itk::NumericTraits<OutputPixelType>::max())
+                {
+                    ++m_NumOverflows.at(threadId);
+                }
+                else
+                {
+                    outIt.Set(static_cast<OutputPixelType>(outValue));
+                }
 
                 // prepare everything for the next pixel
                 for (int si=0; si < vInputIt.size(); ++si)
@@ -807,6 +871,108 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 ++m_PixelCounter;
                 progress.CompletedPixel();
             }
+        }
+    }
+    // we've got no kernel
+    else
+    {
+        std::vector<InputRegionIterator> vInputIt(m_mapNameImg.size());
+        OutputRegionIterator outIt;
+
+        const mup::float_type noval = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+
+        // create an iterator for each input image and keep it
+
+        typename std::map<std::string, InputImageType*>::const_iterator inImgIt = m_mapNameImg.begin();
+        int cnt=0;
+        while (inImgIt != m_mapNameImg.end())
+        {
+            // we set all indices to active per default
+            vInputIt[cnt] = InputRegionIterator(inImgIt->second, outputRegionForThread);
+            ++cnt;
+            ++inImgIt;
+        }
+        outIt = OutputRegionIterator(output, outputRegionForThread);
+
+        while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
+        {
+            // set the neigbourhood values of all input images
+            inImgIt = m_mapNameImg.begin();
+            cnt=0;
+            while (inImgIt != m_mapNameImg.end())
+            {
+                mup::Value nv(noval);
+
+                bool bDataTypeRangeError = false;
+                const InputPixelType pv = vInputIt[cnt].Get();
+                if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
+                {
+                    bDataTypeRangeError = true;
+                }
+                else if (pv > itk::NumericTraits<mup::float_type>::max())
+                {
+                    bDataTypeRangeError = true;
+                }
+
+
+                if (!bDataTypeRangeError)
+                {
+                    nv = static_cast<mup::float_type>(pv);
+                }
+                else
+                {
+                    std::stringstream sstr;
+                    sstr << "Data type range error: Image " << inImgIt->first
+                         << "'s value is out of the parser's data type range!";
+                    itk::KernelScriptParserError dre;
+                    dre.SetLocation(ITK_LOCATION);
+                    dre.SetDescription(sstr.str());
+                    throw dre;
+                }
+
+                m_mapNameImgValue.at(threadId).find(inImgIt->first)->second = nv;
+
+                ++cnt;
+                ++inImgIt;
+            }
+
+
+            // let's run the script now
+            for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
+            {
+                m_vecParsers.at(threadId).at(p)->Eval();
+                if (m_vecBlockLen.at(p) > 1)
+                {
+                    Loop(p, threadId);
+                    p += m_vecBlockLen.at(p)-1;
+                }
+            }
+
+            // now we set the result value for the
+            const mup::float_type outValue = m_vOutputValue.at(threadId).GetFloat();
+            if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
+            {
+                ++m_NumUnderflows.at(threadId);
+                outIt.Set(m_Nodata);
+            }
+            else if (outValue > itk::NumericTraits<OutputPixelType>::max())
+            {
+                ++m_NumOverflows.at(threadId);
+                outIt.Set(m_Nodata);
+            }
+            else
+            {
+                outIt.Set(static_cast<OutputPixelType>(outValue));
+            }
+
+            // prepare everything for the next pixel
+            for (int si=0; si < vInputIt.size(); ++si)
+            {
+                ++vInputIt[si];
+            }
+            ++outIt;
+            ++m_PixelCounter;
+            progress.CompletedPixel();
         }
     }
 }

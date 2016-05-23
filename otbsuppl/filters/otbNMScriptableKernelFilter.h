@@ -66,8 +66,7 @@ class OTBSUPPLFILTERS_EXPORT KernelScriptParserError : public ExceptionObject
 {
 public:
     KernelScriptParserError();
-    virtual ~KernelScriptParserError()
-    ITK_NOEXCEPT {}
+    virtual ~KernelScriptParserError() throw() {}
 
     KernelScriptParserError(const char* file, unsigned int lineNumber);
     KernelScriptParserError(const std::string& file, unsigned int lineNumber);
@@ -256,6 +255,8 @@ private:
 
   OutputPixelType m_Nodata;
   std::vector<mup::Value> m_vOutputValue;
+  std::vector<long long> m_NumOverflows;
+  std::vector<long long> m_NumUnderflows;
 
   // admin objects for the scriptable kernel filter
 
@@ -269,6 +270,7 @@ private:
   std::map<std::string, mup::Value> m_mapNameAuxValue;
   std::map<std::string, InputImageType*> m_mapNameImg;
   std::vector<int> m_vecBlockLen;
+
 
 };
   

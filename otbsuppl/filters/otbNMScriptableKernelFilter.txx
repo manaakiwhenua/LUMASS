@@ -120,6 +120,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         svt[i] = static_cast<typename InputImageType::SizeValueType>(radius[i]);
     }
     m_Radius.SetSize(svt);
+    this->Modified();
 }
 
 template <class TInputImage, class TOutputImage>
@@ -167,6 +168,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     {
         m_DataNames.push_back(inputNames.at(n));
     }
+    this->Modified();
 }
 
 
@@ -176,6 +178,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj)
 {
     itk::ProcessObject::SetNthInput(idx, dataObj);
+    this->Modified();
 }
 
 template <class TInputImage, class TOutputImage>
@@ -219,12 +222,13 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // we've just started working on this image ...
     if (m_PixelCounter == 0)
     {
+        const mup::Value nv = itk::NumericTraits<mup::float_type>::NonpositiveMin();
         for (int th=0; th < this->GetNumberOfThreads(); ++th)
         {
             std::vector<mup::ParserX*> mpvec;
             m_vecParsers.push_back(mpvec);
 
-            m_vOutputValue.push_back(mup::Value('f'));
+            m_vOutputValue.push_back(mup::Value(nv));
         }
 
         m_NumOverflows.clear();
@@ -307,7 +311,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // note: this only applies to 'auxillary' data and
     // not to any of the pre-defined inputs ...
     std::map<std::string, mup::Value>::iterator extIter = m_mapNameAuxValue.find(name);
-    if (!barray && extIter == m_mapNameAuxValue.end())
+    if (!barray && extIter == m_mapNameAuxValue.end() && name.compare(m_OutputVarName) != 0)
     {
         double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
         mup::Value value(v);
@@ -663,6 +667,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         if (m_Radius[d] > 0)
         {
             bNoRadius = false;
+            break;
         }
     }
 
@@ -671,47 +676,45 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         return;
     }
 
-    // get pointers to the input and output
-    typename Superclass::InputImagePointer inputPtr =
-            const_cast< TInputImage * >( this->GetInput() );
-    typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
 
-    if ( !inputPtr || !outputPtr )
+    for (int ip=0; ip < this->GetNumberOfIndexedInputs(); ++ip)
     {
-        itk::DataObjectError de;
-        de.SetLocation(ITK_LOCATION);
-        de.SetDescription("Empty input/output detected!");
-        throw de;
-    }
+        InputImageType* inputPtr = dynamic_cast<InputImageType*>(
+                    this->GetIndexedInputs().at(ip).GetPointer());
 
-    // get a copy of the input requested region (should equal the output
-    // requested region)
-    typename TInputImage::RegionType inputRequestedRegion;
-    inputRequestedRegion = inputPtr->GetRequestedRegion();
+        if (inputPtr == 0)
+        {
+            continue;
+        }
 
-    // pad the input requested region by the operator radius
-    inputRequestedRegion.PadByRadius( m_Radius );
+        // get a copy of the input requested region (should equal the output
+        // requested region)
+        typename TInputImage::RegionType inputRequestedRegion;
+        inputRequestedRegion = inputPtr->GetRequestedRegion();
 
-    // crop the input requested region at the input's largest possible region
-    if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
-    {
-        inputPtr->SetRequestedRegion( inputRequestedRegion );
-        return;
-    }
-    else
-    {
-        // Couldn't crop the region (requested region is outside the largest
-        // possible region).  Throw an exception.
+        // pad the input requested region by the operator radius
+        inputRequestedRegion.PadByRadius( m_Radius );
 
-        // store what we tried to request (prior to trying to crop)
-        inputPtr->SetRequestedRegion( inputRequestedRegion );
+        // crop the input requested region at the input's largest possible region
+        if ( inputRequestedRegion.Crop(inputPtr->GetLargestPossibleRegion()) )
+        {
+            inputPtr->SetRequestedRegion( inputRequestedRegion );
+        }
+        else
+        {
+            // Couldn't crop the region (requested region is outside the largest
+            // possible region).  Throw an exception.
 
-        // build an exception
-        itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
-        e.SetLocation(ITK_LOCATION);
-        e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
-        e.SetDataObject(inputPtr);
-        throw e;
+            // store what we tried to request (prior to trying to crop)
+            inputPtr->SetRequestedRegion( inputRequestedRegion );
+
+            // build an exception
+            itk::InvalidRequestedRegionError e(__FILE__, __LINE__);
+            e.SetLocation(ITK_LOCATION);
+            e.SetDescription("Requested region is (at least partially) outside the largest possible region.");
+            e.SetDataObject(inputPtr);
+            throw e;
+        }
     }
 }
 
@@ -848,6 +851,8 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 }
 
                 // now we set the result value for the
+                //bool bisin=false;
+                //const mup::float_type outValue = vInputIt[0].GetPixel(neipixels / (int)2, bisin);
                 const mup::float_type outValue = m_vOutputValue.at(threadId).GetFloat();
                 if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
                 {

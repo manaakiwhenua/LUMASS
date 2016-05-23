@@ -288,16 +288,20 @@ NMProcess::getNextParamExpr(const QString& expr)
 
     for (int i=0; i < expr.size(); ++i)
     {
-        if (expr.at(i) == '[')
+        if (    expr.at(i) == '$'
+            &&  (i+1 < expr.size() && expr.at(i+1) == '[')
+           )
         {
             startPos << i;
         }
-        else if (expr.at(i) == ']')
+        else if (    expr.at(i) == ']'
+                 &&  (i+1 < expr.size() && expr.at(i+1) == '$')
+                )
         {
             if (startPos.size() > 0)
             {
                 int start = startPos.last();
-                int len = i - start + 1;
+                int len = i - start + 2;
                 QStringRef sub = expr.midRef(start, len);
                 innerExpr << sub.toString();
                 startPos.clear();
@@ -321,7 +325,7 @@ NMProcess::processStringParameter(const QString& str)
         for (int inner=0; inner < numExp; ++inner)
         {
             QString tStr = innerExp.at(inner);
-            QRegExp rex("\\[([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\]");
+            QRegExp rex("\\$\\[([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\]\\$");
             int pos = 0;
             while((pos = rex.indexIn(tStr, pos)) != -1)
             {

@@ -53,6 +53,7 @@
 #include "itkZeroFluxNeumannBoundaryCondition.h"
 #include "itkOffset.h"
 #include "itkProgressReporter.h"
+#include "mpError.h"
 
 #include "otbAttributeTable.h"
 
@@ -231,6 +232,9 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             m_vecParsers.push_back(mpvec);
 
             m_vOutputValue.push_back(mup::Value(nv));
+
+            std::map<std::string, mup::Value> mapnameval;
+            m_mapNameImgValue.push_back(mapnameval);
         }
 
         // update input data
@@ -618,48 +622,33 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             else if (img != 0)
             {
                 const mup::float_type nv = static_cast<mup::float_type>(m_Nodata);
-                if (m_mapNameImgValue.size() > 0)
+                if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
                 {
-                    if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
+                    for (int th=0; th < this->GetNumberOfThreads(); ++th)
                     {
-                        for (int th=0; th < this->GetNumberOfThreads(); ++th)
+                        if (m_NumNeighbourPixel)
                         {
-                            if (m_NumNeighbourPixel)
-                            {
-                                m_mapNameImgValue.at(th).insert(
-                                   std::pair<std::string, mup::Value>(
-                                       name, mup::Value(
-                                            static_cast<mup::int_type>(m_NumNeighbourPixel), nv)));
-                            }
-                            else
-                            {
-                                m_mapNameImgValue.at(th).insert(
-                                   std::pair<std::string, mup::Value>(name, mup::Value(nv)));
-                            }
+                            m_mapNameImgValue.at(th).insert(
+                               std::pair<std::string, mup::Value>(
+                                   name, mup::Value((mup::int_type)m_NumNeighbourPixel, nv)));
                         }
-                        m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
+                        else
+                        {
+                            m_mapNameImgValue.at(th).insert(
+                               std::pair<std::string, mup::Value>(name, mup::Value(nv)));
+                        }
                     }
-                    else
-                    {
-                        std::stringstream sstr;
-                        sstr << "Image name conflict error: The name '"
-                             << name << "' has already been defined!";
-                        itk::KernelScriptParserError kspe;
-                        kspe.SetLocation(ITK_LOCATION);
-                        kspe.SetDescription(sstr.str());
-                        throw kspe;
-                    }
+                    m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
                 }
                 else
                 {
-
-                    for (int th=0; th < this->GetNumberOfThreads(); ++th)
-                    {
-                        std::map<std::string, mup::Value> thMap;
-                        thMap.insert(std::pair<std::string, mup::Value>(name, mup::Value()));
-                        m_mapNameImgValue.push_back(thMap);
-                        m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
-                    }
+                    std::stringstream sstr;
+                    sstr << "Image name conflict error: The name '"
+                         << name << "' has already been defined!";
+                    itk::KernelScriptParserError kspe;
+                    kspe.SetLocation(ITK_LOCATION);
+                    kspe.SetDescription(sstr.str());
+                    throw kspe;
                 }
             }
         }
@@ -800,13 +789,12 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 cnt=0;
                 while (inImgIt != m_mapNameImg.end())
                 {
-                    //mup::Value nv(neipixels, noval);
+
                     for (int ncnt=0; ncnt < m_NumNeighbourPixel; ++ncnt)
                     {
-                        bool bIsInBounds = false;
+                        //bool bIsInBounds = true;
                         bool bDataTypeRangeError = false;
-                        const InputPixelType pv = vInputIt[cnt].GetPixel(ncnt, bIsInBounds);
-                        std::cout << pv << " ";
+                        InputPixelType pv = vInputIt[cnt].GetPixel(ncnt);
                         if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
                         {
                             bDataTypeRangeError = true;
@@ -816,11 +804,19 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                             bDataTypeRangeError = true;
                         }
 
-                        if (bIsInBounds && !bDataTypeRangeError)
+                        if (!bDataTypeRangeError)
                         {
-                            //
-//                            m_mapNameImgValue.at(threadId).find(inImgIt->first)->second.At(ncnt) =
-//                                    static_cast<mup::float_type>(pv);
+                            try{
+                            m_mapNameImgValue[threadId].find(inImgIt->first)->second.At(ncnt) =
+                                    static_cast<mup::float_type>(pv);
+                            }
+                            catch(mup::ParserError& pe)
+                            {
+                                itk::KernelScriptParserError kse;
+                                kse.SetDescription(pe.GetMsg());
+                                kse.SetLocation(ITK_LOCATION);
+                                throw kse;
+                            }
                         }
                         else
                         {
@@ -832,9 +828,12 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                             dre.SetDescription(sstr.str());
                             throw dre;
                         }
+
+                        std::cout << m_mapNameImgValue[threadId].
+                                        find(inImgIt->first)->second.At(ncnt).ToString() << " ";
+                        //std::cout << pv << " ";
                     }
                     std::cout << std::endl;
-                    //m_mapNameImgValue.at(threadId).find(inImgIt->first)->second = nv;
 
                     ++cnt;
                     ++inImgIt;
@@ -842,6 +841,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
 
 
                 // let's run the script now
+                try{
                 for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
                 {
                     m_vecParsers.at(threadId).at(p)->Eval();
@@ -851,11 +851,25 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                         p += m_vecBlockLen.at(p)-1;
                     }
                 }
+                }
+                catch (mup::ParserError& evalerr)
+                {
+                    itk::KernelScriptParserError kse;
+                    kse.SetDescription(evalerr.GetMsg());
+                    kse.SetLocation(ITK_LOCATION);
+                    throw kse;
+                }
 
                 // now we set the result value for the
                 //bool bisin=false;
-                //const mup::float_type outValue = vInputIt[0].GetPixel(neipixels / (int)2, bisin);
+                //const mup::float_type outValue = 5;//vInputIt[0].GetPixel(m_NumNeighbourPixel / (int)2);
                 const mup::float_type outValue = m_vOutputValue.at(threadId).GetFloat();
+
+//                int centre = m_NumNeighbourPixel / (int)2;
+//                const mup::float_type outValue =
+//                        m_mapNameImgValue.at(threadId).
+//                                    find(inImgIt->first)->second.At(centre).GetFloat();
+
                 if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
                 {
                     ++m_NumUnderflows.at(threadId);
@@ -886,7 +900,8 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
         std::vector<InputRegionIterator> vInputIt(m_mapNameImg.size());
         OutputRegionIterator outIt;
 
-        const mup::float_type noval = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+        const mup::float_type noval = static_cast<mup::float_type>(m_Nodata);
+        // itk::NumericTraits<mup::float_type>::NonpositiveMin();
 
         // create an iterator for each input image and keep it
 
@@ -908,8 +923,8 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
             cnt=0;
             while (inImgIt != m_mapNameImg.end())
             {
-                mup::Value nv(noval);
-
+                //mup::Value nv(noval);
+                mup::float_type nv = noval;
                 bool bDataTypeRangeError = false;
                 const InputPixelType pv = vInputIt[cnt].Get();
                 if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())

@@ -179,6 +179,8 @@ public:
    * \sa ImageToImageFilter::GenerateInputRequestedRegion() */
   virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
 
+  void Reset();
+
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
   itkConceptMacro(InputHasNumericTraitsCheck,
@@ -206,7 +208,6 @@ protected:
 
   void BeforeThreadedGenerateData();
   void AfterThreadedGenerateData();
-  void Reset();
   void CacheInputData();
   void ParseScript();
   void ParseCommand(const std::string& expr);

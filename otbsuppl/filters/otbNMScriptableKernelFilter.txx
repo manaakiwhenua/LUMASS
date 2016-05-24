@@ -98,6 +98,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
     m_OutputVarName = "out";
 
+    m_Nodata = itk::NumericTraits<OutputPixelType>::NonpositiveMin();
+
     // just for debug
     this->SetNumberOfThreads(1);
 }
@@ -231,12 +233,6 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             m_vOutputValue.push_back(mup::Value(nv));
         }
 
-        m_NumOverflows.clear();
-        m_NumOverflows.resize(this->GetNumberOfThreads(), 0);
-
-        m_NumUnderflows.clear();
-        m_NumUnderflows.resize(this->GetNumberOfThreads(), 0);
-
         // update input data
         this->CacheInputData();
 
@@ -245,6 +241,12 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         this->ParseScript();
 
     }
+
+    m_NumOverflows.clear();
+    m_NumOverflows.resize(this->GetNumberOfThreads(), 0);
+
+    m_NumUnderflows.clear();
+    m_NumUnderflows.resize(this->GetNumberOfThreads(), 0);
 
     // if we've got a shaped neighbourhood iterator,
     // determine the active offsets
@@ -615,14 +617,25 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             // we'll redefine once we know the actual values
             else if (img != 0)
             {
+                const mup::float_type nv = static_cast<mup::float_type>(m_Nodata);
                 if (m_mapNameImgValue.size() > 0)
                 {
                     if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
                     {
                         for (int th=0; th < this->GetNumberOfThreads(); ++th)
                         {
-                            m_mapNameImgValue.at(th).insert(
-                                        std::pair<std::string, mup::Value>(name, mup::Value()));
+                            if (m_NumNeighbourPixel)
+                            {
+                                m_mapNameImgValue.at(th).insert(
+                                   std::pair<std::string, mup::Value>(
+                                       name, mup::Value(
+                                            static_cast<mup::int_type>(m_NumNeighbourPixel), nv)));
+                            }
+                            else
+                            {
+                                m_mapNameImgValue.at(th).insert(
+                                   std::pair<std::string, mup::Value>(name, mup::Value(nv)));
+                            }
                         }
                         m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
                     }
@@ -639,6 +652,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                 }
                 else
                 {
+
                     for (int th=0; th < this->GetNumberOfThreads(); ++th)
                     {
                         std::map<std::string, mup::Value> thMap;
@@ -660,22 +674,23 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // call the superclass' implementation of this method
     Superclass::GenerateInputRequestedRegion();
 
-    // don't need to do anything, if we're not in kernel mode
-    bool bNoRadius = true;
+    // determine kernel size
+    m_NumNeighbourPixel = 1;
     for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
     {
         if (m_Radius[d] > 0)
         {
-            bNoRadius = false;
-            break;
+            m_NumNeighbourPixel *= (m_Radius[d] * 2 + 1);
         }
     }
+    m_NumNeighbourPixel = m_NumNeighbourPixel == 1 ? 0 : m_NumNeighbourPixel;
 
-    if (bNoRadius)
+    // no need to pad the input requested region,
+    // if we're not operating on a kernel
+    if (!m_NumNeighbourPixel)
     {
         return;
     }
-
 
     for (int ip=0; ip < this->GetNumberOfIndexedInputs(); ++ip)
     {
@@ -731,39 +746,23 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
     // support progress methods/callbacks
     itk::ProgressReporter progress(this, threadId, outputRegionForThread.GetNumberOfPixels());
 
-    bool bKernel = false;
-    for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
+    if (m_NumNeighbourPixel)
     {
-        if (m_Radius[d] > 0)
-        {
-            bKernel = true;
-            break;
-        }
-    }
-
-    if (bKernel)
-    {
-        //std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
-        std::vector<InputNeighborhoodIterator> vInputIt(m_mapNameImg.size());
-        OutputRegionIterator outIt;
-
-        // Find the data-set boundary "faces"
+        // set up the neighborhood iteration, e.g. create a list of boundary faces
         itk::ZeroFluxNeumannBoundaryCondition<InputImageType> nbc;
-
         typename std::map<std::string, InputImageType*>::const_iterator inImgIt = m_mapNameImg.begin();
-
         typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType faceList;
         itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType> bC;
         faceList = bC(inImgIt->second, outputRegionForThread, m_Radius);
-
         typename itk::NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>::FaceListType::iterator fit;
 
-        mup::int_type neipixels = 1;
-        for (int sd=0; sd < m_Radius.GetSizeDimension(); ++sd)
-        {
-            neipixels *= (m_Radius[sd] * 2 + 1);
-        }
-        const mup::float_type noval = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+
+        // initialise the neighborhood iterators and the corresponding
+        // paraser arrays
+        //std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
+        std::vector<InputNeighborhoodIterator> vInputIt(m_mapNameImg.size());
+        OutputRegionIterator outIt;
+        //const mup::float_type noval = itk::NumericTraits<mup::float_type>::NonpositiveMin();
 
         // Process each of the boundary faces.  These are N-d regions which border
         // the edge of the buffer.
@@ -801,12 +800,13 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 cnt=0;
                 while (inImgIt != m_mapNameImg.end())
                 {
-                    mup::Value nv(neipixels, noval);
-                    for (int ncnt=0; ncnt < neipixels; ++ncnt)
+                    //mup::Value nv(neipixels, noval);
+                    for (int ncnt=0; ncnt < m_NumNeighbourPixel; ++ncnt)
                     {
-                        bool bIsInBounds;
+                        bool bIsInBounds = false;
                         bool bDataTypeRangeError = false;
                         const InputPixelType pv = vInputIt[cnt].GetPixel(ncnt, bIsInBounds);
+                        std::cout << pv << " ";
                         if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
                         {
                             bDataTypeRangeError = true;
@@ -816,10 +816,11 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                             bDataTypeRangeError = true;
                         }
 
-
                         if (bIsInBounds && !bDataTypeRangeError)
                         {
-                            nv.At(ncnt) = static_cast<mup::float_type>(pv);
+                            //
+//                            m_mapNameImgValue.at(threadId).find(inImgIt->first)->second.At(ncnt) =
+//                                    static_cast<mup::float_type>(pv);
                         }
                         else
                         {
@@ -832,7 +833,8 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                             throw dre;
                         }
                     }
-                    m_mapNameImgValue.at(threadId).find(inImgIt->first)->second = nv;
+                    std::cout << std::endl;
+                    //m_mapNameImgValue.at(threadId).find(inImgIt->first)->second = nv;
 
                     ++cnt;
                     ++inImgIt;
@@ -979,6 +981,28 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
             ++m_PixelCounter;
             progress.CompletedPixel();
         }
+    }
+}
+
+
+template< class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter< TInputImage, TOutputImage>
+::AfterThreadedGenerateData()
+{
+    long long nover = 0;
+    long long nunder = 0;
+    for (int th=0; th < this->GetNumberOfThreads(); ++th)
+    {
+        nover += m_NumOverflows.at(th);
+        nunder += m_NumUnderflows.at(th);
+    }
+
+    if (nover || nunder)
+    {
+        itkWarningMacro(<< nover << " overflows and "
+                        << nunder << " underflows detected! "
+                        << "Double check your results!");
     }
 }
 

@@ -205,6 +205,7 @@ protected:
                             itk::ThreadIdType threadId );
 
   void BeforeThreadedGenerateData();
+  void AfterThreadedGenerateData();
   void Reset();
   void CacheInputData();
   void ParseScript();
@@ -245,8 +246,10 @@ private:
 
   long long m_NumPixels;
   long long m_PixelCounter;
+  int m_NumNeighbourPixel;
 
   InputSizeType m_Radius;
+
   std::string m_KernelScript;
   std::string m_KernelShape;
   std::string m_OutputVarName;

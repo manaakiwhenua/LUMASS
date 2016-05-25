@@ -104,7 +104,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     m_Nodata = itk::NumericTraits<OutputPixelType>::NonpositiveMin();
 
     // just for debug
-    this->SetNumberOfThreads(1);
+    //this->SetNumberOfThreads(1);
 }
 
 template <class TInputImage, class TOutputImage>
@@ -395,7 +395,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     std::string script = m_KernelScript;
 
     // remove all single (') and double quotes (")
-    std::string quotes = "\'\"";
+    std::string quotes = "\"";
     for (int q=0; q < quotes.size(); ++q)
     {
         script.erase(std::remove(script.begin(), script.end(), quotes.at(q)), script.end());
@@ -1017,6 +1017,11 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
         itkWarningMacro(<< nover << " overflows and "
                         << nunder << " underflows detected! "
                         << "Double check your results!");
+    }
+
+    if (m_PixelCounter >= m_NumPixels)
+    {
+        Reset();
     }
 }
 

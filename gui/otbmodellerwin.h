@@ -287,10 +287,7 @@ protected:
             std::vector<mup::ParserX*>& vecParsers
             );
 
-    void parserTest(std::vector<otb::MultiParser*>& parsers,
-                    std::map<otb::MultiParser*, std::string>& parsername,
-                    std::map<std::string, double*>& namevalue
-                    );
+    void parserTest(std::vector<std::map<std::string, mup::Value> >& vm);
 
     void runScript(
             //std::map<std::string, double*>& mapNameValue,

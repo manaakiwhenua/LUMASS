@@ -57,6 +57,8 @@
 
 #include "otbAttributeTable.h"
 
+#include <algorithm>
+
 namespace itk
 {
 
@@ -144,6 +146,10 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     m_NumOverflows.clear();
     m_NumUnderflows.clear();
 
+    m_mapNameImgValue.clear();
+    m_mapNameAuxValue.clear();
+    m_vecBlockLen.clear();
+
     for (int v=0; v < m_vecParsers.size(); ++v)
     {
         for (int p=0; p < m_vecParsers.at(v).size(); ++p)
@@ -155,9 +161,6 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     m_vecParsers.clear();
 
     m_mapParserName.clear();
-    m_mapNameImgValue.clear();
-    m_mapNameAuxValue.clear();
-    m_vecBlockLen.clear();
 }
 
 
@@ -390,6 +393,14 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     std::stack<int> bracketOpen;
 
     std::string script = m_KernelScript;
+
+    // remove all single (') and double quotes (")
+    std::string quotes = "\'\"";
+    for (int q=0; q < quotes.size(); ++q)
+    {
+        script.erase(std::remove(script.begin(), script.end(), quotes.at(q)), script.end());
+    }
+
     size_t pos = 0;
     size_t start = 0;
     size_t next = 0;
@@ -628,9 +639,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                     {
                         if (m_NumNeighbourPixel)
                         {
-                            m_mapNameImgValue.at(th).insert(
-                               std::pair<std::string, mup::Value>(
-                                   name, mup::Value((mup::int_type)m_NumNeighbourPixel, nv)));
+                            mup::Value mtype = mup::Value((mup::int_type)m_NumNeighbourPixel, nv);
+                            m_mapNameImgValue.at(th)[name] = mtype;
                         }
                         else
                         {
@@ -751,7 +761,6 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
         //std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
         std::vector<InputNeighborhoodIterator> vInputIt(m_mapNameImg.size());
         OutputRegionIterator outIt;
-        //const mup::float_type noval = itk::NumericTraits<mup::float_type>::NonpositiveMin();
 
         // Process each of the boundary faces.  These are N-d regions which border
         // the edge of the buffer.
@@ -792,7 +801,6 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
 
                     for (int ncnt=0; ncnt < m_NumNeighbourPixel; ++ncnt)
                     {
-                        //bool bIsInBounds = true;
                         bool bDataTypeRangeError = false;
                         InputPixelType pv = vInputIt[cnt].GetPixel(ncnt);
                         if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
@@ -828,29 +836,24 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                             dre.SetDescription(sstr.str());
                             throw dre;
                         }
-
-                        std::cout << m_mapNameImgValue[threadId].
-                                        find(inImgIt->first)->second.At(ncnt).ToString() << " ";
-                        //std::cout << pv << " ";
                     }
-                    std::cout << std::endl;
-
                     ++cnt;
                     ++inImgIt;
                 }
 
 
                 // let's run the script now
-                try{
-                for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
+                try
                 {
-                    m_vecParsers.at(threadId).at(p)->Eval();
-                    if (m_vecBlockLen.at(p) > 1)
+                    for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
                     {
-                        Loop(p, threadId);
-                        p += m_vecBlockLen.at(p)-1;
+                        m_vecParsers.at(threadId).at(p)->Eval();
+                        if (m_vecBlockLen.at(p) > 1)
+                        {
+                            Loop(p, threadId);
+                            p += m_vecBlockLen.at(p)-1;
+                        }
                     }
-                }
                 }
                 catch (mup::ParserError& evalerr)
                 {
@@ -861,15 +864,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 }
 
                 // now we set the result value for the
-                //bool bisin=false;
-                //const mup::float_type outValue = 5;//vInputIt[0].GetPixel(m_NumNeighbourPixel / (int)2);
                 const mup::float_type outValue = m_vOutputValue.at(threadId).GetFloat();
-
-//                int centre = m_NumNeighbourPixel / (int)2;
-//                const mup::float_type outValue =
-//                        m_mapNameImgValue.at(threadId).
-//                                    find(inImgIt->first)->second.At(centre).GetFloat();
-
                 if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
                 {
                     ++m_NumUnderflows.at(threadId);
@@ -923,8 +918,6 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
             cnt=0;
             while (inImgIt != m_mapNameImg.end())
             {
-                //mup::Value nv(noval);
-                mup::float_type nv = noval;
                 bool bDataTypeRangeError = false;
                 const InputPixelType pv = vInputIt[cnt].Get();
                 if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
@@ -936,10 +929,10 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                     bDataTypeRangeError = true;
                 }
 
-
                 if (!bDataTypeRangeError)
                 {
-                    nv = static_cast<mup::float_type>(pv);
+                    m_mapNameImgValue.at(threadId).find(inImgIt->first)->second =
+                            static_cast<mup::float_type>(pv);
                 }
                 else
                 {
@@ -951,23 +944,29 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                     dre.SetDescription(sstr.str());
                     throw dre;
                 }
-
-                m_mapNameImgValue.at(threadId).find(inImgIt->first)->second = nv;
-
                 ++cnt;
                 ++inImgIt;
             }
 
-
             // let's run the script now
-            for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
+            try
             {
-                m_vecParsers.at(threadId).at(p)->Eval();
-                if (m_vecBlockLen.at(p) > 1)
+                for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
                 {
-                    Loop(p, threadId);
-                    p += m_vecBlockLen.at(p)-1;
+                    m_vecParsers.at(threadId).at(p)->Eval();
+                    if (m_vecBlockLen.at(p) > 1)
+                    {
+                        Loop(p, threadId);
+                        p += m_vecBlockLen.at(p)-1;
+                    }
                 }
+            }
+            catch (mup::ParserError& evalerr)
+            {
+                itk::KernelScriptParserError kse;
+                kse.SetDescription(evalerr.GetMsg());
+                kse.SetLocation(ITK_LOCATION);
+                throw kse;
             }
 
             // now we set the result value for the

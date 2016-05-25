@@ -160,7 +160,7 @@
 #include "itkStreamingImageFilter.h"
 #include "otbMultiParser.h"
 //#include "otbParserX.h"
-//#include "mpParser.h"
+#include "mpParser.h"
 
 // FOR ::test function
 //#include "itkFloodFilledImageFunctionConditionalIterator.h"
@@ -2993,205 +2993,220 @@ OtbModellerWin::parseKernelScriptBlock(std::string& expr,
 }
 
 void
-OtbModellerWin::parserTest(std::vector<otb::MultiParser *> &parsers,
-                           std::map<otb::MultiParser *, std::string> &parsername,
-                           std::map<std::string, double *> &namevalue)
+OtbModellerWin::parserTest(std::vector<std::map<std::string, mup::Value> >& mv)
 {
-    otb::MultiParser::Pointer smartparser = otb::MultiParser::New();
-    otb::MultiParser* parser = smartparser.GetPointer();
-    parser->Register();
 
-    double* v1;
-    double* res;
-    double* res2;
-    try
+    std::map<std::string, mup::Value>::iterator vit;
+    for (int v=0; v < mv.size(); ++v)
     {
-        v1 = new double;
-        res = new double;
-        res2 = new double;
+        vit = mv.at(v).begin();
+        while (vit != mv.at(v).end())
+        {
+            for (int d=0; d < vit->second.GetRows(); ++d)
+            {
+                mup::float_type av = vit->second.At(d).GetFloat();
+                av += (mup::float_type)d;
+                vit->second.At(d) = av;
+            }
+            ++vit;
+        }
     }
-    catch (...){}
-
-    *v1 = 5;
-
-    std::string myexpr = "v1 + 3"; // = res
-    std::string myexpr2 = "res + 2";
-
-    parser->SetExpr(myexpr);
-    parser->DefineVar("v1", v1);
-
-    parsers.push_back(parser);
-    parsername.insert(std::pair<otb::MultiParser*, std::string>(parser, "res"));
-    namevalue.insert(std::pair<std::string, double*>("res", res));
-
-
-    otb::MultiParser::Pointer sp2 = otb::MultiParser::New();
-    otb::MultiParser* par2 = sp2.GetPointer();
-    par2->Register();
-    par2->DefineVar("res", res);
-    par2->SetExpr(myexpr2);
-
-    parsers.push_back(par2);
-
-    parsername.insert(std::pair<otb::MultiParser*, std::string>(par2, "res2"));
-    namevalue.insert(std::pair<std::string, double*>("res2", res2));
-
-
-
 }
 
 void OtbModellerWin::test()
 {
     NMDebugCtx(ctxOtbModellerWin, << "...")
 
-    mup::Value myVec('m');
-    for (int i=0; i < 10; ++i)
-    {
-        myVec.At(i) = i;
-    }
+    mup::Value aval(2,0);
+    aval.At(0) = mup::Value(3);
+    aval.At(1) = mup::Value(4);
 
-    for (int i=0; i < 10; ++i)
-    {
-        NMDebugAI(<< "myVec[" << i << "]=" << myVec.At(i) << std::endl);
-    }
+//    NMDebugAI(<< aval.At(0,0).GetFloat() << " "
+//              << aval.At(1,0).GetFloat() << std::endl);
+
+
+//    std::vector<std::string> names;//
+//    names.push_back("img1");
+//    names.push_back("img2");
+//    std::vector<std::map<std::string, mup::Value> > mv;
+//    for (int i=0; i < 4; ++i)
+//    {
+//        std::map<std::string, mup::Value> themap;
+//        mv.push_back(themap);
+//    }
+
+//    for (int i=0; i < 4; ++i)
+//    {
+//        for (int a=0; a < 2; ++a)
+//        {
+//            mup::Value maval((mup::int_type)9,(mup::int_type)0,(mup::float_type)0.0);
+//            for (mup::int_type d=0; d < maval.GetRows(); ++d)
+//            {
+//                maval.At(d,(mup::int_type)0) = (mup::float_type)0.1;
+//            }
+//            mv.at(i).insert(std::pair<std::string, mup::Value>(
+//                                names.at(a),maval));
+//        }
+//    }
+
+//    this->parserTest(mv);
+
+//    // what have we got ???
+//    std::map<std::string, mup::Value>::iterator viat;
+//    for (int v=0; v < mv.size(); ++v)
+//    {
+//        NMDebugAI( << "thread #" << v << std::endl);
+//        viat = mv.at(v).begin();
+//        while (viat != mv.at(v).end())
+//        {
+//            NMDebugAI( << viat->first << ": ");
+//            for (int d=0; d < viat->second.GetRows(); ++d)
+//            {
+//                NMDebug(<< viat->second.At(d).GetFloat() << " ");
+//            }
+//            NMDebug(<< std::endl);
+//            ++viat;
+//        }
+//        NMDebug(<< std::endl);
+//    }
 
 
     NMDebugCtx(ctxOtbModellerWin, << "done!")
     return;
 
-    QString scriptStr = NMGlobalHelper::getMultiLineInput(
-                "Kernel Script", "", this);
+//    QString scriptStr = NMGlobalHelper::getMultiLineInput(
+//                "Kernel Script", "", this);
 
-    if (scriptStr.isEmpty())
-    {
-        NMDebugCtx(ctxOtbModellerWin, << "done!");
-        return;
-    }
+//    if (scriptStr.isEmpty())
+//    {
+//        NMDebugCtx(ctxOtbModellerWin, << "done!");
+//        return;
+//    }
 
-    scriptStr = scriptStr.replace(QChar('\r'), QChar(' '));
-    scriptStr = scriptStr.replace(QChar('\n'), QChar(' '));
-    std::string script = scriptStr.toStdString();
+//    scriptStr = scriptStr.replace(QChar('\r'), QChar(' '));
+//    scriptStr = scriptStr.replace(QChar('\n'), QChar(' '));
+//    std::string script = scriptStr.toStdString();
 
-    // ======================================================
-    // some 'external' variables
-    // ======================================================
-    mup::Value apfel = 4;
-    mup::Value birne = 5;
-    //double* kernel = new double[9];
-    mup::Value kernel(9,0);
-    kernel.At(0) = 5;
-    kernel.At(8) = 3;
+//    // ======================================================
+//    // some 'external' variables
+//    // ======================================================
+//    mup::Value apfel = 4;
+//    mup::Value birne = 5;
+//    //double* kernel = new double[9];
+//    mup::Value kernel(9,0);
+//    kernel.At(0) = 5;
+//    kernel.At(8) = 3;
 
-    // note: we still need to know the length of each external input data,
-    // esp. for arrays
-    std::map<std::string, mup::Value> mapNameValue;
-    mapNameValue.insert(std::pair<std::string, mup::Value>("apfel", apfel));
-    mapNameValue.insert(std::pair<std::string, mup::Value>("birne", birne));
-    mapNameValue.insert(std::pair<std::string, mup::Value>("kernel",kernel));
+//    // note: we still need to know the length of each external input data,
+//    // esp. for arrays
+//    std::map<std::string, mup::Value> mapNameValue;
+//    mapNameValue.insert(std::pair<std::string, mup::Value>("apfel", apfel));
+//    mapNameValue.insert(std::pair<std::string, mup::Value>("birne", birne));
+//    mapNameValue.insert(std::pair<std::string, mup::Value>("kernel",kernel));
 
-    // ======================================================
-    // vars for storing script sequence, expr, parsers, and values
-    // ======================================================
+//    // ======================================================
+//    // vars for storing script sequence, expr, parsers, and values
+//    // ======================================================
 
-    //    std::map<otb::MultiParser*, std::string> mapParserName;
-    //    std::vector<otb::MultiParser*> vecParsers;
-    std::map<mup::ParserX*, std::string> mapParserName;
-    std::vector<mup::ParserX*> vecParsers;
-    std::vector<int> vecBlockLen;
+//    //    std::map<otb::MultiParser*, std::string> mapParserName;
+//    //    std::vector<otb::MultiParser*> vecParsers;
+//    std::map<mup::ParserX*, std::string> mapParserName;
+//    std::vector<mup::ParserX*> vecParsers;
+//    std::vector<int> vecBlockLen;
 
-    NMDebugAI(<< "Parsing ... " << std::endl);
-    this->parseKernelScriptBlock(
-                script,
-                mapNameValue,
-                mapParserName,
-                vecParsers,
-                vecBlockLen
-                );
-
-
-    //*************************************************
-    // run LUMASS script
-    //*************************************************
+//    NMDebugAI(<< "Parsing ... " << std::endl);
+//    this->parseKernelScriptBlock(
+//                script,
+//                mapNameValue,
+//                mapParserName,
+//                vecParsers,
+//                vecBlockLen
+//                );
 
 
-    QDateTime start = QDateTime::currentDateTime();
-
-    this->runScript(mapNameValue,
-                    mapParserName,
-                    vecParsers,
-                    vecBlockLen
-                    );
-
-    QDateTime stopped = QDateTime::currentDateTime();
-    int msec = start.msecsTo(stopped);
-    int min = msec / 60000;
-    double sec = (msec % 60000) / 1000.0;
-
-    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
-    NMMsg(<< "LUMASS script took (min:sec): " << elapsedTime.toStdString() << "\n");
-
-    std::map<std::string, mup::Value>::const_iterator vit = mapNameValue.begin();
-    while (vit != mapNameValue.end())
-    {
-        NMMsg(<< vit->first << "=" << vit->second.GetFloat());
-        ++vit;
-    }
-    NMMsg(<< "\n");
+//    //*************************************************
+//    // run LUMASS script
+//    //*************************************************
 
 
-    //*************************************************
-    // run native code ...
-    //*************************************************
+//    QDateTime start = QDateTime::currentDateTime();
+
+//    this->runScript(mapNameValue,
+//                    mapParserName,
+//                    vecParsers,
+//                    vecBlockLen
+//                    );
+
+//    QDateTime stopped = QDateTime::currentDateTime();
+//    int msec = start.msecsTo(stopped);
+//    int min = msec / 60000;
+//    double sec = (msec % 60000) / 1000.0;
+
+//    QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+//    NMMsg(<< "LUMASS script took (min:sec): " << elapsedTime.toStdString() << "\n");
+
+//    std::map<std::string, mup::Value>::const_iterator vit = mapNameValue.begin();
+//    while (vit != mapNameValue.end())
+//    {
+//        NMMsg(<< vit->first << "=" << vit->second.GetFloat());
+//        ++vit;
+//    }
+//    NMMsg(<< "\n");
 
 
-    start = QDateTime::currentDateTime();
-
-    //{
-        double aa = 0;
-        double ba = 0;
-        for (int i=0; i < 1000000; i=i+1)
-        {
-            for (int k=0; k < 3; k=k+1)
-            {
-                    aa = aa + sqrt(k);
-            }
-            ba = ba + 1;
-        }
-        double c = aa + ba;
-    //}
+//    //*************************************************
+//    // run native code ...
+//    //*************************************************
 
 
-    stopped = QDateTime::currentDateTime();
-    msec = start.msecsTo(stopped);
-    min = msec / 60000;
-    sec = (msec % 60000) / 1000.0;
+//    start = QDateTime::currentDateTime();
 
-    elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
-    NMMsg(<< "Native code took (min:sec): " << elapsedTime.toStdString() << "\n");
+//    //{
+//        double aa = 0;
+//        double ba = 0;
+//        for (int i=0; i < 1000000; i=i+1)
+//        {
+//            for (int k=0; k < 3; k=k+1)
+//            {
+//                    aa = aa + sqrt(k);
+//            }
+//            ba = ba + 1;
+//        }
+//        double c = aa + ba;
+//    //}
 
-    NMMsg(<< "aa=" << aa << " ba=" << ba << " c=" << c << "\n");
 
-    //*************************************************
-    // end native code ...
-    //*************************************************
+//    stopped = QDateTime::currentDateTime();
+//    msec = start.msecsTo(stopped);
+//    min = msec / 60000;
+//    sec = (msec % 60000) / 1000.0;
+
+//    elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
+//    NMMsg(<< "Native code took (min:sec): " << elapsedTime.toStdString() << "\n");
+
+//    NMMsg(<< "aa=" << aa << " ba=" << ba << " c=" << c << "\n");
+
+//    //*************************************************
+//    // end native code ...
+//    //*************************************************
 
 
 
-    // *****************
-    // clean up the parser admin
-    // *****************
-    mapParserName.clear();
-    for (int v=0; v < vecParsers.size(); ++v)
-    {
-        delete vecParsers[v];
-    }
+//    // *****************
+//    // clean up the parser admin
+//    // *****************
+//    mapParserName.clear();
+//    for (int v=0; v < vecParsers.size(); ++v)
+//    {
+//        delete vecParsers[v];
+//    }
 
-    mapNameValue.clear();
+//    mapNameValue.clear();
 
-    vecParsers.clear();
-    vecBlockLen.clear();
+//    vecParsers.clear();
+//    vecBlockLen.clear();
 
-    NMDebugCtx(ctxOtbModellerWin, << "done!");
+//    NMDebugCtx(ctxOtbModellerWin, << "done!");
 }
 
 void

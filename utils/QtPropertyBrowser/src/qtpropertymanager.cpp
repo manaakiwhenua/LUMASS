@@ -1761,11 +1761,13 @@ QStringList QtStringListPropertyManager::StringToStringList(const QString& strin
 	QChar c;
 	unsigned int curLevel = maxlevel;
 	bool bInString = false;
+    bool sQuote = false;
+    bool dQuote = false;
 	QString dbg;
 	for(unsigned int i=0; i < input.size(); ++i)
 	{
 		c = input.at(i);
-		if (c == '{')
+        if (c == '{' && !sQuote && !dQuote)
 		{
 			if (curLevel > 0 )
 			{
@@ -1778,7 +1780,7 @@ QStringList QtStringListPropertyManager::StringToStringList(const QString& strin
 				bInString = true;
 			}
 		}
-		else if (c == '}')
+        else if (c == '}' && !sQuote && !dQuote)
 		{
 			if (curLevel > 0)
 			{
@@ -1806,8 +1808,19 @@ QStringList QtStringListPropertyManager::StringToStringList(const QString& strin
 		}
 		else
 		{
+            if (c == '\'')
+            {
+                sQuote = !sQuote;
+            }
+            else if (c == '\"')
+            {
+                dQuote = !dQuote;
+            }
+
 			if (curLevel == 0)
-				s += QString(c);//.simplified(); // c
+            {
+                s += QString(c);
+            }
 		}
 
 //		dbg = "";
@@ -1829,20 +1842,30 @@ int QtStringListPropertyManager::validateExpression(const QString& str)
 {
 	unsigned int braceOpen = 0;
 	unsigned int braceClose = 0;
+    bool sQuote = false;
+    bool dQuote = false;
 	int maxlevel = -1;
 	for (unsigned int m=0; m < str.size(); ++m)
 	{
 		QChar t = str.at(m);
-		if (t == '{')
+        if (t == '{' && !sQuote && !dQuote)
 		{
 			++braceOpen;
 			if (maxlevel < 3 && braceClose == 0)
 				++maxlevel;
 		}
-		else if (t == '}')
+        else if (t == '}' && !sQuote && !dQuote)
 		{
 			++braceClose;
 		}
+        else if (t == '\'')
+        {
+            sQuote = !sQuote;
+        }
+        else if (t == '\"')
+        {
+            dQuote = !dQuote;
+        }
 	}
 
 	if ((braceOpen != braceClose) || maxlevel < 1)

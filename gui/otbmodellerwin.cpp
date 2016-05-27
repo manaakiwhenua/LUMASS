@@ -261,7 +261,7 @@
 //#include <stdbool.h>
 //#include <stdint.h>
 
-#include "valgrind/callgrind.h"
+//#include "valgrind/callgrind.h"
 
 //class NMMdiSubWindow : public QMdiSubWindow
 //{

@@ -238,6 +238,10 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
             std::map<std::string, mup::Value> mapnameval;
             m_mapNameImgValue.push_back(mapnameval);
+
+            std::map<std::string, mup::Value> mapnamauxval;
+            m_mapNameAuxValue.push_back(mapnamauxval);
+
         }
 
         // update input data
@@ -248,6 +252,9 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         this->ParseScript();
 
     }
+
+    m_vthPixelCounter.clear();
+    m_vthPixelCounter.resize(this->GetNumberOfThreads(), 0);
 
     m_NumOverflows.clear();
     m_NumOverflows.resize(this->GetNumberOfThreads(), 0);
@@ -311,22 +318,6 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         name = sstemp.str();
     }
 
-    // check, whether we've defined this variable already;
-    // if so, we just associate the new parser with this
-    // variable; if not, we also add a new variable to the
-    // list
-
-    // enter new variables into the name-variable map
-    // note: this only applies to 'auxillary' data and
-    // not to any of the pre-defined inputs ...
-    std::map<std::string, mup::Value>::iterator extIter = m_mapNameAuxValue.find(name);
-    if (!barray && extIter == m_mapNameAuxValue.end() && name.compare(m_OutputVarName) != 0)
-    {
-        double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
-        mup::Value value(v);
-        m_mapNameAuxValue.insert(std::pair<std::string, mup::Value>(name, value));
-    }
-
     // allocte a new parser for this command, set the expression and
     // define all previously defined auxillirary and img variables
     // for this parser
@@ -350,8 +341,25 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         }
         parser->SetExpr(theexpr);
 
-        extIter = m_mapNameAuxValue.begin();
-        while (extIter != m_mapNameAuxValue.end())
+
+        // check, whether we've defined variable 'name' already;
+        // if so, we just associate the new parser with this
+        // variable; if not, we also add a new variable to the
+        // list
+
+        // enter new variables into the name-variable map
+        // note: this only applies to 'auxillary' data and
+        // not to any of the pre-defined inputs ...
+        std::map<std::string, mup::Value>::iterator extIter = m_mapNameAuxValue.at(th).find(name);
+        if (!barray && extIter == m_mapNameAuxValue.at(th).end() && name.compare(m_OutputVarName) != 0)
+        {
+            double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+            mup::Value value(v);
+            m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, value));
+        }
+
+        extIter = m_mapNameAuxValue.at(th).begin();
+        while (extIter != m_mapNameAuxValue.at(th).end())
         {
             parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
             ++extIter;
@@ -554,13 +562,13 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             long overflows = 0;
             // if we've got a table here, we haven't dealt with, we
             // just copy the content into a matrix type mup::Value
-            if (tab != 0 && m_mapNameAuxValue.find(name) == m_mapNameAuxValue.end())
+            if (tab != 0 && m_mapNameAuxValue.at(0).find(name) == m_mapNameAuxValue.at(0).end())
             {
                 int ncols = tab->GetNumCols();
                 int nrows = tab->GetNumRows();
 
                 // note: access is rows, columns
-                mup::Value tabValue(nrows, ncols);
+                mup::Value tabValue(nrows, ncols, 0);
 
                 for (int row = 0; row < nrows; ++row)
                 {
@@ -625,7 +633,10 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                     throw oe;
                 }
 
-                m_mapNameAuxValue.insert(std::pair<std::string, mup::Value>(name, tabValue));
+				for (int th=0; th < this->GetNumberOfThreads(); ++th)
+				{
+					m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, tabValue));
+				}
             }
 
             // for images, we just prepare the map and put some placeholders in
@@ -884,7 +895,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                     ++vInputIt[si];
                 }
                 ++outIt;
-                ++m_PixelCounter;
+                ++m_vthPixelCounter[threadId];
                 progress.CompletedPixel();
             }
         }
@@ -992,7 +1003,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 ++vInputIt[si];
             }
             ++outIt;
-            ++m_PixelCounter;
+            ++m_vthPixelCounter[threadId];
             progress.CompletedPixel();
         }
     }
@@ -1010,6 +1021,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
     {
         nover += m_NumOverflows.at(th);
         nunder += m_NumUnderflows.at(th);
+        m_PixelCounter += m_vthPixelCounter.at(th);
     }
 
     if (nover || nunder)
@@ -1051,16 +1063,19 @@ NMScriptableKernelFilter<TInputImage, TOutput>
     }
     os << std::endl;
 
-    os << indent << "Tables: ";
-    std::map<std::string, mup::Value>::const_iterator auxIt =
-            m_mapNameAuxValue.begin();
+	if (m_mapNameAuxValue.size() > 0)
+	{
+		os << indent << "Tables: ";
+		std::map<std::string, mup::Value>::const_iterator auxIt =
+				m_mapNameAuxValue.at(0).begin();
 
-    while (auxIt != m_mapNameAuxValue.end())
-    {
-        os << auxIt->first << " ";
-        ++auxIt;
-    }
-    os << std::endl;
+		while (auxIt != m_mapNameAuxValue.at(0).end())
+		{
+			os << auxIt->first << " ";
+			++auxIt;
+		}
+		os << std::endl;
+	}
 
 }
 

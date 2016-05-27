@@ -215,7 +215,7 @@ protected:
   {
       const int numForExp = m_vecBlockLen.at(i)-3;
       mup::ParserX* testParser = m_vecParsers.at(threadId).at(++i);
-      mup::Value& testValue = m_mapNameAuxValue.find(m_mapParserName.find(testParser)->second)->second;
+      mup::Value& testValue = m_mapNameAuxValue.at(threadId).find(m_mapParserName.find(testParser)->second)->second;
       testValue = testParser->Eval();
       const mup::ParserX* counterParser = m_vecParsers.at(threadId).at(++i);
 
@@ -247,6 +247,7 @@ private:
 
   long long m_NumPixels;
   long long m_PixelCounter;
+  std::vector<long long> m_vthPixelCounter;
   int m_NumNeighbourPixel;
 
   InputSizeType m_Radius;
@@ -268,10 +269,10 @@ private:
   // for each individual thread
   std::vector<std::vector<mup::ParserX*> > m_vecParsers;
   std::vector<std::map<std::string, mup::Value> > m_mapNameImgValue;
+  std::vector<std::map<std::string, mup::Value> > m_mapNameAuxValue;
 
   // can share those across threads
   std::map<mup::ParserX*, std::string> m_mapParserName;
-  std::map<std::string, mup::Value> m_mapNameAuxValue;
   std::map<std::string, InputImageType*> m_mapNameImg;
   std::vector<int> m_vecBlockLen;
 

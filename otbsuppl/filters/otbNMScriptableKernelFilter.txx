@@ -57,6 +57,9 @@
 
 #include "otbAttributeTable.h"
 
+//#include "valgrind/callgrind.h"
+
+
 #include <algorithm>
 
 namespace itk
@@ -134,6 +137,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::SetNodata(const double &nodata)
 {
     m_Nodata = static_cast<OutputPixelType>(nodata);
+    this->Modified();
 }
 
 template <class TInputImage, class TOutputImage>
@@ -161,6 +165,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     m_vecParsers.clear();
 
     m_mapParserName.clear();
+    this->Modified();
 }
 
 
@@ -241,7 +246,6 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
             std::map<std::string, mup::Value> mapnamauxval;
             m_mapNameAuxValue.push_back(mapnamauxval);
-
         }
 
         // update input data
@@ -278,7 +282,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
     // extract newly defined variables (i.e. lvalues)
     size_t pos = std::string::npos;
-    bool barray = false;
+    bool bLhsArray = false;
+    bool bRhsArray = false;
     if ((pos = expr.find('=')) != std::string::npos)
     {
         name = expr.substr(0, pos);
@@ -290,17 +295,38 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             name = name.substr(0, assignpos);
         }
 
-        // check, if we've got an array as lhs
+        // check, if we've got an array/matrix expression
+        // on the LHS
         size_t bro = name.find('[', 0);
         size_t bre = name.find(']', bro+1);
-        if (    bro != std::string::npos
-                &&  bre != std::string::npos
-                )
+        if (     bro != std::string::npos
+             &&  bre != std::string::npos
+           )
         {
             name = name.substr(0, bro);
-            barray = true;
+            bLhsArray = true;
         }
 
+        // check, if we've got an array/matrix expression
+        // on the RHS
+        bro = expr.find('{', pos+1);
+        bre = expr.find('}', bro+1);
+        if (     bro != std::string::npos
+             &&  bre != std::string::npos
+           )
+        {
+            bRhsArray = true;
+        }
+
+        if (    expr.find("zeros", pos+1) != std::string::npos
+             || expr.find("ones", pos+1) != std::string::npos
+             || expr.find("eye", pos+1) != std::string::npos
+           )
+        {
+            bRhsArray = true;
+        }
+
+        // trim off whitespaces at the beginning and end
         name.erase(0, name.find_first_not_of(' '));
         name.erase(name.find_last_not_of(' ')+1);
     }
@@ -321,16 +347,41 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // allocte a new parser for this command, set the expression and
     // define all previously defined auxillirary and img variables
     // for this parser
-    // note: this could possibly made smarter such that we only define
+    // note: this could possibly be made smarter such that we only define
     // those variables which actually feature in this expression,
     // but performance gains would probably be minimal to non-existant
     // anyway(?), so we don't bother for now
     for (int th=0; th < this->GetNumberOfThreads(); ++th)
     {
+        bool bNameInvalid = false;
         mup::ParserX* parser = 0;
         try
         {
-            parser = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
+            parser = new mup::ParserX(mup::pckCOMMON |
+                                      mup::pckNON_COMPLEX |
+                                      mup::pckMATRIX);
+            parser->EnableAutoCreateVar(true);
+
+            // some name validity checking
+            if (th == 0)
+            {
+                // double check the name for syntactical correctness
+                std::string charset = parser->ValidNameChars();
+                parser->CheckName(name, charset);
+
+                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsConstDefined(name);
+                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsFunDefined(name);
+                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsOprtDefined(name);
+                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsPostfixOprtDefined(name);
+                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsInfixOprtDefined(name);
+                if (bNameInvalid)
+                {
+                    parser->Error(mup::ecINVALID_NAME);
+                }
+            }
+
+            parser->SetExpr(theexpr);
+
         }
         catch(std::exception& parexp)
         {
@@ -339,29 +390,48 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             pe.SetLocation(ITK_LOCATION);
             throw pe;
         }
-        parser->SetExpr(theexpr);
+        catch(mup::ParserError& pse)
+        {
+            std::stringstream sstr;
+            sstr << pse.GetExpr() << "\nParser error at pos: " << pse.GetPos()
+                 << ": " << pse.GetMsg();
 
-
-        // check, whether we've defined variable 'name' already;
-        // if so, we just associate the new parser with this
-        // variable; if not, we also add a new variable to the
-        // list
+            itk::KernelScriptParserError kspe;
+            kspe.SetDescription(sstr.str());
+            kspe.SetLocation(ITK_LOCATION);
+            throw kspe;
+        }
 
         // enter new variables into the name-variable map
         // note: this only applies to 'auxillary' data and
         // not to any of the pre-defined inputs ...
-        std::map<std::string, mup::Value>::iterator extIter = m_mapNameAuxValue.at(th).find(name);
-        if (!barray && extIter == m_mapNameAuxValue.at(th).end() && name.compare(m_OutputVarName) != 0)
+        if (name.compare(m_OutputVarName) != 0)
         {
-            double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
-            mup::Value value(v);
-            m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, value));
+            if (m_mapNameAuxValue.at(th).find(name) == m_mapNameAuxValue.at(th).end())
+            {
+                if (!bLhsArray && !bRhsArray)
+                {
+                    double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+                    mup::Value value(v);
+                    m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, value));
+                }
+                else if (bRhsArray)
+                {
+                    mup::Value mavecval = parser->Eval();
+                    m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, mavecval));
+                }
+            }
         }
 
-        extIter = m_mapNameAuxValue.at(th).begin();
+        // define all previous variables for this parser
+        std::map<std::string, mup::Value>::iterator extIter = m_mapNameAuxValue.at(th).begin();
         while (extIter != m_mapNameAuxValue.at(th).end())
         {
-            parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
+            // do not re-define implicitly defined arrays or matrices for this parser
+            if (!(bRhsArray && extIter->first.compare(name) == 0))
+            {
+                parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
+            }
             ++extIter;
         }
 
@@ -374,6 +444,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
         // we also need to define a variable for the output image
         parser->DefineVar(m_OutputVarName, mup::Variable(&m_vOutputValue.at(th)));
+
 
         m_vecParsers.at(th).push_back(parser);
         m_mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
@@ -750,6 +821,8 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
                        itk::ThreadIdType threadId)
 {
+//    CALLGRIND_START_INSTRUMENTATION;
+
     // allocate the output image
     typename OutputImageType::Pointer output = this->GetOutput();
 
@@ -1007,6 +1080,9 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
             progress.CompletedPixel();
         }
     }
+
+//    CALLGRIND_STOP_INSTRUMENTATION;
+//    CALLGRIND_DUMP_STATS;
 }
 
 

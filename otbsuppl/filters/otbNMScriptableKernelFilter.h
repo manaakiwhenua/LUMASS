@@ -211,6 +211,7 @@ protected:
   void CacheInputData();
   void ParseScript();
   void ParseCommand(const std::string& expr);
+
   inline void Loop(int i, const int& threadId)
   {
       const int numForExp = m_vecBlockLen.at(i)-3;

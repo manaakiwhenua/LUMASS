@@ -1808,11 +1808,12 @@ QStringList QtStringListPropertyManager::StringToStringList(const QString& strin
 		}
 		else
 		{
-            if (c == '\'')
-            {
-                sQuote = !sQuote;
-            }
-            else if (c == '\"')
+//            if (c == '\'')
+//            {
+//                sQuote = !sQuote;
+//            }
+//            else
+            if (c == '\"')
             {
                 dQuote = !dQuote;
             }
@@ -1858,10 +1859,10 @@ int QtStringListPropertyManager::validateExpression(const QString& str)
 		{
 			++braceClose;
 		}
-        else if (t == '\'')
-        {
-            sQuote = !sQuote;
-        }
+//        else if (t == '\'')
+//        {
+//            sQuote = !sQuote;
+//        }
         else if (t == '\"')
         {
             dQuote = !dQuote;

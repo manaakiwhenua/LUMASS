@@ -48,18 +48,20 @@ NMScriptableKernelFilterWrapper
     
     Q_PROPERTY(QList<QStringList> Radius READ getRadius WRITE setRadius)
     Q_PROPERTY(QStringList KernelScript READ getKernelScript WRITE setKernelScript)
-    Q_PROPERTY(QStringList KernelShape READ getKernelShape WRITE setKernelShape)
     Q_PROPERTY(QStringList OutputVarName READ getOutputVarName WRITE setOutputVarName)
     Q_PROPERTY(QStringList Nodata READ getNodata WRITE setNodata)
+    Q_PROPERTY(QString KernelShapeType READ getKernelShapeType WRITE setKernelShapeType)
+    Q_PROPERTY(QStringList KernelShapeEnum READ getKernelShapeEnum)
 
 public:
 
     
     NMPropertyGetSet( Radius, QList<QStringList> )
     NMPropertyGetSet( KernelScript, QStringList )
-    NMPropertyGetSet( KernelShape, QStringList )
     NMPropertyGetSet( OutputVarName, QStringList )
     NMPropertyGetSet( Nodata, QStringList )
+    NMPropertyGetSet( KernelShapeType, QString )
+    NMPropertyGetSet( KernelShapeEnum, QStringList )
 
 public:
     NMScriptableKernelFilterWrapper(QObject* parent=0);
@@ -85,9 +87,10 @@ protected:
     
     QList<QStringList> mRadius;
     QStringList mKernelScript;
-    QStringList mKernelShape;
     QStringList mOutputVarName;
     QStringList mNodata;
+    QString mKernelShapeType;
+    QStringList mKernelShapeEnum;
 
 };
 

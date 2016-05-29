@@ -141,6 +141,7 @@ public:
   typedef typename OutputImageType::RegionType OutputImageRegionType;
   typedef typename InputImageType::SizeType    InputSizeType;
   typedef typename InputImageType::IndexType   IndexType;
+  typedef typename InputImageType::OffsetType  OffsetType;
 
   typedef typename itk::ConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
   typedef typename itk::ImageRegionConstIterator<InputImageType> InputRegionIterator;
@@ -252,6 +253,7 @@ private:
   int m_NumNeighbourPixel;
 
   InputSizeType m_Radius;
+  std::vector<OffsetType> m_ActiveKernelOffsets;
 
   std::string m_KernelScript;
   std::string m_KernelShape;

@@ -145,6 +145,9 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::Reset()
 {
+    m_KernelShape = "Square";
+    m_ActiveKernelOffsets.clear();
+
     m_PixelCounter = 0;
     m_NumPixels = 0;
     m_NumOverflows.clear();
@@ -269,6 +272,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
     // if we've got a shaped neighbourhood iterator,
     // determine the active offsets
     /// ToDo: later ...
+
+
 
 
 }

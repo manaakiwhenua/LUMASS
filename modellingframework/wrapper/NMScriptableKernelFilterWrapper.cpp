@@ -144,12 +144,12 @@ public:
             f->SetKernelScript(curKernelScript);
         }
 
-        QVariant curKernelShapeVar = p->getParameter("KernelShape");
-        std::string curKernelShape;
-        if (curKernelShapeVar.isValid())
+        //QVariant curKernelShapeVar = p->getParameter("KernelShapeType");
+        //std::string curKernelShape;
+        //if (curKernelShapeVar.isValid())
         {
-           curKernelShape = curKernelShapeVar.toString().toStdString();
-            f->SetKernelShape(curKernelShape);
+           //curKernelShape = curKernelShapeVar.toString().toStdString();
+           f->SetKernelShape(p->getKernelShapeType().toStdString());
         }
 
         QVariant curOutputVarNameVar = p->getParameter("OutputVarName");
@@ -231,6 +231,8 @@ NMScriptableKernelFilterWrapper
 	this->setParent(parent);
 	this->setObjectName("NMScriptableKernelFilterWrapper");
 	this->mParameterHandling = NMProcess::NM_USE_UP;
+
+    mKernelShapeEnum << "Square" << "Circle";
 }
 
 NMScriptableKernelFilterWrapper

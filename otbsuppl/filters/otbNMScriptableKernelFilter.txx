@@ -155,6 +155,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 
     m_mapNameImgValue.clear();
     m_mapNameAuxValue.clear();
+    m_mapNameImg.clear();
+    m_vOutputValue.clear();
     m_vecBlockLen.clear();
 
     for (int v=0; v < m_vecParsers.size(); ++v)
@@ -166,8 +168,8 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         m_vecParsers.at(v).clear();
     }
     m_vecParsers.clear();
-
     m_mapParserName.clear();
+
     this->Modified();
 }
 

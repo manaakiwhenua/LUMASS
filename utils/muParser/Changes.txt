@@ -7,20 +7,46 @@
 #  |  Y Y  \|  |  /|    |     / __ \_|  | \/\___ \ \  ___/ |  | \/    #
 #  |__|_|  /|____/ |____|    (____  /|__|  /____  > \___  >|__|       #
 #        \/                       \/            \/      \/            #
-#					  Fast math parser Library    #
+#					  Fast math parser Library                        #
 #                                                                     #
-#  Copyright (C) 2013 Ingo Berg                                       #
+#  Copyright (C) 2015 Ingo Berg                                       #
 #                                                                     #
 #  Web:     muparser.beltoforion.de                                   #
 #  e-mail:  muparser@beltoforion.de                                   #
 #                                                                     #
 #                                                                     #
 #######################################################################
-
+ 
 
 History:
 --------
 
+Rev 2.2.5: 27.04.2015
+---------------------
+  Changes:
+   * example2 extended to work with UNICODE character set
+   * Applied patch from Issue 9
+   
+  Bugfixes:
+   * muChar_t in muParserDLL.h was not set properly when UNICODE was used
+   * muparser.dll did not build on UNICODE systems
+   
+Rev 2.2.4: 02.10.2014
+---------------------
+  Changes:
+   * explicit positive sign allowed
+
+  Bugfixes:
+   * Fix for Issue 6 (https://code.google.com/p/muparser/issues/detail?id=6)
+   * String constants did not work properly. Using more than a single one 
+     was impossible.
+   * Project Files for VS2008 and VS2010 removed from the repository 
+   * Fix for Issue 4 (https://code.google.com/p/muparser/issues/detail?id=4)
+   * Fix for VS2013 64 bit build option
+   * return type of ParserError::GetPos changed to int
+   * OpenMP support enabled in the VS2013 project files and precompiled windows DLL's
+   * Bulkmode did not evaluate properly if "=" and "," operator was used in the expression
+	
 Rev 2.2.3: 22.12.2012
 ---------------------
 

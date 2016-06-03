@@ -41,7 +41,8 @@ public:
   itkTypeMacro(MultiParserImpl, itk::LightObject);
 
   /** Convenient type definitions */
-  typedef double                                   ValueType;
+  typedef typename mu::value_type                  ValueType;
+  typedef typename mu::char_type                   CharType;
   typedef mu::Parser::exception_type               ExceptionType;
 
   /** Initialize user defined constants */

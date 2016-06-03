@@ -147,6 +147,7 @@ public:
 
   typedef typename otb::MultiParser::Pointer   ParserPointerType;
   typedef typename otb::MultiParser::ValueType ParserValue;
+  typedef typename otb::MultiParser::CharType CharType;
 
   typedef typename itk::ConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
   typedef typename itk::ImageRegionConstIterator<InputImageType> InputRegionIterator;
@@ -218,6 +219,16 @@ protected:
   void ParseScript();
   void ParseCommand(const std::string& expr);
 
+  inline const ParserValue kwinVal(const CharType* imgName, ParserValue kwinIdx, ParserValue threadId)
+  {
+      return m_mapNameImgValue[threadId].find(imgName)->second[kwinIdx];
+  }
+
+  inline const ParserValue tabVal(const CharType* tabName, ParserValue colIdx, ParserValue rowIdx)
+  {
+      return m_mapNameTable.find(tabName)[colIdx][rowIdx];
+  }
+
   inline void Loop(int i, const int& threadId)
   {
       const int numForExp = m_vecBlockLen[i]-3;
@@ -267,21 +278,34 @@ private:
   std::vector<std::string> m_DataNames;
 
   OutputPixelType m_Nodata;
-  std::vector<ParserValue> m_vOutputValue;
-  std::vector<long long> m_NumOverflows;
-  std::vector<long long> m_NumUnderflows;
+
 
   // admin objects for the scriptable kernel filter
 
-  // need a separate set of parsers and img variables
-  // for each individual thread
+  // have to define these separately for each thread ...
+  // the parsers themselves
   std::vector<std::vector<ParserPointerType> > m_vecParsers;
-  std::vector<std::map<std::string, ParserValue> > m_mapNameImgValue;
+  // the map kernel values
+  std::vector<std::map<std::string, std::vector<ParserValue> > > m_mapNameImgValue;
+  // the output value per thread
+  std::vector<ParserValue> m_vOutputValue;
+  // the over- and underflows per thread
+  std::vector<long long> m_NumOverflows;
+  std::vector<long long> m_NumUnderflows;
+
+  // these are aux scalar values which are defined in the KernelScript itself, e.g.
+  // loop counter and test variables
   std::vector<std::map<std::string, ParserValue> > m_mapNameAuxValue;
 
-  // can share those across threads
+  // can share those across threads ...
+  // read-only input tables
+  std::map<std::string, std::vector<std::vector<ParserValue> > m_mapNameTable;
+  // the link between each parser and the name of the variable representing its output value
   std::map<MultiParser*, std::string> m_mapParserName;
+  // the link between input images and their user defined names
   std::map<std::string, InputImageType*> m_mapNameImg;
+  // the length of each script block; note a block is either a single statement/expression,
+  // or a for loop including the test and counter variables
   std::vector<int> m_vecBlockLen;
 
 

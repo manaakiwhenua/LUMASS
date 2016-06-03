@@ -156,17 +156,18 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     m_mapNameImgValue.clear();
     m_mapNameAuxValue.clear();
     m_mapNameImg.clear();
+    m_mapNameTable.clear();
     m_vOutputValue.clear();
     m_vecBlockLen.clear();
 
-    for (int v=0; v < m_vecParsers.size(); ++v)
-    {
-        for (int p=0; p < m_vecParsers.at(v).size(); ++p)
-        {
-            delete m_vecParsers.at(v).at(p);
-        }
-        m_vecParsers.at(v).clear();
-    }
+//    for (int v=0; v < m_vecParsers.size(); ++v)
+//    {
+//        for (int p=0; p < m_vecParsers.at(v).size(); ++p)
+//        {
+//            delete m_vecParsers.at(v).at(p);
+//        }
+//        m_vecParsers.at(v).clear();
+//    }
     m_vecParsers.clear();
     m_mapParserName.clear();
 
@@ -238,19 +239,20 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     // we've just started working on this image ...
     if (m_PixelCounter == 0)
     {
-        const mup::Value nv = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+        const ParserValue nv = itk::NumericTraits<ParserValue>::NonpositiveMin();
         for (int th=0; th < this->GetNumberOfThreads(); ++th)
         {
-            std::vector<mup::ParserX*> mpvec;
+            std::vector<ParserPointerType> mpvec;
             m_vecParsers.push_back(mpvec);
 
-            m_vOutputValue.push_back(mup::Value(nv));
+            m_vOutputValue.push_back(nv);
 
-            std::map<std::string, mup::Value> mapnameval;
+            std::map<std::string, std::vector<ParserValue> > mapnameval;
             m_mapNameImgValue.push_back(mapnameval);
 
-            std::map<std::string, mup::Value> mapnamauxval;
+            std::map<std::string, ParserValue> mapnamauxval;
             m_mapNameAuxValue.push_back(mapnamauxval);
+
         }
 
         // update input data
@@ -646,54 +648,55 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                 int nrows = tab->GetNumRows();
 
                 // note: access is rows, columns
-                mup::Value tabValue(nrows, ncols, 0);
+                std::vector<std::vector<ParserValue> > tableCache(ncols);
 
-                for (int row = 0; row < nrows; ++row)
+                for (int col = 0; col < ncols; ++col)
                 {
-                    for (int col=0; col < ncols; ++col)
+                    std::vector<ParserValue> colCache(nrows);
+                    for (int row=0; row < nrows; ++row)
                     {
                         switch(tab->GetColumnType(col))
                         {
                         case AttributeTable::ATTYPE_INT:
                         {
                             const long long lv = tab->GetIntValue(col, row);
-                            if (lv < static_cast<long long>(itk::NumericTraits<mup::int_type>::NonpositiveMin()))
+                            if (lv < static_cast<long long>(itk::NumericTraits<ParserValue>::NonpositiveMin()))
                             {
                                 ++underflows;
                             }
-                            else if (lv > static_cast<long long>(itk::NumericTraits<mup::int_type>::max()))
+                            else if (lv > static_cast<long long>(itk::NumericTraits<ParserValue>::max()))
                             {
                                 ++overflows;
                             }
                             else
                             {
-                                tabValue.At(row, col) = static_cast<mup::int_type>(lv);
+                                colCache[row] = static_cast<ParserValue>(lv);
                             }
                         }
                             break;
                         case AttributeTable::ATTYPE_DOUBLE:
                         {
                             const double dv = tab->GetDblValue(col, row);
-                            if (dv < static_cast<double>(itk::NumericTraits<mup::float_type>::NonpositiveMin()))
+                            if (dv < static_cast<double>(itk::NumericTraits<ParserValue>::NonpositiveMin()))
                             {
                                 ++underflows;
                             }
-                            else if (dv > static_cast<double>(itk::NumericTraits<mup::float_type>::max()))
+                            else if (dv > static_cast<double>(itk::NumericTraits<ParserValue>::max()))
                             {
                                 ++overflows;
                             }
                             else
                             {
-                                tabValue.At(row, col) = static_cast<mup::float_type>(dv);
+                                colCache[row] = static_cast<ParserValue>(dv);
                             }
                         }
                             break;
                         case AttributeTable::ATTYPE_STRING:
-                            tabValue.At(row, col) =
-                                    static_cast<mup::string_type>(tab->GetStrValue(col, row));
+                            colCache[row] = 0.0;
                             break;
                         }
                     }
+                    tableCache.push_back(colCache);
                 }
 
                 // report conversion errors

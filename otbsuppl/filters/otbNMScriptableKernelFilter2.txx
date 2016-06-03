@@ -291,57 +291,57 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     // extract newly defined variables (i.e. lvalues)
     size_t pos = std::string::npos;
-    bool bLhsArray = false;
-    bool bRhsArray = false;
+    //    bool bLhsArray = false;
+    //    bool bRhsArray = false;
     if ((pos = expr.find('=')) != std::string::npos)
     {
         name = expr.substr(0, pos);
 
-        // in case of += -= *= /= assignment operators
-        size_t assignpos = name.find_first_of("+-*/");
-        if (assignpos != std::string::npos)
-        {
-            name = name.substr(0, assignpos);
-        }
+        //        // in case of += -= *= /= assignment operators
+        //        size_t assignpos = name.find_first_of("+-*/");
+        //        if (assignpos != std::string::npos)
+        //        {
+        //            name = name.substr(0, assignpos);
+        //        }
 
-        // check, if we've got an array/matrix expression
-        // on the LHS
-        size_t bro = name.find('[', 0);
-        size_t bre = name.find(']', bro+1);
-        if (     bro != std::string::npos
-             &&  bre != std::string::npos
-           )
-        {
-            name = name.substr(0, bro);
-            bLhsArray = true;
-        }
+        //        // check, if we've got an array/matrix expression
+        //        // on the LHS
+        //        size_t bro = name.find('[', 0);
+        //        size_t bre = name.find(']', bro+1);
+        //        if (     bro != std::string::npos
+        //             &&  bre != std::string::npos
+        //           )
+        //        {
+        //            name = name.substr(0, bro);
+        //            bLhsArray = true;
+        //        }
 
-        // check, if we've got an array/matrix expression
-        // on the RHS
-        bro = expr.find('{', pos+1);
-        bre = expr.find('}', bro+1);
-        if (     bro != std::string::npos
-             &&  bre != std::string::npos
-           )
-        {
-            bRhsArray = true;
-        }
+        //        // check, if we've got an array/matrix expression
+        //        // on the RHS
+        //        bro = expr.find('{', pos+1);
+        //        bre = expr.find('}', bro+1);
+        //        if (     bro != std::string::npos
+        //             &&  bre != std::string::npos
+        //           )
+        //        {
+        //            bRhsArray = true;
+        //        }
 
-        if (    expr.find("zeros", pos+1) != std::string::npos
-             || expr.find("ones", pos+1) != std::string::npos
-             || expr.find("eye", pos+1) != std::string::npos
-           )
-        {
-            bRhsArray = true;
-        }
+        //        if (    expr.find("zeros", pos+1) != std::string::npos
+        //             || expr.find("ones", pos+1) != std::string::npos
+        //             || expr.find("eye", pos+1) != std::string::npos
+        //           )
+        //        {
+        //            bRhsArray = true;
+        //        }
 
         // trim off whitespaces at the beginning and end
         name.erase(0, name.find_first_not_of(' '));
         name.erase(name.find_last_not_of(' ')+1);
     }
 
-    // always set the whole expression (- of course!)
-    std::string theexpr = expr;
+    // set the RHS as the expression
+    std::string theexpr = expr.substr(pos+1);
     theexpr.erase(0, theexpr.find_first_not_of(' '));
     theexpr.erase(theexpr.find_last_not_of(' ')+1);
 
@@ -363,53 +363,57 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     for (int th=0; th < this->GetNumberOfThreads(); ++th)
     {
         bool bNameInvalid = false;
-        mup::ParserX* parser = 0;
-        try
-        {
-            parser = new mup::ParserX(mup::pckCOMMON |
-                                      mup::pckNON_COMPLEX |
-                                      mup::pckMATRIX);
-            parser->EnableAutoCreateVar(true);
+        //        mup::ParserX* parser = 0;
+        //        try
+        //        {
+        //            parser = new mup::ParserX(mup::pckCOMMON |
+        //                                      mup::pckNON_COMPLEX |
+        //                                      mup::pckMATRIX);
+        //            parser->EnableAutoCreateVar(true);
 
-            // some name validity checking
-            if (th == 0)
-            {
-                // double check the name for syntactical correctness
-                std::string charset = parser->ValidNameChars();
-                parser->CheckName(name, charset);
+        //            // some name validity checking
+        //            if (th == 0)
+        //            {
+        //                // double check the name for syntactical correctness
+        //                std::string charset = parser->ValidNameChars();
+        //                parser->CheckName(name, charset);
 
-                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsConstDefined(name);
-                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsFunDefined(name);
-                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsOprtDefined(name);
-                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsPostfixOprtDefined(name);
-                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsInfixOprtDefined(name);
-                if (bNameInvalid)
-                {
-                    parser->Error(mup::ecINVALID_NAME);
-                }
-            }
+        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsConstDefined(name);
+        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsFunDefined(name);
+        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsOprtDefined(name);
+        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsPostfixOprtDefined(name);
+        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsInfixOprtDefined(name);
+        //                if (bNameInvalid)
+        //                {
+        //                    parser->Error(mup::ecINVALID_NAME);
+        //                }
+        //            }
 
-            parser->SetExpr(theexpr);
+        //            parser->SetExpr(theexpr);
 
-        }
-        catch(std::exception& parexp)
-        {
-            itk::MemoryAllocationError pe;
-            pe.SetDescription("Failed allocating mup::ParserX object!");
-            pe.SetLocation(ITK_LOCATION);
-            throw pe;
-        }
-        catch(mup::ParserError& pse)
-        {
-            std::stringstream sstr;
-            sstr << pse.GetExpr() << "\nParser error at pos: " << pse.GetPos()
-                 << ": " << pse.GetMsg();
+        //        }
+        //        catch(std::exception& parexp)
+        //        {
+        //            itk::MemoryAllocationError pe;
+        //            pe.SetDescription("Failed allocating mup::ParserX object!");
+        //            pe.SetLocation(ITK_LOCATION);
+        //            throw pe;
+        //        }
+        //        catch(mup::ParserError& pse)
+        //        {
+        //            std::stringstream sstr;
+        //            sstr << pse.GetExpr() << "\nParser error at pos: " << pse.GetPos()
+        //                 << ": " << pse.GetMsg();
 
-            itk::KernelScript2ParserError kspe;
-            kspe.SetDescription(sstr.str());
-            kspe.SetLocation(ITK_LOCATION);
-            throw kspe;
-        }
+        //            itk::KernelScript2ParserError kspe;
+        //            kspe.SetDescription(sstr.str());
+        //            kspe.SetLocation(ITK_LOCATION);
+        //            throw kspe;
+        //        }
+
+        ParserPointerType parser = ParserType::New();
+        parser->SetExpr(theexpr);
+        parser->DefineConst("thid", static_cast<double>(th));
 
         // enter new variables into the name-variable map
         // note: this only applies to 'auxillary' data and
@@ -418,45 +422,43 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         {
             if (m_mapNameAuxValue.at(th).find(name) == m_mapNameAuxValue.at(th).end())
             {
-                if (!bLhsArray && !bRhsArray)
-                {
-                    double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
-                    mup::Value value(v);
-                    m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, value));
-                }
-                else if (bRhsArray)
-                {
-                    mup::Value mavecval = parser->Eval();
-                    m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, mavecval));
-                }
+                m_mapNameAuxValue[th][name] = itk::NumericTraits<ParserValue>::NonpositiveMin();
             }
         }
 
         // define all previous variables for this parser
-        std::map<std::string, mup::Value>::iterator extIter = m_mapNameAuxValue.at(th).begin();
+        std::map<std::string, ParserValue>::iterator extIter = m_mapNameAuxValue.at(th).begin();
         while (extIter != m_mapNameAuxValue.at(th).end())
         {
-            // do not re-define implicitly defined arrays or matrices for this parser
-            if (!(bRhsArray && extIter->first.compare(name) == 0))
-            {
-                parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
-            }
+            parser->DefineVar(extIter->first, &extIter->second);
             ++extIter;
         }
 
-        extIter = m_mapNameImgValue.at(th).begin();
-        while (extIter != m_mapNameImgValue.at(th).end())
+        if (m_NumNeighbourPixel)
         {
-            parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
-            ++extIter;
+            std::map<std::string, std::vector<std::vector<ParserValue> > >::iterator kernIter =
+                    m_mapNameImgValue[th].begin();
+            while (kernIter != m_mapNameImgValue[th].end())
+            {
+                parser->DefineStrConst(kernIter->first, kernIter->first);
+                ++kernIter;
+            }
+        }
+        else
+        {
+            extIter = m_mapNameImgValue[th].begin();
+            while (extIter != m_mapNameImgValue.at(th).end())
+            {
+                parser->DefineVar(extIter->first, &extIter->second);
+                ++extIter;
+            }
         }
 
         // we also need to define a variable for the output image
-        parser->DefineVar(m_OutputVarName, mup::Variable(&m_vOutputValue.at(th)));
+        parser->DefineVar(m_OutputVarName, &m_vOutputValue[th]);
 
-
-        m_vecParsers.at(th).push_back(parser);
-        m_mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
+        m_vecParsers[th].push_back(parser);
+        m_mapParserName[parser.GetPointer()] = name;
     }
 }
 
@@ -638,11 +640,12 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
             AttributeTable* tab = dynamic_cast<otb::AttributeTable*>(dataObject);
             InputImageType* img = dynamic_cast<TInputImage*>(dataObject);
 
+            const ParserValue nv = static_cast<ParserValue>(m_Nodata);
             long underflows = 0;
             long overflows = 0;
             // if we've got a table here, we haven't dealt with, we
             // just copy the content into a matrix type mup::Value
-            if (tab != 0 && m_mapNameAuxValue.at(0).find(name) == m_mapNameAuxValue.at(0).end())
+            if (tab != 0 && m_mapNameTable.find(name) == m_mapNameTable.end())
             {
                 int ncols = tab->GetNumCols();
                 int nrows = tab->GetNumRows();
@@ -696,7 +699,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                             break;
                         }
                     }
-                    tableCache.push_back(colCache);
+                    tableCache[col] = colCache;
                 }
 
                 // report conversion errors
@@ -714,31 +717,20 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                     throw oe;
                 }
 
-				for (int th=0; th < this->GetNumberOfThreads(); ++th)
-				{
-					m_mapNameAuxValue.at(th).insert(std::pair<std::string, mup::Value>(name, tabValue));
-				}
+                m_mapNameTable.insert(std::pair<std::string, std::vector<std::vector<ParserValue> > >(name, tabValue));
             }
 
             // for images, we just prepare the map and put some placeholders in
             // we'll redefine once we know the actual values
             else if (img != 0)
             {
-                const mup::float_type nv = static_cast<mup::float_type>(m_Nodata);
                 if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
                 {
                     for (int th=0; th < this->GetNumberOfThreads(); ++th)
                     {
-                        if (m_NumNeighbourPixel)
-                        {
-                            mup::Value mtype = mup::Value((mup::int_type)m_NumNeighbourPixel, nv);
-                            m_mapNameImgValue.at(th)[name] = mtype;
-                        }
-                        else
-                        {
-                            m_mapNameImgValue.at(th).insert(
-                               std::pair<std::string, mup::Value>(name, mup::Value(nv)));
-                        }
+                        int nkernpix = m_NumNeighbourPixel > 0 ? m_NumNeighbourPixel : 1;
+                        std::vector<ParserValue> mtype(nkernpix, nv);
+                        m_mapNameImgValue.at(th)[name] = mtype;
                     }
                     m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
                 }
@@ -1152,7 +1144,7 @@ NMScriptableKernelFilter2<TInputImage, TOutput>
 	if (m_mapNameAuxValue.size() > 0)
 	{
 		os << indent << "Tables: ";
-		std::map<std::string, mup::Value>::const_iterator auxIt =
+        std::map<std::string, ParserValue>::const_iterator auxIt =
 				m_mapNameAuxValue.at(0).begin();
 
 		while (auxIt != m_mapNameAuxValue.at(0).end())

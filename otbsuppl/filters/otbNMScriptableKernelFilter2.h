@@ -145,6 +145,7 @@ public:
   typedef typename InputImageType::IndexType   IndexType;
   typedef typename InputImageType::OffsetType  OffsetType;
 
+  typedef typename otb::MultiParser            ParserType;
   typedef typename otb::MultiParser::Pointer   ParserPointerType;
   typedef typename otb::MultiParser::ValueType ParserValue;
   typedef typename otb::MultiParser::CharType CharType;

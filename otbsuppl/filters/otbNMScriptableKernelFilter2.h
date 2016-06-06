@@ -33,7 +33,7 @@
 =========================================================================*/
 
 /*
- * This class is based on the itk::MeanImageFilter. It has been copied and
+ * This class is inspired by the itk::MeanImageFilter. It has been copied and
  * adjusted by Alexander Herzig, Landcare Research New Zealand Ltd.
  *
  */
@@ -61,24 +61,24 @@
 
 #include "otbsupplfilters_export.h"
 
-namespace itk
-{
+//namespace itk
+//{
 
-class OTBSUPPLFILTERS_EXPORT KernelScript2ParserError : public ExceptionObject
-{
-public:
-    KernelScript2ParserError();
-    virtual ~KernelScript2ParserError() throw() {}
+//class OTBSUPPLFILTERS_EXPORT KernelScript2ParserError : public ExceptionObject
+//{
+//public:
+//    KernelScript2ParserError();
+//    virtual ~KernelScript2ParserError() throw() {}
 
-    KernelScript2ParserError(const char* file, unsigned int lineNumber);
-    KernelScript2ParserError(const std::string& file, unsigned int lineNumber);
+//    KernelScript2ParserError(const char* file, unsigned int lineNumber);
+//    KernelScript2ParserError(const std::string& file, unsigned int lineNumber);
 
-    KernelScript2ParserError & operator=(const KernelScript2ParserError& orig);
+//    KernelScript2ParserError & operator=(const KernelScript2ParserError& orig);
 
-    itkTypeMacro(KernelScript2ParserError, ExceptionObject)
-};
+//    itkTypeMacro(KernelScript2ParserError, ExceptionObject)
+//};
 
-}
+//}
 
 
 namespace otb
@@ -227,13 +227,13 @@ protected:
 
   inline const ParserValue tabVal(const CharType* tabName, ParserValue colIdx, ParserValue rowIdx)
   {
-      return m_mapNameTable.find(tabName)[colIdx][rowIdx];
+      return m_mapNameTable.find(tabName)->second[colIdx][rowIdx];
   }
 
   inline void Loop(int i, const int& threadId)
   {
       const int numForExp = m_vecBlockLen[i]-3;
-      ParserPointerType& testParser = m_vecParsers[threadId][++i];
+      const ParserPointerType& testParser = m_vecParsers[threadId][++i];
       ParserValue& testValue = m_mapNameAuxValue[threadId].find(m_mapParserName.find(testParser.GetPointer())->second)->second;
       testValue = testParser->Eval();
 
@@ -244,7 +244,7 @@ protected:
       {
           for (int exp=1; exp <= numForExp; ++exp)
           {
-              ParserPointerType& forParser = m_vecParsers[threadId][i+exp];
+              const ParserPointerType& forParser = m_vecParsers[threadId][i+exp];
               ParserValue& forValue = m_mapNameAuxValue[threadId].find(m_mapParserName.find(forParser.GetPointer())->second)->second;
               forValue = forParser->Eval();
 
@@ -300,7 +300,7 @@ private:
 
   // can share those across threads ...
   // read-only input tables
-  std::map<std::string, std::vector<std::vector<ParserValue> > m_mapNameTable;
+  std::map<std::string, std::vector<std::vector<ParserValue> > > m_mapNameTable;
   // the link between each parser and the name of the variable representing its output value
   std::map<MultiParser*, std::string> m_mapParserName;
   // the link between input images and their user defined names

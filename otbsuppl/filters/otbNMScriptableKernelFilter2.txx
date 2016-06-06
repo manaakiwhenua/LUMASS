@@ -31,7 +31,7 @@
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef __otbNMScriptableKernelFilter22_txx
+#ifndef __otbNMScriptableKernelFilter2_txx
 #define __otbNMScriptableKernelFilter2_txx
 
 
@@ -46,6 +46,9 @@
 
 #include "otbNMScriptableKernelFilter2.h"
 
+#include <algorithm>
+#include <stack>
+
 #include "itkConstNeighborhoodIterator.h"
 #include "itkNeighborhoodInnerProduct.h"
 #include "itkImageRegionIterator.h"
@@ -53,39 +56,37 @@
 #include "itkZeroFluxNeumannBoundaryCondition.h"
 #include "itkOffset.h"
 #include "itkProgressReporter.h"
-#include "mpError.h"
-
+#include "muParserError.h"
+#include "otbKernelScriptParserError.h"
 #include "otbAttributeTable.h"
 
 //#include "valgrind/callgrind.h"
 
 
-#include <algorithm>
+//namespace itk
+//{
 
-namespace itk
-{
+//KernelScriptParserError::KernelScriptParserError()
+//    : ExceptionObject()
+//{}
 
-KernelScript2ParserError::KernelScript2ParserError()
-    : ExceptionObject()
-{}
-
-KernelScript2ParserError::KernelScript2ParserError(const char* file, unsigned int lineNumber)
-    : ExceptionObject(file, lineNumber)
-{}
+//KernelScriptParserError::KernelScriptParserError(const char* file, unsigned int lineNumber)
+//    : ExceptionObject(file, lineNumber)
+//{}
 
 
-KernelScript2ParserError::KernelScript2ParserError(const std::string& file, unsigned int lineNumber)
-    : ExceptionObject(file, lineNumber)
-{}
+//KernelScriptParserError::KernelScriptParserError(const std::string& file, unsigned int lineNumber)
+//    : ExceptionObject(file, lineNumber)
+//{}
 
-KernelScript2ParserError &
-KernelScript2ParserError::operator=(const KernelScript2ParserError& orig)
-{
-    ExceptionObject::operator=(orig);
-    return *this;
-}
+//KernelScriptParserError &
+//KernelScriptParserError::operator=(const KernelScriptParserError& orig)
+//{
+//    ExceptionObject::operator=(orig);
+//    return *this;
+//}
 
-}
+//}
 
 
 namespace otb
@@ -225,7 +226,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                 {
                     if (refSize[d] != img->GetLargestPossibleRegion().GetSize(d))
                     {
-                        itk::KernelScript2ParserError e;
+                        KernelScriptParserError e;
                         e.SetLocation(ITK_LOCATION);
                         e.SetDescription("Input images don't have the same size!");
                         throw e;
@@ -405,7 +406,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         //            sstr << pse.GetExpr() << "\nParser error at pos: " << pse.GetPos()
         //                 << ": " << pse.GetMsg();
 
-        //            itk::KernelScript2ParserError kspe;
+        //            KernelScriptParserError kspe;
         //            kspe.SetDescription(sstr.str());
         //            kspe.SetLocation(ITK_LOCATION);
         //            throw kspe;
@@ -413,7 +414,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
         ParserPointerType parser = ParserType::New();
         parser->SetExpr(theexpr);
-        parser->DefineConst("thid", static_cast<double>(th));
+        parser->DefineConst("thid", static_cast<ParserValue>(th));
+        parser->DefineFun("kwinVal", kwinVal, false);
+        parser->DefineFun("tabVal", tabVal, false);
 
         // enter new variables into the name-variable map
         // note: this only applies to 'auxillary' data and
@@ -434,10 +437,10 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
             ++extIter;
         }
 
+        std::map<std::string, std::vector<ParserValue > >::iterator kernIter =
+                m_mapNameImgValue[th].begin();
         if (m_NumNeighbourPixel)
         {
-            std::map<std::string, std::vector<std::vector<ParserValue> > >::iterator kernIter =
-                    m_mapNameImgValue[th].begin();
             while (kernIter != m_mapNameImgValue[th].end())
             {
                 parser->DefineStrConst(kernIter->first, kernIter->first);
@@ -446,11 +449,10 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         }
         else
         {
-            extIter = m_mapNameImgValue[th].begin();
-            while (extIter != m_mapNameImgValue.at(th).end())
+            while (kernIter != m_mapNameImgValue[th].end())
             {
-                parser->DefineVar(extIter->first, &extIter->second);
-                ++extIter;
+                parser->DefineVar(kernIter->first, &kernIter->second[0]);
+                ++kernIter;
             }
         }
 
@@ -469,7 +471,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 {
     if (m_KernelScript.empty())
     {
-        itk::KernelScript2ParserError eo;
+        KernelScriptParserError eo;
         eo.SetDescription("Parsing Error: Empty KernelScript object!");
         eo.SetLocation(ITK_LOCATION);
         throw eo;
@@ -533,7 +535,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                     std::stringstream exsstr;
                     exsstr << "Malformed for-loop near pos "
                            << pos << ". Missing '('.";
-                    itk::KernelScript2ParserError pe;
+                    KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
@@ -572,7 +574,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                         std::stringstream exsstr;
                         exsstr << "Malformed for-loop near pos "
                                << pos << "!";
-                        itk::KernelScript2ParserError pe;
+                        KernelScriptParserError pe;
                         pe.SetDescription(exsstr.str());
                         pe.SetLocation(ITK_LOCATION);
                         throw pe;
@@ -592,7 +594,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                     std::stringstream exsstr;
                     exsstr << "Parsing error! For loop without head near pos "
                            << pos << "!";
-                    itk::KernelScript2ParserError pe;
+                    KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
@@ -695,7 +697,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                         }
                             break;
                         case AttributeTable::ATTYPE_STRING:
-                            colCache[row] = 0.0;
+                            colCache[row] = nv;
                             break;
                         }
                     }
@@ -711,13 +713,13 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                          << name
                          << "'s data values are outside the parser's value range!";
 
-                    itk::KernelScript2ParserError oe;
+                    KernelScriptParserError oe;
                     oe.SetLocation(ITK_LOCATION);
                     oe.SetDescription(sstr.str());
                     throw oe;
                 }
 
-                m_mapNameTable.insert(std::pair<std::string, std::vector<std::vector<ParserValue> > >(name, tabValue));
+                m_mapNameTable[name] = tableCache;
             }
 
             // for images, we just prepare the map and put some placeholders in
@@ -739,7 +741,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                     std::stringstream sstr;
                     sstr << "Image name conflict error: The name '"
                          << name << "' has already been defined!";
-                    itk::KernelScript2ParserError kspe;
+                    KernelScriptParserError kspe;
                     kspe.SetLocation(ITK_LOCATION);
                     kspe.SetDescription(sstr.str());
                     throw kspe;
@@ -888,36 +890,26 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                     for (int ncnt=0; ncnt < m_NumNeighbourPixel; ++ncnt)
                     {
                         bool bDataTypeRangeError = false;
-                        InputPixelType pv = vInputIt[cnt].GetPixel(ncnt);
-                        if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
+                        const InputPixelType pv = vInputIt[cnt].GetPixel(ncnt);
+                        if (pv < itk::NumericTraits<ParserValue>::NonpositiveMin())
                         {
                             bDataTypeRangeError = true;
                         }
-                        else if (pv > itk::NumericTraits<mup::float_type>::max())
+                        else if (pv > itk::NumericTraits<ParserValue>::max())
                         {
                             bDataTypeRangeError = true;
                         }
 
                         if (!bDataTypeRangeError)
                         {
-                            try{
-                            m_mapNameImgValue[threadId].find(inImgIt->first)->second.At(ncnt) =
-                                    static_cast<mup::float_type>(pv);
-                            }
-                            catch(mup::ParserError& pe)
-                            {
-                                itk::KernelScript2ParserError kse;
-                                kse.SetDescription(pe.GetMsg());
-                                kse.SetLocation(ITK_LOCATION);
-                                throw kse;
-                            }
+                            m_mapNameImgValue[threadId].find(inImgIt->first)->second[ncnt] = static_cast<ParserValue>(pv);
                         }
                         else
                         {
                             std::stringstream sstr;
                             sstr << "Data type range error: Image " << inImgIt->first
                                  << "'s value is out of the parser's data type range!";
-                            itk::KernelScript2ParserError dre;
+                            KernelScriptParserError dre;
                             dre.SetLocation(ITK_LOCATION);
                             dre.SetDescription(sstr.str());
                             throw dre;
@@ -931,33 +923,36 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                 // let's run the script now
                 try
                 {
-                    for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
+                    for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                     {
-                        m_vecParsers.at(threadId).at(p)->Eval();
-                        if (m_vecBlockLen.at(p) > 1)
+                        const ParserPointerType& exprParser = m_vecParsers[threadId][p];
+                        ParserValue& exprVal = m_mapNameAuxValue[threadId].find(m_mapParserName.find(exprParser.GetPointer())->second)->second;
+                        exprVal = exprParser->Eval();
+
+                        if (m_vecBlockLen[p] > 1)
                         {
                             Loop(p, threadId);
-                            p += m_vecBlockLen.at(p)-1;
+                            p += m_vecBlockLen[p]-1;
                         }
                     }
                 }
-                catch (mup::ParserError& evalerr)
+                catch (mu::ParserError& evalerr)
                 {
-                    itk::KernelScript2ParserError kse;
+                    KernelScriptParserError kse;
                     kse.SetDescription(evalerr.GetMsg());
                     kse.SetLocation(ITK_LOCATION);
                     throw kse;
                 }
 
                 // now we set the result value for the
-                const mup::float_type outValue = m_vOutputValue.at(threadId).GetFloat();
+                const ParserValue outValue = m_vOutputValue[threadId];
                 if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
                 {
-                    ++m_NumUnderflows.at(threadId);
+                    ++m_NumUnderflows[threadId];
                 }
                 else if (outValue > itk::NumericTraits<OutputPixelType>::max())
                 {
-                    ++m_NumOverflows.at(threadId);
+                    ++m_NumOverflows[threadId];
                 }
                 else
                 {
@@ -981,8 +976,8 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
         std::vector<InputRegionIterator> vInputIt(m_mapNameImg.size());
         OutputRegionIterator outIt;
 
-        const mup::float_type noval = static_cast<mup::float_type>(m_Nodata);
-        // itk::NumericTraits<mup::float_type>::NonpositiveMin();
+        const ParserValue noval = static_cast<ParserValue>(m_Nodata);
+        // itk::NumericTraits<ParserValue>::NonpositiveMin();
 
         // create an iterator for each input image and keep it
 
@@ -1006,26 +1001,26 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
             {
                 bool bDataTypeRangeError = false;
                 const InputPixelType pv = vInputIt[cnt].Get();
-                if (pv < itk::NumericTraits<mup::float_type>::NonpositiveMin())
+                if (pv < itk::NumericTraits<ParserValue>::NonpositiveMin())
                 {
                     bDataTypeRangeError = true;
                 }
-                else if (pv > itk::NumericTraits<mup::float_type>::max())
+                else if (pv > itk::NumericTraits<ParserValue>::max())
                 {
                     bDataTypeRangeError = true;
                 }
 
                 if (!bDataTypeRangeError)
                 {
-                    m_mapNameImgValue.at(threadId).find(inImgIt->first)->second =
-                            static_cast<mup::float_type>(pv);
+                    m_mapNameImgValue[threadId].find(inImgIt->first)->second[0] =
+                            static_cast<ParserValue>(pv);
                 }
                 else
                 {
                     std::stringstream sstr;
                     sstr << "Data type range error: Image " << inImgIt->first
                          << "'s value is out of the parser's data type range!";
-                    itk::KernelScript2ParserError dre;
+                    KernelScriptParserError dre;
                     dre.SetLocation(ITK_LOCATION);
                     dre.SetDescription(sstr.str());
                     throw dre;
@@ -1037,34 +1032,37 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
             // let's run the script now
             try
             {
-                for (int p=0; p < m_vecParsers.at(threadId).size(); ++p)
+                for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                 {
-                    m_vecParsers.at(threadId).at(p)->Eval();
-                    if (m_vecBlockLen.at(p) > 1)
+                    const ParserPointerType& exprParser = m_vecParsers[threadId][p];
+                    ParserValue& exprVal = m_mapNameAuxValue[threadId].find(m_mapParserName.find(exprParser.GetPointer())->second)->second;
+                    exprVal = exprParser->Eval();
+
+                    if (m_vecBlockLen[p] > 1)
                     {
                         Loop(p, threadId);
-                        p += m_vecBlockLen.at(p)-1;
+                        p += m_vecBlockLen[p]-1;
                     }
                 }
             }
-            catch (mup::ParserError& evalerr)
+            catch (mu::ParserError& evalerr)
             {
-                itk::KernelScript2ParserError kse;
+                KernelScriptParserError kse;
                 kse.SetDescription(evalerr.GetMsg());
                 kse.SetLocation(ITK_LOCATION);
                 throw kse;
             }
 
             // now we set the result value for the
-            const mup::float_type outValue = m_vOutputValue.at(threadId).GetFloat();
+            const ParserValue outValue = m_vOutputValue[threadId];
             if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
             {
-                ++m_NumUnderflows.at(threadId);
+                ++m_NumUnderflows[threadId];
                 outIt.Set(m_Nodata);
             }
             else if (outValue > itk::NumericTraits<OutputPixelType>::max())
             {
-                ++m_NumOverflows.at(threadId);
+                ++m_NumOverflows.at[threadId];
                 outIt.Set(m_Nodata);
             }
             else

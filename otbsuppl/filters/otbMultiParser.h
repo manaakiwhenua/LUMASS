@@ -20,6 +20,7 @@
 
 #include "itkLightObject.h"
 #include "itkObjectFactory.h"
+#include "muParserDef.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -53,7 +54,10 @@ public:
   
   /** Convenient type definitions */
   typedef MultiParser                              ParserType;
-  typedef double                                   ValueType;
+  typedef typename mu::value_type                  ValueType;
+  typedef typename mu::string_type                 StringType;
+  typedef typename mu::string_type::value_type     CharType;
+
 
   /** Type for function/number of arguments map */
   typedef std::map<std::string, int>               FunctionMapType;
@@ -68,7 +72,14 @@ public:
   ValueType* Eval(int& nNum);
 
   /** Define a variable */
-  void DefineVar(const std::string &sName, ValueType *fVar);
+  void DefineVar(const StringType &sName, ValueType *fVar);
+
+  /** Define a constant */
+  void DefineConst(const StringType& sName, const ValueType& val);
+  void DefineStrConst(const StringType& sName, const StringType &sVal);
+
+  template <typename T>
+  void DefineFun(const StringType& sName, T funPtr, bool bIsOptimisable=true);
   
   /** Clear all the defined variables */
   void ClearVar();

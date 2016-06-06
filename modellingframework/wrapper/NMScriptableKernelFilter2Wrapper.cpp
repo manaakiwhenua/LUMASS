@@ -30,7 +30,7 @@
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
-#include "otbNMScriptableKernelFilter.h"
+#include "otbNMScriptableKernelFilter2.h"
 
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
@@ -41,7 +41,7 @@ class NMScriptableKernelFilter2Wrapper_Internal
 public:
     typedef otb::Image<TInputImage, Dimension>  InImgType;
     typedef otb::Image<TOutputImage, Dimension> OutImgType;
-    typedef typename otb::NMScriptableKernelFilter<InImgType, OutImgType>      FilterType;
+    typedef typename otb::NMScriptableKernelFilter2<InImgType, OutImgType>      FilterType;
     typedef typename FilterType::Pointer        FilterTypePointer;
 
     // more typedefs

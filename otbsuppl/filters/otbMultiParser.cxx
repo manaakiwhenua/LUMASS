@@ -42,7 +42,8 @@ public:
 
   /** Convenient type definitions */
   typedef typename mu::value_type                  ValueType;
-  typedef typename mu::char_type                   CharType;
+  typedef mu::string_type                          StringType;
+  typedef mu::string_type::value_type              CharType;
   typedef mu::Parser::exception_type               ExceptionType;
 
   /** Initialize user defined constants */
@@ -76,13 +77,29 @@ public:
     m_MuParser.DefineFun("RAND", rnum, false);
 
     // init fmod function
-    m_MuParser.DefineFun("mod", calcMod, false);
+    m_MuParser.DefineFun("mod", calcMod);
   }
 
   /** Set the expression to be parsed */
   virtual void SetExpr(const std::string & Expression)
   {
     m_MuParser.SetExpr(Expression);
+  }
+
+  virtual void DefineConst(const StringType& sName, ValueType val)
+  {
+      m_MuParser.DefineConst(sName, val);
+  }
+
+  virtual void DefineStrConst(const StringType& sName, StringType sVal)
+  {
+      m_MuParser.DefineStrConst(sName, sVal);
+  }
+
+  template <typename T>
+  void DefineFun(const StringType& sName, T funPtr, bool bIsOptimisable)
+  {
+      m_MuParser.DefineFun(sName, funPtr, bIsOptimisable);
   }
 
   /** Trigger the parsing */
@@ -119,7 +136,7 @@ public:
 
 
   /** Define a variable */
-  void DefineVar(const std::string &sName, ValueType *fVar)
+  void DefineVar(const StringType &sName, ValueType *fVar)
   {
     try
       {
@@ -288,10 +305,29 @@ MultiParser::ValueType* MultiParser::Eval(int& nNum)
 	return m_InternalMultiParser->Eval(nNum);
 }
 
-void MultiParser::DefineVar(const std::string &sName, MultiParser::ValueType *fVar)
+void MultiParser::DefineVar(const StringType &sName, MultiParser::ValueType *fVar)
 {
   m_InternalMultiParser->DefineVar(sName, fVar);
 }
+
+void MultiParser::DefineConst(const StringType &sName, const ValueType &val)
+{
+    m_InternalMultiParser->DefineConst(sName, val);
+}
+
+void MultiParser::DefineStrConst(const StringType &sName, const StringType& sVal)
+{
+    m_InternalMultiParser->DefineStrConst(sName, sVal);
+}
+
+template<typename T>
+void MultiParser::DefineFun(const StringType& sName, T funPtr, bool bIsOptimisable)
+{
+    m_InternalMultiParser->DefineFun(sName, funPtr, bIsOptimisable);
+}
+
+template <typename T>
+void DefineFun(const std::string& sName, T funPtr, bool bIsOptimisable=true);
 
 void MultiParser::ClearVar()
 {

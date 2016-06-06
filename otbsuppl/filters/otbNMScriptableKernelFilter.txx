@@ -54,38 +54,39 @@
 #include "itkOffset.h"
 #include "itkProgressReporter.h"
 #include "mpError.h"
-
+#include "otbKernelScriptParserError.h"
 #include "otbAttributeTable.h"
 
 //#include "valgrind/callgrind.h"
 
 
+
 #include <algorithm>
 
-namespace itk
-{
+//namespace itk
+//{
 
-KernelScriptParserError::KernelScriptParserError()
-    : ExceptionObject()
-{}
+//KernelScriptParserError::KernelScriptParserError()
+//    : ExceptionObject()
+//{}
 
-KernelScriptParserError::KernelScriptParserError(const char* file, unsigned int lineNumber)
-    : ExceptionObject(file, lineNumber)
-{}
+//KernelScriptParserError::KernelScriptParserError(const char* file, unsigned int lineNumber)
+//    : ExceptionObject(file, lineNumber)
+//{}
 
 
-KernelScriptParserError::KernelScriptParserError(const std::string& file, unsigned int lineNumber)
-    : ExceptionObject(file, lineNumber)
-{}
+//KernelScriptParserError::KernelScriptParserError(const std::string& file, unsigned int lineNumber)
+//    : ExceptionObject(file, lineNumber)
+//{}
 
-KernelScriptParserError &
-KernelScriptParserError::operator=(const KernelScriptParserError& orig)
-{
-    ExceptionObject::operator=(orig);
-    return *this;
-}
+//KernelScriptParserError &
+//KernelScriptParserError::operator=(const KernelScriptParserError& orig)
+//{
+//    ExceptionObject::operator=(orig);
+//    return *this;
+//}
 
-}
+//}
 
 
 namespace otb
@@ -224,7 +225,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                 {
                     if (refSize[d] != img->GetLargestPossibleRegion().GetSize(d))
                     {
-                        itk::KernelScriptParserError e;
+                        KernelScriptParserError e;
                         e.SetLocation(ITK_LOCATION);
                         e.SetDescription("Input images don't have the same size!");
                         throw e;
@@ -403,7 +404,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
             sstr << pse.GetExpr() << "\nParser error at pos: " << pse.GetPos()
                  << ": " << pse.GetMsg();
 
-            itk::KernelScriptParserError kspe;
+            KernelScriptParserError kspe;
             kspe.SetDescription(sstr.str());
             kspe.SetLocation(ITK_LOCATION);
             throw kspe;
@@ -465,7 +466,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
 {
     if (m_KernelScript.empty())
     {
-        itk::KernelScriptParserError eo;
+        KernelScriptParserError eo;
         eo.SetDescription("Parsing Error: Empty KernelScript object!");
         eo.SetLocation(ITK_LOCATION);
         throw eo;
@@ -529,7 +530,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                     std::stringstream exsstr;
                     exsstr << "Malformed for-loop near pos "
                            << pos << ". Missing '('.";
-                    itk::KernelScriptParserError pe;
+                    KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
@@ -568,7 +569,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                         std::stringstream exsstr;
                         exsstr << "Malformed for-loop near pos "
                                << pos << "!";
-                        itk::KernelScriptParserError pe;
+                        KernelScriptParserError pe;
                         pe.SetDescription(exsstr.str());
                         pe.SetLocation(ITK_LOCATION);
                         throw pe;
@@ -588,7 +589,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                     std::stringstream exsstr;
                     exsstr << "Parsing error! For loop without head near pos "
                            << pos << "!";
-                    itk::KernelScriptParserError pe;
+                    KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
@@ -705,7 +706,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                          << name
                          << "'s data values are outside the parser's value range!";
 
-                    itk::KernelScriptParserError oe;
+                    KernelScriptParserError oe;
                     oe.SetLocation(ITK_LOCATION);
                     oe.SetDescription(sstr.str());
                     throw oe;
@@ -744,7 +745,7 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
                     std::stringstream sstr;
                     sstr << "Image name conflict error: The name '"
                          << name << "' has already been defined!";
-                    itk::KernelScriptParserError kspe;
+                    KernelScriptParserError kspe;
                     kspe.SetLocation(ITK_LOCATION);
                     kspe.SetDescription(sstr.str());
                     throw kspe;
@@ -911,7 +912,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                             }
                             catch(mup::ParserError& pe)
                             {
-                                itk::KernelScriptParserError kse;
+                                KernelScriptParserError kse;
                                 kse.SetDescription(pe.GetMsg());
                                 kse.SetLocation(ITK_LOCATION);
                                 throw kse;
@@ -922,7 +923,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                             std::stringstream sstr;
                             sstr << "Data type range error: Image " << inImgIt->first
                                  << "'s value is out of the parser's data type range!";
-                            itk::KernelScriptParserError dre;
+                            KernelScriptParserError dre;
                             dre.SetLocation(ITK_LOCATION);
                             dre.SetDescription(sstr.str());
                             throw dre;
@@ -948,7 +949,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                 }
                 catch (mup::ParserError& evalerr)
                 {
-                    itk::KernelScriptParserError kse;
+                    KernelScriptParserError kse;
                     kse.SetDescription(evalerr.GetMsg());
                     kse.SetLocation(ITK_LOCATION);
                     throw kse;
@@ -1030,7 +1031,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
                     std::stringstream sstr;
                     sstr << "Data type range error: Image " << inImgIt->first
                          << "'s value is out of the parser's data type range!";
-                    itk::KernelScriptParserError dre;
+                    KernelScriptParserError dre;
                     dre.SetLocation(ITK_LOCATION);
                     dre.SetDescription(sstr.str());
                     throw dre;
@@ -1054,7 +1055,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
             }
             catch (mup::ParserError& evalerr)
             {
-                itk::KernelScriptParserError kse;
+                KernelScriptParserError kse;
                 kse.SetDescription(evalerr.GetMsg());
                 kse.SetLocation(ITK_LOCATION);
                 throw kse;

@@ -220,32 +220,32 @@ protected:
   void ParseScript();
   void ParseCommand(const std::string& expr);
 
-  inline const ParserValue kwinVal(const CharType* imgName, ParserValue kwinIdx, ParserValue threadId)
+  static inline const ParserValue kwinVal(const CharType* imgName, ParserValue kwinIdx, ParserValue threadId, ParserValue thisAddr)
   {
-      return m_mapNameImgValue[threadId].find(imgName)->second[kwinIdx];
+      return m_mapNameImgValue[static_cast<uintptr_t>(thisAddr)][threadId][imgName][kwinIdx];
   }
 
-  inline const ParserValue tabVal(const CharType* tabName, ParserValue colIdx, ParserValue rowIdx)
+  static inline const ParserValue tabVal(const CharType* tabName, ParserValue colIdx, ParserValue rowIdx, ParserValue thisAddr)
   {
-      return m_mapNameTable.find(tabName)->second[colIdx][rowIdx];
+      return m_mapNameTable[static_cast<uintptr_t>(thisAddr)][tabName][colIdx][rowIdx];
   }
 
   inline void Loop(int i, const int& threadId)
   {
       const int numForExp = m_vecBlockLen[i]-3;
       const ParserPointerType& testParser = m_vecParsers[threadId][++i];
-      ParserValue& testValue = m_mapNameAuxValue[threadId].find(m_mapParserName.find(testParser.GetPointer())->second)->second;
+      ParserValue& testValue = m_mapNameAuxValue[threadId][m_mapParserName[testParser.GetPointer()]];
       testValue = testParser->Eval();
 
       ParserPointerType& counterParser = m_vecParsers[threadId][++i];
-      ParserValue& counterValue = m_mapNameAuxValue[threadId].find(m_mapParserName.find(counterParser.GetPointer())->second)->second;
+      ParserValue& counterValue = m_mapNameAuxValue[threadId][m_mapParserName[counterParser.GetPointer()]];
 
       while (testValue != 0)
       {
           for (int exp=1; exp <= numForExp; ++exp)
           {
               const ParserPointerType& forParser = m_vecParsers[threadId][i+exp];
-              ParserValue& forValue = m_mapNameAuxValue[threadId].find(m_mapParserName.find(forParser.GetPointer())->second)->second;
+              ParserValue& forValue = m_mapNameAuxValue[threadId][m_mapParserName[forParser.GetPointer()]];
               forValue = forParser->Eval();
 
               if (m_vecBlockLen[i+exp] > 1)
@@ -280,6 +280,7 @@ private:
 
   OutputPixelType m_Nodata;
 
+  uintptr_t m_This;
 
   // admin objects for the scriptable kernel filter
 
@@ -287,7 +288,7 @@ private:
   // the parsers themselves
   std::vector<std::vector<ParserPointerType> > m_vecParsers;
   // the map kernel values
-  std::vector<std::map<std::string, std::vector<ParserValue> > > m_mapNameImgValue;
+  static std::map<uintptr_t, std::vector<std::map<std::string, std::vector<ParserValue> > > > m_mapNameImgValue;
   // the output value per thread
   std::vector<ParserValue> m_vOutputValue;
   // the over- and underflows per thread
@@ -300,7 +301,7 @@ private:
 
   // can share those across threads ...
   // read-only input tables
-  std::map<std::string, std::vector<std::vector<ParserValue> > > m_mapNameTable;
+  static std::map<uintptr_t, std::map<std::string, std::vector<std::vector<ParserValue> > > > m_mapNameTable;
   // the link between each parser and the name of the variable representing its output value
   std::map<MultiParser*, std::string> m_mapParserName;
   // the link between input images and their user defined names

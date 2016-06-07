@@ -107,6 +107,8 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     m_Nodata = itk::NumericTraits<OutputPixelType>::NonpositiveMin();
 
+    m_This = reinterpret_cast<uintptr_t>(this);
+
     // just for debug
     //this->SetNumberOfThreads(1);
 }
@@ -161,14 +163,6 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     m_vOutputValue.clear();
     m_vecBlockLen.clear();
 
-//    for (int v=0; v < m_vecParsers.size(); ++v)
-//    {
-//        for (int p=0; p < m_vecParsers.at(v).size(); ++p)
-//        {
-//            delete m_vecParsers.at(v).at(p);
-//        }
-//        m_vecParsers.at(v).clear();
-//    }
     m_vecParsers.clear();
     m_mapParserName.clear();
 
@@ -240,6 +234,15 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     // we've just started working on this image ...
     if (m_PixelCounter == 0)
     {
+        // create kernel image vlaue store for this object
+        std::vector<std::map<std::string, std::vector<ParserValue> > > mapNameImgVal;
+        m_mapNameImgValue[m_This] = mapNameImgVal;
+
+        // create table value stor vor this object
+        std::map<std::string, std::vector<std::vector<ParserValue> > > mapNameTable;
+        m_mapNameTable[m_This] = mapNameTable;
+
+
         const ParserValue nv = itk::NumericTraits<ParserValue>::NonpositiveMin();
         for (int th=0; th < this->GetNumberOfThreads(); ++th)
         {
@@ -249,7 +252,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
             m_vOutputValue.push_back(nv);
 
             std::map<std::string, std::vector<ParserValue> > mapnameval;
-            m_mapNameImgValue.push_back(mapnameval);
+            m_mapNameImgValue[m_This].push_back(mapnameval);
 
             std::map<std::string, ParserValue> mapnamauxval;
             m_mapNameAuxValue.push_back(mapnamauxval);
@@ -415,6 +418,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         ParserPointerType parser = ParserType::New();
         parser->SetExpr(theexpr);
         parser->DefineConst("thid", static_cast<ParserValue>(th));
+        parser->DefineConst("addr", static_cast<ParserValue>(m_This));
         parser->DefineFun("kwinVal", kwinVal, false);
         parser->DefineFun("tabVal", tabVal, false);
 
@@ -438,10 +442,10 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         }
 
         std::map<std::string, std::vector<ParserValue > >::iterator kernIter =
-                m_mapNameImgValue[th].begin();
+                m_mapNameImgValue[m_This][th].begin();
         if (m_NumNeighbourPixel)
         {
-            while (kernIter != m_mapNameImgValue[th].end())
+            while (kernIter != m_mapNameImgValue[m_This][th].end())
             {
                 parser->DefineStrConst(kernIter->first, kernIter->first);
                 ++kernIter;
@@ -449,7 +453,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         }
         else
         {
-            while (kernIter != m_mapNameImgValue[th].end())
+            while (kernIter != m_mapNameImgValue[m_This][th].end())
             {
                 parser->DefineVar(kernIter->first, &kernIter->second[0]);
                 ++kernIter;
@@ -647,7 +651,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
             long overflows = 0;
             // if we've got a table here, we haven't dealt with, we
             // just copy the content into a matrix type mup::Value
-            if (tab != 0 && m_mapNameTable.find(name) == m_mapNameTable.end())
+            if (tab != 0 && m_mapNameTable[m_This].find(name) == m_mapNameTable[m_This].end())
             {
                 int ncols = tab->GetNumCols();
                 int nrows = tab->GetNumRows();
@@ -719,20 +723,20 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                     throw oe;
                 }
 
-                m_mapNameTable[name] = tableCache;
+                m_mapNameTable[m_This][name] = tableCache;
             }
 
             // for images, we just prepare the map and put some placeholders in
             // we'll redefine once we know the actual values
             else if (img != 0)
             {
-                if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
+                if (m_mapNameImgValue[m_This].at(0).find(name) == m_mapNameImgValue[m_This].at(0).end())
                 {
                     for (int th=0; th < this->GetNumberOfThreads(); ++th)
                     {
                         int nkernpix = m_NumNeighbourPixel > 0 ? m_NumNeighbourPixel : 1;
                         std::vector<ParserValue> mtype(nkernpix, nv);
-                        m_mapNameImgValue.at(th)[name] = mtype;
+                        m_mapNameImgValue[m_This].at(th)[name] = mtype;
                     }
                     m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
                 }
@@ -902,7 +906,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
                         if (!bDataTypeRangeError)
                         {
-                            m_mapNameImgValue[threadId].find(inImgIt->first)->second[ncnt] = static_cast<ParserValue>(pv);
+                            m_mapNameImgValue[m_This][threadId][inImgIt->first][ncnt] = static_cast<ParserValue>(pv);
                         }
                         else
                         {
@@ -926,7 +930,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                     for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                     {
                         const ParserPointerType& exprParser = m_vecParsers[threadId][p];
-                        ParserValue& exprVal = m_mapNameAuxValue[threadId].find(m_mapParserName.find(exprParser.GetPointer())->second)->second;
+                        ParserValue& exprVal = m_mapNameAuxValue[threadId][m_mapParserName[exprParser.GetPointer()]];
                         exprVal = exprParser->Eval();
 
                         if (m_vecBlockLen[p] > 1)
@@ -1012,8 +1016,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
                 if (!bDataTypeRangeError)
                 {
-                    m_mapNameImgValue[threadId].find(inImgIt->first)->second[0] =
-                            static_cast<ParserValue>(pv);
+                    m_mapNameImgValue[m_This][threadId][inImgIt->first][0] = static_cast<ParserValue>(pv);
                 }
                 else
                 {
@@ -1035,7 +1038,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                 for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                 {
                     const ParserPointerType& exprParser = m_vecParsers[threadId][p];
-                    ParserValue& exprVal = m_mapNameAuxValue[threadId].find(m_mapParserName.find(exprParser.GetPointer())->second)->second;
+                    ParserValue& exprVal = m_mapNameAuxValue[threadId][m_mapParserName[exprParser.GetPointer()]];
                     exprVal = exprParser->Eval();
 
                     if (m_vecBlockLen[p] > 1)
@@ -1062,7 +1065,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
             }
             else if (outValue > itk::NumericTraits<OutputPixelType>::max())
             {
-                ++m_NumOverflows.at[threadId];
+                ++m_NumOverflows[threadId];
                 outIt.Set(m_Nodata);
             }
             else

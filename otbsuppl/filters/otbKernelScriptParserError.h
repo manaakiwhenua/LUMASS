@@ -42,4 +42,4 @@ public:
 
 }
 
-#endif // header guard
+#endif // include guard

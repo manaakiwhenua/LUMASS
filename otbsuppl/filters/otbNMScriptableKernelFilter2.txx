@@ -1162,4 +1162,6 @@ NMScriptableKernelFilter2<TInputImage, TOutput>
 
 //#endif
 
+#include "NMScriptableKernelFilter2_ExplicitInst.h"
+
 #endif

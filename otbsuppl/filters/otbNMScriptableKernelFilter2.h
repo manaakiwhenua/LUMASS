@@ -58,7 +58,6 @@
 //#include "mpParser.h"
 #include "otbMultiParser.h"
 
-
 #include "otbsupplfilters_export.h"
 
 //namespace itk
@@ -315,9 +314,10 @@ private:
   
 } // end namespace itk
 
-#ifndef ITK_MANUAL_INSTANTIATION
+//#ifndef ITK_MANUAL_INSTANTIATION
 #include "otbNMScriptableKernelFilter2.txx"
-#endif
+//#endif
+
 
 //#endif
 

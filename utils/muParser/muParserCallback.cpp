@@ -355,6 +355,17 @@ namespace mu
     ,m_bAllowOpti(a_bAllowOpti)
   {}
 
+  //---------------------------------------------------------------------------
+  ParserCallback::ParserCallback(strfun_type4 a_pFun, bool a_bAllowOpti)
+    :m_pFun((void*)a_pFun)
+    ,m_iArgc(3)
+    ,m_iPri(-1)
+    ,m_eOprtAsct(oaNONE)
+    ,m_iCode(cmFUNC_STR)
+    ,m_iType(tpSTR)
+    ,m_bAllowOpti(a_bAllowOpti)
+  {}
+
 
   //---------------------------------------------------------------------------
   /** \brief Default constructor. 

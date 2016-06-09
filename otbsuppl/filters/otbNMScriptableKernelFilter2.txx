@@ -419,8 +419,8 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         parser->SetExpr(theexpr);
         parser->DefineConst("thid", static_cast<ParserValue>(th));
         parser->DefineConst("addr", static_cast<ParserValue>(m_This));
-        parser->DefineFun("kwinVal", kwinVal, false);
-        parser->DefineFun("tabVal", tabVal, false);
+        parser->DefineFun("kwinVal", kwinVal, true);
+        parser->DefineFun("tabVal", tabVal, true);
 
         // enter new variables into the name-variable map
         // note: this only applies to 'auxillary' data and
@@ -1162,6 +1162,5 @@ NMScriptableKernelFilter2<TInputImage, TOutput>
 
 //#endif
 
-#include "NMScriptableKernelFilter2_ExplicitInst.h"
 
 #endif

@@ -314,9 +314,19 @@ private:
   
 } // end namespace itk
 
-//#ifndef ITK_MANUAL_INSTANTIATION
+// definition of static member vars of above class
+template<class TInputImage, class TOutput>
+std::map<uintptr_t, std::map<std::string, std::vector<std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
+otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameTable;
+
+template<class TInputImage, class TOutput>
+std::map<uintptr_t, std::vector<std::map<std::string, std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
+otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameImgValue;
+
+
+#ifndef ITK_MANUAL_INSTANTIATION
 #include "otbNMScriptableKernelFilter2.txx"
-//#endif
+#endif
 
 
 //#endif

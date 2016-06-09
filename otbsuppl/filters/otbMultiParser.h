@@ -21,13 +21,14 @@
 #include "itkLightObject.h"
 #include "itkObjectFactory.h"
 #include "muParserDef.h"
+#include "otbMultiParserImpl.h"
 
 #include "otbsupplfilters_export.h"
 
 namespace otb
 {
 
-class MultiParserImpl;
+//class MultiParserImpl;
 
 
 /** \class MultiParser
@@ -79,7 +80,10 @@ public:
   void DefineStrConst(const StringType& sName, const StringType &sVal);
 
   template <typename T>
-  void DefineFun(const StringType& sName, T funPtr, bool bIsOptimisable=true);
+  void DefineFun(const StringType& sName, T funPtr, bool bIsOptimisable=true)
+  {
+      m_InternalMultiParser->DefineFun(sName, funPtr, bIsOptimisable);
+  }
   
   /** Clear all the defined variables */
   void ClearVar();
@@ -114,5 +118,6 @@ private:
 }; // end class
 
 }//end namespace otb
+
 
 #endif

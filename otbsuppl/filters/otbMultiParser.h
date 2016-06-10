@@ -20,8 +20,8 @@
 
 #include "itkLightObject.h"
 #include "itkObjectFactory.h"
-#include "muParserDef.h"
-#include "otbMultiParserImpl.h"
+#include "utils/muParser/muParserDef.h"
+#include "otbsuppl/filters/otbMultiParserImpl.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -55,9 +55,9 @@ public:
   
   /** Convenient type definitions */
   typedef MultiParser                              ParserType;
-  typedef typename mu::value_type                  ValueType;
-  typedef typename mu::string_type                 StringType;
-  typedef typename mu::string_type::value_type     CharType;
+  typedef mu::value_type                  ValueType;
+  typedef mu::string_type                 StringType;
+  typedef mu::string_type::value_type     CharType;
 
 
   /** Type for function/number of arguments map */
@@ -80,7 +80,7 @@ public:
   void DefineStrConst(const StringType& sName, const StringType &sVal);
 
   template <typename T>
-  void DefineFun(const StringType& sName, T funPtr, bool bIsOptimisable=true)
+  void DefineFun(const mu::string_type& sName, T funPtr, bool bIsOptimisable=true)
   {
       m_InternalMultiParser->DefineFun(sName, funPtr, bIsOptimisable);
   }

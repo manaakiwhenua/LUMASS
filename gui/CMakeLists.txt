@@ -78,6 +78,7 @@ INCLUDE_DIRECTORIES(
     ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
+	${lumass_SOURCE_DIR}
     ${muParserX_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}

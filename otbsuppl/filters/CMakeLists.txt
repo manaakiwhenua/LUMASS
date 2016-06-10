@@ -12,6 +12,7 @@ INCLUDE_DIRECTORIES(
     ${utils_SOURCE_DIR}
     ${OTB_DIR}/Utilities/ITK/Utilities/vxl/core/vnl
     ${lumass_SOURCE_DIR}/utils/ITK
+	${lumass_SOURCE_DIR}
     #${TCADB_INCLUDE_DIR}
 )
 

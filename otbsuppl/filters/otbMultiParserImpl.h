@@ -19,8 +19,8 @@
 
 #include "otbMacro.h"
 
-#include "muParser.h"
-#include "otbMultiParser.h"
+#include "utils/muParser/muParser.h"
+#include "otbsuppl/filters/otbMultiParser.h"
 
 namespace otb
 {
@@ -43,7 +43,7 @@ public:
   itkTypeMacro(MultiParserImpl, itk::LightObject);
 
   /** Convenient type definitions */
-  typedef typename mu::value_type                  ValueType;
+  typedef mu::value_type                  ValueType;
   typedef mu::string_type                          StringType;
   typedef mu::string_type::value_type              CharType;
   typedef mu::Parser::exception_type               ExceptionType;
@@ -103,7 +103,7 @@ public:
   }
 
   template <typename T>
-  void DefineFun(const StringType& sName, T funPtr, bool bIsOptimisable)
+  void DefineFun(const mu::string_type& sName, T funPtr, bool bIsOptimisable)
   {
       m_MuParser.DefineFun(sName, funPtr, bIsOptimisable);
   }

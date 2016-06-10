@@ -17,6 +17,7 @@ INCLUDE_DIRECTORIES(
 	${gui_SOURCE_DIR}
 	${shared_SOURCE_DIR}
 	${lumass_BINARY_DIR}
+	${lumass_SOURCE_DIR}
  	${GDALRATImageIO_SOURCE_DIR}
 	${GDALRATImageIO_BINARY_DIR}
 	${filters_SOURCE_DIR}

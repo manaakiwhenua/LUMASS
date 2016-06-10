@@ -21,6 +21,7 @@ INCLUDE_DIRECTORIES(
     ${filters_BINARY_DIR}
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
+	${lumass_SOURCE_DIR}
     ${OTB_INCLUDE_DIRS}
 )
 

@@ -188,6 +188,16 @@ public:
 
   void Reset();
 
+  static const double kwinVal(const char* imgName, double kwinIdx, double threadId, double thisAddr)
+  {
+      return m_mapNameImgValue[static_cast<uintptr_t>(thisAddr)][threadId][imgName][kwinIdx];
+  }
+
+  static const double tabVal(const char* tabName, double colIdx, double rowIdx, double thisAddr)
+  {
+      return m_mapNameTable[static_cast<uintptr_t>(thisAddr)][tabName][colIdx][rowIdx];
+  }
+
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
   itkConceptMacro(InputHasNumericTraitsCheck,
@@ -218,16 +228,6 @@ protected:
   void CacheInputData();
   void ParseScript();
   void ParseCommand(const std::string& expr);
-
-  static inline const ParserValue kwinVal(const CharType* imgName, ParserValue kwinIdx, ParserValue threadId, ParserValue thisAddr)
-  {
-      return m_mapNameImgValue[static_cast<uintptr_t>(thisAddr)][threadId][imgName][kwinIdx];
-  }
-
-  static inline const ParserValue tabVal(const CharType* tabName, ParserValue colIdx, ParserValue rowIdx, ParserValue thisAddr)
-  {
-      return m_mapNameTable[static_cast<uintptr_t>(thisAddr)][tabName][colIdx][rowIdx];
-  }
 
   inline void Loop(int i, const int& threadId)
   {
@@ -279,7 +279,8 @@ private:
 
   OutputPixelType m_Nodata;
 
-  uintptr_t m_This;
+  double m_This;
+  std::vector<double> m_thid;
 
   // admin objects for the scriptable kernel filter
 
@@ -287,7 +288,7 @@ private:
   // the parsers themselves
   std::vector<std::vector<ParserPointerType> > m_vecParsers;
   // the map kernel values
-  static std::map<uintptr_t, std::vector<std::map<std::string, std::vector<ParserValue> > > > m_mapNameImgValue;
+  static std::map<double, std::vector<std::map<std::string, std::vector<ParserValue> > > > m_mapNameImgValue;
   // the output value per thread
   std::vector<ParserValue> m_vOutputValue;
   // the over- and underflows per thread
@@ -300,7 +301,7 @@ private:
 
   // can share those across threads ...
   // read-only input tables
-  static std::map<uintptr_t, std::map<std::string, std::vector<std::vector<ParserValue> > > > m_mapNameTable;
+  static std::map<double, std::map<std::string, std::vector<std::vector<ParserValue> > > > m_mapNameTable;
   // the link between each parser and the name of the variable representing its output value
   std::map<MultiParser*, std::string> m_mapParserName;
   // the link between input images and their user defined names
@@ -316,11 +317,11 @@ private:
 
 // definition of static member vars of above class
 template<class TInputImage, class TOutput>
-std::map<uintptr_t, std::map<std::string, std::vector<std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
+std::map<double, std::map<std::string, std::vector<std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
 otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameTable;
 
 template<class TInputImage, class TOutput>
-std::map<uintptr_t, std::vector<std::map<std::string, std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
+std::map<double, std::vector<std::map<std::string, std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
 otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameImgValue;
 
 

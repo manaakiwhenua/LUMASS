@@ -56,7 +56,7 @@
 #include "itkZeroFluxNeumannBoundaryCondition.h"
 #include "itkOffset.h"
 #include "itkProgressReporter.h"
-#include "muParserError.h"
+#include "utils/muParser/muParserError.h"
 #include "otbKernelScriptParserError.h"
 #include "otbAttributeTable.h"
 
@@ -107,7 +107,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     m_Nodata = itk::NumericTraits<OutputPixelType>::NonpositiveMin();
 
-    m_This = reinterpret_cast<uintptr_t>(this);
+    m_This = static_cast<double>(reinterpret_cast<uintptr_t>(this));
 
     // just for debug
     //this->SetNumberOfThreads(1);
@@ -277,6 +277,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     m_NumUnderflows.clear();
     m_NumUnderflows.resize(this->GetNumberOfThreads(), 0);
 
+	m_thid.clear();
+	m_thid.resize(this->GetNumberOfThreads(), 0);
+
     // if we've got a shaped neighbourhood iterator,
     // determine the active offsets
     /// ToDo: later ...
@@ -415,12 +418,14 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         //            throw kspe;
         //        }
 
+		m_thid[th] = th;
+
         ParserPointerType parser = ParserType::New();
+        parser->DefineVar("thid", static_cast<ParserValue*>(&m_thid[th]));
+        parser->DefineVar("addr", static_cast<ParserValue*>(&m_This));
+        parser->DefineFun("kwinVal", (mu::strfun_type4)kwinVal, true);
+        parser->DefineFun("tabVal", (mu::strfun_type4)tabVal, true);
         parser->SetExpr(theexpr);
-        parser->DefineConst("thid", static_cast<ParserValue>(th));
-        parser->DefineConst("addr", static_cast<ParserValue>(m_This));
-        parser->DefineFun("kwinVal", kwinVal, true);
-        parser->DefineFun("tabVal", tabVal, true);
 
         // enter new variables into the name-variable map
         // note: this only applies to 'auxillary' data and
@@ -1119,9 +1124,9 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 /**
  * Standard "PrintSelf" method
  */
-template <class TInputImage, class TOutput>
+template <class TInputImage, class TOutputImage>
 void
-NMScriptableKernelFilter2<TInputImage, TOutput>
+NMScriptableKernelFilter2<TInputImage, TOutputImage>
 ::PrintSelf(
         std::ostream& os,
         itk::Indent indent) const

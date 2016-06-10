@@ -243,6 +243,8 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         m_mapNameTable[m_This] = mapNameTable;
 
 
+        m_thid.clear();
+
         const ParserValue nv = itk::NumericTraits<ParserValue>::NonpositiveMin();
         for (int th=0; th < this->GetNumberOfThreads(); ++th)
         {
@@ -256,6 +258,8 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
             std::map<std::string, ParserValue> mapnamauxval;
             m_mapNameAuxValue.push_back(mapnamauxval);
+
+            m_thid.push_back(th);
 
         }
 
@@ -277,9 +281,6 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     m_NumUnderflows.clear();
     m_NumUnderflows.resize(this->GetNumberOfThreads(), 0);
 
-	m_thid.clear();
-	m_thid.resize(this->GetNumberOfThreads(), 0);
-
     // if we've got a shaped neighbourhood iterator,
     // determine the active offsets
     /// ToDo: later ...
@@ -298,49 +299,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     // extract newly defined variables (i.e. lvalues)
     size_t pos = std::string::npos;
-    //    bool bLhsArray = false;
-    //    bool bRhsArray = false;
     if ((pos = expr.find('=')) != std::string::npos)
     {
         name = expr.substr(0, pos);
-
-        //        // in case of += -= *= /= assignment operators
-        //        size_t assignpos = name.find_first_of("+-*/");
-        //        if (assignpos != std::string::npos)
-        //        {
-        //            name = name.substr(0, assignpos);
-        //        }
-
-        //        // check, if we've got an array/matrix expression
-        //        // on the LHS
-        //        size_t bro = name.find('[', 0);
-        //        size_t bre = name.find(']', bro+1);
-        //        if (     bro != std::string::npos
-        //             &&  bre != std::string::npos
-        //           )
-        //        {
-        //            name = name.substr(0, bro);
-        //            bLhsArray = true;
-        //        }
-
-        //        // check, if we've got an array/matrix expression
-        //        // on the RHS
-        //        bro = expr.find('{', pos+1);
-        //        bre = expr.find('}', bro+1);
-        //        if (     bro != std::string::npos
-        //             &&  bre != std::string::npos
-        //           )
-        //        {
-        //            bRhsArray = true;
-        //        }
-
-        //        if (    expr.find("zeros", pos+1) != std::string::npos
-        //             || expr.find("ones", pos+1) != std::string::npos
-        //             || expr.find("eye", pos+1) != std::string::npos
-        //           )
-        //        {
-        //            bRhsArray = true;
-        //        }
 
         // trim off whitespaces at the beginning and end
         name.erase(0, name.find_first_not_of(' '));
@@ -369,68 +330,17 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     // anyway(?), so we don't bother for now
     for (int th=0; th < this->GetNumberOfThreads(); ++th)
     {
-        bool bNameInvalid = false;
-        //        mup::ParserX* parser = 0;
-        //        try
-        //        {
-        //            parser = new mup::ParserX(mup::pckCOMMON |
-        //                                      mup::pckNON_COMPLEX |
-        //                                      mup::pckMATRIX);
-        //            parser->EnableAutoCreateVar(true);
-
-        //            // some name validity checking
-        //            if (th == 0)
-        //            {
-        //                // double check the name for syntactical correctness
-        //                std::string charset = parser->ValidNameChars();
-        //                parser->CheckName(name, charset);
-
-        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsConstDefined(name);
-        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsFunDefined(name);
-        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsOprtDefined(name);
-        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsPostfixOprtDefined(name);
-        //                bNameInvalid = bNameInvalid ? bNameInvalid : parser->IsInfixOprtDefined(name);
-        //                if (bNameInvalid)
-        //                {
-        //                    parser->Error(mup::ecINVALID_NAME);
-        //                }
-        //            }
-
-        //            parser->SetExpr(theexpr);
-
-        //        }
-        //        catch(std::exception& parexp)
-        //        {
-        //            itk::MemoryAllocationError pe;
-        //            pe.SetDescription("Failed allocating mup::ParserX object!");
-        //            pe.SetLocation(ITK_LOCATION);
-        //            throw pe;
-        //        }
-        //        catch(mup::ParserError& pse)
-        //        {
-        //            std::stringstream sstr;
-        //            sstr << pse.GetExpr() << "\nParser error at pos: " << pse.GetPos()
-        //                 << ": " << pse.GetMsg();
-
-        //            KernelScriptParserError kspe;
-        //            kspe.SetDescription(sstr.str());
-        //            kspe.SetLocation(ITK_LOCATION);
-        //            throw kspe;
-        //        }
-
-		m_thid[th] = th;
 
         ParserPointerType parser = ParserType::New();
         parser->DefineVar("thid", static_cast<ParserValue*>(&m_thid[th]));
         parser->DefineVar("addr", static_cast<ParserValue*>(&m_This));
         parser->DefineFun("kwinVal", (mu::strfun_type4)kwinVal, true);
         parser->DefineFun("tabVal", (mu::strfun_type4)tabVal, true);
-        parser->SetExpr(theexpr);
 
         // enter new variables into the name-variable map
         // note: this only applies to 'auxillary' data and
         // not to any of the pre-defined inputs ...
-        if (name.compare(m_OutputVarName) != 0)
+        //if (name.compare(m_OutputVarName) != 0)
         {
             if (m_mapNameAuxValue.at(th).find(name) == m_mapNameAuxValue.at(th).end())
             {
@@ -466,7 +376,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         }
 
         // we also need to define a variable for the output image
-        parser->DefineVar(m_OutputVarName, &m_vOutputValue[th]);
+        //parser->DefineVar(m_OutputVarName, &m_vOutputValue[th]);
+
+        parser->SetExpr(theexpr);
 
         m_vecParsers[th].push_back(parser);
         m_mapParserName[parser.GetPointer()] = name;
@@ -801,6 +713,11 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         typename TInputImage::RegionType inputRequestedRegion;
         inputRequestedRegion = inputPtr->GetRequestedRegion();
 
+        if (ip == 0)
+        {
+            this->m_NumPixels = inputPtr->GetLargestPossibleRegion().GetNumberOfPixels();
+        }
+
         // pad the input requested region by the operator radius
         inputRequestedRegion.PadByRadius( m_Radius );
 
@@ -930,7 +847,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
 
                 // let's run the script now
-                try
+                //try
                 {
                     for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                     {
@@ -945,16 +862,17 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                         }
                     }
                 }
-                catch (mu::ParserError& evalerr)
-                {
-                    KernelScriptParserError kse;
-                    kse.SetDescription(evalerr.GetMsg());
-                    kse.SetLocation(ITK_LOCATION);
-                    throw kse;
-                }
+                //                catch (mu::ParserError& evalerr)
+                //                {
+                //                    KernelScriptParserError kse;
+                //                    kse.SetDescription(evalerr.GetMsg());
+                //                    kse.SetLocation(ITK_LOCATION);
+                //                    throw kse;
+                //                }
 
                 // now we set the result value for the
-                const ParserValue outValue = m_vOutputValue[threadId];
+                //const ParserValue outValue = m_vOutputValue[threadId];
+                const ParserValue outValue = m_mapNameAuxValue[threadId][m_OutputVarName];
                 if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
                 {
                     ++m_NumUnderflows[threadId];
@@ -1038,7 +956,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
             }
 
             // let's run the script now
-            try
+            //try
             {
                 for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                 {
@@ -1053,16 +971,17 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                     }
                 }
             }
-            catch (mu::ParserError& evalerr)
-            {
-                KernelScriptParserError kse;
-                kse.SetDescription(evalerr.GetMsg());
-                kse.SetLocation(ITK_LOCATION);
-                throw kse;
-            }
+            //            catch (mu::ParserError& evalerr)
+            //            {
+            //                KernelScriptParserError kse;
+            //                kse.SetDescription(evalerr.GetMsg());
+            //                kse.SetLocation(ITK_LOCATION);
+            //                throw kse;
+            //            }
 
             // now we set the result value for the
-            const ParserValue outValue = m_vOutputValue[threadId];
+            //const ParserValue outValue = m_vOutputValue[threadId];
+            const ParserValue outValue = m_mapNameAuxValue[threadId][m_OutputVarName];
             if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
             {
                 ++m_NumUnderflows[threadId];

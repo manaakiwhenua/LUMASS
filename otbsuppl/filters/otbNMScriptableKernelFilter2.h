@@ -190,12 +190,12 @@ public:
 
   static const double kwinVal(const char* imgName, double kwinIdx, double threadId, double thisAddr)
   {
-      return m_mapNameImgValue[static_cast<uintptr_t>(thisAddr)][threadId][imgName][kwinIdx];
+      return m_mapNameImgValue[static_cast<double>(thisAddr)][threadId][imgName][kwinIdx];
   }
 
   static const double tabVal(const char* tabName, double colIdx, double rowIdx, double thisAddr)
   {
-      return m_mapNameTable[static_cast<uintptr_t>(thisAddr)][tabName][colIdx][rowIdx];
+      return m_mapNameTable[static_cast<double>(thisAddr)][tabName][colIdx][rowIdx];
   }
 
 #ifdef ITK_USE_CONCEPT_CHECKING

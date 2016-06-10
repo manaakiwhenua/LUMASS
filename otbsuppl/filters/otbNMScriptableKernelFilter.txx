@@ -796,6 +796,11 @@ NMScriptableKernelFilter<TInputImage, TOutputImage>
         typename TInputImage::RegionType inputRequestedRegion;
         inputRequestedRegion = inputPtr->GetRequestedRegion();
 
+        if (ip == 0)
+        {
+            this->m_NumPixels = inputPtr->GetLargestPossibleRegion().GetNumberOfPixels();
+        }
+
         // pad the input requested region by the operator radius
         inputRequestedRegion.PadByRadius( m_Radius );
 

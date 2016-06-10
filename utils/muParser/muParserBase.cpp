@@ -766,6 +766,7 @@ namespace mu
       case 0: valTok.SetVal(1); a_vArg[0].GetAsString();  break;
       case 1: valTok.SetVal(1); a_vArg[1].GetAsString();  a_vArg[0].GetVal();  break;
       case 2: valTok.SetVal(1); a_vArg[2].GetAsString();  a_vArg[1].GetVal();  a_vArg[0].GetVal();  break;
+      case 3: valTok.SetVal(1); a_vArg[3].GetAsString();  a_vArg[2].GetVal();  a_vArg[1].GetVal();  a_vArg[0].GetVal(); break;
       default: Error(ecINTERNAL_ERROR);
       }
     }

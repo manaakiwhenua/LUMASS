@@ -56,6 +56,7 @@ NMScriptableKernelFilter2Wrapper
     Q_PROPERTY(QStringList Nodata READ getNodata WRITE setNodata)
     Q_PROPERTY(QString KernelShapeType READ getKernelShapeType WRITE setKernelShapeType)
     Q_PROPERTY(QStringList KernelShapeEnum READ getKernelShapeEnum)
+    Q_PROPERTY(QString NumThreads READ getNumThreads WRITE setNumThreads)
 
 public:
 
@@ -66,6 +67,7 @@ public:
     NMPropertyGetSet( Nodata, QStringList )
     NMPropertyGetSet( KernelShapeType, QString )
     NMPropertyGetSet( KernelShapeEnum, QStringList )
+    NMPropertyGetSet( NumThreads, QString )
 
 public:
     NMScriptableKernelFilter2Wrapper(QObject* parent=0);
@@ -95,6 +97,7 @@ protected:
     QStringList mNodata;
     QString mKernelShapeType;
     QStringList mKernelShapeEnum;
+    QString mNumThreads;
 
 };
 

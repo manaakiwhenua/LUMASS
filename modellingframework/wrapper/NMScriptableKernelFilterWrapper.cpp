@@ -152,6 +152,17 @@ public:
            f->SetKernelShape(p->getKernelShapeType().toStdString());
         }
 
+        QVariant curNumThreads = p->getParameter("NumThreads");
+        if (curNumThreads.isValid())
+        {
+            unsigned int numThreads = curNumThreads.toUInt(&bok);
+            if (bok)
+            {
+                f->SetNumberOfThreads(numThreads);
+            }
+        }
+
+
         QVariant curOutputVarNameVar = p->getParameter("OutputVarName");
         std::string curOutputVarName;
         if (curOutputVarNameVar.isValid())

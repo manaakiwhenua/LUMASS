@@ -57,6 +57,8 @@
 #include "itkPoint.h"
 #include "itkExceptionObject.h"
 #include "itkImageRegion.h"
+#include "itkStatisticsImageFilter.h"
+#include "itkCastImageFilter.h"
 
 #include "vtkImageData.h"
 #include "vtkImageSlice.h"
@@ -119,6 +121,28 @@ public:
 	typedef typename ImgType::RegionType RegionType;
 	typedef otb::VectorImage<PixelType, Dimension> VecImgType;
 	typedef typename VecImgType::RegionType VecRegionType;
+
+    typedef typename itk::StatisticsImageFilter<ImgType> StatsFilterType;
+    typedef typename itk::StatisticsImageFilter<VecImgType> VecStatsFilterType;
+
+    static void getWholeImageStatistics(itk::DataObject::Pointer& img, unsigned int numBands,
+                                        std::vector<double>& stats)
+    {
+        if (img.IsNull() || img.GetPointer() == 0) return;
+
+        if (numBands == 1)
+        {
+            ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
+            if (theimg == 0)
+            {
+                return;
+            }
+
+
+        }
+
+    }
+
 
     static void getBBox(itk::DataObject::Pointer& img, unsigned int numBands,
 			double* bbox)
@@ -317,11 +341,14 @@ NMImageLayer::getWholeImageStatistics(void)
     }
 
     NMImageReader* imgReader = 0;
-    NMItk2VtkConnector* vtkConn = 0;
+    //NMItk2VtkConnector* vtkConn = 0;
 
     if (!mbStatsAvailable)
     {
         emit layerProcessingStart();
+
+
+
 
         vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
         cast->SetOutputScalarTypeToDouble();

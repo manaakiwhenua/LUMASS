@@ -134,7 +134,6 @@
 #include "itkShiftScaleImageFilter.h"
 #include "itkCastImageFilter.h"
 #include "itkPasteImageFilter.h"
-#include "otbBandMathImageFilter.h"
 #include "otbRATBandMathImageFilter.h"
 #include "itkVTKImageExport.h"
 #include "otbAttributeTable.h"

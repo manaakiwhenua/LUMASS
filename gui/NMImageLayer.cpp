@@ -123,7 +123,11 @@ public:
 	typedef typename VecImgType::RegionType VecRegionType;
 
     typedef typename itk::StatisticsImageFilter<ImgType> StatsFilterType;
+<<<<<<< Updated upstream
     typedef typename itk::StatisticsImageFilter<VecImgType> VecStatsFilterType;
+=======
+    //typedef typename itk::StatisticsImageFilter<VecImgType> VecStatsFilterType;
+>>>>>>> Stashed changes
 
     static void getWholeImageStatistics(itk::DataObject::Pointer& img, unsigned int numBands,
                                         std::vector<double>& stats)
@@ -138,7 +142,27 @@ public:
                 return;
             }
 
+<<<<<<< Updated upstream
 
+=======
+            StatsFilterType::Pointer pF = StatsFilterType::New();
+            pF->SetInput(theimg);
+            pF->Update();
+
+            stats.clear();
+            stats.push_back(pF->GetMinimum());
+            stats.push_back(pF->GetMaximum());
+            stats.push_back(pF->GetMean());
+            stats.push_back(-9999);
+            stats.push_back(std::sqrt(pF->GetVariance()));
+            stats.push_back(theimg->GetLargestPossibleRegion().GetNumberOfPixels());
+
+        }
+        // ToDo: ivestigate what to do in the multi-band case
+        else
+        {
+            return;
+>>>>>>> Stashed changes
         }
 
     }
@@ -235,6 +259,14 @@ public:
         wrapName<PixelType, 3>::getBBox(img, numBands, bbox); \
 }
 
+#define getInternalImgStats( PixelType, wrapName ) \
+{	\
+    if (numDims == 2) \
+        wrapName<PixelType, 2>::getBBox(img, numBands, stats); \
+    else \
+        wrapName<PixelType, 3>::getBBox(img, numBands, stats); \
+}
+
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
 	: NMLayer(renWin, renderer, parent)
@@ -287,6 +319,8 @@ NMImageLayer::~NMImageLayer()
 	if (this->mPipeconn)
 		delete this->mPipeconn;
 }
+
+
 
 std::vector<double>
 NMImageLayer::getWindowStatistics(void)
@@ -347,47 +381,49 @@ NMImageLayer::getWholeImageStatistics(void)
     {
         emit layerProcessingStart();
 
+        //        vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
+        //        cast->SetOutputScalarTypeToDouble();
+        //        if (this->mFileName.isEmpty())
+        //        {
+        //            cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+        //        }
+        //        else
+        //        {
+        //            imgReader = new NMImageReader(0);
+        //            imgReader->setFileName(this->mFileName);
+        //            imgReader->instantiateObject();
+        //            if (!imgReader->isInitialised())
+        //            {
+        //                NMWarn(ctxNMImageLayer, << "Failed initialising NMImageReader!");
+        //                return ret;
+        //            }
+
+        //            vtkConn = new NMItk2VtkConnector(0);
+        //            vtkConn->setInput(imgReader->getOutput(0));
+        //            cast->SetInputConnection(vtkConn->getVtkAlgorithmOutput());
+        //        }
+
+        //        vtkSmartPointer<vtkImageHistogramStatistics> stats =
+        //                vtkSmartPointer<vtkImageHistogramStatistics>::New();
+        //        stats->SetInputConnection(cast->GetOutputPort());
+        //        stats->GenerateHistogramImageOff();
+
+        //        // we leave two threads to keep the OS and UI usable
+        //        int threadNum = max(1, QThread::idealThreadCount()-2);
+        //        stats->SetNumberOfThreads(threadNum);
+        //        stats->Update();
 
 
 
-        vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-        cast->SetOutputScalarTypeToDouble();
-        if (this->mFileName.isEmpty())
-        {
-            cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-        }
-        else
-        {
-            imgReader = new NMImageReader(0);
-            imgReader->setFileName(this->mFileName);
-            imgReader->instantiateObject();
-            if (!imgReader->isInitialised())
-            {
-                NMWarn(ctxNMImageLayer, << "Failed initialising NMImageReader!");
-                return ret;
-            }
+        //        mImgStats[0] = stats->GetMinimum();
+        //        mImgStats[1] = stats->GetMaximum();
+        //        mImgStats[2] = stats->GetMean();
+        //        mImgStats[3] = stats->GetMedian();
+        //        mImgStats[4] = stats->GetStandardDeviation();
+        //        mImgStats[5] = vtkConn->getVtkImage()->GetNumberOfPoints();
 
-            vtkConn = new NMItk2VtkConnector(0);
-            vtkConn->setInput(imgReader->getOutput(0));
-            cast->SetInputConnection(vtkConn->getVtkAlgorithmOutput());
-        }
 
-        vtkSmartPointer<vtkImageHistogramStatistics> stats =
-                vtkSmartPointer<vtkImageHistogramStatistics>::New();
-        stats->SetInputConnection(cast->GetOutputPort());
-        stats->GenerateHistogramImageOff();
 
-        // we leave two threads to keep the OS and UI usable
-        int threadNum = max(1, QThread::idealThreadCount()-2);
-        stats->SetNumberOfThreads(threadNum);
-        stats->Update();
-
-        mImgStats[0] = stats->GetMinimum();
-        mImgStats[1] = stats->GetMaximum();
-        mImgStats[2] = stats->GetMean();
-        mImgStats[3] = stats->GetMedian();
-        mImgStats[4] = stats->GetStandardDeviation();
-        mImgStats[5] = vtkConn->getVtkImage()->GetNumberOfPoints();
         this->mbStatsAvailable = true;
 
         emit layerProcessingEnd();

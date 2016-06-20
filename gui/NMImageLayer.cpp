@@ -117,51 +117,51 @@ template<class PixelType, unsigned int Dimension>
 class InternalImageHelper
 {
 public:
-	typedef otb::Image<PixelType, Dimension> ImgType;
-	typedef typename ImgType::RegionType RegionType;
-	typedef otb::VectorImage<PixelType, Dimension> VecImgType;
-	typedef typename VecImgType::RegionType VecRegionType;
+    typedef otb::Image<PixelType, Dimension> ImgType;
+    typedef typename ImgType::RegionType RegionType;
+    typedef otb::VectorImage<PixelType, Dimension> VecImgType;
+    typedef typename VecImgType::RegionType VecRegionType;
 
-    typedef typename itk::StatisticsImageFilter<ImgType> StatsFilterType;
+    //typedef typename itk::StatisticsImageFilter<ImgType> StatsFilterType;
     //typedef typename itk::StatisticsImageFilter<VecImgType> VecStatsFilterType;
 
-    static void getWholeImageStatistics(itk::DataObject::Pointer& img, unsigned int numBands,
-                                        std::vector<double>& stats)
-    {
-        if (img.IsNull() || img.GetPointer() == 0) return;
+//    static void getWholeImageStatistics(itk::DataObject::Pointer& img, unsigned int numBands,
+//                                        std::vector<double>& stats)
+//    {
+//        if (img.IsNull() || img.GetPointer() == 0) return;
 
-        if (numBands == 1)
-        {
-            ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
-            if (theimg == 0)
-            {
-                return;
-            }
+//        if (numBands == 1)
+//        {
+//            ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
+//            if (theimg == 0)
+//            {
+//                return;
+//            }
 
-            StatsFilterType::Pointer pF = StatsFilterType::New();
-            pF->SetInput(theimg);
-            pF->Update();
+//            typename StatsFilterType::Pointer pF = StatsFilterType::New();
+//            pF->SetInput(theimg);
+//            pF->Update();
 
-            stats.clear();
-            stats.push_back(pF->GetMinimum());
-            stats.push_back(pF->GetMaximum());
-            stats.push_back(pF->GetMean());
-            stats.push_back(-9999);
-            stats.push_back(std::sqrt(pF->GetVariance()));
-            stats.push_back(theimg->GetLargestPossibleRegion().GetNumberOfPixels());
+//            stats.clear();
+//            stats.push_back(pF->GetMinimum());
+//            stats.push_back(pF->GetMaximum());
+//            stats.push_back(pF->GetMean());
+//            stats.push_back(-9999);
+//            stats.push_back(std::sqrt(pF->GetVariance()));
+//            stats.push_back(theimg->GetLargestPossibleRegion().GetNumberOfPixels());
 
-        }
-        // ToDo: ivestigate what to do in the multi-band case
-        else
-        {
-            return;
-        }
-    }
+//        }
+//        // ToDo: ivestigate what to do in the multi-band case
+//        else
+//        {
+//            return;
+//        }
+//    }
 
 
     static void getBBox(itk::DataObject::Pointer& img, unsigned int numBands,
-			double* bbox)
-		{
+            double* bbox)
+        {
             if (img.IsNull() || img.GetPointer() == 0 || bbox == 0) return;
 
             // we set everything to zero here
@@ -170,8 +170,8 @@ public:
                 bbox[i] = 0;
             }
 
-			if (numBands == 1)
-			{
+            if (numBands == 1)
+            {
                 ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
                 if (theimg == 0)
                 {
@@ -209,9 +209,9 @@ public:
                 }
 
 
-			}
-			else if (numBands > 1)
-			{
+            }
+            else if (numBands > 1)
+            {
                 VecImgType* theimg = dynamic_cast<VecImgType*>(img.GetPointer());
                 if (theimg == 0)
                 {
@@ -232,31 +232,31 @@ public:
                 //                bbox[4] = 0;
                 //                bbox[5] = 0;
 
-				if (theimg->GetImageDimension() == 3)
-				{
-					bbox[5] = theimg->GetOrigin()[2];
-					bbox[6] = bbox[5] + theimg->GetSpacing()[2] * reg.GetSize()[2];
-				}
-			}
-		}
+                if (theimg->GetImageDimension() == 3)
+                {
+                    bbox[5] = theimg->GetOrigin()[2];
+                    bbox[6] = bbox[5] + theimg->GetSpacing()[2] * reg.GetSize()[2];
+                }
+            }
+        }
 };
 
 /** macro for querying the bbox */
 #define getInternalBBox( PixelType, wrapName ) \
 {	\
-	if (numDims == 2) \
+    if (numDims == 2) \
         wrapName<PixelType, 2>::getBBox(img, numBands, bbox); \
-	else \
+    else \
         wrapName<PixelType, 3>::getBBox(img, numBands, bbox); \
 }
 
-#define getInternalImgStats( PixelType, wrapName ) \
-{	\
-    if (numDims == 2) \
-        wrapName<PixelType, 2>::getBBox(img, numBands, stats); \
-    else \
-        wrapName<PixelType, 3>::getBBox(img, numBands, stats); \
-}
+//#define getInternalImgStats( PixelType, wrapName ) \
+//{	\
+//    if (numDims == 2) \
+//        wrapName<PixelType, 2>::getBBox(img, numBands, stats); \
+//    else \
+//        wrapName<PixelType, 3>::getBBox(img, numBands, stats); \
+//}
 
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
@@ -354,65 +354,50 @@ NMImageLayer::getWindowStatistics(void)
 std::vector<double>
 NMImageLayer::getWholeImageStatistics(void)
 {
-    std::vector<double> ret;
+    std::vector<double> stats;
 
     if (this->mNumBands > 1)
     {
-        for (int i=0; i < 7; ++i)
-        {
-            ret.push_back(-9999);
-            return ret;
-        }
+        stats.resize(7,-9999);
+        return stats;
     }
 
-    NMImageReader* imgReader = 0;
-    //NMItk2VtkConnector* vtkConn = 0;
 
     if (!mbStatsAvailable)
     {
         emit layerProcessingStart();
 
-        //        vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-        //        cast->SetOutputScalarTypeToDouble();
-        //        if (this->mFileName.isEmpty())
-        //        {
-        //            cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-        //        }
-        //        else
-        //        {
-        //            imgReader = new NMImageReader(0);
-        //            imgReader->setFileName(this->mFileName);
-        //            imgReader->instantiateObject();
-        //            if (!imgReader->isInitialised())
-        //            {
-        //                NMWarn(ctxNMImageLayer, << "Failed initialising NMImageReader!");
-        //                return ret;
-        //            }
 
-        //            vtkConn = new NMItk2VtkConnector(0);
-        //            vtkConn->setInput(imgReader->getOutput(0));
-        //            cast->SetInputConnection(vtkConn->getVtkAlgorithmOutput());
-        //        }
+        if (!this->mFileName.isEmpty())
+        {
 
-        //        vtkSmartPointer<vtkImageHistogramStatistics> stats =
-        //                vtkSmartPointer<vtkImageHistogramStatistics>::New();
-        //        stats->SetInputConnection(cast->GetOutputPort());
-        //        stats->GenerateHistogramImageOff();
+            NMImageReader* imgReader = new NMImageReader(0);
+            imgReader->setFileName(this->mFileName);
 
-        //        // we leave two threads to keep the OS and UI usable
-        //        int threadNum = max(1, QThread::idealThreadCount()-2);
-        //        stats->SetNumberOfThreads(threadNum);
-        //        stats->Update();
+            imgReader->instantiateObject();
+            if (!imgReader->isInitialised())
+            {
+                NMWarn(ctxNMImageLayer, << "Failed initialising NMImageReader!");
+                return stats;
+            }
+
+            stats = imgReader->getImageStatistics();
+
+            delete imgReader;
+
+        }
+        else
+        {
+            stats = this->getWindowStatistics();
+        }
 
 
-
-        //        mImgStats[0] = stats->GetMinimum();
-        //        mImgStats[1] = stats->GetMaximum();
-        //        mImgStats[2] = stats->GetMean();
-        //        mImgStats[3] = stats->GetMedian();
-        //        mImgStats[4] = stats->GetStandardDeviation();
-        //        mImgStats[5] = vtkConn->getVtkImage()->GetNumberOfPoints();
-
+        mImgStats[0] = stats[0];
+        mImgStats[1] = stats[1];
+        mImgStats[2] = stats[2];
+        mImgStats[3] = stats[3];
+        mImgStats[4] = stats[4];
+        mImgStats[5] = stats[5];
 
 
         this->mbStatsAvailable = true;
@@ -420,18 +405,7 @@ NMImageLayer::getWholeImageStatistics(void)
         emit layerProcessingEnd();
     }
 
-    ret.push_back(mImgStats[0]);
-    ret.push_back(mImgStats[1]);
-    ret.push_back(mImgStats[2]);
-    ret.push_back(mImgStats[3]);
-    ret.push_back(mImgStats[4]);
-    ret.push_back(mImgStats[5]);
-    ret.push_back(-9999);
-
-    if (imgReader) delete imgReader;
-    if (vtkConn) delete vtkConn;
-
-    return ret;
+    return stats;
 }
 
 void NMImageLayer::test()

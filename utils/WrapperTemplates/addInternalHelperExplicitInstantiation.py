@@ -21,6 +21,7 @@ if __name__ == '__main__':
 
     filename = sys.argv[1]
     classname = sys.argv[2]
+    ndim = 3
 
     print "    >>> filename=%s" % filename
     print "    >>> helperclassname=%s" % classname
@@ -32,20 +33,20 @@ if __name__ == '__main__':
             'float', 'double']
 
     hStr = None
-    with open(hPath, 'r') as hfile:
+    with open(filename, 'r') as hfile:
         hStr = hfile.read()
 
         instStr = ''
         for dim in range(1, int(ndim)+1):
             for t1 in dt1:
                 inst = "template class %s<%s, %s>;\n"   \
-                     % (className, t1, dim)
+                     % (classname, t1, dim)
                 instStr = instStr + inst
 
         hStr = hStr.replace("/*$<HelperClassInstantiation>$*/", instStr)
 
 
-    with open(hPath, 'w') as hfile:
+    with open(filename, 'w') as hfile:
         hfile.write(hStr)
 
     print "done!"

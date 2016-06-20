@@ -43,7 +43,8 @@
 #include "NMMfwException.h"
 #include "NMIterableComponent.h"
 #include "itkRGBPixel.h"
-#include "itkStatisticsImageFilter.h"
+#include "otbStreamingStatisticsImageFilter.h"
+#include "otbStreamingImageVirtualWriter.h"
 
 #include "otbNMImageReader.h"
 
@@ -76,7 +77,8 @@
         typedef otb::NMImageReader< VecImgType > 				VecReaderType;
 		typedef typename VecReaderType::Pointer						VecReaderTypePointer;
 
-        typedef typename itk::StatisticsImageFilter<ImgType>    StatsFilterType;
+        typedef typename otb::StreamingStatisticsImageFilter<ImgType>    StatsFilterType;
+        typedef typename otb::StreamingImageVirtualWriter<ImgType>       VirtWriterType;
 
 
         static void getImageStatistics(itk::ProcessObject* procObj, unsigned int numBands,
@@ -87,16 +89,24 @@
             if (numBands == 1)
             {
                 ReaderType *r = dynamic_cast<ReaderType*>(procObj);
-                StatsFilterType::Pointer f = StatsFilterType::New();
+                typename StatsFilterType::Pointer f = StatsFilterType::New();
+                typename VirtWriterType::Pointer w = VirtWriterType::New();
+
+                w->SetAutomaticStrippedStreaming(512);
+
+                unsigned int nth = f->GetNumberOfThreads();
+                nth = nth > 0 ? nth : 1;
 
                 f->SetInput(r->GetOutput());
-                f->Update();
+                f->SetNumberOfThreads(nth);
+                w->SetInput(f->GetOutput());
+                w->Update();
 
                 stats.push_back(f->GetMinimum());
                 stats.push_back(f->GetMaximum());
                 stats.push_back(f->GetMean());
                 stats.push_back(-9999);
-                stats.push_back(std::sqrt(f->GetVariance()));
+                stats.push_back(f->GetSigma());
                 stats.push_back(r->GetOutput()->GetLargestPossibleRegion().GetNumberOfPixels());
                 stats.push_back(-9999);
             }
@@ -298,7 +308,8 @@ public:
 	typedef typename VecReaderType::Pointer				  VecReaderTypePointer;
     typedef typename VecReaderType::ImageRegionType       VecReaderRegionType;
 
-    typedef typename itk::StatisticsImageFilter<ImgType>    StatsFilterType;
+    typedef typename otb::PersistentStatisticsImageFilter<ImgType>    StatsFilterType;
+    typedef typename otb::StreamingImageVirtualWriter<ImgType>       VirtWriterType;
 
 
     static void getImageStatistics(itk::ProcessObject* procObj, unsigned int numBands,
@@ -309,16 +320,27 @@ public:
         if (numBands == 1)
         {
             ReaderType *r = dynamic_cast<ReaderType*>(procObj);
-            StatsFilterType::Pointer f = StatsFilterType::New();
+            typename StatsFilterType::Pointer f = StatsFilterType::New();
+            typename VirtWriterType::Pointer w = VirtWriterType::New();
+
+            w->SetAutomaticStrippedStreaming(512);
+
+            unsigned int nth = f->GetNumberOfThreads();
+            nth = nth > 0 ? nth : 1;
 
             f->SetInput(r->GetOutput());
-            f->Update();
+            f->SetNumberOfThreads(nth);
+            w->SetInput(f->GetOutput());
+
+            f->Reset();
+            w->Update();
+            f->Synthetize();
 
             stats.push_back(f->GetMinimum());
             stats.push_back(f->GetMaximum());
             stats.push_back(f->GetMean());
             stats.push_back(-9999);
-            stats.push_back(std::sqrt(f->GetVariance()));
+            stats.push_back(f->GetSigma());
             stats.push_back(r->GetOutput()->GetLargestPossibleRegion().GetNumberOfPixels());
             stats.push_back(-9999);
         }
@@ -1575,4 +1597,66 @@ NMRasdamanConnectorWrapper* NMImageReader::getRasConnector(void)
 #endif
 
 
-/*$<HelperClassInstantiation>$*/
+template class FileReader<unsigned char, 1>;
+template class FileReader<char, 1>;
+template class FileReader<unsigned short, 1>;
+template class FileReader<short, 1>;
+template class FileReader<unsigned int, 1>;
+template class FileReader<int, 1>;
+template class FileReader<unsigned long, 1>;
+template class FileReader<long, 1>;
+template class FileReader<float, 1>;
+template class FileReader<double, 1>;
+template class FileReader<unsigned char, 2>;
+template class FileReader<char, 2>;
+template class FileReader<unsigned short, 2>;
+template class FileReader<short, 2>;
+template class FileReader<unsigned int, 2>;
+template class FileReader<int, 2>;
+template class FileReader<unsigned long, 2>;
+template class FileReader<long, 2>;
+template class FileReader<float, 2>;
+template class FileReader<double, 2>;
+template class FileReader<unsigned char, 3>;
+template class FileReader<char, 3>;
+template class FileReader<unsigned short, 3>;
+template class FileReader<short, 3>;
+template class FileReader<unsigned int, 3>;
+template class FileReader<int, 3>;
+template class FileReader<unsigned long, 3>;
+template class FileReader<long, 3>;
+template class FileReader<float, 3>;
+template class FileReader<double, 3>;
+
+#ifdef BUILD_RASSUPPORT
+template class RasdamanReader<unsigned char, 1>;
+template class RasdamanReader<char, 1>;
+template class RasdamanReader<unsigned short, 1>;
+template class RasdamanReader<short, 1>;
+template class RasdamanReader<unsigned int, 1>;
+template class RasdamanReader<int, 1>;
+template class RasdamanReader<unsigned long, 1>;
+template class RasdamanReader<long, 1>;
+template class RasdamanReader<float, 1>;
+template class RasdamanReader<double, 1>;
+template class RasdamanReader<unsigned char, 2>;
+template class RasdamanReader<char, 2>;
+template class RasdamanReader<unsigned short, 2>;
+template class RasdamanReader<short, 2>;
+template class RasdamanReader<unsigned int, 2>;
+template class RasdamanReader<int, 2>;
+template class RasdamanReader<unsigned long, 2>;
+template class RasdamanReader<long, 2>;
+template class RasdamanReader<float, 2>;
+template class RasdamanReader<double, 2>;
+template class RasdamanReader<unsigned char, 3>;
+template class RasdamanReader<char, 3>;
+template class RasdamanReader<unsigned short, 3>;
+template class RasdamanReader<short, 3>;
+template class RasdamanReader<unsigned int, 3>;
+template class RasdamanReader<int, 3>;
+template class RasdamanReader<unsigned long, 3>;
+template class RasdamanReader<long, 3>;
+template class RasdamanReader<float, 3>;
+template class RasdamanReader<double, 3>;
+#endif

@@ -36,7 +36,7 @@ if __name__ == '__main__':
         print str(sys.argv[num])
 
 
-    sys.exit()
+    #sys.exit()
 
     filepath = inspect.getfile(inspect.currentframe())
     path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))

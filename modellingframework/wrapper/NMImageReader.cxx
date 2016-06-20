@@ -43,6 +43,7 @@
 #include "NMMfwException.h"
 #include "NMIterableComponent.h"
 #include "itkRGBPixel.h"
+#include "itkStatisticsImageFilter.h"
 
 #include "otbNMImageReader.h"
 
@@ -75,6 +76,36 @@
         typedef otb::NMImageReader< VecImgType > 				VecReaderType;
 		typedef typename VecReaderType::Pointer						VecReaderTypePointer;
 
+        typedef typename itk::StatisticsImageFilter<ImgType>    StatsFilterType;
+
+
+        static void getImageStatistics(itk::ProcessObject* procObj, unsigned int numBands,
+                                  std::vector<double>& stats)
+        {
+            stats.clear();
+
+            if (numBands == 1)
+            {
+                ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+                StatsFilterType::Pointer f = StatsFilterType::New();
+
+                f->SetInput(r->GetOutput());
+                f->Update();
+
+                stats.push_back(f->GetMinimum());
+                stats.push_back(f->GetMaximum());
+                stats.push_back(f->GetMean());
+                stats.push_back(-9999);
+                stats.push_back(std::sqrt(f->GetVariance()));
+                stats.push_back(r->GetOutput()->GetLargestPossibleRegion().GetNumberOfPixels());
+                stats.push_back(-9999);
+            }
+            else
+            {
+                stats.resize(7, -9999);
+                return;
+            }
+        }
 
         static otb::AttributeTable::Pointer
             fetchRAT(itk::ProcessObject* procObj, int band,
@@ -266,6 +297,37 @@ public:
     typedef otb::NMImageReader< VecImgType > 	  VecReaderType;
 	typedef typename VecReaderType::Pointer				  VecReaderTypePointer;
     typedef typename VecReaderType::ImageRegionType       VecReaderRegionType;
+
+    typedef typename itk::StatisticsImageFilter<ImgType>    StatsFilterType;
+
+
+    static void getImageStatistics(itk::ProcessObject* procObj, unsigned int numBands,
+                              std::vector<double>& stats)
+    {
+        stats.clear();
+
+        if (numBands == 1)
+        {
+            ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            StatsFilterType::Pointer f = StatsFilterType::New();
+
+            f->SetInput(r->GetOutput());
+            f->Update();
+
+            stats.push_back(f->GetMinimum());
+            stats.push_back(f->GetMaximum());
+            stats.push_back(f->GetMean());
+            stats.push_back(-9999);
+            stats.push_back(std::sqrt(f->GetVariance()));
+            stats.push_back(r->GetOutput()->GetLargestPossibleRegion().GetNumberOfPixels());
+            stats.push_back(-9999);
+        }
+        else
+        {
+            stats.resize(7, -9999);
+            return;
+        }
+    }
 
 
 	static otb::AttributeTable::Pointer
@@ -478,6 +540,52 @@ public:
 
 #ifdef BUILD_RASSUPPORT
   /** Helper Macro to call either the Rasdaman or File Reader methods */
+
+    #define CallGetImgStatsMacro( PixelType ) \
+    { \
+      if (mbRasMode) \
+      { \
+          switch (this->mOutputNumDimensions) \
+          { \
+          case 1: \
+              RasdamanReader< PixelType, 1 >::getImageStatistics( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, stats); \
+              break; \
+          case 3: \
+              RasdamanReader< PixelType, 3 >::getImageStatistics( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, stats); \
+              break; \
+          default: \
+              RasdamanReader< PixelType, 2 >::getImageStatistics( \
+                  this->mOtbProcess, \
+                  this->mOutputNumBands, stats); \
+          }\
+      } \
+      else \
+      { \
+          switch (this->mOutputNumDimensions) \
+          { \
+          case 1: \
+              FileReader< PixelType, 1 >::getImageStatistics( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, stats); \
+              break; \
+          case 3: \
+              FileReader< PixelType, 3 >::getImageStatistics( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, stats); \
+              break; \
+          default: \
+              FileReader< PixelType, 2 >::getImageStatistics( \
+                  this->mOtbProcess, \
+                  this->mOutputNumBands, stats); \
+          }\
+      } \
+    }
+
+
   #define CallReaderMacro( PixelType ) \
   { \
   	if (mbRasMode) \
@@ -641,7 +749,32 @@ public:
 		} \
 	}
 #else
-	#define CallReaderMacro( PixelType ) \
+
+    #define CallGetImgStatsMacro( PixelType ) \
+    { \
+      { \
+          switch (this->mOutputNumDimensions) \
+          { \
+          case 1: \
+              FileReader< PixelType, 1 >::getImageStatistics( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, stats); \
+              break; \
+          case 3: \
+              FileReader< PixelType, 3 >::getImageStatistics( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, stats); \
+              break; \
+          default: \
+              FileReader< PixelType, 2 >::getImageStatistics( \
+                  this->mOtbProcess, \
+                  this->mOutputNumBands, stats); \
+          }\
+      } \
+    }
+
+
+    #define CallReaderMacro( PixelType ) \
 	{ \
 		{ \
 			switch (this->mOutputNumDimensions) \
@@ -1073,6 +1206,21 @@ NMImageReader::buildOverviews(const std::string& resamplingType)
 }
 
 
+std::vector<double> NMImageReader::getImageStatistics()
+{
+    std::vector<double> stats;
+
+    switch(this->mOutputComponentType)
+    {
+    LocalMacroPerSingleType( CallGetImgStatsMacro )
+    default:
+        break;
+    }
+
+
+    return stats;
+}
+
 void
 NMImageReader::setInternalRATType()
 {
@@ -1426,3 +1574,5 @@ NMRasdamanConnectorWrapper* NMImageReader::getRasConnector(void)
 }
 #endif
 
+
+/*$<HelperClassInstantiation>$*/

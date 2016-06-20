@@ -123,11 +123,7 @@ public:
 	typedef typename VecImgType::RegionType VecRegionType;
 
     typedef typename itk::StatisticsImageFilter<ImgType> StatsFilterType;
-<<<<<<< Updated upstream
-    typedef typename itk::StatisticsImageFilter<VecImgType> VecStatsFilterType;
-=======
     //typedef typename itk::StatisticsImageFilter<VecImgType> VecStatsFilterType;
->>>>>>> Stashed changes
 
     static void getWholeImageStatistics(itk::DataObject::Pointer& img, unsigned int numBands,
                                         std::vector<double>& stats)
@@ -142,9 +138,6 @@ public:
                 return;
             }
 
-<<<<<<< Updated upstream
-
-=======
             StatsFilterType::Pointer pF = StatsFilterType::New();
             pF->SetInput(theimg);
             pF->Update();
@@ -162,9 +155,7 @@ public:
         else
         {
             return;
->>>>>>> Stashed changes
         }
-
     }
 
 

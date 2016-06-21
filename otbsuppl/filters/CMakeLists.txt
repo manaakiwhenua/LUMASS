@@ -28,7 +28,6 @@ LINK_DIRECTORIES(
 file(GLOB OTBSUPPL_FILTERS
     ${filters_SOURCE_DIR}/*.txx
     ${filters_SOURCE_DIR}/*.cxx
-    ${filters_SOURCE_DIR}/*ExplicitInst.h
     ${muparser_SOURCE_DIR}/*.cpp
     ${muParserX_SOURCE_DIR}/*.cpp
     ${otbsuppl_core_SOURCE_DIR}/*.cxx

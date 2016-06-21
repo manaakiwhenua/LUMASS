@@ -27,6 +27,7 @@
 
 #include "otbDEMSlopeAspectFilter.h"
 #include "itkImageRegionIterator.h"
+#include "itkNeighborhoodAlgorithm.h"
 #include "itkNeighborhoodIterator.h"
 #include "itkZeroFluxNeumannBoundaryCondition.h"
 
@@ -173,7 +174,7 @@ void DEMSlopeAspectFilter<TInputImage, TOutputImage>
         for (inIter.GoToBegin(), outIter.GoToBegin(); !inIter.IsAtEnd(); ++inIter, ++outIter)
         {
             double val;
-            const NeighborhoodType nh = inIter.GetNeighborhood();
+            NeighborhoodType nh = inIter.GetNeighborhood();
             this->slope(nh, &val);
             val = ::isnan(val) ? nodata : val;
             outIter.Set(val);

@@ -31,6 +31,7 @@
 #include "itkProcessObject.h"
 #include "otbImage.h"
 #include "otbCombineTwoFilter.h"
+#include "otbCombineTwoFilter_ExplicitInst.h"
 
 /*! Internal templated helper class linking to the core otb/itk filter
  *  by static methods.
@@ -213,3 +214,5 @@ NMCombineTwoFilterWrapper
 ::~NMCombineTwoFilterWrapper()
 {
 }
+
+/*$<HelperClassInstantiation>$*/

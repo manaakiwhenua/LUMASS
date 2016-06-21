@@ -20,7 +20,7 @@
 #define __/*$<FilterClassName>$*/_INST_H
 
 #include "otbImage.h"
-#include "otb/*$<FilterClassName>$*/.h"
+#include "/*$<NameSpace>$*//*$<FilterClassName>$*/.h"
 
 /*$<ExplicitInstantiation>$*/
 

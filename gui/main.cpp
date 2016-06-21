@@ -31,6 +31,10 @@
 #endif
 #endif
 
+// explicit instantiation of class templates used
+// in the GUI code
+//#include "GUI_template_inst.h"
+
 //#ifdef EARLY_TEMPLATE
 //#ifdef __GNUG__
 //#include "LUMASS_TemplateInst.h"

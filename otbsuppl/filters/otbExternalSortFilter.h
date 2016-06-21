@@ -124,7 +124,7 @@ public:
   void SetRasdamanConnector(RasdamanConnector* rascon);
 #endif
 
-  void SetNthFileName(int idx, string filename);
+  void SetNthFileName(int idx, std::string filename);
 
 protected:
     ExternalSortFilter();
@@ -189,8 +189,8 @@ protected:
 #endif
 
     bool m_SortAscending;
-    std::vector<string> m_FileNames;
-    std::vector<string> m_TmpFileNames;
+    std::vector<std::string> m_FileNames;
+    std::vector<std::string> m_TmpFileNames;
 
     std::vector<long> m_RowOffsets;
 

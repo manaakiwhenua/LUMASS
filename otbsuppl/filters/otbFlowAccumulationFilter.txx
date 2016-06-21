@@ -28,10 +28,7 @@
 #include "otbFlowAccumulationFilter.h"
 #include "itkImageRegionIterator.h"
 #include "itkNeighborhoodIterator.h"
-
-//#include "itkZeroFluxNeumannBoundaryCondition.h"
-
-class vnl_math;
+#include "vnl/vnl_math.h"
 
 namespace otb {
 

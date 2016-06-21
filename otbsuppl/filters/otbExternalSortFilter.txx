@@ -85,7 +85,7 @@ void ExternalSortFilter<TInputImage, TOutputImage>
 
 template <class TInputImage, class TOutputImage>
 void ExternalSortFilter<TInputImage, TOutputImage>
-::SetNthFileName(int idx, string filename)
+::SetNthFileName(int idx, std::string filename)
 {
     m_FileNames.resize(idx+1);
     m_FileNames[idx] = filename;
@@ -93,7 +93,7 @@ void ExternalSortFilter<TInputImage, TOutputImage>
 
 template <class TInputImage, class TOutputImage>
 void ExternalSortFilter<TInputImage, TOutputImage>
-::GenerateOutputFileNames(std::vector<string> &outputFN)
+::GenerateOutputFileNames(std::vector<std::string> &outputFN)
 {
     std::string sortIndicator = "_desc";
     if (m_SortAscending)

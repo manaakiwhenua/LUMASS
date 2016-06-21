@@ -44,6 +44,8 @@
 #include "otbmodellerwin.h"
 #include "nmlog.h"
 
+
+
 class NMModelViewWidget;
 
 const std::string NMModelScene::ctx = "NMModelScene";

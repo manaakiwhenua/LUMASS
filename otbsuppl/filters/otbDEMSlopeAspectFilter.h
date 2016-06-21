@@ -87,7 +87,7 @@ protected:
 //	virtual void GenerateOutputInformation();
 
     //void aspect(const NeighborhoodType& nh, double* val);
-	void slope(const NeighborhoodType& nh, double* val);
+        void slope(const NeighborhoodType& nh, double* val);
 	void dZdX(const NeighborhoodType& nh, double* val);
 	void dZdY(const NeighborhoodType& nh, double* val);
 

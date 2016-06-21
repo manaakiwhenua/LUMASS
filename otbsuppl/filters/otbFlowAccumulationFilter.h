@@ -30,13 +30,14 @@
 #include "itkNeighborhoodIterator.h"
 #include "itkNeighborhood.h"
 #include "nmlog.h"
+#include "otbsupplfilters_export.h"
 // ToDo: check, if really required
 //#include "itkConceptChecking.h"
 
 namespace otb {
 
 template <class TInputImage, class TOutputImage>
-class ITK_EXPORT FlowAccumulationFilter
+class OTBSUPPLFILTERS_EXPORT FlowAccumulationFilter
 			: public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:

@@ -39,6 +39,7 @@
 #include "otbImage.h"
 #include "otbGDALRATImageIO.h"
 #include "itkNMCostDistanceBufferImageFilter.h"
+#include "itkNMCostDistanceBufferImageFilter_ExplicitInst.h"
 #include "otbStreamingRATImageFileWriter.h"
 #include "otbImageFileWriter.h"
 #include "otbImageFileReader.h"
@@ -721,6 +722,38 @@ public:
 
 };
 
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned char, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<char, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned short, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<short, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned int, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<int, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned long, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<long, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<float, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<double, 1>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned char, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<char, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned short, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<short, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned int, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<int, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned long, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<long, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<float, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<double, 2>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned char, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<char, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned short, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<short, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned int, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<int, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<unsigned long, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<long, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<float, 3>;
+template class NMCostDistanceBufferImageWrapper_Internal<double, 3>;
+
+
 InstantiateInputTypeObjectWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
 SetInputTypeNthInputWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
 GetInputTypeOutputWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
@@ -805,4 +838,5 @@ NMCostDistanceBufferImageWrapper::linkInputs(unsigned int step, const QMap<QStri
 	// data in chunks as required, so we don't do anything here; we only want to avoid
 	// that the superclass' method is being called;
 }
+
 

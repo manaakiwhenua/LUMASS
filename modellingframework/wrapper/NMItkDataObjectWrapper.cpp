@@ -292,3 +292,35 @@ NMItkDataObjectWrapper::getComponentTypeFromString(const QString& compType)
 
 	return type;
 }
+
+template class NMItkDataObjectWrapper_Internal<unsigned char, 1>;
+template class NMItkDataObjectWrapper_Internal<char, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned short, 1>;
+template class NMItkDataObjectWrapper_Internal<short, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned int, 1>;
+template class NMItkDataObjectWrapper_Internal<int, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned long, 1>;
+template class NMItkDataObjectWrapper_Internal<long, 1>;
+template class NMItkDataObjectWrapper_Internal<float, 1>;
+template class NMItkDataObjectWrapper_Internal<double, 1>;
+template class NMItkDataObjectWrapper_Internal<unsigned char, 2>;
+template class NMItkDataObjectWrapper_Internal<char, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned short, 2>;
+template class NMItkDataObjectWrapper_Internal<short, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned int, 2>;
+template class NMItkDataObjectWrapper_Internal<int, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned long, 2>;
+template class NMItkDataObjectWrapper_Internal<long, 2>;
+template class NMItkDataObjectWrapper_Internal<float, 2>;
+template class NMItkDataObjectWrapper_Internal<double, 2>;
+template class NMItkDataObjectWrapper_Internal<unsigned char, 3>;
+template class NMItkDataObjectWrapper_Internal<char, 3>;
+template class NMItkDataObjectWrapper_Internal<unsigned short, 3>;
+template class NMItkDataObjectWrapper_Internal<short, 3>;
+template class NMItkDataObjectWrapper_Internal<unsigned int, 3>;
+template class NMItkDataObjectWrapper_Internal<int, 3>;
+template class NMItkDataObjectWrapper_Internal<unsigned long, 3>;
+template class NMItkDataObjectWrapper_Internal<long, 3>;
+template class NMItkDataObjectWrapper_Internal<float, 3>;
+template class NMItkDataObjectWrapper_Internal<double, 3>;
+

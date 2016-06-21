@@ -31,6 +31,7 @@
 #include "itkDataObject.h"
 #include "otbImage.h"
 #include "otbRATBandMathImageFilter.h"
+#include "otbRATBandMathImageFilter_ExplicitInst.h"
 #include "NMItkDataObjectWrapper.h"
 #include "NMOtbAttributeTableWrapper.h"
 #include "otbAttributeTable.h"
@@ -114,6 +115,308 @@ public:
 			return dynamic_cast<ImgType*>(filter->GetOutput(idx));
 		}
 };
+
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, char, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, short, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, int, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, long, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, float, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, double, 1>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, char, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, short, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, int, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, long, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, float, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, double, 2>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned char, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<char, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned short, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<short, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned int, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<int, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<unsigned long, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<long, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<float, double, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, char, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, short, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, int, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, unsigned long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, long, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, float, 3>;
+template class NMRATBandMathImageFilterWrapper_Internal<double, double, 3>;
+
 
 GetOutputWrap( NMRATBandMathImageFilterWrapper, NMRATBandMathImageFilterWrapper_Internal )
 InstantiateObjectWrap( NMRATBandMathImageFilterWrapper, NMRATBandMathImageFilterWrapper_Internal )
@@ -455,80 +758,8 @@ NMRATBandMathImageFilterWrapper
 		}
 	}
 
-	//we've got some tables and associated variable names
-	// in any case, we need the same amount of tables and table column names
-	// and the parameter pos has to point to a valid position within those
-	// lists
-	//if ((step < this->mInputTables.size())   	 &&
-	//	(step < this->mInputTableVarNames.size()) &&
-	//	(this->mInputTableVarNames.size() == this->mInputTables.size())
-	//   )
-	//{
-	//	QStringList inputTableComps = this->mInputTables.at(step);
-	//	QList<QStringList> inputTabVarNamesList = this->mInputTableVarNames.at(
-	//			step);
-    //
-	//	// check, whether both lists have the same number of entries, otherwise
-	//	// we have to pull out
-	//	if (inputTableComps.size() == inputTabVarNamesList.size())
-	//	{
-	//		for (unsigned int iT = 0; iT < inputTableComps.size(); ++iT)
-	//		{
-	//			QString tablecompname = inputTableComps.at(iT);
-	//			if (tablecompname.isEmpty())
-	//				return;
-    //
-	//			// get the associated table object from the named component
-	//			QMap<QString, NMModelComponent*>::const_iterator compIt =
-	//					repo.find(tablecompname);
-    //
-	//			otb::AttributeTable::Pointer table;// = 0;
-	//			NMImageLayer* layer = qobject_cast<NMImageLayer*>(compIt.value());
-	//			if (layer != 0)
-	//			{
-	//				table = layer->getRasterAttributeTable(1);
-	//			}
-	//			else
-	//			{
-	//				NMIterableComponent* ic =
-	//						qobject_cast<NMIterableComponent*>(compIt.value());
-	//				if (ic != 0 && ic->getProcess() != 0)
-	//				{
-	//					NMImageReader* reader = qobject_cast<NMImageReader*>(
-	//							ic->getProcess());
-	//					if (reader != 0)
-	//					{
-	//						table = reader->getRasterAttributeTable(1);//.GetPointer();
-	//					}
-	//				}
-	//			}
-    //
-	//			// now let's get the variable names
-	//			if (table.IsNotNull())// != 0)
-	//			{
-	//				QStringList varNames = inputTabVarNamesList.at(iT);
-	//				if (varNames.size() != 0)
-	//				{
-	//					std::vector<QString> qcolnames = varNames.toVector().toStdVector();
-	//					std::vector<std::string> colnames;
-	//					colnames.resize(qcolnames.size());
-    //
-	//					for (unsigned int qn = 0; qn < qcolnames.size(); ++qn)
-	//						colnames[qn] = qcolnames[qn].toStdString();
-    //
-	//					// at the end we've got one call to setnthattributetable
-	//					this->setNthAttributeTable(iT, table, colnames);
-	//				}
-	//			}
-	//			else
-	//			{
-	//				NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-	//				e.setMsg("NMRATBandMathImageWrapper: Invalid attribute table input parameter!");
-	//				throw e;
-	//			}
-	//		}
-	//	}
-	//}
 
 	NMDebugCtx(ctx, << "done!");
 }
+
+

@@ -560,6 +560,71 @@ public:
 	}
 };
 
+template class FileReader<unsigned char, 1>;
+template class FileReader<char, 1>;
+template class FileReader<unsigned short, 1>;
+template class FileReader<short, 1>;
+template class FileReader<unsigned int, 1>;
+template class FileReader<int, 1>;
+template class FileReader<unsigned long, 1>;
+template class FileReader<long, 1>;
+template class FileReader<float, 1>;
+template class FileReader<double, 1>;
+template class FileReader<unsigned char, 2>;
+template class FileReader<char, 2>;
+template class FileReader<unsigned short, 2>;
+template class FileReader<short, 2>;
+template class FileReader<unsigned int, 2>;
+template class FileReader<int, 2>;
+template class FileReader<unsigned long, 2>;
+template class FileReader<long, 2>;
+template class FileReader<float, 2>;
+template class FileReader<double, 2>;
+template class FileReader<unsigned char, 3>;
+template class FileReader<char, 3>;
+template class FileReader<unsigned short, 3>;
+template class FileReader<short, 3>;
+template class FileReader<unsigned int, 3>;
+template class FileReader<int, 3>;
+template class FileReader<unsigned long, 3>;
+template class FileReader<long, 3>;
+template class FileReader<float, 3>;
+template class FileReader<double, 3>;
+
+#ifdef BUILD_RASSUPPORT
+template class RasdamanReader<unsigned char, 1>;
+template class RasdamanReader<char, 1>;
+template class RasdamanReader<unsigned short, 1>;
+template class RasdamanReader<short, 1>;
+template class RasdamanReader<unsigned int, 1>;
+template class RasdamanReader<int, 1>;
+template class RasdamanReader<unsigned long, 1>;
+template class RasdamanReader<long, 1>;
+template class RasdamanReader<float, 1>;
+template class RasdamanReader<double, 1>;
+template class RasdamanReader<unsigned char, 2>;
+template class RasdamanReader<char, 2>;
+template class RasdamanReader<unsigned short, 2>;
+template class RasdamanReader<short, 2>;
+template class RasdamanReader<unsigned int, 2>;
+template class RasdamanReader<int, 2>;
+template class RasdamanReader<unsigned long, 2>;
+template class RasdamanReader<long, 2>;
+template class RasdamanReader<float, 2>;
+template class RasdamanReader<double, 2>;
+template class RasdamanReader<unsigned char, 3>;
+template class RasdamanReader<char, 3>;
+template class RasdamanReader<unsigned short, 3>;
+template class RasdamanReader<short, 3>;
+template class RasdamanReader<unsigned int, 3>;
+template class RasdamanReader<int, 3>;
+template class RasdamanReader<unsigned long, 3>;
+template class RasdamanReader<long, 3>;
+template class RasdamanReader<float, 3>;
+template class RasdamanReader<double, 3>;
+#endif
+
+
 #ifdef BUILD_RASSUPPORT
   /** Helper Macro to call either the Rasdaman or File Reader methods */
 
@@ -1597,66 +1662,3 @@ NMRasdamanConnectorWrapper* NMImageReader::getRasConnector(void)
 #endif
 
 
-template class FileReader<unsigned char, 1>;
-template class FileReader<char, 1>;
-template class FileReader<unsigned short, 1>;
-template class FileReader<short, 1>;
-template class FileReader<unsigned int, 1>;
-template class FileReader<int, 1>;
-template class FileReader<unsigned long, 1>;
-template class FileReader<long, 1>;
-template class FileReader<float, 1>;
-template class FileReader<double, 1>;
-template class FileReader<unsigned char, 2>;
-template class FileReader<char, 2>;
-template class FileReader<unsigned short, 2>;
-template class FileReader<short, 2>;
-template class FileReader<unsigned int, 2>;
-template class FileReader<int, 2>;
-template class FileReader<unsigned long, 2>;
-template class FileReader<long, 2>;
-template class FileReader<float, 2>;
-template class FileReader<double, 2>;
-template class FileReader<unsigned char, 3>;
-template class FileReader<char, 3>;
-template class FileReader<unsigned short, 3>;
-template class FileReader<short, 3>;
-template class FileReader<unsigned int, 3>;
-template class FileReader<int, 3>;
-template class FileReader<unsigned long, 3>;
-template class FileReader<long, 3>;
-template class FileReader<float, 3>;
-template class FileReader<double, 3>;
-
-#ifdef BUILD_RASSUPPORT
-template class RasdamanReader<unsigned char, 1>;
-template class RasdamanReader<char, 1>;
-template class RasdamanReader<unsigned short, 1>;
-template class RasdamanReader<short, 1>;
-template class RasdamanReader<unsigned int, 1>;
-template class RasdamanReader<int, 1>;
-template class RasdamanReader<unsigned long, 1>;
-template class RasdamanReader<long, 1>;
-template class RasdamanReader<float, 1>;
-template class RasdamanReader<double, 1>;
-template class RasdamanReader<unsigned char, 2>;
-template class RasdamanReader<char, 2>;
-template class RasdamanReader<unsigned short, 2>;
-template class RasdamanReader<short, 2>;
-template class RasdamanReader<unsigned int, 2>;
-template class RasdamanReader<int, 2>;
-template class RasdamanReader<unsigned long, 2>;
-template class RasdamanReader<long, 2>;
-template class RasdamanReader<float, 2>;
-template class RasdamanReader<double, 2>;
-template class RasdamanReader<unsigned char, 3>;
-template class RasdamanReader<char, 3>;
-template class RasdamanReader<unsigned short, 3>;
-template class RasdamanReader<short, 3>;
-template class RasdamanReader<unsigned int, 3>;
-template class RasdamanReader<int, 3>;
-template class RasdamanReader<unsigned long, 3>;
-template class RasdamanReader<long, 3>;
-template class RasdamanReader<float, 3>;
-template class RasdamanReader<double, 3>;
-#endif

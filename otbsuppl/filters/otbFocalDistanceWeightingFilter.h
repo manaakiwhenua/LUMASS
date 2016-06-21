@@ -180,6 +180,8 @@ private:
   
 } // end namespace itk
 
+#include "otbFocalDistanceWeightingFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbFocalDistanceWeightingFilter.txx"
 #endif

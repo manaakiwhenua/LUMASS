@@ -151,6 +151,8 @@ private:
   
 } // end namespace itk
 
+#include "otbNeighbourhoodCountingFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbNeighbourhoodCountingFilter.txx"
 #endif

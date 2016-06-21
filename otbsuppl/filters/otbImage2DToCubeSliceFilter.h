@@ -129,6 +129,8 @@ protected:
 
 } // end of namespace otb
 
+#include "otbImage2DToCubeSliceFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbImage2DToCubeSliceFilter.txx"
 #endif

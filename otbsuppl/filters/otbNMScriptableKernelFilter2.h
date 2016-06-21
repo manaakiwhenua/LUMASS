@@ -60,26 +60,6 @@
 
 #include "otbsupplfilters_export.h"
 
-//namespace itk
-//{
-
-//class OTBSUPPLFILTERS_EXPORT KernelScript2ParserError : public ExceptionObject
-//{
-//public:
-//    KernelScript2ParserError();
-//    virtual ~KernelScript2ParserError() throw() {}
-
-//    KernelScript2ParserError(const char* file, unsigned int lineNumber);
-//    KernelScript2ParserError(const std::string& file, unsigned int lineNumber);
-
-//    KernelScript2ParserError & operator=(const KernelScript2ParserError& orig);
-
-//    itkTypeMacro(KernelScript2ParserError, ExceptionObject)
-//};
-
-//}
-
-
 namespace otb
 {
 /*! \class NMScriptableKernelFilter2
@@ -325,11 +305,11 @@ std::map<double, std::vector<std::map<std::string, std::vector<typename otb::NMS
 otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameImgValue;
 
 
+#include "otbNMScriptableKernelFilter2_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbNMScriptableKernelFilter2.txx"
 #endif
 
-
-//#endif
 
 #endif

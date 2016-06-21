@@ -59,25 +59,6 @@
 
 #include "otbsupplfilters_export.h"
 
-//namespace itk
-//{
-
-//class OTBSUPPLFILTERS_EXPORT KernelScriptParserError : public ExceptionObject
-//{
-//public:
-//    KernelScriptParserError();
-//    virtual ~KernelScriptParserError() throw() {}
-
-//    KernelScriptParserError(const char* file, unsigned int lineNumber);
-//    KernelScriptParserError(const std::string& file, unsigned int lineNumber);
-
-//    KernelScriptParserError & operator=(const KernelScriptParserError& orig);
-
-//    itkTypeMacro(KernelScriptParserError, ExceptionObject)
-//};
-
-//}
-
 
 namespace otb
 {
@@ -283,6 +264,8 @@ private:
 };
   
 } // end namespace itk
+
+#include "otbNMScriptableKernelFilter_ExplicitInst.h"
 
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbNMScriptableKernelFilter.txx"

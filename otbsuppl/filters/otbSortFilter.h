@@ -134,6 +134,8 @@ private:
 
 } // end namespace
 
+#include "otbSortFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbSortFilter.txx"
 #endif

@@ -153,6 +153,7 @@ private:
 template< class TInputImage, class TOutputImage>
 const std::string otb::CombineTwoFilter<TInputImage, TOutputImage>::ctx = "otb::CombineTwoFilter";
 
+#include "otbCombineTwoFilter_ExplicitInst.h"
 
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbCombineTwoFilter.txx"

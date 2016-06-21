@@ -112,6 +112,8 @@ private:
 
 } // end namespace
 
+#include "otbDEMSlopeAspectFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbDEMSlopeAspectFilter.txx"
 #endif

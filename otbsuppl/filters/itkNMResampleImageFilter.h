@@ -350,10 +350,10 @@ private:
   
 } // end namespace itk
   
+#include "itkNMResampleImageFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "itkNMResampleImageFilter.txx"
 #endif
-  
-//#endif
   
 #endif

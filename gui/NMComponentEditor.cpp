@@ -847,7 +847,7 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
         {
             obj->setProperty(propName.toStdString().c_str(), updatedValue);
             NMDebugAI(<< "object property updated - type '"
-                    << updatedValue.typeName() << "'" << endl);
+                    << updatedValue.typeName() << "'" << std::endl);
         }
     }
     else

@@ -114,6 +114,8 @@ private:
 template< class TInputImage, class TOutputImage>
 const std::string otb::SQLiteProcessor<TInputImage, TOutputImage>::ctx = "otb::SQLiteProcessor";
 
+#include "otbSQLiteProcessor_ExplicitInst.h"
+
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbSQLiteProcessor.txx"
 #endif

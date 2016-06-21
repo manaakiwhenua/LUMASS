@@ -124,6 +124,8 @@ private:
   
 } // end namespace itk
 
+#include "otbPotentialBasedAllocation_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbPotentialBasedAllocation.txx"
 #endif

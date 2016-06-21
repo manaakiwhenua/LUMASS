@@ -148,6 +148,8 @@ private:
   
 } // end namespace itk
 
+#include "otbProcessLUPotentials_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbProcessLUPotentials.txx"
 #endif

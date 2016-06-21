@@ -186,6 +186,7 @@ private:
 template< class TInputImage, class TOutputImage>
 const std::string otb::SumZonesFilter<TInputImage, TOutputImage>::ctx = "otb::SumZonesFilter";
 
+#include "otbSumZonesFilter_ExplicitInst.h"
 
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbSumZonesFilter.txx"

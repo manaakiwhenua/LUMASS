@@ -225,6 +225,8 @@ private :
 
 }//end namespace otb
 
+#include "otbRATBandMathImageFilter_ExplicitInst.h"
+
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbRATBandMathImageFilter.txx"
 #endif

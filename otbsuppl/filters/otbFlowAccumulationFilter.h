@@ -108,6 +108,8 @@ private:
 
 } // end namespace
 
+#include "otbFlowAccumulationFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbFlowAccumulationFilter.txx"
 #endif

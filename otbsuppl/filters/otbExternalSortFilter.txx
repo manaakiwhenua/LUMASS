@@ -229,7 +229,7 @@ void ExternalSortFilter<TInputImage, TOutputImage>
 
     if (chunknames.size() == 0)
     {
-        NMDebugAI(<< "Pre-sorting of image chunks failed or aborted!" << endl);
+        NMDebugAI(<< "Pre-sorting of image chunks failed or aborted!" << std::endl);
         NMDebugCtx(ctxExternalSortFilter, << "done!");
     }
 
@@ -245,11 +245,11 @@ void ExternalSortFilter<TInputImage, TOutputImage>
 
     if (sorted)
     {
-        NMDebugAI( << "ALL SORTED MATE !!!" << endl);
+        NMDebugAI( << "ALL SORTED MATE !!!" << std::endl);
     }
     else
     {
-        NMDebugAI( << "BACK TO THE DRAWING BOARD ... " << endl);
+        NMDebugAI( << "BACK TO THE DRAWING BOARD ... " << std::endl);
     }
 
     NMDebugCtx(ctxExternalSortFilter, << "done!")
@@ -314,9 +314,9 @@ ExternalSortFilter<TInputImage, TOutputImage>
     // VECTOR OF READERS FOR EACH IMAGE AND FOR EACH IMAGE CHUNK
     // ==============================================================
 
-    NMDebugAI(<< "============================" << endl);
+    NMDebugAI(<< "============================" << std::endl);
     NMDebugAI(<< "PREP WORK READERS & WRITERS" << std::endl);
-    NMDebugAI(<< "============================" << endl);
+    NMDebugAI(<< "============================" << std::endl);
 
     // ------------------------------------------------------
     // INIT READERS + other book keeping preparations
@@ -398,10 +398,10 @@ ExternalSortFilter<TInputImage, TOutputImage>
             imgChkBuffers.push_back(chkBuffers);
         }
     }
-    NMDebugAI(<< "maxsplitsize   = " << maxsplitsize << endl);
-    NMDebugAI(<< "splitsize      = " << splitsize << endl);
-    NMDebugAI(<< "numSplitSplits = " << numSplitSplits << endl);
-    NMDebug(<< endl);
+    NMDebugAI(<< "maxsplitsize   = " << maxsplitsize << std::endl);
+    NMDebugAI(<< "splitsize      = " << splitsize << std::endl);
+    NMDebugAI(<< "numSplitSplits = " << numSplitSplits << std::endl);
+    NMDebug(<< std::endl);
 
 
     // ------------------------------------------------------
@@ -434,9 +434,9 @@ ExternalSortFilter<TInputImage, TOutputImage>
     // FINE SORT
     // ==============================================================
 
-    NMDebugAI(<< "=========================" << endl);
+    NMDebugAI(<< "=========================" << std::endl);
     NMDebugAI(<< "FINE SORT ... " << std::endl);
-    NMDebugAI(<< "=========================" << endl);
+    NMDebugAI(<< "=========================" << std::endl);
     OutputImagePixelType tmp, val;
 
     int outputSplit = -1;
@@ -629,7 +629,7 @@ ExternalSortFilter<TInputImage, TOutputImage>
         outImg->SetBufferedRegion(region);
         outImg->Allocate();
 
-        //NMDebugAI(<< "writer #" << on << ": new out image..." << endl);
+        //NMDebugAI(<< "writer #" << on << ": new out image..." << std::endl);
         //outImg->Print(std::cout, itk::Indent(nmlog::nmindent));
 
         writers.at(on)->SetInput(outImg);
@@ -761,7 +761,7 @@ ExternalSortFilter<TInputImage, TOutputImage>
     itk::NMImageRegionSplitterMaxSize::Pointer splitter = itk::NMImageRegionSplitterMaxSize::New();
     int numSplits = splitter->GetNumberOfSplits(lpr, imagechunk);
 
-    NMDebugAI(<< "Pre-sorting " << numSplits << " chunks ..." << endl);
+    NMDebugAI(<< "Pre-sorting " << numSplits << " chunks ..." << std::endl);
 
     InputImageRegionType procRegion = lpr;
     for (int s=0; s < numSplits; ++s)

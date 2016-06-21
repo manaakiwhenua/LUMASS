@@ -154,6 +154,8 @@ private:
 template< class TInputImage, class TOutputImage>
 const std::string otb::UniqueCombinationFilter<TInputImage, TOutputImage>::ctx = "UniqueCombinationFilter";
 
+#include "otbUniqueCombinationFilter_ExplicitInst.h"
+
 #ifndef OTB_MANUAL_INSTANTIATION
 #include "otbUniqueCombinationFilter.txx"
 #endif

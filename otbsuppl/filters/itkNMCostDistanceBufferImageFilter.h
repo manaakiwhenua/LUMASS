@@ -428,9 +428,11 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 
 } //end namespace itk
 
+#include "itkNMCostDistanceBufferImageFilter_ExplicitInst.h"
 
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "itkNMCostDistanceBufferImageFilter.txx"
 #endif
+
 
 #endif

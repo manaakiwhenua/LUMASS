@@ -17,7 +17,7 @@
 #endif
 #endif
 
-#include "GUI_template_inst.h"
+//#include "GUI_template_inst.h"
 
 #ifdef DEBUG
     // required for LUMASS debug output

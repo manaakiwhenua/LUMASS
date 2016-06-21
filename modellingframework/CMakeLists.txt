@@ -22,6 +22,7 @@ INCLUDE_DIRECTORIES(
     ${gui_SOURCE_DIR}
     ${lumass_SOURCE_DIR}/utils/ITK
 	${lumass_SOURCE_DIR}
+    ${otbsuppl_core_SOURCE_DIR}
     ${OTB_INCLUDE_DIRS}
 )
 
@@ -110,10 +111,10 @@ IF(RASSUPPORT)
 ENDIF()
 
 add_definitions(-DNMModFrame_EXPORTS)
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
-#IF(NOT WIN32)
-#    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" -fno-implicit-templates)
-#ENDIF(NOT WIN32)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
+IF(NOT WIN32)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
+ENDIF(NOT WIN32)
 
 include(GenerateExportHeader)
 	# not quite sure whether we need the below

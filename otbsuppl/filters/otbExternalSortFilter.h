@@ -203,6 +203,8 @@ private:
 
 } // end namespace
 
+#include "otbExternalSortFilter_ExplicitInst.h"
+
 #ifndef ITK_MANUAL_INSTANTIATION
 #include "otbExternalSortFilter.txx"
 #endif

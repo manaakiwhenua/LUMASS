@@ -1042,6 +1042,23 @@ void NMSqlTableView::joinAttributes()
         {
             tarOtbTable = srcIt.value().first.GetPointer();
         }
+
+        // if this is a 'drag 'n' dropped' table (i.e. no layer table)
+        // the otb::SQLiteTable may not have been initialised,
+        // so we give it a chance here ...
+        if (tarOtbTable->GetDbConnection() == 0)
+        {
+            QString dbfn = this->mModel->database().databaseName();
+            if (!dbfn.isEmpty())
+            {
+                tarOtbTable->SetDbFileName(dbfn.toStdString());
+                if (tarOtbTable->openConnection())
+                {
+                    tarOtbTable->SetTableName(this->mModel->tableName().toStdString());
+                    bool allok = tarOtbTable->PopulateTableAdmin();
+                }
+            }
+        }
     }
     else
     {

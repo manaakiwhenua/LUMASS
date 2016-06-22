@@ -1637,6 +1637,11 @@ OtbModellerWin::selectSqliteTable(const QString &dbFileName)
     if (sqlTable->openConnection())
     {
         std::vector<std::string> tables = sqlTable->GetTableList();
+        if (tables.size() == 1)
+        {
+            return QString(tables[0].c_str());
+        }
+
         QStringList qtables;
         for (int i=0; i < tables.size(); ++i)
         {

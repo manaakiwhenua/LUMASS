@@ -207,7 +207,7 @@ if (${QT5_VERSION_STRING} VERSION_LESS "5.4.0")
 endif()
 
 # Qt5 requirement
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 
 message(STATUS "vtk definitions: ${VTK_DEFINITIONS}")
 

@@ -335,6 +335,10 @@ NMImageLayer::getWindowStatistics(void)
 
     vtkSmartPointer<vtkImageHistogramStatistics> stats =
             vtkSmartPointer<vtkImageHistogramStatistics>::New();
+    //unsigned int nthreads = std::max(stats->GetNumberOfThreads() - 2, 1);
+    stats->AutomaticBinningOn();
+    stats->SetNumberOfThreads(1);
+    stats->GenerateHistogramImageOff();
     stats->SetInputConnection(cast->GetOutputPort());
 
     stats->Update();

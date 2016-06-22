@@ -70,7 +70,6 @@
 #include "NMAggregateComponentItem.h"
 #include "NMComponentLinkItem.h"
 
-
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
 #include "otbSQLiteTable.h"
@@ -127,45 +126,49 @@
 // orfeo
 //#include "ImageReader.h"
 //#include "ImageDataWrapper.h"
-#include "itkTimeProbe.h"
-#include "itkIndent.h"
-#include "otbGDALRATImageFileReader.h"
-#include "otbImage.h"
-#include "itkShiftScaleImageFilter.h"
-#include "itkCastImageFilter.h"
-#include "itkPasteImageFilter.h"
+//#include "itkTimeProbe.h"
+//#include "itkIndent.h"
+//#include "otbGDALRATImageFileReader.h"
+//#include "otbImage.h"
+//#include "itkShiftScaleImageFilter.h"
+//#include "itkCastImageFilter.h"
+//#include "itkPasteImageFilter.h"
 //#include "otbRATBandMathImageFilter.h"
-#include "itkVTKImageExport.h"
-#include "otbAttributeTable.h"
-#include "otbStreamingRATImageFileWriter.h"
-#include "otbImageFileWriter.h"
-#include "otbImageFileReader.h"
-#include "itkExtractImageFilter.h"
-#include "itkObjectFactoryBase.h"
+//#include "itkVTKImageExport.h"
+//#include "otbAttributeTable.h"
+//#include "otbStreamingRATImageFileWriter.h"
+//#include "otbImageFileWriter.h"
+//#include "otbImageFileReader.h"
+//#include "itkExtractImageFilter.h"
+//#include "itkObjectFactoryBase.h"
 //#include "itkNMCostDistanceBufferImageFilter.h"
-#include "otbProcessLUPotentials.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "otbImageIOBase.h"
-#include "otbImage2DToCubeSliceFilter.h"
-#include "otbMetaDataKey.h"
-#include "itkMetaDataObject.h"
-#include "otbFocalDistanceWeightingFilter.h"
-#include "otbPotentialBasedAllocation.h"
-#include "itkArray2D.h"
-#include "itkRandomImageSource.h"
-#include "otbSortFilter.h"
-#include "otbImageRegionAdaptativeSplitter.h"
-#include "itkVectorContainer.h"
-#include "itkStreamingImageFilter.h"
-#include "otbMultiParser.h"
+//#include "otbProcessLUPotentials.h"
+//#include "itkRescaleIntensityImageFilter.h"
+//#include "otbImageIOBase.h"
+//#include "otbImage2DToCubeSliceFilter.h"
+//#include "otbMetaDataKey.h"
+//#include "itkMetaDataObject.h"
+//#include "otbFocalDistanceWeightingFilter.h"
+//#include "otbPotentialBasedAllocation.h"
+//#include "itkArray2D.h"
+//#include "itkRandomImageSource.h"
+//#include "otbSortFilter.h"
+//#include "otbImageRegionAdaptativeSplitter.h"
+//#include "itkVectorContainer.h"
+//#include "itkStreamingImageFilter.h"
+//#include "otbMultiParser.h"
 //#include "otbParserX.h"
-#include "mpParser.h"
+//#include "mpParser.h"
 
 // FOR ::test function
 //#include "itkFloodFilledImageFunctionConditionalIterator.h"
 //#include "itkBinaryThresholdImageFunction.h"
 //#include "otbDEMSlopeAspectFilter.h"
 //#include "otbFlowAccumulationFilter.h"
+//#include "otbSortFilter.h"
+//#include "otbExternalSortFilter.h"
+//#include "itkImageRegionSplitterMultidimensional.h"
+//#include "itkNMImageRegionSplitterMaxSize.h"
 
 // VTK
 #include "vtkNew.h"
@@ -238,14 +241,9 @@
 #include "vtkInformation.h"
 #include "vtkGeometryFilter.h"
 
-#include "otbSortFilter.h"
-#include "otbExternalSortFilter.h"
-#include "itkImageRegionSplitterMultidimensional.h"
-#include "itkNMImageRegionSplitterMaxSize.h"
 
-
-#include <sqlite3.h>
-#include "sqlite3extfunc.h"
+//#include <sqlite3.h>
+//#include "sqlite3extfunc.h"
 
 #include <QSqlTableModel>
 #include <QSqlDatabase>
@@ -1683,42 +1681,67 @@ OtbModellerWin::importTable(const QString& fileName,
         return 0;
     }
 
+    // initiate unique table identifier to the
+    // basename of the given filename (i.e. without
+    // path and extension
     NMSqlTableView* resview = 0;
     QString viewName = QString(vinfo.at(1).c_str());
+    // if we've got a table name given already (as picked
+    // by the user) we use that as table identifier
     if (!tableName.isEmpty())
     {
         viewName = tableName;
     }
+
+    // it could be that different DBs have a table with the
+    // same name, in that case we have to check the
+    // actual DB filename to see whether the table is actually
+    // the same
     int lfd = 1;
     if (mTableList.contains(QString(vinfo.at(1).c_str())))
     {
         bool dbpresent = false;
+
+        // in case we haven't got a tableName (and hence a filename)
+        // we create a filename from the filename info, otherwise ...
         QString ldbName = QString("%1/%2%3.ldb")
                             .arg(vinfo[0].c_str())
                             .arg(vinfo[1].c_str())
                             .arg(vinfo[2].c_str());
+        // ... we use the name we've got already
         if (!tableName.isEmpty())
         {
             ldbName = fileName;
         }
 
+        // now we go through our table repository to see whether it's not only the table name
+        // which we've got already but whether it is actually from the the database we'v already
+        // got in our list
         QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::const_iterator it =
                 mTableList.constBegin();
-
         while (it != mTableList.constEnd())
         {
             if (ldbName.compare(it.value().first->GetDbFileName().c_str(), Qt::CaseInsensitive) == 0)
             {
-                dbpresent = true;
-                break;
+                if (!tableName.isEmpty())
+                {
+                    if (tableName.compare(it.value().first->GetTableName().c_str(), Qt::CaseInsensitive) == 0)
+                    {
+                        dbpresent = true;
+                        break;
+                    }
+                }
             }
 
             ++it;
         }
 
         lfd++;
+        // depending on the type of table, we do treat things differently ...
+        // ... if we've got a standalone table ...
         if (tvType == NM_TABVIEW_STANDALONE)
         {
+            // ... and it has already been imported, we just raise it, ...
             if (dbpresent)
             {
 
@@ -1729,6 +1752,8 @@ OtbModellerWin::importTable(const QString& fileName,
                     resview->raise();
                     return resview;
             }
+            // ... otherwise we create a unique table name by numbering
+            // subsequent tables sharing the name of an already present db table
             else
             {
                 viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
@@ -1739,6 +1764,9 @@ OtbModellerWin::importTable(const QString& fileName,
                 }
             }
         }
+        // ... if we've got a parameter table, just strictly allow
+        // tables to share names, even if they're from different source
+        // DBs (might change in the future)
         else if (tvType == NM_TABVIEW_SCENE)
         {
             std::stringstream msg;
@@ -1753,6 +1781,8 @@ OtbModellerWin::importTable(const QString& fileName,
 
     sqlTable->SetUseSharedCache(false);
 
+    // now we either open the table or create a new table
+    // using the names and filenames just negotiated
     QString tablename = tableName;
     QString dbfilename = fileName;
     if (tableName.isEmpty())
@@ -1780,8 +1810,11 @@ OtbModellerWin::importTable(const QString& fileName,
         sqlTable->CloseTable();
     }
 
+    // we also create a unique connection name for our
+    // Qt-based connection
     QString conname = QString("%1_%2").arg(tablename).arg(lfd);
 
+    // create a proper low-level sqlite3 connection so, we can ...
 	sqlite3* tabconn = 0;
 	void* splCache = spatialite_alloc_connection();
 	int rc = ::sqlite3_open_v2(dbfilename.toStdString().c_str(), 
@@ -1800,12 +1833,18 @@ OtbModellerWin::importTable(const QString& fileName,
         return 0;
     }
 
+    // ... load the spatialite extension for extra functionality
     rc = sqlite3_enable_load_extension(tabconn, 1);
     spatialite_init_ex(tabconn, splCache, 1);
 
+    // use the 'hacked' (NM)QSQLiteDriver, so we
+    // can create a driver based on an existing sqilte3
+    // connection (with spatialite loaded) ...
     NMQSQLiteDriver* drv = new NMQSQLiteDriver(tabconn, 0);
+    // ... and establish the Qt-Db connection
     QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
 
+    // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
     // note: setting the db name here is just for reference purposes
     srcModel->setDatabaseName(dbfilename);
@@ -1833,7 +1872,6 @@ OtbModellerWin::importTable(const QString& fileName,
                         NMSqlTableView::NMTABVIEW_PARATABLE, 0)
                     );
     }
-
 
     tabview->setTitle(viewName);
     connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));

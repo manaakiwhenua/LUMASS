@@ -22,8 +22,6 @@
  *      Author: alex
  */
 
-#include "GUI_template_inst.h"
-
 #include "NMProcessFactory.h"
 #include "NMImageReader.h"
 #include "NMRATBandMathImageFilterWrapper.h"

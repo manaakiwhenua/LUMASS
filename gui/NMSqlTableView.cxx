@@ -915,106 +915,6 @@ void NMSqlTableView::joinAttributes()
 {
     NMDebugCtx(ctx, << "...");
 
-//    QString fileName = QFileDialog::getOpenFileName(this,
-//         tr("Select Source Attribute Table"), "~",
-//         //tr("Shapefile (*.shp *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
-//         tr("Delimited Text (*.csv *.txt);;dBASE (*.dbf);;Excel File (*.xls)"));
-//    if (fileName.isNull())
-//    {
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
-
-//    QString vttablename = mSortFilter->getRandomString(5);
-//    QString sourceFileName = fileName;
-
-//    std::stringstream ssql;
-
-//    if (fileName.endsWith(".csv") || fileName.endsWith(".txt"))
-//    {
-//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-//             << " USING VirtualText('" << sourceFileName.toStdString() << "', "
-//             << "'UTF-8', 1, POINT, DOUBLEQUOTE, ',')";
-//    }
-//    else if (fileName.endsWith(".shp") || fileName.endsWith(".shx"))
-//    {
-//        //        ssql << "Select ImportSHP('" << sourceFileName.toStdString() << "', "
-//        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
-//        QString filename = sourceFileName.left(sourceFileName.length()-4);
-//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-//             << " USING VirtualShape('" << fileName.toStdString() << "', "
-//             << "'UTF-8', -1)";
-//    }
-//    else if (fileName.endsWith(".dbf"))
-//    {
-//        //        ssql << "Select ('" << sourceFileName.toStdString() << "', "
-//        //             << "'" << vttablename.toStdString() << "', " << "'CP1252')";
-//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-//             << " USING VirtualDbf('" << sourceFileName.toStdString() << "', "
-//             << "'UTF-8')";
-//    }
-//    else if (fileName.endsWith(".xls"))
-//    {
-//        //        ssql << "Select ImportXLS('" << sourceFileName.toStdString() << "', "
-//        //             << "'" << vttablename.toStdString() << "')";
-//        ssql << "CREATE VIRTUAL TABLE " << vttablename.toStdString()
-//             << " USING VirtualXL('" << sourceFileName.toStdString() << "', 0, 1)";
-//    }
-//    else
-//    {
-//        NMErr(ctx, << "File format not supported!");
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
-
-//    QString tableName = mModel->tableName();
-//    mModel->clear();
-
-//    sqlite3* conn = 0;
-//    QVariant vDrv = mModel->database().driver()->handle();
-//    if (vDrv.isValid() && qstrcmp(v.typeName(), "sqlite3*") == 0)
-//    {
-//        conn = *satatic_cast<sqlite3**>(v.data());
-//    }
-
-//    int rc = sqlite3_exec()
-
-//    QSqlQuery vttabquery(mModel->database());
-    //vttabquery.exec(QString(ssql.str().c_str()));
-
-    //if (!mModel->database().tables().contains(vttablename))
-//    if (!vttabquery.exec(QString(ssql.str().c_str())))
-//    {
-//        NMErr(ctx, << vttabquery.lastError().text().toStdString());
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
-
-//    QScopedPointer<NMSqlTableModel> srcModel(new NMSqlTableModel(0, mModel->database()));
-//    srcModel->setTable(vttablename);
-//    srcModel->select();
-
-
-//    NMSqlTableView *resview = new NMSqlTableView(srcModel, this->parentWidget());
-//    resview->setWindowFlags(Qt::Window);
-//    resview->setTitle(vttablename);
-//    resview->show();
-
-
-
-    //	vtkSmartPointer<vtkDelimitedTextReader> tabReader =
-    //						vtkSmartPointer<vtkDelimitedTextReader>::New();
-
-    //	tabReader->SetFileName(fileName.toStdString().c_str());
-    //	tabReader->SetHaveHeaders(true);
-    //	tabReader->DetectNumericColumnsOn();
-    //    tabReader->SetTrimWhitespacePriorToNumericConversion(1);
-    //	tabReader->SetFieldDelimiterCharacters(",\t");
-    //	tabReader->Update();
-
-    //	QScopedPointer<vtkQtTableModelAdapter> srcModel(new vtkQtTableModelAdapter);
-    //	srcModel->setTable(tabReader->GetOutput());
-
     // ============================================================
     //          List of TABLES : names & models
     // ============================================================
@@ -1118,14 +1018,26 @@ void NMSqlTableView::joinAttributes()
 
     if (srcDbFileName.isEmpty())
     {
-        NMDebugCtx(ctx, << "done!");
-        return;
+        // if we couldn't get the dbfilename from the otb::SQLiteTable,
+        // we try the NMSqlTableModel, it should have it too ...
+        // (NOTE: this is the case for standalone tables draged into
+        // LUMASS
+        srcDbFileName = srcModel->getDatabaseName();
+
+        // however, if that didn't work either, we'd better
+        // bail out at this point ...
+        if (srcDbFileName.isEmpty())
+        {
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
     }
 
+    // get the target table (i.e. the one this view is based on)
     otb::SQLiteTable::Pointer tarOtbTable;
-    if (tableList.keys().contains(this->getLayerName()))
+    if (tableList.keys().contains(this->getTitle()))
     {
-        srcIt = tableList.find(this->windowTitle());
+        srcIt = tableList.find(this->getTitle());
         if (srcIt != tableList.end())
         {
             tarOtbTable = srcIt.value().first.GetPointer();

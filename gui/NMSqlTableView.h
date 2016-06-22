@@ -90,6 +90,7 @@ public:
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);
 	void setTitle(const QString& title) {this->setWindowTitle(title);}
+    QString getTitle(){return this->windowTitle();}
     void setBaseFilter(const QString& baseFilter)
         {mBaseFilter = baseFilter;}
 

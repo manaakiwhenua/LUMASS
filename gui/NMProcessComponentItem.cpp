@@ -244,13 +244,17 @@ void NMProcessComponentItem::setTitle(const QString& title)
 	if (!title.isEmpty())
 		this->mTitle = title;
 
-    if (title.contains(QString("Reader"), Qt::CaseInsensitive))
+    if (title.contains(QString("ImageReader"), Qt::CaseInsensitive))
     {
-        mIcon.load(":data-read-icon.png");
+        mIcon.load(":image-read.png");
     }
-    else if (title.contains(QString("Writer"), Qt::CaseInsensitive))
+    else if (title.contains(QString("ImageWriter"), Qt::CaseInsensitive))
     {
-        mIcon.load(":data-save-icon.png");
+        mIcon.load(":image-write.png");
+    }
+    else if (title.contains(QString("TableReader"), Qt::CaseInsensitive))
+    {
+        mIcon.load(":table-read.png");
     }
     else if (title.contains("DataBuffer", Qt::CaseInsensitive))
     {

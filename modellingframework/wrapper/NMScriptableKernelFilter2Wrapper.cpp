@@ -66,7 +66,7 @@ public:
     {
         //InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        filter->SetInput(idx, dataObj);
+        filter->SetFilterInput(idx, dataObj);
     }
 
 
@@ -152,7 +152,7 @@ public:
             f->SetKernelScript(curKernelScript);
         }
 
-        QVariant curKernelShapeVar = p->getParameter("KernelShape");
+        QVariant curKernelShapeVar = p->getParameter("KernelShapeType");
         std::string curKernelShape;
         if (curKernelShapeVar.isValid())
         {

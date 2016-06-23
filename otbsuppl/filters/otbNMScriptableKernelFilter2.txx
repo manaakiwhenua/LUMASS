@@ -192,6 +192,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     itk::ProcessObject::SetNthInput(idx, dataObj);
 }
 
+template <class TInputImage, class TOutputImage>
 void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
 ::setRAT(unsigned int idx, AttributeTable::Pointer table)

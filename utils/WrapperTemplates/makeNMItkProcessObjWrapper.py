@@ -412,7 +412,7 @@ def formatInternalStdSetNthInput():
     "    static void setNthInput(itk::ProcessObject::Pointer& otbFilter,\n"                     \
     "                    unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)\n"  \
     "    {\n"                                                                                   \
-    "        //InImgType* img = dynamic_cast<InImgType*>(dataObj);\n"                             \
+    "        InImgType* img = dynamic_cast<InImgType*>(dataObj);\n"                             \
     "        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());\n"         \
     "        filter->SetInput(idx, dataObj);\n"                                                     \
     "    }\n"                                                                                   \

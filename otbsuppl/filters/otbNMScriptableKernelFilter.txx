@@ -120,7 +120,7 @@ void
 NMScriptableKernelFilter<TInputImage, TOutputImage>
 ::Reset()
 {
-    m_KernelShape = "Square";
+    m_KernelShape = "SQUARE";
     m_ActiveKernelOffsets.clear();
 
     m_PixelCounter = 0;

@@ -57,7 +57,7 @@ NMTableReader::setNthInput(unsigned int numInput,
 }
 
 QSharedPointer<NMItkDataObjectWrapper>
-NMExternalExecWrapper::getOutput(unsigned int idx)
+NMTableReader::getOutput(unsigned int idx)
 {
     QSharedPointer<NMItkDataObjectWrapper> dw(new NMItkDataObjectWrapper());
     dw->setOTBTab(mTable);
@@ -114,10 +114,10 @@ NMTableReader::update(void)
         }
         else
         {
-            sqltab->SetDbFileName(mCurFileName);
+            sqltab->SetDbFileName(mCurFileName.toStdString());
             if (sqltab->openConnection())
             {
-                sqltab->SetTableName(mCurTableName);
+                sqltab->SetTableName(mCurTableName.toStdString());
                 if (sqltab->PopulateTableAdmin())
                 {
                     success = true;

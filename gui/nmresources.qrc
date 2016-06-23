@@ -24,5 +24,9 @@
         <file alias="SQLite_Logo_4.png">resources/SQLite_Logo_4.png</file>
         <file alias="table_object.png">resources/table_object.png</file>
         <file alias="table_object_invisible.png">resources/table_object_invisible.png</file>
+        <file alias="image-read.png">resources/image-read.png</file>
+        <file alias="image-write.png">resources/image-write.png</file>
+        <file alias="table-read.png">resources/table-read.png</file>
+        <file alias="table-write.png">resources/table-write.png</file>
     </qresource>
 </RCC>

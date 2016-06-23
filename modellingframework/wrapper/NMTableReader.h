@@ -37,8 +37,8 @@ class NMMODFRAME_EXPORT NMTableReader : public NMProcess
 {
     Q_OBJECT
 
-    Q_PROPERTY(QStringList FileNames READ getFileName WRITE setFileName)
-    Q_PROPERTY(QStringList TableNames READ getTableName WRITE setTableName)
+    Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
+    Q_PROPERTY(QStringList TableNames READ getTableNames WRITE setTableNames)
 
 public:
 

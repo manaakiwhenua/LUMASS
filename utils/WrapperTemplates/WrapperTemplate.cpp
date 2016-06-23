@@ -107,6 +107,8 @@ public:
 	}
 };
 
+/*$<HelperClassInstantiation>$*/
+
 InstantiateObjectWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
 SetNthInputWrap( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )
 /*$<GetOutPutWrap>$*/( /*$<WrapperClassName>$*/, /*$<WrapperClassName>$*/_Internal )

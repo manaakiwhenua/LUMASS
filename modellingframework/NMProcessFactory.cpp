@@ -39,6 +39,7 @@
 #include "NMSQLiteProcessorWrapper.h"
 #include "NMScriptableKernelFilterWrapper.h"
 #include "NMScriptableKernelFilter2Wrapper.h"
+#include "NMTableReader.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -63,7 +64,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("SQLProcessor");
     mProcRegister << QString::fromLatin1("MapKernelScript");
     mProcRegister << QString::fromLatin1("MapKernelScript2");
-
+    mProcRegister << QString::fromLatin1("TableReader");
 
     mSinks << QString::fromLatin1("ImageWriter");
     mSinks << QString::fromLatin1("CostDistanceBuffer");
@@ -168,6 +169,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMScriptableKernelFilter2Wrapper";
     }
+    else if (alias.compare("TableReader") == 0)
+    {
+        return "NMTableReader";
+    }
     else return proc;
 }
 
@@ -240,6 +245,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMScriptableKernelFilter2Wrapper") == 0)
     {
         proc = new NMScriptableKernelFilter2Wrapper(this);
+    }
+    else if (procClass.compare("NMTableReader") == 0)
+    {
+        proc = new NMTableReader(this);
     }
     else
         proc =  0;

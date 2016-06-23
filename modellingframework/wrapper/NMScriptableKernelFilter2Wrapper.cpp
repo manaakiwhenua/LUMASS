@@ -18,7 +18,7 @@
 /*
  *  NMScriptableKernelFilter2Wrapper.cpp
  *
- *  Created on: 2016-05-22
+ *  Created on: 2016-06-23
  *      Author: Alexander Herzig
  */
 
@@ -66,7 +66,7 @@ public:
     {
         //InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        filter->SetFilterInput(idx, dataObj);
+        filter->SetInput(idx, dataObj);
     }
 
 
@@ -80,7 +80,7 @@ public:
 /*$<InternalRATGetSupport>$*/
 
     static void setRAT(
-        itk::ProcessObject::Pointer& procObj,
+        itk::ProcessObject::Pointer& procObj, 
         unsigned int numBands, unsigned int idx,
         otb::AttributeTable::Pointer& rat)
     {
@@ -89,15 +89,16 @@ public:
     }
 
 
+
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
 			unsigned int numBands, NMProcess* proc,
 			unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 	{
-        NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "...");
+		NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "...");
 
 		FilterType* f = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        NMScriptableKernelFilter2Wrapper* p =
-                dynamic_cast<NMScriptableKernelFilter2Wrapper*>(proc);
+		NMScriptableKernelFilter2Wrapper* p =
+				dynamic_cast<NMScriptableKernelFilter2Wrapper*>(proc);
 
 		// make sure we've got a valid filter object
 		if (f == 0)
@@ -151,22 +152,12 @@ public:
             f->SetKernelScript(curKernelScript);
         }
 
-        //QVariant curKernelShapeVar = p->getParameter("KernelShapeType");
-        //std::string curKernelShape;
-        //if (curKernelShapeVar.isValid())
+        QVariant curKernelShapeVar = p->getParameter("KernelShape");
+        std::string curKernelShape;
+        if (curKernelShapeVar.isValid())
         {
-           //curKernelShape = curKernelShapeVar.toString().toStdString();
-           f->SetKernelShape(p->getKernelShapeType().toStdString());
-        }
-
-        QVariant curNumThreads = p->getParameter("NumThreads");
-        if (curNumThreads.isValid())
-        {
-            unsigned int numThreads = curNumThreads.toUInt(&bok);
-            if (bok)
-            {
-                f->SetNumberOfThreads(numThreads);
-            }
+           curKernelShape = curKernelShapeVar.toString().toStdString();
+            f->SetKernelShape(curKernelShape);
         }
 
         QVariant curOutputVarNameVar = p->getParameter("OutputVarName");
@@ -231,7 +222,7 @@ public:
 	    f->SetInputNames(userIDs);
 
 
-        NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "done!");
+		NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "done!");
 	}
 };
 
@@ -544,14 +535,17 @@ LinkInternalParametersWrap( NMScriptableKernelFilter2Wrapper, NMScriptableKernel
 /*$<RATGetSupportWrap>$*/
 SetRATWrap( NMScriptableKernelFilter2Wrapper, NMScriptableKernelFilter2Wrapper_Internal )
 
+
 NMScriptableKernelFilter2Wrapper
 ::NMScriptableKernelFilter2Wrapper(QObject* parent)
 {
 	this->setParent(parent);
-    this->setObjectName("NMScriptableKernelFilter2Wrapper");
+	this->setObjectName("NMScriptableKernelFilter2Wrapper");
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 
-    mKernelShapeEnum << "Square" << "Circle";
+    mKernelShapeType = QString(tr("RECTANGULAR"));
+    mKernelShapeEnum.clear();
+    mKernelShapeEnum << "RECTANGULAR" << "CIRCULAR";
 }
 
 NMScriptableKernelFilter2Wrapper

@@ -1,0 +1,30 @@
+# LUMASS otb::NMScriptableKernelFilter wrapper profile
+# recognised (filter variable) types: double, long, long long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+
+Year                        = 2016
+WrapperClassName            = NMScriptableKernelFilter2Wrapper
+FileDate                    = 2016-06-23
+Author                      = Alexander Herzig
+FilterClassFileName         = otbNMScriptableKernelFilter2
+FilterTypeDef               = otb::NMScriptableKernelFilter2<InImgType, OutImgType>
+NumTemplateArgs             = 2
+RATGetSupport               = 0
+RATSetSupport               = 1
+ForwardInputUserIDs         = SetInputNames
+Property_1                  = Radius:2:int:int
+Property_2                  = KernelScript:1:string
+Property_3                  = KernelShape:1:string
+Property_4                  = OutputVarName:1:string
+Property_5                  = Nodata:1:double
+

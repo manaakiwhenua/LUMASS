@@ -18,7 +18,7 @@ def buildDict(profileFile):
     keys = ["Year", "WrapperClassName", "FileDate", "Author", 
             "FilterClassFileName", "FilterTypeDef",
             "RATGetSupport", "RATSetSupport",
-            "ForwardInputUserIDs"]
+            "ForwardInputUserIDs", "NumTemplateArgs"]
 
     pdict = {}
     # initialise list elements
@@ -486,6 +486,42 @@ def formatRATSetSupportDecl():
         "        QSharedPointer<NMItkDataObjectWrapper> imgWrapper);\n"
     return s
 
+
+# ===============================================================================
+def formatInternalHelperInst(clname, nargs):
+    '''
+    explicit instantiation of the templated internal
+    helper class to set the filters parameters
+    during pipeline execution
+
+    '''
+
+    dt1 = ['unsigned char', 'char', 'unsigned short', 'short', \
+           'unsigned int', 'int', 'unsigned long', 'long', \
+           'float', 'double']
+    dt2 = dt1
+
+    classname = clname + "_Internal"
+    ndim = 3
+    instStr = ''
+    if nargs == 1:
+        for dim in range(1, int(ndim)+1):
+            for t1 in dt1:
+                inst = "template class %s<%s, %s>;\n"   \
+                     % (classname, t1, dim)
+                instStr = instStr + inst
+
+    elif nargs == 2:
+        for dim in range(1, int(ndim)+1):
+            for t1 in dt1:
+                for t2 in dt2:
+                    inst = "template class %s<%s, %s, %s>;\n"   \
+                         % (classname, t1, t2, dim)
+                    instStr = instStr + inst
+
+    return instStr
+
+
 # ===============================================================================
 if __name__ == '__main__':
     '''
@@ -659,6 +695,14 @@ if __name__ == '__main__':
                     cppStr = cppStr.replace("/*$<ForwardInputUserIDs_Include>$*/", '#include \"NMModelController.h\"')
                     forwardUserIDsStr = formatForwardInputUserIDs(pDict['ForwardInputUserIDs'])
                     cppStr = cppStr.replace("/*$<ForwardInputUserIDs_Body>$*/", forwardUserIDsStr)
+
+            elif key == 'NumTemplateArgs':
+                nargs = int(pDict[key])
+                clname = pDict['WrapperClassName']
+
+                if nargs > 0 and clname <> '':
+                    helpinst = formatInternalHelperInst(clname, nargs)
+                    cppStr = cppStr.replace("/*$<HelperClassInstantiation>$*/", helpinst)
 
             else:
                 keyword = "/*$<%s>$*/" % str(key)

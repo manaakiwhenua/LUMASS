@@ -545,7 +545,9 @@ NMScriptableKernelFilterWrapper
 	this->setObjectName("NMScriptableKernelFilterWrapper");
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 
-    mKernelShapeEnum << "Square" << "Circle";
+    mKernelShapeType = QString(tr("RECTANGULAR"));
+    mKernelShapeEnum.clear();
+    mKernelShapeEnum << "RECTANGULAR" << "CIRCULAR";
 }
 
 NMScriptableKernelFilterWrapper

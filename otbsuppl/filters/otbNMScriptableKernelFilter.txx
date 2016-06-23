@@ -63,32 +63,6 @@
 
 #include <algorithm>
 
-//namespace itk
-//{
-
-//KernelScriptParserError::KernelScriptParserError()
-//    : ExceptionObject()
-//{}
-
-//KernelScriptParserError::KernelScriptParserError(const char* file, unsigned int lineNumber)
-//    : ExceptionObject(file, lineNumber)
-//{}
-
-
-//KernelScriptParserError::KernelScriptParserError(const std::string& file, unsigned int lineNumber)
-//    : ExceptionObject(file, lineNumber)
-//{}
-
-//KernelScriptParserError &
-//KernelScriptParserError::operator=(const KernelScriptParserError& orig)
-//{
-//    ExceptionObject::operator=(orig);
-//    return *this;
-//}
-
-//}
-
-
 namespace otb
 {
 

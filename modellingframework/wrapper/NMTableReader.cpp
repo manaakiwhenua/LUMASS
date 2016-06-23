@@ -144,6 +144,7 @@ NMTableReader::update(void)
         sstr << " from '" << mCurFileName.toStdString() << "'!";
 
         exc.setMsg(sstr.str());
+        mTable = 0;
         NMDebugCtx(ctx, << "done!");
         throw exc;
     }

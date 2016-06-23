@@ -18,27 +18,23 @@
 /*
  * NMScriptableKernelFilter2Wrapper.h
  *
- *  Created on: 2016-05-22
+ *  Created on: 2016-06-23
  *      Author: Alexander Herzig
  */
 
 #ifndef NMScriptableKernelFilter2Wrapper_H_
 #define NMScriptableKernelFilter2Wrapper_H_
 
-#include <string>
-#include <iostream>
-#include <QStringList>
-#include <QList>
-
-
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
+#include <string>
+#include <iostream>
+#include <QStringList>
+#include <QList>
 #include "nmmodframe_export.h"
-
-
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMScriptableKernelFilter2Wrapper_Internal;
@@ -52,10 +48,10 @@ NMScriptableKernelFilter2Wrapper
     
     Q_PROPERTY(QList<QStringList> Radius READ getRadius WRITE setRadius)
     Q_PROPERTY(QStringList KernelScript READ getKernelScript WRITE setKernelScript)
-    Q_PROPERTY(QStringList OutputVarName READ getOutputVarName WRITE setOutputVarName)
-    Q_PROPERTY(QStringList Nodata READ getNodata WRITE setNodata)
     Q_PROPERTY(QString KernelShapeType READ getKernelShapeType WRITE setKernelShapeType)
     Q_PROPERTY(QStringList KernelShapeEnum READ getKernelShapeEnum)
+    Q_PROPERTY(QStringList OutputVarName READ getOutputVarName WRITE setOutputVarName)
+    Q_PROPERTY(QStringList Nodata READ getNodata WRITE setNodata)
     Q_PROPERTY(QString NumThreads READ getNumThreads WRITE setNumThreads)
 
 public:
@@ -68,6 +64,7 @@ public:
     NMPropertyGetSet( KernelShapeType, QString )
     NMPropertyGetSet( KernelShapeEnum, QStringList )
     NMPropertyGetSet( NumThreads, QString )
+
 
 public:
     NMScriptableKernelFilter2Wrapper(QObject* parent=0);
@@ -84,21 +81,22 @@ public:
 
     /*$<RATGetSupportDecl>$*/
 
-    void setRAT(unsigned int idx,
+    void setRAT(unsigned int idx, 
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+
 
 protected:
     void linkParameters(unsigned int step,
     		const QMap<QString, NMModelComponent*>& repo);
 
-    
+    QString mNumThreads;
+
     QList<QStringList> mRadius;
     QStringList mKernelScript;
     QStringList mOutputVarName;
     QStringList mNodata;
     QString mKernelShapeType;
     QStringList mKernelShapeEnum;
-    QString mNumThreads;
 
 };
 

@@ -110,6 +110,11 @@ public:
     /// SQLite support functions
     void SetUseSharedCache(bool shared) {m_bUseSharedCache = shared;}
     void SetOpenReadOnly(bool readonly) {m_bOpenReadOnly = readonly;}
+    bool SetTableName(const std::string& tableName);
+    bool SetDbFileName(const std::string& dbFileName);
+
+    bool openConnection();
+    void disconnectDB();
     TableCreateStatus CreateTable(std::string filename, std::string tag="");
     bool CreateFromVirtual(const std::string& fileName, const std::string& encoding =
             "UTF-8", const int& srid = -1);
@@ -154,10 +159,6 @@ public:
 
     /// more 'free-style' sql support
     std::vector<std::string> GetTableList(void);
-    bool openConnection();
-    void disconnectDB();
-    bool SetTableName(const std::string& tableName);
-    bool SetDbFileName(const std::string& dbFileName);
     bool SqlExec(const std::string& sqlstr);
     bool AttachDatabase(const std::string &fileName, const std::string& dbName);
     bool DetachDatabase(const std::string& dbName);

@@ -1048,14 +1048,21 @@ void NMSqlTableView::joinAttributes()
         // so we give it a chance here ...
         if (tarOtbTable->GetDbConnection() == 0)
         {
-            QString dbfn = this->mModel->database().databaseName();
+            NMSqlTableModel* nmModel = qobject_cast<NMSqlTableModel*>(mModel);
+            QString dbfn = nmModel->getDatabaseName();
             if (!dbfn.isEmpty())
             {
                 tarOtbTable->SetDbFileName(dbfn.toStdString());
                 if (tarOtbTable->openConnection())
                 {
-                    tarOtbTable->SetTableName(this->mModel->tableName().toStdString());
-                    bool allok = tarOtbTable->PopulateTableAdmin();
+                    tarOtbTable->SetTableName(mModel->tableName().toStdString());
+                    if (!tarOtbTable->PopulateTableAdmin())
+                    {
+                        NMBoxErr("Joining attributes failed!",
+                                 "Internal initialisation of target table failed!");
+                        return;
+                        NMDebugCtx(ctx, << "done!");
+                    }
                 }
             }
         }

@@ -160,6 +160,8 @@ public:
 
   void SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj);
 
+  void setRAT(unsigned int idx, AttributeTable::Pointer table);
+
 
   /** The neighbourhood counting filter needs a larger input requested region than
    * the output requested region.
@@ -256,6 +258,8 @@ private:
   std::string m_OutputVarName;
 
   std::vector<std::string> m_DataNames;
+  std::vector<otb::AttributeTable::Pointer> m_TableStore;
+  std::vector<std::string> m_TableNames;
 
   OutputPixelType m_Nodata;
 

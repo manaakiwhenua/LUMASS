@@ -79,7 +79,14 @@ public:
 
 /*$<InternalRATGetSupport>$*/
 
-/*$<InternalRATSetSupport>$*/
+    static void setRAT(
+        itk::ProcessObject::Pointer& procObj,
+        unsigned int numBands, unsigned int idx,
+        otb::AttributeTable::Pointer& rat)
+    {
+        FilterType *f = dynamic_cast<FilterType*>(procObj.GetPointer());
+        return f->setRAT(idx, rat);
+    }
 
 
     static void internalLinkParameters(itk::ProcessObject::Pointer& otbFilter,
@@ -535,7 +542,7 @@ SetNthInputWrap( NMScriptableKernelFilter2Wrapper, NMScriptableKernelFilter2Wrap
 GetOutputWrap( NMScriptableKernelFilter2Wrapper, NMScriptableKernelFilter2Wrapper_Internal )
 LinkInternalParametersWrap( NMScriptableKernelFilter2Wrapper, NMScriptableKernelFilter2Wrapper_Internal )
 /*$<RATGetSupportWrap>$*/
-/*$<RATSetSupportWrap>$*/
+SetRATWrap( NMScriptableKernelFilter2Wrapper, NMScriptableKernelFilter2Wrapper_Internal )
 
 NMScriptableKernelFilter2Wrapper
 ::NMScriptableKernelFilter2Wrapper(QObject* parent)

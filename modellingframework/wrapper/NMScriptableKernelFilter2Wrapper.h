@@ -84,7 +84,8 @@ public:
 
     /*$<RATGetSupportDecl>$*/
 
-    /*$<RATSetSupportDecl>$*/
+    void setRAT(unsigned int idx,
+        QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
 protected:
     void linkParameters(unsigned int step,

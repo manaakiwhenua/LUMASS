@@ -190,6 +190,32 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 ::SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj)
 {
     itk::ProcessObject::SetNthInput(idx, dataObj);
+}
+
+void
+NMScriptableKernelFilter2<TInputImage, TOutputImage>
+::setRAT(unsigned int idx, AttributeTable::Pointer table)
+{
+    m_TableStore.push_back(table);
+    std::string name = "";
+
+    // here we rely on the fact that the NMProcess wrapper
+    // class links parameters (i.e. DataNames) before it
+    // links input data (i.e. images and tables);
+    // furthermore, if an image with an associated RAT is
+    // provided, we've got only one name associated with it
+    // (since the UserID of the reader component is forwarded,
+    // so we just append '_t' to the image name, to distinguish
+    // between the two in the parser formula
+    if (idx < m_DataNames.size())
+    {
+        name = m_DataNames.at(idx);
+        if (idx < this->GetNumberOfIndexedInputs())
+        {
+            name += "_t";
+        }
+        m_TableNames.push_back(name);
+    }
     this->Modified();
 }
 
@@ -261,6 +287,15 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
             m_thid.push_back(th);
 
+        }
+
+        // we append the table store into the filter's input
+        // as we do for the associated data names
+        int numImages = this->GetNumberOfIndexedInputs();
+        for (int t=0; t < m_TableStore.size(); ++t)
+        {
+            this->SetFilterInput(numImages+t, m_TableStore.at(t));
+            m_DataNames.push_back(m_TableNames.at(t));
         }
 
         // update input data

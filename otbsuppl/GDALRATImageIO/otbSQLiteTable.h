@@ -126,6 +126,8 @@ public:
     std::string GetDbFileName() {return this->m_dbFileName;}
     std::string GetTableName() {return this->m_tableName;}
     std::vector<std::string> GetFilenameInfo(const std::string& fileName);
+    long long GetMinPKValue();
+    long long GetMaxPKValue();
 
     sqlite3* GetDbConnection() {return this->m_db;}
 

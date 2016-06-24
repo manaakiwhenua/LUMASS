@@ -97,6 +97,9 @@ public:
     long long GetIntValue(int col, long long row);
     std::string GetStrValue(int col, long long row);
 
+    long long GetMinPKValue();
+    long long GetMaxPKValue();
+
 	bool RemoveColumn(int col);
 	bool RemoveColumn(const std::string& name);
 

@@ -608,6 +608,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
             {
                 int ncols = tab->GetNumCols();
                 int nrows = tab->GetNumRows();
+                int col = 0;
+                int row = 0;
+
 
                 // note: access is rows, columns
                 std::vector<std::vector<ParserValue> > tableCache(ncols);

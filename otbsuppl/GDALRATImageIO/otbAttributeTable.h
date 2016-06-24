@@ -121,6 +121,8 @@ public:
     long long GetIntNodata(void) {return m_iNodata;}
     std::string GetStrNodata(void) {return m_sNodata;}
     std::string GetPrimaryKey() {return this->m_idColName;}
+    virtual long long GetMinPKValue() = 0;
+    virtual long long GetMaxPKValue() = 0;
 
 
     virtual bool RemoveColumn(int col) = 0;

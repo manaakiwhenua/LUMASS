@@ -547,8 +547,6 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 			{
 				NMModelComponent*& ic =
 						const_cast<NMModelComponent*&>(it.value());
-                //NMIterableComponent* procComp = qobject_cast<NMIterableComponent*>(ic);
-                //NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(ic);
 
                 // note: we're linking anything here! It means the user is responsible for deciding
                 //       whether or not it is a good idea to build a pipeline across timelevels or
@@ -557,37 +555,64 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                           << ic->objectName().toStdString()
                           << "[" << outIdx << "] ... " << std::endl);
 
-                // when we've got a process component here, we give it the
-                // opportunity to put itself in order and link in
-                //                if (procComp != 0 && !procComp->getProcess()->isInitialised())
-                //                {
-                //                    // since we're on the same time level, we can safely ask
-                //                    // the input process to link itself into the pipeline
-                //                    procComp->getProcess()->linkInPipeline(inputstep, repo);
-                //                }
-                //                else //if (dataComp == 0)
+                // making sure the input component is linked-up
                 ic->linkComponents(inputstep, repo);
 
-
                 QSharedPointer<NMItkDataObjectWrapper> iw = ic->getOutput(outIdx);
-                if (iw.isNull() || iw->getDataObject() == 0)
+                bool bInvalidOutput = true;
+                stringstream ss;
+                ss << ic->objectName().toStdString() << "::getOutput("
+                   << outIdx << ") ";
+
+                // we set whatever 'data' is available from the input component
+                // as input to this process; only if nothing is available, we
+                // throw an exception
+                if (!iw.isNull())
+                {
+                    if (iw->getDataObject() != 0)
+                    {
+                        this->setNthInput(ii, iw);
+                        bInvalidOutput = false;
+                        NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString()
+                                  << " (DataObject)" << std::endl);
+                    }
+                    else
+                    {
+                        ss << " yields an invalid DataObject";
+                    }
+
+                    if (iw->getOTBTab().IsNotNull())
+                    {
+                        // note: this method does nothing, if it is not reimplemented by the subclass
+                        this->setRAT(ii, iw);
+                        bInvalidOutput = false;
+                        NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString()
+                                  << " (AttributeTable)" << std::endl);
+                    }
+                    else
+                    {
+                        if (bInvalidOutput)
+                        {
+                            ss << " and an invalid AttributeTable!" << std::endl;
+                        }
+                        else
+                        {
+                            ss << " yields an invalid AttributeTable!" << std::endl;
+                        }
+                    }
+                }
+                else
+                {
+                    ss << "has not been initialised!" << std::endl;
+                }
+
+                if (bInvalidOutput)
                 {
                     NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-                    stringstream ss;
-                    ss << ic->objectName().toStdString() << "::getOutput("
-                       << outIdx << ") has not been initialised!" << endl;
                     e.setMsg(ss.str());
                     NMDebugCtx(ctxNMProcess, << "done!");
                     throw e;
                 }
-
-                // since we're on the same time level, we're in pipeline here
-                // connect output to input
-                this->setNthInput(ii, iw);//ic->getOutput(outIdx));
-                NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString() << std::endl);
-
-                // note: this method does nothing, if it is not reimplemented by the subclass
-                this->setRAT(ii, iw);
             }
             else
             {

@@ -1939,6 +1939,45 @@ SQLiteTable::GetIntValue(int col, long long row)
     return ret;
 }
 
+long long
+SQLiteTable::GetMinPKValue()
+{
+    if (m_db == 0)
+    {
+        return m_iNodata;
+    }
+
+    long long ret = m_iNodata;
+    std::stringstream ssql;
+    ssql << "SELECT min(" << m_idColName << ") from "
+         << m_tableName;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                                -1, &stmt, 0);
+    if (sqliteError(rc, &stmt))
+    {
+        sqlite3_finalize(stmt);
+        return ret;
+    }
+
+
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        ret = sqlite3_column_int64(stmt, 0);
+    }
+
+    sqlite3_finalize(stmt);
+    return ret;
+
+}
+
+long long
+SQLiteTable::GetMaxPKValue()
+{
+
+}
+
 std::string SQLiteTable::GetStrValue(int col, long long row)
 {
     if (col < 0 || col >= m_vNames.size())
@@ -2263,18 +2302,18 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
 		}
 	}
 
-    m_tableName = tmp;//vinfo[1];
+    m_tableName = tmp;
     std::string ext = vinfo[2];
 
     std::string vname = "vt_";
     vname += m_tableName;
 
     // ------------------------------
-    // create the database
+    // create / open *.ldb database
     // ----------------------------
     m_dbFileName = vinfo[0];
     m_dbFileName += "/";
-    m_dbFileName += m_tableName;//GetRandomString(5);
+    m_dbFileName += m_tableName;
     m_dbFileName += ext;
     m_dbFileName += ".ldb";
 
@@ -2284,7 +2323,8 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         return false;
     }
 
-
+    // if we've got a m_tableName set, we see
+    // whether we can find it in the database ...
     if (FindTable(m_tableName))
     {
         NMDebugAI(<< "There's already a table '" << m_tableName
@@ -2292,7 +2332,6 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         PopulateTableAdmin();
         return true;
     }
-
 
     std::stringstream ssql;
     ssql << "CREATE VIRTUAL TABLE " << vname << " USING ";

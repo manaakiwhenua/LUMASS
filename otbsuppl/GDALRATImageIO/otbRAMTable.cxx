@@ -194,6 +194,18 @@ bool RAMTable::AddRow()
 	return true;
 }
 
+long long
+RAMTable::GetMinPKValue()
+{
+    return 0;
+}
+
+long long
+RAMTable::GetMaxPKValue()
+{
+    return this->GetNumRows()-1;
+}
+
 void
 RAMTable::SetValue(const std::string& sColName, long long idx, double value)
 {

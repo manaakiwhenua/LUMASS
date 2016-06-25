@@ -1940,7 +1940,7 @@ SQLiteTable::GetIntValue(int col, long long row)
 }
 
 long long
-SQLiteTable::GetMinPKValue()
+SQLiteTable::GetMinMaxPKValue(bool bmax)
 {
     if (m_db == 0)
     {
@@ -1949,7 +1949,17 @@ SQLiteTable::GetMinPKValue()
 
     long long ret = m_iNodata;
     std::stringstream ssql;
-    ssql << "SELECT min(" << m_idColName << ") from "
+    ssql << "SELECT ";
+    if (bmax)
+    {
+        ssql << "max(";
+    }
+    else
+    {
+        ssql << "min(";
+    }
+
+    ssql << m_idColName << ") from "
          << m_tableName;
 
     sqlite3_stmt* stmt;
@@ -1972,11 +1982,20 @@ SQLiteTable::GetMinPKValue()
 
 }
 
+
 long long
 SQLiteTable::GetMaxPKValue()
 {
-
+    return GetMinMaxPKValue(true);
 }
+
+
+long long
+SQLiteTable::GetMinPKValue()
+{
+    return GetMinMaxPKValue(false);
+}
+
 
 std::string SQLiteTable::GetStrValue(int col, long long row)
 {

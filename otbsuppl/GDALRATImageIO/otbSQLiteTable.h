@@ -238,6 +238,7 @@ protected:
 
     void createPreparedColumnStatements(const std::string& colname);
     void resetTableAdmin();
+    long long GetMinMaxPKValue(bool bmax);
 
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
     inline void sqliteStepCheck(const int& rc);

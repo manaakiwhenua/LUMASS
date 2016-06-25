@@ -1548,10 +1548,14 @@ void OtbModellerWin::aboutLUMASS(void)
             << "LUMASS builds on the following open source libraries " << endl
             << "Qt " << _lumass_qt_version << " - http://www.qt.io/" << endl
             << "OTB " << _lumass_otb_version << " - https://www.orfeo-toolbox.org/" << endl
+            << "ITK " << _lumass_itk_version << " - http://www.itk.org/" << endl
             << "VTK " << _lumass_vtk_version << " - http://www.vtk.org/ " << endl
-            << "GDAL " << _lumass_gdal_version << " - http://www.gdal.org/ " << endl
             << "lp_solve 5.5 - http://sourceforge.net/projects/lpsolve/ " << endl
+            << "GDAL " << _lumass_gdal_version << " - http://www.gdal.org/ " << endl
             << "SQLite " << _lumass_sqlite_version << " - http://www.sqlite.org" << endl
+            << "Spatialite - https://www.gaia-gis.it/fossil/libspatialite/index" << endl
+            << "MuParser 2.2.5 - http://beltoforion.de/article.php?a=muparser" << endl
+            << "MuParserX 4.0.7 - http://beltoforion.de/article.php?a=muparserx" << endl
 #ifdef BUILD_RASSUPPORT
   #ifdef PACKAGE_STRING
             << PACKAGE_STRING

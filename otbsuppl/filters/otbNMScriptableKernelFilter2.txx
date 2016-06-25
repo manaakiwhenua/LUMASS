@@ -411,6 +411,14 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
             }
         }
 
+        std::map<std::string, std::vector<std::vector<ParserValue> > >::iterator tabIter =
+                m_mapNameTable[m_This].begin();
+        while(tabIter != m_mapNameTable[m_This].end())
+        {
+            parser->DefineStrConst(tabIter->first, tabIter->first);
+            ++tabIter;
+        }
+
         // we also need to define a variable for the output image
         //parser->DefineVar(m_OutputVarName, &m_vOutputValue[th]);
 
@@ -606,11 +614,15 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
             // just copy the content into a matrix type mup::Value
             if (tab != 0 && m_mapNameTable[m_This].find(name) == m_mapNameTable[m_This].end())
             {
-                int ncols = tab->GetNumCols();
-                int nrows = tab->GetNumRows();
-                int col = 0;
-                int row = 0;
+                // the row, maxrow thing below is weired, I know, but it's because otb::SQLiteTable's row index
+                // (i.e. primary key) is not necessarily in the range [0, nrows-1]; however
+                // we do assume that it is stored in 1-increments; if not, we get (nodata) values
 
+                int minrow = tab->GetMinPKValue();
+                int maxrow = tab->GetMaxPKValue();
+                int nrows = maxrow - minrow + 1;
+
+                int ncols = tab->GetNumCols();
 
                 // note: access is rows, columns
                 std::vector<std::vector<ParserValue> > tableCache(ncols);
@@ -618,24 +630,27 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                 for (int col = 0; col < ncols; ++col)
                 {
                     std::vector<ParserValue> colCache(nrows);
-                    for (int row=0; row < nrows; ++row)
+                    for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
                     {
                         switch(tab->GetColumnType(col))
                         {
                         case AttributeTable::ATTYPE_INT:
                         {
-                            const long long lv = tab->GetIntValue(col, row);
-                            if (lv < static_cast<long long>(itk::NumericTraits<ParserValue>::NonpositiveMin()))
+                            const double lv = static_cast<ParserValue>(tab->GetIntValue(col, row));
+                            if (lv < (itk::NumericTraits<ParserValue>::NonpositiveMin()))
                             {
                                 ++underflows;
                             }
-                            else if (lv > static_cast<long long>(itk::NumericTraits<ParserValue>::max()))
+                            else if (lv > (std::numeric_limits<ParserValue>::max()))
                             {
-                                ++overflows;
+                                //long long lmax = static_cast<long long>(std::numeric_limits<ParserValue>::max());
+                                //if (lv > lmax)
+                                    ++overflows;
+                                //else
                             }
                             else
                             {
-                                colCache[row] = static_cast<ParserValue>(lv);
+                                colCache[rowidx] = static_cast<ParserValue>(lv);
                             }
                         }
                             break;
@@ -646,18 +661,18 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                             {
                                 ++underflows;
                             }
-                            else if (dv > static_cast<double>(itk::NumericTraits<ParserValue>::max()))
+                            else if (dv > static_cast<double>(std::numeric_limits<ParserValue>::max()))
                             {
                                 ++overflows;
                             }
                             else
                             {
-                                colCache[row] = static_cast<ParserValue>(dv);
+                                colCache[rowidx] = static_cast<ParserValue>(dv);
                             }
                         }
                             break;
                         case AttributeTable::ATTYPE_STRING:
-                            colCache[row] = nv;
+                            colCache[rowidx] = nv;
                             break;
                         }
                     }

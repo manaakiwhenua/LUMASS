@@ -52,7 +52,7 @@ NMScriptableKernelFilter2Wrapper
     Q_PROPERTY(QStringList KernelShapeEnum READ getKernelShapeEnum)
     Q_PROPERTY(QStringList OutputVarName READ getOutputVarName WRITE setOutputVarName)
     Q_PROPERTY(QStringList Nodata READ getNodata WRITE setNodata)
-    Q_PROPERTY(QString NumThreads READ getNumThreads WRITE setNumThreads)
+    Q_PROPERTY(unsigned int NumThreads READ getNumThreads WRITE setNumThreads)
 
 public:
 
@@ -63,7 +63,7 @@ public:
     NMPropertyGetSet( Nodata, QStringList )
     NMPropertyGetSet( KernelShapeType, QString )
     NMPropertyGetSet( KernelShapeEnum, QStringList )
-    NMPropertyGetSet( NumThreads, QString )
+    NMPropertyGetSet( NumThreads, unsigned int )
 
 
 public:
@@ -89,7 +89,7 @@ protected:
     void linkParameters(unsigned int step,
     		const QMap<QString, NMModelComponent*>& repo);
 
-    QString mNumThreads;
+    unsigned int mNumThreads;
 
     QList<QStringList> mRadius;
     QStringList mKernelScript;

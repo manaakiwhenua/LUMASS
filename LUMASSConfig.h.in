@@ -27,7 +27,8 @@
 
  // underpinning libraries
  #define LUMASS_QT_VERSION "@QT5_VERSION_STRING@"
- #define LUMASS_OTB_VERSION "@OTB_VERSION_STRING@"
+ #define LUMASS_OTB_VERSION "@LUMASS_OTB_VERSION@"
+ #define LUMASS_ITK_VERSION "@LUMASS_ITK_VERSION@"
  #define LUMASS_GDAL_VERSION "@GDAL_VERSION@"
  #define LUMASS_VTK_VERSION "@VTK_VERSION_STRING@"
  #define LUMASS_SQLITE_VERSION "@NM_SQLite_VERSION@"
@@ -43,6 +44,7 @@
 
  const char _lumass_qt_version[] = LUMASS_QT_VERSION;
  const char _lumass_otb_version[] = LUMASS_OTB_VERSION;
+ const char _lumass_itk_version[] = LUMASS_ITK_VERSION;
  const char _lumass_gdal_version[] = LUMASS_GDAL_VERSION;
  const char _lumass_vtk_version[] = LUMASS_VTK_VERSION;
  const char _lumass_sqlite_version[] = LUMASS_SQLITE_VERSION;

@@ -23,7 +23,7 @@ FIND_PATH(SPATIALITE_INCLUDE_DIR spatialite.h
         ${OSGEO4W_ROOT}
         "c:/opt"
         "c:/build"
-    DOC "Path to Tokyo Cabient include directory"
+    DOC "Path to Spatialite include directory"
 )
 
 if(WIN32)

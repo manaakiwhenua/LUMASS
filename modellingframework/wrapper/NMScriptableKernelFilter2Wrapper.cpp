@@ -22,8 +22,11 @@
  *      Author: Alexander Herzig
  */
 
+#include <algorithm>
+
 #include "NMScriptableKernelFilter2Wrapper.h"
 #include "nmlog.h"
+
 #include "NMMacros.h"
 #include "NMMfwException.h"
 #include "NMModelController.h"
@@ -113,7 +116,11 @@ public:
 		bool bok;
 		int givenStep = step;
 
-		
+        unsigned int nthreads = std::max(p->getNumThreads(), (unsigned int)1);
+        unsigned int maxthreads = f->GetNumberOfThreads();
+        f->SetNumberOfThreads(std::min(nthreads, maxthreads));
+
+
         QVariant curRadiusVar = p->getParameter("Radius");
         if (curRadiusVar.isValid())
         {
@@ -546,6 +553,7 @@ NMScriptableKernelFilter2Wrapper
     mKernelShapeType = QString(tr("RECTANGULAR"));
     mKernelShapeEnum.clear();
     mKernelShapeEnum << "RECTANGULAR" << "CIRCULAR";
+    mNumThreads = QThread::idealThreadCount() < 0 ? (unsigned int)1 : (unsigned int)QThread::idealThreadCount();
 }
 
 NMScriptableKernelFilter2Wrapper

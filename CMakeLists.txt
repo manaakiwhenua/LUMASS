@@ -169,6 +169,10 @@ endif(NOT OTB_FOUND)
 SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
 message(STATUS "found OTB ${LUMASS_OTB_VERSION}")
 
+if(ITK_FOUND)
+    SET(LUMASS_ITK_VERSION "${ITK_VERSION_MAJOR}.${ITK_VERSION_MINOR}.${ITK_VERSION_PATCH}")
+    message(STATUS "found ITK ${LUMASS_ITK_VERSION}")
+endif(ITK_FOUND)
 #====================================================================
 # VTK 
 #====================================================================

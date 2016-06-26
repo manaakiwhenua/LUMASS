@@ -745,6 +745,21 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     }
     m_NumNeighbourPixel = m_NumNeighbourPixel == 1 ? 0 : m_NumNeighbourPixel;
 
+    m_NumPixels = -1;
+    InputImageType* inputPtr = 0;
+
+    int cnt = 0;
+    while (m_NumPixels < 0 && cnt < this->GetNumberOfIndexedInputs())
+    {
+        inputPtr = dynamic_cast<InputImageType*>(
+                        this->GetIndexedInputs().at(cnt).GetPointer());
+        if (inputPtr != 0)
+        {
+            this->m_NumPixels = inputPtr->GetLargestPossibleRegion().GetNumberOfPixels();
+        }
+        ++cnt;
+    }
+
     // no need to pad the input requested region,
     // if we're not operating on a kernel
     if (!m_NumNeighbourPixel)
@@ -754,7 +769,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     for (int ip=0; ip < this->GetNumberOfIndexedInputs(); ++ip)
     {
-        InputImageType* inputPtr = dynamic_cast<InputImageType*>(
+        inputPtr = dynamic_cast<InputImageType*>(
                     this->GetIndexedInputs().at(ip).GetPointer());
 
         if (inputPtr == 0)
@@ -766,11 +781,6 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         // requested region)
         typename TInputImage::RegionType inputRequestedRegion;
         inputRequestedRegion = inputPtr->GetRequestedRegion();
-
-        if (ip == 0)
-        {
-            this->m_NumPixels = inputPtr->GetLargestPossibleRegion().GetNumberOfPixels();
-        }
 
         // pad the input requested region by the operator radius
         inputRequestedRegion.PadByRadius( m_Radius );

@@ -47,6 +47,9 @@
 #ifdef BUILD_RASSUPPORT
     #include "RasdamanConnector.hh"
 #endif
+
+#include "otbgdalratimageio_export.h"
+
 namespace otb
 {
 
@@ -67,7 +70,7 @@ namespace otb
  *
  */
 template <class TOutputImage>
-class ITK_EXPORT NMImageReader : public otb::ImageFileReader<TOutputImage>
+class OTBGDALRATIMAGEIO_EXPORT NMImageReader : public otb::ImageFileReader<TOutputImage>
 {
 public:
   /** Standard class typedefs. */

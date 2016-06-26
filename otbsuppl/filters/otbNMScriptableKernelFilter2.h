@@ -87,7 +87,7 @@ namespace otb
  *
  */
 template <class TInputImage, class TOutputImage>
-class ITK_EXPORT NMScriptableKernelFilter2 :
+class OTBSUPPLFILTERS_EXPORT NMScriptableKernelFilter2 :
     public itk::ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:

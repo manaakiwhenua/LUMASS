@@ -292,6 +292,17 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 					}
 				}
 
+                // just have a look, whether this component has no inputs,
+                // as for example a non itk::Process-based Process component,
+                // such as TableReader, which
+                // still provides an itk::DataObject as input to a 'normal'
+                // process component
+                if (comp->getInputs().size() == 0)
+                {
+                    bnotexplored = false;
+                }
+
+
 				if (bnotexplored)
 				{
 					QStringList upstreamUpstreamPipe;

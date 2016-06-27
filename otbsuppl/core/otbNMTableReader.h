@@ -28,7 +28,6 @@
 
 #include "itkProcessObject.h"
 
-#include "otbAttributeTable.h"
 #include "otbsupplfilters_export.h"
 
 namespace otb
@@ -41,19 +40,27 @@ public:
     typedef itk::ProcessObject             Superclass;
     typedef itk::SmartPointer< Self >      Pointer;
     typedef itk::SmartPointer< const Self> ConstPointer;
+    //typedef typename Self::DataObjectPointerArraySizeType DataObjectPointerArraySizeType;
 
+    itkNewMacro(Self)
     itkTypeMacro(NMTableReader, Superclass)
 
     itkGetMacro(FileName, std::string)
     itkSetMacro(FileName, std::string)
 
+    itkGetMacro(TableName, std::string)
+    itkSetMacro(TableName, std::string)
+
     DataObjectPointer MakeOutput(DataObjectPointerArraySizeType idx);
     void GenerateData();
 
 protected:
+    NMTableReader();
+    ~NMTableReader();
 
     std::string m_FileName;
     std::string m_TableName;
+
 
 };
 

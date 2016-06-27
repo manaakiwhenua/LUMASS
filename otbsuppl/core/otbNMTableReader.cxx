@@ -26,8 +26,71 @@
 #ifndef otbNMTableReader_CXX_
 #define otbNMTableReader_CXX_
 
+#include "itkProcessObject.h"
+
 #include "otbNMTableReader.h"
 #include "otbAttributeTable.h"
 #include "otbSQLiteTable.h"
 
-#endif
+namespace otb {
+
+NMTableReader::NMTableReader()
+    : m_FileName(""), m_TableName("")
+{
+}
+
+NMTableReader::~NMTableReader()
+{
+}
+
+
+itk::ProcessObject::DataObjectPointer
+NMTableReader::MakeOutput(DataObjectPointerArraySizeType idx)
+{
+    return static_cast<itk::DataObject*>(SQLiteTable::New().GetPointer());
+}
+
+void
+NMTableReader::GenerateData()
+{
+    SQLiteTable::Pointer tab = static_cast<SQLiteTable*>(this->GetOutput(0));
+
+    if (m_FileName.empty())
+    {
+        itkExceptionMacro("No filename specified!")
+        return;
+    }
+
+    if (m_TableName.empty())
+    {
+        if (!tab->CreateFromVirtual(m_FileName))
+        {
+            itkExceptionMacro("Failed reading table '"
+                              << m_FileName << "'!")
+            return;
+        }
+    }
+    else
+    {
+        tab->SetDbFileName(m_FileName);
+        if (!tab->openConnection())
+        {
+            itkExceptionMacro("Couldn't establish connection "
+                              << " to '" << m_FileName << "'!");
+            return;
+        }
+
+        tab->SetTableName(m_TableName);
+        if (!tab->PopulateTableAdmin())
+        {
+            itkExceptionMacro("Failed reading table data!");
+            return;
+        }
+    }
+}
+
+
+}   // namespace
+
+
+#endif // include guard

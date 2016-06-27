@@ -16,186 +16,91 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * NMTableReader.h
+ *  NMTableReader.cpp
  *
- *  Created on: 2016-06-23
- *  Author: Alexander Herzig
+ *  Created on: 2016-06-28
+ *      Author: Alexander Herzig
  */
 
-#include <QVariant>
-#include <QSharedPointer>
-
-#include "nmlog.h"
-#include "NMMfwException.h"
 #include "NMTableReader.h"
+#include "nmlog.h"
+#include "NMMacros.h"
+#include "NMMfwException.h"
+
+#include "itkProcessObject.h"
+#include "otbImage.h"
 #include "otbSQLiteTable.h"
+#include "otbNMTableReader.h"
 
 
-const std::string NMTableReader::ctx = "NMTableReader";
-NMTableReader::NMTableReader(QObject* parent)
-    : mCurFileName(""), mCurTableName(""),
-      mOldFileName("")
+NMTableReader
+::NMTableReader(QObject* parent)
 {
-    this->setParent(parent);
-    this->setObjectName(QString::fromLatin1("NMTableReader"));
+	this->setParent(parent);
+	this->setObjectName("NMTableReader");
+	this->mParameterHandling = NMProcess::NM_USE_UP;
 }
 
-NMTableReader::~NMTableReader()
+NMTableReader
+::~NMTableReader()
 {
 }
 
 void
-NMTableReader::instantiateObject(void)
+NMTableReader::instantiateObject()
 {
+    otb::NMTableReader::Pointer tr = otb::NMTableReader::New();
+    mOtbProcess = tr;
     this->mbIsInitialised = true;
 }
 
 void
-NMTableReader::setNthInput(unsigned int numInput,
-          QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
+NMTableReader::linkParameters(unsigned int step, const QMap<QString, NMModelComponent *> &repo)
 {
+    otb::NMTableReader* f = static_cast<otb::NMTableReader*>(mOtbProcess.GetPointer());
+
+    QVariant curFileNameVar = getParameter("FileName");
+    std::string curFileName;
+    if (curFileNameVar.isValid())
+    {
+       curFileName = curFileNameVar.toString().toStdString();
+        f->SetFileName(curFileName);
+    }
+
+    QVariant curTableNameVar = getParameter("TableName");
+    std::string curTableName;
+    if (curTableNameVar.isValid())
+    {
+       curTableName = curTableNameVar.toString().toStdString();
+        f->SetTableName(curTableName);
+    }
 }
 
 QSharedPointer<NMItkDataObjectWrapper>
 NMTableReader::getOutput(unsigned int idx)
 {
+    if (!this->mbIsInitialised)
+    {
+        NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        QString hostName = "";
+        if (this->parent() != 0)
+            hostName = this->parent()->objectName();
+        QString msg = QString::fromLatin1("%1: NMTableReader::getOutput(%2) failed - Object not initialised!")
+                .arg(hostName).arg(idx);
+        e.setMsg(msg.toStdString());
+        throw e;
+    }
+
+    otb::NMTableReader* reader = static_cast<otb::NMTableReader*>(mOtbProcess.GetPointer());
+    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(reader->GetOutput(0));
+
+
     QSharedPointer<NMItkDataObjectWrapper> dw(new NMItkDataObjectWrapper());
-    dw->setOTBTab(mTable);
+    dw->setOTBTab(tab);
+
     return dw;
 }
 
 
-void
-NMTableReader::update(void)
-{
-    NMDebugCtx(ctx, << "...");
-
-    QString objName = this->parent()->objectName();
-    emit signalExecutionStarted(objName);
-
-    // =====================================================
-    //              do some table magic
-    // =====================================================
-    // currently, we're just working with
-    // otb::SQLiteTables
-
-    otb::SQLiteTable::Pointer sqltab;
-    bool success = false;
-
-    // if we've got already a table object and the paramters
-    // haven't changed, we just try to repopulate ...
-    if (mTable.IsNotNull())
-    {
-        sqltab = static_cast<otb::SQLiteTable*>(mTable.GetPointer());
-
-        // check, whether anything has changed
-        if (    mCurFileName.compare(mOldFileName, Qt::CaseSensitive) == 0
-            &&  mCurTableName.compare(sqltab->GetTableName().c_str(), Qt::CaseInsensitive) == 0
-           )
-        {
-            // if not, we just repopulate the table admin, just to make sure ...
-            if (sqltab->PopulateTableAdmin())
-            {
-                success = true;
-            }
-        }
-    }
-    // ... however, if that's not the case, we just create a new object
-    //     and read again
-    else
-    {
-        sqltab = otb::SQLiteTable::New();
-        if (mCurTableName.isEmpty())
-        {
-            if (sqltab->CreateFromVirtual(mCurFileName.toStdString()))
-            {
-                success = true;
-            }
-        }
-        else
-        {
-            sqltab->SetDbFileName(mCurFileName.toStdString());
-            if (sqltab->openConnection())
-            {
-                sqltab->SetTableName(mCurTableName.toStdString());
-                if (sqltab->PopulateTableAdmin())
-                {
-                    success = true;
-                }
-            }
-        }
-    }
-
-    // in case something didn't go to plan, throw an exception
-    if (!success)
-    {
-        NMMfwException exc(NMMfwException::NMProcess_ExecutionError);
-
-        std::stringstream sstr;
-        sstr << this->objectName().toStdString() << " failed reading ";
-        if (!mCurTableName.isEmpty())
-        {
-            sstr << "'" << mCurTableName.toStdString() << "'";
-        }
-        else
-        {
-            sstr << "table data";
-        }
-        sstr << " from '" << mCurFileName.toStdString() << "'!";
-
-        exc.setMsg(sstr.str());
-        mTable = 0;
-        NMDebugCtx(ctx, << "done!");
-        throw exc;
-    }
-
-    mTable = sqltab;
-
-    emit signalExecutionStopped(objName);
-
-    this->mbLinked = false;
-    NMDebugCtx(ctx, << "done!");
-}
-
-
-void
-NMTableReader::linkParameters(unsigned int step,
-                    const QMap<QString, NMModelComponent*>& repo)
-{
-    NMDebugCtx(ctx, << "...");
-
-    QVariant qvFileName = this->getParameter(QString::fromLatin1("FileNames"));
-    if (qvFileName.type() != QVariant::String)
-    {
-        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-        std::stringstream msg;
-        msg << "'" << this->objectName().toStdString() << "'";
-        e.setMsg(msg.str());
-        NMDebugCtx(ctx, << "done!");
-        throw e;
-    }
-    else
-    {
-        mOldFileName = mCurFileName;
-        mCurFileName = qvFileName.toString();
-    }
-
-    QVariant qvTableName = this->getParameter(QString::fromLatin1("TableNames"));
-    if (qvTableName.type() != QVariant::String)
-    {
-        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-        std::stringstream msg;
-        msg << "'" << this->objectName().toStdString() << "'";
-        e.setMsg(msg.str());
-        NMDebugCtx(ctx, << "done!");
-        throw e;
-    }
-    else
-    {
-        mCurTableName = qvTableName.toString();
-    }
-
-    NMDebugCtx(ctx, << "done!")
-}
 
 

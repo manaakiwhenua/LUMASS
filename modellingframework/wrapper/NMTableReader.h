@@ -18,32 +18,39 @@
 /*
  * NMTableReader.h
  *
- *  Created on: 2016-06-23
- *  Author: Alexander Herzig
+ *  Created on: 2016-06-28
+ *      Author: Alexander Herzig
  */
 
 #ifndef NMTableReader_H_
 #define NMTableReader_H_
 
-#include <QObject>
-
+#include "nmlog.h"
+#include "NMMacros.h"
 #include "NMProcess.h"
-#include "otbAttributeTable.h"
 #include "NMItkDataObjectWrapper.h"
 
+#include <string>
+#include <iostream>
+#include <QStringList>
+#include <QList>
 #include "nmmodframe_export.h"
 
-class NMMODFRAME_EXPORT NMTableReader : public NMProcess
+class
+NMTableReader
+		: public NMProcess
 {
-    Q_OBJECT
+	Q_OBJECT
 
-    Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
-    Q_PROPERTY(QStringList TableNames READ getTableNames WRITE setTableNames)
+    
+    Q_PROPERTY(QStringList FileName READ getFileName WRITE setFileName)
+    Q_PROPERTY(QStringList TableName READ getTableName WRITE setTableName)
 
 public:
 
-    NMPropertyGetSet( FileNames, QStringList )
-    NMPropertyGetSet( TableNames, QStringList )
+    
+    NMPropertyGetSet( FileName, QStringList )
+    NMPropertyGetSet( TableName, QStringList )
 
 public:
     NMTableReader(QObject* parent=0);
@@ -53,32 +60,19 @@ public:
     void instantiateObject(void);
 
     void setNthInput(unsigned int numInput,
-              QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
+              QSharedPointer<NMItkDataObjectWrapper> imgWrapper){}
 
-    void linkParameters(unsigned int step,
-                        const QMap<QString, NMModelComponent*>& repo);
-
-    void update(void);
+    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
 
 
 protected:
+    void linkParameters(unsigned int step,
+    		const QMap<QString, NMModelComponent*>& repo);
 
-    QStringList mFileNames;
-    QStringList mTableNames;
-
-    QString mCurFileName;
-    QString mOldFileName;
-    QString mCurTableName;
-
-    otb::AttributeTable::Pointer mTable;
-
-    bool mbUpdate;
-
-private:
-
-    static const std::string ctx;
+    
+    QStringList mFileName;
+    QStringList mTableName;
 
 };
 
-
-#endif // include guard
+#endif /* NMTableReader_H_ */

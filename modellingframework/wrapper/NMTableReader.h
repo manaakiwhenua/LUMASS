@@ -25,15 +25,17 @@
 #ifndef NMTableReader_H_
 #define NMTableReader_H_
 
+#include <string>
+#include <iostream>
+#include <QStringList>
+#include <QList>
+#include <QSharedPointer>
+
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include <string>
-#include <iostream>
-#include <QStringList>
-#include <QList>
 #include "nmmodframe_export.h"
 
 class
@@ -61,9 +63,6 @@ public:
 
     void setNthInput(unsigned int numInput,
               QSharedPointer<NMItkDataObjectWrapper> imgWrapper){}
-
-    QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
-
 
 protected:
     void linkParameters(unsigned int step,

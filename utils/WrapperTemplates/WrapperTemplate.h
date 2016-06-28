@@ -25,15 +25,16 @@
 #ifndef /*$<WrapperClassName>$*/_H_
 #define /*$<WrapperClassName>$*/_H_
 
+#include <string>
+#include <iostream>
+#include <QStringList>
+#include <QList>
+
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include <string>
-#include <iostream>
-#include <QStringList>
-#include <QList>
 #include "nmmodframe_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>

@@ -22,13 +22,16 @@
  *      Author: Alexander Herzig
  */
 
+#include "itkProcessObject.h"
+#include "otbImage.h"
+
 #include "NMTableReader.h"
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
+#include "NMItkDataObjectWrapper.h"
 
-#include "itkProcessObject.h"
-#include "otbImage.h"
+
 #include "otbSQLiteTable.h"
 #include "otbNMTableReader.h"
 
@@ -36,8 +39,7 @@
 NMTableReader
 ::NMTableReader(QObject* parent)
 {
-	this->setParent(parent);
-	this->setObjectName("NMTableReader");
+	this->setParent(parent);	this->setObjectName("NMTableReader");
 	this->mParameterHandling = NMProcess::NM_USE_UP;
 }
 
@@ -92,7 +94,7 @@ NMTableReader::getOutput(unsigned int idx)
     }
 
     otb::NMTableReader* reader = static_cast<otb::NMTableReader*>(mOtbProcess.GetPointer());
-    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(reader->GetOutput(0));
+    otb::AttributeTable::Pointer tab = static_cast<otb::AttributeTable*>(reader->GetOutput());
 
 
     QSharedPointer<NMItkDataObjectWrapper> dw(new NMItkDataObjectWrapper());

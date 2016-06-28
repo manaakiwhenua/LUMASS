@@ -23,13 +23,15 @@
  */
 
 #include "/*$<WrapperClassName>$*/.h"
+
+#include "itkProcessObject.h"
+#include "otbImage.h"
+
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
 /*$<ForwardInputUserIDs_Include>$*/
 
-#include "itkProcessObject.h"
-#include "otbImage.h"
 #include "/*$<FilterClassFileName>$*/.h"
 
 /*! Internal templated helper class linking to the core otb/itk filter

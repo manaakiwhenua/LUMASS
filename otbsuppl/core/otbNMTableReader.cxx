@@ -89,6 +89,12 @@ NMTableReader::GenerateData()
     }
 }
 
+itk::DataObject*
+NMTableReader::GetOutput(unsigned int idx)
+{
+    return static_cast<otb::SQLiteTable*>(this->ProcessObject::GetOutput(0));
+}
+
 
 }   // namespace
 

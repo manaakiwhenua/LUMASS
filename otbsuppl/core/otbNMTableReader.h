@@ -27,6 +27,7 @@
 #define otbNMTableReader_H_
 
 #include "itkProcessObject.h"
+#include "itkDataObject.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -53,6 +54,8 @@ public:
 
     DataObjectPointer MakeOutput(DataObjectPointerArraySizeType idx);
     void GenerateData();
+
+    itk::DataObject* GetOutput(unsigned int idx=0);
 
 protected:
     NMTableReader();

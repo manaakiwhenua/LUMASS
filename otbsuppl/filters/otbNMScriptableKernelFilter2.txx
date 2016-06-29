@@ -197,26 +197,28 @@ void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
 ::setRAT(unsigned int idx, AttributeTable::Pointer table)
 {
-    m_TableStore.push_back(table);
-    std::string name = "";
-
-    // here we rely on the fact that the NMProcess wrapper
+    // NOTE: here we rely on the fact that the NMProcess wrapper
     // class links parameters (i.e. DataNames) before it
     // links input data (i.e. images and tables);
     // furthermore, if an image with an associated RAT is
     // provided, we've got only one name associated with it
     // (since the UserID of the reader component is forwarded,
-    // so we just append '_t' to the image name, to distinguish
-    // between the two in the parser formula
-    if (idx < m_DataNames.size())
+    // and stored in m_DataNames), so we just append '_t' to the
+    // image name, to distinguish between the two in the parser formula
+
+    std::vector<std::string>::iterator nameIt = m_DataNames.begin();
+    if (idx == this->GetNumberOfIndexedInputs()-1)
     {
-        name = m_DataNames.at(idx);
-        if (idx < this->GetNumberOfIndexedInputs())
-        {
-            name += "_t";
-        }
-        m_TableNames.push_back(name);
+        std::string name = m_DataNames.at(idx);
+        name += "_t";
+        m_DataNames.insert(nameIt+idx+1, name);
+        this->SetFilterInput(idx+1, table.GetPointer());
     }
+    else
+    {
+        this->SetFilterInput(idx, table.GetPointer());
+    }
+
     this->Modified();
 }
 
@@ -230,7 +232,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     typename InputImageType::SizeValueType refSize[TInputImage::ImageDimension];
     for (int i=0; i < this->GetNumberOfIndexedInputs(); ++i)
     {
-        InputImageType* img = static_cast<InputImageType*>(this->GetIndexedInputs().at(i).GetPointer());
+        InputImageType* img = dynamic_cast<InputImageType*>(this->GetIndexedInputs().at(i).GetPointer());
         if (img != 0)
         {
             if (fstImg == 0)
@@ -288,15 +290,6 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
             m_thid.push_back(th);
 
-        }
-
-        // we append the table store into the filter's input
-        // as we do for the associated data names
-        int numImages = this->GetNumberOfIndexedInputs();
-        for (int t=0; t < m_TableStore.size(); ++t)
-        {
-            this->SetFilterInput(numImages+t, m_TableStore.at(t));
-            m_DataNames.push_back(m_TableNames.at(t));
         }
 
         // update input data

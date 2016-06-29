@@ -258,9 +258,6 @@ private:
   std::string m_OutputVarName;
 
   std::vector<std::string> m_DataNames;
-  std::vector<otb::AttributeTable::Pointer> m_TableStore;
-  std::vector<std::string> m_TableNames;
-
   OutputPixelType m_Nodata;
 
   double m_This;

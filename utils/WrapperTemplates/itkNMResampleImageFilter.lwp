@@ -1,0 +1,34 @@
+# LUMASS itk::NMResampleImageFilter wrapper profile
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+# PropertyElemList = PropName:PropDim:ConvType:CastType
+#                    -> Name of the wrapper property (=filter parameter)
+#                    -> dimension: s.
+#                       dim = 0 -> property type: plain type
+#                       dim = 1 -> property type: QStringList
+#                       dim = 2 -> property type: QList<QStringList>
+#                       dim = 3 -> property type: QList< QList<QStringList> >
+#                    -> # initial conversion from string to either double, long, bool, string
+#---------------------------------------------------------------------
+
+Year                        = 2014
+WrapperClassName            = NMResampleImageFilterWrapper
+FileDate                    = 2014-04-03
+Author                      = Alexander Herzig
+FilterClassFileName         = itkNMResampleImageFilter
+FilterTypeDef               = itk::NMResampleImageFilter<InImgType, OutImgType>
+
+# map wrapper input index to image setter method
+InputTypeFunc_1             = 1:OutImgType:SetReferenceImage
+
+# wrapper properties / filter parameters
+Property_1                  = InterpolationMethod:1:string
+Property_2                  = DefaultPixelValue:1:double:OutImgPixelType
+Property_3                  = OutputSpacing:2:double:OutSpacingValueType:pointer
+Property_4                  = OutputOrigin:2:double:OutPointValueType:pointer
+Property_5                  = Size:2:long:SizeValueType:pointer

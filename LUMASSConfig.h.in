@@ -1,0 +1,51 @@
+ /****************************************************************************** 
+ * Created by Alexander Herzig 
+ * Copyright 2010-2015 Landcare Research New Zealand Ltd
+ *
+ * This file is part of 'LUMASS', which is free software: you can redistribute
+ * it and/or modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the License, 
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************/
+ 
+ // CMake-based configured options and settings
+ #define LUMASS_VERSION_MAJOR "@LUMASS_VERSION_MAJOR@"
+ #define LUMASS_VERSION_MINOR "@LUMASS_VERSION_MINOR@"
+ #define LUMASS_VERSION_REVISION "@LUMASS_VERSION_REVISION@"
+ #define LUMASS_COMMIT_DATE "@LUMASS_COMMIT_DATE@"
+ #define LUMASS_COMMIT_HASH "@GIT_SHA1@"
+ #define LUMASS_BINARY_DIR "@lumass_BINARY_DIR@"
+ #define LUMASS_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+
+ // underpinning libraries
+ #define LUMASS_QT_VERSION "@QT5_VERSION_STRING@"
+ #define LUMASS_OTB_VERSION "@LUMASS_OTB_VERSION@"
+ #define LUMASS_ITK_VERSION "@LUMASS_ITK_VERSION@"
+ #define LUMASS_GDAL_VERSION "@GDAL_VERSION@"
+ #define LUMASS_VTK_VERSION "@VTK_VERSION_STRING@"
+ #define LUMASS_SQLITE_VERSION "@NM_SQLite_VERSION@"
+
+ 
+ const char _lumass_commit_hash[] = LUMASS_COMMIT_HASH;
+ const char _lumass_commit_date[] = LUMASS_COMMIT_DATE;
+ const char _lumass_version_major[] = LUMASS_VERSION_MAJOR;
+ const char _lumass_version_minor[] = LUMASS_VERSION_MINOR;
+ const char _lumass_version_revision[] = LUMASS_VERSION_REVISION;
+ const char _lumass_binary_dir[] = LUMASS_BINARY_DIR;
+ const char _lumass_build_type[] = LUMASS_BUILD_TYPE;
+
+ const char _lumass_qt_version[] = LUMASS_QT_VERSION;
+ const char _lumass_otb_version[] = LUMASS_OTB_VERSION;
+ const char _lumass_itk_version[] = LUMASS_ITK_VERSION;
+ const char _lumass_gdal_version[] = LUMASS_GDAL_VERSION;
+ const char _lumass_vtk_version[] = LUMASS_VTK_VERSION;
+ const char _lumass_sqlite_version[] = LUMASS_SQLITE_VERSION;
+ 

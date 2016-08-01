@@ -1,0 +1,25 @@
+# LUMASS otb::UniqueCombinationFilter wrapper profile
+# recognised (filter variable) types: double, long, long long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+
+Year                        = 2015
+WrapperClassName            = NMCombineTwoFilterWrapper
+FileDate                    = 2015-09-16
+Author                      = Alexander Herzig
+FilterClassFileName         = otbCombineTwoFilter
+FilterTypeDef               = otb::CombineTwoFilter<InImgType, OutImgType>
+RATGetSupport               = 1
+RATSetSupport               = 1
+ForwardInputUserIDs         = SetImageNames
+Property_1                  = InputNodata:2:long long:InputPixelType:vector
+Property_2                  = OutputTableFileName:1:string:string

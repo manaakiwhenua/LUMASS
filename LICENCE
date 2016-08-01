@@ -1,0 +1,65 @@
+********************************************************************************
+                                 LUMASS
+********************************************************************************
+
+LUMASS is free software and you can redistribute it and/or modify it under the 
+terms of the GNU General Public Licence as published by the Free Software 
+Foundation, either version 3 of the Licence, or (at your option) any later
+version.
+
+LUMASS is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details
+(GPLV3.txt).
+
+********************************************************************************
+                              3rd party libraries and code
+********************************************************************************
+
+LUMASS is built upon various libraries released under a GPL compatible
+licence. Please see the individual source files for further information.
+
+
+********************************************************************************
+                                   ICONS
+********************************************************************************
+
+LUMASS uses various icons released under various licences. See the list below 
+for detailed information of icon source and licence.
+
+--- lumass/gui/resources/edit-select.png (modified)
+--- lumass/gui/resources/draw-bezier-curves.png
+--- lumass/gui/resources/transform-move.png
+source: Oxygen Icons <http://www.oxygen-icons.org>
+license: http://creativecommons.org/licenses/LGPL/2.1/
+         http://creativecommons.org/licenses/by-sa/3.0/
+
+--- lumass/gui/resources/data-read.png
+--- lumass/gui/resources/data-save.png
+--- lumass/gui/resources/model-execute.png (modified)
+--- lumass/gui/resources/model-pause.png (modified)
+--- lumass/gui/resources/model-stop.png (modified)
+--- lumass/gui/resources/table_object.png
+source: Oxygen Icons <http://www.oxygen-icons.org>
+license: http://creativecommons.org/licenses/by-sa/3.0/
+
+         
+--- lumass/gui/resources/select.png
+source: Intrigue Icon Set
+license: http://creativecommons.org/licenses/GPL/2.0/
+
+        
+--- lumass/gui/resources/zoom-in-3.png
+--- lumass/gui/resources/zoom-in-3.png
+--- lumass/gui/resources/zoom-fit-best-2.png
+source: GNOME Icon Theme <http://art.gnome.org>
+license: http://creativecommons.org/licenses/GPL/2.0/
+
+--- lumass/gui/resources/SQLite_Logo_4.png
+adapted from source: https://commons.wikimedia.org/wiki/File:SQLite_Logo_4.png
+license: public domain
+
+
+NOTE: The Oxygen icons website (http://www.oxygen-icons.org) is now defunct!
+You may want to look here for the icon library: http://sourceforge.net/projects/openiconlibrary/
+

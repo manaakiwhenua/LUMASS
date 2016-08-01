@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LUMASSMainWin</class>
+ <widget class="QMainWindow" name="LUMASSMainWin">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>725</width>
+    <height>640</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="baseSize">
+   <size>
+    <width>1158</width>
+    <height>1024</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>LUMASS</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <widget class="QVTKWidget" name="qvtkWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>40</y>
+      <width>120</width>
+      <height>80</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>220</y>
+      <width>191</width>
+      <height>191</height>
+     </rect>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>725</width>
+     <height>35</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuObject">
+    <property name="title">
+     <string>Ob&amp;ject</string>
+    </property>
+    <addaction name="actionLoad_VTK_PolyData"/>
+    <addaction name="separator"/>
+    <addaction name="actionSaveAsVTKPolyData"/>
+    <addaction name="actionSaveAsVectorLayerOGR"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave_As_Image_File"/>
+    <addaction name="actionSave_Visible_Extent_Overview_As"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoad_Layer"/>
+    <addaction name="actionLoad_Vector_Layer"/>
+    <addaction name="actionImport_3D_Point_Set"/>
+    <addaction name="separator"/>
+    <addaction name="actionImportRasdamanLayer"/>
+    <addaction name="separator"/>
+    <addaction name="actionImportTableObject"/>
+    <addaction name="separator"/>
+    <addaction name="actionImage_Polydata"/>
+    <addaction name="separator"/>
+    <addaction name="actionRemoveAllObjects"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menu3D_Vis">
+    <property name="title">
+     <string>&amp;Map</string>
+    </property>
+    <addaction name="actionFullExtent"/>
+    <addaction name="separator"/>
+    <addaction name="actionToggle3DSimpleMode"/>
+    <addaction name="actionToggle3DStereoMode"/>
+    <addaction name="separator"/>
+    <addaction name="actionShowScaleBar"/>
+    <addaction name="actionShowCoordinateAxes"/>
+    <addaction name="separator"/>
+    <addaction name="actionBackground_Colour"/>
+    <addaction name="actionSaveAsImage"/>
+   </widget>
+   <widget class="QMenu" name="menuMOSO">
+    <property name="title">
+     <string>A&amp;nalysis</string>
+    </property>
+    <addaction name="actionMOSO"/>
+    <addaction name="separator"/>
+    <addaction name="actionTreeFindLoops"/>
+    <addaction name="actionTreeBottomUp"/>
+    <addaction name="actionTreeTopDown"/>
+    <addaction name="separator"/>
+    <addaction name="actionTest"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="actionMap_View_Mode"/>
+    <addaction name="actionModel_View_Mode"/>
+    <addaction name="separator"/>
+    <addaction name="actionShow_Map_View"/>
+    <addaction name="actionShow_Model_View"/>
+    <addaction name="separator"/>
+    <addaction name="actionComponents_View"/>
+    <addaction name="actionShow_Components_Info"/>
+    <addaction name="separator"/>
+    <addaction name="actionShowTable"/>
+   </widget>
+   <widget class="QMenu" name="menuAbout">
+    <property name="title">
+     <string>Abo&amp;ut</string>
+    </property>
+    <addaction name="actionLUMASS"/>
+   </widget>
+   <widget class="QMenu" name="menuGIS_ish">
+    <property name="title">
+     <string>&amp;GIS</string>
+    </property>
+   </widget>
+   <addaction name="menuObject"/>
+   <addaction name="menuMOSO"/>
+   <addaction name="menuGIS_ish"/>
+   <addaction name="menu3D_Vis"/>
+   <addaction name="menuView"/>
+   <addaction name="menuAbout"/>
+  </widget>
+  <widget class="QToolBar" name="mainToolBar">
+   <property name="windowTitle">
+    <string>Model Builder Tools</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="sizeGripEnabled">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QDockWidget" name="componentsWidget">
+   <property name="floating">
+    <bool>false</bool>
+   </property>
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::AllDockWidgetAreas</set>
+   </property>
+   <property name="windowTitle">
+    <string>&amp;Layers &amp;&amp; Components</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="compDock">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QScrollArea" name="scrollArea">
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="NMWidgetListView" name="compWidgetList">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>76</width>
+          <height>515</height>
+         </rect>
+        </property>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="componentInfoDock">
+   <property name="windowTitle">
+    <string>Att&amp;ributes &amp;&amp; Properties</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="infoDock">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QScrollArea" name="scrollArea_2">
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="NMWidgetListView" name="infoWidgetList">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>76</width>
+          <height>515</height>
+         </rect>
+        </property>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <action name="actionLoad_Layer">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/image_layer.png</normaloff>:/image_layer.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Import Image Layer ...</string>
+   </property>
+  </action>
+  <action name="actionImport_3D_Point_Set">
+   <property name="text">
+    <string>Import &amp;3D Point Set ...</string>
+   </property>
+  </action>
+  <action name="actionToggle3DStereoMode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>3D &amp;Stereo View</string>
+   </property>
+  </action>
+  <action name="actionLoad_VTK_PolyData">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/vector_layer.png</normaloff>:/vector_layer.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Load VTK PolyData ...</string>
+   </property>
+  </action>
+  <action name="actionLoad_Vector_Layer">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/vector_layer.png</normaloff>:/vector_layer.png</iconset>
+   </property>
+   <property name="text">
+    <string>Im&amp;port Vector Layer ...</string>
+   </property>
+  </action>
+  <action name="actionToggle3DSimpleMode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;3D View</string>
+   </property>
+  </action>
+  <action name="actionMOSO">
+   <property name="text">
+    <string>&amp;MOSO ...</string>
+   </property>
+  </action>
+  <action name="actionComponents_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Layers &amp;&amp; Components</string>
+   </property>
+  </action>
+  <action name="actionModel_View">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Show Model View</string>
+   </property>
+  </action>
+  <action name="actionRemoveAllObjects">
+   <property name="text">
+    <string>&amp;Remove All Objects!</string>
+   </property>
+  </action>
+  <action name="actionFullExtent">
+   <property name="text">
+    <string>&amp;Full Extent</string>
+   </property>
+  </action>
+  <action name="actionSaveAsVTKPolyData">
+   <property name="text">
+    <string>&amp;Save As VTK PolyData ...</string>
+   </property>
+  </action>
+  <action name="actionMapUniqueValues">
+   <property name="text">
+    <string>Map Unique Values ...</string>
+   </property>
+  </action>
+  <action name="actionTest">
+   <property name="text">
+    <string>&amp;test</string>
+   </property>
+  </action>
+  <action name="actionFieldCalculator">
+   <property name="text">
+    <string>Field Calculator ...</string>
+   </property>
+  </action>
+  <action name="actionImportTableObject">
+   <property name="text">
+    <string>Import Table &amp;Data ...</string>
+   </property>
+   <property name="toolTip">
+    <string>Import Table Data</string>
+   </property>
+  </action>
+  <action name="actionSaveAsVectorLayerOGR">
+   <property name="text">
+    <string>Sav&amp;e As Vector Layer (OGR) ...</string>
+   </property>
+  </action>
+  <action name="actionLUMASS">
+   <property name="text">
+    <string>&amp;LUMASS</string>
+   </property>
+  </action>
+  <action name="actionImportRasdamanLayer">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/image_layer.png</normaloff>:/image_layer.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Manage rasdaman Images ...</string>
+   </property>
+   <property name="toolTip">
+    <string>Manage rasdaman Images</string>
+   </property>
+  </action>
+  <action name="actionMOSO_batch">
+   <property name="text">
+    <string>MOSO batch ...</string>
+   </property>
+  </action>
+  <action name="actionShow_Components_Info">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Attributes &amp;&amp; Properties</string>
+   </property>
+  </action>
+  <action name="actionShow_Map_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Map &amp;View</string>
+   </property>
+  </action>
+  <action name="actionShow_Model_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Mo&amp;del View</string>
+   </property>
+  </action>
+  <action name="actionMap_View_Mode">
+   <property name="text">
+    <string>&amp;Map View Mode</string>
+   </property>
+  </action>
+  <action name="actionModel_View_Mode">
+   <property name="text">
+    <string>M&amp;odel View Mode</string>
+   </property>
+  </action>
+  <action name="actionSave_As_Image_File">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/image_layer.png</normaloff>:/image_layer.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save Ima&amp;ge Layer As ...</string>
+   </property>
+  </action>
+  <action name="actionSave_Visible_Extent_Overview_As">
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/image_layer.png</normaloff>:/image_layer.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save &amp;Visible Extent/Overview As ...</string>
+   </property>
+  </action>
+  <action name="actionImage_Polydata">
+   <property name="text">
+    <string>Image -&gt; P&amp;olydata</string>
+   </property>
+  </action>
+  <action name="actionBackground_Colour">
+   <property name="text">
+    <string>&amp;Background Colour ...</string>
+   </property>
+  </action>
+  <action name="actionShowTable">
+   <property name="text">
+    <string>&amp;Show Standalone Table ...</string>
+   </property>
+  </action>
+  <action name="actionSaveAsImage">
+   <property name="text">
+    <string>Save As &amp;Image ...</string>
+   </property>
+  </action>
+  <action name="actionShowScaleBar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>S&amp;how Scale Bar</string>
+   </property>
+  </action>
+  <action name="actionShowCoordinateAxes">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show &amp;Coordinate Axes</string>
+   </property>
+  </action>
+  <action name="actionTreeTopDown">
+   <property name="text">
+    <string>Tree Query: top -&gt; &amp;down ...</string>
+   </property>
+  </action>
+  <action name="actionTreeBottomUp">
+   <property name="text">
+    <string>Tree &amp;Query: bottom -&gt; up ...</string>
+   </property>
+  </action>
+  <action name="actionTreeFindLoops">
+   <property name="text">
+    <string>Tree &amp;Check: find loops ... </string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>QVTKWidget</class>
+   <extends>QWidget</extends>
+   <header>QVTKWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>NMModelViewWidget</class>
+   <extends>QWidget</extends>
+   <header>NMModelViewWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>NMWidgetListView</class>
+   <extends>QWidget</extends>
+   <header>NMWidgetListView.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="nmresources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

@@ -1,0 +1,26 @@
+# LUMASS otb::SumZonesFilter wrapper profile
+# recognised (filter variable) types: double, long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+Year                        = 2014, 2015
+WrapperClassName            = NMSumZonesFilterWrapper
+FileDate                    = 2014-03-27, 2015-08-27
+Author                      = Alexander Herzig
+FilterClassFileName         = otbSumZonesFilter
+FilterTypeDef               = otb::SumZonesFilter<InImgType, OutImgType>
+RATGetSupport               = 1
+InputTypeFunc_0             = 0:OutImgType:SetZoneImage
+InputTypeFunc_1             = 1:InImgType:SetValueImage
+Property_1                  = IgnoreNodataValue:1:bool
+Property_2                  = NodataValue:1:double 
+Property_3                  = HaveMaxKeyRows:1:bool
+Property_4                  = ZoneTableFileName:1:string

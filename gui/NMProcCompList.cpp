@@ -37,6 +37,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("CostDistanceBuffer"));
     this->addItem(QString::fromLatin1("DataBuffer"));
     this->addItem(QString::fromLatin1("ExternalExec"));
+    this->addItem(QString::fromLatin1("ExtractBand"));
     this->addItem(QString::fromLatin1("FocalDistanceWeight"));
     this->addItem(QString::fromLatin1("ImageReader"));
     this->addItem(QString::fromLatin1("ImageWriter"));

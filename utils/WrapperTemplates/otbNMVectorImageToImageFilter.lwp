@@ -1,0 +1,21 @@
+# LUMASS otb::NMVectorImageToImageFilter wrapper profile
+# recognised (filter variable) types: double, long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+Year                        = 2016
+WrapperClassName            = NMVectorImageToImageFilterWrapper
+FileDate                    = 2016-08-03
+Author                      = Alexander Herzig
+FilterClassFileName         = otbNMVectorImageToImageFilter
+FilterTypeDef               = otb::NMVectorImageToImageFilter<InImgType, OutImgType>
+NumTemplateArgs             = 2
+Property_1                  = Band:1:unsigned int

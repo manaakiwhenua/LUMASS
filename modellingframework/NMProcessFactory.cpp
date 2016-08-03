@@ -40,6 +40,7 @@
 #include "NMScriptableKernelFilterWrapper.h"
 #include "NMScriptableKernelFilter2Wrapper.h"
 #include "NMTableReader.h"
+#include "NMVectorImageToImageFilterWrapper.h"
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -65,6 +66,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("MapKernelScript");
     mProcRegister << QString::fromLatin1("MapKernelScript2");
     mProcRegister << QString::fromLatin1("TableReader");
+    mProcRegister << QString::fromLatin1("ExtractBand");
 
     mSinks << QString::fromLatin1("ImageWriter");
     mSinks << QString::fromLatin1("CostDistanceBuffer");
@@ -173,6 +175,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMTableReader";
     }
+    else if (alias.compare("ExtractBand") == 0)
+    {
+        return "NMVectorImageToImageFilterWrapper";
+    }
     else return proc;
 }
 
@@ -249,6 +255,10 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMTableReader") == 0)
     {
         proc = new NMTableReader(this);
+    }
+    else if (procClass.compare("NMVectorImageToImageFilterWrapper") == 0)
+    {
+        proc = new NMVectorImageToImageFilterWrapper(this);
     }
     else
         proc =  0;

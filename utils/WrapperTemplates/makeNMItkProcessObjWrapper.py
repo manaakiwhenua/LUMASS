@@ -149,6 +149,8 @@ def formatTypeConversion(type):
     typeConv = ''
     if type == "int":
         typeConv = ".toInt(&bok)"
+    elif type == "unsigned int":
+        typeConv = ".toUInt(&bok)";
     elif type == "double":
         typeConv = ".toDouble(&bok)"
     elif type == "long":
@@ -414,7 +416,7 @@ def formatInternalStdSetNthInput():
     "    {\n"                                                                                   \
     "        InImgType* img = dynamic_cast<InImgType*>(dataObj);\n"                             \
     "        FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());\n"         \
-    "        filter->SetInput(idx, dataObj);\n"                                                     \
+    "        filter->SetInput(idx, img);\n"                                                     \
     "    }\n"                                                                                   \
 
     return s

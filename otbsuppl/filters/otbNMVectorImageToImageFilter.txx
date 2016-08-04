@@ -41,8 +41,11 @@ void
 NMVectorImageToImageFilter< TInputImage, TOutputImage>
 ::BeforeThreadedGenerateData()
 {
+    InputImageType* input = const_cast<InputImageType*>(this->GetInput());
+    OutputImageType* output = this->GetOutput();
+
     // check for same dimension
-    if (InputImageDimension != OutputImageDimension)
+    if (input->GetImageDimension() != output->GetImageDimension())
     {
         itk::ExceptionObject e(__FILE__, __LINE__);
         e.SetLocation(ITK_LOCATION);
@@ -50,8 +53,6 @@ NMVectorImageToImageFilter< TInputImage, TOutputImage>
         throw e;
     }
 
-    InputImageType* input = const_cast<InputImageType*>(this->GetInput());
-    OutputImageType* output = this->GetOutput();
 
     // check for input image being a vector image
     if (input->GetNumberOfComponentsPerPixel() < 2)
@@ -62,14 +63,22 @@ NMVectorImageToImageFilter< TInputImage, TOutputImage>
         throw e;
     }
 
+    // turn 1-based band index into 0-based VariableLengthVector index
+    // used for accessing pixel components
+    int tband = static_cast<int>(m_Band);
+    --tband;
+
     // check whether specified band index (0-based) is valid
-    if (m_Band >= input->GetNumberOfComponentsPerPixel())
+    if (    tband >= input->GetNumberOfComponentsPerPixel()
+        ||  tband < 0
+       )
     {
         itk::ExceptionObject e(__FILE__, __LINE__);
         e.SetLocation(ITK_LOCATION);
-        e.SetDescription("Specified band index is out of bounds!");
+        e.SetDescription("Specified (1-based) band index is out of bounds!");
         throw e;
     }
+    --m_Band;
 
     // check for same sizes
     typename InputImageType::SizeType inputSize;

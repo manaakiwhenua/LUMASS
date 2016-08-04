@@ -57,6 +57,7 @@ public:
     typedef typename OutputImageType::RegionType OutputImageRegionType;
     typedef typename OutputImageType::SizeType   OutputImageSizeType;
 
+    /*! 1-based image band index */
     itkSetMacro(Band, unsigned int)
 
 

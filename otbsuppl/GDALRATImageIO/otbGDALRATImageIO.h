@@ -298,7 +298,7 @@ private:
   typedef itk::SmartPointer<GDALDatasetWrapper> GDALDatasetWrapperPointer;
   GDALDatasetWrapperPointer m_Dataset;
 
-  GDALDataTypeWrapper*    m_PxType;
+  GDALDataType m_GDALComponentType;
   /** Nombre d'octets par pixel */
   int m_BytePerPixel;
 

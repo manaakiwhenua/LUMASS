@@ -42,6 +42,7 @@
 #include "itkVTKImageExport.h"
 #include "NMMfwException.h"
 #include "NMIterableComponent.h"
+#include "NMModelController.h"
 #include "itkRGBPixel.h"
 #include "otbStreamingStatisticsImageFilter.h"
 #include "otbStreamingImageVirtualWriter.h"
@@ -1011,6 +1012,7 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mFileName = "";
+    this->mBandList.clear();
 	this->mbRasMode = false;
     this->mRGBMode = false;
 	this->mParameterHandling = NMProcess::NM_USE_UP;
@@ -1099,7 +1101,7 @@ QString NMImageReader::getFileName(void)
 }
 
 void
-NMImageReader::setBandMap(const std::vector<int> map)
+NMImageReader::setBandMap(std::vector<int> map)
 {
     this->mBandMap = map;
     if (this->isInitialised())
@@ -1181,7 +1183,8 @@ bool NMImageReader::initialise()
 
 	NMDebugAI(<< "reading image information ..." << endl);
 	this->mItkImgIOBase->ReadImageInformation();
-	this->mOutputNumBands = this->mItkImgIOBase->GetNumberOfComponents();
+
+    this->mOutputNumBands = this->mItkImgIOBase->GetNumberOfComponents();
 
 	if (this->mOutputComponentType == otb::ImageIOBase::UNKNOWNCOMPONENTTYPE)
 		this->mOutputComponentType = this->mItkImgIOBase->GetComponentType();
@@ -1200,6 +1203,12 @@ bool NMImageReader::initialise()
                     this->mItkImgIOBase.GetPointer());
 
         this->mInputNumBands = gio->GetTotalNumberOfBands();
+
+        if (mBandMap.size() > 0 && mOutputNumBands > 1)
+        {
+            mOutputNumBands = mBandMap.size();
+            gio->SetBandMap(mBandMap);
+        }
 
         NMDebugAI(<< "img size: " << gio->GetDimensions(0)
                   << " x " << gio->GetDimensions(1) << std::endl);
@@ -1587,6 +1596,25 @@ NMImageReader::linkParameters(unsigned int step,
         this->setFileName(param.toString());
     }
 
+    param = this->getParameter("BandList");
+    if (param.isValid() && param.type() == QVariant::StringList)
+    {
+        QStringList bandlist = param.toStringList();
+        this->mBandMap.clear();
+        bool bok;
+        foreach(const QString& band, bandlist)
+        {
+            int b = band.toInt(&bok);
+            if (!bok)
+            {
+                NMWarn(ctxNMImageReader, "Not all bands of the band map were "
+                       "identified correctly!");
+                continue;
+            }
+            this->mBandMap.push_back(b);
+        }
+    }
+
     this->setInternalRATType();
 
     NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
@@ -1639,8 +1667,29 @@ void NMImageReader::instantiateObject(void)
         }
     }
 
+    param = this->getParameter("BandList");
+    if (param.isValid() && param.type() == QVariant::StringList)
+    {
+        QStringList bandlist = param.toStringList();
+        this->mBandMap.clear();
+        bool bok;
+        foreach(const QString& band, bandlist)
+        {
+            int b = band.toInt(&bok);
+            if (!bok)
+            {
+                NMWarn(ctxNMImageReader, "Not all bands of the band map were "
+                       "identified correctly!");
+                continue;
+            }
+            this->mBandMap.push_back(b);
+        }
+    }
+
+
     NMDebugAI(<< "FileName set to '" << this->mFileName.toStdString() << "'" << endl);
     this->initialise();
+
 
     NMDebugCtx(this->objectName().toStdString(), << "done!");
 }

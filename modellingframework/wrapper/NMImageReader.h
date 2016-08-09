@@ -65,6 +65,7 @@ class NMMODFRAME_EXPORT NMImageReader : public NMProcess
     Q_PROPERTY(QString RATType READ getRATType WRITE setRATType)
     Q_PROPERTY(QStringList RATEnum READ getRATEnum)
     Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
+    Q_PROPERTY(QList<QStringList> BandList READ getBandList WRITE setBandList)
 
 #ifdef BUILD_RASSUPPORT	
 	Q_PROPERTY(NMRasdamanConnectorWrapper* RasConnector READ getRasConnector WRITE setRasConnector)
@@ -75,6 +76,7 @@ public:
     NMPropertyGetSet(RGBMode, bool)
     NMPropertyGetSet(RATType, QString)
     NMPropertyGetSet(RATEnum, QStringList)
+    NMPropertyGetSet(BandList, QList<QStringList>)
     //NMPropertyGetSet(BandMap, std::vector<int>)
 
 //#ifdef BUILD_RASSUPPORT
@@ -133,9 +135,7 @@ public:
     void buildOverviews(const std::string& resamplingType);
 
     std::vector<int> getBandMap() {return this->mBandMap;}
-    void setBandMap(const std::vector<int> map);
-
-
+    void setBandMap(std::vector<int> map);
 
     bool isRasMode(void) {return this->mbRasMode;}
 	void instantiateObject(void);
@@ -164,6 +164,8 @@ private:
 	bool mbRasMode;
 
     // support vector / RGB display
+    QList<QStringList> mBandList;
+
     bool mRGBMode;
     std::vector<int> mBandMap;
 

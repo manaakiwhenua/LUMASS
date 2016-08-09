@@ -25,6 +25,9 @@
   <property name="windowTitle">
    <string>LUMASS</string>
   </property>
+  <property name="dockNestingEnabled">
+   <bool>true</bool>
+  </property>
   <widget class="QWidget" name="centralWidget">
    <property name="sizePolicy">
     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -59,7 +62,7 @@
      <x>0</x>
      <y>0</y>
      <width>725</width>
-     <height>35</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -197,8 +200,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>76</width>
-          <height>515</height>
+          <width>69</width>
+          <height>542</height>
          </rect>
         </property>
        </widget>
@@ -232,8 +235,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>76</width>
-          <height>515</height>
+          <width>69</width>
+          <height>542</height>
          </rect>
         </property>
        </widget>

@@ -588,7 +588,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 NMProcess* proc = itComp->getProcess();
                 if (itComp != 0)
                 {
-                    QStringList propList = proc->getPropertyList();
+                    QStringList propList = NMModelController::getPropertyList(proc);
                     QStringList fnProps;
                     foreach(const QString& p, propList)
                     {

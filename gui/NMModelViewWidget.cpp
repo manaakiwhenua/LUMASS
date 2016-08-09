@@ -1923,11 +1923,21 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                 break;
 
 		default:
-            NMBoxWarn("Unknown Graphics Item!",
-                      "LUMASS detected an unknown graphics item "
-                      "in the LUMASS visualsation file (*.lmv)!"
-                      "Check the imported model for errors!");
-			break;
+            {
+                std::stringstream msg;
+                msg << "LUMASS detected an unknown graphics item "
+                    << "in the LUMASS visualsation file (*.lmv)!\n"
+                    << "Last successfully imported item '"
+                    << importItems.last().toStdString() << "'. "
+                    << "Check the imported model for errors!";
+
+
+                NMBoxWarn("Unknown Graphics Item!",
+                          msg.str());
+
+                lmv.device()->close();
+                return;
+            }
 		}
 	}
 
@@ -2623,6 +2633,34 @@ void NMModelViewWidget::deleteItem()
         }
 	}
 
+    int ndelitems = delList.count();
+    ndelitems += delLabels.count();
+    ndelitems += widgetItems.count();
+
+    // ==================================================================
+    // accidentally deleting components can be really
+    // painful! (as I've just experienced)
+    // Ask the user whether he's really sure to delete!
+    // Maybe she/he is still a bit tired and under
+    // pressure and the least thing he/she wants is
+    // starting all over again!
+
+    QString msg = QString(tr("Do you really want to delete %1 model %2?"))
+                    .arg(ndelitems)
+                    .arg((ndelitems ? "component" : "components"));
+
+    QMessageBox::StandardButton answer = QMessageBox::question(this,
+                                         tr("Delete Model Components"),
+                                         msg);
+
+    if (answer == QMessageBox::No)
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+
+    // ==================================================================
 
     // remove labels first, then deal with the rest
     foreach(QGraphicsTextItem* ti, delLabels)

@@ -223,7 +223,7 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         //connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
 
         // ------------------------------------------------------
-        // PROCESSING A NON-ITERABLE and NON-PROCESS COMPONENT
+        // PROCESSING proper NMModelComponent and subclasses' PROPERTIES
         // ------------------------------------------------------
 
         const QMetaObject* meta = obj->metaObject();
@@ -237,7 +237,7 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         }
 
         // ------------------------------------------------------
-        // PROCESSING AN AGGREGATE COMPONENT
+        // PROCESSING (im)proper AGGREGATE COMPONENT 'PROPERTIES'
         // ------------------------------------------------------
 
         // do we have a process component?
@@ -283,7 +283,7 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
     // PROCESSING A PROCESS COMPONENT
     // ------------------------------------------------------
 
-    // if this is a process component, we add the processes
+    // if this is a process component, we add the process'
     // properties to the dialog
     if (proc != 0)
     {

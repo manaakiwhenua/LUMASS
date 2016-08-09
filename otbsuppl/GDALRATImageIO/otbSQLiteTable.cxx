@@ -2787,6 +2787,14 @@ SQLiteTable::resetTableAdmin(void)
         }
     }
 
+    for (int s=0; s < m_vStmtGetRowidx.size(); ++s)
+    {
+        if (m_vStmtGetRowidx.at(s) != 0)
+        {
+            sqlite3_finalize(m_vStmtGetRowidx.at(s));
+        }
+    }
+
     m_vTypes.clear();
     m_vIndexNames.clear();
     m_vNames.clear();
@@ -2794,6 +2802,7 @@ SQLiteTable::resetTableAdmin(void)
     m_vTypesBulkSet.clear();
     m_vStmtUpdate.clear();
     m_vStmtSelect.clear();
+    m_vStmtGetRowidx.clear();
 
     m_iNumRows = 0;
     m_iBand = 1;

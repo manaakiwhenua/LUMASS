@@ -65,7 +65,8 @@ protected:
     QSharedPointer<NMItkDataObjectWrapper> mDataWrapper;
 	//QStringList mInputSpec;
 
-	unsigned int mParamPos;
+    long long mTabMinPK;
+    unsigned int mParamPos;
 	bool mbLinked;
 
     QDateTime mSourceMTime;

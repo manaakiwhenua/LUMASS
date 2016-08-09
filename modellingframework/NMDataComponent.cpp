@@ -29,6 +29,7 @@
 #include "NMDataComponent.h"
 #include "NMIterableComponent.h"
 #include "NMMfwException.h"
+#include "otbSQLiteTable.h"
 
 const std::string NMDataComponent::ctx = "NMDataComponent";
 
@@ -55,6 +56,7 @@ NMDataComponent::initAttributes(void)
 	mLastInputOutputIdx = 0;
 	mParamPos = 0;
 	mbLinked = false;
+    mTabMinPK = 0;
 
 }
 
@@ -69,6 +71,15 @@ NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWra
     // parent required, actually if we had a parent
     // we'd get crash with double free error
     //mDataWrapper->setParent(this);
+
+    // in case we've got a table and getModelParameter is called
+    // fetch the minimum value of its primary key so we're getting
+    // the right parameter
+    if (!mDataWrapper.isNull() && mDataWrapper->getOTBTab().IsNotNull())
+    {
+        mTabMinPK = mDataWrapper->getOTBTab()->GetMinPKValue();
+    }
+
 	emit NMDataComponentChanged();
 }
 
@@ -232,12 +243,31 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     long long recnum = tab->GetNumRows();
     if (specList.size() == 2)
     {
-        // empoly the use_up policy of getting index values here; also if the
-        // index is too small bound to 0
+        bool bthrow = false;
         bool bok;
+        // receiving 1-based row number
         row = specList.at(1).toLongLong(&bok);
-        row = row-1 < 0 ? 0 : row > recnum ? recnum-1 : row-1;
         if (!bok)
+        {
+            bthrow = true;
+        }
+        else
+        {
+            // if table PK is 0-based, we adjust the
+            // specified row number
+            if (mTabMinPK == 0)
+            {
+                --row;
+
+                // if row out of bounds throw an error
+                if (row < 0 || row > recnum-1)
+                {
+                    bthrow = true;
+                }
+            }
+        }
+
+        if (bthrow)
         {
             NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
             QString msg = QString("Specified row number '%1' is invalid!")
@@ -480,6 +510,13 @@ NMDataComponent::reset(void)
 {
     if (!mDataWrapper.isNull())
 	{
+        if (    mDataWrapper->getOTBTab().IsNotNull()
+            &&  mDataWrapper->getOTBTab()->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE
+           )
+        {
+            otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(mDataWrapper->getOTBTab().GetPointer());
+            sqltab->CloseTable();
+        }
         mDataWrapper.clear();
 	}
 	this->mbLinked = false;

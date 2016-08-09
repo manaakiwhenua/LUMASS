@@ -78,22 +78,7 @@ NMVectorImageToImageFilter< TInputImage, TOutputImage>
         e.SetDescription("Specified (1-based) band index is out of bounds!");
         throw e;
     }
-    --m_Band;
 
-    // check for same sizes
-    typename InputImageType::SizeType inputSize;
-    for (int d=0; d < InputImageDimension; ++d)
-    {
-        if (    input->GetLargestPossibleRegion().GetSize(d)
-            !=  output->GetLargestPossibleRegion().GetSize(d)
-           )
-        {
-            itk::ExceptionObject e(__FILE__, __LINE__);
-            e.SetLocation(ITK_LOCATION);
-            e.SetDescription("Inupt and ouput image size do not match!");
-            throw e;
-        }
-    }
 }
 
 template < class TInputImage, class TOutputImage>void
@@ -117,11 +102,12 @@ NMVectorImageToImageFilter< TInputImage, TOutputImage>
                       this, threadId,
                       outputRegionForThread.GetNumberOfPixels());
 
+    const int bandidx = m_Band-1;
     inIter.GoToBegin();
     outIter.GoToBegin();
     while (!inIter.IsAtEnd() && !this->GetAbortGenerateData())
     {
-        outIter.Set(static_cast<OutputPixelType>(inIter.Get()[m_Band]));
+        outIter.Set(static_cast<OutputPixelType>(inIter.Get()[bandidx]));
         ++inIter;
         ++outIter;
         progress.CompletedPixel();

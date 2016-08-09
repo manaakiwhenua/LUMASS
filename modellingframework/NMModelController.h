@@ -25,19 +25,21 @@
 #ifndef NMMODELCONTROLLER_H_
 #define NMMODELCONTROLLER_H_
 
+#include <string>
+#include <iostream>
+
 #include "nmlog.h"
 //#include "NMModelSerialiser.h"
  
-#include <qobject.h>
+#include <QObject>
+#include <QMetaObject>
+#include <QMetaProperty>
 #include <QThread>
 #include <QMap>
 #include <QStack>
 #include <QString>
 #include <QStringList>
 #include <QDateTime>
-
-#include <string>
-#include <iostream>
 
 #include "nmmodframe_export.h"
 
@@ -84,6 +86,11 @@ public:
 	static NMModelController* getInstance(void);
 
     static QString getComponentNameFromInputSpec(const QString& inputSpec);
+
+    static QStringList getPropertyList(const QObject* obj);
+    static QString processStringParameter(const QObject *obj, const QString& str);
+    static QStringList getNextParamExpr(const QString& expr);
+
 
 public slots:
 

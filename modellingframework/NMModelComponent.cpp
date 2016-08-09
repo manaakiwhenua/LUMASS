@@ -16,19 +16,19 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include <string>
+#include <iostream>
+#include <sstream>
+
 #include <QMetaObject>
 #include <QMetaProperty>
 
+#include "nmlog.h"
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
 #include "NMDataComponent.h"
 #include "NMModelController.h"
 #include "NMMfwException.h"
-
-#include <string>
-#include <iostream>
-#include <sstream>
-#include "nmlog.h"
 
 const std::string NMModelComponent::ctx = "NMModelComponent";
 
@@ -51,19 +51,19 @@ NMModelComponent::~NMModelComponent(void)
 {
 }
 
-QStringList
-NMModelComponent::getPropertyList(void)
-{
-    QStringList propList;
-    const QMetaObject* meta = this->metaObject();
-    for (int i=0; i < meta->propertyCount(); ++i)
-    {
-        QMetaProperty prop = meta->property(i);
-        propList << prop.name();
-    }
+//QStringList
+//NMModelComponent::getPropertyList(void)
+//{
+//    QStringList propList;
+//    const QMetaObject* meta = this->metaObject();
+//    for (int i=0; i < meta->propertyCount(); ++i)
+//    {
+//        QMetaProperty prop = meta->property(i);
+//        propList << prop.name();
+//    }
 
-    return propList;
-}
+//    return propList;
+//}
 
 QVariant
 NMModelComponent::getModelParameter(const QString &paramSpec)
@@ -82,7 +82,7 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
         specList << "0";
     }
 
-    QStringList propList = this->getPropertyList();
+    QStringList propList = NMModelController::getPropertyList(this);
     if (!propList.contains(specList.at(0)))
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);

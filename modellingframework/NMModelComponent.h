@@ -120,7 +120,7 @@ public:
     QString getDescription()
     	{return this->mDescription;}
 
-    QStringList getPropertyList(void);
+    //QStringList getPropertyList(void);
 
     /*! Allows for recursive identification of
      *  components, which belong to the same
@@ -136,7 +136,6 @@ public:
     	{this->mDownComponent = comp;}
     void setUpstreamModelComponent(NMModelComponent* comp)
     	{this->mUpComponent = comp;}
-
 
     void setInput(QSharedPointer<NMItkDataObjectWrapper> inputImg)
         {this->setNthInput(0, inputImg);}

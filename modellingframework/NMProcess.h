@@ -213,7 +213,7 @@ public:
      * @return QVariant wrapped property value
      */
     QVariant getParameter(const QString& property);
-    QStringList getPropertyList(void);
+    //QStringList getPropertyList(void);
 
 
 public slots:
@@ -298,7 +298,7 @@ protected:
      * any '-' or '+', hence the above expression is not ambigous; the order of the
      * expression has to be like given above <component-identifier><operator(+|-)><number>
      */
-    QString processStringParameter(const QString& str);
+    //QString processStringParameter(const QString& str);
 
 
     /*!
@@ -308,7 +308,7 @@ protected:
      *
      * Extracts non-nested parameter expressions from expr
      */
-    QStringList getNextParamExpr(const QString& expr);
+    //QStringList getNextParamExpr(const QString& expr);
 
 private:
     unsigned int mStepIndex;

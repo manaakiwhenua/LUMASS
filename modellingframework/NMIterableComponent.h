@@ -46,16 +46,18 @@ class NMMODFRAME_EXPORT NMIterableComponent : public NMModelComponent
 	Q_OBJECT
 
     Q_PROPERTY(unsigned int IterationStep READ getIterationStep WRITE setIterationStep)
+    //Q_PROPERTY(QString IterationStepExpression READ getIterationStepExpression WRITE setIterationStepExpression)
 
 public:
 
     //NMPropertyGetSet(IterationStep , unsigned int)
+    NMPropertyGetSet(IterationStepExpression, QString)
 
 
     virtual ~NMIterableComponent(void);
 
 	void setInternalStartComponent (NMModelComponent* comp )
-    	{this->mProcessChainStart = comp;};
+        {this->mProcessChainStart = comp;}
 
     /*! Returns the first sub component referenced by the doubly linked
      *  list hosted by this component. Note that the order of referenced
@@ -111,9 +113,6 @@ public:
 
     virtual QVariant getModelParameter(const QString& paramSpec);
 
-
-    //void setInput(QSharedPointer<NMItkDataObjectWrapper> inputImg)
-    //	{this->setNthInput(0, inputImg);};
     virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
 
     virtual QSharedPointer<NMItkDataObjectWrapper> getOutput(unsigned int idx);
@@ -137,11 +136,6 @@ public:
 
     unsigned int getIterationStep(void);
     void setIterationStep(unsigned int step);
-
-
-    // DEPRECATED: part of ancient execution models, no longer valid
-    //NMModelComponent* getEndOfTimeLevel(void);
-    //void getEndOfPipelineProcess(NMProcess*& endProc);
 
 
     bool isSubComponent(NMModelComponent* comp);
@@ -184,14 +178,13 @@ protected:
     NMModelComponent* mProcessChainPointer;
     unsigned int mMaxInternalTimeLevel;
 
+    QString mIterationStepExpression;
+
     unsigned int mIterationStep;
     unsigned int mIterationStepRun;
 
-    //QList<QStringList> mExecSequence;
-
-
     NMIterableComponent(QObject* parent=0);
-    NMIterableComponent(const NMIterableComponent& modelComp){};
+    NMIterableComponent(const NMIterableComponent& modelComp){}
 
     void initAttributes(void);
 

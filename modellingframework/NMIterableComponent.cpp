@@ -44,6 +44,7 @@ void NMIterableComponent::initAttributes(void)
     this->mProcess = 0;
     this->mIterationStep = 1;
     this->mIterationStepRun = 1;
+    this->mIterationStepExpression.clear();
 }
 
 NMIterableComponent::~NMIterableComponent(void)
@@ -558,117 +559,6 @@ NMModelComponent* NMIterableComponent::getLastInternalComponent(void)
 	return ret;
 }
 
-//void NMModelComponent::setTimeLevel(short level)
-//{
-//	int diff = level - this->mTimeLevel;
-//	this->changeTimeLevel(diff);
-//}
-//
-//void NMModelComponent::changeTimeLevel(int diff)
-//{
-//	this->mTimeLevel += diff;
-//	if (this->mTimeLevel < 0)
-//		this->mTimeLevel = 0;
-//
-//	NMModelComponent* comp = this->getInternalStartComponent();
-//	while (comp != 0)
-//	{
-//		comp->changeTimeLevel(diff);
-//		comp = this->getNextInternalComponent();
-//	}
-//
-//	emit NMModelComponentChanged();
-//}
-
-/*
-NMModelComponent* NMIterableComponent::getEndOfTimeLevel(void)
-{
-	NMDebugCtx(ctx, << "...");
-
-	// we go right to the end of this component's time level
-	// and check; when we've got a non-iterable component, we
-	// return the very component, otherwise, we ask for the
-	// last component's end of time level
-
-
-	NMDebugAI(<< this->objectName().toStdString() << ", level #"
-			  << this->mTimeLevel << endl);
-
-	NMModelComponent* ret = 0;
-	NMModelComponent* tmc = this;
-	NMModelComponent* lmc = 0;
-	while(tmc != 0 && tmc->getTimeLevel() == this->mTimeLevel)
-	{
-		lmc = tmc;
-		tmc = lmc->getDownstreamModelComponent();
-	}
-
-	NMIterableComponent* itmc = qobject_cast<NMIterableComponent*>(lmc);
-	if (itmc != 0)
-	{
-		ret = itmc->getEndOfTimeLevel();
-	}
-	else
-		ret = lmc;
-
-	//NMProcess* proc = 0;
-	//if (this->getDownstreamModelComponent() != 0)
-	//{
-	//	NMIterableComponent* dmc = qobject_cast<NMIterableComponent*>(this->getDownstreamModelComponent());
-	//	if (dmc->getTimeLevel() == this->mTimeLevel)
-	//	{
-	//		proc  = dmc->getEndOfTimeLevel();
-	//	}
-	//	else
-	//	{
-	//		NMIterableComponent* lastComp =
-	//				qobject_cast<NMIterableComponent*>(this->getLastInternalComponent());
-	//		if (lastComp != 0 && lastComp->getTimeLevel() == this->mTimeLevel)
-	//		{
-	//			if (lastComp->getProcess() != 0)
-	//			{
-	//				proc = lastComp->getProcess();
-	//				NMDebugAI(<< "gotcha! " << proc->objectName().toStdString() << endl);
-	//			}
-	//			else
-	//			{
-	//				NMIterableComponent* lastlastComp =
-	//						qobject_cast<NMIterableComponent*>(lastComp->getLastInternalComponent());
-	//				if (lastlastComp != 0)
-	//				{
-	//					proc = lastlastComp->getEndOfTimeLevel();
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-	//else
-	//{
-	//	NMIterableComponent* lastComp =
-	//			qobject_cast<NMIterableComponent*>(this->getLastInternalComponent());
-	//	if (lastComp != 0 && lastComp->getTimeLevel() == this->mTimeLevel)
-	//	{
-	//		if (lastComp->getProcess() != 0)
-	//		{
-	//			proc = lastComp->getProcess();
-	//			NMDebugAI(<< "gotcha! " << proc->objectName().toStdString() << endl);
-	//		}
-	//		else
-	//		{
-	//			NMIterableComponent* lastlastComp =
-	//					qobject_cast<NMIterableComponent*>(lastComp->getLastInternalComponent());
-	//			if (lastlastComp != 0)
-	//			{
-	//				proc = lastlastComp->getEndOfTimeLevel();
-	//			}
-	//		}
-	//	}
-	//}
-
-	NMDebugCtx(ctx, << "done!");
-	return ret;
-}
-*/
 
 QSharedPointer<NMItkDataObjectWrapper>
 NMIterableComponent::getOutput(unsigned int idx)
@@ -682,12 +572,6 @@ NMIterableComponent::getOutput(unsigned int idx)
 		return this->mProcess->getOutput(idx);
 	}
 
-	// ToDo: double check this approach!
-//	NMModelComponent* eotComp = this->getEndOfTimeLevel();
-//	if (eotComp != 0)
-//	{
-//		return eotComp->getOutput(idx);
-//	}
 
 	NMErr(this->objectName().toStdString(), << this->objectName().toStdString() <<
 			" - Couldn't fetch any output!");
@@ -771,14 +655,6 @@ void NMIterableComponent::linkComponents(unsigned int step,
         NMDebugCtx(this->objectName().toStdString(), << "done!");
         return;
 	}
-
-	//NMModelComponent* mc = this->getInternalStartComponent();
-	//while (mc != 0)
-	//{
-	//	NMDebugAI(<< "link '" << mc->objectName().toStdString() << "' in pipeline ..." << std::endl);
-	//	mc->linkComponents(step, repo);
-	//	mc = this->getNextInternalComponent();
-	//}
 
 	NMDebugCtx(this->objectName().toStdString(), << "done!");
 }

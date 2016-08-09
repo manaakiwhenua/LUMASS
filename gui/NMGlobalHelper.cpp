@@ -1,6 +1,21 @@
+/******************************************************************************
+* Created by Alexander Herzig
+* Copyright 2010-2016 Landcare Research New Zealand Ltd
+*
+* This file is part of 'LUMASS', which is free software: you can redistribute
+* it and/or modify it under the terms of the GNU General Public License as
+* published by the Free Software Foundation, either version 3 of the License,
+* or (at your option) any later version.
+*
+* This programs distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/>.
+******************************************************************************/
 
-#include "nmlog.h"
-#include "NMGlobalHelper.h"
 #include <QObject>
 #include <QApplication>
 #include <QDialog>
@@ -8,6 +23,12 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+
+#include "nmlog.h"
+#include "ui_lumassmainwin.h"
+#include "NMGlobalHelper.h"
+#include "NMModelController.h"
+#include "NMIterableComponent.h"
 
 const std::string NMGlobalHelper::ctx = "NMGlobalHelper";
 
@@ -118,12 +139,13 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
 qreal
 NMGlobalHelper::getLUMASSVersion()
 {
+    // DO NOT ALTER THE FORMATTING HERE
+    // IT'LL BREAK THE *.lmx FILE IMPORT
     QString vnumStr = QString("%1.%2%3")
                         .arg(LUMASS_VERSION_MAJOR)
                         .arg(LUMASS_VERSION_MINOR)
                         .arg(LUMASS_VERSION_REVISION);
     return (qreal)vnumStr.toDouble();
-
 }
 
 vtkRenderWindow*

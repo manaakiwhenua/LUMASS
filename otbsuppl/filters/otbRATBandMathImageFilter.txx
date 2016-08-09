@@ -515,7 +515,6 @@ void RATBandMathImageFilter<TImage>
   m_ThreadUnderflow.Fill(0);
   m_ThreadOverflow.SetSize(nbThreads);
   m_ThreadOverflow.Fill(0);
-  m_VParser.resize(nbThreads);
   m_AImage.resize(nbThreads);
   m_NbVar = nbInputImages+nbAccessIndex;
   //m_VVarName.resize(m_NbVar);
@@ -534,31 +533,29 @@ void RATBandMathImageFilter<TImage>
   
   // attribute table support
   m_VAttrValues.resize(nbThreads);
-
-  for(itParser = m_VParser.begin(); itParser < m_VParser.end(); ++itParser)
-  {
-    *itParser = ParserType::New();
-  }
+  m_VParser.clear();
 
   for(i = 0; i < nbThreads; i++)
   {
     m_AImage.at(i).resize(m_NbVar);
     m_VAttrValues.at(i).resize(nbInputImages);
-    m_VParser.at(i)->SetExpr(m_Expression);
+    //m_VParser.at(i)->SetExpr(m_Expression);
+    ParserType::Pointer parser = ParserType::New();
+    parser->SetExpr(m_Expression);
 
-//    // debug
-//    if (i==0)
-//    {
-//    //std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
-//    std::cout << "\t>>> no. of vars: " << m_NbVar << std::endl;
-//    std::cout << "\t>>> parser expression: " << m_VParser[i]->GetExpr() << std::endl;
-//    }
+    //    // debug
+    //    if (i==0)
+    //    {
+    //    //std::cout << "Thread loop ----------------------------------------------" << std::endl << std::endl;
+    //    std::cout << "\t>>> no. of vars: " << m_NbVar << std::endl;
+    //    std::cout << "\t>>> parser expression: " << m_VParser[i]->GetExpr() << std::endl;
+    //    }
   
     //std::cout << "image loop ----------------------------------------------" << std::endl << std::endl;
     for(j=0; j < nbInputImages; j++)
     {
-      m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
-//      if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
+      parser->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
+    //      if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
 
       //attribute table support
       if (m_VRAT[0].size() > 0)
@@ -570,7 +567,7 @@ void RATBandMathImageFilter<TImage>
 			  for (int c=0; c < m_VTabAttr[j].size(); ++c)
 			  {
                   std::string vname = bname + m_VRAT[0][j]->GetColumnName(m_VTabAttr[j][c]);
-				  m_VParser[i]->DefineVar(vname, &(m_VAttrValues[i][j][c]));
+                  parser->DefineVar(vname, &(m_VAttrValues[i][j][c]));
 			  }
     	  }
       }
@@ -583,10 +580,12 @@ void RATBandMathImageFilter<TImage>
     {
       m_VVarName.at(j) = tmpIdxVarNames.at(j-nbInputImages);
       //std::cout << "set varname for img#" << j << " to " << m_VVarName[j] << std::endl;
-      m_VParser.at(i)->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
+      parser->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
       //std::cout << "Parser #" << i << ": define var: " << m_VVarName[j] << " for img-idx #" << j << std::endl;
     }
     //std::cout << std::endl;
+
+    m_VParser.push_back(parser);
   }
 }
 

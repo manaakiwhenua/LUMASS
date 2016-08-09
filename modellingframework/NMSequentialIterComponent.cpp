@@ -33,6 +33,7 @@ NMSequentialIterComponent::NMSequentialIterComponent(QObject* parent)
 {
 	this->setParent(parent);
     NMIterableComponent::initAttributes();
+    this->mNumIterationsExpression.clear();
 }
 
 NMSequentialIterComponent::~NMSequentialIterComponent()
@@ -53,9 +54,23 @@ void
 NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
     		unsigned int minLevel, unsigned int maxLevel)
 {
+    unsigned int niter = mNumIterations;
+
+    if (!this->mNumIterationsExpression.isEmpty())
+    {
+        QString numIterStr = NMModelController::processStringParameter(this, mNumIterationsExpression);
+        bool bok;
+        unsigned int titer = numIterStr.toUInt(&bok);
+        if (bok)
+        {
+            niter = titer;
+            mNumIterations = 1;
+        }
+    }
+
     mIterationStepRun = mIterationStep;
     unsigned int i = mIterationStepRun-1;
-    for (; i < this->mNumIterations; ++i)
+    for (; i < niter; ++i)
 	{
         emit signalProgress(mIterationStepRun);
         this->componentUpdateLogic(repo, minLevel, maxLevel, i);
@@ -63,15 +78,5 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
 	}
     mIterationStepRun = mIterationStep;
 
-    // reset aggregate components
-    //    if (this->mProcess == 0)
-    //    {
-    //       NMModelComponent* mc = this->getInternalStartComponent();
-    //       while(mc)
-    //       {
-    //           mc->reset();
-    //           mc = this->getNextInternalComponent();
-    //       }
-    //    }
 }
 

@@ -172,7 +172,7 @@ public:
   virtual void ReadVolume(void* buffer);
 
   /** Get Info about all subDataset in hdf file */
-  bool GetSubDatasetInfo(std::vector<std::string>& names, std::vector<std::string>& desc);
+  //bool GetSubDatasetInfo(std::vector<std::string>& names, std::vector<std::string>& desc);
 
   /** Get if the pixel type in the file is complex or not (GDAL side)*/
   bool GDALPixelTypeIsComplex();
@@ -293,10 +293,10 @@ private:
 
   GDALDataset* CreateCopy();
 
-
   /** GDAL parameters. */
-  typedef itk::SmartPointer<GDALDatasetWrapper> GDALDatasetWrapperPointer;
-  GDALDatasetWrapperPointer m_Dataset;
+  //typedef itk::SmartPointer<GDALDatasetWrapper> GDALDatasetWrapperPointer;
+  //GDALDatasetWrapperPointer m_Dataset;
+  GDALDataset* m_Dataset;
 
   GDALDataType m_GDALComponentType;
   /** Nombre d'octets par pixel */

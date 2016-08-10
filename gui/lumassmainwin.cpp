@@ -320,6 +320,12 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     std::srand(std::time(0));
 
     // **********************************************************************
+    // *                    GDAL                                            *
+    // **********************************************************************
+    GDALAllRegister();
+    GetGDALDriverManager()->AutoLoadDrivers();
+
+    // **********************************************************************
     // *                    SQLITE3                                         *
     // **********************************************************************
 
@@ -754,6 +760,9 @@ LUMASSMainWin::~LUMASSMainWin()
         NMDebugCtx(ctxLUMASSMainWin, << "...");
 
 	this->removeAllObjects();
+
+
+    GDALDestroyDriverManager();
 
 #ifdef BUILD_RASSUPPORT
 	// close the table view and delete;

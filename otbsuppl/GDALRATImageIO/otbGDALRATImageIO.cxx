@@ -63,145 +63,145 @@ namespace otb
 
 
 // only two states : the Pointer is Null or GetDataSet() returns a valid dataset
-class GDALDatasetWrapper : public itk::LightObject
-{
-  friend class GDALDriverManagerWrapper;
+//class GDALDatasetWrapper : public itk::LightObject
+//{
+//  friend class GDALDriverManagerWrapper;
 
-public:
-  typedef GDALDatasetWrapper      Self;
-  typedef itk::LightObject        Superclass;
-  typedef itk::SmartPointer<Self> Pointer;
+//public:
+//  typedef GDALDatasetWrapper      Self;
+//  typedef itk::LightObject        Superclass;
+//  typedef itk::SmartPointer<Self> Pointer;
 
-  /** Method for creation through the object factory. */
-  itkNewMacro(Self);
+//  // Method for creation through the object factory.
+//  itkNewMacro(Self);
 
-  /** Run-time type information (and related methods). */
-  itkTypeMacro(GDALRATImageIO, itk::LightObject);
+//  // Run-time type information (and related methods).
+//  itkTypeMacro(GDALRATImageIO, itk::LightObject);
 
-  /** Easy access to the internal GDALDataset object.
-   *  Don't close it, it will be automatic */
-  GDALDataset* GetDataSet() const
-  {
-      return m_Dataset;
-  }
+//  // Easy access to the internal GDALDataset object.
+//  // Don't close it, it will be automatic
+//  GDALDataset* GetDataSet() const
+//  {
+//      return m_Dataset;
+//  }
 
-protected :
-  GDALDatasetWrapper()
-   : m_Dataset(NULL)
-  {
-  }
+//protected :
+//  GDALDatasetWrapper()
+//   : m_Dataset(NULL)
+//  {
+//  }
 
-  ~GDALDatasetWrapper()
-  {
-      if (m_Dataset)
-      {
-          GDALClose(m_Dataset);
-          m_Dataset = NULL;
-      }
-  }
+//  ~GDALDatasetWrapper()
+//  {
+//      if (m_Dataset)
+//      {
+//          GDALClose(m_Dataset);
+//          m_Dataset = NULL;
+//      }
+//  }
 
-private:
-  GDALDataset* m_Dataset;
-}; // end of GDALDatasetWrapper
+//private:
+//  GDALDataset* m_Dataset;
+//}; // end of GDALDatasetWrapper
 
 
 // Wraps the GdalDriverManager so that GDALAllRegister is called automatically
-class GDALDriverManagerWrapper
-{
-public:
-  // GetInstance returns a reference to a GDALDriverManagerWrapper
-  // This is the only entry point to interact with this class
-  static GDALDriverManagerWrapper& GetInstance()
-  {
+//class GDALDriverManagerWrapper
+//{
+//public:
+//  // GetInstance returns a reference to a GDALDriverManagerWrapper
+//  // This is the only entry point to interact with this class
+//  static GDALDriverManagerWrapper& GetInstance()
+//  {
 
-    // Declare a static method variable of type GDALDriverManagerWrapper
-    // so that it is constructed and initialized only on the first call
-    // to GetInstance(), and so try to avoid static initialization order problems
+//    // Declare a static method variable of type GDALDriverManagerWrapper
+//    // so that it is constructed and initialized only on the first call
+//    // to GetInstance(), and so try to avoid static initialization order problems
 
-    static GDALDriverManagerWrapper theUniqueInstance;
-    return theUniqueInstance;
-  }
+//    static GDALDriverManagerWrapper theUniqueInstance;
+//    return theUniqueInstance;
+//  }
 
-  // Open the file for reading and returns a smart dataset pointer
-  GDALDatasetWrapper::Pointer Open( std::string filename ) const
-  {
-    GDALDatasetWrapper::Pointer datasetWrapper;
-    GDALDataset* dataset = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly);
+//  // Open the file for reading and returns a smart dataset pointer
+//  GDALDatasetWrapper::Pointer Open( std::string filename ) const
+//  {
+//    GDALDatasetWrapper::Pointer datasetWrapper;
+//    GDALDataset* dataset = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly);
 
-    if (dataset != NULL)
-      {
-      datasetWrapper = GDALDatasetWrapper::New();
-      datasetWrapper->m_Dataset = static_cast<GDALDataset*>(dataset);
-      }
-    return datasetWrapper;
-  }
-
-
-  // Open the file for reading and writing (ie update mode) returns a smart dataset pointer
-  GDALDatasetWrapper::Pointer Update( std::string filename ) const
-  {
-    GDALDatasetWrapper::Pointer datasetWrapper;
-    GDALDataset* dataset = (GDALDataset*)GDALOpen(filename.c_str(), GA_Update);
-
-    if (dataset != NULL)
-      {
-      datasetWrapper = GDALDatasetWrapper::New();
-      datasetWrapper->m_Dataset = static_cast<GDALDataset*>(dataset);
-      }
-    return datasetWrapper;
-  }
+//    if (dataset != NULL)
+//      {
+//      datasetWrapper = GDALDatasetWrapper::New();
+//      datasetWrapper->m_Dataset = static_cast<GDALDataset*>(dataset);
+//      }
+//    return datasetWrapper;
+//  }
 
 
-  // Open the new  file for writing and returns a smart dataset pointer
-  GDALDatasetWrapper::Pointer Create( std::string driverShortName, std::string filename,
-                                      int nXSize, int nYSize, int nBands,
-                                      GDALDataType eType, char ** papszOptions ) const
-  {
-    GDALDatasetWrapper::Pointer datasetWrapper;
+//  // Open the file for reading and writing (ie update mode) returns a smart dataset pointer
+//  GDALDatasetWrapper::Pointer Update( std::string filename ) const
+//  {
+//    GDALDatasetWrapper::Pointer datasetWrapper;
+//    GDALDataset* dataset = (GDALDataset*)GDALOpen(filename.c_str(), GA_Update);
 
-    GDALDriver*  driver = GetDriverByName( driverShortName );
-    if(driver != NULL)
-      {
-      GDALDataset* dataset = (GDALDataset*)driver->Create(filename.c_str(),
-                                            nXSize, nYSize,
-                                            nBands, eType,
-                                            papszOptions );
-      if (dataset != NULL)
-        {
-        datasetWrapper = GDALDatasetWrapper::New();
-        datasetWrapper->m_Dataset = dataset;
-        }
-      }
-    return datasetWrapper;
-  }
+//    if (dataset != NULL)
+//      {
+//      datasetWrapper = GDALDatasetWrapper::New();
+//      datasetWrapper->m_Dataset = static_cast<GDALDataset*>(dataset);
+//      }
+//    return datasetWrapper;
+//  }
 
 
-  GDALDriver* GetDriverByName( std::string driverShortName ) const
-  {
-    return GetGDALDriverManager()->GetDriverByName(driverShortName.c_str());
-  }
+//  // Open the new  file for writing and returns a smart dataset pointer
+//  GDALDatasetWrapper::Pointer Create( std::string driverShortName, std::string filename,
+//                                      int nXSize, int nYSize, int nBands,
+//                                      GDALDataType eType, char ** papszOptions ) const
+//  {
+//    GDALDatasetWrapper::Pointer datasetWrapper;
 
-private :
-  // private constructor so that this class is allocated only inside GetInstance
-  GDALDriverManagerWrapper()
-  {
-    GDALAllRegister();
-    GetGDALDriverManager()->AutoLoadDrivers();
+//    GDALDriver*  driver = GetDriverByName( driverShortName );
+//    if(driver != NULL)
+//      {
+//      GDALDataset* dataset = (GDALDataset*)driver->Create(filename.c_str(),
+//                                            nXSize, nYSize,
+//                                            nBands, eType,
+//                                            papszOptions );
+//      if (dataset != NULL)
+//        {
+//        datasetWrapper = GDALDatasetWrapper::New();
+//        datasetWrapper->m_Dataset = dataset;
+//        }
+//      }
+//    return datasetWrapper;
+//  }
 
-#ifndef CHECK_HDF4OPEN_SYMBOL
-    // Get rid of the HDF4 driver when it is buggy
-    GDALDriver* driver = GetGDALDriverManager()->GetDriverByName( "hdf4" );
-    if (driver)
-      GetGDALDriverManager()->DeregisterDriver( driver );
-#endif
-  }
 
-  ~GDALDriverManagerWrapper()
-  {
-    GDALDestroyDriverManager();
-  }
+//  GDALDriver* GetDriverByName( std::string driverShortName ) const
+//  {
+//    return GetGDALDriverManager()->GetDriverByName(driverShortName.c_str());
+//  }
 
-}; // end of GDALDriverManagerWrapper
+//private :
+//  // private constructor so that this class is allocated only inside GetInstance
+//  GDALDriverManagerWrapper()
+//  {
+//    GDALAllRegister();
+//    GetGDALDriverManager()->AutoLoadDrivers();
+
+//#ifndef CHECK_HDF4OPEN_SYMBOL
+//    // Get rid of the HDF4 driver when it is buggy
+//    GDALDriver* driver = GetGDALDriverManager()->GetDriverByName( "hdf4" );
+//    if (driver)
+//      GetGDALDriverManager()->DeregisterDriver( driver );
+//#endif
+//  }
+
+//  ~GDALDriverManagerWrapper()
+//  {
+//    GDALDestroyDriverManager();
+//  }
+
+//}; // end of GDALDriverManagerWrapper
 
 
 GDALRATImageIO::GDALRATImageIO()
@@ -226,9 +226,8 @@ GDALRATImageIO::GDALRATImageIO()
 
   m_IsIndexed   = false;
   m_DatasetNumber = 0;
-  //m_poBands     = NULL;
-  //m_hDriver     = NULL;
-  //m_poDataset   = NULL;
+
+  m_Dataset = 0;
 
   m_RATType = AttributeTable::ATTABLE_TYPE_RAM;
   m_RATSupport = false;
@@ -275,14 +274,16 @@ bool GDALRATImageIO::CanReadFile(const char* file)
   // causes hawock in conjunction with the lumass pipeline
   // mechanics
 
-  m_Dataset = 0;
-  m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(file);
+  m_Dataset = (GDALDataset*)GDALOpen(file, GA_ReadOnly);
 
-  bool bret = m_Dataset.IsNotNull();
-  m_Dataset = 0;
+  bool bret = false;
+  if (m_Dataset != 0)
+  {
+      bret = true;
+      this->CloseDataset();
+  }
 
   return bret;
-  //return m_Dataset.IsNotNull();
 }
 
 // Used to print information about this object
@@ -301,6 +302,10 @@ void GDALRATImageIO::ReadVolume(void*)
 
 void GDALRATImageIO::CloseDataset(void)
 {
+    if (m_Dataset != 0)
+    {
+        GDALClose(m_Dataset);
+    }
     m_Dataset = 0;
 }
 
@@ -338,11 +343,9 @@ void GDALRATImageIO::Read(void* buffer)
   int lNbLines = lNbBufLines;
   int lNbColumns = lNbBufColumns;
 
-  GDALDataset* dataset = 0;
-  if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+  if (m_Dataset == 0)
   {
-      m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->m_FileName);
-      dataset = m_Dataset->GetDataSet();
+      m_Dataset = (GDALDataset*)GDALOpen(this->m_FileName.c_str(), GA_ReadOnly);
   }
 
   // calc reference (orig. image values) of requested region
@@ -382,7 +385,7 @@ void GDALRATImageIO::Read(void* buffer)
    std::streamoff step = static_cast<std::streamoff>(this->GetNumberOfComponents())
                        * static_cast<std::streamoff>(m_BytePerPixel);
 
-    CPLErr lCrGdal = dataset->GetRasterBand(1)->RasterIO(GF_Read,
+    CPLErr lCrGdal = m_Dataset->GetRasterBand(1)->RasterIO(GF_Read,
                                      lFirstColumn,
                                      lFirstLine,
                                      lNbColumns,
@@ -399,7 +402,7 @@ void GDALRATImageIO::Read(void* buffer)
       }
     // Interpret index as color
     std::streamoff cpt(0);
-    GDALColorTable* colorTable = dataset->GetRasterBand(1)->GetColorTable();
+    GDALColorTable* colorTable = m_Dataset->GetRasterBand(1)->GetColorTable();
     for (std::streamoff i = 0; i < lBufferSize; i = i + static_cast<std::streamoff>(m_BytePerPixel))
       {
       GDALColorEntry color;
@@ -471,21 +474,21 @@ void GDALRATImageIO::Read(void* buffer)
 
     itk::TimeProbe chrono;
     chrono.Start();
-    CPLErr lCrGdal = m_Dataset->GetDataSet()->RasterIO(GF_Read,
-                                                       lFirstColumn,
-                                                       lFirstLine,
-                                                       lNbColumns,
-                                                       lNbLines,
-                                                       p,
-                                                       lNbBufColumns,
-                                                       lNbBufLines,
-                                                       m_GDALComponentType,
-                                                       nbBands,
-                                                       // read specified bands
-                                                       bandMap,
-                                                       pixelOffset,
-                                                       lineOffset,
-                                                       bandOffset);
+    CPLErr lCrGdal = m_Dataset->RasterIO(GF_Read,
+                                       lFirstColumn,
+                                       lFirstLine,
+                                       lNbColumns,
+                                       lNbLines,
+                                       p,
+                                       lNbBufColumns,
+                                       lNbBufLines,
+                                       m_GDALComponentType,
+                                       nbBands,
+                                       // read specified bands
+                                       bandMap,
+                                       pixelOffset,
+                                       lineOffset,
+                                       bandOffset);
     chrono.Stop();
     otbMsgDevMacro(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
 
@@ -501,50 +504,49 @@ void GDALRATImageIO::Read(void* buffer)
     }
 
    // closes the underlying dataset
-   m_Dataset = 0;
-   dataset = 0;
+   this->CloseDataset();
 }
 
-bool GDALRATImageIO::GetSubDatasetInfo(std::vector<std::string> &names, std::vector<std::string> &desc)
-{
-  // Note: we assume that the subdatasets are in order : SUBDATASET_ID_NAME, SUBDATASET_ID_DESC, SUBDATASET_ID+1_NAME, SUBDATASET_ID+1_DESC
-  char** papszMetadata;
-  papszMetadata = m_Dataset->GetDataSet()->GetMetadata("SUBDATASETS");
+//bool GDALRATImageIO::GetSubDatasetInfo(std::vector<std::string> &names, std::vector<std::string> &desc)
+//{
+//  // Note: we assume that the subdatasets are in order : SUBDATASET_ID_NAME, SUBDATASET_ID_DESC, SUBDATASET_ID+1_NAME, SUBDATASET_ID+1_DESC
+//  char** papszMetadata;
+//  papszMetadata = m_Dataset->GetDataSet()->GetMetadata("SUBDATASETS");
 
-  // Have we find some dataSet ?
-  // This feature is supported only for hdf4 and hdf5 file (regards to the bug 270)
-  if ( (CSLCount(papszMetadata) > 0) &&
-       ( (strcmp(m_Dataset->GetDataSet()->GetDriver()->GetDescription(),"HDF4") == 0) ||
-         (strcmp(m_Dataset->GetDataSet()->GetDriver()->GetDescription(),"HDF5") == 0) ) )
-    {
-    for (int cpt = 0; papszMetadata[cpt] != NULL; ++cpt)
-      {
-      std::string key, name;
-      if (System::ParseHdfSubsetName(papszMetadata[cpt], key, name))
-        {
-        otbMsgDevMacro(<< "- key:  " << key);
-        otbMsgDevMacro(<< "- name: " << name);
-        // check if this is a dataset name
-        if (key.find("_NAME") != std::string::npos) names.push_back(name);
-        // check if this is a dataset descriptor
-        if (key.find("_DESC") != std::string::npos) desc.push_back(name);
-        }
-      }
-    }
-  else
-    {
-    return false;
-    }
-  if (names.empty() || desc.empty()) return false;
-  if (names.size() != desc.size())
-    {
-    names.clear();
-    desc.clear();
-    return false;
-    }
+//  // Have we find some dataSet ?
+//  // This feature is supported only for hdf4 and hdf5 file (regards to the bug 270)
+//  if ( (CSLCount(papszMetadata) > 0) &&
+//       ( (strcmp(m_Dataset->GetDataSet()->GetDriver()->GetDescription(),"HDF4") == 0) ||
+//         (strcmp(m_Dataset->GetDataSet()->GetDriver()->GetDescription(),"HDF5") == 0) ) )
+//    {
+//    for (int cpt = 0; papszMetadata[cpt] != NULL; ++cpt)
+//      {
+//      std::string key, name;
+//      if (System::ParseHdfSubsetName(papszMetadata[cpt], key, name))
+//        {
+//        otbMsgDevMacro(<< "- key:  " << key);
+//        otbMsgDevMacro(<< "- name: " << name);
+//        // check if this is a dataset name
+//        if (key.find("_NAME") != std::string::npos) names.push_back(name);
+//        // check if this is a dataset descriptor
+//        if (key.find("_DESC") != std::string::npos) desc.push_back(name);
+//        }
+//      }
+//    }
+//  else
+//    {
+//    return false;
+//    }
+//  if (names.empty() || desc.empty()) return false;
+//  if (names.size() != desc.size())
+//    {
+//    names.clear();
+//    desc.clear();
+//    return false;
+//    }
 
-  return true;
-}
+//  return true;
+//}
 
 bool GDALRATImageIO::GDALPixelTypeIsComplex()
 {
@@ -608,74 +610,69 @@ void GDALRATImageIO::InternalReadImageInformation()
 
   // do we have a valid dataset wrapper and a valid
   // GDALDataset ?
-  if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+  if (m_Dataset == 0)
   {
     // we assume CanRead has been called on this data set already
     // as per design of the itk::ImageIO ...
-    m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->m_FileName);
-
-    //	  if (!this->CanReadFile(m_FileName.c_str()))
-    //	  {
-    //		  itkExceptionMacro(<< "We can't actually read file "
-    //				  << m_FileName);
-    //	  }
+    m_Dataset = (GDALDataset*)GDALOpen(this->m_FileName.c_str(), GA_ReadOnly);
   }
 
-  // Detecting if we are in the case of an image with subdatasets
-  // example: hdf Modis data
-  // in this situation, we are going to change the filename to the
-  // supported gdal format using the m_DatasetNumber value
-  // HDF4_SDS:UNKNOWN:"myfile.hdf":2
-  // and make m_Dataset point to it.
-  if (m_Dataset->GetDataSet()->GetRasterCount() == 0)
-    {
-    // this happen in the case of a hdf file with SUBDATASETS
-    // Note: we assume that the datasets are in order
-    char** papszMetadata;
-    papszMetadata = m_Dataset->GetDataSet()->GetMetadata("SUBDATASETS");
-    //TODO: we might want to keep the list of names somewhere, at least the number of datasets
-    std::vector<std::string> names;
-    if( CSLCount(papszMetadata) > 0 )
-      {
-      for( int cpt = 0; papszMetadata[cpt] != NULL; ++cpt )
-        {
-        std::string key, name;
-        if (System::ParseHdfSubsetName(papszMetadata[cpt], key, name))
-          {
-          otbMsgDevMacro(<< "- key:  " << key);
-          otbMsgDevMacro(<< "- name: " << name);
-          // check if this is a dataset name
-          if (key.find("_NAME") != std::string::npos) names.push_back(name);
-          }
-        }
-      }
-    if (m_DatasetNumber < names.size())
-      {
-      otbMsgDevMacro(<< "Reading: " << names[m_DatasetNumber]);
-      m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(names[m_DatasetNumber]);
-      }
-    else
-      {
-      itkExceptionMacro(<< "Dataset requested does not exist (" << names.size() << " datasets)");
-      }
-    }
+    //  // Detecting if we are in the case of an image with subdatasets
+    //  // example: hdf Modis data
+    //  // in this situation, we are going to change the filename to the
+    //  // supported gdal format using the m_DatasetNumber value
+    //  // HDF4_SDS:UNKNOWN:"myfile.hdf":2
+    //  // and make m_Dataset point to it.
+    //  if (m_Dataset->GetRasterCount() == 0)
+    //    {
+    //    // this happen in the case of a hdf file with SUBDATASETS
+    //    // Note: we assume that the datasets are in order
+    //    char** papszMetadata;
+    //    papszMetadata = m_Dataset->GetMetadata("SUBDATASETS");
+    //    //TODO: we might want to keep the list of names somewhere, at least the number of datasets
+    //    std::vector<std::string> names;
+    //    if( CSLCount(papszMetadata) > 0 )
+    //      {
+    //      for( int cpt = 0; papszMetadata[cpt] != NULL; ++cpt )
+    //        {
+    //        std::string key, name;
+    //        if (System::ParseHdfSubsetName(papszMetadata[cpt], key, name))
+    //          {
+    //          otbMsgDevMacro(<< "- key:  " << key);
+    //          otbMsgDevMacro(<< "- name: " << name);
+    //          // check if this is a dataset name
+    //          if (key.find("_NAME") != std::string::npos) names.push_back(name);
+    //          }
+    //        }
+    //      }
+    //    if (m_DatasetNumber < names.size())
+    //      {
+    //      otbMsgDevMacro(<< "Reading: " << names[m_DatasetNumber]);
+    //      m_Dataset = 0;
+    //      m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(names[m_DatasetNumber]);
+    //      }
+    //    else
+    //      {
+    //      itkExceptionMacro(<< "Dataset requested does not exist (" << names.size() << " datasets)");
+    //      }
+    //    }
 
-  GDALDataset* dataset = m_Dataset->GetDataSet();
+  //GDALDataset* dataset = m_Dataset->GetDataSet();
 
   // Get image dimensions
-  if ( dataset->GetRasterXSize() == 0 || dataset->GetRasterYSize() == 0 )
+  if ( m_Dataset->GetRasterXSize() == 0 || m_Dataset->GetRasterYSize() == 0 )
     {
     itkExceptionMacro(<< "Dimension is undefined.");
     }
 
   // Set image dimensions into IO
-  m_LPRDimensions[0] = dataset->GetRasterXSize();
-  m_LPRDimensions[1] = dataset->GetRasterYSize();
+  m_LPRDimensions[0] = m_Dataset->GetRasterXSize();
+  m_LPRDimensions[1] = m_Dataset->GetRasterYSize();
   m_Dimensions[0] = m_LPRDimensions[0];
   m_Dimensions[1] = m_LPRDimensions[1];
 
   // Get Number of Bands
-  m_NbBands = dataset->GetRasterCount();
+  m_NbBands = m_Dataset->GetRasterCount();
 
   otbMsgDevMacro(<< "Input file dimension: " << m_Dimensions[0] << ", " << m_Dimensions[1]);
   otbMsgDevMacro(<< "Number of bands inside input file: " << m_NbBands);
@@ -688,13 +685,13 @@ void GDALRATImageIO::InternalReadImageInformation()
   otbMsgDevMacro(<< "Nb of Dimensions of the input file: " << m_NumberOfDimensions);
 
   // fetch overview information
-  this->m_NbOverviews = dataset->GetRasterBand(1)->GetOverviewCount();
+  this->m_NbOverviews = m_Dataset->GetRasterBand(1)->GetOverviewCount();
   this->m_OvvSize.clear();
   for (int ov=0; ov < m_NbOverviews; ++ov)
   {
       std::vector<unsigned int> s;
-      s.push_back(dataset->GetRasterBand(1)->GetOverview(ov)->GetXSize());
-      s.push_back(dataset->GetRasterBand(1)->GetOverview(ov)->GetYSize());
+      s.push_back(m_Dataset->GetRasterBand(1)->GetOverview(ov)->GetXSize());
+      s.push_back(m_Dataset->GetRasterBand(1)->GetOverview(ov)->GetYSize());
       this->m_OvvSize.push_back(s);
   }
 
@@ -713,14 +710,14 @@ void GDALRATImageIO::InternalReadImageInformation()
   // Get Data Type
   // Consider only the data type given by the first band
   // Maybe be could changed (to check)
-  m_GDALComponentType = dataset->GetRasterBand(1)->GetRasterDataType();
+  m_GDALComponentType = m_Dataset->GetRasterBand(1)->GetRasterDataType();
   otbMsgDevMacro(<< "PixelType inside input file: "<< GDALGetDataTypeName(m_GDALComponentType) );
   if (m_GDALComponentType == GDT_Byte)
     {
     SetComponentType(UCHAR);
 
     // need to check for 'SIGNEDBYTE'!
-    const char* meta = dataset->GetMetadataItem("PIXELTYPE", "IMAGE_STRUCTURE");
+    const char* meta = m_Dataset->GetMetadataItem("PIXELTYPE", "IMAGE_STRUCTURE");
 
     if (meta != 0)
     {
@@ -929,17 +926,17 @@ void GDALRATImageIO::InternalReadImageInformation()
 
 
   char** papszMetadata;
-  papszMetadata =  dataset->GetMetadata(NULL);
+  papszMetadata =  m_Dataset->GetMetadata(NULL);
 
   /* -------------------------------------------------------------------- */
   /*      Report general info.                                            */
   /* -------------------------------------------------------------------- */
-  GDALDriverH hDriver;
+  GDALDriver* pDriver = 0;
 
-  hDriver = dataset->GetDriver();
+  pDriver = (GDALDriver*)m_Dataset->GetDriver();
 
-  std::string driverShortName =  static_cast<std::string>(GDALGetDriverShortName(hDriver));
-  std::string driverLongName  =  static_cast<std::string>(GDALGetDriverLongName(hDriver));
+  std::string driverShortName =  static_cast<std::string>(GDALGetDriverShortName(pDriver));
+  std::string driverLongName  =  static_cast<std::string>(GDALGetDriverLongName(pDriver));
 
   itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::DriverShortNameKey, driverShortName);
   itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::DriverLongNameKey,  driverLongName);
@@ -947,12 +944,12 @@ void GDALRATImageIO::InternalReadImageInformation()
   /* -------------------------------------------------------------------- */
   /* Get the projection coordinate system of the image : ProjectionRef  */
   /* -------------------------------------------------------------------- */
-  if (dataset->GetProjectionRef() != NULL && !std::string(dataset->GetProjectionRef()).empty())
+  if (m_Dataset->GetProjectionRef() != NULL && !std::string(m_Dataset->GetProjectionRef()).empty())
     {
     OGRSpatialReferenceH pSR = OSRNewSpatialReference(NULL);
 
     const char *         pszProjection = NULL;
-    pszProjection =  dataset->GetProjectionRef();
+    pszProjection =  m_Dataset->GetProjectionRef();
 
     if (OSRImportFromWkt(pSR, (char **) (&pszProjection)) == OGRERR_NONE)
       {
@@ -967,7 +964,7 @@ void GDALRATImageIO::InternalReadImageInformation()
     else
       {
       itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey,
-                                            static_cast<std::string>(dataset->GetProjectionRef()));
+                                            static_cast<std::string>(m_Dataset->GetProjectionRef()));
       }
 
     if (pSR != NULL)
@@ -982,10 +979,10 @@ void GDALRATImageIO::InternalReadImageInformation()
   /* -------------------------------------------------------------------- */
 
   unsigned int gcpCount = 0;
-  gcpCount = dataset->GetGCPCount();
+  gcpCount = m_Dataset->GetGCPCount();
   if (gcpCount > 0)
     {
-    std::string gcpProjectionKey = static_cast<std::string>(dataset->GetGCPProjection());
+    std::string gcpProjectionKey = static_cast<std::string>(m_Dataset->GetGCPProjection());
     itk::EncapsulateMetaData<std::string>(dict, MetaDataKey::GCPProjectionKey, gcpProjectionKey);
 
     if (gcpProjectionKey.empty())
@@ -1002,7 +999,7 @@ void GDALRATImageIO::InternalReadImageInformation()
       {
 
       const GDAL_GCP *psGCP;
-      psGCP = dataset->GetGCPs() + cpt;
+      psGCP = m_Dataset->GetGCPs() + cpt;
 
       OTB_GCP pOtbGCP;
       pOtbGCP.m_Id = std::string(psGCP->pszId);
@@ -1031,7 +1028,7 @@ void GDALRATImageIO::InternalReadImageInformation()
   double     adfGeoTransform[6];
   MetaDataKey::VectorType VadfGeoTransform;
 
-  if (dataset->GetGeoTransform(adfGeoTransform) == CE_None)
+  if (m_Dataset->GetGeoTransform(adfGeoTransform) == CE_None)
   {
       for (int cpt = 0; cpt < 6; ++cpt)
           VadfGeoTransform.push_back(adfGeoTransform[cpt]);
@@ -1059,11 +1056,11 @@ void GDALRATImageIO::InternalReadImageInformation()
   }
 
 
-  // Dataset info
-  otbMsgDevMacro(<< "**** ReadImageInformation() DATASET INFO: ****" );
-  otbMsgDevMacro(<< "Projection Ref: "<< dataset->GetProjectionRef() );
+  // m_Dataset info
+  otbMsgDevMacro(<< "**** ReadImageInformation() m_Dataset INFO: ****" );
+  otbMsgDevMacro(<< "Projection Ref: "<< m_Dataset->GetProjectionRef() );
   double GT[6];
-  if (dataset->GetGeoTransform(GT) == CE_None)
+  if (m_Dataset->GetGeoTransform(GT) == CE_None)
   {
       otbMsgDevMacro( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
                                                   << GT[2] << ", " << GT[3] << ", "
@@ -1073,14 +1070,14 @@ void GDALRATImageIO::InternalReadImageInformation()
   {
       otbMsgDevMacro( << "No Geo Transform: ");
   }
-  otbMsgDevMacro(<< "GCP Projection Ref: "<< dataset->GetGCPProjection() );
-  otbMsgDevMacro(<< "GCP Count: " << dataset->GetGCPCount() );
+  otbMsgDevMacro(<< "GCP Projection Ref: "<< m_Dataset->GetGCPProjection() );
+  otbMsgDevMacro(<< "GCP Count: " << m_Dataset->GetGCPCount() );
 
   /* -------------------------------------------------------------------- */
   /*      Report metadata.                                                */
   /* -------------------------------------------------------------------- */
 
-  papszMetadata = dataset->GetMetadata(NULL);
+  papszMetadata = m_Dataset->GetMetadata(NULL);
   if (CSLCount(papszMetadata) > 0)
     {
     std::string key;
@@ -1097,10 +1094,10 @@ void GDALRATImageIO::InternalReadImageInformation()
     }
 
   /* -------------------------------------------------------------------- */
-  /*      Report subdatasets.                                             */
+  /*      Report subm_Datasets.                                             */
   /* -------------------------------------------------------------------- */
 
-  papszMetadata = dataset->GetMetadata("SUBDATASETS");
+  papszMetadata = m_Dataset->GetMetadata("SUBm_DatasetS");
   if (CSLCount(papszMetadata) > 0)
     {
     std::string key;
@@ -1159,10 +1156,10 @@ void GDALRATImageIO::InternalReadImageInformation()
   /* Color Table                                                          */
   /* -------------------------------------------------------------------- */
 
-  for (int iBand = 0; iBand < dataset->GetRasterCount(); iBand++)
+  for (int iBand = 0; iBand < m_Dataset->GetRasterCount(); iBand++)
     {
     GDALRasterBandH hBand;
-    hBand = GDALGetRasterBand(dataset, iBand + 1);
+    hBand = GDALGetRasterBand(m_Dataset, iBand + 1);
     GDALColorTableH hTable = GDALGetRasterColorTable(hBand);
     if (!m_RATSupport)
     	{
@@ -1249,7 +1246,7 @@ void GDALRATImageIO::InternalReadImageInformation()
 
   // we close the dataset again to not
   // get into trouble!
-  m_Dataset = 0;
+  this->CloseDataset();
 
   m_ImgInfoHasBeenRead = true;
 }
@@ -1274,7 +1271,7 @@ bool GDALRATImageIO::CanWriteFile(const char* name)
     }
 
   // Check the driver for support of Create or at least CreateCopy
-  GDALDriver* driver = GDALDriverManagerWrapper::GetInstance().GetDriverByName(gdalDriverShortName);
+  GDALDriver* driver = GetGDALDriverManager()->GetDriverByName(gdalDriverShortName.c_str());
   if ( GDALGetMetadataItem( driver, GDAL_DCAP_CREATE, NULL ) == NULL
        && GDALGetMetadataItem( driver, GDAL_DCAP_CREATECOPY, NULL ) == NULL )
     {
@@ -1288,7 +1285,7 @@ bool GDALRATImageIO::CanStreamWrite()
 {
   // Get the GDAL format ID from the name
   std::string gdalDriverShortName = FilenameToGdalDriverShortName(m_FileName);
-  GDALDriver* driver = GDALDriverManagerWrapper::GetInstance().GetDriverByName(gdalDriverShortName);
+  GDALDriver* driver = GetGDALDriverManager()->GetDriverByName(gdalDriverShortName.c_str());
 
   if (driver == NULL)
     {
@@ -1312,38 +1309,40 @@ void GDALRATImageIO::Write(const void* buffer)
 	//NMDebugCtx(ctx, << "...");
 	// we're only really updating, when we've written the imageinformation
 	// at least once
-	GDALDataset* pDs = 0;
+    //GDALDataset* m_Dataset = 0;
     if (m_ImageUpdateMode && m_CanStreamWrite)
 	{
         // if we use the drivermanagerwrapper class here and the data set has
         // not been created, it'd throw an exception and the program aborts,
         // which is not what we want, so therefore this hack ...
-        pDs = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+        //m_Dataset = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+
         //std::cout << m_FileName << "-raw::update" << std::endl;
-        if (pDs != 0)
+        if (m_Dataset != 0)
 		{
-            GDALClose(pDs);
+            this->CloseDataset();
+            m_Dataset = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+            //GDALClose(m_Dataset);
             //std::cout << m_FileName << "-raw::close" << std::endl;
             // in case we've worked on the data set in non-update mode before
-            if (m_Dataset && m_Dataset->GetDataSet() != 0)
-            {
-                //m_Dataset->CloseDataSet();
-                m_Dataset = 0;
-            }
-            m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
-                    m_FileName);
-			pDs = m_Dataset->GetDataSet();
+//            if (m_Dataset && m_Dataset->GetDataSet() != 0)
+//            {
+//                m_Dataset = 0;
+//            }
+//            m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
+//                    m_FileName);
+//			m_Dataset = m_Dataset->GetDataSet();
 			//NMDebugAI(<< "opened " << m_FileName.c_str() << " in update mode!" << std::endl);
 			otbDebugMacro(<< "opened '" << m_FileName << "' in update mode.");
 
 			// being in update mode may mean that we're not aware of some essential
 			// metadata we need later on for the RasterIO call, so we read from the
 			// just read image ...
-			m_NbBands = pDs->GetRasterCount();
-            m_GDALComponentType = pDs->GetRasterBand(1)->GetRasterDataType();
+            m_NbBands = m_Dataset->GetRasterCount();
+            m_GDALComponentType = m_Dataset->GetRasterBand(1)->GetRasterDataType();
             m_BytePerPixel = GDALGetDataTypeSize(m_GDALComponentType) / 8;
- 	        m_Dimensions[0] = pDs->GetRasterXSize();
-			m_Dimensions[1] = pDs->GetRasterYSize();
+            m_Dimensions[0] = m_Dataset->GetRasterXSize();
+            m_Dimensions[1] = m_Dataset->GetRasterYSize();
 		}
 		else
 		{
@@ -1358,7 +1357,7 @@ void GDALRATImageIO::Write(const void* buffer)
 	}
 
 	// Check if we have to write the image information
-	if (m_FlagWriteImageInformation == true && pDs == 0)
+    if (m_FlagWriteImageInformation == true && m_Dataset == 0)
 	{
 		this->InternalWriteImageInformation(buffer);
 		m_FlagWriteImageInformation = false;
@@ -1434,7 +1433,7 @@ void GDALRATImageIO::Write(const void* buffer)
         }
 
 		chrono.Start();
-		CPLErr lCrGdal = m_Dataset->GetDataSet()->RasterIO(GF_Write,
+        CPLErr lCrGdal = m_Dataset->RasterIO(GF_Write,
 							lFirstColumn,
 							lFirstLine,
 							lNbColumns,
@@ -1481,13 +1480,11 @@ void GDALRATImageIO::Write(const void* buffer)
 				this->WriteRAT(tab, ti + 1);
 			}
 
-            //m_Dataset->CloseDataSet();
-            m_Dataset = 0;
+            this->CloseDataset();
 		}
 		else
 		{
-			m_Dataset->GetDataSet()->FlushCache();
-            //m_Dataset= 0;
+            m_Dataset->FlushCache();
 		}
 	}
 	else
@@ -1562,14 +1559,13 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
     // don't know whether the DS was opened in update mode or not
     // so to be sure we can write to it, we just close it and
     // re-open it read-write
-    if (m_Dataset.IsNotNull())
+    if (m_Dataset != 0)
     {
-        m_Dataset = 0;
+        this->CloseDataset();
     }
 
-    GDALDataset* ds = 0;
-    GDALDatasetWrapper::Pointer dw = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
-    if (dw.IsNull() || dw->GetDataSet() == 0)
+    m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_Update);
+    if (m_Dataset == 0)
     {
         itkWarningMacro(<< "Failed opening dataset for overview generation!");
         // in case the data set was open before we tried building overivews,
@@ -1577,19 +1573,18 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
         // support writing)
         if (m_ImgInfoHasBeenRead)
         {
-            m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+            m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
         }
         return;
     }
-    ds = dw->GetDataSet();
 
-
-    if (ds->GetRasterCount() == 0)
+    if (m_Dataset->GetRasterCount() == 0)
     {
+        this->CloseDataset();
         return;
     }
 
-    int pix = vcl_min(ds->GetRasterXSize(), ds->GetRasterYSize());
+    int pix = vcl_min(m_Dataset->GetRasterXSize(), m_Dataset->GetRasterYSize());
 
     std::vector<int> factorList;
     double exp = 1;
@@ -1601,7 +1596,7 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
         factor = static_cast<int>(vcl_pow(2,exp));
     }
 
-    ds->BuildOverviews(resamplingType.c_str(),
+    m_Dataset->BuildOverviews(resamplingType.c_str(),
                        factorList.size(),
                        (int*)(&factorList[0]),
                        0,
@@ -1609,22 +1604,22 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
                        GDALDummyProgress,
                        0);
 
-    dw = 0;
 
+    this->CloseDataset();
     // if this ImageIO is in reading mode, we re-open the data set
     // in readonly mode to leave everything as we found it; and
     // we also update the overview information
     if (m_ImgInfoHasBeenRead)
     {
-        m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
+        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
 
-        this->m_NbOverviews = m_Dataset->GetDataSet()->GetRasterBand(1)->GetOverviewCount();
+        this->m_NbOverviews = m_Dataset->GetRasterBand(1)->GetOverviewCount();
         this->m_OvvSize.clear();
         for (int ov=0; ov < m_NbOverviews; ++ov)
         {
             std::vector<unsigned int> s;
-            s.push_back(m_Dataset->GetDataSet()->GetRasterBand(1)->GetOverview(ov)->GetXSize());
-            s.push_back(m_Dataset->GetDataSet()->GetRasterBand(1)->GetOverview(ov)->GetYSize());
+            s.push_back(m_Dataset->GetRasterBand(1)->GetOverview(ov)->GetXSize());
+            s.push_back(m_Dataset->GetRasterBand(1)->GetOverview(ov)->GetYSize());
             this->m_OvvSize.push_back(s);
         }
     }
@@ -1844,16 +1839,18 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
         papszOptions = CSLAddNameValue(papszOptions, "DEFLATE", cl.str().c_str());
     }
 
-
-    m_Dataset = GDALDriverManagerWrapper::GetInstance().Create(
-                     driverShortName,
-                     GetGdalWriteImageFileName(driverShortName, m_FileName),
-                     totalRegionCols, totalRegionLines,
-                     m_NbBands, m_GDALComponentType,
-                     papszOptions);
-    }
-  else
+    GDALDriver* drv = GetGDALDriverManager()->GetDriverByName(driverShortName.c_str());
+    if (drv != 0)
     {
+        m_Dataset = (GDALDataset*)drv->Create(
+                         GetGdalWriteImageFileName(driverShortName, m_FileName).c_str(),
+                         totalRegionCols, totalRegionLines,
+                         m_NbBands, m_GDALComponentType,
+                         papszOptions);
+    }
+  }
+  else
+  {
     // buffer casted in unsigned long cause under Win32 the adress
     // don't begin with 0x, the adress in not interpreted as
     // hexadecimal but alpha numeric value, then the conversion to
@@ -1869,10 +1866,10 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
            <<  "LINEOFFSET=" << m_BytePerPixel * m_NbBands * m_Dimensions[0] << ","
            <<  "BANDOFFSET=" << m_BytePerPixel;
 
-    m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(stream.str());
+    m_Dataset = (GDALDataset*)GDALOpen(stream.str().c_str(), GA_ReadOnly);
     }
 
-  if (m_Dataset.IsNull())
+  if (m_Dataset == 0)
     {
     itkExceptionMacro(
       << "GDAL Writing failed : Impossible to create the image file name '" << m_FileName << "'.");
@@ -1889,9 +1886,9 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   {
       for (int t=0; t < this->m_vecRAT.size(); ++t)
       {
-          m_Dataset->GetDataSet()->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE",
+          m_Dataset->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE",
                                                                        "thematic");
-          m_Dataset->GetDataSet()->GetRasterBand(t+1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
+          m_Dataset->GetRasterBand(t+1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
                                                                        "direct");
       }
   }
@@ -1900,7 +1897,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   // Now initialize the itk dictionary
   itk::MetaDataDictionary& dict = this->GetMetaDataDictionary();
   std::ostringstream oss;
-  GDALDataset* dataset = m_Dataset->GetDataSet();
+  //GDALDataset* dataset = m_Dataset->GetDataSet();
 
   std::string projectionRef;
   itk::ExposeMetaData<std::string>(dict, MetaDataKey::ProjectionRefKey, projectionRef);
@@ -1953,7 +1950,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       std::string gcpProjectionRef;
       itk::ExposeMetaData<std::string>(dict, MetaDataKey::GCPProjectionKey, gcpProjectionRef);
 
-      dataset->SetGCPs(gcpCount, gdalGcps, gcpProjectionRef.c_str());
+      m_Dataset->SetGCPs(gcpCount, gdalGcps, gcpProjectionRef.c_str());
 
       delete[] gdalGcps;
       }
@@ -1964,7 +1961,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   /* -------------------------------------------------------------------- */
   if (!projectionRef.empty())
     {
-    dataset->SetProjection(projectionRef.c_str());
+    m_Dataset->SetProjection(projectionRef.c_str());
     }
 
   /* -------------------------------------------------------------------- */
@@ -1987,7 +1984,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   // FIXME: Here component 1 and 4 should be replaced by the orientation parameters
   geoTransform[2] = 0.;
   geoTransform[4] = 0.;
-  dataset->SetGeoTransform(const_cast<double*>(geoTransform.GetDataPointer()));
+  m_Dataset->SetGeoTransform(const_cast<double*>(geoTransform.GetDataPointer()));
 
   /* -------------------------------------------------------------------- */
   /*      Report metadata.                                                */
@@ -2006,16 +2003,16 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       std::string  tag = svalue.substr(0, equalityPos);
       std::string  value = svalue.substr(equalityPos + 1);
       otbMsgDevMacro(<< "Metadata: " << tag << "=" << value);
-      dataset->SetMetadataItem(tag.c_str(), value.c_str(), NULL);
+      m_Dataset->SetMetadataItem(tag.c_str(), value.c_str(), NULL);
       }
     }
   // END
 
   // Dataset info
   otbMsgDevMacro( << "**** WriteImageInformation() DATASET INFO: ****" );
-  otbMsgDevMacro( << "Projection Ref: "<<dataset->GetProjectionRef() );
+  otbMsgDevMacro( << "Projection Ref: "<<m_Dataset->GetProjectionRef() );
   double GT[6];
-  if (dataset->GetGeoTransform(GT) == CE_None)
+  if (m_Dataset->GetGeoTransform(GT) == CE_None)
     {
     otbMsgDevMacro( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
                                  << GT[2] << ", " << GT[3] << ", "
@@ -2026,8 +2023,8 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     otbMsgDevMacro( << "No Geo Transform: ");
     }
 
-  otbMsgDevMacro( << "GCP Projection Ref: "<< dataset->GetGCPProjection() );
-  otbMsgDevMacro( << "GCP Count: " << dataset->GetGCPCount() );
+  otbMsgDevMacro( << "GCP Projection Ref: "<< m_Dataset->GetGCPProjection() );
+  otbMsgDevMacro( << "GCP Count: " << m_Dataset->GetGCPCount() );
 
 
   // we now write the RAT's
@@ -2067,7 +2064,7 @@ std::string GDALRATImageIO::FilenameToGdalDriverShortName(const std::string& nam
     gdalDriverShortName="JPEG";
   else if ( extension == "pix" )
     gdalDriverShortName="PCIDSK";
-  else if ( extension == "lbl" || extension == "pds" )
+  else if ( extension == "lbl" || extension == "pix" )
     gdalDriverShortName="ISIS2";
   else if ( extension == "kea")
 	gdalDriverShortName="KEA";
@@ -2097,12 +2094,17 @@ bool GDALRATImageIO::GDALInfoReportCorner(const char * /*corner_name*/, double x
 
   bool IsTrue;
 
+  if (m_Dataset == 0)
+  {
+      return false;
+  }
+
   /* -------------------------------------------------------------------- */
   /*      Transform the point into georeferenced coordinates.             */
   /* -------------------------------------------------------------------- */
-  if (m_Dataset->GetDataSet()->GetGeoTransform(adfGeoTransform) == CE_None)
+  if (m_Dataset->GetGeoTransform(adfGeoTransform) == CE_None)
     {
-    pszProjection = m_Dataset->GetDataSet()->GetProjectionRef();
+    pszProjection = m_Dataset->GetProjectionRef();
 
     GeoX = adfGeoTransform[0] + adfGeoTransform[1] * x
            + adfGeoTransform[2] * y;
@@ -2150,35 +2152,40 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
     // we might want to fetch the attribute table before the pipeline has
     // been executed
     GDALDataset* img;
-    if (m_Dataset.IsNull())
+    bool bClose = false;
+    if (m_Dataset == 0)
     {
-        m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
-        if (m_Dataset.IsNull())
+        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
+        if (m_Dataset == 0)
             return 0;
+        bClose = true;
     }
 
     // data set already available?
-    img = m_Dataset->GetDataSet();
-    if (img == 0)
+    //img = m_Dataset->GetDataSet();
+//    if (m_Dataset == 0)
+//    {
+//        //itkWarningMacro(<< "ReadRAT: unable to access data set!");
+//        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+//        return 0;
+//    }
+
+    // how many bands? (band index is 1-based)
+    if (m_Dataset->GetRasterCount() < iBand)
     {
-        //itkWarningMacro(<< "ReadRAT: unable to access data set!");
-        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+        if (bClose) this->CloseDataset();
         return 0;
     }
 
-    // how many bands? (band index is 1-based)
-    if (img->GetRasterCount() < iBand)
-        return 0;
-
     // get the RAT for the specified band
 #ifdef GDAL_NEWRATAPI
-    GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+    GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #else
-    const GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+    const GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #endif
     if (rat == 0)
     {
-        //img = 0;
+        if (bClose) this->CloseDataset();
         return 0;
     }
 
@@ -2186,7 +2193,10 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
     int nrows = rat->GetRowCount();
     int ncols = rat->GetColumnCount();
     if (nrows == 0 || ncols == 0)
+    {
+        if (bClose) this->CloseDataset();
         return 0;
+    }
 
     // copy gdal tab into otbAttributeTable
     RAMTable::Pointer otbTab = RAMTable::New();
@@ -2400,6 +2410,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
     //NMDebug(<< std::endl);
     //NMDebugAI(<< "now pritn' the actual Table ...");
     //otbTab->Print(std::cout, itk::Indent(0), 100);
+    if (bClose) this->CloseDataset();
 
     return otbTab;
 }
@@ -2413,25 +2424,30 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 	// we might want to fetch the attribute table before the pipeline has
 	// been executed
 	GDALDataset* img;
-	if (m_Dataset.IsNull())
+    bool bClose = false;
+    if (m_Dataset == 0)
 	{
-		m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
-		if (m_Dataset.IsNull())
+        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
+        if (m_Dataset == 0)
 			return 0;
+        bClose = true;
 	}
 
 	// data set already available?
-	img = m_Dataset->GetDataSet();
-	if (img == 0)
-	{
-		//itkWarningMacro(<< "ReadRAT: unable to access data set!");
-		//itkExceptionMacro(<< "ReadRAT: unable to access data set!");
-		return 0;
-	}
+    //img = m_Dataset->GetDataSet();
+//	if (img == 0)
+//	{
+//		//itkWarningMacro(<< "ReadRAT: unable to access data set!");
+//		//itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+//		return 0;
+//	}
 
 	// how many bands? (band index is 1-based)
-	if (img->GetRasterCount() < iBand)
+    if (m_Dataset->GetRasterCount() < iBand)
+    {
+        if (bClose) this->CloseDataset();
 		return 0;
+    }
 
     // format the database filename for the external lumass db file
     // copy gdal tab into otbAttributeTable
@@ -2446,12 +2462,13 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
 	// get the RAT for the specified band
 #ifdef GDAL_NEWRATAPI
-    GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+    GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #else
-    const GDALRasterAttributeTable* rat = img->GetRasterBand(iBand)->GetDefaultRAT();
+    const GDALRasterAttributeTable* rat = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #endif
 	if (rat == 0)
 	{
+        if (bClose) this->CloseDataset();
 		return 0;
 	}
 
@@ -2469,6 +2486,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
         }
         else
         {
+            if (bClose) this->CloseDataset();
             return 0;
         }
 
@@ -2520,9 +2538,11 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     case SQLiteTable::ATCREATE_ERROR:
         itkWarningMacro(<< "Couldn't create attribute table '"
                         << dbFN << "'!")
+        if (bClose) this->CloseDataset();
         return 0;
         break;
     case SQLiteTable::ATCREATE_READ:
+        if (bClose) this->CloseDataset();
         return otbTab;
         break;
     }
@@ -2815,7 +2835,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
     //CALLGRIND_STOP_INSTRUMENTATION;
     //CALLGRIND_DUMP_STATS;
-
+    if (bClose) this->CloseDataset();
     return otbTab;
 }
 
@@ -2835,20 +2855,24 @@ GDALRATImageIO::setRasterAttributeTable(AttributeTable* rat, int band)
 bool
 GDALRATImageIO::TableStructureChanged(AttributeTable::Pointer tab, unsigned int iBand)
 {
-    m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(this->GetFileName());
-    if (m_Dataset->GetDataSet() == 0)
-        return false;
+    bool bClose = false;
+    if (m_Dataset == 0)
+    {
+        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_ReadOnly);
+        if (m_Dataset == 0)
+            return false;
+        bClose = true;
+    }
 
 #ifdef GDAL_NEWRATAPI
-    GDALRasterAttributeTable* gdaltab = m_Dataset->GetDataSet()->GetRasterBand(iBand)->GetDefaultRAT();
+    GDALRasterAttributeTable* gdaltab = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #else
-    const GDALRasterAttributeTable* gdaltab = m_Dataset->GetDataSet()->GetRasterBand(iBand)->GetDefaultRAT();
+    const GDALRasterAttributeTable* gdaltab = m_Dataset->GetRasterBand(iBand)->GetDefaultRAT();
 #endif
 
     if (gdaltab == 0)
     {
-        //m_Dataset->CloseDataSet();
-        m_Dataset = 0;
+        if (bClose) this->CloseDataset();
         return false;
     }
 
@@ -2856,8 +2880,7 @@ GDALRATImageIO::TableStructureChanged(AttributeTable::Pointer tab, unsigned int 
     int newNumCols = tab->GetNumCols();
     if (curNumCols != newNumCols)
     {
-        //m_Dataset->CloseDataSet();
-        m_Dataset = 0;
+        if (bClose) this->CloseDataset();
         return true;
     }
 
@@ -2865,8 +2888,7 @@ GDALRATImageIO::TableStructureChanged(AttributeTable::Pointer tab, unsigned int 
     {
         if (tab->GetColumnName(c).compare(gdaltab->GetNameOfCol(c)) != 0)
         {
-            //m_Dataset->CloseDataSet();
-            m_Dataset = 0;
+            if (bClose) this->CloseDataset();
             return true;
         }
     }
@@ -2883,9 +2905,8 @@ GDALDataset* GDALRATImageIO::CreateCopy()
     std::string realFileName = GetGdalWriteImageFileName(
             gdalDriverShortName, m_FileName);
 
-    GDALDriver* driver =
-            GDALDriverManagerWrapper::GetInstance().GetDriverByName(
-                    gdalDriverShortName);
+    GDALDriver* driver = GetGDALDriverManager()->GetDriverByName(
+                    gdalDriverShortName.c_str());
     if (driver == NULL)
     {
         itkExceptionMacro(
@@ -2918,7 +2939,7 @@ GDALDataset* GDALRATImageIO::CreateCopy()
     }
 
     GDALDataset* hOutputDS = driver->CreateCopy(realFileName.c_str(),
-            m_Dataset->GetDataSet(), FALSE, option, NULL, NULL);
+            m_Dataset, FALSE, option, NULL, NULL);
 
     if (gdalDriverShortName.compare("HFA") == 0 && hOutputDS != 0)
     {
@@ -2962,30 +2983,35 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     // if m_Dataset hasn't been instantiated before, we do it here, because
     // we just do an independent write of the RAT into the data set
     // (i.e. outside any pipeline activities ...)
-    GDALDataset* ds;
-    if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+    GDALDataset* ds = 0;
+    bool bClose = false;
+    if (m_Dataset == 0)
     {
-        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
-        if (m_Dataset.IsNull())
+        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_Update);
+        if (m_Dataset == 0)
         {
             std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
             return;
         }
+        bClose = true;
     }
 
     // data set already available?
-    ds = m_Dataset->GetDataSet();
-    if (ds == 0)
-    {
-        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
-        itkWarningMacro(<< "ReadRAT: unable to access data set!");
-        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
-        return;
-    }
+//    ds = m_Dataset->GetDataSet();
+//    if (ds == 0)
+//    {
+//        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+//        itkWarningMacro(<< "ReadRAT: unable to access data set!");
+//        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+//        return;
+//    }
 
     // how many bands? (band index is 1-based)
-    if (ds->GetRasterCount() < iBand)
+    if (m_Dataset->GetRasterCount() < iBand)
+    {
+        if (bClose) this->CloseDataset();
         return;
+    }
 
     // fetch the band
     GDALRasterBand* band = ds->GetRasterBand(iBand);
@@ -3005,7 +3031,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     int rowcount = tab->GetNumRows();
     // if we've got an IMAGINE file with UCHAR data type, we create
     // a table with at least 256 rows, otherwise ERDAS Imagine wouldn't like it
-    GDALDriverH driver = GDALGetDatasetDriver(m_Dataset->GetDataSet());
+    GDALDriverH driver = GDALGetDatasetDriver(m_Dataset);
     std::string dsn = GDALGetDriverShortName(driver);
     if (dsn.compare("HFA") == 0 && this->m_ComponentType == otb::ImageIOBase::UCHAR)
     {
@@ -3082,20 +3108,20 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     err = band->SetDefaultRAT(gdaltab);
     if (err == CE_Failure)
     {
+        if (bClose) this->CloseDataset();
         delete gdaltab;
         itkExceptionMacro(<< "Failed writing table to band!");
     }
-    ds->FlushCache();
+    m_Dataset->FlushCache();
 
     // if we don't close the data set here, the RAT is not written properly to disk
     // (not quite sure why that's not done when m_Dataset runs out of scope(?)
-    //m_Dataset->CloseDataSet();
-    m_Dataset = 0;
+    if (bClose) this->CloseDataset();
 
     // need an open data set for writing the actual image later on;
     // when we're only updating the RAT, the data sets gets closed as soon as
     // the data set run's out of scope
-    m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+    //m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
 
     delete gdaltab;
 }
@@ -3106,33 +3132,38 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 	// if m_Dataset hasn't been instantiated before, we do it here, because
 	// we just do an independent write of the RAT into the data set
 	// (i.e. outside any pipeline activities ...)
-	GDALDataset* ds;
-    if (m_Dataset.IsNull() || m_Dataset->GetDataSet() == 0)
+    GDALDataset* ds = 0;
+    bool bClose = false;
+    if (m_Dataset == 0)
 	{
-        m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
-        if (m_Dataset.IsNull())
+        m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_Update);
+        if (m_Dataset == 0)
         {
             std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
             return;
         }
+        bClose = true;
 	}
 
 	// data set already available?
-    ds = m_Dataset->GetDataSet();
-    if (ds == 0)
-    {
-        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
-        itkWarningMacro(<< "ReadRAT: unable to access data set!");
-        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
-        return;
-    }
+//    ds = m_Dataset->GetDataSet();
+//    if (ds == 0)
+//    {
+//        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
+//        itkWarningMacro(<< "ReadRAT: unable to access data set!");
+//        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+//        return;
+//    }
 
 	// how many bands? (band index is 1-based)
-	if (ds->GetRasterCount() < iBand)
+    if (m_Dataset->GetRasterCount() < iBand)
+    {
+        if (bClose) this->CloseDataset();
 		return;
+    }
 
 	// fetch the band
-	GDALRasterBand* band = ds->GetRasterBand(iBand);
+    GDALRasterBand* band = m_Dataset->GetRasterBand(iBand);
 
 	// create a new raster attribute table
 	// note: we just create a whole new table and replace the
@@ -3151,6 +3182,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     if (rowcount == 0)
     {
         //itkWarningMacro(<< "Refused to write empty table (0 records!)");
+        if (bClose) this->CloseDataset();
         delete gdaltab;
         gdaltab = 0;
         return;
@@ -3158,12 +3190,12 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 
     // if we've got an IMAGINE file with UCHAR data type, we create
     // a table with at least 256 rows, otherwise ERDAS Imagine wouldn't like it
-    GDALDriverH driver = GDALGetDatasetDriver(m_Dataset->GetDataSet());
+    GDALDriverH driver = GDALGetDatasetDriver(m_Dataset);
     std::string dsn = GDALGetDriverShortName(driver);
-//    if (dsn.compare("HFA") == 0 && this->m_ComponentType == otb::ImageIOBase::UCHAR)
-//    {
-//        rowcount = rowcount < 256 ? 256 : rowcount;
-//    }
+    if (dsn.compare("HFA") == 0 && this->m_ComponentType == otb::ImageIOBase::UCHAR)
+    {
+        rowcount = rowcount < 256 ? 256 : rowcount;
+    }
 
     gdaltab->SetRowCount(rowcount);
     std::vector<std::string> colnames;
@@ -3251,20 +3283,21 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     err = band->SetDefaultRAT(gdaltab);
 	if (err == CE_Failure)
 	{
+        if (bClose) this->CloseDataset();
         delete gdaltab;
 		itkExceptionMacro(<< "Failed writing table to band!");
 	}
-	ds->FlushCache();
+    m_Dataset->FlushCache();
 
     // if we don't close the data set here, the RAT is not written properly to disk
     // (not quite sure why that's not done when m_Dataset runs out of scope(?)
     //m_Dataset->CloseDataSet();
-    m_Dataset = 0;
+    if (bClose) this->CloseDataset();
 
     // need an open data set for writing the actual image later on;
     // when we're only updating the RAT, the data sets gets closed as soon as
     // the data set run's out of scope
-    m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
+    //m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(this->GetFileName());
 
 	delete gdaltab;
 }

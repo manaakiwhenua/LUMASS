@@ -38,7 +38,8 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     : mProgress(0), mIsExecuting(false), mIsCollapsed(false), mModelParent(0)
 {
 	this->setParentItem(parent);
-    this->mNumIterations = 0;
+    this->mTimeLevel = 0;
+    this->mNumIterations = 1;
     this->mColor = QColor(qrand() % 256, qrand() % 256, qrand() % 256);
 
     dpr = 1;//qApp->devicePixelRatio();

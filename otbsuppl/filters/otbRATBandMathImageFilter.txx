@@ -73,6 +73,7 @@ RATBandMathImageFilter<TImage>
   m_ThreadUnderflow.SetSize(1);
   m_ThreadOverflow.SetSize(1);
   m_ConcatChar = "__";
+  m_UseTableColumnCache = false;
 
   for (int t=0; t < this->GetNumberOfThreads(); ++t)
   {

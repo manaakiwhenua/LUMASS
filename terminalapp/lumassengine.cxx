@@ -50,6 +50,10 @@
 #include <QFuture>
 #include <QScopedPointer>
 
+#include "gdal.h"
+#include "gdal_priv.h"
+#include <sqlite3.h>
+
 #include "vtkSmartPointer.h"
 #include "vtkPolyDataReader.h"
 #include "vtkPolyData.h"
@@ -61,6 +65,7 @@
 #include "MOSORunnable.h"
 #include "NMModelController.h"
 #include "NMModelSerialiser.h"
+#include "NMSequentialIterComponent.h"
 
 static const std::string ctx = "LUMASS_engine";
 
@@ -181,12 +186,39 @@ void doModel(const QString& modelFile)
 {
     NMDebugCtx(ctx, << "...");
 
+    // ==============================================
+    //  import the model
+    // ==============================================
+    QFileInfo fi(modelFile);
+    if (fi.suffix().compare(QString("lmx"), Qt::CaseInsensitive) != 0)
+    {
+        NMErr(ctx, << "Invalid model specified!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
+    QMap<QString, QString> nameRegister;
+    NMModelSerialiser xmlS;
 
+    // setup the model controller
     NMModelController* ctrl = NMModelController::getInstance();
+    NMSequentialIterComponent* root = new NMSequentialIterComponent();
+    root->setObjectName("root");
+    root->setDescription("Top level model component managed by the ModelController");
+    ctrl->addComponent(root);
 
+    nameRegister = xmlS.parseComponent(modelFile, 0, ctrl);
 
+    // ==============================================
+    //  EXECUTE MODEL
+    // ==============================================
+    GDALAllRegister();
+    GetGDALDriverManager()->AutoLoadDrivers();
+    sqlite3_temp_directory = getenv("HOME");
 
+    ctrl->executeModel("root");
+
+    GDALDestroyDriverManager();
     NMDebugCtx(ctx, << "done!");
 }
 

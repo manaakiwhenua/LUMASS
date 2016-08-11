@@ -824,6 +824,8 @@ StreamingRATImageFileWriter<TInputImage>
     itk::ExposeMetaData<ImageKeywordlist>(dict, MetaDataKey::OSSIMKeywordlistKey, otb_kwl);
     WriteGeometry(otb_kwl, this->GetFileName());
     }
+
+  this->ReleaseInputs();
 }
 
 } // end namespace otb

@@ -51,8 +51,8 @@ NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
     headBase = 3;
     mStartAngle = 95 * 16;
     mSpanAngle  = -315 * 16;
-    mHeadAngleLeft = -165;
-    mHeadAngleRight = -60;
+    //mHeadAngleLeft = -165;
+    //mHeadAngleRight = -60;
 
     smallGap = 2*dpr;
     bigGap = 4*dpr;
@@ -312,20 +312,22 @@ NMAggregateComponentItem::preparePainting(const QRectF& bndRect)
                              mDash.top()+2*bigGap,
                              descrHeight*0.6, descrHeight*0.6);
 
-    mIterSymbol.moveTo(mIterSymbolRect.center());
-    mIterSymbol.arcTo(mIterSymbolRect, (this->mStartAngle/16.0),
-                      (this->mSpanAngle/16.0));
-    QPointF arcEnd = mIterSymbol.currentPosition();
+    mHeadTopTop = QLineF(mIterSymbolRect.center().x(), mIterSymbolRect.topLeft().y(),
+                         mIterSymbolRect.center().x()-(mIterSymbolRect.width()/4),
+                         mIterSymbolRect.topLeft().y()-headBase+1);
 
-    mHeadLeft = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
-    mHeadRight = QLineF(arcEnd, QPointF(arcEnd.x()+headBase, arcEnd.y()));
+    mHeadTopBottom = QLineF(mIterSymbolRect.center().x(), mIterSymbolRect.topLeft().y(),
+                            mIterSymbolRect.center().x()-(mIterSymbolRect.width()/4)+1,
+                            mIterSymbolRect.topLeft().y()+headBase+0.25);
 
-    mHeadLeft.setAngle(mHeadAngleLeft);
-    mHeadRight.setAngle(mHeadAngleRight);
+    mHeadBottomTop = QLineF(mIterSymbolRect.center().x(), mIterSymbolRect.bottomLeft().y(),
+                         mIterSymbolRect.center().x()+(mIterSymbolRect.width()/4)-1,
+                         mIterSymbolRect.bottomLeft().y()-headBase-0.25);
 
-    mIterSymbol.lineTo(mHeadLeft.p2());
-    mIterSymbol.moveTo(arcEnd);
-    mIterSymbol.lineTo(mHeadRight.p2());
+    mHeadBottomBottom = QLineF(mIterSymbolRect.center().x(), mIterSymbolRect.bottomLeft().y(),
+                            mIterSymbolRect.center().x()+(mIterSymbolRect.width()/4),
+                            mIterSymbolRect.bottomLeft().y()+headBase-1.25);
+
 
     qreal numIterWidth = fm.width(QString("%1").arg(mNumIterations));
     qreal numIterHeight = fm.height();
@@ -546,10 +548,14 @@ NMAggregateComponentItem::paint(QPainter* painter,
     // the iteration icon
     painter->setPen(QPen(QBrush(Qt::black), 0.8, Qt::SolidLine));
     //painter->drawPath(mIterSymbol);
-    painter->drawArc(mIterSymbolRect, mStartAngle, mSpanAngle);
-    painter->drawLine(mHeadLeft);
-    painter->drawLine(mHeadRight);
-
+    //painter->drawArc(mIterSymbolRect, mStartAngle, mSpanAngle);
+    painter->drawEllipse(mIterSymbolRect);
+    //painter->drawLine(mHead);
+    //painter->drawLine(mHeadRight);
+    painter->drawLine(mHeadTopTop);
+    painter->drawLine(mHeadTopBottom);
+    painter->drawLine(mHeadBottomTop);
+    painter->drawLine(mHeadBottomBottom);
 
     // the actual number of iterations
     if (mNumIterations > 0)

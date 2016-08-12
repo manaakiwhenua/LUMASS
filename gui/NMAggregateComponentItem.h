@@ -151,15 +151,16 @@ private:
     QRectF mNumIterRect;
     QRectF mDescrRect;
 
-    QPainterPath mIterSymbol;
+    //QPainterPath mIterSymbol;
     QRectF mIterSymbolRect;
-    QLineF mHeadLeft;
-    QLineF mHeadRight;
+    QLineF mHeadTopTop;
+    QLineF mHeadTopBottom;
+    QLineF mHeadBottomTop;
+    QLineF mHeadBottomBottom;
+
     qreal headBase;
     qreal mStartAngle;
     qreal mSpanAngle;
-    qreal mHeadAngleLeft;
-    qreal mHeadAngleRight;
 
     qreal dpr;
     qreal smallGap;

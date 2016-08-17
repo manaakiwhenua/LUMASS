@@ -100,9 +100,9 @@ LINK_DIRECTORIES(
     ${muParserX_BINARY_DIR}
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
-	${SPATIALITE_LIB_DIR}
-	${SPATIALTE_LIBLIB_DIR}
-    #${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
+        ${SPATIALITE_LIB_DIR}
+        ${SPATIALITE_LIBLIB_DIR}
+        #${QT5SQL_PLUGINS_DIR}/plugins/sqldrivers
 	${OSGEO4W_ROOT}/lib
 	${OSGEO4W_ROOT}/bin
 	#${TCADB_LIB_DIR}
@@ -185,15 +185,13 @@ set(LUMASS_LINKLIBS
 
 # need to add the import library on windows
 #if(WIN32)
-#	LIST(REMOVE_ITEM LUMASS_LINKLIBS spatialite)
-#	LIST(APPEND LUMASS_LINKLIBS spatialite_i)
+#        LIST(APPEND LUMASS_LINKLIBS spatialite4)
 #endif()
 
 set(LUMASS_DEPLIBS
 	NMModFrame
 	QtPropertyBrowser 
 	SQLite
-	#SQLiteExtFunc
 )
 
 

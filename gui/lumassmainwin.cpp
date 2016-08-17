@@ -1839,7 +1839,7 @@ LUMASSMainWin::importTable(const QString& fileName,
 
     // create a proper low-level sqlite3 connection so, we can ...
 	sqlite3* tabconn = 0;
-	void* splCache = spatialite_alloc_connection();
+    void* splCache = spatialite_alloc_connection();
 	int rc = ::sqlite3_open_v2(dbfilename.toStdString().c_str(), 
 			&tabconn, 
         			SQLITE_OPEN_URI |
@@ -1857,7 +1857,6 @@ LUMASSMainWin::importTable(const QString& fileName,
     }
 
     // ... load the spatialite extension for extra functionality
-    rc = sqlite3_enable_load_extension(tabconn, 1);
     spatialite_init_ex(tabconn, splCache, 1);
 
     // use the 'hacked' (NM)QSQLiteDriver, so we
@@ -3509,7 +3508,7 @@ void LUMASSMainWin::removeAllObjects()
 		sqlite3* conn = it.value().second;
 
 		sqlite3_close(conn);
-		spatialite_cleanup_ex(cache);
+        spatialite_cleanup_ex(cache);
 		cache = 0;
 		conn = 0;
 		++it;

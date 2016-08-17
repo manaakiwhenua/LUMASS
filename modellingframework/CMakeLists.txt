@@ -3,7 +3,8 @@ PROJECT(mfw)
 ADD_SUBDIRECTORY(wrapper ${mfw_BINARY_DIR}/wrapper)
 
 INCLUDE_DIRECTORIES(
-    ${QT5_INCLUDE_DIRS}
+    ${SPATIALITE_INCLUDE_DIR}
+	${QT5_INCLUDE_DIRS}
     ${PostgreSQL_INCLUDE_DIRS}
     ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
     ${RASDAMAN_INCLUDE_DIR}
@@ -33,6 +34,7 @@ LINK_DIRECTORIES(
     ${RASDAMAN_LIBRARIES_DIR}
     ${LIBRARY_OUTPUT_PATH}
     ${LIBRARY_OUTPUT_PATH}/${CMAKE_BUILD_TYPE}
+    ${OSGEO4W_ROOT}/lib
     ${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
 )
@@ -87,14 +89,14 @@ LIST(REMOVE_ITEM MFW_MOC_H ${mfw_SOURCE_DIR}/NMMfwException.h)
 		Qt5Xml
 		Qt5Core
 		Qt5Concurrent
-		spatialite
+                #spatialite
 	)
 #endif()
 
 # need to add the import library on windows
-if(WIN32)
-	LIST(APPEND MFW_LINK_LIBS spatialite_i)
-endif()
+#if(WIN32)
+#	LIST(APPEND MFW_LINK_LIBS spatialite_i)
+#endif()
 
 set(MFW_DEP_LIBS
     OTBGDALRATImageIO

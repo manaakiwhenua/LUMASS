@@ -43,6 +43,8 @@ IF(NOT WIN32)
 
         SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g -fPIC")
         SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fPIC")
+ELSE(NOT WIN32)
+    SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT ")
 ENDIF(NOT WIN32)
 
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -260,6 +262,7 @@ if(NOT SPATIALITE_FOUND)
 endif()
 
 message(STATUS "Spatialite include dir: ${SPATIALITE_INCLUDE_DIR}")
+message(STATUS "Spatialite library dir: ${SPATIALITE_LIBLIB_DIR}")
 message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
 
 #====================================================================

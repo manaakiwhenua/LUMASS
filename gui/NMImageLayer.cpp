@@ -753,13 +753,12 @@ NMImageLayer::updateAttributeTable()
                 << "Failed opening SqlTableView connection!"
                 << " - rc = " << rc);
         	::sqlite3_close(mSqlViewConn);
-        	spatialite_cleanup_ex(mSpatialiteCache);
+            spatialite_cleanup_ex(mSpatialiteCache);
         	mSpatialiteCache = 0;
         	mSqlViewConn = 0;
         	return 0;
         }
 
-        rc = sqlite3_enable_load_extension(mSqlViewConn, 1);
         spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
 
         mQSqlConnectionName = QString("%1_%2").arg(sqlTable->GetTableName().c_str())

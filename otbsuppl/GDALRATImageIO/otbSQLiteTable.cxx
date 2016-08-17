@@ -35,14 +35,11 @@
 
 #ifndef _WIN32
     #include "libgen.h"
-    #define NM_SPATIALITE_LIB "libspatialite"
+    //#define NM_SPATIALITE_LIB "libspatialite"
 #else
     #include <stdlib.h>
-    #define NM_SPATIALITE_LIB "spatialite"
+    //#define NM_SPATIALITE_LIB "spatialite"
 #endif
-//#define NM_SPATIALITE_INIT "spatialite_init_ex"
-//#define NM_SPATIALITE_INIT "init_spatialite_extension"
-//#define NM_SPATIALITE_INIT "sqlite3_extension_init"
 
 namespace otb
 {
@@ -2254,8 +2251,6 @@ SQLiteTable::openConnection(void)
     // open or create the host data base
     // ============================================================
 
-    // alloc spatialite caches
-    m_SpatialiteCache = spatialite_alloc_connection();
 
     int openFlags = SQLITE_OPEN_URI |
                     SQLITE_OPEN_CREATE;
@@ -2295,11 +2290,14 @@ SQLiteTable::openConnection(void)
         itkDebugMacro(<< "Failed to adjust cache_size!");
     }
 
-
-    // =============
-    // enable loading extension & register spatialite
-    // =============
-    sqlite3_enable_load_extension(m_db, 1);
+	// alloc spatialite caches
+    m_SpatialiteCache = spatialite_alloc_connection();
+    if (m_SpatialiteCache == 0)
+    {
+        NMErr(_ctxotbtab, << "Failed allocating spatialite connection!")
+        return false;
+    }
+	
     spatialite_init_ex(m_db, m_SpatialiteCache, 1);
 
     return true;
@@ -2724,7 +2722,7 @@ SQLiteTable::disconnectDB(void)
     if (m_db != 0)
     {
         sqlite3_close(m_db);
-		spatialite_cleanup_ex(m_SpatialiteCache);
+        spatialite_cleanup_ex(m_SpatialiteCache);
 		m_SpatialiteCache = 0;
         m_db = 0;
     }

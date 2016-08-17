@@ -18,6 +18,7 @@ LINK_DIRECTORIES(
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/lib
     #${SQLITE3_INCLUDE_DIR}
+    ${OSGEO4W_ROOT}/lib
     ${SQLite_BINARY_DIR}/lib
     ${SPATIALITE_LIB_DIR}
     ${SPATIALITE_LIBLIB_DIR}
@@ -52,18 +53,14 @@ if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
         if(WIN32)
                 TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
                         ${GDAL_LIBRARY}
-                        #${SQLITE3_LIBRARY}
-                        lwgeom 
-						SQLite 
-						#spatialite 
-						geos_c freexl_i libxml2 proj_i iconv
-						spatialite_i 
+                        SQLite
+                        lwgeom_i geos_c freexl_i libxml2 proj_i iconv
+                        spatialite4
                         OTBCommon OTBIO
 			)
         else()
                 TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
                         ${GDAL_LIBRARY}
-                        #${SQLITE3_LIBRARY}
                         SQLite spatialite
                         OTBCommon OTBIO
 			)
@@ -73,18 +70,14 @@ else()
 		if(WIN32)
                         TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
                             ${GDAL_LIBRARY}
-                            #${SQLITE3_LIBRARY}
-                            lwgeom 
-							SQLite 
-							#spatialite 
-							geos_c freexl_i libxml2 proj_i iconv
-							spatialite_i 
+                            SQLite
+                            lwgeom_i geos_c freexl_i libxml2 proj_i iconv
+                            spatialite4
                             OTBCommon OTBIOGDAL
 			)
 		else()
 			TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
 					${GDAL_LIBRARY}
-					#${SQLITE3_LIBRARY}
 					SQLite spatialite
                     OTBCommon OTBIOGDAL
 			)

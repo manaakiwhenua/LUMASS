@@ -18,7 +18,8 @@ def buildDict(profileFile):
     keys = ["Year", "WrapperClassName", "FileDate", "Author", 
             "FilterClassFileName", "FilterTypeDef",
             "RATGetSupport", "RATSetSupport",
-            "ForwardInputUserIDs", "NumTemplateArgs"]
+            "ForwardInputUserIDs", "NumTemplateArgs",
+            "ComponentName", "ComponentIsSink"]
 
     pdict = {}
     # initialise list elements
@@ -244,7 +245,7 @@ def formatInternalParamSetting(propertyList, className):
             "        %s cur%s;\n"                                                            \
             "        if (cur%sVar.isValid())\n" \
             "        {\n" \
-            "           cur%s = cur%sVar%s;\n" \
+            "            cur%s = cur%sVar%s;\n" \
             % (propName, propName, propVarType, propName, propName, propName, propName, strToNumConv)
 
             test = ''
@@ -568,19 +569,35 @@ if __name__ == '__main__':
     # copy file
     filepath = inspect.getfile(inspect.currentframe())
     path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    pos = string.rfind(path, '/', 0)
-    pos = string.rfind(path, '/', 0, pos)
+    if os.sep == '/':
+        pos = string.rfind(path, '/', 0)
+        pos = string.rfind(path, '/', 0, pos)
+    else:
+        pos = string.rfind(path, '\\', 0)
+        pos = string.rfind(path, '\\', 0, pos)
+
     homepath = path[0:pos]
-    targetpath = homepath + "/modellingframework/wrapper"
+
+    frameworkpath = os.path.join(homepath, 'modellingframework')
+    targetpath = os.path.join(frameworkpath, 'wrapper')
     print "    >>> lumass HOME=%s" % homepath
     print "    >>> wrapper file path: %s" % targetpath
-    
-    inCppPath = "%s/WrapperTemplate.cpp" % (path)
-    inHPath   = "%s/WrapperTemplate.h" % (path)
-    
-    cppPath = "%s/%s.cpp" % (targetpath, className)
-    hPath = "%s/%s.h" % (targetpath, className)
-    
+
+    inCppPath = os.path.join(path, 'WrapperTemplate.cpp')
+    inHPath   = os.path.join(path, 'WrapperTemplate.h')
+
+    print "   >>> inCppPath=%s" % inCppPath
+    print "   >>> inHPath=%s" % inHPath
+
+    classNameCPP = "%s.cpp" % (className)
+    classNameH = "%s.h" % (className)
+    cppPath = os.path.join(targetpath, classNameCPP)
+    hPath = os.path.join(targetpath, classNameH)
+
+    print "   >>> cppPath=%s" % inCppPath
+    print "   >>> hPath=%s" % hPath
+
+
     shutil.copyfile(inHPath, hPath)
     shutil.copyfile(inCppPath, cppPath)
 
@@ -717,4 +734,97 @@ if __name__ == '__main__':
     with open(cppPath, 'w') as cppWrapper:
         cppWrapper.write(cppStr)
 
+    print "    >>> I'm done with the wrapper class!"
+
+
+    # -----------------------------------------------------------------------
+    # integrate wrapper class into ProcessFactory
+    # -----------------------------------------------------------------------
+
+    print "    >>> framework integration ..."
+
+    #/*$<IncludeWrapperHeader>$*/   = #include "/*$<WrapperClassName>$*/.h"
+    #ComponentName   /*$<RegisterComponentName>$*/    = mProcRegister << QString::fromLatin1($<ComponentName>$);
+    #ComponentIsSink    /*$<RegisterComponentAsSink>$*/  = mSinks << QString::fromLatin1($<ComponentName>$);
+
+    procFactoryPath = os.path.join(frameworkpath, 'NMProcessFactory.cpp')
+
+    procFactoryStr = None
+    with open(procFactoryPath, 'r') as procFactory:
+        procFactoryStr = procFactory.read()
+
+    compNameStr = pDict['ComponentName']
+
+    wrapperInclude = "#include \"%s.h\"\n/*$<IncludeWrapperHeader>$*/" % (pDict['WrapperClassName'])
+    procFactoryStr = procFactoryStr.replace('/*$<IncludeWrapperHeader>$*/', wrapperInclude)
+
+    regCompNameStr = "    mProcRegister << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentName>$*/" % compNameStr
+    procFactoryStr = procFactoryStr.replace('/*$<RegisterComponentName>$*/', regCompNameStr)
+
+    if not pDict['ComponentIsSink'] is None:
+        if int(pDict['ComponentIsSink']) == 1:
+            regSingCompStr = "    mSinks << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentAsSink>$*/)" % compNameStr
+
+
+    nameFromAliasStr = \
+        "    else if (alias.compare(\"%s\") == 0)\n"            \
+        "    {\n"                                               \
+        "        return \"%s\";\n"                              \
+        "    }\n"                                               \
+        "/*$<WrapperClassNameFromComponentName>$*/"       \
+        % (compNameStr, pDict['WrapperClassName'])
+    procFactoryStr = procFactoryStr.replace('/*$<WrapperClassNameFromComponentName>$*/', nameFromAliasStr)
+
+
+    createProcStr = \
+        "    else if (procClass.compare(\"%s\") == 0)\n"                    \
+        "    {\n"                                                           \
+        "        proc = new %s(this);\n"                                    \
+        "    }\n"                                                           \
+        "/*$<CreateProcessObjFromWrapperClassName>$*/"                \
+        % (pDict['WrapperClassName'], pDict['WrapperClassName'])
+
+    procFactoryStr = procFactoryStr.replace('/*$<CreateProcessObjFromWrapperClassName>$*/', createProcStr)
+
+
+    with open(procFactoryPath, 'w') as procFactory:
+        procFactory.write(procFactoryStr)
+
+
+    print "    >>> I'm done with the ProcessFactory integration!"
+
+
+    # -----------------------------------------------------------------------
+    # add process to process component list (GUI)
+    # -----------------------------------------------------------------------
+
+    print "    >>> user interface integration ..."
+
+    guipath = os.path.join(homepath, 'gui')
+    procListPath = os.path.join(guipath, 'NMProcCompList.cpp')
+
+    procListStr = None
+    with open(procListPath, 'r') as procList:
+        procListStr = procList.read()
+
+
+    guiliststr = \
+        "    this->addItem(QString::fromLatin1(\"%s\"));\n"     \
+        "/*$<AddComponentToGUICompList>$*/"                     \
+        % compNameStr
+    procListStr = procListStr.replace('/*$<AddComponentToGUICompList>$*/', guiliststr)
+
+
+    with open(procListPath, 'w') as procList:
+        procList.write(procListStr)
+
     print "    >>> I'm done!"
+
+
+
+
+
+
+
+
+

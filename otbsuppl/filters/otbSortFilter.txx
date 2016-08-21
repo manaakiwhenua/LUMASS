@@ -263,9 +263,11 @@ void SortFilter<TInputImage, TOutputImage>
 {
 	InputImagePixelType val, mval;
 	IndexImagePixelType idx;
-	InputImagePixelType vals[inArrs.size()];
+    InputImagePixelType* vals;//[inArrs.size()];
 	InputImagePixelType* buf = inArrs[0];
 	int numarrs = inArrs.size();
+
+    vals = static_cast<InputImagePixelType*>(new InputImagePixelType[numarrs]);
 
 	long le = left;
 	long ri = right;
@@ -296,6 +298,8 @@ void SortFilter<TInputImage, TOutputImage>
 	} while (le <= ri && !this->GetAbortGenerateData());
 	if (left < ri) this->SortRegionDescending(inArrs, idxBuf, left, ri);
 	if (right > le) this->SortRegionDescending(inArrs, idxBuf, le, right);
+
+    delete vals;
 }
 
 template <class TInputImage, class TOutputImage>
@@ -305,9 +309,11 @@ void SortFilter<TInputImage, TOutputImage>
 {
 	InputImagePixelType val, mval;
 	IndexImagePixelType idx;
-	InputImagePixelType vals[inArrs.size()];
+    InputImagePixelType* vals; //[inArrs.size()];
 	InputImagePixelType* buf = inArrs[0];
 	int numarrs = inArrs.size();
+
+    vals = static_cast<InputImagePixelType*>(new InputImagePixelType[numarrs]);
 
 	long le = left;
 	long ri = right;
@@ -338,6 +344,8 @@ void SortFilter<TInputImage, TOutputImage>
 	} while (le <= ri && !this->GetAbortGenerateData());
 	if (left < ri) this->SortRegionAscending(inArrs, idxBuf, left, ri);
 	if (right > le) this->SortRegionAscending(inArrs, idxBuf, le, right);
+
+    delete vals;
 }
 
 

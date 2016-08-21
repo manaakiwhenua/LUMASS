@@ -585,8 +585,13 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 // check whether the procItem has got a fileName property
                 NMModelComponent* comp = NMModelController::getInstance()->getComponent(procItem->getTitle());
                 NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(comp);
-                NMProcess* proc = itComp->getProcess();
+                NMProcess* proc = 0;
                 if (itComp != 0)
+                {
+                    proc = itComp->getProcess();
+                }
+
+                if (proc != 0)
                 {
                     QStringList propList = NMModelController::getPropertyList(proc);
                     QStringList fnProps;
@@ -634,6 +639,14 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                                 }
 
                                 QVariant newVal = QVariant::fromValue(fnList);
+                                proc->setProperty(theProperty.toStdString().c_str(), newVal);
+                            }
+                            else if (QString::fromLatin1("QList<QStringList>").compare(propVal.typeName(), Qt::CaseInsensitive) == 0)
+                            {
+                                QList<QStringList> fnListList = propVal.value<QList<QStringList> >();
+                                fnListList.append(fileNames);
+
+                                QVariant newVal = QVariant::fromValue(fnListList);
                                 proc->setProperty(theProperty.toStdString().c_str(), newVal);
                             }
                         }

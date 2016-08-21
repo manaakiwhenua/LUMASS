@@ -41,6 +41,9 @@
 #include "NMScriptableKernelFilter2Wrapper.h"
 #include "NMTableReader.h"
 #include "NMVectorImageToImageFilterWrapper.h"
+#include "NMExternalSortFilterWrapper.h"
+/*$<IncludeWrapperHeader>$*/
+
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
 {
@@ -67,12 +70,16 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("MapKernelScript2");
     mProcRegister << QString::fromLatin1("TableReader");
     mProcRegister << QString::fromLatin1("ExtractBand");
+    mProcRegister << QString::fromLatin1("ImageSorter");
+/*$<RegisterComponentName>$*/
 
     mSinks << QString::fromLatin1("ImageWriter");
     mSinks << QString::fromLatin1("CostDistanceBuffer");
     mSinks << QString::fromLatin1("ExternalExec");
     mSinks << QString::fromLatin1("SQLProcessor");
     mSinks << QString::fromLatin1("UniqueCombination");
+    mSinks << QString::fromLatin1("ImageSorter");
+/*$<RegisterComponentAsSink>$*/
 
 }
 
@@ -179,6 +186,11 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMVectorImageToImageFilterWrapper";
     }
+    else if (alias.compare("ImageSorter") == 0)
+    {
+        return "NMExternalSortFilterWrapper";
+    }
+/*$<WrapperClassNameFromComponentName>$*/
     else return proc;
 }
 
@@ -260,6 +272,11 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     {
         proc = new NMVectorImageToImageFilterWrapper(this);
     }
+    else if (procClass.compare("NMExternalSortFilterWrapper") == 0)
+    {
+        proc = new NMExternalSortFilterWrapper(this);
+    }
+/*$<CreateProcessObjFromWrapperClassName>$*/
     else
         proc =  0;
 

@@ -33,6 +33,7 @@
 #include <vector>
 #include "itkImageToImageFilter.h"
 #include "itkImageRegionIterator.h"
+#include "itkImageRegionIteratorWithIndex.h"
 #include "otbNMImageReader.h"
 #include "otbStreamingRATImageFileWriter.h"
 #include "otbSortFilter.h"

@@ -53,7 +53,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("UniqueCombination"));
     this->addItem(QString::fromLatin1("TableReader"));
     this->addItem(QString::fromLatin1("TextLabel"));
-    this->addItem(QString::fromLatin1("ImageSorter"));
+    //this->addItem(QString::fromLatin1("ImageSorter"));
 /*$<AddComponentToGUICompList>$*/
 
     this->sortItems();

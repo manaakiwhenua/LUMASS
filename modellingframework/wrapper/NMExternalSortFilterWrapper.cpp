@@ -107,7 +107,7 @@ public:
 		bool bok;
 		int givenStep = step;
 
-        QVariant curImageFileNamesVar = p->getParameter("ImageInputFileNames");
+        QVariant curImageFileNamesVar = p->getParameter("InputImageFileNames");
         QStringList curImageFileNames;
         if (curImageFileNamesVar.isValid())
         {
@@ -473,10 +473,11 @@ LinkInternalParametersWrap( NMExternalSortFilterWrapper, NMExternalSortFilterWra
 
 NMExternalSortFilterWrapper
 ::NMExternalSortFilterWrapper(QObject* parent)
+    : mSortAscending("0"), mMaxChunkSize("512")
 {
 	this->setParent(parent);
 	this->setObjectName("NMExternalSortFilterWrapper");
-	this->mParameterHandling = NMProcess::NM_USE_UP;
+    this->mParameterHandling = NMProcess::NM_USE_UP;
 }
 
 NMExternalSortFilterWrapper

@@ -64,7 +64,8 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         if (bok)
         {
             niter = titer;
-            mNumIterations = 1;
+            // display the current number of iterations on the display
+            this->setNumIterations(niter);
         }
     }
 

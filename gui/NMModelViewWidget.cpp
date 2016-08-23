@@ -2076,7 +2076,11 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         ai->updateNumIterations(sic->getNumIterations());
                     }
                     else
+                    {
                         ai->updateNumIterations(0);
+                    }
+                    // force update of activiy status of component
+                    ai->slotProgress(c->getIterationStep());
 
 
                     QStringList subNames;

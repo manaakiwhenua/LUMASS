@@ -575,6 +575,8 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
         for (int inner=0; inner < numExp; ++inner)
         {
             QString tStr = innerExp.at(inner);
+            tStr = tStr.simplified();
+            tStr.replace(QString(" "), QString(""));
             QRegExp rex("\\$\\[([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\]\\$");
             int pos = 0;
             while((pos = rex.indexIn(tStr, pos)) != -1)

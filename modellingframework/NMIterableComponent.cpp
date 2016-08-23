@@ -1135,6 +1135,7 @@ NMIterableComponent::setIterationStep(unsigned int step)
 {
     this->mIterationStep = step == 0 ? 1 : step;
     this->mIterationStepRun = this->mIterationStep;
+    emit signalProgress(mIterationStep);
 }
 
 unsigned int

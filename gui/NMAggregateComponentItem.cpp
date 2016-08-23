@@ -35,7 +35,7 @@
 const std::string NMAggregateComponentItem::ctx = "NMAggregateComponentItem";
 
 NMAggregateComponentItem::NMAggregateComponentItem(QGraphicsItem* parent)
-    : mProgress(0), mIsExecuting(false), mIsCollapsed(false), mModelParent(0)
+    : mProgress(0), mIsExecuting(false), mIsCollapsed(false), mIsActive(true), mModelParent(0)
 {
 	this->setParentItem(parent);
     this->mTimeLevel = 0;
@@ -87,8 +87,9 @@ NMAggregateComponentItem::slotExecutionStopped()
 void
 NMAggregateComponentItem::slotProgress(float progress)
 {
-    this->mProgress = progress;
     //NMDebugAI(<< mTitle.toStdString() << " progress: " << mProgress << std::endl);
+    this->mProgress = progress;
+    this->updateActivityStatus();
     this->update();
 }
 
@@ -272,6 +273,7 @@ NMAggregateComponentItem::updateNumIterations(unsigned int iter)
     if (this->mNumIterations != iter)
     {
         this->mNumIterations = iter;
+        this->updateActivityStatus();
         this->update();
     }
 }
@@ -410,7 +412,10 @@ NMAggregateComponentItem::paint(QPainter* painter,
 
     // background
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
-    painter->setBrush(QColor(red, green, blue, 200));
+    if (mIsActive)
+    {
+        painter->setBrush(QColor(red, green, blue, 200));
+    }
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(bnd.adjusted(0.25,0.25,-0.25,-0.25), 8, 8);
 

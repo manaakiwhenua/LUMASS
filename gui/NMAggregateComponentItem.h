@@ -110,6 +110,11 @@ public slots:
 
 private:
 
+    void updateActivityStatus(void)
+    {
+        mIsActive = mProgress > mNumIterations ? false : true;
+    }
+
     void preparePainting(const QRectF& bndRect);
 
     inline void renderText(const QRectF& rect,
@@ -143,6 +148,7 @@ private:
     float mProgress;
     bool mIsExecuting;
     bool mIsCollapsed;
+    bool mIsActive;
 
     QRectF mItemBnd;
     QRectF mDash;

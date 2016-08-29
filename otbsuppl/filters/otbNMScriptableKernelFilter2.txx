@@ -60,33 +60,9 @@
 #include "otbKernelScriptParserError.h"
 #include "otbAttributeTable.h"
 
+#include "nmlog.h"
+
 //#include "valgrind/callgrind.h"
-
-
-//namespace itk
-//{
-
-//KernelScriptParserError::KernelScriptParserError()
-//    : ExceptionObject()
-//{}
-
-//KernelScriptParserError::KernelScriptParserError(const char* file, unsigned int lineNumber)
-//    : ExceptionObject(file, lineNumber)
-//{}
-
-
-//KernelScriptParserError::KernelScriptParserError(const std::string& file, unsigned int lineNumber)
-//    : ExceptionObject(file, lineNumber)
-//{}
-
-//KernelScriptParserError &
-//KernelScriptParserError::operator=(const KernelScriptParserError& orig)
-//{
-//    ExceptionObject::operator=(orig);
-//    return *this;
-//}
-
-//}
 
 
 namespace otb
@@ -98,8 +74,8 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 {
     m_Radius.Fill(0);
 
-    // <Square> and <Circle>
-    m_KernelShape = "Square";
+    // <RECTANGULAR> and <CIRCULAR>
+    m_KernelShape = "RECTANGULAR";
 
     m_PixelCounter = 0;
 
@@ -148,23 +124,34 @@ void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
 ::Reset()
 {
-    m_KernelShape = "Square";
-    m_ActiveKernelOffsets.clear();
+    m_KernelShape = "RECTANGULAR";
+    m_ActiveKernelIndices.clear();
 
+    m_ActiveNeighborhoodSize = 1;
+    m_CentrePixelIndex = 0;
     m_PixelCounter = 0;
     m_NumPixels = 0;
     m_NumOverflows.clear();
     m_NumUnderflows.clear();
 
-    m_mapNameImgValue.clear();
-    m_mapNameAuxValue.clear();
     m_mapNameImg.clear();
-    m_mapNameTable.clear();
     m_vOutputValue.clear();
     m_vecBlockLen.clear();
 
     m_vecParsers.clear();
     m_mapParserName.clear();
+
+    m_mapNameAuxValue.clear();
+    m_mapXCoord.clear();
+    m_mapYCoord.clear();
+    m_mapZCoord.clear();
+
+
+    // erase key-value pairs from static value stores
+    // specifically for this class
+    m_mapNameImgValue.erase(m_This);
+    m_mapNameTable.erase(m_This);
+    m_mapNeighbourDistance.erase(m_This);
 
     this->Modified();
 }
@@ -259,6 +246,69 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         }
     }
 
+    // if we've got a shaped neighbourhood iterator,
+    // determine the active offsets
+    m_ActiveKernelIndices.clear();
+    m_ActiveKernelIndices.resize(m_NumNeighbourPixel);
+    if (m_NumNeighbourPixel)
+    {
+        typedef itk::Neighborhood<int, TInputImage::ImageDimension> NeighbourhoodType;
+        NeighbourhoodType neigh;
+        neigh.SetRadius(m_Radius);
+
+        typename NeighbourhoodType::OffsetType offset;
+        int circ = 0;
+        for (int p=0; p < m_NumNeighbourPixel; ++p)
+        {
+            offset = neigh.GetOffset(static_cast<typename NeighbourhoodType::NeighborIndexType>(p));
+            double d2 = 0;
+            for (int d=0; d < offset.GetOffsetDimension(); ++d)
+            {
+                d2 += ((offset[d]*m_Spacing[d]) * (offset[d]*m_Spacing[d]));
+            }
+
+            // calucate distances to pixel centre (in pixel)
+            // and define cicular neighbourhood, if applicable
+            const double dist = ::sqrt(d2);
+
+            // note: for circular neighborhood, we create a square
+            // neighborhood first, s. ::GenerateInputRequestedRegion(),
+            // so that's why we can just test against the radius of the
+            // first dimension
+
+            // NOTE: the circular neighbourhood assumes, we've got
+            //       square shaped pixels!
+
+            if (m_KernelShape == "CIRCULAR")
+            {
+                if  (dist <= (m_Radius[0]*m_Spacing[0]))
+                {
+                    m_ActiveKernelIndices[circ++] = p;
+                    m_mapNeighbourDistance[m_This].push_back(static_cast<ParserValue>(dist));
+                }
+            }
+            else
+            {
+                m_ActiveKernelIndices[p] = p;
+                m_mapNeighbourDistance[m_This].push_back(static_cast<ParserValue>(dist));
+            }
+        }
+
+        if (circ > 0)
+        {
+            m_ActiveKernelIndices.resize(circ);
+        }
+
+        m_ActiveNeighborhoodSize = m_ActiveKernelIndices.size();
+        m_CentrePixelIndex = (m_ActiveNeighborhoodSize-1) / 2;
+    }
+    else
+    {
+        m_mapNeighbourDistance[m_This].push_back(static_cast<ParserValue>(0));
+        m_CentrePixelIndex = 0;
+        m_ActiveNeighborhoodSize = 1;
+    }
+
     // initiate the parser admin structures if
     // we've just started working on this image ...
     if (m_PixelCounter == 0)
@@ -271,6 +321,8 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         std::map<std::string, std::vector<std::vector<ParserValue> > > mapNameTable;
         m_mapNameTable[m_This] = mapNameTable;
 
+        std::vector<ParserValue> vNeigDist;
+        m_mapNeighbourDistance[m_This] = vNeigDist;
 
         m_thid.clear();
 
@@ -290,6 +342,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
             m_thid.push_back(th);
 
+            m_mapXCoord.push_back(-9999);
+            m_mapYCoord.push_back(-9999);
+            m_mapZCoord.push_back(0);
         }
 
         // update input data
@@ -298,7 +353,6 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         // parse the script only once at the
         // beginning
         this->ParseScript();
-
     }
 
     m_vthPixelCounter.clear();
@@ -309,14 +363,6 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     m_NumUnderflows.clear();
     m_NumUnderflows.resize(this->GetNumberOfThreads(), 0);
-
-    // if we've got a shaped neighbourhood iterator,
-    // determine the active offsets
-    /// ToDo: later ...
-
-
-
-
 }
 
 template <class TInputImage, class TOutputImage>
@@ -330,11 +376,21 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     size_t pos = std::string::npos;
     if ((pos = expr.find('=')) != std::string::npos)
     {
-        name = expr.substr(0, pos);
+        // double check, whether the first '=' is
+        // part of the comparison operator '=='
+        // which meant we don't have an assignment here
+        if (expr.find('=', pos+1) != pos+1)
+        {
+            name = expr.substr(0, pos);
 
-        // trim off whitespaces at the beginning and end
-        name.erase(0, name.find_first_not_of(' '));
-        name.erase(name.find_last_not_of(' ')+1);
+            // trim off whitespaces at the beginning and end
+            name.erase(0, name.find_first_not_of(' '));
+            name.erase(name.find_last_not_of(' ')+1);
+        }
+        else
+        {
+            pos = std::string::npos;
+        }
     }
 
     // set the RHS as the expression
@@ -361,10 +417,16 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     {
 
         ParserPointerType parser = ParserType::New();
-        parser->DefineVar("thid", static_cast<ParserValue*>(&m_thid[th]));
-        parser->DefineVar("addr", static_cast<ParserValue*>(&m_This));
+        parser->DefineConst("numPix", m_ActiveNeighborhoodSize);
+        parser->DefineConst("centrePixIdx", m_CentrePixelIndex);
+        parser->DefineConst("thid", m_thid[th]);
+        parser->DefineConst("addr", m_This);
+        parser->DefineVar("xcoord", static_cast<ParserValue*>(&m_mapXCoord[th]));
+        parser->DefineVar("ycoord", static_cast<ParserValue*>(&m_mapYCoord[th]));
+        parser->DefineVar("zcoord", static_cast<ParserValue*>(&m_mapZCoord[th]));
         parser->DefineFun("kwinVal", (mu::strfun_type4)kwinVal, true);
         parser->DefineFun("tabVal", (mu::strfun_type4)tabVal, true);
+        parser->DefineFun("neigDist", (mu::fun_type2)neigDist, true);
 
         // enter new variables into the name-variable map
         // note: this only applies to 'auxillary' data and
@@ -432,6 +494,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         KernelScriptParserError eo;
         eo.SetDescription("Parsing Error: Empty KernelScript object!");
         eo.SetLocation(ITK_LOCATION);
+        NMErr("MapKernelScript2", << "Parsing Error: Empty KernelScript object!")
         throw eo;
     }
 
@@ -496,6 +559,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                     KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
+                    NMErr("MapKernelScript2", << exsstr.str())
                     throw pe;
                 }
             }
@@ -535,6 +599,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                         KernelScriptParserError pe;
                         pe.SetDescription(exsstr.str());
                         pe.SetLocation(ITK_LOCATION);
+                        NMErr("MapKernelScript2", << exsstr.str())
                         throw pe;
                     }
                 }
@@ -554,6 +619,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                            << pos << "!";
                     KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
+                    NMErr("MapKernelScript2", << exsstr.str())
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
                 }
@@ -698,7 +764,8 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                 {
                     for (int th=0; th < this->GetNumberOfThreads(); ++th)
                     {
-                        int nkernpix = m_NumNeighbourPixel > 0 ? m_NumNeighbourPixel : 1;
+                        int nkernpix = m_ActiveKernelIndices.size();//m_NumNeighbourPixel > 0 ? m_NumNeighbourPixel : 1;
+                        nkernpix =  nkernpix > 0 ? nkernpix : 1;
                         std::vector<ParserValue> mtype(nkernpix, nv);
                         m_mapNameImgValue[m_This].at(th)[name] = mtype;
                     }
@@ -727,16 +794,10 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     // call the superclass' implementation of this method
     Superclass::GenerateInputRequestedRegion();
 
-    // determine kernel size
-    m_NumNeighbourPixel = 1;
-    for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
-    {
-        if (m_Radius[d] > 0)
-        {
-            m_NumNeighbourPixel *= (m_Radius[d] * 2 + 1);
-        }
-    }
-    m_NumNeighbourPixel = m_NumNeighbourPixel == 1 ? 0 : m_NumNeighbourPixel;
+    // some very basic image information
+    // spacing, origin, number of pixel
+    // note: since the input may be a otb::AttributeTable,
+    // we look for the first image we can find
 
     m_NumPixels = -1;
     InputImageType* inputPtr = 0;
@@ -749,9 +810,42 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         if (inputPtr != 0)
         {
             this->m_NumPixels = inputPtr->GetLargestPossibleRegion().GetNumberOfPixels();
+            m_Spacing = inputPtr->GetSpacing();
+            m_Origin = inputPtr->GetOrigin();
         }
         ++cnt;
     }
+
+
+    // when we're working on a circular neighbourhood,
+    // we make sure the fetched neighbourhood is square
+    // rather than only rectangular; thereby, we're taking
+    // the biggest radius across all dimension to determine
+    // the size of the square;
+    if (m_KernelShape == "CRICULAR")
+    {
+        int maxRadius = 0;
+        for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
+        {
+            maxRadius = m_Radius[d] > maxRadius ? m_Radius[d] : maxRadius;
+        }
+        for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
+        {
+            m_Radius[d] = maxRadius;
+        }
+    }
+
+    // determine kernel size
+    m_NumNeighbourPixel = 1;
+    for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
+    {
+        if (m_Radius[d] > 0)
+        {
+            m_NumNeighbourPixel *= (m_Radius[d] * 2 + 1);
+        }
+    }
+    m_NumNeighbourPixel = m_NumNeighbourPixel == 1 ? 0 : m_NumNeighbourPixel;
+
 
     // no need to pad the input requested region,
     // if we're not operating on a kernel
@@ -830,7 +924,8 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
         // initialise the neighborhood iterators and the corresponding
         // paraser arrays
         //std::vector<InputShapedIterator> vInputIt(m_mapNameImg.size());
-        std::vector<InputNeighborhoodIterator> vInputIt(m_mapNameImg.size());
+        InputShapedIterator* vInputIt = new InputShapedIterator[m_mapNameImg.size()];
+        //std::vector<InputNeighborhoodIterator> vInputIt(m_mapNameImg.size());
         OutputRegionIterator outIt;
 
         // Process each of the boundary faces.  These are N-d regions which border
@@ -840,19 +935,18 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
             // create an iterator for each input image and keep it
             inImgIt = m_mapNameImg.begin();
             int cnt=0;
-            while (inImgIt != m_mapNameImg.end())
+            while (inImgIt != m_mapNameImg.end() && !this->GetAbortGenerateData())
             {
                 // we set all indices to active per default
-                //vInputIt[cnt] = InputShapedIterator(m_Radius, inImgIt->second, *fit);
-                vInputIt[cnt] = InputNeighborhoodIterator(m_Radius, inImgIt->second, *fit);
+                vInputIt[cnt] = InputShapedIterator(m_Radius, inImgIt->second, *fit);
+                //vInputIt[cnt] = InputNeighborhoodIterator(m_Radius, inImgIt->second, *fit);
                 vInputIt[cnt].OverrideBoundaryCondition(&nbc);
+//                for (int npix=0; npix < m_ActiveKernelIndices.size() && !this->GetAbortGenerateData(); ++npix)
+//                {
+//                    vInputIt[cnt].ActivateOffset(m_ActiveKernelIndices[npix]);
+//                }
+                vInputIt[cnt].SetActiveIndexList(m_ActiveKernelIndices);
                 vInputIt[cnt].GoToBegin();
-                //                while (!vInputIt[cnt].IsAtEnd())
-                //                {
-                //                    vInputIt[cnt].ActivateIndex(vInputIt[cnt].GetIndex());
-                //                    ++vInputIt[cnt];
-                //                }
-                //                vInputIt[cnt].GoToBegin();
 
                 ++cnt;
                 ++inImgIt;
@@ -864,16 +958,35 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
             while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
             {
+                // spatial location of centre pixel
+                m_mapXCoord[threadId] = static_cast<double>(m_Origin[0])
+                        + static_cast<double>(outIt.GetIndex()[0])
+                            * static_cast<double>(m_Spacing[0]);
+
+                m_mapYCoord[threadId] = static_cast<double>(m_Origin[1])
+                        + static_cast<double>(outIt.GetIndex()[1])
+                            * static_cast<double>(m_Spacing[1]);
+
+                if (m_Radius.GetSizeDimension() == 3)
+                {
+                    m_mapZCoord[threadId] = static_cast<double>(m_Origin[2])
+                            + static_cast<double>(outIt.GetIndex()[2])
+                                * static_cast<double>(m_Spacing[2]);
+                }
+
                 // set the neigbourhood values of all input images
                 inImgIt = m_mapNameImg.begin();
                 cnt=0;
-                while (inImgIt != m_mapNameImg.end())
+                while (inImgIt != m_mapNameImg.end() && !this->GetAbortGenerateData())
                 {
+                    //for (int ncnt=0; ncnt < m_NumNeighbourPixel; ++ncnt)
+                    typename InputShapedIterator::IndexListType::const_iterator pixIter =
+                            vInputIt[cnt].GetActiveIndexList().begin();
 
-                    for (int ncnt=0; ncnt < m_NumNeighbourPixel; ++ncnt)
+                    for (int ncnt=0; pixIter != vInputIt[cnt].GetActiveIndexList().end(); ++ncnt, ++pixIter)
                     {
                         bool bDataTypeRangeError = false;
-                        const InputPixelType pv = vInputIt[cnt].GetPixel(ncnt);
+                        const InputPixelType pv = vInputIt[cnt].GetPixel(*pixIter);
                         if (pv < itk::NumericTraits<ParserValue>::NonpositiveMin())
                         {
                             bDataTypeRangeError = true;
@@ -891,10 +1004,12 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                         {
                             std::stringstream sstr;
                             sstr << "Data type range error: Image " << inImgIt->first
-                                 << "'s value is out of the parser's data type range!";
+                                 << "'s value is out of the parser's data type range!" << std::endl;
+                            NMErr("MapKernelScript2", << sstr.str())
                             KernelScriptParserError dre;
                             dre.SetLocation(ITK_LOCATION);
                             dre.SetDescription(sstr.str());
+                            delete[] vInputIt;
                             throw dre;
                         }
                     }
@@ -904,7 +1019,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
 
                 // let's run the script now
-                //try
+                try
                 {
                     for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                     {
@@ -919,13 +1034,22 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                         }
                     }
                 }
-                //                catch (mu::ParserError& evalerr)
-                //                {
-                //                    KernelScriptParserError kse;
-                //                    kse.SetDescription(evalerr.GetMsg());
-                //                    kse.SetLocation(ITK_LOCATION);
-                //                    throw kse;
-                //                }
+                catch (mu::ParserError& evalerr)
+                {
+                    std::stringstream errmsg;
+                    errmsg << std::endl
+                           << "Message:    " << evalerr.GetMsg() << std::endl
+                           << "Formula:    " << evalerr.GetExpr() << std::endl
+                           << "Token:      " << evalerr.GetToken() << std::endl
+                           << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+                    NMErr("MapKernelScript2", << errmsg.str())
+
+                    KernelScriptParserError kse;
+                    kse.SetDescription(errmsg.str());
+                    kse.SetLocation(ITK_LOCATION);
+                    delete[] vInputIt;
+                    throw kse;
+                }
 
                 // now we set the result value for the
                 //const ParserValue outValue = m_vOutputValue[threadId];
@@ -944,7 +1068,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                 }
 
                 // prepare everything for the next pixel
-                for (int si=0; si < vInputIt.size(); ++si)
+                for (int si=0; si < m_mapNameImg.size(); ++si)
                 {
                     ++vInputIt[si];
                 }
@@ -953,6 +1077,8 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                 progress.CompletedPixel();
             }
         }
+
+        delete[] vInputIt;
     }
     // we've got no kernel
     else
@@ -978,6 +1104,24 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
         while (!outIt.IsAtEnd() && !this->GetAbortGenerateData())
         {
+
+            // spatial location of centre pixel
+            m_mapXCoord[threadId] = static_cast<double>(m_Origin[0])
+                    + static_cast<double>(outIt.GetIndex()[0])
+                        * static_cast<double>(m_Spacing[0]);
+
+            m_mapYCoord[threadId] = static_cast<double>(m_Origin[1])
+                    + static_cast<double>(outIt.GetIndex()[1])
+                        * static_cast<double>(m_Spacing[1]);
+
+            if (m_Radius.GetSizeDimension() == 3)
+            {
+                m_mapZCoord[threadId] = static_cast<double>(m_Origin[2])
+                        + static_cast<double>(outIt.GetIndex()[2])
+                            * static_cast<double>(m_Spacing[2]);
+            }
+
+
             // set the neigbourhood values of all input images
             inImgIt = m_mapNameImg.begin();
             cnt=0;
@@ -1002,7 +1146,8 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                 {
                     std::stringstream sstr;
                     sstr << "Data type range error: Image " << inImgIt->first
-                         << "'s value is out of the parser's data type range!";
+                         << "'s value is out of the parser's data type range!" << std::endl;
+                    NMErr("MapKernelScript2", << sstr.str())
                     KernelScriptParserError dre;
                     dre.SetLocation(ITK_LOCATION);
                     dre.SetDescription(sstr.str());
@@ -1013,7 +1158,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
             }
 
             // let's run the script now
-            //try
+            try
             {
                 for (int p=0; p < m_vecParsers[threadId].size(); ++p)
                 {
@@ -1028,13 +1173,21 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                     }
                 }
             }
-            //            catch (mu::ParserError& evalerr)
-            //            {
-            //                KernelScriptParserError kse;
-            //                kse.SetDescription(evalerr.GetMsg());
-            //                kse.SetLocation(ITK_LOCATION);
-            //                throw kse;
-            //            }
+            catch (mu::ParserError& evalerr)
+            {
+                std::stringstream errmsg;
+                errmsg << std::endl
+                       << "Message:    " << evalerr.GetMsg() << std::endl
+                       << "Formula:    " << evalerr.GetExpr() << std::endl
+                       << "Token:      " << evalerr.GetToken() << std::endl
+                       << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+                NMErr("MapKernelScript2", << errmsg.str())
+
+                KernelScriptParserError kse;
+                kse.SetDescription(errmsg.str());
+                kse.SetLocation(ITK_LOCATION);
+                throw kse;
+            }
 
             // now we set the result value for the
             //const ParserValue outValue = m_vOutputValue[threadId];

@@ -34,7 +34,7 @@
 
 /*
  * This class is inspired by the itk::MeanImageFilter. It has been copied and
- * adjusted by Alexander Herzig, Landcare Research New Zealand Ltd.
+ * extensively adapted by Alexander Herzig, Landcare Research New Zealand Ltd.
  *
  */
 
@@ -53,9 +53,8 @@
 #include "itkNumericTraits.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
-#include "itkConstShapedNeighborhoodIterator.h"
+#include "itkNMConstShapedNeighborhoodIterator.h"
 
-//#include "mpParser.h"
 #include "otbMultiParser.h"
 
 #include "otbsupplfilters_export.h"
@@ -65,25 +64,59 @@ namespace otb
 /*! \class NMScriptableKernelFilter2
  *  \brief A scriptable (optionally shaped neighborhood) filter
  *
- *  This filter allows the user to run a custom script
- *  on a pixel or a (optionally circular) kernel of user specified
- *  size. The user-defined script represents a sequence of
- *  muParser-based expressions (completed by a semi-colon ';'),
- *  with the added functionality of c-style for loops, e.g.
+ *  This filter allows the user to execute a custom script
+ *  to calculate the output pixel value. If required, the user
+ *  may access individual pixel values of a user-defined
+ *  CIRCULAR or RECTANGULAR neighbourhood around the centre
+ *  pixel to be calculated.
+ *  The user-defined script represents a sequence of muParser-based
+ *  expressions, completed by a semi-colon ';'. Additionally,
+ *  users may use C-style for loops, e.g.
  *
+ *  \code
  *  size=10;
- *  a=0;
- *  b=0;
- *  for (i=0; i < size; i = i+1)
+ *  out=0;
+ *  b=5.7;
+ *  for (i=1; i < size; i = i+1)
  *  {
- *      a=i;
+ *      b = b * i;
  *  }
- *  b=a;
+ *  out=b;
+ *  \endcode
  *
  *  A for loop may not be nested in a muParser expression,
  *  as for example
  *
+ *  \code
  *  (a<0) ? for ... : 0;
+ *  \endcode
+ *
+ *  However, for loops itself may be nested, e.g.
+ *
+ *  \code
+ *  for (i=0; i < number; i=i+1)
+ *  {
+ *      for (g=4; g >=0; g = g-1)
+ *      {
+ *          out = i*g;
+ *      }
+ *  }
+ *  \endcode
+ *
+ *  and muParser expressions may be used in the loop header
+ *  header or body, e.g.
+ *
+ *  TBD
+ *
+ *  RESERVED names (must not be used for user variables!):
+ *
+ *  numPix       : number of active pixel in the neighbourhood
+ *  centrePixIdx : 1D neighbourhood index of the centre pixel
+ *  addr         : object address, used in kwinVal, tabVal, neigDist
+ *  thid         : thread id, used in kwinVal and tabVal
+ *  kwinVal      : function to access neighbourhood values by 1D-index
+ *  tabVal       : function to access table values by column and row index
+ *  neigDist     : neighbour distance from centre pixel (in pixel)
  *
  */
 template <class TInputImage, class TOutputImage>
@@ -122,40 +155,54 @@ public:
   typedef typename OutputImageType::RegionType OutputImageRegionType;
   typedef typename InputImageType::SizeType    InputSizeType;
   typedef typename InputImageType::IndexType   IndexType;
-  typedef typename InputImageType::OffsetType  OffsetType;
+
+  typedef typename InputImageType::SpacingType  SpacingType;
+  typedef typename InputImageType::PointType    OriginType;
 
   typedef typename otb::MultiParser            ParserType;
   typedef typename otb::MultiParser::Pointer   ParserPointerType;
   typedef typename otb::MultiParser::ValueType ParserValue;
   typedef typename otb::MultiParser::CharType CharType;
 
-  typedef typename itk::ConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
+  typedef typename itk::NMConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
+  typedef typename InputShapedIterator::OffsetType  OffsetType;
+  typedef typename InputShapedIterator::NeighborIndexType NeighborIndexType;
+
   typedef typename itk::ImageRegionConstIterator<InputImageType> InputRegionIterator;
   typedef typename itk::ConstNeighborhoodIterator<InputImageType> InputNeighborhoodIterator;
   typedef typename itk::ImageRegionIterator<OutputImageType> OutputRegionIterator;
 
-  /** Set the radius of the neighborhood . */
+  /*! Set the radius of the neighborhood.
+   *  RECTANGULAR neighbourhoods may have
+   *  (of course) a different size for each
+   *  dimension. However, if the KernelShape
+   *  is CIRCULAR, we create a square neighbourhood
+   *  based on the biggest size across dimensions
+   *
+   *  NOTE: the circular neighbourhood assumes
+   *        square pixels
+   */
   itkSetMacro(Radius, InputSizeType)
   void SetRadius(const int* radius);
 
-  /** Get the radius of the neighbourhood*/
+  /*! Get the radius of the neighbourhood*/
   itkGetConstReferenceMacro(Radius, InputSizeType)
   
-  /** Set the kernel script */
+  /*! Set the kernel script */
   itkSetStringMacro(KernelScript)
 
-  /** Set the kernel shape <Square, Circle> */
+  /*! Set the kernel shape <Square, Circle> */
   itkSetStringMacro(KernelShape)
 
-  /** Set the variable name associated with
-   *  the output image pixel(s) */
+  /*! Set the script variable (name) associated with
+   *  the output image pixel value */
   itkSetStringMacro(OutputVarName)
 
-  /** Set the nodata value of the computation */
+  /*! Set the nodata value of the computation */
   //itkSetMacro(Nodata, OutputPixelType)
   void SetNodata(const double& nodata);
 
-  /** Forward component UserIDs to the filter*/
+  /*! Forward component UserIDs to the filter*/
   void SetInputNames(const std::vector<std::string>& inputNames);
 
   void SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj);
@@ -163,7 +210,7 @@ public:
   void setRAT(unsigned int idx, AttributeTable::Pointer table);
 
 
-  /** The neighbourhood counting filter needs a larger input requested region than
+  /*! The filter needs a larger input requested region than
    * the output requested region.
    * \sa ImageToImageFilter::GenerateInputRequestedRegion() */
   virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
@@ -180,6 +227,11 @@ public:
       return m_mapNameTable[static_cast<double>(thisAddr)][tabName][colIdx][rowIdx];
   }
 
+  static const double neigDist(double kwinIdx, double thisAddr)
+  {
+      return m_mapNeighbourDistance[static_cast<double>(thisAddr)][kwinIdx];
+  }
+
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */
   itkConceptMacro(InputHasNumericTraitsCheck,
@@ -192,7 +244,7 @@ protected:
   virtual ~NMScriptableKernelFilter2();
   void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
-  /** This filter can be implemented as a multithreaded filter.
+  /** This filter is implemented as a multithreaded filter.
    * Therefore, this implementation provides a ThreadedGenerateData()
    * routine which is called for each processing thread. The output
    * image data is allocated automatically by the superclass prior to
@@ -211,6 +263,11 @@ protected:
   void ParseScript();
   void ParseCommand(const std::string& expr);
 
+  /*!
+   * \brief Loop     mechanics behind C-style for loop based on muParser expressions
+   * \param i
+   * \param threadId
+   */
   inline void Loop(int i, const int& threadId)
   {
       const int numForExp = m_vecBlockLen[i]-3;
@@ -251,7 +308,9 @@ private:
   int m_NumNeighbourPixel;
 
   InputSizeType m_Radius;
-  std::vector<OffsetType> m_ActiveKernelOffsets;
+  std::vector<NeighborIndexType> m_ActiveKernelIndices;
+  ParserValue m_CentrePixelIndex;
+  ParserValue m_ActiveNeighborhoodSize;
 
   std::string m_KernelScript;
   std::string m_KernelShape;
@@ -260,18 +319,43 @@ private:
   std::vector<std::string> m_DataNames;
   OutputPixelType m_Nodata;
 
+  SpacingType   m_Spacing;
+  OriginType    m_Origin;
+
   double m_This;
   std::vector<double> m_thid;
 
   // admin objects for the scriptable kernel filter
 
+  // ===================================================
+  //        thread dependant object/value stores
+  // ===================================================
+
   // have to define these separately for each thread ...
   // the parsers themselves
   std::vector<std::vector<ParserPointerType> > m_vecParsers;
-  // the map kernel values
-  static std::map<double, std::vector<std::map<std::string, std::vector<ParserValue> > > > m_mapNameImgValue;
+
+  // the x, y, and z coordinate of centre pixel
+  std::vector<ParserValue> m_mapXCoord;
+  std::vector<ParserValue> m_mapYCoord;
+  std::vector<ParserValue> m_mapZCoord;
+
   // the output value per thread
   std::vector<ParserValue> m_vOutputValue;
+
+
+  // ===================================================
+  //        thread independant object/value stores
+  // ===================================================
+
+  // the link between each parser and the name of the variable representing its output value
+  std::map<MultiParser*, std::string> m_mapParserName;
+  // the link between input images and their user defined names
+  std::map<std::string, InputImageType*> m_mapNameImg;
+  // the length of each script block; note a block is either a single statement/expression,
+  // or a for loop including the test and counter variables
+  std::vector<int> m_vecBlockLen;
+
   // the over- and underflows per thread
   std::vector<long long> m_NumOverflows;
   std::vector<long long> m_NumUnderflows;
@@ -280,16 +364,23 @@ private:
   // loop counter and test variables
   std::vector<std::map<std::string, ParserValue> > m_mapNameAuxValue;
 
+
+  // ===================================================
+  //        static value stores
+  // ===================================================
+  // these stores make class instance dependant values
+  // available via the static muParser callback functions
+  // ... bit a of dirty hack ... I guess
+
   // can share those across threads ...
+  // read-only neighbour pixel distances to centre pixel
+  static std::map<double, std::vector<ParserValue> > m_mapNeighbourDistance;
+
   // read-only input tables
   static std::map<double, std::map<std::string, std::vector<std::vector<ParserValue> > > > m_mapNameTable;
-  // the link between each parser and the name of the variable representing its output value
-  std::map<MultiParser*, std::string> m_mapParserName;
-  // the link between input images and their user defined names
-  std::map<std::string, InputImageType*> m_mapNameImg;
-  // the length of each script block; note a block is either a single statement/expression,
-  // or a for loop including the test and counter variables
-  std::vector<int> m_vecBlockLen;
+
+  // the map kernel values are thread dependant
+  static std::map<double, std::vector<std::map<std::string, std::vector<ParserValue> > > > m_mapNameImgValue;
 
 
 };
@@ -304,6 +395,10 @@ otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameTable;
 template<class TInputImage, class TOutput>
 std::map<double, std::vector<std::map<std::string, std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
 otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameImgValue;
+
+template<class TInputImage, class TOutput>
+std::map<double, std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> >
+otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNeighbourDistance;
 
 
 //#include "otbNMScriptableKernelFilter2_ExplicitInst.h"

@@ -213,7 +213,6 @@ public:
      * @return QVariant wrapped property value
      */
     QVariant getParameter(const QString& property);
-    //QStringList getPropertyList(void);
 
 
 public slots:
@@ -285,30 +284,6 @@ protected:
 	 */
 	virtual void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
 
-
-    /*!
-     * \brief processStringParameter
-     * \param str
-     * \return
-     *
-     * Parses str for references to other model components, enclosed by '$', e.g. $AggrComp1$,
-     * and replaces the identifier with the current step index of the particular component;
-     * the reference expression may also contain simple +/- arithmetics to adjust the
-     * step index, e.g. $AggrComp1-1$; note that component identifiers do not contain
-     * any '-' or '+', hence the above expression is not ambigous; the order of the
-     * expression has to be like given above <component-identifier><operator(+|-)><number>
-     */
-    //QString processStringParameter(const QString& str);
-
-
-    /*!
-     * \brief getNextParamExpr Helper function to \ref processStringParameter
-     * \param expr (Nested) parameter expression
-     * \return List of (inner most) non-nested parameter expression
-     *
-     * Extracts non-nested parameter expressions from expr
-     */
-    //QStringList getNextParamExpr(const QString& expr);
 
 private:
     unsigned int mStepIndex;

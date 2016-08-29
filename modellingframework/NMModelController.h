@@ -88,7 +88,60 @@ public:
     static QString getComponentNameFromInputSpec(const QString& inputSpec);
 
     static QStringList getPropertyList(const QObject* obj);
+
+    /*!
+     * \brief processStringParameter
+     * \param str
+     * \return
+     *
+     * Parses and evaluates the parameter expression str. Parameter expressions have
+     * the general form
+     *
+     *      $[<component identifier>:<component property>:<property index>]$,
+     *
+     * where the 2nd and 3rd parameter are optional and the 3rd parameter may only be
+     * specified together with the second parameter. Parameter expressions may be nested
+     * arbitrarily deep.
+     * The component identifier can either be the (model) unique ComponentName property or
+     * alternatively the UserID. Since the latter may not be unique throughout the model,
+     * LUMASS searches for the first model component, which matches the given UserID. Thereby
+     * it searches the execution stack 'upwards', starting within its own host aggregate
+     * component (without looking into its sibling aggregate components(!)) until it finally
+     * reaches the root model component.
+     *
+     * Parameter expressions may be used to access tabular data, e.g. held in a DataBuffer
+     * object. In that case the 2nd parameter specifies the column of the table and
+     * the thrid parameter the 1-based row number of the table, e.g.
+     *
+     *      $[MyParameterTable:FileNames:4]$
+     *
+     * fetches the value of table object 'MyParameterTable'
+     *
+     *
+     * If the second and third parameter
+     * are omitted, the expression is implicitly evaluated for the IterationStep of the
+     * given model component. I.e.
+     *
+     *      $[component1]$ = $[component1:IterationStep]$
+     *
+     * If only the first parameter is specified, it may be followed by a '+' or a '-' operator
+     * and an integer(!) operand to allow for simple arithmetic operations, i.e.
+     *
+     *      $[component1+4]$
+     *
+     * For example, if the IterationStep of component1 equals 3 the above epxression yields 7.
+     *
+     * Note: component identifiers may not contain any '-' or '+' sign!
+     */
     static QString processStringParameter(const QObject *obj, const QString& str);
+
+    /*!
+     * \brief getNextParamExpr Helper function to \ref processStringParameter
+     * \param expr (Nested) parameter expression
+     * \return List of (inner most) non-nested parameter expression
+     *
+     * Extracts non-nested parameter expressions from expr
+     */
     static QStringList getNextParamExpr(const QString& expr);
 
 

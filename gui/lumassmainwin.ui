@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>725</width>
-    <height>640</height>
+    <width>1001</width>
+    <height>936</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -38,18 +38,18 @@
    <widget class="QVTKWidget" name="qvtkWidget" native="true">
     <property name="geometry">
      <rect>
-      <x>60</x>
-      <y>40</y>
-      <width>120</width>
-      <height>80</height>
+      <x>240</x>
+      <y>170</y>
+      <width>171</width>
+      <height>191</height>
      </rect>
     </property>
    </widget>
    <widget class="NMModelViewWidget" name="modelViewWidget" native="true">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>220</y>
+      <x>20</x>
+      <y>170</y>
       <width>191</width>
       <height>191</height>
      </rect>
@@ -61,8 +61,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>725</width>
-     <height>21</height>
+     <width>1001</width>
+     <height>35</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -200,8 +200,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>69</width>
-          <height>542</height>
+          <width>233</width>
+          <height>811</height>
          </rect>
         </property>
        </widget>
@@ -235,8 +235,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>69</width>
-          <height>542</height>
+          <width>275</width>
+          <height>811</height>
          </rect>
         </property>
        </widget>

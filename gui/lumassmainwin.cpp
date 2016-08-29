@@ -357,7 +357,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     mTreeCompEditor->setObjectName(QString::fromUtf8("treeCompEditor"));
     ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Component Properties"));
 
-    ui->componentInfoDock->setMinimumWidth(160);
+    //ui->componentInfoDock->setMinimumWidth(160);
     ui->componentInfoDock->setVisible(true);
 
     // ================================================
@@ -385,7 +385,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     NMProcCompList* procList = new NMProcCompList(ui->compWidgetList);
     procList->setObjectName(QString::fromUtf8("processComponents"));
     ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
-    ui->componentsWidget->setMinimumWidth(150);
+    //ui->componentsWidget->setMinimumWidth(150);
 
     // ================================================
     // BAR(s) SETUP - MENU - PROGRESS - STATUS

@@ -35,6 +35,7 @@ file(GLOB OTBSUPPL_FILTERS
     ${muparser_SOURCE_DIR}/*.cpp
     ${muParserX_SOURCE_DIR}/*.cpp
     ${otbsuppl_core_SOURCE_DIR}/*.cxx
+    ${otbsuppl_core_SOURCE_DIR}/*.hxx
 )
 
 file(GLOB OTBSUPPL_HEADER

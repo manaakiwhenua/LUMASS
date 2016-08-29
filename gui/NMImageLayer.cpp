@@ -927,12 +927,15 @@ NMImageLayer::getOverviewSizes()
 {
     std::vector<std::vector<int> > sizes;
 
-    for (int i=0; i < this->mReader->getNumberOfOverviews(); ++i)
+    if (!this->mFileName.isEmpty())
     {
-        std::vector<int> os;
-        os.push_back(this->mReader->getOverviewSize(i)[0]);
-        os.push_back(this->mReader->getOverviewSize(i)[1]);
-        sizes.push_back(os);
+        for (int i=0; i < this->mReader->getNumberOfOverviews(); ++i)
+        {
+            std::vector<int> os;
+            os.push_back(this->mReader->getOverviewSize(i)[0]);
+            os.push_back(this->mReader->getOverviewSize(i)[1]);
+            sizes.push_back(os);
+        }
     }
 
 

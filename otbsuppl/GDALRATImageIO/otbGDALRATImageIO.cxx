@@ -61,149 +61,6 @@ const std::string otb::GDALRATImageIO::ctx = "GDALRATImageIO";
 namespace otb
 {
 
-
-// only two states : the Pointer is Null or GetDataSet() returns a valid dataset
-//class GDALDatasetWrapper : public itk::LightObject
-//{
-//  friend class GDALDriverManagerWrapper;
-
-//public:
-//  typedef GDALDatasetWrapper      Self;
-//  typedef itk::LightObject        Superclass;
-//  typedef itk::SmartPointer<Self> Pointer;
-
-//  // Method for creation through the object factory.
-//  itkNewMacro(Self);
-
-//  // Run-time type information (and related methods).
-//  itkTypeMacro(GDALRATImageIO, itk::LightObject);
-
-//  // Easy access to the internal GDALDataset object.
-//  // Don't close it, it will be automatic
-//  GDALDataset* GetDataSet() const
-//  {
-//      return m_Dataset;
-//  }
-
-//protected :
-//  GDALDatasetWrapper()
-//   : m_Dataset(NULL)
-//  {
-//  }
-
-//  ~GDALDatasetWrapper()
-//  {
-//      if (m_Dataset)
-//      {
-//          GDALClose(m_Dataset);
-//          m_Dataset = NULL;
-//      }
-//  }
-
-//private:
-//  GDALDataset* m_Dataset;
-//}; // end of GDALDatasetWrapper
-
-
-// Wraps the GdalDriverManager so that GDALAllRegister is called automatically
-//class GDALDriverManagerWrapper
-//{
-//public:
-//  // GetInstance returns a reference to a GDALDriverManagerWrapper
-//  // This is the only entry point to interact with this class
-//  static GDALDriverManagerWrapper& GetInstance()
-//  {
-
-//    // Declare a static method variable of type GDALDriverManagerWrapper
-//    // so that it is constructed and initialized only on the first call
-//    // to GetInstance(), and so try to avoid static initialization order problems
-
-//    static GDALDriverManagerWrapper theUniqueInstance;
-//    return theUniqueInstance;
-//  }
-
-//  // Open the file for reading and returns a smart dataset pointer
-//  GDALDatasetWrapper::Pointer Open( std::string filename ) const
-//  {
-//    GDALDatasetWrapper::Pointer datasetWrapper;
-//    GDALDataset* dataset = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly);
-
-//    if (dataset != NULL)
-//      {
-//      datasetWrapper = GDALDatasetWrapper::New();
-//      datasetWrapper->m_Dataset = static_cast<GDALDataset*>(dataset);
-//      }
-//    return datasetWrapper;
-//  }
-
-
-//  // Open the file for reading and writing (ie update mode) returns a smart dataset pointer
-//  GDALDatasetWrapper::Pointer Update( std::string filename ) const
-//  {
-//    GDALDatasetWrapper::Pointer datasetWrapper;
-//    GDALDataset* dataset = (GDALDataset*)GDALOpen(filename.c_str(), GA_Update);
-
-//    if (dataset != NULL)
-//      {
-//      datasetWrapper = GDALDatasetWrapper::New();
-//      datasetWrapper->m_Dataset = static_cast<GDALDataset*>(dataset);
-//      }
-//    return datasetWrapper;
-//  }
-
-
-//  // Open the new  file for writing and returns a smart dataset pointer
-//  GDALDatasetWrapper::Pointer Create( std::string driverShortName, std::string filename,
-//                                      int nXSize, int nYSize, int nBands,
-//                                      GDALDataType eType, char ** papszOptions ) const
-//  {
-//    GDALDatasetWrapper::Pointer datasetWrapper;
-
-//    GDALDriver*  driver = GetDriverByName( driverShortName );
-//    if(driver != NULL)
-//      {
-//      GDALDataset* dataset = (GDALDataset*)driver->Create(filename.c_str(),
-//                                            nXSize, nYSize,
-//                                            nBands, eType,
-//                                            papszOptions );
-//      if (dataset != NULL)
-//        {
-//        datasetWrapper = GDALDatasetWrapper::New();
-//        datasetWrapper->m_Dataset = dataset;
-//        }
-//      }
-//    return datasetWrapper;
-//  }
-
-
-//  GDALDriver* GetDriverByName( std::string driverShortName ) const
-//  {
-//    return GetGDALDriverManager()->GetDriverByName(driverShortName.c_str());
-//  }
-
-//private :
-//  // private constructor so that this class is allocated only inside GetInstance
-//  GDALDriverManagerWrapper()
-//  {
-//    GDALAllRegister();
-//    GetGDALDriverManager()->AutoLoadDrivers();
-
-//#ifndef CHECK_HDF4OPEN_SYMBOL
-//    // Get rid of the HDF4 driver when it is buggy
-//    GDALDriver* driver = GetGDALDriverManager()->GetDriverByName( "hdf4" );
-//    if (driver)
-//      GetGDALDriverManager()->DeregisterDriver( driver );
-//#endif
-//  }
-
-//  ~GDALDriverManagerWrapper()
-//  {
-//    GDALDestroyDriverManager();
-//  }
-
-//}; // end of GDALDriverManagerWrapper
-
-
 GDALRATImageIO::GDALRATImageIO()
 {
   // By default set number of dimensions to two.
@@ -258,6 +115,7 @@ GDALRATImageIO::GDALRATImageIO()
 
 GDALRATImageIO::~GDALRATImageIO()
 {
+    this->CloseDataset();
 }
 
 // Tell only if the file can be read with GDAL.
@@ -2236,6 +2094,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
 
     if (colIdName.empty())
     {
+        fstIntIdx = fstIntIdx < 0 ? 0 : fstIntIdx;
         colIdName = rat->GetNameOfCol(fstIntIdx);
     }
 

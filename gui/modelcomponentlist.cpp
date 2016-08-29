@@ -405,12 +405,15 @@ ModelComponentList::showImageInfo()
         ovidx << "n/a";
     }
 
+    std::string typeStr = il->getImage()->getComponentTypeString(il->getImage()->getNMComponentType()).toStdString();
+
     std::stringstream ii;
     ii << setprecision(0) << fixed;
 
     ii << "Size: " << (bbox[1] - bbox[0]) / ::abs(spac[0])
           << " x " << (bbox[3] - bbox[2]) / ::abs(spac[1]) << std::endl
        << setprecision(2)
+       << "Pixel Component Type: " << typeStr << std::endl
        << "Top Left: " << bbox[0] << ", " << bbox[3]  << std::endl
        << "Bottom Right: " << bbox[1] << ", " << bbox[2] << std::endl
        << setprecision(0)

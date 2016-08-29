@@ -64,59 +64,164 @@ namespace otb
 /*! \class NMScriptableKernelFilter2
  *  \brief A scriptable (optionally shaped neighborhood) filter
  *
- *  This filter allows the user to execute a custom script
- *  to calculate the output pixel value. If required, the user
- *  may access individual pixel values of a user-defined
- *  CIRCULAR or RECTANGULAR neighbourhood around the centre
- *  pixel to be calculated.
- *  The user-defined script represents a sequence of muParser-based
- *  expressions, completed by a semi-colon ';'. Additionally,
- *  users may use C-style for loops, e.g.
+ * \class NMScriptableKernelFilter2
+ * \brief A scriptable (optionally shaped neighborhood) filter
  *
- *  \code
- *  size=10;
- *  out=0;
- *  b=5.7;
- *  for (i=1; i < size; i = i+1)
- *  {
- *      b = b * i;
- *  }
- *  out=b;
- *  \endcode
+ * This filter allows the user to execute a custom script
+ * to calculate the output pixel value. If required, the user
+ * may access individual pixel values of a user-defined
+ * CIRCULAR or RECTANGULAR neighbourhood around the centre
+ * pixel to be calculated.
+ * The user-defined script represents a sequence of muParser-based
+ * expressions, completed by a semi-colon ';'. Additionally,
+ * users may use C-style for loops, e.g.
  *
- *  A for loop may not be nested in a muParser expression,
- *  as for example
+ *	THE NEIGHBOURHOOD
  *
- *  \code
- *  (a<0) ? for ... : 0;
- *  \endcode
+ *      the filter supports a different radius for each
+ *      image axis and the kernel window length in pixel
+ *      for each axis is
  *
- *  However, for loops itself may be nested, e.g.
+ *      len = 2 * radius + 1
  *
- *  \code
- *  for (i=0; i < number; i=i+1)
- *  {
- *      for (g=4; g >=0; g = g-1)
- *      {
- *          out = i*g;
- *      }
- *  }
- *  \endcode
+ *      where d is the image axis (or dimension);
+ *      for a kernel with radius 1 it yields a 3x3
+ *      neighbourhood; pixel values can be accessed
+ *      by its index position in the neighbourood
+ *      which is numbered sequentially from left
+ *      to right and top to bottom starting with 0
  *
- *  and muParser expressions may be used in the loop header
- *  header or body, e.g.
+ *      0  1  2
+ *      3  4  5
+ *      6  7  8
  *
- *  TBD
  *
- *  RESERVED names (must not be used for user variables!):
+ *	ACCESSING PIXEL VALUES
  *
- *  numPix       : number of active pixel in the neighbourhood
- *  centrePixIdx : 1D neighbourhood index of the centre pixel
- *  addr         : object address, used in kwinVal, tabVal, neigDist
- *  thid         : thread id, used in kwinVal and tabVal
- *  kwinVal      : function to access neighbourhood values by 1D-index
- *  tabVal       : function to access table values by column and row index
- *  neigDist     : neighbour distance from centre pixel (in pixel)
+ *	   image values are referenced by the image identifier,
+ *      which is the UserID of the particular input component
+ *      (e.g. an ImageReader's UserID); if a radius of > 0 for any
+ *      the image diemensions is specified, the image values are
+ *      referenced by their identifier AND their particular index
+ *      value according to the above schedule (in case of a 3x3 kernal).
+ *
+ *	   In the presence of a neighbourhood, image values are retrieved
+ *      using the kwinVal function, e.g. the centre pixel value (i.e. index 4)
+ *      of image 'img' can be retrieved with
+ *
+ *      \code
+ *      v = kwinVal(img, 4, thid, addr);
+ *      \endcode
+ *
+ *	   note: the user only ever has to specify the
+ *            first and second parameter of the kwinVal
+ *            function, i.e. the image identifier and the pixel index!
+ *            The 'thid' and 'addr' parameters always have to be specified
+ *            as shown above and are required for technical reasons.
+ *
+ *	   For the convenience of the user, the index of the centre pixel is provided
+ *      as a pre-defined constant 'centrePixIdx', and the centre pixel value could
+ *      be retrieved by
+ *
+ *         \code
+ *	   v = kwinVal(img, centrePixIdx, thid, addr);
+ *         \endcode
+ *
+ *      regardless of the actual size and shape of the neighbourhood;
+ *
+ *
+ *	ACCESSING TABLE VALUES
+ *
+ *	   Table values are referenced by their 0-based column and row index
+ *      in the table. For example the value t, in column 4 and row 3 of the table
+ *      'mytab' can be retrieved with
+ *
+ *         \code
+ *	   t = tabVal(mytab, 3, 2, addr);
+ *         \endcode
+ *
+ *	   note: similar to the kwinVal function, the tabVal function requires one
+ *            administrative parmameter ('addr'), which has to be specified every
+ *            time the function is being used
+ *
+ *      In contrast to 'standalone' tables as above, an input image's RAT is referenced
+ *      by the input component's UserID (e.g. 'img') extended by the suffix '_t', i.e. 'img_t'
+ *
+ *
+ * 	REFERENCING THE OUTPUT VALUE
+ *
+ *	   The name of the output value is user-defined an must be specified in the
+ *      property section of this filter; in the sample scripts below, it is usually
+ *      represented by the variable 'out'.
+ *
+ *
+ *	GENERAL KERNEL SCRIPT SYNTAX
+ *
+ *      A kernel script is made up of a set of variable assignments, i.e. 'var = a + b;'.
+ *      The right hand side (i.e. right of the '=' sign) is represented by a muParser
+ *      expression. See the following website for details:
+ *
+ *	<a href="http://beltoforion.de/article.php?a=muparser&p=features">muParser</a>
+ *
+ *      If the left hand side (e.g. 'var = ') is missing, as common for the test expression
+ *      in a for-loop header, an implict variable is assigned to it.
+ *
+ *      The typing of variables is implicit; every variable is of type double! Variable assignments
+ *      have to specified explicitly using the '=' sign. A side-effect assignment like
+ *      with the C-style '++' or '--' operator is not supported; also not support are the
+ *      operators '+=', '-=', '/=', '*=' (anything else?).
+ *
+ *        \code
+ *        size=10;
+ *        out=0;
+ *        b=5.7;
+ *        for (i=1; i < size; i = i+1)
+ *        {
+ *            b = b * i;
+ *        }
+ *        out=b;
+ *        \endcode
+ *
+ *      A for loop may not be nested in a muParser expression,
+ *      as for example
+ *
+ *        \code
+ *        var = a < 0 ? for (int myvar=0; myvar < numPix; myvar = myvar+1){out=out+}
+ *                    : 0;
+ *        \endcode
+ *
+ *      However, for loops itself may be nested, e.g.
+ *
+ *        \code
+ *        for (i=0; i < number; i=i+1)
+ *        {
+ *            for (g=4; g >=0; g = g-1)
+ *            {
+ *                out = i*g;
+ *            }
+ *        }
+ *        \endcode
+ *
+ *      and muParser expressions may be used in the loop header
+ *      header or body (s. the floral resources script below).
+ *
+ *   RESERVED names (must not be used for user variables!):
+ *
+ *      numPix       : number of active pixel in the neighbourhood
+ *      centrePixIdx : 1D neighbourhood index of the centre pixel
+ *      addr         : object address, used in kwinVal, tabVal, neigDist
+ *      thid         : thread id, used in kwinVal and tabVal
+ *      kwinVal      : function to access neighbourhood values by 1D-index
+ *      tabVal       : function to access table values by column and row index
+ *      neigDist     : neighbour distance from centre pixel (in pixel)
+ *
+ *      otb::Math constants: e, log2e, log10e, ln2, ln10, pi, euler
+ *      muParser standard functions: http://beltoforion.de/article.php?a=muparser&p=features
+ *
+ *      addtional functions:
+ *
+ *      rand(lower_limit, upper_limit)  : returns random value using std::rand
+ *      fmod(numerator, denominator)    : returns remainder of float division using std::fmod
  *
  */
 template <class TInputImage, class TOutputImage>

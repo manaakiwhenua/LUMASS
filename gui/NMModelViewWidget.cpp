@@ -971,7 +971,7 @@ NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
 	mModelScene->removeItem(procItem);
 	if (!mModelController->removeComponent(procItem->getTitle()))
 	{
-		NMErr(ctx, << "failed to remove component '"
+        NMDebugAI(<< "failed to remove component '"
 				<< procItem->getTitle().toStdString() << "'!");
 	}
 
@@ -2983,7 +2983,7 @@ NMModelViewWidget::deleteAggregateComponentItem(NMAggregateComponentItem* aggrIt
 	mModelScene->removeItem(aggrItem);
 	if (!mModelController->removeComponent(aggrName))
 	{
-		NMErr(ctx, << "failed to remove component '"
+        NMDebugAI(<< "failed to remove component '"
 				<< aggrName.toStdString() << "'!");
 	}
 

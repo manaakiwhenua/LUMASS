@@ -86,8 +86,10 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     if (!propList.contains(specList.at(0)))
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        QString msg = QString("'%1' doesn't have a parameter '%2'!")
-                .arg(this->objectName()).arg(specList.at(1));
+        QString msg = QString("%1::getModelParameter(%2) - don't have a parameter '%3'!")
+                .arg(this->objectName())
+                .arg(paramSpec)
+                .arg(specList.at(1));
         me.setMsg(msg.toStdString());
         throw me;
         return param;
@@ -100,7 +102,11 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     if (!bok)
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        me.setMsg("Invalid parameter index specified!");
+        QString msg = QString("%1::getModelParameter(%2) - index '%3' is ivalid!")
+                .arg(this->objectName())
+                .arg(paramSpec)
+                .arg(listIdx);
+        me.setMsg(msg.toStdString());
         throw me;
         return param;
     }

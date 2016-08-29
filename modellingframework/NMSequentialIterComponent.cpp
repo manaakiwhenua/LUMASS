@@ -25,6 +25,7 @@
 #include "NMSequentialIterComponent.h"
 #include "NMDataComponent.h"
 #include "NMModelController.h"
+#include "NMMfwException.h"
 
 const std::string NMSequentialIterComponent::ctx = "NMSequentialIterComponent";
 
@@ -59,13 +60,35 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
     if (!this->mNumIterationsExpression.isEmpty())
     {
         QString numIterStr = NMModelController::processStringParameter(this, mNumIterationsExpression);
-        bool bok;
+        bool bok = false;
         unsigned int titer = numIterStr.toUInt(&bok);
         if (bok)
         {
             niter = titer;
             // display the current number of iterations on the display
             this->setNumIterations(niter);
+        }
+
+        if (!bok || numIterStr.startsWith("ERROR"))
+        {
+            std::stringstream msg;
+            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            if (!bok)
+            {
+                msg << this->objectName().toStdString()
+                    << "::iterativeComponentUpdate(): ERROR "
+                    << "- invalid NumIterationsExpression '" << numIterStr.toStdString()
+                    << "'!" << std::endl;
+            }
+            else
+            {
+                msg << numIterStr.toStdString() << std::endl;
+            }
+
+            me.setMsg(msg.str());
+            emit signalExecutionStopped();
+            this->mIsUpdating = false;
+            throw me;
         }
     }
 

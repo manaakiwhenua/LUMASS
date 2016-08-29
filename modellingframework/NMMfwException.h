@@ -27,11 +27,13 @@
 
 #include <string>
 #include <exception>
-#include "nmmodframe_export.h"
+//#include "nmmodframe_export.h"
+#include "otbsupplfilters_export.h"
 
 using namespace std;
 
-class NMMODFRAME_EXPORT NMMfwException: public std::exception
+//class NMMODFRAME_EXPORT NMMfwException: public std::exception
+class OTBSUPPLFILTERS_EXPORT NMMfwException: public std::exception
 {
 public:
 
@@ -58,6 +60,8 @@ public:
 
 	virtual const char* what() const throw ();
 
+    void setType(ExceptionType excType) {type = excType;}
+    ExceptionType getType(void) {return type;}
 	void setMsg(const string& msg)
 	{
 		this->msg = msg;

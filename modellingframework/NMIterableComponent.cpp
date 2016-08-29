@@ -826,6 +826,9 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     QString hostName;
     int hostStep;
 
+    bool bThrow = false;
+    std::stringstream exceptionMessage;
+    NMMfwException::ExceptionType exceptionType;
     try
     {
 
@@ -939,44 +942,52 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     }
     catch (itk::ExceptionObject& err)
     {
-        NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
-        std::stringstream msg;
-        msg << hostName.toStdString() << " step #" << hostStep << ": "
+        exceptionMessage << hostName.toStdString() << " step #" << hostStep << ": "
             << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
             << ": " << err.GetDescription();
-        rerr.setMsg(msg.str());
+        bThrow = true;
 
-        //        NMErr(this->objectName().toStdString(), << msg.str());
-        NMDebugCtx(this->objectName().toStdString(), << "done!");
-        emit signalExecutionStopped();
-        throw rerr;
+        //NMErr(this->objectName().toStdString(), << msg.str());
+        //NMDebugCtx(this->objectName().toStdString(), << "done!");
+        //emit signalExecutionStopped();
+        //throw err;
     }
     catch (NMMfwException& nmerr)
     {
-        std::stringstream msg;
-        msg << hostName.toStdString() << " step #" << hostStep << ": "
+        exceptionMessage << hostName.toStdString() << " step #" << hostStep << ": "
             << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
             << ": " << nmerr.what();
 
+        exceptionType = nmerr.getType();
+        bThrow = true;
 
-        NMErr(this->objectName().toStdString(), << msg.str());
-        NMDebugCtx(this->objectName().toStdString(), << "done!");
-        emit signalExecutionStopped();
+        //NMErr(this->objectName().toStdString(), << msg.str());
+        //NMDebugCtx(this->objectName().toStdString(), << "done!");
+        //emit signalExecutionStopped();
         //throw nmerr;
     }
     catch (std::exception& e)
     {
-        std::stringstream msg;
-        msg << hostName.toStdString() << " step #" << hostStep << ": "
+        exceptionMessage << hostName.toStdString() << " step #" << hostStep << ": "
             << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
             << ": " << e.what();
+        bThrow = true;
 
-        NMMfwException re(NMMfwException::Unspecified);
-        re.setMsg(e.what());
         //NMErr(this->objectName().toStdString(), << msg.str());
+        //NMDebugCtx(this->objectName().toStdString(), << "done!");
+        //emit signalExecutionStopped();
+        //throw e;
+    }
+    if (bThrow)
+    {
+        NMMfwException mfwe;
+        mfwe.setType(exceptionType);
+        mfwe.setMsg(exceptionMessage.str());
+
         NMDebugCtx(this->objectName().toStdString(), << "done!");
         emit signalExecutionStopped();
-        throw re;
+        mIsUpdating = false;
+        throw mfwe;
     }
 }
 
@@ -1114,6 +1125,7 @@ void
 NMIterableComponent::reset(void)
 {
     this->mIterationStepRun = this->mIterationStep;
+    this->mIsUpdating = false;
     if (this->getProcess() != 0)
 	{
 		this->getProcess()->reset();

@@ -696,9 +696,13 @@ NMRATBandMathImageFilterWrapper
             {
                 NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
                 std::stringstream msg;
-                msg << "'" << inputCompName.toStdString() << "'";
-                e.setMsg(msg.str());
+                msg << "couldn't find " << inputCompName.toStdString() << "'!" << std::endl;
+
+                NMErr(ctx, << msg.str() << std::endl);
+
+
                 NMDebugCtx(ctx, << "done!");
+                e.setMsg(msg.str());
                 throw e;
             }
 
@@ -751,6 +755,7 @@ NMRATBandMathImageFilterWrapper
                 msg << "'" << inputCompName.toStdString() << "'"
                     << " Missing UserID!";
                 e.setMsg(msg.str());
+                NMErr(ctx, << msg.str());
                 NMDebugCtx(ctx, << "done!");
                 throw e;
             }

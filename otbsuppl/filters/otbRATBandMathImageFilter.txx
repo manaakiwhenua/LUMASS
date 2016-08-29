@@ -51,6 +51,8 @@
 #include "otbAttributeTable.h"
 #include "otbSQLiteTable.h"
 
+#include "nmlog.h"
+
 #include <iostream>
 #include <string>
 
@@ -725,15 +727,19 @@ void RATBandMathImageFilter<TImage>
                                     * static_cast<double>(m_Spacing[j]);
         }
 
-		try
-		{
+        try
+        {
 			value = m_VParser.at(threadId)->Eval(this->m_NbExpr);
-		}
-		catch (itk::ExceptionObject& err)
-		{
-			throw err;
-			itkExceptionMacro(<< err);
-		}
+        }
+        catch (itk::ExceptionObject& err)
+        {
+            if (threadId == 0)
+            {
+                NMErr("MapAlgebra", << err.GetDescription() << std::endl)
+            }
+            throw err;
+            //itkExceptionMacro(<< err);
+        }
 
 		// Case value is equal to -inf or inferior to the minimum value
 		// allowed by the pixelType cast

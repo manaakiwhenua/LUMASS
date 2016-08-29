@@ -32,6 +32,7 @@
 #include "NMSequentialIterComponent.h"
 #include "NMDataComponent.h"
 #include "NMModelController.h"
+#include "utils/muParser/muParserError.h"
 
 NMProcess::NMProcess(QObject *parent)
     : mbAbortExecution(false), mbLinked(false)
@@ -188,20 +189,6 @@ NMProcess::mapHostIndexToPolicyIndex(unsigned short step,
 	return idx;
 }
 
-//QStringList
-//NMProcess::getPropertyList(void)
-//{
-//    QStringList propList;
-//    const QMetaObject* meta = this->metaObject();
-//    for (int i=0; i < meta->propertyCount(); ++i)
-//    {
-//        QMetaProperty prop = meta->property(i);
-//        propList << prop.name();
-//    }
-
-//    return propList;
-//}
-
 QVariant
 NMProcess::getParameter(const QString& property)
 {
@@ -215,6 +202,12 @@ NMProcess::getParameter(const QString& property)
         QString retStr = propVal.toString();
         QString tStr = retStr;
         retStr = NMModelController::processStringParameter(this, tStr);
+        if (retStr.startsWith("ERROR"))
+        {
+            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            me.setMsg(retStr.toStdString());
+            throw me;
+        }
         ret = QVariant::fromValue(retStr);
     }
     else if (QString::fromLatin1("QStringList").compare(propVal.typeName()) == 0)
@@ -231,6 +224,12 @@ NMProcess::getParameter(const QString& property)
 
             QString tStr = retStr;
             retStr = NMModelController::processStringParameter(this, tStr);
+            if (retStr.startsWith("ERROR"))
+            {
+                NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+                me.setMsg(retStr.toStdString());
+                throw me;
+            }
         }
         ret = QVariant::fromValue(retStr);
     }
@@ -247,6 +246,12 @@ NMProcess::getParameter(const QString& property)
                 // we account for the case that a fetched string represents a
                 // a list of values in itself separated by ' ' (whitespaces)
                 QString fetched = NMModelController::processStringParameter(this, curList.at(i));
+                if (fetched.startsWith("ERROR"))
+                {
+                    NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+                    me.setMsg(fetched.toStdString());
+                    throw me;
+                }
                 QStringList fetchedList = fetched.split(QString(" "), QString::SkipEmptyParts);
                 if (fetchedList.size() > 1)
                 {
@@ -270,219 +275,11 @@ NMProcess::getParameter(const QString& property)
         }
         ret = QVariant::fromValue(curList);
     }
-    // QList<QList<QStringList> >
+
 
     NMDebugCtx(this->objectName().toStdString(), << "done!");
     return ret;
 }
-
-//QStringList
-//NMProcess::getNextParamExpr(const QString& expr)
-//{
-//    QStringList innerExpr;
-
-//    QList<int> startPos;
-
-//    for (int i=0; i < expr.size(); ++i)
-//    {
-//        if (    expr.at(i) == '$'
-//            &&  (i+1 < expr.size() && expr.at(i+1) == '[')
-//           )
-//        {
-//            startPos << i;
-//        }
-//        else if (    expr.at(i) == ']'
-//                 &&  (i+1 < expr.size() && expr.at(i+1) == '$')
-//                )
-//        {
-//            if (startPos.size() > 0)
-//            {
-//                int start = startPos.last();
-//                int len = i - start + 2;
-//                QStringRef sub = expr.midRef(start, len);
-//                innerExpr << sub.toString();
-//                startPos.clear();
-//            }
-//        }
-//    }
-
-//    return innerExpr;
-//}
-
-
-//QString
-//NMProcess::processStringParameter(const QString& str)
-//{
-//    QString nested = str;
-//    QStringList innerExp = this->getNextParamExpr(nested);
-//    int numExp = innerExp.size();
-
-//    while (numExp > 0)
-//    {
-//        for (int inner=0; inner < numExp; ++inner)
-//        {
-//            QString tStr = innerExp.at(inner);
-//            QRegExp rex("\\$\\[([a-zA-Z]+[a-zA-Z_\\d]*){1,1}(?::([a-zA-Z]+[a-zA-Z_\\d]*))?(?::(\\d*))?([\\+-]?)(\\d*)\\]\\$");
-//            int pos = 0;
-//            while((pos = rex.indexIn(tStr, pos)) != -1)
-//            {
-//                // 0: whole captured text
-//                // 1: component name  | or user Id
-//                // 2: [: property name]
-//                // 3: [: property index]
-//                // 4: [operator]
-//                // 5: [integer number]
-//                QStringList m = rex.capturedTexts();
-//                NMDebugAI(<< m.join(" | ").toStdString() << std::endl);
-//                //NMDebugAI(<< "---------------" << std::endl);
-//                pos += rex.matchedLength();
-
-//                // --------------------------------------------------------------------------
-//                // retrieve model component
-
-//                NMIterableComponent* host = qobject_cast<NMIterableComponent*>(this->parent());
-//                NMModelComponent* mc = NMModelController::getInstance()->getComponent(m.at(1));
-
-//                // if the component is specified by userId, we've got to dig a little deeper
-//                if (mc == 0)
-//                {
-//                    if (host)
-//                    {
-//                        mc = host->findUpstreamComponentByUserId(m.at(1));
-//                    }
-//                    else
-//                    {
-//                        NMWarn(this->objectName().toStdString(), "Process not embedded in model component!");
-//                    }
-//                }
-
-//                // -----------------------------------------------------------------------------
-//                // retrieve model parameter and process, if applicable
-//                if (mc)
-//                {
-//                    NMIterableComponent* ic = 0;
-
-//                    QVariant modelParam;
-//                    if (m.at(2).isEmpty())
-//                    {
-//                        ic = qobject_cast<NMIterableComponent*>(mc);
-//                        if (ic)
-//                        {
-//                            modelParam = QVariant::fromValue(ic->getIterationStep());
-//                        }
-//                        else
-//                        {
-//                            modelParam = QVariant::fromValue(1);
-//                        }
-//                    }
-//                    else
-//                    {
-//                        QString paramSpec;
-//                        if (m.at(3).isEmpty())
-//                        {
-//                            int pstep = 1;
-//                            if (host->getHostComponent())
-//                            {
-//                                pstep = host->getHostComponent()->getIterationStep();
-//                            }
-//                            else if (ic->getHostComponent())
-//                            {
-//                                pstep = ic->getHostComponent()->getIterationStep();
-//                            }
-//                            paramSpec = QString("%1:%2").arg(m.at(2)).arg(pstep);
-//                        }
-//                        else
-//                        {
-//                            paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
-//                        }
-//                        modelParam = mc->getModelParameter(paramSpec);
-//                    }
-
-//                    // .........................................................
-//                    // if the model parameter is of integer type, we allow
-//                    // some arithemtic on it...
-
-//                    if (    (    modelParam.type() == QVariant::Int
-//                                 ||  modelParam.type() == QVariant::LongLong
-//                                 ||  modelParam.type() == QVariant::UInt
-//                                 ||  modelParam.type() == QVariant::ULongLong
-//                                 )
-//                            &&  !m.at(4).isEmpty() && !m.at(5).isEmpty()
-//                            )
-//                    {
-//                        bool bok;
-//                        long long delta = 0;
-//                        const long long t = m.at(5).toLongLong(&bok);
-//                        if (bok)
-//                        {
-//                            delta = t;
-//                        }
-
-//                        //int itStep = ic->getIterationStep();
-//                        long long itStep = modelParam.toLongLong(&bok);
-
-//                        if (QString::fromLatin1("+").compare(m.at(4)) == 0)
-//                        {
-//                            // could only bound  this, if we restricted to the use
-//                            // of SequentialIterComponent here, not quite sure,
-//                            // we want to do that
-//                            itStep += delta;
-//                        }
-//                        else if (QString::fromLatin1("-").compare(m.at(4)) == 0)
-//                        {
-//                            // prevent 'negative' iStep; could occur in 'instantiation phase'
-//                            // of the pipeline, when the correct step parameter has not
-//                            // been established yet (thereby always assuming that the
-//                            // configuration by the user was correct, in which case the
-//                            // a wrong parameter would be created during the 'link phase'
-//                            // of the pipeline establishment)
-
-//                            if (itStep - delta >= 0)
-//                            {
-//                                itStep -= delta;
-//                            }
-//                            else
-//                            {
-//                                NMWarn(this->objectName().toStdString(),
-//                                       << "Expression based parameter retreival "
-//                                       << "prevented a NEGATIVE PARAMETER INDEX!!"
-//                                       << "  Double check whether the correct "
-//                                       << "parameter was used and the results are OK!");
-//                            }
-//                        }
-
-//                        tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(itStep));
-//                    }
-//                    /// ToDo: how do we handle string lists ?
-//                    // no integer type, so ignore any potential arithemtic
-//                    else
-//                    {
-//                        tStr = tStr.replace(m.at(0), QString::fromLatin1("%1").arg(modelParam.toString()));
-//                    }
-
-//                    NMDebugAI(<< "generated parameter: " << tStr.toStdString() << std::endl);
-//                }
-//                else
-//                {
-//                    // couldn't find the parameter table
-//                    NMErr(ctxNMProcess, << "Failed to find component '"
-//                          << m.at(1).toStdString() << "'!");
-//                    return tStr;
-//                }
-//            }
-
-//            nested = nested.replace(innerExp.at(inner), tStr);
-
-//        } // for
-
-//        innerExp = this->getNextParamExpr(nested);
-//        numExp = innerExp.size();
-
-//    } // while
-
-
-//    return nested;
-//}
 
 void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
 {
@@ -683,12 +480,28 @@ void NMProcess::update(void)
             {
                 rerr.setMsg(err.what());
             }
-            //NMErr(this->parent()->objectName().toStdString(), << msg.str());
+            NMErr(this->parent()->objectName().toStdString(), << rerr.what());
             NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
             emit signalExecutionStopped(this->parent()->objectName());
             emit signalProgress(0);
 
             throw rerr;
+        }
+        catch (mu::ParserError& evalerr)
+        {
+            std::stringstream errmsg;
+            errmsg << std::endl
+                   << "Message:    " << evalerr.GetMsg() << std::endl
+                   << "Formula:    " << evalerr.GetExpr() << std::endl
+                   << "Token:      " << evalerr.GetToken() << std::endl
+                   << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+            NMErr("muParserError", << errmsg.str())
+            NMMfwException nme(NMMfwException::NMProcess_ExecutionError);
+            nme.setMsg(errmsg.str());
+            emit signalExecutionStopped(this->parent()->objectName());
+            emit signalProgress(0);
+
+            throw nme;
         }
 
 		this->mMTime = QDateTime::currentDateTimeUtc();

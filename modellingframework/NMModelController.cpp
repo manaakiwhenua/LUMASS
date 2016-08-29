@@ -272,6 +272,16 @@ NMModelController::executeModel(const QString& compName)
         NMDebugAI(<< nmerr.what() << std::endl);
         NMDebugCtx(ctx, << "done!");
     }
+    catch (itk::ExceptionObject& ieo)
+    {
+#ifdef DEBUG
+#ifndef _WIN32
+    nmlog::nmindent = ind;
+#endif
+#endif
+        NMDebugAI(<< ieo.what() << std::endl);
+        NMDebugCtx(ctx, << "done!");
+    }
     catch (std::exception& e)
 	{
 #ifdef DEBUG
@@ -483,7 +493,7 @@ bool NMModelController::removeComponent(const QString& name)
 	NMModelComponent* comp = this->getComponent(name);
 	if (comp == 0)
 	{
-		NMErr(ctx, << "component '" << name.toStdString() << "' is not controlled by this "
+        NMDebugAI(<< "component '" << name.toStdString() << "' is not controlled by this "
 				<< "controller!");
 		return false;
 	}
@@ -661,7 +671,16 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                         {
                             paramSpec = QString("%1:%2").arg(m.at(2)).arg(m.at(3));
                         }
+
+                        // if we get an invalid parameter, we stop processing and
+                        // return the error message
                         modelParam = mc->getModelParameter(paramSpec);
+                        if (    modelParam.type() == QVariant::String
+                             && modelParam.toString().startsWith("ERROR")
+                           )
+                        {
+                            return modelParam.toString();
+                        }
                     }
 
                     // .........................................................
@@ -731,10 +750,27 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                 else
                 {
                     // couldn't find the parameter table
-                    NMErr(ctxNMProcess, << "Failed to find component '"
-                          << m.at(1).toStdString() << "'!");
-                    return tStr;
+                    std::stringstream ssmsg;
+                    ssmsg << "ERROR - NMModelController::processStringParameter('"
+                          << tStr.toStdString() << "' - component '"
+                          << m.at(1).toStdString() << "' not found!";
+
+                    return QString(ssmsg.str().c_str());
                 }
+
+                // indicate that we indeed identified and processed an expression
+                bRecognisedExpression = true;
+            }
+
+            // better raise alarm if the expression is invalid (e.g. using double or float formatted
+            // increment operands, which could lead to endless loops)
+            if (!bRecognisedExpression)
+            {
+               std::stringstream ssmsg;
+               ssmsg << "ERROR - NMModelController::processStringParameter('"
+                     << tStr.toStdString() << "' - invalid parameter syntax/type!";
+
+               return QString(ssmsg.str().c_str());
             }
 
             nested = nested.replace(innerExp.at(inner), tStr);

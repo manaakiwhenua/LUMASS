@@ -54,6 +54,7 @@
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkNMConstShapedNeighborhoodIterator.h"
+#include "itkNeighborhood.h"
 
 #include "otbMultiParser.h"
 
@@ -74,7 +75,7 @@ namespace otb
  * pixel to be calculated.
  * The user-defined script represents a sequence of muParser-based
  * expressions, completed by a semi-colon ';'. Additionally,
- * users may use C-style for loops, e.g.
+ * users may use C-style for loops (s. 'GENERAL KERNEL SCRIPT SYNTAX').
  *
  *	THE NEIGHBOURHOOD
  *
@@ -272,6 +273,7 @@ public:
   typedef typename itk::NMConstShapedNeighborhoodIterator<InputImageType> InputShapedIterator;
   typedef typename InputShapedIterator::OffsetType  OffsetType;
   typedef typename InputShapedIterator::NeighborIndexType NeighborIndexType;
+  //typedef typename itk::Neighborhood<InputPixelType>::AllocatorType   AllocatorType;
 
   typedef typename itk::ImageRegionConstIterator<InputImageType> InputRegionIterator;
   typedef typename itk::ConstNeighborhoodIterator<InputImageType> InputNeighborhoodIterator;
@@ -324,7 +326,8 @@ public:
 
   static const double kwinVal(const char* imgName, double kwinIdx, double threadId, double thisAddr)
   {
-      return m_mapNameImgValue[static_cast<double>(thisAddr)][threadId][imgName][kwinIdx];
+      const long pixid = static_cast<long>(kwinIdx);
+      return static_cast<ParserValue>(m_mapNameImgNeigValues[static_cast<double>(thisAddr)][threadId][imgName].GetPixel(pixid));
   }
 
   static const double tabVal(const char* tabName, double colIdx, double rowIdx, double thisAddr)
@@ -485,7 +488,8 @@ private:
   static std::map<double, std::map<std::string, std::vector<std::vector<ParserValue> > > > m_mapNameTable;
 
   // the map kernel values are thread dependant
-  static std::map<double, std::vector<std::map<std::string, std::vector<ParserValue> > > > m_mapNameImgValue;
+  static std::map<double, std::vector<std::map<std::string, InputShapedIterator > > > m_mapNameImgNeigValues;
+  static std::map<double, std::vector<std::map<std::string, ParserValue > > > m_mapNameImgValue;
 
 
 };
@@ -498,13 +502,16 @@ std::map<double, std::map<std::string, std::vector<std::vector<typename otb::NMS
 otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameTable;
 
 template<class TInputImage, class TOutput>
-std::map<double, std::vector<std::map<std::string, std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > > >
+std::map<double, std::vector<std::map<std::string, typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> > >
 otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameImgValue;
+
+template<class TInputImage, class TOutput>
+std::map<double, std::vector<std::map<std::string, typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::InputShapedIterator > > >
+otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNameImgNeigValues;
 
 template<class TInputImage, class TOutput>
 std::map<double, std::vector<typename otb::NMScriptableKernelFilter2<TInputImage, TOutput>::ParserValue> >
 otb::NMScriptableKernelFilter2<TInputImage, TOutput>::m_mapNeighbourDistance;
-
 
 //#include "otbNMScriptableKernelFilter2_ExplicitInst.h"
 

@@ -65,6 +65,7 @@ void
 NMConstShapedNeighborhoodIterator< TImage, TBoundaryCondition >
 ::SetActiveIndexList(const IndexListType& activeList)
 {
+    const OffsetValueType *OffsetTable = this->m_ConstImage->GetOffsetTable();
     m_ActiveIndexList = activeList;
 
     // Adjust the begin and end iterators.
@@ -73,8 +74,15 @@ NMConstShapedNeighborhoodIterator< TImage, TBoundaryCondition >
 
     m_CenterIsActive = true;
 
-//    this->GetElement(n)
-
+    // Set the pointer in the neighborhood location just activated.
+    for (int n=0; n < m_ActiveIndexList.size(); ++n)
+    {
+        this->GetElement(n) = this->GetCenterPointer();
+        for ( unsigned i = 0; i < Dimension; ++i )
+        {
+            this->GetElement(n) += OffsetTable[i] * this->GetOffset(n)[i];
+        }
+    }
 }
 
 template< typename TImage, typename TBoundaryCondition >

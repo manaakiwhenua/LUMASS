@@ -46,13 +46,14 @@ namespace itk
  *
  *  \brief Specialised version of the original ITK class; it assumes that
  *         ::ActivateIndex() is called in order, and therefore avoids expensive
- *         re-ordering
+ *         re-ordering; furthermore, it uses 'public' to inherit from NeighborhoodIterator
+ *         to be able to access the underlying data buffer directly (::GetBufferReference())
  */
 
 template< typename TImage,  typename TBoundaryCondition =
             ZeroFluxNeumannBoundaryCondition< TImage > >
 class NMConstShapedNeighborhoodIterator:
-  private NeighborhoodIterator< TImage, TBoundaryCondition >
+  public NeighborhoodIterator< TImage, TBoundaryCondition >
 {
 public:
 
@@ -331,11 +332,26 @@ protected:
    *  out of its assigned region will produce undefined results. */
   Self & operator-=(const OffsetType &);
 
+  /** Copy constructor */
+  NMConstShapedNeighborhoodIterator(const NMConstShapedNeighborhoodIterator & orig)
+  {
+      InitializeNMConstShapedNeighborhoodIterator();
+      if(this != &orig)
+      {
+          Superclass::operator=(orig);
+          m_ActiveIndexList = orig.m_ActiveIndexList;
+          m_CenterIsActive = orig.m_CenterIsActive;
+
+          // Reset begin and end pointers
+          m_ConstBeginIterator.GoToBegin();
+          m_ConstEndIterator.GoToBegin();
+      }
+  }
+
 protected:
   using Superclass::SetPixel;
   using Superclass::SetCenterPixel;
-  /** Copy constructor */
-  NMConstShapedNeighborhoodIterator(const NMConstShapedNeighborhoodIterator &);
+
   // purposely not implemented
 
   friend struct ConstIterator;

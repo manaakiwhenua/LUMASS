@@ -422,7 +422,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     ui->menuObject->removeAction(ui->actionImportRasdamanLayer);
 #endif
 #ifndef DEBUG
-    //ui->menuMOSO->removeAction(ui->actionTest);
+    ui->menuGIS_ish->menuAction()->setVisible(false);
+    ui->menuMOSO->removeAction(ui->actionTest);
 #endif
 
     // since we havent' go an implementation for odbc import

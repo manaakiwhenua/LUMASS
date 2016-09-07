@@ -136,7 +136,7 @@ public:
 	 *  (uniform distribution) adds an uncertainty value
 	 *  of +/- 0 to percent.
 	 */
-    void perturbCriterion(const QString& criterion,
+    bool perturbCriterion(const QString& criterion,
                           const QList<float>& percent);
 
 	/* \brief varies a constraint by a given percent
@@ -144,7 +144,7 @@ public:
 	 *  This function varies the named criterion by the given
 	 *  percentage.
 	 */
-    void varyConstraint(const QString& constraint,
+    bool varyConstraint(const QString& constraint,
                         float percent);
 
 	/* lp_solve callback function to check for user abortion ->

@@ -118,13 +118,36 @@ void doMOSObatch(const QString& losFileName)
     if (nReps > 1)
     {
         int nthreads = QThread::idealThreadCount();
-        int chunksize = mosra->getNumberOfPerturbations() / nthreads;
-        int rest = chunksize - (nthreads * chunksize);
+        nthreads = nthreads > nReps ? nReps : nthreads;
+        int chunksize = nReps / nthreads;
+        int rest = nReps - (nthreads * chunksize);
+        rest = rest < 0 ? 0 : rest;
 
-        int cnt = 0;
-        foreach(const QString& item, mosra->getPerturbationItems())
+        // here we account for the lazyness of the user:
+        // it could well be that the user wants to test either
+        // different sets of criteria or constraints while using the
+        // same set of uncertainties or he wants to use a different
+        // set of uncertainties with the same set of criteria or constraints ...
+        //
+        // ... this means the length of the lists (i.e. PERTURB or UNCERTAINTIES)
+        // may be different; so what we do is, when we reach the end of either of
+        // of the lists, we just keep using the last parameter set (i.e. comma separated)
+        // again ... and again ... and again ... ... as often the user wants us to
+        // (i.e. as long as the other list has still a new parameter set!)
+
+        QStringList pertubItems = mosra->getPerturbationItems();
+        int pertubCnt = pertubItems.size();
+        const QList<QList<float> >& uncertaintyLevels = mosra->getAllUncertaintyLevels();
+        int uncertCnt = uncertaintyLevels.size();
+        int maxCnt = std::max(pertubCnt, uncertCnt);
+
+        for (int cnt=0; cnt < maxCnt; ++cnt)
         {
-            QList<float> levels = mosra->getUncertaintyLevels(cnt);
+            int pertubIdx = cnt < pertubCnt ? cnt : pertubCnt-1;
+            int uncertIdx = cnt < uncertCnt ? cnt : uncertCnt-1;
+
+            QString item = pertubItems.at(pertubIdx);
+            QList<float> levels = mosra->getUncertaintyLevels(uncertIdx);
             int runstart = 1;
             for (int t=0; t < nthreads; ++t)
             {
@@ -137,7 +160,6 @@ void doMOSObatch(const QString& losFileName)
                 QThreadPool::globalInstance()->start(m);
                 runstart += chunksize;
             }
-            ++cnt;
         }
     }
     // we paralise over the uncertainty levels
@@ -155,9 +177,8 @@ void doMOSObatch(const QString& losFileName)
                 QThreadPool::globalInstance()->start(m);
             }
         }
+        QThreadPool::globalInstance()->waitForDone();
     }
-
-    QThreadPool::globalInstance()->waitForDone();
 }
 
 void doMOSOsingle(const QString& losFileName)

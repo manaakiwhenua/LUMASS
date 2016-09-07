@@ -77,7 +77,7 @@ MOSORunnable::run()
 
 	QFileInfo dsInfo(dsfileName);
 
-	for (int runs=startIdx; runs <= numruns; ++runs)
+    for (int runs=startIdx; runs <= (numruns+startIdx-1); ++runs)
 	{
 		NMDebugAI(<< endl << "******** PERTURBATION #" << runs << " *************" << endl);
 		// load the file with optimisation settings
@@ -92,7 +92,11 @@ MOSORunnable::run()
 		mosra->setDataSet(pd);
         if (!mPerturbItem.isEmpty())
         {
-            mosra->perturbCriterion(perturbItem, mflLevels);
+            // bail out, if perturbation doesn't go to plan!
+            if (!mosra->perturbCriterion(perturbItem, mflLevels))
+            {
+                return;
+            }
         }
 		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
 

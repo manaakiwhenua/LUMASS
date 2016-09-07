@@ -55,6 +55,9 @@ NMMosra::NMMosra(QObject* parent) //: QObject(parent)
 	this->mLp = new HLpHelper();
 	this->reset();
 
+    // seed the random number generator
+    srand(time(0));
+
 	NMDebugCtx(ctxNMMosra, << "done!");
 }
 
@@ -1540,7 +1543,7 @@ NMMosra::getDataSetAsTable()
 }
 
 
-void
+bool
 NMMosra::perturbCriterion(const QString& criterion,
         const QList<float>& percent)
 {
@@ -1550,72 +1553,135 @@ NMMosra::perturbCriterion(const QString& criterion,
 	if (this->mDataSet == 0)
 	{
 		NMErr(ctxNMMosra, << "Input dataset has not been set!");
-		return;
+        return false;
 	}
 
 	vtkSmartPointer<vtkTable> tabCalc = this->getDataSetAsTable();
 
+    // extract individual constraint or criterion identifier
+    // from the 'criterion' parameter list, e.g.
+    // constraint identifier: "OBJ:Nleach,OBJ:Sediment"
+    // criterion identifier: "Nleach,Sediment"
+    // -> split by ','
+
+    QStringList metaList = criterion.split(",", QString::SkipEmptyParts);
+
+    // check for criterion or constraint
+    if (metaList.size() == 0)
+    {
+        NMErr(ctxNMMosra, << "Empty PERTURB parameter!");
+        return false;
+    }
+
+    bool bCriterion = true;
+    QString fstItem = metaList.at(0).trimmed();
+    if (    fstItem.startsWith(QString("OBJ"))
+         || fstItem.startsWith(QString("CRI"))
+         //|| fstItem.startsWith(QString("AREA"))
+       )
+    {
+        // nope, looks like we've got a constraint
+        bCriterion = false;
+    }
+
 	// need to distinguish between criterion and constraint
 	// so, if we've got just one repetition, we assume to
 	// have to deal with a constraint rather than a criterion
-	if (this->mlReps == 1)
+    if (!bCriterion)
 	{
 		// constraint
-		// check, whether we've more than one
-		QStringList metaList = criterion.split(",");
         for (int cri=0; cri < metaList.size(); ++cri)
 		{
             float perc = percent.last();
             if (cri < percent.size())
                 perc = percent.at(cri);
-            this->varyConstraint(metaList.at(cri), perc);
+            if (!this->varyConstraint(metaList.at(cri), perc))
+            {
+                return false;
+            }
 		}
 	}
 	else
 	{
-		// identify the criterion
-		QStringList fields = this->mmslCriteria.value(criterion);
-		if (fields.size() == 0)
-		{
-			NMDebugAI(<< "nothing to perturb for criterion '"
-					<< criterion.toStdString() << "'" << endl);
-			return;
-		}
+        for (int ptbItem=0; ptbItem < metaList.size(); ++ptbItem)
+        {
+            QString isolatedCriterion = metaList.at(ptbItem).trimmed();
 
-		// perturb field values by +/- percent of field value
-		srand(time(0));
-        for (int f=0; f < fields.size(); ++f)
-		{
-            const QString& field = fields.at(f);
+            // extract the land use
+            QStringList splitCriterion = isolatedCriterion.split(":", QString::SkipEmptyParts);
+            if (splitCriterion.size() < 2)
+            {
+                NMErr(ctxNMMosra, << "Invalid criterion identifier: '"
+                                  << isolatedCriterion.toStdString() << "'!");
+                return false;
+            }
 
-            // grab corresponding uncertainty level, or re-use
-            // the last one, if there aren't any more
-            float perc = percent.last();
-            if (f < percent.size())
-                perc = percent.at(f);
+            QString criLabel = splitCriterion.at(0);
+            QString optLabel = splitCriterion.at(1);
 
-            vtkDataArray* srcAr = vtkDataArray::SafeDownCast(
-					tabCalc->GetColumnByName(field.toStdString().c_str()));
+            int optIdx = this->mslOptions.indexOf(optLabel);
 
-			for (int r=0; r < tabCalc->GetNumberOfRows(); ++r)
-			{
-				double inval = srcAr->GetTuple1(r);
-                double uncval = inval * ((rand() % ((int)perc+1))/100.0);
-				double newval;
-				if (rand() % 2)
-					newval = inval + uncval;
-				else
-					newval = inval - uncval;
+            // get the performance score field for the specified land use criterion
+            // combination
+            QStringList fields = this->mmslCriteria.value(criLabel);
+            if (fields.size() == 0)
+            {
+                NMErr(ctxNMMosra, << "Got an empty field list for '"
+                                  << criLabel.toStdString() << "'!");
+                return false;
+            }
 
-				srcAr->SetTuple1(r, newval);
-			}
-		}
+            QString field = fields.at(optIdx);
+
+            // identify the criterion
+            //            QStringList fields = this->mmslCriteria.value(isolatedCriterion);
+            //            if (fields.size() == 0)
+            //            {
+            //                NMDebugAI(<< "nothing to perturb for criterion '"
+            //                        << criterion.toStdString() << "'" << endl);
+            //                return false;
+            //            }
+
+            // perturb field values by +/- percent of field value
+            //srand(time(0));
+            //for (int f=0; f < fields.size(); ++f)
+            {
+                //const QString& field = fields.at(f);
+
+                // grab corresponding uncertainty level, or re-use
+                // the last one, if there aren't any more
+                float perc = percent.last();
+                //if (f < percent.size())
+                //    perc = percent.at(f);
+                if (ptbItem < percent.size())
+                {
+                    perc = percent.at(ptbItem);
+                }
+
+                vtkDataArray* srcAr = vtkDataArray::SafeDownCast(
+                        tabCalc->GetColumnByName(field.toStdString().c_str()));
+
+                for (int r=0; r < tabCalc->GetNumberOfRows(); ++r)
+                {
+                    double inval = srcAr->GetTuple1(r);
+                    double uncval = inval * ((rand() % ((int)perc+1))/100.0);
+                    double newval;
+                    if (rand() % 2)
+                        newval = inval + uncval;
+                    else
+                        newval = inval - uncval;
+
+                    srcAr->SetTuple1(r, newval);
+                }
+            }
+        }
 	}
 
 	NMDebugCtx(ctxNMMosra, << "done!");
+    return true;
 }
 
-void
+bool
 NMMosra::varyConstraint(const QString& constraint,
                         float percent)
 {
@@ -1633,7 +1699,7 @@ NMMosra::varyConstraint(const QString& constraint,
 		//e.setMsg("Invalid pertubation item specified!");
 		//throw e;
 
-		return;
+        return false;
 	}
 
 	// read information
@@ -1672,22 +1738,24 @@ NMMosra::varyConstraint(const QString& constraint,
 
 		if (lufm.isEmpty())
 		{
+            NMErr(ctxNMMosra, << "Land use field map is empty!");
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
 			//e.setMsg("Land use field map is empty!");
 			//throw e;
-			return;
+            return false;
 		}
 
 		// get the field list + the operator + cap
 		QStringList fieldvaluelist = lufm.value(use);
 		if (fieldvaluelist.empty())
 		{
+            NMErr(ctxNMMosra, << "Field value list is empty!");
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
 			//e.setMsg("field value list is empty!");
 			//throw e;
-			return;
+            return false;
 		}
 
 		fieldvaluelist = lufm.take(use);
@@ -1696,11 +1764,12 @@ NMMosra::varyConstraint(const QString& constraint,
 		double cap = fieldvaluelist.last().toDouble(&bok);
 		if (!bok)
 		{
+            NMErr(ctxNMMosra, << "Constraint threshold is not a number!")
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
 			//e.setMsg("Land use field map is empty!");
 			//throw e;
-			return;
+            return false;
 		}
 
 		NMDebugAI(<< "old value for " << constraint.toStdString()
@@ -1750,6 +1819,7 @@ NMMosra::varyConstraint(const QString& constraint,
 	}
 
 	NMDebugCtx(ctxNMMosra, << "done!");
+    return true;
 }
 
 int NMMosra::addObjFn(void)

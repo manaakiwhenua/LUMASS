@@ -135,7 +135,6 @@ void doMOSObatch(const QString& losFileName)
                 m->setData(dsFileName, mosra->getLosFileName(),
                         item, levels, runstart, chunksize);
                 QThreadPool::globalInstance()->start(m);
-
                 runstart += chunksize;
             }
             ++cnt;
@@ -157,6 +156,8 @@ void doMOSObatch(const QString& losFileName)
             }
         }
     }
+
+    QThreadPool::globalInstance()->waitForDone();
 }
 
 void doMOSOsingle(const QString& losFileName)

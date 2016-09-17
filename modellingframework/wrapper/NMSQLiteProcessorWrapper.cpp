@@ -121,15 +121,12 @@ public:
 		int givenStep = step;
 
 		
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mSQLStatement.size());
-        std::string curSQLStatement;
-        if (step < p->mSQLStatement.size())
+        QVariant curSqlStmt = p->getParameter("SQLStatement");
+        if (curSqlStmt.isValid())
         {
-            curSQLStatement = p->mSQLStatement.at(step).toStdString().c_str();
+            std::string curSQLStatement = curSqlStmt.toString().toStdString();
             f->SetSQLStatement(curSQLStatement);
         }
-
-
                 
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
 	    std::vector<std::string> userIDs;                                                                       

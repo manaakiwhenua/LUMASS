@@ -177,8 +177,8 @@ void doMOSObatch(const QString& losFileName)
                 QThreadPool::globalInstance()->start(m);
             }
         }
-        QThreadPool::globalInstance()->waitForDone();
     }
+    QThreadPool::globalInstance()->waitForDone();
 }
 
 void doMOSOsingle(const QString& losFileName)

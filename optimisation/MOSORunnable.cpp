@@ -115,13 +115,13 @@ MOSORunnable::run()
                     .arg(dsInfo.baseName()).arg(level).arg(runs);
 
 
-            perturbName = QString("%1/%2_p%3-%4.csv").arg(dsInfo.path())
+            perturbName = QString("%1/tab_%2_p%3-%4.csv").arg(dsInfo.path())
                     .arg(dsInfo.baseName()).arg(level).arg(runs);
 
             resName = QString("%1/res_%2_p%3-%4.csv").arg(dsInfo.path())
                             .arg(dsInfo.baseName()).arg(level).arg(runs);
 
-            chngName = QString("%1/chng_%2_p%3-%4.csv").arg(dsInfo.path())
+            chngName = QString("%1/chg_%2_p%3-%4.csv").arg(dsInfo.path())
                     .arg(dsInfo.baseName()).arg(level).arg(runs);
 
             relName = QString("%1/rel_%2_p%3-%4.csv").arg(dsInfo.path())

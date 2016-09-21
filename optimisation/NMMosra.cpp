@@ -1716,6 +1716,13 @@ NMMosra::varyConstraint(const QString& constraint,
         &&  !use.isEmpty()
        )
 	{
+        // construct the 'key' we're looking for
+        QString tident = use;
+        if (!zone.isEmpty())
+        {
+            tident = QString("%1:%2").arg(use).arg(zone);
+        }
+
 		// since we could have more than one constraint with the same
 		// label, we just go through and check the use
 		QMap<QString, QStringList> lufm;
@@ -1725,11 +1732,11 @@ NMMosra::varyConstraint(const QString& constraint,
 		{
 			if (it.key().compare(label) == 0)
 			{
-				if (it.value().find(use) != it.value().end())
-				{
-					lufm = mmslCriCons.take(it.key());
-					break;
-				}
+                if (it.value().find(tident) != it.value().end())
+                {
+                    lufm = mmslCriCons.take(it.key());
+                    break;
+                }
 			}
 
 			++it;
@@ -1747,7 +1754,7 @@ NMMosra::varyConstraint(const QString& constraint,
 		}
 
 		// get the field list + the operator + cap
-		QStringList fieldvaluelist = lufm.value(use);
+        QStringList fieldvaluelist = lufm.value(tident);
 		if (fieldvaluelist.empty())
 		{
             NMErr(ctxNMMosra, << "Field value list is empty!");
@@ -1758,7 +1765,7 @@ NMMosra::varyConstraint(const QString& constraint,
             return false;
 		}
 
-		fieldvaluelist = lufm.take(use);
+        fieldvaluelist = lufm.take(tident);
 
 		bool bok;
 		double cap = fieldvaluelist.last().toDouble(&bok);
@@ -1787,7 +1794,7 @@ NMMosra::varyConstraint(const QString& constraint,
 		fieldvaluelist.replace(fieldvaluelist.size()-1, strVal);
 
 		// put the multi-map back together again
-		lufm.insert(use, fieldvaluelist);
+        lufm.insert(tident, fieldvaluelist);
 		mmslCriCons.insert(label, lufm);
 
 	}

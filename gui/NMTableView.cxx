@@ -128,7 +128,11 @@ void NMTableView::initView()
 	this->mHiddenColumns.clear();
 
 	// ---------------------------- THE PROGRESS DIALOG -------------------
-	mProgressDialog = new QProgressDialog(this);
+#ifndef _WIN32
+    mProgressDialog = new QProgressDialog(this);
+#else
+    mProgressDialog = 0;
+#endif
 
 
 	// ------------------ SET UP STATUS BAR ------------------------------
@@ -523,7 +527,12 @@ void NMTableView::normalise()
 void
 NMTableView::prepareProgressDlg(NMTableCalculator* obj, const QString& msg, int maxrange)
 {
-	if (maxrange == 0)
+    if (mProgressDialog == 0)
+    {
+        return;
+    }
+
+    if (maxrange == 0)
 		maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
 
 	mProgressDialog->setWindowModality(Qt::WindowModal);
@@ -535,7 +544,12 @@ NMTableView::prepareProgressDlg(NMTableCalculator* obj, const QString& msg, int 
 
 void NMTableView::cleanupProgressDlg(NMTableCalculator* obj, int maxrange)
 {
-	if (maxrange == 0)
+    if (mProgressDialog == 0)
+    {
+        return;
+    }
+
+    if (maxrange == 0)
 		maxrange = mlNumSelRecs == 0 ? this->mSortFilter->sourceRowCount() : mlNumSelRecs;
 
 	mProgressDialog->setValue(maxrange);
@@ -884,9 +898,11 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
     //
 	NMDebugAI(<< "copying field contents ...." << std::endl);
 
+#ifndef _WIN32
 	mProgressDialog->setWindowModality(Qt::WindowModal);
 	mProgressDialog->setLabelText("Joining Attributes ...");
 	mProgressDialog->setRange(0, tarnumrows);
+#endif
 
 	// copy field values
 	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
@@ -906,7 +922,11 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 
 	long srcnumrows = srcTable->rowCount(QModelIndex());
 	long havefound = 0;
+#ifndef _WIN32
 	for (long row=0; row < tarnumrows && !mProgressDialog->wasCanceled(); ++row)
+#else
+    for (long row=0; row < tarnumrows; ++row)
+#endif
 	{
 		const QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
 		const QString sTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole).toString();//tarJoin->GetVariantValue(row);
@@ -952,8 +972,9 @@ NMTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
 			}
 			++havefound;
 		}
-
+#ifndef _WIN32
 		mProgressDialog->setValue(row+1);
+#endif
 	}
 
 	NMDebugAI(<< "did find " << havefound << " matching recs!" << std::endl);
@@ -1145,9 +1166,11 @@ bool NMTableView::writeDelimTxt(const QString& fileName,
 	const int maxrange = mlNumSelRecs > 0 ? mlNumSelRecs : this->mSortFilter->sourceRowCount();
 	const int ncols = mModel->columnCount(QModelIndex());
 
+#ifndef _WIN32
 	mProgressDialog->setWindowModality(Qt::WindowModal);
 	mProgressDialog->setLabelText("Export Table ...");
 	mProgressDialog->setRange(0, maxrange);
+#endif
 
 	// write header first
 	long progress = 0;
@@ -1188,11 +1211,17 @@ bool NMTableView::writeDelimTxt(const QString& fileName,
 			if (progress % 100 == 0)
 			{
 				out.flush();
+#ifndef _WIN32
 				mProgressDialog->setValue(progress);
 			}
 		}
 	}
 	mProgressDialog->setValue(maxrange);
+#else
+            }
+        }
+    }
+#endif
 	out.flush();
 	file.close();
 	NMDebugCtx(__ctxtabview, << "done!");

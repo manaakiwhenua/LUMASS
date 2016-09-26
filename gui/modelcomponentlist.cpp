@@ -459,7 +459,7 @@ void ModelComponentList::removeCurrentLayer()
 
 void ModelComponentList::loadLegend()
 {
-    NMLayer* l = this->getSelectedLayer();
+    NMLayer* l = this->getCurrentLayer();
     if (l == 0)
         return;
 
@@ -478,7 +478,7 @@ void ModelComponentList::loadLegend()
 
 void ModelComponentList::saveLegend()
 {
-    NMLayer* l = this->getSelectedLayer();
+    NMLayer* l = this->getCurrentLayer();
     if (l == 0)
         return;
 
@@ -1606,10 +1606,12 @@ void ModelComponentList::zoomToLayer()
 void ModelComponentList::mapSingleSymbol()
 {
 	// get the current layer
-	QModelIndex idx = this->currentIndex();
-	const int toplevelrow = (idx.internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    //	QModelIndex idx = this->currentIndex();
+    //	const int toplevelrow = (idx.internalId() / 100) - 1;
+    //	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->getCurrentLayer();//this->mLayerModel->getItemLayer(stackpos);
+    if (l == 0)
+        return;
 
 	l->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
 	l->updateMapping();
@@ -1617,11 +1619,13 @@ void ModelComponentList::mapSingleSymbol()
 
 void ModelComponentList::mapColourTable()
 {
-	// get the current layer
-	QModelIndex idx = this->currentIndex();
-	const int toplevelrow = (idx.internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    //	// get the current layer
+    //	QModelIndex idx = this->currentIndex();
+    //	const int toplevelrow = (idx.internalId() / 100) - 1;
+    //	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->getCurrentLayer();//this->mLayerModel->getItemLayer(stackpos);
+    if (l == 0)
+        return;
 
 	if (l->getTable() == 0)
 	{
@@ -1689,10 +1693,12 @@ void ModelComponentList::mapColourRamp()
 void ModelComponentList::mapUniqueValues()
 {
 	// get the current layer
-	QModelIndex idx = this->currentIndex();
-	const int toplevelrow = (idx.internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    //	QModelIndex idx = this->currentIndex();
+    //	const int toplevelrow = (idx.internalId() / 100) - 1;
+    //	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->getCurrentLayer();//this->mLayerModel->getItemLayer(stackpos);
+    if (l == 0)
+        return;
 
 	NMVectorLayer* vL = 0;
 	NMImageLayer* iL = 0;

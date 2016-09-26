@@ -177,7 +177,7 @@
     <set>Qt::AllDockWidgetAreas</set>
    </property>
    <property name="windowTitle">
-    <string>&amp;Layers &amp;&amp; Components</string>
+    <string>Layers &amp; Components</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -212,7 +212,7 @@
   </widget>
   <widget class="QDockWidget" name="componentInfoDock">
    <property name="windowTitle">
-    <string>Att&amp;ributes &amp;&amp; Properties</string>
+    <string>Attributes &amp; Properties</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>

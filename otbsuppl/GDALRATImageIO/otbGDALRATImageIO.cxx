@@ -97,6 +97,7 @@ GDALRATImageIO::GDALRATImageIO()
   m_CanStreamWrite = false;
   m_IsComplex = false;
   m_IsVectorImage = false;
+  m_CreatedNotWritten = false;
 
   //this->AddSupportedReadExtension("kea");
   //this->AddSupportedWriteExtension("kea");
@@ -1164,33 +1165,38 @@ bool GDALRATImageIO::CanStreamWrite()
 
 void GDALRATImageIO::Write(const void* buffer)
 {
-	//NMDebugCtx(ctx, << "...");
-	// we're only really updating, when we've written the imageinformation
-	// at least once
-    //GDALDataset* m_Dataset = 0;
-    if (m_ImageUpdateMode && m_CanStreamWrite)
-	{
-        // if we use the drivermanagerwrapper class here and the data set has
-        // not been created, it'd throw an exception and the program aborts,
-        // which is not what we want, so therefore this hack ...
-        //m_Dataset = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+    //NMDebugCtx(ctx, << "...");
 
-        //std::cout << m_FileName << "-raw::update" << std::endl;
+    // Check if conversion succeed
+    if (buffer == NULL)
+    {
+        itkExceptionMacro(<< "GDAL : Bad alloc");
+        //NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    // Check if we have to write the image information
+    if (m_FlagWriteImageInformation == true && m_Dataset == 0)
+    {
+        this->InternalWriteImageInformation(buffer);
+        m_FlagWriteImageInformation = false;
+    }
+
+
+    if (m_ImageUpdateMode &&  m_CanStreamWrite)
+	{
+        if (!m_CreatedNotWritten)
+        {
+            // make sure we open the dataset in update mode before we proceed
+            if (m_Dataset != 0)
+            {
+                this->CloseDataset();
+            }
+            m_Dataset = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
+        }
+
         if (m_Dataset != 0)
 		{
-            this->CloseDataset();
-            m_Dataset = (GDALDataset*) GDALOpen(m_FileName.c_str(), GA_Update);
-            //GDALClose(m_Dataset);
-            //std::cout << m_FileName << "-raw::close" << std::endl;
-            // in case we've worked on the data set in non-update mode before
-//            if (m_Dataset && m_Dataset->GetDataSet() != 0)
-//            {
-//                m_Dataset = 0;
-//            }
-//            m_Dataset = GDALDriverManagerWrapper::GetInstance().Update(
-//                    m_FileName);
-//			m_Dataset = m_Dataset->GetDataSet();
-			//NMDebugAI(<< "opened " << m_FileName.c_str() << " in update mode!" << std::endl);
 			otbDebugMacro(<< "opened '" << m_FileName << "' in update mode.");
 
 			// being in update mode may mean that we're not aware of some essential
@@ -1204,8 +1210,18 @@ void GDALRATImageIO::Write(const void* buffer)
 		}
 		else
 		{
-			itkWarningMacro(
-					<< "GDAL: couldn't open '" << m_FileName << "' in update mode. We now create/overwrite the file!");
+            if (m_CreatedNotWritten)
+            {
+                itkExceptionMacro(
+                        << "GDAL: couldn't write to freshly created dataset '"
+                        << m_FileName << "'!");
+            }
+            else
+            {
+                itkExceptionMacro(
+                        << "GDAL: couldn't open '" << m_FileName << "' in update mode."
+                        << " Double check whether the file format supports update!");
+            }
 		}
 	}
 	else if (m_ImageUpdateMode && !m_CanStreamWrite)
@@ -1214,22 +1230,7 @@ void GDALRATImageIO::Write(const void* buffer)
 				<< "GDAL: file (format) cannot be used in update mode!")
 	}
 
-	// Check if we have to write the image information
-    if (m_FlagWriteImageInformation == true && m_Dataset == 0)
-	{
-		this->InternalWriteImageInformation(buffer);
-		m_FlagWriteImageInformation = false;
-	}
-
-	// Check if conversion succeed
-	if (buffer == NULL)
-	{
-		itkExceptionMacro(<< "GDAL : Bad alloc");
-		//NMDebugCtx(ctx, << "done!");
-		return;
-	}
-
-	// Compute offset and size
+    // Compute offset and size
 	unsigned int lNbLines = this->GetIORegion().GetSize()[1];
 	unsigned int lNbColumns = this->GetIORegion().GetSize()[0];
 	int lFirstLine = this->GetIORegion().GetIndex()[1]; // [1... ]
@@ -1313,6 +1314,8 @@ void GDALRATImageIO::Write(const void* buffer)
 							m_BytePerPixel);
 		chrono.Stop();
 		otbMsgDevMacro(<< "RasterIO Write took " << chrono.GetTotal() << " sec")
+
+        m_CreatedNotWritten = false;
 
 		// Check if writing succeed
 		if (lCrGdal == CE_Failure)
@@ -1705,6 +1708,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
                          totalRegionCols, totalRegionLines,
                          m_NbBands, m_GDALComponentType,
                          papszOptions);
+        m_CreatedNotWritten = true;
     }
   }
   else

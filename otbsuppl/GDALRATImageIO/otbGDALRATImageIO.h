@@ -305,6 +305,7 @@ private:
   bool GDALInfoReportCorner(const char * corner_name, double x, double y,
                             double& dfGeoX, double& dfGeoY) const;
 
+  bool m_CreatedNotWritten;
   bool m_FlagWriteImageInformation;
   bool m_CanStreamWrite;
 

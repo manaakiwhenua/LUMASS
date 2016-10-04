@@ -60,6 +60,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
       mIsSelected(false), mHasChanged(false),
 	  mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
       mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV),
+      mLegendType(NM_LEGEND_SINGLESYMBOL),
       mIsIn3DMode(false)
 {
 	if (renWin == 0)
@@ -91,6 +92,11 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 
 	for (int i=1; i < 6; i += 2)
 		this->mBBox[i] = 1;
+
+    for (int i=0; i < 7; ++i)
+    {
+        this->mStats[i] = -9999;
+    }
 
 	this->mTotalArea = -1;
 
@@ -157,7 +163,11 @@ NMLayer::~NMLayer()
         delete mTableModel;
         mTableModel = 0;
         {
-        QSqlDatabase::database(mQSqlConnectionName).close();
+            QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
+            if (db.isValid() && db.isOpen())
+            {
+                db.close();
+            }
         }
         QSqlDatabase::removeDatabase(mQSqlConnectionName);
 

@@ -39,6 +39,8 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
     : mSourceModel(0),
       mLastFilter(""),
       mLastSelRecsOnly(false),
+      mUpdateProxySelection(false),
+      mUpdateSourceSelection(false),
       mLastSelCount(0),
       mTempTableName(""),
       mSourcePK(""),

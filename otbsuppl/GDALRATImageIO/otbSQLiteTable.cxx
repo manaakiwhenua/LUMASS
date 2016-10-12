@@ -2279,7 +2279,7 @@ SQLiteTable::openConnection(void)
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
         m_db = 0;
-        NMDebugCtx(_ctxotbtab, << "done!");
+        //NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
 
@@ -2298,6 +2298,9 @@ SQLiteTable::openConnection(void)
         return false;
     }
 	
+    NMDebugAI( << _ctxotbtab << ": Opened connection to '"
+               << m_dbFileName << "'" << std::endl);
+
     spatialite_init_ex(m_db, m_SpatialiteCache, 1);
 
     return true;
@@ -2725,6 +2728,9 @@ SQLiteTable::disconnectDB(void)
         spatialite_cleanup_ex(m_SpatialiteCache);
 		m_SpatialiteCache = 0;
         m_db = 0;
+
+        NMDebugAI( << _ctxotbtab << ": Closed connection to '"
+                   << m_dbFileName << "'" << std::endl);
     }
 }
 

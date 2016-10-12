@@ -745,7 +745,8 @@ NMImageLayer::updateAttributeTable()
         int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(),
         			&mSqlViewConn,
         			SQLITE_OPEN_URI |
-                    SQLITE_OPEN_READWRITE, 0);// |
+                    SQLITE_OPEN_READWRITE |
+                    SQLITE_OPEN_SHAREDCACHE, 0);// |
                     //SQLITE_OPEN_SHAREDCACHE, 0);
         if (rc != SQLITE_OK)
         {
@@ -766,6 +767,9 @@ NMImageLayer::updateAttributeTable()
         NMQSQLiteDriver* drv = new NMQSQLiteDriver(mSqlViewConn, 0);
         QSqlDatabase db = QSqlDatabase::addDatabase(drv, mQSqlConnectionName);
 		
+        NMDebugAI(<< ctxNMImageLayer << ": Created QSql connection to '"
+                  << sqlTable->GetTableName() << "'" << std::endl);
+
         sqlModel = new NMSqlTableModel(this, db);
         sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
         sqlModel->select();

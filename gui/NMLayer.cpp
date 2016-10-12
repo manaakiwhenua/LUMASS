@@ -157,7 +157,8 @@ NMLayer::~NMLayer()
     {
         this->mSqlTableView->close();
         delete this->mSqlTableView;
-        QSqlTableModel* tmodel = qobject_cast<QSqlTableModel*>(this->mTableModel);
+        NMSqlTableModel* tmodel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
+        std::string dbname = tmodel->getDatabaseName().toStdString();
         tmodel->clear();
         //tmodel->database().close();
         delete mTableModel;
@@ -175,6 +176,8 @@ NMLayer::~NMLayer()
         spatialite_cleanup_ex(mSpatialiteCache);
         mSpatialiteCache = 0;
         mSqlViewConn = 0;
+        NMDebug(<< "NMImageLayer: Destroyed QSql connection to '"
+                << dbname << "'" << std::endl);
     }
 
     if (mSelectionModel != 0)

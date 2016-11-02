@@ -97,6 +97,8 @@ public:
 
     QString getRandomString(int len=15);
     QString getFilter(void){return mLastFilter;}
+    Qt::SortOrder getSortOrder(){return mLastColSort.second;}
+    int getSortColumn(){return mLastColSort.first;}
     QString getSourcePK(void);
     QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
     QItemSelection getProxySelection(void);

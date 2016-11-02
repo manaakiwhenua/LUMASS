@@ -26,10 +26,12 @@
 #include "NMImageLayer.h"
 #include "NMVectorLayer.h"
 #include "NMQtOtbAttributeTableModel.h"
+#include "NMSqlTableModel.h"
 
 #include <QTime>
 #include <QColor>
 #include <QPainter>
+#include <QSqlQuery>
 
 #include "vtkPointData.h"
 #include "vtkMapper.h"
@@ -82,6 +84,7 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	// make a legendinfo table for this layer
 	//this->resetLegendInfo();
 
+    this->mLegendIndexField.clear();
 	this->mFileName.clear();
 	this->mLayerPos = this->mRenderer->GetLayer();
 
@@ -310,6 +313,21 @@ void NMLayer::resetLegendInfo(void)
 
 }
 
+long long
+NMLayer::getNumTableRecords()
+{
+    if (mTableModel == 0)
+    {
+        return 0;
+    }
+
+    // this is a naive implementation and works only
+    // if the underlying model is always completely
+    // populated with data, i.e. no database!
+    // (suitable for current vector layer implementation)
+    return mTableModel->rowCount();
+}
+
 int
 NMLayer::getColumnIndex(const QString& fieldname)
 {
@@ -366,15 +384,15 @@ NMLayer::initiateLegend(void)
     bool brawpixels = false;
     bool bRGB = false;
     NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-    otb::AttributeTable::Pointer rat;
-    if (il != 0)
-    {
-        rat = il->getRasterAttributeTable(1);
-    }
+    //    otb::AttributeTable::Pointer rat;
+    //    if (il != 0)
+    //    {
+    //        rat = il->getRasterAttributeTable(1);
+    //    }
 
     if (   (    il
-            &&  (    mTableModel == 0
-                 ||  (rat.IsNotNull() && rat->GetNumRows() > 256)
+            &&  (   mTableModel != 0
+                 && il->getNumTableRecords() > 25000
                 )
            )
         || (il && il->getNumBands() == 3)
@@ -416,6 +434,7 @@ NMLayer::initiateLegend(void)
 		// do we have a colour table
 		mLegendValueField.clear();
 		mLegendDescrField.clear();
+        mLegendIndexField.clear();
 		// reset colour table indices
 		mHasClrTab = false;
 		for (int i=0; i < 4; ++i)
@@ -427,15 +446,17 @@ NMLayer::initiateLegend(void)
 		int ncols = this->mTableModel->columnCount(QModelIndex());
 
         //ToDo:: let's destrict us to 256 categories
-        mNumClasses = this->mTableModel->rowCount(QModelIndex());
+        mNumClasses = il ? il->getNumTableRecords() : this->mTableModel->rowCount(QModelIndex());
+
 		// + 4: description (field); nodata; > upper; < lower
 		mNumLegendRows = mNumClasses + 4;
 
-		int colidx = -1;
+        int colidx = -1;    // column index for mLegendValueField
 		for (int i=0; i < ncols; ++i)
 		{
 			const QModelIndex ci = mTableModel->index(0, i, QModelIndex());
-			if (mTableModel->data(ci, Qt::DisplayRole).type() != QVariant::String)
+            QVariant::Type colType = mTableModel->data(ci, Qt::DisplayRole).type();
+            if (colType != QVariant::String)
 			{
 				QString fieldName = mTableModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
 				if (	mLegendValueField.isEmpty()
@@ -450,6 +471,15 @@ NMLayer::initiateLegend(void)
 					mLegendDescrField = fieldName;
 					colidx = i;
 				}
+
+                if (    (    colType == QVariant::Int
+                         ||  colType == QVariant::LongLong
+                        )
+                    &&  mLegendIndexField.isEmpty()
+                   )
+                {
+                    mLegendIndexField = fieldName;
+                }
 
 				if (fieldName.compare("red", Qt::CaseInsensitive) == 0)
 					mClrTabIdx[0] = i;
@@ -682,24 +712,20 @@ NMLayer::updateMapping(void)
 		break;
 	}
 
-    if (mLayerType == NM_IMAGE_LAYER)
+    if (    mLayerType == NM_IMAGE_LAYER
+        &&  mLegendValueField != "RGB"
+       )
 	{
         NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
         vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-        if (mLegendValueField != "RGB")
+        iprop->SetUseLookupTableScalarRange(1);
+        if (!clrfunc)
         {
-            iprop->SetUseLookupTableScalarRange(1);
-            if (!clrfunc)
-            {
-                iprop->SetLookupTable(mLookupTable);
-
-            }
-            else
-                iprop->SetLookupTable(mClrFunc);
+            iprop->SetLookupTable(mLookupTable);
         }
         else
         {
-            ;
+            iprop->SetLookupTable(mClrFunc);
         }
     }
 	else
@@ -1069,7 +1095,9 @@ NMLayer::mapUniqueValues(void)
 		return;
 	}
 
-	// check attribute value type
+    // check attribute value type && column indices
+    int idxidx = -1;
+    idxidx = mLegendIndexField.isEmpty() ? idxidx : this->getColumnIndex(mLegendIndexField);
 	int validx = this->getColumnIndex(mLegendValueField);
 	int descridx = validx;
 	mLegendDescrField = mLegendValueField;
@@ -1080,9 +1108,8 @@ NMLayer::mapUniqueValues(void)
 	}
 	if (descridx < 0) descridx = validx;
 
-	const QModelIndex sampleIdx = mTableModel->index(0, validx);
+    // do we have a numeric values we're mapping or strings?
 	bool bNum = false;
-	//QVariant::Type valType = mTableModel->data(sampleIdx).type();
 	QVariant::Type valType = this->getColumnType(this->getColumnIndex(mLegendValueField));
 	if (valType == QVariant::Double)
 	{
@@ -1094,8 +1121,10 @@ NMLayer::mapUniqueValues(void)
 		bNum = true;
 	}
 
-	mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
+    vtkSmartPointer<NMVtkLookupTable> lut = vtkSmartPointer<NMVtkLookupTable>::New();
 
+
+    // the number of cells / records in the attribute table
 	long ncells = 0;
 	vtkAbstractArray* valar = 0;
 	vtkUnsignedCharArray* hole = 0;
@@ -1104,7 +1133,6 @@ NMLayer::mapUniqueValues(void)
 		vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
 		valar = dsa->GetAbstractArray(validx);
 		ncells = valar->GetNumberOfTuples();
-		mLookupTable->SetNumberOfTableValues(ncells);
 
 		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this);
 		if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
@@ -1112,29 +1140,43 @@ NMLayer::mapUniqueValues(void)
 	}
 	else
 	{
-        //ncells = mTableModel->rowCount(QModelIndex());
-        //ncells = mTableModel-
         NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-        ncells = il->getRasterAttributeTable(1)->GetNumRows();
-        //mLookupTable->SetNumberOfTableValues(ncells+2);
-        mLookupTable->SetNumberOfTableValues(ncells);
+        ncells = il->getNumTableRecords();
 	}
+    lut->SetNumberOfTableValues(ncells);
 
-	// value index
-	//this->mHashValueIndices.clear();
+    // indicates whether to use a map which maps the primary table key
+    // to the 0-based row number of the attribute table
+    // NOTE: this may be the case if the primary key doesn't
+    // consist of consecutive numbers, which may be the case
+    // with SQLite-based RAT;
+    // we work out whether or not to use the index map by simply checking
+    //      bUseIdxMap = mLegendIndexField(ncells-1) > ncells-1
+    bool bUseIdxMap = false;
+
+    QModelIndex ami = mTableModel->index(ncells-1, idxidx);
+    qlonglong maxidx = mTableModel->data(ami).toLongLong();
+    if (maxidx > ncells-1)
+    {
+        bUseIdxMap = true;
+    }
+
+    // maps scalar values to the 'primary key'
 	this->mMapValueIndices.clear();
 
 	bool bConvOk;
 	qlonglong val;
+    qlonglong idx;
 	QString sVal;
 	QModelIndex vi;
+    QModelIndex ii;
 	vtkMath::RandomSeed(QTime::currentTime().msec());
 	double rgba[4];
 	for (int t=0; t < ncells; ++t)
 	{
 		if (hole && hole->GetValue(t))
 		{
-			mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
+            lut->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
 			continue;
 		}
 
@@ -1143,11 +1185,23 @@ NMLayer::mapUniqueValues(void)
 			if (valar)
 			{
 				val = valar->GetVariantValue(t).ToLongLong();
+                idx = t;
 			}
 			else
 			{
 				vi = mTableModel->index(t, validx);
+                ii = mTableModel->index(t, idxidx);
+                if (!vi.isValid() && t < ncells)
+                {
+                    if (mTableModel->canFetchMore(QModelIndex()))
+                    {
+                        mTableModel->fetchMore(QModelIndex());
+                        vi = mTableModel->index(t, validx);
+                        ii = mTableModel->index(t, idxidx);
+                    }
+                }
 				val = vi.data().toLongLong(&bConvOk);
+                idx = ii.data().toLongLong(&bConvOk);
 			}
 
 			sVal = QString(tr("%1")).arg(val);
@@ -1157,11 +1211,24 @@ NMLayer::mapUniqueValues(void)
 			if (valar)
 			{
 				sVal = valar->GetVariantValue(t).ToString().c_str();
+                idx = t;
 			}
 			else
 			{
 				vi = mTableModel->index(t, validx);
+                ii = mTableModel->index(t, idxidx);
+                if (!vi.isValid() && t < ncells)
+                {
+                    if (mTableModel->canFetchMore(QModelIndex()))
+                    {
+                        mTableModel->fetchMore(QModelIndex());
+                        vi = mTableModel->index(t, validx);
+                        ii = mTableModel->index(t, idxidx);
+                    }
+                }
 				sVal = vi.data().toString();
+                idx = ii.data().toLongLong(&bConvOk);
+                val = idx;
 			}
 		}
 
@@ -1177,50 +1244,49 @@ NMLayer::mapUniqueValues(void)
 			// and store a reference into the LookupTable for the
 			// given value;
 			QVector<int> ids;
-            //if (valar)
-			{
-				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
-				ids.push_back(t);
-				this->mMapValueIndices.insert(sVal, ids);
-			}
-            //			else
-            //			{
-            //				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
-            //				ids.push_back(t+1);
-            //				this->mMapValueIndices.insert(sVal, ids);
-            //			}
+            if (bUseIdxMap)
+            {
+                lut->SetMappedTableValue(t, val, rgba[0], rgba[1], rgba[2], rgba[3]);
+            }
+            else
+            {
+                lut->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+            }
+
+            ids.push_back(t);
+            this->mMapValueIndices.insert(sVal, ids);
 		}
 		else
 		{
-			mLookupTable->GetTableValue(it.value().at(0), rgba);
-            //if (valar)
-			{
-				it.value().push_back(t);
-				mLookupTable->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
-			}
-            //			else
-            //			{
-            //				it.value().push_back(t+1);
-            //				mLookupTable->SetTableValue(t+1, rgba[0], rgba[1], rgba[2], rgba[3]);
-            //			}
-		}
+            lut->GetTableValue(it.value().at(0), rgba);
+            it.value().push_back(t);
+            if (bUseIdxMap)
+            {
+                lut->SetMappedTableValue(t, val, rgba[0], rgba[1], rgba[2], rgba[3]);
+            }
+            else
+            {
+                lut->SetTableValue(t, rgba[0], rgba[1], rgba[2], rgba[3]);
+            }
+        }
 	}
 
-//	if (valar == 0)
-//	{
-//		mLookupTable->SetTableValue(0, 0, 0, 0, 0);
-//		mLookupTable->SetTableValue(ncells, 0, 0, 0, 0);
-//		mLookupTable->SetTableRange(-1, ncells);
-//		QVector<int> ov;
-//		ov.push_back(0);
-//		mMapValueIndices.insert("other", ov);
-//	}
-//	else
-		mLookupTable->SetTableRange(0, ncells-1);
+    if (bUseIdxMap)
+    {
+        lut->SetIndexedLookup(0);
+        lut->SetUseIndexMapping(true);
+        lut->SetNumberOfColors(ncells);
+    }
+    else
+    {
+        lut->SetTableRange(0, ncells-1);
+    }
+    mLookupTable = lut;
+
 
 	mNumClasses = mMapValueIndices.size();
-    //mNumLegendRows = mNumClasses + (valar ? 1 : 2);
-    mNumLegendRows = mNumClasses + 1;//(valar ? 1 : 2);
+    NMDebugAI( << "numClasses: " << mNumClasses << std::endl);
+    mNumLegendRows = mNumClasses + 1;
 }
 
 void
@@ -1531,6 +1597,7 @@ NMLayer::mapValueRamp(void)
     else // NM_IMAGE_LAYER
     {
         vtkSmartPointer<NMVtkLookupTable> lut = vtkSmartPointer<NMVtkLookupTable>::New();
+        //vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
         lut->SetNumberOfColors(mNumClasses);
 
         double* rgb;
@@ -1548,20 +1615,26 @@ NMLayer::mapValueRamp(void)
             rgb = mClrFunc->GetColor(sample);
             lut->SetTableValue(i, rgb[0], rgb[1], rgb[2], 1);
         }
-        lut->setLowerUpperClrOn();
+        //lut->setLowerUpperClrOn();
 
-        unsigned char clr[4];
-        clr[0] = mClrLowerMar.red();
-        clr[1] = mClrLowerMar.green();
-        clr[2] = mClrLowerMar.blue();
-        clr[3] = mClrLowerMar.alpha();
-        lut->setLowerClr(lower, clr);
+        //unsigned char clr[4];
+        double clr[4];
+        clr[0] = mClrLowerMar.redF();
+        clr[1] = mClrLowerMar.greenF();
+        clr[2] = mClrLowerMar.blueF();
+        clr[3] = mClrLowerMar.alphaF();
+        //lut->setLowerClr(lower, clr);
+        lut->SetBelowRangeColor(clr);
+        lut->UseBelowRangeColorOn();
 
-        clr[0] = mClrUpperMar.red();
-        clr[1] = mClrUpperMar.green();
-        clr[2] = mClrUpperMar.blue();
-        clr[3] = mClrUpperMar.alpha();
-        lut->setUpperClr(upper, clr);
+        clr[0] = mClrUpperMar.redF();
+        clr[1] = mClrUpperMar.greenF();
+        clr[2] = mClrUpperMar.blueF();
+        clr[3] = mClrUpperMar.alphaF();
+        //lut->setUpperClr(upper, clr);
+        lut->SetAboveRangeColor(clr);
+        lut->SetUseAboveRangeColor(1);
+
         lut->SetTableRange(lower, upper);
         lut->SetIndexedLookup(0);
         mLookupTable = lut;
@@ -2111,29 +2184,68 @@ NMLayer::getValueFieldStatistics()
 	NMDebugCtx(ctxNMLayer, << "...");
 
 	std::vector<double> stats;
+    for (int i=0; i < 7; ++i)
+    {
+        stats.push_back(-9999);
+    }
 
     int colidx = this->getColumnIndex(mLegendValueField);
     QVariant::Type type = this->getColumnType(colidx);
 
-    if (    type == QVariant::Invalid
-        ||  (   type != QVariant::Int
-             && type != QVariant::Double
-             && type != QVariant::LongLong
-            )
-        ||  mLegendValueField == "Colour Table"
-        ||  mLegendValueField == "Pixel Values"
-       )
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
+    if (il && mTableModel)
     {
-        NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-        if (il)
+        if (    type == QVariant::Invalid
+            ||  (   type != QVariant::Int
+                 && type != QVariant::Double
+                 && type != QVariant::LongLong
+                )
+            ||  mLegendValueField == "Colour Table"
+            ||  mLegendValueField == "Pixel Values"
+           )
         {
-            vtkImageData* vtkImg = vtkImageData::SafeDownCast(
-                        const_cast<vtkDataSet*>(il->getDataSet()));
-            stats = il->getWindowStatistics();
-            for (int i=stats.size()-1; i < 7; ++i)
+
+            NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+            std::string col = mLegendValueField.toStdString();
+
+            std::stringstream sql;
+
+            sql << "select count(" << col << ") as count, "
+                << "min(" << col << ") as minimum, "
+                << "max(" << col << ") as maximum, "
+                << "avg(" << col << ") as mean, "
+                << "(sum(" << col << " * " << col << ") / count(" << col << ") "
+                << "- (avg(" << col << ") * avg(" << col << "))) as stddev, "
+
+                << "sum(" << col << ") as sum "
+                << " from "
+                << sqlModel->tableName().toStdString();
+
+            QSqlQuery q(sqlModel->database());
+            if (q.exec(sql.str().c_str()) && q.next())
             {
-                stats[i] = -9999;
+
+                stats[0] = q.value(1).toDouble();
+                stats[1] = q.value(2).toDouble();
+                stats[2] = q.value(3).toDouble();
+                stats[4] = ::sqrt(q.value(4).toDouble());
+                stats[5] = q.value(5).toDouble();
+                stats[6] = q.value(6).toDouble();
+
             }
+
+            return stats;
+        }
+    }
+    else if (il && mTableModel == 0)
+    {
+        vtkImageData* vtkImg = vtkImageData::SafeDownCast(
+                    const_cast<vtkDataSet*>(il->getDataSet()));
+        stats = il->getWindowStatistics();
+
+        for (int i=stats.size()-1; i < 7; ++i)
+        {
+            stats[i] = -9999;
         }
 
         return stats;

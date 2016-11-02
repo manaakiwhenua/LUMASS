@@ -191,6 +191,8 @@ public:
 	QStringList getNumericColumns(bool onlyints);
 	QStringList getStringColumns(void);
 
+    virtual long long getNumTableRecords();
+
 	const QItemSelection getSelection(void);
     void setSelection(const QItemSelection& sel);
 
@@ -400,6 +402,7 @@ protected:
 	double mUpper;
 	double mNodata;
 
+    QString mLegendIndexField;
 	QString mLegendValueField;
 	QString mLegendDescrField;
 

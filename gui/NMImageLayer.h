@@ -91,6 +91,7 @@ public:
     const double* getBBox(){return (double*)&mBBox[0];}
     const double* getSpacing(){return (double*)&mSpacing[0];}
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
+    long long getNumTableRecords();
 
 	void setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
@@ -151,13 +152,16 @@ protected:
     void updateScalarBuffer();
 
     template<class T>
-    void setLongScalars(T* buf, long long* out, long* tabCol,
-                        int numPix, int maxid,
-                        long long nodata);
+    void setLongScalars(T* buf, long long* out, long long numPix, long long nodata);
+
     template<class T>
-    void setDoubleScalars(T* buf, double* out, double* tabCol,
-                        int numPix, int maxid,
-                        double nodata);
+    void setLongDBScalars(T* buf, long long* out, long long start, long long end, long long nodata);
+
+    template<class T>
+    void setDoubleScalars(T* buf, double* out, long long numPix, double nodata);
+
+    template<class T>
+    void setDoubleDBScalars(T* buf, double* out, long long start, long long end, double nodata);
 
     template<class T>
     void mapScalarsToRGB(T* in, unsigned char* out, int numPix, int numComp,

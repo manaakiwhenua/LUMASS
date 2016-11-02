@@ -741,25 +741,36 @@ NMImageLayer::updateAttributeTable()
     }
     else
     {
+        /* NOTE: somehow, we need to explicitly open a separate connection
+         * to the DB. It is we cannot re-use the connection (sqlite3*)
+         * comming from the otb::SQLiteTable class ...
+         * If we did, on Windows, we couldn't use the QSql classes
+         * for the GUI-based DB-stuff ... It works fine on Linux, though.
+         *
+         * Hence, this workaround. Also note, because of that, we have to
+         * close the connection initiated by the otb::SQLiteTable, because
+         * it is opened in read/write and would therefore block any
+         * changes we make to the DB schema via the NMSqlTableView ...
+         *
+         */
+
         mSpatialiteCache = spatialite_alloc_connection();
         int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(),
-        			&mSqlViewConn,
-        			SQLITE_OPEN_URI |
+                    &mSqlViewConn,
+                    SQLITE_OPEN_URI |
                     SQLITE_OPEN_READWRITE |
-                    SQLITE_OPEN_SHAREDCACHE, 0);// |
-                    //SQLITE_OPEN_SHAREDCACHE, 0);
+                    SQLITE_OPEN_SHAREDCACHE, 0);
         if (rc != SQLITE_OK)
         {
-        	NMErr(ctxNMImageLayer,
+            NMErr(ctxNMImageLayer,
                 << "Failed opening SqlTableView connection!"
                 << " - rc = " << rc);
-        	::sqlite3_close(mSqlViewConn);
+            ::sqlite3_close(mSqlViewConn);
             spatialite_cleanup_ex(mSpatialiteCache);
-        	mSpatialiteCache = 0;
-        	mSqlViewConn = 0;
-        	return 0;
+            mSpatialiteCache = 0;
+            mSqlViewConn = 0;
+            return 0;
         }
-
         spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
 
         mQSqlConnectionName = QString("%1_%2").arg(sqlTable->GetTableName().c_str())
@@ -771,8 +782,12 @@ NMImageLayer::updateAttributeTable()
                   << sqlTable->GetTableName() << "'" << std::endl);
 
         sqlModel = new NMSqlTableModel(this, db);
+        //sqlModel->setDatabaseName(sqlTable->GetTableName().c_str());
+        sqlModel->setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
         sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
         sqlModel->select();
+
+        sqlTable->CloseTable();
     }
 
 
@@ -1303,17 +1318,16 @@ NMImageLayer::setScalars(vtkImageData* img)
 {
     //NMDebugCtx(ctxNMImageLayer, << "...");
 
-
     int colidx = this->getColumnIndex(mLegendValueField);
+    QVariant::Type valtype = this->getColumnType(colidx);
 
-    if (colidx < 0 || this->mOtbRAT.IsNull())
+    if (    colidx < 0
+        ||  valtype == QVariant::String
+        ||  this->mTableModel == 0)
     {
-        //NMWarn(ctxNMImageLayer, << "Table is NULL or Value Field is invalid!");
-        //NMDebugCtx(ctxNMImageLayer, << "done!");
         return;
     }
 
-    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     if (colidx != mScalarColIdx)
     {
         mScalarColIdx = colidx;
@@ -1323,29 +1337,16 @@ NMImageLayer::setScalars(vtkImageData* img)
             mScalarLongLongMap.clear();
             updateScalarBuffer();
         }
-        else
-        {
-            if (!tab->PrepareColumnByIndex(mLegendValueField.toStdString()))
-            {
-                NMErr(ctxNMImageLayer, << "Failed preparing fast scalar column access!");
-                return;
-            }
-        }
     }
 
     vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
     vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
     void* buf = idxScalars->GetVoidPointer(0);
     int numPix = idxScalars->GetNumberOfTuples();
-    int maxidx = mNumRecords;//mOtbRAT->GetNumRows()-1;
-    if (mNumRecords > 1e6)
-    {
-        tab->BeginTransaction();
-    }
 
-    switch(tab->GetColumnType(colidx))
+    switch(this->getColumnType(mScalarColIdx))
     {
-    case otb::AttributeTable::ATTYPE_DOUBLE:
+    case QVariant::Double:
         {
             vtkSmartPointer<vtkDoubleArray> ar = vtkSmartPointer<vtkDoubleArray>::New();
             ar->SetName(mLegendValueField.toStdString().c_str());
@@ -1353,17 +1354,16 @@ NMImageLayer::setScalars(vtkImageData* img)
             ar->SetNumberOfTuples(numPix);
 
             double* out = static_cast<double*>(ar->GetVoidPointer(0));
-            double* tabCol = 0; //static_cast<double*>(mOtbRAT->GetColumnPointer(colidx));
+            double* tabCol = 0;
             const double nodata = this->getNodata();
 
             std::map<long long, double>::iterator it;
             switch(idxScalars->GetDataType())
             {
-            vtkTemplateMacro(
-                        setDoubleScalars(static_cast<VTK_TT*>(buf),
-                                                     out, tabCol, numPix, maxidx,
-                                                     nodata)
-                        );
+            vtkTemplateMacro(setDoubleScalars(static_cast<VTK_TT*>(buf),
+                                              out, numPix, nodata
+                                              )
+                            );
             default:
                 {
                     for (int i=0; i < numPix; ++i)
@@ -1378,24 +1378,22 @@ NMImageLayer::setScalars(vtkImageData* img)
                         {
                             out[i] = nodata;
                         }
-                        //                        if (idx < 0 || idx > maxidx)
-                        //                        {
-                        //                            out[i] = nodata;
-                        //                        }
-                        //                        else
-                        //                        {
-                        //                            fseek(mScalarBufferFile, sizeof(long)*idx, SEEK_SET);
-                        //                            fread(out+i, sizeof(double), 1, mScalarBufferFile);
-                        //                        }
                     }
                 }
             }
+
+
+
             dsa->AddArray(ar);
             dsa->SetActiveAttribute(mLegendValueField.toStdString().c_str(),
                                     vtkDataSetAttributes::SCALARS);
         }
         break;
-    case otb::AttributeTable::ATTYPE_INT:
+
+    case QVariant::Int:
+    case QVariant::LongLong:
+    case QVariant::UInt:
+    case QVariant::ULongLong:
         {
             vtkSmartPointer<vtkLongLongArray> ar = vtkSmartPointer<vtkLongLongArray>::New();
             ar->SetName(mLegendValueField.toStdString().c_str());
@@ -1403,7 +1401,7 @@ NMImageLayer::setScalars(vtkImageData* img)
             ar->SetNumberOfComponents(1);
 
             long long* out = static_cast<long long*>(ar->GetVoidPointer(0));
-            long* tabCol = 0;//static_cast<long*>(mOtbRAT->GetColumnPointer(colidx));
+            long* tabCol = 0;
             long long nodata = static_cast<long>(this->getNodata());
 
             std::map<long long, long long>::iterator it;
@@ -1411,8 +1409,8 @@ NMImageLayer::setScalars(vtkImageData* img)
             {
             vtkTemplateMacro(
                         setLongScalars(static_cast<VTK_TT*>(buf),
-                                                     out, tabCol, numPix, maxidx,
-                                                     nodata)
+                                       out, numPix, nodata
+                                       )
                         );
             default:
                 {
@@ -1428,15 +1426,6 @@ NMImageLayer::setScalars(vtkImageData* img)
                         {
                             out[i] = nodata;
                         }
-                        //                        if (idx < 0 || idx > maxidx)
-                        //                        {
-                        //                            out[i] = nodata;
-                        //                        }
-                        //                        else
-                        //                        {
-                        //                            fseek(mScalarBufferFile, sizeof(long)*idx, SEEK_SET);
-                        //                            fread(out+i, sizeof(long), 1, mScalarBufferFile);
-                        //                        }
                     }
                 }
             }
@@ -1447,12 +1436,6 @@ NMImageLayer::setScalars(vtkImageData* img)
         break;
     default:
         dsa->SetActiveAttribute(0, vtkDataSetAttributes::SCALARS);
-    }
-    // end read transaction, if we're accessing the table directly
-    // rather than using a RAM buffer
-    if (mNumRecords > 1e6)
-    {
-        tab->EndTransaction();
     }
 
     mbUpdateScalars = false;
@@ -1473,70 +1456,74 @@ void
 NMImageLayer::updateScalarBuffer()
 {
     NMDebugCtx(ctxNMImageLayer, << "...");
-    //    if (mScalarBufferFile != 0)
-    //    {
-    //        fclose(mScalarBufferFile);
-    //    }
-    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
-    std::vector< std::string > colnames;
-    colnames.push_back(tab->GetPrimaryKey());
-    colnames.push_back(mLegendValueField.toStdString());
 
-    std::vector< otb::AttributeTable::ColumnValue > values;
-    values.resize(2);
-
-    //    mScalarBufferFile = tmpfile();
-    //    rewind(mScalarBufferFile);
-
-    double dnodata = 0;
-    long long inodata = 0;
-
-    tab->BeginTransaction();
-    tab->PrepareBulkGet(colnames, "");
-    const int nrows = mOtbRAT->GetNumRows();
-    const int rep = nrows / 20;
-    for (int r=0; r < nrows; ++r)
+    NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+    QString conname("NMImageLayer_updateBuffer");
     {
-        switch(mOtbRAT->GetColumnType(mScalarColIdx))
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", conname);
+        db.setConnectOptions("QSQLITE_OPEN_READONLY;QSQLITE_OPEN_URI");
+        db.setDatabaseName(sqlModel->getDatabaseName());
+        if (!db.open())
         {
-        case otb::AttributeTable::ATTYPE_INT:
-            if (tab->DoBulkGet(values))
-            {
-                mScalarLongLongMap.insert(
-                            std::pair<long long, long long>(
-                                values[0].ival, values[1].ival));
-                //fwrite(&(values[0].ival), sizeof(long), 1, mScalarBufferFile);
-            }
-            // NOTE: no backup here, since we don't know the rowid value stored
-            // in the db; anyway setLongScalars will take care of it
-            //            else
-            //            {
-            //                //fwrite(&inodata, sizeof(long), 1, mScalarBufferFile);
-            //            }
-            break;
-        case otb::AttributeTable::ATTYPE_DOUBLE:
-            if (tab->DoBulkGet(values))
-            {
-                mScalarDoubleMap.insert(
-                            std::pair<long long, double>(
-                                values[0].ival, values[1].dval));
-                //fwrite(&(values[0].dval), sizeof(double), 1, mScalarBufferFile);
-            }
-            //            else
-            //            {
-            //                fwrite(&dnodata, sizeof(double), 1, mScalarBufferFile);
-            //            }
-            break;
-        default:
-            break;
+            NMDebugAI(<< db.lastError().text().toStdString() << std::endl);
+            return;
         }
 
-        if (r % (rep > 0 ? rep : 1) == 0)
+        QString prepStr = QString("SELECT %1,%2 from %3")
+                            .arg(sqlModel->getNMPrimaryKey())
+                            .arg(mLegendValueField)
+                            .arg(sqlModel->tableName());
+
+        QSqlQuery q(db);
+        q.setForwardOnly(true);
+        if (!q.exec(prepStr))
         {
-            NMDebug(<< ".");
+            NMErr(ctxNMImageLayer, << "Couldn't fetch scalar values from database!");
+            return;
         }
+
+        double dnodata = 0;
+        long long inodata = 0;
+
+        const int rep = mNumRecords / 20;
+        for (int r=0; r < mNumRecords; ++r)
+        {
+            q.next();
+
+            switch(this->getColumnType(mScalarColIdx))
+            {
+            case QVariant::Int:
+            case QVariant::LongLong:
+            case QVariant::UInt:
+            case QVariant::ULongLong:
+
+                    mScalarLongLongMap.insert(
+                                std::pair<long long, long long>(
+                                q.value(0).toLongLong(),
+                                q.value(1).toLongLong()));
+                    break;
+
+            case QVariant::Double:
+
+                    mScalarDoubleMap.insert(
+                                   std::pair<long long, double>(
+                                   q.value(0).toLongLong(),
+                                   q.value(1).toDouble()));
+                   break;
+
+            default:
+                break;
+            }
+
+            if (r % (rep > 0 ? rep : 1) == 0)
+            {
+                NMDebug(<< ".");
+            }
+        }
+        q.clear();
     }
-    tab->EndTransaction();
+    QSqlDatabase::removeDatabase(conname);
+
     NMDebug(<< std::endl);
     NMDebugCtx(ctxNMImageLayer, << "done!");
 }
@@ -1544,16 +1531,42 @@ NMImageLayer::updateScalarBuffer()
 // worker function for scalars setting
 template<class T>
 void
-NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
-                             int numPix, int maxidx, long long nodata)
+NMImageLayer::setLongScalars(T* buf, long long *out,
+                                     long long numPix,
+                                     long long nodata)
 {
     //CALLGRIND_START_INSTRUMENTATION;
-    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
     if (mNumRecords > 1e6)
     {
-        for (int i=0; i < numPix; ++i)
+        int nthreads = QThread::idealThreadCount();
+        long long threadpix = numPix / nthreads;
+        long long rest = numPix - (threadpix * nthreads);
+
+        QList<QFuture<void> > flist;
+        for (int t=0; t < nthreads; ++t)
         {
-              out[i] = tab->NextIntValue(buf[i]);
+            flist << QFuture<void>();
+        }
+
+        long long start=0, end=0;
+        for (int th=0; th < nthreads; ++th)
+        {
+            end = start+threadpix-1;
+
+            if (th == nthreads-1)
+            {
+                end += rest;
+            }
+
+            flist[th] = QtConcurrent::run(this, &NMImageLayer::setLongDBScalars<T>,
+                                           buf, out, start, end, nodata);
+
+            start = end+1;
+        }
+
+        for (int th=0; th < nthreads; ++th)
+        {
+            flist[th].waitForFinished();
         }
     }
     else
@@ -1570,36 +1583,113 @@ NMImageLayer::setLongScalars(T* buf, long long *out, long* tabCol,
             {
                 out[i] = nodata;
             }
-
-
-            // this is really deprecated
-            //        if (buf[i] < 0 || buf[i] > maxidx)
-            //        {
-            //            out[i] = nodata;
-            //        }
-            //        else
-            //        {
-            //            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
-            //            fread(out+i, sizeof(long), 1, mScalarBufferFile);
-            //        }
         }
     }
-    //    CALLGRIND_STOP_INSTRUMENTATION;
-    //    CALLGRIND_DUMP_STATS;
 }
 
 template<class T>
 void
-NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
-                               int numPix, int maxidx, double nodata)
+NMImageLayer::setLongDBScalars(T* buf,
+                               long long* out,
+                               long long start,
+                               long long end,
+                               long long nodata
+                               )
 {
-    //CALLGRIND_START_INSTRUMENTATION;
-    otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
+    NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+
+    QString conname = QString("NMImageLayerSLS_%1").arg(start);
+
+    // db scope
+    // without db and q going out of scope, we cannot remove
+    // db without Qt complaining
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", conname);
+        db.setConnectOptions("QSQLITE_OPEN_READONLY;QSQLITE_OPEN_URI");
+        db.setDatabaseName(sqlModel->getDatabaseName());
+        if (!db.open())
+        {
+            NMDebugAI(<< db.lastError().text().toStdString() << std::endl);
+            return;
+        }
+
+        QString prepStr = QString("SELECT %1 from %2 where %3 = :row")
+                            .arg(mLegendValueField)
+                            .arg(sqlModel->tableName())
+                            .arg(sqlModel->getNMPrimaryKey());
+
+        db.transaction();
+        QSqlQuery q(db);
+        if (q.prepare(prepStr))
+        {
+            for (int i=start; i <= end; ++i)
+            {
+                q.bindValue(0, QVariant::fromValue(buf[i]));
+                if (q.exec())
+                {
+                    if (q.next())
+                    {
+                        out[i] = q.value(0).toLongLong();
+                    }
+                    else
+                    {
+                        out[i] = nodata;
+                    }
+                }
+                else
+                {
+                    out[i] = nodata;
+                }
+                q.finish();
+            }
+        }
+        else
+        {
+            NMDebugAI(<< q.lastError().text().toStdString() << std::endl);
+        }
+        db.commit();
+        q.clear();
+        db.close();
+
+    }
+    QSqlDatabase::removeDatabase(conname);
+}
+
+template<class T>
+void
+NMImageLayer::setDoubleScalars(T* buf, double* out,
+                               long long numPix, double nodata)
+{
     if (mNumRecords > 1e6)
     {
-        for (int i=0; i < numPix; ++i)
+        int nthreads = QThread::idealThreadCount();
+        long long threadpix = numPix / nthreads;
+        long long rest = numPix - (threadpix * nthreads);
+
+        QList<QFuture<void> > flist;
+        for (int t=0; t < nthreads; ++t)
         {
-              out[i] = tab->NextDoubleValue(buf[i]);
+            flist << QFuture<void>();
+        }
+
+        long long start=0, end=0;
+        for (int th=0; th < nthreads; ++th)
+        {
+            end = start+threadpix-1;
+
+            if (th == nthreads-1)
+            {
+                end += rest;
+            }
+
+            flist[th] = QtConcurrent::run(this, &NMImageLayer::setDoubleDBScalars<T>,
+                                           buf, out, start, end, nodata);
+            start = end+1;
+        }
+
+        for (int th=0; th < nthreads; ++th)
+        {
+            flist[th].waitForFinished();
         }
     }
     else
@@ -1616,20 +1706,76 @@ NMImageLayer::setDoubleScalars(T* buf, double* out, double* tabCol,
             {
                 out[i] = nodata;
             }
-
-            //        if (buf[i] < 0 || buf[i] > maxidx)
-            //        {
-            //            out[i] = nodata;
-            //        }
-            //        else
-            //        {
-            //            fseek(mScalarBufferFile, (sizeof(long))*(buf[i]), SEEK_SET);
-            //            fread(out+i, sizeof(double), 1, mScalarBufferFile);
-            //        }
         }
     }
-    //    CALLGRIND_STOP_INSTRUMENTATION;
-    //    CALLGRIND_DUMP_STATS;
+}
+
+template<class T>
+void
+NMImageLayer::setDoubleDBScalars(T* buf,
+                                 double* out,
+                                 long long start,
+                                 long long end,
+                                 double nodata
+                                 )
+{
+    NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+
+    QString conname = QString("NMImageLayerSLS_%1").arg(start);
+
+    // db scope
+    // without db and q going out of scope, we cannot remove
+    // db without Qt complaining
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", conname);
+        db.setConnectOptions("QSQLITE_OPEN_READONLY;QSQLITE_OPEN_URI");
+        db.setDatabaseName(sqlModel->getDatabaseName());
+        if (!db.open())
+        {
+            NMDebugAI(<< db.lastError().text().toStdString() << std::endl);
+            return;
+        }
+
+        QString prepStr = QString("SELECT %1 from %2 where %3 = :row")
+                            .arg(mLegendValueField)
+                            .arg(sqlModel->tableName())
+                            .arg(sqlModel->getNMPrimaryKey());
+
+        db.transaction();
+        QSqlQuery q(db);
+        if (q.prepare(prepStr))
+        {
+            for (int i=start; i <= end; ++i)
+            {
+                q.bindValue(0, QVariant::fromValue(buf[i]));
+                if (q.exec())
+                {
+                    if (q.next())
+                    {
+                        out[i] = q.value(0).toDouble();
+                    }
+                    else
+                    {
+                        out[i] = nodata;
+                    }
+                }
+                else
+                {
+                    out[i] = nodata;
+                }
+                q.finish();
+            }
+        }
+        else
+        {
+            NMDebugAI(<< q.lastError().text().toStdString() << std::endl);
+        }
+        db.commit();
+        q.clear();
+        db.close();
+
+    }
+    QSqlDatabase::removeDatabase(conname);
 }
 
 template<class T>
@@ -1810,6 +1956,12 @@ const vtkDataSet* NMImageLayer::getDataSet()
     return this->mPipeconn->getVtkImage();
 }
 
+long long
+NMImageLayer::getNumTableRecords()
+{
+    return mNumRecords;
+}
+
 
 otb::AttributeTable::Pointer
 NMImageLayer::getRasterAttributeTable(int band)
@@ -1817,7 +1969,7 @@ NMImageLayer::getRasterAttributeTable(int band)
     // it could very well be that this function is called
     // multiple times, so in view of potentially large tables,
     // let's not double any efforts and just return what we've got
-    // (should be safe, since we don't really allow for chaning
+    // (should be safe, since we don't really allow for changing
     // tables anyway, so: she'll be right!
     if (mOtbRAT.IsNotNull())
     {
@@ -1927,7 +2079,12 @@ NMImageLayer::writeDataSet(void)
 	}
 
     otb::SQLiteTable::Pointer sqlTab = static_cast<otb::SQLiteTable*>(this->mOtbRAT.GetPointer());
-    sqlTab->PopulateTableAdmin();
+    sqlTab->SetOpenReadOnly(true);
+    sqlTab->SetUseSharedCache(true);
+    if (sqlTab->openConnection())
+    {
+        sqlTab->PopulateTableAdmin();
+    }
 
 	bool berr = false;
     //const char* fn = this->mFileName.toUtf8().constData();
@@ -1970,9 +2127,11 @@ NMImageLayer::writeDataSet(void)
 		}
 	}
 
+    sqlTab->CloseTable();
+
 	if (berr)
 	{
-		NMErr(ctxNMImageLayer, << "Bugger! Couldn't update the RAT!");
+        NMErr(ctxNMImageLayer, << "Couldn't update the RAT!");
 	}
 
 	NMDebugCtx(ctxNMImageLayer, << "done!");

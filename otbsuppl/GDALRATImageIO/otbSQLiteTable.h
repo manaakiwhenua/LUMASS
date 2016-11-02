@@ -124,7 +124,7 @@ public:
     bool SetRowIDColName(const std::string& name);
     bool DeleteDatabase(void);
 
-    std::string GetRandomString(int len);
+    static std::string GetRandomString(int len);
     std::string GetDbFileName() {return this->m_dbFileName;}
     std::string GetTableName() {return this->m_tableName;}
     std::vector<std::string> GetFilenameInfo(const std::string& fileName);

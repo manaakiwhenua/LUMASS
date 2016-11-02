@@ -136,6 +136,56 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
     return newsel;
 }
 
+QString
+NMGlobalHelper::getRandomString(int len)
+{
+    if (len < 1)
+    {
+        return QString();
+    }
+
+    //std::srand(std::time(0));
+    char* nam = new char[len+1];
+    for (int i=0; i < len; ++i)
+    {
+        if (i == 0)
+        {
+            if (::rand() % 2 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+        }
+        else
+        {
+            if (::rand() % 7 == 0)
+            {
+                nam[i] = '_';
+            }
+            else if (::rand() % 5 == 0)
+            {
+                nam[i] = ::rand() % 26 + 65;
+            }
+            else if (::rand() % 3 == 0)
+            {
+                nam[i] = ::rand() % 26 + 97;
+            }
+            else
+            {
+                nam[i] = ::rand() % 10 + 48;
+            }
+        }
+    }
+    nam[len] = '\0';
+    QString ret = nam;
+    delete[] nam;
+
+    return ret;
+}
+
 qreal
 NMGlobalHelper::getLUMASSVersion()
 {

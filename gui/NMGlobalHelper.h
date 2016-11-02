@@ -46,6 +46,8 @@ public:
                               QList<int>& ids);
     static qreal getLUMASSVersion(void);
 
+    static QString getRandomString(int len);
+
 private:
     static const std::string ctx;
 

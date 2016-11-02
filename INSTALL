@@ -1,0 +1,160 @@
+LUMASS COMPILATION GUIDE
+####################################################
+
+LUMASS is being developed and tested on (K)Ubuntu Linux. Therefore, the remainder
+of this installation guide refers to an Ubuntu 16.04 (LTS) 64 bit test system. 
+Please adjust the described steps accordingly to meet the requirements of your
+favourite Linux distribution. Feel free to share any adapted installation
+guides for other linux distributions or operating systems!
+
+
+Required Ubuntu packages to build LUMASS from source
+####################################################
+
+Enable the Ubuntu universe repository in you package manager. See 
+https://help.ubuntu.com/community/Repositories/Ubuntu for details. 
+
+Install the below mentioned packages, including all its (automatically selected)
+dependencies, to prepare your system for building LUMASS from source.
+
+
+Build environment and packages
+====================================================
+
+	build-essential
+	cmake
+	cmake-curses-gui
+
+
+Personal Package Archive "ubuntugis-unstable"
+====================================================
+
+The ubuntugis-unstable repository provides many of the essential dependencies
+required for the compilation of LUMASS. Add this repository following the 
+instructions given on its web site:
+
+	https://launchpad.net/~ubuntugis/+archive/ubuntugis-unstable
+	
+
+LUMASS' dependencies
+====================================================
+
+LUMASS relies on a number of other open source software libraries, which are
+required (except rasdaman/PostgreSQL) to successfully build LUMASS. 
+
+Qt                  version >= 5; required modules: Qt5Widgets, Qt5Core, Qt5Gui,
+					Qt5Concurrent, Qt5Xml, Qt5Sql
+					
+					packages: 
+					libqt5widgets5, libqt5core5a, libqt5gui5, libqt5concurrent5,
+					libqt5xml5, libqt5sql5, libqt5sql5-sqlite, 
+					qtbase5-private-dev
+					
+GDAL                version >= 2; requires ubuntu-gis-unstable repository
+					
+					packages:
+                    libgdal20, libgdal-dev
+                    
+spatialite			packages:
+					libsqlite3-mod-spatialite
+                    
+Orfeo Toolbox (OTB) version >= 5; required modules: OTBCommon, OTBIOGDAL, 
+					OTBExtendedFilename, OTBCurlAdapters, OTBImageIO,
+					OTBImageBase, OTBStreaming 
+                    
+					packages (<version>: e.g. 5.4-1):
+					libotb-dev (-> selects the *-<version> packages below and 
+					            more automatically)
+
+					libotbcommon-<version>, libotbextendedfilename-<version>,
+					libotbimagebase-<version>, libotbimageio-<version>, 
+					libotbstreaming-<version>, libotbcurladapters-<version>,
+					libotbiogdal-<version>					            
+					            
+					also need the following packages to satisfy all OTB
+					dependencies:
+					
+					otb-bin, otb-bin-qt, libtinyxml-dev
+				
+VTK                 version >= 6; required modules: vtkCommonCore,
+                    vtkCommonDataModel, vtkFiltersGeneric, vtkRenderingCore,
+                    vtkRenderingAnnotation, vtkRenderingImage, vtkGUISupportQt,
+                    vtkImagingStatistics, vtkIteractionWidgets, vtkIOCore,
+                    vtkIOInfovis, vtkIOSQL, vtkIOLegacy, vtkIOXML
+                    
+                    packages:
+                    libvtk6-qt-dev, libvtk6-dev, libvtk6.2-qt, libvtk6.2
+                    
+rasdaman            this package is optional and only useful, if you intend
+                    to use the LUMASS modelling framework; if you're only 
+                    interested in spatial optimisation, you don't need this 
+                    package; see rasdaman.org for download, compilation and
+                    installation details as well as for rasdaman features
+                    
+PostgreSQL          only required when rasdaman is going to be used with the
+                    modelling framework 
+                    
+lp_solve			version >= 5.5; 
+                    
+					packages:
+					lp-solve
+					liblpsolve55-dev						
+			
+
+Building LUMASS from source
+====================================================
+
+1. create a directory for the LUMASS binary files 
+
+   $ mkdir lumass-bin
+   $ cd lumass-bin
+
+2. run ccmake to configure the software and generate the Makefile
+
+   $ ccmake /path/to/lumass/source/directory
+
+   (inside the ccmake UI)
+
+   - Press [c] to configure
+   - adjust any path entries if required
+   - set RASSUPPORT to OFF, if you don't want to build LUMASS with rasdaman 
+     support) 
+   - Press [c] to configure (again)
+   - Press [g] to generate the Makefile and exit ccmake
+
+3. call make (you may want to use multiple cores during the build by specifying  
+   the -j options)  
+
+   $ make -j 4 			# ← uses 4 cores
+
+4. you're good to go now!
+
+   Assuming you're still in the lumass-bin directory created in step 1, you 
+   should now be able to start LUMASS with 
+   
+   $ ./bin/lumass
+
+
+Further highly recommended packages 
+====================================================
+
+QGIS					powerful and user friendly open source GIS with many
+						extensions
+
+GDAL utility programs	very useful set of utility programs for managing 2D 
+						raster and vector files of many different formats
+
+						package: 
+						gdal-bin
+						
+KEALib					advanced raster file format, featuring raster attribute
+						tables, compression, pyramid layers, multi band support;
+						please consult http://kealib.org/ for more information
+
+						
+LUMASS Support  						
+====================================================
+
+Feel free to consult the lumass-users group (https://groups.google.com/forum/#!forum/lumass-users)
+for help if you encounter any issues with the installation process.
+   

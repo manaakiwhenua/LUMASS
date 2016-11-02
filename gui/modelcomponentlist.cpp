@@ -1760,28 +1760,34 @@ void ModelComponentList::mapUniqueValues()
 	else if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
 	{
 		iL = qobject_cast<NMImageLayer*>(l);
-		otb::AttributeTable::Pointer rat = iL->getRasterAttributeTable(1);
-        if (    rat.IsNull()
-            ||  rat->GetNumRows() > 256
-           )
-		{
-			return;
-		}
 
-		for (unsigned int c=0; c < rat->GetNumCols(); ++c)
-		{
-			if (rat->GetColumnType(c) == otb::AttributeTable::ATTYPE_INT ||
-			    rat->GetColumnType(c) == otb::AttributeTable::ATTYPE_STRING)
-			{
-				sFields.append(QString(rat->GetColumnName(c).c_str()));
-			}
-		}
+        if (iL->getTable() == 0)
+        {
+            return;
+        }
+
+        /// ToDo: need to test where the performance limit really is to ask
+
+        //        else if (iL->getNumTableRecords() > 25000)
+        //        {
+        //            QMessageBox::StandardButton resp = QMessageBox::warning(
+        //                                 this, "Map Unique Values",
+        //                                 "Mapping of more than 25000 unique values may "
+        //                                 "impact performance! Do you want to continue?",
+        //                                 QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        //            if (resp == QMessageBox::No)
+        //            {
+        //                return;
+        //            }
+        //        }
+
+        sFields.append(iL->getNumericColumns(true));
+        sFields.append(iL->getStringColumns());
 	}
 	else
 	{
 		return;
 	}
-
 
 	bool bOk = false;
 	QString theField = QInputDialog::getItem(this,

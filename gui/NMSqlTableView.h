@@ -86,6 +86,8 @@ public:
     void setLayerName(const QString& layer){mLayerName = layer;}
     QString getLayerName(){return mLayerName;}
 
+    NMSelSortSqlTableProxyModel* getSortFilter(){return mSortFilter;}
+
 	void hideAttribute(const QString& attr);
 	void unhideAttribute(const QString& attr);
 	int getColumnIndex(const QString& attr);

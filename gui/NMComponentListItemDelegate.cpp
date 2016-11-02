@@ -518,7 +518,8 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 					if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
 					{
 
-						// we also adjust the description field; it makes only sense
+                        l->setLegendValueField(valuefield);
+                        // we also adjust the description field; it makes only sense
 						// to be different from the value field if we're mapping
 						// unique values
 						if (l->getLegendClassType() != NMLayer::NM_CLASS_UNIQUE)
@@ -568,7 +569,7 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
                                 l->setUpper(stats[1]);
                             }
                         }
-                        l->setLegendValueField(valuefield);
+
                         //l->updateMapping();
                         l->updateLegend();
 					}

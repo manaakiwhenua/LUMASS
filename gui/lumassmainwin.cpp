@@ -121,6 +121,7 @@
 #include <QActionGroup>
 #include <QScopedPointer>
 #include <QSqlDriver>
+#include <QSqlRecord>
 #include <QSplitter>
 
 // orfeo
@@ -1557,7 +1558,7 @@ void LUMASSMainWin::aboutLUMASS(void)
 			<< "www.landcareresearch.co.nz" << endl << endl
 			<< "LUMASS is free software and licenced under the GPL v3." << endl
 			<< "Contact: herziga@landcareresearch.co.nz" << endl
-			<< "Code: http://code.scenzgrid.org/index.php/p/lumass/" << endl
+            << "Code: https://bitbucket.org/landcareresearch/lumass" << endl
             << "User group: https://groups.google.com/forum/#!forum/lumass-users" << endl
             << endl
             << "LUMASS builds on the following open source libraries " << endl
@@ -2350,7 +2351,7 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, double cellId)
 
 		// TODO: we have to reasonably extend this to any table
 		// we've got
-		otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
+        //otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
 		//if (tab.IsNull())
 		//{
 		//	NMDebugAI(<< __FUNCTION__ << ": Couldn't fetch the image attribute table!" << std::endl);
@@ -2358,27 +2359,49 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, double cellId)
 		//}
 		//QAbstractItemModel* tab = il->getTable();
 
-		int ncols = tab.IsNull() ? 1 : tab->GetNumCols();
-		ti->setRowCount(ncols);
+        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(
+                    const_cast<QAbstractItemModel*>(il->getTable()));
 
-		long rowcnt = 0;
-		for (int r=0; r < ncols; ++r)
+        QString queryStr = QString("SELECT * from %1 where %2 = %3")
+                .arg(sqlModel->tableName())
+                .arg(sqlModel->getNMPrimaryKey())
+                .arg(cellId);
+
+        QSqlQuery q(sqlModel->database());
+        QSqlRecord rec;
+
+        if (q.exec(queryStr) && q.next())
+        {
+            rec = q.record();
+        }
+
+        int ncols = sqlModel == 0 ? 1 : rec.count();
+        ti->setRowCount(ncols);
+
+        for (int r=0; r < ncols; ++r)
 		{
 			QTableWidgetItem *item1;
-			std::string colname = tab.IsNull() ? "Value" : tab->GetColumnName(r);
-			if (!colname.empty())
-				item1 = new QTableWidgetItem(colname.c_str());
+            QString colname = sqlModel == 0 ? "Value" : rec.fieldName(r);
+
+            if (!colname.isEmpty())
+                item1 = new QTableWidgetItem(colname);
 			else
 				item1 = new QTableWidgetItem("");
-			ti->setItem(r, 0, item1);
-			QTableWidgetItem *item2;
-			if (tab.IsNotNull())
+            ti->setItem(r, 0, item1);
+
+            QTableWidgetItem *item2;
+            if (rec.count())
 			{
-				if (cellId < tab->GetNumRows())
-					item2 = new QTableWidgetItem(tab->GetStrValue(r, cellId).c_str());
-				else
-					item2 = new QTableWidgetItem("CellID invalid!");
-			}
+                QVariant varVal = rec.value(r);
+                if (varVal.isValid())
+                {
+                    item2 = new QTableWidgetItem(varVal.toString());
+                }
+                else
+                {
+                    item2 = new QTableWidgetItem("CellID invalid!");
+                }
+            }
 			else
 			{
 				item2 = new QTableWidgetItem(QString("%1").arg(cellId, 0, 'g'));
@@ -3098,17 +3121,42 @@ LUMASSMainWin::parserTest(std::vector<std::map<std::string, mup::Value> >& mv)
     }
 }
 
+template <class T>
+extern int threadedCounting(T threadId, double start, double end)
+{
+    NMDebug(<< "#" << threadId << " start" << std::endl;)
+    double c = 0;
+    for (int i=start; start <= end; ++start)
+    {
+        c += start / end;
+        //counting in silence
+        ;//NMDebug(<< "#" << threadId << " = " << start << std::endl);
+    }
+    NMDebug(<< "#" << threadId << " done!" << std::endl;)
+    return 1;
+}
+
 void LUMASSMainWin::test()
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...")
 
-    QStringList connames = QSqlDatabase::connectionNames();
+    QList<QFuture<int> > flist;
+    flist << QFuture<int>() << QFuture<int>() << QFuture<int>();
 
-    QString cnnms = connames.join('\n');
+    for (int a=0; a < 3; ++a)
+    {
+        flist[a] = QtConcurrent::run(threadedCounting<int>, static_cast<int>(a),
+                                     static_cast<double>(a*1e9),
+                                     static_cast<double>(a*1e9+1e9)
+                                     );
+    }
 
-    QMessageBox::information(0, "Connections", cnnms);
+    NMDebugAI(<< "still counting ... " << std::endl);
 
-
+    for (int a=0; a < 3; ++a)
+    {
+        flist[a].waitForFinished();
+    }
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!")
 }
@@ -3500,8 +3548,11 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	else
 	{
 		NMImageLayer *il = qobject_cast<NMImageLayer*>(l);
-		if (il->getRasterAttributeTable(1).IsNull())
+        //if (il->getRasterAttributeTable(1).IsNull())
+        if (il->getTable() == 0)
+        {
 					return;
+        }
 
 		vtkImageData *img = vtkImageData::SafeDownCast(
 				const_cast<vtkDataSet*>(l->getDataSet()));

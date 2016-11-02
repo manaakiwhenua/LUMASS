@@ -25,6 +25,7 @@
 #include "NMSqlTableModel.h"
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QSqlIndex>
 #include <QUuid>
 
 
@@ -66,4 +67,22 @@ NMSqlTableModel::data(const QModelIndex &idx, int role) const
     }
 
     return var;
+}
+
+QString
+NMSqlTableModel::getNMPrimaryKey()
+{
+    QString primaryKey = "";
+
+    QSqlIndex pk = this->primaryKey();
+    if (!pk.isEmpty())
+    {
+        primaryKey = pk.fieldName(0);
+    }
+    else
+    {
+        primaryKey = this->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+    }
+
+    return primaryKey;
 }

@@ -37,6 +37,7 @@ public:
     NMSqlTableModel(QObject* parent=0, QSqlDatabase db=QSqlDatabase());
 
     QVariant data(const QModelIndex &idx, int role) const;
+    QString getNMPrimaryKey();
 
     /*!
      * \brief setDatabaseName - handy to save the DB name somewhere

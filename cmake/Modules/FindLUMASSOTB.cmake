@@ -54,12 +54,13 @@ IF(NOT OTB_DIR)
       /opt/otb-bin
       /opt/*
       /usr/lib/cmake
-	  C:/build/OTB-debug
-	  C:/opt/OTB-debug
-	  C:/build/OTB-reldebinfo
-	  C:/opt/OTB-reldebinfo	  
-	  C:/build/OTB-bin
-	  C:/opt/OTB-bin
+      /usr/lib/x86_64-linux-gnu
+      C:/build/OTB-debug
+      C:/opt/OTB-debug
+      C:/build/OTB-reldebinfo
+      C:/opt/OTB-reldebinfo	  
+      C:/build/OTB-bin
+      C:/opt/OTB-bin
   )
 
   #
@@ -72,6 +73,17 @@ IF(NOT OTB_DIR)
         OTB-5.1
         OTB-5.2
         OTB-5.3
+        OTB-5.4
+        OTB-5.5
+        OTB-5.6
+        cmake/OTB-5.0
+        cmake/OTB-4.4
+        cmake/OTB-5.1
+        cmake/OTB-5.2
+        cmake/OTB-5.3
+        cmake/OTB-5.4
+        cmake/OTB-5.5
+        cmake/OTB-5.6        
         OTB/build
     PATHS
     # Look for an environment variable OTB_DIR.

@@ -13,8 +13,8 @@
 
 =========================================================================*/
 /******************************************************************************
-* Adapted by Alexander Herzig
-* Copyright 2014 Landcare Research New Zealand Ltd
+* Adapted/Extended by Alexander Herzig
+* Copyright 2016 Landcare Research New Zealand Ltd
 *
 * This file is part of 'LUMASS', which is free software: you can redistribute
 * it and/or modify it under the terms of the GNU General Public License as
@@ -31,17 +31,18 @@
 ******************************************************************************/
 
 /*!
-    adaptation of vtkLookupTable
+    adaptation of vtkLookupTable (VTK 6.3)
 
-    The main difference to the original class is that it allows for specifying
-    a 'lower' and 'upper' value range for scalars smaller/greater the specified
-    value range and to assign specific colours for those ranges.
-
+    supports map-based look up of colour
+    values for non-contigous map values;
+    rather than linearly interpolating the
+    colour value
 */
 
 #ifndef NMVTKLOOKUPTABLE_H
 #define NMVTKLOOKUPTABLE_H
 
+#include <map>
 #include "vtkLookupTable.h"
 
 class NMVtkLookupTable : public vtkLookupTable
@@ -53,41 +54,41 @@ public:
     void PrintSelf(ostream& os, vtkIndent indent)
     {Superclass::PrintSelf(os, indent);}
 
-
-    void setLowerUpperClrOn(void);
-    void setLowerUpperClrOff(void);
-
-    void setLowerClr(double val, unsigned char clr[4]);
-    void setUpperClr(double val, unsigned char clr[4]);
-
-    void GetColor(double v, double rgb[3]);
-
-    unsigned char* MapValue(double v);
-
-    void MapScalarsThroughTable2(void *input,
+    virtual void MapScalarsThroughTable2(void *input,
                          unsigned char *output,
                          int inputDataType,
                          int numberOfValues,
                          int inputIncrement,
                          int outputFormat);
 
-    inline unsigned char* linearLookupMain(double v,
-                    unsigned char* table,
-                    double maxIndex,
-                    double shift, double scale);
+    /*!
+     * \brief sets the colour and lookup table index for
+     *        the given map value
+     * \param indx  the lookup table index
+     * \param mapVal the map value
+     * \param r red
+     * \param g green
+     * \param b blue
+     * \param a alpha
+     */
+    void SetMappedTableValue(vtkIdType indx, double mapVal,
+                                double r, double g, double b, double a=1.0);
+
+    /*!
+     * \brief turn map-based index lookup on/off
+     * \param bmap == true ? on : off
+     */
+    void SetUseIndexMapping(bool bmap)
+        {mLutIdxMapping = bmap;}
+
 
 
 protected:
     NMVtkLookupTable(int sze=256, int ext=256);
     ~NMVtkLookupTable();
 
-    bool mbUseLowerUpperClr;
-
-    double mUpper;
-    double mLower;
-
-    unsigned char mUpperClr[4];
-    unsigned char mLowerClr[4];
+    bool mLutIdxMapping;
+    std::multimap<double, vtkIdType> mLutIdxMap;
 
 private:
     NMVtkLookupTable(const NMVtkLookupTable&);

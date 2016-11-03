@@ -76,14 +76,32 @@ Orfeo Toolbox (OTB) version >= 5; required modules: OTBCommon, OTBIOGDAL,
 					
 					otb-bin, otb-bin-qt, libtinyxml-dev
 				
-VTK                 version >= 6; required modules: vtkCommonCore,
+VTK                 version = 6.3; required modules: vtkCommonCore,
                     vtkCommonDataModel, vtkFiltersGeneric, vtkRenderingCore,
                     vtkRenderingAnnotation, vtkRenderingImage, vtkGUISupportQt,
                     vtkImagingStatistics, vtkIteractionWidgets, vtkIOCore,
                     vtkIOInfovis, vtkIOSQL, vtkIOLegacy, vtkIOXML
                     
-                    packages:
-                    libvtk6-qt-dev, libvtk6-dev, libvtk6.2-qt, libvtk6.2
+                    packages (Ubuntu 16.10):
+                    libvtk6-qt-dev, libvtk6-dev, libvtk6.3-qt, libvtk6.3
+                    
+                    NOTE: If VTK 6.3 is built from source (Ubuntu 16.04), make 
+                    sure you configure Qt support for Qt5, which is not set by 
+                    default. Start configuring VTK using ccmake with these
+                    settings:
+                    
+                    $ cd /path/to/VTK-binary/dir
+                    $ ccmake -DCMAKE_PREFIX_PATH:PATH="/usr/lib/x86_64-linux-gnu/cmake" 
+                      -DVTK_QT_VERSION:STRING="5" -DVTK_Group_Qt:BOOL=ON 
+                      -DModule_vtkGUISupportQt:BOOL=ON /path/to/source/of/VTK-6.3.0/
+                      
+                    Then in ccmake press c to configure. Press c again. Press g
+                    to generate the make files. Press q to exit the ccmake. Now
+                    run make (-j specifies the number of cores to be used for
+                    the compilation), e.g.:
+                    
+                    $ make -j 4
+                  
                     
 rasdaman            this package is optional and only useful, if you intend
                     to use the LUMASS modelling framework; if you're only 

@@ -1970,7 +1970,7 @@ NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 				this->mlLastClickedRow = row;
                 const QModelIndex ridx = mModel->index(row, 0, QModelIndex());
                 const int srcRow = ridx.row();
-				emit notifyLastClickedRow((long)srcRow);
+                emit notifyLastClickedRow(static_cast<long long>(srcRow));
 				this->mManageLayerMenu->move(me->globalPos());
 				this->mManageLayerMenu->exec();
 			}
@@ -2301,7 +2301,7 @@ NMSqlTableView::toggleRow(int row)
     {
         mPickedRows.removeAt(idx);
     }
-    emit notifyLastClickedRow(srcRow);
+    emit notifyLastClickedRow(static_cast<long long>(srcRow));
     updateSelection(false);
 }
 

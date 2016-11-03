@@ -301,14 +301,14 @@ public slots:
 			int startsection, int endsection);
 	virtual void selectedLayerChanged(const NMLayer* layer);
 	virtual void writeDataSet(void);
-	virtual void selectCell(int cellID, NMLayerSelectionType seltype);
+    virtual void selectCell(long long cellID, NMLayerSelectionType seltype);
 	//void emitDataSetChanged();
 	//void emitAttributeTableChanged(
 	//		QStringList& slAlteredColumns,
 	//		QStringList& slDeletedColumns);
-	void forwardLastClickedRowSignal(long cellID);
-	virtual void updateLayerSelection(QList<long> lstCellId,
-		QList<long> lstNMId, NMLayerSelectionType seltype);
+    void forwardLastClickedRowSignal(long long cellID);
+    virtual void updateLayerSelection(QList<long long> lstCellId,
+        QList<long long> lstNMId, NMLayerSelectionType seltype);
 
     /*! Create a legend according to user choices */
 	virtual void updateLegend(void);
@@ -328,7 +328,7 @@ signals:
 	void layerProcessingStart();
 	void layerProcessingEnd();
 	void layerLoaded();
-	void notifyLastClickedRow(NMLayer* l, double cellID);
+    void notifyLastClickedRow(NMLayer* l, long long cellID);
 
 protected:
 	vtkSmartPointer<vtkRenderWindow> mRenderWindow;

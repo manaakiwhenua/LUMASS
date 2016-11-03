@@ -684,8 +684,8 @@ void NMImageLayer::createTableView(void)
         this->mTableView->setTitle(tabletitle);
         connect(this, SIGNAL(selectabilityChanged(bool)),
                 mTableView, SLOT(setSelectable(bool)));
-        connect(mTableView, SIGNAL(notifyLastClickedRow(long)),
-                this, SLOT(forwardLastClickedRowSignal(long)));
+        connect(mTableView, SIGNAL(notifyLastClickedRow(long long)),
+                this, SLOT(forwardLastClickedRowSignal(long long)));
     }
     else if (sqlModel != 0)
     {
@@ -695,8 +695,8 @@ void NMImageLayer::createTableView(void)
         this->mSqlTableView->setLayerName(this->objectName());
         connect(this, SIGNAL(selectabilityChanged(bool)),
                 mSqlTableView, SLOT(setSelectable(bool)));
-        connect(mSqlTableView, SIGNAL(notifyLastClickedRow(long)),
-                this, SLOT(forwardLastClickedRowSignal(long)));
+        connect(mSqlTableView, SIGNAL(notifyLastClickedRow(long long)),
+                this, SLOT(forwardLastClickedRowSignal(long long)));
     }
 }
 
@@ -1354,7 +1354,6 @@ NMImageLayer::setScalars(vtkImageData* img)
             ar->SetNumberOfTuples(numPix);
 
             double* out = static_cast<double*>(ar->GetVoidPointer(0));
-            double* tabCol = 0;
             const double nodata = this->getNodata();
 
             std::map<long long, double>::iterator it;
@@ -1401,8 +1400,7 @@ NMImageLayer::setScalars(vtkImageData* img)
             ar->SetNumberOfComponents(1);
 
             long long* out = static_cast<long long*>(ar->GetVoidPointer(0));
-            long* tabCol = 0;
-            long long nodata = static_cast<long>(this->getNodata());
+            long long nodata = static_cast<long long>(this->getNodata());
 
             std::map<long long, long long>::iterator it;
             switch(idxScalars->GetDataType())

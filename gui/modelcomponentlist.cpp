@@ -682,8 +682,8 @@ void ModelComponentList::addLayer(NMLayer* layer)
 			layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
 	LUMASSMainWin* mwin = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
-    connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, double)),
-            mwin, SLOT(updateLayerInfo(NMLayer *, double)));
+    connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, long long)),
+            mwin, SLOT(updateLayerInfo(NMLayer *, long long)));
     connect(mwin, SIGNAL(signalIsIn3DMode(bool)),
             layer, SLOT(setIsIn3DMode(bool)));
 

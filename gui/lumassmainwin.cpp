@@ -2267,7 +2267,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
 
 }
 
-void LUMASSMainWin::updateLayerInfo(NMLayer* l, double cellId)
+void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
 {
         //NMDebugCtx(ctxLUMASSMainWin, << "...");
 
@@ -2297,7 +2297,7 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, double cellId)
 	ti->horizontalHeader()->setStretchLastSection(true);
 
 	QStringList colHeaderLabels;
-	colHeaderLabels << QString(tr("Attributes (%1)").arg((long)cellId)) << "Value";
+    colHeaderLabels << QString(tr("Attributes (%1)").arg(cellId)) << "Value";
 
 	ti->setHorizontalHeaderLabels(colHeaderLabels);
 
@@ -2329,10 +2329,10 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, double cellId)
 			ti->setItem(rowcnt,0, item1);
 
 			QTableWidgetItem* item2;
-			if ((long)cellId < aa->GetNumberOfTuples())
+            if (cellId < aa->GetNumberOfTuples())
 			{
 				item2 = new QTableWidgetItem(
-					aa->GetVariantValue((long)cellId).ToString().c_str());
+                    aa->GetVariantValue(cellId).ToString().c_str());
 			}
 			else
 			{
@@ -2404,7 +2404,8 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, double cellId)
             }
 			else
 			{
-				item2 = new QTableWidgetItem(QString("%1").arg(cellId, 0, 'g'));
+                //item2 = new QTableWidgetItem(QString("%1").arg(cellId, 0, 'g'));
+                item2 = new QTableWidgetItem(QString("%1").arg(cellId));
 			}
 			ti->setItem(r, 1, item2);
 		}
@@ -2810,466 +2811,446 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
     return innerExpr;
 }
 
-void
-LUMASSMainWin::parseScriptCommand(std::string& expr,
-        std::map<std::string, mup::Value> &mapNameValue,
-        std::map<mup::ParserX *, std::string> &mapParserName,
-        std::vector<mup::ParserX *> &vecParsers
-        )
-{
-    // create parser for this line
-    //    otb::MultiParser::Pointer smartparser = otb::MultiParser::New();
-    //    otb::MultiParser* parser = smartparser.GetPointer();
-    //    parser->Register();
-    mup::ParserX* parser = 0;
-    try
-    {
-        parser = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
-    }
-    catch(std::exception& parexp)
-    {
-        NMErr(ctxLUMASSMainWin, << "ran out of memory!");
-        return;
-    }
+//void
+//LUMASSMainWin::parseScriptCommand(std::string& expr,
+//        std::map<std::string, mup::Value> &mapNameValue,
+//        std::map<mup::ParserX *, std::string> &mapParserName,
+//        std::vector<mup::ParserX *> &vecParsers
+//        )
+//{
+//    // create parser for this line
+//    //    otb::MultiParser::Pointer smartparser = otb::MultiParser::New();
+//    //    otb::MultiParser* parser = smartparser.GetPointer();
+//    //    parser->Register();
+//    mup::ParserX* parser = 0;
+//    try
+//    {
+//        parser = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
+//    }
+//    catch(std::exception& parexp)
+//    {
+//        NMErr(ctxLUMASSMainWin, << "ran out of memory!");
+//        return;
+//    }
 
-    std::string name = "";
+//    std::string name = "";
 
-    // extract newly defined variables (i.e. lvalues)
-    std::map<std::string, mup::Value>::iterator extIter;
-    size_t pos = std::string::npos;
-    bool barray = false;
-    if ((pos = expr.find('=')) != std::string::npos)
-    {
-        name = expr.substr(0, pos);
+//    // extract newly defined variables (i.e. lvalues)
+//    std::map<std::string, mup::Value>::iterator extIter;
+//    size_t pos = std::string::npos;
+//    bool barray = false;
+//    if ((pos = expr.find('=')) != std::string::npos)
+//    {
+//        name = expr.substr(0, pos);
 
-        // in case of += -= *= /= assignment operators
-        size_t assignpos = name.find_first_of("+-*/");
-        if (assignpos != std::string::npos)
-        {
-            name = name.substr(0, assignpos);
-        }
+//        // in case of += -= *= /= assignment operators
+//        size_t assignpos = name.find_first_of("+-*/");
+//        if (assignpos != std::string::npos)
+//        {
+//            name = name.substr(0, assignpos);
+//        }
 
-        // check, if we've got an array as lhs
-        size_t bro = name.find('[', 0);
-        size_t bre = name.find(']', bro+1);
-        if (    bro != std::string::npos
-            &&  bre != std::string::npos
-           )
-        {
-            //            // check index validity
+//        // check, if we've got an array as lhs
+//        size_t bro = name.find('[', 0);
+//        size_t bre = name.find(']', bro+1);
+//        if (    bro != std::string::npos
+//            &&  bre != std::string::npos
+//           )
+//        {
+//            //            // check index validity
 
-            //            // look for a variable we've defined already ...
-            //            std::string idxop = name.substr(bro+1, bre-bro-1);
-            //            extIter = mapNameValue.find(idxop);
+//            //            // look for a variable we've defined already ...
+//            //            std::string idxop = name.substr(bro+1, bre-bro-1);
+//            //            extIter = mapNameValue.find(idxop);
 
-            //            // ... or an fixed numeric index
-            //            // NOTE: we don't accept 5e2 type index expressions!
-            //            bool bNumIdx = true;
-            //            size_t idxpos = 0;
-            //            while (idxpos < idxop.size())
-            //            {
-            //                if (!::isdigit(idxop[idxpos]))
-            //                {
-            //                    bNumIdx = false;
-            //                    break;
-            //                }
-            //                ++idxpos;
-            //            }
+//            //            // ... or an fixed numeric index
+//            //            // NOTE: we don't accept 5e2 type index expressions!
+//            //            bool bNumIdx = true;
+//            //            size_t idxpos = 0;
+//            //            while (idxpos < idxop.size())
+//            //            {
+//            //                if (!::isdigit(idxop[idxpos]))
+//            //                {
+//            //                    bNumIdx = false;
+//            //                    break;
+//            //                }
+//            //                ++idxpos;
+//            //            }
 
-            //            if (    extIter == mapNameValue.end()
-            //                &&  !bNumIdx
-            //               )
-            //            {
-            //                // throw an exception
-            //                NMErr(ctxLUMASSMainWin,
-            //                      << "Detected undefined index at pos "
-            //                      << bro+1 << "!");
-            //                return;
-            //            }
+//            //            if (    extIter == mapNameValue.end()
+//            //                &&  !bNumIdx
+//            //               )
+//            //            {
+//            //                // throw an exception
+//            //                NMErr(ctxLUMASSMainWin,
+//            //                      << "Detected undefined index at pos "
+//            //                      << bro+1 << "!");
+//            //                return;
+//            //            }
 
-            name = name.substr(0, bro);
-            barray = true;
-        }
+//            name = name.substr(0, bro);
+//            barray = true;
+//        }
 
-        name.erase(0, name.find_first_not_of(' '));
-        name.erase(name.find_last_not_of(' ')+1);
-    }
+//        name.erase(0, name.find_first_not_of(' '));
+//        name.erase(name.find_last_not_of(' ')+1);
+//    }
 
-    // always set the whole expression (- of course!)
-    std::string theexpr = expr;
-    theexpr.erase(0, theexpr.find_first_not_of(' '));
-    theexpr.erase(theexpr.find_last_not_of(' ')+1);
+//    // always set the whole expression (- of course!)
+//    std::string theexpr = expr;
+//    theexpr.erase(0, theexpr.find_first_not_of(' '));
+//    theexpr.erase(theexpr.find_last_not_of(' ')+1);
 
-    parser->SetExpr(theexpr);
-    if (name.empty())
-    {
-        std::stringstream sstemp;
-        sstemp.str("");
-        sstemp << "v" << mapNameValue.size();
-        name = sstemp.str();
-    }
+//    parser->SetExpr(theexpr);
+//    if (name.empty())
+//    {
+//        std::stringstream sstemp;
+//        sstemp.str("");
+//        sstemp << "v" << mapNameValue.size();
+//        name = sstemp.str();
+//    }
 
-    // check, whether we've defined this variable already;
-    // if so, we just associate the new parser with this
-    // variable; if not, we also add a new variable to the
-    // list
+//    // check, whether we've defined this variable already;
+//    // if so, we just associate the new parser with this
+//    // variable; if not, we also add a new variable to the
+//    // list
 
-    // enter new variables into the name-variable map
-    extIter = mapNameValue.find(name);
-    if (!barray && extIter == mapNameValue.end())
-    {
-        // generate a value pointer for this command (equation)
-        //mup::Value* value = 0;
-        double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
-        mup::Value value = v;
+//    // enter new variables into the name-variable map
+//    extIter = mapNameValue.find(name);
+//    if (!barray && extIter == mapNameValue.end())
+//    {
+//        // generate a value pointer for this command (equation)
+//        //mup::Value* value = 0;
+//        double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
+//        mup::Value value = v;
 
-        //        try
-        //        {
-        //             value = new mup::Value;
-        //             *value = v;
-        //        }
-        //        catch (std::exception& newValException)
-        //        {
-        //            // handle code here
-        //            std::string what = newValException.what();
-        //            std::string msg = "No memory to allocate result variable!";
-        //            NMErr(ctxLUMASSMainWin, << msg << what);
-        //            return;
-        //        }
-        mapNameValue.insert(std::pair<std::string, mup::Value>(name, value));
-    }
+//        //        try
+//        //        {
+//        //             value = new mup::Value;
+//        //             *value = v;
+//        //        }
+//        //        catch (std::exception& newValException)
+//        //        {
+//        //            // handle code here
+//        //            std::string what = newValException.what();
+//        //            std::string msg = "No memory to allocate result variable!";
+//        //            NMErr(ctxLUMASSMainWin, << msg << what);
+//        //            return;
+//        //        }
+//        mapNameValue.insert(std::pair<std::string, mup::Value>(name, value));
+//    }
 
-    // define all previously defined variables for this parser
-    extIter = mapNameValue.begin();
-    while (extIter != mapNameValue.end())
-    {
-        parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
-        ++extIter;
-    }
+//    // define all previously defined variables for this parser
+//    extIter = mapNameValue.begin();
+//    while (extIter != mapNameValue.end())
+//    {
+//        parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
+//        ++extIter;
+//    }
 
-    // associate this expression's parser with the name of the lvalue variable
-    mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
-    vecParsers.push_back(parser);
-}
+//    // associate this expression's parser with the name of the lvalue variable
+//    mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
+//    vecParsers.push_back(parser);
+//}
 
-void
-LUMASSMainWin::parseKernelScriptBlock(std::string& expr,
-        std::map<std::string, mup::Value> &mapNameValue,
-        std::map<mup::ParserX *, std::string> &mapParserName,
-        std::vector<mup::ParserX *> &vecParsers,
-        std::vector<int>& vecBlockLen
-        )
-{
-    // ======================================================
-    // break up parsing into for loops (blocks) and simple commands
-    // ======================================================
+//void
+//LUMASSMainWin::parseKernelScriptBlock(std::string& expr,
+//        std::map<std::string, mup::Value> &mapNameValue,
+//        std::map<mup::ParserX *, std::string> &mapParserName,
+//        std::vector<mup::ParserX *> &vecParsers,
+//        std::vector<int>& vecBlockLen
+//        )
+//{
+//    // ======================================================
+//    // break up parsing into for loops (blocks) and simple commands
+//    // ======================================================
 
-    enum ScriptElem {CMD,
-                     FOR_ADMIN,
-                     FOR_BLOCK};
+//    enum ScriptElem {CMD,
+//                     FOR_ADMIN,
+//                     FOR_BLOCK};
 
-    std::stack<int> forLoop;    // parser vector index of 1st for admin cmd
-    std::stack<int> bracketOpen;
+//    std::stack<int> forLoop;    // parser vector index of 1st for admin cmd
+//    std::stack<int> bracketOpen;
 
-    std::string script = expr;
-    size_t pos = 0;
-    size_t start = 0;
-    size_t next = 0;
-    ScriptElem curElem = CMD;
+//    std::string script = expr;
+//    size_t pos = 0;
+//    size_t start = 0;
+//    size_t next = 0;
+//    ScriptElem curElem = CMD;
 
-    std::string cmd;
-    // we look for sequence points and decide what to do ...
-    while(pos < script.size() && pos != std::string::npos)
-    {
-        const char c = script[pos];
-        switch (c)
-        {
-            case ';':
-            {
-                cmd = script.substr(start, pos-start);
-                start = pos+1;
-            }
-            break;
+//    std::string cmd;
+//    // we look for sequence points and decide what to do ...
+//    while(pos < script.size() && pos != std::string::npos)
+//    {
+//        const char c = script[pos];
+//        switch (c)
+//        {
+//            case ';':
+//            {
+//                cmd = script.substr(start, pos-start);
+//                start = pos+1;
+//            }
+//            break;
 
-            case 'f':
-            {
-                if (    script.find("for(", pos) == pos
-                    ||  script.find("for ", pos) == pos
-                   )
-                {
-                    next = script.find('(', pos+3);
-                    if (next != std::string::npos)
-                    {
-                        // store the parser idx starting this for loop
-                        forLoop.push(vecParsers.size());
+//            case 'f':
+//            {
+//                if (    script.find("for(", pos) == pos
+//                    ||  script.find("for ", pos) == pos
+//                   )
+//                {
+//                    next = script.find('(', pos+3);
+//                    if (next != std::string::npos)
+//                    {
+//                        // store the parser idx starting this for loop
+//                        forLoop.push(vecParsers.size());
 
-                        curElem = FOR_ADMIN;
-                        bracketOpen.push(next);
-                        pos = next;
-                        start = pos+1;
-                    }
-                    else
-                    {
-                        /// ToDo: throw exception
-                        NMErr(ctxLUMASSMainWin,
-                              << "Malformed for-loop near pos "
-                              << pos << ". Missing '('.");
-                        return;
-                    }
-                }
-            }
-            break;
+//                        curElem = FOR_ADMIN;
+//                        bracketOpen.push(next);
+//                        pos = next;
+//                        start = pos+1;
+//                    }
+//                    else
+//                    {
+//                        /// ToDo: throw exception
+//                        NMErr(ctxLUMASSMainWin,
+//                              << "Malformed for-loop near pos "
+//                              << pos << ". Missing '('.");
+//                        return;
+//                    }
+//                }
+//            }
+//            break;
 
-            case '(':
-            {
-                if (curElem == FOR_ADMIN)
-                {
-                    bracketOpen.push(pos);
-                }
-            }
-            break;
+//            case '(':
+//            {
+//                if (curElem == FOR_ADMIN)
+//                {
+//                    bracketOpen.push(pos);
+//                }
+//            }
+//            break;
 
-            case ')':
-            {
-                if (curElem == FOR_ADMIN)
-                {
-                    bracketOpen.pop();
-                    if (bracketOpen.size() == 0)
-                    {
-                        cmd = script.substr(start, pos-start);
+//            case ')':
+//            {
+//                if (curElem == FOR_ADMIN)
+//                {
+//                    bracketOpen.pop();
+//                    if (bracketOpen.size() == 0)
+//                    {
+//                        cmd = script.substr(start, pos-start);
 
-                        next = script.find('{', pos+1);
-                        if (next != std::string::npos)
-                        {
-                            start = next+1;
-                            curElem = FOR_BLOCK;
-                        }
-                        else
-                        {
-                            /// ToDo: throw exception
-                            NMErr(ctxLUMASSMainWin,
-                                  << "malformed for-loop near pos "
-                                  << pos << "!");
-                            return;
-                        }
-                    }
-                }
-            }
-            break;
+//                        next = script.find('{', pos+1);
+//                        if (next != std::string::npos)
+//                        {
+//                            start = next+1;
+//                            curElem = FOR_BLOCK;
+//                        }
+//                        else
+//                        {
+//                            /// ToDo: throw exception
+//                            NMErr(ctxLUMASSMainWin,
+//                                  << "malformed for-loop near pos "
+//                                  << pos << "!");
+//                            return;
+//                        }
+//                    }
+//                }
+//            }
+//            break;
 
-            case '}':
-            {
-                if (curElem == FOR_BLOCK)
-                {
-                    if (forLoop.empty())
-                    {
-                        /// ToDo: throw exception
-                        NMErr(ctxLUMASSMainWin,
-                              << "Parsing error! For loop without head near pos "
-                              << pos << "!");
-                        return;
-                    }
+//            case '}':
+//            {
+//                if (curElem == FOR_BLOCK)
+//                {
+//                    if (forLoop.empty())
+//                    {
+//                        /// ToDo: throw exception
+//                        NMErr(ctxLUMASSMainWin,
+//                              << "Parsing error! For loop without head near pos "
+//                              << pos << "!");
+//                        return;
+//                    }
 
-                    int idx = forLoop.top();
-                    forLoop.pop();
-                    vecBlockLen.at(idx) = vecParsers.size() - idx;
+//                    int idx = forLoop.top();
+//                    forLoop.pop();
+//                    vecBlockLen.at(idx) = vecParsers.size() - idx;
 
-                    if (forLoop.empty())
-                    {
-                        curElem = CMD;
-                    }
-                    start = pos+1;
-                }
-            }
-            break;
-        }
+//                    if (forLoop.empty())
+//                    {
+//                        curElem = CMD;
+//                    }
+//                    start = pos+1;
+//                }
+//            }
+//            break;
+//        }
 
 
-        if (!cmd.empty())
-        {
-            this->parseScriptCommand(
-                        cmd,
-                        mapNameValue,
-                        mapParserName,
-                        vecParsers);
-            vecBlockLen.push_back(1);
-            cmd.clear();
-        }
+//        if (!cmd.empty())
+//        {
+//            this->parseScriptCommand(
+//                        cmd,
+//                        mapNameValue,
+//                        mapParserName,
+//                        vecParsers);
+//            vecBlockLen.push_back(1);
+//            cmd.clear();
+//        }
 
-        ++pos;
-    }
-}
+//        ++pos;
+//    }
+//}
 
-void
-LUMASSMainWin::parserTest(std::vector<std::map<std::string, mup::Value> >& mv)
-{
+//void
+//LUMASSMainWin::parserTest(std::vector<std::map<std::string, mup::Value> >& mv)
+//{
 
-    std::map<std::string, mup::Value>::iterator vit;
-    for (int v=0; v < mv.size(); ++v)
-    {
-        vit = mv.at(v).begin();
-        while (vit != mv.at(v).end())
-        {
-            for (int d=0; d < vit->second.GetRows(); ++d)
-            {
-                mup::float_type av = vit->second.At(d).GetFloat();
-                av += (mup::float_type)d;
-                vit->second.At(d) = av;
-            }
-            ++vit;
-        }
-    }
-}
+//    std::map<std::string, mup::Value>::iterator vit;
+//    for (int v=0; v < mv.size(); ++v)
+//    {
+//        vit = mv.at(v).begin();
+//        while (vit != mv.at(v).end())
+//        {
+//            for (int d=0; d < vit->second.GetRows(); ++d)
+//            {
+//                mup::float_type av = vit->second.At(d).GetFloat();
+//                av += (mup::float_type)d;
+//                vit->second.At(d) = av;
+//            }
+//            ++vit;
+//        }
+//    }
+//}
 
-template <class T>
-extern int threadedCounting(T threadId, double start, double end)
-{
-    NMDebug(<< "#" << threadId << " start" << std::endl;)
-    double c = 0;
-    for (int i=start; start <= end; ++start)
-    {
-        c += start / end;
-        //counting in silence
-        ;//NMDebug(<< "#" << threadId << " = " << start << std::endl);
-    }
-    NMDebug(<< "#" << threadId << " done!" << std::endl;)
-    return 1;
-}
 
 void LUMASSMainWin::test()
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...")
 
-    QList<QFuture<int> > flist;
-    flist << QFuture<int>() << QFuture<int>() << QFuture<int>();
+    long long a = 93035670317640;
 
-    for (int a=0; a < 3; ++a)
-    {
-        flist[a] = QtConcurrent::run(threadedCounting<int>, static_cast<int>(a),
-                                     static_cast<double>(a*1e9),
-                                     static_cast<double>(a*1e9+1e9)
-                                     );
-    }
+    double b = 1913802361;
 
-    NMDebugAI(<< "still counting ... " << std::endl);
+    double c = static_cast<double>(a);
 
-    for (int a=0; a < 3; ++a)
-    {
-        flist[a].waitForFinished();
-    }
+    QString myNums = QString("%1 & %2 & %3").arg(a).arg(b).arg(c);
+
+    NMDebugAI(<< myNums.toStdString() << std::endl);
+
+    int aldsf=5;
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!")
 }
 
-void
-LUMASSMainWin::runLoop(int i,
-        std::map<std::string, mup::Value> &mapNameValue,
-        std::map<mup::ParserX *, string> &mapParserName,
-        std::vector<mup::ParserX *> &vecParsers,
-        std::vector<int> &vecBlockLen
-        )
-{
-    const int numForExp = vecBlockLen.at(i)-3;
-    mup::ParserX* testParser = vecParsers.at(++i);
-    //std::string& testName = mapParserName.find(testParser)->second;
-    mup::Value& testValue = mapNameValue.find(mapParserName.find(testParser)->second)->second;
-    testValue = testParser->Eval();
+//void
+//LUMASSMainWin::runLoop(int i,
+//        std::map<std::string, mup::Value> &mapNameValue,
+//        std::map<mup::ParserX *, string> &mapParserName,
+//        std::vector<mup::ParserX *> &vecParsers,
+//        std::vector<int> &vecBlockLen
+//        )
+//{
+//    const int numForExp = vecBlockLen.at(i)-3;
+//    mup::ParserX* testParser = vecParsers.at(++i);
+//    //std::string& testName = mapParserName.find(testParser)->second;
+//    mup::Value& testValue = mapNameValue.find(mapParserName.find(testParser)->second)->second;
+//    testValue = testParser->Eval();
 
-    const mup::ParserX* counterParser = vecParsers.at(++i);
-    //std::string& counterName = mapParserName.find(counterParser)->second;
-    //mup::Value& counterValue = mapNameValue.find(counterName)->second;
+//    const mup::ParserX* counterParser = vecParsers.at(++i);
+//    //std::string& counterName = mapParserName.find(counterParser)->second;
+//    //mup::Value& counterValue = mapNameValue.find(counterName)->second;
 
-    //nmlog::nmindent++;
-    while (testValue.GetFloat())
-    {
-        for (int exp=1; exp <= numForExp; ++exp)
-        {
-//            if (i+exp < vecParsers.size())
-//            {
-                const mup::ParserX* forExp = vecParsers.at(i+exp);
-                //std::string& forName = mapParserName.find(forExp)->second;
-                //mup::Value& forValue = mapNameValue.find(forName)->second;
-                forExp->Eval();
+//    //nmlog::nmindent++;
+//    while (testValue.GetFloat())
+//    {
+//        for (int exp=1; exp <= numForExp; ++exp)
+//        {
+////            if (i+exp < vecParsers.size())
+////            {
+//                const mup::ParserX* forExp = vecParsers.at(i+exp);
+//                //std::string& forName = mapParserName.find(forExp)->second;
+//                //mup::Value& forValue = mapNameValue.find(forName)->second;
+//                forExp->Eval();
 
-                //                NMDebugAI(<< "#" << counterValue.GetFloat() << ": ");
-                //                for (int m=0; m < forValue.GetRows(); ++m)
-                //                {
-                //                    for (int n=0; n < forValue.GetCols(); ++n)
-                //                    {
-                //                        NMDebug(<< forValue.At(m, n).GetFloat() << " ");
-                //                    }
-                //                }
-                //                NMDebug(<< std::endl);
+//                //                NMDebugAI(<< "#" << counterValue.GetFloat() << ": ");
+//                //                for (int m=0; m < forValue.GetRows(); ++m)
+//                //                {
+//                //                    for (int n=0; n < forValue.GetCols(); ++n)
+//                //                    {
+//                //                        NMDebug(<< forValue.At(m, n).GetFloat() << " ");
+//                //                    }
+//                //                }
+//                //                NMDebug(<< std::endl);
 
-                if (vecBlockLen.at(i+exp) > 1)
-                {
-                    this->runLoop(i+exp,
-                                  mapNameValue,
-                                  mapParserName,
-                                  vecParsers,
-                                  vecBlockLen);
-                    exp += vecBlockLen.at(i+exp)-1;
-                }
-//            }
-//            else
-//            {
-//                // throw exception, something's wrong!
-//                NMErr(ctxLUMASSMainWin, << "Not that many cmds in for-loop!");
-//                return;
-//            }
-        }
+//                if (vecBlockLen.at(i+exp) > 1)
+//                {
+//                    this->runLoop(i+exp,
+//                                  mapNameValue,
+//                                  mapParserName,
+//                                  vecParsers,
+//                                  vecBlockLen);
+//                    exp += vecBlockLen.at(i+exp)-1;
+//                }
+////            }
+////            else
+////            {
+////                // throw exception, something's wrong!
+////                NMErr(ctxLUMASSMainWin, << "Not that many cmds in for-loop!");
+////                return;
+////            }
+//        }
 
-        counterParser->Eval();
-        // since we don't impose the test expression of a for loop
-        // to include a result assignment,  we do it manually here,
-        // just in case ...
-        testValue = testParser->Eval();
-    }
-    //nmlog::nmindent--;
-}
-
-
-void
-LUMASSMainWin::runScript(std::map<std::string, mup::Value> &mapNameValue,
-        //std::map<otb::MultiParser *, string> &mapParserName,
-        //std::vector<otb::MultiParser *> &vecParsers,
-        std::map<mup::ParserX*, string> &mapParserName,
-        std::vector<mup::ParserX*> &vecParsers,
-        std::vector<int> &vecBlockLen
-        )
-{
-    //NMDebugCtx(ctxLUMASSMainWin, << "...");
-
-    //NMDebugAI(<< "running script ..." << std::endl);
-
-    //CALLGRIND_START_INSTRUMENTATION;
-
-    for (int i=0; i < vecParsers.size(); ++i)
-    {
-        const mup::ParserX* parser = vecParsers.at(i);
-        //std::string& name = mapParserName.find(parser)->second;
-        //mup::Value& value = mapNameValue.find(name)->second;
-        parser->Eval();
-
-        //NMDebugAI(<< value.GetFloat() << " = " << parser->GetExpr() << std::endl);
-
-        if (vecBlockLen.at(i) > 1)
-        {
-            this->runLoop(i,
-                          mapNameValue,
-                          mapParserName,
-                          vecParsers,
-                          vecBlockLen);
-            i += vecBlockLen.at(i)-1;
-        }
-    }
-
-    //CALLGRIND_STOP_INSTRUMENTATION;
-    //CALLGRIND_DUMP_STATS;
+//        counterParser->Eval();
+//        // since we don't impose the test expression of a for loop
+//        // to include a result assignment,  we do it manually here,
+//        // just in case ...
+//        testValue = testParser->Eval();
+//    }
+//    //nmlog::nmindent--;
+//}
 
 
-    //NMDebugCtx(ctxLUMASSMainWin, << "done!");
-}
+//void
+//LUMASSMainWin::runScript(std::map<std::string, mup::Value> &mapNameValue,
+//        //std::map<otb::MultiParser *, string> &mapParserName,
+//        //std::vector<otb::MultiParser *> &vecParsers,
+//        std::map<mup::ParserX*, string> &mapParserName,
+//        std::vector<mup::ParserX*> &vecParsers,
+//        std::vector<int> &vecBlockLen
+//        )
+//{
+//    //NMDebugCtx(ctxLUMASSMainWin, << "...");
+
+//    //NMDebugAI(<< "running script ..." << std::endl);
+
+//    //CALLGRIND_START_INSTRUMENTATION;
+
+//    for (int i=0; i < vecParsers.size(); ++i)
+//    {
+//        const mup::ParserX* parser = vecParsers.at(i);
+//        //std::string& name = mapParserName.find(parser)->second;
+//        //mup::Value& value = mapNameValue.find(name)->second;
+//        parser->Eval();
+
+//        //NMDebugAI(<< value.GetFloat() << " = " << parser->GetExpr() << std::endl);
+
+//        if (vecBlockLen.at(i) > 1)
+//        {
+//            this->runLoop(i,
+//                          mapNameValue,
+//                          mapParserName,
+//                          vecParsers,
+//                          vecBlockLen);
+//            i += vecBlockLen.at(i)-1;
+//        }
+//    }
+
+//    //CALLGRIND_STOP_INSTRUMENTATION;
+//    //CALLGRIND_DUMP_STATS;
+
+
+//    //NMDebugCtx(ctxLUMASSMainWin, << "done!");
+//}
 
 
 bool
@@ -3390,7 +3371,7 @@ void LUMASSMainWin::removeAllObjects()
 
 void LUMASSMainWin::pickObject(vtkObject* obj)
 {
-    // picking implementation only properly works in 2d mode
+    // picking implementation only works properly in 2d mode
     if (m_b3D)
     {
         return;
@@ -3427,7 +3408,8 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 
 	//	NMDebugAI(<< "wPt: " << wPt[0] << ", " << wPt[1] << ", " << wPt[2] << endl);
 
-	double cellId = -1;
+    //double cellId = -1;
+    vtkIdType cellId = -1;
 	// ==========================================================================
 	// 									VECTOR PICKING
 	// ==========================================================================
@@ -3441,16 +3423,16 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 		vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 		vtkDataArray* nmids = dsAttr->GetArray("nm_id");
 		vtkDataArray* hole = dsAttr->GetArray("nm_hole");
-		vtkDataArray* sa = dsAttr->GetArray("nm_sel");
+        //vtkDataArray* sa = dsAttr->GetArray("nm_sel");
 
 		vtkPolyData* pd = vtkPolyData::SafeDownCast(ds);
-		vtkPoints* cellPoints = pd->GetPoints();
-		int ncells = pd->GetNumberOfCells();
+        //vtkPoints* cellPoints = pd->GetPoints();
+        long ncells = pd->GetNumberOfCells();
 
 		vtkCell* cell;
-		int subid, inout;
-		double pcoords[3], clPt[3], dist2;
-		double* weights = new double[pd->GetMaxCellSize()];
+        //long long subid, inout;
+        //double pcoords[3], clPt[3], dist2;
+        //double* weights = new double[pd->GetMaxCellSize()];
 		bool in = false;
 		QList<vtkIdType> vIds;
 		QList<vtkIdType> holeIds;
@@ -3510,8 +3492,8 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 
 		// the doc widget hosting the layer info table
 
-		QList<long> lstCellId;
-		QList<long> lstNMId;
+        QList<vtkIdType> lstCellId;
+        QList<vtkIdType> lstNMId;
 		if (vIds.size() == 0)
 		{
             // this is mean if you're in a tedious selection process
@@ -3524,7 +3506,7 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 		}
 
 		cellId = vIds.last();
-		long nmid = nmids->GetTuple1(cellId);
+        vtkIdType nmid = nmids->GetTuple1(cellId);
 		lstCellId.push_back(cellId);
 		lstNMId.push_back(nmid);
 
@@ -3548,7 +3530,6 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	else
 	{
 		NMImageLayer *il = qobject_cast<NMImageLayer*>(l);
-        //if (il->getRasterAttributeTable(1).IsNull())
         if (il->getTable() == 0)
         {
 					return;
@@ -3579,11 +3560,15 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 		}
 
         vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
+        NMDebugAI(<< "image data type: " << idxScalars->GetDataTypeAsString() << std::endl);
         void* idxPtr = img->GetArrayPointer(idxScalars, did);
 
         switch(img->GetPointData()->GetArray(0)->GetDataType())
         {
-        vtkTemplateMacro(getDoubleFromVtkTypedPtr(
+//        vtkTemplateMacro(getDoubleFromVtkTypedPtr(
+//                             static_cast<VTK_TT*>(idxPtr), &cellId)
+//                    );
+        vtkTemplateMacro(getLongLongFromVtkTypedPtr(
                              static_cast<VTK_TT*>(idxPtr), &cellId)
                     );
         default:
@@ -3602,12 +3587,6 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	}
 }
 
-template<class T>
-void
-LUMASSMainWin::getDoubleFromVtkTypedPtr(T* in, double* out)
-{
-    *out = static_cast<double>(*in);
-}
 
 bool
 LUMASSMainWin::ptInPoly2D(double pt[3], vtkCell* cell)

@@ -138,7 +138,7 @@ signals:
 	void tableDataChanged(QStringList& slAlteredColumns,
 			QStringList& slDeletedColumns);
 	void selectionChanged();
-	void notifyLastClickedRow(long cellID);
+    void notifyLastClickedRow(long long cellID);
 	void notifyLoadRasLayer(const QString& imagespec,
 			const QString& covname);
 	void notifyDeleteRasLayer(const QString& imagespec);

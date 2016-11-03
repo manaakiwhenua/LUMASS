@@ -164,7 +164,7 @@ public slots:
 	void saveAsVectorLayerOGR();
     void saveImageFile();
     void saveMapAsImage();
-	void updateLayerInfo(NMLayer* l, double cellId);
+    void updateLayerInfo(NMLayer* l, long long cellId);
     void importTableObject();
 	void aboutLUMASS();
 	void addLayerToCompList();
@@ -271,50 +271,59 @@ protected:
 	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
 
-    void parseKernelScriptBlock(std::string& expr,
-            //std::vector<std::pair<ScriptElem, int> >& parseAdmin,
-            //std::map<std::string, double*>& mapNameValue,
-            std::map<std::string, mup::Value>& mapNameValue,
-            //std::map<otb::MultiParser*, std::string> &mapParserName,
-            std::map<mup::ParserX*, std::string>& mapParserName,
-            //std::vector<otb::MultiParser*> &vecParsers,
-            std::vector<mup::ParserX*>& vecParsers,
-            std::vector<int>& vecBlockLen
-            );
+//    void parseKernelScriptBlock(std::string& expr,
+//            //std::vector<std::pair<ScriptElem, int> >& parseAdmin,
+//            //std::map<std::string, double*>& mapNameValue,
+//            std::map<std::string, mup::Value>& mapNameValue,
+//            //std::map<otb::MultiParser*, std::string> &mapParserName,
+//            std::map<mup::ParserX*, std::string>& mapParserName,
+//            //std::vector<otb::MultiParser*> &vecParsers,
+//            std::vector<mup::ParserX*>& vecParsers,
+//            std::vector<int>& vecBlockLen
+//            );
 
-    void parseScriptCommand(std::string& expr,
-            //std::map<std::string, double*>& mapNameValue,
-            std::map<std::string, mup::Value>& mapNameValue,
-            //std::map<otb::MultiParser*, std::string>& mapParserName,
-            std::map<mup::ParserX*, std::string>& mapParserName,
-            //std::vector<otb::MultiParser*>& vecParsers
-            std::vector<mup::ParserX*>& vecParsers
-            );
+//    void parseScriptCommand(std::string& expr,
+//            //std::map<std::string, double*>& mapNameValue,
+//            std::map<std::string, mup::Value>& mapNameValue,
+//            //std::map<otb::MultiParser*, std::string>& mapParserName,
+//            std::map<mup::ParserX*, std::string>& mapParserName,
+//            //std::vector<otb::MultiParser*>& vecParsers
+//            std::vector<mup::ParserX*>& vecParsers
+//            );
 
-    void parserTest(std::vector<std::map<std::string, mup::Value> >& vm);
+//    void parserTest(std::vector<std::map<std::string, mup::Value> >& vm);
 
-    void runScript(
-            //std::map<std::string, double*>& mapNameValue,
-            std::map<std::string, mup::Value>& mapNameValue,
-            //std::map<otb::MultiParser*, std::string> &mapParserName,
-            //std::vector<otb::MultiParser*> &vecParsers,
-            std::map<mup::ParserX*, std::string> &mapParserName,
-            std::vector<mup::ParserX*>& vecParsers,
-            std::vector<int>& vecBlockLen
-            );
+//    void runScript(
+//            //std::map<std::string, double*>& mapNameValue,
+//            std::map<std::string, mup::Value>& mapNameValue,
+//            //std::map<otb::MultiParser*, std::string> &mapParserName,
+//            //std::vector<otb::MultiParser*> &vecParsers,
+//            std::map<mup::ParserX*, std::string> &mapParserName,
+//            std::vector<mup::ParserX*>& vecParsers,
+//            std::vector<int>& vecBlockLen
+//            );
 
-    void runLoop(int i,
-                 //std::map<std::string, double*>& mapNameValue,
-                 std::map<std::string, mup::Value>& mapNameValue,
-                 std::map<mup::ParserX*, std::string> &mapParserName,
-                 std::vector<mup::ParserX*> &vecParsers,
-//                 std::map<otb::MultiParser*, std::string> &mapParserName,
-//                 std::vector<otb::MultiParser*> &vecParsers,
-                 std::vector<int>& vecBlockLen
-                 );
+//    void runLoop(int i,
+//                 //std::map<std::string, double*>& mapNameValue,
+//                 std::map<std::string, mup::Value>& mapNameValue,
+//                 std::map<mup::ParserX*, std::string> &mapParserName,
+//                 std::vector<mup::ParserX*> &vecParsers,
+////                 std::map<otb::MultiParser*, std::string> &mapParserName,
+////                 std::vector<otb::MultiParser*> &vecParsers,
+//                 std::vector<int>& vecBlockLen
+//                 );
 
     template<class T>
-    void getDoubleFromVtkTypedPtr(T* in, double* out);
+    void getDoubleFromVtkTypedPtr(T* in, double* out)
+    {
+        *out = static_cast<double>(*in);
+    }
+
+    template<class T>
+    void getLongLongFromVtkTypedPtr(T* in, long long* out)
+    {
+        *out = static_cast<long long>(*in);
+    }
 
 	template<class T>
 	static int compare_asc(const void* a, const void* b)

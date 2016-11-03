@@ -219,8 +219,8 @@ NMLayer::~NMLayer()
 //	NMDebugCtx(ctxNMLayer, << "done!");
 //}
 
-void NMLayer::updateLayerSelection(QList<long> lstCellId,
-		QList<long> lstNMId, NMLayerSelectionType seltype)
+void NMLayer::updateLayerSelection(QList<long long> lstCellId,
+        QList<long long> lstNMId, NMLayerSelectionType seltype)
 {
 
 }
@@ -2786,7 +2786,7 @@ NMLayer::disconnectTableSel(void)
 			this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
 	disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
-	//disconnect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SIGNAL(notifyLastClickedRow(long)));
+    //disconnect(mTableView, SIGNAL(notifyLastClickedRow(long long)), this, SIGNAL(notifyLastClickedRow(long long)));
 }
 
 void
@@ -2800,11 +2800,11 @@ NMLayer::connectTableSel(void)
 		this, SLOT(tableColumnsRemoved(const QModelIndex &, int, int)));
 	connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 			this, SLOT(selectionChanged(const QItemSelection &, const QItemSelection &)));
-	//connect(mTableView, SIGNAL(notifyLastClickedRow(long)), this, SIGNAL(notifyLastClickedRow(long)));
+    //connect(mTableView, SIGNAL(notifyLastClickedRow(long long)), this, SIGNAL(notifyLastClickedRow(long long)));
 }
 
 void
-NMLayer::forwardLastClickedRowSignal(long cellID)
+NMLayer::forwardLastClickedRowSignal(long long cellID)
 {
 	emit notifyLastClickedRow(this, cellID);
 }
@@ -2955,7 +2955,7 @@ NMLayer::tableColumnsInserted(const QModelIndex& parent, int startsection,
 }
 
 void
-NMLayer::selectCell(int cellID, NMLayerSelectionType type)
+NMLayer::selectCell(long long cellID, NMLayerSelectionType type)
 {
 	const QModelIndex idx = this->mTableModel->index(cellID, 0, QModelIndex());
 	switch(type)

@@ -1441,7 +1441,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				{
 					this->toggleRow(srcRow);
 				}
-				emit notifyLastClickedRow((long)srcRow);
+                emit notifyLastClickedRow((long long)srcRow);
 			}
 		}
 		return true;
@@ -1467,7 +1467,7 @@ bool NMTableView::eventFilter(QObject* object, QEvent* event)
 				this->mlLastClickedRow = row;
 				const QModelIndex ridx = mSortFilter->index(row, 0, QModelIndex());
 				const int srcRow = mSortFilter->mapToSource(ridx).row();
-				emit notifyLastClickedRow((long)srcRow);
+                emit notifyLastClickedRow((long long)srcRow);
 				this->mManageLayerMenu->move(me->globalPos());
 				this->mManageLayerMenu->exec();
 			}

@@ -1645,7 +1645,8 @@ NMImageLayer::setLongDBScalars(T* buf,
         }
         else
         {
-            NMDebugAI(<< q.lastError().text().toStdString() << std::endl);
+            std::string err = q.lastError().text().toStdString();
+            NMErr(ctxNMImageLayer, << err);
         }
         db.commit();
         q.clear();
@@ -1768,7 +1769,8 @@ NMImageLayer::setDoubleDBScalars(T* buf,
         }
         else
         {
-            NMDebugAI(<< q.lastError().text().toStdString() << std::endl);
+            std::string err = q.lastError().text().toStdString();
+            NMErr(ctxNMImageLayer, << err);
         }
         db.commit();
         q.clear();

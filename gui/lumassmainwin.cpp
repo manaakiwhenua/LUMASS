@@ -503,15 +503,19 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 //    NMMdiSubWindow* modelSub = new NMMdiSubWindow(mMdiArea);
 
 
-//    mModelBuilderWindow = new QMainWindow(modelSub);
+    //    mModelBuilderWindow = new QMainWindow(modelSub);
+
+
     mModelBuilderWindow = new QMainWindow(this);
-//    mModelBuilderWindow->setWindowTitle("Model Builder");
+    //    mModelBuilderWindow->setWindowTitle("Model Builder");
     mModelBuilderWindow->setWindowFlags(Qt::Widget);
     mModelBuilderWindow->setMouseTracking(true);
     mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
     mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
-//    modelSub->setWidget(mModelBuilderWindow);
-//    modelSub->setWindowTitle(mModelBuilderWindow->windowTitle());
+
+
+    //    modelSub->setWidget(mModelBuilderWindow);
+    //    modelSub->setWindowTitle(mModelBuilderWindow->windowTitle());
 
 
     //ui->modelViewWidget->setMouseTracking(true);
@@ -3871,7 +3875,12 @@ void LUMASSMainWin::showComponentsInfoView(bool vis)
     // a bit of a dirty hack to avoid ill-aligned display
     // of the layer info table widget; should be really resolved in
     // NMWidgetListView
-    bool livis = ui->infoWidgetList->getWidgetItem(0)->isVisible();
+    QWidget* w = ui->infoWidgetList->getWidgetItem(0);
+    if (w == 0)
+    {
+        return;
+    }
+    bool livis = w->isVisible();
     ui->infoWidgetList->setWidgetItemVisible(0, true);
     ui->infoWidgetList->setWidgetItemVisible(0, false);
     ui->infoWidgetList->setWidgetItemVisible(0, livis);
@@ -4786,7 +4795,7 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 	// set divisions --> no of division in x-y-z-direction (i.e. range)
 	// set bounds
 	OGREnvelope ogrext;
-	l.GetExtent(&ogrext);
+    OGRErr oge = l.GetExtent(&ogrext);
 	double fbnds[6] = {ogrext.MinX-10, ogrext.MaxX+10,
 					   ogrext.MinY-10, ogrext.MaxY+10, 0, 0};
 	mpts->SetDivisions(10, 10, 1);

@@ -40,6 +40,7 @@ NMWidgetListView::NMWidgetListView(QWidget *parent) :
     mVBoxLayout->setContentsMargins(0, 0, 0, 0);
     mVBoxLayout->setDirection(QBoxLayout::TopToBottom);
     mVBoxLayout->setAlignment(Qt::AlignTop);
+    this->setLayout(mVBoxLayout);
 }
 
 
@@ -123,6 +124,10 @@ NMWidgetListView::setWidgetItemVisible(int index, bool visible)
     }
 
     QPushButton* btn = mBtnList.at(index);
+    if (btn == 0)
+    {
+        return;
+    }
     btn->setChecked(visible);
     mWidgetList.value(btn)->setVisible(visible);
 
@@ -151,6 +156,10 @@ NMWidgetListView::setWidgetItemVisible(const QString& name, bool visible)
     w->setVisible(visible);
 
     QPushButton* btn = mWidgetList.key(w);
+    if (btn == 0)
+    {
+        return;
+    }
     btn->setChecked(visible);
 
     this->updateWidgets();

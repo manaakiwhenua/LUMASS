@@ -117,6 +117,8 @@ public:
         getTableList(void) {return mTableList;}
     ModelComponentList* getLayerList(){return this->mLayerList;}
 
+    void checkRemoveLayerInfo(NMLayer* l);
+
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
 #endif
@@ -313,6 +315,15 @@ protected:
 //                 std::vector<int>& vecBlockLen
 //                 );
 
+    /* testing whether pt lies in the cell (2d case)
+     * uses ray-casting odd-even rule: i.e. when pt is
+     * in the cell, a ray going  through this point
+     * intersects with the polygon an odd number of times;
+     * and when the point lies outside the polygon, it
+     * intersects an even number of times
+     * */
+    bool ptInPoly2D(double pt[3], vtkCell* cell);
+
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out)
     {
@@ -320,9 +331,9 @@ protected:
     }
 
     template<class T>
-    void getLongLongFromVtkTypedPtr(T* in, long long* out)
+    void getVtkIdTypeFromVtkTypedPtr(T* in, vtkIdType* out)
     {
-        *out = static_cast<long long>(*in);
+        *out = static_cast<vtkIdType>(*in);
     }
 
 	template<class T>
@@ -459,7 +470,7 @@ private:
     bool m_b3D;
 
     // the GUI containing all controls of the main window
-        Ui::LUMASSMainWin *ui;
+    Ui::LUMASSMainWin *ui;
 	// for showing the mouse position in real world coordinates
     QLabel* m_coordLabel;
     // for showing pixel values
@@ -483,6 +494,7 @@ private:
     QLabel* m_StateMsg;
 
     double mLastPick[3];
+    NMLayer* mLastInfoLayer;
 
     // the background renderer (layer 0)
     vtkSmartPointer<vtkRenderer> mBkgRenderer;
@@ -514,14 +526,6 @@ private:
     QEvent* mLastEvent;
 
 
-    /* testing whether pt lies in the cell (2d case)
-     * uses ray-casting odd-even rule: i.e. when pt is
-     * in the cell, a ray going  through this point
-     * intersects with the polygon an odd number of times;
-     * and when the point lies outside the polygon, it
-     * intersects an even number of times
-     * */
-    bool ptInPoly2D(double pt[3], vtkCell* cell);
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector *mpRasconn;
 #endif

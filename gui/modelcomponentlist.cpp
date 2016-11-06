@@ -614,28 +614,21 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 	disconnect(this, SIGNAL(selectedLayerChanged(const NMLayer *)),
 			layer, SLOT(selectedLayerChanged(const NMLayer *)));
 
-	// remove layer from the model (which updates as well the layer position
-    // held by each layer in the layer stack)
 
-    // we're looking for data base connections for layer attribute table
-
-//    QString dbConnName = layer->getSqlTableConnectionName();
-//    if (    !dbConnName.isEmpty()
-//        &&  QSqlDatabase::connectionNames().contains(dbConnName)
-//       )
-//    {
-//        QSqlDatabase::database(dbConnName).close();
-//        QSqlDatabase::removeDatabase(dbConnName);
-//    }
-
-
-	this->mLayerModel->removeLayer(layer);
-	this->reset();
-	// update the map display window
-    this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
-
+    // double check whether we need to clear any currently displayed
+    // layer info ...
     NMGlobalHelper helper;
     LUMASSMainWin* mwin = helper.getMainWindow();
+    mwin->checkRemoveLayerInfo(layer);
+
+    // remove layer from the model (which updates as well the layer position
+    // held by each layer in the layer stack)
+	this->mLayerModel->removeLayer(layer);
+	this->reset();
+
+    // update the map display window
+    this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+
     mwin->getRenderWindow()->SetNumberOfLayers(mLayerModel->getItemLayerCount()+2);
     vtkRenderer* scaleRenderer = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
     scaleRenderer->SetLayer(this->mLayerModel->getItemLayerCount()+1);
@@ -684,6 +677,8 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	LUMASSMainWin* mwin = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
     connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, long long)),
             mwin, SLOT(updateLayerInfo(NMLayer *, long long)));
+//    connect(layer, SIGNAL(IsSelectedChanged(bool)),
+//            mwin, SLOT()
     connect(mwin, SIGNAL(signalIsIn3DMode(bool)),
             layer, SLOT(setIsIn3DMode(bool)));
 

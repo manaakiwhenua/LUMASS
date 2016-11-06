@@ -294,6 +294,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 #endif
 	this->mbNoRasdaman = false;
     this->mpPetaView = 0;
+    this->mLastInfoLayer = 0;
 
 	//Qt::WindowFlags flags = this->windowFlags() | Qt::WA_DeleteOnClose;
 	//this->setWindowFlags(flags);
@@ -2271,11 +2272,18 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
 
 }
 
+void LUMASSMainWin::checkRemoveLayerInfo(NMLayer* l)
+{
+    if (l == mLastInfoLayer)
+    {
+        updateLayerInfo(0, -1);
+    }
+}
+
 void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
 {
         //NMDebugCtx(ctxLUMASSMainWin, << "...");
 
-    //QDockWidget* dw = qobject_cast<QDockWidget*>(this->ui->infoDock);
     QTableWidget* ti = this->ui->infoWidgetList->findChild<QTableWidget*>(
                 QString::fromUtf8("layerInfoTable"));
     if (ti == 0)
@@ -2285,17 +2293,15 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
     }
 	ti->clear();
 
-	if (cellId < 0 && l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+    if (l == 0 || cellId < 0)
 	{
-        //dw->setWindowTitle(tr("Layer Info"));
 		ti->setColumnCount(0);
 		ti->setRowCount(0);
+        this->mLastInfoLayer = 0;
         //NMDebugCtx(ctxLUMASSMainWin, << "done!");
 		return;
 	}
-
-    //dw->setWindowTitle(QString(tr("Layer Info '%1'")).arg(
-    //		l->objectName()));
+    this->mLastInfoLayer = l;
 
 	ti->setColumnCount(2);
 	ti->horizontalHeader()->setStretchLastSection(true);
@@ -2374,12 +2380,17 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
         QSqlQuery q(sqlModel->database());
         QSqlRecord rec;
 
-        if (q.exec(queryStr) && q.next())
+        bool bempty = true;
+        if (q.exec(queryStr))
         {
-            rec = q.record();
+            if (q.next())
+            {
+                rec = q.record();
+                bempty = false;
+            }
         }
 
-        int ncols = sqlModel == 0 ? 1 : rec.count();
+        int ncols = sqlModel == 0 || rec.isEmpty() ? 1 : rec.count();
         ti->setRowCount(ncols);
 
         for (int r=0; r < ncols; ++r)
@@ -3397,9 +3408,6 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	if (l == 0)
 		return;
 
-	if (!l->isSelectable())
-		return;
-
 	double wPt[4];
 
 	//	vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
@@ -3412,7 +3420,6 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 
 	//	NMDebugAI(<< "wPt: " << wPt[0] << ", " << wPt[1] << ", " << wPt[2] << endl);
 
-    //double cellId = -1;
     vtkIdType cellId = -1;
 	// ==========================================================================
 	// 									VECTOR PICKING
@@ -3450,15 +3457,15 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 				//		NMDebugAI( << "cell (nmid) " << nmids->GetTuple1(c) << ":" << endl);
 				cell = pd->GetCell(c);
                 in = this->ptInPoly2D(wPt, cell);
-//                vtkPolygon* poly = vtkPolygon::SafeDownCast(cell);
-//                double n[3];
-//                double* pts = static_cast<vtkDoubleArray*>(cell->GetPoints()->GetData())->GetPointer(0);
-//                poly->ComputeNormal(poly->GetNumberOfPoints(), pts, n);
-//                in = vtkPolygon::PointInPolygon(
-//                            wPt, cell->GetNumberOfPoints(),
-//                            pts,
-//                            cell->GetBounds(),
-//                            n);
+                //                vtkPolygon* poly = vtkPolygon::SafeDownCast(cell);
+                //                double n[3];
+                //                double* pts = static_cast<vtkDoubleArray*>(cell->GetPoints()->GetData())->GetPointer(0);
+                //                poly->ComputeNormal(poly->GetNumberOfPoints(), pts, n);
+                //                in = vtkPolygon::PointInPolygon(
+                //                            wPt, cell->GetNumberOfPoints(),
+                //                            pts,
+                //                            cell->GetBounds(),
+                //                            n);
                 if (in)
 				{
 					vIds.push_back(c);
@@ -3514,20 +3521,7 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 		lstCellId.push_back(cellId);
 		lstNMId.push_back(nmid);
 
-        // select cell if the user pressed the Ctrl key,
-        // otherwise just show the layer info,
-        // this allows the user to be able to inspect
-        // selected cells - much more useful this way round,
-        // I guess ... ?
-        if (iren->GetControlKey())
-        {
-            l->selectCell(cellId, NMLayer::NM_SEL_ADD);
-        }
-        else
-        {
-            this->updateLayerInfo(l, cellId);
-        }
-	}
+    }
 	// ==========================================================================
 	// 									PIXEL PICKING
 	// ==========================================================================
@@ -3564,31 +3558,31 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 		}
 
         vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
-        NMDebugAI(<< "image data type: " << idxScalars->GetDataTypeAsString() << std::endl);
         void* idxPtr = img->GetArrayPointer(idxScalars, did);
 
-        switch(img->GetPointData()->GetArray(0)->GetDataType())
+        switch(idxScalars->GetDataType())
         {
-//        vtkTemplateMacro(getDoubleFromVtkTypedPtr(
-//                             static_cast<VTK_TT*>(idxPtr), &cellId)
-//                    );
-        vtkTemplateMacro(getLongLongFromVtkTypedPtr(
+        vtkTemplateMacro(getVtkIdTypeFromVtkTypedPtr(
                              static_cast<VTK_TT*>(idxPtr), &cellId)
                     );
         default:
             NMWarn(ctxLUMASSMainWin, << "Scalar pointer type not supported!");
         }
+    }
 
-		NMLayer::NMLayerSelectionType seltype;
-		if (iren->GetControlKey())
-			seltype = NMLayer::NM_SEL_ADD;
-		else
-			seltype = NMLayer::NM_SEL_NEW;
-
-		// populate layer info table with currently picked cell
-		this->updateLayerInfo(l, cellId);
-		l->selectCell(cellId, seltype);
-	}
+    // select cell if the user pressed the Ctrl key,
+    // otherwise just show the layer info,
+    // this allows the user to be able to inspect
+    // selected cells - much more useful this way round,
+    // I guess ... ?
+    if (iren->GetControlKey() && l->isSelectable())
+    {
+        l->selectCell(cellId, NMLayer::NM_SEL_ADD);
+    }
+    else
+    {
+        this->updateLayerInfo(l, cellId);
+    }
 }
 
 

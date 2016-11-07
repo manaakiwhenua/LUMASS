@@ -67,6 +67,38 @@
 #define ctxNMLayer "NMLayer"
 #define NM_LEGEND_RAMP_ROW 2
 
+/*!
+ * \brief The CompNumStrings struct is usded as comparison
+ *        object for the mMapValueIndices look up map, and
+ *        enables alphabetically and numerically correct
+ *        sorted legend entries
+ */
+struct CompNumStrings
+{
+public:
+    bool operator()(const QString& lhs, const QString& rhs)
+    {
+        bool blhv = false, brhv = false;
+        const long long lhv = lhs.toLongLong(&blhv);
+        const long long rhv = rhs.toLongLong(&brhv);
+
+        if (blhv && brhv)
+        {
+            if (lhv < rhv)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            return lhs.localeAwareCompare(rhs) < 0 ? true : false;
+        }
+
+        return false;
+    }
+};
+
+
 //class QVTK_EXPORT NMLayer : public QObject//public NMModelComponent //public QObject
 class NMLayer : public QObject
 {
@@ -361,7 +393,7 @@ protected:
 	// key = category name (equals the value for unique value classifications)
 	// value = the index into the LegendInfo or LookupTable or ClrFunc nodes respectively
 	//QHash<QString, int> mHashValueIndices;
-	QMap<QString, QVector<int> > mMapValueIndices;
+    std::map<QString, QVector<int>, CompNumStrings > mMapValueIndices;
 	QMap<double, QColor> mUserClrNodes;
 
     /*! DEPRECATED - not in actual use at the moment

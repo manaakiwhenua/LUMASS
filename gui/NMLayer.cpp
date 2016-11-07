@@ -1041,14 +1041,14 @@ NMLayer::saveLegend(const QString &filename)
 
     //NMDebugAI(<< "going to save " << numCat << " colours ..." << std::endl);
 
-    QMap<QString, QVector<int> >::const_iterator it = this->mMapValueIndices.cbegin();
+    std::map<QString, QVector<int> >::const_iterator it = this->mMapValueIndices.begin();
     int count = 1;
-    while(it != this->mMapValueIndices.cend())
+    while(it != this->mMapValueIndices.end())
     {
-        cat->SetValue(count, it.key().toStdString().c_str());
+        cat->SetValue(count, it->first.toStdString().c_str());
 
         double clr[4];
-        mLookupTable->GetColor(it.value().at(0), clr);
+        mLookupTable->GetColor(it->second.at(0), clr);
 
         //NMDebugAI(<< cat->GetValue(count).c_str() << ": ");
         for (int i=0; i < 3; ++i)
@@ -1060,7 +1060,7 @@ NMLayer::saveLegend(const QString &filename)
             arList.at(i)->SetValue(count, shortClr);//(short) (clr[i] * 255.0 + 0.5));
 
         }
-        double dop = mLookupTable->GetOpacity(it.value().at(0)) * 255.0 + 0.5;
+        double dop = mLookupTable->GetOpacity(it->second.at(0)) * 255.0 + 0.5;
         short opacity = dop > 255.0 ? (short)255 : (short)dop;
         //NMDebug(<< dop << "->" << opacity << std::endl);
 
@@ -1232,7 +1232,7 @@ NMLayer::mapUniqueValues(void)
 			}
 		}
 
-		QMap<QString, QVector<int> >::iterator it = this->mMapValueIndices.find(sVal);
+        std::map<QString, QVector<int> >::iterator it = this->mMapValueIndices.find(sVal);
 		if (it == this->mMapValueIndices.end())
 		{
 			// generate a random triple of uchar values
@@ -1254,12 +1254,12 @@ NMLayer::mapUniqueValues(void)
             }
 
             ids.push_back(t);
-            this->mMapValueIndices.insert(sVal, ids);
+            this->mMapValueIndices.insert(std::pair<QString, QVector<int> >(sVal, ids));
 		}
 		else
 		{
-            lut->GetTableValue(it.value().at(0), rgba);
-            it.value().push_back(t);
+            lut->GetTableValue(it->second.at(0), rgba);
+            it->second.push_back(t);
             if (bUseIdxMap)
             {
                 lut->SetMappedTableValue(t, val, rgba[0], rgba[1], rgba[2], rgba[3]);
@@ -1835,12 +1835,16 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 				{
 					if (legendRow-1 < mNumLegendRows)
 					{
-						QList<QString> keys = mMapValueIndices.keys();
-						if (legendRow-1 < keys.size())
-						{
-							int tabidx = mMapValueIndices.value(keys[legendRow-1]).at(0);
-							mLookupTable->GetTableValue(tabidx, rgba);
-						}
+                        int cnt = 0;
+                        std::map<QString, QVector<int> >::iterator kit = mMapValueIndices.begin();
+                        while (cnt < legendRow-1 && kit != mMapValueIndices.end())
+                        {
+                            ++kit;
+                            ++cnt;
+                        }
+
+                        int tabidx = kit->second.at(0);
+                        mLookupTable->GetTableValue(tabidx, rgba);
 					}
 				}
 				break;
@@ -2076,14 +2080,21 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 				{
 					if (legendRow-1 < mNumLegendRows)
 					{
-						QList<QString> keys = mMapValueIndices.keys();
-						if (legendRow-1 < keys.size())
+                        if (legendRow-1 < mMapValueIndices.size())
 						{
+                            int cnt = 0;
+                            std::map<QString, QVector<int> >::iterator kit = mMapValueIndices.begin();
+                            while (cnt < legendRow-1 && kit != mMapValueIndices.end())
+                            {
+                                ++kit;
+                                ++cnt;
+                            }
+
 							// the ugly part is that we have to set the
 							// new colour for each element with the
 							// given value ...
-							const QString key = keys[legendRow-1];
-							QVector<int> ids = mMapValueIndices.value(key);
+
+                            QVector<int> ids = kit->second;
 							for (int i=0; i < ids.size(); ++ i)
 							{
 								int ti = ids.at(i);
@@ -2435,11 +2446,15 @@ QString  NMLayer::getLegendName(const int legendRow)
 			{
 			case NM_CLASS_UNIQUE:
 				{
-					QList<QString> keys = mMapValueIndices.keys();
-					if (legendRow-1 < keys.size())
-					{
-						name = keys[legendRow-1];
-					}
+                    int cnt = 0;
+                    std::map<QString, QVector<int> >::iterator kit = mMapValueIndices.begin();
+                    while (cnt < legendRow-1 && kit != mMapValueIndices.end())
+                    {
+                        ++kit;
+                        ++cnt;
+                    }
+
+                    name = kit->first;
 				}
 				break;
 
@@ -2856,15 +2871,15 @@ bool NMLayer::isInteractive(void)
 
 void NMLayer::selectedLayerChanged(const NMLayer* layer)
 {
-	NMLayer* l = const_cast<NMLayer*>(layer);
-	if (l == this)
-	{
+    NMLayer* l = const_cast<NMLayer*>(layer);
+    if (l == this)
+    {
         this->mRenderer->SetInteractive(1);
-	}
-	else
-	{
-		this->mRenderer->SetInteractive(0);
-	}
+    }
+    else
+    {
+        this->mRenderer->SetInteractive(0);
+    }
 }
 
 double NMLayer::getLegendItemUpperValue(const int legendRow)

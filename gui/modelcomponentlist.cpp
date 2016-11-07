@@ -677,8 +677,6 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	LUMASSMainWin* mwin = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
     connect(layer, SIGNAL(notifyLastClickedRow(NMLayer *, long long)),
             mwin, SLOT(updateLayerInfo(NMLayer *, long long)));
-//    connect(layer, SIGNAL(IsSelectedChanged(bool)),
-//            mwin, SLOT()
     connect(mwin, SIGNAL(signalIsIn3DMode(bool)),
             layer, SLOT(setIsIn3DMode(bool)));
 
@@ -1223,6 +1221,7 @@ void ModelComponentList::processSelection(bool toggle)
 			QItemSelectionModel::Rows);
 	}
 	this->update();
+    NMGlobalHelper::getMainWindow()->checkInteractiveLayer();
 }
 
 void ModelComponentList::mouseMoveEvent(QMouseEvent *event)

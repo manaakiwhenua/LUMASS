@@ -2272,6 +2272,33 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
 
 }
 
+void LUMASSMainWin::checkInteractiveLayer(void)
+{
+    int firstVisID = -1;
+    bool bAllInactive = true;
+    vtkRenderer* ren = 0;
+    for (int id=0; id < this->mLayerList->getLayerCount(); ++id)
+    {
+        NMLayer* l = this->mLayerList->getLayer(id);
+        ren = const_cast<vtkRenderer*>(l->getRenderer());
+        if (l->isVisible() && ren->GetInteractive())
+        {
+            bAllInactive = false;
+        }
+
+        if (firstVisID < 0 && l->isVisible())
+        {
+            firstVisID = id;
+        }
+    }
+
+    if (bAllInactive && firstVisID >= 0)
+    {
+        ren = const_cast<vtkRenderer*>(this->mLayerList->getLayer(firstVisID)->getRenderer());
+        ren->SetInteractive(1);
+    }
+}
+
 void LUMASSMainWin::checkRemoveLayerInfo(NMLayer* l)
 {
     if (l == mLastInfoLayer)

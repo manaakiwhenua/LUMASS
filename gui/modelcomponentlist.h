@@ -63,13 +63,13 @@ public:
     bool removeLayer(QString layerName);
 
     int getLayerCount(void) {
-    	return this->mLayerModel->getItemLayerCount();};
+        return this->mLayerModel->getItemLayerCount();}
 
     NMLayer* getLayer(QString layerName) {
-    	return this->mLayerModel->getItemLayer(layerName);};
+        return this->mLayerModel->getItemLayer(layerName);}
 
     NMLayer* getLayer(int idx) {
-    	return this->mLayerModel->getItemLayer(idx);};
+        return this->mLayerModel->getItemLayer(idx);}
 
     // gets the topmost selected layer
     NMLayer* getSelectedLayer(void);

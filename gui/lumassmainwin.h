@@ -118,6 +118,7 @@ public:
     ModelComponentList* getLayerList(){return this->mLayerList;}
 
     void checkRemoveLayerInfo(NMLayer* l);
+    void checkInteractiveLayer();
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);

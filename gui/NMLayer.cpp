@@ -1041,7 +1041,7 @@ NMLayer::saveLegend(const QString &filename)
 
     //NMDebugAI(<< "going to save " << numCat << " colours ..." << std::endl);
 
-    std::map<QString, QVector<int> >::const_iterator it = this->mMapValueIndices.begin();
+    std::map<QString, QVector<int>, CompNumStrings >::const_iterator it = this->mMapValueIndices.begin();
     int count = 1;
     while(it != this->mMapValueIndices.end())
     {
@@ -1232,7 +1232,7 @@ NMLayer::mapUniqueValues(void)
 			}
 		}
 
-        std::map<QString, QVector<int> >::iterator it = this->mMapValueIndices.find(sVal);
+        std::map<QString, QVector<int>, CompNumStrings >::iterator it = this->mMapValueIndices.find(sVal);
 		if (it == this->mMapValueIndices.end())
 		{
 			// generate a random triple of uchar values
@@ -1836,7 +1836,7 @@ bool  NMLayer::getLegendColour(const int legendRow, double* rgba)
 					if (legendRow-1 < mNumLegendRows)
 					{
                         int cnt = 0;
-                        std::map<QString, QVector<int> >::iterator kit = mMapValueIndices.begin();
+                        std::map<QString, QVector<int>, CompNumStrings >::iterator kit = mMapValueIndices.begin();
                         while (cnt < legendRow-1 && kit != mMapValueIndices.end())
                         {
                             ++kit;
@@ -2083,7 +2083,7 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
                         if (legendRow-1 < mMapValueIndices.size())
 						{
                             int cnt = 0;
-                            std::map<QString, QVector<int> >::iterator kit = mMapValueIndices.begin();
+                            std::map<QString, QVector<int>, CompNumStrings >::iterator kit = mMapValueIndices.begin();
                             while (cnt < legendRow-1 && kit != mMapValueIndices.end())
                             {
                                 ++kit;
@@ -2447,7 +2447,7 @@ QString  NMLayer::getLegendName(const int legendRow)
 			case NM_CLASS_UNIQUE:
 				{
                     int cnt = 0;
-                    std::map<QString, QVector<int> >::iterator kit = mMapValueIndices.begin();
+                    std::map<QString, QVector<int>, CompNumStrings >::iterator kit = mMapValueIndices.begin();
                     while (cnt < legendRow-1 && kit != mMapValueIndices.end())
                     {
                         ++kit;

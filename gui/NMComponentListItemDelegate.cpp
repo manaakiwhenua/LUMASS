@@ -518,7 +518,6 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
 					if (valuefield.compare(l->getLegendValueField(), Qt::CaseInsensitive) != 0)
 					{
 
-                        l->setLegendValueField(valuefield);
                         // we also adjust the description field; it makes only sense
 						// to be different from the value field if we're mapping
 						// unique values
@@ -539,6 +538,7 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
                                 }
                             }
                             il->setBandMap(bandmap);
+                            l->setLegendValueField(valuefield);
                         }
                         else if (valuefield.startsWith(QString("Band #")))
                         {
@@ -550,9 +550,11 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
                                 bandmap.push_back(box->currentIndex());
                             }
                             il->setBandMap(bandmap);
+                            l->setLegendValueField(valuefield);
                         }
                         else if (valuefield.compare(QString("Pixel Values")) == 0)
                         {
+                            l->setLegendValueField(valuefield);
                             std::vector<double> stats = il->getWindowStatistics();//l->getValueFieldStatistics();
                             if (stats.size() >= 2)
                             {
@@ -562,6 +564,7 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
                         }
                         else
                         {
+                            l->setLegendValueField(valuefield);
                             std::vector<double> stats = l->getValueFieldStatistics();
                             if (stats.size() >= 2)
                             {

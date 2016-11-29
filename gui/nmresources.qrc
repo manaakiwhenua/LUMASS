@@ -29,5 +29,8 @@
         <file alias="table-read.png">resources/table-read.png</file>
         <file alias="table-write.png">resources/table-write.png</file>
         <file alias="lumass-icon.png">resources/LUMASS_icon_64.png</file>
+        <file alias="view-split-left-right.png">resources/view-split-left-right.png</file>
+        <file alias="view-split-top-bottom.png">resources/view-split-top-bottom.png</file>
+        <file alias="view-map.png">resources/network-globe2.png</file>
     </qresource>
 </RCC>

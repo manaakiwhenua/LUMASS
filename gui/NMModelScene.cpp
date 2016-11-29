@@ -159,6 +159,7 @@ NMModelScene::toggleLinkToolButton(bool linkMode)
 		this->views().at(0)->setCursor(Qt::CrossCursor);
         this->setProcCompMoveability(false);
 		this->mMode = NMS_LINK;
+        NMGlobalHelper::getMainWindow()->updateExclusiveActions("linkAction");
 	}
 	else
     {
@@ -273,9 +274,10 @@ void NMModelScene::toggleSelToolButton(bool selMode)
 
 void NMModelScene::toggleMoveToolButton(bool moveMode)
 {
-	if (moveMode)
+    if (moveMode)
 	{
         mbSceneMove = true;
+        NMGlobalHelper::getMainWindow()->updateExclusiveActions("panAction");
         this->setProcCompMoveability(false);
 	}
 	else
@@ -932,11 +934,11 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             .arg(title)
             .arg(x)
             .arg(y);
-    NMModelViewWidget* vw = qobject_cast<NMModelViewWidget*>(this->views().at(0)->parent());
+    //NMModelViewWidget* vw = qobject_cast<NMModelViewWidget*>(this->views().at(0)->parent());
     LUMASSMainWin* mainWin = 0;
-    if (vw != 0)
+    //if (vw != 0)
     {
-        mainWin = vw->getMainWindow();
+        mainWin = NMGlobalHelper::getMainWindow();//vw->getMainWindow();
         if (mainWin != 0)
         {
             mainWin->updateCoordLabel(pos);

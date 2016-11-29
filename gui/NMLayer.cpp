@@ -728,7 +728,7 @@ NMLayer::updateMapping(void)
             iprop->SetLookupTable(mClrFunc);
         }
     }
-	else
+    else if (mLayerType == NM_VECTOR_LAYER)
 	{
 		vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
 		if (!clrfunc)

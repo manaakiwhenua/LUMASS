@@ -40,6 +40,8 @@
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
 
+#include "lumassmainwin.h"
+
 #include "vtkQtTableModelAdapter.h"
 #include "vtkDelimitedTextReader.h"
 #include "vtkSmartPointer.h"

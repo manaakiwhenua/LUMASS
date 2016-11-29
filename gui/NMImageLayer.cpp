@@ -2038,6 +2038,10 @@ QSharedPointer<NMItkDataObjectWrapper> NMImageLayer::getImage(void)
     QSharedPointer<NMItkDataObjectWrapper> imgW(new NMItkDataObjectWrapper(0,
 			img, this->mComponentType, this->mNumDimensions,
             this->mNumBands));
+    if (mNumBands == 3)
+    {
+        imgW->setIsRGBImage(true);
+    }
     imgW->setOTBTab(this->mOtbRAT);
 	return imgW;
 }

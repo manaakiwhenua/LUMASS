@@ -2995,8 +2995,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 	// if m_Dataset hasn't been instantiated before, we do it here, because
 	// we just do an independent write of the RAT into the data set
 	// (i.e. outside any pipeline activities ...)
-    GDALDataset* ds = 0;
-    bool bClose = false;
+    bool bCloseDataSet = false;
     if (m_Dataset == 0)
 	{
         m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_Update);
@@ -3005,23 +3004,13 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
             std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
             return;
         }
-        bClose = true;
+        bCloseDataSet = true;
 	}
-
-	// data set already available?
-//    ds = m_Dataset->GetDataSet();
-//    if (ds == 0)
-//    {
-//        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
-//        itkWarningMacro(<< "ReadRAT: unable to access data set!");
-//        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
-//        return;
-//    }
 
 	// how many bands? (band index is 1-based)
     if (m_Dataset->GetRasterCount() < iBand)
     {
-        if (bClose) this->CloseDataset();
+        if (bCloseDataSet) this->CloseDataset();
 		return;
     }
 
@@ -3042,13 +3031,44 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 
     otb::SQLiteTable::Pointer tab = static_cast<otb::SQLiteTable*>(intab.GetPointer());
     int rowcount = tab->GetNumRows();
+    bool bCloseConnection = false;
+    bool bOpenReadOnlyFlag = tab->GetOpenReadOnlyFlag();
+    bool bOpenSharedCache = tab->GetUseSharedCache();
     if (rowcount == 0)
     {
-        //itkWarningMacro(<< "Refused to write empty table (0 records!)");
-        if (bClose) this->CloseDataset();
-        delete gdaltab;
-        gdaltab = 0;
-        return;
+        // it could be that the RAT connection has been closed and just
+        // needs reopening ...
+        if (    tab->GetDbConnection() == 0
+            &&  !tab->GetTableName().empty()
+            &&  !tab->GetDbFileName().empty())
+        {
+            tab->SetOpenReadOnly(true);
+            tab->SetUseSharedCache(false);
+            if (tab->openConnection())
+            {
+                bCloseConnection = true;
+                if (!tab->PopulateTableAdmin())
+                {
+                    tab->SetOpenReadOnly(bOpenReadOnlyFlag);
+                    tab->SetUseSharedCache(bOpenSharedCache);
+                    tab->CloseTable();
+                    if (bCloseDataSet) this->CloseDataset();
+                    delete gdaltab;
+                    gdaltab = 0;
+                    return;
+                }
+            }
+            else
+            {
+                tab->SetOpenReadOnly(bOpenReadOnlyFlag);
+                tab->SetUseSharedCache(bOpenSharedCache);
+                if (bCloseDataSet) this->CloseDataset();
+                delete gdaltab;
+                gdaltab = 0;
+                return;
+            }
+            rowcount = tab->GetNumRows();
+        }
     }
 
     // if we've got an IMAGINE file with UCHAR data type, we create
@@ -3142,11 +3162,17 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 	}
     tab->EndTransaction();
 
+    // if we've just established the connection for writing the RAT
+    // we leave if as we found it again ...
+    tab->SetOpenReadOnly(bOpenReadOnlyFlag);
+    tab->SetUseSharedCache(bOpenSharedCache);
+    if (bCloseConnection) tab->CloseTable();
+
 	// associate the table with the band
     err = band->SetDefaultRAT(gdaltab);
 	if (err == CE_Failure)
 	{
-        if (bClose) this->CloseDataset();
+        if (bCloseDataSet) this->CloseDataset();
         delete gdaltab;
 		itkExceptionMacro(<< "Failed writing table to band!");
 	}
@@ -3155,7 +3181,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     // if we don't close the data set here, the RAT is not written properly to disk
     // (not quite sure why that's not done when m_Dataset runs out of scope(?)
     //m_Dataset->CloseDataSet();
-    if (bClose) this->CloseDataset();
+    if (bCloseDataSet) this->CloseDataset();
 
     // need an open data set for writing the actual image later on;
     // when we're only updating the RAT, the data sets gets closed as soon as

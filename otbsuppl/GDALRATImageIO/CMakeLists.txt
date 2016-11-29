@@ -4,13 +4,14 @@ INCLUDE_DIRECTORIES(
 	${GDALRATImageIO_SOURCE_DIR}
         ${GDALRATImageIO_BINARY_DIR}
 	${shared_SOURCE_DIR}
+        ${otbsuppl_core_SOURCE_DIR}
         #${rimageio_SOURCE_DIR}
         #${RASDAMAN_SOURCE_DIR}/applications/rasgeo
         ${OTB_DIR}/Code/Common
 	${OTB_DIR}/Code/IO
 	${OTB_DIR}/Utilities/ITK/Code/Common
-    ${SQLite_SOURCE_DIR}
-    ${SPATIALITE_INCLUDE_DIR}
+        ${SQLite_SOURCE_DIR}
+        ${SPATIALITE_INCLUDE_DIR}
 ) 
 
 LINK_DIRECTORIES(

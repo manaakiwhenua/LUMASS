@@ -128,11 +128,13 @@ void NMTableView::initView()
 	this->mHiddenColumns.clear();
 
 	// ---------------------------- THE PROGRESS DIALOG -------------------
-#ifndef _WIN32
+//#ifndef _WIN32
     mProgressDialog = new QProgressDialog(this);
-#else
-    mProgressDialog = 0;
-#endif
+    mProgressDialog->setMaximum(10);
+    mProgressDialog->setValue(10);
+//#else
+//    mProgressDialog = 0;
+//#endif
 
 
 	// ------------------ SET UP STATUS BAR ------------------------------

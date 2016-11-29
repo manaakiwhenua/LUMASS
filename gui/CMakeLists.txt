@@ -67,6 +67,7 @@ INCLUDE_DIRECTORIES(
     ${otbsuppl_core_SOURCE_DIR}
     ${filters_BINARY_DIR}
     ${shared_SOURCE_DIR}
+    ${shared_BINARY_DIR}
     ${rimageio_SOURCE_DIR}
     ${mfw_SOURCE_DIR}
     ${mfw_BINARY_DIR}
@@ -142,8 +143,10 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMComponentListItemDelegate.h
         ${gui_SOURCE_DIR}/NMComponentEditor.h
         ${gui_SOURCE_DIR}/NMWidgetListView.h
+        ${gui_SOURCE_DIR}/NMLogWidget.h
         ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
         ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
+        ${shared_SOURCE_DIR}/NMLogger.h
 )
 
 file(GLOB QT_UI ${gui_SOURCE_DIR}/*.ui)
@@ -157,7 +160,7 @@ file(GLOB QT_SRC
     ${NMQSQLite_SRC_DIR}/*.cpp
     
     # we also add some other stuff here
-    # want to be included
+    ${shared_SOURCE_DIR}/NMLogger.cpp
     ${opt_SOURCE_DIR}/*.cpp
     ${NMVtk_SOURCE_DIR}/*.cxx
     ${lumass_SOURCE_DIR}/utils/ITK/itkVTKImageExportBase.cxx
@@ -195,24 +198,28 @@ set(LUMASS_DEPLIBS
 )
 
 
+
 IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
 ENDIF()
+
 
 # Define a special indicator for Qt Version >= 5.4 (for NMSqliteDriver copy ..)
 if (${QT5_VERSION_STRING} VERSION_LESS "5.4.0")
 	add_definitions(-DQTVERSION_LT_FIVE_FOUR)
 endif()
 
-# Qt5 requirement
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
+# indicate that we're building the LUMASS GUI VERSION
+add_definitions(-DNM_ENABLE_LOGGER)
+
 
 message(STATUS "vtk definitions: ${VTK_DEFINITIONS}")
 
 # VTK6 requirement
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS "${VTK_DEFINITIONS} ")
+#set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS "${VTK_DEFINITIONS} ")
 
 ADD_EXECUTABLE(lumass ${QT_SRC} ${MOC_CPP} ${UI_CPP} ${NM_RES})
+set_target_properties(lumass PROPERTIES WIN32_EXECUTABLE TRUE)
 #QT5_USE_MODULES(lumass Widgets Xml Gui Concurrent Core Declarative Qml Quick)
 TARGET_LINK_LIBRARIES(lumass ${LUMASS_LINKLIBS})     
 ADD_DEPENDENCIES(lumass ${LUMASS_DEPLIBS})

@@ -1,3 +1,20 @@
+/******************************************************************************
+* Created by Alexander Herzig
+* Copyright 2011-2016 Landcare Research New Zealand Ltd
+*
+* This file is part of 'LUMASS', which is free software: you can redistribute
+* it and/or modify it under the terms of the GNU General Public License as
+* published by the Free Software Foundation, either version 3 of the License,
+* or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/>.
+******************************************************************************/
 /*
  * NMMosra., cpp
  *
@@ -5,13 +22,13 @@
  *      Author: alex
  */
 
-#define NMDebug(arg)
-#define NMDebugAI(arg)
-#define NMDebugInd(level, arg)
-#define NMDebugTime(arg)
-#define NMDebugTimeInd(level, arg)
-#define NMDebugCtx(ctx, arg)
-#define NMDebugTimeCtx(ctx, arg)
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 
 
 #include "NMMosra.h"
@@ -31,6 +48,7 @@
 #include <QStandardItem>
 #include <QScopedPointer>
 #include <QFileInfo>
+#include <QDateTime>
 
 #include "vtkDataSetAttributes.h"
 #include "vtkDataSet.h"
@@ -45,12 +63,15 @@
 #include "vtkMath.h"
 #include "vtkDelimitedTextWriter.h"
 
+#include "NMLogger.h"
+
 #include "lp_lib.h"
 
 NMMosra::NMMosra(QObject* parent) //: QObject(parent)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
+    this->mLogger = 0;
 	this->setParent(parent);
 	this->mLp = new HLpHelper();
 	this->reset();
@@ -81,7 +102,7 @@ NMMosra::setDataSet(const vtkDataSet* dataset)
 		this->mDataSet = const_cast<vtkDataSet*>(dataset);
 	else
 	{
-		NMErr(ctxNMMosra, << "data set is NULL!");
+        NMLogError( << "data set is NULL!");
 	}
 }
 
@@ -124,7 +145,7 @@ void NMMosra::reset(void)
 
     mslPerfSumZones.clear();
 
-	NMDebugCtx(ctxNMMosra, << "done!");
+    NMDebugCtx(ctxNMMosra, << "done!")
 }
 
 bool
@@ -145,7 +166,7 @@ NMMosra::doBatch()
 
 int NMMosra::loadSettings(QString fileName)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    NMDebugCtx(ctxNMMosra, << "...")
 
 	// reset this objects vars
 	this->reset();
@@ -153,8 +174,8 @@ int NMMosra::loadSettings(QString fileName)
 	QFile los(fileName);
 	if (!los.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
-		NMErr(ctxNMMosra, << "failed reading settings file!");
-		NMDebugCtx(ctxNMMosra, << "done!");
+        NMLogError( << "failed reading settings file!")
+        NMDebugCtx(ctxNMMosra, << "done!")
 		return 0;
 	}
 	this->msLosFileName = fileName;
@@ -182,7 +203,7 @@ int NMMosra::loadSettings(QString fileName)
 	ParSec section = nosection;
 
 	sReport << "Import Report - '" << fileName << "'" << endl << endl;
-	NMDebugAI( << "parsing settings file ..." << endl);
+    NMLogDebug( << "parsing settings file ..." << endl)
 	while (!str.atEnd())
 	{
 		sLine = str.readLine();
@@ -277,7 +298,7 @@ int NMMosra::loadSettings(QString fileName)
 				else // DVTYPE_CONTINUOUS
 					this->meDVType = NMMosra::NM_MOSO_REAL;
 
-				NMDebugAI( << "DEVTYPE: " << this->meDVType << endl);
+                NMLogInfo( << "DEVTYPE: " << this->meDVType << endl)
 			}
 			else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
 			{
@@ -285,17 +306,17 @@ int NMMosra::loadSettings(QString fileName)
 					this->mDataSet = 0;
 
 				this->msLayerName = sValueStr;
-				NMDebugAI( << "LayerName: " << this->msLayerName.toStdString() << endl);
+                NMLogInfo( << "LayerName: " << this->msLayerName.toStdString() << endl)
 			}
 			else if (sVarName.compare(tr("LAND_USE_FIELD"), Qt::CaseInsensitive) == 0)
 			{
 				this->msLandUseField = sValueStr;
-				NMDebugAI( << "LandUseField: " << this->msLandUseField.toStdString() << endl);
+                NMLogInfo( << "LandUseField: " << this->msLandUseField.toStdString() << endl)
 			}
 			else if (sVarName.compare(tr("AREA_FIELD"), Qt::CaseInsensitive) == 0)
 			{
 				this->msAreaField = sValueStr;
-				NMDebugAI( << "AreaField: " << this->msAreaField.toStdString() << endl);
+                NMLogInfo( << "AreaField: " << this->msAreaField.toStdString() << endl)
 			}
             else if (sVarName.compare(tr("PERFORMANCE_SUM_ZONES"), Qt::CaseInsensitive) == 0)
             {
@@ -303,7 +324,7 @@ int NMMosra::loadSettings(QString fileName)
                 {
                     this->mslPerfSumZones = sValueStr.split(" ", QString::SkipEmptyParts);
                 }
-                NMDebugAI( << "PerformanceSumZones: " << mslPerfSumZones.join(" ").toStdString() << endl);
+                NMLogInfo( << "PerformanceSumZones: " << mslPerfSumZones.join(" ").toStdString() << endl)
             }
 		}
 		break;
@@ -317,9 +338,13 @@ int NMMosra::loadSettings(QString fileName)
 				if (ok)
 					this->miNumOptions = lo;
 				else
-					sReport << "Line " << numline << " contains an invalid number" << endl;
+                {
+                    NMLogError(<< "Line " << numline << " contains an invalid number" << endl;)
+                    sReport << "Line " << numline << " contains an invalid number" << endl;
+                }
 
-				NMDebugAI( << "no options: " << this->miNumOptions << endl);
+
+                NMLogInfo( << "number of resource options: " << this->miNumOptions << endl)
 			}
 			else if (sVarName.compare(tr("OPTIONS"), Qt::CaseInsensitive) == 0)
 			{
@@ -331,10 +356,11 @@ int NMMosra::loadSettings(QString fileName)
 				}
 				else
 				{
+                    NMLogError(<< "Line " << numline << " contains an invalid number of options" << endl)
 					sReport << "Line " << numline << " contains an invalid number of options" << endl;
 				}
 
-				NMDebugAI( << "options: " << this->mslOptions.join(tr(" ")).toStdString() << endl);
+                NMLogInfo( << "options: " << this->mslOptions.join(tr(" ")).toStdString() << endl)
 
 			}
 			else if (sVarName.indexOf(tr("CRI_"), Qt::CaseInsensitive) != -1)
@@ -346,10 +372,11 @@ int NMMosra::loadSettings(QString fileName)
 					criFieldNames.removeAt(0);
 					this->mmslCriteria.insert(scri, criFieldNames);
 
-					NMDebugAI( << "criterion: " << scri.toStdString() << " " << this->mmslCriteria.find(scri).value().join(tr(" ")).toStdString() << endl);
+                    NMLogDebug( << "criterion: " << scri.toStdString() << " " << this->mmslCriteria.find(scri).value().join(tr(" ")).toStdString() << endl);
 				}
 				else
 				{
+                    NMLogError(<< "Line " << numline << " contains an invalid number of criteria" << endl;)
 					sReport << "Line " << numline << " contains an invalid number of criteria" << endl;
 				}
 			}
@@ -362,10 +389,11 @@ int NMMosra::loadSettings(QString fileName)
 					evalFieldNames.removeAt(0);
 					this->mmslEvalFields.insert(scri, evalFieldNames);
 
-					NMDebugAI( << "criterion evaluation fields: " << scri.toStdString() << " " << this->mmslEvalFields.find(scri).value().join(tr(" ")).toStdString() << endl);
+                    NMLogDebug( << "criterion evaluation fields: " << scri.toStdString() << " " << this->mmslEvalFields.find(scri).value().join(tr(" ")).toStdString() << endl);
 				}
 				else
 				{
+                    NMLogError(<< "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;)
 					sReport << "Line " << numline << " contains an invalid number of criterion evaluation fields" << endl;
 				}
 			}
@@ -388,7 +416,7 @@ int NMMosra::loadSettings(QString fileName)
 					this->meScalMeth = NMMosra::NM_MOSO_INTERACTIVE;
 					sAggrMeth = tr("Interactive");
 				}
-				NMDebugAI( << "Scalarisation method is '" << sAggrMeth.toStdString() << "'" << endl);
+                NMLogInfo( << "Scalarisation method is '" << sAggrMeth.toStdString() << "'" << endl)
 			}
 			else if (sVarName.indexOf(tr("OBJ_"), Qt::CaseInsensitive) != -1)
 			{
@@ -397,8 +425,8 @@ int NMMosra::loadSettings(QString fileName)
 				 {
 					 QString obj = objs.takeAt(1);
 					 this->mmslObjectives.insert(obj, objs);
-					 NMDebugAI( << "obj: " << obj.toStdString() << ": "
-							 << this->mmslObjectives.find(obj).value().join(tr(" ")).toStdString() << endl);
+                     NMLogInfo( << "obj: " << obj.toStdString() << ": "
+                             << this->mmslObjectives.find(obj).value().join(tr(" ")).toStdString() << endl)
 				 }
 			}
 		}
@@ -412,7 +440,7 @@ int NMMosra::loadSettings(QString fileName)
 				if (arCons.size() != 0)
 				{
 					this->mmslAreaCons.insert(sVarName, arCons);
-					NMDebugAI( << "areal cons: " << sVarName.toStdString() << ": "
+                    NMLogDebug( << "areal cons: " << sVarName.toStdString() << ": "
 							<< this->mmslAreaCons.find(sVarName).value().join(tr(" ")).toStdString() << endl);
 
 					// check, whether we've got a zoning constraint here and if so, initialise the
@@ -463,21 +491,21 @@ int NMMosra::loadSettings(QString fileName)
 		{
 			if (sVarName.indexOf(tr("CRI_CONS_"), Qt::CaseInsensitive) != -1)
 			{
-				NMDebugInd(nmlog::nmindent+1, << "gonna split raw list: " << sValueStr.toStdString() << endl);
+                NMLogDebug(<< "\tgonna split raw list: " << sValueStr.toStdString() << endl);
 				QStringList outerList = sValueStr.split(tr(" "), QString::SkipEmptyParts);
 				if (outerList.size() != 0)
 				{
 					QString criLabel = outerList.takeAt(0);
-					NMDebugInd(nmlog::nmindent+1, << "criLabel is '" << criLabel.toStdString() << "'" << endl);
+                    NMLogDebug( << "\tcriLabel is '" << criLabel.toStdString() << "'" << endl);
 					QString luLabel = outerList.takeAt(0);
-					NMDebugInd(nmlog::nmindent+1, << "land use is '" << luLabel.toStdString() << "'" << endl);
+                    NMLogDebug( << "\tland use is '" << luLabel.toStdString() << "'" << endl);
 
 					QMap<QString, QStringList> innerMap;
 					innerMap.insert(luLabel, outerList);
 
 					this->mmslCriCons.insert(criLabel, innerMap);
 
-					NMDebugAI( << "cri cons: " << criLabel.toStdString() << ": "
+                    NMLogDebug( << "cri cons: " << criLabel.toStdString() << ": "
 							<< luLabel.toStdString() << ": "
 							<< outerList.join(tr(" ")).toStdString() << endl);
 				}
@@ -494,7 +522,7 @@ int NMMosra::loadSettings(QString fileName)
 				{
 					QString objkey = sVarName + QString(tr("_%1")).arg(objCons.value(0));
 					this->mmslObjCons.insert(objkey, objCons);
-					NMDebugAI( << objkey.toStdString() << ": "
+                    NMLogInfo( << objkey.toStdString() << ": "
 							<< this->mmslObjCons.find(objkey).value().join(tr(" ")).toStdString() << endl);
 				}
 			}
@@ -508,7 +536,7 @@ int NMMosra::loadSettings(QString fileName)
 				if (fi.isReadable())
 				{
 					this->msDataPath = sValueStr;
-					NMDebugAI(<< "batch data path: " << this->msDataPath.toStdString() << endl);
+                    NMLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
 				}
 			}
 			else if (sVarName.compare("PERTURB", Qt::CaseInsensitive) == 0)
@@ -516,7 +544,7 @@ int NMMosra::loadSettings(QString fileName)
 				this->mslPerturbItems = sValueStr.split(" ");
 				if (mslPerturbItems.size() > 0)
 				{
-					NMDebugAI(<< "Criteria/constraints to be perturbed: ");
+                    NMLogInfo(<< "Criteria/constraints to be perturbed: ");
 					foreach(const QString& pc, this->mslPerturbItems)
 					{
 						NMDebug(<< pc.toStdString() << " ");
@@ -525,7 +553,7 @@ int NMMosra::loadSettings(QString fileName)
 				}
 				else
 				{
-					NMDebugAI(<< "No perturbation criteria provided!" << endl);
+                    NMLogInfo(<< "No perturbation criteria provided!" << endl);
 				}
 			}
 			else if (sVarName.compare("UNCERTAINTIES", Qt::CaseInsensitive) == 0)
@@ -553,20 +581,22 @@ int NMMosra::loadSettings(QString fileName)
 
                 if (this->mlflPerturbUncertainties.size() > 0)
 				{
-					NMDebugAI(<< "Perturbation levels: ");
+                    std::stringstream logstr;
+                    logstr << "Perturbation levels: ";
                     foreach(const QList<float>& lf, mlflPerturbUncertainties)
                     {
                         foreach(const float& f, lf)
                         {
-                            NMDebug(<< f << " ");
+                            logstr << f << " ";
                         }
-                        NMDebug(<< " | ");
+                        logstr << " | ";
                     }
-					NMDebug(<< endl);
+                    logstr << endl;
+                    NMLogDebug(<< logstr.str())
 				}
 				else
 				{
-					NMDebugAI(<< "No uncertainty levels for perturbation provided!" << endl);
+                    NMLogInfo(<< "No uncertainty levels for perturbation provided!" << endl);
 				}
 			}
 			else if (sVarName.compare("REPETITIONS", Qt::CaseInsensitive) == 0)
@@ -578,7 +608,7 @@ int NMMosra::loadSettings(QString fileName)
 					if (bok)
 					{
 						this->mlReps = reps;
-						NMDebugAI(<< "Number of perturbations: " << reps << endl);
+                        NMLogInfo(<< "Number of perturbations: " << reps << endl);
 					}
 				}
 			}
@@ -590,6 +620,7 @@ int NMMosra::loadSettings(QString fileName)
                     {
                         this->muiTimeOut = 0;
                         this->mbBreakAtFirst = true;
+                        NMLogInfo(<< "Solver timeout: break at first feasible solution!" << endl);
                     }
                     else
                     {
@@ -599,7 +630,7 @@ int NMMosra::loadSettings(QString fileName)
                         {
                             this->mbBreakAtFirst = false;
                             this->muiTimeOut = timeout;
-                            NMDebugAI(<< "Solver timeout: " << timeout << endl);
+                            NMLogInfo(<< "Solver timeout: " << timeout << endl);
                         }
                     }
 				}
@@ -647,6 +678,7 @@ int NMMosra::solveLp(void)
 		NMDebugCtx(ctxNMMosra, << "done!");
 		return 0;
 	}
+    NMLogInfo(<< "checking optimisation settings - OK")
 
 	this->makeLp();
 
@@ -655,10 +687,14 @@ int NMMosra::solveLp(void)
 		NMDebugCtx(ctxNMMosra, << "done!");
 		return 0;
 	}
+    NMLogInfo(<< "adding objective function - OK")
 
 	if (this->meScalMeth == NMMosra::NM_MOSO_INTERACTIVE &&
 			this->mmslObjCons.size() > 0)
+    {
 		this->addObjCons();
+        NMLogInfo(<< "adding objective constraints - OK")
+    }
 
 	// doe we have any additional constraints?
 	if (this->mmslAreaCons.size() > 0)
@@ -668,6 +704,7 @@ int NMMosra::solveLp(void)
 			NMDebugCtx(ctxNMMosra, << "done!");
 			return 0;
 		}
+        NMLogInfo(<< "adding allocation constraints - OK")
 	}
 
 	if (this->mmslCriCons.size() > 0)
@@ -677,6 +714,7 @@ int NMMosra::solveLp(void)
 			NMDebugCtx(ctxNMMosra, << "done!");
 			return 0;
 		}
+        NMLogInfo(<< "adding performance constraints - OK")
 	}
 
 	if (!this->addImplicitAreaCons())
@@ -684,22 +722,24 @@ int NMMosra::solveLp(void)
 		NMDebugCtx(ctxNMMosra, << "done!");
 		return 0;
 	}
+    NMLogInfo(<< "adding internal areal (consistency) constraints - OK")
 
     if (this->mbBreakAtFirst)
     {
         this->mLp->SetBreakAtFirst(true);
 
-        NMDebugAI(<< "solver stops at first feasible solution!" << std::endl);
+        NMLogInfo(<< "solver stops at first feasible solution!" << std::endl);
     }
     else
     {
         this->mLp->SetTimeout(this->muiTimeOut);
 
-        NMDebugAI(<< "solver time out set to " << this->muiTimeOut
+        NMLogInfo(<< "solver times out after " << this->muiTimeOut
                 << " seconds!" << std::endl);
     }
     this->mbCanceled = false;
-	this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
+    this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
+    this->mLp->SetLogFunc((void*)this, NMMosra::lpLogCallback);
 
 
 
@@ -718,7 +758,7 @@ int NMMosra::solveLp(void)
 
 	this->createReport();
 
-	NMDebug(<< this->getReport().toStdString() << endl);
+    NMLogInfo(<< "Optimisation Report ... \n" << this->getReport().toStdString() << endl);
 
 	NMDebugCtx(ctxNMMosra, << "done!");
 	return 1;
@@ -898,7 +938,7 @@ void NMMosra::createReport(void)
 	}
 
 	// DEBUG - we just dump all constraints values here
-	NMDebugAI( << endl << "just dumping all constraint values .... " << endl);
+    NMLogDebug( << endl << "just dumping all constraint values .... " << endl);
 	int nrows = this->mLp->GetNRows();
 	for (int q=1; q < nrows; ++q)
 	{
@@ -909,9 +949,9 @@ void NMMosra::createReport(void)
 		double cv = pdCons[q-1];
 		char fv[256];
 		::sprintf(fv, "%g", cv);
-		NMDebugAI(<< name.toStdString() << " " << op << " " << fv << endl);
+        NMLogDebug(<< name.toStdString() << " " << op << " " << fv << endl);
 	}
-	NMDebug(<< endl);
+    //NMDebug(<< endl);
 
 
 	sRes << endl;
@@ -948,7 +988,7 @@ void NMMosra::writeReport(QString fileName)
 	QFile file(fileName);
 	if (!file.open(QIODevice::WriteOnly))
 	{
-		NMErr(ctxNMMosra, << "failed writing file '" << fileName.toStdString() << "'!");
+        NMLogError( << "failed writing file '" << fileName.toStdString() << "'!");
 		return;
 	}
 
@@ -970,24 +1010,25 @@ int NMMosra::checkSettings(void)
 	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
 
-	NMDebugAI(<< "checking area field ..." << endl);
+    NMLogInfo(<< "Optimisation - Checking settings ...")
 	//  get the total area of the layer (summing the provided field's data)
 	if (this->msAreaField.isEmpty())
 	{
-		NMErr(ctxNMMosra, << "no area field specified!");
+        NMLogError( << "no area field specified!");
 		NMDebugCtx(ctxNMMosra, << "done!");
 		return 0;
 	}
 
 	if (!dsAttr->HasArray(this->msAreaField.toStdString().c_str()))
 	{
-		NMErr(ctxNMMosra, << "specified area field could not be found!");
+        NMLogError( << "specified area field could not be found!");
 		NMDebugCtx(ctxNMMosra, << "done!");
 		return 0;
 	}
+    NMLogInfo(<< "area field OK" << endl);
 
 	// --------------------------------------------------------------------------------------------------------
-	NMDebugAI(<< "calculating area and counting features ..." << endl);
+    //NMLogInfo(<< "calculating area and counting features ..." << endl);
 	vtkDataArray* areaAr = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
 	vtkDataArray* nm_hole = dsAttr->GetArray("nm_hole");
 	int numTuples = areaAr->GetNumberOfTuples();
@@ -1021,7 +1062,7 @@ int NMMosra::checkSettings(void)
 			if (zoneAr == 0)
 			{
 				arealCriValid = false;
-				NMErr(ctxNMMosra, << "specified zone field '" << zonesIt.key().toStdString()
+                NMLogError( << "specified zone field '" << zonesIt.key().toStdString()
 						<< "' does not exist in the data base!");
 				continue;
 			}
@@ -1077,7 +1118,7 @@ int NMMosra::checkSettings(void)
 		// get the user specified area constraint value and add it to the total of all area constraints
 		if (acIt.value().size() < 4)
 		{
-			NMErr(ctxNMMosra, << "areal constraint '" << acIt.key().toStdString()
+            NMLogError( << "areal constraint '" << acIt.key().toStdString()
 					<< ": " << acIt.value().join(" ").toStdString() << "' is invalid! Check number of parameters!");
 			arealCriValid = false;
 			continue;
@@ -1101,7 +1142,7 @@ int NMMosra::checkSettings(void)
             {
                 if (!this->mslOptions.contains(opt))
                 {
-                    NMErr(ctxNMMosra, << "specified option '" << opt.toStdString()
+                    NMLogError( << "specified option '" << opt.toStdString()
                           << "' is not a valid resource option!");
                     arealCriValid = false;
                     continue;
@@ -1113,6 +1154,7 @@ int NMMosra::checkSettings(void)
                 zval = oval > zval ? oval : zval;
             }
 
+
             foreach(const QString& opt, options)
             {
                 QStringList ozspec;
@@ -1121,7 +1163,7 @@ int NMMosra::checkSettings(void)
 
                 if (oval > zval)
                 {
-                    NMErr(ctxNMMosra, << "area constraint for option '" << opt.toStdString() << "' with respect to zone field '"
+                    NMLogWarn( << "area constraint for option '" << opt.toStdString() << "' with respect to zone field '"
                             << zone.toStdString() << "' exceeds the available area for that option in that zone!");
                     //	arealCriValid = false;
                 }
@@ -1129,11 +1171,17 @@ int NMMosra::checkSettings(void)
 		}
 
 	}
+    if (arealCriValid)
+    {
+        NMLogInfo(<< "areal constraints OK!");
+    }
+
+
 
 	// now check on the total area
 //	if (totalConsArea > this->mdAreaTotal)
 //	{
-//		NMErr(ctxNMMosra, << "the specified area constraints exceed the total available area!");
+//		NMLogError( << "the specified area constraints exceed the total available area!");
 //		arealCriValid = false;
 //	}
 
@@ -1152,7 +1200,7 @@ int NMMosra::checkSettings(void)
 //		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(this->mLayer);
 //		this->mlNumOptFeat = vl->getNumberOfFeatures();
 //
-//		NMDebugAI( << "layer features: " << this->mlNumOptFeat << endl);
+//		NMLogInfo( << "layer features: " << this->mlNumOptFeat << endl);
 //	}
 //	else // NM_IMAGE_LAYER
 //	{
@@ -1163,7 +1211,7 @@ int NMMosra::checkSettings(void)
 	// cell id field = vtkPolyData cellId
 
 	// --------------------------------------------------------------------------------------------------------
-	NMDebugAI(<< "checking performance indicator fields for optimisation criteria ..." << endl);
+    //sNMLogInfo(<< "checking performance indicator fields for optimisation criteria ..." << endl);
 	// performance indicator fields
 	QMap<QString, QStringList>::const_iterator criit =
 			this->mmslCriteria.constBegin();
@@ -1178,14 +1226,18 @@ int NMMosra::checkSettings(void)
 			if (!dsAttr->HasArray(fields.at(f).toStdString().c_str()))
 			{
 				criValid = false;
-				NMErr(ctxNMMosra, << "couldn't find performance indicator '"
+                NMLogError( << "couldn't find performance indicator '"
 						<< fields.at(f).toStdString() << "'!");
 			}
 		}
 	}
+    if (criValid)
+    {
+        NMLogInfo( << "optimisation criteria: performance indicator fields OK");
+    }
 
-	NMDebugAI(<< "checking fields for evaluating criteria performance ..." << endl);
-	// performance indicator fields
+//    NMLogInfo(<< "checking fields for evaluating criteria performance ..." << endl);
+//	// performance indicator fields
 	criit = this->mmslEvalFields.constBegin();
 
 	bool evalValid = true;
@@ -1198,18 +1250,22 @@ int NMMosra::checkSettings(void)
 			if (!dsAttr->HasArray(fields.at(f).toStdString().c_str()))
 			{
 				evalValid = false;
-				NMErr(ctxNMMosra, << "couldn't find performance evaluation indicator '"
+                NMLogError( << "couldn't find performance evaluation indicator '"
 						<< fields.at(f).toStdString() << "'!");
 			}
 		}
 	}
+    if (evalValid)
+    {
+        NMLogInfo(<< "optimisation criteria: performance evaluation fields OK")
+    }
 
 	// check the performance indicator fields specified with
 	// criteria constraints
 	bool criConsValid = true;
 	if (this->mmslCriCons.size() > 0)
 	{
-		NMDebugAI(<< "checking performance indicator fields for attributive constraints ..." << endl);
+        //NMLogInfo(<< "checking performance indicator fields for attributive constraints ..." << endl);
 		QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit =
 				this->mmslCriCons.constBegin();
 
@@ -1232,7 +1288,7 @@ int NMMosra::checkSettings(void)
 					if (!dsAttr->HasArray(zone.toStdString().c_str()))
 					{
 						criConsValid = false;
-						NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: couldn't find zone field '"
+                        NMLogError( << "CRITERIA_CONSTRAINTS: couldn't find zone field '"
 								<< zone.toStdString() << "'!");
 					}
 				}
@@ -1248,7 +1304,7 @@ int NMMosra::checkSettings(void)
 						if (!dsAttr->HasArray(fieldList.at(f).toStdString().c_str()))
 						{
 							criConsValid = false;
-							NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: couldn't find performance indicator '"
+                            NMLogError( << "CRITERIA_CONSTRAINTS: couldn't find performance indicator '"
 									<< fieldList.at(f).toStdString() << "'!");
 						}
 					}
@@ -1259,7 +1315,7 @@ int NMMosra::checkSettings(void)
 					if (!this->mslOptions.contains(landuse))
 					{
 						criConsValid = false;
-						NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: specified resource '"
+                        NMLogError( << "CRITERIA_CONSTRAINTS: specified resource '"
 								<< landuse.toStdString() << "' does not match any of "
 								"the previously specified resources!");
 						continue;
@@ -1269,16 +1325,20 @@ int NMMosra::checkSettings(void)
 					if (!dsAttr->HasArray(fieldList.at(0).toStdString().c_str()))
 					{
 						criConsValid = false;
-						NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: couldn't find performance indicator '"
+                        NMLogError( << "CRITERIA_CONSTRAINTS: couldn't find performance indicator '"
 								<< fieldList.at(0).toStdString() << "'!");
 					}
 				}
 			}
 		}
 	}
+    if (criConsValid)
+    {
+        NMLogInfo(<< "performance constraints OK")
+    }
 
 	// --------------------------------------------------------------------------------------------------------
-	NMDebugAI(<< "calculating size of the optimsation matrix ..." << endl);
+    //NMLogInfo(<< "calculating size of the optimsation matrix ..." << endl);
 	/*
 	 * structure of the lp matrix
 	 * here displayed for two options (land uses)
@@ -1324,12 +1384,13 @@ int NMMosra::checkSettings(void)
 
 	this->msSettingsReport = sstr.readAll();
 
-	NMDebug(<< this->msSettingsReport.toStdString() << endl);
+    NMLogDebug(<< "Optimisation Settings Report ...\n"
+               << this->msSettingsReport.toStdString() << endl);
 
 	NMDebugCtx(ctxNMMosra, << "done!");
 	if (!criValid || !criConsValid || !evalValid || !arealCriValid)
 	{
-		NMErr(ctxNMMosra, << "The configuration file contains invalid settings!");
+        NMLogError( << "The configuration file contains invalid settings!");
 		return 0;
 	}
 	else
@@ -1345,7 +1406,7 @@ int NMMosra::mapLp(void)
 
 	if (ret != 0 && ret != 1 && ret != 12)
 	{
-		NMDebugAI( << "unfortunately no feasible solution!" << endl);
+        NMLogDebug( << "unfortunately no feasible solution!" << endl);
 		NMDebugCtx(ctxNMMosra, << "done!");
 		return 0;
 	}
@@ -1361,7 +1422,7 @@ int NMMosra::mapLp(void)
 	opt_str = vtkSmartPointer<vtkStringArray>::New();
 	opt_str->SetName("OPT_STR");
 	opt_str->Allocate(lNumCells, 100);
-	NMDebugAI( << "created attribute 'OPT_STR'" << endl);
+    NMLogDebug( << "created attribute 'OPT_STR'" << endl);
 
 
 	// check for the scoring attributes
@@ -1374,7 +1435,7 @@ int NMMosra::mapLp(void)
 		var->Allocate(lNumCells, 100);
 		vValAr.push_back(var);
 
-		NMDebugAI( << "created scoring attribute '" << optx_val.toStdString() << "'" << endl);
+        NMLogDebug( << "created scoring attribute '" << optx_val.toStdString() << "'" << endl);
 	}
 
 	// get the decision vars
@@ -1388,7 +1449,7 @@ int NMMosra::mapLp(void)
 	const int iOffset = this->miNumOptions;
 	long lNonHoleCounter = 0;
 
-	NMDebugAI( << "extracting results ..." << endl);
+    //NMLogDebug( << "extracting results ..." << endl);
 	// -------------------------------------------------------------------for each feature
 	for (int f=0; f < lNumCells; f++)
 	{
@@ -1431,13 +1492,13 @@ int NMMosra::mapLp(void)
 		opt_str->InsertValue(f, sOptStr.toStdString().c_str());
 
 		if (f % 100 == 0)
-			NMDebug(<< ".");
+            NMDebug(<< ".");
 
 		// increment the valid feature counter
 		lNonHoleCounter++;
 	}
 
-	NMDebug(<< " finished!" << endl);
+    NMLogDebug(<< "extracted results!" << endl);
 
 	// don't forget to add the new attributes to the
 	// data set! (remember: availalbe attributes with the same name
@@ -1497,7 +1558,7 @@ int NMMosra::makeLp(void)
 			colname = QString(tr("X_%1_%2")).arg(of).arg(opt);
 			this->mLp->SetColName(colPos, colname.toStdString());
 
-            //NMDebugAI(<< "#" << colPos << ": " << colname.toStdString() << std::endl);
+            //NMLogInfo(<< "#" << colPos << ": " << colname.toStdString() << std::endl);
 
 			// set variable type for areal decision variables
 			switch(this->meDVType)
@@ -1552,7 +1613,7 @@ NMMosra::perturbCriterion(const QString& criterion,
 	// check, whether the dataset has been set yet
 	if (this->mDataSet == 0)
 	{
-		NMErr(ctxNMMosra, << "Input dataset has not been set!");
+        NMLogError( << "Input dataset has not been set!");
         return false;
 	}
 
@@ -1569,7 +1630,7 @@ NMMosra::perturbCriterion(const QString& criterion,
     // check for criterion or constraint
     if (metaList.size() == 0)
     {
-        NMErr(ctxNMMosra, << "Empty PERTURB parameter!");
+        NMLogError( << "Empty PERTURB parameter!");
         return false;
     }
 
@@ -1611,7 +1672,7 @@ NMMosra::perturbCriterion(const QString& criterion,
             QStringList splitCriterion = isolatedCriterion.split(":", QString::SkipEmptyParts);
             if (splitCriterion.size() < 2)
             {
-                NMErr(ctxNMMosra, << "Invalid criterion identifier: '"
+                NMLogError( << "Invalid criterion identifier: '"
                                   << isolatedCriterion.toStdString() << "'!");
                 return false;
             }
@@ -1626,7 +1687,7 @@ NMMosra::perturbCriterion(const QString& criterion,
             QStringList fields = this->mmslCriteria.value(criLabel);
             if (fields.size() == 0)
             {
-                NMErr(ctxNMMosra, << "Got an empty field list for '"
+                NMLogError( << "Got an empty field list for '"
                                   << criLabel.toStdString() << "'!");
                 return false;
             }
@@ -1637,7 +1698,7 @@ NMMosra::perturbCriterion(const QString& criterion,
             //            QStringList fields = this->mmslCriteria.value(isolatedCriterion);
             //            if (fields.size() == 0)
             //            {
-            //                NMDebugAI(<< "nothing to perturb for criterion '"
+            //                NMLogInfo(<< "nothing to perturb for criterion '"
             //                        << criterion.toStdString() << "'" << endl);
             //                return false;
             //            }
@@ -1691,7 +1752,7 @@ NMMosra::varyConstraint(const QString& constraint,
 	QStringList identlist = constraint.split(":");
     if (identlist.size() < 2)
 	{
-		NMErr(ctxNMMosra, << "Invalid pertubation item specified: "
+        NMLogError( << "Invalid pertubation item specified: "
 				<< constraint.toStdString() << std::endl);
 		NMDebugCtx(ctxNMMosra, << "done!");
 
@@ -1745,7 +1806,7 @@ NMMosra::varyConstraint(const QString& constraint,
 
 		if (lufm.isEmpty())
 		{
-            NMErr(ctxNMMosra, << "Land use field map is empty!");
+            NMLogError( << "Land use field map is empty!");
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
 			//e.setMsg("Land use field map is empty!");
@@ -1757,7 +1818,7 @@ NMMosra::varyConstraint(const QString& constraint,
         QStringList fieldvaluelist = lufm.value(tident);
 		if (fieldvaluelist.empty())
 		{
-            NMErr(ctxNMMosra, << "Field value list is empty!");
+            NMLogError( << "Field value list is empty!");
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
 			//e.setMsg("field value list is empty!");
@@ -1771,7 +1832,7 @@ NMMosra::varyConstraint(const QString& constraint,
 		double cap = fieldvaluelist.last().toDouble(&bok);
 		if (!bok)
 		{
-            NMErr(ctxNMMosra, << "Constraint threshold is not a number!")
+            NMLogError( << "Constraint threshold is not a number!")
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
 			//e.setMsg("Land use field map is empty!");
@@ -1779,14 +1840,14 @@ NMMosra::varyConstraint(const QString& constraint,
             return false;
 		}
 
-		NMDebugAI(<< "old value for " << constraint.toStdString()
+        NMLogDebug(<< "old value for " << constraint.toStdString()
 				<< " = " << cap << endl);
 
 
 		// adjust the cap value by adding the percentage of change
 		cap += (cap * percent/100.0);
 
-		NMDebugAI(<< "new value for " << constraint.toStdString()
+        NMLogDebug(<< "new value for " << constraint.toStdString()
 				<< " = " << cap << endl);
 
 		// vary the constraint value (cap)
@@ -1814,9 +1875,9 @@ NMMosra::varyConstraint(const QString& constraint,
             if (oconsIt.value().contains(label))
             {
                 double val = oconsIt.value().takeLast().toDouble();
-                NMDebugAI(<< label.toStdString() << " old: " << val << std::endl);
+                NMLogDebug(<< label.toStdString() << " old: " << val << std::endl);
                 val += (val * percent/100.0);
-                NMDebugAI(<< label.toStdString() << " new: " << val << std::endl);
+                NMLogDebug(<< label.toStdString() << " new: " << val << std::endl);
                 oconsIt.value().push_back(QString("%1").arg(val));
                 break;
             }
@@ -1865,9 +1926,9 @@ int NMMosra::addObjFn(void)
 	for (; it != this->mmslObjectives.constEnd(); ++it, ++objcount)
 	{
 		// get field indices for the performance indicators
-		NMDebugAI( << "objective '" << it.key().toStdString() << "' ..." << endl);
+        NMLogDebug( << "objective '" << it.key().toStdString() << "' ..." << endl);
 
-		NMDebugAI( << "criterion / option: <performance indi field> <field index> ... " << endl);
+        NMLogDebug( << "criterion / option: <performance indi field> <field index> ... " << endl);
 		for (int option=0; option < this->miNumOptions; option++)
 		{
 			// field name of performance indicator for
@@ -1880,7 +1941,7 @@ int NMMosra::addObjFn(void)
 
 			if (dsAttr->GetArray(sField.toStdString().c_str(), *(plFieldIndices + option)) == NULL)
 			{
-				NMErr(ctxNMMosra, << "failed to get performance indicator '"
+                NMLogError( << "failed to get performance indicator '"
 						<< sField.toStdString() << "' for option '"
 						<< this->mslOptions.at(option).toStdString() << "'!");
 
@@ -1893,7 +1954,7 @@ int NMMosra::addObjFn(void)
 				return 0;
 			}
 
-			NMDebugAI( << sCriterion.toStdString() << " / " << this->mslOptions.at(option).toStdString()
+            NMLogDebug( << sCriterion.toStdString() << " / " << this->mslOptions.at(option).toStdString()
 					<< ": " << sField.toStdString() << " " << plFieldIndices[option] << endl);
 		}
 
@@ -1906,10 +1967,14 @@ int NMMosra::addObjFn(void)
 			bMalMinusEins = true;
 
 		// get the weight for this objective
-		dWeight = it.value().at(1).toDouble(&convOK);
-		NMDebugAI( << "sxMaxmin: " << sxMaxmin.toStdString() << " | adjust task: " << bMalMinusEins << " | weight: " << dWeight << endl);
+        dWeight = 1.0;
+        if (it.value().size() == 2)
+        {
+            dWeight = it.value().at(1).toDouble(&convOK);
+        }
+        NMLogDebug( << "sxMaxmin: " << sxMaxmin.toStdString() << " | adjust task: " << bMalMinusEins << " | weight: " << dWeight << endl);
 
-		NMDebugAI( << "processing individual features now" << endl);
+        NMLogDebug( << "processing individual features now" << endl);
 		// --------------------------------------------------for each feature
 		long colPos = 1;
 		long arpos = 0;
@@ -1929,7 +1994,7 @@ int NMMosra::addObjFn(void)
 
 				// DEBUG
 				//if (f < 100)
-				//	NMDebugAI( << lCounter << " : " << this->mslOptions.at(option).toStdString()
+                //	NMLogDebug( << lCounter << " : " << this->mslOptions.at(option).toStdString()
 				//			<< " : " << da->GetName() << " : " << dCoeff << endl);
 
 				// adjust according to MinMax of objective 1
@@ -1978,7 +2043,7 @@ int NMMosra::addObjFn(void)
 	}
 
 	int ncols = this->mLp->GetNColumns();
-	//NMDebugAI( << "num cols: " << ncols << " | NumArealDVar: " << this->mlNumArealDVar << endl);
+    //NMLogDebug( << "num cols: " << ncols << " | NumArealDVar: " << this->mlNumArealDVar << endl);
 
 
 	// set the objective function
@@ -2020,7 +2085,7 @@ int NMMosra::addObjCons(void)
 	std::vector<QString> vsObjConsLabel;
 	QMap<QString, QStringList>::const_iterator it = this->mmslObjCons.constBegin();
 
-	NMDebugAI( << "reading props" << endl);
+    NMLogDebug( << "reading props" << endl);
 	for (; it != this->mmslObjCons.constEnd(); it++)
 	{
 		// add the operator
@@ -2034,7 +2099,7 @@ int NMMosra::addObjCons(void)
 		// add the key i.e. objective as label
 		vsObjConsLabel.push_back(it.key());
 
-		NMDebugAI( << it.key().toStdString() << ": " << it.value().join(tr(" ")).toStdString() << endl);
+        NMLogDebug( << it.key().toStdString() << ": " << it.value().join(tr(" ")).toStdString() << endl);
 	}
 
 	// allocate the required memory
@@ -2063,11 +2128,11 @@ int NMMosra::addObjCons(void)
 		if (bConvOK)
 			dConsVal = dVal;
 		else
-			NMErr(ctxNMMosra, << "couldn't convert " << it.value().at(2).toStdString() << " into a double!" << endl);
+            NMLogError( << "couldn't convert " << it.value().at(2).toStdString() << " into a double!" << endl);
 
-		NMDebugAI( << it.key().toStdString() << endl);
+        NMLogDebug( << it.key().toStdString() << endl);
 
-		NMDebugAI( << "criterion / option: <performance indi field> <field index> ... " << endl);
+        NMLogDebug( << "criterion / option: <performance indi field> <field index> ... " << endl);
 		for (int option=0; option < this->miNumOptions; option++)
 		{
 			// field name of performance indicator for
@@ -2076,7 +2141,7 @@ int NMMosra::addObjCons(void)
 			QString sField = this->mmslCriteria.value(sCriterion).at(option);
 			if (dsAttr->GetArray(sField.toStdString().c_str(), *(piFieldIndices + option)) == NULL)
 			{
-				NMErr(ctxNMMosra, << "failed to get performance indicator '"
+                NMLogError( << "failed to get performance indicator '"
 						<< sField.toStdString() << "'!");
 
 				// free some memory
@@ -2088,7 +2153,7 @@ int NMMosra::addObjCons(void)
 				return 0;
 			}
 
-			NMDebugAI( << sCriterion.toStdString() << " / " << this->mslOptions.at(option).toStdString()
+            NMLogDebug( << sCriterion.toStdString() << " / " << this->mslOptions.at(option).toStdString()
 					<< ": " << sField.toStdString() << " " << piFieldIndices[option] << endl);
 		}
 
@@ -2186,12 +2251,12 @@ int NMMosra::addExplicitAreaCons(void)
 	QMap<QString, QStringList>::const_iterator it =
 			this->mmslAreaCons.constBegin();
 
-	NMDebugAI( << this->mmslAreaCons.size() << " cons to process" << endl);
+    NMLogDebug( << this->mmslAreaCons.size() << " cons to process" << endl);
 
 	// ----------------------------------------------------for each constraint
 	for(int iConsCounter=1; it != this->mmslAreaCons.constEnd(); it++, iConsCounter++)
 	{
-		NMDebugAI( << it.key().toStdString() << " "
+        NMLogDebug( << it.key().toStdString() << " "
 				<< it.value().join(tr(" ")).toStdString() << " - reading props" << endl);
 
 		// set the constraint label
@@ -2220,7 +2285,7 @@ int NMMosra::addExplicitAreaCons(void)
         bool bConvOK;
         dUserVal = it.value().at(2).toDouble(&bConvOK);
         double dtval = 0;
-        NMDebugAI( << "dUserVal (" << dUserVal << ") as '" << it.value().at(3).toStdString() << "' = " << dtval << endl);
+        NMLogDebug( << "dUserVal (" << dUserVal << ") as '" << it.value().at(3).toStdString() << "' = " << dtval << endl);
 
         int maxzonelen = 0;
 
@@ -2232,7 +2297,7 @@ int NMMosra::addExplicitAreaCons(void)
             unsigned int idx = this->mslOptions.indexOf(
                     QRegExp(options.at(no), Qt::CaseInsensitive, QRegExp::FixedString));
             noptidx.push_back(idx);
-            NMDebugAI( << "option index for '" << options.at(no).toStdString() << "' = " << idx + 1 << endl);
+            NMLogDebug( << "option index for '" << options.at(no).toStdString() << "' = " << idx + 1 << endl);
 
             QStringList ozspec;
             ozspec << options.at(no) << zone;
@@ -2268,7 +2333,7 @@ int NMMosra::addExplicitAreaCons(void)
 			vnConsType.push_back(2);
 		else
 			vnConsType.push_back(3);
-        NMDebugAI( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << endl);
+        NMLogDebug( << "constraint type (1: <= | 2: >= | 3: =): " << vnConsType.at(iConsCounter-1) << endl);
 
 	}
 
@@ -2276,7 +2341,7 @@ int NMMosra::addExplicitAreaCons(void)
 
 //	if (dUserArea > dAreaSelected)
 //	{
-//		NMErr(ctxNMMosra, << "The specified areal constraints are "
+//		NMLogError( << "The specified areal constraints are "
 //				<< "inconsistent with the available area!");
 //		return 0;
 //	}
@@ -2301,7 +2366,7 @@ int NMMosra::addExplicitAreaCons(void)
 	// ------------------------------------------------ for each constraint
 	for (int r=0; it != this->mmslAreaCons.constEnd(); ++it, ++r)
 	{
-        NMDebugAI( << vsConsLabel.at(r).toStdString() << " - adding constraint" << endl);
+        NMLogDebug( << vsConsLabel.at(r).toStdString() << " - adding constraint" << endl);
 
 		// array defining zones for this constraints
 		bool bZoneCons = false;
@@ -2497,7 +2562,7 @@ int NMMosra::addImplicitAreaCons(void)
 			// set the column number
 			piColno[option] = colpos;
 
-			//NMDebugAI( << "feat cons: option | colps = " << option << " | " << lCounter+1 << endl);
+            //NMLogInfo( << "feat cons: option | colps = " << option << " | " << lCounter+1 << endl);
 
 		}
 
@@ -2605,7 +2670,7 @@ int NMMosra::addCriCons(void)
 			}
 			else
 			{
-				NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: " << crilabit.key().toStdString()
+                NMLogError( << "CRITERIA_CONSTRAINTS: " << crilabit.key().toStdString()
 						<< "_" << criit.key().toStdString() <<	": invalid comparison operator '"
 						<< compOp.toStdString() << "'!");
 				return 0;
@@ -2621,7 +2686,7 @@ int NMMosra::addCriCons(void)
 			double rhs = sRhs.toDouble(&convertable);
 			if (!convertable)
 			{
-				NMErr(ctxNMMosra, << "CRITERIA_CONSTRAINTS: " << label.toStdString() << ": invalid value '"
+                NMLogError( << "CRITERIA_CONSTRAINTS: " << label.toStdString() << ": invalid value '"
 						<< sRhs.toStdString() << "'!");
 				return 0;
 			}
@@ -2689,7 +2754,7 @@ int NMMosra::addCriCons(void)
 
 	for (int labelidx = 0; labelidx < vLabels.size(); ++labelidx)
 	{
-		NMDebugAI(<< "preparing constraint " << vLabels[labelidx].toStdString() << endl);
+        NMLogDebug(<< "preparing constraint " << vLabels[labelidx].toStdString() << endl);
 
 		// get the performance indicator fields, land use indices
 		// and allocate the constraint buffers
@@ -2756,7 +2821,7 @@ int NMMosra::addCriCons(void)
 		NMDebug(<< " finished!" << std::endl);
 
 		// add constraint
-		NMDebugAI(<< "adding constraint to LP ..." << std::endl);
+        NMLogDebug(<< "adding constraint to LP ..." << std::endl);
 		this->mLp->AddConstraintEx(numCriOptions * this->mlNumOptFeat,
 				pdRow, piColno, vOperators[labelidx], vRHS[labelidx]);
 
@@ -2765,7 +2830,7 @@ int NMMosra::addCriCons(void)
 
 
 		//  set the constraint label
-		NMDebugAI(<< "labeling constraint ..." << std::endl);
+        NMLogDebug(<< "labeling constraint ..." << std::endl);
 		this->mLp->SetRowName(lRowCounter, vLabels[labelidx].toStdString().c_str());
 
 		delete[] pdRow;
@@ -2784,7 +2849,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
-	NMDebugAI(<< "getting input arrays (attributes) ..." << std::endl);
+    NMLogDebug(<< "getting input arrays (attributes) ..." << std::endl);
 	// get hold of the input attributes we need
 	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
 	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
@@ -2796,7 +2861,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 	vtkStringArray* optStrAr = vtkStringArray::SafeDownCast(dsAttr->GetAbstractArray("OPT_STR"));
 	if (optStrAr == 0)
 	{
-		NMErr(ctxNMMosra, << "failed to fetch result array 'OPT_STR'!");
+        NMLogError( << "failed to fetch result array 'OPT_STR'!");
 		return 0;
 	}
 
@@ -2807,7 +2872,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 		vtkDataArray* optvalar = dsAttr->GetArray(arName.toStdString().c_str());
 		if (optvalar == 0)
 		{
-			NMErr(ctxNMMosra, << "failed to fetch result array '"
+            NMLogError( << "failed to fetch result array '"
 					<< arName.toStdString().c_str() << "'!");
 			return 0;
 		}
@@ -2836,7 +2901,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 	 *
 	 */
 
-	NMDebugAI(<< "creating the results table..." << std::endl);
+    NMLogDebug(<< "creating the results table..." << std::endl);
 
 	// determine the number of rows and columns
 	//int resNumCols = (this->mmslCriteria.size() + this->mmslCriCons.size()) * 3 +1;
@@ -2884,7 +2949,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                         .arg(this->mslOptions.at(r));
             }
             rowheads->SetValue(rowCount, (const char*)rowHead.toStdString().c_str());
-            //NMDebugAI(<< "RowHead #" << rowCount << ": " << rowHead.toStdString() << std::endl);
+            //NMLogDebug(<< "RowHead #" << rowCount << ": " << rowHead.toStdString() << std::endl);
             ++rowCount;
         }
 
@@ -2898,7 +2963,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                     .arg(this->mslPerfSumZones.at(nz-1));
         }
         rowheads->SetValue(rowCount, (const char*)rowHead.toStdString().c_str());
-        //NMDebugAI(<< "RowHead #" << rowCount << ": " << rowHead.toStdString() << std::endl);
+        //NMLogDebug(<< "RowHead #" << rowCount << ": " << rowHead.toStdString() << std::endl);
         ++rowCount;
 
     }
@@ -3013,7 +3078,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
      *                          SUMMARISE PERFORMANCES AND FILL CHANGE MATRIX
      * ################################################################################## */
 
-	NMDebugAI(<< "summarising results ..." << std::endl << std::endl);
+    NMLogDebug(<< "summarising results ..." << std::endl << std::endl);
 
 
 // don't need these really, and it only breaks the WIN32 compilation
@@ -3429,7 +3494,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 //	QStandardItemModel* model = new QStandardItemModel(nDestRows, nDestCols, this->parent());
 //	model->setItemPrototype(new QStandardItem());
 //
-//	NMDebugAI( << "populating table ..." << endl);
+//	NMLogInfo( << "populating table ..." << endl);
 //
 //	QStringList slVHeaderLabels;
 //	int srccol = 4;
@@ -3472,8 +3537,25 @@ int NMMosra::callbackIsSolveCanceled(lprec *lp, void *userhandle)
 	if (userhandle == 0)
 		return 1;
 
-	NMMosra *mosra = (NMMosra*) userhandle;
+    NMMosra *mosra = static_cast<NMMosra*>(userhandle);
 	return mosra->isSolveCanceled();
+}
+
+void
+NMMosra::lpLogCallback(lprec *lp, void *userhandle, char *buf)
+{
+    NMMosra* mosra = static_cast<NMMosra*>(userhandle);
+    if (mosra)
+    {
+        mosra->forwardLpLog(buf);
+    }
+}
+
+void NMMosra::forwardLpLog(const char* log)
+{
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
+                           NMLogger::NM_LOG_INFO,
+                           QString("lp_solve: %1").arg(log));
 }
 
 int NMMosra::isSolveCanceled()

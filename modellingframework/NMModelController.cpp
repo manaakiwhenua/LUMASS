@@ -22,12 +22,21 @@
  *      Author: alex
  */
 
+#include <QFuture>
+#include <QtConcurrentRun>
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
 #include "NMMfwException.h"
 
-#include <QFuture>
-#include <QtConcurrentRun>
 
 const std::string NMModelController::ctx = "NMModelController";
 
@@ -38,10 +47,15 @@ NMModelController::NMModelController(QObject* parent)
 	this->setParent(parent);
 	this->mModelStarted = QDateTime::currentDateTime();
 	this->mModelStopped = this->mModelStarted;
+    mLogger = new NMLogger();
 }
 
 NMModelController::~NMModelController()
 {
+    if (mLogger)
+    {
+        delete mLogger;
+    }
 }
 
 NMModelController*
@@ -201,35 +215,55 @@ NMModelController::executeModel(const QString& compName)
 {
 	NMDebugCtx(ctx, << "...");
 
-	if (this->mbModelIsRunning)
+    NMModelComponent* comp = this->getComponent(compName);
+    if (comp == 0)
+    {
+        NMErr(ctx, << "couldn't find '"
+                << compName.toStdString() << "'!");
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+    QString msg;
+    QString userID = comp->getUserID();
+    if (userID.isEmpty())
+    {
+        userID = comp->objectName();
+    }
+
+    if (this->mbModelIsRunning)
 	{
 		NMDebugAI(<< "There is already a model running! "
 				<< "Be patient and try later!" << endl);
+        if (mLogger)
+        {
+            msg = QString("Model Controller: Cannot execute %1! "
+                          "There is already a model running!"
+                           ).arg(userID);
+
+
+            mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                   NMLogger::NM_LOG_INFO,
+                                   msg);
+        }
 		NMDebugCtx(ctx, << "done!");
 		return;
 	}
 
-	//this->mRootComponent = this->identifyRootComponent();
-	//QString name = this->mRootComponent->objectName();
-	NMModelComponent* comp = this->getComponent(compName);
-	if (comp == 0)
-	{
-		NMErr(ctx, << "couldn't find '"
-				<< compName.toStdString() << "'!");
-		NMDebugCtx(ctx, << "done!");
-		return;
-	}
+        //this->mRootComponent = this->identifyRootComponent();
+        //QString name = this->mRootComponent->objectName();
 
-	// we only execute 'iterable / executable' components
-//	NMIterableComponent* icomp =
-//			qobject_cast<NMIterableComponent*>(comp);
-//	if (icomp == 0)
-//	{
-//		NMErr(ctx, << "component '" << compName.toStdString()
-//				<< "' is of type '" << comp->metaObject()->className()
-//				<< "' which is non-executable!");
-//		return;
-//	}
+
+        // we only execute 'iterable / executable' components
+    //	NMIterableComponent* icomp =
+    //			qobject_cast<NMIterableComponent*>(comp);
+    //	if (icomp == 0)
+    //	{
+    //		NMErr(ctx, << "component '" << compName.toStdString()
+    //				<< "' is of type '" << comp->metaObject()->className()
+    //				<< "' which is non-executable!");
+    //		return;
+    //	}
 
 	// we reset all the components
 	// (and thereby delete all data buffers)
@@ -238,6 +272,11 @@ NMModelController::executeModel(const QString& compName)
 
 	NMDebugAI(<< "running model on thread: "
 			<< this->thread()->currentThreadId() << endl);
+
+    msg = QString("Model Controller: Executing model %1 ...").arg(userID);
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
+                           NMLogger::NM_LOG_INFO,
+                           msg);
 
 	// model management
 	this->mbModelIsRunning = true;
@@ -306,8 +345,12 @@ NMModelController::executeModel(const QString& compName)
 	double sec = (msec % 60000) / 1000.0;
 
 	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
-	NMDebugAI(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
+    //NMDebugAI(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
 	NMMsg(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
+    QString endMsg = QString("Model Controller: Model stopped after (min:sec): %1").arg(elapsedTime);
+    mLogger->processLogMsg(mModelStopped.time().toString(),
+                           NMLogger::NM_LOG_INFO,
+                           endMsg);
 
 	this->mbModelIsRunning = false;
 	this->mbAbortionRequested = false;
@@ -429,6 +472,7 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 	comp->moveToThread(this->thread());
 	comp->setObjectName(tname);
 	comp->setParent(this);
+    comp->setLogger(this->mLogger);
 
 	this->mComponentMap.insert(tname, comp);
     this->mUserIdMap.insertMulti(comp->getUserID(), comp);
@@ -498,7 +542,7 @@ bool NMModelController::removeComponent(const QString& name)
 		return false;
 	}
 
-	NMIterableComponent* host = comp->getHostComponent();
+    NMIterableComponent* host = comp->getHostComponent();
 	if (host != 0)
 		host->removeModelComponent(name);
 
@@ -506,6 +550,7 @@ bool NMModelController::removeComponent(const QString& name)
 	if (ic != 0)
 		ic->destroySubComponents(this->mComponentMap);
 	this->mComponentMap.remove(name);
+
 	delete comp;
 
     emit componentRemoved(name);

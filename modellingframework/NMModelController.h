@@ -28,7 +28,7 @@
 #include <string>
 #include <iostream>
 
-#include "nmlog.h"
+//#include "nmlog.h"
 //#include "NMModelSerialiser.h"
  
 #include <QObject>
@@ -47,6 +47,7 @@ class NMItkDataObjectWrapper;
 class NMModelComponent;
 class NMIterableComponent;
 class NMProcess;
+class NMLogger;
 
 /*! \brief NMModelController is responsible for managing
  *         all NMModelComponents.
@@ -82,6 +83,8 @@ public:
 
 	const QMap<QString, NMModelComponent*>& getRepository(void)
 			{return this->mComponentMap;}
+
+    NMLogger* getLogger(void){return mLogger;}
 
 	static NMModelController* getInstance(void);
 
@@ -240,6 +243,7 @@ protected:
 	QDateTime mModelStopped;
 
 	NMModelController* mModelController;
+    NMLogger* mLogger;
 
     QStringList mToBeDeleted;
 

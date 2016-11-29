@@ -191,6 +191,7 @@
 #include "vtkInteractorObserver.h"
 #include "vtkInteractorStyle.h"
 #include "vtkInteractorStyleImage.h"
+#include "NMVtkInteractorStyleImage.h"
 #include "vtkInteractorStyleRubberBandZoom.h"
 #include "vtkInteractorStyleRubberBand2D.h"
 #include "vtkLongArray.h"
@@ -216,7 +217,7 @@
 #include "vtkUnsignedCharArray.h"
 #include "vtkXMLPolyDataReader.h"
 #include "vtkXMLPolyDataWriter.h"
-#include "vtkInteractorStyleTrackballCamera.h"
+//#include "vtkInteractorStyleTrackballCamera.h"
 #include "vtkExtractPolyDataGeometry.h"
 #include "vtkCylinder.h"
 #include "vtkTransform.h"
@@ -261,25 +262,6 @@
 
 //#include "valgrind/callgrind.h"
 
-//class NMMdiSubWindow : public QMdiSubWindow
-//{
-//    public:
-//        NMMdiSubWindow(QWidget* parent=0)
-//            : QMdiSubWindow(parent)
-//        {
-//        }
-//        ~NMMdiSubWindow()
-//        {
-//        }
-
-//        void closeEvent(QCloseEvent *closeEvent)
-//        {
-//            closeEvent->ignore();
-//            this->hide();
-//        }
-//};
-
-
 LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::LUMASSMainWin)
 {
@@ -295,9 +277,10 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	this->mbNoRasdaman = false;
     this->mpPetaView = 0;
     this->mLastInfoLayer = 0;
+    this->mActiveMainWidget = 0;
 
-	//Qt::WindowFlags flags = this->windowFlags() | Qt::WA_DeleteOnClose;
-	//this->setWindowFlags(flags);
+    mLogger.setHtmlMode(true);
+    connect(&mLogger, SIGNAL(sendLogMsg(QString)), this, SLOT(appendHtmlMsg(QString)));
 
 	// some meta type registration for supporting the given types for
 	// properties and QVariant
@@ -313,10 +296,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif
 	qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
-    //qRegisterMetaType<QSharedPointer<NMItkDataObjectWrapper> >("QSharedPointer<NMItkDataObjectWrapper>");
 	qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
-    //qRegisterMetaType<NMDataComponent>("NMDataComponent");
-    //qRegisterMetaType<NMDataComponent*>("NMDataComponent*");
 
     // seed the std random number generator
     std::srand(std::time(0));
@@ -344,6 +324,17 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     this->setWindowIcon(mLUMASSIcon);
 
+    // ================================================
+    //
+    // ================================================
+
+    //    mModelBuilderWindow = new QMainWindow(this);
+    //    //    mModelBuilderWindow->setWindowTitle("Model Builder");
+    //    mModelBuilderWindow->setWindowFlags(Qt::Widget);
+    //    mModelBuilderWindow->setMouseTracking(true);
+    //    mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
+    //    mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
+
 
 
     // ================================================
@@ -359,7 +350,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     mTreeCompEditor->setObjectName(QString::fromUtf8("treeCompEditor"));
     ui->infoWidgetList->addWidgetItem(mTreeCompEditor, QString::fromUtf8("Component Properties"));
 
-    //ui->componentInfoDock->setMinimumWidth(160);
+    ui->componentInfoDock->setMinimumWidth(200);
     ui->componentInfoDock->setVisible(true);
 
     // ================================================
@@ -387,36 +378,19 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     NMProcCompList* procList = new NMProcCompList(ui->compWidgetList);
     procList->setObjectName(QString::fromUtf8("processComponents"));
     ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
-    //ui->componentsWidget->setMinimumWidth(150);
+    ui->componentsWidget->setMinimumWidth(170);
+
+
+    // ================================================
+    // LOG DOCK
+    // ================================================
+
+    ui->logDock->setVisible(false);
+
 
     // ================================================
     // BAR(s) SETUP - MENU - PROGRESS - STATUS
     // ================================================
-
-    this->mMapToolBar = new QToolBar("View Tools");
-
-////    QAction* rubberBandZoom = new QAction("Zoom In", this->mMapToolBar);
-////    rubberBandZoom->setCheckable(true);
-////    rubberBandZoom->setChecked(false);
-////    this->mMapToolBar->addAction(rubberBandZoom);
-
-//    connect(rubberBandZoom, SIGNAL(triggered(bool)), this, SLOT(toggleRubberBandZoom(bool)));
-
-    //this->mMdiArea = new QMdiArea(this);
-    //this->setCentralWidget(mMdiArea);
-
-    //this->mMdiArea->addSubWindow(this->ui->qvtkWidget);
-//    NMMdiSubWindow* mapSub = new NMMdiSubWindow(mMdiArea);
-//    this->mMapWindow = new QMainWindow(mapSub);
-//    this->mMapWindow->setParent(this);
-//    this->mMapWindow->setWindowTitle("Map View");
-//    this->mMapWindow->setWindowFlags(Qt::Widget);
-//    this->mMapWindow->setMouseTracking(true);
-//    this->mMapWindow->addToolBar(this->mMapToolBar);
-//    this->mMapWindow->setCentralWidget(this->ui->qvtkWidget);
-//    mapSub->setWidget(mMapWindow);
-//    mapSub->setWindowTitle(mMapWindow->windowTitle());
-
 
     // we remove the rasdaman import option, when we haven't
     // rasdaman suppor
@@ -467,6 +441,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     //connect(ui->actionMOSO_batch, SIGNAL(triggered()), this, SLOT(doMOSObatch()));
     connect(ui->actionComponents_View, SIGNAL(toggled(bool)), this, SLOT(showComponentsView(bool)));
     connect(ui->actionShow_Components_Info, SIGNAL(toggled(bool)), this, SLOT(showComponentsInfoView(bool)));
+    connect(ui->actionShow_Notifications, SIGNAL(toggled(bool)), this, SLOT(showNotificationsView(bool)));
+
     //connect(ui->actionModel_View, SIGNAL(triggered()), this, SLOT(showModelView()));
     connect(ui->actionShowScaleBar, SIGNAL(toggled(bool)), this, SLOT(showScaleBar(bool)));
     connect(ui->actionShowCoordinateAxes, SIGNAL(toggled(bool)), this, SLOT(showCoordinateAxes(bool)));
@@ -493,91 +469,87 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
             ui->actionComponents_View, SLOT(setChecked(bool)));
     connect(ui->componentInfoDock, SIGNAL(visibilityChanged(bool)),
             ui->actionShow_Components_Info, SLOT(setChecked(bool)));
+    connect(ui->logDock, SIGNAL(visibilityChanged(bool)),
+            ui->actionShow_Notifications, SLOT(setChecked(bool)));
 
     // TEST TEST TEST
     connect(ui->actionImage_Polydata, SIGNAL(triggered()), this, SLOT(convertImageToPolyData()));
 
-    // **********************************************************************
-	// *                    MODEL BUILDER WINDOW                            *
-	// **********************************************************************
-
-//    NMMdiSubWindow* modelSub = new NMMdiSubWindow(mMdiArea);
-
-
-    //    mModelBuilderWindow = new QMainWindow(modelSub);
-
-
-    mModelBuilderWindow = new QMainWindow(this);
-    //    mModelBuilderWindow->setWindowTitle("Model Builder");
-    mModelBuilderWindow->setWindowFlags(Qt::Widget);
-    mModelBuilderWindow->setMouseTracking(true);
-    mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
-    mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
-
-
-    //    modelSub->setWidget(mModelBuilderWindow);
-    //    modelSub->setWindowTitle(mModelBuilderWindow->windowTitle());
-
-
-    //ui->modelViewWidget->setMouseTracking(true);
-    //ui->modelViewWidget->setParent(this);
-
-    //mModelBuilderWindow->setAttribute(Qt::WA_DeleteOnClose, false);
-    //mMapWindow->setAttribute(Qt::WA_DeleteOnClose, false);
-
-
-//    this->mMdiArea->addSubWindow(modelSub);
-//    this->mMdiArea->addSubWindow(mapSub);
-//    this->mMdiArea->addSubWindow(this->ui->modelViewWidget);
-//    this->mMdiArea->tileSubWindows();
-
-
-//    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
-//    foreach (QMdiSubWindow* s, wl)
-//    {
-//        s->installEventFilter(this);
-//        s->setWindowFlags(s->windowFlags() |
-//                          Qt::CustomizeWindowHint |
-//                          Qt::WindowMinMaxButtonsHint);
-//    }
 
     // =============================================================
     // set up the tool bar
-    this->ui->mainToolBar->setWindowTitle("Model Builder Tools");
+    //this->ui->mainToolBar->setWindowTitle("Model Builder Tools");
 
     // .....................
     // zoom actions
     QIcon zoomInIcon(":zoom-in-icon.png");
     QAction* zoomInAction = new QAction(zoomInIcon, "Zoom In", this->ui->mainToolBar);
-    zoomInAction->setAutoRepeat(true);
+    zoomInAction->setObjectName("zoomInAction");
+    zoomInAction->setCheckable(true);
+    mExclusiveActions.append(zoomInAction);
+    //zoomInAction->setAutoRepeat(true);
 
     QIcon zoomOutIcon(":zoom-out-icon.png");
     QAction* zoomOutAction = new QAction(zoomOutIcon, "Zoom Out", this->ui->mainToolBar);
-    zoomOutAction->setAutoRepeat(true);
+    zoomOutAction->setObjectName("zoomOutAction");
+    zoomOutAction->setCheckable(true);
+    mExclusiveActions.append(zoomOutAction);
+
+    //zoomOutAction->setAutoRepeat(true);
 
     QIcon zoomContentIcon(":zoom-fit-best-icon.png");
-    QAction* zoomToContent = new QAction(zoomContentIcon, "Zoom To Content", this->ui->mainToolBar);
+    QAction* zoomToContentAct = new QAction(zoomContentIcon, "Zoom To Content", this->ui->mainToolBar);
 
     // ..........................
     // component management actions
     QIcon moveIcon(":move-icon.png");
-    QAction* moveAction = new QAction(moveIcon, "Move Scene",
+    QAction* moveAction = new QAction(moveIcon, "Pan Map/Model",
             this->ui->mainToolBar);
+    moveAction->setObjectName("panAction");
     moveAction->setCheckable(true);
-    moveAction->setChecked(false);
+    moveAction->setChecked(true);
+    mExclusiveActions.append(moveAction);
 
     QIcon linkIcon(":link-icon.png");
     QAction* linkAction = new QAction(linkIcon, "Link Components", this->ui->mainToolBar);
+    linkAction->setObjectName("linkAction");
     linkAction->setCheckable(true);
+    mExclusiveActions.append(linkAction);
 
-//    QIcon selIcon(":select-icon.png");
-//    QAction* selAction = new QAction(selIcon, "Select Components", this->ui->mainToolBar);
-//    selAction->setCheckable(true);
+    //    QIcon selIcon(":select-icon.png");
+    //    QAction* selAction = new QAction(selIcon, "Select Components", this->ui->mainToolBar);
+    //    selAction->setCheckable(true);
 
-//    QActionGroup* modelToolGroup = new QActionGroup(this->ui->mainToolBar);
-//    modelToolGroup->addAction(moveAction);
-//    modelToolGroup->addAction(linkAction);
-//    modelToolGroup->addAction(selAction);
+    // .....................................
+    // main windows orientation action
+
+    QIcon mapIcon(":view-map.png");
+    QAction* actMapBtn = new QAction(mapIcon, "Map View", ui->mainToolBar);
+    actMapBtn->setObjectName("actMapBtn");
+    actMapBtn->setCheckable(true);
+    actMapBtn->setChecked(true);
+
+    QIcon modelIcon(":model-icon.png");
+    QAction* actModelBtn = new QAction(modelIcon, "Model View", ui->mainToolBar);
+    actModelBtn->setObjectName("actModelBtn");
+    actModelBtn->setCheckable(true);
+    actModelBtn->setChecked(true);
+
+
+    QActionGroup* windowLayoutGroup = new QActionGroup(this->ui->mainToolBar);
+
+    QIcon horzIcon(":view-split-left-right.png");
+    QAction* actHorzLayout = new QAction(horzIcon, "Views: Left | Right", ui->mainToolBar);
+    actHorzLayout->setCheckable(true);
+    actHorzLayout->setChecked(true);
+
+    QIcon vertIcon(":view-split-top-bottom.png");
+    QAction* actVertLayout = new QAction(vertIcon, "Views: Top | Bottom", ui->mainToolBar);
+    actVertLayout->setCheckable(true);
+    actVertLayout->setChecked(false);
+
+    windowLayoutGroup->addAction(actHorzLayout);
+    windowLayoutGroup->addAction(actVertLayout);
 
     // ..........................
     // model execution actions
@@ -592,36 +564,51 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
 
     //this->ui->mainToolBar->addActions(modelToolGroup->actions());
-    this->ui->mainToolBar->addAction(linkAction);
-    this->ui->mainToolBar->addSeparator();
 
     this->ui->mainToolBar->addAction(zoomInAction);
     this->ui->mainToolBar->addAction(zoomOutAction);
-    this->ui->mainToolBar->addAction(zoomToContent);
+    this->ui->mainToolBar->addAction(zoomToContentAct);
     this->ui->mainToolBar->addAction(moveAction);
 
     this->ui->mainToolBar->addSeparator();
+    this->ui->mainToolBar->addAction(linkAction);
     this->ui->mainToolBar->addAction(resetAction);
     this->ui->mainToolBar->addAction(stopAction);
     this->ui->mainToolBar->addAction(execAction);
+
+    this->ui->mainToolBar->addSeparator();
+    this->ui->mainToolBar->addAction(actMapBtn);
+    this->ui->mainToolBar->addAction(actModelBtn);
+    this->ui->mainToolBar->addActions(windowLayoutGroup->actions());
 
 
     // connect model view widget signals / slots
     connect(linkAction, SIGNAL(toggled(bool)),
     		this->ui->modelViewWidget, SIGNAL(linkToolToggled(bool)));
-//    connect(selAction, SIGNAL(toggled(bool)),
-//    		this->ui->modelViewWidget, SIGNAL(selToolToggled(bool)));
+    //    connect(selAction, SIGNAL(toggled(bool)),
+    //    		this->ui->modelViewWidget, SIGNAL(selToolToggled(bool)));
     connect(moveAction, SIGNAL(toggled(bool)),
             this->ui->modelViewWidget, SIGNAL(moveToolToggled(bool)));
+    connect(moveAction, SIGNAL(toggled(bool)),
+            this, SLOT(pan(bool)));
 
-    connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
-    connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));
-    connect(zoomToContent, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomToContent()));
+    //connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
+    //connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));
+    //connect(zoomToContent, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomToContent()));
+
+    connect(zoomToContentAct, SIGNAL(triggered()), this, SLOT(zoomToContent()));
+    connect(zoomInAction, SIGNAL(toggled(bool)), this, SLOT(zoomIn(bool)));
+    connect(zoomOutAction, SIGNAL(toggled(bool)), this, SLOT(zoomOut(bool)));
+
+    connect(actMapBtn, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
+    connect(actModelBtn, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
 
     connect(execAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(executeModel()));
     connect(stopAction, SIGNAL(triggered()), this->ui->modelViewWidget, SIGNAL(requestModelAbortion()));
     connect(resetAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(resetModel()));
 
+    connect(windowLayoutGroup, SIGNAL(triggered(QAction*)),
+            this, SLOT(swapWindowLayout(QAction*)));
 
     // **********************************************************************
 	// *                    VTK DISPLAY WIDGET                              *
@@ -704,7 +691,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	axes->SetOrigin(0,0,0);
 
     this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-                vtkInteractorStyleImage::New());
+                NMVtkInteractorStyleImage::New());
 
 	m_orientwidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
 	m_orientwidget->SetOrientationMarker(axes);
@@ -721,6 +708,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
     		vtkCommand::LeftButtonPressEvent,
     		this, SLOT(pickObject(vtkObject*)));
+    this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
+            vtkCommand::MiddleButtonPressEvent,
+            this, SLOT(pickObject(vtkObject*)));
 
 
     // **********************************************************************
@@ -733,10 +723,11 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     ui->centralWidget->setLayout(boxL);
 
-    QSplitter* splitter = new QSplitter(Qt::Horizontal);
+    QSplitter* splitter = new QSplitter(Qt::Horizontal, ui->centralWidget);
+    splitter->setObjectName("MainSplitter");
     splitter->setChildrenCollapsible(true);
     splitter->addWidget(ui->qvtkWidget);
-    splitter->addWidget(mModelBuilderWindow);
+    splitter->addWidget(ui->modelViewWidget);
     boxL->addWidget(splitter);
     QSize totalSize = splitter->size();
     QList<int> sizes;
@@ -744,6 +735,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     splitter->setSizes(sizes);
 
 
+    connect(ui->modelViewWidget, SIGNAL(modelViewActivated(QObject *)),
+            this, SLOT(modelViewActivated(QObject *)));
 
     // ================================================
     // INITIAL WIDGET's VISIBILITY
@@ -830,32 +823,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
     // ===========================================================
     if (obj->objectName().compare(QString("qvtkWidget")) == 0)
     {
-        if (event->type() == QEvent::Wheel && !this->m_b3D)
-        {
-            vtkInteractorStyleImage* iai =
-                    vtkInteractorStyleImage::SafeDownCast(
-                        this->ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
-
-            QWheelEvent* we = static_cast<QWheelEvent*>(event);
-            if (    we != 0
-                    &&  we->modifiers().testFlag(Qt::ControlModifier)
-                    &&  we->modifiers().testFlag(Qt::ShiftModifier)
-                    )
-            {
-                iai->SetMotionFactor(0.2);
-            }
-            else if (   we != 0
-                        && we->modifiers().testFlag(Qt::ControlModifier)
-                        )
-            {
-                iai->SetMotionFactor(1.0);
-            }
-            else
-            {
-                iai->SetMotionFactor(10.0);
-            }
-        }
-        else if (event->type() == QEvent::KeyPress)
+        if (event->type() == QEvent::KeyPress)
         {
             QKeyEvent* ke = static_cast<QKeyEvent*>(event);
             if (!ke)
@@ -874,43 +842,57 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToCrystalEyes();
                     renwin->StereoUpdate();
-                    NMDebugAI(<< "Stereo mode switched to Crystal Eye" << std::endl);
+                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                          NMLogger::NM_LOG_INFO,
+                                          "Stereo mode switched to Crystal Eye");
                 }
                 else if (ke->key() == Qt::Key_Y)
                 {
                     renwin->SetStereoTypeToAnaglyph();
                     renwin->StereoUpdate();
-                    NMDebugAI(<< "Stereo mode switched to Anaglyph" << std::endl);
+                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                          NMLogger::NM_LOG_INFO,
+                                          "Stereo mode switched to Anaglyph");
                 }
                 else if (ke->key() == Qt::Key_I)
                 {
                     renwin->SetStereoTypeToInterlaced();
                     renwin->StereoUpdate();
-                    NMDebugAI(<< "Stereo mode switched to Interlaced" << std::endl);
+                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                          NMLogger::NM_LOG_INFO,
+                                          "Stereo mode switched to Interlaced");
                 }
                 else if (ke->key() == Qt::Key_B)
                 {
                     renwin->SetStereoTypeToRedBlue();
                     renwin->StereoUpdate();
-                    NMDebugAI(<< "Stereo mode switched to RedBlue" << std::endl);
+                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                          NMLogger::NM_LOG_INFO,
+                                          "Stereo mode switched to Red-Blue");
                 }
                 else if (ke->key() == Qt::Key_G)
                 {
                     renwin->SetStereoTypeToSplitViewportHorizontal();
                     renwin->StereoUpdate();
-                    NMDebugAI(<< "Stereo mode switched to Split Viewport Horizontal" << std::endl);
+                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                          NMLogger::NM_LOG_INFO,
+                                          "Stereo mode switched to Split Viewport Horizontal");
                 }
                 else if (ke->key() == Qt::Key_D)
                 {
                     renwin->SetStereoTypeToDresden();
                     renwin->StereoUpdate();
-                    NMDebugAI(<< "Stereo mode switched to Dresden" << std::endl);
+                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                          NMLogger::NM_LOG_INFO,
+                                          "Stereo mode switched to Dresden");
                 }
                 else if (ke->key() == Qt::Key_U)
                 {
                     renwin->SetStereoTypeToCheckerboard();
                     renwin->StereoUpdate();
-                    NMDebugAI(<< "Stereo mode switched to Checkerboard" << std::endl);
+                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                          NMLogger::NM_LOG_INFO,
+                                          "Stereo mode switched to Checkerboard");
                 }
             }
         }
@@ -937,6 +919,10 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
             {
                 this->mLayerList->dropEvent(de);
             }
+        }
+        else if (event->type() == QEvent::MouseButtonPress)
+        {
+            mActiveMainWidget = this->ui->qvtkWidget;
         }
     }
     // ===========================================================
@@ -972,11 +958,173 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 }
             }
         }
+        else if (event->type() == QEvent::DragEnter)
+        {
+            QDragEnterEvent* dee = static_cast<QDragEnterEvent*>(event);
+            if (dee)
+            {
+                this->mLayerList->dragEnterEvent(dee);
+            }
+        }
+        else if (event->type() == QEvent::DragMove)
+        {
+            QDragMoveEvent* dme = static_cast<QDragMoveEvent*>(event);
+            if (dme)
+            {
+                this->mLayerList->dragMoveEvent(dme);
+            }
+        }
+        else if (event->type() == QEvent::Drop)
+        {
+            QDropEvent* de = static_cast<QDropEvent*>(event);
+            if (de)
+            {
+                this->mLayerList->dropEvent(de);
+            }
+        }
 
-        //        mLastSender = obj;
-        //        mLastEvent = event;
     }
     return false;
+}
+
+void
+LUMASSMainWin::modelViewActivated(QObject* obj)
+{
+        mActiveMainWidget = obj;
+}
+
+void
+LUMASSMainWin::updateExclusiveActions(const QString &checkedAction)
+{
+    for (int a=0; a < mExclusiveActions.size(); ++a)
+    {
+        QAction* act = mExclusiveActions.at(a);
+        if (act->objectName().compare(checkedAction) != 0)
+        {
+            // we explicitly toggle here since the
+            // model view tools set internal properties
+            // based on the toggle message; so just
+            // updating the 'tool button' is not enough
+            if (act->isChecked())
+            {
+                act->toggle();
+            }
+        }
+    }
+}
+
+void
+LUMASSMainWin::zoomToContent()
+{
+    // work out which view we're working on
+    if (mActiveMainWidget)
+    {
+        if (mActiveMainWidget->objectName().compare(QString("qvtkWidget")) == 0)
+        {
+            NMLayer* l = this->mLayerList->getSelectedLayer();
+            if (l)
+            {
+                this->mBkgRenderer->ResetCamera(const_cast<double*>(l->getBBox()));
+                ui->qvtkWidget->update();
+            }
+            else
+            {
+                mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                                      NMLogger::NM_LOG_INFO,
+                                      "Zoom to Layer: No layer selected!");
+            }
+        }
+        else if (mActiveMainWidget->objectName().compare(QString("modelViewWidget")) == 0)
+        {
+            this->ui->modelViewWidget->zoomToContent();
+        }
+    }
+}
+
+void
+LUMASSMainWin::pan(bool toggled)
+{
+    QAction* in = ui->mainToolBar->findChild<QAction*>("panAction");
+    if (in)
+    {
+        in->setChecked(toggled);
+        if (toggled)
+        {
+            NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+                        ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_PAN);
+
+            this->updateExclusiveActions(in->objectName());
+        }
+    }
+}
+
+void
+LUMASSMainWin::zoomIn(bool toggled)
+{
+    QAction* in = ui->mainToolBar->findChild<QAction*>("zoomInAction");
+    if (in)
+    {
+        in->setChecked(toggled);
+        if (toggled)
+        {
+            NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+                        ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_IN);
+
+
+            this->updateExclusiveActions(in->objectName());
+        }
+    }
+}
+
+void
+LUMASSMainWin::zoomOut(bool toggled)
+{
+    QAction* out = ui->mainToolBar->findChild<QAction*>("zoomOutAction");
+    if (out)
+    {
+        out->setChecked(toggled);
+        if (toggled)
+        {
+            NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+                        ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_OUT);
+
+            this->updateExclusiveActions(out->objectName());
+        }
+    }
+}
+
+void
+LUMASSMainWin::appendHtmlMsg(const QString& msg)
+{
+    ui->logEdit->insertHtml(msg);
+    ui->logEdit->ensureCursorVisible();
+}
+
+void
+LUMASSMainWin::appendLogMsg(const QString& msg)
+{
+    ui->logEdit->textCursor().insertText(msg);
+    ui->logEdit->ensureCursorVisible();
+}
+
+void
+LUMASSMainWin::swapWindowLayout(QAction* act)
+{
+    QSplitter* splitter = this->ui->centralWidget->findChild<QSplitter*>("MainSplitter");
+    if (splitter)
+    {
+        if (act->text().compare("Views: Left | Right") == 0 && act->isChecked())
+        {
+            splitter->setOrientation(Qt::Horizontal);
+        }
+        else if (act->text().compare("Views: Top | Bottom") == 0 && act->isChecked())
+        {
+            splitter->setOrientation(Qt::Vertical);
+        }
+    }
 }
 
 void
@@ -1065,7 +1213,7 @@ LUMASSMainWin::toggleRubberBandZoom(bool bzoom)
     if (this->m_b3D || !bzoom)
     {
         this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-                    vtkInteractorStyleImage::New());
+                    NMVtkInteractorStyleImage::New());
     }
      else
     {
@@ -1374,41 +1522,30 @@ LUMASSMainWin::modelViewMode()
 void
 LUMASSMainWin::showMapView(bool vis)
 {
-//    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
-//    foreach (QMdiSubWindow* s, wl)
-//    {
-//        if (s->windowTitle().compare("Map View") == 0)
-//        {
-//            vis ? ui->actionMap_View_Mode->isChecked()
-//                  ? s->setWindowState(
-//                        s->windowState() |
-//                        Qt::WindowMaximized |
-//                        Qt::WindowActive)
-//                    : s->showNormal()
-//                : s->hide();
-//        }
-//    }
     ui->qvtkWidget->setVisible(vis);
+    if (!vis)
+    {
+        this->mActiveMainWidget = ui->modelViewWidget;
+    }
+    QAction* actMapBtn = ui->mainToolBar->findChild<QAction*>("actMapBtn");
+    if (actMapBtn) actMapBtn->setChecked(vis);
+
+    ui->actionShow_Map_View->setChecked(vis);
+
 }
 
 void
 LUMASSMainWin::showModelView(bool vis)
 {
-//    QList<QMdiSubWindow*> wl = this->mMdiArea->subWindowList();
-//    foreach (QMdiSubWindow* s, wl)
-//    {
-//        if (s->windowTitle().compare("Model Builder") == 0)
-//        {
-//            vis ? ui->actionMap_View_Mode->isChecked()
-//                    ? s->setWindowState(
-//                          s->windowState() |
-//                          Qt::WindowMaximized |
-//                          Qt::WindowActive)
-//                    : s->showNormal()
-//                : s->hide();
-//        }
-//    }
-    ui->modelViewWidget->parentWidget()->setVisible(vis);
+    ui->modelViewWidget->setVisible(vis);
+    if (!vis)
+    {
+        this->mActiveMainWidget = ui->qvtkWidget;
+    }
+    QAction* actModelBtn = ui->mainToolBar->findChild<QAction*>("actModelBtn");
+    if (actModelBtn) actModelBtn->setChecked(vis);
+
+    ui->actionShow_Model_View->setChecked(vis);
 }
 
 const vtkRenderer*
@@ -2168,8 +2305,7 @@ void
 LUMASSMainWin::saveImageFile()
 {
     QObject* obj = this->sender();
-    QAction* aobj = qobject_cast<QAction*>(obj);
-    if (aobj->text().compare(QString("Save Visible Extent/Overview As ...")) == 0)
+    if (obj && obj->objectName().compare(QString("actionSave_Visible_Extent_Overview_As")) == 0)
     {
         this->saveAsImageFile(true);
     }
@@ -2203,6 +2339,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
 
     // ---------------- SET UP INPUT ----------------------
     QSharedPointer<NMItkDataObjectWrapper> dw = il->getImage();
+    dw->getDataObject()->SetReleaseDataFlag(false);
     NMDataComponent* dc = new NMDataComponent();
     dc->setObjectName("DataBuffer");
     QString bufCompName = ctrl->addComponent(dc);
@@ -2235,8 +2372,11 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
                 new NMStreamingImageFileWriterWrapper();
     writerProc->setFileNames(QStringList(fileName));
     writerProc->setImgTypeSpec(dw);
-    writerProc->setInputTables(QStringList(bufCompName));
+    writerProc->setWriteTable(true);
+    //writerProc->setInputTables(QStringList(bufCompName));
     writerProc->setPyramidResamplingType(QString("NEAREST"));
+    writerProc->setRGBMode(dw->getIsRGBImage());
+
 
     // create host component
     NMSequentialIterComponent* writerComp =
@@ -2269,7 +2409,6 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
         del << readerCompName;
     }
     ctrl->deleteLater(del);
-
 }
 
 void LUMASSMainWin::checkInteractiveLayer(void)
@@ -3169,17 +3308,51 @@ void LUMASSMainWin::test()
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...")
 
-    long long a = 93035670317640;
+    QString smsg = QString("infoDock - w: %1 h: %2\n")
+            .arg(ui->infoWidgetList->size().width())
+            .arg(ui->infoWidgetList->size().height());
+    this->appendLogMsg(smsg);
 
-    double b = 1913802361;
+    smsg = QString("compDock - w: %1 h: %2\n")
+            .arg(ui->compWidgetList->size().width())
+            .arg(ui->compWidgetList->size().height());
+    this->appendLogMsg(smsg);
 
-    double c = static_cast<double>(a);
+    const QObjectList& objs = this->children();
+    foreach (const QObject* o, objs)
+    {
+        QString msg = QString("%1\n").arg(o->objectName());
+        this->appendLogMsg(msg);
+    }
 
-    QString myNums = QString("%1 & %2 & %3").arg(a).arg(b).arg(c);
 
-    NMDebugAI(<< myNums.toStdString() << std::endl);
 
-    int aldsf=5;
+//    NMLogger logger;
+//    logger.setHtmlMode(true);
+//    connect(&logger, SIGNAL(sendLogMsg(QString)), this, SLOT(appendHtmlMsg(QString)));
+
+//    std::vector<NMLogger::LogEventType> type;
+//    type.push_back(NMLogger::NM_LOG_INFO);
+//    type.push_back(NMLogger::NM_LOG_WARN);
+//    type.push_back(NMLogger::NM_LOG_ERROR);
+//    type.push_back(NMLogger::NM_LOG_DEBUG);
+
+//    int typecnt = 0;
+//    for (int i=0; i < 30; ++i, ++typecnt)
+//    {
+//        if (typecnt > 3)
+//            typecnt = 0;
+
+//        QString msgA = QString("%1: This is a test message ... ----------")
+//                        .arg(i);
+//        logger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+//                             type.at(typecnt),
+//                             msgA);
+
+//        //usleep(1);
+//    }
+
+
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!")
 }
@@ -3888,6 +4061,12 @@ void LUMASSMainWin::showComponentsView(bool vis)
     this->ui->componentsWidget->setVisible(vis);
 }
 
+void
+LUMASSMainWin::showNotificationsView(bool vis)
+{
+    ui->logDock->setVisible(vis);
+}
+
 void LUMASSMainWin::showComponentsInfoView(bool vis)
 {
     ui->infoDock->setVisible(vis);
@@ -3994,14 +4173,18 @@ void LUMASSMainWin::showComponentsInfoView(bool vis)
 
 void LUMASSMainWin::doMOSO()
 {
-        NMDebugCtx(ctxLUMASSMainWin, << "...");
+    //NMDebugCtx(ctxLUMASSMainWin, << "...");
 
 	QString fileName = QFileDialog::getOpenFileName(this,
 	     tr("Open Optimisation Settings"), "~", tr("LUMASS Optimisation Settings (*.los)"));
 
 	if (fileName.isNull())
 	{
-		NMDebugAI( << "Please provide a filename!" << endl);
+        //NMDebugAI( << "Please provide a filename!" << endl);
+        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                              NMLogger::NM_LOG_INFO,
+                              "Please specifiy file to run an optimisation scenario!");
+        NMDebugCtx(ctxLUMASSMainWin, << "done!");
 		return;
 	}
 
@@ -4013,7 +4196,13 @@ void LUMASSMainWin::doMOSO()
 	QString baseName = fileinfo.baseName();
 	if (!fileinfo.isReadable())
 	{
-		NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
+        //NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
+        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                              NMLogger::NM_LOG_ERROR,
+                              QString("Could not read file '%1'!")
+                                 .arg(fileName)
+                              );
+
         NMDebugCtx(ctxLUMASSMainWin, << "done!");
 		return;
 	}
@@ -4047,6 +4236,7 @@ void LUMASSMainWin::doMOSO()
 
 	// create a new optimisation object
 	NMMosra* mosra = new NMMosra(this);
+    mosra->setLogger(&mLogger);
 
 	// load the file with optimisation settings
 	mosra->loadSettings(fileName);
@@ -4055,8 +4245,14 @@ void LUMASSMainWin::doMOSO()
     NMLayer* layer = this->mLayerList->getLayer(mosra->getLayerName());
 	if (layer == 0)
 	{
-		NMDebugAI( << "couldn't find layer '" << mosra->getLayerName().toStdString() << "'" << endl);
+        //NMDebugAI( << "couldn't find layer '" << mosra->getLayerName().toStdString() << "'" << endl);
+        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                              NMLogger::NM_LOG_ERROR,
+                              QString("Could not find layer '%1'!")
+                                 .arg(mosra->getLayerName())
+                              );
 		delete mosra;
+        NMDebugCtx(ctxLUMASSMainWin, << "done!");
 		return;
 	}
 
@@ -4072,13 +4268,18 @@ void LUMASSMainWin::doMOSO()
     //QFuture<int> future = QtConcurrent::run(mosra, &NMMosra::solveLp);
 
     //    NMDebugAI(<< "waiting 10 secs ..." << endl);
-    //    ::sleep(10);
+    //::sleep(10);
 
     //    QMessageBox::StandardButton btn = QMessageBox::question(this, "Abort Optimisation?",
-    //                    "Press 'Yes' to abort the current optimisation run!");
+    //                                                            "Press 'Yes' to abort the current optimisation run!");
     //    if (btn == QMessageBox::Yes)
     //    {
-    //        NMDebugAI(<< "cancel solving ..." << endl);
+    //        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+    //                              NMLogger::NM_LOG_ERROR,
+    //                              QString("Could not find layer '%1'!")
+    //                                 .arg(mosra->getLayerName())
+    //                              );
+    //        //NMDebugAI(<< "cancel solving ..." << endl);
     //        mosra->cancelSolving();
     //    }
 
@@ -4096,6 +4297,12 @@ void LUMASSMainWin::doMOSO()
     //if (!future.result())
     if (!mosra->solveLp())
 	{
+        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                              NMLogger::NM_LOG_ERROR,
+                              QString("We encountered trouble setting/solving the problem "
+                              "or the optimisation was aborted - s. report '%1'")
+                              .arg(sRepName));
+
         NMDebugAI(<< "We encountered trouble setting/solving the problem or the optimisation was aborted!" << std::endl);
         NMDebugAI( << "write report to '" << sRepName.toStdString() << "'" << endl);
         mosra->writeReport(sRepName);
@@ -4113,6 +4320,11 @@ void LUMASSMainWin::doMOSO()
     NMDebugAI(<< "Optimisation took (min:sec): " << elapsedTime.toStdString() << endl);
     NMMsg(<< "Optimisation took (min:sec): " << elapsedTime.toStdString() << endl);
 
+    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                          NMLogger::NM_LOG_INFO,
+                          QString("Optimisation took (min:sec): %1")
+                             .arg(elapsedTime)
+                          );
 
 	// ============================================================================
     NMDebugAI( << "write report to '" << sRepName.toStdString() << "'" << endl);
@@ -5768,8 +5980,8 @@ void LUMASSMainWin::toggle3DSimpleMode()
 		}
 
 		// set image interaction
-		this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-            vtkInteractorStyleImage::New());
+        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
+            NMVtkInteractorStyleImage::New());
 
 		// reset the camera for the background renderer
 		vtkRenderer* ren0 = this->mBkgRenderer;
@@ -5806,8 +6018,8 @@ void LUMASSMainWin::toggle3DSimpleMode()
 	{
 		NMDebugAI( << "switching 3D on!! ..." << endl);
 
-		this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-			vtkInteractorStyleTrackballCamera::New());
+        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
+            vtkInteractorStyleTrackballCamera::New());
 
 		this->m_orientwidget->SetEnabled(1);
 		this->ui->actionToggle3DStereoMode->setEnabled(true);

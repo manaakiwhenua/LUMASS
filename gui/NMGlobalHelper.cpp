@@ -24,11 +24,13 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 
-#include "nmlog.h"
 #include "ui_lumassmainwin.h"
+#include "lumassmainwin.h"
 #include "NMGlobalHelper.h"
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
+
+#include "nmlog.h"
 
 const std::string NMGlobalHelper::ctx = "NMGlobalHelper";
 
@@ -70,6 +72,12 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     dlg->deleteLater();
     return retText;
 
+}
+
+void
+NMGlobalHelper::appendLogMsg(const QString& msg)
+{
+    NMGlobalHelper::getMainWindow()->appendLogMsg(msg);
 }
 
 LUMASSMainWin *NMGlobalHelper::getMainWindow()

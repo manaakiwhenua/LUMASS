@@ -48,6 +48,7 @@
 #include "NMModelController.h"
 #include "NMEditModelComponentDialog.h"
 #include "NMComponentEditor.h"
+#include "NMGlobalHelper.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "NMRasdamanConnectorWrapper.h"
@@ -65,7 +66,7 @@ public:
 	NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
 	virtual ~NMModelViewWidget();
 
-    LUMASSMainWin* getMainWindow(void);
+    //LUMASSMainWin* getMainWindow(void);
     NMModelScene* getScene(void){return mModelScene;}
     void addWidget(QWidget* w);
     void addItem(QGraphicsItem* item);
@@ -122,6 +123,7 @@ signals:
 	void requestModelReset(const QString& compName);
 	void requestModelAbortion(void);
 	void widgetIsExiting(void);
+    void modelViewActivated(QObject* obj);
 
 
 protected:

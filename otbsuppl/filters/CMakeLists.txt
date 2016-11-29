@@ -45,6 +45,8 @@ file(GLOB OTBSUPPL_HEADER
 
 include(GenerateExportHeader)
 
+add_definitions(-DNM_PROC_LOG)
+
 if(WIN32)
         add_definitions(-DOTBGDALRATIMAGEIO_STATIC_DEFINE)
         ADD_LIBRARY(OTBSupplFilters STATIC ${OTBSUPPL_FILTERS})

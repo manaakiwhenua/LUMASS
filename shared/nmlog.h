@@ -180,4 +180,86 @@ extern int nmindent;
 			std::cout << str.str() << std::endl; \
 		}
 
+// =====================================================
+// macros to facilitate invoking NMLogger::processLogMsg()
+// in the NMModellingFramework and GUI classes
+// =====================================================
+#ifdef NM_ENABLE_LOGGER
+#include "NMLogger.h"
+
+#define NMLogInfo(arg) \
+{ \
+    std::stringstream str; \
+    str arg; \
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(), \
+                           NMLogger::NM_LOG_INFO, \
+                           str.str().c_str()); \
+}
+
+#define NMLogWarn(arg) \
+{ \
+    std::stringstream str; \
+    str arg; \
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(), \
+                           NMLogger::NM_LOG_WARN, \
+                           str.str().c_str()); \
+}
+
+#define NMLogError(arg) \
+{ \
+    std::stringstream str; \
+    str arg; \
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(), \
+                           NMLogger::NM_LOG_ERROR, \
+                           str.str().c_str()); \
+}
+
+#define NMLogDebug(arg) \
+{ \
+    std::stringstream str; \
+    str arg; \
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(), \
+                           NMLogger::NM_LOG_DEBUG, \
+                           str.str().c_str()); \
+}
+# else
+# define NMLogInfo(arg)
+# define NMLogWarn(arg)
+# define NMLogError(arg)
+# define NMLogDebug(arg)
+#endif
+
+
+// =====================================================
+// macros to facilitate invoking itk::NMLogEvent() in
+//      itk::Object derived classes (itk::ProcessObject)
+// =====================================================
+#ifdef NM_PROC_LOG
+#include "itkNMLogEvent.h"
+
+#define NMProcErr(arg) \
+        { \
+            this->InvokeEvent(itk::NMLogEvent(arg, \
+                    itk::NMLogEvent::NM_LOG_ERROR)); \
+        }
+
+#define NMProcWarn(arg)  \
+        { \
+            this->InvokeEvent(itk::NMLogEvent(arg, \
+                    itk::NMLogEvent::NM_LOG_WARN)); \
+        }
+
+#define NMProcInfo(arg) \
+       { \
+           this->InvokeEvent(itk::NMLogEvent(arg, \
+                   itk::NMLogEvent::NM_LOG_INFO)); \
+       }
+
+#define NMProcDebug(arg) \
+       { \
+           this->InvokeEvent(itk::NMLogEvent(arg, \
+                   itk::NMLogEvent::NM_LOG_DEBUG)); \
+       }
+#endif // NM_PROC_LOG
+
 #endif /* NMLOG_H_ */

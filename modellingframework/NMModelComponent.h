@@ -29,12 +29,14 @@
 #include <QMetaType>
 #include <QSharedPointer>
 
-#include "nmlog.h"
+#include "itkCommand.h"
+
 #include "NMMacros.h"
 #include "NMItkDataObjectWrapper.h"
 #include "nmmodframe_export.h"
 
 class NMIterableComponent;
+class NMLogger;
 
 /*! \brief DEPRECATED: NMModelComponent is one of the core building blocks of the LUMASS modelling
  *         framework. It represents either a single process (i.e. algorithm,
@@ -103,6 +105,8 @@ public:
     QString getUserID()
         {return this->mUserID;}
 
+    void setLogger(NMLogger* logger){mLogger = logger;}
+
     /*!
      * \brief getModelParameter fetches model component property values;
      *        in contrast to NMProcess::getParameter() this function also looks
@@ -119,6 +123,9 @@ public:
     void setDescription(QString descr);
     QString getDescription()
     	{return this->mDescription;}
+
+
+    void ProcessLogEvent(itk::Object* obj, const itk::EventObject& event);
 
     //QStringList getPropertyList(void);
 
@@ -167,6 +174,11 @@ protected:
     short mTimeLevel;
 
     QList<QStringList> mInputs;
+
+    typedef itk::MemberCommand<NMModelComponent> ObserverType;
+    ObserverType::Pointer mObserver;
+
+    NMLogger* mLogger;
 
     virtual void initAttributes(void);
 

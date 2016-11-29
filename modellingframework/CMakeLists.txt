@@ -44,12 +44,14 @@ file(GLOB MFW_CPP
    ${mfw_wrapper_SOURCE_DIR}/*.cpp
    ${mfw_wrapper_SOURCE_DIR}/*.cxx
    ${lumass_SOURCE_DIR}/util/ITK/itkVTKImageExportBase.cxx
+   ${shared_SOURCE_DIR}/NMLogger.cpp
 )
 
 file(GLOB MFW_H
    ${mfw_SOURCE_DIR}/*.h
    ${mfw_BINARY_DIR}/*.h
    ${mfw_wrapper_SOURCE_DIR}/*.h
+   ${shared_SOURCE_DIR}/NMLogger.h
 )
 
     #LIST(REMOVE_ITEM MFW_CPP ${mfw_wrapper_SOURCE_DIR}/WrapperTemplate.cpp)
@@ -68,6 +70,7 @@ endif()
 
 SET(MFW_MOC_H ${MFW_H})
 LIST(REMOVE_ITEM MFW_MOC_H ${mfw_SOURCE_DIR}/NMMfwException.h)
+LIST(APPEND MFW_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 
 
 #if (OTB_VERSION_STRING VERSION_LESS "5.0.0")
@@ -112,7 +115,7 @@ IF(RASSUPPORT)
     LIST(APPEND MFW_DEP_LIBS RasImageIO)
 ENDIF()
 
-add_definitions(-DNMModFrame_EXPORTS)
+add_definitions(-DNMModFrame_EXPORTS -DNM_PROC_LOG)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 #IF(NOT WIN32)
 #    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")

@@ -23,7 +23,14 @@
 #include <QMetaObject>
 #include <QMetaProperty>
 
-#include "nmlog.h"
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
 #include "NMDataComponent.h"
@@ -45,6 +52,7 @@ void NMModelComponent::initAttributes(void)
     this->mUpComponent = 0;
     this->mDownComponent = 0;
     this->mHostComponent = 0;
+    this->mLogger = 0;
 }
 
 NMModelComponent::~NMModelComponent(void)
@@ -64,6 +72,30 @@ NMModelComponent::~NMModelComponent(void)
 
 //    return propList;
 //}
+
+void
+NMModelComponent::ProcessLogEvent(itk::Object* obj, const itk::EventObject& event)
+{
+    if (typeid(event) == typeid(itk::NMLogEvent))
+    {
+        itk::NMLogEvent& le = dynamic_cast<itk::NMLogEvent&>(
+                    const_cast<itk::EventObject&>(event));
+        if (mLogger)
+        {
+            QString userID = this->getUserID();
+            if (userID.isEmpty())
+            {
+                userID = this->objectName();
+            }
+
+            QString logmsg = QString("%1: %2").arg(userID).arg(le.getLogMsg().c_str());
+            mLogger->processLogMsg(le.getLogTime().c_str(),
+                                   (NMLogger::LogEventType)le.getLogType(),
+                                   logmsg);
+        }
+    }
+}
+
 
 QVariant
 NMModelComponent::getModelParameter(const QString &paramSpec)

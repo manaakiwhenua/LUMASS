@@ -60,6 +60,8 @@
 #include "vtkDataSetAttributes.h"
 //#include "vtkQtTableModelAdapter.h"
 
+class NMLogger;
+
 class NMMosra : public QObject
 {
 	Q_OBJECT
@@ -87,6 +89,8 @@ public:
 	int loadSettings(QString fileName);
 
 	QString getLayerName(void);
+
+    void setLogger(NMLogger* logger){mLogger = logger;}
 
 	void setDataSet(const vtkDataSet* dataset);
 	const vtkDataSet* getDataSet()
@@ -151,7 +155,9 @@ public:
 	 * i.e. interactive cancellation of solving process rather
 	 * than a time one
 	 */
-	static int callbackIsSolveCanceled(lprec* lp, void* userhandle);
+    static int callbackIsSolveCanceled(lprec* lp, void* userhandle);
+
+    static void lpLogCallback(lprec* lp, void* userhandle, char* buf);
 
 
 
@@ -161,6 +167,7 @@ private:
 
 	HLpHelper* mLp;
 	vtkDataSet* mDataSet;
+    NMLogger* mLogger;
 
 	QString msReport;
 	QString msSettingsReport;
@@ -247,6 +254,7 @@ private:
 	int addCriCons(void);
 
 	int isSolveCanceled(void);
+    void forwardLpLog(const char* log);
 
 	/* converts the user specified area into area units
 	  (same units as the specified area field) */

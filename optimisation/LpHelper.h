@@ -65,6 +65,7 @@ public:
     void SetPresolve(int presolveFlags, int maxloops=-1);
 
 	void SetAbortFunc(void *owningObject, int (*abortfunc)(lprec*,void*));
+    void SetLogFunc(void *owningObject, void (*logfunc)(lprec*, void*, char*));
 	void SetMinim();
 	void SetMaxim();
 

@@ -71,6 +71,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* ====================================================================== */
     /* MODEL CONTROLLER SETUP */
     /* ====================================================================== */
+    LUMASSMainWin* mainWin = NMGlobalHelper::getMainWindow();//this->getMainWindow();
+
     mModelRunThread = new QThread(this);
     connect(this, SIGNAL(widgetIsExiting()), mModelRunThread, SLOT(quit()));
 
@@ -78,6 +80,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
  	mModelController = NMModelController::getInstance();
  	mModelController->moveToThread(mModelRunThread);
+    mModelController->getLogger()->setHtmlMode(true);
 
  	connect(this, SIGNAL(requestModelExecution(const QString &)),
  			mModelController, SLOT(executeModel(const QString &)));
@@ -87,6 +90,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
  			mModelController, SLOT(abortModel()), Qt::DirectConnection);
  	connect(mModelController, SIGNAL(signalIsControllerBusy(bool)),
  			this, SLOT(reportIsModelControllerBusy(bool)));
+    connect(mModelController->getLogger(), SIGNAL(sendLogMsg(const QString &)),
+            mainWin, SLOT(appendHtmlMsg(const QString &)));
 
  	mRootComponent = new NMSequentialIterComponent();
 	mRootComponent->setObjectName("root");
@@ -100,7 +105,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* ====================================================================== */
     /* GET THE RASDAMAN CONNECTOR FROM THE MAIN WINDOW */
 	/* ====================================================================== */
-    LUMASSMainWin* mainWin = this->getMainWindow();
+
 
 #ifdef BUILD_RASSUPPORT	
 	this->mRasConn = new NMRasdamanConnectorWrapper(this);
@@ -3263,7 +3268,7 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
 
     if (mTreeCompEditor == 0)
     {
-        LUMASSMainWin* otbwin = this->getMainWindow();
+        LUMASSMainWin* otbwin = NMGlobalHelper::getMainWindow();//this->getMainWindow();
         if (otbwin == 0)
         {
             NMErr(ctx, << "Couldn't get hold of main application window!")
@@ -3459,6 +3464,13 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
 
         return true;
     }
+    else if (e->type() == QEvent::MouseButtonPress)
+    {
+        emit modelViewActivated(this);
+    }
+
+
+
 //    else if (e->type() == QEvent::Drop)
 //    {
 //        QDropEvent* de = static_cast<QDropEvent*>(e);
@@ -3471,20 +3483,20 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
     return false;
 }
 
-LUMASSMainWin*
-NMModelViewWidget::getMainWindow(void)
-{
-    LUMASSMainWin* mainWin = 0;
-    QWidgetList tlw = qApp->topLevelWidgets();
-    QWidgetList::ConstIterator it = tlw.constBegin();
-    for (; it != tlw.constEnd(); ++it)
-    {
-        QWidget* w = const_cast<QWidget*>(*it);
-        if (w->objectName().compare("LUMASSMainWin") == 0)
-        {
-            mainWin = qobject_cast<LUMASSMainWin*>(w);
-        }
-    }
+//LUMASSMainWin*
+//NMModelViewWidget::getMainWindow(void)
+//{
+//    LUMASSMainWin* mainWin = 0;
+//    QWidgetList tlw = qApp->topLevelWidgets();
+//    QWidgetList::ConstIterator it = tlw.constBegin();
+//    for (; it != tlw.constEnd(); ++it)
+//    {
+//        QWidget* w = const_cast<QWidget*>(*it);
+//        if (w->objectName().compare("LUMASSMainWin") == 0)
+//        {
+//            mainWin = qobject_cast<LUMASSMainWin*>(w);
+//        }
+//    }
 
-    return mainWin;
-}
+//    return mainWin;
+//}

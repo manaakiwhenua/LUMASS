@@ -23,6 +23,7 @@ INCLUDE_DIRECTORIES(
 	${filters_SOURCE_DIR}
 	${filters_BINARY_DIR}
 	${shared_SOURCE_DIR}
+    ${shared_BINARY_DIR}
 	${rimageio_SOURCE_DIR}
 	${mfw_SOURCE_DIR}    
 	${mfw_BINARY_DIR}
@@ -53,11 +54,15 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 QT5_WRAP_CPP(ENGINE_MOC_CPP
 	${opt_SOURCE_DIR}/NMMosra.h
 	${opt_SOURCE_DIR}/MOSORunnable.h
+    ${shared_SOURCE_DIR}/NMLogger.h
 )
 
 file(GLOB ENGINE_SRC 
     ${opt_SOURCE_DIR}/*.cpp 
     ${lumassengine_SOURCE_DIR}/*.cxx 
+
+    # and ...
+    ${shared_SOURCE_DIR}/NMLogger.cpp
 )
 
 set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml

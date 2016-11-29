@@ -33,6 +33,7 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
+#include "itkNMLogEvent.h"
 
 #include <ctime>
 
@@ -185,8 +186,19 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         this->InvokeEvent(itk::AbortEvent());
         throw;
     }
+    catch(itk::ExceptionObject& eo)
+    {
+        NMProcErr(eo.GetDescription());
+        throw;
+    }
+    catch(std::exception& se)
+    {
+        NMProcErr(se.what());
+        throw;
+    }
     catch(...)
     {
+        NMProcErr("Unknown Error!");
         throw;
     }
 
@@ -231,8 +243,19 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     if (nbInputs < 2 || nbRAT < 2)
     {
         NMDebugCtx(ctx, << "done!");
-        itkExceptionMacro(<< "Need at least two input layers to work!");
+        itkExceptionMacro(<< "Need at least two input layers with raster attribute table to work!");
         return;
+    }
+
+    if (m_InputNodata.size() == 0)
+    {
+        this->InvokeEvent(itk::NMLogEvent("No 'InputNodata' values defined!",
+                                          itk::NMLogEvent::NM_LOG_WARN));
+    }
+    else if (m_InputNodata.size() < nbInputs)
+    {
+        this->InvokeEvent(itk::NMLogEvent("'InputNodata' values are not defined for all input layers!",
+                                          itk::NMLogEvent::NM_LOG_WARN));
     }
 
     // ======================================================================
@@ -252,15 +275,17 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         if((inputSize[0] != m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(0))
            || (inputSize[1] != m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(1)))
           {
-          itkExceptionMacro(<< "Input images must have the same dimensions." << std::endl
-                            << "image #1 is [" << inputSize[0] << ";" << inputSize[1] << "]" << std::endl
-                            << "image #" << p+1 << " is ["
-                            << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(0) << ";"
-                            << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(1) << "]");
+            //          itkExceptionMacro(<< "Input images must have the same dimensions." << std::endl
+            //                            << "image #1 is [" << inputSize[0] << ";" << inputSize[1] << "]" << std::endl
+            //                            << "image #" << p+1 << " is ["
+            //                            << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(0) << ";"
+            //                            << m_InputImages.at(p)->GetLargestPossibleRegion().GetSize(1) << "]");
 
           itk::ExceptionObject e(__FILE__, __LINE__);
           e.SetLocation(ITK_LOCATION);
           e.SetDescription("Input regions don't match in size!");
+          this->InvokeEvent(itk::NMLogEvent("Input regions differ in size!",
+                                            itk::NMLogEvent::NM_LOG_ERROR));
           NMDebugCtx(ctx, << "done!");
           throw e;
           }
@@ -291,6 +316,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typename ReaderType::Pointer iterReader = 0;
     typename CombFilterType::Pointer ctFilter = CombFilterType::New();
     ctFilter->SetReleaseDataFlag(true);
+
     otb::SQLiteTable::Pointer uvTable = otb::SQLiteTable::New();
     uvTable->SetUseSharedCache(false);
 
@@ -309,6 +335,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     uvTableName << temppath << "uv_" << this->getRandomString(5) << ".ldb";
     if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
     {
+        this->InvokeEvent(itk::NMLogEvent("Failed to create the combinations table!",
+                                          itk::NMLogEvent::NM_LOG_ERROR));
         itkExceptionMacro(<< "Combinatorial analysis failed!");
         NMDebugCtx(ctx, << "done!");
         return;
@@ -336,8 +364,15 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         chunk *= 0.33;
 
         // do  the combinatorial analysis ...
-        NMDebugAI( << ">>>>> Iteration " << numIter << " <<<<<<" << std::endl);
-        NMDebugAI( << "  combining imgs #" << fstImg << " to #" << lastImg << std::endl);
+        std::stringstream msg;
+        //NMDebugAI( << ">>>>> Iteration " << numIter << " <<<<<<" << std::endl);
+        msg << ">>>>> Iteration " << numIter << " <<<<<<" << std::endl;
+        this->InvokeEvent(itk::NMLogEvent(msg.str(), itk::NMLogEvent::NM_LOG_INFO));
+
+        //NMDebugAI( << "  combining imgs #" << fstImg << " to #" << lastImg << std::endl);
+        msg.str("");
+        msg << "combining imgs #" << fstImg << " to #" << lastImg << std::endl;
+        this->InvokeEvent(itk::NMLogEvent(msg.str(), itk::NMLogEvent::NM_LOG_INFO));
         // set up the combination filter
 
         for (int i=fstImg; i <= lastImg; ++i, ++pos)
@@ -345,7 +380,11 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
             ctFilter->SetInput(pos, m_InputImages.at(m_ProcOrder.at(i)));
             ctFilter->setRAT(pos, m_vInRAT.at(m_ProcOrder.at(i)));
 
-            if (m_ProcOrder.at(i) < m_InputNodata.size())
+            if (m_InputNodata.size() == 0)
+            {
+                nodata.push_back(itk::NumericTraits<long long>::NonpositiveMin());
+            }
+            else if (m_ProcOrder.at(i) < m_InputNodata.size())
             {
                 nodata.push_back(static_cast<long long>(m_InputNodata.at(m_ProcOrder.at(i))));
             }
@@ -365,6 +404,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
                 names.push_back(n.str());
             }
         }
+
         ctFilter->SetInputNodata(nodata);
         ctFilter->SetImageNames(names);
         std::stringstream ctTableNameStr;
@@ -379,7 +419,11 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
         ctWriter->SetReleaseDataFlag(true);
-        NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
+
+        msg.str("");
+        //NMDebugAI( << "  do combinatorial analysis ..." << std::endl);
+        msg << "  do combinatorial analysis ..." << std::endl;
+        this->InvokeEvent(itk::NMLogEvent(msg.str(), itk::NMLogEvent::NM_LOG_INFO));
         ctWriter->Update();
 
         otb::AttributeTable::Pointer tempUvTable = ctFilter->getRAT(0);
@@ -392,9 +436,6 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         ctFilter->GetOutput()->ReleaseData();
         ctFilter = 0;
         ctWriter = 0;
-
-
-
 
         progr += chunk;
         this->UpdateProgress(progr);
@@ -413,7 +454,10 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // .........................
 
         // update the final table
-        NMDebugAI( << "  do table magic ..." << std::endl);
+        //NMDebugAI( << "  do table magic ..." << std::endl);
+        msg.str("");
+        msg << "  do table magic ..." << std::endl;
+        this->InvokeEvent(itk::NMLogEvent(msg.str(), itk::NMLogEvent::NM_LOG_INFO));
         otb::SQLiteTable::Pointer sqlTemp = static_cast<otb::SQLiteTable*>(tempUvTable.GetPointer());
 
         // create some shortcut strings for programmer's readability ....

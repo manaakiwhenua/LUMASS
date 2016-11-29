@@ -29,6 +29,7 @@
 #include <exception>
 
 #include "nmlog.h"
+#include "NMLogger.h"
 #include "NMMacros.h"
 
 #include <qobject.h>
@@ -167,12 +168,17 @@ public:
         {return this->mbIsInitialised;}
 
     bool isSink(void) {return mIsSink;}
+    void setReleaseData(bool release){mbReleaseData = release;}
+    bool getReleaseData(void){return mbReleaseData;}
+
 
     /*! Convenience method to set the input/output/(in- & output)
      *  image type specification from a NMItkDataObjectWrapper */
     void setInputImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
     void setOutputImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
     void setImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
+
+    void setLogger(NMLogger* logger){mLogger = logger;}
 
 
 	QDateTime getModifiedTime(void)
@@ -260,6 +266,8 @@ protected:
 	typedef itk::MemberCommand<NMProcess> ObserverType;
 	ObserverType::Pointer mObserver;
 
+    NMLogger* mLogger;
+
 
 	/*! \brief Call-back method for itk::Process-based NMProcess classes to
 	 *         signal (emit) the process' state to listeners
@@ -288,6 +296,7 @@ protected:
 private:
     unsigned int mStepIndex;
     bool mIsSink;
+    bool mbReleaseData;
 
 };
 

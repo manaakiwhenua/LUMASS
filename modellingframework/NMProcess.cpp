@@ -33,9 +33,10 @@
 #include "NMDataComponent.h"
 #include "NMModelController.h"
 #include "utils/muParser/muParserError.h"
+#include "itkNMLogEvent.h"
 
 NMProcess::NMProcess(QObject *parent)
-    : mbAbortExecution(false), mbLinked(false)
+    : mbAbortExecution(false), mbLinked(false), mLogger(0)
 {
 	this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
@@ -50,6 +51,7 @@ NMProcess::NMProcess(QObject *parent)
 	this->mProgress = 0.0;
 	this->mMTime.setMSecsSinceEpoch(0);
     this->mIsSink = false;
+    this->mbReleaseData = true;
     this->mStepIndex = 0;
 }
 
@@ -93,7 +95,8 @@ NMProcess::linkInPipeline(unsigned int step,
 		this->mOtbProcess->AddObserver(itk::StartEvent(), mObserver);
 		this->mOtbProcess->AddObserver(itk::EndEvent(), mObserver);
 		this->mOtbProcess->AddObserver(itk::AbortEvent(), mObserver);
-        if (mIsSink)
+        this->mOtbProcess->AddObserver(itk::NMLogEvent(), mObserver);
+        if (mIsSink && mbReleaseData)
         {
             this->mOtbProcess->ReleaseDataFlagOn();
         }
@@ -468,11 +471,15 @@ void NMProcess::update(void)
             NMIterableComponent* pc = qobject_cast<NMIterableComponent*>(this->parent());
             if (pc)
             {
+                std::stringstream msg;
                 NMIterableComponent* hc = pc->getHostComponent();
 
-                std::stringstream msg;
-                msg << hc->objectName().toStdString() << " step #" << hc->getIterationStep() << ": "
-                    << pc->objectName().toStdString() << " step #" << pc->getIterationStep()
+                if (hc)
+                {
+                    msg << hc->objectName().toStdString() << " step #" << hc->getIterationStep() << ": ";
+                }
+
+                msg << pc->objectName().toStdString() << " step #" << pc->getIterationStep()
                     << ": " << err.what();
                 rerr.setMsg(msg.str());
             }
@@ -545,9 +552,20 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 		return;
 
     QString objName = this->objectName();
+    QString userID;
     if (this->parent())
     {
         objName = this->parent()->objectName();
+
+        NMModelComponent* mcomp = qobject_cast<NMModelComponent*>(this->parent());
+        if (mcomp)
+        {
+            userID = mcomp->getUserID();
+            if (userID.isEmpty())
+            {
+                userID = mcomp->objectName();
+            }
+        }
     }
 
 	if (this->mbAbortExecution)
@@ -572,14 +590,36 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 	{
         emit signalExecutionStopped(objName);
 		emit signalProgress(0);
+        QString logmsg = QString("%1: %2").arg(userID).arg("Process aborted!");
+        mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
+                               NMLogger::NM_LOG_INFO,
+                               logmsg);
 		this->mOtbProcess->ResetPipeline();
 		this->mOtbProcess->SetAbortGenerateData(false);
 		this->mbAbortExecution = false;
 	}
+    else if (typeid(event) == typeid(itk::NMLogEvent))
+    {
+        itk::NMLogEvent& le = dynamic_cast< itk::NMLogEvent& > (
+                    const_cast<itk::EventObject&>(event)
+                    );
+
+        if (mLogger)
+        {
+            QString logmsg = QString("%1: %2").arg(userID).arg(le.getLogMsg().c_str());
+            mLogger->processLogMsg(le.getLogTime().c_str(),
+                                   (NMLogger::LogEventType)le.getLogType(),
+                                   logmsg);
+        }
+
+        //        NMDebugAI(<< "NMProcess has received a message from its "
+        //                  << "underlying process! ..." << std::endl);
+        //        NMDebugAI(<< "type: " << le.getLogType() << " msg: " << le.getLogMsg() << std::endl);
+    }
 
 	// regardless of what event made this method been called, it indicates that
 	// the process has been executed, which means for the next iteration, new
-	// parameters have potentially be linked in again
+    // parameters have potentially to be linked in again
 	//NMDebugAI(<< this->parent()->objectName().toStdString()
 	//		  << "::UpdateProgressInfo(): mbLinked = false" << endl);
 	this->mbLinked = false;

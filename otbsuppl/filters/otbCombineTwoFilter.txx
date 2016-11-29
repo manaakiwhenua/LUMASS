@@ -22,6 +22,7 @@
 #define __otbCombineTwoFilter_txx
 
 #include "nmlog.h"
+#include "itkNMLogEvent.h"
 #include "otbCombineTwoFilter.h"
 
 #include "itkImageRegionIterator.h"
@@ -128,7 +129,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
            )
         {
             itkExceptionMacro(<< "Input imgages' dimensions don't match!");
-            NMDebugCtx(ctx, << "done!");
+            //NMDebugCtx(ctx, << "done!");
             return;
         }
     }
@@ -196,7 +197,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         if (m_ComboTable->CreateTable(m_OutputTableFileName, "1")
                 == SQLiteTable::ATCREATE_ERROR)
         {
-            NMDebugCtx(ctx, << "done!");
+            //NMDebugCtx(ctx, << "done!");
             itkExceptionMacro("Failed creating unique combination attribute table!");
             return;
         }
@@ -378,7 +379,7 @@ template< class TInputImage, class TOutputImage >
 void CombineTwoFilter< TInputImage, TOutputImage >
 ::ResetPipeline()
 {
-	NMDebugCtx(ctx, << "...");
+    //NMDebugCtx(ctx, << "...");
 
     m_ComboMap.clear();
     m_TotalPixCount = 0;
@@ -397,7 +398,7 @@ void CombineTwoFilter< TInputImage, TOutputImage >
     m_vThreadComboTracker.clear();
 
     Superclass::ResetPipeline();
-    NMDebugCtx(ctx, << "done!");
+    //NMDebugCtx(ctx, << "done!");
 }
 
 } // end namespace otb

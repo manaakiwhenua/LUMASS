@@ -19,8 +19,8 @@
 #ifndef NMGLOBALHELPER_H
 #define NMGLOBALHELPER_H
 
-#include "vtkRenderWindow.h"
-#include "lumassmainwin.h"
+//#include "vtkRenderWindow.h"
+//#include "lumassmainwin.h"
 
 #include <QString>
 #include <QAbstractItemModel>
@@ -28,6 +28,8 @@
 #include <QItemSelection>
 
 class QVTKWidget;
+class LUMASSMainWin;
+class vtkRenderWindow;
 
 class NMGlobalHelper
 {
@@ -47,6 +49,8 @@ public:
     static qreal getLUMASSVersion(void);
 
     static QString getRandomString(int len);
+
+    void appendLogMsg(const QString& msg);
 
 private:
     static const std::string ctx;

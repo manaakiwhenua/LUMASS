@@ -30,6 +30,7 @@
 #include "NMIterableComponent.h"
 #include "NMMfwException.h"
 #include "otbSQLiteTable.h"
+#include "itkNMLogEvent.h"
 
 const std::string NMDataComponent::ctx = "NMDataComponent";
 
@@ -63,21 +64,32 @@ NMDataComponent::initAttributes(void)
 void
 NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
 {
-    if (!mDataWrapper.isNull())
-        mDataWrapper.clear();
-
-	mDataWrapper = inputImg;
     // note QSharedPointer takes care of management, so no
     // parent required, actually if we had a parent
     // we'd get crash with double free error
-    //mDataWrapper->setParent(this);
 
-    // in case we've got a table and getModelParameter is called
-    // fetch the minimum value of its primary key so we're getting
-    // the right parameter
-    if (!mDataWrapper.isNull() && mDataWrapper->getOTBTab().IsNotNull())
+    if (!mDataWrapper.isNull())
+        mDataWrapper.clear();
+	mDataWrapper = inputImg;
+
+    if (!mDataWrapper.isNull())
     {
-        mTabMinPK = mDataWrapper->getOTBTab()->GetMinPKValue();
+        if (mDataWrapper->getDataObject())
+        {
+            // add an observer to keep track of any internal log worthy events
+            mObserver = ObserverType::New();
+            mObserver->SetCallbackFunction(this, &NMModelComponent::ProcessLogEvent);
+            mDataWrapper->getDataObject()->AddObserver(itk::NMLogEvent(), mObserver);
+        }
+
+
+        // in case we've got a table and getModelParameter is called
+        // fetch the minimum value of its primary key so we're getting
+        // the right parameter
+        if (mDataWrapper->getOTBTab().IsNotNull())
+        {
+            mTabMinPK = mDataWrapper->getOTBTab()->GetMinPKValue();
+        }
     }
 
 	emit NMDataComponentChanged();

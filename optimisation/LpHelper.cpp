@@ -652,3 +652,8 @@ void HLpHelper::SetAbortFunc(void *owningObject, int (*abortfunc)(lprec*, void*)
 {
 	put_abortfunc(this->m_pLp, abortfunc, owningObject);
 }
+
+void HLpHelper::SetLogFunc(void *owningObject, void (*logfunc)(lprec *, void *, char *))
+{
+    put_logfunc(this->m_pLp, logfunc, owningObject);
+}

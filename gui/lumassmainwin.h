@@ -52,6 +52,7 @@
 //#include "NMLayer.h"
 
 #include "NMSqlTableView.h"
+#include "NMLogger.h"
 
 #include "otbSQLiteTable.h"
 #include "mpParser.h"
@@ -152,6 +153,7 @@ public slots:
     void showComponentsInfoView(bool);
     void showMapView(bool);
     void showModelView(bool);
+    void showNotificationsView(bool);
     void showTable();
     void showScaleBar(bool);
     void showCoordinateAxes(bool);
@@ -183,6 +185,18 @@ public slots:
     void treeFindLoops(void);
     void deleteTableObject(const QString &);
     void convertImageToPolyData();
+    void swapWindowLayout(QAction *act);
+    void modelViewActivated(QObject *);
+
+    void pan(bool toggled);
+    void zoomIn(bool toggled);
+    void zoomOut(bool toggled);
+    void zoomToContent();
+    void updateExclusiveActions(const QString& checkedAction);
+
+
+    void appendLogMsg(const QString& msg);
+    void appendHtmlMsg(const QString& msg);
 
     QStringList getNextParamExpr(const QString& expr);
 
@@ -477,12 +491,10 @@ private:
     // for showing pixel values
     QLabel* mPixelValLabel;
 
-    QMdiArea* mMdiArea;
-    QMainWindow* mModelBuilderWindow;
-    QMainWindow* mMapWindow;
-
     QToolBar* mMapToolBar;
     QIcon mLUMASSIcon;
+
+    QList<QAction*> mExclusiveActions;
 
 
     unsigned int mBusyProcCounter;
@@ -521,6 +533,10 @@ private:
 	QMap<QString, QPair<void*, sqlite3*> > mTableAdminObjects;
 
     QListWidget* mTableListWidget;
+
+    NMLogger mLogger;
+
+    QObject* mActiveMainWidget;
 
     // the last event objects filtered by LUMASSMainWin
     QObject* mLastSender;

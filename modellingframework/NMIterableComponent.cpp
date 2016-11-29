@@ -606,6 +606,7 @@ void NMIterableComponent::initialiseComponents(unsigned int timeLevel)
 	{
 //		NMDebugAI(<< "instantiate process '" << this->mProcess->objectName().toStdString() << "'" << std::endl);
 		this->mProcess->instantiateObject();
+        this->mProcess->setLogger(this->mLogger);
 //		NMDebugCtx(this->objectName().toStdString(), << "done!");
 		return;
 	}

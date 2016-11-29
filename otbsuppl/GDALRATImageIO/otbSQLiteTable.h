@@ -111,7 +111,9 @@ public:
 
     /// SQLite support functions
     void SetUseSharedCache(bool shared) {m_bUseSharedCache = shared;}
+    bool GetUseSharedCache(void){return m_bUseSharedCache;}
     void SetOpenReadOnly(bool readonly) {m_bOpenReadOnly = readonly;}
+    bool GetOpenReadOnlyFlag(void){return m_bOpenReadOnly;}
     bool SetTableName(const std::string& tableName);
     bool SetDbFileName(const std::string& dbFileName);
 

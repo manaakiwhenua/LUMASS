@@ -534,7 +534,7 @@ private:
 
     QListWidget* mTableListWidget;
 
-    NMLogger mLogger;
+    NMLogger* mLogger;
 
     QObject* mActiveMainWidget;
 

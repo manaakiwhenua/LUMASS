@@ -33,7 +33,16 @@
 
 
 // NM stuff
-#include "nmlog.h"
+//#include "nmlog.h"
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
+
 #include "NMMacros.h"
 //#include "NMLayer.h"
 #include "NMImageLayer.h"
@@ -279,8 +288,10 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     this->mLastInfoLayer = 0;
     this->mActiveMainWidget = 0;
 
-    mLogger.setHtmlMode(true);
-    connect(&mLogger, SIGNAL(sendLogMsg(QString)), this, SLOT(appendHtmlMsg(QString)));
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), this, SLOT(appendHtmlMsg(QString)));
 
 	// some meta type registration for supporting the given types for
 	// properties and QVariant
@@ -324,18 +335,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     this->setWindowIcon(mLUMASSIcon);
 
-    // ================================================
-    //
-    // ================================================
-
-    //    mModelBuilderWindow = new QMainWindow(this);
-    //    //    mModelBuilderWindow->setWindowTitle("Model Builder");
-    //    mModelBuilderWindow->setWindowFlags(Qt::Widget);
-    //    mModelBuilderWindow->setMouseTracking(true);
-    //    mModelBuilderWindow->addToolBar(this->ui->mainToolBar);
-    //    mModelBuilderWindow->setCentralWidget(ui->modelViewWidget);
-
-
 
     // ================================================
     // INFO COMPONENT DOCK
@@ -354,7 +353,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     ui->componentInfoDock->setVisible(true);
 
     // ================================================
-    // MODEL COMPONENT DOCK (Source)
+    // LAYER / TABLE / MODEL COMPONENT DOCK (Source)
     // ================================================
 
     // set up the layer list
@@ -366,6 +365,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     qreal pratio = qApp->devicePixelRatio();
     mTableListWidget = new QListWidget(ui->compWidgetList);
     mTableListWidget->setObjectName(QString::fromUtf8("tableListWidget"));
+    mTableListWidget->setAcceptDrops(true);
     mTableListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     mTableListWidget->setIconSize(QSize((int)16*pratio,(int)16*pratio));
     //    connect(mTableListWidget, SIGNAL(itemClicked(QListWidgetItem*)),
@@ -842,7 +842,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToCrystalEyes();
                     renwin->StereoUpdate();
-                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                           NMLogger::NM_LOG_INFO,
                                           "Stereo mode switched to Crystal Eye");
                 }
@@ -850,7 +850,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToAnaglyph();
                     renwin->StereoUpdate();
-                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                           NMLogger::NM_LOG_INFO,
                                           "Stereo mode switched to Anaglyph");
                 }
@@ -858,7 +858,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToInterlaced();
                     renwin->StereoUpdate();
-                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                           NMLogger::NM_LOG_INFO,
                                           "Stereo mode switched to Interlaced");
                 }
@@ -866,7 +866,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToRedBlue();
                     renwin->StereoUpdate();
-                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                           NMLogger::NM_LOG_INFO,
                                           "Stereo mode switched to Red-Blue");
                 }
@@ -874,7 +874,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToSplitViewportHorizontal();
                     renwin->StereoUpdate();
-                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                           NMLogger::NM_LOG_INFO,
                                           "Stereo mode switched to Split Viewport Horizontal");
                 }
@@ -882,7 +882,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToDresden();
                     renwin->StereoUpdate();
-                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                           NMLogger::NM_LOG_INFO,
                                           "Stereo mode switched to Dresden");
                 }
@@ -890,7 +890,7 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
                 {
                     renwin->SetStereoTypeToCheckerboard();
                     renwin->StereoUpdate();
-                    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                           NMLogger::NM_LOG_INFO,
                                           "Stereo mode switched to Checkerboard");
                 }
@@ -1029,7 +1029,7 @@ LUMASSMainWin::zoomToContent()
             }
             else
             {
-                mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+                mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                                       NMLogger::NM_LOG_INFO,
                                       "Zoom to Layer: No layer selected!");
             }
@@ -4181,7 +4181,7 @@ void LUMASSMainWin::doMOSO()
 	if (fileName.isNull())
 	{
         //NMDebugAI( << "Please provide a filename!" << endl);
-        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+        mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                               NMLogger::NM_LOG_INFO,
                               "Please specifiy file to run an optimisation scenario!");
         NMDebugCtx(ctxLUMASSMainWin, << "done!");
@@ -4197,7 +4197,7 @@ void LUMASSMainWin::doMOSO()
 	if (!fileinfo.isReadable())
 	{
         //NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
-        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+        mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                               NMLogger::NM_LOG_ERROR,
                               QString("Could not read file '%1'!")
                                  .arg(fileName)
@@ -4236,7 +4236,7 @@ void LUMASSMainWin::doMOSO()
 
 	// create a new optimisation object
 	NMMosra* mosra = new NMMosra(this);
-    mosra->setLogger(&mLogger);
+    mosra->setLogger(mLogger);
 
 	// load the file with optimisation settings
 	mosra->loadSettings(fileName);
@@ -4246,7 +4246,7 @@ void LUMASSMainWin::doMOSO()
 	if (layer == 0)
 	{
         //NMDebugAI( << "couldn't find layer '" << mosra->getLayerName().toStdString() << "'" << endl);
-        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+        mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                               NMLogger::NM_LOG_ERROR,
                               QString("Could not find layer '%1'!")
                                  .arg(mosra->getLayerName())
@@ -4274,7 +4274,7 @@ void LUMASSMainWin::doMOSO()
     //                                                            "Press 'Yes' to abort the current optimisation run!");
     //    if (btn == QMessageBox::Yes)
     //    {
-    //        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+    //        mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
     //                              NMLogger::NM_LOG_ERROR,
     //                              QString("Could not find layer '%1'!")
     //                                 .arg(mosra->getLayerName())
@@ -4297,7 +4297,7 @@ void LUMASSMainWin::doMOSO()
     //if (!future.result())
     if (!mosra->solveLp())
 	{
-        mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+        mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                               NMLogger::NM_LOG_ERROR,
                               QString("We encountered trouble setting/solving the problem "
                               "or the optimisation was aborted - s. report '%1'")
@@ -4320,7 +4320,7 @@ void LUMASSMainWin::doMOSO()
     NMDebugAI(<< "Optimisation took (min:sec): " << elapsedTime.toStdString() << endl);
     NMMsg(<< "Optimisation took (min:sec): " << elapsedTime.toStdString() << endl);
 
-    mLogger.processLogMsg(QDateTime::currentDateTime().time().toString(),
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
                           NMLogger::NM_LOG_INFO,
                           QString("Optimisation took (min:sec): %1")
                              .arg(elapsedTime)

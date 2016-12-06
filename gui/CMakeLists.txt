@@ -144,6 +144,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMComponentEditor.h
         ${gui_SOURCE_DIR}/NMWidgetListView.h
         ${gui_SOURCE_DIR}/NMLogWidget.h
+        ${gui_SOURCE_DIR}/NMListWidget.h
         ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
         ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
         ${shared_SOURCE_DIR}/NMLogger.h

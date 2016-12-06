@@ -879,7 +879,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 	QModelIndex idx = this->indexAt(event->pos());
 	if (!idx.isValid())
 	{
-		NMDebugCtx(ctx, << "done!")
+        //NMDebugCtx(ctx, << "done!")
 		return;
 	}
 
@@ -1024,10 +1024,6 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                 this->mContourMenu->move(event->globalPos());
                 this->mContourMenu->exec();
             }
-        }
-        else
-        {
-
         }
     }
 
@@ -1491,7 +1487,6 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
 
         if (!fileName.isEmpty())
         {
-            NMDebugAI(<< "file dragged into layer component list" << std::endl);
             event->acceptProposedAction();
         }
     }

@@ -35,6 +35,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QMenu>
 #include <QAction>
+#include <QRubberBand>
 
 #include "NMProcessComponentItem.h"
 #include "NMAggregateComponentItem.h"
@@ -52,6 +53,7 @@ class NMComponentLinkItem;
 class NMProcessComponentItem;
 class NMAggregateComponentItem;
 class NMSqlTableView;
+class NMLogger;
 
 class NMModelScene: public QGraphicsScene
 {
@@ -59,10 +61,21 @@ class NMModelScene: public QGraphicsScene
 
 public:
 
-	enum InteractionMode {NMS_IDLE, NMS_MOVE, NMS_LINK, NMS_SELECT};
+    enum InteractionMode
+    {
+        NMS_IDLE,
+        NMS_MOVE,
+        NMS_LINK,
+        NMS_SELECT,
+        NMS_ZOOM_IN,
+        NMS_ZOOM_OUT,
+        NMS_UNDEFINED
+    };
 
 	NMModelScene(QObject* parent=0);
 	virtual ~NMModelScene();
+
+    void setLogger(NMLogger* logger){mLogger = logger;}
 
     QGraphicsProxyWidget* getWidgetAt(const QPointF& pos);
 	QGraphicsItem* getComponentItem(const QString& name);
@@ -82,13 +95,20 @@ public:
                            NMAggregateComponentItem* ai,
                            NMModelComponent* host);
 
+     InteractionMode getInteractionMode(void){return mMode;}
+
 public slots:
 	void toggleLinkToolButton(bool);
 	void toggleSelToolButton(bool);
 	void toggleMoveToolButton(bool);
+    void toggleZoomInTool(bool zin);
+    void toggleZoomOutTool(bool zout);
+    void idleModeOn(void);
 
     void clearDragItems(void)
         {this->mDragItemList.clear();}
+
+    void unselectItems(void);
 
 signals:
 	void linkItemCreated(NMComponentLinkItem*);
@@ -122,7 +142,7 @@ protected:
 	void setProcCompSelectability(bool selectable);
 	void setProcCompMoveability(bool moveable);
 	void setLinkCompSelectability(bool selectable);
-
+    void updateCursor();
 
 	void wheelEvent(QGraphicsSceneWheelEvent* event);
 	void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event);
@@ -140,12 +160,16 @@ private:
 	QGraphicsLineItem* mLinkLine;
 	InteractionMode mMode;
 
-    bool mbSceneMove;
+    QGraphicsRectItem* mRubberBand;
+    QPointF mRubberBandOrigin;
 
+    QList<QGraphicsItem*> mTempSelection;
     QList<QGraphicsItem*> mDragItemList;
     QMap<QString, QGraphicsItem*> mHiddenModelItems;
     QPointF mDragStartPos;
     QPointF mMousePos;
+
+    NMLogger* mLogger;
 };
 
 #endif /* NMMODELSCENE_H_ */

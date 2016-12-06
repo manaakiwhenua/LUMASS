@@ -169,14 +169,15 @@ NMVtkInteractorStyleImage::OnLeftButtonDown()
         return;
     }
 
-    if (this->mNMInteractorMode == NM_INTERACT_PAN)
+    switch(mNMInteractorMode)
     {
+    case NM_INTERACT_PAN:
         this->StartPan();
-    }
-    else if (   this->mNMInteractorMode == NM_INTERACT_ZOOM_IN
-             || this->mNMInteractorMode == NM_INTERACT_ZOOM_OUT
-            )
-    {
+        break;
+
+
+    case NM_INTERACT_ZOOM_IN:
+    case NM_INTERACT_ZOOM_OUT:
         if (this->Interactor)
         {
             vtkRenderWindow *renWin = this->Interactor->GetRenderWindow();
@@ -188,7 +189,13 @@ NMVtkInteractorStyleImage::OnLeftButtonDown()
 
             renWin->GetPixelData(0, 0, size[0]-1, size[1]-1, 1, this->mPixelArray);
         }
+        break;
+
+    case NM_INTERACT_MULTI:
+        Superclass::OnLeftButtonDown();
+        break;
     }
+
     this->mMoving = 1;
 
 }
@@ -199,14 +206,14 @@ NMVtkInteractorStyleImage::OnLeftButtonUp()
     mEndPosition[0] = this->Interactor->GetEventPosition()[0];
     mEndPosition[1] = this->Interactor->GetEventPosition()[1];
 
-    if (this->mNMInteractorMode == NM_INTERACT_PAN)
+    switch (mNMInteractorMode)
     {
+    case NM_INTERACT_PAN:
         this->EndPan();
-    }
-    else if (   this->mNMInteractorMode == NM_INTERACT_ZOOM_IN
-             || this->mNMInteractorMode == NM_INTERACT_ZOOM_OUT
-            )
-    {
+        break;
+
+    case NM_INTERACT_ZOOM_IN:
+    case NM_INTERACT_ZOOM_OUT:
         if (this->Interactor && this->mMoving)
         {
             if (    mStartPosition[0] != mEndPosition[0]
@@ -216,11 +223,14 @@ NMVtkInteractorStyleImage::OnLeftButtonUp()
                 this->Zoom();
             }
         }
+        break;
+
+    case NM_INTERACT_MULTI:
+        Superclass::OnLeftButtonUp();
+        break;
     }
+
     this->mMoving = 0;
-
-
-    //Superclass::OnLeftButtonUp();
 }
 
 void

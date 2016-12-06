@@ -127,6 +127,7 @@ public:
 
 signals:
     void signalIsIn3DMode(bool in3d);
+    void noExclusiveToolSelected(void);
 
 public slots:
 
@@ -187,12 +188,16 @@ public slots:
     void convertImageToPolyData();
     void swapWindowLayout(QAction *act);
     void modelViewActivated(QObject *);
+    void clearSelection(void);
 
     void pan(bool toggled);
     void zoomIn(bool toggled);
     void zoomOut(bool toggled);
+    void toggleSelectTool(bool toggled);
+    void toggleLinkTool(bool toggled);
     void zoomToContent();
-    void updateExclusiveActions(const QString& checkedAction);
+    void updateExclusiveActions(const QString& checkedAction,
+                                bool toggled);
 
 
     void appendLogMsg(const QString& msg);
@@ -495,7 +500,7 @@ private:
     QIcon mLUMASSIcon;
 
     QList<QAction*> mExclusiveActions;
-
+    bool mbUpdatingExclusiveActions;
 
     unsigned int mBusyProcCounter;
     QProgressBar* mProgressBar;
@@ -536,7 +541,7 @@ private:
 
     NMLogger* mLogger;
 
-    QObject* mActiveMainWidget;
+    QObject* mActiveWidget;
 
     // the last event objects filtered by LUMASSMainWin
     QObject* mLastSender;

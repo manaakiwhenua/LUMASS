@@ -25,7 +25,6 @@
 #ifndef NMMODELVIEWWIDGET_H_
 #define NMMODELVIEWWIDGET_H_
 
-#include "nmlog.h"
 #include <string>
 #include <iostream>
 
@@ -57,6 +56,7 @@
 class QDomDocument;
 class LUMASSMainWin;
 class NMComponentLinkItem;
+class NMLogger;
 
 class NMModelViewWidget: public QWidget
 {
@@ -66,10 +66,11 @@ public:
 	NMModelViewWidget(QWidget* parent=0, Qt::WindowFlags f=0);
 	virtual ~NMModelViewWidget();
 
-    //LUMASSMainWin* getMainWindow(void);
     NMModelScene* getScene(void){return mModelScene;}
     void addWidget(QWidget* w);
     void addItem(QGraphicsItem* item);
+
+    void setLogger(NMLogger* logger);
 
 public slots:
 
@@ -119,11 +120,15 @@ signals:
 	void linkToolToggled(bool);
 	void selToolToggled(bool);
 	void moveToolToggled(bool);
+    void zoomInToolToggled(bool);
+    void zoomOutToolToggled(bool);
 	void requestModelExecution(const QString& compName);
 	void requestModelReset(const QString& compName);
 	void requestModelAbortion(void);
 	void widgetIsExiting(void);
     void modelViewActivated(QObject* obj);
+    void unselectItems(void);
+    void idleMode();
 
 
 protected:
@@ -169,6 +174,7 @@ protected slots:
     bool eventFilter(QObject* obj, QEvent* e);
 
     void test();
+
 
 private:
 	void initItemContextMenu();
@@ -226,6 +232,7 @@ private:
     NMComponentEditor* mTreeCompEditor;
 
 	QMap<QString, QAction*> mActionMap;
+    NMLogger* mLogger;
 
     static const std::string ctx;
 

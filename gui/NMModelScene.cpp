@@ -42,9 +42,15 @@
 #include "NMParameterTable.h"
 #include "NMSqlTableModel.h"
 #include "lumassmainwin.h"
-#include "nmlog.h"
+//#include "nmlog.h"
 
-
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 
 class NMModelViewWidget;
 
@@ -52,11 +58,10 @@ const std::string NMModelScene::ctx = "NMModelScene";
 
 
 NMModelScene::NMModelScene(QObject* parent)
-	: QGraphicsScene(parent)
+    : QGraphicsScene(parent), mLogger(0)
 {
 	//ctx = "NMModelScene";
-    mMode = NMS_IDLE;
-    mbSceneMove = false;
+    mMode = NMS_UNDEFINED;
     mLinkHitTolerance = 15;
 	mLinkZLevel = 10000;
 	mLinkLine = 0;
@@ -155,63 +160,198 @@ NMModelScene::toggleLinkToolButton(bool linkMode)
 {
 	if (linkMode)
 	{
-		this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
-		this->views().at(0)->setCursor(Qt::CrossCursor);
+        //NMLogDebug(<< "link on" << std::endl);
         this->setProcCompMoveability(false);
+        this->setProcCompSelectability(false);
+        this->setLinkCompSelectability(false);
 		this->mMode = NMS_LINK;
-        NMGlobalHelper::getMainWindow()->updateExclusiveActions("linkAction");
 	}
-	else
+//    else
+//    {
+//        NMLogDebug(<< "link off" << std::endl);
+//    }
+    updateCursor();
+}
+
+void
+NMModelScene::toggleZoomInTool(bool zin)
+{
+    if (zin)
     {
-        if (!mbSceneMove)
-        {
-            this->setProcCompMoveability(true);
-        }
-        this->views().at(0)->setCursor(Qt::OpenHandCursor);
+        //NMLogDebug(<< "zoom in on" << std::endl);
+        this->mMode = NMS_ZOOM_IN;
+        this->setProcCompMoveability(false);
+        this->setProcCompSelectability(false);
+        this->setLinkCompSelectability(false);
+    }
+//    else
+//    {
+//        NMLogDebug(<< "zoom in off" << std::endl);
+//    }
+    updateCursor();
+}
+
+void
+NMModelScene::toggleZoomOutTool(bool zout)
+{
+    if (zout)
+    {
+        //NMLogDebug(<< "zoom out on" << std::endl);
+        this->mMode = NMS_ZOOM_OUT;
+        this->setProcCompMoveability(false);
+        this->setProcCompSelectability(false);
+        this->setLinkCompSelectability(false);
+    }
+//    else
+//    {
+//        NMLogDebug(<< "zoom out off" << std::endl);
+//    }
+    updateCursor();
+}
+
+void NMModelScene::toggleSelToolButton(bool selMode)
+{
+    if (selMode)
+    {
+        //NMLogDebug(<< "sel on" << std::endl);
+        this->mMode = NMS_SELECT;
+        this->setProcCompMoveability(false);
+        this->setProcCompSelectability(true);
+        this->setLinkCompSelectability(false);
+    }
+//    else
+//    {
+//        NMLogDebug(<< "sel off" << std::endl);
+//    }
+    updateCursor();
+}
+
+void NMModelScene::toggleMoveToolButton(bool moveMode)
+{
+    if (moveMode)
+    {
+        //NMLogDebug(<< "move on" << std::endl);
         this->mMode = NMS_MOVE;
+        this->setProcCompMoveability(false);
+        this->setProcCompSelectability(false);
+        this->setLinkCompSelectability(false);
+    }
+//    else
+//    {
+//        NMLogDebug(<< "move off" << std::endl);
+//    }
+    updateCursor();
+    this->invalidate();
+}
+
+void
+NMModelScene::idleModeOn(void)
+{
+    //NMLogDebug(<< "idle on" << std::endl);
+    this->mMode = NMS_IDLE;
+    this->setProcCompMoveability(true);
+    this->setProcCompSelectability(false);
+    this->setLinkCompSelectability(false);
+    updateCursor();
+}
+
+void
+NMModelScene::updateCursor(void)
+{
+    QGraphicsView* v = this->views().at(0);
+    switch(mMode)
+    {
+        case NMS_MOVE:
+            QApplication::restoreOverrideCursor();
+            v->setDragMode(QGraphicsView::ScrollHandDrag);
+            v->setCursor(Qt::OpenHandCursor);
+            break;
+
+        case NMS_LINK:
+            QApplication::restoreOverrideCursor();
+            v->setDragMode(QGraphicsView::NoDrag);
+            v->setCursor(Qt::CrossCursor);
+            break;
+
+        case NMS_SELECT:
+            QApplication::restoreOverrideCursor();
+            v->setDragMode(QGraphicsView::NoDrag);
+            v->setCursor(Qt::ArrowCursor);
+            break;
+        case NMS_ZOOM_IN:
+        case NMS_ZOOM_OUT:
+            QApplication::restoreOverrideCursor();
+            v->setDragMode(QGraphicsView::NoDrag);
+            v->setCursor(Qt::ArrowCursor);
+            break;
+
+        case NMS_IDLE:
+            v->setDragMode(QGraphicsView::ScrollHandDrag);
+            break;
     }
 }
 
 void
 NMModelScene::updateComponentItemFlags(QGraphicsItem *item)
 {
+    if (item == 0)
+    {
+        return;
+    }
+
     switch(mMode)
     {
+    case NMS_ZOOM_IN:
+    case NMS_ZOOM_OUT:
+    case NMS_MOVE:
     case NMS_LINK:
         item->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        item->setFlag(QGraphicsItem::ItemIsMovable, false);
         break;
     case NMS_SELECT:
         item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+        item->setFlag(QGraphicsItem::ItemIsMovable, false);
         break;
+
     case NMS_IDLE:
     default:
         item->setFlag(QGraphicsItem::ItemIsSelectable, false);
-        break;
-    }
-
-    if (mbSceneMove)
-    {
-        item->setFlag(QGraphicsItem::ItemIsMovable, false);
-    }
-    else
-    {
         item->setFlag(QGraphicsItem::ItemIsMovable, true);
     }
 }
 
+void
+NMModelScene::unselectItems(void)
+{
+    mTempSelection.clear();
+    QList<QGraphicsItem*> curSel = this->selectedItems();
+
+    if (mMode != NMS_SELECT)
+    {
+        for (int i=0; i < curSel.size(); ++i)
+        {
+            QGraphicsItem* gi = curSel.at(i);
+            gi->setSelected(false);
+            gi->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        }
+    }
+    this->clearSelection();
+}
 
 
 void NMModelScene::setProcCompSelectability(bool selectable)
 {
 	QList<QGraphicsItem*> allItems = this->items();
 	QListIterator<QGraphicsItem*> it(allItems);
-    //NMProcessComponentItem* item;
 	while(it.hasNext())
 	{
 		QGraphicsItem* item = it.next();
 		if (item != 0)
 		{
-			item->setFlag(QGraphicsItem::ItemIsSelectable, selectable);
+            if (!item->isSelected())
+            {
+                item->setFlag(QGraphicsItem::ItemIsSelectable, selectable);
+            }
 		}
 	}
 }
@@ -234,14 +374,12 @@ void NMModelScene::setProcCompMoveability(bool moveable)
 {
     QList<QGraphicsItem*> allItems = this->items();
 	QListIterator<QGraphicsItem*> it(allItems);
-    //NMProcessComponentItem* item;
 	while(it.hasNext())
 	{
         QGraphicsItem* ni = it.next();
         QGraphicsProxyWidget* pwi = qgraphicsitem_cast<QGraphicsProxyWidget*>(ni);
         if (pwi)
         {
-            //ni->setFlag(QGraphicsItem::ItemIsSelectable, moveable);
             pwi->setFlag(QGraphicsItem::ItemIsSelectable, moveable);
             pwi->setFlag(QGraphicsItem::ItemIsMovable, moveable);
         }
@@ -252,44 +390,6 @@ void NMModelScene::setProcCompMoveability(bool moveable)
 	}
 }
 
-
-void NMModelScene::toggleSelToolButton(bool selMode)
-{
-	if (selMode)
-	{
-		this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);
-		this->views().at(0)->setCursor(Qt::PointingHandCursor);
-		this->mMode = NMS_SELECT;
-		this->setProcCompSelectability(true);
-		this->setLinkCompSelectability(false);
-	}
-	else
-	{
-        this->views().at(0)->setDragMode(QGraphicsView::NoDrag);
-		this->mMode = NMS_IDLE;
-		this->setProcCompSelectability(false);
-		//this->setLinkCompSelectability(false);
-	}
-}
-
-void NMModelScene::toggleMoveToolButton(bool moveMode)
-{
-    if (moveMode)
-	{
-        mbSceneMove = true;
-        NMGlobalHelper::getMainWindow()->updateExclusiveActions("panAction");
-        this->setProcCompMoveability(false);
-	}
-	else
-	{
-        mbSceneMove = false;
-        if (mMode != NMS_LINK)
-        {
-            this->setProcCompMoveability(true);
-        }
-	}
-    this->invalidate();
-}
 
 QGraphicsItem*
 NMModelScene::getComponentItem(const QString& name)
@@ -353,7 +453,6 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
 
     QGraphicsProxyWidget* proxyWidget = this->addWidget(tv,
                    Qt::CustomizeWindowHint | Qt::Window | Qt::WindowTitleHint);
-    proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, true);
     proxyWidget->setObjectName(ptName);
     this->updateComponentItemFlags(proxyWidget);
 
@@ -423,6 +522,14 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 break;
             }
             this->mDragItemList.clear();
+
+            // restore pointing hand cursor
+            if (    QApplication::overrideCursor()
+                &&  QApplication::overrideCursor()->shape() == Qt::ClosedHandCursor
+               )
+            {
+                QApplication::restoreOverrideCursor();
+            }
         }
         // =========================================================
         //  ADD NEW PROC COMP ITEMS
@@ -440,7 +547,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 QGraphicsTextItem* labelItem = new QGraphicsTextItem(ai);
                 labelItem->setHtml(QString::fromLatin1("<b>Text Label</b>"));
                 labelItem->setTextInteractionFlags(Qt::NoTextInteraction);
-                labelItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                //labelItem->setFlag(QGraphicsItem::ItemIsMovable, true);
                 labelItem->setOpenExternalLinks(true);
                 if (ai != 0)
                 {
@@ -452,6 +559,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                     this->addItem(labelItem);
                     labelItem->setPos(event->scenePos());
                 }
+                this->updateComponentItemFlags(labelItem);
                 //event->acceptProposedAction();
             }
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -492,7 +600,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 {
                     procItem->setIsDataBufferItem(true);
                 }
-                procItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                this->updateComponentItemFlags(procItem);
                 //event->acceptProposedAction();
 
                 NMDebugAI(<< "asking for creating '" << dropItem.toStdString() << "' ..." << endl);
@@ -661,12 +769,8 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             NMDebugAI(<< "No valid drag source detected!" << std::endl);
         }
 	}
-    //event->accept();
-    if (!mbSceneMove)
-    {
-        this->setProcCompMoveability(true);
-    }
-    mDragItemList.clear();
+
+    //mDragItemList.clear();
 	NMDebugCtx(ctx, << "done!");
 }
 
@@ -768,62 +872,79 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 			this->addItem(mLinkLine);
 			break;
 
-		default:
+        case NMS_ZOOM_IN:
+        case NMS_ZOOM_OUT:
+        case NMS_SELECT:
             {
-                // SELECTION 'MODE'
-                if (event->modifiers() & Qt::ControlModifier)
+                mRubberBandOrigin = mMousePos;
+                if (mRubberBand == 0)
                 {
-                    this->views().at(0)->setCursor(Qt::PointingHandCursor);
-                    this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);
-                    //this->setProcCompMoveability(false);
-                    this->setProcCompSelectability(true);
-                    this->setLinkCompSelectability(false);
-                    pwi = this->getWidgetAt(mMousePos);
-                    if (pwi)
-                    {
-                        pwi->setSelected(true);
-                        NMDebugAI(<< pwi->objectName().toStdString() << " selected!" << std::endl);
-                    }
+                    mRubberBand = new QGraphicsRectItem(0);
+                    mRubberBand->setPen(QPen(Qt::darkGray, 0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                    mRubberBand->setRect(mRubberBand->mapRectFromScene(QRectF(mRubberBandOrigin, QSize())));
+                    this->addItem(mRubberBand);
                 }
-                // INFO/DRAG 'MODE'
-                else
-                {
-                    this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
 
-                    pwi = this->getWidgetAt(event->scenePos());
-                    if (pwi)
+                if (mMode == NMS_SELECT)
+                {
+                    if (!event->modifiers().testFlag(Qt::ControlModifier))
                     {
-                        this->views().at(0)->setCursor(Qt::ClosedHandCursor);
-                        emit itemLeftClicked(pwi->objectName());
-                    }
-                    else if (item != 0)
-                    {
-                        this->views().at(0)->setCursor(Qt::ClosedHandCursor);
-                        if (procItem)
-                        {
-                            emit itemLeftClicked(procItem->getTitle());
-                        }
-                        else if (aggrItem)
-                        {
-                            emit itemLeftClicked(aggrItem->getTitle());
-                        }
-                        else if (textItem)
-                        {
-                            textItem->setTextInteractionFlags(Qt::NoTextInteraction
-                                                              | Qt::TextBrowserInteraction);
-                        }
+                        this->clearSelection();
+                        mTempSelection.clear();
                     }
                     else
                     {
-                        this->views().at(0)->setCursor(Qt::OpenHandCursor);
-                        this->setProcCompSelectability(false);
-                        emit itemLeftClicked(QString::fromUtf8("root"));
+                        mTempSelection.append(item);
                     }
                 }
             }
+            break;
+
+        case NMS_MOVE:
+            mDragStartPos = event->screenPos();
+            this->views().at(0)->setCursor(Qt::ClosedHandCursor);
+            QGraphicsScene::mousePressEvent(event);
+            break;
+
+        case NMS_IDLE:
+            {
+                mTempSelection.clear();
+                mTempSelection = this->selectedItems();
+                pwi = this->getWidgetAt(event->scenePos());
+                if (pwi)
+                {
+                    QApplication::setOverrideCursor(Qt::ClosedHandCursor);
+                    //this->views().at(0)->setCursor(Qt::ClosedHandCursor);
+                    emit itemLeftClicked(pwi->objectName());
+                }
+                else if (item != 0)
+                {
+                    QApplication::setOverrideCursor(Qt::ClosedHandCursor);
+                    //this->views().at(0)->setCursor(Qt::ClosedHandCursor);
+                    if (procItem)
+                    {
+                        emit itemLeftClicked(procItem->getTitle());
+                    }
+                    else if (aggrItem)
+                    {
+                        emit itemLeftClicked(aggrItem->getTitle());
+                    }
+                    else if (textItem)
+                    {
+                        textItem->setTextInteractionFlags(Qt::NoTextInteraction
+                                                          | Qt::TextBrowserInteraction);
+                    }
+                }
+                else
+                {
+                    NMLogDebug( << "no item at: " << mMousePos.x() << ","
+                                << mMousePos.y());
+                    emit itemLeftClicked(QString::fromUtf8("root"));
+                }
+                QGraphicsScene::mousePressEvent(event);
+            }
 			break;
 		}
-        QGraphicsScene::mousePressEvent(event);
 	}
 	else if (event->button() == Qt::RightButton)
 	{
@@ -896,7 +1017,9 @@ NMComponentLinkItem* NMModelScene::getLinkItem(QPointF pos)
 void
 NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
+    // ==================================================
     // update coordinate label in status bar
+    // ==================================================
     QPointF sp = event->scenePos();
     QGraphicsItem* item = this->itemAt(sp, this->views()[0]->transform());
     NMAggregateComponentItem* ai = 0;
@@ -934,20 +1057,17 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             .arg(title)
             .arg(x)
             .arg(y);
-    //NMModelViewWidget* vw = qobject_cast<NMModelViewWidget*>(this->views().at(0)->parent());
-    LUMASSMainWin* mainWin = 0;
-    //if (vw != 0)
+    LUMASSMainWin* mainWin = NMGlobalHelper::getMainWindow();
+    if (mainWin != 0)
     {
-        mainWin = NMGlobalHelper::getMainWindow();//vw->getMainWindow();
-        if (mainWin != 0)
-        {
-            mainWin->updateCoordLabel(pos);
-        }
+        mainWin->updateCoordLabel(pos);
     }
 
-    //mMousePos = event->scenePos();
 
-	switch(mMode)
+    // ==================================================
+    //  InteractionMode control
+    // ==================================================
+    switch(mMode)
 	{
 	case NMS_LINK:
 		if (mLinkLine == 0)
@@ -955,10 +1075,33 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 		mLinkLine->setLine(QLineF(mLinkLine->line().p1(), event->scenePos()));
 		break;
 
-	case NMS_MOVE:
+    case NMS_ZOOM_IN:
+    case NMS_ZOOM_OUT:
     case NMS_SELECT:
-    default:
+        {
+            if (mRubberBand)
+            {
+                mRubberBand->setRect(mRubberBand->mapRectFromScene(
+                                         QRectF(mRubberBandOrigin, event->scenePos()).normalized()));
+                if (mMode == NMS_SELECT)
+                {
+                    QList<QGraphicsItem*> selitems = this->items(mRubberBand->sceneBoundingRect(),
+                                                                 Qt::ContainsItemShape);
 
+                    foreach(QGraphicsItem* gi, selitems)
+                    {
+                        gi->setSelected(true);
+                    }
+                }
+            }
+        }
+        break;
+
+    case NMS_MOVE:
+        QGraphicsScene::mouseMoveEvent(event);
+        break;
+
+    case NMS_IDLE:
         {
             QGraphicsItem* dragItem = qgraphicsitem_cast<QGraphicsItem*>(this->getWidgetAt(mMousePos));
             if (dragItem == 0)
@@ -967,7 +1110,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             }
             if (    (event->buttons() & Qt::LeftButton)
                 &&  dragItem != 0
-                &&  (   QApplication::keyboardModifiers() & Qt::AltModifier
+                &&  (   QApplication::keyboardModifiers() & Qt::ControlModifier
                      || QApplication::keyboardModifiers() & Qt::ShiftModifier
                     )
                )
@@ -1001,7 +1144,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                     //drag->setDragCursor(dragPix, Qt::MoveAction);
                     drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::MoveAction);
                 }
-                else if (event->modifiers() & Qt::AltModifier)
+                else if (event->modifiers() & Qt::ControlModifier)
                 {
                    if (dragItem->type() == QGraphicsProxyWidget::Type)
                    {
@@ -1021,17 +1164,12 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                    }
                 }
                 NMDebugAI(<< "drag start - " << mimeText.toStdString() << std::endl);
-                this->setProcCompMoveability(false);
-            }
-            else if (dragItem && mbSceneMove)
-            {
-                return;
             }
         }
         this->invalidate();
+        QGraphicsScene::mouseMoveEvent(event);
         break;
 	}
-    QGraphicsScene::mouseMoveEvent(event);
 }
 
 void
@@ -1042,7 +1180,8 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 	NMComponentLinkItem* link = 0;
 	QList<QGraphicsItem*> srcList;
 	QList<QGraphicsItem*> tarList;
-	switch(mMode)
+
+    switch(mMode)
 	{
 	case NMS_LINK:
 		if (mLinkLine == 0)
@@ -1085,35 +1224,112 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             this->invalidate();
             emit linkItemCreated(link);
 		}
-
 		break;
 
-	default:
+    case NMS_ZOOM_IN:
         {
-            if (event->modifiers() & Qt::ControlModifier)
+            if (mRubberBand)
             {
-                this->views().at(0)->setCursor(Qt::PointingHandCursor);
-                this->views().at(0)->setDragMode(QGraphicsView::RubberBandDrag);
-                this->setProcCompSelectability(true);
-                this->setLinkCompSelectability(false);
-                mMode = NMS_SELECT;
+                this->views().at(0)->fitInView(mRubberBand->sceneBoundingRect(),
+                                               Qt::KeepAspectRatio);
+                this->removeItem(mRubberBand);
+                delete mRubberBand;
+                mRubberBand = 0;
             }
-            else
-            {
-                this->views().at(0)->setDragMode(QGraphicsView::ScrollHandDrag);
-                this->views().at(0)->setCursor(Qt::OpenHandCursor);
-                this->setProcCompSelectability(false);
-                mMode = NMS_IDLE;
-            }
-            this->mDragItemList.clear();
         }
+        break;
+
+    case NMS_ZOOM_OUT:
+        {
+            if (mRubberBand)
+            {
+                QRectF rbb = mRubberBand->sceneBoundingRect();
+                QWidget* vp = this->views().at(0);
+                QRect vpRect(0, 0, vp->width(), vp->height());
+                QRectF sr = this->views().at(0)->mapToScene(vpRect).boundingRect();
+
+                if (rbb.width() > rbb.height())
+                {
+                    sr.setWidth(sr.width() * (sr.width() / rbb.width()));
+                }
+                else
+                {
+                    sr.setHeight(sr.height() * (sr.height() / rbb.height()));
+                }
+
+                sr.setTopLeft(QPointF(rbb.center().x() - (sr.width() / 2.0),
+                                      rbb.center().y() - (sr.height() / 2.0)));
+
+                this->views().at(0)->fitInView(sr, Qt::KeepAspectRatio);
+
+                delete mRubberBand;
+                mRubberBand = 0;
+            }
+        }
+        break;
+
+    case NMS_SELECT:
+        if (mRubberBand)
+        {
+            QRectF delta = QRectF(mRubberBandOrigin, event->scenePos()).normalized();
+            if (delta.width() < 5 && delta.height() < 5)
+            {
+                for (int i=0; i < mTempSelection.size(); ++i)
+                {
+                    if (event->modifiers() & Qt::ControlModifier)
+                    {
+                        mTempSelection.at(i)->setSelected(!mTempSelection.at(i)->isSelected());
+                    }
+                }
+            }
+
+            mTempSelection.clear();
+            delete mRubberBand;
+            mRubberBand = 0;
+        }
+        break;
+
+    case NMS_MOVE:
+        // note: here and now mDragStartPos stores the screen(!) position
+        //       where the move started
+        if (mDragStartPos.toPoint() == event->screenPos())
+        {
+            QGraphicsItem* item = itemAt(event->scenePos(), this->views().at(0)->transform());
+            NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(item);
+            NMAggregateComponentItem* aggrItem = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
+            if (procItem)
+            {
+                emit itemLeftClicked(procItem->getTitle());
+            }
+            else if (aggrItem)
+            {
+                emit itemLeftClicked(aggrItem->getTitle());
+            }
+        }
+        QGraphicsScene::mouseReleaseEvent(event);
+        break;
+
+    case NMS_IDLE:
+        this->mDragItemList.clear();
+
+        if (    QApplication::overrideCursor()
+            &&  QApplication::overrideCursor()->shape() == Qt::ClosedHandCursor
+           )
+        {
+            QApplication::restoreOverrideCursor();
+        }
+
+
+        QGraphicsScene::mouseReleaseEvent(event);
+
+        for (int h=0; h < mTempSelection.size(); ++h)
+        {
+            mTempSelection.at(h)->setSelected(true);
+        }
+
 		break;
 	}
-    if (!mbSceneMove && mMode != NMS_LINK)
-    {
-        this->setProcCompMoveability(true);
-    }
-	QGraphicsScene::mouseReleaseEvent(event);
+    updateCursor();
 }
 
 

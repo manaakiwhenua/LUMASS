@@ -1,7 +1,8 @@
 <RCC>
     <qresource prefix="/">
         <file alias="link-icon.png">resources/draw-bezier-curves.png</file>
-        <file alias="select-icon.png">resources/select.png</file>
+        <file alias="select.png">resources/select.png</file>
+        <file alias="clear.png">resources/document-new.png</file>
         <file alias="model-icon.png">resources/system-run-3.png</file>
         <file alias="move-icon.png">resources/transform-move.png</file>
         <file alias="zoom-in-icon.png">resources/zoom-in-3.png</file>

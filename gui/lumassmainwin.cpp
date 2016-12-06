@@ -78,6 +78,7 @@
 #include "NMProcessComponentItem.h"
 #include "NMAggregateComponentItem.h"
 #include "NMComponentLinkItem.h"
+#include "NMListWidget.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -286,11 +287,13 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	this->mbNoRasdaman = false;
     this->mpPetaView = 0;
     this->mLastInfoLayer = 0;
-    this->mActiveMainWidget = 0;
+    this->mActiveWidget = 0;
 
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
+#ifdef DEBUG
     mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
     connect(mLogger, SIGNAL(sendLogMsg(QString)), this, SLOT(appendHtmlMsg(QString)));
 
 	// some meta type registration for supporting the given types for
@@ -334,7 +337,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     mLUMASSIcon = QIcon(":lumass-icon.png");
 
     this->setWindowIcon(mLUMASSIcon);
-
+    mbUpdatingExclusiveActions = false;
 
     // ================================================
     // INFO COMPONENT DOCK
@@ -363,14 +366,18 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     // set up the table list
     qreal pratio = qApp->devicePixelRatio();
-    mTableListWidget = new QListWidget(ui->compWidgetList);
+    NMListWidget* liwi = new NMListWidget(ui->compWidgetList);
+    liwi->setLogger(mLogger);
+    mTableListWidget = liwi;
     mTableListWidget->setObjectName(QString::fromUtf8("tableListWidget"));
-    mTableListWidget->setAcceptDrops(true);
     mTableListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     mTableListWidget->setIconSize(QSize((int)16*pratio,(int)16*pratio));
-    //    connect(mTableListWidget, SIGNAL(itemClicked(QListWidgetItem*)),
-    //            this, SLOT(tableObjectClicked(QListWidgetItem*)));
+
+    mTableListWidget->setDragEnabled(false);
+    mTableListWidget->setAcceptDrops(true);
+    mTableListWidget->setDragDropMode(QAbstractItemView::DropOnly);
     mTableListWidget->viewport()->setObjectName("tableListView");
+    mTableListWidget->viewport()->setAcceptDrops(true);
     mTableListWidget->viewport()->installEventFilter(this);
     ui->compWidgetList->addWidgetItem(mTableListWidget, QString::fromUtf8("Table Objects"));
 
@@ -495,8 +502,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     zoomOutAction->setCheckable(true);
     mExclusiveActions.append(zoomOutAction);
 
-    //zoomOutAction->setAutoRepeat(true);
-
     QIcon zoomContentIcon(":zoom-fit-best-icon.png");
     QAction* zoomToContentAct = new QAction(zoomContentIcon, "Zoom To Content", this->ui->mainToolBar);
 
@@ -507,7 +512,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
             this->ui->mainToolBar);
     moveAction->setObjectName("panAction");
     moveAction->setCheckable(true);
-    moveAction->setChecked(true);
     mExclusiveActions.append(moveAction);
 
     QIcon linkIcon(":link-icon.png");
@@ -516,9 +520,15 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     linkAction->setCheckable(true);
     mExclusiveActions.append(linkAction);
 
-    //    QIcon selIcon(":select-icon.png");
-    //    QAction* selAction = new QAction(selIcon, "Select Components", this->ui->mainToolBar);
-    //    selAction->setCheckable(true);
+    QIcon selIcon(":select.png");
+    QAction* selAction = new QAction(selIcon, "Select Features/Components", this->ui->mainToolBar);
+    selAction->setObjectName("selAction");
+    selAction->setCheckable(true);
+    mExclusiveActions.append(selAction);
+
+    QIcon clearIcon(":clear.png");
+    QAction* clearAction = new QAction(clearIcon, "Clear Selection", this->ui->mainToolBar);
+    clearAction->setObjectName("clearAction");
 
     // .....................................
     // main windows orientation action
@@ -571,6 +581,10 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     this->ui->mainToolBar->addAction(moveAction);
 
     this->ui->mainToolBar->addSeparator();
+    this->ui->mainToolBar->addAction(selAction);
+    this->ui->mainToolBar->addAction(clearAction);
+
+    this->ui->mainToolBar->addSeparator();
     this->ui->mainToolBar->addAction(linkAction);
     this->ui->mainToolBar->addAction(resetAction);
     this->ui->mainToolBar->addAction(stopAction);
@@ -585,20 +599,32 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // connect model view widget signals / slots
     connect(linkAction, SIGNAL(toggled(bool)),
     		this->ui->modelViewWidget, SIGNAL(linkToolToggled(bool)));
-    //    connect(selAction, SIGNAL(toggled(bool)),
-    //    		this->ui->modelViewWidget, SIGNAL(selToolToggled(bool)));
+    connect(linkAction, SIGNAL(toggled(bool)),
+            this, SLOT(toggleLinkTool(bool)));
+    connect(selAction, SIGNAL(toggled(bool)),
+            this->ui->modelViewWidget, SIGNAL(selToolToggled(bool)));
+    connect(selAction, SIGNAL(toggled(bool)),
+            this, SLOT(toggleSelectTool(bool)));
+
     connect(moveAction, SIGNAL(toggled(bool)),
             this->ui->modelViewWidget, SIGNAL(moveToolToggled(bool)));
     connect(moveAction, SIGNAL(toggled(bool)),
             this, SLOT(pan(bool)));
 
-    //connect(zoomInAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomIn()));
-    //connect(zoomOutAction, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomOut()));
-    //connect(zoomToContent, SIGNAL(triggered()), this->ui->modelViewWidget, SLOT(zoomToContent()));
+    connect(this, SIGNAL(noExclusiveToolSelected()),
+            this->ui->modelViewWidget, SIGNAL(idleMode()));
+    connect(clearAction, SIGNAL(triggered()),
+            this->ui->modelViewWidget, SIGNAL(unselectItems()));
+    connect(clearAction, SIGNAL(triggered()),
+            this, SLOT(clearSelection()));
 
     connect(zoomToContentAct, SIGNAL(triggered()), this, SLOT(zoomToContent()));
     connect(zoomInAction, SIGNAL(toggled(bool)), this, SLOT(zoomIn(bool)));
+    connect(zoomInAction, SIGNAL(toggled(bool)),
+            this->ui->modelViewWidget, SIGNAL(zoomInToolToggled(bool)));
     connect(zoomOutAction, SIGNAL(toggled(bool)), this, SLOT(zoomOut(bool)));
+    connect(zoomOutAction, SIGNAL(toggled(bool)),
+            this->ui->modelViewWidget, SIGNAL(zoomOutToolToggled(bool)));
 
     connect(actMapBtn, SIGNAL(toggled(bool)), this, SLOT(showMapView(bool)));
     connect(actModelBtn, SIGNAL(toggled(bool)), this, SLOT(showModelView(bool)));
@@ -738,6 +764,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     connect(ui->modelViewWidget, SIGNAL(modelViewActivated(QObject *)),
             this, SLOT(modelViewActivated(QObject *)));
 
+    ui->modelViewWidget->setLogger(mLogger);
+
     // ================================================
     // INITIAL WIDGET's VISIBILITY
     // ================================================
@@ -806,7 +834,7 @@ LUMASSMainWin::notify(QObject* receiver, QEvent* event)
 	}
 	catch (std::exception& e)
 	{
-		qDebug() << "Exception thrown: " << e.what() << endl;
+        NMLogError(<< "Exception thrown: " << e.what() << endl);
 	}
 
 	return true;
@@ -922,7 +950,12 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
         }
         else if (event->type() == QEvent::MouseButtonPress)
         {
-            mActiveMainWidget = this->ui->qvtkWidget;
+            mActiveWidget = this->ui->qvtkWidget;
+            QAction* selAction = ui->mainToolBar->findChild<QAction*>("selAction");
+            if (selAction)
+            {
+                selAction->setEnabled(false);
+            }
         }
     }
     // ===========================================================
@@ -990,12 +1023,24 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
 void
 LUMASSMainWin::modelViewActivated(QObject* obj)
 {
-        mActiveMainWidget = obj;
+    mActiveWidget = obj;
+    QAction* selAction = ui->mainToolBar->findChild<QAction*>("selAction");
+    if (selAction)
+    {
+        selAction->setEnabled(true);
+    }
 }
 
 void
-LUMASSMainWin::updateExclusiveActions(const QString &checkedAction)
+LUMASSMainWin::updateExclusiveActions(const QString &checkedAction,
+                                      bool toggled)
 {
+    if (mbUpdatingExclusiveActions)
+    {
+        return;
+    }
+
+    mbUpdatingExclusiveActions = true;
     for (int a=0; a < mExclusiveActions.size(); ++a)
     {
         QAction* act = mExclusiveActions.at(a);
@@ -1011,30 +1056,42 @@ LUMASSMainWin::updateExclusiveActions(const QString &checkedAction)
             }
         }
     }
+    if (!toggled)
+    {
+        // let the NMModelViewWidget know
+        emit noExclusiveToolSelected();
+
+        // set map interactor multi mode
+        NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+                    ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+        iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_MULTI);
+    }
+    mbUpdatingExclusiveActions = false;
 }
 
 void
 LUMASSMainWin::zoomToContent()
 {
     // work out which view we're working on
-    if (mActiveMainWidget)
+    if (mActiveWidget)
     {
-        if (mActiveMainWidget->objectName().compare(QString("qvtkWidget")) == 0)
+        if (mActiveWidget->objectName().compare(QString("qvtkWidget")) == 0)
         {
-            NMLayer* l = this->mLayerList->getSelectedLayer();
-            if (l)
-            {
-                this->mBkgRenderer->ResetCamera(const_cast<double*>(l->getBBox()));
-                ui->qvtkWidget->update();
-            }
-            else
-            {
-                mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
-                                      NMLogger::NM_LOG_INFO,
-                                      "Zoom to Layer: No layer selected!");
-            }
+            this->zoomFullExtent();
+            //            NMLayer* l = this->mLayerList->getSelectedLayer();
+            //            if (l)
+            //            {
+            //                this->mBkgRenderer->ResetCamera(const_cast<double*>(l->getBBox()));
+            //                ui->qvtkWidget->update();
+            //            }
+            //            else
+            //            {
+            //                mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
+            //                                      NMLogger::NM_LOG_INFO,
+            //                                      "Zoom to Layer: No layer selected!");
+            //            }
         }
-        else if (mActiveMainWidget->objectName().compare(QString("modelViewWidget")) == 0)
+        else if (mActiveWidget->objectName().compare(QString("modelViewWidget")) == 0)
         {
             this->ui->modelViewWidget->zoomToContent();
         }
@@ -1053,9 +1110,8 @@ LUMASSMainWin::pan(bool toggled)
             NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                         ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
             iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_PAN);
-
-            this->updateExclusiveActions(in->objectName());
         }
+        this->updateExclusiveActions(in->objectName(), toggled);
     }
 }
 
@@ -1071,10 +1127,8 @@ LUMASSMainWin::zoomIn(bool toggled)
             NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                         ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
             iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_IN);
-
-
-            this->updateExclusiveActions(in->objectName());
         }
+        this->updateExclusiveActions(in->objectName(), toggled);
     }
 }
 
@@ -1090,11 +1144,43 @@ LUMASSMainWin::zoomOut(bool toggled)
             NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                         ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
             iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_OUT);
-
-            this->updateExclusiveActions(out->objectName());
         }
+        this->updateExclusiveActions(out->objectName(), toggled);
     }
 }
+
+void
+LUMASSMainWin::clearSelection()
+{
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+    if (l)
+    {
+        l->selectCell(-1, NMLayer::NM_SEL_CLEAR);
+    }
+}
+
+void
+LUMASSMainWin::toggleSelectTool(bool toggled)
+{
+    QAction* sel = ui->mainToolBar->findChild<QAction*>("selAction");
+    if (sel)
+    {
+        sel->setChecked(toggled);
+        this->updateExclusiveActions(sel->objectName(), toggled);
+    }
+}
+
+void
+LUMASSMainWin::toggleLinkTool(bool toggled)
+{
+    QAction* link = ui->mainToolBar->findChild<QAction*>("linkAction");
+    if (link)
+    {
+        link->setChecked(toggled);
+        this->updateExclusiveActions(link->objectName(), toggled);
+    }
+}
+
 
 void
 LUMASSMainWin::appendHtmlMsg(const QString& msg)
@@ -1525,7 +1611,7 @@ LUMASSMainWin::showMapView(bool vis)
     ui->qvtkWidget->setVisible(vis);
     if (!vis)
     {
-        this->mActiveMainWidget = ui->modelViewWidget;
+        this->mActiveWidget = ui->modelViewWidget;
     }
     QAction* actMapBtn = ui->mainToolBar->findChild<QAction*>("actMapBtn");
     if (actMapBtn) actMapBtn->setChecked(vis);
@@ -1540,7 +1626,7 @@ LUMASSMainWin::showModelView(bool vis)
     ui->modelViewWidget->setVisible(vis);
     if (!vis)
     {
-        this->mActiveMainWidget = ui->qvtkWidget;
+        this->mActiveWidget = ui->qvtkWidget;
     }
     QAction* actModelBtn = ui->mainToolBar->findChild<QAction*>("actModelBtn");
     if (actModelBtn) actModelBtn->setChecked(vis);

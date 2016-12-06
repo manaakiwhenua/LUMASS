@@ -55,10 +55,19 @@
 #include "NMGlobalHelper.h"
 #include "NMParameterTable.h"
 
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
-    : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075)
+    : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075),
+      mLogger(0)
 {
 	this->setAcceptDrops(true);
 	this->mLastItem = 0;
@@ -133,6 +142,15 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 			SLOT(toggleSelToolButton(bool)));
 	connect(this, SIGNAL(moveToolToggled(bool)), mModelScene,
 			SLOT(toggleMoveToolButton(bool)));
+    connect(this, SIGNAL(zoomInToolToggled(bool)), mModelScene,
+            SLOT(toggleZoomInTool(bool)));
+    connect(this, SIGNAL(zoomOutToolToggled(bool)), mModelScene,
+            SLOT(toggleZoomOutTool(bool)));
+    connect(this, SIGNAL(unselectItems()), mModelScene,
+            SLOT(unselectItems()));
+
+
+    connect(this, SIGNAL(idleMode()), mModelScene, SLOT(idleModeOn()));
 
 	connect(mModelScene, SIGNAL(itemRightBtnClicked(QGraphicsSceneMouseEvent *,
 				QGraphicsItem *)), this, SLOT(callItemContextMenu(QGraphicsSceneMouseEvent *,
@@ -174,7 +192,8 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     //mModelView->setCacheMode(QGraphicsView::CacheBackground);
 	mModelView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, false);
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
-    mModelView->setRubberBandSelectionMode(Qt::ContainsItemShape);
+    mModelView->setCursor(Qt::PointingHandCursor);
+    //mModelView->setRubberBandSelectionMode(Qt::ContainsItemShape);
 	mModelView->setRenderHint(QPainter::Antialiasing, true);
 	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
     //mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -183,6 +202,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     mModelView->viewport()->installEventFilter(this);
 
     mTreeCompEditor = 0;
+    //mModelScene->idleModeOn();
 
     /* ====================================================================== */
     /* WIDGET BUTTON AND CONTEXT MENU SETUP */
@@ -214,6 +234,13 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	this->initItemContextMenu();
 
 	qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
+}
+
+void
+NMModelViewWidget::setLogger(NMLogger *logger)
+{
+    mLogger = logger;
+    this->mModelScene->setLogger(logger);
 }
 
 NMModelViewWidget::~NMModelViewWidget()
@@ -630,6 +657,38 @@ NMModelViewWidget::test()
    else if (pi)
    {
        title = pi->getTitle().toStdString();
+       QList<NMComponentLinkItem*> inl = pi->getInputLinks();
+       QList<NMComponentLinkItem*> outl = pi->getOutputLinks();
+
+       int nin = inl.size();
+       int nout = outl.size();
+       NMLogDebug(<< title << ": " << nin << " inputs and " << nout << " outputs!" << std::endl);
+
+       int cnt = 0;
+       foreach(NMComponentLinkItem* li, inl)
+       {
+           QRectF r = li->sceneBoundingRect();
+           NMLogDebug(<< "sr-#" << cnt << " TL: " << r.left() << "," << r.top()
+                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
+
+           r = li->boundingRect();
+           NMLogDebug(<< "br-#" << cnt << " TL: " << r.left() << "," << r.top()
+                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
+           ++cnt;
+       }
+
+       cnt=0;
+       foreach(NMComponentLinkItem* oi, outl)
+       {
+           QRectF r = oi->sceneBoundingRect();
+           NMLogDebug(<< "#" << cnt << " TL: " << r.left() << "," << r.top()
+                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
+
+           r = oi->boundingRect();
+           NMLogDebug(<< "br-#" << cnt << " TL: " << r.left() << "," << r.top()
+                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
+           ++cnt;
+       }
    }
    else if (ti)
    {
@@ -3468,35 +3527,34 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
     {
         emit modelViewActivated(this);
     }
+    else if (e->type() == QEvent::Enter)
+    {
+        if (mModelScene->getInteractionMode() == NMModelScene::NMS_UNDEFINED)
+        {
+            mModelScene->idleModeOn();
+        }
 
+        if (mModelScene->getInteractionMode() == NMModelScene::NMS_IDLE)
+        {
+            QCursor* orc = QApplication::overrideCursor();
+            if (orc == 0)
+            {
+                QApplication::setOverrideCursor(Qt::PointingHandCursor);
+            }
+        }
+    }
+    else if (e->type() == QEvent::Leave)
+    {
+        if (mModelScene->getInteractionMode() == NMModelScene::NMS_IDLE)
+        {
+            QCursor* cur = QApplication::overrideCursor();
+            while (cur != 0)
+            {
+                QApplication::restoreOverrideCursor();
+                cur = QApplication::overrideCursor();
+            }
+        }
+    }
 
-
-//    else if (e->type() == QEvent::Drop)
-//    {
-//        QDropEvent* de = static_cast<QDropEvent*>(e);
-//        if (de != 0)
-//        {
-//            //mLastScenePos = this->mModelView->mapToScene(de->pos());
-//            //mLastItem = this->mModelScene->itemAt(mLastScenePos, this->mModelView->transform());
-//        }
-//    }
     return false;
 }
-
-//LUMASSMainWin*
-//NMModelViewWidget::getMainWindow(void)
-//{
-//    LUMASSMainWin* mainWin = 0;
-//    QWidgetList tlw = qApp->topLevelWidgets();
-//    QWidgetList::ConstIterator it = tlw.constBegin();
-//    for (; it != tlw.constEnd(); ++it)
-//    {
-//        QWidget* w = const_cast<QWidget*>(*it);
-//        if (w->objectName().compare("LUMASSMainWin") == 0)
-//        {
-//            mainWin = qobject_cast<LUMASSMainWin*>(w);
-//        }
-//    }
-
-//    return mainWin;
-//}

@@ -185,6 +185,7 @@ extern int nmindent;
 // in the NMModellingFramework and GUI classes
 // =====================================================
 #ifdef NM_ENABLE_LOGGER
+#include <QDateTime>
 #include "NMLogger.h"
 
 #define NMLogInfo(arg) \

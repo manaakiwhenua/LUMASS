@@ -35,11 +35,11 @@ const std::string NMProcessComponentItem::ctx = "NMProcessComponentItem";
 
 NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
 		NMModelScene* scene)
-    : QGraphicsItem(parent), //mContextMenu(0) ,
+    : QGraphicsItem(parent),
       mProgress(0.0), mbIsExecuting(false), mbIsDataBuffer(false),
       mTimeLevel(0), mTypeID(0),
-      //mIsCollapsed(false),
-      mModelParent(0)
+      mModelParent(0),
+      mDescription("")
 {
 	this->mScene = scene;
 
@@ -47,26 +47,10 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     mDoubleLineHeight = 30;
     mMaxTextWidth = 150;
 
-//    if (this->objectName().contains("Reader", Qt::CaseInsensitive))
-//    {
-//        mIcon.load(":data-read-icon.png");
-//    }
-//    else if (this->objectName().contains("Writer", Qt::CaseInsensitive))
-//    {
-//        mIcon.load(":data-write-icon.png");
-//    }
-//    else if (this->objectName().contains("DataBuffer", Qt::CaseInsensitive))
-//    {
-//        mIcon.load(":image_layer.png");
-//    }
-//    else if (this->objectName().contains("SQL", Qt::CaseInsensitive))
-//    {
-//        mIcon.load(":SQLite_Logo_4.png");
-//    }
-//    else
-    {
-        mIcon.load(":model-icon.png");
-    }
+    // will be overriden with setTitle
+    // once we know what type of
+    // item this is
+    mIcon.load(":model-icon.png");
 
     qreal dpr = 1;//qApp->devicePixelRatio();
     qreal smallGap = 2*dpr;
@@ -75,6 +59,7 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     mIcon.scaledToWidth(64*dpr);
 
     mFont = QFont("Arial", 10);
+    mFont.setBold(true);
 
     QFontMetrics fm(mFont);
 
@@ -87,12 +72,6 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     mIconBnd = QRectF(mIconRect.left()-12*dpr, mIconRect.top()-16*dpr,
                       mIconRect.width()+24*dpr, mIconRect.height()+24*dpr);
 
-
-    //qreal textwidth = fm.width(mDescription);
-    //    qreal lefttrect = mIconBnd.left() - ((mMaxTextWidth - mIconBnd.width())/2.0);
-    //    mTextRect = QRectF(lefttrect, mIconBnd.bottom()+bigGap,
-    //                       mMaxTextWidth, fm.height());
-    updateDescription();
 
     mClockRect = QRectF(mIconBnd.left()+smallGap, mIconBnd.top()+bigGap,
                         fm.height()*0.6,fm.height()*0.6);
@@ -474,7 +453,7 @@ NMProcessComponentItem::paint(QPainter* painter,
 
     // the description
     mFont.setBold(true);
-	painter->setFont(mFont);
+    painter->setFont(mFont);
     painter->drawText(mTextRect,
                       Qt::AlignTop | Qt::AlignHCenter | Qt::TextWordWrap |
                       Qt::ElideRight,

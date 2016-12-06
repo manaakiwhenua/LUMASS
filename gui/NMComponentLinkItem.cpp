@@ -89,6 +89,10 @@ NMComponentLinkItem::boundingRect(void) const
             tarBnd = mapRectFromItem(mTargetItem, mTargetItem->boundingRect());
         }
     }
+    else
+    {
+        tarBnd = mapRectFromItem(mTargetItem, mTargetItem->boundingRect());
+    }
 
     NMAggregateComponentItem* eldestCollapsedSource = 0;
     NMAggregateComponentItem* ts = mSourceItem->getModelParent();
@@ -105,6 +109,10 @@ NMComponentLinkItem::boundingRect(void) const
         {
             srcBnd = mapRectFromItem(mSourceItem, mSourceItem->boundingRect());
         }
+    }
+    else
+    {
+        srcBnd = mapRectFromItem(mSourceItem, mSourceItem->boundingRect());
     }
 
     return srcBnd.united(tarBnd);

@@ -2191,7 +2191,8 @@ NMSqlTableView::setSelection(const QItemSelection &isel)
 }
 
 void
-NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelection& desel)
+NMSqlTableView::updateProxySelection(const QItemSelection& sel,
+                                     const QItemSelection& desel)
 {
     NMDebugCtx(ctx, << "...");
 
@@ -2223,6 +2224,10 @@ NMSqlTableView::updateProxySelection(const QItemSelection& sel, const QItemSelec
             }
         }
         this->updateSelection(false);
+    }
+    else if (mSelectionModel && desel.count() > 0)
+    {
+        this->clearSelection();
     }
     else
     {

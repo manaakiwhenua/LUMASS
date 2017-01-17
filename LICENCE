@@ -3,13 +3,18 @@
 ********************************************************************************
 
 LUMASS is free software and you can redistribute it and/or modify it under the 
+<<<<<<< HEAD
 terms of the GNU General Public Licence as published by the Free Software 
 Foundation, either version 3 of the Licence, or (at your option) any later
+=======
+terms of the GNU General Public Licence as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+>>>>>>> 09cb623... rev: renamed and updated LICENCE file
 version.
 
 LUMASS is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU General Public License for more details
+PARTICULAR PURPOSE.  See the GNU General Public Licence for more details
 (GPLV3.txt).
 
 ********************************************************************************
@@ -30,9 +35,17 @@ for detailed information of icon source and licence.
 --- lumass/gui/resources/edit-select.png (modified)
 --- lumass/gui/resources/draw-bezier-curves.png
 --- lumass/gui/resources/transform-move.png
+<<<<<<< HEAD
 source: Oxygen Icons <http://www.oxygen-icons.org>
 license: http://creativecommons.org/licenses/LGPL/2.1/
          http://creativecommons.org/licenses/by-sa/3.0/
+=======
+--- lumass/gui/resources/view-split-left-right.png\
+--- lumass/gui/resources/view-split-top-bottom.png
+source: Oxygen Icons <https://anongit.kde.org/oxygen-icons5.git>
+licence: http://creativecommons.org/licenses/LGPL/2.1/
+
+>>>>>>> 09cb623... rev: renamed and updated LICENCE file
 
 --- lumass/gui/resources/data-read.png
 --- lumass/gui/resources/data-save.png
@@ -40,26 +53,37 @@ license: http://creativecommons.org/licenses/LGPL/2.1/
 --- lumass/gui/resources/model-pause.png (modified)
 --- lumass/gui/resources/model-stop.png (modified)
 --- lumass/gui/resources/table_object.png
+<<<<<<< HEAD
 source: Oxygen Icons <http://www.oxygen-icons.org>
 license: http://creativecommons.org/licenses/by-sa/3.0/
+=======
+source: Oxygen Icons <https://anongit.kde.org/oxygen-icons5.git>
+licence: http://creativecommons.org/licenses/by-sa/3.0/
+>>>>>>> 09cb623... rev: renamed and updated LICENCE file
 
          
 --- lumass/gui/resources/select.png
 source: Intrigue Icon Set
-license: http://creativecommons.org/licenses/GPL/2.0/
+licence: http://creativecommons.org/licenses/GPL/2.0/
 
         
 --- lumass/gui/resources/zoom-in-3.png
 --- lumass/gui/resources/zoom-in-3.png
 --- lumass/gui/resources/zoom-fit-best-2.png
 source: GNOME Icon Theme <http://art.gnome.org>
-license: http://creativecommons.org/licenses/GPL/2.0/
+licence: http://creativecommons.org/licenses/GPL/2.0/
 
 --- lumass/gui/resources/SQLite_Logo_4.png
 adapted from source: https://commons.wikimedia.org/wiki/File:SQLite_Logo_4.png
-license: public domain
+licence: public domain
 
 
+<<<<<<< HEAD
 NOTE: The Oxygen icons website (http://www.oxygen-icons.org) is now defunct!
 You may want to look here for the icon library: http://sourceforge.net/projects/openiconlibrary/
 
+=======
+--- lumass/gui/resources/network-globe2.png
+source Crystal Icon set <https://sourceforge.net/projects/openiconlibrary/>
+licence: http://creativecommons.org/licenses/LGPL/2.1/
+>>>>>>> 09cb623... rev: renamed and updated LICENCE file

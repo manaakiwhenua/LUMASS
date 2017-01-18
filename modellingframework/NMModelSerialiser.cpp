@@ -43,6 +43,7 @@
 #include "NMModelComponentFactory.h"
 #include "NMProcessFactory.h"
 #include "NMIterableComponent.h"
+#include "NMDataComponent.h"
 
 
 NMModelSerialiser::NMModelSerialiser(QObject* parent)
@@ -822,7 +823,7 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 		NMModelController* controller)
 {
 	/*  We go through the list of imported components,
-	 *  and ensure for all process components that
+     *  and ensure for all process and data components that
 	 *  the names of any input components are consistent
 	 *  with the actual component names as result of
      *  the import process.
@@ -835,13 +836,14 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 	QStringList newnames = nameRegister.values();
 	foreach(const QString& nn, newnames)
 	{
-		NMIterableComponent* comp =
-				qobject_cast<NMIterableComponent*>(controller->getComponent(nn));
-		if (comp != 0 && comp->getProcess() != 0)
+        NMModelComponent* comp = controller->getComponent(nn);
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+        NMDataComponent* dc = qobject_cast<NMDataComponent*>(comp);
+        if ((ic != 0 && ic->getProcess() != 0)
+             || dc != 0)
 		{
             QList<QStringList> revisedList;
-			QList<QStringList> inputslist =
-					comp->getProcess()->getInputComponents();
+            QList<QStringList> inputslist = comp->getInputs();
 			for(int i=0; i < inputslist.size(); ++i)
 			{
                 QStringList newInputsList;
@@ -871,19 +873,17 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 					{
 						newinput = nameRegister.value(oldinputSrc);
 					}
-                    //oldinputs.replace(oi, newinput);
                     if (!newinput.isEmpty())
                     {
                         newInputsList.push_back(newinput);
                     }
 				}
-                //inputslist.replace(i, oldinputs);
                 if (newInputsList.size() > 0)
                 {
                     revisedList.push_back(newInputsList);
                 }
 			}
-            comp->getProcess()->setInputComponents(revisedList);
+            comp->setInputs(revisedList);
 		}
 	}
 }

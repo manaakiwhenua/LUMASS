@@ -89,18 +89,10 @@ public:
 	std::string GetColumnName(int idx);
 	TableColumnType GetColumnType(int idx);
 
-    //void* GetColumnPointer(int idx);
-
     virtual long long GetRowIdx(const std::string& column, void* value) = 0;
-
-	//long GetRowIdx(const std::string& column, const double& value);
-	//long GetRowIdx(const std::string& column, const long& value);
-	//long GetRowIdx(const std::string& column, const std::string& value);
 
 	// managing the attribute table's content
     virtual bool AddColumn(const std::string& sColName, TableColumnType type) = 0;
-    //bool AddRow();
-    //bool AddRows(long numRows);
     virtual void SetValue(const std::string& sColName, long long idx, double value) = 0;
     virtual void SetValue(const std::string& sColName, long long idx, long long value) = 0;
     virtual void SetValue(const std::string& sColName, long long idx, std::string value) = 0;
@@ -156,28 +148,6 @@ protected:
 	 */
 	std::vector<std::string> m_vNames;
 	std::vector<TableColumnType> m_vTypes;
-
-	/** Holds the index of the respective type specific
-	 *  vector containing the data of the column
-	 *  denoted by the index in this vector;
-	 *  e.g.:
-	 *  		m_vNames[2]    = "Column_3";
-	 *  		m_vTypes[2]    = ATTYPE_INT;
-	 *  		m_vPosition[2] = 3;
-	 *
-	 *  Column "Column_3" is the third column in the table
-	 *  and its content is stored in m_mIntCols[3];
-	 *
-	 */
-    //std::vector<int> m_vPosition;
-
-	// maps holding table columns
-	//std::map<int, std::vector<std::string> > m_mStringCols;
-	//std::map<int, std::vector<long> > m_mIntCols;
-	//std::map<int, std::vector<double> > m_mDoubleCols;
-    //	std::vector<std::vector<std::string>* > m_mStringCols;
-    //	std::vector<std::vector<long>* > m_mIntCols;
-    //	std::vector<std::vector<double>* > m_mDoubleCols;
 
     TableType m_ATType;
     long long m_iNumRows;

@@ -108,7 +108,7 @@ protected:
         struct tm* timeinfo;
         time(&timestamp);
         timeinfo = localtime(&timestamp);
-        static char res[8];
+        static char res[16];
         sprintf(res, "%.2d:%.2d:%.2d",
                 timeinfo->tm_hour,
                 timeinfo->tm_min,

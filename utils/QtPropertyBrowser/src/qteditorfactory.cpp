@@ -1420,6 +1420,7 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
 {
     QWidget* w = new QWidget(parent);
     w->setWindowFlags(Qt::FramelessWindowHint);
+    w->setAttribute(Qt::WA_DeleteOnClose, true);
     w->setMinimumHeight(200);
     w->setMinimumWidth(100);
     QHBoxLayout* blo = new QHBoxLayout(w);
@@ -1456,6 +1457,7 @@ QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
     connect(btn, SIGNAL(clicked()), this, SLOT(slotCallAuxEditor()));
+    connect(btn, SIGNAL(clicked()), w, SLOT(close()));
     connect(this, SIGNAL(signalCallAuxEditor(QtProperty *, const QStringList &)),
             manager, SLOT(slotCallAuxEditor(QtProperty *, const QStringList &)));
 

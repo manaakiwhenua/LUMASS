@@ -378,6 +378,8 @@ public:
 
     QMap<QtProperty *, QtVariantProperty *> m_internalToProperty;
 
+    QtProperty* getProperty(const QtVariantProperty* varProp) const;
+
     const QString m_constraintAttribute;
     const QString m_singleStepAttribute;
     const QString m_decimalsAttribute;
@@ -400,6 +402,23 @@ QtVariantPropertyManagerPrivate::QtVariantPropertyManagerPrivate() :
     m_minimumAttribute(QLatin1String("minimum")),
     m_regExpAttribute(QLatin1String("regExp"))
 {
+}
+
+QtProperty*
+QtVariantPropertyManagerPrivate::getProperty(const QtVariantProperty *varProp) const
+{
+    QtProperty* prop = 0;
+    QMap<QtProperty*, QtVariantProperty*>::const_iterator pit = m_internalToProperty.begin();
+    while (pit != m_internalToProperty.end())
+    {
+        if (varProp == pit.value())
+        {
+            prop = pit.key();
+            break;
+        }
+        ++pit;
+    }
+    return prop;
 }
 
 int QtVariantPropertyManagerPrivate::internalPropertyToType(QtProperty *property) const
@@ -1343,6 +1362,16 @@ QtVariantProperty *QtVariantPropertyManager::variantProperty(const QtProperty *p
     if (it == d_ptr->m_propertyToType.constEnd())
         return 0;
     return it.value().first;
+}
+
+/*!
+    Returns the internal \sa QtProperty managed and refered to by
+    this QtVariantPropertyManager as \a varProp. If there is no such
+    QtVariantProperty as \a varProp, the function returns 0.
+*/
+QtProperty* QtVariantPropertyManager::getProperty(const QtVariantProperty *varProp) const
+{
+    return d_ptr->getProperty(varProp);
 }
 
 /*!

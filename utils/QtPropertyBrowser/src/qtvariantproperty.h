@@ -91,6 +91,7 @@ public:
     int propertyType(const QtProperty *property) const;
     int valueType(const QtProperty *property) const;
     QtVariantProperty *variantProperty(const QtProperty *property) const;
+    QtProperty* getProperty(const QtVariantProperty* varProp) const;
 
     virtual bool isPropertyTypeSupported(int propertyType) const;
     virtual int valueType(int propertyType) const;

@@ -30,12 +30,15 @@
 #include "qtpropertymanager.h"
 #include "qtvariantproperty.h"
 
-#include "nmlog.h"
 #include "NMProcess.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "NMRasdamanConnectorWrapper.h"
 #endif
+
+class NMLogger;
+class NMHoverEdit;
+
 
 class NMComponentEditor : public QWidget
 {
@@ -43,6 +46,8 @@ class NMComponentEditor : public QWidget
     Q_ENUMS(NMCompEditorMode)
 
 public:
+
+    friend class NMHoverEdit;
 
     enum NMCompEditorMode {
         NM_COMPEDITOR_GRPBOX,
@@ -59,6 +64,8 @@ public:
     void setRasdamanConnectorWrapper(NMRasdamanConnectorWrapper* wrap)
         {this->mRasConn = wrap;}
 #endif
+
+    static QVariant nestedListFromStringList(const QStringList& strList);
 
 signals:
     //void finishedEditing(QObject* obj);
@@ -78,7 +85,6 @@ private:
      *        in content and order of sub components
      */
     void updateSubComponents(const QStringList& compList);
-    QVariant nestedListFromStringList(const QStringList& strList);
 
     void createPropertyEdit(const QMetaProperty& property,
             QObject* obj);
@@ -89,6 +95,8 @@ private:
             NMProcess* proc);
 
 
+    NMLogger* mLogger;
+
     QObject* mObj;
     NMModelComponent* comp;
     NMIterableComponent* itComp;
@@ -96,6 +104,10 @@ private:
     static const std::string ctx;
     NMCompEditorMode mEditorMode;
     QtAbstractPropertyBrowser* mPropBrowser;
+
+    QString mUserID;
+    QString mCompName;
+    NMHoverEdit* mHoverEdit;
 
     // keep track of managers and editorFactories
     QList<QtVariantPropertyManager*> mManagers;

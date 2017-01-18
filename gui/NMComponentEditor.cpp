@@ -18,6 +18,15 @@
 
 #include "NMComponentEditor.h"
 
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+#include "NMGlobalHelper.h"
+
 #include <QObject>
 #include <QMetaObject>
 #include <QMetaProperty>
@@ -34,6 +43,7 @@
 #include "NMIterableComponent.h"
 #include "NMConditionalIterComponent.h"
 #include "NMSequentialIterComponent.h"
+#include "NMHoverEdit.h"
 
 
 const std::string NMComponentEditor::ctx = "NMComponentEditor";
@@ -43,6 +53,15 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     : QWidget(parent), mEditorMode(mode), mObj(0), comp(0), proc(0),
       mUpdating(false)
 {
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
 
 #ifdef BUILD_RASSUPPORT
     this->mRasConn = 0;
@@ -65,6 +84,9 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
         }
         break;
     }
+
+    mHoverEdit = new NMHoverEdit(this);
+    mHoverEdit->setLogger(mLogger);
 
     QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     //sizePolicy.setHorizontalStretch(0);
@@ -96,8 +118,9 @@ NMComponentEditor::update()
     }
 
     if (mObj)
+    {
         this->setObject(mObj);
-        //this->readComponentProperties(mObj, comp, proc);
+    }
 }
 
 void
@@ -128,6 +151,7 @@ NMComponentEditor::setObject(QObject* obj)
         this->proc = 0;
         this->clear();
         debugCounter = 1;
+        mHoverEdit->setProperty("", "");
         return;
     }
 
@@ -139,6 +163,8 @@ NMComponentEditor::setObject(QObject* obj)
     {
         if (c != 0)
         {
+            mCompName = c->objectName();
+            mUserID = c->getUserID();
             mObj = obj;
             comp = c;
             connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
@@ -168,6 +194,9 @@ NMComponentEditor::setObject(QObject* obj)
 
         if (c != 0)
         {
+            mCompName = c->objectName();
+            mUserID = c->getUserID();
+
             mObj = obj;
             comp = c;
             connect(comp, SIGNAL(nmChanged()), this, SLOT(update()));
@@ -180,8 +209,6 @@ NMComponentEditor::setObject(QObject* obj)
         debugCounter = 1;
     }
 
-    //this->setWindowTitle(c->objectName());
-    //this->mPropBrowser->setWindowTitle(comp->objectName());
     this->readComponentProperties(mObj, comp, proc);
 
 //      NMDebugCtx(ctx, << "done!");
@@ -560,11 +587,11 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
         connect(manager, SIGNAL(signalCallAuxEditor(QtProperty*, const QStringList &)),
                  this, SLOT(callFeeder(QtProperty*, const QStringList &)));
 
-//        NMDebug(<< " - processed!" << std::endl);
+        //        NMDebug(<< " - processed!" << std::endl);
     }
     else
     {
-//        NMDebug(<< " - failed!" << std::endl);
+        //        NMDebug(<< " - failed!" << std::endl);
         delete manager;
     }
 }
@@ -572,98 +599,8 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
 void
 NMComponentEditor::callFeeder(QtProperty* prop, const QStringList& val)
 {
-    NMDebugCtx(ctx, << "...");
-
-    NMDebugAI(<< "Feeder for " << mObj->objectName().toStdString()
-              << "'s '" << prop->propertyName().toStdString()
-              << "' requested ..." << std::endl);
-
-    NMDebugAI(<< "current value: " << val.join(":").toStdString() << std::endl);
-
-    QVariant nestedList;
-    if (!val.isEmpty())
-    {
-        if (!val.at(0).isEmpty() && !val.at(0).startsWith("invalid"))
-        {
-            nestedList = this->nestedListFromStringList(val);
-        }
-    }
-
-    if (!nestedList.isValid())
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
-
-    // wait until we've done coding below
-    return;
-
-    mUpdating = true;
-    // ------------------------------------------------------
-    // here we edit the value
-    // ...
-
-
-
-
-    // ------------------------------------------------------
-    // here we get the value back from the editor
-    QVariant newVal; // = QVariant::fromValue(newList);
-
-    NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(mObj);
-    NMProcess* proc = 0;
-
-
-    if (mObj->property(prop->propertyName().toStdString().c_str()).isValid())
-    {
-        mObj->setProperty(prop->propertyName().toStdString().c_str(), newVal);
-    }
-    else if (itComp != 0 && itComp->getProcess() != 0)
-    {
-        proc = itComp->getProcess();
-        if (proc->property(prop->propertyName().toStdString().c_str()).isValid())
-        {
-            proc->setProperty(prop->propertyName().toStdString().c_str(), newVal);
-        }
-    }
-
-    mUpdating = false;
-
-
-
-//    if (QString::fromLatin1("QList<QStringList>").compare(QString(nestedList.typeName())) == 0)
-//    {
-//        QList<QStringList> _nestedList = nestedList.value<QList<QStringList> >();
-//        foreach(const QStringList& lst, _nestedList)
-//        {
-//            NMDebugAI(<< "  >> " << std::endl);
-//            foreach(const QString& qstr, lst)
-//            {
-//                NMDebugAI(<< "    -- " << qstr.toStdString() << std::endl);
-//            }
-//            NMDebugAI(<< "  << " << std::endl);
-//        }
-//    }
-//    else if (QString::fromLatin1("QList<QList<QStringList> >").compare(QString(nestedList.typeName())) == 0)
-//    {
-//        QList<QList<QStringList> > _nestedList = nestedList.value<QList<QList<QStringList> > >();
-//        foreach(const QList<QStringList>& llst, _nestedList)
-//        {
-//            NMDebugAI( << "  >> " << std::endl);
-//            foreach(const QStringList& lst, llst)
-//            {
-//                NMDebugAI(<< "    >> " << std::endl);
-//                foreach(const QString& qstr, lst)
-//                {
-//                    NMDebugAI(<< "      -- " << qstr.toStdString() << std::endl);
-//                }
-//                NMDebugAI(<< "    << " << std::endl);
-//            }
-//            NMDebugAI( << "  << " << std::endl);
-//        }
-//    }
-
-    NMDebugCtx(ctx, << "done!");
+    mHoverEdit->setProperty(mCompName, prop->propertyName());
+    mHoverEdit->show();
 }
 
 void NMComponentEditor::applySettings(QtProperty* prop,
@@ -720,7 +657,7 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
             qobject_cast<QtVariantPropertyManager*>(prop->propertyManager());
     if (manager == 0)
     {
-        NMErr(ctx, << "couldn't get the property manager for "
+        NMLogError(<< ctx << ": couldn't get the property manager for "
                 << prop->propertyName().toStdString() << "!");
         return;
     }
@@ -746,12 +683,12 @@ void NMComponentEditor::setComponentProperty(const QtProperty* prop,
         {
             if (this->mRasConn == 0)
             {
-                NMErr(ctx, << "rasdaman connector requested, but non available!");
+                NMLogError(<< ctx << ": rasdaman connector requested, but non available!");
                 updatedValue.setValue<NMRasdamanConnectorWrapper*>(0);
             }
             else if (this->mRasConn->getConnector() == 0)
             {
-                NMErr(ctx, << "rasdaman connector requested, but non available!");
+                NMLogError( << ctx << ":rasdaman connector requested, but non available!");
                 updatedValue.setValue<NMRasdamanConnectorWrapper*>(0);
             }
             else
@@ -894,6 +831,7 @@ void NMComponentEditor::updateSubComponents(const QStringList& compList)
     }
 }
 
+
 QVariant
 NMComponentEditor::nestedListFromStringList(const QStringList& strList)
 {
@@ -906,6 +844,7 @@ NMComponentEditor::nestedListFromStringList(const QStringList& strList)
     int levelcounter = 0;
     foreach(QString ts, strList)
     {
+        ts = ts.trimmed();
         if (ts.compare("{") == 0)// || ts.startsWith("{"))
         {
             ++levelcounter;
@@ -926,6 +865,7 @@ NMComponentEditor::nestedListFromStringList(const QStringList& strList)
     levelcounter = maxlevel;
     foreach(QString ts, strList)
     {
+        ts = ts.trimmed();
 //		NMDebugAI(<< "'" << ts.toStdString() << "' on level " << levelcounter);
         if (ts.compare("{") == 0)
         {

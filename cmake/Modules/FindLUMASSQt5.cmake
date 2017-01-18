@@ -33,7 +33,7 @@ if(WIN32)
             5.3.1/5.3/qtbase
             5.5.0/5.5/qtbase
             5.5.0/qtbase
-			5.5.1/qtbase
+            5.5.1/qtbase
     )
 else()
     set(QT5_CORE_LIB "libQt5Core.so")
@@ -41,12 +41,12 @@ else()
 	set(QT5_PATHS
 		/opt
 		/opt/qt
-        /opt/Qt
+                /opt/Qt
 		/usr
 		/usr/qt
 		/usr/local
-        /usr/lib
-        /usr/lib/x86_64-linux-gnu
+                /usr/lib
+                /usr/lib/x86_64-linux-gnu
 	)
     set(QT5_PATH_SUFFIXES
             Qt5.0.0/5.0.0/gcc
@@ -208,13 +208,15 @@ foreach(INCLDIR ${QT5_INCLUDE_DIRS})
             5.4.0/QtCore
             5.4.1/QtCore
             5.4.2/QtCore
-			5.5.0/QtCore
-			5.5.1/QtCore
+            5.5.0/QtCore
+            5.5.1/QtCore
+            5.6.1/QtCore
         PATHS 
-			${INCLDIR}
-			c:/qt/5.5.0/qtbase/include/QtCore
-			c:/Qt/5.5.0/qtbase/include/QtCore
-			c:/qt/5.5.1/qtbase/include/QtCore
+            ${INCLDIR}
+            c:/qt/5.5.0/qtbase/include/QtCore
+            c:/Qt/5.5.0/qtbase/include/QtCore
+            c:/qt/5.5.1/qtbase/include/QtCore
+            c:/qt/5.6.1/qtbase/include/QtCore
         NO_DEFAULT_PATH
     )
 endforeach()
@@ -243,13 +245,15 @@ foreach(INCLSQL ${QT5_INCLUDE_DIRS})
             5.4.1
             5.4.2
             5.5.0
-			5.5.1
+            5.5.1
+            5.6.1
         PATHS
             ${INCLSQL}
             c:/qt/5.5.0/qtbase/include/QtSql
             c:/Qt/5.5.0/qtbase/include/QtSql
-			c:/Qt/5.5.1/qtbase/include/QtSql
-			c:/qt/5.5.1/qtbase/include/QtSql
+            c:/Qt/5.5.1/qtbase/include/QtSql
+            c:/qt/5.5.1/qtbase/include/QtSql
+            c:/qt/5.6.1/qtbase/include/QtSql
         NO_DEFAULT_PATH
     )
 endforeach()
@@ -260,6 +264,42 @@ if(NOT QT5SQL_INCLUDE_DIR)
     message(STATUS "Couldn't find QtSql inlcude directory!")
 endif()
 
+# find the private header dir QtWidgets
+#foreach(INCLWIDGET ${QT5_INCLUDE_DIRS})
+#    FIND_PATH(QT5WIDGETS_INCLUDE_DIR QtWidgets/private/qcompleter_p.h
+#        PATH_SUFFIXES
+#            5.0.0
+#            5.0.1
+#            5.0.2
+#            5.1.0
+#            5.1.1
+#            5.2.0
+#            5.2.1
+#            5.3.0
+#            5.3.1
+#              5.3
+#            5.4.0
+#            5.4.1
+#            5.4.2
+#            5.5.0
+#            5.5.1
+#            5.6.1
+#        PATHS
+#            ${INCLWIDGET}
+#            c:/qt/5.5.0/qtbase/include/QtWidgets
+#            c:/Qt/5.5.0/qtbase/include/QtWidgets
+#            c:/Qt/5.5.1/qtbase/include/QtWidgets
+#            c:/qt/5.5.1/qtbase/include/QtWidgets
+#            c:/qt/5.6.1/qtbase/include/QtWidgets
+#        NO_DEFAULT_PATH
+#    )
+#endforeach()
+
+#if(NOT QT5WIDGETS_INCLUDE_DIR)
+#    set(QT5WIDGETS_INCLUDE_DIR ${QT5WIDGETS_INLCUDE_DIR}
+#        CACHE FILEPATH "Path to QtWidgets include directory" FORCE)
+#    message(STATUS "Couldn't find QtWidgets inlcude directory!")
+#endif()
 
 # have a look around whether we can find a source 
 # directory hosting the QSQLiteDriver code

@@ -53,6 +53,7 @@ INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${QT5CORE_PRIVATE_DIR}
     ${QT5SQL_INCLUDE_DIR}
+    #${QT5WIDGETS_INCLUDE_DIR}
     #${QT5SQL_PRIVATE_DIR}/private
     ${opt_SOURCE_DIR}
     ${lumass_BINARY_DIR}
@@ -79,13 +80,13 @@ INCLUDE_DIRECTORIES(
     ${RASDAMAN_SOURCE_DIR}/applications/rasgeo
     ${PostgreSQL_INCLUDE_DIRS}
     ${lumass_SOURCE_DIR}/utils/ITK
-	${lumass_SOURCE_DIR}
+    ${lumass_SOURCE_DIR}
     ${muParserX_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}
     ${SQLite_SOURCE_DIR}
     ${NMQSQLite_SRC_DIR}
-	${SPATIALITE_INCLUDE_DIR}
+    ${SPATIALITE_INCLUDE_DIR}
 #    ${TCADB_INCLUDE_DIR}
 )     
 
@@ -145,6 +146,10 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMWidgetListView.h
         ${gui_SOURCE_DIR}/NMLogWidget.h
         ${gui_SOURCE_DIR}/NMListWidget.h
+        ${gui_SOURCE_DIR}/NMHoverEdit.h
+        ${gui_SOURCE_DIR}/NMHoverEditTree.h
+        ${gui_SOURCE_DIR}/NMParamHighlighter.h
+        ${gui_SOURCE_DIR}/NMParamEdit.h
         ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
         ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
         ${shared_SOURCE_DIR}/NMLogger.h

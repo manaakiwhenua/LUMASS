@@ -56,7 +56,6 @@ QT_BEGIN_NAMESPACE
 #endif
 
 class QtPropertyEditorView;
-
 class QtTreePropertyBrowserPrivate
 {
     QtTreePropertyBrowser *q_ptr;
@@ -115,6 +114,7 @@ private:
     bool m_browserChangedBlocked;
     QIcon m_expandIcon;
 };
+
 
 // ------------ QtPropertyEditorView
 class QtPropertyEditorView : public QTreeWidget

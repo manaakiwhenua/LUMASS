@@ -21,7 +21,14 @@
  *  Created on: 04/02/2016
  *      Author: alex
  */
-#include "nmlog.h"
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #include <string>
 #include <sstream>
 
@@ -62,9 +69,10 @@ NMParameterTable::setFileName(QString fn)
     if (mFileName.isEmpty())
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        QString msg = QString("Invalid FileName specified!").arg(this->objectName())
+        me.setSource(this->objectName().toStdString());
+        QString msg = QString("Invalid FileName '%1'!")
                 .arg(mFileName);
-        me.setMsg(msg.toStdString());
+        me.setDescription(msg.toStdString());
         NMDebugCtx(ctx, << "done!");
         throw me;
         return;
@@ -97,9 +105,10 @@ NMParameterTable::setFileName(QString fn)
         if (!tab->CreateFromVirtual(this->mFileName.toStdString()))
         {
             NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            me.setSource(this->objectName().toStdString());
             QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
                     .arg(mFileName);
-            me.setMsg(msg.toStdString());
+            me.setDescription(msg.toStdString());
             NMDebugCtx(ctx, << "done!");
             throw me;
             return;
@@ -120,13 +129,10 @@ NMParameterTable::setFileName(QString fn)
         tab->SetDbFileName(mFileName.toStdString());
         if (!tab->openConnection())
         {
-            //NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
             QString msg = QString("%1 failed opening '%2'!").arg(this->objectName())
                     .arg(mFileName);
-            //me.setMsg(msg.toStdString());
-            NMErr(ctx, << msg.toStdString());
+            NMLogError(<< ctx << ": " << msg.toStdString());
             NMDebugCtx(ctx, << "done!");
-            //throw me;
             mFileName.clear();
             return;
         }
@@ -135,14 +141,11 @@ NMParameterTable::setFileName(QString fn)
             ||  !tab->PopulateTableAdmin()
            )
         {
-            //NMMfwException me(NMMfwException::NMModelComponent_UninitialisedDataObject);
             QString msg = QString("Failed populating table '%1' of '%2'!").arg(mTableName)
                     .arg(mFileName);
-            //me.setMsg(msg.toStdString());
             mTableName.clear();
-            NMErr(ctx, << msg.toStdString());
+            NMLogError(<< ctx << ": " << msg.toStdString());
             NMDebugCtx(ctx, << "done!");
-            //throw me;
             return;
         }
     }
@@ -188,7 +191,7 @@ NMParameterTable::setFileName(QString fn)
 //            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
 //            QString msg = QString("Specified row number '%1' is invalid!")
 //                    .arg(this->objectName()).arg(specList.at(1));
-//            me.setMsg(msg.toStdString());
+//            me.setDescription(msg.toStdString());
 //            throw me;
 //            return param;
 //        }

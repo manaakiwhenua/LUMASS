@@ -18,7 +18,6 @@
 #ifndef MODELCOMPONENTLIST_H
 #define MODELCOMPONENTLIST_H
 
-#include "nmlog.h"
 //#define ctxModelComponentList "ModelComponentList"
 
 #include <vector>
@@ -48,6 +47,7 @@
 
 class LUMASSMainWin;
 class NMLayer;
+class NMLogger;
 
 class ModelComponentList : public QTreeView
 {
@@ -123,6 +123,9 @@ protected slots:
 private:
 
 	double mFullMapExt[6];
+
+    NMLogger* mLogger;
+
     NMLayerModel* mLayerModel;
     NMComponentListItemDelegate* mDelegate;
     QPoint dragStartPosition;

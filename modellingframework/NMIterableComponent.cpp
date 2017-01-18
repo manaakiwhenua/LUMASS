@@ -20,16 +20,25 @@
 #include <string>
 #include <iostream>
 #include <sstream>
-#include "nmlog.h"
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 
 #include "NMModelController.h"
 #include "NMDataComponent.h"
 #include "NMMfwException.h"
 #include "NMProcessFactory.h"
+#include "utils/muParser/muParserError.h"
 
 const std::string NMIterableComponent::ctx = "NMIterableComponent";
 
 NMIterableComponent::NMIterableComponent(QObject* parent)
+    : NMModelComponent(parent)
 {
 	this->setParent(parent);
 	this->initAttributes();
@@ -49,6 +58,16 @@ void NMIterableComponent::initAttributes(void)
 
 NMIterableComponent::~NMIterableComponent(void)
 {
+}
+
+void
+NMIterableComponent::setLogger(NMLogger* logger)
+{
+    mLogger = logger;
+    if (this->mProcess)
+    {
+        mProcess->setLogger(logger);
+    }
 }
 
 void NMIterableComponent::setProcess(NMProcess* proc)
@@ -567,14 +586,21 @@ NMIterableComponent::getOutput(unsigned int idx)
 	// check, whether we've got a 'single' process component
 	if (this->mProcess != 0)
 	{
-		NMDebugAI(<< this->objectName().toStdString()
-				<<"->getOutput(" << idx << ")" << std::endl);
-		return this->mProcess->getOutput(idx);
+        NMLogDebug(<< this->objectName().toStdString()
+                << "->getOutput(" << idx << ")" << std::endl);
+
+
+        ret = mProcess->getOutput(idx);
+        if (ret->getOTBTab().IsNotNull())
+        {
+            ret->getOTBTab()->AddObserver(itk::NMLogEvent(), mProcess->getObserver());
+        }
+        return ret;
 	}
 
 
-	NMErr(this->objectName().toStdString(), << this->objectName().toStdString() <<
-			" - Couldn't fetch any output!");
+    NMLogWarn(<< this->objectName().toStdString() <<
+            ": No output available!");
     return ret;
 
 }
@@ -731,10 +757,11 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
     if (mIsUpdating)
     {
         NMMfwException ul(NMMfwException::NMModelComponent_RecursiveUpdate);
+        ul.setSource(this->objectName().toStdString());
         std::stringstream msg;
         msg << this->objectName().toStdString()
             << " is already updating itself!";
-        ul.setMsg(msg.str());
+        ul.setDescription(msg.str());
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -752,7 +779,7 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	{
 		if (controller->isModelAbortionRequested())
 		{
-			NMDebugAI(<< "The user elected to abort model execution, so we break out here!" << endl);
+            NMLogInfo(<< "Model abortion requested!" << endl);
 			NMDebugCtx(this->objectName().toStdString(), << "done!");
             emit signalExecutionStopped();
 			return;
@@ -760,8 +787,8 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	}
 	else
 	{
-		NMErr(this->objectName().toStdString(),
-				<< "We'd better quit here - there's no controller in charge!" << endl);
+        NMLogError(<< this->objectName().toStdString()
+                << ": We'd better quit here - there's no controller in charge!" << endl);
 		NMDebugCtx(this->objectName().toStdString(), << "done!");
         emit signalExecutionStopped();
 		return;
@@ -828,7 +855,10 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     int hostStep;
 
     bool bThrow = false;
-    std::stringstream exceptionMessage;
+    std::stringstream exStackInfo;
+    std::stringstream exDescription;
+    std::string exObjName;
+    std::string exSource;
     NMMfwException::ExceptionType exceptionType;
     try
     {
@@ -837,7 +867,9 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 	// and we just link and execute this one
 	if (this->mProcess != 0)
 	{
+        exObjName = this->objectName().toStdString();
 		NMDebugAI(<< "update " << this->objectName().toStdString() << "'s process..." << std::endl);
+        NMLogDebug(<< "update " << this->objectName().toStdString() << "'s process...");
 		if (!this->mProcess->isInitialised())
 			this->mProcess->instantiateObject();
 		this->mProcess->linkInPipeline(i, repo);
@@ -901,9 +933,10 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 				if (comp == 0)
 				{
 					NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
+                    e.setSource(in.toStdString());
 					std::stringstream msg;
 					msg << "'" << in.toStdString() << "'";
-					e.setMsg(msg.str());
+                    e.setDescription(msg.str());
                     NMDebugCtx(this->objectName().toStdString(), << "done!");
                     emit signalExecutionStopped();
 					throw e;
@@ -941,11 +974,34 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     NMDebugCtx(this->objectName().toStdString(), << "done!");
 
     }
+    catch (mu::ParserError& evalerr)
+    {
+        std::stringstream errmsg;
+        errmsg << std::endl
+               << "Message:    " << evalerr.GetMsg() << std::endl
+               << "Formula:    " << evalerr.GetExpr() << std::endl
+               << "Token:      " << evalerr.GetToken() << std::endl
+               << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+        //NMLogError(<< "mu::ParserError: " << errmsg.str());
+        //NMMfwException nme(NMMfwException::NMProcess_ExecutionError);
+        //nme.setDescription(errmsg.str());
+        //emit signalExecutionStopped(this->parent()->objectName());
+        //emit signalProgress(0);
+        //throw nme;
+
+        exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName) << " step #" << hostStep << ": "
+            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1;
+        exDescription << errmsg.str();
+        exSource = (exObjName.empty() ? hostName.toStdString() : exObjName);
+        exceptionType = NMMfwException::NMProcess_ExecutionError;
+        bThrow = true;
+    }
     catch (itk::ExceptionObject& err)
     {
-        exceptionMessage << hostName.toStdString() << " step #" << hostStep << ": "
-            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
-            << ": " << err.GetDescription();
+        exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName) << " step #" << hostStep << ": "
+            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1;
+        exSource = (exObjName.empty() ? hostName.toStdString() : exObjName);
+        exDescription << err.GetDescription();
         bThrow = true;
 
         //NMErr(this->objectName().toStdString(), << msg.str());
@@ -955,10 +1011,25 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     }
     catch (NMMfwException& nmerr)
     {
-        exceptionMessage << hostName.toStdString() << " step #" << hostStep << ": "
-            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
-            << ": " << nmerr.what();
+        if (nmerr.getExecStackInfo().empty())
+        {
+            exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName) << " step #" << hostStep << ": "
+                << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1;
+        }
+        else
+        {
+            exStackInfo << nmerr.getExecStackInfo();
+        }
 
+        if (nmerr.getSource().empty())
+        {
+            exSource = (exObjName.empty() ? hostName.toStdString() : exObjName);
+        }
+        else
+        {
+            exSource = nmerr.getSource();
+        }
+        exDescription << nmerr.getDescription();
         exceptionType = nmerr.getType();
         bThrow = true;
 
@@ -969,9 +1040,9 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     }
     catch (std::exception& e)
     {
-        exceptionMessage << hostName.toStdString() << " step #" << hostStep << ": "
-            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1
-            << ": " << e.what();
+        exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName) << " step #" << hostStep << ": "
+            << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1;
+        exDescription << e.what();
         bThrow = true;
 
         //NMErr(this->objectName().toStdString(), << msg.str());
@@ -983,7 +1054,10 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     {
         NMMfwException mfwe;
         mfwe.setType(exceptionType);
-        mfwe.setMsg(exceptionMessage.str());
+        mfwe.setDescription(exDescription.str());
+        mfwe.setExecStackInfo(exStackInfo.str());
+        mfwe.setSource(exSource);
+        NMErr(ctx, << mfwe.what());
 
         NMDebugCtx(this->objectName().toStdString(), << "done!");
         emit signalExecutionStopped();

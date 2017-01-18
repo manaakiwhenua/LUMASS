@@ -105,7 +105,8 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-			e.setMsg("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            e.setSource(p->parent()->objectName().toStdString());
+			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;
 		}
@@ -134,9 +135,10 @@ public:
             }
             else
             {
-                NMErr("NMResampleImageFilterWrapper_Internal", << "Invalid value for 'DefaultPixelValue'!");
+                NMLogError(<< "NMResampleImageFilterWrapper_Internal: " << "Invalid value for 'DefaultPixelValue'!");
                 NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setMsg("Invalid value for 'DefaultPixelValue'!");
+                e.setSource(p->parent()->objectName().toStdString());
+                e.setDescription("Invalid value for 'DefaultPixelValue'!");
                 throw e;
             }
         }
@@ -155,9 +157,10 @@ public:
                 }
                 else
                 {
-                    NMErr("NMResampleImageFilterWrapper_Internal", << "Invalid value for 'OutputSpacing'!");
+                    NMLogError(<< "NMResampleImageFilterWrapper_Internal: " << "Invalid value for 'OutputSpacing'!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setMsg("Invalid value for 'OutputSpacing'!");
+                    e.setSource(p->parent()->objectName().toStdString());
+                    e.setDescription("Invalid value for 'OutputSpacing'!");
                     throw e;
                 }
             }
@@ -185,9 +188,10 @@ public:
                 }
                 else
                 {
-                    NMErr("NMResampleImageFilterWrapper_Internal", << "Invalid value for 'OutputOrigin'!");
+                    NMLogError(<< "NMResampleImageFilterWrapper_Internal: " << "Invalid value for 'OutputOrigin'!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setMsg("Invalid value for 'OutputOrigin'!");
+                    e.setSource(p->parent()->objectName().toStdString());
+                    e.setDescription("Invalid value for 'OutputOrigin'!");
                     throw e;
                 }
             }
@@ -215,9 +219,10 @@ public:
                 }
                 else
                 {
-                    NMErr("NMResampleImageFilterWrapper_Internal", << "Invalid value for 'Size'!");
+                    NMLogError(<< "NMResampleImageFilterWrapper_Internal: " << "Invalid value for 'Size'!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setMsg("Invalid value for 'Size'!");
+                    e.setDescription("Invalid value for 'Size'!");
+                    e.setSource(p->parent()->objectName().toStdString());
                     throw e;
                 }
             }

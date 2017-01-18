@@ -26,7 +26,6 @@
 #define NMTABLEVIEW_H_
 #define __ctxtabview "NMTableView"
 
-#include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
 #include "NMFastTrackSelectionModel.h"
 #include "NMTableCalculator.h"
@@ -79,7 +78,7 @@
 #include "vtkUnicodeStringArray.h"
 */
 
-//class NMLayer;
+class NMLogger;
 
 class NMTableView : public QWidget
 {
@@ -178,6 +177,8 @@ protected:
 			const QString& msg, int maxrange=0);
 	void cleanupProgressDlg(NMTableCalculator* obj, int maxrange=0);
 
+    NMLogger* mLogger;
+
     QProgressDialog* mProgressDialog;
 	ViewMode mViewMode;
 
@@ -210,16 +211,6 @@ protected:
 	QMenu* mManageLayerMenu;
 
 	QAction* mActSel;
-
-
-
-
-	//vtkSmartPointer<vtkTable> mBaseTable;
-	//otb::AttributeTable::Pointer mOtbTable;
-	//NMLayer* mLayer;
-
-	//QStringList mDeletedColumns;
-	//QStringList mAlteredColumns;
 
 };
 

@@ -23,7 +23,16 @@
  */
 
 #include "NMQtOtbAttributeTableModel.h"
-#include "nmlog.h"
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
+#include "NMGlobalHelper.h"
 
 #include <QColor>
 
@@ -31,6 +40,16 @@ NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(QObject* parent)
 	: mKeyIdx(0)
 {
 	this->setParent(parent);
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
+
 }
 
 NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(
@@ -40,6 +59,16 @@ NMQtOtbAttributeTableModel::NMQtOtbAttributeTableModel(
 	this->setParent(parent);
 	if (tab.IsNotNull())
 		this->mTable = tab;
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
+
 }
 
 NMQtOtbAttributeTableModel::~NMQtOtbAttributeTableModel()
@@ -270,7 +299,7 @@ NMQtOtbAttributeTableModel::insertColumns(int column, int count,
 	QVariant::Type type = (QVariant::Type)count;
 	if (type == 0)
 	{
-		NMErr("NMQtOtbAttributeTableModel", << "Invalid column type!");
+        NMLogError(<< "NMQtOtbAttributeTableModel: " << "Invalid column type!");
 		NMDebugCtx("NMQtOtbAttributeTableModel", << "done!");
 		return false;
 	}

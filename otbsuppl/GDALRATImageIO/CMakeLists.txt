@@ -38,7 +38,7 @@ file(GLOB GDALRATIO_HEADER
 	${GDALRATImageIO_BINARY_DIR}/*.h
 )
 
-add_definitions(-DOTBGDALRATImageIO_EXPORTS)
+add_definitions(-DOTBGDALRATImageIO_EXPORTS -DNM_PROC_LOG)
 
 include(GenerateExportHeader)
 # define build target: shared library 

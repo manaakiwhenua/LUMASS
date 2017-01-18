@@ -1757,7 +1757,7 @@ NMMosra::varyConstraint(const QString& constraint,
 		NMDebugCtx(ctxNMMosra, << "done!");
 
 		//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-		//e.setMsg("Invalid pertubation item specified!");
+		//e.setDescription("Invalid pertubation item specified!");
 		//throw e;
 
         return false;
@@ -1809,7 +1809,7 @@ NMMosra::varyConstraint(const QString& constraint,
             NMLogError( << "Land use field map is empty!");
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-			//e.setMsg("Land use field map is empty!");
+			//e.setDescription("Land use field map is empty!");
 			//throw e;
             return false;
 		}
@@ -1821,7 +1821,7 @@ NMMosra::varyConstraint(const QString& constraint,
             NMLogError( << "Field value list is empty!");
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-			//e.setMsg("field value list is empty!");
+			//e.setDescription("field value list is empty!");
 			//throw e;
             return false;
 		}
@@ -1835,7 +1835,7 @@ NMMosra::varyConstraint(const QString& constraint,
             NMLogError( << "Constraint threshold is not a number!")
 			NMDebugCtx(ctxNMMosra, << "done!");
 			//NMMfwException e(NMMfwException::NMMosra_InvalidParameter);
-			//e.setMsg("Land use field map is empty!");
+			//e.setDescription("Land use field map is empty!");
 			//throw e;
             return false;
 		}

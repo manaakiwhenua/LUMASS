@@ -35,6 +35,8 @@
 
 #include "otbMultiParser.h"
 
+class NMLogger;
+
 class NMTableCalculator : public QObject
 {
 	Q_OBJECT
@@ -103,7 +105,7 @@ protected:
 	bool mSelectionModeOn;
 	bool mbCanceled;
 
-
+    NMLogger* mLogger;
 
 	long mNumSel;
 	QItemSelection mOutputSelection;

@@ -24,12 +24,20 @@
 
 #include <string>
 #include <iostream>
-#include <QDebug>
 #include <QFile>
 #include <QMetaObject>
 #include <QMetaProperty>
 #include <QList>
 #include <QStringList>
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 
 #include "NMModelSerialiser.h"
 #include "NMModelComponentFactory.h"
@@ -43,7 +51,22 @@ NMModelSerialiser::NMModelSerialiser(QObject* parent)
 	this->ctx = this->metaObject()->className();
 #ifdef BUILD_RASSUPPORT
 	this->mRasconn = 0;
-#endif	
+#endif
+}
+
+void
+NMModelSerialiser::setLogger(NMLogger *logger)
+{
+    if (logger == 0)
+    {
+        return;
+    }
+    mLogger = logger;
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
 }
 
 NMModelSerialiser::~NMModelSerialiser()
@@ -72,7 +95,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
     QScopedPointer<QFile> file(new QFile(fileName));
 	if (!file->open(QIODevice::ReadOnly | QIODevice::Text))
 	{
-		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
+        NMLogError(<< ctx << ": unable to read input file '" << fileName.toStdString()
 				<< "'!");
 //		NMDebugCtx(ctx, << "done!");
 		return nameRegister;
@@ -81,7 +104,7 @@ QMap<QString, QString> NMModelSerialiser::parseComponent(const QString& fileName
 	QDomDocument doc;
     if (!doc.setContent(file.data()))
 	{
-		NMErr(ctx, << "unable to read input file '" << fileName.toStdString()
+        NMLogError(<< ctx << ": unable to read input file '" << fileName.toStdString()
 				<< "'!");
 //		NMDebugCtx(ctx, << "done!");
 		return nameRegister;
@@ -125,7 +148,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		QString compName = compElem.attribute("name");
 		if (compName.isEmpty())
 		{
-			NMErr(ctx, << "detected unnamed component!");
+            NMLogError(<< ctx << ": detected unnamed component!");
             //			NMDebugCtx(ctx, << "done!");
             return;// nameRegister;
 		}
@@ -287,7 +310,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
         //				}
         //				else
         //				{
-        //					NMErr(ctx, << "couldn't get the root model component from "
+        //					NMLogError(<< ctx << ": couldn't get the root model component from "
         //							<< "the model controller!");
         //				}
         //			}
@@ -447,7 +470,7 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 			else
 			{
 				value.setValue<NMRasdamanConnectorWrapper*>(0);
-				NMErr(ctx, << "rasdaman connector requested, but non available!");
+                NMLogError(<< ctx << ": rasdaman connector requested, but non available!");
 			}
 		}
 		else
@@ -531,7 +554,7 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 	QFile file(fileName);
 	if (!file.open(QIODevice::ReadWrite | QIODevice::Text))
 	{
-		NMErr(ctx, << "unable to create file '" << fileName.toStdString()
+        NMLogError(<< ctx << ": unable to create file '" << fileName.toStdString()
 				<< "'!");
         NMDebugCtx(ctx, << "done!");
 		return;
@@ -550,7 +573,7 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 	{
 		if (!doc.setContent(&file))
 		{
-			NMErr(ctx, << "failed reading document structure from '"
+            NMLogError(<< ctx << ": failed reading document structure from '"
 					<< fileName.toStdString() << "'!");
             NMDebugCtx(ctx, << "done!");
 			return;
@@ -585,7 +608,7 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 
 	if (comp == 0)
 	{
-		NMErr(ctx, << "cannot serialise NULL component!");
+        NMLogError(<< ctx << ": cannot serialise NULL component!");
 		return;
 	}
 //	NMDebugAI(<< "serialising '" << comp->objectName().toStdString() << endl);
@@ -838,7 +861,7 @@ NMModelSerialiser::harmoniseInputComponentNames(QMap<QString, QString>& nameRegi
 						}
 						else
 						{
-							NMErr(ctx, << comp->objectName().toStdString() << " seems to contain an "
+                            NMLogWarn(<< ctx << ": " << comp->objectName().toStdString() << " seems to contain an "
 									<< "ill formatted component input string: '"
 									<< oldinputSrc.toStdString() << "' - we just go for the name then!");
 							newinput = nameRegister.value(oldinputSrcParams.at(0));

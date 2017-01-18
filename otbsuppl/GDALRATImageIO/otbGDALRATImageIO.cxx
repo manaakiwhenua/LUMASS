@@ -1428,7 +1428,7 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
     m_Dataset = (GDALDataset*)GDALOpen(this->GetFileName(), GA_Update);
     if (m_Dataset == 0)
     {
-        itkWarningMacro(<< "Failed opening dataset for overview generation!");
+        NMProcWarn(<< "Failed opening dataset for overview generation!");
         // in case the data set was open before we tried building overivews,
         // we try to re-opening it again in ReadOnly mode (note: many drivers don't
         // support writing)
@@ -1517,7 +1517,7 @@ void GDALRATImageIO::SetForcedLPR(const itk::ImageIORegion& forcedLPR)
 //	}
 //	else
 //	{
-//		itkWarningMacro(<< "The provided update region does not fit into the set forced largest possible region!");
+//		NMProcWarn(<< "The provided update region does not fit into the set forced largest possible region!");
 //		this->m_UseUpdateRegion = false;
 //	}
 //
@@ -1603,7 +1603,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
         m_BytePerPixel = sizeof(tmp);
         if( m_BytePerPixel == 8 )
           {
-            itkWarningMacro(<< "Cast a long (64 bits) image into an int (32 bits) one.")
+            NMProcWarn(<< "Cast a long (64 bits) image into an int (32 bits) one.")
           }
         m_GDALComponentType = GDT_Int32;
       }
@@ -1613,7 +1613,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
         m_BytePerPixel = sizeof(tmp);
         if( m_BytePerPixel == 8 )
           {
-            itkWarningMacro(<< "Cast an unsigned long (64 bits) image into an unsigned int (32 bits) one.")
+            NMProcWarn(<< "Cast an unsigned long (64 bits) image into an unsigned int (32 bits) one.")
               }
         m_GDALComponentType = GDT_UInt32;
       }
@@ -1778,7 +1778,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     // If there is no ProjectionRef, and the GeoTransform is not the identity,
     // then saving also GCPs is undefined behavior for GDAL, and a WGS84 projection crs
     // is assigned arbitrarily
-    //itkWarningMacro(<< "Skipping GCPs saving to prevent GDAL from assigning a WGS84 projection ref to the file")
+    //NMProcWarn(<< "Skipping GCPs saving to prevent GDAL from assigning a WGS84 projection ref to the file")
     }
   else
     {
@@ -2027,7 +2027,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
     //img = m_Dataset->GetDataSet();
 //    if (m_Dataset == 0)
 //    {
-//        //itkWarningMacro(<< "ReadRAT: unable to access data set!");
+//        //NMProcWarn(<< "ReadRAT: unable to access data set!");
 //        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
 //        return 0;
 //    }
@@ -2300,7 +2300,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     //img = m_Dataset->GetDataSet();
 //	if (img == 0)
 //	{
-//		//itkWarningMacro(<< "ReadRAT: unable to access data set!");
+//		//NMProcWarn(<< "ReadRAT: unable to access data set!");
 //		//itkExceptionMacro(<< "ReadRAT: unable to access data set!");
 //		return 0;
 //	}
@@ -2399,7 +2399,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
     switch(otbTab->CreateTable(dbFN, tag.str()))
     {
     case SQLiteTable::ATCREATE_ERROR:
-        itkWarningMacro(<< "Couldn't create attribute table '"
+        NMProcWarn(<< "Couldn't create attribute table '"
                         << dbFN << "'!")
         if (bClose) this->CloseDataset();
         return 0;
@@ -2864,7 +2864,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
 //    if (ds == 0)
 //    {
 //        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
-//        itkWarningMacro(<< "ReadRAT: unable to access data set!");
+//        NMProcWarn(<< "ReadRAT: unable to access data set!");
 //        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
 //        return;
 //    }
@@ -2960,7 +2960,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
                 break;
             default:
                 delete gdaltab;
-                itkWarningMacro(<< "Unrecognised field type! Couldn't set value col=" << col
+                NMProcWarn(<< "Unrecognised field type! Couldn't set value col=" << col
                         << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
                 break;
             }
@@ -3131,7 +3131,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 	{
         if (!tab->DoBulkGet(values))
         {
-            itkWarningMacro(<< "Copying records failed at row idx=" << row
+            NMProcWarn(<< "Copying records failed at row idx=" << row
                             << " of 0-" << tab->GetNumRows()-1 << "!");
             break;
         }

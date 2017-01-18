@@ -228,7 +228,7 @@ extern int nmindent;
 # define NMLogWarn(arg)
 # define NMLogError(arg)
 # define NMLogDebug(arg)
-#endif
+#endif // NM_ENABLE_LOGGER
 
 
 // =====================================================
@@ -240,27 +240,40 @@ extern int nmindent;
 
 #define NMProcErr(arg) \
         { \
-            this->InvokeEvent(itk::NMLogEvent(arg, \
+            std::stringstream sstr; \
+            sstr arg; \
+            this->InvokeEvent(itk::NMLogEvent(sstr.str(), \
                     itk::NMLogEvent::NM_LOG_ERROR)); \
         }
 
 #define NMProcWarn(arg)  \
         { \
-            this->InvokeEvent(itk::NMLogEvent(arg, \
+            std::stringstream sstr; \
+            sstr arg; \
+            this->InvokeEvent(itk::NMLogEvent(sstr.str(), \
                     itk::NMLogEvent::NM_LOG_WARN)); \
         }
 
 #define NMProcInfo(arg) \
        { \
-           this->InvokeEvent(itk::NMLogEvent(arg, \
+            std::stringstream sstr; \
+            sstr arg; \
+            this->InvokeEvent(itk::NMLogEvent(sstr.str(), \
                    itk::NMLogEvent::NM_LOG_INFO)); \
        }
 
 #define NMProcDebug(arg) \
        { \
-           this->InvokeEvent(itk::NMLogEvent(arg, \
+            std::stringstream sstr; \
+            sstr arg; \
+            this->InvokeEvent(itk::NMLogEvent(sstr.str(), \
                    itk::NMLogEvent::NM_LOG_DEBUG)); \
        }
+#else
+#define NMProcErr(arg)
+#define NMProcWarn(arg)
+#define NMProcInfo(arg)
+#define NMProcDebug(arg)
 #endif // NM_PROC_LOG
 
 #endif /* NMLOG_H_ */

@@ -188,17 +188,17 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     }
     catch(itk::ExceptionObject& eo)
     {
-        NMProcErr(eo.GetDescription());
+        NMProcErr(<< eo.GetDescription());
         throw;
     }
     catch(std::exception& se)
     {
-        NMProcErr(se.what());
+        NMProcErr(<< se.what());
         throw;
     }
     catch(...)
     {
-        NMProcErr("Unknown Error!");
+        NMProcErr(<< "Unknown Error!");
         throw;
     }
 

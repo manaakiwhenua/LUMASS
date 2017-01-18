@@ -27,13 +27,14 @@
 
 #include <qabstractproxymodel.h>
 
-#include "nmlog.h"
 #include "NMSqlTableModel.h"
 
 #include <QObject>
 #include <QSqlTableModel>
 #include <QItemSelection>
 #include <QDateTime>
+
+class NMLogger;
 
 class NMSelSortSqlTableProxyModel : public QAbstractProxyModel
 {
@@ -132,6 +133,8 @@ protected:
     QString mProxyPK;
 
     bool mLastSelRecsOnly;
+
+    NMLogger* mLogger;
 
 
 private:

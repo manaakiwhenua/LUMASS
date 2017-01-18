@@ -127,10 +127,11 @@ public:
                 else
                 {
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setMsg("NMCostDistanceBufferImageWrapper: Invalid ObjectValue!");
+                    e.setSource(p->parent()->objectName().toStdString());
+                    e.setDescription("Invalid ObjectValue!");
                     throw e;
 
-                    NMErr("NMCostDistanceBufferImageWrapper", << "Invalid ObjectValue!");
+                    NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "Invalid ObjectValue!");
                     return;
                 }
             }
@@ -183,10 +184,10 @@ public:
             //            else
             //            {
             //                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-            //                e.setMsg("NMCostDistanceBufferImageWrapper: Invalid MaxDistance!");
+            //                e.setDescription("NMCostDistanceBufferImageWrapper: Invalid MaxDistance!");
             //                throw e;
 
-            //                NMErr("NMCostDistanceBufferImageWrapper", << "Invalid MaxDistance!");
+            //                NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "Invalid MaxDistance!");
             //                return;
             //            }
         }
@@ -211,10 +212,10 @@ public:
             //            else
             //            {
             //                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-            //                e.setMsg("NMCostDistanceBufferImageWrapper: Invalid BufferZoneIndicator!");
+            //                e.setDescription("NMCostDistanceBufferImageWrapper: Invalid BufferZoneIndicator!");
             //                throw e;
 
-            //                NMErr("NMCostDistanceBufferImageWrapper", << "Invalid BufferZoneIndicator!");
+            //                NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "Invalid BufferZoneIndicator!");
             //                return;
             //            }
         }
@@ -296,10 +297,11 @@ public:
 		if (fileName.isEmpty())
 		{
             NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-            e.setMsg("NMCostDistanceBufferImageWrapper: No input image filename!");
+            e.setSource(p->parent()->objectName().toStdString());
+            e.setDescription("No input image filename!");
             throw e;
 
-			NMErr("CostDistanceInternal", << "Please provide an input image file name!");
+            NMLogError(<< "CostDistanceInternal: Please provide an input image file name!");
 			return;
 		}
 
@@ -345,10 +347,11 @@ public:
         if (out.isEmpty())
         {
             NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-            e.setMsg("NMCostDistanceBufferImageWrapper: No output image filename!");
+            e.setSource(p->parent()->objectName().toStdString());
+            e.setDescription("No output image filename!");
             throw e;
 
-            NMErr("NMCostDistanceBufferImageWrapper", << "No output image filename!");
+            NMLogError(<< "NMCostDistanceBufferImageWrapper: No output image filename!");
             return;
         }
 
@@ -360,13 +363,13 @@ public:
 //			out = p->mOutputImageFileName.at(pos);
 //			if (out.isEmpty())
 //			{
-//				NMErr("CostDistanceInternal", << "Please provide an output image file name!");
+//				NMLogError(<<  "CostDistanceInternal", << "Please provide an output image file name!");
 //				return;
 //			}
 //		}
 //		else
 //		{
-//			NMErr("CostDistanceInternal", << "Please provide an output image file name!");
+//			NMLogError(<<  "CostDistanceInternal", << "Please provide an output image file name!");
 //			return;
 //		}
 		bool bOutRas = false;
@@ -381,10 +384,11 @@ public:
 			if (p->mRasConnector == 0)
 			{
                 NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setMsg("NMCostDistanceBufferImageWrapper: Invalid RasdamanConnector object!");
+                e.setSource(p->parent()->objectName().toStdString());
+                e.setDescription("Invalid RasdamanConnector object!");
                 throw e;
 
-                NMErr("NMCostDistanceBufferImageWrapper", << "RasdamanConnector object!");
+                NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "RasdamanConnector object!");
                 return;
             }
 			else
@@ -517,7 +521,7 @@ public:
 	    }
 	    if (chunksize < 2)
 	    {
-	    	NMErr("CostDistanceInternal", << "Ever thought of calculating this by hand?? It's not even two rows!!");
+            NMLogError(<< "CostDistanceInternal: Chunk size below minimum (< 2)!");
 	    	NMDebugCtx("CostDistanceInternal", << "done!");
 	    	return;
 	    }

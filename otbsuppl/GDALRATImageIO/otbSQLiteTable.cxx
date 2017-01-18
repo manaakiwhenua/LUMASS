@@ -2208,7 +2208,7 @@ SQLiteTable::DropTable(const std::string &tablename)
              && m_tableName.empty())
        )
     {
-        itkWarningMacro(<< "Didn't drop anything - no database connection!");
+        NMProcWarn(<< "Didn't drop anything - no database connection!");
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
@@ -2231,7 +2231,7 @@ SQLiteTable::DropTable(const std::string &tablename)
     sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, &errmsg);
     if (errmsg)
     {
-        itkWarningMacro( << "ERROR - DropTable: " << errmsg);
+        NMProcWarn( << "ERROR - DropTable: " << errmsg);
         sqlite3_free(errmsg);
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
@@ -2488,7 +2488,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
                                 -1, &rcnt, 0);
     if (sqliteError(rc, &rcnt))
     {
-        //itkWarningMacro(<< "Failed querying the number of records in the VT!");
+        //NMProcWarn(<< "Failed querying the number of records in the VT!");
         this->InvokeEvent(itk::NMLogEvent("Failed querying the number of records in the VT!",
                                           itk::NMLogEvent::NM_LOG_WARN));
         sqlite3_finalize(rcnt);
@@ -2507,7 +2507,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
 
     //    if (m_iNumRows < 1)
     //    {
-    //        itkWarningMacro("Import failed or VT is empty!")
+    //        NMProcWarn(<< "Import failed or VT is empty!")
     //        m_dbFileName.clear();
     //        NMDebugCtx(_ctxotbtab, << "done!");
     //        return false;
@@ -2692,8 +2692,8 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
         if (rc != SQLITE_OK)
         {
             std::string errmsg = sqlite3_errmsg(m_db);
-            itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
-            itkWarningMacro(<< "Failed creating the table!");
+            NMProcWarn(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
+            NMProcWarn(<< "Failed creating the table!");
             m_dbFileName.clear();
             ::sqlite3_close(m_db);
             m_db = 0;
@@ -2908,7 +2908,7 @@ SQLiteTable::loadExtension(const std::string &lib, const std::string &entry)
     int rc = sqlite3_load_extension(m_db, lib.c_str(), entry.c_str(), &errMsg);
     if (rc)
     {
-        NMErr(_ctxotbtab, << errMsg);
+        NMProcErr(<< _ctxotbtab<< ": " << errMsg);
         sqlite3_free(errMsg);
         return false;
     }
@@ -2923,7 +2923,7 @@ SQLiteTable::PopulateTableAdmin()
 
     if (!FindTable(this->m_tableName))
     {
-        itkWarningMacro(<< "Couldn't find table '" << m_tableName << "' in the database!");
+        NMProcWarn(<< "Couldn't find table '" << m_tableName << "' in the database!");
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
@@ -3034,7 +3034,7 @@ SQLiteTable::PopulateTableAdmin()
     // out here, something seems to be wrong
     if (m_vNames.size() == 0)
     {
-        itkWarningMacro(<< "Failed fetching column info or unsupported table structure!");
+        NMProcWarn(<< "Failed fetching column info or unsupported table structure!");
         m_dbFileName.clear();
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
@@ -3060,7 +3060,7 @@ SQLiteTable::PopulateTableAdmin()
                             -1, &stmt_exists, 0);
     if (sqliteError(rc, &stmt_exists))
     {
-        itkWarningMacro(<< "Failed fetching number of records!");
+        NMProcWarn(<< "Failed fetching number of records!");
         sqlite3_finalize(stmt_exists);
         m_dbFileName.clear();
         NMDebugCtx(_ctxotbtab, << "done!");
@@ -3192,7 +3192,7 @@ SQLiteTable::SqlExec(const std::string& sqlstr)
     char* errMsg;
     if (sqlite3_exec(m_db, sqlstr.c_str(), 0, 0, &errMsg) != 0)
     {
-        itkWarningMacro(<< "SQLite3 ERROR: " << errMsg);
+        NMProcWarn(<< "SQLite3 ERROR: " << errMsg);
         sqlite3_free((void*)errMsg);
         ret = false;
     }
@@ -3222,7 +3222,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
         sourceDb = this->GetRandomString(3);
         if (!this->AttachDatabase(sourceDbFileName, sourceDb))
         {
-            itkWarningMacro(<< "Couldn't attach source database!");
+            NMProcWarn(<< "Couldn't attach source database!");
             return false;
         }
     }
@@ -3232,7 +3232,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     vIdxCol.push_back(sourceJoinField);
     if (!this->CreateIndex(vIdxCol, false, sourceTable, sourceDb))
     {
-        itkWarningMacro(<< "indexing '" << sourceTable << "."
+        NMProcWarn(<< "indexing '" << sourceTable << "."
                         << vIdxCol[0] << "' failed!");
     }
 
@@ -3240,7 +3240,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     vIdxCol.push_back(targetJoinField);
     if (!this->CreateIndex(vIdxCol, false, targetTable))
     {
-        itkWarningMacro(<< "indexing '" << targetTable << "."
+        NMProcWarn(<< "indexing '" << targetTable << "."
                         << vIdxCol[0] << "' failed!");
     }
 
@@ -3278,7 +3278,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
 
     if (!this->SqlExec(ssql.str()))
     {
-        itkWarningMacro(<< "something went wrong!");
+        NMProcWarn(<< "something went wrong!");
         this->DetachDatabase(sourceDb);
         return false;
     }

@@ -24,6 +24,15 @@
 
 //#include "NMTableView.h"
 
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+#include "NMGlobalHelper.h"
+
 #include "NMVectorLayer.h"
 
 #include <QHash>
@@ -606,7 +615,7 @@ void NMVectorLayer::createTableView(void)
 
 	if (this->mTableModel == 0)
 	{
-		NMErr(ctxNMVectorLayer, << "No table model - no table view! We're outa here!");
+        NMLogError(<< ctxNMVectorLayer << ": table model missing!");
 		return;
 	}
 
@@ -775,7 +784,7 @@ void NMVectorLayer::writeDataSet(void)
 	QFileInfo finfo(this->mFileName);
 	if (!finfo.isWritable())
 	{
-		NMErr(ctxNMVectorLayer, << "can't write to '" << this->mFileName.toStdString() <<
+        NMLogError(<< ctxNMVectorLayer << ": can't write to '" << this->mFileName.toStdString() <<
 				"' - check permissions!" << endl);
 		return;
 	}

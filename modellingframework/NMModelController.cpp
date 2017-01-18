@@ -35,7 +35,12 @@
 
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
+#include "NMSequentialIterComponent.h"
+#include "NMParameterTable.h"
+#include "NMDataComponent.h"
 #include "NMMfwException.h"
+#include "NMImageReader.h"
+#include "NMTableReader.h"
 
 
 const std::string NMModelController::ctx = "NMModelController";
@@ -86,7 +91,7 @@ NMModelController::getOutputFromSource(const QString& inputSrc)
 		outIdx = inputSrcParams.at(1).toInt(&bOK);
 		if (!bOK)
 		{
-			NMErr(ctx, << "failed to interpret input source parameter"
+            NMLogError(<< ctx << ": failed to interpret input source parameter"
 					<< "'" << inputSrc.toStdString() << "'");
 			return w;
 		}
@@ -218,7 +223,7 @@ NMModelController::executeModel(const QString& compName)
     NMModelComponent* comp = this->getComponent(compName);
     if (comp == 0)
     {
-        NMErr(ctx, << "couldn't find '"
+        NMLogError(<< ctx << ": couldn't find '"
                 << compName.toStdString() << "'!");
         NMDebugCtx(ctx, << "done!");
         return;
@@ -259,7 +264,7 @@ NMModelController::executeModel(const QString& compName)
     //			qobject_cast<NMIterableComponent*>(comp);
     //	if (icomp == 0)
     //	{
-    //		NMErr(ctx, << "component '" << compName.toStdString()
+    //		NMLogError(<< ctx << ": component '" << compName.toStdString()
     //				<< "' is of type '" << comp->metaObject()->className()
     //				<< "' which is non-executable!");
     //		return;
@@ -308,7 +313,7 @@ NMModelController::executeModel(const QString& compName)
     nmlog::nmindent = ind;
 #endif
 #endif
-        NMDebugAI(<< nmerr.what() << std::endl);
+        NMLogError(<< "Model Controller: " << nmerr.what());
         NMDebugCtx(ctx, << "done!");
     }
     catch (itk::ExceptionObject& ieo)
@@ -318,7 +323,7 @@ NMModelController::executeModel(const QString& compName)
     nmlog::nmindent = ind;
 #endif
 #endif
-        NMDebugAI(<< ieo.what() << std::endl);
+        NMLogError(<< "Model Controller: " << ieo.what());
         NMDebugCtx(ctx, << "done!");
     }
     catch (std::exception& e)
@@ -328,7 +333,7 @@ NMModelController::executeModel(const QString& compName)
     nmlog::nmindent = ind;
 #endif
 #endif
-        NMDebugAI(<< e.what() << endl);
+        NMLogError(<< "Model Controller: " << e.what());
 		NMDebugCtx(ctx, << "done!");
 	}
 
@@ -347,10 +352,7 @@ NMModelController::executeModel(const QString& compName)
 	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
     //NMDebugAI(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
 	NMMsg(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
-    QString endMsg = QString("Model Controller: Model stopped after (min:sec): %1").arg(elapsedTime);
-    mLogger->processLogMsg(mModelStopped.time().toString(),
-                           NMLogger::NM_LOG_INFO,
-                           endMsg);
+    NMLogInfo(<< "Model Controller: Model stopped after (min:sec): " << elapsedTime.toStdString());
 
 	this->mbModelIsRunning = false;
 	this->mbAbortionRequested = false;
@@ -379,7 +381,7 @@ NMModelController::resetComponent(const QString& compName)
 	NMModelComponent* comp = this->getComponent(compName);
 	if (comp == 0)
 	{
-		NMErr(ctx, << "couldn't find '"
+        NMLogError(<< ctx << ": couldn't find '"
 				<< compName.toStdString() << "'!");
 		return;
 	}
@@ -396,13 +398,17 @@ NMModelController::getComponents(const QString &userId)
 {
     QList<NMModelComponent*> ret;
 
-    QMultiMap<QString, NMModelComponent*>::const_iterator it =
+    QMultiMap<QString, QString>::const_iterator it =
             mUserIdMap.cbegin();
     while (it != mUserIdMap.end())
     {
         if (it.key().compare(userId) == 0)
         {
-            ret << it.value();
+            NMModelComponent* comp = this->getComponent(it.value());
+            if (comp)
+            {
+                ret << comp;
+            }
         }
         ++it;
     }
@@ -410,7 +416,8 @@ NMModelController::getComponents(const QString &userId)
     return ret;
 }
 
-QString NMModelController::addComponent(NMModelComponent* comp,
+QString
+NMModelController::addComponent(NMModelComponent* comp,
 		NMModelComponent* host)
 {
     //	NMDebugCtx(ctx, << "...");
@@ -434,7 +441,7 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 
 	if (this->mComponentMap.values().contains(comp))
 	{
-		NMErr(ctx, << "model component already present in repository!");
+        NMLogError(<< ctx << ": model component already present in repository!");
         //		NMDebugCtx(ctx, << "done!");
 		return "failed";
 	}
@@ -475,9 +482,9 @@ QString NMModelController::addComponent(NMModelComponent* comp,
     comp->setLogger(this->mLogger);
 
 	this->mComponentMap.insert(tname, comp);
-    this->mUserIdMap.insertMulti(comp->getUserID(), comp);
-    connect(comp, SIGNAL(ComponentUserIDChanged(QString)),
-            this, SLOT(setUserId(QString)));
+    this->mUserIdMap.insert(comp->getUserID(), tname);
+    connect(comp, SIGNAL(ComponentUserIDChanged(QString, QString)),
+            this, SLOT(setUserId(QString, QString)));
 
 	// check, whether we've go a valid host
 	if (ihost != 0)
@@ -492,7 +499,7 @@ QString NMModelController::addComponent(NMModelComponent* comp,
 	return tname;
 }
 
-void NMModelController::setUserId(const QString& userId)
+void NMModelController::setUserId(const QString& oldId, const QString& newId)
 {
     NMModelComponent* comp = qobject_cast<NMModelComponent*>(this->sender());
     if (comp == 0)
@@ -500,15 +507,20 @@ void NMModelController::setUserId(const QString& userId)
         return;
     }
 
-    QMap<QString, NMModelComponent*>::iterator it =
-            mUserIdMap.find(userId, comp);
-
-    if (it != mUserIdMap.end())
+    int nrem = mUserIdMap.remove(oldId, comp->objectName());
+    if (nrem == 0)
     {
-        mUserIdMap.remove(it.key(), comp);
+        NMLogWarn(<< "Failed to unregister old UserID' "
+                  << oldId.toStdString() << "' for '"
+                  << comp->objectName().toStdString() << "'!");
     }
+    mUserIdMap.insert(newId, comp->objectName());
+}
 
-    mUserIdMap.insert(userId, comp);
+QStringList
+NMModelController::getUserIDs()
+{
+    return mUserIdMap.keys();
 }
 
 bool
@@ -546,6 +558,13 @@ bool NMModelController::removeComponent(const QString& name)
 	if (host != 0)
 		host->removeModelComponent(name);
 
+    int nrem = mUserIdMap.remove(comp->getUserID(), comp->objectName());
+    if (nrem == 0)
+    {
+        NMLogWarn(<< "Failed removing '" << comp->objectName().toStdString()
+                  << "' from the UserID map!");
+    }
+
 	NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
 	if (ic != 0)
 		ic->destroySubComponents(this->mComponentMap);
@@ -582,6 +601,107 @@ NMModelController::getPropertyList(const QObject* obj)
 
     return propList;
 }
+
+otb::AttributeTable::Pointer
+NMModelController::getComponentTable(const NMModelComponent* comp)
+{
+    NMModelComponent* mc = const_cast<NMModelComponent*>(comp);
+    NMDataComponent* dc = qobject_cast<NMDataComponent*>(mc);
+
+    otb::AttributeTable::Pointer tab;
+    // data component
+    if (dc)
+    {
+        // update the data component
+        QSharedPointer<NMItkDataObjectWrapper> dw = dc->getOutput(0);
+        if (!dw.isNull())
+        {
+            tab = dw->getOTBTab();
+        }
+        else
+        {
+            this->executeModel(dc->objectName());
+            QSharedPointer<NMItkDataObjectWrapper> dwupd = dc->getOutput(0);
+            if (!dwupd.isNull())
+            {
+                tab = dwupd->getOTBTab();
+            }
+        }
+    }
+    // looking for a reader (table or image)
+    else
+    {
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+        if (ic && ic->getProcess())
+        {
+            NMImageReader* ir = qobject_cast<NMImageReader*>(ic->getProcess());
+            NMTableReader* tr = qobject_cast<NMTableReader*>(ic->getProcess());
+            if (ir)
+            {
+                try
+                {
+                    ir->instantiateObject();
+                    tab = ir->getRasterAttributeTable(1);
+                }
+                catch (NMMfwException& mex)
+                {
+                    NMLogError(<< "Model Controller: " << mex.what());
+                    return tab;
+                }
+            }
+            else if (tr)
+            {
+                this->executeModel(ic->objectName());
+                QSharedPointer<NMItkDataObjectWrapper> dw = ic->getOutput(0);
+                if (!dw.isNull())
+                {
+                    tab = dw->getOTBTab();
+                }
+            }
+        }
+    }
+    return tab;
+}
+
+
+QStringList
+NMModelController::getDataComponentProperties(const NMModelComponent* comp,
+                                       DataComponentPropertyType type)
+{
+    QStringList props;
+    if (comp == 0)
+    {
+        NMLogDebug(<< "Failed fetching data component properties for NULL object!");
+        return props;
+    }
+
+    if (type != NM_DATAPROP_COLUMNS)
+    {
+        NMLogDebug(<< "NMModelController::getDataComponentProperties() - "
+                   << "unsupported property type!");
+        return props;
+    }
+
+    otb::AttributeTable::Pointer tab = this->getComponentTable(comp);
+
+    if (tab.IsNotNull())
+    {
+        for (int c=0; c < tab->GetNumCols(); ++c)
+        {
+            props << QString(tab->GetColumnName(c).c_str());
+        }
+    }
+
+    return props;
+}
+
+QStringList
+NMModelController::getDataComponentProperties(const QString& compName,
+                                       DataComponentPropertyType type)
+{
+    return getDataComponentProperties(this->getComponent(compName), type);
+}
+
 
 QStringList
 NMModelController::getNextParamExpr(const QString &expr)
@@ -674,7 +794,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     }
                     else
                     {
-                        NMWarn(obj->objectName().toStdString(), "Process not embedded in model component!");
+                        NMLogWarn(<< obj->objectName().toStdString()<< ": Process not embedded in model component!");
                     }
                 }
 
@@ -774,7 +894,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                             }
                             else
                             {
-                                NMWarn(obj->objectName().toStdString(),
+                                NMLogWarn(<< obj->objectName().toStdString() << "::processStringParameter: "
                                        << "Expression based parameter retreival "
                                        << "prevented a NEGATIVE PARAMETER INDEX!!"
                                        << "  Double check whether the correct "
@@ -823,7 +943,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
 
         } // for
 
-        innerExp = NMModelController::getNextParamExpr(nested);
+        innerExp = NMModelController::getInstance()->getNextParamExpr(nested);
         numExp = innerExp.size();
 
     } // while

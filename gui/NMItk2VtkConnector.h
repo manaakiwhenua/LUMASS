@@ -28,7 +28,6 @@
 #define NMItk2VtkConnector_H_
 
 #define ctxNMItk2VtkConnector "NMItk2VtkConnector"
-#include "nmlog.h"
 #include "NMProcess.h"
 
 #include <QObject>
@@ -40,6 +39,8 @@
 #include "itkImageBase.h"
 #include "itkVTKImageExportBase.h"
 #include "vtkImageChangeInformation.h"
+
+class NMLogger;
 
 class NMItk2VtkConnector : public NMProcess
 {
@@ -69,6 +70,8 @@ private:
 	vtkSmartPointer<vtkImageImport> mVtkImgImp;
 	vtkSmartPointer<vtkImageChangeInformation> mVtkImgChangeInfo;
 	itk::VTKImageExportBase::Pointer mVtkImgExp;
+
+    NMLogger* mLogger;
     bool mbIsConnected;
 
 };

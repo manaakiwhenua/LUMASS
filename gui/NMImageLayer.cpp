@@ -21,6 +21,15 @@
  *  Created on: 18/01/2012
  *      Author: alex
  */
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #include "NMImageLayer.h"
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMFastTrackSelectionModel.h"
@@ -381,7 +390,7 @@ NMImageLayer::getWholeImageStatistics(void)
             imgReader->instantiateObject();
             if (!imgReader->isInitialised())
             {
-                NMWarn(ctxNMImageLayer, << "Failed initialising NMImageReader!");
+                NMLogWarn(<< ctxNMImageLayer << ": Failed initialising NMImageReader!");
                 return stats;
             }
 
@@ -762,8 +771,8 @@ NMImageLayer::updateAttributeTable()
                     SQLITE_OPEN_SHAREDCACHE, 0);
         if (rc != SQLITE_OK)
         {
-            NMErr(ctxNMImageLayer,
-                << "Failed opening SqlTableView connection!"
+            NMLogError(<< ctxNMImageLayer
+                << ": Failed opening SqlTableView connection!"
                 << " - rc = " << rc);
             ::sqlite3_close(mSqlViewConn);
             spatialite_cleanup_ex(mSpatialiteCache);
@@ -828,7 +837,7 @@ NMImageLayer::setFileName(QString filename)
 
 	if (filename.isEmpty() || filename.isNull())
 	{
-		NMErr(ctxNMImageLayer, << "invalid filename!");
+        NMLogError(<< ctxNMImageLayer << ": invalid filename!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
 	}
@@ -866,14 +875,15 @@ NMImageLayer::setFileName(QString filename)
 	if (!this->mReader->isInitialised())
 	{
 		emit layerProcessingEnd();
-		NMErr(ctxNMImageLayer, << "couldn't read the image!");
+        NMLogError(<< ctxNMImageLayer << ": couldn't read the image!");
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return false;
 	}
     if (this->mReader->getNumberOfOverviews() == 0)
     {
         emit layerProcessingEnd();
-        NMWarn(ctxNMImageLayer, << "No overviews present for this layer!");
+        NMLogWarn(<< ctxNMImageLayer << ": layer '" << this->objectName().toStdString() << "'"
+                  << " has no overviews!");
         QMessageBox::StandardButton yesno =
                 QMessageBox::question(0, QString::fromLatin1("No overviews found!"),
                                       QString::fromLatin1("Do you want to build image overviews?"));
@@ -1275,7 +1285,7 @@ NMImageLayer::mapRGBImageScalars(vtkImageData* img)
         vtkTemplateMacro(mapScalarsToRGB(static_cast<VTK_TT*>(in),
                                          out, numPix, numComp, mBandMinMax));
         default:
-            NMErr(ctxNMImageLayer, << "Invalid input pixel type!");
+            NMLogError(<< ctxNMImageLayer << ": Invalid input pixel type!");
             break;
         }
 
@@ -1299,7 +1309,7 @@ NMImageLayer::mapRGBImageScalars(vtkImageData* img)
                                              static_cast<VTK_TT*>(out),
                                              numPix));
         default:
-            NMErr(ctxNMImageLayer, << "Invalid Data Type!");
+            NMLogError(<< ctxNMImageLayer << ": Invalid Data Type!");
             return;
         }
 
@@ -1476,7 +1486,7 @@ NMImageLayer::updateScalarBuffer()
         q.setForwardOnly(true);
         if (!q.exec(prepStr))
         {
-            NMErr(ctxNMImageLayer, << "Couldn't fetch scalar values from database!");
+            NMLogError(<< ctxNMImageLayer << ": Couldn't fetch scalar values from database!");
             return;
         }
 
@@ -1644,7 +1654,7 @@ NMImageLayer::setLongDBScalars(T* buf,
         else
         {
             std::string err = q.lastError().text().toStdString();
-            NMErr(ctxNMImageLayer, << err);
+            NMLogError(<< ctxNMImageLayer << ": " << err);
         }
         db.commit();
         q.clear();
@@ -1768,7 +1778,7 @@ NMImageLayer::setDoubleDBScalars(T* buf,
         else
         {
             std::string err = q.lastError().text().toStdString();
-            NMErr(ctxNMImageLayer, << err);
+            NMLogError(<< ctxNMImageLayer << ": " << err);
         }
         db.commit();
         q.clear();
@@ -2077,7 +2087,7 @@ NMImageLayer::writeDataSet(void)
 
 	if (this->mFileName.isEmpty())
 	{
-		NMErr(ctxNMImageLayer, << "No valid file name set! Abort!")
+        NMLogError(<< ctxNMImageLayer << ": No valid file name set! Abort!")
 		NMDebugCtx(ctxNMImageLayer, << "done!");
 		return;
 	}
@@ -2135,7 +2145,7 @@ NMImageLayer::writeDataSet(void)
 
 	if (berr)
 	{
-        NMErr(ctxNMImageLayer, << "Couldn't update the RAT!");
+        NMLogError(<< ctxNMImageLayer << ": Couldn't update the RAT!");
 	}
 
 	NMDebugCtx(ctxNMImageLayer, << "done!");

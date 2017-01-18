@@ -29,7 +29,6 @@
 #include <QMetaType>
 #include <QSharedPointer>
 
-#include "nmlog.h"
 #include "NMMacros.h"
 #include "NMModelComponent.h"
 #include "NMProcess.h"
@@ -121,6 +120,8 @@ public:
     virtual void setProcess(NMProcess* proc);
     virtual NMProcess* getProcess(void)
         {return this->mProcess;}
+
+    virtual void setLogger(NMLogger* logger);
 
     virtual void setInputs(const QList<QStringList>& inputs);
     virtual const QList<QStringList> getInputs(void);

@@ -59,7 +59,7 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
 
     if (!this->mNumIterationsExpression.isEmpty())
     {
-        QString numIterStr = NMModelController::processStringParameter(this, mNumIterationsExpression);
+        QString numIterStr = NMModelController::getInstance()->processStringParameter(this, mNumIterationsExpression);
         bool bok = false;
         unsigned int titer = numIterStr.toUInt(&bok);
         if (bok)
@@ -73,6 +73,7 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         {
             std::stringstream msg;
             NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            me.setSource(this->objectName().toStdString());
             if (!bok)
             {
                 msg << this->objectName().toStdString()
@@ -85,7 +86,7 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
                 msg << numIterStr.toStdString() << std::endl;
             }
 
-            me.setMsg(msg.str());
+            me.setDescription(msg.str());
             emit signalExecutionStopped();
             this->mIsUpdating = false;
             throw me;

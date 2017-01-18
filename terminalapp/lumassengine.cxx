@@ -19,10 +19,17 @@
 
 //#include "GUI_template_inst.h"
 
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #ifdef DEBUG
     // required for LUMASS debug output
     #ifndef _WIN32
-        #include "nmlog.h"
         int nmlog::nmindent = 1;
     #endif
 
@@ -33,13 +40,13 @@
 #else
     #ifdef RMANDEBUG
         #ifndef _WIN32
-            #include "nmlog.h"
             int nmlog::nmindent = 1;
         #endif
         int indentLevel;
         bool debugOutput;
     #endif
 #endif
+
 
 #include "lumassengine.h"
 #include "LUMASSConfig.h"
@@ -70,7 +77,7 @@
 static const std::string ctx = "LUMASS_engine";
 
 /*
- * \brief Terminal version of LUMASS to run models without graphical user interface
+ * \brief terminal version of LUMASS to run models without graphical user interface
  *
  */
 
@@ -220,10 +227,13 @@ void doModel(const QString& modelFile)
     }
 
     QMap<QString, QString> nameRegister;
+    NMLogger* mLogger = new NMLogger();
     NMModelSerialiser xmlS;
+    xmlS.setLogger(mLogger);
 
     // setup the model controller
     NMModelController* ctrl = NMModelController::getInstance();
+
     NMSequentialIterComponent* root = new NMSequentialIterComponent();
     root->setObjectName("root");
     root->setDescription("Top level model component managed by the ModelController");
@@ -241,6 +251,7 @@ void doModel(const QString& modelFile)
     ctrl->executeModel("root");
 
     GDALDestroyDriverManager();
+    delete mLogger;
     NMDebugCtx(ctx, << "done!");
 }
 

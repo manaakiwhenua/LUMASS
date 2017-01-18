@@ -23,7 +23,14 @@
  */
 
 #include "NMTableCalculator.h"
-#include "nmlog.h"
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+#include "NMGlobalHelper.h"
 
 #include <cmath>
 #include <limits>
@@ -50,6 +57,15 @@ NMTableCalculator::NMTableCalculator(QAbstractItemModel* model,
 	: QObject(parent), mModel(model), mbCanceled(false), mRaw2Source(0)
 {
 	this->initCalculator();
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
 }
 
 void NMTableCalculator::initCalculator()
@@ -128,7 +144,7 @@ bool NMTableCalculator::setResultColumn(const QString& name)
 	int colidx = this->getColumnIndex(name);
 	if (colidx < 0)
 	{
-		NMErr(ctxTabCalc, << "Specified Column couldn't be found in the table!");
+        NMLogError(<< ctxTabCalc << ": Specified Column couldn't be found in the table!");
 		return false;
 	}
 
@@ -178,7 +194,7 @@ NMTableCalculator::setRowFilter(const QItemSelection& inputSelection)
 
 	if (inputSelection.size() == 0)
 	{
-		NMWarn(ctxTabCalc, << "Selection is empty! Row filter is turned off!");
+        NMLogDebug(<< ctxTabCalc << ": Selection is empty! Row filter is turned off!");
 		this->mInputSelection.clear();
 		this->mbRowFilter = false;
 		return false;
@@ -241,7 +257,7 @@ bool NMTableCalculator::parseFunction()
 		||  (this->mResultColumn.isEmpty() && !this->mSelectionModeOn)
 	   )
 	{
-		NMErr(ctxTabCalc, << "Function or result column has not been set!");
+        NMLogError(<< ctxTabCalc << ": Function or result column has not been set!");
 		NMDebugCtx(ctxTabCalc, << "done!");
 		return false;
 	}
@@ -311,7 +327,7 @@ bool NMTableCalculator::parseFunction()
 				// if we haven't got 4 elements in the list, something went wrong
 				if (guts.size() != 4)
 				{
-					NMErr(ctxTabCalc, << "Expected three element calculator expression!");
+                    NMLogError(<< ctxTabCalc << ": Expected three element calculator expression!");
 					NMDebugCtx(ctxTabCalc, << "done!");
 					return false;
 				}
@@ -730,7 +746,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		}
 		else
 		{
-			NMErr(ctxTabCalc, << "Encountered invalid numeric value in column "
+            NMLogError(<< ctxTabCalc << ": Encountered invalid numeric value in column "
 					<< mFuncFields.at(fcnt) << " at row " << row
 					<< "!");
 			break;
@@ -744,7 +760,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	}
 	//if (!bok)
 	//{
-	//	NMErr(ctxTabCalc, << "Skipping rest of invalid calculation in row " << row << "!");
+    //	NMLogError(<< ctxTabCalc << ": Skipping rest of invalid calculation in row " << row << "!");
 	//	CALLGRIND_STOP_INSTRUMENTATION;
 	//	CALLGRIND_DUMP_STATS;
 	//	return;
@@ -905,7 +921,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 	}
 	catch(itk::ExceptionObject& err)
 	{
-		NMErr(ctxTabCalc, << "Invalid expression detected!");
+        NMLogError(<< ctxTabCalc << ": Invalid expression detected!");
 		NMDebugCtx(ctxTabCalc, << "done!");
 
 		throw err;
@@ -1050,13 +1066,13 @@ NMTableCalculator::calcColumnStats(const QString& column)
 	int colidx = this->getColumnIndex(column);
 	if (colidx < 0)
 	{
-		NMErr(ctxTabCalc, << "Specified Column couldn't be found in the table!");
+        NMLogError(<< ctxTabCalc << ": Specified Column couldn't be found in the table!");
 		return res;
 	}
 
 	if (!this->isNumericColumn(colidx))
 	{
-		NMErr(ctxTabCalc, << "Data Type is not suitable for this kind of operation!");
+        NMLogError(<< ctxTabCalc << ": Data Type is not suitable for this kind of operation!");
 		return res;
 	}
 
@@ -1133,7 +1149,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 					}
 					else
 					{
-						NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+                        NMLogError(<< ctxTabCalc << ": Calc Column Stats for '" << column.toStdString()
 								<< "': Disregarding invalid value at row " << row << "!");
 					}
 					++progress;
@@ -1172,7 +1188,7 @@ NMTableCalculator::calcColumnStats(const QString& column)
 				}
 				else
 				{
-					NMErr(ctxTabCalc, << "Calc Column Stats for '" << column.toStdString()
+                    NMLogError(<< ctxTabCalc << ": Calc Column Stats for '" << column.toStdString()
 							<< "': Disregarding invalid value at row " << row << "!");
 				}
 
@@ -1240,7 +1256,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		}
 		else
 		{
-			NMErr(ctxTabCalc, << "Could't find any numeric array '"
+            NMLogError(<< ctxTabCalc << ": Could't find any numeric array '"
 					<< name.toStdString() << "'!" << std::endl);
 			NMDebugCtx(ctxTabCalc, << "done!");
 			return normalisedCols;
@@ -1281,7 +1297,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		nfields = this->mModel->columnCount(QModelIndex());
 		if (!this->mModel->insertColumns(nfields, ftype, QModelIndex()))
 		{
-			NMErr(ctxTabCalc, << "Failed to add a column to the model!");
+            NMLogError(<< ctxTabCalc << ": Failed to add a column to the model!");
 			bSomethingWrong = true;
 			break;
 		}
@@ -1290,7 +1306,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 		nfields = this->mModel->columnCount(QModelIndex());
 		if (!this->mModel->setHeaderData(nfields-1, Qt::Horizontal, QVariant(name), Qt::DisplayRole))
 		{
-			NMErr(ctxTabCalc, << "Failed to set name for column '" << name.toStdString() << "'!");
+            NMLogError(<< ctxTabCalc << ": Failed to set name for column '" << name.toStdString() << "'!");
 			bSomethingWrong = true;
 			break;
 		}
@@ -1350,7 +1366,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 					double val = this->mModel->data(misrc, Qt::DisplayRole).toDouble(&bok);
 					if (!bok)
 					{
-						NMErr(ctxTabCalc, << "Failed getting input value for '"
+                        NMLogError(<< ctxTabCalc << ": Failed getting input value for '"
 							<< this->mModel->headerData(srcIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
 							<< "', row " << i << "!");
 						continue;
@@ -1360,7 +1376,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 
 					if (!this->mModel->setData(mitar, QVariant(normval), Qt::DisplayRole))
 					{
-						NMErr(ctxTabCalc, << "Failed setting normalised value for '"
+                        NMLogError(<< ctxTabCalc << ": Failed setting normalised value for '"
 							<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
 							<< "', row " << i << "!");
 						continue;
@@ -1385,7 +1401,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 				double val = this->mModel->data(misrc, Qt::DisplayRole).toDouble(&bok);
 				if (!bok)
 				{
-					NMErr(ctxTabCalc, << "Failed getting input value for '"
+                    NMLogError(<< ctxTabCalc << ": Failed getting input value for '"
 						<< this->mModel->headerData(srcIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
 						<< "', row " << row << "!");
 					continue;
@@ -1395,7 +1411,7 @@ QStringList NMTableCalculator::normaliseColumns(const QStringList& columnNames,
 
 				if (!this->mModel->setData(mitar, QVariant(normval), Qt::DisplayRole))
 				{
-					NMErr(ctxTabCalc, << "Failed setting normalised value for '"
+                    NMLogError(<< ctxTabCalc << ": Failed setting normalised value for '"
 						<< this->mModel->headerData(tarIdx, Qt::Horizontal, Qt::DisplayRole).toString().toStdString()
 						<< "', row " << row << "!");
 					continue;

@@ -29,10 +29,10 @@
 //#include <qsortfilterproxymodel.h>
 #include <qabstractproxymodel.h>
 
-#include "nmlog.h"
-
 #include <QItemSelection>
 #include <QDateTime>
+
+class NMLogger;
 
 class NMSelectableSortFilterProxyModel : public QAbstractProxyModel //public QSortFilterProxyModel
 {
@@ -154,7 +154,7 @@ public:
 	void notifyLayoutUpdate() {emit layoutChanged();}
 
 protected:
-
+    NMLogger* mLogger;
 	QAbstractItemModel* mSourceModel;
 	//QList<bool> mHidden;
 

@@ -26,10 +26,11 @@
 #define NMQTOTBATTRIBUTETABLEMODEL_H_
 
 #define ctxQtOtbTabModel "NMQtOtbAttributeTableModel"
-#include "nmlog.h"
 #include "otbAttributeTable.h"
 
 #include <qabstractitemmodel.h>
+
+class NMLogger;
 
 class NMQtOtbAttributeTableModel: public QAbstractTableModel
 {
@@ -65,6 +66,8 @@ public:
 
 private:
 	otb::AttributeTable::Pointer mTable;
+    NMLogger* mLogger;
+
 	int mKeyIdx;
 
 };

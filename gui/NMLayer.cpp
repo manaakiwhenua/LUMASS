@@ -22,11 +22,20 @@
  *      Author: alex
  */
 
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #include "NMLayer.h"
 #include "NMImageLayer.h"
 #include "NMVectorLayer.h"
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMSqlTableModel.h"
+#include "NMGlobalHelper.h"
 
 #include <QTime>
 #include <QColor>
@@ -65,9 +74,19 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
       mLegendType(NM_LEGEND_SINGLESYMBOL),
       mIsIn3DMode(false)
 {
-	if (renWin == 0)
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
+
+    if (renWin == 0)
 	{
-		NMErr(ctxNMLayer, << "invalid render window specified!");
+        NMLogError(<< ctxNMLayer << ": invalid render window specified!");
 		return;
 	}
 	this->mRenderWindow = renWin;
@@ -831,7 +850,7 @@ NMLayer::loadLegend(const QString& filename)
 {
     if (this->mTableModel == 0)
     {
-        NMErr(ctxNMLayer, << "Need an attribute table for mapping!");
+        NMLogError(<< ctxNMLayer << ":Need an attribute table for mapping!");
         return;
     }
 
@@ -1091,7 +1110,7 @@ NMLayer::mapUniqueValues(void)
 {
 	if (mTableModel == 0)
 	{
-		NMErr(ctxNMLayer, << "Invalid attribute table");
+        NMLogError(<< ctxNMLayer << ": Invalid attribute table");
 		return;
 	}
 
@@ -1103,7 +1122,7 @@ NMLayer::mapUniqueValues(void)
 	mLegendDescrField = mLegendValueField;
 	if (validx < 0)
 	{
-		NMErr(ctxNMLayer, << "Value field not specified!");
+        NMLogError(<< ctxNMLayer << ": Value field not specified!");
 		return;
 	}
 	if (descridx < 0) descridx = validx;
@@ -1113,7 +1132,7 @@ NMLayer::mapUniqueValues(void)
 	QVariant::Type valType = this->getColumnType(this->getColumnIndex(mLegendValueField));
 	if (valType == QVariant::Double)
 	{
-		NMErr(ctxNMLayer, << "Continuous data types are not supported!");
+        NMLogError(<< ctxNMLayer << ": Continuous data types are not supported!");
 		return;
 	}
 	else if (valType != QVariant::String)
@@ -1703,7 +1722,7 @@ NMLayer::mapColourTable(void)
 
 	if (mTableModel == 0 || !this->hasColourTable())
 	{
-		NMErr(ctxNMLayer, << "Invalid attribute table");
+        NMLogError(<< ctxNMLayer << ": Invalid attribute table");
 		return;
 	}
 
@@ -2577,7 +2596,7 @@ void NMLayer::setDataSet(vtkDataSet* dataset)
 {
 	if (!dataset)
 	{
-		NMErr(ctxNMLayer, << "dataset is NULL!");
+        NMLogError(<< ctxNMLayer << ": dataset is NULL!");
 		return;
 	}
 
@@ -2617,8 +2636,7 @@ void NMLayer::setBBox(double bbox[6])
 		bbox[2] > bbox[3] ||
 		bbox[4] > bbox[5])
 	{
-		NMErr(ctxNMLayer, <<
-				"invalid bounding box!");
+        NMLogError(<< ctxNMLayer << ": invalid bounding box!");
 		return;
 	}
 
@@ -2886,7 +2904,7 @@ double NMLayer::getLegendItemUpperValue(const int legendRow)
 {
 	if (!(0 <= legendRow < this->mLegendInfo->GetNumberOfRows()))
 	{
-		NMErr(ctxNMLayer, << "legend row outside bounds!");
+        NMLogError(<< ctxNMLayer << ": legend row outside bounds!");
 		return -9;
 	}
 
@@ -2903,7 +2921,7 @@ double NMLayer::getLegendItemLowerValue(const int legendRow)
 {
 	if (!(0 <= legendRow < this->mLegendInfo->GetNumberOfRows()))
 	{
-		NMErr(ctxNMLayer, << "legend row outside bounds!");
+        NMLogError(<< ctxNMLayer << ": legend row outside bounds!");
 		return -9;
 	}
 
@@ -2920,7 +2938,7 @@ bool NMLayer::getLegendItemRange(const int legendRow, double* range)
 {
 	if (!(0 <= legendRow < this->mLegendInfo->GetNumberOfRows()))
 	{
-		NMErr(ctxNMLayer, << "legend row outside bounds!");
+        NMLogError(<< ctxNMLayer << ": legend row outside bounds!");
 		return false;
 	}
 

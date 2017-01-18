@@ -99,7 +99,8 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-			e.setMsg("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            e.setSource(p->parent()->objectName().toStdString());
+			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;
 		}
@@ -120,9 +121,10 @@ public:
                     }
                     else
                     {
-                        NMErr("NMVectorImageToImageFilterWrapper_Internal", << "Invalid value for 'Band'!");
+                        NMLogError(<< "NMVectorImageToImageFilterWrapper_Internal: " << "Invalid value for 'Band'!");
                         NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                        e.setMsg("Invalid value for 'Band'!");
+                        e.setSource(p->parent()->objectName().toStdString());
+                        e.setDescription("Invalid value for 'Band'!");
                         throw e;
                     }
                 }

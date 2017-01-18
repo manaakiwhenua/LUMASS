@@ -33,7 +33,7 @@
 #include <QString>
 #include <QVariant>
 
-#include "nmlog.h"
+//#include "nmlog.h"
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 #include "NMModelController.h"
@@ -44,6 +44,7 @@
 
 #include "nmmodframe_export.h"
 
+class NMLogger;
 class NMModelController;
 
 class NMMODFRAME_EXPORT NMModelSerialiser: public QObject
@@ -72,6 +73,8 @@ public:
                             QDomDocument& doc,
                             NMIterableComponent* importHost);
 
+    void setLogger(NMLogger* logger);
+
 
 protected:
 	QDomElement createValueElement(QDomDocument& doc,
@@ -83,6 +86,8 @@ protected:
 	 *  (i.e. accounting for any name adjustments during import)*/
 	void harmoniseInputComponentNames(QMap<QString, QString>& nameRegister,
 			NMModelController* controller);
+
+    NMLogger* mLogger;
 
 private:
 	string ctx;

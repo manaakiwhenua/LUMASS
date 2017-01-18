@@ -501,7 +501,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         KernelScriptParserError eo;
         eo.SetDescription("Parsing Error: Empty KernelScript object!");
         eo.SetLocation(ITK_LOCATION);
-        NMErr("MapKernelScript2", << "Parsing Error: Empty KernelScript object!")
+        NMProcErr(<< "MapKernelScript2:  Parsing Error: Empty KernelScript object!")
         throw eo;
     }
 
@@ -566,7 +566,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                     KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
                     pe.SetLocation(ITK_LOCATION);
-                    NMErr("MapKernelScript2", << exsstr.str())
+                    NMProcErr(<< "MapKernelScript2: "  << exsstr.str())
                     throw pe;
                 }
             }
@@ -606,7 +606,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                         KernelScriptParserError pe;
                         pe.SetDescription(exsstr.str());
                         pe.SetLocation(ITK_LOCATION);
-                        NMErr("MapKernelScript2", << exsstr.str())
+                        NMProcErr(<< "MapKernelScript2: "  << exsstr.str())
                         throw pe;
                     }
                 }
@@ -626,7 +626,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                            << pos << "!";
                     KernelScriptParserError pe;
                     pe.SetDescription(exsstr.str());
-                    NMErr("MapKernelScript2", << exsstr.str())
+                    NMProcErr(<< "MapKernelScript2: "  << exsstr.str())
                     pe.SetLocation(ITK_LOCATION);
                     throw pe;
                 }
@@ -1005,7 +1005,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                            << "Formula:    " << evalerr.GetExpr() << std::endl
                            << "Token:      " << evalerr.GetToken() << std::endl
                            << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
-                    NMErr("MapKernelScript2", << errmsg.str())
+                    NMProcErr(<< "MapKernelScript2: "  << errmsg.str())
 
                     KernelScriptParserError kse;
                     kse.SetDescription(errmsg.str());
@@ -1108,7 +1108,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                     std::stringstream sstr;
                     sstr << "Data type range error: Image " << inImgIt->first
                          << "'s value is out of the parser's data type range!" << std::endl;
-                    NMErr("MapKernelScript2", << sstr.str())
+                    NMProcErr(<< "MapKernelScript2: "  << sstr.str())
                     KernelScriptParserError dre;
                     dre.SetLocation(ITK_LOCATION);
                     dre.SetDescription(sstr.str());
@@ -1142,7 +1142,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                        << "Formula:    " << evalerr.GetExpr() << std::endl
                        << "Token:      " << evalerr.GetToken() << std::endl
                        << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
-                NMErr("MapKernelScript2", << errmsg.str())
+                NMProcErr(<< "MapKernelScript2: "  << errmsg.str())
 
                 KernelScriptParserError kse;
                 kse.SetDescription(errmsg.str());
@@ -1200,7 +1200,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
     if (nover || nunder)
     {
-        itkWarningMacro(<< nover << " overflows and "
+        NMProcWarn(<< nover << " overflows and "
                         << nunder << " underflows detected! "
                         << "Double check your results!");
     }

@@ -28,7 +28,6 @@
 #ifndef NMLAYER_H_
 #define NMLAYER_H_
 
-#include "nmlog.h"
 #include "NMModelComponent.h"
 #include "NMTableView.h"
 #include "NMSqlTableView.h"
@@ -63,6 +62,8 @@
 //#include "NMVtkLookupTable.h"
 
 //#include "vtkScalarsToColors.h"
+
+class NMLogger;
 
 #define ctxNMLayer "NMLayer"
 #define NM_LEGEND_RAMP_ROW 2
@@ -380,6 +381,8 @@ protected:
     QString mQSqlConnectionName;
 	NMFastTrackSelectionModel* mSelectionModel;
 	QAbstractItemModel* mTableModel;
+
+    NMLogger* mLogger;
 
 	vtkSmartPointer<vtkEventQtSlotConnect> mVtkConn;
 

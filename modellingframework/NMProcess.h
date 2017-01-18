@@ -28,8 +28,13 @@
 
 #include <exception>
 
-#include "nmlog.h"
-#include "NMLogger.h"
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 #include "NMMacros.h"
 
 #include <qobject.h>
@@ -135,6 +140,8 @@ public:
 	 *	The default setting is NM_SYNC_WITH_HOST
 	 */
 	enum AdvanceParameter {NM_USE_UP=0, NM_CYCLE, NM_SYNC_WITH_HOST};
+    typedef itk::MemberCommand<NMProcess> ObserverType;
+    typedef ObserverType::Pointer ObserverTypePointer;
 
 	//NMPropertyGetSet(InputComponents      , QList<QStringList>                     )
 	//	NMPropertyGetSet(NMComponentType      , NMItkDataObjectWrapper::NMComponentType )
@@ -184,7 +191,9 @@ public:
 	QDateTime getModifiedTime(void)
 		{return mMTime;}
 
-	itk::ProcessObject* getInternalProc(void)
+    ObserverTypePointer getObserver(void){return mObserver;}
+
+    itk::ProcessObject* getInternalProc(void)
 		{return this->mOtbProcess;}
 
 	/*! \brief Supplies properties' values to instantiated internal process object.
@@ -263,8 +272,7 @@ protected:
 
 	bool mbLinked;
 
-	typedef itk::MemberCommand<NMProcess> ObserverType;
-	ObserverType::Pointer mObserver;
+    ObserverType::Pointer mObserver;
 
     NMLogger* mLogger;
 

@@ -32,7 +32,7 @@
 #include "NMSequentialIterComponent.h"
 #include "NMDataComponent.h"
 #include "NMModelController.h"
-#include "utils/muParser/muParserError.h"
+//#include "utils/muParser/muParserError.h"
 #include "itkNMLogEvent.h"
 
 NMProcess::NMProcess(QObject *parent)
@@ -53,6 +53,7 @@ NMProcess::NMProcess(QObject *parent)
     this->mIsSink = false;
     this->mbReleaseData = true;
     this->mStepIndex = 0;
+    this->mObserver = 0;
 }
 
 NMProcess::~NMProcess()
@@ -68,7 +69,8 @@ NMProcess::linkInPipeline(unsigned int step,
     if (hostComp == 0)
     {
         NMMfwException nme(NMMfwException::NMProcess_UninitialisedProcessObject);
-        nme.setMsg("NMProcess Object not embedded in NMIterableComponent!");
+        nme.setSource(this->parent()->objectName().toStdString());
+        nme.setDescription("NMProcess Object not embedded in NMIterableComponent!");
         throw nme;
         return;
     }
@@ -204,11 +206,12 @@ NMProcess::getParameter(const QString& property)
     {
         QString retStr = propVal.toString();
         QString tStr = retStr;
-        retStr = NMModelController::processStringParameter(this, tStr);
+        retStr = NMModelController::getInstance()->processStringParameter(this, tStr);
         if (retStr.startsWith("ERROR"))
         {
             NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-            me.setMsg(retStr.toStdString());
+            me.setSource(this->parent()->objectName().toStdString());
+            me.setDescription(retStr.toStdString());
             throw me;
         }
         ret = QVariant::fromValue(retStr);
@@ -226,11 +229,12 @@ NMProcess::getParameter(const QString& property)
             NMDebugAI( << "input parameter to by analysed: " << retStr.toStdString() << std::endl);
 
             QString tStr = retStr;
-            retStr = NMModelController::processStringParameter(this, tStr);
+            retStr = NMModelController::getInstance()->processStringParameter(this, tStr);
             if (retStr.startsWith("ERROR"))
             {
                 NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-                me.setMsg(retStr.toStdString());
+                me.setSource(this->parent()->objectName().toStdString());
+                me.setDescription(retStr.toStdString());
                 throw me;
             }
         }
@@ -248,11 +252,12 @@ NMProcess::getParameter(const QString& property)
             {
                 // we account for the case that a fetched string represents a
                 // a list of values in itself separated by ' ' (whitespaces)
-                QString fetched = NMModelController::processStringParameter(this, curList.at(i));
+                QString fetched = NMModelController::getInstance()->processStringParameter(this, curList.at(i));
                 if (fetched.startsWith("ERROR"))
                 {
                     NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-                    me.setMsg(fetched.toStdString());
+                    me.setSource(this->parent()->objectName().toStdString());
+                    me.setDescription(fetched.toStdString());
                     throw me;
                 }
                 QStringList fetchedList = fetched.split(QString(" "), QString::SkipEmptyParts);
@@ -332,7 +337,7 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 				outIdx = inputSrcParams.at(1).toInt(&bOK);
 				if (!bOK)
 				{
-					NMErr(ctxNMProcess, << "failed to interpret input source parameter"
+                    NMLogError(<< ctxNMProcess << ": failed to interpret input source parameter"
 							<< "'" << inputSrc.toStdString() << "'");
 				}
 			}
@@ -406,7 +411,8 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 if (bInvalidOutput)
                 {
                     NMMfwException e(NMMfwException::NMProcess_UninitialisedDataObject);
-                    e.setMsg(ss.str());
+                    e.setSource(this->parent()->objectName().toStdString());
+                    e.setDescription(ss.str());
                     NMDebugCtx(ctxNMProcess, << "done!");
                     throw e;
                 }
@@ -414,11 +420,12 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
             else
             {
                 NMMfwException e(NMMfwException::NMProcess_InvalidInput);
+                e.setSource(this->parent()->objectName().toStdString());
                 stringstream ss;
                 ss << this->parent()->objectName().toStdString() << ": The specified "
                    << "input component '" << inputCompName.toStdString()
                    << "' couldn't be found! Check the property settings." << endl;
-                e.setMsg(ss.str());
+                e.setDescription(ss.str());
                 NMDebugCtx(ctxNMProcess, << "done!");
                 throw e;
             }
@@ -451,6 +458,7 @@ void NMProcess::reset(void)
 	this->mMTime.setMSecsSinceEpoch(0);
 	this->mOtbProcess = 0;
     this->mStepIndex = 0;
+    emit signalProgress(0);
     //NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
 }
 
@@ -464,52 +472,67 @@ void NMProcess::update(void)
         {
             this->mOtbProcess->Update();
         }
-        catch (std::exception& err)//itk::ExceptionObject& err)
+        catch (...)
         {
-            NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
-
-            NMIterableComponent* pc = qobject_cast<NMIterableComponent*>(this->parent());
-            if (pc)
-            {
-                std::stringstream msg;
-                NMIterableComponent* hc = pc->getHostComponent();
-
-                if (hc)
-                {
-                    msg << hc->objectName().toStdString() << " step #" << hc->getIterationStep() << ": ";
-                }
-
-                msg << pc->objectName().toStdString() << " step #" << pc->getIterationStep()
-                    << ": " << err.what();
-                rerr.setMsg(msg.str());
-            }
-            else
-            {
-                rerr.setMsg(err.what());
-            }
-            NMErr(this->parent()->objectName().toStdString(), << rerr.what());
-            NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
-            emit signalExecutionStopped(this->parent()->objectName());
             emit signalProgress(0);
 
-            throw rerr;
+            throw;
         }
-        catch (mu::ParserError& evalerr)
-        {
-            std::stringstream errmsg;
-            errmsg << std::endl
-                   << "Message:    " << evalerr.GetMsg() << std::endl
-                   << "Formula:    " << evalerr.GetExpr() << std::endl
-                   << "Token:      " << evalerr.GetToken() << std::endl
-                   << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
-            NMErr("muParserError", << errmsg.str())
-            NMMfwException nme(NMMfwException::NMProcess_ExecutionError);
-            nme.setMsg(errmsg.str());
-            emit signalExecutionStopped(this->parent()->objectName());
-            emit signalProgress(0);
 
-            throw nme;
-        }
+//        catch (std::exception& err)//itk::ExceptionObject& err)
+//        {
+//            NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
+
+//            NMIterableComponent* pc = qobject_cast<NMIterableComponent*>(this->parent());
+//            if (pc)
+//            {
+//                std::stringstream msg;
+//                NMIterableComponent* hc = pc->getHostComponent();
+
+//                if (hc)
+//                {
+//                    msg << hc->objectName().toStdString() << " step #" << hc->getIterationStep() << ": ";
+//                }
+
+//                msg << pc->objectName().toStdString() << " step #" << pc->getIterationStep()
+//                    << ": " << err.what();
+//                rerr.setDescription(msg.str());
+//            }
+//            else
+//            {
+//                rerr.setDescription(err.what());
+//            }
+//            if (mLogger)
+//            {
+//                NMLogError(<< this->parent()->objectName().toStdString() << ": " << rerr.what());
+//            }
+//            else
+//            {
+//                NMDebugAI(<< this->parent()->objectName().toStdString() << ": has NULL Logger!" << std::endl);
+//            }
+//            NMDebugAI(<< this->parent()->objectName().toStdString() << ": " << rerr.what());
+//            NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
+//            emit signalExecutionStopped(this->parent()->objectName());
+//            emit signalProgress(0);
+
+//            throw rerr;
+//        }
+//        catch (mu::ParserError& evalerr)
+//        {
+//            std::stringstream errmsg;
+//            errmsg << std::endl
+//                   << "Message:    " << evalerr.GetMsg() << std::endl
+//                   << "Formula:    " << evalerr.GetExpr() << std::endl
+//                   << "Token:      " << evalerr.GetToken() << std::endl
+//                   << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+//            NMLogError(<< "mu::ParserError: " << errmsg.str());
+//            NMMfwException nme(NMMfwException::NMProcess_ExecutionError);
+//            nme.setDescription(errmsg.str());
+//            emit signalExecutionStopped(this->parent()->objectName());
+//            emit signalProgress(0);
+
+//            throw nme;
+//        }
 
 		this->mMTime = QDateTime::currentDateTimeUtc();
 		NMDebugAI(<< "modified at: "
@@ -517,8 +540,8 @@ void NMProcess::update(void)
 	}
 	else
 	{
-		NMErr(this->parent()->objectName().toStdString(),
-				<< "Update failed! Either the process object is not initialised or"
+        NMLogError(<< this->parent()->objectName().toStdString()
+                << ": Update failed! Either the process object is not initialised or"
 				<< " itk::ProcessObject is NULL and ::update() is not re-implemented!");
 	}
 	this->mbLinked = false;

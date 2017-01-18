@@ -81,7 +81,7 @@ signals:
     void nmChanged();
     void TimeLevelChanged(short level);
 	void ComponentDescriptionChanged(const QString& descr);
-    void ComponentUserIDChanged(const QString& userID);
+    void ComponentUserIDChanged(const QString& oldID, const QString& newID);
 
 public:
     virtual ~NMModelComponent(void);
@@ -105,7 +105,7 @@ public:
     QString getUserID()
         {return this->mUserID;}
 
-    void setLogger(NMLogger* logger){mLogger = logger;}
+    virtual void setLogger(NMLogger* logger){mLogger = logger;}
 
     /*!
      * \brief getModelParameter fetches model component property values;
@@ -126,8 +126,6 @@ public:
 
 
     void ProcessLogEvent(itk::Object* obj, const itk::EventObject& event);
-
-    //QStringList getPropertyList(void);
 
     /*! Allows for recursive identification of
      *  components, which belong to the same

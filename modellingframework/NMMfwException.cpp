@@ -29,6 +29,7 @@
 NMMfwException::NMMfwException(ExceptionType t)
 : type(t), msg("")
 {
+    setMsg();
 }
 
 NMMfwException::~NMMfwException() throw()
@@ -38,13 +39,60 @@ NMMfwException::~NMMfwException() throw()
 const char*
 NMMfwException::what() const throw()
 {
-	stringstream usermsg;
-	usermsg << endl << "EXCEPTION - " << type2string() << endl
-			<< " " << msg << endl;
-
-	return usermsg.str().c_str();
+    return msg.c_str();
 }
 
+void
+NMMfwException::setType(ExceptionType excType)
+{
+    type = excType;
+    setMsg();
+}
+
+NMMfwException::ExceptionType
+NMMfwException::getType()
+{
+    return type;
+}
+
+void
+NMMfwException::setExecStackInfo(const std::string& execstackinfo)
+{
+    execstack = execstackinfo;
+    setMsg();
+}
+
+void
+NMMfwException::setDescription(const std::string& descr)
+{
+    description = descr;
+    setMsg();
+}
+
+void
+NMMfwException::setSource(const string &src)
+{
+    source = src;
+    setMsg();
+}
+
+string
+NMMfwException::getDescription()
+{
+    return description;
+}
+
+void
+NMMfwException::setMsg()
+{
+    std::stringstream usermsg;
+    usermsg << "EXCEPTION - "
+            << source << (source.empty() ? "" : ": ")
+            << type2string() << " "
+            << execstack << (execstack.empty() ? "" : ". ")
+            << description;
+    msg = usermsg.str();
+}
 
 string
 NMMfwException::type2string(void) const

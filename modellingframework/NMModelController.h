@@ -28,9 +28,6 @@
 #include <string>
 #include <iostream>
 
-//#include "nmlog.h"
-//#include "NMModelSerialiser.h"
- 
 #include <QObject>
 #include <QMetaObject>
 #include <QMetaProperty>
@@ -40,6 +37,8 @@
 #include <QString>
 #include <QStringList>
 #include <QDateTime>
+
+#include "otbAttributeTable.h"
 
 #include "nmmodframe_export.h"
 
@@ -72,7 +71,12 @@ class NMMODFRAME_EXPORT NMModelController: public QObject
 
 public:
 
-	QSharedPointer<NMItkDataObjectWrapper> getOutputFromSource(const QString& inputSrc);
+    enum DataComponentPropertyType
+    {
+        NM_DATAPROP_COLUMNS = 0
+    };
+
+    QSharedPointer<NMItkDataObjectWrapper> getOutputFromSource(const QString& inputSrc);
 	NMModelComponent* getComponent(const QString& name);
     QList<NMModelComponent*> getComponents(const QString& userId);
 	QString addComponent(NMModelComponent* comp,
@@ -84,6 +88,8 @@ public:
 	const QMap<QString, NMModelComponent*>& getRepository(void)
 			{return this->mComponentMap;}
 
+    QStringList getUserIDs(void);
+
     NMLogger* getLogger(void){return mLogger;}
 
 	static NMModelController* getInstance(void);
@@ -91,6 +97,23 @@ public:
     static QString getComponentNameFromInputSpec(const QString& inputSpec);
 
     static QStringList getPropertyList(const QObject* obj);
+
+    otb::AttributeTable::Pointer getComponentTable(const NMModelComponent* comp);
+
+
+    /*!
+     * \brief Fetches a list of data component properties. Currently this only refers
+     * to columns of an otb::AttributeTable object but might be extended in the future.
+     * \param Model component object to extract the property list from; overloaded function
+     *        takes the model component name instead
+     * \param The property type. Currently only columns of otb::AttributeTable objects are
+     *        supported
+     * \return List of property names
+     */
+    QStringList getDataComponentProperties(const NMModelComponent* comp,
+                                           DataComponentPropertyType type=NM_DATAPROP_COLUMNS);
+    QStringList getDataComponentProperties(const QString& compName,
+                                           DataComponentPropertyType type=NM_DATAPROP_COLUMNS);
 
     /*!
      * \brief processStringParameter
@@ -136,7 +159,7 @@ public:
      *
      * Note: component identifiers may not contain any '-' or '+' sign!
      */
-    static QString processStringParameter(const QObject *obj, const QString& str);
+    QString processStringParameter(const QObject *obj, const QString& str);
 
     /*!
      * \brief getNextParamExpr Helper function to \ref processStringParameter
@@ -145,7 +168,7 @@ public:
      *
      * Extracts non-nested parameter expressions from expr
      */
-    static QStringList getNextParamExpr(const QString& expr);
+    QStringList getNextParamExpr(const QString& expr);
 
 
 public slots:
@@ -213,7 +236,7 @@ public slots:
 	bool isModelAbortionRequested(void)
 		{return this->mbAbortionRequested;}
 
-    void setUserId(const QString& userId);
+    void setUserId(const QString& oldId, const QString& newId);
 
 signals:
 	/*! Signals whether any of the process components controlled
@@ -230,8 +253,10 @@ protected:
 
 	void resetExecutionStack(void);
 
+    /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;
-    QMultiMap<QString, NMModelComponent*> mUserIdMap;
+    /*! maps userId to ComponentName */
+    QMultiMap<QString, QString> mUserIdMap;
 
 	QStack<QString> mExecutionStack;
 	NMIterableComponent* mRootComponent;

@@ -25,7 +25,8 @@ NMLogger::NMLogger(QObject *parent)
 void
 NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &msg)
 {
-    if ((int)type < (int)mLogLevel)
+    if (    (int)type < (int)mLogLevel
+        ||  msg.isEmpty())
     {
         return;
     }
@@ -34,7 +35,7 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
     // each message its own line!
     if (msg.at(msg.size()-1) != '\n')
     {
-        logmsg = QString("%1\n").arg(msg);
+        logmsg = QString("%1 \n").arg(msg);
     }
 
     if (mbHtml)

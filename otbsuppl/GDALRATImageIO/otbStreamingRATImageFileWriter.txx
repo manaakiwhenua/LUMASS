@@ -445,7 +445,7 @@ StreamingRATImageFileWriter<TInputImage>
 	}
 	else
 	{
-		itkWarningMacro(<< "The provided update region does not fit into the set forced largest possible region!");
+        NMProcWarn(<< "The provided update region does not fit into the configured 'forced largest possible region'!");
 		this->m_UseUpdateRegion = false;
 	}
 }

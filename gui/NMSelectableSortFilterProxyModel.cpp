@@ -21,13 +21,21 @@
  *  Created on: 23/12/2011
  *      Author: alex
  */
-#include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 
 #include <algorithm>
 #include <vector>
 
 #include <QItemSelectionRange>
+#include "NMGlobalHelper.h"
 
 NMSelectableSortFilterProxyModel::NMSelectableSortFilterProxyModel(
 		QObject *parent)
@@ -38,6 +46,15 @@ NMSelectableSortFilterProxyModel::NMSelectableSortFilterProxyModel(
 		  mNumHidden(0),
 		  mbFilterOn(false)
 {
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
 }
 
 NMSelectableSortFilterProxyModel::~NMSelectableSortFilterProxyModel()
@@ -130,7 +147,7 @@ NMSelectableSortFilterProxyModel::mapToRaw(const QModelIndex& idx) const
 {
 	if (idx.column() < 0 || idx.column() > mSourceModel->columnCount(QModelIndex())-1)
 	{
-		NMErr(ctxSelSortFilter, << "Invalid column: " << idx.column());
+        NMLogError(<< ctxSelSortFilter << ": Invalid column: " << idx.column());
 		return QModelIndex();
 	}
 
@@ -138,7 +155,7 @@ NMSelectableSortFilterProxyModel::mapToRaw(const QModelIndex& idx) const
 	int lookuprow = idx.row();
 	if (lookuprow < 0 || lookuprow > nrows-1)
 	{
-		NMErr(ctxSelSortFilter, << "Invalid row: " << idx.row());
+        NMLogError(<< ctxSelSortFilter << ": Invalid row: " << idx.row());
 		return QModelIndex();
 	}
 

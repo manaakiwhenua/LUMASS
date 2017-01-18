@@ -23,7 +23,6 @@
 */
 
 #include "NMSelSortSqlTableProxyModel.h"
-#include "nmlog.h"
 #include <cstdio>
 #include <ctime>
 
@@ -32,6 +31,16 @@
 #include <QSqlIndex>
 #include <QSqlError>
 #include <QUuid>
+
+#include "NMGlobalHelper.h"
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 
 const std::string NMSelSortSqlTableProxyModel::ctx = "NMSelSortSqlTableProxyModel";
 
@@ -51,6 +60,16 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
     mLastColSort.first = -1;
     mLastColSort.second = Qt::AscendingOrder;
     mTempTableName = this->getRandomString();
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
+
 }
 
 NMSelSortSqlTableProxyModel::~NMSelSortSqlTableProxyModel()
@@ -333,7 +352,7 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     queryObj.setForwardOnly(true);
     if (!queryObj.exec(queryStr))
     {
-        NMErr(ctx, << queryObj.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << queryObj.lastError().text().toStdString() << std::endl);
         return false;
     }
 
@@ -499,7 +518,7 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
     bool ret = true;
     if (!q.exec(qStr))
     {
-        NMErr(ctx, << q.lastError().text().toStdString());
+        NMLogError(<< ctx << q.lastError().text().toStdString());
         ret = false;
     }
 
@@ -559,7 +578,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     if (!query.exec(QString(ssql.str().c_str())))
     {
         NMDebugAI(<< "last query:\n" << ssql.str() << std::endl);
-        NMErr(ctx, << query.lastError().text().toStdString());
+        NMLogError(<< ctx << query.lastError().text().toStdString());
         return false;
     }
 
@@ -572,7 +591,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     if (!query.exec(QString(ssql.str().c_str())))
     {
         NMDebugAI(<< "last query:\n" << ssql.str() << std::endl);
-        NMErr(ctx, << query.lastError().text().toStdString());
+        NMLogError(<< ctx << query.lastError().text().toStdString());
         return false;
     }
 
@@ -595,7 +614,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     //QSqlQuery query(mSourceModel->database());
     if (!query.exec(QString(ssql.str().c_str())))
     {
-        NMErr(ctx, << query.lastError().text().toStdString());
+        NMLogError(<< ctx << query.lastError().text().toStdString());
         return false;
     }
 
@@ -603,7 +622,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     ssql << "DROP TABLE " << tarTableName.toStdString() << ";";
     if (!query.exec(QString(ssql.str().c_str())))
     {
-        NMErr(ctx, << query.lastError().text().toStdString());
+        NMLogError(<< ctx << query.lastError().text().toStdString());
         return false;
     }
 
@@ -612,7 +631,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
          << "SELECT * FROM " << tempTableName.toStdString() << ";";
     if (!query.exec(QString(ssql.str().c_str())))
     {
-        NMErr(ctx, << query.lastError().text().toStdString());
+        NMLogError(<< ctx << query.lastError().text().toStdString());
         return false;
     }
 
@@ -690,7 +709,7 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
     //if (!qInsert.exec(ssql))
     if (!qInsert.execBatch(QSqlQuery::ValuesAsRows))
     {
-        NMErr(ctx, << "Failed to add rows - "
+        NMLogError(<< ctx << "Failed to add rows - "
               << qInsert.lastError().text().toStdString());
         return false;
     }
@@ -792,7 +811,7 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
         NMDebugAI(<< "Query: " << qu.toStdString() << std::endl);
         if (!dml.exec(qu))
         {
-            NMErr(ctx, << dml.lastError().text().toStdString());
+            NMLogError(<< ctx << dml.lastError().text().toStdString());
             ret = false;
             break;
         }
@@ -876,7 +895,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
             QSqlQuery qobj(mTempDb);
             if (!qobj.exec(qstr))
             {
-                NMErr(ctx, << qobj.lastError().text().toStdString() << std::endl);
+                NMLogError(<< ctx << qobj.lastError().text().toStdString() << std::endl);
                 return false;
             }
         }
@@ -896,7 +915,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryStruct(mSourceModel->database());
     if (!queryStruct.exec(tmpStruct))
     {
-        NMErr(ctx, << queryStruct.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << queryStruct.lastError().text().toStdString() << std::endl);
         return false;
     }
     queryStruct.next();
@@ -915,7 +934,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryTmpCreate(mTempDb);
     if (!queryTmpCreate.exec(tmpCreate))
     {
-        NMErr(ctx, << queryTmpCreate.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << queryTmpCreate.lastError().text().toStdString() << std::endl);
         return false;
     }
 
@@ -953,7 +972,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryInsert(mTempDb);
     if (!queryInsert.exec(tmpInsert))
     {
-        NMErr(ctx, << queryInsert.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << queryInsert.lastError().text().toStdString() << std::endl);
         queryInsert.finish();
         return false;
     }
@@ -988,7 +1007,7 @@ NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
             QSqlQuery qobj(mSourceModel->database());
             if (!qobj.exec(qstr))
             {
-                NMErr(ctx, << "Failed dropping previous mapping table"
+                NMLogError(<< ctx << "Failed dropping previous mapping table"
                            << " '" << mTempTableName.toStdString() << "'!");
                 NMDebugCtx(ctx, << "done!");
                 return;
@@ -1016,7 +1035,7 @@ NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
     QSqlQuery qCreate(mSourceModel->database());
     if (!qCreate.exec(qstr))
     {
-        NMErr(ctx, << "Failed creating new mapping table"
+        NMLogError(<< ctx << "Failed creating new mapping table"
                    << " '" << mTempTableName.toStdString() << "'!");
         NMDebugCtx(ctx, << "done!");
         return;
@@ -1036,7 +1055,7 @@ NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
     QSqlQuery qSort(mSourceModel->database());
     if (!qSort.exec(qstr))
     {
-        NMErr(ctx, << "Failed populating new mapping table"
+        NMLogError(<< ctx << "Failed populating new mapping table"
                    << " '" << mTempTableName.toStdString() << "'!");
         NMDebugCtx(ctx, << "done!");
         return;
@@ -1106,7 +1125,7 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
     QSqlQuery qProxy(mTempDb);
     if (!qProxy.exec(qstr))
     {
-        NMErr(ctx, << qProxy.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << qProxy.lastError().text().toStdString() << std::endl);
         return retIdx;
     }
 
@@ -1149,7 +1168,7 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
     QSqlQuery qProxy(mTempDb);
     if (!qProxy.exec(qstr))
     {
-        NMErr(ctx, << qProxy.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << qProxy.lastError().text().toStdString() << std::endl);
         return retIdx;
     }
 
@@ -1227,7 +1246,7 @@ NMSelSortSqlTableProxyModel::getNumTableRecords()
     }
     else
     {
-        NMErr(ctx, << q.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << q.lastError().text().toStdString() << std::endl);
     }
 
 

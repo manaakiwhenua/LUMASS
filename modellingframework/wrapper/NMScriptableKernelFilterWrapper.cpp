@@ -96,7 +96,8 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-			e.setMsg("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            e.setSource(p->parent()->objectName().toStdString());
+			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;
 		}
@@ -120,9 +121,10 @@ public:
                 }
                 else
                 {
-                    NMErr("NMScriptableKernelFilterWrapper_Internal", << "Invalid value for 'Radius'!");
+                    NMLogError(<< "NMScriptableKernelFilterWrapper_Internal: " << "Invalid value for 'Radius'!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setMsg("Invalid value for 'Radius'!");
+                    e.setSource(p->parent()->objectName().toStdString());
+                    e.setDescription("Invalid value for 'Radius'!");
                     throw e;
                 }
             }
@@ -182,9 +184,10 @@ public:
             }
             else
             {
-                NMErr("NMScriptableKernelFilterWrapper_Internal", << "Invalid value for 'Nodata'!");
+                NMLogError(<< "NMScriptableKernelFilterWrapper_Internal: " << "Invalid value for 'Nodata'!");
                 NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setMsg("Invalid value for 'Nodata'!");
+                e.setSource(p->parent()->objectName().toStdString());
+                e.setDescription("Invalid value for 'Nodata'!");
                 throw e;
             }
         }

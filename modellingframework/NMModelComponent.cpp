@@ -59,20 +59,6 @@ NMModelComponent::~NMModelComponent(void)
 {
 }
 
-//QStringList
-//NMModelComponent::getPropertyList(void)
-//{
-//    QStringList propList;
-//    const QMetaObject* meta = this->metaObject();
-//    for (int i=0; i < meta->propertyCount(); ++i)
-//    {
-//        QMetaProperty prop = meta->property(i);
-//        propList << prop.name();
-//    }
-
-//    return propList;
-//}
-
 void
 NMModelComponent::ProcessLogEvent(itk::Object* obj, const itk::EventObject& event)
 {
@@ -118,11 +104,12 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     if (!propList.contains(specList.at(0)))
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        me.setSource(this->objectName().toStdString());
         QString msg = QString("%1::getModelParameter(%2) - don't have a parameter '%3'!")
                 .arg(this->objectName())
                 .arg(paramSpec)
                 .arg(specList.at(1));
-        me.setMsg(msg.toStdString());
+        me.setDescription(msg.toStdString());
         throw me;
         return param;
     }
@@ -134,11 +121,12 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     if (!bok)
     {
         NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        me.setSource(this->objectName().toStdString());
         QString msg = QString("%1::getModelParameter(%2) - index '%3' is ivalid!")
                 .arg(this->objectName())
                 .arg(paramSpec)
                 .arg(listIdx);
-        me.setMsg(msg.toStdString());
+        me.setDescription(msg.toStdString());
         throw me;
         return param;
     }
@@ -399,6 +387,7 @@ NMModelComponent::setUserID(const QString& userID)
     // do what we can to fix 'erroneously' ill-formatted
     // ids
     QString uid = userID.simplified();
+    QString oldID = mUserID;
 
     // check, whether string is fit for purpose
     // here we apply the muParser character set for
@@ -406,20 +395,21 @@ NMModelComponent::setUserID(const QString& userID)
     // in expressions subject to be parsed by muParser
     // allowed set of characters:
     // "0123456789_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    QRegExp idchars("[_a-zA-Z\\d]*");
+    QRegExp idchars("[a-zA-Z]*[_a-zA-Z\\d]*");
     if (idchars.indexIn(uid) >= 0)
     {
         mUserID = uid;
         emit NMModelComponentChanged();
         emit nmChanged();
-        emit ComponentUserIDChanged(uid);
+        emit ComponentUserIDChanged(oldID, uid);
     }
     else
     {
         NMMfwException e(NMMfwException::NMModelComponent_InvalidUserID);
+        e.setSource(this->objectName().toStdString());
         QString msg = QString(tr("%1: Invalid UserID: '%2'!"))
                 .arg(this->objectName()).arg(uid);
-        e.setMsg(msg.toStdString());
+        e.setDescription(msg.toStdString());
         throw e;
     }
 }

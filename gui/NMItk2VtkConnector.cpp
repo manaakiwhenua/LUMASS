@@ -31,6 +31,8 @@
 #include "NMitkVTKImageExport.h"
 #include "itkRGBPixel.h"
 
+#include "NMGlobalHelper.h"
+
 /** some private classes facilitating pipeline connection
  *  for templated image exporter
  */
@@ -170,6 +172,15 @@ NMItk2VtkConnector::NMItk2VtkConnector(QObject* parent)
     : mbIsConnected(false)
 {
 	this->setParent(parent);
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
 }
 
 NMItk2VtkConnector::~NMItk2VtkConnector()
@@ -200,8 +211,8 @@ void NMItk2VtkConnector::setNthInput(unsigned int numInput, QSharedPointer<NMItk
 	{
     LocalMacroPerSingleType( ConnectPipelines )
 	default:
-		NMErr(ctxNMItk2VtkConnector,
-				<< "UNKNOWN DATA TYPE, couldn't connect pipelines!");
+        NMLogError(<< ctxNMItk2VtkConnector
+                << ": UNKNOWN DATA TYPE, couldn't connect pipelines!");
 		this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
         connect = false;
 		break;
@@ -229,8 +240,8 @@ NMItk2VtkConnector::updateInput(QSharedPointer<NMItkDataObjectWrapper> imgWrappe
             {
             LocalMacroPerSingleType( UpdateInput )
             default:
-                NMErr(ctxNMItk2VtkConnector,
-                        << "UNKNOWN DATA TYPE, couldn't connect pipelines!");
+                NMLogError(<< ctxNMItk2VtkConnector
+                        << ": UNKNOWN DATA TYPE, couldn't connect pipelines!");
                 this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
                 break;
             }
@@ -250,8 +261,8 @@ NMItk2VtkConnector::updateInput(QSharedPointer<NMItkDataObjectWrapper> imgWrappe
                 }
             }
 
-            NMErr(ctxNMItk2VtkConnector,
-                  << "Data type mismatch! Update of "
+            NMLogError(<< ctxNMItk2VtkConnector
+                  << ": Data type mismatch! Update of "
                   << parentName.toStdString() << "'s data failed!");
         }
     }

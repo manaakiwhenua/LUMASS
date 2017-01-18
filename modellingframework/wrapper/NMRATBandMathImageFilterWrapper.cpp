@@ -653,10 +653,11 @@ NMRATBandMathImageFilterWrapper
     else
 	{
 		NMMfwException e(NMMfwException::NMProcess_MissingParameter);
-		e.setMsg("NMRATBandMathImageWrapper: No map expression specified!");
+        e.setSource(this->parent()->objectName().toStdString());
+		e.setDescription("NMRATBandMathImageWrapper: No map expression specified!");
 		throw e;
 
-		NMErr(ctx, << "no map expression available!");
+        NMLogError(<< ctx << ": no map expression available!");
         NMDebugCtx(ctx, << "done!");
 		return;
 	}
@@ -695,14 +696,15 @@ NMRATBandMathImageFilterWrapper
             if (comp == 0)
             {
                 NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
+                e.setSource(this->parent()->objectName().toStdString());
                 std::stringstream msg;
                 msg << "couldn't find " << inputCompName.toStdString() << "'!" << std::endl;
 
-                NMErr(ctx, << msg.str() << std::endl);
+                NMLogError(<< ctx << msg .str() << std::endl);
 
 
                 NMDebugCtx(ctx, << "done!");
-                e.setMsg(msg.str());
+                e.setDescription(msg.str());
                 throw e;
             }
 
@@ -751,11 +753,12 @@ NMRATBandMathImageFilterWrapper
             else
             {
                 NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setSource(this->parent()->objectName().toStdString());
                 std::stringstream msg;
                 msg << "'" << inputCompName.toStdString() << "'"
                     << " Missing UserID!";
-                e.setMsg(msg.str());
-                NMErr(ctx, << msg.str());
+                e.setDescription(msg.str());
+                NMLogError(<< ctx << msg .str());
                 NMDebugCtx(ctx, << "done!");
                 throw e;
             }

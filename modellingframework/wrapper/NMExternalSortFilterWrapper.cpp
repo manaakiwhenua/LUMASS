@@ -98,7 +98,8 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-			e.setMsg("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            e.setSource(p->parent()->objectName().toStdString());
+			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;
 		}
@@ -129,9 +130,10 @@ public:
             }
             else
             {
-                NMErr("NMExternalSortFilterWrapper_Internal", << "Invalid value for 'SortAscending'!");
+                NMLogError(<< "NMExternalSortFilterWrapper_Internal: " << "Invalid value for 'SortAscending'!");
                 NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setMsg("Invalid value for 'SortAscending'!");
+                e.setSource(p->parent()->objectName().toStdString());
+                e.setDescription("Invalid value for 'SortAscending'!");
                 throw e;
             }
         }
@@ -147,9 +149,10 @@ public:
             }
             else
             {
-                NMErr("NMExternalSortFilterWrapper_Internal", << "Invalid value for 'MaxChunkSize'!");
+                NMLogError(<< "NMExternalSortFilterWrapper_Internal: " << "Invalid value for 'MaxChunkSize'!");
                 NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                e.setMsg("Invalid value for 'MaxChunkSize'!");
+                e.setSource(p->parent()->objectName().toStdString());
+                e.setDescription("Invalid value for 'MaxChunkSize'!");
                 throw e;
             }
         }

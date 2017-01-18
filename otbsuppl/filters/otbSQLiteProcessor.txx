@@ -62,7 +62,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
     }
     else
     {
-        itkWarningMacro(<< "NULL-table or non-SQLite-table provided!")
+        NMProcWarn(<< "NULL-table or non-SQLite-table provided!")
     }
 }
 
@@ -153,7 +153,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         // we just give a warning here, since we might do things
         // like adding a column; and if the column is already
         // present, the overall modelling run is not interrupted
-        itkWarningMacro(<< "SQL processing failed!");
+        NMProcWarn(<< "SQL processing failed!");
         return;
     }
 
@@ -169,7 +169,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
             // and it is still locked; attachement should be released
             // once the otbSQLiteTable pointer goes out of scope and
             // the host database is closed anyway ...
-            itkWarningMacro(<< "Failed detaching databases!");
+            NMProcWarn(<< "Failed detaching databases!");
             return;
         }
     }

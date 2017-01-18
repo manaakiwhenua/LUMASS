@@ -1083,7 +1083,7 @@ NMImageReader::getRasterAttributeTable(int band)
 		CallFetchRATClassMacro( double );
 		break;
 	default:
-		NMErr(ctxNMImageReader, << "UNKNOWN DATA TYPE, couldn't fetch RAT!");
+        NMLogError(<<  ctxNMImageReader << ": UNKNOWN DATA TYPE, couldn't fetch RAT!");
 		break;
 	}
 
@@ -1166,7 +1166,7 @@ bool NMImageReader::initialise()
 
 	if (!this->mItkImgIOBase)
 	{
-		NMErr(ctxNMImageReader, << "NO IMAGEIO WAS FOUND!");
+        NMLogError(<<  ctxNMImageReader << ": NO IMAGEIO WAS FOUND!");
 		NMDebugCtx(ctxNMImageReader, << "done!");
 		return false;
 	}
@@ -1176,7 +1176,7 @@ bool NMImageReader::initialise()
 	this->mItkImgIOBase->SetFileName(this->mFileName.toStdString().c_str());
 	if (!this->mItkImgIOBase->CanReadFile(this->mFileName.toStdString().c_str()))
 	{
-		NMErr(ctxNMImageReader, << "Failed reading '" << this->mFileName.toStdString() << "'!");
+        NMLogError(<<  ctxNMImageReader << ": Failed reading '" << this->mFileName.toStdString() << "'!");
 		NMDebugCtx(ctxNMImageReader, << "done!");
 		return false;
 	}
@@ -1259,7 +1259,7 @@ bool NMImageReader::initialise()
 		CallReaderMacro( double );
 		break;
 	default:
-		NMErr(ctxNMImageReader, << "UNKNOWN DATA TYPE, couldn't create Pipeline!");
+        NMLogError(<<  ctxNMImageReader << ": UNKNOWN DATA TYPE, couldn't create Pipeline!");
 		ret = false;
 		break;
 	}
@@ -1416,12 +1416,13 @@ QSharedPointer<NMItkDataObjectWrapper> NMImageReader::getOutput(unsigned int idx
 	if (!this->mbIsInitialised)
 	{
 		NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        e.setSource(this->objectName().toStdString());
         QString hostName = "";
         if (this->parent() != 0)
             hostName = this->parent()->objectName();
         QString msg = QString::fromLatin1("%1: NMImageReader::getOutput(%2) failed - Object not initialised!")
                 .arg(hostName).arg(idx);
-        e.setMsg(msg.toStdString());
+        e.setDescription(msg.toStdString());
 		throw e;
 	}
 
@@ -1459,7 +1460,7 @@ QSharedPointer<NMItkDataObjectWrapper> NMImageReader::getOutput(unsigned int idx
 		RequestReaderOutput( double );
 		break;
 	default:
-		NMErr(ctxNMImageReader, << "UNKNOWN DATA TYPE, couldn't get output!");
+        NMLogError(<<  ctxNMImageReader << ": UNKNOWN DATA TYPE, couldn't get output!");
 		break;
 	}
 
@@ -1509,7 +1510,7 @@ itk::DataObject* NMImageReader::getItkImage(void)
 		RequestReaderOutput( double );
 		break;
 	default:
-		NMErr(ctxNMImageReader, << "UNKNOWN DATA TYPE, couldn't get output!");
+        NMLogError(<<  ctxNMImageReader << ": UNKNOWN DATA TYPE, couldn't get output!");
 		break;
 	}
 	return img;
@@ -1647,6 +1648,15 @@ void NMImageReader::instantiateObject(void)
 	}
 #endif	
 
+    // put the name of the hosting iterable component
+    // because that's the 'visible' feature in the
+    // GUI rather than the internal NMProcess-derived class
+    QString source = this->objectName();
+    if (this->parent())
+    {
+        source = this->parent()->objectName();
+    }
+
     QVariant param = this->getParameter("FileNames");
     if (param.isValid() && !param.toString().isEmpty())
     {
@@ -1659,9 +1669,10 @@ void NMImageReader::instantiateObject(void)
         else
         {
             NMMfwException ex(NMMfwException::NMProcess_InvalidParameter);
-            QString msg = QString(tr("File %1 does not exists or is not readable!"))
+            ex.setSource(source.toStdString());
+            QString msg = QString(tr("File %1 does not exist or is not readable!"))
                     .arg(fn);
-            ex.setMsg(msg.toStdString());
+            ex.setDescription(msg.toStdString());
             NMDebugCtx(this->objectName().toStdString(), << "done!");
             throw ex;
         }
@@ -1678,7 +1689,7 @@ void NMImageReader::instantiateObject(void)
             int b = band.toInt(&bok);
             if (!bok)
             {
-                NMWarn(ctxNMImageReader, "Not all bands of the band map were "
+                NMLogWarn(<< source.toStdString() ": Not all bands of the band map were "
                        "identified correctly!");
                 continue;
             }

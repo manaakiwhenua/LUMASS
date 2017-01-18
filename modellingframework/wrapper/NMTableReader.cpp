@@ -84,12 +84,13 @@ NMTableReader::getOutput(unsigned int idx)
     if (!this->mbIsInitialised)
     {
         NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        e.setSource(this->parent()->objectName().toStdString());
         QString hostName = "";
         if (this->parent() != 0)
             hostName = this->parent()->objectName();
         QString msg = QString::fromLatin1("%1: NMTableReader::getOutput(%2) failed - Object not initialised!")
                 .arg(hostName).arg(idx);
-        e.setMsg(msg.toStdString());
+        e.setDescription(msg.toStdString());
         throw e;
     }
 

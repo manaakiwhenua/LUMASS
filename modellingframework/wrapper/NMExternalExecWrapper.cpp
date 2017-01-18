@@ -93,9 +93,10 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
     if (qvCmnd.type() != QVariant::String)
     {
         NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+        e.setSource(this->parent()->objectName().toStdString());
         std::stringstream msg;
         msg << "'" << this->objectName().toStdString() << "'";
-        e.setMsg(msg.str());
+        e.setDescription(msg.str());
         NMDebugCtx(ctx, << "done!");
         throw e;
     }
@@ -110,7 +111,7 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
 //        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
 //        std::stringstream msg;
 //        msg << "'" << this->objectName().toStdString() << "'";
-//        e.setMsg(msg.str());
+//        e.setDescription(msg.str());
 //        NMDebugCtx(ctx, << "done!");
 //        throw e;
 //    }

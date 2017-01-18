@@ -112,7 +112,7 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-			e.setMsg("We're trying to link, but the filter doesn't seem to be initialised properly!");
+			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;
 		}
@@ -136,9 +136,10 @@ public:
                 }
                 else
                 {
-                    NMErr("NMCombineTwoFilterWrapper_Internal", << "Invalid value for 'InputNodata'!");
+                    NMLogError(<< "NMCombineTwoFilterWrapper_Internal: Invalid value for 'InputNodata'!");
                     NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setMsg("Invalid value for 'InputNodata'!");
+                    e.setSource(p->parent()->objectName().toStdString());
+                    e.setDescription("Invalid value for 'InputNodata'!");
                     throw e;
                 }
             }

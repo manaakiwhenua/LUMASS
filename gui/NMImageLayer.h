@@ -26,8 +26,6 @@
 #define NMIMAGELAYER_H_
 #define ctxNMImageLayer "NMImageLayer"
 
-#include "nmlog.h"
-
 #include <NMLayer.h>
 #include <NMImageReader.h>
 #include <NMItk2VtkConnector.h>
@@ -46,6 +44,7 @@
 #endif
 
 class NMLayer;
+class NMLogger;
 
 class NMImageLayer: public NMLayer
 {

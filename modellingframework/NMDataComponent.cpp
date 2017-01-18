@@ -21,7 +21,14 @@
  *  Created on: 12/02/2013
  *      Author: alex
  */
-#include "nmlog.h"
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
 #include <string>
 #include <sstream>
 
@@ -35,6 +42,7 @@
 const std::string NMDataComponent::ctx = "NMDataComponent";
 
 NMDataComponent::NMDataComponent(QObject* parent)
+    : NMModelComponent(parent)
 {
 	this->setParent(parent);
 	this->initAttributes();
@@ -58,7 +66,6 @@ NMDataComponent::initAttributes(void)
 	mParamPos = 0;
 	mbLinked = false;
     mTabMinPK = 0;
-
 }
 
 void
@@ -100,6 +107,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 {
 	NMDebugCtx(ctx, << "...");
 	NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
+    e.setSource(this->objectName().toStdString());
 	std::stringstream msg;
 
 	this->mParamPos = step;
@@ -124,7 +132,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
         }
         else
         {
-            e.setMsg("List of input specs is empty!");
+            e.setDescription("List of input specs is empty!");
             NMDebugCtx(ctx, << "done!");
             throw e;
         }
@@ -139,7 +147,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 	QStringList listOfSpecs = mInputs.at(step);
 	if (listOfSpecs.size() == 0)
 	{
-		e.setMsg("No input component defined!");
+        e.setDescription("No input component defined!");
 		NMDebugCtx(ctx, << "done!");
 		throw e;
 	}
@@ -151,7 +159,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 
 	if (inputSpec.isEmpty())
 	{
-		e.setMsg("No input component defined!");
+        e.setDescription("No input component defined!");
 		NMDebugCtx(ctx, << "done!");
 		throw e;
 	}
@@ -171,7 +179,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 			{
 				msg << "Failed to interpret input source parameter '"
 					<< inputSpec.toStdString() << "'";
-				e.setMsg(msg.str());
+                e.setDescription(msg.str());
 				NMDebugCtx(ctx, << "done!");
 				throw e;
 			}
@@ -193,7 +201,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
     {
 		msg << "The specified input component '"
 		    << mInputCompName.toStdString() << "' couldn't be found!";
-		e.setMsg(msg.str());
+        e.setDescription(msg.str());
 		NMDebugCtx(ctx, << "done!");
 		throw e;
 	}
@@ -337,13 +345,14 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 {
 	NMDebugCtx(ctx, << "...");
 	NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
+    e.setSource(this->objectName().toStdString());
 	std::stringstream msg;
 
 	if (comp == 0)
 	{
 		msg << "Retrieved input component '"
 			<< mInputCompName.toStdString() << "' is NULL!";
-		e.setMsg(msg.str());
+        e.setDescription(msg.str());
 		NMDebugCtx(ctx, << "done!");
 		throw e;
 	}
@@ -375,9 +384,10 @@ NMDataComponent::fetchData(NMModelComponent* comp)
     QSharedPointer<NMItkDataObjectWrapper> to = comp->getOutput(mInputOutputIdx);
     if (to.isNull())
 	{
-		NMErr(ctx, << "Got NULL output so far, but could be all right.");
+        //NMLogError(<< ctx << ": input object is NULL!");
 		NMMfwException de(NMMfwException::NMProcess_UninitialisedDataObject);
-		de.setMsg("Input NMItkDataObjectWrapper is NULL!");
+        de.setSource(this->objectName().toStdString());
+        de.setDescription("Input NMItkDataObjectWrapper is NULL!");
 		throw de;
 	}
 
@@ -391,7 +401,7 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 	//{
 	//	msg << "Internal data object of '"
 	//		<< mInputCompName.toStdString() << "' is NULL!";
-	//	e.setMsg(msg.str());
+    //	e.setDescription(msg.str());
 	//	NMDebugCtx(ctx, << "done!");
 	//	throw e;
 	//}
@@ -421,10 +431,11 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
     if (mIsUpdating)
     {
         NMMfwException ul(NMMfwException::NMModelComponent_RecursiveUpdate);
+        ul.setSource(this->objectName().toStdString());
         std::stringstream msg;
         msg << this->objectName().toStdString()
             << " is already updating itself!";
-        ul.setMsg(msg.str());
+        ul.setDescription(msg.str());
         NMDebugCtx(ctx, << "done!");
         return;
     }

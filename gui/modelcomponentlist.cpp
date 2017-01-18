@@ -17,6 +17,15 @@
  ******************************************************************************/
 #include <limits>
 
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+#include "NMGlobalHelper.h"
+
 #include "modelcomponentlist.h"
 #include "lumassmainwin.h"
 #include "NMImageLayer.h"
@@ -27,7 +36,6 @@
 #include "NMModelController.h"
 #include "NMModelComponent.h"
 #include "NMItkDataObjectWrapper.h"
-#include "NMGlobalHelper.h"
 
 #include <QDrag>
 #include <QMimeData>
@@ -105,6 +113,16 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mDelegate = new NMComponentListItemDelegate(this);
     this->setItemDelegate(mDelegate);
 
+    // set up the logger
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
+            SLOT(insertHtml(QString)));
 
     /* =============================================================
                         GENERAL LAYER CONTEXT MENU
@@ -1867,7 +1885,7 @@ void ModelComponentList::showWholeImgStats()
     // can this actually happen?
     if (!mStatsWatcherMap.contains(watcher))
     {
-        NMErr(ctx, << "Got an unobserved future watcher for img stats!");
+        NMLogDebug(<< ctx << ": Got an unobserved future watcher for img stats!");
         delete watcher;
         return;
     }
@@ -1920,7 +1938,7 @@ void ModelComponentList::showValueStats()
 
 	if (stats.size() == 0)
 	{
-		NMErr(ctx, << "failed retrieving value field statistics!");
+        NMLogError(<< ctx << ": failed retrieving value field statistics!");
 		NMDebugCtx(ctx, << "done!");
 		return;
 	}

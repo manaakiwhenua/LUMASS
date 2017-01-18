@@ -100,7 +100,8 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-			e.setMsg("We're trying to link, but the filter doesn't seem to be initialised properly!");
+            e.setSource(p->parent()->objectName().toStdString());
+			e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;
 		}
@@ -139,7 +140,7 @@ public:
 					values.push_back(v);
 				else
 				{
-					NMErr("NMFocalNeighbourhoodDistanceWeightingWrapper_Internal",
+                    NMLogError(<< "NMFocalNeighbourhoodDistanceWeightingWrapper_Internal: "
 							<< "Couldn't parse influence value: " << strVal.toStdString() << "!");
 				}
 			}
@@ -176,11 +177,12 @@ public:
 						QStringList strCols = strMatrix.at(row);
 						if (strCols.size() != ncols)
 						{
-							NMErr("NMFocalNeighbourhoodDistanceWeighting_Internal",
+                            NMLogError(<< "NMFocalNeighbourhoodDistanceWeighting_Internal: "
 									<< "Invalid weights matrix detected!");
 
 							NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-							e.setMsg("Invalid weights matrix detected!");
+                            e.setSource(p->parent()->objectName().toStdString());
+							e.setDescription("Invalid weights matrix detected!");
 							throw e;
 						}
 

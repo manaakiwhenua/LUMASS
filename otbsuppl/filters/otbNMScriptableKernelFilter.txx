@@ -45,7 +45,7 @@
 //#else
 
 #include "otbNMScriptableKernelFilter.h"
-
+#include "nmlog.h"
 #include "itkConstNeighborhoodIterator.h"
 #include "itkNeighborhoodInnerProduct.h"
 #include "itkImageRegionIterator.h"
@@ -1104,7 +1104,7 @@ NMScriptableKernelFilter< TInputImage, TOutputImage>
 
     if (nover || nunder)
     {
-        itkWarningMacro(<< nover << " overflows and "
+        NMProcWarn(<< nover << " overflows and "
                         << nunder << " underflows detected! "
                         << "Double check your results!");
     }

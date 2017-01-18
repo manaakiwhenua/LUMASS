@@ -26,9 +26,11 @@
 #include <QAbstractItemModel>
 #include <QList>
 #include <QItemSelection>
+#include "lumassmainwin.h"
+#include "NMLogWidget.h"
 
 class QVTKWidget;
-class LUMASSMainWin;
+//class LUMASSMainWin;
 class vtkRenderWindow;
 
 class NMGlobalHelper
@@ -39,6 +41,7 @@ public:
     static void startBusy(void);
     static void endBusy(void);
 
+    static NMLogWidget* getLogWidget(void);
     static LUMASSMainWin* getMainWindow(void);
     static vtkRenderWindow* getRenderWindow(void);
     static QVTKWidget* getVTKWidget(void);

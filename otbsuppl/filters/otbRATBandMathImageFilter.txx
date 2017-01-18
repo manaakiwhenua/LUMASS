@@ -544,7 +544,6 @@ void RATBandMathImageFilter<TImage>
     m_VAttrValues.at(i).resize(nbInputImages);
     //m_VParser.at(i)->SetExpr(m_Expression);
     ParserType::Pointer parser = ParserType::New();
-    parser->SetExpr(m_Expression);
 
     //    // debug
     //    if (i==0)
@@ -588,6 +587,7 @@ void RATBandMathImageFilter<TImage>
     }
     //std::cout << std::endl;
 
+    parser->SetExpr(m_Expression);
     m_VParser.push_back(parser);
   }
 }
@@ -735,10 +735,19 @@ void RATBandMathImageFilter<TImage>
         {
             if (threadId == 0)
             {
-                NMErr("MapAlgebra", << err.GetDescription() << std::endl)
+                NMProcErr(<< "Map Algebra: " << err.GetDescription() << std::endl)
+                NMErr("MapAlgebra", << err.GetDescription() << std::endl);
             }
-            throw err;
-            //itkExceptionMacro(<< err);
+            throw;
+        }
+        catch (mu::ParserError& mpe)
+        {
+            if (threadId == 0)
+            {
+                NMProcErr(<< "Map Algebra: " << mpe.GetMsg());
+                NMErr("Map Algebra", << mpe.GetMsg());
+            }
+            throw;
         }
 
 		// Case value is equal to -inf or inferior to the minimum value

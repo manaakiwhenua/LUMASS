@@ -48,6 +48,7 @@ public slots:
                        const QString& msg);
 
 protected:
+
     bool mbHtml;
     LogEventType mLogLevel;
 };

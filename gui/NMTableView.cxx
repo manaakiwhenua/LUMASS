@@ -589,7 +589,7 @@ void NMTableView::calcColumn()
 		calc->setFunction(func);
 		if (!calc->calculate())
 		{
-			NMErr(__ctxtabview, << "Something went wrong!");
+            NMLogError(<< __ctxtabview << ": Something went wrong!");
 		}
 	}
 	catch (itk::ExceptionObject& err)
@@ -598,7 +598,7 @@ void NMTableView::calcColumn()
 		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
 				      .arg(err.GetDescription());
 
-		NMErr(__ctxtabview, << "Calculation failed!"
+        NMLogError(<< __ctxtabview << ": Calculation failed!"
 				<< errmsg.toStdString());
 
 		QMessageBox::critical(this, "Table Calculation Error", errmsg);
@@ -1038,7 +1038,7 @@ void NMTableView::exportTable()
 	//	}
 	//	else
 	//	{
-	//		NMErr(__ctxtabview, << "invalid database and table name!");
+    //		NMLogError(<< __ctxtabview << ": invalid database and table name!");
 	//		return;
 	//	}
     //
@@ -1582,7 +1582,7 @@ NMTableView::selectionQuery(void)
 			//		"Selection Query Failed",
 			//		"Error parsing the query!");
 
-			NMErr(__ctxtabview, << "Selection Query failed!");
+            NMLogError(<< __ctxtabview << ": Selection Query failed!");
 			NMDebugCtx(__ctxtabview, << "done!");
 			//return;
 		}
@@ -1593,7 +1593,7 @@ NMTableView::selectionQuery(void)
 		QString errmsg = QString(tr("%1: %2")).arg(err.GetLocation())
 				      .arg(err.GetDescription());
 		NMBoxErr("Selection Query Failed!", "Invalid Query String!");
-		NMErr(__ctxtabview, << "Calculation failed!"
+        NMLogError(<< __ctxtabview << ": Calculation failed!"
 				<< errmsg.toStdString());
 		return;
 	}

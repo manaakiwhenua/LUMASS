@@ -347,7 +347,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 	if (mZoneTable.IsNull())
 	{
-		NMErr(ctx, << "oops, don't have a zone table - shouldn't have happened!");
+        NMProcErr(<< ctx << ": oops, don't have a zone table - shouldn't have happened!");
 		itk::ExceptionObject eo;
 		eo.SetDescription("no table found! How could that happen?!");
 		throw eo;

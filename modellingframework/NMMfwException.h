@@ -60,18 +60,27 @@ public:
 
 	virtual const char* what() const throw ();
 
-    void setType(ExceptionType excType) {type = excType;}
-    ExceptionType getType(void) {return type;}
-	void setMsg(const string& msg)
-	{
-		this->msg = msg;
-	}
+    string getSource(void){return source;}
+    string getExecStackInfo(void){return execstack;}
+    string getDescription(void);
+    string type2string(void) const;
+
+    void setType(ExceptionType excType);
+    ExceptionType getType(void);
+
+    void setExecStackInfo(const std::string& execstackinfo);
+    void setDescription(const std::string& descr);
+    void setSource(const std::string& src);
 
 protected:
-	string msg;
+    void setMsg();
+
+    string msg;
+    string description;
+    string execstack;
+    string source;
 	ExceptionType type;
 
-	string type2string(void) const ;
 
 };
 

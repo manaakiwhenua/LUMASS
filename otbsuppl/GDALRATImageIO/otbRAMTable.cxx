@@ -86,7 +86,7 @@ RAMTable::AddColumn(const std::string& sColName, TableColumnType eType)
 		try{
 		vstr = new std::vector<std::string>();
 		vstr->resize(m_iNumRows, m_sNodata);
-		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+        } catch (std::exception& e) {NMProcErr(<< _ctxotbtab << ": Failed adding column: " << e.what());return false;}
 
 		this->m_mStringCols.push_back(vstr);
 		this->m_vPosition.push_back(m_mStringCols.size()-1);
@@ -95,7 +95,7 @@ RAMTable::AddColumn(const std::string& sColName, TableColumnType eType)
 		try{
         vint = new std::vector<long long>();
 		vint->resize(m_iNumRows, m_iNodata);
-		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+        } catch (std::exception& e) {NMProcErr(<< _ctxotbtab << ": Failed adding column: " << e.what());return false;}
 
 		this->m_mIntCols.push_back(vint);
 		this->m_vPosition.push_back(m_mIntCols.size()-1);
@@ -104,7 +104,7 @@ RAMTable::AddColumn(const std::string& sColName, TableColumnType eType)
 		try{
 		vdbl = new std::vector<double>();
 		vdbl->resize(m_iNumRows, m_dNodata);
-		} catch (std::exception& e) {NMErr(_ctxotbtab, << "Failed adding column: " << e.what());return false;}
+        } catch (std::exception& e) {NMProcErr(<< _ctxotbtab << ": Failed adding column: " << e.what());return false;}
 
 		this->m_mDoubleCols.push_back(vdbl);
 		this->m_vPosition.push_back(m_mDoubleCols.size()-1);

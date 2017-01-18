@@ -52,12 +52,12 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     QVBoxLayout* vlayout = new QVBoxLayout(dlg);
     vlayout->addWidget(textEdit);
 
-    QHBoxLayout* hlayout = new QHBoxLayout(dlg);
+    QHBoxLayout* hlayout = new QHBoxLayout();
     hlayout->addWidget(btnCancel);
     hlayout->addWidget(btnOk);
     vlayout->addItem(hlayout);
 
-    dlg->setLayout(vlayout);
+    //dlg->setLayout(vlayout);
 
     int ret = dlg->exec();
     //NMDebugAI(<< "dialog closed: " << ret << std::endl);
@@ -95,6 +95,12 @@ LUMASSMainWin *NMGlobalHelper::getMainWindow()
     }
 
     return mainWin;
+}
+
+NMLogWidget*
+NMGlobalHelper::getLogWidget()
+{
+    return NMGlobalHelper::getMainWindow()->getLogWidget();
 }
 
 QItemSelection

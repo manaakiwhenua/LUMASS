@@ -77,7 +77,7 @@ class vtkTable;
 class NMLayer;
 class NMTableView;
 class NMVectorLayer;
-
+class NMLogWidget;
 
 namespace Ui
 {
@@ -121,6 +121,8 @@ public:
     void checkRemoveLayerInfo(NMLayer* l);
     void checkInteractiveLayer();
 
+    NMLogWidget* getLogWidget(void);
+
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
 #endif
@@ -128,6 +130,8 @@ public:
 signals:
     void signalIsIn3DMode(bool in3d);
     void noExclusiveToolSelected(void);
+    void isAboutToClose(void);
+    void componentOfInterest(const QString&);
 
 public slots:
 
@@ -149,7 +153,6 @@ public slots:
 	void loadVTKPolyData();			// loads VTK *vtp PolyData
 	void loadVectorLayer();
 	void doMOSO();
-    //void doMOSObatch();
     void showComponentsView(bool);
     void showComponentsInfoView(bool);
     void showMapView(bool);
@@ -198,6 +201,8 @@ public slots:
     void zoomToContent();
     void updateExclusiveActions(const QString& checkedAction,
                                 bool toggled);
+
+    void searchModelComponent(void);
 
 
     void appendLogMsg(const QString& msg);
@@ -292,48 +297,6 @@ protected:
 	vtkSmartPointer<vtkPolyData> wkbPointToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
-
-//    void parseKernelScriptBlock(std::string& expr,
-//            //std::vector<std::pair<ScriptElem, int> >& parseAdmin,
-//            //std::map<std::string, double*>& mapNameValue,
-//            std::map<std::string, mup::Value>& mapNameValue,
-//            //std::map<otb::MultiParser*, std::string> &mapParserName,
-//            std::map<mup::ParserX*, std::string>& mapParserName,
-//            //std::vector<otb::MultiParser*> &vecParsers,
-//            std::vector<mup::ParserX*>& vecParsers,
-//            std::vector<int>& vecBlockLen
-//            );
-
-//    void parseScriptCommand(std::string& expr,
-//            //std::map<std::string, double*>& mapNameValue,
-//            std::map<std::string, mup::Value>& mapNameValue,
-//            //std::map<otb::MultiParser*, std::string>& mapParserName,
-//            std::map<mup::ParserX*, std::string>& mapParserName,
-//            //std::vector<otb::MultiParser*>& vecParsers
-//            std::vector<mup::ParserX*>& vecParsers
-//            );
-
-//    void parserTest(std::vector<std::map<std::string, mup::Value> >& vm);
-
-//    void runScript(
-//            //std::map<std::string, double*>& mapNameValue,
-//            std::map<std::string, mup::Value>& mapNameValue,
-//            //std::map<otb::MultiParser*, std::string> &mapParserName,
-//            //std::vector<otb::MultiParser*> &vecParsers,
-//            std::map<mup::ParserX*, std::string> &mapParserName,
-//            std::vector<mup::ParserX*>& vecParsers,
-//            std::vector<int>& vecBlockLen
-//            );
-
-//    void runLoop(int i,
-//                 //std::map<std::string, double*>& mapNameValue,
-//                 std::map<std::string, mup::Value>& mapNameValue,
-//                 std::map<mup::ParserX*, std::string> &mapParserName,
-//                 std::vector<mup::ParserX*> &vecParsers,
-////                 std::map<otb::MultiParser*, std::string> &mapParserName,
-////                 std::vector<otb::MultiParser*> &vecParsers,
-//                 std::vector<int>& vecBlockLen
-//                 );
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

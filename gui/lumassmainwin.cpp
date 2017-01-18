@@ -59,6 +59,7 @@
 #include "NMQtOtbAttributeTableModel.h"
 #include "NMModelComponent.h"
 #include "NMProcess.h"
+#include "NMMfwException.h"
 
 #include "modelcomponentlist.h"
 #include "NMProcCompList.h"
@@ -133,6 +134,8 @@
 #include <QSqlDriver>
 #include <QSqlRecord>
 #include <QSplitter>
+#include <QRegularExpression>
+#include <QRegularExpressionMatch>
 
 // orfeo
 //#include "ImageReader.h"
@@ -286,15 +289,10 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 #endif
 	this->mbNoRasdaman = false;
     this->mpPetaView = 0;
+
+    this->mbUpdatingExclusiveActions = false;
     this->mLastInfoLayer = 0;
     this->mActiveWidget = 0;
-
-    mLogger = new NMLogger(this);
-    mLogger->setHtmlMode(true);
-#ifdef DEBUG
-    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
-#endif
-    connect(mLogger, SIGNAL(sendLogMsg(QString)), this, SLOT(appendHtmlMsg(QString)));
 
 	// some meta type registration for supporting the given types for
 	// properties and QVariant
@@ -335,9 +333,15 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	// set up the qt designer based controls
     ui->setupUi(this);
     mLUMASSIcon = QIcon(":lumass-icon.png");
-
     this->setWindowIcon(mLUMASSIcon);
-    mbUpdatingExclusiveActions = false;
+
+    // set up the logger
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(true);
+#ifdef DEBUG
+    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#endif
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), ui->logEdit, SLOT(insertHtml(QString)));
 
     // ================================================
     // INFO COMPONENT DOCK
@@ -391,7 +395,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // ================================================
     // LOG DOCK
     // ================================================
-
     ui->logDock->setVisible(false);
 
 
@@ -484,7 +487,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
 
     // =============================================================
-    // set up the tool bar
+    //                      MAIN TOOL BAR
+    // =============================================================
     //this->ui->mainToolBar->setWindowTitle("Model Builder Tools");
 
     // .....................
@@ -572,9 +576,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     QIcon resetIcon(":model-reset-icon.png");
     QAction* resetAction = new QAction(resetIcon, "Reset Model",  this->ui->mainToolBar);
 
-
-    //this->ui->mainToolBar->addActions(modelToolGroup->actions());
-
     this->ui->mainToolBar->addAction(zoomInAction);
     this->ui->mainToolBar->addAction(zoomOutAction);
     this->ui->mainToolBar->addAction(zoomToContentAct);
@@ -594,6 +595,14 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     this->ui->mainToolBar->addAction(actMapBtn);
     this->ui->mainToolBar->addAction(actModelBtn);
     this->ui->mainToolBar->addActions(windowLayoutGroup->actions());
+
+    this->ui->mainToolBar->addSeparator();
+    QLineEdit* searchedit = new QLineEdit(ui->mainToolBar);
+    searchedit->setPlaceholderText("Enter ComponentName or UserID");
+    QAction *actCompSearch = ui->mainToolBar->addWidget(searchedit);
+    actCompSearch->setText("Search Model");
+    connect(searchedit, SIGNAL(returnPressed()), this,
+            SLOT(searchModelComponent()));
 
 
     // connect model view widget signals / slots
@@ -764,6 +773,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     connect(ui->modelViewWidget, SIGNAL(modelViewActivated(QObject *)),
             this, SLOT(modelViewActivated(QObject *)));
 
+    connect(ui->logEdit, SIGNAL(anchorClicked(QUrl)),
+            ui->modelViewWidget, SLOT(zoomToComponent(QUrl)));
+
     ui->modelViewWidget->setLogger(mLogger);
 
     // ================================================
@@ -785,10 +797,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
 LUMASSMainWin::~LUMASSMainWin()
 {
-        NMDebugCtx(ctxLUMASSMainWin, << "...");
+    NMDebugCtx(ctxLUMASSMainWin, << "...");
 
 	this->removeAllObjects();
-
 
     GDALDestroyDriverManager();
 
@@ -804,6 +815,10 @@ LUMASSMainWin::~LUMASSMainWin()
 	if (this->mpRasconn)
 		delete this->mpRasconn;
 #endif
+
+    // wait for the logging thread to quit
+    emit isAboutToClose();
+    //mLoggingThread->wait();
 
 	NMDebugAI(<< "delete ui ..." << endl);
 	delete ui;
@@ -1061,6 +1076,8 @@ LUMASSMainWin::updateExclusiveActions(const QString &checkedAction,
         // let the NMModelViewWidget know
         emit noExclusiveToolSelected();
 
+        NMLogInfo(<< "no exclusive tool selected!");
+
         // set map interactor multi mode
         NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                     ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
@@ -1078,18 +1095,6 @@ LUMASSMainWin::zoomToContent()
         if (mActiveWidget->objectName().compare(QString("qvtkWidget")) == 0)
         {
             this->zoomFullExtent();
-            //            NMLayer* l = this->mLayerList->getSelectedLayer();
-            //            if (l)
-            //            {
-            //                this->mBkgRenderer->ResetCamera(const_cast<double*>(l->getBBox()));
-            //                ui->qvtkWidget->update();
-            //            }
-            //            else
-            //            {
-            //                mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
-            //                                      NMLogger::NM_LOG_INFO,
-            //                                      "Zoom to Layer: No layer selected!");
-            //            }
         }
         else if (mActiveWidget->objectName().compare(QString("modelViewWidget")) == 0)
         {
@@ -1181,7 +1186,6 @@ LUMASSMainWin::toggleLinkTool(bool toggled)
     }
 }
 
-
 void
 LUMASSMainWin::appendHtmlMsg(const QString& msg)
 {
@@ -1194,6 +1198,12 @@ LUMASSMainWin::appendLogMsg(const QString& msg)
 {
     ui->logEdit->textCursor().insertText(msg);
     ui->logEdit->ensureCursorVisible();
+}
+
+NMLogWidget*
+LUMASSMainWin::getLogWidget()
+{
+    return ui->logEdit;
 }
 
 void
@@ -1363,7 +1373,7 @@ LUMASSMainWin::saveMapAsImage()
     }
     else
     {
-        NMErr("Save Map As Image File", "Unsupported image format!");
+        NMLogError(<< "Save Map As Image File: Unsupported image format!");
     }
 }
 
@@ -1709,7 +1719,7 @@ LUMASSMainWin::getRasdamanConnector(void)
 
 	if (!fileopen)
 	{
-                NMErr(ctxLUMASSMainWin, << "func_metadatatable: Failed installing petascope browsing support!");
+                NMLogError(<< ctxLUMASSMainWin << ": func_metadatatable: Failed installing petascope browsing support!");
 		if (this->mpRasconn)
 		{
 			this->mpRasconn->disconnect();
@@ -1735,7 +1745,7 @@ LUMASSMainWin::getRasdamanConnector(void)
 	{
 		//NMBoxErr("Rasdaman Connection Error", raserr.what()
 		//		 << ": Check whether the rasdaman database is up and running!");
-                NMErr(ctxLUMASSMainWin, << raserr.what());
+                NMLogError(<< ctxLUMASSMainWin << ": " << raserr.what());
 		if (this->mpRasconn)
 		{
 			this->mpRasconn->disconnect();
@@ -1754,7 +1764,7 @@ LUMASSMainWin::getRasdamanConnector(void)
 		NMBoxErr("Failed initialising rasdaman metadata browser!",
 				 "Check whether Postgres is up and running and access is "
 				"is configured properly!");
-                NMErr(ctxLUMASSMainWin, << "PQexec: Failed installing petascope browsing support!"
+                NMLogError(<< ctxLUMASSMainWin << ": PQexec: Failed installing petascope browsing support!"
 				                 << PQresultErrorMessage(res));
                 NMDebugCtx(ctxLUMASSMainWin, << "done!");
 		return 0;
@@ -2076,8 +2086,8 @@ LUMASSMainWin::importTable(const QString& fileName,
         			SQLITE_OPEN_READWRITE, 0);
     if (rc != SQLITE_OK)
     {
-        NMErr(ctxLUMASSMainWin,
-        	<< "Failed opening SqlTableView connection!");
+        NMLogError(<< ctxLUMASSMainWin
+            << ": Failed opening SqlTableView connection!");
         ::sqlite3_close(tabconn);
         spatialite_cleanup_ex(splCache);
         splCache = 0;
@@ -3078,480 +3088,53 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
     return innerExpr;
 }
 
-//void
-//LUMASSMainWin::parseScriptCommand(std::string& expr,
-//        std::map<std::string, mup::Value> &mapNameValue,
-//        std::map<mup::ParserX *, std::string> &mapParserName,
-//        std::vector<mup::ParserX *> &vecParsers
-//        )
-//{
-//    // create parser for this line
-//    //    otb::MultiParser::Pointer smartparser = otb::MultiParser::New();
-//    //    otb::MultiParser* parser = smartparser.GetPointer();
-//    //    parser->Register();
-//    mup::ParserX* parser = 0;
-//    try
-//    {
-//        parser = new mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX);
-//    }
-//    catch(std::exception& parexp)
-//    {
-//        NMErr(ctxLUMASSMainWin, << "ran out of memory!");
-//        return;
-//    }
-
-//    std::string name = "";
-
-//    // extract newly defined variables (i.e. lvalues)
-//    std::map<std::string, mup::Value>::iterator extIter;
-//    size_t pos = std::string::npos;
-//    bool barray = false;
-//    if ((pos = expr.find('=')) != std::string::npos)
-//    {
-//        name = expr.substr(0, pos);
-
-//        // in case of += -= *= /= assignment operators
-//        size_t assignpos = name.find_first_of("+-*/");
-//        if (assignpos != std::string::npos)
-//        {
-//            name = name.substr(0, assignpos);
-//        }
-
-//        // check, if we've got an array as lhs
-//        size_t bro = name.find('[', 0);
-//        size_t bre = name.find(']', bro+1);
-//        if (    bro != std::string::npos
-//            &&  bre != std::string::npos
-//           )
-//        {
-//            //            // check index validity
-
-//            //            // look for a variable we've defined already ...
-//            //            std::string idxop = name.substr(bro+1, bre-bro-1);
-//            //            extIter = mapNameValue.find(idxop);
-
-//            //            // ... or an fixed numeric index
-//            //            // NOTE: we don't accept 5e2 type index expressions!
-//            //            bool bNumIdx = true;
-//            //            size_t idxpos = 0;
-//            //            while (idxpos < idxop.size())
-//            //            {
-//            //                if (!::isdigit(idxop[idxpos]))
-//            //                {
-//            //                    bNumIdx = false;
-//            //                    break;
-//            //                }
-//            //                ++idxpos;
-//            //            }
-
-//            //            if (    extIter == mapNameValue.end()
-//            //                &&  !bNumIdx
-//            //               )
-//            //            {
-//            //                // throw an exception
-//            //                NMErr(ctxLUMASSMainWin,
-//            //                      << "Detected undefined index at pos "
-//            //                      << bro+1 << "!");
-//            //                return;
-//            //            }
-
-//            name = name.substr(0, bro);
-//            barray = true;
-//        }
-
-//        name.erase(0, name.find_first_not_of(' '));
-//        name.erase(name.find_last_not_of(' ')+1);
-//    }
-
-//    // always set the whole expression (- of course!)
-//    std::string theexpr = expr;
-//    theexpr.erase(0, theexpr.find_first_not_of(' '));
-//    theexpr.erase(theexpr.find_last_not_of(' ')+1);
-
-//    parser->SetExpr(theexpr);
-//    if (name.empty())
-//    {
-//        std::stringstream sstemp;
-//        sstemp.str("");
-//        sstemp << "v" << mapNameValue.size();
-//        name = sstemp.str();
-//    }
-
-//    // check, whether we've defined this variable already;
-//    // if so, we just associate the new parser with this
-//    // variable; if not, we also add a new variable to the
-//    // list
-
-//    // enter new variables into the name-variable map
-//    extIter = mapNameValue.find(name);
-//    if (!barray && extIter == mapNameValue.end())
-//    {
-//        // generate a value pointer for this command (equation)
-//        //mup::Value* value = 0;
-//        double v = itk::NumericTraits<mup::float_type>::NonpositiveMin();
-//        mup::Value value = v;
-
-//        //        try
-//        //        {
-//        //             value = new mup::Value;
-//        //             *value = v;
-//        //        }
-//        //        catch (std::exception& newValException)
-//        //        {
-//        //            // handle code here
-//        //            std::string what = newValException.what();
-//        //            std::string msg = "No memory to allocate result variable!";
-//        //            NMErr(ctxLUMASSMainWin, << msg << what);
-//        //            return;
-//        //        }
-//        mapNameValue.insert(std::pair<std::string, mup::Value>(name, value));
-//    }
-
-//    // define all previously defined variables for this parser
-//    extIter = mapNameValue.begin();
-//    while (extIter != mapNameValue.end())
-//    {
-//        parser->DefineVar(extIter->first, mup::Variable(&extIter->second));
-//        ++extIter;
-//    }
-
-//    // associate this expression's parser with the name of the lvalue variable
-//    mapParserName.insert(std::pair<mup::ParserX*, std::string>(parser, name));
-//    vecParsers.push_back(parser);
-//}
-
-//void
-//LUMASSMainWin::parseKernelScriptBlock(std::string& expr,
-//        std::map<std::string, mup::Value> &mapNameValue,
-//        std::map<mup::ParserX *, std::string> &mapParserName,
-//        std::vector<mup::ParserX *> &vecParsers,
-//        std::vector<int>& vecBlockLen
-//        )
-//{
-//    // ======================================================
-//    // break up parsing into for loops (blocks) and simple commands
-//    // ======================================================
-
-//    enum ScriptElem {CMD,
-//                     FOR_ADMIN,
-//                     FOR_BLOCK};
-
-//    std::stack<int> forLoop;    // parser vector index of 1st for admin cmd
-//    std::stack<int> bracketOpen;
-
-//    std::string script = expr;
-//    size_t pos = 0;
-//    size_t start = 0;
-//    size_t next = 0;
-//    ScriptElem curElem = CMD;
-
-//    std::string cmd;
-//    // we look for sequence points and decide what to do ...
-//    while(pos < script.size() && pos != std::string::npos)
-//    {
-//        const char c = script[pos];
-//        switch (c)
-//        {
-//            case ';':
-//            {
-//                cmd = script.substr(start, pos-start);
-//                start = pos+1;
-//            }
-//            break;
-
-//            case 'f':
-//            {
-//                if (    script.find("for(", pos) == pos
-//                    ||  script.find("for ", pos) == pos
-//                   )
-//                {
-//                    next = script.find('(', pos+3);
-//                    if (next != std::string::npos)
-//                    {
-//                        // store the parser idx starting this for loop
-//                        forLoop.push(vecParsers.size());
-
-//                        curElem = FOR_ADMIN;
-//                        bracketOpen.push(next);
-//                        pos = next;
-//                        start = pos+1;
-//                    }
-//                    else
-//                    {
-//                        /// ToDo: throw exception
-//                        NMErr(ctxLUMASSMainWin,
-//                              << "Malformed for-loop near pos "
-//                              << pos << ". Missing '('.");
-//                        return;
-//                    }
-//                }
-//            }
-//            break;
-
-//            case '(':
-//            {
-//                if (curElem == FOR_ADMIN)
-//                {
-//                    bracketOpen.push(pos);
-//                }
-//            }
-//            break;
-
-//            case ')':
-//            {
-//                if (curElem == FOR_ADMIN)
-//                {
-//                    bracketOpen.pop();
-//                    if (bracketOpen.size() == 0)
-//                    {
-//                        cmd = script.substr(start, pos-start);
-
-//                        next = script.find('{', pos+1);
-//                        if (next != std::string::npos)
-//                        {
-//                            start = next+1;
-//                            curElem = FOR_BLOCK;
-//                        }
-//                        else
-//                        {
-//                            /// ToDo: throw exception
-//                            NMErr(ctxLUMASSMainWin,
-//                                  << "malformed for-loop near pos "
-//                                  << pos << "!");
-//                            return;
-//                        }
-//                    }
-//                }
-//            }
-//            break;
-
-//            case '}':
-//            {
-//                if (curElem == FOR_BLOCK)
-//                {
-//                    if (forLoop.empty())
-//                    {
-//                        /// ToDo: throw exception
-//                        NMErr(ctxLUMASSMainWin,
-//                              << "Parsing error! For loop without head near pos "
-//                              << pos << "!");
-//                        return;
-//                    }
-
-//                    int idx = forLoop.top();
-//                    forLoop.pop();
-//                    vecBlockLen.at(idx) = vecParsers.size() - idx;
-
-//                    if (forLoop.empty())
-//                    {
-//                        curElem = CMD;
-//                    }
-//                    start = pos+1;
-//                }
-//            }
-//            break;
-//        }
-
-
-//        if (!cmd.empty())
-//        {
-//            this->parseScriptCommand(
-//                        cmd,
-//                        mapNameValue,
-//                        mapParserName,
-//                        vecParsers);
-//            vecBlockLen.push_back(1);
-//            cmd.clear();
-//        }
-
-//        ++pos;
-//    }
-//}
-
-//void
-//LUMASSMainWin::parserTest(std::vector<std::map<std::string, mup::Value> >& mv)
-//{
-
-//    std::map<std::string, mup::Value>::iterator vit;
-//    for (int v=0; v < mv.size(); ++v)
-//    {
-//        vit = mv.at(v).begin();
-//        while (vit != mv.at(v).end())
-//        {
-//            for (int d=0; d < vit->second.GetRows(); ++d)
-//            {
-//                mup::float_type av = vit->second.At(d).GetFloat();
-//                av += (mup::float_type)d;
-//                vit->second.At(d) = av;
-//            }
-//            ++vit;
-//        }
-//    }
-//}
-
 
 void LUMASSMainWin::test()
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...")
 
-    QString smsg = QString("infoDock - w: %1 h: %2\n")
-            .arg(ui->infoWidgetList->size().width())
-            .arg(ui->infoWidgetList->size().height());
-    this->appendLogMsg(smsg);
+    QString sug("cat > 0 ? 0.0012 * mar * 0.25 * sqrt(cat__slopelength / 22.0) * woody__nzusleU * (0.065 + (4.56 * tanangle) + (65.41 * tanangle * tanangle)) * eter__SDRsurficial : 0 + $[sednetparams:mycolumn:4]$");
+//    QString sug("alladd = 0; for (nei=0; nei < 9; nei = nei + 1)"
+//                "{alladd = alladd + (nei == 4 ? 0 : kwinVal(img, nei, thid, addr));}"
+//                "out = alladd / 8.0;");
+    QString text = NMGlobalHelper::getMultiLineInput("", sug, this);
 
-    smsg = QString("compDock - w: %1 h: %2\n")
-            .arg(ui->compWidgetList->size().width())
-            .arg(ui->compWidgetList->size().height());
-    this->appendLogMsg(smsg);
+//    QRegularExpression rexPropName(QString(
+//        "(?>:|__)([a-zA-Z]+([a-zA-Z0-9]|_(?!_)){2,}(?!__))"));
+//    QRegularExpression rexComp(QString("((?<!__|:)[a-zA-Z]+([a-zA-Z0-9]|_(?!_)){2,})"));
 
-    const QObjectList& objs = this->children();
-    foreach (const QObject* o, objs)
+    QRegularExpression rexGroup("((?<open>\\$\\[)*(?(<open>)|\\b)"
+                                "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+                                "(?<sep1>(?(<open>):|(?>__)))*"
+                                "(?<prop>(?(<sep1>)\\g<comp>))*"
+                                "(?<sep2>(?(<prop>)(?(<open>)):))*"
+                                "(?<idx>(?(<sep2>)\\d+))*)");
+    if (!rexGroup.isValid())
     {
-        QString msg = QString("%1\n").arg(o->objectName());
-        this->appendLogMsg(msg);
+        NMLogError(<< "regex is invalid!");
+        return;
     }
 
-
-
-//    NMLogger logger;
-//    logger.setHtmlMode(true);
-//    connect(&logger, SIGNAL(sendLogMsg(QString)), this, SLOT(appendHtmlMsg(QString)));
-
-//    std::vector<NMLogger::LogEventType> type;
-//    type.push_back(NMLogger::NM_LOG_INFO);
-//    type.push_back(NMLogger::NM_LOG_WARN);
-//    type.push_back(NMLogger::NM_LOG_ERROR);
-//    type.push_back(NMLogger::NM_LOG_DEBUG);
-
-//    int typecnt = 0;
-//    for (int i=0; i < 30; ++i, ++typecnt)
-//    {
-//        if (typecnt > 3)
-//            typecnt = 0;
-
-//        QString msgA = QString("%1: This is a test message ... ----------")
-//                        .arg(i);
-//        logger.processLogMsg(QDateTime::currentDateTime().time().toString(),
-//                             type.at(typecnt),
-//                             msgA);
-
-//        //usleep(1);
-//    }
-
+    int gspos=0, cnt=0;
+    QRegularExpressionMatchIterator git = rexGroup.globalMatch(text);
+    while (git.hasNext())
+    {
+        QRegularExpressionMatch match = git.next();
+        if (match.hasMatch())
+        {
+            gspos = match.capturedStart(0);
+            QString srctext = match.captured(0);
+            NMLogDebug(<< "Match #" << cnt << ":  " << srctext.toStdString());
+            NMLogDebug(<< "    comp:  " << match.capturedRef("comp").toString().toStdString());
+            NMLogDebug(<< "    prop:  " << match.capturedRef("prop").toString().toStdString());
+            NMLogDebug(<< "    idx:   "  << match.capturedRef("idx").toString().toStdString());
+        }
+        ++cnt;
+    }
 
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!")
 }
-
-//void
-//LUMASSMainWin::runLoop(int i,
-//        std::map<std::string, mup::Value> &mapNameValue,
-//        std::map<mup::ParserX *, string> &mapParserName,
-//        std::vector<mup::ParserX *> &vecParsers,
-//        std::vector<int> &vecBlockLen
-//        )
-//{
-//    const int numForExp = vecBlockLen.at(i)-3;
-//    mup::ParserX* testParser = vecParsers.at(++i);
-//    //std::string& testName = mapParserName.find(testParser)->second;
-//    mup::Value& testValue = mapNameValue.find(mapParserName.find(testParser)->second)->second;
-//    testValue = testParser->Eval();
-
-//    const mup::ParserX* counterParser = vecParsers.at(++i);
-//    //std::string& counterName = mapParserName.find(counterParser)->second;
-//    //mup::Value& counterValue = mapNameValue.find(counterName)->second;
-
-//    //nmlog::nmindent++;
-//    while (testValue.GetFloat())
-//    {
-//        for (int exp=1; exp <= numForExp; ++exp)
-//        {
-////            if (i+exp < vecParsers.size())
-////            {
-//                const mup::ParserX* forExp = vecParsers.at(i+exp);
-//                //std::string& forName = mapParserName.find(forExp)->second;
-//                //mup::Value& forValue = mapNameValue.find(forName)->second;
-//                forExp->Eval();
-
-//                //                NMDebugAI(<< "#" << counterValue.GetFloat() << ": ");
-//                //                for (int m=0; m < forValue.GetRows(); ++m)
-//                //                {
-//                //                    for (int n=0; n < forValue.GetCols(); ++n)
-//                //                    {
-//                //                        NMDebug(<< forValue.At(m, n).GetFloat() << " ");
-//                //                    }
-//                //                }
-//                //                NMDebug(<< std::endl);
-
-//                if (vecBlockLen.at(i+exp) > 1)
-//                {
-//                    this->runLoop(i+exp,
-//                                  mapNameValue,
-//                                  mapParserName,
-//                                  vecParsers,
-//                                  vecBlockLen);
-//                    exp += vecBlockLen.at(i+exp)-1;
-//                }
-////            }
-////            else
-////            {
-////                // throw exception, something's wrong!
-////                NMErr(ctxLUMASSMainWin, << "Not that many cmds in for-loop!");
-////                return;
-////            }
-//        }
-
-//        counterParser->Eval();
-//        // since we don't impose the test expression of a for loop
-//        // to include a result assignment,  we do it manually here,
-//        // just in case ...
-//        testValue = testParser->Eval();
-//    }
-//    //nmlog::nmindent--;
-//}
-
-
-//void
-//LUMASSMainWin::runScript(std::map<std::string, mup::Value> &mapNameValue,
-//        //std::map<otb::MultiParser *, string> &mapParserName,
-//        //std::vector<otb::MultiParser *> &vecParsers,
-//        std::map<mup::ParserX*, string> &mapParserName,
-//        std::vector<mup::ParserX*> &vecParsers,
-//        std::vector<int> &vecBlockLen
-//        )
-//{
-//    //NMDebugCtx(ctxLUMASSMainWin, << "...");
-
-//    //NMDebugAI(<< "running script ..." << std::endl);
-
-//    //CALLGRIND_START_INSTRUMENTATION;
-
-//    for (int i=0; i < vecParsers.size(); ++i)
-//    {
-//        const mup::ParserX* parser = vecParsers.at(i);
-//        //std::string& name = mapParserName.find(parser)->second;
-//        //mup::Value& value = mapNameValue.find(name)->second;
-//        parser->Eval();
-
-//        //NMDebugAI(<< value.GetFloat() << " = " << parser->GetExpr() << std::endl);
-
-//        if (vecBlockLen.at(i) > 1)
-//        {
-//            this->runLoop(i,
-//                          mapNameValue,
-//                          mapParserName,
-//                          vecParsers,
-//                          vecBlockLen);
-//            i += vecBlockLen.at(i)-1;
-//        }
-//    }
-
-//    //CALLGRIND_STOP_INSTRUMENTATION;
-//    //CALLGRIND_DUMP_STATS;
-
-
-//    //NMDebugCtx(ctxLUMASSMainWin, << "done!");
-//}
 
 
 bool
@@ -3991,6 +3574,52 @@ LUMASSMainWin::ptInPoly2D(double pt[3], vtkCell* cell)
 }
 
 void
+LUMASSMainWin::searchModelComponent()
+{
+    QLineEdit* le = qobject_cast<QLineEdit*>(sender());
+    if (le)
+    {
+        QString compName = le->text();
+        if (NMModelController::getInstance()->contains(compName))
+        {
+            emit componentOfInterest(compName);
+        }
+        else
+        {
+            QList<NMModelComponent*> comps = NMModelController::getInstance()->getComponents(compName);
+            if (compName.isEmpty() ? comps.size()-1 : comps.size() > 0)
+            {
+                QStringList nameList;
+                foreach (const NMModelComponent* mc, comps)
+                {
+                    nameList << mc->objectName();
+                }
+                if (nameList.size() > 1)
+                {
+                    NMLogWarn(<< "Model Controller: components matching userID='"
+                              << compName.toStdString() << "': "
+                              << nameList.join(' ').toStdString());
+                }
+
+                emit componentOfInterest(comps.at(0)->objectName());
+            }
+            else
+            {
+                if (!compName.isEmpty())
+                {
+                    NMLogInfo(<< "'" << compName.toStdString()
+                          << "' does not reference a model component!");
+                }
+                else
+                {
+                    NMLogInfo(<< "No model component found!");
+                }
+            }
+        }
+    }
+}
+
+void
 LUMASSMainWin::updateCoordLabel(const QString& newCoords)
 {
 	this->m_coordLabel->setText(newCoords);
@@ -4173,90 +3802,6 @@ void LUMASSMainWin::showComponentsInfoView(bool vis)
 }
 
 
-//void LUMASSMainWin::doMOSObatch()
-//{
-//	return;
-
-//	NMDebugCtx(ctxLUMASSMainWin, << "...");
-
-//	QString fileName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/scenario_files/r1_minNleach_ConstAgrProd.los";
-//	QString dsName = "/home/alex/projects/HBRC_EnviroLink/sensitivity/data/r1sens.vtk";
-//	//QString fileName = QFileDialog::getOpenFileName(this,
-//	//     tr("Open Optimisation Settings"), "~", tr("LUMASS Optimisation Settings (*.los)"));
-//    //
-//	//if (fileName.isNull())
-//	//{
-//	//	NMDebugAI( << "Please provide a filename!" << endl);
-//	//	return;
-//	//}
-
-//	QFileInfo fileinfo(fileName);
-//	QFileInfo dsInfo(dsName);
-
-//	QString path = fileinfo.path();
-//	QString baseName = fileinfo.baseName();
-//	if (!fileinfo.isReadable())
-//	{
-//		NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
-//		return;
-//	}
-
-//	// create a new optimisation object
-//	NMMosra* mosra = new NMMosra(this);
-
-//	for (int runs=5; runs < 7; ++runs)
-//	{
-//		NMDebugAI(<< "******** PERTURBATION #" << runs+1 << " *************" << endl);
-//		// load the file with optimisation settings
-//		mosra->loadSettings(fileName);
-
-//		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
-//		reader->SetFileName(dsName.toStdString().c_str());
-//		reader->Update();
-//		vtkPolyData* pd = reader->GetOutput();
-//		mosra->setDataSet(pd);
-//		mosra->perturbCriterion("Nleach", 5);
-//		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
-
-//		mosra->setTimeOut(180);
-//		if (!mosra->solveLp())
-//			continue;
-
-//		if (!mosra->mapLp())
-//			continue;
-
-//        vtkSmartPointer<vtkTable> chngmatrix;
-//        vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
-
-//		// get rid of admin fields
-//		tab->RemoveColumnByName("nm_id");
-//		tab->RemoveColumnByName("nm_hole");
-//		tab->RemoveColumnByName("nm_sel");
-
-//		// now write the input and the result table
-//		QString perturbName = QString("%1/%2_p%3.csv").arg(dsInfo.path())
-//				.arg(dsInfo.baseName()).arg(runs+1);
-
-//		QString resName = QString("%1/res_%2_p%3.csv").arg(dsInfo.path())
-//						.arg(dsInfo.baseName()).arg(runs+1);
-
-//		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
-//		writer->SetFieldDelimiter(",");
-
-//        writer->SetInputData(tab);
-//		writer->SetFileName(perturbName.toStdString().c_str());
-//		writer->Update();
-
-//        writer->SetInputData(sumres);
-//		writer->SetFileName(resName.toStdString().c_str());
-//		writer->Update();
-
-//		writer->Delete();
-//	}
-
-//	NMDebugCtx(ctxLUMASSMainWin, << "done!");
-//}
-
 void LUMASSMainWin::doMOSO()
 {
     //NMDebugCtx(ctxLUMASSMainWin, << "...");
@@ -4282,13 +3827,7 @@ void LUMASSMainWin::doMOSO()
 	QString baseName = fileinfo.baseName();
 	if (!fileinfo.isReadable())
 	{
-        //NMErr(ctxNMMosra, << "Could not read file '" << fileName.toStdString() << "'!");
-        mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(),
-                              NMLogger::NM_LOG_ERROR,
-                              QString("Could not read file '%1'!")
-                                 .arg(fileName)
-                              );
-
+        NMLogError(<< ctxLUMASSMainWin << ": Could not read file '" << fileName.toStdString() << "'!");
         NMDebugCtx(ctxLUMASSMainWin, << "done!");
 		return;
 	}
@@ -5219,7 +4758,7 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 		unsigned char* wkb = new unsigned char[wkbSize];
 		if (wkb == 0)
 		{
-                        NMErr(ctxLUMASSMainWin, << "not enough memory to allocate feature wkb buffer!");
+                        NMLogError(<< ctxLUMASSMainWin << ": not enough memory to allocate feature wkb buffer!");
 			return 0;
 		}
 		geom->exportToWkb(bo, wkb);
@@ -5416,7 +4955,7 @@ LUMASSMainWin::vtkPolygonPolydataToOGR(
     if (hole == 0)
     {
         NMDebugAI(<< "Failed creating the OGR polygon layer!" << std::endl);
-        NMErr(ctxLUMASSMainWin, << "Lacking info on donut polygons - bailing out!");
+        NMLogError(<< ctxLUMASSMainWin << ": Lacking info on donut polygons - bailing out!");
         NMDebugCtx(ctxLUMASSMainWin, << "done!");
         return;
     }
@@ -5658,7 +5197,7 @@ LUMASSMainWin::OgrToVtkPolyData(
 		vtkVect = this->wkbPolygonToPolyData(*pLayer);
 		break;
 	default:
-                NMErr(ctxLUMASSMainWin, << "Geometry type '" << geomType << "' is currently not supported!");
+                NMLogError(<< ctxLUMASSMainWin << ": Geometry type '" << geomType << "' is currently not supported!");
 		vtkVect = NULL;
 	}
 
@@ -5683,7 +5222,7 @@ void LUMASSMainWin::loadVectorLayer()
 			FALSE, NULL);
 	if (pDS == NULL)
 	{
-                NMErr(ctxLUMASSMainWin, << "failed to open '" << fileName.toStdString() << "'!");
+                NMLogError(<< ctxLUMASSMainWin << ": failed to open '" << fileName.toStdString() << "'!");
 		return;
 	}
 
@@ -5696,7 +5235,7 @@ void LUMASSMainWin::loadVectorLayer()
             GDAL_OF_VECTOR, NULL, NULL, NULL);
     if (pDS == NULL)
     {
-        NMErr(ctxLUMASSMainWin, << "failed to open '" << fileName.toStdString() << "'!");
+        NMLogError(<< ctxLUMASSMainWin << ": failed to open '" << fileName.toStdString() << "'!");
         return;
     }
 
@@ -5760,7 +5299,7 @@ LUMASSMainWin::fetchRasLayer(const QString& imagespec,
 		RasdamanConnector* rasconn = this->getRasdamanConnector();
 		if (rasconn == 0)
 		{
-                        NMErr(ctxLUMASSMainWin, << "Connection with rasdaman failed!");
+                        NMLogError(<< ctxLUMASSMainWin << ": Connection with rasdaman failed!");
 			return;
 		}
 
@@ -5810,7 +5349,7 @@ LUMASSMainWin::eraseRasLayer(const QString& imagespec)
 	double oid = imagespec.right(imagespec.size()-1-pos).toDouble(&bok);
 	if (!bok)
 	{
-                NMErr(ctxLUMASSMainWin, << "Couldn't extract OID from rasdaman image spec!");
+                NMLogError(<< ctxLUMASSMainWin << ": Couldn't extract OID from rasdaman image spec!");
 		return;
 	}
 

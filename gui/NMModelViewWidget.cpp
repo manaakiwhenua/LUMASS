@@ -188,50 +188,29 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 	/* ====================================================================== */
 	mModelView = new QGraphicsView(mModelScene, this);
 	mModelView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    //mModelView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-    //mModelView->setCacheMode(QGraphicsView::CacheBackground);
 	mModelView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, false);
 	mModelView->setDragMode(QGraphicsView::ScrollHandDrag);
     mModelView->setCursor(Qt::PointingHandCursor);
-    //mModelView->setRubberBandSelectionMode(Qt::ContainsItemShape);
 	mModelView->setRenderHint(QPainter::Antialiasing, true);
 	mModelView->setRenderHint(QPainter::SmoothPixmapTransform, true);
-    //mModelView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    //mModelView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mModelView->setMouseTracking(true);
     mModelView->viewport()->installEventFilter(this);
+    mModelView->setInteractive(true);
 
     mTreeCompEditor = 0;
-    //mModelScene->idleModeOn();
 
     /* ====================================================================== */
-    /* WIDGET BUTTON AND CONTEXT MENU SETUP */
+    /* other Initialisations
 	/* ====================================================================== */
-    //	QPushButton* btnCancel = new QPushButton();
-    //	btnCancel->setText(tr("Stop Execution"));
-    //	btnCancel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    //	QPushButton* btnExec = new QPushButton();
-    //	btnExec->setText(tr("Execute"));
-    //	btnExec->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    //	QHBoxLayout* boxLayout = new QHBoxLayout();
-    //	boxLayout->setAlignment(Qt::AlignRight | Qt::AlignBottom);
-    //	boxLayout->addWidget(btnCancel);
-    //	boxLayout->addWidget(btnExec);
-
-
 	QVBoxLayout* gridLayout = new QVBoxLayout();
-	gridLayout->addWidget(mModelView);//, 0, 0);
-    //gridLayout->addLayout(boxLayout);//, 1, 0);
-
+    gridLayout->addWidget(mModelView);
 	this->setLayout(gridLayout);
 
-	// connect buttons
-    //	connect(btnExec, SIGNAL(clicked()), this, SLOT(executeModel()));
-    //	connect(btnCancel, SIGNAL(clicked()), this, SIGNAL(requestModelAbortion()));
+    this->initItemContextMenu();
 
-	this->initItemContextMenu();
+    connect(mainWin, SIGNAL(componentOfInterest(QString)),
+            this, SLOT(zoomToComponent(QString)));
+
 
 	qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
 }
@@ -593,18 +572,25 @@ void NMModelViewWidget::initItemContextMenu()
     clrAct->setText(tr("Change Colour ..."));
     this->mActionMap.insert("Change Colour ...", clrAct);
 
+    QAction* clearSelAct = new QAction(this->mItemContextMenu);
+    clearSelAct->setText(tr("Clear Selection"));
+    this->mActionMap.insert("Clear Selection", clearSelAct);
+
+
     this->mItemContextMenu->addAction(actDeltaTimeLevel);
     this->mItemContextMenu->addAction(actGroupTimeLevel);
 	this->mItemContextMenu->addAction(groupSeqItems);
-	this->mItemContextMenu->addAction(groupCondItems);
+    //this->mItemContextMenu->addAction(groupCondItems);
 	this->mItemContextMenu->addAction(ungroupItems);
+
 	this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(clearSelAct);
     this->mItemContextMenu->addAction(unfoldComp);
     this->mItemContextMenu->addAction(collapseComp);
-	this->mItemContextMenu->addAction(delComp);
-	this->mItemContextMenu->addSeparator();
-	this->mItemContextMenu->addAction(loadComp);
-	this->mItemContextMenu->addAction(saveComp);
+    this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(saveComp);
+    this->mItemContextMenu->addAction(loadComp);
+    this->mItemContextMenu->addAction(delComp);
     this->mItemContextMenu->addSeparator();
     this->mItemContextMenu->addAction(fontAct);
     this->mItemContextMenu->addAction(clrAct);
@@ -615,18 +601,19 @@ void NMModelViewWidget::initItemContextMenu()
 
 	connect(runComp, SIGNAL(triggered()), this, SLOT(executeModel()));
 	connect(resetComp, SIGNAL(triggered()), this, SLOT(resetModel()));
-	connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
     connect(actDeltaTimeLevel, SIGNAL(triggered()), this, SLOT(addDeltaTimeLevel()));
     connect(actGroupTimeLevel, SIGNAL(triggered()), this, SLOT(setGroupTimeLevel()));
     connect(groupSeqItems, SIGNAL(triggered()), this, SLOT(createSequentialIterComponent()));
 	connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
-	connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
+    connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
+    connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
     connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
     connect(fontAct, SIGNAL(triggered()), this, SLOT(changeFont()));
     connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
     connect(collapseComp, SIGNAL(triggered()), this, SLOT(collapseAggrItem()));
     connect(unfoldComp, SIGNAL(triggered()), this, SLOT(unfoldAggrItem()));
+    connect(clearSelAct, SIGNAL(triggered()), this->mModelScene, SLOT(unselectItems()));
 
     // DEBUG
 #ifdef DEBUG
@@ -754,11 +741,13 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		QGraphicsItem* item)
 {
     bool running = NMModelController::getInstance()->isModelRunning();
+    NMModelComponent* comp = this->componentFromItem(item);
 
 	this->mLastScenePos = event->scenePos();
 	this->mLastItem = item;
 
     QList<QGraphicsItem*> selection = this->mModelScene->selectedItems();
+    this->mActionMap.value("Clear Selection")->setEnabled((bool)selection.count());
 
     NMProcessComponentItem* pi   = qgraphicsitem_cast<NMProcessComponentItem*>(item);
     NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(item);
@@ -771,11 +760,25 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     bool paraTable = false;
     if (selection.count() > 0)
     {
-        title = QString("%1 Components").arg(selection.count());
+        if (li)
+        {
+            title = QString("Link");
+        }
+        else
+        {
+            title = QString("%1 Components").arg(selection.count());
+        }
     }
     else if (pi != 0)
     {
-        title = pi->getTitle();
+        if (comp->getUserID().isEmpty())
+        {
+            title = pi->getTitle();
+        }
+        else
+        {
+            title = QString("%1 (%2)").arg(comp->getUserID()).arg(comp->objectName());
+        }
         dataBuffer = pi->getIsDataBufferItem();
     }
     else if (wi != 0)
@@ -785,11 +788,18 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
     else if (ai != 0)
     {
-        title = ai->getTitle();
+        if (comp->getUserID().isEmpty())
+        {
+            title = ai->getTitle();
+        }
+        else
+        {
+            title = QString("%1 (%2)").arg(comp->getUserID()).arg(comp->objectName());
+        }
     }
     else if (li != 0)
     {
-        title = QString("input link");
+        title = QString("Link");
     }
     else if (ti != 0)
     {
@@ -1024,7 +1034,7 @@ NMModelViewWidget::deleteProcessComponentItem(NMProcessComponentItem* procItem)
 	NMModelComponent* procComp = mModelController->getComponent(procItem->getTitle());
 	if (procComp == 0)
 	{
-		NMErr(ctx, << "something has gone utterly wrong! The component which is supposed"
+        NMLogError(<< ctx << ": something has gone utterly wrong! The component which is supposed"
 				<< " to be deleted, is not controlled by this controller!");
 		NMDebugCtx(ctx, << "done!");
 		return;
@@ -1074,12 +1084,22 @@ void NMModelViewWidget::saveItems(void)
 	// or all items of the scene
 	QList<QGraphicsItem*> items = this->mModelScene->selectedItems();
 
+    QString suggestedBaseName;
     bool bSaveRoot = false;
     if (items.isEmpty())
     {
         if (this->mLastItem != 0)
         {
             items.append(this->mLastItem);
+            NMModelComponent* sc = this->componentFromItem(mLastItem);
+            if (sc)
+            {
+                suggestedBaseName = sc->property("UserID").toString();
+                if (suggestedBaseName.isEmpty())
+                {
+                    suggestedBaseName = sc->objectName();
+                }
+            }
         }
         else if (!this->mModelScene->items().isEmpty())
         {
@@ -1094,28 +1114,34 @@ void NMModelViewWidget::saveItems(void)
         return;
     }
 
-    QFileDialog dlg(this);
-    dlg.setAcceptMode(QFileDialog::AcceptSave);
-    dlg.setFileMode(QFileDialog::AnyFile);
-    dlg.setWindowTitle(tr("Save Model Component(s)"));
-    dlg.setDirectory("~/");
-    dlg.setNameFilter("LUMASS Model Component Files (*.lmx *.lmv)");
+//    QFileDialog dlg(this);
+//    dlg.setAcceptMode(QFileDialog::AcceptSave);
+//    dlg.setFileMode(QFileDialog::AnyFile);
+//    dlg.setWindowTitle(tr("Save Model Component(s)"));
+//    dlg.setDirectory("~/");
+//    dlg.setNameFilter("LUMASS Model Component Files (*.lmx *.lmv)");
 
-    QString fileNameString;
-    if (dlg.exec())
+
+    QString fileNameString = QFileDialog::getSaveFileName(
+                this,
+                tr("Save Model Component(s)"),
+                QString("~/%1").arg(suggestedBaseName),
+                tr("LUMASS Model Component Files (*.lmx *.lmv)"));
+//    if (dlg.exec())
     {
-        fileNameString = dlg.selectedFiles().at(0);
+
+        //fileNameString = dlg.selectedFiles().at(0);
         if (fileNameString.isNull() || fileNameString.isEmpty())
         {
             NMDebugCtx(ctx, << "done!");
             return;
         }
     }
-    else
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
+//    else
+//    {
+//        NMDebugCtx(ctx, << "done!");
+//        return;
+//    }
 
     QFileInfo fi(fileNameString);
     QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
@@ -1129,7 +1155,7 @@ void NMModelViewWidget::saveItems(void)
     QFile fileLmv(fnLmv);
     if (!fileLmv.open(QIODevice::WriteOnly))
     {
-        NMErr(ctx, << "unable to open/create file '" << fnLmv.toStdString()
+        NMLogError(<< ctx << ": unable to open/create file '" << fnLmv.toStdString()
                 << "'!");
         NMDebugCtx(ctx, << "done!");
         return;
@@ -1139,7 +1165,7 @@ void NMModelViewWidget::saveItems(void)
     if (!fileLmx.open(QIODevice::WriteOnly | QIODevice::Text))
     {
         fileLmv.close();
-        NMErr(ctx, << "unable to create file '" << fnLmx.toStdString()
+        NMLogError(<< ctx << ": unable to create file '" << fnLmx.toStdString()
                 << "'!");
         NMDebugCtx(ctx, << "done!");
         return;
@@ -1241,6 +1267,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
     int cnt = 0;
 	bool append = false;
 	NMModelSerialiser xmlS;
+    xmlS.setLogger(mLogger);
 	foreach(QString itemName, savecomps)
 	{
 		if (cnt == 0)
@@ -1309,6 +1336,7 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
                                    QStringList& savecomps)
 {
     NMModelSerialiser xmlS;
+    xmlS.setLogger(mLogger);
     NMModelComponent* comp = 0;
     switch (item->type())
     {
@@ -1318,7 +1346,7 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
             comp = this->mModelController->getComponent(pi->getTitle());
             if (comp == 0)
             {
-                NMErr(ctx, << "couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
+                NMLogError(<< ctx << ": couldn't write '" << pi->getTitle().toStdString() << "' - skip it!");
                 //NMDebugCtx(ctx, << "done!");
                 return;
             }
@@ -1367,7 +1395,7 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
             comp = this->mModelController->getComponent(ai->getTitle());
             if (comp == 0)
             {
-                NMErr(ctx, << "couldn't write '" << ai->getTitle().toStdString() << "' - skip it!");
+                NMLogError(<< ctx << ": couldn't write '" << ai->getTitle().toStdString() << "' - skip it!");
                 //NMDebugCtx(ctx, << "done!");
                 return;
             }
@@ -1385,7 +1413,7 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
             comp = this->mModelController->getComponent(pwi->objectName());
             if (comp == 0)
             {
-                NMErr(ctx, << "couldn't write '" << pwi->objectName().toStdString() << "' - skip it!");
+                NMLogError(<< ctx << ": couldn't write '" << pwi->objectName().toStdString() << "' - skip it!");
                 return;
             }
 
@@ -1439,16 +1467,14 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
         {
             NMAggregateComponentItem* aii = qgraphicsitem_cast<NMAggregateComponentItem*>(gii);
             // check, whether move is possible
-            //if (gii->childItems().contains(targetItem))
             if (aii && aii->getModelChildren().contains(targetItem))
             {
                 // ouch we can't do that
-                NMBoxErr("Move Components", "Cannot move components into itself!");
+                NMLogWarn(<< "Move Model Components: Cannot move components into itself!");
                 NMDebugCtx(ctx, << "done!");
                 return;
             }
 
-            //if (gii->childItems().contains(gi))
             if (aii && aii->getModelChildren().contains(gi))
             {
                 isTopLevel = false;
@@ -1478,13 +1504,13 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
     {
         if (targetItem->type() == NMProcessComponentItem::Type)
         {
-            NMErr(ctx, <<  "Can't drop anything on a process component!" << std::endl);
+            NMLogError(<< ctx << ": Can't drop anything on a process component!" << std::endl);
             NMDebugCtx(ctx, << "done!");
             return;
         }
         else if (targetItem->type() == QGraphicsTextItem::Type)
         {
-            NMErr(ctx, <<  "Can't drop anything on a text label!" << std::endl);
+            NMLogError(<< ctx << ": Can't drop anything on a text label!" << std::endl);
             NMDebugCtx(ctx, << "done!");
             return;
         }
@@ -1502,7 +1528,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
 
     if (newHostComp == 0)
     {
-        NMErr(ctx, << "Couldn't find a suitable new host to move to!");
+        NMLogError(<< ctx << ": Couldn't find a suitable new host to move to!");
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1610,6 +1636,7 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
     // parse the DomDocument copy and create identical copy
     // with own identity (i.e. objectName is unique)
     NMModelSerialiser xmlS;
+    xmlS.setLogger(mLogger);
     QMap<QString, QString> nameRegister;
     xmlS.parseModelDocument(nameRegister, doc, importHost);
 
@@ -1624,6 +1651,7 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
     {
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(origItem);
         NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(origItem);
+        QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(origItem);
 
         QGraphicsItem* ni = 0;
         if (pi)
@@ -1634,18 +1662,35 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
         {
             ni = this->mModelScene->getComponentItem(nameRegister.value(ai->getTitle()));
         }
-        else
+        else if (ti)
         {
-
             ni = this->mModelScene->itemAt(origItem->scenePos(), this->mModelView->transform());
-            if (ni == 0)
-            {
-                ni = origItem;
-            }
         }
+
+        //        else
+        //        {
+
+        //            ni = this->mModelScene->itemAt(origItem->scenePos(), this->mModelView->transform());
+        //            if (ni == 0)
+        //            {
+        //                ni = origItem;
+        //            }
+        //        }
 
         if (ni)
         {
+            // deselect the original items and
+            // select the newly created items instead
+            // (facilitates proper positioning of copied
+            // group after dropping by the user)
+            if (origItem->isSelected())
+            {
+                ni->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                ni->setSelected(true);
+                origItem->setSelected(false);
+                origItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
+            }
+
             itemList << ni;
         }
     }
@@ -1695,6 +1740,7 @@ NMModelViewWidget::loadItems(const QString& fileName)
     // read the data model
     QMap<QString, QString> nameRegister;
     NMModelSerialiser xmlS;
+    xmlS.setLogger(mLogger);
 
 #ifdef BUILD_RASSUPPORT
     nameRegister = xmlS.parseComponent(fnLmx, importHost, this->mModelController, *this->mRasConn);
@@ -1705,7 +1751,7 @@ NMModelViewWidget::loadItems(const QString& fileName)
     QFile fileLmv(fnLmv);
     if (!fileLmv.open(QIODevice::ReadOnly))
     {
-        NMErr(ctx, << "unable to open file '" << fnLmv.toStdString()
+        NMLogError(<< ctx << ": unable to open file '" << fnLmv.toStdString()
                 << "'!");
         //NMDebugCtx(ctx, << "done!");
         return;
@@ -1824,7 +1870,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 								this->mModelController->getComponent(itemTitle));
                         if (itComp == 0 || itComp->getProcess() == 0)
                         {
-                            NMErr(ctx, << "Ivalid process component detected '"
+                            NMLogError(<< ctx << ": Ivalid process component detected '"
 									<< itemTitle.toStdString() << "'!");
                             continue;
 						}
@@ -1840,7 +1886,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         NMModelComponent* mcomp = this->mModelController->getComponent(itemTitle);
                         if (mcomp == 0)
                         {
-                            NMErr(ctx, << "Ivalid data buffer component detected '"
+                            NMLogError(<< ctx << ": Ivalid data buffer component detected '"
                                     << itemTitle.toStdString() << "'!");
                             continue;
                         }
@@ -1964,7 +2010,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                             QMap<QString, QString>& nR = const_cast< QMap<QString, QString>& >(nameRegister);
                             nR.remove(ptName);
                         }
-                        NMErr(ctx, "Failed importing ParameterTable '"
+                        NMLogError(<< ctx << ": Failed importing ParameterTable '"
                                    << ptName.toStdString() << "/"
                                    << compName.toStdString() << "'!" << std::endl);
                     }
@@ -2097,7 +2143,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
 					}
 					else
 					{
-						NMErr(ctx, << "failed linking '"
+                        NMLogError(<< ctx << ": failed linking '"
 								<< srcName.toStdString() << "' with '"
 								<< tarName.toStdString() << "'!");
 					}
@@ -2348,6 +2394,43 @@ NMModelViewWidget::zoomToContent()
                                 Qt::KeepAspectRatio);
 }
 
+void
+NMModelViewWidget::zoomToComponent(const QString &name)
+{
+    QGraphicsItem* item = mModelScene->getComponentItem(name);
+    if (item)
+    {
+        QRectF bnd = item->sceneBoundingRect();
+        QPointF centre = bnd.center();
+        if (bnd.width() < 200)
+        {
+            //bnd.setLeft(bnd.center().x()-(200 - bnd.width()));
+            bnd.setWidth(200);
+        }
+        if (bnd.height() < 200)
+        {
+            //bnd.setTop(bnd.top()-(200 - bnd.height()));
+            bnd.setHeight(200);
+        }
+        bnd.setTopLeft(QPointF(centre.x()-(bnd.width()/2.0),
+                               centre.y()-(bnd.height()/2.0)));
+
+        this->mModelView->fitInView(bnd, Qt::KeepAspectRatio);
+        this->updateTreeEditor(name);
+    }
+}
+
+
+void
+NMModelViewWidget::zoomToComponent(const QUrl &url)
+{
+    QString str = url.toString();
+    if (str.startsWith('#'))
+    {
+        QString cname = str.right(str.size()-1);
+        this->zoomToComponent(cname);
+    }
+}
 
 int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 {
@@ -3070,7 +3153,7 @@ NMModelViewWidget::deleteProxyWidget(QGraphicsProxyWidget *pw)
     QString title = pw->windowTitle();
     if (!NMModelController::getInstance()->removeComponent(name))
     {
-        NMErr(ctx, << "Failed to delete '" << pw->windowTitle().toStdString() << "'!");
+        NMLogError(<< ctx << ": Failed to delete '" << pw->windowTitle().toStdString() << "'!");
     }
     this->mModelScene->removeItem(pw);
 	NMGlobalHelper::getMainWindow()->deleteTableObject(title);
@@ -3207,7 +3290,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 
     if (comp == 0)
 	{
-        NMErr(ctx, << "Component creation failed! proc=" << proc << " | comp=" << comp);
+        NMLogError(<< ctx << ": Component creation failed! proc=" << proc << " | comp=" << comp);
         NMDebugCtx(ctx, << "done!")
         return;
 	}
@@ -3330,7 +3413,7 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
         LUMASSMainWin* otbwin = NMGlobalHelper::getMainWindow();//this->getMainWindow();
         if (otbwin == 0)
         {
-            NMErr(ctx, << "Couldn't get hold of main application window!")
+            NMLogError(<< ctx << ": Couldn't get hold of main application window!")
             return;
         }
 
@@ -3358,7 +3441,7 @@ void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 	NMModelComponent* comp = this->mModelController->getComponent(compName);
 	if (comp == 0)
 	{
-		NMErr(ctx, << "component '" << compName.toStdString() << "' couldn't be found!");
+        NMLogError(<< ctx << ": component '" << compName.toStdString() << "' couldn't be found!");
 		return;
 	}
 
@@ -3448,7 +3531,7 @@ void NMModelViewWidget::executeModel(void)
 
 	if (comp == 0)
 	{
-		NMErr(ctx, << "Failed to perform model execution!");
+        NMLogError(<< ctx << ": Failed to perform model execution!");
 		return;
 	}
 
@@ -3482,7 +3565,7 @@ NMModelViewWidget::resetModel(void)
 
 	if (comp == 0)
 	{
-		NMErr(ctx, << "Failed to perform model reset!");
+        NMLogError(<< ctx << ": Failed to perform model reset!");
 		return;
 	}
 

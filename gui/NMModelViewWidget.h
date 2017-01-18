@@ -98,6 +98,8 @@ public slots:
     void zoomOut() {zoom(-1);}
     void zoom(int delta);
     void zoomToContent(void);
+    void zoomToComponent(const QString& name);
+    void zoomToComponent(const QUrl& url);
     void updateTreeEditor(const QString&);
     void changeFont(void);
     void changeColour(void);

@@ -66,6 +66,8 @@ NMModelScene::NMModelScene(QObject* parent)
 	mLinkZLevel = 10000;
 	mLinkLine = 0;
     mHiddenModelItems.clear();
+    mRubberBand = 0;
+    mbIdleMove = false;
 }
 
 NMModelScene::~NMModelScene()
@@ -176,53 +178,53 @@ NMModelScene::toggleLinkToolButton(bool linkMode)
 void
 NMModelScene::toggleZoomInTool(bool zin)
 {
+    if (mRubberBand)
+    {
+        delete mRubberBand;
+        mRubberBand = 0;
+    }
     if (zin)
     {
-        //NMLogDebug(<< "zoom in on" << std::endl);
         this->mMode = NMS_ZOOM_IN;
         this->setProcCompMoveability(false);
         this->setProcCompSelectability(false);
         this->setLinkCompSelectability(false);
     }
-//    else
-//    {
-//        NMLogDebug(<< "zoom in off" << std::endl);
-//    }
     updateCursor();
 }
 
 void
 NMModelScene::toggleZoomOutTool(bool zout)
 {
+    if (mRubberBand)
+    {
+        delete mRubberBand;
+        mRubberBand = 0;
+    }
     if (zout)
     {
-        //NMLogDebug(<< "zoom out on" << std::endl);
         this->mMode = NMS_ZOOM_OUT;
         this->setProcCompMoveability(false);
         this->setProcCompSelectability(false);
         this->setLinkCompSelectability(false);
     }
-//    else
-//    {
-//        NMLogDebug(<< "zoom out off" << std::endl);
-//    }
     updateCursor();
 }
 
 void NMModelScene::toggleSelToolButton(bool selMode)
 {
+    if (mRubberBand)
+    {
+        delete mRubberBand;
+        mRubberBand = 0;
+    }
     if (selMode)
     {
-        //NMLogDebug(<< "sel on" << std::endl);
         this->mMode = NMS_SELECT;
         this->setProcCompMoveability(false);
         this->setProcCompSelectability(true);
         this->setLinkCompSelectability(false);
     }
-//    else
-//    {
-//        NMLogDebug(<< "sel off" << std::endl);
-//    }
     updateCursor();
 }
 
@@ -230,16 +232,11 @@ void NMModelScene::toggleMoveToolButton(bool moveMode)
 {
     if (moveMode)
     {
-        //NMLogDebug(<< "move on" << std::endl);
         this->mMode = NMS_MOVE;
         this->setProcCompMoveability(false);
         this->setProcCompSelectability(false);
         this->setLinkCompSelectability(false);
     }
-//    else
-//    {
-//        NMLogDebug(<< "move off" << std::endl);
-//    }
     updateCursor();
     this->invalidate();
 }
@@ -247,7 +244,6 @@ void NMModelScene::toggleMoveToolButton(bool moveMode)
 void
 NMModelScene::idleModeOn(void)
 {
-    //NMLogDebug(<< "idle on" << std::endl);
     this->mMode = NMS_IDLE;
     this->setProcCompMoveability(true);
     this->setProcCompSelectability(false);
@@ -495,7 +491,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 					"You cannot create new model components\nwhile a "
 					"model is being executed! Please try again later!");
 
-			NMErr(ctx, << "You cannot create new model components while there is "
+            NMLogError(<< ctx << ": You cannot create new model components while there is "
 					     "a model running. Please try again later!");
 			NMDebugCtx(ctx, << "done!");
 			return;
@@ -908,19 +904,39 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
         case NMS_IDLE:
             {
+                mToggleSelection.clear();
                 mTempSelection.clear();
                 mTempSelection = this->selectedItems();
                 pwi = this->getWidgetAt(event->scenePos());
-                if (pwi)
+
+                // switch into move scene mode
+                if (    event->button() == Qt::LeftButton
+                    &&  event->modifiers().testFlag(Qt::ShiftModifier)
+                    &&  event->modifiers().testFlag(Qt::ControlModifier)
+                   )
                 {
+                    this->mbIdleMove = true;
+                    this->setProcCompMoveability(false);
                     QApplication::setOverrideCursor(Qt::ClosedHandCursor);
-                    //this->views().at(0)->setCursor(Qt::ClosedHandCursor);
+                }
+                else if (pwi)
+                {
+                    if (event->modifiers().testFlag(Qt::ControlModifier))
+                    {
+                        mToggleSelection << pwi;
+                    }
+
+                    QApplication::setOverrideCursor(Qt::ClosedHandCursor);
                     emit itemLeftClicked(pwi->objectName());
                 }
                 else if (item != 0)
                 {
+                    if (event->modifiers().testFlag(Qt::ControlModifier))
+                    {
+                         mToggleSelection << item;
+                    }
+
                     QApplication::setOverrideCursor(Qt::ClosedHandCursor);
-                    //this->views().at(0)->setCursor(Qt::ClosedHandCursor);
                     if (procItem)
                     {
                         emit itemLeftClicked(procItem->getTitle());
@@ -1110,6 +1126,7 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             }
             if (    (event->buttons() & Qt::LeftButton)
                 &&  dragItem != 0
+                &&  !mbIdleMove
                 &&  (   QApplication::keyboardModifiers() & Qt::ControlModifier
                      || QApplication::keyboardModifiers() & Qt::ShiftModifier
                     )
@@ -1310,8 +1327,9 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         break;
 
     case NMS_IDLE:
-        this->mDragItemList.clear();
 
+        // in any case, we want to restore the override cursor
+        // to the pointing hand cursor
         if (    QApplication::overrideCursor()
             &&  QApplication::overrideCursor()->shape() == Qt::ClosedHandCursor
            )
@@ -1319,13 +1337,35 @@ NMModelScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             QApplication::restoreOverrideCursor();
         }
 
-
+        // we let superclass end the default 'ScrollHandDrag' mode
         QGraphicsScene::mouseReleaseEvent(event);
 
+
+        // override selection settings of the default ScrollHandDrag mode
+        // depending on what which button we pressed right before and
+        // whether we were pointing at any components
         for (int h=0; h < mTempSelection.size(); ++h)
         {
+            mTempSelection.at(h)->setFlag(QGraphicsItem::ItemIsSelectable, true);
             mTempSelection.at(h)->setSelected(true);
         }
+
+        foreach(QGraphicsItem* gi, mToggleSelection)
+        {
+            gi->setFlag(QGraphicsItem::ItemIsSelectable, !gi->isSelected());
+            gi->setSelected(!gi->isSelected());
+        }
+
+        // states that are always clear or reverted to
+        // its state prior to pressing a mouse button in
+        // this mode
+        if (mbIdleMove)
+        {
+            mbIdleMove = false;
+            this->setProcCompMoveability(true);
+        }
+
+        this->mDragItemList.clear();
 
 		break;
 	}

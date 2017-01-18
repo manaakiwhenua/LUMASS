@@ -157,6 +157,8 @@ private:
 	qreal mLinkZLevel;
 	qreal mLinkHitTolerance;
 
+    bool mbIdleMove;
+
 	QGraphicsLineItem* mLinkLine;
 	InteractionMode mMode;
 
@@ -164,6 +166,7 @@ private:
     QPointF mRubberBandOrigin;
 
     QList<QGraphicsItem*> mTempSelection;
+    QList<QGraphicsItem*> mToggleSelection;
     QList<QGraphicsItem*> mDragItemList;
     QMap<QString, QGraphicsItem*> mHiddenModelItems;
     QPointF mDragStartPos;

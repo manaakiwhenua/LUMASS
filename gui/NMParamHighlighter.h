@@ -19,6 +19,7 @@
 #define NMPARAMHIGHLIGHTER_H
 
 #include <QSyntaxHighlighter>
+#include <QRegularExpression>
 
 class NMParamHighlighter : public QSyntaxHighlighter
 {
@@ -35,6 +36,8 @@ public:
 
     void setExpressionType(NMParamExpressionType type)
         {mExpType = type;}
+    void setRegularExpression(const QRegularExpression& regex)
+        {mRegEx = regex;}
 
 signals:
 
@@ -47,6 +50,7 @@ private:
     QStringList mSQLiteKeywords;
     QStringList mMuParserKeywords;
     QStringList mKernelScriptKeywords;
+    QRegularExpression mRegEx;
 
 };
 

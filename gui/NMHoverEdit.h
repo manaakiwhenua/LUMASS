@@ -21,13 +21,14 @@
 
 #include <QDialog>
 //#include <QTextEdit>
-#include <QPushButton>
 #include <QLabel>
 
+class QCheckBox;
 class QTreeWidgetItem;
 class QListWidget;
 class QtProperty;
 class QCompleter;
+class QTextBrowser;
 class NMParamEdit;
 class NMLogger;
 class NMHoverEditTree;
@@ -61,12 +62,14 @@ protected slots:
     void setTreeLevel(int level){mPropLevel = level;}
     void updateModelItem(QTreeWidgetItem* item, int col);
     void assistEditing();
+    void updateExpressionPreview() {showExpressionPreview(true);}
+    void showExpressionPreview(bool preview);
 
 protected:
     void showEvent(QShowEvent* event);
     void updateCompleter();
 
-    //QString analyseText();
+
 
 private:
     QString mCompName;
@@ -74,16 +77,18 @@ private:
     int mPropLevel;
 
     NMParamEdit* mEdit;
+    QTextBrowser* mPreview;
     NMParamHighlighter* mHighlighter;
+    NMParamHighlighter* mPreviewHighlighter;
     NMHoverEditTree* mTreeWidget;
-
-    //QCompleter* mCompleter;
 
     NMModelComponent* mComp;
     NMProcess* mProc;
 
-    QLabel mLabel;
-    QLabel mPosLabel;
+    //QPushButton* btnPreview;
+    QCheckBox* btnPreview;
+    QLabel* mLabel;
+    QLabel* mPosLabel;
 
     NMLogger* mLogger;
 

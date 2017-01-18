@@ -89,7 +89,7 @@ NMParamHighlighter::highlightBlock(const QString &text)
         return;
     }
 
-    NMParamEdit* edit = qobject_cast<NMParamEdit*>(this->parent());
+    QTextEdit* edit = qobject_cast<QTextEdit*>(this->parent());
     if (edit == 0)
     {
         return;
@@ -107,8 +107,7 @@ NMParamHighlighter::highlightBlock(const QString &text)
     QTextCharFormat keywordFormat;
     keywordFormat.setForeground(Qt::darkBlue);
 
-    QRegularExpression rex = edit->getRegEx();
-    QRegularExpressionMatchIterator mit = rex.globalMatch(text);
+    QRegularExpressionMatchIterator mit = mRegEx.globalMatch(text);
     while (mit.hasNext())
     {
         QRegularExpressionMatch match = mit.next();

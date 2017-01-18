@@ -30,7 +30,10 @@
 #include <QSyntaxHighlighter>
 #include <QListWidget>
 #include <QCompleter>
+#include <QTextBrowser>
 #include <QStringListModel>
+#include <QCheckBox>
+#include <QLabel>
 
 #include "qtpropertymanager.h"
 #include "qtvariantproperty.h"
@@ -63,28 +66,59 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     mTreeWidget->setObjectName("treeWidget");
     mTreeWidget->setDragEnabled(true);
     mTreeWidget->setTreeModel(QVariant());
-    splitter->addWidget(mTreeWidget);
-
-    connect(mTreeWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)),
-            SLOT(updateModelItem(QTreeWidgetItem*,int)));
-    connect(mTreeWidget, SIGNAL(maxTreeLevel(int)), SLOT(setTreeLevel(int)));
+    //splitter->addWidget(mTreeWidget);
 
     mEdit = new NMParamEdit(this);
     mEdit->setObjectName("ParamEditor");
-    mEdit->installEventFilter(this);
     mEdit->setSizePolicy(tepol);
     mEdit->setPlaceholderText("Select a parameter");
-    splitter->addWidget(mEdit);
+    mHighlighter = new NMParamHighlighter(mEdit);
+    mHighlighter->setRegularExpression(mEdit->getRegEx());
+    //splitter->addWidget(mEdit);
+
+    mPreview = new QTextBrowser(this);
+    mPreviewHighlighter = new NMParamHighlighter(mPreview);
+    mPreviewHighlighter->setRegularExpression(mEdit->getRegEx());
+    splitter->addWidget(mPreview);
+    mPreview->hide();
+
+    QWidget* widgetL = new QWidget(this);
+    QVBoxLayout* vboxL = new QVBoxLayout(widgetL);
+    mLabel = new QLabel(widgetL);
+    vboxL->addWidget(mTreeWidget);
+    vboxL->addWidget(mLabel);
+
+    // ============================================
+    // RIGHT HAND SIDE WIDGET
+    // ============================================
+    QWidget* widgetR = new QWidget(this);
+    QVBoxLayout* vboxR = new QVBoxLayout(widgetR);
+
+    QSplitter* splitterR = new QSplitter(Qt::Horizontal);
+    splitterR->setSizePolicy(tepol);
+    splitterR->addWidget(mEdit);
+    splitterR->addWidget(mPreview);
+
+    QHBoxLayout* hboxR = new QHBoxLayout();
+    btnPreview = new QCheckBox(widgetR);
+    btnPreview->setText("Preview Expression");
+    btnPreview->setVisible(true);
+    btnPreview->setCheckable(true);
+    btnPreview->setChecked(false);
+    hboxR->addWidget(btnPreview);
+    hboxR->addStretch();
+    mPosLabel = new QLabel(widgetR);
+    hboxR->addWidget(mPosLabel);
+
+    vboxR->addWidget(splitterR);
+    vboxR->addItem(hboxR);
+
     QList<int> sizes;
     sizes << 40 << 120;
+
+    splitter->addWidget(widgetL);
+    splitter->addWidget(widgetR);
     splitter->setSizes(sizes);
-
-    mHighlighter = new NMParamHighlighter(mEdit);
-    connect(mEdit, &QTextEdit::cursorPositionChanged, this, &NMHoverEdit::assistEditing);
-
-    fl->addWidget(splitter);
-    fl->addWidget(&mLabel);
-    fl->addWidget(&mPosLabel);
 
     QHBoxLayout* bl2 = new QHBoxLayout();
     bl2->addStretch();
@@ -95,70 +129,43 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     QPushButton* btncancel = new QPushButton("Cancel", this);
     bl2->addWidget(btncancel);
 
+    fl->addWidget(splitter);
+    fl->addItem(bl2);
+
+
+    connect(mTreeWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)),
+            SLOT(updateModelItem(QTreeWidgetItem*,int)));
+    connect(mTreeWidget, SIGNAL(maxTreeLevel(int)), SLOT(setTreeLevel(int)));
+    connect(mEdit, &QTextEdit::cursorPositionChanged, this, &NMHoverEdit::assistEditing);
+    connect(mEdit, SIGNAL(textChanged()), this, SLOT(updateExpressionPreview()));
+    connect(btnPreview, SIGNAL(toggled(bool)), this, SLOT(showExpressionPreview(bool)));
     connect(btnapply, SIGNAL(clicked()), this, SLOT(applyChanges()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(close()));
-
-    fl->addItem(bl2);
 }
 
+
+void
+NMHoverEdit::showExpressionPreview(bool preview)
+{
+    if (!preview)
+    {
+        mPreview->hide();
+        return;
+    }
+
+    QString curExpr = mEdit->toPlainText();
+    QString populatedExpr = NMModelController::getInstance()->processStringParameter(mComp, curExpr);
+    mPreview->setText(populatedExpr);
+    mPreview->show();
+}
 
 void
 NMHoverEdit::assistEditing()
 {
     QTextCursor cur = mEdit->textCursor();
-    mPosLabel.setText(QString("pos: %1").arg(cur.position()));
-
+    mPosLabel->setText(QString("pos: %1").arg(cur.position()));
 }
 
-
-//QString
-//NMHoverEdit::analyseText()
-//{
-//    QTextCursor cur = mEdit->textCursor();
-//    cur.select(QTextCursor::WordUnderCursor);
-//    return cur.selectedText();
-
-//    int curpos = mEdit->textCursor().position();
-//    QString text = mEdit->toPlainText();
-//    QRegularExpression rexComp(QString(
-//        "\\b((?<!__|:)[a-zA-Z]+([a-zA-Z0-9]|_(?!_)){2,})"));
-
-//    int cpos = text.lastIndexOf(rexComp, curpos);
-//    QString compCand = text.mid(cpos, curpos-cpos+1);
-//    NMLogDebug(<< "comp search: " << compCand.toStdString());
-
-//    QRegularExpressionMatch match = rexComp.match(compCand);
-//    QString comp;
-//    if (match.hasMatch())
-//    {
-//        comp = match.captured(1);
-//        NMLogDebug(<< "COMP=" << comp.toStdString());
-
-//        //        QStringList suggestion;
-//        //        for (int t=0; t < mCompList.size(); ++t)
-//        //        {
-//        //            if (mCompList[t].startsWith(comp))
-//        //            {
-//        //                suggestion << mCompList[t];
-//        //            }
-//        //        }
-
-//        //        if (suggestion.size())
-//        //        {
-//        //            mList->clear();
-//        //            QPoint br = mEdit->cursorRect().bottomRight();
-//        //            mList->addItems(suggestion);
-//        //            mList->move(br);
-//        ////            mList->setc
-//        //            mList->show();
-//        //        }
-//        //        else
-//        //        {
-//        //            mList->hide();
-//        //        }
-//    }
-//    return comp;
-//}
 
 void
 NMHoverEdit::updateCompleter()
@@ -202,7 +209,7 @@ NMHoverEdit::setProperty(const QString &compName, const QString& propName)
         mPropName.clear();
         mTreeWidget->setTreeModel(QVariant());
         mCurIndices.clear();
-        mLabel.clear();
+        mLabel->clear();
         mEdit->clear();
         return;
     }
@@ -252,18 +259,22 @@ NMHoverEdit::setProperty(const QString &compName, const QString& propName)
     if (propName.compare("KernelScript") == 0)
     {
         mHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
+        mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
     }
     else if (propName.contains("SQL", Qt::CaseInsensitive))
     {
         mHighlighter->setExpressionType(NMParamHighlighter::NM_SQLITE_EXP);
+        mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_SQLITE_EXP);
     }
     else if (propName.compare("MapExpressions") == 0)
     {
         mHighlighter->setExpressionType(NMParamHighlighter::NM_MATH_EXP);
+        mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_MATH_EXP);
     }
     else
     {
         mHighlighter->setExpressionType(NMParamHighlighter::NM_PARM_EXP);
+        mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_PARM_EXP);
     }
 
     updateEditor();
@@ -304,13 +315,17 @@ NMHoverEdit::updateEditor()
     }
     this->setWindowTitle(title);
 
+    mPreview->clear();
+    mPreview->hide();
+    btnPreview->setChecked(false);
+
     const int ml = mPropLevel;
     switch(ml)
     {
     case 0:
-    case 1: mLabel.setText("Parameter"); break;
-    case 2: mLabel.setText("List of Parameters"); break;
-    case 3: mLabel.setText("List of List of Pameters"); break;
+    case 1: mLabel->setText("Parameter"); break;
+    case 2: mLabel->setText("List of Parameters"); break;
+    case 3: mLabel->setText("List of List of Pameters"); break;
     }
 
     updateCompleter();

@@ -22,46 +22,66 @@
 #include <QDate>
 #include <QTime>
 
-NMLogWidget::NMLogWidget(QWidget *parent) : QTextEdit(parent)
+#include "NMModelController.h"
+
+NMLogWidget::NMLogWidget(QWidget *parent) : QTextBrowser(parent)
 {
     // ===============================
     // initial settings & message
     // ===============================
     this->setAcceptDrops(false);
     this->setReadOnly(true);
+    this->setOpenLinks(false);
+    this->setTextInteractionFlags(Qt::NoTextInteraction);
 
     // ... printing the first log message
     this->clearLog();
     this->zoomOut(2);
+
 }
+
 
 void
 NMLogWidget::insertHtml(const QString& text)
 {
-    QTextEdit::insertHtml(text);
-    moveCursorToEnd();
-}
+    QString worktext = text;
 
-void
-NMLogWidget::moveCursorToEnd(void)
-{
-    this->textCursor().movePosition(QTextCursor::End, QTextCursor::MoveAnchor);
-}
+    //insertPlainText(QString("%1\n").arg(worktext));
+    QStringList captured;
+    QStringList tokens = worktext.split(':', QString::SkipEmptyParts);
+    foreach(const QString& tok, tokens)
+    {
+        QStringList ttkk = tok.split(' ', QString::SkipEmptyParts);
+        foreach(const QString& tt, ttkk)
+        {
+            if (!captured.contains(tt))
+            {
+                if (NMModelController::getInstance()->contains(tt))
+                {
+                    QString anchortext = QString("<a href=\"#%1\">%1</a>")
+                            .arg(tt);
+                    QRegExp re(QString("\\b(%1)\\b").arg(tt));
+                    worktext = worktext.replace(re, anchortext);
+                    captured << tt;
+                    //insertPlainText(QString("%1 ==> %2 \n").arg(tt).arg(anchortext));
+                }
+            }
+        }
+    }
 
-void
-NMLogWidget::mousePressEvent(QMouseEvent* e)
-{
-    // in case the user clicks somewhere, we
-    // want to make sure that text is appended
-    // only and not inserted somewhere in the
-    // middle of a previous log message ...
-    moveCursorToEnd();
+    QTextCursor cur(this->document());
+    cur.movePosition(QTextCursor::End);
+    cur.beginEditBlock();
+    cur.insertHtml(worktext);
+    cur.movePosition(QTextCursor::End, QTextCursor::MoveAnchor);
+    cur.endEditBlock();
+    this->ensureCursorVisible();
 }
 
 void
 NMLogWidget::contextMenuEvent(QContextMenuEvent* event)
 {
-    QMenu* menu = createStandardContextMenu();
+    QMenu* menu = new QMenu(this);//createStandardContextMenu();
     QAction* clearAct = menu->addAction(tr("Clear"));
 
     connect(clearAct, SIGNAL(triggered()), this,
@@ -81,11 +101,5 @@ NMLogWidget::clearLog(void)
             .arg(QTime::currentTime().toString());
 
     this->insertHtml(logstart);
-
-    QTextBlockFormat blFormat = this->textCursor().blockFormat();
-    blFormat.setBottomMargin(1);
-    blFormat.setTopMargin(1);
-    this->textCursor().setBlockFormat(blFormat);
     this->insertPlainText("\n");
-    this->ensureCursorVisible();
 }

@@ -19,9 +19,9 @@
 #define NMLOGWIDGET_H
 
 #include <QObject>
-#include <QTextEdit>
+#include <QTextBrowser>
 
-class NMLogWidget : public QTextEdit
+class NMLogWidget : public QTextBrowser
 {
     Q_OBJECT
 
@@ -31,14 +31,9 @@ public:
 public slots:
     void insertHtml(const QString& text);
 
-
 protected slots:
     virtual void contextMenuEvent(QContextMenuEvent* event);
-    virtual void mousePressEvent(QMouseEvent* e);
-
     void clearLog(void);
-    void moveCursorToEnd(void);
-
 };
 
 #endif // NMLOGWIDGET_H

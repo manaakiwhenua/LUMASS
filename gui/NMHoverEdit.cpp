@@ -66,7 +66,6 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     mTreeWidget->setObjectName("treeWidget");
     mTreeWidget->setDragEnabled(true);
     mTreeWidget->setTreeModel(QVariant());
-    //splitter->addWidget(mTreeWidget);
 
     mEdit = new NMParamEdit(this);
     mEdit->setObjectName("ParamEditor");
@@ -74,7 +73,6 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     mEdit->setPlaceholderText("Select a parameter");
     mHighlighter = new NMParamHighlighter(mEdit);
     mHighlighter->setRegularExpression(mEdit->getRegEx());
-    //splitter->addWidget(mEdit);
 
     mPreview = new QTextBrowser(this);
     mPreviewHighlighter = new NMParamHighlighter(mPreview);
@@ -157,6 +155,15 @@ NMHoverEdit::showExpressionPreview(bool preview)
     QString populatedExpr = NMModelController::getInstance()->processStringParameter(mComp, curExpr);
     mPreview->setText(populatedExpr);
     mPreview->show();
+}
+
+void
+NMHoverEdit::updateExpressionPreview()
+{
+    if (btnPreview->isChecked())
+    {
+        showExpressionPreview(true);
+    }
 }
 
 void
@@ -314,10 +321,6 @@ NMHoverEdit::updateEditor()
         title = QString("Edit %3 of %1 (%2)").arg(mComp->getUserID()).arg(mCompName).arg(mPropName);
     }
     this->setWindowTitle(title);
-
-    mPreview->clear();
-    mPreview->hide();
-    btnPreview->setChecked(false);
 
     const int ml = mPropLevel;
     switch(ml)

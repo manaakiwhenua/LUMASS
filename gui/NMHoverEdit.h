@@ -62,7 +62,7 @@ protected slots:
     void setTreeLevel(int level){mPropLevel = level;}
     void updateModelItem(QTreeWidgetItem* item, int col);
     void assistEditing();
-    void updateExpressionPreview() {showExpressionPreview(true);}
+    void updateExpressionPreview();
     void showExpressionPreview(bool preview);
 
 protected:

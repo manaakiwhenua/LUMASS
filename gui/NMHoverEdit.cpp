@@ -34,6 +34,7 @@
 #include <QStringListModel>
 #include <QCheckBox>
 #include <QLabel>
+#include <QKeyEvent>
 
 #include "qtpropertymanager.h"
 #include "qtvariantproperty.h"
@@ -44,10 +45,13 @@
 #include "NMHoverEditTree.h"
 #include "NMParamHighlighter.h"
 #include "NMParamEdit.h"
+#include "NMFindReplaceDialog.h"
+#include "NMMfwException.h"
 
 
 NMHoverEdit::NMHoverEdit(QWidget *parent)
-    : QDialog(parent), mComp(0), mProc(0), mPropLevel(0)
+    : QDialog(parent), mComp(0), mProc(0), mPropLevel(0),
+      mFindReplaceDlg(0)
 {
     this->setModal(false);
 
@@ -71,6 +75,7 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     mEdit->setObjectName("ParamEditor");
     mEdit->setSizePolicy(tepol);
     mEdit->setPlaceholderText("Select a parameter");
+    mEdit->installEventFilter(this);
     mHighlighter = new NMParamHighlighter(mEdit);
     mHighlighter->setRegularExpression(mEdit->getRegEx());
 
@@ -139,8 +144,50 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     connect(btnPreview, SIGNAL(toggled(bool)), this, SLOT(showExpressionPreview(bool)));
     connect(btnapply, SIGNAL(clicked()), this, SLOT(applyChanges()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(close()));
+
+    this->setTabOrder(mTreeWidget, mEdit);
+    this->setTabOrder(mEdit, btnPreview);
+    this->setTabOrder(btnPreview, btnapply);
+    this->setTabOrder(btnapply, btncancel);
 }
 
+void
+NMHoverEdit::closeEvent(QCloseEvent *event)
+{
+    if (mFindReplaceDlg)
+    {
+        mFindReplaceDlg->close();
+    }
+    QDialog::closeEvent(event);
+}
+
+bool
+NMHoverEdit::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == mEdit)
+    {
+        if (event->type() == QEvent::KeyPress)
+        {
+            QKeyEvent* ke = static_cast<QKeyEvent*>(event);
+            if (ke->modifiers() & Qt::ControlModifier && ke->key() == Qt::Key_F)
+            {
+                if (mFindReplaceDlg == 0)
+                {
+                    mFindReplaceDlg = new NMFindReplaceDialog(mEdit);
+                    mFindReplaceDlg->setWindowTitle(tr("Find and Replace"));
+                }
+                mFindReplaceDlg->show();
+                return true;
+            }
+            else if (ke->key() == Qt::Key_Tab)
+            {
+                btnPreview->setFocus();
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 void
 NMHoverEdit::showExpressionPreview(bool preview)
@@ -152,7 +199,19 @@ NMHoverEdit::showExpressionPreview(bool preview)
     }
 
     QString curExpr = mEdit->toPlainText();
-    QString populatedExpr = NMModelController::getInstance()->processStringParameter(mComp, curExpr);
+
+    // we might induce an update operation of an involved
+    // data component, so we have to watch out for
+    // any exceptions thrown ...
+    QString populatedExpr = "Parameter expression evaluation failed - see notification window!)";
+    try
+    {
+        populatedExpr = NMModelController::getInstance()->processStringParameter(mComp, curExpr);
+    }
+    catch(NMMfwException& me)
+    {
+        NMLogError(<< me.what());
+    }
     mPreview->setText(populatedExpr);
     mPreview->show();
 }

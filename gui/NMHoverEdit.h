@@ -36,6 +36,7 @@ class NMModelComponent;
 class NMProcess;
 class NMComponentEditor;
 class NMParamHighlighter;
+class NMFindReplaceDialog;
 
 class NMHoverEdit : public QDialog
 {
@@ -64,11 +65,12 @@ protected slots:
     void assistEditing();
     void updateExpressionPreview();
     void showExpressionPreview(bool preview);
+    bool eventFilter(QObject *obj, QEvent *event);
+    void closeEvent(QCloseEvent *event);
 
 protected:
     void showEvent(QShowEvent* event);
     void updateCompleter();
-
 
 
 private:
@@ -81,6 +83,7 @@ private:
     NMParamHighlighter* mHighlighter;
     NMParamHighlighter* mPreviewHighlighter;
     NMHoverEditTree* mTreeWidget;
+    NMFindReplaceDialog* mFindReplaceDlg;
 
     NMModelComponent* mComp;
     NMProcess* mProc;

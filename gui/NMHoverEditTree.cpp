@@ -82,7 +82,7 @@ NMHoverEditTree::changeStructure(const QList<int> &indices, int mode)
     switch (mMaxLevel)
     {
     case 1:
-        if (indices.size() == 1)
+        if (indices.count() == 1)
         {
             QStringList sl = mModel.toStringList();
             if (mode)
@@ -100,7 +100,7 @@ NMHoverEditTree::changeStructure(const QList<int> &indices, int mode)
     case 2:
         {
             QList<QStringList> lsl = mModel.value<QList<QStringList> >();
-            if (indices.size() == 1)
+            if (indices.count() == 1)
             {
                 if (mode)
                 {
@@ -112,7 +112,7 @@ NMHoverEditTree::changeStructure(const QList<int> &indices, int mode)
                     lsl.removeAt(indices.at(0));
                 }
             }
-            else if (indices.size() == 2)
+            else if (indices.count() == 2)
             {
                 QStringList sl = lsl.at(indices.at(0));
                 if (mode)
@@ -132,7 +132,7 @@ NMHoverEditTree::changeStructure(const QList<int> &indices, int mode)
     case 3:
         {
             QList<QList<QStringList> > llsl = mModel.value<QList<QList<QStringList> > >();
-            if (indices.size() == 1)
+            if (indices.count() == 1)
             {
                 if (mode)
                 {
@@ -144,7 +144,7 @@ NMHoverEditTree::changeStructure(const QList<int> &indices, int mode)
                     llsl.removeAt(indices.at(0));
                 }
             }
-            else if (indices.size() == 2)
+            else if (indices.count() == 2)
             {
                 QList<QStringList> lsl = llsl.at(indices.at(0));
                 if (mode)
@@ -158,7 +158,7 @@ NMHoverEditTree::changeStructure(const QList<int> &indices, int mode)
                 }
                 llsl.replace(indices.at(0), lsl);
             }
-            else if (indices.size() == 3)
+            else if (indices.count() == 3)
             {
                 QList<QStringList> lsl = llsl.at(indices.at(0));
                 QStringList sl = lsl.at(indices.at(1));
@@ -185,7 +185,7 @@ NMHoverEditTree::itemFromIndices(const QList<int> &indices)
     if (indices.count() > 0)
     {
         item = this->topLevelItem(indices.at(0));
-        for (int i=1; i < indices.size() && item != 0; ++i)
+        for (int i=1; i < indices.count() && item != 0; ++i)
         {
             item = item->child(indices.at(i));
         }
@@ -197,7 +197,7 @@ void
 NMHoverEditTree::addList()
 {
     QList<int> indices = mCurIndices;
-    indices << mLastPressedItem->childCount();
+    indices << (mLastPressedItem ? mLastPressedItem->childCount() : 0);
     changeStructure(indices, 1);
     mCurIndices = indices;
     updateTree();
@@ -215,9 +215,9 @@ NMHoverEditTree::insertParameter()
 {
     QList<int> indices = mCurIndices;
 
-    if (indices.size() == mMaxLevel-1)
+    if (indices.count() == mMaxLevel-1)
     {
-        indices << mLastPressedItem->childCount();
+        indices << (mLastPressedItem ? mLastPressedItem->childCount() : 0);
     }
     changeStructure(indices, 1);
     mCurIndices = indices;
@@ -228,17 +228,17 @@ NMHoverEditTree::insertParameter()
 void
 NMHoverEditTree::callContextMenu(const QPoint& pos)
 {
-    QString delType = mCurIndices.size() == mMaxLevel ? "parameter" : "list";
+    QString delType = mCurIndices.count() == mMaxLevel ? "parameter" : "list";
 
     QTreeWidgetItem* item = itemFromIndices(mCurIndices);
-    if (mCurIndices.size() == mMaxLevel)
+    if (mCurIndices.count() == mMaxLevel)
     {
         mInsParamAction->setEnabled(true);
         mInsParamAction->setText("Insert parameter here");
         mInsListAction->setEnabled(false);
         mAddListAction->setEnabled(false);
     }
-    else if (mCurIndices.size() == mMaxLevel-1)
+    else if (mCurIndices.count() == mMaxLevel-1)
     {
 
         mInsParamAction->setEnabled(true);
@@ -327,7 +327,7 @@ NMHoverEditTree::updateTree()
     {
         QStringList sL = mModel.value<QStringList>();
         QList<QTreeWidgetItem*> items;
-        for (int i=0; i < sL.size(); ++i)
+        for (int i=0; i < sL.count(); ++i)
         {
             items << (new QTreeWidgetItem((QTreeWidget*)0, QStringList(QString("#%1: %2").arg(i+1).arg(sL.at(i)))));
             if (i == 0)
@@ -343,13 +343,13 @@ NMHoverEditTree::updateTree()
     {
         QList<QStringList> lsl = mModel.value<QList<QStringList> >();
         QList<QTreeWidgetItem*> stepItems;
-        for (int t=0; t < lsl.size(); ++t)
+        for (int t=0; t < lsl.count(); ++t)
         {
             QStringList stepItemText;
             stepItemText << QString("#%1").arg(t+1);
             QTreeWidgetItem* stepItem = new QTreeWidgetItem((QTreeWidget*)0, stepItemText);
             QStringList sl = lsl.at(t);
-            for (int s=0; s < sl.size(); ++s)
+            for (int s=0; s < sl.count(); ++s)
             {
                 QStringList level1Text;
                 level1Text << QString("%1.%2: %3").arg(t+1).arg(s+1).arg(sl.at(s));
@@ -369,17 +369,17 @@ NMHoverEditTree::updateTree()
     {
         QList<QList<QStringList> > llsl = mModel.value<QList<QList<QStringList> > >();
         QList<QTreeWidgetItem*> stepItems;
-        for (int t=0; t < llsl.size(); ++t)
+        for (int t=0; t < llsl.count(); ++t)
         {
             QTreeWidgetItem* stepItem = new QTreeWidgetItem((QTreeWidget*)0, QStringList(QString("#%1").arg(t+1)));
             QList<QStringList> lsl = llsl.at(t);
-            for (int ls=0; ls < lsl.size(); ++ls)
+            for (int ls=0; ls < lsl.count(); ++ls)
             {
                 QStringList level1Text;
                 level1Text << QString("List %1.%2").arg(t+1).arg(ls+1);
                 QTreeWidgetItem* level1Item = new QTreeWidgetItem((QTreeWidget*)0, level1Text);
                 QStringList sl = lsl.at(ls);
-                for (int s=0; s < sl.size(); ++s)
+                for (int s=0; s < sl.count(); ++s)
                 {
                     QStringList level2Text;
                     level2Text << QString("%1.%2.%3: %4").arg(t+1).arg(ls+1).arg(s+1).arg(sl.at(s));
@@ -399,7 +399,7 @@ NMHoverEditTree::updateTree()
     }
     emit maxTreeLevel(mMaxLevel);
 
-    if (mCurIndices.size() > 0)
+    if (mCurIndices.count() > 0)
     {
         initItem = itemFromIndices(mCurIndices);
     }
@@ -497,7 +497,7 @@ NMHoverEditTree::extractString(QTreeWidgetItem *item, int pos)
 
     QString s = item->text(0);
     QStringList sl = s.split(':', QString::SkipEmptyParts);
-    if (sl.size() >= 2)
+    if (sl.count() >= 2)
     {
         s = sl.at(pos).simplified();
     }
@@ -643,7 +643,7 @@ void NMHoverEditTree::dropEvent(QDropEvent* event)
 
         // determine the new item's parent
         QTreeWidgetItem* insertParent = 0;
-        int dropDepth = dropIndices.size() == mCurIndices.size()-1 ? dropIndices.size() : dropIndices.size()-1;
+        int dropDepth = dropIndices.count() == mCurIndices.count()-1 ? dropIndices.count() : dropIndices.count()-1;
         for (int l=0; l < dropDepth; ++l)
         {
             if (l == 0)
@@ -657,7 +657,7 @@ void NMHoverEditTree::dropEvent(QDropEvent* event)
         }
 
         // adjust dropIndices, if we're dropping at the item's parent's level
-        if (dropIndices.size() < mCurIndices.size())
+        if (dropIndices.count() < mCurIndices.count())
         {
             dropIndices << (insertParent ? insertParent->childCount() : topLevelItemCount());
         }
@@ -665,11 +665,11 @@ void NMHoverEditTree::dropEvent(QDropEvent* event)
         // ... finally insert the dropped item at the identified position
         if (insertParent)
         {
-            insertParent->insertChild(dropIndices.at(dropIndices.size()-1), mLastPressedItem->clone());
+            insertParent->insertChild(dropIndices.at(dropIndices.count()-1), mLastPressedItem->clone());
         }
         else
         {
-            insertTopLevelItem(dropIndices.at(dropIndices.size()-1), mLastPressedItem->clone());
+            insertTopLevelItem(dropIndices.at(dropIndices.count()-1), mLastPressedItem->clone());
         }
 
         // delete the drag item if this is a move operation
@@ -682,7 +682,7 @@ void NMHoverEditTree::dropEvent(QDropEvent* event)
             {
                 ++cnt;
             }
-            if (cnt == dropIndices.size()-1)
+            if (cnt == dropIndices.count()-1)
             {
                 if (mCurIndices.at(cnt) < dropIndices.at(cnt))
                 {
@@ -703,7 +703,7 @@ void NMHoverEditTree::dropEvent(QDropEvent* event)
         // ... the new indices of the current item, for easy access
         //     of the current model item
         QTreeWidgetItem* curItem = 0;
-        for (int l=0; l < dropIndices.size(); ++l)
+        for (int l=0; l < dropIndices.count(); ++l)
         {
             if (l == 0)
             {

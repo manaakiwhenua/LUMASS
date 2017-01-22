@@ -164,7 +164,8 @@ protected slots:
                          QDomDocument& doc,
                          QList<NMComponentLinkItem*>& writtenLinks,
                          QStringList &savecomps);
-
+    void scaleFonts(void);
+    void scaleItemFonts(QGraphicsItem* gi, int delta);
 
 
     void collapseAggrItem();

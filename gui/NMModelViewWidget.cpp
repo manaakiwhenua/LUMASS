@@ -41,6 +41,7 @@
 #include <QPropertyAnimation>
 #include <QDomDocument>
 #include <QGraphicsProxyWidget>
+#include <QInputDialog>
 
 #include "lumassmainwin.h"
 #include "NMModelViewWidget.h"
@@ -576,6 +577,10 @@ void NMModelViewWidget::initItemContextMenu()
     clearSelAct->setText(tr("Clear Selection"));
     this->mActionMap.insert("Clear Selection", clearSelAct);
 
+    QAction* scaleFonts = new QAction(this->mItemContextMenu);
+    scaleFonts->setText(tr("Scale All Fonts ..."));
+    this->mActionMap.insert("Scale All Fonts ...", scaleFonts);
+
 
     this->mItemContextMenu->addAction(actDeltaTimeLevel);
     this->mItemContextMenu->addAction(actGroupTimeLevel);
@@ -592,6 +597,7 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(loadComp);
     this->mItemContextMenu->addAction(delComp);
     this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(scaleFonts);
     this->mItemContextMenu->addAction(fontAct);
     this->mItemContextMenu->addAction(clrAct);
     this->mItemContextMenu->addSeparator();
@@ -609,6 +615,7 @@ void NMModelViewWidget::initItemContextMenu()
     connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
     connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
     connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
+    connect(scaleFonts, SIGNAL(triggered()), this, SLOT(scaleFonts()));
     connect(fontAct, SIGNAL(triggered()), this, SLOT(changeFont()));
     connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
     connect(collapseComp, SIGNAL(triggered()), this, SLOT(collapseAggrItem()));
@@ -629,69 +636,93 @@ void NMModelViewWidget::initItemContextMenu()
 }
 
 void
+NMModelViewWidget::scaleFonts()
+{
+    // we either scale the selected, the last, or all items ...
+    QList<QGraphicsItem*> scaleitems;
+    if (this->mModelScene->selectedItems().count())
+    {
+        scaleitems << this->mModelScene->selectedItems();
+    }
+    else if (mLastItem != 0)
+    {
+        scaleitems << mLastItem;
+    }
+    else
+    {
+        scaleitems << mModelScene->items();
+    }
+
+    // create a list of toplevel components
+    QList<QGraphicsItem*> nonnested;
+    if (scaleitems.count())
+    {
+        foreach(QGraphicsItem* gi1, scaleitems)
+        {
+            bool toplevel = true;
+            foreach(QGraphicsItem* gi2, scaleitems)
+            {
+                if (gi1 != gi2 && gi2->isAncestorOf(gi1))
+                {
+                    toplevel = false;
+                }
+            }
+            if (toplevel)
+            {
+                nonnested << gi1;
+            }
+        }
+    }
+
+    bool bok;
+    int delta = QInputDialog::getInt(this, QString("Scale All Fonts"),
+                                     QString("Adjust relative font size (+/- pt):"),
+                                     -1, -10, 10, 1, &bok);
+    if (bok)
+    {
+        foreach(QGraphicsItem* gi, nonnested)
+        {
+            scaleItemFonts(gi, delta);
+        }
+    }
+}
+
+void
+NMModelViewWidget::scaleItemFonts(QGraphicsItem *gi, int delta)
+{
+    QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
+    NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
+    NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
+    if (ti)
+    {
+        QFont tfont = ti->font();
+        int size = tfont.pointSize();
+        size += delta;
+        tfont.setPointSize(size);
+        ti->setFont(tfont);
+    }
+    else if (ai)
+    {
+        int size = ai->getFontPtSize();
+        size += delta;
+        ai->setFontPtSize(size);
+        foreach(QGraphicsItem* child, gi->childItems())
+        {
+            scaleItemFonts(child, delta);
+        }
+    }
+    else if (pi)
+    {
+        int size = pi->getFontPtSize();
+        size += delta;
+        pi->setFontPtSize(size);
+    }
+}
+
+void
 NMModelViewWidget::test()
 {
-   NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
-   NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(mLastItem);
-   QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(mLastItem);
-   QGraphicsProxyWidget* pw = qgraphicsitem_cast<QGraphicsProxyWidget*>(mLastItem);
-   std::string title;
 
-   if (ai)
-   {
-       title = ai->getTitle().toStdString();
-   }
-   else if (pi)
-   {
-       title = pi->getTitle().toStdString();
-       QList<NMComponentLinkItem*> inl = pi->getInputLinks();
-       QList<NMComponentLinkItem*> outl = pi->getOutputLinks();
-
-       int nin = inl.size();
-       int nout = outl.size();
-       NMLogDebug(<< title << ": " << nin << " inputs and " << nout << " outputs!" << std::endl);
-
-       int cnt = 0;
-       foreach(NMComponentLinkItem* li, inl)
-       {
-           QRectF r = li->sceneBoundingRect();
-           NMLogDebug(<< "sr-#" << cnt << " TL: " << r.left() << "," << r.top()
-                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
-
-           r = li->boundingRect();
-           NMLogDebug(<< "br-#" << cnt << " TL: " << r.left() << "," << r.top()
-                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
-           ++cnt;
-       }
-
-       cnt=0;
-       foreach(NMComponentLinkItem* oi, outl)
-       {
-           QRectF r = oi->sceneBoundingRect();
-           NMLogDebug(<< "#" << cnt << " TL: " << r.left() << "," << r.top()
-                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
-
-           r = oi->boundingRect();
-           NMLogDebug(<< "br-#" << cnt << " TL: " << r.left() << "," << r.top()
-                      << "  BR: " << r.right() << "," << r.bottom() << std::endl);
-           ++cnt;
-       }
-   }
-   else if (ti)
-   {
-       title = QString("%1 ...").arg(ti->toPlainText().left(15)).toStdString();
-   }
-   else if (pw)
-   {
-       title = pw->objectName().toStdString();
-   }
-
-   NMDebugAI(<< "probing '" << title << "' ... " << std::endl);
-
-   NMDebugAI(<< this->reportPoint(mLastItem->pos(), "item's pos") << std::endl);
-   NMDebugAI(<< this->reportPoint(mLastItem->scenePos(), "item's scene pos") << std::endl);
-   NMDebugAI(<< this->reportRect(mLastItem->boundingRect(), "item's rect") << std::endl);
-   NMDebugAI(<< this->reportRect(mLastItem->sceneBoundingRect(), "item's scene rect") << std::endl);
 }
 
 
@@ -905,7 +936,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     }
 
 	// SAVE & LOAD
-    if ((item != 0 && li == 0 && wi == 0) || item == 0)
+    //if ((item != 0 && li == 0 && wi == 0) || item == 0)
+    if (item != 0 && li == 0 && wi == 0)
     {
         this->mActionMap.value("Save As ...")->setEnabled(true);
         mActionMap.value("Save As ...")->setText(QString("Save %1 As ...").arg(title));
@@ -936,6 +968,13 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
                 mActionMap.value("Collapse")->setEnabled(true);
                 mActionMap.value("Unfold")->setEnabled(false);
             }
+        }
+        else
+        {
+            mActionMap.value("Collapse")->setText(QString("Collapse"));
+            mActionMap.value("Collapse")->setEnabled(false);
+            mActionMap.value("Unfold")->setText(QString("Unfold"));
+            mActionMap.value("Unfold")->setEnabled(false);
         }
     }
 	else

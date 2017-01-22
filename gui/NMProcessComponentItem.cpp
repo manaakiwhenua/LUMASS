@@ -52,14 +52,24 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     // item this is
     mIcon.load(":model-icon.png");
 
+    mFont = QFont("Arial", 10);
+    mFont.setBold(true);
+
+    initRectsNSizes();
+}
+
+NMProcessComponentItem::~NMProcessComponentItem()
+{
+}
+
+void
+NMProcessComponentItem::initRectsNSizes()
+{
     qreal dpr = 1;//qApp->devicePixelRatio();
     qreal smallGap = 2*dpr;
     qreal bigGap = 5*dpr;
 
     mIcon.scaledToWidth(64*dpr);
-
-    mFont = QFont("Arial", 10);
-    mFont.setBold(true);
 
     QFontMetrics fm(mFont);
 
@@ -93,11 +103,6 @@ NMProcessComponentItem::NMProcessComponentItem(QGraphicsItem* parent,
     mPointer2 = mPointer1;
     mPointer2.setLength(0.6*mPointer1.length());
     mPointer2.setAngle((qreal)-27.5);
-
-}
-
-NMProcessComponentItem::~NMProcessComponentItem()
-{
 }
 
 void
@@ -290,6 +295,26 @@ NMProcessComponentItem::updateTimeLevel(short level)
 }
 
 void
+NMProcessComponentItem::setFont(const QFont& font)
+{
+    mFont = font;
+    initRectsNSizes();
+    prepareGeometryChange();
+    this->updateDescription();
+    this->update();
+}
+
+void
+NMProcessComponentItem::setFontPtSize(const int pts)
+{
+    mFont.setPointSize(pts);
+    initRectsNSizes();
+    prepareGeometryChange();
+    this->updateDescription();
+    this->update();
+}
+
+void
 NMProcessComponentItem::setDescription(const QString& descr)
 {
     if (descr.compare(this->mDescription) != 0)
@@ -359,6 +384,7 @@ NMProcessComponentItem::paint(QPainter* painter,
     QFontMetrics fm(mFont);
 
     painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setFont(mFont);
 
 	if(mbIsExecuting)
 	{
@@ -430,6 +456,7 @@ NMProcessComponentItem::paint(QPainter* painter,
     // the type id
     if (this->mTypeID > 0)
     {
+        painter->setFont(mFont);
         painter->setPen(QPen(QBrush(Qt::darkGray), 2, Qt::SolidLine));
         painter->drawText(mIDRect, Qt::AlignRight, QString("%1").arg(mTypeID));
         painter->setPen(QPen(QBrush(Qt::black), 2, Qt::SolidLine));

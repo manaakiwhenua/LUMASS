@@ -88,6 +88,11 @@ public:
 
     void getAllModelOffSprings(QList<QGraphicsItem*>& offsprings);
 
+    void setFont(const QFont& font){mFont = font;}
+    QFont getFont(void){return mFont;}
+    void setFontPtSize(const int pts) {mFont.setPointSize(pts);}
+    int getFontPtSize(void){return mFont.pointSize();}
+
 
 public slots:
     void updateDescription(const QString& descr);

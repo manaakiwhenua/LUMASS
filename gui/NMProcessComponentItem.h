@@ -103,6 +103,11 @@ public:
     void setTypeID(const int& num)
         {this->mTypeID = num;}
 
+    void setFont(const QFont& font);
+    QFont getFont(void){return mFont;}
+    void setFontPtSize(const int pts);
+    int getFontPtSize(void){return mFont.pointSize();}
+
 	void addInputLink(int idx, NMComponentLinkItem* link);
 	void addOutputLink(int idx, NMComponentLinkItem* link);
 
@@ -132,6 +137,7 @@ public slots:
     void updateTimeLevel(short level);
 
 protected:
+    void initRectsNSizes();
     void updateDescription();
 
 private:

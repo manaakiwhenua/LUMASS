@@ -984,15 +984,17 @@ NMModelScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                 tv->processParaTableRightClick(event, pwi);
             }
         }
-        else if (item)
+        else// if (item)
         {
             // first, we check, whether we've got a link on the hook
             sendItem = this->getLinkItem(event->scenePos());
-            if (sendItem == 0 && item != 0)
+            if (sendItem != 0) //(sendItem == 0 && item != 0)
             {
-                sendItem = item;
+                //sendItem = item;
+                item = sendItem;
             }
-            emit itemRightBtnClicked(event, sendItem);
+            //emit itemRightBtnClicked(event, sendItem);
+            emit itemRightBtnClicked(event, item);
         }
 	}
 	else

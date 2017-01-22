@@ -50,7 +50,7 @@
      <x>0</x>
      <y>0</y>
      <width>1001</width>
-     <height>23</height>
+     <height>35</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -114,10 +114,10 @@
     <addaction name="separator"/>
     <addaction name="actionShow_Map_View"/>
     <addaction name="actionShow_Model_View"/>
-    <addaction name="actionShow_Notifications"/>
     <addaction name="separator"/>
     <addaction name="actionComponents_View"/>
     <addaction name="actionShow_Components_Info"/>
+    <addaction name="actionShow_Notifications"/>
     <addaction name="separator"/>
     <addaction name="actionShowTable"/>
    </widget>
@@ -166,7 +166,7 @@
     <set>Qt::AllDockWidgetAreas</set>
    </property>
    <property name="windowTitle">
-    <string>Layers  Components</string>
+    <string>&amp;Layers  Components</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -189,8 +189,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>69</width>
-          <height>611</height>
+          <width>76</width>
+          <height>581</height>
          </rect>
         </property>
         <property name="acceptDrops">
@@ -227,8 +227,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>69</width>
-          <height>611</height>
+          <width>76</width>
+          <height>581</height>
          </rect>
         </property>
        </widget>
@@ -239,7 +239,7 @@
   </widget>
   <widget class="QDockWidget" name="logDock">
    <property name="windowTitle">
-    <string>Notifications</string>
+    <string>&amp;Notifications</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -513,7 +513,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Notifications</string>
+    <string>&amp;Notifications</string>
    </property>
   </action>
  </widget>

@@ -591,9 +591,17 @@ NMIterableComponent::getOutput(unsigned int idx)
 
 
         ret = mProcess->getOutput(idx);
-        if (!ret.isNull() && ret->getOTBTab().IsNotNull())
+        if (!ret.isNull())
         {
-            ret->getOTBTab()->AddObserver(itk::NMLogEvent(), mProcess->getObserver());
+            if (ret->getOTBTab().IsNotNull())
+            {
+                ret->getOTBTab()->AddObserver(itk::NMLogEvent(), mProcess->getObserver());
+            }
+        }
+        else
+        {
+            NMLogWarn(<< this->objectName().toStdString() <<
+                    ": No output available!");
         }
         return ret;
 	}

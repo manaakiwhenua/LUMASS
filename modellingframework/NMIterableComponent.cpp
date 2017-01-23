@@ -591,7 +591,7 @@ NMIterableComponent::getOutput(unsigned int idx)
 
 
         ret = mProcess->getOutput(idx);
-        if (ret->getOTBTab().IsNotNull())
+        if (!ret.isNull() && ret->getOTBTab().IsNotNull())
         {
             ret->getOTBTab()->AddObserver(itk::NMLogEvent(), mProcess->getObserver());
         }

@@ -2968,14 +2968,21 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     }
 
     // associate the table with the band
-    err = band->SetDefaultRAT(gdaltab);
-    if (err == CE_Failure)
+    // (only if there is actually a record in the table yet,
+    // it could be we're in update mode and the table is only
+    // being made available once all pixels have been processed
+    // (e.g. SumZones))
+    if (rowcount && gdaltab->GetColumnCount())
     {
-        if (bClose) this->CloseDataset();
-        delete gdaltab;
-        itkExceptionMacro(<< "Failed writing table to band!");
+        err = band->SetDefaultRAT(gdaltab);
+        if (err == CE_Failure)
+        {
+            if (bClose) this->CloseDataset();
+            delete gdaltab;
+            itkExceptionMacro(<< "Failed writing table to band!");
+        }
+        m_Dataset->FlushCache();
     }
-    m_Dataset->FlushCache();
 
     // if we don't close the data set here, the RAT is not written properly to disk
     // (not quite sure why that's not done when m_Dataset runs out of scope(?)
@@ -3169,14 +3176,21 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     if (bCloseConnection) tab->CloseTable();
 
 	// associate the table with the band
-    err = band->SetDefaultRAT(gdaltab);
-	if (err == CE_Failure)
-	{
-        if (bCloseDataSet) this->CloseDataset();
-        delete gdaltab;
-		itkExceptionMacro(<< "Failed writing table to band!");
-	}
-    m_Dataset->FlushCache();
+    // (only if there is actually a record in the table yet,
+    // it could be we're in update mode and the table is only
+    // being made available once all pixels have been processed
+    // (e.g. SumZones))
+    if (rowcount && gdaltab->GetColumnCount())
+    {
+        err = band->SetDefaultRAT(gdaltab);
+        if (err == CE_Failure)
+        {
+            if (bCloseDataSet) this->CloseDataset();
+            delete gdaltab;
+            itkExceptionMacro(<< "Failed writing table to band!");
+        }
+        m_Dataset->FlushCache();
+    }
 
     // if we don't close the data set here, the RAT is not written properly to disk
     // (not quite sure why that's not done when m_Dataset runs out of scope(?)

@@ -589,7 +589,6 @@ NMIterableComponent::getOutput(unsigned int idx)
         NMLogDebug(<< this->objectName().toStdString()
                 << "->getOutput(" << idx << ")" << std::endl);
 
-
         ret = mProcess->getOutput(idx);
         if (!ret.isNull())
         {
@@ -880,6 +879,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         NMLogDebug(<< "update " << this->objectName().toStdString() << "'s process...");
 		if (!this->mProcess->isInitialised())
 			this->mProcess->instantiateObject();
+        this->mProcess->setLogger(mLogger);
 		this->mProcess->linkInPipeline(i, repo);
         this->mProcess->update();
 		NMDebugCtx(this->objectName().toStdString(), << "done!");

@@ -232,6 +232,8 @@ public:
         return v;
     }
 
+    std::string getLastLogMsg(void){return m_lastLogMsg;}
+
 protected:
         SQLiteTable();
     virtual ~SQLiteTable();
@@ -247,6 +249,7 @@ protected:
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);
     inline void sqliteStepCheck(const int& rc);
 
+    std::string m_lastLogMsg;
 
     bool m_bUseSharedCache;
     bool m_bOpenReadOnly;

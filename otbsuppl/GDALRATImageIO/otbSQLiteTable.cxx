@@ -2787,7 +2787,8 @@ SQLiteTable::SQLiteTable()
       //m_idColName(""),
       m_tableName(""),
       m_bUseSharedCache(true),
-      m_bOpenReadOnly(false)
+      m_bOpenReadOnly(false),
+      m_lastLogMsg("")
 {
     //this->createTable("");
     this->m_ATType = ATTABLE_TYPE_SQLITE;
@@ -3192,6 +3193,7 @@ SQLiteTable::SqlExec(const std::string& sqlstr)
     char* errMsg;
     if (sqlite3_exec(m_db, sqlstr.c_str(), 0, 0, &errMsg) != 0)
     {
+        m_lastLogMsg = errMsg;
         NMProcWarn(<< "SQLite3 ERROR: " << errMsg);
         sqlite3_free((void*)errMsg);
         ret = false;

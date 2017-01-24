@@ -141,7 +141,8 @@ void SQLiteProcessor< TInputImage, TOutputImage >
                                           m_ImageNames.at(i)))
         {
             NMDebugCtx(ctx, << "done!");
-            itkExceptionMacro(<< "Failed attaching input databases!");
+            itkExceptionMacro(<< "Failed attaching input databases - "
+                              << m_vRAT.at(0)->getLastLogMsg());
             return;
         }
     }
@@ -153,14 +154,16 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         // we just give a warning here, since we might do things
         // like adding a column; and if the column is already
         // present, the overall modelling run is not interrupted
-        NMProcWarn(<< "SQL processing failed!");
+        NMProcWarn(<< "SQL processing failed - "
+                   << m_vRAT.at(0)->getLastLogMsg());
         return;
     }
 
 
     for (int i=1; i < m_vRAT.size(); ++i)
     {
-        if (!m_vRAT.at(i)->DetachDatabase(m_ImageNames.at(i)))
+        //if (!m_vRAT.at(i)->DetachDatabase(m_ImageNames.at(i)))
+        if (!m_vRAT.at(0)->DetachDatabase(m_ImageNames.at(i)))
         {
             NMDebugCtx(ctx, << "done!");
             // we just warn here, because we had problems with detaching the
@@ -169,7 +172,8 @@ void SQLiteProcessor< TInputImage, TOutputImage >
             // and it is still locked; attachement should be released
             // once the otbSQLiteTable pointer goes out of scope and
             // the host database is closed anyway ...
-            NMProcWarn(<< "Failed detaching databases!");
+            NMProcWarn(<< "Failed detaching databases - "
+                       << m_vRAT.at(i)->getLastLogMsg());
             return;
         }
     }
@@ -177,7 +181,8 @@ void SQLiteProcessor< TInputImage, TOutputImage >
     if (!m_vRAT.at(0)->PopulateTableAdmin())
     {
         NMDebugCtx(ctx, << "done!");
-        itkExceptionMacro(<< "Failed repopulating the main table's admin structures!");
+        itkExceptionMacro(<< "Failed repopulating the main table's admin structures! "
+                          << m_vRAT.at(0)->getLastLogMsg());
     }
 
     m_ProcessedPixel = 0;

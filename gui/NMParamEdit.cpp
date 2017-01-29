@@ -61,12 +61,15 @@ NMParamEdit::NMParamEdit(QWidget *parent)
 
     mMuParserParameterList << "MapExpressions" << "KernelScript";
 
-    mRegEx = QRegularExpression("((?<open>\\$\\[)*(?(<open>)|\\b)"
-                                 "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-                                 "(?<sep1>(?(<open>):|(?>__)))*"
-                                 "(?<prop>(?(<sep1>)\\g<comp>))*"
-                                 "(?<sep2>(?(<prop>)(?(<open>)):))*"
-                                 "(?<idx>(?(<sep2>)\\d+))*)");
+
+    mRegEx = QRegularExpression("((?<open>\\$\\[)*"
+                             "(?(<open>)|\\b)"
+                             "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+                             "(?<sep1>(?(<open>):|(?>__)))*"
+                             "(?<prop>(?(<sep1>)\\g<comp>))*"
+                             "(?<sep2>(?(<prop>)(?(<open>)):))*"
+                             "(?<idx>(?(<sep2>)[\\w]*)))");
+
 }
 
 NMModelComponent*
@@ -221,7 +224,7 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
         int spos = match.capturedStart(0);
         int epos = match.capturedEnd(0);
         int len = match.capturedLength(0);
-        //qDebug() << "cpos=" << cpos << "match: " << tmpStr << " (" << spos << "," << epos << ")";
+        qDebug() << "cpos=" << cpos << "match: " << tmpStr << " (" << spos << "," << epos << ")";
 
 
         if (cpos >= spos && cpos <= epos)
@@ -231,10 +234,11 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
             QStringRef sep1 = match.capturedRef("sep1");
             QStringRef prop = match.capturedRef("prop");
             QStringRef sep2 = match.capturedRef("sep2");
-            //qDebug() << "comp=" << comp.position()
-            //         << " sep1=" << (sep1.isEmpty() ? -1 : sep1.position())
-            //         << " prop=" << prop.position()
-            //         << " sep2=" << (sep2.isEmpty() ? -1 : sep2.position());
+            QStringRef idx = match.capturedRef("idx");
+            qDebug() << "comp=" << comp.position()
+                     << " sep1=" << (sep1.isEmpty() ? -1 : sep1.position())
+                     << " prop=" << prop.position()
+                     << " sep2=" << (sep2.isEmpty() ? -1 : sep2.position());
 
 
             // Col value completion
@@ -242,9 +246,24 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
             {
                 // $[mycomp:myprop:index]$
                 // cat__myprop
-                //qDebug() << "value completion prefix: \n";
-                completionMode = setupValueCompleter(comp.toString(), prop.toString());
-                mCompleter->setCompletionPrefix(QString(""));
+                completionMode = NM_COLVALUE_COMPLETION;
+                if (mCompletionMode != NM_COLVALUE_COMPLETION)
+                {
+                    setupValueCompleter(comp.toString(), prop.toString());
+                }
+
+                QString prefix;
+                if (!idx.isEmpty())
+                {
+                    prefix = idx.mid(0, cpos-idx.position()).toString();
+                }
+                else
+                {
+                    prefix = tmpStr.mid(sep2.position()+1, epos-sep2.position());
+                }
+                mCompleter->setCompletionPrefix(prefix);
+                qDebug() << "value completion prefix: " << prefix;
+                //mCompleter->setCompletionPrefix(QString(""));
             }
             // Prop completion
             else if (   !sep1.isEmpty() && cpos >= sep1.position() + sep1.length()
@@ -298,7 +317,7 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
         }
     }
     mCompletionMode = completionMode;
-    //qDebug() << "completion mode: " << completionMode;
+    qDebug() << "completion mode: " << completionMode;
 
     if (mCompletionMode != NM_NO_COMPLETION)
     {

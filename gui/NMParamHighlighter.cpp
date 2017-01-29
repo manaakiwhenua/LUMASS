@@ -79,6 +79,16 @@ NMParamHighlighter::NMParamHighlighter(QObject* parent)
     mKernelScriptKeywords = mMuParserKeywords;
     mKernelScriptKeywords << "for" << "numPix" << "centrePixIdx" << "addr"
                           << "thid" << "kwinVal" << "tabVal" << "neigDist";
+
+    mRegEx = QRegularExpression("((?<open>\\$\\[)*"
+                                "(?(<open>)|\\b)"
+                                "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+                                "(?<sep1>(?(<open>):|(?>__)))*"
+                                "(?<prop>(?(<sep1>)\\g<comp>))*"
+                                "(?<sep2>(?(<prop>)(?(<open>)):))*"
+                                "(?<idx>(?(<sep2>)[0-9]+)))");
+
+    mRegExNum = QRegularExpression("\\b(\\d+(?<pt>\\.)*(?(pt)\\d)*(?<sn>e)*(?(sn)[+-]\\d+))\\b");
 }
 
 void
@@ -107,6 +117,29 @@ NMParamHighlighter::highlightBlock(const QString &text)
     QTextCharFormat keywordFormat;
     keywordFormat.setForeground(Qt::darkBlue);
 
+    QTextCharFormat idxFormat; // dark orange
+    idxFormat.setForeground(QColor(200, 133, 0));
+
+    QTextCharFormat numberFormat;
+    numberFormat.setForeground(Qt::darkRed);
+
+    // =================================================================
+    // looking for numbers e.g. 3.5 or 133 or 1e-9 or 1e+3
+    // =================================================================
+    QRegularExpressionMatchIterator numit = mRegExNum.globalMatch(text);
+    while (numit.hasNext())
+    {
+        QRegularExpressionMatch match = numit.next();
+        if (match.hasMatch())
+        {
+            setFormat(match.capturedStart(0), match.capturedLength(0), numberFormat);
+        }
+    }
+
+
+    // =================================================================================
+    // looking for paramter expressions, e.g. imgId__ColumnName or $[component:property:index]$
+    // =================================================================================
     QRegularExpressionMatchIterator mit = mRegEx.globalMatch(text);
     while (mit.hasNext())
     {
@@ -120,6 +153,11 @@ NMParamHighlighter::highlightBlock(const QString &text)
 
         if (!comp.isEmpty())
         {
+            if (!idx.isEmpty() && !sep1.isEmpty() && sep1.compare(QString("__")) != 0)
+            {
+                setFormat(idx.position(), idx.length(), idxFormat);
+            }
+
             if (!prop.isEmpty())
             {
                 if (  (   sep1.compare(QString("__")) == 0

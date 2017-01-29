@@ -77,11 +77,11 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     mEdit->setPlaceholderText("Select a parameter");
     mEdit->installEventFilter(this);
     mHighlighter = new NMParamHighlighter(mEdit);
-    mHighlighter->setRegularExpression(mEdit->getRegEx());
+    //mHighlighter->setRegularExpression(mEdit->getRegEx());
 
     mPreview = new QTextBrowser(this);
     mPreviewHighlighter = new NMParamHighlighter(mPreview);
-    mPreviewHighlighter->setRegularExpression(mEdit->getRegEx());
+    //mPreviewHighlighter->setRegularExpression(mEdit->getRegEx());
     splitter->addWidget(mPreview);
     mPreview->hide();
 

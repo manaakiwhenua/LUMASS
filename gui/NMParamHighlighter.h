@@ -51,6 +51,7 @@ private:
     QStringList mMuParserKeywords;
     QStringList mKernelScriptKeywords;
     QRegularExpression mRegEx;
+    QRegularExpression mRegExNum;
 
 };
 

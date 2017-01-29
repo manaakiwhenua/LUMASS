@@ -140,25 +140,28 @@ public:
 		}
 
 	static void setNthInput(itk::ProcessObject::Pointer& otbFilter,
-            unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, bool rgbMode)
+            unsigned int numBands, unsigned int idx, itk::DataObject* dataObj, bool rgbMode, bool writeImage)
 		{
 			if (numBands == 1)
 			{
 				FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
 				ImgType* img = dynamic_cast<ImgType*>(dataObj);
 				filter->SetInput(img);
+                filter->SetWriteImage(writeImage);
 			}
             else if (numBands == 3 && rgbMode)
             {
                 RGBFilterType* filter = dynamic_cast<RGBFilterType*>(otbFilter.GetPointer());
                 RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj);
                 filter->SetInput(img);
+                filter->SetWriteImage(writeImage);
             }
 			else
 			{
 				VecImgType* img = dynamic_cast<VecImgType*>(dataObj);
 				VecFilterType* filter = dynamic_cast<VecFilterType*>(otbFilter.GetPointer());
 				filter->SetInput(img);
+                filter->SetWriteImage(writeImage);
 			}
 		}
 
@@ -606,17 +609,17 @@ template class NMStreamingImageFileWriterWrapper_Internal<double, double, 3>;
 	if (this->mOutputNumDimensions == 1) \
 	{ \
 		wrapName< imgType, imgType, 1 >::setNthInput( \
-                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode); \
+                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode, mWriteImage); \
 	} \
 	else if (this->mOutputNumDimensions == 2) \
 	{ \
 		wrapName< imgType, imgType, 2 >::setNthInput( \
-                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode); \
+                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode, mWriteImage); \
 	} \
 	else if (this->mOutputNumDimensions == 3) \
 	{ \
 		wrapName< imgType, imgType, 3 >::setNthInput( \
-                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode); \
+                this->mOtbProcess, this->mOutputNumBands, numInput, img, mRGBMode, mWriteImage); \
 	}\
 }
 
@@ -730,6 +733,8 @@ NMStreamingImageFileWriterWrapper
 	this->mOutputNumBands = 1;
 	this->mInputNumDimensions = 2;
 	this->mOutputNumDimensions = 2;
+    this->mWriteTable = true;
+    this->mWriteImage = true;
     this->mUpdateMode = false;
     this->mRGBMode = false;
 
@@ -766,6 +771,7 @@ NMStreamingImageFileWriterWrapper
 	this->mOutputNumBands = numBands;
 	this->mInputNumDimensions = numDims;
 	this->mOutputNumDimensions = numDims;
+    this->mWriteImage = true;
     this->mWriteTable = true;
     this->mUpdateMode = false;
     this->mRGBMode = false;
@@ -1009,7 +1015,7 @@ NMStreamingImageFileWriterWrapper
 ::setNthInput(unsigned int numInput,
         QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
 {
-	if (!this->mbIsInitialised)
+    if (!this->mbIsInitialised)
 		return;
 
 	itk::DataObject* img = imgWrapper->getDataObject();
@@ -1019,26 +1025,6 @@ NMStreamingImageFileWriterWrapper
 	default:
 		break;
 	}
-
-//    // only if we haven't got an externally specified table,
-//    // we use the one, which comes with the data object
-//    QVariant param = this->getParameter("InputTables");
-//    if (    mWriteTable
-//        &&  (!param.isValid() || param.isNull())
-//       )
-//    {
-//        otb::AttributeTable::Pointer tab = imgWrapper->getOTBTab();
-//        unsigned int tabIdx = 1;
-//        if (tab.IsNotNull())
-//        {
-//            switch(this->mOutputComponentType)
-//            {
-//            MacroPerType( callOutputTypeSetTab, NMStreamingImageFileWriterWrapper_Internal )
-//            default:
-//                break;
-//            }
-//        }
-//    }
 }
 
 

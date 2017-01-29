@@ -95,6 +95,7 @@ StreamingRATImageFileWriter<TInputImage>
   m_UseForcedLPR = false;
   m_UseUpdateRegion = false;
   m_UpdateMode = false;
+  m_WriteImage = true;
 #ifdef BUILD_RASSUPPORT
   this->mRasconn = 0;
 #endif
@@ -610,6 +611,7 @@ StreamingRATImageFileWriter<TInputImage>
   InputImagePointer inputPtr =
     const_cast<InputImageType *>(this->GetInput(0));
 
+
   /**
    * Set the user's streaming preferences
    */
@@ -631,18 +633,25 @@ StreamingRATImageFileWriter<TInputImage>
 
   /** Control if the ImageIO is CanStreamWrite*/
   if (m_ImageIO->CanStreamWrite() == false || InputImageDimension == 1)
-    {
-    otbWarningMacro(
-      << "ImageIO doesn't support streaming, or we've got a 1D image!");
-    this->SetNumberOfDivisionsStrippedStreaming(1);
-    }
+  {
+      otbWarningMacro(
+                  << "ImageIO doesn't support streaming, or we've got a 1D image!");
+      this->SetNumberOfDivisionsStrippedStreaming(1);
+  }
   else if (inputPtr->GetBufferedRegion() == inputPtr->GetLargestPossibleRegion())
-    {
-    otbMsgDevMacro(<< "Buffered region is the largest possible region, there is no need for streaming.");
-    this->SetNumberOfDivisionsStrippedStreaming(1);
-    }
+  {
+      otbMsgDevMacro(<< "Buffered region is the largest possible region, there is no need for streaming.");
+      this->SetNumberOfDivisionsStrippedStreaming(1);
+  }
   m_StreamingManager->PrepareStreaming(inputPtr, outputRegion);
   m_NumberOfDivisions = m_StreamingManager->GetNumberOfSplits();
+
+  // no point in chopping up the image, if we're not
+  // intrested in it (and only want to write the table)
+  if (!m_WriteImage)
+  {
+      m_NumberOfDivisions = 1;
+  }
   otbMsgDebugMacro(<< "Number Of Stream Divisions : " << m_NumberOfDivisions);
 
   /**
@@ -660,21 +669,21 @@ StreamingRATImageFileWriter<TInputImage>
   const typename TInputImage::DirectionType& direction = outputPtr->GetDirection();
 
   for (unsigned int i = 0; i < TInputImage::ImageDimension; ++i)
-    {
-    // Final image size
-    m_ImageIO->SetDimensions(i, outputRegion.GetSize(i));
-    m_ImageIO->SetSpacing(i, spacing[i]);
-    m_ImageIO->SetOrigin(i, origin[i]);
+  {
+      // Final image size
+      m_ImageIO->SetDimensions(i, outputRegion.GetSize(i));
+      m_ImageIO->SetSpacing(i, spacing[i]);
+      m_ImageIO->SetOrigin(i, origin[i]);
 
-    vnl_vector<double> axisDirection(TInputImage::ImageDimension);
-    // Please note: direction cosines are stored as columns of the
-    // direction matrix
-    for (unsigned int j = 0; j < TInputImage::ImageDimension; ++j)
+      vnl_vector<double> axisDirection(TInputImage::ImageDimension);
+      // Please note: direction cosines are stored as columns of the
+      // direction matrix
+      for (unsigned int j = 0; j < TInputImage::ImageDimension; ++j)
       {
-      axisDirection[j] = direction[j][i];
+          axisDirection[j] = direction[j][i];
       }
-    m_ImageIO->SetDirection(i, axisDirection);
-    }
+      m_ImageIO->SetDirection(i, axisDirection);
+  }
 
   m_ImageIO->SetUseCompression(m_UseCompression);
   m_ImageIO->SetMetaDataDictionary(inputPtr->GetMetaDataDictionary());
@@ -698,30 +707,32 @@ StreamingRATImageFileWriter<TInputImage>
   for (m_CurrentDivision = 0;
        m_CurrentDivision < m_NumberOfDivisions && !this->GetAbortGenerateData();
        m_CurrentDivision++, m_DivisionProgress = 0, this->UpdateFilterProgress())
-    {
-    streamRegion = m_StreamingManager->GetSplit(m_CurrentDivision);
+  {
+      streamRegion = m_StreamingManager->GetSplit(m_CurrentDivision);
 
-    inputPtr->SetRequestedRegion(streamRegion);
-    inputPtr->PropagateRequestedRegion();
-    inputPtr->UpdateOutputData();
+      inputPtr->SetRequestedRegion(streamRegion);
+      inputPtr->PropagateRequestedRegion();
+      inputPtr->UpdateOutputData();
 
-    // Write the whole image
-    itk::ImageIORegion ioRegion(TInputImage::ImageDimension);
-    for (unsigned int i = 0; i < TInputImage::ImageDimension; ++i)
+      // Write the whole image
+      itk::ImageIORegion ioRegion(TInputImage::ImageDimension);
+      for (unsigned int i = 0; i < TInputImage::ImageDimension; ++i)
       {
-      ioRegion.SetSize(i, streamRegion.GetSize(i));
-      ioRegion.SetIndex(i, streamRegion.GetIndex(i));
+          ioRegion.SetSize(i, streamRegion.GetSize(i));
+          ioRegion.SetIndex(i, streamRegion.GetIndex(i));
       }
-    this->SetIORegion(ioRegion);
-    m_ImageIO->SetIORegion(m_IORegion);
+      this->SetIORegion(ioRegion);
+      m_ImageIO->SetIORegion(m_IORegion);
 
-    // Start writing stream region in the image file
-    this->GenerateData();
-    //this->ReleaseInputs();
-    }
+      // Start writing stream region in the image file
+      if (m_WriteImage)
+      {
+          this->GenerateData();
+      }
+  }
 
   /** build overviews */
-  if (m_ResamplingType.compare("NONE") != 0)
+  if (m_ResamplingType.compare("NONE") != 0 && m_WriteImage)
   {
       if (gio != 0)
       {
@@ -734,12 +745,32 @@ StreamingRATImageFileWriter<TInputImage>
    * it probably didn't end there)
    */
   if (!this->GetAbortGenerateData())
-    {
-    this->UpdateProgress(1.0);
-    }
+  {
+      this->UpdateProgress(1.0);
+  }
 
   // Notify end event observers
   this->InvokeEvent(itk::EndEvent());
+
+
+  // ONLY WHEN RAT AVAILABLE AND HAS NOT BEEN WRITTEN WITH IMAGE (above)
+  if (!m_WriteImage && m_InputRAT.IsNotNull())
+  {
+      if (gio)
+      {
+          NMProcDebug(<< "writing ONLY RAT!");
+          gio->WriteRAT(m_InputRAT);
+      }
+      if (m_InputRAT->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+      {
+          otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(m_InputRAT.GetPointer());
+          if (sqltab)
+          {
+              sqltab->CloseTable();
+          }
+      }
+  }
+
 
   /**
    * Now we have to mark the data as up to data.

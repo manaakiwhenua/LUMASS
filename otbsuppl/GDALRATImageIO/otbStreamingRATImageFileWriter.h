@@ -269,6 +269,11 @@ public:
   itkGetMacro(UpdateMode, bool);
   itkBooleanMacro(UpdateMode);
 
+
+  itkSetMacro(WriteImage, bool);
+  itkGetMacro(WriteImage, bool);
+  itkBooleanMacro(WriteImage);
+
   /** introduce a rasdaman mode to run this writer explicitly with
    *  with an RasdamanImageIO; this seems to be a dirty hack and violates
    *  somehow the generica nature of this writer, but otherwise rasdaman
@@ -369,6 +374,7 @@ private:
   bool m_UseForcedLPR;
   bool m_UseUpdateRegion;
   bool m_UpdateMode;
+  bool m_WriteImage;
 
 #ifdef BUILD_RASSUPPORT
   RasdamanConnector* mRasconn;

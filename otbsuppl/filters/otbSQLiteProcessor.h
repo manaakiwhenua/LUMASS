@@ -88,7 +88,8 @@ public:
     AttributeTable::Pointer getRAT(unsigned int idx);
     void setRAT(unsigned int idx, AttributeTable::Pointer);
 
-    virtual void ResetPipeline();
+
+    void GenerateInputRequestedRegion();
 
 
 protected:
@@ -102,7 +103,7 @@ protected:
     std::string m_SQLStatement;
 
     std::vector<SQLiteTable::Pointer> m_vRAT;
-    long long m_ProcessedPixel;
+
 
 private:
     static const std::string ctx;

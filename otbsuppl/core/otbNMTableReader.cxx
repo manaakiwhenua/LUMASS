@@ -68,7 +68,7 @@ NMTableReader::GenerateData()
         if (!tab->CreateFromVirtual(m_FileName))
         {
             itkExceptionMacro("Failed reading table '"
-                              << m_FileName << "'!")
+                              << m_FileName << "'! Double check FileName!")
             return;
         }
     }
@@ -85,7 +85,7 @@ NMTableReader::GenerateData()
         tab->SetTableName(m_TableName);
         if (!tab->PopulateTableAdmin())
         {
-            itkExceptionMacro("Failed reading table data!");
+            itkExceptionMacro("Failed reading table data! Double check FileName and TableName!");
             return;
         }
     }

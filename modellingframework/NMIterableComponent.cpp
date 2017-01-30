@@ -75,6 +75,10 @@ void NMIterableComponent::setProcess(NMProcess* proc)
 //	NMDebugCtx(ctx, << "...");
 
 	this->mProcess = proc;
+    if (mLogger)
+    {
+        this->mProcess->setLogger(mLogger);
+    }
 	this->mProcessChainPointer = 0;
 	this->mProcessChainStart = 0;
 	proc->setParent(0);
@@ -975,6 +979,17 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 				NMDebugCtx(this->objectName().toStdString(), << "done!");
 				return;
 			}
+
+            // release resources
+            foreach (const QString in, pipeline)
+            {
+                comp = controller->getComponent(in);
+                NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+                if (ic && ic->getProcess() != 0)
+                {
+                    ic->getProcess()->reset();
+                }
+            }
 		}
 	}
 

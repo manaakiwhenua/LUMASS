@@ -75,15 +75,18 @@ void NMIterableComponent::setProcess(NMProcess* proc)
 //	NMDebugCtx(ctx, << "...");
 
 	this->mProcess = proc;
-    if (mLogger)
-    {
-        this->mProcess->setLogger(mLogger);
-    }
 	this->mProcessChainPointer = 0;
 	this->mProcessChainStart = 0;
-	proc->setParent(0);
-	proc->moveToThread(this->thread());
-	proc->setParent(this);
+    if (this->mProcess)
+    {
+        if (mLogger)
+        {
+            this->mProcess->setLogger(mLogger);
+        }
+        this->mProcess->setParent(0);
+        this->mProcess->moveToThread(this->thread());
+        this->mProcess->setParent(this);
+    }
 
 //	NMDebugCtx(ctx, << "done!");
 

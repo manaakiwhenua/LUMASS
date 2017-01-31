@@ -1581,7 +1581,14 @@ SQLiteTable::GetStrValue(const std::string& sColName, long long idx)
     if (rc == SQLITE_ROW)
     {
         const unsigned char* sval = sqlite3_column_text(stmt, 0);
-        ret << sval;
+        if (sval)
+        {
+            ret << sval;
+        }
+        else
+        {
+            ret << m_sNodata;
+        }
     }
     else
     {
@@ -2073,7 +2080,14 @@ std::string SQLiteTable::GetStrValue(int col, long long row)
     if (rc == SQLITE_ROW)
     {
         const unsigned char* sval = sqlite3_column_text(stmt, 0);
-        ret << sval;
+        if (sval)
+        {
+            ret << sval;
+        }
+        else
+        {
+            ret << m_sNodata;
+        }
     }
     else
     {
@@ -3169,7 +3183,10 @@ SQLiteTable::GetTableList(void)
     {
         tnamestr.str("");
         const unsigned char* sval = sqlite3_column_text(stmt_tablelist, 0);
-        tnamestr << sval;
+        if (sval)
+        {
+            tnamestr << sval;
+        }
         vtables.push_back(tnamestr.str());
     }
 

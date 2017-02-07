@@ -652,12 +652,11 @@ NMModelSerialiser::serialiseComponent(NMModelComponent* comp,
 		if (ic->getProcess() == 0)
 		{
 			QStringList strCompChain;
-			NMModelComponent* sc = ic->getInternalStartComponent();
-			while (sc != 0)
+            NMModelComponentIterator cit = ic->getComponentIterator();
+            while (*cit != 0)
 			{
-				//this->serialiseComponent(sc, doc);
-				strCompChain << sc->objectName();
-				sc = ic->getNextInternalComponent();
+                strCompChain << cit->objectName();
+                ++cit;
 			}
 
 			QDomElement subComps = doc.createElement("Subcomponents");

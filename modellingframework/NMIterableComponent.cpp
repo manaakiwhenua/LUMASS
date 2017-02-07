@@ -35,6 +35,39 @@
 #include "NMProcessFactory.h"
 #include "utils/muParser/muParserError.h"
 
+///////////////////////////////////////////////
+/// NMModelComponentIterator implementation
+///////////////////////////////////////////////
+
+void
+NMModelComponentIterator::init(NMIterableComponent* ic)
+{
+    mIterList.clear();
+    mComponent = 0;
+    mListPos = -1;
+    if (ic == 0)
+    {
+        return;
+    }
+
+    NMModelComponent* c = ic->getInternalStartComponent();
+    while (c != 0)
+    {
+        mIterList << c;
+        c = ic->getNextInternalComponent();
+    }
+
+    if (mIterList.size())
+    {
+        mComponent = mIterList.at(0);
+        mListPos = 0;
+    }
+}
+
+///////////////////////////////////////////////
+/// NMIterableComponent implementation
+///////////////////////////////////////////////
+
 const std::string NMIterableComponent::ctx = "NMIterableComponent";
 
 NMIterableComponent::NMIterableComponent(QObject* parent)
@@ -58,6 +91,12 @@ void NMIterableComponent::initAttributes(void)
 
 NMIterableComponent::~NMIterableComponent(void)
 {
+}
+
+NMModelComponentIterator
+NMIterableComponent::getComponentIterator()
+{
+    return NMModelComponentIterator(this);
 }
 
 void
@@ -135,12 +174,11 @@ int NMIterableComponent::countComponents(void)
 {
 	int ret = 0;
 
-	NMModelComponent* comp = this->getInternalStartComponent();
-
-	while(comp != 0)
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while(*cit != 0)
 	{
 		++ret;
-		comp = this->getNextInternalComponent();
+        ++cit;
 	}
 
 	return ret;
@@ -171,7 +209,8 @@ void NMIterableComponent::addModelComponent(NMModelComponent* comp)
 //	NMDebugAI(<< "new chain: ");
 	comp->setHostComponent(this);
 
-	NMModelComponent* lastComp = this->getInternalStartComponent();
+    NMModelComponentIterator cit = this->getComponentIterator();
+    NMModelComponent* lastComp = *cit;
 	if (lastComp == 0)
 	{
 		this->mProcessChainStart = comp;
@@ -181,9 +220,12 @@ void NMIterableComponent::addModelComponent(NMModelComponent* comp)
 	}
 //	NMDebug(<< " '" << lastComp->objectName().toStdString() << "'");
 
-	while (lastComp->getDownstreamModelComponent() != 0)
+    //while (lastComp->getDownstreamModelComponent() != 0)
+    ++cit;
+    while(*cit != 0)
 	{
-		lastComp = this->getNextInternalComponent();
+        lastComp = *cit;//this->getNextInternalComponent();
+        ++cit;
 //		NMDebug(<< " '" << lastComp->objectName().toStdString() << "'");
 	}
 //	NMDebug(<< "'" << comp->objectName().toStdString() << "'" << std::endl);
@@ -430,31 +472,33 @@ void NMIterableComponent::insertModelComponent(NMModelComponent* insertComp,
 
 NMModelComponent* NMIterableComponent::findModelComponent(const QString& compName)
 {
-	NMModelComponent* curComp = this->getInternalStartComponent();
-	while (curComp != 0)
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while(*cit != 0)
 	{
-		if (curComp->objectName().compare(compName, Qt::CaseInsensitive) == 0)
-			break;
-		curComp = this->getNextInternalComponent();
+        if (cit->objectName().compare(compName, Qt::CaseInsensitive) == 0)
+        {
+            return *cit;
+        }
+        ++cit;
 	}
 
-	return curComp;
+    return *cit;
 }
 
 NMModelComponent*
 NMIterableComponent::findComponentByUserId(const QString& userId)
 {
-    NMModelComponent* curComp = this->getInternalStartComponent();
-    while (curComp != 0)
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while(*cit != 0)
     {
-        if (curComp->getUserID().compare(userId, Qt::CaseInsensitive) == 0)
+        if (cit->getUserID().compare(userId, Qt::CaseInsensitive) == 0)
         {
-            break;
+            return *cit;
         }
-        curComp = this->getNextInternalComponent();
+        ++cit;
     }
 
-    return curComp;
+    return *cit;
 }
 
 NMModelComponent*
@@ -517,7 +561,6 @@ NMModelComponent* NMIterableComponent::removeModelComponent(const QString& compN
 		}
 	}
 
-	//	if (this->mProcessChainPointer == comp)
 	this->mProcessChainPointer = 0;
 
 	// release all ties to the host's remaining
@@ -535,11 +578,11 @@ void NMIterableComponent::destroySubComponents(QMap<QString, NMModelComponent*>&
 {
 	if (this->mProcess == 0)
 	{
-		NMModelComponent* sc = this->getInternalStartComponent();
+        NMModelComponentIterator cit = this->getComponentIterator();
         NMIterableComponent* dc = 0;
-		while (sc != 0)
+        while(*cit != 0)
 		{
-            dc = static_cast<NMIterableComponent*>(sc);
+            dc = static_cast<NMIterableComponent*>(*cit);
 			if (dc != 0)
             {
 				dc->destroySubComponents(repo);
@@ -548,10 +591,11 @@ void NMIterableComponent::destroySubComponents(QMap<QString, NMModelComponent*>&
                 dc = 0;
             }
 
-            sc = this->getNextInternalComponent();
-            if (sc != 0)
+            ++cit;
+            if (*cit != 0)
             {
-                repo.remove(sc->objectName());
+                repo.remove(cit->objectName());
+                NMModelComponent* sc = *cit;
                 delete sc;
                 sc = 0;
             }
@@ -568,18 +612,18 @@ void NMIterableComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkData
 		return;
 	}
 
-	NMModelComponent* sc = this->getInternalStartComponent();
+    NMModelComponent* sc = this->mProcessChainStart;
 	sc->setNthInput(idx, inputImg);
 }
 
 NMModelComponent* NMIterableComponent::getLastInternalComponent(void)
 {
 	NMModelComponent* ret = 0;
-	NMModelComponent* comp = this->getInternalStartComponent();
-	while(comp != 0)
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while (*cit != 0)
 	{
-		ret = comp;
-		comp = this->getNextInternalComponent();
+        ret = *cit;
+        ++cit;
 	}
 
 	return ret;
@@ -640,31 +684,31 @@ NMModelComponent* NMIterableComponent::getNextInternalComponent(void)
 
 void NMIterableComponent::initialiseComponents(unsigned int timeLevel)
 {
-//	NMDebugCtx(this->objectName().toStdString(), << "...");
+    //	NMDebugCtx(this->objectName().toStdString(), << "...");
 
-	if (this->mProcess != 0 && this->getTimeLevel() == timeLevel)
+    if (this->mProcess != 0 && this->getTimeLevel() == timeLevel)
 	{
-//		NMDebugAI(<< "instantiate process '" << this->mProcess->objectName().toStdString() << "'" << std::endl);
+        //NMDebugAI(<< "\tinstantiate process '" << this->mProcess->objectName().toStdString() << "'" << std::endl);
 		this->mProcess->instantiateObject();
         this->mProcess->setLogger(this->mLogger);
-//		NMDebugCtx(this->objectName().toStdString(), << "done!");
+        //NMDebugCtx(this->objectName().toStdString(), << "done!");
 		return;
 	}
 
-	NMModelComponent* mc = this->getInternalStartComponent();
-	while (mc != 0)
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while (*cit != 0)
 	{
-		NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(*cit);
 		if (ic != 0 && ic->getTimeLevel() == timeLevel)
 		{
-//			NMDebugAI(<< "initialise '" << mc->objectName().toStdString()
-//					 << "' ... " << std::endl );
+            //NMDebugAI(<< "initialise '" << ic->objectName().toStdString()
+            //         << "' ... " << std::endl);
 			ic->initialiseComponents(timeLevel);
 		}
-		mc = this->getNextInternalComponent();
+        ++cit;
 	}
 
-//	NMDebugCtx(this->objectName().toStdString(), << "done!");
+    //	NMDebugCtx(this->objectName().toStdString(), << "done!");
 }
 
 void
@@ -673,11 +717,11 @@ NMIterableComponent::changeTimeLevel(int diff)
 	// we call the superclass implementation first
 	NMModelComponent::changeTimeLevel(diff);
 
-	NMModelComponent* comp = this->getInternalStartComponent();
-	while (comp != 0)
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while (*cit != 0)
 	{
-		comp->changeTimeLevel(diff);
-		comp = this->getNextInternalComponent();
+        cit->changeTimeLevel(diff);
+        ++cit;
 	}
 
     //emit TimeLevelChanged(this->mTimeLevel);
@@ -722,33 +766,24 @@ void NMIterableComponent::mapTimeLevels(unsigned int startLevel,
 
 	if (this->mTimeLevel == startLevel)
 	{
-		NMModelComponent* mc = this->getInternalStartComponent();
-		while (mc != 0)
+        NMModelComponentIterator cit = this->getComponentIterator();
+        while (*cit != 0)
 		{
-//			NMIterableComponent* ic =
-//					qobject_cast<NMIterableComponent*>(mc);
-//			if (ic != 0)
-//			{
-//				ic->mapTimeLevels(startLevel, timeLevelMap);
-//			}
-//			else
-			{
-				if (mc->getTimeLevel() >= startLevel)
-				{
-					it = timeLevelMap.find(mc->getTimeLevel());
-					if (it != timeLevelMap.end())
-					{
-						it.value().insert(mc->objectName(), mc);
-					}
-					else
-					{
-						QMap<QString, NMModelComponent*> newLevel;
-						newLevel.insert(mc->objectName(), mc);
-						timeLevelMap.insert(mc->getTimeLevel(), newLevel);
-					}
-				}
-			}
-			mc = this->getNextInternalComponent();
+            if (cit->getTimeLevel() >= startLevel)
+            {
+                it = timeLevelMap.find(cit->getTimeLevel());
+                if (it != timeLevelMap.end())
+                {
+                    it.value().insert(cit->objectName(), *cit);
+                }
+                else
+                {
+                    QMap<QString, NMModelComponent*> newLevel;
+                    newLevel.insert(cit->objectName(), *cit);
+                    timeLevelMap.insert(cit->getTimeLevel(), newLevel);
+                }
+            }
+            ++cit;
 		}
 	}
 }
@@ -1008,12 +1043,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                << "Formula:    " << evalerr.GetExpr() << std::endl
                << "Token:      " << evalerr.GetToken() << std::endl
                << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
-        //NMLogError(<< "mu::ParserError: " << errmsg.str());
-        //NMMfwException nme(NMMfwException::NMProcess_ExecutionError);
-        //nme.setDescription(errmsg.str());
-        //emit signalExecutionStopped(this->parent()->objectName());
-        //emit signalProgress(0);
-        //throw nme;
 
         exStackInfo << (exObjName.empty() ? hostName.toStdString() : exObjName) << " step #" << hostStep << ": "
             << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1;
@@ -1029,11 +1058,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         exSource = (exObjName.empty() ? hostName.toStdString() : exObjName);
         exDescription << err.GetDescription();
         bThrow = true;
-
-        //NMErr(this->objectName().toStdString(), << msg.str());
-        //NMDebugCtx(this->objectName().toStdString(), << "done!");
-        //emit signalExecutionStopped();
-        //throw err;
     }
     catch (NMMfwException& nmerr)
     {
@@ -1058,11 +1082,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
         exDescription << nmerr.getDescription();
         exceptionType = nmerr.getType();
         bThrow = true;
-
-        //NMErr(this->objectName().toStdString(), << msg.str());
-        //NMDebugCtx(this->objectName().toStdString(), << "done!");
-        //emit signalExecutionStopped();
-        //throw nmerr;
     }
     catch (std::exception& e)
     {
@@ -1070,11 +1089,6 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
             << (comp == 0 ? "NULL-Comp" : comp->objectName().toStdString()) << " step #" << i+1;
         exDescription << e.what();
         bThrow = true;
-
-        //NMErr(this->objectName().toStdString(), << msg.str());
-        //NMDebugCtx(this->objectName().toStdString(), << "done!");
-        //emit signalExecutionStopped();
-        //throw e;
     }
     if (bThrow)
     {
@@ -1183,22 +1197,10 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 		QStringList inputs = allInputs.at(step);
 		foreach(const QString& in, inputs)
 		{
-//            NMModelComponent* c = ctrl->getComponent(in);
-//            NMModelComponent* hc = c ? c->getHostComponent() : 0;
-
             if (execComps.contains(in))
 			{
 				execComps.removeOne(in);
 			}
-            //experimental
-            // we only account for those components, which are
-            // actually direct children of THIS iterable
-            // component; all nested components are run
-            //
-//            else if (hc != 0 && hc != this)
-//            {
-//                execComps.removeOne(in);
-//            }
 		}
 
 		++levelIt;
@@ -1234,11 +1236,11 @@ NMIterableComponent::reset(void)
 	}
 	else
 	{
-		NMModelComponent* comp = this->getInternalStartComponent();
-		while(comp != 0)
+        NMModelComponentIterator cit = this->getComponentIterator();
+        while (*cit != 0)
 		{
-			comp->reset();
-			comp = this->getNextInternalComponent();
+            cit->reset();
+            ++cit;
 		}
 	}
 }
@@ -1305,40 +1307,21 @@ bool NMIterableComponent::isSubComponent(NMModelComponent* comp)
 {
     bool bIsSub = false;
 
-/// this commented code below doesn't work any more, since we now only map
-/// time levels within the bounds of an IterableComponent
-
-//	QMap<unsigned int, QMap<QString, NMModelComponent*> >::const_iterator timeIt =
-//			this->mMapTimeLevelComp.begin();
-//	QMap<QString, NMModelComponent*>::const_iterator compIt;
-//	for (; timeIt != this->mMapTimeLevelComp.end(); ++timeIt)
-//	{
-//		compIt = timeIt.value().begin();
-//		for (; compIt != timeIt.value().end(); ++compIt)
-//		{
-//			if (compIt.value()->objectName().compare(comp->objectName()) == 0)
-//			{
-//				ret = true;
-//				break;
-//			}
-//		}
-//	}
-
-    NMModelComponent* c = this->getInternalStartComponent();
-    while(c != 0 && !bIsSub)
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while (*cit != 0 && !bIsSub)
     {
-        if (comp->objectName().compare(c->objectName()) == 0)
+        if (comp->objectName().compare(cit->objectName()) == 0)
         {
             bIsSub = true;
             break;
         }
 
-        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(c);
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(*cit);
         if (ic)
         {
             bIsSub = ic->isSubComponent(comp);
         }
-        c = this->getNextInternalComponent();
+        ++cit;
     }
 
     return bIsSub;

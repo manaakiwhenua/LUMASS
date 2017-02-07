@@ -279,12 +279,13 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         {
             // now we add the subcomponents list for reference
             QStringList strCompChain;
-            NMModelComponent* sc = procComp->getInternalStartComponent();
+
+            NMModelComponentIterator cit = procComp->getComponentIterator();
             strCompChain << "{";
-            while (sc != 0)
+            while(!cit.isAtEnd())
             {
-                strCompChain << QString(tr("{%1}")).arg(sc->objectName());
-                sc = procComp->getNextInternalComponent();
+                strCompChain << QString(tr("{%1}")).arg(cit->objectName());
+                ++cit;
             }
             strCompChain << "}";
 
@@ -805,11 +806,11 @@ void NMComponentEditor::updateSubComponents(const QStringList& compList)
     QStringList oldCompNames;
     QList<NMModelComponent*> oldComps;
 
-    NMModelComponent* sub = comp->getInternalStartComponent();
-    while(sub != 0)
+    NMModelComponentIterator cit = comp->getComponentIterator();
+    while(!cit.isAtEnd())
     {
-        oldCompNames.push_back(sub->objectName());
-        sub = comp->getNextInternalComponent();
+        oldCompNames.push_back(cit->objectName());
+        ++cit;
     }
 
     // remove all components

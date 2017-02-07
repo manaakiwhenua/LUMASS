@@ -35,6 +35,95 @@
 #include "NMItkDataObjectWrapper.h"
 #include "nmmodframe_export.h"
 
+/*! \brief NMModelComponentIterator
+ *
+ *  Iterates over the internal components of
+ *  \sa NMIterableComponent.
+ *
+ */
+
+class NMMODFRAME_EXPORT NMModelComponentIterator
+{
+    friend class NMIterableComponent;
+
+public:
+    NMModelComponentIterator(const NMModelComponentIterator& other)
+    {
+        this->mSourceComp = other.mSourceComp;
+        init(mSourceComp);
+    }
+
+    ~NMModelComponentIterator()
+    {
+        mIterList.clear();
+    }
+
+    NMModelComponent* operator*()
+    {
+        return mComponent;
+    }
+
+    NMModelComponent* operator->(void)
+    {
+        return mComponent;
+    }
+
+    void operator++()
+    {
+        if (mListPos+1 < mIterList.size())
+        {
+            mComponent = mIterList.at(++mListPos);
+        }
+        else
+        {
+            mComponent = 0;
+            mListPos = -1;
+        }
+    }
+
+    void operator++(int)
+    {
+        this->operator++();
+    }
+
+    void reset()
+    {
+        this->init(mSourceComp);
+    }
+
+    int operator==(void* compare)
+    {
+        return dynamic_cast<void*>(mComponent) == compare;
+    }
+
+    int operator!=(void* compare)
+    {
+        return dynamic_cast<void*>(mComponent) != compare;
+    }
+
+    int isAtEnd()
+    {
+        return mListPos == -1 ? 1 : 0;
+    }
+
+
+private:
+    NMModelComponentIterator(NMIterableComponent* ic)
+    {
+        mSourceComp = ic;
+        init(ic);
+    }
+
+    void init(NMIterableComponent* ic);
+
+    NMIterableComponent* mSourceComp;
+    QList<NMModelComponent*> mIterList;
+    NMModelComponent* mComponent;
+    int mListPos;
+
+};
+
+
 /*! \brief NMIterableComponent
  *
  *	\see NMModelComponent, NMDataComponent, NMProcess, NMModelController
@@ -147,6 +236,8 @@ public:
      */
     const QStringList findExecutableComponents(unsigned int timeLevel,
     		int step);
+
+    NMModelComponentIterator getComponentIterator();
 
 
     /*! creates the execution sequence for the given

@@ -122,26 +122,27 @@ public:
 		bool bok;
 		int givenStep = step;
 
-		
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mOutputImageFileName.size());
-        std::string curOutputImageFileName;
-        if (step < p->mOutputImageFileName.size())
+
+        QVariant curOutputImgFileNameVar = p->getParameter("OutputImageFileName");
+        std::string curOutputImagFileName;
+        if (curOutputImgFileNameVar.isValid())
         {
-            curOutputImageFileName = p->mOutputImageFileName.at(step).toStdString().c_str();
-            f->SetOutputImageFileName(curOutputImageFileName);
+            curOutputImagFileName = curOutputImgFileNameVar.toString().toStdString();
+            f->SetOutputImageFileName(curOutputImagFileName);
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputNodata.size());
-        std::vector<long long> vecInputNodata;
-        long long curInputNodata;
-        if (step < p->mInputNodata.size())
+
+        QVariant curInputNodataVar = p->getParameter("InputNodata");
+        if (curInputNodataVar.isValid())
         {
-            for (int i=0; i < p->mInputNodata.at(step).size(); ++i) 
+            std::vector<long long> vecNodata;
+            QStringList curValVarList = curInputNodataVar.toStringList();
+            foreach(const QString& vStr, curValVarList)
             {
-                curInputNodata = p->mInputNodata.at(step).at(i).toLongLong(&bok);
+                long long curNodata = vStr.toLongLong(&bok);
                 if (bok)
                 {
-                    vecInputNodata.push_back((curInputNodata));
+                    vecNodata.push_back(static_cast<long long>(curNodata));
                 }
                 else
                 {
@@ -152,11 +153,10 @@ public:
                     throw e;
                 }
             }
-            f->SetInputNodata(vecInputNodata);
+            f->SetInputNodata(vecNodata);
         }
 
 
-                
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
 	    std::vector<std::string> userIDs;                                                                       
 	    QStringList currentInputs;                                                                              

@@ -126,15 +126,13 @@ public:
 		bool bok;
 		int givenStep = step;
 
-		
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mIgnoreNodataValue.size());
-        bool curIgnoreNodataValue;
-        if (step < p->mIgnoreNodataValue.size())
+        QVariant curIgnoreNodataValueVar = p->getParameter("IgnoreNodataValue");
+        if (curIgnoreNodataValueVar.isValid())
         {
-            curIgnoreNodataValue = p->mIgnoreNodataValue.at(step).toInt(&bok);
+            bool curIgnoreNodataValue = curIgnoreNodataValueVar.toInt(&bok);
             if (bok)
             {
-                f->SetIgnoreNodataValue((curIgnoreNodataValue));
+                f->SetIgnoreNodataValue(curIgnoreNodataValue);
             }
             else
             {
@@ -146,14 +144,13 @@ public:
             }
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mNodataValue.size());
-        double curNodataValue;
-        if (step < p->mNodataValue.size())
+        QVariant curNodataValueVar = p->getParameter("NodataValue");
+        if (curNodataValueVar.isValid())
         {
-            curNodataValue = p->mNodataValue.at(step).toDouble(&bok);
+            double curNodataValue = curNodataValueVar.toDouble(&bok);
             if (bok)
             {
-                f->SetNodataValue((curNodataValue));
+                f->SetNodataValue(curNodataValue);
             }
             else
             {
@@ -165,11 +162,9 @@ public:
             }
         }
 
-        step = p->mapHostIndexToPolicyIndex(givenStep, p->mHaveMaxKeyRows.size());
-        bool curHaveMaxKeyRows;
-        if (step < p->mHaveMaxKeyRows.size())
+        QVariant curHaveMaxKeyRowsVar = p->getParameter("HaveMaxKeyRows");
         {
-            curHaveMaxKeyRows = p->mHaveMaxKeyRows.at(step).toInt(&bok);
+            bool curHaveMaxKeyRows = curHaveMaxKeyRowsVar.toInt(&bok);
             if (bok)
             {
                 f->SetHaveMaxKeyRows((curHaveMaxKeyRows));
@@ -184,13 +179,6 @@ public:
             }
         }
 
-//        step = p->mapHostIndexToPolicyIndex(givenStep, p->mZoneTableFileName.size());
-//        std::string curZoneTableFileName;
-//        if (step < p->mZoneTableFileName.size())
-//        {
-//            curZoneTableFileName = p->mZoneTableFileName.at(step).toStdString().c_str();
-//            f->SetZoneTableFileName(curZoneTableFileName);
-//        }
 
         QVariant ztparam = p->getParameter("ZoneTableFileName");
         if (ztparam.isValid())

@@ -47,6 +47,10 @@ public:
     static QVTKWidget* getVTKWidget(void);
     static QString getMultiLineInput(const QString& title,
                               const QString& suggestion, QWidget* parent=0);
+    static QStringList getMultiItemSelection(const QString& title,
+                                         const QString& label,
+                                         const QStringList& items,
+                                         QWidget* parent=0);
     static QItemSelection selectRows(const QAbstractItemModel *model,
                               QList<int>& ids);
     static qreal getLUMASSVersion(void);

@@ -23,6 +23,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QListView>
+#include <QStringListModel>
 
 #include "ui_lumassmainwin.h"
 #include "lumassmainwin.h"
@@ -46,15 +48,15 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     QPlainTextEdit* textEdit = new QPlainTextEdit(suggestion, dlg);
     QPushButton* btnCancel = new QPushButton("Cancel", dlg);
     dlg->connect(btnCancel, SIGNAL(pressed()), dlg, SLOT(reject()));
-    QPushButton* btnOk = new QPushButton("Ok", dlg);
+    QPushButton* btnOk = new QPushButton("OK", dlg);
     dlg->connect(btnOk, SIGNAL(pressed()), dlg, SLOT(accept()));
 
     QVBoxLayout* vlayout = new QVBoxLayout(dlg);
     vlayout->addWidget(textEdit);
 
     QHBoxLayout* hlayout = new QHBoxLayout();
-    hlayout->addWidget(btnCancel);
     hlayout->addWidget(btnOk);
+    hlayout->addWidget(btnCancel);
     vlayout->addItem(hlayout);
 
     //dlg->setLayout(vlayout);
@@ -73,6 +75,58 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     return retText;
 
 }
+
+QStringList
+NMGlobalHelper::getMultiItemSelection(const QString& title,
+                                     const QString& label,
+                                     const QStringList& items,
+                                     QWidget* parent)
+{
+    if (items.size() == 0)
+    {
+        return QStringList();
+    }
+
+
+    QDialog* dlg = new QDialog(parent);
+    dlg->setWindowModality(Qt::WindowModal);
+    dlg->setWindowTitle(title);
+
+    QLabel* userPrompt = new QLabel(label, dlg);
+    QListView* lstView = new QListView(dlg);
+    lstView->setSelectionMode(QAbstractItemView::MultiSelection);
+    lstView->setModel(new QStringListModel(items, lstView));
+
+    QPushButton* btnCancel = new QPushButton("Cancel", dlg);
+    dlg->connect(btnCancel, SIGNAL(pressed()), dlg, SLOT(reject()));
+    QPushButton* btnOk = new QPushButton("OK", dlg);
+    dlg->connect(btnOk, SIGNAL(pressed()), dlg, SLOT(accept()));
+
+    QHBoxLayout* hbox = new QHBoxLayout();
+    hbox->addWidget(btnOk);
+    hbox->addWidget(btnCancel);
+
+    QVBoxLayout* vbox = new QVBoxLayout(dlg);
+    vbox->addWidget(userPrompt);
+    vbox->addWidget(lstView);
+    vbox->addItem(hbox);
+
+    int ret = dlg->exec();
+
+    QStringList retList;
+    if (ret)
+    {
+        QModelIndexList rows = lstView->selectionModel()->selectedRows();
+        foreach(const QModelIndex& idx, rows)
+        {
+            retList << items.at(idx.row());
+        }
+    }
+
+    dlg->deleteLater();
+    return retList;
+}
+
 
 void
 NMGlobalHelper::appendLogMsg(const QString& msg)

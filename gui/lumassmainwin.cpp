@@ -3093,44 +3093,13 @@ void LUMASSMainWin::test()
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...")
 
-    QString sug("cat > 0 ? 0.0012 * mar * 0.25 * sqrt(cat__slopelength / 22.0) * woody__nzusleU * (0.065 + (4.56 * tanangle) + (65.41 * tanangle * tanangle)) * eter__SDRsurficial : 0 + $[sednetparams:mycolumn:4]$");
-//    QString sug("alladd = 0; for (nei=0; nei < 9; nei = nei + 1)"
-//                "{alladd = alladd + (nei == 4 ? 0 : kwinVal(img, nei, thid, addr));}"
-//                "out = alladd / 8.0;");
-    QString text = NMGlobalHelper::getMultiLineInput("", sug, this);
+    QStringList items;
+    items << "Hans" << "Franz" << "Ganz" << "Duschhaube";
 
-//    QRegularExpression rexPropName(QString(
-//        "(?>:|__)([a-zA-Z]+([a-zA-Z0-9]|_(?!_)){2,}(?!__))"));
-//    QRegularExpression rexComp(QString("((?<!__|:)[a-zA-Z]+([a-zA-Z0-9]|_(?!_)){2,})"));
-
-    QRegularExpression rexGroup("((?<open>\\$\\[)*(?(<open>)|\\b)"
-                                "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-                                "(?<sep1>(?(<open>):|(?>__)))*"
-                                "(?<prop>(?(<sep1>)\\g<comp>))*"
-                                "(?<sep2>(?(<prop>)(?(<open>)):))*"
-                                "(?<idx>(?(<sep2>)\\d+))*)");
-    if (!rexGroup.isValid())
-    {
-        NMLogError(<< "regex is invalid!");
-        return;
-    }
-
-    int gspos=0, cnt=0;
-    QRegularExpressionMatchIterator git = rexGroup.globalMatch(text);
-    while (git.hasNext())
-    {
-        QRegularExpressionMatch match = git.next();
-        if (match.hasMatch())
-        {
-            gspos = match.capturedStart(0);
-            QString srctext = match.captured(0);
-            NMLogDebug(<< "Match #" << cnt << ":  " << srctext.toStdString());
-            NMLogDebug(<< "    comp:  " << match.capturedRef("comp").toString().toStdString());
-            NMLogDebug(<< "    prop:  " << match.capturedRef("prop").toString().toStdString());
-            NMLogDebug(<< "    idx:   "  << match.capturedRef("idx").toString().toStdString());
-        }
-        ++cnt;
-    }
+    QStringList sel = NMGlobalHelper::getMultiItemSelection("Field Selection",
+                                                            "Select fields to join:",
+                                                            items, this);
+    NMLogDebug(<< "Selected Items: " << sel.join(" ").toStdString());
 
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!")

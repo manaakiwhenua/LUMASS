@@ -122,6 +122,7 @@ public:
     void checkInteractiveLayer();
 
     NMLogWidget* getLogWidget(void);
+    NMLogger* getLogger(){return mLogger;}
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);

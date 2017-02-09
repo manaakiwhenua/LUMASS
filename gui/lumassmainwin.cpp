@@ -1807,7 +1807,7 @@ void LUMASSMainWin::aboutLUMASS(void)
             << "lp_solve 5.5 - http://sourceforge.net/projects/lpsolve/ " << endl
             << "GDAL " << _lumass_gdal_version << " - http://www.gdal.org/ " << endl
             << "SQLite " << _lumass_sqlite_version << " - http://www.sqlite.org" << endl
-            << "Spatialite - https://www.gaia-gis.it/fossil/libspatialite/index" << endl
+            << "Spatialite 4.3 - https://www.gaia-gis.it/fossil/libspatialite/index" << endl
             << "MuParser 2.2.5 - http://beltoforion.de/article.php?a=muparser" << endl
             << "MuParserX 4.0.7 - http://beltoforion.de/article.php?a=muparserx" << endl
 #ifdef BUILD_RASSUPPORT

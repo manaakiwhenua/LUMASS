@@ -43,8 +43,6 @@
   #include "RasdamanConnector.hh"
 #endif
 
-class NMLayer;
-class NMLogger;
 
 class NMImageLayer: public NMLayer
 {

@@ -1999,6 +1999,12 @@ NMLayer::setLegendValueField(QString field)
         }
         else if (il->getColumnIndex(mLegendValueField) != -1)
         {
+            std::vector<double> stats = this->getValueFieldStatistics();
+            if (stats.size() >= 2)
+            {
+                this->setLower(stats[0]);
+                this->setUpper(stats[1]);
+            }
             il->setUpdateScalars();
         }
 	}
@@ -2222,66 +2228,65 @@ NMLayer::getValueFieldStatistics()
     int colidx = this->getColumnIndex(mLegendValueField);
     QVariant::Type type = this->getColumnType(colidx);
 
+    // ========================================================
+    //              IMAGE LAYER
+    // ========================================================
     NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
-    if (il && mTableModel)
+    if (il)
     {
-        if (    type == QVariant::Invalid
-            ||  (   type != QVariant::Int
-                 && type != QVariant::Double
-                 && type != QVariant::LongLong
-                )
-            ||  mLegendValueField == "Colour Table"
-            ||  mLegendValueField == "Pixel Values"
+        if (    mTableModel != 0
+            &&  mLegendValueField.compare(QString("Pixel Values")) != 0
            )
         {
-
-            NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
-            std::string col = mLegendValueField.toStdString();
-
-            std::stringstream sql;
-
-            sql << "select count(" << col << ") as count, "
-                << "min(" << col << ") as minimum, "
-                << "max(" << col << ") as maximum, "
-                << "avg(" << col << ") as mean, "
-                << "(sum(" << col << " * " << col << ") / count(" << col << ") "
-                << "- (avg(" << col << ") * avg(" << col << "))) as stddev, "
-
-                << "sum(" << col << ") as sum "
-                << " from "
-                << sqlModel->tableName().toStdString();
-
-            QSqlQuery q(sqlModel->database());
-            if (q.exec(sql.str().c_str()) && q.next())
+            if (    type == QVariant::Int
+                ||  type == QVariant::Double
+                ||  type == QVariant::LongLong
+               )
             {
+                NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+                std::string col = mLegendValueField.toStdString();
 
-                stats[0] = q.value(1).toDouble();
-                stats[1] = q.value(2).toDouble();
-                stats[2] = q.value(3).toDouble();
-                stats[4] = ::sqrt(q.value(4).toDouble());
-                stats[5] = q.value(5).toDouble();
-                stats[6] = q.value(6).toDouble();
+                std::stringstream sql;
 
+                sql << "select count(" << col << ") as count, "
+                    << "min(" << col << ") as minimum, "
+                    << "max(" << col << ") as maximum, "
+                    << "avg(" << col << ") as mean, "
+                    << "(sum(" << col << " * " << col << ") / count(" << col << ") "
+                    << "- (avg(" << col << ") * avg(" << col << "))) as stddev, "
+
+                    << "sum(" << col << ") as sum "
+                    << " from "
+                    << sqlModel->tableName().toStdString();
+
+                QSqlQuery q(sqlModel->database());
+                if (q.exec(sql.str().c_str()) && q.next())
+                {
+                    stats[0] = q.value(1).toDouble();
+                    stats[1] = q.value(2).toDouble();
+                    stats[2] = q.value(3).toDouble();
+                    stats[3] = -9999;
+                    stats[4] = ::sqrt(q.value(4).toDouble());
+                    stats[5] = q.value(0).toDouble();
+                    stats[6] = q.value(5).toDouble();
+                }
             }
-
-            return stats;
         }
-    }
-    else if (il && mTableModel == 0)
-    {
-        vtkImageData* vtkImg = vtkImageData::SafeDownCast(
-                    const_cast<vtkDataSet*>(il->getDataSet()));
-        stats = il->getWindowStatistics();
-
-        for (int i=stats.size()-1; i < 7; ++i)
+        else
         {
-            stats[i] = -9999;
+            stats = il->getWindowStatistics();
+            for (int i=stats.size()-1; i < 7; ++i)
+            {
+                stats[i] = -9999;
+            }
         }
 
         return stats;
     }
 
-
+    // ========================================================
+    //              VECTOR LAYER
+    // ========================================================
     // determine non-hole features in case we've got a
     // polygon layer here
     QList<int> raw2source;

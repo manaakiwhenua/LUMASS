@@ -552,28 +552,12 @@ NMComponentListItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* m
                             il->setBandMap(bandmap);
                             l->setLegendValueField(valuefield);
                         }
-                        else if (valuefield.compare(QString("Pixel Values")) == 0)
-                        {
-                            l->setLegendValueField(valuefield);
-                            std::vector<double> stats = il->getWindowStatistics();//l->getValueFieldStatistics();
-                            if (stats.size() >= 2)
-                            {
-                                l->setLower(stats[0]);
-                                l->setUpper(stats[1]);
-                            }
-                        }
                         else
                         {
                             l->setLegendValueField(valuefield);
-                            std::vector<double> stats = l->getValueFieldStatistics();
-                            if (stats.size() >= 2)
-                            {
-                                l->setLower(stats[0]);
-                                l->setUpper(stats[1]);
-                            }
                         }
 
-                        //l->updateMapping();
+                        l->updateMapping();
                         l->updateLegend();
 					}
 				}

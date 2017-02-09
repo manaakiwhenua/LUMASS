@@ -203,6 +203,7 @@ public:
 			QObject* parent=0);
 	virtual ~NMLayer();
 
+    void setLogger(NMLogger* logger){mLogger = logger;}
 
 	virtual void setDataSet(vtkDataSet* dataset);
 	virtual bool setFileName(QString filename)

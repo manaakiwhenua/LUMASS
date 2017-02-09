@@ -699,6 +699,7 @@ void NMImageLayer::createTableView(void)
     else if (sqlModel != 0)
     {
         this->mSqlTableView = new NMSqlTableView(sqlModel, 0);
+        this->mSqlTableView->setLogger(mLogger);
         this->mSqlTableView->setSelectionModel(this->mSelectionModel);
         this->mSqlTableView->setTitle(sqlModel->tableName());
         this->mSqlTableView->setLayerName(this->objectName());

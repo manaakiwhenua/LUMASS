@@ -30,6 +30,7 @@
 #include <QSqlQuery>
 #include <QSqlIndex>
 #include <QSqlError>
+#include <QSqlDriver>
 #include <QUuid>
 
 #include "NMGlobalHelper.h"
@@ -902,9 +903,13 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     }
     else
     {
-        mTempDb = QSqlDatabase::cloneDatabase(mSourceModel->database(),
-                                this->getRandomString());
-        mTempDb.open();
+        mTempDb = QSqlDatabase::addDatabase("QSQLITE", this->getRandomString());
+        mTempDb.setDatabaseName(mSourceModel->getDatabaseName());
+        if (!mTempDb.open())
+        {
+            NMLogError(<< ctx << ": " << mTempDb.lastError().text().toStdString() << std::endl);
+            return false;
+        }
     }
 
     // ==================================================================
@@ -915,7 +920,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryStruct(mSourceModel->database());
     if (!queryStruct.exec(tmpStruct))
     {
-        NMLogError(<< ctx << queryStruct.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << ": " << queryStruct.lastError().text().toStdString() << std::endl);
         return false;
     }
     queryStruct.next();
@@ -934,7 +939,8 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryTmpCreate(mTempDb);
     if (!queryTmpCreate.exec(tmpCreate))
     {
-        NMLogError(<< ctx << queryTmpCreate.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << ": " << queryTmpCreate.lastError().text().toStdString() << " Query: '"
+                   << tmpCreate.toStdString() << "'" << std::endl);
         return false;
     }
 
@@ -943,10 +949,14 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     // ==================================================================
 
     // list of original columns
+    QSqlDriver* drv = mSourceModel->database().driver();
+    QString srcCol;
     QString columns = "(";
     for (int c=0; c < mSourceModel->columnCount(); ++c)
     {
-        columns += mSourceModel->headerData(c, Qt::Horizontal).toString();
+        //srcCol = mSourceModel->headerData(c, Qt::Horizontal).toString();
+
+        columns += drv->escapeIdentifier(mSourceModel->headerData(c, Qt::Horizontal).toString(), QSqlDriver::FieldName);
         if (c < mSourceModel->columnCount() - 1)
         {
             columns += ", ";
@@ -972,7 +982,8 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlQuery queryInsert(mTempDb);
     if (!queryInsert.exec(tmpInsert))
     {
-        NMLogError(<< ctx << queryInsert.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << ": " << queryInsert.lastError().text().toStdString() << " Query: '"
+                   << tmpInsert.toStdString() << "'" << std::endl);
         queryInsert.finish();
         return false;
     }

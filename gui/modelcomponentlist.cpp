@@ -950,16 +950,17 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                     NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
                     if (il && il->getNumBands() == 1)
                     {
-                        if (    mActValueStats->text() == "Value Field Statistics"
-                                ||  mActValueStats->text() == "Visible Pixels' Statistics")
+                        if (    mActValueStats->text().endsWith(QString("Value Field Statistics"))
+                            ||  mActValueStats->text().endsWith(QString("Visible Pixel Statistics"))
+                           )
                         {
-                            if (l->getLegendValueField() == "Pixel Values")
+                            if (l->getLegendValueField().compare(QString("Pixel Values")) == 0)
                             {
-                                mActValueStats->setText("Visible Pixel Statistics");
+                                mActValueStats->setText(QString("Visible Pixel Statistics"));
                             }
                             else
                             {
-                                mActValueStats->setText("Value Field Statistics");
+                                mActValueStats->setText(QString("Value Field Statistics"));
                             }
                         }
                         mActImageStats->setEnabled(true);
@@ -1326,6 +1327,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         vtkRenderWindow* renWin = h.getRenderWindow();
         NMImageLayer* iLayer = new NMImageLayer(renWin, 0, this);
         iLayer->setObjectName(layerName);
+        iLayer->setLogger(h.getMainWindow()->getLogger());
         h.getMainWindow()->connectImageLayerProcSignals(iLayer);
 
         iLayer->setImage(comp->getOutput(0));
@@ -1419,6 +1421,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                 vtkRenderWindow* renWin = h.getRenderWindow();
                 NMImageLayer* fLayer = new NMImageLayer(renWin, 0, this);
                 fLayer->setObjectName(finfo.baseName());
+                fLayer->setLogger(h.getMainWindow()->getLogger());
                 h.getMainWindow()->connectImageLayerProcSignals(fLayer);
                 fLayer->setFileName(fileName);
             }
@@ -1433,6 +1436,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                 NMGlobalHelper h;
                 vtkRenderWindow* renWin = h.getRenderWindow();
                 NMVectorLayer* vl = new NMVectorLayer(renWin);
+                vl->setLogger(h.getMainWindow()->getLogger());
                 vl->setFileName(fileName);
                 vl->setObjectName(finfo.baseName());
                 vl->setDataSet(pd);
@@ -1914,7 +1918,6 @@ void ModelComponentList::showValueStats()
 	if (l == 0)
 		return;
 
-    std::vector<double> stats;
     if (mbWholeImgStats)
     {
         mbWholeImgStats = false;
@@ -1931,11 +1934,9 @@ void ModelComponentList::showValueStats()
         watcher->setFuture(res); //const_cast<QFuture<QList<double> >& >(res));
         return;
     }
-    else
-    {
-        stats = l->getValueFieldStatistics();
-    }
 
+
+    std::vector<double> stats = l->getValueFieldStatistics();
 	if (stats.size() == 0)
 	{
         NMLogError(<< ctx << ": failed retrieving value field statistics!");

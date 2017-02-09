@@ -26,7 +26,7 @@
 #define NMSqlTableView_H_
 //#define __ctxsqltabview "NMSqlTableView"
 
-#include "nmlog.h"
+//#include "nmlog.h"
 #include "NMSelectableSortFilterProxyModel.h"
 #include "NMSelSortSqlTableProxyModel.h"
 #include "NMFastTrackSelectionModel.h"
@@ -59,6 +59,7 @@
 
 class QGraphicsItem;
 class QGraphicsSceneMouseEvent;
+class NMLogger;
 
 class NMSqlTableView : public QWidget
 {
@@ -100,6 +101,8 @@ public:
             {return 0;}
 
     QSqlTableModel* getModel(void) {return mModel;}
+
+    void setLogger(NMLogger* logger){mLogger = logger;}
 
 public slots:
 
@@ -225,6 +228,8 @@ protected:
 	QMenu* mManageLayerMenu;
 
 	QAction* mActSel;
+
+    NMLogger* mLogger;
 
 private:
     static const std::string ctx;

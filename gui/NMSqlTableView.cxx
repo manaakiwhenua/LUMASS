@@ -27,25 +27,6 @@
 #include <vector>
 #include <limits>
 
-#include "NMMacros.h"
-#include "NMSqlTableView.h"
-#include "NMAddColumnDialog.h"
-#include "NMTableCalculator.h"
-#include "NMSelSortSqlTableProxyModel.h"
-#include "NMGlobalHelper.h"
-#include "modelcomponentlist.h"
-#include "NMLayer.h"
-#include "NMImageLayer.h"
-
-#include "nmqsql_sqlite_p.h"
-#include "nmqsqlcachedresult_p.h"
-
-#include "lumassmainwin.h"
-
-#include "vtkQtTableModelAdapter.h"
-#include "vtkDelimitedTextReader.h"
-#include "vtkSmartPointer.h"
-
 #include <QtGui>
 #include <QWidget>
 #include <QObject>
@@ -78,6 +59,36 @@
 #include <QSqlResult>
 #include <QSqlIndex>
 #include <QSqlError>
+
+#include "NMMacros.h"
+#include "NMSqlTableView.h"
+#include "NMAddColumnDialog.h"
+#include "NMTableCalculator.h"
+#include "NMSelSortSqlTableProxyModel.h"
+#include "NMGlobalHelper.h"
+#include "modelcomponentlist.h"
+#include "NMLayer.h"
+#include "NMImageLayer.h"
+#include "NMLogger.h"
+
+#include "nmqsql_sqlite_p.h"
+#include "nmqsqlcachedresult_p.h"
+
+#include "lumassmainwin.h"
+
+#include "vtkQtTableModelAdapter.h"
+#include "vtkDelimitedTextReader.h"
+#include "vtkSmartPointer.h"
+
+
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 
 //#include "valgrind/callgrind.h"
 
@@ -1046,6 +1057,13 @@ void NMSqlTableView::joinAttributes()
         //srcTableName = srcIt.value().first->GetTableName().c_str();
     }
 
+    // if we didn't get the table name from the view, we just use the one
+    // we got earlier
+    if (srcTableName.isEmpty())
+    {
+        srcTableName = tableName;
+    }
+
     if (srcDbFileName.isEmpty())
     {
         // if we couldn't get the dbfilename from the otb::SQLiteTable,
@@ -1177,6 +1195,27 @@ void NMSqlTableView::joinAttributes()
 
 
     // ======================================================================
+    //              ask user which fields to join from the source
+    // ======================================================================
+
+    QStringList userJoinFields = NMGlobalHelper::getMultiItemSelection(
+                "Select Fields", "Select source fields to join:",
+                srcJoinFields, this);
+
+    std::vector<std::string> vJnFields;
+    foreach(const QString& f, userJoinFields)
+    {
+        vJnFields.push_back(f.toStdString());
+    }
+
+    if (vJnFields.size() == 0)
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+
+
+    // ======================================================================
     //              otb::SQLiteTable is doing the join
     // ======================================================================
 
@@ -1189,17 +1228,44 @@ void NMSqlTableView::joinAttributes()
               << " to " << tarOtbTable->GetDbFileName() << std::endl);
 
 
-    std::vector<std::string> vJnFields;
-    foreach(const QString& f, srcJoinFields)
-    {
-        vJnFields.push_back(f.toStdString());
-    }
-
     NMDebugAI(<< "tarTableName = " << tarTableName.toStdString() << std::endl);
     NMDebugAI(<< "tarFieldName = " << tarFieldName.toStdString() << std::endl);
     NMDebugAI(<< "srcDbFileName = " << srcDbFileName.toStdString() << std::endl);
     NMDebugAI(<< "srcTableName = " << srcTableName.toStdString() << std::endl);
     NMDebugAI(<< "srcFieldName = " << srcFieldName.toStdString() << std::endl);
+
+    if (tarOtbTable->GetDbConnection() == 0)
+    {
+        bool berr = false;
+        if (!tarOtbTable->openConnection())
+        {
+            NMLogError(<< ctx << ": Failed to connect to database '"
+                       << tarOtbTable->GetDbFileName() << "'!");
+            berr = true;
+        }
+
+        if (!tarOtbTable->PopulateTableAdmin())
+        {
+            NMLogError(<< ctx << ": Failed to fetch information of table '"
+                       << tarOtbTable->GetTableName() << "'!");
+            berr = true;
+        }
+
+        if (berr)
+        {
+            this->mModel->setTable(tarTableName);
+            this->mModel->select();
+            this->update();
+
+            srcModel->setTable(srcTableName);
+            srcModel->select();
+            if (srcView)
+            {
+                srcView->update();
+            }
+            return;
+        }
+    }
 
     bool ret2 = tarOtbTable->JoinAttributes(tarTableName.toStdString(),
                                 tarFieldName.toStdString(),
@@ -1208,11 +1274,12 @@ void NMSqlTableView::joinAttributes()
                                 srcFieldName.toStdString(),
                                 vJnFields);
 
+    tarOtbTable->CloseTable();
+
     if (!ret2)
     {
-        NMDebugAI(<< "join failed!" << std::endl);
+        NMLogError(<< ctx << ": Join failed!");
     }
-
 
     this->mModel->setTable(tarTableName);
     this->mModel->select();
@@ -1220,7 +1287,10 @@ void NMSqlTableView::joinAttributes()
 
     srcModel->setTable(srcTableName);
     srcModel->select();
-    srcView->update();
+    if (srcView)
+    {
+        srcView->update();
+    }
 
 
     //srcModel->clear();

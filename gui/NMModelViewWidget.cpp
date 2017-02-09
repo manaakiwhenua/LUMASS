@@ -55,6 +55,7 @@
 #include "NMComponentEditor.h"
 #include "NMGlobalHelper.h"
 #include "NMParameterTable.h"
+#include "NMIterableComponent.h"
 
 #ifndef NM_ENABLE_LOGGER
 #   define NM_ENABLE_LOGGER
@@ -722,7 +723,22 @@ NMModelViewWidget::scaleItemFonts(QGraphicsItem *gi, int delta)
 void
 NMModelViewWidget::test()
 {
+    NMModelComponent* mc = componentFromItem(mLastItem);
+    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(mc);
+    if (ic == 0)
+        return;
 
+    QStringList chain;
+
+    NMModelComponentIterator it = ic->getComponentIterator();
+    while (!it.isAtEnd())
+    {
+        chain << it->objectName();
+        ++it;
+    }
+
+
+    NMLogDebug(<< "chain: " << chain.join("-").toStdString());
 }
 
 
@@ -1101,18 +1117,20 @@ void NMModelViewWidget::getSubComps(NMModelComponent* comp, QStringList& subs)
 	if (itComp == 0)
 		return;
 
-	NMModelComponent* ic = itComp->getInternalStartComponent();
-	while(ic != 0)
+    NMModelComponentIterator cit = itComp->getComponentIterator();
+    while(!cit.isAtEnd())
 	{
-		if (!subs.contains(ic->objectName()))
+        if (!subs.contains(cit->objectName()))
 		{
-			subs.push_back(ic->objectName());
+            subs.push_back(cit->objectName());
 			NMIterableComponent* itic =
-					qobject_cast<NMIterableComponent*>(ic);
+                    qobject_cast<NMIterableComponent*>(*cit);
 			if (itic != 0 && itic->getProcess() == 0)
+            {
 				this->getSubComps(itic, subs);
-			ic = itComp->getNextInternalComponent();
+            }
 		}
+        ++cit;
 	}
 }
 

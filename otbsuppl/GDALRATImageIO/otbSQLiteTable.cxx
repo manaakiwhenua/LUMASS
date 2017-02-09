@@ -3263,6 +3263,53 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
                         << vIdxCol[0] << "' failed!");
     }
 
+    //===================================================
+    //      DEFINING SUB-QUERY AND FINAL TABLE STRUCTURE
+    //===================================================
+
+    // the final table structure (i.e. field names)
+    std::string tempJoinTable = this->GetRandomString(5);
+    std::stringstream finalTableFieldStr;
+    for (int i=0; i < m_vNames.size(); ++i)
+    {
+        finalTableFieldStr << tempJoinTable << "." << m_vNames[i];
+        if (i < m_vNames.size()-1)
+        {
+            finalTableFieldStr << ", ";
+        }
+    }
+
+    // here we define the the sub-query structure (i.e. the fields to be joined
+    // from the source table); and extend the final table structure
+    // by the join fields from the source table (note: we don't include the
+    // the source index field)
+    std::stringstream srcFieldStr;
+    bool bSrcJoinFieldIncluded = false;
+    for (int i=0; i < sourceFields.size(); ++i)
+    {
+        if (sourceFields[i].compare(sourceJoinField) == 0)
+        {
+            bSrcJoinFieldIncluded = true;
+        }
+        else
+        {
+            finalTableFieldStr << ", " << tempJoinTable << "." << sourceFields[i];
+        }
+
+        srcFieldStr << sourceDb << "." << sourceTable << "." << sourceFields[i];
+        if (i < sourceFields.size()-1)
+        {
+            srcFieldStr << ", ";
+        }
+    }
+
+    // if the join field of the source table is not included in the join fields
+    // list, we add it to the source fields list since required for joining the
+    // the sub-query to the target table
+    if (!bSrcJoinFieldIncluded)
+    {
+        srcFieldStr << ", " << sourceDb << "." << sourceTable << "." << sourceJoinField;
+    }
 
     /*
      * SAMPLE QUERY: JOIN WITH SUBQUERY
@@ -3271,18 +3318,7 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
                                       as s on t.rowidx = s.SedNetID;
     */
 
-    std::stringstream srcFieldStr;
-    for (int i=0; i < sourceFields.size(); ++i)
-    {
-        srcFieldStr << sourceDb << "." << sourceTable << "." << sourceFields[i];
-        if (i < sourceFields.size()-1)
-        {
-            srcFieldStr << ", ";
-        }
-    }
-
     // create join expression
-    std::string tempJoinTable = this->GetRandomString(5);
     std::stringstream ssql;
     ssql << "CREATE TEMP TABLE " << tempJoinTable << " AS "
          << "SELECT * FROM main." << targetTable << " "
@@ -3305,7 +3341,8 @@ SQLiteTable::JoinAttributes(const std::string& targetTable,
     ssql.str("");
     ssql << "DROP TABLE main." << targetTable << ";";
     ssql << "CREATE TABLE " << targetTable
-         << " AS SELECT * FROM " << tempJoinTable << ";";
+         //<< " AS SELECT * FROM " << tempJoinTable << ";";
+         << " AS SELECT " << finalTableFieldStr.str() << " FROM " << tempJoinTable << ";";
 
     ret = this->SqlExec(ssql.str());
 

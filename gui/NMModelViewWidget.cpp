@@ -578,10 +578,13 @@ void NMModelViewWidget::initItemContextMenu()
     clearSelAct->setText(tr("Clear Selection"));
     this->mActionMap.insert("Clear Selection", clearSelAct);
 
-    QAction* scaleFonts = new QAction(this->mItemContextMenu);
-    scaleFonts->setText(tr("Scale All Fonts ..."));
-    this->mActionMap.insert("Scale All Fonts ...", scaleFonts);
+    QAction* scaleCompFonts = new QAction(this->mItemContextMenu);
+    scaleCompFonts->setText(tr("Scale Component Fonts ..."));
+    this->mActionMap.insert("Scale Component Fonts ...", scaleCompFonts);
 
+    QAction* scaleLabels = new QAction(this->mItemContextMenu);
+    scaleLabels->setText(tr("Scale Labels ..."));
+    this->mActionMap.insert("Scale Labels ...", scaleLabels);
 
     this->mItemContextMenu->addAction(actDeltaTimeLevel);
     this->mItemContextMenu->addAction(actGroupTimeLevel);
@@ -598,7 +601,8 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(loadComp);
     this->mItemContextMenu->addAction(delComp);
     this->mItemContextMenu->addSeparator();
-    this->mItemContextMenu->addAction(scaleFonts);
+    this->mItemContextMenu->addAction(scaleCompFonts);
+    this->mItemContextMenu->addAction(scaleLabels);
     this->mItemContextMenu->addAction(fontAct);
     this->mItemContextMenu->addAction(clrAct);
     this->mItemContextMenu->addSeparator();
@@ -616,7 +620,8 @@ void NMModelViewWidget::initItemContextMenu()
     connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
     connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
     connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
-    connect(scaleFonts, SIGNAL(triggered()), this, SLOT(scaleFonts()));
+    connect(scaleCompFonts, SIGNAL(triggered()), this, SLOT(scaleComponentFonts()));
+    connect(scaleLabels, SIGNAL(triggered()), this, SLOT(scaleTextLabels()));
     connect(fontAct, SIGNAL(triggered()), this, SLOT(changeFont()));
     connect(clrAct, SIGNAL(triggered()), this, SLOT(changeColour()));
     connect(collapseComp, SIGNAL(triggered()), this, SLOT(collapseAggrItem()));
@@ -637,7 +642,19 @@ void NMModelViewWidget::initItemContextMenu()
 }
 
 void
-NMModelViewWidget::scaleFonts()
+NMModelViewWidget::scaleComponentFonts(void)
+{
+    this->scaleFonts(false);
+}
+
+void
+NMModelViewWidget::scaleTextLabels(void)
+{
+    this->scaleFonts(true);
+}
+
+void
+NMModelViewWidget::scaleFonts(bool bOnlyLabels)
 {
     // we either scale the selected, the last, or all items ...
     QList<QGraphicsItem*> scaleitems;
@@ -651,7 +668,7 @@ NMModelViewWidget::scaleFonts()
     }
     else
     {
-        scaleitems << mModelScene->items();
+       scaleitems << mModelScene->items();
     }
 
     // create a list of toplevel components
@@ -675,21 +692,27 @@ NMModelViewWidget::scaleFonts()
         }
     }
 
+    if (nonnested.count() == 0)
+    {
+        NMLogInfo(<< "Scale Fonts: No items selected!");
+        return;
+    }
+
     bool bok;
-    int delta = QInputDialog::getInt(this, QString("Scale All Fonts"),
+    int delta = QInputDialog::getInt(this, QString("Scale Fonts"),
                                      QString("Adjust relative font size (+/- pt):"),
                                      -1, -10, 10, 1, &bok);
     if (bok)
     {
         foreach(QGraphicsItem* gi, nonnested)
         {
-            scaleItemFonts(gi, delta);
+            scaleItemFonts(gi, delta, bOnlyLabels);
         }
     }
 }
 
 void
-NMModelViewWidget::scaleItemFonts(QGraphicsItem *gi, int delta)
+NMModelViewWidget::scaleItemFonts(QGraphicsItem *gi, int delta, bool bOnlyLabels)
 {
     QGraphicsTextItem* ti = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
     NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
@@ -705,14 +728,26 @@ NMModelViewWidget::scaleItemFonts(QGraphicsItem *gi, int delta)
     else if (ai)
     {
         int size = ai->getFontPtSize();
-        size += delta;
-        ai->setFontPtSize(size);
+        if (!bOnlyLabels)
+        {
+            size += delta;
+            ai->setFontPtSize(size);
+        }
         foreach(QGraphicsItem* child, gi->childItems())
         {
-            scaleItemFonts(child, delta);
+            QGraphicsTextItem* cl = qgraphicsitem_cast<QGraphicsTextItem*>(child);
+            NMAggregateComponentItem* cai = qgraphicsitem_cast<NMAggregateComponentItem*>(child);
+            if (bOnlyLabels && (cl || cai))
+            {
+                scaleItemFonts(child, delta, bOnlyLabels);
+            }
+            else if (!bOnlyLabels && cl == 0)
+            {
+                scaleItemFonts(child, delta, bOnlyLabels);
+            }
         }
     }
-    else if (pi)
+    else if (pi && !bOnlyLabels)
     {
         int size = pi->getFontPtSize();
         size += delta;

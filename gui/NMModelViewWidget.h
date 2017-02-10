@@ -88,6 +88,8 @@ public slots:
     void processModelFileDrop(const QString& fileName,
                               const QPointF& scenePos);
 
+    void scaleComponentFonts(void);
+    void scaleTextLabels(void);
 
 	void editRootComponent();
     //void compProcChanged();
@@ -164,9 +166,8 @@ protected slots:
                          QDomDocument& doc,
                          QList<NMComponentLinkItem*>& writtenLinks,
                          QStringList &savecomps);
-    void scaleFonts(void);
-    void scaleItemFonts(QGraphicsItem* gi, int delta);
-
+    void scaleFonts(bool bOnlyLabels);
+    void scaleItemFonts(QGraphicsItem* gi, int delta, bool bOnlyLabels);
 
     void collapseAggrItem();
     void unfoldAggrItem();

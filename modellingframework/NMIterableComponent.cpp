@@ -699,7 +699,7 @@ void NMIterableComponent::initialiseComponents(unsigned int timeLevel)
     while (*cit != 0)
 	{
         NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(*cit);
-		if (ic != 0 && ic->getTimeLevel() == timeLevel)
+        if (ic != 0 && ic->getTimeLevel() == timeLevel && ic->countComponents() == 0)
 		{
             //NMDebugAI(<< "initialise '" << ic->objectName().toStdString()
             //         << "' ... " << std::endl);

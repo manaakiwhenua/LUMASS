@@ -2846,7 +2846,6 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     // if m_Dataset hasn't been instantiated before, we do it here, because
     // we just do an independent write of the RAT into the data set
     // (i.e. outside any pipeline activities ...)
-    GDALDataset* ds = 0;
     bool bClose = false;
     if (m_Dataset == 0)
     {
@@ -2877,7 +2876,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     }
 
     // fetch the band
-    GDALRasterBand* band = ds->GetRasterBand(iBand);
+    GDALRasterBand* band = m_Dataset->GetRasterBand(iBand);
 
     // create a new raster attribute table
     // note: we just create a whole new table and replace the

@@ -2180,12 +2180,12 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
             {
             case GFT_Integer:
             {
-                long* valPtr = static_cast<long*>(colPtr);
+                long long* valPtr = static_cast<long long*>(colPtr);
                 int* tptr = (int*)CPLCalloc(sizeof(int), chunksize);
                 rat->ValuesIO(GF_Read, col, s, chunksize, tptr);
                 for (int k=0; k < chunksize; ++k)
                 {
-                    valPtr[s+k] = static_cast<long>(tptr[k]);
+                    valPtr[s+k] = static_cast<long long>(tptr[k]);
                 }
                 CPLFree(tptr);
             }
@@ -2250,7 +2250,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
             {
             case GFT_Integer:
                 //otbTab->SetValue(c+1, r, (long)rat->GetValueAsInt(r, c));
-                otbTab->SetValue(c, r, (long)rat->GetValueAsInt(r, c));
+                otbTab->SetValue(c, r, (long long)rat->GetValueAsInt(r, c));
                 break;
             case GFT_Real:
                 //otbTab->SetValue(c+1, r, rat->GetValueAsDouble(r, c));

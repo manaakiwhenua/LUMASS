@@ -610,9 +610,8 @@ void RATBandMathImageFilter<TImage>
     }
 
   if((m_UnderflowCount != 0) || (m_OverflowCount!=0))
-    otbWarningMacro(<< std::endl 
-        << "The Following Parsed Expression  :  "
-        << this->GetExpression()                                 << std::endl
+    NMProcWarn(<< "The Following Parsed Expression  :  "
+        << this->GetExpression()  << std::endl
         << "Generated " << m_UnderflowCount << " Underflow(s) " 
         << "And " << m_OverflowCount        << " Overflow(s) "   << std::endl
         << "The Parsed Expression, The Inputs And The Output "  

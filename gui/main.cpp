@@ -69,6 +69,9 @@
 
 int main(int argc, char *argv[])
 {
+#ifdef QT_HIGHDPI_SUPPORT
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+#endif
     QApplication lumass(argc, argv);
     LUMASSMainWin w;
     w.show();

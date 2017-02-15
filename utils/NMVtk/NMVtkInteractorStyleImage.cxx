@@ -35,6 +35,7 @@
  *   to the needs of LUMASS
  */
 
+#include "nmlog.h"
 
 #include "NMVtkInteractorStyleImage.h"
 
@@ -56,8 +57,10 @@ NMVtkInteractorStyleImage::NMVtkInteractorStyleImage()
     this->State = VTKIS_IMAGE2D;
     mNMInteractorMode = NM_INTERACT_PAN;
     mMoving = 0;
+    mDPR = 1;
 
     mPixelArray = vtkUnsignedCharArray::New();
+
 }
 
 NMVtkInteractorStyleImage::~NMVtkInteractorStyleImage()
@@ -74,8 +77,8 @@ NMVtkInteractorStyleImage::New()
 void
 NMVtkInteractorStyleImage::OnMouseMove()
 {
-    mEndPosition[0] = this->Interactor->GetEventPosition()[0];
-    mEndPosition[1] = this->Interactor->GetEventPosition()[1];
+    mEndPosition[0] = (double)this->Interactor->GetEventPosition()[0]*mDPR;
+    mEndPosition[1] = (double)this->Interactor->GetEventPosition()[1]*mDPR;
 
     if (this->mMoving && this->Interactor)
     {
@@ -158,8 +161,8 @@ NMVtkInteractorStyleImage::DrawRubberBand()
 void
 NMVtkInteractorStyleImage::OnLeftButtonDown()
 {
-    mStartPosition[0] = this->Interactor->GetEventPosition()[0];
-    mStartPosition[1] = this->Interactor->GetEventPosition()[1];
+    mStartPosition[0] = (double)this->Interactor->GetEventPosition()[0]*mDPR;
+    mStartPosition[1] = (double)this->Interactor->GetEventPosition()[1]*mDPR;
     mEndPosition[0] = mStartPosition[0];
     mEndPosition[1] = mStartPosition[1];
 
@@ -203,8 +206,8 @@ NMVtkInteractorStyleImage::OnLeftButtonDown()
 void
 NMVtkInteractorStyleImage::OnLeftButtonUp()
 {
-    mEndPosition[0] = this->Interactor->GetEventPosition()[0];
-    mEndPosition[1] = this->Interactor->GetEventPosition()[1];
+    mEndPosition[0] = (double)this->Interactor->GetEventPosition()[0]*mDPR;
+    mEndPosition[1] = (double)this->Interactor->GetEventPosition()[1]*mDPR;
 
     switch (mNMInteractorMode)
     {

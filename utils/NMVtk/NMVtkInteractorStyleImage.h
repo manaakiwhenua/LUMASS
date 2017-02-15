@@ -53,6 +53,7 @@ public:
     NMVtkInteractorMode getNMInteractorMode(void)
          {return mNMInteractorMode;}
 
+    void setDevicePixelRatio(double dpr){this->mDPR = dpr;}
 
 protected:
     NMVtkInteractorStyleImage();
@@ -69,7 +70,7 @@ protected:
 
     NMVtkInteractorMode mNMInteractorMode;
 
-
+    double mDPR;
 
 private:
     NMVtkInteractorStyleImage(const NMVtkInteractorStyleImage&);

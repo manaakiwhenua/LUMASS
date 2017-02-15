@@ -136,6 +136,7 @@
 #include <QSplitter>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
+#include <QMouseEvent>
 
 // orfeo
 //#include "ImageReader.h"
@@ -369,13 +370,17 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     ui->compWidgetList->addWidgetItem(mLayerList, QString::fromUtf8("Map Layers"));
 
     // set up the table list
-    qreal pratio = qApp->devicePixelRatio();
+#ifdef QT_HIGHDPI_SUPPORT
+    qreal pratio = this->devicePixelRatioF();
+#else
+    qreal pratio = 1;
+#endif
     NMListWidget* liwi = new NMListWidget(ui->compWidgetList);
     liwi->setLogger(mLogger);
     mTableListWidget = liwi;
     mTableListWidget->setObjectName(QString::fromUtf8("tableListWidget"));
     mTableListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    mTableListWidget->setIconSize(QSize((int)16*pratio,(int)16*pratio));
+    mTableListWidget->setIconSize(QSize(int((qreal)16*pratio),int((qreal)16*pratio)));
 
     mTableListWidget->setDragEnabled(false);
     mTableListWidget->setAcceptDrops(true);
@@ -725,8 +730,11 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	axes->SetTotalLength(10,10,10);
 	axes->SetOrigin(0,0,0);
 
-    this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-                NMVtkInteractorStyleImage::New());
+    NMVtkInteractorStyleImage* iasm = NMVtkInteractorStyleImage::New();
+#ifdef QT_HIGHDPI_SUPPORT
+    iasm->setDevicePixelRatio(this->devicePixelRatioF());
+#endif
+    this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(iasm);
 
 	m_orientwidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
 	m_orientwidget->SetOrientationMarker(axes);
@@ -1301,21 +1309,6 @@ vtkRenderWindow*
 LUMASSMainWin::getRenderWindow(void)
 {
     return this->ui->qvtkWidget->GetRenderWindow();
-}
-
-void
-LUMASSMainWin::toggleRubberBandZoom(bool bzoom)
-{
-    if (this->m_b3D || !bzoom)
-    {
-        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-                    NMVtkInteractorStyleImage::New());
-    }
-     else
-    {
-        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-                    vtkInteractorStyleRubberBand2D::New());
-    }
 }
 
 void
@@ -3234,12 +3227,21 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	vtkRenderWindowInteractor* iren = vtkRenderWindowInteractor::SafeDownCast(
 			obj);
 
+    int rwWidth = iren->GetRenderWindow()->GetSize()[0];
+    int rwHeight = iren->GetRenderWindow()->GetSize()[1];
+    NMLogDebug(<< "renwin size: " << rwWidth << ", " << rwHeight);
+
 	if (iren->GetShiftKey())
 		return;
 
 	// get event position
 	int event_pos[2];
 	iren->GetEventPosition(event_pos);
+
+#ifdef QT_HIGHDPI_SUPPORT
+    event_pos[0] = (qreal)event_pos[0]*this->devicePixelRatioF();
+    event_pos[1] = (qreal)event_pos[1]*this->devicePixelRatioF();
+#endif
 
 	// get the selected layer or quit
     NMLayer* l = this->mLayerList->getSelectedLayer();
@@ -3619,6 +3621,11 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
 	// get event position
 	int event_pos[2];
 	iren->GetEventPosition(event_pos);
+
+#ifdef QT_HIGHDPI_SUPPORT
+    event_pos[0] = (qreal)event_pos[0]*this->devicePixelRatioF();
+    event_pos[1] = (qreal)event_pos[1]*this->devicePixelRatioF();
+#endif
 
 	double wPt[4];
 	vtkInteractorObserver::ComputeDisplayToWorld(this->mBkgRenderer,

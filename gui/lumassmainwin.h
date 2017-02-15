@@ -180,7 +180,6 @@ public slots:
 	void addLayerToCompList();
     void addLayerToCompList(NMLayer* layer);
     void image2PolyData(vtkImageData* img, QList<int>& unitIds);
-    void toggleRubberBandZoom(bool);
     void setMapBackgroundColour();
     void tableObjectVisibility(QListWidgetItem* item);
     void removeTableObject(QListWidgetItem* item, QPoint globalPos);

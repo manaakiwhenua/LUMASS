@@ -216,6 +216,10 @@ if (${QT5_VERSION_STRING} VERSION_LESS "5.4.0")
 	add_definitions(-DQTVERSION_LT_FIVE_FOUR)
 endif()
 
+if (${QT5_VERSION_STRING} VERSION_GREATER "5.5.9")
+    add_definitions(-DQT_HIGHDPI_SUPPORT)
+endif()
+
 # indicate that we're building the LUMASS GUI VERSION
 add_definitions(-DNM_ENABLE_LOGGER)
 

@@ -515,26 +515,27 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
 
 	// check, whether the user point is within the
 	// image boundary
-    if (bImgConstrained)
+    if (bImgConstrained && !vtkMath::PointIsWithinBounds(wcoord, mBBox, err))
     {
-        if (vtkMath::PointIsWithinBounds(wcoord, mBBox, err))
-        {
-            // calculate the image/pixel coordinates
-            for (d = 0; d < this->mNumDimensions; ++d)
-            {
-                pixel[d] = 0;
-
-                if (dims[d] > 0)
-                    pixel[d] = ::abs((int)((wcoord[d] - origin[d]) / spacing[d]));
-            }
-        }
+        for (int i=0; i < 3; ++i) pixel[i] = -1;
+        return;
     }
-    else
+
+    for (d = 0; d < this->mNumDimensions; ++d)
     {
-        for (d = 0; d < this->mNumDimensions; ++d)
+        if (dims[d] > 0)
         {
-            if (dims[d] > 0)
-                pixel[d] = (int)((wcoord[d] - origin[d]) / spacing[d]);
+            double raw = ((wcoord[d] - origin[d]) / spacing[d]);
+            if (    (d == 0 && (world[0] < mBBox[0]))
+                ||  (d == 1 && (wcoord[1] > mBBox[1]))
+               )
+            {
+                pixel[d] = int(raw-1);
+            }
+            else
+            {
+                pixel[d] = int(raw);
+            }
         }
     }
 

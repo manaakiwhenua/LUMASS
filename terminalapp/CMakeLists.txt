@@ -23,12 +23,12 @@ INCLUDE_DIRECTORIES(
 	${filters_SOURCE_DIR}
 	${filters_BINARY_DIR}
 	${shared_SOURCE_DIR}
-    ${shared_BINARY_DIR}
+        ${shared_BINARY_DIR}
 	${rimageio_SOURCE_DIR}
 	${mfw_SOURCE_DIR}    
 	${mfw_BINARY_DIR}
 	${mfw_wrapper_SOURCE_DIR}
-    ${LPSOLVE_INCLUDE_DIR}
+        ${LPSOLVE_INCLUDE_DIR}
 	${OTB_INCLUDE_DIRS}
 	${RASDAMAN_INCLUDE_DIR}                                   
 	${RASDAMAN_INCLUDE_DIR}/raslib	
@@ -54,7 +54,8 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -fPIC")
 QT5_WRAP_CPP(ENGINE_MOC_CPP
 	${opt_SOURCE_DIR}/NMMosra.h
 	${opt_SOURCE_DIR}/MOSORunnable.h
-    ${shared_SOURCE_DIR}/NMLogger.h
+        ${shared_SOURCE_DIR}/NMLogger.h
+        ${lumassengine_SOURCE_DIR}/lumassengine.h
 )
 
 file(GLOB ENGINE_SRC 

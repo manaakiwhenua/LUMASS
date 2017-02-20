@@ -21,7 +21,7 @@
 #include "vtkDataSet.h"
 #include "vtkTable.h"
 #include "vtkDelimitedTextWriter.h"
-
+#include "lumassengine.h"
 
 MOSORunnable::MOSORunnable()
 {
@@ -53,6 +53,8 @@ void
 MOSORunnable::run()
 {
 	QScopedPointer<NMMosra> mosra(new NMMosra());
+    NMLogger* mLogger = const_cast<NMLogger*>(NMLoggingProvider::This()->getLogger());
+    mosra->setLogger(mLogger);
 
 	int startIdx = mStartIdx;
 	int numruns = mNumRuns;

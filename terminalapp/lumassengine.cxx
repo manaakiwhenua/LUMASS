@@ -52,10 +52,12 @@
 #include "LUMASSConfig.h"
 
 #include <QtCore>
+#include <QDir>
 #include <QFileInfo>
 #include <QThread>
 #include <QFuture>
 #include <QScopedPointer>
+#include <QDateTime>
 
 #include "gdal.h"
 #include "gdal_priv.h"
@@ -74,6 +76,73 @@
 #include "NMModelSerialiser.h"
 #include "NMSequentialIterComponent.h"
 
+
+//////////////////////////////////////////////////////
+/// NMLoggingProvider implementation
+//////////////////////////////////////////////////////
+
+NMLoggingProvider::NMLoggingProvider()
+{
+    mLogger = new NMLogger(this);
+    mLogger->setHtmlMode(false);
+}
+
+NMLoggingProvider::~NMLoggingProvider()
+{
+    if (mLogFile.isOpen())
+    {
+        mLogFile.flush();
+        mLogFile.close();
+    }
+
+    if (mLogger)
+    {
+        delete mLogger;
+    }
+}
+
+NMLoggingProvider *NMLoggingProvider::This()
+{
+    static NMLoggingProvider provider;
+    return &provider;
+}
+
+NMLogger *NMLoggingProvider::getLogger() const
+{
+    return mLogger;
+}
+
+void
+NMLoggingProvider::setLogFileName(const QString &fn)
+{
+    mLogFile.setFileName(fn);
+    if (!mLogFile.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        NMErr("NMLoggingProvider", << "Failed creating log file!");
+        return;
+    }
+
+    connect(mLogger, SIGNAL(sendLogMsg(QString)), This(), SLOT(writeLogMsg(QString)));
+}
+
+void
+NMLoggingProvider::writeLogMsg(const QString &msg)
+{
+    if (!mLogFile.isOpen())
+    {
+        NMErr("NMLoggingProvider", << "Failed writing log message - log file is closed!");
+        return;
+    }
+
+    QTextStream out(&mLogFile);
+    out << msg;
+}
+
+//////////////////////////////////////////////////////
+/// lumassengine implementation
+//////////////////////////////////////////////////////
+
+
 static const std::string ctx = "LUMASS_engine";
 
 /*
@@ -86,6 +155,7 @@ void doMOSO(const QString& losFileName)
 	NMDebugCtx(ctx, << "...");
 
 	QScopedPointer<NMMosra> mosra(new NMMosra());
+    mosra->setLogger(NMLoggingProvider::This()->getLogger());
 	mosra->loadSettings(losFileName);
 	if (mosra->doBatch())
 	{
@@ -102,6 +172,7 @@ void doMOSO(const QString& losFileName)
 void doMOSObatch(const QString& losFileName)
 {
 	QScopedPointer<NMMosra> mosra(new NMMosra());
+    mosra->setLogger(NMLoggingProvider::This()->getLogger());
 	mosra->loadSettings(losFileName);
 	if (!mosra->doBatch())
 	{
@@ -191,6 +262,7 @@ void doMOSObatch(const QString& losFileName)
 void doMOSOsingle(const QString& losFileName)
 {
     QScopedPointer<NMMosra> mosra(new NMMosra());
+    mosra->setLogger(NMLoggingProvider::This()->getLogger());
     mosra->loadSettings(losFileName);
     QString dsFileName = QString("%1/%2.vtk").arg(mosra->getDataPath())
             .arg(mosra->getLayerName());
@@ -226,13 +298,16 @@ void doModel(const QString& modelFile)
         return;
     }
 
-    QMap<QString, QString> nameRegister;
-    NMLogger* mLogger = new NMLogger();
-    NMModelSerialiser xmlS;
-    xmlS.setLogger(mLogger);
-
-    // setup the model controller
     NMModelController* ctrl = NMModelController::getInstance();
+    ctrl->getLogger()->setHtmlMode(false);
+
+    QMap<QString, QString> nameRegister;
+    NMModelSerialiser xmlS;
+    xmlS.setLogger(ctrl->getLogger());
+
+    // connect the logger to the logging provider
+    ctrl->connect(ctrl->getLogger(), SIGNAL(sendLogMsg(QString)),
+                  NMLoggingProvider::This(), SLOT(writeLogMsg(QString)));
 
     NMSequentialIterComponent* root = new NMSequentialIterComponent();
     root->setObjectName("root");
@@ -251,7 +326,7 @@ void doModel(const QString& modelFile)
     ctrl->executeModel("root");
 
     GDALDestroyDriverManager();
-    delete mLogger;
+   // delete mLogger;
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -263,7 +338,8 @@ void showHelp()
                            << _lumass_version_revision
                            << std::endl << std::endl;
     std::cout << "Usage: lumassengine --moso <settings file (*.los)> | "
-                                  << "--model <LUMASS model file (*.lmx)>"
+                                  << "--model <LUMASS model file (*.lmx)> "
+                                  << "[--logfile <file name>]"
                                   << std::endl << std::endl;
 }
 
@@ -306,6 +382,7 @@ int main(int argc, char** argv)
 	WhatToDo todo = NM_ENGINE_NOPLAN;
     QString losFileName;
     QString modelFileName;
+    QString logFileName;
 
 	int arg = 1;
 	while (arg < argc-1)
@@ -333,6 +410,17 @@ int main(int argc, char** argv)
             }
             todo = NM_ENGINE_MODEL;
         }
+        else if (theArg == "--logfile")
+        {
+            logFileName = argv[arg+1];
+            QFileInfo fifo(logFileName);
+            QFileInfo difo(fifo.absoluteDir().absolutePath());
+            if (!difo.isWritable())
+            {
+                NMWarn(ctx, << "Log file directory is not writeable!");
+                logFileName.clear();
+            }
+        }
 
 		++arg;
 	}
@@ -344,6 +432,24 @@ int main(int argc, char** argv)
         showHelp();
         NMDebugCtx(ctx, << "done!");
         return EXIT_SUCCESS;
+    }
+
+
+
+#ifdef DEBUG
+    NMLoggingProvider::This()->getLogger()->setLogLevel(NMLogger::NM_LOG_DEBUG);
+#else
+    NMLoggingProvider::This()->getLogger()->setLogLevel(NMLogger::NM_LOG_INFO);
+#endif
+
+    if (!logFileName.isEmpty())
+    {
+        QString logstart = QString("lumassengine - %1, %2")
+                .arg(QDate::currentDate().toString())
+                .arg(QTime::currentTime().toString());
+
+        NMLoggingProvider::This()->setLogFileName(logFileName);
+        NMLoggingProvider::This()->writeLogMsg(logstart);
     }
 
 

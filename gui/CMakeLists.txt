@@ -168,7 +168,8 @@ file(GLOB QT_SRC
     
     # we also add some other stuff here
     ${shared_SOURCE_DIR}/NMLogger.cpp
-    ${opt_SOURCE_DIR}/*.cpp
+    ${opt_SOURCE_DIR}/LpHelper.cpp
+    ${opt_SOURCE_DIR}/NMMosra.cpp
     ${NMVtk_SOURCE_DIR}/*.cxx
     ${lumass_SOURCE_DIR}/utils/ITK/itkVTKImageExportBase.cxx
 )

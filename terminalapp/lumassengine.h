@@ -26,19 +26,37 @@
 #define LUMASSENGINE_H_
 
 #include <QString>
+#include <QFile>
+#include "NMLogger.h"
 
 // DECLARATIONS
 void doModel(const QString& modelFile);
 void doMOSO(const QString& losFileName);
 void doMOSObatch(const QString& losFileName);
 void doMOSOsingle(const QString& losFileName);
-//void doMOSOrun(const QString& dsfileName,
-//		const QString& losSettingsFileName,
-//		const QString& perturbItem,
-//		float level,
-//		int startIdx, int numruns);
-
-
 bool isFileAccessible(const QString& fileName);
+
+class NMLoggingProvider : public QObject
+{
+    Q_OBJECT
+public:
+    static NMLoggingProvider* This();
+
+    NMLogger* getLogger() const;
+    void setLogFileName(const QString& fn);
+
+
+public slots:
+    void writeLogMsg(const QString& msg);
+
+protected:
+    NMLoggingProvider();
+    virtual ~NMLoggingProvider();
+
+private:
+    NMLogger* mLogger;
+    QString mLogFileName;
+    QFile mLogFile;
+};
 
 #endif /* LUMASSENGINE_H_ */

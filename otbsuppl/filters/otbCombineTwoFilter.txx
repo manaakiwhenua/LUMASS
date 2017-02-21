@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2010-2014 Landcare Research New Zealand Ltd
+ * Copyright 2010-2015 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -16,6 +16,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+/*  ACKNOWLEDGEMENT
+ *
+ *  This implementation is based on a conceptual algorithm for
+ *  computing unique combinations developed by my brillant colleague
+ *
+ *  Robbie Price (Manaaki Whenua - Landcare Research New Zealand Ltd)
+ *
+ *
+ */
 
 
 #ifndef __otbCombineTwoFilter_txx

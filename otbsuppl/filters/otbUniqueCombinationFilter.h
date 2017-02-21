@@ -16,6 +16,16 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+/*  ACKNOWLEDGEMENT
+ *
+ *  This implementation is based on a conceptual algorithm for
+ *  computing unique combinations developed by my brillant colleague
+ *
+ *  Robbie Price (Manaaki Whenua - Landcare Research New Zealand Ltd)
+ *
+ *
+ */
+
 #ifndef OTBUNIQUECOMBINATIONFILTER_H_
 #define OTBUNIQUECOMBINATIONFILTER_H_
 

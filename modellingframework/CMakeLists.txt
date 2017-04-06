@@ -1,5 +1,13 @@
 PROJECT(mfw)
 
+find_package(VTK COMPONENTS
+        vtkCommonDataModel
+        vtkCommonCore
+        vtkIOCore
+)
+
+include(${VTK_USE_FILE})
+
 ADD_SUBDIRECTORY(wrapper ${mfw_BINARY_DIR}/wrapper)
 
 INCLUDE_DIRECTORIES(
@@ -25,6 +33,8 @@ INCLUDE_DIRECTORIES(
     ${lumass_SOURCE_DIR}
     ${otbsuppl_core_SOURCE_DIR}
     ${OTB_INCLUDE_DIRS}
+    ${LPSOLVE_INCLUDE_DIR}
+    ${opt_SOURCE_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -45,6 +55,9 @@ file(GLOB MFW_CPP
    ${mfw_wrapper_SOURCE_DIR}/*.cxx
    ${lumass_SOURCE_DIR}/util/ITK/itkVTKImageExportBase.cxx
    ${shared_SOURCE_DIR}/NMLogger.cpp
+   ${opt_SOURCE_DIR}/LpHelper.cpp
+   ${opt_SOURCE_DIR}/NMMosra.cpp
+
 )
 
 file(GLOB MFW_H
@@ -52,6 +65,8 @@ file(GLOB MFW_H
    ${mfw_BINARY_DIR}/*.h
    ${mfw_wrapper_SOURCE_DIR}/*.h
    ${shared_SOURCE_DIR}/NMLogger.h
+   ${opt_SOURCE_DIR}/LpHelper.h
+   ${opt_SOURCE_DIR}/NMMosra.h
 )
 
     #LIST(REMOVE_ITEM MFW_CPP ${mfw_wrapper_SOURCE_DIR}/WrapperTemplate.cpp)
@@ -93,6 +108,10 @@ LIST(APPEND MFW_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 		Qt5Core
 		Qt5Concurrent
                 #spatialite
+                vtkCommonDataModel
+                vtkCommonCore
+                vtkIOCore
+                ${LPSOLVE_LIBRARY}
 	)
 #endif()
 

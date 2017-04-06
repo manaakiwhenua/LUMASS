@@ -20,6 +20,7 @@ INCLUDE_DIRECTORIES(
 	${lumass_SOURCE_DIR}
  	${GDALRATImageIO_SOURCE_DIR}
 	${GDALRATImageIO_BINARY_DIR}
+        ${otbsuppl_core_SOURCE_DIR}
 	${filters_SOURCE_DIR}
 	${filters_BINARY_DIR}
 	${shared_SOURCE_DIR}

@@ -52,6 +52,12 @@ public:
     itkGetMacro(TableName, std::string)
     itkSetMacro(TableName, std::string)
 
+    itkGetMacro(RowIdColname, std::string)
+    itkSetMacro(RowIdColname, std::string)
+
+    itkGetMacro(CreateTable, bool)
+    itkSetMacro(CreateTable, bool)
+
     DataObjectPointer MakeOutput(DataObjectPointerArraySizeType idx);
     void GenerateData();
 
@@ -61,8 +67,10 @@ protected:
     NMTableReader();
     ~NMTableReader();
 
+    bool m_CreateTable;
     std::string m_FileName;
     std::string m_TableName;
+    std::string m_RowIdColname;
 
 
 };

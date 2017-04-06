@@ -26,6 +26,14 @@
 #ifndef otbNMTableReader_CXX_
 #define otbNMTableReader_CXX_
 
+#include "nmlog.h"
+
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <sys/stat.h>
+#endif
+
 #include "itkProcessObject.h"
 
 #include "otbNMTableReader.h"
@@ -61,6 +69,92 @@ NMTableReader::GenerateData()
     {
         itkExceptionMacro("No filename specified!")
         return;
+    }
+
+    // ----------------------------------------------------------
+    // check, whether the given file exists or not
+    bool fileExists = true;
+    std::stringstream fileErrorMsg;
+
+#ifdef _WIN32
+
+    int wcharSize = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+                                       m_FileName.c_str(), -1,
+                                       NULL, 0);
+
+    LPWSTR utf16FN = new WCHAR[wcharSize];
+
+    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+                        m_FileName.c_str(), -1,
+                        utf16FN, wcharSize);
+
+    DWORD attr = GetFileAttributesW(utf16FN);
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        LPVOID lpMsgBuf;
+        DWORD dw = GetLastError();
+        FormatMessage(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL,
+                dw,
+                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &lpMsgBuf,
+                0, NULL );
+
+        fileErrorMsg << "File '" << m_FileName << "' does not exist! "
+                   << (const char*)lpMsgBuf;
+
+        fileExists = false;
+    }
+    delete[] utf16FN;
+
+#else
+
+    struct stat attr;
+    if (stat(m_FileName.c_str(), &attr) != 0)
+    {
+        fileErrorMsg << "File '" << m_FileName << "' does not exist!";
+        fileExists = false;
+    }
+    else
+    {
+        if (!S_ISREG(attr.st_mode))
+        {
+            fileErrorMsg << "'" << m_FileName << "' is not a file!";
+            fileExists = false;
+        }
+    }
+
+#endif
+
+    // ----------------------------------------------------------
+    // if table not exists and we're supposed to create one,
+    // we do just that
+    if (!fileExists)
+    {
+        if (m_CreateTable)
+        {
+            if (tab->CreateTable(m_FileName) == otb::SQLiteTable::ATCREATE_ERROR)
+            {
+                itkExceptionMacro( << "Failed creating table '" << m_FileName << "'!");
+                return;
+            }
+            return;
+        }
+        else
+        {
+            itkExceptionMacro(<< fileErrorMsg.str());
+            return;
+        }
+    }
+
+
+    if (!m_RowIdColname.empty())
+    {
+        tab->SetRowIDColName(m_RowIdColname);
+        tab->SetRowIdColNameIsPersistent(true);
     }
 
     if (m_TableName.empty())

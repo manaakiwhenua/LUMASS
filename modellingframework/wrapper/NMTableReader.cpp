@@ -61,6 +61,11 @@ NMTableReader::linkParameters(unsigned int step, const QMap<QString, NMModelComp
 {
     otb::NMTableReader* f = static_cast<otb::NMTableReader*>(mOtbProcess.GetPointer());
 
+
+
+    f->SetCreateTable(mCreateTable);
+
+
     QVariant curFileNameVar = getParameter("FileName");
     std::string curFileName;
     if (curFileNameVar.isValid())
@@ -76,6 +81,15 @@ NMTableReader::linkParameters(unsigned int step, const QMap<QString, NMModelComp
        curTableName = curTableNameVar.toString().toStdString();
         f->SetTableName(curTableName);
     }
+
+    QVariant curRowIdColnameVar = getParameter("RowIdColname");
+    std::string curRowIdColname;
+    if (curRowIdColnameVar.isValid())
+    {
+       curRowIdColname = curTableNameVar.toString().toStdString();
+        f->SetTableName(curTableName);
+    }
+
 }
 
 QSharedPointer<NMItkDataObjectWrapper>

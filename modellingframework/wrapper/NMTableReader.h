@@ -44,15 +44,18 @@ NMTableReader
 {
 	Q_OBJECT
 
-    
+
+    Q_PROPERTY(bool CreateTable READ getCreateTable WRITE setCreateTable)
     Q_PROPERTY(QStringList FileName READ getFileName WRITE setFileName)
     Q_PROPERTY(QStringList TableName READ getTableName WRITE setTableName)
+    //Q_PROPERTY(QStringList RowIdColname READ getRowIdColname WRITE setRowIdColname)
 
 public:
 
-    
+    NMPropertyGetSet( CreateTable, bool)
     NMPropertyGetSet( FileName, QStringList )
     NMPropertyGetSet( TableName, QStringList )
+    NMPropertyGetSet( RowIdColname, QStringList )
 
 public:
     NMTableReader(QObject* parent=0);
@@ -68,9 +71,10 @@ protected:
     void linkParameters(unsigned int step,
     		const QMap<QString, NMModelComponent*>& repo);
 
-    
+    bool mCreateTable;
     QStringList mFileName;
     QStringList mTableName;
+    QStringList mRowIdColname;
 
 };
 

@@ -3129,9 +3129,6 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     std::vector< otb::AttributeTable::ColumnValue > values;
     values.resize(tab->GetNumCols());
 
-    int intval;
-    double dblval;
-    char* strval;
 	// copy values row by row
     for (long long row=0; row < tab->GetNumRows(); ++row)
 	{
@@ -3143,20 +3140,24 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
         }
         for (int col=0; col < tab->GetNumCols(); ++col)
 		{
-            //			itkDebugMacro(<< "Setting value: col=" << col
-            //					<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
 			switch(tab->GetColumnType(col))
 			{
 			case otb::AttributeTable::ATTYPE_INT:
-                //intval = ::atoi(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col, static_cast<int>(values[col].ival));//(int)tab->GetIntValue(col, row));
+                gdaltab->SetValue(row, col, static_cast<int>(values[col].ival));
                 break;
 			case otb::AttributeTable::ATTYPE_DOUBLE:
-                //dblval = ::atof(values.at(col-1).c_str());
-                gdaltab->SetValue(row, col, values[col].dval); //tab->GetDblValue(col, row));
+                gdaltab->SetValue(row, col, values[col].dval);
                 break;
 			case otb::AttributeTable::ATTYPE_STRING:
-                gdaltab->SetValue(row, col, values[col].tval); //tab->GetStrValue(col, row).c_str());
+                if (values[col].tval == 0)
+                {
+                    const char nullval = '\0';
+                    gdaltab->SetValue(row, col, &nullval);
+                }
+                else
+                {
+                    gdaltab->SetValue(row, col, values[col].tval);
+                }
 				break;
 			default:
                 delete gdaltab;

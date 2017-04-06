@@ -38,8 +38,6 @@
 #include "otbImage.h"
 #include "itkImageBase.h"
 #include "otbImageIOBase.h"
-#include "vtkImageImport.h"
-#include "itkVTKImageExport.h"
 #include "NMMfwException.h"
 #include "NMIterableComponent.h"
 #include "NMModelController.h"

@@ -41,7 +41,6 @@
 #include "otbAttributeTable.h"
 #include "otbImage.h"
 #include "itkSmartPointer.h"
-#include "vtkSmartPointer.h"
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageReader.h"

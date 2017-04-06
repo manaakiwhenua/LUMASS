@@ -59,7 +59,7 @@ NMParamHighlighter::NMParamHighlighter(QObject* parent)
                     << "ROW" << "SAVEPOINT" << "SELECT" << "SET" << "TABLE"
                     << "TEMP" << "TEMPORARY" << "TEXT" << "THEN" << "TO" << "TRANSACTION"
                     << "TRIGGER" << "UNION" << "UNIQUE" << "UPDATE" << "USING"
-                    << "VACUUM" << "VIEW" << "VIRTUAL" << "WHEN" << "WHERE" << "WITH";
+                    << "VACUUM" << "VALUES" << "VIEW" << "VIRTUAL" << "WHEN" << "WHERE" << "WITH";
                     // spatialite functions
     mSQLiteKeywords << "CastToInteger" << "CastToDouble" << "CastToText" << "CastToBlob"
                     << "ForceAsNull" << "MD5Checksum" << "MD5TotalChecksum";
@@ -72,8 +72,8 @@ NMParamHighlighter::NMParamHighlighter(QObject* parent)
 
 
     mMuParserKeywords << "sin" << "cos" << "tan" << "asin" << "acos" << "atan" << "sinh"
-                      << "cosh" << "tanh" << "asinh" << "acosh" << "atanh" << "log2"
-                      << "log10" << "ln" << "exp" << "sqrt" << "sign" << "rint"
+                      << "cosh" << "fmod" << "tanh" << "asinh" << "acosh" << "atanh" << "log2"
+                      << "log10" << "ln" << "exp" << "sqrt" << "sign" << "rint" << "rand"
                       << "abs" << "min" << "max" << "sum" << "avg";
 
     mKernelScriptKeywords = mMuParserKeywords;
@@ -189,7 +189,6 @@ NMParamHighlighter::highlightBlock(const QString &text)
                     break;
 
                     case NM_MATH_EXP:
-                    case NM_SCRIPT_EXP:
                     {
                         if (mMuParserKeywords.contains(comp.toString(), Qt::CaseInsensitive))
                         {
@@ -197,7 +196,20 @@ NMParamHighlighter::highlightBlock(const QString &text)
                         }
                         else
                         {
-                            theFormat = compFormat;
+                            theFormat = normalFormat;
+                        }
+                    }
+                    break;
+
+                    case NM_SCRIPT_EXP:
+                    {
+                        if (mKernelScriptKeywords.contains(comp.toString(), Qt::CaseInsensitive))
+                        {
+                            theFormat = keywordFormat;
+                        }
+                        else
+                        {
+                            theFormat = normalFormat;
                         }
                     }
                     break;

@@ -63,8 +63,8 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     QSizePolicy tepol(QSizePolicy::Expanding, QSizePolicy::Expanding);
     tepol.setVerticalStretch(1);
 
-    QSplitter* splitter = new QSplitter(Qt::Horizontal);
-    splitter->setSizePolicy(tepol);
+    mMainSplitter = new QSplitter(Qt::Horizontal);
+    mMainSplitter->setSizePolicy(tepol);
 
     mTreeWidget = new NMHoverEditTree(this);
     mTreeWidget->setObjectName("treeWidget");
@@ -82,14 +82,14 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     mPreview = new QTextBrowser(this);
     mPreviewHighlighter = new NMParamHighlighter(mPreview);
     //mPreviewHighlighter->setRegularExpression(mEdit->getRegEx());
-    splitter->addWidget(mPreview);
+    //splitter->addWidget(mPreview);
     mPreview->hide();
 
     QWidget* widgetL = new QWidget(this);
     QVBoxLayout* vboxL = new QVBoxLayout(widgetL);
     mLabel = new QLabel(widgetL);
     vboxL->addWidget(mTreeWidget);
-    vboxL->addWidget(mLabel);
+    //vboxL->addWidget(mLabel);
 
     // ============================================
     // RIGHT HAND SIDE WIDGET
@@ -116,12 +116,12 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     vboxR->addWidget(splitterR);
     vboxR->addItem(hboxR);
 
-    QList<int> sizes;
-    sizes << 40 << 120;
+    mSplitterSizes.clear();
+    mSplitterSizes << 40 << 120;
 
-    splitter->addWidget(widgetL);
-    splitter->addWidget(widgetR);
-    splitter->setSizes(sizes);
+    mMainSplitter->addWidget(widgetL);
+    mMainSplitter->addWidget(widgetR);
+    mMainSplitter->setSizes(mSplitterSizes);
 
     QHBoxLayout* bl2 = new QHBoxLayout();
     bl2->addStretch();
@@ -132,9 +132,13 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     QPushButton* btncancel = new QPushButton("Cancel", this);
     bl2->addWidget(btncancel);
 
-    fl->addWidget(splitter);
+    fl->addWidget(mLabel);
+    fl->addWidget(mMainSplitter);
     fl->addItem(bl2);
 
+
+    connect(mMainSplitter, SIGNAL(splitterMoved(int,int)),
+            this, SLOT(storeSplitterSize(int,int)));
 
     connect(mTreeWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)),
             SLOT(updateModelItem(QTreeWidgetItem*,int)));
@@ -179,11 +183,19 @@ NMHoverEdit::eventFilter(QObject *obj, QEvent *event)
                 mFindReplaceDlg->show();
                 return true;
             }
-            else if (ke->key() == Qt::Key_Tab)
-            {
-                btnPreview->setFocus();
-                return true;
-            }
+//            else if (ke->key() == Qt::Key_Tab)
+//            {
+//                if (!mEdit->hasFocus())
+//                {
+//                    btnPreview->setFocus();
+//                    return true;
+//                }
+//            }
+//            else if (ke->key() == Qt::RightArrow)
+//            {
+//                btnPreview->setFocus();
+//                return true;
+//            }
         }
     }
     return false;
@@ -322,7 +334,7 @@ NMHoverEdit::setProperty(const QString &compName, const QString& propName)
         }
     }
 
-    if (propName.compare("KernelScript") == 0)
+    if (propName.compare("KernelScript") == 0 || propName.compare("InitScript") == 0)
     {
         mHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
         mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
@@ -367,7 +379,23 @@ NMHoverEdit::updateEditor()
     mTreeWidget->setTreeModel(model);
     if (QString("QString").compare(model.typeName()) == 0)
     {
+        mEdit->setPlaceholderText(tr("Edit parameter"));
         mEdit->setText(model.toString());
+
+        mTreeWidget->setVisible(false);
+        QList<int> nsizes;
+        nsizes << 0 << (mSplitterSizes[0] + mSplitterSizes[1]);
+        mMainSplitter->setSizes(nsizes);
+    }
+    else
+    {
+        if (!mTreeWidget->isVisible())
+        {
+            mTreeWidget->setVisible(true);
+            QList<int> nsizes;
+            nsizes << 40 << (mSplitterSizes[1]-40);
+            mMainSplitter->setSizes(nsizes);
+        }
     }
 
     QString title;
@@ -384,10 +412,10 @@ NMHoverEdit::updateEditor()
     const int ml = mPropLevel;
     switch(ml)
     {
-    case 0:
-    case 1: mLabel->setText("Parameter"); break;
-    case 2: mLabel->setText("List of Parameters"); break;
-    case 3: mLabel->setText("List of List of Pameters"); break;
+    case 0: mLabel->setText("Single parameter for all iterations"); break;
+    case 1: mLabel->setText("One parameter per iteration"); break;
+    case 2: mLabel->setText("List of parameters per iteration"); break;
+    case 3: mLabel->setText("List of list of pameters per iteration"); break;
     }
 
     updateCompleter();
@@ -407,7 +435,7 @@ NMHoverEdit::updateModelItem(QTreeWidgetItem *item, int col)
     QVariant model = mTreeWidget->getTreeModel();
     if (QString("QString").compare(model.typeName()) == 0)
     {
-        mEdit->setText(model.toString());
+        mEdit->setText(unquoteParam(model.toString()));
         return;
     }
 
@@ -431,7 +459,7 @@ NMHoverEdit::updateModelItem(QTreeWidgetItem *item, int col)
             {
                 mEdit->setPlaceholderText("Edit parameter");
             }
-            mEdit->setText(param);
+            mEdit->setText(unquoteParam(param));
         }
     }
     else if (QString("QList<QStringList>").compare(model.typeName()) == 0)
@@ -443,7 +471,7 @@ NMHoverEdit::updateModelItem(QTreeWidgetItem *item, int col)
             {
                 mEdit->setPlaceholderText("Edit parameter");
             }
-            mEdit->setText(param);
+            mEdit->setText(unquoteParam(param));
         }
     }
     else if (QString("QList<QList<QStringList> >").compare(model.typeName()) == 0)
@@ -455,7 +483,7 @@ NMHoverEdit::updateModelItem(QTreeWidgetItem *item, int col)
             {
                 mEdit->setPlaceholderText("Edit parameter");
             }
-            mEdit->setText(param);
+            mEdit->setText(unquoteParam(param));
         }
     }
     else
@@ -465,6 +493,43 @@ NMHoverEdit::updateModelItem(QTreeWidgetItem *item, int col)
     }
 
     mCurIndices = indices;
+}
+
+QString
+NMHoverEdit::quoteParam(const QString &param)
+{
+    QString ret = param;
+    if (param.contains(QChar('{')) || param.contains(QChar('}')))
+    {
+        if (param.at(0) != '\"' || param.at(param.size()-1) == '\"')
+        {
+            ret = QString("\"%1\"").arg(param);
+        }
+    }
+
+    return ret;
+}
+
+QString
+NMHoverEdit::unquoteParam(const QString &param)
+{
+    if (param.isEmpty())
+    {
+        return param;
+    }
+
+    QString ret = param;
+    if (ret.at(0) == '\"')
+    {
+        ret = ret.mid(1);
+    }
+
+    if (ret.at(ret.size()-1) == '\"')
+    {
+        ret = ret.left(ret.size()-1);
+    }
+
+    return ret;
 }
 
 void
@@ -477,7 +542,7 @@ NMHoverEdit::applyChanges()
     // we replace the model's value with the editor value
     if (indices.size() == mPropLevel)
     {
-        QString newValue = mEdit->toPlainText().simplified();
+        QString newValue = quoteParam(mEdit->toPlainText());//.simplified();
 
         if (QString("QString").compare(model.typeName()) == 0)
         {

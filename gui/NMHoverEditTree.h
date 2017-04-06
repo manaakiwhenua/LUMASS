@@ -60,8 +60,12 @@ protected:
      *        function does not reflect changes to the tree
      * \param indices tree index where change occurs
      * \param mode 0=remove; 1=add
+     * \param for mode == 1, the respective element, set up
+     *        according to the mMaxLevel of the model and
+     *        the given indices, is inserted into the model
      */
-    void changeStructure(const QList<int>& indices, int mode);
+    void changeStructure(const QList<int>& indices, int mode,
+                         QVariant=QVariant());
 
     void callContextMenu(const QPoint& pos);
     void showoffItem(QTreeWidgetItem* item);

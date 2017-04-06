@@ -20,8 +20,8 @@
 #define __NMHOVEREDIT_
 
 #include <QDialog>
-//#include <QTextEdit>
 #include <QLabel>
+#include <QSplitter>
 
 class QCheckBox;
 class QTreeWidgetItem;
@@ -67,10 +67,14 @@ protected slots:
     void showExpressionPreview(bool preview);
     bool eventFilter(QObject *obj, QEvent *event);
     void closeEvent(QCloseEvent *event);
+    void storeSplitterSize(int pos, int idx)
+        {mSplitterSizes = mMainSplitter->sizes();}
 
 protected:
     void showEvent(QShowEvent* event);
     void updateCompleter();
+    QString quoteParam(const QString& param);
+    QString unquoteParam(const QString& param);
 
 
 private:
@@ -78,6 +82,8 @@ private:
     QString mPropName;
     int mPropLevel;
 
+    QList<int> mSplitterSizes;
+    QSplitter* mMainSplitter;
     NMParamEdit* mEdit;
     QTextBrowser* mPreview;
     NMParamHighlighter* mHighlighter;

@@ -59,6 +59,10 @@ protected:
     };
 
     void keyPressEvent(QKeyEvent* e);
+    void wheelEvent(QWheelEvent* e);
+
+    void updateWhiteSpaceTab();
+
     NMModelComponent* getModelComponent(const QString& compName);
     CompletionMode setupValueCompleter(const QString& compName,
                            const QString& propName);

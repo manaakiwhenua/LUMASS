@@ -70,6 +70,7 @@ NMParamEdit::NMParamEdit(QWidget *parent)
                              "(?<sep2>(?(<prop>)(?(<open>)):))*"
                              "(?<idx>(?(<sep2>)[\\w]*)))");
 
+    updateWhiteSpaceTab();
 }
 
 NMModelComponent*
@@ -93,6 +94,31 @@ NMParamEdit::getModelComponent(const QString& compName)
         }
     }
     return pcomp;
+}
+
+void
+NMParamEdit::wheelEvent(QWheelEvent* e)
+{
+    if (e->modifiers() & Qt::ControlModifier)
+    {
+        if (e->delta() > 0)
+        {
+            this->zoomIn(2);
+        }
+        else
+        {
+            this->zoomOut(2);
+        }
+        updateWhiteSpaceTab();
+    }
+}
+
+void
+NMParamEdit::updateWhiteSpaceTab()
+{
+    // set the default tabStopWidth
+    int fw = QFontMetrics(this->currentCharFormat().font()).width(QLatin1Char(' '));
+    this->setTabStopWidth(fw * 4);
 }
 
 void
@@ -302,7 +328,7 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
                 }
             }
             // Comp completion
-            else if (!comp.isEmpty() && cpos <= comp.position()+comp.length())
+            else if (!comp.isEmpty() && cpos > comp.position() && cpos <= comp.position()+comp.length())
             {
                 completionMode = NM_COMPNAME_COMPLETION;
                 if (mCompletionMode != NM_COMPNAME_COMPLETION)
@@ -367,6 +393,7 @@ NMParamEdit::setupValueCompleter(const QString &compName, const QString &propNam
                     }
                 }
 
+                values.removeDuplicates();
                 values.sort(Qt::CaseInsensitive);
                 mCompleter->setModel(new QStringListModel(values, mCompleter));
                 bFailed = false;

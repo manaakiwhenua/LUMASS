@@ -117,6 +117,9 @@ public:
     bool SetTableName(const std::string& tableName);
     bool SetDbFileName(const std::string& dbFileName);
 
+    void SetRowIdColNameIsPersistent(bool bPersistent)
+    {m_bPersistentRowIdColName = bPersistent;}
+
     bool openConnection();
     void disconnectDB();
     TableCreateStatus CreateTable(std::string filename, std::string tag="");
@@ -253,6 +256,9 @@ protected:
 
     bool m_bUseSharedCache;
     bool m_bOpenReadOnly;
+
+    bool m_bPersistentRowIdColName;
+
     sqlite3* m_db;
     std::string m_dbFileName;
     std::string m_tableName;

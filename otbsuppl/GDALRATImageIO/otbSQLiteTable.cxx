@@ -2422,7 +2422,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     m_dbFileName = vinfo[0];
     m_dbFileName += "/";
     m_dbFileName += m_tableName;
-    m_dbFileName += ext;
+    //m_dbFileName += ext;
     m_dbFileName += ".ldb";
 
     if (!openConnection())
@@ -2556,7 +2556,8 @@ SQLiteTable::GetFilenameInfo(const std::string& fileName)
      */
     std::vector<std::string> vinfo;
 
-    if (fileName.empty())
+    if (fileName.empty()
+        || fileName.compare("file::memory:") == 0)
     {
         return vinfo;
     }
@@ -2622,29 +2623,37 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     {
         std::string fullname = m_dbFileName;
 
+        if (fullname.compare("file::memory:") != 0)
+        {
+
 #ifndef _WIN32
-		m_tableName = basename(const_cast<char*>(fullname.c_str()));
+            m_tableName = basename(const_cast<char*>(fullname.c_str()));
 #else
-		char fname[256];
-		_splitpath(fullname.c_str(), 0, 0, fname, 0);
-		m_tableName = fname;
+            char fname[256];
+            _splitpath(fullname.c_str(), 0, 0, fname, 0);
+            m_tableName = fname;
 #endif
 
-		size_t pos = m_tableName.find_last_of('.');
-        if (pos > 0)
-        {
-            m_tableName = m_tableName.substr(0, pos);
+            size_t pos = m_tableName.find_last_of('.');
+            if (pos > 0)
+            {
+                m_tableName = m_tableName.substr(0, pos);
+            }
+            std::locale loc;
+            if (std::isdigit(m_tableName[0], loc))
+            {
+                std::string prefix = "nm_";
+                m_tableName = prefix + m_tableName;
+            }
         }
-        std::locale loc;
-        if (std::isdigit(m_tableName[0], loc))
+        else
         {
-            std::string prefix = "nm_";
-            m_tableName = prefix + m_tableName;
+            m_tableName = "nmtab";
         }
     }
     else
     {
-        m_tableName = "nm_tab";
+        m_tableName = "nmtab";
     }
 
     if (!tag.empty())
@@ -2802,7 +2811,8 @@ SQLiteTable::SQLiteTable()
       m_tableName(""),
       m_bUseSharedCache(true),
       m_bOpenReadOnly(false),
-      m_lastLogMsg("")
+      m_lastLogMsg(""),
+      m_bPersistentRowIdColName(false)
 {
     //this->createTable("");
     this->m_ATType = ATTABLE_TYPE_SQLITE;
@@ -2944,9 +2954,14 @@ SQLiteTable::PopulateTableAdmin()
     }
 
     const std::string tableName = m_tableName;
+    const std::string rowidname = m_idColName;
     this->resetTableAdmin();
 
     m_tableName = tableName;
+    if (m_bPersistentRowIdColName)
+    {
+        m_idColName = rowidname;
+    }
 
     // -------------------------------------------------
     // get table info

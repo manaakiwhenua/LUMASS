@@ -43,8 +43,8 @@
 #ifndef NMMOSRA_H_
 #define NMMOSRA_H_
 
-#include "nmlog.h"
-#define ctxNMMosra "NMMosra"
+//#include "nmlog.h"
+//#define ctxNMMosra "NMMosra"
 
 #include <QObject>
 #include <QMap>
@@ -58,9 +58,85 @@
 #include "vtkTable.h"
 #include "vtkDataSet.h"
 #include "vtkDataSetAttributes.h"
-//#include "vtkQtTableModelAdapter.h"
+#include "otbAttributeTable.h"
 
 class NMLogger;
+
+/////////////////////////////////////////////////////////////////
+/// \brief The NMMosraDataSet class
+///        provides an abstract layer around
+///        different (table-based) data sources the
+///        the optimisation could run on
+/////////////////////////////////////////////////////////////////
+
+class NMMosraDataSet : public QObject
+{
+
+public:
+    NMMosraDataSet(QObject* parent=0);
+    ~NMMosraDataSet(){}
+
+    enum NMMosraDataSetDataType
+    {
+        NM_MOSRA_DATATYPE_INT = 0,
+        NM_MOSRA_DATATYPE_DOUBLE,
+        NM_MOSRA_DATATYPE_STRING
+    };
+
+    enum NMMosraDataSetType
+    {
+        NM_MOSRA_DS_VTKDS = 0,
+        NM_MOSRA_DS_OTBTAB,
+        NM_MOSRA_DS_NONE
+    };
+
+    NMMosraDataSetType getDataSetType()
+        {return mType;}
+
+    vtkSmartPointer<vtkTable> getDataSetAsVtkTable();
+
+    void setDataSet(vtkDataSet* vtkds);
+    void setDataSet(otb::AttributeTable::Pointer otbtab);
+
+    otb::AttributeTable::Pointer getAttributeTable(void)
+        {return mOtbTab;}
+    vtkDataSet* getVtkDataSet(void)
+        {return mVtkDS;}
+
+    bool hasColumn(const QString& columnName);
+    int  getColumnIndex(const QString& colName);
+    void addColumn(const QString& colName,
+                   NMMosraDataSetDataType type);
+
+    int  getNumRecs();
+    double getDblValue(const QString& columnName, int row);
+    int  getIntValue(const QString& columnName, int row);
+    QString getStrValue(const QString& columnName, int row);
+
+    double getDblValue(int col, int row);
+    int  getIntValue(int col, int row);
+    QString getStrValue(int col, int row);
+
+
+    void setIntValue(const QString& colname, int row, int value);
+    void setDblValue(const QString& colname, int row, double value);
+    void setStrValue(const QString& colname, int row, const QString& value);
+
+
+protected:
+
+    NMMosraDataSetType mType;
+
+    vtkDataSet* mVtkDS;
+    otb::AttributeTable::Pointer mOtbTab;
+
+};
+
+
+/////////////////////////////////////////////////////////////////
+/// \brief The NMMosra class
+///        the one dealing with the deatails of the optimisation
+/////////////////////////////////////////////////////////////////
 
 class NMMosra : public QObject
 {
@@ -68,6 +144,7 @@ class NMMosra : public QObject
 	Q_ENUMS(NMMosoDVType)
 	Q_ENUMS(NMMOsoScalMeth)
 
+friend class NMMosraDataSet;
 
 public:
 	NMMosra(QObject* parent=0);
@@ -92,8 +169,12 @@ public:
 
     void setLogger(NMLogger* logger){mLogger = logger;}
 
+    void setItkProcessObject(itk::ProcessObject* obj)
+        {mProcObj = obj;}
+
 	void setDataSet(const vtkDataSet* dataset);
-	const vtkDataSet* getDataSet()
+    void setDataSet(otb::AttributeTable::Pointer otbtab);
+    const NMMosraDataSet* getDataSet()
 		{return this->mDataSet;}
 	vtkSmartPointer<vtkTable> getDataSetAsTable();
 
@@ -163,11 +244,16 @@ public:
 
 private:
 
+    static const std::string ctxNMMosra;
+
 	bool mbCanceled;
 
 	HLpHelper* mLp;
-	vtkDataSet* mDataSet;
+    //vtkDataSet* mDataSet;
+    NMMosraDataSet* mDataSet;
     NMLogger* mLogger;
+
+    itk::ProcessObject* mProcObj;
 
 	QString msReport;
 	QString msSettingsReport;
@@ -212,6 +298,8 @@ private:
 	QMap<QString, QStringList> mmslAreaZoneCons;
 	QStringList mmslAreaConsLabel;
 
+    QMap<QString, QStringList> mmslFeatCons;
+
 	/*! nested map; holds for each zone field the maximum available area for each specified
 	 *  (combination of) land use options */
 	QMap<QString, QMap<QString, double > > mmslZoneAreas;
@@ -251,6 +339,7 @@ private:
 	int addObjCons(void);
 	int addExplicitAreaCons(void);
 	int addImplicitAreaCons(void);
+    int addFeatureCons(void);
 	int addCriCons(void);
 
 	int isSolveCanceled(void);

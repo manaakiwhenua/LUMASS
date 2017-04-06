@@ -46,6 +46,7 @@
 
 #include "otbNMScriptableKernelFilter2.h"
 
+#include <cctype>
 #include <algorithm>
 #include <stack>
 
@@ -58,7 +59,9 @@
 #include "itkProgressReporter.h"
 #include "utils/muParser/muParserError.h"
 #include "otbKernelScriptParserError.h"
-#include "otbAttributeTable.h"
+//#include "otbRAMTable.h"'
+#include "otbSQLiteTable.h"
+//#include "otbAttributeTable.h"
 
 #include "nmlog.h"
 
@@ -85,8 +88,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
     m_This = static_cast<double>(reinterpret_cast<uintptr_t>(this));
 
-    // just for debug
-    //this->SetNumberOfThreads(1);
+    this->SetNumberOfIndexedOutputs(2);
+
+    this->SetNthOutput(1, MakeOutput(1));
 }
 
 template <class TInputImage, class TOutputImage>
@@ -117,6 +121,18 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 {
     m_Nodata = static_cast<OutputPixelType>(nodata);
     this->Modified();
+}
+
+
+template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter2<TInputImage, TOutputImage>
+::SetNumThreads(unsigned int nthreads)
+{
+    unsigned int nth = std::max(nthreads, (unsigned int)1);
+    unsigned int maxthreads = this->GetNumberOfThreads();
+
+    this->SetNumberOfThreads(std::min(nth, maxthreads));
 }
 
 template <class TInputImage, class TOutputImage>
@@ -153,6 +169,10 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     m_mapNameTable.erase(m_This);
     m_mapNeighbourDistance.erase(m_This);
 
+    m_minVal.clear();
+    m_maxVal.clear();
+    m_sumVal.clear();
+
     this->Modified();
 }
 
@@ -174,10 +194,25 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 template <class TInputImage, class TOutputImage>
 void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
-::SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj)
+::SetNthInput(itk::DataObject::DataObjectPointerArraySizeType num, itk::DataObject* input)
 {
-    itk::ProcessObject::SetNthInput(idx, dataObj);
+    InputImageType* img = dynamic_cast<InputImageType*>(input);
+
+    if (img)
+    {
+        int idx = num >= this->GetNumberOfIndexedInputs() ? this->GetNumberOfIndexedInputs(): num;
+        Superclass::SetNthInput(idx, input);
+        m_IMGNames.push_back(m_DataNames.at(num));
+    }
 }
+
+//template <class TInputImage, class TOutputImage>
+//void
+//NMScriptableKernelFilter2<TInputImage, TOutputImage>
+//::SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj)
+//{
+//    itk::ProcessObject::SetNthInput(idx, dataObj);
+//}
 
 template <class TInputImage, class TOutputImage>
 void
@@ -193,20 +228,23 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     // and stored in m_DataNames), so we just append '_t' to the
     // image name, to distinguish between the two in the parser formula
 
-    std::vector<std::string>::iterator nameIt = m_DataNames.begin();
-    if (idx == this->GetNumberOfIndexedInputs()-1)
+    if (idx >= m_IMGNames.size())
     {
-        std::string name = m_DataNames.at(idx);
-        name += "_t";
-        m_DataNames.insert(nameIt+idx+1, name);
-        this->SetFilterInput(idx+1, table.GetPointer());
+        if (idx < m_DataNames.size())
+        {
+            m_RATNames.push_back(m_DataNames.at(idx));
+            m_vRAT.push_back(table);
+            this->Modified();
+        }
     }
     else
     {
-        this->SetFilterInput(idx, table.GetPointer());
+        std::string name = m_IMGNames.at(idx);
+        name += "_t";
+        m_RATNames.push_back(name);
+        m_vRAT.push_back(table);
+        this->Modified();
     }
-
-    this->Modified();
 }
 
 template <class TInputImage, class TOutputImage>
@@ -356,9 +394,21 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         // update input data
         this->CacheInputData();
 
+        // run (and parse and all that) the init script
+        this->RunInitScript();
+
         // parse the script only once at the
         // beginning
-        this->ParseScript();
+        std::vector<std::vector<ParserPointerType> > iscript;
+        std::vector<int> blen;
+        this->ParseScript(false, iscript, blen);
+
+        m_minVal.resize(m_mapNameAuxValue[0].size(), itk::NumericTraits<ParserValue>::max());
+        m_maxVal.resize(m_mapNameAuxValue[0].size(), itk::NumericTraits<ParserValue>::NonpositiveMin());
+        m_sumVal.resize(m_mapNameAuxValue[0].size(),0);
+
+        // make a new AuxTable output
+        this->SetNthOutput(1, this->MakeOutput(1));
     }
 
     m_vthPixelCounter.clear();
@@ -374,7 +424,84 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 template <class TInputImage, class TOutputImage>
 void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
-::ParseCommand(const std::string &expr)
+::RunInitScript()
+{
+    if (this->m_InitScript.empty())
+    {
+        NMProcInfo(<< "Skip empty init script");
+        return;
+    }
+
+    std::vector<std::vector<ParserPointerType> > initcommands;
+    for (int t=0; t < this->GetNumberOfThreads(); ++t)
+    {
+        std::vector<ParserPointerType> initParsers;
+        initcommands.push_back(initParsers);
+    }
+
+
+    std::vector<int> initblocklen;
+    this->ParseScript(true, initcommands, initblocklen);
+
+    for (int th=0; th < this->GetNumberOfThreads(); ++th)
+    {
+        for (int c=0; c < initcommands.at(th).size(); ++c)
+        {
+            const ParserPointerType& exprParser = initcommands[th][c];
+            ParserValue& exprVal = m_mapNameAuxValue[th][m_mapParserName[exprParser.GetPointer()]];
+
+            exprVal = exprParser->Eval();
+            if (initblocklen[c] > 1)
+            {
+                std::vector<ParserPointerType>& vp = initcommands[th];
+                LoopInit(c, th, vp, initblocklen);
+                c += initblocklen[c]-1;
+            }
+        }
+    }
+}
+
+template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter2<TInputImage, TOutputImage>
+::LoopInit(int i, int th,
+           std::vector<ParserPointerType> &vParsers,
+           std::vector<int> &vBlockLen)
+{
+    const int numForExp = vBlockLen[i]-3;
+    const ParserPointerType& testParser = vParsers[++i];
+    ParserValue& testValue = m_mapNameAuxValue[th][m_mapParserName[testParser.GetPointer()]];
+    testValue = testParser->Eval();
+
+    ParserPointerType& counterParser = vParsers[++i];
+    ParserValue& counterValue = m_mapNameAuxValue[th][m_mapParserName[counterParser.GetPointer()]];
+
+    while (testValue != 0)
+    {
+        for (int exp=1; exp <= numForExp; ++exp)
+        {
+            const ParserPointerType& forParser = vParsers[i+exp];
+            ParserValue& forValue = m_mapNameAuxValue[th][m_mapParserName[forParser.GetPointer()]];
+            forValue = forParser->Eval();
+
+            if (vBlockLen[i+exp] > 1)
+            {
+                LoopInit(i+exp, th, vParsers, vBlockLen);
+                exp += vBlockLen[i+exp]-1;
+            }
+        }
+
+        counterValue = counterParser->Eval();
+        testValue = testParser->Eval();
+    }
+}
+
+
+template <class TInputImage, class TOutputImage>
+void
+NMScriptableKernelFilter2<TInputImage, TOutputImage>
+::ParseCommand(bool binit, const std::string &expr,
+               std::vector<std::vector<ParserPointerType> > &initScript)
 {
     std::string name = "";
 
@@ -486,7 +613,15 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
         parser->SetExpr(theexpr);
 
-        m_vecParsers[th].push_back(parser);
+        if (binit)
+        {
+            initScript[th].push_back(parser);
+        }
+        else
+        {
+            m_vecParsers[th].push_back(parser);
+        }
+
         m_mapParserName[parser.GetPointer()] = name;
     }
 }
@@ -494,7 +629,9 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 template <class TInputImage, class TOutputImage>
 void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
-::ParseScript()
+::ParseScript(bool binit,
+              std::vector<std::vector<ParserPointerType> > &initScript,
+              std::vector<int>& initBlockLen)
 {
     if (m_KernelScript.empty())
     {
@@ -512,7 +649,16 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     std::stack<int> forLoop;    // parser vector index of 1st for admin cmd
     std::stack<int> bracketOpen;
 
-    std::string script = m_KernelScript;
+    std::string script;
+    if (binit)
+    {
+        script = m_InitScript;
+
+    }
+    else
+    {
+        script = m_KernelScript;
+    }
 
     // remove all single (') and double quotes (")
     std::string quotes = "\"";
@@ -550,7 +696,14 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                 if (next != std::string::npos)
                 {
                     // store the parser idx starting this for loop
-                    forLoop.push(m_vecParsers.at(0).size());
+                    if (binit)
+                    {
+                        forLoop.push(initScript.at(0).size());
+                    }
+                    else
+                    {
+                        forLoop.push(m_vecParsers.at(0).size());
+                    }
 
                     curElem = FOR_ADMIN;
                     bracketOpen.push(next);
@@ -561,6 +714,10 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
                 {
                     /// ToDo: throw exception
                     std::stringstream exsstr;
+                    if (binit)
+                    {
+                        exsstr << "Init script: ";
+                    }
                     exsstr << "Malformed for-loop near pos "
                            << pos << ". Missing '('.";
                     KernelScriptParserError pe;
@@ -633,7 +790,14 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
                 int idx = forLoop.top();
                 forLoop.pop();
-                m_vecBlockLen.at(idx) = m_vecParsers[0].size() - idx;
+                if (binit)
+                {
+                    initBlockLen.at(idx) = initScript[0].size() - idx;
+                }
+                else
+                {
+                    m_vecBlockLen.at(idx) = m_vecParsers[0].size() - idx;
+                }
 
                 if (forLoop.empty())
                 {
@@ -648,8 +812,16 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
         if (!cmd.empty())
         {
-            this->ParseCommand(cmd);
-            m_vecBlockLen.push_back(1);
+            this->ParseCommand(binit, cmd, initScript);
+
+            if (binit)
+            {
+                initBlockLen.push_back(1);
+            }
+            else
+            {
+                m_vecBlockLen.push_back(1);
+            }
             cmd.clear();
         }
 
@@ -663,140 +835,141 @@ void
 NMScriptableKernelFilter2<TInputImage, TOutputImage>
 ::CacheInputData()
 {
-    for (int n=0; n < m_DataNames.size(); ++n)
+    std::string name;
+    for (int t=0; t < m_RATNames.size(); ++t)
     {
-        const std::string& name = m_DataNames.at(n);
+        otb::AttributeTable::Pointer tab = m_vRAT.at(t);
+        name = m_RATNames.at(t);
 
-        if (n < this->GetNumberOfIndexedInputs())
+        const ParserValue nv = static_cast<ParserValue>(m_Nodata);
+        long underflows = 0;
+        long overflows = 0;
+        // if we've got a table here, we haven't dealt with, we
+        // just copy the content into a matrix type mup::Value
+        if (tab.IsNotNull() && m_mapNameTable[m_This].find(name) == m_mapNameTable[m_This].end())
         {
-            itk::DataObject* dataObject = this->GetIndexedInputs().at(n).GetPointer();
-            AttributeTable* tab = dynamic_cast<otb::AttributeTable*>(dataObject);
-            InputImageType* img = dynamic_cast<TInputImage*>(dataObject);
+            // the row, maxrow thing below is weired, I know, but it's because otb::SQLiteTable's row index
+            // (i.e. primary key) is not necessarily in the range [0, nrows-1]; however
+            // we do assume that it is stored in 1-increments; if not, we get (nodata) values
 
-            const ParserValue nv = static_cast<ParserValue>(m_Nodata);
-            long underflows = 0;
-            long overflows = 0;
-            // if we've got a table here, we haven't dealt with, we
-            // just copy the content into a matrix type mup::Value
-            if (tab != 0 && m_mapNameTable[m_This].find(name) == m_mapNameTable[m_This].end())
+            int minrow = tab->GetMinPKValue();
+            int maxrow = tab->GetMaxPKValue();
+            int nrows = maxrow - minrow + 1;
+
+            int ncols = tab->GetNumCols();
+
+            // note: access is rows, columns
+            std::vector<std::vector<ParserValue> > tableCache(ncols);
+
+            for (int col = 0; col < ncols; ++col)
             {
-                // the row, maxrow thing below is weired, I know, but it's because otb::SQLiteTable's row index
-                // (i.e. primary key) is not necessarily in the range [0, nrows-1]; however
-                // we do assume that it is stored in 1-increments; if not, we get (nodata) values
-
-                int minrow = tab->GetMinPKValue();
-                int maxrow = tab->GetMaxPKValue();
-                int nrows = maxrow - minrow + 1;
-
-                int ncols = tab->GetNumCols();
-
-                // note: access is rows, columns
-                std::vector<std::vector<ParserValue> > tableCache(ncols);
-
-                for (int col = 0; col < ncols; ++col)
+                std::vector<ParserValue> colCache(nrows);
+                for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
                 {
-                    std::vector<ParserValue> colCache(nrows);
-                    for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
+                    switch(tab->GetColumnType(col))
                     {
-                        switch(tab->GetColumnType(col))
+                    case AttributeTable::ATTYPE_INT:
+                    {
+                        const double lv = static_cast<ParserValue>(tab->GetIntValue(col, row));
+                        if (lv < (itk::NumericTraits<ParserValue>::NonpositiveMin()))
                         {
-                        case AttributeTable::ATTYPE_INT:
-                        {
-                            const double lv = static_cast<ParserValue>(tab->GetIntValue(col, row));
-                            if (lv < (itk::NumericTraits<ParserValue>::NonpositiveMin()))
-                            {
-                                ++underflows;
-                            }
-                            else if (lv > (std::numeric_limits<ParserValue>::max()))
-                            {
-                                //long long lmax = static_cast<long long>(std::numeric_limits<ParserValue>::max());
-                                //if (lv > lmax)
-                                    ++overflows;
-                                //else
-                            }
-                            else
-                            {
-                                colCache[rowidx] = static_cast<ParserValue>(lv);
-                            }
+                            ++underflows;
                         }
-                            break;
-                        case AttributeTable::ATTYPE_DOUBLE:
+                        else if (lv > (std::numeric_limits<ParserValue>::max()))
                         {
-                            const double dv = tab->GetDblValue(col, row);
-                            if (dv < static_cast<double>(itk::NumericTraits<ParserValue>::NonpositiveMin()))
-                            {
-                                ++underflows;
-                            }
-                            else if (dv > static_cast<double>(std::numeric_limits<ParserValue>::max()))
-                            {
+                            //long long lmax = static_cast<long long>(std::numeric_limits<ParserValue>::max());
+                            //if (lv > lmax)
                                 ++overflows;
-                            }
-                            else
-                            {
-                                colCache[rowidx] = static_cast<ParserValue>(dv);
-                            }
+                            //else
                         }
-                            break;
-                        case AttributeTable::ATTYPE_STRING:
-                            colCache[rowidx] = nv;
-                            break;
+                        else
+                        {
+                            colCache[rowidx] = static_cast<ParserValue>(lv);
                         }
                     }
-                    tableCache[col] = colCache;
+                        break;
+                    case AttributeTable::ATTYPE_DOUBLE:
+                    {
+                        const double dv = tab->GetDblValue(col, row);
+                        if (dv < static_cast<double>(itk::NumericTraits<ParserValue>::NonpositiveMin()))
+                        {
+                            ++underflows;
+                        }
+                        else if (dv > static_cast<double>(std::numeric_limits<ParserValue>::max()))
+                        {
+                            ++overflows;
+                        }
+                        else
+                        {
+                            colCache[rowidx] = static_cast<ParserValue>(dv);
+                        }
+                    }
+                        break;
+                    case AttributeTable::ATTYPE_STRING:
+                        colCache[rowidx] = nv;
+                        break;
+                    }
                 }
-
-                // report conversion errors
-                if (overflows > 0 || underflows > 0)
-                {
-                    std::stringstream sstr;
-                    sstr << "Data conversion errors: " << overflows
-                         << " overflows and " << underflows << " underflows; table "
-                         << name
-                         << "'s data values are outside the parser's value range!";
-
-                    KernelScriptParserError oe;
-                    oe.SetLocation(ITK_LOCATION);
-                    oe.SetDescription(sstr.str());
-                    throw oe;
-                }
-                m_mapNameTable[m_This][name] = tableCache;
+                tableCache[col] = colCache;
             }
 
-            // for images, we just prepare the map and put some placeholders in
-            // we'll redefine once we know the actual values
-            else if (img != 0)
+            // report conversion errors
+            if (overflows > 0 || underflows > 0)
             {
+                std::stringstream sstr;
+                sstr << "Data conversion errors: " << overflows
+                     << " overflows and " << underflows << " underflows; table "
+                     << name
+                     << "'s data values are outside the parser's value range!";
 
-                if (m_mapNameImg.find(name) == m_mapNameImg.end())
-                {
-                    m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
-                }
-                else
-                {
-                    std::stringstream sstr;
-                    sstr << "Image name conflict error: The name '"
-                         << name << "' has already been defined!";
-                    KernelScriptParserError kspe;
-                    kspe.SetLocation(ITK_LOCATION);
-                    kspe.SetDescription(sstr.str());
-                    throw kspe;
-                }
+                KernelScriptParserError oe;
+                oe.SetLocation(ITK_LOCATION);
+                oe.SetDescription(sstr.str());
+                throw oe;
+            }
+            m_mapNameTable[m_This][name] = tableCache;
+        }
+    }
 
-                if (m_mapNameImgNeigValues[m_This].at(0).find(name) == m_mapNameImgNeigValues[m_This].at(0).end())
-                {
-                    for (int th=0; th < this->GetNumberOfThreads(); ++th)
-                    {
-                        m_mapNameImgNeigValues[m_This].at(th)[name] = InputShapedIterator();
-                    }
-                }
+    // for images, we just prepare the map and put some placeholders in
+    // we'll redefine once we know the actual values
+    for (int i=0; i < m_IMGNames.size(); ++i)
+    {
+        InputImageType* img = dynamic_cast<TInputImage*>(this->GetIndexedInputs().at(i).GetPointer());
+        if (img == 0)
+        {
+            continue;
+        }
+        name = m_IMGNames.at(i);
 
-                if (m_mapNameImgValue[m_This].at(0).find(name) == m_mapNameImgValue[m_This].at(0).end())
-                {
-                    for (int th=0; th < this->GetNumberOfThreads(); ++th)
-                    {
-                        m_mapNameImgValue[m_This].at(th)[name] = static_cast<ParserValue>(m_Nodata);
-                    }
-                }
+        if (m_mapNameImg.find(name) == m_mapNameImg.end())
+        {
+            m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
+        }
+        else
+        {
+            std::stringstream sstr;
+            sstr << "Image name conflict error: The name '"
+                 << name << "' has already been defined!";
+            KernelScriptParserError kspe;
+            kspe.SetLocation(ITK_LOCATION);
+            kspe.SetDescription(sstr.str());
+            throw kspe;
+        }
+
+        if (m_mapNameImgNeigValues[m_This].at(0).find(name) == m_mapNameImgNeigValues[m_This].at(0).end())
+        {
+            for (int th=0; th < this->GetNumberOfThreads(); ++th)
+            {
+                m_mapNameImgNeigValues[m_This].at(th)[name] = InputShapedIterator();
+            }
+        }
+
+        if (m_mapNameImgValue[m_This].at(0).find(name) == m_mapNameImgValue[m_This].at(0).end())
+        {
+            for (int th=0; th < this->GetNumberOfThreads(); ++th)
+            {
+                m_mapNameImgValue[m_This].at(th)[name] = static_cast<ParserValue>(m_Nodata);
             }
         }
     }
@@ -1185,10 +1358,33 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
 
 template< class TInputImage, class TOutputImage>
+itk::DataObject::Pointer
+NMScriptableKernelFilter2< TInputImage, TOutputImage>
+::MakeOutput(unsigned int idx)
+{
+    switch(idx)
+    {
+    case 1:
+        {
+            otb::SQLiteTable::Pointer sqlTab = otb::SQLiteTable::New();
+            sqlTab->SetUseSharedCache(false);
+            sqlTab->CreateTable("file::memory:");
+            return sqlTab.GetPointer();
+        }
+        break;
+    default:
+        return Superclass::MakeOutput(idx);
+        break;
+    }
+}
+
+template< class TInputImage, class TOutputImage>
 void
 NMScriptableKernelFilter2< TInputImage, TOutputImage>
 ::AfterThreadedGenerateData()
 {
+    // reporting over and under flows during
+    // kernel script execution
     long long nover = 0;
     long long nunder = 0;
     for (int th=0; th < this->GetNumberOfThreads(); ++th)
@@ -1204,9 +1400,81 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
                         << nunder << " underflows detected! "
                         << "Double check your results!");
     }
+    bool bSumUp = m_PixelCounter >= m_NumPixels ? true : false;
 
-    if (m_PixelCounter >= m_NumPixels)
+    // create output table with variable values for further
+    // processing
+    otb::SQLiteTable::Pointer auxTab = static_cast<otb::SQLiteTable*>(this->GetIndexedOutputs()[1].GetPointer());
+
+    // just summing up the aux values across threads
+    // i.e. 0: min
+    //      1: max
+    //      2: mean
+    //      3: sum
+
+    int nthreads = this->GetNumberOfThreads();
+    std::map<std::string, ParserValue>::const_iterator auxIt;
+
+    std::vector< std::string > colnames;
+    std::vector< otb::AttributeTable::TableColumnType > coltypes;
+    std::vector< otb::AttributeTable::ColumnValue > colvalues;
+    if (bSumUp)
     {
+        auxTab->BeginTransaction();
+    }
+
+    for (int t=0; t < nthreads; ++t)
+    {
+        auxIt = m_mapNameAuxValue[t].begin();
+        int n=0;
+        while (auxIt != m_mapNameAuxValue[t].end())
+        {
+            if (t==0 && bSumUp)
+            {
+                auxTab->AddColumn(auxIt->first, otb::AttributeTable::ATTYPE_DOUBLE);
+                colnames.push_back(auxIt->first);
+                coltypes.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+                otb::AttributeTable::ColumnValue cval;
+                cval.type = otb::AttributeTable::ATTYPE_DOUBLE;
+                colvalues.push_back(cval);
+            }
+            m_minVal[n] = std::min(m_minVal[n], auxIt->second);
+            m_maxVal[n] = std::max(m_maxVal[n], auxIt->second);
+            m_sumVal[n] += auxIt->second;
+            ++n;
+            ++auxIt;
+        }
+    }
+
+    if (bSumUp)
+    {
+        auxTab->EndTransaction();
+
+        auxTab->PrepareBulkSet(colnames, true);
+        for (int n=0; n < m_minVal.size(); ++n)
+        {
+            colvalues[n].dval = m_minVal[n];
+        }
+        auxTab->DoBulkSet(colvalues);
+
+        for (int n=0; n < m_maxVal.size(); ++n)
+        {
+            colvalues[n].dval = m_maxVal[n];
+        }
+        auxTab->DoBulkSet(colvalues);
+
+        for (int n=0; n < m_sumVal.size(); ++n)
+        {
+            colvalues[n].dval = m_sumVal[n] / (ParserValue)m_NumPixels;
+        }
+        auxTab->DoBulkSet(colvalues);
+
+        for (int n=0; n < m_sumVal.size(); ++n)
+        {
+            colvalues[n].dval = m_sumVal[n];
+        }
+        auxTab->DoBulkSet(colvalues);
+
         Reset();
     }
 }

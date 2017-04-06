@@ -48,6 +48,7 @@ NMScriptableKernelFilter2Wrapper
     
     Q_PROPERTY(QList<QStringList> Radius READ getRadius WRITE setRadius)
     Q_PROPERTY(QStringList KernelScript READ getKernelScript WRITE setKernelScript)
+    Q_PROPERTY(QStringList InitScript READ getInitScript WRITE setInitScript)
     Q_PROPERTY(QString KernelShapeType READ getKernelShapeType WRITE setKernelShapeType)
     Q_PROPERTY(QStringList KernelShapeEnum READ getKernelShapeEnum)
     Q_PROPERTY(QStringList OutputVarName READ getOutputVarName WRITE setOutputVarName)
@@ -59,6 +60,7 @@ public:
     
     NMPropertyGetSet( Radius, QList<QStringList> )
     NMPropertyGetSet( KernelScript, QStringList )
+    NMPropertyGetSet( InitScript, QStringList )
     NMPropertyGetSet( OutputVarName, QStringList )
     NMPropertyGetSet( Nodata, QStringList )
     NMPropertyGetSet( KernelShapeType, QString )
@@ -93,6 +95,7 @@ protected:
 
     QList<QStringList> mRadius;
     QStringList mKernelScript;
+    QStringList mInitScript;
     QStringList mOutputVarName;
     QStringList mNodata;
     QString mKernelShapeType;

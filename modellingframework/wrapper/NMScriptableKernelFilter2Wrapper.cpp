@@ -69,7 +69,8 @@ public:
     {
         //InImgType* img = dynamic_cast<InImgType*>(dataObj);
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        filter->SetFilterInput(idx, dataObj);
+        //filter->SetFilterInput(idx, dataObj);
+        filter->SetNthInput(idx, dataObj);
     }
 
 
@@ -117,9 +118,7 @@ public:
 		bool bok;
 		int givenStep = step;
 
-        unsigned int nthreads = std::max(p->getNumThreads(), (unsigned int)1);
-        unsigned int maxthreads = f->GetNumberOfThreads();
-        f->SetNumberOfThreads(std::min(nthreads, maxthreads));
+        f->SetNumThreads(p->getNumThreads());
 
 
         QVariant curRadiusVar = p->getParameter("Radius");
@@ -157,8 +156,16 @@ public:
         std::string curKernelScript;
         if (curKernelScriptVar.isValid())
         {
-           curKernelScript = curKernelScriptVar.toString().toStdString();
+           curKernelScript = curKernelScriptVar.toString().simplified().toStdString();
             f->SetKernelScript(curKernelScript);
+        }
+
+        QVariant curInitScriptVar = p->getParameter("InitScript");
+        std::string curInitScript;
+        if (curInitScriptVar.isValid())
+        {
+           curInitScript = curInitScriptVar.toString().simplified().toStdString();
+            f->SetInitScript(curInitScript);
         }
 
         QVariant curKernelShapeVar = p->getParameter("KernelShapeType");
@@ -173,7 +180,7 @@ public:
         std::string curOutputVarName;
         if (curOutputVarNameVar.isValid())
         {
-           curOutputVarName = curOutputVarNameVar.toString().toStdString();
+           curOutputVarName = curOutputVarNameVar.toString().simplified().toStdString();
             f->SetOutputVarName(curOutputVarName);
         }
 
@@ -557,6 +564,7 @@ NMScriptableKernelFilter2Wrapper
     mKernelShapeEnum.clear();
     mKernelShapeEnum << "RECTANGULAR" << "CIRCULAR";
     mNumThreads = QThread::idealThreadCount() < 0 ? (unsigned int)1 : (unsigned int)QThread::idealThreadCount();
+    this->mAuxDataIdx = 1;
 }
 
 NMScriptableKernelFilter2Wrapper

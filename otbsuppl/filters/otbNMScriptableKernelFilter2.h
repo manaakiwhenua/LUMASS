@@ -57,6 +57,7 @@
 #include "itkNeighborhood.h"
 
 #include "otbMultiParser.h"
+#include "otbAttributeTable.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -298,6 +299,9 @@ public:
   /*! Set the kernel script */
   itkSetStringMacro(KernelScript)
 
+  /*! Set the initialisation script */
+  itkSetStringMacro(InitScript)
+
   /*! Set the kernel shape <Square, Circle> */
   itkSetStringMacro(KernelShape)
 
@@ -312,15 +316,23 @@ public:
   /*! Forward component UserIDs to the filter*/
   void SetInputNames(const std::vector<std::string>& inputNames);
 
-  void SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj);
+//  void SetFilterInput(const unsigned int& idx, itk::DataObject* dataObj);
 
   void setRAT(unsigned int idx, AttributeTable::Pointer table);
+
+  void SetNumThreads(unsigned int nthreads);
+
+  otb::AttributeTable::Pointer GetAuxOutput()
+    {return static_cast<otb::AttributeTable*>(this->GetIndexedOutputs()[1].GetPointer());}
 
 
   /*! The filter needs a larger input requested region than
    * the output requested region.
    * \sa ImageToImageFilter::GenerateInputRequestedRegion() */
   virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
+
+  virtual itk::DataObject::Pointer MakeOutput(unsigned int idx);
+  virtual void SetNthInput(itk::DataObject::DataObjectPointerArraySizeType num, itk::DataObject* input);
 
   void Reset();
 
@@ -368,8 +380,16 @@ protected:
   void BeforeThreadedGenerateData();
   void AfterThreadedGenerateData();
   void CacheInputData();
-  void ParseScript();
-  void ParseCommand(const std::string& expr);
+  void ParseScript(bool binit,
+                   std::vector<std::vector<ParserPointerType> >& initScript,
+                   std::vector<int>& initBlockLen);
+  void ParseCommand(bool binit, const std::string& expr,
+                    std::vector<std::vector<ParserPointerType> >& initScript);
+  void RunInitScript();
+  void LoopInit(int i, int th,
+                std::vector<ParserPointerType>& vParsers,
+                std::vector<int>& vBlockLen);
+
 
   /*!
    * \brief Loop     mechanics behind C-style for loop based on muParser expressions
@@ -410,6 +430,7 @@ private:
   NMScriptableKernelFilter2(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
 
+  unsigned int m_NumThreads;
   long long m_NumPixels;
   long long m_PixelCounter;
   std::vector<long long> m_vthPixelCounter;
@@ -420,10 +441,14 @@ private:
   ParserValue m_CentrePixelIndex;
   ParserValue m_ActiveNeighborhoodSize;
 
+  std::string m_InitScript;
   std::string m_KernelScript;
   std::string m_KernelShape;
   std::string m_OutputVarName;
 
+  std::vector<otb::AttributeTable::Pointer> m_vRAT;
+  std::vector<std::string> m_RATNames;
+  std::vector<std::string> m_IMGNames;
   std::vector<std::string> m_DataNames;
   OutputPixelType m_Nodata;
 
@@ -432,6 +457,10 @@ private:
 
   double m_This;
   std::vector<double> m_thid;
+
+  std::vector<ParserValue> m_minVal;
+  std::vector<ParserValue> m_maxVal;
+  std::vector<ParserValue> m_sumVal;
 
   // admin objects for the scriptable kernel filter
 
@@ -471,7 +500,6 @@ private:
   // these are aux scalar values which are defined in the KernelScript itself, e.g.
   // loop counter and test variables
   std::vector<std::map<std::string, ParserValue> > m_mapNameAuxValue;
-
 
   // ===================================================
   //        static value stores

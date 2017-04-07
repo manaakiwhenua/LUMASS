@@ -54,6 +54,7 @@ NMProcess::NMProcess(QObject *parent)
     this->mbReleaseData = true;
     this->mStepIndex = 0;
     this->mObserver = 0;
+    this->mAuxDataIdx = -1;
 }
 
 NMProcess::~NMProcess()
@@ -479,64 +480,9 @@ void NMProcess::update(void)
             throw;
         }
 
-//        catch (std::exception& err)//itk::ExceptionObject& err)
-//        {
-//            NMMfwException rerr(NMMfwException::NMProcess_ExecutionError);
-
-//            NMIterableComponent* pc = qobject_cast<NMIterableComponent*>(this->parent());
-//            if (pc)
-//            {
-//                std::stringstream msg;
-//                NMIterableComponent* hc = pc->getHostComponent();
-
-//                if (hc)
-//                {
-//                    msg << hc->objectName().toStdString() << " step #" << hc->getIterationStep() << ": ";
-//                }
-
-//                msg << pc->objectName().toStdString() << " step #" << pc->getIterationStep()
-//                    << ": " << err.what();
-//                rerr.setDescription(msg.str());
-//            }
-//            else
-//            {
-//                rerr.setDescription(err.what());
-//            }
-//            if (mLogger)
-//            {
-//                NMLogError(<< this->parent()->objectName().toStdString() << ": " << rerr.what());
-//            }
-//            else
-//            {
-//                NMDebugAI(<< this->parent()->objectName().toStdString() << ": has NULL Logger!" << std::endl);
-//            }
-//            NMDebugAI(<< this->parent()->objectName().toStdString() << ": " << rerr.what());
-//            NMDebugCtx(this->parent()->objectName().toStdString(), << "done!");
-//            emit signalExecutionStopped(this->parent()->objectName());
-//            emit signalProgress(0);
-
-//            throw rerr;
-//        }
-//        catch (mu::ParserError& evalerr)
-//        {
-//            std::stringstream errmsg;
-//            errmsg << std::endl
-//                   << "Message:    " << evalerr.GetMsg() << std::endl
-//                   << "Formula:    " << evalerr.GetExpr() << std::endl
-//                   << "Token:      " << evalerr.GetToken() << std::endl
-//                   << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
-//            NMLogError(<< "mu::ParserError: " << errmsg.str());
-//            NMMfwException nme(NMMfwException::NMProcess_ExecutionError);
-//            nme.setDescription(errmsg.str());
-//            emit signalExecutionStopped(this->parent()->objectName());
-//            emit signalProgress(0);
-
-//            throw nme;
-//        }
-
 		this->mMTime = QDateTime::currentDateTimeUtc();
-		NMDebugAI(<< "modified at: "
-				  << mMTime.toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString() << std::endl);
+        QString tstring = mMTime.toString("dd.MM.yyyy hh:mm:ss.zzz");
+        NMDebugAI(<< "modified at: " << tstring.toStdString() << std::endl);
 	}
 	else
 	{
@@ -608,6 +554,12 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
 		emit signalProgress(0);
 		this->mOtbProcess->SetAbortGenerateData(false);
 		this->mbAbortExecution = false;
+        if (this->mAuxDataIdx >= 0)
+        {
+            this->mAuxTab = static_cast<otb::AttributeTable*>(
+                        this->mOtbProcess->GetIndexedOutputs()[mAuxDataIdx].GetPointer());
+            this->mAuxTab->DisconnectPipeline();
+        }
 	}
 	else if (typeid(event) == typeid(itk::AbortEvent))
 	{

@@ -53,6 +53,7 @@
 #include "otbImageIOBase.h"
 #include "itkCommand.h"
 #include "itkEventObject.h"
+#include "otbAttributeTable.h"
 
 #include "nmmodframe_export.h"
 
@@ -112,7 +113,7 @@ class NMMODFRAME_EXPORT NMProcess : public QObject
     Q_OBJECT
 	Q_ENUMS(AdvanceParameter)
 	Q_PROPERTY(QList<QStringList> InputComponents READ getInputComponents WRITE setInputComponents)
-	Q_PROPERTY(NMProcess::AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
+    Q_PROPERTY(NMProcess::AdvanceParameter ParameterHandling READ getParameterHandling WRITE setParameterHandling NOTIFY NMProcessChanged)
 //	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMComponentType READ getNMComponentType WRITE setNMComponentType NOTIFY NMProcessChanged)
 	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMInputComponentType READ getInputNMComponentType WRITE setInputNMComponentType NOTIFY NMProcessChanged)
 	Q_PROPERTY(NMItkDataObjectWrapper::NMComponentType NMOutputComponentType READ getOutputNMComponentType WRITE setOutputNMComponentType NOTIFY NMProcessChanged)
@@ -229,6 +230,9 @@ public:
      */
     QVariant getParameter(const QString& property);
 
+    int getAuxDataIdx(void)
+        {return this->mAuxDataIdx;}
+
 
 public slots:
 	void removeInputComponent(const QString& input);
@@ -239,7 +243,6 @@ public slots:
 
     virtual void setRAT(unsigned idx,
                         QSharedPointer<NMItkDataObjectWrapper> imgWrapper) {}
-
 signals:
 		void NMProcessChanged();
         void nmChanged();
@@ -271,6 +274,9 @@ protected:
 	NMProcess::AdvanceParameter mParameterHandling;
 
 	bool mbLinked;
+
+    otb::AttributeTable::Pointer mAuxTab;
+    int mAuxDataIdx;
 
     ObserverType::Pointer mObserver;
 

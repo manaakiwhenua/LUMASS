@@ -828,9 +828,18 @@ QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)			
 {                                                                               \
     QSharedPointer<NMItkDataObjectWrapper> ret;                                    \
     ret.clear();                                                                    \
-    if (!this->mbIsInitialised)                                                   \
-        return ret;                                                                 \
+    \
+    if (idx == this->mAuxDataIdx)                                               \
+    {                                                                           \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
+                        new NMItkDataObjectWrapper(this, 0, this->mOutputComponentType,   \
+            this->mOutputNumDimensions, this->mOutputNumBands));                 \
                                                                                 \
+        dw->setOTBTab(this->mAuxTab);                                           \
+        return dw;                                                              \
+    }                                                                           \
+    else if (this->mbIsInitialised)                                                   \
+    {                                                                           \
 	itk::DataObject* img = 0;                                                   \
                                                                                 \
 	switch (this->mInputComponentType)                                         \
@@ -868,12 +877,13 @@ QSharedPointer<NMItkDataObjectWrapper> ClassName::getOutput(unsigned int idx)			
 	default:                                                                    \
 		break;                                                                  \
 	}                                                                           \
-                                                                                \
-    QSharedPointer<NMItkDataObjectWrapper> dw(                                  \
+                                                                                    \
+        QSharedPointer<NMItkDataObjectWrapper> dw(                                      \
 			new NMItkDataObjectWrapper(this, img, this->mOutputComponentType,   \
             this->mOutputNumDimensions, this->mOutputNumBands));                 \
-                                                                                \
-	return dw;																	\
+        return dw;                                                              \
+    }                                                                           \
+    return ret;                                                                  \
 }
 
 /** get the output of the process object, which is templated

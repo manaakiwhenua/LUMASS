@@ -97,6 +97,8 @@ protected:
     SQLiteProcessor(const Self&);
     void operator=(const Self&);
 
+    virtual void VerifyInputInformation() ITK_OVERRIDE {}
+
     void GenerateData();
 
     std::vector<std::string>  m_ImageNames;

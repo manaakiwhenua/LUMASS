@@ -219,7 +219,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
 
     if (!m_vRAT.at(0)->PopulateTableAdmin())
     {
-        itkExceptionMacro(<< "Failed repopulating the main table's admin structures! "
+        NMProcWarn(<< "Failed repopulating the main table's admin structures! "
                           << m_vRAT.at(0)->getLastLogMsg());
     }
 

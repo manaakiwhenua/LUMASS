@@ -1815,8 +1815,86 @@ void
 NMImageLayer::updateSourceBuffer(void)
 {
     NMDataComponent* dc = qobject_cast<NMDataComponent*>(this->sender());
+    bool bOpenRAMTable = false;
+    bool bOpenSQLTable = false;
     if (dc != 0 && dc->getOutput(0) != 0 && dc->getOutput(0)->getDataObject() != 0)
     {
+        QSize tabSize;
+        QPoint tabPos;
+        if (this->mTableView)
+        {
+            tabSize = this->mTableView->size();
+            tabPos = this->mTableView->pos();
+
+            this->mTableView->close();
+            delete this->mTableView;
+            mTableView = 0;
+
+            delete mSelectionModel;
+            mSelectionModel = 0;
+
+
+            delete this->mTableModel;
+            mTableModel = 0;
+
+            bOpenRAMTable = true;
+        }
+
+        if (this->mSqlTableView)
+        {
+            tabSize = mSqlTableView->size();
+            tabPos = mSqlTableView->pos();
+
+            mSqlTableView->close();
+            delete mSqlTableView;
+            mSqlTableView = 0;
+
+            NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+            sqlModel->database().close();
+            sqlModel->clear();
+            delete sqlModel;
+            mTableModel = 0;
+
+            {
+                QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
+                if (db.isValid() && db.isOpen())
+                {
+                    db.close();
+                }
+            }
+            QSqlDatabase::removeDatabase(mQSqlConnectionName);
+            mQSqlConnectionName.clear();
+
+            delete mSelectionModel;
+            mSelectionModel = 0;
+
+            ::sqlite3_close(mSqlViewConn);
+            spatialite_cleanup_ex(mSpatialiteCache);
+            mSpatialiteCache = 0;
+            mSqlViewConn = 0;
+
+            bOpenSQLTable = true;
+        }
+
+        this->mOtbRAT = dc->getOutput(0)->getOTBTab();
+        this->updateAttributeTable();
+        if (bOpenRAMTable || bOpenSQLTable)
+        {
+            this->createTableView();
+            if (bOpenRAMTable && mTableView)
+            {
+                mTableView->show();
+                mTableView->resize(tabSize);
+                mTableView->move(tabPos);
+            }
+            else if (bOpenSQLTable && mSqlTableView)
+            {
+                mSqlTableView->show();
+                mSqlTableView->resize(tabSize);
+                mSqlTableView->move(tabPos);
+            }
+        }
+
         this->mPipeconn->setInput(dc->getOutput(0));
         this->mMapper->Update();
         this->mRenderer->Render();

@@ -91,7 +91,7 @@ public:
 		if (f == 0)
 		{
 			NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
-			e.setMsg("We're trying to link, but the filter doesn't seem to be initialised properly!");
+                        e.setDescription("We're trying to link, but the filter doesn't seem to be initialised properly!");
 			throw e;
 			return;
 		}

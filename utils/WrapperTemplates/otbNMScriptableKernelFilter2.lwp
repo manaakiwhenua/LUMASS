@@ -21,10 +21,12 @@ FilterTypeDef               = otb::NMScriptableKernelFilter2<InImgType, OutImgTy
 NumTemplateArgs             = 2
 RATGetSupport               = 0
 RATSetSupport               = 1
+AuxOutputIndex              = 1
 ForwardInputUserIDs         = SetInputNames
 Property_1                  = Radius:2:int:int
 Property_2                  = KernelScript:1:string
 Property_3                  = KernelShape:1:string
 Property_4                  = OutputVarName:1:string
 Property_5                  = Nodata:1:double
+Property_6                  = NumThreads:0:unsigned int
 

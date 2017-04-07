@@ -1,0 +1,85 @@
+# LUMASS wrapper profile for itk::ImageToImageFilter-derived classes
+
+# year to appear in copyright notice at the top of the source *.h & *.cpp file
+Year                        = 2016
+
+# the name of the wrapper class
+WrapperClassName            = NMScriptableKernelFilter2Wrapper
+
+# the user visible name of the processing component used in the user interface
+ComponentName               = ImageBufferWriter
+
+# indicates whether this processing component is a SINK or not;
+# Sink components are executable and can from the 'bottom end'
+# of a processing pipeline
+ComponentIsSink             = 1
+
+# the file creation date to appear below the copyright notice in *.h & *.cpp file
+FileDate                    = 2016-06-23
+
+# the author of the file
+Author                      = Alexander Herzig
+
+# the base file name of the itk::ImageToImageFilter-derived class
+FilterClassFileName         = otbNMScriptableKernelFilter2
+
+# the filter type definition, including template parameter names
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+FilterTypeDef               = otb::NMScriptableKernelFilter2<InImgType, OutImgType>
+
+# the numer of template arguments; e.g. for InPlaceImageFilter-derived classes, which
+# only have one template parameter (s. otbRATBandMathImageFilter.h)
+NumTemplateArgs             = 2
+
+# definition of a setter method, which sets the input at index position IDX
+# of TYPE using the function SETMETHOD
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+InputTypeFunc_1             = 1:OutImgType:SetReferenceImage
+
+# whether (=1) or not (=0) getter/setter for raster attribute tables (RAT) should be generated
+RATGetSupport               = 0
+RATSetSupport               = 1
+
+# support for auxiliary (persistent) output;
+# defines the filter fuction used to fetch auxillary output and the
+# output index;
+# NOTE: auxillary output must be provided as otb::AttributeTable::Pointer;
+#       the table will be persistent with the process component until the
+#       next execution;
+#       i.e. it will be available after the filter pipeline has been executed
+#       and can be fetched e.g. by a DataBuffer Component or other
+#       filters downstream the execution order; next time the filter executed
+#       the auxillary output will be overriden
+AuxOutputSupport            = GetAuxOutput:1
+
+# the name of the filter function, which takes the UserIDs of the input processing
+# components; function argument type is std::vector<std::string>
+ForwardInputUserIDs         = SetInputNames
+
+# Process component property name, dimension and type;
+# recognised (filter variable) types: int, unsigned int, long, long long, double, bool, string
+# dimension = 0 -> property type: plain type
+# dimension = 1 -> property type: QStringList
+# dimension = 2 -> property type: QList<QStringList>
+#   not supported yet, requires manual coding of wrapper class
+#   dim = 3 -> property type: QList< QList<QStringList> >
+# NOTE: the first type given denotes the value type of the process component,
+#       whereas the second value type denotes the target type in the filter class,
+#       which could be a typedef'ed type as shown for Property_6 (i.e. OutImgPixelType);
+#       if the second value type is omitted, it is assumed that the types are identical
+#       for the process component class and the filter class;
+# NOTE 2: 2-dim parameters may be expected by the filter class as
+#           std::vector<OutSpacingValueType> param;       // then use the 'vector' keyword
+#         or as pointer
+#           OutSpacingValueType* param;                   // then use the 'pointer' keyword
+Property_1                  = Radius:2:int:int
+Property_2                  = KernelScript:1:string
+Property_3                  = KernelShape:1:string
+Property_4                  = OutputVarName:1:string
+Property_5                  = Nodata:1:double
+Property_6                  = DefaultPixelValue:1:double:OutImgPixelType
+Property_7                  = OutputSpacing:2:double:OutSpacingValueType:pointer
+
+

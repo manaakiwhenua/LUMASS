@@ -1,0 +1,26 @@
+# LUMASS otb::NMMosraFilter wrapper profile
+# recognised (filter variable) types: double, long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+Year                        = 2017
+WrapperClassName            = NMMosraFilterWrapper
+FileDate                    = 2017-03-03
+Author                      = Alexander Herzig
+FilterClassFileName         = otbNMMosraFilter
+FilterTypeDef               = otb::NMMosraFilter<InImgType, OutImgType>
+RATGetSupport               = 1
+RATSetSupport               = 1
+ForwardInputUserIDs         = SetImageNames
+ComponentName               = SpatialOptimisation
+ComponentIsSink             = 1
+Property_1                  = LosFileName:1:string
+Property_2                  = TimeOut:1:int

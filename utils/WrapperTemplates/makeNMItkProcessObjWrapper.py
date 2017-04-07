@@ -192,7 +192,7 @@ def formatInternalParamSetting(propertyList, className):
     #        << "Invalid weights matrix detected!");
     #
     #NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-    #e.setMsg("Invalid weights matrix detected!");
+    #e.setDescription("Invalid weights matrix detected!");
     #throw e;
     
     paramSetting = ''
@@ -259,7 +259,7 @@ def formatInternalParamSetting(propertyList, className):
                 "            {\n"                                                                \
                 "                NMErr(\"%s_Internal\", << \"Invalid value for '%s'!\");\n"      \
                 "                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);\n"\
-                "                e.setMsg(\"Invalid value for '%s'!\");\n"                       \
+                "                e.setDescription(\"Invalid value for '%s'!\");\n"                       \
                 "                throw e;\n"                                                     \
                 "            }\n"                                                                \
                 % (propName, varTargetCast, propName, className, propName, propName)
@@ -298,7 +298,7 @@ def formatInternalParamSetting(propertyList, className):
                 "                {\n"                                                                \
                 "                    NMErr(\"%s_Internal\", << \"Invalid value for '%s'!\");\n"      \
                 "                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);\n"\
-                "                    e.setMsg(\"Invalid value for '%s'!\");\n"                       \
+                "                    e.setDescription(\"Invalid value for '%s'!\");\n"                       \
                 "                    throw e;\n"                                                     \
                 "                }\n"                                                                \
                 % (propName, varTargetCast, propName, className, propName, propName)

@@ -1,0 +1,31 @@
+# otb::StreamingImageVirtualWriter
+# recognised (filter variable) types: double, long, long long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+
+Year                        = 2017
+WrapperClassName            = NMVirtualStreamWriter
+ComponentName               = ImageBufferWriter
+ComponentIsSink             = 1
+FileDate                    = 2017-03-28
+Author                      = Alexander Herzig
+FilterClassFileName         = otbNMStreamingImageVirtualWriter
+FilterTypeDef               = otb::NMStreamingImageVirtualWriter<InImgType, OutImgType>
+NumTemplateArgs             = 2
+RATGetSupport               = 1
+RATSetSupport               = 1
+#AuxOutputIndex              = 0
+#ForwardInputUserIDs         = SetInputNames
+Property_1                  = StreamingSize:0:int
+Property_2                  = StreamingMethod:0:string
+Property_1                  = NumThreads:0:unsigned int
+

@@ -101,17 +101,28 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     }
 
     QStringList propList = NMModelController::getPropertyList(this);
+    NMProcess* proc = 0;
     if (!propList.contains(specList.at(0)))
     {
-        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        me.setSource(this->objectName().toStdString());
-        QString msg = QString("%1::getModelParameter(%2) - don't have a parameter '%3'!")
-                .arg(this->objectName())
-                .arg(paramSpec)
-                .arg(specList.at(1));
-        me.setDescription(msg.toStdString());
-        throw me;
-        return param;
+        NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(this);
+        if (ic && ic->getProcess() != 0)
+        {
+            proc = ic->getProcess();
+            propList = NMModelController::getPropertyList(proc);
+        }
+
+        if (!propList.contains(specList.at(0)))
+        {
+            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            me.setSource(this->objectName().toStdString());
+            QString msg = QString("%1::getModelParameter(%2) - don't have a parameter '%3'!")
+                    .arg(this->objectName())
+                    .arg(paramSpec)
+                    .arg(specList.at(1));
+            me.setDescription(msg.toStdString());
+            throw me;
+            return param;
+        }
     }
 
     // if we've got an explict idex given, we just see what we've got
@@ -131,7 +142,16 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
         return param;
     }
 
-    QVariant paramList = this->property(specList.at(0).toStdString().c_str());
+    QVariant paramList;
+    if (proc)
+    {
+        paramList = proc->property(specList.at(0).toStdString().c_str());
+    }
+    else
+    {
+        this->property(specList.at(0).toStdString().c_str());
+    }
+
     if (QString::fromLatin1("QStringList").compare(paramList.typeName()) == 0)
     {
         QStringList tl = paramList.toStringList();

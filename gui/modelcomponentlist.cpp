@@ -1311,29 +1311,50 @@ void ModelComponentList::dropEvent(QDropEvent* event)
         NMDebugAI(<< "adding layer: " << dropLayer.toStdString() << std::endl);
         NMDataComponent* comp = qobject_cast<NMDataComponent*>(
                     NMModelController::getInstance()->getComponent(dropLayer));
-        if (comp == 0)
+
+        if (comp == 0
+            || comp->getOutput(0).isNull())
         {
+            NMLogInfo(<< ctx << ": Cannot display NULL object!")
             NMDebugCtx(ctx, << "done!");
             return;
         }
 
-        QString layerName = dropLayer;
-        if (!comp->getDescription().isEmpty())
-        {
-            layerName = comp->getDescription();
-        }
-
+        // =========================================================
+        //              DROPPED LAYER (w || w/o RAT)
+        // =========================================================
         NMGlobalHelper h;
-        vtkRenderWindow* renWin = h.getRenderWindow();
-        NMImageLayer* iLayer = new NMImageLayer(renWin, 0, this);
-        iLayer->setObjectName(layerName);
-        iLayer->setLogger(h.getMainWindow()->getLogger());
-        h.getMainWindow()->connectImageLayerProcSignals(iLayer);
+        if (comp->getOutput(0)->getDataObject() != 0)
+        {
+            QString layerName = dropLayer;
+            if (!comp->getDescription().isEmpty())
+            {
+                layerName = comp->getDescription();
+            }
 
-        iLayer->setImage(comp->getOutput(0));
 
-        connect(comp, SIGNAL(NMDataComponentChanged()), iLayer, SLOT(updateSourceBuffer()));
+            vtkRenderWindow* renWin = h.getRenderWindow();
+            NMImageLayer* iLayer = new NMImageLayer(renWin, 0, this);
+            iLayer->setObjectName(layerName);
+            iLayer->setLogger(h.getMainWindow()->getLogger());
+            h.getMainWindow()->connectImageLayerProcSignals(iLayer);
 
+            iLayer->setImage(comp->getOutput(0));
+
+            connect(comp, SIGNAL(NMDataComponentChanged()), iLayer, SLOT(updateSourceBuffer()));
+        }
+        // =========================================================
+        //              DROPPED STAND ALONE TABLE
+        // =========================================================
+        else if (comp->getOutput(0)->getOTBTab().IsNotNull())
+        {
+            otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(comp->getOutput(0)->getOTBTab().GetPointer());
+
+            if (sqltab && !sqltab->GetDbFileName().empty())
+            {
+                h.getMainWindow()->createTableView(sqltab);
+            }
+        }
     }
     else if (dropSource.compare(QString::fromLatin1("_ModelComponentList_")) == 0)
     {
@@ -1393,7 +1414,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
                        << "png" << "gif" << "adf" << "hdr" << "sdat";
             QString ext = finfo.suffix().toLower();
-            if (tabFormats.contains(ext))
+            if (tabFormats.contains(ext) || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
             {
                 NMGlobalHelper hlp;
                 LUMASSMainWin* mainWin = hlp.getMainWindow();
@@ -1402,7 +1423,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                 sqliteformats << "db" << "sqlite" << "ldb";
 
                 QString tableName;
-                if (sqliteformats.contains(ext))
+                if (sqliteformats.contains(ext) || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
                 {
                     tableName = mainWin->selectSqliteTable(fileName);
                     if (!tableName.isEmpty())

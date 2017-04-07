@@ -1084,12 +1084,15 @@ LUMASSMainWin::updateExclusiveActions(const QString &checkedAction,
         // let the NMModelViewWidget know
         emit noExclusiveToolSelected();
 
-        NMLogInfo(<< "no exclusive tool selected!");
+        NMLogDebug(<< "no exclusive tool selected!");
 
         // set map interactor multi mode
         NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                     ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
-        iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_MULTI);
+        if (iact)
+        {
+            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_MULTI);
+        }
     }
     mbUpdatingExclusiveActions = false;
 }
@@ -1122,7 +1125,10 @@ LUMASSMainWin::pan(bool toggled)
         {
             NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                         ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
-            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_PAN);
+            if (iact)
+            {
+                iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_PAN);
+            }
         }
         this->updateExclusiveActions(in->objectName(), toggled);
     }
@@ -1139,7 +1145,10 @@ LUMASSMainWin::zoomIn(bool toggled)
         {
             NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                         ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
-            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_IN);
+            if (iact)
+            {
+                iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_IN);
+            }
         }
         this->updateExclusiveActions(in->objectName(), toggled);
     }
@@ -1156,7 +1165,10 @@ LUMASSMainWin::zoomOut(bool toggled)
         {
             NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
                         ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
-            iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_OUT);
+            if (iact)
+            {
+                iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_OUT);
+            }
         }
         this->updateExclusiveActions(out->objectName(), toggled);
     }
@@ -2001,7 +2013,7 @@ LUMASSMainWin::importTable(const QString& fileName,
             if (dbpresent)
             {
 
-                    NMBoxInfo("Import Table Data", "Table has already been imported!");
+                    NMLogInfo(<< "Import Table Data: Table has already been imported!");
 
                     resview = mTableList.find(viewName).value().second.data();
                     resview->show();
@@ -2029,7 +2041,7 @@ LUMASSMainWin::importTable(const QString& fileName,
             msg << "The model already contains a ParameterTable '"
                 << viewName.toStdString() << "'!";
 
-            NMBoxInfo("Add ParameterTable", msg.str());
+            NMLogInfo(<< "Add ParameterTable - " << msg.str());
             return 0;
         }
     }
@@ -2155,6 +2167,68 @@ LUMASSMainWin::importTable(const QString& fileName,
         tabview->show();
         tabview->raise();
     }
+
+    return tabview.data();
+}
+
+NMSqlTableView*
+LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
+{
+    QString conname = QString::fromLatin1("mem_%1").arg(sqlTab->GetTableName().c_str());
+
+    int nr = 2;
+    while(QSqlDatabase::connectionNames().contains(conname))
+    {
+        conname = QString("%1_%2").arg(conname).arg(nr);
+        ++nr;
+    }
+
+    // use the 'hacked' (NM)QSQLiteDriver, so we
+    // can create a driver based on an existing sqilte3
+    // connection (with spatialite loaded) ...
+    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTab->GetDbConnection(), 0);
+    // ... and establish the Qt-Db connection
+    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+
+    // now we create our NMSqlTableView and do some book keeping
+    NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
+    // note: setting the db name here is just for reference purposes
+    srcModel->setDatabaseName(sqlTab->GetDbFileName().c_str());
+    srcModel->setTable(sqlTab->GetTableName().c_str());
+    srcModel->select();
+
+    QString viewName = QString(conname);
+
+
+    QSharedPointer<NMSqlTableView> tabview = QSharedPointer<NMSqlTableView>(
+                    new NMSqlTableView(srcModel,
+                        NMSqlTableView::NMTABVIEW_STANDALONE, 0)
+                    );
+
+    tabview->setTitle(viewName);
+    connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
+
+
+    QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > tabPair;
+    tabPair.first = sqlTab;
+    tabPair.second = tabview;
+
+    mTableList.insert(viewName, tabPair);
+
+    QPair<void*, sqlite3*> adminPair;
+    adminPair.first = 0;
+    adminPair.second = sqlTab->GetDbConnection();
+
+    mTableAdminObjects.insert(viewName, adminPair);
+
+    QPixmap pm;
+    pm.load(":table_object.png");
+
+    QListWidgetItem* wi = new QListWidgetItem(QIcon(pm), viewName, mTableListWidget);
+    mTableListWidget->addItem(wi);
+
+    tabview->show();
+    tabview->raise();
 
     return tabview.data();
 }
@@ -3086,13 +3160,53 @@ void LUMASSMainWin::test()
 {
     NMDebugCtx(ctxLUMASSMainWin, << "...")
 
-    QStringList items;
-    items << "Hans" << "Franz" << "Ganz" << "Duschhaube";
+    QString path = "/home/alex/projects/SedNetNZ_dev/KaipHarbour/";
 
-    QStringList sel = NMGlobalHelper::getMultiItemSelection("Field Selection",
-                                                            "Select fields to join:",
-                                                            items, this);
-    NMLogDebug(<< "Selected Items: " << sel.join(" ").toStdString());
+    QString fn = path + "mitzones.ldb";
+    QString los = path + "farm_summary.los";
+    QString report = path + "farm_summary_report.txt";
+    QString lp = path + "farm_summary_problem.lp";
+
+
+    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
+    tab->SetUseSharedCache(false);
+    tab->SetDbFileName(fn.toStdString());
+    tab->SetRowIDColName("mitzone_id");
+    tab->SetRowIdColNameIsPersistent(true);
+    tab->openConnection();
+    tab->SetTableName("farm_summary");
+    if (!tab->PopulateTableAdmin())
+    {
+        NMLogError(<< "populate table admin failed!")
+        return;
+    }
+
+    NMMosra* mosra = new NMMosra(this);
+    mosra->setLogger(this->mLogger);
+
+    mosra->loadSettings(los);
+
+    otb::AttributeTable::Pointer otbtab = tab.GetPointer();
+
+    mosra->setDataSet(otbtab);
+    mosra->setTimeOut(0);
+    mosra->setBreakAtFirst(true);
+
+    if (!mosra->solveLp())
+    {
+        NMLogError(<< "farm opt failed!");
+        mosra->writeReport(report);
+        delete mosra;
+        return;
+    }
+
+    mosra->writeReport(report);
+    mosra->getLp()->WriteLp(lp.toStdString());
+    int solved = mosra->mapLp();
+
+    delete mosra;
+
+    tab->CloseTable();
 
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!")
@@ -5581,8 +5695,11 @@ void LUMASSMainWin::toggle3DSimpleMode()
 		}
 
 		// set image interaction
-        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
-            NMVtkInteractorStyleImage::New());
+        NMVtkInteractorStyleImage* iasim = NMVtkInteractorStyleImage::New();
+#ifdef QT_HIGHDPI_SUPPORT
+        iasim->setDevicePixelRatio(this->devicePixelRatioF());
+#endif
+        this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(iasim);
 
 		// reset the camera for the background renderer
 		vtkRenderer* ren0 = this->mBkgRenderer;
@@ -5614,10 +5731,39 @@ void LUMASSMainWin::toggle3DSimpleMode()
 		this->m_orientwidget->SetEnabled(0);
 		this->ui->actionToggle3DStereoMode->setEnabled(false);
 		m_b3D = false;
+
+        // re-enable the 2D-related tool actions
+        // disable 2D-related pan an zoom tools
+        QAction* pact = this->ui->mainToolBar->findChild<QAction*>("panAction");
+        if (pact) pact->setEnabled(true);
+
+        QAction* zin = this->ui->mainToolBar->findChild<QAction*>("zoomInAction");
+        if (zin) zin->setEnabled(true);
+
+        QAction* zout = this->ui->mainToolBar->findChild<QAction*>("zoomOutAction");
+        if (zout) zout->setEnabled(true);
+
+        // (re-)activate pan action as default 2D interactor mode
+        // coming back from 3D mode
+        this->pan(true);
 	}
 	else
 	{
 		NMDebugAI( << "switching 3D on!! ..." << endl);
+
+        // we're unselecting all exclusive tool bar actions
+        // before going into 3D mode
+        this->updateExclusiveActions("", false);
+
+        // disable 2D-related pan an zoom tools
+        QAction* pact = this->ui->mainToolBar->findChild<QAction*>("panAction");
+        if (pact) pact->setEnabled(false);
+
+        QAction* zin = this->ui->mainToolBar->findChild<QAction*>("zoomInAction");
+        if (zin) zin->setEnabled(false);
+
+        QAction* zout = this->ui->mainToolBar->findChild<QAction*>("zoomOutAction");
+        if (zout) zout->setEnabled(false);
 
         this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(
             vtkInteractorStyleTrackballCamera::New());

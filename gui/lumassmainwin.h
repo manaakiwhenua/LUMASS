@@ -114,6 +114,8 @@ public:
 
     QString selectSqliteTable(const QString& dbFileName);
 
+    NMSqlTableView* createTableView(otb::SQLiteTable::Pointer sqlTab);
+
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&
         getTableList(void) {return mTableList;}
     ModelComponentList* getLayerList(){return this->mLayerList;}

@@ -322,7 +322,9 @@ void NMComponentEditor::readComponentProperties(QObject* obj, NMModelComponent* 
         for (unsigned int p=0; p < nprop; ++p)
         {
             QMetaProperty property = procmeta->property(p);
-            if (QString(property.name()).endsWith("Enum"))
+            if (QString(property.name()).endsWith("Enum")
+                || QString::fromLatin1("InputComponents").compare(QString(property.name())) == 0
+                || QString::fromLatin1("ParameterHandling").compare(QString(property.name())) == 0)
                 continue;
             this->createPropertyEdit(property, proc);
         }
@@ -339,6 +341,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
     NMProcess* proc = qobject_cast<NMProcess*>(obj);
 
     QString propName = QString(property.name());
+
     if (QString("objectName").compare(property.name()) == 0)
     {
         if (proc != 0)
@@ -365,7 +368,7 @@ void NMComponentEditor::createPropertyEdit(const QMetaProperty& property,
 
     QtVariantPropertyManager* manager = new QtVariantPropertyManager();
     mManagers.append(manager);
-    QtVariantProperty* prop;
+    QtVariantProperty* prop = 0;
 
     // assign replacement types for the not supported variant
     // types

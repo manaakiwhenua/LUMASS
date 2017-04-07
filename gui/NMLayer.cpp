@@ -757,6 +757,19 @@ NMLayer::updateMapping(void)
 		mapper->UseLookupTableScalarRangeOn();
 	}
 
+    if (!mLegendFileName.isEmpty())
+    {
+        if (mLegendFileLegendType == this->mLegendType
+            && mLegendFileLegendClassType == this->mLegendClassType)
+        {
+            loadLegend(mLegendFileName);
+        }
+        else
+        {
+            mLegendFileName.clear();
+        }
+    }
+
 	emit legendChanged(this);
 	emit visibilityChanged(this);
 
@@ -855,7 +868,7 @@ NMLayer::loadLegend(const QString& filename)
     }
 
     if (    this->mLegendType != NMLayer::NM_LEGEND_INDEXED
-        &&  this->mLegendClassType != NMLayer::NM_CLASS_UNIQUE
+        ||  this->mLegendClassType != NMLayer::NM_CLASS_UNIQUE
         )
     {
         return;
@@ -1004,6 +1017,11 @@ NMLayer::loadLegend(const QString& filename)
         this->mLookupTable->SetTableValue(t,
                           rgba[0], rgba[1], rgba[2], rgba[3]);
     }
+
+    mLegendFileName = filename;
+    mLegendFileLegendType = this->mLegendType;
+    mLegendFileLegendClassType = this->mLegendClassType;
+
 
     emit legendChanged(this);
     emit visibilityChanged(this);

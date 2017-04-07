@@ -438,6 +438,11 @@ protected:
 	double mUpper;
 	double mNodata;
 
+    QString mLegendFileName;
+    NMLayer::NMLegendType mLegendFileLegendType;
+    NMLayer::NMLegendClassType mLegendFileLegendClassType;
+
+
     QString mLegendIndexField;
 	QString mLegendValueField;
 	QString mLegendDescrField;

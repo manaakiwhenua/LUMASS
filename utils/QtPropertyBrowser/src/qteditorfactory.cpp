@@ -1207,6 +1207,27 @@ void QtLineEditFactory::connectPropertyManager(QtStringPropertyManager *manager)
                 this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
 }
 
+void QtLineEditFactory::slotCallAuxEditor(void)
+{
+    QPushButton* btn = qobject_cast<QPushButton*>(this->sender());
+    if (btn == 0)
+        return;
+
+    if (mButton2Property.contains(btn))
+    {
+        QtProperty* prop = mButton2Property.value(btn);
+        if (prop != 0)
+        {
+            QtStringPropertyManager* spm =
+                    qobject_cast<QtStringPropertyManager*>(prop->propertyManager());
+            QString value = spm->value(prop);
+            QStringList lst;
+            lst << value;
+            emit signalCallAuxEditor(prop, lst);
+        }
+    }
+}
+
 /*!
     \internal
 
@@ -1215,10 +1236,32 @@ void QtLineEditFactory::connectPropertyManager(QtStringPropertyManager *manager)
 QWidget *QtLineEditFactory::createEditor(QtStringPropertyManager *manager,
         QtProperty *property, QWidget *parent)
 {
-
+    QWidget* w = new QWidget(parent);
+    w->setWindowFlags(Qt::FramelessWindowHint);
+    w->setAttribute(Qt::WA_DeleteOnClose, true);
+    //w->setMinimumWidth(100);
+    QHBoxLayout* blo = new QHBoxLayout(w);
+    //blo->setSizeConstraint(QLayout::SetMinAndMaxSize);
+    QPushButton* btn = new QPushButton("...", w);
+    QSizePolicy sp(QSizePolicy::Expanding,
+                   QSizePolicy::Expanding);
+    btn->setMaximumWidth(20);
+    btn->setSizePolicy(sp);
     QLineEdit *editor = d_ptr->createEditor(property, parent);
+    editor->setSizePolicy(sp);
+
+    blo->setSpacing(0);
+    blo->setContentsMargins(0,0,0,0);
+    blo->addWidget(btn);
+    blo->addWidget(editor);
+
+    w->setSizePolicy(sp);
+    w->setLayout(blo);
+    w->setContentsMargins(0,0,0,0);
+
     editor->setFocusPolicy(Qt::WheelFocus);
     editor->installEventFilter(this);
+
     QRegExp regExp = manager->regExp(property);
     if (regExp.isValid()) {
         QValidator *validator = new QRegExpValidator(regExp, editor);
@@ -1226,11 +1269,21 @@ QWidget *QtLineEditFactory::createEditor(QtStringPropertyManager *manager,
     }
     editor->setText(manager->value(property));
 
-//    connect(editor, SIGNAL(textEdited(const QString &)),
-//                this, SLOT(slotSetValue(const QString &)));
+    mButton2Property.insert(btn, property);
+
+    //    QString value = manager->value(property);
+    //    QStringList lst;
+    //    lst << value;
+
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
-    return editor;
+    connect(btn, SIGNAL(clicked()), this, SLOT(slotCallAuxEditor()));
+    connect(btn, SIGNAL(clicked()), w, SLOT(close()));
+    connect(this, SIGNAL(signalCallAuxEditor(QtProperty*,const QStringList &)),
+            manager, SLOT(slotCallAuxEditor(QtProperty*,const QStringList &)));
+    //    emit signalCallAuxEditor(property, lst);
+
+    return w;
 }
 
 /*!
@@ -1418,50 +1471,55 @@ QtTextEditFactory::slotCallAuxEditor(void)
 QWidget *QtTextEditFactory::createEditor(QtStringListPropertyManager *manager,
         QtProperty *property, QWidget *parent)
 {
-    QWidget* w = new QWidget(parent);
-    w->setWindowFlags(Qt::FramelessWindowHint);
-    w->setAttribute(Qt::WA_DeleteOnClose, true);
-    w->setMinimumHeight(200);
-    w->setMinimumWidth(100);
-    QHBoxLayout* blo = new QHBoxLayout(w);
-    blo->setSizeConstraint(QLayout::SetMinAndMaxSize);
-    QPushButton* btn = new QPushButton("...", w);
-    QSizePolicy sp(QSizePolicy::Expanding,
-                   QSizePolicy::Expanding);
-    btn->setMaximumWidth(20);
-    btn->setSizePolicy(sp);
-    QTextEdit *editor = d_ptr->createEditor(property, parent);
-    editor->setSizePolicy(sp);
+//    QWidget* w = new QWidget(parent);
+//    w->setWindowFlags(Qt::FramelessWindowHint);
+//    w->setAttribute(Qt::WA_DeleteOnClose, true);
+//    w->setMinimumHeight(200);
+//    w->setMinimumWidth(100);
+//    QHBoxLayout* blo = new QHBoxLayout(w);
+//    blo->setSizeConstraint(QLayout::SetMinAndMaxSize);
+//    QPushButton* btn = new QPushButton("...", w);
+//    QSizePolicy sp(QSizePolicy::Expanding,
+//                   QSizePolicy::Expanding);
+//    btn->setMaximumWidth(20);
+//    btn->setSizePolicy(sp);
+//    QTextEdit *editor = d_ptr->createEditor(property, parent);
+//    editor->setSizePolicy(sp);
 
-    blo->setSpacing(0);
-    blo->setContentsMargins(0,0,0,0);
-    blo->addWidget(btn);
-    blo->addWidget(editor);
+//    blo->setSpacing(0);
+//    blo->setContentsMargins(0,0,0,0);
+//    blo->addWidget(btn);
+//    blo->addWidget(editor);
 
-    w->setSizePolicy(sp);
-    w->setLayout(blo);
-    w->setContentsMargins(0,0,0,0);
+//    w->setSizePolicy(sp);
+//    w->setLayout(blo);
+//    w->setContentsMargins(0,0,0,0);
 
 
-    editor->setFocusPolicy(Qt::WheelFocus);
-    editor->installEventFilter(this);
-    QStringList lst = manager->value(property);
-    QString instr = QtStringListPropertyManager::StringListToString(lst);
-    editor->setPlainText(instr);
+//    editor->setFocusPolicy(Qt::WheelFocus);
+//    editor->installEventFilter(this);
+//    QStringList lst = manager->value(property);
+//    QString instr = QtStringListPropertyManager::StringListToString(lst);
+//    editor->setPlainText(instr);
 
-    //qDebug() << "createEditor for '" << property->propertyName() << "' ...";
-    mButton2Property.insert(btn, property);
+//    //qDebug() << "createEditor for '" << property->propertyName() << "' ...";
+//    mButton2Property.insert(btn, property);
 
-    //connect(editor, SIGNAL(textChanged()),
-    //            this, SLOT(slotSetValue()));
-    connect(editor, SIGNAL(destroyed(QObject *)),
-                this, SLOT(slotEditorDestroyed(QObject *)));
-    connect(btn, SIGNAL(clicked()), this, SLOT(slotCallAuxEditor()));
-    connect(btn, SIGNAL(clicked()), w, SLOT(close()));
+//    //    connect(editor, SIGNAL(textChanged()),
+//    //                this, SLOT(slotSetValue()));
+
+//    connect(editor, SIGNAL(destroyed(QObject *)),
+//                this, SLOT(slotEditorDestroyed(QObject *)));
+//    connect(btn, SIGNAL(clicked()), this, SLOT(slotCallAuxEditor()));
+//    connect(btn, SIGNAL(clicked()), w, SLOT(close()));
     connect(this, SIGNAL(signalCallAuxEditor(QtProperty *, const QStringList &)),
             manager, SLOT(slotCallAuxEditor(QtProperty *, const QStringList &)));
 
-    return w;
+    QStringList value = manager->value(property);
+    emit signalCallAuxEditor(property, value);
+
+//    return w;
+    return 0;
 }
 
 /*!

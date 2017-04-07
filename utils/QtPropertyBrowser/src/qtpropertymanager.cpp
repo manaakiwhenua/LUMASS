@@ -1746,7 +1746,7 @@ QStringList QtStringListPropertyManager::StringToStringList(const QString& strin
 //	qDebug() << "  in: " << string;
 
 	// determine the maximum list level ie 0, 1, 2, or 3
-	QString input = string.simplified();
+    QString input = string;//string.simplified();
 	QStringList lst;
 	int maxlevel = QtStringListPropertyManager::validateExpression(string);
 	if (maxlevel < 0)

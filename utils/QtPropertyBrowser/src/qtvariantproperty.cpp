@@ -1072,6 +1072,8 @@ QtVariantPropertyManager::QtVariantPropertyManager(QObject *parent)
                 this, SLOT(slotValueChanged(QtProperty *, const QString &)));
     connect(stringPropertyManager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)),
                 this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    connect(stringPropertyManager, SIGNAL(signalCallAuxEditor(QtProperty*,const QStringList &)),
+            this, SIGNAL(signalCallAuxEditor(QtProperty*,const QStringList &)));
 
     // StringListPropertyManager
     QtStringListPropertyManager* stringListPropertyManager = new QtStringListPropertyManager(this);

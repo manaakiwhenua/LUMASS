@@ -215,9 +215,11 @@ public:
 public Q_SLOTS:
     void setValue(QtProperty *property, const QString &val);
     void setRegExp(QtProperty *property, const QRegExp &regExp);
+
 Q_SIGNALS:
     void valueChanged(QtProperty *property, const QString &val);
     void regExpChanged(QtProperty *property, const QRegExp &regExp);
+
 protected:
     QString valueText(const QtProperty *property) const;
     virtual void initializeProperty(QtProperty *property);
@@ -245,13 +247,10 @@ public:
 
 public Q_SLOTS:
     void setValue(QtProperty *property, const QStringList &val);
-    void slotCallAuxEditor(QtProperty* property, const QStringList& val)
-        {emit signalCallAuxEditor(property, val);}
     static int validateExpression(const QString& str);
 
 Q_SIGNALS:
     void valueChanged(QtProperty *property, const QStringList &val);
-    void signalCallAuxEditor(QtProperty* property, const QStringList& val);
 protected:
     QString valueText(const QtProperty *property) const;
     virtual void initializeProperty(QtProperty *property);

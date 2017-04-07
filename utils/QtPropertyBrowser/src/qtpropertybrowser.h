@@ -127,6 +127,11 @@ public:
 
     QtProperty *addProperty(const QString &name = QString());
     QtProperty *qtProperty(const QString &id)const;
+
+public Q_SLOTS:
+    void slotCallAuxEditor(QtProperty* property, const QStringList& val)
+        {emit signalCallAuxEditor(property, val);}
+
 Q_SIGNALS:
 
     void propertyInserted(QtProperty *property,
@@ -134,6 +139,8 @@ Q_SIGNALS:
     void propertyChanged(QtProperty *property);
     void propertyRemoved(QtProperty *property, QtProperty *parent);
     void propertyDestroyed(QtProperty *property);
+    void signalCallAuxEditor(QtProperty* property, const QStringList& val);
+
 protected:
     virtual bool hasValue(const QtProperty *property) const;
     virtual QIcon valueIcon(const QtProperty *property) const;
@@ -214,6 +221,7 @@ public:
         }
         return 0;
     }
+
 protected:
     virtual void connectPropertyManager(PropertyManager *manager) = 0;
     virtual QWidget *createEditor(PropertyManager *manager, QtProperty *property,

@@ -202,6 +202,13 @@ class QT_QTPROPERTYBROWSER_EXPORT QtLineEditFactory : public QtAbstractEditorFac
 public:
     QtLineEditFactory(QObject *parent = 0);
     ~QtLineEditFactory();
+
+Q_SIGNALS:
+    void signalCallAuxEditor(QtProperty*, const QStringList&);
+
+public Q_SLOTS:
+    void slotCallAuxEditor(void);
+
 protected:
     bool eventFilter(QObject* obj, QEvent* event);
     void connectPropertyManager(QtStringPropertyManager *manager);
@@ -210,6 +217,7 @@ protected:
     void disconnectPropertyManager(QtStringPropertyManager *manager);
 private:
     QtLineEditFactoryPrivate *d_ptr;
+    QMap<QPushButton*, QtProperty*> mButton2Property;
     Q_DECLARE_PRIVATE(QtLineEditFactory)
     Q_DISABLE_COPY(QtLineEditFactory)
     Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, const QString &))
@@ -229,11 +237,11 @@ public:
     QtTextEditFactory(QObject *parent = 0);
     ~QtTextEditFactory();
 
+Q_SIGNALS:
+    void signalCallAuxEditor(QtProperty*, const QStringList&);
+
 public Q_SLOTS:
     void slotCallAuxEditor(void);
-
-Q_SIGNALS:
-    void signalCallAuxEditor(QtProperty *, const QStringList &);
 
 protected:
     bool eventFilter(QObject* obj, QEvent* event);

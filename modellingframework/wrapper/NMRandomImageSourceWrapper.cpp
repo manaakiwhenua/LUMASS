@@ -31,6 +31,7 @@
 #include "itkDataObject.h"
 #include "otbImage.h"
 #include "NMItkDataObjectWrapper.h"
+#include "NMMfwException.h"
 
 #include <QVariant>
 
@@ -223,26 +224,69 @@ void NMRandomImageSourceWrapper::linkParameters(
 {
 	NMDebugCtx(ctx, << "...");
 
-	std::vector<double> vals;
+    bool bok;
 
-	this->extractNumericVector(step, this->mImageSize, vals);
-	if (vals.size() != 0)
-		this->setVecParam("ImageSize", vals);
+    QStringList vecparams;
+    vecparams << "ImageSize" << "ImageSpacing" << "ImageOrigin";
 
-	this->extractNumericVector(step, this->mImageSpacing, vals);
-	if (vals.size() != 0)
-		this->setVecParam("ImageSpacing", vals);
+    for (int p=0; p < 3; ++p)
+    {
+        QVariant valVecVar = this->getParameter(vecparams.at(p));
+        if (valVecVar.isValid())
+        {
+            QStringList strValVec = valVecVar.toStringList();
+            std::vector<double> vals;
+            for (int v=0; v < strValVec.size(); ++v)
+            {
+                double val = strValVec.at(v).toDouble(&bok);
+                if (bok)
+                {
+                    vals.push_back(val);
+                }
+                else
+                {
+                    NMLogError(<< "NMRandomImageSourceWrapper: " << "Invalid value for '"
+                               << vecparams.at(p) << "'!");
+                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                    e.setSource(this->objectName().toStdString());
+                    QString descr = QString("Invalid value for '%1'").arg(vecparams.at(p));
+                    e.setDescription(descr.toStdString());
+                    throw e;
+                }
 
-	this->extractNumericVector(step, this->mImageOrigin, vals);
-	if (vals.size() != 0)
-		this->setVecParam("ImageOrigin", vals);
+                if (vals.size() == strValVec.size())
+                {
+                    this->setVecParam(vecparams.at(p), vals);
+                }
+            }
+        }
+    }
 
-	double val;
-	if (this->extractNumericValue(step, this->mMaxValue, &val))
-		this->setParam("MaxValue", val);
 
-	if (this->extractNumericValue(step, this->mMinValue, &val))
-		this->setParam("MinValue", val);
+    QStringList singleparams;
+    singleparams << "MaxValue" << "MinValue";
+
+    for (int k=0; k < singleparams.size(); ++k)
+    {
+        QVariant svalVar = this->getParameter(singleparams.at(k));
+        if (svalVar.isValid())
+        {
+            QString svalStr = svalVar.toString();
+            double val = svalStr.toDouble(&bok);
+            if (!bok)
+            {
+                NMLogError(<< "NMRandomImageSourceWrapper: " << "Invalid value for '"
+                           << singleparams.at(k) << "'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setSource(this->objectName().toStdString());
+                QString descr = QString("Invalid value for '%1'").arg(singleparams.at(k));
+                e.setDescription(descr.toStdString());
+                throw e;
+            }
+
+            this->setParam(singleparams.at(k), val);
+        }
+    }
 
 	NMDebugCtx(ctx, << "done!");
 }

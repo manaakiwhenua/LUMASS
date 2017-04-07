@@ -592,7 +592,8 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 procItem->setTitle(dropItem);
                 procItem->setDescription(dropItem);
                 procItem->setPos(event->scenePos());
-                if (dropItem.compare("DataBuffer") == 0)
+                if (dropItem.compare(QString::fromLatin1("DataBuffer")) == 0
+                    || dropItem.compare(QString::fromLatin1("DataBufferReference")) == 0)
                 {
                     procItem->setIsDataBufferItem(true);
                 }

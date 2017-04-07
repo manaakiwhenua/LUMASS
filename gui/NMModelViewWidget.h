@@ -74,6 +74,7 @@ public:
 
 public slots:
 
+    /*** DEPRECATED - editing done via HoverEdit dialog and tree-built-in editors ***/
 	void callEditComponentDialog(const QString &);
 	void linkProcessComponents(NMComponentLinkItem* link);
 	void createProcessComponent(NMProcessComponentItem* procItem,
@@ -91,7 +92,10 @@ public slots:
     void scaleComponentFonts(void);
     void scaleTextLabels(void);
 
-	void editRootComponent();
+    /*** DEPRECATED - root component made non-editable ***/
+    void editRootComponent();
+
+
     //void compProcChanged();
 
 	void executeModel(void);

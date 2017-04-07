@@ -167,10 +167,13 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 			const QString &, QPointF)),
 			this, SLOT(createProcessComponent(NMProcessComponentItem*,
 			const QString &, QPointF)));
-	connect(mModelScene, SIGNAL(rootComponentDblClicked()),
-			this, SLOT(editRootComponent()));
-	connect(mModelScene, SIGNAL(procAggregateCompDblClicked(const QString &)),
-			this, SLOT(callEditComponentDialog(const QString &)));
+
+/*** DEPRECATED ***/
+//    connect(mModelScene, SIGNAL(rootComponentDblClicked()),
+//			this, SLOT(editRootComponent()));
+//	connect(mModelScene, SIGNAL(procAggregateCompDblClicked(const QString &)),
+//			this, SLOT(callEditComponentDialog(const QString &)));
+
     connect(mModelScene, SIGNAL(zoom(int)), this, SLOT(zoom(int)));
     connect(mModelScene, SIGNAL(itemLeftClicked(const QString &)), this,
             SLOT(updateTreeEditor(const QString &)));
@@ -3344,7 +3347,7 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 		tname = QString(tr("%1%2")).arg(procName).arg(cnt);
 		++cnt;
 	}
-	NMDebugAI(<< "finale name of component is '" << tname.toStdString() << "'" << endl);
+    NMDebugAI(<< "final name of component is '" << tname.toStdString() << "'" << endl);
     procItem->setTypeID(cnt-1);
 
 	NMModelComponent* comp = 0;
@@ -3352,10 +3355,12 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 	NMIterableComponent* itComp = 0;
 	NMProcess* proc = 0;
 
-    if (procName.compare("DataBuffer") == 0)
+    if (procName.compare(QString::fromLatin1("DataBuffer")) == 0
+        || procName.compare(QString::fromLatin1("DataBufferReference")) == 0)
 	{
 		NMDebugAI(<< "it's gonna be a DataComponent ... " << endl);
-		dataComp = new NMDataComponent();
+        //dataComp = new NMDataComponent();
+        dataComp = qobject_cast<NMDataComponent*>(NMModelComponentFactory::instance().createModelComponent(procName));
 		dataComp->setObjectName(tname);
 		comp = qobject_cast<NMModelComponent*>(dataComp);
         connect(dataComp, SIGNAL(ComponentDescriptionChanged(const QString &)),
@@ -3521,6 +3526,7 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
     //mTreeCompEditor->show();
 }
 
+/*! DEPRECATED */
 void NMModelViewWidget::callEditComponentDialog(const QString& compName)
 {
     if (    compName.isEmpty()

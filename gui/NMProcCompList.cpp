@@ -36,6 +36,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     //this->addItem(QString::fromLatin1("CombineTwo"));
     this->addItem(QString::fromLatin1("CostDistanceBuffer"));
     this->addItem(QString::fromLatin1("DataBuffer"));
+    this->addItem(QString::fromLatin1("DataBufferReference"));
     this->addItem(QString::fromLatin1("ExternalExec"));
     this->addItem(QString::fromLatin1("ExtractBand"));
     this->addItem(QString::fromLatin1("FocalDistanceWeight"));
@@ -44,7 +45,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("MapAlgebra"));
     //this->addItem(QString::fromLatin1("MapKernelScript"));
     this->addItem(QString::fromLatin1("MapKernelScript2"));
-    this->addItem(QString::fromLatin1("NeighbourCounter"));
+    //this->addItem(QString::fromLatin1("NeighbourCounter"));
     this->addItem(QString::fromLatin1("ParameterTable"));
     this->addItem(QString::fromLatin1("RandomImage"));
     this->addItem(QString::fromLatin1("ResampleImage"));
@@ -53,7 +54,9 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("UniqueCombination"));
     this->addItem(QString::fromLatin1("TableReader"));
     this->addItem(QString::fromLatin1("TextLabel"));
-    //this->addItem(QString::fromLatin1("ImageSorter"));
+    this->addItem(QString::fromLatin1("ImageSorter"));
+    this->addItem(QString::fromLatin1("SpatialOptimisation"));
+    //this->addItem(QString::fromLatin1("ImageBufferWriter"));
 /*$<AddComponentToGUICompList>$*/
 
     this->sortItems();

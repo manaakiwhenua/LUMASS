@@ -42,6 +42,8 @@
 #include "NMTableReader.h"
 #include "NMVectorImageToImageFilterWrapper.h"
 #include "NMExternalSortFilterWrapper.h"
+#include "NMMosraFilterWrapper.h"
+#include "NMVirtualStreamWriter.h"
 /*$<IncludeWrapperHeader>$*/
 
 
@@ -71,6 +73,8 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("TableReader");
     mProcRegister << QString::fromLatin1("ExtractBand");
     mProcRegister << QString::fromLatin1("ImageSorter");
+    mProcRegister << QString::fromLatin1("SpatialOptimisation");
+    mProcRegister << QString::fromLatin1("ImageBufferWriter");
 /*$<RegisterComponentName>$*/
 
     mSinks << QString::fromLatin1("ImageWriter");
@@ -79,6 +83,8 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mSinks << QString::fromLatin1("SQLProcessor");
     mSinks << QString::fromLatin1("UniqueCombination");
     mSinks << QString::fromLatin1("ImageSorter");
+    mSinks << QString::fromLatin1("SpatialOptimisation");
+    mSinks << QString::fromLatin1("ImageBufferWriter");
 /*$<RegisterComponentAsSink>$*/
 
 }
@@ -190,6 +196,14 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMExternalSortFilterWrapper";
     }
+    else if (alias.compare("SpatialOptimisation") == 0)
+    {
+        return "NMMosraFilterWrapper";
+    }
+    else if (alias.compare("ImageBufferWriter") == 0)
+    {
+        return "NMVirtualStreamWriter";
+    }
 /*$<WrapperClassNameFromComponentName>$*/
     else return proc;
 }
@@ -275,6 +289,14 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     else if (procClass.compare("NMExternalSortFilterWrapper") == 0)
     {
         proc = new NMExternalSortFilterWrapper(this);
+    }
+    else if (procClass.compare("NMMosraFilterWrapper") == 0)
+    {
+        proc = new NMMosraFilterWrapper(this);
+    }
+    else if (procClass.compare("NMVirtualStreamWriter") == 0)
+    {
+        proc = new NMVirtualStreamWriter(this);
     }
 /*$<CreateProcessObjFromWrapperClassName>$*/
     else

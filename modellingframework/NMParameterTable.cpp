@@ -118,7 +118,11 @@ NMParameterTable::setFileName(QString fn)
     {
         if (mTableName.isEmpty())
         {
-            this->setTableName(tab->GetFilenameInfo(mFileName.toStdString()).at(1).c_str());
+            std::vector<std::string> fninfo = tab->GetFilenameInfo(mFileName.toStdString());
+            if (fninfo.size() >= 2)
+            {
+                this->setTableName(fninfo.at(1).c_str());
+            }
         }
 
         // here's how it goes:

@@ -38,7 +38,7 @@ class NMMODFRAME_EXPORT NMSequentialIterComponent: public NMIterableComponent
 {
 	Q_OBJECT
     Q_PROPERTY(unsigned int NumIterations READ getNumIterations WRITE setNumIterations NOTIFY NMModelComponentChanged)
-    Q_PROPERTY(QString NumIterationsExpression READ getNumIterationsExpression WRITE setNumIterationsExpression NOTIFY NMModelComponentChanged)
+    Q_PROPERTY(QStringList NumIterationsExpression READ getNumIterationsExpression WRITE setNumIterationsExpression NOTIFY NMModelComponentChanged)
 
 
 public:
@@ -50,7 +50,7 @@ public:
 	NMSequentialIterComponent(QObject* parent=0);
 	virtual ~NMSequentialIterComponent(void);
 
-    NMPropertyGetSet(NumIterationsExpression, QString)
+    NMPropertyGetSet(NumIterationsExpression, QStringList)
 
     //NMPropertyGetSet(NumIterations, unsigned int)
     void setNumIterations(unsigned int numiter);
@@ -59,10 +59,13 @@ public:
 
 protected:
 	unsigned int mNumIterations;
-    QString mNumIterationsExpression;
+    QStringList mNumIterationsExpression;
 
     void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
     		unsigned int minLevel, unsigned int maxLevel);
+
+    // note: step is 1-based as mIterationStep && mIterationStepRun!
+    unsigned int evalNumIterationsExpression(const unsigned int& step);
 
 private:
 	static const std::string ctx;

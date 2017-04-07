@@ -21,6 +21,13 @@
  *  Created on: 12/02/2013
  *      Author: alex
  */
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
 
 #include "NMSequentialIterComponent.h"
 #include "NMDataComponent.h"
@@ -51,22 +58,38 @@ NMSequentialIterComponent::setNumIterations(unsigned int numiter)
     }
 }
 
-void
-NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
-    		unsigned int minLevel, unsigned int maxLevel)
+unsigned int
+NMSequentialIterComponent::evalNumIterationsExpression(const unsigned int& step)
 {
     unsigned int niter = mNumIterations;
 
-    if (!this->mNumIterationsExpression.isEmpty())
+    // note: step is 1-based as mIterationStep
+    if (step >= 1
+        && this->mNumIterationsExpression.size() != 0)
     {
-        QString numIterStr = NMModelController::getInstance()->processStringParameter(this, mNumIterationsExpression);
+        // emploly the NM_USE_UP (and continue to use the last one) parameter policy
+        int exprIdx = step-1;
+        if (exprIdx >= this->mNumIterationsExpression.size())
+        {
+            exprIdx = this->mNumIterationsExpression.size()-1;
+        }
+
+        QString numIterStr = NMModelController::getInstance()->processStringParameter(this,
+                                                                         mNumIterationsExpression.at(exprIdx));
+
+        // we don't interprete an empty string as error but as
+        // a non set parameter
+        if (numIterStr.isEmpty())
+        {
+            return mNumIterations;
+        }
+
+
         bool bok = false;
         unsigned int titer = numIterStr.toUInt(&bok);
         if (bok)
         {
             niter = titer;
-            // display the current number of iterations on the display
-            this->setNumIterations(niter);
         }
 
         if (!bok || numIterStr.startsWith("ERROR"))
@@ -93,15 +116,38 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         }
     }
 
+    return niter;
+}
+
+void
+NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
+    		unsigned int minLevel, unsigned int maxLevel)
+{
+    unsigned int oldNumIter = mNumIterations;
+    unsigned int niter = evalNumIterationsExpression(mIterationStep);
+    NMDebugAI(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << niter;)
+
+    if (niter != mNumIterations)
+    {
+        this->setNumIterations(niter);
+    }
+
+    NMModelController* ctrl = NMModelController::getInstance();
+
     mIterationStepRun = mIterationStep;
     unsigned int i = mIterationStepRun-1;
-    for (; i < niter; ++i)
-	{
+    for (; i < niter && !ctrl->isModelAbortionRequested(); ++i)
+    {
         emit signalProgress(mIterationStepRun);
         this->componentUpdateLogic(repo, minLevel, maxLevel, i);
+        niter = evalNumIterationsExpression(mIterationStepRun+1);
+        NMDebugAI(<< getUserID().toStdString() << ": in-loop: IterStep=" << getIterationStep()
+                                                << " i=" << i << " niter=" << niter;)
+        this->setNumIterations(niter);
         ++mIterationStepRun;
-	}
+    }
     mIterationStepRun = mIterationStep;
-
+    this->setNumIterations(oldNumIter);
+    emit signalProgress(mIterationStep);
 }
 

@@ -34,6 +34,13 @@ if(WIN32)
             5.5.0/5.5/qtbase
             5.5.0/qtbase
             5.5.1/qtbase
+            5.6.0/qtbase
+            5.6.1/qtbase
+            5.6.1-1/qtbase
+            5.6.2/qtbase
+            5.7.0/qtbase
+            5.7.1/qtbase
+            5.8.0/qtbase
     )
 else()
     set(QT5_CORE_LIB "libQt5Core.so")
@@ -73,6 +80,15 @@ else()
             Qt5.5.0/5.5.0/gcc_64
             Qt5.5.1/5.5.1/gcc
             Qt5.5.1/5.5.1/gcc_64
+            Qt5.6.0/5.6.0/gcc
+            Qt5.6.0/5.6.0/gcc_64
+            Qt5.6.1/5.6.1/gcc_64
+            Qt5.6.1-1/5.6.1-1/gcc_64
+            Qt5.6.2/5.6.2/gcc_64
+            Qt5.7.0/5.7.0/gcc_64
+            Qt5.7.1/5.7.1/gcc_64
+            Qt5.8.0/5.8.0/gcc_64
+
 
             qt/5.3/gcc
             qt/5.3/gcc_64
@@ -211,12 +227,22 @@ foreach(INCLDIR ${QT5_INCLUDE_DIRS})
             5.5.0/QtCore
             5.5.1/QtCore
             5.6.1/QtCore
+            5.6.1-1/QtCore
+            5.6.2/QtCore
+            5.7.0/QtCore
+            5.7.1/QtCore
+            5.8.0/QtCore
         PATHS 
             ${INCLDIR}
             c:/qt/5.5.0/qtbase/include/QtCore
             c:/Qt/5.5.0/qtbase/include/QtCore
             c:/qt/5.5.1/qtbase/include/QtCore
             c:/qt/5.6.1/qtbase/include/QtCore
+            c:/qt/5.6.1-1/qtbase/include/QtCore
+            c:/qt/5.6.2/qtbase/include/QtCore
+            c:/qt/5.7.0/qtbase/include/QtCore
+            c:/qt/5.7.1/qtbase/include/QtCore
+            c:/qt/5.8.0/qtbase/include/QtCore
         NO_DEFAULT_PATH
     )
 endforeach()
@@ -247,6 +273,11 @@ foreach(INCLSQL ${QT5_INCLUDE_DIRS})
             5.5.0
             5.5.1
             5.6.1
+            5.6.1-1
+            5.6.2
+            5.7.0
+            5.7.1
+            5.8.0
         PATHS
             ${INCLSQL}
             c:/qt/5.5.0/qtbase/include/QtSql
@@ -254,6 +285,11 @@ foreach(INCLSQL ${QT5_INCLUDE_DIRS})
             c:/Qt/5.5.1/qtbase/include/QtSql
             c:/qt/5.5.1/qtbase/include/QtSql
             c:/qt/5.6.1/qtbase/include/QtSql
+            c:/qt/5.6.1-1/qtbase/include/QtSql
+            c:/qt/5.6.2/qtbase/include/QtSql
+            c:/qt/5.7.0/qtbase/include/QtSql
+            c:/qt/5.7.1/qtbase/include/QtSql
+            c:/qt/5.8.0/qtbase/include/QtSql
         NO_DEFAULT_PATH
     )
 endforeach()

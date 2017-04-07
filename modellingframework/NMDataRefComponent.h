@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2013 Landcare Research New Zealand Ltd
+ * Copyright 2017 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -16,41 +16,38 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * NMDataComponent.h
+ * NMDataRefComponent.h
  *
- *  Created on: 12/02/2013
+ *  Created on: 30/03/2017
  *      Author: alex
  */
 
-#ifndef NMDATACOMPONENT_H_
-#define NMDATACOMPONENT_H_
+#ifndef NMDATAREFCOMPONENT_H_
+#define NMDATAREFCOMPONENT_H_
 
-#include <string>
-#include <iostream>
-#include <QMap>
-#include <QDateTime>
-#include <QStringList>
+#include <QObject>
+#include <QString>
 
 #include "NMMacros.h"
-#include "NMModelComponent.h"
-#include "NMItkDataObjectWrapper.h"
+#include "NMDataComponent.h"
+
+//#include "NMModelComponent.h"
+//#include "NMItkDataObjectWrapper.h"
 #include "nmmodframe_export.h"
 
-class NMDataRefComponent;
 
-class NMMODFRAME_EXPORT NMDataComponent: public NMModelComponent
+
+class NMMODFRAME_EXPORT NMDataRefComponent: public NMDataComponent
 {
-	Q_OBJECT
-
-    friend class NMDataRefComponent;
-public:
-
-	signals:
-    void NMDataComponentChanged();
+    Q_OBJECT
+    Q_PROPERTY(QString DataComponentName READ getDataComponentName WRITE setDataComponentName)
 
 public:
-	NMDataComponent(QObject* parent=0);
-	virtual ~NMDataComponent(void);
+
+    NMPropertyGetSet( DataComponentName, QString )
+
+    NMDataRefComponent(QObject* parent=0);
+    virtual ~NMDataRefComponent(void);
 
     virtual void setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg);
     virtual void linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
@@ -60,8 +57,10 @@ public:
 
 protected:
 
-    QSharedPointer<NMItkDataObjectWrapper> mDataWrapper;
-	//QStringList mInputSpec;
+//    QSharedPointer<NMItkDataObjectWrapper> mDataWrapper;
+    QString mDataComponentName;
+
+    NMDataComponent* mDataComponent;
 
     long long mTabMinPK;
     unsigned int mParamPos;
@@ -75,8 +74,9 @@ protected:
 
     virtual QVariant getModelParameter(const QString &paramSpec);
 
-	virtual void initAttributes(void);
-	void fetchData(NMModelComponent* comp);
+    virtual void initAttributes(void);
+    void fetchData(NMModelComponent* comp);
+    void updateDataSource(void);
 
 private:
 	static const std::string ctx;
@@ -84,8 +84,8 @@ private:
 };
 
 //Q_DECLARE_METATYPE(QSharedPointer<NMItkDataObjectWrapper>)
-Q_DECLARE_METATYPE(NMDataComponent)
-Q_DECLARE_METATYPE(NMDataComponent*)
+Q_DECLARE_METATYPE(NMDataRefComponent)
+Q_DECLARE_METATYPE(NMDataRefComponent*)
 
 
-#endif /* NMDATACOMPONENT_H_ */
+#endif /* NMDATAREFCOMPONENT_H_ */

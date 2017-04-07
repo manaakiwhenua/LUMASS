@@ -1,6 +1,6 @@
 /*****************************t*************************************************
  * Created by Alexander Herzige
- * 2013 Landcare Research New Zealand Ltd
+ * Copyright 2017 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -16,9 +16,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 /*
- * NMDataComponent.cpp
+ * NMDataRefComponent.cpp
  *
- *  Created on: 12/02/2013
+ *  Created on: 30/03/2017
  *      Author: alex
  */
 #ifndef NM_ENABLE_LOGGER
@@ -33,80 +33,131 @@
 #include <sstream>
 
 #include "NMModelController.h"
-#include "NMDataComponent.h"
+#include "NMDataRefComponent.h"
 #include "NMIterableComponent.h"
 #include "NMMfwException.h"
 #include "otbSQLiteTable.h"
 #include "itkNMLogEvent.h"
 
-const std::string NMDataComponent::ctx = "NMDataComponent";
+const std::string NMDataRefComponent::ctx = "NMDataRefComponent";
 
-NMDataComponent::NMDataComponent(QObject* parent)
-    : NMModelComponent(parent)
+NMDataRefComponent::NMDataRefComponent(QObject* parent)
+    : NMDataComponent(parent)
 {
 	this->setParent(parent);
 	this->initAttributes();
 }
 
-NMDataComponent::~NMDataComponent()
+NMDataRefComponent::~NMDataRefComponent()
 {
 	reset();
 }
 
 void
-NMDataComponent::initAttributes(void)
+NMDataRefComponent::initAttributes(void)
 {
 	NMModelComponent::initAttributes();
 	mInputCompName.clear();
 	mLastInputCompName.clear();
 	mSourceMTime.setMSecsSinceEpoch(0);
-    mDataWrapper.clear();
 	mInputOutputIdx = 0;
 	mLastInputOutputIdx = 0;
 	mParamPos = 0;
 	mbLinked = false;
     mTabMinPK = 0;
+    mDataComponent = 0;
 }
 
 void
-NMDataComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
+NMDataRefComponent::setNthInput(unsigned int idx, QSharedPointer<NMItkDataObjectWrapper> inputImg)
 {
-    // note QSharedPointer takes care of management, so no
-    // parent required, actually if we had a parent
-    // we'd get crash with double free error
-
-    if (!mDataWrapper.isNull())
-        mDataWrapper.clear();
-	mDataWrapper = inputImg;
-
-    if (!mDataWrapper.isNull())
+    if (mDataComponent)
     {
-        if (mDataWrapper->getDataObject())
+        mDataComponent->setNthInput(idx, inputImg);
+    }
+    // get the data component this reference component is actually
+    // referencing
+    else
+    {
+        if (mDataComponent == 0)
         {
-            // add an observer to keep track of any internal log worthy events
-            mObserver = ObserverType::New();
-            mObserver->SetCallbackFunction(this, &NMModelComponent::ProcessLogEvent);
-            mDataWrapper->getDataObject()->AddObserver(itk::NMLogEvent(), mObserver);
+            NMLogError(<< ctx << " - source data component is NULL!");
+        }
+    }
+}
+
+void
+NMDataRefComponent::updateDataSource(void)
+{
+    reset();
+    mDataComponent = 0;
+
+    NMModelComponent* comp = NMModelController::getInstance()->getComponent(mDataComponentName);
+    if (comp)
+    {
+        NMDataComponent* dc = qobject_cast<NMDataComponent*>(comp);
+        if (dc)
+        {
+            mDataComponent = dc;
+            NMLogWarn(<< ctx << ": Source component identified by component name rather than "
+                             << "UserID, which is subject to change, if this model component "
+                             << "is imported into a different model!");
+        }
+        else
+        {
+            mDataComponent = 0;
+            NMLogError(<< ctx << ": Specified source component '"
+                              << mDataComponentName.toStdString() << "' "
+                              << "couldn't be found is not a DataBuffer (NMDataComponent)!");
+        }
+    }
+    else
+    {
+        QList<NMModelComponent*> comps = NMModelController::getInstance()->getComponents(mDataComponentName);
+
+        QList<int> dcIdx;
+        for (int i=0; i < comps.count(); ++i)
+        {
+            NMModelComponent* mc = comps.at(i);
+            if (QString(mc->metaObject()->className()).compare(QString::fromLatin1("NMDataComponent")) == 0)
+            {
+                dcIdx << i;
+            }
         }
 
-
-        // in case we've got a table and getModelParameter is called
-        // fetch the minimum value of its primary key so we're getting
-        // the right parameter
-        if (mDataWrapper->getOTBTab().IsNotNull())
+        if (dcIdx.count() == 0)
         {
-            mTabMinPK = mDataWrapper->getOTBTab()->GetMinPKValue();
+            NMLogError(<< ctx << ": Specified source component '"
+                              << mDataComponentName.toStdString() << "' "
+                              << "couldn't be found is not a DataBuffer (NMDataComponent)!");
+            return;
+        }
+        else if (dcIdx.count() > 1)
+        {
+            NMLogError(<< ctx << ": The UserID of the source NMDataComponent is not unique!");
+            return;
+        }
+
+        mDataComponent = qobject_cast<NMDataComponent*>(comps.at(dcIdx.at(0)));
+    }
+}
+
+void
+NMDataRefComponent::linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
+{
+    if (mDataComponent == 0)
+    {
+        updateDataSource();
+        if (mDataComponent == 0)
+        {
+            NMLogError(<< ctx << " - source data component is NULL!");
+            return;
         }
     }
 
-	emit NMDataComponentChanged();
-}
 
-void
-NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelComponent*>& repo)
-{
 	NMDebugCtx(ctx, << "...");
-	NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
+    NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
     e.setSource(this->objectName().toStdString());
 	std::stringstream msg;
 
@@ -124,10 +175,10 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
         // if we haven't got an input component set-up,
         // we're also happy with data which was set from
         // outside the pipeline
-        if (!mDataWrapper.isNull())
+        if (!mDataComponent->mDataWrapper.isNull())
         {
             mbLinked = true;
-            NMDebugCtx(ctx, << "...");
+            NMDebugCtx(ctx, << "done!");
             return;
         }
         else
@@ -209,9 +260,15 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 }
 
 QVariant
-NMDataComponent::getModelParameter(const QString &paramSpec)
+NMDataRefComponent::getModelParameter(const QString &paramSpec)
 {
     QVariant param;
+
+    if (mDataComponent == 0)
+    {
+        NMLogError(<< ctx << " - source data component is NULL!");
+        return param;
+    }
 
     bool bThrowUp = false;
     QString demsg;
@@ -222,14 +279,14 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
         demsg = "invalid parameter specification!";
     }
 
-    if (    this->mDataWrapper.isNull()
-        ||  this->mDataWrapper->getOTBTab().IsNull()
+    if (    mDataComponent->mDataWrapper.isNull()
+        ||  mDataComponent->mDataWrapper->getOTBTab().IsNull()
        )
     {
         this->update(NMModelController::getInstance()->getRepository());
 
-        if (    this->mDataWrapper.isNull()
-            ||  this->mDataWrapper->getOTBTab().IsNull()
+        if (    mDataComponent->mDataWrapper.isNull()
+            ||  mDataComponent->mDataWrapper->getOTBTab().IsNull()
            )
         {
             bThrowUp = true;
@@ -247,7 +304,7 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     }
 
     //  <columnName>:<rowNumber>
-    otb::AttributeTable::Pointer tab = this->mDataWrapper->getOTBTab();
+    otb::AttributeTable::Pointer tab = mDataComponent->mDataWrapper->getOTBTab();
 
     QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
     long long row = 0;
@@ -318,10 +375,17 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
 }
 
 void
-NMDataComponent::fetchData(NMModelComponent* comp)
+NMDataRefComponent::fetchData(NMModelComponent* comp)
 {
+    if (mDataComponent == 0)
+    {
+        NMLogError(<< ctx << " - source data component is NULL!");
+        return;
+    }
+
+
 	NMDebugCtx(ctx, << "...");
-	NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
+    NMMfwException e(NMMfwException::NMDataComponent_InvalidParameter);
     e.setSource(this->objectName().toStdString());
 	std::stringstream msg;
 
@@ -368,20 +432,38 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 		to->getDataObject()->DisconnectPipeline();
 	}
 
+
     this->setInput(to);
 
 	NMDebugCtx(ctx, << "done!");
 }
 
 QSharedPointer<NMItkDataObjectWrapper>
-NMDataComponent::getOutput(unsigned int idx)
+NMDataRefComponent::getOutput(unsigned int idx)
 {
-	return mDataWrapper;
+    QSharedPointer<NMItkDataObjectWrapper> ret;
+
+    if (mDataComponent)
+    {
+        return mDataComponent->mDataWrapper;
+    }
+
+    return ret;
 }
 
 void
-NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
+NMDataRefComponent::update(const QMap<QString, NMModelComponent*>& repo)
 {
+    if (mDataComponent == 0)
+    {
+        updateDataSource();
+        if (mDataComponent == 0)
+        {
+            NMLogError(<< ctx << " - source data component is NULL!");
+            return;
+        }
+    }
+
 	NMDebugCtx(ctx, << "...");
 
     // prevent chasing our own tail
@@ -419,19 +501,20 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
 }
 
 void
-NMDataComponent::reset(void)
+NMDataRefComponent::reset(void)
 {
-    if (!mDataWrapper.isNull())
+    if (mDataComponent && !mDataComponent->mDataWrapper.isNull())
 	{
-        if (    mDataWrapper->getOTBTab().IsNotNull()
-            &&  mDataWrapper->getOTBTab()->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE
+        if (    mDataComponent->mDataWrapper->getOTBTab().IsNotNull()
+            &&  mDataComponent->mDataWrapper->getOTBTab()->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE
            )
         {
-            otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(mDataWrapper->getOTBTab().GetPointer());
+            otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(mDataComponent->mDataWrapper->getOTBTab().GetPointer());
             sqltab->CloseTable();
         }
-        mDataWrapper.clear();
+        mDataComponent->mDataWrapper.clear();
 	}
+    this->mDataComponent = 0;
 	this->mbLinked = false;
     this->mIsUpdating = false;
 	this->mInputCompName.clear();
@@ -440,5 +523,5 @@ NMDataComponent::reset(void)
 	this->mInputOutputIdx = 0;
 	this->mLastInputOutputIdx = 0;
 
-	emit NMDataComponentChanged();
+    emit NMDataComponentChanged();
 }

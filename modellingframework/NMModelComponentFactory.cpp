@@ -26,11 +26,17 @@
 #include "NMSequentialIterComponent.h"
 #include "NMConditionalIterComponent.h"
 #include "NMDataComponent.h"
+#include "NMDataRefComponent.h"
 #include "NMParameterTable.h"
 
 NMModelComponentFactory::NMModelComponentFactory(QObject* parent)
 {
 	this->setParent(parent);
+
+    mCompRegister << "NMSequentialIterComponent"
+                  << "NMDataComponent"
+                  << "NMDataRefComponent"
+                  << "NMParameterTable";
 }
 
 NMModelComponentFactory::~NMModelComponentFactory()
@@ -43,24 +49,55 @@ NMModelComponentFactory& NMModelComponentFactory::instance(void)
 	return fab;
 }
 
+QString NMModelComponentFactory::compNameFromAlias(const QString &alias)
+{
+    QString compName;
+
+    if (alias.compare(QString::fromLatin1("DataBuffer")) == 0)
+    {
+        compName = QString::fromLatin1("NMDataComponent");
+    }
+    else if (alias.compare(QString::fromLatin1("DataBufferReference")) == 0)
+    {
+        compName = QString::fromLatin1("NMDataRefComponent");
+    }
+    else if (alias.compare(QString::fromLatin1("ParameterTable")) == 0)
+    {
+        compName = QString::fromLatin1("NMParameterTable");
+    }
+
+    return compName;
+}
+
 NMModelComponent* NMModelComponentFactory::createModelComponent(const QString& compClass)
 {
-	if (compClass.compare("NMSequentialIterComponent") == 0)
+    QString cn = compClass;
+    if (!mCompRegister.contains(compClass))
+    {
+        cn = this->compNameFromAlias(compClass);
+    }
+
+    if (cn.compare("NMSequentialIterComponent") == 0)
 	{
 		return qobject_cast<NMModelComponent*>(
 				new NMSequentialIterComponent(this));
 	}
-	else if (compClass.compare("NMConditionalIterComponent") == 0)
+    else if (cn.compare("NMConditionalIterComponent") == 0)
 	{
 		return qobject_cast<NMModelComponent*>(
 				new NMConditionalIterComponent(this));
 	}
-	else if (compClass.compare("NMDataComponent") == 0)
+    else if (cn.compare("NMDataComponent") == 0)
 	{
 		return qobject_cast<NMModelComponent*>(
 				new NMDataComponent(this));
 	}
-    else if (compClass.compare("NMParameterTable") == 0)
+    else if (cn.compare("NMDataRefComponent") == 0)
+    {
+        return qobject_cast<NMModelComponent*>(
+                    new NMDataRefComponent(this));
+    }
+    else if (cn.compare("NMParameterTable") == 0)
     {
         return qobject_cast<NMModelComponent*>(
                  new NMParameterTable(this));

@@ -37,8 +37,12 @@ public:
 
 private:
 	NMModelComponentFactory(QObject* parent=0);
-	NMModelComponentFactory(const NMModelComponentFactory& fab){};
+    NMModelComponentFactory(const NMModelComponentFactory& fab){}
 	virtual ~NMModelComponentFactory();
+
+    QString compNameFromAlias(const QString& alias);
+
+    QStringList mCompRegister;
 };
 
 #endif /* NMMODELCOMPONENTFACTORY_H_ */

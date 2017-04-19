@@ -99,7 +99,7 @@ LINK_DIRECTORIES(
 	${gui_BINARY_DIR}/lib
 	${SQLite_BINARY_DIR}/lib
 	${muparser_BINARY_DIR}  
-    ${muParserX_BINARY_DIR}
+        ${muParserX_BINARY_DIR}
 	${RASDAMAN_LIBRARIES_DIR}
 	${PostgreSQL_LIBRARY_DIRS}
         ${SPATIALITE_LIB_DIR}

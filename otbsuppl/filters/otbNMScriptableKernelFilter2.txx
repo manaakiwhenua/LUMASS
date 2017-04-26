@@ -428,7 +428,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 {
     if (this->m_InitScript.empty())
     {
-        NMProcInfo(<< "Skip empty init script");
+        //NMProcDebug(<< "Skip empty init script");
         return;
     }
 

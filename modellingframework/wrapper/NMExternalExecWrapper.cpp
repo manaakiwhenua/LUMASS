@@ -22,21 +22,40 @@
  *      Author: Alexander Herzig
  */
 
-#include "nmlog.h"
+#include <QVariant>
+#include <QByteArray>
+
+//#include "nmlog.h"
+
+#ifndef NM_ENABLE_LOGGER
+#   define NM_ENABLE_LOGGER
+#   include "nmlog.h"
+#   undef NM_ENABLE_LOGGER
+#else
+#   include "nmlog.h"
+#endif
+
+#include "NMModelController.h"
 #include "NMExternalExecWrapper.h"
 #include "NMMfwException.h"
 
-#include <QVariant>
-#include <QSharedPointer>
 
 const std::string NMExternalExecWrapper::ctx = "NMExternalExecWrapper";
 NMExternalExecWrapper::NMExternalExecWrapper(QObject* parent)
+    : mCmdProcess(0)
 {
     this->setParent(parent);
 }
 
 NMExternalExecWrapper::~NMExternalExecWrapper()
 {
+    if (mCmdProcess != 0)
+    {
+        disconnect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
+                   this, SLOT(readOutput()));
+        delete mCmdProcess;
+        mCmdProcess = 0;
+    }
 }
 
 QSharedPointer<NMItkDataObjectWrapper>
@@ -49,6 +68,7 @@ NMExternalExecWrapper::getOutput(unsigned int idx)
 void
 NMExternalExecWrapper::instantiateObject(void)
 {
+    reset();
 
     this->mbIsInitialised = true;
     this->setObjectName(QString::fromLatin1("NMExternalExecWrapper"));
@@ -62,22 +82,56 @@ NMExternalExecWrapper::setNthInput(unsigned int numInput,
 }
 
 void
+NMExternalExecWrapper::reset(void)
+{
+    NMProcess::reset();
+
+    if (mCmdProcess != 0)
+    {
+        disconnect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
+                   this, SLOT(readOutput()));
+        delete mCmdProcess;
+        mCmdProcess = 0;
+    }
+
+    mCmdProcess = new QProcess();
+    mCmdProcess->setProcessChannelMode(QProcess::MergedChannels);
+    connect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
+            this, SLOT(readOutput()));
+
+    mProcOutput.clear();
+}
+
+void
+NMExternalExecWrapper::abortExecution(void)
+{
+    mCmdProcess->close();
+    NMLogInfo(<< "Process killed!");
+}
+
+void
+NMExternalExecWrapper::readOutput(void)
+{
+    QString baOut = mCmdProcess->readAllStandardOutput();
+    NMLogInfoNoNL(<< baOut.toStdString());
+}
+
+void
 NMExternalExecWrapper::update(void)
 {
     NMDebugCtx(ctx, << "...");
 
-    //    NMDebugAI( << "running: " << mCurCmd.toStdString()
-    //               << " " << mCurArgs.toStdString());
+    NMDebugAI( << mCurCmd.toStdString() << std::endl);
+
+    mCmdProcess->setProcessEnvironment(mProcEnv);
 
     QString objName = this->parent()->objectName();
     emit signalExecutionStarted(objName);
 
-    //QProcess::execute(mCurCmd, mCurArgList);
-    QProcess::execute(mCurCmd);//, mCurArgList);
+    mCmdProcess->start(mCurCmd);
+    mCmdProcess->waitForFinished(-1);
 
     emit signalExecutionStopped(objName);
-
-    //NMDebugAI( << "finished!");
 
     this->mbLinked = false;
     NMDebugCtx(ctx, << "done!");
@@ -100,27 +154,31 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
         NMDebugCtx(ctx, << "done!");
         throw e;
     }
-
     mCurCmd = qvCmnd.toString();
-    //mCmdProcess.setProgram(sCmd);
 
 
-//    QVariant qvArguments = this->getParameter(QString::fromLatin1("Arguments"));
-//    if (qvArguments.type() != QVariant::StringList)
-//    {
-//        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-//        std::stringstream msg;
-//        msg << "'" << this->objectName().toStdString() << "'";
-//        e.setDescription(msg.str());
-//        NMDebugCtx(ctx, << "done!");
-//        throw e;
-//    }
+    QVariant qvEnvironment = this->getParameter(QString::fromLatin1("Environment"));
+    if (QString::fromLatin1("QStringList").compare(qvEnvironment.typeName()) == 0)
+    {
+        QStringList temp = qvEnvironment.toStringList();
 
-//    //mCurArgs = qvArguments.toString();
+        mProcEnv = QProcessEnvironment::systemEnvironment();
 
-//    mCurArgList = qvArguments.toStringList();//mCurArgs.split(' ');
-//    mCmdProcess.setArguments(mCurArgList);
-
+        foreach (const QString& kv, temp)
+        {
+            QStringList aList = kv.split('=', QString::SkipEmptyParts);
+            if (aList.size() > 1)
+            {
+                mProcEnv.insert(aList.at(0), aList.at(1));
+                NMLogDebug(<< kv.toStdString());
+            }
+            else
+            {
+                NMLogWarn(<< ctx << " - skipped invalid key=value pair '"
+                          << kv.toStdString() << "'!");
+            }
+        }
+    }
 
     NMDebugCtx(ctx, << "done!");
 }

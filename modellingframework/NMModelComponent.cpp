@@ -100,7 +100,7 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
         specList << "0";
     }
 
-    QStringList propList = NMModelController::getPropertyList(this);
+    QStringList propList = this->getModelController()->getPropertyList(this);
     NMProcess* proc = 0;
     if (!propList.contains(specList.at(0)))
     {
@@ -108,7 +108,7 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
         if (ic && ic->getProcess() != 0)
         {
             proc = ic->getProcess();
-            propList = NMModelController::getPropertyList(proc);
+            propList = this->getModelController()->getPropertyList(proc);
         }
 
         if (!propList.contains(specList.at(0)))
@@ -229,7 +229,7 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 	{
         // make sure that we strip off any input index, e.g. MapAlgebra:1, should
         // be turned into MapAlgebra
-        QString inName = NMModelController::getComponentNameFromInputSpec(in);
+        QString inName = this->getModelController()->getComponentNameFromInputSpec(in);
 
         //NMDebugAI(<< this->objectName().toStdString()
 		//		<< "::getUpstreamPipe: investigating input '"
@@ -252,7 +252,7 @@ NMModelComponent::getUpstreamPipe(QList<QStringList>& hydra,
 
         bool bGoUp = false;
         bool bShareHost = false;
-        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inName);
+        NMModelComponent* comp = this->getModelController()->getComponent(inName);
         NMDataComponent* dataComp = qobject_cast<NMDataComponent*>(comp);
         if (comp != 0 && dataComp == 0)
         {

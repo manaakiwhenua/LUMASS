@@ -40,7 +40,7 @@ class NMMODFRAME_EXPORT NMConditionalIterComponent: public NMIterableComponent
 
 
 public:
-	NMConditionalIterComponent(QObject* parent=0);
+    NMConditionalIterComponent(QObject* parent=0);
 	virtual ~NMConditionalIterComponent(void);
 
 protected:

@@ -23,7 +23,8 @@ NMLogger::NMLogger(QObject *parent)
 }
 
 void
-NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &msg)
+NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &msg,
+                        bool bForceNewLine)
 {
     if (    (int)type < (int)mLogLevel
         ||  msg.isEmpty())
@@ -32,8 +33,8 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
     }
 
     QString logmsg = msg;
-    // each message its own line!
-    if (msg.at(msg.size()-1) != '\n')
+    // each message its own line unless we specifiy bForceNewLine = false!
+    if (bForceNewLine && msg.at(msg.size()-1) != '\n')
     {
         logmsg = QString("%1 \n").arg(msg);
     }
@@ -47,7 +48,14 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
         switch(type)
         {
             case NM_LOG_INFO:
-                logmsg = QString("%1 <b>INFO</b>: %2").arg(time).arg(logmsg);
+                if (!bForceNewLine)
+                {
+                    logmsg = QString("%1 ").arg(logmsg);
+                }
+                else
+                {
+                    logmsg = QString("%1 <b>INFO</b>: %2").arg(time).arg(logmsg);
+                }
                 break;
             case NM_LOG_WARN:
                 logmsg = QString("%1 <b><font color=\"blue\">WARNING</font></b>: %2").arg(time).arg(logmsg);
@@ -56,7 +64,14 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
                 logmsg = QString("%1 <b><font color=\"red\">ERROR</font></b>: %2").arg(time).arg(logmsg);
                 break;
             case NM_LOG_DEBUG:
-                logmsg = QString("%1 DEBUG: %2").arg(time).arg(logmsg);
+                if (!bForceNewLine)
+                {
+                    logmsg = QString("%1 ").arg(logmsg);
+                }
+                else
+                {
+                    logmsg = QString("%1 DEBUG: %2").arg(time).arg(logmsg);
+                }
                 break;
         }
     }
@@ -65,7 +80,14 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
         switch(type)
         {
             case NM_LOG_INFO:
-                logmsg = QString("%1 INFO: %2").arg(time).arg(logmsg);
+                if (!bForceNewLine)
+                {
+                    logmsg = QString("%1 ").arg(logmsg);
+                }
+                else
+                {
+                    logmsg = QString("%1 INFO: %2").arg(time).arg(logmsg);
+                }
                 break;
             case NM_LOG_WARN:
                 logmsg = QString("%1 WARNING: %2").arg(time).arg(logmsg);
@@ -74,7 +96,14 @@ NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &m
                 logmsg = QString("%1 ERROR: %2").arg(time).arg(logmsg);
                 break;
             case NM_LOG_DEBUG:
-                logmsg = QString("%1 DEBUG: %2").arg(time).arg(logmsg);
+                if (!bForceNewLine)
+                {
+                    logmsg = QString("%1 ").arg(logmsg);
+                }
+                else
+                {
+                    logmsg = QString("%1 DEBUG: %2").arg(time).arg(logmsg);
+                }
                 break;
         }
     }

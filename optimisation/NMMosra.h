@@ -161,9 +161,14 @@ public:
 	enum AreaUnitType {NM_MOSO_MAP_UNITS, NM_MOSO_PERCENT_TOTAL,
 		NM_MOSO_PERCENT_SELECTED, NM_MOSO_PERCENT_ZONE};
 
-	// load settings from textfile
-	// (from LUMASS Optimisation settings file)
+    /*! loads the settings from textfile (LUMASS Optimisation settings file, *.los)
+     *  and passes a string to the parseStringSettings function for doing the
+     *  grunt work of analysing the string.
+     */
 	int loadSettings(QString fileName);
+
+    /*! parses the settings and makes them meaningful to NMMosra*/
+    int parseStringSettings(QString strSettings);
 
 	QString getLayerName(void);
 

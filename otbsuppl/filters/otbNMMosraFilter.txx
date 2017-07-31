@@ -166,7 +166,8 @@ void NMMosraFilter< TInputImage, TOutputImage >
 
     NMMosra* mosra = new NMMosra();
     mosra->setItkProcessObject(this);
-    mosra->loadSettings(m_LosFileName.c_str());
+//    mosra->loadSettings(m_LosFileName.c_str());
+    mosra->parseStringSettings(m_LosSettings.c_str());
     mosra->setDataSet(m_DataSet->getAttributeTable());
     if (m_TimeOut >= 0)
     {

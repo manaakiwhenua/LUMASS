@@ -27,6 +27,9 @@
 #include "itkProcessObject.h"
 #include "otbImage.h"
 
+#include <QTextStream>
+#include <QFile>
+
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
@@ -124,11 +127,25 @@ public:
 
 		
         QVariant curLosFileNameVar = p->getParameter("LosFileName");
-        std::string curLosFileName;
+        QString curLosFileName;
         if (curLosFileNameVar.isValid())
         {
-            curLosFileName = curLosFileNameVar.toString().toStdString();
-            f->SetLosFileName(curLosFileName);
+            curLosFileName = curLosFileNameVar.toString();
+            QFile losFile(curLosFileName);
+            if (!losFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            {
+                NMErr("NMMosraFilterWrapper_Internal", << "Invlid value for 'LosFileName'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setDescription("Ivalid value for 'LosFileName'!");
+                throw e;
+            }
+
+            QTextStream losStream(&losFile);
+            QString losInString = losStream.readAll();
+            losFile.close();
+            QString losOutString = p->getModelController()->processStringParameter(p, losInString);
+            //f->SetLosFileName(curLosFileName);
+            f->SetLosSettings(losOutString.toStdString());
         }
 
         QVariant curTimeOutVar = p->getParameter("TimeOut");
@@ -149,8 +166,6 @@ public:
             }
         }
 
-
-                
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
 	    std::vector<std::string> userIDs;                                                                       
 	    QStringList currentInputs;                                                                              
@@ -162,8 +177,8 @@ public:
 		    {                                                                                               
 		        std::stringstream uid;                                                                      
 		        uid << "L" << cnt;                                                                          
-		        QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);            
-		        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);     
+                QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
+                NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
 		        if (comp != 0)                                                                              
 		        {                                                                                           
 			        if (comp->getUserID().isEmpty())                                                        

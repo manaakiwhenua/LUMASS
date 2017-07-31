@@ -55,6 +55,7 @@ file(GLOB MFW_CPP
    ${mfw_wrapper_SOURCE_DIR}/*.cxx
    ${lumass_SOURCE_DIR}/util/ITK/itkVTKImageExportBase.cxx
    ${shared_SOURCE_DIR}/NMLogger.cpp
+   ${shared_SOURCE_DIR}/NMObject.cpp
    ${opt_SOURCE_DIR}/LpHelper.cpp
    ${opt_SOURCE_DIR}/NMMosra.cpp
 
@@ -65,6 +66,7 @@ file(GLOB MFW_H
    ${mfw_BINARY_DIR}/*.h
    ${mfw_wrapper_SOURCE_DIR}/*.h
    ${shared_SOURCE_DIR}/NMLogger.h
+   ${shared_SOURCE_DIR}/NMObject.h
    ${opt_SOURCE_DIR}/LpHelper.h
    ${opt_SOURCE_DIR}/NMMosra.h
 )

@@ -678,6 +678,21 @@ NMRATBandMathImageFilterWrapper
 
     this->setInternalUseTableCache(mUseTableColumnCache);
 
+    NMModelController* ctrl = this->getModelController();
+    if (ctrl == 0)
+    {
+        NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
+        e.setSource(this->parent()->objectName().toStdString());
+        std::stringstream msg;
+        msg << "no ModelController available!" << std::endl;
+
+        NMLogError(<< ctx << msg .str() << std::endl);
+
+        NMDebugCtx(ctx, << "done!");
+        e.setDescription(msg.str());
+        throw e;
+    }
+
 	// we go through every input image, check, whether a table is
 	// available for this step, and then we identify the
 	// columns uses in the currentExpression and pass their
@@ -691,8 +706,8 @@ NMRATBandMathImageFilterWrapper
 		int cnt = 0;
 		foreach (const QString& input, currentInputs)
 		{
-            QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);
-            NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);
+            QString inputCompName = ctrl->getComponentNameFromInputSpec(input);
+            NMModelComponent* comp = ctrl->getComponent(inputCompName);
             if (comp == 0)
             {
                 NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
@@ -715,7 +730,7 @@ NMRATBandMathImageFilterWrapper
             // for testing purposes
             comp->linkComponents(step, repo);
 
-            QSharedPointer<NMItkDataObjectWrapper> dw = NMModelController::getInstance()->getOutputFromSource(input);
+            QSharedPointer<NMItkDataObjectWrapper> dw = ctrl->getOutputFromSource(input);
             if (dw.isNull())
 			{
                 ++cnt;

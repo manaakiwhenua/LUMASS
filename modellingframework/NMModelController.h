@@ -38,6 +38,7 @@
 #include <QStringList>
 #include <QDateTime>
 
+#include "NMObject.h"
 #include "otbAttributeTable.h"
 
 #include "nmmodframe_export.h"
@@ -65,7 +66,7 @@ class NMLogger;
  *
  */
 
-class NMMODFRAME_EXPORT NMModelController: public QObject
+class NMMODFRAME_EXPORT NMModelController: public QObject, public NMObject
 {
 	Q_OBJECT
 
@@ -75,6 +76,9 @@ public:
     {
         NM_DATAPROP_COLUMNS = 0
     };
+
+    NMModelController(QObject* parent=0);
+    virtual ~NMModelController();
 
     QSharedPointer<NMItkDataObjectWrapper> getOutputFromSource(const QString& inputSrc);
 	NMModelComponent* getComponent(const QString& name);
@@ -90,13 +94,13 @@ public:
 
     QStringList getUserIDs(void);
 
-    NMLogger* getLogger(void){return mLogger;}
+//    NMLogger* getLogger(void){return mLogger;}
 
-	static NMModelController* getInstance(void);
+//	static NMModelController* getInstance(void);
 
-    static QString getComponentNameFromInputSpec(const QString& inputSpec);
+    QString getComponentNameFromInputSpec(const QString& inputSpec);
 
-    static QStringList getPropertyList(const QObject* obj);
+    QStringList getPropertyList(const QObject* obj);
 
     otb::AttributeTable::Pointer getComponentTable(const NMModelComponent* comp);
 
@@ -238,19 +242,25 @@ public slots:
 
     void setUserId(const QString& oldId, const QString& newId);
 
+    void updateSettings(const QString& key, QVariant value)
+        {mSettings[key] = value;}
+
+    QVariant getSetting(const QString& key) const
+        {return mSettings[key];}
+
 signals:
 	/*! Signals whether any of the process components controlled
 	 *  by this controller is currently running or not */
 	void signalIsControllerBusy(bool);
     void signalExecutionStopped(const QString&);
 
+    void signalModelStarted();
+    void signalModelStopped();
+
     /*! Notify listeners that a component was deleted from the controller */
     void componentRemoved(const QString&);
 
 protected:
-	NMModelController(QObject* parent=0);
-	virtual ~NMModelController();
-
 	void resetExecutionStack(void);
 
     /*! maps ComponentName to model component object */
@@ -267,10 +277,12 @@ protected:
 	QDateTime mModelStarted;
 	QDateTime mModelStopped;
 
-	NMModelController* mModelController;
-    NMLogger* mLogger;
+    //NMModelController* mModelController;
+    //NMLogger* mLogger;
 
     QStringList mToBeDeleted;
+
+    QMap<QString, QVariant> mSettings;
 
 private:
 	static const std::string ctx;

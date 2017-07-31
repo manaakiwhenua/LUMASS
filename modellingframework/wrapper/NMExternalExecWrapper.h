@@ -31,6 +31,7 @@
 #include <QList>
 #include <QMap>
 #include <QProcess>
+#include <QProcessEnvironment>
 
 #include "NMMacros.h"
 #include "NMProcess.h"
@@ -40,17 +41,18 @@
 #include "NMItkDataObjectWrapper.h"
 #include "nmmodframe_export.h"
 
+
 class NMMODFRAME_EXPORT NMExternalExecWrapper : public NMProcess
 {
     Q_OBJECT
 
     Q_PROPERTY(QStringList Command READ getCommand WRITE setCommand)
-    Q_PROPERTY(QList<QStringList> Arguments READ getArguments WRITE setArguments)
+    Q_PROPERTY(QList<QStringList> Environment READ getEnvironment WRITE setEnvironment)
 
 public:
 
     NMPropertyGetSet( Command, QStringList )
-    NMPropertyGetSet( Arguments, QList<QStringList> )
+    NMPropertyGetSet( Environment, QList<QStringList> )
 
 public:
 
@@ -67,17 +69,23 @@ public:
                         const QMap<QString, NMModelComponent*>& repo);
 
     void update(void);
+    void abortExecution(void);
+    void reset(void);
+
+public slots:
+    void readOutput(void);
 
 protected:
 
     QString mCurCmd;
-    QString mCurArgs;
-    QStringList mCurArgList;
 
     QStringList mCommand;
-    QList<QStringList> mArguments;
+    QList<QStringList> mEnvironment;
+    QProcessEnvironment mProcEnv;
 
-    QProcess mCmdProcess;
+    QString mProcOutput;
+
+    QProcess* mCmdProcess;
 
 private:
     static const std::string ctx;

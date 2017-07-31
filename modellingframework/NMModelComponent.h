@@ -32,11 +32,12 @@
 #include "itkCommand.h"
 
 #include "NMMacros.h"
+#include "NMModelObject.h"
 #include "NMItkDataObjectWrapper.h"
 #include "nmmodframe_export.h"
 
 class NMIterableComponent;
-class NMLogger;
+//class NMLogger;
 
 /*! \brief DEPRECATED: NMModelComponent is one of the core building blocks of the LUMASS modelling
  *         framework. It represents either a single process (i.e. algorithm,
@@ -64,7 +65,7 @@ class NMLogger;
  *	\see NMProcess, NMModelController
  */
 
-class NMMODFRAME_EXPORT NMModelComponent : public QObject
+class NMMODFRAME_EXPORT NMModelComponent : public QObject, public NMModelObject
 {
 	Q_OBJECT
     Q_PROPERTY(QString UserID READ getUserID WRITE setUserID)
@@ -105,7 +106,7 @@ public:
     QString getUserID()
         {return this->mUserID;}
 
-    virtual void setLogger(NMLogger* logger){mLogger = logger;}
+    //virtual void setLogger(NMLogger* logger){mLogger = logger;}
 
     /*!
      * \brief getModelParameter fetches model component property values;
@@ -176,7 +177,7 @@ protected:
     typedef itk::MemberCommand<NMModelComponent> ObserverType;
     ObserverType::Pointer mObserver;
 
-    NMLogger* mLogger;
+    //NMLogger* mLogger;
 
     virtual void initAttributes(void);
 

@@ -197,6 +197,15 @@ extern int nmindent;
                            str.str().c_str()); \
 }
 
+#define NMLogInfoNoNL(arg) \
+{ \
+    std::stringstream str; \
+    str arg; \
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(), \
+                           NMLogger::NM_LOG_INFO, \
+                           str.str().c_str(), false); \
+}
+
 #define NMLogWarn(arg) \
 { \
     std::stringstream str; \
@@ -223,6 +232,16 @@ extern int nmindent;
                            NMLogger::NM_LOG_DEBUG, \
                            str.str().c_str()); \
 }
+
+#define NMLogDebugNoNL(arg) \
+{ \
+    std::stringstream str; \
+    str arg; \
+    mLogger->processLogMsg(QDateTime::currentDateTime().time().toString(), \
+                           NMLogger::NM_LOG_DEBUG, \
+                           str.str().c_str(), false); \
+}
+
 # else
 # define NMLogInfo(arg)
 # define NMLogWarn(arg)

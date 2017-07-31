@@ -81,6 +81,7 @@ public:
     typedef typename OutputImageType::RegionType OutputImageRegionType;
 
     itkSetMacro(LosFileName, std::string)
+    itkSetMacro(LosSettings, std::string)
     itkSetMacro(TimeOut, int)
 
     void SetImageNames(std::vector<std::string> names) {m_ImageNames = names;}
@@ -102,6 +103,7 @@ public:
     std::vector<std::string>  m_ImageNames;
 
     std::string m_LosFileName;
+    std::string m_LosSettings;
 //    std::string m_ReportFileName;
 //    std::string m_LpFileName;
 //    std::string

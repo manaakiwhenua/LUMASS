@@ -205,8 +205,8 @@ public:
 		    {                                                                                               
 		        std::stringstream uid;                                                                      
 		        uid << "L" << cnt;                                                                          
-		        QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);            
-		        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);     
+                QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
+                NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
 		        if (comp != 0)                                                                              
 		        {                                                                                           
 			        if (comp->getUserID().isEmpty())                                                        

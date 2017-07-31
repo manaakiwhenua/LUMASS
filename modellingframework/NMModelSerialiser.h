@@ -47,7 +47,7 @@
 class NMLogger;
 class NMModelController;
 
-class NMMODFRAME_EXPORT NMModelSerialiser: public QObject
+class NMMODFRAME_EXPORT NMModelSerialiser: public QObject, public NMModelObject
 {
 	Q_OBJECT
 
@@ -73,7 +73,7 @@ public:
                             QDomDocument& doc,
                             NMIterableComponent* importHost);
 
-    void setLogger(NMLogger* logger);
+    //void setLogger(NMLogger* logger);
 
 
 protected:
@@ -87,7 +87,7 @@ protected:
 	void harmoniseInputComponentNames(QMap<QString, QString>& nameRegister,
 			NMModelController* controller);
 
-    NMLogger* mLogger;
+    //NMLogger* mLogger;
 
 private:
 	string ctx;

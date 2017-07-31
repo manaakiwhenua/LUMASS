@@ -92,6 +92,17 @@ QMessageBox::critical(parent,               \
  * PROPERTY GETTER & SETTER METHODS
  */
 
+#define NMGUIPropertyGetSet( name, type ) \
+void set ## name(type _arg) \
+{ \
+        this->m ## name = _arg; \
+}	\
+type get ## name() \
+{ \
+        return this->m ## name; \
+}
+
+
 #define NMPropertyGetSet( name, type ) \
 void set ## name(type _arg) \
 { \

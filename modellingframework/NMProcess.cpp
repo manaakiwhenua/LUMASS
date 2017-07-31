@@ -31,12 +31,13 @@
 #include "NMMfwException.h"
 #include "NMSequentialIterComponent.h"
 #include "NMDataComponent.h"
+#include "NMObject.h"
 #include "NMModelController.h"
 //#include "utils/muParser/muParserError.h"
 #include "itkNMLogEvent.h"
 
 NMProcess::NMProcess(QObject *parent)
-    : mbAbortExecution(false), mbLinked(false), mLogger(0)
+    : mbAbortExecution(false), mbLinked(false)
 {
 	this->mInputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
 	this->mOutputComponentType = otb::ImageIOBase::UNKNOWNCOMPONENTTYPE;
@@ -207,7 +208,7 @@ NMProcess::getParameter(const QString& property)
     {
         QString retStr = propVal.toString();
         QString tStr = retStr;
-        retStr = NMModelController::getInstance()->processStringParameter(this, tStr);
+        retStr = this->getModelController()->processStringParameter(this, tStr);
         if (retStr.startsWith("ERROR"))
         {
             NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
@@ -230,7 +231,7 @@ NMProcess::getParameter(const QString& property)
             NMDebugAI( << "input parameter to by analysed: " << retStr.toStdString() << std::endl);
 
             QString tStr = retStr;
-            retStr = NMModelController::getInstance()->processStringParameter(this, tStr);
+            retStr = this->getModelController()->processStringParameter(this, tStr);
             if (retStr.startsWith("ERROR"))
             {
                 NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
@@ -253,7 +254,7 @@ NMProcess::getParameter(const QString& property)
             {
                 // we account for the case that a fetched string represents a
                 // a list of values in itself separated by ' ' (whitespaces)
-                QString fetched = NMModelController::getInstance()->processStringParameter(this, curList.at(i));
+                QString fetched = this->getModelController()->processStringParameter(this, curList.at(i));
                 if (fetched.startsWith("ERROR"))
                 {
                     NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);

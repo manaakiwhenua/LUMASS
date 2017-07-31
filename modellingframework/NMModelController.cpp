@@ -56,23 +56,23 @@ NMModelController::NMModelController(QObject* parent)
 	this->setParent(parent);
 	this->mModelStarted = QDateTime::currentDateTime();
 	this->mModelStopped = this->mModelStarted;
-    mLogger = new NMLogger();
+    mLogger = new NMLogger(this);
 }
 
 NMModelController::~NMModelController()
 {
-    if (mLogger)
-    {
-        delete mLogger;
-    }
+//    if (mLogger)
+//    {
+//        delete mLogger;
+//    }
 }
 
-NMModelController*
-NMModelController::getInstance(void)
-{
-	static NMModelController controller;
-	return &controller;
-}
+//NMModelController*
+//NMModelController::getInstance(void)
+//{
+//	static NMModelController controller;
+//	return &controller;
+//}
 
 QSharedPointer<NMItkDataObjectWrapper>
 NMModelController::getOutputFromSource(const QString& inputSrc)
@@ -301,6 +301,8 @@ NMModelController::executeModel(const QString& compName)
 #endif
 #endif
 
+    emit signalModelStarted();
+
 	// we catch all exceptions thrown by ITK/OTB, rasdaman
 	// and the LUMASS MFW components
 	// and just report them for now; note this includes
@@ -347,6 +349,8 @@ NMModelController::executeModel(const QString& compName)
     nmlog::nmindent = ind;
 #endif
 #endif
+
+    emit signalModelStopped();
 
 	this->mModelStopped = QDateTime::currentDateTime();
 	int msec = this->mModelStarted.msecsTo(this->mModelStopped);
@@ -426,27 +430,21 @@ NMModelController::addComponent(NMModelComponent* comp,
 {
     //	NMDebugCtx(ctx, << "...");
 
-	NMIterableComponent* ihost = 0;
+    if (comp == 0)
+    {
+        NMLogError(<< ctx << ": cannot add NULL component to model!");
+        return "failed";
+    }
+
+    NMIterableComponent* ihost = 0;
 	if (host != 0)
 	{
 		ihost = qobject_cast<NMIterableComponent*>(host);
 	}
 
-    //	if (comp != 0 && ihost != 0)
-    //	{
-    //		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to '"
-    //			     << host->objectName().toStdString() << "' ..." << endl);
-    //	}
-    //	else if (comp != 0)
-    //	{
-    //		NMDebugAI(<< "adding '" << comp->objectName().toStdString() << "' to 'root"
-    //			     << "' ..." << endl);
-    //	}
-
 	if (this->mComponentMap.values().contains(comp))
 	{
         NMLogError(<< ctx << ": model component already present in repository!");
-        //		NMDebugCtx(ctx, << "done!");
 		return "failed";
 	}
 
@@ -456,9 +454,8 @@ NMModelController::addComponent(NMModelComponent* comp,
 	QString numstr;
 	unsigned long cnt = 1;
 	bool bok;
-    //	NMDebugAI(<< "checking names ..." << endl);
-    //	NMDebugAI(<< tname.toStdString() << endl);
-	while (this->mComponentMap.keys().contains(tname))
+
+    while (this->mComponentMap.keys().contains(tname))
 	{
 		if (re.indexIn(tname) > 0)
 		{
@@ -475,15 +472,14 @@ NMModelController::addComponent(NMModelComponent* comp,
 		}
 
 		tname = QString(tr("%1%2")).arg(cname).arg(cnt);
-        //		NMDebugAI(<< tname.toStdString() << endl);
 	}
 
-    //	NMDebugAI(<< "insert comp as '" << tname.toStdString() << "'" << endl);
 	comp->setParent(0);
 	comp->moveToThread(this->thread());
 	comp->setObjectName(tname);
 	comp->setParent(this);
     comp->setLogger(this->mLogger);
+    comp->setModelController(this);
 
 	this->mComponentMap.insert(tname, comp);
     this->mUserIdMap.insert(comp->getUserID(), tname);
@@ -499,7 +495,6 @@ NMModelController::addComponent(NMModelComponent* comp,
 		}
 	}
 
-    //	NMDebugCtx(ctx, << "done!");
 	return tname;
 }
 
@@ -511,13 +506,18 @@ void NMModelController::setUserId(const QString& oldId, const QString& newId)
         return;
     }
 
-    int nrem = mUserIdMap.remove(oldId, comp->objectName());
-    if (nrem == 0)
+    int nrem = 0;
+    if (!oldId.isNull() && mUserIdMap.size() > 0 && mUserIdMap.contains(oldId, comp->objectName()))
     {
-        NMLogWarn(<< "Failed to unregister old UserID' "
-                  << oldId.toStdString() << "' for '"
-                  << comp->objectName().toStdString() << "'!");
+        nrem = mUserIdMap.remove(oldId, comp->objectName());
     }
+
+    //    if (nrem == 0)
+    //    {
+    //        NMLogWarn(<< "Failed to unregister old UserID' "
+    //                  << oldId.toStdString() << "' for '"
+    //                  << comp->objectName().toStdString() << "'!");
+    //    }
     mUserIdMap.insert(newId, comp->objectName());
 }
 
@@ -562,12 +562,18 @@ bool NMModelController::removeComponent(const QString& name)
 	if (host != 0)
 		host->removeModelComponent(name);
 
-    int nrem = mUserIdMap.remove(comp->getUserID(), comp->objectName());
-    if (nrem == 0)
+    QString oldId = comp->getUserID();
+    int nrem = 0;
+    if (!oldId.isNull() && mUserIdMap.size() > 0 && mUserIdMap.contains(oldId, comp->objectName()))
     {
-        NMLogWarn(<< "Failed removing '" << comp->objectName().toStdString()
-                  << "' from the UserID map!");
+        nrem = mUserIdMap.remove(oldId, comp->objectName());
     }
+
+//    if (nrem == 0)
+//    {
+//        NMLogWarn(<< "Failed removing '" << comp->objectName().toStdString()
+//                  << "' from the UserID map!");
+//    }
 
 	NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
 	if (ic != 0)
@@ -834,9 +840,24 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                         return QString(errmsg.str().c_str());
                     }
                 }
+                else if (m.at(0).compare(QString("LUMASS"), Qt::CaseInsensitive) == 0)
+                {
+                    if (mSettings.find(m.at(1)) != mSettings.end())
+                    {
+                       tStr = tStr.replace(wholeText, QString("%1").arg(mSettings[m.at(1)].toString()));
+                    }
+                    else
+                    {
+                        std::stringstream errstr;
+                        errstr << "Couldn't find LUMASS setting '"
+                               << m.at(1).toStdString() << "'!";
+                        NMLogError(<< errstr.str());
+                        return QString(errstr.str().c_str());
+                    }
+                }
                 else
                 {
-                    NMModelComponent* mc = NMModelController::getInstance()->getComponent(m.at(0));
+                    NMModelComponent* mc = this->getComponent(m.at(0));
 
                     // if the component is specified by userId, we've got to dig a little deeper
                     if (mc == 0)
@@ -1003,7 +1024,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
 
         } // for
 
-        innerExp = NMModelController::getInstance()->getNextParamExpr(nested);
+        innerExp = this->getNextParamExpr(nested);
         numExp = innerExp.size();
 
     } // while

@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include <QList>
+#include <QVector>
 #include <QStringList>
 #include <QMap>
 #include <QMetaType>
@@ -93,12 +93,12 @@ public:
 
     int operator==(void* compare)
     {
-        return dynamic_cast<void*>(mComponent) == compare;
+        return static_cast<void*>(mComponent) == compare;
     }
 
     int operator!=(void* compare)
     {
-        return dynamic_cast<void*>(mComponent) != compare;
+        return static_cast<void*>(mComponent) != compare;
     }
 
     int isAtEnd()
@@ -117,7 +117,7 @@ private:
     void init(NMIterableComponent* ic);
 
     NMIterableComponent* mSourceComp;
-    QList<NMModelComponent*> mIterList;
+    QVector<NMModelComponent*> mIterList;
     NMModelComponent* mComponent;
     int mListPos;
 
@@ -140,7 +140,6 @@ public:
 
     //NMPropertyGetSet(IterationStep , unsigned int)
     NMPropertyGetSet(IterationStepExpression, QString)
-
 
     virtual ~NMIterableComponent(void);
 
@@ -210,6 +209,7 @@ public:
     virtual NMProcess* getProcess(void)
         {return this->mProcess;}
 
+    virtual void setModelController(NMModelController *controller);
     virtual void setLogger(NMLogger* logger);
 
     virtual void setInputs(const QList<QStringList>& inputs);
@@ -275,8 +275,10 @@ protected:
     unsigned int mIterationStep;
     unsigned int mIterationStepRun;
 
+
     NMIterableComponent(QObject* parent=0);
     NMIterableComponent(const NMIterableComponent& modelComp){}
+
 
     void initAttributes(void);
 

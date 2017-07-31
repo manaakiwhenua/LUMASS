@@ -74,7 +74,7 @@ NMSequentialIterComponent::evalNumIterationsExpression(const unsigned int& step)
             exprIdx = this->mNumIterationsExpression.size()-1;
         }
 
-        QString numIterStr = NMModelController::getInstance()->processStringParameter(this,
+        QString numIterStr = this->getModelController()->processStringParameter(this,
                                                                          mNumIterationsExpression.at(exprIdx));
 
         // we don't interprete an empty string as error but as
@@ -132,7 +132,7 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         this->setNumIterations(niter);
     }
 
-    NMModelController* ctrl = NMModelController::getInstance();
+    NMModelController* ctrl = this->getModelController();
 
     mIterationStepRun = mIterationStep;
     unsigned int i = mIterationStepRun-1;

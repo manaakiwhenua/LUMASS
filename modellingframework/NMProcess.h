@@ -46,6 +46,8 @@
 #include <QMetaObject>
 #include <QMetaType>
 #include <QDateTime>
+
+#include "NMModelObject.h"
 #include "NMModelComponent.h"
 #include "NMItkDataObjectWrapper.h"
 #include "itkProcessObject.h"
@@ -106,7 +108,7 @@ class NMProcessFactory;
  */
 
 
-class NMMODFRAME_EXPORT NMProcess : public QObject
+class NMMODFRAME_EXPORT NMProcess : public QObject, public NMModelObject
 {
     friend class NMProcessFactory;
 
@@ -186,7 +188,7 @@ public:
     void setOutputImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
     void setImgTypeSpec(QSharedPointer<NMItkDataObjectWrapper> dw);
 
-    void setLogger(NMLogger* logger){mLogger = logger;}
+    //void setLogger(NMLogger* logger){mLogger = logger;}
 
 
 	QDateTime getModifiedTime(void)
@@ -280,7 +282,7 @@ protected:
 
     ObserverType::Pointer mObserver;
 
-    NMLogger* mLogger;
+    //NMLogger* mLogger;
 
 
 	/*! \brief Call-back method for itk::Process-based NMProcess classes to

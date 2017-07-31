@@ -192,7 +192,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
 	}
 
 	// fetch the data from the source object
-    NMModelComponent* inComp = NMModelController::getInstance()->getComponent(mInputCompName);
+    NMModelComponent* inComp = this->getModelController()->getComponent(mInputCompName);
 
     if (inComp == 0)
     {
@@ -226,7 +226,7 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
         ||  this->mDataWrapper->getOTBTab().IsNull()
        )
     {
-        this->update(NMModelController::getInstance()->getRepository());
+        this->update(this->getModelController()->getRepository());
 
         if (    this->mDataWrapper.isNull()
             ||  this->mDataWrapper->getOTBTab().IsNull()
@@ -344,7 +344,7 @@ NMDataComponent::fetchData(NMModelComponent* comp)
 	NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
     if (ic != 0 && ic->getProcess() != 0 && mInputOutputIdx != ic->getProcess()->getAuxDataIdx())
 	{
-		ic->update(NMModelController::getInstance()->getRepository());
+        ic->update(this->getModelController()->getRepository());
 		NMDebugAI(<< "current modified source time: "
 				  << ic->getProcess()->getModifiedTime().toString("dd.MM.yyyy hh:mm:ss.zzz").toStdString()
 				  << std::endl);
@@ -407,7 +407,7 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
         this->linkComponents(step, repo);
     }
 
-    NMModelComponent* inComp = NMModelController::getInstance()->getComponent(mInputCompName);
+    NMModelComponent* inComp = this->getModelController()->getComponent(mInputCompName);
     if (inComp)
 	{
         this->fetchData(inComp);

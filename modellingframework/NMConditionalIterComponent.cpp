@@ -27,7 +27,7 @@
 
 NMConditionalIterComponent::NMConditionalIterComponent(QObject* parent)
 {
-	this->setParent(parent);
+//	this->setParent(parent);
 	this->initAttributes();
 }
 

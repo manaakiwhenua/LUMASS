@@ -566,6 +566,7 @@ NMMosra::NMMosra(QObject* parent) //: QObject(parent)
     this->mDataSet = new NMMosraDataSet(this);
 
     this->mLogger = 0;
+    this->mProcObj = 0;
 	this->setParent(parent);
 	this->mLp = new HLpHelper();
 	this->reset();
@@ -668,23 +669,39 @@ NMMosra::doBatch()
 	return ret;
 }
 
+
 int NMMosra::loadSettings(QString fileName)
+{
+    NMDebugCtx(ctxNMMosra, << "...")
+
+    QFile los(fileName);
+    if (!los.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        MosraLogError( << "failed reading settings file!")
+        NMDebugCtx(ctxNMMosra, << "done!")
+        return 0;
+    }
+    this->msLosFileName = fileName;
+
+    QTextStream str(&los);
+
+    int ret = parseStringSettings(str.readAll());
+
+    los.close();
+
+    NMDebugCtx(ctxNMMosra, << "done!")
+    return ret;
+}
+
+int NMMosra::parseStringSettings(QString strSettings)
 {
     NMDebugCtx(ctxNMMosra, << "...")
 
 	// reset this objects vars
 	this->reset();
 
-	QFile los(fileName);
-	if (!los.open(QIODevice::ReadOnly | QIODevice::Text))
-	{
-        MosraLogError( << "failed reading settings file!")
-        NMDebugCtx(ctxNMMosra, << "done!")
-		return 0;
-	}
-	this->msLosFileName = fileName;
-
-	QTextStream str(&los);
+    QTextStream str;
+    str.setString(&strSettings);
 
 	QString rep;
 	QTextStream sReport(&rep);
@@ -707,7 +724,7 @@ int NMMosra::loadSettings(QString fileName)
 
 	ParSec section = nosection;
 
-	sReport << "Import Report - '" << fileName << "'" << endl << endl;
+    sReport << "Import Report" << endl << endl;
     MosraLogDebug( << "parsing settings file ..." << endl)
 	while (!str.atEnd())
 	{
@@ -1169,8 +1186,6 @@ int NMMosra::loadSettings(QString fileName)
 
 
 	NMDebug(<< endl << "Report..." << endl << sReport.readAll().toStdString() << endl);
-
-	los.close();
 
 	NMDebugCtx(ctxNMMosra, << "done!");
 

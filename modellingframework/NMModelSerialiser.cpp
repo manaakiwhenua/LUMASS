@@ -45,7 +45,6 @@
 #include "NMIterableComponent.h"
 #include "NMDataComponent.h"
 
-
 NMModelSerialiser::NMModelSerialiser(QObject* parent)
 {
 	this->setParent(parent);
@@ -55,20 +54,20 @@ NMModelSerialiser::NMModelSerialiser(QObject* parent)
 #endif
 }
 
-void
-NMModelSerialiser::setLogger(NMLogger *logger)
-{
-    if (logger == 0)
-    {
-        return;
-    }
-    mLogger = logger;
-    mLogger->setHtmlMode(true);
+//void
+//NMModelSerialiser::setLogger(NMLogger *logger)
+//{
+//    if (logger == 0)
+//    {
+//        return;
+//    }
+//    mLogger = logger;
+//    mLogger->setHtmlMode(true);
 
-#ifdef DEBUG
-    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
-#endif
-}
+//#ifdef DEBUG
+//    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
+//#endif
+//}
 
 NMModelSerialiser::~NMModelSerialiser()
 {
@@ -127,7 +126,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 	QDomElement modelElem = doc.documentElement();
 //	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
 
-    NMModelController* controller = NMModelController::getInstance();
+    NMModelController* controller = this->getModelController();
 #ifdef DEBUG
 #ifndef _WIN32
     int ind = nmlog::nmindent;
@@ -346,14 +345,14 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
     NMIterableComponent* ic = importHost;
     if (ic == 0)
     {
-        NMModelComponent* mc = NMModelController::getInstance()->getComponent(QString::fromUtf8("root"));
+        NMModelComponent* mc = this->getModelController()->getComponent(QString::fromUtf8("root"));
         ic = qobject_cast<NMIterableComponent*>(mc);
     }
 
     foreach(const QString& name, nameRegister.values())
     {
 //        NMDebugAI(<< "sorting host for '" << name.toStdString() << "' ..." << std::endl);
-        NMModelComponent* c = NMModelController::getInstance()->getComponent(name);
+        NMModelComponent* c = this->getModelController()->getComponent(name);
         if (    c != 0
             &&  c->getHostComponent() == 0
             &&  c->objectName().compare("root") != 0

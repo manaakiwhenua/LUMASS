@@ -46,7 +46,6 @@ NMMosraFilterWrapper
 {
 	Q_OBJECT
 
-    
     Q_PROPERTY(QStringList LosFileName READ getLosFileName WRITE setLosFileName)
     Q_PROPERTY(QStringList TimeOut READ getTimeOut WRITE setTimeOut)
 

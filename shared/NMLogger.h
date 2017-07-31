@@ -45,7 +45,8 @@ signals:
 public slots:
     void processLogMsg(const QString& time,
                        LogEventType type,
-                       const QString& msg);
+                       const QString& msg,
+                       bool bForceNewLine=true);
 
 protected:
 

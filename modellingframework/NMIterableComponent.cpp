@@ -53,7 +53,7 @@ NMModelComponentIterator::init(NMIterableComponent* ic)
     NMModelComponent* c = ic->getInternalStartComponent();
     while (c != 0)
     {
-        mIterList << c;
+        mIterList.push_back(c);
         c = ic->getNextInternalComponent();
     }
 
@@ -100,6 +100,23 @@ NMIterableComponent::getComponentIterator()
 }
 
 void
+NMIterableComponent::setModelController(NMModelController *controller)
+{
+    this->mController = controller;
+    if (this->mProcess)
+    {
+        this->mProcess->setModelController(controller);
+    }
+
+    NMModelComponentIterator cit = this->getComponentIterator();
+    while (*cit != 0)
+    {
+        (*cit)->setModelController(controller);
+        ++cit;
+    }
+}
+
+void
 NMIterableComponent::setLogger(NMLogger* logger)
 {
     mLogger = logger;
@@ -125,6 +142,7 @@ void NMIterableComponent::setProcess(NMProcess* proc)
         this->mProcess->setParent(0);
         this->mProcess->moveToThread(this->thread());
         this->mProcess->setParent(this);
+        this->mProcess->setModelController(this->getModelController());
     }
 
 //	NMDebugCtx(ctx, << "done!");
@@ -258,7 +276,7 @@ NMIterableComponent::createExecSequence(QList<QStringList>& execList,
         //QList<QStringList> subPipes;
 	foreach(const QString de, deadEnds)
 	{
-		NMModelComponent* comp = NMModelController::getInstance()->getComponent(de);
+        NMModelComponent* comp = this->getModelController()->getComponent(de);
 		if (comp == 0)
 			continue;
 
@@ -301,7 +319,7 @@ NMIterableComponent::isCompExecComp(const QList<QStringList>& execList,
 		if (lst.last().compare(compName) == 0)
 		{
 			NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(
-					NMModelController::getInstance()->getComponent(compName));
+                    this->getModelController()->getComponent(compName));
 			if (ic != 0 && ic->getProcess() != 0)
 			{
 				idx = cnt;
@@ -363,7 +381,7 @@ NMIterableComponent::findTargetComp(const QList<QStringList>& execList,
 	indices.push_back(-1);
 	indices.push_back(-1);
 
-	NMModelController* ctrl = NMModelController::getInstance();
+    NMModelController* ctrl = this->getModelController();
 	NMModelComponent* receiver = 0;
 	int cnt_inner = 0;
 	int cnt_outer = 0;
@@ -823,7 +841,7 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
     emit signalExecutionStarted();
 
 	// check, whether we're supposed to run at all
-	NMModelController* controller = qobject_cast<NMModelController*>(this->parent());
+    NMModelController* controller = this->getModelController();//= qobject_cast<NMModelController*>(this->parent());
 	if (controller != 0)
 	{
 		if (controller->isModelAbortionRequested())
@@ -885,7 +903,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     		unsigned int minLevel, unsigned int maxLevel, unsigned int step)
 {
 	NMDebugCtx(this->objectName().toStdString(), << "...");
-	NMModelController* controller = NMModelController::getInstance();
+    NMModelController* controller = this->getModelController();
 	unsigned int i = step;
 
 	if (controller->isModelAbortionRequested())
@@ -1127,7 +1145,7 @@ NMIterableComponent::findExecutableComponents(unsigned int timeLevel,
 		execComps.removeOne(this->objectName());
 	}
 
-	NMModelController* ctrl = NMModelController::getInstance();
+    NMModelController* ctrl = this->getModelController();
 
 	//NMDebugAI(<< "raw execs: " << execComps.join(" ").toStdString() << endl);
 
@@ -1256,7 +1274,7 @@ NMIterableComponent::setIterationStep(unsigned int step)
 unsigned int
 NMIterableComponent::getIterationStep(void)
 {
-    if (NMModelController::getInstance()->isModelRunning())
+    if (this->getModelController()->isModelRunning())
         return this->mIterationStepRun;
     else
         return this->mIterationStep;

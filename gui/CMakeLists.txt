@@ -151,6 +151,8 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMParamHighlighter.h
         ${gui_SOURCE_DIR}/NMParamEdit.h
         ${gui_SOURCE_DIR}/NMFindReplaceDialog.h
+        ${gui_SOURCE_DIR}/NMToolBar.h
+        ${gui_SOURCE_DIR}/NMAction.h
         ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
         ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
         ${shared_SOURCE_DIR}/NMLogger.h
@@ -167,7 +169,7 @@ file(GLOB QT_SRC
     ${NMQSQLite_SRC_DIR}/*.cpp
     
     # we also add some other stuff here
-    ${shared_SOURCE_DIR}/NMLogger.cpp
+    ${shared_SOURCE_DIR}/*.cpp
     ${opt_SOURCE_DIR}/LpHelper.cpp
     ${opt_SOURCE_DIR}/NMMosra.cpp
     ${NMVtk_SOURCE_DIR}/*.cxx

@@ -56,6 +56,7 @@ QT5_WRAP_CPP(ENGINE_MOC_CPP
 	${opt_SOURCE_DIR}/NMMosra.h
 	${opt_SOURCE_DIR}/MOSORunnable.h
         ${shared_SOURCE_DIR}/NMLogger.h
+        #${shared_SOURCE_DIR}/NMObject.h
         ${lumassengine_SOURCE_DIR}/lumassengine.h
 )
 
@@ -64,7 +65,7 @@ file(GLOB ENGINE_SRC
     ${lumassengine_SOURCE_DIR}/*.cxx 
 
     # and ...
-    ${shared_SOURCE_DIR}/NMLogger.cpp
+    ${shared_SOURCE_DIR}/*.cpp
 )
 
 set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml

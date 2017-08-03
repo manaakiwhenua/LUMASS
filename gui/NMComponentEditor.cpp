@@ -641,6 +641,8 @@ void NMComponentEditor::applySettings(QtProperty* prop,
     {
         this->setComponentProperty(prop, mObj);
     }
+
+    emit signalPropertyChanged();
     mUpdating = false;
     NMDebugCtx(ctx, << "done!");
 }

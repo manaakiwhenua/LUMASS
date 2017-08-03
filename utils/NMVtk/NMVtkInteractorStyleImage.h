@@ -54,6 +54,9 @@ public:
          {return mNMInteractorMode;}
 
     void setDevicePixelRatio(double dpr){this->mDPR = dpr;}
+    void setUserTool(const std::string& userTool)
+        {mUserTool = userTool;}
+    std::string getUserTool(void){return mUserTool;}
 
 protected:
     NMVtkInteractorStyleImage();
@@ -65,6 +68,8 @@ protected:
     int mStartPosition[2];
     int mEndPosition[2];
     int mMoving;
+
+    std::string mUserTool;
 
     vtkUnsignedCharArray* mPixelArray;
 

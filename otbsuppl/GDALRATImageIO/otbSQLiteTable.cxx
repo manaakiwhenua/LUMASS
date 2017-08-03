@@ -280,6 +280,7 @@ SQLiteTable::createPreparedColumnStatements(const std::string& colname)
     sqliteError(rc, &stmt_upd);
     this->m_vStmtUpdate.push_back(stmt_upd);
 
+
     // prepare a get value statement for this column
     sqlite3_stmt* stmt_sel;
     ssql.str("");
@@ -289,6 +290,7 @@ SQLiteTable::createPreparedColumnStatements(const std::string& colname)
                             -1, &stmt_sel, 0);
     sqliteError(rc, &stmt_sel);
     this->m_vStmtSelect.push_back(stmt_sel);
+
 
     // prepare a get rowidx by value statement for this column
     sqlite3_stmt* stmt_rowidx;
@@ -1464,6 +1466,119 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, std::strin
     NMDebugCtx(_ctxotbtab, << "done!");
 }
 
+void
+SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClause, double value)
+{
+    NMDebugCtx(_ctxotbtab, << "...");
+    // we just check for the database and leave the rest
+    // to sqlite3
+    if (m_db == 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    const int& colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    sqlite3_stmt* stmt_upd;
+    std::stringstream ssql;
+    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+         <<  value << " WHERE " << whereClause << ";";
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_upd, 0);
+    if (sqliteError(rc, &stmt_upd))
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    rc = sqlite3_step(stmt_upd);
+    sqliteStepCheck(rc);
+
+    sqlite3_finalize(stmt_upd);
+    NMDebugCtx(_ctxotbtab, << "done!");
+}
+
+void
+SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClause, long long int value)
+{
+    NMDebugCtx(_ctxotbtab, << "...");
+    if (m_db == 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    const int& colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    sqlite3_stmt* stmt_upd;
+    std::stringstream ssql;
+    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+         <<  value << " WHERE " << whereClause << ";";
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_upd, 0);
+    if (sqliteError(rc, &stmt_upd))
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    rc = sqlite3_step(stmt_upd);
+    sqliteStepCheck(rc);
+
+    sqlite3_finalize(stmt_upd);
+
+
+    NMDebugCtx(_ctxotbtab, << "done!");
+}
+
+void
+SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClause, std::string value)
+{
+    NMDebugCtx(_ctxotbtab, << "...");
+    if (m_db == 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    const int& colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    sqlite3_stmt* stmt_upd;
+    std::stringstream ssql;
+    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+         <<  value << " WHERE " << whereClause << ";";
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+                            -1, &stmt_upd, 0);
+    if (sqliteError(rc, &stmt_upd))
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return;
+    }
+
+    rc = sqlite3_step(stmt_upd);
+    sqliteStepCheck(rc);
+
+    sqlite3_finalize(stmt_upd);
+
+    NMDebugCtx(_ctxotbtab, << "done!");
+}
+
 bool
 SQLiteTable::PrepareColumnByIndex(const std::string &colname)//,
                                       //const std::string &whereClause)
@@ -1481,15 +1596,6 @@ SQLiteTable::PrepareColumnByIndex(const std::string &colname)//,
     ssql << "SELECT " << colname
          << " from main." << m_tableName
          << " where " << m_idColName << " = ?1;";
-
-    //    if (!whereClause.empty())
-    //    {
-    //        ssql << " " << whereClause << ";";
-    //    }
-    //    else
-    //    {
-    //        ssql << ";";
-    //    }
 
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
                                 &m_StmtColIter, 0);
@@ -1598,6 +1704,111 @@ SQLiteTable::GetStrValue(const std::string& sColName, long long idx)
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
+
+    return ret.str();
+}
+
+double SQLiteTable::GetDblValue(const std::string& sColName, const std::string& whereClause)
+{
+    //check for valid name and index parameters
+    int colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+        return m_dNodata;
+
+    sqlite3_stmt* stmt;
+    std::stringstream ssql;
+    ssql << "SELECT \"" << sColName << "\" from main." << m_tableName
+         << " WHERE " << whereClause << ";";
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &stmt, 0);
+    if (sqliteError(rc, &stmt)) return m_dNodata;
+
+    double ret = m_dNodata;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        ret = sqlite3_column_double(stmt, 0);
+    }
+    else
+    {
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return ret;
+}
+
+long long
+SQLiteTable::GetIntValue(const std::string& sColName, const std::string& whereClause)
+{
+    // check given index and column name
+    int colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+        return m_iNodata;
+
+    sqlite3_stmt* stmt;
+    std::stringstream ssql;
+    ssql << "SELECT \"" << sColName << "\" from main." << m_tableName
+         << " WHERE " << whereClause << ";";
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &stmt, 0);
+
+    if (sqliteError(rc, &stmt)) return m_iNodata;
+
+    long long int ret = m_iNodata;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+         ret = sqlite3_column_int64(stmt, 0);
+    }
+    else
+    {
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return ret;
+}
+
+std::string
+SQLiteTable::GetStrValue(const std::string& sColName, const std::string& whereClause)
+{
+    // check given index and column name
+    int colidx = this->ColumnExists(sColName);
+    if (colidx < 0)
+        return m_sNodata;
+
+    sqlite3_stmt* stmt;
+    std::stringstream ssql;
+    ssql << "SELECT \"" << sColName << "\" from main." << m_tableName
+         << " WHERE " << whereClause << ";";
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &stmt, 0);
+    if (sqliteError(rc, &stmt)) return m_sNodata;
+
+    std::stringstream ret;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW)
+    {
+        const unsigned char* sval = sqlite3_column_text(stmt, 0);
+        if (sval)
+        {
+            ret << sval;
+        }
+        else
+        {
+            ret << m_sNodata;
+        }
+    }
+    else
+    {
+        ret << m_sNodata;
+        sqliteStepCheck(rc);
+    }
+
+    sqlite3_finalize(stmt);
 
     return ret.str();
 }
@@ -2755,6 +2966,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
         sqliteError(rc, &stmt_upd);
         this->m_vStmtUpdate.push_back(stmt_upd);
 
+
         // prepare a get value statement for this column
         sqlite3_stmt* stmt_sel;
         ssql.str("");
@@ -2764,7 +2976,8 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
                                 -1, &stmt_sel, 0);
         sqliteError(rc, &stmt_sel);
         this->m_vStmtSelect.push_back(stmt_sel);
-    }
+
+     }
 
     // ============================================================
     // prepare statements for recurring tasks

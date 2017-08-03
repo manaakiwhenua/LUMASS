@@ -1275,7 +1275,6 @@ void ModelComponentList::mouseMoveEvent(QMouseEvent *event)
     dragPainter.drawPixmap(0,0,32,32, layerIcon.pixmap(dragImageSize));
     dragPainter.end();
 
-
     QDrag* drag = new QDrag(this);
     drag->setPixmap(QPixmap::fromImage(dragImage));
     drag->setDragCursor(QPixmap(":move-icon.png"), Qt::CopyAction);
@@ -1310,7 +1309,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
     {
         NMDebugAI(<< "adding layer: " << dropLayer.toStdString() << std::endl);
         NMDataComponent* comp = qobject_cast<NMDataComponent*>(
-                    NMModelController::getInstance()->getComponent(dropLayer));
+                    NMGlobalHelper::getModelController()->getComponent(dropLayer));
 
         if (comp == 0
             || comp->getOutput(0).isNull())
@@ -1501,7 +1500,7 @@ void ModelComponentList::dragEnterEvent(QDragEnterEvent* event)
     }
     else if (dropSource.startsWith(QString::fromLatin1("_NMModelScene_")))
     {
-        NMModelComponent* comp = NMModelController::getInstance()->getComponent(dropLayer);
+        NMModelComponent* comp = NMGlobalHelper::getModelController()->getComponent(dropLayer);
         if (comp != 0)
         {
             QSharedPointer<NMItkDataObjectWrapper> dw = comp->getOutput(0);

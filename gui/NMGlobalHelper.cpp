@@ -76,6 +76,27 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
 
 }
 
+QString
+NMGlobalHelper::getUserSetting(const QString& key)
+{
+    QString ret;
+
+    LUMASSMainWin* win = NMGlobalHelper::getMainWindow();
+    if (win->mSettings.find(key) != win->mSettings.end())
+    {
+        ret = win->mSettings[key].toString();
+    }
+    return ret;
+}
+
+QStringList
+NMGlobalHelper::getUserSettingsList(void)
+{
+    QStringList ret = NMGlobalHelper::getMainWindow()->mSettings.keys();
+    return ret;
+}
+
+
 QStringList
 NMGlobalHelper::getMultiItemSelection(const QString& title,
                                      const QString& label,
@@ -150,6 +171,13 @@ LUMASSMainWin *NMGlobalHelper::getMainWindow()
 
     return mainWin;
 }
+
+NMModelController*
+NMGlobalHelper::getModelController(void)
+{
+    return NMGlobalHelper::getMainWindow()->ui->modelViewWidget->getModelController();
+}
+
 
 NMLogWidget*
 NMGlobalHelper::getLogWidget()

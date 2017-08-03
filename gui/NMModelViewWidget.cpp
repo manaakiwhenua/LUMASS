@@ -42,6 +42,7 @@
 #include <QDomDocument>
 #include <QGraphicsProxyWidget>
 #include <QInputDialog>
+#include <QtConcurrent>
 
 #include "lumassmainwin.h"
 #include "NMModelViewWidget.h"
@@ -89,9 +90,12 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
     mModelRunThread->start();
 
- 	mModelController = NMModelController::getInstance();
- 	mModelController->moveToThread(mModelRunThread);
+    //mModelController = mainWin->getModelController();//this->mModelController;
+    mModelController = new NMModelController();
     mModelController->getLogger()->setHtmlMode(true);
+ 	mModelController->moveToThread(mModelRunThread);
+    mModelController->updateSettings("LUMASSPath",
+                                     NMGlobalHelper::getUserSetting("LUMASSPath"));
 
  	connect(this, SIGNAL(requestModelExecution(const QString &)),
  			mModelController, SLOT(executeModel(const QString &)));
@@ -103,6 +107,9 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
  			this, SLOT(reportIsModelControllerBusy(bool)));
     connect(mModelController->getLogger(), SIGNAL(sendLogMsg(const QString &)),
             mainWin, SLOT(appendHtmlMsg(const QString &)));
+
+    connect(mainWin, SIGNAL(settingsUpdated(const QString &, QVariant)),
+            mModelController, SLOT(updateSettings(const QString &,QVariant)));
 
  	mRootComponent = new NMSequentialIterComponent();
 	mRootComponent->setObjectName("root");
@@ -207,18 +214,173 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     /* ====================================================================== */
     /* other Initialisations
 	/* ====================================================================== */
-	QVBoxLayout* gridLayout = new QVBoxLayout();
-    gridLayout->addWidget(mModelView);
-	this->setLayout(gridLayout);
+    QVBoxLayout* vbox = new QVBoxLayout();
+
+    QHBoxLayout* hbox = new QHBoxLayout();
+
+    QIcon saveIcon(":document-save.png");
+    mSaveModelBtn = new QPushButton(this);
+    mSaveModelBtn->setIcon(saveIcon);
+    mSaveModelBtn->setToolTip(tr("Save Model"));
+    mSaveModelBtn->setEnabled(false);
+    hbox->addWidget(mSaveModelBtn);
+
+    QIcon saveAsIcon(":document-save-as.png");
+    QPushButton* saveAsBtn = new QPushButton(this);
+    saveAsBtn->setIcon(saveAsIcon);
+    saveAsBtn->setToolTip(tr("Save Model As ..."));
+    hbox->addWidget(saveAsBtn);
+
+    mModelPathEdit = new QLineEdit(this);
+    mModelPathEdit->setReadOnly(true);
+    mModelPathEdit->setPlaceholderText(tr("LUMASS Model FileName"));
+    hbox->addWidget(mModelPathEdit);
+
+    vbox->addItem(hbox);
+    vbox->addWidget(mModelView);
+    this->setLayout(vbox);
 
     this->initItemContextMenu();
 
     connect(mainWin, SIGNAL(componentOfInterest(QString)),
             this, SLOT(zoomToComponent(QString)));
 
+    // TIMER & CHANGE NOTIFICATIONS TO IMPROVE BOOKEEPING OF CHANGES
+    connect(this, SIGNAL(signalModelChanged(QString)), this, SLOT(slotModelChanged(QString)));
+    connect(mSaveModelBtn, SIGNAL(pressed()), this, SLOT(saveCurrentModel()));
+    connect(saveAsBtn, SIGNAL(pressed()), this, SLOT(saveCurrentModelAs()));
 
 	qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
+
+    mTimerThread = new QThread(this);
+    connect(this, SIGNAL(widgetIsExiting()), mTimerThread, SLOT(quit()));
+
+    mTimerThread->start();
+    mTimer = new QTimer();
+    mTimer->setTimerType(Qt::VeryCoarseTimer);
+    mTimer->setInterval(60000);
+    connect(mTimer, SIGNAL(timeout()), this, SLOT(callAutoSaveModel()));
+    connect(this, SIGNAL(signalSaveTimerStart()), mTimer, SLOT(start()));
+    connect(this, SIGNAL(signalSaveTimerStop()), mTimer, SLOT(stop()));
+    mTimer->moveToThread(mTimerThread);
 }
+
+void
+NMModelViewWidget::slotModelChanged(const QString &itemName)
+{
+    if (mModelScene->items().count())
+    {
+        this->mSaveModelBtn->setEnabled(true);
+        if (!mTimer->isActive())
+        {
+            emit signalSaveTimerStart();
+        }
+    }
+    else
+    {
+        emit signalSaveTimerStop();
+        this->mAutoSaveName.clear();
+        this->mModelPathEdit->clear();
+        this->mSaveModelBtn->setEnabled(false);
+    }
+}
+
+void
+NMModelViewWidget::slotComponentChanged(void)
+{
+    //NMLogDebug(<< obj->objectName().toStdString() << " has changed!");
+    this->mSaveModelBtn->setEnabled(true);
+}
+
+void
+NMModelViewWidget::saveCurrentModel(void)
+{
+    NMLogDebug(<< "Save Model");
+
+    QString fn = mModelPathEdit->text();
+    if (fn.isEmpty())
+    {
+        saveCurrentModelAs();
+    }
+    else
+    {
+        exportItems(mModelScene->items(), fn, false);
+        this->mSaveModelBtn->setEnabled(false);
+    }
+}
+
+void
+NMModelViewWidget::callAutoSaveModel(void)
+{
+    NMLogDebug(<< "callAutoSaveModel - called!")
+    QtConcurrent::run(this, &NMModelViewWidget::autoSaveCurrentModel);
+}
+
+void
+NMModelViewWidget::autoSaveCurrentModel(void)
+{
+    if (mModelController->isModelRunning())
+    {
+        return;
+    }
+
+    QString fn = mModelPathEdit->text();
+    if (fn.isEmpty())
+    {
+        if (mAutoSaveName.isEmpty())
+        {
+            fn = QString("%1/model_%2_autosave.lmx")
+                    .arg(NMGlobalHelper::getUserSetting("Workspace"))
+                    .arg(NMGlobalHelper::getRandomString(5));
+            mAutoSaveName = fn;
+        }
+    }
+    else
+    {
+        QFileInfo asfn(fn);
+        QString bfn = asfn.baseName();
+        if (!bfn.endsWith(QString::fromLatin1("_autosave")))
+        {
+            bfn = QString("%1_autosave").arg(bfn);
+        }
+        mAutoSaveName = QString("%1/%2.lmx")
+                .arg(asfn.absolutePath())
+                .arg(bfn);
+    }
+    exportItems(mModelScene->items(), mAutoSaveName, false);
+}
+
+void
+NMModelViewWidget::saveCurrentModelAs(void)
+{
+    NMLogDebug(<< "Save Model As ...");
+
+    QString fn = mModelPathEdit->text();
+    if (fn.isEmpty())
+    {
+        fn = QString("%1/model_%2.lmx")
+                .arg(NMGlobalHelper::getUserSetting("Workspace"))
+                .arg(NMGlobalHelper::getRandomString(5));
+    }
+
+    QString fileNameString = QFileDialog::getSaveFileName(
+                this,
+                tr("Save Model Component(s)"),
+                fn,
+                tr("LUMASS Model Component Files (*.lmx *.lmv)"));
+
+    if (fileNameString.isNull() || fileNameString.isEmpty())
+    {
+        return;
+    }
+
+    if (exportItems(mModelScene->items(), fileNameString, false))
+    {
+        mModelPathEdit->setText(fileNameString);
+        this->mSaveModelBtn->setEnabled(false);
+    }
+}
+
 
 void
 NMModelViewWidget::setLogger(NMLogger *logger)
@@ -482,9 +644,9 @@ void NMModelViewWidget::createAggregateComponent(const QString& compType)
         aggrItem->relocate(npos);
     }
 
+    connect(aggrComp, SIGNAL(NMModelComponentChanged()), this, SLOT(slotComponentChanged()));
+
     this->mModelScene->invalidate();
-
-
 	NMDebugCtx(ctx, << "done!");
 }
 
@@ -494,6 +656,8 @@ NMModelViewWidget::collapseAggrItem()
     NMAggregateComponentItem* ai =
             qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
     ai->collapse(true);
+
+    emit signalModelChanged(ai->getTitle());
 }
 
 void
@@ -502,6 +666,8 @@ NMModelViewWidget::unfoldAggrItem()
     NMAggregateComponentItem* ai =
             qgraphicsitem_cast<NMAggregateComponentItem*>(mLastItem);
     ai->collapse(false);
+
+    emit signalModelChanged(ai->getTitle());
 }
 
 void NMModelViewWidget::initItemContextMenu()
@@ -621,7 +787,7 @@ void NMModelViewWidget::initItemContextMenu()
 	connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
     connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
-    connect(saveComp, SIGNAL(triggered()), this, SLOT(saveItems()));
+    connect(saveComp, SIGNAL(triggered()), this, SLOT(saveBenchItems()));
     connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
     connect(scaleCompFonts, SIGNAL(triggered()), this, SLOT(scaleComponentFonts()));
     connect(scaleLabels, SIGNAL(triggered()), this, SLOT(scaleTextLabels()));
@@ -785,7 +951,7 @@ NMModelViewWidget::processModelFileDrop(const QString& fileName,
                           const QPointF& scenePos)
 {
     mLastScenePos = scenePos;
-    this->loadItems(fileName);
+    this->loadBenchItems(fileName);
 }
 
 
@@ -825,7 +991,7 @@ NMModelViewWidget::changeColour(void)
 void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
 		QGraphicsItem* item)
 {
-    bool running = NMModelController::getInstance()->isModelRunning();
+    bool running = this->mModelController->isModelRunning();
     NMModelComponent* comp = this->componentFromItem(item);
 
 	this->mLastScenePos = event->scenePos();
@@ -1172,7 +1338,7 @@ void NMModelViewWidget::getSubComps(NMModelComponent* comp, QStringList& subs)
 	}
 }
 
-void NMModelViewWidget::saveItems(void)
+void NMModelViewWidget::saveBenchItems(void)
 {
 	NMDebugCtx(ctx, << "...");
 	// we save either all selected items, the item under the mouse pointer
@@ -1209,36 +1375,31 @@ void NMModelViewWidget::saveItems(void)
         return;
     }
 
-//    QFileDialog dlg(this);
-//    dlg.setAcceptMode(QFileDialog::AcceptSave);
-//    dlg.setFileMode(QFileDialog::AnyFile);
-//    dlg.setWindowTitle(tr("Save Model Component(s)"));
-//    dlg.setDirectory("~/");
-//    dlg.setNameFilter("LUMASS Model Component Files (*.lmx *.lmv)");
-
+    QString path = NMGlobalHelper::getUserSetting("Workspace");
+    QString suggestedName = QString("%1/%2").arg(path).arg(suggestedBaseName);
 
     QString fileNameString = QFileDialog::getSaveFileName(
                 this,
                 tr("Save Model Component(s)"),
-                QString("~/%1").arg(suggestedBaseName),
+                suggestedName,
                 tr("LUMASS Model Component Files (*.lmx *.lmv)"));
-//    if (dlg.exec())
     {
-
-        //fileNameString = dlg.selectedFiles().at(0);
         if (fileNameString.isNull() || fileNameString.isEmpty())
         {
             NMDebugCtx(ctx, << "done!");
             return;
         }
     }
-//    else
-//    {
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
 
-    QFileInfo fi(fileNameString);
+    exportItems(items, fileNameString, bSaveRoot);
+}
+
+
+bool
+NMModelViewWidget::exportItems(const QList<QGraphicsItem *> &items,
+                               const QString &filename, bool bSaveRoot)
+{
+    QFileInfo fi(filename);
     QString fnLmx = QString("%1/%2.lmx").arg(fi.absolutePath()).arg(fi.baseName());
     QString fnLmv = QString("%1/%2.lmv").arg(fi.absolutePath()).arg(fi.baseName());
 
@@ -1253,7 +1414,7 @@ void NMModelViewWidget::saveItems(void)
         NMLogError(<< ctx << ": unable to open/create file '" << fnLmv.toStdString()
                 << "'!");
         NMDebugCtx(ctx, << "done!");
-        return;
+        return false;
     }
 
     QFile fileLmx(fnLmx);
@@ -1263,7 +1424,7 @@ void NMModelViewWidget::saveItems(void)
         NMLogError(<< ctx << ": unable to create file '" << fnLmx.toStdString()
                 << "'!");
         NMDebugCtx(ctx, << "done!");
-        return;
+        return false;
     }
 
     QDomDocument doc;
@@ -1280,6 +1441,8 @@ void NMModelViewWidget::saveItems(void)
 
 
     NMDebugCtx(ctx, << "done!");
+
+    return true;
 }
 
 
@@ -1362,6 +1525,7 @@ NMModelViewWidget::exportModel(const QList<QGraphicsItem*>& items,
     int cnt = 0;
 	bool append = false;
 	NMModelSerialiser xmlS;
+    xmlS.setModelController(mModelController);
     xmlS.setLogger(mLogger);
 	foreach(QString itemName, savecomps)
 	{
@@ -1431,6 +1595,7 @@ NMModelViewWidget::exportComponent(QGraphicsItem* item,
                                    QStringList& savecomps)
 {
     NMModelSerialiser xmlS;
+    xmlS.setModelController(mModelController);
     xmlS.setLogger(mLogger);
     NMModelComponent* comp = 0;
     switch (item->type())
@@ -1618,7 +1783,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
     else
     {
         newHostItem = 0;
-        newHostComp = qobject_cast<NMIterableComponent*>(NMModelController::getInstance()->getComponent("root"));
+        newHostComp = qobject_cast<NMIterableComponent*>(this->mModelController->getComponent("root"));
     }
 
     if (newHostComp == 0)
@@ -1639,9 +1804,9 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
                        << comp->getDescription().toStdString() << std::endl);
 
             NMIterableComponent* hostComp = comp->getHostComponent();
-            if (    hostComp->objectName().compare(newHostComp->objectName()) != 0
-                &&  newHostComp->objectName().compare(comp->objectName()) != 0
-               )
+            if (    hostComp != 0
+                &&  hostComp->objectName().compare(newHostComp->objectName()) != 0
+                &&  newHostComp->objectName().compare(comp->objectName()) != 0)
             {
                 hostComp->removeModelComponent(comp->objectName());
                 newHostComp->addModelComponent(comp);
@@ -1702,6 +1867,14 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
     }
     this->mModelScene->invalidate();
     this->mModelScene->clearDragItems();
+
+    QString changedModelComp = QString::fromLatin1("root");
+    if (newHostItem)
+    {
+        changedModelComp = newHostItem->getTitle();
+    }
+    emit signalModelChanged(changedModelComp);
+
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -1718,7 +1891,7 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
     if (hostItem)
     {
         importHost = qobject_cast<NMIterableComponent*>(
-                        NMModelController::getInstance()->getComponent(hostItem->getTitle()));
+                        this->mModelController->getComponent(hostItem->getTitle()));
     }
 
     // make a structured copy of the selected item
@@ -1731,6 +1904,7 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
     // parse the DomDocument copy and create identical copy
     // with own identity (i.e. objectName is unique)
     NMModelSerialiser xmlS;
+    xmlS.setModelController(mModelController);
     xmlS.setLogger(mLogger);
     QMap<QString, QString> nameRegister;
     xmlS.parseModelDocument(nameRegister, doc, importHost);
@@ -1798,7 +1972,7 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
 
 
 void
-NMModelViewWidget::loadItems(const QString& fileName)
+NMModelViewWidget::loadBenchItems(const QString& fileName)
 {
     QString fileNameString;
     if (fileName.isEmpty())
@@ -1812,6 +1986,11 @@ NMModelViewWidget::loadItems(const QString& fileName)
         fileNameString = fileName;
     }
 
+    // we set this as the refenrence path
+    if (mModelScene->items().count() == 0)
+    {
+        mModelPathEdit->setText(fileNameString);
+    }
 
     // get the import component
     QString importHostName;
@@ -1835,6 +2014,7 @@ NMModelViewWidget::loadItems(const QString& fileName)
     // read the data model
     QMap<QString, QString> nameRegister;
     NMModelSerialiser xmlS;
+    xmlS.setModelController(mModelController);
     xmlS.setLogger(mLogger);
 
 #ifdef BUILD_RASSUPPORT
@@ -2272,7 +2452,7 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                             this->mModelScene->getComponentItem(title));
 
                     NMIterableComponent* c = qobject_cast<NMIterableComponent*>(
-                                NMModelController::getInstance()->getComponent(title));
+                                this->mModelController->getComponent(title));
                     ai->updateDescription(c->getDescription());
                     ai->updateTimeLevel(c->getTimeLevel());
                     NMSequentialIterComponent* sic = qobject_cast<NMSequentialIterComponent*>(c);
@@ -2433,6 +2613,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
         this->moveComponents(moveItems, importRegion.center(), mLastScenePos);
     }
 
+    emit signalModelChanged("");
+
     NMDebugAI(<< "moved & collapsed rect: " << this->reportRect(mModelScene->itemsBoundingRect(), "") << std::endl);
 
     NMDebugCtx(ctx, << "done!");
@@ -2576,7 +2758,7 @@ int NMModelViewWidget::shareLevel(QList<QGraphicsItem*> list)
 void
 NMModelViewWidget::addDeltaTimeLevel()
 {
-    NMModelController* ctrl = NMModelController::getInstance();
+    NMModelController* ctrl = this->mModelController;
     if (ctrl->isModelRunning())
     {
         NMDebugAI(<< "Cannot edit components while model is running!" << std::endl);
@@ -2623,7 +2805,7 @@ NMModelViewWidget::addDeltaTimeLevel()
 void
 NMModelViewWidget::setGroupTimeLevel()
 {
-    NMModelController* ctrl = NMModelController::getInstance();
+    NMModelController* ctrl = this->mModelController;
     if (ctrl->isModelRunning())
     {
         NMDebugAI(<< "Cannot edit components while model is running!" << std::endl);
@@ -2825,6 +3007,7 @@ void NMModelViewWidget::deleteItem()
 
 	QStringList delList;
     QList<QGraphicsTextItem*> delLabels;
+    QList<NMComponentLinkItem*> delLinks;
 	if (this->mModelScene->selectedItems().count())
 	{
 		foreach(QGraphicsItem* gi, this->mModelScene->selectedItems())
@@ -2858,6 +3041,7 @@ void NMModelViewWidget::deleteItem()
 		if (linkItem != 0)
         {
 			this->deleteLinkComponentItem(linkItem);
+            delLinks << linkItem;
         }
 		else if (procItem != 0)
         {
@@ -2882,6 +3066,7 @@ void NMModelViewWidget::deleteItem()
     int ndelitems = delList.count();
     ndelitems += delLabels.count();
     ndelitems += widgetItems.count();
+    ndelitems += delLinks.count();
 
     // ==================================================================
     // accidentally deleting components can be really
@@ -2893,7 +3078,12 @@ void NMModelViewWidget::deleteItem()
 
     QString msg = QString(tr("Do you really want to delete %1 model %2?"))
                     .arg(ndelitems)
-                    .arg((ndelitems ? "component" : "components"));
+                    .arg((ndelitems ?
+                                (delLinks.count() > 0 ?
+                                     (delLinks.count() > 1 ? "links" : "link")
+                                     : (ndelitems > 1 ? "components" : "component")
+                                )
+                                : "components"));
 
     QMessageBox::StandardButton answer = QMessageBox::question(this,
                                          tr("Delete Model Components"),
@@ -2964,6 +3154,9 @@ void NMModelViewWidget::deleteItem()
 	}
 
 	mModelScene->invalidate();
+
+    emit signalModelChanged("");
+
 	NMDebugCtx(ctx, << "done!");
 }
 
@@ -3246,7 +3439,7 @@ NMModelViewWidget::deleteProxyWidget(QGraphicsProxyWidget *pw)
 
     QString name = pw->objectName();
     QString title = pw->windowTitle();
-    if (!NMModelController::getInstance()->removeComponent(name))
+    if (!this->mModelController->removeComponent(name))
     {
         NMLogError(<< ctx << ": Failed to delete '" << pw->windowTitle().toStdString() << "'!");
     }
@@ -3443,6 +3636,10 @@ NMModelViewWidget::createProcessComponent(NMProcessComponentItem* procItem,
 	this->mModelScene->invalidate();
 	this->mModelView->update();
 
+    connect(comp, SIGNAL(nmChanged()), this, SLOT(slotComponentChanged()));
+
+    emit signalModelChanged(comp->objectName());
+
 
 	NMDebugCtx(ctx, << "done!");
 }
@@ -3476,6 +3673,8 @@ NMModelViewWidget::linkProcessComponents(NMComponentLinkItem* link)
 			inpComps[0] = lst;
 		}
 		target->setInputs(inpComps);
+
+        emit signalModelChanged(link->targetItem()->getTitle());
 	}
 
 	// update any potentially opened editors
@@ -3517,6 +3716,7 @@ NMModelViewWidget::updateTreeEditor(const QString& compName)
         mTreeCompEditor = const_cast<NMComponentEditor*>(otbwin->getCompEditor());
         connect(this->mModelController, SIGNAL(componentRemoved(const QString &)),
                 this, SLOT(updateTreeEditor(const QString &)));
+        connect(mTreeCompEditor, SIGNAL(signalPropertyChanged()), this, SLOT(slotComponentChanged()));
 #ifdef BUILD_RASSUPPORT
         mTreeCompEditor->setRasdamanConnectorWrapper(this->mRasConn);
 #endif
@@ -3611,7 +3811,7 @@ void NMModelViewWidget::dropEvent(QDropEvent* event)
 
 void NMModelViewWidget::executeModel(void)
 {
-	if (NMModelController::getInstance()->isModelRunning())
+    if (this->mModelController->isModelRunning())
 	{
 		QMessageBox::information(this, "Execute Model Component",
 				"There's already a model running at the moment! Please"
@@ -3645,7 +3845,7 @@ void NMModelViewWidget::executeModel(void)
 void
 NMModelViewWidget::resetModel(void)
 {
-	if (NMModelController::getInstance()->isModelRunning())
+    if (this->mModelController->isModelRunning())
 	{
 		QMessageBox::information(this, "Reset Model Component",
 				"You cannot reset a model component while a model"

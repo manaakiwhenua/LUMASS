@@ -94,7 +94,8 @@ public slots:
 
     /*** DEPRECATED - root component made non-editable ***/
     void editRootComponent();
-
+    NMModelController* getModelController(void)
+        {return mModelController;}
 
     //void compProcChanged();
 
@@ -119,6 +120,16 @@ public slots:
 	void callItemContextMenu(QGraphicsSceneMouseEvent* event,
 			QGraphicsItem* item);
 
+    bool exportItems(const QList<QGraphicsItem*>& items, const QString& filename,
+                     bool bSaveRoot);
+
+    void saveCurrentModel();
+    void saveCurrentModelAs();
+    void callAutoSaveModel();
+
+    void slotModelChanged(const QString& itemName);
+    void slotComponentChanged();
+
 	/*! Reflects changes of input components for the first
 	 *  iteration in the model view (i.e. deletes, draws
 	 *  links between components)*/
@@ -137,7 +148,9 @@ signals:
     void modelViewActivated(QObject* obj);
     void unselectItems(void);
     void idleMode();
-
+    void signalModelChanged(const QString& itemName);
+    void signalSaveTimerStart();
+    void signalSaveTimerStop();
 
 protected:
 	void dragEnterEvent(QDragEnterEvent* event);
@@ -155,11 +168,11 @@ protected slots:
 	int shareLevel(QList<QGraphicsItem*> list);
 	NMModelComponent* componentFromItem(QGraphicsItem* item);
 	QString getComponentItemTitle(QGraphicsItem* item);
-	void saveItems();
-    void loadItems(const QString& fileName);
+    void saveBenchItems();
+    void loadBenchItems(const QString& fileName);
 	void reportIsModelControllerBusy(bool);
     void callLoadItems()
-        {loadItems(QString());}
+        {loadBenchItems(QString());}
 
     void exportModel(const QList<QGraphicsItem*>& items,
                      QIODevice& device,
@@ -180,6 +193,8 @@ protected slots:
 	void getSubComps(NMModelComponent* comp, QStringList& subs);
 	void connectProcessItem(NMProcess* proc, NMProcessComponentItem* procItem);
     bool eventFilter(QObject* obj, QEvent* e);
+
+    void autoSaveCurrentModel();
 
     void test();
 
@@ -241,6 +256,13 @@ private:
 
 	QMap<QString, QAction*> mActionMap;
     NMLogger* mLogger;
+
+    QLineEdit* mModelPathEdit;
+    QPushButton* mSaveModelBtn;
+    QString mAutoSaveName;
+
+    QThread* mTimerThread;
+    QTimer* mTimer;
 
     static const std::string ctx;
 

@@ -68,7 +68,7 @@ public:
     static QVariant nestedListFromStringList(const QStringList& strList);
 
 signals:
-    //void finishedEditing(QObject* obj);
+    void signalPropertyChanged();
 
 public slots:
     void update(void);

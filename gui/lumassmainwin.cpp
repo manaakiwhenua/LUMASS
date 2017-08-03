@@ -80,6 +80,9 @@
 #include "NMAggregateComponentItem.h"
 #include "NMComponentLinkItem.h"
 #include "NMListWidget.h"
+#include "NMToolBar.h"
+#include "NMAction.h"
+
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -283,18 +286,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // *                    META TYPES and other initisalisations           *
     // **********************************************************************
 
-
-#ifdef BUILD_RASSUPPORT
-	this->mpRasconn = 0;
-	this->mbNoRasdaman = true;
-#endif
-	this->mbNoRasdaman = false;
-    this->mpPetaView = 0;
-
-    this->mbUpdatingExclusiveActions = false;
-    this->mLastInfoLayer = 0;
-    this->mActiveWidget = 0;
-
 	// some meta type registration for supporting the given types for
 	// properties and QVariant
 	qRegisterMetaType< QList< QStringList> >();
@@ -310,9 +301,46 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 #endif
 	qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
 	qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
+    qRegisterMetaType<NMModelController*>("NMModelController*");
+    qRegisterMetaType<NMAction::NMOutputMap>("NMAction::NMOutputMap");
+//    qRegisterMetaType<NMAction::NMActionOutputType>("NMAction::NMActionOutputType");
+//    qRegisterMetaType<NMAction::NMActionTriggerType>("NMAction::NMActionTriggerType");
 
-    // seed the std random number generator
-    std::srand(std::time(0));
+    // **********************************************************************
+    // *                    INIT SETTINGS FRAMEWORK
+    // **********************************************************************
+
+//#ifdef _WIN32
+    QString homepath = QDir::homePath();
+//#else
+//    QString homepath = "$HOME";
+//#endif
+
+    // initially set a directory which we're certain exists ...
+    mSettings["Workspace"] = QVariant::fromValue(QString("%1").arg(homepath));
+    mSettings["UserModels"] = QVariant::fromValue(QString("%1").arg(homepath));
+    mSettings["LUMASSPath"] = qApp->applicationDirPath();
+    sqlite3_temp_directory = const_cast<char*>(
+                mSettings["Workspace"].toString().toStdString().c_str());
+
+    // **********************************************************************
+    // *                    INIT SOME ON-DEMAND GUI ELEMENTS
+    // **********************************************************************
+
+    mSettingsBrowser = 0;
+    this->mbFirstTimeLoaded = true;
+
+#ifdef BUILD_RASSUPPORT
+    this->mpRasconn = 0;
+    this->mbNoRasdaman = true;
+#endif
+    this->mbNoRasdaman = false;
+    this->mpPetaView = 0;
+
+    this->mbUpdatingExclusiveActions = false;
+    this->mLastInfoLayer = 0;
+    this->mActiveWidget = 0;
+
 
     // **********************************************************************
     // *                    GDAL                                            *
@@ -325,16 +353,13 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // **********************************************************************
 
     //sqlite3_auto_extension((void(*)(void))sqlite3_extmathstrfunc_init);
-    sqlite3_temp_directory = getenv("HOME");
 
-	// **********************************************************************
-    // *                    MAIN WINDOW - MENU BAR AND DOCKS                *
-	// **********************************************************************
+    // **********************************************************************
+    // *                    MAIN WINDOW SETUP & LOGGING & MODELLING         *
+    // **********************************************************************
 
-	// set up the qt designer based controls
-    ui->setupUi(this);
-    mLUMASSIcon = QIcon(":lumass-icon.png");
-    this->setWindowIcon(mLUMASSIcon);
+    // seed the std random number generator
+    std::srand(std::time(0));
 
     // set up the logger
     mLogger = new NMLogger(this);
@@ -342,7 +367,18 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 #ifdef DEBUG
     mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
 #endif
-    connect(mLogger, SIGNAL(sendLogMsg(QString)), ui->logEdit, SLOT(insertHtml(QString)));
+
+    // set up the qt designer based controls
+    ui->setupUi(this);
+    mLUMASSIcon = QIcon(":lumass-icon.png");
+    this->setWindowIcon(mLUMASSIcon);
+
+    // connect logger with log widget
+    connect(mLogger, SIGNAL(sendLogMsg(const QString &)), this, SLOT(appendHtmlMsg(const QString &)));
+
+	// **********************************************************************
+    // *                    MENU BAR AND DOCKS                              *
+	// **********************************************************************
 
     // ================================================
     // INFO COMPONENT DOCK
@@ -375,17 +411,18 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 #else
     qreal pratio = 1;
 #endif
-    NMListWidget* liwi = new NMListWidget(ui->compWidgetList);
-    liwi->setLogger(mLogger);
-    mTableListWidget = liwi;
-    mTableListWidget->setObjectName(QString::fromUtf8("tableListWidget"));
+    mTableListWidget = new NMListWidget(ui->compWidgetList);
+    mTableListWidget->setLogger(mLogger);
+    mTableListWidget->setDragSourceName("StandaloneTableList");
+    //mTableListWidget = liwi;
+    mTableListWidget->setObjectName(QString::fromLatin1("tableListWidget"));
     mTableListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     mTableListWidget->setIconSize(QSize(int((qreal)16*pratio),int((qreal)16*pratio)));
 
     mTableListWidget->setDragEnabled(false);
     mTableListWidget->setAcceptDrops(true);
     mTableListWidget->setDragDropMode(QAbstractItemView::DropOnly);
-    mTableListWidget->viewport()->setObjectName("tableListView");
+    mTableListWidget->viewport()->setObjectName(QString::fromLatin1("tableListView"));
     mTableListWidget->viewport()->setAcceptDrops(true);
     mTableListWidget->viewport()->installEventFilter(this);
     ui->compWidgetList->addWidgetItem(mTableListWidget, QString::fromUtf8("Table Objects"));
@@ -395,6 +432,23 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     procList->setObjectName(QString::fromUtf8("processComponents"));
     ui->compWidgetList->addWidgetItem(procList, QString::fromUtf8("Model Components"));
     ui->componentsWidget->setMinimumWidth(170);
+
+    // set up the user models list
+    mUserModelListWidget = new NMListWidget(ui->compWidgetList);
+    mUserModelListWidget->setLogger(mLogger);
+    mUserModelListWidget->setDragSourceName(QString::fromLatin1("UserModelList"));
+    //mUserModelListWidget = umlw;
+    mUserModelListWidget->setObjectName(QString::fromLatin1("userModelListWidget"));
+    mUserModelListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    mUserModelListWidget->setIconSize(QSize(int((qreal)16*pratio),int((qreal)16*pratio)));
+
+    mUserModelListWidget->setDragEnabled(false);
+    mUserModelListWidget->setAcceptDrops(true);
+    mUserModelListWidget->setDragDropMode(QAbstractItemView::DropOnly);
+    mUserModelListWidget->viewport()->setObjectName("userModelListView");
+    mUserModelListWidget->viewport()->setAcceptDrops(true);
+    mUserModelListWidget->viewport()->installEventFilter(this);
+    ui->compWidgetList->addWidgetItem(mUserModelListWidget, QString::fromUtf8("User Models"));
 
 
     // ================================================
@@ -486,6 +540,14 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
             ui->actionShow_Components_Info, SLOT(setChecked(bool)));
     connect(ui->logDock, SIGNAL(visibilityChanged(bool)),
             ui->actionShow_Notifications, SLOT(setChecked(bool)));
+    connect(ui->actionConfigure_Settings, SIGNAL(triggered()), this, SLOT(configureSettings()));
+
+    // USER TOOL SUPPORT
+    connect(ui->actionAdd_Toolbar, SIGNAL(triggered()), this, SLOT(addUserToolBar()));
+
+
+    // SYSTEM
+    connect(this, SIGNAL(windowLoaded()), this, SLOT(readSettings()));
 
     // TEST TEST TEST
     connect(ui->actionImage_Polydata, SIGNAL(triggered()), this, SLOT(convertImageToPolyData()));
@@ -494,7 +556,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // =============================================================
     //                      MAIN TOOL BAR
     // =============================================================
-    //this->ui->mainToolBar->setWindowTitle("Model Builder Tools");
+    this->ui->mainToolBar->setWindowTitle("Main LUMASS Tools");
+    this->ui->mainToolBar->setObjectName("MainTools");
 
     // .....................
     // zoom actions
@@ -544,12 +607,14 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     QIcon mapIcon(":view-map.png");
     QAction* actMapBtn = new QAction(mapIcon, "Map View", ui->mainToolBar);
+    mMiscActions["actMapBtn"] = actMapBtn;
     actMapBtn->setObjectName("actMapBtn");
     actMapBtn->setCheckable(true);
     actMapBtn->setChecked(true);
 
     QIcon modelIcon(":model-icon.png");
     QAction* actModelBtn = new QAction(modelIcon, "Model View", ui->mainToolBar);
+    mMiscActions["actModelBtn"] = actModelBtn;
     actModelBtn->setObjectName("actModelBtn");
     actModelBtn->setCheckable(true);
     actModelBtn->setChecked(true);
@@ -559,11 +624,15 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     QIcon horzIcon(":view-split-left-right.png");
     QAction* actHorzLayout = new QAction(horzIcon, "Views: Left | Right", ui->mainToolBar);
+    mMiscActions["actHorzLayout"] = actHorzLayout;
+    actHorzLayout->setObjectName("actHorzLayout");
     actHorzLayout->setCheckable(true);
     actHorzLayout->setChecked(true);
 
     QIcon vertIcon(":view-split-top-bottom.png");
     QAction* actVertLayout = new QAction(vertIcon, "Views: Top | Bottom", ui->mainToolBar);
+    mMiscActions["actVertLayout"] = actVertLayout;
+    actVertLayout->setObjectName("actVertLayout");
     actVertLayout->setCheckable(true);
     actVertLayout->setChecked(false);
 
@@ -608,6 +677,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     actCompSearch->setText("Search Model");
     connect(searchedit, SIGNAL(returnPressed()), this,
             SLOT(searchModelComponent()));
+
+    this->ui->mainToolBar->installEventFilter(this);
 
 
     // connect model view widget signals / slots
@@ -755,6 +826,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
             vtkCommand::MiddleButtonPressEvent,
             this, SLOT(pickObject(vtkObject*)));
 
+//    this->m_vtkConns->Connect(ui->qvtkWidget->GetRenderWindow()->GetInteractor(),
+//            vtkCommand::LeftButtonPressEvent,
+//            this, SLOT(userPick(vtkObject*)));
 
     // **********************************************************************
     // *                    CENTRAL WIDGET                                  *
@@ -801,6 +875,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // set menu's check buttons to right state
     this->ui->actionShow_Map_View->setChecked(true);
     this->ui->actionShow_Model_View->setChecked(true);
+
 }
 
 LUMASSMainWin::~LUMASSMainWin()
@@ -831,21 +906,15 @@ LUMASSMainWin::~LUMASSMainWin()
 	NMDebugAI(<< "delete ui ..." << endl);
 	delete ui;
 
-//    const QObjectList& kids = this->children();
-//    QObject *child;
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
+}
 
-//    NMDebugAI(<< "going to delete child objects ..." << endl);
-//    foreach (child, kids)
-//    {
-//        if (child->metaObject()->className() != "NMMdiSubWindow")
-//        {
-//            NMDebugAI( << "... " << child->metaObject()->className() << endl);
-//            delete child;
-//            child = 0;
-//        }
-//    }
-
-        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+void LUMASSMainWin::mousePressEvent(QMouseEvent *event)
+{
+    if (event->buttons() & Qt::RightButton)
+    {
+        mLastToolBar.clear();
+    }
 }
 
 bool
@@ -1040,8 +1109,92 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
         }
 
     }
+    // ===========================================================
+    //                      UserModelListWidget (VIEW)
+    // ===========================================================
+    else if (obj->objectName().compare(QString("userModelListView")) == 0)
+    {
+        if (event->type() == QEvent::DragEnter)
+        {
+            QDragEnterEvent* dee = static_cast<QDragEnterEvent*>(event);
+            if (dee && !checkMimeDataForModelComponent(dee->mimeData()).isEmpty())
+            {
+                dee->acceptProposedAction();
+            }
+        }
+        else if (event->type() == QEvent::DragMove)
+        {
+            QDragMoveEvent* dme = static_cast<QDragMoveEvent*>(event);
+            if (dme)
+            {
+                dme->acceptProposedAction();
+            }
+        }
+        else if (event->type() == QEvent::Drop)
+        {
+            QDropEvent* de = static_cast<QDropEvent*>(event);
+            QString compName = checkMimeDataForModelComponent(de->mimeData());
+            if (de && !compName.isEmpty())
+            {
+                NMModelComponent* mc = NMGlobalHelper::getModelController()->getComponent(compName);
+                if (mc)
+                {
+                    addModelToUserModelList(compName);
+                    de->accept();
+                    return true;
+                }
+            }
+        }
+    }
+    // ===============
+    // MAIN TOOL BAR
+    // ===============
+    else if (obj->objectName().compare(QString::fromLatin1("MainTools")) == 0)
+    {
+        if (event->type() == QEvent::MouseButtonPress)
+        {
+            QMouseEvent* me = static_cast<QMouseEvent*>(event);
+            if (me->buttons() & Qt::RightButton)
+            {
+                mLastToolBar.clear();
+            }
+        }
+    }
+
     return false;
 }
+
+QString
+LUMASSMainWin::checkMimeDataForModelComponent(const QMimeData *mimedata)
+{
+    QString compName;
+
+    QString dropSource;
+    QString dropComponent;
+    if (mimedata->hasFormat("text/plain"))
+    {
+        QString ts = mimedata->text();
+        QStringList tl = ts.split(':', QString::SkipEmptyParts);
+        if (tl.count() == 2)
+        {
+            dropSource = tl.at(0);
+            dropComponent = tl.at(1);
+        }
+    }
+
+    if (   dropSource.startsWith(QString::fromLatin1("_NMModelScene_"))
+        && NMGlobalHelper::getModelController()->contains(dropComponent)
+       )
+    {
+        NMLogDebug(<< "on the hook: " << dropSource.toStdString()
+               << ":" << dropComponent.toStdString());
+
+        compName = dropComponent;
+    }
+
+    return compName;
+}
+
 
 void
 LUMASSMainWin::modelViewActivated(QObject* obj)
@@ -1128,6 +1281,7 @@ LUMASSMainWin::pan(bool toggled)
             if (iact)
             {
                 iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_PAN);
+                iact->setUserTool("");
             }
         }
         this->updateExclusiveActions(in->objectName(), toggled);
@@ -1148,6 +1302,7 @@ LUMASSMainWin::zoomIn(bool toggled)
             if (iact)
             {
                 iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_IN);
+                iact->setUserTool("");
             }
         }
         this->updateExclusiveActions(in->objectName(), toggled);
@@ -1168,6 +1323,7 @@ LUMASSMainWin::zoomOut(bool toggled)
             if (iact)
             {
                 iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_ZOOM_OUT);
+                iact->setUserTool("");
             }
         }
         this->updateExclusiveActions(out->objectName(), toggled);
@@ -1225,6 +1381,12 @@ LUMASSMainWin::getLogWidget()
 {
     return ui->logEdit;
 }
+
+//NMModelController*
+//LUMASSMainWin::getModelController(void)
+//{
+//    return mModelController;
+//}
 
 void
 LUMASSMainWin::swapWindowLayout(QAction* act)
@@ -2110,6 +2272,7 @@ LUMASSMainWin::importTable(const QString& fileName,
     NMQSQLiteDriver* drv = new NMQSQLiteDriver(tabconn, 0);
     // ... and establish the Qt-Db connection
     QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+    db.setDatabaseName(dbfilename);
 
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
@@ -2139,6 +2302,7 @@ LUMASSMainWin::importTable(const QString& fileName,
                         NMSqlTableView::NMTABVIEW_PARATABLE, 0)
                     );
     }
+    tabview->setLogger(mLogger);
 
     tabview->setTitle(viewName);
     connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
@@ -2174,12 +2338,13 @@ LUMASSMainWin::importTable(const QString& fileName,
 NMSqlTableView*
 LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
 {
-    QString conname = QString::fromLatin1("mem_%1").arg(sqlTab->GetTableName().c_str());
+    QString tmpname = QString::fromLatin1("mem_%1").arg(sqlTab->GetTableName().c_str());
+    QString conname = tmpname;
 
     int nr = 2;
     while(QSqlDatabase::connectionNames().contains(conname))
     {
-        conname = QString("%1_%2").arg(conname).arg(nr);
+        conname = QString("%1_%2").arg(tmpname).arg(nr);
         ++nr;
     }
 
@@ -2189,6 +2354,7 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
     NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTab->GetDbConnection(), 0);
     // ... and establish the Qt-Db connection
     QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+    db.setDatabaseName(sqlTab->GetDbFileName().c_str());
 
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
@@ -2498,7 +2664,9 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     if (fileName.isNull())
         return;
 
-    NMModelController* ctrl = NMModelController::getInstance();
+    //NMModelController* ctrl = NMModelController::getInstance();
+    QScopedPointer<NMModelController> ctrl(new NMModelController());
+    ctrl->setLogger(mLogger);
 
     // ---------------- SET UP INPUT ----------------------
     QSharedPointer<NMItkDataObjectWrapper> dw = il->getImage();
@@ -2565,13 +2733,13 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
 
     // ---- CONTROLLER DOES THE REST ------
     ctrl->executeModel(writerComp->objectName());
-    QStringList del;
-    del << bufCompName << writerCompName;
-    if (!onlyVisImg)
-    {
-        del << readerCompName;
-    }
-    ctrl->deleteLater(del);
+//    QStringList del;
+//    del << bufCompName << writerCompName;
+//    if (!onlyVisImg)
+//    {
+//        del << readerCompName;
+//    }
+//    ctrl->deleteLater(del);
 }
 
 void LUMASSMainWin::checkInteractiveLayer(void)
@@ -2706,7 +2874,9 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
                 .arg(sqlModel->getNMPrimaryKey())
                 .arg(cellId);
 
-        QSqlQuery q(sqlModel->database());
+        QSqlDatabase db = sqlModel->database();
+        db.transaction();
+        QSqlQuery q(db);
         QSqlRecord rec;
 
         bool bempty = true;
@@ -2753,6 +2923,9 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
 			}
 			ti->setItem(r, 1, item2);
 		}
+        q.finish();
+        q.clear();
+        db.commit();
 	}
 
     connect(l, SIGNAL(destroyed()), ti, SLOT(clear()));
@@ -3158,58 +3331,7 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    NMDebugCtx(ctxLUMASSMainWin, << "...")
 
-    QString path = "/home/alex/projects/SedNetNZ_dev/KaipHarbour/";
-
-    QString fn = path + "mitzones.ldb";
-    QString los = path + "farm_summary.los";
-    QString report = path + "farm_summary_report.txt";
-    QString lp = path + "farm_summary_problem.lp";
-
-
-    otb::SQLiteTable::Pointer tab = otb::SQLiteTable::New();
-    tab->SetUseSharedCache(false);
-    tab->SetDbFileName(fn.toStdString());
-    tab->SetRowIDColName("mitzone_id");
-    tab->SetRowIdColNameIsPersistent(true);
-    tab->openConnection();
-    tab->SetTableName("farm_summary");
-    if (!tab->PopulateTableAdmin())
-    {
-        NMLogError(<< "populate table admin failed!")
-        return;
-    }
-
-    NMMosra* mosra = new NMMosra(this);
-    mosra->setLogger(this->mLogger);
-
-    mosra->loadSettings(los);
-
-    otb::AttributeTable::Pointer otbtab = tab.GetPointer();
-
-    mosra->setDataSet(otbtab);
-    mosra->setTimeOut(0);
-    mosra->setBreakAtFirst(true);
-
-    if (!mosra->solveLp())
-    {
-        NMLogError(<< "farm opt failed!");
-        mosra->writeReport(report);
-        delete mosra;
-        return;
-    }
-
-    mosra->writeReport(report);
-    mosra->getLp()->WriteLp(lp.toStdString());
-    int solved = mosra->mapLp();
-
-    delete mosra;
-
-    tab->CloseTable();
-
-
-    NMDebugCtx(ctxLUMASSMainWin, << "done!")
 }
 
 
@@ -3514,13 +3636,16 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
         vtkDataArray* idxScalars = img->GetPointData()->GetArray(0);
         void* idxPtr = img->GetArrayPointer(idxScalars, did);
 
-        switch(idxScalars->GetDataType())
+        if (idxScalars != 0 && idxPtr != 0)
         {
-        vtkTemplateMacro(getVtkIdTypeFromVtkTypedPtr(
-                             static_cast<VTK_TT*>(idxPtr), &cellId)
-                    );
-        default:
-            NMWarn(ctxLUMASSMainWin, << "Scalar pointer type not supported!");
+            switch(idxScalars->GetDataType())
+            {
+            vtkTemplateMacro(getVtkIdTypeFromVtkTypedPtr(
+                                 static_cast<VTK_TT*>(idxPtr), &cellId)
+                        );
+            default:
+                NMWarn(ctxLUMASSMainWin, << "Scalar pointer type not supported!");
+            }
         }
     }
 
@@ -3537,6 +3662,12 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
     {
         this->updateLayerInfo(l, cellId);
     }
+
+    // =========================================
+    //       EXECUTE USER ACTIONS
+    // =========================================
+    processUserPickAction(cellId);
+
 }
 
 
@@ -3665,13 +3796,13 @@ LUMASSMainWin::searchModelComponent()
     if (le)
     {
         QString compName = le->text();
-        if (NMModelController::getInstance()->contains(compName))
+        if (NMGlobalHelper::getModelController()->contains(compName))
         {
             emit componentOfInterest(compName);
         }
         else
         {
-            QList<NMModelComponent*> comps = NMModelController::getInstance()->getComponents(compName);
+            QList<NMModelComponent*> comps = NMGlobalHelper::getModelController()->getComponents(compName);
             if (compName.isEmpty() ? comps.size()-1 : comps.size() > 0)
             {
                 QStringList nameList;
@@ -5628,37 +5759,41 @@ LUMASSMainWin::updateRasMetaView()
 
 void LUMASSMainWin::loadImageLayer()
 {
-        NMDebugCtx(ctxLUMASSMainWin, << "...");
+    NMDebugCtx(ctxLUMASSMainWin, << "...");
 
 	QString fileName = QFileDialog::getOpenFileName(this,
 	     tr("Open Image"), "~", tr("All Image Files (*.*)"));
 	if (fileName.isNull())
 		return;
 
+    loadImageLayer(fileName);
+
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
+}
+
+
+void LUMASSMainWin::loadImageLayer(const QString& fileName)
+{
+    NMDebugCtx(ctxLUMASSMainWin, << "...");
+
 	NMDebugAI( << "opening " << fileName.toStdString() << " ..." << std::endl);
 
 	QFileInfo finfo(fileName);
-	QString layerName = finfo.baseName();
+    if (!finfo.exists() || !finfo.isReadable())
+    {
+        NMLogError(<< "Load Image: Failed to load image file '"
+                   << fileName.toStdString() << "'!")
+        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+        return;
+    }
 
 	vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
 	NMImageLayer* layer = new NMImageLayer(renWin, 0, this);
 
-//    connect(layer, SIGNAL(layerProcessingEnd(const QString &)),
-//            loader, SLOT());
-
     this->connectImageLayerProcSignals(layer);
-    //QtConcurrent::run(layer, &NMImageLayer::setFileName, fileName);
     layer->setFileName(fileName);
 
-//	if (layer->setFileName(fileName))
-//	{
-//		layer->setVisible(true);
-//		this->mLayerList->addLayer(layer);
-//	}
-//	else
-//		delete layer;
-
-        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
 
 void
@@ -5781,5 +5916,1125 @@ void LUMASSMainWin::toggle3DStereoMode()
 {
         this->ui->qvtkWidget->GetRenderWindow()->SetStereoRender(
 	    		!this->ui->qvtkWidget->GetRenderWindow()->GetStereoRender());
+}
+
+void
+LUMASSMainWin::configureSettings()
+{
+    QDialog* dlg = new QDialog(this);
+    dlg->setWindowModality(Qt::WindowModal);
+    QVBoxLayout* vlayout = new QVBoxLayout(dlg);
+
+    QtTreePropertyBrowser* bro = new QtTreePropertyBrowser(dlg);
+    mSettingsBrowser = bro;
+    bro->setResizeMode(QtTreePropertyBrowser::Interactive);
+    vlayout->addWidget(bro);
+
+    QPushButton* btnClose = new QPushButton("Close", dlg);
+    dlg->connect(btnClose, SIGNAL(pressed()), dlg, SLOT(accept()));
+    vlayout->addWidget(btnClose);
+
+    populateSettingsBrowser();
+
+    dlg->exec();
+    dlg->deleteLater();
+    delete bro;
+    mSettingsBrowser = 0;
+}
+
+void
+LUMASSMainWin::populateSettingsBrowser(void)
+{
+    if (mSettingsBrowser == 0)
+    {
+        return;
+    }
+
+    mSettingsBrowser->clear();
+
+    QMap<QString, QVariant>::iterator it = mSettings.begin();
+    while (it != mSettings.end())
+    {
+        QtVariantEditorFactory* ed = new QtVariantEditorFactory(mSettingsBrowser);
+        QtVariantPropertyManager* man = new QtVariantPropertyManager(mSettingsBrowser);
+        QtVariantProperty* vprop = man->addProperty(it.value().type(), it.key());
+        vprop->setValue(it.value());
+        mSettingsBrowser->setFactoryForManager(man, ed);
+        mSettingsBrowser->addProperty(vprop);
+
+        connect(man, SIGNAL(signalCallAuxEditor(QtProperty*,const QStringList &)),
+                this, SLOT(settingsFeeder(QtProperty*,const QStringList &)));
+        connect(man, SIGNAL(valueChanged(QtProperty*,QVariant)),
+                this, SLOT(updateSettings(QtProperty*,QVariant)));
+        ++it;
+    }
+}
+
+void
+LUMASSMainWin::updateSettings(QtProperty *prop, const QVariant &val)
+{
+    if (prop == 0)
+    {
+        return;
+    }
+
+    updateSettings(prop->propertyName(), val);
+}
+
+void
+LUMASSMainWin::updateSettings(const QString &setting, const QVariant &val)
+{
+    switch (val.type())
+    {
+    case QVariant::String:
+        mSettings[setting] = val.toString();
+        break;
+    default:
+        break;
+    }
+
+    populateSettingsBrowser();
+
+    if (setting.compare(QString::fromLatin1("Workspace")) == 0)
+    {
+        sqlite3_temp_directory = const_cast<char*>(
+                    mSettings["Workspace"].toString().toStdString().c_str());
+    }
+    else if (setting.compare(QString::fromLatin1("UserModels")) == 0)
+    {
+        scanUserModels();
+    }
+
+    emit settingsUpdated(setting, val);
+}
+
+void
+LUMASSMainWin::settingsFeeder(QtProperty *prop, const QStringList &strVal)
+{
+    if (prop == 0)
+    {
+        return;
+    }
+
+    if (    prop->propertyName().compare(QString::fromLatin1("UserModels")) == 0
+        ||  prop->propertyName().compare(QString::fromLatin1("Workspace")) == 0
+       )
+    {
+        QFileInfo finfo(strVal.at(0));
+        QString newfn = QFileDialog::getExistingDirectory(this,
+                                     QString("Set '%1' Path").arg(prop->propertyName()),
+                                     finfo.absoluteFilePath());
+
+        if (!newfn.isEmpty())
+        {
+            updateSettings(prop, QVariant::fromValue(newfn));
+        }
+    }
+}
+
+QString
+LUMASSMainWin::getUserModelPath(const QString &model)
+{
+    QString ret;
+
+    if (mUserModelPath.find(model) != mUserModelPath.end())
+    {
+        ret = mUserModelPath[model];
+    }
+
+    return ret;
+}
+
+void
+LUMASSMainWin::removeUserTool(NMAction *act)
+{
+    if (act == 0)
+    {
+        return;
+    }
+
+    NMLogDebug(<< "Removing user tool '" << act->text().toStdString() << "'");
+    mExclusiveActions.removeOne(act);
+    mUserActions.remove(act->objectName());
+    NMToolBar* toolbar = qobject_cast<NMToolBar*>(const_cast<QObject*>(act->parent()));
+    toolbar->removeAction(act);
+
+
+    // remove tool entry from settings file to
+    // prevent reloading after restart
+    QSettings settings("LUMASS", "GUI");
+
+#ifdef __linux__
+    settings.setIniCodec("UTF-8");
+#endif
+
+    settings.beginGroup("UserToolBars");
+    settings.beginGroup(toolbar->objectName());
+    settings.remove(act->objectName());
+    settings.endGroup();
+    settings.endGroup();
+
+    act->deleteLater();
+}
+
+void
+LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName)
+{
+    // ============================================
+    // look for configuration table
+    // ============================================
+
+    QString baseName = QString("%1Tool").arg(userModel);
+    QString toolTableName = QString("%1/%2.ldb")
+            .arg(this->mUserModelPath[userModel])
+            .arg(baseName);
+
+    QFileInfo fnInfo(toolTableName);
+    if (!fnInfo.exists() || !fnInfo.isReadable())
+    {
+        NMLogError(<< "Load User Tool: Couldn't read tool table for '"
+                 << userModel.toStdString() << "'!")
+        return;
+    }
+
+
+    QString modelFile = QString("%1/%2.lmx")
+            .arg(this->mUserModelPath[userModel])
+            .arg(userModel);
+
+    QFileInfo mfInfo(modelFile);
+    if (!mfInfo.exists() || !mfInfo.isReadable())
+    {
+        NMLogError(<< "Load User Tool: Couldn't read tool's user model '"
+                 << userModel.toStdString() << "'!")
+        return;
+    }
+
+    otb::SQLiteTable::Pointer toolTable = otb::SQLiteTable::New();
+    toolTable->SetUseSharedCache(false);
+    toolTable->SetDbFileName(toolTableName.toStdString());
+    if (!toolTable->openConnection())
+    {
+        NMLogError(<< "Load User Tool: Couldn't read tool table for '"
+                 << userModel.toStdString() << "'!")
+        return;
+    }
+    toolTable->SetTableName(baseName.toStdString());
+    toolTable->PopulateTableAdmin();
+
+    // ============================================
+    // find tool bar
+    // ============================================
+
+    NMToolBar* toolbar = this->findChild<NMToolBar*>(toolBarName);
+    if (toolbar == 0)
+    {
+        NMLogError(<< "Load User Tool: Couldn't find specified tool bar!");
+        return;
+    }
+    QString toolName = toolTable->GetStrValue("AdminValue", "Admin = 'Name'").c_str();
+
+    if (toolbar->findChild<NMAction*>(toolName))
+    {
+        NMLogInfo(<< "User Tool '" << toolName.toStdString()
+                  << "' has already been loaded!");
+        return;
+    }
+
+    // ===================================
+    // create the user action && set up the model controller
+    // ===================================
+
+    NMAction* uact = new NMAction(toolName, toolbar);
+    uact->setObjectName(toolName);
+    uact->setModelName(userModel);
+    uact->setLogger(mLogger);
+    mExclusiveActions << uact;
+
+    // initially, we set the tool up as a simple button
+    uact->setCheckable(false);
+
+    // create model context
+    NMModelController* ctrl = new NMModelController(uact);
+    ctrl->setObjectName(toolName);
+    ctrl->getLogger()->setHtmlMode(true);
+    ctrl->updateSettings("UserModels", mSettings["UserModels"]);
+    ctrl->updateSettings("Workspace", mSettings["Workspace"]);
+    ctrl->updateSettings("LUMASSPath", mSettings["LUMASSPath"]);
+
+    connect(this, SIGNAL(settingsUpdated(const QString &,QVariant)),
+            ctrl, SLOT(updateSettings(const QString &,QVariant)));
+    connect(ctrl->getLogger(), SIGNAL(sendLogMsg(QString)),
+            this, SLOT(appendHtmlMsg(QString)));
+    connect(ui->modelViewWidget, SIGNAL(requestModelAbortion()),
+            ctrl, SLOT(abortModel()), Qt::DirectConnection);
+    connect(ctrl, SIGNAL(signalModelStarted()), this, SLOT(showBusyStart()));
+    connect(ctrl, SIGNAL(signalModelStopped()), this, SLOT(showBusyEnd()));
+    connect(ctrl, SIGNAL(signalModelStopped()), this, SLOT(displayUserModelOutput()));
+    connect(uact, SIGNAL(signalRemoveUserTool(NMAction*)), this,
+            SLOT(removeUserTool(NMAction*)));
+    uact->setModelController(ctrl);
+
+
+    NMModelSerialiser xmlS;
+    xmlS.setModelController(ctrl);
+    xmlS.setLogger(mLogger);
+
+    NMSequentialIterComponent* root = new NMSequentialIterComponent();
+    root->setObjectName("root");
+    root->setDescription("Top level model component managed by the ModelController");
+    ctrl->addComponent(root);
+    xmlS.parseComponent(modelFile, 0, ctrl);
+
+
+    // ====================================
+    // parse Tool Table
+    // ====================================
+
+    NMAction::NMOutputMap outMap;
+    bool bKeyFound;
+    int nrecs = toolTable->GetNumRows();
+    long long minid = toolTable->GetMinPKValue();
+    for (long long id=minid; id < minid+nrecs; ++id)
+    {
+        // ----------------------------------
+        // OUTPUTS
+        // ----------------------------------
+
+        QString output = toolTable->GetStrValue("Output", id).c_str();
+        QString outTypeStr = toolTable->GetStrValue("OutputType", id).c_str();
+        if (    (!output.isEmpty() && !outTypeStr.isEmpty())
+             && (    output.compare(QString::fromLatin1("NULL")) != 0
+                  && outTypeStr.compare(QString::fromLatin1("NULL")) != 0
+                )
+           )
+        {
+            const int oatei = NMAction::staticMetaObject.indexOfEnumerator("NMActionOutputType");
+            NMAction::NMActionOutputType outActType = static_cast<NMAction::NMActionOutputType>(
+                    NMAction::staticMetaObject.enumerator(oatei).keyToValue(
+                        outTypeStr.toStdString().c_str(), &bKeyFound));
+            if (bKeyFound)
+            {
+                outMap.insert(output, outActType);
+            }
+        }
+
+        // ----------------------------------
+        // TRIGGERS
+        // ----------------------------------
+
+        QString trigger = toolTable->GetStrValue("Trigger", id).c_str();
+        QString triggerTypeStr = toolTable->GetStrValue("TriggerType", id).c_str();
+        if (    (!trigger.isEmpty() && !triggerTypeStr.isEmpty())
+             && (    trigger.compare(QString::fromLatin1("NULL")) != 0
+                  && triggerTypeStr.compare(QString::fromLatin1("NULL")) != 0
+                )
+           )
+        {
+            const int ttei = NMAction::staticMetaObject.indexOfEnumerator("NMActionTriggerType");
+            NMAction::NMActionTriggerType triggerType = static_cast<NMAction::NMActionTriggerType>(
+                        NMAction::staticMetaObject.enumerator(ttei).keyToValue(
+                            triggerTypeStr.toStdString().c_str(), &bKeyFound));
+            if (bKeyFound)
+            {
+                uact->setTrigger(trigger, triggerType);
+            }
+        }
+
+        // ----------------------------------
+        // INPUT PARAMETERS
+        // ----------------------------------
+        QString actionParam = toolTable->GetStrValue("Input", id).c_str();
+        QString actionValStr = toolTable->GetStrValue("InputValue", id).c_str();
+        QString actionTypeStr = toolTable->GetStrValue("InputValueType", id).c_str();
+        if (!actionParam.isEmpty())
+        {
+            NMAction::NMActionInputType inputType = NMAction::NM_ACTION_INPUT_UNKNOWN;
+            if (!actionTypeStr.isEmpty())
+            {
+                const int iaei = NMAction::staticMetaObject.indexOfEnumerator("NMActionInputType");
+                inputType = static_cast<NMAction::NMActionInputType>(
+                            NMAction::staticMetaObject.enumerator(iaei).keyToValue(
+                                actionTypeStr.toStdString().c_str(), &bKeyFound));
+            }
+            uact->updateActionParameter(actionParam, QVariant::fromValue(actionValStr),
+                                        inputType);
+        }
+    }
+    uact->setOutputs(outMap);
+
+    // just let the user know ...
+    if (uact->getTriggerCount() == 0)
+    {
+        uact->setTrigger("", NMAction::NM_ACTION_TRIGGER_NIL);
+        NMLogWarn(<< "Load User Tool: No trigger parameters specified!");
+    }
+
+
+    if (uact->isCheckable())
+    {
+        connect(uact, SIGNAL(triggered(bool)), this, SLOT(selectUserTool(bool)));
+    }
+    else
+    {
+        connect(uact, SIGNAL(triggered()), this, SLOT(executeUserModel()));
+    }
+
+    toolbar->addAction(uact);
+    mUserActions.insert(uact->objectName(), uact);
+}
+
+void
+LUMASSMainWin::executeUserModel(void)
+{
+    NMAction* uact = qobject_cast<NMAction*>(sender());
+    if (uact)
+    {
+        NMModelController* ctrl = uact->getModelController();
+        if (ctrl)
+        {
+            const QString compName = "root";
+            QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
+        }
+    }
+}
+
+void
+LUMASSMainWin::updateUserModelTriggerParameters(NMAction* uact)
+{
+    if (uact == 0)
+    {
+        return;
+    }
+
+    QString filenameParam = uact->getTriggerKey(NMAction::NM_ACTION_TRIGGER_FILENAME);
+    QString colnameParam  = uact->getTriggerKey(NMAction::NM_ACTION_TRIGGER_COLUMN);
+    QString tablenameParam = uact->getTriggerKey(NMAction::NM_ACTION_TRIGGER_TABLENAME);
+
+    // selected layer filename
+    if (!filenameParam.isEmpty() && (colnameParam.isEmpty() && tablenameParam.isEmpty()))
+    {
+        NMLayer* selLayer = mLayerList->getSelectedLayer();
+        if (selLayer)
+        {
+            QString fn = selLayer->getFileName();
+            uact->setProperty(filenameParam.toStdString().c_str(), QVariant::fromValue(fn));
+        }
+    }
+
+
+}
+
+QMenu*
+LUMASSMainWin::createPopupMenu(void)
+{
+    QMenu* menu = QMainWindow::createPopupMenu();
+    if (!mLastToolBar.isEmpty())
+    {
+        menu->addSeparator();
+
+        QString removeText = QString("%1 '%2'").arg(tr("Remove")).arg(mLastToolBar);
+        QAction* removeAct = new QAction(removeText, menu);
+        menu->addAction(removeAct);
+
+        connect(removeAct, SIGNAL(triggered()), this, SLOT(removeUserToolBar()));
+
+        menu->addSeparator();
+        QAction* addAct = new QAction(tr("Add User Tool ..."), menu);
+        menu->addAction(addAct);
+
+        connect(addAct, SIGNAL(triggered()), this, SLOT(addUserToolToToolBar()));
+    }
+    return menu;
+}
+
+void
+LUMASSMainWin::addUserToolToToolBar()
+{
+    NMToolBar* bar = 0;
+    if (!mLastToolBar.isEmpty())
+    {
+        bar = this->findChild<NMToolBar*>(mLastToolBar);
+    }
+
+    if (bar && mUserTools.count())
+    {
+        bool bOK;
+        QString userTool = QInputDialog::getItem(bar,
+                                                 tr("Add User Tool"),
+                                                 tr("Select User Tool"),
+                                                 this->mUserTools,
+                                                 0, false, &bOK);
+        if (bOK && !userTool.isEmpty())
+        {
+            this->loadUserTool(userTool, bar->objectName());
+        }
+    }
+}
+
+void
+LUMASSMainWin::removeUserToolBar(void)
+{
+    if (!mLastToolBar.isEmpty())
+    {
+        NMToolBar* tb = this->findChild<NMToolBar*>(mLastToolBar);
+        if (tb)
+        {
+            QList<NMAction*> userActions = tb->findChildren<NMAction*>();
+            for (int ua=0; ua < userActions.size(); ++ua)
+            {
+                this->removeUserTool(userActions.at(ua));
+            }
+
+            this->removeToolBar(tb);
+            mLastToolBar.clear();
+
+            // remove tool entry from settings file to
+            // prevent reloading after restart
+            QSettings settings("LUMASS", "GUI");
+
+#ifdef __linux__
+            settings.setIniCodec("UTF-8");
+#endif
+
+            settings.beginGroup("UserToolBars");
+            settings.remove(tb->objectName());
+            settings.endGroup();
+
+            delete tb;
+        }
+    }
+    mLastToolBar.clear();
+}
+
+void
+LUMASSMainWin::updateLastToolBar(void)
+{
+    if (sender())
+    {
+        mLastToolBar = sender()->objectName();
+    }
+    else
+    {
+        mLastToolBar.clear();
+    }
+}
+
+void
+LUMASSMainWin::addUserToolBar()
+{
+    bool bOK = false;
+    QString tbname = QInputDialog::getText(this, tr("Add Tool Bar"),
+                                           tr("Tool Bar Name:"),
+                                           QLineEdit::Normal,
+                                           QString(), &bOK);
+    if (!bOK || tbname.isEmpty())
+    {
+        return;
+    }
+
+    createUserToolBar(tbname);
+}
+
+void
+LUMASSMainWin::createUserToolBar(const QString& tbname,
+                                 const QByteArray& ba)
+{
+
+    NMToolBar* toolbar = this->findChild<NMToolBar*>(tbname);
+    if (toolbar == 0)
+    {
+        toolbar = new NMToolBar(tbname, this);
+    }
+    else
+    {
+        NMLogInfo(<< "There is already a Tool Bar '"
+                  << tbname.toStdString() << "'!");
+        return;
+    }
+
+    if (ba.size())
+    {
+        toolbar->restoreGeometry(ba);
+    }
+
+    toolbar->setAllowedAreas(Qt::AllToolBarAreas);
+    toolbar->setObjectName(tbname);
+    toolbar->setOrientation(Qt::Horizontal);
+    toolbar->setLogger(mLogger);
+
+    QMainWindow* mw = static_cast<QMainWindow*>(this);
+    mw->addToolBar(toolbar);
+
+    connect(toolbar, SIGNAL(signalPopupMenu()), this, SLOT(updateLastToolBar()),
+            Qt::DirectConnection);
+
+}
+
+void
+LUMASSMainWin::selectUserTool(bool toggled)
+{
+    QAction* userAction = static_cast<QAction*>(sender());
+
+    if (userAction)
+    {
+        userAction->setChecked(toggled);
+
+        NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+                    ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+
+        if (iact)
+        {
+            if (toggled)
+            {
+                iact->setNMInteractorMode(NMVtkInteractorStyleImage::NM_INTERACT_MULTI);
+                iact->setUserTool(userAction->objectName().toStdString());
+            }
+            else
+            {
+                iact->setUserTool("");
+            }
+        }
+        this->updateExclusiveActions(userAction->objectName(), toggled);
+    }
+}
+
+void
+LUMASSMainWin::processUserPickAction(long long cellId)
+{
+    NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+                ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+    if (iact)
+    {
+        QString userTool = iact->getUserTool().c_str();
+        QMap<QString, NMAction*>::iterator actIt = mUserActions.find(userTool);
+        if (actIt != mUserActions.end())
+        {
+            NMAction* act = actIt.value();
+            QString key = act->getTriggerKey(NMAction::NM_ACTION_TRIGGER_ID);
+            if (!key.isEmpty())
+            {
+                NMModelController* ctrl = act->getModelController();
+                if (!ctrl->isModelRunning())
+                {
+                    ctrl->updateSettings(key, QVariant::fromValue(cellId));
+                    const QString compName = "root";
+                    QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
+                }
+                else
+                {
+                    NMLogInfo(<< userTool.toStdString()
+                              << " is already running - try again once its finished!");
+                }
+            }
+        }
+    }
+}
+
+void
+LUMASSMainWin::displayUserModelOutput(void)
+{
+    NMModelController* ctrl = static_cast<NMModelController*>(sender());
+    if (ctrl == 0)
+    {
+        return;
+    }
+
+    QMap<QString, NMAction*>::iterator actionIt = mUserActions.find(ctrl->objectName());
+    if (actionIt == mUserActions.end())
+    {
+        NMLogDebug(<< "displayUserModelOutput(): Couldn't find user model '"
+                   << ctrl->objectName().toStdString() << "'!");
+        return;
+    }
+    NMAction* userAction = actionIt.value();
+
+    const NMAction::NMOutputMap& outMap = userAction->getOutputs();
+    NMAction::NMOutputMap::const_iterator outIt = outMap.cbegin();
+    while (outIt != outMap.cend())
+    {
+        NMAction::NMActionOutputType outtype = outIt.value();
+        const QString& output = outIt.key();
+        NMModelComponent* comp = ctrl->getComponent(output);
+        if (comp == 0)
+        {
+            QList<NMModelComponent*> setofcomps = ctrl->getComponents(output);
+            if (setofcomps.count() > 0)
+            {
+                comp = setofcomps.at(0);
+            }
+        }
+
+        if (comp == 0)
+        {
+            NMLogError(<< userAction->objectName().toStdString() << ": "
+                       << "Invalid output component '" << output.toStdString() << "'!");
+            continue;
+        }
+
+        // we can just display an output buffer (default), or
+        // specify a reader or writer component, whose filename
+        // specifies the output data set to be displayed
+        switch (outtype)
+        {
+        case NMAction::NM_ACTION_DISPLAY_FILENAME:
+            {
+                // always just grab the first filename from the list
+                QVariant fnVar = comp->property("FileNames");
+                if (fnVar.isValid() && fnVar.type() == QVariant::StringList)
+                {
+                    QString fn = fnVar.toStringList().at(0);
+                    this->loadImageLayer(fn);
+                }
+                // and here comes the impl. for tables
+                else
+                {
+                    fnVar = comp->property("FileName");
+                    if (fnVar.isValid())
+                    {
+                        QVariant tn = comp->property("TableName");
+                        if (tn.isValid())
+                        {
+                            this->importTable(fnVar.toString(),
+                                              LUMASSMainWin::NM_TABVIEW_STANDALONE,
+                                              false,
+                                              tn.toString());
+                        }
+                    }
+                }
+            }
+            break;
+
+        default:
+        case NMAction::NM_ACTION_DISPLAY_BUFFER:
+            {
+                // ============================================
+                //              OUTPUT LAYER
+                // ============================================
+                if (!comp->getOutput(0).isNull() && comp->getOutput(0)->getDataObject() != 0)
+                {
+                    QString layerName = output;
+                    //            if (!comp->getUserID().isEmpty())
+                    //            {
+                    //                layerName = comp->getUserID();
+                    //            }
+
+                    vtkRenderWindow* renWin = ui->qvtkWidget->GetRenderWindow();
+                    NMImageLayer* iLayer = new NMImageLayer(renWin, 0, this);
+                    iLayer->setObjectName(layerName);
+                    iLayer->setLogger(mLogger);
+                    connectImageLayerProcSignals(iLayer);
+
+                    iLayer->setImage(comp->getOutput(0));
+
+                    connect(comp, SIGNAL(NMDataComponentChanged()), iLayer, SLOT(updateSourceBuffer()));
+                }
+                // =========================================================
+                //              STAND ALONE TABLE
+                // =========================================================
+                else if (!comp->getOutput(0).isNull() && comp->getOutput(0)->getOTBTab().IsNotNull())
+                {
+                    otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(comp->getOutput(0)->getOTBTab().GetPointer());
+
+                    if (sqltab && !sqltab->GetDbFileName().empty())
+                    {
+                        createTableView(sqltab);
+                    }
+                }
+            }
+            break;
+        }
+
+        // get the next tool output
+        ++outIt;
+    }
+}
+
+void
+LUMASSMainWin::scanUserModels()
+{
+    mUserModelListWidget->clear();
+    mUserModelPath.clear();
+    mUserTools.clear();
+
+    QString folder = mSettings["UserModels"].toString();
+
+    QFileInfo finfo(folder);
+    QDir dir = finfo.absoluteFilePath();
+
+    QFileInfoList lst = dir.entryInfoList();
+    for (int i=0; i < lst.size(); ++i)
+    {
+        const QFileInfo& fifo = lst.at(i);
+        QString path = dir.absolutePath();
+        if (fifo.isDir())
+        {
+            path = fifo.absoluteFilePath();
+        }
+
+        QString lmvFile = QString("%1/%2.lmv")
+                .arg(path)
+                .arg(fifo.baseName());
+        QString lmxFile = QString("%1/%2.lmx")
+                .arg(path)
+                .arg(fifo.baseName());
+        QString toolTable = QString("%1/%2Tool.ldb")
+                .arg(path)
+                .arg(fifo.baseName());
+
+        if (QFile::exists(lmvFile) && QFile::exists(lmxFile))
+        {
+            if (mUserModelPath.find(fifo.baseName()) == mUserModelPath.end())
+            {
+                QPixmap pm;
+                pm.load(":model-icon.png");
+                QListWidgetItem* wi = new QListWidgetItem(QIcon(pm),
+                                                          fifo.baseName(),
+                                                          mUserModelListWidget);
+                QFileInfo modelFileInfo(lmxFile);
+                mUserModelListWidget->addItem(wi);
+                mUserModelPath[fifo.baseName()] = modelFileInfo.absolutePath();
+            }
+
+            if (QFile::exists(toolTable))
+            {
+                mUserTools << fifo.baseName();
+            }
+        }
+        else
+        {
+            // log a warning that not all model files are valid
+            NMLogDebug(<< "Scanning User Models: "
+                      << fifo.absolutePath().toStdString() << "/"
+                      << fifo.baseName().toStdString()
+                      << (fifo.suffix().isEmpty() ? "" : ".") << fifo.suffix().toStdString()
+                      << " is not a LUMASS model!");
+        }
+    }
+}
+
+void
+LUMASSMainWin::addModelToUserModelList(const QString& modelName)
+{
+    bool bOnList = false;
+    for (int i=0; i < mUserModelListWidget->count(); ++i)
+    {
+        if (mUserModelListWidget->item(i)->text().compare(modelName, Qt::CaseInsensitive) == 0)
+        {
+            bOnList = true;
+            break;
+        }
+    }
+
+
+    // =========================================
+    //   pick a nice name for the model
+    // =========================================
+    NMModelComponent* mc = NMGlobalHelper::getModelController()->getComponent(modelName);
+    QString basename = modelName;
+
+    if (mc)
+    {
+        basename = mc->getUserID();
+        if (basename.isEmpty())
+        {
+            basename = mc->getDescription();
+            if (basename.isEmpty())
+            {
+                basename = modelName;
+            }
+        }
+    }
+
+    QString filename = QString("%1/%2.lmx")
+                        .arg(mSettings["UserModels"].toString())
+                        .arg(basename);
+    QString foldername = QString("%1/%2")
+                        .arg(mSettings["UserModels"].toString())
+                        .arg(basename);
+
+    QFileInfo fileInfo(filename);
+    QFileInfo folderInfo(foldername);
+
+    // =========================================
+    //   check, whether we've got a model with this name already
+    // =========================================
+    bool bWriteModel = true;
+    bool bAddToList = true;
+    if (fileInfo.exists() || folderInfo.exists())
+    {
+        if (QMessageBox::NoButton == QMessageBox::warning(
+                    this, tr("Add User Model"),
+                    QString("The model '%1' already exists! Do you "
+                            "want to override the model?").arg(basename)))
+        {
+            bWriteModel = false;
+        }
+        else
+        {
+            if (folderInfo.exists())
+            {
+                filename = QString("%1/%2.lmx")
+                        .arg(foldername).arg(basename);
+            }
+        }
+        bAddToList = false;
+    }
+
+    // =========================================
+    //   if all lights are green, add the model
+    // =========================================
+    if (bWriteModel)
+    {
+        QList<QGraphicsItem*> items;
+        QGraphicsItem* theItem = ui->modelViewWidget->getScene()->getComponentItem(modelName);
+        if (theItem != 0)
+        {
+            items << theItem;
+            ui->modelViewWidget->exportItems(items, filename, false);
+
+        }
+
+        if (bAddToList)
+        {
+            QPixmap pm;
+            pm.load(":model-icon.png");
+            QListWidgetItem* wi = new QListWidgetItem(QIcon(pm), basename, mUserModelListWidget);
+            mUserModelListWidget->addItem(wi);
+            QFileInfo storageFileInfo(filename);
+            mUserModelPath[basename] = storageFileInfo.absolutePath();
+        }
+    }
+}
+
+void
+LUMASSMainWin::show()
+{
+    QMainWindow::show();
+    if (mbFirstTimeLoaded)
+    {
+        mbFirstTimeLoaded = false;
+        emit windowLoaded();
+    }
+}
+
+void LUMASSMainWin::readSettings()
+{
+    QSettings settings("LUMASS", "GUI");
+
+#ifdef __linux__
+    settings.setIniCodec("UTF-8");
+#endif
+
+    // ================================================================
+    //              LUMASSMainWin
+    // ================================================================
+    settings.beginGroup("LUMASSMainWin");
+
+    // size & toolbars & docks
+    restoreGeometry(settings.value("geometry").toByteArray());
+    restoreState(settings.value("windowState").toByteArray());
+
+    // custom widgets' state
+    for (int i=0; i < ui->compWidgetList->getWidgetItemCount(); ++i)
+    {
+        QString key = QString("%1/visible").arg(ui->compWidgetList->getWidgetItemName(i));
+        QVariant val = settings.value(key);
+        if (val.isValid())
+        {
+            ui->compWidgetList->setWidgetItemVisible(i, val.toBool());
+        }
+    }
+
+    for (int i=0; i < ui->infoWidgetList->getWidgetItemCount(); ++i)
+    {
+        QString key = QString("%1/visible").arg(ui->infoWidgetList->getWidgetItemName(i));
+        QVariant val = settings.value(key);
+        if (val.isValid())
+        {
+            ui->infoWidgetList->setWidgetItemVisible(i, val.toBool());
+        }
+    }
+
+    QVariant val = settings.value("MapView/visible");
+    if (val.isValid())
+    {
+        mMiscActions["actMapBtn"]->setChecked(val.toBool());
+        ui->qvtkWidget->setVisible(val.toBool());
+    }
+
+    val = settings.value("ModelView/visible");
+    if (val.isValid())
+    {
+        mMiscActions["actModelBtn"]->setChecked(val.toBool());
+        ui->modelViewWidget->setVisible(val.toBool());
+    }
+
+    val = settings.value("HorzLayout");
+    if (val.isValid())
+    {
+        if (val.toBool()) // horz layout
+        {
+            mMiscActions["actHorzLayout"]->setChecked(true);
+            this->swapWindowLayout(mMiscActions["actHorzLayout"]);
+        }
+        else // vert layout
+        {
+            mMiscActions["actVertLayout"]->setChecked(true);
+            this->swapWindowLayout(mMiscActions["actVertLayout"]);
+        }
+    }
+
+    val = settings.value("CentralSplitter");
+    if (val.isValid())
+    {
+        QSplitter* splitter = this->ui->centralWidget->findChild<QSplitter*>("MainSplitter");
+        splitter->restoreState(val.toByteArray());
+    }
+    settings.endGroup();
+
+    // ================================================================
+    //              Directories
+    // ================================================================
+    settings.beginGroup("Directories");
+    val = settings.value("Workspace");
+    if (val.isValid())
+    {
+        mSettings["Workspace"] = val.toString();
+        sqlite3_temp_directory = const_cast<char*>(
+                    mSettings["Workspace"].toString().toStdString().c_str());
+        emit settingsUpdated("Workspace", val);
+    }
+
+    val = settings.value("UserModels");
+    if (val.isValid())
+    {
+        mSettings["UserModels"] = val.toString();
+        emit settingsUpdated("UserModels", val);
+    }
+
+    settings.endGroup();
+
+    // ================================================================
+    //              re scan user models
+    // ================================================================
+    scanUserModels();
+
+    // ================================================================
+    //              User TOOLS
+    // ================================================================
+    settings.beginGroup("UserToolBars");
+
+    QStringList toolBars = settings.childGroups();
+    foreach (const QString& tbKey, toolBars)
+    {
+        settings.beginGroup(tbKey);
+        QVariant baVar = settings.value("geometry");
+        QByteArray ba;
+        if (baVar.isValid())
+        {
+            ba = baVar.toByteArray();
+        }
+        this->createUserToolBar(tbKey, ba);
+
+        QStringList userTools = settings.childKeys();
+        foreach(const QString& utKey, userTools)
+        {
+            QVariant utModelVar = settings.value(utKey);
+            if (utModelVar.isValid() && utModelVar.type() == QVariant::String)
+            {
+                if (mUserTools.contains(utModelVar.toString()))
+                {
+                    this->loadUserTool(utModelVar.toString(), tbKey);
+                }
+                else
+                {
+                    NMLogError(<< "Failed to load user tool '"
+                               << utModelVar.toString().toStdString() << "'!"
+                               << " Double check the 'UserModels' path!");
+                }
+            }
+        }
+        settings.endGroup();
+    }
+}
+
+void LUMASSMainWin::writeSettings(void)
+{
+    QSettings settings("LUMASS", "GUI");
+
+#ifdef __linux__
+    settings.setIniCodec("UTF-8");
+#endif
+
+    // ================================================================
+    //              LUMASSMainWin
+    // ================================================================
+
+    settings.beginGroup("LUMASSMainWin");
+
+    // size & toolbars & docks
+    settings.setValue("geometry", saveGeometry());
+    settings.setValue("windowState", saveState());
+
+    // custom widgets states
+    for (int i=0; i < ui->compWidgetList->getWidgetItemCount(); ++i)
+    {
+        QString key = QString("%1/visible").arg(ui->compWidgetList->getWidgetItemName(i));
+        settings.setValue(key, ui->compWidgetList->isWidgetItemVisible(i));
+    }
+
+    for (int i=0; i < ui->infoWidgetList->getWidgetItemCount(); ++i)
+    {
+        QString key = QString("%1/visible").arg(ui->infoWidgetList->getWidgetItemName(i));
+        settings.setValue(key, ui->infoWidgetList->isWidgetItemVisible(i));
+    }
+
+    // map and model view
+    settings.setValue("MapView/visible", ui->qvtkWidget->isVisible());
+    settings.setValue("ModelView/visible", ui->modelViewWidget->isVisible());
+    settings.setValue("HorzLayout", mMiscActions["actHorzLayout"]->isChecked());
+
+    // central splitter position
+    QSplitter* splitter = this->ui->centralWidget->findChild<QSplitter*>("MainSplitter");
+    settings.setValue("CentralSplitter", splitter->saveState());
+
+    settings.endGroup();
+
+    // ================================================================
+    //              Directories
+    // ================================================================
+    settings.beginGroup("Directories");
+
+    settings.setValue("Workspace", mSettings["Workspace"]);
+    settings.setValue("UserModels", mSettings["UserModels"]);
+
+    settings.endGroup();
+
+    // ================================================================
+    //              User TOOLS
+    // ================================================================
+    settings.beginGroup("UserToolBars");
+
+    QList<NMToolBar*> toolBars = this->findChildren<NMToolBar*>();
+    foreach(const NMToolBar* tb, toolBars)
+    {
+        settings.beginGroup(tb->objectName());
+        settings.setValue("geometry", tb->saveGeometry());
+
+        QList<NMAction*> userTools = tb->findChildren<NMAction*>();
+        foreach(const NMAction* act, userTools)
+        {
+            settings.setValue(act->objectName(), act->getModelName());
+        }
+        settings.endGroup();
+    }
+    settings.endGroup();
+}
+
+void LUMASSMainWin::closeEvent(QCloseEvent* event)
+{
+    writeSettings();
+    QMainWindow::closeEvent(event);
 }
 

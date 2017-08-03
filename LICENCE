@@ -88,3 +88,10 @@ license: public domain
 --- lumass/gui/resources/network-globe2.png
 source Crystal Icon set <https://sourceforge.net/projects/openiconlibrary/>
 licence: http://creativecommons.org/licenses/LGPL/2.1/
+
+
+--- lumass/gui/resources/document-save.png
+--- lumass/gui/resources/document-save-as.png
+source: oxygen-icons5: https://cgit.kde.org/oxygen-icons5.git
+licence: https://www.gnu.org/licenses/lgpl-3.0.en.html
+

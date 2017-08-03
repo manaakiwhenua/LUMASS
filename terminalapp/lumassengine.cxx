@@ -283,7 +283,7 @@ void doMOSOsingle(const QString& losFileName)
     QThreadPool::globalInstance()->start(m);
 }
 
-void doModel(const QString& modelFile)
+void doModel(const QString& modelFile, QString &workspace)
 {
     NMDebugCtx(ctx, << "...");
 
@@ -298,11 +298,48 @@ void doModel(const QString& modelFile)
         return;
     }
 
-    NMModelController* ctrl = NMModelController::getInstance();
+    //NMModelController* ctrl = NMModelController::getInstance();
+    QScopedPointer<NMModelController> ctrl(new NMModelController());
+    ctrl->setLogger(NMLoggingProvider::This()->getLogger());
+    ctrl->updateSettings("LUMASSPath",
+                         qApp->applicationDirPath());
+
+    // ====================================================
+    //   set ModelController settings
+    // ====================================================
+    QSettings settings("LUMASS", "GUI");
+
+#ifdef __linux__
+    settings.setIniCodec("UTF-8");
+#endif
+
+    settings.beginGroup("Directories");
+
+    QVariant val = settings.value("Workspace");
+    if (val.isValid() && workspace.isEmpty())
+    {
+        workspace = val.toString();
+    }
+
+    ctrl->updateSettings("Workspace", QVariant::fromValue(workspace));
+    sqlite3_temp_directory = const_cast<char*>(
+                workspace.toStdString().c_str());
+
+    val = settings.value("UserModels");
+    if (val.isValid())
+    {
+        ctrl->updateSettings("UserModels", val);
+    }
+
+    settings.endGroup();
+
+    // ====================================================
+
     ctrl->getLogger()->setHtmlMode(false);
 
     QMap<QString, QString> nameRegister;
     NMModelSerialiser xmlS;
+    xmlS.setModelController(ctrl.data());
     xmlS.setLogger(ctrl->getLogger());
 
     // connect the logger to the logging provider
@@ -314,14 +351,14 @@ void doModel(const QString& modelFile)
     root->setDescription("Top level model component managed by the ModelController");
     ctrl->addComponent(root);
 
-    nameRegister = xmlS.parseComponent(modelFile, 0, ctrl);
+    nameRegister = xmlS.parseComponent(modelFile, 0, ctrl.data());
 
     // ==============================================
     //  EXECUTE MODEL
     // ==============================================
     GDALAllRegister();
     GetGDALDriverManager()->AutoLoadDrivers();
-    sqlite3_temp_directory = getenv("HOME");
+    sqlite3_temp_directory = const_cast<char*>(workspace.toStdString().c_str());//getenv("HOME");
 
     ctrl->executeModel("root");
 
@@ -339,6 +376,7 @@ void showHelp()
                            << std::endl << std::endl;
     std::cout << "Usage: lumassengine --moso <settings file (*.los)> | "
                                   << "--model <LUMASS model file (*.lmx)> "
+                                  << "[--workspace <absolute directory path for '$[LUMASS:Workspace]$'>] "
                                   << "[--logfile <file name>]"
                                   << std::endl << std::endl;
 }
@@ -383,6 +421,7 @@ int main(int argc, char** argv)
     QString losFileName;
     QString modelFileName;
     QString logFileName;
+    QString workspace;
 
 	int arg = 1;
 	while (arg < argc-1)
@@ -419,6 +458,16 @@ int main(int argc, char** argv)
             {
                 NMWarn(ctx, << "Log file directory is not writeable!");
                 logFileName.clear();
+            }
+        }
+        else if (theArg == "--workspace")
+        {
+            workspace = argv[arg+1];
+            QFileInfo difo(workspace);
+            if (!difo.isDir() || !difo.isWritable())
+            {
+                NMErr(ctx, << "Cannot write into workspace '"
+                           << workspace.toStdString() << "'!");
             }
         }
 
@@ -459,7 +508,7 @@ int main(int argc, char** argv)
 		doMOSO(losFileName);
 		break;
     case NM_ENGINE_MODEL:
-        doModel(modelFileName);
+        doModel(modelFileName, workspace);
         break;
 	default:
         NMWarn(ctx, << "Please specify either an optimisation "

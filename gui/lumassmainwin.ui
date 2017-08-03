@@ -50,12 +50,12 @@
      <x>0</x>
      <y>0</y>
      <width>1001</width>
-     <height>35</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
     <property name="title">
-     <string>Ob&amp;ject</string>
+     <string>File</string>
     </property>
     <addaction name="actionLoad_VTK_PolyData"/>
     <addaction name="separator"/>
@@ -132,11 +132,19 @@
      <string>&amp;GIS</string>
     </property>
    </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="actionConfigure_Settings"/>
+    <addaction name="actionAdd_Toolbar"/>
+   </widget>
    <addaction name="menuObject"/>
    <addaction name="menuMOSO"/>
    <addaction name="menuGIS_ish"/>
    <addaction name="menu3D_Vis"/>
    <addaction name="menuView"/>
+   <addaction name="menuSettings"/>
    <addaction name="menuAbout"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
@@ -166,7 +174,7 @@
     <set>Qt::AllDockWidgetAreas</set>
    </property>
    <property name="windowTitle">
-    <string>&amp;Layers  Components</string>
+    <string>Layers and Components</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -189,8 +197,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>76</width>
-          <height>581</height>
+          <width>58</width>
+          <height>637</height>
          </rect>
         </property>
         <property name="acceptDrops">
@@ -204,7 +212,7 @@
   </widget>
   <widget class="QDockWidget" name="componentInfoDock">
    <property name="windowTitle">
-    <string>Attributes &amp; Properties</string>
+    <string>Attributes and Properties</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -227,8 +235,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>76</width>
-          <height>581</height>
+          <width>58</width>
+          <height>637</height>
          </rect>
         </property>
        </widget>
@@ -239,7 +247,7 @@
   </widget>
   <widget class="QDockWidget" name="logDock">
    <property name="windowTitle">
-    <string>&amp;Notifications</string>
+    <string>Notifications</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -417,6 +425,10 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="icon">
+    <iconset resource="nmresources.qrc">
+     <normaloff>:/view-map.png</normaloff>:/view-map.png</iconset>
+   </property>
    <property name="text">
     <string>Map &amp;View</string>
    </property>
@@ -424,6 +436,11 @@
   <action name="actionShow_Model_View">
    <property name="checkable">
     <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normalon>:/model-icon.png</normalon>
+    </iconset>
    </property>
    <property name="text">
     <string>Mo&amp;del View</string>
@@ -514,6 +531,16 @@
    </property>
    <property name="text">
     <string>&amp;Notifications</string>
+   </property>
+  </action>
+  <action name="actionConfigure_Settings">
+   <property name="text">
+    <string>&amp;Configure Settings...</string>
+   </property>
+  </action>
+  <action name="actionAdd_Toolbar">
+   <property name="text">
+    <string>Add Toolbar</string>
    </property>
   </action>
  </widget>

@@ -180,6 +180,7 @@ NMHoverEdit::eventFilter(QObject *obj, QEvent *event)
                     mFindReplaceDlg = new NMFindReplaceDialog(mEdit);
                     mFindReplaceDlg->setWindowTitle(tr("Find and Replace"));
                 }
+                mFindReplaceDlg->setEnabled(true);
                 mFindReplaceDlg->show();
                 return true;
             }
@@ -218,7 +219,7 @@ NMHoverEdit::showExpressionPreview(bool preview)
     QString populatedExpr = "Parameter expression evaluation failed - see notification window!)";
     try
     {
-        populatedExpr = NMModelController::getInstance()->processStringParameter(mComp, curExpr);
+        populatedExpr = NMGlobalHelper::getModelController()->processStringParameter(mComp, curExpr);
     }
     catch(NMMfwException& me)
     {
@@ -249,7 +250,7 @@ void
 NMHoverEdit::updateCompleter()
 {
     QMap<QString, QString> compMap;
-    QStringList userIds = NMModelController::getInstance()->getUserIDs();
+    QStringList userIds = NMGlobalHelper::getModelController()->getUserIDs();
     userIds.removeDuplicates();
     userIds.removeOne(QString(""));
     foreach(const QString& uid, userIds)
@@ -257,7 +258,7 @@ NMHoverEdit::updateCompleter()
         compMap.insert(uid, "UserID");
     }
 
-    QStringList compNames = NMModelController::getInstance()->getRepository().keys();
+    QStringList compNames = NMGlobalHelper::getModelController()->getRepository().keys();
     foreach(const QString& cn, compNames)
     {
         compMap.insert(cn, "ComponentName");
@@ -276,7 +277,8 @@ NMHoverEdit::showEvent(QShowEvent *event)
 void
 NMHoverEdit::setProperty(const QString &compName, const QString& propName)
 {
-    NMModelComponent* comp = NMModelController::getInstance()->getComponent(compName);
+    NMModelController* ctrl = NMGlobalHelper::getModelController();
+    NMModelComponent* comp = ctrl->getComponent(compName);
     if (comp == 0)
     {
         if (mProc) this->disconnect(mProc);
@@ -310,7 +312,7 @@ NMHoverEdit::setProperty(const QString &compName, const QString& propName)
 
     if (comp)
     {
-        if (NMModelController::getPropertyList(comp).contains(propName))
+        if (ctrl->getPropertyList(comp).contains(propName))
         {
             connect(comp, SIGNAL(nmChanged()), this, SLOT(updateEditor()));
             mComp = comp;
@@ -322,7 +324,7 @@ NMHoverEdit::setProperty(const QString &compName, const QString& propName)
             NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
             if (ic && ic->getProcess() != 0)
             {
-                if (NMModelController::getPropertyList(ic->getProcess()).contains(propName))
+                if (ctrl->getPropertyList(ic->getProcess()).contains(propName))
                 {
                     mProc = ic->getProcess();
                     mComp = comp;

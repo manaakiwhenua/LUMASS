@@ -30,8 +30,8 @@
 #include "NMLogWidget.h"
 
 class QVTKWidget;
-//class LUMASSMainWin;
 class vtkRenderWindow;
+class NMModelController;
 
 class NMGlobalHelper
 {
@@ -41,10 +41,13 @@ public:
     static void startBusy(void);
     static void endBusy(void);
 
-    static NMLogWidget* getLogWidget(void);
     static LUMASSMainWin* getMainWindow(void);
+    static NMModelController* getModelController(void);
+    static NMLogWidget* getLogWidget(void);
     static vtkRenderWindow* getRenderWindow(void);
     static QVTKWidget* getVTKWidget(void);
+    static QString getUserSetting(const QString& key);
+    static QStringList getUserSettingsList(void);
     static QString getMultiLineInput(const QString& title,
                               const QString& suggestion, QWidget* parent=0);
     static QStringList getMultiItemSelection(const QString& title,
@@ -57,7 +60,7 @@ public:
 
     static QString getRandomString(int len);
 
-    void appendLogMsg(const QString& msg);
+    static void appendLogMsg(const QString& msg);
 
 private:
     static const std::string ctx;

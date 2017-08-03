@@ -30,7 +30,7 @@
 #include "NMLogger.h"
 
 // DECLARATIONS
-void doModel(const QString& modelFile);
+void doModel(const QString& modelFile, QString &workspace);
 void doMOSO(const QString& losFileName);
 void doMOSObatch(const QString& losFileName);
 void doMOSOsingle(const QString& losFileName);

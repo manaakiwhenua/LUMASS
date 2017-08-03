@@ -45,8 +45,15 @@ public slots:
     void setWidgetItemVisible(int index, bool visible);
     void setWidgetItemVisible(const QString& name, bool visible);
 
+    int getWidgetIndex(const QString& name);
+    int getWidgetItemCount(void);
+    bool isWidgetItemVisible(int index);
+    bool isWidgetItemVisible(const QString& name);
+
     QWidget* getWidgetItem(int index);
     QWidget* getWidgetItem(const QString& name);
+
+    QString getWidgetItemName(int index);
 
 protected slots:
 

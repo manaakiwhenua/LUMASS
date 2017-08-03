@@ -255,7 +255,21 @@ NMWidgetListView::getWidgetItem(int index)
 QWidget*
 NMWidgetListView::getWidgetItem(const QString& name)
 {
+    int idx = getWidgetIndex(name);
+
+    if (idx < 0 || idx >= static_cast<int>(mBtnList.size()))
+    {
+        return 0;
+    }
+
+    return mWidgetList.value(mBtnList.at(idx));
+}
+
+int
+NMWidgetListView::getWidgetIndex(const QString& name)
+{
     QWidget* ret = 0;
+    int idx = -1;
 
     QMap<QPushButton*, QWidget*>::const_iterator it = mWidgetList.cbegin();
     while (it != mWidgetList.cend())
@@ -268,14 +282,55 @@ NMWidgetListView::getWidgetItem(const QString& name)
         ++it;
     }
 
-    return ret;
+    for (int b=0; b < mBtnList.size(); ++b)
+    {
+        if (mBtnList.at(b) == ret)
+        {
+            idx = b;
+            break;
+        }
+    }
+
+    return idx;
 }
 
+int
+NMWidgetListView::getWidgetItemCount(void)
+{
+    return mBtnList.size();
+}
 
+bool
+NMWidgetListView::isWidgetItemVisible(const QString &name)
+{
+    int idx = getWidgetIndex(name);
+    return isWidgetItemVisible(idx);
+}
 
+bool
+NMWidgetListView::isWidgetItemVisible(int index)
+{
+    if (index < 0 || index >= static_cast<int>(mBtnList.size()))
+    {
+        return false;
+    }
 
+    return mBtnList.at(index)->isChecked();
+}
 
+QString
+NMWidgetListView::getWidgetItemName(int index)
+{
+    QString ret;
+    if (index < 0 || index >= mBtnList.size())
+    {
+        return ret;
+    }
 
+    QString name = mBtnList.at(index)->text();
+    name = name.replace("&", "");
+    return name;
+}
 
 
 

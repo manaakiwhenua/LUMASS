@@ -23,6 +23,7 @@
 #include <QTime>
 
 #include "NMModelController.h"
+#include "NMGlobalHelper.h"
 
 NMLogWidget::NMLogWidget(QWidget *parent) : QTextBrowser(parent)
 {
@@ -56,7 +57,9 @@ NMLogWidget::insertHtml(const QString& text)
         {
             if (!captured.contains(tt))
             {
-                if (NMModelController::getInstance()->contains(tt))
+                if (    NMGlobalHelper::getModelController()
+                    &&  NMGlobalHelper::getModelController()->contains(tt)
+                   )
                 {
                     QString anchortext = QString("<a href=\"#%1\">%1</a>")
                             .arg(tt);

@@ -33,6 +33,7 @@
 #include <QProgressBar>
 #include <QToolBox>
 #include <QListWidget>
+#include "qttreepropertybrowser.h"
 
 // OGR
 #include "ogrsf_frmts.h"
@@ -66,6 +67,7 @@
   #include "otbRasdamanImageIOFactory.h"
 #endif
 
+class NMModelController;
 class NMModelComponent;
 class NMComponentEditor;
 class ModelComponentList;
@@ -78,6 +80,9 @@ class NMLayer;
 class NMTableView;
 class NMVectorLayer;
 class NMLogWidget;
+class QtProperty;
+class NMAction;
+class NMListWidget;
 
 namespace Ui
 {
@@ -94,10 +99,11 @@ public:
 
     friend class NMGlobalHelper;
 
-    typedef enum {NM_TABVIEW_SCENE,
-                  NM_TABVIEW_STANDALONE
-
-                 }TableViewType;
+    enum TableViewType
+        {
+            NM_TABVIEW_SCENE,
+            NM_TABVIEW_STANDALONE
+        };
 
     vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
@@ -123,6 +129,7 @@ public:
     void checkRemoveLayerInfo(NMLayer* l);
     void checkInteractiveLayer();
 
+    //NMModelController* getModelController(void);
     NMLogWidget* getLogWidget(void);
     NMLogger* getLogger(){return mLogger;}
 
@@ -135,6 +142,8 @@ signals:
     void noExclusiveToolSelected(void);
     void isAboutToClose(void);
     void componentOfInterest(const QString&);
+    void windowLoaded(void);
+    void settingsUpdated(const QString&, QVariant);
 
 public slots:
 
@@ -150,6 +159,7 @@ public slots:
     void showBusyValue(int);
 	void showBusyEnd();
 	void loadImageLayer();
+    void loadImageLayer(const QString& fileName);
 	void import3DPointSet();			// imports char (" " | "," | ";" | "\t") seperated text (x,y,z)
 	void toggle3DStereoMode();
 	void toggle3DSimpleMode();
@@ -203,9 +213,35 @@ public slots:
     void zoomToContent();
     void updateExclusiveActions(const QString& checkedAction,
                                 bool toggled);
-
+    void configureSettings(void);
     void searchModelComponent(void);
 
+    void selectUserTool(bool toggled);
+
+    // SYSTEM SLOTS & SETTINGS
+    void show();
+    void readSettings(void);
+    QMenu* createPopupMenu(void);
+
+    // USER MODEL
+    void addUserToolBar();
+    void createUserToolBar(const QString& tbname,
+                           const QByteArray& ba=QByteArray());
+    void updateLastToolBar(void);
+    void removeUserToolBar(void);
+    void addUserToolToToolBar();
+
+    QString getUserModelPath(const QString& model);
+    void executeUserModel(void);
+    void updateUserModelTriggerParameters(NMAction* uact);
+    void scanUserModels(void);
+    void displayUserModelOutput(void);
+    void loadUserTool(const QString& userModel, const QString& toolBarName);
+    void removeUserTool(NMAction* act);
+
+
+
+    // logging
 
     void appendLogMsg(const QString& msg);
     void appendHtmlMsg(const QString& msg);
@@ -279,11 +315,23 @@ public slots:
     bool checkTree(const int& rootId, const int& stopId, QList<int>& idHistory,
                    const QMultiMap<int, int> &treeMap);
 
+protected slots:
+    void settingsFeeder(QtProperty* prop, const QStringList& strVal);
+    void updateSettings(QtProperty* prop, const QVariant& val);
+    void updateSettings(const QString& setting, const QVariant& val);
 
 protected:
 
+    void mousePressEvent(QMouseEvent *event);
     bool eventFilter(QObject *obj, QEvent *event);
     void saveAsImageFile(bool onlyVisImg);
+    void closeEvent(QCloseEvent* event);
+    void writeSettings(void);
+    void populateSettingsBrowser();
+    void addModelToUserModelList(const QString& modelName);
+
+    void processUserPickAction(long long cellId);
+
 
     //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
 #ifndef GDAL_200
@@ -308,6 +356,8 @@ protected:
      * intersects an even number of times
      * */
     bool ptInPoly2D(double pt[3], vtkCell* cell);
+
+    QString checkMimeDataForModelComponent(const QMimeData *mimedata);
 
     template<class T>
     void getDoubleFromVtkTypedPtr(T* in, double* out)
@@ -454,6 +504,10 @@ private:
 	// in all 3 dims allowed or restricted to 2D)
     bool m_b3D;
 
+    // indicates whether the main window is being
+    // loaded for the first time
+    bool mbFirstTimeLoaded;
+
     // the GUI containing all controls of the main window
     Ui::LUMASSMainWin *ui;
 	// for showing the mouse position in real world coordinates
@@ -464,6 +518,11 @@ private:
     QToolBar* mMapToolBar;
     QIcon mLUMASSIcon;
 
+    QString mLastToolBar;
+
+    QMap<QString, QVariant> mSettings;
+
+    QMap<QString, QAction*> mMiscActions;
     QList<QAction*> mExclusiveActions;
     bool mbUpdatingExclusiveActions;
 
@@ -502,15 +561,27 @@ private:
 	// (unique) table name
 	QMap<QString, QPair<void*, sqlite3*> > mTableAdminObjects;
 
-    QListWidget* mTableListWidget;
+    QMap<QString, NMAction*> mUserActions;
+
+    QtTreePropertyBrowser* mSettingsBrowser;
+
+    //QListWidget* mTableListWidget;
+    NMListWidget* mTableListWidget;
+
+    // USER MODELS
+    //QListWidget* mUserModelListWidget;
+    NMListWidget* mUserModelListWidget;
+    QMap<QString, QString> mUserModelPath;
+    QStringList mUserTools;
 
     NMLogger* mLogger;
-
     QObject* mActiveWidget;
 
     // the last event objects filtered by LUMASSMainWin
     QObject* mLastSender;
     QEvent* mLastEvent;
+
+    //NMModelController* mModelController;
 
 
 #ifdef BUILD_RASSUPPORT

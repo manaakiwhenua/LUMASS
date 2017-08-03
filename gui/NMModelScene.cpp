@@ -87,17 +87,23 @@ NMModelScene::dragLeaveEvent(QGraphicsSceneDragDropEvent *event)
             {
                 NMProcessComponentItem* pi = qgraphicsitem_cast<NMProcessComponentItem*>(
                             mDragItemList.at(0));
+                NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(
+                            mDragItemList.at(0));
+                QString compName;
                 if (pi != 0)
                 {
-                    if (pi->getIsDataBufferItem())
-                    {
-                        leaveText = QString::fromLatin1("_NMModelScene_:%1").arg(pi->getTitle());
-                        QMimeData* md = const_cast<QMimeData*>(event->mimeData());
-                        md->setText(leaveText);
-                        event->setMimeData(md);
-                        event->accept();
-                    }
+                    compName = pi->getTitle();
                 }
+                else if (ai != 0)
+                {
+                    compName = ai->getTitle();
+                }
+
+                leaveText = QString::fromLatin1("_NMModelScene_:%1").arg(compName);
+                QMimeData* md = const_cast<QMimeData*>(event->mimeData());
+                md->setText(leaveText);
+                event->setMimeData(md);
+                event->accept();
             }
         }
     }
@@ -131,6 +137,7 @@ NMModelScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
         if (    mimeText.startsWith(QString::fromLatin1("_NMProcCompList_:"))
             ||  mimeText.startsWith(QString::fromLatin1("_NMModelScene_:"))
             ||  mimeText.startsWith(QString::fromLatin1("_ModelComponentList_:"))
+            ||  mimeText.startsWith(QString::fromLatin1("_UserModelList_:"))
             ||  !fileName.isEmpty()
            )
         {
@@ -440,11 +447,11 @@ NMModelScene::addParameterTable(NMSqlTableView* tv,
     pt->setDescription(tv->getModel()->tableName());
     if (host == 0)
     {
-        host = NMModelController::getInstance()->getComponent(QString::fromLatin1("root"));
+        host = NMGlobalHelper::getModelController()->getComponent(QString::fromLatin1("root"));
     }
 
     pt->setTimeLevel(host->getTimeLevel());
-    QString ptName = NMModelController::getInstance()->addComponent(pt, host);
+    QString ptName = NMGlobalHelper::getModelController()->addComponent(pt, host);
 
 
     QGraphicsProxyWidget* proxyWidget = this->addWidget(tv,
@@ -485,7 +492,9 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             dropItem = dropsplit.at(1);
         }
 
-		if (NMModelController::getInstance()->isModelRunning())
+        if (   NMGlobalHelper::getModelController()
+            && NMGlobalHelper::getModelController()->isModelRunning()
+           )
         {
 			QMessageBox::information(0, "Invalid user request!",
 					"You cannot create new model components\nwhile a "
@@ -567,14 +576,14 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
                 if (ai)
                 {
-                    host = NMModelController::getInstance()->getComponent(ai->getTitle());
+                    host = NMGlobalHelper::getModelController()->getComponent(ai->getTitle());
                 }
                 else
                 {
                     NMProcessComponentItem* procItem = qgraphicsitem_cast<NMProcessComponentItem*>(pi);
                     if (procItem)
                     {
-                        host = NMModelController::getInstance()->getComponent(procItem->getTitle())->getHostComponent();
+                        host = NMGlobalHelper::getModelController()->getComponent(procItem->getTitle())->getHostComponent();
                     }
                 }
 
@@ -603,6 +612,15 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 NMDebugAI(<< "asking for creating '" << dropItem.toStdString() << "' ..." << endl);
                 emit processItemCreated(procItem, dropItem, event->scenePos());
             }
+        }
+        // =========================================================
+        //  IMPORT USER MODEL
+        // =========================================================
+        else if (dropSource.startsWith(QString::fromLatin1("_UserModelList_")))
+        {
+            QString path = NMGlobalHelper::getMainWindow()->getUserModelPath(dropItem);
+            QString fileName = QString("%1/%2.lmx").arg(path).arg(dropItem);
+            emit signalModelFileDropped(fileName, mMousePos);
         }
         // =========================================================
         //  IMPORT FROM FILE
@@ -656,7 +674,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
                 NMModelComponent* host = 0;
                 if (aggrItem)
                 {
-                    host = NMModelController::getInstance()->getComponent(aggrItem->getTitle());
+                    host = NMGlobalHelper::getModelController()->getComponent(aggrItem->getTitle());
                 }
 
                 NMGlobalHelper h;
@@ -690,7 +708,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
             else if (procItem != 0)
             {
                 // check whether the procItem has got a fileName property
-                NMModelComponent* comp = NMModelController::getInstance()->getComponent(procItem->getTitle());
+                NMModelComponent* comp = NMGlobalHelper::getModelController()->getComponent(procItem->getTitle());
                 NMIterableComponent* itComp = qobject_cast<NMIterableComponent*>(comp);
                 NMProcess* proc = 0;
                 if (itComp != 0)
@@ -700,7 +718,7 @@ void NMModelScene::dropEvent(QGraphicsSceneDragDropEvent* event)
 
                 if (proc != 0)
                 {
-                    QStringList propList = NMModelController::getPropertyList(proc);
+                    QStringList propList = NMGlobalHelper::getModelController()->getPropertyList(proc);
                     QStringList fnProps;
                     foreach(const QString& p, propList)
                     {
@@ -1149,7 +1167,12 @@ NMModelScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                 }
                 QPixmap dragPix = QPixmap::grabWidget(this->views()[0],
                         this->views()[0]->mapFromScene(selRect).boundingRect());
-                dragPix = dragPix.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+#ifdef QT_HIGHDPI_SUPPORT
+    qreal pratio = NMGlobalHelper::getMainWindow()->devicePixelRatioF();
+#else
+    qreal pratio = 1;
+#endif
+                dragPix = dragPix.scaled(32*pratio, 32*pratio, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
                 QDrag* drag = new QDrag(this);
                 QMimeData* mimeData = new QMimeData;

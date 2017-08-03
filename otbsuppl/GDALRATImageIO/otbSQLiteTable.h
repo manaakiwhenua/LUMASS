@@ -88,9 +88,19 @@ public:
     void SetValue(const std::string& sColName, long long idx, double value);
     void SetValue(const std::string& sColName, long long idx, long long value);
     void SetValue(const std::string& sColName, long long idx, std::string value);
+
+    void SetValue(const std::string& sColName, const std::string& whereClause, double value);
+    void SetValue(const std::string& sColName, const std::string& whereClause, long long value);
+    void SetValue(const std::string& sColName, const std::string& whereClause, std::string value);
+
+
     double GetDblValue(const std::string& sColName, long long idx);
     long long GetIntValue(const std::string& sColName, long long idx);
     std::string GetStrValue(const std::string& sColName, long long idx);
+
+    double GetDblValue(const std::string& sColName, const std::string& whereClause);
+    long long GetIntValue(const std::string& sColName, const std::string& whereClause);
+    std::string GetStrValue(const std::string& sColName, const std::string& whereClause);
 
     void SetValue(int col, long long row, double value);
     void SetValue(int col, long long row, long long value);

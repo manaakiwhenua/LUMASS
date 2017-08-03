@@ -35,6 +35,7 @@
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
 #include "NMDataComponent.h"
+#include "NMGlobalHelper.h"
 
 NMParamEdit::NMParamEdit(QWidget *parent)
     : QTextEdit(parent), mEditComp(0), mCompletionMode(NM_COMPNAME_COMPLETION),
@@ -76,7 +77,7 @@ NMParamEdit::NMParamEdit(QWidget *parent)
 NMModelComponent*
 NMParamEdit::getModelComponent(const QString& compName)
 {
-    NMModelComponent* pcomp = NMModelController::getInstance()->getComponent(compName);
+    NMModelComponent* pcomp = NMGlobalHelper::getModelController()->getComponent(compName);
     if (pcomp == 0 && mEditComp)
     {
         NMIterableComponent* pic = qobject_cast<NMIterableComponent*>(mEditComp);
@@ -369,7 +370,7 @@ NMParamEdit::setupValueCompleter(const QString &compName, const QString &propNam
     NMModelComponent* mc = this->getModelComponent(compName);
     if (mc)
     {
-        otb::AttributeTable::Pointer tab = NMModelController::getInstance()->getComponentTable(mc);
+        otb::AttributeTable::Pointer tab = NMGlobalHelper::getModelController()->getComponentTable(mc);
         if (tab.IsNotNull())
         {
             int colid = tab->ColumnExists(propName.toStdString());
@@ -400,6 +401,20 @@ NMParamEdit::setupValueCompleter(const QString &compName, const QString &propNam
             }
         }
     }
+    else if (compName.compare(QString("LUMASS"), Qt::CaseInsensitive) == 0)
+    {
+        mValueIdxMap.clear();
+
+        QStringList keys = NMGlobalHelper::getUserSettingsList();
+        if (keys.contains(propName))
+        {
+            QStringList values;
+            values << NMGlobalHelper::getUserSetting(propName);
+            mValueIdxMap.insert(values.at(0), 1);
+            mCompleter->setModel(new QStringListModel(values, mCompleter));
+            bFailed = false;
+        }
+    }
 
     // reset to component completion if we couldn't fetch
     // any values for this comp / prop combination
@@ -425,12 +440,13 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
     // set up property completion
     else if (!comp.isEmpty() && propPos > 0)
     {
-        NMModelComponent* pcomp = this->getModelComponent(comp);
+        NMModelController* ctrl = NMGlobalHelper::getModelController();
+        NMModelComponent* pcomp = ctrl->getComponent(comp);
         QStringList propList;
         mPropToolTipMap.clear();
         if (pcomp)
         {
-            QStringList dataProps = NMModelController::getInstance()->getDataComponentProperties(pcomp);
+            QStringList dataProps = NMGlobalHelper::getModelController()->getDataComponentProperties(pcomp);
             foreach(const QString& dp, dataProps)
             {
                 mPropToolTipMap.insert(dp, "TableColumn");
@@ -442,7 +458,7 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
                 NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(pcomp);
                 if (ic && ic->getProcess())
                 {
-                    QStringList procProps = NMModelController::getPropertyList(ic->getProcess());
+                    QStringList procProps = ctrl->getPropertyList(ic->getProcess());
                     procProps.removeDuplicates();
                     foreach(const QString& pp, procProps)
                     {
@@ -450,7 +466,7 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
                     }
                     propList << procProps;
                 }
-                QStringList compProps = NMModelController::getPropertyList(pcomp);
+                QStringList compProps = ctrl->getPropertyList(pcomp);
                 compProps.removeDuplicates();
                 foreach(const QString& cp, compProps)
                 {
@@ -467,6 +483,15 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
                     mPropToolTipMap.remove(bl);
                     propList.removeAll(bl);
                 }
+            }
+        }
+        else if (comp.compare(QString("LUMASS"), Qt::CaseInsensitive) == 0)
+        {
+            QStringList keys = NMGlobalHelper::getUserSettingsList();
+            foreach (const QString& key, keys)
+            {
+                propList.append(key);
+                mPropToolTipMap.insert(key, "LUMASS Setting");
             }
         }
         else

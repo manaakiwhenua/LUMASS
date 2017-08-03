@@ -33,5 +33,7 @@
         <file alias="view-split-left-right.png">resources/view-split-left-right.png</file>
         <file alias="view-split-top-bottom.png">resources/view-split-top-bottom.png</file>
         <file alias="view-map.png">resources/network-globe2.png</file>
+        <file alias="document-save.png">resources/document-save.png</file>
+        <file alias="document-save-as.png">resources/document-save-as.png</file>
     </qresource>
 </RCC>

@@ -482,7 +482,6 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     double spacing[3];
 	double origin[3];
     int dims[3] = {0,0,0};
-    double bnd[6];
 	double err[3];
 
     vtkImageData* img = vtkImageData::SafeDownCast(
@@ -515,7 +514,9 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
 
 	// check, whether the user point is within the
 	// image boundary
-    if (bImgConstrained && !vtkMath::PointIsWithinBounds(wcoord, mBBox, err))
+    bool bPtInBnds = vtkMath::PointIsWithinBounds(wcoord, mBBox, err);
+
+    if (bImgConstrained && !bPtInBnds)
     {
         for (int i=0; i < 3; ++i) pixel[i] = -1;
         return;
@@ -525,16 +526,22 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     {
         if (dims[d] > 0)
         {
-            double raw = ((wcoord[d] - origin[d]) / spacing[d]);
-            if (    (d == 0 && (world[0] < mBBox[0]))
-                ||  (d == 1 && (wcoord[1] > mBBox[1]))
-               )
+            pixel[d] = ((world[d] - origin[d]) / spacing[d])+0.5;
+            if (!bImgConstrained)
             {
-                pixel[d] = int(raw-1);
+                if (d == 0 && wcoord[d] < origin[d])
+                {
+                    pixel[d] -= 1;
+                }
+
+                if (d == 1 && wcoord[d] > origin[d])
+                {
+                    pixel[d] -= 1;
+                }
             }
-            else
+            else if (!bPtInBnds)
             {
-                pixel[d] = int(raw);
+                pixel[d] = -1;
             }
         }
     }
@@ -685,7 +692,6 @@ void NMImageLayer::createTableView(void)
 
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
     NMQtOtbAttributeTableModel* ramModel = qobject_cast<NMQtOtbAttributeTableModel*>(mTableModel);
-
     if (ramModel != 0)
     {
         this->mTableView = new NMTableView(ramModel, 0);
@@ -788,12 +794,12 @@ NMImageLayer::updateAttributeTable()
                 .arg(sqlTable->GetRandomString(5).c_str());
         NMQSQLiteDriver* drv = new NMQSQLiteDriver(mSqlViewConn, 0);
         QSqlDatabase db = QSqlDatabase::addDatabase(drv, mQSqlConnectionName);
+        db.setDatabaseName(sqlTable->GetDbFileName().c_str());
 		
         NMDebugAI(<< ctxNMImageLayer << ": Created QSql connection to '"
                   << sqlTable->GetTableName() << "'" << std::endl);
 
         sqlModel = new NMSqlTableModel(this, db);
-        //sqlModel->setDatabaseName(sqlTable->GetTableName().c_str());
         sqlModel->setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
         sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
         sqlModel->select();
@@ -1059,8 +1065,8 @@ NMImageLayer::mapExtentChanged(void)
         }
         else
         {
-            h_res = fullcols / size[0];
-            v_res = fullrows / size[1];
+            h_res = mSpacing[0]*dpr;//fullcols / size[0];
+            v_res = ::fabs(mSpacing[1])*dpr;//fullrows / size[1];
         }
 
         //        NMDebugAI(<< "world: tl: " << wtl[0] << " " << wtl[1]
@@ -1484,6 +1490,7 @@ NMImageLayer::updateScalarBuffer()
                             .arg(mLegendValueField)
                             .arg(sqlModel->tableName());
 
+        db.transaction();
         QSqlQuery q(db);
         q.setForwardOnly(true);
         if (!q.exec(prepStr))
@@ -1530,7 +1537,10 @@ NMImageLayer::updateScalarBuffer()
                 NMDebug(<< ".");
             }
         }
+        q.finish();
         q.clear();
+        db.commit();
+        db.close();
     }
     QSqlDatabase::removeDatabase(conname);
 
@@ -1658,10 +1668,10 @@ NMImageLayer::setLongDBScalars(T* buf,
             std::string err = q.lastError().text().toStdString();
             NMLogError(<< ctxNMImageLayer << ": " << err);
         }
-        db.commit();
+        q.finish();
         q.clear();
+        db.commit();
         db.close();
-
     }
     QSqlDatabase::removeDatabase(conname);
 }
@@ -1782,10 +1792,10 @@ NMImageLayer::setDoubleDBScalars(T* buf,
             std::string err = q.lastError().text().toStdString();
             NMLogError(<< ctxNMImageLayer << ": " << err);
         }
-        db.commit();
+        q.finish();
         q.clear();
+        db.commit();
         db.close();
-
     }
     QSqlDatabase::removeDatabase(conname);
 }

@@ -36,6 +36,13 @@ NMSqlTableModel::NMSqlTableModel(QObject *parent, QSqlDatabase db)
 {
 }
 
+bool
+NMSqlTableModel::select()
+{
+    QString selSTmt = this->selectStatement();
+    return QSqlTableModel::select();
+}
+
 QVariant
 NMSqlTableModel::data(const QModelIndex &idx, int role) const
 {

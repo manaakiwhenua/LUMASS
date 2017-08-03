@@ -105,7 +105,6 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
     mSortFilter = new NMSelSortSqlTableProxyModel(this);
     mSortFilter->setSourceModel(mModel);
 
-    //this->mTableView->setModel(mSortFilter);
     mModel->setEditStrategy(QSqlTableModel::OnFieldChange);
     this->mTableView->setModel(mModel);
 
@@ -270,6 +269,7 @@ void NMSqlTableView::initView()
 
 
 	QAction* actDelete;
+    QAction* actIndex;
 	QAction* actAdd;
 	QAction* actCalc;
 	QAction* actNorm;
@@ -279,6 +279,9 @@ void NMSqlTableView::initView()
 	{
 		actDelete = new QAction(this->mColHeadMenu);
 		actDelete->setText(tr("Delete Column"));
+
+        actIndex = new QAction(this->mColHeadMenu);
+        actIndex->setText(tr("Create Column Index"));
 
 		actAdd = new QAction(this->mColHeadMenu);
 		actAdd->setText(tr("Add Column ..."));
@@ -304,6 +307,7 @@ void NMSqlTableView::initView()
 		this->mColHeadMenu->addAction(actCalc);
         //this->mColHeadMenu->addAction(actNorm);
 		this->mColHeadMenu->addSeparator();
+        this->mColHeadMenu->addAction(actIndex);
 		this->mColHeadMenu->addAction(actAdd);
         if (    mViewMode == NMTABVIEW_PARATABLE
             ||  mViewMode == NMTABVIEW_STANDALONE
@@ -343,7 +347,8 @@ void NMSqlTableView::initView()
 
     if (mViewMode != NMTABVIEW_RASMETADATA)
 	{
-		this->connect(actAdd, SIGNAL(triggered()), this, SLOT(addColumn()));
+        this->connect(actIndex, SIGNAL(triggered()), this, SLOT(indexColumn()));
+        this->connect(actAdd, SIGNAL(triggered()), this, SLOT(addColumn()));
 		this->connect(actDelete, SIGNAL(triggered()), this, SLOT(deleteColumn()));
 		this->connect(actCalc, SIGNAL(triggered()), this, SLOT(calcColumn()));
 		this->connect(actNorm, SIGNAL(triggered()), this, SLOT(normalise()));
@@ -466,9 +471,7 @@ NMSqlTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
     this->connectSelModels(true);
 	if (this->mSelectionModel)
 	{
-        //this->mTableView->setSelectionModel(mSelectionModel);
         this->updateProxySelection(QItemSelection(), QItemSelection());
-        //this->updateSelectionAdmin(QItemSelection(), QItemSelection());
 	}
 }
 
@@ -503,22 +506,6 @@ void NMSqlTableView::updateSelRecsOnly(int state)
 
     updateSelection(mbSwitchSelection);
 
-//	if (state == Qt::Checked)
-//	{
-//		this->mSortFilter->setFilterOn(false);
-//		this->mProxySelModel->clearSelection();
-//		this->mSortFilter->clearFilter();
-//		const QItemSelection srcSel = this->mSelectionModel->selection();
-//		const QItemSelection proxySel = this->mSortFilter->mapRowSelectionFromSource(srcSel);
-//		this->mSortFilter->addToFilter(proxySel);
-//		this->mSortFilter->setFilterOn(true);
-//	}
-//	else
-//	{
-//		this->mSortFilter->setFilterOn(false);
-//		this->mSortFilter->clearFilter();
-//		this->updateProxySelection(QItemSelection(), QItemSelection());
-//	}
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -529,15 +516,6 @@ void NMSqlTableView::switchSelection()
     mbSwitchSelection = !mbSwitchSelection;
     updateSelection(mbSwitchSelection);
 
-//	mbSwitchSelection = true;
-
-//	if (mSelectionModel != 0)
-//	{
-//		const QItemSelection toggledSelection = this->mSortFilter->swapRowSelection(
-//				mSelectionModel->selection(), true);
-
-//		mSelectionModel->setSelection(toggledSelection);
-//	}
 
     //NMDebugCtx(ctx, << "done!");
 }
@@ -649,13 +627,23 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
     }
 
     QString queryStr = QString("Create temp table %1 as %2").arg(tableName).arg(sql);
+
+    QSqlDatabase db = mModel->database();
+    db.transaction();
     QSqlQuery userQuery(mModel->database());
     if (!userQuery.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
         NMDebugCtx(ctx, << "done!");
+        userQuery.finish();
+        userQuery.clear();
+        db.rollback();
+        db.commit();
         return;
     }
+    userQuery.finish();
+    userQuery.clear();
+    db.commit();
     ++mQueryCounter;
 
     NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
@@ -736,6 +724,21 @@ NMSqlTableView::addRows()
     }
 }
 
+void NMSqlTableView::indexColumn()
+{
+    int colidx = this->getColumnIndex(mLastClickedColumn);
+    if (colidx < 0)
+    {
+        return;
+    }
+
+    if (!this->mSortFilter->createColumnIndex(colidx))
+    {
+        NMLogError(<< "Failed to index column '"
+                   << mLastClickedColumn.toStdString() << "'!");
+    }
+}
+
 void NMSqlTableView::calcColumn()
 {
     NMDebugCtx(ctx, << "...");
@@ -763,18 +766,6 @@ void NMSqlTableView::calcColumn()
     }
     NMDebugAI(<< rowsAffected << " records updated!" << std::endl);
     updateProxySelection(QItemSelection(), QItemSelection());
-
-
-//    QSqlQuery qUpdate(mModel->database());
-//    if (!qUpdate.exec(uStr))
-//    {
-//        NMBoxErr("Calculate Column", qUpdate.lastError().text().toStdString());
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
-
-//    mModel->select();
-//    updateProxySelection(QItemSelection(), QItemSelection());
 
     NMDebugCtx(ctx, << "done!");
 }
@@ -1578,40 +1569,70 @@ void NMSqlTableView::colStats()
 
     QString queryStr = QString("Create temp table %1 as %2").arg(tableName)
             .arg(sql.str().c_str());
+
+    QSqlDatabase db = mModel->database();
+    db.transaction();
     QSqlQuery userQuery(mModel->database());
     if (!userQuery.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
         NMDebugCtx(ctx, << "done!");
+        userQuery.finish();
+        userQuery.clear();
+        db.rollback();
+        db.commit();
         return;
     }
+    userQuery.finish();
+    userQuery.clear();
+    db.commit();
     ++mQueryCounter;
 
     queryStr = QString("Select stddev from %1").arg(tableName);
+
+    db.transaction();
     QSqlQuery qRes(mModel->database());
     if (!qRes.exec(queryStr))
     {
          NMDebugCtx(ctx, << "done!");
+         qRes.finish();
+         qRes.clear();
+         db.commit();
          return;
     }
     if (!qRes.next())
     {
         NMDebugCtx(ctx, << "done!");
+        qRes.finish();
+        qRes.clear();
+        db.commit();
         return;
     }
     double var = qRes.value(0).toDouble();
     double sdev = std::sqrt(var);
+    qRes.finish();
+    qRes.clear();
+    db.commit();
 
     queryStr = QString("Update %1 set stddev = %2")
             .arg(tableName)
             .arg(sdev);
+
+    db.transaction();
     QSqlQuery qUpd(mModel->database());
     if (!qUpd.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
         NMDebugCtx(ctx, << "done!");
+        qUpd.finish();
+        qUpd.clear();
+        db.rollback();
+        db.commit();
         return;
     }
+    qUpd.finish();
+    qUpd.clear();
+    db.commit();
 
     NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
     restab->setTable(tableName);
@@ -1754,11 +1775,17 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
     QString qStr = QString("select * from %1 %2")
                 .arg(mModel->tableName())
                 .arg(whereClause);
+
+    QSqlDatabase db = mModel->database();
+    db.transaction();
     QSqlQuery qTable(mModel->database());
     if (!qTable.exec(qStr))
     {
         NMBoxErr("Export Table", qTable.lastError().text().toStdString());
         file.close();
+        qTable.finish();
+        qTable.clear();
+        db.commit();
         return false;
     }
 
@@ -1811,6 +1838,11 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
     //mProgressDialog->setValue(maxrange);
     out.flush();
 	file.close();
+
+    qTable.finish();
+    qTable.clear();
+    db.commit();
+
     NMDebugCtx(ctx, << "done!");
 	return true;
 }

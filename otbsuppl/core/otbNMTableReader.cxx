@@ -138,14 +138,14 @@ NMTableReader::GenerateData()
         {
             if (tab->CreateTable(m_FileName) == otb::SQLiteTable::ATCREATE_ERROR)
             {
-                itkExceptionMacro( << "Failed creating table '" << m_FileName << "'!");
+                NMProcErr( << "Failed creating table '" << m_FileName << "'!");
                 return;
             }
             return;
         }
         else
         {
-            itkExceptionMacro(<< fileErrorMsg.str());
+            NMProcErr(<< fileErrorMsg.str());
             return;
         }
     }
@@ -161,7 +161,7 @@ NMTableReader::GenerateData()
     {
         if (!tab->CreateFromVirtual(m_FileName))
         {
-            itkExceptionMacro("Failed reading table '"
+            NMProcErr(<< "Failed reading table '"
                               << m_FileName << "'! Double check FileName!")
             return;
         }
@@ -171,7 +171,7 @@ NMTableReader::GenerateData()
         tab->SetDbFileName(m_FileName);
         if (!tab->openConnection())
         {
-            itkExceptionMacro("Couldn't establish connection "
+            NMProcErr(<<"Couldn't establish connection "
                               << " to '" << m_FileName << "'!");
             return;
         }
@@ -179,7 +179,7 @@ NMTableReader::GenerateData()
         tab->SetTableName(m_TableName);
         if (!tab->PopulateTableAdmin())
         {
-            itkExceptionMacro("Failed reading table data! Double check FileName and TableName!");
+            NMProcErr(<<"Failed reading table data! Double check FileName and TableName!");
             return;
         }
     }

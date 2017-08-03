@@ -257,6 +257,21 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         return;
     }
 
+    // check for valid RATs
+    for (int t=0; t < m_vInRAT.size(); ++t)
+    {
+        AttributeTable::Pointer tab = m_vInRAT.at(t);
+        if (tab.IsNull())
+        {
+            NMDebugCtx(ctx, << "done!");
+            itkExceptionMacro(<< "Table at index=" << t
+                              << " is NULL! Please only provide"
+                              << " categorical images with raster"
+                              << " attribute tables!");
+            return;
+        }
+    }
+
     if (m_InputNodata.size() == 0)
     {
         this->InvokeEvent(itk::NMLogEvent("No 'InputNodata' values defined!",

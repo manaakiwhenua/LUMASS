@@ -114,7 +114,7 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 52)
+SET(LUMASS_VERSION_REVISION 53)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -326,6 +326,9 @@ ENDIF(UNIX)
 
 configure_file("${CMAKE_SOURCE_DIR}/LUMASSConfig.h.in"
                "${lumass_BINARY_DIR}/LUMASSConfig.h" @ONLY)
+
+configure_file("${CMAKE_SOURCE_DIR}/docs/lumassDocConfig.in"
+              "${CMAKE_SOURCE_DIR}/docs/lumassDocConfig" @ONLY)
 
 #====================================================================
 # SOME OTHER STUFF WE WANNA USE GLOBALLY

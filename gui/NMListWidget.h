@@ -3,23 +3,32 @@
 
 #include <QObject>
 #include <QListWidget>
+#include "NMObject.h"
 
 class NMLogger;
 
-class NMListWidget : public QListWidget
+class NMListWidget : public QListWidget, public NMObject
 {
     Q_OBJECT
 public:
     NMListWidget(QWidget* parent=0);
 
+    void setDragSourceName(const QString& name)
+        {mDragSourceName = name;}
+
+protected:
+    void mousePressEvent(QMouseEvent* event);
+    void mouseMoveEvent(QMouseEvent* event);
+
     void dragEnterEvent(QDragEnterEvent* event);
     void dragMoveEvent(QDragMoveEvent* event);
     void dropEvent(QDropEvent* event);
+    void dragLeaveEvent(QDragLeaveEvent* event);
 
-    void setLogger(NMLogger* logger){mLogger = logger;}
+    QPoint mDragStartPosition;
+    QString mDragSourceName;
 
-protected:
-    NMLogger* mLogger;
+
 };
 
 #endif // NMLISTWIDGET_H

@@ -108,6 +108,7 @@ public slots:
 
 	void calcColumn();
 	void addColumn();
+    void indexColumn();
     void addRow();
     void addRows();
 	void deleteColumn();

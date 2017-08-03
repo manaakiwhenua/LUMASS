@@ -2277,6 +2277,7 @@ NMLayer::getValueFieldStatistics()
                     << " from "
                     << sqlModel->tableName().toStdString();
 
+                sqlModel->database().transaction();
                 QSqlQuery q(sqlModel->database());
                 if (q.exec(sql.str().c_str()) && q.next())
                 {
@@ -2288,6 +2289,9 @@ NMLayer::getValueFieldStatistics()
                     stats[5] = q.value(0).toDouble();
                     stats[6] = q.value(5).toDouble();
                 }
+                q.finish();
+                q.clear();
+                sqlModel->database().commit();
             }
         }
         else

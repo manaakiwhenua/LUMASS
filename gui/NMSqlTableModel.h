@@ -48,6 +48,8 @@ public:
     void setDatabaseName(const QString& dbName){mDatabaseName = dbName;}
     QString getDatabaseName(){return mDatabaseName;}
 
+    bool select();
+
 protected:
     QString mDatabaseName;
 

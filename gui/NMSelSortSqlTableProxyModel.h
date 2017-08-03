@@ -74,12 +74,7 @@ public:
     bool addRow();
     bool addRows(unsigned int nrows);
 
-    //bool joinTable(const QString& sourceFileName, const QString& joinField, const QStringList& joinSrcFields);
-
-
-    //    QItemSelection mapSelectionFromSource(const QItemSelection& sourceSelection) const;
-    //    QItemSelection mapSelectionToSource(const QItemSelection& proxySelection) const;
-
+    bool createColumnIndex(int colidx);
     void sort(int column, Qt::SortOrder order);
 
 

@@ -26,6 +26,7 @@
 #include "nmlog.h"
 #include "NMMacros.h"
 #include "NMMfwException.h"
+#include "NMModelController.h"
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
@@ -183,6 +184,7 @@ public:
         QVariant ztparam = p->getParameter("ZoneTableFileName");
         if (ztparam.isValid())
         {
+            f->SetWorkspace(p->getModelController()->getSetting("Workspace").toString().toStdString());
             f->SetZoneTableFileName(ztparam.toString().toStdString());
         }
 

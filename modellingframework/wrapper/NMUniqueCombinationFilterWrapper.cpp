@@ -127,6 +127,7 @@ public:
         std::string curOutputImagFileName;
         if (curOutputImgFileNameVar.isValid())
         {
+            f->SetWorkspace(p->getModelController()->getSetting("Workspace").toString().toStdString());
             curOutputImagFileName = curOutputImgFileNameVar.toString().toStdString();
             f->SetOutputImageFileName(curOutputImagFileName);
         }

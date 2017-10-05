@@ -608,15 +608,14 @@ void NMIterableComponent::destroySubComponents(QMap<QString, NMModelComponent*>&
                 delete dc;
                 dc = 0;
             }
-
-            ++cit;
-            if (*cit != 0)
+            else
             {
                 repo.remove(cit->objectName());
                 NMModelComponent* sc = *cit;
                 delete sc;
                 sc = 0;
             }
+            ++cit;
 		}
 	}
 	this->setInternalStartComponent(0);

@@ -101,6 +101,9 @@ public:
 	  itkGetMacro(IgnoreNodataValue, bool);
 	  itkBooleanMacro(IgnoreNodataValue);
 
+          itkGetMacro(Workspace, std::string);
+          itkSetMacro(Workspace, std::string);
+
           /** Enforces the zone table to have MaxKey rows with a
            *  0-based index. Note: this options overrides KeyIsRowIdx;
            *  The default value is 'false'.
@@ -175,6 +178,7 @@ private:
           long long mTotalPixCount;
           long long mLPRPixCount;
 
+          std::string m_Workspace;
 
           static const std::string ctx;
 

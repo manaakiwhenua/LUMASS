@@ -84,7 +84,7 @@ template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::SetZoneTableFileName(const std::string &tableFileName)
 {
-    if (tableFileName.empty())
+    if (tableFileName.empty() || tableFileName.compare("file::memory:"))
     {
         m_dropTmpDBs = true;
     }
@@ -160,32 +160,35 @@ void SumZonesFilter< TInputImage, TOutputImage >
     NMDebugAI( << "  NodataValue        = " << m_NodataValue << std::endl);
     NMDebugAI( << "  HaveMaxKeyRows     = " << m_HaveMaxKeyRows << std::endl);
 
+
     // create the zone table (db)
-    NMDebugAI( << "Loading / creating the zone table ..." << std::endl);
-    if (mZoneTable->CreateTable(m_ZoneTableFileName) == otb::SQLiteTable::ATCREATE_ERROR)
-    {
-        itkExceptionMacro(<< "Failed to create the zone table!");
-        return;
-    }
-
-    // prepare thread specific stores, valid for one pass only
-    unsigned int numThreads = this->GetNumberOfThreads();
-    mThreadPixCount.clear();
-    mThreadValueStore.clear();
-    for (int t=0; t < numThreads; ++t)
-    {
-        mThreadValueStore.push_back(ZoneMapType());
-        mThreadPixCount.push_back(0);
-    }
-
+    std::string tempZtName = m_ZoneTableFileName;
     if (!mStreamingProc)
     {
-        // if we're using a temp data base, we want to know the name for
-        // to open the same table again during sequential processing
-        if (m_ZoneTableFileName.empty())
+        if (tempZtName.empty())
         {
+            if (!m_Workspace.empty())
+            {
+                tempZtName = m_Workspace + "/" + otb::SQLiteTable::GetRandomString(5) + ".ldb";
+            }
+            else
+            {
+                tempZtName = otb::SQLiteTable::GetRandomString(5) + ".ldb";
+            }
+
+            // if we're using a temp data base, we want to know the name for
+            // to open the same table again during sequential processing
             m_dropTmpDBs = true;
         }
+
+        NMDebugAI( << "Creating the zone table ..." << std::endl);
+        if (mZoneTable->CreateTable(tempZtName) == otb::SQLiteTable::ATCREATE_ERROR)
+        {
+            itkExceptionMacro(<< "Failed to create the zone table: "
+                              << mZoneTable->getLastLogMsg());
+            return;
+        }
+
         m_ZoneTableFileName = mZoneTable->GetDbFileName();
 
         NMDebugAI(<< "clearing value stores ..." << std::endl);
@@ -207,6 +210,23 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
 		mStreamingProc = true;
 	}
+    else // re-open connection
+    {
+        if (!mZoneTable->openConnection())
+        {
+            itkExceptionMacro(<< "Failed to open connection to "
+                         << mZoneTable->GetDbFileName() << ": "
+                         << mZoneTable->getLastLogMsg());
+        }
+
+        if (!mZoneTable->PopulateTableAdmin())
+        {
+            itkExceptionMacro(<< "Failed to read table "
+                              << mZoneTable->GetTableName() << ": "
+                              << mZoneTable->getLastLogMsg());
+        }
+
+    }
 
 	// for now, the size of the input regions must be exactly the same
     if (mValueImage.IsNotNull())
@@ -221,6 +241,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
             NMDebugCtx(ctx, << "done!");
             return;
         }
+    }
+
+    // prepare thread specific stores, valid for one pass only
+    unsigned int numThreads = this->GetNumberOfThreads();
+    mThreadPixCount.clear();
+    mThreadValueStore.clear();
+    for (int t=0; t < numThreads; ++t)
+    {
+        mThreadValueStore.push_back(ZoneMapType());
+        mThreadPixCount.push_back(0);
     }
 
 	NMDebugCtx(ctx, << "done!");
@@ -511,6 +541,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
         mZoneTable->EndTransaction();
     }
 
+    mZoneTable->CloseTable();
     NMDebugAI(<< "Got " << numzones << " zones on record now ..." << std::endl);
 
 	this->GraftOutput(static_cast<TOutputImage*>(mZoneImage));
@@ -533,6 +564,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
     m_NextZoneId = 0;
 
     mZoneTable = SQLiteTable::New();
+    if (m_ZoneTableFileName.compare("file::memory:") == 0)
+    {
+        mZoneTable->SetTableName(mZoneTable->GetRandomString(5));
+    }
 
 	Superclass::ResetPipeline();
 	NMDebugCtx(ctx, << "done!");

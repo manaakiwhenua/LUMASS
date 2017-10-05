@@ -81,6 +81,17 @@ protected:
 			QVariant& dataValue);
 	QVariant extractPropertyValue(QDomElement& propElem);
 
+    /*!
+     * \brief Removes any carriage returns (CR, '\r') in front of
+     *          newline character (LF, '\n'), which are put in by
+     *          the QDomDocument.createTextNode(), which
+     *          replaces any '\n' by "\r\n", which blows up the
+     *          text in the NMHoverEdit dialog.
+     * \param inStr
+     * \return QString
+     */
+    QString removeSurplusCR(const QString& inStr);
+
 	/*! Harmonises the process component input settings (i.e.
 	 *  model component names) with imported model components
 	 *  (i.e. accounting for any name adjustments during import)*/

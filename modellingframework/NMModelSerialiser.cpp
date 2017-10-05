@@ -381,6 +381,47 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
     //return nameRegister;
 }
 
+QString
+NMModelSerialiser::removeSurplusCR(const QString& inStr)
+{
+    QList<int> pos;
+    QString ret;
+    QTextStream text(&ret);
+    for (int i=0; i < inStr.size(); ++i)
+    {
+        if (inStr[i] == '\r')
+        {
+            pos << i;
+        }
+        else if (inStr[i] == '\n')
+        {
+            if (pos.size() > 0)
+            {
+                pos.clear();
+            }
+            text << inStr[i];
+        }
+        else
+        {
+            if (pos.size() > 0)
+            {
+                text << inStr.mid(pos.first(), pos.last() - pos.first() + 1);
+                pos.clear();
+            }
+            text << inStr[i];
+        }
+    }
+
+    // any CRs left we haven't written yet
+    if (pos.size() > 0)
+    {
+        text << inStr.mid(pos.first(), pos.last() - pos.first() + 1);
+        pos.clear();
+    }
+
+    return ret;
+}
+
 
 QVariant
 NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
@@ -394,14 +435,14 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 
 	if (valueNode.nodeName() == "string")
 	{
-		value = QVariant::fromValue(valueNode.toElement().text());
+        value = QVariant::fromValue(removeSurplusCR(valueNode.toElement().text()));
 	}
 	else if (valueNode.nodeName() == "stringlist")
 	{
 		QStringList lst;
 		QDomNodeList nodeList = valueNode.childNodes();
 		for (unsigned int i = 0; i < nodeList.count(); ++i)
-			lst << nodeList.at(i).toElement().text();
+            lst << removeSurplusCR(nodeList.at(i).toElement().text());
 		value = QVariant::fromValue(lst);
 	}
 	else if (valueNode.nodeName() == "list_stringlist")
@@ -413,7 +454,7 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 			QStringList lst;
 			QDomNodeList innerList = nodeList.at(i).childNodes();
 			for (unsigned int ii = 0; ii < innerList.count(); ++ii)
-				lst << innerList.at(ii).toElement().text();
+                lst << removeSurplusCR(innerList.at(ii).toElement().text());
 			lsl.push_back(lst);
 		}
 		value = QVariant::fromValue(lsl);
@@ -431,7 +472,7 @@ NMModelSerialiser::extractPropertyValue(QDomElement& propElem)
 				QStringList lst;
 				QDomNodeList stringList = innerList.at(ii).childNodes();
 				for (unsigned int iii = 0; iii < stringList.count(); ++iii)
-					lst << stringList.at(iii).toElement().text();
+                    lst << removeSurplusCR(stringList.at(iii).toElement().text());
 				lsl.push_back(lst);
 			}
 			llsl.push_back(lsl);

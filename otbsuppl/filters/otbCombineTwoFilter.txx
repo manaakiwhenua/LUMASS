@@ -203,6 +203,12 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         {
             m_dropTmpDBs = false;
         }
+
+        if (m_OutputTableFileName.empty() && !m_Workspace.empty())
+        {
+            m_OutputTableFileName = m_Workspace + "/" + otb::SQLiteTable::GetRandomString(5) + ".ldb";
+        }
+
         if (m_ComboTable->CreateTable(m_OutputTableFileName, "1")
                 == SQLiteTable::ATCREATE_ERROR)
         {

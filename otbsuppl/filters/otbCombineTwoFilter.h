@@ -111,6 +111,9 @@ public:
 
           virtual void ResetPipeline();
 
+          itkGetMacro(Workspace, std::string);
+          itkSetMacro(Workspace, std::string);
+
           itkGetMacro(OutputTableFileName, std::string);
           void SetOutputTableFileName(const std::string& outtablename)
             {m_OutputTableFileName = outtablename;}
@@ -130,6 +133,7 @@ private:
           CombineTwoFilter(const Self&); //purposely not implemented
 	  void operator=(const Self&); //purposely not implemented
 
+          std::string m_Workspace;
           std::string m_OutputTableFileName;
           SQLiteTable::Pointer m_ComboTable;
           bool m_dropTmpDBs;

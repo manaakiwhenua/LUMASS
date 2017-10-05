@@ -2481,7 +2481,7 @@ SQLiteTable::GetRandomString(int len)
         return "";
     }
 
-    //std::srand(std::time(0));
+    std::srand(std::time(0));
     char* nam = new char[len+1];
     for (int i=0; i < len; ++i)
     {
@@ -2557,6 +2557,7 @@ SQLiteTable::openConnection(void)
         //itkDebugMacro(<< "SQLite3 ERROR #" << rc << ": " << errmsg);
         std::stringstream errstr;
         errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
+        m_lastLogMsg = errstr.str();
         this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
@@ -2581,12 +2582,13 @@ SQLiteTable::openConnection(void)
         //NMErr(_ctxotbtab, << "Failed allocating spatialite connection!")
         std::stringstream errstr;
         errstr << "Failed allocating spatialite connection!";
+        m_lastLogMsg = errstr.str();
         this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         return false;
     }
 	
-    //    NMDebugAI( << _ctxotbtab << ": Opened connection to '"
-    //               << m_dbFileName << "'" << std::endl);
+    NMDebugAI( << _ctxotbtab << ": Opened connection to '"
+               << m_dbFileName << "'" << std::endl);
 
     std::stringstream errstr;
     errstr << "Opened connection to '" << m_dbFileName << "'";
@@ -2857,14 +2859,14 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
                 m_tableName = prefix + m_tableName;
             }
         }
-        else
+        else if (m_tableName.empty())
         {
-            m_tableName = "nmtab";
+            m_tableName = GetRandomString(5);
         }
     }
-    else
+    else if (m_tableName.empty())
     {
-        m_tableName = "nmtab";
+        m_tableName = GetRandomString(5);
     }
 
     if (!tag.empty())
@@ -3041,7 +3043,7 @@ SQLiteTable::disconnectDB(void)
 		m_SpatialiteCache = 0;
         m_db = 0;
 
-        NMDebugAI( << _ctxotbtab << ": Closed connection to '"
+        NMDebugAI(<< _ctxotbtab << ": Closed connection to '"
                    << m_dbFileName << "'" << std::endl);
     }
 }
@@ -3161,7 +3163,7 @@ SQLiteTable::PopulateTableAdmin()
 
     if (!FindTable(this->m_tableName))
     {
-        NMProcWarn(<< "Couldn't find table '" << m_tableName << "' in the database!");
+        m_lastLogMsg = "Couldn't find table '" + m_tableName + "' in the database!";
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
@@ -3277,7 +3279,7 @@ SQLiteTable::PopulateTableAdmin()
     // out here, something seems to be wrong
     if (m_vNames.size() == 0)
     {
-        NMProcWarn(<< "Failed fetching column info or unsupported table structure!");
+        m_lastLogMsg = "Failed fetching column info or unsupported table structure!";
         m_dbFileName.clear();
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
@@ -3612,7 +3614,9 @@ SQLiteTable::CloseTable(bool drop)
     {
         this->DropTable();
     }
-
+    //    NMProcInfo(<< "disconnecting "
+    //                     << this->m_dbFileName << "."
+    //                     << this->m_tableName);
     this->resetTableAdmin();
     this->disconnectDB();
 }

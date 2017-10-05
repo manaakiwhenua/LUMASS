@@ -137,12 +137,22 @@ void RATBandMathImageFilter<TImage>
 		return;
 	}
 
-    //    if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
-    //    {
-    //        itkExceptionMacro(<< "SQLiteTables are currently not supported! "
-    //                          << "Please use ATTABLE_TYPE_RAM-based tables!");
-    //        return;
-    //    }
+    otb::SQLiteTable::Pointer sqlTab = 0;
+    if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+    {
+        sqlTab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+        if (sqlTab->GetDbConnection() == 0)
+        {
+            if (!sqlTab->openConnection() || !sqlTab->PopulateTableAdmin())
+            {
+                itkExceptionMacro(<< "Failed connecting to "
+                                  << sqlTab->GetDbFileName() << ": "
+                                  << sqlTab->getLastLogMsg());
+                return;
+            }
+        }
+    }
+
 
 	std::vector<int> columns;
 	std::vector<ColumnType> types;
@@ -190,12 +200,14 @@ void RATBandMathImageFilter<TImage>
             }
             else
             {
-                otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+                //otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
                 otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
                 thtab->SetUseSharedCache(false);
-                if (thtab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
+                thtab->SetOpenReadOnly(true);
+                if (thtab->CreateTable(sqlTab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
                 {
-                    itkExceptionMacro(<< "Failed creating table connection for thread!");
+                    itkExceptionMacro(<< "Failed creating table connection for thread: "
+                                      << thtab->getLastLogMsg());
                     return;
                 }
                 otb::AttributeTable::Pointer ctp = static_cast<otb::AttributeTable*>(thtab.GetPointer());
@@ -217,12 +229,14 @@ void RATBandMathImageFilter<TImage>
             }
             else
             {
-                otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+                //otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
                 otb::SQLiteTable::Pointer thtab = otb::SQLiteTable::New();
                 thtab->SetUseSharedCache(false);
-                if (thtab->CreateTable(stab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
+                thtab->SetOpenReadOnly(true);
+                if (thtab->CreateTable(sqlTab->GetDbFileName(), "1") != otb::SQLiteTable::ATCREATE_READ)
                 {
-                    itkExceptionMacro(<< "Failed creating table connection for thread!");
+                    itkExceptionMacro(<< "Failed creating table connection for thread: "
+                                      << thtab->getLastLogMsg());
                     return;
                 }
                 this->m_VRAT[t][idx] = thtab;

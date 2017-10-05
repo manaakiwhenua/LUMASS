@@ -95,6 +95,9 @@ public:
     //typedef typename std::map< UniqueValueType, std::vector<long long> >  CombinationPedigreeMap;
     //typedef typename CombinationPedigreeMap::iterator 		          CombinationPedigreeIterator;
 
+    itkGetMacro(Workspace, std::string);
+    itkSetMacro(Workspace, std::string);
+
     void SetInput(unsigned int idx, const InputImageType * image);
 
     void setRAT(unsigned int idx, AttributeTable::Pointer table);
@@ -130,6 +133,7 @@ protected:
     unsigned int nextUpperIterationIdx(unsigned int idx, OutputPixelType& accIdx);
     void determineProcOrder(void);
 
+    std::string m_Workspace;
     std::string m_OutputImageFileName;
     std::vector<AttributeTable::Pointer> m_vInRAT;
     std::vector<AttributeTable::Pointer> m_vOutRAT;

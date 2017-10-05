@@ -58,7 +58,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
       m_UVTable(0),
       m_UVTableIndex(0),
       m_UVTableName(""),
-      m_WorkingDirectory(""),
+      m_Workspace(""),
       m_OutputImageFileName(""),
       m_OutIdx(0)
 {
@@ -341,6 +341,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     typename ReaderType::Pointer iterReader = 0;
     typename CombFilterType::Pointer ctFilter = CombFilterType::New();
     ctFilter->SetReleaseDataFlag(true);
+    ctFilter->SetWorkspace(m_Workspace);
 
     otb::SQLiteTable::Pointer uvTable = otb::SQLiteTable::New();
     uvTable->SetUseSharedCache(false);
@@ -356,6 +357,19 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
     GetTempPath(MAX_PATH, s);
     temppath = s;
 #endif
+
+    if (!m_Workspace.empty())
+    {
+        if (m_Workspace.at(m_Workspace.size()-1) != '/')
+        {
+            temppath = m_Workspace + "/";
+        }
+        else
+        {
+            temppath = m_Workspace;
+        }
+    }
+
     std::stringstream uvTableName;
     uvTableName << temppath << "uv_" << this->getRandomString(5) << ".ldb";
     if (uvTable->CreateTable(uvTableName.str()) == otb::SQLiteTable::ATCREATE_ERROR)
@@ -366,6 +380,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         NMDebugCtx(ctx, << "done!");
         return;
     }
+    std::string uvTableTabName = uvTable->GetTableName();
+    uvTable->CloseTable();
 
     int numIter = 1;
     OutputPixelType accIdx = static_cast<OutputPixelType>(m_vInRAT.at(m_ProcOrder.at(0))->GetNumRows());
@@ -489,7 +505,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         // most recent table incl. 'uvimg'
         std::string tt = sqlTemp->GetTableName();
         // tab from prev. iter cont. rowidx: -> tt.uvimg = uv.rowidx
-        std::string uv = uvTable->GetTableName();
+        std::string uv = uvTableTabName;//uvTable->GetTableName();
 
         // list of images already combined ...
         std::stringstream sql;
@@ -784,6 +800,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         return "";
     }
 
+    std::srand(std::time(0));
     const int arlen = length+1;
     char* nam = new char[arlen];
     for (int i=0; i < length; ++i)

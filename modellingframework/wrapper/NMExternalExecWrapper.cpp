@@ -105,21 +105,44 @@ NMExternalExecWrapper::reset(void)
 void
 NMExternalExecWrapper::abortExecution(void)
 {
-    mCmdProcess->close();
+    if (mCmdProcess != 0)
+    {
+        mCmdProcess->close();
+        mCmdProcess = 0;
+    }
     NMLogInfo(<< "Process killed!");
 }
 
 void
 NMExternalExecWrapper::readOutput(void)
 {
-    QString baOut = mCmdProcess->readAllStandardOutput();
-    NMLogInfoNoNL(<< baOut.toStdString());
+    if (mCmdProcess != 0)
+    {
+        QString baOut = mCmdProcess->readAllStandardOutput();
+        NMLogInfoNoNL(<< baOut.toStdString());
+    }
+    else
+    {
+        NMLogWarn(<< "External Process is NULL!");
+    }
 }
 
 void
 NMExternalExecWrapper::update(void)
 {
     NMDebugCtx(ctx, << "...");
+
+    if (mCmdProcess == 0)
+    {
+        NMMfwException e(NMMfwException::NMProcess_UninitialisedProcessObject);
+        e.setSource(this->parent()->objectName().toStdString());
+        std::stringstream msg;
+        msg << this->objectName().toStdString() << "::update() - "
+            << "external process object is NULL!";
+        e.setDescription(msg.str());
+        NMDebugCtx(ctx, << "done!");
+        throw e;
+    }
 
     NMDebugAI( << mCurCmd.toStdString() << std::endl);
 

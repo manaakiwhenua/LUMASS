@@ -24,6 +24,8 @@
 
 #include <QFuture>
 #include <QtConcurrentRun>
+#include <QFileInfo>
+#include <QString>
 
 #ifndef NM_ENABLE_LOGGER
 #   define NM_ENABLE_LOGGER
@@ -61,18 +63,7 @@ NMModelController::NMModelController(QObject* parent)
 
 NMModelController::~NMModelController()
 {
-//    if (mLogger)
-//    {
-//        delete mLogger;
-//    }
 }
-
-//NMModelController*
-//NMModelController::getInstance(void)
-//{
-//	static NMModelController controller;
-//	return &controller;
-//}
 
 QSharedPointer<NMItkDataObjectWrapper>
 NMModelController::getOutputFromSource(const QString& inputSrc)
@@ -152,6 +143,9 @@ NMModelController::abortModel(void)
 			}
 		}
 		this->mbAbortionRequested = true;
+
+        NMLogInfo(<< "ModelController: Model '" << comp->objectName().toStdString()
+                  << "' has been requested to abort execution at the next opportunity!");
 	}
 	NMDebugCtx(ctx, << "done!");
 }
@@ -219,6 +213,55 @@ NMModelController::deleteLater(QStringList compNames)
     }
 }
 
+QStringList
+NMModelController::getModelSettingsList(void)
+{
+    QStringList modelSettings = mSettings.keys();
+    modelSettings.removeAll("UserModels");
+    modelSettings.removeAll("Workspace");
+    modelSettings.removeAll("LUMASSPath");
+
+    return modelSettings;
+}
+
+void
+NMModelController::clearModelSettings(void)
+{
+    QStringList modelSettings = mSettings.keys();
+    QStringList sys;
+    sys << "UserModels" << "Workspace" << "LUMASSPath";
+
+    foreach(const QString& key, modelSettings)
+    {
+        if (!sys.contains(key))
+        {
+            mSettings.remove(key);
+            emit settingsUpdated(key, QVariant());
+        }
+    }
+}
+
+void
+NMModelController::updateSettings(const QString& key, QVariant value)
+{
+    if (value.isValid())
+    {
+        mSettings[key] = value;
+    }
+    else
+    {
+        QStringList sys;
+        sys << "UserModels" << "Workspace" << "LUMASSPath";
+
+        if (!sys.contains(key))
+        {
+            mSettings.remove(key);
+        }
+    }
+
+    emit settingsUpdated(key, value);
+}
+
 void
 NMModelController::executeModel(const QString& compName)
 {
@@ -277,7 +320,6 @@ NMModelController::executeModel(const QString& compName)
 	// we reset all the components
 	// (and thereby delete all data buffers)
 	this->resetComponent(compName);
-
 
 	NMDebugAI(<< "running model on thread: "
 			<< this->thread()->currentThreadId() << endl);
@@ -386,13 +428,23 @@ void
 NMModelController::resetComponent(const QString& compName)
 {
 //	NMDebugCtx(ctx, << "...");
-	NMModelComponent* comp = this->getComponent(compName);
+
+    if (this->isModelRunning())
+    {
+        NMLogError(<< "ModelController: Cannot reset '"
+                   << compName.toStdString() << "' while a model is running!");
+        return;
+    }
+
+    NMModelComponent* comp = this->getComponent(compName);
 	if (comp == 0)
 	{
         NMLogError(<< ctx << ": couldn't find '"
 				<< compName.toStdString() << "'!");
 		return;
 	}
+
+    NMLogInfo(<< "ModelController: Resetting component '" << compName.toStdString() << "'");
 
 //	NMDebugAI(<< "resetting component '" << compName.toStdString()
 //			  << "'" << endl);
@@ -560,7 +612,15 @@ bool NMModelController::removeComponent(const QString& name)
 
     NMIterableComponent* host = comp->getHostComponent();
 	if (host != 0)
+    {
 		host->removeModelComponent(name);
+    }
+    else // name must be 'root' in this case
+    {
+        NMLogError(<< "You cannot remove the root model componet!");
+        return false;
+    }
+
 
     QString oldId = comp->getUserID();
     int nrem = 0;
@@ -746,7 +806,230 @@ NMModelController::getNextParamExpr(const QString &expr)
     return innerExpr;
 }
 
+QString
+NMModelController::evalFunc(const QString& funcName, const QStringList& args)
+{
+    QString ret;
+    if (funcName.compare("isFile") == 0)
+    {
+        if (args.size() < 1)
+        {
+            ret = "0";
+        }
+        else
+        {
+            QFileInfo fifo(args.at(0));
+            if (fifo.isFile())
+            {
+                ret = "1";
+            }
+            else
+            {
+                ret = "0";
+            }
+        }
+    }
+    else if (funcName.compare("isDir") == 0)
+    {
+        if (args.size() < 1)
+        {
+            ret = "0";
+        }
+        else
+        {
+            QFileInfo fifo(args.at(0));
+            if (fifo.isDir())
+            {
+                ret = "1";
+            }
+            else
+            {
+                ret = "0";
+            }
+        }
+    }
+    else if (funcName.compare("fileBaseName") == 0)
+    {
+        if (args.size() < 1)
+        {
+            ret = QString("");
+        }
+        else
+        {
+            QFileInfo fifo(args.at(0));
+            ret = fifo.baseName();
+        }
+    }
+    else if (funcName.compare("fileCompleteBaseName") == 0)
+    {
+        if (args.size() < 1)
+        {
+            ret = QString("");
+        }
+        else
+        {
+            QFileInfo fifo(args.at(0));
+            ret = fifo.completeBaseName();
+        }
+    }
+    else if (funcName.compare("filePath") == 0)
+    {
+        if (args.size() < 1)
+        {
+            ret = QString("");
+        }
+        else
+        {
+            QFileInfo fifo(args.at(0));
+            ret = fifo.absolutePath();
+        }
+    }
+    else if (funcName.compare("fileSuffix") == 0)
+    {
+        if (args.size() < 1)
+        {
+            ret = QString("");
+        }
+        else
+        {
+            QFileInfo fifo(args.at(0));
+            ret = fifo.suffix();
+        }
+    }
+    else if (funcName.compare("fileCompleteSuffix") == 0)
+    {
+        if (args.size() < 1)
+        {
+            ret = QString("");
+        }
+        else
+        {
+            QFileInfo fifo(args.at(0));
+            ret = fifo.completeSuffix();
+        }
+    }
+    else if (funcName.compare("strReplace") == 0)
+    {
+        if (args.size() < 3)
+        {
+            if (args.size() > 0)
+            {
+                ret = args.at(0);
+            }
+            else
+            {
+                ret = QString("ERROR: Not enough arguments!");
+            }
+        }
+        else
+        {
+            QString in = args.at(0);
+            ret = in.replace(args.at(1), args.at(2));
+        }
+    }
+    else if (funcName.compare("strIsEmpty") == 0)
+    {
+        if (args.size() < 1 || args.at(0).isEmpty())
+        {
+            ret = "1";
+        }
+        else
+        {
+            ret = "0";
+        }
+    }
+    else if (funcName.compare("strLength") == 0)
+    {
+        if (args.size() >= 1)
+        {
+            ret = QString("%1").arg(args.at(0).size());
+        }
+        else
+        {
+            ret = "0";
+        }
+    }
+    else if (funcName.compare("strSubstring") == 0)
+    {
+        if (args.size() < 3)
+        {
+            if (args.size() > 0)
+            {
+                return args.at(0);
+            }
 
+            return QString("ERROR: Not enough arguments!");
+        }
+
+        bool bok;
+        int pos = QVariant(args.at(1)).toInt(&bok);
+        if (!bok)
+        {
+            return QString("ERROR: Argument #2 is not an integer number!");
+        }
+
+        int cnt = QVariant(args.at(2)).toInt(&bok);
+        if (!bok)
+        {
+            return QString("ERROR: Argument #3 is not an integer number!");
+        }
+
+        ret = args.at(0).mid(pos, cnt);
+    }
+    else
+    {
+        ret = QString("ERROR: Unknown function '%1'").arg(funcName);
+    }
+
+    return ret;
+}
+
+QStringList
+NMModelController::parseQuotedArguments(const QString& args)
+{
+    QStringList retList;
+
+    if (args.isEmpty())
+    {
+        return retList;
+    }
+
+    QList<int> pos;
+    int lastComma = -1;
+
+    for (int i=0; i < args.size(); ++i)
+    {
+        if (args[i] == '\"')
+        {
+            pos << i;
+        }
+        else if (args[i] == ',' && pos.size() > 0 && (pos.size() % 2) == 0)
+        {
+            retList << args.mid(pos.first()+1, pos.last()-pos.first()-1);
+            pos.clear();
+            lastComma = i;
+        }
+        // this detects non quoted arguments
+        else if (i > 0 && args[i] == ',' && pos.size() == 0)
+        {
+            retList << args.mid(lastComma+1, i-(lastComma < 0 ? 0 : lastComma-1));
+            lastComma = i;
+        }
+    }
+
+    // don't forget the last quoted arguments
+    // (which isn't followed by a comma)
+    if (pos.size() > 0 && (pos.size() % 2) == 0)
+    {
+        retList << args.mid(pos.first()+1, pos.last()-pos.first()-1);
+    }
+    else if (args.size() > 0 && lastComma > 0)
+    {
+         retList << args.mid(lastComma+1, args.size()-lastComma-1);
+    }
+
+    return retList;
+}
 
 QString
 NMModelController::processStringParameter(const QObject* obj, const QString& str)
@@ -761,16 +1044,16 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
         {
             QString tStr = innerExp.at(inner);
             tStr = tStr.simplified();
-            tStr.replace(QString(" "), QString(""));
+            //tStr.replace(QString(" "), QString(""));
 
             QRegularExpression rexexp("((?<open>\\$\\[)*"
-                                                 "(?(<open>)|\\b)"
-                                                 "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-                                                 "(?<sep1>(?(<open>):|(?>__)))*"
-                                                 "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
-                                                 "(?<prop>(?(?<!math:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9 /\\(\\)&\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:.,])*))*"
-                                                 "(?<sep2>(?(<prop>)(?(<open>):)))*"
-                                                 "(?(<sep2>)(?<idx>[0-9]+)|([ ]*(?<opr2>[+\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
+                                         "(?(<open>)|\\b)"
+                                         "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+                                         "(?<sep1>(?(<open>):|(?>__)))*"
+                                         "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
+                                         "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
+                                         "(?<sep2>(?(<prop>)(?(<open>):)))*"
+                                         "(?(<sep2>)(?<idx>[0-9]+)|([ ]*(?<opr2>[+\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
             int pos = 0;
             bool bRecognisedExpression = false;
             //while((pos = rex.indexIn(tStr, pos)) != -1)
@@ -854,6 +1137,37 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                         NMLogError(<< errstr.str());
                         return QString(errstr.str().c_str());
                     }
+                }
+                else if (m.at(0).compare(QString("func"), Qt::CaseInsensitive) == 0)
+                {
+                    QString funcexpr = m.at(1);
+                    int posOpen = funcexpr.indexOf('(');
+                    int posClose = funcexpr.lastIndexOf(')');
+                    QString funcName = funcexpr.left(posOpen);
+                    QString args = funcexpr.mid(posOpen+1, posClose-posOpen-1).trimmed();
+                    QStringList argList;
+                    if (args.contains('\"'))
+                    {
+                        argList = this->parseQuotedArguments(args);
+                    }
+                    else
+                    {
+                        foreach(QString s, args.split(',', QString::SkipEmptyParts))
+                        {
+                            argList << s.trimmed();
+                        }
+                    }
+
+                    QString ret = this->evalFunc(funcName, argList);
+                    if (ret.startsWith("ERROR:"))
+                    {
+                        std::stringstream msg;
+                        msg << ret.right(ret.size()-6).toStdString();
+                        //NMLogError(<< msg.str());
+                        return QString(msg.str().c_str());
+                    }
+
+                    tStr = tStr.replace(wholeText, ret);
                 }
                 else
                 {

@@ -124,10 +124,15 @@ public:
      * \param str
      * \return
      *
-     * Parses and evaluates the parameter expression str. Parameter expressions have
-     * the general form
+     *******************************
+     *** GENERAL PARAMETER EXPRESSION
+     *******************************
+     *  Parses and evaluates the parameter expression str. Parameter expressions have
+     *  the general form
      *
      *      $[<component identifier>:<component property>:<property index>]$,
+     *
+     *      Note: component identifiers may not contain any '-' or '+' sign!
      *
      * where the 2nd and 3rd parameter are optional and the 3rd parameter may only be
      * specified together with the second parameter. Parameter expressions may be nested
@@ -148,6 +153,9 @@ public:
      * fetches the value of table object 'MyParameterTable'
      *
      *
+     *** ********************************
+     *** SHORT HAND EXPRESSION
+     *** ********************************
      * If the second and third parameter
      * are omitted, the expression is implicitly evaluated for the IterationStep of the
      * given model component. I.e.
@@ -161,7 +169,67 @@ public:
      *
      * For example, if the IterationStep of component1 equals 3 the above epxression yields 7.
      *
-     * Note: component identifiers may not contain any '-' or '+' sign!
+     *
+     *****************************
+     *** LUMASS AND MODEL SETTINGS
+     * *****************************
+     * LUMASS or model settings may be accessed by parameter expressions, if 'LUMASS'
+     * is used as identifier and the particular setting keyword is used as property, e.g.
+     *
+     *      $[LUMASS:UserModels]$
+     *
+     * the expressions returns the user models directory as string. Other global settings are 'Workspace'
+     * and 'LUMASSPath'. The latter is set automatically when lumass starts and provides a path
+     * to the storage location of the currently running lumass executable, e.g. lumass.exe.
+     *
+     *
+     **************************
+     *** FUNCTIONAL EXPRESSIONS
+     ***************************
+     *
+     *      $[math: <mathematical equation parsable by MuParser>]$
+     *
+     *      String and filename processing functions based on
+     *      Qt equivalents, which returns string values.
+     *
+     *      $[func:isFile(<filename>)]$
+     *          /home/user/anImage.kea  -> 1
+     *          My grandma has a cold     -> 0
+     *          /home/user                      -> 0
+     *         ""                                     -> 0
+     *
+     *      $[func:isDir(<filename>)]$
+     *          /home/user/anImage.kea  -> 0
+     *          My grandma has a cold     -> 0
+     *          /home/user                      -> 1
+     *         ""                                     -> 0
+     *
+     *      $[func:fileBaseName(<filename>)]$
+     *          /home/user/archive.tar.gz   -> archive
+     *
+     *      $[func:fileCompleteBaseName(<filename>)]$
+     *          /home/user/archive.tar.gz   -> archive.tar
+     *
+     *      $[func:filePath(<filename>)]$
+     *          /home/user/archive.tar.gz   -> /home/user
+     *          ../user                               -> /home/user
+     *
+     *      $[func:fileSuffix(<filename>)]$
+     *          /home/user/archive.tar.gz   -> gz
+     *
+     *      $[func:fileCompleteSuffix(<filename>)]$
+     *          /home/user/archive.tar.gz   -> tar.gz
+     *
+     *      $[func:strIsEmpty(<string>)]$
+     *          /home/user/archive.tar.gz   -> 0
+     *          ""                                      -> 1
+     *
+     *      $[func:strReplace("<string>", "<find string>", "<replace string>")]$
+     *          $[func:strReplace("/home/user/archive.tar.gz", "/", "_")]$  -> _home_user_archive.tar.gz
+     *
+     *      $[func:strSubstring("<string>", <start pos>, <num chars>)]$
+     *          $[func:strSubstring("/home/user/archive.tar.gz", 1, 4)]$     -> home
+     *
      */
     QString processStringParameter(const QObject *obj, const QString& str);
 
@@ -174,6 +242,7 @@ public:
      */
     QStringList getNextParamExpr(const QString& expr);
 
+    QString evalFunc(const QString& funcName, const QStringList& args);
 
 public slots:
 
@@ -242,8 +311,10 @@ public slots:
 
     void setUserId(const QString& oldId, const QString& newId);
 
-    void updateSettings(const QString& key, QVariant value)
-        {mSettings[key] = value;}
+    void updateSettings(const QString& key, QVariant value);
+
+    QStringList getModelSettingsList(void);
+    void clearModelSettings(void);
 
     QVariant getSetting(const QString& key) const
         {return mSettings[key];}
@@ -260,8 +331,11 @@ signals:
     /*! Notify listeners that a component was deleted from the controller */
     void componentRemoved(const QString&);
 
+    void settingsUpdated(const QString& key, const QVariant& value);
+
 protected:
 	void resetExecutionStack(void);
+    QStringList parseQuotedArguments(const QString& args);
 
     /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;
@@ -276,9 +350,6 @@ protected:
 
 	QDateTime mModelStarted;
 	QDateTime mModelStopped;
-
-    //NMModelController* mModelController;
-    //NMLogger* mLogger;
 
     QStringList mToBeDeleted;
 

@@ -82,6 +82,11 @@ public slots:
     QString getModelName(void) const
         {return mModelName;}
 
+    void setModelPath(const QString& modelPath)
+        {mModelPath = modelPath;}
+    QString getModelPath()
+        {return mModelPath;}
+
     NMModelController* getModelController(void);
     void setModelController(NMModelController* ctrl);
 
@@ -95,6 +100,9 @@ public slots:
     void callConfigDlg(void);
     void settingsFeeder(QtProperty* prop, const QStringList& valList);
     void updateSettings(QtProperty* prop, QVariant valueVar);
+
+    void reloadUserConfig(void);
+    void reloadModel(void);
 
 signals:
     void updatedActionParameter(const QString& key, QVariant value);
@@ -110,6 +118,8 @@ public:
 
 protected slots:
     void requestRemoveTool(void);
+    void requestAbort(void);
+    void resetUserModel(void);
     void populateSettingsBrowser(void);
 
 
@@ -132,6 +142,7 @@ protected:
 
     NMOutputMap mOutputs;
     QString mModelName;
+    QString mModelPath;
     NMModelController* mModelController;
 
     QMenu* mMenu;

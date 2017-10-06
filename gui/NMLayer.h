@@ -283,6 +283,7 @@ public:
 	double getLegendItemUpperValue(const int legendRow);
 	double getLegendItemLowerValue(const int legendRow);
 	bool getLegendItemRange(const int legendRow, double* range);
+    bool useIdxMap(void){return mUseIdxMap;}
 
 	bool hasColourTable(void);
 	/* get the statistics of the current legend value field;
@@ -424,6 +425,7 @@ protected:
 	int mClrTabIdx[4];
 	long mNumClasses;
 	long mNumLegendRows;
+    bool mUseIdxMap;
 
 	// legend stats
 	// 0: min

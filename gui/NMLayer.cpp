@@ -72,7 +72,8 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
 	  mLayerType(NM_UNKNOWN_LAYER), mClrFunc(0), mLookupTable(0), mLegendInfo(0),
       mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV),
       mLegendType(NM_LEGEND_SINGLESYMBOL),
-      mIsIn3DMode(false)
+      mIsIn3DMode(false),
+      mUseIdxMap(false)
 {
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
@@ -175,14 +176,12 @@ NMLayer::~NMLayer()
 		delete this->mTableView;
 	}
 
-    if (this->mSqlTableView != 0)
+    if (this->mTableModel != 0)
     {
-        this->mSqlTableView->close();
-        delete this->mSqlTableView;
         NMSqlTableModel* tmodel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
         std::string dbname = tmodel->getDatabaseName().toStdString();
         tmodel->clear();
-        //tmodel->database().close();
+        tmodel->database().close();
         delete mTableModel;
         mTableModel = 0;
         {
@@ -198,8 +197,15 @@ NMLayer::~NMLayer()
         spatialite_cleanup_ex(mSpatialiteCache);
         mSpatialiteCache = 0;
         mSqlViewConn = 0;
+
         NMDebug(<< "NMImageLayer: Destroyed QSql connection to '"
                 << dbname << "'" << std::endl);
+    }
+
+    if (this->mSqlTableView != 0)
+    {
+        this->mSqlTableView->close();
+        delete this->mSqlTableView;
     }
 
     if (mSelectionModel != 0)
@@ -683,7 +689,6 @@ NMLayer::updateMapping(void)
 {
 
     NMDebugCtx(ctxNMLayer, << "...");
-
 	this->resetLegendInfo();
 
 	bool clrfunc = false;
@@ -1188,14 +1193,14 @@ NMLayer::mapUniqueValues(void)
     // consist of consecutive numbers, which may be the case
     // with SQLite-based RAT;
     // we work out whether or not to use the index map by simply checking
-    //      bUseIdxMap = mLegendIndexField(ncells-1) > ncells-1
-    bool bUseIdxMap = false;
+    //      mUseIdxMap = mLegendIndexField(ncells-1) > ncells-1
+    mUseIdxMap = false;
 
     QModelIndex ami = mTableModel->index(ncells-1, idxidx);
     qlonglong maxidx = mTableModel->data(ami).toLongLong();
     if (maxidx > ncells-1)
     {
-        bUseIdxMap = true;
+        mUseIdxMap = true;
     }
 
     // maps scalar values to the 'primary key'
@@ -1281,7 +1286,7 @@ NMLayer::mapUniqueValues(void)
 			// and store a reference into the LookupTable for the
 			// given value;
 			QVector<int> ids;
-            if (bUseIdxMap)
+            if (mUseIdxMap)
             {
                 lut->SetMappedTableValue(t, val, rgba[0], rgba[1], rgba[2], rgba[3]);
             }
@@ -1297,7 +1302,7 @@ NMLayer::mapUniqueValues(void)
 		{
             lut->GetTableValue(it->second.at(0), rgba);
             it->second.push_back(t);
-            if (bUseIdxMap)
+            if (mUseIdxMap)
             {
                 lut->SetMappedTableValue(t, val, rgba[0], rgba[1], rgba[2], rgba[3]);
             }
@@ -1308,7 +1313,7 @@ NMLayer::mapUniqueValues(void)
         }
 	}
 
-    if (bUseIdxMap)
+    if (mUseIdxMap)
     {
         lut->SetIndexedLookup(0);
         lut->SetUseIndexMapping(true);

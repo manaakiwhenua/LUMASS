@@ -1341,9 +1341,26 @@ NMImageLayer::setScalars(vtkImageData* img)
 
     if (    colidx < 0
         ||  valtype == QVariant::String
-        ||  this->mTableModel == 0)
+        ||  this->mTableModel == 0
+        ||  this->mLegendType == NMLayer::NM_LEGEND_INDEXED
+       )
     {
-        return;
+        // account for the case that the primary RAT index is
+        // not contiguous, i.e. max index may be >= number of
+        // records-1
+        if (mLegendType == NMLayer::NM_LEGEND_INDEXED)
+        {
+            // only if we're not using an index map do we not
+            // have to set the attribute value as scalars
+            if (!mUseIdxMap)
+            {
+                return;
+            }
+        }
+        else
+        {
+            return;
+        }
     }
 
     if (colidx != mScalarColIdx)

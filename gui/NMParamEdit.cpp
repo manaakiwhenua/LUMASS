@@ -64,12 +64,22 @@ NMParamEdit::NMParamEdit(QWidget *parent)
 
 
     mRegEx = QRegularExpression("((?<open>\\$\\[)*"
-                             "(?(<open>)|\\b)"
-                             "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-                             "(?<sep1>(?(<open>):|(?>__)))*"
-                             "(?<prop>(?(<sep1>)\\g<comp>))*"
-                             "(?<sep2>(?(<prop>)(?(<open>)):))*"
-                             "(?<idx>(?(<sep2>)[\\w]*)))");
+                               "(?(<open>)|\\b)"
+                               "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+                               "(?<sep1>(?(<open>):|(?>__)))*"
+                               "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
+                               "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
+                               "(?<sep2>(?(<prop>)(?(<open>):)))*"
+                               "(?(<sep2>)(?<idx>[0-9]+)|([ ]*(?<opr2>[+\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
+
+
+//            QRegularExpression("((?<open>\\$\\[)*"
+//                             "(?(<open>)|\\b)"
+//                             "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+//                             "(?<sep1>(?(<open>):|(?>__)))*"
+//                             "(?<prop>(?(<sep1>)\\g<comp>))*"
+//                             "(?<sep2>(?(<prop>)(?(<open>)):))*"
+//                             "(?<idx>(?(<sep2>)[\\w]*)))");
 
     updateWhiteSpaceTab();
 }
@@ -234,7 +244,7 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
         //&& e->key() != QKeySequence(Qt::ALT + Qt::Key_C))
             )
     {
-        mCompletionMode == NM_NO_COMPLETION;
+        mCompletionMode = NM_NO_COMPLETION;
         mCompleter->popup()->hide();
         return;
     }

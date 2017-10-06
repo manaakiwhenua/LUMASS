@@ -320,8 +320,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     mSettings["Workspace"] = QVariant::fromValue(QString("%1").arg(homepath));
     mSettings["UserModels"] = QVariant::fromValue(QString("%1").arg(homepath));
     mSettings["LUMASSPath"] = qApp->applicationDirPath();
-    sqlite3_temp_directory = const_cast<char*>(
-                mSettings["Workspace"].toString().toStdString().c_str());
+
+//    sqlite3_temp_directory = const_cast<char*>(
+//                mSettings["Workspace"].toString().toStdString().c_str());
 
     // **********************************************************************
     // *                    INIT SOME ON-DEMAND GUI ELEMENTS
@@ -875,6 +876,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // set menu's check buttons to right state
     this->ui->actionShow_Map_View->setChecked(true);
     this->ui->actionShow_Model_View->setChecked(true);
+
+    this->ui->modelViewWidget->updateToolContextBox();
 
 }
 
@@ -2450,6 +2453,22 @@ LUMASSMainWin::tableObjectViewClosed()
 void
 LUMASSMainWin::deleteTableObject(const QString& name)
 {
+
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
+               mTableList.find(name);
+
+    if (itList != mTableList.end())
+    {
+        NMSqlTableModel* model = qobject_cast<NMSqlTableModel*>(itList.value().second->getModel());
+        QString cname = itList.value().second->windowTitle();
+        model->clear();
+        model->database().close();
+        delete model;
+
+        QSqlDatabase::removeDatabase(cname);
+        mTableList.erase(itList);
+    }
+
     QMap<QString, QPair<void*, sqlite3*> >::iterator itAdmin =
             mTableAdminObjects.find(name);
     if (itAdmin != mTableAdminObjects.end())
@@ -2462,14 +2481,6 @@ LUMASSMainWin::deleteTableObject(const QString& name)
         cache = 0;
         conn = 0;
         mTableAdminObjects.erase(itAdmin);
-    }
-
-
-    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
-               mTableList.find(name);
-    if (itList != mTableList.end())
-    {
-        mTableList.erase(itList);
     }
 }
 
@@ -3331,7 +3342,25 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
+    QStringList openConns;
+    foreach(const QString& cn, QSqlDatabase::connectionNames())
+    {
+        QSqlDatabase db = QSqlDatabase::database(cn, false);
+        if (db.isValid() && db.isOpen())
+        {
+            QString entry = cn + ":" + db.databaseName();
+            openConns << entry;
+        }
+    }
 
+    QStringList lst = NMGlobalHelper::getMultiItemSelection("Open Database Connections",
+                                          "", openConns, this);
+
+    foreach(const QString& odb, lst)
+    {
+        QStringList split = odb.split(':', QString::SkipEmptyParts);
+        QSqlDatabase::removeDatabase(split.at(0));
+    }
 }
 
 
@@ -3937,6 +3966,32 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
     else
     {
         cvs << "nodata ";
+    }
+
+    // need to fetch the proper attribute value, when scalars represent
+    // the row index of the RAT
+    if (il->getLegendType() == NMLayer::NM_LEGEND_INDEXED && !il->useIdxMap())
+    {
+        int lrow = ::atoi(cvs.str().c_str());
+
+        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(
+                    const_cast<QAbstractItemModel*>(il->getTable()));
+
+        QString queryStr = QString("SELECT %1 from %2 where %3 = %4")
+                .arg(il->getLegendValueField())
+                .arg(sqlModel->tableName())
+                .arg(sqlModel->getNMPrimaryKey())
+                .arg(lrow);
+
+        QSqlQuery q(sqlModel->database());
+        if (q.exec(queryStr))
+        {
+            if (q.next())
+            {
+                cvs.str("");
+                cvs << q.value(0).toString().toStdString();
+            }
+        }
     }
 
     pixval = QString(" Pixel(%1, %2, %3) = %4 | LPRPixel(%5, %6, %7)").  // | Displ(%8, %9) | Orig(%10, %11)").
@@ -5995,12 +6050,13 @@ LUMASSMainWin::updateSettings(const QString &setting, const QVariant &val)
 
     populateSettingsBrowser();
 
-    if (setting.compare(QString::fromLatin1("Workspace")) == 0)
-    {
-        sqlite3_temp_directory = const_cast<char*>(
-                    mSettings["Workspace"].toString().toStdString().c_str());
-    }
-    else if (setting.compare(QString::fromLatin1("UserModels")) == 0)
+    //    if (setting.compare(QString::fromLatin1("Workspace")) == 0)
+    //    {
+    //        sqlite3_temp_directory = const_cast<char*>(
+    //                    mSettings["Workspace"].toString().toStdString().c_str());
+    //    }
+    //    else
+    if (setting.compare(QString::fromLatin1("UserModels")) == 0)
     {
         scanUserModels();
     }
@@ -6045,6 +6101,19 @@ LUMASSMainWin::getUserModelPath(const QString &model)
     return ret;
 }
 
+QStringList
+LUMASSMainWin::getUserToolsList(void)
+{
+    return mUserActions.keys();
+}
+
+const NMAction*
+LUMASSMainWin::getUserTool(const QString &toolName)
+{
+    return mUserActions.value(toolName);
+}
+
+
 void
 LUMASSMainWin::removeUserTool(NMAction *act)
 {
@@ -6052,6 +6121,14 @@ LUMASSMainWin::removeUserTool(NMAction *act)
     {
         return;
     }
+
+    if (act->getModelController()->isModelRunning())
+    {
+        NMLogError(<< "Can't remove User Tool while model is still running!");
+        return;
+    }
+
+    act->getModelController()->resetComponent("root");
 
     NMLogDebug(<< "Removing user tool '" << act->text().toStdString() << "'");
     mExclusiveActions.removeOne(act);
@@ -6073,6 +6150,8 @@ LUMASSMainWin::removeUserTool(NMAction *act)
     settings.remove(act->objectName());
     settings.endGroup();
     settings.endGroup();
+
+    ui->modelViewWidget->updateToolContextBox();
 
     act->deleteLater();
 }
@@ -6148,6 +6227,7 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
     NMAction* uact = new NMAction(toolName, toolbar);
     uact->setObjectName(toolName);
     uact->setModelName(userModel);
+    uact->setModelPath(this->mUserModelPath[userModel]);
     uact->setLogger(mLogger);
     mExclusiveActions << uact;
 
@@ -6267,7 +6347,7 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
     if (uact->getTriggerCount() == 0)
     {
         uact->setTrigger("", NMAction::NM_ACTION_TRIGGER_NIL);
-        NMLogWarn(<< "Load User Tool: No trigger parameters specified!");
+        NMLogInfo(<< "Load User Tool: No trigger parameters specified!");
     }
 
 
@@ -6357,17 +6437,18 @@ LUMASSMainWin::addUserToolToToolBar()
         bar = this->findChild<NMToolBar*>(mLastToolBar);
     }
 
-    if (bar && mUserTools.count())
+    if (bar && mUserModels.count())
     {
         bool bOK;
         QString userTool = QInputDialog::getItem(bar,
                                                  tr("Add User Tool"),
-                                                 tr("Select User Tool"),
-                                                 this->mUserTools,
+                                                 tr("Select User Model"),
+                                                 this->mUserModels,
                                                  0, false, &bOK);
         if (bOK && !userTool.isEmpty())
         {
             this->loadUserTool(userTool, bar->objectName());
+            ui->modelViewWidget->updateToolContextBox();
         }
     }
 }
@@ -6514,7 +6595,8 @@ LUMASSMainWin::processUserPickAction(long long cellId)
             QString key = act->getTriggerKey(NMAction::NM_ACTION_TRIGGER_ID);
             if (!key.isEmpty())
             {
-                NMModelController* ctrl = act->getModelController();
+                NMModelController* ctrl = const_cast<NMModelController*>(
+                            act->getModelController());
                 if (!ctrl->isModelRunning())
                 {
                     ctrl->updateSettings(key, QVariant::fromValue(cellId));
@@ -6572,6 +6654,23 @@ LUMASSMainWin::displayUserModelOutput(void)
             continue;
         }
 
+        // get the process holding the FileName(s) (and TableName) properties
+        NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(comp);
+        if (icomp == 0)
+        {
+            NMLogError(<< userAction->objectName().toStdString() << ": "
+                       << "Invalid output component '" << output.toStdString() << "'!");
+            continue;
+        }
+
+        NMProcess* proc = icomp->getProcess();
+        if (proc == 0)
+        {
+            NMLogError(<< userAction->objectName().toStdString() << ": "
+                       << "Invalid output component '" << output.toStdString() << "'!");
+            continue;
+        }
+
         // we can just display an output buffer (default), or
         // specify a reader or writer component, whose filename
         // specifies the output data set to be displayed
@@ -6580,7 +6679,7 @@ LUMASSMainWin::displayUserModelOutput(void)
         case NMAction::NM_ACTION_DISPLAY_FILENAME:
             {
                 // always just grab the first filename from the list
-                QVariant fnVar = comp->property("FileNames");
+                QVariant fnVar = proc->getParameter("FileNames");
                 if (fnVar.isValid() && fnVar.type() == QVariant::StringList)
                 {
                     QString fn = fnVar.toStringList().at(0);
@@ -6589,10 +6688,10 @@ LUMASSMainWin::displayUserModelOutput(void)
                 // and here comes the impl. for tables
                 else
                 {
-                    fnVar = comp->property("FileName");
+                    fnVar = proc->getParameter("FileName");
                     if (fnVar.isValid())
                     {
-                        QVariant tn = comp->property("TableName");
+                        QVariant tn = proc->getParameter("TableName");
                         if (tn.isValid())
                         {
                             this->importTable(fnVar.toString(),
@@ -6648,6 +6747,9 @@ LUMASSMainWin::displayUserModelOutput(void)
         // get the next tool output
         ++outIt;
     }
+
+    // experimental
+    ctrl->resetComponent("root");
 }
 
 void
@@ -6655,7 +6757,7 @@ LUMASSMainWin::scanUserModels()
 {
     mUserModelListWidget->clear();
     mUserModelPath.clear();
-    mUserTools.clear();
+    mUserModels.clear();
 
     QString folder = mSettings["UserModels"].toString();
 
@@ -6698,7 +6800,7 @@ LUMASSMainWin::scanUserModels()
 
             if (QFile::exists(toolTable))
             {
-                mUserTools << fifo.baseName();
+                mUserModels << fifo.baseName();
             }
         }
         else
@@ -6901,8 +7003,8 @@ void LUMASSMainWin::readSettings()
     if (val.isValid())
     {
         mSettings["Workspace"] = val.toString();
-        sqlite3_temp_directory = const_cast<char*>(
-                    mSettings["Workspace"].toString().toStdString().c_str());
+        //        sqlite3_temp_directory = const_cast<char*>(
+        //                    mSettings["Workspace"].toString().toStdString().c_str());
         emit settingsUpdated("Workspace", val);
     }
 
@@ -6943,9 +7045,10 @@ void LUMASSMainWin::readSettings()
             QVariant utModelVar = settings.value(utKey);
             if (utModelVar.isValid() && utModelVar.type() == QVariant::String)
             {
-                if (mUserTools.contains(utModelVar.toString()))
+                if (mUserModels.contains(utModelVar.toString()))
                 {
                     this->loadUserTool(utModelVar.toString(), tbKey);
+                    this->ui->modelViewWidget->updateToolContextBox();
                 }
                 else
                 {

@@ -129,9 +129,11 @@ public:
     void checkRemoveLayerInfo(NMLayer* l);
     void checkInteractiveLayer();
 
-    //NMModelController* getModelController(void);
     NMLogWidget* getLogWidget(void);
     NMLogger* getLogger(){return mLogger;}
+
+    QStringList getUserToolsList(void);
+    const NMAction* getUserTool(const QString& toolName);
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
@@ -572,7 +574,7 @@ private:
     //QListWidget* mUserModelListWidget;
     NMListWidget* mUserModelListWidget;
     QMap<QString, QString> mUserModelPath;
-    QStringList mUserTools;
+    QStringList mUserModels;
 
     NMLogger* mLogger;
     QObject* mActiveWidget;

@@ -40,10 +40,12 @@ NMFindReplaceDialog::NMFindReplaceDialog(QTextEdit* parent)
     mFindText = new QTextEdit(this);
     mFindText->setFixedHeight(80);
     mFindText->installEventFilter(this);
+    mFindText->setEnabled(true);
     mReplaceText = new QTextEdit(this);
     mReplaceText->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     mReplaceText->setFixedHeight(80);
     mReplaceText->installEventFilter(this);
+    mReplaceText->setEnabled(true);
 
     QHBoxLayout* boxOptions = new QHBoxLayout();
     mUseOnlySelectedText = new QCheckBox(tr("Selected Text"), this);
@@ -96,6 +98,7 @@ NMFindReplaceDialog::eventFilter(QObject *obj, QEvent *event)
             }
         }
     }
+    return false;
 }
 
 void

@@ -108,6 +108,8 @@ public slots:
     void zoomToComponent(const QString& name);
     void zoomToComponent(const QUrl& url);
     void updateTreeEditor(const QString&);
+    void updateToolContextBox(void);
+    void updateToolContext(const QString& tool);
     void changeFont(void);
     void changeColour(void);
     void importModel(QDataStream& lmv, const QMap<QString, QString>& nameRegister,
@@ -257,6 +259,8 @@ private:
 	QMap<QString, QAction*> mActionMap;
     NMLogger* mLogger;
 
+    QComboBox* mToolContext;
+    NMModelController* mToolContextController;
     QLineEdit* mModelPathEdit;
     QPushButton* mSaveModelBtn;
     QString mAutoSaveName;

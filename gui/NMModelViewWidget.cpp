@@ -46,10 +46,12 @@
 
 #include "lumassmainwin.h"
 #include "NMModelViewWidget.h"
+#include "NMAction.h"
 #include "NMProcess.h"
 #include "NMProcessFactory.h"
 #include "NMModelComponentFactory.h"
 #include "NMModelSerialiser.h"
+#include "NMModelController.h"
 #include "NMDataComponent.h"
 #include "NMSequentialIterComponent.h"
 #include "NMConditionalIterComponent.h"
@@ -70,7 +72,7 @@ const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075),
-      mLogger(0)
+      mLogger(0), mToolContextController(0)
 {
 	this->setAcceptDrops(true);
 	this->mLastItem = 0;
@@ -217,6 +219,25 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     QVBoxLayout* vbox = new QVBoxLayout();
 
     QHBoxLayout* hbox = new QHBoxLayout();
+
+    QLabel* aLabel = new QLabel("Tool Context:");
+    mToolContext = new QComboBox();
+    mToolContext->setEditable(false);
+    mToolContext->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+
+    connect(mToolContext, SIGNAL(currentIndexChanged(QString)),
+            this, SLOT(updateToolContext(QString)));
+
+    mToolContext->addItem("None");
+    hbox->addWidget(aLabel);
+    hbox->addWidget(mToolContext);
+
+    QFrame* line = new QFrame();
+    line->setFrameShape(QFrame::VLine);
+    line->setFrameShadow(QFrame::Sunken);
+    hbox->addSpacing(2);
+    hbox->addWidget(line);
+    hbox->addSpacing(2);
 
     QIcon saveIcon(":document-save.png");
     mSaveModelBtn = new QPushButton(this);
@@ -1876,6 +1897,78 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
     emit signalModelChanged(changedModelComp);
 
     NMDebugCtx(ctx, << "done!");
+}
+
+void
+NMModelViewWidget::updateToolContextBox(void)
+{
+    if (mToolContext == 0)
+    {
+        return;
+    }
+
+    QString curText = mToolContext->currentText();
+
+    mToolContext->clear();
+    mToolContext->addItem("None");
+    mToolContext->addItems(NMGlobalHelper::getMainWindow()->getUserToolsList());
+
+    if (mToolContext->findText(curText))
+    {
+        mToolContext->setCurrentText(curText);
+    }
+    else
+    {
+        mToolContext->setCurrentText("None");
+    }
+}
+
+void
+NMModelViewWidget::updateToolContext(const QString &tool)
+{
+    if (mToolContextController != 0)
+    {
+        disconnect(mToolContextController, SIGNAL(settingsUpdated(QString,QVariant)),
+                mModelController, SLOT(updateSettings(QString,QVariant)));
+        mToolContextController = 0;
+    }
+
+    if (tool.compare("None") == 0)
+    {
+        mModelController->clearModelSettings();
+        return;
+    }
+
+    NMAction* act = const_cast<NMAction*>(NMGlobalHelper::getMainWindow()->getUserTool(tool));
+    if (act == 0)
+    {
+        mModelController->clearModelSettings();
+        NMLogDebug(<< "Update tool context: Tool '"
+                   << tool.toStdString() << "' is not registered!");
+        return;
+    }
+
+    /// DEBUG
+    //    QStringList curModelSettings = mModelController->getModelSettingsList();
+    //    NMLogInfo(<< "ModelController: current settings: " << curModelSettings.join(' ').toStdString());
+    mModelController->clearModelSettings();
+
+    NMModelController* ctrl = act->getModelController();
+    QStringList settings = ctrl->getModelSettingsList();
+    NMLogInfo(<< "adding settings: " << settings.join(' ').toStdString());
+    foreach(const QString& key, settings)
+    {
+        mModelController->updateSettings(key, ctrl->getSetting(key));
+    }
+
+    mToolContextController = ctrl;
+    connect(mToolContextController, SIGNAL(settingsUpdated(QString,QVariant)),
+            mModelController, SLOT(updateSettings(QString,QVariant)));
+
+    /// DEBUG
+    //    QStringList afterModelSettings = mModelController->getModelSettingsList();
+    //    NMLogInfo(<< "ModelController: current settings: " << afterModelSettings.join(' ').toStdString());
+
 }
 
 void

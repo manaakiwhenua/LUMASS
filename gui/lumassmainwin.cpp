@@ -6247,7 +6247,7 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
     connect(ctrl->getLogger(), SIGNAL(sendLogMsg(QString)),
             this, SLOT(appendHtmlMsg(QString)));
     connect(ui->modelViewWidget, SIGNAL(requestModelAbortion()),
-            ctrl, SLOT(abortModel()), Qt::DirectConnection);
+            uact, SLOT(requestAbort()), Qt::DirectConnection);
     connect(ctrl, SIGNAL(signalModelStarted()), this, SLOT(showBusyStart()));
     connect(ctrl, SIGNAL(signalModelStopped()), this, SLOT(showBusyEnd()));
     connect(ctrl, SIGNAL(signalModelStopped()), this, SLOT(displayUserModelOutput()));

@@ -73,6 +73,7 @@ protected slots:
 protected:
     void showEvent(QShowEvent* event);
     void updateCompleter();
+    bool containsUnquotedCurlyBrace(const QString& param);
     QString quoteParam(const QString& param);
     QString unquoteParam(const QString& param);
 

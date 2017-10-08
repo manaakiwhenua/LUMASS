@@ -497,16 +497,52 @@ NMHoverEdit::updateModelItem(QTreeWidgetItem *item, int col)
     mCurIndices = indices;
 }
 
+bool
+NMHoverEdit::containsUnquotedCurlyBrace(const QString &param)
+{
+    if (param.isEmpty())
+    {
+        return false;
+    }
+
+    int bfound = false;
+    int pos = -1;
+
+    for (int i=0; i < param.size(); ++i)
+    {
+        if ( (    param[i] == '{'
+              ||  param[i] == '}'
+             )
+             &&  pos < 0
+           )
+        {
+            bfound = true;
+            i = param.size();
+        }
+        else if (param[i] == '\"')
+        {
+            if (pos < 0)
+            {
+                pos = i;
+            }
+            else
+            {
+                pos = -1;
+            }
+        }
+    }
+
+    return bfound;
+}
+
 QString
 NMHoverEdit::quoteParam(const QString &param)
 {
     QString ret = param;
-    if (param.contains(QChar('{')) || param.contains(QChar('}')))
+
+    if (containsUnquotedCurlyBrace(param))
     {
-        if (param.at(0) != '\"' || param.at(param.size()-1) == '\"')
-        {
-            ret = QString("\"%1\"").arg(param);
-        }
+        ret = QString("\"%1\"").arg(param);
     }
 
     return ret;
@@ -520,15 +556,22 @@ NMHoverEdit::unquoteParam(const QString &param)
         return param;
     }
 
+    // remove outermost quotations
     QString ret = param;
-    if (ret.at(0) == '\"')
+    int cnt = param.count('\"');
+    if (    param.startsWith('\"')
+        &&  param.endsWith('\"')
+        &&  cnt == 2
+       )
     {
         ret = ret.mid(1);
+        ret = ret.left(ret.size()-1);
     }
 
-    if (ret.at(ret.size()-1) == '\"')
+    // test for unquoted curly braces
+    if (!containsUnquotedCurlyBrace(ret))
     {
-        ret = ret.left(ret.size()-1);
+        ret = param;
     }
 
     return ret;

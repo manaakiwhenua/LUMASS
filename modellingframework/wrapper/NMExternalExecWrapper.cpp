@@ -107,10 +107,10 @@ NMExternalExecWrapper::abortExecution(void)
 {
     if (mCmdProcess != 0)
     {
-        mCmdProcess->close();
-        mCmdProcess = 0;
+        mCmdProcess->kill();
+        NMLogInfo(<< "Process killed!");
     }
-    NMLogInfo(<< "Process killed!");
+
 }
 
 void

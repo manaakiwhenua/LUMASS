@@ -219,9 +219,12 @@ NMAction::initMenu()
 void
 NMAction::requestAbort(void)
 {
-    if (mModelController)
+    if (    mModelController
+        &&  mModelController->isModelRunning()
+       )
     {
         mModelController->abortModel();
+        NMLogInfo(<< mModelName.toStdString() << ": Model abortion requested by user!");
     }
 }
 

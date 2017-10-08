@@ -103,6 +103,7 @@ public slots:
 
     void reloadUserConfig(void);
     void reloadModel(void);
+    void requestAbort(void);
 
 signals:
     void updatedActionParameter(const QString& key, QVariant value);
@@ -118,7 +119,6 @@ public:
 
 protected slots:
     void requestRemoveTool(void);
-    void requestAbort(void);
     void resetUserModel(void);
     void populateSettingsBrowser(void);
 

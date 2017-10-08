@@ -262,7 +262,8 @@ NMProcess::getParameter(const QString& property)
                     me.setDescription(fetched.toStdString());
                     throw me;
                 }
-                QStringList fetchedList = fetched.split(QString(" "), QString::SkipEmptyParts);
+                //QStringList fetchedList = fetched.split(QString(" "), QString::SkipEmptyParts);
+                QStringList fetchedList = this->mController->parseQuotedArguments(fetched, QChar(' '));
                 if (fetchedList.size() > 1)
                 {
                     for (int t=0; t < fetchedList.size(); ++t)

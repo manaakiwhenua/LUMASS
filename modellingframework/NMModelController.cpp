@@ -144,8 +144,8 @@ NMModelController::abortModel(void)
 		}
 		this->mbAbortionRequested = true;
 
-        NMLogInfo(<< "ModelController: Model '" << comp->objectName().toStdString()
-                  << "' has been requested to abort execution at the next opportunity!");
+//        NMLogInfo(<< "ModelController: Model '" << comp->objectName().toStdString()
+//                  << "' has been requested to abort execution at the next opportunity!");
 	}
 	NMDebugCtx(ctx, << "done!");
 }
@@ -985,7 +985,7 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
 }
 
 QStringList
-NMModelController::parseQuotedArguments(const QString& args)
+NMModelController::parseQuotedArguments(const QString& args, const QChar &sep)
 {
     QStringList retList;
 
@@ -995,6 +995,8 @@ NMModelController::parseQuotedArguments(const QString& args)
     }
 
     QList<int> pos;
+    // lastComma indicates the last
+    // found separator position
     int lastComma = -1;
 
     for (int i=0; i < args.size(); ++i)
@@ -1003,14 +1005,14 @@ NMModelController::parseQuotedArguments(const QString& args)
         {
             pos << i;
         }
-        else if (args[i] == ',' && pos.size() > 0 && (pos.size() % 2) == 0)
+        else if (args[i] == sep && pos.size() > 0 && (pos.size() % 2) == 0)
         {
             retList << args.mid(pos.first()+1, pos.last()-pos.first()-1);
             pos.clear();
             lastComma = i;
         }
         // this detects non quoted arguments
-        else if (i > 0 && args[i] == ',' && pos.size() == 0)
+        else if (i > 0 && args[i] == sep && pos.size() == 0)
         {
             retList << args.mid(lastComma+1, i-(lastComma < 0 ? 0 : lastComma-1));
             lastComma = i;
@@ -1019,13 +1021,20 @@ NMModelController::parseQuotedArguments(const QString& args)
 
     // don't forget the last quoted arguments
     // (which isn't followed by a comma)
-    if (pos.size() > 0 && (pos.size() % 2) == 0)
+    if (lastComma > 0)
     {
-        retList << args.mid(pos.first()+1, pos.last()-pos.first()-1);
+        if (pos.size() > 0 && (pos.size() % 2) == 0)
+        {
+            retList << args.mid(pos.first()+1, pos.last()-pos.first()-1);
+        }
+        else
+        {
+             retList << args.mid(lastComma+1, args.size()-lastComma-1);
+        }
     }
-    else if (args.size() > 0 && lastComma > 0)
+    else
     {
-         retList << args.mid(lastComma+1, args.size()-lastComma-1);
+        retList << args;
     }
 
     return retList;

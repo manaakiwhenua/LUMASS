@@ -194,15 +194,15 @@ public:
      *
      *      $[func:isFile(<filename>)]$
      *          /home/user/anImage.kea  -> 1
-     *          My grandma has a cold     -> 0
-     *          /home/user                      -> 0
-     *         ""                                     -> 0
+     *          My grandma has a cold   -> 0
+     *          /home/user              -> 0
+     *         ""                       -> 0
      *
      *      $[func:isDir(<filename>)]$
      *          /home/user/anImage.kea  -> 0
-     *          My grandma has a cold     -> 0
-     *          /home/user                      -> 1
-     *         ""                                     -> 0
+     *          My grandma has a cold   -> 0
+     *          /home/user              -> 1
+     *         ""                       -> 0
      *
      *      $[func:fileBaseName(<filename>)]$
      *          /home/user/archive.tar.gz   -> archive
@@ -212,7 +212,7 @@ public:
      *
      *      $[func:filePath(<filename>)]$
      *          /home/user/archive.tar.gz   -> /home/user
-     *          ../user                               -> /home/user
+     *          ../user                     -> /home/user
      *
      *      $[func:fileSuffix(<filename>)]$
      *          /home/user/archive.tar.gz   -> gz
@@ -222,10 +222,10 @@ public:
      *
      *      $[func:strIsEmpty(<string>)]$
      *          /home/user/archive.tar.gz   -> 0
-     *          ""                                      -> 1
+     *          ""                          -> 1
      *
      *      $[func:strReplace("<string>", "<find string>", "<replace string>")]$
-     *          $[func:strReplace("/home/user/archive.tar.gz", "/", "_")]$  -> _home_user_archive.tar.gz
+     *          $[func:strReplace("/home/user/archive.tar.gz", "/", "_")]$   -> _home_user_archive.tar.gz
      *
      *      $[func:strSubstring("<string>", <start pos>, <num chars>)]$
      *          $[func:strSubstring("/home/user/archive.tar.gz", 1, 4)]$     -> home
@@ -243,6 +243,7 @@ public:
     QStringList getNextParamExpr(const QString& expr);
 
     QString evalFunc(const QString& funcName, const QStringList& args);
+    QStringList parseQuotedArguments(const QString& args, const QChar& sep= ',');
 
 public slots:
 
@@ -335,7 +336,6 @@ signals:
 
 protected:
 	void resetExecutionStack(void);
-    QStringList parseQuotedArguments(const QString& args);
 
     /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;

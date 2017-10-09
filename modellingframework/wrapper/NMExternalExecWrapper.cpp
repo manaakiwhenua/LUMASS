@@ -192,7 +192,9 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
             QStringList aList = kv.split('=', QString::SkipEmptyParts);
             if (aList.size() > 1)
             {
-                mProcEnv.insert(aList.at(0), aList.at(1));
+                QString path = aList.at(1);
+                path = path.replace("\"", "");
+                mProcEnv.insert(aList.at(0), path);
                 NMLogDebug(<< kv.toStdString());
             }
             else

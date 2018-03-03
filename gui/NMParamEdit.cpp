@@ -39,7 +39,7 @@
 
 NMParamEdit::NMParamEdit(QWidget *parent)
     : QTextEdit(parent), mEditComp(0), mCompletionMode(NM_COMPNAME_COMPLETION),
-      mPropPos(-1)
+      mPropPos(-1), mCtrlPressed(false)
 {
     mCompleter = new QCompleter(this);
     mCompleter->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
@@ -51,7 +51,7 @@ NMParamEdit::NMParamEdit(QWidget *parent)
     connect(mCompleter, SIGNAL(activated(QString)), this,
             SLOT(insertCompletion(QString)));
     connect(mCompleter->popup()->selectionModel(), SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
-            SLOT(showContextInfo(QItemSelection)));
+            SLOT(showContextInfo(QItemSelection,QItemSelection)));
 
     mPropBlackList << "objectName" << "Description" << "Inputs"
                    << "InputComponents"
@@ -60,26 +60,78 @@ NMParamEdit::NMParamEdit(QWidget *parent)
                    << "OutputNumDimensions" << "InputNumBands"
                    << "OutputNumBands";
 
+    mPreamblesAndTips.insert("math", "Inline Calculator");
+    mPreamblesAndTips.insert("func", "Process Strings & Filenames");
+
+    mFunctionsAndTips.insert("isFile", "(<filename>)");
+    mFunctionsAndTips.insert("isDir", "(<filename>)");
+    mFunctionsAndTips.insert("fileBaseName", "(<filename>)");
+    mFunctionsAndTips.insert("fileCompleteBaseName", "(<filename>)");
+    mFunctionsAndTips.insert("filePath", "(<filename>)");
+    mFunctionsAndTips.insert("fileSuffix", "(<filename>)");
+    mFunctionsAndTips.insert("fileCompleteSuffix", "(<filename>)");
+    mFunctionsAndTips.insert("strIsEmpty", "(<string>)");
+    mFunctionsAndTips.insert("strLength", "(<string>)");
+    mFunctionsAndTips.insert("strReplace", "(\"<string>\", \"<find str>\", \"<replace str>\")");
+    mFunctionsAndTips.insert("strSubstring", "(\"<string>\", <start pos>, <num chars>)");
+    mFunctionsAndTips.insert("strCompare", "(\"<string_1>\", \"<string_2>\", <{0,1}: case sensitive?>)");
+
+    mMathFuncAndTips.insert("sin(x)", "sine of x");
+    mMathFuncAndTips.insert("cos(x)", "cosine of x");
+    mMathFuncAndTips.insert("tan(x)", "tangens of x");
+    mMathFuncAndTips.insert("asin(x)", "arcus sine of x");
+    mMathFuncAndTips.insert("acos(x)", "arcus cosine of x");
+    mMathFuncAndTips.insert("atan(x)", "arcus tangens of x");
+    mMathFuncAndTips.insert("sinh(x)", "hyperbolic sine of x");
+    mMathFuncAndTips.insert("cosh(x)", "hyperbolic cosine of x");
+    mMathFuncAndTips.insert("tanh(x)", "hyperbolic tangens of x");
+    mMathFuncAndTips.insert("asinh(x)", "hyperbolic arcus sine of x");
+    mMathFuncAndTips.insert("acosh(x)", "hyperbolic arcus cosine of x");
+    mMathFuncAndTips.insert("atanh(x)", "hyperbolic arcus tangens of x");
+    mMathFuncAndTips.insert("log2(x)", "logarithm of x to base 2");
+    mMathFuncAndTips.insert("log10(x)", "logarithm of x to base 10");
+    mMathFuncAndTips.insert("log(x)", "logarithm of x to base e (2.71828...)");
+    mMathFuncAndTips.insert("ln(x)", "logarithm of x to base e (2.71828...)");
+    mMathFuncAndTips.insert("exp(x)", "e raised to the power of x");
+    mMathFuncAndTips.insert("sqrt(x)", "square root of x");
+    mMathFuncAndTips.insert("rint(x)", "round x to nearest integer");
+    mMathFuncAndTips.insert("abs(x)", "absolute value of x");
+    mMathFuncAndTips.insert("min(...)", "mininum of all arguments");
+    mMathFuncAndTips.insert("max(...)", "maximum of all arguments");
+    mMathFuncAndTips.insert("sum(...)", "sum of all arguments");
+    mMathFuncAndTips.insert("avg(...)", "mean value of all arguments");
+    mMathFuncAndTips.insert("rand(a, b)", "integer random number x with a <= x <= b");
+    mMathFuncAndTips.insert("fmod(a, b)", "floating point remainder of a/b");
+    mMathFuncAndTips.insert("e", "Eulerian number (2.71828...)");
+    mMathFuncAndTips.insert("pi", "Pi (3.141...)");
+    mMathFuncAndTips.insert("&&", "logical and");
+    mMathFuncAndTips.insert("||", "logical or");
+    mMathFuncAndTips.insert("!=", "not equel");
+    mMathFuncAndTips.insert("<=", "less or equal");
+    mMathFuncAndTips.insert(">=", "greater or equal");
+    mMathFuncAndTips.insert("==", "equal");
+    mMathFuncAndTips.insert(">", "greater than");
+    mMathFuncAndTips.insert("<", "less than");
+    mMathFuncAndTips.insert("/", "division: a/b");
+    mMathFuncAndTips.insert("^", "raise x to the power of y: x^y");
+    mMathFuncAndTips.insert("+", "addition: a+b");
+    mMathFuncAndTips.insert("-", "subtraction: a-b");
+    mMathFuncAndTips.insert("*", "multiplication: a*b");
+    mMathFuncAndTips.insert("?:", "if then else: a > 0 ? true : false");
+
+
+
     mMuParserParameterList << "MapExpressions" << "KernelScript";
 
 
     mRegEx = QRegularExpression("((?<open>\\$\\[)*"
-                               "(?(<open>)|\\b)"
-                               "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-                               "(?<sep1>(?(<open>):|(?>__)))*"
-                               "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
-                               "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
-                               "(?<sep2>(?(<prop>)(?(<open>):)))*"
-                               "(?(<sep2>)(?<idx>[0-9]+)|([ ]*(?<opr2>[+\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
-
-
-//            QRegularExpression("((?<open>\\$\\[)*"
-//                             "(?(<open>)|\\b)"
-//                             "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-//                             "(?<sep1>(?(<open>):|(?>__)))*"
-//                             "(?<prop>(?(<sep1>)\\g<comp>))*"
-//                             "(?<sep2>(?(<prop>)(?(<open>)):))*"
-//                             "(?<idx>(?(<sep2>)[\\w]*)))");
+                                "(?(<open>)|\\b)"
+                                "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+                                "(?<sep1>(?(<open>):|(?>__)))*"
+                                "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
+                                "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
+                                "(?<sep2>(?(<prop>)(?(<open>):)))*"
+                                "(?(<sep2>)((?<numidx>[0-9]+)(?:\\]\\$|\\$\\[])|(?<stridx>[^\\r\\n\\$\\[\\]]*))|([ ]*(?<opr2>[+\\\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
 
     updateWhiteSpaceTab();
 }
@@ -133,13 +185,14 @@ NMParamEdit::updateWhiteSpaceTab()
 }
 
 void
-NMParamEdit::showContextInfo(const QItemSelection& sel)
+NMParamEdit::showContextInfo(QItemSelection newsel,
+                             QItemSelection oldsel)
 {
     if (!mCompleter->popup()->isHidden()
-        && sel.count()
+        && newsel.count()
         && mCompletionMode != NM_NO_COMPLETION)
     {
-        const int id = sel.at(0).top();
+        const int id = newsel.at(0).top();
         QRect listrect = mCompleter->popup()->rect();
         QModelIndex idx = mCompleter->model()->index(id,0);
         QModelIndex tidx = mCompleter->popup()->indexAt(listrect.topLeft());
@@ -168,7 +221,8 @@ NMParamEdit::showContextInfo(const QItemSelection& sel)
                   top);
 
         QString tip;
-        QString completion = mCompleter->model()->data(idx).toString();
+        QString completion = mCompleter->popup()->model()->data(idx).toString();
+
         QMap<QString, QString>::iterator mit;
         if (mCompletionMode == NM_PROPNAME_COMPLETION)
         {
@@ -201,8 +255,27 @@ NMParamEdit::setCompList(QMap<QString, QString> compMap,
                          NMModelComponent* editComp)
 {
     mCompList = compMap.keys();
-    mCompList.sort(Qt::CaseInsensitive);
     mCompToolTipMap = compMap;
+
+    // add info on parameter expression processing capabilities
+    QMap<QString, QString>::const_iterator miter = mPreamblesAndTips.cbegin();
+    while (miter != mPreamblesAndTips.cend())
+    {
+        mCompList.append(miter.key());
+        mCompToolTipMap.insert(miter.key(), miter.value());
+        ++miter;
+    }
+
+    // also add "LUMASS" so that users are aware they can access
+    // lumass and model settings as well
+    mCompList.append("LUMASS");
+    mCompToolTipMap.insert("LUMASS", "LUMASS & Model Settings");
+
+    miter = mCompToolTipMap.find("func");
+    miter = mCompToolTipMap.find("math");
+    miter = mCompToolTipMap.find("LUMASS");
+
+    mCompList.sort(Qt::CaseInsensitive);
     mCompleter->setModel(new QStringListModel(mCompList, mCompleter));
     mEditComp = editComp;
 }
@@ -212,6 +285,16 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
 {
     if (mCompleter && mCompleter->popup()->isVisible())
     {
+        //
+        if (e->modifiers() & Qt::CTRL)
+        {
+            mCtrlPressed = true;
+        }
+        else
+        {
+            mCtrlPressed = false;
+        }
+
         // The following keys are forwarded by the completer to the widget
         switch (e->key())
         {
@@ -271,7 +354,8 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
             QStringRef sep1 = match.capturedRef("sep1");
             QStringRef prop = match.capturedRef("prop");
             QStringRef sep2 = match.capturedRef("sep2");
-            QStringRef idx = match.capturedRef("idx");
+            QStringRef numidx = match.capturedRef("numidx");
+            QStringRef stridx = match.capturedRef("stridx");
             qDebug() << "comp=" << comp.position()
                      << " sep1=" << (sep1.isEmpty() ? -1 : sep1.position())
                      << " prop=" << prop.position()
@@ -290,9 +374,13 @@ NMParamEdit::keyPressEvent(QKeyEvent *e)
                 }
 
                 QString prefix;
-                if (!idx.isEmpty())
+                if (!numidx.isEmpty())
                 {
-                    prefix = idx.mid(0, cpos-idx.position()).toString();
+                    prefix = numidx.mid(0, cpos-numidx.position()).toString();
+                }
+                else if (!stridx.isEmpty())
+                {
+                    prefix = stridx.mid(0, cpos-stridx.position()).toString();
                 }
                 else
                 {
@@ -394,13 +482,15 @@ NMParamEdit::setupValueCompleter(const QString &compName, const QString &propNam
 
                 QStringList values;
                 mValueIdxMap.clear();
-                for (int i=0; i < nrows; ++i)
+                long long minpk = tab->GetMinPKValue();
+                long long maxpk = tab->GetMaxPKValue();
+                for (long long i=minpk; i <= maxpk; ++i)
                 {
                     QString v = tab->GetStrValue(colid, i).c_str();
                     if (!v.isEmpty())
                     {
                         values << v;
-                        mValueIdxMap.insert(v, i+1);
+                        mValueIdxMap.insert(v, minpk == 0 ? i+1 : i);
                     }
                 }
 
@@ -451,7 +541,7 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
     else if (!comp.isEmpty() && propPos > 0)
     {
         NMModelController* ctrl = NMGlobalHelper::getModelController();
-        NMModelComponent* pcomp = ctrl->getComponent(comp);
+        NMModelComponent* pcomp = this->getModelComponent(comp);
         QStringList propList;
         mPropToolTipMap.clear();
         if (pcomp)
@@ -472,7 +562,7 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
                     procProps.removeDuplicates();
                     foreach(const QString& pp, procProps)
                     {
-                        mPropToolTipMap.insert(pp, "ProcessParameter");
+                        mPropToolTipMap.insert(pp, "Process Parameter");
                     }
                     propList << procProps;
                 }
@@ -480,7 +570,7 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
                 compProps.removeDuplicates();
                 foreach(const QString& cp, compProps)
                 {
-                    mPropToolTipMap.insert(cp, "ComponentProperty");
+                    mPropToolTipMap.insert(cp, "Component Property");
                 }
                 propList << compProps;
             }
@@ -495,6 +585,30 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
                 }
             }
         }
+        else if (mPreamblesAndTips.keys().contains(comp))
+        {
+            QMap<QString, QString>::const_iterator fiter;
+            if (comp.compare(QString("func"), Qt::CaseInsensitive) == 0)
+            {
+                fiter = mFunctionsAndTips.cbegin();
+                while (fiter != mFunctionsAndTips.cend())
+                {
+                    propList.append(fiter.key());
+                    mPropToolTipMap.insert(fiter.key(), fiter.value());
+                    ++fiter;
+                }
+            }
+            else if (comp.compare(QString("math"), Qt::CaseInsensitive) == 0)
+            {
+                fiter = mMathFuncAndTips.cbegin();
+                while (fiter != mMathFuncAndTips.cend())
+                {
+                    propList.append(fiter.key());
+                    mPropToolTipMap.insert(fiter.key(), fiter.value());
+                    ++fiter;
+                }
+            }
+        }
         else if (comp.compare(QString("LUMASS"), Qt::CaseInsensitive) == 0)
         {
             QStringList keys = NMGlobalHelper::getUserSettingsList();
@@ -502,6 +616,13 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
             {
                 propList.append(key);
                 mPropToolTipMap.insert(key, "LUMASS Setting");
+            }
+
+            QStringList modelKeys = NMGlobalHelper::getModelSettingsList();
+            foreach(const QString& mk, modelKeys)
+            {
+                propList.append(mk);
+                mPropToolTipMap.insert(mk, "Model Setting");
             }
         }
         else
@@ -554,7 +675,14 @@ NMParamEdit::insertCompletion(const QString &completion)
         mit = mValueIdxMap.find(completion);
         if (mit != mValueIdxMap.end())
         {
-            theCompletion = QString("%1").arg(mit.value());
+            if (mCtrlPressed)
+            {
+                theCompletion = QString("%1").arg(mit.key());
+            }
+            else
+            {
+                theCompletion = QString("%1").arg(mit.value());
+            }
         }
     }
 

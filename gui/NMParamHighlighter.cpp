@@ -80,15 +80,59 @@ NMParamHighlighter::NMParamHighlighter(QObject* parent)
     mKernelScriptKeywords << "for" << "numPix" << "centrePixIdx" << "addr"
                           << "thid" << "kwinVal" << "tabVal" << "neigDist";
 
+//    mRegEx = QRegularExpression("((?<open>\\$\\[)*"
+//                                "(?(<open>)|\\b)"
+//                                "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+//                                "(?<sep1>(?(<open>):|(?>__)))*"
+//                                "(?<prop>(?(<sep1>)\\g<comp>))*"
+//                                "(?<sep2>(?(<prop>)(?(<open>)):))*"
+//                                "(?<idx>(?(<sep2>)[0-9]+)))");
+
     mRegEx = QRegularExpression("((?<open>\\$\\[)*"
                                 "(?(<open>)|\\b)"
                                 "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
                                 "(?<sep1>(?(<open>):|(?>__)))*"
                                 "(?<prop>(?(<sep1>)\\g<comp>))*"
                                 "(?<sep2>(?(<prop>)(?(<open>)):))*"
-                                "(?<idx>(?(<sep2>)[0-9]+)))");
+                                "(?(<sep2>)("
+                                "(?<numidx>[0-9]+)(?:\\]\\$|\\$\\[)|"
+                                "(?<stridx>[^\\r\\n\\$\\[\\]]*))))");
 
     mRegExNum = QRegularExpression("\\b(\\d+(?<pt>\\.)*(?(pt)\\d)*(?<sn>e)*(?(sn)[+-]\\d+))\\b");
+    setDarkColorMode();
+}
+
+void
+NMParamHighlighter::setDarkColorMode(bool bDark)
+{
+    if (bDark)
+    {
+        normalFormat.setForeground((QColor(180,180,180)));
+
+        compFormat.setForeground(QColor(255,120,255));
+
+        propFormat.setForeground(QColor(11,223,84));
+
+        keywordFormat.setForeground(QColor(0,255,255));
+
+        idxFormat.setForeground(QColor(255, 230, 0));
+
+        numberFormat.setForeground(QColor(255,80,80));
+    }
+    else
+    {
+        normalFormat.setForeground((Qt::black));
+
+        compFormat.setForeground(Qt::darkMagenta);
+
+        propFormat.setForeground(Qt::darkGreen);
+
+        keywordFormat.setForeground(Qt::darkBlue);
+
+        idxFormat.setForeground(QColor(200, 133, 0));
+
+        numberFormat.setForeground(Qt::darkRed);
+    }
 }
 
 void
@@ -104,24 +148,6 @@ NMParamHighlighter::highlightBlock(const QString &text)
     {
         return;
     }
-
-    QTextCharFormat normalFormat;
-    normalFormat.setForeground((Qt::black));
-
-    QTextCharFormat compFormat;
-    compFormat.setForeground(Qt::darkMagenta);
-
-    QTextCharFormat propFormat;
-    propFormat.setForeground(Qt::darkGreen);
-
-    QTextCharFormat keywordFormat;
-    keywordFormat.setForeground(Qt::darkBlue);
-
-    QTextCharFormat idxFormat; // dark orange
-    idxFormat.setForeground(QColor(200, 133, 0));
-
-    QTextCharFormat numberFormat;
-    numberFormat.setForeground(Qt::darkRed);
 
     // =================================================================
     // looking for numbers e.g. 3.5 or 133 or 1e-9 or 1e+3
@@ -149,20 +175,31 @@ NMParamHighlighter::highlightBlock(const QString &text)
         QStringRef comp = match.capturedRef("comp");
         QStringRef sep1 = match.capturedRef("sep1");
         QStringRef prop = match.capturedRef("prop");
-        QStringRef idx  = match.capturedRef("idx");
+        //QStringRef idx  = match.capturedRef("idx");
+        QStringRef numidx  = match.capturedRef("numidx");
+        QStringRef stridx  = match.capturedRef("stridx");
+
 
         if (!comp.isEmpty())
         {
-            if (!idx.isEmpty() && !sep1.isEmpty() && sep1.compare(QString("__")) != 0)
+            if ((!numidx.isEmpty() || !stridx.isEmpty()) && !sep1.isEmpty() && sep1.compare(QString("__")) != 0)
             {
-                setFormat(idx.position(), idx.length(), idxFormat);
+                if (!numidx.isEmpty())
+                {
+                    setFormat(numidx.position(), numidx.length(), idxFormat);
+                }
+                else
+                {
+                    setFormat(stridx.position(), stridx.length(), idxFormat);
+                }
             }
 
             if (!prop.isEmpty())
             {
                 if (  (   sep1.compare(QString("__")) == 0
                        && (mExpType == NM_MATH_EXP || mExpType == NM_SCRIPT_EXP)
-                       && idx.isEmpty())
+                       && numidx.isEmpty()
+                       && stridx.isEmpty())
                    || (sep1.compare(QString(":")) == 0)
                        && !open.isEmpty())
                 {

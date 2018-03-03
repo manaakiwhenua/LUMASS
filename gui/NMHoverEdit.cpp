@@ -85,6 +85,18 @@ NMHoverEdit::NMHoverEdit(QWidget *parent)
     //splitter->addWidget(mPreview);
     mPreview->hide();
 
+    // adapt highlighter colours for dark mode, if applicable
+    QColor bkg = this->mEdit->palette().background().color();
+    bool bdark = false;
+    if (bkg.red() < 80 && bkg.green() < 80 && bkg.blue() < 80)
+    {
+        bdark = true;
+    }
+
+    mHighlighter->setDarkColorMode(bdark);
+    mPreviewHighlighter->setDarkColorMode(bdark);
+
+
     QWidget* widgetL = new QWidget(this);
     QVBoxLayout* vboxL = new QVBoxLayout(widgetL);
     mLabel = new QLabel(widgetL);
@@ -205,7 +217,9 @@ NMHoverEdit::eventFilter(QObject *obj, QEvent *event)
 void
 NMHoverEdit::showExpressionPreview(bool preview)
 {
-    if (!preview)
+    NMModelController* ctrl = NMGlobalHelper::getModelController();
+
+    if (!preview || ctrl == 0)
     {
         mPreview->hide();
         return;
@@ -213,19 +227,59 @@ NMHoverEdit::showExpressionPreview(bool preview)
 
     QString curExpr = mEdit->toPlainText();
 
-    // we might induce an update operation of an involved
-    // data component, so we have to watch out for
-    // any exceptions thrown ...
-    QString populatedExpr = "Parameter expression evaluation failed - see notification window!)";
-    try
+    // iterate over each expression in the parameter and substitute with
+    // the evaluated value
+    int maxcount = 0;
+    QString nested = curExpr;
+    QStringList innerExp = ctrl->getNextParamExpr(nested);
+    while (innerExp.size() > 0)
     {
-        populatedExpr = NMGlobalHelper::getModelController()->processStringParameter(mComp, curExpr);
+        foreach(const QString& s, innerExp)
+        {
+            nested = nested.replace(s, QString(""));
+            ++maxcount;
+        }
+        innerExp = ctrl->getNextParamExpr(nested);
     }
-    catch(NMMfwException& me)
+    maxcount *= 11;
+
+    int count = 0;
+    QStringList expList = ctrl->getNextParamExpr(curExpr);
+    while (expList.size() > 0)
     {
-        NMLogError(<< me.what());
+        if (count >= maxcount)
+        {
+            NMLogError(<< "The maximum allowed number of "
+                       << "expressions per parameter "
+                       << "has been exceeded. Note: LUMASS"
+                       << "currently only supports a depth"
+                          "recursion level of 10 for "
+                       << "parameter expressions!")
+
+            break;
+        }
+
+        for (int i=0; i < expList.size(); ++i)
+        {
+            QString rawStr = expList.at(i);
+            QString evalExpr;
+            try
+            {
+                evalExpr = ctrl->processStringParameter(mComp, rawStr);
+            }
+            catch(NMMfwException& me)
+            {
+                //NMLogError(<< me.what());
+                evalExpr = QString("ERROR: %1").arg(evalExpr);
+            }
+
+            curExpr = curExpr.replace(rawStr, evalExpr);
+            ++count;
+        }
+        expList = ctrl->getNextParamExpr(curExpr);
     }
-    mPreview->setText(populatedExpr);
+
+    mPreview->setText(curExpr);
     mPreview->show();
 }
 

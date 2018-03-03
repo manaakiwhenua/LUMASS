@@ -21,11 +21,11 @@
 
 #include <QTextEdit>
 #include <QRegularExpressionMatchIterator>
+#include <QItemSelection>
 
 class QCompleter;
 class QAbstractItemModel;
 class NMModelComponent;
-class QItemSelection;
 
 class NMParamEdit : public QTextEdit
 {
@@ -43,10 +43,11 @@ public:
 signals:
 
 public slots:
+    void showContextInfo(QItemSelection newsel,
+                         QItemSelection oldsel);
 
 protected slots:
     void insertCompletion(const QString& completion);
-    void showContextInfo(const QItemSelection& sel);
 
 protected:
 
@@ -75,6 +76,8 @@ private:
     CompletionMode mCompletionMode;
     int mPropPos;
 
+    bool mCtrlPressed;
+
     NMModelComponent* mEditComp;
     QStringList mCompList;
     QMap<QString, QString> mCompToolTipMap;
@@ -84,6 +87,9 @@ private:
     QCompleter* mCompleter;
     QStringList mPropBlackList;
     QStringList mMuParserParameterList;
+    QMap<QString, QString> mPreamblesAndTips;
+    QMap<QString, QString> mFunctionsAndTips;
+    QMap<QString, QString> mMathFuncAndTips;
 
     QString mLastTip;
     QString mEditParameter;

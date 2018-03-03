@@ -43,6 +43,7 @@ signals:
 
 public slots:
     void highlightBlock(const QString &text);
+    void setDarkColorMode(bool bDark=false);
 
 
 private:
@@ -52,6 +53,13 @@ private:
     QStringList mKernelScriptKeywords;
     QRegularExpression mRegEx;
     QRegularExpression mRegExNum;
+
+    QTextCharFormat normalFormat;
+    QTextCharFormat compFormat;
+    QTextCharFormat propFormat;
+    QTextCharFormat keywordFormat;
+    QTextCharFormat idxFormat;
+    QTextCharFormat numberFormat;
 
 };
 

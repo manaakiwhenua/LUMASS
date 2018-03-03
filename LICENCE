@@ -20,7 +20,7 @@ LUMASS' source code is built upon various libraries released under a GPL compati
 licence. Please see the individual source files for further information.
 You can download the LUMASS source code from https://bitbucket.org/landcareresearch/lumass/src
 
-This Windows distribution provides all direct and indirect dependencies required
+The Windows distribution provides all direct and indirect dependencies required
 to run LUMASS without any further installation. Please consult the dependencies.xls
 file for the complete list of dependencies and a referece to the individual 
 licence and copyright notices provided in the licences subfolder. 

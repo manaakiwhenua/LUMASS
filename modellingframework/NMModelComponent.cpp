@@ -94,10 +94,13 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     }
 
     //  <parameterName>:<indexNumber>
+    //  NOTE: the index is 1-BASED!!!
+    //        in alignment with parameter expressions fetching table
+    //        table values
     QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
     if (specList.size() < 2)
     {
-        specList << "0";
+        specList << "1";
     }
 
     QStringList propList = this->getModelController()->getPropertyList(this);
@@ -113,14 +116,15 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
 
         if (!propList.contains(specList.at(0)))
         {
-            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-            me.setSource(this->objectName().toStdString());
-            QString msg = QString("%1::getModelParameter(%2) - don't have a parameter '%3'!")
-                    .arg(this->objectName())
-                    .arg(paramSpec)
-                    .arg(specList.at(1));
-            me.setDescription(msg.toStdString());
-            throw me;
+            //            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            //            me.setSource(this->objectName().toStdString());
+            //            QString msg = QString("%1::getModelParameter(%2) - don't have a parameter '%3'!")
+            //                    .arg(this->objectName())
+            //                    .arg(paramSpec)
+            //                    .arg(specList.at(1));
+            //            me.setDescription(msg.toStdString());
+            //            throw me;
+            param = QString("ERROR - invalid property: %1").arg(specList.at(0));
             return param;
         }
     }
@@ -129,16 +133,28 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     // (employing the 'use_up' strategy, s. NMProcess)
     bool bok = true;
     int listIdx = specList.at(1).toInt(&bok);
+
+    /// !!!!
+    // adjusting the 1-based index to the 0-based map-indices!
+    /// !!!!
+    --listIdx;
+
     if (!bok)
     {
-        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-        me.setSource(this->objectName().toStdString());
-        QString msg = QString("%1::getModelParameter(%2) - index '%3' is ivalid!")
-                .arg(this->objectName())
-                .arg(paramSpec)
-                .arg(listIdx);
-        me.setDescription(msg.toStdString());
-        throw me;
+        param = QString("ERROR - invalid index: %1").arg(specList.at(1));
+        return param;
+    }
+    else if (listIdx < 0)
+    {
+        //        NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+        //        me.setSource(this->objectName().toStdString());
+        //        QString msg = QString("%1::getModelParameter(%2) - index '%3' is invalid!")
+        //                .arg(this->objectName())
+        //                .arg(paramSpec)
+        //                .arg(listIdx);
+        //        me.setDescription(msg.toStdString());
+        //        throw me;
+        param = QString("ERROR - index '%1' is invalid!").arg(listIdx+1);
         return param;
     }
 
@@ -149,30 +165,41 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     }
     else
     {
-        this->property(specList.at(0).toStdString().c_str());
+        param = this->property(specList.at(0).toStdString().c_str());
     }
+
 
     if (QString::fromLatin1("QStringList").compare(paramList.typeName()) == 0)
     {
         QStringList tl = paramList.toStringList();
-        if (listIdx >= tl.size())
+        if (tl.size())
         {
-            listIdx = tl.size();
+            if (listIdx >= tl.size() && listIdx > 0)
+            {
+                listIdx = tl.size()-1;
+            }
+            param = QVariant::fromValue(tl.at(listIdx));
         }
-        param = QVariant::fromValue(tl.at(listIdx));
+        else
+        {
+            param = QString("ERROR - property '%1' is NULL!").arg(specList.at(0));
+        }
     }
     else if (QString::fromLatin1("QList<QStringList>").compare(paramList.typeName()) == 0)
     {
         QList<QStringList> tll = paramList.value<QList<QStringList> >();
-        if (listIdx >= tll.size())
+        if (tll.size())
         {
-            listIdx = tll.size();
+            if (listIdx >= tll.size() && listIdx > 0)
+            {
+                listIdx = tll.size()-1;
+            }
+            param = QVariant::fromValue(tll.at(listIdx));
         }
-        param = QVariant::fromValue(tll.at(listIdx));
-    }
-    else
-    {
-        param = paramList;
+        else
+        {
+            param = QString("ERROR - property '%1' is NULL!").arg(specList.at(0));
+        }
     }
 
     return param;

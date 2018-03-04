@@ -976,6 +976,33 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
 
         ret = args.at(0).mid(pos, cnt);
     }
+    else if (funcName.compare("strCompare") == 0)
+    {
+        if (args.size() < 2)
+        {
+            return QString("ERROR: Need two strings to compare!");
+        }
+
+        Qt::CaseSensitivity csens = Qt::CaseInsensitive;
+
+        // if the user provided a thrid parameter, we
+        // try to make sense of it
+        if (args.size() == 3)
+        {
+            bool bOK;
+            int sens = QVariant(args.at(2)).toInt(&bOK);
+
+
+            if (bOK && sens)
+            {
+                csens = Qt::CaseSensitive;
+            }
+        }
+
+        int ret = args.at(0).compare(args.at(1), csens);
+        return QString("%1").arg(ret);
+
+    }
     else
     {
         ret = QString("ERROR: Unknown function '%1'").arg(funcName);
@@ -1014,7 +1041,7 @@ NMModelController::parseQuotedArguments(const QString& args, const QChar &sep)
         // this detects non quoted arguments
         else if (i > 0 && args[i] == sep && pos.size() == 0)
         {
-            retList << args.mid(lastComma+1, i-(lastComma < 0 ? 0 : lastComma-1));
+            retList << args.mid(lastComma+1, i-(lastComma+1));
             lastComma = i;
         }
     }
@@ -1029,12 +1056,20 @@ NMModelController::parseQuotedArguments(const QString& args, const QChar &sep)
         }
         else
         {
-             retList << args.mid(lastComma+1, args.size()-lastComma-1);
+             retList << args.mid(lastComma+1, args.size()-(lastComma+1));
         }
     }
+    // support for single argument functions
     else
     {
-        retList << args;
+        if (args.startsWith('\"') && args.endsWith('\"'))
+        {
+            retList << args.mid(1, args.size()-2);
+        }
+        else
+        {
+            retList << args;
+        }
     }
 
     return retList;
@@ -1043,31 +1078,74 @@ NMModelController::parseQuotedArguments(const QString& args, const QChar &sep)
 QString
 NMModelController::processStringParameter(const QObject* obj, const QString& str)
 {
+    int maxcount = 0;
     QString nested = str;
-    QStringList innerExp = NMModelController::getNextParamExpr(nested);
+
+    // count the number of ParameterExpressions to be evaluated
+    // to avoid endless loops
+    QStringList innerExp = this->getNextParamExpr(nested);
+    while (innerExp.size() > 0)
+    {
+        foreach(const QString& s, innerExp)
+        {
+            nested = nested.replace(s, QString(""));
+            ++maxcount;
+        }
+        innerExp = this->getNextParamExpr(nested);
+    }
+    /// ToDo: testing!
+    maxcount *= 11;
+
+    nested = str;
+    innerExp = this->getNextParamExpr(nested);
     int numExp = innerExp.size();
 
+    int count = 0;
     while (numExp > 0)
     {
+        if (count >= maxcount)
+        {
+            NMLogError(<< "The maximum allowed number of "
+                       << "expressions per parameter "
+                       << "has been exceeded. Note: LUMASS "
+                       << "currently only supports a "
+                          "recursion depth of 10 for "
+                       << "parameter expressions!")
+
+            return QString::fromLatin1("ERROR: Maximum recursion depth exceeded!");
+        }
+
         for (int inner=0; inner < numExp; ++inner)
         {
             QString tStr = innerExp.at(inner);
             tStr = tStr.simplified();
             //tStr.replace(QString(" "), QString(""));
 
+//            QRegularExpression rexexp("((?<open>\\$\\[)*"
+//                                         "(?(<open>)|\\b)"
+//                                         "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+//                                         "(?<sep1>(?(<open>):|(?>__)))*"
+//                                         "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
+//                                         "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
+//                                         "(?<sep2>(?(<prop>)(?(<open>)):))*"
+//                                         "(?(<sep2>)(?<idx>[0-9]+)*|([ ]*(?<opr2>[+\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
+
             QRegularExpression rexexp("((?<open>\\$\\[)*"
-                                         "(?(<open>)|\\b)"
-                                         "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
-                                         "(?<sep1>(?(<open>):|(?>__)))*"
-                                         "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
-                                         "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
-                                         "(?<sep2>(?(<prop>)(?(<open>):)))*"
-                                         "(?(<sep2>)(?<idx>[0-9]+)|([ ]*(?<opr2>[+\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
+                                            "(?(<open>)|\\b)"
+                                            "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
+                                            "(?<sep1>(?(<open>):|(?>__)))*"
+                                            "(?<arith>(?(<sep1>)|([ ]*(?<opr>[+\\-])?[ ]*(?<sum>[\\d]+))))*"
+                                            "(?<prop>(?(?<!math:|func:)(?(<sep1>)\\g<comp>)|([a-zA-Z0-9_ \\/\\(\\)&%\\|\\>\\!\\=\\<\\-\\+\\*\\^\\?:;.,'\"])*))*"
+                                            "(?<sep2>(?(<prop>)(?(<open>):)))*"
+                                            "(?(<sep2>)((?<numidx>[0-9]+)(?:\\]\\$|\\$\\[)|(?<stridx>[^\\r\\n\\$\\[\\]]*))|([ ]*(?<opr2>[+\\\\-]+)[ ]*(?<sum2>[\\d]+))*))(?>\\]\\$)*");
+
             int pos = 0;
             bool bRecognisedExpression = false;
             //while((pos = rex.indexIn(tStr, pos)) != -1)
             QRegularExpressionMatchIterator mit = rexexp.globalMatch(tStr);
-            while (mit.hasNext())
+            //while (mit.hasNext())
+            // we ever only expect to have one match here!
+            if (mit.hasNext())
             {
                 QRegularExpressionMatch match = mit.next();
                 QString wholeText = match.captured(0);
@@ -1075,7 +1153,23 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                 QStringList m;
                 m << match.capturedRef("comp").toString(); // 0
                 m << match.capturedRef("prop").toString(); // 1
-                m << match.capturedRef("idx").toString();  // 2
+
+                QStringRef numidx = match.capturedRef("numidx");
+                QStringRef stridx = match.capturedRef("stridx");
+
+                if (!numidx.isEmpty())                     // 2
+                {
+                    m << numidx.toString();
+                }
+                else
+                {
+                    m << stridx.toString();
+                }
+
+                //m << match.capturedRef("idx").toString();  // 2
+
+                bool sep1 = match.capturedRef("sep1").toString().isEmpty() ? false : true;
+                bool sep2 = match.capturedRef("sep2").toString().isEmpty() ? false : true;
 
                 // in case we've got arithmetics right after the component name
                 m << match.capturedRef("opr").toString();  // 3
@@ -1111,7 +1205,6 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     otb::MultiParser::Pointer parser = otb::MultiParser::New();
                     try
                     {
-                        //parser->SetExpr(m.at(2).toStdString());
                         parser->SetExpr(m.at(1).toStdString());
                         otb::MultiParser::ValueType res = parser->Eval();
                         tStr = QString("%1").arg(res);
@@ -1119,8 +1212,8 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     catch (mu::ParserError& evalerr)
                     {
                         std::stringstream errmsg;
-                        errmsg << "ERROR - " << obj->objectName().toStdString()
-                               << " Math expression evaluation: ";
+                        errmsg << "ERROR:" << obj->objectName().toStdString() << std::endl
+                               << "Math expression evaluation: ";
                         errmsg << std::endl
                                << "Message:    " << evalerr.GetMsg() << std::endl
                                << "Formula:    " << evalerr.GetExpr() << std::endl
@@ -1128,7 +1221,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                                << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
 
 
-                        NMLogError(<< errmsg.str());
+                        //NMLogError(<< errmsg.str());
                         return QString(errmsg.str().c_str());
                     }
                 }
@@ -1141,9 +1234,9 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     else
                     {
                         std::stringstream errstr;
-                        errstr << "Couldn't find LUMASS setting '"
+                        errstr << "ERROR: Couldn't find LUMASS setting '"
                                << m.at(1).toStdString() << "'!";
-                        NMLogError(<< errstr.str());
+                        //NMLogError(<< errstr.str());
                         return QString(errstr.str().c_str());
                     }
                 }
@@ -1200,9 +1293,11 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     if (mc)
                     {
                         NMIterableComponent* ic = 0;
-
+                        QString paramSpec;
                         QVariant modelParam;
-                        if (m.at(1).isEmpty())
+
+                        // we've got only the component defined
+                        if (!sep1)
                         {
                             ic = qobject_cast<NMIterableComponent*>(mc);
                             if (ic)
@@ -1211,39 +1306,49 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                             }
                             else
                             {
-                                modelParam = QVariant::fromValue(1);
+                                modelParam = QString::fromLatin1("ERROR: Invalid iteration-step expression!");
                             }
+                        }
+                        // we've got a property defined
+                        else if (sep1 && m.at(1).isEmpty())
+                        {
+                            modelParam = QString::fromLatin1("ERROR: malformed parameter expresssion: missing property!");
+                        }
+                        else if (!sep2)
+                        {
+                            int pstep = 1;
+                            if (host->getHostComponent())
+                            {
+                                pstep = host->getHostComponent()->getIterationStep();
+                            }
+                            else if (ic->getHostComponent())
+                            {
+                                pstep = ic->getHostComponent()->getIterationStep();
+                            }
+                            paramSpec = QString("%1:%2").arg(m.at(1)).arg(pstep);
+                        }
+                        else if (sep2 && !m.at(2).isEmpty())
+                        {
+                            paramSpec = QString("%1:%2").arg(m.at(1)).arg(m.at(2));
                         }
                         else
                         {
-                            QString paramSpec;
-                            if (m.at(2).isEmpty())
-                            {
-                                int pstep = 1;
-                                if (host->getHostComponent())
-                                {
-                                    pstep = host->getHostComponent()->getIterationStep();
-                                }
-                                else if (ic->getHostComponent())
-                                {
-                                    pstep = ic->getHostComponent()->getIterationStep();
-                                }
-                                paramSpec = QString("%1:%2").arg(m.at(1)).arg(pstep);
-                            }
-                            else
-                            {
-                                paramSpec = QString("%1:%2").arg(m.at(1)).arg(m.at(2));
-                            }
+                            modelParam = QString::fromLatin1("ERROR: malformed parameter expression: missing index!");
+                        }
 
-                            // if we get an invalid parameter, we stop processing and
-                            // return the error message
+
+                        // if we get an invalid parameter, we stop processing and
+                        // return the error message
+                        if (!paramSpec.isEmpty())
+                        {
                             modelParam = mc->getModelParameter(paramSpec);
-                            if (    modelParam.type() == QVariant::String
-                                    && modelParam.toString().startsWith("ERROR")
-                                    )
-                            {
-                                return modelParam.toString();
-                            }
+                        }
+
+                        if (   modelParam.type() == QVariant::String
+                            && modelParam.toString().startsWith("ERROR")
+                           )
+                        {
+                            return modelParam.toString();
                         }
 
                         // .........................................................
@@ -1319,7 +1424,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                     {
                         // couldn't find the parameter table
                         std::stringstream ssmsg;
-                        ssmsg << "ERROR - NMModelController::processStringParameter('"
+                        ssmsg << "ERROR: '"
                               << tStr.toStdString() << "' - component '"
                                  << m.at(0).toStdString() << "' not found!";
 
@@ -1337,13 +1442,14 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
             if (!bRecognisedExpression)
             {
                std::stringstream ssmsg;
-               ssmsg << "ERROR - NMModelController::processStringParameter('"
+               ssmsg << "ERROR: '"
                      << tStr.toStdString() << "' - invalid parameter syntax/type!";
 
                return QString(ssmsg.str().c_str());
             }
 
             nested = nested.replace(innerExp.at(inner), tStr);
+            ++count;
 
         } // for
 

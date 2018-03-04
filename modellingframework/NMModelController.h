@@ -224,11 +224,26 @@ public:
      *          /home/user/archive.tar.gz   -> 0
      *          ""                          -> 1
      *
+     *      $[func:strLength(<string>)]$
+     *          "Hello LUMASS!"             -> 13
+     *          ""                          -> 0
+     *
+     *      // string_1, string_1: strings to be compared lexicographically
+     *      // CaseSensitive: 0: case insensitive; 1: case sensitive
+     *      // return: returns an integer number smaller, equal to, or greater
+     *      //         than zero, if string_1 is less, equal to, or greater
+     *      //         than string_1
+     *      $[func:strCompare("<string_1>", "<string_2>", <int: CaseSensitive=0>)
+     *          ("hello", "Hello", 0)       -> 0
+     *          ("hello", "Hello", 1)       -> 32
+     *          ("Hello", "hello", 1)       -> -32
+     *          ("Hello", "Hello", 1)       -> 0
+     *
      *      $[func:strReplace("<string>", "<find string>", "<replace string>")]$
-     *          $[func:strReplace("/home/user/archive.tar.gz", "/", "_")]$   -> _home_user_archive.tar.gz
+     *          ("/home/user/archive.tar.gz", "/", "_") -> _home_user_archive.tar.gz
      *
      *      $[func:strSubstring("<string>", <start pos>, <num chars>)]$
-     *          $[func:strSubstring("/home/user/archive.tar.gz", 1, 4)]$     -> home
+     *          ("/home/user/archive.tar.gz", 1, 4)     -> home
      *
      */
     QString processStringParameter(const QObject *obj, const QString& str);

@@ -40,7 +40,7 @@
 #include <QStack>
 #include <QModelIndex>
 #include <QDateTime>
-
+#include "muParserError.h"
 #include "itkExceptionObject.h"
 
 //#include "valgrind/callgrind.h"
@@ -919,7 +919,7 @@ NMTableCalculator::processNumericCalcSelection(int row, bool* selected)
 		this->mParser->SetExpr(newFunc.toStdString());
 		res = this->mParser->Eval();
 	}
-	catch(itk::ExceptionObject& err)
+    catch(mu::ParserError& err)
 	{
         NMLogError(<< ctxTabCalc << ": Invalid expression detected!");
 		NMDebugCtx(ctxTabCalc, << "done!");

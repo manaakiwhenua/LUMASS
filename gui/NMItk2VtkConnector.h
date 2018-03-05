@@ -58,6 +58,9 @@ public:
 
     vtkImageImport* getVtkImageImport(void);
 
+    bool isConnected(void)
+        {return this->mbIsConnected;}
+
 	void instantiateObject(void);
 
     void updateInput(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);

@@ -27,6 +27,7 @@
 #include <QSqlError>
 #include <QSqlIndex>
 #include <QUuid>
+#include <QIcon>
 
 
 const std::string NMSqlTableModel::ctx = "NMSqlTableModel";
@@ -47,6 +48,8 @@ QVariant
 NMSqlTableModel::data(const QModelIndex &idx, int role) const
 {
     QVariant var = QSqlTableModel::data(idx, role);
+    QVariant value = QSqlTableModel::data(idx, Qt::DisplayRole);
+    QString colname = QSqlTableModel::headerData(idx.column(), Qt::Horizontal).toString();
 
     if (idx.isValid())
     {
@@ -54,7 +57,6 @@ NMSqlTableModel::data(const QModelIndex &idx, int role) const
         {
         case Qt::TextAlignmentRole:
             {
-                QVariant value = QSqlTableModel::data(idx, Qt::DisplayRole);
                 switch(value.type())
                 {
                 case QVariant::Double:
@@ -69,6 +71,39 @@ NMSqlTableModel::data(const QModelIndex &idx, int role) const
                         break;
                 }
             }
+            break;
+
+        case Qt::DecorationRole:
+            {
+                if (     value.type() == QVariant::ByteArray
+                    &&   colname.compare("Geometry", Qt::CaseInsensitive) == 0
+                   )
+                {
+                    QIcon icn = QIcon(":vector_layer.png");
+                    QVariant retVar = QVariant::fromValue(icn);
+                    return retVar;
+                }
+                else
+                {
+                    return QVariant();
+                }
+
+            }
+            break;
+
+        case Qt::DisplayRole:
+            {
+                if (     value.type() == QVariant::ByteArray
+                    &&   colname.compare("Geometry", Qt::CaseInsensitive) != 0
+                   )
+                {
+                    return QVariant("BLOB");
+                }
+
+            }
+            break;
+
+        default:
             break;
         }
     }

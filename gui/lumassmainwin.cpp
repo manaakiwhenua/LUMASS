@@ -240,6 +240,7 @@
 #include "vtkTransform.h"
 #include "vtkSphere.h"
 #include "vtkImageDataGeometryFilter.h"
+#include "vtkImageToPolyDataFilter.h"
 #include "vtkGeometryFilter.h"
 #include "vtkTransformPolyDataFilter.h"
 #include "vtkImageWrapPad.h"
@@ -671,13 +672,13 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     this->ui->mainToolBar->addAction(actModelBtn);
     this->ui->mainToolBar->addActions(windowLayoutGroup->actions());
 
-    this->ui->mainToolBar->addSeparator();
-    QLineEdit* searchedit = new QLineEdit(ui->mainToolBar);
-    searchedit->setPlaceholderText("Enter ComponentName or UserID");
-    QAction *actCompSearch = ui->mainToolBar->addWidget(searchedit);
-    actCompSearch->setText("Search Model");
-    connect(searchedit, SIGNAL(returnPressed()), this,
-            SLOT(searchModelComponent()));
+    //this->ui->mainToolBar->addSeparator();
+//    QLineEdit* searchedit = new QLineEdit(ui->mainToolBar);
+//    searchedit->setPlaceholderText("Enter ComponentName or UserID");
+//    QAction *actCompSearch = ui->mainToolBar->addWidget(searchedit);
+//    actCompSearch->setText("Search Model");
+//    connect(searchedit, SIGNAL(returnPressed()), this,
+//            SLOT(searchModelComponent()));
 
     this->ui->mainToolBar->installEventFilter(this);
 
@@ -1583,12 +1584,9 @@ LUMASSMainWin::image2PolyData(vtkImageData *img, QList<int> &unitIds)
 
     vtkNew<vtkIdList> pixIds;
     vtkDataSetAttributes* dsa = 0;
-    vtkDataArray* idxScalars = 0;
+    vtkDataArray* idxScalars = id->GetPointData()->GetArray(0);
     if (unitIds.count() > 0)
     {
-        dsa = id->GetAttributes(vtkDataSet::POINT);
-        idxScalars = id->GetPointData()->GetArray(0);
-
         for (int pix=0; pix < idxScalars->GetNumberOfTuples(); ++pix)
         {
             const long val = idxScalars->GetVariantValue(pix).ToLong();
@@ -1598,7 +1596,6 @@ LUMASSMainWin::image2PolyData(vtkImageData *img, QList<int> &unitIds)
             }
         }
     }
-
 
 
     double spacing[3];
@@ -1618,7 +1615,6 @@ LUMASSMainWin::image2PolyData(vtkImageData *img, QList<int> &unitIds)
 
     // convert to polydata
     vtkNew<vtkImageDataGeometryFilter> imgConv;
-    //vtkNew<vtkGreedyTerrainDecimation> imgConv;
     imgConv->SetInputConnection(pad->GetOutputPort());
 
     // translate by -dx/2, -dy/2
@@ -1676,7 +1672,6 @@ LUMASSMainWin::image2PolyData(vtkImageData *img, QList<int> &unitIds)
     vtkCell* cell = 0;
     for (int p=0; p < ncells; ++p)
     {
-        //vtkCell* cell = pdraw->GetCell(p);
         long id;
         if (pixIds->GetNumberOfIds() > 0)
         {
@@ -2758,22 +2753,30 @@ void LUMASSMainWin::checkInteractiveLayer(void)
     int firstVisID = -1;
     bool bAllInactive = true;
     vtkRenderer* ren = 0;
-    for (int id=0; id < this->mLayerList->getLayerCount(); ++id)
+
+    for (int id = this->mLayerList->getLayerCount()-1; id >= 0; --id)
     {
         NMLayer* l = this->mLayerList->getLayer(id);
         ren = const_cast<vtkRenderer*>(l->getRenderer());
-        if (l->isVisible() && ren->GetInteractive())
-        {
-            bAllInactive = false;
-        }
+//        if (l->isVisible() && ren->GetInteractive())
+//        {
+//            bAllInactive = false;
+//        }
 
-        if (firstVisID < 0 && l->isVisible())
+//        if (firstVisID < 0 && l->isVisible())
+//        {
+//            firstVisID = id;
+//        }
+
+        ren->SetInteractive(0);
+        if (l->isVisible() && !ren->GetInteractive())
         {
             firstVisID = id;
         }
+
     }
 
-    if (bAllInactive && firstVisID >= 0)
+    if (firstVisID >= 0)
     {
         ren = const_cast<vtkRenderer*>(this->mLayerList->getLayer(firstVisID)->getRenderer());
         ren->SetInteractive(1);
@@ -3192,10 +3195,13 @@ LUMASSMainWin::treeAnalysis(const int& mode)
     {
         btms.removeOne(0);
 
-        vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
-        vtkImageData* id = vtkImageData::SafeDownCast(ds);
+        if (btms.size() > 0)
+        {
+            vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+            vtkImageData* id = vtkImageData::SafeDownCast(ds);
 
-        this->image2PolyData(id, btms);
+            this->image2PolyData(id, btms);
+        }
     }
 
     h.endBusy();
@@ -3342,25 +3348,63 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    QStringList openConns;
-    foreach(const QString& cn, QSqlDatabase::connectionNames())
+    NMLayer* l = this->mLayerList->getSelectedLayer();
+
+    if (l && l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
     {
-        QSqlDatabase db = QSqlDatabase::database(cn, false);
-        if (db.isValid() && db.isOpen())
-        {
-            QString entry = cn + ":" + db.databaseName();
-            openConns << entry;
-        }
+        return ;
     }
 
-    QStringList lst = NMGlobalHelper::getMultiItemSelection("Open Database Connections",
-                                          "", openConns, this);
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == 0)
+        return;
 
-    foreach(const QString& odb, lst)
+    vtkImageData* img = il->getVTKImage();
+
+    vtkNew<vtkImageToPolyDataFilter> polyFilter;
+    polyFilter->SetColorModeToLUT();
+    vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
+    polyFilter->SetLookupTable(iprop->GetLookupTable());
+
+    polyFilter->SmoothingOff();
+    polyFilter->SetOutputStyleToPolygonalize();
+    polyFilter->SetInputData(img);
+    polyFilter->Update();
+
+    vtkPolyData* pd = polyFilter->GetOutput();
+    vtkIdType ncells = pd->GetNumberOfCells();
+
+    // create attr table
+    vtkNew<vtkLongArray> nmid;
+    nmid->SetName("nm_id");
+    nmid->Allocate(ncells);
+
+    vtkNew<vtkUnsignedCharArray> nmhole;
+    nmhole->SetName("nm_hole");
+    nmhole->Allocate(ncells);
+
+    vtkNew<vtkUnsignedCharArray> nmsel;
+    nmsel->SetName("nm_sel");
+    nmsel->Allocate(ncells);
+
+    for (int c=0; c < ncells; ++c)
     {
-        QStringList split = odb.split(':', QString::SkipEmptyParts);
-        QSqlDatabase::removeDatabase(split.at(0));
+        nmid->InsertNextValue(c+1);
+        nmhole->InsertNextValue(0);
+        nmsel->InsertNextValue(0);
     }
+
+    //vtkDataSetAttributes* dsa = pd->GetAttributes(vtkDataSet::CELL);
+    pd->GetCellData()->SetScalars(nmid.GetPointer());
+    pd->GetCellData()->AddArray(nmhole.GetPointer());
+    pd->GetCellData()->AddArray(nmsel.GetPointer());
+
+    NMVectorLayer* newPolys = new NMVectorLayer(this->getRenderWindow());
+    newPolys->setObjectName("convert");
+    newPolys->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
+    newPolys->setDataSet(pd);
+    this->mLayerList->addLayer(newPolys);
+
 }
 
 
@@ -3818,51 +3862,95 @@ LUMASSMainWin::ptInPoly2D(double pt[3], vtkCell* cell)
 	return ret;
 }
 
-void
-LUMASSMainWin::searchModelComponent()
-{
-    QLineEdit* le = qobject_cast<QLineEdit*>(sender());
-    if (le)
-    {
-        QString compName = le->text();
-        if (NMGlobalHelper::getModelController()->contains(compName))
-        {
-            emit componentOfInterest(compName);
-        }
-        else
-        {
-            QList<NMModelComponent*> comps = NMGlobalHelper::getModelController()->getComponents(compName);
-            if (compName.isEmpty() ? comps.size()-1 : comps.size() > 0)
-            {
-                QStringList nameList;
-                foreach (const NMModelComponent* mc, comps)
-                {
-                    nameList << mc->objectName();
-                }
-                if (nameList.size() > 1)
-                {
-                    NMLogWarn(<< "Model Controller: components matching userID='"
-                              << compName.toStdString() << "': "
-                              << nameList.join(' ').toStdString());
-                }
+//void
+//LUMASSMainWin::searchModelComponent()
+//{
+//    QLineEdit* le = qobject_cast<QLineEdit*>(sender());
+//    if (le)
+//    {
+//        QString compName = le->text();
 
-                emit componentOfInterest(comps.at(0)->objectName());
-            }
-            else
-            {
-                if (!compName.isEmpty())
-                {
-                    NMLogInfo(<< "'" << compName.toStdString()
-                          << "' does not reference a model component!");
-                }
-                else
-                {
-                    NMLogInfo(<< "No model component found!");
-                }
-            }
-        }
-    }
-}
+//        // COMPONENT MODEL NAME ENTERED
+//        if (NMGlobalHelper::getModelController()->contains(compName))
+//        {
+//            emit componentOfInterest(compName);
+//        }
+//        // LOOK FOR EITHER USER-ID OR PARAMETERS
+//        else
+//        {
+//            // to indicate whether we've found a parameter
+//            QStringList compProp;
+
+
+//            // LOOK FOR COMPONENTS
+//            QList<NMModelComponent*> comps = NMGlobalHelper::getModelController()->getComponents(compName);
+//            if (compName.isEmpty() ? comps.size()-1 : comps.size() > 0)
+//            {
+//                QStringList nameList;
+//                foreach (const NMModelComponent* mc, comps)
+//                {
+//                    nameList << mc->objectName();
+//                }
+//                if (nameList.size() > 1)
+//                {
+//                    NMLogWarn(<< "Model Controller: components matching userID='"
+//                              << compName.toStdString() << "': "
+//                              << nameList.join(' ').toStdString());
+//                }
+
+//                emit componentOfInterest(comps.at(0)->objectName());
+//            }
+//            // LOOK for PARAMETERS
+//            else if (!compName.isEmpty())
+//            {
+//                NMModelController* mc = NMGlobalHelper::getModelController();
+//                QMap<QString, NMModelComponent*> mmap = mc->getRepository();
+//                QMap<QString, NMModelComponent*>::const_iterator mit = mmap.cbegin();
+//                while (mit != mmap.cend())
+//                {
+//                    NMModelComponent* comp = const_cast<NMModelComponent*>(mit.value());
+//                    QStringList props = NMGlobalHelper::searchPropertyValues(comp, compName);
+//                    foreach(const QString& p, props)
+//                    {
+//                        compProp << QString::fromLatin1("%1:%2")
+//                                    .arg(mit.key())
+//                                    .arg(p);
+//                    }
+
+//                    NMSequentialIterComponent* pc = qobject_cast<NMSequentialIterComponent*>(comp);
+//                    if (pc && pc->getProcess() != 0)
+//                    {
+//                        QStringList procProps = NMGlobalHelper::searchPropertyValues(pc->getProcess(),
+//                                                                                     compName);
+//                        foreach(const QString& p1, procProps)
+//                        {
+//                            compProp << QString::fromLatin1("%1:%2")
+//                                        .arg(mit.key())
+//                                        .arg(p1);
+//                        }
+//                    }
+
+//                    ++mit;
+//                }
+//            }
+
+//            if (compProp.size() > 0)
+//            {
+//                NMLogInfo(<< "Found '" << compName.toStdString() << "' in these components and properties: "
+//                          << compProp.join(' ').toStdString());
+//            }
+//            else if (!compName.isEmpty() && compProp.size() == 0)
+//            {
+//                NMLogInfo(<< "'" << compName.toStdString()
+//                      << "' neither references a model component nor a model parameter!");
+//            }
+//            else
+//            {
+//                NMLogInfo(<< "No model component found!");
+//            }
+//        }
+//    }
+//}
 
 void
 LUMASSMainWin::updateCoordLabel(const QString& newCoords)
@@ -6270,80 +6358,10 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
     // ====================================
     // parse Tool Table
     // ====================================
+    uact->reloadUserConfig();
 
-    NMAction::NMOutputMap outMap;
-    bool bKeyFound;
-    int nrecs = toolTable->GetNumRows();
-    long long minid = toolTable->GetMinPKValue();
-    for (long long id=minid; id < minid+nrecs; ++id)
-    {
-        // ----------------------------------
-        // OUTPUTS
-        // ----------------------------------
 
-        QString output = toolTable->GetStrValue("Output", id).c_str();
-        QString outTypeStr = toolTable->GetStrValue("OutputType", id).c_str();
-        if (    (!output.isEmpty() && !outTypeStr.isEmpty())
-             && (    output.compare(QString::fromLatin1("NULL")) != 0
-                  && outTypeStr.compare(QString::fromLatin1("NULL")) != 0
-                )
-           )
-        {
-            const int oatei = NMAction::staticMetaObject.indexOfEnumerator("NMActionOutputType");
-            NMAction::NMActionOutputType outActType = static_cast<NMAction::NMActionOutputType>(
-                    NMAction::staticMetaObject.enumerator(oatei).keyToValue(
-                        outTypeStr.toStdString().c_str(), &bKeyFound));
-            if (bKeyFound)
-            {
-                outMap.insert(output, outActType);
-            }
-        }
-
-        // ----------------------------------
-        // TRIGGERS
-        // ----------------------------------
-
-        QString trigger = toolTable->GetStrValue("Trigger", id).c_str();
-        QString triggerTypeStr = toolTable->GetStrValue("TriggerType", id).c_str();
-        if (    (!trigger.isEmpty() && !triggerTypeStr.isEmpty())
-             && (    trigger.compare(QString::fromLatin1("NULL")) != 0
-                  && triggerTypeStr.compare(QString::fromLatin1("NULL")) != 0
-                )
-           )
-        {
-            const int ttei = NMAction::staticMetaObject.indexOfEnumerator("NMActionTriggerType");
-            NMAction::NMActionTriggerType triggerType = static_cast<NMAction::NMActionTriggerType>(
-                        NMAction::staticMetaObject.enumerator(ttei).keyToValue(
-                            triggerTypeStr.toStdString().c_str(), &bKeyFound));
-            if (bKeyFound)
-            {
-                uact->setTrigger(trigger, triggerType);
-            }
-        }
-
-        // ----------------------------------
-        // INPUT PARAMETERS
-        // ----------------------------------
-        QString actionParam = toolTable->GetStrValue("Input", id).c_str();
-        QString actionValStr = toolTable->GetStrValue("InputValue", id).c_str();
-        QString actionTypeStr = toolTable->GetStrValue("InputValueType", id).c_str();
-        if (!actionParam.isEmpty())
-        {
-            NMAction::NMActionInputType inputType = NMAction::NM_ACTION_INPUT_UNKNOWN;
-            if (!actionTypeStr.isEmpty())
-            {
-                const int iaei = NMAction::staticMetaObject.indexOfEnumerator("NMActionInputType");
-                inputType = static_cast<NMAction::NMActionInputType>(
-                            NMAction::staticMetaObject.enumerator(iaei).keyToValue(
-                                actionTypeStr.toStdString().c_str(), &bKeyFound));
-            }
-            uact->updateActionParameter(actionParam, QVariant::fromValue(actionValStr),
-                                        inputType);
-        }
-    }
-    uact->setOutputs(outMap);
-
-    // just let the user know ...
+     // just let the user know ...
     if (uact->getTriggerCount() == 0)
     {
         uact->setTrigger("", NMAction::NM_ACTION_TRIGGER_NIL);
@@ -6784,7 +6802,10 @@ LUMASSMainWin::scanUserModels()
                 .arg(path)
                 .arg(fifo.baseName());
 
-        if (QFile::exists(lmvFile) && QFile::exists(lmxFile))
+        if (   QFile::exists(lmvFile)
+            && QFile::exists(lmxFile)
+            && !lmxFile.endsWith("autosave.lmx", Qt::CaseInsensitive)
+           )
         {
             if (mUserModelPath.find(fifo.baseName()) == mUserModelPath.end())
             {
@@ -6806,11 +6827,22 @@ LUMASSMainWin::scanUserModels()
         else
         {
             // log a warning that not all model files are valid
-            NMLogDebug(<< "Scanning User Models: "
-                      << fifo.absolutePath().toStdString() << "/"
-                      << fifo.baseName().toStdString()
-                      << (fifo.suffix().isEmpty() ? "" : ".") << fifo.suffix().toStdString()
-                      << " is not a LUMASS model!");
+            std::stringstream str;
+            str << "Scanning User Models: "
+                << fifo.absolutePath().toStdString() << "/"
+                << fifo.baseName().toStdString()
+                << (fifo.suffix().isEmpty() ? "" : ".") << fifo.suffix().toStdString();
+
+            if (!lmxFile.endsWith("autosave.lmx", Qt::CaseInsensitive))
+            {
+                str << " is an automatic backup copy we don't consider here!";
+            }
+            else
+            {
+                str << " is not a LUMASS model!";
+            }
+
+            NMLogDebug(<< str.str());
         }
     }
 }
@@ -6865,10 +6897,13 @@ LUMASSMainWin::addModelToUserModelList(const QString& modelName)
     bool bAddToList = true;
     if (fileInfo.exists() || folderInfo.exists())
     {
-        if (QMessageBox::NoButton == QMessageBox::warning(
+        QMessageBox::StandardButton userBtn =
+                QMessageBox::question(
                     this, tr("Add User Model"),
                     QString("The model '%1' already exists! Do you "
-                            "want to override the model?").arg(basename)))
+                            "want to override the model?").arg(basename));
+
+        if (userBtn == QMessageBox::No)
         {
             bWriteModel = false;
         }

@@ -143,7 +143,7 @@ signals:
     void signalIsIn3DMode(bool in3d);
     void noExclusiveToolSelected(void);
     void isAboutToClose(void);
-    void componentOfInterest(const QString&);
+    //void componentOfInterest(const QString&);
     void windowLoaded(void);
     void settingsUpdated(const QString&, QVariant);
 
@@ -216,7 +216,7 @@ public slots:
     void updateExclusiveActions(const QString& checkedAction,
                                 bool toggled);
     void configureSettings(void);
-    void searchModelComponent(void);
+    //void searchModelComponent(void);
 
     void selectUserTool(bool toggled);
 

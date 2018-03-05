@@ -20,6 +20,7 @@
 #define NMACTION_H
 
 #include "NMMacros.h"
+#include "otbSQLiteTable.h"
 
 #include <QAction>
 #include <QString>
@@ -62,11 +63,13 @@ public:
     enum NMActionInputType
     {
         NM_ACTION_INPUT_UNKNOWN,
-        NM_ACTION_INPUT_OPEN_FILENAME,
-        NM_ACTION_INPUT_SAVE_FILENAME,
-        NM_ACTION_INPUT_EXISTING_DIRECTORY,
-        NM_ACTION_INPUT_TEXT,
-        NM_ACTION_INPUT_NUMERIC
+        NM_ACTION_INPUT_OPEN_FILENAME,      // file FileName
+        NM_ACTION_INPUT_SAVE_FILENAME,      // file FileName
+        NM_ACTION_INPUT_EXISTING_DIRECTORY, // directory FileName
+        NM_ACTION_INPUT_TEXT,               // ´some text´
+        NM_ACTION_INPUT_NUMERIC,            // integer or real number
+        NM_ACTION_INPUT_ENUM,               // {´name1´, ´name2´, ..., ´nameN´}
+        NM_ACTION_INPUT_BOOLEAN             // {´yes´, ´no´}
     };
     Q_ENUM(NMActionInputType)
 
@@ -126,8 +129,12 @@ protected slots:
 protected:
     void initMenu();
     void createConfigDialog();
-    //    bool eventFilter(QObject *watched, QEvent *event);
-    //    bool event(QEvent *event);
+    otb::SQLiteTable::Pointer getToolTable(void);
+
+    /*! action: populates emptyList for '<param>Enum' column in tool table;
+     *  return value: index of current enum value, -1 upon failure;
+     */
+    int fetchEnumValues(const QString& param, QStringList& emptyList);
 
     typedef QMap<QString, NMActionTriggerType> NMMapTriggerType;
     typedef QMap<NMActionTriggerType, QString> NMMapTypeTrigger;

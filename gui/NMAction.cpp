@@ -80,6 +80,66 @@ void NMAction::updateActionParameter(const QString& key, QVariant value,
     emit updatedActionParameter(key, value);
 }
 
+int
+NMAction::fetchEnumValues(const QString &param, QStringList &emptyList)
+{
+    int curEnumVal = -1;
+
+    // just in case ...
+    emptyList.clear();
+
+    otb::SQLiteTable::Pointer tab = getToolTable();
+    if (tab.IsNull())
+    {
+        return curEnumVal;
+    }
+
+    // gather enum values, if applicable
+    QString enumCol = QString("%1Enum").arg(param);
+    QString curEnumStr = this->property(param.toStdString().c_str()).toString();
+    if (tab->ColumnExists(enumCol.toStdString()) >= 0)
+    {
+        if (!tab->PrepareColumnIterator(enumCol.toStdString()))
+        {
+            return curEnumVal;
+        }
+
+        bool bOK = false;
+        int counter=0;
+
+        QString ev = tab->NextTextValue(bOK);
+        while (bOK)
+        {
+            if (!ev.isEmpty() && ev.compare("NULL", Qt::CaseInsensitive) != 0)
+            {
+                if (ev.compare(curEnumStr, Qt::CaseSensitive) == 0)
+                {
+                    curEnumVal = counter;
+                }
+                emptyList << ev;
+                ++counter;
+            }
+
+            ev = tab->NextTextValue(bOK);
+        }
+        emptyList.removeDuplicates();
+    }
+    else if (mMapInputType[param] == NMAction::NM_ACTION_INPUT_BOOLEAN)
+    {
+        emptyList << "yes" << "no";
+        if (curEnumStr.compare("yes", Qt::CaseInsensitive) == 0)
+        {
+            curEnumVal = 0;
+        }
+        else
+        {
+            curEnumVal = 1;
+        }
+    }
+
+    return curEnumVal;
+}
+
 NMModelController *NMAction::getModelController(void)
 {
     return mModelController;
@@ -239,9 +299,11 @@ NMAction::resetUserModel()
     this->mModelController->resetComponent("root");
 }
 
-void
-NMAction::reloadUserConfig(void)
+otb::SQLiteTable::Pointer
+NMAction::getToolTable(void)
 {
+    otb::SQLiteTable::Pointer tab;
+
     QString baseName = QString("%1Tool").arg(mModelName);
     QString toolTableName = QString("%1/%2.ldb")
                     .arg(mModelPath).arg(baseName);
@@ -249,20 +311,37 @@ NMAction::reloadUserConfig(void)
     QFileInfo fnInfo(toolTableName);
     if (!fnInfo.exists() || !fnInfo.isReadable())
     {
-        NMLogWarn(<< mModelName.toStdString() << "Reloading tool configuration failed!");
-        return;
+        return tab;
     }
 
     otb::SQLiteTable::Pointer toolTable = otb::SQLiteTable::New();
     toolTable->SetUseSharedCache(false);
     toolTable->SetDbFileName(toolTableName.toStdString());
+
     if (!toolTable->openConnection())
     {
-        NMLogWarn(<< mModelName.toStdString() << "Reloading tool configuration failed!");
+        return tab;
+    }
+
+    toolTable->SetTableName(baseName.toStdString());
+    if (toolTable->PopulateTableAdmin())
+    {
+        return toolTable;
+    }
+
+    return tab;
+}
+
+
+void
+NMAction::reloadUserConfig(void)
+{
+    otb::SQLiteTable::Pointer toolTable = getToolTable();
+    if (toolTable.IsNull())
+    {
+        NMLogWarn(<< mModelName.toStdString() << ": Reloading tool configuration failed!");
         return;
     }
-    toolTable->SetTableName(baseName.toStdString());
-    toolTable->PopulateTableAdmin();
 
     // ==============================
     // clear old settings
@@ -476,23 +555,49 @@ NMAction::populateSettingsBrowser(void)
     //            << "whatsThis"
     //            << "modelName";
 
+    otb::SQLiteTable::Pointer tab = getToolTable();
+    if (tab.IsNull())
+    {
+        NMLogError(<< mModelName.toStdString()
+                   << ": Populate configuration dialog: Missing tool configuration table!");
+        return;
+    }
+
     QList<QByteArray> dynPropNames = this->dynamicPropertyNames();  //mobj->propertyCount();
     foreach (const QByteArray& propName, dynPropNames)
     {
         const char* name = propName.data();
-        // don't show all your hand ...
-        //        if (noprops.contains(name))
-        //        {
-        //            continue;
-        //        }
+        int propType = this->property(name).type();
+
+        QStringList enumVals;
+        int curEnumVal = fetchEnumValues(name, enumVals);
 
         // add configurable properties
         QtVariantEditorFactory* ed = new QtVariantEditorFactory(bro);
         QtVariantPropertyManager* man = new QtVariantPropertyManager(bro);
-        QtVariantProperty* vprop = man->addProperty(this->property(name).type(), name);
+        QtVariantProperty* vprop = 0;
+
+        if (enumVals.empty())
+        {
+            vprop = man->addProperty(this->property(name).type(), name);
+            if (vprop)
+            {
+                vprop->setValue(this->property(name));
+            }
+        }
+        else
+        {
+            propType = QtVariantPropertyManager::enumTypeId();
+            vprop = man->addProperty(propType, name);
+            if (vprop)
+            {
+                vprop->setAttribute("enumNames", enumVals);
+                vprop->setValue(QVariant::fromValue(curEnumVal));
+            }
+        }
+
         if (vprop != 0)
         {
-            vprop->setValue(this->property(name));
             bro->setFactoryForManager(man, ed);
             bro->addProperty(vprop);
 
@@ -575,6 +680,33 @@ NMAction::updateSettings(QtProperty *prop, QVariant valueVar)
     {
         type = mMapInputType[prop->propertyName()];
     }
+
+    // need to convert the int ENUM type into a string
+    // if we've got an ENUM-configured property!
+    if (    type == NMAction::NM_ACTION_INPUT_ENUM
+        ||  type == NMAction::NM_ACTION_INPUT_BOOLEAN
+       )
+    {
+        QStringList evals;
+        int curEnumVal = fetchEnumValues(prop->propertyName(), evals);
+        bool bOK;
+        int newEnumVal = valueVar.toInt(&bOK);
+
+        if (bOK && newEnumVal >=0 && newEnumVal < evals.size())
+        {
+            valueVar = QVariant::fromValue(evals.at(newEnumVal));
+        }
+        else
+        {
+            QString defaultValue = evals.size() ? evals.at(0) : "null";
+            NMLogWarn(<< mModelName.toStdString() << ": Update action parameter: "
+                      << "No valid value set for '" << prop->propertyName().toStdString() << "'! "
+                      << "Forced assignment: " << prop->propertyName().toStdString()
+                      << " = " << defaultValue.toStdString());
+            valueVar = QVariant::fromValue(defaultValue);
+        }
+    }
+
     updateActionParameter(prop->propertyName(), valueVar, type);
     populateSettingsBrowser();
 }

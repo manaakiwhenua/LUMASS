@@ -64,6 +64,7 @@ protected:
 	//QStringList mInputSpec;
 
     long long mTabMinPK;
+    long long mTabMaxPK;
     unsigned int mParamPos;
 	bool mbLinked;
 

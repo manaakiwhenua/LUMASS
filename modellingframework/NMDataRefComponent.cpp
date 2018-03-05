@@ -64,7 +64,6 @@ NMDataRefComponent::initAttributes(void)
 	mLastInputOutputIdx = 0;
 	mParamPos = 0;
 	mbLinked = false;
-    mTabMinPK = 0;
     mDataComponent = 0;
 }
 
@@ -263,22 +262,25 @@ QVariant
 NMDataRefComponent::getModelParameter(const QString &paramSpec)
 {
     QVariant param;
-
-    if (mDataComponent == 0)
-    {
-        NMLogError(<< ctx << " - source data component is NULL!");
-        return param;
-    }
-
-    bool bThrowUp = false;
     QString demsg;
 
     if (paramSpec.isEmpty())
     {
-        bThrowUp = true;
-        demsg = "invalid parameter specification!";
+        demsg = QString("ERROR - %1::getModelParameter(%2) - %3!")
+                .arg(this->objectName())
+                .arg(paramSpec)
+                .arg("invalid parameter specification!");
+        return param = QVariant::fromValue(demsg);
     }
 
+
+    // break up paramSpec, which can be either
+    //   <columnName>:<rowNumber> or
+    //   <objectProperty>:<index>
+    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
+
+    // fetch table, if applicable
+    otb::AttributeTable::Pointer tab;
     if (    mDataComponent->mDataWrapper.isNull()
         ||  mDataComponent->mDataWrapper->getOTBTab().IsNull()
        )
@@ -289,13 +291,36 @@ NMDataRefComponent::getModelParameter(const QString &paramSpec)
             ||  mDataComponent->mDataWrapper->getOTBTab().IsNull()
            )
         {
-            bThrowUp = true;
             demsg = "no parameter table found!";
         }
+        else
+        {
+            tab = mDataComponent->mDataWrapper->getOTBTab();
+        }
+    }
+    else
+    {
+        tab = mDataComponent->mDataWrapper->getOTBTab();
     }
 
-    if (bThrowUp)
+    // see whether we've got a valid table column;
+    int colidx = -1;
+    if (tab.IsNotNull())
     {
+        colidx = tab->ColumnExists(specList.at(0).toStdString().c_str());
+        demsg = QString("couldn't find column '%1'!").arg(specList.at(0));
+    }
+
+    // if either the table is valid or the 'column name',
+    // we try and fetch an object property
+    if (colidx < 0)
+    {
+        param = NMModelComponent::getModelParameter(paramSpec);
+        if (param.isValid())
+        {
+            return param;
+        }
+
         QString msg = QString("ERROR - %1::getModelParameter(%2) - %3!")
                 .arg(this->objectName())
                 .arg(paramSpec)
@@ -303,41 +328,82 @@ NMDataRefComponent::getModelParameter(const QString &paramSpec)
         return param = QVariant::fromValue(msg);
     }
 
-    //  <columnName>:<rowNumber>
-    otb::AttributeTable::Pointer tab = mDataComponent->mDataWrapper->getOTBTab();
-
-    QStringList specList = paramSpec.split(":", QString::SkipEmptyParts);
-    long long row = 0;
+    // go and fetch the table value
+    long long row = -1;
     long long recnum = tab->GetNumRows();
-    if (specList.size() == 2)
+    //if (specList.size() == 2)
     {
         bool bthrow = false;
-        bool bok;
+        bool bok = true;
+
         // receiving 1-based row number
-        row = specList.at(1).toLongLong(&bok);
+        row = specList.size() == 2 ? specList.at(1).toLongLong(&bok) : 1;
+
+        // if haven't got a numeric index, the user wants the numeric index for the given
+        // value in column 'colidx'
         if (!bok)
         {
-            bthrow = true;
-        }
-        else
-        {
-            // if table PK is 0-based, we adjust the
-            // specified row number
-            if (mTabMinPK == 0)
+            QString pkcol = tab->GetPrimaryKey().c_str();
+            if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
             {
-                --row;
+                otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+                std::stringstream wclause;
 
-                // if row out of bounds throw an error
-                if (row < 0 || row > recnum-1)
+                if (tab->GetColumnType(colidx) == otb::AttributeTable::ATTYPE_STRING)
+                {
+                    wclause << specList.at(0).toStdString().c_str() << " = '" << specList.at(1).toStdString().c_str() << "'";
+                }
+                else
+                {
+                    wclause << specList.at(0).toStdString().c_str() << " = " << specList.at(1).toStdString().c_str();
+                }
+
+                row = sqltab->GetIntValue(pkcol.toStdString(), wclause.str());
+            }
+            else
+            {   int rec;
+                bool bfound = false;
+                for (rec = mDataComponent->mTabMinPK; rec <= mDataComponent->mTabMaxPK && !bfound; ++rec)
+                {
+                    if (tab->GetStrValue(colidx, rec).compare(specList.at(1).toStdString()) == 0)
+                    {
+                        bfound = true;
+                    }
+                }
+                if (!bfound)
                 {
                     bthrow = true;
                 }
+                row = rec;
             }
+
+            if (!bthrow)
+            {
+                // remember, in parameter expressions, we're dealing in 1-based indices!
+                if (mDataComponent->mTabMinPK == 0)
+                {
+                    ++row;
+                }
+                return QVariant::fromValue(row);
+            }
+        }
+
+        // if table PK is 0-based, we adjust the
+        // specified row number
+        if (mDataComponent->mTabMinPK == 0)
+        {
+            --row;
+        }
+
+        // if row out of bounds throw an error
+        if (row < mDataComponent->mTabMinPK || row > mDataComponent->mTabMaxPK)
+        {
+            bthrow = true;
         }
 
         if (bthrow)
         {
-            QString msg = QString("ERROR - %1::getModelParameter(%2) - row number '%3' is invalid!")
+            QString msg = QString("ERROR - %1::getModelParameter(%2): invalid row number: %3")
                     .arg(this->objectName())
                     .arg(paramSpec)
                     .arg(specList.at(1));
@@ -345,30 +411,18 @@ NMDataRefComponent::getModelParameter(const QString &paramSpec)
         }
     }
 
-    int colidx = tab->ColumnExists(specList.at(0).toStdString().c_str());
-    if (colidx >= 0)
+    const otb::AttributeTable::TableColumnType type = tab->GetColumnType(colidx);
+    switch (type)
     {
-        const otb::AttributeTable::TableColumnType type = tab->GetColumnType(colidx);
-        switch (type)
-        {
-        case otb::AttributeTable::ATTYPE_STRING:
-            param = QVariant::fromValue(QString(tab->GetStrValue(colidx, row).c_str()));
-            break;
-        case otb::AttributeTable::ATTYPE_INT:
-            param = QVariant::fromValue(tab->GetIntValue(colidx, row));
-            break;
-        case otb::AttributeTable::ATTYPE_DOUBLE:
-            param = QVariant::fromValue(tab->GetDblValue(colidx, row));
-            break;
-        }
-    }
-    else
-    {
-        QString msg = QString("ERROR - %1::getModelParameter(%2) - column '%3' is invalid!")
-                .arg(this->objectName())
-                .arg(paramSpec)
-                .arg(specList.at(0));
-        return param = QVariant::fromValue(msg);
+    case otb::AttributeTable::ATTYPE_STRING:
+        param = QVariant::fromValue(QString(tab->GetStrValue(colidx, row).c_str()));
+        break;
+    case otb::AttributeTable::ATTYPE_INT:
+        param = QVariant::fromValue(tab->GetIntValue(colidx, row));
+        break;
+    case otb::AttributeTable::ATTYPE_DOUBLE:
+        param = QVariant::fromValue(tab->GetDblValue(colidx, row));
+        break;
     }
 
     return param;

@@ -68,6 +68,11 @@ MultiParser::ValueType* MultiParser::Eval(int& nNum)
     return m_InternalMultiParser.Eval(nNum);
 }
 
+const MultiParser::CharType* MultiParser::ValidNameChars() const
+{
+    return m_InternalMultiParser.ValidNameChars();
+}
+
 void MultiParser::DefineVar(const StringType &sName, MultiParser::ValueType *fVar)
 {
   m_InternalMultiParser.DefineVar(sName, fVar);

@@ -86,6 +86,9 @@ public:
         m_InternalMultiParser.DefineFun(sName, funPtr, bIsOptimisable);
     }
 
+    /** set of valid name charcters, i.e. variables, constants **/
+    const CharType* ValidNameChars() const;
+
     /** Clear all the defined variables */
     void ClearVar();
 

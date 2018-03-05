@@ -119,6 +119,7 @@ protected:
 protected slots:
     void showWholeImgStats();
     void wholeImgStats();
+    void showImageHistogram();
 
 private:
 
@@ -143,6 +144,7 @@ private:
     QAction* mActVecContourOnly;
     QAction* mActOpacity;
 
+    QAction* mActImageHistogram;
     QAction* mActValueStats;
     QAction* mActImageStats;
     QAction* mActImageInfo;

@@ -36,6 +36,7 @@
 #include "NMModelController.h"
 #include "NMModelComponent.h"
 #include "NMItkDataObjectWrapper.h"
+#include "NMChartView.h"
 
 #include <QDrag>
 #include <QMimeData>
@@ -74,6 +75,19 @@
 #include "vtkCell.h"
 #include "vtkPolygon.h"
 #include "vtkPolyDataReader.h"
+#include "vtkChartHistogram2D.h"
+#include "vtkImageData.h"
+#include "vtkContextView.h"
+#include "vtkContextScene.h"
+#include "vtkIdTypeArray.h"
+#include "vtkChartBox.h"
+#include "vtkPlot.h"
+#include "vtkPlotBox.h"
+#include "vtkChartXY.h"
+#include "vtkPlotBar.h"
+#include "vtkNew.h"
+#include "vtkAxis.h"
+#include "vtkFloatArray.h"
 
 
 // for testing
@@ -144,6 +158,9 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActImageStats->setText(tr("Whole Image Pixel Statistics"));
     mActImageInfo = new QAction(this->mMenu);
     mActImageInfo->setText(tr("Show Image Information"));
+    mActImageHistogram = new QAction(this->mMenu);
+    mActImageHistogram->setText(tr("Visible Pixel Histogram"));
+
 
     mActUniqueValues = new QAction(this->mMenu);
     mActUniqueValues->setText(tr("Map Unique Values ..."));
@@ -176,6 +193,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
     this->mMenu->addAction(mActImageInfo);
     this->mMenu->addAction(mActValueStats);
+    this->mMenu->addAction(mActImageHistogram);
     this->mMenu->addAction(mActImageStats);
 	this->mMenu->addSeparator();
 
@@ -209,6 +227,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->connect(actSaveChanges, SIGNAL(triggered()), this, SLOT(saveLayerChanges()));
     this->connect(mActValueStats, SIGNAL(triggered()), this, SLOT(showValueStats()));
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
+    this->connect(mActImageHistogram, SIGNAL(triggered()), this, SLOT(showImageHistogram()));
     this->connect(mActOpacity, SIGNAL(triggered()), this, SLOT(editLayerOpacity()));
     this->connect(mActImageInfo, SIGNAL(triggered()), this, SLOT(showImageInfo()));
     this->connect(mActExportColourRamp, SIGNAL(triggered()), this, SLOT(exportColourRamp()));
@@ -362,6 +381,19 @@ void ModelComponentList::saveLayerChanges()
 		NMDebugAI(<< "going to save changes to the data set..." << endl);
 		l->writeDataSet();
 	}
+}
+
+void
+ModelComponentList::showImageHistogram()
+{
+    NMLayer* l = this->getSelectedLayer();
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == 0)
+    {
+        return;
+    }
+
+    il->showHistogram();
 }
 
 void
@@ -986,6 +1018,10 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                         mActClrRamp->setText("Map Band Value Range");
                     }
                     mActImageInfo->setVisible(true);
+
+                    // TODO: switch on when reliable
+                    mActImageHistogram->setVisible(false);
+
                     mActVecContourOnly->setVisible(false);
                     mActOpacity->setVisible(true);
             }
@@ -1012,6 +1048,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                 mActImageInfo->setVisible(false);
                 mActImageStats->setEnabled(false);
                 mActImageStats->setVisible(false);
+                mActImageHistogram->setVisible(false);
                 mActValueStats->setText("Value Field Statistics");
             }
 
@@ -1838,59 +1875,87 @@ void ModelComponentList::test()
 {
 	NMDebugCtx(ctx, << "...");
 
-//    NMLayer* l = this->getSelectedLayer();
+    NMLayer* l = this->getSelectedLayer();
 
-//    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-//    if (il == 0)
-//    {
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il == 0)
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
+    std::vector<double> stats = il->getWindowStatistics();
+    vtkSmartPointer<vtkIdTypeArray> hist = il->getHistogram();
 
-//    otb::AttributeTable::Pointer tab = il->getRasterAttributeTable(1);
-//    if (tab.IsNull())
-//    {
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
+    if (hist.GetPointer() == 0)
+    {
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
 
-//    otb::SQLiteTable::Pointer sqlTable = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+    int nbins = hist->GetNumberOfTuples();
+    hist->SetName("Frequency");
+    NMLogInfo(<< "Hist has " << nbins << " bins");
 
+    NMChartView* chartView = new NMChartView();
 
+    vtkSmartPointer<vtkContextView> view = chartView->getContextView();  //vtkSmartPointer<vtkContextView>::New();
+//    view->GetRenderWindow()->SetSize(400,300);
+//    view->GetRenderWindow()->SetMultiSamples(0);
 
-//    QString fileName = QFileDialog::getOpenFileName(this,
-//         tr("Select Source Attribute Table"), "~",
-//         //tr("Shapefile (*.shp *.dbf *.shx);;Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
-//         tr("Excel File (*.xls);;Delimited Text (*.csv *.txt);;dBASE (*.dbf)"));
-//    if (fileName.isNull())
-//    {
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
+    vtkSmartPointer<vtkChartXY> chart = vtkSmartPointer<vtkChartXY>::New();
+    view->GetScene()->AddItem(chart);
 
-//    otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
-//    if (!sqlTable->CreateFromVirtual(fileName.toStdString()))
-//    {
-//        NMDebugCtx(ctx, << "done!");
-//        return;
-//    }
+    vtkSmartPointer<vtkFloatArray> pixval = vtkSmartPointer<vtkFloatArray>::New();
+    pixval->SetNumberOfComponents(1);
+    pixval->SetNumberOfTuples(nbins);
+    pixval->SetName("Value");
 
-//    QString conname = sqlTable->GetRandomString(5).c_str();
-
-//    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTable->GetDbConnection(), 0);
-//    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
-
-//    NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
-//    srcModel->setTable(QString(sqlTable->GetTableName().c_str()));
-//    srcModel->select();
+    vtkSmartPointer<vtkIntArray> freq = vtkSmartPointer<vtkIntArray>::New();
+    freq->SetNumberOfComponents(1);
+    freq->SetNumberOfTuples(nbins);
+    freq->SetName("Frequency");
 
 
-//    NMSqlTableView *resview = new NMSqlTableView(srcModel, this->parentWidget());
-//    resview->setWindowFlags(Qt::Window);
-//    resview->setTitle(QString(sqlTable->GetTableName().c_str()));
-//    resview->show();
+    vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
+    tab->AddColumn(pixval);
+    tab->AddColumn(freq);
 
+    double range = (stats[1] - stats[0]);
+    double min = stats[0];
+    double npix = stats[5];
+
+    double sumpix = 0;
+    for (int n=0; n < nbins; ++n)
+    {
+        tab->SetValue(n, 0, vtkVariant((n+1)*range/(double)nbins));
+        tab->SetValue(n, 1, vtkVariant((float)hist->GetValue(n)));
+        sumpix += (double)hist->GetValue(n);
+    }
+
+    NMLogDebug(<< "npix="<< npix << " sumpix=" << sumpix);
+
+    chart->GetAxis(1)->SetRange(stats[0], stats[1]);
+    chart->GetAxis(1)->SetTitle("Pixel Value");
+    chart->GetAxis(0)->SetTitle("Frequency");
+    //chart->GetAxis(1)->SetLogScale(true);
+
+    vtkPlot* plot = 0;
+    vtkPlotBar* plotBar = 0;
+    plot = chart->AddPlot(vtkChart::BAR);
+    plotBar = vtkPlotBar::SafeDownCast(plot);
+    plotBar->SetInputData(tab, 0, 1);
+    plotBar->SetOrientation(vtkPlotBar::VERTICAL);
+    plotBar->SetColor(0.7, 0.7, 0.7);
+    double pbWidth = range / (double)nbins;
+    plotBar->SetWidth(pbWidth);
+
+
+    chartView->show();
+    chartView->getRenderWindow()->Render();
+//    view->GetInteractor()->Initialize();
+//    view->Render();
+//    view->GetInteractor()->Start();
 
 	NMDebugCtx(ctx, << "done!");
 }

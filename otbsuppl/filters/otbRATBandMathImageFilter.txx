@@ -132,10 +132,17 @@ void RATBandMathImageFilter<TImage>
 	// exclude invalid settings
 	if (idx < 0)// || tab.IsNull() || tab.GetPointer() == 0)
 	{
-		std::cout << __FILE__ << ", line " << __LINE__ << ": WARNING:"
-				<< " Invalid index for ::SetNthAttributeTable()!" << std::endl;
+        itkExceptionMacro(<< "Invalid index for ::SetNthAttributeTable()!");
 		return;
 	}
+
+    if (vAttrNames.size() == 0)
+    {
+        itkExceptionMacro(<< "No attributes/columns specified for "
+                          << this->GetNthInputName(idx)
+                          << "'s raster attribute table!")
+        return;
+    }
 
     otb::SQLiteTable::Pointer sqlTab = 0;
     if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
@@ -156,6 +163,7 @@ void RATBandMathImageFilter<TImage>
 
 	std::vector<int> columns;
 	std::vector<ColumnType> types;
+    bool bstringCol = false;
 	if (tab.IsNotNull())
 	{
 		int ncols = tab->GetNumCols();
@@ -164,15 +172,31 @@ void RATBandMathImageFilter<TImage>
 			int c = -1;
 			if ((c = tab->ColumnExists(vAttrNames.at(n))) >= 0)
 			{
-				if (tab->GetColumnType(c) == AttributeTable::ATTYPE_INT
-					|| tab->GetColumnType(c) == AttributeTable::ATTYPE_DOUBLE)
+//				if (tab->GetColumnType(c) == AttributeTable::ATTYPE_INT
+//					|| tab->GetColumnType(c) == AttributeTable::ATTYPE_DOUBLE)
 				{
 					columns.push_back(c);
 					types.push_back(tab->GetColumnType(c));
 				}
+
+//                if (tab->GetColumnType(c) == AttributeTable::ATTYPE_STRING)
+//                {
+//                    bstringCol = true;
+//                }
 			}
 		}
 	}
+
+//    if (bstringCol && tab->GetTableType() == AttributeTable::ATTABLE_TYPE_SQLITE)
+//    {
+//        otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(tab.GetPointer());
+//        int cn = tab->ColumnExists(sqltab->GetPrimaryKey());
+//        if (cn >= 0)
+//        {
+//            columns.push_back(cn);
+//            types.push_back(AttributeTable::ATTYPE_STRING);
+//        }
+//    }
 
     int nt = this->GetNumberOfThreads();
 
@@ -571,21 +595,100 @@ void RATBandMathImageFilter<TImage>
     for(j=0; j < nbInputImages; j++)
     {
       parser->DefineVar(m_VVarName.at(j), &(m_AImage.at(i).at(j)));
-    //      if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
+      //      if (i==0) std::cout << "img-name #" << j << ": " << m_VVarName[j] << std::endl;
 
       //attribute table support
       if (m_VRAT[0].size() > 0)
       {
           if (&m_VRAT[0][j] != 0)
-    	  {
-			  m_VAttrValues[i][j].resize(m_VTabAttr[j].size());
-			  std::string bname = this->GetNthInputName(j) + m_ConcatChar;
-			  for (int c=0; c < m_VTabAttr[j].size(); ++c)
-			  {
+          {
+              m_VAttrValues[i][j].resize(m_VTabAttr[j].size());
+              std::string bname = this->GetNthInputName(j) + m_ConcatChar;
+              for (int c=0; c < m_VTabAttr[j].size(); ++c)
+              {
+                  // here, we define constants for each unique string value
+                  // in the given column; the value of the constant will be
+                  // either the row number (RAMTable) of the table record or
+                  // its primary key value (SQLiteTable); NOTE that the
+                  // constant name is derived from the string value by using
+                  // its first characters, which are within the ValidNameChars
+                  // set of muParser
+
+                  if (m_VAttrTypes[j][c] == AttributeTable::ATTYPE_STRING)
+                  {
+                      if (m_VRAT[0][j]->GetTableType() == AttributeTable::ATTABLE_TYPE_SQLITE)
+                      {
+                          otb::SQLiteTable::Pointer stab = static_cast<otb::SQLiteTable*>(m_VRAT[0][j].GetPointer());
+                          if (stab.IsNotNull())
+                          {
+                              std::vector<std::string> colnames;
+                              colnames.push_back(stab->GetPrimaryKey());
+                              colnames.push_back(stab->GetColumnName(m_VTabAttr[j][c]));
+
+                              if (stab->PrepareBulkGet(colnames))
+                              {
+                                  std::vector<otb::AttributeTable::ColumnValue> values;
+                                  otb::AttributeTable::ColumnValue v1, v2;
+                                  v1.type = otb::AttributeTable::ATTYPE_INT;
+                                  v2.type = otb::AttributeTable::ATTYPE_STRING;
+                                  values.push_back(v1);
+                                  values.push_back(v2);
+
+                                  for (int r=0; r < stab->GetNumRows(); ++r)
+                                  {
+                                      stab->DoBulkGet(values);
+                                      otb::MultiParser::StringType cname = values[1].tval;
+                                      size_t apos = std::string::npos;
+                                      if (    (apos = cname.find_first_not_of(parser->ValidNameChars())) != std::string::npos
+                                           && apos != 0
+                                         )
+                                      {
+                                          cname = cname.substr(0, apos);
+                                      }
+                                      std::stringstream sstr(cname);
+                                      double num;
+                                      if ((sstr >> num).fail() && !cname.empty())
+                                      {
+                                        otb::MultiParser::ValueType constval = static_cast<otb::MultiParser::ValueType>(values[0].ival);
+                                        parser->DefineConst(cname, constval);
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                      else
+                      {
+                          for (int r=0; r < m_VRAT[0][j]->GetNumRows(); ++r)
+                          {
+                              otb::MultiParser::StringType thename = m_VRAT[0][j]->GetStrValue(m_VTabAttr[j][c], r);
+                              size_t apos = std::string::npos;
+                              if (    (apos = thename.find_first_not_of(parser->ValidNameChars())) != std::string::npos
+                                   && apos != 0
+                                 )
+                              {
+                                  thename = thename.substr(0, apos);
+                              }
+                              std::stringstream sstr(thename);
+                              double num;
+                              if ((sstr >> num).fail() && !thename.empty())
+                              {
+                                otb::MultiParser::ValueType cval = static_cast<otb::MultiParser::ValueType>(r);
+                                parser->DefineConst(thename, cval);
+                              }
+                          }
+                      }
+
+
+                  }
+
+                  // now define the variable name to represent the attribute value for any given pixel
+                  // NOTE: for string columns, the variable with hold either the row number or the
+                  // primary key value representing the table record associated with the particular
+                  // pixel value for RAMTables or SQLiteTables respectively
                   std::string vname = bname + m_VRAT[0][j]->GetColumnName(m_VTabAttr[j][c]);
                   parser->DefineVar(vname, &(m_VAttrValues[i][j][c]));
-			  }
-    	  }
+              }
+          }
       }
 
     }
@@ -717,6 +820,10 @@ void RATBandMathImageFilter<TImage>
                             m_VAttrValues[threadId][j][c] =
                                     static_cast<double>(m_VRAT[threadId][j]->GetIntValue(
                                             m_VTabAttr[j][c], Vit[j].Get()));
+                            break;
+
+                        case AttributeTable::ATTYPE_STRING:
+                            m_VAttrValues[threadId][j][c] = static_cast<double>(Vit[j].Get());
                             break;
                         }
                     }

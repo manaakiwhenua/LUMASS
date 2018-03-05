@@ -681,14 +681,13 @@ int NMMosra::loadSettings(QString fileName)
         NMDebugCtx(ctxNMMosra, << "done!")
         return 0;
     }
-    this->msLosFileName = fileName;
-
     QTextStream str(&los);
 
     int ret = parseStringSettings(str.readAll());
 
     los.close();
 
+    this->msLosFileName = fileName;
     NMDebugCtx(ctxNMMosra, << "done!")
     return ret;
 }

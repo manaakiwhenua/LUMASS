@@ -42,6 +42,10 @@ find_package(VTK COMPONENTS
 	vtkIOSQL
 	vtkIOLegacy
 	vtkIOXML
+        vtkRenderingContextOpenGL
+        vtkViewsCore
+        vtkViewsContext2D
+        vtkChartsCore
 	NO_MODULE
 )
 endif()
@@ -52,9 +56,11 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${QT5CORE_PRIVATE_DIR}
+    ${QT5CORE_PRIVATE_DIR}/..
     ${QT5SQL_INCLUDE_DIR}
     #${QT5WIDGETS_INCLUDE_DIR}
-    #${QT5SQL_PRIVATE_DIR}/private
+    ${NMQT5SQL_PRIVATE_DIR}
+    ${NMQT5SQL_PRIVATE_DIR}/..
     ${opt_SOURCE_DIR}
     ${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
@@ -153,6 +159,7 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMFindReplaceDialog.h
         ${gui_SOURCE_DIR}/NMToolBar.h
         ${gui_SOURCE_DIR}/NMAction.h
+        ${gui_SOURCE_DIR}/NMChartView.h
         ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
         ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
         ${shared_SOURCE_DIR}/NMLogger.h

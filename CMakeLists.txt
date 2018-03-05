@@ -127,7 +127,7 @@ message(STATUS "building LUMASS ${LUMASS_VERSION_MAJOR}.${LUMASS_VERSION_MINOR}.
 #====================================================================
 
 FIND_PACKAGE(LUMASSQt5)
-IF(NOT CMAKE_PREFIX_PATH)
+IF(NOT QT5_PREFIX_PATH)
 	message(FATAL_ERROR "Need to specify Qt5 install DIR!")
 ENDIF()
 
@@ -156,18 +156,18 @@ message(STATUS "OpenGL's GLU library: ${OPENGL_glu_LIBRARY}")
 
 # if on windows, ask for the OSGEO4W_ROOT PATH
 if(WIN32)
-		FIND_PACKAGE(LUMASSOSGeo4W)
-		if(NOT OSGEO4W_ROOT)
-			message(FATAL_ERROR "Specify the OSGeo4W installation directory!")
-		endif()
+    FIND_PACKAGE(LUMASSOSGeo4W)
+    if(NOT OSGEO4W_ROOT)
+            message(FATAL_ERROR "Specify the OSGeo4W installation directory!")
+    endif()
 endif()
 
 FIND_PACKAGE(LUMASSOTB)  
-INCLUDE(${OTB_USE_FILE})
 if(NOT OTB_FOUND)
   message(FATAL_ERROR "You have to install Orfeo Toolbox prior to compiling LUMASS!")
 endif(NOT OTB_FOUND)
 
+INCLUDE(${OTB_USE_FILE})
 SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
 message(STATUS "found OTB ${LUMASS_OTB_VERSION}")
 

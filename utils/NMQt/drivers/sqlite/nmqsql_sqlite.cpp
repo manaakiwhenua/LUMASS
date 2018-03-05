@@ -41,7 +41,7 @@
 #include <qsqlindex.h>
 #include <qsqlquery.h>
 #include "nmqsqlcachedresult_p.h"
-#include <QtSql/private/qsqldriver_p.h>
+#include "private/qsqldriver_p.h"
 #include <qstringlist.h>
 #include <qvector.h>
 #include <qdebug.h>

@@ -168,6 +168,8 @@ private:
 	// at index idx
 	QIcon createLegendIcon(NMLayer* layer, int legendRow);
 
+    QObject* mParent;
+
 };
 
 #endif /* NMLAYERMODEL_H_ */

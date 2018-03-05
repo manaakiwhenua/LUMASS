@@ -27,6 +27,7 @@
 
 #include <QPixmap>
 #include <QPainter>
+#include <QTreeView>
 
 #include "vtkLookupTable.h"
 #include "vtkMapper.h"
@@ -34,6 +35,7 @@
 
 NMLayerModel::NMLayerModel(QObject* parent)
 {
+    mParent = parent;
 }
 
 NMLayerModel::~NMLayerModel()
@@ -396,8 +398,21 @@ QVariant NMLayerModel::data(const QModelIndex& index, int role) const
 
 			case Qt::ForegroundRole:
 			{
-				if (col == 0)
-					return QVariant(QColor(0,0,255));
+                QTreeView* view = qobject_cast<QTreeView*>(mParent);
+                if (col == 0)
+                {
+                    if (view)
+                    {
+                        return QVariant(view->palette().link().color());
+                    }
+                }
+                else if (col == 1)
+                {
+                    if (view)
+                    {
+                        return QVariant(view->palette().windowText().color());
+                    }
+                }
 			}
 			break;
 

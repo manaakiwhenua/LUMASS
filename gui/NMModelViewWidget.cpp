@@ -220,7 +220,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
 
     QHBoxLayout* hbox = new QHBoxLayout();
 
-    QLabel* aLabel = new QLabel("Tool Context:");
+    QLabel* aLabel = new QLabel("Tool Context: ");
     mToolContext = new QComboBox();
     mToolContext->setEditable(false);
     mToolContext->setSizeAdjustPolicy(QComboBox::AdjustToContents);
@@ -257,14 +257,28 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     mModelPathEdit->setPlaceholderText(tr("LUMASS Model FileName"));
     hbox->addWidget(mModelPathEdit);
 
+    // create model search interface
+    QHBoxLayout* searchBox = new QHBoxLayout();
+    QLineEdit* searchedit = new QLineEdit(this);
+    searchedit->setPlaceholderText("Search for components or parameters");
+    QLabel* searchLabel = new QLabel(this);
+    searchLabel->setText(tr("Search Model: "));
+    searchBox->addWidget(searchLabel);
+    searchBox->addWidget(searchedit);
+    connect(searchedit, SIGNAL(returnPressed()), this,
+            SLOT(searchModelComponent()));
+
+
+    // add items and widgets to the ModelViewWidget
     vbox->addItem(hbox);
+    vbox->addItem(searchBox);
     vbox->addWidget(mModelView);
     this->setLayout(vbox);
 
     this->initItemContextMenu();
 
-    connect(mainWin, SIGNAL(componentOfInterest(QString)),
-            this, SLOT(zoomToComponent(QString)));
+//    connect(mainWin, SIGNAL(componentOfInterest(QString)),
+//            this, SLOT(zoomToComponent(QString)));
 
     // TIMER & CHANGE NOTIFICATIONS TO IMPROVE BOOKEEPING OF CHANGES
     connect(this, SIGNAL(signalModelChanged(QString)), this, SLOT(slotModelChanged(QString)));
@@ -285,6 +299,97 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     connect(this, SIGNAL(signalSaveTimerStop()), mTimer, SLOT(stop()));
     mTimer->moveToThread(mTimerThread);
 }
+
+void
+NMModelViewWidget::searchModelComponent()
+{
+    QLineEdit* le = qobject_cast<QLineEdit*>(sender());
+    if (le)
+    {
+        QString compName = le->text();
+
+        // COMPONENT MODEL NAME ENTERED
+        if (NMGlobalHelper::getModelController()->contains(compName))
+        {
+            zoomToComponent(compName);
+        }
+        // LOOK FOR EITHER USER-ID OR PARAMETERS
+        else
+        {
+            // to indicate whether we've found a parameter
+            QStringList compProp;
+
+
+            // LOOK FOR COMPONENTS
+            QList<NMModelComponent*> comps = NMGlobalHelper::getModelController()->getComponents(compName);
+            if (compName.isEmpty() ? comps.size()-1 : comps.size() > 0)
+            {
+                QStringList nameList;
+                foreach (const NMModelComponent* mc, comps)
+                {
+                    nameList << mc->objectName();
+                }
+                if (nameList.size() > 1)
+                {
+                    NMLogWarn(<< "Model Controller: components matching userID='"
+                              << compName.toStdString() << "': "
+                              << nameList.join(' ').toStdString());
+                }
+
+                zoomToComponent(comps.at(0)->objectName());
+            }
+            // LOOK for PARAMETERS
+            else if (!compName.isEmpty())
+            {
+                NMModelController* mc = NMGlobalHelper::getModelController();
+                QMap<QString, NMModelComponent*> mmap = mc->getRepository();
+                QMap<QString, NMModelComponent*>::const_iterator mit = mmap.cbegin();
+                while (mit != mmap.cend())
+                {
+                    NMModelComponent* comp = const_cast<NMModelComponent*>(mit.value());
+                    QStringList props = NMGlobalHelper::searchPropertyValues(comp, compName);
+                    foreach(const QString& p, props)
+                    {
+                        compProp << QString::fromLatin1("%1:%2")
+                                    .arg(mit.key())
+                                    .arg(p);
+                    }
+
+                    NMSequentialIterComponent* pc = qobject_cast<NMSequentialIterComponent*>(comp);
+                    if (pc && pc->getProcess() != 0)
+                    {
+                        QStringList procProps = NMGlobalHelper::searchPropertyValues(pc->getProcess(),
+                                                                                     compName);
+                        foreach(const QString& p1, procProps)
+                        {
+                            compProp << QString::fromLatin1("%1:%2")
+                                        .arg(mit.key())
+                                        .arg(p1);
+                        }
+                    }
+
+                    ++mit;
+                }
+            }
+
+            if (compProp.size() > 0)
+            {
+                NMLogInfo(<< "Found '" << compName.toStdString() << "' in these components and properties: "
+                          << compProp.join(' ').toStdString());
+            }
+            else if (!compName.isEmpty() && compProp.size() == 0)
+            {
+                NMLogInfo(<< "'" << compName.toStdString()
+                      << "' neither references a model component nor a model parameter!");
+            }
+            else
+            {
+                NMLogInfo(<< "No model component found!");
+            }
+        }
+    }
+}
+
 
 void
 NMModelViewWidget::slotModelChanged(const QString &itemName)
@@ -1003,9 +1108,22 @@ NMModelViewWidget::changeColour(void)
     }
     else if (ai != 0)
     {
+
+
         ai->setColor(QColorDialog::getColor(ai->getColor(),
                     this, QString::fromLatin1("Select Component Colour"),
                     QColorDialog::ShowAlphaChannel));
+    }
+    // change background colour
+    else
+    {
+        QBrush curBrush = this->mModelScene->backgroundBrush();//this->mModelScene->backgroundBrush();
+        QColor nColor = QColorDialog::getColor(curBrush.color(),
+                                               this, QString::fromLatin1("Select Background Colour"));
+        curBrush.setStyle(Qt::SolidPattern);
+        curBrush.setColor(nColor);
+        this->mModelScene->setBackgroundBrush(curBrush);
+
     }
 }
 
@@ -1250,8 +1368,8 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     {
         this->mActionMap.value("Change Font ...")->setEnabled(false);
         this->mActionMap.value("Change Font ...")->setText(QString("Change Font ..."));
-        this->mActionMap.value("Change Colour ...")->setEnabled(false);
-        this->mActionMap.value("Change Colour ...")->setText(QString("Change Colour ..."));
+        this->mActionMap.value("Change Colour ...")->setEnabled(true);
+        this->mActionMap.value("Change Colour ...")->setText(QString("Change Background Colour ..."));
     }
 
 	QPoint viewPt = this->mModelView->mapFromScene(this->mLastScenePos);
@@ -3947,7 +4065,7 @@ NMModelViewWidget::resetModel(void)
 	}
 
 	NMModelComponent* comp = 0;
-	if (QString("QPushButton").compare(this->sender()->metaObject()->className()) == 0)
+    if (QString("QAction").compare(this->sender()->metaObject()->className()) == 0)
 		comp = this->mModelController->getComponent("root");
 	else if (this->mLastItem != 0)
 		comp = this->componentFromItem(this->mLastItem);

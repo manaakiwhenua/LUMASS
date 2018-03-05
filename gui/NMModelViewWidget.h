@@ -112,6 +112,7 @@ public slots:
     void updateToolContext(const QString& tool);
     void changeFont(void);
     void changeColour(void);
+    void searchModelComponent(void);
     void importModel(QDataStream& lmv, const QMap<QString, QString>& nameRegister,
                      bool move);
     void copyComponents(const QList<QGraphicsItem*>& copyList,

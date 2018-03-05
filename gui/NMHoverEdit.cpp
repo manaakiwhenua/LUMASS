@@ -274,7 +274,16 @@ NMHoverEdit::showExpressionPreview(bool preview)
             }
 
             curExpr = curExpr.replace(rawStr, evalExpr);
-            ++count;
+            if (evalExpr.startsWith("ERROR"))
+            {
+                mPreview->setText(curExpr);
+                mPreview->show();
+                return;
+            }
+            else
+            {
+                ++count;
+            }
         }
         expList = ctrl->getNextParamExpr(curExpr);
     }

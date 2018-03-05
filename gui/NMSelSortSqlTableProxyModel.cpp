@@ -800,8 +800,26 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
         return false;
     }
 
-    int rowcount = mSourceModel->rowCount();
+    // query max pk value
     QString idColName = this->getSourcePK();
+    QString maxPKSql = QString("SELECT max(%1) from %2")
+                            .arg(idColName)
+                            .arg(mSourceModel->tableName());
+    QSqlQuery qMaxPK(mSourceModel->database());
+    if (!qMaxPK.exec(maxPKSql))
+    {
+        NMLogError(<< ctx << "Failed to add rows - "
+              << qMaxPK.lastError().text().toStdString());
+        qMaxPK.finish();
+        return false;
+    }
+    qMaxPK.next();
+    int maxPK = qMaxPK.value(0).toInt();
+    qMaxPK.finish();
+    qMaxPK.clear();
+    ++maxPK;
+
+    // insert new rows
     QString ssql = QString("INSERT INTO %1 (%2) VALUES (?)")
                             .arg(mSourceModel->tableName())
                             .arg(idColName);
@@ -812,29 +830,28 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
     qInsert.prepare(ssql);
 
     QVariantList ids;
-    for (unsigned int row=0; row < nrows; ++row, ++rowcount)
+    for (unsigned int row=0; row < nrows; ++row, ++maxPK)
     {
-        ids << rowcount;
+        ids << maxPK;
     }
     qInsert.addBindValue(ids);
 
     // in case we haven't got any records yet,
     // we make sure that the row index is 0-based
-//    if (rowcount == 0)
-//    {
+    //    if (rowcount == 0)
+    //    {
 
-//        ssql = QString("INSERT INTO %1 (%2) VALUES (?)")
-//                        .arg(mSourceModel->tableName())
-//                        .arg(idColName);
-//                        //.arg(rowcount);
-//        QVariant
-//    }
-//    else
-//    {
-//        ssql = QString("INSERT INTO %1 DEFAULT VALUES")
-//                .arg(mSourceModel->tableName());
-//    }
-
+    //        ssql = QString("INSERT INTO %1 (%2) VALUES (?)")
+    //                        .arg(mSourceModel->tableName())
+    //                        .arg(idColName);
+    //                        //.arg(rowcount);
+    //        QVariant
+    //    }
+    //    else
+    //    {
+    //        ssql = QString("INSERT INTO %1 DEFAULT VALUES")
+    //                .arg(mSourceModel->tableName());
+    //    }
 
 
     //if (!qInsert.exec(ssql))

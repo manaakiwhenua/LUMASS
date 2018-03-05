@@ -41,6 +41,7 @@
 #include "NMGlobalHelper.h"
 #include "NMSqlTableModel.h"
 #include "NMSqlTableView.h"
+#include "NMChartView.h"
 
 #include <QTime>
 #include <QtCore>
@@ -118,7 +119,17 @@
 #include "vtkLongLongArray.h"
 #include "vtkSetGet.h"
 #include "vtkTrivialProducer.h"
-
+#include "vtkImageAccumulate.h"
+#include "vtkIdTypeArray.h"
+#include "vtkContextView.h"
+#include "vtkChartXY.h"
+#include "vtkChartHistogram2D.h"
+#include "vtkPlot.h"
+#include "vtkPlotHistogram2D.h"
+#include "vtkFloatArray.h"
+#include "vtkContextScene.h"
+#include "vtkAxis.h"
+#include "vtkPlotBar.h"
 
 //#include "valgrind/callgrind.h"
 
@@ -269,7 +280,8 @@ public:
 
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
-	: NMLayer(renWin, renderer, parent)
+    : NMLayer(renWin, renderer, parent),
+      mHistogramView(0)
 {
 	this->mLayerType = NMLayer::NM_IMAGE_LAYER;
     this->mReader = 0; //new NMImageReader(this);
@@ -294,7 +306,10 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
     this->mScalarBufferFile = 0;
 
     //vtkInteractorObserver* style = mRenderWindow->GetInteractor()->GetInteractorStyle();
-    //this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
+    this->mVtkConn = vtkSmartPointer<vtkEventQtSlotConnect>::New();
+    this->mVtkConn->Connect(mRenderer, vtkCommand::EndEvent,
+                            this, SLOT(updateHistogram(vtkObject*)));
+
 
 //	this->mVtkConn->Connect(style, vtkCommand::ResetWindowLevelEvent,
 //			this, SLOT(windowLevelReset(vtkObject*)));
@@ -304,6 +319,12 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 NMImageLayer::~NMImageLayer()
 {
+    if (mHistogramView != 0)
+    {
+        mHistogramView->close();
+        delete mHistogramView;
+    }
+
     if (this->mOtbRAT.IsNotNull())
     {
         otb::SQLiteTable::Pointer st = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
@@ -314,10 +335,16 @@ NMImageLayer::~NMImageLayer()
     {
         fclose(mScalarBufferFile);
     }
+
 	if (this->mReader)
+    {
 		delete this->mReader;
+    }
+
 	if (this->mPipeconn)
+    {
 		delete this->mPipeconn;
+    }
 }
 
 
@@ -338,19 +365,28 @@ NMImageLayer::getWindowStatistics(void)
 
     emit layerProcessingStart();
 
-    vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-    cast->SetOutputScalarTypeToDouble();
-    cast->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+    // calc stats
+//    vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
+//    cast->SetOutputScalarTypeToDouble();
+//    cast->SetInputConnection(conn->getVtkAlgorithmOutput());
 
     vtkSmartPointer<vtkImageHistogramStatistics> stats =
             vtkSmartPointer<vtkImageHistogramStatistics>::New();
-    //unsigned int nthreads = std::max(stats->GetNumberOfThreads() - 2, 1);
-    stats->AutomaticBinningOn();
-    stats->SetNumberOfThreads(1);
-    stats->GenerateHistogramImageOff();
-    stats->SetInputConnection(cast->GetOutputPort());
+    stats->SetInputConnection(mPipeconn->getVtkAlgorithmOutput());
+//    vtkImageMapper3D* im3d = vtkImageMapper3D::SafeDownCast(mMapper);
+//    stats->SetInputData(im3d->GetInput());
 
+    //unsigned int nthreads = std::max(stats->GetNumberOfThreads() - 2, 1);
+    //stats->AutomaticBinningOff();
+    //stats->SetNumberOfBins(256);
+    stats->AutomaticBinningOn();
+    stats->SetMaximumNumberOfBins(256);
+    //stats->SetNumberOfThreads(1);
+    stats->GenerateHistogramImageOff();
+    //stats->SetInputConnection(cast->GetOutputPort());
     stats->Update();
+
+    mHistogram = stats->GetHistogram();
 
     ret.push_back(stats->GetMinimum());
     ret.push_back(stats->GetMaximum());
@@ -362,6 +398,78 @@ NMImageLayer::getWindowStatistics(void)
 
     emit layerProcessingEnd();
     return ret;
+}
+
+void
+NMImageLayer::showHistogram(void)
+{
+    if (mHistogramView == 0)
+    {
+        mHistogramView = new NMChartView();
+        vtkSmartPointer<vtkContextView> view = mHistogramView->getContextView();
+
+        vtkSmartPointer<vtkChartXY> chart = vtkSmartPointer<vtkChartXY>::New();
+        view->GetScene()->AddItem(chart);
+
+    }
+
+
+    mHistogramView->show();
+    this->updateHistogram(0);
+}
+
+void
+NMImageLayer::updateHistogram(vtkObject *)
+{
+    if (    mHistogramView == 0
+         || !mHistogramView->isVisible())
+    {
+        return;
+    }
+
+    // prepare the histogram data
+    // histogram data
+    std::vector<double> stats = this->getWindowStatistics();
+    int nbins = mHistogram->GetNumberOfTuples();
+    mHistogram->SetName("Frequency");
+
+    vtkSmartPointer<vtkFloatArray> pixval = vtkSmartPointer<vtkFloatArray>::New();
+    pixval->SetNumberOfComponents(1);
+    pixval->SetNumberOfTuples(nbins);
+    pixval->SetName("Value");
+
+    vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
+    tab->AddColumn(pixval);
+    tab->AddColumn(mHistogram);
+
+    double range = (stats[1] - stats[0]);
+    double min = stats[0];
+    double npix = stats[5];
+
+    for (int n=0; n < nbins; ++n)
+    {
+        tab->SetValue(n, 0, vtkVariant((n+1)*range/(double)nbins));
+    }
+
+    vtkChartXY* chart = vtkChartXY::SafeDownCast(mHistogramView->getContextView()->GetScene()->GetItem(0));
+    chart->GetAxis(1)->SetRange(stats[0], stats[1]);
+    chart->GetAxis(1)->SetTitle("Pixel Value");
+    chart->GetAxis(0)->SetTitle("Frequency");
+
+    chart->ClearPlots();
+
+    vtkPlot* plot = 0;
+    vtkPlotBar* plotBar = 0;
+
+    plot = chart->AddPlot(vtkChart::BAR);
+    plotBar = vtkPlotBar::SafeDownCast(plot);
+    plotBar->SetInputData(tab, 0, 1);
+    plotBar->SetOrientation(vtkPlotBar::VERTICAL);
+    plotBar->SetColor(0.7, 0.7, 0.7);
+
+
+    mHistogramView->show();
+    mHistogramView->getRenderWindow()->Render();
 }
 
 std::vector<double>
@@ -1327,7 +1435,6 @@ NMImageLayer::mapRGBImageScalars(vtkImageData* img)
         img->SetNumberOfScalarComponents(1, info);
 
     }
-
     //NMDebugCtx(ctxNMImageLayer, << "done!");
 }
 
@@ -2161,6 +2268,24 @@ QSharedPointer<NMItkDataObjectWrapper> NMImageLayer::getImage(void)
     }
     imgW->setOTBTab(this->mOtbRAT);
 	return imgW;
+}
+
+vtkImageData *NMImageLayer::getVTKImage(void)
+{
+    if (mPipeconn->isConnected())
+    {
+        return mPipeconn->getVtkImage();
+    }
+}
+
+vtkIdTypeArray* NMImageLayer::getHistogram(void)
+{
+    if (mHistogram.GetPointer() != 0)
+    {
+        return mHistogram;
+    }
+
+    return 0;
 }
 
 itk::DataObject* NMImageLayer::getITKImage(void)

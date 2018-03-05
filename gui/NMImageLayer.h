@@ -43,6 +43,8 @@
   #include "RasdamanConnector.hh"
 #endif
 
+class vtkIdTypeArray;
+class NMChartView;
 
 class NMImageLayer: public NMLayer
 {
@@ -100,6 +102,8 @@ public:
     int getOverviewIndex(void) {return mOverviewIdx;}
 
 	itk::DataObject *getITKImage(void);
+    vtkImageData* getVTKImage(void);
+    vtkIdTypeArray* getHistogram(void);
 	QSharedPointer<NMItkDataObjectWrapper> getImage(void);
 	NMProcess* getProcess(void)
 		{return this->mReader;}
@@ -141,6 +145,8 @@ public slots:
     void setScalars(vtkImageData* img);
     void mapRGBImageScalars(vtkImageData* img);
     void mapRGBImage(void);
+    void showHistogram(void);
+    void updateHistogram(vtkObject*);
 
 protected:
 
@@ -181,6 +187,9 @@ protected:
 
     itk::DataObject::Pointer mImage;
 	vtkSmartPointer<vtkImageProperty> mImgProp;
+
+    NMChartView* mHistogramView;
+    vtkSmartPointer<vtkIdTypeArray> mHistogram;
 
     unsigned int mNumRecords;
     unsigned int mNumDimensions;

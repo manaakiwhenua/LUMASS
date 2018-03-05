@@ -304,6 +304,20 @@ SQLiteTable::createPreparedColumnStatements(const std::string& colname)
 }
 
 bool
+SQLiteTable::isRowidColumn(const std::string &sColName)
+{
+    std::string colname = sColName;
+    std::transform(colname.begin(), colname.end(), colname.begin(), ::tolower);
+    bool ret = false;
+    if (colname.compare("rowid") == 0)
+    {
+        ret = true;
+    }
+
+    return ret;
+}
+
+bool
 SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
                                const std::string& whereClause)
 {
@@ -334,10 +348,17 @@ SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
         int colidx = this->ColumnExists(colNames[c]);
         if (colidx < 0)
         {
-            sqlite3_finalize(m_StmtBulkGet);
-            m_StmtBulkGet = 0;
-            //NMDebugCtx(_ctxotbtab, << "done!");
+            if (isRowidColumn(colNames[c]))
+            {
+                m_vTypesBulkGet.push_back(ATTYPE_INT);
+            }
+            else
+            {
+                sqlite3_finalize(m_StmtBulkGet);
+                m_StmtBulkGet = 0;
+                //NMDebugCtx(_ctxotbtab, << "done!");
             return false;
+            }
         }
         else
         {
@@ -863,9 +884,19 @@ SQLiteTable::GreedyNumericFetch(const std::vector<std::string> &columns,
     }
 
     std::stringstream ssql;
-    ssql << "SELECT ";
+    ssql << "SELECT "; //<< this->GetPrimaryKey() << ", ";
+    std::vector<bool> bStrCol;
     for (int c=0; c < columns.size(); ++c)
     {
+        if (this->GetColumnType(this->ColumnExists(columns[c])) == AttributeTable::ATTYPE_STRING)
+        {
+            bStrCol.push_back(true);
+        }
+        else
+        {
+            bStrCol.push_back(false);
+        }
+
         ssql << columns[c];
         if (c < columns.size()-1)
         {
@@ -893,7 +924,7 @@ SQLiteTable::GreedyNumericFetch(const std::vector<std::string> &columns,
         storeIter = valstore.begin();
         for (int c=1; c < columns.size() && storeIter != valstore.end(); ++c, ++storeIter)
         {
-            const double val = sqlite3_column_double(stmt, c);
+            const double val = bStrCol[c] ? static_cast<double>(id) : sqlite3_column_double(stmt, c);
             storeIter->second.insert(std::pair<long, double>(id, val));
         }
     }
@@ -1609,11 +1640,45 @@ SQLiteTable::PrepareColumnByIndex(const std::string &colname)//,
     return true;
 }
 
+bool
+SQLiteTable::PrepareColumnIterator(const std::string &colname,
+                                   const std::string &whereClause)
+{
+    NMDebugCtx(_ctxotbtab, << "...");
+    if (m_db == 0)
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    sqlite3_finalize(m_StmtColIter);
+
+    std::stringstream ssql;
+    ssql << "SELECT " << colname
+         << " from main." << m_tableName;
+    if (!whereClause.empty())
+    {
+         ssql << whereClause;
+    }
+    ssql << ";";
+
+    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
+                                &m_StmtColIter, 0);
+    if (sqliteError(rc, &m_StmtColIter))
+    {
+        NMDebugCtx(_ctxotbtab, << "done!");
+        return false;
+    }
+
+    NMDebugCtx(_ctxotbtab, << "done!");
+    return true;
+}
+
 double SQLiteTable::GetDblValue(const std::string& sColName, long long int idx)
 {
 	//check for valid name and index parameters
 	int colidx = this->ColumnExists(sColName);
-    if (colidx < 0)// || idx < 0)// || idx > m_iNumRows)
+    if (colidx < 0)
 		return m_dNodata;
 
     sqlite3_stmt* stmt = m_vStmtSelect.at(colidx);
@@ -1712,7 +1777,7 @@ double SQLiteTable::GetDblValue(const std::string& sColName, const std::string& 
 {
     //check for valid name and index parameters
     int colidx = this->ColumnExists(sColName);
-    if (colidx < 0)
+    if (colidx < 0 && !isRowidColumn(sColName))
         return m_dNodata;
 
     sqlite3_stmt* stmt;
@@ -1744,7 +1809,7 @@ SQLiteTable::GetIntValue(const std::string& sColName, const std::string& whereCl
 {
     // check given index and column name
     int colidx = this->ColumnExists(sColName);
-    if (colidx < 0)
+    if (colidx < 0 && !isRowidColumn(sColName))
         return m_iNodata;
 
     sqlite3_stmt* stmt;
@@ -1777,7 +1842,7 @@ SQLiteTable::GetStrValue(const std::string& sColName, const std::string& whereCl
 {
     // check given index and column name
     int colidx = this->ColumnExists(sColName);
-    if (colidx < 0)
+    if (colidx < 0 && !isRowidColumn(sColName))
         return m_sNodata;
 
     sqlite3_stmt* stmt;
@@ -3218,6 +3283,10 @@ SQLiteTable::PopulateTableAdmin()
                    << type << " | "
                    << pk << std::endl);
 
+        // convert type name into upperstring for
+        // 'case insensitive comparison'
+        std::transform(type.begin(), type.end(), type.begin(), ::toupper);
+
         if (name.compare("rowidx") == 0)
         {
             browidx = true;
@@ -3240,7 +3309,9 @@ SQLiteTable::PopulateTableAdmin()
             }
             m_vTypes.push_back(ATTYPE_INT);
         }
-        else if (type.compare("REAL") == 0)
+        else if (   type.compare("REAL") == 0
+                 || type.compare("NUMERIC") == 0
+                )
         {
             m_vTypes.push_back(ATTYPE_DOUBLE);
         }

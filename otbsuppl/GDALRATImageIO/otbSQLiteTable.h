@@ -81,6 +81,7 @@ public:
 	//long GetRowIdx(const std::string& column, const std::string& value);
 
 	// managing the attribute table's content
+    bool isRowidColumn(const std::string& sColName);
     bool AddColumn(const std::string &sColName, TableColumnType type)
         {return AddConstrainedColumn(sColName, type, "");}
     bool AddConstrainedColumn(const std::string& sColName, TableColumnType type,
@@ -197,6 +198,7 @@ public:
 
     /// FAST INLINE ACCESS TO COLUMN VALUES
     bool PrepareColumnByIndex(const std::string& colname);//, const std::string& whereClause);
+    bool PrepareColumnIterator(const std::string& colname, const std::string& whereClause="");
 
     double NextDoubleValue(const long long& row)
     {
@@ -214,6 +216,19 @@ public:
 
     }
 
+    double NextDoubleValue(bool& bOK)
+    {
+        if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
+        {
+            sqlite3_reset(m_StmtColIter);
+            bOK = false;
+            return m_dNodata;
+        }
+        bOK = true;
+        return sqlite3_column_double(m_StmtColIter, 0);
+    }
+
+
     long long NextIntValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
@@ -229,20 +244,45 @@ public:
         return v;
     }
 
-    const unsigned char* NextTextValue(const long long& row)
+    long long NextIntValue(bool& bOK)
+    {
+        if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
+        {
+            sqlite3_reset(m_StmtColIter);
+            bOK = false;
+            return m_iNodata;
+        }
+        bOK = true;
+        return sqlite3_column_int(m_StmtColIter, 0);
+    }
+
+    const char* NextTextValue(const long long& row)
     {
         sqlite3_bind_int64(m_StmtColIter, 1, row);
         if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
         {
             sqlite3_reset(m_StmtColIter);
-            char* err = const_cast<char*>(m_sNodata.c_str());
-            return reinterpret_cast<unsigned char*>(err);
+            return m_sNodata.c_str();
         }
-        const unsigned char* v = sqlite3_column_text(m_StmtColIter, 0);
+        const char* v = reinterpret_cast<const char*>(
+                        sqlite3_column_text(m_StmtColIter, 0));
         sqlite3_clear_bindings(m_StmtColIter);
         sqlite3_reset(m_StmtColIter);
 
         return v;
+    }
+
+    const char* NextTextValue(bool& bOK)
+    {
+        if (sqlite3_step(m_StmtColIter) != SQLITE_ROW)
+        {
+            sqlite3_reset(m_StmtColIter);
+            bOK = false;
+            return m_sNodata.c_str();
+        }
+        bOK = true;
+        return reinterpret_cast<const char*>(
+                    sqlite3_column_text(m_StmtColIter, 0));
     }
 
     std::string getLastLogMsg(void){return m_lastLogMsg;}

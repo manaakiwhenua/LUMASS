@@ -600,7 +600,7 @@ void NMIterableComponent::destroySubComponents(QMap<QString, NMModelComponent*>&
         NMIterableComponent* dc = 0;
         while(*cit != 0)
 		{
-            dc = static_cast<NMIterableComponent*>(*cit);
+            dc = qobject_cast<NMIterableComponent*>(*cit);
 			if (dc != 0)
             {
 				dc->destroySubComponents(repo);

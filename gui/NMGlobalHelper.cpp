@@ -96,6 +96,13 @@ NMGlobalHelper::getUserSettingsList(void)
     return ret;
 }
 
+QStringList
+NMGlobalHelper::getModelSettingsList(void)
+{
+    NMModelController* ctrl = NMGlobalHelper::getModelController();
+    return ctrl->getModelSettingsList();
+}
+
 
 QStringList
 NMGlobalHelper::getMultiItemSelection(const QString& title,
@@ -176,6 +183,65 @@ NMModelController*
 NMGlobalHelper::getModelController(void)
 {
     return NMGlobalHelper::getMainWindow()->ui->modelViewWidget->getModelController();
+}
+
+QStringList
+NMGlobalHelper::searchPropertyValues(const QObject* obj, const QString& searchTerm)
+{
+    QStringList props;
+    if (obj == 0 || searchTerm.isEmpty())
+    {
+        return props;
+    }
+
+    int nprops = obj->metaObject()->propertyCount();
+    for (int i=0; i < nprops; ++i)
+    {
+        bool bfound = false;
+
+        QString propName = obj->metaObject()->property(i).name();
+        QVariant pVal = obj->property(propName.toStdString().c_str());
+        if (QString::fromLatin1("QStringList").compare(pVal.typeName()) == 0)
+        {
+            QString aStr = pVal.toStringList().join(' ');
+            bfound = aStr.contains(searchTerm, Qt::CaseInsensitive);
+        }
+        else if (QString::fromLatin1("QList<QStringList>").compare(pVal.typeName()) == 0)
+        {
+            QString allString;
+            QList<QStringList> lsl = pVal.value<QList<QStringList> >();
+            foreach(const QStringList& sl, lsl)
+            {
+                allString += sl.join(' ') + ' ';
+            }
+            bfound = allString.contains(searchTerm, Qt::CaseInsensitive);
+        }
+        else if (QString::fromLatin1("QList<QList<QStringList> >").compare(pVal.typeName()) == 0)
+        {
+            QString allallString;
+            QList<QList<QStringList> > llsl = pVal.value<QList<QList<QStringList> > >();
+
+            foreach(const QList<QStringList>& lsl2, llsl)
+            {
+                foreach(const QStringList& sl2, lsl2)
+                {
+                    allallString += sl2.join(' ') + ' ';
+                }
+            }
+            bfound = allallString.contains(searchTerm, Qt::CaseInsensitive);
+        }
+        else
+        {
+            bfound = pVal.toString().contains(searchTerm, Qt::CaseInsensitive);
+        }
+
+        if (bfound)
+        {
+            props << propName;
+        }
+    }
+
+    return props;
 }
 
 

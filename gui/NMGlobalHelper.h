@@ -48,12 +48,14 @@ public:
     static QVTKWidget* getVTKWidget(void);
     static QString getUserSetting(const QString& key);
     static QStringList getUserSettingsList(void);
+    static QStringList getModelSettingsList(void);
     static QString getMultiLineInput(const QString& title,
                               const QString& suggestion, QWidget* parent=0);
     static QStringList getMultiItemSelection(const QString& title,
                                          const QString& label,
                                          const QStringList& items,
                                          QWidget* parent=0);
+    static QStringList searchPropertyValues(const QObject *obj, const QString& searchTerm);
     static QItemSelection selectRows(const QAbstractItemModel *model,
                               QList<int>& ids);
     static qreal getLUMASSVersion(void);

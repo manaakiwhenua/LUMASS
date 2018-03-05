@@ -751,7 +751,10 @@ NMRATBandMathImageFilterWrapper
 						vcolnames.push_back(cn.toStdString());
 					}
 				}
-                this->setNthAttributeTable(cnt, tab, vcolnames);
+                if (vcolnames.size() > 0)
+                {
+                    this->setNthAttributeTable(cnt, tab, vcolnames);
+                }
 			}
 
 

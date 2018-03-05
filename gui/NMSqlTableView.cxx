@@ -70,6 +70,7 @@
 #include "NMLayer.h"
 #include "NMImageLayer.h"
 #include "NMLogger.h"
+#include "NMChartView.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -79,7 +80,19 @@
 #include "vtkQtTableModelAdapter.h"
 #include "vtkDelimitedTextReader.h"
 #include "vtkSmartPointer.h"
-
+#include "vtkChartXYZ.h"
+#include "vtkChartXY.h"
+#include "vtkContextView.h"
+#include "vtkTable.h"
+#include "vtkPlotPoints3D.h"
+#include "vtkPlotPoints.h"
+#include "vtkNew.h"
+#include "vtkCallbackCommand.h"
+#include "vtkAxis.h"
+#include "vtkContextScene.h"
+#include "vtkFloatArray.h"
+#include "vtkBrush.h"
+#include "vtkTextProperty.h"
 
 
 #ifndef NM_ENABLE_LOGGER
@@ -93,7 +106,7 @@
 //#include "valgrind/callgrind.h"
 
 const std::string NMSqlTableView::ctx = "NMSqlTableView";
-
+double NMSqlTableView::angle = 0;
 
 NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
@@ -237,6 +250,15 @@ void NMSqlTableView::initView()
     //        this->mColHeadMenu->setWindowFlags(flags);
     //    }
 
+    // the graph menu and actions
+    QMenu* graphMenu = new QMenu(mColHeadMenu);
+    graphMenu->setTitle(tr("Graph Column"));
+
+    QAction* actScatter = new QAction(graphMenu);
+    actScatter->setText(tr("Scatter Plot ..."));
+    graphMenu->addAction(actScatter);
+
+    // other actions
 	QAction* actStat = new QAction(this->mColHeadMenu);
 	actStat->setText(tr("Statistics ..."));
 
@@ -304,11 +326,18 @@ void NMSqlTableView::initView()
 
     if (mViewMode != NMTABVIEW_RASMETADATA)
 	{
-		this->mColHeadMenu->addAction(actCalc);
+        this->mColHeadMenu->addAction(actCalc);
         //this->mColHeadMenu->addAction(actNorm);
 		this->mColHeadMenu->addSeparator();
+        if (mViewMode != NMTABVIEW_PARATABLE)
+        {
+            this->mColHeadMenu->addMenu(graphMenu);
+            this->mColHeadMenu->addSeparator();
+        }
+
         this->mColHeadMenu->addAction(actIndex);
 		this->mColHeadMenu->addAction(actAdd);
+
         if (    mViewMode == NMTABVIEW_PARATABLE
             ||  mViewMode == NMTABVIEW_STANDALONE
            )
@@ -330,6 +359,17 @@ void NMSqlTableView::initView()
 		this->mColHeadMenu->addAction(actJoin);
 	}
 	this->mColHeadMenu->addAction(actExp);
+
+#ifdef DEBUG
+    QAction* actTest = new QAction(this->mColHeadMenu);
+    actTest->setText(tr("Test ..."));
+
+    this->mColHeadMenu->addSeparator();
+    this->mColHeadMenu->addAction(actTest);
+
+    this->connect(actTest, SIGNAL(triggered()),
+                  this, SLOT(test()));
+#endif
 
 
     // CONNECT MENU ACTIONS WITH SLOTS
@@ -357,6 +397,7 @@ void NMSqlTableView::initView()
            )
         {
             this->connect(actJoin, SIGNAL(triggered()), this, SLOT(joinAttributes()));
+            this->connect(actScatter, SIGNAL(triggered()), this, SLOT(plotScatter()));
         }
 
         if (    mViewMode == NMTABVIEW_PARATABLE
@@ -383,6 +424,142 @@ void NMSqlTableView::initView()
 
 	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
+}
+
+void
+NMSqlTableView::ProcessEvents(vtkObject *caller, unsigned long,
+                   void *clientData, void *callerData)
+{
+  vtkChartXYZ *chart = reinterpret_cast<vtkChartXYZ *>(clientData);
+  vtkRenderWindowInteractor *interactor =
+      reinterpret_cast<vtkRenderWindowInteractor *>(caller);
+  angle += 2;
+  chart->SetAngle(angle);
+  interactor->Render();
+  if (angle >= 90)
+    {
+    int timerId = *reinterpret_cast<int *>(callerData);
+    interactor->DestroyTimer(timerId);
+    }
+}
+
+
+void
+NMSqlTableView::test()
+{
+}
+
+void
+NMSqlTableView::plotScatter()
+{
+
+    NMChartView* chartView = new NMChartView(this);
+    vtkContextView* view = chartView->getContextView();
+
+    vtkNew<vtkChartXY> chart;
+    view->GetScene()->AddItem(chart.GetPointer());
+
+
+    int nrows = mSortFilter->getNumTableRecords();
+
+    QStringList colnames;
+    int ncols = mModel->columnCount();
+    for (int c=0; c < ncols; ++c)
+    {
+        colnames << mModel->headerData(c, Qt::Horizontal).toString();
+    }
+
+    // pick x-col
+    QString xcolname = QInputDialog::getItem(this, "Pick x column", "", colnames);
+
+    // Create a table with some points in it...
+    vtkNew<vtkTable> table;
+    vtkNew<vtkFloatArray> arrX;
+    arrX->SetName(xcolname.toStdString().c_str());
+    arrX->SetNumberOfComponents(1);
+    arrX->SetNumberOfValues(nrows);
+    table->AddColumn(arrX.GetPointer());
+
+
+    vtkNew<vtkFloatArray> arrY;
+    arrY->SetName(this->mLastClickedColumn.toStdString().c_str());
+    arrY->SetNumberOfComponents(1);
+    arrY->SetNumberOfValues(nrows);
+
+    table->AddColumn(arrY.GetPointer());
+
+
+    NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mModel);
+
+    QSqlDatabase db = sqlModel->database();
+
+    // query the max y value
+    QString maxYStr = QString("select min(%1),max(%1), min(%2), max(%2) from %3")
+            .arg(mLastClickedColumn).arg(xcolname).arg(sqlModel->tableName());
+    double maxY = 0.0;
+    double minY = 0.0;
+    double minX = 0.0;
+    double maxX = 0.0;
+    QSqlQuery maxQ(db);
+    if (maxQ.exec(maxYStr))
+    {
+        minY = maxQ.value(0).toDouble();
+        maxY = maxQ.value(1).toDouble();
+        minX = maxQ.value(2).toDouble();
+        maxX = maxQ.value(3).toDouble();
+    }
+    else
+    {
+        NMLogError(<< maxQ.lastError().text().toStdString());
+        return;
+    }
+
+    // now query the actual y values for the plot
+    QString queryStr = QString("select %1, %2 from %3")
+                .arg(xcolname)
+                .arg(mLastClickedColumn)
+                .arg(sqlModel->tableName());
+
+    QSqlQuery q(db);
+    if (q.exec(queryStr))
+    {
+        int id = 0;
+        while (q.next())
+        {
+            float x = q.value(0).toFloat();
+            float y = q.value(1).toFloat();
+            table->SetValue(id, 0, vtkVariant(x));
+            table->SetValue(id, 1, vtkVariant(y));
+
+            ++id;
+        }
+    }
+
+
+    // Add the three dimensions we are interested in visualizing.
+    vtkNew<vtkPlotPoints> plot;
+//    plot->SetInputData(table.GetPointer(),
+//                       xcolname.toStdString().c_str(),
+//                       mLastClickedColumn.toStdString().c_str());
+    plot->SetInputData(table.GetPointer(), 0,1);
+
+    plot->SetColor(0.7, 0.7, 0.7);
+    plot->SetMarkerSize(-8);
+
+    chart->AddPlot(plot.GetPointer());
+    chart->GetAxis(0)->SetUnscaledRange(minX, maxX);
+    chart->GetAxis(1)->SetTitle(xcolname.toStdString().c_str());
+    chart->GetAxis(1)->SetUnscaledRange(minY, maxY);
+    chart->GetAxis(0)->SetTitle(mLastClickedColumn.toStdString().c_str());
+
+    vtkTextProperty* xprop = chart->GetAxis(0)->GetLabelProperties();
+    xprop->SetFontSize(16);
+
+    vtkTextProperty* yprop = chart->GetAxis(1)->GetLabelProperties();
+    yprop->SetFontSize(16);
+
+    chartView->show();
+    chartView->getRenderWindow()->Render();
 }
 
 void

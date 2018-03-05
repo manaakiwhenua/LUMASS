@@ -104,8 +104,14 @@ public:
 
     void setLogger(NMLogger* logger){mLogger = logger;}
 
+    static void ProcessEvents(vtkObject *caller, unsigned long,
+                       void *clientData, void *callerData);
+
+    static double angle;
+
 public slots:
 
+    void test();
 	void calcColumn();
 	void addColumn();
     void indexColumn();
@@ -129,6 +135,7 @@ public slots:
 	void setSelectable(bool);
     void processParaTableRightClick(QGraphicsSceneMouseEvent *gsme, QGraphicsItem *gi);
     void processParaTableDblClick(QGraphicsSceneMouseEvent*);
+    void plotScatter();
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);

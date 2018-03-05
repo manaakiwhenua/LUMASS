@@ -179,27 +179,30 @@ NMLayer::~NMLayer()
     if (this->mTableModel != 0)
     {
         NMSqlTableModel* tmodel = qobject_cast<NMSqlTableModel*>(this->mTableModel);
-        std::string dbname = tmodel->getDatabaseName().toStdString();
-        tmodel->clear();
-        tmodel->database().close();
-        delete mTableModel;
-        mTableModel = 0;
+        if (tmodel)
         {
-            QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
-            if (db.isValid() && db.isOpen())
+            std::string dbname = tmodel->getDatabaseName().toStdString();
+            tmodel->clear();
+            tmodel->database().close();
+            delete mTableModel;
+            mTableModel = 0;
             {
-                db.close();
+                QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
+                if (db.isValid() && db.isOpen())
+                {
+                    db.close();
+                }
             }
+            QSqlDatabase::removeDatabase(mQSqlConnectionName);
+
+            sqlite3_close(mSqlViewConn);
+            spatialite_cleanup_ex(mSpatialiteCache);
+            mSpatialiteCache = 0;
+            mSqlViewConn = 0;
+
+            NMDebug(<< "NMImageLayer: Destroyed QSql connection to '"
+                    << dbname << "'" << std::endl);
         }
-        QSqlDatabase::removeDatabase(mQSqlConnectionName);
-
-        sqlite3_close(mSqlViewConn);
-        spatialite_cleanup_ex(mSpatialiteCache);
-        mSpatialiteCache = 0;
-        mSqlViewConn = 0;
-
-        NMDebug(<< "NMImageLayer: Destroyed QSql connection to '"
-                << dbname << "'" << std::endl);
     }
 
     if (this->mSqlTableView != 0)

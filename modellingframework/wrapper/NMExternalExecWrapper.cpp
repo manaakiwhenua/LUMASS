@@ -39,7 +39,6 @@
 #include "NMExternalExecWrapper.h"
 #include "NMMfwException.h"
 
-
 const std::string NMExternalExecWrapper::ctx = "NMExternalExecWrapper";
 NMExternalExecWrapper::NMExternalExecWrapper(QObject* parent)
     : mCmdProcess(0)
@@ -49,13 +48,7 @@ NMExternalExecWrapper::NMExternalExecWrapper(QObject* parent)
 
 NMExternalExecWrapper::~NMExternalExecWrapper()
 {
-    if (mCmdProcess != 0)
-    {
-        disconnect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
-                   this, SLOT(readOutput()));
-        delete mCmdProcess;
-        mCmdProcess = 0;
-    }
+    reset();
 }
 
 QSharedPointer<NMItkDataObjectWrapper>
@@ -69,6 +62,9 @@ void
 NMExternalExecWrapper::instantiateObject(void)
 {
     reset();
+
+    mCmdProcess = new QProcess(this);
+    mCmdProcess->setProcessChannelMode(QProcess::MergedChannels);
 
     this->mbIsInitialised = true;
     this->setObjectName(QString::fromLatin1("NMExternalExecWrapper"));
@@ -88,16 +84,9 @@ NMExternalExecWrapper::reset(void)
 
     if (mCmdProcess != 0)
     {
-        disconnect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
-                   this, SLOT(readOutput()));
         delete mCmdProcess;
         mCmdProcess = 0;
     }
-
-    mCmdProcess = new QProcess();
-    mCmdProcess->setProcessChannelMode(QProcess::MergedChannels);
-    connect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
-            this, SLOT(readOutput()));
 
     mProcOutput.clear();
 }
@@ -146,6 +135,15 @@ NMExternalExecWrapper::update(void)
 
     NMDebugAI( << mCurCmd.toStdString() << std::endl);
 
+#ifndef _WIN32
+    connect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
+            this, SLOT(readOutput()));
+#else
+
+    NMLogInfo( << "Invoking external component ... " << std::endl
+               << mCurCmd.toStdString());
+#endif
+
     mCmdProcess->setProcessEnvironment(mProcEnv);
 
     QString objName = this->parent()->objectName();
@@ -153,6 +151,13 @@ NMExternalExecWrapper::update(void)
 
     mCmdProcess->start(mCurCmd);
     mCmdProcess->waitForFinished(-1);
+
+#ifndef _WIN32
+    disconnect(mCmdProcess, SIGNAL(readyReadStandardOutput()),
+               this, SLOT(readOutput()));
+#else
+    NMLogInfo( << "...finished!");
+#endif
 
     emit signalExecutionStopped(objName);
 

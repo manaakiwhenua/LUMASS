@@ -54,21 +54,6 @@ NMModelSerialiser::NMModelSerialiser(QObject* parent)
 #endif
 }
 
-//void
-//NMModelSerialiser::setLogger(NMLogger *logger)
-//{
-//    if (logger == 0)
-//    {
-//        return;
-//    }
-//    mLogger = logger;
-//    mLogger->setHtmlMode(true);
-
-//#ifdef DEBUG
-//    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
-//#endif
-//}
-
 NMModelSerialiser::~NMModelSerialiser()
 {
 }
@@ -186,15 +171,10 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		// --------------------------------------------------------------------------------------
 		// property assignment
 		// --------------------------------------------------------------------------------------
-//		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
+        //		NMDebugInd(ind + 1, << "parsing '" << compName.toStdString() << "'" << endl);
 		QDomElement propElem = compElem.firstChildElement("Property");
 		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
 		{
-            // serialisation of HostComponent is deprecated
-            //            // we can only deal with the HostComponent after we've parsed everything
-            //            if (propElem.attribute("name").compare("HostComponent") == 0)
-            //                continue;
-
 			QVariant value;
 			bool suc = false;
 			value = this->extractPropertyValue(propElem);
@@ -285,39 +265,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		if (itComp == 0)
 			continue;
 
-        // MARKED FOR DELETION
-        //---------------------
-        //		NMDebugAI(<< "adding '" << finalName.toStdString() << "' to its host component" << endl);
-        //		QDomElement propElem = compElem.firstChildElement("Property");
-        //		for (; !propElem.isNull(); propElem = propElem.nextSiblingElement("Property"))
-        //		{
-        //			if (propElem.attribute("name").compare("HostComponent") != 0)
-        //				continue;
-
-        //			QDomElement hostCompElem = propElem.firstChildElement("component_name");
-        //			NMIterableComponent* hostComp = 0;
-        //			if ((nameRegister.find(hostCompElem.text()) == nameRegister.end() ||
-        //				 (hostCompElem.text().compare("root") == 0  &&
-        //				  nameRegister.find("root") == nameRegister.end())
-        //				 )                                                                   &&
-        //				itComp->objectName().compare("root") != 0
-        //			   )
-        //			{
-        //				hostComp = qobject_cast<NMIterableComponent*>(controller->getComponent("root"));
-        //				if (hostComp != 0)
-        //				{
-        //					hostComp->addModelComponent(itComp);
-        //				}
-        //				else
-        //				{
-        //					NMLogError(<< ctx << ": couldn't get the root model component from "
-        //							<< "the model controller!");
-        //				}
-        //			}
-        //		}
-
-
-//		NMDebugAI(<< "setting subcomponents for '" << itCompName.toStdString() << "'" << endl);
+        //		NMDebugAI(<< "setting subcomponents for '" << itCompName.toStdString() << "'" << endl);
 		QDomElement subcompElem = compElem.firstChildElement("Subcomponents");
 		if (!subcompElem.isNull())
 		{
@@ -351,7 +299,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 
     foreach(const QString& name, nameRegister.values())
     {
-//        NMDebugAI(<< "sorting host for '" << name.toStdString() << "' ..." << std::endl);
+    //        NMDebugAI(<< "sorting host for '" << name.toStdString() << "' ..." << std::endl);
         NMModelComponent* c = this->getModelController()->getComponent(name);
         if (    c != 0
             &&  c->getHostComponent() == 0
@@ -365,20 +313,20 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 
 	// ------------------------------------------------------
 	// a bit of debug code
-//	QMap<QString, NMModelComponent*>& repo =
-//			const_cast<QMap<QString, NMModelComponent*>& >(controller->getRepository());
+    //	QMap<QString, NMModelComponent*>& repo =
+    //			const_cast<QMap<QString, NMModelComponent*>& >(controller->getRepository());
 
-//	NMDebug(<< endl);
-//	NMDebugAI(<< "Model controller's contents after import ..." << endl);
-//	foreach(NMModelComponent* cmp, repo.values())
-//	{
-//		NMDebugAI(<< cmp->objectName().toStdString() << endl);
-//	}
-	// ------------------------------------------------------
+    //	NMDebug(<< endl);
+    //	NMDebugAI(<< "Model controller's contents after import ..." << endl);
+    //	foreach(NMModelComponent* cmp, repo.values())
+    //	{
+    //		NMDebugAI(<< cmp->objectName().toStdString() << endl);
+    //	}
+        // ------------------------------------------------------
 
 
-//    NMDebugCtx(ctx, << "done!");
-    //return nameRegister;
+    //    NMDebugCtx(ctx, << "done!");
+        //return nameRegister;
 }
 
 QString

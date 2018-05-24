@@ -23,6 +23,91 @@ NMLogger::NMLogger(QObject *parent)
 }
 
 void
+NMLogger::logProvN(const NMProvConcept &concept,
+                   const QStringList& args,
+                   QStringList& attr)
+{
+    QString msg;
+
+    switch(concept)
+    {
+    case NM_PROV_ENTITY:
+        msg = "entity(";
+        break;
+    case NM_PROV_ACTIVITY:
+        msg = "activity(";
+        break;
+    case NM_PROV_GENERATION:
+        msg = "wasGeneratedBy(";
+        break;
+    case NM_PROV_USAGE:
+        msg = "used(";
+        break;
+    case NM_PROV_COMMUNICATION:
+        msg = "wasInformedBy(";
+        break;
+    case NM_PROV_START:
+        msg = "wasStartedBy(";
+        break;
+    case NM_PROV_END:
+        msg = "wasEndedBy(";
+        break;
+    case NM_PROV_INVALIDATION:
+        msg = "wasInvalidatedBy(";
+        break;
+    case NM_PROV_DERIVATION:
+        msg = "wasDerivedFrom(";
+        break;
+    case NM_PROV_AGENT:
+        msg = "agent(";
+        attr.prepend(QString::fromLatin1("prov:type='prov:SoftwareAgent'"));
+        break;
+    case NM_PROV_ATTRIBUTION:
+        msg = "wasAttributedTo(";
+        break;
+    case NM_PROV_ASSOCIATION:
+        msg = "wasAssociatedWith(";
+        attr.prepend(QString::fromLatin1("prov:role=\"operator\""));
+        break;
+    case NM_PROV_DELEGATION:
+        msg = "actedOnBehalfOf(";
+        attr.prepend(QString::fromLatin1("prov:type=\"delegation\""));
+        break;
+    case NM_PROV_COLLECTION:
+        // must be of type prov:type='prov:Collection'
+        msg = "entity(";
+        attr.prepend(QString::fromLatin1("prov:type='prov:Collection'"));
+        break;
+    case NM_PROV_MEMBERSHIP:
+        msg = "hadMember(";
+        break;
+    default:
+        msg = "unknown(";
+    }
+
+    msg += args.join(',');
+
+    if (attr.size() > 0)
+    {
+        msg += ",";
+        msg += "[";
+        msg += attr.join(',');
+        msg += "]";
+    }
+
+    // removing any new line / carriage return new line
+    // characters, since they lead to formatting errors
+    // of the PROV-N file; basically there are no
+    // such characters allowed in the file
+    msg = msg.replace('\n', ' ');
+    msg = msg.replace("\r\n", " ");
+
+    msg += ")\n";
+
+    sendProvN(msg);
+}
+
+void
 NMLogger::processLogMsg(const QString &time, LogEventType type, const QString &msg,
                         bool bForceNewLine)
 {

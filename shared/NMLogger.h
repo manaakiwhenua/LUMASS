@@ -33,6 +33,24 @@ public:
 
     } LogEventType;
 
+    typedef enum {
+        NM_PROV_ENTITY = 0,
+        NM_PROV_ACTIVITY,
+        NM_PROV_GENERATION,
+        NM_PROV_USAGE,
+        NM_PROV_COMMUNICATION,
+        NM_PROV_START,
+        NM_PROV_END,
+        NM_PROV_INVALIDATION,
+        NM_PROV_DERIVATION,
+        NM_PROV_AGENT,
+        NM_PROV_ATTRIBUTION,
+        NM_PROV_ASSOCIATION,
+        NM_PROV_DELEGATION,
+        NM_PROV_COLLECTION,
+        NM_PROV_MEMBERSHIP
+    } NMProvConcept;
+
 
     explicit NMLogger(QObject *parent = 0);
     void setHtmlMode(bool bhtml){mbHtml=bhtml;}
@@ -41,12 +59,25 @@ public:
 
 signals:
     void sendLogMsg(const QString& msg);
+    void sendProvN(const QString& provLog);
 
 public slots:
     void processLogMsg(const QString& time,
                        LogEventType type,
                        const QString& msg,
                        bool bForceNewLine=true);
+
+    /*! CONCEPT
+     *  entity, activity, generation, usage, communication,
+     *  start, end, derivation, aggent, attribution, association,
+     *  delegation, collection, membership
+     *
+     *
+     */
+
+    void logProvN(const NMProvConcept& concept,
+                  const QStringList &args,
+                  QStringList &attr);
 
 protected:
 

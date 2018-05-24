@@ -242,11 +242,15 @@ extern int nmindent;
                            str.str().c_str(), false); \
 }
 
+#define NMLogProv(concept, args, attr) mLogger->logProvN(concept, args, attr);
+
+
 # else
 # define NMLogInfo(arg)
 # define NMLogWarn(arg)
 # define NMLogError(arg)
 # define NMLogDebug(arg)
+# define NMLogProv(concept, args, attr)
 #endif // NM_ENABLE_LOGGER
 
 
@@ -256,6 +260,13 @@ extern int nmindent;
 // =====================================================
 #ifdef NM_PROC_LOG
 #include "itkNMLogEvent.h"
+
+#define NMProcProvN(provType, args, attrs) \
+        { \
+            this->InvokeEvent(itk::NMLogEvent(        \
+                               itk::NMLogEvent::NM_LOG_PROVN, \
+                               provType, args, attrs)); \
+        }
 
 #define NMProcErr(arg) \
         { \
@@ -289,6 +300,7 @@ extern int nmindent;
                    itk::NMLogEvent::NM_LOG_DEBUG)); \
        }
 #else
+#define NMProcProvN(provType, args, attrs)
 #define NMProcErr(arg)
 #define NMProcWarn(arg)
 #define NMProcInfo(arg)

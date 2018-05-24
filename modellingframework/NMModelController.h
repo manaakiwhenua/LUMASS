@@ -37,6 +37,7 @@
 #include <QString>
 #include <QStringList>
 #include <QDateTime>
+#include <QFile>
 
 #include "NMObject.h"
 #include "otbAttributeTable.h"
@@ -49,17 +50,17 @@ class NMIterableComponent;
 class NMProcess;
 class NMLogger;
 
-/*! \brief NMModelController is responsible for managing
- *         all NMModelComponents.
+/*! \brief NMModelController is responsible for managing and
+ *   running a single LUMASS model.
  *
- *   (Currently) NMModelController is implemented as Singleton
- *   to keep track of and manage a model's components
- *   (i.e. process components and aggregate components).
- *   The model controller lives in a separate thread and moves
- *   any new components being added to its component repository
- *   to the thread its running in. Also, it becomes the parent
- *   of each component it looks after (i.e. which is referenced in its
- *   repository).
+ *   One NMModelController is responsible for the model being
+ *   edited/run within the modelling environment; each user tool
+ *   has its own NMModelController associated with it for running
+ *   the particular model and so has the lumassengine.
+ *   Each NMModelController manages its own list of model settings,
+ *   e.g. for writing provenace information or not.
+ *
+ *
  *
  *   \see NMModelComponent, NMProcess, NMAggregateComponentItem,
  *   NMProcessComponentItem
@@ -79,6 +80,8 @@ public:
 
     NMModelController(QObject* parent=0);
     virtual ~NMModelController();
+
+    virtual void setLogger(NMLogger* logger);
 
     QSharedPointer<NMItkDataObjectWrapper> getOutputFromSource(const QString& inputSrc);
 	NMModelComponent* getComponent(const QString& name);
@@ -101,6 +104,7 @@ public:
     QString getComponentNameFromInputSpec(const QString& inputSpec);
 
     QStringList getPropertyList(const QObject* obj);
+    QStringList getProvNAttributes(const QObject *comp);
 
     otb::AttributeTable::Pointer getComponentTable(const NMModelComponent* comp);
 
@@ -335,6 +339,13 @@ public slots:
     QVariant getSetting(const QString& key) const
         {return mSettings[key];}
 
+    bool isLogProvOn(){return mbLogProv;}
+    void setLogProvOn() {mbLogProv = true;}
+    void setLogProvOff() {mbLogProv = false;}
+    void startProv(const QString& fn, const QString& compName);
+    void endProv();
+    void writeProv(const QString& provLog);
+
 signals:
 	/*! Signals whether any of the process components controlled
 	 *  by this controller is currently running or not */
@@ -351,6 +362,8 @@ signals:
 
 protected:
 	void resetExecutionStack(void);
+    void logProvNComponent(NMModelComponent* comp);
+    void trackIdConceptRev(const QString& id, const QString&, const int& rev);
 
     /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;
@@ -369,6 +382,12 @@ protected:
     QStringList mToBeDeleted;
 
     QMap<QString, QVariant> mSettings;
+
+    bool mbLogProv;
+    QFile mProvFile;
+    QString mProvFileName;
+    QMap<QString, QMap<QString, int> > mMapProvIdConRev;
+
 
 private:
 	static const std::string ctx;

@@ -53,7 +53,8 @@ const std::string NMModelController::ctx = "NMModelController";
 
 NMModelController::NMModelController(QObject* parent)
 	: mbModelIsRunning(false),
-	  mRootComponent(0), mbAbortionRequested(false)
+      mRootComponent(0), mbAbortionRequested(false),
+      mbLogProv(false)
 {
 	this->setParent(parent);
 	this->mModelStarted = QDateTime::currentDateTime();
@@ -63,6 +64,17 @@ NMModelController::NMModelController(QObject* parent)
 
 NMModelController::~NMModelController()
 {
+}
+
+void
+NMModelController::setLogger(NMLogger* logger)
+{
+    if (mLogger != nullptr)
+    {
+        delete mLogger;
+    }
+
+    mLogger = logger;
 }
 
 QSharedPointer<NMItkDataObjectWrapper>
@@ -220,6 +232,7 @@ NMModelController::getModelSettingsList(void)
     modelSettings.removeAll("UserModels");
     modelSettings.removeAll("Workspace");
     modelSettings.removeAll("LUMASSPath");
+    modelSettings.removeAll("TimeFormat");
 
     return modelSettings;
 }
@@ -229,7 +242,7 @@ NMModelController::clearModelSettings(void)
 {
     QStringList modelSettings = mSettings.keys();
     QStringList sys;
-    sys << "UserModels" << "Workspace" << "LUMASSPath";
+    sys << "UserModels" << "Workspace" << "LUMASSPath" << "TimeFormat";
 
     foreach(const QString& key, modelSettings)
     {
@@ -317,7 +330,25 @@ NMModelController::executeModel(const QString& compName)
     //		return;
     //	}
 
-	// we reset all the components
+
+    // ================================================
+    // starting the provenance
+
+    if (mbLogProv)
+    {
+        QString provFN = QString("%1/%2_%3.provn")
+                         .arg(this->getSetting("Workspace").toString())
+                         .arg(userID)
+                         .arg(QDateTime::currentDateTime().toString(Qt::ISODate));
+        provFN = provFN.replace(":", "");
+        provFN = provFN.replace("-", "");
+        startProv(provFN, comp->objectName());
+
+        //this->logProvNComponent(comp);
+    }
+
+    // ================================================
+    // we reset all the components
 	// (and thereby delete all data buffers)
 	this->resetComponent(compName);
 
@@ -407,6 +438,13 @@ NMModelController::executeModel(const QString& compName)
 	this->mbModelIsRunning = false;
 	this->mbAbortionRequested = false;
 	emit signalIsControllerBusy(false);
+
+    // ================================================
+    // end provenance
+    if (mbLogProv)
+    {
+        endProv();
+    }
 
 	// to be on the safe side, we reset the execution stack and
 	// notify all listeners, that those components are no longer
@@ -1460,3 +1498,575 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
 
     return nested;
 }
+
+void
+NMModelController::trackIdConceptRev(const QString &id,
+                                     const QString &concept,
+                                     const int &rev)
+{
+    QMap<QString, QMap<QString, int> >::iterator idIter =
+            mMapProvIdConRev.find(id);
+
+    if (idIter == mMapProvIdConRev.end())
+    {
+        QMap<QString, int> mapRev;
+        mapRev.insert(concept, rev);
+        mMapProvIdConRev.insert(id, mapRev);
+    }
+    else
+    {
+        idIter.value().insert(concept, rev);
+    }
+}
+
+void
+NMModelController::writeProv(const QString &provLog)
+{
+    if (!mbLogProv)
+    {
+        return;
+    }
+
+    if (!mProvFile.isOpen())
+    {
+        NMLogError(<< "Model Controller: Failed writing provenance entry - provenance file is closed!");
+        return;
+    }
+
+    // --------------------------------------------------------------------------------
+    // disect the statement
+    int idOpen = provLog.indexOf('(');
+    int idSquare1 = provLog.indexOf('[');
+    int idSquare2 = provLog.indexOf(']');
+    int idComma = provLog.indexOf(',');
+    idComma = idComma > 0 ? idComma : provLog.indexOf(')');
+    QString concept = provLog.mid(0, idOpen);
+    QString id = provLog.mid(idOpen+1, idComma-idOpen-1);
+
+    int idComma2 = provLog.indexOf(',', idComma+1);
+    idComma2 = idComma > 0 ? idComma2 : provLog.indexOf(')');
+    QString id2 = idComma2 > 0 ? provLog.mid(idComma+1, idComma2-idComma-1) : "-";
+
+    int idComma3 = provLog.indexOf(',', idComma2+1);
+    idComma3 = idComma3 > 0 ? idComma3 : provLog.indexOf(')');
+    QString id3 = idComma3 > 0 ? provLog.mid(idComma2+1, idComma3-idComma2-1) : "-";
+
+    QString attrs = idSquare1 > 0 ? provLog.mid(idSquare1+1, idSquare2-idSquare1-1) : "";
+
+    QString entityLog;
+    QString writeLog;
+
+    QStringList filterOut;
+    filterOut << "agent", "actedOnBehalf", "activity", "wasAssociatedWith";
+
+    // the id iterator (i.e. key of the outer map)
+    QMap<QString, QMap<QString, int> >::iterator idIter = mMapProvIdConRev.find(id);
+    // the concept iterator (i.e. key of the inner map)
+    QMap<QString, int>::iterator conIter;
+
+    // check for the combination of id and concept in the 'tracker maps'
+    bool bComboFound = false;
+    bool bIdFound = false;
+    if (idIter != mMapProvIdConRev.end())
+    {
+        bIdFound = true;
+        conIter = idIter.value().find(concept);
+        if (conIter != idIter.value().end())
+        {
+            bComboFound = true;
+        }
+    }
+
+    // ===================================================================
+    // concept depending processing
+
+    // when concept belongs to 'filterOut' list
+    // - only allows a single concept with the given id (i.e. entity id or activity id)
+    // - tracks the concept id pair
+    if (filterOut.contains(concept))
+    {
+        if (!bComboFound)
+        {
+            this->trackIdConceptRev(id, concept, 0);
+        }
+        else
+        {
+            NMLogDebug(<< "Model Controller: PROV-N issue: '"
+                     << concept.toStdString() << "' has already been logged for '"
+                     << id.toStdString() << "'!");
+            return;
+        }
+    }
+    // ---------------------------------------------------------------------
+    // processing entity statements
+    else if (concept.compare("entity") == 0)
+    {
+        if (bComboFound)
+        {
+            // get entity revision
+            int e_rx = conIter.value();
+
+            // check for derived revision
+            conIter = idIter.value().find("wasDerivedFrom");
+            int g_rx = -1;
+            if (conIter != idIter.value().end())
+            {
+                g_rx = conIter.value();
+                if (g_rx > e_rx)
+                {
+                    writeLog = QString("entity(%1_r%2")
+                               .arg(id).arg(g_rx);
+                    attrs = "";
+                    this->trackIdConceptRev(id, concept, g_rx);
+                }
+                else
+                {
+                    NMLogDebug(<< "Model Controller: PROV-N issue: '"
+                             << concept.toStdString() << "' has already been logged for '"
+                             << id.toStdString() << "'!");
+                    return;
+                }
+            }
+            else if (conIter == idIter.value().end())
+            {
+                NMLogDebug(<< "Model Controller: PROV-N issue: '"
+                         << concept.toStdString() << "' has already been logged for '"
+                         << id.toStdString() << "'!");
+                return;
+            }
+        }
+        else
+        {
+            this->trackIdConceptRev(id, concept, 0);
+        }
+    }
+    // -------------------------------------------------------------------------------------
+    // processing used statements
+    else if (concept.compare("used") == 0)
+    {
+        // id - activity
+        // id2 - entity
+        // id3 - time
+
+        // have to lookup different id (-> i.e. id2) here
+        idIter = mMapProvIdConRev.find(id2);
+        if (idIter != mMapProvIdConRev.end())
+        {
+            conIter = idIter.value().find("entity");
+            if (conIter != idIter.value().end())
+            {
+                int e_rx = conIter.value();
+
+                // used(e, a, t, -)
+                if (e_rx > 0)
+                {
+                    writeLog = QString("used(%1, %2_r%3, %4")
+                                .arg(id).arg(id2).arg(e_rx).arg(id3);
+                    this->trackIdConceptRev(id2, concept, e_rx);
+                }
+                else
+                {
+                    writeLog = QString("used(%1, %2, %3")
+                                .arg(id).arg(id2).arg(id3);
+                    this->trackIdConceptRev(id2, concept, 0);
+                }
+            }
+            //            else
+            //            {
+            //                // mmh, there should be an entity present before
+            //                // we can use it!
+            //                return;
+            //            }
+        }
+        else
+        {
+            this->trackIdConceptRev(id2, concept, 0);
+        }
+    }
+    // -------------------------------------------------------------------------------------
+    else if (concept.compare("wasGeneratedBy") == 0)
+    {
+        // id = entity
+        // id2 = activity
+
+        if (bIdFound)
+        {
+            // do we already have an entity of that kind logged?
+            conIter = idIter.value().find("entity");
+
+            // ... yes -> turn it into 'revision statement'
+            if (conIter != idIter.value().end())
+            {
+                int e_rx = conIter.value();
+                if (e_rx == 0)
+                {
+                    writeLog = QString("wasDerivedFrom(%1_r%2, %3, %4, -, -")
+                                .arg(id).arg(e_rx+1).arg(id).arg(id2);
+                }
+                else if (e_rx > 0)
+                {
+                    writeLog = QString("wasDerivedFrom(%1_r%2, %3_r%4, %5, -, -")
+                                .arg(id).arg(e_rx+1).arg(id).arg(e_rx).arg(id2);
+                }
+                this->trackIdConceptRev(id, "wasDerivedFrom", e_rx+1);
+            }
+            // ... no -> sweet, no problem then
+            //            else
+            //            {
+            //                //writeLog = provLog;
+
+            //                // don't need to really track this
+            //                //this->trackIdConceptRev(id, concept, 0);
+            //            }
+        }
+        else
+        {
+            //writeLog = provLog;
+            this->trackIdConceptRev(id, concept, 0);
+        }
+    }
+    // -------------------------------------------------------------------------------------
+    else if (concept.compare("wasDerivedFrom") == 0)
+    {
+        // id = entity (derived)
+        // id2 = entity (source)
+        // id3 = activity
+
+        int e_rx = 0;
+
+        // determine currently present revision ...
+        // ... in case we've logged a revision for this entity already
+        if (bComboFound)
+        {
+            e_rx = conIter.value();
+        }
+        // ... in case this entity is being revised for the first time
+        //        else if (bIdFound)
+        //        {
+        //            e_
+        //            conIter = idIter.value().find("entity");
+        //            if (conIter != idIter.value().end())
+        //            {
+        //                e_rx = conIter.value();
+        //            }
+        //            else
+        //            {
+        //                NMLogError(<< "PROVENANCE ERROR: Cannot derive from nothing! "
+        //                           << "Expected '" << id.toStdString() << "' "
+        //                           << "to be present in the log!");
+        //                return;
+        //            }
+        //        }
+
+        if (e_rx == 0)
+        {
+            writeLog = QString("wasDerivedFrom(%1_r%2, %3, %4, -, -")
+                       .arg(id).arg(e_rx+1).arg(id).arg(id3);
+        }
+        else if (e_rx > 0)
+        {
+            writeLog = QString("wasDerivedFrom(%1_r%2, %3_r%4, %5, -, -")
+                       .arg(id).arg(e_rx+1).arg(id).arg(e_rx).arg(id3);
+        }
+        this->trackIdConceptRev(id, concept, e_rx+1);
+
+        entityLog = QString("entity(%1_r%2)").arg(id).arg(e_rx+1);
+        this->trackIdConceptRev(id, "entity", e_rx+1);
+
+    }
+
+    // -------------------------------------------------------------------------------------
+    // append attributes, if applicable,
+    // otherwise just close the statememt
+    if (writeLog.isEmpty())
+    {
+        writeLog = provLog;
+    }
+    else
+    {
+        if (attrs.isEmpty())
+        {
+            writeLog = QString("%1)").arg(writeLog);
+        }
+        else
+        {
+            writeLog = QString("%1, [%2])").arg(writeLog).arg(attrs);
+        }
+    }
+
+    QTextStream out(&mProvFile);
+    out << '\t' << writeLog;
+
+    if (!writeLog.endsWith("\n"))
+    {
+        out << '\n';
+    }
+
+    if (!entityLog.isEmpty())
+    {
+        out << '\t' << entityLog << '\n';
+    }
+
+//    QString logNewEntity;
+//    QStringList watchout;
+//    watchout << "wasGeneratedBy" << "wasDerivedFrom" << "entity" << "activity" << "agent";
+//    QMap<QString, QString>::iterator idIter = mMapProvIdConcept.find(id);
+//    if (watchout.contains(concept) && idIter != mMapProvIdConcept.end())
+//    {
+//        if (concept.compare("wasGeneratedBy") == 0)
+//        {
+//            newId = QString("%1_2").arg(id);
+
+//            if (attrs.isEmpty())
+//            {
+//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[prov:type='prov:Revision'])\n")
+//                           .arg(newId).arg(id).arg(id2);
+//            }
+//            else
+//            {
+//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[prov:type='prov:Revision',%4])\n")
+//                           .arg(newId).arg(id).arg(id2).arg(attrs);
+//            }
+//            logNewEntity = QString("entity(%1)\n").arg(newId);
+//            mMapProvIdConcept.insert(newId, "entity");
+//        }
+//        else if (concept.compare("wasDerivedFrom") == 0)
+//        {
+//            int underscore = id.lastIndexOf('_');
+//            QString baseId = id.left(underscore);
+//            QString cnt = id.right(id.size()-underscore-1);
+//            bool bok;
+//            int num = cnt.toInt(&bok);
+//            if (bok)
+//            {
+//                newId = QString("%1_%2").arg(baseId).arg(++num);
+//            }
+
+//            if (attrs.isEmpty())
+//            {
+//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[prov:type='prov:Revision'])\n")
+//                           .arg(newId).arg(id).arg(id3);
+//            }
+//            else
+//            {
+//                // we expect that the 'wasDerivedFrom' had been properly formatted
+//                // so that we can just re-use the 'revision' specification
+//                writeLog = QString("wasDerivedFrom(%1,%2,%3,-,-,[%4])\n")
+//                           .arg(newId).arg(id).arg(id3).arg(attrs);
+//            }
+//            logNewEntity = QString("entity(%1)\n").arg(newId);
+//            mMapProvIdConcept.insert(newId, "entity");
+//        }
+//        //else if (concept.compare(idIter.value()) != 0)
+//        else if (concept.compare(idIter.value()) == 0)
+//        {
+//            NMLogWarn(<< "Model Controller: PROV-N issue: '"
+//                      << concept.toStdString() << "' has already been logged for '"
+//                      << id.toStdString() << "'!");
+//            return;
+//        }
+//        //        else
+//        //        {
+//        //            NMLogWarn(<< "Model Controller: PROV-N issue: '"
+//        //                      << concept.toStdString() << "' has already been logged for '"
+//        //                      << id.toStdString() << "'!");
+//        //            return;
+//        //        }
+
+//    }
+//    else if (concept.compare("wasDerivedFrom") == 0)
+//    {
+//        // create companion entity
+//        logNewEntity = QString("entity(%1)\n").arg(id);
+//        mMapProvIdConcept.insert(id, "entity");
+//    }
+//    else
+//    {
+//        mMapProvIdConcept.insert(id, concept);
+//    }
+
+//    QTextStream out(&mProvFile);
+//    out << '\t' << writeLog;
+
+//    if (!logNewEntity.isEmpty())
+//    {
+//        out << '\t' << logNewEntity;
+//    }
+}
+
+QStringList
+NMModelController::getProvNAttributes(const QObject *comp)
+{
+    QStringList provAttr;
+
+    QStringList propNames = getPropertyList(comp);
+    foreach(const QString& prop, propNames)
+    {
+        QVariant pVal = comp->property(prop.toStdString().c_str());
+        QString sVal;
+        if (pVal.typeName() == "QString")
+        {
+            sVal = pVal.toString();
+        }
+        else if (pVal.typeName() == "QStringList")
+        {
+            sVal = pVal.toStringList().join(',');
+        }
+        else if (pVal.typeName() == "QList<QStringList>")
+        {
+            QList<QStringList> lsl = pVal.value<QList<QStringList> >();
+            for (int i=0; i < lsl.size(); ++i)
+            {
+                QStringList sl = lsl.at(i);
+                sVal += sl.join(',');
+                if (i+1 < lsl.size())
+                {
+                    sVal += ", ";
+                }
+            }
+        }
+        else if (pVal.typeName() == "QList<QList<QStringList> >")
+        {
+            QList<QList<QStringList> > llsl = pVal.value<QList<QList<QStringList > > >();
+            for (int k=0; k < llsl.size(); ++k)
+            {
+                QList<QStringList> lsl = llsl.at(k);
+                for (int i=0; i < lsl.size(); ++i)
+                {
+                    QStringList sl = lsl.at(i);
+                    sVal += sl.join(',');
+                    if (i+1 < lsl.size())
+                    {
+                        sVal += ", ";
+                    }
+                }
+                if (k+1 < llsl.size())
+                {
+                    sVal += ", ";
+                }
+            }
+        }
+        else
+        {
+            sVal += pVal.toString();
+        }
+
+        // remove quotation marks around parameter value,
+        // e.g. as for MapKernelScripts, since they lead
+        // to formatting errors of the PROV-N
+        // file:
+        // [... MapKernelScript=""cipx = 0; ...
+        // Here, obviously, the PROV-N parser of ProvStore expects
+        // a comma after the double quotation marks ...
+        sVal = sVal.replace("\"","");
+
+        QString attr = QString("nm:%1=\"%2\"")
+                        .arg(prop)
+                        .arg(sVal);
+
+        provAttr.push_back(attr);
+    }
+
+    return provAttr;
+}
+
+void
+NMModelController::logProvNComponent(NMModelComponent *comp)
+{
+    if (comp == nullptr)
+    {
+        return;
+    }
+    NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+    NMDataComponent* dc = qobject_cast<NMDataComponent*>(comp);
+
+    QStringList args;
+    QString idt = QString("nm:%1").arg(comp->objectName());
+    args.push_back(idt);
+    QStringList attr;
+    QStringList othAttr;// = this->getProvNAttributes(comp);
+    // process & aggregate component
+    if (ic != nullptr)
+    {
+        // aggregate component
+        if (ic->countComponents())
+        {
+            attr.push_back("nm:type='nm:AggrComp'");
+            attr.append(othAttr);
+            NMLogProv(NMLogger::NM_PROV_AGENT, args, attr);
+
+            NMModelComponentIterator icIter = ic->getComponentIterator();
+            while(!icIter.isAtEnd())
+            {
+                logProvNComponent(*icIter);
+                QStringList delegateAttr;
+                QStringList delegateArgs;
+                QString responseId = QString("nm:%1").arg(ic->objectName());
+                QString delegateId  = QString("nm:%1").arg((*icIter)->objectName());
+                delegateArgs << delegateId << responseId;
+                NMLogProv(NMLogger::NM_PROV_DELEGATION,
+                          delegateArgs,
+                          delegateAttr);
+                ++icIter;
+            }
+        }
+        // process component
+        else if (ic->getProcess() != nullptr)
+        {
+            attr.push_back("nm:type='nm:Process'");
+            attr.append(othAttr);
+            //attr.append(this->getProvNAttributes(ic->getProcess()));
+            NMLogProv(NMLogger::NM_PROV_AGENT, args, attr);
+        }
+    }
+    // data component
+    else if (dc != nullptr)
+    {
+        attr.push_back("nm:type='nm:DataComp'");
+        attr.append(othAttr);
+        NMLogProv(NMLogger::NM_PROV_ENTITY, args, attr);
+    }
+}
+
+void
+NMModelController::startProv(const QString &fn, const QString& compName)
+{
+    if (!mbLogProv)
+    {
+        return;
+    }
+
+    mProvFileName = fn;
+    mProvFile.setFileName(fn);
+    if (!mProvFile.open(QIODevice::ReadWrite | QIODevice::Text))
+    {
+        NMLogError(<< "Model Controller: Failed creating provenance record!)");
+        return;
+    }
+
+    connect(mLogger, SIGNAL(sendProvN(QString)), this, SLOT(writeProv(QString)));
+
+    this->mMapProvIdConRev.clear();
+
+    QTextStream provF(&mProvFile);
+    provF << "document\n";
+    provF << "\tprefix nm <https://bitbucket.org/landcareresearch/lumass/nm>\n";
+    provF << "\tprefix img <https://bitbucket.org/landcareresearch/lumass/img>\n";
+    provF << "\tprefix db <https://bitbucket.org/landcareresearch/lumass/db>\n";
+}
+
+void
+NMModelController::endProv()
+{
+    if (mProvFile.isOpen())
+    {
+        QTextStream provF(&mProvFile);
+        provF << "endDocument";
+
+        mProvFile.flush();
+        mProvFile.close();
+    }
+
+    disconnect(mLogger, SIGNAL(sendProvN(QString)), this, SLOT(writeProv(QString)));
+}
+

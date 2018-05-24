@@ -18,16 +18,8 @@
 
 #include "NMObject.h"
 
-#ifndef NM_ENABLE_LOGGER
-#   define NM_ENABLE_LOGGER
-#   include "nmlog.h"
-#   undef NM_ENABLE_LOGGER
-#else
-#   include "nmlog.h"
-#endif
-
 NMObject::NMObject()
-    : mLogger(0)
+    : mLogger(nullptr)
 {
 }
 

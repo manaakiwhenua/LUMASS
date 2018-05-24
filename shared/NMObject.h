@@ -19,14 +19,14 @@
 #ifndef NMOBJECT_H
 #define NMOBJECT_H
 
-class NMLogger;
+#include "NMLogger.h"
 
 class NMObject
 {
 public:
     explicit NMObject();
 
-    void setLogger(NMLogger* logger);
+    virtual void setLogger(NMLogger* logger);
     NMLogger* getLogger(void);
 
 protected:

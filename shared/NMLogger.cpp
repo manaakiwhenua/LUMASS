@@ -104,7 +104,7 @@ NMLogger::logProvN(const NMProvConcept &concept,
 
     msg += ")\n";
 
-    sendProvN(msg);
+    emit sendProvN(msg);
 }
 
 void

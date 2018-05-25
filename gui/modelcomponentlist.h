@@ -88,6 +88,7 @@ public: signals:
 
 public slots:
 	void zoomToLayer();
+    void zoomToSelection();
 	void updateMapWin(const NMLayer* layer);
 	void updateLegend(const NMLayer* layer);
 	void mapUniqueValues();
@@ -120,6 +121,11 @@ protected slots:
     void showWholeImgStats();
     void wholeImgStats();
     void showImageHistogram();
+    /*!
+     *  mode=0 : zoom to layer
+     *  mode=1 : zoom to selection
+     */
+    void zoom(int mode);
 
 private:
 
@@ -149,6 +155,7 @@ private:
     QAction* mActImageStats;
     QAction* mActImageInfo;
     QAction* mActExportColourRamp;
+    QAction* mActZoomSel;
     bool mbWholeImgStats;
 
     // keeps track of future watchers being created for stats creation survaillance

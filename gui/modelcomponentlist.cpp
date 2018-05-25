@@ -145,7 +145,11 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 
 	QAction* actZoom = new QAction(this->mMenu);
 	actZoom->setText(tr("Zoom To Layer"));
-	QAction* actTable = new QAction(this->mMenu);
+
+    mActZoomSel = new QAction(this->mMenu);
+    mActZoomSel->setText(tr("Zoom To Selection"));
+
+    QAction* actTable = new QAction(this->mMenu);
 	actTable->setText(tr("Open Attribute Table"));
 	QAction* actSaveChanges = new QAction(this->mMenu);
 	actSaveChanges->setText(tr("Save Changes"));
@@ -189,6 +193,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
 	this->mMenu->addSeparator();
 
     this->mMenu->addAction(actZoom);
+    this->mMenu->addAction(mActZoomSel);
 	this->mMenu->addSeparator();
 
     this->mMenu->addAction(mActImageInfo);
@@ -217,6 +222,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->connect(actLoadLegend, SIGNAL(triggered()), this, SLOT(loadLegend()));
     this->connect(actSaveLegend, SIGNAL(triggered()), this, SLOT(saveLegend()));
 	this->connect(actZoom, SIGNAL(triggered()), this, SLOT(zoomToLayer()));
+    this->connect(mActZoomSel, SIGNAL(triggered()), this, SLOT(zoomToSelection()));
 	this->connect(actTable, SIGNAL(triggered()), this, SLOT(openAttributeTable()));
 	this->connect(actRemove, SIGNAL(triggered()), this, SLOT(removeCurrentLayer()));
     this->connect(mActSingleSymbol, SIGNAL(triggered()), this, SLOT(mapSingleSymbol()));
@@ -868,7 +874,7 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
 
 				QColor curclr;
 				curclr.setRgbF(rgba[0], rgba[1], rgba[2], rgba[3]);
-				QColor clr;
+                QColor clr = curclr;
 
                 // ToDo: improve! alpha should work with all layers and
                 //       legned options!
@@ -1019,6 +1025,17 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                     }
                     mActImageInfo->setVisible(true);
 
+                    if (    il->hasSelBox()
+                        &&  il->getSelection().count() > 0
+                       )
+                    {
+                        mActZoomSel->setEnabled(true);
+                    }
+                    else
+                    {
+                        mActZoomSel->setEnabled(false);
+                    }
+
                     // TODO: switch on when reliable
                     mActImageHistogram->setVisible(false);
 
@@ -1039,6 +1056,9 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 
                 mActRGBImg->setVisible(false);
                 mActOpacity->setVisible(false);
+
+                mActZoomSel->setVisible(false);
+                mActZoomSel->setEnabled(false);
 
                 mActUniqueValues->setVisible(true);
                 mActSingleSymbol->setVisible(true);
@@ -1678,19 +1698,40 @@ void ModelComponentList::paintEvent(QPaintEvent* event)
 
 void ModelComponentList::zoomToLayer()
 {
-	// get the current layer
+    // mode 0
+    this->zoom(0);
+}
+
+void ModelComponentList::zoomToSelection()
+{
+    // mode 1
+    this->zoom(1);
+}
+
+void ModelComponentList::zoom(int mode)
+{
+    // get the current layer
     QModelIndex idx = this->currentIndex();
 
-	const int toplevelrow = (idx.internalId() / 100) - 1;
-	const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
-	NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
-	//NMLayer* l = (NMLayer*)idx.internalPointer();
+    const int toplevelrow = (idx.internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
 
-	// get the camera of the background renderer
+    double* box;
+    if (mode == 0)
+    {
+        box = const_cast<double*>(l->getBBox());
+    }
+    else
+    {
+        box = const_cast<double*>(l->getSelectionBBox());
+    }
+
+    // get the camera of the background renderer
     LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
-	vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
-	bkgRen->ResetCamera(const_cast<double*>(l->getBBox()));
-	win->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+    vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
+    bkgRen->ResetCamera(box);
+    win->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
 }
 
 void ModelComponentList::mapSingleSymbol()
@@ -1875,87 +1916,19 @@ void ModelComponentList::test()
 {
 	NMDebugCtx(ctx, << "...");
 
-    NMLayer* l = this->getSelectedLayer();
+    // get the current layer
+    QModelIndex idx = this->currentIndex();
 
-    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-    if (il == 0)
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
+    const int toplevelrow = (idx.internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    //NMLayer* l = (NMLayer*)idx.internalPointer();
 
-    std::vector<double> stats = il->getWindowStatistics();
-    vtkSmartPointer<vtkIdTypeArray> hist = il->getHistogram();
-
-    if (hist.GetPointer() == 0)
-    {
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
-
-    int nbins = hist->GetNumberOfTuples();
-    hist->SetName("Frequency");
-    NMLogInfo(<< "Hist has " << nbins << " bins");
-
-    NMChartView* chartView = new NMChartView();
-
-    vtkSmartPointer<vtkContextView> view = chartView->getContextView();  //vtkSmartPointer<vtkContextView>::New();
-//    view->GetRenderWindow()->SetSize(400,300);
-//    view->GetRenderWindow()->SetMultiSamples(0);
-
-    vtkSmartPointer<vtkChartXY> chart = vtkSmartPointer<vtkChartXY>::New();
-    view->GetScene()->AddItem(chart);
-
-    vtkSmartPointer<vtkFloatArray> pixval = vtkSmartPointer<vtkFloatArray>::New();
-    pixval->SetNumberOfComponents(1);
-    pixval->SetNumberOfTuples(nbins);
-    pixval->SetName("Value");
-
-    vtkSmartPointer<vtkIntArray> freq = vtkSmartPointer<vtkIntArray>::New();
-    freq->SetNumberOfComponents(1);
-    freq->SetNumberOfTuples(nbins);
-    freq->SetName("Frequency");
-
-
-    vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
-    tab->AddColumn(pixval);
-    tab->AddColumn(freq);
-
-    double range = (stats[1] - stats[0]);
-    double min = stats[0];
-    double npix = stats[5];
-
-    double sumpix = 0;
-    for (int n=0; n < nbins; ++n)
-    {
-        tab->SetValue(n, 0, vtkVariant((n+1)*range/(double)nbins));
-        tab->SetValue(n, 1, vtkVariant((float)hist->GetValue(n)));
-        sumpix += (double)hist->GetValue(n);
-    }
-
-    NMLogDebug(<< "npix="<< npix << " sumpix=" << sumpix);
-
-    chart->GetAxis(1)->SetRange(stats[0], stats[1]);
-    chart->GetAxis(1)->SetTitle("Pixel Value");
-    chart->GetAxis(0)->SetTitle("Frequency");
-    //chart->GetAxis(1)->SetLogScale(true);
-
-    vtkPlot* plot = 0;
-    vtkPlotBar* plotBar = 0;
-    plot = chart->AddPlot(vtkChart::BAR);
-    plotBar = vtkPlotBar::SafeDownCast(plot);
-    plotBar->SetInputData(tab, 0, 1);
-    plotBar->SetOrientation(vtkPlotBar::VERTICAL);
-    plotBar->SetColor(0.7, 0.7, 0.7);
-    double pbWidth = range / (double)nbins;
-    plotBar->SetWidth(pbWidth);
-
-
-    chartView->show();
-    chartView->getRenderWindow()->Render();
-//    view->GetInteractor()->Initialize();
-//    view->Render();
-//    view->GetInteractor()->Start();
+    // get the camera of the background renderer
+    LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
+    vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
+    bkgRen->ResetCamera(const_cast<double*>(l->getSelectionBBox()));
+    win->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
 
 	NMDebugCtx(ctx, << "done!");
 }

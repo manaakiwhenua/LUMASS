@@ -1023,7 +1023,6 @@ NMTableCalculator::processStringCalc(int row)
 	// expressions so far, we just probe the left-hand side of the field list and the
 	// list of constants for a string we could use to write it into the table
 	int termcnt=0;
-	int fieldcnt;
 	foreach(const QString& st, this->mslStrTerms)
 	{
 		// check whether we've got a field given first ...

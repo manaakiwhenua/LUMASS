@@ -473,7 +473,40 @@ NMDataComponent::update(const QMap<QString, NMModelComponent*>& repo)
     NMModelComponent* inComp = this->getModelController()->getComponent(mInputCompName);
     if (inComp)
 	{
+        // provenance information
+        NMIterableComponent* host = this->getHostComponent();
+        unsigned int hStep = 1;
+        QString hostId = "-";
+        if (host)
+        {
+            hStep = host->getIterationStep();
+            hostId = QString("nm:%1_Update-%2")
+                    .arg(host->objectName())
+                    .arg(hStep);
+        }
+        QStringList attrs = this->getModelController()->getProvNAttributes(this);
+        QStringList args;
+        QString actId = QString("nm:%1_Update-%2")
+                        .arg(this->objectName())
+                        .arg(hStep);
+        QDateTime startTime = QDateTime::currentDateTime();
+        args << actId << "-" << hostId;
+        //args << startTime.toString(Qt::ISODate);
+        args << startTime.toString(getModelController()->getSetting("TimeFormat").toString());
+
+        this->getModelController()->getLogger()->logProvN(NMLogger::NM_PROV_START, args, attrs);
+
+        // update the data component
         this->fetchData(inComp);
+
+        // provenance again ...
+        QDateTime endTime = QDateTime::currentDateTime();
+        args.clear();
+        args << actId << "-" << hostId;
+        //args << endTime.toString(Qt::ISODate);
+        args << endTime.toString(getModelController()->getSetting("TimeFormat").toString());
+
+        this->getModelController()->getLogger()->logProvN(NMLogger::NM_PROV_END, args, attrs);
 	}
 
     mIsUpdating = false;

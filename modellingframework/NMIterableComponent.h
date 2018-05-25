@@ -121,6 +121,7 @@ private:
     NMModelComponent* mComponent;
     int mListPos;
 
+
 };
 
 

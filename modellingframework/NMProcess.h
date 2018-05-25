@@ -232,6 +232,9 @@ public:
      */
     QVariant getParameter(const QString& property);
 
+    QStringList getRunTimeParaProvN(void){return mRuntimeParaProv;}
+    void addRunTimeParaProvN(const QString& provNAttr){mRuntimeParaProv << provNAttr;}
+
     int getAuxDataIdx(void)
         {return this->mAuxDataIdx;}
 
@@ -282,7 +285,7 @@ protected:
 
     ObserverType::Pointer mObserver;
 
-    //NMLogger* mLogger;
+    QStringList mRuntimeParaProv;
 
 
 	/*! \brief Call-back method for itk::Process-based NMProcess classes to

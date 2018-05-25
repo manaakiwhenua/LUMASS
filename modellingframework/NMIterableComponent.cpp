@@ -926,6 +926,18 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     std::string exObjName;
     std::string exSource;
     NMMfwException::ExceptionType exceptionType;
+
+    // ==============================================================================
+    // PROVENANCE
+    QStringList args;
+    QStringList attrs;
+    QDateTime startTime;
+    QDateTime endTime;
+    QString actId = QString("nm:%1_Update-%2").arg(this->objectName()).arg(this->getIterationStep());
+    QString agId = QString("nm:%1").arg(this->objectName());
+
+    // ==============================================================================
+    // UPDATE LOGIC
     try
     {
 
@@ -939,11 +951,90 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		if (!this->mProcess->isInitialised())
 			this->mProcess->instantiateObject();
         this->mProcess->setLogger(mLogger);
-		this->mProcess->linkInPipeline(i, repo);
+
+        // log provenance
+        unsigned int hostStep = 1;
+        if (this->getHostComponent() != nullptr)
+        {
+            hostStep = this->getHostComponent()->getIterationStep();
+        }
+        actId = QString("nm:%1_Update-%2").arg(this->objectName()).arg(hostStep);
+
+        attrs.clear();// = this->mProcess->getRunTimeParaProvN();
+
+        startTime = QDateTime::currentDateTime();
+        this->mProcess->linkInPipeline(i, repo);
+
+        args.clear();
+        args << actId << "-";
+        NMIterableComponent* host = this->getHostComponent();
+        QString hostActProv;
+        if (host)
+        {
+            unsigned int hStep = host->getIterationStep();
+            hostActProv = QString("nm:%1_Update-%2")
+                            .arg(host->objectName())
+                            .arg(hStep);
+            args << hostActProv;
+        }
+        else
+        {
+            args << "-";
+        }
+        //args << startTime.toString(Qt::ISODate);
+        args << startTime.toString(controller->getSetting("TimeFormat").toString());
+        controller->getLogger()->logProvN(NMLogger::NM_PROV_START, args, attrs);
+
+
+        // execute process / pipeline
         this->mProcess->update();
-		NMDebugCtx(this->objectName().toStdString(), << "done!");
+
+        // more provenenace
+        endTime = QDateTime::currentDateTime();
+
+        args.clear();
+        args << actId << "-";
+        if (host)
+        {
+            args << hostActProv;
+        }
+        else
+        {
+            args << "-";
+        }
+        //args << endTime.toString(Qt::ISODate);
+        args << endTime.toString(controller->getSetting("TimeFormat").toString());
+        attrs.clear();
+        controller->getLogger()->logProvN(NMLogger::NM_PROV_END, args, attrs);
+
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+
+
+        // log provenance
+
+
+        //NMLogProv(NMLogger::NM_PROV_ACTIVITY, args, attrs);
+        //        controller->getLogger()->logProvN(NMLogger::NM_PROV_ACTIVITY, args, attrs);
+
+        //        args.clear();
+        //        args << actId << agId;
+        //        controller->getLogger()->logProvN(NMLogger::NM_PROV_ASSOCIATION, args, attrs);
 		return;
 	}
+
+    // provenance
+    // we create a new activity for each iteration step of the aggr component
+    attrs.clear();
+    args.clear();
+
+    args << actId << "-" << "-";
+    controller->getLogger()->logProvN(NMLogger::NM_PROV_ACTIVITY, args, attrs);
+
+    attrs.clear();
+    args.clear();
+    args << actId << agId << "-";
+    controller->getLogger()->logProvN(NMLogger::NM_PROV_ASSOCIATION, args, attrs);
+
 
 	// we identify and execute processing pipelines and components
 	// on each individual time level separately, from the highest
@@ -994,6 +1085,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		foreach(const QStringList& pipeline, execList)
 		{
             comp = 0;
+//            NMModelComponent* informant = nullptr;
 			foreach(const QString in, pipeline)
 			{
 				comp = controller->getComponent(in);
@@ -1008,6 +1100,8 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                     emit signalExecutionStopped();
 					throw e;
 				}
+                // link component
+                comp->linkComponents(step, repo);
 
                 // gather some info, we could use for debugging purposes in case
                 // the execution fails
@@ -1017,7 +1111,55 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
                     hostStep = comp->getHostComponent()->getIterationStep();
                 }
 
-                comp->linkComponents(step, repo);
+                NMIterableComponent* ic = qobject_cast<NMIterableComponent*>(comp);
+                NMProcess* pc = ic == nullptr ? nullptr : ic->getProcess();
+
+                // log provenance
+                args.clear();
+                attrs = controller->getProvNAttributes(comp);
+
+                QString respId = QString("nm:%1").arg(this->objectName());
+
+
+                actId = QString("nm:%1_Update-%2").arg(comp->objectName()).arg(this->getIterationStep());
+                agId = QString("nm:%1").arg(comp->objectName());
+
+
+                args << agId;
+                controller->getLogger()->logProvN(NMLogger::NM_PROV_AGENT, args, attrs);
+
+                attrs.clear();
+                args.clear();
+                args << agId << respId << "-";
+                controller->getLogger()->logProvN(NMLogger::NM_PROV_DELEGATION, args, attrs);
+
+                attrs.clear();
+                if (pc != nullptr)
+                {
+                    attrs.append(pc->getRunTimeParaProvN());
+                }
+                args.clear();
+                args << actId << "-" << "-";
+                controller->getLogger()->logProvN(NMLogger::NM_PROV_ACTIVITY, args, attrs);
+
+                attrs.clear();
+                args.clear();
+                args << actId << agId << "-";
+                controller->getLogger()->logProvN(NMLogger::NM_PROV_ASSOCIATION, args, attrs);
+
+//                // prov-n the pipeline structure
+//                if (informant != nullptr)
+//                {
+//                    QString infId = QString("nm:%1_Update-%2")
+//                                    .arg(informant->objectName())
+//                                    .arg(this->getIterationStep());
+//                    attrs.clear();
+//                    args.clear();
+//                    args << actId << infId;
+//                    controller->getLogger()->logProvN(NMLogger::NM_PROV_COMMUNICATION, args, attrs);
+//                }
+//                informant = comp;
+
 			}
 
             // calling update on the last component of the pipeline

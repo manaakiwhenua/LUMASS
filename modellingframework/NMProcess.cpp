@@ -123,6 +123,9 @@ NMProcess::linkInPipeline(unsigned int step,
     }
     mStepIndex = step;
 
+    // clear provenance info before this run
+    mRuntimeParaProv.clear();
+
     this->linkParameters(step, repo);
     this->linkInputs(step, repo);
 
@@ -286,6 +289,10 @@ NMProcess::getParameter(const QString& property)
         }
         ret = QVariant::fromValue(curList);
     }
+    else
+    {
+        ret = propVal;
+    }
 
 
     NMDebugCtx(this->objectName().toStdString(), << "done!");
@@ -380,6 +387,9 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                         bInvalidOutput = false;
                         NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString()
                                   << " (DataObject)" << std::endl);
+                        QString inputImgProv = QString("nm:InputImage-%1=\"nm:%2\"")
+                                                    .arg(ii).arg(ic->objectName());
+                        mRuntimeParaProv << inputImgProv;
                     }
                     else
                     {
@@ -393,6 +403,9 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                         bInvalidOutput = false;
                         NMDebugAI(<< "input #" << ii << ": " << inputSrc.toStdString()
                                   << " (AttributeTable)" << std::endl);
+                        QString inputTabProv = QString("nm:InputTable-%1=\"nm:%2\"")
+                                                    .arg(ii).arg(ic->objectName());
+                        mRuntimeParaProv << inputTabProv;
                     }
                     else
                     {
@@ -405,6 +418,30 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                             ss << " yields an invalid AttributeTable!" << std::endl;
                         }
                     }
+
+                    // log provenance
+
+                    NMIterableComponent* informedParentComp = qobject_cast<NMIterableComponent*>(this->parent());
+                    NMIterableComponent* informedHostComp = informedParentComp == nullptr ? nullptr : informedParentComp->getHostComponent();
+                    unsigned int iStep = informedParentComp == nullptr ? 1 : informedParentComp->getIterationStep();
+                    if (informedHostComp != nullptr)
+                    {
+                        iStep = informedHostComp->getIterationStep();
+                    }
+
+                    NMIterableComponent* informantComp = qobject_cast<NMIterableComponent*>(ic->getHostComponent());
+                    unsigned infStep = informantComp == nullptr ? 1 : informantComp->getIterationStep();
+
+                    QStringList args;
+                    QStringList attrs;
+                    QString informedId = QString("nm:%1_Update-%2")
+                                    .arg(this->parent()->objectName())
+                                    .arg(iStep);
+                    QString informantId = QString("nm:%1_Update-%2")
+                                    .arg(ic->objectName())
+                                    .arg(infStep);
+                    args << informedId << informantId;
+                    this->getModelController()->getLogger()->logProvN(NMLogger::NM_PROV_COMMUNICATION, args, attrs);
                 }
                 else
                 {
@@ -482,7 +519,7 @@ void NMProcess::update(void)
             throw;
         }
 
-		this->mMTime = QDateTime::currentDateTimeUtc();
+        this->mMTime = QDateTime::currentDateTime();
         QString tstring = mMTime.toString("dd.MM.yyyy hh:mm:ss.zzz");
         NMDebugAI(<< "modified at: " << tstring.toStdString() << std::endl);
 	}
@@ -580,13 +617,93 @@ NMProcess::UpdateProgressInfo(itk::Object* obj,
         itk::NMLogEvent& le = dynamic_cast< itk::NMLogEvent& > (
                     const_cast<itk::EventObject&>(event)
                     );
-
         if (mLogger)
         {
-            QString logmsg = QString("%1: %2").arg(userID).arg(le.getLogMsg().c_str());
-            mLogger->processLogMsg(le.getLogTime().c_str(),
-                                   (NMLogger::LogEventType)le.getLogType(),
-                                   logmsg);
+            const itk::NMLogEvent::LogEventType etype = le.getLogType();
+            switch (etype)
+            {
+            case itk::NMLogEvent::NM_LOG_PROVN:
+                {
+                    std::vector<std::string> args = le.getProvNArgs();
+                    std::vector<std::string> attrs = le.getProvNAttrs();
+                    QStringList qargs;
+                    for(int a=0; a < args.size(); ++a)
+                    {
+                        qargs << args.at(a).c_str();
+                    }
+
+                    QStringList qattrs;
+                    for (int t=0; t < attrs.size(); ++t)
+                    {
+                        qattrs << attrs.at(t).c_str();
+                    }
+
+                    NMIterableComponent* pc = qobject_cast<NMIterableComponent*>(this->parent());
+                    NMIterableComponent* hc = pc == nullptr ? nullptr : pc->getHostComponent();
+                    unsigned int hStep = 1;
+                    if (hc != nullptr)
+                    {
+                        hStep = hc->getIterationStep();
+                    }
+
+                    QDateTime timeStamp = QDateTime::currentDateTime();
+                    QString actId = QString("nm:%1_Update-%2")
+                                    .arg(this->parent()->objectName())
+                                    .arg(hStep);
+
+                    NMLogger::NMProvConcept provType;
+                    const itk::NMLogEvent::LogProvNType ptype = le.getProvNType();
+                    switch(ptype)
+                    {
+                    case itk::NMLogEvent::NM_PROV_USAGE:
+                        {
+                            qargs.prepend(actId);
+                            //qargs.push_back(timeStamp.toString(Qt::ISODate));
+                            qargs.push_back(timeStamp.toString(mController->getSetting("TimeFormat").toString()));
+                            provType = NMLogger::NM_PROV_USAGE;
+                        }
+                        break;
+                    case itk::NMLogEvent::NM_PROV_GENERATION:
+                        {
+                            qargs.push_back(actId);
+                            //qargs.push_back(timeStamp.toString(Qt::ISODate));
+                            qargs.push_back(timeStamp.toString(mController->getSetting("TimeFormat").toString()));
+                            provType = NMLogger::NM_PROV_GENERATION;
+                        }
+                        break;
+
+
+                    case itk::NMLogEvent::NM_PROV_ENTITY:
+                        {
+                              provType = NMLogger::NM_PROV_ENTITY;
+                        }
+                        break;
+
+                    case itk::NMLogEvent::NM_PROV_DERIVATION:
+                        {
+                              qargs.push_back(actId);
+                              qargs.push_back("-");
+                              qargs.push_back("-");
+                              provType = NMLogger::NM_PROV_DERIVATION;
+                        }
+                        break;
+
+                    default:
+                        {
+                            ;
+                        }
+                    }
+                    mLogger->logProvN(provType, qargs, qattrs);
+                }
+                break;
+            default: // log case
+                {
+                    QString logmsg = QString("%1: %2").arg(userID).arg(le.getLogMsg().c_str());
+                    mLogger->processLogMsg(le.getLogTime().c_str(),
+                                           (NMLogger::LogEventType)le.getLogType(),
+                                           logmsg);
+                }
+            }
         }
 
         //        NMDebugAI(<< "NMProcess has received a message from its "

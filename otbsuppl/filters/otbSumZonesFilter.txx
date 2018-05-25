@@ -26,6 +26,7 @@
 
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
+#include "itkImageRegionConstIteratorWithIndex.h"
 #include "itkProgressReporter.h"
 #include "itkMacro.h"
 
@@ -205,6 +206,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
 		mZoneTable->AddColumn("mean", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("stddev", AttributeTable::ATTYPE_DOUBLE);
 		mZoneTable->AddColumn("sum", AttributeTable::ATTYPE_DOUBLE);
+        mZoneTable->AddColumn("minX", AttributeTable::ATTYPE_INT);
+        mZoneTable->AddColumn("minY", AttributeTable::ATTYPE_INT);
+        mZoneTable->AddColumn("maxX", AttributeTable::ATTYPE_INT);
+        mZoneTable->AddColumn("maxY", AttributeTable::ATTYPE_INT);
         mZoneTable->EndTransaction();
 
 
@@ -269,8 +274,9 @@ void SumZonesFilter< TInputImage, TOutputImage >
 				<< " pixels ..." << std::endl);
 		//NMDebugAI(<< "number of threads: " << this->GetNumberOfThreads() << std::endl);
 	}
-	typedef itk::ImageRegionConstIterator<TOutputImage> InputIterType;
+    typedef itk::ImageRegionConstIteratorWithIndex<TOutputImage> InputIterType;
 	InputIterType zoneIt(mZoneImage, outputRegionForThread);
+    typename InputIterType::IndexType pixIdx;
 
     mThreadPixCount[threadId] += outputRegionForThread.GetNumberOfPixels();
 	ZoneMapType& vMap = mThreadValueStore[threadId];
@@ -310,9 +316,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(5,0);
+                // idx 0, 1, 2. 3, 4 are min, max, sum, count, sum^2
+                vMap[zone] = std::vector<double>(9,0);
                 vMap[zone][0] = itk::NumericTraits<double>::max();
                 vMap[zone][1] = itk::NumericTraits<double>::NonpositiveMin();
+
+                // idx 5, 6, 7, 8 are minX, minY, maxX, maxY
+                vMap[zone][5] = itk::NumericTraits<double>::max();
+                vMap[zone][6] = itk::NumericTraits<double>::max();
+                vMap[zone][7] = itk::NumericTraits<double>::NonpositiveMin();
+                vMap[zone][8] = itk::NumericTraits<double>::NonpositiveMin();
             }
             std::vector<double>& params = vMap[zone];
 
@@ -326,6 +339,13 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[3] += 1;
             // sum_val^2
             params[4] += val * val;
+
+            pixIdx = zoneIt.GetIndex();
+
+            params[5] = pixIdx[0] < params[5] ? pixIdx[0] : params[5];
+            params[6] = pixIdx[1] < params[6] ? pixIdx[1] : params[6];
+            params[7] = pixIdx[0] > params[7] ? pixIdx[0] : params[7];
+            params[8] = pixIdx[1] > params[8] ? pixIdx[1] : params[8];
 
             ++zoneIt;
             ++valueIt;
@@ -342,7 +362,13 @@ void SumZonesFilter< TInputImage, TOutputImage >
             mapIt = vMap.find(zone);
             if (mapIt == vMap.end())
             {
-                vMap[zone] = std::vector<double>(5,0);
+                vMap[zone] = std::vector<double>(9,0);
+
+                // idx 5, 6, 7, 8 are minX, minY, maxX, maxY
+                vMap[zone][5] = itk::NumericTraits<double>::max();
+                vMap[zone][6] = itk::NumericTraits<double>::max();
+                vMap[zone][7] = itk::NumericTraits<double>::NonpositiveMin();
+                vMap[zone][8] = itk::NumericTraits<double>::NonpositiveMin();
             }
             std::vector<double>& params = vMap[zone];
 
@@ -356,6 +382,14 @@ void SumZonesFilter< TInputImage, TOutputImage >
             params[3] += 1;
             // sum_val^2
             params[4] += val * val;
+
+            pixIdx = zoneIt.GetIndex();
+
+            params[5] = pixIdx[0] < params[5] ? pixIdx[0] : params[5];
+            params[6] = pixIdx[1] < params[6] ? pixIdx[1] : params[6];
+            params[7] = pixIdx[0] > params[7] ? pixIdx[0] : params[7];
+            params[8] = pixIdx[1] > params[8] ? pixIdx[1] : params[8];
+
 
             ++zoneIt;
             progress.CompletedPixel();
@@ -403,6 +437,10 @@ void SumZonesFilter< TInputImage, TOutputImage >
      *  2: sum_v
      *  3: count
      *  4: sum_v^2
+     *  5: minX
+     *  6: minY
+     *  7: maxX
+     *  8: maxY
      */
 
     for (int t=0; t < this->GetNumberOfThreads(); ++t)
@@ -433,7 +471,7 @@ void SumZonesFilter< TInputImage, TOutputImage >
                 params[0] = params[0] < mapIt->second[0] ?
                             params[0] : mapIt->second[0];
                 // max
-                params[1] = params[1] > mapIt->second[0] ?
+                params[1] = params[1] > mapIt->second[1] ?
                             params[1] : mapIt->second[1];
                 // sum_val
                 params[2] += mapIt->second[2];
@@ -443,6 +481,23 @@ void SumZonesFilter< TInputImage, TOutputImage >
 
                 // sum_val^2
                 params[4] += mapIt->second[4];
+
+                // minX
+                params[5] = params[5] < mapIt->second[5] ?
+                            params[5] : mapIt->second[5];
+
+                // minY
+                params[6] = params[6] < mapIt->second[6] ?
+                            params[6] : mapIt->second[6];
+
+                // maxX
+                params[7] = params[7] > mapIt->second[7] ?
+                            params[7] : mapIt->second[7];
+
+                // maxY
+                params[8] = params[8] > mapIt->second[8] ?
+                            params[8] : mapIt->second[8];
+
             }
 
             ++mapIt;
@@ -480,8 +535,12 @@ void SumZonesFilter< TInputImage, TOutputImage >
         colnames.push_back("mean");                      // 5
         colnames.push_back("stddev");                    // 6
         colnames.push_back("sum");                       // 7
+        colnames.push_back("minX");                      // 8
+        colnames.push_back("minY");                      // 9
+        colnames.push_back("maxX");                      // 10
+        colnames.push_back("maxY");                      // 11
 
-        int numIntCols = 3;
+        int numIntCols =  3;
         std::vector<otb::AttributeTable::ColumnValue> values;
         std::vector<otb::AttributeTable::ColumnValue> fillIns;
         for (int i=0; i < numIntCols; ++i)
@@ -500,6 +559,16 @@ void SumZonesFilter< TInputImage, TOutputImage >
             v.type = otb::AttributeTable::ATTYPE_DOUBLE;
             values.push_back(v);
             v.dval = 0;
+            fillIns.push_back(v);
+        }
+
+        // add the 'extent' columns
+        for (int h=0; h < 4; ++h)
+        {
+            otb::AttributeTable::ColumnValue v;
+            v.type = otb::AttributeTable::ATTYPE_INT;
+            values.push_back(v);
+            v.ival = 0;
             fillIns.push_back(v);
         }
 
@@ -533,6 +602,12 @@ void SumZonesFilter< TInputImage, TOutputImage >
 //                             : 0;                            // stddev
             values[6].dval = ::sqrt((p[4] / (p[3] > 0 ? p[3] : 1.0)) - (values[5].dval * values[5].dval));
             values[7].dval = p[2];                           // sum
+
+            // set the extent
+            values[8].ival = p[5];                          // minX
+            values[9].ival = p[6];                          // minY
+            values[10].ival = p[7];                         // maxX
+            values[11].ival = p[8];                         // maxY
 
             mZoneTable->DoBulkSet(values);
             ++globalIt;

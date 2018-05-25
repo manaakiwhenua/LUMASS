@@ -96,6 +96,7 @@ public:
     Qt::SortOrder getSortOrder(){return mLastColSort.second;}
     int getSortColumn(){return mLastColSort.first;}
     QString getSourcePK(void);
+    int getMinPKVal(void){return mMinPKVal;}
     QAbstractItemModel* sourceModel(void) const {return mSourceModel;}
     QItemSelection getProxySelection(void);
     QItemSelection getSourceSelection(void);
@@ -128,6 +129,9 @@ protected:
     QString mProxyPK;
 
     bool mLastSelRecsOnly;
+    bool mPKIsFstCol;
+
+    int mMinPKVal;
 
     NMLogger* mLogger;
 

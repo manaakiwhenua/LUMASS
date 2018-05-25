@@ -56,8 +56,9 @@ NMSelSortSqlTableProxyModel::NMSelSortSqlTableProxyModel(QObject *parent)
       mLastSelCount(0),
       mTempTableName(""),
       mSourcePK(""),
-      mProxyPK("")
-
+      mProxyPK(""),
+      mPKIsFstCol(true),
+      mMinPKVal(1)
 {
     this->setParent(parent);
     mLastColSort.first = -1;
@@ -182,7 +183,7 @@ NMSelSortSqlTableProxyModel::createColumnIndex(int colidx)
 
     QString idxQuery = QString("Create index if not exists %1 on %2 (%3)")
                 .arg(escpIdx).arg(mSourceModel->tableName()).arg(escpCol);
-    NMLogInfo(<< "idx creation query: " << idxQuery.toStdString() << " on " << colname.toStdString());
+    NMLogDebug(<< ctx << ": idx creation query: " << idxQuery.toStdString() << " on " << colname.toStdString());
 
     QSqlDatabase db = mSourceModel->database();
     db.transaction();
@@ -222,7 +223,7 @@ NMSelSortSqlTableProxyModel::sort(int column, Qt::SortOrder order)
 
     if (!mSourceModel->select())
     {
-        NMLogError(<< "Column sort failed - "
+        NMLogError(<< ctx << ": Column sort failed - "
                   << mSourceModel->lastError().text().toStdString() << "\n"
                   << "Try indexing the column and try again.");
     }
@@ -344,8 +345,53 @@ NMSelSortSqlTableProxyModel::getSourcePK()
     }
     else
     {
-        primaryKey = mSourceModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+        // look for  rowidx field
+        bool bfound = false;
+        for (int i=0; i < this->columnCount(); ++i)
+        {
+            primaryKey = this->mSourceModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+            if (primaryKey.compare("rowidx") == 0)
+            {
+                bfound = true;
+                break;
+            }
+        }
+
+        if (!bfound)
+        {
+            primaryKey = "rowid";
+        }
     }
+
+    QString fstCol = mSourceModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+    if (primaryKey.compare(fstCol, Qt::CaseInsensitive) != 0)
+    {
+        mPKIsFstCol = false;
+    }
+    else
+    {
+        mPKIsFstCol = true;
+    }
+
+    // get the min PK value (0- or 1-based)
+    QString queryStr = QString("select min(%1) from %2")
+                       .arg(primaryKey)
+                       .arg(mSourceModel->tableName());
+
+    QSqlQuery queryObj(mSourceModel->database());
+    if (!queryObj.exec(queryStr))
+    {
+        NMLogError(<< ctx << ": " << queryObj.lastError().text().toStdString() << std::endl);
+        queryObj.finish();
+        return primaryKey;
+    }
+
+    if (queryObj.next())
+    {
+        mMinPKVal = queryObj.value(0).toInt();
+        NMLogDebug(<< ctx << ": min PK value = " << mMinPKVal);
+    }
+    queryObj.finish();
 
     return primaryKey;
 }
@@ -367,28 +413,31 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     // check, whether we've got a mapping table at all
     bool tmpTable = false;
     QStringList allTables = mTempDb.tables();
-    if (allTables.contains(mTempTableName))
+    if (!allTables.contains(mTempTableName))
     {
-        tmpTable = true;
-    }
-
-    QString selectColumn = mProxyPK;
-    QString whereClause = QString("where %1").arg(mLastFilter);
-    QString orderByClause = "";
-    QAbstractItemModel* model = this;
-    QString tableName = mTempTableName;
-    int proxyCorr = -1;
-    if (!bProxySelection || !tmpTable)
-    {
-        //model = mSourceModel;
-        selectColumn = mSourcePK;
-        orderByClause = QString("order by %1 asc").arg(selectColumn);
-        proxyCorr = 0;
-        if (!tmpTable)
+        if (!this->createMappingTable())
         {
-            tableName = mSourceModel->tableName();
+            NMLogError(<< ctx << ": Failed to create selection mapping table!");
+            return false;
         }
     }
+    tmpTable = true;
+
+    // define query items
+    QString selectColumn = mSourcePK;
+    QString tableName = mSourceModel->tableName();
+    int proxyCorr = -1 * mMinPKVal;
+
+    if (bProxySelection && tmpTable)
+    {
+        selectColumn = mProxyPK;
+        proxyCorr = -1;
+        tableName = mTempTableName;
+    }
+
+    QString whereClause = QString("where %1").arg(mLastFilter);
+    QString orderByClause = QString("order by %1 asc").arg(selectColumn);
+    QAbstractItemModel* model = this;
 
     QString queryStr = QString("select %1 from %2 %3 %4")
                        .arg(selectColumn)
@@ -398,6 +447,7 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
 
     QSqlDatabase srcDb = mSourceModel->database();
 
+    // do query
     if (tmpTable)
     {
         mTempDb.transaction();
@@ -411,7 +461,7 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     queryObj.setForwardOnly(true);
     if (!queryObj.exec(queryStr))
     {
-        NMLogError(<< ctx << queryObj.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << ": " << queryObj.lastError().text().toStdString() << std::endl);
         if (tmpTable)
         {
             mTempDb.commit();
@@ -597,7 +647,7 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
     bool ret = true;
     if (!q.exec(qStr))
     {
-        NMLogError(<< ctx << q.lastError().text().toStdString());
+        NMLogError(<< ctx << ": " << q.lastError().text().toStdString());
         db.rollback();
         db.commit();
         ret = false;
@@ -663,8 +713,8 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     QSqlQuery query(mSourceModel->database());
     if (!query.exec(QString(ssql.str().c_str())))
     {
-        NMDebugAI(<< "last query:\n" << ssql.str() << std::endl);
-        NMLogError(<< ctx << query.lastError().text().toStdString());
+        NMLogDebug(<< ctx << ": " << " last query:\n" << ssql.str());
+        NMLogError(<< ctx << ": " << query.lastError().text().toStdString());
         query.finish();
         query.clear();
         db.rollback();
@@ -685,8 +735,8 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     QSqlQuery idxQuery(db);
     if (!idxQuery.exec(QString(ssql.str().c_str())))
     {
-        NMDebugAI(<< "last query:\n" << ssql.str() << std::endl);
-        NMLogError(<< ctx << query.lastError().text().toStdString());
+        NMLogDebug(<< ctx << ": " << "last query:\n" << ssql.str() << std::endl);
+        NMLogError(<< ctx << ": " << query.lastError().text().toStdString());
         idxQuery.finish();
         idxQuery.clear();
         db.rollback();
@@ -716,7 +766,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     QSqlQuery joinTable(mSourceModel->database());
     if (!joinTable.exec(QString(ssql.str().c_str())))
     {
-        NMLogError(<< ctx << query.lastError().text().toStdString());
+        NMLogError(<< ctx << ": " << query.lastError().text().toStdString());
         joinTable.finish();
         joinTable.clear();
         db.rollback();
@@ -733,7 +783,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     QSqlQuery dropTable(db);
     if (!dropTable.exec(QString(ssql.str().c_str())))
     {
-        NMLogError(<< ctx << query.lastError().text().toStdString());
+        NMLogError(<< ctx << ": " << query.lastError().text().toStdString());
         dropTable.finish();
         dropTable.clear();
         db.rollback();
@@ -752,7 +802,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     QSqlQuery tarTable(db);
     if (!tarTable.exec(QString(ssql.str().c_str())))
     {
-        NMLogError(<< ctx << query.lastError().text().toStdString());
+        NMLogError(<< ctx << ": " << query.lastError().text().toStdString());
         tarTable.finish();
         tarTable.clear();
         db.rollback();
@@ -801,14 +851,34 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
     }
 
     // query max pk value
-    QString idColName = this->getSourcePK();
+    QString idColName;
+    if (!mPKIsFstCol)
+    {
+        QModelIndex mid = mSourceModel->index(0, 0);
+        QVariant idVal = mSourceModel->data(mid, Qt::DisplayRole);
+        if (    idVal.type() == QVariant::String
+            ||  idVal.type() == QVariant::Bool
+            ||  idVal.type() == QVariant::Char
+            ||  idVal.type() == QVariant::ByteArray
+           )
+        {
+            NMLogError(<< ctx << ": " << "Failed to add rows! Please double check primary key!");
+            return false;
+        }
+        idColName = mSourceModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+    }
+    else
+    {
+        idColName = this->mSourcePK;
+    }
+
     QString maxPKSql = QString("SELECT max(%1) from %2")
                             .arg(idColName)
                             .arg(mSourceModel->tableName());
     QSqlQuery qMaxPK(mSourceModel->database());
     if (!qMaxPK.exec(maxPKSql))
     {
-        NMLogError(<< ctx << "Failed to add rows - "
+        NMLogError(<< ctx << ": " << "Failed to add rows - "
               << qMaxPK.lastError().text().toStdString());
         qMaxPK.finish();
         return false;
@@ -857,7 +927,7 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
     //if (!qInsert.exec(ssql))
     if (!qInsert.execBatch(QSqlQuery::ValuesAsRows))
     {
-        NMLogError(<< ctx << "Failed to add rows - "
+        NMLogError(<< ctx << ": " << "Failed to add rows - "
               << qInsert.lastError().text().toStdString());
         qInsert.finish();
         qInsert.clear();
@@ -978,7 +1048,7 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
         QSqlQuery dml(db);
         if (!dml.exec(qu))
         {
-            NMLogError(<< ctx << dml.lastError().text().toStdString());
+            NMLogError(<< ctx << ": " << dml.lastError().text().toStdString());
             ret = false;
             dml.finish();
             dml.clear();
@@ -1067,7 +1137,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
             QSqlQuery qobj(mTempDb);
             if (!qobj.exec(qstr))
             {
-                NMLogError(<< ctx << qobj.lastError().text().toStdString() << std::endl);
+                NMLogError(<< ctx << ": " << qobj.lastError().text().toStdString() << std::endl);
                 mTempDb.rollback();
                 mTempDb.commit();
                 qobj.finish();
@@ -1112,13 +1182,44 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     queryStruct.clear();
     srcDb.commit();
 
-    int pos = orgTableSql.indexOf(',');
-    orgTableSql = orgTableSql.right(orgTableSql.length()-pos);
+    // if the first column of the table happens to be the primary
+    // key, we take all column definitions after the
+    // primary key (fst col) to create the mapping table
+    int pos = -1;
+    if (mPKIsFstCol)
+    {
+        pos = orgTableSql.indexOf(',');
+        orgTableSql = orgTableSql.right(orgTableSql.length()-pos);
+    }
+    // if the table doesn't have an explicit primary key, we
+    // use rowid (SQLITE-specifc) for mapping and take all
+    // column definitions
+    else
+    {
+        pos = orgTableSql.indexOf('(')+1;
+        orgTableSql = orgTableSql.right(orgTableSql.length()-pos);
+        orgTableSql.prepend(", ");
+    }
+
+
     QString tmpCreate = QString("Create temp table if not exists %1 ")
                         .arg(mTempTableName);
-    tmpCreate += QString("(%1 integer primary key, %2").arg(mProxyPK)
+    tmpCreate += QString("(%1 integer primary key, %2 integer").arg(mProxyPK)
                                                        .arg(mSourcePK);
     tmpCreate += orgTableSql;
+
+    // have to account for the case that the input table has had
+    // its primary key defined at the end of the column definition ...
+    // ... so looking for superfluous second PIRMARY statement
+    pos = tmpCreate.indexOf("primary", 0, Qt::CaseInsensitive);
+    int pos2 = tmpCreate.indexOf("primary", pos+1, Qt::CaseInsensitive);
+    if (pos2 > pos)
+    {
+        pos = tmpCreate.lastIndexOf(',');
+        tmpCreate = tmpCreate.left(pos);
+        tmpCreate += ")";
+    }
+
 
     mTempDb.transaction();
     QSqlQuery queryTmpCreate(mTempDb);
@@ -1144,6 +1245,12 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QSqlDriver* drv = mSourceModel->database().driver();
     QString srcCol;
     QString columns = "(";
+
+    if (!mPKIsFstCol)
+    {
+        columns += "rowid, ";
+    }
+
     for (int c=0; c < mSourceModel->columnCount(); ++c)
     {
         //srcCol = mSourceModel->headerData(c, Qt::Horizontal).toString();
@@ -1165,11 +1272,23 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
         orderByClause = QString("order by %1 %2").arg(sOrderColumn).arg(qsSortOrder);
     }
 
-    QString tmpInsert = QString("Insert into %1 %2 select * from %3 %4")
-                        .arg(mTempTableName)
-                        .arg(columns)
-                        .arg(mSourceModel->tableName())
-                        .arg(orderByClause);
+    QString tmpInsert;
+    if (mPKIsFstCol)
+    {
+        tmpInsert = QString("Insert into %1 %2 select * from %3 %4")
+                            .arg(mTempTableName)
+                            .arg(columns)
+                            .arg(mSourceModel->tableName())
+                            .arg(orderByClause);
+    }
+    else
+    {
+        tmpInsert = QString("Insert into %1 %2 select rowid, * from %3 %4")
+                            .arg(mTempTableName)
+                            .arg(columns)
+                            .arg(mSourceModel->tableName())
+                            .arg(orderByClause);
+    }
 
     mTempDb.transaction();
     QSqlQuery queryInsert(mTempDb);
@@ -1210,6 +1329,8 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
                    .arg(mSourcePK)
                    .arg(srcIdx.row());
 
+    NMLogDebug(<< ctx << ": " << "tv mapFromSource (srcIdx): " << qstr.toStdString());
+
 
     //    /// debug
     //    NMDebugAI(<< "mTempDb.isOpen() = " << mTempDb.isOpen() << std::endl);
@@ -1223,7 +1344,7 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
     QSqlQuery qProxy(db);
     if (!qProxy.exec(qstr))
     {
-        NMLogError(<< ctx << qProxy.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << ": " << qProxy.lastError().text().toStdString() << std::endl);
         qProxy.finish();
         qProxy.clear();
         db.commit();
@@ -1232,9 +1353,12 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
 
     if (qProxy.next())
     {
-        // NOTE: since we utilise the autoincrementing primary key, the
-        // proxy index in the mapping-table is 1-based!
-        int r = qProxy.value(0).toInt() - 1;
+        // the proxy index, i.e. the row number in the table view is always 0-based;
+        // the 'proxy-mapping-index' in the temp table is 1-based and since this
+        // is the onve we're querying here, we've got to subtract 1 to get to
+        // row number in the table view
+        int r = qProxy.value(0).toInt()-1;
+        NMLogDebug(<< ctx << ": " << ">> mapped proxyIdx + srcToProxy: ");
         retIdx = this->createIndex(r, srcIdx.column());
     }
     qProxy.finish();
@@ -1264,16 +1388,16 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
                    .arg(mSourcePK)
                    .arg(mTempTableName)
                    .arg(mProxyPK)
-                   .arg(proxyIdx.row()+1);
+                   .arg(proxyIdx.row());//+1);
 
-	NMMsg(<< "mapToSource: qstr: " << qstr.toStdString() << std::endl);
+    NMLogDebug(<< ctx << ": " << "tv mapToSource (proxyIdx): " << qstr.toStdString());
 
     QSqlDatabase db = mTempDb;
     db.transaction();
     QSqlQuery qProxy(db);
     if (!qProxy.exec(qstr))
     {
-        NMLogError(<< ctx << qProxy.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << ": " << qProxy.lastError().text().toStdString() << std::endl);
         qProxy.finish();
         qProxy.clear();
         db.commit();
@@ -1340,11 +1464,16 @@ NMSelSortSqlTableProxyModel::getNumTableRecords()
     if (!pk.isEmpty())
     {
         primaryKey = pk.name();
+        if (primaryKey.isEmpty())
+        {
+            primaryKey = "*";
+        }
     }
     else
     {
         primaryKey = mSourceModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
     }
+
     QString qstr = QString("Select count(%1) from %2").arg(primaryKey)
                                                       .arg(mSourceModel->tableName());
     QSqlDatabase db = mSourceModel->database();
@@ -1358,7 +1487,7 @@ NMSelSortSqlTableProxyModel::getNumTableRecords()
     }
     else
     {
-        NMLogError(<< ctx << q.lastError().text().toStdString() << std::endl);
+        NMLogError(<< ctx << ": " << q.lastError().text().toStdString() << std::endl);
     }
     q.finish();
     q.clear();

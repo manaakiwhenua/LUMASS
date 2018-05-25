@@ -61,7 +61,7 @@ generate_export_header(OTBSupplFilters)
 
 if(LUMASS_OTB_VERSION VERSION_LESS "5.0.0")
         target_link_libraries(OTBSupplFilters OTBCommon OTBBasicFilters OTBIO
-        #OTBGDALRATImageIO
+        OTBGDALRATImageIO
         #tokyocabinet
         )
 else()
@@ -69,12 +69,12 @@ else()
 	OTBExtendedFilename OTBCurlAdapters OTBImageIO OTBImageBase 
         #OTBMathParser
         OTBStreaming
-        #OTBGDALRATImageIO
+        OTBGDALRATImageIO
         #tokyocabinet
         )
 endif()
 
-#add_dependencies(OTBSupplFilters OTBGDALRATImageIO)
+add_dependencies(OTBSupplFilters OTBGDALRATImageIO)
 
 #set_property(TARGET OTBSupplFilters PROPERTY POSITION_INDEPENDENT_CODE 1)
 

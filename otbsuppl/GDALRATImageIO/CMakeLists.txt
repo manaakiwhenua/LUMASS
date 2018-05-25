@@ -30,13 +30,19 @@ LINK_DIRECTORIES(
 file(GLOB GDALRATIO 
 	${GDALRATImageIO_SOURCE_DIR}/*.cxx
 	${GDALRATImageIO_SOURCE_DIR}/*.txx
+#        ${otbsuppl_core_SOURCE_DIR}/*.cxx
+#        ${otbsuppl_core_SOURCE_DIR}/*.hxx
 )
+
 # list of project header files
 file(GLOB GDALRATIO_HEADER
-	${GDALRATImageIO_SOURCE_DIR}/otbGDALRATImageFileReader.h
+#        ${GDALRATImageIO_SOURCE_DIR}/otbGDALRATImageFileReader.h
 	${GDALRATImageIO_SOURCE_DIR}/*.h
 	${GDALRATImageIO_BINARY_DIR}/*.h
 )
+
+list(REMOVE_ITEM GDALRATIO ${GDALRATImageIO_SOURCE_DIR}/otbGDALRATImageFileReader.txx)
+list(REMOVE_ITEM GDALRATIO_HEADER ${GDALRATImageIO_SOURCE_DIR}/otbGDALRATImageFileReader.h)
 
 add_definitions(-DOTBGDALRATImageIO_EXPORTS -DNM_PROC_LOG)
 

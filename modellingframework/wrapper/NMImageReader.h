@@ -36,14 +36,14 @@
 
 #include "otbImageIOBase.h"
 #include "otbImageFileReader.h"
-#include "otbGDALRATImageFileReader.h"
+//#include "otbGDALRATImageFileReader.h"
 #include "NMItkDataObjectWrapper.h"
 #include "otbAttributeTable.h"
 #include "otbImage.h"
 #include "itkSmartPointer.h"
 
 #ifdef BUILD_RASSUPPORT
-  #include "otbRasdamanImageReader.h"
+  //#include "otbRasdamanImageReader.h"
   #include "RasdamanConnector.hh"
   #include "NMRasdamanConnectorWrapper.h"
 #endif

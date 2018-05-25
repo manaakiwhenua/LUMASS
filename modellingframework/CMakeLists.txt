@@ -102,7 +102,7 @@ LIST(APPEND MFW_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 #	)
 #else()
 	set(MFW_LINK_LIBS
-		OTBGDALRATImageIO
+                #OTBGDALRATImageIO
                 #OTBMathParser
 		OTBSupplFilters
 		#RasImageIO
@@ -123,7 +123,7 @@ LIST(APPEND MFW_MOC_H ${shared_SOURCE_DIR}/NMLogger.h)
 #endif()
 
 set(MFW_DEP_LIBS
-    OTBGDALRATImageIO
+    #OTBGDALRATImageIO
     OTBSupplFilters
     #RasImageIO
 )
@@ -133,7 +133,7 @@ QT5_WRAP_CPP(MFW_MOC_CPP ${MFW_MOC_H})
 IF(RASSUPPORT)
     add_definitions(-DBUILD_RASSUPPORT)
     LIST(APPEND MFW_LINK_LIBS RasImageIO)
-    LIST(APPEND MFW_DEP_LIBS RasImageIO)
+    #LIST(APPEND MFW_DEP_LIBS RasImageIO)
 ENDIF()
 
 add_definitions(-DNMModFrame_EXPORTS -DNM_PROC_LOG)

@@ -29,7 +29,7 @@
 
 #include "NMImageReader.h"
 #include "otbGDALRATImageIO.h"
-#include "otbGDALRATImageFileReader.h"
+//#include "otbGDALRATImageFileReader.h"
 #include "otbImageFileReader.h"
 #include "otbImageIOFactory.h"
 #include "itkIndent.h"
@@ -49,7 +49,7 @@
 
 #ifdef BUILD_RASSUPPORT
   #include "otbRasdamanImageIO.h"
-  #include "otbRasdamanImageReader.h"
+  //#include "otbRasdamanImageReader.h"
 
 	/**
 	 *  Helper class which instantiates the first part of the (ITK) image

@@ -127,12 +127,14 @@ public:
         long long curInputNodata;
         if (step < p->mInputNodata.size())
         {
+            QStringList inputNodata;
             for (int i=0; i < p->mInputNodata.at(step).size(); ++i) 
             {
                 curInputNodata = p->mInputNodata.at(step).at(i).toLongLong(&bok);
                 if (bok)
                 {
                     vecInputNodata.push_back((curInputNodata));
+                    inputNodata << p->mInputNodata.at(step).at(i);
                 }
                 else
                 {
@@ -144,6 +146,8 @@ public:
                 }
             }
             f->SetInputNodata(vecInputNodata);
+            QString inputNodataProvN = QString("nm:InputNodata=\"%1\"").arg(inputNodata.join(" "));
+            p->addRunTimeParaProvN(inputNodataProvN);
         }
 
         step = p->mapHostIndexToPolicyIndex(givenStep, p->mOutputTableFileName.size());
@@ -152,15 +156,19 @@ public:
         {
             curOutputTableFileName = p->mOutputTableFileName.at(step).toStdString().c_str();
             f->SetOutputTableFileName(curOutputTableFileName);
+            QString outputTableFileNameProv = QString("nm:OutputTableFileName=\"%1\"")
+                                              .arg(curOutputTableFileName.c_str());
+            p->addRunTimeParaProvN(outputTableFileNameProv);
         }
 
 
                 
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
 	    std::vector<std::string> userIDs;                                                                       
-	    QStringList currentInputs;                                                                              
+        QStringList userIDsProvN;
+        QStringList currentInputs;
 	    if (step < p->mInputComponents.size())                                                                  
-	    {                                                                                                       
+        {
 		    currentInputs = p->mInputComponents.at(step);                                                   
 		    int cnt=0;                                                                                      
 		    foreach (const QString& input, currentInputs)                                                   
@@ -174,21 +182,26 @@ public:
 			        if (comp->getUserID().isEmpty())                                                        
 			        {                                                                                       
 				        userIDs.push_back(uid.str());                                                   
+                        userIDsProvN << uid.str().c_str();
 			        }                                                                                       
 			        else                                                                                    
 			        {                                                                                       
 				        userIDs.push_back(comp->getUserID().toStdString());                             
+                        userIDsProvN << comp->getUserID();
 			        }                                                                                       
 		        }                                                                                           
 		        else                                                                                        
 		        {                                                                                           
-			        userIDs.push_back(uid.str());                                                           
+                    userIDs.push_back(uid.str());
+                    userIDsProvN << uid.str().c_str();
 		        }                                                                                           
 		        ++cnt;                                                                                      
 		    }                                                                                               
 	    }                                                                                                       
 	    f->SetImageNames(userIDs);
-
+        QString userIDsProvNStr = QString("nm:UserIDs=\"%1\"")
+                                  .arg(userIDsProvN.join(" "));
+        p->addRunTimeParaProvN(userIDsProvNStr);
 
 		NMDebugCtx("NMCombineTwoFilterWrapper_Internal", << "done!");
 	}

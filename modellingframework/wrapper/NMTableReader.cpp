@@ -64,6 +64,9 @@ NMTableReader::linkParameters(unsigned int step, const QMap<QString, NMModelComp
 
 
     f->SetCreateTable(mCreateTable);
+    QString provCreateTable = QString("nm:CreateTable=\"%1\"")
+                               .arg(mCreateTable ? "true" : "false");
+    this->addRunTimeParaProvN(provCreateTable);
 
 
     QVariant curFileNameVar = getParameter("FileName");
@@ -72,6 +75,9 @@ NMTableReader::linkParameters(unsigned int step, const QMap<QString, NMModelComp
     {
        curFileName = curFileNameVar.toString().toStdString();
         f->SetFileName(curFileName);
+        QString provFileName = QString("nm:FileName=\"%1\"")
+                                   .arg(curFileNameVar.toString());
+        this->addRunTimeParaProvN(provFileName);
     }
 
     QVariant curTableNameVar = getParameter("TableName");
@@ -79,16 +85,19 @@ NMTableReader::linkParameters(unsigned int step, const QMap<QString, NMModelComp
     if (curTableNameVar.isValid())
     {
        curTableName = curTableNameVar.toString().toStdString();
-        f->SetTableName(curTableName);
+       f->SetTableName(curTableName);
+       QString provTableName = QString("nm:TableName=\"%1\"")
+                                  .arg(curTableNameVar.toString());
+       this->addRunTimeParaProvN(provTableName);
     }
 
-    QVariant curRowIdColnameVar = getParameter("RowIdColname");
-    std::string curRowIdColname;
-    if (curRowIdColnameVar.isValid())
-    {
-       curRowIdColname = curTableNameVar.toString().toStdString();
-        f->SetTableName(curTableName);
-    }
+//    QVariant curRowIdColnameVar = getParameter("RowIdColname");
+//    std::string curRowIdColname;
+//    if (curRowIdColnameVar.isValid())
+//    {
+//       curRowIdColname = curTableNameVar.toString().toStdString();
+//        f->SetTableName(curTableName);
+//    }
 
 }
 

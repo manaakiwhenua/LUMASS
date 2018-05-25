@@ -649,6 +649,10 @@ NMRATBandMathImageFilterWrapper
     {
         currentExpression = exprParam.toString();
         this->setInternalExpression(currentExpression);
+
+        QString curExrProvN = QString("nm:MapExpression=\"%1\"")
+                              .arg(currentExpression);
+        this->addRunTimeParaProvN(curExrProvN);
     }
     else
 	{
@@ -668,7 +672,11 @@ NMRATBandMathImageFilterWrapper
 		bool bOK;
 		int numExpr = this->mNumExpressions.at(step).toInt(&bOK);
 		if (bOK)
+        {
 			this->setInternalNumExpression(numExpr);
+            QString numExprProvN = QString("nm:NumExpressions=\"%1\"").arg(numExpr);
+            this->addRunTimeParaProvN(numExprProvN);
+        }
 	}
 	else
 	{
@@ -741,6 +749,7 @@ NMRATBandMathImageFilterWrapper
 			std::vector<std::string> vcolnames;
 			if (tab.IsNotNull())
 			{
+                QStringList colNamesProvN;
 				for (int c=0; c < tab->GetNumCols(); ++c)
 				{
 					std::string colname = tab->GetColumnName(c);
@@ -749,11 +758,17 @@ NMRATBandMathImageFilterWrapper
 					if (currentExpression.contains(cn, Qt::CaseInsensitive))
 					{
 						vcolnames.push_back(cn.toStdString());
+                        colNamesProvN << cn;
 					}
 				}
                 if (vcolnames.size() > 0)
                 {
                     this->setNthAttributeTable(cnt, tab, vcolnames);
+
+                    QString colNamesProvNAttr = QString("nm:TableColumns-%1=\"%2\"")
+                                                .arg(cnt)
+                                                .arg(colNamesProvN.join(" "));
+                    this->addRunTimeParaProvN(colNamesProvNAttr);
                 }
 			}
 
@@ -767,6 +782,10 @@ NMRATBandMathImageFilterWrapper
             if (!comp->getUserID().isEmpty())
             {
                 this->setInternalNthInputName(cnt, comp->getUserID());
+                QString inputNameProvNAttr = QString("nm:InputUserID-%1=\"%2\"")
+                                             .arg(cnt)
+                                             .arg(comp->getUserID());
+                this->addRunTimeParaProvN(inputNameProvNAttr);
             }
             else
             {

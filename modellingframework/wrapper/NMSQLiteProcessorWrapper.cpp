@@ -127,6 +127,10 @@ public:
         {
             std::string curSQLStatement = curSqlStmt.toString().toStdString();
             f->SetSQLStatement(curSQLStatement);
+
+            QString sqlStmtProvNAttr = QString("nm:SQLStatement=\"%1\"")
+                                       .arg(curSqlStmt.toString());
+            p->addRunTimeParaProvN(sqlStmtProvNAttr);
         }
                 
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				

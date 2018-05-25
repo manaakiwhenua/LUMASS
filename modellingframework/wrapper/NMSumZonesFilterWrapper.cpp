@@ -134,6 +134,9 @@ public:
             if (bok)
             {
                 f->SetIgnoreNodataValue(curIgnoreNodataValue);
+                QString provIgnoreNodata = QString("nm:IgnoreNodataValue=\"%1\"")
+                                           .arg(curIgnoreNodataValue);
+                p->addRunTimeParaProvN(provIgnoreNodata);
             }
             else
             {
@@ -152,6 +155,9 @@ public:
             if (bok)
             {
                 f->SetNodataValue(curNodataValue);
+                QString provNodataVal = QString("nm:NodataValue=\"%1\"")
+                                           .arg(curNodataValueVar.toString());
+                p->addRunTimeParaProvN(provNodataVal);
             }
             else
             {
@@ -169,6 +175,9 @@ public:
             if (bok)
             {
                 f->SetHaveMaxKeyRows((curHaveMaxKeyRows));
+                QString provHaveMaxKeyRows = QString("nm:HaveMaxKeyRows=\"%1\"")
+                                           .arg(curHaveMaxKeyRows);
+                p->addRunTimeParaProvN(provHaveMaxKeyRows);
             }
             else
             {
@@ -186,6 +195,9 @@ public:
         {
             f->SetWorkspace(p->getModelController()->getSetting("Workspace").toString().toStdString());
             f->SetZoneTableFileName(ztparam.toString().toStdString());
+            QString provZoneTableFN = QString("nm:ZoneTableFileName=\"%1\"")
+                                       .arg(ztparam.toString());
+            p->addRunTimeParaProvN(provZoneTableFN);
         }
 
 		NMDebugCtx("NMSumZonesFilterWrapper_Internal", << "done!");

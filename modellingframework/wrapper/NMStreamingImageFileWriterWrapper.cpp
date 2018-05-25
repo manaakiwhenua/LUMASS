@@ -906,18 +906,50 @@ NMStreamingImageFileWriterWrapper
     if (param.isValid())
     {
         this->setInternalFileName(param.toString());
+        QString fnProvNAttr = QString("nm:FileNames=\"%1\"")
+                              .arg(param.toString());
+        this->addRunTimeParaProvN(fnProvNAttr);
     }
 
     QVariant param2 = this->getParameter("InputTables");
     if (param2.isValid())
     {
         this->setInternalInputTable(param2.toString(), repo);
+        QString tabProvNAttr = QString("nm:TableNames=\"%1\"")
+                              .arg(param2.toString());
+        this->addRunTimeParaProvN(tabProvNAttr);
     }
 
     this->setInternalUpdateMode();
+    QString updateProvNAttr = QString("nm:UpdateMode=\"%1\"")
+                          .arg(mUpdateMode ? "true" : "false");
+    this->addRunTimeParaProvN(updateProvNAttr);
+    QString writeImgProvNAttr = QString("nm:WriteImage=\"%1\"")
+                          .arg(mWriteImage ? "true" : "false");
+    this->addRunTimeParaProvN(writeImgProvNAttr);
+    QString writeTabProvNAttr = QString("nm:WriteTable=\"%1\"")
+                          .arg(mWriteTable ? "true" : "false");
+    this->addRunTimeParaProvN(writeTabProvNAttr);
+    QString rgbModeProvNAttr = QString("nm:RGBMode=\"%1\"")
+                          .arg(mRGBMode ? "true" : "false");
+    this->addRunTimeParaProvN(rgbModeProvNAttr);
+
+
     this->setInternalResamplingType();
+    QString resTypeProvNAttr = QString("nm:ResamplingType=\"%1\"")
+                              .arg(mPyramidResamplingType);
+    this->addRunTimeParaProvN(resTypeProvNAttr);
+
     this->setInternalStreamingMethod();
+    QString streamMethodProvNAttr = QString("nm:StreamingMethod=\"%1\"")
+                          .arg(mStreamingMethodType);
+    this->addRunTimeParaProvN(streamMethodProvNAttr);
+
     this->setInternalStreamingSize();
+    QString streamSizeProvNAttr = QString("nm:StreamingSize=\"%1\"")
+                          .arg(mStreamingSize);
+    this->addRunTimeParaProvN(streamSizeProvNAttr);
+
 }
 
 void

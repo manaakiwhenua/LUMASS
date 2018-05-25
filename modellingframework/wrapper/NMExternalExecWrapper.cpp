@@ -183,7 +183,10 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
         throw e;
     }
     mCurCmd = qvCmnd.toString();
-
+    QString provNCmd = mCurCmd;
+    QString curCmdProvN1 = provNCmd.replace('\"', '\'');
+    QString curCmdProvN = QString("nm:Command=\"%1\"").arg(curCmdProvN1);
+    this->addRunTimeParaProvN(curCmdProvN);
 
     QVariant qvEnvironment = this->getParameter(QString::fromLatin1("Environment"));
     if (QString::fromLatin1("QStringList").compare(qvEnvironment.typeName()) == 0)
@@ -208,7 +211,14 @@ NMExternalExecWrapper::linkParameters(unsigned int step,
                           << kv.toStdString() << "'!");
             }
         }
+
+        QString envProvNStr__ = temp.join(" ");
+        envProvNStr__ = envProvNStr__.replace("\"","'");
+        QString envProvNStr = QString("nm:Environment=\"%1\"")
+                              .arg(envProvNStr__);
+        this->addRunTimeParaProvN(envProvNStr);
     }
+
 
     NMDebugCtx(ctx, << "done!");
 }

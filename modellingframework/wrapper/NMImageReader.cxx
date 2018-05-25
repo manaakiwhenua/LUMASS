@@ -81,13 +81,31 @@
 
 
         static void getImageStatistics(itk::ProcessObject* procObj, unsigned int numBands,
-                                  std::vector<double>& stats)
+                                  std::vector<double>& stats, const int* index, const int* size)
         {
             stats.clear();
 
             if (numBands == 1)
             {
                 ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+
+                if (index != nullptr && size != nullptr)
+                {
+                    typename ReaderType::ImageRegionType::IndexType idx;
+                    typename ReaderType::ImageRegionType::SizeType sz;
+                    typename ReaderType::ImageRegionType reg;
+
+                    for (int d=0; d < ImgType::ImageDimension; ++d)
+                    {
+                        idx[d] = index[d];
+                        sz[d] = size[d];
+                    }
+                    reg.SetIndex(idx);
+                    reg.SetSize(sz);
+                    r->SetUserLargestPossibleRegion(reg);
+                    r->SetUseUserLargestPossibleRegion(true);
+                }
+
                 typename StatsFilterType::Pointer f = StatsFilterType::New();
                 typename VirtWriterType::Pointer w = VirtWriterType::New();
 
@@ -312,13 +330,30 @@ public:
 
 
     static void getImageStatistics(itk::ProcessObject* procObj, unsigned int numBands,
-                              std::vector<double>& stats)
+                              std::vector<double>& stats, const int* index, const int* size)
     {
         stats.clear();
 
         if (numBands == 1)
         {
             ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            if (index != nullptr && size != nullptr)
+            {
+                typename ReaderType::ImageRegionType::IndexType idx;
+                typename ReaderType::ImageRegionType::SizeType sz;
+                typename ReaderType::ImageRegionType reg;
+
+                for (int d=0; d < ImgType::ImageDimension; ++d)
+                {
+                    idx[d] = index[d];
+                    sz[d] = size[d];
+                }
+                reg.SetIndex(idx);
+                reg.SetSize(sz);
+                r->UseUserLargestPossibleRegionOn();
+                r->SetUserLargestPossibleRegion(reg);
+            }
+
             typename StatsFilterType::Pointer f = StatsFilterType::New();
             typename VirtWriterType::Pointer w = VirtWriterType::New();
 
@@ -636,17 +671,17 @@ template class RasdamanReader<double, 3>;
           case 1: \
               RasdamanReader< PixelType, 1 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats); \
+                      this->mOutputNumBands, stats, index, size); \
               break; \
           case 3: \
               RasdamanReader< PixelType, 3 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats); \
+                      this->mOutputNumBands, stats, index, size); \
               break; \
           default: \
               RasdamanReader< PixelType, 2 >::getImageStatistics( \
                   this->mOtbProcess, \
-                  this->mOutputNumBands, stats); \
+                  this->mOutputNumBands, stats, index, size); \
           }\
       } \
       else \
@@ -656,17 +691,17 @@ template class RasdamanReader<double, 3>;
           case 1: \
               FileReader< PixelType, 1 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats); \
+                      this->mOutputNumBands, stats, index, size); \
               break; \
           case 3: \
               FileReader< PixelType, 3 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats); \
+                      this->mOutputNumBands, stats, index, size); \
               break; \
           default: \
               FileReader< PixelType, 2 >::getImageStatistics( \
                   this->mOtbProcess, \
-                  this->mOutputNumBands, stats); \
+                  this->mOutputNumBands, stats, index, size); \
           }\
       } \
     }
@@ -818,6 +853,14 @@ template class RasdamanReader<double, 3>;
 		}\
 		else \
 			{ \
+    © imago
+
+    vorheriges Bild
+    näc
+    © imago
+
+    vorheriges Bild
+    näc
 			switch (this->mOutputNumDimensions) \
 			{ \
 			case 1: \
@@ -844,17 +887,17 @@ template class RasdamanReader<double, 3>;
           case 1: \
               FileReader< PixelType, 1 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats); \
+                      this->mOutputNumBands, stats, index, size); \
               break; \
           case 3: \
               FileReader< PixelType, 3 >::getImageStatistics( \
                       this->mOtbProcess, \
-                      this->mOutputNumBands, stats); \
+                      this->mOutputNumBands, stats, index, size); \
               break; \
           default: \
               FileReader< PixelType, 2 >::getImageStatistics( \
                   this->mOtbProcess, \
-                  this->mOutputNumBands, stats); \
+                  this->mOutputNumBands, stats, index, size); \
           }\
       } \
     }
@@ -1273,6 +1316,7 @@ bool NMImageReader::initialise()
 	this->mOtbProcess->AddObserver(itk::StartEvent(), observer);
 	this->mOtbProcess->AddObserver(itk::EndEvent(), observer);
 	this->mOtbProcess->AddObserver(itk::AbortEvent(), observer);
+    this->mOtbProcess->AddObserver(itk::NMLogEvent(), observer);
 
 	NMDebugCtx(ctxNMImageReader, << "done!");
 
@@ -1300,7 +1344,7 @@ NMImageReader::buildOverviews(const std::string& resamplingType)
 }
 
 
-std::vector<double> NMImageReader::getImageStatistics()
+std::vector<double> NMImageReader::getImageStatistics(const int *index, const int *size)
 {
     std::vector<double> stats;
 
@@ -1593,6 +1637,8 @@ NMImageReader::linkParameters(unsigned int step,
     if (param.isValid() && !param.toString().isEmpty())
     {
         this->setFileName(param.toString());
+        QString paramProvN = QString("nm:FileNames=\"%1\"").arg(param.toString());
+        this->addRunTimeParaProvN(paramProvN);
     }
 
     param = this->getParameter("BandList");
@@ -1612,6 +1658,9 @@ NMImageReader::linkParameters(unsigned int step,
             }
             this->mBandMap.push_back(b);
         }
+
+        QString bandListProvN = QString("nm:BandList=\"%1\"").arg(bandlist.join(" "));
+        this->addRunTimeParaProvN(bandListProvN);
     }
 
     this->setInternalRATType();

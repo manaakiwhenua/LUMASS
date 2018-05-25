@@ -303,6 +303,7 @@ void doModel(const QString& modelFile, QString &workspace)
     ctrl->setLogger(NMLoggingProvider::This()->getLogger());
     ctrl->updateSettings("LUMASSPath",
                          qApp->applicationDirPath());
+    ctrl->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
 
     // ====================================================
     //   set ModelController settings

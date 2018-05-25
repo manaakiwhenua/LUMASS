@@ -37,6 +37,9 @@
 #include "vtkImageProperty.h"
 #include "otbImageIOBase.h"
 #include "vtkImageHistogram.h"
+#include "NMVtkOpenGLImageSliceMapper.h"
+#include "vtkImageSlice.h"
+#include "vtkImageProperty.h"
 
 
 #ifdef BUILD_RASSUPPORT
@@ -151,6 +154,7 @@ public slots:
 protected:
 
 	void createTableView(void);
+    void createImgSelData(void);
 
     void updateScalarBuffer();
 
@@ -191,6 +195,11 @@ protected:
     NMChartView* mHistogramView;
     vtkSmartPointer<vtkIdTypeArray> mHistogram;
 
+    // selection mapping & vis
+    vtkSmartPointer<NMVtkOpenGLImageSliceMapper> mImgSelMapper;
+    vtkSmartPointer<vtkImageSlice> mImgSelSlice;
+    vtkSmartPointer<vtkImageProperty> mImgSelProperty;
+
     unsigned int mNumRecords;
     unsigned int mNumDimensions;
 	unsigned int mNumBands;
@@ -204,8 +213,15 @@ protected:
     double mSpacing[3];
     double mOrigin[3];
 
+    int mVisibleRegion[6];
+
     int mOverviewIdx;
     bool mbUpdateScalars;
+
+    // this keeps track of the world x-coordinate of the
+    // upper left corner; we use it to determine whether
+    // the map extent has changed or not
+    double mWTLx;
 
     /*!
      * \brief The buffered (current) image region
@@ -238,8 +254,6 @@ protected:
 
     std::map<long long, long long> mScalarLongLongMap;
     std::map<long long, double> mScalarDoubleMap;
-
-	//void fetchRATs(void);
 
 protected slots:
 	int updateAttributeTable(void);

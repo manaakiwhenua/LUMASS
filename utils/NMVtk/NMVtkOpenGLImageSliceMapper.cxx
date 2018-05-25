@@ -32,6 +32,13 @@
 
 #include "NMVtkOpenGLImageSliceMapper.h"
 
+#ifdef VTK_OPENGL2
+    #include "vtk_glew.h"
+#else
+    #include "vtkOpenGLExtensionManager.h"
+#endif
+
+
 #include "vtkObjectFactory.h"
 #include "vtkImageData.h"
 #include "vtkImageSlice.h"
@@ -45,7 +52,6 @@
 #include "vtkOpenGLCamera.h"
 #include "vtkOpenGLRenderer.h"
 #include "vtkOpenGLRenderWindow.h"
-#include "vtkOpenGLExtensionManager.h"
 #include "vtkTimerLog.h"
 #include "vtkGarbageCollector.h"
 #include "vtkTemplateAliasMacro.h"
@@ -60,7 +66,10 @@
 
 #include "vtkOpenGL.h"
 #include "vtkOpenGLError.h"
-#include "vtkgl.h" // vtkgl namespace
+
+#ifndef VTK_OPENGL2
+    #include "vtkgl.h" // vtkgl namespace
+#endif
 
 vtkStandardNewMacro(NMVtkOpenGLImageSliceMapper);
 

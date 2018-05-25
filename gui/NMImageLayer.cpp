@@ -42,6 +42,7 @@
 #include "NMSqlTableModel.h"
 #include "NMSqlTableView.h"
 #include "NMChartView.h"
+#include "NMVtkLookupTable.h"
 
 #include <QTime>
 #include <QtCore>
@@ -62,6 +63,8 @@
 #include "itkDataObject.h"
 #include "otbImage.h"
 #include "otbSQLiteTable.h"
+#include "otbRAMTable.h"
+#include "otbGDALRATImageIO.h"
 #include "otbVectorImage.h"
 #include "itkImageRegion.h"
 #include "itkPoint.h"
@@ -74,6 +77,7 @@
 #include "vtkImageSlice.h"
 #include "vtkImageResliceMapper.h"
 #include "vtkImageProperty.h"
+#include "vtkImageStack.h"
 #include "vtkLookupTable.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkMath.h"
@@ -91,7 +95,7 @@
 #include "vtkExtractCells.h"
 #include "vtkCellData.h"
 #include "vtkContourFilter.h"
-#include "vtkGenericContourFilter.h"
+//#include "vtkGenericContourFilter.h"
 #include "vtkExtractSelection.h"
 #include "vtkSelectionNode.h"
 #include "vtkSelection.h"
@@ -286,6 +290,9 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 	this->mLayerType = NMLayer::NM_IMAGE_LAYER;
     this->mReader = 0; //new NMImageReader(this);
 	this->mPipeconn = new NMItk2VtkConnector(this);
+
+    //this->mSelPipe = new NMItk2VtkConnector(this);
+
 	this->mFileName = "";
 
 	this->mNumBands = 0;
@@ -310,6 +317,7 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
     this->mVtkConn->Connect(mRenderer, vtkCommand::EndEvent,
                             this, SLOT(updateHistogram(vtkObject*)));
 
+    this->mWTLx = itk::NumericTraits<double>::NonpositiveMin();
 
 //	this->mVtkConn->Connect(style, vtkCommand::ResetWindowLevelEvent,
 //			this, SLOT(windowLevelReset(vtkObject*)));
@@ -365,36 +373,99 @@ NMImageLayer::getWindowStatistics(void)
 
     emit layerProcessingStart();
 
-    // calc stats
-//    vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-//    cast->SetOutputScalarTypeToDouble();
-//    cast->SetInputConnection(conn->getVtkAlgorithmOutput());
+    if (mReader == nullptr || mReader->getImageIOBase() == nullptr)
+    {
 
-    vtkSmartPointer<vtkImageHistogramStatistics> stats =
-            vtkSmartPointer<vtkImageHistogramStatistics>::New();
-    stats->SetInputConnection(mPipeconn->getVtkAlgorithmOutput());
-//    vtkImageMapper3D* im3d = vtkImageMapper3D::SafeDownCast(mMapper);
-//    stats->SetInputData(im3d->GetInput());
+        // calc stats
+    //        vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
+    //        cast->SetOutputScalarTypeToDouble();
+    //        cast->SetInputConnection(conn->getVtkAlgorithmOutput());
 
-    //unsigned int nthreads = std::max(stats->GetNumberOfThreads() - 2, 1);
-    //stats->AutomaticBinningOff();
-    //stats->SetNumberOfBins(256);
-    stats->AutomaticBinningOn();
-    stats->SetMaximumNumberOfBins(256);
-    //stats->SetNumberOfThreads(1);
-    stats->GenerateHistogramImageOff();
-    //stats->SetInputConnection(cast->GetOutputPort());
-    stats->Update();
+        vtkSmartPointer<vtkImageHistogramStatistics> stats =
+                vtkSmartPointer<vtkImageHistogramStatistics>::New();
+        stats->SetInputConnection(mPipeconn->getVtkAlgorithmOutput());
+    //    vtkImageMapper3D* im3d = vtkImageMapper3D::SafeDownCast(mMapper);
+    //    stats->SetInputData(im3d->GetInput());
 
-    mHistogram = stats->GetHistogram();
+        //unsigned int nthreads = std::max(stats->GetNumberOfThreads() - 2, 1);
+        //stats->AutomaticBinningOff();
+        //stats->SetNumberOfBins(256);
+        stats->AutomaticBinningOn();
+        stats->SetMaximumNumberOfBins(256);
+        //stats->SetNumberOfThreads(1);
+        stats->GenerateHistogramImageOff();
+        //stats->SetInputConnection(cast->GetOutputPort());
+        stats->Update();
 
-    ret.push_back(stats->GetMinimum());
-    ret.push_back(stats->GetMaximum());
-    ret.push_back(stats->GetMean());
-    ret.push_back(stats->GetMedian());
-    ret.push_back(stats->GetStandardDeviation());
-    ret.push_back(mPipeconn->getVtkImage()->GetNumberOfPoints());
-    ret.push_back(-9999);
+        mHistogram = stats->GetHistogram();
+
+        ret.push_back(stats->GetMinimum());
+        ret.push_back(stats->GetMaximum());
+        ret.push_back(stats->GetMean());
+        ret.push_back(stats->GetMedian());
+        ret.push_back(stats->GetStandardDeviation());
+        ret.push_back(mPipeconn->getVtkImage()->GetNumberOfPoints());
+        ret.push_back(-9999);
+
+    }
+    else
+    {
+        if (!this->mFileName.isEmpty())
+        {
+            NMImageReader* imgReader = new NMImageReader(0);
+            imgReader->setFileName(this->mFileName);
+
+            imgReader->instantiateObject();
+            if (!imgReader->isInitialised())
+            {
+                NMLogWarn(<< ctxNMImageLayer << ": Failed initialising NMImageReader!");
+            }
+            else
+            {
+                int ovidx = this->mOverviewIdx;
+                if (!mbStatsAvailable && imgReader->getNumberOfOverviews() > 0)
+                {
+                    ovidx = -1;
+                }
+
+                if (ovidx < 0)
+                {
+                    ovidx =imgReader->getNumberOfOverviews()-1;
+                    ovidx = ovidx < 0 ? -1 : ovidx;
+
+                    std::vector<std::vector<int> > sizes = this->getOverviewSizes();
+                    if (sizes.size() > 0)
+                    {
+                        for (int d=0; d < 3; ++d)
+                        {
+                            mVisibleRegion[d*2] = 0;
+                            mVisibleRegion[d*2+1] = d < 2 ? sizes[ovidx][d] : 0;
+                        }
+                    }
+                    else
+                    {
+                        double h_ext = mBBox[1] - mBBox[0];
+                        double v_ext = mBBox[3] - mBBox[2];
+
+                        int fullcols = h_ext / mSpacing[0];
+                        int fullrows = v_ext / ::fabs(mSpacing[1]);
+
+                        for (int d=0; d < 3; ++d)
+                        {
+                            mVisibleRegion[d*2] = 0;
+                            mVisibleRegion[d*2+1] = d < 1 ? fullcols :
+                                                    d < 2 ? fullrows : 0;
+                        }
+                    }
+                }
+
+                imgReader->setOverviewIdx(ovidx, mVisibleRegion);
+                ret = imgReader->getImageStatistics();
+            }
+
+            delete imgReader;
+        }
+    }
 
     emit layerProcessingEnd();
     return ret;
@@ -665,119 +736,182 @@ void
 NMImageLayer::selectionChanged(const QItemSelection& newSel,
 		const QItemSelection& oldSel)
 {
-    return;
-    //    mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
-    vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-    vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
-    //    vtkSmartPointer<vtkLongArray> scalars = vtkSmartPointer<vtkLongArray>::New();
-
-    int selcnt = 0;
-    foreach(const QItemSelectionRange& range, newSel)
+    // no table, no selection
+    otb::SQLiteTable::Pointer sqlTab;
+    bool alright = false;
+    if (mOtbRAT.IsNotNull())
     {
-        const int top = range.top();
-        const int bottom = range.bottom();
-        for (int row=top; row <= bottom; ++row)
+        sqlTab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
+        if (sqlTab.IsNotNull())
         {
-            selCellIds->InsertNextId(row);
-            ++selcnt;
+            sqlTab->SetOpenReadOnly(true);
+            if (alright = sqlTab->openConnection())
+            {
+                alright = sqlTab->PopulateTableAdmin();
+            }
+        }
+    }
+
+    if (!alright)
+    {
+        sqlTab->CloseTable();
+        NMLogError(<< "ImageLayer::selectionChanged(): Failed to open the RAT!");
+        return;
+    }
+
+    // ==========================================================================
+    // prepare selection bounding box, if applicable for this layer
+
+    // mSelBBox
+    // 0: minx
+    // 1: maxx
+    // 2: miny
+    // 3: maxy
+    // 4: minz
+    // 5: maxz
+
+    // invalidate the mSelBBox
+    for (int i=0; i < 3; ++i)
+    {
+        mSelBBox[i*2] = mBBox[i*2+1];
+        mSelBBox[i*2+1] = mBBox[i*2];
+    }
+
+    if (!mHasSelBox)
+    {
+        for (int i=0; i < 6; ++i)
+        {
+            mSelBBox[i] = mBBox[i];
         }
     }
 
 
+    // =====================================================================================
+    // prepare selection processing
 
-    //selCellIds->SetNumberOfIds(selcnt);
-    //    scalars->SetNumberOfTuples(selcnt);
-    //    clrtab->SetNumberOfTableValues(selcnt);
-
-//    //this->printSelRanges(newSel, "incoming update selection");
-
-    //    int clrcnt = 0;
-    //    foreach(const QItemSelectionRange& range, newSel)
-    //    {
-    //        const int top = range.top();
-    //        const int bottom = range.bottom();
-    //        for (int row=top; row<=bottom; ++row)
-    //        {
-    //            //scalars->SetValue(clrcnt, clrcnt);
-    //            selCellIds->SetId(clrcnt, row);
-    //            //clrtab->SetTableValue(clrcnt, 1, 0, 0);
-    //            ++clrcnt;
-    //        }
-    //    }
-
-    //vtkImageData* id = vtkImageData::SafeDownCast(mDataSet);
-    //id->getP
-
-    //NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
-    clrtab->SetNumberOfTableValues(selCellIds->GetNumberOfIds());
-    for(int a=0; a < clrtab->GetNumberOfTableValues(); ++a)
+    // determine whether the legend value field is of type numeric
+    bool bNum = false;
+    QVariant::Type valType = this->getColumnType(this->getColumnIndex(mLegendValueField));
+    if (valType != QVariant::String)
     {
-        clrtab->SetTableValue(a,1,0,0,1);
+        bNum = true;
     }
 
-    //    if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
-    //    {
-    //        NMDebugAI(<< "removed old selection" << std::endl);
-    //        this->mRenderer->RemoveActor(mSelectionActor);
-    //    }
+    const long long ncells = this->getNumTableRecords();
 
-    vtkSmartPointer<vtkTrivialProducer> producer = vtkSmartPointer<vtkTrivialProducer>::New();
-    producer->SetOutput(mDataSet);
-
-    vtkInformation* outInfo = producer->GetOutputPortInformation(0);
-    outInfo->Set(vtkDataObject::DATA_TYPE_NAME(), "vtkImageData");
-
-
-    //producer->FillOutputDataInformation(mDataSet);
-
-
-//    vtkSmartPointer<vtkInformation> outinfo = vtkSmartPointer<vtkInformation>::New();
-//    outinfo->Set(vtkAlgorithm)
-
-
-    vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
-    extractor->SetInputConnection(producer->GetOutputPort());
-    extractor->SetCellList(selCellIds);
-    //extractor->Update();
-
-    //vtkSmartPointer<vtkUnstructuredGrid> ugrid = extractor->GetOutput();
-
-    //ugrid->GetP
-
-    vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-    //geoFilter->SetInputData(ugrid);
-    geoFilter->SetInputConnection(extractor->GetOutputPort());
-    geoFilter->Update();
-
-    mCellSelection = geoFilter->GetOutput(); //vtkSmartPointer<vtkPolyData>::New();
-
-    //    mCellSelection->SetPoints(geoFilter->GetOutput()->GetPoints());
-    //    mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
-    //mCellSelection->GetCellData()->SetScalars(scalars);
-
-    //	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
-    //			<< " cells in selection" << std::endl);
-
-    mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
-
-    mSelectionMapper->SetInputData(mCellSelection);
-    mSelectionMapper->SetLookupTable(clrtab);
-    mSelectionMapper->UseLookupTableScalarRangeOn();
+    // pre-fill look-up table with non-selection values / colours
+    int valcolidx = this->getColumnIndex(mLegendValueField);
+    vtkSmartPointer<NMVtkLookupTable> selLut = vtkSmartPointer<NMVtkLookupTable>::New();
+    selLut->SetNumberOfTableValues(ncells);
+    for (int cell=0; cell < ncells; ++cell)
+    {
+        if (mUseIdxMap)
+        {
+            if (bNum)
+            {
+                selLut->SetMappedTableValue(cell,
+                                          sqlTab->GetDblValue(valcolidx, cell),
+                                          0,0,0,0);
+            }
+            else
+            {
+                selLut->SetMappedTableValue(cell,
+                                          cell,
+                                          0,0,0,0);
+            }
+        }
+        else
+        {
+            selLut->SetTableValue(cell, 0,0,0,0);
+        }
+    }
 
 
-    vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
-    a->SetMapper(mSelectionMapper);
+    // iterate over new selection range and set selection colour for
+    // seletec rows
+    int selcnt = 0;
+    foreach(QItemSelectionRange range, newSel)
+    {
+        const int top = range.top();
+        const int bottom = range.bottom();
+
+        // set colour for selected rows
+        for (int row=top; row <= bottom; ++row, ++selcnt)
+        {
+            if (mUseIdxMap)
+            {
+                if (bNum)
+                {
+                    selLut->SetMappedTableValue(row,
+                                              sqlTab->GetDblValue(valcolidx, row),
+                                              1,0,0,1);
+                }
+                else
+                {
+                    selLut->SetMappedTableValue(row,
+                                              row,
+                                              1,0,0,1);
+                }
+            }
+            else
+            {
+                selLut->SetTableValue(row, 1,0,0,1);
+            }
 
 
-    mSelectionActor = a;
-    mRenderer->AddActor(a);
+            if (mHasSelBox)
+            {
+                double minX = sqlTab->GetIntValue("minX", row) * mSpacing[0] + mOrigin[0];
+                double minY = mOrigin[1] + mSpacing[1] + (sqlTab->GetIntValue("maxY", row) * mSpacing[1]);
+                double minZ = 0;
+                double maxX = sqlTab->GetIntValue("maxX", row) * mSpacing[0] + mOrigin[0] + mSpacing[0];
+                double maxY = mOrigin[1] + (sqlTab->GetIntValue("minY", row) * mSpacing[1]);
+                double maxZ = 0;
 
+                mSelBBox[0] = minX < mSelBBox[0] ? minX : mSelBBox[0];
+                mSelBBox[1] = maxX > mSelBBox[1] ? maxX : mSelBBox[1];
+                mSelBBox[2] = minY < mSelBBox[2] ? minY : mSelBBox[2];
+                mSelBBox[3] = maxY > mSelBBox[3] ? maxY : mSelBBox[3];
+                mSelBBox[4] = minZ < mSelBBox[4] ? minZ : mSelBBox[4];
+                mSelBBox[5] = maxZ > mSelBBox[5] ? maxZ : mSelBBox[5];
+            }
+        }
+    }
+    sqlTab->CloseTable();
+
+    // set selection look-up table and selection
+    // 'layer' visibility
+    this->mImgSelSlice->SetVisibility(selcnt);
+    if (mUseIdxMap)
+    {
+        selLut->SetIndexedLookup(0);
+        selLut->SetUseIndexMapping(true);
+        selLut->SetNumberOfColors(ncells);
+    }
+    else
+    {
+        selLut->SetTableRange(0, ncells-1);
+    }
+
+    this->mImgSelProperty->SetUseLookupTableScalarRange(1);
+    this->mImgSelProperty->SetLookupTable(selLut);
+    this->mImgSelMapper->Update();
 
 	// call the base class implementation to do datatype agnostic stuff
     NMLayer::selectionChanged(newSel, oldSel);
 
+    mNumSelRows = selcnt;
+
 	emit visibilityChanged(this);
 	emit legendChanged(this);
+
+}
+
+void
+NMImageLayer::createImgSelData()
+{
+
+
 }
 
 void NMImageLayer::createTableView(void)
@@ -941,6 +1075,25 @@ NMImageLayer::updateAttributeTable()
         connectTableSel();
     }
 
+    // =========================================
+    // check for sel box fields
+
+    // setup list of required RAT fields for selection box support
+    QStringList bndCols;
+    bndCols << "minX" << "minY" << "maxX" << "maxY";
+
+    // determine whether the layer provides the required fields for
+    // supporting a selection box
+    mHasSelBox = true;
+    foreach(const QString& cn, bndCols)
+    {
+       if (this->getColumnIndex(cn) < 0)
+       {
+           mHasSelBox = false;
+           break;
+       }
+    }
+
     emit legendChanged(this);
 
 	return 1;
@@ -969,7 +1122,6 @@ NMImageLayer::setFileName(QString filename)
         // also we set the type of RAT we'd like to get from
         // the reader
         this->mReader->setRATType("ATTABLE_TYPE_SQLITE");
-        //this->mReader->setRATType("ATTABLE_TYPE_RAM");
     }
 
 	// TODO: find a more unambiguous way of determining
@@ -988,6 +1140,7 @@ NMImageLayer::setFileName(QString filename)
 
     this->mReader->setFileName(filename);
 	this->mReader->instantiateObject();
+
 	if (!this->mReader->isInitialised())
 	{
 		emit layerProcessingEnd();
@@ -1010,11 +1163,10 @@ NMImageLayer::setFileName(QString filename)
         }
     }
 
-    this->mReader->getInternalProc()->ReleaseDataFlagOn();
-
     // get original image attributes before we muck
     // around with scaling and overviews
     this->mReader->getBBox(this->mBBox);
+    this->mReader->getBBox(this->mSelBBox);
     this->mReader->getBBox(this->mBufferedBox);
     this->mReader->getSpacing(this->mSpacing);
     this->mReader->getOrigin(this->mOrigin);
@@ -1044,14 +1196,35 @@ NMImageLayer::setFileName(QString filename)
     m->SetNMLayer(this);
     m->SetBorder(1);
 
+    this->mImgSelMapper = vtkSmartPointer<NMVtkOpenGLImageSliceMapper>::New();
+    this->mImgSelMapper->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+    this->mImgSelMapper->SetNMLayer(this);
+    this->mImgSelMapper->SetBorder(1);
+
     vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
     a->SetMapper(m);
+
+    this->mImgSelSlice = vtkSmartPointer<vtkImageSlice>::New();
+    this->mImgSelSlice->SetMapper(mImgSelMapper);
+    this->mImgSelSlice->SetVisibility(0);
 
     mImgProp = vtkSmartPointer<vtkImageProperty>::New();
     mImgProp->SetInterpolationTypeToNearest();
     a->SetProperty(mImgProp);
+    mImgProp->SetLayerNumber(0);
 
-	this->mRenderer->AddViewProp(a);
+    this->mImgSelProperty = vtkSmartPointer<vtkImageProperty>::New();
+    this->mImgSelProperty->SetInterpolationTypeToNearest();
+    this->mImgSelSlice->SetProperty(this->mImgSelProperty);
+    this->mImgSelProperty->SetLayerNumber(1);
+
+    vtkImageStack* imgStack = vtkImageStack::New();
+    imgStack->AddImage(a);
+    imgStack->AddImage(mImgSelSlice);
+    imgStack->SetActiveLayer(0);
+
+    this->mRenderer->AddViewProp(imgStack);
+    imgStack->Delete();
 
 	this->mMapper = m;
     this->mActor = a;
@@ -1059,6 +1232,7 @@ NMImageLayer::setFileName(QString filename)
 	this->mImage = 0;
 	this->mFileName = filename;
     this->mMapper->Update();
+
     this->initiateLegend();
 
     emit layerProcessingEnd();
@@ -1111,7 +1285,6 @@ NMImageLayer::mapExtentChanged(void)
         return;
     }
 
-
     // get the bbox and fullsize of this layer
     double h_ext = mBBox[1] - mBBox[0];
     double v_ext = mBBox[3] - mBBox[2];
@@ -1151,16 +1324,23 @@ NMImageLayer::mapExtentChanged(void)
 
         // top left (note: display origin is bottom left)
         vtkInteractorObserver::ComputeDisplayToWorld(ren, 0,size[1]-1,0, wtl);
+
+        // since the image and image-selection mapper are hooked up to this
+        // method, we make sure that we don't do double the work, i.e. if
+        // nothing has changed ('cause the other mapper has called this function
+        // already), we don't have to reload new data;
+        if (wtl[0] == mWTLx)
+        {
+            return;
+        }
+
         wminx = wtl[0];
         wmaxy = wtl[1];
-
-        //this->world2pixel(wtl, ptl, true, false);
 
         // bottom right
         vtkInteractorObserver::ComputeDisplayToWorld(ren, size[0]-1,0,0, wbr);
         wmaxx = wbr[0];
         wminy = wbr[1];
-        //this->world2pixel(wbr, pbr, true, false);
 
         // only works good if
         wwidth = (wmaxx - wminx);
@@ -1180,15 +1360,6 @@ NMImageLayer::mapExtentChanged(void)
         //        NMDebugAI(<< "world: tl: " << wtl[0] << " " << wtl[1]
         //                  << " br: " << wbr[0] << " " << wbr[1] << std::endl);
     }
-//    else
-//    {
-//        // full extent and overview according to window size
-//        ren = this->mRenderWindow->GetRenderers()->GetFirstRenderer();
-//        size = ren->GetSize();
-
-//        h_res = h_ext / (double)size[0];
-//        v_res = v_ext / (double)size[1];
-//    }
 
     int ovidx = -1;
     double target_res;
@@ -1203,6 +1374,7 @@ NMImageLayer::mapExtentChanged(void)
         target_res = v_res;
         opt_res = ::fabs(mSpacing[1])*dpr;
     }
+    opt_res *= 0.15;
     double diff = ::fabs(opt_res-target_res);
 
 
@@ -1232,7 +1404,6 @@ NMImageLayer::mapExtentChanged(void)
     }
 
     if (this->mRenderer->GetViewProps()->GetNumberOfItems() > 0)
-    //if (ren)
     {
         // overview properties and visible extent
         int cols = ovidx >= 0 ? this->mReader->getOverviewSize(ovidx)[0]: fullcols;
@@ -1249,23 +1420,24 @@ NMImageLayer::mapExtentChanged(void)
         xe = (wmaxx - mBBox[0]) / uspacing[0];
         ye = (mBBox[3] - wminy) / ::fabs(uspacing[1]);
 
+
         // calc vtk update extent
         int uext[6];
         uext[0] = xo > cols-1 ? cols-1 : xo < 0 ? 0 : xo;
-        uext[2] = yo > rows-1 ? rows-1 : yo < 0 ? 0 : yo;
         uext[1] = xe > cols-1 ? cols-1 : xe < 0 ? 0 : xe;
+        uext[2] = yo > rows-1 ? rows-1 : yo < 0 ? 0 : yo;
         uext[3] = ye > rows-1 ? rows-1 : ye < 0 ? 0 : ye;
         uext[4] = 0;
         uext[5] = 0;
 
         // visible itk image region
-        int wext[6];
-        wext[0] = uext[0];
-        wext[1] = uext[1] - uext[0] + 1;
-        wext[2] = uext[2];
-        wext[3] = uext[3] - uext[2] + 1;
-        wext[4] = uext[4];
-        wext[5] = uext[4] == 0 && uext[5] == 0 ? 0 : uext[5] - uext[4] + 1;
+        int mVisibleRegion[6];
+        mVisibleRegion[0] = uext[0];                  // x-origin
+        mVisibleRegion[1] = uext[1] - uext[0] + 1;    // x-size
+        mVisibleRegion[2] = uext[2];                  // y-origin
+        mVisibleRegion[3] = uext[3] - uext[2] + 1;    // y-size
+        mVisibleRegion[4] = uext[4];                  // z-origin
+        mVisibleRegion[5] = uext[4] == 0 && uext[5] == 0 ? 0 : uext[5] - uext[4] + 1; // z-size
 
         //        NMDebugAI(<< "ov #" << ovidx << ": " << cols << "x" << rows << std::endl);
 
@@ -1275,25 +1447,30 @@ NMImageLayer::mapExtentChanged(void)
         //        NMDebugAI(<< "wext: " << wext[0] << "," << wext[2] << " "
         //                              << wext[1] << "x" << wext[3] << std::endl);
 
-        //        if (this->mNumBands == 3 && this->mBandMap.size() == 3)
-        //        {
-        //            this->mReader->setBandMap(this->mBandMap);
-        //        }
-        this->mReader->setOverviewIdx(ovidx, wext);
-        this->mMapper->UpdateInformation();
+        this->mReader->setOverviewIdx(ovidx, mVisibleRegion);
 
-        NMVtkOpenGLImageSliceMapper* ism = NMVtkOpenGLImageSliceMapper::SafeDownCast(this->mMapper);
-        ism->SetDisplayExtent(uext);
-        ism->SetDataWholeExtent(uext);
+        // update mapper, if actor is visible
+        if (this->mActor->GetVisibility())
+        {
+            this->mMapper->UpdateInformation();
+            NMVtkOpenGLImageSliceMapper* ism = NMVtkOpenGLImageSliceMapper::SafeDownCast(this->mMapper);
+            ism->SetDisplayExtent(uext);
+            ism->SetDataWholeExtent(uext);
+            this->mMapper->Update();
+        }
 
-        this->mMapper->Update();
+        // update the selection mapper if selection
+        // actor is visible
+        if (this->mImgSelSlice->GetVisibility())
+        {
+            this->mImgSelMapper->UpdateInformation();
+            this->mImgSelMapper->SetDisplayExtent(uext);
+            this->mImgSelMapper->SetDataWholeExtent(uext);
+            this->mImgSelMapper->Update();
+        }
     }
     else
     {
-        //        if (this->mNumBands == 3 && this->mBandMap.size() == 3)
-        //        {
-        //            this->mReader->setBandMap(this->mBandMap);
-        //        }
         this->mReader->setOverviewIdx(ovidx, 0);
     }
 
@@ -1960,6 +2137,7 @@ NMImageLayer::updateSourceBuffer(void)
             tabSize = this->mTableView->size();
             tabPos = this->mTableView->pos();
 
+            this->mTableView->clearSelection();
             this->mTableView->close();
             delete this->mTableView;
             mTableView = 0;
@@ -1979,6 +2157,7 @@ NMImageLayer::updateSourceBuffer(void)
             tabSize = mSqlTableView->size();
             tabPos = mSqlTableView->pos();
 
+            mSqlTableView->clearSelection();
             mSqlTableView->close();
             delete mSqlTableView;
             mSqlTableView = 0;
@@ -2042,6 +2221,15 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     if (imgWrapper.data() == 0)
 		return;
 
+    if (mTableView != nullptr)
+    {
+        mTableView->clearSelection();
+    }
+    if (mSqlTableView != nullptr)
+    {
+        mSqlTableView->clearSelection();
+    }
+
     this->mbUseOverviews = false;
 	this->mImage = imgWrapper->getDataObject();
     this->mOtbRAT = imgWrapper->getOTBTab();
@@ -2093,6 +2281,7 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     for(int i=0; i < 6; ++i)
     {
         this->mBBox[i] = bbox[i];
+        this->mSelBBox[i] = bbox[i];
     }
     delete bbox;
 
@@ -2100,66 +2289,6 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     emit layerLoaded();
 }
 
-//void NMImageLayer::setITKImage(itk::DataObject* img,
-//		otb::ImageIOBase::IOComponentType pixType,
-//		unsigned int numDims,
-//		unsigned int numBands)
-//{
-//	this->mImage = img;
-//	this->mComponentType = pixType;
-//	this->mNumDimensions = numDims;
-//	this->mNumBands = numBands;
-//
-//	// concatenate the pipeline
-//	this->mPipeconn->setInput(img, pixType, numDims, numBands);
-//
-//	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
-//	m->SetInputConnection(this->mPipeconn->getOutputPort());
-//
-//	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
-//	a->SetMapper(m);
-//
-//	this->mRenderer->AddViewProp(a);
-//
-//	this->mMapper = m;
-//	this->mActor = a;
-//
-////	switch (pixType)
-////	{
-////	case otb::ImageIOBase::UCHAR:
-////		getInternalBBox( unsigned char );
-////		break;
-////	case otb::ImageIOBase::CHAR:
-////		getInternalBBox( char );
-////		break;
-////	case otb::ImageIOBase::USHORT:
-////		getInternalBBox( unsigned short );
-////		break;
-////	case otb::ImageIOBase::SHORT:
-////		getInternalBBox( short );
-////		break;
-////	case otb::ImageIOBase::UINT:
-////		getInternalBBox( unsigned int );
-////		break;
-////	case otb::ImageIOBase::INT:
-////		getInternalBBox( int );
-////		break;
-////	case otb::ImageIOBase::ULONG:
-////		getInternalBBox( unsigned long );
-////		break;
-////	case otb::ImageIOBase::LONG:
-////		getInternalBBox( long );
-////		break;
-////	case otb::ImageIOBase::FLOAT:
-////		getInternalBBox( float );
-////		break;
-////	case otb::ImageIOBase::DOUBLE:
-////		getInternalBBox( double );
-////		break;
-////	default:
-////		break;
-////	}
-//}
 
 void NMImageLayer::getBBox(double bbox[6])
 {
@@ -2320,7 +2449,7 @@ NMImageLayer::writeDataSet(void)
 	if (this->mFileName.isEmpty())
 	{
         NMLogError(<< ctxNMImageLayer << ": No valid file name set! Abort!")
-		NMDebugCtx(ctxNMImageLayer, << "done!");
+        NMDebugCtx(ctxNMImageLayer, << "done!");
 		return;
 	}
 

@@ -73,7 +73,8 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
       mLegendClassType(NM_CLASS_JENKS), mColourRamp(NM_RAMP_BLUE2RED_DIV),
       mLegendType(NM_LEGEND_SINGLESYMBOL),
       mIsIn3DMode(false),
-      mUseIdxMap(false)
+      mUseIdxMap(false),
+      mHasSelBox(false), mNumSelRows(0)
 {
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
@@ -694,6 +695,7 @@ NMLayer::updateMapping(void)
     NMDebugCtx(ctxNMLayer, << "...");
 	this->resetLegendInfo();
 
+    mUseIdxMap = false;
 	bool clrfunc = false;
 	switch(mLegendType)
 	{
@@ -757,7 +759,8 @@ NMLayer::updateMapping(void)
     }
     else if (mLayerType == NM_VECTOR_LAYER)
 	{
-		vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
+        //vtkOGRLayerMapper* mapper = vtkOGRLayerMapper::SafeDownCast(this->mMapper);
+        vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(this->mMapper);
 		if (!clrfunc)
 			mapper->SetLookupTable(mLookupTable);
 		else
@@ -2691,6 +2694,12 @@ void NMLayer::getBBox(double bbox[6])
 
 	for (int i=0; i < 6; i++)
 		bbox[i] = this->mBBox[i];
+}
+
+const double*
+NMLayer::getSelectionBBox()
+{
+    return this->mSelBBox;
 }
 
 void NMLayer::setVisible(bool visible)

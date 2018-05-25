@@ -56,6 +56,7 @@
 #include "vtkUnstructuredGrid.h"
 #include "vtkPolyData.h"
 #include "vtkOGRLayerMapper.h"
+#include "vtkPolyDataMapper.h"
 #include "vtkColorTransferFunction.h"
 //#include "vtkColorTransferFunctionSpecialNodes.h"
 #include "vtkLookupTable.h"
@@ -235,8 +236,9 @@ public:
     void saveLegend(const QString& filename);
 
 	virtual void setBBox(double bbox[6]);
-	const double* getBBox(void);
+    const double* getBBox(void);
 	virtual void getBBox(double bbox[6]);
+    const double* getSelectionBBox(void);
 
 	// gets sum of covered feature area for
 	// polygon cells; and bounding box
@@ -267,6 +269,9 @@ public:
 	bool isSelectable(void);
 	virtual void setSelectable(bool selectable);
     bool isInteractive(void);
+
+    bool hasSelBox(void)
+        {return mHasSelBox;}
 
 
 	//-----------------------------------------------
@@ -372,9 +377,14 @@ protected:
 	vtkSmartPointer<vtkAbstractMapper> mMapper;
     vtkSmartPointer<vtkProp3D> mActor;
 
+
 	vtkSmartPointer<vtkPolyData> mCellSelection;
-	vtkSmartPointer<vtkOGRLayerMapper> mSelectionMapper;
-	vtkSmartPointer<vtkProp3D>	mSelectionActor;
+#ifdef VTK_OPENGL2
+    vtkSmartPointer<vtkPolyDataMapper> mSelectionMapper;
+#else
+    vtkSmartPointer<vtkOGRLayerMapper> mSelectionMapper;
+#endif
+    vtkSmartPointer<vtkProp3D>	mSelectionActor;
 
 	void* mSpatialiteCache;
 	sqlite3* mSqlViewConn;
@@ -423,9 +433,12 @@ protected:
 
 	// Field indices containing RGBA components
 	int mClrTabIdx[4];
+
 	long mNumClasses;
 	long mNumLegendRows;
+    long mNumSelRows;
     bool mUseIdxMap;
+    bool mHasSelBox;
 
 	// legend stats
 	// 0: min
@@ -443,7 +456,6 @@ protected:
     QString mLegendFileName;
     NMLayer::NMLegendType mLegendFileLegendType;
     NMLayer::NMLegendClassType mLegendFileLegendClassType;
-
 
     QString mLegendIndexField;
 	QString mLegendValueField;
@@ -477,6 +489,7 @@ protected:
 	int mLayerPos;
 	bool mHasChanged;
 	double mBBox[6];
+    double mSelBBox[6];
 	double mTotalArea;
 
 	virtual void createTableView(void);

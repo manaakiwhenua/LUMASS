@@ -4,6 +4,7 @@
 
 cmake_minimum_required(VERSION 2.8.9)
 cmake_policy(SET CMP0003 NEW)
+cmake_policy(SET CMP0053 NEW)
 # from version 2.8.11 onwards
 if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.11")
 	cmake_policy(SET CMP0020 NEW)
@@ -114,7 +115,7 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 57)
+SET(LUMASS_VERSION_REVISION 58)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 

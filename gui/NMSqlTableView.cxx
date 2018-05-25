@@ -94,6 +94,8 @@
 #include "vtkBrush.h"
 #include "vtkTextProperty.h"
 
+#include "itkNumericTraits.h"
+
 
 #ifndef NM_ENABLE_LOGGER
 #   define NM_ENABLE_LOGGER
@@ -111,7 +113,7 @@ double NMSqlTableView::angle = 0;
 NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
 	: QWidget(parent), mViewMode(NMTABVIEW_ATTRTABLE),
 	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
-      mSelectionModel(0), mbIsSelectable(true), mSortFilter(0), mQueryCounter(0)
+      mSelectionModel(0), mbIsSelectable(true), mSortFilter(0), mQueryCounter(0), mbHaveCoords(false)
 {
     this->mTableView = new QTableView(this);
 
@@ -135,7 +137,7 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
 NMSqlTableView::NMSqlTableView(QSqlTableModel *model, ViewMode mode, QWidget* parent)
 	: QWidget(parent), mViewMode(mode),
 	  mModel(model), mbSwitchSelection(false), mbClearSelection(false),
-      mSelectionModel(0), mbIsSelectable(true), mSortFilter(0), mQueryCounter(0)
+      mSelectionModel(0), mbIsSelectable(true), mSortFilter(0), mQueryCounter(0), mbHaveCoords(false)
 {
     this->mTableView = new QTableView(this);
     mSortFilter = new NMSelSortSqlTableProxyModel(this);
@@ -165,6 +167,105 @@ NMSqlTableView::~NMSqlTableView()
     this->mModel = 0;
 }
 
+void
+NMSqlTableView::zoomToCoords()
+{
+    if (!mbHaveCoords || this->mlNumSelRecs == 0)
+    {
+        return;
+    }
+
+    QString qstr = QString("select minXCoord, maxXCoord, minYCoord, maxYCoord");
+    int minZIdx = this->getColumnIndex("minZCoord");
+    int maxZIdx = this->getColumnIndex("maxZCoord");
+    bool bZ = false;
+    if (minZIdx >= 0 && maxZIdx >=0)
+    {
+        qstr += ", minZCoord, maxZCoord";
+        bZ = true;
+    }
+
+    qstr += QString(" from %1 where %2;")
+            .arg(mModel->tableName())
+            .arg(this->updateQueryString());
+
+    QSqlDatabase db = this->mModel->database();
+    db.transaction();
+    QSqlQuery corQuery(db);
+    corQuery.setForwardOnly(true);
+
+    if (!corQuery.exec(qstr))
+    {
+        NMLogError(<< ctx << ": " << corQuery.lastError().text().toStdString());
+        corQuery.finish();
+        db.commit();
+        return;
+    }
+
+    double box[6];
+    for (int d=0; d < 3; ++d)
+    {
+        box[d*2] = itk::NumericTraits<double>::max();
+        box[d*2+1] = itk::NumericTraits<double>::NonpositiveMin();
+    }
+
+    while (corQuery.next())
+    {
+        const double minX = corQuery.value(0).toDouble();
+        const double maxX = corQuery.value(1).toDouble();
+        const double minY = corQuery.value(2).toDouble();
+        const double maxY = corQuery.value(3).toDouble();
+        double minZ = 0;
+        double maxZ = 0;
+        if (bZ)
+        {
+            minZ = corQuery.value(4).toDouble();
+            maxZ = corQuery.value(5).toDouble();
+        }
+
+        box[0] = minX < box[0] ? minX : box[0];
+        box[1] = maxX > box[1] ? maxX : box[1];
+        box[2] = minY < box[2] ? minY : box[2];
+        box[3] = maxY > box[3] ? maxY : box[3];
+        box[4] = minZ < box[4] ? minZ : box[4];
+        box[5] = maxZ > box[5] ? maxZ : box[5];
+    }
+
+    corQuery.finish();
+    db.commit();
+
+    emit zoomToTableCoords(box);
+}
+
+void
+NMSqlTableView::checkCoords(void)
+{
+    mbHaveCoords = false;
+    QStringList reqCols;
+    reqCols << "minXCoord" << "minYCoord" << "maxXCoord" << "maxYCoord";
+    QList<QVariant::Type> allowedTypes;
+    allowedTypes << QVariant::Double << QVariant::Int << QVariant::LongLong;
+    QSet<QString> availCols;
+
+    for (int c=0; c < this->mModel->columnCount(); ++c)
+    {
+        QString cname = this->mModel->headerData(c, Qt::Horizontal, Qt::DisplayRole).toString();
+        if (reqCols.contains(cname))
+        {
+            QModelIndex mid = this->mModel->index(0, c);
+            if (allowedTypes.contains(this->mModel->data(mid).type()))
+            {
+                availCols << cname;
+            }
+        }
+    }
+
+    if (availCols.count() == 4)
+    {
+        mbHaveCoords = true;
+    }
+}
+
 void NMSqlTableView::initView()
 {
     this->setWindowIcon(QIcon(":table_object.png"));
@@ -183,6 +284,22 @@ void NMSqlTableView::initView()
 
 	// ---------------------------- THE PROGRESS DIALOG -------------------
 	//mProgressDialog = new QProgressDialog(this);
+
+    // ------------------ check for coords zoom support--------------------
+    checkCoords();
+
+
+    // init some other members that need to be established
+    // before we initially update the selection
+    this->mColHeadMenu = new QMenu(this);
+
+    // and the
+    mActZoom = new QAction(this->mColHeadMenu);
+    mActZoom->setText(tr("Zoom To Selection"));
+    if (!mbHaveCoords)
+    {
+        mActZoom->setEnabled(false);
+    }
 
 
 	// ------------------ SET UP STATUS BAR ------------------------------
@@ -241,8 +358,6 @@ void NMSqlTableView::initView()
 	// install an event filter on the itemWidget
     this->mTableView->viewport()->installEventFilter(this);
 
-	// init the context menu of column headers
-	this->mColHeadMenu = new QMenu(this);
     //    if (this->mViewMode == NMTABVIEW_PARATABLE)
     //    {
     //        Qt::WindowFlags flags = mColHeadMenu->windowFlags();
@@ -288,7 +403,6 @@ void NMSqlTableView::initView()
         actAddRows = new QAction(this->mColHeadMenu);
         actAddRows->setText(tr("Add Rows ..."));
     }
-
 
 	QAction* actDelete;
     QAction* actIndex;
@@ -348,6 +462,10 @@ void NMSqlTableView::initView()
 		this->mColHeadMenu->addAction(actDelete);
 	}
 	this->mColHeadMenu->addSeparator();
+
+    this->mColHeadMenu->addAction(mActZoom);
+
+    this->mColHeadMenu->addSeparator();
 	this->mColHeadMenu->addAction(actHide);
 	this->mColHeadMenu->addAction(actUnHide);
 
@@ -384,6 +502,7 @@ void NMSqlTableView::initView()
     this->connect(actFilter, SIGNAL(triggered()), this, SLOT(userQuery()));
 	this->connect(actHide, SIGNAL(triggered()), this, SLOT(callHideColumn()));
 	this->connect(actUnHide, SIGNAL(triggered()), this, SLOT(callUnHideColumn()));
+    this->connect(mActZoom, SIGNAL(triggered()), this, SLOT(zoomToCoords()));
 
     if (mViewMode != NMTABVIEW_RASMETADATA)
 	{
@@ -648,7 +767,7 @@ NMSqlTableView::setSelectionModel(NMFastTrackSelectionModel* selectionModel)
     this->connectSelModels(true);
 	if (this->mSelectionModel)
 	{
-        this->updateProxySelection(QItemSelection(), QItemSelection());
+        this->updateProxySelection(mSelectionModel->getSelection(), QItemSelection());
 	}
 }
 
@@ -782,7 +901,8 @@ void NMSqlTableView::userQuery()
     NMGlobalHelper helper;
     QString sqlStmt = helper.getMultiLineInput("Arbitrary SQL-SELECT Query",
                                                queryTemplate, this);
-    if (sqlStmt.compare("0") == 0 || sqlStmt.isEmpty())
+    //if (sqlStmt.compare("0") == 0 || sqlStmt.isEmpty())
+    if (sqlStmt.isEmpty())
     {
         NMDebugCtx(ctx, << "done!");
         return;
@@ -961,6 +1081,10 @@ NMSqlTableView::updateSelectionAdmin(long numSel)
         this->mBtnClearSelection->setEnabled(true);
         this->mBtnSwitchSelection->setEnabled(true);
         this->mChkSelectedRecsOnly->setEnabled(true);
+        if (mbHaveCoords)
+        {
+            this->mActZoom->setEnabled(true);
+        }
     }
     else
     {
@@ -968,6 +1092,7 @@ NMSqlTableView::updateSelectionAdmin(long numSel)
         this->mBtnSwitchSelection->setEnabled(false);
         this->mChkSelectedRecsOnly->setEnabled(false);
         this->mChkSelectedRecsOnly->setChecked(false);
+        this->mActZoom->setEnabled(false);
     }
 }
 
@@ -2218,14 +2343,7 @@ NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 			this->mlLastClickedRow = row;
             if (row != -1 && mbIsSelectable)
 			{
-//                QModelIndex indx = this->mSortFilter->index(row, 0, QModelIndex());
-//                QModelIndex srcIndx = this->mSortFilter->mapToSource(indx);
-//                long srcRow = srcIndx.row();
-                //if (this->mbIsSelectable)
-				{
-                    this->toggleRow(row);
-				}
-//                emit notifyLastClickedRow(srcRow);
+                this->toggleRow(row);
 			}
 		}
 		return true;
@@ -2362,8 +2480,8 @@ NMSqlTableView::selectionQuery(void)
     NMDebugCtx(ctx, << "done!");
 }
 
-void
-NMSqlTableView::updateSelection(bool swap)
+QString
+NMSqlTableView::updateQueryString(bool swap)
 {
     // we build the final query from the
     // user's selection query (comprising the entire history of
@@ -2416,6 +2534,15 @@ NMSqlTableView::updateSelection(bool swap)
         }
     }
 
+    return queryStr;
+}
+
+void
+NMSqlTableView::updateSelection(bool swap)
+{
+    // udpate the query string
+    QString queryStr = this->updateQueryString(swap);
+
     NMGlobalHelper h;
     h.startBusy();
 
@@ -2447,6 +2574,7 @@ void NMSqlTableView::clearSelection()
 {
     mSortFilter->clearSelection();
     mProxySelModel->clearSelection();
+    mSelectionModel->setSelection(QItemSelection());
     mSelectionModel->clearSelection();
     updateSelectionAdmin(0);
     mTableView->reset();
@@ -2467,6 +2595,11 @@ NMSqlTableView::setSelection(const QItemSelection &isel)
 {
     this->clearSelection();
     this->mSelectionModel->setSelection(isel);
+
+//    QItemSelection dsel;
+//    this->updateProxySelection(isel, dsel);
+//    QItemSelection asel;
+//    this->updateSelectionAdmin(asel, dsel);
 }
 
 void
@@ -2566,18 +2699,59 @@ NMSqlTableView::toggleRow(int row)
         return;
     }
 
-    QModelIndex proxyIdx = mSortFilter->index(row, 0);
-    QModelIndex srcIdx = mSortFilter->mapToSource(proxyIdx);
-    if (!srcIdx.isValid())
+    // query the rowid of the source model for the given
+    // row in the table view
+    QModelIndex mir = mModel->index(row, 0);
+    QVariant varData = this->mTableView->model()->data(mir);
+    QString cellData;
+    if (varData.type() == QVariant::String)
     {
+        cellData = QString("'%1'").arg(varData.toString());
+    }
+    else
+    {
+        cellData = varData.toString();
+    }
+
+    QString rowQueryStr = QString("select %1 from %2 where %3 = %4")
+                        .arg(mPrimaryKey)
+                        .arg(mModel->tableName())
+                        .arg(mSortFilter->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString())
+                        .arg(cellData);
+
+    QSqlQuery rowQuery(mModel->database());
+    if (!rowQuery.exec(rowQueryStr))
+    {
+        NMLogError(<< "NMSqlTableView::toggleRow(): "
+                   << rowQuery.lastError().text().toStdString() << std::endl);
         return;
     }
+
+    if (!rowQuery.next())
+    {
+        NMLogError(<< "NMSqlTableView::toggleRow(): "
+                   << rowQuery.lastError().text().toStdString() << std::endl);
+        return;
+    }
+
+    int therowid = rowQuery.value(0).toInt();
+
+//    NMLogDebug(<< "table view toggleRow: row=" << row);
+
+//    QModelIndex proxyIdx = mSortFilter->index(row, 0);
+//    QModelIndex srcIdx = mSortFilter->mapToSource(proxyIdx);
+//    if (!srcIdx.isValid())
+//    {
+//        return;
+//    }
+
+
 
     mCurrentQuery.clear();
     mCurrentSwapQuery.clear();
     mbSwitchSelection = false;
 
-    int srcRow = srcIdx.row();
+    int srcRow = therowid;//srcIdx.row();
     int idx = mPickedRows.indexOf(srcRow);
     if (idx == -1)
     {

@@ -136,6 +136,7 @@ public slots:
     void processParaTableRightClick(QGraphicsSceneMouseEvent *gsme, QGraphicsItem *gi);
     void processParaTableDblClick(QGraphicsSceneMouseEvent*);
     void plotScatter();
+    void zoomToCoords();
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);
@@ -147,6 +148,7 @@ signals:
 			const QString& covname);
 	void notifyDeleteRasLayer(const QString& imagespec);
     void tableViewClosed();
+    void zoomToTableCoords(double* box);
 
 protected slots:
     void procRowsInserted(QModelIndex parent, int first, int last);
@@ -165,7 +167,7 @@ protected:
 
     //    void updateModelSelection();
     void updateSelection(bool swap=false);
-
+    QString updateQueryString(bool swap=false);
 
 	bool writeDelimTxt(const QString& fileName, bool bselectedRecs);
     //	vtkSmartPointer<vtkSQLiteDatabase> writeSqliteDb(
@@ -189,6 +191,7 @@ protected:
 	void prepareProgressDlg(NMTableCalculator* obj,
 			const QString& msg, int maxrange=0);
 	void cleanupProgressDlg(NMTableCalculator* obj, int maxrange=0);
+    void checkCoords(void);
 
     void closeEvent(QCloseEvent *event);
 
@@ -236,6 +239,8 @@ protected:
 	QMenu* mManageLayerMenu;
 
 	QAction* mActSel;
+    QAction* mActZoom;
+    bool mbHaveCoords;
 
     NMLogger* mLogger;
 

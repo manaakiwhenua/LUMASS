@@ -1364,19 +1364,19 @@ SQLiteTable::sqliteStepCheck(const int& rc)
 void
 SQLiteTable::SetValue(const std::string& sColName, long long int idx, double value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     // we just check for the database and leave the rest
     // to sqlite3
     if (m_db == 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     const int& colidx = this->ColumnExists(sColName);
     if (colidx < 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
     sqlite3_stmt* stmt = m_vStmtUpdate.at(colidx);
@@ -1387,14 +1387,14 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, double val
     int rc = sqlite3_bind_double(stmt, 1, value);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     rc = sqlite3_bind_int64(stmt, 2, idx);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1405,23 +1405,23 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, double val
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 }
 
 void
 SQLiteTable::SetValue(const std::string& sColName, long long int idx, long long int value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     const int& colidx = this->ColumnExists(sColName);
     if (colidx < 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
     sqlite3_stmt* stmt = m_vStmtUpdate.at(colidx);
@@ -1433,14 +1433,14 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, long long 
     int rc = sqlite3_bind_int64(stmt, 1, value);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     rc = sqlite3_bind_int64(stmt, 2, idx);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1450,23 +1450,23 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, long long 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 }
 
 void
 SQLiteTable::SetValue(const std::string& sColName, long long int idx, std::string value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     const int& colidx = this->ColumnExists(sColName);
     if (colidx < 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
     sqlite3_stmt* stmt = m_vStmtUpdate.at(colidx);
@@ -1477,14 +1477,14 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, std::strin
     int rc = sqlite3_bind_text(stmt, 1, value.c_str(), -1, 0);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     rc = sqlite3_bind_int64(stmt, 2, idx);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1494,25 +1494,25 @@ SQLiteTable::SetValue(const std::string& sColName, long long int idx, std::strin
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 }
 
 void
 SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClause, double value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     // we just check for the database and leave the rest
     // to sqlite3
     if (m_db == 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     const int& colidx = this->ColumnExists(sColName);
     if (colidx < 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1524,7 +1524,7 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
                             -1, &stmt_upd, 0);
     if (sqliteError(rc, &stmt_upd))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1532,23 +1532,23 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
     sqliteStepCheck(rc);
 
     sqlite3_finalize(stmt_upd);
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 }
 
 void
 SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClause, long long int value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     const int& colidx = this->ColumnExists(sColName);
     if (colidx < 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1560,7 +1560,7 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
                             -1, &stmt_upd, 0);
     if (sqliteError(rc, &stmt_upd))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1570,23 +1570,23 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
     sqlite3_finalize(stmt_upd);
 
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 }
 
 void
 SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClause, std::string value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     const int& colidx = this->ColumnExists(sColName);
     if (colidx < 0)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1598,7 +1598,7 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
                             -1, &stmt_upd, 0);
     if (sqliteError(rc, &stmt_upd))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -1607,7 +1607,7 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
 
     sqlite3_finalize(stmt_upd);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 }
 
 bool
@@ -2031,16 +2031,16 @@ SQLiteTable::RemoveColumn(const std::string& name)
 
 void SQLiteTable::SetValue(int col, long long int row, double value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
 		return;
     }
 
 	if (row < 0 || row >= m_iNumRows)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
 		return;
     }
 
@@ -2050,14 +2050,14 @@ void SQLiteTable::SetValue(int col, long long int row, double value)
     int rc = sqlite3_bind_double(stmt, 1, value);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     rc = sqlite3_bind_int64(stmt, 2, row);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2067,7 +2067,7 @@ void SQLiteTable::SetValue(int col, long long int row, double value)
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 
 //	const int& tidx = m_vPosition[col];
 //	switch (m_vTypes[col])
@@ -2096,16 +2096,16 @@ void SQLiteTable::SetValue(int col, long long int row, double value)
 
 void SQLiteTable::SetValue(int col, long long int row, long long int value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
 		return;
     }
 
 	if (row < 0 || row >= m_iNumRows)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2114,14 +2114,14 @@ void SQLiteTable::SetValue(int col, long long int row, long long int value)
     int rc = sqlite3_bind_int64(stmt, 1, value);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     rc = sqlite3_bind_int64(stmt, 2, row);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2131,7 +2131,7 @@ void SQLiteTable::SetValue(int col, long long int row, long long int value)
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 
     //	const int& tidx = m_vPosition[col];
     //	switch (m_vTypes[col])
@@ -2160,16 +2160,16 @@ void SQLiteTable::SetValue(int col, long long int row, long long int value)
 
 void SQLiteTable::SetValue(int col, long long int row, std::string value)
 {
-    NMDebugCtx(_ctxotbtab, << "...");
+//    NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     if (row < 0 || row >= m_iNumRows)
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2178,7 +2178,7 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
     int rc = sqlite3_bind_text(stmt, 1, value.c_str(), -1, 0);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2186,7 +2186,7 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
     rc = sqlite3_bind_int64(stmt, 2, row);
     if (sqliteError(rc, &stmt))
     {
-        NMDebugCtx(_ctxotbtab, << "done!");
+//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2197,7 +2197,7 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    NMDebugCtx(_ctxotbtab, << "done!");
+//    NMDebugCtx(_ctxotbtab, << "done!");
 
 //	const int& tidx = m_vPosition[col];
 //	switch (m_vTypes[col])

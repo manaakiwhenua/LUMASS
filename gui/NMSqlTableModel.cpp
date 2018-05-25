@@ -117,7 +117,7 @@ NMSqlTableModel::getNMPrimaryKey()
     QString primaryKey = "";
 
     QSqlIndex pk = this->primaryKey();
-    if (!pk.isEmpty())
+    if (!pk.isEmpty() && !pk.fieldName(0).isEmpty())
     {
         primaryKey = pk.fieldName(0);
     }

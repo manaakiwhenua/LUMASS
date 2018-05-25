@@ -41,6 +41,8 @@
 #define __otbNMImageReader_txx
 #include "otbNMImageReader.h"
 
+#include "nmlog.h"
+
 #include "itkMetaDataObject.h"
 
 #include "otbMacro.h"
@@ -646,6 +648,44 @@ NMImageReader<TOutputImage>
     }
 
     output->SetLargestPossibleRegion(region);
+
+    // ==================================================================
+    // log provenance information
+    // provenance information
+    std::stringstream sstr;
+
+    // create table entity
+    std::vector<std::string> args;
+    std::vector<std::string> attrs;
+
+    std::string fn = this->GetFileName();
+    std::size_t pos1 = fn.find_last_of("/\\");
+    std::string basename = fn.substr(pos1+1);
+    std::size_t pos2 = basename.find_last_of('.');
+    std::string ext = basename.substr(pos2+1);
+
+    sstr << "img:" << basename;
+    args.push_back(sstr.str());
+
+    sstr.str("");
+    sstr << "nm:FileName=\"" << this->GetFileName() << "\"";
+    attrs.push_back(sstr.str());
+
+    sstr.str("");
+    sstr << "nm:Format=\"" << ext << "\"";
+    attrs.push_back(sstr.str());
+
+    NMProcProvN(itk::NMLogEvent::NM_PROV_ENTITY, args, attrs);
+
+    // provn used by
+    args.clear();
+    attrs.clear();
+
+    sstr.str("");
+    sstr << "img:" << basename;
+    args.push_back(sstr.str());
+
+    NMProcProvN(itk::NMLogEvent::NM_PROV_USAGE, args, attrs);
 
 }
 

@@ -196,7 +196,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         // present, the overall modelling run is not interrupted
         NMProcWarn(<< "SQL processing failed - "
                    << m_vRAT.at(0)->getLastLogMsg());
-        return;
+        //return;
     }
 
     for (int i=1; i < m_vRAT.size(); ++i)
@@ -212,7 +212,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
             // the host database is closed anyway ...
             NMProcWarn(<< "Failed detaching databases - "
                        << m_vRAT.at(i)->getLastLogMsg());
-            return;
+           // return;
         }
     }
     this->UpdateProgress(0.8);
@@ -224,6 +224,60 @@ void SQLiteProcessor< TInputImage, TOutputImage >
     }
 
     this->UpdateProgress(1.0);
+
+
+    for (int d=0; d < m_vRAT.size(); ++d)
+    {
+        // provenance information
+        std::stringstream sstr;
+
+        // create table entity
+        std::vector<std::string> args;
+        std::vector<std::string> attrs;
+
+        sstr << "db:" << m_vRAT.at(d)->GetTableName();
+        args.push_back(sstr.str());
+
+        sstr.str("");
+        sstr << "nm:DbFileName=\"" << m_vRAT.at(d)->GetDbFileName() << "\"";
+        attrs.push_back(sstr.str());
+
+        sstr.str("");
+        sstr << "nm:TableName=\"" << m_vRAT.at(d)->GetTableName() << "\"";
+        attrs.push_back(sstr.str());
+
+        NMProcProvN(itk::NMLogEvent::NM_PROV_ENTITY, args, attrs);
+
+        // provn used by
+        args.clear();
+        attrs.clear();
+
+        sstr.str("");
+        sstr << "db:" << m_vRAT.at(d)->GetTableName();
+        args.push_back(sstr.str());
+
+        NMProcProvN(itk::NMLogEvent::NM_PROV_USAGE, args, attrs);
+
+        if (d == 0)
+        {
+            args.clear();
+            attrs.clear();
+
+            sstr.str("");
+            sstr << "db:" << m_vRAT.at(d)->GetTableName();
+            args.push_back(sstr.str());
+
+            sstr.str("");
+            sstr << "db:" << m_vRAT.at(d)->GetTableName();
+            args.push_back(sstr.str());
+
+            sstr.str("");
+            sstr << "prov:type='prov:Revision'";
+            attrs.push_back(sstr.str());
+
+            NMProcProvN(itk::NMLogEvent::NM_PROV_DERIVATION, args, attrs);
+        }
+    }
 }
 
 

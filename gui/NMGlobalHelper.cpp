@@ -65,10 +65,10 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     //NMDebugAI(<< "dialog closed: " << ret << std::endl);
 
     QString retText = textEdit->toPlainText();
-    if (ret == 0)
-    {
-        retText = "0";
-    }
+    //    if (ret == 0)
+    //    {
+    //        retText = "0";
+    //    }
     //NMDebugAI(<< "user text: " << retText.toStdString() << std::endl);
 
     dlg->deleteLater();
@@ -265,7 +265,7 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
         return newsel;
     }
 
-    int maxcolidx = model->columnCount();
+    int maxcolidx = model->columnCount()-1;
 
     int start = ids[0];
     int end = start;
@@ -273,8 +273,8 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
     {
         if (ids[i] > end+1)
         {
-            const QModelIndex& tl = model->index(start, maxcolidx);
-            const QModelIndex& br = model->index(end, maxcolidx);
+            QModelIndex tl = model->index(start, 0);
+            QModelIndex br = model->index(end, maxcolidx);
             newsel.append(QItemSelectionRange(tl, br));
 
             start = ids[i];
@@ -288,8 +288,8 @@ NMGlobalHelper::selectRows(const QAbstractItemModel* model,
 
     //if (end != ids.last())
     {
-        const QModelIndex& tl = model->index(start, maxcolidx);
-        const QModelIndex& br = model->index(ids.last(), maxcolidx);
+        QModelIndex tl = model->index(start, 0);
+        QModelIndex br = model->index(ids.last(), maxcolidx);
         newsel.append(QItemSelectionRange(tl, br));
 
     }

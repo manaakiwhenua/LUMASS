@@ -81,7 +81,7 @@ class NMTableView;
 class NMVectorLayer;
 class NMLogWidget;
 class QtProperty;
-class NMAction;
+class NMAbstractAction;
 class NMListWidget;
 
 namespace Ui
@@ -133,7 +133,7 @@ public:
     NMLogger* getLogger(){return mLogger;}
 
     QStringList getUserToolsList(void);
-    const NMAction* getUserTool(const QString& toolName);
+    const NMAbstractAction* getUserTool(const QString& toolName);
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector* getRasdamanConnector(void);
@@ -213,6 +213,7 @@ public slots:
     void toggleSelectTool(bool toggled);
     void toggleLinkTool(bool toggled);
     void zoomToContent();
+    void zoomToCoords(double* box);
     void updateExclusiveActions(const QString& checkedAction,
                                 bool toggled);
     void configureSettings(void);
@@ -225,21 +226,21 @@ public slots:
     void readSettings(void);
     QMenu* createPopupMenu(void);
 
-    // USER MODEL
+    // USER MODELS & TOOLS
     void addUserToolBar();
     void createUserToolBar(const QString& tbname,
                            const QByteArray& ba=QByteArray());
     void updateLastToolBar(void);
     void removeUserToolBar(void);
-    void addUserToolToToolBar();
+    void addUserModelToolToToolBar();
 
     QString getUserModelPath(const QString& model);
     void executeUserModel(void);
-    void updateUserModelTriggerParameters(NMAction* uact);
+    void updateUserModelTriggerParameters(NMAbstractAction* uact);
     void scanUserModels(void);
     void displayUserModelOutput(void);
-    void loadUserTool(const QString& userModel, const QString& toolBarName);
-    void removeUserTool(NMAction* act);
+    void loadUserModelTool(const QString& userModel, const QString& toolBarName);
+    void removeUserTool(NMAbstractAction* act);
 
 
 
@@ -563,7 +564,7 @@ private:
 	// (unique) table name
 	QMap<QString, QPair<void*, sqlite3*> > mTableAdminObjects;
 
-    QMap<QString, NMAction*> mUserActions;
+    QMap<QString, NMAbstractAction*> mUserActions;
 
     QtTreePropertyBrowser* mSettingsBrowser;
 

@@ -81,7 +81,8 @@
 #include "NMComponentLinkItem.h"
 #include "NMListWidget.h"
 #include "NMToolBar.h"
-#include "NMAction.h"
+#include "NMAbstractAction.h"
+#include "NMModelAction.h"
 
 
 #include "nmqsql_sqlite_p.h"
@@ -303,9 +304,9 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
 	qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
     qRegisterMetaType<NMModelController*>("NMModelController*");
-    qRegisterMetaType<NMAction::NMOutputMap>("NMAction::NMOutputMap");
-//    qRegisterMetaType<NMAction::NMActionOutputType>("NMAction::NMActionOutputType");
-//    qRegisterMetaType<NMAction::NMActionTriggerType>("NMAction::NMActionTriggerType");
+    qRegisterMetaType<NMAbstractAction::NMOutputMap>("NMAbstractAction::NMOutputMap");
+//    qRegisterMetaType<NMAbstractAction::NMActionOutputType>("NMAbstractAction::NMActionOutputType");
+//    qRegisterMetaType<NMAbstractAction::NMActionTriggerType>("NMAbstractAction::NMActionTriggerType");
 
     // **********************************************************************
     // *                    INIT SETTINGS FRAMEWORK
@@ -2304,6 +2305,7 @@ LUMASSMainWin::importTable(const QString& fileName,
 
     tabview->setTitle(viewName);
     connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
+    connect(tabview.data(), SIGNAL(zoomToTableCoords(double*)), this, SLOT(zoomToCoords(double*)));
 
 
     QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > tabPair;
@@ -2769,7 +2771,9 @@ void LUMASSMainWin::checkInteractiveLayer(void)
 //        }
 
         ren->SetInteractive(0);
-        if (l->isVisible() && !ren->GetInteractive())
+        if (    (l->isVisible() || l->getSelection().count() > 0)
+            &&  !ren->GetInteractive()
+           )
         {
             firstVisID = id;
         }
@@ -3174,35 +3178,48 @@ LUMASSMainWin::treeAnalysis(const int& mode)
         quicksort(btms, 0, btms.size()-1, true);
     }
 
+    QItemSelection newsel = h.selectRows(model, btms);
+    l->setSelection(newsel);
+
+    NMDebugAI(<< "TREE ANALYSIS SELECTION" << std::endl);
+    NMDebugAI(<< "-----------------------" << std::endl);
+    foreach(QItemSelectionRange r, newsel)
+    {
+        NMDebugAI(<< r.top() << " -- " << r.bottom() << std::endl);
+    }
+    NMDebugAI(<< std::endl);
+
     /// ToDo:
     /// this shouldn't require the layer type dependend
     /// treatment. however due to some issues with
     /// the 'outside tableview' selection update
     /// for image layers, we have it for now ..
-    if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
-    {
-        QItemSelection newsel = h.selectRows(model, btms);
-        if (l)
-        {
-            l->setSelection(newsel);
-        }
-        else if (view)
-        {
-            view->setSelection(newsel);
-        }
-    }
-    else
-    {
-        btms.removeOne(0);
 
-        if (btms.size() > 0)
-        {
-            vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
-            vtkImageData* id = vtkImageData::SafeDownCast(ds);
 
-            this->image2PolyData(id, btms);
-        }
-    }
+    //    if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+    //    {
+    //        QItemSelection newsel = h.selectRows(model, btms);
+    //        if (l)
+    //        {
+    //            l->setSelection(newsel);
+    //        }
+    //        else if (view)
+    //        {
+    //            view->setSelection(newsel);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        btms.removeOne(0);
+
+    //        if (btms.size() > 0)
+    //        {
+    //            vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+    //            vtkImageData* id = vtkImageData::SafeDownCast(ds);
+
+    //            this->image2PolyData(id, btms);
+    //        }
+    //    }
 
     h.endBusy();
 
@@ -3348,62 +3365,69 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    NMLayer* l = this->mLayerList->getSelectedLayer();
+    QDateTime curTime = QDateTime::currentDateTime();
+    NMLogInfo(<< "time1: " << curTime.toString("yyyy-MM-dd'T'hh:mm:ss.zzz").toStdString());
+    NMLogInfo(<< "time2: " << curTime.toString("yyyy-MM-ddThh:mm:ss.zzz").toStdString());
+    NMLogInfo(<< "time3: " << curTime.toString("yyyy-MM-dd hh:mm:ss.zzz").toStdString());
 
-    if (l && l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-    {
-        return ;
-    }
 
-    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-    if (il == 0)
-        return;
 
-    vtkImageData* img = il->getVTKImage();
+//    NMLayer* l = this->mLayerList->getSelectedLayer();
 
-    vtkNew<vtkImageToPolyDataFilter> polyFilter;
-    polyFilter->SetColorModeToLUT();
-    vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-    polyFilter->SetLookupTable(iprop->GetLookupTable());
+//    if (l && l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
+//    {
+//        return ;
+//    }
 
-    polyFilter->SmoothingOff();
-    polyFilter->SetOutputStyleToPolygonalize();
-    polyFilter->SetInputData(img);
-    polyFilter->Update();
+//    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+//    if (il == 0)
+//        return;
 
-    vtkPolyData* pd = polyFilter->GetOutput();
-    vtkIdType ncells = pd->GetNumberOfCells();
+//    vtkImageData* img = il->getVTKImage();
 
-    // create attr table
-    vtkNew<vtkLongArray> nmid;
-    nmid->SetName("nm_id");
-    nmid->Allocate(ncells);
+//    vtkNew<vtkImageToPolyDataFilter> polyFilter;
+//    polyFilter->SetColorModeToLUT();
+//    vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
+//    polyFilter->SetLookupTable(iprop->GetLookupTable());
 
-    vtkNew<vtkUnsignedCharArray> nmhole;
-    nmhole->SetName("nm_hole");
-    nmhole->Allocate(ncells);
+//    polyFilter->SmoothingOff();
+//    polyFilter->SetOutputStyleToPolygonalize();
+//    polyFilter->SetInputData(img);
+//    polyFilter->Update();
 
-    vtkNew<vtkUnsignedCharArray> nmsel;
-    nmsel->SetName("nm_sel");
-    nmsel->Allocate(ncells);
+//    vtkPolyData* pd = polyFilter->GetOutput();
+//    vtkIdType ncells = pd->GetNumberOfCells();
 
-    for (int c=0; c < ncells; ++c)
-    {
-        nmid->InsertNextValue(c+1);
-        nmhole->InsertNextValue(0);
-        nmsel->InsertNextValue(0);
-    }
+//    // create attr table
+//    vtkNew<vtkLongArray> nmid;
+//    nmid->SetName("nm_id");
+//    nmid->Allocate(ncells);
 
-    //vtkDataSetAttributes* dsa = pd->GetAttributes(vtkDataSet::CELL);
-    pd->GetCellData()->SetScalars(nmid.GetPointer());
-    pd->GetCellData()->AddArray(nmhole.GetPointer());
-    pd->GetCellData()->AddArray(nmsel.GetPointer());
+//    vtkNew<vtkUnsignedCharArray> nmhole;
+//    nmhole->SetName("nm_hole");
+//    nmhole->Allocate(ncells);
 
-    NMVectorLayer* newPolys = new NMVectorLayer(this->getRenderWindow());
-    newPolys->setObjectName("convert");
-    newPolys->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
-    newPolys->setDataSet(pd);
-    this->mLayerList->addLayer(newPolys);
+//    vtkNew<vtkUnsignedCharArray> nmsel;
+//    nmsel->SetName("nm_sel");
+//    nmsel->Allocate(ncells);
+
+//    for (int c=0; c < ncells; ++c)
+//    {
+//        nmid->InsertNextValue(c+1);
+//        nmhole->InsertNextValue(0);
+//        nmsel->InsertNextValue(0);
+//    }
+
+//    //vtkDataSetAttributes* dsa = pd->GetAttributes(vtkDataSet::CELL);
+//    pd->GetCellData()->SetScalars(nmid.GetPointer());
+//    pd->GetCellData()->AddArray(nmhole.GetPointer());
+//    pd->GetCellData()->AddArray(nmsel.GetPointer());
+
+//    NMVectorLayer* newPolys = new NMVectorLayer(this->getRenderWindow());
+//    newPolys->setObjectName("convert");
+//    newPolys->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
+//    newPolys->setDataSet(pd);
+//    this->mLayerList->addLayer(newPolys);
 
 }
 
@@ -3486,6 +3510,17 @@ void LUMASSMainWin::zoomFullExtent()
             this->mLayerList->getMapBBox()));
 
 	this->ui->qvtkWidget->update();
+}
+
+void LUMASSMainWin::zoomToCoords(double *box)
+{
+    int nlayers = this->mLayerList->getLayerCount();
+    if (nlayers <= 0)
+        return;
+
+    this->mBkgRenderer->ResetCamera(box);
+
+    this->ui->qvtkWidget->update();
 }
 
 void LUMASSMainWin::removeAllObjects()
@@ -4993,6 +5028,7 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 	 *		WKBPolygon			polygons[numPolygons]
 	 *	}
 	 *
+     * DEPRECATED
 	 *	To allow for proper polygon display (i.e. holes / donuts, non-convex polygons),
 	 *	the herewith created vtkPolyData should be used in conjunction with the
 	 *	vtkOGRLayerMapper class. vtkOGRLayerMapper uses GLU tesselation to display
@@ -6195,7 +6231,7 @@ LUMASSMainWin::getUserToolsList(void)
     return mUserActions.keys();
 }
 
-const NMAction*
+const NMAbstractAction*
 LUMASSMainWin::getUserTool(const QString &toolName)
 {
     return mUserActions.value(toolName);
@@ -6203,20 +6239,26 @@ LUMASSMainWin::getUserTool(const QString &toolName)
 
 
 void
-LUMASSMainWin::removeUserTool(NMAction *act)
+LUMASSMainWin::removeUserTool(NMAbstractAction *act)
 {
     if (act == 0)
     {
         return;
     }
 
-    if (act->getModelController()->isModelRunning())
+    NMModelAction* mact = qobject_cast<NMModelAction*>(act);
+    if (mact != nullptr)
     {
-        NMLogError(<< "Can't remove User Tool while model is still running!");
-        return;
+        if (mact->getModelController()->isModelRunning())
+        {
+            NMLogError(<< "Can't remove User Tool while model is still running!");
+            return;
+        }
+        else
+        {
+            mact->getModelController()->resetComponent("root");
+        }
     }
-
-    act->getModelController()->resetComponent("root");
 
     NMLogDebug(<< "Removing user tool '" << act->text().toStdString() << "'");
     mExclusiveActions.removeOne(act);
@@ -6245,7 +6287,7 @@ LUMASSMainWin::removeUserTool(NMAction *act)
 }
 
 void
-LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName)
+LUMASSMainWin::loadUserModelTool(const QString& userModel, const QString& toolBarName)
 {
     // ============================================
     // look for configuration table
@@ -6301,7 +6343,7 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
     }
     QString toolName = toolTable->GetStrValue("AdminValue", "Admin = 'Name'").c_str();
 
-    if (toolbar->findChild<NMAction*>(toolName))
+    if (toolbar->findChild<NMAbstractAction*>(toolName))
     {
         NMLogInfo(<< "User Tool '" << toolName.toStdString()
                   << "' has already been loaded!");
@@ -6312,7 +6354,7 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
     // create the user action && set up the model controller
     // ===================================
 
-    NMAction* uact = new NMAction(toolName, toolbar);
+    NMModelAction* uact = new NMModelAction(toolName, toolbar);
     uact->setObjectName(toolName);
     uact->setModelName(userModel);
     uact->setModelPath(this->mUserModelPath[userModel]);
@@ -6339,8 +6381,8 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
     connect(ctrl, SIGNAL(signalModelStarted()), this, SLOT(showBusyStart()));
     connect(ctrl, SIGNAL(signalModelStopped()), this, SLOT(showBusyEnd()));
     connect(ctrl, SIGNAL(signalModelStopped()), this, SLOT(displayUserModelOutput()));
-    connect(uact, SIGNAL(signalRemoveUserTool(NMAction*)), this,
-            SLOT(removeUserTool(NMAction*)));
+    connect(uact, SIGNAL(signalRemoveUserTool(NMAbstractAction*)), this,
+            SLOT(removeUserTool(NMAbstractAction*)));
     uact->setModelController(ctrl);
 
 
@@ -6364,7 +6406,7 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
      // just let the user know ...
     if (uact->getTriggerCount() == 0)
     {
-        uact->setTrigger("", NMAction::NM_ACTION_TRIGGER_NIL);
+        uact->setTrigger("", NMAbstractAction::NM_ACTION_TRIGGER_NIL);
         NMLogInfo(<< "Load User Tool: No trigger parameters specified!");
     }
 
@@ -6385,7 +6427,7 @@ LUMASSMainWin::loadUserTool(const QString& userModel, const QString& toolBarName
 void
 LUMASSMainWin::executeUserModel(void)
 {
-    NMAction* uact = qobject_cast<NMAction*>(sender());
+    NMModelAction* uact = qobject_cast<NMModelAction*>(sender());
     if (uact)
     {
         NMModelController* ctrl = uact->getModelController();
@@ -6398,16 +6440,16 @@ LUMASSMainWin::executeUserModel(void)
 }
 
 void
-LUMASSMainWin::updateUserModelTriggerParameters(NMAction* uact)
+LUMASSMainWin::updateUserModelTriggerParameters(NMAbstractAction *uact)
 {
     if (uact == 0)
     {
         return;
     }
 
-    QString filenameParam = uact->getTriggerKey(NMAction::NM_ACTION_TRIGGER_FILENAME);
-    QString colnameParam  = uact->getTriggerKey(NMAction::NM_ACTION_TRIGGER_COLUMN);
-    QString tablenameParam = uact->getTriggerKey(NMAction::NM_ACTION_TRIGGER_TABLENAME);
+    QString filenameParam = uact->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_FILENAME);
+    QString colnameParam  = uact->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_COLUMN);
+    QString tablenameParam = uact->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_TABLENAME);
 
     // selected layer filename
     if (!filenameParam.isEmpty() && (colnameParam.isEmpty() && tablenameParam.isEmpty()))
@@ -6441,13 +6483,13 @@ LUMASSMainWin::createPopupMenu(void)
         QAction* addAct = new QAction(tr("Add User Tool ..."), menu);
         menu->addAction(addAct);
 
-        connect(addAct, SIGNAL(triggered()), this, SLOT(addUserToolToToolBar()));
+        connect(addAct, SIGNAL(triggered()), this, SLOT(addUserModelToolToToolBar()));
     }
     return menu;
 }
 
 void
-LUMASSMainWin::addUserToolToToolBar()
+LUMASSMainWin::addUserModelToolToToolBar()
 {
     NMToolBar* bar = 0;
     if (!mLastToolBar.isEmpty())
@@ -6459,13 +6501,13 @@ LUMASSMainWin::addUserToolToToolBar()
     {
         bool bOK;
         QString userTool = QInputDialog::getItem(bar,
-                                                 tr("Add User Tool"),
+                                                 tr("Add User-Model Tool"),
                                                  tr("Select User Model"),
                                                  this->mUserModels,
                                                  0, false, &bOK);
         if (bOK && !userTool.isEmpty())
         {
-            this->loadUserTool(userTool, bar->objectName());
+            this->loadUserModelTool(userTool, bar->objectName());
             ui->modelViewWidget->updateToolContextBox();
         }
     }
@@ -6479,7 +6521,7 @@ LUMASSMainWin::removeUserToolBar(void)
         NMToolBar* tb = this->findChild<NMToolBar*>(mLastToolBar);
         if (tb)
         {
-            QList<NMAction*> userActions = tb->findChildren<NMAction*>();
+            QList<NMAbstractAction*> userActions = tb->findChildren<NMAbstractAction*>();
             for (int ua=0; ua < userActions.size(); ++ua)
             {
                 this->removeUserTool(userActions.at(ua));
@@ -6606,12 +6648,12 @@ LUMASSMainWin::processUserPickAction(long long cellId)
     if (iact)
     {
         QString userTool = iact->getUserTool().c_str();
-        QMap<QString, NMAction*>::iterator actIt = mUserActions.find(userTool);
+        QMap<QString, NMAbstractAction*>::iterator actIt = mUserActions.find(userTool);
         if (actIt != mUserActions.end())
         {
-            NMAction* act = actIt.value();
-            QString key = act->getTriggerKey(NMAction::NM_ACTION_TRIGGER_ID);
-            if (!key.isEmpty())
+            NMModelAction* act = qobject_cast<NMModelAction*>(actIt.value());
+            QString key = act->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_ID);
+            if (act != nullptr && !key.isEmpty())
             {
                 NMModelController* ctrl = const_cast<NMModelController*>(
                             act->getModelController());
@@ -6640,20 +6682,20 @@ LUMASSMainWin::displayUserModelOutput(void)
         return;
     }
 
-    QMap<QString, NMAction*>::iterator actionIt = mUserActions.find(ctrl->objectName());
+    QMap<QString, NMAbstractAction*>::iterator actionIt = mUserActions.find(ctrl->objectName());
     if (actionIt == mUserActions.end())
     {
         NMLogDebug(<< "displayUserModelOutput(): Couldn't find user model '"
                    << ctrl->objectName().toStdString() << "'!");
         return;
     }
-    NMAction* userAction = actionIt.value();
+    NMAbstractAction* userAction = actionIt.value();
 
-    const NMAction::NMOutputMap& outMap = userAction->getOutputs();
-    NMAction::NMOutputMap::const_iterator outIt = outMap.cbegin();
+    const NMAbstractAction::NMOutputMap& outMap = userAction->getOutputs();
+    NMAbstractAction::NMOutputMap::const_iterator outIt = outMap.cbegin();
     while (outIt != outMap.cend())
     {
-        NMAction::NMActionOutputType outtype = outIt.value();
+        NMAbstractAction::NMActionOutputType outtype = outIt.value();
         const QString& output = outIt.key();
         NMModelComponent* comp = ctrl->getComponent(output);
         if (comp == 0)
@@ -6694,7 +6736,7 @@ LUMASSMainWin::displayUserModelOutput(void)
         // specifies the output data set to be displayed
         switch (outtype)
         {
-        case NMAction::NM_ACTION_DISPLAY_FILENAME:
+        case NMAbstractAction::NM_ACTION_DISPLAY_FILENAME:
             {
                 // always just grab the first filename from the list
                 QVariant fnVar = proc->getParameter("FileNames");
@@ -6723,7 +6765,7 @@ LUMASSMainWin::displayUserModelOutput(void)
             break;
 
         default:
-        case NMAction::NM_ACTION_DISPLAY_BUFFER:
+        case NMAbstractAction::NM_ACTION_DISPLAY_BUFFER:
             {
                 // ============================================
                 //              OUTPUT LAYER
@@ -7082,7 +7124,7 @@ void LUMASSMainWin::readSettings()
             {
                 if (mUserModels.contains(utModelVar.toString()))
                 {
-                    this->loadUserTool(utModelVar.toString(), tbKey);
+                    this->loadUserModelTool(utModelVar.toString(), tbKey);
                     this->ui->modelViewWidget->updateToolContextBox();
                 }
                 else
@@ -7090,6 +7132,7 @@ void LUMASSMainWin::readSettings()
                     NMLogError(<< "Failed to load user tool '"
                                << utModelVar.toString().toStdString() << "'!"
                                << " Double check the 'UserModels' path!");
+                    settings.remove(utKey);
                 }
             }
         }
@@ -7160,8 +7203,8 @@ void LUMASSMainWin::writeSettings(void)
         settings.beginGroup(tb->objectName());
         settings.setValue("geometry", tb->saveGeometry());
 
-        QList<NMAction*> userTools = tb->findChildren<NMAction*>();
-        foreach(const NMAction* act, userTools)
+        QList<NMAbstractAction*> userTools = tb->findChildren<NMAbstractAction*>();
+        foreach(const NMAbstractAction* act, userTools)
         {
             settings.setValue(act->objectName(), act->getModelName());
         }

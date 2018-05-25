@@ -162,7 +162,7 @@ protected:
 
 protected slots:
 	void removeObjFromOpenEditsList(QObject* obj);
-	void deleteItem();
+    void deleteItem(bool bConfirm=true);
 	void deleteLinkComponentItem(NMComponentLinkItem* linkItem);
 	void deleteProcessComponentItem(NMProcessComponentItem* procItem);
 	void deleteAggregateComponentItem(NMAggregateComponentItem* aggrItem);
@@ -200,6 +200,11 @@ protected slots:
     void autoSaveCurrentModel();
 
     void test();
+
+    void copy();
+    void cut();
+    void paste();
+    void bufferComponents(QBuffer*& lmxBuf, QBuffer*& lmvBuf, bool bRemove=false);
 
 
 private:
@@ -239,6 +244,12 @@ private:
 	QMenu* mItemContextMenu;
 
 	QThread* mModelRunThread;
+
+    QBuffer* mProvBufferDoc;
+    QBuffer* mProvBufferVis;
+    QBuffer* mCopyBufferDoc;
+    QBuffer* mCopyBufferVis;
+
 
 	QPointF mLastScenePos;
     QPointF mSceneDropPos;

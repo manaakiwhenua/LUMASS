@@ -46,7 +46,7 @@
 
 #include "lumassmainwin.h"
 #include "NMModelViewWidget.h"
-#include "NMAction.h"
+#include "NMModelAction.h"
 #include "NMProcess.h"
 #include "NMProcessFactory.h"
 #include "NMModelComponentFactory.h"
@@ -72,7 +72,8 @@ const std::string NMModelViewWidget::ctx = "NMModelViewWidget";
 
 NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     : QWidget(parent, f), mbControllerIsBusy(false), mScaleFactor(1.075),
-      mLogger(0), mToolContextController(0)
+      mLogger(0), mToolContextController(0),
+      mCopyBufferVis(nullptr), mCopyBufferDoc(nullptr)
 {
 	this->setAcceptDrops(true);
 	this->mLastItem = 0;
@@ -98,6 +99,19 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
  	mModelController->moveToThread(mModelRunThread);
     mModelController->updateSettings("LUMASSPath",
                                      NMGlobalHelper::getUserSetting("LUMASSPath"));
+    mModelController->updateSettings("Workspace", NMGlobalHelper::getUserSetting("Workspace"));
+    mModelController->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
+
+    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    // set prov testing
+
+    mModelController->setLogProvOn();
+//    QString provFN = QString("%1/%2.provn")
+//                     .arg(mModelController->getSetting("Workspace"))
+//                     .arg(NMGlobalHelper::getRandomString(5);
+//    mModelController->startProv(provFN);
+
+    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
  	connect(this, SIGNAL(requestModelExecution(const QString &)),
  			mModelController, SLOT(executeModel(const QString &)));
@@ -861,6 +875,18 @@ void NMModelViewWidget::initItemContextMenu()
 	loadComp->setText(tr("Load ..."));
 	this->mActionMap.insert("Load ...", loadComp);
 
+    QAction* copyComp = new QAction(this->mItemContextMenu);
+    copyComp->setText(tr("Copy"));
+    this->mActionMap.insert("Copy", copyComp);
+
+    QAction* cutComp = new QAction(this->mItemContextMenu);
+    cutComp->setText(tr("Cut"));
+    this->mActionMap.insert("Cut", cutComp);
+
+    QAction* pasteComp = new QAction(this->mItemContextMenu);
+    pasteComp->setText(tr("Paste"));
+    this->mActionMap.insert("Paste", pasteComp);
+
     QAction* fontAct = new QAction(this->mItemContextMenu);
     fontAct->setText(tr("Change Font ..."));
     this->mActionMap.insert("Change Font ...", fontAct);
@@ -892,6 +918,9 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(unfoldComp);
     this->mItemContextMenu->addAction(collapseComp);
     this->mItemContextMenu->addSeparator();
+    this->mItemContextMenu->addAction(copyComp);
+    this->mItemContextMenu->addAction(cutComp);
+    this->mItemContextMenu->addAction(pasteComp);
     this->mItemContextMenu->addAction(saveComp);
     this->mItemContextMenu->addAction(loadComp);
     this->mItemContextMenu->addAction(delComp);
@@ -904,7 +933,6 @@ void NMModelViewWidget::initItemContextMenu()
     this->mItemContextMenu->addAction(resetComp);
     this->mItemContextMenu->addAction(runComp);
 
-
 	connect(runComp, SIGNAL(triggered()), this, SLOT(executeModel()));
 	connect(resetComp, SIGNAL(triggered()), this, SLOT(resetModel()));
     connect(actDeltaTimeLevel, SIGNAL(triggered()), this, SLOT(addDeltaTimeLevel()));
@@ -913,6 +941,9 @@ void NMModelViewWidget::initItemContextMenu()
 	connect(groupCondItems, SIGNAL(triggered()), this, SLOT(createConditionalIterComponent()));
 	connect(ungroupItems, SIGNAL(triggered()), this, SLOT(ungroupComponents()));
     connect(delComp, SIGNAL(triggered()), this, SLOT(deleteItem()));
+    connect(copyComp, SIGNAL(triggered()), this, SLOT(copy()));
+    connect(cutComp, SIGNAL(triggered()), this, SLOT(cut()));
+    connect(pasteComp, SIGNAL(triggered()), this, SLOT(paste()));
     connect(saveComp, SIGNAL(triggered()), this, SLOT(saveBenchItems()));
     connect(loadComp, SIGNAL(triggered()), this, SLOT(callLoadItems()));
     connect(scaleCompFonts, SIGNAL(triggered()), this, SLOT(scaleComponentFonts()));
@@ -1287,15 +1318,33 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
     {
         this->mActionMap.value("Delete")->setEnabled(true);
         mActionMap.value("Delete")->setText(QString("Delete %1").arg(title));
+
+        // copy && cut
+        if (li == nullptr)
+        {
+            mActionMap.value("Copy")->setEnabled(true);
+            mActionMap.value("Copy")->setText(QString("Copy %1").arg(title));
+            mActionMap.value("Cut")->setEnabled(true);
+            mActionMap.value("Cut")->setText(QString("Cut %1").arg(title));
+        }
+        else
+        {
+            mActionMap.value("Copy")->setEnabled(false);
+            mActionMap.value("Copy")->setText(QString("Copy"));
+            mActionMap.value("Cut")->setEnabled(false);
+            mActionMap.value("Cut")->setText(QString("Cut"));
+        }
     }
 	else
     {
 		this->mActionMap.value("Delete")->setEnabled(false);
         mActionMap.value("Delete")->setText(QString::fromUtf8("Delete"));
+
+        mActionMap.value("Copy")->setEnabled(false);
+        mActionMap.value("Copy")->setText(QString("Copy"));
     }
 
 	// SAVE & LOAD
-    //if ((item != 0 && li == 0 && wi == 0) || item == 0)
     if (item != 0 && li == 0 && wi == 0)
     {
         this->mActionMap.value("Save As ...")->setEnabled(true);
@@ -1370,6 +1419,16 @@ void NMModelViewWidget::callItemContextMenu(QGraphicsSceneMouseEvent* event,
         this->mActionMap.value("Change Font ...")->setText(QString("Change Font ..."));
         this->mActionMap.value("Change Colour ...")->setEnabled(true);
         this->mActionMap.value("Change Colour ...")->setText(QString("Change Background Colour ..."));
+    }
+
+    // paste
+    if (mCopyBufferDoc != nullptr && mCopyBufferVis != nullptr)
+    {
+        mActionMap.value("Paste")->setEnabled(true);
+    }
+    else
+    {
+        mActionMap.value("Paste")->setEnabled(false);
     }
 
 	QPoint viewPt = this->mModelView->mapFromScene(this->mLastScenePos);
@@ -2057,7 +2116,16 @@ NMModelViewWidget::updateToolContext(const QString &tool)
         return;
     }
 
-    NMAction* act = const_cast<NMAction*>(NMGlobalHelper::getMainWindow()->getUserTool(tool));
+    NMAbstractAction* aact = const_cast<NMAbstractAction*>(NMGlobalHelper::getMainWindow()->getUserTool(tool));
+    if (aact == 0)
+    {
+        mModelController->clearModelSettings();
+        NMLogDebug(<< "Update tool context: Tool '"
+                   << tool.toStdString() << "' is not registered!");
+        return;
+    }
+
+    NMModelAction* act = qobject_cast<NMModelAction*>(aact);
     if (act == 0)
     {
         mModelController->clearModelSettings();
@@ -2087,6 +2155,131 @@ NMModelViewWidget::updateToolContext(const QString &tool)
     //    QStringList afterModelSettings = mModelController->getModelSettingsList();
     //    NMLogInfo(<< "ModelController: current settings: " << afterModelSettings.join(' ').toStdString());
 
+}
+
+void
+NMModelViewWidget::copy()
+{
+    bufferComponents(mCopyBufferDoc, mCopyBufferVis);
+}
+
+void
+NMModelViewWidget::cut()
+{
+    bufferComponents(mCopyBufferDoc, mCopyBufferVis, true);
+}
+
+void
+NMModelViewWidget::bufferComponents(QBuffer *&lmxBuf, QBuffer *&lmvBuf, bool bRemove)
+{
+    // get list of items under the cursor, if there are no
+    // selected items
+    QList<QGraphicsItem*> copyList;
+    copyList = mModelScene->selectedItems();
+    if (copyList.size() == 0)
+    {
+        QGraphicsItem* item = qgraphicsitem_cast<QGraphicsItem*>(mModelScene->getWidgetAt(mLastScenePos));
+        if (item == 0)
+        {
+            item = mModelScene->itemAt(mLastScenePos, mModelScene->views()[0]->transform());
+        }
+        copyList.push_back(item);
+    }
+
+    // -------------------------------------------------------
+    // write vis
+    if (lmvBuf != nullptr)
+    {
+        delete lmvBuf;
+    }
+    lmvBuf = new QBuffer(this);
+    if (lmvBuf == nullptr)
+    {
+        return;
+    }
+    lmvBuf->open(QBuffer::WriteOnly);
+    QDomDocument doc;
+    this->exportModel(copyList, *lmvBuf, doc, false);
+    lmvBuf->close();
+
+    // ---------------------------------------------------------
+    // write xml
+    if (lmxBuf != nullptr)
+    {
+        delete lmxBuf;
+    }
+    lmxBuf = new QBuffer(this);
+    if (lmxBuf == nullptr)
+    {
+        return;
+    }
+    lmxBuf->open(QBuffer::WriteOnly | QIODevice::Text);
+    QTextStream xmlOut(lmxBuf);
+    xmlOut << doc.toString(4);
+    lmxBuf->close();
+
+    if (bRemove)
+    {
+        deleteItem(false);
+    }
+}
+
+void
+NMModelViewWidget::paste()
+{
+    if (mCopyBufferDoc == nullptr || mCopyBufferVis == nullptr)
+    {
+        return;
+    }
+
+    QPointF target = mLastScenePos;
+    NMAggregateComponentItem* hostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(
+                this->mModelScene->itemAt(target, this->mModelView->transform()));
+
+    NMIterableComponent* importHost = 0;
+    if (hostItem)
+    {
+        importHost = qobject_cast<NMIterableComponent*>(
+                        this->mModelController->getComponent(hostItem->getTitle()));
+    }
+
+    // --------------------------------------------------------------------
+    // read the xml
+
+    if (!mCopyBufferDoc->open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        NMLogError(<< ctx << ": copy paste error - copy buffer is empty or corrupt!");
+        return;
+    }
+    QDomDocument doc;
+    if (!doc.setContent(mCopyBufferDoc->data()))
+    {
+        NMLogError(<< ctx << ": copy paste error - copy buffer is empty or corrupt!");
+        mCopyBufferDoc->close();
+        return;
+    }
+
+    NMModelSerialiser xmlS;
+    xmlS.setModelController(mModelController);
+    xmlS.setLogger(mLogger);
+    QMap<QString, QString> nameRegister;
+    xmlS.parseModelDocument(nameRegister, doc, importHost);
+    mCopyBufferDoc->close();
+
+    // ----------------------------------------------------------------------
+    // read the vis file
+
+    // create a copy of the graphical item representation
+    if (!mCopyBufferVis->open(QIODevice::ReadOnly))
+    {
+        NMLogError(<< ctx << ": copy paste error - copy buffer is empty or corrupt!");
+        return;
+    }
+    QDataStream itemStream(mCopyBufferVis);
+    this->importModel(itemStream, nameRegister, true);
+    mCopyBufferVis->close();
+
+    //this->copyComponents(mCopyList, mCopyScenePos, mLastScenePos);
 }
 
 void
@@ -3205,7 +3398,7 @@ QString NMModelViewWidget::getComponentItemTitle(QGraphicsItem* item)
 	return ret;
 }
 
-void NMModelViewWidget::deleteItem()
+void NMModelViewWidget::deleteItem(bool bConfirm)
 {
 	NMDebugCtx(ctx, << "...");
 
@@ -3287,23 +3480,26 @@ void NMModelViewWidget::deleteItem()
     // pressure and the least thing he/she wants is
     // starting all over again!
 
-    QString msg = QString(tr("Do you really want to delete %1 model %2?"))
-                    .arg(ndelitems)
-                    .arg((ndelitems ?
-                                (delLinks.count() > 0 ?
-                                     (delLinks.count() > 1 ? "links" : "link")
-                                     : (ndelitems > 1 ? "components" : "component")
-                                )
-                                : "components"));
-
-    QMessageBox::StandardButton answer = QMessageBox::question(this,
-                                         tr("Delete Model Components"),
-                                         msg);
-
-    if (answer == QMessageBox::No)
+    if (bConfirm)
     {
-        NMDebugCtx(ctx, << "done!");
-        return;
+        QString msg = QString(tr("Do you really want to delete %1 model %2?"))
+                        .arg(ndelitems)
+                        .arg((ndelitems ?
+                                    (delLinks.count() > 0 ?
+                                         (delLinks.count() > 1 ? "links" : "link")
+                                         : (ndelitems > 1 ? "components" : "component")
+                                    )
+                                    : "components"));
+
+        QMessageBox::StandardButton answer = QMessageBox::question(this,
+                                             tr("Delete Model Components"),
+                                             msg);
+
+        if (answer == QMessageBox::No)
+        {
+            NMDebugCtx(ctx, << "done!");
+            return;
+        }
     }
 
 
@@ -4044,13 +4240,7 @@ void NMModelViewWidget::executeModel(void)
 		return;
 	}
 
-	//QString msg = QString(tr("Do you want to execute model component '%1'?"))
-	//		.arg(comp->objectName());
-	//if (QMessageBox::Ok == QMessageBox::question(this, "Execute Model Component",
-	//		msg, QMessageBox::No | QMessageBox::Yes, QMessageBox::Yes))
-	{
-		emit requestModelExecution(comp->objectName());
-	}
+    emit requestModelExecution(comp->objectName());
 }
 
 void

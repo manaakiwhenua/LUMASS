@@ -30,6 +30,7 @@
 
 #include "vtkPolyData.h"
 #include "vtkOGRLayerMapper.h"
+#include "vtkPolyDataMapper.h"
 #include "vtkActor.h"
 
 class NMVectorLayer: public NMLayer
@@ -54,7 +55,11 @@ public:
         {return this->mDataSet;}
 
 	const vtkPolyData* getContour(void);
-	const vtkOGRLayerMapper* getContourMapper(void);
+#ifdef VTK_OPENGL2
+    const vtkPolyDataMapper* getContourMapper(void);
+#else
+    const vtkOGRLayerMapper* getContourMapper(void);
+#endif
 	const vtkActor* getContourActor(void);
 
     void setContoursVisible(bool vis);
@@ -79,7 +84,11 @@ public slots:
 	//		QList<long> lstNMId, NMLayerSelectionType seltype);
 
 protected:
-	vtkSmartPointer<vtkOGRLayerMapper> mContourMapper;
+#ifdef VTK_OPENGL2
+    vtkSmartPointer<vtkPolyDataMapper> mContourMapper;
+#else
+    vtkSmartPointer<vtkOGRLayerMapper> mContourMapper;
+#endif
 	vtkSmartPointer<vtkActor> mContourActor;
 	vtkSmartPointer<vtkPolyData> mContour;
 

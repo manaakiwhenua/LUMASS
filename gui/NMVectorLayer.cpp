@@ -45,7 +45,9 @@
 #include "vtkPolyData.h"
 #include "vtkPolyDataWriter.h"
 #include "vtkLookupTable.h"
+#include "vtkTriangleFilter.h"
 #include "vtkOGRLayerMapper.h"
+#include "vtkPolyDataMapper.h"
 #include "vtkCellData.h"
 #include "vtkCellArray.h"
 #include "vtkPolygon.h"
@@ -144,8 +146,17 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 	this->mContour->GetCellData()->SetScalars(contClr);
 
 	// create a contour mapper
-	vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
-    m->SetInputData(this->mContour);
+#ifdef VTK_OPENGL2
+    vtkSmartPointer<vtkPolyDataMapper> m = vtkSmartPointer<vtkPolyDataMapper>::New();
+#else
+    vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
+#endif
+
+
+
+    vtkSmartPointer<vtkTriangleFilter> tf = vtkSmartPointer<vtkTriangleFilter>::New();
+    tf->SetInputData(this->mContour);
+    m->SetInputConnection(tf->GetOutputPort());
 
 	vtkSmartPointer<vtkLookupTable> olclrtab = vtkSmartPointer<vtkLookupTable>::New();
 	long ncells = this->mContour->GetNumberOfCells();
@@ -242,8 +253,17 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 	//mDepthSort->SortScalarsOn();
 
 	// create and set the mapper
-	vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
+#ifdef VTK_OPENGL2
+    vtkSmartPointer<vtkPolyDataMapper> m = vtkSmartPointer<vtkPolyDataMapper>::New();
+    vtkSmartPointer<vtkTriangleFilter> tf = vtkSmartPointer<vtkTriangleFilter>::New();
+    tf->SetInputData(pd);
+    m->SetInputConnection(tf->GetOutputPort());
+#else
+    vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
     m->SetInputData(pd);
+#endif
+
+    //m->SetInputData(pd);
 	//m->SetInputConnection(mDepthSort->GetOutputPort());
 	//m->SetScalarRange(0, mDepthSort->GetOutput()->GetNumberOfCells());
 	this->mMapper = m;
@@ -282,7 +302,11 @@ const vtkPolyData* NMVectorLayer::getContour(void)
 	return this->mContour;
 }
 
+#ifdef VTK_OPENGL2
+const vtkPolyDataMapper *NMVectorLayer::getContourMapper(void)
+#else
 const vtkOGRLayerMapper* NMVectorLayer::getContourMapper(void)
+#endif
 {
 	return this->mContourMapper;
 }
@@ -845,7 +869,11 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 	//const int nrows = this->mAttributeTable->GetNumberOfRows();
 
 	// create new selections
-	mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
+#ifdef VTK_OPENGL2
+    mSelectionMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+#else
+    mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
+#endif
 	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
 	vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
 	vtkSmartPointer<vtkLongArray> scalars = vtkSmartPointer<vtkLongArray>::New();

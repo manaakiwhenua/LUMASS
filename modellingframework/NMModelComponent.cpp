@@ -201,6 +201,10 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
             param = QString("ERROR - property '%1' is NULL!").arg(specList.at(0));
         }
     }
+    else
+    {
+        param = paramList;
+    }
 
     return param;
 }

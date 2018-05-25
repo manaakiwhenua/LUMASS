@@ -50,6 +50,7 @@
 #include <ctime>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 
 namespace itk
@@ -63,9 +64,27 @@ public:
         NM_LOG_DEBUG = 0,
         NM_LOG_INFO = 1,
         NM_LOG_WARN = 2,
-        NM_LOG_ERROR = 3
-
+        NM_LOG_ERROR = 3,
+        NM_LOG_PROVN = 4
     } LogEventType;
+
+    typedef enum {
+        NM_PROV_ENTITY = 0,
+        NM_PROV_ACTIVITY,
+        NM_PROV_GENERATION,
+        NM_PROV_USAGE,
+        NM_PROV_COMMUNICATION,
+        NM_PROV_START,
+        NM_PROV_END,
+        NM_PROV_INVALIDATION,
+        NM_PROV_DERIVATION,
+        NM_PROV_AGENT,
+        NM_PROV_ATTRIBUTION,
+        NM_PROV_ASSOCIATION,
+        NM_PROV_DELEGATION,
+        NM_PROV_COLLECTION,
+        NM_PROV_MEMBERSHIP
+    } LogProvNType;
 
     NMLogEvent()
         : mMsg(""), mType(NM_LOG_INFO),
@@ -86,6 +105,15 @@ public:
         mTime = le.getLogTime();
     }
 
+    NMLogEvent(const LogEventType& logType,
+               const LogProvNType& provType,
+               const std::vector<std::string>& args,
+               const std::vector<std::string>& attrs)
+        : mType(logType), mProvNType(provType),
+          mArgs(args), mAttrs(attrs)
+    {
+    }
+
     std::string getLogMsg()
         {return mMsg;}
 
@@ -94,6 +122,16 @@ public:
 
     LogEventType getLogType()
         {return mType;}
+
+    LogProvNType getProvNType()
+        {return mProvNType;}
+
+    std::vector<std::string> getProvNArgs()
+        {return mArgs;}
+
+    std::vector<std::string> getProvNAttrs()
+        {return mAttrs;}
+
 
     virtual const char* GetEventName() const
         {return "NMLogEvent";}
@@ -121,6 +159,9 @@ private:
     std::string mMsg;
     std::string mTime;
     LogEventType mType;
+    std::vector<std::string> mArgs;
+    std::vector<std::string> mAttrs;
+    LogProvNType mProvNType;
 };
 
 } // end namespace itk

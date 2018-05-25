@@ -22,27 +22,54 @@ find_package(VTK COMPONENTS
 	vtkIOXML
 	NO_MODULE
 )
+elseif (${VTK_VERSION_STRING} VERSION_LESS "7.1.1")
+find_package(VTK COMPONENTS
+        vtkCommonDataModel
+        vtkCommonCore
+        vtkFiltersGeneric
+        vtkRenderingCore
+        vtkRenderingAnnotation
+        vtkRenderingImage
+        vtkRenderingOpenGL
+        vtkGUISupportQt
+        vtkImagingStatistics
+        vtkInteractionWidgets
+        vtkInteractionStyle
+        #vtkRenderingFreeTypeOpenGL
+        vtkRenderingFreeType
+        vtkIOCore
+        vtkIOInfovis
+        vtkIOSQL
+        vtkIOLegacy
+        vtkIOXML
+        vtkRenderingContextOpenGL
+        vtkViewsCore
+        vtkViewsContext2D
+        vtkChartsCore
+        NO_MODULE
+)
 else()
+add_definitions(-DVTK_OPENGL2)
+set(DVTKOGL2 "yes")
 find_package(VTK COMPONENTS
 	vtkCommonDataModel
 	vtkCommonCore
-	vtkFiltersGeneric
+        vtkFiltersGeneral
 	vtkRenderingCore
 	vtkRenderingAnnotation
 	vtkRenderingImage
-	vtkRenderingOpenGL
+        vtkRenderingOpenGL2
 	vtkGUISupportQt
 	vtkImagingStatistics
 	vtkInteractionWidgets
 	vtkInteractionStyle
-	#vtkRenderingFreeTypeOpenGL
 	vtkRenderingFreeType
 	vtkIOCore
 	vtkIOInfovis
 	vtkIOSQL
 	vtkIOLegacy
 	vtkIOXML
-        vtkRenderingContextOpenGL
+        vtkRenderingContextOpenGL2
         vtkViewsCore
         vtkViewsContext2D
         vtkChartsCore
@@ -158,7 +185,8 @@ QT5_WRAP_CPP(MOC_CPP
         ${gui_SOURCE_DIR}/NMParamEdit.h
         ${gui_SOURCE_DIR}/NMFindReplaceDialog.h
         ${gui_SOURCE_DIR}/NMToolBar.h
-        ${gui_SOURCE_DIR}/NMAction.h
+        ${gui_SOURCE_DIR}/NMAbstractAction.h
+        ${gui_SOURCE_DIR}/NMModelAction.h
         ${gui_SOURCE_DIR}/NMChartView.h
         ${NMQSQLite_SRC_DIR}/nmqsqlcachedresult_p.h
         ${NMQSQLite_SRC_DIR}/nmqsql_sqlite_p.h
@@ -186,6 +214,11 @@ file(GLOB QT_SRC
 # take the ChartsWidget out until we've switched to the new VTK Charts
 # framework
 list(REMOVE_ITEM QT_SRC ${gui_SOURCE_DIR}/NMChartWidget.cpp)
+
+# take the deprecated vtkOGRLayerMapper out, if applicable
+if(DVTKOGL2)
+    list(REMOVE_ITEM QT_SRC ${NMVtk_SOURCE_DIR}/vtkOGRLayerMapper.cxx)
+endif()
 
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS

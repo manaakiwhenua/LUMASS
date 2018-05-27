@@ -2899,7 +2899,12 @@ NMLayer::getTable(void)
 const QItemSelection
 NMLayer::getSelection(void)
 {
-	return this->mSelectionModel->selection();
+    if (mSelectionModel != nullptr)
+    {
+        return this->mSelectionModel->selection();
+    }
+
+    return QItemSelection();
 }
 
 void NMLayer::writeDataSet()

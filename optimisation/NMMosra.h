@@ -186,6 +186,8 @@ public:
     void cancelSolving(void) {this->mbCanceled = true;}
 	int solveLp(void);
 	int mapLp(void);
+    int mapLpTab(void);
+    int mapLpDb(void);
 	HLpHelper* getLp();
     vtkSmartPointer<vtkTable> sumResults(vtkSmartPointer<vtkTable>& changeMatrix);
 

@@ -96,6 +96,7 @@
 #include <QDateTime>
 
 #include "itkProcessObject.h"
+#include "otbSQLiteTable.h"
 
 #include "vtkDataSetAttributes.h"
 #include "vtkDataSet.h"
@@ -1974,17 +1975,125 @@ int NMMosra::checkSettings(void)
 
 int NMMosra::mapLp(void)
 {
-	NMDebugCtx(ctxNMMosra, << "...");
+    // check return value from lp_solve
+    int ret = this->mLp->GetLastReturnFromSolve();
 
-	// check return value from lp_solve
-	int ret = this->mLp->GetLastReturnFromSolve();
-
-	if (ret != 0 && ret != 1 && ret != 12)
-	{
+    if (ret != 0 && ret != 1 && ret != 12)
+    {
         MosraLogDebug( << "unfortunately no feasible solution!" << endl);
-		NMDebugCtx(ctxNMMosra, << "done!");
-		return 0;
-	}
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return 0;
+    }
+
+    if (mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_OTBTAB)
+    {
+        otb::AttributeTable::Pointer otbtab = mDataSet->getAttributeTable();
+        if (otbtab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+        {
+            return mapLpDb();
+        }
+    }
+
+    return mapLpTab();
+}
+
+int NMMosra::mapLpDb(void)
+{
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(this->mDataSet->getAttributeTable().GetPointer());
+
+    long long lNumCells = sqltab->GetNumRows();
+
+    std::vector< std::string > colnames;
+    std::vector< otb::AttributeTable::TableColumnType > coltypes;
+
+    // add the optimisation result columns to the table
+    sqltab->BeginTransaction();
+    sqltab->AddColumn("OPT_STR", otb::AttributeTable::ATTYPE_STRING);
+    colnames.push_back("OPT_STR");
+    coltypes.push_back(otb::AttributeTable::ATTYPE_STRING);
+
+    QString sOptStr;
+    for (int option=0; option < this->miNumOptions; ++option)
+    {
+        QString optx_val = QString(tr("OPT%1_VAL")).arg(option+1);
+        colnames.push_back(optx_val.toStdString());
+        coltypes.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+        sqltab->AddColumn(optx_val.toStdString(), otb::AttributeTable::ATTYPE_DOUBLE);
+
+        // create longest possible version of sOptStr, i.e. for all options
+        sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
+    }
+    sqltab->EndTransaction();
+
+
+    // write opt results in table
+    std::vector< otb::AttributeTable::ColumnValue > colValues;
+    colValues.resize(this->miNumOptions+1);
+    sqltab->PrepareBulkSet(colnames, false);
+    sqltab->BeginTransaction();
+
+
+    // get the decision vars
+    double * pdVars;
+    this->mLp->GetPtrVariables(&pdVars);
+
+    // some more vars
+    QString sColName;
+    double dVal;
+    int iValIndex;
+    const int iOffset = this->miNumOptions;
+
+    // allocate a char* that can hold the longest possible sOptStr
+    char* optstr = new char[sOptStr.length()+1];
+
+    // interate over the table and write optimisation results into the table
+    for (long long f=0; f < lNumCells; ++f)
+    {
+        sOptStr.clear();
+        for (int option=0; option < this->miNumOptions; ++option)
+        {
+            // format the column name (i.e. name of the decision variable
+            // we are dealing with int this iteration)
+            sColName = QString(tr("X_%1_%2")).arg(f).arg(option+1);
+
+            //determine index for the pdVars array holding the values of the decision
+            //variables (i.e. the appropriate column index - 1)
+            iValIndex = this->mLp->GetNameIndex(sColName.toStdString(), false)-1;
+
+            // get the actual value and put it into the right OPTx_VAL array (attribute)
+            dVal = pdVars[iValIndex];
+            //mDataSet->setDblValue(vValAr.at(option), f, dVal);
+            colValues[option+1].type = otb::AttributeTable::ATTYPE_DOUBLE;
+            colValues[option+1].dval = dVal;
+
+            // format sOptStr
+            if (dVal > 0)
+                sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
+        }
+
+        // trim sOptStr and write into array
+        sOptStr = sOptStr.simplified();
+        colValues[0].type = otb::AttributeTable::ATTYPE_STRING;
+        optstr[0] = '\0';
+        ::sprintf(optstr, "%s", sOptStr.toStdString().c_str());
+        colValues[0].tval = optstr;
+
+        sqltab->DoBulkSet(colValues, f);
+
+        if (f % 100 == 0)
+            NMDebug(<< ".");
+    }
+    sqltab->EndTransaction();
+
+    // clear memory for optstr
+    delete[] optstr;
+
+    return 1;
+}
+
+int NMMosra::mapLpTab(void)
+{
+	NMDebugCtx(ctxNMMosra, << "...");
 
 	// get the attributes of the layer
 //	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
@@ -2605,16 +2714,16 @@ int NMMosra::addObjFn(void)
                 double area = mDataSet->getDblValue(this->msAreaField, f);
 				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
 				bool bok;
-				switch(this->meDVType)
-				{
-				case NM_MOSO_BINARY:
-					dCoeff = vtkMath::Floor(dCoeff);
-					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
-					break;
-				case NM_MOSO_INT:
-					dCoeff = vtkMath::Floor(dCoeff);
-					break;
-				}
+//				switch(this->meDVType)
+//				{
+//				case NM_MOSO_BINARY:
+//                    dCoeff = vtkMath::Floor(dCoeff);
+//					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
+//					break;
+//				case NM_MOSO_INT:
+//					dCoeff = vtkMath::Floor(dCoeff);
+//					break;
+//				}
 
 
 				// write coefficient into row array
@@ -2783,16 +2892,16 @@ int NMMosra::addObjCons(void)
                 double area = mDataSet->getDblValue(this->msAreaField, f);
 				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
 				bool bok;
-				switch(this->meDVType)
-				{
-				case NM_MOSO_BINARY:
-					dCoeff = vtkMath::Floor(dCoeff);
-					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
-					break;
-				case NM_MOSO_INT:
-					dCoeff = vtkMath::Floor(dCoeff);
-					break;
-				}
+//				switch(this->meDVType)
+//				{
+//				case NM_MOSO_BINARY:
+//					dCoeff = vtkMath::Floor(dCoeff);
+//					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
+//					break;
+//				case NM_MOSO_INT:
+//					dCoeff = vtkMath::Floor(dCoeff);
+//					break;
+//				}
 
 				pdRow[lCounter] = dCoeff;
 				piColno[lCounter] = colpos;
@@ -4389,22 +4498,22 @@ double NMMosra::convertAreaUnits(double dUserVal, AreaUnitType otype)
 	switch (otype)
 	{
 	case NMMosra::NM_MOSO_PERCENT_TOTAL:
-		if (this->meDVType == NMMosra::NM_MOSO_INT)
-			dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
-		else
+//		if (this->meDVType == NMMosra::NM_MOSO_INT)
+//			dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
+//		else
 			dtval = this->mdAreaTotal * dUserVal/100.0;
 		break;
 	case NMMosra::NM_MOSO_PERCENT_SELECTED:
 
-		if (this->meDVType == NMMosra::NM_MOSO_INT)
-			dtval = vtkMath::Floor(this->mdAreaSelected * dUserVal/100.0);
-		else
+//		if (this->meDVType == NMMosra::NM_MOSO_INT)
+//			dtval = vtkMath::Floor(this->mdAreaSelected * dUserVal/100.0);
+//		else
 			dtval = this->mdAreaSelected * dUserVal/100.0;
 		break;
 	default:
-		if (this->meDVType == NMMosra::NM_MOSO_INT)
-			dtval = vtkMath::Floor(dUserVal);
-		else
+//		if (this->meDVType == NMMosra::NM_MOSO_INT)
+//			dtval = vtkMath::Floor(dUserVal);
+//		else
 			dtval = dUserVal;
 		break;
 	}
@@ -4419,17 +4528,17 @@ double NMMosra::convertAreaUnits(double dUserVal, const QString& otype, const QS
 
 	if (otype.compare(tr("percent_of_total"), Qt::CaseInsensitive) == 0)
 	{
-		if (this->meDVType == NMMosra::NM_MOSO_INT)
-			dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
-		else
+//		if (this->meDVType == NMMosra::NM_MOSO_INT)
+//			dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
+//		else
 			dtval = this->mdAreaTotal * dUserVal/100.0;
 	}
 	else if (otype.compare(tr("percent_of_selected"), Qt::CaseInsensitive) == 0)
 	{
 
-		if (this->meDVType == NMMosra::NM_MOSO_INT)
-			dtval = vtkMath::Floor(this->mdAreaSelected * dUserVal/100.0);
-		else
+//		if (this->meDVType == NMMosra::NM_MOSO_INT)
+//			dtval = vtkMath::Floor(this->mdAreaSelected * dUserVal/100.0);
+//		else
 			dtval = this->mdAreaSelected * dUserVal/100.0;
 	}
 	else if (otype.compare(tr("percent_of_zone"), Qt::CaseInsensitive) == 0)
@@ -4437,9 +4546,9 @@ double NMMosra::convertAreaUnits(double dUserVal, const QString& otype, const QS
 		// if there is no zone spec given, we interpret it as percent_of_total
 		if (zoneSpec.size() == 0)
 		{
-			if (this->meDVType == NMMosra::NM_MOSO_INT)
-				dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
-			else
+//			if (this->meDVType == NMMosra::NM_MOSO_INT)
+//				dtval = vtkMath::Floor(this->mdAreaTotal * dUserVal/100.0);
+//			else
 				dtval = this->mdAreaTotal * dUserVal/100.0;
 
 			// todo: issue a warning message, that a percent_of_total is used instead
@@ -4447,17 +4556,17 @@ double NMMosra::convertAreaUnits(double dUserVal, const QString& otype, const QS
 		else
 		{
 			double zonearea = this->mmslZoneAreas.find(zoneSpec.at(1)).value().find(zoneSpec.at(0)).value();
-			if (this->meDVType == NMMosra::NM_MOSO_INT)
-				dtval = vtkMath::Floor(zonearea * dUserVal/100.0);
-			else
+//			if (this->meDVType == NMMosra::NM_MOSO_INT)
+//				dtval = vtkMath::Floor(zonearea * dUserVal/100.0);
+//			else
 				dtval = zonearea * dUserVal/100.0;
 		}
 	}
 	else
 	{ // -> "map_units"
-		if (this->meDVType == NMMosra::NM_MOSO_INT)
-			dtval = vtkMath::Floor(dUserVal);
-		else
+//		if (this->meDVType == NMMosra::NM_MOSO_INT)
+//			dtval = vtkMath::Floor(dUserVal);
+//		else
 			dtval = dUserVal;
 	}
 

@@ -17,7 +17,7 @@ if(WIN32)
 else()
     #ADD_LIBRARY(SQLiteExtFunc STATIC sqlite3extfunc.c)
     ADD_LIBRARY(SQLite SHARED sqlite3.c)
-    #target_link_libraries(SQLite SQLiteExtFunc)
+    target_link_libraries(SQLite pthread dl)
 endif()
 
 

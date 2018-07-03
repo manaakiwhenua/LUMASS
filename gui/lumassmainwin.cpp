@@ -3371,63 +3371,22 @@ void LUMASSMainWin::test()
     NMLogInfo(<< "time3: " << curTime.toString("yyyy-MM-dd hh:mm:ss.zzz").toStdString());
 
 
+    time_t timestamp;
+    struct tm* timeinfo;
+    time(&timestamp);
+    timeinfo = localtime(&timestamp);
+    static char curTime2[128];
+    sprintf(curTime2, "%.2d-%.2d-%.2dT%.2d-%.2d-%.2d",
+            timeinfo->tm_year + 1900,
+            timeinfo->tm_mon + 1,
+            timeinfo->tm_mday,
+            timeinfo->tm_hour,
+            timeinfo->tm_min,
+            timeinfo->tm_sec);
 
-//    NMLayer* l = this->mLayerList->getSelectedLayer();
 
-//    if (l && l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-//    {
-//        return ;
-//    }
 
-//    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-//    if (il == 0)
-//        return;
-
-//    vtkImageData* img = il->getVTKImage();
-
-//    vtkNew<vtkImageToPolyDataFilter> polyFilter;
-//    polyFilter->SetColorModeToLUT();
-//    vtkImageProperty* iprop = const_cast<vtkImageProperty*>(il->getImageProperty());
-//    polyFilter->SetLookupTable(iprop->GetLookupTable());
-
-//    polyFilter->SmoothingOff();
-//    polyFilter->SetOutputStyleToPolygonalize();
-//    polyFilter->SetInputData(img);
-//    polyFilter->Update();
-
-//    vtkPolyData* pd = polyFilter->GetOutput();
-//    vtkIdType ncells = pd->GetNumberOfCells();
-
-//    // create attr table
-//    vtkNew<vtkLongArray> nmid;
-//    nmid->SetName("nm_id");
-//    nmid->Allocate(ncells);
-
-//    vtkNew<vtkUnsignedCharArray> nmhole;
-//    nmhole->SetName("nm_hole");
-//    nmhole->Allocate(ncells);
-
-//    vtkNew<vtkUnsignedCharArray> nmsel;
-//    nmsel->SetName("nm_sel");
-//    nmsel->Allocate(ncells);
-
-//    for (int c=0; c < ncells; ++c)
-//    {
-//        nmid->InsertNextValue(c+1);
-//        nmhole->InsertNextValue(0);
-//        nmsel->InsertNextValue(0);
-//    }
-
-//    //vtkDataSetAttributes* dsa = pd->GetAttributes(vtkDataSet::CELL);
-//    pd->GetCellData()->SetScalars(nmid.GetPointer());
-//    pd->GetCellData()->AddArray(nmhole.GetPointer());
-//    pd->GetCellData()->AddArray(nmsel.GetPointer());
-
-//    NMVectorLayer* newPolys = new NMVectorLayer(this->getRenderWindow());
-//    newPolys->setObjectName("convert");
-//    newPolys->setLegendType(NMLayer::NM_LEGEND_SINGLESYMBOL);
-//    newPolys->setDataSet(pd);
-//    this->mLayerList->addLayer(newPolys);
+    NMLogInfo(<< "from the off - current date & time: " << curTime2);
 
 }
 

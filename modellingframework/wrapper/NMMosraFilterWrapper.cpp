@@ -125,7 +125,29 @@ public:
 		bool bok;
 		int givenStep = step;
 
-		
+        QString workspace;
+        QVariant varWS = p->getModelController()->getSetting("Workspace");
+        if (varWS.isValid())
+        {
+            workspace = varWS.toString();
+            if (!workspace.isEmpty())
+            {
+                f->SetWorkspace(workspace.toStdString());
+            }
+        }
+
+        QObject* parent = p->parent();
+        QString compName = "MOSRA";
+        if (parent != nullptr)
+        {
+            compName = parent->objectName();
+            if (!compName.isEmpty())
+            {
+                f->SetCompName(compName.toStdString());
+            }
+        }
+
+
         QVariant curLosFileNameVar = p->getParameter("LosFileName");
         QString curLosFileName;
         if (curLosFileNameVar.isValid())

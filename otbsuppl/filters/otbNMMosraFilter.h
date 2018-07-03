@@ -80,6 +80,8 @@ public:
     typedef typename InputImageType::RegionType  InputImageRegionType;
     typedef typename OutputImageType::RegionType OutputImageRegionType;
 
+    itkSetMacro(CompName, std::string)
+    itkSetMacro(Workspace, std::string)
     itkSetMacro(LosFileName, std::string)
     itkSetMacro(LosSettings, std::string)
     itkSetMacro(TimeOut, int)
@@ -102,6 +104,8 @@ public:
 
     std::vector<std::string>  m_ImageNames;
 
+    std::string m_CompName;
+    std::string m_Workspace;
     std::string m_LosFileName;
     std::string m_LosSettings;
 //    std::string m_ReportFileName;

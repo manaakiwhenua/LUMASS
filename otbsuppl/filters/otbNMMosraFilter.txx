@@ -26,7 +26,8 @@
 
 #include "NMMosra.h"
 
-//#include "nmlog.h"
+#include <ctime>
+
 #include "otbNMMosraFilter.h"
 #include "otbNMTableReader.h"
 
@@ -35,7 +36,7 @@ namespace otb
 
 template< class TInputImage, class TOutputImage >
 NMMosraFilter< TInputImage, TOutputImage >::NMMosraFilter()
-    : m_TimeOut(-1)
+    : m_TimeOut(-1), m_Workspace(""), m_CompName("")
 {
     m_DataSet = new NMMosraDataSet();
 
@@ -180,18 +181,50 @@ void NMMosraFilter< TInputImage, TOutputImage >
         mosra->setBreakAtFirst(true);
     }
 
-    this->UpdateProgress(0.2);
-    if (!mosra->solveLp())
-    {
-        NMProcErr( << "optimisation failed!");
-        delete mosra;
-        return;
-    }
-
     this->SetProgress(0.8);
     mosra->mapLp();
 
+    // get the current time
+    time_t timestamp;
+    struct tm* timeinfo;
+    time(&timestamp);
+    timeinfo = localtime(&timestamp);
+    static char curTime[128];
+    sprintf(curTime, "%.2d-%.2d-%.2dT%.2d-%.2d-%.2d",
+            timeinfo->tm_year + 1900,
+            timeinfo->tm_mon + 1,
+            timeinfo->tm_mday,
+            timeinfo->tm_hour,
+            timeinfo->tm_min,
+            timeinfo->tm_sec);
 
+    // write report and lp file (i.e. equations) into
+    // lumass workspace
+    std::stringstream fns;
+    fns << m_Workspace << "/report_" << m_CompName << "_" << curTime << ".txt";
+    std::string reportFN = fns.str();
+    fns.str("");
+    fns << m_Workspace << "/lp_" << m_CompName << "_" << curTime << ".lp";
+    std::string lpFN = fns.str();
+
+
+    // solve the problem
+    this->UpdateProgress(0.2);
+    if (mosra->solveLp())
+    {
+        this->SetProgress(0.8);
+        mosra->mapLp();
+    }
+    else
+    {
+        this->SetProgress(0.8);
+        NMProcErr( << "optimisation failed!");
+    }
+
+    mosra->getLp()->WriteLp(lpFN);
+    mosra->writeReport(reportFN.c_str());
+
+    this->SetProgress(1.0);
     delete mosra;
 }
 

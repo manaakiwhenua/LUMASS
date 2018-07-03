@@ -134,7 +134,8 @@
 #include "vtkContextScene.h"
 #include "vtkAxis.h"
 #include "vtkPlotBar.h"
-
+#include "vtkRect.h"
+#include "vtkBoundingBox.h"
 //#include "valgrind/callgrind.h"
 
 template<class PixelType, unsigned int Dimension>
@@ -285,7 +286,7 @@ public:
 NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 		vtkRenderer* renderer, QObject* parent)
     : NMLayer(renWin, renderer, parent),
-      mHistogramView(0)
+      mHistogramView(0), mbLayerLoaded(false)
 {
 	this->mLayerType = NMLayer::NM_IMAGE_LAYER;
     this->mReader = 0; //new NMImageReader(this);
@@ -423,17 +424,27 @@ NMImageLayer::getWindowStatistics(void)
             else
             {
                 int ovidx = this->mOverviewIdx;
-                if (!mbStatsAvailable && imgReader->getNumberOfOverviews() > 0)
+
+                // is this layer actually visible?
+                bool bIsVisible = true;
+                for (int d=0; d < 2; ++d)
                 {
-                    ovidx = -1;
+                    if (mVisibleRegion[d*2+1] == 0)
+                    {
+                        bIsVisible = false;
+                    }
                 }
 
-                if (ovidx < 0)
+                const int numOverviews = imgReader->getNumberOfOverviews();
+                if ((!bIsVisible || !mbLayerLoaded) && numOverviews > 0)
                 {
-                    ovidx =imgReader->getNumberOfOverviews()-1;
-                    ovidx = ovidx < 0 ? -1 : ovidx;
+                    ovidx = numOverviews-1;
+                }
 
-                    std::vector<std::vector<int> > sizes = this->getOverviewSizes();
+
+                std::vector<std::vector<int> > sizes = this->getOverviewSizes();
+                if (ovidx >= 0)
+                {
                     if (sizes.size() > 0)
                     {
                         for (int d=0; d < 3; ++d)
@@ -442,7 +453,10 @@ NMImageLayer::getWindowStatistics(void)
                             mVisibleRegion[d*2+1] = d < 2 ? sizes[ovidx][d] : 0;
                         }
                     }
-                    else
+                }
+                else
+                {
+                    if (!bIsVisible)
                     {
                         double h_ext = mBBox[1] - mBBox[0];
                         double v_ext = mBBox[3] - mBBox[2];
@@ -1231,12 +1245,13 @@ NMImageLayer::setFileName(QString filename)
 
 	this->mImage = 0;
 	this->mFileName = filename;
-    this->mMapper->Update();
+    //this->mMapper->Update();
 
     this->initiateLegend();
 
     emit layerProcessingEnd();
     emit layerLoaded();
+    mbLayerLoaded = true;
     NMDebugCtx(ctxNMImageLayer, << "done!");
 	return true;
 }
@@ -1317,6 +1332,7 @@ NMImageLayer::mapExtentChanged(void)
 
     int* size = ren->GetSize();
     double wminx, wmaxx, wminy, wmaxy, wwidth, wheight;
+    bool bHasVisReg = false;
     if (ren)
     {
         double wbr[] = {-1,-1,-1,-1};
@@ -1346,60 +1362,88 @@ NMImageLayer::mapExtentChanged(void)
         wwidth = (wmaxx - wminx);
         wheight = (wmaxy - wminy);
 
-        if (wwidth > 1 && wheight > 1)
+        vtkBoundingBox bbworld(wminx, wmaxx, wminy, wmaxy, 0, 0);
+        vtkBoundingBox bblayer(mBBox);
+
+        if (bbworld.Intersects(bblayer) == 0)
         {
-            h_res = wwidth / (double)size[0];
-            v_res = wheight / (double)size[1];
+            // no point in rendering anything, if the layer
+            // is outside the view window!
+            for (int v=0; v < 6; ++v)
+            {
+                mVisibleRegion[v] = 0;
+            }
+            bHasVisReg = false;
         }
         else
         {
-            h_res = mSpacing[0]*dpr;//fullcols / size[0];
-            v_res = ::fabs(mSpacing[1])*dpr;//fullrows / size[1];
+            bHasVisReg = true;
+
+
+
+            if (wwidth > 1 && wheight > 1)
+            {
+                h_res = wwidth / (double)size[0];
+                v_res = wheight / (double)size[1];
+            }
+            else
+            {
+                h_res = mSpacing[0]*dpr;//fullcols / size[0];
+                v_res = ::fabs(mSpacing[1])*dpr;//fullrows / size[1];
+            }
         }
 
-        //        NMDebugAI(<< "world: tl: " << wtl[0] << " " << wtl[1]
-        //                  << " br: " << wbr[0] << " " << wbr[1] << std::endl);
+            //        NMDebugAI(<< "world: tl: " << wtl[0] << " " << wtl[1]
+            //                  << " br: " << wbr[0] << " " << wbr[1] << std::endl);
     }
 
+
     int ovidx = -1;
-    double target_res;
-    double opt_res;
-    if (size[0] > size[1])
+    if (!bHasVisReg)
     {
-        opt_res = mSpacing[0]*dpr;
-        target_res = h_res;
+        ovidx = this->mReader->getNumberOfOverviews()-1;
     }
     else
     {
-        target_res = v_res;
-        opt_res = ::fabs(mSpacing[1])*dpr;
-    }
-    opt_res *= 0.15;
-    double diff = ::fabs(opt_res-target_res);
-
-
-    //        NMDebugAI(<< "screen size: " << size[0] << "x" << size[1] << std::endl);
-    //        NMDebugAI(<< "opt_res: " << opt_res << " | target_res: " << target_res << " | diff: "
-    //                  << diff << std::endl);
-
-    for (int i=0; i < mReader->getNumberOfOverviews(); ++i)
-    {
-        double _tres;
+        double target_res;
+        double opt_res;
         if (size[0] > size[1])
         {
-            _tres = h_ext / (double)mReader->getOverviewSize(i)[0];
+            opt_res = mSpacing[0]*dpr;
+            target_res = h_res;
         }
         else
         {
-            _tres = v_ext / (double)mReader->getOverviewSize(i)[1];
+            target_res = v_res;
+            opt_res = ::fabs(mSpacing[1])*dpr;
         }
+        opt_res *= 0.15;
+        double diff = ::fabs(opt_res-target_res);
 
-        if (::fabs(_tres-target_res) < diff)
+
+        //        NMDebugAI(<< "screen size: " << size[0] << "x" << size[1] << std::endl);
+        //        NMDebugAI(<< "opt_res: " << opt_res << " | target_res: " << target_res << " | diff: "
+        //                  << diff << std::endl);
+
+        for (int i=0; i < mReader->getNumberOfOverviews(); ++i)
         {
-            diff = ::fabs(_tres-target_res);
-            //            NMDebugAI(<< "_tres: " << _tres << " | target_res: " << target_res << " | diff: "
-            //                      << diff << " --> idx = " << i << std::endl);
-            ovidx = i;
+            double _tres;
+            if (size[0] > size[1])
+            {
+                _tres = h_ext / (double)mReader->getOverviewSize(i)[0];
+            }
+            else
+            {
+                _tres = v_ext / (double)mReader->getOverviewSize(i)[1];
+            }
+
+            if (::fabs(_tres-target_res) < diff)
+            {
+                diff = ::fabs(_tres-target_res);
+                //            NMDebugAI(<< "_tres: " << _tres << " | target_res: " << target_res << " | diff: "
+                //                      << diff << " --> idx = " << i << std::endl);
+                ovidx = i;
+            }
         }
     }
 
@@ -1431,7 +1475,6 @@ NMImageLayer::mapExtentChanged(void)
         uext[5] = 0;
 
         // visible itk image region
-        int mVisibleRegion[6];
         mVisibleRegion[0] = uext[0];                  // x-origin
         mVisibleRegion[1] = uext[1] - uext[0] + 1;    // x-size
         mVisibleRegion[2] = uext[2];                  // y-origin

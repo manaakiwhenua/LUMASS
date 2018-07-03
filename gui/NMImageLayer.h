@@ -233,6 +233,7 @@ protected:
     double mBufferedBox[6];
 
 	bool mbStatsAvailable;
+    bool mbLayerLoaded;
 
     /*!
      * \brief Image stats

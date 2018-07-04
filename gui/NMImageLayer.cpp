@@ -970,6 +970,8 @@ void NMImageLayer::createTableView(void)
                 mSqlTableView, SLOT(setSelectable(bool)));
         connect(mSqlTableView, SIGNAL(notifyLastClickedRow(long long)),
                 this, SLOT(forwardLastClickedRowSignal(long long)));
+        connect(mSqlTableView, SIGNAL(columnsInserted(QModelIndex,int,int)),
+                this, SLOT(tableColumnsInserted(QModelIndex,int,int)));
     }
 }
 
@@ -1543,6 +1545,12 @@ NMImageLayer::mapRGBImage(void)
     vtkImageData* img = vtkImageData::SafeDownCast(const_cast<vtkDataSet*>(this->getDataSet()));
     vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
     vtkDataArray* inScalars = img->GetPointData()->GetArray(0);
+
+    if (inScalars == nullptr)
+    {
+        NMLogDebug(<< "NMImageLayer::mapRGBImage() - inScalars == nullptr");
+        return;
+    }
     int numComp = inScalars->GetNumberOfComponents();
 
     if (mBandMinMax.size() == 0)
@@ -1603,6 +1611,11 @@ NMImageLayer::mapRGBImageScalars(vtkImageData* img)
 
     vtkDataSetAttributes* dsa = img->GetAttributes(vtkDataSet::POINT);
     vtkDataArray* inScalars = img->GetPointData()->GetArray(0);
+    if (inScalars == nullptr)
+    {
+        NMLogDebug(<< "NMImageLayer::mapRGBImageScalars() - inScalars == nullptr");
+        return;
+    }
     void* in = inScalars->GetVoidPointer(0);
     int numComp = inScalars->GetNumberOfComponents();
     int numPix = inScalars->GetNumberOfTuples();

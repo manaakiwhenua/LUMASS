@@ -142,6 +142,7 @@ signals:
 	//void columnsChanged(int oldCount, int newCount);
 	void tableDataChanged(QStringList& slAlteredColumns,
 			QStringList& slDeletedColumns);
+    void columnsInserted(QModelIndex parent, int fstIdx, int lastIdx);
 	void selectionChanged();
     void notifyLastClickedRow(long long cellID);
 	void notifyLoadRasLayer(const QString& imagespec,

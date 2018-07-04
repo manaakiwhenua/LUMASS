@@ -1514,6 +1514,8 @@ void NMSqlTableView::joinAttributes()
 
 
     QString tarTableName = this->mModel->tableName();
+    int fstidx = mModel->columnCount();
+    int lastidx = fstidx + vJnFields.size()-1;
     this->mModel->clear();
     srcModel->clear();
 
@@ -1578,13 +1580,14 @@ void NMSqlTableView::joinAttributes()
     this->mModel->select();
     this->update();
 
+    emit columnsInserted(QModelIndex(), fstidx, lastidx);
+
     srcModel->setTable(srcTableName);
     srcModel->select();
     if (srcView)
     {
         srcView->update();
     }
-
 
     //srcModel->clear();
 //    if (mSortFilter->joinTable(srcDbFileName, srcFieldName, tarFieldName))
@@ -2325,7 +2328,7 @@ NMSqlTableView::eventFilter(QObject* object, QEvent* event)
 		// --------------------- LEFT BUTTON SORTS THE COLUMN ---------------------------------------------
 		else if (me->button() == Qt::LeftButton)
 		{
-			NMDebugAI(<< "SROTING COLUMN #" << col << "..." << std::endl);
+            NMDebugAI(<< "SORTING COLUMN #" << col << "..." << std::endl);
 			this->sortColumn(col);
 		}
 		return false;
@@ -2699,6 +2702,8 @@ NMSqlTableView::toggleRow(int row)
         return;
     }
 
+    // =======================================================================
+    // ... initial query ...
     // query the rowid of the source model for the given
     // row in the table view
     QModelIndex mir = mModel->index(row, 0);
@@ -2719,6 +2724,7 @@ NMSqlTableView::toggleRow(int row)
                         .arg(mSortFilter->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString())
                         .arg(cellData);
 
+
     QSqlQuery rowQuery(mModel->database());
     if (!rowQuery.exec(rowQueryStr))
     {
@@ -2736,22 +2742,51 @@ NMSqlTableView::toggleRow(int row)
 
     int therowid = rowQuery.value(0).toInt();
 
-//    NMLogDebug(<< "table view toggleRow: row=" << row);
+    // =======================================================================
+    // ... subsequent queries, if required ...
+    // just in case we did get multiple records ... which does happen ...
 
-//    QModelIndex proxyIdx = mSortFilter->index(row, 0);
-//    QModelIndex srcIdx = mSortFilter->mapToSource(proxyIdx);
-//    if (!srcIdx.isValid())
-//    {
-//        return;
-//    }
+    int colcounter = 1;
+    while (rowQuery.next())
+    {
+        rowQuery.finish();
+
+        mir = mModel->index(row, colcounter);
+        varData = this->mTableView->model()->data(mir);
+
+        if (varData.type() == QVariant::String)
+        {
+            cellData = QString("'%1'").arg(varData.toString());
+        }
+        else
+        {
+            cellData = varData.toString();
+        }
+
+        rowQueryStr = QString("%1 and %2 = %3")
+                            .arg(rowQueryStr)
+                            .arg(mSortFilter->headerData(colcounter, Qt::Horizontal, Qt::DisplayRole).toString())
+                            .arg(cellData);
+
+        if (rowQuery.exec(rowQueryStr))
+        {
+            if (rowQuery.next())
+            {
+                therowid = rowQuery.value(0).toInt();
+            }
+        }
+
+        ++colcounter;
+    }
 
 
-
+    // =======================================================================
+    // finalise
     mCurrentQuery.clear();
     mCurrentSwapQuery.clear();
     mbSwitchSelection = false;
 
-    int srcRow = therowid;//srcIdx.row();
+    int srcRow = therowid;
     int idx = mPickedRows.indexOf(srcRow);
     if (idx == -1)
     {

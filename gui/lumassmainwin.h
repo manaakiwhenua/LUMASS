@@ -239,7 +239,7 @@ public slots:
     void updateUserModelTriggerParameters(NMAbstractAction* uact);
     void scanUserModels(void);
     void displayUserModelOutput(void);
-    void loadUserModelTool(const QString& userModel, const QString& toolBarName);
+    void loadUserModelTool(const QString& modelPath, const QString& userModel, const QString& toolBarName);
     void removeUserTool(NMAbstractAction* act);
 
 
@@ -576,6 +576,8 @@ private:
     NMListWidget* mUserModelListWidget;
     QMap<QString, QString> mUserModelPath;
     QStringList mUserModels;
+
+    QMap<QString, QString> mMapUserToolsModelPath;
 
     NMLogger* mLogger;
     QObject* mActiveWidget;

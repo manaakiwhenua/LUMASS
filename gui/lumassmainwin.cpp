@@ -6246,7 +6246,9 @@ LUMASSMainWin::removeUserTool(NMAbstractAction *act)
 }
 
 void
-LUMASSMainWin::loadUserModelTool(const QString& userModel, const QString& toolBarName)
+LUMASSMainWin::loadUserModelTool(const QString& modelPath,
+                                 const QString& userModel,
+                                 const QString& toolBarName)
 {
     // ============================================
     // look for configuration table
@@ -6254,7 +6256,7 @@ LUMASSMainWin::loadUserModelTool(const QString& userModel, const QString& toolBa
 
     QString baseName = QString("%1Tool").arg(userModel);
     QString toolTableName = QString("%1/%2.ldb")
-            .arg(this->mUserModelPath[userModel])
+            .arg(modelPath)
             .arg(baseName);
 
     QFileInfo fnInfo(toolTableName);
@@ -6267,14 +6269,15 @@ LUMASSMainWin::loadUserModelTool(const QString& userModel, const QString& toolBa
 
 
     QString modelFile = QString("%1/%2.lmx")
-            .arg(this->mUserModelPath[userModel])
+            .arg(modelPath)
             .arg(userModel);
 
     QFileInfo mfInfo(modelFile);
     if (!mfInfo.exists() || !mfInfo.isReadable())
     {
         NMLogError(<< "Load User Tool: Couldn't read tool's user model '"
-                 << userModel.toStdString() << "'!")
+                   << modelPath.toStdString() << "/"
+                   << userModel.toStdString() << ".lmx'!")
         return;
     }
 
@@ -6316,9 +6319,21 @@ LUMASSMainWin::loadUserModelTool(const QString& userModel, const QString& toolBa
     NMModelAction* uact = new NMModelAction(toolName, toolbar);
     uact->setObjectName(toolName);
     uact->setModelName(userModel);
-    uact->setModelPath(this->mUserModelPath[userModel]);
+    uact->setModelPath(modelPath);
     uact->setLogger(mLogger);
     mExclusiveActions << uact;
+
+    // if modelPath is pointing 'into' the
+    // tool directory, go one level up ...
+    QFileInfo mdir(modelPath);
+    QString mdirbaseName = mdir.baseName();
+    QString usermodelname = userModel;
+    QString usermodelpath = modelPath;
+    if (mdirbaseName.compare(usermodelname) == 0)
+    {
+        int pos = modelPath.lastIndexOf('/', -1);
+        usermodelpath = modelPath.left(pos);
+    }
 
     // initially, we set the tool up as a simple button
     uact->setCheckable(false);
@@ -6327,7 +6342,8 @@ LUMASSMainWin::loadUserModelTool(const QString& userModel, const QString& toolBa
     NMModelController* ctrl = new NMModelController(uact);
     ctrl->setObjectName(toolName);
     ctrl->getLogger()->setHtmlMode(true);
-    ctrl->updateSettings("UserModels", mSettings["UserModels"]);
+    //ctrl->updateSettings("UserModels", mSettings["UserModels"]);
+    ctrl->updateSettings("UserModels", usermodelpath);
     ctrl->updateSettings("Workspace", mSettings["Workspace"]);
     ctrl->updateSettings("LUMASSPath", mSettings["LUMASSPath"]);
 
@@ -6466,7 +6482,7 @@ LUMASSMainWin::addUserModelToolToToolBar()
                                                  0, false, &bOK);
         if (bOK && !userTool.isEmpty())
         {
-            this->loadUserModelTool(userTool, bar->objectName());
+            this->loadUserModelTool(mSettings["UserModels"].toString(), userTool, bar->objectName());
             ui->modelViewWidget->updateToolContextBox();
         }
     }
@@ -6707,6 +6723,7 @@ LUMASSMainWin::displayUserModelOutput(void)
                 // and here comes the impl. for tables
                 else
                 {
+                    bool bfailed = true;
                     fnVar = proc->getParameter("FileName");
                     if (fnVar.isValid())
                     {
@@ -6717,6 +6734,16 @@ LUMASSMainWin::displayUserModelOutput(void)
                                               LUMASSMainWin::NM_TABVIEW_STANDALONE,
                                               false,
                                               tn.toString());
+                            bfailed = false;
+                        }
+                    }
+
+                    if (bfailed)
+                    {
+                        if (proc->parent() != nullptr)
+                        {
+                            NMLogError(<< userAction->objectName().toStdString() << ": "
+                                       << "Failed to display output table!");
                         }
                     }
                 }
@@ -7059,9 +7086,12 @@ void LUMASSMainWin::readSettings()
     scanUserModels();
 
     // ================================================================
-    //              User TOOLS
+    //              UserToolBars & UserTools
     // ================================================================
     settings.beginGroup("UserToolBars");
+
+    // ---------------------------------------------------------
+    // for each toolbar
 
     QStringList toolBars = settings.childGroups();
     foreach (const QString& tbKey, toolBars)
@@ -7075,28 +7105,79 @@ void LUMASSMainWin::readSettings()
         }
         this->createUserToolBar(tbKey, ba);
 
-        QStringList userTools = settings.childKeys();
-        foreach(const QString& utKey, userTools)
+        // --------------------------------------------------------
+        // scan 'new' and 'old' settings - identify tools
+
+        QStringList userTools = settings.childGroups();
+        QMap<QString, QString> mapModelName;
+        QMap<QString, QString> mapModelPath;
+        QStringList lstJustNames;
+        foreach (const QString& utKey, userTools)
         {
-            QVariant utModelVar = settings.value(utKey);
-            if (utModelVar.isValid() && utModelVar.type() == QVariant::String)
+            settings.beginGroup(utKey);
+            QVariant nameVar = settings.value("ModelName");
+            if (nameVar.isValid())
             {
-                if (mUserModels.contains(utModelVar.toString()))
+                mapModelName.insert(utKey, nameVar.toString());
+            }
+
+            QVariant pathVar = settings.value("ModelPath");
+            if (pathVar.isValid())
+            {
+                mapModelPath.insert(utKey, pathVar.toString());
+            }
+            settings.endGroup(); // userTools group
+        }
+
+        QStringList oldSpecKeys = settings.childKeys();
+        foreach (const QString& oldKey, oldSpecKeys)
+        {
+            // name hasn't been found yet
+            if (mapModelName.find(oldKey) == mapModelName.end())
+            {
+                // insert
+                QVariant oldVal = settings.value(oldKey);
+                if (oldVal.isValid() && oldVal.type() == QVariant::String)
                 {
-                    this->loadUserModelTool(utModelVar.toString(), tbKey);
-                    this->ui->modelViewWidget->updateToolContextBox();
-                }
-                else
-                {
-                    NMLogError(<< "Failed to load user tool '"
-                               << utModelVar.toString().toStdString() << "'!"
-                               << " Double check the 'UserModels' path!");
-                    settings.remove(utKey);
+                    mapModelName.insert(oldKey, oldVal.toString());
                 }
             }
+            else // remove key
+            {
+                settings.remove(oldKey);
+                NMLogDebug(<< "removed old UserTool name key: " << oldKey.toStdString());
+            }
         }
-        settings.endGroup();
+
+        // ------------------------------------------------------
+        // load identified tools
+
+        QMap<QString, QString>::const_iterator pathIter;
+        QMap<QString, QString>::const_iterator nameIter = mapModelName.cbegin();
+        while (nameIter != mapModelName.cend())
+        {
+            // if we've got an explict model path, we use that, ...
+            pathIter = mapModelPath.find(nameIter.key());
+            if (pathIter != mapModelPath.cend())
+            {
+                this->loadUserModelTool(pathIter.value(), nameIter.value(), tbKey);
+            }
+            // ... otherwise, we see whether there's a user model around with that name
+            else if (mUserModels.contains(nameIter.value()))
+            {
+                this->loadUserModelTool(mUserModelPath[nameIter.value()], nameIter.value(), tbKey);
+            }
+            else
+            {
+                NMLogError(<< "The referenced user tool '"
+                           << nameIter.value().toStdString() << "' "
+                           << " could not be found at the previously specified location!"
+                           << " Please double check your settings and add the tool manually agin.");
+            }
+            ++nameIter;
+        }
     }
+    settings.endGroup(); // UserToolBars
 }
 
 void LUMASSMainWin::writeSettings(void)
@@ -7165,7 +7246,10 @@ void LUMASSMainWin::writeSettings(void)
         QList<NMAbstractAction*> userTools = tb->findChildren<NMAbstractAction*>();
         foreach(const NMAbstractAction* act, userTools)
         {
-            settings.setValue(act->objectName(), act->getModelName());
+            QString nameKey = QString("%1/ModelName").arg(act->objectName());
+            QString pathKey = QString("%1/ModelPath").arg(act->objectName());
+            settings.setValue(nameKey, act->getModelName());
+            settings.setValue(pathKey, act->getModelPath());
         }
         settings.endGroup();
     }

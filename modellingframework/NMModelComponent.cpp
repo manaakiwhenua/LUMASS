@@ -165,7 +165,7 @@ NMModelComponent::getModelParameter(const QString &paramSpec)
     }
     else
     {
-        param = this->property(specList.at(0).toStdString().c_str());
+        paramList = this->property(specList.at(0).toStdString().c_str());
     }
 
 

@@ -95,9 +95,20 @@ public slots:
     void setTrigger(const QString& key, NMAbstractAction::NMActionTriggerType type);
     int getTriggerCount(void);
 
+    /*! path pointing into the directory where the individual model files are stored
+     *  e.g. modelPpath = /home/models/AwesomeModel
+     *
+     *  /home/models/AwesomeModel
+     *                    |
+     *                    +--> AwesomeModelTool.ldb
+     *                    |
+     *                    +--> AwesomeModel.lmx
+     *                    |
+     *                    +--> AwesomeModel.lmv
+     */
     void setModelPath(const QString& modelPath)
         {mModelPath = modelPath;}
-    QString getModelPath()
+    QString getModelPath() const
         {return mModelPath;}
 
     void updateActionParameter(const QString& key, QVariant value, NMAbstractAction::NMActionInputType type);

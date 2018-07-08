@@ -366,13 +366,13 @@ NMModelController::executeModel(const QString& compName)
 
 	this->mModelStarted = QDateTime::currentDateTime();
 
-#ifdef DEBUG
-#ifndef _WIN32
-    int ind = nmlog::nmindent;
-#else
-	int ind = 2;
-#endif
-#endif
+//#ifdef DEBUG
+//#ifndef _WIN32
+//    int ind = nmlog::nmindent;
+//#else
+//	int ind = 2;
+//#endif
+//#endif
 
     emit signalModelStarted();
 
@@ -387,41 +387,41 @@ NMModelController::executeModel(const QString& compName)
 	}
     catch (NMMfwException& nmerr)
     {
-#ifdef DEBUG
-#ifndef _WIN32
-    nmlog::nmindent = ind;
-#endif
-#endif
+//#ifdef DEBUG
+//#ifndef _WIN32
+//    nmlog::nmindent = ind;
+//#endif
+//#endif
         NMLogError(<< "Model Controller: " << nmerr.what());
         NMDebugCtx(ctx, << "done!");
     }
     catch (itk::ExceptionObject& ieo)
     {
-#ifdef DEBUG
-#ifndef _WIN32
-    nmlog::nmindent = ind;
-#endif
-#endif
+//#ifdef DEBUG
+//#ifndef _WIN32
+//    nmlog::nmindent = ind;
+//#endif
+//#endif
         NMLogError(<< "Model Controller: " << ieo.what());
         NMDebugCtx(ctx, << "done!");
     }
     catch (std::exception& e)
 	{
-#ifdef DEBUG
-#ifndef _WIN32
-    nmlog::nmindent = ind;
-#endif
-#endif
+//#ifdef DEBUG
+//#ifndef _WIN32
+//    nmlog::nmindent = ind;
+//#endif
+//#endif
         NMLogError(<< "Model Controller: " << e.what());
 		NMDebugCtx(ctx, << "done!");
 	}
 
 
-#ifdef DEBUG
-#ifndef _WIN32
-    nmlog::nmindent = ind;
-#endif
-#endif
+//#ifdef DEBUG
+//#ifndef _WIN32
+//    nmlog::nmindent = ind;
+//#endif
+//#endif
 
     emit signalModelStopped();
 

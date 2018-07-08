@@ -29,9 +29,9 @@
 
 #ifdef DEBUG
     // required for LUMASS debug output
-    #ifndef _WIN32
-        int nmlog::nmindent = 1;
-    #endif
+//    #ifndef _WIN32
+//        int nmlog::nmindent = 1;
+//    #endif
 
     #ifdef RMANDEBUG
         int indentLevel;
@@ -39,9 +39,9 @@
     #endif
 #else
     #ifdef RMANDEBUG
-        #ifndef _WIN32
-            int nmlog::nmindent = 1;
-        #endif
+//        #ifndef _WIN32
+//            int nmlog::nmindent = 1;
+//        #endif
         int indentLevel;
         bool debugOutput;
     #endif

@@ -50,7 +50,7 @@
     // required for LUMASS debug output
     #ifndef _WIN32
         #include "nmlog.h"
-        int nmlog::nmindent = 1;
+//        int nmlog::nmindent = 1;
     #endif
     #ifdef RMANDEBUG
         int indentLevel;
@@ -60,7 +60,7 @@
     #ifdef RMANDEBUG
         #ifndef _WIN32
             #include "nmlog.h"
-            int nmlog::nmindent = 1;
+//            int nmlog::nmindent = 1;
         #endif
         int indentLevel;
         bool debugOutput;

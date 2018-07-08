@@ -112,11 +112,11 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 //	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
 
     NMModelController* controller = this->getModelController();
-#ifdef DEBUG
-#ifndef _WIN32
-    int ind = nmlog::nmindent;
-#endif
-#endif
+//#ifdef DEBUG
+//#ifndef _WIN32
+//    int ind = nmlog::nmindent;
+//#endif
+//#endif
 	//==========================================================================================
 	// parsing model components -- creating objects, assigning properties
 	//==========================================================================================

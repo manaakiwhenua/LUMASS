@@ -214,12 +214,17 @@ NMProcess::getParameter(const QString& property)
         retStr = this->getModelController()->processStringParameter(this, tStr);
         if (retStr.startsWith("ERROR"))
         {
-            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-            me.setSource(this->parent()->objectName().toStdString());
-            me.setDescription(retStr.toStdString());
-            throw me;
+            //            NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+            //            me.setSource(this->parent()->objectName().toStdString());
+            //            me.setDescription(retStr.toStdString());
+            //            throw me;
+            ret = QVariant();
         }
-        ret = QVariant::fromValue(retStr);
+        else
+        {
+            ret = QVariant::fromValue(retStr);
+        }
+
     }
     else if (QString::fromLatin1("QStringList").compare(propVal.typeName()) == 0)
     {
@@ -237,10 +242,12 @@ NMProcess::getParameter(const QString& property)
             retStr = this->getModelController()->processStringParameter(this, tStr);
             if (retStr.startsWith("ERROR"))
             {
-                NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-                me.setSource(this->parent()->objectName().toStdString());
-                me.setDescription(retStr.toStdString());
-                throw me;
+                //                NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+                //                me.setSource(this->parent()->objectName().toStdString());
+                //                me.setDescription(retStr.toStdString());
+                //                throw me;
+                NMDebugCtx(this->objectName().toStdString(), << "done!");
+                return QVariant();
             }
         }
         ret = QVariant::fromValue(retStr);
@@ -260,10 +267,11 @@ NMProcess::getParameter(const QString& property)
                 QString fetched = this->getModelController()->processStringParameter(this, curList.at(i));
                 if (fetched.startsWith("ERROR"))
                 {
-                    NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
-                    me.setSource(this->parent()->objectName().toStdString());
-                    me.setDescription(fetched.toStdString());
-                    throw me;
+                    //                    NMMfwException me(NMMfwException::NMModelComponent_InvalidParameter);
+                    //                    me.setSource(this->parent()->objectName().toStdString());
+                    //                    me.setDescription(fetched.toStdString());
+                    //                    throw me;
+                    return QVariant();
                 }
                 //QStringList fetchedList = fetched.split(QString(" "), QString::SkipEmptyParts);
                 QStringList fetchedList = this->mController->parseQuotedArguments(fetched, QChar(' '));

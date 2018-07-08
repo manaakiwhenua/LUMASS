@@ -170,6 +170,7 @@ public:
         }
 
         QVariant curHaveMaxKeyRowsVar = p->getParameter("HaveMaxKeyRows");
+        if (curHaveMaxKeyRowsVar.isValid())
         {
             bool curHaveMaxKeyRows = curHaveMaxKeyRowsVar.toInt(&bok);
             if (bok)

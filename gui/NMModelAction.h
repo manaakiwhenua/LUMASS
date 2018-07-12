@@ -38,6 +38,8 @@ public slots:
     NMModelController* getModelController(void);
     void setModelController(NMModelController* ctrl);
 
+    void updateSettings(const QString& key, QVariant value);
+
     void settingsFeeder(QtProperty* prop, const QStringList& valList);
     void reloadUserConfig(void);
 

@@ -188,13 +188,13 @@ NMAbstractAction::settingsFeeder(QtProperty *prop, const QStringList &valList)
 
         if (!newValue.isEmpty())
         {
-            updateSettings(prop, QVariant::fromValue(newValue));
+            updatePropSettings(prop, QVariant::fromValue(newValue));
         }
     }
 }
 
 void
-NMAbstractAction::updateSettings(QtProperty *prop, QVariant valueVar)
+NMAbstractAction::updatePropSettings(QtProperty *prop, QVariant valueVar)
 {
     NMActionInputType type = NM_ACTION_INPUT_UNKNOWN;
     if (mMapInputType.contains(prop->propertyName()))
@@ -415,7 +415,7 @@ NMAbstractAction::populateSettingsBrowser(void)
             connect(man, SIGNAL(signalCallAuxEditor(QtProperty*,const QStringList &)),
                     this, SLOT(settingsFeeder(QtProperty*,const QStringList &)));
             connect(man, SIGNAL(valueChanged(QtProperty*,QVariant)),
-                    this, SLOT(updateSettings(QtProperty*,QVariant)));
+                    this, SLOT(updatePropSettings(QtProperty*,QVariant)));
         }
         else
         {

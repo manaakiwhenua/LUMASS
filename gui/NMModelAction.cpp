@@ -71,6 +71,17 @@ NMModelAction::setModelController(NMModelController *ctrl)
 }
 
 void
+NMModelAction::updateSettings(const QString& key, QVariant value)
+{
+    // we pass everything but the "UserModels"
+    // setting on to the model controller
+    if (key.compare("UserModels", Qt::CaseInsensitive) != 0)
+    {
+        emit updatedActionParameter(key, value);
+    }
+}
+
+void
 NMModelAction::requestAbort(void)
 {
     if (    mModelController
@@ -186,7 +197,7 @@ NMModelAction::settingsFeeder(QtProperty *prop, const QStringList &valList)
 
         if (!newValue.isEmpty())
         {
-            updateSettings(prop, QVariant::fromValue(newValue));
+            updatePropSettings(prop, QVariant::fromValue(newValue));
         }
     }
 }

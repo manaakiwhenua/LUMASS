@@ -113,7 +113,8 @@ public slots:
 
     void updateActionParameter(const QString& key, QVariant value, NMAbstractAction::NMActionInputType type);
     void callConfigDlg(void);
-    void updateSettings(QtProperty* prop, QVariant valueVar);
+    void updatePropSettings(QtProperty* prop, QVariant valueVar);
+    virtual void updateSettings(const QString& key, QVariant value)=0;
 
     virtual void settingsFeeder(QtProperty* prop, const QStringList& valList);
     virtual void reloadUserConfig(void);

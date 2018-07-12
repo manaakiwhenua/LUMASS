@@ -4052,28 +4052,54 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
 
     // need to fetch the proper attribute value, when scalars represent
     // the row index of the RAT
-    if (il->getLegendType() == NMLayer::NM_LEGEND_INDEXED && !il->useIdxMap())
+    if (    il->getTable() != nullptr
+        &&  il->getLegendType() == NMLayer::NM_LEGEND_INDEXED
+        &&  !il->useIdxMap()
+       )
     {
         int lrow = ::atoi(cvs.str().c_str());
 
-        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(
-                    const_cast<QAbstractItemModel*>(il->getTable()));
+        QAbstractItemModel* itemModel = const_cast<QAbstractItemModel*>(il->getTable());
 
-        QString queryStr = QString("SELECT %1 from %2 where %3 = %4")
-                .arg(il->getLegendValueField())
-                .arg(sqlModel->tableName())
-                .arg(sqlModel->getNMPrimaryKey())
-                .arg(lrow);
+        NMQtOtbAttributeTableModel* ramModel = qobject_cast<NMQtOtbAttributeTableModel*>(itemModel);
+        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(itemModel);
 
-        QSqlQuery q(sqlModel->database());
-        if (q.exec(queryStr))
-        {
-            if (q.next())
-            {
-                cvs.str("");
-                cvs << q.value(0).toString().toStdString();
-            }
-        }
+       if (sqlModel != nullptr)
+       {
+           QString queryStr = QString("SELECT %1 from %2 where %3 = %4")
+                   .arg(il->getLegendValueField())
+                   .arg(sqlModel->tableName())
+                   .arg(sqlModel->getNMPrimaryKey())
+                   .arg(lrow);
+
+           QSqlQuery q(sqlModel->database());
+           if (q.exec(queryStr))
+           {
+               if (q.next())
+               {
+                   cvs.str("");
+                   cvs << q.value(0).toString().toStdString();
+               }
+           }
+       }
+       // here we assume a 0-based indexed attribute table
+       else if (ramModel != nullptr)
+       {
+           int colidx = 0;
+           for (int i=0; i < ramModel->columnCount(); ++i)
+           {
+               QVariant colName = ramModel->headerData(i, Qt::Horizontal);
+               if (il->getLegendValueField().compare(colName.toString(), Qt::CaseInsensitive) == 0)
+               {
+                   colidx = i;
+                   break;
+               }
+           }
+
+           QModelIndex mi = ramModel->index(lrow, colidx);
+           cvs.str("");
+           cvs << mi.data().toString().toStdString().c_str();
+       }
     }
 
     pixval = QString(" Pixel(%1, %2, %3) = %4 | LPRPixel(%5, %6, %7)").  // | Displ(%8, %9) | Orig(%10, %11)").
@@ -6253,7 +6279,7 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     // ============================================
     // look for configuration table
     // ============================================
-
+    QString usermodelpath = modelPath;
     QString baseName = QString("%1Tool").arg(userModel);
     QString toolTableName = QString("%1/%2.ldb")
             .arg(modelPath)
@@ -6262,21 +6288,31 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     QFileInfo fnInfo(toolTableName);
     if (!fnInfo.exists() || !fnInfo.isReadable())
     {
-        NMLogError(<< "Load User Tool: Couldn't read tool table for '"
-                 << userModel.toStdString() << "'!")
-        return;
+        QString deeppath = QString("%1/%2").arg(usermodelpath).arg(userModel);
+        QString deeptool = QString("%1/%2Tool.ldb").arg(deeppath).arg(userModel);
+        QFileInfo deepFifo(deeptool);
+        if (deepFifo.exists() && deepFifo.isReadable())
+        {
+            usermodelpath = deeppath;
+            toolTableName = deeptool;
+        }
+        else
+        {
+            NMLogError(<< "Load User Tool: Couldn't read tool table for '"
+                     << userModel.toStdString() << "'!")
+            return;
+        }
     }
 
-
     QString modelFile = QString("%1/%2.lmx")
-            .arg(modelPath)
+            .arg(usermodelpath)
             .arg(userModel);
 
     QFileInfo mfInfo(modelFile);
     if (!mfInfo.exists() || !mfInfo.isReadable())
     {
         NMLogError(<< "Load User Tool: Couldn't read tool's user model '"
-                   << modelPath.toStdString() << "/"
+                   << usermodelpath.toStdString() << "/"
                    << userModel.toStdString() << ".lmx'!")
         return;
     }
@@ -6319,16 +6355,15 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     NMModelAction* uact = new NMModelAction(toolName, toolbar);
     uact->setObjectName(toolName);
     uact->setModelName(userModel);
-    uact->setModelPath(modelPath);
+    uact->setModelPath(usermodelpath);
     uact->setLogger(mLogger);
     mExclusiveActions << uact;
 
     // if modelPath is pointing 'into' the
     // tool directory, go one level up ...
-    QFileInfo mdir(modelPath);
+    QFileInfo mdir(usermodelpath);
     QString mdirbaseName = mdir.baseName();
     QString usermodelname = userModel;
-    QString usermodelpath = modelPath;
     if (mdirbaseName.compare(usermodelname) == 0)
     {
         int pos = modelPath.lastIndexOf('/', -1);
@@ -6348,7 +6383,7 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     ctrl->updateSettings("LUMASSPath", mSettings["LUMASSPath"]);
 
     connect(this, SIGNAL(settingsUpdated(const QString &,QVariant)),
-            ctrl, SLOT(updateSettings(const QString &,QVariant)));
+            uact, SLOT(updateSettings(const QString &,QVariant)));
     connect(ctrl->getLogger(), SIGNAL(sendLogMsg(QString)),
             this, SLOT(appendHtmlMsg(QString)));
     connect(ui->modelViewWidget, SIGNAL(requestModelAbortion()),
@@ -7178,6 +7213,7 @@ void LUMASSMainWin::readSettings()
         }
     }
     settings.endGroup(); // UserToolBars
+    this->ui->modelViewWidget->updateToolContextBox();
 }
 
 void LUMASSMainWin::writeSettings(void)

@@ -2337,7 +2337,9 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     // and the number of records have never been calculated,
     // so revive the table and calc the number of records that we need
     // later on for, e.g. the mapping
-    if (this->mOtbRAT->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+    if (    this->mOtbRAT.IsNotNull()
+        &&  this->mOtbRAT->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE
+       )
     {
         otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
         if (sqltab.IsNotNull())

@@ -96,7 +96,8 @@ SQLiteTable::sqliteError(const int& rc, sqlite3_stmt** stmt)
         //NMErr(_ctxotbtab, << "SQLite3 ERROR #" << rc << ": " << errmsg);
         std::stringstream errstr;
         errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         if (stmt != 0 && *stmt != 0)
         {
             sqlite3_clear_bindings(*stmt);
@@ -583,7 +584,8 @@ SQLiteTable::PrepareAutoBulkSet(const std::vector<std::string>& colNames,
                 errstr << "Number of provided types doesn't match "
                        << "the number of expression values for "
                        << "column '" << colNames.at(i) << "'";
-                this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+                m_lastLogMsg = errstr.str();
+                //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
                 itkExceptionMacro(<< errstr.str());
                 m_vTypesBulkSet.clear();
                 sqlite3_finalize(m_StmtBulkSet);
@@ -822,7 +824,8 @@ SQLiteTable::DoBulkGet(std::vector< ColumnValue >& values)
                     //NMErr(_ctxotbtab, << "UNKNOWN data type!");
                     std::stringstream errstr;
                     errstr << "UNKNOWN data type!";
-                    this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+                    m_lastLogMsg = errstr.str();
+                    //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
                     return false;
                 }
             }
@@ -988,7 +991,8 @@ SQLiteTable::DoPtrBulkSet(std::vector<int *> &intVals,
 
                 std::stringstream errstr;
                 errstr << "UNKNOWN data type!";
-                this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+                m_lastLogMsg = errstr.str();
+                //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
                 return false;
             }
         }
@@ -1022,7 +1026,8 @@ SQLiteTable::DoBulkSet(std::vector<ColumnValue> &values, const long long int &ro
         //                          << "the number of values provided!");
         std::stringstream errstr;
         errstr << "UNKNOWN data type!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         return false;
     }
 
@@ -1061,7 +1066,8 @@ SQLiteTable::DoBulkSet(std::vector<ColumnValue> &values, const long long int &ro
 
             std::stringstream errstr;
             errstr << "UNKNOWN data type!";
-            this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+            m_lastLogMsg = errstr.str();
+            //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
             return false;
             }
         }
@@ -1255,7 +1261,8 @@ SQLiteTable::BeginTransaction()
 
         std::stringstream errstr;
         errstr << "No database connection!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
         return false;
     }
 
@@ -1267,7 +1274,8 @@ SQLiteTable::BeginTransaction()
 
         std::stringstream errstr;
         errstr << "Transaction already in progress - bail out!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
         return true;
     }
 
@@ -1279,7 +1287,8 @@ SQLiteTable::BeginTransaction()
 
         std::stringstream errstr;
         errstr << "Failed starting transaction!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         return false;
     }
     else
@@ -1288,7 +1297,8 @@ SQLiteTable::BeginTransaction()
         //NMDebugAI(<< "NMSQLiteTable --> started new transaction!" << std::endl);
         std::stringstream errstr;
         errstr << "Started new transaction!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_DEBUG));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_DEBUG));
         return true;
     }
 }
@@ -1304,7 +1314,8 @@ SQLiteTable::EndTransaction()
         // NMDebugCtx(_ctxotbtab, << "done!");
         std::stringstream errstr;
         errstr << "No datbase connection!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
         return false;
     }
 
@@ -1315,7 +1326,8 @@ SQLiteTable::EndTransaction()
         //NMDebugCtx(_ctxotbtab, << "done!");
         std::stringstream errstr;
         errstr << "Nothing to commit - no active transaction!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_WARN));
         return false;
     }
 
@@ -1326,7 +1338,8 @@ SQLiteTable::EndTransaction()
         //NMDebugCtx(_ctxotbtab, << "done!");
         std::stringstream errstr;
         errstr << "Commit failed!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         return false;
     }
     else
@@ -1335,7 +1348,8 @@ SQLiteTable::EndTransaction()
         //NMDebugAI(<< "NMSQLiteTable --> ended current transaction!" << std::endl);
         std::stringstream errstr;
         errstr << "Ended current transaction!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_DEBUG));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_DEBUG));
         return true;
     }
 }
@@ -2623,7 +2637,7 @@ SQLiteTable::openConnection(void)
         std::stringstream errstr;
         errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
         m_lastLogMsg = errstr.str();
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         m_dbFileName.clear();
         ::sqlite3_close(m_db);
         m_db = 0;
@@ -2636,8 +2650,9 @@ SQLiteTable::openConnection(void)
     {
         //NMWarn(_ctxotbtab, << "Failed to adjust cache_size!");
         //itkDebugMacro(<< "Failed to adjust cache_size!");
-        this->InvokeEvent(itk::NMLogEvent("Failed to adjust cache_size!",
-                                          itk::NMLogEvent::NM_LOG_ERROR));
+        m_lastLogMsg = "Failed to adjust cache size!";
+        //this->InvokeEvent(itk::NMLogEvent("Failed to adjust cache_size!",
+          //                                itk::NMLogEvent::NM_LOG_ERROR));
     }
 
 	// alloc spatialite caches
@@ -2648,7 +2663,7 @@ SQLiteTable::openConnection(void)
         std::stringstream errstr;
         errstr << "Failed allocating spatialite connection!";
         m_lastLogMsg = errstr.str();
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         return false;
     }
 	
@@ -2657,7 +2672,7 @@ SQLiteTable::openConnection(void)
 
     std::stringstream errstr;
     errstr << "Opened connection to '" << m_dbFileName << "'";
-    this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_DEBUG));
+    //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_DEBUG));
 
     spatialite_init_ex(m_db, m_SpatialiteCache, 1);
 
@@ -2751,8 +2766,9 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     else
     {
         //NMErr(_ctxotbtab, << "File format not supported!");
-        this->InvokeEvent(itk::NMLogEvent("File format not supported!",
-                          itk::NMLogEvent::NM_LOG_ERROR));
+        m_lastLogMsg = "File format not supported!";
+        //this->InvokeEvent(itk::NMLogEvent("File format not supported!",
+                        //  itk::NMLogEvent::NM_LOG_ERROR));
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
@@ -2765,7 +2781,8 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         std::stringstream errstr;
         errstr << "Creating virtual table from "
                << m_tableName << "." << ext << " failed!";
-        this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
+        m_lastLogMsg = errstr.str();
+        //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_ERROR));
         NMDebugCtx(_ctxotbtab, << "done!");
         return false;
     }
@@ -2781,8 +2798,9 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     if (sqliteError(rc, &rcnt))
     {
         //NMProcWarn(<< "Failed querying the number of records in the VT!");
-        this->InvokeEvent(itk::NMLogEvent("Failed querying the number of records in the VT!",
-                                          itk::NMLogEvent::NM_LOG_WARN));
+        m_lastLogMsg = "Failed querying the number of records in the VT!";
+        //this->InvokeEvent(itk::NMLogEvent("Failed querying the number of records in the VT!",
+          //                                itk::NMLogEvent::NM_LOG_WARN));
         sqlite3_finalize(rcnt);
         m_dbFileName.clear();
         NMDebugCtx(_ctxotbtab, << "done!");

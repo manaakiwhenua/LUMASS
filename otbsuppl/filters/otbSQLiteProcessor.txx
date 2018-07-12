@@ -191,12 +191,27 @@ void SQLiteProcessor< TInputImage, TOutputImage >
     this->UpdateProgress(0.2);
     if (!m_vRAT.at(0)->SqlExec(m_SQLStatement))
     {
-        // we just give a warning here, since we might do things
-        // like adding a column; and if the column is already
-        // present, the overall modelling run is not interrupted
-        NMProcWarn(<< "SQL processing failed - "
-                   << m_vRAT.at(0)->getLastLogMsg());
-        //return;
+        // we only report an error for the following
+        // conditions:
+        // - database is locked
+        //
+        // all other conditions are treated as OK; for instance
+        // we just give a warning if try to a add a column that
+        // is already present and in general doesn't affect the
+        // overall modelling run
+
+
+        std::string lastlog = m_vRAT.at(0)->getLastLogMsg();
+        if (lastlog.find("database is locked") != std::string::npos)
+        {
+            NMProcErr(<< "SQL processing failed - "
+                      << lastlog);
+        }
+        else
+        {
+            NMProcWarn(<< "SQL processing failed - "
+                       << lastlog);
+        }
     }
 
     for (int i=1; i < m_vRAT.size(); ++i)

@@ -196,7 +196,8 @@ protected:
     vtkSmartPointer<vtkIdTypeArray> mHistogram;
 
     // selection mapping & vis
-    vtkSmartPointer<NMVtkOpenGLImageSliceMapper> mImgSelMapper;
+    //vtkSmartPointer<NMVtkOpenGLImageSliceMapper> mImgSelMapper;
+    vtkSmartPointer<vtkImageSliceMapper> mImgSelMapper;
     vtkSmartPointer<vtkImageSlice> mImgSelSlice;
     vtkSmartPointer<vtkImageProperty> mImgSelProperty;
 

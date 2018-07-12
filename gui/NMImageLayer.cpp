@@ -752,26 +752,31 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 {
     // no table, no selection
     otb::SQLiteTable::Pointer sqlTab;
-    bool alright = false;
+    bool bsql = false;
     if (mOtbRAT.IsNotNull())
     {
-        sqlTab = static_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
+        sqlTab = dynamic_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
         if (sqlTab.IsNotNull())
         {
             sqlTab->SetOpenReadOnly(true);
-            if (alright = sqlTab->openConnection())
+            if (sqlTab->openConnection())
             {
-                alright = sqlTab->PopulateTableAdmin();
+                if (!sqlTab->PopulateTableAdmin())
+                {
+                    sqlTab->CloseTable();
+                    NMLogError(<< "ImageLayer::selectionChanged(): Failed to open SQL RAT!");
+                    return;
+                }
+                bsql = true;
             }
         }
     }
-
-    if (!alright)
+    else
     {
-        sqlTab->CloseTable();
-        NMLogError(<< "ImageLayer::selectionChanged(): Failed to open the RAT!");
+        NMLogWarn(<< "ImageLayer::selectionChanged(): No RAT no selction support!");
         return;
     }
+
 
     // ==========================================================================
     // prepare selection bounding box, if applicable for this layer
@@ -824,7 +829,8 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
             if (bNum)
             {
                 selLut->SetMappedTableValue(cell,
-                                          sqlTab->GetDblValue(valcolidx, cell),
+                                          //sqlTab->GetDblValue(valcolidx, cell),
+                                          mOtbRAT->GetDblValue(valcolidx, cell),
                                           0,0,0,0);
             }
             else
@@ -857,7 +863,8 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
                 if (bNum)
                 {
                     selLut->SetMappedTableValue(row,
-                                              sqlTab->GetDblValue(valcolidx, row),
+                                              //sqlTab->GetDblValue(valcolidx, row),
+                                              mOtbRAT->GetDblValue(valcolidx, row),
                                               1,0,0,1);
                 }
                 else
@@ -875,11 +882,15 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
             if (mHasSelBox)
             {
-                double minX = sqlTab->GetIntValue("minX", row) * mSpacing[0] + mOrigin[0];
-                double minY = mOrigin[1] + mSpacing[1] + (sqlTab->GetIntValue("maxY", row) * mSpacing[1]);
+                //double minX = sqlTab->GetIntValue("minX", row) * mSpacing[0] + mOrigin[0];
+                double minX = mOtbRAT->GetIntValue("minX", row) * mSpacing[0] + mOrigin[0];
+                //double minY = mOrigin[1] + mSpacing[1] + (sqlTab->GetIntValue("maxY", row) * mSpacing[1]);
+                double minY = mOrigin[1] + mSpacing[1] + (mOtbRAT->GetIntValue("maxY", row) * mSpacing[1]);
                 double minZ = 0;
-                double maxX = sqlTab->GetIntValue("maxX", row) * mSpacing[0] + mOrigin[0] + mSpacing[0];
-                double maxY = mOrigin[1] + (sqlTab->GetIntValue("minY", row) * mSpacing[1]);
+                //double maxX = sqlTab->GetIntValue("maxX", row) * mSpacing[0] + mOrigin[0] + mSpacing[0];
+                double maxX = mOtbRAT->GetIntValue("maxX", row) * mSpacing[0] + mOrigin[0] + mSpacing[0];
+                //double maxY = mOrigin[1] + (sqlTab->GetIntValue("minY", row) * mSpacing[1]);
+                double maxY = mOrigin[1] + (mOtbRAT->GetIntValue("minY", row) * mSpacing[1]);
                 double maxZ = 0;
 
                 mSelBBox[0] = minX < mSelBBox[0] ? minX : mSelBBox[0];
@@ -891,7 +902,12 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
             }
         }
     }
-    sqlTab->CloseTable();
+
+
+    if (bsql)
+    {
+        sqlTab->CloseTable();
+    }
 
     // set selection look-up table and selection
     // 'layer' visibility
@@ -989,7 +1005,15 @@ NMImageLayer::updateAttributeTable()
 		return 0;
 	}
 
-    mNumRecords = mOtbRAT->GetNumRows();
+    // we do this check only if we've got a RAM table and we don't know the
+    // number of rows yet!
+    if (    mNumRecords == 0
+        &&  mOtbRAT->GetTableType() != otb::AttributeTable::ATTABLE_TYPE_SQLITE
+       )
+    {
+        mNumRecords = mOtbRAT->GetNumRows();
+    }
+
     if (mNumRecords == 0)
     {
         mOtbRAT = 0;
@@ -1212,10 +1236,11 @@ NMImageLayer::setFileName(QString filename)
     m->SetNMLayer(this);
     m->SetBorder(1);
 
-    this->mImgSelMapper = vtkSmartPointer<NMVtkOpenGLImageSliceMapper>::New();
-    this->mImgSelMapper->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
-    this->mImgSelMapper->SetNMLayer(this);
-    this->mImgSelMapper->SetBorder(1);
+    vtkSmartPointer<NMVtkOpenGLImageSliceMapper> iselm = vtkSmartPointer<NMVtkOpenGLImageSliceMapper>::New();
+    iselm->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+    iselm->SetNMLayer(this);
+    iselm->SetBorder(1);
+    this->mImgSelMapper = iselm;
 
     vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
     a->SetMapper(m);
@@ -1508,10 +1533,15 @@ NMImageLayer::mapExtentChanged(void)
         // actor is visible
         if (this->mImgSelSlice->GetVisibility())
         {
-            this->mImgSelMapper->UpdateInformation();
-            this->mImgSelMapper->SetDisplayExtent(uext);
-            this->mImgSelMapper->SetDataWholeExtent(uext);
-            this->mImgSelMapper->Update();
+            vtkSmartPointer<NMVtkOpenGLImageSliceMapper> imselm = NMVtkOpenGLImageSliceMapper::SafeDownCast(
+                        mImgSelMapper.GetPointer());
+            if (imselm.GetPointer() != nullptr)
+            {
+                imselm->UpdateInformation();
+                imselm->SetDisplayExtent(uext);
+                imselm->SetDataWholeExtent(uext);
+                imselm->Update();
+            }
         }
     }
     else
@@ -2303,20 +2333,61 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
         return;
     }
 
+    // in case we've got an SQLite table, the connection is probably closed,
+    // and the number of records have never been calculated,
+    // so revive the table and calc the number of records that we need
+    // later on for, e.g. the mapping
+    if (this->mOtbRAT->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+    {
+        otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
+        if (sqltab.IsNotNull())
+        {
+            if (sqltab->openConnection())
+            {
+                if (sqltab->PopulateTableAdmin())
+                {
+                    mNumRecords = sqltab->GetNumRows();
+                }
+
+                sqltab->CloseTable();
+            }
+        }
+    }
+
     // concatenate the pipeline
 	this->mPipeconn->setInput(imgWrapper);
 
-	vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
-	m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+    vtkSmartPointer<vtkImageResliceMapper> m = vtkSmartPointer<vtkImageResliceMapper>::New();
+    m->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+
+    this->mImgSelMapper = vtkSmartPointer<vtkImageSliceMapper>::New();
+    this->mImgSelMapper->SetInputConnection(this->mPipeconn->getVtkAlgorithmOutput());
+    this->mImgSelMapper->SetBorder(1);
 
 	vtkSmartPointer<vtkImageSlice> a = vtkSmartPointer<vtkImageSlice>::New();
 	a->SetMapper(m);
 
-	mImgProp = vtkSmartPointer<vtkImageProperty>::New();
+    this->mImgSelSlice = vtkSmartPointer<vtkImageSlice>::New();
+    this->mImgSelSlice->SetMapper(mImgSelMapper);
+    this->mImgSelSlice->SetVisibility(0);
+
+
+    mImgProp = vtkSmartPointer<vtkImageProperty>::New();
 	mImgProp->SetInterpolationTypeToNearest();
 	a->SetProperty(mImgProp);
 
-	this->mRenderer->AddViewProp(a);
+    this->mImgSelProperty = vtkSmartPointer<vtkImageProperty>::New();
+    this->mImgSelProperty->SetInterpolationTypeToNearest();
+    this->mImgSelSlice->SetProperty(this->mImgSelProperty);
+    this->mImgSelProperty->SetLayerNumber(1);
+
+    vtkImageStack* imgStack = vtkImageStack::New();
+    imgStack->AddImage(a);
+    imgStack->AddImage(mImgSelSlice);
+    imgStack->SetActiveLayer(0);
+
+    this->mRenderer->AddViewProp(imgStack);
+    imgStack->Delete();
 
 	this->mMapper = m;
 	this->mActor = a;

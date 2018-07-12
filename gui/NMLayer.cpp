@@ -874,7 +874,7 @@ NMLayer::loadLegend(const QString& filename)
 {
     if (this->mTableModel == 0)
     {
-        NMLogError(<< ctxNMLayer << ":Need an attribute table for mapping!");
+        //NMLogError(<< ctxNMLayer << ":Need an attribute table for mapping!");
         return;
     }
 
@@ -1139,7 +1139,7 @@ NMLayer::mapUniqueValues(void)
 {
 	if (mTableModel == 0)
 	{
-        NMLogError(<< ctxNMLayer << ": Invalid attribute table");
+        //NMLogError(<< ctxNMLayer << ": Invalid attribute table");
 		return;
 	}
 

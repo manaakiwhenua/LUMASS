@@ -1468,7 +1468,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "csv" << "txt" << "xls";
             QStringList imgFormats;
             imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
-                       << "png" << "gif" << "adf" << "hdr" << "sdat";
+                       << "png" << "gif" << "adf" << "hdr" << "sdat" << "vrt";
             QString ext = finfo.suffix().toLower();
             if (tabFormats.contains(ext) || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
             {

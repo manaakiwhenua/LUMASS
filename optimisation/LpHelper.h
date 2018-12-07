@@ -36,6 +36,7 @@ public:
 	bool ReadLP(std::string sLpFilePath, int verbose, std::string sLpName);	//reads an LP-Problem from Textfile (path)
 	int Solve();	//solves the current problem
 	bool WriteLp(std::string sFileName);	//wraps write_lp function form lp_solve5.1
+    bool WriteMps(std::string sFileName);
 	
 	bool GetPtrConstraints(double **ppConstraints); //get the rh (right hand) values of the constraints after solution
 	bool GetPtrVariables(double **ppVariables);		//get the values of all variables after solution

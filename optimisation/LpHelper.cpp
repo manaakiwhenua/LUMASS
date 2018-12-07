@@ -556,6 +556,21 @@ bool HLpHelper::WriteLp(std::string sFileName)
 	return ret;
 }
 
+bool HLpHelper::WriteMps(std::string sFileName)
+{
+    NMDebugCtx(ctxLpHelper, << "...");
+
+    //check valid lp
+    if (!this->CheckLp())
+        return false;
+
+    MYBOOL ret = write_mps(this->m_pLp,
+            const_cast<char*>(sFileName.c_str()));
+
+    NMDebugCtx(ctxLpHelper, << "done!");
+    return ret;
+}
+
 bool HLpHelper::SetLpName(std::string sLpName)
 {
 	//check valid lp

@@ -22,7 +22,6 @@
 #include "NMImageReader.h"
 #include "NMModelComponent.h"
 #include "NMIterableComponent.h"
-//#include "NMImageLayer.h"
 #include "NMMfwException.h"
 
 #include <string>
@@ -31,7 +30,6 @@
 #include "itkDataObject.h"
 #include "otbImage.h"
 #include "otbRATBandMathImageFilter.h"
-//#include "otbRATBandMathImageFilter_ExplicitInst.h"
 #include "NMItkDataObjectWrapper.h"
 #include "NMOtbAttributeTableWrapper.h"
 #include "otbAttributeTable.h"
@@ -47,7 +45,8 @@ class NMRATBandMathImageFilterWrapper_Internal
 {
 public:
 	typedef otb::Image<inputType, Dimension> ImgType;
-	typedef otb::RATBandMathImageFilter<ImgType> FilterType;
+    typedef otb::RATBandMathImageFilter<ImgType> FilterType;
+    //typedef otb::AutoResampleMapAlgebraFilter<ImgType> FilterType;
 	typedef typename FilterType::Pointer FilterTypePointer;
 
 	static void createInstance(itk::ProcessObject::Pointer& otbFilter,

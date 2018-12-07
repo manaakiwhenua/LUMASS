@@ -103,6 +103,7 @@ public slots:
     void editContourWidth();
     void editContourStyle();
     void editLayerOpacity();
+    void editSelectionColour();
     void saveLegend();
     void loadLegend();
     void showImageInfo();
@@ -133,6 +134,7 @@ private:
 
     NMLogger* mLogger;
 
+    NMLayer* mLastLayer;
     NMLayerModel* mLayerModel;
     NMComponentListItemDelegate* mDelegate;
     QPoint dragStartPosition;

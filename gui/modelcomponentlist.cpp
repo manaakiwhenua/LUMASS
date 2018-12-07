@@ -101,7 +101,7 @@
 const std::string ModelComponentList::ctx = "ModelComponentList";
 
 ModelComponentList::ModelComponentList(QWidget *parent)
-       :QTreeView(parent)
+       :QTreeView(parent), mLastLayer(nullptr)
 {
 	this->mLayerModel = new NMLayerModel(this);
 	this->setModel(this->mLayerModel);
@@ -180,6 +180,9 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActOpacity = new QAction(this->mMenu);
     mActOpacity->setText(tr("Layer Opacity ..."));
 
+    QAction* actSelColor = new QAction(this->mMenu);
+    actSelColor->setText(tr("Selection Colour ..."));
+
     QAction* actLoadLegend = new QAction(this->mMenu);
     actLoadLegend->setText(tr("Load Legend ..."));
 
@@ -210,6 +213,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->mMenu->addSeparator();
 
     this->mMenu->addAction(mActOpacity);
+    this->mMenu->addAction(actSelColor);
 	this->mMenu->addSeparator();
 
     this->mMenu->addAction(actLoadLegend);
@@ -235,6 +239,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->connect(mActImageStats, SIGNAL(triggered()), this, SLOT(wholeImgStats()));
     this->connect(mActImageHistogram, SIGNAL(triggered()), this, SLOT(showImageHistogram()));
     this->connect(mActOpacity, SIGNAL(triggered()), this, SLOT(editLayerOpacity()));
+    this->connect(actSelColor, SIGNAL(triggered()), this, SLOT(editSelectionColour()));
     this->connect(mActImageInfo, SIGNAL(triggered()), this, SLOT(showImageInfo()));
     this->connect(mActExportColourRamp, SIGNAL(triggered()), this, SLOT(exportColourRamp()));
 
@@ -938,15 +943,15 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
         //NMDebugCtx(ctx, << "done!")
 		return;
 	}
+    const int toplevelrow = (idx.internalId() / 100) - 1;
+    const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
+    NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
+    mLastLayer = l;
 
-    // see whether we've got a layer on the hook
-    NMLayer* l = this->getCurrentLayer();
     const int level = idx.internalId() % 100;
-
     if (!idx.parent().isValid())
 	{
-		this->setCurrentIndex(idx);
-
+        this->setCurrentIndex(idx);
 		if (event->button() == Qt::LeftButton)
 		{
 			QRect vrect = visualRect(idx);
@@ -1089,7 +1094,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
     else if (   event->button() == Qt::RightButton
              && level == 1
              && idx.row() > 0
-             && this->getCurrentLayer() != 0
+             //&& this->getCurrentLayer() != 0
             )
     {
         if(l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
@@ -1097,6 +1102,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
             NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
             if (vl->getFeatureType() == NMVectorLayer::NM_POLYGON_FEAT)
             {
+                this->mActVecContourOnly->setChecked(vl->getIsContoursOnlyOn());
                 this->mContourMenu->move(event->globalPos());
                 this->mContourMenu->exec();
             }
@@ -1133,8 +1139,8 @@ ModelComponentList::editLayerOpacity()
 void
 ModelComponentList::editContourColour()
 {
-    NMLayer* l = this->getCurrentLayer();
-    if (l == 0)
+    NMLayer* l = mLastLayer;
+    if (l == nullptr)
         return;
 
     NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
@@ -1159,10 +1165,36 @@ ModelComponentList::editContourColour()
 }
 
 void
-ModelComponentList::editContourWidth()
+ModelComponentList::editSelectionColour()
 {
     NMLayer* l = this->getCurrentLayer();
-    if (l == 0)
+    if (l == nullptr)
+    {
+        return;
+    }
+
+    QString title = QString("Selection Colour for %1")
+            .arg(l->objectName());
+
+    QColor curclr = l->getSelectionColor();
+    QColor clr = QColorDialog::getColor(curclr, this, title,
+                                        QColorDialog::ShowAlphaChannel);
+
+    if (clr.isValid())
+    {
+        l->setSelectionColor(clr);
+    }
+
+    NMGlobalHelper h;
+    h.getVTKWidget()->update();
+
+}
+
+void
+ModelComponentList::editContourWidth()
+{
+    NMLayer* l = mLastLayer;
+    if (l == nullptr)
         return;
 
     NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
@@ -1180,7 +1212,7 @@ ModelComponentList::editContourWidth()
     bool bok;
     double newWidth = QInputDialog::getDouble(this,
                         tr("Set Contour Width"),
-                        "Width in Pixel", curWidth, 0, 50, 1, &bok);
+                        "Width in Pixel", curWidth, 1, 8, 1, &bok);
     if (bok)
     {
         a->GetProperty()->SetLineWidth(static_cast<float>(newWidth));
@@ -1194,8 +1226,8 @@ ModelComponentList::editContourWidth()
 void
 ModelComponentList::editContourStyle()
 {
-    NMLayer* l = this->getCurrentLayer();
-    if (l == 0)
+    NMLayer* l = mLastLayer;
+    if (l == nullptr)
         return;
 
     NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
@@ -1211,10 +1243,16 @@ ModelComponentList::editContourStyle()
     QStringList options;
     options << "Solid" << "Dashed" << "Dotted";
 
+    int curPattern = a->GetProperty()->GetLineStipplePattern();
+    int curIdx = 0;
+    if (curPattern == 0xffff) curIdx = 0;
+    else if (curPattern == 0xf0f0) curIdx = 1;
+    else curIdx = 2;
+
     bool bok;
     QString style = QInputDialog::getItem(this,
                    tr("Select Contour Style"), "",
-                   options, 0, false, &bok);
+                   options, curIdx, false, &bok);
 
     if (bok)
     {
@@ -1240,8 +1278,8 @@ ModelComponentList::editContourStyle()
 void
 ModelComponentList::mapVectorContoursOnly()
 {
-    NMLayer* l = this->getCurrentLayer();
-    if (l == 0)
+    NMLayer* l = mLastLayer;
+    if (l == nullptr)
         return;
 
     NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
@@ -1249,6 +1287,8 @@ ModelComponentList::mapVectorContoursOnly()
         return;
 
     vl->setFeaturesVisible(!this->mActVecContourOnly->isChecked());
+    vtkAbstractMapper* mapper = const_cast<vtkAbstractMapper*>(vl->getMapper());
+    mapper->Update();
 
     NMGlobalHelper h;
     h.getVTKWidget()->update();

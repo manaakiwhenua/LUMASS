@@ -1402,10 +1402,6 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
     }
     bool bSumUp = m_PixelCounter >= m_NumPixels ? true : false;
 
-    // create output table with variable values for further
-    // processing
-    otb::SQLiteTable::Pointer auxTab = static_cast<otb::SQLiteTable*>(this->GetIndexedOutputs()[1].GetPointer());
-
     // just summing up the aux values across threads
     // i.e. 0: min
     //      1: max
@@ -1418,9 +1414,20 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
     std::vector< std::string > colnames;
     std::vector< otb::AttributeTable::TableColumnType > coltypes;
     std::vector< otb::AttributeTable::ColumnValue > colvalues;
+
+    // create output table with variable values for further
+    // processing
+    otb::SQLiteTable::Pointer auxTab = otb::SQLiteTable::New();
+    bool bTableMagic = false;
+
     if (bSumUp)
     {
-        auxTab->BeginTransaction();
+        if (auxTab->CreateTable("file::memory:") == otb::SQLiteTable::ATCREATE_CREATED)
+        {
+            bTableMagic = true;
+            auxTab->BeginTransaction();
+            this->GraftNthOutput(1, auxTab.GetPointer());
+        }
     }
 
     for (int t=0; t < nthreads; ++t)
@@ -1429,7 +1436,7 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
         int n=0;
         while (auxIt != m_mapNameAuxValue[t].end())
         {
-            if (t==0 && bSumUp)
+            if (t==0 && bSumUp && bTableMagic)
             {
                 auxTab->AddColumn(auxIt->first, otb::AttributeTable::ATTYPE_DOUBLE);
                 colnames.push_back(auxIt->first);
@@ -1446,7 +1453,8 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
         }
     }
 
-    if (bSumUp)
+
+    if (bTableMagic)
     {
         auxTab->EndTransaction();
 
@@ -1474,7 +1482,10 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
             colvalues[n].dval = m_sumVal[n];
         }
         auxTab->DoBulkSet(colvalues);
+    }
 
+    if (bSumUp)
+    {
         Reset();
     }
 }

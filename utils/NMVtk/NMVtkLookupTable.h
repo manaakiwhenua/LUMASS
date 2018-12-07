@@ -74,6 +74,9 @@ public:
     void SetMappedTableValue(vtkIdType indx, double mapVal,
                                 double r, double g, double b, double a=1.0);
 
+    void SetMappedTableValue(vtkIdType indx, double mapVal, double rgba[4])
+        {SetMappedTableValue(indx, mapVal, rgba[0], rgba[1], rgba[2], rgba[3]);}
+
     /*!
      * \brief turn map-based index lookup on/off
      * \param bmap == true ? on : off

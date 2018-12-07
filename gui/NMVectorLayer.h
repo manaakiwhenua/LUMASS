@@ -64,6 +64,8 @@ public:
 
     void setContoursVisible(bool vis);
     void setFeaturesVisible(bool vis);
+    bool getIsContoursOnlyOn(void)
+           {return mContourOnly;}
 
 	NMFeatureType getFeatureType(void);
 
@@ -105,6 +107,8 @@ protected:
 
 protected slots:
 	int updateAttributeTable(void);
+    void updateSelectionColor();
+
 	//virtual void updateDataSet(QStringList& slAlteredColumns,
 	//		QStringList& slDeletedColumns);
 	//virtual void updateSelectionData(void);

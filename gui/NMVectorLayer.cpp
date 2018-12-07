@@ -903,7 +903,11 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 		{
 			scalars->SetValue(clrcnt, clrcnt);
 			selCellIds->SetId(clrcnt, row);
-			clrtab->SetTableValue(clrcnt, 1, 0, 0);
+            //clrtab->SetTableValue(clrcnt, 1, 0, 0);
+            clrtab->SetTableValue(clrcnt, mClrSelection.redF(),
+                                          mClrSelection.greenF(),
+                                          mClrSelection.blueF(),
+                                          mClrSelection.alphaF());
 			++clrcnt;
 		}
 	}
@@ -947,6 +951,31 @@ NMVectorLayer::selectionChanged(const QItemSelection& newSel,
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);
+}
+
+void
+NMVectorLayer::updateSelectionColor()
+{
+    const QItemSelection& curSel = this->mSelectionModel->selection();
+    vtkSmartPointer<vtkLookupTable> clrtab = vtkLookupTable::SafeDownCast(
+                                                this->mSelectionMapper->GetLookupTable());
+
+    int clrcnt = 0;
+    foreach(const QItemSelectionRange& range, curSel)
+    {
+        const int top = range.top();
+        const int bottom = range.bottom();
+        for (int row=top; row<=bottom; ++row)
+        {
+            clrtab->SetTableValue(clrcnt, mClrSelection.redF(),
+                                          mClrSelection.greenF(),
+                                          mClrSelection.blueF(),
+                                          mClrSelection.alphaF());
+            ++clrcnt;
+        }
+    }
+
+    this->mSelectionMapper->Update();
 }
 
 //void NMVectorLayer::updateSelectionData(void)

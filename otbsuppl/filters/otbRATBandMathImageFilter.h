@@ -128,12 +128,17 @@ public:
 
   /** Some convenient typedefs. */
   typedef TImage                                  ImageType;
-  typedef typename ImageType::ConstPointer        ImagePointer;
+  typedef typename ImageType::ConstPointer        ImageConstPointer;
+  typedef typename ImageType::Pointer             ImagePointer;
   typedef typename ImageType::RegionType          ImageRegionType; 
+  typedef typename ImageRegionType::SizeType      SizeType;
   typedef typename ImageType::PixelType           PixelType;
   typedef typename ImageType::IndexType           IndexType;
-  typedef typename ImageType::PointType           OrigineType;
+  typedef typename ImageType::PointType           OriginType;
   typedef typename ImageType::SpacingType         SpacingType;
+
+  typedef typename itk::ImageBase< ImageType::ImageDimension > ImageBaseType;
+
   typedef MultiParser                             ParserType;
   
   typedef typename AttributeTable::Pointer		   TablePointer;
@@ -206,7 +211,7 @@ private :
   int									m_NbExpr;
 
   SpacingType                           m_Spacing;
-  OrigineType                           m_Origin;
+  OriginType                            m_Origin;
 
   bool                                  m_UseTableColumnCache;
   std::vector<std::map<int, std::map<long, double> > >  m_TableColumnCache;
@@ -221,6 +226,7 @@ private :
   std::vector< std::vector<int> > 	m_VTabAttr;
   std::vector< std::vector< ColumnType > > m_VAttrTypes;
   std::vector< std::vector< std::vector<double> > >	m_VAttrValues;
+
 };
 
 }//end namespace otb

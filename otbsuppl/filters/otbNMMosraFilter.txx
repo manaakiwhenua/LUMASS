@@ -181,8 +181,8 @@ void NMMosraFilter< TInputImage, TOutputImage >
         mosra->setBreakAtFirst(true);
     }
 
-    this->SetProgress(0.8);
-    mosra->mapLp();
+    //this->SetProgress(0.8);
+    //mosra->mapLp();
 
     // get the current time
     time_t timestamp;
@@ -207,6 +207,8 @@ void NMMosraFilter< TInputImage, TOutputImage >
     fns << m_Workspace << "/lp_" << m_CompName << "_" << curTime << ".lp";
     std::string lpFN = fns.str();
 
+    // this will write the problem before it's attampted to being solved
+    mosra->writeProblem(lpFN.c_str(), NMMosra::NM_MOSO_LP);
 
     // solve the problem
     this->UpdateProgress(0.2);
@@ -221,7 +223,6 @@ void NMMosraFilter< TInputImage, TOutputImage >
         NMProcErr( << "optimisation failed!");
     }
 
-    mosra->getLp()->WriteLp(lpFN);
     mosra->writeReport(reportFN.c_str());
 
     this->SetProgress(1.0);

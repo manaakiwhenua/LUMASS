@@ -74,7 +74,9 @@ NMLayer::NMLayer(vtkRenderWindow* renWin,
       mLegendType(NM_LEGEND_SINGLESYMBOL),
       mIsIn3DMode(false),
       mUseIdxMap(false),
-      mHasSelBox(false), mNumSelRows(0)
+      mHasSelBox(false),
+      mNumSelRows(0),
+      mClrSelection(QColor(255,0,0))
 {
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);

@@ -263,6 +263,11 @@ public:
 	QIcon getLayerIcon(void);
 	QImage getLayerIconAsImage(void);
 
+    QColor getSelectionColor(void)
+        {return mClrSelection;}
+    void setSelectionColor(QColor& clr)
+        {mClrSelection = clr;
+         updateSelectionColor();}
 
 	bool isVisible(void);
 	virtual void setVisible(bool visible);
@@ -471,6 +476,7 @@ protected:
     vtkSmartPointer<vtkLookupTable> mLookupTable;
     //vtkSmartPointer<NMVtkLookupTable> mLookupTable;
 
+    QColor mClrSelection;
 	QColor mClrNodata;
 	QColor mClrLowerMar;
 	QColor mClrUpperMar;
@@ -528,8 +534,7 @@ protected slots:
 	//virtual void updateDataSet(QStringList& slAlteredColumns,
 	//		QStringList& slDeletedColumns);
 	virtual void updateSelectionData();
-
-
+    virtual void updateSelectionColor(void)=0;
 
 private:
 

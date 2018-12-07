@@ -86,6 +86,9 @@ public:
 	std::vector<double> getOIDs(void)
 		{return this->m_oids;}
 
+    std::vector<double> getUpperLeftCorner(void)
+    {return m_UpperLeftCorner;}
+
 	/*! Sets a valid RasdamanConnector instance */
 	void setRasdamanConnector(RasdamanConnector* rasconn);
 	RasdamanConnector* getRasdamanConnector(void)
@@ -157,6 +160,7 @@ private:
 	RasdamanConnector* m_Rasconn;
 	std::vector<otb::AttributeTable::Pointer> m_vecRAT;
 
+    std::vector<double> m_UpperLeftCorner;
 	std::string m_ImageSpec;
 	std::string m_prevImageSpec;
 	std::string m_collname;

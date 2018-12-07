@@ -100,6 +100,8 @@ public:
   itkGetMacro(OverviewIdx, int)
   void SetOverviewIdx(int ovvidx);
 
+  std::vector<double> GetUpperLeftCorner(void);
+
   /** Allow for retro-fitting of overviews, in case not present */
   void BuildOverviews(const std::string& method);
 
@@ -169,6 +171,8 @@ protected:
   unsigned int m_DatasetNumber;
 
   AttributeTable::Pointer m_RAT;
+
+  std::vector<double> m_UpperLeftCorner;
 
   int m_OverviewIdx;
   bool m_UseUserLargestPossibleRegion;

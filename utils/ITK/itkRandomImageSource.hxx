@@ -47,7 +47,7 @@ RandomImageSource< TOutputImage >
     {
     m_Size[i] = 64;
     m_Spacing[i] = 1.0;
-    m_Origin[i] = 0.0;
+    m_Origin[i] = 0.5;
     }
   m_Direction.SetIdentity();
 

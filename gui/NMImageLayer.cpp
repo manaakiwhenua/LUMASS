@@ -195,6 +195,9 @@ public:
                 bbox[i] = 0;
             }
 
+            // set up cornerorigin array
+            double UpperLeftCorner[Dimension];
+
             if (numBands == 1)
             {
                 ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
@@ -202,34 +205,23 @@ public:
                 {
                     return;
                 }
-                RegionType reg = theimg->GetLargestPossibleRegion();//theimg->GetBufferedRegion();
 
-                // problem here is that we could also be dealing with an
-                // image of type 'itk::Image' rather than 'otb::Image',
-                // so using the convenient 'GetLowerLeftCorner()' etc.
-                // functions would crash with 'itk::Image' and hence crash
-                //				bbox[0] = theimg->GetLowerLeftCorner()[0];  // minx
-                //				bbox[2] = theimg->GetLowerLeftCorner()[1];  // miny
-                //				bbox[1] = theimg->GetUpperRightCorner()[0]; // maxx
-                //				bbox[3] = theimg->GetUpperRightCorner()[1]; // maxy
-                //				bbox[5] = 0;
-                //				bbox[6] = 0;
+                for (int d=0; d < Dimension; ++d)
+                {
+                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSpacing()[d];
+                }
 
-                //				if (theimg->GetImageDimension() == 3)
-                //				{
-                //					bbox[5] = theimg->GetOrigin()[2];
-                //					bbox[6] = bbox[5] + theimg->GetSpacing()[2] * reg.GetSize()[2];
-                //				}
+                RegionType reg = theimg->GetLargestPossibleRegion();
 
-                bbox[0] = theimg->GetOrigin()[0];
+                bbox[0] = UpperLeftCorner[0];
                 bbox[1] = bbox[0] + (theimg->GetSpacing()[0] * reg.GetSize()[0]);
-                bbox[2] = theimg->GetOrigin()[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
-                bbox[3] = theimg->GetOrigin()[1];
+                bbox[2] = UpperLeftCorner[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
+                bbox[3] = UpperLeftCorner[1];
                 bbox[4] = 0;
                 bbox[5] = 0;
                 if (theimg->GetImageDimension() == 3)
                 {
-                    bbox[4] = theimg->GetOrigin()[2];
+                    bbox[4] = UpperLeftCorner[2];
                     bbox[5] = bbox[4] + (theimg->GetSpacing()[2] * reg.GetSize()[2]);
                 }
 
@@ -242,24 +234,24 @@ public:
                 {
                     return;
                 }
-                VecRegionType reg = theimg->GetLargestPossibleRegion();//theimg->GetBufferedRegion();
 
-                bbox[0] = theimg->GetOrigin()[0];
+                for (int d=0; d < Dimension; ++d)
+                {
+                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSpacing()[d];
+                }
+
+                VecRegionType reg = theimg->GetLargestPossibleRegion();
+
+                bbox[0] = UpperLeftCorner[0];
                 bbox[1] = bbox[0] + (theimg->GetSpacing()[0] * reg.GetSize()[0]);
-                bbox[2] = theimg->GetOrigin()[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
-                bbox[3] = theimg->GetOrigin()[1];
+                bbox[2] = UpperLeftCorner[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
+                bbox[3] = UpperLeftCorner[1];
                 bbox[4] = 0;
                 bbox[5] = 0;
-                //				bbox[0] = theimg->GetLowerLeftCorner()[0];
-                //				bbox[2] = theimg->GetLowerLeftCorner()[1];
-                //				bbox[1] = theimg->GetUpperRightCorner()[0];
-                //				bbox[3] = theimg->GetUpperRightCorner()[1];
-                //                bbox[4] = 0;
-                //                bbox[5] = 0;
 
                 if (theimg->GetImageDimension() == 3)
                 {
-                    bbox[5] = theimg->GetOrigin()[2];
+                    bbox[5] = UpperLeftCorner[2];
                     bbox[6] = bbox[5] + theimg->GetSpacing()[2] * reg.GetSize()[2];
                 }
             }
@@ -664,9 +656,6 @@ double NMImageLayer::getDefaultNodata()
 void NMImageLayer::world2pixel(double world[3], int pixel[3],
     bool bOnLPR, bool bImgConstrained)
 {
-	// we tweak the world coordinates a little bit to
-	// generate the illusion as if we had pixel-centered
-	// coordinates in vtk as well
     double wcoord[3];
     for (int i=0; i<3; ++i)
     {
@@ -674,6 +663,7 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     }
     double spacing[3];
 	double origin[3];
+    double ulcorner[3];
     int dims[3] = {0,0,0};
 	double err[3];
 
@@ -686,7 +676,7 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     img->GetSpacing(spacing);
     img->GetOrigin(origin);
 
-    // adjust coordinates & calc bnd
+    // calc bounds, size (dims), and error margin
     unsigned int d;
     for (d = 0; d < this->mNumDimensions; ++d)
     {
@@ -694,15 +684,10 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         {
             spacing[d] = mSpacing[d];
         }
+        ulcorner[d] = origin[d] - 0.5 * spacing[d];
         dims[d] = (mBBox[d*2+1] - mBBox[d*2]) / ::fabs(spacing[d]);
 
-        // account for 'pixel corner coordinate' vs.
-        // 'pixel centre coordinate' philosophy of
-        // vtk vs itk
-        wcoord[d] += spacing[d] / 2.0;
-        // set the 'pointing accuracy' to 1 percent of
-        // pixel width for each dimension
-        err[d] = spacing[d] * 0.001;
+        err[d] = ::fabs(spacing[d]) * 0.001;
     }
 
 	// check, whether the user point is within the
@@ -719,15 +704,15 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     {
         if (dims[d] > 0)
         {
-            pixel[d] = ((world[d] - origin[d]) / spacing[d])+0.5;
+            pixel[d] = ((world[d] - ulcorner[d]) / spacing[d]);
             if (!bImgConstrained)
             {
-                if (d == 0 && wcoord[d] < origin[d])
+                if (d == 0 && wcoord[d] < ulcorner[d])
                 {
                     pixel[d] -= 1;
                 }
 
-                if (d == 1 && wcoord[d] > origin[d])
+                if (d == 1 && wcoord[d] > ulcorner[d])
                 {
                     pixel[d] -= 1;
                 }
@@ -846,6 +831,13 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
         }
     }
 
+    double selRGBA[4] = {
+                            mClrSelection.redF(),
+                            mClrSelection.greenF(),
+                            mClrSelection.blueF(),
+                            mClrSelection.alphaF()
+                        };
+
 
     // iterate over new selection range and set selection colour for
     // seletec rows
@@ -863,34 +855,29 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
                 if (bNum)
                 {
                     selLut->SetMappedTableValue(row,
-                                              //sqlTab->GetDblValue(valcolidx, row),
                                               mOtbRAT->GetDblValue(valcolidx, row),
-                                              1,0,0,1);
+                                              selRGBA);//1,0,0,1);
                 }
                 else
                 {
                     selLut->SetMappedTableValue(row,
                                               row,
-                                              1,0,0,1);
+                                              selRGBA);//1,0,0,1);
                 }
             }
             else
             {
-                selLut->SetTableValue(row, 1,0,0,1);
+                selLut->SetTableValue(row, selRGBA);//1,0,0,1);
             }
 
 
             if (mHasSelBox)
             {
-                //double minX = sqlTab->GetIntValue("minX", row) * mSpacing[0] + mOrigin[0];
-                double minX = mOtbRAT->GetIntValue("minX", row) * mSpacing[0] + mOrigin[0];
-                //double minY = mOrigin[1] + mSpacing[1] + (sqlTab->GetIntValue("maxY", row) * mSpacing[1]);
-                double minY = mOrigin[1] + mSpacing[1] + (mOtbRAT->GetIntValue("maxY", row) * mSpacing[1]);
+                double minX = mOtbRAT->GetIntValue("minX", row) * mSpacing[0] + mUpperLeftCorner[0];
+                double minY = mUpperLeftCorner[1] + mSpacing[1] + (mOtbRAT->GetIntValue("maxY", row) * mSpacing[1]);
                 double minZ = 0;
-                //double maxX = sqlTab->GetIntValue("maxX", row) * mSpacing[0] + mOrigin[0] + mSpacing[0];
-                double maxX = mOtbRAT->GetIntValue("maxX", row) * mSpacing[0] + mOrigin[0] + mSpacing[0];
-                //double maxY = mOrigin[1] + (sqlTab->GetIntValue("minY", row) * mSpacing[1]);
-                double maxY = mOrigin[1] + (mOtbRAT->GetIntValue("minY", row) * mSpacing[1]);
+                double maxX = mOtbRAT->GetIntValue("maxX", row) * mSpacing[0] + mUpperLeftCorner[0] + mSpacing[0];
+                double maxY = mUpperLeftCorner[1] + (mOtbRAT->GetIntValue("minY", row) * mSpacing[1]);
                 double maxZ = 0;
 
                 mSelBBox[0] = minX < mSelBBox[0] ? minX : mSelBBox[0];
@@ -934,6 +921,100 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
 	emit visibilityChanged(this);
 	emit legendChanged(this);
+
+}
+
+void
+NMImageLayer::updateSelectionColor()
+{
+    // no table, no selection
+    otb::SQLiteTable::Pointer sqlTab;
+    bool bsql = false;
+    if (mOtbRAT.IsNotNull())
+    {
+        sqlTab = dynamic_cast<otb::SQLiteTable*>(mOtbRAT.GetPointer());
+        if (sqlTab.IsNotNull())
+        {
+            sqlTab->SetOpenReadOnly(true);
+            if (sqlTab->openConnection())
+            {
+                if (!sqlTab->PopulateTableAdmin())
+                {
+                    sqlTab->CloseTable();
+                    NMLogError(<< "ImageLayer::selectionChanged(): Failed to open SQL RAT!");
+                    return;
+                }
+                bsql = true;
+            }
+        }
+    }
+    else
+    {
+        NMLogWarn(<< "ImageLayer::selectionChanged(): No RAT no selction support!");
+        return;
+    }
+
+
+    bool bNum = false;
+    QVariant::Type valType = this->getColumnType(this->getColumnIndex(mLegendValueField));
+    if (valType != QVariant::String)
+    {
+        bNum = true;
+    }
+
+    // pre-fill look-up table with non-selection values / colours
+    int valcolidx = this->getColumnIndex(mLegendValueField);
+    vtkSmartPointer<NMVtkLookupTable> selLut = NMVtkLookupTable::SafeDownCast(
+                                                    this->mImgSelProperty->GetLookupTable());
+
+
+    double selRGBA[4] = {
+                            mClrSelection.redF(),
+                            mClrSelection.greenF(),
+                            mClrSelection.blueF(),
+                            mClrSelection.alphaF()
+                        };
+
+
+    // iterate over new selection range and set selection colour for
+    // seletec rows
+    const QItemSelection& curSel = this->mSelectionModel->selection();
+    foreach(QItemSelectionRange range, curSel)
+    {
+        const int top = range.top();
+        const int bottom = range.bottom();
+
+        // set colour for selected rows
+        for (int row=top; row <= bottom; ++row)
+        {
+            if (mUseIdxMap)
+            {
+                if (bNum)
+                {
+                    selLut->SetMappedTableValue(row,
+                                              mOtbRAT->GetDblValue(valcolidx, row),
+                                              selRGBA);
+                }
+                else
+                {
+                    selLut->SetMappedTableValue(row,
+                                              row,
+                                              selRGBA);
+                }
+            }
+            else
+            {
+                selLut->SetTableValue(row, selRGBA);
+            }
+        }
+    }
+
+    if (bsql)
+    {
+        sqlTab->CloseTable();
+    }
+
+    this->mImgSelMapper->Update();
 
 }
 
@@ -1210,6 +1291,7 @@ NMImageLayer::setFileName(QString filename)
     this->mReader->getBBox(this->mBufferedBox);
     this->mReader->getSpacing(this->mSpacing);
     this->mReader->getOrigin(this->mOrigin);
+    this->mReader->getUpperLeftCorner(this->mUpperLeftCorner);
 
     // let's store some meta data, in case someone needs it
 	this->mComponentType = this->mReader->getOutputComponentType();
@@ -2192,6 +2274,10 @@ void
 NMImageLayer::mapScalarsToRGB(T* in, unsigned char* out, int numPix, int numComp,
                               const std::vector<double>& minmax)
 {
+    if (minmax.size() == 0)
+    {
+        return;
+    }
     const double* mm = &minmax[0];
     // the mapping is according to itk::RescaleIntensityImageFilter<...>
     for (int i=0; i < numPix; ++i)
@@ -2581,6 +2667,12 @@ NMImageLayer::writeDataSet(void)
         NMDebugCtx(ctxNMImageLayer, << "done!");
 		return;
 	}
+
+    if (this->mOtbRAT.IsNull())
+    {
+        NMDebugCtx(ctxNMImageLayer, << "done!");
+        return;
+    }
 
     otb::SQLiteTable::Pointer sqlTab = static_cast<otb::SQLiteTable*>(this->mOtbRAT.GetPointer());
     sqlTab->SetOpenReadOnly(true);

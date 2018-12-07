@@ -539,6 +539,7 @@ NMImageReader<TOutputImage>
         //        {
         //            imageIO->SetDatasetNumber(m_AdditionalNumber);
         //        }
+
     }
 
     // Got to allocate space for the image. Determine the characteristics of
@@ -546,7 +547,17 @@ NMImageReader<TOutputImage>
     //
     //this->GetImageIO()->SetFileName(this->GetFileName());
     this->GetImageIO()->ReadImageInformation();
+    if (gio != nullptr)
+    {
+        m_UpperLeftCorner = gio->GetUpperLeftCorner();
+    }
 
+#ifdef BUILD_RASSUPPORT
+    if (rio != nullptr)
+    {
+        m_UpperLeftCorner = rio->getUpperLeftCorner();
+    }
+#endif
 
     SizeType dimSize;
     double spacing[ TOutputImage::ImageDimension ];
@@ -583,7 +594,7 @@ NMImageReader<TOutputImage>
             // spacing, origin and direction for the final (degenerate) dimensions.
             dimSize[i] = 1;
             spacing[i] = 1.0;
-            origin[i] = 0.0;
+            origin[i] = 0.5;
             for (unsigned j = 0; j < TOutputImage::ImageDimension; ++j)
             {
                 if (i == j)

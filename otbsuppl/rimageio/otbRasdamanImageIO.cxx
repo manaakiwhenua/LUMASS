@@ -65,9 +65,11 @@ RasdamanImageIO::RasdamanImageIO(void)
 	m_Spacing[0] = 1.0;
 	m_Spacing[1] = 1.0;
 
-	// default origin is (0,0)
-	m_Origin[0] = 0.0;
-	m_Origin[1] = 0.0;
+        m_UpperLeftCorner.resize(this->GetNumberOfDimensions());
+
+        // default origin is (0.5,0.5)
+        m_Origin[0] = 0.5;
+        m_Origin[1] = 0.5;
 
 	// we don't have any info about the image so far ...
 	m_ImageSpec = "";
@@ -279,6 +281,8 @@ void RasdamanImageIO::ReadImageInformation()
 
 	this->m_rtype = this->m_Helper->getBaseTypeId(this->m_collname);
 
+        m_UpperLeftCorner.resize(m_sdom.dimension());
+
 	int step=0;
 	for (int d=0; d < m_sdom.dimension(); d++)
 	{
@@ -286,13 +290,15 @@ void RasdamanImageIO::ReadImageInformation()
 
 		if (d == 1)
 		{
-			this->SetOrigin(d, geodom[step+1]);			  // real world origin
+                        m_UpperLeftCorner[d] = geodom[step+1];
+                        this->SetOrigin(d, geodom[step+1] + 0.5 * cellsize[d]);  // real world origin
 			this->SetSpacing(d, cellsize[d]);// * -1);
 		}
 		else
 		{
 			this->SetSpacing(d, cellsize[d]);			  // real world cellsize
-			this->SetOrigin(d, geodom[step]);
+                        this->SetOrigin(d, geodom[step] + 0.5 * cellsize[d]);
+                        m_UpperLeftCorner[d] = geodom[step];
 		}
 		step += 2;
 	}
@@ -810,9 +816,9 @@ void RasdamanImageIO::WriteImageInformation()
 	// ----------------------------------------------------------------------
 	// determine the geo-shift, in case we update an already existing image
 	// input geospatial domain parameters
-	double minx = this->GetOrigin(0);
-	double maxy = this->GetOrigin(1);
-	double minz = ndim == 3 ? this->GetOrigin(2) : numeric_limits<double>::max() * -1;
+        double minx = this->GetOrigin(0) - 0.5 * this->GetSpacing(0);
+        double maxy = this->GetOrigin(1) - 0.5 * this->GetSpacing(1);
+        double minz = ndim == 3 ? this->GetOrigin(2) * this->GetSpacing(2) : numeric_limits<double>::max() * -1;
 	double csx = this->GetSpacing(0);
 	double csy = this->GetSpacing(1);
 	double csz = ndim == 3 ? this->GetSpacing(2) : 0;

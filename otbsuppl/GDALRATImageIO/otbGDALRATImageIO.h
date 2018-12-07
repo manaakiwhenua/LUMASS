@@ -136,6 +136,10 @@ public:
 
   std::vector<unsigned int> GetOverviewSize(int ovv);
 
+  /** retreive the upper left corner of the image */
+  std::vector<double> GetUpperLeftCorner(void)
+    {return m_UpperLeftCorner;}
+
 
   /** surrounding region specs */
   void SetForcedLPR(const itk::ImageIORegion& forcedLPR);
@@ -234,19 +238,31 @@ protected:
   void InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int iBand);
   void InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned int iBand);
 
+  /** stores the coordinates of the upper left corner of the image */
+  std::vector<double> m_UpperLeftCorner;
+
   /** Number of bands of the image*/
   int m_NbBands;
+
   /** map of band numbers to be read/written */
   std::vector<int> m_BandMap;
+
   /** pixels in RGB mode? */
   bool m_RGBMode;
 
+  /** number of overviews */
   int m_NbOverviews;
+
+  /** dimensions of each overview */
   std::vector<std::vector<unsigned int > > m_OvvSize;
+
+  /** current overview (as index) */
   int m_OverviewIdx;
 
-
+  /** dimensions of the largest possible region */
   unsigned int m_LPRDimensions[2];
+
+  /** spacing of the largest possible region */
   double m_LPRSpacing[2];
 
 

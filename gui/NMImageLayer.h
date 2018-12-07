@@ -155,8 +155,8 @@ protected:
 
 	void createTableView(void);
     void createImgSelData(void);
-
-    void updateScalarBuffer();
+    void updateScalarBuffer(void);
+    void updateSelectionColor(void);
 
     template<class T>
     void setLongScalars(T* buf, long long* out, long long numPix, long long nodata);
@@ -213,6 +213,7 @@ protected:
 
     double mSpacing[3];
     double mOrigin[3];
+    double mUpperLeftCorner[3];
 
     int mVisibleRegion[6];
 

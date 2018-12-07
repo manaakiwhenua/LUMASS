@@ -1582,6 +1582,24 @@ NMImageReader::getOrigin(double origin[3])
 }
 
 void
+NMImageReader::getUpperLeftCorner(double ulcorner[3])
+{
+    double origin[3];
+    this->getOrigin(origin);
+
+    ulcorner[0] = origin[0] + 0.5 * this->mItkImgIOBase->GetSpacing(0);
+    ulcorner[1] = origin[1] + 0.5 * this->mItkImgIOBase->GetSpacing(1);
+    if (this->mItkImgIOBase->GetNumberOfDimensions() == 3)
+    {
+        ulcorner[2] = origin[2] + 0.5 * this->mItkImgIOBase->GetSpacing(2);
+    }
+    else
+    {
+        ulcorner[2] = origin[2];
+    }
+}
+
+void
 NMImageReader::getSpacing(double spacing[3])
 {
     spacing[0] = this->mItkImgIOBase->GetSpacing(0);
@@ -1611,6 +1629,11 @@ void NMImageReader::getBBox(double bbox[6])
 	if (csy < 0) csy *= -1;
 	double csz = 0;
 	if (ddd) csz = this->mItkImgIOBase->GetSpacing(2);
+
+    // turn pixel centre-based origin coordinates into
+    // upper left corner coordinates
+    xmin -= 0.5 * csx;
+    ymax += 0.5 * csy;
 
 	double xmax = xmin + (ncols * csx);
 	double ymin = ymax - (nrows * csy);

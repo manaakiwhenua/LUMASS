@@ -72,14 +72,21 @@ GDALRATImageIO::GDALRATImageIO()
   // By default set component type to unsigned char
   m_ComponentType = UCHAR;
   m_UseCompression = true;
-  m_CompressionLevel = 9; // default was 4: Range 0-9; 0 = no file compression, 9 = maximum file compression
+  m_CompressionLevel = 7; // default was 4: Range 0-9; 0 = no file compression, 9 = maximum file compression
 
   // Set default spacing to one
   m_Spacing[0] = 1.0;
   m_Spacing[1] = 1.0;
-  // Set default origin to zero
-  m_Origin[0] = 0.0;
-  m_Origin[1] = 0.0;
+
+  // set the upper left corner coordinates
+  m_UpperLeftCorner.resize(this->GetNumberOfDimensions());
+  m_UpperLeftCorner[0] = 1.0;
+  m_UpperLeftCorner[0] = 1.0;
+
+  // Set default origin
+  // upper left pixel centre
+  m_Origin[0] = 0.5;
+  m_Origin[1] = 0.5;
 
   m_IsIndexed   = false;
   m_DatasetNumber = 0;
@@ -214,17 +221,17 @@ void GDALRATImageIO::Read(void* buffer)
         //            std::cout << "ImgIO-read: size: " << lNbBufColumns
         //                      << " x " << lNbBufLines << std::endl;
 
-      double xstart = m_Origin[0] + lFirstColumn * m_Spacing[0];//m_LPRSpacing[0];
+      double xstart = m_UpperLeftCorner[0] + lFirstColumn * m_Spacing[0];//m_LPRSpacing[0];
       double xend = xstart + lNbBufColumns * m_Spacing[0];
       lNbColumns = (xend - xstart) / m_LPRSpacing[0];
 
-      double ystart = m_Origin[1] + lFirstLine * m_Spacing[1];//m_LPRSpacing[1];
+      double ystart = m_UpperLeftCorner[1] + lFirstLine * m_Spacing[1];//m_LPRSpacing[1];
       double yend = ystart + lNbBufLines * m_Spacing[1];
       lNbLines = (ystart - yend) / ::fabs(m_LPRSpacing[1]);
 
 
-      lFirstColumn = (xstart - m_Origin[0]) / m_LPRSpacing[0];
-      lFirstLine = (m_Origin[1] - ystart) / ::fabs(m_LPRSpacing[1]);
+      lFirstColumn = (xstart - m_UpperLeftCorner[0]) / m_LPRSpacing[0];
+      lFirstLine = (m_UpperLeftCorner[1] - ystart) / ::fabs(m_LPRSpacing[1]);
 
     //            std::cout << "ImgIO-read: orig. ULC: " << lFirstColumn << "," << lFirstLine << std::endl;
     //            std::cout << "ImgIO-read: orig. size: " << lNbColumns
@@ -444,8 +451,8 @@ void GDALRATImageIO::updateOverviewInfo()
         m_Dimensions[0] = m_OvvSize[m_OverviewIdx][0];
         m_Dimensions[1] = m_OvvSize[m_OverviewIdx][1];
 
-        double xsize = (m_Origin[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_Origin[0];
-        double ysize = m_Origin[1] - (m_Origin[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
+        double xsize = (m_UpperLeftCorner[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_UpperLeftCorner[0];
+        double ysize = m_UpperLeftCorner[1] - (m_UpperLeftCorner[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
         m_Spacing[0] = xsize / (double)m_Dimensions[0];
         m_Spacing[1] = -(ysize / (double)m_Dimensions[1]);
 
@@ -895,12 +902,14 @@ void GDALRATImageIO::InternalReadImageInformation()
       itk::EncapsulateMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::GeoTransformKey, VadfGeoTransform);
 
       /// retrieve origin and spacing from the geo transform
-      m_Origin[0] = VadfGeoTransform[0];
-      m_Origin[1] = VadfGeoTransform[3];
+      m_UpperLeftCorner[0] = VadfGeoTransform[0];
+      m_UpperLeftCorner[1] = VadfGeoTransform[3];
       m_LPRSpacing[0] = VadfGeoTransform[1];
       m_LPRSpacing[1] = VadfGeoTransform[5];
       m_Spacing[0] = m_LPRSpacing[0];
       m_Spacing[1] = m_LPRSpacing[1];
+      m_Origin[0] = m_UpperLeftCorner[0] + 0.5 * m_Spacing[0];
+      m_Origin[1] = m_UpperLeftCorner[1] + 0.5 * m_Spacing[1];
 
       //    std::cout << "ImgIO: scaled spacing: x: " << m_Spacing[0] << " y: " << m_Spacing[1] << std::endl;
   }
@@ -908,8 +917,8 @@ void GDALRATImageIO::InternalReadImageInformation()
   // want to adjust spacing even if we haven't got a GeoTransform given (e.g. for photos)
   if (m_OverviewIdx >= 0 && m_OverviewIdx < m_NbOverviews)
   {
-      double xsize = (m_Origin[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_Origin[0];
-      double ysize = m_Origin[1] - (m_Origin[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
+      double xsize = (m_UpperLeftCorner[0] + (m_LPRSpacing[0] * m_LPRDimensions[0])) - m_UpperLeftCorner[0];
+      double ysize = m_UpperLeftCorner[1] - (m_UpperLeftCorner[1] + (m_LPRSpacing[1] * m_LPRDimensions[1]));
       m_Spacing[0] = xsize / (double)m_Dimensions[0];
       m_Spacing[1] = -(ysize / (double)m_Dimensions[1]);
   }
@@ -1835,13 +1844,10 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   itk::ExposeMetaData<MetaDataKey::VectorType>(dict, MetaDataKey::UpperLeftCornerKey, upperLeft);
 
   // Setting the GeoTransform
-//  geoTransform[0] = upperLeft[0]; // = m_Origin[0];		// = xmin
-  geoTransform[0] = m_Origin[0];
-  // in GDAL the origin is the upper left corner!!! not lower left
-//  geoTransform[3] = upperLeft[1]; // != m_Origin[1]; !!!
-  geoTransform[3] = m_Origin[1];
+  geoTransform[0] = m_Origin[0] - 0.5 * m_Spacing[0];
+  geoTransform[3] = m_Origin[1] - 0.5 * m_Spacing[1];
   geoTransform[1] = m_Spacing[0];
-  geoTransform[5] = m_Spacing[1];// * -1;
+  geoTransform[5] = m_Spacing[1];
 
   // FIXME: Here component 1 and 4 should be replaced by the orientation parameters
   geoTransform[2] = 0.;

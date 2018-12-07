@@ -30,7 +30,8 @@
 
 #include "itkProcessObject.h"
 #include "otbImage.h"
-#include "itkNMResampleImageFilter.h"
+#include "otbNMGridResampleImageFilter.h"
+//#include "itkNMResampleImageFilter.h"
 //#include "itkNMResampleImageFilter_ExplicitInst.h"
 
 /*! Internal templated helper class linking to the core otb/itk filter
@@ -42,8 +43,11 @@ class NMResampleImageFilterWrapper_Internal
 public:
     typedef otb::Image<TInputImage, Dimension>  InImgType;
     typedef otb::Image<TOutputImage, Dimension> OutImgType;
-    typedef typename itk::NMResampleImageFilter<InImgType, OutImgType>      FilterType;
-    typedef typename FilterType::Pointer        FilterTypePointer;
+    typedef typename otb::NMGridResampleImageFilter<InImgType, OutImgType>  FilterType;
+    typedef typename FilterType::Pointer           FilterTypePointer;
+
+    typedef typename FilterType::SizeType          FilterSizeType;
+    typedef typename FilterSizeType::SizeValueType FilterSizeValueType;
 
     // more typedefs
     typedef typename InImgType::PixelType  InImgPixelType;
@@ -66,12 +70,12 @@ public:
                     unsigned int numBands, unsigned int idx, itk::DataObject* dataObj)
     {
         FilterType* filter = dynamic_cast<FilterType*>(otbFilter.GetPointer());
-        if (idx == 1)
-        {
-            OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
-            filter->SetReferenceImage(img);
-        }
-        else
+//        if (idx == 1)
+//        {
+//            OutImgType* img = dynamic_cast<OutImgType*>(dataObj);
+//            filter->SetReferenceImage(img);
+//        }
+//        else
         {
             InImgType* img = dynamic_cast<InImgType*>(dataObj);
             filter->SetInput(idx, img);
@@ -170,7 +174,11 @@ public:
             }
             else
             {
-                f->SetOutputSpacing(0);
+                for (int d=0; d < Dimension; ++d)
+                {
+                    vecOutputSpacing.push_back(0);
+                }
+                f->SetOutputSpacing(static_cast<OutSpacingValueType*>(&vecOutputSpacing[0]));
             }
         }
 
@@ -208,14 +216,17 @@ public:
         QVariant curSizeVar = p->getParameter("Size");
         if (curSizeVar.isValid())
         {
-           std::vector<SizeValueType> vecSize;
+           std::vector<FilterSizeValueType> vecSize;
            QStringList curValVarList = curSizeVar.toStringList();
            foreach(const QString& vStr, curValVarList) 
            {
-                long curSize = vStr.toLong(&bok);
+                // since ...
+                // using itk::SizeValueType = unsigned long
+                unsigned long curSize = vStr.toULong(&bok);
+
                 if (bok)
                 {
-                    vecSize.push_back(static_cast<SizeValueType>(curSize));
+                    vecSize.push_back(static_cast<FilterSizeValueType>(curSize));
                 }
                 else
                 {
@@ -228,11 +239,15 @@ public:
             }
             if (vecSize.size() > 0)
             {
-                f->SetSize(static_cast<SizeValueType*>(&vecSize[0]));
+                f->SetSize(static_cast<FilterSizeValueType*>(&vecSize[0]));
             }
             else
             {
-                f->SetSize(0);
+                for (int d=0; d < Dimension; ++d)
+                {
+                    vecSize.push_back(0);
+                }
+                f->SetSize(static_cast<FilterSizeValueType*>(&vecSize[0]));
             }
         }
 

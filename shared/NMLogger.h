@@ -29,7 +29,8 @@ public:
         NM_LOG_DEBUG = 0,
         NM_LOG_INFO = 1,
         NM_LOG_WARN = 2,
-        NM_LOG_ERROR = 3
+        NM_LOG_ERROR = 3,
+        NM_LOG_NOLOG = 4
 
     } LogEventType;
 

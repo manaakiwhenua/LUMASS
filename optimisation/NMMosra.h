@@ -161,6 +161,9 @@ public:
 	enum AreaUnitType {NM_MOSO_MAP_UNITS, NM_MOSO_PERCENT_TOTAL,
 		NM_MOSO_PERCENT_SELECTED, NM_MOSO_PERCENT_ZONE};
 
+    // type of model to export
+    enum NMMosoExportType {NM_MOSO_LP, NM_MOSO_MPS};
+
     /*! loads the settings from textfile (LUMASS Optimisation settings file, *.los)
      *  and passes a string to the parseStringSettings function for doing the
      *  grunt work of analysing the string.
@@ -207,6 +210,14 @@ public:
 		{return this->msLosFileName;}
 	unsigned int getTimeOut(void)
 		{return this->muiTimeOut;}
+
+    /*! writes the model after it has been build
+     *  but before solving it
+     *
+     *  filename: the filename of the exported model
+     *  type: NM_MOSO_LP || NM_MOSO_MPS
+     */
+    void writeProblem(QString filename, NMMosoExportType type);
 
 	void writeReport(QString fileName);
 	QString getReport(void);
@@ -266,6 +277,9 @@ private:
 	QString msSettingsReport;
 	QString msLosFileName;
 
+    QString mProblemFilename;
+    NMMosoExportType mProblemType;
+
 	QString msLandUseField;
 	QString msAreaField;
 	QString msLayerName;
@@ -312,6 +326,20 @@ private:
 	QMap<QString, QMap<QString, double > > mmslZoneAreas;
 	QMap<QString, QMap<QString, int > > mmslZoneLength;
 
+    /*! map containing (non-overlapping) generic zone constraints
+     * key: ZONE_CONS_<x>
+     * string list: 0: column name of unique value zone identifier
+     *              1: <column name of resource spec, e.g. GullyMit0 SurfMit1 LandMit2 ...> | total
+     *              2: criterion label
+     *              3: operator: <= | >= | =
+     *              4: column name of constraint value; note: if an individual zone
+     *                 comprises more than one spatial option, all spatial options
+     *                 within a particular zone should have the same value allocated
+     *                 to them
+     */
+    QMap<QString, QStringList> mslZoneConstraints;
+
+
 
 	// maps criterion constraints onto criteria
 	// nested maps:
@@ -347,6 +375,7 @@ private:
 	int addExplicitAreaCons(void);
 	int addImplicitAreaCons(void);
     int addFeatureCons(void);
+    int addZoneCons(void);
 	int addCriCons(void);
 
 	int isSolveCanceled(void);

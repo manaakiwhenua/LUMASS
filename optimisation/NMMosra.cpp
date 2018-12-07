@@ -94,6 +94,7 @@
 #include <QScopedPointer>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QDir>
 
 #include "itkProcessObject.h"
 #include "otbSQLiteTable.h"
@@ -561,6 +562,7 @@ NMMosraDataSet::getColumnIndex(const QString &colName)
 const std::string NMMosra::ctxNMMosra = "NMMosra";
 
 NMMosra::NMMosra(QObject* parent) //: QObject(parent)
+    : mProblemFilename(""), mProblemType(NM_MOSO_LP)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
@@ -716,6 +718,7 @@ int NMMosra::parseStringSettings(QString strSettings)
 		objectives,
 		arealcons,
         featcons,
+        zonecons,
 		cricons,
 		objcons,
 		batch,
@@ -766,7 +769,12 @@ int NMMosra::parseStringSettings(QString strSettings)
             section = featcons;
             continue;
         }
-		else if (!sLine.compare(tr("<CRITERIA_CONSTRAINTS>"), Qt::CaseInsensitive))
+        else if (!sLine.compare(tr("<ZONE_CONSTRAINTS>"), Qt::CaseInsensitive))
+        {
+            section = zonecons;
+            continue;
+        }
+        else if (!sLine.compare(tr("<CRITERIA_CONSTRAINTS>"), Qt::CaseInsensitive))
 		{
 			section = cricons;
 			continue;
@@ -852,6 +860,29 @@ int NMMosra::parseStringSettings(QString strSettings)
                     this->mslPerfSumZones = sValueStr.split(" ", QString::SkipEmptyParts);
                 }
                 MosraLogInfo( << "PerformanceSumZones: " << mslPerfSumZones.join(" ").toStdString() << endl)
+            }
+            else if (sVarName.compare("TIMEOUT", Qt::CaseInsensitive) == 0)
+            {
+                if (!sValueStr.isEmpty())
+                {
+                    if (sValueStr.compare("break_at_first", Qt::CaseInsensitive) == 0)
+                    {
+                        this->muiTimeOut = 0;
+                        this->mbBreakAtFirst = true;
+                        MosraLogInfo(<< "Solver timeout: break at first feasible solution!" << endl);
+                    }
+                    else
+                    {
+                        bool bok;
+                        unsigned int timeout = sValueStr.toUInt(&bok);
+                        if (bok)
+                        {
+                            this->mbBreakAtFirst = false;
+                            this->muiTimeOut = timeout;
+                            MosraLogInfo(<< "Solver timeout: " << timeout << endl);
+                        }
+                    }
+                }
             }
 		}
 		break;
@@ -1028,6 +1059,48 @@ int NMMosra::parseStringSettings(QString strSettings)
             }
         }
         break;
+        //----------------------------------------------ZONE_CONST-------
+        case zonecons:
+        {
+            if (sVarName.indexOf(tr("ZONE_CONS_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList fullZoneCons = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (fullZoneCons.size() == 3)
+                {
+                    QString label = sVarName;
+                    QStringList zonespec = fullZoneCons.at(0).split(":", QString::SkipEmptyParts);
+                    QString zoneOp = fullZoneCons.at(1);
+                    QString valueCol = fullZoneCons.at(2);
+
+                    QStringList zonecon;
+                    if (zonespec.size() != 3)
+                    {
+                        MosraLogError (<< "Malfomred ZONE_CONSTRAINT on line " << numline);
+                    }
+
+                    zonecon << zonespec << zoneOp << valueCol;
+                    this->mslZoneConstraints.insert(label, zonecon);
+
+                    std::stringstream logs;
+                    logs << label.toStdString() << ": ";
+                    for (int r=0; r < zonecon.size(); ++r)
+                    {
+                        logs << zonecon.at(r).toStdString();
+                        if (r < zonecon.size()-2)
+                        {
+                            logs << " | ";
+                        }
+                    }
+                    MosraLogInfo(<< logs.str());
+
+                }
+                else
+                {
+                    MosraLogError (<< "Malfomred ZONE_CONSTRAINT on line " << numline);
+                }
+            }
+        }
+        break;
         //----------------------------------------------ATTR_CONS--------
 		case cricons:
 		{
@@ -1070,6 +1143,7 @@ int NMMosra::parseStringSettings(QString strSettings)
 			}
 		}
 		break;
+        //------------------------------------------------BATCH_SETTINGS-------
 		case batch:
 		{
 			if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
@@ -1154,10 +1228,10 @@ int NMMosra::parseStringSettings(QString strSettings)
 					}
 				}
 			}
-			else if (sVarName.compare("TIMEOUT", Qt::CaseInsensitive) == 0)
-			{
-				if (!sValueStr.isEmpty())
-				{
+            else if (sVarName.compare("TIMEOUT", Qt::CaseInsensitive) == 0)
+            {
+                if (!sValueStr.isEmpty())
+                {
                     if (sValueStr.compare("break_at_first", Qt::CaseInsensitive) == 0)
                     {
                         this->muiTimeOut = 0;
@@ -1175,8 +1249,8 @@ int NMMosra::parseStringSettings(QString strSettings)
                             MosraLogInfo(<< "Solver timeout: " << timeout << endl);
                         }
                     }
-				}
-			}
+                }
+            }
 		}
 		break;
 		default:
@@ -1257,6 +1331,16 @@ int NMMosra::solveLp(void)
         MosraLogInfo(<< "adding performance constraints - OK")
 	}
 
+    if (this->mslZoneConstraints.size() > 0)
+    {
+        if (!this->addZoneCons())
+        {
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
+        MosraLogInfo(<< "adding zone constraints - OK")
+    }
+
 
     if (this->mmslFeatCons.size() > 0)
     {
@@ -1294,7 +1378,18 @@ int NMMosra::solveLp(void)
     this->mLp->SetAbortFunc((void*)this, NMMosra::callbackIsSolveCanceled);
     this->mLp->SetLogFunc((void*)this, NMMosra::lpLogCallback);
 
-
+    // if the user wishes, we write out the problem we've just created ...
+    if (!this->mProblemFilename.isEmpty())
+    {
+        if (this->mProblemType == NM_MOSO_LP)
+        {
+            this->mLp->WriteLp(this->mProblemFilename.toStdString());
+        }
+        else
+        {
+            this->mLp->WriteMps(this->mProblemFilename.toStdString());
+        }
+    }
 
     this->mLp->SetPresolve(PRESOLVE_COLS |
                            PRESOLVE_ROWS |
@@ -1534,6 +1629,31 @@ void NMMosra::createReport(void)
 QString NMMosra::getReport(void)
 {
 	return this->msReport;
+}
+
+void NMMosra::writeProblem(QString filename, NMMosoExportType type)
+{
+    QFileInfo fifo(filename);
+    QFileInfo difo(fifo.absolutePath());
+    if (difo.isWritable())
+    {
+        QString path = fifo.absolutePath();
+        QString baseName = fifo.completeBaseName();
+        if (type == NM_MOSO_LP)
+        {
+            this->mProblemFilename = QString("%1/%2.lp").arg(path).arg(baseName);
+        }
+        else
+        {
+            this->mProblemFilename = QString("%1/%2.mps").arg(path).arg(baseName);
+        }
+
+        this->mProblemType = type;
+    }
+    else
+    {
+        this->mProblemFilename.clear();
+    }
 }
 
 void NMMosra::writeReport(QString fileName)
@@ -1913,6 +2033,68 @@ int NMMosra::checkSettings(void)
         MosraLogInfo(<< "performance constraints OK")
     }
 
+    // -------------------------------------------------------------------------
+    // check availability of specified field names in zone constraints
+    bool zoneConsValid = true;
+    QMap<QString, QStringList>::ConstIterator zconsIt = this->mslZoneConstraints.cbegin();
+    while (zconsIt != mslZoneConstraints.cend())
+    {
+        if (!mDataSet->hasColumn(zconsIt.value().at(0)))
+        {
+            zoneConsValid = false;
+            MosraLogError(<< zconsIt.key().toStdString() << ": "
+                          << "couldn't find '" << zconsIt.value().at(0).toStdString()
+                          << "' column in the dataset!");
+        }
+
+        // check resource specification
+        if (    zconsIt.value().at(1).compare("total") != 0
+             && !mDataSet->hasColumn(zconsIt.value().at(1))
+            )
+        {
+            zoneConsValid = false;
+            MosraLogError(<< zconsIt.key().toStdString() << ": "
+                          << "couldn't find '" << zconsIt.value().at(1).toStdString()
+                          << "' column in the dataset!");
+        }
+
+        if (!mDataSet->hasColumn(zconsIt.value().at(4)))
+        {
+            zoneConsValid = false;
+            MosraLogError(<< zconsIt.key().toStdString() << ": "
+                          << "couldn't find '" << zconsIt.value().at(4).toStdString()
+                          << "' column in the dataset!");
+        }
+
+        QMap<QString, QStringList>::ConstIterator lablIt = mmslCriteria.find(zconsIt.value().at(2));
+        if (lablIt == mmslCriteria.cend())
+        {
+            zoneConsValid = false;
+            MosraLogError(<< zconsIt.key().toStdString() << ": "
+                          << "criterion '" << zconsIt.value().at(2).toStdString()
+                          << "' doesn't seem to be defined in the optimisation settings!");
+        }
+
+        QString opStr = zconsIt.value().at(3);
+        if (    opStr.compare("<=") != 0
+             && opStr.compare(">=") != 0
+             && opStr.compare("=")  != 0
+           )
+        {
+            zoneConsValid = false;
+            MosraLogError(<< zconsIt.key().toStdString() << ": "
+                          << "invalid operator '" << zconsIt.value().at(3).toStdString()
+                          << "'!");
+        }
+
+        ++zconsIt;
+    }
+    if (zoneConsValid)
+    {
+        MosraLogInfo(<< "zone constraints OK")
+    }
+
+
 	// --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating size of the optimsation matrix ..." << endl);
 	/*
@@ -2226,9 +2408,9 @@ int NMMosra::makeLp(void)
 	 * r : land use index
 	 *
 	 * X_i_r: area share of land-use r allocated to feature i
-	 * b_i  : binary conditional variable we need to model that
-	 *        a feature has to be either completely covered by
-	 *        any combination of the land use options or not at all
+     * NOT USED! b_i  : binary conditional variable we need to model that
+     *           a feature has to be either completely covered by
+     *           any combination of the land use options or not at all
 	 *
 	 * note: row-0 contains the objective function and cell 0,0 contains
 	 *       the objective function value; row-1 and beyond contain the
@@ -2941,6 +3123,207 @@ int NMMosra::addObjCons(void)
 	NMDebugCtx(ctxNMMosra, << "done!");
 
 	return 1;
+}
+
+int NMMosra::addZoneCons(void)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+    MosraLogInfo(<< "adding non-overlapping zone constraints ...");
+
+    // iterate over the table to fetch the data and put it into the maps
+    // and vectors
+    QMap<QString, QStringList>::ConstIterator zconsIt = mslZoneConstraints.constBegin();
+    while (zconsIt != mslZoneConstraints.cend())
+    {
+        // ... for each zone
+        QMap<int, double>           mRHS;
+        QMap<int, QVector<int> >    mZoneRowIds;
+        QMap<int, QStringList>      mvPerformanceFields;
+        QMap<int, QVector<int> >    mvResourceIdx;
+        int                         consOp;
+
+        QString consLabel = zconsIt.key();
+        QString opStr = zconsIt.value().at(3);
+        if (opStr.compare("<=") == 0)
+        {
+            consOp = 1;
+        }
+        else if (opStr.compare(">=") == 0)
+        {
+            consOp = 2;
+        }
+        else
+        {
+            consOp = 3;
+        }
+
+        QString rhsField = zconsIt.value().at(4);
+        QString zoneField = zconsIt.value().at(0);
+        QString resField = zconsIt.value().at(1);
+
+        bool bAllRes = false;
+        QVector<int> allResIds;
+        if (resField.compare("total") == 0)
+        {
+            bAllRes = true;
+            for (int r=0; r < this->miNumOptions; ++r)
+            {
+                allResIds.push_back(r);
+            }
+        }
+
+        QStringList allPerfFields = mmslCriteria[zconsIt.value().at(2)];
+
+        //========================================================================================
+        // loop over the data set and identify zone and track required information
+
+        bool hole = mDataSet->hasColumn("nm_hole");
+        long lNumCells = mDataSet->getNumRecs();
+        long lRowCounter = this->mLp->GetNRows();
+        this->mLp->SetAddRowmode(true);
+
+        for (long f=0; f < lNumCells; ++f)
+        {
+            if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+            {
+                continue;
+            }
+
+            int zoneID = mDataSet->getIntValue(zoneField, f);
+            if (mZoneRowIds.contains(zoneID))
+            {
+                mZoneRowIds[zoneID].push_back(f);
+            }
+            else
+            {
+                // add a new zone to the zone map
+                QVector<int> rows;
+                rows.push_back(f);
+                mZoneRowIds[zoneID] = rows;
+
+                // add a new rhs value to the rhs map
+                double rhs = mDataSet->getDblValue(rhsField, f);
+                mRHS[zoneID] = rhs;
+
+                // get the resource indices for this zone
+                // and the associated performance indicator fields
+                if (!bAllRes)
+                {
+                    QVector<int> resIdx;
+                    QStringList perfFields;
+                    QStringList zoneRes = mDataSet->getStrValue(resField, f).split(" ", QString::SkipEmptyParts);
+                    foreach(const QString& res, zoneRes)
+                    {
+                        int idx = mslOptions.indexOf(QRegExp(res, Qt::CaseInsensitive,  QRegExp::FixedString));
+                        if (idx > 0)
+                        {
+                            resIdx.push_back(idx);
+                            perfFields.push_back(allPerfFields.at(idx));
+                        }
+                    }
+
+                    mvResourceIdx[zoneID] = resIdx;
+                    mvPerformanceFields[zoneID] = perfFields;
+                }
+            }
+        }
+
+        //=================================================================================
+        // process identified zones
+        int zoneCounter = 0;
+        QMap<int, QVector<int> >::ConstIterator zoneIt = mZoneRowIds.cbegin();
+        while (zoneIt != mZoneRowIds.cend())
+        {
+            const int zoneID = zoneIt.key();
+            double rhs = mRHS[zoneID];
+            int numCoeffs = 0;
+            int numRes = 0;
+
+            if (bAllRes)
+            {
+                numRes = allPerfFields.size();
+            }
+            else
+            {
+                numRes = mvPerformanceFields[zoneID].size();
+            }
+
+            // ...............................................................
+            // allocate row buffers and populate
+            const QVector<int>& vRows = zoneIt.value();
+            numCoeffs = numRes * vRows.size();
+
+            double* pdRow = new double[numCoeffs];
+            int* piColno = new int[numCoeffs];
+
+            int coeffCounter = 0;
+            for (int r=0; r < vRows.size(); ++r)
+            {
+                long colPos = 1 + vRows[r] * this->miNumOptions;
+                double coeff = 0.0;
+                if (bAllRes)
+                {
+                    for (int arpos=0; arpos < numRes; ++arpos)
+                    {
+                        if (this->meDVType == NMMosoDVType::NM_MOSO_BINARY)
+                        {
+                            coeff = mDataSet->getDblValue(this->msAreaField, vRows[r])
+                                    * mDataSet->getDblValue(allPerfFields[arpos], vRows[r]);
+                        }
+                        else
+                        {
+                            coeff = mDataSet->getDblValue(allPerfFields[arpos], vRows[r]);
+                        }
+                        pdRow[coeffCounter] = coeff;
+                        piColno[coeffCounter] = colPos + allResIds[arpos];
+                        ++coeffCounter;
+                    }
+                }
+                else
+                {
+                    QStringList coeffFields = mvPerformanceFields[zoneID];
+                    QVector<int> resix = mvResourceIdx[zoneID];
+                    for (int arpos=0; arpos < numRes; ++arpos)
+                    {
+                        if (this->meDVType == NMMosoDVType::NM_MOSO_BINARY)
+                        {
+                            coeff = mDataSet->getDblValue(this->msAreaField, vRows[r])
+                                    * mDataSet->getDblValue(coeffFields[arpos], vRows[r]);
+                        }
+                        else
+                        {
+                            coeff = mDataSet->getDblValue(coeffFields[arpos], vRows[r]);
+                        }
+                        pdRow[coeffCounter] = coeff;
+                        piColno[coeffCounter] = colPos + resix[arpos];
+                        ++coeffCounter;
+                    }
+                }
+            }
+
+            // add or modify constraint
+            this->mLp->AddConstraintEx(numCoeffs, pdRow, piColno, consOp, rhs);
+            ++lRowCounter;
+
+            QString zoneLabel = QString("%1_%2").arg(consLabel).arg(zoneID);
+            this->mLp->SetRowName(lRowCounter, zoneLabel.toStdString());
+
+            delete[] pdRow;
+            delete[] piColno;
+
+            if (zoneCounter % 200 == 0)
+            {
+                NMDebug(<< ".");
+            }
+            ++zoneCounter;
+            ++zoneIt;
+        }
+        ++zconsIt;
+    }
+
+    this->mLp->SetAddRowmode(false);
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
 }
 
 int NMMosra::addFeatureCons(void)

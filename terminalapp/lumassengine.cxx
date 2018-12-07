@@ -298,7 +298,6 @@ void doModel(const QString& modelFile, QString &workspace)
         return;
     }
 
-    //NMModelController* ctrl = NMModelController::getInstance();
     QScopedPointer<NMModelController> ctrl(new NMModelController());
     ctrl->setLogger(NMLoggingProvider::This()->getLogger());
     ctrl->updateSettings("LUMASSPath",
@@ -500,6 +499,11 @@ int main(int argc, char** argv)
 
         NMLoggingProvider::This()->setLogFileName(logFileName);
         NMLoggingProvider::This()->writeLogMsg(logstart);
+    }
+    else
+    {
+        // turn off logging altoghether
+        NMLoggingProvider::This()->getLogger()->setLogLevel(NMLogger::NM_LOG_NOLOG);
     }
 
 

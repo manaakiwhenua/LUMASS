@@ -179,6 +179,9 @@
 //#include "otbMultiParser.h"
 //#include "otbParserX.h"
 //#include "mpParser.h"
+#include "otbFlowAccumulationFilter.h"
+#include "otbParallelFillSinks.h"
+#include "otbStreamingRATImageFileWriter.h"
 
 //#include "otbFlowAccumulationFilter.h"
 //#include "otbParallelFillSinks.h"
@@ -3379,121 +3382,7 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-/*
 
-    //////////////////////////////////////////////////////////////////////////////////////
-    return;
-
-    typedef otb::Image<float, 2> ImgType;
-    typedef typename ImgType::Pointer ImgPointerType;
-
-    typedef typename otb::FlowAccumulationFilter<ImgType, ImgType> FlowFilterType;
-    typedef typename otb::ParallelFillSinks<ImgType> FillFilterType;
-
-    typedef typename FlowFilterType::Pointer FlowPointer;
-    typedef typename FillFilterType::Pointer FillPointer;
-
-    typedef typename otb::StreamingRATImageFileWriter<ImgType> WriterType;
-    typedef typename WriterType::Pointer    WriterPointer;
-
-    bool bFlow = false;
-    QMessageBox::StandardButton answer =
-            QMessageBox::question(this, "Flow or Fill?", "Yes=Flow | No=Fill");
-    if (answer == QMessageBox::Yes)
-    {
-        bFlow = true;
-    }
-
-    NMLayer* l =this->mLayerList->getSelectedLayer();
-    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-
-    if (il == nullptr)
-    {
-        return;
-    }
-
-    QString layername = il->getFileName();
-
-    NMImageReader* reader = new NMImageReader(this);
-    reader->setObjectName("flowAcc");
-    reader->setFileName(layername);
-    reader->instantiateObject();
-    if (!reader->isInitialised())
-    {
-        NMLogError(<< "failed to init the iamge reader!");
-        delete reader;
-        return;
-    }
-
-    reader->update();
-
-
-    QSharedPointer<NMItkDataObjectWrapper> iw = reader->getOutput(0);
-    ImgPointerType img = dynamic_cast<ImgType*>(iw->getDataObject());
-
-    FlowPointer flow = FlowFilterType::New();
-    FillPointer fill = FillFilterType::New();
-
-//    WriterPointer writer = WriterType::New();
-
-//    QFileInfo fifo(layername);
-//    QString basename = fifo.baseName();
-//    QString path = fifo.path();
-//    QString newfn = QString("%1/%2_%3.img").arg(path).arg(basename).arg("_fill");
-
-//    filter->SetInput(img);
-//    //filter->SetNumberOfThreads(1);
-//    //filter->Update();
-
-//    writer->SetFileName(newfn.toStdString());
-//    writer->SetInput(filter->GetOutput());
-//    writer->Update();
-
-    if (bFlow)
-    {
-        flow->SetInput(img);
-        flow->SetNumberOfThreads(1);
-        flow->Update();
-
-        QSharedPointer<NMItkDataObjectWrapper> outw(new NMItkDataObjectWrapper(
-                                                        this,
-                                                        flow->GetOutput(),
-                                                        iw->getItkComponentType(),
-                                                        iw->getNumDimensions(),
-                                                        iw->getNumBands()));
-
-        NMImageLayer* imgLayer = new NMImageLayer(this->getRenderWindow());
-        imgLayer->setObjectName("flowAcc");
-        imgLayer->setVisible(true);
-        imgLayer->setImage(outw);
-
-        this->mLayerList->addLayer(imgLayer);
-
-    }
-    else // Fill
-    {
-        double margin = QInputDialog::getDouble(this, "FillMargin", "", 0, 2147483647, 3);
-        fill->SetFillMargin(margin);
-        fill->SetInput(img);
-        fill->SetNumberOfThreads(1);
-        fill->Update();
-
-        QSharedPointer<NMItkDataObjectWrapper> outw(new NMItkDataObjectWrapper(
-                                                        this,
-                                                        fill->GetOutput(),
-                                                        iw->getItkComponentType(),
-                                                        iw->getNumDimensions(),
-                                                        iw->getNumBands()));
-
-        NMImageLayer* imgLayer = new NMImageLayer(this->getRenderWindow());
-        imgLayer->setObjectName("filled");
-        imgLayer->setVisible(true);
-        imgLayer->setImage(outw);
-
-        this->mLayerList->addLayer(imgLayer);
-
-    }
- */
 }
 
 
@@ -4117,9 +4006,13 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
     int vl=0;
     for (int l=this->mLayerList->getLayerCount()-1; l >= 0 && vl < 10; --l)
     {
+<<<<<<< HEAD
         if (    mLayerList->getLayer(l)->isVisible()
              && mLayerList->getLayer(l)->getLayerType() == NMLayer::NM_IMAGE_LAYER
             )
+=======
+        if (mLayerList->getLayer(l)->isVisible())
+>>>>>>> 977af29... enh: lumassmainwin
         {
             ++vl;
         }
@@ -4140,11 +4033,16 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
         vtkImageData* img = vtkImageData::SafeDownCast(
                 const_cast<vtkDataSet*>(il->getDataSet()));
 
+<<<<<<< HEAD
         // bail out on error
         if (img == 0)
         {
             continue;
         }
+=======
+        if (img == 0)
+            return;
+>>>>>>> 977af29... enh: lumassmainwin
 
         int ext[6];
         img->GetExtent(ext);
@@ -4240,6 +4138,7 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
         ++cnt;
     }
 
+<<<<<<< HEAD
     // no message, no display
     if (    visvs.str().size() == 0
          || lprPixStr.str().size() == 0
@@ -4256,6 +4155,13 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
                     arg(visvs.str().c_str());
         this->mPixelValLabel->setText(pixval);
     }
+=======
+    pixval = QString("| Pixel: %1 | LPRPixel: %2 | Values: %3 ").
+                arg(pixStr.str().c_str()).
+                arg(lprPixStr.str().c_str()).
+                arg(visvs.str().c_str());
+	this->mPixelValLabel->setText(pixval);
+>>>>>>> 977af29... enh: lumassmainwin
 }
 
 void

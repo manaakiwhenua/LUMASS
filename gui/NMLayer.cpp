@@ -1585,7 +1585,9 @@ NMLayer::mapValueRamp(void)
     }
 
     //  fill lookup table based on the legend value field
-    if (this->mLayerType == NM_VECTOR_LAYER)
+    if (    this->mLayerType == NM_VECTOR_LAYER
+         && this->mTableModel != nullptr
+       )
 	{
         mLookupTable = vtkSmartPointer<vtkLookupTable>::New();
         // prepare look-up table

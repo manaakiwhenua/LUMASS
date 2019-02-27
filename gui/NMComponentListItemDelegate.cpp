@@ -58,7 +58,7 @@ NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem
     if(!index.isValid())
     	return;
 
-    QStyleOptionViewItemV4 opt = option;
+    QStyleOptionViewItem opt = option;
     initStyleOption(&opt, index);
     opt.decorationSize = index.data(Qt::SizeHintRole).toSize();
 
@@ -124,7 +124,7 @@ NMComponentListItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem
     // we put the DEFAULT switch at the end in case other switches have some subconditions
     // and might fall back onto this default implementation (e.g. level == 1)
     QWidget* widget = 0;
-	if (QStyleOptionViewItemV3 *v3 = qstyleoption_cast<QStyleOptionViewItemV3 *>(&opt))
+    if (QStyleOptionViewItem *v3 = qstyleoption_cast<QStyleOptionViewItem *>(&opt))
 		widget = const_cast<QWidget*>(v3->widget);
 
 	QStyle *style = widget ? widget->style() : QApplication::style();

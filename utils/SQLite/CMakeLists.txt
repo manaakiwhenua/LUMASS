@@ -10,7 +10,7 @@ LINK_DIRECTORIES(
 
 #add_definitions(-DSQLITE_CORE)
 #ADD_LIBRARY(SQLiteExtFunc STATIC sqlite3extfunc.c)
-
+add_definitions(-DSQLITE_THREADSAFE=1)
 
 if(WIN32)
     ADD_LIBRARY(SQLite STATIC sqlite3.c)

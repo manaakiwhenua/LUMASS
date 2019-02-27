@@ -2746,15 +2746,15 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         ssql << "VirtualText('" << fileName << "', " << ecode
              << ", 1, POINT, DOUBLEQUOTE, ',');";
     }
-    //    else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
-    //    {
-    //        std::string sname = "'";
-    //        sname += vinfo[0];
-    //        sname += m_tableName;
-    //        sname += "'";
-    //        ssql << "VirtualShape(" << sname << ", " << ecode
-    //             << ", " << srid << ");";
-    //    }
+        else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
+        {
+            std::string sname = "'";
+            sname += vinfo[0];
+            sname += m_tableName;
+            sname += "'";
+            ssql << "VirtualShape(" << sname << ", " << ecode
+                 << ", " << srid << ");";
+        }
     else if (ext.compare(".dbf") == 0)
     {
         ssql << "VirtualDbf('" << fileName << "', " << ecode << ");";

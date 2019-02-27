@@ -71,7 +71,7 @@
 #include "vtkDataSetAttributes.h"
 #include "vtkCamera.h"
 #include "vtkProperty.h"
-#include "QVTKWidget.h"
+#include "QVTKOpenGLWidget.h"
 #include "vtkCell.h"
 #include "vtkPolygon.h"
 #include "vtkPolyDataReader.h"
@@ -88,7 +88,10 @@
 #include "vtkNew.h"
 #include "vtkAxis.h"
 #include "vtkFloatArray.h"
+#include "vtkRenderWindow.h"
 
+#include "vtkAbstractMapper.h"
+#include "vtkMapper.h"
 
 // for testing
 #include "NMSqlTableView.h"
@@ -591,13 +594,15 @@ void ModelComponentList::updateLegend(const NMLayer* layer)
 		this->expand(idx);
 	}
 
+
+
 	this->update(idx);
 }
 
 //void
 //ModelComponentList::zoomChanged(vtkObject* obj)
 //{
-//	this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+//	this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
 //	NMDebugAI(<< "zoom" << endl);
 //}
 
@@ -649,7 +654,8 @@ int ModelComponentList::changeLayerPos(int oldpos, int newpos)
 	}
 
 	// update the map display window
-	this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+    //this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
+    NMGlobalHelper::getRenderWindow()->Render();
 	return oldpos;
 }
 
@@ -688,7 +694,8 @@ void ModelComponentList::removeLayer(NMLayer* layer)
 	this->reset();
 
     // update the map display window
-    this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+    //this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
+    NMGlobalHelper::getRenderWindow()->Render();
 
     mwin->getRenderWindow()->SetNumberOfLayers(mLayerModel->getItemLayerCount()+2);
     vtkRenderer* scaleRenderer = const_cast<vtkRenderer*>(mwin->getScaleRenderer());
@@ -707,8 +714,7 @@ void ModelComponentList::updateMapWin(const NMLayer* layer)
 
 	//NMDebugAI( << "updating map window for " << layer->objectName().toStdString() << endl);
 
-	QVTKWidget* qvtk = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
-    qvtk->update();
+    NMGlobalHelper::getRenderWindow()->Render();
 }
 
 
@@ -762,7 +768,7 @@ void ModelComponentList::addLayer(NMLayer* layer)
 	// adjust the number of layers per this render window and add the renderer
 	// to the render window
 	// add the renderer to the render window and update the widget
-    QVTKWidget* qvtk = this->topLevelWidget()->findChild<QVTKWidget*>(tr("qvtkWidget"));
+    QVTKOpenGLWidget* qvtk = this->topLevelWidget()->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"));
 
 	// we keep one layer more than required (and keep in mind that we've got the
 	// the background layer as well
@@ -773,7 +779,7 @@ void ModelComponentList::addLayer(NMLayer* layer)
     scaleRen->SetLayer(nlayers+1);
 
     qvtk->GetRenderWindow()->AddRenderer(ren);
-	qvtk->update();
+    qvtk->GetRenderWindow()->Render();
 
 	this->reset();
 	NMDebugCtx(ctx, << "done!");
@@ -885,7 +891,8 @@ void ModelComponentList::mouseDoubleClickEvent(QMouseEvent* event)
                 //       legned options!
                 if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
 				{
-					clr = QColorDialog::getColor(curclr, this, title);
+                    clr = QColorDialog::getColor(curclr, this, title,
+                            QColorDialog::ShowAlphaChannel);
 				}
 				else
 				{
@@ -1771,7 +1778,8 @@ void ModelComponentList::zoom(int mode)
     LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
     vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
     bkgRen->ResetCamera(box);
-    win->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+    //win->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
+    NMGlobalHelper::getRenderWindow()->Render();
 }
 
 void ModelComponentList::mapSingleSymbol()
@@ -1964,11 +1972,39 @@ void ModelComponentList::test()
     NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
     //NMLayer* l = (NMLayer*)idx.internalPointer();
 
-    // get the camera of the background renderer
-    LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
-    vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
-    bkgRen->ResetCamera(const_cast<double*>(l->getSelectionBBox()));
-    win->findChild<QVTKWidget*>(tr("qvtkWidget"))->update();
+//    // get the camera of the background renderer
+//    LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
+//    vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
+//    bkgRen->ResetCamera(const_cast<double*>(l->getSelectionBBox()));
+//    win->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
+
+    if (l == nullptr)
+        return;
+
+    vtkMapper* m = vtkMapper::SafeDownCast(const_cast<vtkAbstractMapper*>(l->getMapper()));
+    if (m == nullptr) return;
+
+    vtkLookupTable* lut = vtkLookupTable::SafeDownCast(m->GetLookupTable());
+    if (lut == nullptr) return;
+
+
+    std::string label = "LOOKUP:";
+    //void NMVtkOpenGLPolyDataMapper::PrintLookupTable(vtkLookupTable *lut, std::string label)
+    {
+        int nclrs = lut->GetNumberOfTableValues();
+        std::cout << label << "\n";
+        for (int k=0; k < nclrs; ++k)
+        {
+            std::cout << "  " << k << "\t";
+            double farbe[4];
+            lut->GetTableValue(k, farbe);
+            std::cout << std::setprecision(3)
+                          << farbe[0] << " " << farbe[1] << " "
+                          << farbe[2] << " " << farbe[3] << "\n";
+            if (farbe[3] == 0)
+                farbe[3] = 1.0;
+        }
+    }
 
 	NMDebugCtx(ctx, << "done!");
 }

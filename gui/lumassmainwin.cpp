@@ -84,12 +84,13 @@
 #include "NMAbstractAction.h"
 #include "NMModelAction.h"
 
+#include "LpHelper.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
 #include "otbSQLiteTable.h"
+#include "avtPolygonToTrianglesTesselator.h"
 
-#include "LpHelper.h"
 
 // QT stuff
 #include "lumassmainwin.h"
@@ -179,6 +180,10 @@
 //#include "otbParserX.h"
 //#include "mpParser.h"
 
+//#include "otbFlowAccumulationFilter.h"
+//#include "otbParallelFillSinks.h"
+//#include "otbStreamingRATImageFileWriter.h"
+
 // FOR ::test function
 //#include "itkFloodFilledImageFunctionConditionalIterator.h"
 //#include "itkBinaryThresholdImageFunction.h"
@@ -204,12 +209,13 @@
 #include "vtkDoubleArray.h"
 #include "vtkCommand.h"
 #include "vtkEventQtSlotConnect.h"
+#include "vtkGenericOpenGLRenderWindow.h"
 #include "vtkImageData.h"
 #include "vtkIntArray.h"
 #include "vtkInteractorObserver.h"
 #include "vtkInteractorStyle.h"
 #include "vtkInteractorStyleImage.h"
-#include "NMVtkInteractorStyleImage.h"
+
 #include "vtkInteractorStyleRubberBandZoom.h"
 #include "vtkInteractorStyleRubberBand2D.h"
 #include "vtkLongArray.h"
@@ -248,12 +254,11 @@
 #include "vtkGreedyTerrainDecimation.h"
 #include "vtkPolyDataNormals.h"
 #include "vtkCoordinate.h"
-#include "QVTKWidget.h"
+//#include "QVTKWidget.h"
 #include "vtkWindowToImageFilter.h"
 #include "vtkPNGWriter.h"
 #include "vtkJPEGWriter.h"
 //#include "vtkLegendScaleActor.h"
-#include "NMVtkMapScale.h"
 #include "vtkImageResample.h"
 #include "vtkAxisActor2D.h"
 #include "vtkTextProperty.h"
@@ -261,7 +266,15 @@
 #include "vtkExtractCells.h"
 #include "vtkInformation.h"
 #include "vtkGeometryFilter.h"
+#include "vtkGDALVectorReader.h"
+#include "vtkUnsignedLongArray.h"
 
+#include "QVTKOpenGLWidget.h"
+
+#include "NMSqlTableModel.h"
+#include "vtkOpenGLRenderWindow.h"
+#include "NMVtkInteractorStyleImage.h"
+#include "NMVtkMapScale.h"
 
 //#include <sqlite3.h>
 //#include "sqlite3extfunc.h"
@@ -270,7 +283,7 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QProcess>
-#include "NMSqlTableModel.h"
+
 
 //// TOKYO CABINET
 //#include "tcutil.h"
@@ -734,7 +747,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 #endif
 
     // create the render window
-    vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+    //vtkSmartPointer<vtkRenderWindow> renwin = vtkSmartPointer<vtkRenderWindow>::New();
+    vtkSmartPointer<vtkGenericOpenGLRenderWindow> renwin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     renwin->SetStereoCapableWindow(1);
     renwin->SetStereoTypeToCrystalEyes();
     //renwin->SetStereoRender(1);
@@ -1525,7 +1539,7 @@ LUMASSMainWin::saveMapAsImage()
     vtkNew<vtkWindowToImageFilter> win2ImgFilter;
 
     win2ImgFilter->SetInput(renwin);
-    win2ImgFilter->SetMagnification(factor);
+    win2ImgFilter->SetScale(factor);
     win2ImgFilter->SetFixBoundary(true);
 
     QString tmpName = fileName.toLower();
@@ -3365,29 +3379,121 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    QDateTime curTime = QDateTime::currentDateTime();
-    NMLogInfo(<< "time1: " << curTime.toString("yyyy-MM-dd'T'hh:mm:ss.zzz").toStdString());
-    NMLogInfo(<< "time2: " << curTime.toString("yyyy-MM-ddThh:mm:ss.zzz").toStdString());
-    NMLogInfo(<< "time3: " << curTime.toString("yyyy-MM-dd hh:mm:ss.zzz").toStdString());
+/*
+
+    //////////////////////////////////////////////////////////////////////////////////////
+    return;
+
+    typedef otb::Image<float, 2> ImgType;
+    typedef typename ImgType::Pointer ImgPointerType;
+
+    typedef typename otb::FlowAccumulationFilter<ImgType, ImgType> FlowFilterType;
+    typedef typename otb::ParallelFillSinks<ImgType> FillFilterType;
+
+    typedef typename FlowFilterType::Pointer FlowPointer;
+    typedef typename FillFilterType::Pointer FillPointer;
+
+    typedef typename otb::StreamingRATImageFileWriter<ImgType> WriterType;
+    typedef typename WriterType::Pointer    WriterPointer;
+
+    bool bFlow = false;
+    QMessageBox::StandardButton answer =
+            QMessageBox::question(this, "Flow or Fill?", "Yes=Flow | No=Fill");
+    if (answer == QMessageBox::Yes)
+    {
+        bFlow = true;
+    }
+
+    NMLayer* l =this->mLayerList->getSelectedLayer();
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+
+    if (il == nullptr)
+    {
+        return;
+    }
+
+    QString layername = il->getFileName();
+
+    NMImageReader* reader = new NMImageReader(this);
+    reader->setObjectName("flowAcc");
+    reader->setFileName(layername);
+    reader->instantiateObject();
+    if (!reader->isInitialised())
+    {
+        NMLogError(<< "failed to init the iamge reader!");
+        delete reader;
+        return;
+    }
+
+    reader->update();
 
 
-    time_t timestamp;
-    struct tm* timeinfo;
-    time(&timestamp);
-    timeinfo = localtime(&timestamp);
-    static char curTime2[128];
-    sprintf(curTime2, "%.2d-%.2d-%.2dT%.2d-%.2d-%.2d",
-            timeinfo->tm_year + 1900,
-            timeinfo->tm_mon + 1,
-            timeinfo->tm_mday,
-            timeinfo->tm_hour,
-            timeinfo->tm_min,
-            timeinfo->tm_sec);
+    QSharedPointer<NMItkDataObjectWrapper> iw = reader->getOutput(0);
+    ImgPointerType img = dynamic_cast<ImgType*>(iw->getDataObject());
 
+    FlowPointer flow = FlowFilterType::New();
+    FillPointer fill = FillFilterType::New();
 
+//    WriterPointer writer = WriterType::New();
 
-    NMLogInfo(<< "from the off - current date & time: " << curTime2);
+//    QFileInfo fifo(layername);
+//    QString basename = fifo.baseName();
+//    QString path = fifo.path();
+//    QString newfn = QString("%1/%2_%3.img").arg(path).arg(basename).arg("_fill");
 
+//    filter->SetInput(img);
+//    //filter->SetNumberOfThreads(1);
+//    //filter->Update();
+
+//    writer->SetFileName(newfn.toStdString());
+//    writer->SetInput(filter->GetOutput());
+//    writer->Update();
+
+    if (bFlow)
+    {
+        flow->SetInput(img);
+        flow->SetNumberOfThreads(1);
+        flow->Update();
+
+        QSharedPointer<NMItkDataObjectWrapper> outw(new NMItkDataObjectWrapper(
+                                                        this,
+                                                        flow->GetOutput(),
+                                                        iw->getItkComponentType(),
+                                                        iw->getNumDimensions(),
+                                                        iw->getNumBands()));
+
+        NMImageLayer* imgLayer = new NMImageLayer(this->getRenderWindow());
+        imgLayer->setObjectName("flowAcc");
+        imgLayer->setVisible(true);
+        imgLayer->setImage(outw);
+
+        this->mLayerList->addLayer(imgLayer);
+
+    }
+    else // Fill
+    {
+        double margin = QInputDialog::getDouble(this, "FillMargin", "", 0, 2147483647, 3);
+        fill->SetFillMargin(margin);
+        fill->SetInput(img);
+        fill->SetNumberOfThreads(1);
+        fill->Update();
+
+        QSharedPointer<NMItkDataObjectWrapper> outw(new NMItkDataObjectWrapper(
+                                                        this,
+                                                        fill->GetOutput(),
+                                                        iw->getItkComponentType(),
+                                                        iw->getNumDimensions(),
+                                                        iw->getNumBands()));
+
+        NMImageLayer* imgLayer = new NMImageLayer(this->getRenderWindow());
+        imgLayer->setObjectName("filled");
+        imgLayer->setVisible(true);
+        imgLayer->setImage(outw);
+
+        this->mLayerList->addLayer(imgLayer);
+
+    }
+ */
 }
 
 
@@ -3468,7 +3574,7 @@ void LUMASSMainWin::zoomFullExtent()
 	this->mBkgRenderer->ResetCamera(const_cast<double*>(
             this->mLayerList->getMapBBox()));
 
-	this->ui->qvtkWidget->update();
+    NMGlobalHelper::getRenderWindow()->Render();
 }
 
 void LUMASSMainWin::zoomToCoords(double *box)
@@ -3479,7 +3585,7 @@ void LUMASSMainWin::zoomToCoords(double *box)
 
     this->mBkgRenderer->ResetCamera(box);
 
-    this->ui->qvtkWidget->update();
+    NMGlobalHelper::getRenderWindow()->Render();
 }
 
 void LUMASSMainWin::removeAllObjects()
@@ -3570,8 +3676,12 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	if (l->getLayerType() == NMLayer::NM_VECTOR_LAYER)
 	{
 		NMVectorLayer* vl = qobject_cast<NMVectorLayer*>(l);
-		if (vl->getFeatureType() != NMVectorLayer::NM_POLYGON_FEAT)
-			return;
+        if (    vl->getFeatureType() != NMVectorLayer::NM_POLYGON_FEAT
+             || vl->getTable() == nullptr
+           )
+        {
+            return;
+        }
 
 		vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
 		vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
@@ -3989,7 +4099,7 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
 	wPt[2] = 0;
 
 	// update label
-	QString s = QString("Map Location: X: %1 Y: %2"). // Z: %3").
+    QString s = QString("XY Location: %1, %2 "). // Z: %3").
 	arg(wPt[0], 0, 'f', 5).arg(wPt[1], 0, 'f', 5); //.arg(wPt[3],0,'f',2);
 
 	this->m_coordLabel->setText(s);
@@ -4003,114 +4113,149 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
     }
 
     // =======================================================================================
-	// get pixel value, if image layer is selected
+    // get pixel value of top 10 visible image layers in the order from top to bottom
+    int vl=0;
+    for (int l=this->mLayerList->getLayerCount()-1; l >= 0 && vl < 10; --l)
+    {
+        if (    mLayerList->getLayer(l)->isVisible()
+             && mLayerList->getLayer(l)->getLayerType() == NMLayer::NM_IMAGE_LAYER
+            )
+        {
+            ++vl;
+        }
+    }
 
-	// update the pixel value label, if we've got an image layer selected
-    NMLayer *l = this->mLayerList->getSelectedLayer();
-	if (l == 0)
-		return;
+    QString pixval = "";
+    stringstream visvs, pixStr, lprPixStr;
+    for (int i=this->mLayerList->getLayerCount()-1, cnt=1; i >= 0 && cnt <= vl; --i)
+    {
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(this->mLayerList->getLayer(i));
+        if (il == nullptr || !il->isVisible())
+        {
+            continue;
+        }
 
-	if (l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
-		return;
+        // get the current pixel and LPR pixel cooridnates for the top most
+        // visible layer
+        vtkImageData* img = vtkImageData::SafeDownCast(
+                const_cast<vtkDataSet*>(il->getDataSet()));
 
-	vtkImageData* img = vtkImageData::SafeDownCast(
-			const_cast<vtkDataSet*>(l->getDataSet()));
+        // bail out on error
+        if (img == 0)
+        {
+            continue;
+        }
 
-	if (img == 0)
-		return;
+        int ext[6];
+        img->GetExtent(ext);
 
+        int did[3] = {-1,-1,-1};
+        int lprpix[3] = {-1,-1,-1};
 
-    int ext[6];
-    double orig[3];
-    img->GetOrigin(orig);
-    img->GetExtent(ext);
+        il->world2pixel(wPt, did, false, false);
+        il->world2pixel(wPt, lprpix, true, false);
 
-	NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
-	QString pixval = "";
-    int did[3] = {-1,-1,-1};
-    int lprpix[3] = {-1,-1,-1};
+        // keep the pixel and LPR pixel coordinates just for the
+        // topmost visible layer!
+        if (cnt == 1)
+        {
+            pixStr << did[0] << ", " << did[1] << ", " << did[2];
+            lprPixStr << lprpix[0] << ", " << lprpix[1] << ", " << lprpix[2];
+        }
 
-    il->world2pixel(wPt, did, false, false);
-    il->world2pixel(wPt, lprpix, true, false);
+        stringstream cvs;
+        if (    (did[0] >= ext[0] && did[0] <= ext[1])
+             && (did[1] >= ext[2] && did[1] <= ext[3])
+             && (did[2] >= ext[4] && did[2] <= ext[5])
+           )
+        {
+            for (unsigned int d=0; d < img->GetNumberOfScalarComponents(); ++d)
+            {
+                cvs << img->GetScalarComponentAsDouble(did[0], did[1], did[2], d)
+                        << " ";
+            }
+        }
+        else
+        {
+            cvs << "nodata ";
+        }
 
-    stringstream cvs;
-    if (    (did[0] >= ext[0] && did[0] <= ext[1])
-         && (did[1] >= ext[2] && did[1] <= ext[3])
-         && (did[2] >= ext[4] && did[2] <= ext[5])
+        // need to fetch the proper attribute value, when scalars represent
+        // the row index of the RAT
+        if (    il->getTable() != nullptr
+            &&  il->getLegendType() == NMLayer::NM_LEGEND_INDEXED
+            &&  !il->useIdxMap()
+           )
+        {
+            int lrow = ::atoi(cvs.str().c_str());
+
+            QAbstractItemModel* itemModel = const_cast<QAbstractItemModel*>(il->getTable());
+
+            NMQtOtbAttributeTableModel* ramModel = qobject_cast<NMQtOtbAttributeTableModel*>(itemModel);
+            NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(itemModel);
+
+           if (sqlModel != nullptr)
+           {
+               QString queryStr = QString("SELECT %1 from %2 where %3 = %4")
+                       .arg(il->getLegendValueField())
+                       .arg(sqlModel->tableName())
+                       .arg(sqlModel->getNMPrimaryKey())
+                       .arg(lrow);
+
+               QSqlQuery q(sqlModel->database());
+               if (q.exec(queryStr))
+               {
+                   if (q.next())
+                   {
+                       cvs.str("");
+                       cvs << q.value(0).toString().toStdString();
+                   }
+               }
+           }
+           // here we assume a 0-based indexed attribute table
+           else if (ramModel != nullptr)
+           {
+               int colidx = 0;
+               for (int i=0; i < ramModel->columnCount(); ++i)
+               {
+                   QVariant colName = ramModel->headerData(i, Qt::Horizontal);
+                   if (il->getLegendValueField().compare(colName.toString(), Qt::CaseInsensitive) == 0)
+                   {
+                       colidx = i;
+                       break;
+                   }
+               }
+
+               QModelIndex mi = ramModel->index(lrow, colidx);
+               cvs.str("");
+               cvs << mi.data().toString().toStdString().c_str();
+           }
+        }
+
+        visvs << cvs.str();
+        if (cnt < vl)
+        {
+             visvs << ", ";
+        }
+        ++cnt;
+    }
+
+    // no message, no display
+    if (    visvs.str().size() == 0
+         || lprPixStr.str().size() == 0
+         || pixStr.str().size() == 0
        )
     {
-        for (unsigned int d=0; d < img->GetNumberOfScalarComponents(); ++d)
-        {
-            cvs << img->GetScalarComponentAsDouble(did[0], did[1], did[2], d)
-                    << " ";
-        }
+        this->mPixelValLabel->setText("");
     }
     else
     {
-        cvs << "nodata ";
+        pixval = QString("| Pixel: %1 | LPRPixel: %2 | Values: %3 ").
+                    arg(pixStr.str().c_str()).
+                    arg(lprPixStr.str().c_str()).
+                    arg(visvs.str().c_str());
+        this->mPixelValLabel->setText(pixval);
     }
-
-    // need to fetch the proper attribute value, when scalars represent
-    // the row index of the RAT
-    if (    il->getTable() != nullptr
-        &&  il->getLegendType() == NMLayer::NM_LEGEND_INDEXED
-        &&  !il->useIdxMap()
-       )
-    {
-        int lrow = ::atoi(cvs.str().c_str());
-
-        QAbstractItemModel* itemModel = const_cast<QAbstractItemModel*>(il->getTable());
-
-        NMQtOtbAttributeTableModel* ramModel = qobject_cast<NMQtOtbAttributeTableModel*>(itemModel);
-        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(itemModel);
-
-       if (sqlModel != nullptr)
-       {
-           QString queryStr = QString("SELECT %1 from %2 where %3 = %4")
-                   .arg(il->getLegendValueField())
-                   .arg(sqlModel->tableName())
-                   .arg(sqlModel->getNMPrimaryKey())
-                   .arg(lrow);
-
-           QSqlQuery q(sqlModel->database());
-           if (q.exec(queryStr))
-           {
-               if (q.next())
-               {
-                   cvs.str("");
-                   cvs << q.value(0).toString().toStdString();
-               }
-           }
-       }
-       // here we assume a 0-based indexed attribute table
-       else if (ramModel != nullptr)
-       {
-           int colidx = 0;
-           for (int i=0; i < ramModel->columnCount(); ++i)
-           {
-               QVariant colName = ramModel->headerData(i, Qt::Horizontal);
-               if (il->getLegendValueField().compare(colName.toString(), Qt::CaseInsensitive) == 0)
-               {
-                   colidx = i;
-                   break;
-               }
-           }
-
-           QModelIndex mi = ramModel->index(lrow, colidx);
-           cvs.str("");
-           cvs << mi.data().toString().toStdString().c_str();
-       }
-    }
-
-    pixval = QString(" Pixel(%1, %2, %3) = %4 | LPRPixel(%5, %6, %7)").  // | Displ(%8, %9) | Orig(%10, %11)").
-                arg(did[0]).arg(did[1]).arg(did[2]).
-                arg(cvs.str().c_str()).
-                arg(lprpix[0]).arg(lprpix[1]).arg(lprpix[2]);//.
-                //                arg(event_pos[0]).arg(event_pos[1]).
-                //                arg(orig[0], 0, 'f', 0).
-                //                arg(orig[1], 0, 'f', 0);
-
-	this->mPixelValLabel->setText(pixval);
 }
 
 void
@@ -5033,7 +5178,7 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 	vtkSmartPointer<vtkPolyData> vtkVect = vtkSmartPointer<vtkPolyData>::New();
 	vtkSmartPointer<vtkCellArray> polys = vtkSmartPointer<vtkCellArray>::New();
 	vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-	vtkSmartPointer<vtkMergePoints> mpts = vtkSmartPointer<vtkMergePoints>::New();
+    vtkSmartPointer<vtkMergePoints> mpts = vtkSmartPointer<vtkMergePoints>::New();
 
 	// set divisions --> no of division in x-y-z-direction (i.e. range)
 	// set bounds
@@ -5081,7 +5226,6 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 	vtkSmartPointer<vtkUnsignedCharArray> nm_sel = vtkSmartPointer<vtkUnsignedCharArray>::New();
 	nm_sel->SetName("nm_sel");
 	nm_sel->Allocate(l.GetFeatureCount(1), 100);
-
 
 	vtkSmartPointer<vtkIntArray> iarr;
 	vtkSmartPointer<vtkDoubleArray> darr;
@@ -5269,7 +5413,8 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 					pt[1] = y;
 					pt[2] = 0.0;
 
-					mpts->InsertUniquePoint(pt, tmpId);
+                    //mpts->InsertUniquePoint(pt, tmpId);
+                    tmpId = points->InsertNextPoint(pt);
 					polys->InsertCellPoint(tmpId);
 				}
 //				NMDebug(<< endl);
@@ -5300,7 +5445,7 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 		vtkVect->GetCellData()->AddArray(attr[f]);
 
 	vtkVect->BuildCells();
-	vtkVect->BuildLinks();
+    vtkVect->BuildLinks();
 
 	NMDebugAI(<< featCounter << " features imported" << endl);
 
@@ -5308,6 +5453,362 @@ vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToPolyData(OGRLayer& l)
 	return vtkVect;
 }
 
+void
+LUMASSMainWin::importShapeFile(const QString &filename)
+{
+
+}
+
+// experimental
+vtkSmartPointer<vtkPolyData> LUMASSMainWin::wkbPolygonToTesselatedPolyData(OGRLayer& l)
+{
+    /*	OGC SimpleFeature Spec
+     *
+     * 	Point {double x; double y}
+     * 	LinearRing {unsigned int numPoints; Point points[numPoints]}
+     *
+     *  WKBPolygon {char byteOrder; static unsigned int wkbType = 3;
+     *  	unsigned int		numRings;
+     *		LinearRing			rings[numRings]
+     *	}
+     *
+     *	WKBMultiPolygon {char byteOrder; static unsigned int wkbType = 6;
+     *		unsigned int		numPolygons;
+     *		WKBPolygon			polygons[numPolygons]
+     *	}
+     *
+     * DEPRECATED
+     *	To allow for proper polygon display (i.e. holes / donuts, non-convex polygons),
+     *	the herewith created vtkPolyData should be used in conjunction with the
+     *	vtkOGRLayerMapper class. vtkOGRLayerMapper uses GLU tesselation to display
+     *	the above mentioned features. For this to work, the following vertex order
+     *	is required to identify features
+     *		- exterior ring: counter-clockwise
+     *		- interior rings: clockwise
+     *
+     *	Unfortunately, the OGR exportToWKB function uses the opposite ordering of rings. So here
+     *	all exterior rings are traversed from the last point to the first one to adhere
+     *	with vtk requirements
+     */
+
+        NMDebugCtx(ctxLUMASSMainWin, << "...");
+
+    // create vtk data objects
+    vtkSmartPointer<vtkPolyData> vtkVect = vtkSmartPointer<vtkPolyData>::New();
+    vtkSmartPointer<vtkCellArray> polys = vtkSmartPointer<vtkCellArray>::New();
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    vtkSmartPointer<vtkMergePoints> mpts = vtkSmartPointer<vtkMergePoints>::New();
+
+    // set divisions --> no of division in x-y-z-direction (i.e. range)
+    // set bounds
+    OGREnvelope ogrext;
+    OGRErr oge = l.GetExtent(&ogrext);
+    double fbnds[6] = {ogrext.MinX-10, ogrext.MaxX+10,
+                       ogrext.MinY-10, ogrext.MaxY+10, 0, 0};
+//    mpts->SetDivisions(10, 10, 1);
+//    mpts->SetTolerance(1e-2);
+//    mpts->InitPointInsertion(points, fbnds);
+
+    vtkIdType pointId, cellId;
+    double dMax = std::numeric_limits<double>::max();
+    double dMin = std::numeric_limits<double>::max() * -1;
+    double bnd[6] = {dMax, dMin, dMax, dMin, 0, 0};
+    int featcount = l.GetFeatureCount(1);
+    NMDebugAI(<< "number of features: " << featcount << endl);
+
+    vtkVect->Allocate(featcount, 100);
+    // this is just a guess; may need some fine tuning in the end
+    points->Allocate(featcount*3, 100);
+    vtkVect->SetPoints(points);
+
+    // OGC SimpleFeature WellKnownBinary (WKB) byte order enum:
+    // wkbXDR = 0 (big endian) | wkbNDR = 1 (little endian)
+    OGRwkbByteOrder bo = QSysInfo::ByteOrder == QSysInfo::BigEndian ? wkbXDR : wkbNDR;
+    OGRFeature *pFeat;
+
+    // ----------------------------------------------------------------------------------
+    // create the attributes arrays for this layer
+    l.ResetReading();
+    pFeat = l.GetNextFeature();
+    int nfields = pFeat->GetFieldCount();
+
+    std::vector<vtkSmartPointer<vtkAbstractArray> > attr;
+    // keeps track of the features to copy
+    // we filter all "nm_*" by default
+    std::vector<int> fieldIdx;
+
+    unsigned int ent = l.GetFeatureCount(0);
+
+    vtkSmartPointer<vtkLongArray> nm_id = vtkSmartPointer<vtkLongArray>::New();
+    nm_id->SetName("nm_id");
+    nm_id->Allocate(ent, 100);
+
+    vtkSmartPointer<vtkUnsignedCharArray> nm_hole = vtkSmartPointer<vtkUnsignedCharArray>::New();
+    nm_hole->SetName("nm_hole");
+    nm_hole->Allocate(ent, 100);
+
+    vtkSmartPointer<vtkUnsignedLongArray> nm_triid = vtkSmartPointer<vtkUnsignedLongArray>::New();
+    nm_triid->SetName("nm_triid");
+    nm_triid->Allocate(ent, 100);
+
+    vtkSmartPointer<vtkUnsignedCharArray> nm_sel = vtkSmartPointer<vtkUnsignedCharArray>::New();
+    nm_sel->SetName("nm_sel");
+    nm_sel->Allocate(ent, 100);
+
+    vtkSmartPointer<vtkIntArray> iarr;
+    vtkSmartPointer<vtkDoubleArray> darr;
+    vtkSmartPointer<vtkStringArray> sarr;
+
+//    for (int f=0; f < nfields; ++f)
+//    {
+//        OGRFieldDefn* fdef = pFeat->GetFieldDefnRef(f);
+//        //		NMDebugAI( << fdef->GetNameRef() << ": " << fdef->GetFieldTypeName(fdef->GetType()) << endl);
+//        if (::strcmp(fdef->GetNameRef(), "nm_id") == 0  ||
+//            ::strcmp(fdef->GetNameRef(), "nm_hole") == 0 ||
+//            ::strcmp(fdef->GetNameRef(), "nm_sel") == 0)
+//        {
+//            continue;
+//        }
+//        fieldIdx.push_back(f);
+
+//        switch(fdef->GetType())
+//        {
+//            case OFTInteger:
+//                iarr = vtkSmartPointer<vtkIntArray>::New();
+//                iarr->SetName(fdef->GetNameRef());
+//                iarr->SetName("TriID");
+//                iarr->Allocate(featcount, 100);
+//                attr.push_back(iarr);
+//                break;
+//            case OFTReal:
+//                darr = vtkSmartPointer<vtkDoubleArray>::New();
+//                darr->SetName(fdef->GetNameRef());
+//                darr->Allocate(featcount, 100);
+//                attr.push_back(darr);
+//                break;
+//            default: // case OFTString:
+//                sarr = vtkSmartPointer<vtkStringArray>::New();
+//                sarr->SetName(fdef->GetNameRef());
+//                sarr->Allocate(featcount, 100);
+//                attr.push_back(sarr);
+//                break;
+//        }
+//    }
+
+    // ------------------------------------------------------------------------------------------------
+    // process feature by feature
+    l.ResetReading();
+    //NMDebugAI(<< "importing features ... " << std::endl);
+    unsigned int featCounter = 1;
+    unsigned int trisCounter = 0;
+    while ((pFeat = l.GetNextFeature()) != NULL)
+    {
+        OGRGeometry *geom = pFeat->GetGeometryRef();
+        if (geom == 0)
+        {
+                        NMWarn(ctxLUMASSMainWin, << "Oops - got NULL geometry for this feature! - Abort.");
+            continue;
+        }
+
+        avtPolygonToTrianglesTesselator tess(points);
+        tess.SetNormal(0.0, 0.0, 1.0);
+
+//        int fid = pFeat->GetFieldAsInteger(0);
+
+        int wkbSize = geom->WkbSize();
+//		NMDebug(<< endl << endl << "feature #" << featCounter << ":" << fid << " (" << geom->getGeometryName() <<
+//				", " << wkbSize << " bytes)" << endl);
+        unsigned char* wkb = new unsigned char[wkbSize];
+        if (wkb == 0)
+        {
+                        NMLogError(<< ctxLUMASSMainWin << ": not enough memory to allocate feature wkb buffer!");
+            return 0;
+        }
+        geom->exportToWkb(bo, wkb);
+
+        // multi or not ?
+        unsigned int pos = sizeof(char); // we start with the type, 'cause we know the byte order already
+        unsigned int type;
+        memcpy(&type, (wkb+pos), sizeof(unsigned int));
+
+        // jump over type (= 4 byte)
+        pos += sizeof(unsigned int);
+
+        //NMDebugAI( << "feature #" << featCounter << " is of geometry type " << type << endl);
+
+        unsigned int nPolys;
+        unsigned int nRings;
+
+        if (type == 6)
+        {
+            memcpy(&nPolys, (wkb+pos), sizeof(unsigned int));
+            // jump over the nPolys (= 4 byte),
+            // skip byte order for 1st polygon (= 1 byte),
+            // skip geometry type for 1st polygon (= 4 byte);
+            pos += sizeof(unsigned int) + sizeof(char) + sizeof(unsigned int);
+        }
+        else
+            nPolys = 1;
+
+//		NMDebug(<< endl << "number of polygons: " << nPolys << endl);
+
+        unsigned int nPoints;
+        double x, y;
+
+        // pos should point to the number of rings of the 1st polygon
+        for (unsigned int p=0; p < nPolys; ++p) // -----------------------------------------
+        {
+            // get the number of rings for this polygon
+            memcpy(&nRings, (wkb+pos), sizeof(unsigned int));
+
+//			NMDebug(<< "polygon #" << p+1 << " - " << nRings << " rings ... " << endl);
+
+            // jump over nRings (= 4 byte)
+            pos += sizeof(unsigned int);
+
+            // process rings
+            for (unsigned int r=0; r < nRings; ++r) // ......................................
+            {
+                // get the number of points for this ring
+                memcpy(&nPoints, (wkb+pos), sizeof(unsigned int));
+
+//				NMDebug(<< "ring #" << r+1 << " - " << nPoints << " points ..." << endl);
+
+                // jump over nPoints (= 4 byte)
+                pos += sizeof(unsigned int);
+
+                // insert next cell and assign cellId as preliminary attribute
+                //cellId = polys->InsertNextCell(nPoints);
+
+                // assign feature id and cell values
+                //                nm_sel->InsertNextValue(0);
+                //                if (r == 0)
+                //                {
+                //                    nm_id->InsertNextValue(featCounter);
+                //                    nm_hole->InsertNextValue(0);
+                //                }
+                //                else
+                //                {
+                //                    nm_id->InsertNextValue(-1);
+                //                    nm_hole->InsertNextValue(1);
+                //                }
+
+//                vtkIntArray* iar;
+//                vtkDoubleArray* dar;
+//                vtkStringArray* sar;
+//                for (int fidx=0; fidx < fieldIdx.size(); ++fidx)
+//                {
+//                    switch(pFeat->GetFieldDefnRef(fieldIdx[fidx])->GetType())
+//                    {
+//                    case OFTInteger:
+//                        iar = vtkIntArray::SafeDownCast(attr[fidx]);
+//                        iar->InsertNextValue(pFeat->GetFieldAsInteger(fieldIdx[fidx]));
+//                        break;
+//                    case OFTReal:
+//                        dar = vtkDoubleArray::SafeDownCast(attr[fidx]);
+//                        dar->InsertNextValue(pFeat->GetFieldAsDouble(fieldIdx[fidx]));
+//                        break;
+//                    default:
+//                        sar = vtkStringArray::SafeDownCast(attr[fidx]);
+//                        sar->InsertNextValue(pFeat->GetFieldAsString(fieldIdx[fidx]));
+//                        break;
+//                    }
+//                }
+
+                /* We traverse all points backwards, since the vertex order given by
+                 * exportToWKB is opposite to the VTK required one (and the
+                 * OGC simple feature spec).
+                 *
+                  0   1   2   3   4 ... nPoints-1
+                 >x y x y x y x y x y   x y
+                 --> advancing the buffer pointer (pos) nPoints-1 times by
+                     16 bytes moves it right in front of the x coordinate
+                     of the last point, adding another 8 bytes, in front
+                     of the y coordinate of the last point; then we are
+                     going backwards through the buffer and read
+                     the coordinates;
+                */
+
+                tess.BeginContour();
+
+                unsigned int rpos = pos + ((nPoints-1) * 2 * sizeof(double)) + sizeof(double);
+                pos = rpos + sizeof(double);
+
+                for (unsigned int pnt=0; pnt < nPoints; ++pnt) // ............................
+                {
+                    // get the coordinates and jump over it
+                    // i.e. forward 8 byte each time (double!)
+                    memcpy(&y, (wkb+rpos), sizeof(double)); rpos -= sizeof(double);
+                    memcpy(&x, (wkb+rpos), sizeof(double)); rpos -= sizeof(double);
+
+                    double pt[3];
+                    vtkIdType tmpId;
+
+//					NMDebug(<< pnt << "(" << x << "," << y << ")" << endl);
+                    pt[0] = x;
+                    pt[1] = y;
+                    pt[2] = 0.0;
+
+                    //mpts->InsertUniquePoint(pt, tmpId);
+                    //tmpId = points->InsertNextPoint(pt);
+                    // polys->InsertCellPoint(tmpId);
+
+                    tess.AddContourVertex(x, y, 0.0);
+                }
+//				NMDebug(<< endl);
+
+                tess.EndContour();
+            }
+            //skip byte order for next polygon (= 1 byte)
+            //skip geom type for next polygon (= 4 byte)
+            pos += sizeof(char) + sizeof(unsigned int);
+
+            int ntris = tess.Tessellate(vtkVect);
+            for (int t=0; t < ntris; ++t)
+            {
+                nm_id->InsertNextValue(featCounter);
+                nm_hole->InsertNextValue(0);
+                nm_sel->InsertNextValue(0);
+                nm_triid->InsertNextValue(trisCounter+t+1);
+            }
+            trisCounter += ntris;
+        }
+
+        // increase feature counter
+        //NMDebug(<< featCounter << " ");
+        ++featCounter;
+
+        // release memory for the wkb buffer
+        delete[] wkb;
+    }
+    //NMDebug(<< std::endl);
+
+    // add geometry (i.e. points and cells)
+//    vtkVect->SetPoints(mpts->GetPoints());
+//    vtkVect->SetPolys(polys);
+
+    // add attributes
+    nm_id->Squeeze();
+    nm_hole->Squeeze();
+    nm_sel->Squeeze();
+    nm_triid->Squeeze();
+    vtkVect->Squeeze();
+    vtkVect->GetCellData()->SetScalars(nm_id);
+    vtkVect->GetCellData()->AddArray(nm_hole);
+    vtkVect->GetCellData()->AddArray(nm_sel);
+    vtkVect->GetCellData()->AddArray(nm_triid);
+
+//    for (int f=0; f < fieldIdx.size(); ++f)
+//        vtkVect->GetCellData()->AddArray(attr[f]);
+
+//    vtkVect->BuildCells();
+//    vtkVect->BuildLinks();
+
+    NMDebugAI(<< featCounter << " features imported" << endl);
+
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
+    return vtkVect;
+}
 
 void
 LUMASSMainWin::vtkPolygonPolydataToOGR(
@@ -5579,7 +6080,8 @@ LUMASSMainWin::OgrToVtkPolyData(
 		break;
 	case wkbPolygon:
 	case wkbMultiPolygon:
-		vtkVect = this->wkbPolygonToPolyData(*pLayer);
+        vtkVect = this->wkbPolygonToPolyData(*pLayer);
+        //vtkVect = this->wkbPolygonToTesselatedPolyData(*pLayer);
 		break;
 	default:
                 NMLogError(<< ctxLUMASSMainWin << ": Geometry type '" << geomType << "' is currently not supported!");
@@ -5602,17 +6104,17 @@ void LUMASSMainWin::loadVectorLayer()
 	NMDebugAI( << "opening '" << fileName.toStdString() << "' ..." << endl);
 
 #ifndef GDAL_200
-	OGRRegisterAll();
-	OGRDataSource *pDS = OGRSFDriverRegistrar::Open(fileName.toStdString().c_str(),
-			FALSE, NULL);
-	if (pDS == NULL)
-	{
+    OGRRegisterAll();
+    OGRDataSource *pDS = OGRSFDriverRegistrar::Open(fileName.toStdString().c_str(),
+            FALSE, NULL);
+    if (pDS == NULL)
+    {
                 NMLogError(<< ctxLUMASSMainWin << ": failed to open '" << fileName.toStdString() << "'!");
-		return;
-	}
+        return;
+    }
 
-	vtkSmartPointer<vtkPolyData> vtkVec = this->OgrToVtkPolyData(pDS);
-	OGRDataSource::DestroyDataSource(pDS);
+    vtkSmartPointer<vtkPolyData> vtkVec = this->OgrToVtkPolyData(pDS);
+    OGRDataSource::DestroyDataSource(pDS);
 #else
 
     GDALAllRegister();
@@ -5631,7 +6133,9 @@ void LUMASSMainWin::loadVectorLayer()
 	QFileInfo finfo(fileName);
 	QString layerName = finfo.baseName();
 
-	vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
+    vtkRenderWindow* renWin = this->ui->qvtkWidget->GetRenderWindow();
+    //vtkSmartPointer<NMVtkOpenGLRenderWindow> renWin = vtkSmartPointer<NMVtkOpenGLRenderWindow>::New();
+    //this->ui->qvtkWidget->SetRenderWindow(renWin);
 	NMVectorLayer* layer = new NMVectorLayer(renWin);
 	layer->setObjectName(layerName);
 	layer->setDataSet(vtkVec);
@@ -6073,7 +6577,7 @@ void LUMASSMainWin::toggle3DSimpleMode()
 	}
 
     emit signalIsIn3DMode(m_b3D);
-	this->ui->qvtkWidget->update();
+    NMGlobalHelper::getRenderWindow()->Render();
 }
 
 void LUMASSMainWin::toggle3DStereoMode()

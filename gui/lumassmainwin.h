@@ -318,6 +318,10 @@ public slots:
     bool checkTree(const int& rootId, const int& stopId, QList<int>& idHistory,
                    const QMultiMap<int, int> &treeMap);
 
+
+
+    void importShapeFile(const QString& filename);
+
 protected slots:
     void settingsFeeder(QtProperty* prop, const QStringList& strVal);
     void updateSettings(QtProperty* prop, const QVariant& val);
@@ -350,6 +354,7 @@ protected:
 	vtkSmartPointer<vtkPolyData> wkbPointToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbLineStringToPolyData(OGRLayer& l);
 	vtkSmartPointer<vtkPolyData> wkbPolygonToPolyData(OGRLayer& l);
+    vtkSmartPointer<vtkPolyData> wkbPolygonToTesselatedPolyData(OGRLayer& l);
 
     /* testing whether pt lies in the cell (2d case)
      * uses ray-casting odd-even rule: i.e. when pt is

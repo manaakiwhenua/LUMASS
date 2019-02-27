@@ -16,9 +16,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 #include <QApplication>
+#include <QSurfaceFormat>
 #include <QResource>
 #include "lumassmainwin.h"
 
+#include "QVTKOpenGLWidget.h"
 
 #ifdef BUILD_RASSUPPORT
 /// RASDAMAN includes
@@ -69,6 +71,7 @@
 
 int main(int argc, char *argv[])
 {
+    QSurfaceFormat::setDefaultFormat(QVTKOpenGLWidget::defaultFormat());
 #ifdef QT_HIGHDPI_SUPPORT
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif

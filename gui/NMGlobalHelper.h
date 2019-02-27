@@ -29,7 +29,7 @@
 #include "lumassmainwin.h"
 #include "NMLogWidget.h"
 
-class QVTKWidget;
+class QVTKOpenGLWidget;
 class vtkRenderWindow;
 class NMModelController;
 
@@ -45,7 +45,7 @@ public:
     static NMModelController* getModelController(void);
     static NMLogWidget* getLogWidget(void);
     static vtkRenderWindow* getRenderWindow(void);
-    static QVTKWidget* getVTKWidget(void);
+    static QVTKOpenGLWidget* getVTKWidget(void);
     static QString getUserSetting(const QString& key);
     static QStringList getUserSettingsList(void);
     static QStringList getModelSettingsList(void);

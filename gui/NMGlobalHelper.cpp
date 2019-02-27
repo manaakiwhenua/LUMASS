@@ -26,11 +26,14 @@
 #include <QListView>
 #include <QStringListModel>
 
+#include "QVTKOpenGLWidget.h"
+
 #include "ui_lumassmainwin.h"
 #include "lumassmainwin.h"
 #include "NMGlobalHelper.h"
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
+
 
 #include "nmlog.h"
 
@@ -366,7 +369,7 @@ NMGlobalHelper::getRenderWindow()
    return NMGlobalHelper::getMainWindow()->getRenderWindow();
 }
 
-QVTKWidget*
+QVTKOpenGLWidget*
 NMGlobalHelper::getVTKWidget()
 {
     return NMGlobalHelper::getMainWindow()->ui->qvtkWidget;

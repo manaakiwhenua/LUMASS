@@ -329,7 +329,7 @@ public:
   /*! The filter needs a larger input requested region than
    * the output requested region.
    * \sa ImageToImageFilter::GenerateInputRequestedRegion() */
-  virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
+  virtual void GenerateInputRequestedRegion() throw();
 
   virtual itk::DataObject::Pointer MakeOutput(unsigned int idx);
   virtual void SetNthInput(itk::DataObject::DataObjectPointerArraySizeType num, itk::DataObject* input);

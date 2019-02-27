@@ -136,7 +136,7 @@ public:
   
   /** Since we're working on a neighbourhood, we need to override this method
    *  to ensure, we get enough input data */
-  virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
+  virtual void GenerateInputRequestedRegion() throw();
 
 #ifdef ITK_USE_CONCEPT_CHECKING
   /** Begin concept checking */

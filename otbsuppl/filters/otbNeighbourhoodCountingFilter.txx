@@ -67,7 +67,7 @@ NeighbourhoodCountingFilter<TInputImage, TOutputImage>
 template <class TInputImage, class TOutputImage>
 void 
 NeighbourhoodCountingFilter<TInputImage, TOutputImage>
-::GenerateInputRequestedRegion() throw (itk::InvalidRequestedRegionError)
+::GenerateInputRequestedRegion() throw ()
 {
   // call the superclass' implementation of this method
   Superclass::GenerateInputRequestedRegion();

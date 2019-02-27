@@ -77,7 +77,7 @@ public:
   void SetGradientAlgorithm(NmGradientAlgorithm algo);
   void SetGradientUnit(NmGradientUnit unit);
 
-  virtual void GenerateInputRequestedRegion() throw(itk::InvalidRequestedRegionError);
+  virtual void GenerateInputRequestedRegion() throw ();
 
 protected:
     DEMSlopeAspectFilter();

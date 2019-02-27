@@ -18,11 +18,10 @@ LINK_DIRECTORIES(
 	${OTB_DIR}/bin
 	${OTB_DIR}/bin/${CMAKE_BUILD_TYPE}
 	${OTB_DIR}/lib
-    #${SQLITE3_INCLUDE_DIR}
-    ${OSGEO4W_ROOT}/lib
-    ${SQLite_BINARY_DIR}/lib
-    ${SPATIALITE_LIB_DIR}
-    ${SPATIALITE_LIBLIB_DIR}
+        ${OSGEO4W_ROOT}/lib
+        ${SQLite_BINARY_DIR}/lib
+        ${SPATIALITE_LIB_DIR}
+        ${SPATIALITE_LIBLIB_DIR}
 )                                                         
 
 
@@ -30,13 +29,10 @@ LINK_DIRECTORIES(
 file(GLOB GDALRATIO 
 	${GDALRATImageIO_SOURCE_DIR}/*.cxx
 	${GDALRATImageIO_SOURCE_DIR}/*.txx
-#        ${otbsuppl_core_SOURCE_DIR}/*.cxx
-#        ${otbsuppl_core_SOURCE_DIR}/*.hxx
 )
 
 # list of project header files
 file(GLOB GDALRATIO_HEADER
-#        ${GDALRATImageIO_SOURCE_DIR}/otbGDALRATImageFileReader.h
 	${GDALRATImageIO_SOURCE_DIR}/*.h
 	${GDALRATImageIO_BINARY_DIR}/*.h
 )

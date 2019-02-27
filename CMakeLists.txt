@@ -115,7 +115,7 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 59)
+SET(LUMASS_VERSION_REVISION 60rc)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -131,6 +131,9 @@ FIND_PACKAGE(LUMASSQt5)
 IF(NOT QT5_PREFIX_PATH)
 	message(FATAL_ERROR "Need to specify Qt5 install DIR!")
 ENDIF()
+#if (${QT5_VERSION_STRING} VERSION_LESS "5.7")
+#    message(FATAL_ERROR "LUMASS >= 0.9.60 requires Qt >= 5.7")
+#endif ()
 
 
 #====================================================================
@@ -149,6 +152,7 @@ if(NOT OPENGL_INCLUDE_DIR)
 endif()
 
 message(STATUS "OpenGL's include dir: ${OPENGL_INCLUDE_DIR}")
+message(STATUS "OpenGL's GL library:  ${OPENGL_gl_LIBRARY}")
 message(STATUS "OpenGL's GLU library: ${OPENGL_glu_LIBRARY}")
 
 #====================================================================
@@ -167,15 +171,21 @@ FIND_PACKAGE(LUMASSOTB)
 if(NOT OTB_FOUND)
   message(FATAL_ERROR "You have to install Orfeo Toolbox prior to compiling LUMASS!")
 endif(NOT OTB_FOUND)
-
-INCLUDE(${OTB_USE_FILE})
-SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
-message(STATUS "found OTB ${LUMASS_OTB_VERSION}")
-
 if(ITK_FOUND)
     SET(LUMASS_ITK_VERSION "${ITK_VERSION_MAJOR}.${ITK_VERSION_MINOR}.${ITK_VERSION_PATCH}")
     message(STATUS "found ITK ${LUMASS_ITK_VERSION}")
 endif(ITK_FOUND)
+if (${LUMASS_ITK_VERSION} VERSION_LESS "4.11")
+    message(FATAL_ERROR "LUMASS >= 0.9.60 requires ITK >= 4.11")
+endif ()
+
+INCLUDE(${OTB_USE_FILE})
+SET(LUMASS_OTB_VERSION "${OTB_VERSION_MAJOR}.${OTB_VERSION_MINOR}.${OTB_VERSION_PATCH}")
+message(STATUS "found OTB ${LUMASS_OTB_VERSION}")
+if (${LUMASS_OTB_VERSION} VERSION_LESS "6.4")
+    message(FATAL_ERROR "LUMASS >= 0.9.60 requires OTB >= 6.4")
+endif ()
+
 #====================================================================
 # VTK 
 #====================================================================
@@ -192,13 +202,12 @@ if(NOT VTK_DIR)
 endif()
 
 find_package(VTK NO_MODULE)
-if(VTK_MAJOR_VERSION LESS 6)
-  message(FATAL_ERROR "LUMASS requires VTK 6 or greater!")
-endif()
-
 set(VTK_VERSION_STRING "${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}.${VTK_BUILD_VERSION}")
-
 message(STATUS "found VTK ${VTK_VERSION_STRING} at ${VTK_DIR}")
+
+if (${VTK_VERSION_STRING} VERSION_LESS "8.2")
+    message(FATAL_ERROR "LUMASS >= 0.9.60 requires VTK >= 8.2")
+endif ()
 
 #====================================================================
 # GDAL SUPPORT - always required otherwise we pull out
@@ -234,8 +243,8 @@ message(STATUS "gdal include dir: ${GDAL_INCLUDE_DIR}")
 FIND_PACKAGE(Lpsolve)
 IF(NOT LPSOLVE_FOUND)
   message(FATAL_ERROR "You have to install lp_solve prior to compiling LUMASS!")
-ELSE()
-  add_definitions(-DSQLITE_THREADSAFE=1)
+#ELSE()
+  #add_definitions(-DSQLITE_THREADSAFE=1)
 ENDIF()
 
 message(STATUS "lp_solve include dir: ${LPSOLVE_INCLUDE_DIR}")
@@ -335,7 +344,7 @@ configure_file("${CMAKE_SOURCE_DIR}/docs/lumassDocConfig.in"
 # SOME OTHER STUFF WE WANNA USE GLOBALLY
 #====================================================================
 
-add_definitions(-DWno-deprecated)
+
 
 #====================================================================
 # ADD SUBDIRECTORIES

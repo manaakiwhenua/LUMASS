@@ -59,16 +59,18 @@ find_package(VTK COMPONENTS
 	vtkRenderingAnnotation
 	vtkRenderingImage
         vtkRenderingOpenGL2
-	vtkGUISupportQt
+        #vtkRenderingLOD
+        vtkGUISupportQt
 	vtkImagingStatistics
 	vtkInteractionWidgets
 	vtkInteractionStyle
 	vtkRenderingFreeType
 	vtkIOCore
-	vtkIOInfovis
+        vtkIOInfovis
 	vtkIOSQL
-	vtkIOLegacy
+        vtkIOLegacy
 	vtkIOXML
+        vtkIOGDAL
         vtkRenderingContextOpenGL2
         vtkViewsCore
         vtkViewsContext2D
@@ -121,6 +123,8 @@ INCLUDE_DIRECTORIES(
     ${NMQSQLite_SRC_DIR}
     ${SPATIALITE_INCLUDE_DIR}
 #    ${TCADB_INCLUDE_DIR}
+    ${VisIt_SOURCE_DIR}
+    ${VisIt_BINARY_DIR}
 )     
 
 LINK_DIRECTORIES(
@@ -141,6 +145,7 @@ LINK_DIRECTORIES(
 	${OSGEO4W_ROOT}/lib
 	${OSGEO4W_ROOT}/bin
 	#${TCADB_LIB_DIR}
+        ${VisIt_BINARY_DIR}
 )
 
 
@@ -223,28 +228,21 @@ endif()
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
     Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
-    #qsqlite
-    #Qt5Declarative Qt5Qml Qt5Quick
-	QtPropertyBrowser
-	NMModFrame
-	#QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
-	${VTK_LIBRARIES}
-	${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
-	${OPENGL_glu_LIBRARY}
-	#${SQLITE3_LIBRARY}
-	SQLite 
-	#SQLiteExtFunc
+    QtPropertyBrowser
+    NMModFrame
+    #QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
+    ${VTK_LIBRARIES}
+    ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
+    ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY}
+    SQLite
+    VisItTesselator
 )
-
-# need to add the import library on windows
-#if(WIN32)
-#        LIST(APPEND LUMASS_LINKLIBS spatialite4)
-#endif()
 
 set(LUMASS_DEPLIBS
 	NMModFrame
 	QtPropertyBrowser 
 	SQLite
+        VisItTesselator
 )
 
 

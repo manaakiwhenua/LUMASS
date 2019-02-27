@@ -48,6 +48,7 @@
 #include "vtkTriangleFilter.h"
 #include "vtkOGRLayerMapper.h"
 #include "vtkPolyDataMapper.h"
+//#include "vtkOpenGLPolyDataMapper.h"
 #include "vtkCellData.h"
 #include "vtkCellArray.h"
 #include "vtkPolygon.h"
@@ -58,6 +59,7 @@
 #include "vtkDoubleArray.h"
 #include "vtkStringArray.h"
 #include "vtkSmartPointer.h"
+//#include "vtkLODActor.h"
 
 #include "vtkQtEditableTableModelAdapter.h"
 #include "vtkQtTableModelAdapter.h"
@@ -73,6 +75,10 @@
 #include "vtkExtractCells.h"
 #include "vtkGeometryFilter.h"
 #include "vtkDataSetMapper.h"
+
+#include "vtkOpenGLPolyDataMapper.h"
+#include "NMVtkOpenGLPolyDataMapper.h"
+#include "NMPolygonToTriangles.h"
 
 
 NMVectorLayer::NMVectorLayer(vtkRenderWindow* renWin,
@@ -154,9 +160,10 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 
 
 
-    vtkSmartPointer<vtkTriangleFilter> tf = vtkSmartPointer<vtkTriangleFilter>::New();
-    tf->SetInputData(this->mContour);
-    m->SetInputConnection(tf->GetOutputPort());
+//    vtkSmartPointer<vtkTriangleFilter> tf = vtkSmartPointer<vtkTriangleFilter>::New();
+//    tf->SetInputData(this->mContour);
+//    m->SetInputConnection(tf->GetOutputPort());
+    m->SetInputData(this->mContour);
 
 	vtkSmartPointer<vtkLookupTable> olclrtab = vtkSmartPointer<vtkLookupTable>::New();
 	long ncells = this->mContour->GetNumberOfCells();
@@ -254,25 +261,77 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 
 	// create and set the mapper
 #ifdef VTK_OPENGL2
-    vtkSmartPointer<vtkPolyDataMapper> m = vtkSmartPointer<vtkPolyDataMapper>::New();
-    vtkSmartPointer<vtkTriangleFilter> tf = vtkSmartPointer<vtkTriangleFilter>::New();
-    tf->SetInputData(pd);
-    m->SetInputConnection(tf->GetOutputPort());
+    vtkSmartPointer<NMVtkOpenGLPolyDataMapper> m = vtkSmartPointer<NMVtkOpenGLPolyDataMapper>::New();
+
+//    QString vscodeFN = "/home/alex/garage/cpp/lumass/utils/NMVtk/vtkPolyDataVS.glsl";
+//    QFile vscodeFile(vscodeFN);
+//    vscodeFile.open(QIODevice::ReadOnly | QIODevice::Text);
+//    QTextStream vsstr(&vscodeFile);
+//    QString vscode = vsstr.readAll();
+//    m->SetVertexShaderCode(vscode.toStdString().c_str());
+//    vscodeFile.close();
+
+//    QString cscodeFN = "/home/alex/garage/cpp/lumass/utils/NMVtk/vtkPolyDataCS.glsl";
+//    QFile cscodeFile(cscodeFN);
+//    cscodeFile.open(QIODevice::ReadOnly | QIODevice::Text);
+//    QTextStream csstr(&cscodeFile);
+//    QString cscode = csstr.readAll();
+//    m->SetTessControlShaderCode(cscode.toStdString().c_str());
+//    cscodeFile.close();
+
+//    QString escodeFN = "/home/alex/garage/cpp/lumass/utils/NMVtk/vtkPolyDataES.glsl";
+//    QFile escodeFile(escodeFN);
+//    escodeFile.open(QIODevice::ReadOnly | QIODevice::Text);
+//    QTextStream esstr(&escodeFile);
+//    QString escode = esstr.readAll();
+//    m->SetTessEvaluationShaderCode(escode.toStdString().c_str());
+//    escodeFile.close();
+
+//    QString fscodeFN = "/home/users/herziga/garage/cpp/lumass/utils/NMVtk/vtkPolyDataFS.glsl";
+//    QFile fscodeFile(fscodeFN);
+//    fscodeFile.open(QIODevice::ReadOnly | QIODevice::Text);
+//    QTextStream fsstr(&fscodeFile);
+//    QString fscode = fsstr.readAll();
+//    m->SetFragmentShaderCode(fscode.toStdString().c_str());
+//    fscodeFile.close();
+
+//    vtkSmartPointer<vtkTriangleFilter> tf = vtkSmartPointer<vtkTriangleFilter>::New();
+//    tf->SetInputData(pd);
+//    m->SetInputConnection(tf->GetOutputPort());
+
+//    vtkSmartPointer<NMPolygonToTriangles> tess = vtkSmartPointer<NMPolygonToTriangles>::New();
+//    tess->SetInputData(pd);
+//    tess->Update();
+//    pd = tess->GetOutput();
+//    this->mDataSet = pd;
+//    //m->SetInputData(tess->GetOutput());
+
+
+//    std::vector<vtkIdType> ids = tess->GetPolyIdMap();
+//    std::cout << "tris id -> poly id ...\n";
+//    for (int i=0; i < ids.size(); ++i)
+//    {
+//        std::cout << "   " << i << "    -> " << ids.at(i) << "\n";
+//    }
+
+
+    m->SetInputData(pd);
 #else
     vtkSmartPointer<vtkOGRLayerMapper> m = vtkSmartPointer<vtkOGRLayerMapper>::New();
     m->SetInputData(pd);
 #endif
 
-    //m->SetInputData(pd);
+//    m->SetInputData(pd);
 	//m->SetInputConnection(mDepthSort->GetOutputPort());
 	//m->SetScalarRange(0, mDepthSort->GetOutput()->GetNumberOfCells());
 	this->mMapper = m;
 
 	// create and set the actor
-	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
+    vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
 	a->SetMapper(m);
 	//a->GetProperty()->SetOpacity(0.3);
 	//mDepthSort->SetProp3D(a);
+    //a->GetProperty()->SetRepresentation(VTK_WIREFRAME);
 	this->mActor = a;
 	this->mActor->SetVisibility(0);
 
@@ -282,15 +341,16 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 	this->mRenderer->AddActor(a);
 
 	// create contours, if we've got polygons
-	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-	{
-		//NMDebugAI( << "NMVectorLayer '" << this->objectName().toStdString() <<
-		//		"' contains polygons!" << endl);
-		vtkSmartPointer<vtkPolyData> cont = vtkSmartPointer<vtkPolyData>::New();
-		cont->SetPoints(pd->GetPoints());
-		cont->SetLines(pd->GetPolys());
-		this->setContour(cont);
-	}
+    if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+    {
+        //NMDebugAI( << "NMVectorLayer '" << this->objectName().toStdString() <<
+        //		"' contains polygons!" << endl);
+        vtkSmartPointer<vtkPolyData> cont = vtkSmartPointer<vtkPolyData>::New();
+        cont->SetPoints(pd->GetPoints());
+        cont->SetLines(pd->GetPolys());
+        this->setContour(cont);
+    }
+//    this->mContour = nullptr;
 
 	this->initiateLegend();
 

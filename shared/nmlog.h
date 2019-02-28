@@ -40,7 +40,7 @@
 //#endif
 
 // DEBUG MACROs
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
 #define NMDebug(arg)  \
 		{ \
 			std::ostringstream str; \

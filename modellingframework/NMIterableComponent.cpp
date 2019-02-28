@@ -874,7 +874,7 @@ void NMIterableComponent::update(const QMap<QString, NMModelComponent*>& repo)
 	if (minLevelMap.size() == 0)
 		this->mMapTimeLevelComp.remove(minLevel);
 
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
 	if (this->mMapTimeLevelComp.size() == 0)
 	{
 		NMDebugAI(<< "no sub components detected!" << std::endl);

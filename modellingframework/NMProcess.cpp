@@ -129,7 +129,7 @@ NMProcess::linkInPipeline(unsigned int step,
     this->linkParameters(step, repo);
     this->linkInputs(step, repo);
 
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
     if (this->mOtbProcess.IsNotNull())
     {
 //        this->mOtbProcess->Print(std::cout, itk::Indent(nmlog::nmindent));

@@ -478,7 +478,7 @@ void NMSqlTableView::initView()
 	}
 	this->mColHeadMenu->addAction(actExp);
 
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
     QAction* actTest = new QAction(this->mColHeadMenu);
     actTest->setText(tr("Test ..."));
 

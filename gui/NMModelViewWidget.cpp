@@ -955,7 +955,7 @@ void NMModelViewWidget::initItemContextMenu()
     connect(clearSelAct, SIGNAL(triggered()), this->mModelScene, SLOT(unselectItems()));
 
     // DEBUG
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
     QAction* testAct = new QAction(this->mItemContextMenu);
     testAct->setText("test");
     this->mActionMap.insert("test", testAct);

@@ -48,7 +48,7 @@
 //	#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
 //#endif
 
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
     // required for LUMASS debug output
     #ifndef _WIN32
         #include "nmlog.h"

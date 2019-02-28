@@ -366,7 +366,7 @@ NMModelController::executeModel(const QString& compName)
 
 	this->mModelStarted = QDateTime::currentDateTime();
 
-//#ifdef DEBUG
+//#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
 //    int ind = nmlog::nmindent;
 //#else
@@ -387,7 +387,7 @@ NMModelController::executeModel(const QString& compName)
 	}
     catch (NMMfwException& nmerr)
     {
-//#ifdef DEBUG
+//#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
 //    nmlog::nmindent = ind;
 //#endif
@@ -397,7 +397,7 @@ NMModelController::executeModel(const QString& compName)
     }
     catch (itk::ExceptionObject& ieo)
     {
-//#ifdef DEBUG
+//#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
 //    nmlog::nmindent = ind;
 //#endif
@@ -407,7 +407,7 @@ NMModelController::executeModel(const QString& compName)
     }
     catch (std::exception& e)
 	{
-//#ifdef DEBUG
+//#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
 //    nmlog::nmindent = ind;
 //#endif
@@ -417,7 +417,7 @@ NMModelController::executeModel(const QString& compName)
 	}
 
 
-//#ifdef DEBUG
+//#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
 //    nmlog::nmindent = ind;
 //#endif

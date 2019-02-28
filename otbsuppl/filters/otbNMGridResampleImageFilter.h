@@ -46,8 +46,6 @@
 #include "itkLinearInterpolateImageFunction.h"
 #include "itkDefaultConvertPixelTraits.h"
 
-#include "otbMacro.h"
-
 namespace otb
 {
 

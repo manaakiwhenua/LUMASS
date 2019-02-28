@@ -66,8 +66,6 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkNumericTraits.h"
 #include "itkProgressReporter.h"
-#include "otbMacro.h"
-#include "itkMacro.h"
 #include "otbAttributeTable.h"
 #include "otbSQLiteTable.h"
 

@@ -16,10 +16,10 @@
 
 =========================================================================*/
 
-#include "otbMath.h"
-#include "otbMacro.h"
-#include "otbMultiParser.h"
 #include "nmlog.h"
+#include "otbMath.h"
+//#include "otbMacro.h"
+#include "otbMultiParser.h"
 
 namespace otb
 {

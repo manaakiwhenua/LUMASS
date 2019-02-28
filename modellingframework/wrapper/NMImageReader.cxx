@@ -29,21 +29,15 @@
 
 #include "NMImageReader.h"
 #include "otbGDALRATImageIO.h"
-//#include "otbGDALRATImageFileReader.h"
-#include "otbImageFileReader.h"
-#include "otbImageIOFactory.h"
-#include "itkIndent.h"
 #include "otbAttributeTable.h"
 #include "otbVectorImage.h"
-#include "otbImage.h"
 #include "itkImageBase.h"
-#include "otbImageIOBase.h"
 #include "NMMfwException.h"
 #include "NMIterableComponent.h"
 #include "NMModelController.h"
 #include "itkRGBPixel.h"
 #include "otbStreamingStatisticsImageFilter.h"
-#include "otbStreamingImageVirtualWriter.h"
+
 
 #include "otbNMImageReader.h"
 

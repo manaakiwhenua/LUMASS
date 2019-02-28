@@ -35,7 +35,7 @@
 #include "NMMacros.h"
 
 #include "otbImageIOBase.h"
-#include "otbImageFileReader.h"
+//#include "otbImageFileReader.h"
 //#include "otbGDALRATImageFileReader.h"
 #include "NMItkDataObjectWrapper.h"
 #include "otbAttributeTable.h"

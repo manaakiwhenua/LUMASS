@@ -30,9 +30,9 @@
 #include <vector>
 #include <fstream>
 
-#include "itkObject.h"
+//#include "itkObject.h"
 #include "itkDataObject.h"
-#include "itkObjectFactory.h"
+//#include "itkObjectFactory.h"
 
 #include "otbgdalratimageio_export.h"
 

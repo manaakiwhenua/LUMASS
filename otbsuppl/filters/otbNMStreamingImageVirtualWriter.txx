@@ -44,8 +44,6 @@
 #include "itkObjectFactoryBase.h"
 
 #include "itkImageRegionMultidimensionalSplitter.h"
-//#include "otbImageIOFactory.h"
-//#include "otbGDALRATImageIO.h"
 #include "itkImageRegion.h"
 #include "itkImageIORegion.h"
 

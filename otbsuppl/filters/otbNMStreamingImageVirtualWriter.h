@@ -39,10 +39,10 @@
 	#include "RasdamanConnector.hh"
 #endif
 
-#include "otbMacro.h"
 #include "otbAttributeTable.h"
 #include "otbImageIOBase.h"
 #include "itkImageToImageFilter.h"
+
 #include "otbStreamingManager.h"
 
 namespace otb

@@ -27,7 +27,7 @@
 #   include "nmlog.h"
 #endif
 
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
     // required for LUMASS debug output
 //    #ifndef _WIN32
 //        int nmlog::nmindent = 1;
@@ -483,13 +483,6 @@ int main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
 
-
-
-#ifdef DEBUG
-    NMLoggingProvider::This()->getLogger()->setLogLevel(NMLogger::NM_LOG_DEBUG);
-#else
-    NMLoggingProvider::This()->getLogger()->setLogLevel(NMLogger::NM_LOG_INFO);
-#endif
 
     if (!logFileName.isEmpty())
     {

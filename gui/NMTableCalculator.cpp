@@ -43,14 +43,6 @@
 #include "muParserError.h"
 #include "itkExceptionObject.h"
 
-//#include "valgrind/callgrind.h"
-
-
-//NMTableCalculator::NMTableCalculator(QObject* parent)
-//	: QObject(parent), mModel(0)
-//{
-//	this->initCalculator();
-//}
 
 NMTableCalculator::NMTableCalculator(QAbstractItemModel* model,
 		QObject* parent)
@@ -59,10 +51,6 @@ NMTableCalculator::NMTableCalculator(QAbstractItemModel* model,
 	this->initCalculator();
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
-
-#ifdef DEBUG
-    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
-#endif
 
     connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
             SLOT(insertHtml(QString)));

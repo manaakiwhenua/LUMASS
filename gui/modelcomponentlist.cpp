@@ -134,10 +134,6 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
 
-#ifdef DEBUG
-    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
-#endif
-
     connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
             SLOT(insertHtml(QString)));
 
@@ -247,7 +243,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->connect(mActExportColourRamp, SIGNAL(triggered()), this, SLOT(exportColourRamp()));
 
 
-#ifdef DEBUG
+#ifdef LUMASS_DEBUG
 
 	QAction* testing = new QAction(this->mMenu);
 	testing->setText(tr("Test ..."));

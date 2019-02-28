@@ -49,10 +49,6 @@ NMSelectableSortFilterProxyModel::NMSelectableSortFilterProxyModel(
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
 
-#ifdef DEBUG
-    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
-#endif
-
     connect(mLogger, SIGNAL(sendLogMsg(QString)), NMGlobalHelper::getLogWidget(),
             SLOT(insertHtml(QString)));
 }

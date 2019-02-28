@@ -384,9 +384,6 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     // set up the logger
     mLogger = new NMLogger(this);
     mLogger->setHtmlMode(true);
-#ifdef DEBUG
-    mLogger->setLogLevel(NMLogger::NM_LOG_DEBUG);
-#endif
 
     // set up the qt designer based controls
     ui->setupUi(this);

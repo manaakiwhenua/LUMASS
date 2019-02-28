@@ -18,7 +18,12 @@
 #include "NMLogger.h"
 
 NMLogger::NMLogger(QObject *parent)
-    : QObject(parent), mbHtml(false), mLogLevel(NM_LOG_INFO)
+    : QObject(parent), mbHtml(false),
+#ifdef LUMASS_DEBUG
+    mLogLevel(NM_LOG_DEBUG)
+#else
+    mLogLevel(NM_LOG_INFO)
+#endif
 {
 }
 

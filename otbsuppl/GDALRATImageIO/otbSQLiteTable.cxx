@@ -22,7 +22,7 @@
  *      Author: Alexander Herzig
  */
 #include "nmlog.h"
-#include "itkNMLogEvent.h"
+//#include "itkNMLogEvent.h"
 #define _ctxotbtab "SQLiteTable"
 #include "otbSQLiteTable.h"
 #include <limits>
@@ -31,7 +31,7 @@
 #include <sstream>
 #include <locale>
 #include <algorithm>
-#include "otbMacro.h"
+//#include "otbMacro.h"
 #include <spatialite.h>
 
 #ifndef _WIN32
@@ -422,7 +422,7 @@ SQLiteTable::PrepareBulkSet(const std::vector<std::string>& colNames,
         const int idx = this->ColumnExists(colNames.at(i));
         if (idx < 0)
         {
-            otbWarningMacro(<< "Column \"" << colNames.at(i)
+            NMLogWarn(<< "Column \"" << colNames.at(i)
                             << "\" does not exist in the table!");
             NMDebugAI(<< "Column '" << colNames.at(i) << "' not found!" << std::endl);
             //NMDebugCtx(_ctxotbtab, << "done!");
@@ -551,7 +551,7 @@ SQLiteTable::PrepareAutoBulkSet(const std::vector<std::string>& colNames,
         const int idx = this->ColumnExists(colNames.at(i));
         if (idx < 0)
         {
-            otbWarningMacro(<< "Column \"" << colNames.at(i)
+            NMLogWarn(<< "Column \"" << colNames.at(i)
                             << "\" does not exist in the table!");
             NMDebugAI(<< "Column '" << colNames.at(i) << "' not found!" << std::endl);
             NMDebugCtx(_ctxotbtab, << "done!");
@@ -727,7 +727,7 @@ SQLiteTable::CreateIndex(const std::vector<std::string> &colNames,
     {
         if (db.compare("main") == 0 && this->ColumnExists(colNames.at(n)) < 0)
         {
-            otbWarningMacro(<< "Invalid Column Name!");
+            NMLogWarn(<< "Invalid Column Name!");
             return false;
         }
 
@@ -1255,7 +1255,7 @@ SQLiteTable::BeginTransaction()
 	//NMDebugCtx(_ctxotbtab, << "...");
     if (m_db == 0)
     {
-        otbWarningMacro(<< "No database connection!");
+        NMLogWarn(<< "No database connection!");
         //NMWarn(_ctxotbtab, << "No database connection!");
         //NMDebugCtx(_ctxotbtab, << "done!");
 
@@ -1268,7 +1268,7 @@ SQLiteTable::BeginTransaction()
 
     if (sqlite3_get_autocommit(m_db) == 0)
     {
-        otbWarningMacro(<< "Transaction alrady in progress - bail out!");
+        NMLogWarn(<< "Transaction alrady in progress - bail out!");
         //NMWarn(_ctxotbtab, << "Transaction already in progress - bail out!");
         //NMDebugCtx(_ctxotbtab, << "done!");
 
@@ -1310,7 +1310,7 @@ SQLiteTable::EndTransaction()
     if (m_db == 0)
     {
         //NMWarn(_ctxotbtab, << "No datbase connection!");
-        //otbWarningMacro(<< "No database connection!");
+        //NMLogWarn(<< "No database connection!");
         // NMDebugCtx(_ctxotbtab, << "done!");
         std::stringstream errstr;
         errstr << "No datbase connection!";
@@ -1321,7 +1321,7 @@ SQLiteTable::EndTransaction()
 
     if (sqlite3_get_autocommit(m_db))
     {
-        //otbWarningMacro(<< "Cannot commit, no active transaction!");
+        //NMLogWarn(<< "Cannot commit, no active transaction!");
         //NMWarn(_ctxotbtab, << "Nothing to commit - no active transaction!");
         //NMDebugCtx(_ctxotbtab, << "done!");
         std::stringstream errstr;

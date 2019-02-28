@@ -38,7 +38,7 @@
 #include <algorithm>
 
 #include "otbGDALRATImageIO.h"
-#include "otbMacro.h"
+//#include "otbMacro.h"
 #include "otbSystem.h"
 #include "otbImage.h"
 #include "otbSQLiteTable.h"
@@ -132,7 +132,7 @@ bool GDALRATImageIO::CanReadFile(const char* file)
   // First check the extension
   if (file == NULL)
     {
-    itkDebugMacro(<< "No filename specified.");
+    NMLogDebug(<< "No filename specified.");
     return false;
     }
 
@@ -194,7 +194,7 @@ void GDALRATImageIO::Read(void* buffer)
   // Check if conversion succeed
   if (p == NULL)
     {
-    itkExceptionMacro(<< "GDAL : Bad alloc");
+    NMLogError(<< "GDAL : Bad alloc");
     return;
     }
 
@@ -264,7 +264,7 @@ void GDALRATImageIO::Read(void* buffer)
                                      0);
     if (lCrGdal == CE_Failure)
       {
-      itkExceptionMacro(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
+      NMLogError(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
       }
     // Interpret index as color
     std::streamoff cpt(0);
@@ -327,8 +327,8 @@ void GDALRATImageIO::Read(void* buffer)
       }
 
     // keep it for the moment
-    //otbMsgDevMacro(<< "Number of bands inside input file: " << m_NbBands);
-    otbMsgDevMacro(<< "Parameters RasterIO : \n"
+    //NMLogDebug(<< "Number of bands inside input file: " << m_NbBands);
+    NMLogDebug(<< "Parameters RasterIO : \n"
                    << " indX = " << lFirstColumn << "\n"
                    << " indY = " << lFirstLine << "\n"
                    << " sizeX = " << lNbBufColumns << "\n"
@@ -356,14 +356,14 @@ void GDALRATImageIO::Read(void* buffer)
                                        lineOffset,
                                        bandOffset);
     chrono.Stop();
-    otbMsgDevMacro(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
+    NMLogDebug(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
 
     if (bandMap) delete(bandMap);
 
     // Check if gdal call succeed
     if (lCrGdal == CE_Failure)
       {
-      itkExceptionMacro(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
+      NMLogError(<< "Error while reading image (GDAL format) " << m_FileName.c_str() << ".");
       return;
       }
     //printDataBuffer(p, m_GDALComponentType, m_NbBands, lNbColumns*lNbLines);
@@ -390,8 +390,8 @@ void GDALRATImageIO::Read(void* buffer)
 //      std::string key, name;
 //      if (System::ParseHdfSubsetName(papszMetadata[cpt], key, name))
 //        {
-//        otbMsgDevMacro(<< "- key:  " << key);
-//        otbMsgDevMacro(<< "- name: " << name);
+//        NMLogDebug(<< "- key:  " << key);
+//        NMLogDebug(<< "- name: " << name);
 //        // check if this is a dataset name
 //        if (key.find("_NAME") != std::string::npos) names.push_back(name);
 //        // check if this is a dataset descriptor
@@ -504,8 +504,8 @@ void GDALRATImageIO::InternalReadImageInformation()
     //        std::string key, name;
     //        if (System::ParseHdfSubsetName(papszMetadata[cpt], key, name))
     //          {
-    //          otbMsgDevMacro(<< "- key:  " << key);
-    //          otbMsgDevMacro(<< "- name: " << name);
+    //          NMLogDebug(<< "- key:  " << key);
+    //          NMLogDebug(<< "- name: " << name);
     //          // check if this is a dataset name
     //          if (key.find("_NAME") != std::string::npos) names.push_back(name);
     //          }
@@ -513,13 +513,13 @@ void GDALRATImageIO::InternalReadImageInformation()
     //      }
     //    if (m_DatasetNumber < names.size())
     //      {
-    //      otbMsgDevMacro(<< "Reading: " << names[m_DatasetNumber]);
+    //      NMLogDebug(<< "Reading: " << names[m_DatasetNumber]);
     //      m_Dataset = 0;
     //      m_Dataset = GDALDriverManagerWrapper::GetInstance().Open(names[m_DatasetNumber]);
     //      }
     //    else
     //      {
-    //      itkExceptionMacro(<< "Dataset requested does not exist (" << names.size() << " datasets)");
+    //      NMLogError(<< "Dataset requested does not exist (" << names.size() << " datasets)");
     //      }
     //    }
 
@@ -528,7 +528,7 @@ void GDALRATImageIO::InternalReadImageInformation()
   // Get image dimensions
   if ( m_Dataset->GetRasterXSize() == 0 || m_Dataset->GetRasterYSize() == 0 )
     {
-    itkExceptionMacro(<< "Dimension is undefined.");
+    NMLogError(<< "Dimension is undefined.");
     }
 
   // Set image dimensions into IO
@@ -540,15 +540,15 @@ void GDALRATImageIO::InternalReadImageInformation()
   // Get Number of Bands
   m_NbBands = m_Dataset->GetRasterCount();
 
-  otbMsgDevMacro(<< "Input file dimension: " << m_Dimensions[0] << ", " << m_Dimensions[1]);
-  otbMsgDevMacro(<< "Number of bands inside input file: " << m_NbBands);
+  NMLogDebug(<< "Input file dimension: " << m_Dimensions[0] << ", " << m_Dimensions[1]);
+  NMLogDebug(<< "Number of bands inside input file: " << m_NbBands);
 
   this->SetNumberOfComponents(m_NbBands);
 
   // Set the number of dimensions (verify for the dim )
   this->SetNumberOfDimensions(2);
 
-  otbMsgDevMacro(<< "Nb of Dimensions of the input file: " << m_NumberOfDimensions);
+  NMLogDebug(<< "Nb of Dimensions of the input file: " << m_NumberOfDimensions);
 
   // fetch overview information
   this->m_NbOverviews = m_Dataset->GetRasterBand(1)->GetOverviewCount();
@@ -577,7 +577,7 @@ void GDALRATImageIO::InternalReadImageInformation()
   // Consider only the data type given by the first band
   // Maybe be could changed (to check)
   m_GDALComponentType = m_Dataset->GetRasterBand(1)->GetRasterDataType();
-  otbMsgDevMacro(<< "PixelType inside input file: "<< GDALGetDataTypeName(m_GDALComponentType) );
+  NMLogDebug(<< "PixelType inside input file: "<< GDALGetDataTypeName(m_GDALComponentType) );
   if (m_GDALComponentType == GDT_Byte)
     {
     SetComponentType(UCHAR);
@@ -636,7 +636,7 @@ void GDALRATImageIO::InternalReadImageInformation()
     }
   else
     {
-    itkExceptionMacro(<< "Pixel type unknown");
+    NMLogError(<< "Pixel type unknown");
     }
 
   if (this->GetComponentType() == CHAR)
@@ -704,7 +704,7 @@ void GDALRATImageIO::InternalReadImageInformation()
     }
   else
     {
-    itkExceptionMacro(<< "Component type unknown");
+    NMLogError(<< "Component type unknown");
     }
 
   /******************************************************************/
@@ -717,7 +717,7 @@ void GDALRATImageIO::InternalReadImageInformation()
           // we are reading a complex data set into an image where the pixel
           // type is Vector<real>: we have to double the number of component
           // for that to work
-          otbMsgDevMacro( << "GDALtypeIO= Complex and IFReader::InternalPixelType= Scalar and IFReader::PixelType= Vector");
+          NMLogDebug( << "GDALtypeIO= Complex and IFReader::InternalPixelType= Scalar and IFReader::PixelType= Vector");
           this->SetNumberOfComponents(m_NbBands*2);
           this->SetPixelType(VECTOR);
       }
@@ -764,10 +764,10 @@ void GDALRATImageIO::InternalReadImageInformation()
   }
 
   /*** Parameters set by Internal Read function ***/
-  otbMsgDevMacro( << "Pixel Type IFReader = " << GetPixelTypeAsString(this->GetPixelType()) )
-  otbMsgDevMacro( << "Number of component IFReader = " << this->GetNumberOfComponents() )
-  otbMsgDevMacro( << "Byte per pixel set = " << m_BytePerPixel )
-  otbMsgDevMacro( << "Component Type set = " << GetComponentTypeAsString(this->GetComponentType()) );
+  NMLogDebug( << "Pixel Type IFReader = " << GetPixelTypeAsString(this->GetPixelType()) )
+  NMLogDebug( << "Number of component IFReader = " << this->GetNumberOfComponents() )
+  NMLogDebug( << "Byte per pixel set = " << m_BytePerPixel )
+  NMLogDebug( << "Component Type set = " << GetComponentTypeAsString(this->GetComponentType()) );
 
   /*----------------------------------------------------------------------*/
   /*-------------------------- METADATA ----------------------------------*/
@@ -925,21 +925,21 @@ void GDALRATImageIO::InternalReadImageInformation()
 
 
   // m_Dataset info
-  otbMsgDevMacro(<< "**** ReadImageInformation() m_Dataset INFO: ****" );
-  otbMsgDevMacro(<< "Projection Ref: "<< m_Dataset->GetProjectionRef() );
+  NMLogDebug(<< "**** ReadImageInformation() m_Dataset INFO: ****" );
+  NMLogDebug(<< "Projection Ref: "<< m_Dataset->GetProjectionRef() );
   double GT[6];
   if (m_Dataset->GetGeoTransform(GT) == CE_None)
   {
-      otbMsgDevMacro( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
+      NMLogDebug( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
                                                   << GT[2] << ", " << GT[3] << ", "
                                                   << GT[4] << ", " << GT[5] );
   }
   else
   {
-      otbMsgDevMacro( << "No Geo Transform: ");
+      NMLogDebug( << "No Geo Transform: ");
   }
-  otbMsgDevMacro(<< "GCP Projection Ref: "<< m_Dataset->GetGCPProjection() );
-  otbMsgDevMacro(<< "GCP Count: " << m_Dataset->GetGCPCount() );
+  NMLogDebug(<< "GCP Projection Ref: "<< m_Dataset->GetGCPProjection() );
+  NMLogDebug(<< "GCP Count: " << m_Dataset->GetGCPCount() );
 
   /* -------------------------------------------------------------------- */
   /*      Report metadata.                                                */
@@ -1126,7 +1126,7 @@ bool GDALRATImageIO::CanWriteFile(const char* name)
   // First check the filename
   if (name == NULL)
     {
-    itkDebugMacro(<< "No filename specified.");
+    NMLogDebug(<< "No filename specified.");
     return false;
     }
 
@@ -1134,7 +1134,7 @@ bool GDALRATImageIO::CanWriteFile(const char* name)
   std::string gdalDriverShortName = FilenameToGdalDriverShortName(name);
   if (gdalDriverShortName == "NOT-FOUND")
     {
-	itkDebugMacro(<< "Couldn't find suitable driver for file type.");
+    NMLogDebug(<< "Couldn't find suitable driver for file type.");
     return false;
     }
 
@@ -1143,7 +1143,7 @@ bool GDALRATImageIO::CanWriteFile(const char* name)
   if ( GDALGetMetadataItem( driver, GDAL_DCAP_CREATE, NULL ) == NULL
        && GDALGetMetadataItem( driver, GDAL_DCAP_CREATECOPY, NULL ) == NULL )
     {
-    itkDebugMacro(<< "The driver " << GDALGetDriverShortName(driver) << " does not support writing");
+    NMLogDebug(<< "The driver " << GDALGetDriverShortName(driver) << " does not support writing");
     return false;
     }
   return true;
@@ -1157,7 +1157,7 @@ bool GDALRATImageIO::CanStreamWrite()
 
   if (driver == NULL)
     {
-    itkDebugMacro(<< "Unable to instantiate driver " << gdalDriverShortName);
+    NMLogDebug(<< "Unable to instantiate driver " << gdalDriverShortName);
     m_CanStreamWrite = false;
     }
 
@@ -1179,7 +1179,7 @@ void GDALRATImageIO::Write(const void* buffer)
     // Check if conversion succeed
     if (buffer == NULL)
     {
-        itkExceptionMacro(<< "GDAL : Bad alloc");
+        NMLogError(<< "GDAL : Bad alloc");
         //NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1206,7 +1206,7 @@ void GDALRATImageIO::Write(const void* buffer)
 
         if (m_Dataset != 0)
 		{
-			otbDebugMacro(<< "opened '" << m_FileName << "' in update mode.");
+            NMLogDebug(<< "opened '" << m_FileName << "' in update mode.");
 
 			// being in update mode may mean that we're not aware of some essential
 			// metadata we need later on for the RasterIO call, so we read from the
@@ -1221,13 +1221,13 @@ void GDALRATImageIO::Write(const void* buffer)
 		{
             if (m_CreatedNotWritten)
             {
-                itkExceptionMacro(
+                NMLogError(
                         << "GDAL: couldn't write to freshly created dataset '"
                         << m_FileName << "'!");
             }
             else
             {
-                itkExceptionMacro(
+                NMLogError(
                         << "GDAL: couldn't open '" << m_FileName << "' in update mode."
                         << " Double check whether the file format supports update!");
             }
@@ -1235,7 +1235,7 @@ void GDALRATImageIO::Write(const void* buffer)
 	}
 	else if (m_ImageUpdateMode && !m_CanStreamWrite)
 	{
-		itkExceptionMacro(
+        NMLogError(
 				<< "GDAL: file (format) cannot be used in update mode!")
 	}
 
@@ -1272,7 +1272,7 @@ void GDALRATImageIO::Write(const void* buffer)
 	if (m_CanStreamWrite)
 	{
 
-		otbMsgDevMacro(<< "RasterIO Write requested region : " << this->GetIORegion() <<
+        NMLogDebug(<< "RasterIO Write requested region : " << this->GetIORegion() <<
 				"\n, lNbColumns =" << lNbColumns <<
 				"\n, lNbLines =" << lNbLines <<
                 "\n, m_GDALComponentType =" << GDALGetDataTypeName(m_GDALComponentType) <<
@@ -1322,14 +1322,14 @@ void GDALRATImageIO::Write(const void* buffer)
 							// Band offset is BytePerPixel
 							m_BytePerPixel);
 		chrono.Stop();
-		otbMsgDevMacro(<< "RasterIO Write took " << chrono.GetTotal() << " sec")
+        NMLogDebug(<< "RasterIO Write took " << chrono.GetTotal() << " sec")
 
         m_CreatedNotWritten = false;
 
 		// Check if writing succeed
 		if (lCrGdal == CE_Failure)
 		{
-			itkExceptionMacro(
+            NMLogError(
 					<< "Error while writing image (GDAL format) " << m_FileName.c_str() << ".");
 		}
 
@@ -1339,7 +1339,7 @@ void GDALRATImageIO::Write(const void* buffer)
 		if (m_ImageUpdateMode)
 		{
             // also update RAT's
-			otbMsgDevMacro( << "Writing RATs ...");
+            NMLogDebug( << "Writing RATs ...");
 			for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
 			{
 				otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
@@ -1371,7 +1371,7 @@ void GDALRATImageIO::Write(const void* buffer)
         //						gdalDriverShortName);
         //		if (driver == NULL)
         //		{
-        //			itkExceptionMacro(
+        //			NMLogError(
         //                    << "Unable to instantiate driver " << gdalDriverShortName
         //                        << " to write " << m_FileName);
         //		}
@@ -1542,7 +1542,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 
   if ((m_Dimensions[0] == 0) && (m_Dimensions[1] == 0))
     {
-    itkExceptionMacro(<< "Dimensions are not defined.");
+    NMLogError(<< "Dimensions are not defined.");
     }
 
   if ((this->GetPixelType() == COMPLEX) /*&& (m_NbBands / 2 > 0)*/)
@@ -1571,7 +1571,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       }
     else
       {
-      itkExceptionMacro(<< "This complex type is not defined :" << this->GetPixelTypeAsString(this->GetPixelType()) );
+      NMLogError(<< "This complex type is not defined :" << this->GetPixelTypeAsString(this->GetPixelType()) );
       }
     }
   else
@@ -1649,7 +1649,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   driverShortName = FilenameToGdalDriverShortName(m_FileName);
   if (driverShortName == "NOT-FOUND")
     {
-    itkExceptionMacro(
+    NMLogError(
       << "GDAL Writing failed : the image file name '" << m_FileName.c_str() << "' is not recognized by GDAL.");
     }
 
@@ -1670,7 +1670,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
     // efficient when writing huge tiffs
     if( driverShortName.compare("GTiff") == 0 )
       {
-      otbMsgDevMacro(<< "Enabling TIFF Tiled mode")
+      NMLogDebug(<< "Enabling TIFF Tiled mode")
       papszOptions = CSLAddNameValue( papszOptions, "TILED", "YES" );
 
       // Use a fixed tile size
@@ -1683,7 +1683,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       // align the tile dimension to the next multiple of 16 (needed by TIFF spec)
       tileDimension = ( tileDimension + 15 ) / 16 * 16;
 
-      otbMsgDevMacro(<< "Tile dimension : " << tileDimension << " * " << tileDimension)
+      NMLogDebug(<< "Tile dimension : " << tileDimension << " * " << tileDimension)
 
       std::ostringstream oss;
       oss << tileDimension;
@@ -1742,7 +1742,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
 
   if (m_Dataset == 0)
     {
-    itkExceptionMacro(
+    NMLogError(
       << "GDAL Writing failed : Impossible to create the image file name '" << m_FileName << "'.");
     }
 
@@ -1870,33 +1870,33 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
       unsigned int equalityPos = svalue.find_first_of('=');
       std::string  tag = svalue.substr(0, equalityPos);
       std::string  value = svalue.substr(equalityPos + 1);
-      otbMsgDevMacro(<< "Metadata: " << tag << "=" << value);
+      NMLogDebug(<< "Metadata: " << tag << "=" << value);
       m_Dataset->SetMetadataItem(tag.c_str(), value.c_str(), NULL);
       }
     }
   // END
 
   // Dataset info
-  otbMsgDevMacro( << "**** WriteImageInformation() DATASET INFO: ****" );
-  otbMsgDevMacro( << "Projection Ref: "<<m_Dataset->GetProjectionRef() );
+  NMLogDebug( << "**** WriteImageInformation() DATASET INFO: ****" );
+  NMLogDebug( << "Projection Ref: "<<m_Dataset->GetProjectionRef() );
   double GT[6];
   if (m_Dataset->GetGeoTransform(GT) == CE_None)
     {
-    otbMsgDevMacro( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
+    NMLogDebug( <<"Geo Transform: "<< GT[0] << ", " << GT[1] << ", "
                                  << GT[2] << ", " << GT[3] << ", "
                                  << GT[4] << ", " << GT[5] );
     }
   else
     {
-    otbMsgDevMacro( << "No Geo Transform: ");
+    NMLogDebug( << "No Geo Transform: ");
     }
 
-  otbMsgDevMacro( << "GCP Projection Ref: "<< m_Dataset->GetGCPProjection() );
-  otbMsgDevMacro( << "GCP Count: " << m_Dataset->GetGCPCount() );
+  NMLogDebug( << "GCP Projection Ref: "<< m_Dataset->GetGCPProjection() );
+  NMLogDebug( << "GCP Count: " << m_Dataset->GetGCPCount() );
 
 
   // we now write the RAT's
-  otbMsgDevMacro( << "Writing RATs ...");
+  NMLogDebug( << "Writing RATs ...");
   for (unsigned int ti = 0; ti < this->m_vecRAT.size(); ++ti)
   {
   	otb::AttributeTable::Pointer tab = this->m_vecRAT.at(ti);
@@ -2034,7 +2034,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
 //    if (m_Dataset == 0)
 //    {
 //        //NMProcWarn(<< "ReadRAT: unable to access data set!");
-//        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+//        //NMLogError(<< "ReadRAT: unable to access data set!");
 //        return 0;
 //    }
 
@@ -2207,7 +2207,7 @@ RAMTable::Pointer GDALRATImageIO::InternalReadRAMRAT(unsigned int iBand)
                 char** valPtr = (char**)CPLCalloc(sizeof(char*), chunksize);
                 if (valPtr == 0)
                 {
-                    itkExceptionMacro(<< "Not enough memory to allocate chunk of string records!");
+                    NMLogError(<< "Not enough memory to allocate chunk of string records!");
                     break;
                 }
                 rat->ValuesIO(GF_Read, col, s, chunksize, valPtr);
@@ -2307,7 +2307,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 //	if (img == 0)
 //	{
 //		//NMProcWarn(<< "ReadRAT: unable to access data set!");
-//		//itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+//		//NMLogError(<< "ReadRAT: unable to access data set!");
 //		return 0;
 //	}
 
@@ -2778,7 +2778,7 @@ GDALDataset* GDALRATImageIO::CreateCopy()
                     gdalDriverShortName.c_str());
     if (driver == NULL)
     {
-        itkExceptionMacro(
+        NMLogError(
                 << "Unable to instantiate driver " << gdalDriverShortName
                     << " to write " << m_FileName);
     }
@@ -2870,7 +2870,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
 //    {
 //        //std::cout << "Sorry, couldn't open raster layer for RAT update!" << std::endl;
 //        NMProcWarn(<< "ReadRAT: unable to access data set!");
-//        //itkExceptionMacro(<< "ReadRAT: unable to access data set!");
+//        //NMLogError(<< "ReadRAT: unable to access data set!");
 //        return;
 //    }
 
@@ -2936,10 +2936,10 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
                             type, usage);
         if (err == CE_Failure)
         {
-            itkExceptionMacro(<< "Failed creating column #" << col
+            NMLogError(<< "Failed creating column #" << col
                     << " '" << tab->GetColumnName(col).c_str() << "!");
         }
-        itkDebugMacro(<< "Created column #" << col << " '"
+        NMLogDebug(<< "Created column #" << col << " '"
                 << tab->GetColumnName(col).c_str() << "'");
     }
 
@@ -2950,7 +2950,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
     {
         for (int col=0; col < tab->GetNumCols(); ++col)
         {
-            //            itkDebugMacro(<< "Setting value: col=" << col
+            //            NMLogDebug(<< "Setting value: col=" << col
             //                    << " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
             switch(tab->GetColumnType(col))
             {
@@ -2984,7 +2984,7 @@ GDALRATImageIO::InternalWriteRAMRAT(AttributeTable::Pointer intab, unsigned int 
         {
             if (bClose) this->CloseDataset();
             delete gdaltab;
-            itkExceptionMacro(<< "Failed writing table to band!");
+            NMLogError(<< "Failed writing table to band!");
         }
         m_Dataset->FlushCache();
     }
@@ -3119,13 +3119,13 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 							type, usage);
 		if (err == CE_Failure)
 		{
-			itkExceptionMacro(<< "Failed creating column #" << col
+            NMLogError(<< "Failed creating column #" << col
 					<< " '" << tab->GetColumnName(col).c_str() << "!");
 		}
 
         colnames.push_back(tab->GetColumnName(col));
 
-		itkDebugMacro(<< "Created column #" << col << " '"
+        NMLogDebug(<< "Created column #" << col << " '"
 				<< tab->GetColumnName(col).c_str() << "'");
 	}
 
@@ -3167,7 +3167,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 				break;
 			default:
                 delete gdaltab;
-				itkExceptionMacro(<< "Unrecognised field type! Couldn't set value col=" << col
+                NMLogError(<< "Unrecognised field type! Couldn't set value col=" << col
 						<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
 				break;
 			}
@@ -3193,7 +3193,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
         {
             if (bCloseDataSet) this->CloseDataset();
             delete gdaltab;
-            itkExceptionMacro(<< "Failed writing table to band!");
+            NMLogError(<< "Failed writing table to band!");
         }
         m_Dataset->FlushCache();
     }

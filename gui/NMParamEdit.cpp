@@ -63,6 +63,7 @@ NMParamEdit::NMParamEdit(QWidget *parent)
     mPreamblesAndTips.insert("math", "Inline Calculator");
     mPreamblesAndTips.insert("func", "Process Strings & Filenames");
 
+    mFunctionsAndTips.insert("cond", "(<boolean>, <true string>, <false string>)");
     mFunctionsAndTips.insert("isFile", "(<filename>)");
     mFunctionsAndTips.insert("isDir", "(<filename>)");
     mFunctionsAndTips.insert("fileBaseName", "(<filename>)");

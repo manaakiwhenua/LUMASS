@@ -196,6 +196,11 @@ public:
      *      String and filename processing functions based on
      *      Qt equivalents, which returns string values.
      *
+     *      $[func:cond(<boolean>, <true string>, <false string>)]$
+     *          ($[math: 3 > 4]$, "/home/user/green.img", "/home/user/red.img") -> /home/user/red.img
+     *          (true, "/home/user/green.img", "/home/user/red.img")            -> /home/user/green.img
+     *          ($[math: 5 > 4]$, "/home/user/green.img", "/home/user/red.img") -> /home/user/green.img
+     *
      *      $[func:isFile(<filename>)]$
      *          /home/user/anImage.kea  -> 1
      *          My grandma has a cold   -> 0

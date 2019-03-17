@@ -848,7 +848,38 @@ QString
 NMModelController::evalFunc(const QString& funcName, const QStringList& args)
 {
     QString ret;
-    if (funcName.compare("isFile") == 0)
+    if (funcName.compare("cond") == 0)
+    {
+        if (args.size() < 3)
+        {
+            ret = QString("ERROR: Not enough arguments!");
+        }
+        else
+        {
+            ret = args.at(2);
+
+            QString exp = args.at(0);
+
+            bool isnum;
+            int ival = exp.toInt(&isnum);
+
+            if (isnum)
+            {
+                if (ival == 1)
+                {
+                    ret = args.at(1);
+                }
+            }
+            else
+            {
+                if (exp.compare("true", Qt::CaseInsensitive) == 0)
+                {
+                    ret = args.at(1);
+                }
+            }
+        }
+    }
+    else if (funcName.compare("isFile") == 0)
     {
         if (args.size() < 1)
         {
@@ -1132,7 +1163,7 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
         innerExp = this->getNextParamExpr(nested);
     }
     /// ToDo: testing!
-    maxcount *= 11;
+    maxcount *= 21;
 
     nested = str;
     innerExp = this->getNextParamExpr(nested);

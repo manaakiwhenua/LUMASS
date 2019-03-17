@@ -283,7 +283,7 @@ void doMOSOsingle(const QString& losFileName)
     QThreadPool::globalInstance()->start(m);
 }
 
-void doModel(const QString& modelFile, QString &workspace)
+void doModel(const QString& modelFile, QString &workspace, QString& enginePath, bool bLogProv)
 {
     NMDebugCtx(ctx, << "...");
 
@@ -300,8 +300,7 @@ void doModel(const QString& modelFile, QString &workspace)
 
     QScopedPointer<NMModelController> ctrl(new NMModelController());
     ctrl->setLogger(NMLoggingProvider::This()->getLogger());
-    ctrl->updateSettings("LUMASSPath",
-                         qApp->applicationDirPath());
+    ctrl->updateSettings("LUMASSPath", enginePath);
     ctrl->updateSettings("TimeFormat", "yyyy-MM-ddThh:mm:ss.zzz");
 
     // ====================================================
@@ -360,10 +359,15 @@ void doModel(const QString& modelFile, QString &workspace)
     GetGDALDriverManager()->AutoLoadDrivers();
     sqlite3_temp_directory = const_cast<char*>(workspace.toStdString().c_str());//getenv("HOME");
 
+    if (bLogProv)
+    {
+        ctrl->setLogProvOn();
+    }
+
     ctrl->executeModel("root");
 
     GDALDestroyDriverManager();
-   // delete mLogger;
+
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -377,7 +381,7 @@ void showHelp()
     std::cout << "Usage: lumassengine --moso <settings file (*.los)> | "
                                   << "--model <LUMASS model file (*.lmx)> "
                                   << "[--workspace <absolute directory path for '$[LUMASS:Workspace]$'>] "
-                                  << "[--logfile <file name>]"
+                                  << "[--logfile <file name>] [--logprov]"
                                   << std::endl << std::endl;
 }
 
@@ -422,9 +426,15 @@ int main(int argc, char** argv)
     QString modelFileName;
     QString logFileName;
     QString workspace;
+    bool bLogProv = false;
+
+    // capture path to lumassengine
+    QFileInfo rawPath(argv[0]);
+    QString enginePath = rawPath.absolutePath();
+
 
 	int arg = 1;
-	while (arg < argc-1)
+    while (arg < argc)
 	{
 		QString theArg = argv[arg];
 		theArg = theArg.toLower();
@@ -470,6 +480,10 @@ int main(int argc, char** argv)
                            << workspace.toStdString() << "'!");
             }
         }
+        else if (theArg == "--logprov")
+        {
+            bLogProv = true;
+        }
 
 		++arg;
 	}
@@ -506,7 +520,7 @@ int main(int argc, char** argv)
 		doMOSO(losFileName);
 		break;
     case NM_ENGINE_MODEL:
-        doModel(modelFileName, workspace);
+        doModel(modelFileName, workspace, enginePath, bLogProv);
         break;
 	default:
         NMWarn(ctx, << "Please specify either an optimisation "

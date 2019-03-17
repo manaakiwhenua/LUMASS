@@ -115,7 +115,7 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 60rc)
+SET(LUMASS_VERSION_REVISION 60)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -194,6 +194,7 @@ endif ()
 # available; set up specifics later with respect to the
 # different executables
 
+set(VTK_DIR "VTK_DIR NOT FOUND" CACHE STRING "VTK directory (to VTKConfig.cmake)")
 FIND_PACKAGE(LUMASSVTK)
 #FIND_PACKAGE(VTK)
 

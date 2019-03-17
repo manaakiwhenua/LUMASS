@@ -159,6 +159,19 @@ NMVtkInteractorStyleImage::DrawRubberBand()
 }
 
 void
+NMVtkInteractorStyleImage::setDevicePixelRatio(double dpr)
+{
+#ifdef QT_HIGHDPI_SUPPORT
+#   ifdef VTK_OPENGL2
+        this->mDPR = 1;
+#   else
+        this->mDPR = dpr;
+#   endif
+#else
+    this->mDPR = dpr;
+#endif
+}
+void
 NMVtkInteractorStyleImage::OnLeftButtonDown()
 {
     mStartPosition[0] = (double)this->Interactor->GetEventPosition()[0]*mDPR;

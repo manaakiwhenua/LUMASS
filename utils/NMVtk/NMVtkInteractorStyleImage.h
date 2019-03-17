@@ -53,7 +53,7 @@ public:
     NMVtkInteractorMode getNMInteractorMode(void)
          {return mNMInteractorMode;}
 
-    void setDevicePixelRatio(double dpr){this->mDPR = dpr;}
+    void setDevicePixelRatio(double dpr);
     void setUserTool(const std::string& userTool)
         {mUserTool = userTool;}
     std::string getUserTool(void){return mUserTool;}

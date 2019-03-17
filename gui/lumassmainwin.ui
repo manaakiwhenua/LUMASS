@@ -40,7 +40,7 @@
      <widget class="NMModelViewWidget" name="modelViewWidget" native="true"/>
     </item>
     <item>
-     <widget class="QVTKOpenGLWidget" name="qvtkWidget" native="true"/>
+     <widget class="NMQVTKOpenGLWidget" name="qvtkWidget" native="true"/>
     </item>
    </layout>
   </widget>
@@ -50,7 +50,7 @@
      <x>0</x>
      <y>0</y>
      <width>1001</width>
-     <height>22</height>
+     <height>36</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -174,7 +174,7 @@
     <set>Qt::AllDockWidgetAreas</set>
    </property>
    <property name="windowTitle">
-    <string>Layers and Components</string>
+    <string>&amp;Layers and Components</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -197,8 +197,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>68</width>
-          <height>615</height>
+          <width>80</width>
+          <height>579</height>
          </rect>
         </property>
         <property name="acceptDrops">
@@ -212,7 +212,7 @@
   </widget>
   <widget class="QDockWidget" name="componentInfoDock">
    <property name="windowTitle">
-    <string>Attributes and Properties</string>
+    <string>Att&amp;ributes and Properties</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -235,8 +235,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>68</width>
-          <height>615</height>
+          <width>80</width>
+          <height>579</height>
          </rect>
         </property>
        </widget>
@@ -247,7 +247,7 @@
   </widget>
   <widget class="QDockWidget" name="logDock">
    <property name="windowTitle">
-    <string>Notifications</string>
+    <string>&amp;Notifications</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -540,7 +540,7 @@
   </action>
   <action name="actionAdd_Toolbar">
    <property name="text">
-    <string>Add Toolbar</string>
+    <string>&amp;Add Toolbar</string>
    </property>
   </action>
  </widget>
@@ -564,9 +564,9 @@
    <header>NMLogWidget.h</header>
   </customwidget>
   <customwidget>
-   <class>QVTKOpenGLWidget</class>
+   <class>NMQVTKOpenGLWidget</class>
    <extends>QWidget</extends>
-   <header>QVTKOpenGLWidget.h</header>
+   <header>NMQVTKOpenglWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

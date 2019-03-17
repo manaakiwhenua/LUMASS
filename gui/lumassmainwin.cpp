@@ -3525,7 +3525,7 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 
     int rwWidth = iren->GetRenderWindow()->GetSize()[0];
     int rwHeight = iren->GetRenderWindow()->GetSize()[1];
-    NMLogDebug(<< "renwin size: " << rwWidth << ", " << rwHeight);
+    //NMLogDebug(<< "renwin size: " << rwWidth << ", " << rwHeight);
 
 	if (iren->GetShiftKey())
 		return;
@@ -3534,9 +3534,13 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	int event_pos[2];
 	iren->GetEventPosition(event_pos);
 
+    int rawpos[2] = {event_pos[0], event_pos[1]};
+
 #ifdef QT_HIGHDPI_SUPPORT
-    event_pos[0] = (qreal)event_pos[0]*this->devicePixelRatioF();
-    event_pos[1] = (qreal)event_pos[1]*this->devicePixelRatioF();
+#   ifndef VTK_OPENGL2
+        event_pos[0] = (qreal)event_pos[0]*this->devicePixelRatioF();
+        event_pos[1] = (qreal)event_pos[1]*this->devicePixelRatioF();
+#   endif
 #endif
 
 	// get the selected layer or quit
@@ -3545,6 +3549,7 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 		return;
 
 	double wPt[4];
+    double raw_wPt[4];
 
 	//	vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
 	//	picker->Pick(event_pos[0], event_pos[1], 0, const_cast<vtkRenderer*>(l->getRenderer()));
@@ -3554,7 +3559,13 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 			event_pos[0], event_pos[1], 0, wPt);
 	wPt[2] = 0;
 
-	//	NMDebugAI(<< "wPt: " << wPt[0] << ", " << wPt[1] << ", " << wPt[2] << endl);
+    vtkInteractorObserver::ComputeDisplayToWorld(this->mBkgRenderer,
+            rawpos[0], rawpos[1], 0, raw_wPt);
+    raw_wPt[2] = 0;
+
+
+    //NMLogDebug(<< setprecision(2) << fixed << "raw: " << raw_wPt[0] << ", " << raw_wPt[1]);
+    //NMLogDebug(<< setprecision(2) << fixed << "dpi: " << wPt[0] << ", " << wPt[1]);
 
     vtkIdType cellId = -1;
 	// ==========================================================================
@@ -3971,13 +3982,16 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
 	vtkRenderWindowInteractor* iren = vtkRenderWindowInteractor::SafeDownCast(
 			obj);
 
+
 	// get event position
 	int event_pos[2];
 	iren->GetEventPosition(event_pos);
 
 #ifdef QT_HIGHDPI_SUPPORT
-    event_pos[0] = (qreal)event_pos[0]*this->devicePixelRatioF();
-    event_pos[1] = (qreal)event_pos[1]*this->devicePixelRatioF();
+#   ifndef VTK_OPENGL2
+        event_pos[0] = (qreal)event_pos[0]*this->devicePixelRatioF();
+        event_pos[1] = (qreal)event_pos[1]*this->devicePixelRatioF();
+#   endif
 #endif
 
 	double wPt[4];
@@ -3987,7 +4001,7 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
 
 	// update label
     QString s = QString("XY Location: %1, %2 "). // Z: %3").
-	arg(wPt[0], 0, 'f', 5).arg(wPt[1], 0, 'f', 5); //.arg(wPt[3],0,'f',2);
+    arg(wPt[0], 0, 'f', 3).arg(wPt[1], 0, 'g', 10); //.arg(wPt[3],0,'f',2);
 
 	this->m_coordLabel->setText(s);
 
@@ -4074,6 +4088,7 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
         }
 
         stringstream cvs;
+        cvs << setprecision(10);
         if (    (did[0] >= ext[0] && did[0] <= ext[1])
              && (did[1] >= ext[2] && did[1] <= ext[3])
              && (did[2] >= ext[4] && did[2] <= ext[5])
@@ -4141,7 +4156,6 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
                cvs << mi.data().toString().toStdString().c_str();
            }
         }
-
         visvs << cvs.str();
         if (cnt < vl)
         {

@@ -128,7 +128,7 @@ void SQLiteProcessor< TInputImage, TOutputImage >
     // what we're doing now ...
     for (int i=0; i < m_vRAT.size(); ++i)
     {
-        if (m_vRAT.at(i)->GetDbConnection() == 0)
+        if (m_vRAT.at(i).IsNotNull() && m_vRAT.at(i)->GetDbConnection() == 0)
         {
             otb::SQLiteTable::Pointer tab = m_vRAT.at(i);
             if (tab->GetSource())

@@ -85,125 +85,126 @@ NMVtkOpenGLImageSliceMapper::ProcessRequest(
   vtkInformation* request, vtkInformationVector** inputVector,
   vtkInformationVector* outputVector)
 {
-  // compute display extent
-  if(request->Has(vtkStreamingDemandDrivenPipeline::REQUEST_INFORMATION()))
-    {
-    int wholeExtent[6];
-    int *extent = this->DataWholeExtent;
-    //int extent[6];
-    double *spacing = this->DataSpacing;
-    double *origin = this->DataOrigin;
+    Superclass::ProcessRequest(request, inputVector, outputVector);
+//  // compute display extent
+//  if(request->Has(vtkStreamingDemandDrivenPipeline::REQUEST_INFORMATION()))
+//    {
+//    int wholeExtent[6];
+//    int *extent = this->DataWholeExtent;
+//    //int extent[6];
+//    double *spacing = this->DataSpacing;
+//    double *origin = this->DataOrigin;
 
-    vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
-    inInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), wholeExtent);
-    inInfo->Get(vtkDataObject::SPACING(), spacing);
-    inInfo->Get(vtkDataObject::ORIGIN(), origin);
+//    vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+//    inInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), wholeExtent);
+//    inInfo->Get(vtkDataObject::SPACING(), spacing);
+//    inInfo->Get(vtkDataObject::ORIGIN(), origin);
 
-    vtkMatrix4x4 *matrix = this->GetDataToWorldMatrix();
+//    vtkMatrix4x4 *matrix = this->GetDataToWorldMatrix();
 
-    for (int k = 0; k < 6; k++)
-      {
-      extent[k] = wholeExtent[k];
-      }
+//    for (int k = 0; k < 6; k++)
+//      {
+//      extent[k] = wholeExtent[k];
+//      }
 
-    if (this->Cropping)
-      {
-      for (int i = 0; i < 3; i++)
-        {
-        if (extent[2*i] < this->CroppingRegion[2*i])
-          {
-          extent[2*i] = this->CroppingRegion[2*i];
-          }
-        if (extent[2*i+1] > this->CroppingRegion[2*i+1])
-          {
-          extent[2*i+1] = this->CroppingRegion[2*i+1];
-          }
-        }
-      }
+//    if (this->Cropping)
+//      {
+//      for (int i = 0; i < 3; i++)
+//        {
+//        if (extent[2*i] < this->CroppingRegion[2*i])
+//          {
+//          extent[2*i] = this->CroppingRegion[2*i];
+//          }
+//        if (extent[2*i+1] > this->CroppingRegion[2*i+1])
+//          {
+//          extent[2*i+1] = this->CroppingRegion[2*i+1];
+//          }
+//        }
+//      }
 
-    if (this->SliceFacesCamera || this->SliceAtFocalPoint)
-      {
-      vtkRenderer *ren = this->GetCurrentRenderer();
+//    if (this->SliceFacesCamera || this->SliceAtFocalPoint)
+//      {
+//      vtkRenderer *ren = this->GetCurrentRenderer();
 
-      if (matrix && ren)
-        {
-        vtkCamera *camera = ren->GetActiveCamera();
+//      if (matrix && ren)
+//        {
+//        vtkCamera *camera = ren->GetActiveCamera();
 
-        if (this->SliceFacesCamera)
-          {
-          this->Orientation = this->GetOrientationFromCamera(matrix, camera);
-          this->Orientation = this->Orientation % 3;
-          }
+//        if (this->SliceFacesCamera)
+//          {
+//          this->Orientation = this->GetOrientationFromCamera(matrix, camera);
+//          this->Orientation = this->Orientation % 3;
+//          }
 
-        if (this->SliceAtFocalPoint)
-          {
-          this->SliceNumber = this->GetSliceFromCamera(matrix, camera);
-          }
-        }
-      }
+//        if (this->SliceAtFocalPoint)
+//          {
+//          this->SliceNumber = this->GetSliceFromCamera(matrix, camera);
+//          }
+//        }
+//      }
 
-    int orientation = this->Orientation % 3;
+//    int orientation = this->Orientation % 3;
 
-    this->SliceNumberMinValue = wholeExtent[2*orientation];
-    this->SliceNumberMaxValue = wholeExtent[2*orientation + 1];
+//    this->SliceNumberMinValue = wholeExtent[2*orientation];
+//    this->SliceNumberMaxValue = wholeExtent[2*orientation + 1];
 
-    if (this->SliceNumber < extent[2*orientation])
-      {
-      this->SliceNumber = extent[2*orientation];
-      }
-    if (this->SliceNumber > extent[2*orientation + 1])
-      {
-      this->SliceNumber = extent[2*orientation + 1];
-      }
+//    if (this->SliceNumber < extent[2*orientation])
+//      {
+//      this->SliceNumber = extent[2*orientation];
+//      }
+//    if (this->SliceNumber > extent[2*orientation + 1])
+//      {
+//      this->SliceNumber = extent[2*orientation + 1];
+//      }
 
-    extent[2*orientation] = this->SliceNumber;
-    extent[2*orientation + 1] = this->SliceNumber;
+//    extent[2*orientation] = this->SliceNumber;
+//    extent[2*orientation + 1] = this->SliceNumber;
 
-    this->DisplayExtent[0] = extent[0];
-    this->DisplayExtent[1] = extent[1];
-    this->DisplayExtent[2] = extent[2];
-    this->DisplayExtent[3] = extent[3];
-    this->DisplayExtent[4] = extent[4];
-    this->DisplayExtent[5] = extent[5];
+//    this->DisplayExtent[0] = extent[0];
+//    this->DisplayExtent[1] = extent[1];
+//    this->DisplayExtent[2] = extent[2];
+//    this->DisplayExtent[3] = extent[3];
+//    this->DisplayExtent[4] = extent[4];
+//    this->DisplayExtent[5] = extent[5];
 
-    // Create point and normal of plane
-    double point[4];
-    point[0] = 0.5*(extent[0] + extent[1])*spacing[0] + origin[0];
-    point[1] = 0.5*(extent[2] + extent[3])*spacing[1] + origin[1];
-    point[2] = 0.5*(extent[4] + extent[5])*spacing[2] + origin[2];
-    point[3] = 1.0;
+//    // Create point and normal of plane
+//    double point[4];
+//    point[0] = 0.5*(extent[0] + extent[1])*spacing[0] + origin[0];
+//    point[1] = 0.5*(extent[2] + extent[3])*spacing[1] + origin[1];
+//    point[2] = 0.5*(extent[4] + extent[5])*spacing[2] + origin[2];
+//    point[3] = 1.0;
 
-    double normal[4];
-    normal[0] = 0.0;
-    normal[1] = 0.0;
-    normal[2] = 0.0;
-    normal[3] = -point[orientation];
-    normal[orientation] = 1.0;
+//    double normal[4];
+//    normal[0] = 0.0;
+//    normal[1] = 0.0;
+//    normal[2] = 0.0;
+//    normal[3] = -point[orientation];
+//    normal[orientation] = 1.0;
 
-    if (matrix)
-      {
-      // Convert point and normal to world coords
-      double mat[16];
-      vtkMatrix4x4::DeepCopy(mat, matrix);
-      vtkMatrix4x4::MultiplyPoint(mat, point, point);
-      point[0] /= point[3];
-      point[1] /= point[3];
-      point[2] /= point[3];
-      vtkMatrix4x4::Invert(mat, mat);
-      vtkMatrix4x4::Transpose(mat, mat);
-      vtkMatrix4x4::MultiplyPoint(mat, normal, normal);
-      vtkMath::Normalize(normal);
-      }
+//    if (matrix)
+//      {
+//      // Convert point and normal to world coords
+//      double mat[16];
+//      vtkMatrix4x4::DeepCopy(mat, matrix);
+//      vtkMatrix4x4::MultiplyPoint(mat, point, point);
+//      point[0] /= point[3];
+//      point[1] /= point[3];
+//      point[2] /= point[3];
+//      vtkMatrix4x4::Invert(mat, mat);
+//      vtkMatrix4x4::Transpose(mat, mat);
+//      vtkMatrix4x4::MultiplyPoint(mat, normal, normal);
+//      vtkMath::Normalize(normal);
+//      }
 
-    this->SlicePlane->SetOrigin(point);
-    this->SlicePlane->SetNormal(normal);
+//    this->SlicePlane->SetOrigin(point);
+//    this->SlicePlane->SetNormal(normal);
 
-    return 1;
-    }
-  else
-  {
-      return this->Superclass::ProcessRequest(request, inputVector, outputVector);
-  }
+//    return 1;
+//    }
+//  else
+//  {
+//      return this->Superclass::ProcessRequest(request, inputVector, outputVector);
+//  }
 }
 
 void

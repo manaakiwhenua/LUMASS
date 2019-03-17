@@ -417,7 +417,8 @@ ModelComponentList::showImageInfo()
     }
 
     const double* bbox = il->getBBox();
-    const double* spac = il->getSpacing();
+    const double* spac = il->getSignedSpacing();
+    const double* orig = il->getOrigin();
 
     std::stringstream bandorder;
     std::vector<int> bands = il->getBandMap();
@@ -489,15 +490,13 @@ ModelComponentList::showImageInfo()
     std::stringstream ii;
     ii << setprecision(0) << fixed;
 
-    //ii //<< "Size: " << (bbox[1] - bbox[0]) / ::abs(spac[0])
-       //   << " x " << (bbox[3] - bbox[2]) / ::abs(spac[1]) << std::endl
-
     ii << sizestr.str()
        << setprecision(2)
        << pixsizestr.str()
        << "Pixel Component Type: " << typeStr << std::endl
-       << "Top Left: " << bbox[0] << ", " << bbox[3]  << std::endl
-       << "Bottom Right: " << bbox[1] << ", " << bbox[2] << std::endl
+       << "Origin: " << orig[0] << ", " << orig[1] << std::endl
+       << "Top Left Corner: " << bbox[0] << ", " << bbox[3]  << std::endl
+       << "Bottom Right Corner: " << bbox[1] << ", " << bbox[2] << std::endl
        << setprecision(0)
        << "Total Number of Bands: " << il->getTotalNumBands() << std::endl
        << "Bands Displayed: " << bandorder.str() << std::endl

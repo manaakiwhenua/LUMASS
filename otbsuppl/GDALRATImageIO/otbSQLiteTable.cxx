@@ -51,7 +51,6 @@ namespace otb
 //{
 //	return this->m_vNames.size();
 //}
-
 SQLiteTable::Pointer
 SQLiteTable::New()
 {
@@ -3096,15 +3095,16 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
 }
 
 SQLiteTable::SQLiteTable()
-    : m_db(0),
-      m_StmtBegin(0),
-      m_StmtEnd(0),
-      m_StmtRollback(0),
-      m_StmtBulkSet(0),
-      m_StmtBulkGet(0),
-      m_StmtColIter(0),
-      m_StmtRowCount(0),
-	  m_SpatialiteCache(0),
+    : m_db(nullptr),
+      m_StmtBegin(nullptr),
+      m_StmtEnd(nullptr),
+      m_StmtRollback(nullptr),
+      m_StmtBulkSet(nullptr),
+      m_StmtBulkGet(nullptr),
+      m_StmtColIter(nullptr),
+      m_StmtRowCount(nullptr),
+      m_SpatialiteCache(nullptr),
+      m_CurPrepStmt(nullptr),
       //m_idColName(""),
       m_tableName(""),
       m_bUseSharedCache(true),

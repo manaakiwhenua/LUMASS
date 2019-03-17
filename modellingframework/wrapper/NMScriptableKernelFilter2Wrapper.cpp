@@ -239,6 +239,11 @@ public:
 	    f->SetInputNames(userIDs);
 
 
+        // set the workspace path
+        f->SetWorkspacePath(p->getModelController()->getSetting("Workspace").toString().toStdString());
+
+
+
 		NMDebugCtx("NMScriptableKernelFilter2Wrapper_Internal", << "done!");
 	}
 };

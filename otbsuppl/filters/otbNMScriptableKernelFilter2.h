@@ -299,6 +299,9 @@ public:
   /*! Set the kernel script */
   itkSetStringMacro(KernelScript)
 
+  /*! Set the kernel script */
+  itkSetStringMacro(WorkspacePath)
+
   /*! Set the initialisation script */
   itkSetStringMacro(InitScript)
 
@@ -445,6 +448,7 @@ private:
   std::string m_KernelScript;
   std::string m_KernelShape;
   std::string m_OutputVarName;
+  std::string m_WorkspacePath;
 
   std::vector<otb::AttributeTable::Pointer> m_vRAT;
   std::vector<std::string> m_RATNames;

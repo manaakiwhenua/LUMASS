@@ -319,7 +319,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
 
             if (m_KernelShape == "CIRCULAR")
             {
-                if  (dist <= (m_Radius[0]*m_Spacing[0]))
+                if  (dist <= (m_Radius[0] * m_Spacing[0]))
                 {
                     m_ActiveKernelIndices[circ++] = p;
                     m_mapNeighbourDistance[m_This].push_back(static_cast<ParserValue>(dist));
@@ -999,7 +999,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
         if (inputPtr != 0)
         {
             this->m_NumPixels = inputPtr->GetLargestPossibleRegion().GetNumberOfPixels();
-            m_Spacing = inputPtr->GetSpacing();
+            m_Spacing = inputPtr->GetSignedSpacing(); //GetGetSpacing();
             m_Origin = inputPtr->GetOrigin();
         }
         ++cnt;
@@ -1368,7 +1368,8 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
         {
             otb::SQLiteTable::Pointer sqlTab = otb::SQLiteTable::New();
             sqlTab->SetUseSharedCache(false);
-            sqlTab->CreateTable("file::memory:");
+            std::string tabName = m_WorkspacePath + "/aux_" + sqlTab->GetRandomString(5) + ".ldb";
+            sqlTab->CreateTable(tabName);
             return sqlTab.GetPointer();
         }
         break;
@@ -1417,16 +1418,30 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
 
     // create output table with variable values for further
     // processing
-    otb::SQLiteTable::Pointer auxTab = otb::SQLiteTable::New();
+    otb::SQLiteTable::Pointer auxTab;// = otb::SQLiteTable::New();
+    auxTab = static_cast<otb::SQLiteTable*>(this->GetAuxOutput().GetPointer());
     bool bTableMagic = false;
 
     if (bSumUp)
     {
-        if (auxTab->CreateTable("file::memory:") == otb::SQLiteTable::ATCREATE_CREATED)
+        //if (auxTab->CreateTable("") == otb::SQLiteTable::ATCREATE_CREATED)
+        if (auxTab.IsNotNull())
         {
+            if (auxTab->GetDbConnection() == nullptr)
+            {
+                if (!auxTab->openConnection())
+                {
+                    NMProcErr(<< "failed to open connection to AUX table!");
+                }
+            }
+
             bTableMagic = true;
             auxTab->BeginTransaction();
-            this->GraftNthOutput(1, auxTab.GetPointer());
+            //this->GraftNthOutput(1, dynamic_cast<itk::DataObject*>(auxTab.GetPointer()));
+        }
+        else
+        {
+            NMProcErr(<< "failed creating AUX table!");
         }
     }
 

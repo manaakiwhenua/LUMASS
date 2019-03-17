@@ -124,7 +124,7 @@ public:
 	const otb::ImageIOBase* getImageIOBase();
 	void getBBox(double bbox[6]);
 
-    void getSpacing(double spacing[3]);
+    void getSignedSpacing(double signedspacing[3]);
     void getOrigin(double origin[3]);
     void getUpperLeftCorner(double ulcorner[3]);
     std::vector<double> getImageStatistics(const int* index=0,

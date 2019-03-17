@@ -1581,10 +1581,12 @@ NMImageReader::getUpperLeftCorner(double ulcorner[3])
     double origin[3];
     this->getOrigin(origin);
 
-    ulcorner[0] = origin[0] + 0.5 * this->mItkImgIOBase->GetSpacing(0);
-    ulcorner[1] = origin[1] + 0.5 * this->mItkImgIOBase->GetSpacing(1);
+    ulcorner[0] = origin[0] - 0.5 * this->mItkImgIOBase->GetSpacing(0);
+    // note: we expect y-axis spacing from the ImageIO to be negative
+    ulcorner[1] = origin[1] - (0.5 * this->mItkImgIOBase->GetSpacing(1));
     if (this->mItkImgIOBase->GetNumberOfDimensions() == 3)
     {
+        // note: this assumes zmax (top) pixel is origin (?)
         ulcorner[2] = origin[2] + 0.5 * this->mItkImgIOBase->GetSpacing(2);
     }
     else
@@ -1594,11 +1596,11 @@ NMImageReader::getUpperLeftCorner(double ulcorner[3])
 }
 
 void
-NMImageReader::getSpacing(double spacing[3])
+NMImageReader::getSignedSpacing(double signedspacing[3])
 {
-    spacing[0] = this->mItkImgIOBase->GetSpacing(0);
-    spacing[1] = this->mItkImgIOBase->GetSpacing(1);
-    spacing[2] = this->mItkImgIOBase->GetNumberOfDimensions() == 3
+    signedspacing[0] = this->mItkImgIOBase->GetSpacing(0);
+    signedspacing[1] = this->mItkImgIOBase->GetSpacing(1);
+    signedspacing[2] = this->mItkImgIOBase->GetNumberOfDimensions() == 3
                     ? this->mItkImgIOBase->GetSpacing(2)
                     : 0;
 }
@@ -1607,8 +1609,8 @@ void NMImageReader::getBBox(double bbox[6])
 {
 	bool ddd = this->mItkImgIOBase->GetNumberOfDimensions() == 3 ? true : false;
 
-	double xmin = this->mItkImgIOBase->GetOrigin(0);
-	double ymax = this->mItkImgIOBase->GetOrigin(1);
+    double xmin = this->mItkImgIOBase->GetOrigin(0);
+    double ymax = this->mItkImgIOBase->GetOrigin(1);
 	double zmin = 0; //numeric_limits<double>::max() * -1;
 	if (ddd) zmin = this->mItkImgIOBase->GetOrigin(2);
 

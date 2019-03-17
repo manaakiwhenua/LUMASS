@@ -564,13 +564,22 @@ NMImageReader<TOutputImage>
     double origin[ TOutputImage::ImageDimension ];
     typename TOutputImage::DirectionType direction;
     std::vector<double> axis;
+    int spacing_sign (0);
 
     for (unsigned int i=0; i<TOutputImage::ImageDimension; ++i)
     {
         if ( i < this->GetImageIO()->GetNumberOfDimensions() )
         {
             dimSize[i] = this->GetImageIO()->GetDimensions(i);
-            spacing[i] = this->GetImageIO()->GetSpacing(i);
+            if (this->GetImageIO()->GetSpacing(i) < 0)
+            {
+                spacing_sign = -1;
+            }
+            else
+            {
+                spacing_sign = 1;
+            }
+            spacing[i] = this->GetImageIO()->GetSpacing(i) * spacing_sign;
             origin[i]  = this->GetImageIO()->GetOrigin(i);
             // Please note: direction cosines are stored as columns of the
             // direction matrix
@@ -579,7 +588,7 @@ NMImageReader<TOutputImage>
             {
                 if (j < this->GetImageIO()->GetNumberOfDimensions())
                 {
-                    direction[j][i] = axis[j];
+                    direction[j][i] = axis[j] * spacing_sign;
                 }
                 else
                 {

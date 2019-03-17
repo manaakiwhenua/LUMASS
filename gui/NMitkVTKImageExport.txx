@@ -169,12 +169,13 @@ double* NMVTKImageExport<TInputImage>::SpacingCallback()
     }
 
   const typename TInputImage::SpacingType& spacing = input->GetSpacing();
+  const typename TInputImage::DirectionType& direction = input->GetDirection();
 
   unsigned int i=0;
   // Fill in the known portion of the spacing.
   for(;i < InputImageDimension;++i)
     {
-    m_DataSpacing[i] = static_cast<double>(spacing[i]);
+    m_DataSpacing[i] = static_cast<double>(spacing[i] * direction[i][i]);
     }
   // Fill up the spacing with defaults up to three dimensions.
   for(;i < 3;++i)
@@ -193,18 +194,19 @@ float* NMVTKImageExport<TInputImage>::FloatSpacingCallback()
 {
   InputImagePointer input = this->GetInput();
   const typename TInputImage::SpacingType& spacing = input->GetSpacing();
+  const typename TInputImage::DirectionType& direction = input->GetDirection();
 
   unsigned int i=0;
   // Fill in the known portion of the spacing.
   for(;i < InputImageDimension;++i)
-    {
-    m_FloatDataSpacing[i] = static_cast<float>(spacing[i]);
-    }
+  {
+      m_FloatDataSpacing[i] = static_cast<float>(spacing[i] * direction[i][i]);
+  }
   // Fill up the spacing with defaults up to three dimensions.
   for(;i < 3;++i)
-    {
-    m_FloatDataSpacing[i] = 1;
-    }
+  {
+      m_FloatDataSpacing[i] = 1;
+  }
   return m_FloatDataSpacing;
 }
 
@@ -225,29 +227,17 @@ double* NMVTKImageExport<TInputImage>::OriginCallback()
 
   const typename TInputImage::PointType& origin = input->GetOrigin();
 
-  // we've got to account for the different origin settings in VTK/ITK (ie corner vs centre)
-//  const typename TInputImage::SpacingType& spacing = input->GetSpacing();
-
   unsigned int i=0;
+  for (; i < InputImageDimension; ++i)
+  {
+    m_DataOrigin[i] = origin[i];
+  }
 
-//  for (; i < InputImageDimension; ++i)
-//  {
-//        m_DataOrigin[i] = origin[i] + (spacing[i] / 2.0);
-//  }
-
-  // Fill in the known portion of the origin.
-  //  std::cout << "ItkImgExp: img orgigin: ";
-  for(;i < InputImageDimension;++i)						// part added by alex: - static_cast ...
-    {
-    m_DataOrigin[i] = static_cast<double>(origin[i]);
-    //    std::cout << m_DataOrigin[i] << " ";
-    }
-  //    std::cout << std::endl;
   // Fill up the origin with defaults up to three dimensions.
   for(;i < 3;++i)
-    {
-    m_DataOrigin[i] = 0;
-    }
+  {
+      m_DataOrigin[i] = 0;
+  }
   return m_DataOrigin;
 }
 
@@ -261,25 +251,22 @@ float* NMVTKImageExport<TInputImage>::FloatOriginCallback()
   InputImagePointer input = this->GetInput();
   const typename TInputImage::PointType& origin = input->GetOrigin();
 
-  // we've got to account for the different origin settings in VTK/ITK (ie corner vs centre)
-//  const typename TInputImage::SpacingType& spacing = input->GetSpacing();
-
   unsigned int i=0;
-//  for (; i < InputImageDimension; ++i)
-//  {
-//        m_DataOrigin[i] = origin[i] + (float)(spacing[i] / 2.0);
-//  }
+  for (; i < InputImageDimension; ++i)
+  {
+      m_DataOrigin[i] = origin[i];
+  }
 
-//  // Fill in the known portion of the origin.
+  // Fill in the known portion of the origin.
   for(;i < InputImageDimension;++i)
-    {
-        m_FloatDataOrigin[i] = static_cast<float>(origin[i]);
-    }
+  {
+      m_FloatDataOrigin[i] = origin[i];
+  }
   // Fill up the origin with defaults up to three dimensions.
   for(;i < 3;++i)
-    {
-        m_FloatDataOrigin[i] = 0;
-    }
+  {
+      m_FloatDataOrigin[i] = 0;
+  }
   return m_FloatDataOrigin;
 }
 

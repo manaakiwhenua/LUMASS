@@ -473,7 +473,7 @@ public:
 		{
 			rasreader->GetOutput()->UpdateOutputInformation();
 			lpr          = rasreader->GetOutput()->GetLargestPossibleRegion();
-			inputSpacing = rasreader->GetOutput()->GetSpacing();
+            inputSpacing = rasreader->GetOutput()->GetSignedSpacing();
 			inputOrigin  = rasreader->GetOutput()->GetOrigin();
 		}
 		else
@@ -481,7 +481,7 @@ public:
 		{
 			reader->GetOutput()->UpdateOutputInformation();
 			lpr          = reader->GetOutput()->GetLargestPossibleRegion();
-			inputSpacing = reader->GetOutput()->GetSpacing();
+            inputSpacing = reader->GetOutput()->GetSignedSpacing();
 			inputOrigin  = reader->GetOutput()->GetOrigin();
 		}
 		pr.SetSize(0, lpr.GetSize()[0]);

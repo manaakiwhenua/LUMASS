@@ -74,7 +74,7 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
 ::SetOutputParametersFromImage(const ImageBaseType * image)
 {
     this->SetOutputOrigin ( image->GetOrigin() );
-    this->SetOutputSpacing ( image->GetSpacing() );
+    this->SetOutputSpacing ( internal::GetSignedSpacing(image) );
     this->SetOutputStartIndex ( image->GetLargestPossibleRegion().GetIndex() );
     this->SetOutputSize ( image->GetLargestPossibleRegion().GetSize() );
 }
@@ -144,8 +144,8 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
     outputLargestPossibleRegion.SetIndex(m_OutputStartIndex);
 
     outputPtr->SetLargestPossibleRegion(outputLargestPossibleRegion);
-    //outputPtr->SetSignedSpacing(m_OutputSpacing);
-    outputPtr->SetSpacing(m_OutputSpacing);
+    outputPtr->SetSignedSpacing(m_OutputSpacing);
+    //outputPtr->SetSpacing(m_OutputSpacing);
     outputPtr->SetOrigin(m_OutputOrigin);
 
     // need to set this sometime, so why not now ...
@@ -451,8 +451,8 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
     this->GetInput()->TransformIndexToPhysicalPoint(inUL,inULp);
     this->GetInput()->TransformIndexToPhysicalPoint(inLR,inLRp);
 
-    inULp-=0.5*this->GetInput()->GetSpacing();
-    inLRp+=0.5*this->GetInput()->GetSpacing();
+    inULp-=0.5*this->GetInput()->GetSignedSpacing();
+    inLRp+=0.5*this->GetInput()->GetSignedSpacing();
 
     ContinuousInputIndexType outUL;
     ContinuousInputIndexType outLR;
@@ -532,8 +532,8 @@ NMGridResampleImageFilter<TInputImage, TOutputImage, TInterpolatorPrecision>
     OutputPixelType outputValue;
 
     // TODO: assert outputPtr->GetSignedSpacing() != 0 here
-    assert(outputPtr->GetSpacing()[0]!=0&&"Null spacing will cause division by zero.");
-    const double delta = outputPtr->GetSpacing()[0]/inputPtr->GetSpacing()[0];
+    assert(outputPtr->GetSignedSpacing()[0]!=0&&"Null spacing will cause division by zero.");
+    const double delta = outputPtr->GetSignedSpacing()[0]/inputPtr->GetSignedSpacing()[0];
     double cidx[InputImageDimension];
 
     // Iterate through the output region

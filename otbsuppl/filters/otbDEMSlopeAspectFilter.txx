@@ -141,7 +141,7 @@ void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 
 
 	// get pixel size in x and y direction
-    typename TInputImage::SpacingType spacing = pInImg->GetSpacing();
+    typename TInputImage::SpacingType spacing = pInImg->GetSignedSpacing();
 	m_xdist = spacing[0];
 	m_ydist = abs(spacing[1]);
 

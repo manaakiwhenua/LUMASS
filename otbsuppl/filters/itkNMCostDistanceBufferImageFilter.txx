@@ -255,7 +255,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 	SpacingType spacing;
 	if (this->m_UseImageSpacing)
 	{
-		spacing = distanceMap->GetSpacing();
+        spacing = distanceMap->GetSignedSpacing();
 	}
 	else
 	{

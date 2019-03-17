@@ -667,12 +667,20 @@ StreamingRATImageFileWriter<TInputImage>
   const typename TInputImage::SpacingType&   spacing = outputPtr->GetSpacing();
   const typename TInputImage::PointType&     origin = outputPtr->GetOrigin();
   const typename TInputImage::DirectionType& direction = outputPtr->GetDirection();
-
+  int direction_sign(0);
   for (unsigned int i = 0; i < TInputImage::ImageDimension; ++i)
   {
+      if (direction[i][i] < 0)
+      {
+         direction_sign = -1;
+      }
+      else
+      {
+          direction_sign = 1;
+      }
       // Final image size
       m_ImageIO->SetDimensions(i, outputRegion.GetSize(i));
-      m_ImageIO->SetSpacing(i, spacing[i]);
+      m_ImageIO->SetSpacing(i, spacing[i] * direction_sign);
       m_ImageIO->SetOrigin(i, origin[i]);
 
       vnl_vector<double> axisDirection(TInputImage::ImageDimension);
@@ -680,7 +688,7 @@ StreamingRATImageFileWriter<TInputImage>
       // direction matrix
       for (unsigned int j = 0; j < TInputImage::ImageDimension; ++j)
       {
-          axisDirection[j] = direction[j][i];
+          axisDirection[j] = direction[j][i] * direction_sign;
       }
       m_ImageIO->SetDirection(i, axisDirection);
   }

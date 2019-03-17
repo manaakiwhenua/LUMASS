@@ -738,10 +738,11 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
         SizeType        inSize = inImg->GetLargestPossibleRegion().GetSize();
         OriginPointType inOrigin = inImg->GetOrigin();
         SpacingType     inSpacing = inImg->GetSpacing();
+        DirectionType   inDirection = inImg->GetDirection();
 
         double ddim[ImageDimension];
         for (int d=0; d < ImageDimension; ++d)
-            ddim[d] = (inOrigin[d] + (inSize[d] * inSpacing[d])) - inOrigin[d];
+            ddim[d] = (inOrigin[d] + (inSize[d] * inSpacing[d] *inDirection[d][d])) - inOrigin[d];
 
         if (!m_UserSize && m_UserSpacing)
         {
@@ -755,7 +756,7 @@ NMResampleImageFilter<TInputImage,TOutputImage,TInterpolatorPrecisionType>
         {
             for (int d=0; d < ImageDimension; ++d)
             {
-                m_OutputSpacing[d] = (ddim[d]) / (double)m_Size[d];
+                m_OutputSpacing[d] = ((ddim[d]) / (double)m_Size[d]) * inDirection[d][d];
             }
             m_UserSpacing = true;
         }

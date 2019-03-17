@@ -184,6 +184,98 @@ public:
 //    }
 
 
+    static void getOrigin(itk::DataObject::Pointer& img, unsigned int numBands,
+                          double* origin)
+    {
+            if (img.IsNull() || img.GetPointer() == 0 || origin == 0) return;
+
+            // we set everything to zero here
+            for(int i=0; i < 3; ++i)
+            {
+                origin[i] = 0;
+            }
+
+            double TheOrigin[Dimension];
+
+            if (numBands == 1)
+            {
+                ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
+                if (theimg == 0)
+                {
+                    return;
+                }
+
+                for (int d=0; d < Dimension; ++d)
+                {
+                    TheOrigin[d] = theimg->GetOrigin()[d];
+                }
+            }
+            else if (numBands > 1)
+            {
+                VecImgType* theimg = dynamic_cast<VecImgType*>(img.GetPointer());
+                if (theimg == 0)
+                {
+                    return;
+                }
+
+                for (int d=0; d < Dimension; ++d)
+                {
+                    TheOrigin[d] = theimg->GetOrigin()[d];
+                }
+            }
+
+            for (int d=0; d < 3; ++d)
+            {
+                origin[d] = TheOrigin[d];
+            }
+    }
+
+    static void getSignedSpacing(itk::DataObject::Pointer& img, unsigned int numBands,
+                          double* sspacing)
+    {
+            if (img.IsNull() || img.GetPointer() == 0 || sspacing == 0) return;
+
+            // we set everything to zero here
+            for(int i=0; i < 3; ++i)
+            {
+                sspacing[i] = 0;
+            }
+
+            double SignedSpacing[Dimension];
+
+            if (numBands == 1)
+            {
+                ImgType* theimg = dynamic_cast<ImgType*>(img.GetPointer());
+                if (theimg == 0)
+                {
+                    return;
+                }
+
+                for (int d=0; d < Dimension; ++d)
+                {
+                    SignedSpacing[d] = theimg->GetSignedSpacing()[d];
+                }
+            }
+            else if (numBands > 1)
+            {
+                VecImgType* theimg = dynamic_cast<VecImgType*>(img.GetPointer());
+                if (theimg == 0)
+                {
+                    return;
+                }
+
+                for (int d=0; d < Dimension; ++d)
+                {
+                    SignedSpacing[d] = theimg->GetSignedSpacing()[d];
+                }
+            }
+
+            for (int d=0; d < 3; ++d)
+            {
+                sspacing[d] = SignedSpacing[d];
+            }
+    }
+
     static void getBBox(itk::DataObject::Pointer& img, unsigned int numBands,
             double* bbox)
         {
@@ -208,21 +300,21 @@ public:
 
                 for (int d=0; d < Dimension; ++d)
                 {
-                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSpacing()[d];
+                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSignedSpacing()[d];
                 }
 
                 RegionType reg = theimg->GetLargestPossibleRegion();
 
                 bbox[0] = UpperLeftCorner[0];
-                bbox[1] = bbox[0] + (theimg->GetSpacing()[0] * reg.GetSize()[0]);
-                bbox[2] = UpperLeftCorner[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
+                bbox[1] = bbox[0] + (theimg->GetSignedSpacing()[0] * reg.GetSize()[0]);
+                bbox[2] = UpperLeftCorner[1] + (theimg->GetSignedSpacing()[1] * reg.GetSize()[1]);
                 bbox[3] = UpperLeftCorner[1];
                 bbox[4] = 0;
                 bbox[5] = 0;
                 if (theimg->GetImageDimension() == 3)
                 {
                     bbox[4] = UpperLeftCorner[2];
-                    bbox[5] = bbox[4] + (theimg->GetSpacing()[2] * reg.GetSize()[2]);
+                    bbox[5] = bbox[4] + (theimg->GetSignedSpacing()[2] * reg.GetSize()[2]);
                 }
 
 
@@ -237,14 +329,14 @@ public:
 
                 for (int d=0; d < Dimension; ++d)
                 {
-                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSpacing()[d];
+                    UpperLeftCorner[d] = theimg->GetOrigin()[d] + 0.5 * theimg->GetSignedSpacing()[d];
                 }
 
                 VecRegionType reg = theimg->GetLargestPossibleRegion();
 
                 bbox[0] = UpperLeftCorner[0];
-                bbox[1] = bbox[0] + (theimg->GetSpacing()[0] * reg.GetSize()[0]);
-                bbox[2] = UpperLeftCorner[1] + (theimg->GetSpacing()[1] * reg.GetSize()[1]);
+                bbox[1] = bbox[0] + (theimg->GetSignedSpacing()[0] * reg.GetSize()[0]);
+                bbox[2] = UpperLeftCorner[1] + (theimg->GetSignedSpacing()[1] * reg.GetSize()[1]);
                 bbox[3] = UpperLeftCorner[1];
                 bbox[4] = 0;
                 bbox[5] = 0;
@@ -252,7 +344,7 @@ public:
                 if (theimg->GetImageDimension() == 3)
                 {
                     bbox[5] = UpperLeftCorner[2];
-                    bbox[6] = bbox[5] + theimg->GetSpacing()[2] * reg.GetSize()[2];
+                    bbox[6] = bbox[5] + theimg->GetSignedSpacing()[2] * reg.GetSize()[2];
                 }
             }
         }
@@ -266,6 +358,23 @@ public:
     else \
         wrapName<PixelType, 3>::getBBox(img, numBands, bbox); \
 }
+
+#define getInternalOrigin( PixelType, wrapName ) \
+{	\
+    if (numDims == 2) \
+        wrapName<PixelType, 2>::getOrigin(img, numBands, origin); \
+    else \
+        wrapName<PixelType, 3>::getOrigin(img, numBands, origin); \
+}
+
+#define getInternalSignedSpacing( PixelType, wrapName ) \
+{	\
+    if (numDims == 2) \
+        wrapName<PixelType, 2>::getSignedSpacing(img, numBands, sspacing); \
+    else \
+        wrapName<PixelType, 3>::getSignedSpacing(img, numBands, sspacing); \
+}
+
 
 //#define getInternalImgStats( PixelType, wrapName ) \
 //{	\
@@ -453,8 +562,8 @@ NMImageLayer::getWindowStatistics(void)
                         double h_ext = mBBox[1] - mBBox[0];
                         double v_ext = mBBox[3] - mBBox[2];
 
-                        int fullcols = h_ext / mSpacing[0];
-                        int fullrows = v_ext / ::fabs(mSpacing[1]);
+                        int fullcols = h_ext / mSignedSpacing[0];
+                        int fullrows = v_ext / ::fabs(mSignedSpacing[1]);
 
                         for (int d=0; d < 3; ++d)
                         {
@@ -673,6 +782,9 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     if (img == 0)
         return;
 
+    // note:
+    // spacing is signed spacing
+    // VTK origin is upper left pixel centre
     img->GetSpacing(spacing);
     img->GetOrigin(origin);
 
@@ -682,9 +794,13 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
     {
         if (bOnLPR)
         {
-            spacing[d] = mSpacing[d];
+            spacing[d] = mSignedSpacing[d];
         }
+//        if (d == 0)
+//            ulcorner[d] = origin[d];
+//        else if (d >= 1)
         ulcorner[d] = origin[d] - 0.5 * spacing[d];
+
         dims[d] = (mBBox[d*2+1] - mBBox[d*2]) / ::fabs(spacing[d]);
 
         err[d] = ::fabs(spacing[d]) * 0.001;
@@ -873,11 +989,11 @@ NMImageLayer::selectionChanged(const QItemSelection& newSel,
 
             if (mHasSelBox)
             {
-                double minX = mOtbRAT->GetIntValue("minX", row) * mSpacing[0] + mUpperLeftCorner[0];
-                double minY = mUpperLeftCorner[1] + mSpacing[1] + (mOtbRAT->GetIntValue("maxY", row) * mSpacing[1]);
+                double minX = mOtbRAT->GetIntValue("minX", row) * mSignedSpacing[0] + mUpperLeftCorner[0];
+                double minY = mUpperLeftCorner[1] + mSignedSpacing[1] + (mOtbRAT->GetIntValue("maxY", row) * mSignedSpacing[1]);
                 double minZ = 0;
-                double maxX = mOtbRAT->GetIntValue("maxX", row) * mSpacing[0] + mUpperLeftCorner[0] + mSpacing[0];
-                double maxY = mUpperLeftCorner[1] + (mOtbRAT->GetIntValue("minY", row) * mSpacing[1]);
+                double maxX = mOtbRAT->GetIntValue("maxX", row) * mSignedSpacing[0] + mUpperLeftCorner[0] + mSignedSpacing[0];
+                double maxY = mUpperLeftCorner[1] + (mOtbRAT->GetIntValue("minY", row) * mSignedSpacing[1]);
                 double maxZ = 0;
 
                 mSelBBox[0] = minX < mSelBBox[0] ? minX : mSelBBox[0];
@@ -1289,7 +1405,7 @@ NMImageLayer::setFileName(QString filename)
     this->mReader->getBBox(this->mBBox);
     this->mReader->getBBox(this->mSelBBox);
     this->mReader->getBBox(this->mBufferedBox);
-    this->mReader->getSpacing(this->mSpacing);
+    this->mReader->getSignedSpacing(this->mSignedSpacing);
     this->mReader->getOrigin(this->mOrigin);
     this->mReader->getUpperLeftCorner(this->mUpperLeftCorner);
 
@@ -1413,8 +1529,8 @@ NMImageLayer::mapExtentChanged(void)
     double h_ext = mBBox[1] - mBBox[0];
     double v_ext = mBBox[3] - mBBox[2];
 
-    int fullcols = h_ext / mSpacing[0];
-    int fullrows = v_ext / ::fabs(mSpacing[1]);
+    int fullcols = h_ext / mSignedSpacing[0];
+    int fullrows = v_ext / ::fabs(mSignedSpacing[1]);
 
     double h_res;
     double v_res;
@@ -1497,8 +1613,8 @@ NMImageLayer::mapExtentChanged(void)
             }
             else
             {
-                h_res = mSpacing[0]*dpr;//fullcols / size[0];
-                v_res = ::fabs(mSpacing[1])*dpr;//fullrows / size[1];
+                h_res = mSignedSpacing[0]*dpr;//fullcols / size[0];
+                v_res = ::fabs(mSignedSpacing[1])*dpr;//fullrows / size[1];
             }
         }
 
@@ -1518,13 +1634,13 @@ NMImageLayer::mapExtentChanged(void)
         double opt_res;
         if (size[0] > size[1])
         {
-            opt_res = mSpacing[0]*dpr;
+            opt_res = mSignedSpacing[0]*dpr;
             target_res = h_res;
         }
         else
         {
             target_res = v_res;
-            opt_res = ::fabs(mSpacing[1])*dpr;
+            opt_res = ::fabs(mSignedSpacing[1])*dpr;
         }
         opt_res *= 0.15;
         double diff = ::fabs(opt_res-target_res);
@@ -2484,8 +2600,10 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
     unsigned int numDims = imgWrapper->getNumDimensions();
     unsigned int numBands = imgWrapper->getNumBands();
     itk::DataObject::Pointer img = this->mImage;
-    double* bbox = new double[6];
     otb::ImageIOBase::IOComponentType type = imgWrapper->getItkComponentType();
+
+    // get bbox
+    double* bbox = new double[6];
     switch(type)
     {
     MacroPerType( getInternalBBox, InternalImageHelper )
@@ -2499,6 +2617,33 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
         this->mSelBBox[i] = bbox[i];
     }
     delete bbox;
+
+    // get origin
+    double* origin = new double[3];
+    switch(type)
+    {
+    MacroPerType( getInternalOrigin, InternalImageHelper )
+    default:
+        break;
+    }
+
+    double* sspacing = new double[3];
+    switch(type)
+    {
+    MacroPerType( getInternalSignedSpacing, InternalImageHelper )
+    default:
+        break;
+    }
+
+    for(int i=0; i < 3; ++i)
+    {
+        this->mOrigin[i] = origin[i];
+        this->mSignedSpacing[i] = sspacing[i];
+
+    }
+    delete origin;
+    delete sspacing;
+
 
     this->initiateLegend();
     emit layerLoaded();

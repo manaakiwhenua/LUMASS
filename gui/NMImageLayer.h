@@ -91,7 +91,8 @@ public:
 
 	void getBBox(double bbox[6]);
     const double* getBBox(){return (double*)&mBBox[0];}
-    const double* getSpacing(){return (double*)&mSpacing[0];}
+    const double* getSignedSpacing(){return (double*)&mSignedSpacing[0];}
+    const double* getOrigin(){return (double*)&mOrigin[0];}
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
     long long getNumTableRecords();
 
@@ -211,7 +212,7 @@ protected:
 
     NMLayer::NMLegendType mLastLegendType;
 
-    double mSpacing[3];
+    double mSignedSpacing[3];
     double mOrigin[3];
     double mUpperLeftCorner[3];
 

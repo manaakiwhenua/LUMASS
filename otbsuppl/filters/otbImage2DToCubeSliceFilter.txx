@@ -98,7 +98,7 @@ void Image2DToCubeSliceFilter<TInputImage, TOutputImage>
 //	InputRegionType InRegion = InImg->GetRequestedRegion();
 	InputSizeType InSize = InRegion.GetSize();
 	InputIndexType InIdx = InRegion.GetIndex();
-	InputSpacingType InSpacing = InImg->GetSpacing();
+    InputSpacingType InSpacing = InImg->GetSignedSpacing();
 	InputPointType InOrigin = InImg->GetOrigin();
 
 	OutIdx[0] = InIdx[0];
@@ -106,11 +106,11 @@ void Image2DToCubeSliceFilter<TInputImage, TOutputImage>
 	OutIdx[2] = this->m_ZLevel;
 
 	OutSize[0] = InSize[0];
-	OutSize[1] = InSize[1];
+    OutSize[1] = InSize[1];
 	OutSize[2] = 1;
 
 	OutSpacing[0] = InSpacing[0];
-	OutSpacing[1] = InSpacing[0];
+    OutSpacing[1] = InSpacing[1];
 	OutSpacing[2] = this->m_ZSpacing;
 
 	OutOrigin[0] = InOrigin[0];

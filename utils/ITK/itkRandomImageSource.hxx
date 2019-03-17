@@ -25,6 +25,14 @@
  *  please refer to the NOTICE file at the top of the ITK source tree.
  *
  *=========================================================================*/
+/*!
+    adapted by Alexander Herzig for the use in LUMASS
+    Copyright 2019 Landcare Research New Zealand Ltd
+
+
+*/
+
+
 #ifndef __itkRandomImageSource_hxx
 #define __itkRandomImageSource_hxx
 
@@ -43,13 +51,24 @@ RandomImageSource< TOutputImage >
 ::RandomImageSource()
 {
   //Initial image is 64 wide in each direction.
-  for ( unsigned int i = 0; i < TOutputImage::GetImageDimension(); i++ )
+    for ( unsigned int i = 0; i < TOutputImage::GetImageDimension(); i++ )
     {
-    m_Size[i] = 64;
-    m_Spacing[i] = 1.0;
-    m_Origin[i] = 0.5;
+        m_Size[i] = 64;
+        m_Spacing[i] = 1.0;
+        m_Origin[i] = 0.5;
+
+        if (i == 1)
+        {
+            m_Direction[i][i] = -1;
+        }
+        else
+        {
+            m_Direction[i][i] = 1;
+        }
     }
-  m_Direction.SetIdentity();
+  //m_Direction.SetIdentity();
+
+
 
   m_Min = NumericTraits< OutputImagePixelType >::NonpositiveMin();
   m_Max = NumericTraits< OutputImagePixelType >::max();
@@ -102,20 +121,24 @@ RandomImageSource< TOutputImage >
   unsigned int       i;
 
   for ( i = 0; i < count; i++ )
-    {
-    if ( spacingArray[i] != this->m_Spacing[i] )
+  {
+      if ( spacingArray[i] != this->m_Spacing[i] )
       {
-      break;
+          break;
       }
-    }
+  }
   if ( i < count )
-    {
-    this->Modified();
-    for ( i = 0; i < count; i++ )
+  {
+      this->Modified();
+      for ( i = 0; i < count; i++ )
       {
-      this->m_Spacing[i] = spacingArray[i];
+          if (i == 1)
+          {
+              m_Direction[i][i] *= -1;
+          }
+          this->m_Spacing[i] = spacingArray[i];
       }
-    }
+  }
 }
 
 template< typename TOutputImage >

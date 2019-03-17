@@ -264,7 +264,42 @@ else()
 endif()
 
 
+# ==========================================================
+# find the private header dir for Qt5Widgets
+# ==========================================================
+foreach(QT5WIDGETSPRIVDIR ${QT5_INCLUDE_DIRS})
+    FIND_PATH(NMQT5WIDGETS_PRIVATE_DIR private/qwindowcontainer_p.h
+        PATH_SUFFIXES
+            ${QT5_VERSION_STRING}/QtWidgets
+        PATHS
+            ${QT5WIDGETSPRIVDIR}
+    )
 
+endforeach()
 
+if(NOT NMQT5WIDGETS_PRIVATE_DIR)
+    message(STATUS "couldn't find NMQT5WIDGETS_PRIVATE_DIR!")
+else()
+    message(STATUS "NMQT5WIDGETS_PRIVATE_DIR=${NMQT5WIDGETS_PRIVATE_DIR}")
+endif()
+
+# ==========================================================
+# find the private header dir for Qt5Gui
+# ==========================================================
+foreach(QT5GUIPRIVDIR ${QT5_INCLUDE_DIRS})
+    FIND_PATH(NMQT5GUI_PRIVATE_DIR private/qwindow_p.h
+        PATH_SUFFIXES
+            ${QT5_VERSION_STRING}/QtGui
+        PATHS
+            ${QT5GUIPRIVDIR}
+    )
+
+endforeach()
+
+if(NOT NMQT5GUI_PRIVATE_DIR)
+    message(STATUS "couldn't find NMQT5GUI_PRIVATE_DIR!")
+else()
+    message(STATUS "NMQT5GUI_PRIVATE_DIR=${NMQT5GUI_PRIVATE_DIR}")
+endif()
 
 

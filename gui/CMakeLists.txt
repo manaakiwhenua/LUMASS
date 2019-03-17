@@ -90,6 +90,10 @@ INCLUDE_DIRECTORIES(
     #${QT5WIDGETS_INCLUDE_DIR}
     ${NMQT5SQL_PRIVATE_DIR}
     ${NMQT5SQL_PRIVATE_DIR}/..
+    ${NMQT5WIDGETS_PRIVATE_DIR}
+    ${NMQT5WIDGETS_PRIVATE_DIR}/..
+    ${NMQT5GUI_PRIVATE_DIR}
+    ${NMQT5GUI_PRIVATE_DIR}/..
     ${opt_SOURCE_DIR}
     ${lumass_BINARY_DIR}
     ${gui_BINARY_DIR}
@@ -146,6 +150,7 @@ LINK_DIRECTORIES(
 	${OSGEO4W_ROOT}/bin
 	#${TCADB_LIB_DIR}
         ${VisIt_BINARY_DIR}
+        ${NMVtk_BINARY_DIR}
 )
 
 
@@ -154,6 +159,7 @@ QT5_ADD_RESOURCES(NM_RES nmresources.qrc)
 
 QT5_WRAP_CPP(MOC_CPP
         ${NMVtk_SOURCE_DIR}/vtkQtEditableTableModelAdapter.h
+        ${NMVtk_SOURCE_DIR}/NMQVTKOpenglWidget.h
         ${opt_SOURCE_DIR}/NMMosra.h
         ${gui_SOURCE_DIR}/lumassmainwin.h
         ${gui_SOURCE_DIR}/modelcomponentlist.h

@@ -71,7 +71,9 @@ public:
         NM_ACTION_INPUT_TEXT,               // ´some text´
         NM_ACTION_INPUT_NUMERIC,            // integer or real number
         NM_ACTION_INPUT_ENUM,               // {´name1´, ´name2´, ..., ´nameN´}
-        NM_ACTION_INPUT_BOOLEAN             // {´yes´, ´no´}
+        NM_ACTION_INPUT_BOOLEAN,            // {´yes´, ´no´}
+        NM_ACTION_INPUT_LAYER_SELECTION,     // the list of selected IDS
+        NM_ACTION_INPUT_LAYER_SELBBOX       // the bbox of the current selection
     };
     Q_ENUM(NMActionInputType)
 
@@ -94,6 +96,9 @@ public slots:
     NMAbstractAction::NMActionTriggerType getTriggerType(const QString& key);
     void setTrigger(const QString& key, NMAbstractAction::NMActionTriggerType type);
     int getTriggerCount(void);
+
+    NMAbstractAction::NMActionInputType getInputType(const QString& key);
+    //QString getInputKey(NMAbstractAction::NMActionInputType type);
 
     /*! path pointing into the directory where the individual model files are stored
      *  e.g. modelPpath = /home/models/AwesomeModel
@@ -147,12 +152,14 @@ protected:
     typedef QMap<QString, NMActionTriggerType> NMMapTriggerType;
     typedef QMap<NMActionTriggerType, QString> NMMapTypeTrigger;
     typedef QMap<QString, NMActionInputType> NMMapInputType;
+    //typedef QMultiMap<NMActionInputType, QString> NMMapTypeInput;
 
     bool mHasMenu;
 
     NMMapTriggerType mMapTriggerType;
     NMMapTypeTrigger mMapTypeTrigger;
-    NMMapInputType mMapInputType;
+    NMMapInputType   mMapInputType;
+    //NMMapTypeInput   mMapTypeInput;
 
     NMOutputMap mOutputs;
     QString mModelName;

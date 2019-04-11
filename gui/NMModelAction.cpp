@@ -302,6 +302,12 @@ NMModelAction::reloadUserConfig(void)
                 inputType = static_cast<NMAbstractAction::NMActionInputType>(
                             NMAbstractAction::staticMetaObject.enumerator(iaei).keyToValue(
                                 actionTypeStr.toStdString().c_str(), &bKeyFound));
+
+                if (inputType == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELECTION)
+                {
+                    actionValStr = QString("%1").arg(-1);
+                }
+
             }
             this->updateActionParameter(actionParam, QVariant::fromValue(actionValStr),
                                         inputType);

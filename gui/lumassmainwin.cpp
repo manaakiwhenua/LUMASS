@@ -1361,6 +1361,7 @@ LUMASSMainWin::clearSelection()
     if (l)
     {
         l->selectCell(-1, NMLayer::NM_SEL_CLEAR);
+        this->processUserPickAction(-1, true);
     }
 }
 
@@ -3736,6 +3737,7 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 			{
 				this->updateLayerInfo(l, -1);
 				l->selectCell(cellId, NMLayer::NM_SEL_CLEAR);
+                this->processUserPickAction(-1, true);
 				return;
 			}
 		}
@@ -3761,9 +3763,11 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
     // this allows the user to be able to inspect
     // selected cells - much more useful this way round,
     // I guess ... ?
+    bool bSelection = false;
     if (iren->GetControlKey() && l->isSelectable())
     {
         l->selectCell(cellId, NMLayer::NM_SEL_ADD);
+        bSelection = true;
     }
     else
     {
@@ -3773,7 +3777,7 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
     // =========================================
     //       EXECUTE USER ACTIONS
     // =========================================
-    processUserPickAction(cellId);
+    processUserPickAction(cellId, bSelection);
 
 }
 
@@ -6877,6 +6881,46 @@ LUMASSMainWin::executeUserModel(void)
     NMModelAction* uact = qobject_cast<NMModelAction*>(sender());
     if (uact)
     {
+        //        // check for selections
+        //        QList<QByteArray> dynNames = uact->dynamicPropertyNames();
+        //        foreach(const QByteArray& propName, dynNames)
+        //        {
+        //            QVariant val;
+
+        //            const char* name = propName.data();
+        //            NMAbstractAction::NMActionInputType inputType =
+        //                    uact->getInputType(name);
+        //            if (inputType == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELECTION)
+        //            {
+        //                NMLayer* l = this-mLayerList->getSelectedLayer();
+        //                int selRow = -1;
+        //                if (l != nullptr)
+        //                {
+        //                    const QItemSelection lsel = l->getSelection();
+        //                    if (lsel.count() > 0)
+        //                    {
+        //                        selRow = lsel.at(0).top();
+        //                    }
+
+        //                    uact->updateActionParameter(name, QVariant(selRow), inputType);
+        //                }
+
+        //            }
+        //            else if (inputType == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELBBOX)
+        //            {
+        //                NMLayer* l = this-mLayerList->getSelectedLayer();
+        //                if (l != nullptr)
+        //                {
+        //                    const double* selbox = l->getSelectionBBox();
+        //                    QString selStr = QString("%1 %2 %3 %4")
+        //                            .arg(selbox[0]).arg(selbox[1])
+        //                            .arg(selbox[2]).arg(selbox[3]);
+        //                    QVariant vval(selStr);
+        //                    uact->updateActionParameter(name, vval, inputType);
+        //                }
+        //            }
+        //        }
+
         NMModelController* ctrl = uact->getModelController();
         if (ctrl)
         {
@@ -7088,35 +7132,98 @@ LUMASSMainWin::selectUserTool(bool toggled)
 }
 
 void
-LUMASSMainWin::processUserPickAction(long long cellId)
+LUMASSMainWin::processUserPickAction(long long cellId, bool bSelection)
 {
-    NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
-                ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
-    if (iact)
+    // PASSIVE UPDATES
+
+    if (bSelection)
     {
-        QString userTool = iact->getUserTool().c_str();
-        QMap<QString, NMAbstractAction*>::iterator actIt = mUserActions.find(userTool);
-        if (actIt != mUserActions.end())
+
+        // look non-triggering actions
+        QMap<QString, NMAbstractAction*>::iterator passIt = mUserActions.begin();
+        if (passIt != mUserActions.end())
         {
-            NMModelAction* act = qobject_cast<NMModelAction*>(actIt.value());
-            QString key = act->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_ID);
-            if (act != nullptr && !key.isEmpty())
+            NMModelAction* act = qobject_cast<NMModelAction*>(passIt.value());
+
+            //=================================================
+            // check for selections
+
+            QList<QByteArray> dynNames = act->dynamicPropertyNames();
+            foreach(const QByteArray& propName, dynNames)
             {
-                NMModelController* ctrl = const_cast<NMModelController*>(
-                            act->getModelController());
-                if (!ctrl->isModelRunning())
+                const char* name = propName.data();
+                NMAbstractAction::NMActionInputType inputType = act->getInputType(name);
+
+                if (inputType == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELECTION)
                 {
-                    ctrl->updateSettings(key, QVariant::fromValue(cellId));
-                    const QString compName = "root";
-                    QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
+                    int selRow = -1;
+                    NMLayer* l = this->mLayerList->getSelectedLayer();
+                    if (l != nullptr)
+                    {
+                        const QItemSelection lsel = l->getSelection();
+                        if (lsel.count() > 0)
+                        {
+                            selRow = lsel.at(0).top();
+                        }
+                    }
+                    act->updateActionParameter(name, QVariant::fromValue(selRow), inputType);
+
                 }
-                else
+                else if (inputType == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELBBOX)
                 {
-                    NMLogInfo(<< userTool.toStdString()
-                              << " is already running - try again once its finished!");
+                    NMLayer* l = this->mLayerList->getSelectedLayer();
+                    if (l != nullptr)
+                    {
+                        const double* selbox = l->getSelectionBBox();
+                        QString selStr = QString("%1 %2 %3 %4")
+                                .arg(selbox[0]).arg(selbox[1])
+                                .arg(selbox[2]).arg(selbox[3]);
+                        act->updateActionParameter(name, QVariant::fromValue(selStr), inputType);
+                    }
                 }
             }
         }
+
+    }
+    else
+    {
+
+
+        // TRIGGER MODEL
+
+        NMVtkInteractorStyleImage* iact = NMVtkInteractorStyleImage::SafeDownCast(
+                    ui->qvtkWidget->GetInteractor()->GetInteractorStyle());
+        if (iact)
+        {
+            QString userTool = iact->getUserTool().c_str();
+            QMap<QString, NMAbstractAction*>::iterator actIt = mUserActions.find(userTool);
+            if (actIt != mUserActions.end())
+            {
+                NMModelAction* act = qobject_cast<NMModelAction*>(actIt.value());
+
+                // ========================================================
+                // LOOK FOR TRIGGERS
+
+                QString triggerKey = act->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_ID);
+                if (act != nullptr && !triggerKey.isEmpty())
+                {
+                    NMModelController* ctrl = const_cast<NMModelController*>(
+                                act->getModelController());
+                    if (!ctrl->isModelRunning())
+                    {
+                        ctrl->updateSettings(triggerKey, QVariant::fromValue(cellId));
+                        const QString compName = "root";
+                        QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
+                    }
+                    else
+                    {
+                        NMLogInfo(<< userTool.toStdString()
+                                  << " is already running - try again once its finished!");
+                    }
+                }
+            }
+        }
+
     }
 }
 

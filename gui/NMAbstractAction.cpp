@@ -51,11 +51,24 @@ NMAbstractAction::getTriggerKey(NMAbstractAction::NMActionTriggerType type)
     return mMapTypeTrigger[type];
 }
 
+//QString
+//NMAbstractAction::getInputKey(NMAbstractAction::NMActionInputType type)
+//{
+
+//}
+
 NMAbstractAction::NMActionTriggerType
 NMAbstractAction::getTriggerType(const QString &key)
 {
     return mMapTriggerType[key];
 }
+
+NMAbstractAction::NMActionInputType
+NMAbstractAction::getInputType(const QString& key)
+{
+    return mMapInputType[key];
+}
+
 
 int
 NMAbstractAction::getTriggerCount(void)
@@ -130,7 +143,7 @@ NMAbstractAction::callConfigDlg()
         createConfigDialog();
     }
 
-    reloadUserConfig();
+    //reloadUserConfig();
 
     mDialog->show();
 }
@@ -317,6 +330,7 @@ NMAbstractAction::reloadUserConfig(void)
         QString actionParam = toolTable->GetStrValue("Input", id).c_str();
         QString actionValStr = toolTable->GetStrValue("InputValue", id).c_str();
         QString actionTypeStr = toolTable->GetStrValue("InputValueType", id).c_str();
+
         if (!actionParam.isEmpty())
         {
             NMAbstractAction::NMActionInputType inputType = NMAbstractAction::NM_ACTION_INPUT_UNKNOWN;
@@ -326,6 +340,11 @@ NMAbstractAction::reloadUserConfig(void)
                 inputType = static_cast<NMAbstractAction::NMActionInputType>(
                             NMAbstractAction::staticMetaObject.enumerator(iaei).keyToValue(
                                 actionTypeStr.toStdString().c_str(), &bKeyFound));
+
+                if (inputType == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELECTION)
+                {
+                    actionValStr = QString("%1").arg(-1);
+                }
             }
             this->updateActionParameter(actionParam, QVariant::fromValue(actionValStr),
                                         inputType);
@@ -379,6 +398,18 @@ NMAbstractAction::populateSettingsBrowser(void)
     {
         const char* name = propName.data();
         int propType = this->property(name).type();
+
+        QMap<QString, NMActionInputType>::const_iterator tit = mMapInputType.find(name);
+        if (tit != mMapInputType.cend())
+        {
+            if (    tit.value() == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELECTION
+                 || tit.value() == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELBBOX
+               )
+            {
+                // no config dialog input!
+                continue;
+            }
+        }
 
         QStringList enumVals;
         int curEnumVal = fetchEnumValues(name, enumVals);

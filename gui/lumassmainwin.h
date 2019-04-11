@@ -337,7 +337,7 @@ protected:
     void populateSettingsBrowser();
     void addModelToUserModelList(const QString& modelName);
 
-    void processUserPickAction(long long cellId);
+    void processUserPickAction(long long cellId, bool bSelection);
 
 
     //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);

@@ -26,7 +26,8 @@
 #define NMCOMPONENTLINKITEM_H_
 
 #include <qgraphicsitem.h>
-#include "NMModelComponent.h"
+
+//#include "NMModelComponent.h"
 #include "NMProcessComponentItem.h"
 #include "NMAggregateComponentItem.h"
 #include <QPainterPath>

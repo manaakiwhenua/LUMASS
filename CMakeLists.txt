@@ -2,18 +2,7 @@
 # author: Alexander Herzig
 # copyright: Landcare Research New Zealand Ltd
 
-cmake_minimum_required(VERSION 2.8.9)
-cmake_policy(SET CMP0003 NEW)
-cmake_policy(SET CMP0053 NEW)
-# from version 2.8.11 onwards
-if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.11")
-	cmake_policy(SET CMP0020 NEW)
-endif()
-# from version 2.8.12 onwards
-if(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.13")
-	cmake_policy(SET CMP0045 OLD)
-endif()
-
+cmake_minimum_required(VERSION 3.5.1)
 PROJECT(lumass)
 
 INCLUDE_REGULAR_EXPRESSION("^.*$")
@@ -42,10 +31,13 @@ IF(NOT WIN32)
 	# this cmake variable doesn't seem to be honoured with this CMAKE version
         SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIC -fPIE")
 
-        SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g -fPIC")
+        SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g -fPIC -fno-aggressive-loop-optimizations")
         SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fPIC")
 ELSE(NOT WIN32)
     SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT ")
+    SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Ob2 ")
+    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Ob2 ")
+    SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /Ob2 ")
 ENDIF(NOT WIN32)
 
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -174,6 +166,7 @@ endif(NOT OTB_FOUND)
 if(ITK_FOUND)
     SET(LUMASS_ITK_VERSION "${ITK_VERSION_MAJOR}.${ITK_VERSION_MINOR}.${ITK_VERSION_PATCH}")
     message(STATUS "found ITK ${LUMASS_ITK_VERSION}")
+    message(STATUS "ITK library DIRS: ${ITK_LIBRARY_DIRS}")
 endif(ITK_FOUND)
 if (${LUMASS_ITK_VERSION} VERSION_LESS "4.11")
     message(FATAL_ERROR "LUMASS >= 0.9.60 requires ITK >= 4.11")
@@ -345,6 +338,23 @@ configure_file("${CMAKE_SOURCE_DIR}/docs/lumassDocConfig.in"
 # SOME OTHER STUFF WE WANNA USE GLOBALLY
 #====================================================================
 
+SET(MFW_WRAPPER_NAMES
+    NMMosraFilterWrapper
+    NMDEMSlopeAspectFilterWrapper
+    NMFlowAccumulationFilterWrapper
+    NMItkCastImageFilterWrapper
+    NMRandomImageSourceWrapper
+    NMResampleImageFilterWrapper
+    NMVectorImageToImageFilterWrapper
+    NMSumZonesFilterWrapper
+    NMStreamingImageFileWriterWrapper
+    NMCostDistanceBufferImageWrapper
+    NMRATBandMathImageFilterWrapper
+    NMScriptableKernelFilter2Wrapper
+    NMExternalExecWrapper
+    NMSQLiteProcessorWrapper
+    NMUniqueCombinationFilterWrapper
+)
 
 
 #====================================================================

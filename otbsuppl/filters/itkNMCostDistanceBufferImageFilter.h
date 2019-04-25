@@ -352,7 +352,7 @@ NMCostDistanceBufferImageFilter<TInputImage,TOutputImage>
 				}
 				else
 				{
-					tmpDist = (cbuf[cidx] * 1.414214)
+                    tmpDist = (cbuf[cidx] * sqrt(spacing[0]*spacing[0]+spacing[1]*spacing[1]))
 								+ obuf[(col + noff[c][0])
 								       + ((row + noff[c][1]) * ncols)];
 				}

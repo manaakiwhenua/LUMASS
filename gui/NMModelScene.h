@@ -49,6 +49,7 @@
  *
  */
 
+class NMModelComponent;
 class NMComponentLinkItem;
 class NMProcessComponentItem;
 class NMAggregateComponentItem;

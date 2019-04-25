@@ -34,6 +34,7 @@
 #include <QFileInfo>
 #include <QGraphicsProxyWidget>
 
+#include "NMModelComponent.h"
 #include "NMGlobalHelper.h"
 #include "NMModelScene.h"
 #include "NMModelViewWidget.h"

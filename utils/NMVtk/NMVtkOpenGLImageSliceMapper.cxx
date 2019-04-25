@@ -85,7 +85,7 @@ NMVtkOpenGLImageSliceMapper::ProcessRequest(
   vtkInformation* request, vtkInformationVector** inputVector,
   vtkInformationVector* outputVector)
 {
-    Superclass::ProcessRequest(request, inputVector, outputVector);
+    return Superclass::ProcessRequest(request, inputVector, outputVector);
 //  // compute display extent
 //  if(request->Has(vtkStreamingDemandDrivenPipeline::REQUEST_INFORMATION()))
 //    {

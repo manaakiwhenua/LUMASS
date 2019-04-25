@@ -111,7 +111,10 @@ INCLUDE_DIRECTORIES(
     ${rimageio_SOURCE_DIR}
     ${mfw_SOURCE_DIR}
     ${mfw_BINARY_DIR}
+    ${mfw_core_SOURCE_DIR}
+    ${mfw_core_BINARY_DIR}
     ${mfw_wrapper_SOURCE_DIR}
+    ${mfw_wrapper_BINARY_DIR}
     ${LPSOLVE_INCLUDE_DIR}
     ${OTB_INCLUDE_DIRS}
     ${RASDAMAN_INCLUDE_DIR}
@@ -121,6 +124,7 @@ INCLUDE_DIRECTORIES(
     ${lumass_SOURCE_DIR}/utils/ITK
     ${lumass_SOURCE_DIR}
     ${muParserX_SOURCE_DIR}
+    ${muparser_SOURCE_DIR}
     ${GDALRATImageIO_BINARY_DIR}
     #${SQLITE3_INCLUDE_DIR}
     ${SQLite_SOURCE_DIR}
@@ -235,7 +239,7 @@ endif()
 set(LUMASS_LINKLIBS
     Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
     QtPropertyBrowser
-    NMModFrame
+    NMModFrameCore ${MFW_WRAPPER_NAMES}
     #QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
     ${VTK_LIBRARIES}
     ${PostgreSQL_LIBRARIES}  ${LPSOLVE_LIBRARY}
@@ -245,7 +249,7 @@ set(LUMASS_LINKLIBS
 )
 
 set(LUMASS_DEPLIBS
-	NMModFrame
+        NMModFrameCore ${MFW_WRAPPER_NAMES}
 	QtPropertyBrowser 
 	SQLite
         VisItTesselator

@@ -26,9 +26,10 @@ INCLUDE_DIRECTORIES(
 	${shared_SOURCE_DIR}
         ${shared_BINARY_DIR}
 	${rimageio_SOURCE_DIR}
-	${mfw_SOURCE_DIR}    
-	${mfw_BINARY_DIR}
+        ${mfw_core_SOURCE_DIR}
+        ${mfw_core_BINARY_DIR}
 	${mfw_wrapper_SOURCE_DIR}
+        ${mfw_wrapper_BINARY_DIR}
         ${LPSOLVE_INCLUDE_DIR}
 	${OTB_INCLUDE_DIRS}
 	${RASDAMAN_INCLUDE_DIR}                                   
@@ -69,7 +70,8 @@ file(GLOB ENGINE_SRC
 )
 
 set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
-	NMModFrame ${VTK_LIBRARIES} ${PostgreSQL_LIBRARIES}
+        NMModFrameCore ${MFW_WRAPPER_NAMES}
+        ${VTK_LIBRARIES} ${PostgreSQL_LIBRARIES}
         ${LPSOLVE_LIBRARY}
         #spatialite
 )
@@ -80,7 +82,7 @@ set(ENGINE_LINKLIBS Qt5Core Qt5Sql Qt5Xml
 #endif()
 	
 set(ENGINE_DEPLIBS
-    NMModFrame
+    NMModFrameCore ${MFW_WRAPPER_NAMES}
 )
 
 IF(RASSUPPORT)

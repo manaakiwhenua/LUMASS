@@ -353,18 +353,18 @@ def formatForwardInputUserIDs(funcName):
     "		    foreach (const QString& input, currentInputs)                                                   \n"  \
     "		    {                                                                                               \n"  \
     "		        std::stringstream uid;                                                                      \n"  \
-    "		        uid << \"L\" << cnt;                                                                          \n"  \
-    "		        QString inputCompName = NMModelController::getComponentNameFromInputSpec(input);            \n"  \
-    "		        NMModelComponent* comp = NMModelController::getInstance()->getComponent(inputCompName);     \n"  \
+    "		        uid << \"L\" << cnt;                                                                        \n"  \
+    "		        QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);      \n"  \
+    "		        NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);              \n"  \
     "		        if (comp != 0)                                                                              \n"  \
     "		        {                                                                                           \n"  \
     "			        if (comp->getUserID().isEmpty())                                                        \n"  \
     "			        {                                                                                       \n"  \
-    "				        userIDs.push_back(uid.str());                                                   \n"  \
+    "				        userIDs.push_back(uid.str());                                                       \n"  \
     "			        }                                                                                       \n"  \
     "			        else                                                                                    \n"  \
     "			        {                                                                                       \n"  \
-    "				        userIDs.push_back(comp->getUserID().toStdString());                             \n"  \
+    "				        userIDs.push_back(comp->getUserID().toStdString());                                 \n"  \
     "			        }                                                                                       \n"  \
     "		        }                                                                                           \n"  \
     "		        else                                                                                        \n"  \
@@ -719,9 +719,9 @@ if __name__ == '__main__':
                 nargs = int(pDict[key])
                 clname = pDict['WrapperClassName']
 
-                if nargs > 0 and clname <> '':
-                    helpinst = formatInternalHelperInst(clname, nargs)
-                    cppStr = cppStr.replace("/*$<HelperClassInstantiation>$*/", helpinst)
+                #if nargs > 0 and clname <> '':
+                #    helpinst = formatInternalHelperInst(clname, nargs)
+                #    cppStr = cppStr.replace("/*$<HelperClassInstantiation>$*/", helpinst)
 
             else:
                 keyword = "/*$<%s>$*/" % str(key)

@@ -2120,8 +2120,12 @@ NMModelViewWidget::updateToolContext(const QString &tool)
     if (aact == 0)
     {
         mModelController->clearModelSettings();
-        NMLogDebug(<< "Update tool context: Tool '"
-                   << tool.toStdString() << "' is not registered!");
+		if (!tool.isEmpty())
+		{
+			NMLogDebug(<< "Update tool context: Tool '"
+				<< tool.toStdString().c_str() << "' is not registered!");
+		}
+		NMLogDebug(<< "Update tool context: No tool name specified!");
         return;
     }
 

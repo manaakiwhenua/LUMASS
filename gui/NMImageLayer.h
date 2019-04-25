@@ -93,6 +93,10 @@ public:
     const double* getBBox(){return (double*)&mBBox[0];}
     const double* getSignedSpacing(){return (double*)&mSignedSpacing[0];}
     const double* getOrigin(){return (double*)&mOrigin[0];}
+    const int*    getVisibleRegion(){return (int*)&mVisibleRegion[0];}
+
+    void getSignedOverviewSpacing(int ovidx, double spac[3]);
+
 	otb::AttributeTable::Pointer getRasterAttributeTable(int band);
     long long getNumTableRecords();
 
@@ -107,7 +111,7 @@ public:
 
 	itk::DataObject *getITKImage(void);
     vtkImageData* getVTKImage(void);
-    vtkIdTypeArray* getHistogram(void);
+    //vtkIdTypeArray* getHistogram(void);
 	QSharedPointer<NMItkDataObjectWrapper> getImage(void);
 	NMProcess* getProcess(void)
 		{return this->mReader;}
@@ -194,7 +198,17 @@ protected:
 	vtkSmartPointer<vtkImageProperty> mImgProp;
 
     NMChartView* mHistogramView;
-    vtkSmartPointer<vtkIdTypeArray> mHistogram;
+//    vtkSmartPointer<vtkIdTypeArray> mHistogram;
+
+    struct LayerHistType
+    {
+        int numBins;
+        double binMin;
+        double binMax;
+        std::vector<double> bins;
+        std::vector<int>    freqs;
+
+    } mHistogram;
 
     // selection mapping & vis
     //vtkSmartPointer<NMVtkOpenGLImageSliceMapper> mImgSelMapper;
@@ -252,8 +266,10 @@ protected:
     double mImgStats[6];
 
     bool mbUseOverviews;
+    std::vector< std::vector<int> > mOverviewSize;
 
     int mScalarColIdx;
+    static const int mMaxLayerDimensions;
     FILE* mScalarBufferFile;
 
     std::map<long long, long long> mScalarLongLongMap;

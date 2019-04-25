@@ -136,6 +136,7 @@
 #include "vtkPlotBar.h"
 #include "vtkRect.h"
 #include "vtkBoundingBox.h"
+#include <vtkTextProperty.h>
 //#include "valgrind/callgrind.h"
 
 template<class PixelType, unsigned int Dimension>
@@ -146,6 +147,8 @@ public:
     typedef typename ImgType::RegionType RegionType;
     typedef otb::VectorImage<PixelType, Dimension> VecImgType;
     typedef typename VecImgType::RegionType VecRegionType;
+
+    static const int max_layer_dim = 3;
 
     //typedef typename itk::StatisticsImageFilter<ImgType> StatsFilterType;
     //typedef typename itk::StatisticsImageFilter<VecImgType> VecStatsFilterType;
@@ -190,7 +193,7 @@ public:
             if (img.IsNull() || img.GetPointer() == 0 || origin == 0) return;
 
             // we set everything to zero here
-            for(int i=0; i < 3; ++i)
+            for(int i=0; i < max_layer_dim; ++i)
             {
                 origin[i] = 0;
             }
@@ -224,7 +227,7 @@ public:
                 }
             }
 
-            for (int d=0; d < 3; ++d)
+            for (int d=0; d < max_layer_dim; ++d)
             {
                 origin[d] = TheOrigin[d];
             }
@@ -236,7 +239,7 @@ public:
             if (img.IsNull() || img.GetPointer() == 0 || sspacing == 0) return;
 
             // we set everything to zero here
-            for(int i=0; i < 3; ++i)
+            for(int i=0; i < max_layer_dim; ++i)
             {
                 sspacing[i] = 0;
             }
@@ -270,7 +273,7 @@ public:
                 }
             }
 
-            for (int d=0; d < 3; ++d)
+            for (int d=0; d < max_layer_dim; ++d)
             {
                 sspacing[d] = SignedSpacing[d];
             }
@@ -478,28 +481,15 @@ NMImageLayer::getWindowStatistics(void)
     if (mReader == nullptr || mReader->getImageIOBase() == nullptr)
     {
 
-        // calc stats
-    //        vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
-    //        cast->SetOutputScalarTypeToDouble();
-    //        cast->SetInputConnection(conn->getVtkAlgorithmOutput());
-
         vtkSmartPointer<vtkImageHistogramStatistics> stats =
                 vtkSmartPointer<vtkImageHistogramStatistics>::New();
         stats->SetInputConnection(mPipeconn->getVtkAlgorithmOutput());
-    //    vtkImageMapper3D* im3d = vtkImageMapper3D::SafeDownCast(mMapper);
-    //    stats->SetInputData(im3d->GetInput());
-
-        //unsigned int nthreads = std::max(stats->GetNumberOfThreads() - 2, 1);
-        //stats->AutomaticBinningOff();
-        //stats->SetNumberOfBins(256);
         stats->AutomaticBinningOn();
         stats->SetMaximumNumberOfBins(256);
-        //stats->SetNumberOfThreads(1);
         stats->GenerateHistogramImageOff();
-        //stats->SetInputConnection(cast->GetOutputPort());
         stats->Update();
 
-        mHistogram = stats->GetHistogram();
+        //mHistogram = stats->GetHistogram();
 
         ret.push_back(stats->GetMinimum());
         ret.push_back(stats->GetMaximum());
@@ -512,74 +502,7 @@ NMImageLayer::getWindowStatistics(void)
     }
     else
     {
-        if (!this->mFileName.isEmpty())
-        {
-            NMImageReader* imgReader = new NMImageReader(0);
-            imgReader->setFileName(this->mFileName);
-
-            imgReader->instantiateObject();
-            if (!imgReader->isInitialised())
-            {
-                NMLogWarn(<< ctxNMImageLayer << ": Failed initialising NMImageReader!");
-            }
-            else
-            {
-                int ovidx = this->mOverviewIdx;
-
-                // is this layer actually visible?
-                bool bIsVisible = true;
-                for (int d=0; d < 2; ++d)
-                {
-                    if (mVisibleRegion[d*2+1] == 0)
-                    {
-                        bIsVisible = false;
-                    }
-                }
-
-                const int numOverviews = imgReader->getNumberOfOverviews();
-                if ((!bIsVisible || !mbLayerLoaded) && numOverviews > 0)
-                {
-                    ovidx = numOverviews-1;
-                }
-
-
-                std::vector<std::vector<int> > sizes = this->getOverviewSizes();
-                if (ovidx >= 0)
-                {
-                    if (sizes.size() > 0)
-                    {
-                        for (int d=0; d < 3; ++d)
-                        {
-                            mVisibleRegion[d*2] = 0;
-                            mVisibleRegion[d*2+1] = d < 2 ? sizes[ovidx][d] : 0;
-                        }
-                    }
-                }
-                else
-                {
-                    if (!bIsVisible)
-                    {
-                        double h_ext = mBBox[1] - mBBox[0];
-                        double v_ext = mBBox[3] - mBBox[2];
-
-                        int fullcols = h_ext / mSignedSpacing[0];
-                        int fullrows = v_ext / ::fabs(mSignedSpacing[1]);
-
-                        for (int d=0; d < 3; ++d)
-                        {
-                            mVisibleRegion[d*2] = 0;
-                            mVisibleRegion[d*2+1] = d < 1 ? fullcols :
-                                                    d < 2 ? fullrows : 0;
-                        }
-                    }
-                }
-
-                imgReader->setOverviewIdx(ovidx, mVisibleRegion);
-                ret = imgReader->getImageStatistics();
-            }
-
-            delete imgReader;
-        }
+        ret = this->mReader->getImageStatistics();
     }
 
     emit layerProcessingEnd();
@@ -599,6 +522,18 @@ NMImageLayer::showHistogram(void)
 
     }
 
+    //std::vector<double> stats = this->getWindowStatistics();
+    mHistogram.numBins = 64;
+    mHistogram.binMin = this->mLower;
+    mHistogram.binMax = this->mUpper;
+    if (this->mReader != nullptr)
+    {
+
+        this->mReader->getImageHistogram(mHistogram.bins, mHistogram.freqs,
+                                         mHistogram.numBins, mHistogram.binMin,
+                                         mHistogram.binMax);
+    }
+
 
     mHistogramView->show();
     this->updateHistogram(0);
@@ -608,39 +543,51 @@ void
 NMImageLayer::updateHistogram(vtkObject *)
 {
     if (    mHistogramView == 0
-         || !mHistogramView->isVisible())
+         || !mHistogramView->isVisible()
+       )
     {
         return;
     }
 
     // prepare the histogram data
     // histogram data
-    std::vector<double> stats = this->getWindowStatistics();
-    int nbins = mHistogram->GetNumberOfTuples();
-    mHistogram->SetName("Frequency");
+
+    int nbins = mHistogram.numBins;
 
     vtkSmartPointer<vtkFloatArray> pixval = vtkSmartPointer<vtkFloatArray>::New();
     pixval->SetNumberOfComponents(1);
     pixval->SetNumberOfTuples(nbins);
     pixval->SetName("Value");
 
+    vtkSmartPointer<vtkIntArray> freqval = vtkSmartPointer<vtkIntArray>::New();
+    freqval->SetNumberOfComponents(1);
+    freqval->SetNumberOfTuples(nbins);
+    freqval->SetName("Frequency");
+
     vtkSmartPointer<vtkTable> tab = vtkSmartPointer<vtkTable>::New();
     tab->AddColumn(pixval);
-    tab->AddColumn(mHistogram);
+    tab->AddColumn(freqval);
 
-    double range = (stats[1] - stats[0]);
-    double min = stats[0];
-    double npix = stats[5];
+//    double range = (stats[1] - stats[0]);
+//    double min = stats[0];
+//    double npix = stats[5];
 
     for (int n=0; n < nbins; ++n)
     {
-        tab->SetValue(n, 0, vtkVariant((n+1)*range/(double)nbins));
+        tab->SetValue(n, 0, mHistogram.bins[n]);
+        tab->SetValue(n, 1, mHistogram.freqs[n]);
     }
 
     vtkChartXY* chart = vtkChartXY::SafeDownCast(mHistogramView->getContextView()->GetScene()->GetItem(0));
-    chart->GetAxis(1)->SetRange(stats[0], stats[1]);
     chart->GetAxis(1)->SetTitle("Pixel Value");
+    chart->GetAxis(1)->SetRange(mHistogram.binMin, mHistogram.binMax);
     chart->GetAxis(0)->SetTitle("Frequency");
+
+    chart->GetAxis(0)->GetTitleProperties()->SetFontSize(16);
+    chart->GetAxis(1)->GetTitleProperties()->SetFontSize(16);
+
+    chart->GetAxis(0)->GetLabelProperties()->SetFontSize(16);
+    chart->GetAxis(1)->GetLabelProperties()->SetFontSize(16);
 
     chart->ClearPlots();
 
@@ -651,7 +598,7 @@ NMImageLayer::updateHistogram(vtkObject *)
     plotBar = vtkPlotBar::SafeDownCast(plot);
     plotBar->SetInputData(tab, 0, 1);
     plotBar->SetOrientation(vtkPlotBar::VERTICAL);
-    plotBar->SetColor(0.7, 0.7, 0.7);
+    plotBar->SetColor(0, 170/255.0, 255/255.0);
 
 
     mHistogramView->show();
@@ -1400,6 +1347,17 @@ NMImageLayer::setFileName(QString filename)
         }
     }
 
+    // store overview sizes
+    mOverviewSize.clear();
+    const int numOvv = this->mReader->getNumberOfOverviews();
+    for (int n=0; n < numOvv; ++n)
+    {
+        std::vector<int> size = {0,0};
+        size[0] = this->mReader->getOverviewSize(n)[0];
+        size[1] = this->mReader->getOverviewSize(n)[1];
+        mOverviewSize.push_back(size);
+    }
+
     // get original image attributes before we muck
     // around with scaling and overviews
     this->mReader->getBBox(this->mBBox);
@@ -1538,7 +1496,7 @@ NMImageLayer::mapExtentChanged(void)
     qreal dpr = qApp->devicePixelRatio();
 
     vtkRendererCollection* rencoll = this->mRenderWindow->GetRenderers();
-    vtkRenderer* ren = 0;
+    vtkRenderer* ren = nullptr;
     if (this->mRenderer->GetViewProps()->GetNumberOfItems() == 0)
     {
         if (rencoll->GetNumberOfItems() > 1)
@@ -1603,8 +1561,6 @@ NMImageLayer::mapExtentChanged(void)
         else
         {
             bHasVisReg = true;
-
-
 
             if (wwidth > 1 && wheight > 1)
             {
@@ -1675,8 +1631,8 @@ NMImageLayer::mapExtentChanged(void)
     if (this->mRenderer->GetViewProps()->GetNumberOfItems() > 0)
     {
         // overview properties and visible extent
-        int cols = ovidx >= 0 ? this->mReader->getOverviewSize(ovidx)[0]: fullcols;
-        int rows = ovidx >= 0 ? this->mReader->getOverviewSize(ovidx)[1]: fullrows;
+        int cols = ovidx >= 0 ? mOverviewSize[ovidx][0] : fullcols;
+        int rows = ovidx >= 0 ? mOverviewSize[ovidx][1] : fullrows;
 
         double uspacing[3];
         uspacing[0] = h_ext / cols;
@@ -1759,6 +1715,36 @@ NMImageLayer::setBandMap(const std::vector<int> map)
     {
         this->mReader->setBandMap(mBandMap);
     }
+}
+
+void
+NMImageLayer::getSignedOverviewSpacing(int ovidx, double os[3])
+{
+    for (int d=0; d < 3; ++d)
+    {
+        os[d] = 0;
+    }
+
+    if (this->mReader == nullptr)
+    {
+        return;
+    }
+
+    std::vector<unsigned int> ovwsize = this->mReader->getOverviewSize(ovidx);
+    bool bnos = ovwsize.size() == 0 ? true : false;
+    bool booi = ovidx < (-1) ? true : false;
+    if (bnos || booi)
+    {
+        return;
+    }
+
+    os[0] = (mBBox[1] - mBBox[0]) / ovwsize[0];
+    os[1] = -(mBBox[3] - mBBox[2]) / ovwsize[1];
+    if (ovwsize.size() == 3)
+    {
+        os[2] = (mBBox[5] - mBBox[4]) / ovwsize[2];
+    }
+    os[2] = 0;
 }
 
 void
@@ -2767,15 +2753,15 @@ vtkImageData *NMImageLayer::getVTKImage(void)
     }
 }
 
-vtkIdTypeArray* NMImageLayer::getHistogram(void)
-{
-    if (mHistogram.GetPointer() != 0)
-    {
-        return mHistogram;
-    }
+//vtkIdTypeArray* NMImageLayer::getHistogram(void)
+//{
+//    if (mHistogram.GetPointer() != 0)
+//    {
+//        return mHistogram;
+//    }
 
-    return 0;
-}
+//    return 0;
+//}
 
 itk::DataObject* NMImageLayer::getITKImage(void)
 {

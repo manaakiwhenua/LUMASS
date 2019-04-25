@@ -29,6 +29,7 @@
 #include "vtkEventQtSlotConnect.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderWindowInteractor.h"
+#include <vtkGenericOpenGLRenderWindow.h>
 
 #include "NMMacros.h"
 #include "NMLogger.h"
@@ -55,17 +56,16 @@ NMChartView::NMChartView(QWidget *parent) : QWidget(parent)
     rect.setHeight((int)(500.0*pr));
     this->setGeometry(rect);
 
-    mVTKView = new QVTKWidget(parent);
+    vtkNew<vtkGenericOpenGLRenderWindow> window;
+    mVTKView = new QVTKOpenGLWidget();
+    mVTKView->SetRenderWindow(window);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(mVTKView);
 
     mContextView = vtkSmartPointer<vtkContextView>::New();
-    mContextView->SetInteractor(mVTKView->GetInteractor());
-    mVTKView->SetRenderWindow(mContextView->GetRenderWindow());
-
-    //mVTKView->GetRenderWindow()->SetSize(800,600);
-    mVTKView->GetRenderWindow()->SetMultiSamples(0);
+    mContextView->SetRenderWindow(window);
+    mContextView->SetInteractor(window->GetInteractor());
 
 
     //========================================================

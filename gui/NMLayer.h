@@ -78,7 +78,7 @@ class NMLogger;
 struct CompNumStrings
 {
 public:
-    bool operator()(const QString& lhs, const QString& rhs)
+    bool operator()(const QString& lhs, const QString& rhs) const
     {
         bool blhv = false, brhv = false;
         const long long lhv = lhs.toLongLong(&blhv);

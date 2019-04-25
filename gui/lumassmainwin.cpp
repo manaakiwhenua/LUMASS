@@ -84,8 +84,6 @@
 #include "NMAbstractAction.h"
 #include "NMModelAction.h"
 
-
-
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
 #include "otbSQLiteTable.h"
@@ -181,7 +179,6 @@
 //#include "mpParser.h"
 
 #include "otbFlowAccumulationFilter.h"
-#include "otbParallelFillSinks.h"
 #include "otbStreamingRATImageFileWriter.h"
 
 //#include "otbFlowAccumulationFilter.h"

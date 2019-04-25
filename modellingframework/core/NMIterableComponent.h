@@ -33,7 +33,7 @@
 #include "NMModelComponent.h"
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
 /*! \brief NMModelComponentIterator
  *
@@ -42,7 +42,7 @@
  *
  */
 
-class NMMODFRAME_EXPORT NMModelComponentIterator
+class NMMODFRAMECORE_EXPORT NMModelComponentIterator
 {
     friend class NMIterableComponent;
 
@@ -130,7 +130,7 @@ private:
  *	\see NMModelComponent, NMDataComponent, NMProcess, NMModelController
  */
 
-class NMMODFRAME_EXPORT NMIterableComponent : public NMModelComponent
+class NMMODFRAMECORE_EXPORT NMIterableComponent : public NMModelComponent
 {
 	Q_OBJECT
 

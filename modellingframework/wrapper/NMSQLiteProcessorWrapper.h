@@ -34,12 +34,12 @@
 #include <iostream>
 #include <QStringList>
 #include <QList>
-#include "nmmodframe_export.h"
+#include "nmsqliteprocessorwrapper_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMSQLiteProcessorWrapper_Internal;
 
-class
+class NMSQLITEPROCESSORWRAPPER_EXPORT
 NMSQLiteProcessorWrapper
 		: public NMProcess
 {

@@ -37,6 +37,7 @@
 #include "NMModelController.h"
 #include "itkRGBPixel.h"
 #include "otbStreamingStatisticsImageFilter.h"
+#include "itkImageToHistogramFilter.h"
 
 
 #include "otbNMImageReader.h"
@@ -320,6 +321,8 @@ public:
     typedef typename VecReaderType::ImageRegionType       VecReaderRegionType;
 
     typedef typename otb::PersistentStatisticsImageFilter<ImgType>    StatsFilterType;
+    typedef typename itk::Statistics::ImageToHistogramFilter<ImgType>             HistogramFilterType;
+
     typedef typename otb::StreamingImageVirtualWriter<ImgType>       VirtWriterType;
 
 
@@ -376,6 +379,75 @@ public:
         {
             stats.resize(7, -9999);
             return;
+        }
+    }
+
+    static void getImageHistogram(itk::ProcessObject* procObj, unsigned int numBands,
+                              std::vector<double>& bins, std::vector<int>& freqs,
+                              const int numBins, double binMin, double binMax,
+                              const int* index, const int* size)
+    {
+        bins.clear();
+        freqs.clear();
+
+        if (numBands == 1)
+        {
+            ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            if (index != nullptr && size != nullptr)
+            {
+                typename ReaderType::ImageRegionType::IndexType idx;
+                typename ReaderType::ImageRegionType::SizeType sz;
+                typename ReaderType::ImageRegionType reg;
+
+                for (int d=0; d < ImgType::ImageDimension; ++d)
+                {
+                    idx[d] = index[d];
+                    sz[d] = size[d];
+                }
+                reg.SetIndex(idx);
+                reg.SetSize(sz);
+                r->UseUserLargestPossibleRegionOn();
+                r->SetUserLargestPossibleRegion(reg);
+            }
+
+            using SizeType = typename HistogramFilterType::HistogramType::SizeType;
+            SizeType histSize(1);
+            histSize.Fill(numBins);
+
+            using HistMeasureType = typename HistogramFilterType::HistogramMeasurementVectorType;
+            HistMeasureType msMin(numBins);
+            HistMeasureType msMax(numBins);
+            msMin.Fill(binMin);
+            msMax.Fill(binMax);
+
+            typename HistogramFilterType::Pointer f = HistogramFilterType::New();
+            //typename VirtWriterType::Pointer w = VirtWriterType::New();
+            //w->SetAutomaticStrippedStreaming(512);
+
+            unsigned int nth = f->GetNumberOfThreads();
+            nth = nth > 0 ? nth : 1;
+
+            f->SetInput(r->GetOutput());
+            f->SetNumberOfThreads(nth);
+            f->SetAutoMinimumMaximum(false);
+            f->SetHistogramSize(histSize);
+            f->SetHistogramBinMinimum(msMin);
+            f->SetHistogramBinMaximum(msMax);
+            f->Update();
+
+            //w->SetInput(f->GetOutput());
+            //w->Update();
+
+            using HistogramType = typename HistogramFilterType::HistogramType;
+            HistogramType* hist = f->GetOutput();
+            int hsize = hist->GetSize()[0];
+            freqs.resize(hsize);
+            bins.resize(hsize);
+            for (unsigned int i=0; i < hist->GetSize()[0]; ++i)
+            {
+                freqs[i] = hist->GetFrequency(i);
+                bins[i] = hist->GetMeasurement(i, 0);
+            }
         }
     }
 
@@ -445,7 +517,7 @@ public:
 
 
     static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
-                                 unsigned int numBands, int ovvidx, int* userLPR,
+                                 unsigned int numBands, int ovvidx, const int* userLPR,
                                bool rgbMode)
     {
         if (numBands == 1)
@@ -872,6 +944,31 @@ template class RasdamanReader<double, 3>;
 		} \
 	}
 #else
+
+    #define CallGetImageHistogram( PixelType ) \
+    { \
+      { \
+          switch (this->mOutputNumDimensions) \
+          { \
+          case 1: \
+              FileReader< PixelType, 1 >::getImageHistogram( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, bins, freqs, numBins, binMin, binMax, index, size); \
+              break; \
+          case 3: \
+              FileReader< PixelType, 3 >::getImageHistogram( \
+                      this->mOtbProcess, \
+                      this->mOutputNumBands, bins, freqs, numBins, binMin, binMax, index, size); \
+              break; \
+          default: \
+              FileReader< PixelType, 2 >::getImageHistogram( \
+                  this->mOtbProcess, \
+                  this->mOutputNumBands, bins, freqs, numBins, binMin, binMax, index, size); \
+          }\
+      } \
+    }
+
+
 
     #define CallGetImgStatsMacro( PixelType ) \
     { \
@@ -1337,6 +1434,18 @@ NMImageReader::buildOverviews(const std::string& resamplingType)
     }
 }
 
+void NMImageReader::getImageHistogram(std::vector<double>& bins,
+                                      std::vector<int>& freqs,
+                                      int numBins, double binMin, double binMax,
+                                      const int* index, const int* size)
+{
+    switch(this->mOutputComponentType)
+    {
+    LocalMacroPerSingleType( CallGetImageHistogram )
+    default:
+        break;
+    }
+}
 
 std::vector<double> NMImageReader::getImageStatistics(const int *index, const int *size)
 {
@@ -1384,7 +1493,7 @@ NMImageReader::setInternalRATType()
 }
 
 void
-NMImageReader::setOverviewIdx(int ovvidx, int* userLPR)
+NMImageReader::setOverviewIdx(int ovvidx, const int *userLPR)
 {
     if (!mbRasMode)
     {
@@ -1428,13 +1537,21 @@ NMImageReader::getOverviewSize(int ovvidx)
         otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
                     this->mItkImgIOBase.GetPointer());
 
-        if (    gio
-            &&  (   ovvidx >= 0
-                 && ovvidx < gio->GetNbOverviews()
-                )
-           )
+        if (gio.IsNotNull())
         {
-            ret = gio->GetOverviewSize(ovvidx);
+            if (    ovvidx >= 0
+                &&  ovvidx < gio->GetNbOverviews()
+               )
+            {
+                ret = gio->GetOverviewSize(ovvidx);
+            }
+            else
+            {
+                for (unsigned int d=0; d < gio->GetNumberOfDimensions(); ++d)
+                {
+                    ret.push_back(gio->getLPR()[d]);
+                }
+            }
         }
     }
     return ret;

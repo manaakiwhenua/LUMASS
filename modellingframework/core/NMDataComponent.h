@@ -34,11 +34,11 @@
 #include "NMMacros.h"
 #include "NMModelComponent.h"
 #include "NMItkDataObjectWrapper.h"
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
 class NMDataRefComponent;
 
-class NMMODFRAME_EXPORT NMDataComponent: public NMModelComponent
+class NMMODFRAMECORE_EXPORT NMDataComponent: public NMModelComponent
 {
 	Q_OBJECT
 

@@ -35,7 +35,6 @@
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include "nmmodframe_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMVirtualStreamWriter_Internal;

@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2013 Landcare Research New Zealand Ltd
+ * Copyright 2017 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -15,40 +15,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
-/*
- * NMConditionalIterComponent.h
- *
- *  Created on: 12/02/2013
- *      Author: alex
- */
 
-#ifndef NMCONDITIONALITERCOMPONENT_H_
-#define NMCONDITIONALITERCOMPONENT_H_
+#ifndef NMMODELOBJECT_H
+#define NMMODELOBJECT_H
 
-#include "nmlog.h"
-#include "NMMacros.h"
-#include "NMProcess.h"
+#include "NMObject.h"
+#include "nmmodframecore_export.h"
 
-#include <NMIterableComponent.h>
-#include <QMap>
+class NMModelController;
 
-#include "nmmodframe_export.h"
-
-class NMMODFRAME_EXPORT NMConditionalIterComponent: public NMIterableComponent
+class NMMODFRAMECORE_EXPORT NMModelObject : public NMObject
 {
-	Q_OBJECT
-
-
 public:
-    NMConditionalIterComponent(QObject* parent=0);
-	virtual ~NMConditionalIterComponent(void);
+    NMModelObject();
+
+    virtual void setModelController(NMModelController* controller);
+    NMModelController* getModelController(void);
 
 protected:
-    void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
-    		unsigned int minLevel, unsigned int maxLevel);
+    NMModelController* mController;
 
-private:
-	static const std::string ctx;
 };
 
-#endif /* NMCONDITIONALITERCOMPONENT_H_ */
+#endif // NMMODELOBJECT_H

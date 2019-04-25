@@ -37,11 +37,50 @@ public:
     typedef itk::RGBPixel< PixelType >                  RGBPixelType;
     typedef otb::Image< RGBPixelType, ImageDimension >  RGBImgType;
     typedef typename RGBImgType::RegionType             RGBImgRegType;
+    typedef typename RGBImgType::PointType              RGBImgPointType;
 
     typedef otb::Image<PixelType, ImageDimension> ImgType;
     typedef typename ImgType::RegionType ImgRegType;
+    typedef typename ImgType::PointType ImgPointType;
+
     typedef otb::VectorImage<PixelType, ImageDimension> VecType;
     typedef typename VecType::RegionType VecRegType;
+    typedef typename VecType::PointType VecPointType;
+
+    static void setOrigin(itk::DataObject::Pointer& dataObj,
+                          unsigned int numBands, bool rgbMode, const double* origin)
+    {
+        if (numBands == 1)
+        {
+            ImgType* img = dynamic_cast<ImgType*>(dataObj.GetPointer());
+            ImgPointType orig;
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                orig[d] = origin[d];
+            }
+            img->SetOrigin(orig);
+        }
+        else if (numBands == 3 && rgbMode)
+        {
+            RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj.GetPointer());
+            RGBImgPointType orig;
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                orig[d] = origin[d];
+            }
+            img->SetOrigin(orig);
+        }
+        else
+        {
+            VecType* img = dynamic_cast<VecType*>(dataObj.GetPointer());
+            VecPointType orig;
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                orig[d] = origin[d];
+            }
+            img->SetOrigin(orig);
+        }
+    }
 
     static void setRegion(itk::DataObject::Pointer& dataObj,
                           NMItkDataObjectWrapper::NMRegionType& regType,
@@ -103,6 +142,25 @@ public:
         }
     }
 };
+
+#define DWSetOrigin( comptype ) \
+{ \
+    switch(mNumDimensions) \
+    { \
+    case 1: \
+        NMItkDataObjectWrapper_Internal<comptype, 1>::setOrigin( \
+            mDataObject, mNumBands, mIsRGBImage, origin); \
+        break; \
+    case 2: \
+        NMItkDataObjectWrapper_Internal<comptype, 2>::setOrigin( \
+            mDataObject, mNumBands, mIsRGBImage, origin); \
+        break; \
+    case 3: \
+        NMItkDataObjectWrapper_Internal<comptype, 3>::setOrigin( \
+            mDataObject, mNumBands, mIsRGBImage, origin); \
+        break; \
+    }\
+}
 
 #define DWSetRegion( comptype ) \
 { \
@@ -197,6 +255,24 @@ NMItkDataObjectWrapper::setImageRegion(NMRegionType regType, void *regObj)
     switch (this->mNMComponentType)
     {
         LocalMacroPerSingleType( DWSetRegion )
+        default:
+            break;
+    }
+}
+
+void
+NMItkDataObjectWrapper::setImageOrigin(const double* origin)
+{
+    if (mDataObject.IsNull())
+    {
+        NMWarn("NMItkDataObjectWrapper::setImageOrigin()",
+               << "itk::DataObject is NULL");
+        return;
+    }
+
+    switch (this->mNMComponentType)
+    {
+        LocalMacroPerSingleType( DWSetOrigin )
         default:
             break;
     }

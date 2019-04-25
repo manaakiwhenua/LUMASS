@@ -25,9 +25,9 @@
 #define NMLUALLOCATIONWRAPPER_H_
 
 #include "NMProcess.h"
-#include "nmmodframe_export.h"
+#include "nmluallocationwrapper_export.h"
 
-class NMMODFRAME_EXPORT NMLUAllocationWrapper: public NMProcess
+class NMLUALLOCATIONWRAPPER_EXPORT NMLUAllocationWrapper: public NMProcess
 {
 public:
 	NMLUAllocationWrapper();

@@ -37,9 +37,9 @@
 #include "NMItkDataObjectWrapper.h"
 
 #include "otbImageIOBase.h"
-#include "nmmodframe_export.h"
+#include "nmneighbourhoodcountingwrapper_export.h"
 
-class NMMODFRAME_EXPORT NMNeighbourhoodCountingWrapper: public NMProcess
+class NMNEIGHBOURHOODCOUNTINGWRAPPER_EXPORT NMNeighbourhoodCountingWrapper: public NMProcess
 {
 	Q_OBJECT
 	Q_PROPERTY(QStringList TestValueList READ getTestValueList WRITE setTestValueList)

@@ -34,12 +34,12 @@
 #include <iostream>
 #include <QStringList>
 #include <QList>
-#include "nmmodframe_export.h"
+#include "nmcombinetwofilterwrapper_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMCombineTwoFilterWrapper_Internal;
 
-class NMMODFRAME_EXPORT NMCombineTwoFilterWrapper
+class NMCOMBINETWOFILTERWRAPPER_EXPORT NMCombineTwoFilterWrapper
 		: public NMProcess
 {
 	Q_OBJECT

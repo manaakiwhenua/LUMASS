@@ -33,11 +33,11 @@
 
 //#include "NMModelComponent.h"
 //#include "NMItkDataObjectWrapper.h"
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
 
 
-class NMMODFRAME_EXPORT NMDataRefComponent: public NMDataComponent
+class NMMODFRAMECORE_EXPORT NMDataRefComponent: public NMDataComponent
 {
     Q_OBJECT
     Q_PROPERTY(QString DataComponentName READ getDataComponentName WRITE setDataComponentName)

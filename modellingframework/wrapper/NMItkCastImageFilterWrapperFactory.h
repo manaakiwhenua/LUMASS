@@ -1,6 +1,6 @@
 /******************************************************************************
  * Created by Alexander Herzig
- * Copyright 2017 Landcare Research New Zealand Ltd
+ * Copyright 2019 Landcare Research New Zealand Ltd
  *
  * This file is part of 'LUMASS', which is free software: you can redistribute
  * it and/or modify it under the terms of the GNU General Public License as
@@ -15,26 +15,30 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
+/*
+ * NMItkCastImageFilterWrapperFactory.h
+ *
+ *  Created on: 2019-04-09
+ *      Author: Alex Herzig
+ */
 
-#ifndef NMMODELOBJECT_H
-#define NMMODELOBJECT_H
+#ifndef NMItkCastImageFilterWrapperFactory_H_
+#define NMItkCastImageFilterWrapperFactory_H_
 
-#include "NMObject.h"
-#include "nmmodframe_export.h"
+#include <QObject>
+#include "NMWrapperFactory.h"
 
-class NMModelController;
+#include "nmitkcastimagefilterwrapper_export.h"
 
-class NMMODFRAME_EXPORT NMModelObject : public NMObject
+class NMITKCASTIMAGEFILTERWRAPPER_EXPORT NMItkCastImageFilterWrapperFactory : public NMWrapperFactory
 {
+    Q_OBJECT
 public:
-    NMModelObject();
+    NMItkCastImageFilterWrapperFactory(QObject *parent = nullptr);
 
-    virtual void setModelController(NMModelController* controller);
-    NMModelController* getModelController(void);
-
-protected:
-    NMModelController* mController;
-
+    NMProcess* createWrapper();
+    bool isSinkProcess(void) {return false;}
+    QString getWrapperClassName() {return "NMItkCastImageFilterWrapper";}
 };
 
-#endif // NMMODELOBJECT_H
+#endif // NMItkCastImageFilterWrapperFactory_H

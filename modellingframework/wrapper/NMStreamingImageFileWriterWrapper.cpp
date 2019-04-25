@@ -748,7 +748,7 @@ NMStreamingImageFileWriterWrapper
 
     this->mStreamingMethodType = QString(tr("STRIPPED"));
     this->mStreamingMethodEnum.clear();
-    this->mStreamingMethodEnum << "STRIPPED" << "TILED";
+    this->mStreamingMethodEnum << "STRIPPED" << "TILED" << "NO_STREAMING";
 
 #ifdef BUILD_RASSUPPORT
 	this->mRasConnector = 0;

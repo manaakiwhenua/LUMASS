@@ -42,7 +42,7 @@
 #include "NMObject.h"
 #include "otbAttributeTable.h"
 
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
 class NMItkDataObjectWrapper;
 class NMModelComponent;
@@ -67,7 +67,7 @@ class NMLogger;
  *
  */
 
-class NMMODFRAME_EXPORT NMModelController: public QObject, public NMObject
+class NMMODFRAMECORE_EXPORT NMModelController: public QObject, public NMObject
 {
 	Q_OBJECT
 

@@ -35,12 +35,12 @@
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include "nmmodframe_export.h"
+#include "nmmosrafilterwrapper_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMMosraFilterWrapper_Internal;
 
-class
+class NMMOSRAFILTERWRAPPER_EXPORT
 NMMosraFilterWrapper
 		: public NMProcess
 {

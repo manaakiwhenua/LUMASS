@@ -22,32 +22,22 @@
  *      Author: alex
  */
 
+#include <QApplication>
+#include <QLibrary>
+#include <QDir>
+#include <QFileInfo>
+
 #include "NMProcessFactory.h"
+#include "NMProcess.h"
+#include "NMWrapperFactory.h"
 #include "NMImageReader.h"
-#include "NMRATBandMathImageFilterWrapper.h"
-#include "NMStreamingImageFileWriterWrapper.h"
-#include "NMNeighbourhoodCountingWrapper.h"
-#include "NMRandomImageSourceWrapper.h"
-#include "NMCostDistanceBufferImageWrapper.h"
-#include "NMFocalNeighbourhoodDistanceWeightingWrapper.h"
-#include "NMSumZonesFilterWrapper.h"
-#include "NMItkCastImageFilterWrapper.h"
-#include "NMResampleImageFilterWrapper.h"
-#include "NMUniqueCombinationFilterWrapper.h"
-#include "NMCombineTwoFilterWrapper.h"
-#include "NMExternalExecWrapper.h"
-#include "NMSQLiteProcessorWrapper.h"
-#include "NMScriptableKernelFilterWrapper.h"
-#include "NMScriptableKernelFilter2Wrapper.h"
 #include "NMTableReader.h"
-#include "NMVectorImageToImageFilterWrapper.h"
-#include "NMExternalSortFilterWrapper.h"
-#include "NMMosraFilterWrapper.h"
-#include "NMVirtualStreamWriter.h"
+
 /*$<IncludeWrapperHeader>$*/
 
 
 NMProcessFactory::NMProcessFactory(QObject* parent)
+    : bLibInitialised(false)
 {
 	this->setParent(parent);
 
@@ -75,6 +65,8 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("ImageSorter");
     mProcRegister << QString::fromLatin1("SpatialOptimisation");
     mProcRegister << QString::fromLatin1("ImageBufferWriter");
+    mProcRegister << QString::fromLatin1("RAMFlowAcc");
+    mProcRegister << QString::fromLatin1("TerrainAttributes");
 /*$<RegisterComponentName>$*/
 
     mSinks << QString::fromLatin1("ImageWriter");
@@ -204,107 +196,79 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMVirtualStreamWriter";
     }
+    else if (alias.compare("RAMFlowAcc") == 0)
+    {
+        return "NMFlowAccumulationFilterWrapper";
+    }
+    else if (alias.compare("TerrainAttributes") == 0)
+    {
+        return "NMDEMSlopeAspectFilterWrapper";
+    }
 /*$<WrapperClassNameFromComponentName>$*/
     else return proc;
+}
+
+void
+NMProcessFactory::initializeProcessLibrary()
+{
+    QString path = qApp->applicationDirPath();
+
+#ifdef __linux__
+    path += "/../lib";
+#endif
+
+    NM_CREATE_FACTORY_FUNC factoryFunc = 0;
+
+    QDir libDir(path);
+    QFileInfoList libInfoList = libDir.entryInfoList();
+    foreach(const QFileInfo& libInfo, libInfoList)
+    {
+        QString libname = QString("%1/%2").arg(path).arg(libInfo.fileName());
+        if (QLibrary::isLibrary(libname))
+        {
+            QLibrary wrapperLib(libname);
+            factoryFunc = (NM_CREATE_FACTORY_FUNC)wrapperLib.resolve("createWrapperFactory");
+
+            if (factoryFunc != nullptr)
+            {
+                NMWrapperFactory* factory = factoryFunc();
+                factory->setParent(this);
+                mFactoryRegister[factory->getWrapperClassName()] = factory;
+            }
+        }
+    }
+
+    bLibInitialised = true;
 }
 
 // TODO: this needs to be revised to support automatic
 //       registration of supported classes;
 NMProcess* NMProcessFactory::createProcess(const QString& procClass)
 {
+    if (!bLibInitialised)
+    {
+        initializeProcessLibrary();
+    }
+
     NMProcess* proc = 0;
 
     if (procClass.compare("NMImageReader") == 0)
-	{
+    {
         proc =  new NMImageReader(this);
-	}
-	else if (procClass.compare("NMRATBandMathImageFilterWrapper") == 0)
-	{
-        proc =  new NMRATBandMathImageFilterWrapper(this);
-	}
-	else if (procClass.compare("NMStreamingImageFileWriterWrapper") == 0)
-	{
-        proc =  new NMStreamingImageFileWriterWrapper(this);
-	}
-	else if (procClass.compare("NMNeighbourhoodCountingWrapper") == 0)
-	{
-        proc =  new NMNeighbourhoodCountingWrapper(this);
-	}
-	else if (procClass.compare("NMRandomImageSourceWrapper") == 0)
-	{
-        proc =  new NMRandomImageSourceWrapper(this);
-	}
-	else if (procClass.compare("NMCostDistanceBufferImageWrapper") == 0)
-	{
-        proc =  new NMCostDistanceBufferImageWrapper(this);
-	}
-	else if (procClass.compare("NMFocalNeighbourhoodDistanceWeightingWrapper") == 0)
-	{
-        proc =  new NMFocalNeighbourhoodDistanceWeightingWrapper(this);
-	}
-	else if (procClass.compare("NMSumZonesFilterWrapper") == 0)
-	{
-        proc =  new NMSumZonesFilterWrapper(this);
-	}
-    else if (procClass.compare("NMItkCastImageFilterWrapper") == 0)
-    {
-        proc =  new NMItkCastImageFilterWrapper(this);
-    }
-    else if (procClass.compare("NMResampleImageFilterWrapper") == 0)
-    {
-        proc =  new NMResampleImageFilterWrapper(this);
-    }
-    else if (procClass.compare("NMUniqueCombinationFilterWrapper") == 0)
-    {
-        proc =  new NMUniqueCombinationFilterWrapper(this);
-    }
-    else if (procClass.compare("NMCombineTwoFilterWrapper") == 0)
-    {
-        proc =  new NMCombineTwoFilterWrapper(this);
-    }
-    else if (procClass.compare("NMExternalExecWrapper") == 0)
-    {
-        proc =  new NMExternalExecWrapper(this);
-    }
-    else if (procClass.compare("NMSQLiteProcessorWrapper") == 0)
-    {
-        proc =  new NMSQLiteProcessorWrapper(this);
-    }
-    else if (procClass.compare("NMScriptableKernelFilterWrapper") == 0)
-    {
-        proc = new NMScriptableKernelFilterWrapper(this);
-    }
-    else if (procClass.compare("NMScriptableKernelFilter2Wrapper") == 0)
-    {
-        proc = new NMScriptableKernelFilter2Wrapper(this);
     }
     else if (procClass.compare("NMTableReader") == 0)
     {
         proc = new NMTableReader(this);
     }
-    else if (procClass.compare("NMVectorImageToImageFilterWrapper") == 0)
-    {
-        proc = new NMVectorImageToImageFilterWrapper(this);
-    }
-    else if (procClass.compare("NMExternalSortFilterWrapper") == 0)
-    {
-        proc = new NMExternalSortFilterWrapper(this);
-    }
-    else if (procClass.compare("NMMosraFilterWrapper") == 0)
-    {
-        proc = new NMMosraFilterWrapper(this);
-    }
-    else if (procClass.compare("NMVirtualStreamWriter") == 0)
-    {
-        proc = new NMVirtualStreamWriter(this);
-    }
-/*$<CreateProcessObjFromWrapperClassName>$*/
+    /*$<CreateProcessObjFromWrapperClassName>$*/
     else
-        proc =  0;
-
-    if(proc && isSink(proc->objectName()))
     {
-        proc->mIsSink = true;
+        proc = mFactoryRegister[procClass]->createWrapper();
+
+        if(proc && this->isSink(procClass))
+        {
+            proc->mIsSink = true;
+        }
     }
 
     return proc;

@@ -34,12 +34,12 @@
 #include <iostream>
 #include <QStringList>
 #include <QList>
-#include "nmmodframe_export.h"
+#include "nmscriptablekernelfilter2wrapper_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMScriptableKernelFilter2Wrapper_Internal;
 
-class
+class NMSCRIPTABLEKERNELFILTER2WRAPPER_EXPORT
 NMScriptableKernelFilter2Wrapper
 		: public NMProcess
 {

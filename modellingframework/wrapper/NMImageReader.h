@@ -48,7 +48,7 @@
   #include "NMRasdamanConnectorWrapper.h"
 #endif
 
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
 /**
  *  \brief Type independent image reader class.
@@ -57,7 +57,7 @@
  *  data type templated GDALRATImageFileReader class.
  */
 
-class NMMODFRAME_EXPORT NMImageReader : public NMProcess
+class NMMODFRAMECORE_EXPORT NMImageReader : public NMProcess
 {
 	Q_OBJECT
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
@@ -130,6 +130,11 @@ public:
     std::vector<double> getImageStatistics(const int* index=0,
                                            const int* size=0);
 
+    void getImageHistogram(std::vector<double>& bins,
+                           std::vector<int> &freqs,
+                           int numBins, double binMin, double binMax,
+                           const int* index=0, const int* size=0);
+
     int getNumberOfOverviews(void);
     std::vector<unsigned int> getOverviewSize(int ovvidx);
 
@@ -141,7 +146,7 @@ public:
     bool isRasMode(void) {return this->mbRasMode;}
 	void instantiateObject(void);
 
-    void setOverviewIdx(int ovvidx, int* userLPR);
+    void setOverviewIdx(int ovvidx, const int* userLPR);
 
 protected:
 	void UpdateProgressInfo(itk::Object* obj,

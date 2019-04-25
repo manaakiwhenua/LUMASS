@@ -57,7 +57,7 @@
 #include "itkEventObject.h"
 #include "otbAttributeTable.h"
 
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
 class NMProcessFactory;
 
@@ -108,7 +108,7 @@ class NMProcessFactory;
  */
 
 
-class NMMODFRAME_EXPORT NMProcess : public QObject, public NMModelObject
+class NMMODFRAMECORE_EXPORT NMProcess : public QObject, public NMModelObject
 {
     friend class NMProcessFactory;
 

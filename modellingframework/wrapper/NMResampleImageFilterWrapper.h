@@ -34,12 +34,12 @@
 #include <iostream>
 #include <QStringList>
 #include <QList>
-#include "nmmodframe_export.h"
+#include "nmresampleimagefilterwrapper_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMResampleImageFilterWrapper_Internal;
 
-class
+class NMRESAMPLEIMAGEFILTERWRAPPER_EXPORT
 NMResampleImageFilterWrapper
 		: public NMProcess
 {

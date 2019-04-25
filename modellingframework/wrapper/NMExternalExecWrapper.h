@@ -39,10 +39,10 @@
 #include <qobject.h>
 
 #include "NMItkDataObjectWrapper.h"
-#include "nmmodframe_export.h"
+#include "nmexternalexecwrapper_export.h"
 
 
-class NMMODFRAME_EXPORT NMExternalExecWrapper : public NMProcess
+class NMEXTERNALEXECWRAPPER_EXPORT NMExternalExecWrapper : public NMProcess
 {
     Q_OBJECT
 

@@ -4050,19 +4050,9 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
     int vl=0;
     for (int l=this->mLayerList->getLayerCount()-1; l >= 0 && vl < 10; --l)
     {
-<<<<<<< HEAD
-<<<<<<< HEAD
         if (    mLayerList->getLayer(l)->isVisible()
              && mLayerList->getLayer(l)->getLayerType() == NMLayer::NM_IMAGE_LAYER
             )
-=======
-        if (mLayerList->getLayer(l)->isVisible())
->>>>>>> 977af29... enh: lumassmainwin
-=======
-        if (    mLayerList->getLayer(l)->isVisible()
-             && mLayerList->getLayer(l)->getLayerType() == NMLayer::NM_IMAGE_LAYER
-            )
->>>>>>> 10b37d1... fix: replace deprecated QVTKWidget with QVTKOpenGLWidget
         {
             ++vl;
         }
@@ -4083,24 +4073,11 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
         vtkImageData* img = vtkImageData::SafeDownCast(
                 const_cast<vtkDataSet*>(il->getDataSet()));
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         // bail out on error
         if (img == 0)
         {
             continue;
         }
-=======
-        if (img == 0)
-            return;
->>>>>>> 977af29... enh: lumassmainwin
-=======
-        // bail out on error
-        if (img == 0)
-        {
-            continue;
-        }
->>>>>>> 10b37d1... fix: replace deprecated QVTKWidget with QVTKOpenGLWidget
 
         int ext[6];
         img->GetExtent(ext);
@@ -4196,10 +4173,6 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
         ++cnt;
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 10b37d1... fix: replace deprecated QVTKWidget with QVTKOpenGLWidget
     // no message, no display
     if (    visvs.str().size() == 0
          || lprPixStr.str().size() == 0
@@ -4216,16 +4189,6 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
                     arg(visvs.str().c_str());
         this->mPixelValLabel->setText(pixval);
     }
-<<<<<<< HEAD
-=======
-    pixval = QString("| Pixel: %1 | LPRPixel: %2 | Values: %3 ").
-                arg(pixStr.str().c_str()).
-                arg(lprPixStr.str().c_str()).
-                arg(visvs.str().c_str());
-	this->mPixelValLabel->setText(pixval);
->>>>>>> 977af29... enh: lumassmainwin
-=======
->>>>>>> 10b37d1... fix: replace deprecated QVTKWidget with QVTKOpenGLWidget
 }
 
 void

@@ -34,12 +34,12 @@
 #include <iostream>
 #include <QStringList>
 #include <QList>
-#include "nmmodframe_export.h"
+#include "nmuniquecombinationfilterwrapper_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMUniqueCombinationFilterWrapper_Internal;
 
-class
+class NMUNIQUECOMBINATIONFILTERWRAPPER_EXPORT
 NMUniqueCombinationFilterWrapper
 		: public NMProcess
 {

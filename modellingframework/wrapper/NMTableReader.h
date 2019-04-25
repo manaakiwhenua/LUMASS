@@ -36,9 +36,9 @@
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
-class
+class NMMODFRAMECORE_EXPORT
 NMTableReader
 		: public NMProcess
 {

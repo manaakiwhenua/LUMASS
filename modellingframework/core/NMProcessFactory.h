@@ -27,30 +27,39 @@
 
 #include <qobject.h>
 
-#include "NMProcess.h"
+//#include "NMProcess.h"
 
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
-class NMMODFRAME_EXPORT NMProcessFactory: public QObject
+class NMProcess;
+class NMWrapperFactory;
+
+class NMMODFRAMECORE_EXPORT NMProcessFactory: public QObject
 {
 public:
 	static NMProcessFactory& instance(void);
     NMProcess* createProcess(const QString& procClass);
     NMProcess* createProcessFromAlias(const QString& alias);
 
+    typedef NMWrapperFactory* ( *NM_CREATE_FACTORY_FUNC )();
+
     bool isSink(const QString& process);
 
 private:
 	NMProcessFactory(QObject* parent=0);
 	virtual ~NMProcessFactory();
-    NMProcessFactory(const NMProcessFactory& fab){}
 
+    void initializeProcessLibrary(void);
+    NMProcessFactory(const NMProcessFactory& fab){}
     QString procNameFromAlias(const QString& alias);
 
+    bool bLibInitialised;
     QStringList mSinks;
     QStringList mProcRegister;
 
+    NM_CREATE_FACTORY_FUNC mCreateWrapperFactory;
 
+    QMap<QString, NMWrapperFactory*> mFactoryRegister;
 };
 
 #endif /* NMPROCESSFACTORY_H_ */

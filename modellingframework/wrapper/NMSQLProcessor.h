@@ -29,10 +29,10 @@
 
 #include <QObject>
 #include "NMProcess.h"
-#include "nmmodframe_export.h"
+#include "nmmodframewrapper_export.h"
 
 
-class NMMODFRAME_EXPORT NMSQLProcessor : public NMProcess
+class NMMODFRAMEWRAPPER_EXPORT NMSQLProcessor : public NMProcess
 {
     Q_OBJECT
     Q_PROPERTY(QList<QStringList> SQLStmt READ getSQLStmt WRITE setSQLStmt)

@@ -32,9 +32,9 @@
 
 #include <QMap>
 
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
-class NMMODFRAME_EXPORT NMSequentialIterComponent: public NMIterableComponent
+class NMMODFRAMECORE_EXPORT NMSequentialIterComponent: public NMIterableComponent
 {
 	Q_OBJECT
     Q_PROPERTY(unsigned int NumIterations READ getNumIterations WRITE setNumIterations NOTIFY NMModelComponentChanged)

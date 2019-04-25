@@ -29,7 +29,7 @@
 
 #include "NMDataComponent.h"
 #include "NMMacros.h"
-#include "nmmodframe_export.h"
+#include "nmmodframecore_export.h"
 
 /*!
  * \brief The NMParameterTable class is a specialised data component for parameter tables.
@@ -39,7 +39,7 @@
  *
  */
 
-class NMMODFRAME_EXPORT NMParameterTable : public NMDataComponent
+class NMMODFRAMECORE_EXPORT NMParameterTable : public NMDataComponent
 {
     Q_OBJECT
     Q_PROPERTY(QString TableName READ getTableName WRITE setTableName)

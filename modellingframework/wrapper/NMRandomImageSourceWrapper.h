@@ -36,9 +36,9 @@
 #include "NMMacros.h"
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
-#include "nmmodframe_export.h"
+#include "nmrandomimagesourcewrapper_export.h"
 
-class NMMODFRAME_EXPORT NMRandomImageSourceWrapper : public NMProcess
+class NMRANDOMIMAGESOURCEWRAPPER_EXPORT NMRandomImageSourceWrapper : public NMProcess
 {
 	Q_OBJECT
 

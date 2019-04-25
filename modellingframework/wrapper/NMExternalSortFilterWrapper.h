@@ -35,12 +35,12 @@
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include "nmmodframe_export.h"
+#include "nmexternalsortfilterwrapper_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class NMExternalSortFilterWrapper_Internal;
 
-class
+class NMEXTERNALSORTFILTERWRAPPER_EXPORT
 NMExternalSortFilterWrapper
 		: public NMProcess
 {

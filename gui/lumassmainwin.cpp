@@ -47,7 +47,7 @@
 //#include "NMLayer.h"
 #include "NMImageLayer.h"
 #include "NMVectorLayer.h"
-#include "NMMosra.h"
+
 #include "NMTableView.h"
 #include "NMSqlTableView.h"
 //#include "NMChartWidget.h"
@@ -84,7 +84,7 @@
 #include "NMAbstractAction.h"
 #include "NMModelAction.h"
 
-#include "LpHelper.h"
+
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -149,7 +149,7 @@
 //#include "itkTimeProbe.h"
 //#include "itkIndent.h"
 //#include "otbGDALRATImageFileReader.h"
-//#include "otbImage.h"
+#include "otbImage.h"
 //#include "itkShiftScaleImageFilter.h"
 //#include "itkCastImageFilter.h"
 //#include "itkPasteImageFilter.h"
@@ -157,7 +157,7 @@
 //#include "itkVTKImageExport.h"
 //#include "otbAttributeTable.h"
 //#include "otbStreamingRATImageFileWriter.h"
-//#include "otbImageFileWriter.h"
+#include "otbImageFileWriter.h"
 //#include "otbImageFileReader.h"
 //#include "itkExtractImageFilter.h"
 //#include "itkObjectFactoryBase.h"
@@ -180,9 +180,9 @@
 //#include "otbParserX.h"
 //#include "mpParser.h"
 
-//#include "otbFlowAccumulationFilter.h"
-//#include "otbParallelFillSinks.h"
-//#include "otbStreamingRATImageFileWriter.h"
+#include "otbFlowAccumulationFilter.h"
+#include "otbParallelFillSinks.h"
+#include "otbStreamingRATImageFileWriter.h"
 
 //#include "otbFlowAccumulationFilter.h"
 //#include "otbParallelFillSinks.h"
@@ -197,6 +197,10 @@
 //#include "otbExternalSortFilter.h"
 //#include "itkImageRegionSplitterMultidimensional.h"
 //#include "itkNMImageRegionSplitterMaxSize.h"
+
+
+#include "NMMosra.h"
+
 
 // VTK
 #include "vtkNew.h"
@@ -319,7 +323,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	qRegisterMetaType< NMRasdamanConnectorWrapper*>("NMRasdamanConnectorWrapper*");
 #endif
 	qRegisterMetaType<NMItkDataObjectWrapper>("NMItkDataObjectWrapper");
-	qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
+    //qRegisterMetaType<NMOtbAttributeTableWrapper>("NMOtbAttributeTableWrapper");
     qRegisterMetaType<NMModelController*>("NMModelController*");
     qRegisterMetaType<NMAbstractAction::NMOutputMap>("NMAbstractAction::NMOutputMap");
 //    qRegisterMetaType<NMAbstractAction::NMActionOutputType>("NMAbstractAction::NMActionOutputType");
@@ -483,7 +487,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 #ifndef BUILD_RASSUPPORT
     ui->menuObject->removeAction(ui->actionImportRasdamanLayer);
 #endif
-#ifndef DEBUG
+#ifndef LUMASS_DEBUG
     ui->menuGIS_ish->menuAction()->setVisible(false);
     ui->menuMOSO->removeAction(ui->actionTest);
 #endif
@@ -1967,7 +1971,8 @@ void LUMASSMainWin::aboutLUMASS(void)
                       .arg(_lumass_commit_hash)
                       .arg(_lumass_commit_date);
 
-	QString year = QString(_lumass_commit_date).split(" ").at(4);
+	QStringList datelist = QString(_lumass_commit_date).split(" ");
+	QString year = datelist.size() >= 5 ? datelist.at(4) : QString("");
 	QString title = tr("About LUMASS");
 	stringstream textstr;
 	textstr << "LUMASS - The Land-Use Management Support System" << endl
@@ -2674,7 +2679,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     if (l == 0)
         return;
 
-    // make sure, we've got a vector layer
+    // make sure, we've got a raster layer
     if (l->getLayerType() != NMLayer::NM_IMAGE_LAYER)
         return;
 
@@ -2691,9 +2696,35 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     QScopedPointer<NMModelController> ctrl(new NMModelController());
     ctrl->setLogger(mLogger);
 
+
+    // ---------------- CALC ORIGIN FOR OUTPUT IMAGE ----------
+    const int* pVisreg = il->getVisibleRegion();
+    int visreg[6];
+    for (int v=0; v < 6; ++v){visreg[v] = pVisreg[v];}
+
+    const double* pOrig = il->getOrigin();
+    double orig[3];
+    for (int v=0; v < 6; ++v){orig[v] = pOrig[v];}
+
+    double spac[3];
+    il->getSignedOverviewSpacing(il->getOverviewIndex(), spac);
+
+    double newOrig[3];
+    newOrig[0] = pOrig[0] + visreg[0] * spac[0];
+    newOrig[1] = pOrig[1] + visreg[2] * spac[1];
+    if (il->getNumDimensions() == 3)
+    {
+        newOrig[2] = pOrig[2] + visreg[4] * spac[2];
+    }
+    else
+    {
+        newOrig[2] = 0;
+    }
+
     // ---------------- SET UP INPUT ----------------------
     QSharedPointer<NMItkDataObjectWrapper> dw = il->getImage();
     dw->getDataObject()->SetReleaseDataFlag(false);
+    dw->setImageOrigin(&newOrig[0]);
     NMDataComponent* dc = new NMDataComponent();
     dc->setObjectName("DataBuffer");
     QString bufCompName = ctrl->addComponent(dc);
@@ -2730,6 +2761,7 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     //writerProc->setInputTables(QStringList(bufCompName));
     writerProc->setPyramidResamplingType(QString("NEAREST"));
     writerProc->setRGBMode(dw->getIsRGBImage());
+
 
 
     // create host component
@@ -7331,21 +7363,31 @@ LUMASSMainWin::scanUserModels()
         }
         else
         {
-            // log a warning that not all model files are valid
-            std::stringstream str;
-            str << "Scanning User Models: "
-                << fifo.absolutePath().toStdString() << "/"
-                << fifo.baseName().toStdString()
-                << (fifo.suffix().isEmpty() ? "" : ".") << fifo.suffix().toStdString();
+			std::string abspath = !fifo.absolutePath().isEmpty() ? fifo.absolutePath().toStdString() : "";
+			std::string basename = !fifo.baseName().isEmpty() ? fifo.baseName().toStdString() : "";
+			std::string suffix = !fifo.suffix().isEmpty() ? fifo.suffix().toStdString() : "";
 
-            if (!lmxFile.endsWith("autosave.lmx", Qt::CaseInsensitive))
-            {
-                str << " is an automatic backup copy we don't consider here!";
-            }
-            else
-            {
-                str << " is not a LUMASS model!";
-            }
+			// log a warning that not all model files are valid
+            std::stringstream str;
+            
+			if (abspath.empty() || basename.empty())
+			{
+				str << "No valid user model specified!";
+			}
+			else
+			{
+				str << "Scanning User Models: " << abspath << "/" << basename << suffix;
+
+				if (!lmxFile.endsWith("autosave.lmx", Qt::CaseInsensitive))
+				{
+					str << " is an automatic backup copy we don't consider here!";
+				}
+				else
+				{
+					str << " is not a LUMASS model!";
+				}
+
+			}
 
             NMLogDebug(<< str.str());
         }

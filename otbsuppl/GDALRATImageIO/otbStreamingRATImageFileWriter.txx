@@ -387,36 +387,26 @@ StreamingRATImageFileWriter<TInputImage>
 	}
 }
 
-
 template<class TInputImage>
-void
-StreamingRATImageFileWriter<TInputImage>
+void StreamingRATImageFileWriter<TInputImage>
 ::GenerateInputRequestedRegion()
  {
     //NMDebugCtx(ctxSIFR, << "...");
-  Superclass::GenerateInputRequestedRegion();
+    Superclass::GenerateInputRequestedRegion();
 
-  InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
+    InputImageType * inputPtr = const_cast<InputImageType*>(this->GetInput());
 
-  if(!inputPtr)
+    if(!inputPtr)
     {
-    return;
+        return;
     }
-  typename InputImageType::RegionType lregion = inputPtr->GetLargestPossibleRegion();
+    typename InputImageType::RegionType lregion = inputPtr->GetLargestPossibleRegion();
 
-  //NMDebugAI(<< "input lpr before resetting ... " << endl);
-  //lregion.Print(std::cout, itk::Indent(nmlog::nmindent));
+    typename InputImageType::SizeType rsize;
+    rsize.Fill(0);
+    lregion.SetSize(rsize);
 
-  typename InputImageType::SizeType rsize;
-  rsize.Fill(0);
-  lregion.SetSize(rsize);
-
-  //NMDebugAI(<< "input lpr after resetting ... " << endl);
-  //lregion.Print(std::cout, itk::Indent(nmlog::nmindent));
-
-  inputPtr->SetRequestedRegion(lregion);
-
-    //NMDebugCtx(ctxSIFR, << "done!");
+    inputPtr->SetRequestedRegion(lregion);
 }
 
 template<class TInputImage>
@@ -611,7 +601,6 @@ StreamingRATImageFileWriter<TInputImage>
   InputImagePointer inputPtr =
     const_cast<InputImageType *>(this->GetInput(0));
 
-
   /**
    * Set the user's streaming preferences
    */
@@ -640,7 +629,12 @@ StreamingRATImageFileWriter<TInputImage>
   }
   else if (inputPtr->GetBufferedRegion() == inputPtr->GetLargestPossibleRegion())
   {
-      otbMsgDevMacro(<< "Buffered region is the largest possible region, there is no need for streaming.");
+      otbMsgDevMacro(<< "Requested region is the largest possible region, "
+                     << "let's honour that, he preceding filter might not have a choice!");
+      this->SetNumberOfDivisionsStrippedStreaming(1);
+  }
+  else if (m_StreamingMethod.compare("NO_STREAMING") == 0)
+  {
       this->SetNumberOfDivisionsStrippedStreaming(1);
   }
   m_StreamingManager->PrepareStreaming(inputPtr, outputRegion);

@@ -12,7 +12,6 @@ INCLUDE_DIRECTORIES(
         ${VisIt_BINARY_DIR}
         ${VisIt_SOURCE_DIR}/../libtess2
         ${VTK_INCLUDE_DIRS}
-
 )
 
 LINK_DIRECTORIES(
@@ -30,7 +29,7 @@ file(GLOB VisItTesselator_HEADER
     ${VisIt_SOURCE_DIR}/../libtess2/*.h
 )
 
-
+add_definitions(-DVisItTesselator_EXPORT)
 #if(WIN32)
 #    ADD_LIBRARY(VisItTesselator SHARED )
 #else()
@@ -45,7 +44,7 @@ file(GLOB VisItTesselator_HEADER
 include(GenerateExportHeader)
 generate_export_header(VisItTesselator)
 
-install(FILES  ${VisItTesselator_HEADER} DESTINATION include)
+install(FILES ${VisItTesselator_HEADER} DESTINATION include)
 if(WIN32)
 #        install(TARGETS VisItTesselator
 #                LIBRARY DESTINATION lib

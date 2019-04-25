@@ -74,7 +74,7 @@ else()
                         TARGET_LINK_LIBRARIES(OTBGDALRATImageIO
                             ${GDAL_LIBRARY}
                             SQLite
-                            lwgeom_i geos_c freexl_i libxml2 proj_i iconv
+                            lwgeom_i geos_c freexl_i libxml2 proj_i iconv zlib
                             spatialite4
                             OTBCommon OTBIOGDAL
 			)

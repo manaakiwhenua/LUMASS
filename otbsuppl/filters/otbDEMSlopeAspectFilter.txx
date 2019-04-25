@@ -25,21 +25,41 @@
 #ifndef __otbDEMSlopeAspectFilter_txx
 #define __otbDEMSlopeAspectFilter_txx
 
+#include <algorithm>
+#include <cmath>
+
 #include "otbDEMSlopeAspectFilter.h"
 #include "itkImageRegionIterator.h"
 #include "itkNeighborhoodAlgorithm.h"
 #include "itkNeighborhoodIterator.h"
+#include "itkProgressReporter.h"
 #include "itkZeroFluxNeumannBoundaryCondition.h"
+
 
 
 namespace otb {
 
 template <class TInputImage, class TOutputImage>
+const double DEMSlopeAspectFilter<TInputImage, TOutputImage>::RtoD = 57.29578;
+
+template <class TInputImage, class TOutputImage>
+const double DEMSlopeAspectFilter<TInputImage, TOutputImage>::DegToRad = 0.0174533;
+
+template <class TInputImage, class TOutputImage>
+const double DEMSlopeAspectFilter<TInputImage, TOutputImage>::Pi = 3.1415926535897932384626433832795;
+
+
+template <class TInputImage, class TOutputImage>
 DEMSlopeAspectFilter<TInputImage, TOutputImage>
 ::DEMSlopeAspectFilter()
-	: m_algo(GRADIENT_HORN), m_unit(GRADIENT_DEGREE),
-	  m_xdist(1), m_ydist(1)
+    : m_TerrainAlgorithm("Zevenbergen"),
+      m_TerrainAttribute("Slope"),
+      m_AttributeUnit("Degree")
 {
+    this->SetNumberOfRequiredInputs(1);
+    this->SetNumberOfRequiredOutputs(1);
+
+    this->m_Pixcounter = 0;
 }
 
 template <class TInputImage, class TOutputImage>
@@ -50,21 +70,95 @@ DEMSlopeAspectFilter<TInputImage, TOutputImage>
 
 template <class TInputImage, class TOutputImage>
 void DEMSlopeAspectFilter<TInputImage, TOutputImage>
-::SetGradientAlgorithm(NmGradientAlgorithm algo)
+::SetNodata(const double &nodata)
 {
-	this->m_algo = algo;
+    m_Nodata = static_cast<OutputImagePixelType>(nodata);
+    this->Modified();
 }
 
 template <class TInputImage, class TOutputImage>
 void DEMSlopeAspectFilter<TInputImage, TOutputImage>
-::SetGradientUnit(NmGradientUnit unit)
+::SetInputNames(const std::vector<std::string> &inputNames)
 {
-	this->m_unit = unit;
+    m_DataNames.clear();
+    for (int n=0; n < inputNames.size(); ++n)
+    {
+        m_DataNames.push_back(inputNames.at(n));
+    }
+    this->Modified();
 }
 
 template <class TInputImage, class TOutputImage>
-void
-DEMSlopeAspectFilter<TInputImage, TOutputImage>
+void DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::SetNthInput(itk::DataObject::DataObjectPointerArraySizeType num, itk::DataObject* input)
+{
+    InputImageType* img = dynamic_cast<InputImageType*>(input);
+
+    if (img)
+    {
+        int idx = num >= this->GetNumberOfIndexedInputs() ? this->GetNumberOfIndexedInputs(): num;
+        Superclass::SetNthInput(idx, input);
+        m_IMGNames.push_back(m_DataNames.at(num));
+    }
+}
+
+template <class TInputImage, class TOutputImage>
+TInputImage* DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::GetDEMImage()
+{
+    // popoulate with default position at idx=0;
+    int idx = 0;
+
+    // look for index of "dem" image
+    for (int n=0; n < m_IMGNames.size(); ++n)
+    {
+        std::string aName = m_IMGNames.at(n);
+        std::transform(aName.begin(), aName.end(), aName.begin(), ::tolower);
+        if (aName.compare("dem") == 0)
+        {
+            idx = n;
+        }
+    }
+
+    InputImageType* img = nullptr;
+    if (idx < this->GetNumberOfIndexedInputs())
+    {
+        img = dynamic_cast<InputImageType*>(this->GetIndexedInputs().at(idx).GetPointer());
+    }
+
+    return img;
+}
+
+template <class TInputImage, class TOutputImage>
+TInputImage* DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::GetFlowAccImage()
+{
+    // popoulate with default position at idx=0;
+    int idx = 1;
+
+    // look for index of "dem" image
+    for (int n=0; n < m_IMGNames.size(); ++n)
+    {
+        std::string aName = m_IMGNames.at(n);
+        std::transform(aName.begin(), aName.end(), aName.begin(), ::tolower);
+        if (aName.compare("flowacc") == 0)
+        {
+            idx = n;
+        }
+    }
+
+    InputImageType* img = nullptr;
+    if (idx < this->GetNumberOfIndexedInputs())
+    {
+        img = dynamic_cast<InputImageType*>(this->GetIndexedInputs().at(idx).GetPointer());
+    }
+
+    return img;
+}
+
+
+template <class TInputImage, class TOutputImage>
+void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 ::GenerateInputRequestedRegion() throw ()
 {
   // call the superclass' implementation of this method
@@ -113,19 +207,91 @@ DEMSlopeAspectFilter<TInputImage, TOutputImage>
     }
 }
 
+template <class TInputImage, class TOutputImage>
+void DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::BeforeThreadedGenerateData()
+{
+    InputImageType* dem = this->GetDEMImage();
+    if (dem == nullptr)
+    {
+        NMProcErr(<< "No DEM input layer specified!");
+        return;
+    }
+
+    InputImageType* flowacc = this->GetFlowAccImage();
+
+    // assign enums for controlling processing
+    if (m_TerrainAlgorithm.compare("Horn") == 0)
+    {
+        m_eTerrainAlgorithm = ALGO_HORN;
+    }
+    else // if (m_sTerrainAlgorithm.compare("Zevenbergen") == 0)
+    {
+        m_eTerrainAlgorithm = ALGO_ZEVEN;
+    }
+
+    if (m_TerrainAttribute.compare("Slope") == 0)
+    {
+        m_eTerrainAttribute = TERRAIN_SLOPE;
+    }
+    else if (m_TerrainAttribute.compare("LS") == 0)
+    {
+        m_eTerrainAttribute = TERRAIN_LS;
+        if (flowacc == nullptr)
+        {
+            NMProcErr(<< "No flow accumulation input layer specified!");
+            return;
+        }
+    }
+    else if (m_TerrainAttribute.compare("Wetness") == 0)
+    {
+        m_eTerrainAttribute = TERRAIN_WETNESS;
+        if (flowacc == nullptr)
+        {
+            NMProcErr(<< "No flow accumulation input layer specified!");
+            return;
+        }
+    }
+    else if (m_TerrainAttribute.compare("SedTransport") == 0)
+    {
+        m_eTerrainAttribute = TERRAIN_SEDTRANS;
+        if (flowacc == nullptr)
+        {
+            NMProcErr(<< "No flow accumulation input layer specified!");
+            return;
+        }
+    }
+
+    if (m_AttributeUnit.compare("Degree") == 0)
+    {
+        m_eAttributeUnit = GRADIENT_DEGREE;
+    }
+    else if (m_AttributeUnit.compare("Percent") == 0)
+    {
+        m_eAttributeUnit = GRADIENT_PERCENT;
+    }
+    else if (m_AttributeUnit.compare("Aspect") == 0)
+    {
+        m_eAttributeUnit = GRADIENT_ASPECT;
+    }
+    else //if (m_AttributeUnit.compare("Dim.less") == 0)
+    {
+        m_eAttributeUnit = GRADIENT_DIMLESS;
+    }
+}
+
 
 template <class TInputImage, class TOutputImage>
 void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
                        itk::ThreadIdType threadId)
 {
-    //NMDebug(<< "Enter FlowAcc::GenerateData" << std::endl);
-    // Allocate output
-    typename OutputImageType::Pointer pOutImg = this->GetOutput();
-    typename  InputImageType::ConstPointer pInImg  = this->GetInput();
+    OutputImagePointer pOutImg = this->GetOutput();
+    InputImageConstPointer pInImg = this->GetDEMImage();
+    InputImageConstPointer pFaImg = this->GetFlowAccImage();
 
     // Find the data-set boundary "faces"
-    typename InputImageType::SizeType radius;
+    InputImageSizeType radius;
     radius.Fill(1);
 
     typename itk::NeighborhoodAlgorithm
@@ -141,49 +307,144 @@ void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 
 
 	// get pixel size in x and y direction
-    typename TInputImage::SpacingType spacing = pInImg->GetSignedSpacing();
+    InputImageSpacingType spacing = pInImg->GetSpacing();
 	m_xdist = spacing[0];
-	m_ydist = abs(spacing[1]);
-
-	// get the number of pixels
-    //	long numcols = pInImg->GetLargestPossibleRegion().GetSize(0);
-    //	long numrows = pInImg->GetLargestPossibleRegion().GetSize(1);
-    //	long numpix = numcols * numrows;
-
-    //	NMDebugInd(1, << "cellsize is: " << spacing[0] << ", " << spacing[1] << std::endl);
-    //	NMDebugInd(1, << "m_xdist: " << m_xdist << ", m_ydist: " << m_ydist << std::endl);
-    //	NMDebugInd(1, << "numcols: " << numcols << ", numrows: " << numrows <<
-    //			", numpix: " << numpix << std::endl);
+    m_ydist = spacing[1];
 
     itk::ZeroFluxNeumannBoundaryCondition<TInputImage> bndCond;
-    typedef itk::ConstNeighborhoodIterator<TInputImage> KernelIterType;
-    typedef itk::ImageRegionIterator<TOutputImage> RegionIterType;
 
-    KernelIterType inIter; //(radius, pInImg, pOutImg->GetRequestedRegion());
-    RegionIterType outIter; //(pOutImg, pOutImg->GetRequestedRegion());
+    KernelIterType inIter;
+    RegionIterType outIter;
+    InputRegionConstIterType faIter;
 
     typedef typename itk::PixelTraits< OutputImagePixelType >::ValueType OutputValueType;
     OutputValueType nodata = itk::NumericTraits< OutputValueType >::ZeroValue();
-
-    for (fit = faceList.begin(); fit != faceList.end(); ++fit)
+    switch (m_eTerrainAttribute)
     {
-        inIter = KernelIterType(radius, pInImg, *fit);
-        inIter.OverrideBoundaryCondition(&bndCond);
-        outIter = RegionIterType(pOutImg, *fit);
-
-        for (inIter.GoToBegin(), outIter.GoToBegin(); !inIter.IsAtEnd(); ++inIter, ++outIter)
+    case TERRAIN_SLOPE:
+        for (fit = faceList.begin(); fit != faceList.end(); ++fit)
         {
-            double val;
-            NeighborhoodType nh = inIter.GetNeighborhood();
-            this->slope(nh, &val);
-            val = ::isnan(val) ? nodata : val;
-            outIter.Set(val);
+            inIter = KernelIterType(radius, pInImg, *fit);
+            inIter.OverrideBoundaryCondition(&bndCond);
+            outIter = RegionIterType(pOutImg, *fit);
 
-            progress.CompletedPixel();
+            for (inIter.GoToBegin(), outIter.GoToBegin(); !inIter.IsAtEnd(); ++inIter, ++outIter)
+            {
+                double val;
+                NeighborhoodType nh = inIter.GetNeighborhood();
+                this->Slope(nh, &val);
+                val = std::isnan(val) ? nodata : val;
+                outIter.Set(val);
+
+                progress.CompletedPixel();
+            }
         }
+        break;
+
+    case TERRAIN_LS:
+        for (fit = faceList.begin(); fit != faceList.end(); ++fit)
+        {
+            inIter = KernelIterType(radius, pInImg, *fit);
+            inIter.OverrideBoundaryCondition(&bndCond);
+
+            faIter = InputRegionConstIterType(pFaImg, *fit);
+            outIter = RegionIterType(pOutImg, *fit);
+
+            for (inIter.GoToBegin(), outIter.GoToBegin(), faIter.GoToBegin();
+                 !inIter.IsAtEnd();
+                 ++inIter, ++outIter, ++faIter
+                 )
+            {
+                double val;
+                NeighborhoodType nh = inIter.GetNeighborhood();
+                InputImagePixelType fa = faIter.Get();
+                this->LS(nh, fa, &val);
+                val = std::isnan(val) ? m_Nodata : val;
+                outIter.Set(val);
+
+                ++m_Pixcounter;
+                progress.CompletedPixel();
+            }
+        }
+        break;
+
+     case TERRAIN_WETNESS:
+        for (fit = faceList.begin(); fit != faceList.end(); ++fit)
+        {
+            inIter = KernelIterType(radius, pInImg, *fit);
+            inIter.OverrideBoundaryCondition(&bndCond);
+
+            faIter = InputRegionConstIterType(pFaImg, *fit);
+            outIter = RegionIterType(pOutImg, *fit);
+
+            for (inIter.GoToBegin(), outIter.GoToBegin(), faIter.GoToBegin();
+                 !inIter.IsAtEnd();
+                 ++inIter, ++outIter, ++faIter
+                 )
+            {
+                double val;
+                NeighborhoodType nh = inIter.GetNeighborhood();
+                InputImagePixelType fa = faIter.Get();
+                this->Wetness(nh, fa, &val);
+                val = std::isnan(val) ? m_Nodata : val;
+                outIter.Set(val);
+
+                ++m_Pixcounter;
+                progress.CompletedPixel();
+            }
+        }
+        break;
+
+     case TERRAIN_SEDTRANS:
+        for (fit = faceList.begin(); fit != faceList.end(); ++fit)
+        {
+            inIter = KernelIterType(radius, pInImg, *fit);
+            inIter.OverrideBoundaryCondition(&bndCond);
+
+            faIter = InputRegionConstIterType(pFaImg, *fit);
+            outIter = RegionIterType(pOutImg, *fit);
+
+            for (inIter.GoToBegin(), outIter.GoToBegin(), faIter.GoToBegin();
+                 !inIter.IsAtEnd();
+                 ++inIter, ++outIter, ++faIter
+                 )
+            {
+                double val;
+                NeighborhoodType nh = inIter.GetNeighborhood();
+                InputImagePixelType fa = faIter.Get();
+                this->SedTrans(nh, fa, &val);
+                val = std::isnan(val) ? m_Nodata : val;
+                outIter.Set(val);
+
+                ++m_Pixcounter;
+                progress.CompletedPixel();
+            }
+        }
+
     }
 
+    NMProcDebug(<< "num pix: " << m_Pixcounter);
+
     //NMDebug(<< "Leave FlowAcc::GenerateData" << std::endl);
+}
+
+template <class TInputImage, class TOutputImage>
+void DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::AfterThreadedGenerateData()
+{
+        TInputImage* in = dynamic_cast<TInputImage*>(this->GetIndexedInputs().at(0).GetPointer());
+
+        InputImageRegionType inReg = in->GetLargestPossibleRegion();
+
+        long totpix = inReg.GetSize(0) * inReg.GetSize(1);
+        NMProcDebug(<< "the total num of pix is: " << totpix);
+
+        NMProcDebug(<< "pixelcounter is: " << m_Pixcounter);
+
+        if (m_Pixcounter == totpix)
+            m_Pixcounter = 0;
+
+
 }
 
 //template <class TInputImage, class TOutputImage>
@@ -209,14 +470,14 @@ template <class TInputImage, class TOutputImage>
 void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 ::dZdX(const NeighborhoodType& nh, double* val)
 {
-	switch (m_algo)
+    switch (m_eTerrainAlgorithm)
 	{
-	case GRADIENT_ZEVEN:
-		*val = (-nh[3] + nh[5]) / (m_xdist + m_ydist);
+    case ALGO_ZEVEN:
+        *val = (-nh[3] + nh[5]) / (2*m_xdist);
 		break;
-	case GRADIENT_HORN:
+    case ALGO_HORN:
 	default:
-		*val = ((nh[2] + 2*nh[5] + nh[8]) - (nh[0] + 2*nh[3] + nh[6])) / (4*(m_xdist + m_ydist));
+        *val = ((nh[2] + 2*nh[5] + nh[8]) - (nh[0] + 2*nh[3] + nh[6])) / (8*m_xdist);
 		break;
 	}
 }
@@ -225,43 +486,77 @@ template <class TInputImage, class TOutputImage>
 void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 ::dZdY(const NeighborhoodType& nh, double* val)
 {
-	switch (m_algo)
+    switch (m_eTerrainAlgorithm)
 	{
-	case GRADIENT_ZEVEN:
-		*val = (nh[1] - nh[7]) / (m_xdist + m_ydist);
+    case ALGO_ZEVEN:
+        *val = (nh[1] - nh[7]) / (2*m_ydist);
 		break;
-	case GRADIENT_HORN:
+    case ALGO_HORN:
 	default:
-		*val = ((nh[8] + 2*nh[7] + nh[6]) - (nh[2] + 2*nh[1] + nh[0])) / (4*(m_xdist + m_ydist));
+        *val = ((nh[8] + 2*nh[7] + nh[6]) - (nh[2] + 2*nh[1] + nh[0])) / (8*m_ydist);
 		break;
 	}
 }
 
-//template <class TInputImage, class TOutputImage>
-//void DEMSlopeAspectFilter<TInputImage, TOutputImage>
-//::aspect(const NeighborhoodType& nh, double* val)
-//{
-//    double zx, zy;
-//    dZdX(nh, &zx);
-//    dZdY(nh, &zy);
+template <class TInputImage, class TOutputImage>
+void DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::Wetness(const NeighborhoodType& nDem, const InputImagePixelType& flowacc,
+          double* val)
+{
+    const double cellarea = m_xdist * m_ydist;
+    const double flaccx = static_cast<double>(flowacc * cellarea);
+    // Desmet & Govers assume square pixels; since we support
+    // non-square pixels, we need to calculate a single
+    // grid cell size to calculate the effective contour length
+    // through which the flow is drained; here we approximate D
+    // as the diameter of a circle with area D^2 = 'cellarea'
+    const double bigD = sqrt(cellarea/Pi) * 2;
 
-//    *val = ::atan2(zy,zx) * 180 / vnl_math::pi;
-//    if (*val < 0)
-//        *val += 360;
-//}
+    double dzNdx, dzNdy;
+    dZdX(nDem, &dzNdx);
+    dZdY(nDem, &dzNdy);
+
+    const double tanbeta = sqrt(dzNdx*dzNdx + dzNdy*dzNdy);
+    if (tanbeta != 0)
+    {
+        *val = log((flaccx/bigD) / tanbeta);
+    }
+    else
+    {
+        *val = m_Nodata;
+    }
+}
 
 template <class TInputImage, class TOutputImage>
 void DEMSlopeAspectFilter<TInputImage, TOutputImage>
-::slope(const NeighborhoodType& nh, double* val)
+::SedTrans(const NeighborhoodType& nDem, const InputImagePixelType& flowacc,
+              double* val)
+{
+    const double cellarea = m_xdist * m_ydist;
+    const double flaccx = static_cast<double>(flowacc * cellarea);
+    //const double bigD = sqrt(cellarea/Pi) * 2;
+
+    double dzNdx, dzNdy;
+    dZdX(nDem, &dzNdx);
+    dZdY(nDem, &dzNdy);
+
+    const double sinbeta = sin(atan(sqrt(dzNdx*dzNdx + dzNdy*dzNdy)));
+    *val = pow((flaccx/22.13), 0.6) * pow((sinbeta/0.0896), 1.3);
+}
+
+
+template <class TInputImage, class TOutputImage>
+void DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::Slope(const NeighborhoodType& nh, double* val)
 {
 	double zx, zy;
 	dZdX(nh, &zx);
 	dZdY(nh, &zy);
 
-	switch (m_unit)
+    switch (m_eAttributeUnit)
 	{
 	case GRADIENT_ASPECT:
-		if (m_algo == GRADIENT_HORN)
+        if (m_eTerrainAlgorithm == ALGO_HORN)
 			*val = atan2(zy,zx) - vnl_math::pi / 2.0;
 		else
 			*val = atan2(zx,zy) - vnl_math::pi;
@@ -270,7 +565,10 @@ void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 		if (*val < 0)
 			*val += 360;
 		break;
-	case GRADIENT_PERCENT:
+    case GRADIENT_DIMLESS:
+        *val = sqrt(zx * zx + zy * zy);
+        break;
+    case GRADIENT_PERCENT:
 		*val = sqrt(zx * zx + zy * zy) * 100;
 		break;
 	case GRADIENT_DEGREE:
@@ -279,6 +577,137 @@ void DEMSlopeAspectFilter<TInputImage, TOutputImage>
 		break;
 	}
 }
+
+template <class TInputImage, class TOutputImage>
+void DEMSlopeAspectFilter<TInputImage, TOutputImage>
+::LS(const NeighborhoodType& nDem, const InputImagePixelType &flowacc,
+     double* val)
+{
+    const double cellarea = m_xdist * m_ydist;
+    const double flaccx = static_cast<double>(flowacc * cellarea);
+    // Desmet & Govers assume square pixels; since we support
+    // non-square pixels, we need to calculate a single
+    // grid cell size to calculate the effective contour length
+    // through which the flow is drained; here we approximate D
+    // as the diameter of a circle with area D^2 = 'cellarea'
+    const double bigD = sqrt(cellarea/Pi) * 2;
+    const int RILLEROSION = 0;
+    const int THAWINGSOIL = 0;
+
+    double rise_run, sx, ax, xij, sij, lij, m, beta;
+    double dzNdx, dzNdy;
+    double sinsx, sinax, cosax;
+
+    // ----------------------------------------------------------------------
+    *val = m_Nodata;
+
+
+    this->dZdY(nDem, &dzNdy);
+    this->dZdX(nDem, &dzNdx);
+
+    rise_run = pow(((dzNdx*dzNdx) + (dzNdy*dzNdy)), 0.5);
+    sx = atan(rise_run) * RtoD;
+
+    //adjust aspect depending on chosen algorithm
+    switch (m_eTerrainAlgorithm)
+    {
+    case ALGO_HORN : //HORN('81)-Method
+        ax = (atan2(dzNdy,dzNdx)-1.5707963) * RtoD;
+        break;
+
+    default : //Zevenbergen & Thorne('87)-Method
+        ax = (atan2(dzNdx,dzNdy)-3.1415927) * RtoD;
+        break;
+    }
+
+    //Aspect nachbearbeiten
+    if (ax < 0)
+        ax +=360;
+
+    //check planar slope (i.e. the neighbouring cells show equal elevation)
+    bool equalelev = true;
+    for (int b=0; b < 7; ++b)
+    {
+        if (nDem[b] != nDem[b+1])
+        {
+            equalelev = false;
+            break;
+        }
+    }
+
+    //Berechnung versch. Sinuswerte/Cosinuswerte
+    sinsx = sin(sx * DegToRad);
+    sinax = sin(ax * DegToRad);
+    cosax = cos(ax * DegToRad);
+    if (sinsx < 0) sinsx *= -1;
+    if (sinax < 0) sinax *= -1;
+    if (cosax < 0) cosax *= -1;
+
+    //Weitere Input-Daten berechnen, um sie dann in Desmet&Govers-Algorithmus
+    //einzusetzen
+
+    //xij berechnen
+    xij = sinax + cosax;
+
+    //Hanglängenexponent (m) berechnen
+    beta = ( (sinsx / 0.0896) / ((3 * pow(sinsx, 0.8)) + 0.56) );
+
+    switch (RILLEROSION)
+    {
+    case 1 :
+        beta *= 0.5;
+        break;
+    case 2 :
+        beta *= 2;
+        break;
+    default:
+        ;
+    }
+    m = beta / (1 + beta);
+
+    //S-Faktor der RUSLE berechnen
+    if ((rise_run*100) < 9)
+        sij = (10.8 * sinsx) + 0.03;
+    else
+    {
+        switch (THAWINGSOIL)
+        {
+        case 1 :
+            sij = pow((sinsx/0.0896),0.6);
+            break;
+        default :
+            sij = (16.8 * sinsx) - 0.5;
+        }
+    }
+
+    //LFaktor berechnen
+    if (flaccx != m_Nodata)// && ppOver[row][col] != 0.0)
+    {
+        if (equalelev)
+        {
+
+            lij = 1;
+        }
+        else
+        {
+            //	lij = ( (pow((flaccx + (cellsize*cellsize)),(m+1)) - pow(flaccx,(m+1)) ) /
+                //	(pow(cellsize,(m+2)) * pow(xij,m) * pow(22.13, m)) );
+
+            //lumass uses this version instead of the above implementation because
+            //lumass calculates the contributing area at the outlet of a grid cell
+            //with coordinates (i,j)
+            //furthermore before flowacc calculation is performed, all grid cells are
+            //initialized with the area of the grid
+            lij = ( (pow(flaccx,(m+1)) - pow(flaccx-cellarea,(m+1)) ) /
+                    (pow(bigD,(m+2)) * pow(xij,m) * pow(22.13, m)) );
+        }
+
+
+        //LS-Faktor berechnen und in LSGrid schreiben
+        *val = lij * sij;
+    }
+}
+
 
 //template <class TInputImage, class TOutputImage>
 //InputImagePixelType DEMSlopeAspectFilter<TInputImage, TOutputImage>

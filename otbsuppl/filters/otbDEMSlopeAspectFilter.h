@@ -29,6 +29,9 @@
 #include "itkNeighborhoodAllocator.h"
 #include "itkNeighborhoodIterator.h"
 #include "itkNeighborhood.h"
+#include "itkImageRegionConstIterator.h"
+#include "itkImageRegionIterator.h"
+
 #include "nmlog.h"
 // ToDo: check, if really required
 //#include "itkConceptChecking.h"
@@ -37,7 +40,7 @@
 
 namespace otb {
 
-template <class TInputImage, class TOutputImage >
+template <class TInputImage, class TOutputImage=TInputImage >
 class OTBSUPPLFILTERS_EXPORT DEMSlopeAspectFilter
 			: public itk::ImageToImageFilter<TInputImage, TOutputImage>
 {
@@ -51,62 +54,109 @@ public:
   itkNewMacro(Self);
   itkTypeMacro(DEMSlopeAspectFilter, itk::ImageToImageFilter);
 
-  typedef TInputImage						InputImageType;
-  typedef typename InputImageType::Pointer	InputImagePointer;
-  typedef typename InputImageType::RegionType InputImageRegionType;
-  typedef typename InputImageType::PixelType  InputImagePixelType;
-  typedef typename InputImageType::SizeType   InputImageSizeType;
+  typedef TInputImage                           InputImageType;
+  typedef typename InputImageType::ConstPointer InputImageConstPointer;
+  typedef typename InputImageType::RegionType   InputImageRegionType;
+  typedef typename InputImageType::PixelType    InputImagePixelType;
+  typedef typename InputImageType::IndexType    InputImageIndexType;
+  typedef typename InputImageType::SpacingType  InputImageSpacingType;
 
-  typedef TOutputImage						OutputImageType;
-  typedef typename OutputImageType::Pointer	OutputImagePointer;
-  typedef typename OutputImageType::RegionType OutputImageRegionType;
-  typedef typename OutputImageType::PixelType  OutputImagePixelType;
+  using InputImageSizeType = typename InputImageType::SizeType;
+
+  typedef TOutputImage                          OutputImageType;
+  typedef typename OutputImageType::Pointer     OutputImagePointer;
+  typedef typename OutputImageType::RegionType  OutputImageRegionType;
+  typedef typename OutputImageType::PixelType   OutputImagePixelType;
+  typedef typename OutputImageType::IndexType   OutputImageIndexType;
 
 
+  using InputRegionConstIterType = itk::ImageRegionConstIterator<InputImageType>;
+  using KernelIterType = itk::ConstNeighborhoodIterator<InputImageType>;
+  using RegionIterType = itk::ImageRegionIterator<OutputImageType>;
 
-//  typedef typename TInputImageType::OffsetType	InputOffsetType;
-//  typedef itk::NeighborhoodIterator<TInputImage> NeighborhoodIteratorType;
+  typedef enum {TERRAIN_SLOPE, TERRAIN_LS, TERRAIN_WETNESS, TERRAIN_SEDTRANS} TerrainAttribute;
+  typedef enum {GRADIENT_DEGREE, GRADIENT_PERCENT, GRADIENT_ASPECT, GRADIENT_DIMLESS} AttributeUnit;
+  typedef enum {ALGO_HORN, ALGO_ZEVEN} TerrainAlgorithm;
 
-  typedef enum {GRADIENT_HORN, GRADIENT_ZEVEN} NmGradientAlgorithm;
-  typedef enum {GRADIENT_DEGREE, GRADIENT_PERCENT, GRADIENT_ASPECT} NmGradientUnit;
-
-//  typedef typename TInputImage::ImageDimension ImgDimType;
   typedef itk::NeighborhoodAllocator<InputImagePixelType> NeighborhoodAllocType;
-  typedef itk::Neighborhood<InputImagePixelType, 2, NeighborhoodAllocType> NeighborhoodType;
+  typedef itk::Neighborhood<InputImagePixelType, InputImageType::ImageDimension, NeighborhoodAllocType> NeighborhoodType;
 
-  void SetGradientAlgorithm(NmGradientAlgorithm algo);
-  void SetGradientUnit(NmGradientUnit unit);
 
-  virtual void GenerateInputRequestedRegion() throw ();
+  /*! supported slope algorithms:
+   * Horn           // after Horn 1981
+   * Zevenbergen    // after Zevenbergen & Thorne 1987
+   */
+  itkSetStringMacro( TerrainAlgorithm )
+
+  /*! supported terrain attributes
+   * Slope          // slope angle
+   * LS             // (R)USLE LS factor (Desmet & Govers)
+   * Wetness        // topographic wetness index
+   * SedTransport   // Moore & Burch 1986 (cited in Mitasova et al. 1996)
+   */
+  itkSetStringMacro( TerrainAttribute )
+
+  /*! supported units for slope
+   * Dim.less   // tan(angle)
+   * Degree     // 0-90
+   * Percent    // 0-100
+   * Aspect     // 0-360 (north=0 deg., clockwise)
+   */
+  itkSetStringMacro( AttributeUnit )
+
+  void SetNodata(const double& nodata);
+  void SetInputNames(const std::vector<std::string>& inputNames);
+
+  virtual void SetNthInput(itk::DataObject::DataObjectPointerArraySizeType num, itk::DataObject* input);
+
+
+  InputImageType* GetDEMImage();
+  InputImageType* GetFlowAccImage();
 
 protected:
     DEMSlopeAspectFilter();
     virtual ~DEMSlopeAspectFilter();
-//	void PrintSelf(std::ostream& os, itk::Indent indent) const;
+    //	void PrintSelf(std::ostream& os, itk::Indent indent) const;
 
-//	virtual void GenerateOutputInformation();
-
-    //void aspect(const NeighborhoodType& nh, double* val);
-        void slope(const NeighborhoodType& nh, double* val);
-	void dZdX(const NeighborhoodType& nh, double* val);
-	void dZdY(const NeighborhoodType& nh, double* val);
-
-//	int getUpslopeArea(const NeighborhoodType& nh, )
-
-//	OffsetType GetNextUpwardCell(NeighborhoodIteratorType iter, double xdist, double ydist, double digdist);
-//	InputImagePixelType GetNumUpwardCells(NeighborhoodIteratorType iter);
-
-    virtual void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
+    void GenerateInputRequestedRegion() throw ();
+    void AfterThreadedGenerateData();
+    void BeforeThreadedGenerateData();
+    void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread,
                            itk::ThreadIdType threadId);
 
-    //void GenerateData(void);
+    void Slope(const NeighborhoodType& nh, double* val);
+	void dZdX(const NeighborhoodType& nh, double* val);
+	void dZdY(const NeighborhoodType& nh, double* val);
+    void LS(const NeighborhoodType& nDem, const InputImagePixelType& flowacc,
+            double* val);
+    void Wetness(const NeighborhoodType& nDem, const InputImagePixelType& flowacc,
+                 double* val);
+    void SedTrans(const NeighborhoodType& nDem, const InputImagePixelType& flowacc,
+                  double* val);
+
 
 private:
 	double m_xdist;
 	double m_ydist;
+    double m_Nodata;
 
-	NmGradientAlgorithm m_algo;
-	NmGradientUnit m_unit;
+    long m_Pixcounter;
+
+    std::string m_TerrainAlgorithm;
+    std::string m_TerrainAttribute;
+    std::string m_AttributeUnit;
+
+    TerrainAlgorithm m_eTerrainAlgorithm;
+    TerrainAttribute m_eTerrainAttribute;
+    AttributeUnit    m_eAttributeUnit;
+
+
+    std::vector<std::string> m_IMGNames;
+    std::vector<std::string> m_DataNames;
+
+    static const double RtoD;
+    static const double DegToRad;
+    static const double Pi;
 
 };
 

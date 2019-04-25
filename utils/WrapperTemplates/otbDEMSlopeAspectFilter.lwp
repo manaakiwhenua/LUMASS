@@ -1,0 +1,29 @@
+# LUMASS otb::NMScriptableKernelFilter wrapper profile
+# recognised (filter variable) types: double, long, long long, bool, string
+# dim = 0 -> property type: plain type
+# dim = 1 -> property type: QStringList
+# dim = 2 -> property type: QList<QStringList>
+# dim = 3 -> property type: QList< QList<QStringList> >
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+
+Year                        = 2019
+WrapperClassName            = NMDEMSlopeAspectFilterWrapper
+FileDate                    = 2019-03-22
+Author                      = Alexander Herzig
+ComponentName               = TerrainAttributes
+ComponentIsSink             = 0
+FilterClassFileName         = otbDEMSlopeAspectFilter
+FilterTypeDef               = otb::DEMSlopeAspectFilter<InImgType, OutImgType>
+NumTemplateArgs             = 2
+ForwardInputUserIDs         = SetInputNames
+Property_1                  = TerrainAttribute:1:string
+Property_2                  = TerrainAlgorithm:1:string
+Property_3                  = AttributeUnit:1:string
+Property_4                  = Nodata:1:double
+

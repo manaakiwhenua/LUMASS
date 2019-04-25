@@ -39,7 +39,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("DataBufferReference"));
     this->addItem(QString::fromLatin1("ExternalExec"));
     this->addItem(QString::fromLatin1("ExtractBand"));
-    this->addItem(QString::fromLatin1("FocalDistanceWeight"));
+    //this->addItem(QString::fromLatin1("FocalDistanceWeight"));
     this->addItem(QString::fromLatin1("ImageReader"));
     this->addItem(QString::fromLatin1("ImageWriter"));
     this->addItem(QString::fromLatin1("MapAlgebra"));
@@ -54,9 +54,11 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("UniqueCombination"));
     this->addItem(QString::fromLatin1("TableReader"));
     this->addItem(QString::fromLatin1("TextLabel"));
-    this->addItem(QString::fromLatin1("ImageSorter"));
+    //this->addItem(QString::fromLatin1("ImageSorter"));
     this->addItem(QString::fromLatin1("SpatialOptimisation"));
     //this->addItem(QString::fromLatin1("ImageBufferWriter"));
+    this->addItem(QString::fromLatin1("RAMFlowAcc"));
+    this->addItem(QString::fromLatin1("TerrainAttributes"));
 /*$<AddComponentToGUICompList>$*/
 
     this->sortItems();

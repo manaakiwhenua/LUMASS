@@ -16,6 +16,7 @@ if(WIN32)
     set(QT5SQLite_PLUGIN_LIBRARY "qsqlite.lib")
     set(QT5_PATHS
 		C:/qt
+		C:/qt5
 		C:/
 		C:/Qt
 		C:/opt
@@ -48,6 +49,8 @@ if(WIN32)
             5.9.3/qtbase
             5.10.0/qtbase
             5.11.0/qtbase
+			5.11.2/qtbase
+			5.11.2
     )
 else()
     set(QT5_CORE_LIB "libQt5Core.so")
@@ -142,9 +145,6 @@ else()
         "Qt5Gui"
         "Qt5Concurrent"
         "Qt5Sql"
-        #"Qt5Declarative"
-        #"Qt5Qml"
-        #"Qt5Quick"
     )
 	
 	foreach(QT5COMP ${QT5_COMP_LIST})
@@ -155,42 +155,29 @@ else()
 			else(WIN32)
 				LIST(APPEND QT5_LIB_LIST "${QT5COMP}_LIBRARIES")
 		    endif(WIN32)
-                    LIST(APPEND QT5_INCLUDE_DIRS ${${QT5COMP}_INCLUDE_DIRS})
-
-            #			string(COMPARE EQUAL "${QT5COMP}" Qt5Sql _cmp)
-            #            if (_cmp)
-            #                list(LENGTH ${QT5COMP}_PLUGINS numplugs)
-            #                if (${numplugs})
-            #                    list(GET Qt5Sql_PLUGINS 0 plugin)
-            #                    get_target_property(_loc ${plugin} LOCATION)
-            #                    get_filename_component(_loc_path ${_loc} DIRECTORY)
-            #                    message("Plugin ${plugin} is at location ${_loc_path}")
-            #                    set(QT5SQL_PLUGINS_DIR ${_loc_path} CACHE FILEPATH
-            #                        "Path to Qt5's qsqlite.<so | dll | lib> plugin library" FORCE)
-            #                endif()
-            #			endif()
-	    endif(${QT5COMP}_FOUND)
+            
+			LIST(APPEND QT5_INCLUDE_DIRS ${${QT5COMP}_INCLUDE_DIRS})
+        endif(${QT5COMP}_FOUND)
 	endforeach(QT5COMP)
 	list(REMOVE_DUPLICATES QT5_INCLUDE_DIRS)
 	
 	message(STATUS "Qt5 libraries: ${QT5_LIB_LIST}")
 	message(STATUS "Qt5 INCLUDE_DIRS: ${QT5_INCLUDE_DIRS}")
 	
-	# extract the link directories
-	get_target_property(FULLLIBNAME ${Qt5Core_LIBRARIES} LOCATION)
-	get_filename_component(LIBPATH ${FULLLIBNAME} PATH)
-	SET(QT5_LINK_DIRS ${LIBPATH})
-	foreach(LOOPLIB ${QT5_LIB_LIST})
-            get_target_property(FULLLIBNAME ${LOOPLIB} LOCATION)
-            get_filename_component(LIBPATH ${FULLLIBNAME} PATH)
-	    list(APPEND QT5_LINK_DIRS ${LIBPATH})
-	endforeach(LOOPLIB)
-	list(REMOVE_DUPLICATES QT5_LINK_DIRS)
-	
+        # find link directories
 	# just from experience
 	IF(WIN32)
-            set(WINLIBDIR ${QT5_PREFIX_PATH}/lib)
-            list(APPEND QT5_LINK_DIRS ${WINLIBDIR})
+		FIND_PATH(QT5_CORE_LIB_PATH "Qt5Core.lib"
+			PATH_SUFFIXES
+				lib
+			PATHS
+				${QT5_PREFIX_PATH}
+				${QT5_PREFIX_PATH}/../
+			NO_DEFAULT_PATH
+		)
+		if (NOT QT5_CORE_LIB_PATH-NOTFOUND)
+			list(APPEND QT5_LINK_DIRS ${QT5_CORE_LIB_PATH})
+                endif()
 	ENDIF(WIN32)
 	
 	message(STATUS "Qt5 link directories: ${QT5_LINK_DIRS}")

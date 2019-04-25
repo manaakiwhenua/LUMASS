@@ -65,6 +65,7 @@
 #include <QFileInfo>
 #include <QtConcurrent>
 #include <QFileDialog>
+#include <QSqlQuery>
 
 #include "vtkSmartPointer.h"
 #include "vtkObject.h"
@@ -176,6 +177,9 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     mActRGBImg = new QAction(this->mMenu);
     mActRGBImg->setText(tr("Map RGB Image"));
 
+    mActStretchClrRamp = new QAction(this->mMenu);
+    mActStretchClrRamp->setText(tr("Stretch Colour Ramp"));
+
     mActOpacity = new QAction(this->mMenu);
     mActOpacity->setText(tr("Layer Opacity ..."));
 
@@ -209,6 +213,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->mMenu->addAction(mActClrTab);
     this->mMenu->addAction(mActClrRamp);
     this->mMenu->addAction(mActRGBImg);
+    this->mMenu->addAction(mActStretchClrRamp);
     this->mMenu->addSeparator();
 
     this->mMenu->addAction(mActOpacity);
@@ -241,6 +246,7 @@ ModelComponentList::ModelComponentList(QWidget *parent)
     this->connect(actSelColor, SIGNAL(triggered()), this, SLOT(editSelectionColour()));
     this->connect(mActImageInfo, SIGNAL(triggered()), this, SLOT(showImageInfo()));
     this->connect(mActExportColourRamp, SIGNAL(triggered()), this, SLOT(exportColourRamp()));
+    this->connect(mActStretchClrRamp, SIGNAL(triggered()), this, SLOT(stretchColourRampToVisMinMax()));
 
 
 #ifdef LUMASS_DEBUG
@@ -1017,6 +1023,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                         mActRGBImg->setVisible(false);
 
                         mActClrRamp->setText("Map Value Range");
+
                     }
                     else
                     {
@@ -1031,6 +1038,8 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                         mActClrRamp->setText("Map Band Value Range");
                     }
                     mActImageInfo->setVisible(true);
+                    mActStretchClrRamp->setEnabled(true);
+                    mActStretchClrRamp->setVisible(true);
 
                     if (    il->hasSelBox()
                         &&  il->getSelection().count() > 0
@@ -1044,7 +1053,7 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
                     }
 
                     // TODO: switch on when reliable
-                    mActImageHistogram->setVisible(false);
+                    mActImageHistogram->setVisible(true);
 
                     mActVecContourOnly->setVisible(false);
                     mActOpacity->setVisible(true);
@@ -1066,6 +1075,9 @@ void ModelComponentList::mousePressEvent(QMouseEvent *event)
 
                 mActZoomSel->setVisible(false);
                 mActZoomSel->setEnabled(false);
+
+                mActStretchClrRamp->setEnabled(false);
+                mActStretchClrRamp->setVisible(false);
 
                 mActUniqueValues->setVisible(true);
                 mActSingleSymbol->setVisible(true);
@@ -1959,49 +1971,61 @@ void ModelComponentList::test()
 {
 	NMDebugCtx(ctx, << "...");
 
+
+	NMDebugCtx(ctx, << "done!");
+}
+
+void ModelComponentList::stretchColourRampToVisMinMax()
+{
     // get the current layer
     QModelIndex idx = this->currentIndex();
 
     const int toplevelrow = (idx.internalId() / 100) - 1;
     const int stackpos = this->mLayerModel->toLayerStackIndex(toplevelrow);
     NMLayer* l = this->mLayerModel->getItemLayer(stackpos);
-    //NMLayer* l = (NMLayer*)idx.internalPointer();
-
-//    // get the camera of the background renderer
-//    LUMASSMainWin* win = qobject_cast<LUMASSMainWin*>(this->topLevelWidget());
-//    vtkRenderer* bkgRen = const_cast<vtkRenderer*>(win->getBkgRenderer());
-//    bkgRen->ResetCamera(const_cast<double*>(l->getSelectionBBox()));
-//    win->findChild<QVTKOpenGLWidget*>(tr("qvtkWidget"))->update();
-
     if (l == nullptr)
-        return;
-
-    vtkMapper* m = vtkMapper::SafeDownCast(const_cast<vtkAbstractMapper*>(l->getMapper()));
-    if (m == nullptr) return;
-
-    vtkLookupTable* lut = vtkLookupTable::SafeDownCast(m->GetLookupTable());
-    if (lut == nullptr) return;
-
-
-    std::string label = "LOOKUP:";
-    //void NMVtkOpenGLPolyDataMapper::PrintLookupTable(vtkLookupTable *lut, std::string label)
     {
-        int nclrs = lut->GetNumberOfTableValues();
-        std::cout << label << "\n";
-        for (int k=0; k < nclrs; ++k)
-        {
-            std::cout << "  " << k << "\t";
-            double farbe[4];
-            lut->GetTableValue(k, farbe);
-            std::cout << std::setprecision(3)
-                          << farbe[0] << " " << farbe[1] << " "
-                          << farbe[2] << " " << farbe[3] << "\n";
-            if (farbe[3] == 0)
-                farbe[3] = 1.0;
-        }
+        return;
     }
 
-	NMDebugCtx(ctx, << "done!");
+    NMImageLayer* il = qobject_cast<NMImageLayer*>(l);
+    if (il != nullptr)
+    {
+        std::vector<double> stats = il->getWindowStatistics();
+        QString col = il->getLegendValueField();
+        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(
+                    const_cast<QAbstractItemModel*>(il->getTable()));
+
+        if (sqlModel != nullptr && col.compare("Pixel Values") != 0)
+        {
+            std::string key = sqlModel->getNMPrimaryKey().toStdString();
+
+
+            std::stringstream sql;
+
+            sql << "select "
+                << "min(" << col.toStdString() << ") as minimum, "
+                << "max(" << col.toStdString() << ") as maximum "
+                << "from " << sqlModel->tableName().toStdString()
+                << " where " <<  key
+                << " between " << stats[0] << " and " << stats[1];
+
+            sqlModel->database().transaction();
+            QSqlQuery q(sqlModel->database());
+            if (q.exec(sql.str().c_str()) && q.next())
+            {
+                stats[0] = q.value(1).toDouble();
+                stats[1] = q.value(2).toDouble();
+            }
+            q.finish();
+            q.clear();
+            sqlModel->database().commit();
+        }
+
+        il->setLower(stats.at(0));
+        il->setUpper(stats.at(1));
+        il->updateMapping();
+    }
 }
 
 void ModelComponentList::wholeImgStats()

@@ -128,6 +128,8 @@ protected slots:
      */
     void zoom(int mode);
 
+    void stretchColourRampToVisMinMax();
+
 private:
 
 	double mFullMapExt[6];
@@ -151,6 +153,8 @@ private:
     QAction* mActRGBImg;
     QAction* mActVecContourOnly;
     QAction* mActOpacity;
+
+    QAction* mActStretchClrRamp;
 
     QAction* mActImageHistogram;
     QAction* mActValueStats;

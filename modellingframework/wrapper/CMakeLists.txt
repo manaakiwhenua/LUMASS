@@ -1,14 +1,5 @@
 PROJECT(mfw_wrapper)
 
-
-#find_package(VTK COMPONENTS
-#        vtkCommonDataModel
-#        vtkCommonCore
-#        vtkIOCore
-#)
-
-#include(${VTK_USE_FILE})
-
 INCLUDE_DIRECTORIES(
     ${SPATIALITE_INCLUDE_DIR}
     ${QT5_INCLUDE_DIRS}
@@ -50,19 +41,7 @@ LINK_DIRECTORIES(
     ${SPATIALITE_LIBLIB_DIR}
 )
 
-#file(GLOB MFW_WRAPPER_CPP
-#   ${mfw_wrapper_SOURCE_DIR}/*.cpp
-#   ${mfw_wrapper_SOURCE_DIR}/*.cxx
-#   ${lumass_SOURCE_DIR}/util/ITK/itkVTKImageExportBase.cxx
-##   ${shared_SOURCE_DIR}/NMLogger.cpp
-##   ${shared_SOURCE_DIR}/NMObject.cpp
-#   ${opt_SOURCE_DIR}/LpHelper.cpp
-#   ${opt_SOURCE_DIR}/NMMosra.cpp
-#)
-
 set(MFW_WRAPPER_LINK_LIBS
-                #OTBGDALRATImageIO
-                #OTBMathParser
                 NMModFrameCore
                 OTBSupplFilters
                 #RasImageIO
@@ -82,52 +61,10 @@ set(MFW_WRAPPER_DEP_LIBS
     NMModFrameCore
 )
 
-#SET(MFW_WRAPPER_NAMES
-#    NMMosraFilterWrapper
-#    #NMScriptableKernelFilter2Wrapper
-#)
-
 
 if (NOT RASSUPPORT)
     list(REMOVE_ITEM MFW_WRAPPER_NAMES "NMRasdamanConnector")
 endif()
-
-
-#file(GLOB MFW_WRAPPER_H
-#   ${mfw_wrapper_SOURCE_DIR}/*.h
-##   ${shared_SOURCE_DIR}/NMLogger.h
-##   ${shared_SOURCE_DIR}/NMObject.h
-#   ${opt_SOURCE_DIR}/LpHelper.h
-#   ${opt_SOURCE_DIR}/NMMosra.h
-#)
-
-# those two classes are part of the NMModFrameCore library
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMImageReader.cxx)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMImageReader.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMTableReader.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMTableReader.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMItkDataObjectWrapper.h)
-
-## ... take even more out we're not really using
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMCombineTwoFilterWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMCombineTwoFilterWrapper.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMExternalSortFilterWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMExternalSortFilterWrapper.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMLUAllocationWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMLUAllocationWrapper.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMNeighbourhoodCountingWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMNeighbourhoodCountingWrapper.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMSQLProcessor.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMSQLProcessor.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMOtbAttributeTableWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMOtbAttributeTableWrapper.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMScriptableKernelFilterWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMScriptableKernelFilterWrapper.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMFocalNeighbourhoodDistanceWeightingWrapper.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMFocalNeighbourhoodDistanceWeightingWrapper.h)
-#LIST(REMOVE_ITEM MFW_WRAPPER_CPP ${mfw_wrapper_SOURCE_DIR}/NMVirtualStreamWriter.cpp)
-#LIST(REMOVE_ITEM MFW_WRAPPER_H ${mfw_wrapper_SOURCE_DIR}/NMVirtualStreamWriter.h)
 
 
 IF(RASSUPPORT)
@@ -154,24 +91,14 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
             list(APPEND MFW_WRAPPER_HEADER_FILES ${opt_SOURCE_DIR}/LpHelper.h)
         endif()
 
-#        if (${wrapper} STREQUAL "NMCostDistanceBufferImageWrapper" OR ${wrapper} STREQUAL "UniqueCombinationFilterWrapper")
-
-#        endif()
-
-
-        message(STATUS "source files in lib ${MFW_WRAPPER_SOURCE_FILES}")
-        message(STATUS "source files in lib ${MFW_WRAPPER_HEADER_FILES}")
-
-
-        #QT5_WRAP_CPP(MFW__MOC_CPP ${MFW_WRAPPER_HEADER_FILES})
-        #message(STATUS "moc files: ${MFW_WRAPPER_MOC_CPP}")
+        #message(STATUS "source files in lib ${MFW_WRAPPER_SOURCE_FILES}")
+        #message(STATUS "source files in lib ${MFW_WRAPPER_HEADER_FILES}")
 
         include(GenerateExportHeader)
-        ADD_LIBRARY(${wrapper} SHARED ${MFW_WRAPPER_SOURCE_FILES}) #${MFW_WRAPPER_MOC_CPP})
+        ADD_LIBRARY(${wrapper} SHARED ${MFW_WRAPPER_SOURCE_FILES})
 
         generate_export_header(${wrapper})
 
-        #QT5_USE_MODULES(NMModFrame Core Xml Concurrent)
         TARGET_LINK_LIBRARIES(${wrapper} ${MFW_WRAPPER_LINK_LIBS})
         ADD_DEPENDENCIES(${wrapper} ${MFW_WRAPPER_DEP_LIBS})
 

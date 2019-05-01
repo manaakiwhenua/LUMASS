@@ -336,15 +336,15 @@ NMModelController::executeModel(const QString& compName)
 
     if (mbLogProv)
     {
-        QString provFN = QString("%1/%2_%3.provn")
+		QString stamp = QDateTime::currentDateTime().toString(Qt::ISODate);
+		stamp = stamp.replace(":", "");
+		stamp = stamp.replace("-", "");
+
+		QString provFN = QString("%1/%2_%3.provn")
                          .arg(this->getSetting("Workspace").toString())
                          .arg(userID)
-                         .arg(QDateTime::currentDateTime().toString(Qt::ISODate));
-        provFN = provFN.replace(":", "");
-        provFN = provFN.replace("-", "");
+                         .arg(stamp);
         startProv(provFN, comp->objectName());
-
-        //this->logProvNComponent(comp);
     }
 
     // ================================================
@@ -2071,7 +2071,8 @@ NMModelController::startProv(const QString &fn, const QString& compName)
     mProvFile.setFileName(fn);
     if (!mProvFile.open(QIODevice::ReadWrite | QIODevice::Text))
     {
-        NMLogError(<< "Model Controller: Failed creating provenance record!)");
+        NMLogError(<< "Model Controller: Failed creating provenance record: "
+			       << mProvFile.errorString().toStdString());
         return;
     }
 

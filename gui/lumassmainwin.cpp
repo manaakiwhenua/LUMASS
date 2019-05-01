@@ -6393,6 +6393,7 @@ void LUMASSMainWin::loadImageLayer(const QString& fileName)
 	NMImageLayer* layer = new NMImageLayer(renWin, 0, this);
 
     this->connectImageLayerProcSignals(layer);
+	layer->setObjectName(finfo.baseName());
     layer->setFileName(fileName);
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!");
@@ -7291,7 +7292,7 @@ LUMASSMainWin::displayUserModelOutput(void)
             {
                 // always just grab the first filename from the list
                 QVariant fnVar = proc->getParameter("FileNames");
-                if (fnVar.isValid() && fnVar.type() == QVariant::StringList)
+                if (fnVar.isValid())
                 {
                     QString fn = fnVar.toStringList().at(0);
                     this->loadImageLayer(fn);

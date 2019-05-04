@@ -51,6 +51,7 @@
 #include "lumassengine.h"
 #include "LUMASSConfig.h"
 
+#include <QApplication>
 #include <QtCore>
 #include <QDir>
 #include <QFileInfo>
@@ -404,10 +405,16 @@ bool isFileAccessible(const QString& fileName)
     return true;
 }
 
+
 int main(int argc, char** argv)
 {
-	NMDebugCtx(ctx, << "...");
+    // capture path to lumassengine
+    QCoreApplication engineApp(argc, argv);
+    QString enginePath = engineApp.applicationDirPath();
 
+    NMDebugCtx(ctx, << "...");
+
+    // process args
 	if (argc < 2)
 	{
 		showHelp();
@@ -428,12 +435,7 @@ int main(int argc, char** argv)
     QString workspace;
     bool bLogProv = false;
 
-    // capture path to lumassengine
-    QFileInfo rawPath(argv[0]);
-    QString enginePath = rawPath.absolutePath();
-
-
-	int arg = 1;
+    int arg = 1;
     while (arg < argc)
 	{
 		QString theArg = argv[arg];
@@ -532,4 +534,3 @@ int main(int argc, char** argv)
 	NMDebugCtx(ctx, << "done!");
 	return EXIT_SUCCESS;
 }
-

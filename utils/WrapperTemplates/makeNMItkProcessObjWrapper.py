@@ -67,7 +67,7 @@ def getPropertyType(propertyElementList):
         OutputSpacing:2:double:OutputSpacingValueType
     '''
     if len(propertyElementList) < 3:
-        print "ERROR - Invalid property element list length!"
+        print ("ERROR - Invalid property element list length!")
         return None
     propDim = int(propertyElementList[1])
     
@@ -80,7 +80,7 @@ def getPropertyType(propertyElementList):
     elif propDim == 3:
         type = 'QList< QList<QStringList> >'
     else:
-        print "ERROR - cannot handle property with 3+ dimensions!"
+        print ("ERROR - cannot handle property with 3+ dimensions!")
         type = None
     
     return type
@@ -226,13 +226,13 @@ def formatInternalParamSetting(propertyList, className):
                     propTypeVector = True
 
 
-        print "parsed property 'attributes' for %s: ..." % propName
+        print ("parsed property 'attributes' for %s: ..." % propName)
         elstr = ''
         for elm in prop:
             elstr = elstr + elm + ' '
-        print "raw list = %s" % elstr
-        print "propVarType=%s\nvarTargetType=%s\nvarTargetCast=%s\nvarTargetPointerCast=%s\npropTypeVector=%s\n" \
-                % (propVarType, varTargetType, varTargetCast, varTargetPointerCast, propTypeVector)
+        print ("raw list = %s" % elstr)
+        print ("propVarType=%s\nvarTargetType=%s\nvarTargetCast=%s\nvarTargetPointerCast=%s\npropTypeVector=%s\n" \
+                % (propVarType, varTargetType, varTargetCast, varTargetPointerCast, propTypeVector))
 
         if propDim == 0:
             tmp = \
@@ -330,7 +330,7 @@ def formatInternalParamSetting(propertyList, className):
                 % (propName, propName, varTargetPointerCast, propName, propName)
 
         else:
-            print "WARNING - cannot format multi-dimensional parameter settings yet!!"
+            print ("WARNING - cannot format multi-dimensional parameter settings yet!!")
             return None
         
         if tmp != '':
@@ -538,7 +538,7 @@ if __name__ == '__main__':
     
     # get the profile file path from the command line
     if len(sys.argv) < 2:
-        print "    Usage: $ %s <LUMASS wrapper profile file name>.lwp" % sys.argv[0]
+        print ("    Usage: $ %s <LUMASS wrapper profile file name>.lwp" % sys.argv[0])
         sys.exit()
     profile = sys.argv[1]
     
@@ -547,22 +547,22 @@ if __name__ == '__main__':
         fp = open(profile)
     except IOError as e:
         if e.errno == errno.EACCES:
-            print "Failed opening %s" % profile
+            print ("Failed opening %s" % profile)
             sys.exit()
         raise
     
     # -----------------------------------------------------------------------
     # parsing the profile file
-    print "    >>> using '%s' as lumass wrapper profile ..." % str(profile)
+    print ("    >>> using '%s' as lumass wrapper profile ..." % str(profile))
 
     pDict = buildDict(fp)
-    print ''
-    print pDict
-    print ''
+    print('')
+    print(pDict)
+    print('')
 
     # ---------------------------------------------------------------------  
     # copying the wrapper template to new files
-    print "    >>> creating wrapper class files ..."
+    print("    >>> creating wrapper class files ...")
         
     className = pDict['WrapperClassName']
 
@@ -570,32 +570,32 @@ if __name__ == '__main__':
     filepath = inspect.getfile(inspect.currentframe())
     path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     if os.sep == '/':
-        pos = string.rfind(path, '/', 0)
-        pos = string.rfind(path, '/', 0, pos)
+        pos = path.rfind('/', 0)
+        pos = path.rfind('/', 0, pos)
     else:
-        pos = string.rfind(path, '\\', 0)
-        pos = string.rfind(path, '\\', 0, pos)
+        pos = path.rfind('\\', 0)
+        pos = path.rfind('\\', 0, pos)
 
     homepath = path[0:pos]
 
     frameworkpath = os.path.join(homepath, 'modellingframework')
     targetpath = os.path.join(frameworkpath, 'wrapper')
-    print "    >>> lumass HOME=%s" % homepath
-    print "    >>> wrapper file path: %s" % targetpath
+    print("    >>> lumass HOME=%s" % homepath)
+    print("    >>> wrapper file path: %s" % targetpath)
 
     inCppPath = os.path.join(path, 'WrapperTemplate.cpp')
     inHPath   = os.path.join(path, 'WrapperTemplate.h')
 
-    print "   >>> inCppPath=%s" % inCppPath
-    print "   >>> inHPath=%s" % inHPath
+    print("   >>> inCppPath=%s" % inCppPath)
+    print("   >>> inHPath=%s" % inHPath)
 
     classNameCPP = "%s.cpp" % (className)
     classNameH = "%s.h" % (className)
     cppPath = os.path.join(targetpath, classNameCPP)
     hPath = os.path.join(targetpath, classNameH)
 
-    print "   >>> cppPath=%s" % inCppPath
-    print "   >>> hPath=%s" % hPath
+    print("   >>> cppPath=%s" % inCppPath)
+    print("   >>> hPath=%s" % hPath)
 
 
     shutil.copyfile(inHPath, hPath)
@@ -603,7 +603,7 @@ if __name__ == '__main__':
 
     # -----------------------------------------------------------------------
     # process copied files
-    print "    >>> processing wrapper header file ..."    
+    print("    >>> processing wrapper header file ...")
 
     #/*$<InternalRATGetSupport>$*/
     #/*$<InternalRATSetSupport>$*/
@@ -616,6 +616,10 @@ if __name__ == '__main__':
     hStr = None
     with open(hPath, 'r') as hWrapper:
         hStr = hWrapper.read()
+
+        wrapperclasssmallname = pDict['WrapperClassName']
+        exportIncludeStr = '%s' % wrapperclasssmallname.lower()
+        hStr = hStr.replace("/*$<WrapperExportInclude>$*/", exportIncludeStr)
 
         for key in pDict:
             if key == 'Property':
@@ -647,14 +651,14 @@ if __name__ == '__main__':
 
         # check whether there is any keyword left unreplaced ...
         if hStr.find("/*$<") != -1:
-            print "WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (hPath)
+            print("WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (hPath))
     
     with open(hPath, 'w') as hWrapper:
         hWrapper.write(hStr)
     
 
 
-    print "    >>> processing wrapper c++ implementation file ..."
+    print("    >>> processing wrapper c++ implementation file ...")
     # CPP FILE
     if 'RATGetSupport' in pDict:
         RATGetSupp = int(pDict['RATGetSupport'])
@@ -729,25 +733,25 @@ if __name__ == '__main__':
                 
         # check whether there is any keyword left unreplaced ...
         if hStr.find("/*$<") != -1:
-            print "WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (cppPath)
+            print ("WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (cppPath))
     
     with open(cppPath, 'w') as cppWrapper:
         cppWrapper.write(cppStr)
 
-    print "    >>> I'm done with the wrapper class!"
+    print("    >>> I'm done with the wrapper class!")
 
 
     # -----------------------------------------------------------------------
     # integrate wrapper class into ProcessFactory
     # -----------------------------------------------------------------------
 
-    print "    >>> framework integration ..."
+    print("    >>> framework integration ...")
 
     #/*$<IncludeWrapperHeader>$*/   = #include "/*$<WrapperClassName>$*/.h"
     #ComponentName   /*$<RegisterComponentName>$*/    = mProcRegister << QString::fromLatin1($<ComponentName>$);
     #ComponentIsSink    /*$<RegisterComponentAsSink>$*/  = mSinks << QString::fromLatin1($<ComponentName>$);
 
-    procFactoryPath = os.path.join(frameworkpath, 'NMProcessFactory.cpp')
+    procFactoryPath = os.path.join(frameworkpath, 'core/NMProcessFactory.cpp')
 
     procFactoryStr = None
     with open(procFactoryPath, 'r') as procFactory:
@@ -755,15 +759,18 @@ if __name__ == '__main__':
 
     compNameStr = pDict['ComponentName']
 
-    wrapperInclude = "#include \"%s.h\"\n/*$<IncludeWrapperHeader>$*/" % (pDict['WrapperClassName'])
-    procFactoryStr = procFactoryStr.replace('/*$<IncludeWrapperHeader>$*/', wrapperInclude)
+    #    wrapperInclude = "#include \"%s.h\"\n/*$<IncludeWrapperHeader>$*/" % (pDict['WrapperClassName'])
+    #    procFactoryStr = procFactoryStr.replace('/*$<IncludeWrapperHeader>$*/', wrapperInclude)
 
     regCompNameStr = "    mProcRegister << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentName>$*/" % compNameStr
-    procFactoryStr = procFactoryStr.replace('/*$<RegisterComponentName>$*/', regCompNameStr)
+    if procFactoryStr.find(regCompNameStr) == -1:
+        procFactoryStr = procFactoryStr.replace('/*$<RegisterComponentName>$*/', regCompNameStr)
 
     if not pDict['ComponentIsSink'] is None:
         if int(pDict['ComponentIsSink']) == 1:
-            regSingCompStr = "    mSinks << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentAsSink>$*/)" % compNameStr
+            regSinKCompStr = "    mSinks << QString::fromLatin1(\"%s\");\n/*$<RegisterComponentAsSink>$*/)" % compNameStr
+            if procFactoryStr.find(regSinkCompStr) == -1:
+                procFactoryStr = procFacotryStr.replace('/*$<RegisterComponentAsSink>$*/', regSinkCompStr)
 
 
     nameFromAliasStr = \
@@ -773,32 +780,36 @@ if __name__ == '__main__':
         "    }\n"                                               \
         "/*$<WrapperClassNameFromComponentName>$*/"       \
         % (compNameStr, pDict['WrapperClassName'])
-    procFactoryStr = procFactoryStr.replace('/*$<WrapperClassNameFromComponentName>$*/', nameFromAliasStr)
+
+    if procFactoryStr.find(nameFromAliasStr) == -1:
+        procFactoryStr = procFactoryStr.replace('/*$<WrapperClassNameFromComponentName>$*/', nameFromAliasStr)
 
 
-    createProcStr = \
-        "    else if (procClass.compare(\"%s\") == 0)\n"                    \
-        "    {\n"                                                           \
-        "        proc = new %s(this);\n"                                    \
-        "    }\n"                                                           \
-        "/*$<CreateProcessObjFromWrapperClassName>$*/"                \
-        % (pDict['WrapperClassName'], pDict['WrapperClassName'])
+    ### THIS IS NO LONGER REQUIRED WITH NEW INDIVIDUAL FACTORY APPROACH
+    #    createProcStr = \
+    #        "    else if (procClass.compare(\"%s\") == 0)\n"                    \
+    #        "    {\n"                                                           \
+    #        "        proc = new %s(this);\n"                                    \
+    #        "    }\n"                                                           \
+    #        "/*$<CreateProcessObjFromWrapperClassName>$*/"                \
+    #        % (pDict['WrapperClassName'], pDict['WrapperClassName'])
 
-    procFactoryStr = procFactoryStr.replace('/*$<CreateProcessObjFromWrapperClassName>$*/', createProcStr)
+    #    if procFactoryStr.find(createProcStr) == -1:
+    #        procFactoryStr = procFactoryStr.replace('/*$<CreateProcessObjFromWrapperClassName>$*/', createProcStr)
 
 
     with open(procFactoryPath, 'w') as procFactory:
         procFactory.write(procFactoryStr)
 
 
-    print "    >>> I'm done with the ProcessFactory integration!"
+    print("    >>> I'm done with the ProcessFactory integration!")
 
 
     # -----------------------------------------------------------------------
     # add process to process component list (GUI)
     # -----------------------------------------------------------------------
 
-    print "    >>> user interface integration ..."
+    print("    >>> user interface integration ...")
 
     guipath = os.path.join(homepath, 'gui')
     procListPath = os.path.join(guipath, 'NMProcCompList.cpp')
@@ -812,13 +823,15 @@ if __name__ == '__main__':
         "    this->addItem(QString::fromLatin1(\"%s\"));\n"     \
         "/*$<AddComponentToGUICompList>$*/"                     \
         % compNameStr
-    procListStr = procListStr.replace('/*$<AddComponentToGUICompList>$*/', guiliststr)
+
+    if procListStr.find(guiliststr) == -1:
+        procListStr = procListStr.replace('/*$<AddComponentToGUICompList>$*/', guiliststr)
 
 
     with open(procListPath, 'w') as procList:
         procList.write(procListStr)
 
-    print "    >>> I'm done!"
+    print("    >>> I'm done!")
 
 
 

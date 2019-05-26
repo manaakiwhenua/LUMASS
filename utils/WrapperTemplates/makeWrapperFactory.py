@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys
 import shutil
 import inspect, os
@@ -15,13 +17,13 @@ if __name__ == '__main__':
     more special
     '''
     if len(sys.argv) < 11:
-        print "Usage: $ %s makeWrapperFactory --cl_name <WrapperClassName> --isSink <true | false> --author <author> --year <year> --date <date>"
+        print ("Usage: $ %s makeWrapperFactory --cl_name <WrapperClassName> --isSink <true | false> --author <author> --year <year> --date <date>")
         sys.exit()
 
     pdict = {}
 
     for i in range(1, len(sys.argv)):
-        print "processing '%s' ..." % sys.argv[i]
+        print ("processing '%s' ..." % sys.argv[i])
 
         if sys.argv[i] == "--cl_name":
             pdict['cl_name'] = sys.argv[i+1]
@@ -64,32 +66,32 @@ if __name__ == '__main__':
     filepath = inspect.getfile(inspect.currentframe())
     path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     if os.sep == '/':
-        pos = string.rfind(path, '/', 0)
-        pos = string.rfind(path, '/', 0, pos)
+        pos = path.rfind('/', 0)
+        pos = path.rfind('/', 0, pos)
     else:
-        pos = string.rfind(path, '\\', 0)
-        pos = string.rfind(path, '\\', 0, pos)
+        pos = path.rfind('\\', 0)
+        pos = path.rfind('\\', 0, pos)
 
     homepath = path[0:pos]
 
     frameworkpath = os.path.join(homepath, 'modellingframework')
     targetpath = os.path.join(frameworkpath, 'wrapper')
-    print "    >>> lumass HOME=%s" % homepath
-    print "    >>> wrapper file path: %s" % targetpath
+    print ("    >>> lumass HOME=%s" % homepath)
+    print ("    >>> wrapper file path: %s" % targetpath)
 
     inCppPath = os.path.join(path, 'WrapperFactoryTemplate.cpp')
     inHPath   = os.path.join(path, 'WrapperFactoryTemplate.h')
 
-    print "   >>> inCppPath=%s" % inCppPath
-    print "   >>> inHPath=%s" % inHPath
+    print ("   >>> inCppPath=%s" % inCppPath)
+    print ("   >>> inHPath=%s" % inHPath)
 
     classNameCPP = "%s.cpp" % (factoryClassName)
     classNameH = "%s.h" % (factoryClassName)
     cppPath = os.path.join(targetpath, classNameCPP)
     hPath = os.path.join(targetpath, classNameH)
 
-    print "   >>> cppPath=%s" % cppPath
-    print "   >>> hPath=%s" % hPath
+    print ("   >>> cppPath=%s" % cppPath)
+    print ("   >>> hPath=%s" % hPath)
 
 
     shutil.copyfile(inHPath, hPath)
@@ -108,7 +110,7 @@ if __name__ == '__main__':
             hStr = hStr.replace(searchDict[key], pdict[key])
 
         if hStr.find("/*$<") != -1:
-            print "WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (hPath)
+            print ("WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (hPath))
 
     with open(hPath, 'w') as hWrapper:
         hWrapper.write(hStr)
@@ -124,7 +126,7 @@ if __name__ == '__main__':
             cppStr = cppStr.replace(searchDict[key], pdict[key])
 
         if cppStr.find("/*$<") != -1:
-            print "WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (cppPath)
+            print ("WARNING: There's likely one or more unreplaced wrapper keywords left in %s!" % (cppPath))
 
 
     with open(cppPath, 'w') as cppWrapper:

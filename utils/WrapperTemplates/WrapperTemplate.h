@@ -35,7 +35,7 @@
 #include "NMProcess.h"
 #include "NMItkDataObjectWrapper.h"
 
-#include "nmmodframe_export.h"
+#include "/*$<WrapperExportInclude>$*/_export.h"
 
 template<class TInputImage, class TOutputImage, unsigned int Dimension=2>
 class /*$<WrapperClassName>$*/_Internal;

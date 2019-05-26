@@ -312,6 +312,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
     connect(this, SIGNAL(signalSaveTimerStart()), mTimer, SLOT(start()));
     connect(this, SIGNAL(signalSaveTimerStop()), mTimer, SLOT(stop()));
     mTimer->moveToThread(mTimerThread);
+    connect(mTimerThread, SIGNAL(finished()), mTimer, SLOT(deleteLater()));
 }
 
 void

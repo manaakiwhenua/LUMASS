@@ -38,14 +38,62 @@ public:
     typedef otb::Image< RGBPixelType, ImageDimension >  RGBImgType;
     typedef typename RGBImgType::RegionType             RGBImgRegType;
     typedef typename RGBImgType::PointType              RGBImgPointType;
+    typedef typename RGBImgType::SpacingType            RGBImgSpacingType;
 
     typedef otb::Image<PixelType, ImageDimension> ImgType;
     typedef typename ImgType::RegionType ImgRegType;
     typedef typename ImgType::PointType ImgPointType;
+    typedef typename ImgType::SpacingType ImgSpacingType;
 
     typedef otb::VectorImage<PixelType, ImageDimension> VecType;
     typedef typename VecType::RegionType VecRegType;
     typedef typename VecType::PointType VecPointType;
+    typedef typename VecType::SpacingType VecSpacingType;
+
+
+    static void getSignedSpacing(itk::DataObject::Pointer& dataObj,
+                           unsigned int numBands, bool rgbMode, std::array<double, 3>& spacing)
+    {
+        if (numBands == 1)
+        {
+            ImgType* img = dynamic_cast<ImgType*>(dataObj.GetPointer());
+            ImgSpacingType spac = img->GetSignedSpacing();
+            for (unsigned int d=0; d < ImageDimension; ++d)
+            {
+                spacing[d] = spac[d];
+            }
+            for (unsigned int k=ImageDimension; k < 3; ++k)
+            {
+                spacing[k] = 0.0;
+            }
+        }
+        else if (numBands == 3 && rgbMode)
+        {
+            RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj.GetPointer());
+            RGBImgPointType spac = img->GetSignedSpacing();
+            for (unsigned int d=0; d < ImageDimension; ++d)
+            {
+                spacing[d] = spac[d];
+            }
+            for (unsigned int k=ImageDimension; k < 3; ++k)
+            {
+                spacing[k] = 0.0;
+            }
+        }
+        else
+        {
+            VecType* img = dynamic_cast<VecType*>(dataObj.GetPointer());
+            VecPointType spac = img->GetSignedSpacing();
+            for (unsigned int d=0; d < ImageDimension; ++d)
+            {
+                spacing[d] = spac[d];
+            }
+            for (unsigned int k=ImageDimension; k < 3; ++k)
+            {
+                spacing[k] = 0.0;
+            }
+        }
+    }
 
     static void setOrigin(itk::DataObject::Pointer& dataObj,
                           unsigned int numBands, bool rgbMode, const double* origin)
@@ -54,7 +102,7 @@ public:
         {
             ImgType* img = dynamic_cast<ImgType*>(dataObj.GetPointer());
             ImgPointType orig;
-            for (int d=0; d < ImageDimension; ++d)
+            for (unsigned int d=0; d < ImageDimension; ++d)
             {
                 orig[d] = origin[d];
             }
@@ -64,7 +112,7 @@ public:
         {
             RGBImgType* img = dynamic_cast<RGBImgType*>(dataObj.GetPointer());
             RGBImgPointType orig;
-            for (int d=0; d < ImageDimension; ++d)
+            for (unsigned int d=0; d < ImageDimension; ++d)
             {
                 orig[d] = origin[d];
             }
@@ -74,7 +122,7 @@ public:
         {
             VecType* img = dynamic_cast<VecType*>(dataObj.GetPointer());
             VecPointType orig;
-            for (int d=0; d < ImageDimension; ++d)
+            for (unsigned int d=0; d < ImageDimension; ++d)
             {
                 orig[d] = origin[d];
             }
@@ -142,6 +190,25 @@ public:
         }
     }
 };
+
+#define DWGetSignedSpacing( comptype ) \
+{ \
+    switch(mNumDimensions) \
+    { \
+    case 1: \
+        NMItkDataObjectWrapper_Internal<comptype, 1>::getSignedSpacing( \
+            mDataObject, mNumBands, mIsRGBImage, spacing); \
+        break; \
+    case 2: \
+        NMItkDataObjectWrapper_Internal<comptype, 2>::getSignedSpacing( \
+            mDataObject, mNumBands, mIsRGBImage, spacing); \
+        break; \
+    case 3: \
+        NMItkDataObjectWrapper_Internal<comptype, 3>::getSignedSpacing( \
+            mDataObject, mNumBands, mIsRGBImage, spacing); \
+        break; \
+    }\
+}
 
 #define DWSetOrigin( comptype ) \
 { \
@@ -273,6 +340,23 @@ NMItkDataObjectWrapper::setImageOrigin(const double* origin)
     switch (this->mNMComponentType)
     {
         LocalMacroPerSingleType( DWSetOrigin )
+        default:
+            break;
+    }
+}
+
+void NMItkDataObjectWrapper::getSignedImageSpacing(std::array<double, 3>& spacing)
+{
+    if (mDataObject.IsNull())
+    {
+        NMWarn("NMItkDataObjectWrapper::getImageSpacing()",
+               << "itk::DataObject is NULL");
+        return;
+    }
+
+    switch (this->mNMComponentType)
+    {
+        LocalMacroPerSingleType( DWGetSignedSpacing )
         default:
             break;
     }

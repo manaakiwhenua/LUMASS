@@ -54,9 +54,9 @@ public:
 
     enum NMRegionType {NM_BUFFERED_REGION, NM_REQUESTED_REGION, NM_LARGESTPOSSIBLE_REGION};
 
-	NMPropertyGetSet(NMComponentType, NMComponentType);
-	NMPropertyGetSet(NumDimensions, unsigned int);
-	NMPropertyGetSet(NumBands, unsigned int);
+    NMPropertyGetSet(NMComponentType, NMComponentType)
+    NMPropertyGetSet(NumDimensions, unsigned int)
+    NMPropertyGetSet(NumBands, unsigned int)
     NMPropertyGetSet(IsRGBImage, bool)
 
 	void setDataObject(itk::DataObject* obj)
@@ -70,6 +70,8 @@ public:
 
 	itk::DataObject* getDataObject(void)
 		{return this->mDataObject;}
+
+    void getSignedImageSpacing(std::array<double, 3>& spacing);
 
 	void setStringObject(const QString& str)
 		{this->mStringObject = str;}

@@ -113,6 +113,9 @@ public:
 
     void setRAT(unsigned idx, QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
+    void setForcedLargestPossibleRegion(std::array<int, 6> forcedLPR);
+    void setUpdateRegion(std::array<int, 6> updateRegion);
+
 protected:
 
     QString mPyramidResamplingType;
@@ -128,6 +131,12 @@ protected:
     bool mWriteTable;
     bool mUpdateMode;
     bool mRGBMode;
+
+    bool mbUseForcedLPR;
+    bool mbUseUpdateRegion;
+
+    std::array<int, 6> mForcedLPR;
+    std::array<int, 6> mUpdateRegion;
 
 #ifdef BUILD_RASSUPPORT
 	NMRasdamanConnectorWrapper* mRasConnector;
@@ -148,7 +157,8 @@ protected:
                                const QMap<QString, NMModelComponent*>& repo);
     void setInternalStreamingMethod();
     void setInternalStreamingSize();
-
+    void setInternalForcedLargestPossibleRegion(itk::ImageIORegion& ior);
+    void setInternalUpdateRegion(itk::ImageIORegion& ior);
 };
 
 #endif /* NMSTREAMINGIMAGEFILEWRITERWRAPPER_H_ */

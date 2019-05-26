@@ -1,4 +1,4 @@
- /****************************************************************************** 
+ /******************************************************************************
  * Created by Alexander Herzig 
  * Copyright 2010,2011,2012 Landcare Research New Zealand Ltd 
  *
@@ -150,6 +150,26 @@
                 VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
                 //return r->getRasterAttributeTable(band);
                 return r->GetAttributeTable(band);
+            }
+        }
+
+        static void setRequestedRegion(itk::ProcessObject::Pointer& procObj,
+                                        unsigned int numBands, itk::ImageIORegion& ior, bool rgbMode)
+        {
+            if (numBands == 1)
+            {
+                ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+                r->SetRequestedRegion(ior);
+            }
+            else if (rgbMode && numBands == 3)
+            {
+                RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
+                r->SetRequestedRegion(ior);
+            }
+            else
+            {
+                VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
+                r->SetRequestedRegion(ior);
             }
         }
 
@@ -515,6 +535,45 @@ public:
         }
     }
 
+
+    static void setRequestedRegion(itk::ProcessObject* procObj,
+                                    unsigned int numBands, itk::ImageIORegion& ior, bool rgbMode)
+    {
+        if (numBands == 1)
+        {
+            ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            ReaderRegionType rreg;
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                rreg.SetIndex(d, ior.GetIndex()[d]);
+                rreg.SetSize(d, ior.GetSize()[d]);
+            }
+
+            r->GetOutput()->SetRequestedRegion(rreg);
+        }
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
+            RGBReaderRegionType rreg;
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                rreg.SetIndex(d, ior.GetIndex()[d]);
+                rreg.SetSize(d, ior.GetSize()[d]);
+            }
+            r->GetOutput()->SetRequestedRegion(rreg);
+        }
+        else
+        {
+            VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
+            VecReaderRegionType rreg;
+            for (int d=0; d < ImageDimension; ++d)
+            {
+                rreg.SetIndex(d, ior.GetIndex()[d]);
+                rreg.SetSize(d, ior.GetSize()[d]);
+            }
+            r->GetOutput()->SetRequestedRegion(rreg);
+        }
+    }
 
     static void setOverviewIdx(itk::ProcessObject::Pointer& procObj,
                                  unsigned int numBands, int ovvidx, const int* userLPR,
@@ -1085,8 +1144,7 @@ template class RasdamanReader<double, 3>;
      }
 
 
-    /*! Macro for setting the RAT type to be read upon fetch
-     */
+
     #define CallBuildOverviews( PixelType ) \
     {\
         switch (this->mOutputNumDimensions) \
@@ -1102,6 +1160,24 @@ template class RasdamanReader<double, 3>;
         default: \
             FileReader<PixelType, 2 >::buildOverviews( \
                     this->mOtbProcess, this->mOutputNumBands, resamplingType, mRGBMode); \
+        }\
+     }
+
+    #define CallSetRequestedRegion( PixelType ) \
+    {\
+        switch (this->mOutputNumDimensions) \
+        { \
+        case 1: \
+            FileReader<PixelType, 1 >::setRequestedRegion( \
+                    this->mOtbProcess, this->mOutputNumBands, ior, mRGBMode); \
+            break; \
+        case 3: \
+            FileReader<PixelType, 3 >::setRequestedRegion( \
+                    this->mOtbProcess, this->mOutputNumBands, ior, mRGBMode); \
+            break; \
+        default: \
+            FileReader<PixelType, 2 >::setRequestedRegion( \
+                    this->mOtbProcess, this->mOutputNumBands, ior, mRGBMode); \
         }\
      }
 
@@ -1508,6 +1584,17 @@ NMImageReader::setOverviewIdx(int ovvidx, const int *userLPR)
                 break;
             }
         }
+    }
+}
+
+void
+NMImageReader::setRequestedRegion(itk::ImageIORegion &ior)
+{
+    switch(this->mOutputComponentType)
+    {
+    LocalMacroPerSingleType( CallSetRequestedRegion )
+    default:
+        break;
     }
 }
 

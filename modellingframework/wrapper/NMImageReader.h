@@ -147,6 +147,7 @@ public:
 	void instantiateObject(void);
 
     void setOverviewIdx(int ovvidx, const int* userLPR);
+    void setRequestedRegion(itk::ImageIORegion& ior);
 
 protected:
 	void UpdateProgressInfo(itk::Object* obj,

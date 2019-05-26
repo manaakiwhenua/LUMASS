@@ -71,7 +71,9 @@ NMVtkInteractorStyleImage::~NMVtkInteractorStyleImage()
 NMVtkInteractorStyleImage*
 NMVtkInteractorStyleImage::New()
 {
-    return new NMVtkInteractorStyleImage();
+    NMVtkInteractorStyleImage* iasm = new NMVtkInteractorStyleImage();
+    iasm->InitializeObjectBase();
+    return iasm;
 }
 
 void
@@ -168,7 +170,7 @@ NMVtkInteractorStyleImage::setDevicePixelRatio(double dpr)
         this->mDPR = dpr;
 #   endif
 #else
-    this->mDPR = dpr;
+    this->mDPR = 1;
 #endif
 }
 void
@@ -376,15 +378,15 @@ NMVtkInteractorStyleImage::OnMouseWheelForward()
         &&  this->Interactor->GetShiftKey()
        )
     {
-        this->SetMotionFactor(0.2);
+        this->SetMotionFactor(0.5);
     }
     else if (this->Interactor->GetControlKey())
     {
-        this->SetMotionFactor(1.0);
+        this->SetMotionFactor(5.0);
     }
     else
     {
-        this->SetMotionFactor(10.0);
+        this->SetMotionFactor(20);
     }
 
     Superclass::OnMouseWheelForward();
@@ -405,7 +407,7 @@ NMVtkInteractorStyleImage::OnMouseWheelBackward()
     }
     else
     {
-        this->SetMotionFactor(10.0);
+        this->SetMotionFactor(20);
     }
 
     Superclass::OnMouseWheelBackward();

@@ -83,6 +83,7 @@
 #include "NMToolBar.h"
 #include "NMAbstractAction.h"
 #include "NMModelAction.h"
+#include "NMStreamingROIImageFilterWrapper.h"
 
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -147,7 +148,7 @@
 //#include "itkTimeProbe.h"
 //#include "itkIndent.h"
 //#include "otbGDALRATImageFileReader.h"
-#include "otbImage.h"
+//#include "otbImage.h"
 //#include "itkShiftScaleImageFilter.h"
 //#include "itkCastImageFilter.h"
 //#include "itkPasteImageFilter.h"
@@ -155,7 +156,7 @@
 //#include "itkVTKImageExport.h"
 //#include "otbAttributeTable.h"
 //#include "otbStreamingRATImageFileWriter.h"
-#include "otbImageFileWriter.h"
+//#include "otbImageFileWriter.h"
 //#include "otbImageFileReader.h"
 //#include "itkExtractImageFilter.h"
 //#include "itkObjectFactoryBase.h"
@@ -178,8 +179,8 @@
 //#include "otbParserX.h"
 //#include "mpParser.h"
 
-#include "otbFlowAccumulationFilter.h"
-#include "otbStreamingRATImageFileWriter.h"
+//#include "otbFlowAccumulationFilter.h"
+//#include "otbStreamingRATImageFileWriter.h"
 
 //#include "otbFlowAccumulationFilter.h"
 //#include "otbParallelFillSinks.h"
@@ -195,6 +196,12 @@
 //#include "itkImageRegionSplitterMultidimensional.h"
 //#include "itkNMImageRegionSplitterMaxSize.h"
 
+
+//#include "itkRegionOfInterestImageFilter.h"
+//#include "otbNMImageReader.h"
+//#include "otbStreamingRATImageFileWriter.h"
+//#include "itkImageFileWriter.h"
+//#include "nmStreamingROIImageFilter.h"
 
 #include "NMMosra.h"
 
@@ -2690,10 +2697,10 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     if (fileName.isNull())
         return;
 
-    //NMModelController* ctrl = NMModelController::getInstance();
     QScopedPointer<NMModelController> ctrl(new NMModelController());
     ctrl->setLogger(mLogger);
 
+    const int nDim = il->getNumDimensions();
 
     // ---------------- CALC ORIGIN FOR OUTPUT IMAGE ----------
     const int* pVisreg = il->getVisibleRegion();
@@ -2707,10 +2714,10 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     double spac[3];
     il->getSignedOverviewSpacing(il->getOverviewIndex(), spac);
 
-    double newOrig[3];
+    std::array<double, 3> newOrig = {0.0, 0.0, 0.0};
     newOrig[0] = pOrig[0] + visreg[0] * spac[0];
     newOrig[1] = pOrig[1] + visreg[2] * spac[1];
-    if (il->getNumDimensions() == 3)
+    if (nDim == 3)
     {
         newOrig[2] = pOrig[2] + visreg[4] * spac[2];
     }
@@ -2721,8 +2728,6 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
 
     // ---------------- SET UP INPUT ----------------------
     QSharedPointer<NMItkDataObjectWrapper> dw = il->getImage();
-    dw->getDataObject()->SetReleaseDataFlag(false);
-    dw->setImageOrigin(&newOrig[0]);
     NMDataComponent* dc = new NMDataComponent();
     dc->setObjectName("DataBuffer");
     QString bufCompName = ctrl->addComponent(dc);
@@ -2732,22 +2737,111 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     QString srcFileName = il->getFileName();
     QFileInfo fifo(srcFileName);
     QString readerCompName;
+    QString roiCompName;
+    NMImageReader* readerProc = nullptr;
+
     bool bReader = false;
-    if (!onlyVisImg && fifo.isFile() && fifo.isReadable())
+    if (fifo.isFile() && fifo.isReadable())
     {
         bReader = true;
 
         // SET UP THE READER Process
-        NMImageReader* readerProc = new NMImageReader();
+        readerProc = new NMImageReader();
         readerProc->setFileNames(QStringList(srcFileName));
         readerProc->setImgTypeSpec(dw);
 
-        NMSequentialIterComponent* readerComp =
-                new NMSequentialIterComponent();
+        NMSequentialIterComponent* readerComp = new NMSequentialIterComponent();
         readerComp->setObjectName("ImageReader");
         readerComp->setProcess(readerProc);
         readerCompName = ctrl->addComponent(readerComp);
     }
+
+    // -------------------- SET UP ROI FILTER -------------------------
+    // plug a region of interest filter into the pipeline ....
+    if (onlyVisImg)
+    {
+       double imgSpacing[3];
+
+       if (bReader)
+       {
+           readerProc->instantiateObject();
+           if (!readerProc->isInitialised())
+           {
+                NMLogError(<< "The ImageReader could not be initialised!");
+                return;
+           }
+           readerProc->getSignedSpacing(imgSpacing);
+       }
+       else
+       {
+           std::array<double, 3> myspacing;
+           dw->getSignedImageSpacing(myspacing);
+           for (unsigned int d=0; d < nDim; ++d)
+           {
+                imgSpacing[d] = myspacing[d];
+           }
+           for (unsigned l=nDim; l < 3; ++l)
+           {
+               imgSpacing[l] = 0.0;
+           }
+       }
+
+       const int scol = std::floor((newOrig[0] - pOrig[0]) / std::fabs(imgSpacing[0]));
+       const QString strScol = QString("%1").arg(scol);
+       const int srow = std::floor((pOrig[1] - newOrig[1]) / std::fabs(imgSpacing[1]));
+       const QString strSrow = QString("%1").arg(srow);
+       const int xsize = static_cast<int>(((visreg[1] * spac[0]) / imgSpacing[0]) + 0.5);
+       const QString strXsize = QString("%1").arg(xsize);
+       const int ysize = static_cast<int>(((visreg[3] * spac[1]) / imgSpacing[1]) + 0.5);
+       const QString strYsize = QString("%1").arg(ysize);
+
+       QStringList indices;
+       indices << strScol << strSrow;
+       QStringList sizes;
+       sizes << strXsize << strYsize;
+
+       if (nDim == 3)
+       {
+            const int sslice = std::floor((newOrig[2] - pOrig[2]) / std::fabs(imgSpacing[2]));
+            const QString strSslice = QString("%1").arg(sslice);
+            const int zsize = static_cast<int>(((visreg[5]* spac[2]) / imgSpacing[2]) + 0.5);
+            const QString strZsize = QString("%1").arg(zsize);
+
+            indices << strSslice;
+            sizes << strZsize;
+       }
+
+       QList<QStringList> listIndex;
+       listIndex << indices;
+       QList<QStringList> listSize;
+       listSize << sizes;
+
+       NMStreamingROIImageFilterWrapper* roiProc = new NMStreamingROIImageFilterWrapper();
+       roiProc->setROIIndex(listIndex);
+       roiProc->setROISize(listSize);
+       roiProc->setImgTypeSpec(dw);
+
+       NMSequentialIterComponent* roiComp = new NMSequentialIterComponent();
+       roiComp->setObjectName("ExtractImageRegion");
+       roiComp->setProcess(roiProc);
+       roiCompName = ctrl->addComponent(roiComp);
+
+       QList<QStringList> rrinput;
+       QStringList rinput;
+
+       if (bReader)
+       {
+            rinput << readerCompName;
+       }
+       else
+       {
+            rinput << bufCompName;
+       }
+
+       rrinput << rinput;
+       roiComp->setInputs(rrinput);
+    }
+
 
     // ---------------- SET UP WRITER ---------------------
     // create the process
@@ -2756,10 +2850,9 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     writerProc->setFileNames(QStringList(fileName));
     writerProc->setImgTypeSpec(dw);
     writerProc->setWriteTable(true);
-    //writerProc->setInputTables(QStringList(bufCompName));
+    writerProc->setInputTables(QStringList(bufCompName));
     writerProc->setPyramidResamplingType(QString("NEAREST"));
     writerProc->setRGBMode(dw->getIsRGBImage());
-
 
 
     // create host component
@@ -2772,27 +2865,27 @@ void LUMASSMainWin::saveAsImageFile(bool onlyVisImg)
     QList<QStringList> llst;
     QStringList lst;
 
-    if (bReader)
+    if (onlyVisImg)
     {
-        lst << readerCompName;
+        lst << roiCompName;
     }
     else
     {
-        lst << bufCompName;
+        if (bReader)
+        {
+            lst << readerCompName;
+        }
+        else
+        {
+            lst << bufCompName;
+        }
     }
 
     llst << lst;
     writerComp->setInputs(llst);
 
     // ---- CONTROLLER DOES THE REST ------
-    ctrl->executeModel(writerComp->objectName());
-//    QStringList del;
-//    del << bufCompName << writerCompName;
-//    if (!onlyVisImg)
-//    {
-//        del << readerCompName;
-//    }
-//    ctrl->deleteLater(del);
+    ctrl->executeModel(writerCompName);
 }
 
 void LUMASSMainWin::checkInteractiveLayer(void)

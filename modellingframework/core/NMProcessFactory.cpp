@@ -67,6 +67,7 @@ NMProcessFactory::NMProcessFactory(QObject* parent)
     mProcRegister << QString::fromLatin1("ImageBufferWriter");
     mProcRegister << QString::fromLatin1("RAMFlowAcc");
     mProcRegister << QString::fromLatin1("TerrainAttributes");
+    mProcRegister << QString::fromLatin1("ExtractImageRegion");
 /*$<RegisterComponentName>$*/
 
     mSinks << QString::fromLatin1("ImageWriter");
@@ -204,6 +205,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMDEMSlopeAspectFilterWrapper";
     }
+    else if (alias.compare("ExtractImageRegion") == 0)
+    {
+        return "NMStreamingROIImageFilterWrapper";
+    }
 /*$<WrapperClassNameFromComponentName>$*/
     else return proc;
 }
@@ -260,7 +265,6 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     {
         proc = new NMTableReader(this);
     }
-    /*$<CreateProcessObjFromWrapperClassName>$*/
     else
     {
         proc = mFactoryRegister[procClass]->createWrapper();

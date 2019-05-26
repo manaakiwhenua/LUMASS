@@ -354,6 +354,7 @@ SET(MFW_WRAPPER_NAMES
     NMExternalExecWrapper
     NMSQLiteProcessorWrapper
     NMUniqueCombinationFilterWrapper
+    NMStreamingROIImageFilterWrapper
 )
 
 

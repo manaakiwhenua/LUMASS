@@ -1,0 +1,30 @@
+# LUMASS nm::NMStreamingROIImageFilter wrapper profile
+
+# FilterTypeDef: InImgType and OutImgType correspond with first and second
+#                template argument (i.e. TInputImage and TOutputImage)
+
+# InputTypeFunc_# = IDX:TYPE:SETMETHOD
+#                -> uses SETMETHOD to set the IDXth input of TYPE
+
+# PropertyElemList = PropName:PropDim:ConvType:CastType
+#                    -> Name of the wrapper property (=filter parameter)
+#                    -> dimension: s.
+#                       dim = 0 -> property type: plain type
+#                       dim = 1 -> property type: QStringList
+#                       dim = 2 -> property type: QList<QStringList>
+#                       dim = 3 -> property type: QList< QList<QStringList> >
+#                    -> # initial conversion from string to either double, long, bool, string
+#---------------------------------------------------------------------
+
+Year                        = 2019
+WrapperClassName            = NMStreamingROIImageFilterWrapper
+FileDate                    = 2019-05-16
+Author                      = Alexander Herzig
+FilterClassFileName         = nmStreamingROIImageFilter
+FilterTypeDef               = nm::StreamingROIImageFilter<InImgType, OutImgType>
+ComponentName               = ExtractImageRegion
+ComponentIsSink             = 0
+Property_1                  = ROIIndex:2:long:IndexValueType:vector
+Property_2                  = ROISize:2:long:IndexValueType:vector
+Property_3                  = ROIOrigin:2:double:PointValueType:vector
+Property_4                  = ROILength:2:double:PointValueType:vector

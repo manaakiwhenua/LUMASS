@@ -23,6 +23,9 @@
  */
 
 #include "NMItkDataObjectWrapper.h"
+
+#include <array>
+
 #include "itkDataObject.h"
 #include "itkImageRegion.h"
 #include "otbImage.h"

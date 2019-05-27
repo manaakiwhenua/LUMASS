@@ -24,6 +24,7 @@
 #include <ctime>
 #include <list>
 #include <stack>
+#include <array>
 #include <map>
 #include "math.h"
 

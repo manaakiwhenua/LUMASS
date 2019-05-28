@@ -382,11 +382,11 @@ NMVtkInteractorStyleImage::OnMouseWheelForward()
     }
     else if (this->Interactor->GetControlKey())
     {
-        this->SetMotionFactor(5.0);
+        this->SetMotionFactor(1.0);
     }
     else
     {
-        this->SetMotionFactor(20);
+        this->SetMotionFactor(10);
     }
 
     Superclass::OnMouseWheelForward();
@@ -407,7 +407,7 @@ NMVtkInteractorStyleImage::OnMouseWheelBackward()
     }
     else
     {
-        this->SetMotionFactor(20);
+        this->SetMotionFactor(10);
     }
 
     Superclass::OnMouseWheelBackward();

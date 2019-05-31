@@ -239,6 +239,7 @@
 #include "vtkPoints.h"
 #include "vtkPolygon.h"
 #include "vtkPointData.h"
+#include "vtkPointPicker.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataReader.h"
 #include "vtkPolyDataWriter.h"
@@ -283,6 +284,7 @@
 #include "vtkUnsignedLongArray.h"
 
 #include "QVTKOpenGLWidget.h"
+#include "QVTKInteractorAdapter.h"
 
 #include "NMSqlTableModel.h"
 #include "vtkOpenGLRenderWindow.h"
@@ -772,6 +774,7 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	// set-up the background renderer
 	this->mBkgRenderer = vtkSmartPointer<vtkRenderer>::New();
 	this->mBkgRenderer->SetLayer(0);
+    this->mBkgRenderer->GetActiveCamera()->ParallelProjectionOn();
     //this->mBkgRenderer->SetBackground(1,1,1);
     this->mBkgRenderer->SetBackground(0.7,0.7,0.7);
 	//this->mBkgRenderer->SetUseDepthPeeling(1);
@@ -833,6 +836,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
     iasm->setDevicePixelRatio(this->devicePixelRatioF());
 #endif
     this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(iasm);
+
+    NMLogDebug(<< "QVTKOpenGLWidget Interactor class: " << ui->qvtkWidget->GetInteractor()->GetClassName());
 
 	m_orientwidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
 	m_orientwidget->SetOrientationMarker(axes);
@@ -3644,12 +3649,7 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
     }
 
     // get interactor
-	vtkRenderWindowInteractor* iren = vtkRenderWindowInteractor::SafeDownCast(
-			obj);
-
-    int rwWidth = iren->GetRenderWindow()->GetSize()[0];
-    int rwHeight = iren->GetRenderWindow()->GetSize()[1];
-    //NMLogDebug(<< "renwin size: " << rwWidth << ", " << rwHeight);
+    vtkRenderWindowInteractor* iren = vtkRenderWindowInteractor::SafeDownCast(obj);
 
 	if (iren->GetShiftKey())
 		return;
@@ -3657,8 +3657,6 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 	// get event position
 	int event_pos[2];
 	iren->GetEventPosition(event_pos);
-
-    int rawpos[2] = {event_pos[0], event_pos[1]};
 
 #ifdef QT_HIGHDPI_SUPPORT
 #   ifndef VTK_OPENGL2
@@ -3673,23 +3671,10 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
 		return;
 
 	double wPt[4];
-    double raw_wPt[4];
-
-	//	vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
-	//	picker->Pick(event_pos[0], event_pos[1], 0, const_cast<vtkRenderer*>(l->getRenderer()));
-	//	vtkIdType pickedId = picker->GetCellId();
-
 	vtkInteractorObserver::ComputeDisplayToWorld(this->mBkgRenderer,
 			event_pos[0], event_pos[1], 0, wPt);
 	wPt[2] = 0;
 
-    vtkInteractorObserver::ComputeDisplayToWorld(this->mBkgRenderer,
-            rawpos[0], rawpos[1], 0, raw_wPt);
-    raw_wPt[2] = 0;
-
-
-    //NMLogDebug(<< setprecision(2) << fixed << "raw: " << raw_wPt[0] << ", " << raw_wPt[1]);
-    //NMLogDebug(<< setprecision(2) << fixed << "dpi: " << wPt[0] << ", " << wPt[1]);
 
     vtkIdType cellId = -1;
 	// ==========================================================================
@@ -3705,32 +3690,36 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
             return;
         }
 
-		vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
-		vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-		vtkDataArray* nmids = dsAttr->GetArray("nm_id");
-		vtkDataArray* hole = dsAttr->GetArray("nm_hole");
+        //        vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
+        //        picker->Pick(event_pos[0], event_pos[1], 0, const_cast<vtkRenderer*>(l->getRenderer()));
+        //        cellId = picker->GetCellId();
+
+        vtkDataSet* ds = const_cast<vtkDataSet*>(l->getDataSet());
+        vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
+        vtkDataArray* nmids = dsAttr->GetArray("nm_id");
+        vtkDataArray* hole = dsAttr->GetArray("nm_hole");
         //vtkDataArray* sa = dsAttr->GetArray("nm_sel");
 
-		vtkPolyData* pd = vtkPolyData::SafeDownCast(ds);
+        vtkPolyData* pd = vtkPolyData::SafeDownCast(ds);
         //vtkPoints* cellPoints = pd->GetPoints();
         long ncells = pd->GetNumberOfCells();
 
-		vtkCell* cell;
+        vtkCell* cell;
         //long long subid, inout;
         //double pcoords[3], clPt[3], dist2;
         //double* weights = new double[pd->GetMaxCellSize()];
-		bool in = false;
-		QList<vtkIdType> vIds;
-		QList<vtkIdType> holeIds;
-		QList<vtkIdType> vnmIds;
+        bool in = false;
+        QList<vtkIdType> vIds;
+        QList<vtkIdType> holeIds;
+        QList<vtkIdType> vnmIds;
 
         //NMDebugAI(<< "analysing cells ..." << endl);
-		for (long c = 0; c < ncells; c++)
-		{
-			if (hole->GetTuple1(c) == 0)
-			{
-				//		NMDebugAI( << "cell (nmid) " << nmids->GetTuple1(c) << ":" << endl);
-				cell = pd->GetCell(c);
+        for (long c = 0; c < ncells; c++)
+        {
+            if (hole->GetTuple1(c) == 0)
+            {
+                //		NMDebugAI( << "cell (nmid) " << nmids->GetTuple1(c) << ":" << endl);
+                cell = pd->GetCell(c);
                 in = this->ptInPoly2D(wPt, cell);
                 //                vtkPolygon* poly = vtkPolygon::SafeDownCast(cell);
                 //                double n[3];
@@ -3742,59 +3731,59 @@ void LUMASSMainWin::pickObject(vtkObject* obj)
                 //                            cell->GetBounds(),
                 //                            n);
                 if (in)
-				{
-					vIds.push_back(c);
-					vnmIds.push_back(nmids->GetTuple1(c));
-					// don't really what this is for anymore
-					if (hole->GetTuple1(c) == 1)
-						  holeIds.push_back(c);
-				}
-			}
-		}
+                {
+                    vIds.push_back(c);
+                    vnmIds.push_back(nmids->GetTuple1(c));
+                    // don't really what this is for anymore
+                    if (hole->GetTuple1(c) == 1)
+                          holeIds.push_back(c);
+                }
+            }
+        }
 
-		//	// remove holes from result vector
-		//	for (int k=0; k < vIds.size(); ++k)
-		//	{
-		//		if (holeIds.contains(vIds.at(k)))
-		//		{
-		//			vIds.removeOne(vIds.at(k));
-		//		}
-		//	}
+        //	// remove holes from result vector
+        //	for (int k=0; k < vIds.size(); ++k)
+        //	{
+        //		if (holeIds.contains(vIds.at(k)))
+        //		{
+        //			vIds.removeOne(vIds.at(k));
+        //		}
+        //	}
 
-		if (vIds.size() > 1)
-		{
-			NMDebug(<< endl);
-			NMDebugAI(<< "WARNING - multiple hits - cellIds: ");
+        if (vIds.size() > 1)
+        {
+            NMDebug(<< endl);
+            NMDebugAI(<< "WARNING - multiple hits - cellIds: ");
 
-			foreach(const int &id, vIds)
-				NMDebug(<< id << " ");
-			NMDebug(<< endl);
+            foreach(const int &id, vIds)
+                NMDebug(<< id << " ");
+            NMDebug(<< endl);
 
-			NMDebugAI(<< "                          - nmids: ");
-			foreach(const int &id, vnmIds)
-				NMDebug(<< id << " ");
-			NMDebug(<< endl);
-		}
+            NMDebugAI(<< "                          - nmids: ");
+            foreach(const int &id, vnmIds)
+                NMDebug(<< id << " ");
+            NMDebug(<< endl);
+        }
 
-		// the doc widget hosting the layer info table
+        // the doc widget hosting the layer info table
 
         QList<vtkIdType> lstCellId;
         QList<vtkIdType> lstNMId;
-		if (vIds.size() == 0)
-		{
+        if (vIds.size() == 0)
+        {
             // this is mean if you're in a tedious selection process
             // and only because the bloody picking algorithm doesn't
             // work, you've got to start again - so we don't do it;
             // note, the user can deselect via the table view
             //l->selectCell(0, NMLayer::NM_SEL_CLEAR);
-			this->updateLayerInfo(l, -1);
-			return;
-		}
+            this->updateLayerInfo(l, -1);
+            return;
+        }
 
-		cellId = vIds.last();
+        cellId = vIds.last();
         vtkIdType nmid = nmids->GetTuple1(cellId);
-		lstCellId.push_back(cellId);
-		lstNMId.push_back(nmid);
+        lstCellId.push_back(cellId);
+        lstNMId.push_back(nmid);
 
     }
 	// ==========================================================================
@@ -4121,9 +4110,9 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
 #   endif
 #endif
 
-	double wPt[4];
-	vtkInteractorObserver::ComputeDisplayToWorld(this->mBkgRenderer,
-			event_pos[0], event_pos[1], 0, wPt);
+    double wPt[4];
+    vtkInteractorObserver::ComputeDisplayToWorld(this->mBkgRenderer,
+            event_pos[0], event_pos[1], 0, wPt);
 	wPt[2] = 0;
 
 	// update label
@@ -6515,6 +6504,11 @@ LUMASSMainWin::addLayerToCompList(NMLayer* layer)
 
 void LUMASSMainWin::toggle3DSimpleMode()
 {
+    // get the renderer and the camera
+    vtkRenderer* ren0 = this->mBkgRenderer;
+    vtkCamera* cam0 = ren0->GetActiveCamera();
+    double dist;
+
 	if (m_b3D)
 	{
 		NMDebugAI( << "switching 3D off ..." << endl);
@@ -6533,13 +6527,11 @@ void LUMASSMainWin::toggle3DSimpleMode()
 #endif
         this->ui->qvtkWidget->GetInteractor()->SetInteractorStyle(iasim);
 
-		// reset the camera for the background renderer
-		vtkRenderer* ren0 = this->mBkgRenderer;
-		vtkCamera* cam0 = ren0->GetActiveCamera();
+        // switch back to parallel projection
+        cam0->ParallelProjectionOn();
 
 		double *fp = new double[3];
 		double *p = new double[3];
-		double dist;
 
 		ren0->ResetCamera();
 		cam0->GetFocalPoint(fp);
@@ -6550,15 +6542,6 @@ void LUMASSMainWin::toggle3DSimpleMode()
 
 		delete[] fp;
 		delete[] p;
-
-		// set new camera for all other renderers as well
-		vtkRendererCollection* recoll = this->ui->qvtkWidget->GetRenderWindow()->GetRenderers();
-		vtkRenderer *ren = recoll->GetNextItem();
-		while (ren != NULL)
-		{
-			ren->SetActiveCamera(cam0);
-			ren = recoll->GetNextItem();
-		}
 
 		this->m_orientwidget->SetEnabled(0);
 		this->ui->actionToggle3DStereoMode->setEnabled(false);
@@ -6582,6 +6565,15 @@ void LUMASSMainWin::toggle3DSimpleMode()
 	else
 	{
 		NMDebugAI( << "switching 3D on!! ..." << endl);
+
+        // correction for view angle is sourced from David Gobbi on VTK user's list
+        // http://vtk.1045678.n5.nabble.com/Image-Shifts-between-Parallel-Projection-mode-and-Perspective-mode-td5744800.html
+        dist = cam0->GetDistance();
+        double h = cam0->GetParallelScale();
+        cam0->SetViewAngle(2.0 * std::atan(h/dist) * 180 / 3.141);
+
+        // turn parallel projection off
+        this->mBkgRenderer->GetActiveCamera()->ParallelProjectionOff();
 
         // we're unselecting all exclusive tool bar actions
         // before going into 3D mode

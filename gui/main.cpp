@@ -71,7 +71,14 @@
 
 int main(int argc, char *argv[])
 {
-    QSurfaceFormat::setDefaultFormat(QVTKOpenGLWidget::defaultFormat());
+    auto format = QVTKOpenGLWidget::defaultFormat();
+#ifdef _WIN32
+    // with VTK 8.2 on Windows, use compatibility profile;
+    // adopted from https://discourse.vtk.org/t/problem-in-vtk-8-2-with-defaultformat-and-qvtkopenglwidget-on-windows-10-intel/998/10
+    format.setProfile(QSurfaceFormat::CompatibilityProfile);
+#endif
+    QSurfaceFormat::setDefaultFormat(format);
+
 #ifdef QT_HIGHDPI_SUPPORT
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif

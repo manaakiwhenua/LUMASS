@@ -1964,7 +1964,6 @@ void ModelComponentList::mapUniqueValues()
 	l->setLegendType(NMLayer::NM_LEGEND_INDEXED);
 	l->setLegendClassType(NMLayer::NM_CLASS_UNIQUE);
 	l->setLegendValueField(theField);
-	l->updateMapping();
 }
 
 void ModelComponentList::test()

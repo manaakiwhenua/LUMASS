@@ -338,8 +338,8 @@ void GDALRATImageIO::Read(void* buffer)
                    << " lineOffset = " << lineOffset << "\n"
                    << " bandOffset = " << bandOffset);
 
-    itk::TimeProbe chrono;
-    chrono.Start();
+//    itk::TimeProbe chrono;
+//    chrono.Start();
     CPLErr lCrGdal = m_Dataset->RasterIO(GF_Read,
                                        lFirstColumn,
                                        lFirstLine,
@@ -355,8 +355,10 @@ void GDALRATImageIO::Read(void* buffer)
                                        pixelOffset,
                                        lineOffset,
                                        bandOffset);
-    chrono.Stop();
-    NMLogDebug(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
+//    chrono.Stop();
+//    NMProcDebug(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
+//    //NMLogDebug(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
+//    NMDebugAI(<< "RasterIO Read took " << chrono.GetTotal() << " sec")
 
     if (bandMap) delete(bandMap);
 
@@ -1459,7 +1461,7 @@ GDALRATImageIO::BuildOverviews(const std::string& resamplingType)
     std::vector<int> factorList;
     double exp = 1;
     double factor = static_cast<int>(vcl_pow(2,exp));
-    while ((pix / factor) > 32 )
+    while ((pix / factor) >= 256 )
     {
         factorList.push_back(factor);
         ++exp;

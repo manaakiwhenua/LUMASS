@@ -2267,7 +2267,11 @@ NMLayer::getValueFieldStatistics()
     NMImageLayer* il = qobject_cast<NMImageLayer*>(this);
     if (il)
     {
-        if (    mTableModel != 0
+        // for image layers we only support SQLite-based RAT;
+        // RAM-based tables are not supported by layers anymore
+        NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
+
+        if (    sqlModel != nullptr
             &&  mLegendValueField.compare(QString("Pixel Values")) != 0
            )
         {
@@ -2276,9 +2280,7 @@ NMLayer::getValueFieldStatistics()
                 ||  type == QVariant::LongLong
                )
             {
-                NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mTableModel);
                 std::string col = mLegendValueField.toStdString();
-
                 std::stringstream sql;
 
                 sql << "select count(" << col << ") as count, "

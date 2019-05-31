@@ -743,13 +743,9 @@ void NMImageLayer::world2pixel(double world[3], int pixel[3],
         {
             spacing[d] = mSignedSpacing[d];
         }
-//        if (d == 0)
-//            ulcorner[d] = origin[d];
-//        else if (d >= 1)
+
         ulcorner[d] = origin[d] - 0.5 * spacing[d];
-
         dims[d] = (mBBox[d*2+1] - mBBox[d*2]) / ::fabs(spacing[d]);
-
         err[d] = ::fabs(spacing[d]) * 0.001;
     }
 
@@ -1470,7 +1466,6 @@ NMImageLayer::mapExtentChanged(void)
     if (    !this->mbUseOverviews
         ||  this->mReader == 0
         ||  !this->mReader->isInitialised()
-        //||  this->mReader->getNumberOfOverviews() == 0
         ||  this->mIsIn3DMode
        )
     {
@@ -1493,27 +1488,14 @@ NMImageLayer::mapExtentChanged(void)
     double h_res;
     double v_res;
 
-    qreal dpr = qApp->devicePixelRatio();
+    qreal dpr = 1.0;
+#ifdef QT_HIGHDPI_SUPPORT
+    dpr = NMGlobalHelper::getMainWindow()->devicePixelRatioF();
+#endif
 
-    vtkRendererCollection* rencoll = this->mRenderWindow->GetRenderers();
-    vtkRenderer* ren = nullptr;
-    if (this->mRenderer->GetViewProps()->GetNumberOfItems() == 0)
-    {
-        if (rencoll->GetNumberOfItems() > 1)
-        {
-            rencoll->InitTraversal();
-            for (int r=0; r < rencoll->GetNumberOfItems(); ++r)
-            {
-                ren = rencoll->GetNextItem();
-            }
-        }
-    }
-    else
-    {
-        ren = this->mRenderer;
-    }
-
+    vtkRenderer* ren = const_cast<vtkRenderer*>(NMGlobalHelper::getMainWindow()->getBkgRenderer());
     int* size = ren->GetSize();
+
     double wminx, wmaxx, wminy, wmaxy, wwidth, wheight;
     bool bHasVisReg = false;
     if (ren)
@@ -1532,6 +1514,7 @@ NMImageLayer::mapExtentChanged(void)
         {
             return;
         }
+        mWTLx = wtl[0];
 
         wminx = wtl[0];
         wmaxy = wtl[1];
@@ -1569,61 +1552,46 @@ NMImageLayer::mapExtentChanged(void)
             }
             else
             {
-                h_res = mSignedSpacing[0]*dpr;//fullcols / size[0];
-                v_res = ::fabs(mSignedSpacing[1])*dpr;//fullrows / size[1];
+                h_res = mSignedSpacing[0] ;
+                v_res = ::fabs(mSignedSpacing[1]) ;
             }
         }
-
-            //        NMDebugAI(<< "world: tl: " << wtl[0] << " " << wtl[1]
-            //                  << " br: " << wbr[0] << " " << wbr[1] << std::endl);
     }
 
 
     int ovidx = -1;
     if (!bHasVisReg)
     {
-        ovidx = this->mReader->getNumberOfOverviews()-1;
+        ovidx = mOverviewSize.size() - 1;
     }
     else
     {
         double target_res;
-        double opt_res;
         if (size[0] > size[1])
         {
-            opt_res = mSignedSpacing[0]*dpr;
-            target_res = h_res;
+            target_res = h_res * 2 * dpr;
         }
         else
         {
-            target_res = v_res;
-            opt_res = ::fabs(mSignedSpacing[1])*dpr;
+            target_res = v_res * 2 * dpr;
         }
-        opt_res *= 0.15;
-        double diff = ::fabs(opt_res-target_res);
 
-
-        //        NMDebugAI(<< "screen size: " << size[0] << "x" << size[1] << std::endl);
-        //        NMDebugAI(<< "opt_res: " << opt_res << " | target_res: " << target_res << " | diff: "
-        //                  << diff << std::endl);
-
-        for (int i=0; i < mReader->getNumberOfOverviews(); ++i)
+        for (int i=mOverviewSize.size()-1; i >= 0; --i)
         {
             double _tres;
             if (size[0] > size[1])
             {
-                _tres = h_ext / (double)mReader->getOverviewSize(i)[0];
+                _tres = (h_ext / (double)mOverviewSize[i][0]) ;
             }
             else
             {
-                _tres = v_ext / (double)mReader->getOverviewSize(i)[1];
+                _tres = (v_ext / (double)mOverviewSize[i][1]) ;
             }
 
-            if (::fabs(_tres-target_res) < diff)
+            if (_tres <= target_res)
             {
-                diff = ::fabs(_tres-target_res);
-                //            NMDebugAI(<< "_tres: " << _tres << " | target_res: " << target_res << " | diff: "
-                //                      << diff << " --> idx = " << i << std::endl);
                 ovidx = i;
+                break;
             }
         }
     }
@@ -1640,11 +1608,10 @@ NMImageLayer::mapExtentChanged(void)
         uspacing[2] = 0;
 
         int xo, yo, xe, ye, zo, ze;
-        xo = (wminx - mBBox[0]) / uspacing[0];
-        yo = (mBBox[3] - wmaxy) / ::fabs(uspacing[1]);
-        xe = (wmaxx - mBBox[0]) / uspacing[0];
-        ye = (mBBox[3] - wminy) / ::fabs(uspacing[1]);
-
+        xo = ((wminx - mBBox[0]) / uspacing[0]);
+        yo = ((mBBox[3] - wmaxy) / ::fabs(uspacing[1]));
+        xe = ((wmaxx - mBBox[0]) / uspacing[0]);
+        ye = ((mBBox[3] - wminy) / ::fabs(uspacing[1]));
 
         // calc vtk update extent
         int uext[6];
@@ -1662,14 +1629,6 @@ NMImageLayer::mapExtentChanged(void)
         mVisibleRegion[3] = uext[3] - uext[2] + 1;    // y-size
         mVisibleRegion[4] = uext[4];                  // z-origin
         mVisibleRegion[5] = uext[4] == 0 && uext[5] == 0 ? 0 : uext[5] - uext[4] + 1; // z-size
-
-        //        NMDebugAI(<< "ov #" << ovidx << ": " << cols << "x" << rows << std::endl);
-
-        //        NMDebugAI(<< "uext: " << uext[0] << ".." << uext[1] << " "
-        //                              << uext[2] << ".." << uext[3] << std::endl);
-
-        //        NMDebugAI(<< "wext: " << wext[0] << "," << wext[2] << " "
-        //                              << wext[1] << "x" << wext[3] << std::endl);
 
         this->mReader->setOverviewIdx(ovidx, mVisibleRegion);
 

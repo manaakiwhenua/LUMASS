@@ -134,6 +134,8 @@ public:
             {
                 f->SetWorkspace(workspace.toStdString());
             }
+            QString workspaceProvN = QString("nm:Workspace=\"%1\"").arg(workspace.toStdString().c_str());
+            p->addRunTimeParaProvN(workspaceProvN);
         }
 
         QObject* parent = p->parent();
@@ -145,6 +147,8 @@ public:
             {
                 f->SetCompName(compName.toStdString());
             }
+            QString compNameProvN = QString("nm:ComponentName=\"%1\"").arg(compName.toStdString().c_str());
+            p->addRunTimeParaProvN(compNameProvN);
         }
 
 
@@ -168,6 +172,9 @@ public:
             QString losOutString = p->getModelController()->processStringParameter(p, losInString);
             //f->SetLosFileName(curLosFileName);
             f->SetLosSettings(losOutString.toStdString());
+
+            QString losFileNameProvN = QString("nm:LosFileName=\"%1\"").arg(curLosFileName.toStdString().c_str());
+            p->addRunTimeParaProvN(losFileNameProvN);
         }
 
         QVariant curTimeOutVar = p->getParameter("TimeOut");
@@ -186,6 +193,8 @@ public:
                 e.setDescription("Invalid value for 'TimeOut'!");
                 throw e;
             }
+            QString timeOutProvN = QString("nm:TimeOut=\"%1\"").arg(curTimeOut);
+            p->addRunTimeParaProvN(timeOutProvN);
         }
 
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				

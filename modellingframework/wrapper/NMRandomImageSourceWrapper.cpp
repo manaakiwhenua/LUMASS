@@ -257,6 +257,8 @@ void NMRandomImageSourceWrapper::linkParameters(
                 if (vals.size() == strValVec.size())
                 {
                     this->setVecParam(vecparams.at(p), vals);
+                    QString provN = QString("nm:%1=\"%2\"").arg(vecparams.at(p)).arg(strValVec.join(' '));
+                    this->addRunTimeParaProvN(provN);
                 }
             }
         }
@@ -285,6 +287,8 @@ void NMRandomImageSourceWrapper::linkParameters(
             }
 
             this->setParam(singleparams.at(k), val);
+            QString singleProvN = QString("nm:%1=\"%2\"").arg(singleparams.at(k)).arg(svalStr);
+            this->addRunTimeParaProvN(singleProvN);
         }
     }
 

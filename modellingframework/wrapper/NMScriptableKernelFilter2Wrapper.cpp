@@ -150,45 +150,55 @@ public:
             {
                 f->SetRadius(0);
             }
+            QString radiusVarProvN = QString("nm:Radius=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(radiusVarProvN);
         }
 
         QVariant curKernelScriptVar = p->getParameter("KernelScript");
         std::string curKernelScript;
         if (curKernelScriptVar.isValid())
         {
-           curKernelScript = curKernelScriptVar.toString().simplified().toStdString();
+            curKernelScript = curKernelScriptVar.toString().simplified().toStdString();
             f->SetKernelScript(curKernelScript);
+            QString kernelScriptProvN = QString("nm:KernelScript=\"%1\"").arg(curKernelScript.c_str());
+            p->addRunTimeParaProvN(kernelScriptProvN);
         }
 
         QVariant curInitScriptVar = p->getParameter("InitScript");
         std::string curInitScript;
         if (curInitScriptVar.isValid())
         {
-           curInitScript = curInitScriptVar.toString().simplified().toStdString();
+            curInitScript = curInitScriptVar.toString().simplified().toStdString();
             f->SetInitScript(curInitScript);
+            QString initScriptProvN = QString("nm:InitScript=\"%1\"").arg(curInitScript.c_str());
+            p->addRunTimeParaProvN(initScriptProvN);
         }
 
         QVariant curKernelShapeVar = p->getParameter("KernelShapeType");
         std::string curKernelShape;
         if (curKernelShapeVar.isValid())
         {
-           curKernelShape = curKernelShapeVar.toString().toStdString();
+            curKernelShape = curKernelShapeVar.toString().toStdString();
             f->SetKernelShape(curKernelShape);
+            QString kernelShapeProvN = QString("nm:KernelShapeType=\"%1\"").arg(curKernelShape.c_str());
+            p->addRunTimeParaProvN(kernelShapeProvN);
         }
 
         QVariant curOutputVarNameVar = p->getParameter("OutputVarName");
         std::string curOutputVarName;
         if (curOutputVarNameVar.isValid())
         {
-           curOutputVarName = curOutputVarNameVar.toString().simplified().toStdString();
+            curOutputVarName = curOutputVarNameVar.toString().simplified().toStdString();
             f->SetOutputVarName(curOutputVarName);
+            QString outputVarNameProvN = QString("nm:OutputVarName=\"%1\"").arg(curOutputVarName.c_str());
+            p->addRunTimeParaProvN(outputVarNameProvN);
         }
 
         QVariant curNodataVar = p->getParameter("Nodata");
         double curNodata;
         if (curNodataVar.isValid())
         {
-           curNodata = curNodataVar.toDouble(&bok);
+            curNodata = curNodataVar.toDouble(&bok);
             if (bok)
             {
                 f->SetNodata((curNodata));
@@ -201,13 +211,16 @@ public:
                 e.setDescription("Invalid value for 'Nodata'!");
                 throw e;
             }
+            QString curNodataProvN = QString("nm:Nodata=\"%1\"").arg(curNodataVar.toString());
+            p->addRunTimeParaProvN(curNodataProvN);
         }
 
 
                 
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
 	    std::vector<std::string> userIDs;                                                                       
-	    QStringList currentInputs;                                                                              
+        QStringList currentInputs;
+        QStringList inputNamesProvVal;
 	    if (step < p->mInputComponents.size())                                                                  
 	    {                                                                                                       
 		    currentInputs = p->mInputComponents.at(step);                                                   
@@ -232,11 +245,14 @@ public:
 		        else                                                                                        
 		        {                                                                                           
 			        userIDs.push_back(uid.str());                                                           
-		        }                                                                                           
+                }
+                inputNamesProvVal << QString(userIDs.back().c_str());
 		        ++cnt;                                                                                      
 		    }                                                                                               
 	    }                                                                                                       
 	    f->SetInputNames(userIDs);
+        QString inputNamesProvN = QString("nm:InputNames=\"%1\"").arg(inputNamesProvVal.join(' '));
+        p->addRunTimeParaProvN(inputNamesProvN);
 
 
         // set the workspace path

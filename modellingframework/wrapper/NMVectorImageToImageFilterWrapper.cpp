@@ -110,27 +110,30 @@ public:
 		int givenStep = step;
 
 		
-                QVariant curBandVar = p->getParameter("Band");
-                unsigned int curBand;
-                if (curBandVar.isValid())
-                {
-                   curBand = curBandVar.toUInt(&bok);
-                    if (bok)
-                    {
-                        f->SetBand((curBand));
-                    }
-                    else
-                    {
-                        NMLogError(<< "NMVectorImageToImageFilterWrapper_Internal: " << "Invalid value for 'Band'!");
-                        NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                        e.setSource(p->parent()->objectName().toStdString());
-                        e.setDescription("Invalid value for 'Band'!");
-                        throw e;
-                    }
-                }
+        QVariant curBandVar = p->getParameter("Band");
+        unsigned int curBand;
+        QString bandProvVal;
+        if (curBandVar.isValid())
+        {
+           curBand = curBandVar.toUInt(&bok);
+            if (bok)
+            {
+                f->SetBand((curBand));
+                bandProvVal = QString("%1").arg(curBand);
+            }
+            else
+            {
+                NMLogError(<< "NMVectorImageToImageFilterWrapper_Internal: " << "Invalid value for 'Band'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setSource(p->parent()->objectName().toStdString());
+                e.setDescription("Invalid value for 'Band'!");
+                throw e;
+            }
+        }
+        QString bandProvN = QString("nm:Band=\"%1\"").arg(bandProvVal);
+        p->addRunTimeParaProvN(bandProvN);
 
-
-                /*$<ForwardInputUserIDs_Body>$*/
+        /*$<ForwardInputUserIDs_Body>$*/
 
 
 		NMDebugCtx("NMVectorImageToImageFilterWrapper_Internal", << "done!");

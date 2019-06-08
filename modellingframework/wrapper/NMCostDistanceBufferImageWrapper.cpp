@@ -136,41 +136,13 @@ public:
                 }
             }
             f->SetCategories(objValueVec);
+            QString objValueListProvN = QString("nm:ObjectValueList=\"%1\"").arg(objValueList.join(' '));
+            p->addRunTimeParaProvN(objValueListProvN);
         }
-//		if (p->mObjectValueList.size())
-//		{
-//            ols = p->mapHostIndexToPolicyIndex(step, p->mObjectValueList.size());
-//            //if (ols >= p->mObjectValueList.size() || ols < 0)
-//            //	ols = 0;
 
-//			std::vector<double> vObjValues;
-//			QStringList strObjValues = p->mObjectValueList.at(ols);
-//			foreach(const QString& strVal, strObjValues)
-//			{
-//				double val = strVal.toDouble(&bok);
-//				if (bok)
-//					vObjValues.push_back(val);
-//			}
-//			f->SetCategories(vObjValues);
-//		}
-
-		// -------------------------------------------------------------------
-		// set max distances
-        //ols = step;
-        //if (ols >= p->mMaxDistance.size() || ols < 0)
-        //	ols = 0;
-
-//        ols = p->mapHostIndexToPolicyIndex(step, p->mMaxDistance.size());
-
-//		double distance;
-//		if (p->mMaxDistance.size())
-//		{
-//			distance = p->mMaxDistance.at(ols).toDouble(&bok);
-//			if (bok)
-//				f->SetMaxDistance(distance);
-//		}
 
         QVariant curMaxDistanceVar = p->getParameter("MaxDistance");
+        QString maxDistProvVal;
         if (curMaxDistanceVar.isValid())
         {
             if (!curMaxDistanceVar.toString().isEmpty())
@@ -179,26 +151,18 @@ public:
                 if (bok)
                 {
                     f->SetMaxDistance(curMaxDistance);
+                    maxDistProvVal = QString("%1").arg(curMaxDistance);
                 }
             }
-            //            else
-            //            {
-            //                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-            //                e.setDescription("NMCostDistanceBufferImageWrapper: Invalid MaxDistance!");
-            //                throw e;
-
-            //                NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "Invalid MaxDistance!");
-            //                return;
-            //            }
         }
+        QString maxDistProvN = QString("nm:MaxDistance=\"%1\"").arg(maxDistProvVal);
+        p->addRunTimeParaProvN(maxDistProvN);
 
-		// -------------------------------------------------------------------
+        // -------------------------------------------------------------------
 		// set buffer zone indicator
-        //ols = step;
-        //if (ols >= p->mBufferZoneIndicator.size() || ols < 0)
-        //	ols = 0;
 
         QVariant curBufferZoneIndicatorVar = p->getParameter("BufferZoneIndicator");
+        QString bufferZoneIDProvVal;
         if (curBufferZoneIndicatorVar.isValid())
         {
             if (!curBufferZoneIndicatorVar.toString().isEmpty())
@@ -207,31 +171,18 @@ public:
                 if (bok)
                 {
                     f->SetBufferZoneIndicator(curBufferZoneIndicator);
+                    bufferZoneIDProvVal = QString("%1").arg(curBufferZoneIndicator);
                 }
             }
-            //            else
-            //            {
-            //                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-            //                e.setDescription("NMCostDistanceBufferImageWrapper: Invalid BufferZoneIndicator!");
-            //                throw e;
-
-            //                NMLogError(<<  "NMCostDistanceBufferImageWrapper" << "Invalid BufferZoneIndicator!");
-            //                return;
-            //            }
         }
+        QString bufferZoneIDProvN = QString("nm:BufferZoneIndicator=\"%1\"").arg(bufferZoneIDProvVal);
+        p->addRunTimeParaProvN(bufferZoneIDProvN);
 
-
-//		int indicator;
-//		if (p->mBufferZoneIndicator.size())
-//		{
-//            ols = p->mapHostIndexToPolicyIndex(step, p->mBufferZoneIndicator.size());
-//			indicator = p->mBufferZoneIndicator.at(ols).toInt(&bok);
-//			if (bok)
-//				f->SetBufferZoneIndicator(indicator);
-//		}
 
 		// -------------------------------------------------------------------
 		// set the other 'singular / fixed' parameters
+        // since we know both variables are boolean and that they are assigned
+        // default values, we can rely on them being valid in any case
 
         QVariant curUseImgSpacVar = p->getParameter("UseImageSpacing");
         if (curUseImgSpacVar.isValid())
@@ -240,9 +191,11 @@ public:
             {
                 bool useImgSpac = curUseImgSpacVar.toBool();
                 f->SetUseImageSpacing(useImgSpac);
+                QString useImgSpacProvN = QString("nm:UseImageSpacing=\"%1\"").arg(useImgSpac);
+                p->addRunTimeParaProvN(useImgSpacProvN);
             }
         }
-        //f->SetUseImageSpacing(p->mUseImageSpacing);
+
 
         QVariant curCreateBufferVar = p->getParameter("CreateBuffer");
         if (curCreateBufferVar.isValid())
@@ -251,10 +204,10 @@ public:
             {
                 bool createBuffer = curCreateBufferVar.toBool();
                 f->SetCreateBuffer(createBuffer);
+                QString createBufferProvN = QString("nm:CreateBuffer=\"%1\"").arg(createBuffer);
+                p->addRunTimeParaProvN(createBufferProvN);
             }
         }
-
-        //f->SetCreateBuffer(p->mCreateBuffer);
 
 
 		// set the observer for this process object
@@ -279,9 +232,6 @@ public:
 		// get the input, cost, and output image filenames
 		int pos = p->mParamPos;
 
-        //if (pos >= p->mInputImageFileName.size())
-        //	pos = 0;
-
         QVariant fileNameVar = p->getParameter("InputImageFileName");
         QString fileName;
         if (fileNameVar.isValid())
@@ -289,11 +239,6 @@ public:
             fileName = fileNameVar.toString();
         }
 
-        //        if (p->mInputImageFileName.size())
-        //        {
-        //            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mInputImageFileName.size());
-        //            fileName = p->mInputImageFileName.at(pos);
-        //        }
 		if (fileName.isEmpty())
 		{
             NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
@@ -324,16 +269,6 @@ public:
         {
             bCostRas = true;
         }
-//		if (p->mCostImageFileName.size())
-//		{
-//            //if (pos >= p->mCostImageFileName.size())
-//            //	pos = 0;
-//            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mCostImageFileName.size());
-//			costFN = p->mCostImageFileName.at(pos);
-
-//			if (!costFN.contains('.'))
-//				bCostRas = true;
-//		}
 
 		pos = p->mParamPos;
 
@@ -355,23 +290,6 @@ public:
             return;
         }
 
-//		if (p->mOutputImageFileName.size())
-//		{
-//            //if (pos >= p->mOutputImageFileName.size())
-//            //	pos = 0;
-//            pos = p->mapHostIndexToPolicyIndex(p->mParamPos, p->mOutputImageFileName.size());
-//			out = p->mOutputImageFileName.at(pos);
-//			if (out.isEmpty())
-//			{
-//				NMLogError(<<  "CostDistanceInternal", << "Please provide an output image file name!");
-//				return;
-//			}
-//		}
-//		else
-//		{
-//			NMLogError(<<  "CostDistanceInternal", << "Please provide an output image file name!");
-//			return;
-//		}
 		bool bOutRas = false;
 		if (!out.contains('.'))
 			bOutRas = true;
@@ -764,7 +682,7 @@ GetInputTypeOutputWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferIm
 LinkInputTypeInternalParametersWrap( NMCostDistanceBufferImageWrapper, NMCostDistanceBufferImageWrapper_Internal )
 
 NMCostDistanceBufferImageWrapper::NMCostDistanceBufferImageWrapper(QObject* parent)
-    : mMemoryMax(256), mUseImageSpacing(true),
+    : mMemoryMax(512), mUseImageSpacing(true),
 	  mCreateBuffer(false)
 {
 	this->setParent(parent);

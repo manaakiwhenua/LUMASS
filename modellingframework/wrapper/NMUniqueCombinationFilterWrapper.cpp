@@ -130,6 +130,8 @@ public:
             f->SetWorkspace(p->getModelController()->getSetting("Workspace").toString().toStdString());
             curOutputImagFileName = curOutputImgFileNameVar.toString().toStdString();
             f->SetOutputImageFileName(curOutputImagFileName);
+            QString outFNProvN = QString("nm:OutputImageFileName=\"%1\"").arg(curOutputImagFileName.c_str());
+            p->addRunTimeParaProvN(outFNProvN);
         }
 
 
@@ -138,6 +140,7 @@ public:
         {
             std::vector<long long> vecNodata;
             QStringList curValVarList = curInputNodataVar.toStringList();
+            int ncnt = 0;
             foreach(const QString& vStr, curValVarList)
             {
                 long long curNodata = vStr.toLongLong(&bok);
@@ -153,6 +156,9 @@ public:
                     e.setDescription("Invalid value for 'InputNodata'!");
                     throw e;
                 }
+                QString curNodataProvN = QString("nm:InputNodata-%1=\"%2\"").arg(ncnt).arg(curNodata);
+                p->addRunTimeParaProvN(curNodataProvN);
+                ++ncnt;
             }
             f->SetInputNodata(vecNodata);
         }
@@ -171,27 +177,31 @@ public:
 		        uid << "L" << cnt;                                                                          
                 QString inputCompName = p->getModelController()->getComponentNameFromInputSpec(input);
                 NMModelComponent* comp = p->getModelController()->getComponent(inputCompName);
-		        if (comp != 0)                                                                              
+                QString curProvUID;
+                if (comp != 0)
 		        {                                                                                           
 			        if (comp->getUserID().isEmpty())                                                        
 			        {                                                                                       
-				        userIDs.push_back(uid.str());                                                   
+                        userIDs.push_back(uid.str());
+                        curProvUID = uid.str().c_str();
 			        }                                                                                       
 			        else                                                                                    
 			        {                                                                                       
-				        userIDs.push_back(comp->getUserID().toStdString());                             
+                        userIDs.push_back(comp->getUserID().toStdString());
+                        curProvUID = comp->getUserID().toStdString().c_str();
 			        }                                                                                       
 		        }                                                                                           
 		        else                                                                                        
 		        {                                                                                           
-			        userIDs.push_back(uid.str());                                                           
-		        }                                                                                           
+                    userIDs.push_back(uid.str());
+                    curProvUID = uid.str().c_str();
+                }
+                QString userIDProvN = QString("nm:InputUserID-%1=\"%2\"").arg(cnt).arg(curProvUID);
+                p->addRunTimeParaProvN(userIDProvN);
 		        ++cnt;                                                                                      
 		    }                                                                                               
 	    }                                                                                                       
 	    f->SetImageNames(userIDs);
-
-
 		NMDebugCtx("NMUniqueCombinationFilterWrapper_Internal", << "done!");
 	}
 };

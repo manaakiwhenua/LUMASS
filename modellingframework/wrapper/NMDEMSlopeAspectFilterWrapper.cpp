@@ -108,57 +108,65 @@ public:
 		int givenStep = step;
 
 		
-            QVariant curTerrainAttributeVar = p->getParameter("TerrainAttributeType");
-            std::string curTerrainAttribute;
-            if (curTerrainAttributeVar.isValid())
+        QVariant curTerrainAttributeVar = p->getParameter("TerrainAttributeType");
+        std::string curTerrainAttribute;
+        if (curTerrainAttributeVar.isValid())
+        {
+            curTerrainAttribute = curTerrainAttributeVar.toString().toStdString();
+            f->SetTerrainAttribute(curTerrainAttribute);
+            QString provN = QString("nm:TerrainAttributeType=\"%1\"").arg(curTerrainAttribute.c_str());
+            p->addRunTimeParaProvN(provN);
+        }
+
+        QVariant curTerrainAlgorithmVar = p->getParameter("TerrainAlgorithmType");
+        std::string curTerrainAlgorithm;
+        if (curTerrainAlgorithmVar.isValid())
+        {
+            curTerrainAlgorithm = curTerrainAlgorithmVar.toString().toStdString();
+            f->SetTerrainAlgorithm(curTerrainAlgorithm);
+            QString provN = QString("nm:TerrainAlgorithmType=\"%1\"").arg(curTerrainAlgorithm.c_str());
+            p->addRunTimeParaProvN(provN);
+        }
+
+        QVariant curAttributeUnitVar = p->getParameter("AttributeUnitType");
+        std::string curAttributeUnit;
+        if (curAttributeUnitVar.isValid())
+        {
+            curAttributeUnit = curAttributeUnitVar.toString().toStdString();
+            f->SetAttributeUnit(curAttributeUnit);
+            QString provN = QString("nm:AttributeUnitType=\"%1\"").arg(curAttributeUnit.c_str());
+            p->addRunTimeParaProvN(provN);
+        }
+
+        QVariant curNodataVar = p->getParameter("Nodata");
+        double curNodata;
+        if (curNodataVar.isValid())
+        {
+            curNodata = curNodataVar.toDouble(&bok);
+            if (bok)
             {
-                curTerrainAttribute = curTerrainAttributeVar.toString().toStdString();
-                f->SetTerrainAttribute(curTerrainAttribute);
+                f->SetNodata((curNodata));
+                QString provN = QString("nm:Nodata=\"%1\"").arg(curNodata);
+                p->addRunTimeParaProvN(provN);
             }
-
-            QVariant curTerrainAlgorithmVar = p->getParameter("TerrainAlgorithmType");
-            std::string curTerrainAlgorithm;
-            if (curTerrainAlgorithmVar.isValid())
+            else
             {
-                curTerrainAlgorithm = curTerrainAlgorithmVar.toString().toStdString();
-                f->SetTerrainAlgorithm(curTerrainAlgorithm);
+                NMErr("NMDEMSlopeAspectFilterWrapper_Internal", << "Invalid value for 'Nodata'!");
+                NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
+                e.setDescription("Invalid value for 'Nodata'!");
+                throw e;
             }
-
-            QVariant curAttributeUnitVar = p->getParameter("AttributeUnitType");
-            std::string curAttributeUnit;
-            if (curAttributeUnitVar.isValid())
-            {
-                curAttributeUnit = curAttributeUnitVar.toString().toStdString();
-                f->SetAttributeUnit(curAttributeUnit);
-            }
-
-            QVariant curNodataVar = p->getParameter("Nodata");
-            double curNodata;
-            if (curNodataVar.isValid())
-            {
-                curNodata = curNodataVar.toDouble(&bok);
-                if (bok)
-                {
-                    f->SetNodata((curNodata));
-                }
-                else
-                {
-                    NMErr("NMDEMSlopeAspectFilterWrapper_Internal", << "Invalid value for 'Nodata'!");
-                    NMMfwException e(NMMfwException::NMProcess_InvalidParameter);
-                    e.setDescription("Invalid value for 'Nodata'!");
-                    throw e;
-                }
-            }
+        }
 
 
-                
 	    step = p->mapHostIndexToPolicyIndex(givenStep, p->mInputComponents.size());				
 	    std::vector<std::string> userIDs;                                                                       
-	    QStringList currentInputs;                                                                              
+        QStringList currentInputs;
+        QStringList userInputIDProvVal;
 	    if (step < p->mInputComponents.size())                                                                  
 	    {                                                                                                       
 		    currentInputs = p->mInputComponents.at(step);                                                   
-		    int cnt=0;                                                                                      
+            int cnt=0;
 		    foreach (const QString& input, currentInputs)                                                   
 		    {                                                                                               
 		        std::stringstream uid;                                                                      
@@ -179,12 +187,14 @@ public:
 		        else                                                                                        
 		        {                                                                                           
 			        userIDs.push_back(uid.str());                                                           
-		        }                                                                                           
+                }
+                userInputIDProvVal << uid.str().c_str();
 		        ++cnt;                                                                                      
 		    }                                                                                               
 	    }                                                                                                       
 	    f->SetInputNames(userIDs);
-
+        QString inputIDsProvN = QString("nm:InputUserIDs=\"%1\"").arg(userInputIDProvVal.join(' '));
+        p->addRunTimeParaProvN(inputIDsProvN);
 
 		NMDebugCtx("NMDEMSlopeAspectFilterWrapper_Internal", << "done!");
 	}

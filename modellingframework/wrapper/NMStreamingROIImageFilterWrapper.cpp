@@ -132,6 +132,8 @@ public:
                 }
             }
             f->SetROIIndex(vecROIIndex);
+            QString roiIndexProvN = QString("nm:ROIIndex=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(roiIndexProvN);
         }
 
         QVariant curROISizeVar = p->getParameter("ROISize");
@@ -155,6 +157,8 @@ public:
                 }
             }
             f->SetROISize(vecROISize);
+            QString roiSizeProvN = QString("nm:ROISize=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(roiSizeProvN);
         }
 
         QVariant curROIOriginVar = p->getParameter("ROIOrigin");
@@ -178,6 +182,8 @@ public:
                 }
             }
             f->SetROIOrigin(vecROIOrigin);
+            QString roiOriginProvN = QString("nm:ROIOrigin=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(roiOriginProvN);
         }
 
         QVariant curROILengthVar = p->getParameter("ROILength");
@@ -201,6 +207,8 @@ public:
                 }
             }
             f->SetROILength(vecROILength);
+            QString roiLengthProvN = QString("nm:ROILength=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(roiLengthProvN);
         }
 
 

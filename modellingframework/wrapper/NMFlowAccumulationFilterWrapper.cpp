@@ -112,8 +112,10 @@ public:
         std::string curAlgorithmType;
         if (curAlgorithmTypeVar.isValid())
         {
-           curAlgorithmType = curAlgorithmTypeVar.toString().simplified().toStdString();
+            curAlgorithmType = curAlgorithmTypeVar.toString().simplified().toStdString();
             f->SetFlowAccAlgorithm(curAlgorithmType);
+            QString provN = QString("nm:AlgorithmType=\"%1\"").arg(curAlgorithmType.c_str());
+            p->addRunTimeParaProvN(provN);
         }
 
         QVariant curNodataVar = p->getParameter("Nodata");
@@ -124,6 +126,8 @@ public:
             if (bok)
             {
                 f->Setnodata(static_cast<InImgPixelType>(curNodata));
+                QString provN = QString("nm:Nodata=\"%1\"").arg(curNodata);
+                p->addRunTimeParaProvN(provN);
             }
             else
             {
@@ -143,6 +147,8 @@ public:
             if (bok)
             {
                 f->SetFlowExponent((curFlowExponent));
+                QString provN = QString("nm:FlowExponent=\"%1\"").arg(curFlowExponent);
+                p->addRunTimeParaProvN(provN);
             }
             else
             {
@@ -173,6 +179,8 @@ public:
                f->SetFlowLength(true);
                f->SetFlowLengthUpstream(true); // <-- looks wrong, but is correct!
            }
+           QString provN = QString("nm:FlowLengthType=\"%1\"").arg(curFlowLengthType.c_str());
+           p->addRunTimeParaProvN(provN);
         }
 
         /*$<ForwardInputUserIDs_Body>$*/

@@ -124,18 +124,22 @@ public:
         std::string curInterpolationMethod;
         if (curInterpolationMethodVar.isValid())
         {
-           curInterpolationMethod = curInterpolationMethodVar.toString().toStdString();
+            curInterpolationMethod = curInterpolationMethodVar.toString().toStdString();
             f->SetInterpolationMethod(curInterpolationMethod);
+            QString interpolMethodProvN = QString("nm:InterpolationMethod=\"%1\"").arg(curInterpolationMethod.c_str());
+            p->addRunTimeParaProvN(interpolMethodProvN);
         }
 
         QVariant curDefaultPixelValueVar = p->getParameter("DefaultPixelValue");
         double curDefaultPixelValue;
         if (curDefaultPixelValueVar.isValid())
         {
-           curDefaultPixelValue = curDefaultPixelValueVar.toDouble(&bok);
+            curDefaultPixelValue = curDefaultPixelValueVar.toDouble(&bok);
             if (bok)
             {
                 f->SetDefaultPixelValue((curDefaultPixelValue));
+                QString defaultPixValProvN = QString("nm:DefaultPixelValue=\"%1\"").arg(curDefaultPixelValue);
+                p->addRunTimeParaProvN(defaultPixValProvN);
             }
             else
             {
@@ -180,6 +184,8 @@ public:
                 }
                 f->SetOutputSpacing(static_cast<OutSpacingValueType*>(&vecOutputSpacing[0]));
             }
+            QString outputSpacingProvN = QString("nm:OutputSpacing=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(outputSpacingProvN);
         }
 
         QVariant curOutputOriginVar = p->getParameter("OutputOrigin");
@@ -211,6 +217,8 @@ public:
             {
                 f->SetOutputOrigin(0);
             }
+            QString outputOriginProvN = QString("nm:OutputOrigin=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(outputOriginProvN);
         }
 
         QVariant curSizeVar = p->getParameter("Size");
@@ -249,6 +257,8 @@ public:
                 }
                 f->SetSize(static_cast<FilterSizeValueType*>(&vecSize[0]));
             }
+            QString sizeProvN = QString("nm:Size=\"%1\"").arg(curValVarList.join(' '));
+            p->addRunTimeParaProvN(sizeProvN);
         }
 
 

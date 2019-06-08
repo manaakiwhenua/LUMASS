@@ -91,11 +91,18 @@ public:
 			return;
 		}
 
+        QString inputTypeStr = QString("nm:InputComponentType=\"%1\"")
+                .arg(NMItkDataObjectWrapper::getComponentTypeString(p->getInputNMComponentType()));
+        p->addRunTimeParaProvN(inputTypeStr);
+
+        QString outputTypeStr = QString("nm:OutputComponentType=\"%1\"")
+                .arg(NMItkDataObjectWrapper::getComponentTypeString(p->getOutputNMComponentType()));
+        p->addRunTimeParaProvN(outputTypeStr);
+
+
 		/* do something reasonable here */
 		bool bok;
 		int givenStep = step;
-
-		
 
 		NMDebugCtx("NMItkCastImageFilterWrapper_Internal", << "done!");
 	}

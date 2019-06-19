@@ -2673,7 +2673,7 @@ SQLiteTable::openConnection(void)
     errstr << "Opened connection to '" << m_dbFileName << "'";
     //this->InvokeEvent(itk::NMLogEvent(errstr.str(), itk::NMLogEvent::NM_LOG_DEBUG));
 
-    spatialite_init_ex(m_db, m_SpatialiteCache, 1);
+    spatialite_init_ex(m_db, m_SpatialiteCache, 0);
 
     return true;
 }

@@ -206,6 +206,8 @@ protected slots:
     void paste();
     void bufferComponents(QBuffer*& lmxBuf, QBuffer*& lmvBuf, bool bRemove=false);
 
+    void loadYAMLSettings(const QString& yamlFile);
+
 
 private:
 	void initItemContextMenu();

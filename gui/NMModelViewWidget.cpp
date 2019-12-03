@@ -44,6 +44,8 @@
 #include <QInputDialog>
 #include <QtConcurrent>
 
+#include <yaml-cpp/yaml.h>
+
 #include "lumassmainwin.h"
 #include "NMModelViewWidget.h"
 #include "NMModelAction.h"
@@ -243,6 +245,7 @@ NMModelViewWidget::NMModelViewWidget(QWidget* parent, Qt::WindowFlags f)
             this, SLOT(updateToolContext(QString)));
 
     mToolContext->addItem("None");
+    mToolContext->addItem("YAML File");
     hbox->addWidget(aLabel);
     hbox->addWidget(mToolContext);
 
@@ -2089,6 +2092,7 @@ NMModelViewWidget::updateToolContextBox(void)
 
     mToolContext->clear();
     mToolContext->addItem("None");
+    mToolContext->addItem("YAML File");
     mToolContext->addItems(NMGlobalHelper::getMainWindow()->getUserToolsList());
 
     if (mToolContext->findText(curText))
@@ -2098,6 +2102,48 @@ NMModelViewWidget::updateToolContextBox(void)
     else
     {
         mToolContext->setCurrentText("None");
+    }
+}
+
+void
+NMModelViewWidget::loadYAMLSettings(const QString &yamlFile)
+{
+    YAML::Node yamlconfig;
+    YAML::Node modelconfig;
+    YAML::Node settings;
+
+    try
+    {
+        yamlconfig = YAML::LoadFile(yamlFile.toStdString());
+        modelconfig = yamlconfig["ModelConfig"];
+        if (!modelconfig.IsNull())
+        {
+            settings = modelconfig["Settings"];
+        }
+    }
+    catch (std::exception& e)
+    {
+        NMLogError(<< e.what());
+        return;
+    }
+
+    if (!settings.IsNull() && settings.size() > 0)
+    {
+        QStringList yamlSettings;
+
+        YAML::const_iterator sit = settings.begin();
+        while (sit != settings.end())
+        {
+            QString name = sit->first.as<std::string>().c_str();
+            QString value = sit->second.as<std::string>().c_str();
+            mModelController->updateSettings(name, value);
+
+            yamlSettings << name;
+            ++sit;
+        }
+
+        NMLogInfo(<< "YAML configuration: updated LUMASS model settings: "
+                  << yamlSettings.join(' ').toStdString());
     }
 }
 
@@ -2115,6 +2161,23 @@ NMModelViewWidget::updateToolContext(const QString &tool)
     {
         mModelController->clearModelSettings();
         return;
+    }
+
+    // load model SETTINGS from the model's associated YAML file <Model Name>.yaml
+    if (tool.compare("YAML File") == 0)
+    {
+        if (!mModelPathEdit->text().isEmpty())
+        {
+            QString mfFN = mModelPathEdit->text();
+            QFileInfo mfInfo(mfFN);
+            QString mfSuffix = mfInfo.suffix();
+            QString yamlFN = mfFN.left(mfFN.length()-mfSuffix.length());
+            yamlFN += "yaml";
+
+            mModelController->clearModelSettings();
+            this->loadYAMLSettings(yamlFN);
+            return;
+        }
     }
 
     NMAbstractAction* aact = const_cast<NMAbstractAction*>(NMGlobalHelper::getMainWindow()->getUserTool(tool));

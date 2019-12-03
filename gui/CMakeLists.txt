@@ -133,6 +133,7 @@ INCLUDE_DIRECTORIES(
 #    ${TCADB_INCLUDE_DIR}
     ${VisIt_SOURCE_DIR}
     ${VisIt_BINARY_DIR}
+    ${YAML_HEADERDIR}
 )     
 
 LINK_DIRECTORIES(
@@ -155,6 +156,7 @@ LINK_DIRECTORIES(
 	#${TCADB_LIB_DIR}
         ${VisIt_BINARY_DIR}
         ${NMVtk_BINARY_DIR}
+        ${YAML_LIBDIR}
 )
 
 
@@ -238,6 +240,7 @@ endif()
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
     Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+    #Qt5Network Qt5WebSockets
     QtPropertyBrowser
     NMModFrameCore ${MFW_WRAPPER_NAMES}
     #QVTK vtkImaging vtkIO vtkRendering vtkCommon vtkFiltering vtkHybrid vtkInfovis vtkQtChart
@@ -247,6 +250,12 @@ set(LUMASS_LINKLIBS
     SQLite
     VisItTesselator
 )
+
+if (WIN32)
+        LIST(APPEND LUMASS_LINKLIBS libyaml-cppmd)
+else()
+    LIST(APPEND LUMASS_LINKLIBS yaml-cpp)
+endif()
 
 set(LUMASS_DEPLIBS
         NMModFrameCore ${MFW_WRAPPER_NAMES}

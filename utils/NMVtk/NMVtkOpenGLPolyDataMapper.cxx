@@ -2733,7 +2733,7 @@ void NMVtkOpenGLPolyDataMapper::RenderPiece(vtkRenderer* ren, vtkActor *actor)
       tess->Update();
       //this->LookupTable = vtkScalarsToColors::SafeDownCast(tess->GetOutputColors());
       this->m_Tris = tess->GetOutput();
-      this->m_OrigInput = this->CurrentInput;
+      //this->m_OrigInput = this->CurrentInput;
       this->CurrentInput = m_Tris;
       this->TriIdsToPolyIds = tess->GetPolyIdMap();
   }

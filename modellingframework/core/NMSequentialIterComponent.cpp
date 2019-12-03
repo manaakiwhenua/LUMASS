@@ -37,7 +37,7 @@
 const std::string NMSequentialIterComponent::ctx = "NMSequentialIterComponent";
 
 NMSequentialIterComponent::NMSequentialIterComponent(QObject* parent)
-    : mNumIterations(1)
+    : mNumIterations(1), mOldIterations(1)
 {
 	this->setParent(parent);
     NMIterableComponent::initAttributes();
@@ -120,20 +120,42 @@ NMSequentialIterComponent::evalNumIterationsExpression(const unsigned int& step)
 }
 
 void
+NMSequentialIterComponent::linkComponents(unsigned int step, const QMap<QString, NMModelComponent *> &repo)
+{
+    NMDebugCtx(this->objectName().toStdString(), << "...");
+
+    this->processUserID();
+    mOldIterations = mNumIterations;
+    mNumIterations = this->evalNumIterationsExpression(mIterationStep);
+    //NMDebugAI(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations;)
+    //NMLogDebug(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << mNumIterations);
+
+    if (this->mProcess != 0)
+    {
+        this->mProcess->linkInPipeline(step, repo);
+        NMDebugCtx(this->objectName().toStdString(), << "done!");
+        return;
+    }
+
+    NMDebugCtx(this->objectName().toStdString(), << "done!");
+}
+
+void
 NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,
     		unsigned int minLevel, unsigned int maxLevel)
 {
-    unsigned int oldNumIter = mNumIterations;
-    unsigned int niter = evalNumIterationsExpression(mIterationStep);
-    NMDebugAI(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << niter;)
+    //    unsigned int oldNumIter = mNumIterations;
+    //    unsigned int niter = evalNumIterationsExpression(mIterationStep);
+    //    NMDebugAI(<< getUserID().toStdString() << ": pre-loop: IterStep=" << getIterationStep() << " niter=" << niter;)
 
-    if (niter != mNumIterations)
-    {
-        this->setNumIterations(niter);
-    }
+    //    if (niter != mNumIterations)
+    //    {
+    //        this->setNumIterations(niter);
+    //    }
 
     NMModelController* ctrl = this->getModelController();
 
+    unsigned int niter = mNumIterations;
     mIterationStepRun = mIterationStep;
     unsigned int i = mIterationStepRun-1;
     for (; i < niter && !ctrl->isModelAbortionRequested(); ++i)
@@ -147,7 +169,7 @@ NMSequentialIterComponent::iterativeComponentUpdate(const QMap<QString, NMModelC
         ++mIterationStepRun;
     }
     mIterationStepRun = mIterationStep;
-    this->setNumIterations(oldNumIter);
+    this->setNumIterations(mOldIterations);
     emit signalProgress(mIterationStep);
 }
 

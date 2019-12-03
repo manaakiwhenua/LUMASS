@@ -160,6 +160,7 @@ NMDataRefComponent::linkComponents(unsigned int step, const QMap<QString, NMMode
     e.setSource(this->objectName().toStdString());
 	std::stringstream msg;
 
+    this->processUserID();
 	this->mParamPos = step;
 	if (mbLinked)
 	{

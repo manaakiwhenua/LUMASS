@@ -157,6 +157,8 @@ public:
     virtual void update(const QMap<QString, NMModelComponent*>& repo)=0;//{};
     virtual void reset(void){}
 
+    virtual void processUserID();
+
 protected:
     NMModelComponent(QObject* parent=0);
     NMModelComponent(const NMModelComponent& modelComp){}

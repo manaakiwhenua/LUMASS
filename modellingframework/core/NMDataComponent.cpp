@@ -112,6 +112,7 @@ NMDataComponent::linkComponents(unsigned int step, const QMap<QString, NMModelCo
     e.setSource(this->objectName().toStdString());
 	std::stringstream msg;
 
+    this->processUserID();
 	this->mParamPos = step;
 	if (mbLinked)
 	{
@@ -243,7 +244,8 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
             ||  this->mDataWrapper->getOTBTab().IsNull()
            )
         {
-            demsg = "no parameter table found!";
+            QString dmesg = "no parameter table found!";
+            return QVariant::fromValue(dmesg);
         }
         else
         {
@@ -253,6 +255,25 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
     else
     {
         tab = this->mDataWrapper->getOTBTab();
+    }
+
+    // go and fetch the table value
+    long long row = -1;
+    long long recnum = tab->GetNumRows();
+
+    // enable table attribute queries:
+    // <obj>:rowcount       --> number of rows
+    // <obj>:columncount    --> number of columns
+
+    if (specList.at(0).compare("rowcount", Qt::CaseInsensitive) == 0)
+    {
+        param = QVariant::fromValue(recnum);
+        return param;
+    }
+    else if (specList.at(0).compare("columncount", Qt::CaseInsensitive) == 0)
+    {
+        param = QVariant::fromValue(tab->GetNumCols());
+        return param;
     }
 
     // see whether we've got a valid table column;
@@ -280,9 +301,6 @@ NMDataComponent::getModelParameter(const QString &paramSpec)
         return param = QVariant::fromValue(msg);
     }
 
-    // go and fetch the table value
-    long long row = -1;
-    long long recnum = tab->GetNumRows();
     //if (specList.size() == 2)
     {
         bool bthrow = false;

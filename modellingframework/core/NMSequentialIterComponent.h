@@ -57,8 +57,12 @@ public:
     unsigned int getNumIterations(void)
         {return this->mNumIterations;}
 
+    virtual void linkComponents(unsigned int step,
+                   const QMap<QString, NMModelComponent*>& repo);
+
 protected:
 	unsigned int mNumIterations;
+    unsigned int mOldIterations;
     QStringList mNumIterationsExpression;
 
     void iterativeComponentUpdate(const QMap<QString, NMModelComponent*>& repo,

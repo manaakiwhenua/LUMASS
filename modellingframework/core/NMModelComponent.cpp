@@ -82,6 +82,24 @@ NMModelComponent::ProcessLogEvent(itk::Object* obj, const itk::EventObject& even
     }
 }
 
+void
+NMModelComponent::processUserID(void)
+{
+    if (mController == nullptr)
+    {
+        return;
+    }
+
+    QString procID = mController->processStringParameter(this, mUserID);
+    if (procID.startsWith("ERROR"))
+    {
+        NMLogError(<< this->objectName().toStdString() << ":processUserID() failed! "
+                   << procID.toStdString());
+        return;
+    }
+
+    this->setProperty("UserID", QVariant::fromValue(procID));
+}
 
 QVariant
 NMModelComponent::getModelParameter(const QString &paramSpec)

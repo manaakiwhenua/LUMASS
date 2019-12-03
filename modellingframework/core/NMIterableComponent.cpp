@@ -751,6 +751,7 @@ void NMIterableComponent::linkComponents(unsigned int step,
 {
 	NMDebugCtx(this->objectName().toStdString(), << "...");
 
+    this->processUserID();
 	if (this->mProcess != 0)
 	{
         this->mProcess->linkInPipeline(step, repo);
@@ -941,6 +942,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
     try
     {
 
+    // =================================== PROCESS COMPONENT =========================
 	// when we've got a process component, the process is straightforward
 	// and we just link and execute this one
 	if (this->mProcess != 0)
@@ -1022,6 +1024,7 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		return;
 	}
 
+    // =================================== AGGREGATE COMPONENT =========================
     // provenance
     // we create a new activity for each iteration step of the aggr component
     attrs.clear();
@@ -1086,10 +1089,12 @@ NMIterableComponent::componentUpdateLogic(const QMap<QString, NMModelComponent*>
 		{
             comp = 0;
 //            NMModelComponent* informant = nullptr;
-			foreach(const QString in, pipeline)
+//            foreach(const QString in, pipeline)
+            for (int c=0; c < pipeline.size(); ++c)
 			{
-				comp = controller->getComponent(in);
-				if (comp == 0)
+                QString in = pipeline.at(c);
+                comp = controller->getComponent(in);
+                if (comp == 0)
 				{
 					NMMfwException e(NMMfwException::NMModelController_UnregisteredModelComponent);
                     e.setSource(in.toStdString());

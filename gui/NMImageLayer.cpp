@@ -54,6 +54,13 @@
 #include <QSqlDriver>
 #include <QApplication>
 
+//#include "QtWebSockets/QWebSocket"
+//#include <QtNetwork/QSslCertificate>
+//#include <QtNetwork/QSslKey>
+//#include <QtNetwork/QtNetwork>
+//#include <QHostAddress>
+
+
 // QSQLiteDriver
 #include "nmqsql_sqlite_p.h"
 #include "nmqsqlcachedresult_p.h"
@@ -1205,9 +1212,6 @@ NMImageLayer::updateAttributeTable()
         }
 
         QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName);
-        NMDebugAI(<< ctxNMImageLayer << ": Created QSql connection to '"
-                  << sqlTable->GetTableName() << "'" << std::endl);
-
         sqlModel = new NMSqlTableModel(this, db);
         sqlModel->setDatabaseName(dbFileName);
         sqlModel->setTable(tableName);
@@ -2012,10 +2016,11 @@ NMImageLayer::updateScalarBuffer()
             return;
         }
 
+        QSqlDriver* drv = db.driver();
         QString prepStr = QString("SELECT %1,%2 from %3")
-                            .arg(sqlModel->getNMPrimaryKey())
-                            .arg(mLegendValueField)
-                            .arg(sqlModel->tableName());
+                            .arg(drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName))
+                            .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
+                            .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName));
 
         db.transaction();
         QSqlQuery q(db);
@@ -2160,10 +2165,11 @@ NMImageLayer::setLongDBScalars(T* buf,
             return;
         }
 
+        QSqlDriver* drv = db.driver();
         QString prepStr = QString("SELECT %1 from %2 where %3 = :row")
-                            .arg(mLegendValueField)
-                            .arg(sqlModel->tableName())
-                            .arg(sqlModel->getNMPrimaryKey());
+                            .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
+                            .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName))
+                            .arg(drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName));
 
         db.transaction();
         QSqlQuery q(db);
@@ -2284,10 +2290,12 @@ NMImageLayer::setDoubleDBScalars(T* buf,
             return;
         }
 
+        QSqlDriver* drv = db.driver();
         QString prepStr = QString("SELECT %1 from %2 where %3 = :row")
-                            .arg(mLegendValueField)
-                            .arg(sqlModel->tableName())
-                            .arg(sqlModel->getNMPrimaryKey());
+                            .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
+                            .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName))
+                            .arg(drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName));
+
 
         db.transaction();
         QSqlQuery q(db);
@@ -2442,7 +2450,116 @@ NMImageLayer::updateSourceBuffer(void)
         this->mMapper->Update();
         this->mRenderer->Render();
         this->updateMapping();
+
+        //this->sendData(dc->getOutput(0));
     }
+}
+
+void
+NMImageLayer::sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
+{
+/*
+    const QWebSocketServer* server = NMGlobalHelper::getMainWindow()->getSocketServer();
+    if (server == nullptr)
+    {
+        return;
+    }
+
+    vtkImageData* img = this->getVTKImage();
+
+    int dims[3];
+    img->GetDimensions(dims);
+
+    int bs = sizeof(int);
+
+    vtkDataArray* ptData = img->GetPointData()->GetArray(0);
+    int npixels = ptData->GetNumberOfTuples();
+    int pixelbytes = ptData->GetDataTypeSize();
+    int ncomps = ptData->GetNumberOfComponents();
+    int bytes = npixels * pixelbytes * ncomps;
+
+    NMLogInfo(<< "dims: " << dims[0] << " " << dims[1] << " " << dims[2]);
+    NMLogInfo(<< "npixels: " << npixels);
+    NMLogInfo(<< "pixelbytes: " << pixelbytes);
+    NMLogInfo(<< "bytes: " << bytes);
+
+    void* vdim = static_cast<void*>(&dims[0]);
+    char* cdim = static_cast<char*>(vdim);
+
+    void* vbytes = static_cast<void*>(&bytes);
+    char* cbytes = static_cast<char*>(vbytes);
+
+    vtkImageProperty* ip = const_cast<vtkImageProperty*>(this->getImageProperty());
+    NMVtkLookupTable* colorTable = NMVtkLookupTable::SafeDownCast(ip->GetLookupTable());
+    if (colorTable == nullptr)
+    {
+        return;
+    }
+
+    unsigned char* pcar = new unsigned char[npixels*4];
+    double* dbl_rgba = new double[4];
+
+    int idx = 0;
+    int pixel = 0;
+    for (int r=0; r < dims[1]; ++r)
+    {
+        //NMDebug(<< r << ": ");
+        for (int c=0; c < dims[0]; ++c)
+        {
+            double v = ptData->GetTuple1(pixel);
+            this->getValueColour(v, dbl_rgba);
+
+            for (int i=0; i < 4; ++i)
+            {
+                const double dv = dbl_rgba[i] * 255.0;
+                pcar[idx] = (unsigned char)(dv > 255 ? 255 : dv < 0 ? 0 : dv);
+//                if (i == 3)
+//                {
+//                    pcar[idx] = 128;
+//                }
+                ++idx;
+            }
+            //NMDebug(<< int(pcar[pixel]) << "," << int(pcar[pixel+1]) << "," << int(pcar[pixel+2]) << " ");
+
+            ++pixel;
+        }
+        //NMDebug( << std::endl);
+    }
+
+    QList<QWebSocket*> cllist = NMGlobalHelper::getMainWindow()->getSocketClients();
+    if (cllist.size() == 0)
+    {
+        return;
+    }
+
+    QWebSocket* client = nullptr;
+    foreach (const QWebSocket* ws, cllist)
+    {
+        if (ws != nullptr)
+        {
+            if (ws->state() == QAbstractSocket::ConnectedState)
+            {
+                client = const_cast<QWebSocket*>(ws);
+                break;
+            }
+        }
+    }
+
+    QByteArray payload;
+    payload.reserve(npixels*4 + 4*bs);
+
+    for (int i=0; i < 3; ++i)
+    {
+        payload.append(cdim+i*bs, bs);
+    }
+    payload.append(cbytes, bs);
+    payload.append((char*)pcar, npixels*4);
+
+    client->sendBinaryMessage(payload);
+
+    delete[] pcar;
+    delete[] dbl_rgba;
+*/
 }
 
 void

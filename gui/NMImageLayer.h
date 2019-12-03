@@ -135,7 +135,7 @@ public:
     std::vector<std::vector<int> > getOverviewSizes(void);
 
     void setScalarBand(const int& band)
-        {this->mScalarBand = band >= 1 && band <= this->mTotalNumBands ? band : 1;}
+        {this->mScalarBand = band >= 1 && band <= (int)this->mTotalNumBands ? band : 1;}
     int getScalarBand(void) {return this->mScalarBand;}
 
 
@@ -162,6 +162,8 @@ protected:
     void createImgSelData(void);
     void updateScalarBuffer(void);
     void updateSelectionColor(void);
+
+    void sendData(QSharedPointer<NMItkDataObjectWrapper> imgWrapper);
 
     template<class T>
     void setLongScalars(T* buf, long long* out, long long numPix, long long nodata);

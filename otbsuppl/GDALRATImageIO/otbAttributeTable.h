@@ -65,15 +65,32 @@ public:
 	} TableColumnType;
 
     // field value data structure
-    typedef struct
+    typedef struct _ColumnValue
     {
+        _ColumnValue()
+            : type(ATTYPE_UNKNOWN),
+              tval(nullptr),
+              slen(0)
+        {}
+
+        ~_ColumnValue()
+        {
+            if (slen > 0)
+            {
+                delete[] tval;
+            }
+        }
+
         TableColumnType type;
         union
         {
             long long int ival;
             double    dval;
-            char*     tval;
+            char*  tval;
         };
+
+        size_t slen;
+
     } ColumnValue;
 
 

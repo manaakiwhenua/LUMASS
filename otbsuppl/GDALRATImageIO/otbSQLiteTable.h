@@ -194,6 +194,9 @@ public:
     bool PopulateTableAdmin();
     bool loadExtension(const std::string& lib, const std::string& entry);
 
+    bool openAsInMemDb(const std::string& dbName, const std::string& tablename);
+
+
 
 
     /// FAST INLINE ACCESS TO COLUMN VALUES
@@ -292,11 +295,27 @@ protected:
     virtual ~SQLiteTable();
 
     /*! SQLite foundation of otbSQLiteTable
-     *
      */
 
     void createPreparedColumnStatements(const std::string& colname);
     void resetTableAdmin();
+
+	/*! deletes the ldb table if the ldb file has a more recent modified data; 
+	 *  returns 1 when ldb is deleted or did not exist 
+	 *  returns 0 when existing ldb is kept
+	 *  returns -1 when provided 'vt' is not accessible
+	 */
+	int deleteOldLDB(const std::string& vt, const std::string& ldb);
+
+
+	/*! replace any char in 
+	 *	{ '-', '.', '+', '*', '/', '%', '|', '<', '>', '=', '!', '~'},
+	 *  i.e. operator characters or a leading digit with '_' or double
+	 *  quote any keyword
+	 */
+	// awesome function - we're actually not using it, we just double quote
+	// any table name identifier!
+	//std::string formatTableName(const std::string& tableName);
     long long GetMinMaxPKValue(bool bmax);
 
     inline bool sqliteError(const int& rc, sqlite3_stmt** stmt);

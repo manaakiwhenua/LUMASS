@@ -33,9 +33,12 @@
 #include <algorithm>
 //#include "otbMacro.h"
 #include <spatialite.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #ifndef _WIN32
     #include "libgen.h"
+    #include <unistd.h>
     //#define NM_SPATIALITE_LIB "libspatialite"
 #else
     #include <stdlib.h>
@@ -213,7 +216,7 @@ SQLiteTable::AddConstrainedColumn(const std::string& sColName,
     }
 
     std::stringstream ssql;
-    ssql << "ALTER TABLE main." << m_tableName << " ADD \"" << sColName << "\" "
+    ssql << "ALTER TABLE main." << "\"" << m_tableName << "\"" << " ADD \"" << sColName << "\" "
          << sType;
     if (!sColConstraint.empty())
     {
@@ -273,7 +276,7 @@ SQLiteTable::createPreparedColumnStatements(const std::string& colname)
     // prepare an update statement for this column
     sqlite3_stmt* stmt_upd;
     std::stringstream ssql;
-    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+    ssql <<  "UPDATE main." << "\"" << m_tableName << "\"" << " SET \"" << sColName << "\" = "
          <<  "?1 WHERE " << m_idColName << " = ?2 ;";
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             -1, &stmt_upd, 0);
@@ -284,7 +287,7 @@ SQLiteTable::createPreparedColumnStatements(const std::string& colname)
     // prepare a get value statement for this column
     sqlite3_stmt* stmt_sel;
     ssql.str("");
-    ssql <<  "SELECT \"" << sColName << "\" from main." << m_tableName << ""
+    ssql <<  "SELECT \"" << sColName << "\" from main." << "\"" << m_tableName << "\"" << ""
          <<  " WHERE " << m_idColName << " = ?1 ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             -1, &stmt_sel, 0);
@@ -295,7 +298,7 @@ SQLiteTable::createPreparedColumnStatements(const std::string& colname)
     // prepare a get rowidx by value statement for this column
     sqlite3_stmt* stmt_rowidx;
     ssql.str("");
-    ssql <<  "SELECT " << m_idColName << " from main." << m_tableName << ""
+    ssql <<  "SELECT " << m_idColName << " from main." << "\"" << m_tableName << "\"" << ""
          <<  " WHERE \"" << sColName << "\" = ?1 ;";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             -1, &stmt_rowidx, 0);
@@ -334,7 +337,7 @@ SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
     // values
     std::string::size_type pos = 0;
     m_iStmtBulkGetNumParam = 0;
-    while ((pos = whereClause.find('?', pos) != std::string::npos))
+    while ((pos = whereClause.find('?', pos)) != std::string::npos)
     {
         ++m_iStmtBulkGetNumParam;
         ++pos;
@@ -370,7 +373,7 @@ SQLiteTable::PrepareBulkGet(const std::vector<std::string> &colNames,
             ssql << ",";
         }
     }
-    ssql << " from main." << m_tableName << "";
+    ssql << " from main." << "\"" << m_tableName << "\"" << "";
 
     if (whereClause.empty())
     {
@@ -434,7 +437,7 @@ SQLiteTable::PrepareBulkSet(const std::vector<std::string>& colNames,
     std::stringstream ssql;
     if (bInsert)
     {
-        ssql << "INSERT OR REPLACE INTO main." << m_tableName << " (";
+        ssql << "INSERT OR REPLACE INTO main." << "\"" << m_tableName << "\"" << " (";
         for (int c=0; c < colNames.size(); ++c)
         {
             ssql << "\"" << colNames.at(c) << "\"";
@@ -476,7 +479,7 @@ SQLiteTable::PrepareBulkSet(const std::vector<std::string>& colNames,
     }
     else
     {
-        ssql << "UPDATE main." << m_tableName << " SET ";
+        ssql << "UPDATE main." << "\"" << m_tableName << "\"" << " SET ";
         for (int c=0; c < colNames.size(); ++c)
         {
             ssql << "\"" << colNames.at(c) << "\" = ";
@@ -604,7 +607,7 @@ SQLiteTable::PrepareAutoBulkSet(const std::vector<std::string>& colNames,
     std::stringstream ssql;
     if (bInsert)
     {
-        ssql << "INSERT OR REPLACE INTO main." << m_tableName << " (";
+        ssql << "INSERT OR REPLACE INTO main." << "\"" << m_tableName << "\"" << " (";
         for (int c=0; c < colNames.size(); ++c)
         {
             ssql << "\"" << colNames.at(c) << "\"";
@@ -646,7 +649,7 @@ SQLiteTable::PrepareAutoBulkSet(const std::vector<std::string>& colNames,
     }
     else
     {
-        ssql << "UPDATE main." << m_tableName << " SET ";
+        ssql << "UPDATE main." << "\"" << m_tableName << "\"" << " SET ";
         for (int c=0; c < colNames.size(); ++c)
         {
             ssql << "\"" << colNames.at(c) << "\" = ";
@@ -834,7 +837,7 @@ SQLiteTable::DoBulkGet(std::vector< ColumnValue >& values)
     rc = sqlite3_step(m_StmtBulkGet);
     if (rc == SQLITE_ROW)
     {
-        for (int col=0; col < m_vTypesBulkGet.size()-m_iStmtBulkGetNumParam; ++col)
+        for (int col=0; col < m_vTypesBulkGet.size(); ++col)
         {
             switch(m_vTypesBulkGet[col])
             {
@@ -847,10 +850,22 @@ SQLiteTable::DoBulkGet(std::vector< ColumnValue >& values)
                 values[col].ival = sqlite3_column_int64(m_StmtBulkGet, col);
                 break;
             case ATTYPE_STRING:
-                values[col].type = ATTYPE_STRING;
-                values[col].tval = reinterpret_cast<char*>(
-                                    const_cast<unsigned char*>(
-                                      sqlite3_column_text(m_StmtBulkGet, col)));
+                {
+                    values[col].type = ATTYPE_STRING;
+                    values[col].slen = std::max(sqlite3_column_bytes(m_StmtBulkGet, col), 1) + 1;
+                    const char* val = reinterpret_cast<char*>(
+                                        const_cast<unsigned char*>(
+                                          sqlite3_column_text(m_StmtBulkGet, col)));
+                    values[col].tval = new char[values[col].slen];
+                    if (val != 0)
+                    {
+                        ::sprintf((values[col]).tval, "%s", sqlite3_column_text(m_StmtBulkGet, col));
+                    }
+                    else
+                    {
+                        ::sprintf(values[col].tval, "%s", "\0");
+                    }
+                }
                 break;
             }
         }
@@ -906,7 +921,7 @@ SQLiteTable::GreedyNumericFetch(const std::vector<std::string> &columns,
         }
     }
 
-    ssql << " FROM main." << m_tableName << ";";
+    ssql << " FROM main." << "\"" << m_tableName << "\"" << ";";
 
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1, &stmt, 0);
@@ -1531,7 +1546,7 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
 
     sqlite3_stmt* stmt_upd;
     std::stringstream ssql;
-    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+    ssql <<  "UPDATE main." << "\"" << m_tableName << "\"" << " SET \"" << sColName << "\" = "
          <<  value << " WHERE " << whereClause << ";";
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             -1, &stmt_upd, 0);
@@ -1567,7 +1582,7 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
 
     sqlite3_stmt* stmt_upd;
     std::stringstream ssql;
-    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+    ssql <<  "UPDATE main." << "\"" << m_tableName << "\"" << " SET \"" << sColName << "\" = "
          <<  value << " WHERE " << whereClause << ";";
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             -1, &stmt_upd, 0);
@@ -1605,7 +1620,7 @@ SQLiteTable::SetValue(const std::string& sColName, const std::string& whereClaus
 
     sqlite3_stmt* stmt_upd;
     std::stringstream ssql;
-    ssql <<  "UPDATE main." << m_tableName << " SET \"" << sColName << "\" = "
+    ssql <<  "UPDATE main." << "\"" << m_tableName << "\"" << " SET \"" << sColName << "\" = "
          <<  value << " WHERE " << whereClause << ";";
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                             -1, &stmt_upd, 0);
@@ -1638,7 +1653,7 @@ SQLiteTable::PrepareColumnByIndex(const std::string &colname)//,
 
     std::stringstream ssql;
     ssql << "SELECT " << colname
-         << " from main." << m_tableName
+         << " from main." << "\"" << m_tableName << "\""
          << " where " << m_idColName << " = ?1;";
 
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
@@ -1668,7 +1683,7 @@ SQLiteTable::PrepareColumnIterator(const std::string &colname,
 
     std::stringstream ssql;
     ssql << "SELECT " << colname
-         << " from main." << m_tableName;
+         << " from main." << "\"" << m_tableName << "\"";
     if (!whereClause.empty())
     {
          ssql << whereClause;
@@ -1795,7 +1810,7 @@ double SQLiteTable::GetDblValue(const std::string& sColName, const std::string& 
 
     sqlite3_stmt* stmt;
     std::stringstream ssql;
-    ssql << "SELECT \"" << sColName << "\" from main." << m_tableName
+    ssql << "SELECT \"" << sColName << "\" from main." << "\"" << m_tableName << "\""
          << " WHERE " << whereClause << ";";
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
                                 &stmt, 0);
@@ -1827,7 +1842,7 @@ SQLiteTable::GetIntValue(const std::string& sColName, const std::string& whereCl
 
     sqlite3_stmt* stmt;
     std::stringstream ssql;
-    ssql << "SELECT \"" << sColName << "\" from main." << m_tableName
+    ssql << "SELECT \"" << sColName << "\" from main." << "\"" << m_tableName << "\""
          << " WHERE " << whereClause << ";";
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
                                 &stmt, 0);
@@ -1860,7 +1875,7 @@ SQLiteTable::GetStrValue(const std::string& sColName, const std::string& whereCl
 
     sqlite3_stmt* stmt;
     std::stringstream ssql;
-    ssql << "SELECT \"" << sColName << "\" from main." << m_tableName
+    ssql << "SELECT \"" << sColName << "\" from main." << "\"" << m_tableName << "\""
          << " WHERE " << whereClause << ";";
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1,
                                 &stmt, 0);
@@ -1958,42 +1973,6 @@ SQLiteTable::RemoveColumn(int col)
 
     this->RemoveColumn(m_vNames[col]);
 
-    //	int tidx = m_vPosition[col];
-    //	switch(this->m_vTypes[col])
-    //	{
-    //	case ATTYPE_INT:
-    //		delete this->m_mIntCols.at(tidx);
-    //		this->m_mIntCols.erase(this->m_mIntCols.begin()+tidx);
-    //		break;
-    //	case ATTYPE_DOUBLE:
-    //		delete this->m_mDoubleCols.at(tidx);
-    //		this->m_mDoubleCols.erase(this->m_mDoubleCols.begin()+tidx);
-    //		break;
-    //	case ATTYPE_STRING:
-    //		delete this->m_mStringCols.at(tidx);
-    //		this->m_mStringCols.erase(this->m_mStringCols.begin()+tidx);
-    //		break;
-    //	default:
-    //		return false;
-    //		break;
-    //	}
-
-    //	// house keeping: adjust type specific array indices
-    //	// for each column of the same type to the right of
-    //	// the one being removed
-    //	for (int c=col+1; c < this->m_vNames.size(); ++c)
-    //	{
-    //		if (m_vTypes[c] == m_vTypes[col])
-    //		{
-    //			--m_vPosition[c];
-    //		}
-    //	}
-
-	// now remove any traces of the column in the admin arrays
-    //	this->m_vNames.erase(this->m_vNames.begin() + col);
-    //	this->m_vTypes.erase(this->m_vTypes.begin() + col);
-    //	this->m_vPosition.erase(this->m_vPosition.begin() + col);
-
 	return true;
 }
 
@@ -2022,12 +2001,12 @@ SQLiteTable::RemoveColumn(const std::string& name)
     }
 
     ssql << "BEGIN TRANSACTION;"
-         << "CREATE TEMPORARY TABLE " << m_tableName << "_backup(" << collist.str() << ");"
-         << "INSERT INTO " << m_tableName << "_backup SELECT "  << collist.str() << " FROM main." << m_tableName << ";"
-         << "DROP TABLE main." << m_tableName << ";"
-         << "CREATE TABLE main." << m_tableName << "(" << collist.str() << ");"
-         << "INSERT INTO main." << m_tableName << " SELECT " << collist.str() << " FROM " << m_tableName << "_backup;"
-         << "DROP TABLE " << m_tableName << "_backup;"
+         << "CREATE TEMPORARY TABLE " << "\"" << m_tableName << "\"" << "_backup(" << collist.str() << ");"
+         << "INSERT INTO " << "\"" << m_tableName << "\"" << "_backup SELECT "  << collist.str() << " FROM main." << "\"" << m_tableName << "\"" << ";"
+         << "DROP TABLE main." << "\"" << m_tableName << "\"" << ";"
+         << "CREATE TABLE main." << "\"" << m_tableName << "\"" << "(" << collist.str() << ");"
+         << "INSERT INTO main." << "\"" << m_tableName << "\"" << " SELECT " << collist.str() << " FROM " << "\"" << m_tableName << "\"" << "_backup;"
+         << "DROP TABLE " << "\"" << m_tableName << "\"" << "_backup;"
          << "END TRANSACTION";
 
     int rc = sqlite3_exec(m_db, ssql.str().c_str(), 0, 0, 0);
@@ -2044,16 +2023,13 @@ SQLiteTable::RemoveColumn(const std::string& name)
 
 void SQLiteTable::SetValue(int col, long long int row, double value)
 {
-//    NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
 		return;
     }
 
 	if (row < 0 || row >= m_iNumRows)
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
 		return;
     }
 
@@ -2063,14 +2039,12 @@ void SQLiteTable::SetValue(int col, long long int row, double value)
     int rc = sqlite3_bind_double(stmt, 1, value);
     if (sqliteError(rc, &stmt))
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     rc = sqlite3_bind_int64(stmt, 2, row);
     if (sqliteError(rc, &stmt))
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2079,46 +2053,17 @@ void SQLiteTable::SetValue(int col, long long int row, double value)
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
-
-//    NMDebugCtx(_ctxotbtab, << "done!");
-
-//	const int& tidx = m_vPosition[col];
-//	switch (m_vTypes[col])
-//	{
-//		case ATTYPE_STRING:
-//		{
-//			std::stringstream sval;
-//			sval << value;
-//			this->m_mStringCols.at(tidx)->at(row) = sval.str();
-//			break;
-//		}
-//		case ATTYPE_INT:
-//		{
-//			this->m_mIntCols.at(tidx)->at(row) = value;
-//			break;
-//		}
-//		case ATTYPE_DOUBLE:
-//		{
-//			this->m_mDoubleCols.at(tidx)->at(row) = value;
-//			break;
-//		}
-//		default:
-//			break;
-//	}
 }
 
 void SQLiteTable::SetValue(int col, long long int row, long long int value)
 {
-//    NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
 		return;
     }
 
 	if (row < 0 || row >= m_iNumRows)
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2127,14 +2072,12 @@ void SQLiteTable::SetValue(int col, long long int row, long long int value)
     int rc = sqlite3_bind_int64(stmt, 1, value);
     if (sqliteError(rc, &stmt))
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     rc = sqlite3_bind_int64(stmt, 2, row);
     if (sqliteError(rc, &stmt))
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2143,46 +2086,17 @@ void SQLiteTable::SetValue(int col, long long int row, long long int value)
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
-
-//    NMDebugCtx(_ctxotbtab, << "done!");
-
-    //	const int& tidx = m_vPosition[col];
-    //	switch (m_vTypes[col])
-    //	{
-    //		case ATTYPE_STRING:
-    //		{
-    //			std::stringstream sval;
-    //			sval << value;
-    //			this->m_mStringCols.at(tidx)->at(row) = sval.str();
-    //			break;
-    //		}
-    //		case ATTYPE_INT:
-    //		{
-    //			this->m_mIntCols.at(tidx)->at(row) = value;
-    //			break;
-    //		}
-    //		case ATTYPE_DOUBLE:
-    //		{
-    //			this->m_mDoubleCols.at(tidx)->at(row) = value;
-    //			break;
-    //		}
-    //		default:
-    //			break;
-    //	}
 }
 
 void SQLiteTable::SetValue(int col, long long int row, std::string value)
 {
-//    NMDebugCtx(_ctxotbtab, << "...");
     if (col < 0 || col >= m_vNames.size())
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
     if (row < 0 || row >= m_iNumRows)
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2191,7 +2105,6 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
     int rc = sqlite3_bind_text(stmt, 1, value.c_str(), -1, 0);
     if (sqliteError(rc, &stmt))
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2199,7 +2112,6 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
     rc = sqlite3_bind_int64(stmt, 2, row);
     if (sqliteError(rc, &stmt))
     {
-//        NMDebugCtx(_ctxotbtab, << "done!");
         return;
     }
 
@@ -2209,30 +2121,6 @@ void SQLiteTable::SetValue(int col, long long int row, std::string value)
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
-
-//    NMDebugCtx(_ctxotbtab, << "done!");
-
-//	const int& tidx = m_vPosition[col];
-//	switch (m_vTypes[col])
-//	{
-//		case ATTYPE_STRING:
-//		{
-//			this->m_mStringCols.at(tidx)->at(row) = value;
-//			break;
-//		}
-//		case ATTYPE_INT:
-//		{
-//			this->m_mIntCols.at(tidx)->at(row) = ::strtol(value.c_str(), 0, 10);
-//			break;
-//		}
-//		case ATTYPE_DOUBLE:
-//		{
-//			this->m_mDoubleCols.at(tidx)->at(row) = ::strtod(value.c_str(), 0);
-//			break;
-//		}
-//		default:
-//			break;
-//	}
 }
 
 double SQLiteTable::GetDblValue(int col, long long row)
@@ -2315,7 +2203,7 @@ SQLiteTable::GetMinMaxPKValue(bool bmax)
     }
 
     ssql << m_idColName << ") from "
-         << m_tableName;
+         << "\"" << m_tableName << "\"";
 
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
@@ -2521,11 +2409,11 @@ SQLiteTable::DropTable(const std::string &tablename)
     ssql << "Drop table ";
     if (!tablename.empty())
     {
-        ssql << tablename << ";";
+        ssql << "\"" << tablename << "\"" << ";";
     }
     else
     {
-        ssql << m_tableName;
+        ssql << "\"" << m_tableName << "\"";
     }
 
     NMDebugAI( << "SQL command: " << ssql.str() << std::endl);
@@ -2678,6 +2566,53 @@ SQLiteTable::openConnection(void)
     return true;
 }
 
+int
+SQLiteTable::deleteOldLDB(const std::string& vt, const std::string& ldb)
+{
+#ifdef _WIN32
+#define stat64 _stat64
+#endif
+
+	bool ret = 1;
+
+	struct stat64 resVt;
+	if (stat64(vt.c_str(), &resVt) == 0)
+	{
+		struct stat64 resLdb;
+		if (stat64(ldb.c_str(), &resLdb) == 0)
+		{
+			// vt is more recent
+			if (resVt.st_mtime > resLdb.st_mtime)
+			{
+				// delete old ldb
+				if (remove(ldb.c_str()))
+				{
+					std::stringstream errmsg;
+					errmsg << "SQLiteTable::deleteOldLDB() - ERROR: Failed deleting old '"
+						<< ldb << "'!";
+					m_lastLogMsg = errmsg.str();
+					ret = -1;
+				}
+			}
+			// ldb is more recent
+			else
+			{
+				// don't do anything, just open 
+				ret = 0;
+			}
+		}
+	}
+	else
+	{
+		std::stringstream errmsg;
+		errmsg << "SQLiteTable::deleteOldLDB() - ERROR: The provided virtual table '"
+			<< vt << "' is not accessible!";
+		m_lastLogMsg = errmsg.str();
+		ret = -1;
+	}
+	return ret;
+}
+
 bool
 SQLiteTable::CreateFromVirtual(const std::string &fileName,
                                const std::string &encoding, const int &srid)
@@ -2691,6 +2626,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         return false;
     }
 
+	/*
 	std::string tmp = vinfo[1];
 	std::string torepl = "-+&=*(){}[]%$#@!~/\\";
 	for (int i=0; i < torepl.size(); ++i)
@@ -2703,20 +2639,40 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
 	}
 
     m_tableName = tmp;
+	*/
+
+	m_tableName = vinfo[1];
+
     std::string ext = vinfo[2];
 
     std::string vname = "vt_";
     vname += m_tableName;
 
-    // ------------------------------
-    // create / open *.ldb database
-    // ----------------------------
+	// -------------------------------
+	// craft *.ldb filename
+	// -------------------------------
     m_dbFileName = vinfo[0];
     m_dbFileName += "/";
     m_dbFileName += m_tableName;
     //m_dbFileName += ext;
     m_dbFileName += ".ldb";
 
+	// --------------------------------
+	// delete existing *.ldb if older
+	// than virtual table provided 
+	// in filename
+	// ---------------------------------
+
+    int deloldb = this->deleteOldLDB(fileName, m_dbFileName);
+    if (deloldb < 0)
+	{
+		NMDebugCtx(_ctxotbtab, << "done!");
+		return false;
+	}
+
+	// ------------------------------
+	// create / open *.ldb database
+	// ----------------------------
     if (!openConnection())
     {
         NMDebugCtx(_ctxotbtab, << "done!");
@@ -2734,7 +2690,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     }
 
     std::stringstream ssql;
-    ssql << "CREATE VIRTUAL TABLE " << vname << " USING ";
+    ssql << "CREATE VIRTUAL TABLE \"" << vname << "\" USING ";
 
     std::string ecode = "'";
     ecode += encoding;
@@ -2745,15 +2701,20 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
         ssql << "VirtualText('" << fileName << "', " << ecode
              << ", 1, POINT, DOUBLEQUOTE, ',');";
     }
-        else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
-        {
-            std::string sname = "'";
-            sname += vinfo[0];
-            sname += m_tableName;
-            sname += "'";
-            ssql << "VirtualShape(" << sname << ", " << ecode
-                 << ", " << srid << ");";
-        }
+    else if (ext.compare(".shp") == 0 || ext.compare(".shx") == 0)
+    {
+        std::string sname = "'";
+        sname += vinfo[0];
+#ifdef _WIN32
+        sname += "\\";
+#else
+        sname += "/";
+#endif
+        sname += m_tableName;
+        sname += "'";
+        ssql << "VirtualShape(" << sname << ", " << ecode
+             << ", " << srid << ");";
+    }
     else if (ext.compare(".dbf") == 0)
     {
         ssql << "VirtualDbf('" << fileName << "', " << ecode << ");";
@@ -2789,7 +2750,7 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
     // double check whether we've got any records here, since
     // spatialite creates empty tables if the import fails ...
     ssql.str("");
-    ssql << "SELECT COUNT(*) FROM " << vname << ";";
+    ssql << "SELECT COUNT(*) FROM \"" << vname << "\";";
 
     sqlite3_stmt* rcnt = 0;
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
@@ -2824,8 +2785,8 @@ SQLiteTable::CreateFromVirtual(const std::string &fileName,
 
     // ... and then make a proper one of it ...
     ssql.str("");
-    ssql << "CREATE TABLE " << m_tableName << " AS SELECT * FROM " << vname << ";";
-    ssql << "DROP TABLE " << vname << ";";
+    ssql << "CREATE TABLE " << "\"" << m_tableName << "\"" << " AS SELECT * FROM \"" << vname << "\";";
+    ssql << "DROP TABLE \"" << vname << "\";";
 
     if (SqlExec(ssql.str()))
     {
@@ -2876,6 +2837,114 @@ SQLiteTable::GetFilenameInfo(const std::string& fileName)
     vinfo.push_back(ext);
 
     return vinfo;
+}
+
+bool
+SQLiteTable::openAsInMemDb(const std::string &dbName, const std::string &tablename)
+{
+    if (this->m_db != nullptr)
+    {
+        this->CloseTable(false);
+    }
+
+    // check filename
+    std::string indbfn = dbName.empty() ? this->m_dbFileName : dbName;
+    if (indbfn.empty())
+    {
+        this->m_lastLogMsg = "The provided filename is empty!";
+        return false;
+    }
+
+    std::string errmsg;
+    std::stringstream errstr;
+    std::string tabname = tablename.empty() ? this->m_tableName : tablename;
+
+    // open the db to copy from
+    sqlite3* pFileDb = nullptr;
+    int rc = sqlite3_open_v2(indbfn.c_str(), &pFileDb,
+                         SQLITE_OPEN_READONLY |
+                         SQLITE_OPEN_URI | SQLITE_OPEN_PRIVATECACHE,
+                         nullptr);
+    if (rc != SQLITE_OK)
+    {
+        errmsg = sqlite3_errmsg(pFileDb);
+        errstr.str("");
+        errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
+        m_lastLogMsg = errstr.str();
+        ::sqlite3_close(pFileDb);
+        pFileDb = nullptr;
+        return false;
+    }
+
+
+    // create in mem db to receive the backup
+    rc = sqlite3_open(":memory:", &m_db);
+
+    if (rc != SQLITE_OK)
+    {
+        errmsg = sqlite3_errmsg(m_db);
+        errstr.str("");
+        errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
+        m_lastLogMsg = errstr.str();
+        ::sqlite3_close(m_db);
+        m_db = nullptr;
+        return false;
+    }
+
+    // do the backup
+    sqlite3_backup* pBackup = sqlite3_backup_init(m_db, "main",
+                                                  pFileDb, "main");
+    if (pBackup)
+    {
+//        do
+//        {
+//            rc = sqlite3_backup_step(pBackup, 5);
+//            if (    rc == SQLITE_OK
+//                ||  rc == SQLITE_BUSY
+//                ||  rc == SQLITE_LOCKED
+//               )
+//            {
+//                sqlite3_sleep(0.025);
+//            }
+
+//            ++bcycles;
+
+//        } while (    rc == SQLITE_OK
+//                 ||  rc == SQLITE_BUSY
+//                 ||  rc == SQLITE_LOCKED
+//                );
+        rc = sqlite3_backup_step(pBackup, -1);
+        sqlite3_backup_finish(pBackup);
+    }
+
+    if (pBackup == 0 || (pBackup && (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)))
+    {
+        std::string errmsg = sqlite3_errmsg(m_db);
+        std::stringstream errstr;
+        errstr << "SQLite3 ERROR #" << rc << ": " << errmsg;
+        m_lastLogMsg = errstr.str();
+        m_dbFileName.clear();
+        ::sqlite3_close(m_db);
+        m_db = nullptr;
+        return false;
+    }
+
+    // if tablename is not specified, we
+    // just grab the first table we find
+    if (tablename.empty())
+    {
+        std::vector<std::string> tabs = this->GetTableList();
+        this->m_tableName = tabs.at(0);
+    }
+    else
+    {
+        this->m_tableName = tablename;
+    }
+
+    this->m_dbFileName = ":memory:";
+    this->PopulateTableAdmin();
+
+    return true;
 }
 
 SQLiteTable::TableCreateStatus
@@ -2934,21 +3003,23 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
             {
                 m_tableName = m_tableName.substr(0, pos);
             }
+			
+			// avoid ugly table names, if nothing helps, double quote ...
+			//m_tableName = this->formatTableName(m_tableName);
+
+			/*
             std::locale loc;
             if (std::isdigit(m_tableName[0], loc))
             {
                 std::string prefix = "nm_";
                 m_tableName = prefix + m_tableName;
             }
+			*/
         }
         else if (m_tableName.empty())
         {
             m_tableName = GetRandomString(5);
         }
-    }
-    else if (m_tableName.empty())
-    {
-        m_tableName = GetRandomString(5);
     }
 
     if (!tag.empty())
@@ -3000,7 +3071,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
         }
         ssql.str("");
         ssql << "begin transaction;";
-        ssql << "CREATE TABLE " << m_tableName << " "
+        ssql << "CREATE TABLE " << "\"" << m_tableName << "\"" << " "
             << "(" << m_idColName << " INTEGER PRIMARY KEY);";
         ssql << "commit;";
 
@@ -3043,7 +3114,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
         // prepare an update statement for this column
         sqlite3_stmt* stmt_upd;
         ssql.str("");
-        ssql <<  "UPDATE main." << m_tableName << " SET " << m_idColName << " = "
+        ssql <<  "UPDATE main." << "\"" << m_tableName << "\"" << " SET " << m_idColName << " = "
              <<  "@VAL WHERE " << m_idColName << " = @IDX ;";
         rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                                 -1, &stmt_upd, 0);
@@ -3054,7 +3125,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
         // prepare a get value statement for this column
         sqlite3_stmt* stmt_sel;
         ssql.str("");
-        ssql <<  "SELECT " << m_idColName << " from main." << m_tableName << ""
+        ssql <<  "SELECT " << m_idColName << " from main." << "\"" << m_tableName << "\"" << ""
              <<  " WHERE " << m_idColName << " = @IDX ;";
         rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
                                 -1, &stmt_sel, 0);
@@ -3068,7 +3139,7 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     // ============================================================
     ssql.str("");
     ssql << "SELECT count(" << this->m_idColName << ") "
-         << "FROM " << this->m_tableName << ";";
+         << "FROM " << "\"" << m_tableName << "\"" << ";";
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(), -1, &m_StmtRowCount, 0);
     sqliteError(rc, &m_StmtRowCount);
 
@@ -3266,7 +3337,7 @@ SQLiteTable::PopulateTableAdmin()
     // -------------------------------------------------
     std::stringstream ssql;
     ssql.str("");
-    ssql << "pragma table_info(" << m_tableName << ")";
+    ssql << "pragma table_info(" << "\"" << m_tableName << "\"" << ")";
 
     sqlite3_stmt* stmt_exists;
     int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
@@ -3387,11 +3458,11 @@ SQLiteTable::PopulateTableAdmin()
     // now we count the number of records in the table
     ssql.str("");
     ssql << "SELECT count(" << m_idColName << ") "
-         << "from " << m_tableName << ";";
+    << "from " << "\"" << m_tableName << "\"" << ";";
 
 
     rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            -1, &stmt_exists, 0);
+        -1, &stmt_exists, 0);
     if (sqliteError(rc, &stmt_exists))
     {
         m_lastLogMsg = "Failed fetching number of records!";
@@ -3406,8 +3477,8 @@ SQLiteTable::PopulateTableAdmin()
     {
         m_iNumRows = sqlite3_column_int64(stmt_exists, 0);
     }
-    NMDebugAI( << m_tableName << " has " << m_iNumRows
-               << " records" << std::endl);
+    NMDebugAI(<< m_tableName << " has " << m_iNumRows
+        << " records" << std::endl);
     sqlite3_finalize(stmt_exists);
 
     NMDebugCtx(_ctxotbtab, << "done!");
@@ -3417,46 +3488,81 @@ SQLiteTable::PopulateTableAdmin()
 bool
 SQLiteTable::FindTable(const std::string &tableName)
 {
-    if (m_db == 0)
-    {
-        return false;
-    }
+	if (m_db == 0)
+	{
+		return false;
+	}
 
-    int bTableExists = 0;
-    sqlite3_stmt* stmt_exists;
-    std::stringstream ssql;
-    ssql << "SELECT count(name) FROM sqlite_master WHERE "
-        << "type='table' AND name='" << tableName << "';";
+	int bTableExists = 0;
+	sqlite3_stmt* stmt_exists;
+	std::stringstream ssql;
+	ssql << "SELECT count(name) FROM sqlite_master WHERE "
+		<< "type='table' AND name='" << tableName << "';";
 
-    int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
-                            -1, &stmt_exists, 0);
-    if (sqliteError(rc, &stmt_exists))
-    {
-        sqlite3_finalize(stmt_exists);
-        return false;
-    }
+	int rc = sqlite3_prepare_v2(m_db, ssql.str().c_str(),
+		-1, &stmt_exists, 0);
+	if (sqliteError(rc, &stmt_exists))
+	{
+		sqlite3_finalize(stmt_exists);
+		return false;
+	}
 
-    if (sqlite3_step(stmt_exists) == SQLITE_ROW)
-    {
-        bTableExists = sqlite3_column_int(stmt_exists, 0);
-    }
-    sqlite3_finalize(stmt_exists);
+	if (sqlite3_step(stmt_exists) == SQLITE_ROW)
+	{
+		bTableExists = sqlite3_column_int(stmt_exists, 0);
+	}
+	sqlite3_finalize(stmt_exists);
 
-    return bTableExists;
+	return bTableExists;
 }
 
 
 bool
 SQLiteTable::SetTableName(const std::string &tableName)
 {
-    bool ret = false;
-    if (FindTable(tableName))
-    {
-        m_tableName = tableName;
-        ret = true;
-    }
-    return ret;
+	bool ret = false;
+	if (FindTable(tableName))
+	{
+		m_tableName = tableName;
+		ret = true;
+	}
+	return ret;
 }
+
+/*
+std::string
+SQLiteTable::formatTableName(const std::string& tableName)
+{
+	// check for 'sqlite_' prefix of system tables
+	std::string tn = tableName;
+	if (tn.substr(0, 7).compare("sqlite_") == 0)
+	{
+		tn = tn.substr(7, tn.size() - 1);
+	}
+	
+	// check for operator symbols and schema-name separator
+	const std::locale loc;
+	const char repl = '_';
+	const std::vector<char> tok = { '-', '.', '+', '*', '/', '%', '|', '<', '>', '=', '!', '~'};
+	for (int i = 0; i < tn.size(); ++i)
+	{
+		if (	std::find(tok.begin(), tok.end(), tn[i]) != tok.end()
+			 || (i == 0 && std::isdigit(tn[i], loc))
+		   )
+		{
+			tn[i] = repl;
+		}
+	}
+
+	// double quote name if it is a SQL keyword after all!
+	if (sqlite3_keyword_check(tn.c_str(), tn.size()))
+	{
+		tn = "\"" + tn + "\"";
+	}
+
+	return tn;
+}
+*/
 
 bool
 SQLiteTable::SetDbFileName(const std::string &dbFileName)

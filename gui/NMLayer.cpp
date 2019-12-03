@@ -41,6 +41,7 @@
 #include <QColor>
 #include <QPainter>
 #include <QSqlQuery>
+#include <QSqlDriver>
 
 #include "vtkPointData.h"
 #include "vtkMapper.h"
@@ -1339,6 +1340,37 @@ NMLayer::mapUniqueValues(void)
     mNumLegendRows = mNumClasses + 1;
 }
 
+bool
+NMLayer::getValueColour(double value, double*& rgba)
+{
+    if (mLookupTable.GetPointer() == nullptr)
+    {
+        return false;
+    }
+
+    if (mLegendType == NMLayer::NM_LEGEND_RAMP)
+    {
+        const unsigned char* uint_rgba = mLookupTable->MapValue(value);
+        for (int c=0; c < 4; ++c)
+        {
+            rgba[c] = uint_rgba[c] / 255.0;
+        }
+    }
+    else
+    {
+        QString sVal = QString("%1").arg(value);
+        std::map<QString, QVector<int>, CompNumStrings>::const_iterator it =
+                this->mMapValueIndices.find(sVal);
+
+        if (it != this->mMapValueIndices.cend())
+        {
+            mLookupTable->GetTableValue(it->second.at(0), rgba);
+        }
+    }
+
+    return true;
+}
+
 void
 NMLayer::setNodata(double val)
 {
@@ -2280,7 +2312,9 @@ NMLayer::getValueFieldStatistics()
                 ||  type == QVariant::LongLong
                )
             {
-                std::string col = mLegendValueField.toStdString();
+                QSqlDriver* drv = sqlModel->database().driver();
+
+                std::string col = drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName).toStdString();
                 std::stringstream sql;
 
                 sql << "select count(" << col << ") as count, "
@@ -2292,7 +2326,7 @@ NMLayer::getValueFieldStatistics()
 
                     << "sum(" << col << ") as sum "
                     << " from "
-                    << sqlModel->tableName().toStdString();
+                    << drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName).toStdString();
 
                 sqlModel->database().transaction();
                 QSqlQuery q(sqlModel->database());

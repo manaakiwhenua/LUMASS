@@ -296,6 +296,7 @@ public:
     bool useIdxMap(void){return mUseIdxMap;}
 
 	bool hasColourTable(void);
+    bool getValueColour(double value, double *&rgba);
 	/* get the statistics of the current legend value field;
 	 * in case of an image layer without attribute table,
 	 * the pixel value statistics are returned for the current

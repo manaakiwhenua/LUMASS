@@ -1519,7 +1519,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             QFileInfo finfo(fileName);
 
             QStringList tabFormats;
-            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "csv" << "txt" << "xls";
+            tabFormats << "dbf" << "db" << "sqlite" << "ldb" << "csv" << "txt" << "xls" << "shp" << "shx";
             QStringList imgFormats;
             imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
                        << "png" << "gif" << "adf" << "hdr" << "sdat" << "vrt";
@@ -1999,13 +1999,15 @@ void ModelComponentList::stretchColourRampToVisMinMax()
         {
             std::string key = sqlModel->getNMPrimaryKey().toStdString();
 
-
+            QSqlDriver* drv = sqlModel->database().driver();
+            std::string colstr = drv->escapeIdentifier(col, QSqlDriver::FieldName).toStdString();
+            std::string tabstr = drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName).toStdString();
             std::stringstream sql;
 
             sql << "select "
-                << "min(" << col.toStdString() << ") as minimum, "
-                << "max(" << col.toStdString() << ") as maximum "
-                << "from " << sqlModel->tableName().toStdString()
+                << "min(" << colstr << ") as minimum, "
+                << "max(" << colstr << ") as maximum "
+                << "from " << tabstr
                 << " where " <<  key
                 << " between " << stats[0] << " and " << stats[1];
 

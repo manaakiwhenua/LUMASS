@@ -35,6 +35,14 @@
 #include <QListWidget>
 #include "qttreepropertybrowser.h"
 
+//#include <QtWebSockets/QWebSocketServer>
+
+//#include <QTcpServer>
+//#include <QTcpSocket>
+//#include <QNetworkSession>
+
+
+
 // OGR
 #include "ogrsf_frmts.h"
 
@@ -66,6 +74,9 @@
   #include "otbRasdamanImageIO.h"
   #include "otbRasdamanImageIOFactory.h"
 #endif
+
+//QT_FORWARD_DECLARE_CLASS(QWebSocketServer)
+//QT_FORWARD_DECLARE_CLASS(QWebSocket)
 
 class NMModelController;
 class NMModelComponent;
@@ -108,6 +119,8 @@ public:
     vtkRenderWindow* getRenderWindow(void);
     const vtkRenderer* getBkgRenderer(void);
     const vtkRenderer* getScaleRenderer(void);
+//    const QWebSocketServer* getSocketServer(void) {return mServer;}
+//    const QList<QWebSocket*> getSocketClients(void) {return mClientList;}
     void displayChart(vtkTable* srcTab);
     void updateCoordLabel(const QString& newCoords);
     const NMComponentEditor* getCompEditor(void);
@@ -253,7 +266,6 @@ public slots:
     void removeUserTool(NMAbstractAction* act);
 
 
-
     // logging
 
     void appendLogMsg(const QString& msg);
@@ -337,6 +349,14 @@ protected slots:
     void updateSettings(QtProperty* prop, const QVariant& val);
     void updateSettings(const QString& setting, const QVariant& val);
 
+    // client & server
+    void onNewConnection();
+    void onWebSocketServerClosed();
+    void processTextMessage(QString message);
+    void processBinaryMessage(QByteArray message);
+    void socketDisconnected();
+    //void onSslErrors(const QList<QSslError>& errors);
+
 protected:
 
     void mousePressEvent(QMouseEvent *event);
@@ -352,6 +372,7 @@ protected:
     void openTablesReadOnly(void);
     void openTablesReadWrite(void);
 
+    void initWebSocketServer();
 
 
     //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
@@ -610,6 +631,8 @@ private:
 
     //NMModelController* mModelController;
 
+//    QWebSocketServer* mServer;
+//    QList<QWebSocket*> mClientList;
 
 #ifdef BUILD_RASSUPPORT
     RasdamanConnector *mpRasconn;

@@ -191,8 +191,10 @@ NMSelSortSqlTableProxyModel::createColumnIndex(int colidx)
     QString escpIdx = drv->escapeIdentifier(idxname,
                                             QSqlDriver::FieldName);
 
+    QString escpTabName = drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName);
+
     QString idxQuery = QString("Create index if not exists %1 on %2 (%3)")
-                .arg(escpIdx).arg(mSourceModel->tableName()).arg(escpCol);
+                .arg(escpIdx).arg(escpTabName).arg(escpCol);
     NMLogDebug(<< ctx << ": idx creation query: " << idxQuery.toStdString() << " on " << colname.toStdString());
 
     QString table = mSourceModel->tableName();
@@ -390,10 +392,12 @@ NMSelSortSqlTableProxyModel::getSourcePK()
         mPKIsFstCol = true;
     }
 
+    QSqlDriver* drv = mSourceModel->database().driver();
+
     // get the min PK value (0- or 1-based)
     QString queryStr = QString("select min(%1) from %2")
-                       .arg(primaryKey)
-                       .arg(mSourceModel->tableName());
+                       .arg(drv->escapeIdentifier(primaryKey, QSqlDriver::FieldName))
+                       .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName));
 
     QSqlQuery queryObj(mSourceModel->database());
     if (!queryObj.exec(queryStr))
@@ -458,9 +462,10 @@ NMSelSortSqlTableProxyModel::updateSelection(QItemSelection& sel, bool bProxySel
     QString orderByClause = QString("order by %1 asc").arg(selectColumn);
     QAbstractItemModel* model = this;
 
+    QSqlDriver* drv = mSourceModel->database().driver();
     QString queryStr = QString("select %1 from %2 %3 %4")
-                       .arg(selectColumn)
-                       .arg(tableName)
+                       .arg(drv->escapeIdentifier(selectColumn, QSqlDriver::FieldName))
+                       .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
                        .arg(whereClause)
                        .arg(orderByClause);
 
@@ -663,10 +668,11 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
 
     beginInsertColumns(QModelIndex(), colidx, colidx);
 
+    QSqlDriver* drv = mSourceModel->database().driver();
     mSourceModel->clear();
     QString qStr = QString("Alter table %1 add column %2 %3")
-                        .arg(table)
-                        .arg(name)
+                        .arg(drv->escapeIdentifier(table, QSqlDriver::TableName))
+                        .arg(drv->escapeIdentifier(name, QSqlDriver::FieldName))
                         .arg(typeStr);
 
     QSqlDatabase db = mSourceModel->database();
@@ -686,26 +692,6 @@ NMSelSortSqlTableProxyModel::insertColumn(const QString& name,
 
     openReadModel();
     this->updateSourceModel(table);
-
-
-    // reset the source model with the
-    // modified table
-    //    mSourceModel->setTable(table);
-    //    if (mLastColSort.first >= 0)
-    //    {
-    //        mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
-    //    }
-    //    if (mLastSelRecsOnly)
-    //    {
-    //        mSourceModel->setFilter(mLastFilter);
-    //    }
-    //    else
-    //    {
-    //        mSourceModel->setFilter("");
-    //    }
-    //    mSourceModel->select();
-    //    mUpdateProxySelection = true;
-    //    mUpdateSourceSelection = true;
 
     endInsertColumns();
 
@@ -736,11 +722,12 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
 
     QString tempJoinTableName = this->getRandomString(5);
 
+    QSqlDatabase db = mSourceModel->database();
+    QSqlDriver* drv = db.driver();
     std::stringstream ssql;
     ssql << "CREATE TEMP TABLE " << tempJoinTableName.toStdString() << " AS "
-         << "SELECT * FROM " << joinTableName.toStdString() << ";";
+         << "SELECT * FROM " << drv->escapeIdentifier(joinTableName, QSqlDriver::TableName).toStdString() << ";";
 
-    QSqlDatabase db = mSourceModel->database();
     db.transaction();
     QSqlQuery query(mSourceModel->database());
     if (!query.exec(QString(ssql.str().c_str())))
@@ -759,9 +746,9 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
 
     QString idxName = QString("%1_idx").arg(joinFieldName);
     ssql.str("");
-    ssql << "CREATE INDEX IF NOT EXISTS " << idxName.toStdString()
-         << " on " << tempJoinTableName.toStdString()
-         << " (" << joinFieldName.toStdString() << ");";
+    ssql << "CREATE INDEX IF NOT EXISTS " << drv->escapeIdentifier(idxName, QSqlDriver::FieldName).toStdString()
+         << " on " << drv->escapeIdentifier(tempJoinTableName, QSqlDriver::TableName).toStdString()
+         << " (" << drv->escapeIdentifier(joinFieldName, QSqlDriver::FieldName).toStdString() << ");";
 
     db.transaction();
     QSqlQuery idxQuery(db);
@@ -787,10 +774,12 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
 
     ssql.str("");
     ssql << "CREATE TEMP TABLE " << tempTableName.toStdString() << " AS "
-         << "SELECT * FROM " << tarTableName.toStdString() << " "
-         << "LEFT OUTER JOIN " << tempJoinTableName.toStdString() << " "
-         << " ON " << tarTableName.toStdString() << "." << tarFieldName.toStdString()
-         << " = " << tempJoinTableName.toStdString() << "." << joinFieldName.toStdString()
+         << "SELECT * FROM " << drv->escapeIdentifier(tarTableName, QSqlDriver::TableName).toStdString() << " "
+         << "LEFT OUTER JOIN " << drv->escapeIdentifier(tempJoinTableName, QSqlDriver::TableName).toStdString() << " "
+         << " ON " << drv->escapeIdentifier(tarTableName, QSqlDriver::TableName).toStdString()
+         << "." << drv->escapeIdentifier(tarFieldName, QSqlDriver::FieldName).toStdString()
+         << " = " << drv->escapeIdentifier(tempJoinTableName, QSqlDriver::TableName).toStdString()
+         << "." << drv->escapeIdentifier(joinFieldName, QSqlDriver::FieldName).toStdString()
          << ";";
 
 
@@ -810,7 +799,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     db.commit();
 
     ssql.str("");
-    ssql << "DROP TABLE " << tarTableName.toStdString() << ";";
+    ssql << "DROP TABLE " << drv->escapeIdentifier(tarTableName, QSqlDriver::TableName).toStdString() << ";";
     db.transaction();
     QSqlQuery dropTable(db);
     if (!dropTable.exec(QString(ssql.str().c_str())))
@@ -828,7 +817,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
 
 
     ssql.str("");
-    ssql << "CREATE TABLE " << tarTableName.toStdString() << " AS "
+    ssql << "CREATE TABLE " << drv->escapeIdentifier(tarTableName, QSqlDriver::TableName).toStdString() << " AS "
          << "SELECT * FROM " << tempTableName.toStdString() << ";";
     db.transaction();
     QSqlQuery tarTable(db);
@@ -846,7 +835,7 @@ NMSelSortSqlTableProxyModel::joinTable(const QString& joinTableName,
     db.commit();
 
 
-    mSourceModel->setTable(tarTableName);
+    mSourceModel->setTable(drv->escapeIdentifier(tarTableName, QSqlDriver::TableName));
     if (mLastColSort.first >= 0)
     {
         mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
@@ -957,9 +946,10 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
         idColName = this->mSourcePK;
     }
 
+    QSqlDriver* drv = mSourceModel->database().driver();
     QString maxPKSql = QString("SELECT max(%1) from %2")
-                            .arg(idColName)
-                            .arg(mSourceModel->tableName());
+                            .arg(drv->escapeIdentifier(idColName, QSqlDriver::FieldName))
+                            .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName));
 
     QSqlQuery qMaxPK(mSourceModel->database());
     if (!qMaxPK.exec(maxPKSql))
@@ -978,8 +968,8 @@ NMSelSortSqlTableProxyModel::addRows(unsigned int nrows)
 
     // insert new rows
     QString ssql = QString("INSERT INTO %1 (%2) VALUES (?)")
-                            .arg(mSourceModel->tableName())
-                            .arg(idColName);
+                            .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName))
+                            .arg(drv->escapeIdentifier(idColName, QSqlDriver::FieldName));
 
     QSqlDatabase db = mSourceModel->database();
     db.transaction();
@@ -1096,13 +1086,15 @@ NMSelSortSqlTableProxyModel::updateData(int colidx, const QString &column,
         whereClause = QString("where %1").arg(mLastFilter);
     }
 
+    QSqlDatabase db = mSourceModel->database();
+    QSqlDriver* drv = db.driver();
     QString uStr = QString("update %1 set %2 = %3 %4")
-                    .arg(mSourceModel->tableName())
-                    .arg(column)
+                    .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName))
+                    .arg(drv->escapeIdentifier(column, QSqlDriver::FieldName))
                     .arg(expr)
                     .arg(whereClause);
 
-    QSqlDatabase db = mSourceModel->database();
+
     db.transaction();
     QSqlQuery qUpdate(db);
     if (!qUpdate.exec(uStr))
@@ -1148,6 +1140,8 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
         return false;
     }
 
+    QSqlDriver* drv = mSourceModel->database().driver();
+
     int ncols = mSourceModel->columnCount();
     int delidx = -1;
     QStringList remainCols;
@@ -1162,14 +1156,14 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
             }
             else
             {
-                remainCols << vcol.toString();
+                remainCols << drv->escapeIdentifier(vcol.toString(), QSqlDriver::FieldName);
             }
         }
     }
 
     std::string collist = remainCols.join(',').toStdString();
     std::string backuptable = this->getRandomString().toStdString();
-    std::string tablename = mSourceModel->tableName().toStdString();
+    std::string tablename = drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName).toStdString();
     std::stringstream ssql;
     ssql << "CREATE TEMPORARY TABLE " << backuptable << " AS SELECT " << collist << " FROM main." << tablename << ";"
          << "DROP TABLE main." << tablename << ";"
@@ -1231,25 +1225,6 @@ NMSelSortSqlTableProxyModel::removeColumn(const QString& name)
     }
     endRemoveColumns();
     this->updateSourceModel(tablename.c_str());
-
-    // repopulate the table model
-//    mSourceModel->setTable(QString(tablename.c_str()));
-//    if (mLastColSort.first >= 0)
-//    {
-//        mSourceModel->setSort(mLastColSort.first, mLastColSort.second);
-//    }
-//    if (mLastSelRecsOnly)
-//    {
-//        mSourceModel->setFilter(mLastFilter);
-//    }
-//    else
-//    {
-//        mSourceModel->setFilter("");
-//    }
-//    mSourceModel->select();
-//    mUpdateProxySelection = true;
-//    mUpdateSourceSelection = true;
-
 
     return ret;
 }
@@ -1371,7 +1346,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
                                                        .arg(mSourcePK);
     tmpCreate += orgTableSql;
 
-    // have to account for the case that the input table has had
+    // have to account for the case that the input table had
     // its primary key defined at the end of the column definition ...
     // ... so looking for superfluous second PIRMARY statement
     pos = tmpCreate.indexOf("primary", 0, Qt::CaseInsensitive);
@@ -1380,6 +1355,13 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     {
         pos = tmpCreate.lastIndexOf(',');
         tmpCreate = tmpCreate.left(pos);
+        tmpCreate += ")";
+    }
+
+    // had the case that the column definition is not closed, i.e. we're
+    // missing the closing bracket ')', so double check that, just in case ....
+    if (!tmpCreate.endsWith(')'))
+    {
         tmpCreate += ")";
     }
 
@@ -1430,7 +1412,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
     QString orderByClause = "";
     if (mLastColSort.first >= 0)
     {
-        QString sOrderColumn = mSourceModel->headerData(mLastColSort.first, Qt::Horizontal).toString();
+        QString sOrderColumn = drv->escapeIdentifier(mSourceModel->headerData(mLastColSort.first, Qt::Horizontal).toString(), QSqlDriver::FieldName);
         QString qsSortOrder = mLastColSort.second == Qt::AscendingOrder ? "ASC" : "DESC";
         orderByClause = QString("order by %1 %2").arg(sOrderColumn).arg(qsSortOrder);
     }
@@ -1441,7 +1423,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
         tmpInsert = QString("Insert into %1 %2 select * from %3 %4")
                             .arg(mTempTableName)
                             .arg(columns)
-                            .arg(mSourceModel->tableName())
+                            .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName))
                             .arg(orderByClause);
     }
     else
@@ -1449,7 +1431,7 @@ NMSelSortSqlTableProxyModel::createMappingTable(void)
         tmpInsert = QString("Insert into %1 %2 select rowid, * from %3 %4")
                             .arg(mTempTableName)
                             .arg(columns)
-                            .arg(mSourceModel->tableName())
+                            .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName))
                             .arg(orderByClause);
     }
 
@@ -1488,10 +1470,11 @@ NMSelSortSqlTableProxyModel::mapFromSource(const QModelIndex& srcIdx) const
         return this->mSourceModel->index(srcIdx.row(), srcIdx.column(), srcIdx.parent());
     }
 
+    QSqlDriver* drv = mSourceModel->database().driver();
     QString qstr = QString("Select %1 from %2 where %3 = %4;")
-                   .arg(mProxyPK)
+                   .arg(drv->escapeIdentifier(mProxyPK, QSqlDriver::FieldName))
                    .arg(mTempTableName)
-                   .arg(mSourcePK)
+                   .arg(drv->escapeIdentifier(mSourcePK, QSqlDriver::FieldName))
                    .arg(srcIdx.row());
 
     NMLogDebug(<< ctx << ": " << "tv mapFromSource (srcIdx): " << qstr.toStdString());
@@ -1549,10 +1532,11 @@ NMSelSortSqlTableProxyModel::mapToSource(const QModelIndex& proxyIdx) const
 
     // NOTE: since we utilise the autoincrementing primary key, the
     // proxy index in the mapping-table is 1-based!
+    QSqlDriver* drv = mSourceModel->database().driver();
     QString qstr = QString("Select %1 from %2 where %3 = %4;")
-                   .arg(mSourcePK)
+                   .arg(drv->escapeIdentifier(mSourcePK, QSqlDriver::FieldName))
                    .arg(mTempTableName)
-                   .arg(mProxyPK)
+                   .arg(drv->escapeIdentifier(mProxyPK, QSqlDriver::FieldName))
                    .arg(proxyIdx.row());//+1);
 
     NMLogDebug(<< ctx << ": " << "tv mapToSource (proxyIdx): " << qstr.toStdString());
@@ -1639,11 +1623,13 @@ NMSelSortSqlTableProxyModel::getNumTableRecords()
         primaryKey = mSourceModel->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
     }
 
-    QString qstr = QString("Select count(%1) from %2").arg(primaryKey)
-                                                      .arg(mSourceModel->tableName());
     QSqlDatabase db = mSourceModel->database();
+    QSqlDriver* drv = db.driver();
+    QString qstr = QString("Select count(%1) from %2").arg(drv->escapeIdentifier(primaryKey, QSqlDriver::FieldName))
+                                                      .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName));
+
     db.transaction();
-    QSqlQuery q(mSourceModel->database());
+    QSqlQuery q(db);
     q.setForwardOnly(true);
     if (q.exec(qstr))
     {

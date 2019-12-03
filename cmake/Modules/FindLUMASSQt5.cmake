@@ -64,6 +64,7 @@ else()
             /usr/local
             /usr/lib
             /usr/lib/x86_64-linux-gnu
+            /usr/lib/x86_64-linux-gnu/cmake
 	)
     set(QT5_PATH_SUFFIXES
             x86_64-linux-gnu
@@ -145,6 +146,8 @@ else()
         "Qt5Gui"
         "Qt5Concurrent"
         "Qt5Sql"
+        #"Qt5Network"
+        #"Qt5WebSockets"
     )
 	
 	foreach(QT5COMP ${QT5_COMP_LIST})
@@ -154,7 +157,7 @@ else()
 				LIST(APPEND QT5_LIB_LIST "${QT5COMP}.lib")
 			else(WIN32)
 				LIST(APPEND QT5_LIB_LIST "${QT5COMP}_LIBRARIES")
-		    endif(WIN32)
+                        endif(WIN32)
             
 			LIST(APPEND QT5_INCLUDE_DIRS ${${QT5COMP}_INCLUDE_DIRS})
         endif(${QT5COMP}_FOUND)

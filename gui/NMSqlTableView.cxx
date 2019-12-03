@@ -185,11 +185,13 @@ NMSqlTableView::zoomToCoords()
         bZ = true;
     }
 
+    QSqlDatabase db = this->mModel->database();
+    QSqlDriver* drv = db.driver();
     qstr += QString(" from %1 where %2;")
-            .arg(mModel->tableName())
+            .arg(drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName))
             .arg(this->updateQueryString());
 
-    QSqlDatabase db = this->mModel->database();
+
     db.transaction();
     QSqlQuery corQuery(db);
     corQuery.setForwardOnly(true);
@@ -630,10 +632,13 @@ NMSqlTableView::plotScatter()
     NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(mModel);
 
     QSqlDatabase db = sqlModel->database();
+    QSqlDriver* drv = db.driver();
 
     // query the max y value
     QString maxYStr = QString("select min(%1),max(%1), min(%2), max(%2) from %3")
-            .arg(mLastClickedColumn).arg(xcolname).arg(sqlModel->tableName());
+            .arg(drv->escapeIdentifier(mLastClickedColumn, QSqlDriver::FieldName))
+            .arg(drv->escapeIdentifier(xcolname, QSqlDriver::FieldName))
+            .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName));
     double maxY = 0.0;
     double minY = 0.0;
     double minX = 0.0;
@@ -654,9 +659,9 @@ NMSqlTableView::plotScatter()
 
     // now query the actual y values for the plot
     QString queryStr = QString("select %1, %2 from %3")
-                .arg(xcolname)
-                .arg(mLastClickedColumn)
-                .arg(sqlModel->tableName());
+                .arg(drv->escapeIdentifier(xcolname, QSqlDriver::FieldName))
+                .arg(drv->escapeIdentifier(mLastClickedColumn, QSqlDriver::FieldName))
+                .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName));
 
     QSqlQuery q(db);
     if (q.exec(queryStr))
@@ -905,7 +910,9 @@ void NMSqlTableView::userQuery()
 
     // ask for the name and the type of the new data field
     bool bOk = false;
-    QString queryTemplate = QString("select * from %1").arg(mModel->tableName());
+    QSqlDriver* drv = mModel->database().driver();
+    QString queryTemplate = QString("select * from %1")
+            .arg(drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName));
 
     NMGlobalHelper helper;
     QString sqlStmt = helper.getMultiLineInput("Arbitrary SQL-SELECT Query",
@@ -932,7 +939,10 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
         tableName = QString("%1_%2").arg(queryName).arg(++mQueryCounter);
     }
 
-    QString queryStr = QString("Create temp table %1 as %2").arg(tableName).arg(sql);
+    QSqlDriver* drv = mModel->database().driver();
+    QString queryStr = QString("Create temp table %1 as %2")
+            .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
+            .arg(sql);
 
     QSqlDatabase db = mModel->database();
     db.transaction();
@@ -953,7 +963,7 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
     ++mQueryCounter;
 
     NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
-    restab->setTable(tableName);
+    restab->setTable(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
     restab->select();
 
     NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
@@ -1055,9 +1065,10 @@ void NMSqlTableView::calcColumn()
 
 	// get user input
 
+    QSqlDriver* drv = mModel->database().driver();
     QString label = QString(tr("UPDATE %1 SET %2 = ")
-                            .arg(this->mModel->tableName())
-                            .arg(this->mLastClickedColumn));
+                            .arg(drv->escapeIdentifier(this->mModel->tableName(), QSqlDriver::TableName))
+                            .arg(drv->escapeIdentifier(this->mLastClickedColumn, QSqlDriver::FieldName)));
     QString func = NMGlobalHelper::getMultiLineInput(label, "");
     if (func.isEmpty())
 	{
@@ -1692,7 +1703,8 @@ void NMSqlTableView::colStats()
 
     QString name = QString("%1_stats").arg(mLastClickedColumn);
 
-    std::string col = mLastClickedColumn.toStdString();
+    QSqlDriver* drv = mModel->database().driver();
+    std::string col = drv->escapeIdentifier(mLastClickedColumn, QSqlDriver::FieldName).toStdString();
     std::stringstream sql;
 
     sql << "select count(" << col << ") as count, "
@@ -1704,7 +1716,7 @@ void NMSqlTableView::colStats()
 
         << "sum(" << col << ") as sum "
         << " from "
-        << mModel->tableName().toStdString();
+        << drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName).toStdString();
 
     if (mSortFilter->getSelCount())
     {
@@ -1720,7 +1732,8 @@ void NMSqlTableView::colStats()
         tableName = QString("%1_%2").arg(name).arg(++mQueryCounter);
     }
 
-    QString queryStr = QString("Create temp table %1 as %2").arg(tableName)
+    QString queryStr = QString("Create temp table %1 as %2")
+            .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
             .arg(sql.str().c_str());
 
     QSqlDatabase db = mModel->database();
@@ -1741,7 +1754,8 @@ void NMSqlTableView::colStats()
     db.commit();
     ++mQueryCounter;
 
-    queryStr = QString("Select stddev from %1").arg(tableName);
+    queryStr = QString("Select stddev from %1")
+            .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
 
     db.transaction();
     QSqlQuery qRes(mModel->database());
@@ -1768,7 +1782,7 @@ void NMSqlTableView::colStats()
     db.commit();
 
     queryStr = QString("Update %1 set stddev = %2")
-            .arg(tableName)
+            .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
             .arg(sdev);
 
     db.transaction();
@@ -1788,7 +1802,7 @@ void NMSqlTableView::colStats()
     db.commit();
 
     NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
-    restab->setTable(tableName);
+    restab->setTable(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
     restab->select();
 
     NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
@@ -1877,13 +1891,15 @@ NMSqlTableView::writeDelimTxt(const QString& fileName,
         whereClause = QString("where %1").arg(mSortFilter->getFilter());
     }
 
+    QSqlDatabase db = mModel->database();
+    QSqlDriver* drv = db.driver();
     QString qStr = QString("select * from %1 %2")
-                .arg(mModel->tableName())
+                .arg(drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName))
                 .arg(whereClause);
 
-    QSqlDatabase db = mModel->database();
+
     db.transaction();
-    QSqlQuery qTable(mModel->database());
+    QSqlQuery qTable(db);
     if (!qTable.exec(qStr))
     {
         NMBoxErr("Export Table", qTable.lastError().text().toStdString());
@@ -2251,9 +2267,10 @@ NMSqlTableView::selectionQuery(void)
     NMDebugCtx(ctx, << "...");
 
 	bool bOk = false;
+    QSqlDriver* drv = mModel->database().driver();
     QString queryStr = QInputDialog::getText(this, tr("Selection Query"),
                          tr("Where Clause"), QLineEdit::Normal,
-                         QString("%1 = ").arg(this->mLastClickedColumn),
+                         QString("%1 = ").arg(drv->escapeIdentifier(this->mLastClickedColumn, QSqlDriver::FieldName)),
                          &bOk);
     if (!bOk || queryStr.isEmpty())
 	{
@@ -2312,10 +2329,11 @@ NMSqlTableView::updateQueryString(bool swap)
 
     if (!mPickedRows.isEmpty())
     {
-        QString handPicked = QString("%1 in (").arg(mPrimaryKey);
+        QSqlDriver* drv = mModel->database().driver();
+        QString handPicked = QString("%1 in (").arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName));
         if (swap)
         {
-            handPicked = QString("%1 not in (").arg(mPrimaryKey);
+            handPicked = QString("%1 not in (").arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName));
         }
         for (int r=0; r < mPickedRows.size(); ++r)
         {
@@ -2518,10 +2536,11 @@ NMSqlTableView::toggleRow(int row)
         cellData = varData.toString();
     }
 
+    QSqlDriver* drv = mModel->database().driver();
     QString rowQueryStr = QString("select %1 from %2 where %3 = %4")
-                        .arg(mPrimaryKey)
-                        .arg(mModel->tableName())
-                        .arg(mSortFilter->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString())
+                        .arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName))
+                        .arg(drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName))
+                        .arg(drv->escapeIdentifier(mSortFilter->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString(), QSqlDriver::FieldName))
                         .arg(cellData);
 
 
@@ -2565,7 +2584,7 @@ NMSqlTableView::toggleRow(int row)
 
         rowQueryStr = QString("%1 and %2 = %3")
                             .arg(rowQueryStr)
-                            .arg(mSortFilter->headerData(colcounter, Qt::Horizontal, Qt::DisplayRole).toString())
+                            .arg(drv->escapeIdentifier(mSortFilter->headerData(colcounter, Qt::Horizontal, Qt::DisplayRole).toString(), QSqlDriver::FieldName))
                             .arg(cellData);
 
         if (rowQuery.exec(rowQueryStr))

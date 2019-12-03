@@ -142,6 +142,19 @@
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 #include <QMouseEvent>
+#include <QSqlTableModel>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QProcess>
+
+//#include "QtWebSockets/QWebSocketServer"
+//#include "QtWebSockets/QWebSocket"
+//#include <QtNetwork/QSslCertificate>
+//#include <QtNetwork/QSslKey>
+//#include <QtNetwork/QtNetwork>
+//#include <QHostAddress>
+
 
 // orfeo
 //#include "ImageReader.h"
@@ -290,16 +303,10 @@
 #include "vtkOpenGLRenderWindow.h"
 #include "NMVtkInteractorStyleImage.h"
 #include "NMVtkMapScale.h"
+#include "NMVtkLookupTable.h"
 
 //#include <sqlite3.h>
 //#include "sqlite3extfunc.h"
-
-#include <QSqlTableModel>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QSqlError>
-#include <QProcess>
-
 
 //// TOKYO CABINET
 //#include "tcutil.h"
@@ -311,7 +318,7 @@
 //#include "valgrind/callgrind.h"
 
 LUMASSMainWin::LUMASSMainWin(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::LUMASSMainWin)
+    : QMainWindow(parent), ui(new Ui::LUMASSMainWin)//, mServer(nullptr)
 {
     // **********************************************************************
     // *                    META TYPES and other initisalisations           *
@@ -911,6 +918,10 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 
     this->ui->modelViewWidget->updateToolContextBox();
 
+
+    // =================================================
+    // init WebServer
+    //initWebSocketServer();
 }
 
 LUMASSMainWin::~LUMASSMainWin()
@@ -934,6 +945,12 @@ LUMASSMainWin::~LUMASSMainWin()
 		delete this->mpRasconn;
 #endif
 
+//    if (mServer != nullptr)
+//    {
+//        mServer->close();
+//        delete mServer;
+//    }
+
     // wait for the logging thread to quit
     emit isAboutToClose();
     //mLoggingThread->wait();
@@ -943,6 +960,93 @@ LUMASSMainWin::~LUMASSMainWin()
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
+
+void LUMASSMainWin::initWebSocketServer()
+{
+/*
+    mServer = new QWebSocketServer(QStringLiteral("LUMASS Server"),
+                                   QWebSocketServer::NonSecureMode,
+                                   this);
+    if (mServer)
+    {
+		QHostAddress hadd = QHostAddress::Any; // setAddress("172.20.89.168");
+		if (mServer->listen(hadd, 38529))
+        {
+            connect(mServer, &QWebSocketServer::newConnection,
+                    this, &LUMASSMainWin::onNewConnection);
+
+            connect(mServer, &QWebSocketServer::closed,
+                    this, &LUMASSMainWin::onWebSocketServerClosed);
+
+            NMLogDebug(<< "WebSocketServer running on: " <<
+                      mServer->serverAddress().toString().toStdString()  << ":" <<
+                      mServer->serverPort());
+        }
+    }
+*/
+}
+
+void LUMASSMainWin::onWebSocketServerClosed()
+{
+    NMLogDebug(<< "WebSocketServer closed!");
+}
+
+void LUMASSMainWin::onNewConnection()
+{
+/*
+    QWebSocket* socket = mServer->nextPendingConnection();
+    connect(socket, &QWebSocket::textMessageReceived,
+            this, &LUMASSMainWin::processTextMessage);
+    connect(socket, &QWebSocket::binaryMessageReceived,
+            this, &LUMASSMainWin::processBinaryMessage);
+    connect(socket, &QWebSocket::disconnected,
+            this, &LUMASSMainWin::socketDisconnected);
+
+    mClientList << socket;
+*/
+}
+
+void LUMASSMainWin::socketDisconnected()
+{
+/*
+    QWebSocket* client = qobject_cast<QWebSocket*>(sender());
+    if (client != nullptr)
+    {
+        this->mClientList.removeAll(client);
+        client->deleteLater();
+
+        NMLogDebug(<< "client disconnected!");
+    }
+*/
+}
+
+void LUMASSMainWin::processTextMessage(QString message)
+{
+/*
+    QWebSocket* client = qobject_cast<QWebSocket*>(sender());
+    if (client != nullptr)
+    {
+        NMLogDebug(<< "client request: " << message.toStdString());
+        if (message.compare(QString("update")) == 0)
+        {
+            this->test();
+        }
+    }
+*/
+}
+
+void LUMASSMainWin::processBinaryMessage(QByteArray message)
+{
+/*
+    QWebSocket* client = qobject_cast<QWebSocket*>(sender());
+    if (client != nullptr)
+    {
+        NMLogDebug(<< "client blob received!");
+    }
+*/
+}
+
+
 
 void LUMASSMainWin::mousePressEvent(QMouseEvent *event)
 {
@@ -1987,7 +2091,7 @@ void LUMASSMainWin::aboutLUMASS(void)
 	QString year = datelist.size() >= 5 ? datelist.at(4) : QString("");
 	QString title = tr("About LUMASS");
 	stringstream textstr;
-	textstr << "LUMASS - The Land-Use Management Support System" << endl
+	textstr << "LUMASS - Spatial Modelling and Optimisation" << endl
 			<< vinfo.toStdString() << endl
 			<< "Developed by Alexander Herzig" << endl
 			<< "Copyright 2010-" << year.toStdString() << " Landcare Research New Zealand Ltd" << endl
@@ -2274,53 +2378,9 @@ LUMASSMainWin::importTable(const QString& fileName,
     }
     sqlTable->CloseTable();
     sqlTable->SetOpenReadOnly(true);
-    // we also create a unique connection name for our
-    // Qt-based connection
-    QString conname = QString("%1_%2").arg(tablename).arg(lfd);
 
-    // create a proper low-level sqlite3 connection so, we can ...
-    sqlite3* tabconn = nullptr;
-    void* splCache = nullptr; //spatialite_alloc_connection();
-//	int rc = ::sqlite3_open_v2(dbfilename.toStdString().c_str(),
-//			&tabconn,
-//        			SQLITE_OPEN_URI |
-//        			SQLITE_OPEN_READWRITE, 0);
-//    if (rc != SQLITE_OK)
-//    {
-//        NMLogError(<< ctxLUMASSMainWin
-//            << ": Failed opening SqlTableView connection!");
-//        ::sqlite3_close(tabconn);
-//        spatialite_cleanup_ex(splCache);
-//        splCache = 0;
-//        tabconn = 0;
-//                NMDebugCtx(ctxLUMASSMainWin, << "done!");
-//        return 0;
-//    }
 
-//    // ... load the spatialite extension for extra functionality
-//    spatialite_init_ex(tabconn, splCache, 1);
-
-    // use the 'hacked' (NM)QSQLiteDriver, so we
-    // can create a driver based on an existing sqilte3
-    // connection (with spatialite loaded) ...
-//    NMQSQLiteDriver* drv = new NMQSQLiteDriver();
-//    if (!drv->open(dbfilename.toStdString().c_str(), QString(), QString(), QString(), 0,
-//                  QString("QSQLITE_OPEN_READONLY;"
-//                          "QSQLITE_ENABLE_SHARED_CACHE;"
-//                          "QSQLITE_INIT_SPATIALITE;"
-//                          "QSQLITE_OPEN_URI")))
-//    {
-//        NMLogError(<< ctxLUMASSMainWin << ": "
-//            << ": Failed opening SqlTableView connection!");
-//        return 0;
-//    }
-
-//    // ... and establish the Qt-Db connection
-//    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
-//    db.setDatabaseName(dbfilename);
-
-    conname.clear();
-    conname = this->getDbConnection(dbfilename, false);
+    const QString conname = this->getDbConnection(dbfilename, false);
     if (conname.isEmpty())
     {
         NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - failed connecting to db!");
@@ -2333,7 +2393,7 @@ LUMASSMainWin::importTable(const QString& fileName,
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
     // note: setting the db name here is just for reference purposes
     srcModel->setDatabaseName(dbfilename);
-    srcModel->setTable(tablename);
+    srcModel->setTable(drv->escapeIdentifier(tablename, QSqlDriver::TableName));
     srcModel->select();
 
     if (viewName.isEmpty())
@@ -2423,7 +2483,7 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
     // note: setting the db name here is just for reference purposes
     srcModel->setDatabaseName(sqlTab->GetDbFileName().c_str());
-    srcModel->setTable(sqlTab->GetTableName().c_str());
+    srcModel->setTable(drv->escapeIdentifier(QString(sqlTab->GetTableName().c_str()), QSqlDriver::TableName));
     srcModel->select();
 
     //QString viewName = QString(conname);
@@ -3108,13 +3168,13 @@ void LUMASSMainWin::updateLayerInfo(NMLayer* l, long long cellId)
 
         NMSqlTableModel* sqlModel = qobject_cast<NMSqlTableModel*>(
                     const_cast<QAbstractItemModel*>(il->getTable()));
-
+        QSqlDatabase db = sqlModel->database();
+        QSqlDriver* drv = db.driver();
         QString queryStr = QString("SELECT * from %1 where %2 = %3")
-                .arg(sqlModel->tableName())
-                .arg(sqlModel->getNMPrimaryKey())
+                .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName))
+                .arg(drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName))
                 .arg(cellId);
 
-        QSqlDatabase db = sqlModel->database();
         db.transaction();
         QSqlQuery q(db);
         QSqlRecord rec;
@@ -3583,7 +3643,6 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
     return innerExpr;
 }
-
 
 void LUMASSMainWin::test()
 {
@@ -4278,10 +4337,11 @@ void LUMASSMainWin::updateCoords(vtkObject* obj)
 
            if (sqlModel != nullptr)
            {
+               const QSqlDriver* drv = sqlModel->database().driver();
                QString queryStr = QString("SELECT %1 from %2 where %3 = %4")
-                       .arg(il->getLegendValueField())
-                       .arg(sqlModel->tableName())
-                       .arg(sqlModel->getNMPrimaryKey())
+                       .arg(drv->escapeIdentifier(il->getLegendValueField(), QSqlDriver::FieldName))
+                       .arg(drv->escapeIdentifier(sqlModel->tableName(), QSqlDriver::TableName))
+                       .arg(drv->escapeIdentifier(sqlModel->getNMPrimaryKey(), QSqlDriver::FieldName))
                        .arg(lrow);
 
                QSqlQuery q(sqlModel->database());
@@ -4492,8 +4552,18 @@ void LUMASSMainWin::doMOSO()
 	}
 
 	// now set the layer, do moso and clean up
-	//mosra->setLayer(layer);
-    mosra->setDataSet(layer->getDataSet());
+    if (layer->getLayerType() == NMLayer::NM_VECTOR_LAYER)
+    {
+        mosra->setDataSet(layer->getDataSet());
+    }
+    else
+    {
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
+        if (il != nullptr)
+        {
+            mosra->setDataSet(qobject_cast<QSqlTableModel*>(const_cast<QAbstractItemModel*>(il->getTable())));
+        }
+    }
     mosra->setTimeOut(0); // clears any time out setting ...
     mosra->setBreakAtFirst(true);
     //NMDebugAI(<< "split off solving to seperate thread ... " << endl);
@@ -4595,7 +4665,7 @@ void LUMASSMainWin::doMOSO()
         int r = 0;
         while(r < nrows)
         {
-            if (hole->GetValue(r))
+            if (hole != nullptr && hole->GetValue(r))
             {
                 tab->RemoveRow(r);
                 --nrows;

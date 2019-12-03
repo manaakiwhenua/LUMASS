@@ -626,7 +626,7 @@ NMImageReader<TOutputImage>
     output->SetDirection( direction ); // Set the image direction cosines
 
     // Update otb Keywordlist
-    ImageKeywordlist otb_kwl = ReadGeometryFromImage(lFileNameOssimKeywordlist);
+	ImageKeywordlist otb_kwl;// = ReadGeometryFromImage(lFileNameOssimKeywordlist);
 
     // Update itk MetaData Dictionary
     itk::MetaDataDictionary& dict = this->GetImageIO()->GetMetaDataDictionary();

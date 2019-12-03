@@ -95,7 +95,7 @@ AttributeTable::Pointer NMMosraFilter< TInputImage, TOutputImage >
     AttributeTable::Pointer tab;
     if (m_DataSet && m_DataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_OTBTAB)
     {
-        tab = m_DataSet->getAttributeTable();
+        tab = m_DataSet->getOtbAttributeTable();
     }
 
     return tab;
@@ -126,7 +126,7 @@ void NMMosraFilter< TInputImage, TOutputImage >
     // what we're doing now ...
 
     otb::SQLiteTable::Pointer sqltab =
-            static_cast<otb::SQLiteTable*>(this->m_DataSet->getAttributeTable().GetPointer());
+            static_cast<otb::SQLiteTable*>(this->m_DataSet->getOtbAttributeTable().GetPointer());
 
     if (sqltab.IsNotNull())
     {
@@ -169,7 +169,7 @@ void NMMosraFilter< TInputImage, TOutputImage >
     mosra->setItkProcessObject(this);
 //    mosra->loadSettings(m_LosFileName.c_str());
     mosra->parseStringSettings(m_LosSettings.c_str());
-    mosra->setDataSet(m_DataSet->getAttributeTable());
+    mosra->setDataSet(m_DataSet->getOtbAttributeTable());
     if (m_TimeOut >= 0)
     {
         mosra->setBreakAtFirst(false);

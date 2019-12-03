@@ -64,6 +64,7 @@ public:
 	void SetTimeout(int secs);
     void SetBreakAtFirst(bool breakAtFirst);
     void SetPresolve(int presolveFlags, int maxloops=-1);
+    void SetScaling(int scalemode);
 
 	void SetAbortFunc(void *owningObject, int (*abortfunc)(lprec*,void*));
     void SetLogFunc(void *owningObject, void (*logfunc)(lprec*, void*, char*));

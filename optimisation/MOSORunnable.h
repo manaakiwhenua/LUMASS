@@ -11,6 +11,9 @@
 #include <qrunnable.h>
 #include <QString>
 
+#include "NMLogger.h"
+
+class NMMosra;
 
 class MOSORunnable: public QRunnable
 {
@@ -24,8 +27,13 @@ public:
             const QList<float>& levels,
 			int startIdx, int numruns);
 	void run();
+	void setLogger(NMLogger* logger) { mLogger = logger; }
+
+protected:
+    bool loadDataSet(NMMosra* mosra);
 
 private:
+	NMLogger* mLogger;
 	QString mDsFileName;
 	QString mLosFileName;
 	QString mPerturbItem;

@@ -1,4 +1,4 @@
-/******************************************************************************
+﻿/******************************************************************************
 * Created by Alexander Herzig
 * Copyright 2011-2016 Landcare Research New Zealand Ltd
 *
@@ -95,6 +95,12 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <QDir>
+#include <QSqlDriver>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlIndex>
+#include <QSqlError>
+#include <QVariantList>
 
 #include "itkProcessObject.h"
 #include "otbSQLiteTable.h"
@@ -121,15 +127,93 @@
 ////////////////////////////////
 
 NMMosraDataSet::NMMosraDataSet(QObject* parent)
-    : mVtkDS(0), mOtbTab(0), mType(NM_MOSRA_DS_NONE)
+    : mProcObj(nullptr),
+      mLogger(nullptr),
+      mVtkDS(nullptr),
+      mOtbTab(nullptr),
+      mSqlMod(nullptr),
+      mbTransaction(false),
+      mTableName(""),
+      mType(NM_MOSRA_DS_NONE)
 {
     this->setParent(parent);
 }
 
 void
+NMMosraDataSet::reset(void)
+{
+    this->mOtbTab = nullptr;
+    this->mVtkDS = nullptr;
+    this->mSqlMod = nullptr;
+    this->mLogger = nullptr;
+    this->mTableName.clear();
+    this->mType = NM_MOSRA_DS_NONE;
+}
+
+bool
+NMMosraDataSet::beginTransaction(void)
+{
+
+    if (mOtbTab.IsNotNull())
+    {
+        otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mOtbTab.GetPointer());
+        if (sqltab != nullptr)
+        {
+            mbTransaction = sqltab->BeginTransaction();
+        }
+    }
+    else if (mSqlMod != nullptr)
+    {
+        mSqlMod->clear();
+        mbTransaction = mSqlMod->database().transaction();
+    }
+    else
+    {
+        mbTransaction = false;
+    }
+
+    return mbTransaction;
+}
+
+bool
+NMMosraDataSet::endTransaction(void)
+{
+    if (mOtbTab.IsNotNull())
+    {
+        otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mOtbTab.GetPointer());
+        if (sqltab != nullptr)
+        {
+            mbTransaction = sqltab->EndTransaction();
+        }
+    }
+    else if (mSqlMod != nullptr)
+    {
+        mbTransaction = mSqlMod->database().commit();
+        mSqlMod->setTable(mSqlMod->database().driver()->escapeIdentifier(mTableName, QSqlDriver::TableName));
+        mSqlMod->select();
+    }
+    else
+    {
+        mbTransaction = true;
+    }
+
+    return !mbTransaction;
+}
+
+void
+NMMosraDataSet::rollBack(void)
+{
+    if (mSqlMod != nullptr)
+    {
+        mSqlMod->database().rollback();
+    }
+}
+
+void
 NMMosraDataSet::setDataSet(otb::AttributeTable::Pointer otbtab)
 {
-    mVtkDS = 0;
+    mVtkDS = nullptr;
+    mSqlMod = nullptr;
     if (otbtab.IsNotNull())
     {
         mOtbTab = otbtab;
@@ -137,7 +221,8 @@ NMMosraDataSet::setDataSet(otb::AttributeTable::Pointer otbtab)
     }
     else
     {
-        mOtbTab = 0;
+        mOtbTab = nullptr;
+        mSqlMod = nullptr;
         mType = NM_MOSRA_DS_NONE;
     }
 }
@@ -145,7 +230,8 @@ NMMosraDataSet::setDataSet(otb::AttributeTable::Pointer otbtab)
 void
 NMMosraDataSet::setDataSet(vtkDataSet* vtkds)
 {
-    mOtbTab = 0;
+    mOtbTab = nullptr;
+    mSqlMod = nullptr;
     if (vtkds)
     {
         mVtkDS = vtkds;
@@ -153,8 +239,30 @@ NMMosraDataSet::setDataSet(vtkDataSet* vtkds)
     }
     else
     {
-        mVtkDS = 0;
+        mVtkDS = nullptr;
+        mSqlMod = nullptr;
         mType = NM_MOSRA_DS_NONE;
+    }
+}
+
+void
+NMMosraDataSet::setDataSet(QSqlTableModel *sqlmod)
+{
+    mOtbTab = nullptr;
+    mVtkDS = nullptr;
+    if (sqlmod)
+    {
+        mSqlMod = sqlmod;
+        mTableName = sqlmod->tableName();
+        mPrimaryKey = this->getNMPrimaryKey();
+        mType = NM_MOSRA_DS_QTSQL;
+    }
+    else
+    {
+        mVtkDS = nullptr;
+        mOtbTab = nullptr;
+        mType = NM_MOSRA_DS_NONE;
+        mColTypes.clear();
     }
 }
 
@@ -178,8 +286,20 @@ NMMosraDataSet::hasColumn(const QString &columnName)
             {
                 ret = true;
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        for (int col=0; col < mSqlMod->columnCount(); ++col)
+        {
+            if (mSqlMod->headerData(col, Qt::Horizontal).toString()
+                    .compare(columnName, Qt::CaseInsensitive) == 0)
+            {
+                ret = true;
+            }
+        }
+        break;
+
     default:
         ret = false;
     }
@@ -190,7 +310,7 @@ NMMosraDataSet::hasColumn(const QString &columnName)
 int
 NMMosraDataSet::getNumRecs()
 {
-    int recs;
+    int recs = 0;
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -200,12 +320,40 @@ NMMosraDataSet::getNumRecs()
     case NM_MOSRA_DS_VTKDS:
         {
             vtkDataSetAttributes* dsAttr = mVtkDS->GetAttributes(vtkDataSet::CELL);
-            if (dsAttr)
+            if (dsAttr != nullptr)
             {
-                recs = dsAttr->GetArray(0)->GetNumberOfTuples();
+                recs = dsAttr->GetAbstractArray(0)->GetNumberOfTuples();
             }
             break;
         }
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            if (mSqlMod != nullptr)
+            {
+                QSqlDatabase db = mSqlMod->database();
+                QSqlDriver* drv = db.driver();
+
+                QString qStr = QString("SELECT count(*) from %1")
+                                .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName));
+                QSqlQuery q(db);
+                if (!q.exec(qStr))
+                {
+                    MosraLogError(<< "Failed retrieving the number of records in '"
+                                  << mTableName.toStdString() << "'!");
+                    recs = 0;
+                }
+                else
+                {
+                    if (q.next())
+                    {
+                        recs = q.value(0).toInt();
+                    }
+                }
+            }
+        }
+        break;
+
     default:
         recs = 0;
     }
@@ -216,7 +364,7 @@ NMMosraDataSet::getNumRecs()
 double
 NMMosraDataSet::getDblValue(const QString &columnName, int row)
 {
-    double val;
+    double val = 0;
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -226,13 +374,36 @@ NMMosraDataSet::getDblValue(const QString &columnName, int row)
     case NM_MOSRA_DS_VTKDS:
         {
             vtkDataSetAttributes* dsAttr = mVtkDS->GetAttributes(vtkDataSet::CELL);
-            if (dsAttr)
+            if (dsAttr != nullptr)
             {
-                vtkDataArray* da = dsAttr->GetArray(columnName.toStdString().c_str());
-                val = da->GetTuple1(row);
+                vtkDataArray* da = vtkDataArray::SafeDownCast(dsAttr->GetAbstractArray(columnName.toStdString().c_str()));
+                if (da != nullptr)
+                {
+                    val = da->GetTuple1(row);
+                }
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            const QVariant value = getQSqlTableValue(columnName, row);
+            if (value.isValid())
+            {
+                val = value.toDouble();
+            }
+
+//            int cidx = getColumnIndex(columnName);
+//            QModelIndex mi = mSqlMod->index(row, cidx);
+//            bool bok = false;
+//            val = mSqlMod->data(mi, Qt::DisplayRole).toDouble(&bok);
+//            if (!bok)
+//            {
+//                val = 0.0;
+//            }
+        }
+        break;
+
     default:
         val = 0;
     }
@@ -243,7 +414,7 @@ NMMosraDataSet::getDblValue(const QString &columnName, int row)
 int
 NMMosraDataSet::getIntValue(const QString &columnName, int row)
 {
-    int val;
+    int val = 0;
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -253,13 +424,36 @@ NMMosraDataSet::getIntValue(const QString &columnName, int row)
     case NM_MOSRA_DS_VTKDS:
         {
             vtkDataSetAttributes* dsAttr = mVtkDS->GetAttributes(vtkDataSet::CELL);
-            if (dsAttr)
+            if (dsAttr != nullptr)
             {
-                vtkDataArray* da = dsAttr->GetArray(columnName.toStdString().c_str());
-                val = da->GetTuple1(row);
+                vtkDataArray* da = vtkDataArray::SafeDownCast(dsAttr->GetAbstractArray(columnName.toStdString().c_str()));
+                if (da != nullptr)
+                {
+                    val = static_cast<int>(da->GetTuple1(row));
+                }
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            const QVariant value = getQSqlTableValue(columnName, row);
+            if (value.isValid())
+            {
+                val = value.toInt();
+            }
+
+//            const int cidx = getColumnIndex(columnName);
+//            QModelIndex mi = mSqlMod->index(row, cidx);
+//            bool bok = false;
+//            val = mSqlMod->data(mi, Qt::DisplayRole).toInt(&bok);
+//            if (!bok)
+//            {
+//                val = 0;
+//            }
+        }
+        break;
+
     default:
         val = 0;
     }
@@ -270,7 +464,7 @@ NMMosraDataSet::getIntValue(const QString &columnName, int row)
 QString
 NMMosraDataSet::getStrValue(const QString &columnName, int row)
 {
-    QString val;
+    QString val = "";
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -280,14 +474,32 @@ NMMosraDataSet::getStrValue(const QString &columnName, int row)
     case NM_MOSRA_DS_VTKDS:
         {
             vtkDataSetAttributes* dsAttr = mVtkDS->GetAttributes(vtkDataSet::CELL);
-            if (dsAttr)
+            if (dsAttr != nullptr)
             {
                 vtkStringArray* sa = vtkStringArray::SafeDownCast(
                             dsAttr->GetAbstractArray(columnName.toStdString().c_str()));
-                val = sa->GetValue(row);
+                if (sa != nullptr)
+                {
+                    val = sa->GetValue(row);
+                }
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            const QVariant value = getQSqlTableValue(columnName, row);
+            if (value.isValid())
+            {
+                val = value.toString();
+            }
+
+//            const int cidx = getColumnIndex(columnName);
+//            QModelIndex mi = mSqlMod->index(row, cidx);
+//            val = mSqlMod->data(mi, Qt::DisplayRole).toString();
+        }
+        break;
+
     default:
         val = "";
     }
@@ -299,7 +511,7 @@ NMMosraDataSet::getStrValue(const QString &columnName, int row)
 double
 NMMosraDataSet::getDblValue(int col, int row)
 {
-    double val;
+    double val = 0;
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -309,13 +521,37 @@ NMMosraDataSet::getDblValue(int col, int row)
     case NM_MOSRA_DS_VTKDS:
         {
             vtkDataSetAttributes* dsAttr = mVtkDS->GetAttributes(vtkDataSet::CELL);
-            if (dsAttr)
+            if (dsAttr != nullptr)
             {
-                vtkDataArray* da = dsAttr->GetArray(col);
-                val = da->GetTuple1(row);
+                vtkDataArray* da = vtkDataArray::SafeDownCast(dsAttr->GetAbstractArray(col));
+                if (da != nullptr)
+                {
+                    val = da->GetTuple1(row);
+                }
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            const QString colname = this->getColumnName(col);
+            const QVariant value = getQSqlTableValue(colname, row);
+            if (value.isValid())
+            {
+                val = value.toDouble();
+            }
+
+//            QModelIndex mi = mSqlMod->index(row, col);
+//            bool bok = false;
+//            val = mSqlMod->data(mi, Qt::DisplayRole).toDouble(&bok);
+//            if (!bok)
+//            {
+//                val = 0.0;
+//            }
+        }
+        break;
+
+
     default:
         val = 0;
     }
@@ -326,7 +562,7 @@ NMMosraDataSet::getDblValue(int col, int row)
 int
 NMMosraDataSet::getIntValue(int col, int row)
 {
-    int val;
+    int val = 0;
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -336,13 +572,35 @@ NMMosraDataSet::getIntValue(int col, int row)
     case NM_MOSRA_DS_VTKDS:
         {
             vtkDataSetAttributes* dsAttr = mVtkDS->GetAttributes(vtkDataSet::CELL);
-            if (dsAttr)
+            if (dsAttr != nullptr)
             {
-                vtkDataArray* da = dsAttr->GetArray(col);
-                val = da->GetTuple1(row);
+                vtkDataArray* da = vtkDataArray::SafeDownCast(dsAttr->GetAbstractArray(col));
+                {
+                    val = static_cast<int>(da->GetTuple1(row));
+                }
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            const QString colname = this->getColumnName(col);
+            const QVariant value = getQSqlTableValue(colname, row);
+            if (value.isValid())
+            {
+                val = value.toInt();
+            }
+
+//            QModelIndex mi = mSqlMod->index(row, col);
+//            bool bok = false;
+//            val = mSqlMod->data(mi, Qt::DisplayRole).toInt(&bok);
+//            if (!bok)
+//            {
+//                val = 0;
+//            }
+        }
+        break;
+
     default:
         val = 0;
     }
@@ -353,7 +611,7 @@ NMMosraDataSet::getIntValue(int col, int row)
 QString
 NMMosraDataSet::getStrValue(int col, int row)
 {
-    QString val;
+    QString val = "";
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -363,21 +621,69 @@ NMMosraDataSet::getStrValue(int col, int row)
     case NM_MOSRA_DS_VTKDS:
         {
             vtkDataSetAttributes* dsAttr = mVtkDS->GetAttributes(vtkDataSet::CELL);
-            if (dsAttr)
+            if (dsAttr != nullptr)
             {
                 vtkStringArray* sa = vtkStringArray::SafeDownCast(
                             dsAttr->GetAbstractArray(col));
-                val = sa->GetValue(row);
+                if (sa != nullptr)
+                {
+                    val = sa->GetValue(row);
+                }
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+              const QString colname = this->getColumnName(col);
+              const QVariant value = getQSqlTableValue(colname, row);
+              if (value.isValid())
+              {
+                  val = value.toString();
+              }
+//            QModelIndex mi = mSqlMod->index(row, col);
+//            val = mSqlMod->data(mi, Qt::DisplayRole).toString();
+        }
+        break;
+
     default:
         val = "";
     }
 
     return val;
 }
-/// in col impl - end
+
+QVariant
+NMMosraDataSet::getQSqlTableValue(const QString &column, int row)
+{
+    QVariant val = QVariant::Invalid;
+    if (mSqlMod == nullptr)
+    {
+        return val;
+    }
+
+    QSqlDatabase db = mSqlMod->database();
+    QSqlDriver* drv = db.driver();
+
+    QString qStr = QString("SELECT %1 from %2 where %3 = %4")
+            .arg(drv->escapeIdentifier(column, QSqlDriver::FieldName))
+            .arg(drv->escapeIdentifier(mSqlMod->tableName(), QSqlDriver::TableName))
+            .arg(drv->escapeIdentifier(this->getNMPrimaryKey(), QSqlDriver::FieldName))
+            .arg(row);
+
+    QSqlQuery q(db);
+    if (q.exec(qStr))
+    {
+        if (q.next())
+        {
+            val = q.value(0);
+        }
+    }
+
+    return val;
+}
+
+
 
 void
 NMMosraDataSet::addColumn(const QString &colName, NMMosraDataSetDataType type)
@@ -432,6 +738,60 @@ NMMosraDataSet::addColumn(const QString &colName, NMMosraDataSetDataType type)
             }
         }
         break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            QString typeStr;
+            switch(type)
+            {
+            case NM_MOSRA_DATATYPE_INT:
+                typeStr = "INTEGER";
+                break;
+            case NM_MOSRA_DATATYPE_DOUBLE:
+                typeStr = "REAL";
+                break;
+            case NM_MOSRA_DATATYPE_STRING:
+            default:
+                typeStr = "TEXT";
+                break;
+            }
+
+            //const int colidx = mSqlMod->columnCount();
+            const QString tableName = mTableName;//mSqlMod->tableName();
+
+            const QSqlDriver* drv = mSqlMod->database().driver();
+
+            //mSqlMod->clear();
+            const QString qStr = QString("ALTER TABLE %1 ADD COLUMN %2 %3")
+                    .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
+                    .arg(drv->escapeIdentifier(colName, QSqlDriver::FieldName))
+                    .arg(typeStr);
+
+            QSqlDatabase db = mSqlMod->database();
+            //db.transaction();
+
+            QSqlQuery q(db);
+            if (!q.exec(qStr))
+            {
+                MosraLogError(<< "Failed adding column '" << colName.toStdString() << "'!");
+            }
+            //db.commit();
+
+            //mSqlMod->setTable(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
+            //mSqlMod->select();
+
+            if (mColTypes.empty())
+            {
+                this->getColumnType(colName);
+            }
+            else
+            {
+                mColTypes.insert(colName, type);
+            }
+        }
+        break;
+
+
     default:
         break;
     }
@@ -457,8 +817,36 @@ NMMosraDataSet::setIntValue(const QString &colname, int row, int value)
                             dsAttr->GetArray(colname.toStdString().c_str()));
                 ia->SetValue(row, value);
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            QSqlDatabase db = mSqlMod->database();
+            QSqlDriver* drv = db.driver();
+
+            const QString whereClause = QString("WHERE %1 = %2")
+                    .arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName))
+                    .arg(row);
+
+            const QString qStr = QString("UPDATE %1 SET %2 = %3 %4")
+                    .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName))
+                    .arg(drv->escapeIdentifier(colname, QSqlDriver::FieldName))
+                    .arg(value)
+                    .arg(whereClause);
+
+            //db.transaction();
+            QSqlQuery qUpdate(db);
+            if (!qUpdate.exec(qStr))
+            {
+                MosraLogError(<< "Failed to set value='" << value << "' for column '" << colname.toStdString()
+                              << "' in row=" << row << "!");
+            }
+            //db.commit();
+            //mSqlMod->select();
+        }
+        break;
+
     default:
         break;
     }
@@ -482,8 +870,37 @@ NMMosraDataSet::setDblValue(const QString &colname, int row, double value)
                             dsAttr->GetArray(colname.toStdString().c_str()));
                 da->SetValue(row, value);
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            QSqlDatabase db = mSqlMod->database();
+            QSqlDriver* drv = db.driver();
+
+            const QString whereClause = QString("WHERE %1 = %2")
+                    .arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName))
+                    .arg(row);
+
+            const QString qStr = QString("UPDATE %1 SET %2 = %3 %4")
+                    .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName))
+                    .arg(drv->escapeIdentifier(colname, QSqlDriver::FieldName))
+                    .arg(value)
+                    .arg(whereClause);
+
+            //db.transaction();
+            QSqlQuery qUpdate(db);
+            if (!qUpdate.exec(qStr))
+            {
+                MosraLogError(<< "Failed to set value='" << value << "' for column '" << colname.toStdString()
+                              << "' in row=" << row << "!");
+            }
+            //db.commit();
+            //mSqlMod->select();
+        }
+        break;
+
+
     default:
         break;
     }
@@ -507,21 +924,361 @@ NMMosraDataSet::setStrValue(const QString &colname, int row, const QString& valu
                             dsAttr->GetAbstractArray(colname.toStdString().c_str()));
                 sa->SetValue(row, value.toStdString());
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            QSqlDatabase db = mSqlMod->database();
+            QSqlDriver* drv = db.driver();
+
+            const QString whereClause = QString("WHERE %1 = %2")
+                    .arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName))
+                    .arg(row);
+
+            const QString qStr = QString("UPDATE %1 SET %2 = '%3' %4")
+                    .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName))
+                    .arg(drv->escapeIdentifier(colname, QSqlDriver::FieldName))
+                    .arg(value)
+                    .arg(whereClause);
+
+            //db.transaction();
+            QSqlQuery qUpdate(db);
+            if (!qUpdate.exec(qStr))
+            {
+                MosraLogError(<< "Failed to set value='" << value.toStdString() << "' for column '"
+                              << colname.toStdString()
+                              << "' in row=" << row << "!");
+            }
+            //db.commit();
+            //mSqlMod->select();
+        }
+        break;
+
     default:
         break;
     }
 }
 
+QString
+NMMosraDataSet::getNMPrimaryKey()
+{
+    QString primaryKey = "";
+
+    if (mSqlMod != nullptr)
+    {
+        QSqlIndex pk = mSqlMod->primaryKey();
+        if (!pk.isEmpty() && !pk.fieldName(0).isEmpty())
+        {
+            primaryKey = pk.fieldName(0);
+        }
+        else
+        {
+            primaryKey = mSqlMod->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString();
+        }
+
+    }
+
+    return primaryKey;
+}
+
+
+NMMosraDataSet::NMMosraDataSetDataType
+NMMosraDataSet::getColumnType(const QString& colname)
+{
+    NMMosraDataSetDataType dtype = NM_MOSRA_DATATYPE_STRING;
+    if (mVtkDS != nullptr)
+    {
+        vtkDataSetAttributes* dsa = mVtkDS->GetAttributes(vtkDataSet::CELL);
+        const int colidx = this->getColumnIndex(colname);
+        if (colidx >=0 && dsa)
+        {
+            const int atype = dsa->GetArray(colidx)->GetArrayType();
+            switch(atype)
+            {
+            case VTK_INT:
+                dtype = NM_MOSRA_DATATYPE_INT;
+                break;
+            case VTK_DOUBLE:
+                dtype = NM_MOSRA_DATATYPE_DOUBLE;
+                break;
+            case VTK_STRING:
+            default:
+                dtype = NM_MOSRA_DATATYPE_STRING;
+                break;
+            }
+        }
+    }
+    else if (mOtbTab != nullptr)
+    {
+        const int colidx = this->getColumnIndex(colname);
+        const otb::AttributeTable::TableColumnType otype = mOtbTab->GetColumnType(colidx);
+        switch(otype)
+        {
+        case otb::AttributeTable::ATTYPE_INT:
+            dtype = NM_MOSRA_DATATYPE_INT;
+            break;
+        case otb::AttributeTable::ATTYPE_DOUBLE:
+            dtype = NM_MOSRA_DATATYPE_DOUBLE;
+            break;
+        case otb::AttributeTable::ATTYPE_STRING:
+        default:
+            dtype = NM_MOSRA_DATATYPE_STRING;
+            break;
+        }
+    }
+    else if (mSqlMod != nullptr)
+    {
+        if (mColTypes.empty())
+        {
+            QSqlDatabase db = mSqlMod->database();
+            const QString qStr = QString("SELECT sql from sqlite_master where tbl_name = '%1'")
+                    .arg(mTableName);
+
+            QSqlQuery sqlq(db);
+            if (!sqlq.exec(qStr))
+            {
+                MosraLogError(<< "Failed retreiving data type of column '" << colname.toStdString()
+                              << "'!");
+                return dtype;
+            }
+
+            if (sqlq.next())
+            {
+                QString colname, coltype;
+                QString tabsql = sqlq.value(0).toString();
+                int fpos = tabsql.indexOf('(', 0);
+                int epos = tabsql.indexOf(')', 0);
+                int tpos = 0;
+                tabsql = tabsql.mid(fpos+1, epos-1-fpos);
+                while (fpos >=0)
+                {
+                    epos = tabsql.indexOf(' ', fpos+1);
+                    colname = tabsql.mid(fpos+1, epos-1-fpos);
+                    fpos = tabsql.indexOf(',', epos+1);
+                    if ((tpos = tabsql.indexOf("primary key", epos+1, Qt::CaseInsensitive)) < fpos)
+                    {
+                        coltype = tabsql.mid(epos+1, tpos-1-epos);
+                    }
+                    else
+                    {
+                        coltype = tabsql.mid(epos+1, fpos-1-epos);
+                    }
+
+                    NMMosraDataSetDataType ctype;
+                    if (   coltype.compare("INT", Qt::CaseInsensitive) == 0
+                        || coltype.compare("INTEGER", Qt::CaseInsensitive) == 0
+                       )
+                    {
+                        ctype = NM_MOSRA_DATATYPE_INT;
+                    }
+                    else if (coltype.compare("REAL", Qt::CaseInsensitive) == 0)
+                    {
+                        ctype = NM_MOSRA_DATATYPE_DOUBLE;
+                    }
+                    else if (coltype.compare("TEXT", Qt::CaseInsensitive) == 0)
+                    {
+                        ctype = NM_MOSRA_DATATYPE_STRING;
+                    }
+                    mColTypes.insert(colname.trimmed(), ctype);
+                }
+            }
+        }
+
+        dtype = mColTypes[colname];
+    }
+
+    return dtype;
+}
+
+QString
+NMMosraDataSet::getColumnName(const int &idx)
+{
+    QString ret="";
+    if (mVtkDS != nullptr)
+    {
+        vtkDataSetAttributes* dsa = mVtkDS->GetAttributes(vtkDataSet::CELL);
+        vtkAbstractArray* aa = dsa->GetAbstractArray(idx);
+        if (aa != nullptr)
+        {
+            ret = aa->GetName();
+        }
+    }
+    else if (mOtbTab.IsNotNull())
+    {
+        ret = mOtbTab->GetColumnName(idx).c_str();
+    }
+    else if (mSqlMod != nullptr)
+    {
+        if (idx >=0 && idx < mSqlMod->columnCount())
+        {
+            ret = mSqlMod->headerData(idx, Qt::Horizontal).toString();
+        }
+    }
+
+    return ret;
+}
+
 vtkSmartPointer<vtkTable>
 NMMosraDataSet::getDataSetAsVtkTable()
 {
-    vtkSmartPointer<vtkTable> tab = 0;
-    if (mVtkDS)
+    vtkSmartPointer<vtkTable> tab = nullptr;
+    if (mVtkDS != nullptr)
     {
         tab = vtkSmartPointer<vtkTable>::New();
         tab->SetRowData(mVtkDS->GetAttributes(vtkDataSet::CELL));
+    }
+    else if (mSqlMod != nullptr)
+    {
+        tab = vtkSmartPointer<vtkTable>::New();
+        const int nrows = this->getNumRecs();
+        const int ncols = mSqlMod->columnCount();
+
+        // create the table structure
+        for (int col=0; col < ncols; ++col)
+        {
+            vtkSmartPointer<vtkAbstractArray> ar;
+            const QString cname = getColumnName(col);
+            const NMMosraDataSetDataType coltype = getColumnType(cname);
+            switch(coltype)
+            {
+                case NM_MOSRA_DATATYPE_INT:
+                    ar = vtkSmartPointer<vtkLongArray>::New();
+                    break;
+                case NM_MOSRA_DATATYPE_DOUBLE:
+                    ar = vtkSmartPointer<vtkDoubleArray>::New();
+                    break;
+                case NM_MOSRA_DATATYPE_STRING:
+                    ar = vtkSmartPointer<vtkStringArray>::New();
+                    break;
+                default:
+                    break;
+
+            }
+            ar->SetNumberOfComponents(1);
+            ar->SetNumberOfTuples(nrows);
+            ar->SetName(cname.toStdString().c_str());
+            tab->AddColumn(ar);
+         }
+
+        // populate the table
+        const QSqlDatabase db = mSqlMod->database();
+        QSqlDriver* drv = db.driver();
+
+        QString qStr = QString("SELECT * FROM %1")
+                .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName));
+
+        QSqlQuery q(db);
+        if (!q.exec(qStr))
+        {
+            MosraLogError(<< "Failed to fecth records for '"
+                          << mTableName.toStdString() << "'!");
+        }
+
+        long rowcount = 0;
+        while (q.next())
+        {
+            for (int field=0; field < ncols; ++field)
+            {
+                const QVariant vres = q.value(field);
+                switch(vres.type())
+                {
+                case QVariant::Int:
+                    tab->SetValue(rowcount, field, vtkVariant(vres.toInt()));
+                    break;
+                case QVariant::Double:
+                    tab->SetValue(rowcount, field, vtkVariant(vres.toDouble()));
+                    break;
+                case QVariant::String:
+                    tab->SetValue(rowcount, field, vtkVariant(vres.toString().toStdString()));
+                    break;
+                default:
+                    break;
+                }
+            }
+            ++rowcount;
+        }
+    }
+    else if (mOtbTab.IsNotNull())
+    {
+        if (mOtbTab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+        {
+            otb::SQLiteTable::Pointer sqltab = static_cast<otb::SQLiteTable*>(mOtbTab.GetPointer());
+            long long nrows = sqltab->GetNumRows();
+
+            tab = vtkSmartPointer<vtkTable>::New();
+
+            // ------------------------------------------------
+            // create table structure
+            std::vector<std::string> colnames;
+            for (int col=0; col < sqltab->GetNumCols(); ++col)
+            {
+                vtkSmartPointer<vtkAbstractArray> ar;
+                switch(sqltab->GetColumnType(col))
+                {
+                    case otb::AttributeTable::ATTYPE_INT:
+                        ar = vtkSmartPointer<vtkLongArray>::New();
+                        break;
+                    case otb::AttributeTable::ATTYPE_DOUBLE:
+                        ar = vtkSmartPointer<vtkDoubleArray>::New();
+                        break;
+                    case otb::AttributeTable::ATTYPE_STRING:
+                        ar = vtkSmartPointer<vtkStringArray>::New();
+                        break;
+                    default:
+                        break;
+                }
+                ar->SetNumberOfComponents(1);
+                ar->SetNumberOfTuples(nrows);
+
+                colnames.push_back(sqltab->GetColumnName(col));
+                ar->SetName(colnames[col].c_str());
+
+                tab->AddColumn(ar);
+            }
+
+            // ------------------------------------------------------
+            // populate table
+            sqltab->BeginTransaction();
+            sqltab->PrepareBulkGet(colnames, "");
+
+            std::vector<otb::AttributeTable::ColumnValue> values;
+            values.resize(colnames.size());
+
+            for (long long row=0; row < nrows; ++row)
+            {
+                if (sqltab->DoBulkGet(values))
+                {
+                    for (int wcol=0; wcol < sqltab->GetNumCols(); ++wcol)
+                    {
+                        switch(sqltab->GetColumnType(wcol))
+                        {
+                        case otb::AttributeTable::ATTYPE_INT:
+                            tab->SetValue(row, wcol, values[wcol].ival);
+                            break;
+                        case otb::AttributeTable::ATTYPE_DOUBLE:
+                            tab->SetValue(row, wcol, values[wcol].dval);
+                            break;
+                        case otb::AttributeTable::ATTYPE_STRING:
+                            tab->SetValue(row, wcol, values[wcol].tval);
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                }
+            }
+            sqltab->EndTransaction();
+
+            // clean up
+            //            for (int v=0; v < values.size(); ++v)
+            //            {
+            //                if (values[v].type == otb::AttributeTable::ATTYPE_STRING)
+            //                {
+            //                    delete[] (values[v].tval);
+            //                }
+            //            }
+        }
     }
     return tab;
 }
@@ -529,7 +1286,7 @@ NMMosraDataSet::getDataSetAsVtkTable()
 int
 NMMosraDataSet::getColumnIndex(const QString &colName)
 {
-    int val;
+    int val = -1;
     switch(mType)
     {
     case NM_MOSRA_DS_OTBTAB:
@@ -546,14 +1303,498 @@ NMMosraDataSet::getColumnIndex(const QString &colName)
                     val = -1;
                 }
             }
-            break;
         }
+        break;
+
+    case NM_MOSRA_DS_QTSQL:
+        {
+            for (int i=0; i < mSqlMod->columnCount(); ++i)
+            {
+                const QString name = mSqlMod->headerData(i, Qt::Horizontal).toString();
+                if (name.compare(colName, Qt::CaseInsensitive) == 0)
+                {
+                    val = i;
+                    break;
+                }
+            }
+        }
+        break;
+
     default:
         val = -1;
     }
 
     return val;
 }
+
+
+bool
+NMMosraDataSet::prepareRowUpdate(const QStringList &colnames, bool bInsert)
+{
+    bool ret = false;
+
+    if (mVtkDS != nullptr)
+    {
+        // just store the column names
+        mRowUpdateColumns = colnames;
+        ret = true;
+    }
+    else if (mOtbTab.IsNotNull())
+    {
+        otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mOtbTab.GetPointer());
+        if (sqltab != nullptr)
+        {
+            std::vector<std::string> vcolnames;
+            foreach (const QString name, colnames)
+            {
+                vcolnames.push_back(name.toStdString());
+            }
+            ret = sqltab->PrepareBulkSet(vcolnames, bInsert);
+        }
+    }
+    else if (mSqlMod != nullptr)
+    {
+        QSqlDatabase db = mSqlMod->database();
+        QSqlDriver* drv = db.driver();
+
+        QString qStr;
+        if (bInsert)
+        {
+            qStr = QString("INSERT OR REPLACE INTO %1 (")
+                    .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName));
+
+            for (int c=0; c < colnames.size(); ++c)
+            {
+                qStr += drv->escapeIdentifier(colnames.at(c), QSqlDriver::FieldName);
+                if (c < colnames.size()-1)
+                {
+                    qStr += ",";
+                }
+                else
+                {
+                    qStr += ") VALUES (";
+                }
+            }
+
+            for (int v=0; v < colnames.size(); ++v)
+            {
+                qStr += "?";
+                if (v < colnames.size()-1)
+                {
+                    qStr += ", ";
+                }
+                else
+                {
+                    qStr += ")";
+                }
+            }
+        }
+        else
+        {
+            qStr = QString("UPDATE %1 SET ")
+                    .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName));
+            for (int c=0; c < colnames.size(); ++c)
+            {
+                qStr += drv->escapeIdentifier(colnames.at(c), QSqlDriver::FieldName) + " = ?";
+                if (c < colnames.size()-1)
+                {
+                    qStr += ", ";
+                }
+            }
+        }
+
+        qStr += QString(" WHERE %1 == ? ;").arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName));
+
+        mRowUpdateQuery = QSqlQuery(db);
+        if (!mRowUpdateQuery.prepare(qStr))
+        {
+
+            MosraLogError(<< "Failed to prepare update query: " << qStr.toStdString() << std::endl
+                          << "ERROR: " << mRowUpdateQuery.lastError().text().toStdString());
+            ret = false;
+        }
+        else
+        {
+            MosraLogDebug(<< "UpdateRow query: " << qStr.toStdString());
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+
+bool
+NMMosraDataSet::prepareRowGet(const QStringList &colnames)
+{
+    bool ret = false;
+    if (mVtkDS != nullptr)
+    {
+        mRowGetColumns = colnames;
+        ret = true;
+    }
+    else if (mOtbTab.IsNotNull())
+    {
+        otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mOtbTab.GetPointer());
+        if (sqltab != nullptr)
+        {
+            std::vector<std::string> vcolnames;
+            for (int i=0; i < colnames.size(); ++i)
+            {
+                vcolnames.push_back(colnames.at(i).toStdString());
+            }
+            QString wc = QString("WHERE \"%1\" == ?1").arg(sqltab->GetPrimaryKey().c_str());
+            ret = sqltab->PrepareBulkGet(vcolnames, wc.toStdString());
+        }
+    }
+    else if (mSqlMod != nullptr)
+    {
+        QSqlDatabase db = mSqlMod->database();
+        QSqlDriver* drv = db.driver();
+
+        QString colstr;
+        for (int i=0; i < colnames.size(); ++i)
+        {
+            colstr += drv->escapeIdentifier(colnames.at(i), QSqlDriver::FieldName);
+            if (i < colnames.size()-1)
+            {
+                colstr += ",";
+            }
+        }
+
+        // just in case we got an empty list of colnames
+        if (colstr.isEmpty())
+        {
+            return false;
+        }
+
+        QString qStr = QString("SELECT %1 from %2 WHERE %3 == ?")
+                        .arg(colstr)
+                        .arg(drv->escapeIdentifier(mTableName, QSqlDriver::TableName))
+                        .arg(drv->escapeIdentifier(mPrimaryKey, QSqlDriver::FieldName));
+
+        mRowGetQuery = QSqlQuery(db);
+        if (!mRowGetQuery.prepare(qStr))
+        {
+            MosraLogError(<< "Failed preparing 'get row' query: "
+                          << qStr.toStdString() << std::endl
+                          << "ERROR: " << mRowGetQuery.lastError().text().toStdString());
+        }
+        else
+        {
+            MosraLogDebug(<< "GetRow query: " << qStr.toStdString());
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+
+bool
+NMMosraDataSet::updateRow(const QVariantList &values, const int &row)
+{
+    bool ret = false;
+    if (mVtkDS != nullptr)
+    {
+        ret = true;
+        vtkDataSetAttributes* dsa = mVtkDS->GetAttributes(vtkDataSet::CELL);
+        for (int var=0; var < values.size(); ++var)
+        {
+            const QVariant val = values.at(var);
+            const QString colname = mRowUpdateColumns.at(var);
+
+            switch(val.type())
+            {
+            case QVariant::Int:
+                {
+                    vtkIntArray* ia = vtkIntArray::SafeDownCast(dsa->GetAbstractArray(colname.toStdString().c_str()));
+                    ia->SetValue(row, val.toInt());
+                }
+                break;
+
+           case QVariant::Double:
+                {
+                    vtkDoubleArray* da = vtkDoubleArray::SafeDownCast(dsa->GetAbstractArray(colname.toStdString().c_str()));
+                    da->SetValue(row, val.toDouble());
+                }
+                break;
+
+            case QVariant::String:
+                 {
+                     vtkStringArray* sa = vtkStringArray::SafeDownCast(dsa->GetAbstractArray(colname.toStdString().c_str()));
+                     sa->SetValue(row, val.toString().toStdString());
+                 }
+                 break;
+
+            default:
+                ret = false;
+                break;
+
+            }
+        }
+    }
+    else if (mOtbTab.IsNotNull())
+    {
+        otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mOtbTab.GetPointer());
+        if (sqltab != nullptr)
+        {
+            ret = true;
+            std::vector<otb::AttributeTable::ColumnValue> cvalues;
+            for (int var=0; var < values.size(); ++var)
+            {
+                const QVariant val = values.at(var);
+                switch(val.type())
+                {
+                case QVariant::Int:
+                case QVariant::LongLong:
+                    {
+                      otb::AttributeTable::ColumnValue lv;
+                      lv.type = otb::AttributeTable::ATTYPE_INT;
+                      lv.ival = val.toLongLong();
+                      cvalues.push_back(lv);
+                    }
+                    break;
+
+                case QVariant::Double:
+                    {
+                      otb::AttributeTable::ColumnValue dv;
+                      dv.type = otb::AttributeTable::ATTYPE_DOUBLE;
+                      dv.dval = val.toDouble();
+                      cvalues.push_back(dv);
+                    }
+                    break;
+
+                case QVariant::String:
+                    {
+                      otb::AttributeTable::ColumnValue sv;
+                      sv.type = otb::AttributeTable::ATTYPE_STRING;
+                      sv.tval = const_cast<char*>(val.toString().toStdString().c_str());
+                      cvalues.push_back(sv);
+                    }
+                    break;
+
+                default:
+                    ret = false;
+                    break;
+                }
+            }
+            ret = sqltab->DoBulkSet(cvalues, row);
+        }
+    }
+    else if (mSqlMod != nullptr)
+    {
+        for (int var=0; var < values.size(); ++var)
+        {
+            mRowUpdateQuery.bindValue(var, values.at(var));
+        }
+        mRowUpdateQuery.bindValue(values.size(), QVariant::fromValue((int)row));
+
+        if (!mRowUpdateQuery.exec())
+        {
+            MosraLogError(<< "Failed updating table record: "
+                          << mRowUpdateQuery.lastQuery().toStdString() << std::endl
+                          << mRowUpdateQuery.lastError().text().toStdString());
+            ret = false;
+        }
+        else
+        {
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+
+bool
+NMMosraDataSet::getRowValues(QVariantList &values, const int &row)
+{
+    bool ret = false;
+    if (mVtkDS != nullptr)
+    {
+        ret = true;
+        vtkDataSetAttributes* dsa = mVtkDS->GetAttributes(vtkDataSet::CELL);
+        if (dsa != nullptr)
+        {
+            for (int val=0; val < values.size(); ++val)
+            {
+                QVariant& varVal = values[val];
+                const QVariant::Type vt = varVal.type();
+                vtkAbstractArray* aa = dsa->GetAbstractArray(mRowGetColumns.at(val).toStdString().c_str());
+
+                switch(vt)
+                {
+                case QVariant::Int:
+                    {
+                        const int aatype = aa->GetArrayType();
+                        switch(aatype)
+                        {
+                        case VTK_LONG:
+                            {
+                                vtkLongArray* la = vtkLongArray::SafeDownCast(aa);
+                                if (la != nullptr)
+                                {
+                                    varVal = QVariant::fromValue(la->GetValue(row));
+                                }
+                            }
+                            break;
+
+                        case VTK_INT:
+                            {
+                                vtkIntArray* ia = vtkIntArray::SafeDownCast(aa);
+                                if (ia != nullptr)
+                                {
+                                    varVal = QVariant::fromValue(ia->GetValue(row));
+                                }
+                            }
+                            break;
+
+                        default:
+                            break;
+                        }
+                    }
+                    break;
+
+                case QVariant::Double:
+                    {
+                        vtkDoubleArray* da = vtkDoubleArray::SafeDownCast(dsa->GetAbstractArray(mRowGetColumns.at(val).toStdString().c_str()));
+                        if (da == nullptr)
+                        {
+                            MosraLogError(<< "Failed fetching row value for column '" << mRowGetColumns.at(val).toStdString() << "'!");
+                            return false;
+                        }
+                        varVal = QVariant::fromValue(da->GetValue(row));
+                    }
+                    break;
+
+                case QVariant::String:
+                    {
+                        vtkStringArray* sa = vtkStringArray::SafeDownCast(dsa->GetAbstractArray(mRowGetColumns.at(val).toStdString().c_str()));
+                        if (sa == nullptr)
+                        {
+                            MosraLogError(<< "Failed fetching row value for column '" << mRowGetColumns.at(val).toStdString() << "'!");
+                            return false;
+                        }
+                        varVal = QVariant::fromValue(QString(sa->GetValue(row).operator const char *()));
+                    }
+                    break;
+
+                default:
+                    ret = false;
+                    break;
+                }
+            }
+        }
+    }
+    else if (mOtbTab.IsNotNull())
+    {
+        otb::SQLiteTable* sqltab = static_cast<otb::SQLiteTable*>(mOtbTab.GetPointer());
+        if (sqltab != nullptr)
+        {
+            std::vector<otb::AttributeTable::ColumnValue> cvalues;
+//            for (int var=0; var < values.size(); ++var)
+//            {
+//                const QVariant& val = values.at(var);
+//                switch(val.type())
+//                {
+//                case QVariant::Int:
+//                case QVariant::LongLong:
+//                    {
+//                      otb::AttributeTable::ColumnValue lv;
+//                      lv.type = otb::AttributeTable::ATTYPE_INT;
+//                      lv.ival = val.toLongLong();
+//                      cvalues.push_back(lv);
+//                    }
+//                    break;
+
+//                case QVariant::Double:
+//                    {
+//                      otb::AttributeTable::ColumnValue dv;
+//                      dv.type = otb::AttributeTable::ATTYPE_DOUBLE;
+//                      dv.dval = val.toDouble();
+//                      cvalues.push_back(dv);
+//                    }
+//                    break;
+
+//                case QVariant::String:
+//                    {
+//                      int strsize = ::atoi(val.toString().toStdString().c_str());
+//                      otb::AttributeTable::ColumnValue sv;
+//                      cvalues.push_back(sv);
+//                      cvalues.back().type = otb::AttributeTable::ATTYPE_STRING;
+//                      cvalues.back().tval = new char[strsize];//const_cast<char*>(val.toString().toStdString().c_str());
+//                      //::sprintf(sv.tval, "\0");
+
+//                    }
+//                    break;
+
+//                default:
+//                    break;
+//                }
+//            }
+            cvalues.resize(values.size());
+            otb::AttributeTable::ColumnValue rowVal;
+            rowVal.type = otb::AttributeTable::ATTYPE_INT;
+            rowVal.ival = row;
+            cvalues.push_back(rowVal);
+
+            ret = sqltab->DoBulkGet(cvalues);
+
+
+            for (int var=0; var < values.size(); ++var)
+            {
+                QVariant& val = values[var];
+                switch(val.type())
+                {
+                case QVariant::Int:
+                case QVariant::LongLong:
+                    val = QVariant::fromValue(cvalues[var].ival);
+                    break;
+
+                case QVariant::Double:
+                    val = QVariant::fromValue(cvalues[var].dval);
+                    break;
+
+                case QVariant::String:
+                    {
+                        const QString tstr = const_cast<char*>(cvalues[var].tval);
+                        val = QVariant::fromValue(tstr);
+                        //                        if (cvalues[var].tval != nullptr)
+                        //                        {
+                        //                            delete[] cvalues[var].tval;
+                        //                        }
+                        //                        cvalues[var].tval = nullptr;
+                    }
+                    break;
+
+                default:
+                    break;
+                }
+            }
+        }
+    }
+    else if (mSqlMod != nullptr)
+    {
+        mRowGetQuery.bindValue(0, QVariant::fromValue(row));
+
+        if (!mRowGetQuery.exec() || !mRowGetQuery.next())
+        {
+            MosraLogError(<< "Failed getting row values: "
+                          << mRowGetQuery.lastQuery().toStdString() << std::endl
+                          << "ERROR: " << mRowGetQuery.lastError().text().toStdString());
+            ret = false;
+        }
+        else
+        {
+            for (int val=0; val < values.size(); ++val)
+            {
+                values[val] = QVariant::fromValue(mRowGetQuery.value(val));
+            }
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+
 
 ////////////////////////////////
 /// NMMosra implementation
@@ -594,6 +1835,22 @@ NMMosra::~NMMosra()
 }
 
 void
+NMMosra::setItkProcessObject(itk::ProcessObject *obj)
+{
+    mProcObj = obj;
+    mDataSet->setProcObj(obj);
+    mDataSet->setLogger(nullptr);
+}
+
+void
+NMMosra::setLogger(NMLogger *logger)
+{
+    mLogger = logger;
+    mDataSet->setLogger(logger);
+    mDataSet->setProcObj(nullptr);
+}
+
+void
 NMMosra::setDataSet(const vtkDataSet* dataset)
 {
 	if (dataset != 0)
@@ -615,13 +1872,25 @@ NMMosra::setDataSet(otb::AttributeTable::Pointer otbtab)
     }
 }
 
+void
+NMMosra::setDataSet(const QSqlTableModel *sqlmod)
+{
+    if (sqlmod != nullptr)
+    {
+        this->mDataSet->setDataSet(const_cast<QSqlTableModel*>(sqlmod));
+    }
+    else
+    {
+        MosraLogError( << "QSqlTableModel is NULL!");
+    }
+}
+
 void NMMosra::reset(void)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
 	this->mLp->DeleteLp();
 	this->msLosFileName.clear();
-    this->mDataSet->setDataSet(0);
 
 	this->mlNumDVar = 0;
 	this->mlNumOptFeat = 0;
@@ -641,11 +1910,15 @@ void NMMosra::reset(void)
 	this->mmslEvalFields.clear();
 	this->mmslObjCons.clear();
 	this->mmslObjectives.clear();
+    this->mmslIncentives.clear();
+    this->mIncNamePair.clear();
 
     this->mbBreakAtFirst = false;
 	this->mbCanceled = false;
 
-	msDataPath = std::getenv("HOME");
+    this->msOptFeatures.clear();
+    this->mDataSet->reset();
+    msDataPath = std::getenv("HOME");
 	mslPerturbItems.clear();
     mlflPerturbUncertainties.clear();
 	mflUncertainties.clear();
@@ -715,6 +1988,7 @@ int NMMosra::parseStringSettings(QString strSettings)
 	enum ParSec {
 		problem,
 		criteria,
+        incentives,
 		objectives,
 		arealcons,
         featcons,
@@ -754,7 +2028,12 @@ int NMMosra::parseStringSettings(QString strSettings)
 			section = criteria;
 			continue;
 		}
-		else if (!sLine.compare(tr("<OBJECTIVES>"), Qt::CaseInsensitive))
+        else if (!sLine.compare(tr("<INCENTIVES>"), Qt::CaseInsensitive))
+        {
+            section = incentives;
+            continue;
+        }
+        else if (!sLine.compare(tr("<OBJECTIVES>"), Qt::CaseInsensitive))
 		{
 			section = objectives;
 			continue;
@@ -837,8 +2116,8 @@ int NMMosra::parseStringSettings(QString strSettings)
 			}
 			else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
 			{
-				if (this->msLayerName.compare(sValueStr, Qt::CaseInsensitive) != 0)
-                    this->mDataSet->setDataSet(0);
+//				if (this->msLayerName.compare(sValueStr, Qt::CaseInsensitive) != 0)
+//                    this->mDataSet->setDataSet(0);
 
 				this->msLayerName = sValueStr;
                 MosraLogInfo( << "LayerName: " << this->msLayerName.toStdString() << endl)
@@ -882,6 +2161,23 @@ int NMMosra::parseStringSettings(QString strSettings)
                             MosraLogInfo(<< "Solver timeout: " << timeout << endl);
                         }
                     }
+                }
+            }
+            else if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
+            {
+                QFileInfo fi(sValueStr);
+                if (fi.isReadable())
+                {
+                    this->msDataPath = sValueStr;
+                    MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
+                }
+            }
+            else if (sVarName.compare("OPT_FEATURES", Qt::CaseInsensitive) == 0)
+            {
+                if (!sValueStr.isEmpty())
+                {
+                    this->msOptFeatures = sValueStr;
+                    MosraLogInfo(<< "OPT_FEATURES: " << this->msOptFeatures.toStdString() << endl);
                 }
             }
 		}
@@ -958,6 +2254,35 @@ int NMMosra::parseStringSettings(QString strSettings)
 
 		}
 		break;
+        //----------------------------------------INCENTIVES----------
+        case incentives:
+        {
+            if (sVarName.indexOf(tr("INC_"), Qt::CaseInsensitive) != -1)
+            {
+                QStringList incfields = sValueStr.split(tr(" "), QString::SkipEmptyParts);
+                if (!incfields.isEmpty())
+                {
+                    QString incName = incfields.takeFirst();
+                    QStringList namePair = incName.split("_", QString::SkipEmptyParts);
+                    if (namePair.size() == 2)
+                    {
+                        mmslIncentives.insert(incName, incfields);
+                        mIncNamePair.insert(incName, namePair);
+                    }
+                    else
+                    {
+                        std::stringstream errmsg;
+                        errmsg << "Line " << numline << " contains an invalid incentives name! Make sure any incentive name "
+                                      << "is comprised of two criteria names concatenated by and underscore \'_\'. Thereby, the "
+                                      << "leading name represents the objective and the second name represents the criterion "
+                                      << "whose per unit reduction is incentivised by the values specified in the column given "
+                                      << "whose name is given after the incentive name." << endl;
+                        sReport << QString(errmsg.str().c_str());
+                    }
+                }
+            }
+        }
+        break;
         //----------------------------------------OBJECTIVES----------
 		case objectives:
 		{
@@ -1294,7 +2619,12 @@ int NMMosra::solveLp(void)
 	}
     MosraLogInfo(<< "checking optimisation settings - OK")
 
-	this->makeLp();
+    // calc baseline
+    this->calcBaseline();
+    MosraLogInfo(<< "calculdated baseline alright!");
+
+
+    this->makeLp();
 
 	if (!this->addObjFn())
 	{
@@ -1330,6 +2660,16 @@ int NMMosra::solveLp(void)
 		}
         MosraLogInfo(<< "adding performance constraints - OK")
 	}
+
+    if (this->mmslIncentives.size() > 0)
+    {
+        if (!this->addIncentCons())
+        {
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
+        MosraLogInfo(<< "adding incentives 'constraints' - OK")
+    }
 
     if (this->mslZoneConstraints.size() > 0)
     {
@@ -1401,6 +2741,8 @@ int NMMosra::solveLp(void)
                            PRESOLVE_KNAPSACK |
                            PRESOLVE_PROBEFIX);
 
+    this->mLp->SetScaling(SCALE_GEOMETRIC |
+                          SCALE_DYNUPDATE);
 
 	this->mLp->Solve();
 
@@ -1591,7 +2933,7 @@ void NMMosra::createReport(void)
 	for (int q=1; q < nrows; ++q)
 	{
 		QString name(this->mLp->GetRowName(q).c_str());
-		if (name.contains("Feature"))
+        if (name.contains("Feature") || name.contains("BaselineCons"))
 			continue;
 		int op = this->mLp->GetConstraintType(q-1);
 		double cv = pdCons[q-1];
@@ -1611,13 +2953,70 @@ void NMMosra::createReport(void)
 	double *pDuals, *pDualsFrom, *pDualsTill;
 	if (this->mLp->GetPtrSensitivityRHS(&pDuals, &pDualsFrom, &pDualsTill))
 	{
-		int nRows = this->mLp->GetNameIndex("Feature_0a", true);//this->mLp->GetNRows();
+        // avoid dumping feature and baseline constraints here, so we're looking for the
+        // first occurence (row number) of either of them
+        //const int nRowsFeat = this->mLp->GetNameIndex("Feature_0a", true);//this->mLp->GetNRows();
+        //const int nRowsBase = this->mLp->GetNameIndex("Baseline_0_1", true);
+        const int nRows = this->mLp->GetNRows(); //std::max(std::min(nRowsFeat, nRowsBase), -1);
+
 		for (int r=1; r < nRows; r++)
 		{
-			sRes << QString(this->mLp->GetRowName(r).c_str()) << platz << tr("\t") <<
-					pDuals[r] << platz << pDualsFrom[r] << platz << pDualsTill[r] << endl;
+            const QString consname = this->mLp->GetRowName(r).c_str();
+            if (    !consname.startsWith("Feature")
+                 && !consname.startsWith("Baseline")
+               )
+            {
+                sRes << consname << platz << tr("\t") <<
+                        pDuals[r] << platz << pDualsFrom[r] << platz << pDualsTill[r] << endl;
+            }
 		}
 	}
+
+
+    // DEBUG if we've got incentives, let's get 'em and see 'em!
+//    const int lNumRecs = this->mDataSet->getNumRecs();
+//    const int iNumIncs = this->mmslIncentives.size();
+//    const bool optFeat = this->mDataSet->hasColumn(this->msOptFeatures);
+//    if (iNumIncs > 0)
+//    {
+//        QFile incFile("/home/users/herziga/crunch/testOptimisation/opt_result/incs.txt");
+//        if (incFile.open(QIODevice::WriteOnly | QIODevice::Text))
+//        {
+//            QTextStream incstr(&incFile);
+
+//            incstr << endl << endl;
+//            incstr << "Let's get a feeling for those reduction variables (r_i_r_q) ...." << endl;
+//            incstr << "     with: i: feature index, r: land use index, q: incentive index" << endl << endl;
+
+//            double* pdVars = nullptr;
+//            this->mLp->GetPtrVariables(&pdVars);
+
+//            for (int rec=0; rec < lNumRecs; ++rec)
+//            {
+//                if (optFeat && this->mDataSet->getIntValue(this->msOptFeatures, rec) == 0)
+//                {
+//                    continue;
+//                }
+
+//                for (int inc=0; inc < iNumIncs; ++inc)
+//                {
+//                    for (int lu=0; lu < miNumOptions; ++lu)
+//                    {
+//                        const QString incName = QString("R_%1_%2_%3").arg(rec).arg(lu+1).arg(inc+1);
+//                        const int ivalIdx = this->mLp->GetNameIndex(incName.toStdString(), false)-1;
+//                        if (ivalIdx >=0)
+//                        {
+//                            incstr << incName << "=" << pdVars[ivalIdx] << " ";
+//                        }
+//                    }
+//                }
+//                incstr << endl;
+//            }
+//            incstr << endl << endl;
+//            incFile.close();
+//        }
+//    }
+
 
 	this->msReport.clear();
 	this->msReport = sRes.readAll();
@@ -1680,10 +3079,8 @@ int NMMosra::checkSettings(void)
 	sstr << "type of DV (0=REAL | 1=INT | 2=BINARY): " << this->meDVType << endl;
 
 	// get the attributes of the layer
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-
     MosraLogInfo(<< "Optimisation - Checking settings ...")
+
 	//  get the total area of the layer (summing the provided field's data)
 	if (this->msAreaField.isEmpty())
 	{
@@ -1692,7 +3089,23 @@ int NMMosra::checkSettings(void)
 		return 0;
 	}
 
-//	if (!dsAttr->HasArray(this->msAreaField.toStdString().c_str()))
+    bool optfeatures = false;
+    if (this->msOptFeatures.isEmpty())
+    {
+        MosraLogInfo(<< "no OPT_FEATURES field specified - all features in this dataset"
+                     << " are available as 'spatial alternatives' in this scenario!");
+    }
+    else
+    {
+        if (!mDataSet->hasColumn(this->msOptFeatures))
+        {
+            MosraLogError( << "the specified OPT_FEATURES field could not be found!");
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
+        optfeatures = true;
+    }
+
     if (!mDataSet->hasColumn(this->msAreaField.toStdString().c_str()))
 	{
         MosraLogError( << "specified area field could not be found!");
@@ -1703,9 +3116,6 @@ int NMMosra::checkSettings(void)
 
 	// --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating area and counting features ..." << endl);
-//	vtkDataArray* areaAr = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
-//	vtkDataArray* nm_hole = dsAttr->GetArray("nm_hole");
-//	int numTuples = areaAr->GetNumberOfTuples();
     bool nm_hole = mDataSet->hasColumn("nm_hole");
     int numTuples = mDataSet->getNumRecs();
 	int numFeat = 0;
@@ -1720,16 +3130,17 @@ int NMMosra::checkSettings(void)
 	bool arealCriValid = true;
 	this->mdAreaTotal = 0;
 
-//	for (int cs=0; cs < areaAr->GetNumberOfTuples(); cs++)
     for (int cs=0; cs < numTuples; cs++)
 	{
-//		if (nm_hole->GetTuple1(cs) == 1)
         if (nm_hole && mDataSet->getIntValue("nm_hole", cs) == 1)
         {
             continue;
         }
+        if (optfeatures && mDataSet->getIntValue(this->msOptFeatures, cs) == 0)
+        {
+            continue;
+        }
 
-        //this->mdAreaTotal += areaAr->GetTuple1(cs);
         this->mdAreaTotal += mDataSet->getDblValue(this->msAreaField, cs);
 		numFeat++;
 
@@ -1740,9 +3151,6 @@ int NMMosra::checkSettings(void)
 		{
             bool zoneAr = mDataSet->hasColumn(zonesIt.key());
 
-//            vtkStringArray* zoneAr = vtkStringArray::SafeDownCast(
-//					dsAttr->GetAbstractArray(zonesIt.key().toStdString().c_str()));
-//			if (zoneAr == 0)
             if (zoneAr == false)
 			{
 				arealCriValid = false;
@@ -1758,7 +3166,6 @@ int NMMosra::checkSettings(void)
                 std::string zoneVal = mDataSet->getStrValue(zonesIt.key(), cs).toStdString();
                 if (zoneVal.find(optIt.key().toStdString()) != std::string::npos)
 				{
-//					tmpVal = optIt.value() + areaAr->GetTuple1(cs);
                     tmpVal = optIt.value() + mDataSet->getDblValue(this->msAreaField, cs);
 					tmpLen = optLenIt.value() + 1;
 					zonesIt.value().insert(optIt.key(), tmpVal);
@@ -1781,8 +3188,6 @@ int NMMosra::checkSettings(void)
 	{
         bool zoneAr = mDataSet->hasColumn(zonesIt.key());
 
-//        vtkStringArray* zoneAr = vtkStringArray::SafeDownCast(dsAttr->GetAbstractArray(zonesIt.key().toStdString().c_str()));
-//		if (zoneAr == 0)
         if (zoneAr == false)
         {
             continue;
@@ -1914,7 +3319,6 @@ int NMMosra::checkSettings(void)
 		QStringList fields = criit.value();
 		for (int f=0; f < fields.size(); ++f)
 		{
-//			if (!dsAttr->HasArray(fields.at(f).toStdString().c_str()))
             if (!mDataSet->hasColumn(fields.at(f)))
 			{
 				criValid = false;
@@ -1928,8 +3332,8 @@ int NMMosra::checkSettings(void)
         MosraLogInfo( << "optimisation criteria: performance indicator fields OK");
     }
 
-//    MosraLogInfo(<< "checking fields for evaluating criteria performance ..." << endl);
-//	// performance indicator fields
+    //    MosraLogInfo(<< "checking fields for evaluating criteria performance ..." << endl);
+    //	// performance indicator fields
 	criit = this->mmslEvalFields.constBegin();
 
 	bool evalValid = true;
@@ -1939,7 +3343,6 @@ int NMMosra::checkSettings(void)
 		QStringList fields = criit.value();
 		for (int f=0; f < fields.size(); ++f)
 		{
-//			if (!dsAttr->HasArray(fields.at(f).toStdString().c_str()))
             if (!mDataSet->hasColumn(fields.at(f)))
 			{
 				evalValid = false;
@@ -1978,7 +3381,6 @@ int NMMosra::checkSettings(void)
 					zone = zonespec.at(1);
 
 					// check for zone field
-//					if (!dsAttr->HasArray(zone.toStdString().c_str()))
                     if (!mDataSet->hasColumn(zone))
 					{
 						criConsValid = false;
@@ -1995,7 +3397,6 @@ int NMMosra::checkSettings(void)
 					// look through m_iNumOptions fields
 					for (int f=0; f < this->miNumOptions; ++f)
 					{
-//						if (!dsAttr->HasArray(fieldList.at(f).toStdString().c_str()))
                         if (!mDataSet->hasColumn(fieldList.at(f)))
 						{
 							criConsValid = false;
@@ -2017,7 +3418,6 @@ int NMMosra::checkSettings(void)
 					}
 
 					// look for the specified performance field of the given land use
-//					if (!dsAttr->HasArray(fieldList.at(0).toStdString().c_str()))
                     if (!mDataSet->hasColumn(fieldList.at(0)))
 					{
 						criConsValid = false;
@@ -2094,6 +3494,46 @@ int NMMosra::checkSettings(void)
         MosraLogInfo(<< "zone constraints OK")
     }
 
+    // --------------------------------------------------------------------------------------------------------
+    // checking the incentives specification
+    bool incentivesValid = true;
+
+    // check whether the criteria have been specified
+    QMap<QString, QStringList>::ConstIterator incCriPair = this->mIncNamePair.constBegin();
+    while (incCriPair != this->mIncNamePair.constEnd())
+    {
+        const QStringList& criteria = this->mmslCriteria.keys();
+        foreach (const QString& cri, incCriPair.value())
+        {
+            if (!criteria.contains(cri))
+            {
+                incentivesValid = false;
+                MosraLogError(<< "Incentive criterion '" << cri.toStdString() << "' "
+                              << "is not a valid criterion of the configured "
+                              << "spatial optimisation problem!");
+            }
+        }
+        ++incCriPair;
+    }
+
+    // checking the provided fieldnames for incentive scores
+    QMap<QString, QStringList>::ConstIterator incFieldIt = this->mmslIncentives.constBegin();
+    while (incFieldIt != this->mmslIncentives.constEnd())
+    {
+        const QString& scoreField = incFieldIt.value().at(0);
+        if (!this->mDataSet->hasColumn(scoreField))
+        {
+            incentivesValid = false;
+            MosraLogError(<< "The specified incentive score '" << scoreField.toStdString() << "' "
+                          << "could not be found in the dataset!");
+        }
+        ++incFieldIt;
+    }
+    if (incentivesValid)
+    {
+        MosraLogInfo(<< "incentives spec OK")
+    }
+
 
 	// --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating size of the optimsation matrix ..." << endl);
@@ -2105,27 +3545,62 @@ int NMMosra::checkSettings(void)
 	 * r : land use index
 	 *
 	 * X_i_r: area share of land-use r allocated to feature i
-	 * b_i  : binary conditional variable we need to model that
+     * DEPRECATED: b_i  : binary conditional variable we need to model that
 	 *        a feature has to be either completely covered by
 	 *        any combination of the land use options or not at all
 	 *
 	 * note: row-0 contains the objective function and cell 0,0 contains
 	 *       the objective function value; row-1 and beyond contain the
 	 *       constraints of the model
-	 *
+     *
+     *
+     *colindex:     0     1       2       3       4       5
+     *row-0           | X_0_1 | X_0_2 | X_1_1 | X_1_2 | X_2_1 ...
+     *row-1
+     *
+     * if incentives are specified, the matrix structure becomes:
+     *
+     * q : incentive index
+     *
+     * R_i_r_q
+     *
+     *colindex:     0     1       2        3         4         5         6        7       8        9         10        11        12
+     *row-0           | X_0_1 | X_0_2 | R_0_1_1 | R_0_2_1 | R_0_1_2 | R_0_2_2 | X_1_1 | X_1_2 | R_1_1_1 | R_1_2_1 | R_1_1_2 | R_1_2_2 | ...
+     *row-1
+     *
+     *
+     *
+     * ..........................................................................................
+     *DEPRECATED
 	 *colindex:     0     1       2      3      4       5
 	 *row-0           | X_0_1 | X_0_2 | b_0 | X_1_1 | X_1_2 | b_1 | ...
 	 *row-1
-	 *
+     *                                   ^
+     *                                   |
+     *                              this is deprecated
 	 */
 	this->mlNumArealDVar = this->miNumOptions * this->mlNumOptFeat;
 	sstr << "mlNumArealDVar = miNumOptions * mlNumOptFeat = "
 			<< this->mlNumArealDVar << " = " << this->miNumOptions << " * "
-			<< this->mlNumOptFeat << endl;
+            << this->mlNumOptFeat << endl;
 
     this->mlNumDVar =  this->mlNumArealDVar;// + this->mlNumOptFeat;
-	sstr << "mlNumDvar =  mlNumArealDVar + mlNumOptFeat = "
-            << this->mlNumDVar << " = " << this-> mlNumArealDVar << endl;
+
+    QString plusRedVar = "";
+    QString addNumVar = "\n";
+    if (incentivesValid)
+    {
+        this->mlNumDVar += this->mmslIncentives.size() * this->mlNumOptFeat * this->miNumOptions;
+        addNumVar = QString(" + %1 * %2 * %3\n")
+                .arg(this->mmslIncentives.size())
+                .arg(this->mlNumOptFeat)
+                .arg(this->miNumOptions);
+        plusRedVar = QString(" + numIncentives * mlNumOptFeat * miNumOptions");
+    }
+
+    sstr << "mlNumDvar = mlNumArealDVar" << plusRedVar
+         << " = " << this->mlNumDVar << " = " << this-> mlNumArealDVar
+         << addNumVar;
             //<< " + " << this->mlNumOptFeat << endl;
 
 	// number of columns of the decision matrix
@@ -2146,7 +3621,7 @@ int NMMosra::checkSettings(void)
                << this->msSettingsReport.toStdString() << endl);
 
 	NMDebugCtx(ctxNMMosra, << "done!");
-	if (!criValid || !criConsValid || !evalValid || !arealCriValid)
+    if (!criValid || !criConsValid || !evalValid || !arealCriValid || !incentivesValid)
 	{
         MosraLogError( << "The configuration file contains invalid settings!");
 		return 0;
@@ -2160,6 +3635,7 @@ int NMMosra::mapLp(void)
     // check return value from lp_solve
     int ret = this->mLp->GetLastReturnFromSolve();
 
+    int resval = 0;
     if (ret != 0 && ret != 1 && ret != 12)
     {
         MosraLogDebug( << "unfortunately no feasible solution!" << endl);
@@ -2169,21 +3645,30 @@ int NMMosra::mapLp(void)
 
     if (mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_OTBTAB)
     {
-        otb::AttributeTable::Pointer otbtab = mDataSet->getAttributeTable();
+        otb::AttributeTable::Pointer otbtab = mDataSet->getOtbAttributeTable();
         if (otbtab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
         {
-            return mapLpDb();
+            resval = mapLpDb();
         }
     }
+    else// if (mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_VTKDS)
+    {
+        resval = mapLpTab();
+    }
+//    else if (mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_QTSQL)
+//    {
+//        resval = mapLpQtSql();
+//    }
 
-    return mapLpTab();
+    return resval;
 }
 
 int NMMosra::mapLpDb(void)
 {
-    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(this->mDataSet->getAttributeTable().GetPointer());
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(this->mDataSet->getOtbAttributeTable().GetPointer());
 
-    long long lNumCells = sqltab->GetNumRows();
+    const long long lNumCells = sqltab->GetNumRows();
+    const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
     std::vector< std::string > colnames;
     std::vector< otb::AttributeTable::TableColumnType > coltypes;
@@ -2231,6 +3716,11 @@ int NMMosra::mapLpDb(void)
     // interate over the table and write optimisation results into the table
     for (long long f=0; f < lNumCells; ++f)
     {
+        if (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+        {
+            continue;
+        }
+
         sOptStr.clear();
         for (int option=0; option < this->miNumOptions; ++option)
         {
@@ -2242,15 +3732,23 @@ int NMMosra::mapLpDb(void)
             //variables (i.e. the appropriate column index - 1)
             iValIndex = this->mLp->GetNameIndex(sColName.toStdString(), false)-1;
 
-            // get the actual value and put it into the right OPTx_VAL array (attribute)
-            dVal = pdVars[iValIndex];
-            //mDataSet->setDblValue(vValAr.at(option), f, dVal);
-            colValues[option+1].type = otb::AttributeTable::ATTYPE_DOUBLE;
-            colValues[option+1].dval = dVal;
+            if (iValIndex >=0)
+            {
+                // get the actual value and put it into the right OPTx_VAL array (attribute)
+                dVal = pdVars[iValIndex];
+                //mDataSet->setDblValue(vValAr.at(option), f, dVal);
+                colValues[option+1].type = otb::AttributeTable::ATTYPE_DOUBLE;
+                colValues[option+1].dval = dVal;
 
-            // format sOptStr
-            if (dVal > 0)
-                sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
+                // format sOptStr
+                if (dVal > 0)
+                    sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
+            }
+            else
+            {
+                MosraLogError( << "failed fetching value of decision variable '"
+                               << sColName.toStdString() << "'!");
+            }
         }
 
         // trim sOptStr and write into array
@@ -2273,42 +3771,56 @@ int NMMosra::mapLpDb(void)
     return 1;
 }
 
+int
+NMMosra::mapLpQtSql(void)
+{
+    //add mapping columns
+//    this->mDataSet->addColumn("OPT_STR", NMMosraDataSet::NM_MOSRA_DATATYPE_STRING);
+//    for (int option=0; option < miNumOptions; ++option)
+//    {
+//        QString optx_val = QString("OPT%1_VAL").arg(option+1);
+//        mDataSet->addColumn(optx_val, NMMosraDataSet::NM_MOSRA_DATATYPE_DOUBLE);
+//    }
+
+//    QSqlTableModel* sqlMod = mDataSet->getQSqlTableModel();
+//    QSqlDatabase db = sqlMod->database();
+//    QSqlDriver* drv = db.driver();
+
+	return 0;
+}
+
 int NMMosra::mapLpTab(void)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
 	// get the attributes of the layer
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-//	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
-    bool hole = mDataSet->hasColumn("nm_hole");
-    //long lNumCells = hole->GetNumberOfTuples();
-    long lNumCells = mDataSet->getNumRecs();
+    const bool hole = mDataSet->hasColumn("nm_hole");
+    const bool optFeat = mDataSet->hasColumn(this->msOptFeatures);
+    const long lNumCells = mDataSet->getNumRecs();
 
-	// create a new result field for the resource option
-//    vtkSmartPointer<vtkStringArray> opt_str;
-//	opt_str = vtkSmartPointer<vtkStringArray>::New();
-//	opt_str->SetName("OPT_STR");
-//	opt_str->Allocate(lNumCells, 100);
+    // prepare list of update columns
+    QStringList colnames;
+    QVariantList valList;
+
+    // create a new result field for the resource option
+    mDataSet->beginTransaction();
     mDataSet->addColumn("OPT_STR", NMMosraDataSet::NM_MOSRA_DATATYPE_STRING);
+    colnames.push_back("OPT_STR");
+    valList.push_back(QVariant(QVariant::String));
     MosraLogDebug( << "created attribute 'OPT_STR'" << endl);
 
-
-	// check for the scoring attributes
-//	std::vector< vtkSmartPointer< vtkDoubleArray > > vValAr;
+    // add scoring attributes
     QStringList vValAr;
 	for (int option=0; option < this->miNumOptions; option++)
 	{
 		QString optx_val = QString(tr("OPT%1_VAL")).arg(option+1);
-//		vtkSmartPointer<vtkDoubleArray> var = vtkSmartPointer<vtkDoubleArray>::New();
-//		var->SetName(optx_val.toStdString().c_str());
-//		var->Allocate(lNumCells, 100);
         mDataSet->addColumn(optx_val, NMMosraDataSet::NM_MOSRA_DATATYPE_DOUBLE);
-//        vValAr.push_back(var);
+        colnames.push_back(optx_val);
+        valList.push_back(QVariant(0.0));
         vValAr.push_back(optx_val);
-
         MosraLogDebug( << "created scoring attribute '" << optx_val.toStdString() << "'" << endl);
 	}
+    mDataSet->endTransaction();
 
 	// get the decision vars
 	double * pdVars;
@@ -2321,53 +3833,90 @@ int NMMosra::mapLpTab(void)
 	const int iOffset = this->miNumOptions;
 	long lNonHoleCounter = 0;
 
+    QVariantList getValues;
+    QStringList getNames;
+    if (hole)
+    {
+        getValues << QVariant::Int;
+        getNames << "nm_hole";
+    }
+    if (optFeat)
+    {
+        getValues << QVariant::Int;
+        getNames << this->msOptFeatures;
+    }
+
+    mDataSet->prepareRowGet(getNames);
+    mDataSet->prepareRowUpdate(colnames, false);
+    mDataSet->beginTransaction();
+
+
     //MosraLogDebug( << "extracting results ..." << endl);
 	// -------------------------------------------------------------------for each feature
 	for (int f=0; f < lNumCells; f++)
 	{
-		// special treatment for polygon holes
-//		if (hole->GetTuple1(f))
-        if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+        if (    (hole || optFeat)
+            &&  !mDataSet->getRowValues(getValues, f)
+           )
+        {
+            MosraLogError( << "mapLp(): Failed fetching row values!");
+            mDataSet->endTransaction();
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
+
+        // special treatment for polygon holes or no-opt features
+        if (    (hole && getValues[0] == 1)
+             || (optFeat && getValues[getValues.size()-1] == 0)
+           )
 		{
-			// write 0 values into the OPTx_VAL arrarys for holes
+            //mDataSet->setStrValue("OPT_STR", f, "");
+            valList[0] = QVariant(QVariant::String);
+
 			for (int option=0; option < this->miNumOptions; option++)
             {
-                mDataSet->setDblValue(vValAr.at(option), f, 0.0);
-//                vValAr.at(option)->InsertValue(f, 0.0);
+                //mDataSet->setDblValue(vValAr.at(option), f, 0.0);
+                valList[option+1] = QVariant(0.0);
             }
-            mDataSet->setStrValue("OPT_STR", f, "");
-//			opt_str->InsertValue(f, "");
 
 			// leap frog
-			continue;
+            //continue;
 		}
+        else
+        {
+            // -----------------------------------------------------------------for each option
+            sOptStr.clear();
+            for (int option=0; option < this->miNumOptions; option++)
+            {
+                // format the column name (i.e. name of the decision variable
+                // we are dealing with int this iteration)
+                sColName = QString(tr("X_%1_%2")).arg(lNonHoleCounter).arg(option+1);
 
-		// -----------------------------------------------------------------for each option
-		sOptStr.clear();
-		for (int option=0; option < this->miNumOptions; option++)
-		{
-			// format the column name (i.e. name of the decision variable
-			// we are dealing with int this iteration)
-			sColName = QString(tr("X_%1_%2")).arg(lNonHoleCounter).arg(option+1);
+                //determine index for the pdVars array holding the values of the decision
+                //variables (i.e. the appropriate column index - 1)
+                iValIndex = this->mLp->GetNameIndex(sColName.toStdString(), false)-1;
 
-			//determine index for the pdVars array holding the values of the decision
-			//variables (i.e. the appropriate column index - 1)
-			iValIndex = this->mLp->GetNameIndex(sColName.toStdString(), false)-1;
+                // get the actual value and put it into the right OPTx_VAL array (attribute)
+                dVal = pdVars[iValIndex];
+                valList[option+1] = QVariant(dVal);
 
-			// get the actual value and put it into the right OPTx_VAL array (attribute)
-			dVal = pdVars[iValIndex];
-//			vValAr.at(option)->InsertValue(f, dVal);
-            mDataSet->setDblValue(vValAr.at(option), f, dVal);
+                // format sOptStr
+                if (dVal > 0)
+                    sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
+            }
 
-			// format sOptStr
-			if (dVal > 0)
-				sOptStr += QString(this->mslOptions.at(option)) + tr(" ");
-		}
+            // trim sOptStr and write into array
+            sOptStr = sOptStr.simplified();
+            valList[0] = sOptStr;
+        }
 
-		// trim sOptStr and write into array
-		sOptStr = sOptStr.simplified();
-//		opt_str->InsertValue(f, sOptStr.toStdString().c_str());
-        mDataSet->setStrValue("OPT_STR", f, sOptStr);
+        if (!mDataSet->updateRow(valList, f))
+        {
+            mDataSet->rollBack();
+            mDataSet->endTransaction();
+            NMDebugCtx(ctxNMMosra, << "done!");
+            return 0;
+        }
 
 		if (f % 100 == 0)
             NMDebug(<< ".");
@@ -2376,18 +3925,9 @@ int NMMosra::mapLpTab(void)
 		lNonHoleCounter++;
 	}
 
+    mDataSet->endTransaction();
+
     MosraLogDebug(<< "extracted results!" << endl);
-
-	// don't forget to add the new attributes to the
-	// data set! (remember: availalbe attributes with the same name
-	// are overriden!)
-//	ds->GetCellData()->AddArray(opt_str);
-//	for (int option=0; option < this->miNumOptions; option++)
-//		ds->GetCellData()->AddArray(vValAr.at(option));
-
-	// call data set changed signal on layer to trigger
-	// update chain for reflecting the changes elsewhere
-	//this->mLayer->emitDataSetChanged();
 
 	NMDebugCtx(ctxNMMosra, << "done!");
 	return 1;
@@ -2416,21 +3956,59 @@ int NMMosra::makeLp(void)
 	 *       the objective function value; row-1 and beyond contain the
 	 *       constraints of the model
 	 *
+     *colindex:     0     1       2       3       4       5
+     *row-0           | X_0_1 | X_0_2 | X_1_1 | X_1_2 | X_2_1 ...
+     *row-1
+     *
+     * .....................................................................
+     * if incentives are specified, the matrix structure becomes:
+     *
+     * q : incentive index
+     *
+     * R_i_r_q
+     *
+     *colindex:     0     1       2        3         4         5         6        7       8        9         10        11        12
+     *row-0           | X_0_1 | X_0_2 | R_0_1_1 | R_0_2_1 | R_0_1_2 | R_0_2_2 | X_1_1 | X_1_2 | R_1_1_1 | R_1_2_1 | R_1_1_2 | R_1_2_2 | ...
+     *row-1
+     *
+     *
+     *
+     * ......................................................................
+     * DEPRECATED
 	 *colindex:     0     1       2      3      4       5
 	 *row-0           | X_0_1 | X_0_2 | b_0 | X_1_1 | X_1_2 | b_1 | ...
 	 *row-1 (constraint #1: i.e. coefficients for decision variables)
 	 *row-2 (constraint #2)
 	 *row-3  etc.
-	 *etc.
+     *etc.                               ^
+     *                                   |
+     *                               deprecated
 	 */
 
 	// create the LP structure (i.e. columns (i.e. decision vars),
 	// column names and column types; note: the default type is REAL
+    int lNumCells = mDataSet->getNumRecs();
+    bool hole = mDataSet->hasColumn("nm_hole");
+    int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+
 	this->mLp->MakeLp(0,this->mlLpCols);
 	long colPos = 1;
-    for (int of=0; of < this->mlNumOptFeat; ++of)//, ++colPos)
+    int featCount = 0;
+
+    // we name the decision variables such that the feature index
+    // matches the actual feature rowidx in the dataset, otherwise
+    // would have trouble mapping the final results back to the
+    // right features!
+    for (int of=0; of < lNumCells; ++of)//, ++colPos)
 	{
-		QString colname;
+        if (    (hole && mDataSet->getIntValue("nm_hole", of) == 1)
+             || (optFeatIdx != -1 && mDataSet->getIntValue(this->msOptFeatures, of) == 0)
+           )
+        {
+            continue;
+        }
+
+        QString colname;
 		for (int opt=1; opt <= this->miNumOptions; ++opt, ++colPos)
 		{
 			colname = QString(tr("X_%1_%2")).arg(of).arg(opt);
@@ -2450,11 +4028,35 @@ int NMMosra::makeLp(void)
 			}
 		}
 
+        // add vars for incentivsed reduction (depending on x_i_r)
+        for (int inc=1; inc <= this->mmslIncentives.size(); ++inc)
+        {
+            for (int opt=1; opt <= this->miNumOptions; ++opt, ++colPos)
+            {
+                colname = QString(tr("R_%1_%2_%3")).arg(of).arg(opt).arg(inc);
+                this->mLp->SetColName(colPos, colname.toStdString());
+            }
+        }
+
         //		colname = QString(tr("b_%1")).arg(of);
         //		this->mLp->SetColName(colPos, colname.toStdString());
         //		this->mLp->SetBinary(colPos, true);
         //  ++colPos;
+
+        ++featCount;
 	}
+
+    if (featCount != this->mlNumOptFeat)
+    {
+        MosraLogError(<< "makeLp(): mmh, the number of processed features "
+                      << "does not match the number of identified optimisation features!")
+        NMDebugCtx(ctxNMMosra, << "done!");
+        return 0;
+    }
+
+
+
+
 
 //	// initiate the objective function to zero; note that all unspecified
 //	// obj functions values are initiated to zero by lp_solve, so we
@@ -2492,7 +4094,10 @@ NMMosra::perturbCriterion(const QString& criterion,
         return false;
 	}
 
-//	vtkSmartPointer<vtkTable> tabCalc = this->getDataSetAsTable();
+    int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+
+
+    //	vtkSmartPointer<vtkTable> tabCalc = this->getDataSetAsTable();
 
     // extract individual constraint or criterion identifier
     // from the 'criterion' parameter list, e.g.
@@ -2509,25 +4114,18 @@ NMMosra::perturbCriterion(const QString& criterion,
         return false;
     }
 
-    bool bCriterion = true;
     QString fstItem = metaList.at(0).trimmed();
-    if (    fstItem.startsWith(QString("OBJ"))
-         || fstItem.startsWith(QString("CRI"))
+
+    // -------------------------------------------------------------
+    // CONSTRAINT
+    if (    fstItem.startsWith(QStringLiteral("OBJ"))
+         || fstItem.startsWith(QStringLiteral("CRI"))
          //|| fstItem.startsWith(QString("AREA"))
        )
     {
-        // nope, looks like we've got a constraint
-        bCriterion = false;
-    }
-
-	// need to distinguish between criterion and constraint
-	// so, if we've got just one repetition, we assume to
-	// have to deal with a constraint rather than a criterion
-    if (!bCriterion)
-	{
-		// constraint
+        // constraint
         for (int cri=0; cri < metaList.size(); ++cri)
-		{
+        {
             float perc = percent.last();
             if (cri < percent.size())
                 perc = percent.at(cri);
@@ -2535,10 +4133,46 @@ NMMosra::perturbCriterion(const QString& criterion,
             {
                 return false;
             }
-		}
-	}
-	else
-	{
+        }
+    }
+    // -------------------------------------------------------------
+    // INCENTIVE
+    else if (fstItem.startsWith(QStringLiteral("INC")))
+    {
+        mDataSet->beginTransaction();
+        for (int m=0; m < metaList.size(); ++m)
+        {
+            // get the incentives field
+            const QString incSpec = metaList.at(m).trimmed();
+            const QStringList incDetails = incSpec.split(":", QString::SkipEmptyParts);
+            const QString incField = this->mmslIncentives[incDetails.at(1)].at(0);
+
+            if (incField.isEmpty() || !this->mDataSet->hasColumn(incField))
+            {
+                MosraLogError(<< "Couldn't find incentive field '"
+                              << incField.toStdString() << "' for '"
+                              << incDetails.at(1).toStdString() << "'!");
+                mDataSet->rollBack();
+                mDataSet->endTransaction();
+                return false;
+            }
+
+
+            for (int r=0; r < mDataSet->getNumRecs(); ++r)
+            {
+                const double inval = mDataSet->getDblValue(incField, r);
+                const double outval = inval + (inval * percent.at(m) / 100.0);
+                mDataSet->setDblValue(incField, r, outval);
+            }
+        }
+        mDataSet->endTransaction();
+    }
+    // -------------------------------------------------------------
+    // CRITERION
+    else
+    {
+        mDataSet->beginTransaction();
+
         for (int ptbItem=0; ptbItem < metaList.size(); ++ptbItem)
         {
             QString isolatedCriterion = metaList.at(ptbItem).trimmed();
@@ -2594,13 +4228,12 @@ NMMosra::perturbCriterion(const QString& criterion,
                     perc = percent.at(ptbItem);
                 }
 
-//                vtkDataArray* srcAr = vtkDataArray::SafeDownCast(
-//                        tabCalc->GetColumnByName(field.toStdString().c_str()));
-
-//                for (int r=0; r < tabCalc->GetNumberOfRows(); ++r)
                 for (int r=0; r < mDataSet->getNumRecs(); ++r)
                 {
-//                    double inval = srcAr->GetTuple1(r);
+                    if (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, r) == 0)
+                    {
+                        continue;
+                    }
                     double inval = mDataSet->getDblValue(field, r);
                     double uncval = inval * ((rand() % ((int)perc+1))/100.0);
                     double newval;
@@ -2609,11 +4242,13 @@ NMMosra::perturbCriterion(const QString& criterion,
                     else
                         newval = inval - uncval;
 
-//                    srcAr->SetTuple1(r, newval);
+                    newval = newval < 0 ? 0 : newval;
                     mDataSet->setDblValue(field, r, newval);
                 }
             }
         }
+
+        mDataSet->endTransaction();
 	}
 
 	NMDebugCtx(ctxNMMosra, << "done!");
@@ -2773,28 +4408,26 @@ int NMMosra::addObjFn(void)
 	NMDebugCtx(ctxNMMosra, << "...");
 
 	// get the hole array
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-//	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
     bool hole = mDataSet->hasColumn("nm_hole");
-//	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
-
+    int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
 	// some vars we need
 
 	// init some mem for the row and column objects of the
 	// problem
-	double* pdRow = new double[this->mlNumArealDVar];
-	int* piColno = new int[this->mlNumArealDVar];
+    double* pdRow = new double[this->mlNumDVar];
+    int* piColno = new int[this->mlNumDVar];
 	int* plFieldIndices = new int[this->miNumOptions];
 
+    // each incentive has only one field associated with it
+    const int numIncentives = this->mmslIncentives.size();
+    int* piIncFieldIdx = new int[numIncentives];
 
 	QString s1Maxmin = this->mmslObjectives.begin().value().at(0).left(3);
 	QString sxMaxmin;
-	QString sFieldName;
-    //long lId, lNumCells = hole->GetNumberOfTuples();
+    //QString sFieldName;
     long lNumCells = mDataSet->getNumRecs();
-	double dFeatID, dCoeff, dWeight = 1;
+    double dCoeff, dWeight = 1; // dFeatID,
 	bool convOK;
 
 	// ------------------------------------------------------------------for each objective
@@ -2820,8 +4453,6 @@ int NMMosra::addObjFn(void)
 				sField = criFieldList.at(option);
 
             plFieldIndices[option] = mDataSet->getColumnIndex(sField);
-
-//            if (dsAttr->GetArray(sField.toStdString().c_str(), *(plFieldIndices + option)) == NULL)
             if (plFieldIndices[option] == -1)
 			{
                 MosraLogError( << "failed to get performance indicator '"
@@ -2841,6 +4472,34 @@ int NMMosra::addObjFn(void)
 					<< ": " << sField.toStdString() << " " << plFieldIndices[option] << endl);
 		}
 
+        MosraLogDebug( << "incentive: <incentive field> <field index> ..." << std::endl);
+        QMap<QString, QStringList>::ConstIterator incIt = this->mmslIncentives.constBegin();
+        int inccount = 0;
+        while (incIt != this->mmslIncentives.constEnd())
+        {
+            const int ifidx = mDataSet->getColumnIndex(incIt.value().at(0));
+            if (ifidx == -1)
+            {
+                MosraLogError( << "Failed to retreive columnn index for '"
+                               << incIt.value().at(0).toStdString() << "!");
+
+                delete[] pdRow;
+                delete[] piColno;
+                delete[] plFieldIndices;
+                delete[] piIncFieldIdx;
+
+                NMDebugCtx(ctxNMMosra, << "done!");
+                return 0;
+            }
+            else
+            {
+                piIncFieldIdx[inccount] = ifidx;
+            }
+            ++inccount;
+            ++incIt;
+        }
+
+
 		// maximise or minimise ?
 		sxMaxmin = it.value().at(0).left(3);
 
@@ -2859,13 +4518,15 @@ int NMMosra::addObjFn(void)
 
         MosraLogDebug( << "processing individual features now" << endl);
 		// --------------------------------------------------for each feature
-		long colPos = 1;
+        const int holeidx = mDataSet->getColumnIndex("nm_hole");
+        long colPos = 1;
 		long arpos = 0;
 		for (int f=0; f < lNumCells; ++f)
 		{
 			// leap over holes
-//            if (hole->GetTuple1(f))
-            if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+            if (    (hole && mDataSet->getIntValue(holeidx, f) == 1)
+                 || (optFeatIdx != -1 && mDataSet->getIntValue(this->msOptFeatures, f) == 0)
+               )
             {
 				continue;
             }
@@ -2875,8 +4536,6 @@ int NMMosra::addObjFn(void)
 			{
 				// get performance indicator for current feature and
 				// criterion and option
-//				vtkDataArray* da = dsAttr->GetArray(plFieldIndices[option]);
-//				dCoeff = da->GetTuple1(f);
                 dCoeff = mDataSet->getDblValue(plFieldIndices[option], f);
 
 				// DEBUG
@@ -2892,20 +4551,19 @@ int NMMosra::addObjFn(void)
 					dCoeff *= dWeight;
 
 				// do we have binary decision variables?
-//				double area = areas->GetTuple1(f);
-                double area = mDataSet->getDblValue(this->msAreaField, f);
-				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
-				bool bok;
-//				switch(this->meDVType)
-//				{
-//				case NM_MOSO_BINARY:
-//                    dCoeff = vtkMath::Floor(dCoeff);
-//					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
-//					break;
-//				case NM_MOSO_INT:
-//					dCoeff = vtkMath::Floor(dCoeff);
-//					break;
-//				}
+                //              double area = mDataSet->getDblValue(this->msAreaField, f);
+                //				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
+                //				bool bok;
+                //				switch(this->meDVType)
+                //				{
+                //				case NM_MOSO_BINARY:
+                //                    dCoeff = vtkMath::Floor(dCoeff);
+                //					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
+                //					break;
+                //				case NM_MOSO_INT:
+                //					dCoeff = vtkMath::Floor(dCoeff);
+                //					break;
+                //				}
 
 
 				// write coefficient into row array
@@ -2919,6 +4577,25 @@ int NMMosra::addObjFn(void)
 
 			}
 
+            for (int in=0; in < numIncentives; ++in)
+            {
+                dCoeff = mDataSet->getDblValue(piIncFieldIdx[in], f);
+                dCoeff = bMalMinusEins ? dCoeff * -1 : dCoeff;
+                if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
+                {
+                    dCoeff *= dWeight;
+                }
+
+                for (int option=0; option < miNumOptions; ++option, ++arpos, ++colPos)
+                {
+                    if (objcount)
+                        pdRow[arpos] += dCoeff;
+                    else
+                        pdRow[arpos] = dCoeff;
+                    piColno[arpos] = colPos;
+                }
+            }
+
 			// increment the column number counter to the next areal decision variable
 			// (leaping one binary deciscion var associated with each areal decision variable)
             //colPos++;
@@ -2930,13 +4607,13 @@ int NMMosra::addObjFn(void)
 		NMDebug(<< " finished!" << endl);
 	}
 
-	int ncols = this->mLp->GetNColumns();
+    //int ncols = this->mLp->GetNColumns();
     //MosraLogDebug( << "num cols: " << ncols << " | NumArealDVar: " << this->mlNumArealDVar << endl);
 
 
 	// set the objective function
 	this->mLp->SetAddRowmode(true);
-	this->mLp->SetObjFnEx(this->mlNumArealDVar, pdRow, piColno);
+    this->mLp->SetObjFnEx(this->mlNumDVar, pdRow, piColno);
 	this->mLp->SetAddRowmode(false);
 
 	// set the optimisation task
@@ -2949,6 +4626,7 @@ int NMMosra::addObjFn(void)
 	delete[] pdRow;
 	delete[] piColno;
 	delete[] plFieldIndices;
+    delete[] piIncFieldIdx;
 
 	NMDebugCtx(ctxNMMosra, << "done!");
 
@@ -2961,13 +4639,12 @@ int NMMosra::addObjCons(void)
 
 	// get data set attributes
 	// get the hole array
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-//	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
     bool hole = mDataSet->hasColumn("nm_hole");
-//	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
-//	long lNumCells = hole->GetNumberOfTuples();
     long lNumCells = mDataSet->getNumRecs();
+    int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+
+    // check whether we've got to account for incentives
+    int iNumIncentives = this->mmslIncentives.size();
 
 	// create vectors holding the constraint types
 	// and objective constraint labels
@@ -2998,8 +4675,8 @@ int NMMosra::addObjCons(void)
 	int* piFieldIndices = new int[this->miNumOptions];
 
 	// some more vars
-	QString sFieldName;
-	QString sObjCri;
+    //QString sFieldName;
+    //QString sObjCri;
 	double dConsVal;
 	double dCoeff;
 
@@ -3053,37 +4730,36 @@ int NMMosra::addObjCons(void)
 
 		// ------------------------------------------------------------for each spatial alternative
 		long lCounter = 0;
+        long const int skipIncentivesOffset = iNumIncentives * miNumOptions;
 		long colpos = 1;
 		for (int f=0; f < lNumCells; f++)
 		{
 			// leap frog holes in polygons
-//			if (hole->GetTuple1(f))
-            if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+            if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+                 || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+               )
             {
 				continue;
             }
 
 			for (int option=0; option < this->miNumOptions; option++)
 			{
-//				vtkDataArray* da = dsAttr->GetArray(piFieldIndices[option]);
-//				dCoeff = da->GetTuple1(f);
                 dCoeff = mDataSet->getDblValue(piFieldIndices[option], f);
 
 				// do we have binary decision variables?
-//				double area = areas->GetTuple1(f);
                 double area = mDataSet->getDblValue(this->msAreaField, f);
-				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
-				bool bok;
-//				switch(this->meDVType)
-//				{
-//				case NM_MOSO_BINARY:
-//					dCoeff = vtkMath::Floor(dCoeff);
-//					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
-//					break;
-//				case NM_MOSO_INT:
-//					dCoeff = vtkMath::Floor(dCoeff);
-//					break;
-//				}
+                //				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
+                //				bool bok;
+                //				switch(this->meDVType)
+                //				{
+                //				case NM_MOSO_BINARY:
+                //					dCoeff = vtkMath::Floor(dCoeff);
+                //					dCoeff = (int)dCoeff * (int)sArea.toDouble(&bok);
+                //					break;
+                //				case NM_MOSO_INT:
+                //					dCoeff = vtkMath::Floor(dCoeff);
+                //					break;
+                //				}
 
 				pdRow[lCounter] = dCoeff;
 				piColno[lCounter] = colpos;
@@ -3092,6 +4768,7 @@ int NMMosra::addObjCons(void)
 				lCounter++;
 				colpos++;
 			}
+            colpos += skipIncentivesOffset;
 
 			// leap frog the binary decision variable for this feature
             //colpos++;
@@ -3177,14 +4854,17 @@ int NMMosra::addZoneCons(void)
         //========================================================================================
         // loop over the data set and identify zone and track required information
 
-        bool hole = mDataSet->hasColumn("nm_hole");
-        long lNumCells = mDataSet->getNumRecs();
+        const bool hole = mDataSet->hasColumn("nm_hole");
+        const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+        const long lNumCells = mDataSet->getNumRecs();
         long lRowCounter = this->mLp->GetNRows();
         this->mLp->SetAddRowmode(true);
 
         for (long f=0; f < lNumCells; ++f)
         {
-            if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+            if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+                    || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+               )
             {
                 continue;
             }
@@ -3330,7 +5010,8 @@ int NMMosra::addFeatureCons(void)
 {
     NMDebugCtx(ctxNMMosra, << "...");
 
-    bool hole = mDataSet->hasColumn("nm_hole");
+    const bool hole = mDataSet->hasColumn("nm_hole");
+    const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
     std::vector<QString> vsConsLabel;
     std::vector<std::vector<unsigned int> > vvnOptionIndex;
@@ -3392,7 +5073,9 @@ int NMMosra::addFeatureCons(void)
     this->mLp->SetAddRowmode(true);
     long lRowCounter = this->mLp->GetNRows();
 
-    int iOffset = this->miNumOptions;
+    const int iOffset = this->miNumOptions;
+    const int skipIncentivesFeatOffset = this->mmslIncentives.size() * miNumOptions;
+
 
     it = this->mmslFeatCons.constBegin();
     //-------------------------------------------------------------------- for each constraint
@@ -3416,7 +5099,9 @@ int NMMosra::addFeatureCons(void)
         // --------------------------------- for each feature
         for (int f=0; f < lNumCells; ++f)
         {
-            if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+            if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+                    || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+               )
             {
                 continue;
             }
@@ -3453,7 +5138,7 @@ int NMMosra::addFeatureCons(void)
 
             for (int opt=0; opt < numOptions; ++opt)
             {
-                vlCounter[opt] += iOffset;
+                vlCounter[opt] += iOffset + skipIncentivesFeatOffset;
             }
 
             if (f % 500 == 0)
@@ -3481,11 +5166,8 @@ int NMMosra::addExplicitAreaCons(void)
 	NMDebugCtx(ctxNMMosra, << "...");
 
 	// get the hole array
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-//	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
-    bool hole = mDataSet->hasColumn("nm_hole");
-//	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
+    const bool hole = mDataSet->hasColumn("nm_hole");
+    const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
 	std::vector<QString> vsConsLabel;
 	std::vector<int> vnZoneLength;
@@ -3493,12 +5175,12 @@ int NMMosra::addExplicitAreaCons(void)
     std::vector<std::vector<unsigned int> > vvnOptionIndex;
 	std::vector<unsigned int> vnConsType;
 	std::vector<double> vdRHS;
-//	long lNumCells = hole->GetNumberOfTuples();
+
     long lNumCells = mDataSet->getNumRecs();
 	double dUserVal;
 	double dUserArea = 0.0;
-    double dAreaTotal = this->mdAreaTotal;
-    double dAreaSelected = this->mdAreaSelected <= 0 ? this->mdAreaTotal : this->mdAreaSelected;
+//    double dAreaTotal = this->mdAreaTotal;
+//    double dAreaSelected = this->mdAreaSelected <= 0 ? this->mdAreaTotal : this->mdAreaSelected;
 
 	QMap<QString, QStringList>::const_iterator it =
 			this->mmslAreaCons.constBegin();
@@ -3591,12 +5273,12 @@ int NMMosra::addExplicitAreaCons(void)
 
 	// todo: we need to account for selected areas at one stage
 
-//	if (dUserArea > dAreaSelected)
-//	{
-//		MosraLogError( << "The specified areal constraints are "
-//				<< "inconsistent with the available area!");
-//		return 0;
-//	}
+    //	if (dUserArea > dAreaSelected)
+    //	{
+    //		MosraLogError( << "The specified areal constraints are "
+    //				<< "inconsistent with the available area!");
+    //		return 0;
+    //	}
 
     double* pdRow = 0;
     int* piColno = 0;
@@ -3613,6 +5295,12 @@ int NMMosra::addExplicitAreaCons(void)
 	// we've got to add 1 to the offset;
     //int iOffset = this->miNumOptions + 1;
     int iOffset = this->miNumOptions;
+
+    // offset to jump over any incentives decision-variables
+    int iSkipIncentivesOffset = this->mmslIncentives.size() * miNumOptions;
+
+    // adjust option offset
+    iOffset += iSkipIncentivesOffset;
 
 	it = this->mmslAreaCons.constBegin();
 	// ------------------------------------------------ for each constraint
@@ -3654,13 +5342,13 @@ int NMMosra::addExplicitAreaCons(void)
 		for (int f=0; f < lNumCells; f++)
 		{
 			// skip holes
-//			if (hole->GetTuple1(f))
-            if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+            if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+                 || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+               )
             {
 				continue;
             }
 
-//			dCoeff = areas->GetTuple1(f);
             dCoeff = mDataSet->getDblValue(this->msAreaField, f);
 			QString sConsVal = QString(tr("%1")).arg(dCoeff, 0, 'g');
 
@@ -3698,7 +5386,7 @@ int NMMosra::addExplicitAreaCons(void)
                     }
                 }
             }
-            else // set the coefficients for a non-zone constraint
+            else // set the coefficients for a non-zone constraintcoeffCcoeffCounterounter
             {
                 // set the coefficient
                 switch(this->meDVType)
@@ -3766,25 +5454,21 @@ int NMMosra::addImplicitAreaCons(void)
 	// we cover each feature separately, so we need miNumOptions coefficients
 	// plus the binary conditional to realise the either zero or all area
 	// constraint for each feature
-    //    double* pdRow = new double[this->miNumOptions + 1];
-    //	int* piColno = new int[this->miNumOptions + 1];
-
     double* pdRow = new double[this->miNumOptions];
     int* piColno = new int[this->miNumOptions];
 
 	// get the hole array
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-//	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
-    bool hole = mDataSet->hasColumn("nm_hole");
-//	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
+    const bool hole = mDataSet->hasColumn("nm_hole");
+    const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
 
-//	long lNumCells = hole->GetNumberOfTuples();
-    long lNumCells = mDataSet->getNumRecs();
-	long lId;
+    const long lNumCells = mDataSet->getNumRecs();
+    //long lId;
 	double dConsVal;
-	double dFeatID;
-	double dVal;
+    //double dFeatID;
+    //double dVal;
+
+    const int iNumIncentives = this->mmslIncentives.size();
+    const int skipIncentivesOffset = iNumIncentives * miNumOptions;
 
 	// set add_row_mode for adding constraints
 	this->mLp->SetAddRowmode(true);
@@ -3795,14 +5479,14 @@ int NMMosra::addImplicitAreaCons(void)
 	for (int f=0; f < lNumCells; f++)
 	{
 		// leap over holes!
-//		if (hole->GetTuple1(f))
-        if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+        if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+                || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+           )
         {
 			continue;
         }
 
 		// get the area of the current feature
-//		dConsVal = areas->GetTuple1(f);
         dConsVal = mDataSet->getDblValue(this->msAreaField, f);
 
 		// round value when dealing with integer decision variables
@@ -3833,16 +5517,17 @@ int NMMosra::addImplicitAreaCons(void)
             //MosraLogInfo( << "feat cons: option | colps = " << option << " | " << lCounter+1 << endl);
 
 		}
+        colpos += skipIncentivesOffset;
 
 		// ......................................................................................
 		// add the first constraint: SUM(x_i_r) - A_i * b_i >= 0
 
 		// set the coefficient for the binary decision variable for the current feature
-//		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
-//		piColno[this->miNumOptions] = colpos;
+        //		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
+        //		piColno[this->miNumOptions] = colpos;
 
-//		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
-//				piColno, 2, 0);
+        //		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
+        //				piColno, 2, 0);
 
         this->mLp->AddConstraintEx(this->miNumOptions, pdRow,
                 piColno, 1, ::atof(sConsVal.toStdString().c_str()));
@@ -3855,16 +5540,16 @@ int NMMosra::addImplicitAreaCons(void)
 		QString sRowName = QString(tr("Feature_%1a")).arg(f);
 		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
 
-//		// ......................................................................................
-//		// add the second constraint: SUM(x_i_r) - A_i * b_i <= 0
-//		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
+        // ......................................................................................
+        // add the second constraint: SUM(x_i_r) - A_i * b_i <= 0
+        //		pdRow[this->miNumOptions] = ::atof(sConsVal.toStdString().c_str()) * -1;
 
-//		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
-//				piColno, 1, 0);
-//		lRowCounter++;
+        //		this->mLp->AddConstraintEx(this->miNumOptions+1, pdRow,
+        //				piColno, 1, 0);
+        //		lRowCounter++;
 
-//		sRowName = QString(tr("Feature_%1b")).arg(f);
-//		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
+        //		sRowName = QString(tr("Feature_%1b")).arg(f);
+        //		this->mLp->SetRowName(lRowCounter, sRowName.toStdString());
 
 		// ........................................................................................
 		// column position counter
@@ -3897,13 +5582,19 @@ int NMMosra::addCriCons(void)
 	// usually not too many constraints
 
 	QVector<QString> vLabels;
-	// one constraint per land use (or 'total'=all land uses)
+    // one land use per constraint (or 'total'=all land uses)
 	QVector<QString> vLandUses;
-	// vector of zones (may be and empty string though, if no zone was specified for a particular
+    // vector of zones (may be an empty string though, if no zone was specified for a particular
 	// constraint
 	QVector<QString> vZones;
 	// vector of vector of field names per constraint (only when 'total' is given more than one)
 	QVector<QVector<QString> > vvFieldNames;
+
+    // vector of incentive criterion field names
+    // need to have the incentive benefit criterion as constraint name
+    QVector<QVector<QString> > vvIncCriterionFieldNames;
+
+
 	// vector of vector of land use indices (i.e. position in mslOptions and thus
 	// relative position within the optimisation matrix per feature)
 	QVector<QVector<unsigned int> > vvIdxLandUses;
@@ -3912,10 +5603,28 @@ int NMMosra::addCriCons(void)
 	// vector of values of the right hand side
 	QVector<double> vRHS;
 
-	QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit;
+    QMap<QString, QStringList>::ConstIterator incIt;
+    QMultiMap<QString, QMap<QString, QStringList> >::const_iterator crilabit;
 	QMap<QString, QStringList>::const_iterator criit;
 	for (crilabit = this->mmslCriCons.begin(); crilabit != this->mmslCriCons.end(); ++crilabit)
 	{
+        // test whether we've got incentives for this criterion
+        QVector<QString> vIncCriterionFieldNames;
+        incIt = this->mmslIncentives.constBegin();
+        while (incIt != this->mmslIncentives.constEnd())
+        {
+            if (incIt.key().startsWith(crilabit.key(), Qt::CaseInsensitive))
+            {
+                foreach(const QString& fn, incIt.value())
+                {
+                    vIncCriterionFieldNames.push_back(fn);
+                }
+            }
+            ++incIt;
+        }
+        vvIncCriterionFieldNames.push_back(vIncCriterionFieldNames);
+
+
 		QMap<QString, QStringList> luFieldList = crilabit.value();
 		for (criit = luFieldList.begin(); criit != luFieldList.end(); ++criit)
 		{
@@ -4007,17 +5716,14 @@ int NMMosra::addCriCons(void)
 	}
 
 	// get the hole array
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-//	vtkDataArray* areas = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
-//	vtkDataArray* hole = dsAttr->GetArray("nm_hole");
-//	long lNumCells = hole->GetNumberOfTuples();
-
     bool hole = mDataSet->hasColumn("nm_hole");
+    int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
     long lNumCells = mDataSet->getNumRecs();
 
 	// iterate over constraints and process them one at a time
 	// (or should we process them while looping over all features)?
+
+    const int skipIncentiveFeatOffset = this->mmslIncentives.size() * miNumOptions;
 
 	this->mLp->SetAddRowmode(true);
 	long lRowCounter = this->mLp->GetNRows();
@@ -4028,31 +5734,35 @@ int NMMosra::addCriCons(void)
 
 		// get the performance indicator fields, land use indices
 		// and allocate the constraint buffers
-		QVector<unsigned int> landUseIdxs = vvIdxLandUses[labelidx];
-		QVector<QString> fieldNames = vvFieldNames[labelidx];
-		int numCriOptions = fieldNames.size();
+        const QVector<unsigned int> landUseIdxs = vvIdxLandUses[labelidx];
+        const QVector<QString> fieldNames = vvFieldNames[labelidx];
+        const int numCriOptions = fieldNames.size();
 
-		double* pdRow = new double[numCriOptions * this->mlNumOptFeat];
-		int* piColno = new int[numCriOptions * this->mlNumOptFeat];
+        const QVector<QString> incFieldNames = vvIncCriterionFieldNames[labelidx];
+        const int iNumIncentives = incFieldNames.size();
+
+        // debug
+        int varspace = (numCriOptions + iNumIncentives) * this->mlNumOptFeat;
+
+        double* pdRow = new double[(numCriOptions + iNumIncentives) * this->mlNumOptFeat];
+        int* piColno = new int[(numCriOptions + iNumIncentives) * this->mlNumOptFeat];
 
 		long arpos = 0;
 		long colPos = 1;
 		for (long f=0; f < lNumCells; ++f)
 		{
 			//leap over holes
-//			if (hole->GetTuple1(f))
-            if (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+            if (    (hole && mDataSet->getIntValue("nm_hole", f) == 1)
+                 || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, f) == 0)
+               )
             {
 				continue;
             }
 
-			for(int i=0; i < numCriOptions; ++i, ++arpos)
+            for(int i=0; i < numCriOptions; ++i)
 			{
-				int optIdx = landUseIdxs[i];
-
-//				vtkDataArray* performanceIndicator = dsAttr->GetArray(
-//						fieldNames[i].toStdString().c_str());
-                int performanceIndicatorIdx = mDataSet->getColumnIndex(fieldNames[i]);
+                const int optIdx = landUseIdxs[i];
+                const int performanceIndicatorIdx = mDataSet->getColumnIndex(fieldNames[i]);
 
 				double coeff = 0.0;
 				bool bAddCoeff = true;
@@ -4061,11 +5771,7 @@ int NMMosra::addCriCons(void)
 				// for the current land use option shall be restricted to this zone
 				if (!vZones.at(labelidx).isEmpty())
 				{
-//					vtkStringArray* zoneAr = vtkStringArray::SafeDownCast(
-//							dsAttr->GetAbstractArray(vZones.at(labelidx).toStdString().c_str()));
-                    std::string zoneArVal = mDataSet->getStrValue(vZones.at(labelidx), f).toStdString();
-//					if (zoneAr->GetValue(f).find(this->mslOptions.at(optIdx).toStdString()) == std::string::npos)
-//						bAddCoeff = false;
+                    const std::string zoneArVal = mDataSet->getStrValue(vZones.at(labelidx), f).toStdString();
                     if (zoneArVal.find(this->mslOptions.at(optIdx).toStdString()) == std::string::npos)
                     {
                         bAddCoeff = false;
@@ -4077,33 +5783,65 @@ int NMMosra::addCriCons(void)
 					switch(this->meDVType)
 					{
 					case NMMosra::NM_MOSO_BINARY:
-//						coeff = areas->GetTuple1(f) * performanceIndicator->GetTuple1(f);
                         coeff = mDataSet->getDblValue(this->msAreaField, f) * mDataSet->getDblValue(performanceIndicatorIdx, f);
 						break;
 					default:
-//						coeff = performanceIndicator->GetTuple1(f);
                         coeff = mDataSet->getDblValue(performanceIndicatorIdx, f);
 						break;
 					}
 				}
 
+                //debug
+                //int criPos = colPos + optIdx;
+
 				pdRow[arpos] = coeff;
 				piColno[arpos] = colPos + optIdx;
+                ++arpos;
 
-				if (f % 200 == 0)
-					NMDebug(<< ".");
+                // account for incentives, if applicable
+                for (int inc=0; inc < iNumIncentives; ++inc, ++arpos)
+                {
+                    const int incFieldIdx = mDataSet->getColumnIndex(incFieldNames[inc]);
+                    coeff = 0.0;
+                    if (bAddCoeff)
+                    {
+                        switch(this->meDVType)
+                        {
+                        case NMMosra::NM_MOSO_BINARY:
+                            coeff = mDataSet->getDblValue(this->msAreaField, f) * mDataSet->getDblValue(incFieldIdx, f);
+                            break;
+                        default:
+                            coeff = mDataSet->getDblValue(incFieldIdx, f);
+                            break;
+                        }
+                    }
+
+                    //debug
+                    //const int theIncPos = colPos + optIdx + (inc+1) * miNumOptions;
+
+                    // arpos is the current postion based on no incentives; + 1 move it to the next pos; +inc positions
+                    // the pointer at the inc+1ths position
+                    pdRow[arpos] = coeff;
+                    // piColno: colpos is start of current feature; adding miNumOptions jumps at the beginning of the
+                    // base-line reduction decision var; inc*miNumOptions jumps at the start of the inc-th (-1) lu sequence of
+                    // base-line reductions; + optIdx picks the right decision var for the given landuse at hand
+                    piColno[arpos] = colPos + optIdx + (inc+1) * miNumOptions;
+                }
 			}
 
-			// jump to the first option of the next feature (keep in mind that we've got
-			// one binary decision var (i.e. column) per feature, hence the +1
-            //colPos += this->miNumOptions + 1;
-            colPos += this->miNumOptions;
+            // jump to the first option of the next feature
+            //          DEPRECATED(keep in mind that we've got one binary decision var (i.e. column) per feature, hence the +1
+            colPos += this->miNumOptions + skipIncentiveFeatOffset;
+
+            if (f % 200 == 0)
+                NMDebug(<< ".");
+
 		}
 		NMDebug(<< " finished!" << std::endl);
 
 		// add constraint
         MosraLogDebug(<< "adding constraint to LP ..." << std::endl);
-		this->mLp->AddConstraintEx(numCriOptions * this->mlNumOptFeat,
+        this->mLp->AddConstraintEx((numCriOptions + iNumIncentives) * this->mlNumOptFeat,
 				pdRow, piColno, vOperators[labelidx], vRHS[labelidx]);
 
 		// increment the row counter
@@ -4126,49 +5864,389 @@ int NMMosra::addCriCons(void)
 	return 1;
 }
 
+int
+NMMosra::addIncentCons(void)
+{
+    NMDebugCtx(ctxNMMosra, << "...");
+
+    const bool hole = mDataSet->hasColumn("nm_hole");
+    const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+    const long lNumCells = mDataSet->getNumRecs();
+
+    const int iNumInc = this->mmslIncentives.size();
+    double* pdRow = new double[2 * this->miNumOptions];
+    int* piColNo = new int[2 * this->miNumOptions];
+
+    std::vector<std::vector<int> > vvIncCriFieldIdx;
+    std::vector<int>                vBaselineFieldIdx;
+
+    // get field indices
+    QMap<QString, QStringList>::ConstIterator incIt = mIncNamePair.constBegin();
+    while (incIt != mIncNamePair.constEnd())
+    {
+        const QString& incCri = incIt.value().at(1);
+        const QString& baselineField = QString("%1_CUR").arg(incCri);
+
+        const int baselineFieldIdx = mDataSet->getColumnIndex(baselineField);
+        if (baselineFieldIdx == -1)
+        {
+            MosraLogError(<< "Couldn't find baseline performance score for "
+                          << " '" << incCri.toStdString() << "' in the dataset!");
+            return 0;
+        }
+        vBaselineFieldIdx.push_back(baselineFieldIdx);
+
+        std::vector<int> vCriFieldIdx;
+        for (int lu=0; lu < miNumOptions; ++lu)
+        {
+            const QString& incCriField = mmslCriteria[incCri].at(lu);
+            const int incCriFieldIdx = mDataSet->getColumnIndex(incCriField);
+            if (incCriFieldIdx == -1)
+            {
+                MosraLogError( << "Couldn't find criterion performance score '"
+                               << incCriField.toStdString() << "' in the dataset!");
+                return 0;
+            }
+            vCriFieldIdx.push_back(incCriFieldIdx);
+        }
+        vvIncCriFieldIdx.push_back(vCriFieldIdx);
+
+        ++incIt;
+    }
+
+
+    // add baseline criteria!
+    const int featColOffset = miNumOptions + iNumInc * miNumOptions;
+    int featPos = 1;
+
+    long lRowCounter = this->mLp->GetNRows();
+    this->mLp->SetAddRowmode(true);
+    for (long cell=0; cell < lNumCells; ++cell)
+    {
+        if (    (hole && mDataSet->getIntValue("nm_hole", cell) == 1)
+                || (optFeatIdx != -1 && mDataSet->getIntValue(optFeatIdx, cell) == 0)
+           )
+        {
+            continue;
+        }
+
+        for (int inc=0; inc < iNumInc; ++inc)
+        {
+            const double baselinePerf = mDataSet->getDblValue(vBaselineFieldIdx.at(inc), cell);
+
+            int arpos = 0;
+            for (int lu=0; lu < miNumOptions; ++lu, ++arpos)
+            {
+                // set x_i_r coefficient
+                const double criScore = mDataSet->getDblValue(vvIncCriFieldIdx[inc][lu], cell);
+                pdRow[arpos] = criScore;
+                piColNo[arpos] = featPos + lu;
+            }
+
+            for (int incs=0; incs < miNumOptions; ++incs, ++arpos)
+            {
+                // set r_i_r_q coefficient
+                pdRow[arpos] = 1.0;
+                piColNo[arpos] = featPos + incs + (inc+1) * miNumOptions;
+            }
+
+            // add constraint
+            // for a given parcel: sum of optimised performance w.r.t to incentivised criterion + reduction over baseline <= baseline
+            // for a given parcel: sum_l cl xl + sum_l rfl <= baseline
+            this->mLp->AddConstraintEx(2*miNumOptions, pdRow, piColNo, 1, baselinePerf);
+            ++lRowCounter;
+
+            const QString& consName = QString("BaselineCons_%1_%2").arg(cell).arg(inc+1);
+            this->mLp->SetRowName(lRowCounter, consName.toStdString().c_str());
+        }
+
+        featPos += featColOffset;
+
+        if (cell % 200 == 0)
+        {
+            NMDebug(<< ".");
+        }
+    }
+    NMDebug(<< " finished!" << std::endl);
+
+    delete[] pdRow;
+    delete[] piColNo;
+
+    this->mLp->SetAddRowmode(false);
+
+    NMDebugCtx(ctxNMMosra, << "done!");
+    return 1;
+}
+
+int
+NMMosra::calcBaseline(void)
+{
+    MosraLogDebug(<< "Calculating baseline performance ... ");
+
+    int ret = 0;
+    QStringList criteria = mmslCriteria.keys();
+    foreach(const QString& cri, criteria)
+    {
+        QString colname = QString("%1_CUR").arg(cri);
+        mDataSet->addColumn(colname, NMMosraDataSet::NM_MOSRA_DATATYPE_DOUBLE);
+    }
+
+    if (mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_OTBTAB)
+    {
+        otb::AttributeTable::Pointer otbtab = mDataSet->getOtbAttributeTable();
+        if (otbtab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE)
+        {
+            ret = calcBaselineDb();
+        }
+    }
+    else if (mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_QTSQL)
+    {
+        ret = calcBaselineQtSql();
+    }
+    else if (mDataSet->getDataSetType() == NMMosraDataSet::NM_MOSRA_DS_VTKDS)
+    {
+        ret = calcBaselineTab();
+    }
+
+    return ret;
+
+    MosraLogDebug(<< "Done with baseline performance!");
+}
+
+int
+NMMosra::calcBaselineQtSql(void)
+{
+    int ret = 1;
+
+    QSqlTableModel* sqlMod = mDataSet->getQSqlTableModel();
+    QSqlDatabase db = sqlMod->database();
+    QSqlDriver* drv = db.driver();
+
+    QString sOptFeatCond = "";
+    if (!this->msOptFeatures.isEmpty())
+    {
+        sOptFeatCond = QString(" and %1 == 1 ")
+                .arg(drv->escapeIdentifier(this->msOptFeatures, QSqlDriver::FieldName));
+    }
+
+    db.transaction();
+    QStringList criteria = mmslCriteria.keys();
+    foreach(const QString& cri, criteria)
+    {
+        const QStringList scorefields = mmslCriteria[cri];
+
+        QString colname = QString("%1_CUR").arg(cri);
+        QString qStr = QString("UPDATE %1 SET %2 = CASE ")
+                .arg(drv->escapeIdentifier(sqlMod->tableName(), QSqlDriver::TableName))
+                .arg(drv->escapeIdentifier(colname, QSqlDriver::FieldName));
+
+        QString vStr;
+        foreach(const QString& luopt, mslOptions)
+        {
+            const int fidx = mslOptions.indexOf(luopt);
+            vStr += QString("WHEN %1 == '%2' %3 then %4 * %5 ")
+                    .arg(drv->escapeIdentifier(this->msLandUseField, QSqlDriver::FieldName))
+                    .arg(luopt)
+                    .arg(sOptFeatCond)
+                    .arg(drv->escapeIdentifier(scorefields.at(fidx), QSqlDriver::FieldName))
+                    .arg(drv->escapeIdentifier(this->msAreaField, QSqlDriver::FieldName));
+        }
+        vStr += QString("ELSE 0.0 END;");
+        qStr += vStr;
+
+        QSqlQuery q(db);
+        if (!q.exec(qStr))
+        {
+            MosraLogError(<< "Failed updating baseline performance for criterion '"
+                          << cri.toStdString() << "'!");
+            ret = 0;
+        }
+        q.finish();
+    }
+    db.commit();
+
+    return ret;
+}
+
+int
+NMMosra::calcBaselineTab(void)
+{
+    // what we do ...
+    // for each parcel
+    //    for each criterion
+    //       - get current land use
+    //       - work out performance of land use (area * criterion performance)
+    //
+
+    int luArIdx = mDataSet->getColumnIndex(this->msLandUseField);
+    int areaArIdx = mDataSet->getColumnIndex(this->msAreaField);
+    int holeArIdx = mDataSet->getColumnIndex("nm_hole");
+    int optFeatArIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+
+    long lNumCells = mDataSet->getNumRecs();
+
+    QStringList criteria = mmslCriteria.keys();
+
+    for (long cell=0; cell < lNumCells; ++cell)
+    {
+        QString landuse = mDataSet->getStrValue(luArIdx, cell);
+        landuse = landuse.trimmed();
+        const int fidx = mslOptions.indexOf(landuse);
+        double area = mDataSet->getDblValue(areaArIdx, cell);
+
+        if (    mDataSet->getIntValue(holeArIdx, cell) == 1
+             || (optFeatArIdx != -1 && mDataSet->getIntValue(optFeatArIdx, cell) == 0)
+           )
+        {
+            area = 0.0;
+        }
+
+        foreach(const QString& cri, criteria)
+        {
+            const QString colname = QString("%1_CUR").arg(cri);
+            const QStringList scorefields = mmslCriteria[cri];
+            double scoreha = fidx >= 0 ? mDataSet->getDblValue(scorefields.at(fidx), cell) : 0.0;
+
+            mDataSet->setDblValue(colname, cell, scoreha * area);
+        }
+    }
+	return 1;
+}
+
+int NMMosra::calcBaselineDb(void)
+{
+    otb::SQLiteTable::Pointer sqltab = dynamic_cast<otb::SQLiteTable*>(this->mDataSet->getOtbAttributeTable().GetPointer());
+
+    long long lNumCells = sqltab->GetNumRows();
+
+    std::vector< std::string > getnames = {this->msLandUseField.toStdString(),
+                                           this->msAreaField.toStdString()};
+    std::vector< otb::AttributeTable::TableColumnType > gettypes = {otb::AttributeTable::ATTYPE_STRING,
+                                                                    otb::AttributeTable::ATTYPE_DOUBLE};
+
+    bool optFeat = false;
+    if (!this->msOptFeatures.isEmpty())
+    {
+        getnames.push_back(this->msOptFeatures.toStdString());
+        gettypes.push_back(otb::AttributeTable::ATTYPE_INT);
+
+        optFeat = true;
+    }
+
+    std::vector< std::string > setnames;
+    std::vector< otb::AttributeTable::ColumnValue > setvalues;
+
+    const QStringList criteria = this->mmslCriteria.keys();
+    foreach(const QString& cri, criteria)
+    {
+        const QString setcolname = QString("%1_CUR").arg(cri);
+        setnames.push_back(setcolname.toStdString());
+        otb::AttributeTable::ColumnValue cval;
+        cval.type = otb::AttributeTable::ATTYPE_DOUBLE;
+        setvalues.push_back(cval);
+
+        const QVector<QString> scorefields = mmslCriteria[cri].toVector();
+        for (int f=0; f < scorefields.size(); ++f)
+        {
+            getnames.push_back(scorefields.at(f).toStdString());
+            gettypes.push_back(otb::AttributeTable::ATTYPE_DOUBLE);
+        }
+    }
+
+
+    sqltab->PrepareBulkGet(getnames);
+    sqltab->PrepareBulkSet(setnames);
+    sqltab->BeginTransaction();
+
+    std::vector< otb::AttributeTable::ColumnValue > getvalues;
+    getvalues.resize(gettypes.size());
+
+    const int luoffset = optFeat == true ? 3 : 2;
+    for (int cell=0; cell < lNumCells; ++cell)
+    {
+        if (!sqltab->DoBulkGet(getvalues))
+        {
+            MosraLogError( << "failed calculating the baseline performance!");
+            return 0;
+        }
+
+        bool optrow = true;
+        if (optFeat && getvalues.at(2).ival == 0)
+        {
+            optrow = false;
+        }
+
+        double area = getvalues.at(1).dval;
+        const QString& landuse = static_cast<const char*>(getvalues.at(0).tval);
+        const int luidx = mslOptions.indexOf(landuse);
+
+        int cricount=0;
+        foreach(const QString& cri, criteria)
+        {
+            if (optrow && luidx >= 0)
+            {
+                double scoreha = getvalues.at(luidx + luoffset).dval;
+                setvalues[cricount].dval = scoreha * area;
+            }
+            else
+            {
+                setvalues[cricount].dval = 0.0;
+            }
+
+            ++cricount;
+        }
+
+        if (!sqltab->DoBulkSet(setvalues, cell))
+        {
+            MosraLogError( << "failed calculating the baseline performance!");
+            return 0;
+        }
+    }
+    sqltab->EndTransaction();
+
+    // clean up
+    //    for (int vv=0; vv < getvalues.size(); ++vv)
+    //    {
+    //        if (getvalues.at(vv).type == otb::AttributeTable::ATTYPE_STRING)
+    //        {
+    //            delete[] (getvalues[vv].tval);
+    //        }
+    //    }
+
+    return 1;
+}
+
 vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeMatrix)
 {
 	NMDebugCtx(ctxNMMosra, << "...");
 
     MosraLogDebug(<< "getting input arrays (attributes) ..." << std::endl);
 	// get hold of the input attributes we need
-//	vtkDataSet* ds = const_cast<vtkDataSet*>(this->mDataSet);
-//	vtkDataSetAttributes* dsAttr = ds->GetAttributes(vtkDataSet::CELL);
-//	vtkDataArray* holeAr = dsAttr->GetArray("nm_hole");
-//	vtkDataArray* areaAr = dsAttr->GetArray(this->msAreaField.toStdString().c_str());
-//	vtkStringArray* luAr = vtkStringArray::SafeDownCast(dsAttr->GetAbstractArray(
-//			this->msLandUseField.toStdString().c_str()));
 
-    int luArIdx = mDataSet->getColumnIndex(this->msLandUseField);
-    int areaArIdx = mDataSet->getColumnIndex(this->msAreaField);
-    bool hole = mDataSet->hasColumn("nm_hole");
+//    int luArIdx = mDataSet->getColumnIndex(this->msLandUseField);
+//    int areaArIdx = mDataSet->getColumnIndex(this->msAreaField);
+//    bool hole = mDataSet->hasColumn("nm_hole");
 
-//	vtkStringArray* optStrAr = vtkStringArray::SafeDownCast(dsAttr->GetAbstractArray("OPT_STR"));
-//    if (optStrAr == 0)
-    int optStrArIdx = mDataSet->getColumnIndex("OPT_STR");
-    if (optStrArIdx == -1)
-	{
-        MosraLogError( << "failed to fetch result array 'OPT_STR'!");
-		return 0;
-	}
+//    int optStrArIdx = mDataSet->getColumnIndex("OPT_STR");
+//    if (optStrArIdx == -1)
+//	{
+//        MosraLogError( << "failed to fetch result array 'OPT_STR'!");
+//		return 0;
+//	}
 
-//	QList<vtkDataArray*> optValArs;
-    QList<int> optValArsIdx;
-	for (int option=0; option < this->miNumOptions; ++option)
-	{
-		QString arName = QString(tr("OPT%1_VAL")).arg(option+1);
-//		vtkDataArray* optvalar = dsAttr->GetArray(arName.toStdString().c_str());
-//		if (optvalar == 0)
-        int idx = mDataSet->getColumnIndex(arName);
-        if (idx == -1)
-		{
-            MosraLogError( << "failed to fetch result array '"
-					<< arName.toStdString().c_str() << "'!");
-			return 0;
-		}
-//		optValArs.append(optvalar);
-        optValArsIdx.append(idx);
-	}
+//    QList<int> optValArsIdx;
+//	for (int option=0; option < this->miNumOptions; ++option)
+//	{
+//		QString arName = QString(tr("OPT%1_VAL")).arg(option+1);
+//        int idx = mDataSet->getColumnIndex(arName);
+//        if (idx == -1)
+//		{
+//            MosraLogError( << "failed to fetch result array '"
+//					<< arName.toStdString().c_str() << "'!");
+//			return 0;
+//		}
+//        optValArsIdx.append(idx);
+//	}
 
     /* ##################################################################################
      *                          CREATE PERFORMANCE SUMMARY TABLE
@@ -4190,30 +6268,167 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 //	 *  mixed      |
 	 *  total      |
 	 *
+     *
+     * ---------------------------
+     * column identifiers for columnvalues
+     *
+     *
+     *
+     * 01: curLU       cur resource: luopt
+     * 02: optLU       opt resource: opt_str
+     * 03: cellArea    AreaHa
+     * 04: optArea     opt<x>_val
+     * 05: .
+     * 06: .
+     * 07: .
+     * 08: sumZones    zoneArrayColumn<x> (mslPerfSumZones)
+     * 09: .
+     * 10: .
+     * 11: <EV_cri 1>     evalfield<x> mmslEvalFields
+     * 12: .
+     * 13: .
+     * 14: .
+     * 15: <EV_cri 2>     evalfields<x> ...
+     * 16: .
+     *   : .
+     *   : <PS_cri 1>  performance score field<x> ...
+     *   : .
+     *   : .
+     *   : <PS_cri 2>  performance score field<x> ....
+     *
+     *
+     *
+     * 17: .
+     * 18: .
+     * 19: <inc 1>     incField<x>
+     * 20: <inc 2>     incField<x>
+     * 21: <BL_cri_1>  baseline performance of cri 1
+     * 22: <BL_cri_2>  baseline performance of cri 2
+     * 23: .
+     * 24: .
+     * 25: hole       nm_hole
+     * 26: msOptFeatures    OPT_FEATURES identifier
+     *
 	 */
 
     MosraLogDebug(<< "creating the results table..." << std::endl);
+
+    // preparing some variables required later on
+    QVariant sval(QVariant::String);
+    QMap<QString, int> valOffsets;
+    QVariantList colvalues;
+    QStringList colnames;
+    colnames << this->msLandUseField << "OPT_STR" << this->msAreaField;
+    colvalues << sval << sval << QVariant::Double;
+    valOffsets.insert("curLU", 0);
+    valOffsets.insert("optLU", 1);
+    valOffsets.insert("cellArea", 2);
+
+    valOffsets.insert("optArea", colvalues.size());
+    for (int opt=0; opt < this->miNumOptions; ++opt)
+    {
+        const QString cname = QString("OPT%1_VAL").arg(opt+1);
+        colnames << cname;
+        colvalues << QVariant::Double;
+    }
 
 	// determine the number of rows and columns
 	//int resNumCols = (this->mmslCriteria.size() + this->mmslCriCons.size()) * 3 +1;
 
 	// we sum over each resource option (land use), all mixed landuses (mixed) and
 	// the overall total
-	//int resNumRows = this->miNumOptions + 2; // with mixed
-	int resNumRows = this->miNumOptions + 1;   // without mixed
+    int resNumRows = this->miNumOptions + 1;   // without mixed
 
     // note: each zone defines an <zone>:IN and <zone>:OUT zone
     // (expecting boolean values {0,1})
 
     int numZones = 1; // we've got at leat the total area!
-    for (int nz=0; nz < this->mslPerfSumZones.size(); ++nz)
+    if (this->mslPerfSumZones.size() > 0)
     {
-        resNumRows  += this->miNumOptions + 1;
-        numZones += 1;
+        valOffsets.insert("sumZones", colvalues.size());
+        for (int nz=0; nz < this->mslPerfSumZones.size(); ++nz)
+        {
+            resNumRows  += this->miNumOptions + 1;
+            numZones += 1;
+
+            colnames << this->mslPerfSumZones.at(nz);
+            colvalues << QVariant::Double;
+        }
     }
 
-//	long ncells = holeAr->GetNumberOfTuples();
-    long ncells = mDataSet->getNumRecs();
+    QMap<QString, QStringList>::const_iterator efit =
+            this->mmslEvalFields.constBegin();
+    for (; efit != this->mmslEvalFields.constEnd(); ++efit)
+    {
+        const QString& evlKey = QString("EV_%1").arg(efit.key());
+        valOffsets.insert(evlKey, colvalues.size());
+        for (int p=0; p < efit.value().size(); ++p)
+        {
+            colnames << efit.value().at(p);
+            colvalues << QVariant::Double;
+        }
+    }
+
+    QMap<QString, QStringList>::const_iterator psit =
+            this->mmslCriteria.constBegin();
+    for (; psit != this->mmslCriteria.constEnd(); ++psit)
+    {
+        const QString& psKey = QString("PS_%1").arg(psit.key());
+        valOffsets.insert(psKey, colvalues.size());
+        for (int p=0; p < psit.value().size(); ++p)
+        {
+            colnames << psit.value().at(p);
+            colvalues << QVariant::Double;
+        }
+    }
+
+    QMap<QString, QStringList>::const_iterator incIt =
+            this->mmslIncentives.constBegin();
+    for (; incIt != this->mmslIncentives.constEnd(); ++incIt)
+    {
+        valOffsets.insert(incIt.key(), colvalues.size());
+        colnames << incIt.value().at(0);
+        colvalues << QVariant::Double;
+    }
+
+    // add current performance score fields;
+    // only applicable and available when incentives
+    // have been specified for the given scenario
+    if (this->mmslIncentives.size() > 0)
+    {
+        const QStringList& criteria = this->mmslCriteria.keys();
+        foreach(const QString& cri, criteria)
+        {
+            const QString blname = QString("BL_%1").arg(cri);
+            valOffsets.insert(blname, colvalues.size());
+            const QString curname = QString("%1_CUR").arg(cri);
+            colnames << curname;
+            colvalues << QVariant::Double;
+        }
+    }
+
+    const bool hole = mDataSet->hasColumn("nm_hole");
+    if (hole)
+    {
+        valOffsets.insert("hole", colvalues.size());
+        colnames << "nm_hole";
+        colvalues << QVariant::Int;
+    }
+
+    const bool optFeat = mDataSet->hasColumn(this->msOptFeatures);
+    if (optFeat)
+    {
+        valOffsets.insert(this->msOptFeatures, colvalues.size());
+        colnames << this->msOptFeatures;
+        colvalues << QVariant::Int;
+    }
+
+
+
+
+    //----------------------------------
+
+    const long ncells = mDataSet->getNumRecs();
 
 	vtkSmartPointer<vtkTable> restab = vtkSmartPointer<vtkTable>::New();
 	restab->SetNumberOfRows(resNumRows);
@@ -4290,7 +6505,7 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 	{
 		for (int s=0; s < colsuffix.size(); ++s)
 		{
-			QString colname = QString(tr("e_%1_%2")).arg(criit.key()).arg(colsuffix[s]);
+            QString colname = QString(tr("%1_%2")).arg(criit.key()).arg(colsuffix[s]);
 			vtkSmartPointer<vtkDoubleArray> da = vtkSmartPointer<vtkDoubleArray>::New();
             da->SetName(colname.toLatin1());
 			da->SetNumberOfComponents(1);
@@ -4372,10 +6587,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 
     MosraLogDebug(<< "summarising results ..." << std::endl << std::endl);
 
-
-// don't need these really, and it only breaks the WIN32 compilation
-//	int ind = nmlog::nmindent + 1;
-//	int ind2 = ind+1;
+    mDataSet->beginTransaction();
+    mDataSet->prepareRowGet(colnames);
 
     int resRec = 0;
     int rec = 0;
@@ -4384,20 +6597,24 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 	// only after the final iteration, the table holds correct values;
 	for (long cell=0; cell < ncells; ++cell)
 	{
-		// don't tumble into holes
-//		if (holeAr->GetTuple1(cell))
-        if (hole && mDataSet->getIntValue("nm_hole", cell) == 1)
+        mDataSet->getRowValues(colvalues, cell);
+
+        // don't tumble into holes
+        //if (hole && mDataSet->getIntValue("nm_hole", cell) == 1)
+        if (    (hole && colvalues.at(valOffsets["hole"]).toInt() == 1)
+             || (optFeat && colvalues.at(valOffsets[this->msOptFeatures]).toInt() == 0)
+           )
         {
 			continue;
         }
 
 		// read the current and optimised resource
-//		QString curResource = (const char*)luAr->GetValue(cell);
-        QString curResource = mDataSet->getStrValue(luArIdx, cell);
+        //QString curResource = mDataSet->getStrValue(luArIdx, cell);
+        QString curResource = colvalues.at(valOffsets["curLU"]).toString();
 		// make sure, we're not fooled by any leading or trailing white spaces
 		curResource = curResource.simplified();
-//		QString optResource = (const char*)optStrAr->GetValue(cell);
-        QString optResource = mDataSet->getStrValue(optStrArIdx, cell);
+        //QString optResource = mDataSet->getStrValue(optStrArIdx, cell);
+        QString optResource = colvalues.at(valOffsets["optLU"]).toString();
 		QStringList optResList = optResource.split(tr(" "), QString::SkipEmptyParts);
 
         // ===============================================================================
@@ -4434,13 +6651,13 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
             double newValue = 0;
             if (toIdx.at(t) < this->miNumOptions)
             {
-//                newValue = optValArs.at(toIdx.at(t))->GetTuple1(cell);
-                newValue = mDataSet->getDblValue(optValArsIdx.at(toIdx.at(t)), cell);
+                //newValue = mDataSet->getDblValue(optValArsIdx.at(toIdx.at(t)), cell);
+                newValue = colvalues.at(valOffsets["optArea"]+toIdx.at(t)).toDouble();
             }
             else   // get the area value from the AreaHa field for 'other' land uses
             {
-//                newValue = areaAr->GetTuple1(cell);
-                newValue = mDataSet->getDblValue(areaArIdx, cell);
+                //newValue = mDataSet->getDblValue(areaArIdx, cell);
+                newValue = colvalues.at(valOffsets["cellArea"]).toDouble();
             }
 
             chngVal += newValue;
@@ -4464,19 +6681,17 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         {
             rec = zone * (this->miNumOptions+1);
 
-//            vtkDataArray* zoneAr = 0;
-            int zoneArIdx = -1;
+            //int zoneArIdx = -1;
+            //            if (zone >= 1)
+            //            {
+            //                zoneArIdx = mDataSet->getColumnIndex(mslPerfSumZones.at(zone-1));
+            //            }
+
+            //if (zoneArIdx >= 0)
             if (zone >= 1)
             {
-                zoneArIdx = mDataSet->getColumnIndex(mslPerfSumZones.at(zone-1));
-//                zoneAr = dsAttr->GetArray((const char*)mslPerfSumZones.at(zone-1).toStdString().c_str());
-            }
-
-//            if (zoneAr)
-            if (zoneArIdx >= 0)
-            {
-//                if (zoneAr->GetTuple1(cell) == 0)
-                if (mDataSet->getDblValue(zoneArIdx, cell) == 0)
+                //if (mDataSet->getDblValue(zoneArIdx, cell) == 0)
+                if (colvalues.at(valOffsets["sumZones"]+zone-1).toDouble() == 0)
                 {
                     continue;
                 }
@@ -4486,9 +6701,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
             for (int option=0; option < this->miNumOptions; ++option)
             {
                 // common vars
-//                vtkDataArray* evalAr;
-                int evalArIdx = -1;
-                QString evalField;
+                //int evalArIdx = -1;
+                //QString evalField;
                 double performanceValue;
 
                 // handle current land uses
@@ -4500,8 +6714,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                     //						this->mslOptions.at(option).toStdString() << "' ..." << endl);
 
                     // process area
-//                    curArea = areaAr->GetTuple1(cell);
-                    curArea = mDataSet->getDblValue(areaArIdx, cell);
+                    //curArea = mDataSet->getDblValue(areaArIdx, cell);
+                    curArea = colvalues.at(valOffsets["cellArea"]).toDouble();
                     curaccumArea = curArea + restab->GetValue(resRec, 1).ToDouble();
                     restab->SetValue(resRec,1, vtkVariant(curaccumArea));
 
@@ -4514,16 +6728,14 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                     int coloffset = 1;
                     for (; evalit != this->mmslEvalFields.constEnd(); ++evalit, ++coloffset)
                     {
-                        evalField = evalit.value().at(option);
+                        //evalField = evalit.value().at(option);
 
-                        //					NMDebugInd(ind2, << "checking criterion: " << evalit.key().toStdString() << endl);
+                        //evalArIdx = mDataSet->getColumnIndex(evalField);
 
-//                        evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
-                        evalArIdx = mDataSet->getColumnIndex(evalField);
+                        //performanceValue = mDataSet->getDblValue(evalArIdx, cell) * curArea +
 
-//                        performanceValue = evalAr->GetTuple1(cell) * curArea +
-//                                restab->GetValue(resRec, coloffset*4 + 1).ToDouble();
-                        performanceValue = mDataSet->getDblValue(evalArIdx, cell) * curArea +
+                        const QString& evKey = QString("EV_%1").arg(evalit.key());
+                        performanceValue = colvalues.at(valOffsets[evKey]+option).toDouble() * curArea +
                                 restab->GetValue(resRec, coloffset*4 + 1).ToDouble();
 
                         restab->SetValue(resRec, coloffset*4 + 1, vtkVariant(performanceValue));
@@ -4532,59 +6744,6 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                         //							<< " goes into row,col: " << option << ", " << (coloffset*4+1) << endl);
 
                     }
-                    //				NMDebug(<< endl);
-
-                    //                        // update the constraints evaluations
-                    //                        constrit =  this->mmslCriCons.constBegin();
-                    //                        coloffset = this->mmslEvalFields.size() + 1;
-                    //                        for (; constrit != this->mmslCriCons.constEnd(); ++constrit, ++coloffset)
-                    //                        {
-                    //                            //					NMDebugInd(ind2, << "checking attr cons: " << constrit.key().toStdString() << endl);
-
-                    //                            QMap<QString, QStringList>::const_iterator lufmap =
-                    //                                    constrit.value().constBegin();
-                    //                            for (; lufmap != constrit.value().constEnd(); ++lufmap)
-                    //                            {
-                    //                                //						NMDebugInd(2, << "land use field map: " << lufmap.key().toStdString() << " " << lufmap.value().join(tr(" ")).toStdString() << endl);
-
-                    //                                evalField = tr("");
-
-                    //                                // account for zoning
-                    //                                QStringList zonespec;
-                    //                                QString opt;
-                    //                                QString zone;
-                    //                                if (lufmap.key().contains(tr(":"), Qt::CaseInsensitive))
-                    //                                {
-                    //                                    zonespec = lufmap.key().split(tr(":"), QString::SkipEmptyParts);
-                    //                                    opt = zonespec.at(0);
-                    //                                    zone = zonespec.at(1);
-                    //                                }
-                    //                                else
-                    //                                {
-                    //                                    opt = lufmap.key();
-                    //                                    zone = "";
-                    //                                }
-
-                    //                                // identify the right field for looking up the performance value
-                    //                                if (opt.compare(tr("total"), Qt::CaseInsensitive) == 0)
-                    //                                    evalField = lufmap.value().at(option);
-                    //                                else if (opt.compare(this->mslOptions.at(option), Qt::CaseInsensitive) == 0)
-                    //                                    evalField = lufmap.value().at(0);
-
-
-                    //                                evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
-                    //                                if (evalAr == 0)
-                    //                                    continue;
-
-                    //                                performanceValue = evalAr->GetTuple1(cell) * curArea +
-                    //                                        restab->GetValue(resRec, coloffset*4 + 1).ToDouble();
-                    //                                restab->SetValue(resRec, coloffset*4 + 1, vtkVariant(performanceValue));
-
-                    //                                //						NMDebugInd(ind2, << "attr performance measure: " << performanceValue
-                    //                                //								<< " goes into row,col: " << option << ", " << (coloffset*4+1) << endl << endl);
-
-                    //                            }
-                    //                        }
                 }
                 //			NMDebug(<< endl);
 
@@ -4601,8 +6760,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                     //						this->mslOptions.at(option).toStdString() << "' ..." << endl);
 
                     // get the allocated area for this resource category
-//                    optArea = optValArs.at(option)->GetTuple1(cell);
-                    optArea = mDataSet->getDblValue(optValArsIdx.at(option), cell);
+                    //optArea = mDataSet->getDblValue(optValArsIdx.at(option), cell);
+                    optArea = colvalues.at(valOffsets["optArea"]+option).toDouble();
 
                     //				// track mixed land-use separately
                     //				if (optResList.size() > 1)
@@ -4629,74 +6788,39 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                     {
                         //					NMDebugInd(ind2, << "checking criterion: " << evalit.key().toStdString() << endl);
 
-                        evalField = evalit.value().at(option);
-//                        evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
-                        evalArIdx = mDataSet->getColumnIndex(evalField);
+                        //evalField = evalit.value().at(option);
+                        //evalArIdx = mDataSet->getColumnIndex(evalField);
 
-//                        performanceValue = evalAr->GetTuple1(cell) * optArea +
-//                                restab->GetValue(resTabRow, coloffset*4 + 2).ToDouble();
-                        performanceValue = mDataSet->getDblValue(evalArIdx, cell) * optArea +
+
+                        //performanceValue = mDataSet->getDblValue(evalArIdx, cell) * optArea +
+                        const QString& evKey = QString("EV_%1").arg(evalit.key());
+                        performanceValue = colvalues.at(valOffsets[evKey]+option).toDouble() * optArea +
                                 restab->GetValue(resTabRow, coloffset*4 + 2).ToDouble();
+
+                        // account for incentives, if applicable
+                        QMap<QString, QStringList>::const_iterator incnamesIt = this->mIncNamePair.constBegin();
+                        for (; incnamesIt != this->mIncNamePair.constEnd(); ++incnamesIt)
+                        {
+                            // check whether the currently processed criterion benefits from
+                            // incentivised reduction of another criterion
+                            if (incnamesIt.value().at(0).compare(evalit.key(), Qt::CaseInsensitive) == 0)
+                            {
+                                const QString& blkey = QString("BL_%1").arg(incnamesIt.value().at(1));
+                                const QString& pskey = QString("PS_%1").arg(incnamesIt.value().at(1));
+
+                                const double perfscore = colvalues.at(valOffsets[pskey]+option).toDouble();
+                                const double baseline = colvalues.at(valOffsets[blkey]).toDouble();
+                                const double incentive = colvalues.at(valOffsets[incnamesIt.key()]).toDouble();
+                                const double reduction = std::max((baseline - optArea * perfscore), 0.0);
+                                performanceValue +=  reduction * incentive;
+                            }
+                        }
+
                         restab->SetValue(resTabRow, coloffset*4 + 2, vtkVariant(performanceValue));
 
                         //					NMDebugInd(ind2, << "performance measure: " << performanceValue
                         //							<< "goes into row,col: " << resTabRow << ", " << (coloffset*4+2) << endl);
                     }
-
-                    //                        // update the constraints evaluations
-                    //                        constrit =  this->mmslCriCons.constBegin();
-                    //                        coloffset = this->mmslEvalFields.size() + 1;
-                    //                        for (; constrit != this->mmslCriCons.constEnd(); ++constrit, ++coloffset)
-                    //                        {
-                    //                            //					NMDebugInd(ind2, << "checking attr cons: " << constrit.key().toStdString() << endl);
-
-                    //                            QMap<QString, QStringList>::const_iterator lufmap =
-                    //                                    constrit.value().constBegin();
-                    //                            for (; lufmap != constrit.value().constEnd(); ++lufmap)
-                    //                            {
-
-                    //                                //						NMDebugInd(2, << "land use field map: " << lufmap.key().toStdString() << " " << lufmap.value().join(tr(" ")).toStdString() << endl);
-
-                    //                                evalField = tr("");
-
-                    //                                // account for zoning
-                    //                                QStringList zonespec;
-                    //                                QString opt;
-                    //                                QString zone;
-                    //                                if (lufmap.key().contains(tr(":"), Qt::CaseInsensitive))
-                    //                                {
-                    //                                    zonespec = lufmap.key().split(tr(":"), QString::SkipEmptyParts);
-                    //                                    opt = zonespec.at(0);
-                    //                                    zone = zonespec.at(1);
-                    //                                }
-                    //                                else
-                    //                                {
-                    //                                    opt = lufmap.key();
-                    //                                    zone = "";
-                    //                                }
-
-                    //                                if (optResList.contains(opt, Qt::CaseInsensitive))
-                    //                                {
-
-                    //                                    if (opt.compare(tr("total"), Qt::CaseInsensitive) == 0)
-                    //                                        evalField = lufmap.value().at(option);
-                    //                                    else if (opt.compare(this->mslOptions.at(option), Qt::CaseInsensitive) == 0)
-                    //                                        evalField = lufmap.value().at(0);
-
-                    //                                    evalAr = dsAttr->GetArray(evalField.toStdString().c_str());
-                    //                                    if (evalAr == 0)
-                    //                                        continue;
-
-                    //                                    performanceValue = evalAr->GetTuple1(cell) * optArea +
-                    //                                            restab->GetValue(resTabRow, coloffset*4 + 2).ToDouble();
-                    //                                    restab->SetValue(resTabRow, coloffset*4 + 2, vtkVariant(performanceValue));
-
-                    //                                    //						NMDebugInd(ind2, << "attr performance measure: " << performanceValue
-                    //                                    //								<< "goes into row,col: " << resTabRow << ", " << (coloffset*4+2) << endl << endl);
-
-                    //                                }
-                    //                            }
-                    //                        }
                 }
                 ++resRec;
             }
@@ -4707,6 +6831,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 			NMDebug(<< ".");
 		}
 	}
+    mDataSet->endTransaction();
+
 	NMDebug(<< " finished!" << std::endl);
 
     // ===============================================================================

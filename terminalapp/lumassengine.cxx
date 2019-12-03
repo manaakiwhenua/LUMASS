@@ -188,8 +188,21 @@ void doMOSObatch(const QString& losFileName)
 
 	if (!dsinfo.isReadable())
 	{
-		NMErr(ctx, << "Could not read file '" << dsFileName.toStdString() << "'!");
-		return;
+        NMWarn(ctx, << "Could not read file '" << dsFileName.toStdString() << "'!");
+        dsFileName = QString("%1/%2.ldb").arg(mosra->getDataPath())
+                .arg(mosra->getLayerName());
+        NMMsg(<< "Trying this file '" << dsFileName.toStdString() << "' instead ...");
+
+        dsinfo.setFile(dsFileName);
+        if (!dsinfo.isReadable())
+        {
+            NMErr(ctx, << "Could not read file '" << dsFileName.toStdString() << "'!");
+            return;
+        }
+        else
+        {
+            NMMsg(<< "... and it worked!");
+        }
 	}
 
 
@@ -234,6 +247,7 @@ void doMOSObatch(const QString& losFileName)
                     chunksize += rest;
 
                 MOSORunnable* m = new MOSORunnable();
+				m->setLogger(const_cast<NMLogger*>(NMLoggingProvider::This()->getLogger()));
                 m->setData(dsFileName, mosra->getLosFileName(),
                         item, levels, runstart, chunksize);
                 QThreadPool::globalInstance()->start(m);
@@ -251,6 +265,7 @@ void doMOSObatch(const QString& losFileName)
             {
                 QList<float> itemUncertainties = levels.at(l);
                 MOSORunnable* m = new MOSORunnable();
+                m->setLogger(const_cast<NMLogger*>(NMLoggingProvider::This()->getLogger()));
                 m->setData(dsFileName, mosra->getLosFileName(),
                         item, itemUncertainties, 1, 1);
                 QThreadPool::globalInstance()->start(m);
@@ -265,20 +280,39 @@ void doMOSOsingle(const QString& losFileName)
     QScopedPointer<NMMosra> mosra(new NMMosra());
     mosra->setLogger(NMLoggingProvider::This()->getLogger());
     mosra->loadSettings(losFileName);
-    QString dsFileName = QString("%1/%2.vtk").arg(mosra->getDataPath())
-            .arg(mosra->getLayerName());
 
-    QFileInfo dsinfo(dsFileName);
+    QStringList ltypes;
+    ltypes << "vtk" << "ldb" << "db" << "sqlite";
+
+    QString dsFileName;
+    QFileInfo dsinfo;
+    for (int t=0; t < ltypes.size(); ++t)
+    {
+        dsFileName = QString("%1/%2.%3")
+                .arg(mosra->getDataPath())
+                .arg(mosra->getLayerName())
+                .arg(ltypes.at(t));
+
+        dsinfo.setFile(dsFileName);
+        if (dsinfo.isReadable())
+        {
+            break;
+        }
+        dsFileName.clear();
+    }
 
     if (!dsinfo.isReadable())
     {
-        NMErr(ctx, << "Could not read file '" << dsFileName.toStdString() << "'!");
+        NMErr(ctx, << "Could not read file '" << mosra->getDataPath().toStdString() << "/"
+                                              << mosra->getLayerName().toStdString() << ".*' !"
+                                              << "'!");
         return;
     }
 
     QList<float> levels;
     levels << 0;
     MOSORunnable* m = new MOSORunnable();
+    m->setLogger(const_cast<NMLogger*>(NMLoggingProvider::This()->getLogger()));
     m->setData(dsFileName, mosra->getLosFileName(),
                "", levels, 1, 1);
     QThreadPool::globalInstance()->start(m);
@@ -398,7 +432,8 @@ bool isFileAccessible(const QString& fileName)
     QFileInfo losInfo(fileName);
     if (!losInfo.isReadable())
     {
-        NMErr(ctx, << "Specified file could not be read!");
+        NMErr(ctx, << "Specified file '" << fileName.toStdString()
+                   << "' could not be read!");
         return false;
     }
 

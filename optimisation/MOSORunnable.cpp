@@ -21,9 +21,13 @@
 #include "vtkDataSet.h"
 #include "vtkTable.h"
 #include "vtkDelimitedTextWriter.h"
-#include "lumassengine.h"
+
+#include "otbSQLiteTable.h"
+
+//#include "lumassengine.h"
 
 MOSORunnable::MOSORunnable()
+	: mLogger(nullptr)
 {
 	// TODO Auto-generated constructor stub
 
@@ -49,12 +53,62 @@ MOSORunnable::setData(QString dsfileName,
 	mNumRuns = numruns;
 }
 
+bool
+MOSORunnable::loadDataSet(NMMosra* mosra)
+{
+    if (mDsFileName.isEmpty())
+    {
+        return false;
+    }
+
+    QFileInfo dsInfo(mDsFileName);
+    if (!dsInfo.isReadable())
+    {
+        return false;
+    }
+
+    QStringList dbFormats;
+    dbFormats << "ldb" << "db" << "sqlite";
+
+    const QString suffix = dsInfo.suffix();
+    if (suffix.compare("vtk") == 0)
+    {
+        vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
+        reader->SetFileName(mDsFileName.toStdString().c_str());
+
+        reader->Update();
+
+        vtkPolyData* pd = reader->GetOutput();
+        if (pd == nullptr)
+        {
+            return false;
+        }
+
+        mosra->setDataSet(pd);
+    }
+    else if (dbFormats.contains(suffix, Qt::CaseInsensitive))
+    {
+        otb::SQLiteTable::Pointer stab = otb::SQLiteTable::New();
+        if (!stab->openAsInMemDb(mDsFileName.toStdString(), ""))
+        {
+            return false;
+        }
+
+        mosra->setDataSet(stab.GetPointer());
+    }
+
+    return true;
+}
+
 void
 MOSORunnable::run()
 {
 	QScopedPointer<NMMosra> mosra(new NMMosra());
-    NMLogger* mLogger = const_cast<NMLogger*>(NMLoggingProvider::This()->getLogger());
-    mosra->setLogger(mLogger);
+    //NMLogger* mLogger = const_cast<NMLogger*>(NMLoggingProvider::This()->getLogger());
+	if (mLogger != nullptr)
+	{
+		mosra->setLogger(mLogger);
+	}
 
 	int startIdx = mStartIdx;
 	int numruns = mNumRuns;
@@ -71,27 +125,34 @@ MOSORunnable::run()
             level = QString("%1+%2").arg(level).arg(mflLevels.at(l));
         }
     }
+
+
 	QString dsfileName = mDsFileName;
-	QString losSettingsFileName = mLosFileName;
+    QFileInfo dsInfo(dsfileName);
+
+    QString losSettingsFileName = mLosFileName;
 	QString perturbItem = mPerturbItem;
 
-	NMMsg(<< "Starting run=" << startIdx);
+    NMMsg(<< "Starting run=" << startIdx);
 
-	QFileInfo dsInfo(dsfileName);
 
     for (int runs=startIdx; runs <= (numruns+startIdx-1); ++runs)
 	{
 		NMDebugAI(<< endl << "******** PERTURBATION #" << runs << " *************" << endl);
 		// load the file with optimisation settings
 		mosra->loadSettings(losSettingsFileName);
+        if (!loadDataSet(mosra.data()))
+        {
+            return;
+        }
 
-		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
-		reader->SetFileName(dsfileName.toStdString().c_str());
+        //		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
+        //		reader->SetFileName(dsfileName.toStdString().c_str());
 
-		reader->Update();
+        //		reader->Update();
 
-		vtkPolyData* pd = reader->GetOutput();
-		mosra->setDataSet(pd);
+        //		vtkPolyData* pd = reader->GetOutput();
+        //		mosra->setDataSet(pd);
         if (!mPerturbItem.isEmpty())
         {
             // bail out, if perturbation doesn't go to plan!
@@ -190,14 +251,13 @@ MOSORunnable::run()
         // --------------------------------------------------------------------------
 
         mosra->setTimeOut(mosra->getTimeOut());
-        mosra->getLp()->WriteLp(lpName.toStdString());
         if (!mosra->solveLp())
         {
             mosra->writeReport(sRepName);
 			continue;
         }
+        mosra->getLp()->WriteLp(lpName.toStdString());
         mosra->writeReport(sRepName);
-
 
 		if (!mosra->mapLp())
 			continue;
@@ -205,7 +265,7 @@ MOSORunnable::run()
         vtkSmartPointer<vtkTable> chngmatrix;
         vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
 
-		vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
+        vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");
 
         // ------------------------------------------------------
@@ -218,7 +278,7 @@ MOSORunnable::run()
         int r = 0;
         while(r < nrows)
         {
-            if (hole->GetValue(r))
+            if (hole != nullptr && hole->GetValue(r))
             {
                 tab->RemoveRow(r);
                 --nrows;
@@ -233,7 +293,6 @@ MOSORunnable::run()
         tab->RemoveColumnByName("nm_id");
         tab->RemoveColumnByName("nm_hole");
         tab->RemoveColumnByName("nm_sel");
-
 
         writer->SetInputData(tab);
 		writer->SetFileName(perturbName.toStdString().c_str());
@@ -280,7 +339,6 @@ MOSORunnable::run()
         writer->SetInputData(sumres);
         writer->SetFileName(relName.toStdString().c_str());
         writer->Update();
-
 
 		writer->Delete();
 	}

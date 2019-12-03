@@ -461,6 +461,14 @@ void HLpHelper::SetPresolve(int presolveFlags, int maxloops)
     set_presolve(this->m_pLp, presolveFlags, maxloops);
 }
 
+void HLpHelper::SetScaling(int scalemode)
+{
+    if (this->CheckLp())
+    {
+        set_scaling(this->m_pLp, scalemode);
+    }
+}
+
 void HLpHelper::SetMinim()
 {
 	//check valid lp

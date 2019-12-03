@@ -43,16 +43,13 @@
 #ifndef NMMOSRA_H_
 #define NMMOSRA_H_
 
-//#include "nmlog.h"
-//#define ctxNMMosra "NMMosra"
-
 #include <QObject>
 #include <QMap>
 #include <QStringList>
-//#include <QStandardItemModel>
+#include <QSqlTableModel>
+#include <QSqlQuery>
 
 #include "LpHelper.h"
-//#include "NMLayer.h"
 
 #include "vtkSmartPointer.h"
 #include "vtkTable.h"
@@ -76,6 +73,8 @@ public:
     NMMosraDataSet(QObject* parent=0);
     ~NMMosraDataSet(){}
 
+    void reset();
+
     enum NMMosraDataSetDataType
     {
         NM_MOSRA_DATATYPE_INT = 0,
@@ -87,6 +86,7 @@ public:
     {
         NM_MOSRA_DS_VTKDS = 0,
         NM_MOSRA_DS_OTBTAB,
+        NM_MOSRA_DS_QTSQL,
         NM_MOSRA_DS_NONE
     };
 
@@ -97,16 +97,22 @@ public:
 
     void setDataSet(vtkDataSet* vtkds);
     void setDataSet(otb::AttributeTable::Pointer otbtab);
+    void setDataSet(QSqlTableModel *sqlmod);
 
-    otb::AttributeTable::Pointer getAttributeTable(void)
+    otb::AttributeTable::Pointer getOtbAttributeTable(void)
         {return mOtbTab;}
     vtkDataSet* getVtkDataSet(void)
         {return mVtkDS;}
+    QSqlTableModel* getQSqlTableModel(void)
+        {return mSqlMod;}
 
-    bool hasColumn(const QString& columnName);
+
     int  getColumnIndex(const QString& colName);
+    QString getColumnName(const int& idx);
+    bool hasColumn(const QString& columnName);
     void addColumn(const QString& colName,
                    NMMosraDataSetDataType type);
+    NMMosraDataSetDataType getColumnType(const QString& colname);
 
     int  getNumRecs();
     double getDblValue(const QString& columnName, int row);
@@ -122,14 +128,51 @@ public:
     void setDblValue(const QString& colname, int row, double value);
     void setStrValue(const QString& colname, int row, const QString& value);
 
+    void setProcObj(itk::ProcessObject* procObj) {mProcObj = procObj;}
+    void setLogger(NMLogger* logger) {mLogger = logger;}
+
+    /*! for DB-based datasets */
+
+    /*! for db-based datasets starts/ends a transaction */
+    bool beginTransaction();
+    bool endTransaction();
+    void rollBack();
+
+    bool prepareRowUpdate(const QStringList& colnames, bool bInsert);
+    bool updateRow(const QVariantList& values, const int& row=-1);
+
+    bool prepareRowGet(const QStringList& colnames);
+    bool getRowValues(QVariantList& values, const int& row);
+
+    void setTableName(const QString& name) {mTableName = name;}
 
 protected:
 
+    QString getNMPrimaryKey();
+    QVariant getQSqlTableValue(const QString& column, int row);
+
+    QMap<QString, NMMosraDataSetDataType> mColTypes;
     NMMosraDataSetType mType;
 
     vtkDataSet* mVtkDS;
     otb::AttributeTable::Pointer mOtbTab;
+    QSqlTableModel* mSqlMod;
 
+    itk::ProcessObject* mProcObj;
+    NMLogger* mLogger;
+
+    QList<int> mRowUpdateColumnIndices;
+    QStringList mRowUpdateColumns;
+    QStringList mRowGetColumns;
+    QSqlQuery mRowUpdateQuery;
+    QSqlQuery mRowGetQuery;
+
+    QString mTableName;
+    QString mPrimaryKey;
+
+    QVector<QSqlQuery> mGetColValueQueries;
+
+    bool mbTransaction;
 };
 
 
@@ -144,7 +187,7 @@ class NMMosra : public QObject
 	Q_ENUMS(NMMosoDVType)
 	Q_ENUMS(NMMOsoScalMeth)
 
-friend class NMMosraDataSet;
+//friend class NMMosraDataSet;
 
 public:
 	NMMosra(QObject* parent=0);
@@ -170,18 +213,31 @@ public:
      */
 	int loadSettings(QString fileName);
 
-    /*! parses the settings and makes them meaningful to NMMosra*/
+    /*! parses the optimisation settings from a string and makes them meaningful to NMMosra*/
     int parseStringSettings(QString strSettings);
 
 	QString getLayerName(void);
 
-    void setLogger(NMLogger* logger){mLogger = logger;}
+    void setLogger(NMLogger* logger);
 
-    void setItkProcessObject(itk::ProcessObject* obj)
-        {mProcObj = obj;}
+    void setItkProcessObject(itk::ProcessObject* obj);
 
+    /*! stores the filename of the settings file with this object,
+        doesn't do anything else, i.e. doesn't parse of othewise checks
+        the file for accessibility etc.
+    */
+    void setLosFileName(const QString& fileName) { msLosFileName = fileName; }
+
+    /*! stores the content of an optimisation settings file as one big string */
+    void setLosSettings(const QString& settings) { msLosSettings = settings; }
+
+    /*! retreives the currently stored optimisation settings; use \ref parseStringSettings
+     *  to parse the settings */
+	QString getLosSettings(void) { return msLosSettings; }
+ 
 	void setDataSet(const vtkDataSet* dataset);
     void setDataSet(otb::AttributeTable::Pointer otbtab);
+    void setDataSet(const QSqlTableModel* sqlmod);
     const NMMosraDataSet* getDataSet()
 		{return this->mDataSet;}
 	vtkSmartPointer<vtkTable> getDataSetAsTable();
@@ -191,6 +247,11 @@ public:
 	int mapLp(void);
     int mapLpTab(void);
     int mapLpDb(void);
+    int mapLpQtSql(void);
+    int calcBaseline(void);
+    int calcBaselineTab(void);
+    int calcBaselineDb(void);
+    int calcBaselineQtSql(void);
 	HLpHelper* getLp();
     vtkSmartPointer<vtkTable> sumResults(vtkSmartPointer<vtkTable>& changeMatrix);
 
@@ -276,6 +337,7 @@ private:
 	QString msReport;
 	QString msSettingsReport;
 	QString msLosFileName;
+	QString msLosSettings;
 
     QString mProblemFilename;
     NMMosoExportType mProblemType;
@@ -284,6 +346,7 @@ private:
 	QString msAreaField;
 	QString msLayerName;
 
+    QString msOptFeatures;
 	QString msDataPath;
 	QStringList mslPerturbItems;
     QList< QList<float> > mlflPerturbUncertainties;
@@ -307,6 +370,19 @@ private:
 	// option performance fields have to be given in the same order
 	// as in the mlsOptions list
 	QMap<QString, QStringList> mmslCriteria;
+
+    // map holding the incentive names (key) (comprised of to
+    // valid criterion names from the CRITERIA section
+    // concatenated by and underscore '_') and the associated
+    // column name (value) storing the actual incentive
+    // as per ha score for each feature
+    QMap<QString, QStringList> mmslIncentives;
+
+    // map holding the incentive names (key) (s. above) and
+    // the 'split' name, i.e. the individual criteria
+    // representing the benefit criterion (first) and the
+    // cost criterion (second)
+    QMap<QString, QStringList> mIncNamePair;
 
 	// as above but this map contains per criterion the data fields which
 	// are going to be used to evaluate status quo and optimised
@@ -371,6 +447,8 @@ private:
 
 	int makeLp(void);
 	int addObjFn(void);
+
+    int addIncentCons(void);
 	int addObjCons(void);
 	int addExplicitAreaCons(void);
 	int addImplicitAreaCons(void);

@@ -363,10 +363,24 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
 			// find the input component
 			QMap<QString, NMModelComponent*>::const_iterator it = repo.find(
 					inputCompName);
-			if (it != repo.end())
+            if (it != repo.end())
 			{
 				NMModelComponent*& ic =
 						const_cast<NMModelComponent*&>(it.value());
+
+                // making sure the input component is linked-up
+                ic->linkComponents(inputstep, repo);
+
+                // double check, whether the input is meant to be linked in as input for this run
+                NMSequentialIterComponent* seqComp = qobject_cast<NMSequentialIterComponent*>(it.value());
+                if (seqComp != nullptr)
+                {
+                    if (seqComp->getNumIterations() == 0)
+                    {
+                        NMLogDebug(<< "'" << inputCompName.toStdString() << "' skipped as input for this run!")
+                        continue;
+                    }
+                }
 
                 // note: we're linking anything here! It means the user is responsible for deciding
                 //       whether or not it is a good idea to build a pipeline across timelevels or
@@ -374,9 +388,6 @@ void NMProcess::linkInputs(unsigned int step, const QMap<QString, NMModelCompone
                 NMDebugAI(<< targetName.toStdString() << " <-(" << ii << ")- "
                           << ic->objectName().toStdString()
                           << "[" << outIdx << "] ... " << std::endl);
-
-                // making sure the input component is linked-up
-                ic->linkComponents(inputstep, repo);
 
                 QSharedPointer<NMItkDataObjectWrapper> iw = ic->getOutput(outIdx);
                 bool bInvalidOutput = true;

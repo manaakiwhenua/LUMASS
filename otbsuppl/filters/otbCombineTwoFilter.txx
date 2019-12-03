@@ -184,7 +184,12 @@ void CombineTwoFilter< TInputImage, TOutputImage >
         m_vHyperStrides[0] = 1;
         for (int s=1; s < m_vHyperSpaceDomains.size(); ++s)
         {
-            if (m_vHyperStrides[s-1] > maxIdx / m_vHyperSpaceDomains[s-1])
+            if (m_vHyperSpaceDomains[s-1] == 0)
+            {
+                itkExceptionMacro(<< "HyperSpaceDomain[" << s-1 << "] == 0 !" << std::endl
+                                  << "Please ensure that each HyperSpaceDomain is >= 1!");
+            }
+            else if (m_vHyperStrides[s-1] > maxIdx / m_vHyperSpaceDomains[s-1])
             {
                 itkExceptionMacro(<< "Type overflow! The possible number of unique "
                                   << " combinations exceeds the data type limits! "

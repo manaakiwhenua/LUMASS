@@ -59,6 +59,8 @@
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
 #include "vtkPlane.h"
+#include "vtkTexture.h"
+#include "vtkUnsignedCharArray.h"
 #include "NMImageLayer.h"
 
 
@@ -227,6 +229,18 @@ NMVtkOpenGLImageSliceMapper::SetDataWholeExtent(int extent[6])
     this->DataWholeExtent[3] = extent[3];
     this->DataWholeExtent[4] = extent[4];
     this->DataWholeExtent[5] = extent[5];
+}
+
+const vtkUnsignedCharArray*
+NMVtkOpenGLImageSliceMapper::GetTexture() const
+{
+    vtkTexture* texture = this->PolyDataActor->GetTexture();
+    if (texture != nullptr)
+    {
+        return texture->GetMappedScalars();
+    }
+	
+	return nullptr;
 }
 
 

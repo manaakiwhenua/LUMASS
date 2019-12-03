@@ -84,6 +84,7 @@ public:
     void SetUseIndexMapping(bool bmap)
         {mLutIdxMapping = bmap;}
 
+    bool GetUseIndexMapping(void){return mLutIdxMapping;}
 
 
 protected:

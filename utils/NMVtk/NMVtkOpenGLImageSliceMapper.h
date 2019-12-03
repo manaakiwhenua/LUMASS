@@ -55,6 +55,7 @@ class vtkOpenGLRenderWindow;
 class vtkImageSlice;
 class vtkImageProperty;
 class vtkImageData;
+class vtkUnsignedCharArray;
 class NMImageLayer;
 
 class NMVtkOpenGLImageSliceMapper :
@@ -75,10 +76,10 @@ public:
 
   void SetDisplayExtent(int extent[6]);
   void SetDataWholeExtent(int extent[6]);
-
   void SetNMLayer(NMImageLayer* layer)
     {this->mLayer = layer;}
 
+  const vtkUnsignedCharArray* GetTexture() const;
 
 protected:
   NMVtkOpenGLImageSliceMapper();

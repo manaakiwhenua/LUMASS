@@ -1,0 +1,57 @@
+### LUMASS Engine (BMI) configuration TEMPLATE
+#
+# *** NOTE: all pathnames must use slashes '/' as directory separator
+# *** regardless of the platform you're running LUMASS on!
+#
+# mandatory engine configuration
+EngineConfig:
+    # mandatory: <model | moso>
+    #    model: spatial system dynamics model (*.lmx)
+    #    moso:  multi-objective spatial optimisation scenario(s) (*.los)
+    mode: "model"
+    # mandatory for 'model' mode: location of the LumassBMI.<so | dll> installation directory
+    # optional  for 'moso' mode: this setting is ignored in 'moso' mode
+    enginepath: "/home/opt/lumass-debug/bin"
+    #"c:/opt/lumass-0.9.60-test/bin"
+    # mandatory: filepath of the model file
+    #    model: spatial system dynamics model file (*.lmx)
+    #    moso:  LUMASS optimisation settings file (*.los)
+    modelfile: "/home/alex/crunch/lumass_models/DaisyWorld/DaisyWorld.lmx"
+    #"d:/lumass_models/DaisyWorld/DaisyWorld.lmx"
+    # mandatory: path to working directory for storing intermediary files
+    #    model: path to the provenance (PROV-N) file produced for each LUMASS model run
+    workspace: "/home/alex/crunch/lumass_workspace"
+    #"d:/lumass_workspace"
+    # optional: filename for LUMASS specific logging
+    logfile: "/home/alex/crunch/lumass_workspace/engine.log"
+    #"d:/lumass_workspace/engine.log"
+    # whether or not LUMASS should log data provenance
+    logprovenance: true
+# optional model configuration
+ModelConfig:
+    # Specification of 'global' LUMASS model settings. 
+    # The specified settings can be accessed inside a LUMASS 
+    # model using the LUMASS expression '$[LUMASS:<parameter>]$', for example 
+    # '$[LUMASS:DataPath]$' is evaluated to 'D:/Temp/IOMTest/Data' during a model run
+    Settings:
+        ParameterTable: "D:/Temp/IOMTest/MakeEcotopes/EcotopesParas.xls"
+        DataPath: "D:/Temp/IOMTest/Data"
+    # Specification of model component parameters. For example, 'ImageReader' is the 
+    # the unique name of a model component that has a list of properties that can 
+    # be set in this configuration file
+    ImageReader:
+        UserID: "MyFileReader"
+        InputDimensions: "2"
+        OutputDimensions: "2"
+        # this property holds a sequence (list) of filenames that are used 
+        # by the component during an iteration, e.g. while processing a number
+        # of inputs according to a given algorithm
+        FileNames:
+            - "file1.img"
+            - "file2.img"
+    MapAlgebra:
+        UserID: "simple add"
+        InputDimensions: "2"
+        OutputDimensions: "2"
+        MapExpression:
+            - "sqrt(2) + pi^4"

@@ -24,6 +24,7 @@ SET(LIBRARY_OUTPUT_PATH ${lumass_BINARY_DIR}/lib)
 
 # we're setting some more variables
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 IF(NOT WIN32)
         SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC -fPIE")
@@ -36,7 +37,7 @@ IF(NOT WIN32)
 ELSE(NOT WIN32)
     SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT ")
     SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /Oy /Oi /Ot ")
-    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ")
     SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /O2 /Ob2 /Oy /Oi /Ot ")
 ENDIF(NOT WIN32)
 
@@ -281,6 +282,20 @@ message(STATUS "Spatialite library: ${SPATIALITE_LIB}")
 #message(STATUS "Tokyo Cabinet include dir: ${TCADB_INCLUDE_DIR}")
 #message(STATUS "Tokyo Cabinet library dir: ${TCADB_LIB_DIR}")
 
+#====================================================================
+# ask for YAML library and header dir
+#====================================================================
+
+IF(NOT YAML_LIBDIR)
+    set(YAML_LIBDIR "/opt/yaml-cpp/install/lib" CACHE STRING "Path to yaml library directory")
+    message(FATAL_ERROR "Please specify the yaml lib dir!")
+ENDIF()
+
+IF(NOT YAML_HEADERDIR)
+    set(YAML_HEADERDIR "/opt/yaml-cpp/install/include" CACHE STRING "Path to yaml header directory")
+    message(FATAL_ERROR "Please specify the yaml header dir!")
+ENDIF()
+
 
 #====================================================================
 # RASDAMAN SUPPORT - optional (requires PostgreSQL support)
@@ -369,5 +384,6 @@ ADD_SUBDIRECTORY(optimisation ${lumass_BINARY_DIR}/optimisation)
 ADD_SUBDIRECTORY(modellingframework ${lumass_BINARY_DIR}/modellingframework)
 ADD_SUBDIRECTORY(gui ${lumass_BINARY_DIR}/gui)
 ADD_SUBDIRECTORY(terminalapp ${lumass_BINARY_DIR}/terminalapp)
+ADD_SUBDIRECTORY(bmi ${lumass_BINARY_DIR}/bmi)
 
 

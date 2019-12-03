@@ -196,10 +196,10 @@ public:
      *      String and filename processing functions based on
      *      Qt equivalents, which returns string values.
      *
-     *      $[func:cond(<boolean>, <true string>, <false string>)]$
-     *          ($[math: 3 > 4]$, "/home/user/green.img", "/home/user/red.img") -> /home/user/red.img
-     *          (true, "/home/user/green.img", "/home/user/red.img")            -> /home/user/green.img
-     *          ($[math: 5 > 4]$, "/home/user/green.img", "/home/user/red.img") -> /home/user/green.img
+     *      $[func:cond(<boolean (MuParser expression>, <true string>, <false string>)]$
+     *          (3 > 4, "/home/user/green.img", "/home/user/red.img") -> /home/user/red.img
+     *          (true, "/home/user/green.img", "/home/user/red.img")  -> /home/user/green.img
+     *          (5 > 4, "/home/user/green.img", "/home/user/red.img") -> /home/user/green.img
      *
      *      $[func:isFile(<filename>)]$
      *          /home/user/anImage.kea  -> 1
@@ -253,6 +253,23 @@ public:
      *
      *      $[func:strSubstring("<string>", <start pos>, <num chars>)]$
      *          ("/home/user/archive.tar.gz", 1, 4)     -> home
+     *
+     *
+     *      $[func:strListItem("<string>", "<sep>", <idx>)]$
+     *          ("255 108 16", " ", 1)                  -> 108
+     *          ("255 108 16", " ", -1)                 -> 255
+     *          ("255 108 16", " ", )                   -> 255
+     *          ("255 108 16", " ", 2)                  -> 16
+     *          ("255 108 16", " ", 5)                  -> 16
+     *          ("Hello_World_", "_", 2)                -> World
+     *
+     *
+     *      $[func:strListLength("<string>", "<sep>")]$
+     *
+     *          ("Hello World!", " ")           ->  2
+     *          ("Hello")                       ->  1
+     *          ("")                            ->  0
+     *          ("Let's plant a tree !", " ")   ->  5
      *
      */
     QString processStringParameter(const QObject *obj, const QString& str);
@@ -369,6 +386,12 @@ protected:
 	void resetExecutionStack(void);
     void logProvNComponent(NMModelComponent* comp);
     void trackIdConceptRev(const QString& id, const QString&, const int& rev);
+    /*! evaluates a mathematical expression and returns its value as
+     *  formatted QString and writes the resulting double value into the
+     *  provided double (must be user allocatecd) pointer; in case of
+     *  a parser error, the returned string starts with "ERROR".
+     */
+    QString evalMuParserExpression(const QObject* obj, const QString& expr, double* resVal);
 
     /*! maps ComponentName to model component object */
 	QMap<QString, NMModelComponent*> mComponentMap;

@@ -73,6 +73,8 @@ NMParamEdit::NMParamEdit(QWidget *parent)
     mFunctionsAndTips.insert("fileCompleteSuffix", "(<filename>)");
     mFunctionsAndTips.insert("strIsEmpty", "(<string>)");
     mFunctionsAndTips.insert("strLength", "(<string>)");
+    mFunctionsAndTips.insert("strListItem", "(\"<string>\", \"<sep>\", <idx>)");
+    mFunctionsAndTips.insert("strListLength", "(\"<string>\", \"<sep>\")");
     mFunctionsAndTips.insert("strReplace", "(\"<string>\", \"<find str>\", \"<replace str>\")");
     mFunctionsAndTips.insert("strSubstring", "(\"<string>\", <start pos>, <num chars>)");
     mFunctionsAndTips.insert("strCompare", "(\"<string_1>\", \"<string_2>\", <{0,1}: case sensitive?>)");
@@ -553,6 +555,15 @@ NMParamEdit::setupPropCompleter(const QString &comp, int propPos, bool dataOnly)
                 mPropToolTipMap.insert(dp, "TableColumn");
             }
             propList << dataProps;
+
+            if (dataProps.size() > 0)
+            {
+                propList.prepend("columncount");
+                propList.prepend("rowcount");
+
+                mPropToolTipMap.insert("columncount", "TableProperty");
+                mPropToolTipMap.insert("rowcount", "TableProperty");
+            }
 
             if (!dataOnly)
             {

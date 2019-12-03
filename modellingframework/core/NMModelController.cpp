@@ -433,7 +433,7 @@ NMModelController::executeModel(const QString& compName)
 	QString elapsedTime = QString("%1:%2").arg((int)min).arg(sec,0,'g',3);
     //NMDebugAI(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
 	NMMsg(<< "Model run took (min:sec): " << elapsedTime.toStdString() << endl);
-    NMLogInfo(<< "Model Controller: Model stopped after (min:sec): " << elapsedTime.toStdString());
+    NMLogInfo(<< "Model Controller: Model completed in (min:sec): " << elapsedTime.toStdString());
 
 	this->mbModelIsRunning = false;
 	this->mbAbortionRequested = false;
@@ -865,16 +865,35 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
 
             if (isnum)
             {
-                if (ival == 1)
+                if (ival != 0)
                 {
                     ret = args.at(1);
                 }
             }
             else
             {
-                if (exp.compare("true", Qt::CaseInsensitive) == 0)
+                if (exp.trimmed().compare("false", Qt::CaseInsensitive) == 0)
+                {
+                    ret = args.at(2);
+                }
+                else if (exp.trimmed().compare("true", Qt::CaseInsensitive) == 0)
                 {
                     ret = args.at(1);
+                }
+                // interpret the string as mu-parser expression
+                // if the expression value is not zero (i.e. exprVal != 0)
+                // we return the 'false' argument (i.e. the third function argument)
+                else
+                {
+                    double resVal;
+                    QString resStr = this->evalMuParserExpression(nullptr, exp, &resVal);
+                    if (!resStr.startsWith("ERROR", Qt::CaseSensitive) && resVal != 0)
+                    {
+                        if (resVal != 0)
+                        {
+                            ret = args.at(1);
+                        }
+                    }
                 }
             }
         }
@@ -1016,6 +1035,97 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
         else
         {
             ret = "0";
+        }
+    }
+    else if (funcName.compare("strListItem") == 0)
+    {
+        // strListItem("string", '<sep char>', index);
+        if (args.size() >= 1)
+        {
+            if (args.at(0).isEmpty())
+            {
+                ret = "";
+            }
+
+            QString thestr = args.at(0).trimmed();
+            QStringList stritems;
+            if (args.size() == 1)
+            {
+                ret = thestr;
+            }
+            else if (args.size() >= 2)
+            {
+                stritems = thestr.split(args.at(1), QString::SkipEmptyParts);
+                if (stritems.size() > 0)
+                {
+                    if (args.size() == 3)
+                    {
+                        bool bok;
+                        int idx = args.at(2).toInt(&bok);
+                        if (bok)
+                        {
+                            if (idx <= 0)
+                            {
+                                ret = stritems.first();
+                            }
+                            else if (idx >= stritems.size()-1)
+                            {
+                                ret = stritems.last();
+                            }
+                            else
+                            {
+                                ret = stritems.at(idx);
+                            }
+                        }
+                        else
+                        {
+                            return QString("ERROR: strListItem() - argument 3 (<idx>) is invalid!");
+                        }
+                    }
+                    else
+                    {
+                        ret = stritems.at(0);
+                    }
+                }
+                else
+                {
+                    ret = thestr;
+                }
+            }
+        }
+        else
+        {
+            return QString("ERROR: Not enough arguments!");
+        }
+    }
+    else if (funcName.compare("strListLength") == 0)
+    {
+        // strListItem("string", '<sep char>');
+        if (args.size() >= 1)
+        {
+            if (args.at(0).isEmpty())
+            {
+                ret = "0";
+            }
+
+            if (args.size() == 1)
+            {
+                ret = "1";
+            }
+            else if (args.size() == 2)
+            {
+                QString thestr = args.at(0).trimmed();
+                QStringList stritems  = thestr.split(args.at(1), QString::SkipEmptyParts);
+                ret = QString("%1").arg(stritems.length());
+            }
+            else
+            {
+                return QString("ERROR: Too many arguments!");
+            }
+        }
+        else
+        {
+            return QString("ERROR: Not enough arguments!");
         }
     }
     else if (funcName.compare("strSubstring") == 0)
@@ -1271,28 +1381,38 @@ NMModelController::processStringParameter(const QObject* obj, const QString& str
                 // eval a math parser expression
                 if (m.at(0).compare(QString("math"), Qt::CaseInsensitive) == 0)
                 {
-                    otb::MultiParser::Pointer parser = otb::MultiParser::New();
-                    try
+                    double resVal;
+                    QString resStr = this->evalMuParserExpression(obj, m.at(1), &resVal);
+                    if (resStr.startsWith("ERROR", Qt::CaseSensitive))
                     {
-                        parser->SetExpr(m.at(1).toStdString());
-                        otb::MultiParser::ValueType res = parser->Eval();
-                        tStr = QString("%1").arg(res);
+                        return resStr;
                     }
-                    catch (mu::ParserError& evalerr)
-                    {
-                        std::stringstream errmsg;
-                        errmsg << "ERROR:" << obj->objectName().toStdString() << std::endl
-                               << "Math expression evaluation: ";
-                        errmsg << std::endl
-                               << "Message:    " << evalerr.GetMsg() << std::endl
-                               << "Formula:    " << evalerr.GetExpr() << std::endl
-                               << "Token:      " << evalerr.GetToken() << std::endl
-                               << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+
+                    tStr = resStr;
 
 
-                        //NMLogError(<< errmsg.str());
-                        return QString(errmsg.str().c_str());
-                    }
+//                    otb::MultiParser::Pointer parser = otb::MultiParser::New();
+//                    try
+//                    {
+//                        parser->SetExpr(m.at(1).toStdString());
+//                        otb::MultiParser::ValueType res = parser->Eval();
+//                        tStr = QString("%1").arg(static_cast<double>(res), 0, 'g', 15);
+//                    }
+//                    catch (mu::ParserError& evalerr)
+//                    {
+//                        std::stringstream errmsg;
+//                        errmsg << "ERROR:" << obj->objectName().toStdString() << std::endl
+//                               << "Math expression evaluation: ";
+//                        errmsg << std::endl
+//                               << "Message:    " << evalerr.GetMsg() << std::endl
+//                               << "Formula:    " << evalerr.GetExpr() << std::endl
+//                               << "Token:      " << evalerr.GetToken() << std::endl
+//                               << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+
+
+//                        //NMLogError(<< errmsg.str());
+//                        return QString(errmsg.str().c_str());
+//                    }
                 }
                 else if (m.at(0).compare(QString("LUMASS"), Qt::CaseInsensitive) == 0)
                 {
@@ -2057,6 +2177,46 @@ NMModelController::logProvNComponent(NMModelComponent *comp)
         attr.append(othAttr);
         NMLogProv(NMLogger::NM_PROV_ENTITY, args, attr);
     }
+}
+
+QString
+NMModelController::evalMuParserExpression(const QObject *obj, const QString& expr, double* resVal)
+{
+    QString tStr;
+    otb::MultiParser::Pointer parser = otb::MultiParser::New();
+    try
+    {
+        parser->SetExpr(expr.toStdString());
+        otb::MultiParser::ValueType res = parser->Eval();
+        *resVal = static_cast<double>(res);
+        tStr = QString("%1").arg(*resVal, 0, 'g', 15);
+    }
+    catch (mu::ParserError& evalerr)
+    {
+        std::stringstream errmsg;
+        errmsg << "ERROR:";
+        if (obj != nullptr)
+        {
+            errmsg << obj->objectName().toStdString() << std::endl;
+        }
+        else
+        {
+            errmsg << "ModelController" << std::endl;
+        }
+
+        errmsg << "Math expression evaluation: "     << std::endl
+               << "Message:    " << evalerr.GetMsg() << std::endl
+               << "Formula:    " << evalerr.GetExpr() << std::endl
+               << "Token:      " << evalerr.GetToken() << std::endl
+               << "Position:   " << evalerr.GetPos() << std::endl << std::endl;
+
+
+        //NMLogError(<< errmsg.str());
+        *resVal = 0.0;
+        tStr = errmsg.str().c_str();
+    }
+
+    return tStr;
 }
 
 void

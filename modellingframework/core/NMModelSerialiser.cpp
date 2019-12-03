@@ -112,6 +112,7 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 //	NMDebugAI(<< "root element: '" << modelElem.attribute("name").toStdString() << "'" << endl);
 
     NMModelController* controller = this->getModelController();
+	NMProcessFactory::instance().setLumassPath(controller->getSetting("LUMASSPath").toString());
 //#ifdef LUMASS_DEBUG
 //#ifndef _WIN32
 //    int ind = nmlog::nmindent;
@@ -211,7 +212,9 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
                     NMWarn(ctx, << "Failed to create process component '"
                            << compName.toStdString()
                            << "(" << procName.toStdString() << ") - skipping it!");
-
+					NMLogWarn(<< "Failed to create process component '"
+						<< compName.toStdString()
+						<< "(" << procName.toStdString() << ") - skipping it!");
                     // remove component from register and model controller and carry on ...
                     QMap<QString, QString>::Iterator it = nameRegister.find(compName);
                     nameRegister.erase(it);
@@ -219,6 +222,8 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
                     {
                         NMWarn(ctx, << "Failed to remove NULL Process Component '"
                                << compName.toStdString() << "' from model controller!");
+						NMLogWarn(<< "Failed to remove NULL Process Component '"
+							<< compName.toStdString() << "' from model controller!");
                     }
                     continue;
                 }

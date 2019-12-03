@@ -44,6 +44,7 @@ public:
     typedef NMWrapperFactory* ( *NM_CREATE_FACTORY_FUNC )();
 
     bool isSink(const QString& process);
+	void setLumassPath(const QString& lumassPath) { mLumassPath = lumassPath; }
 
 private:
 	NMProcessFactory(QObject* parent=0);
@@ -54,6 +55,7 @@ private:
     QString procNameFromAlias(const QString& alias);
 
     bool bLibInitialised;
+	QString mLumassPath;
     QStringList mSinks;
     QStringList mProcRegister;
 

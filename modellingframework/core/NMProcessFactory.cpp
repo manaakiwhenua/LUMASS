@@ -216,7 +216,7 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
 void
 NMProcessFactory::initializeProcessLibrary()
 {
-    QString path = qApp->applicationDirPath();
+    QString path = mLumassPath;
 
 #ifdef __linux__
     path += "/../lib";
@@ -226,7 +226,8 @@ NMProcessFactory::initializeProcessLibrary()
 
     QDir libDir(path);
     QFileInfoList libInfoList = libDir.entryInfoList();
-    foreach(const QFileInfo& libInfo, libInfoList)
+
+	foreach(const QFileInfo& libInfo, libInfoList)
     {
         QString libname = QString("%1/%2").arg(path).arg(libInfo.fileName());
         if (QLibrary::isLibrary(libname))

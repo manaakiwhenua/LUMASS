@@ -159,12 +159,19 @@ protected slots:
 	void updateSelectionAdmin(const QItemSelection&
 			selected, const QItemSelection& deselected);
 	void updateSelectionAdmin(long numSel);
+    void refreshTableView(void);
 protected:
 
 	void initView();
 	void sortColumn(int col);
     void processUserQuery(const QString& queryName,
                           const QString& sql);
+
+    bool joinFields(const QString& targetField,
+                    const QString& srcConnName,
+                    const QString& srcTable,
+                    const QString& srcField,
+                    QStringList& joinFields);
 
     //    void updateModelSelection();
     void updateSelection(bool swap=false);
@@ -177,10 +184,6 @@ protected:
     //			bool bselectedRecs);
 
 	//vtkSmartPointer<vtkTable> queryTable(const QString& sqlStmt);
-
-	void appendAttributes(const int tarJoinColIdx,
-			const int srcJoinColIdx,
-			QAbstractItemModel* srcTable);
 
 	bool eventFilter(QObject* object, QEvent* event);
 	void showEvent(QShowEvent* event);

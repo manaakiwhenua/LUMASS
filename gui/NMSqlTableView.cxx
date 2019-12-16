@@ -432,6 +432,9 @@ void NMSqlTableView::initView()
         actJoin->setText(tr("Join Attributes ..."));
 	}
 
+    QAction* actRefresh = new QAction(this->mColHeadMenu);
+    actRefresh->setText(tr("Refresh Table View"));
+
 
 	this->mColHeadMenu->addAction(actSel);
     this->mColHeadMenu->addAction(actFilter);
@@ -477,6 +480,11 @@ void NMSqlTableView::initView()
 		this->mColHeadMenu->addAction(actJoin);
 	}
 	this->mColHeadMenu->addAction(actExp);
+
+    this->mColHeadMenu->addSeparator();
+    this->mColHeadMenu->addAction(actRefresh);
+
+
 
 #ifdef LUMASS_DEBUG
     QAction* actTest = new QAction(this->mColHeadMenu);
@@ -528,6 +536,8 @@ void NMSqlTableView::initView()
         }
 	}
 
+    this->connect(actRefresh, SIGNAL(triggered()), this, SLOT(refreshTableView()));
+
 	///////////////////////////////////////////
 	// init the context menu for managing rasdaman layers
 	this->mManageLayerMenu = new QMenu(this);
@@ -543,6 +553,15 @@ void NMSqlTableView::initView()
 
 	this->connect(loadLayer, SIGNAL(triggered()), this, SLOT(loadRasLayer()));
 	this->connect(delLayer, SIGNAL(triggered()), this, SLOT(deleteRasLayer()));
+}
+
+void
+NMSqlTableView::refreshTableView(void)
+{
+    if (mSortFilter != nullptr)
+    {
+        mSortFilter->reloadSourceModel();
+    }
 }
 
 void
@@ -724,11 +743,6 @@ NMSqlTableView::connectSelModels(bool bconnect)
 {
 	if (bconnect)
 	{
-//		connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-//				                                         const QItemSelection &)),
-//				this, SLOT(updateSelectionAdmin(const QItemSelection &,
-//						                        const QItemSelection &)));
-
         connect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
                                                          const QItemSelection &)),
                 this, SLOT(updateProxySelection(const QItemSelection &,
@@ -736,11 +750,6 @@ NMSqlTableView::connectSelModels(bool bconnect)
 	}
 	else
 	{
-//		disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
-//				                                         const QItemSelection &)),
-//				this, SLOT(updateSelectionAdmin(const QItemSelection &,
-//						                        const QItemSelection &)));
-
         disconnect(mSelectionModel, SIGNAL(selectionChanged(const QItemSelection &,
                                                          const QItemSelection &)),
                 this, SLOT(updateProxySelection(const QItemSelection &,
@@ -1034,6 +1043,10 @@ void NMSqlTableView::indexColumn()
         NMLogError(<< "Failed to index column '"
                    << mLastClickedColumn.toStdString() << "'!");
     }
+    else
+    {
+        NMBoxInfo("Index Column", "'" << mLastClickedColumn.toStdString() << "' successfully indexed!");
+    }
 }
 
 void NMSqlTableView::calcColumn()
@@ -1057,7 +1070,7 @@ void NMSqlTableView::calcColumn()
     int rowsAffected = mSortFilter->updateData(colidx, mLastClickedColumn, func, error);
     if (!error.isEmpty())
     {
-        NMBoxErr2(NMGlobalHelper::getMainWindow(), "Calculate Column", "Calculation Failed!");
+        NMBoxErr2(NMGlobalHelper::getMainWindow(), "Calculate Column", error.toStdString());
         NMDebugCtx(ctx, << "done!");
         return;
     }
@@ -1273,27 +1286,6 @@ void NMSqlTableView::joinAttributes()
         ++it;
     }
 
-    int nlayers = layerList->getLayerCount();
-    for (int i=0; i < nlayers; ++i)
-    {
-        NMLayer* l = layerList->getLayer(i);
-        if (     l->getLayerType() == NMLayer::NM_IMAGE_LAYER
-            &&   l->objectName().compare(this->getLayerName()) != 0
-           )
-        {
-            QAbstractItemModel* im = const_cast<QAbstractItemModel*>(l->getTable());
-            if (im)
-            {
-                NMSqlTableModel* nmsqlmodel = qobject_cast<NMSqlTableModel*>(im);
-                if (nmsqlmodel)
-                {
-                    tableNameList.append(nmsqlmodel->tableName());
-                    tableModelList.insert(nmsqlmodel->tableName(), nmsqlmodel);
-                }
-            }
-        }
-    }
-
     // ============================================================
     //          LET THE USER PICK THE SOURCE TABLE
     // ============================================================
@@ -1331,6 +1323,7 @@ void NMSqlTableView::joinAttributes()
 
     QString srcDbFileName = "";
     QString srcTableName = "";
+    QString srcConnName = "";
     NMSqlTableView* srcView = 0;
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator srcIt =
             tableList.find(tableName);
@@ -1344,6 +1337,7 @@ void NMSqlTableView::joinAttributes()
             if (m)
             {
                 srcTableName = m->tableName();
+                srcConnName = m->database().connectionName();
             }
         }
 
@@ -1374,56 +1368,6 @@ void NMSqlTableView::joinAttributes()
         }
     }
 
-    // get the target table (i.e. the one this view is based on)
-    otb::SQLiteTable::Pointer tarOtbTable;
-    if (tableList.keys().contains(this->getTitle()))
-    {
-        srcIt = tableList.find(this->getTitle());
-        if (srcIt != tableList.end())
-        {
-            tarOtbTable = srcIt.value().first.GetPointer();
-        }
-
-        // if this is a 'drag 'n' dropped' table (i.e. no layer table)
-        // the otb::SQLiteTable may not have been initialised,
-        // so we give it a chance here ...
-        if (tarOtbTable->GetDbConnection() == 0)
-        {
-            NMSqlTableModel* nmModel = qobject_cast<NMSqlTableModel*>(mModel);
-            QString dbfn = nmModel->getDatabaseName();
-            if (!dbfn.isEmpty())
-            {
-                tarOtbTable->SetDbFileName(dbfn.toStdString());
-                if (tarOtbTable->openConnection())
-                {
-                    tarOtbTable->SetTableName(mModel->tableName().toStdString());
-                    if (!tarOtbTable->PopulateTableAdmin())
-                    {
-                        NMBoxErr("Joining attributes failed!",
-                                 "Internal initialisation of target table failed!");
-                        return;
-                        NMDebugCtx(ctx, << "done!");
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        NMImageLayer* il = qobject_cast<NMImageLayer*>(layerList->getLayer(this->getLayerName()));
-        if (il)
-        {
-            //otb::AttributeTable* ttab = static_cast<otb::AttributeTable*>(il->getRasterAttributeTable(1).GetPointer());
-            tarOtbTable = static_cast<otb::SQLiteTable*>(il->getRasterAttributeTable(1).GetPointer());
-        }
-    }
-
-    if (tarOtbTable.IsNull())
-    {
-        NMDebugAI(<< "tarOtbTable is NULL!\n");
-        NMDebugCtx(ctx, << "done!");
-        return;
-    }
 
     // ==========================================================================
     //                  ASK FOR JOIN FIELDS
@@ -1509,275 +1453,179 @@ void NMSqlTableView::joinAttributes()
 
 
     // ======================================================================
-    //              otb::SQLiteTable is doing the join
+    //             NMSqlTableView is doing the join
     // ======================================================================
 
+    this->joinFields(tarFieldName,
+                     srcConnName,
+                     srcTableName,
+                     srcFieldName,
+                     userJoinFields);
 
-    QString tarTableName = this->mModel->tableName();
-    int fstidx = mModel->columnCount();
-    int lastidx = fstidx + vJnFields.size()-1;
+    const QString tartabName = mModel->tableName();
     this->mModel->clear();
-    srcModel->clear();
-
-    NMDebugAI(<< "Joining fields from " << srcDbFileName.toStdString()
-              << " to " << tarOtbTable->GetDbFileName() << std::endl);
-
-
-    NMDebugAI(<< "tarTableName = " << tarTableName.toStdString() << std::endl);
-    NMDebugAI(<< "tarFieldName = " << tarFieldName.toStdString() << std::endl);
-    NMDebugAI(<< "srcDbFileName = " << srcDbFileName.toStdString() << std::endl);
-    NMDebugAI(<< "srcTableName = " << srcTableName.toStdString() << std::endl);
-    NMDebugAI(<< "srcFieldName = " << srcFieldName.toStdString() << std::endl);
-
-    if (tarOtbTable->GetDbConnection() == 0)
-    {
-        bool berr = false;
-        if (!tarOtbTable->openConnection())
-        {
-            NMLogError(<< ctx << ": Failed to connect to database '"
-                       << tarOtbTable->GetDbFileName() << "'!");
-            berr = true;
-        }
-
-        if (!tarOtbTable->PopulateTableAdmin())
-        {
-            NMLogError(<< ctx << ": Failed to fetch information of table '"
-                       << tarOtbTable->GetTableName() << "'!");
-            berr = true;
-        }
-
-        if (berr)
-        {
-            this->mModel->setTable(tarTableName);
-            this->mModel->select();
-            this->update();
-
-            srcModel->setTable(srcTableName);
-            srcModel->select();
-            if (srcView)
-            {
-                srcView->update();
-            }
-            return;
-        }
-    }
-
-    bool ret2 = tarOtbTable->JoinAttributes(tarTableName.toStdString(),
-                                tarFieldName.toStdString(),
-                                srcDbFileName.toStdString(),
-                                srcTableName.toStdString(),
-                                srcFieldName.toStdString(),
-                                vJnFields);
-
-    tarOtbTable->CloseTable();
-
-    if (!ret2)
-    {
-        NMLogError(<< ctx << ": Join failed!");
-    }
-
-    this->mModel->setTable(tarTableName);
+    this->mModel->setTable(tartabName);
     this->mModel->select();
     this->update();
 
-    emit columnsInserted(QModelIndex(), fstidx, lastidx);
+    updateSelection(mbSwitchSelection);
 
-    srcModel->setTable(srcTableName);
-    srcModel->select();
-    if (srcView)
+    NMDebugCtx(ctx, << "done!");
+}
+
+bool
+NMSqlTableView::joinFields(const QString &targetField,
+                           const QString &srcConnName,
+                           const QString &srcTable,
+                           const QString &srcField,
+                           QStringList &joinFields)
+{
+    bool ret = false;
+
+    // ---------------- prepare read/write target DB with source DB attached --------------------------
+
+    // get database connections
+    if (!mSortFilter->openWriteModel())
     {
-        srcView->update();
+        NMLogError(<< ctx << "::" << __FUNCTION__ << "() - no write connection to target table!");
+        mSortFilter->openReadModel();
+        return ret;
     }
 
-    //srcModel->clear();
-//    if (mSortFilter->joinTable(srcDbFileName, srcFieldName, tarFieldName))
-//    {
-//        updateSelection(mbSwitchSelection);
-//    }
+    QSqlDatabase srcDb = QSqlDatabase::database(srcConnName, true);
+    if (!srcDb.isValid() || !srcDb.isOpen())
+    {
+        NMLogError(<< ctx << "::" << __FUNCTION__ << "() - failed getting the source table!");
+        mSortFilter->openReadModel();
+        return ret;
+    }
+
+    QSqlDatabase tarDb = mModel->database();
+    QSqlDriver* drv = tarDb.driver();
+
+    // attach the source database
+    const QString attachStr = QString("ATTACH DATABASE '%1' as srcdb")
+            .arg(srcDb.databaseName());
+
+    QSqlQuery qAttach(tarDb);
+    if (!qAttach.exec(attachStr))
+    {
+        NMLogError(<< ctx << "::" << __FUNCTION__
+                   << "() - attaching source database failed : "
+                   << qAttach.lastError().text().toStdString());
+        mSortFilter->openReadModel();
+        return ret;
+    }
+
+    // create a detach query
+    const QString detachStr = QString("DETACH DATABASE '%'1;")
+            .arg(srcDb.databaseName());
+    QSqlQuery qDetach(tarDb);
+
+    // ---------------- list of source and final join fields --------------------------------------------
+
+    // create escaped list of join fields
+    QString srcFields;
+    for (int f=0; f < joinFields.size(); ++f)
+    {
+        srcFields += drv->escapeIdentifier(joinFields.at(f), QSqlDriver::FieldName);
+        if (f < joinFields.size()-1)
+        {
+            srcFields += ", ";
+        }
+    }
+
+    // create a list of field names to be 'selected' from the tmp join table
+    QStringList finalFieldList;
+    for (int col=0; col < mModel->columnCount(); ++col)
+    {
+        QString colname = mModel->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString();
+        finalFieldList << drv->escapeIdentifier(colname, QSqlDriver::FieldName);
+    }
+    QString finalFieldsStr = finalFieldList.join(',');
+    finalFieldsStr += QStringLiteral(",") + srcFields;
+
+    // add the source join field to source fields, if not already present
+    // - can't do the join without the source join field!
+    if (!joinFields.contains(srcField))
+    {
+        srcFields += QStringLiteral(",") + drv->escapeIdentifier(srcField, QSqlDriver::FieldName);
+    }
+
+    // ---------------- create a prelim (temp) joined table-----------------------------------------
+
+    // temp join table
+    QString tmpJoinStr = QString(
+            "CREATE TEMP TABLE tmpjoin AS "
+                "SELECT * FROM main.%1 "
+                    "LEFT OUTER JOIN "
+                        "(SELECT %2 FROM srcdb.%3) AS s "
+                    "ON main.%1.%4 = s.%5;")
+            .arg(drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName))
+            .arg(srcFields)
+            .arg(drv->escapeIdentifier(srcTable, QSqlDriver::TableName))
+            .arg(drv->escapeIdentifier(targetField, QSqlDriver::FieldName))
+            .arg(drv->escapeIdentifier(srcField, QSqlDriver::FieldName));
+
+    QSqlQuery qTmpJoin(tarDb);
+    if (!qTmpJoin.exec(tmpJoinStr))
+    {
+        NMLogError(<< ctx << "::" << __FUNCTION__
+                   << "() - failed creating temporary join table\nQUERY: "
+                   << tmpJoinStr.toStdString() << "\n"
+                   << qTmpJoin.lastError().text().toStdString());
+        qDetach.exec(detachStr);
+        mSortFilter->openReadModel();
+        return ret;
+    }
+
+    // ---------------- create 'proper' join table and clear up  -----------------------------------
+
+    // drop the current original table
+    const QString dropOrigStr = QString("DROP TABLE main.%1;")
+            .arg(drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName));
+    QSqlQuery qDropOrig(tarDb);
+    if (!qDropOrig.exec(dropOrigStr))
+    {
+        NMLogError(<< ctx << "::" << __FUNCTION__
+                   << "() - failed droping original target table! : "
+                   << qDropOrig.lastError().text().toStdString());
+        qDetach.exec(detachStr);
+        mSortFilter->openReadModel();
+        return ret;
+    }
 
 
-//    NMSqlTableView *resview = new NMSqlTableView(joinModel, this->parentWidget());
-//    resview->setWindowFlags(Qt::Window);
-//    resview->setTitle(tempTableName);
-//    resview->show();
+    // re-create target table from temp-joined table
+    const QString finalTabStr = QString(
+            "CREATE TABLE %1 "
+                "AS SELECT %2 FROM tmpjoin;")
+            .arg(drv->escapeIdentifier(mModel->tableName(), QSqlDriver::TableName))
+            .arg(finalFieldsStr);
+
+    QSqlQuery qFinalTab(tarDb);
+    if (!qFinalTab.exec(finalTabStr))
+    {
+        NMLogError(<< ctx << "::" << __FUNCTION__
+                   << "() - failed re-creating original target table! : "
+                   << qFinalTab.lastError().text().toStdString());
+        qDetach.exec(detachStr);
+        mSortFilter->openReadModel();
+        return ret;
+    }
 
 
+    // ---------------- re-open target DB read-only  -----------------------------------
 
-//    this->appendAttributes(tarJoinColIdx, srcJoinColIdx, srcModel.data());
+    // go back to readonly connection
+    // this also auto deletes the TEMP tmpjoin table
+    // and auto detaches the src database upon
+    // closing the database connection
+    mSortFilter->openReadModel();
 
-    NMDebugCtx(ctx, << "done!");
+    return true;
 }
 
-void
-NMSqlTableView::appendAttributes(const int tarJoinColIdx, const int srcJoinColIdx,
-		QAbstractItemModel* srcTable)
-{
-    NMDebugCtx(ctx, << "...");
-
-
-
-    //	QStringList allTarFields;
-    //	for (int i=0; i < mModel->columnCount(QModelIndex()); ++i)
-    //	{
-    //		QString fN = mModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-    //		allTarFields.push_back(fN);
-    //	}
-
-    //	// we determine which columns to copy, and which name + index they have
-    //	QRegExp nameRegExp("^[\"A-Za-z_]+[\\d\\w]*$", Qt::CaseInsensitive);
-
-    //	NMDebugAI(<< "checking column names ... " << std::endl);
-    //	QStringList copyNames;
-    //	QList<int> copyIdx;
-    //    QList<QVariant::Type> copyType;
-    //	QStringList writeNames;
-    //	for (int i=0; i < srcTable->columnCount(QModelIndex()); ++i)
-    //	{
-    //		QString name = srcTable->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-    //		QString writeName = name;
-    //		if (i == srcJoinColIdx || allTarFields.contains(name))
-    //		{
-    //			continue;
-    //		}
-    //		//else if (allTarFields.contains(name, Qt::CaseInsensitive))
-    //		//{
-    //		//	// come up with a new name for the column to appended
-    //		//	writeName = QString(tr("copy_%1")).arg(name);
-    //		//}
-
-    //		int pos = -1;
-    //		pos = nameRegExp.indexIn(name);
-    //		if (pos >= 0)
-    //		{
-    //			copyNames.push_back(name);
-    //			copyIdx.push_back(i);
-    //            const QModelIndex smi = srcTable->index(0, i);
-    //            copyType.push_back(srcTable->data(smi).type());
-    //			writeNames.push_back(writeName);
-    //		}
-    //	}
-
-    //	NMDebugAI( << "adding new columns to target table ..." << std::endl);
-    //	// create new output columns for join fields
-    //	QList<int> writeIdx;
-    //	long tarnumrows = mModel->rowCount(QModelIndex());
-    //	for (int t=0; t < copyNames.size(); ++t)
-    //	{
-    //		QModelIndex srcidx = srcTable->index(0, copyIdx.at(t), QModelIndex());
-    //		QVariant::Type type = srcTable->data(srcidx, Qt::DisplayRole).type();
-
-    //		mModel->insertColumns(0, type, QModelIndex());
-    //		int colnum = mModel->columnCount(QModelIndex());
-    //		mModel->setHeaderData(colnum-1, Qt::Horizontal, QVariant(writeNames.at(t)), Qt::DisplayRole);
-    //		writeIdx.push_back(colnum-1);
-    //	}
-
-	// DEBUG
-	//NMDebugAI(<< "SOURCE TABLE 0 to 10 ..." << std::endl);
-	//int nsrccols = srcTable->columnCount(QModelIndex());
-	//for (int i=0; i < srcTable->rowCount(QModelIndex()) && i < 10; ++i)
-	//{
-	//	for (int c=nsrccols-4; c < nsrccols; ++c)
-	//	{
-	//		const QModelIndex ind = srcTable->index(i, c, QModelIndex());
-	//		QString nam = srcTable->headerData(c, Qt::Horizontal, Qt::DisplayRole).toString();
-	//		QString val = srcTable->data(ind, Qt::DisplayRole).toString();
-	//		NMDebug(<< "#" << i << " " << nam.toStdString().c_str() << "=" << val.toStdString().c_str() << " ");
-	//	}
-	//	NMDebug(<< std::endl);
-	//}
-    //
-    //	NMDebugAI(<< "copying field contents ...." << std::endl);
-
-    //	mProgressDialog->setWindowModality(Qt::WindowModal);
-    //	mProgressDialog->setLabelText("Joining Attributes ...");
-    //	mProgressDialog->setRange(0, tarnumrows);
-
-	// copy field values
-	//vtkAbstractArray* tarJoin = tar->GetColumnByName(tarJoinField.toStdString().c_str());
-	//vtkAbstractArray* srcJoin = src->GetColumnByName(srcJoinField.toStdString().c_str());
-	//long cnt = 0;
-
-	// let's create a hash index into the src key column to
-	// quickly find corresponding records
-//	QHash<QString, int> srchash;
-//	for (int sr=0; sr < srcTable->rowCount(QModelIndex()); ++sr)
-//	{
-//		const QModelIndex idx = srcTable->index(sr, srcJoinColIdx, QModelIndex());
-//		const QString key = srcTable->data(idx, Qt::DisplayRole).toString();
-//		srchash.insert(key, sr);
-//	}
-
-
-//	long srcnumrows = srcTable->rowCount(QModelIndex());
-//	long havefound = 0;
-//	for (long row=0; row < tarnumrows && !mProgressDialog->wasCanceled(); ++row)
-//	{
-//		const QModelIndex tarJoinIdx = mModel->index(row, tarJoinColIdx, QModelIndex());
-//		const QString sTarJoin = mModel->data(tarJoinIdx, Qt::DisplayRole).toString();//tarJoin->GetVariantValue(row);
-
-//		const int foundyou = srchash.value(sTarJoin, -1);
-//		if (foundyou >= 0)
-//		{
-//			// copy columns for current row
-//			for (int c=0; c < copyIdx.size(); ++c)
-//			{
-//				const QModelIndex srcIdx = srcTable->index(foundyou, copyIdx.at(c), QModelIndex());
-//				const QVariant srcVal = srcTable->data(srcIdx, Qt::DisplayRole);
-//                const QModelIndex tarIdx = mModel->index(row, writeIdx.at(c), QModelIndex());
-//                const QVariant::Type colType = copyType.at(c);
-
-//                switch(colType)
-//                {
-//                case QVariant::String:
-//                    // strip single quotes (may come from vtk CSV to vtkTable import)
-//                    {
-//                        const QString sVal = srcVal.toString();
-//                        if (    (    sVal.startsWith("'")
-//                                 &&  sVal.endsWith("'")
-//                                )
-//                            ||  (    sVal.startsWith("\"")
-//                                     &&  sVal.endsWith("\"")
-//                                )
-//                           )
-//                        {
-//                            QVariant vsVal = sVal.mid(1, sVal.size()-2);
-//                            mModel->setData(tarIdx, vsVal, Qt::DisplayRole);
-//                        }
-//                        else
-//                        {
-//                            mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
-//                        }
-//                    }
-//                    break;
-
-//                default:
-//                    mModel->setData(tarIdx, srcVal, Qt::DisplayRole);
-//                }
-//			}
-//			++havefound;
-//		}
-
-//		mProgressDialog->setValue(row+1);
-//	}
-
-//	NMDebugAI(<< "did find " << havefound << " matching recs!" << std::endl);
-//    //this->mSortFilter->notifyLayoutUpdate();
-//    //mSortFilter->layoutChanged();
-//    mModel->layoutChanged();
-
-    NMDebugCtx(ctx, << "done!");
-}
-
-//void NMSqlTableView::hideRow(int row)
-//{
-//    //if (row < 0 || row > this->mModel->rowCount()-1)
-//    if (row < 0 || row > mlNumRecs - 1)
-//		return;
-
-//	this->mTableView->hideRow(row);
-
-//}
 
 void NMSqlTableView::exportTable()
 {
@@ -1948,54 +1796,6 @@ void NMSqlTableView::colStats()
     resview->setTitle(tableName);
     resview->show();
 
-
-    //	QScopedPointer<NMTableCalculator> calc(new NMTableCalculator(mModel));
-    //    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->sourceRowCount()*2;
-    //    //const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : this->mSortFilter->rowCount()*2;
-    //    const int maxrange = mlNumSelRecs ? mlNumSelRecs*2 : mlNumRecs*2;
-    //	prepareProgressDlg(calc.data(), "Calculate Column Statistics ...", maxrange);
-
-    //    //calc->setRaw2Source(const_cast<QList<int>* >(mSortFilter->getRaw2Source()));
-    //	calc->setRowFilter(mSelectionModel->selection());
-    //	std::vector<double> stats = calc->calcColumnStats(this->mLastClickedColumn);
-
-    //	if (stats.size() < 4)
-    //	{
-    //		NMDebugAI(<< "Couldn't calc stats for a reason!" << std::endl);
-    //        NMDebugCtx(ctx, << "done!");
-    //		return;
-    //	}
-    //	cleanupProgressDlg(calc.data(), maxrange);
-
-    //	// min, max, mean, std. dev, sum
-    //	QString smin  = QString("%1").arg(stats[0], 0, 'f', 4); //smin  = smin .rightJustified(15, ' ');
-    //	QString smax  = QString("%1").arg(stats[1], 0, 'f', 4); //smax  = smax .rightJustified(15, ' ');
-    //	QString smean = QString("%1").arg(stats[2], 0, 'f', 4); //smean = smean.rightJustified(15, ' ');
-    //	QString smedi = QString("%1").arg(stats[3], 0, 'f', 4);
-    //	QString ssdev = QString("%1").arg(stats[4], 0, 'f', 4); //ssdev = ssdev.rightJustified(15, ' ');
-    //	QString ssum  = QString("%1").arg(stats[6], 0, 'f', 4); //ssum  = ssum .rightJustified(15, ' ');
-    //	QString ssample = QString("Sample Size: %1").arg(stats[5]);
-
-    //	QString strmin  ("Minimum: ");  //strmin  = strmin .rightJustified(10, ' ');
-    //	QString strmax  ("Maximum: ");  //strmax  = strmax .rightJustified(10, ' ');
-    //	QString strmean ("Mean: ");     //strmean = strmean.rightJustified(10, ' ');
-    //	QString strmedi ("Median: ");
-    //	QString strsdev ("Std.Dev.: "); //strsdev = strsdev.rightJustified(10, ' ');
-    //	QString strsum  ("Sum: ");      //strsum  = strsum .rightJustified(10, ' ');
-
-
-    //	QString res = QString("%1%2\n%3%4\n%5%6\n%7%8\n%9%10\n%11%12\n%13")
-    //			.arg(strmin).arg(smin)
-    //			.arg(strmax).arg(smax)
-    //			.arg(strmean).arg(smean)
-    //			.arg(strmedi).arg(smedi)
-    //			.arg(strsdev).arg(ssdev)
-    //			.arg(strsum).arg(ssum)
-    //			.arg(ssample);
-
-    //	QString title = QString(tr("%1")).arg(this->mLastClickedColumn);
-
-    //	QMessageBox::information(this, title, res);
 
     NMDebugCtx(ctx, << "done!");
 }

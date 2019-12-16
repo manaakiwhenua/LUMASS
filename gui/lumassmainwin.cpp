@@ -2388,6 +2388,7 @@ LUMASSMainWin::importTable(const QString& fileName,
     }
 
     QSqlDatabase db = QSqlDatabase::database(conname);
+    QSqlDriver* drv = db.driver();
 
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
@@ -2459,14 +2460,6 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
         ++nr;
     }
 
-    // use the 'hacked' (NM)QSQLiteDriver, so we
-    // can create a driver based on an existing sqilte3
-    // connection (with spatialite loaded) ...
-//    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTab->GetDbConnection(), 0);
-    // ... and establish the Qt-Db connection
-//    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
-//    db.setDatabaseName(sqlTab->GetDbFileName().c_str());
-
     QString viewName = conname;
     QString dbfilename;
     if (sqlTab.IsNotNull())
@@ -2477,7 +2470,7 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
     conname = getDbConnection(dbfilename, false);
 
     QSqlDatabase db = QSqlDatabase::database(conname, true);
-
+    QSqlDriver* drv = db.driver();
 
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
@@ -2485,9 +2478,6 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
     srcModel->setDatabaseName(sqlTab->GetDbFileName().c_str());
     srcModel->setTable(drv->escapeIdentifier(QString(sqlTab->GetTableName().c_str()), QSqlDriver::TableName));
     srcModel->select();
-
-    //QString viewName = QString(conname);
-
 
     QSharedPointer<NMSqlTableView> tabview = QSharedPointer<NMSqlTableView>(
                     new NMSqlTableView(srcModel,

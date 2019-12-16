@@ -206,6 +206,8 @@ void SQLiteProcessor< TInputImage, TOutputImage >
         {
             NMProcErr(<< "SQL processing failed - "
                       << lastlog);
+            itkExceptionMacro(<< "SQL processing failed - "
+                              << lastlog);
         }
         else
         {

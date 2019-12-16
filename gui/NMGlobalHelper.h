@@ -62,6 +62,8 @@ public:
 
     static QString getRandomString(int len);
 
+    static void logQsqlConnections(void);
+
     static void appendLogMsg(const QString& msg);
 
 private:

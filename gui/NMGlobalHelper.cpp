@@ -79,6 +79,22 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
 
 }
 
+void
+NMGlobalHelper::logQsqlConnections(void)
+{
+    QStringList conList = QSqlDatabase::connectionNames();
+    foreach(const QString con, conList)
+    {
+        QSqlDatabase db = QSqlDatabase::database(con, false);
+        if (db.isValid() && db.isOpen())
+        {
+            QString dbname = db.databaseName();
+            QString conopt = db.connectOptions();
+            NMGlobalHelper::appendLogMsg(QString("QSqlConnection: %1 -> %2 (Options: %3)\n").arg(con).arg(dbname).arg(conopt));
+        }
+    }
+}
+
 QString
 NMGlobalHelper::getUserSetting(const QString& key)
 {

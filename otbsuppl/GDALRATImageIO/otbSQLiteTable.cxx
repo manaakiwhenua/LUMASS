@@ -3394,6 +3394,7 @@ SQLiteTable::PopulateTableAdmin()
                             -1, &stmt_exists, 0);
     if (sqliteError(rc, &stmt_exists))
     {
+        m_lastLogMsg = "Failed fetching number of records!";
         NMProcWarn(<< "Failed fetching number of records!");
         sqlite3_finalize(stmt_exists);
         m_dbFileName.clear();

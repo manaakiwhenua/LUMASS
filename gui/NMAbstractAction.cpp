@@ -376,22 +376,6 @@ NMAbstractAction::populateSettingsBrowser(void)
     }
     bro->clear();
 
-    //    QStringList noprops;
-    //    noprops << "objectName" << "autoRepeat" << "checkable"
-    //            << "checked" << "enabled" << "font" << "icon"
-    //            << "iconText" << "iconVisibleInMenu" << "menuRole"
-    //            << "priority" << "shortcut" << "shortcutContext"
-    //            << "statusTip" << "text" << "toolTip" << "visible"
-    //            << "whatsThis"
-    //            << "modelName";
-
-    otb::SQLiteTable::Pointer tab = getToolTable();
-    if (tab.IsNull())
-    {
-        NMLogError(<< mModelName.toStdString()
-                   << ": Populate configuration dialog: Missing tool configuration table!");
-        return;
-    }
 
     QList<QByteArray> dynPropNames = this->dynamicPropertyNames();  //mobj->propertyCount();
     foreach (const QByteArray& propName, dynPropNames)
@@ -536,6 +520,7 @@ NMAbstractAction::getToolTable(void)
     otb::SQLiteTable::Pointer toolTable = otb::SQLiteTable::New();
     toolTable->SetUseSharedCache(false);
     toolTable->SetDbFileName(toolTableName.toStdString());
+    toolTable->SetOpenReadOnly(true);
 
     if (!toolTable->openConnection())
     {
@@ -547,7 +532,6 @@ NMAbstractAction::getToolTable(void)
     {
         return toolTable;
     }
-
     return tab;
 }
 

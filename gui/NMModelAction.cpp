@@ -257,7 +257,7 @@ NMModelAction::reloadUserConfig(void)
             const int oatei = NMAbstractAction::staticMetaObject.indexOfEnumerator("NMActionOutputType");
             NMAbstractAction::NMActionOutputType outActType = static_cast<NMAbstractAction::NMActionOutputType>(
                     NMAbstractAction::staticMetaObject.enumerator(oatei).keyToValue(
-                        outTypeStr.toStdString().c_str(), &bKeyFound));
+                        outTypeStr.trimmed().toStdString().c_str(), &bKeyFound));
             if (bKeyFound)
             {
                 outMap.insert(output, outActType);
@@ -279,7 +279,7 @@ NMModelAction::reloadUserConfig(void)
             const int ttei = NMAbstractAction::staticMetaObject.indexOfEnumerator("NMActionTriggerType");
             NMAbstractAction::NMActionTriggerType triggerType = static_cast<NMAbstractAction::NMActionTriggerType>(
                         NMAbstractAction::staticMetaObject.enumerator(ttei).keyToValue(
-                            triggerTypeStr.toStdString().c_str(), &bKeyFound));
+                            triggerTypeStr.trimmed().toStdString().c_str(), &bKeyFound));
             if (bKeyFound)
             {
                 this->setTrigger(trigger, triggerType);
@@ -301,7 +301,7 @@ NMModelAction::reloadUserConfig(void)
                 const int iaei = NMAbstractAction::staticMetaObject.indexOfEnumerator("NMActionInputType");
                 inputType = static_cast<NMAbstractAction::NMActionInputType>(
                             NMAbstractAction::staticMetaObject.enumerator(iaei).keyToValue(
-                                actionTypeStr.toStdString().c_str(), &bKeyFound));
+                                actionTypeStr.trimmed().toStdString().c_str(), &bKeyFound));
 
                 if (inputType == NMAbstractAction::NM_ACTION_INPUT_LAYER_SELECTION)
                 {

@@ -53,6 +53,7 @@
 #endif
 
 #include <sqlite3.h>
+#include <spatialite.h>
 
 Q_DECLARE_OPAQUE_POINTER(sqlite3*)
 Q_DECLARE_METATYPE(sqlite3*)
@@ -543,12 +544,12 @@ QVariant NMQSQLiteResult::handle() const
 /////////////////////////////////////////////////////////
 
 NMQSQLiteDriver::NMQSQLiteDriver(QObject * parent)
-    : QSqlDriver(*new NMQSQLiteDriverPrivate, parent)
+    : QSqlDriver(*new NMQSQLiteDriverPrivate, parent), mSpatialiteCache(nullptr)
 {
 }
 
 NMQSQLiteDriver::NMQSQLiteDriver(sqlite3 *connection, QObject *parent)
-    : QSqlDriver(*new NMQSQLiteDriverPrivate, parent)
+    : QSqlDriver(*new NMQSQLiteDriverPrivate, parent), mSpatialiteCache(nullptr)
 {
     Q_D(NMQSQLiteDriver);
     d->access = connection;
@@ -600,6 +601,7 @@ bool NMQSQLiteDriver::open(const QString & db, const QString &, const QString &,
     bool sharedCache = false;
     bool openReadOnlyOption = false;
     bool openUriOption = false;
+    bool initSpatialite = false;
 
     const QStringList opts = QString(conOpts).remove(QLatin1Char(' ')).split(QLatin1Char(';'));
     foreach (const QString &option, opts) {
@@ -614,6 +616,8 @@ bool NMQSQLiteDriver::open(const QString & db, const QString &, const QString &,
             openUriOption = true;
         } else if (option == QLatin1String("QSQLITE_ENABLE_SHARED_CACHE")) {
             sharedCache = true;
+        } else if (option == QLatin1String("QSQLITE_INIT_SPATIALITE")) {
+            initSpatialite = true;
         }
     }
 
@@ -623,8 +627,20 @@ bool NMQSQLiteDriver::open(const QString & db, const QString &, const QString &,
 
     sqlite3_enable_shared_cache(sharedCache);
 
+    if (initSpatialite)
+    {
+        mSpatialiteCache = spatialite_alloc_connection();
+    }
+
     if (sqlite3_open_v2(db.toUtf8().constData(), &d->access, openMode, NULL) == SQLITE_OK) {
         sqlite3_busy_timeout(d->access, timeOut);
+
+        if (initSpatialite)
+        {
+            spatialite_init_ex(d->access, mSpatialiteCache, 0);
+            mbSpatialiteSession = true;
+        }
+
         setOpen(true);
         setOpenError(false);
         return true;
@@ -634,11 +650,21 @@ bool NMQSQLiteDriver::open(const QString & db, const QString &, const QString &,
             d->access = 0;
         }
 
+        spatialite_cleanup_ex(mSpatialiteCache);
+        mSpatialiteCache = nullptr;
+        mbSpatialiteSession = false;
+
         setLastError(qMakeError(d->access, tr("Error opening database"),
                      QSqlError::ConnectionError));
         setOpenError(true);
         return false;
     }
+}
+
+sqlite3* NMQSQLiteDriver::getConnectionPtr(void)
+{
+    Q_D(NMQSQLiteDriver);
+    return d->access;
 }
 
 void NMQSQLiteDriver::close()
@@ -655,6 +681,10 @@ void NMQSQLiteDriver::close()
         d->access = 0;
         setOpen(false);
         setOpenError(false);
+
+        spatialite_cleanup_ex(mSpatialiteCache);
+        mSpatialiteCache = nullptr;
+        mbSpatialiteSession = false;
     }
 }
 

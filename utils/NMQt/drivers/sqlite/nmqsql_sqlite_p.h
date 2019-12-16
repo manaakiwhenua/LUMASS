@@ -90,6 +90,11 @@ public:
     QSqlIndex primaryIndex(const QString &table) const Q_DECL_OVERRIDE;
     QVariant handle() const Q_DECL_OVERRIDE;
     QString escapeIdentifier(const QString &identifier, IdentifierType) const Q_DECL_OVERRIDE;
+    sqlite3* getConnectionPtr(void);
+
+protected:
+    void* mSpatialiteCache;
+    bool mbSpatialiteSession;
 };
 
 QT_END_NAMESPACE

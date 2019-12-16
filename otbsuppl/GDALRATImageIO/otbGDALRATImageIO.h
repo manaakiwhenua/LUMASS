@@ -83,31 +83,35 @@ public:
   typedef itk::SmartPointer<Self> Pointer;
 
   /** Method for creation through the object factory. */
-  itkNewMacro(Self);
+  itkNewMacro(Self)
 
   /** Run-time type information (and related methods). */
-  itkTypeMacro(GDALRATImageIO, otb::ImageIOBase);
+  itkTypeMacro(GDALRATImageIO, otb::ImageIOBase)
 
   /** Set/Get the level of compression for the output images.
    *  0-9; 0 = none, 9 = maximum. */
-  itkSetMacro(CompressionLevel, int);
-  itkGetMacro(CompressionLevel, int);
+  itkSetMacro(CompressionLevel, int)
+  itkGetMacro(CompressionLevel, int)
 
   /** Set/Get whether the pixel type (otb side) is complex */
-  itkSetMacro(IsComplex, bool);
-  itkGetMacro(IsComplex, bool);
+  itkSetMacro(IsComplex, bool)
+  itkGetMacro(IsComplex, bool)
 
   /** Set/Get whether the pixel type (otb side) is Vector or Scalar */
-  itkSetMacro(IsVectorImage, bool);
-  itkGetMacro(IsVectorImage, bool);
+  itkSetMacro(IsVectorImage, bool)
+  itkGetMacro(IsVectorImage, bool)
 
   /** Set/Get the dataset index to extract (starting at 0)*/
-  itkSetMacro(DatasetNumber, unsigned int);
-  itkGetMacro(DatasetNumber, unsigned int);
+  itkSetMacro(DatasetNumber, unsigned int)
+  itkGetMacro(DatasetNumber, unsigned int)
 
   /** Set/Get the IO mode (i.e. RAT support on or off) */
-  itkSetMacro(RATSupport, bool);
-  itkGetMacro(RATSupport, bool);
+  itkSetMacro(RATSupport, bool)
+  itkGetMacro(RATSupport, bool)
+
+  /** Set/Get whether or not a DB-based RAT should be opened readonly */
+  itkSetMacro(DbRATReadOnly, bool)
+  itkGetMacro(DbRATReadOnly, bool)
 
   /** Set/Get the band map to be read/written by this IO */
   void SetBandMap(std::vector<int> map)
@@ -123,16 +127,16 @@ public:
 
   /** Set/Get whether files should be opened in update mode
    *  rather than being overridden */
-  itkSetMacro(ImageUpdateMode, bool);
-  itkGetMacro(ImageUpdateMode, bool);
+  itkSetMacro(ImageUpdateMode, bool)
+  itkGetMacro(ImageUpdateMode, bool)
 
-  itkGetMacro(NbOverviews, int);
+  itkGetMacro(NbOverviews, int)
 
-  itkGetMacro(OverviewIdx, int);
+  itkGetMacro(OverviewIdx, int)
   void SetOverviewIdx(int idx);
 
-  itkGetMacro(RATType, otb::AttributeTable::TableType);
-  itkSetMacro(RATType, otb::AttributeTable::TableType);
+  itkGetMacro(RATType, otb::AttributeTable::TableType)
+  itkSetMacro(RATType, otb::AttributeTable::TableType)
 
   std::vector<unsigned int> GetOverviewSize(int ovv);
 
@@ -277,6 +281,10 @@ protected:
 
   /** indicates whether RAT support is switched on or not */
   bool m_RATSupport;
+
+  /** Whether or not a DB-based RAT should be openend readonly */
+  bool m_DbRATReadOnly;
+
 
   /** preferred output RAT type */
   otb::AttributeTable::TableType m_RATType;

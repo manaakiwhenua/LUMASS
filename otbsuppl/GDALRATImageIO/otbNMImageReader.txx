@@ -79,7 +79,8 @@ NMImageReader<TOutputImage>
       m_UseUserLargestPossibleRegion(false),
       m_RAT(0),
       m_RGBMode(false),
-      m_DatasetNumber(0)
+      m_DatasetNumber(0),
+      m_DbRATReadOnly(false)
 #ifdef BUILD_RASSUPPORT
     , mRasconn(0)
 #endif
@@ -484,6 +485,7 @@ NMImageReader<TOutputImage>
                     gio->SetRATSupport(this->m_RATSupport);
                     gio->SetRATType(this->m_RATType);
                     gio->SetRGBMode(m_RGBMode);
+                    gio->SetDbRATReadOnly(this->m_DbRATReadOnly);
                     this->m_RAT = gio->ReadRAT(1);
                 }
             }
@@ -493,6 +495,7 @@ NMImageReader<TOutputImage>
     else
     {
         gio->SetRATType(m_RATType);
+        gio->SetDbRATReadOnly(m_DbRATReadOnly);
     }
 
     if ( this->GetImageIO() == 0 )
@@ -840,6 +843,7 @@ NMImageReader< TOutputImage >
             {
                 gio->SetRATSupport(m_RATSupport);
                 gio->SetRATType(m_RATType);
+                gio->SetDbRATReadOnly(m_DbRATReadOnly);
                 this->m_RAT = gio->ReadRAT(band);
                 return this->m_RAT;
             }

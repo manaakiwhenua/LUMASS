@@ -515,6 +515,27 @@ public:
     }
 
     static void
+        setDbRATReadOnly(itk::ProcessObject* procObj, unsigned int numBands,
+                   bool bDbRATReadOnly, bool rgbMode)
+    {
+        if (numBands == 1)
+        {
+            ReaderType *r = dynamic_cast<ReaderType*>(procObj);
+            r->SetDbRATReadOnly(bDbRATReadOnly);
+        }
+        else if (rgbMode && numBands == 3)
+        {
+            RGBReaderType *r = dynamic_cast<RGBReaderType*>(procObj);
+            r->SetDbRATReadOnly(bDbRATReadOnly);
+        }
+        else
+        {
+            VecReaderType *r = dynamic_cast<VecReaderType*>(procObj);
+            r->SetDbRATReadOnly(bDbRATReadOnly);
+        }
+    }
+
+    static void
         buildOverviews(itk::ProcessObject* procObj, unsigned int numBands,
                    const std::string& resamplingType, bool rgbMode)
     {
@@ -1143,6 +1164,25 @@ template class RasdamanReader<double, 3>;
         }\
      }
 
+    /*! Macro for setting whether Db-RAT should be opened readonly
+     */
+    #define SetHelperDbRATReadOnly( PixelType ) \
+    {\
+        switch (this->mOutputNumDimensions) \
+        { \
+        case 1: \
+            FileReader<PixelType, 1 >::setDbRATReadOnly( \
+                    this->mOtbProcess, this->mOutputNumBands, mDbRATReadOnly, mRGBMode); \
+            break; \
+        case 3: \
+            FileReader<PixelType, 3 >::setDbRATReadOnly( \
+                    this->mOtbProcess, this->mOutputNumBands, mDbRATReadOnly, mRGBMode); \
+            break; \
+        default: \
+            FileReader<PixelType, 2 >::setDbRATReadOnly( \
+                    this->mOtbProcess, this->mOutputNumBands, mDbRATReadOnly, mRGBMode); \
+        }\
+     }
 
 
     #define CallBuildOverviews( PixelType ) \
@@ -1204,6 +1244,7 @@ template class RasdamanReader<double, 3>;
 			}\
 		} \
 	}
+
 #endif // BUILD_RASSUPPORT
 
 /* ================================================================================== */
@@ -1226,6 +1267,7 @@ NMImageReader::NMImageReader(QObject * parent)
 	this->mParameterHandling = NMProcess::NM_USE_UP;
     this->mRATType = QString("ATTABLE_TYPE_RAM");
     this->mRATEnum << "ATTABLE_TYPE_RAM" << "ATTABLE_TYPE_SQLITE";
+    this->mDbRATReadOnly = false;
 #ifdef BUILD_RASSUPPORT	
 	this->mRasconn = 0;
 	this->mRasConnector = 0;
@@ -1348,7 +1390,7 @@ bool NMImageReader::initialise()
         {
             gio->SetRATType(otb::AttributeTable::ATTABLE_TYPE_SQLITE);
         }
-
+        gio->SetDbRATReadOnly(mDbRATReadOnly);
         gio->SetRGBMode(mRGBMode);
         gio->SetBandMap(mBandMap);
 		this->mItkImgIOBase = gio;
@@ -1474,6 +1516,7 @@ bool NMImageReader::initialise()
 	this->mbIsInitialised = ret;
 
     this->setInternalRATType();
+    this->setInternalDbRATReadOnly();
 
 	// set the observer
 	ReaderObserverType::Pointer observer = ReaderObserverType::New();
@@ -1567,6 +1610,27 @@ NMImageReader::setInternalRATType()
         }
     }
 }
+
+void
+NMImageReader::setInternalDbRATReadOnly()
+{
+    if (!mbRasMode)
+    {
+        otb::GDALRATImageIO::Pointer gio = static_cast<otb::GDALRATImageIO*>(
+                    this->mItkImgIOBase.GetPointer());
+        if (gio)
+        {
+            switch(this->mOutputComponentType)
+            {
+            LocalMacroPerSingleType( SetHelperDbRATReadOnly )
+            default:
+                break;
+            }
+        }
+    }
+}
+
+
 
 void
 NMImageReader::setOverviewIdx(int ovvidx, const int *userLPR)

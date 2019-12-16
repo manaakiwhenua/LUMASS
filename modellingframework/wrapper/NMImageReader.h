@@ -62,6 +62,7 @@ class NMMODFRAMECORE_EXPORT NMImageReader : public NMProcess
 	Q_OBJECT
 	Q_PROPERTY(QStringList FileNames READ getFileNames WRITE setFileNames)
     Q_PROPERTY(QString RATType READ getRATType WRITE setRATType)
+    Q_PROPERTY(bool DbRATReadOnly READ getDbRATReadOnly WRITE setDbRATReadOnly)
     Q_PROPERTY(QStringList RATEnum READ getRATEnum)
     Q_PROPERTY(bool RGBMode READ getRGBMode WRITE setRGBMode)
     Q_PROPERTY(QList<QStringList> BandList READ getBandList WRITE setBandList)
@@ -73,6 +74,7 @@ class NMMODFRAMECORE_EXPORT NMImageReader : public NMProcess
 public:
     NMPropertyGetSet(FileNames, QStringList)
     NMPropertyGetSet(RGBMode, bool)
+    NMPropertyGetSet(DbRATReadOnly, bool)
     NMPropertyGetSet(RATType, QString)
     NMPropertyGetSet(RATEnum, QStringList)
     NMPropertyGetSet(BandList, QList<QStringList>)
@@ -160,6 +162,7 @@ private:
 	bool initialise();
 	void linkParameters(unsigned int step, const QMap<QString, NMModelComponent*>& repo);
     void setInternalRATType(void);
+    void setInternalDbRATReadOnly(void);
 
 	QString mFileName;
 	QStringList mFileNames;
@@ -176,6 +179,7 @@ private:
     bool mRGBMode;
     std::vector<int> mBandMap;
 
+    bool mDbRATReadOnly;
     QString mRATType;
     QStringList mRATEnum;
 

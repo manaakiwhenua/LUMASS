@@ -95,6 +95,7 @@ GDALRATImageIO::GDALRATImageIO()
 
   m_RATType = AttributeTable::ATTABLE_TYPE_RAM;
   m_RATSupport = false;
+  m_DbRATReadOnly = false;
   m_ImageUpdateMode = false;
   m_UseForcedLPR = false;
   //m_UseUpdateRegion = false;
@@ -2366,6 +2367,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
         // double check, whether there's an external lumass db file out there,
         // which we could use instead
         SQLiteTable::Pointer ldbTab = SQLiteTable::New();
+        ldbTab->SetOpenReadOnly(m_DbRATReadOnly);
         if (ldbTab->CreateTable(dbFN, ssband.str()) == SQLiteTable::ATCREATE_READ)
         {
             return ldbTab;
@@ -2404,6 +2406,7 @@ SQLiteTable::Pointer GDALRATImageIO::InternalReadSQLiteRAT(unsigned int iBand)
 
     SQLiteTable::Pointer otbTab = SQLiteTable::New();
     otbTab->SetRowIDColName(idColName);
+    otbTab->SetOpenReadOnly(m_DbRATReadOnly);
     switch(otbTab->CreateTable(dbFN, tag.str()))
     {
     case SQLiteTable::ATCREATE_ERROR:

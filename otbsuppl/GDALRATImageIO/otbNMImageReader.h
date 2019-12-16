@@ -79,10 +79,10 @@ public:
   typedef itk::SmartPointer<Self>             Pointer;
 
   /** Method for creation through the object factory. */
-  itkNewMacro(Self);
+  itkNewMacro(Self)
 
   /** Run-time type information (and related methods). */
-  itkTypeMacro(NMImageReader, Superclass);
+  itkTypeMacro(NMImageReader, Superclass)
 
   /** The pixel type of the output image. */
   typedef typename TOutputImage::InternalPixelType OutputImagePixelType;
@@ -122,6 +122,11 @@ public:
   itkGetMacro(RATSupport, bool)
   itkBooleanMacro(RATSupport)
 
+  /** Set/Get Whether a DB-based RAT should be opened readonly */
+  itkSetMacro(DbRATReadOnly, bool)
+  itkGetMacro(DbRATReadOnly, bool)
+  itkBooleanMacro(DbRATReadOnly)
+
   /** Specifies whether images with 3 or more bands should
    *  be interpreated as RGB images RGBPixelType, or
    *  whether they're to be interpreted as VectorImageType
@@ -138,8 +143,8 @@ public:
 //    {return this->m_FileName.c_str();}
 
 
-  itkGetMacro(RATType, otb::AttributeTable::TableType);
-  itkSetMacro(RATType, otb::AttributeTable::TableType);
+  itkGetMacro(RATType, otb::AttributeTable::TableType)
+  itkSetMacro(RATType, otb::AttributeTable::TableType)
 
 
   /** get the RAT from the reader*/
@@ -185,6 +190,7 @@ protected:
   bool mbRasMode;
   bool m_RGBMode;
   bool m_RATSupport;
+  bool m_DbRATReadOnly;
   otb::AttributeTable::TableType m_RATType;
 
 private:

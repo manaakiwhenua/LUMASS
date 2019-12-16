@@ -432,6 +432,11 @@ NMImageLayer::NMImageLayer(vtkRenderWindow* renWin,
 
 NMImageLayer::~NMImageLayer()
 {
+//    if (this->mSqlTableView != nullptr)
+//    {
+//        this->mSqlTableView->getSortFilter()->removeTempTables();
+//    }
+
     if (mHistogramView != 0)
     {
         mHistogramView->close();
@@ -1180,53 +1185,34 @@ NMImageLayer::updateAttributeTable()
     }
     else
     {
-        /* NOTE: somehow, we need to explicitly open a separate connection
-         * to the DB. It is we cannot re-use the connection (sqlite3*)
-         * comming from the otb::SQLiteTable class ...
-         * If we did, on Windows, we couldn't use the QSql classes
-         * for the GUI-based DB-stuff ... It works fine on Linux, though.
-         *
-         * Hence, this workaround. Also note, because of that, we have to
-         * close the connection initiated by the otb::SQLiteTable, because
-         * it is opened in read/write and would therefore block any
-         * changes we make to the DB schema via the NMSqlTableView ...
-         *
+        /* NOTE: To avoid database locking issues with SQLite,
+         * database connection management is centralised in
+         * LUMASSMainWin; by default all tables are opened
+         * as readonly and all tables belonging to the same
+         * database (file) share a single database connection
          */
 
-        mSpatialiteCache = spatialite_alloc_connection();
-        int rc = ::sqlite3_open_v2(sqlTable->GetDbFileName().c_str(),
-                    &mSqlViewConn,
-                    SQLITE_OPEN_URI |
-                    SQLITE_OPEN_READWRITE |
-                    SQLITE_OPEN_SHAREDCACHE, 0);
-        if (rc != SQLITE_OK)
+        const QString dbFileName = sqlTable->GetDbFileName().c_str();
+        const QString tableName = sqlTable->GetTableName().c_str();
+        sqlTable->CloseTable();
+
+        // get readonly connection
+        mQSqlConnectionName = NMGlobalHelper::getMainWindow()->getDbConnection(dbFileName, false);
+        if (mQSqlConnectionName.isEmpty())
         {
-            NMLogError(<< ctxNMImageLayer
-                << ": Failed opening SqlTableView connection!"
-                << " - rc = " << rc);
-            ::sqlite3_close(mSqlViewConn);
-            spatialite_cleanup_ex(mSpatialiteCache);
-            mSpatialiteCache = 0;
-            mSqlViewConn = 0;
+            NMLogError(<< ctxNMImageLayer << "::" << __FUNCTION__ << "() - db connection failed!");
             return 0;
         }
-        spatialite_init_ex(mSqlViewConn, mSpatialiteCache, 1);
 
-        mQSqlConnectionName = QString("%1_%2").arg(sqlTable->GetTableName().c_str())
-                .arg(sqlTable->GetRandomString(5).c_str());
-        NMQSQLiteDriver* drv = new NMQSQLiteDriver(mSqlViewConn, 0);
-        QSqlDatabase db = QSqlDatabase::addDatabase(drv, mQSqlConnectionName);
-        db.setDatabaseName(sqlTable->GetDbFileName().c_str());
-		
+        QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName);
         NMDebugAI(<< ctxNMImageLayer << ": Created QSql connection to '"
                   << sqlTable->GetTableName() << "'" << std::endl);
 
         sqlModel = new NMSqlTableModel(this, db);
-        sqlModel->setDatabaseName(QString(sqlTable->GetDbFileName().c_str()));
-        sqlModel->setTable(QString(sqlTable->GetTableName().c_str()));
+        sqlModel->setDatabaseName(dbFileName);
+        sqlModel->setTable(tableName);
         sqlModel->select();
 
-        sqlTable->CloseTable();
     }
 
 
@@ -1302,6 +1288,17 @@ NMImageLayer::setFileName(QString filename)
         // also we set the type of RAT we'd like to get from
         // the reader
         this->mReader->setRATType("ATTABLE_TYPE_SQLITE");
+
+        // if the table already exists, we open it readonly,
+        // otherwise, we need the table to be created, hence
+        // need write access!
+        QFileInfo fifo(filename);
+        QString tabFN = QString("%1/%2.ldb").arg(fifo.absoluteDir().absolutePath()).arg(fifo.baseName());
+        QFileInfo tabInfo(tabFN);
+        if (tabInfo.exists())
+        {
+            this->mReader->setDbRATReadOnly(true);
+        }
     }
 
 	// TODO: find a more unambiguous way of determining
@@ -2414,8 +2411,8 @@ NMImageLayer::updateSourceBuffer(void)
             delete mSelectionModel;
             mSelectionModel = 0;
 
-            ::sqlite3_close(mSqlViewConn);
-            spatialite_cleanup_ex(mSpatialiteCache);
+            //::sqlite3_close(mSqlViewConn);
+            //spatialite_cleanup_ex(mSpatialiteCache);
             mSpatialiteCache = 0;
             mSqlViewConn = 0;
 
@@ -2769,7 +2766,13 @@ NMImageLayer::writeDataSet(void)
     sqlTab->SetUseSharedCache(true);
     if (sqlTab->openConnection())
     {
-        sqlTab->PopulateTableAdmin();
+        if (!sqlTab->PopulateTableAdmin())
+        {
+            NMLogError(<< ctxNMImageLayer << ": Failed accessing database table: "
+                                          << sqlTab->getLastLogMsg() << "!");
+            NMDebugCtx(ctxNMImageLayer, << "done!");
+            return;
+        }
     }
 
 	bool berr = false;

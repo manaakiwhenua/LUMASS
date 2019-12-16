@@ -34,6 +34,10 @@
 #include <QItemSelection>
 #include <QDateTime>
 
+#include <sqlite3.h>
+#include <spatialite.h>
+
+
 class NMLogger;
 
 class NMSelSortSqlTableProxyModel : public QAbstractProxyModel
@@ -76,6 +80,7 @@ public:
 
     bool createColumnIndex(int colidx);
     void sort(int column, Qt::SortOrder order);
+    void reloadSourceModel(void);
 
 
     /*
@@ -102,9 +107,13 @@ public:
     QItemSelection getSourceSelection(void);
     QItemSelection getSelectAll(void);
 
+    /*! removes any temporary tables used for ID mapping of sorted tables */
+    void removeTempTables(void);
 
-
-
+    /*! closes the current db connection and re-opens it in read/write model */
+    bool openWriteModel();
+    /*! closes the current db connection and re-opens it in readonly model */
+    void openReadModel();
 
 protected:
 
@@ -112,6 +121,10 @@ protected:
     bool updateSelection(QItemSelection& sel, bool bProxySelection=true);
     void resetSourceModel();
     bool createMappingTable();
+    void updateSourceModel(const QString& table);
+
+    QString mDbFileName;
+    QString mTableName;
 
     std::pair<int, Qt::SortOrder> mLastColSort;
     QString mLastFilter;

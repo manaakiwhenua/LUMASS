@@ -297,6 +297,7 @@
 #include <QSqlTableModel>
 #include <QSqlDatabase>
 #include <QSqlQuery>
+#include <QSqlError>
 #include <QProcess>
 
 
@@ -918,7 +919,7 @@ LUMASSMainWin::~LUMASSMainWin()
 
 	this->removeAllObjects();
 
-    GDALDestroyDriverManager();
+    //GDALDestroyDriverManager();
 
 #ifdef BUILD_RASSUPPORT
 	// close the table view and delete;
@@ -2089,6 +2090,7 @@ LUMASSMainWin::selectSqliteTable(const QString &dbFileName)
     otb::SQLiteTable::Pointer sqlTable = otb::SQLiteTable::New();
     sqlTable->SetUseSharedCache(false);
     sqlTable->SetDbFileName(dbFileName.toStdString());
+    sqlTable->SetOpenReadOnly(true);
     if (sqlTable->openConnection())
     {
         std::vector<std::string> tables = sqlTable->GetTableList();
@@ -2116,7 +2118,7 @@ LUMASSMainWin::selectSqliteTable(const QString &dbFileName)
             tableName = ipd.textValue();
         }
 
-        sqlTable->disconnectDB();
+        sqlTable->CloseTable();
     }
     else
     {
@@ -2267,42 +2269,65 @@ LUMASSMainWin::importTable(const QString& fileName,
         }
         tablename = sqlTable->GetTableName().c_str();
         dbfilename = sqlTable->GetDbFileName().c_str();
-        sqlTable->CloseTable();
-    }
+        //sqlTable->CloseTable();
 
+    }
+    sqlTable->CloseTable();
+    sqlTable->SetOpenReadOnly(true);
     // we also create a unique connection name for our
     // Qt-based connection
     QString conname = QString("%1_%2").arg(tablename).arg(lfd);
 
     // create a proper low-level sqlite3 connection so, we can ...
-	sqlite3* tabconn = 0;
-    void* splCache = spatialite_alloc_connection();
-	int rc = ::sqlite3_open_v2(dbfilename.toStdString().c_str(), 
-			&tabconn, 
-        			SQLITE_OPEN_URI |
-        			SQLITE_OPEN_READWRITE, 0);
-    if (rc != SQLITE_OK)
-    {
-        NMLogError(<< ctxLUMASSMainWin
-            << ": Failed opening SqlTableView connection!");
-        ::sqlite3_close(tabconn);
-        spatialite_cleanup_ex(splCache);
-        splCache = 0;
-        tabconn = 0;
-                NMDebugCtx(ctxLUMASSMainWin, << "done!");
-        return 0;
-    }
+    sqlite3* tabconn = nullptr;
+    void* splCache = nullptr; //spatialite_alloc_connection();
+//	int rc = ::sqlite3_open_v2(dbfilename.toStdString().c_str(),
+//			&tabconn,
+//        			SQLITE_OPEN_URI |
+//        			SQLITE_OPEN_READWRITE, 0);
+//    if (rc != SQLITE_OK)
+//    {
+//        NMLogError(<< ctxLUMASSMainWin
+//            << ": Failed opening SqlTableView connection!");
+//        ::sqlite3_close(tabconn);
+//        spatialite_cleanup_ex(splCache);
+//        splCache = 0;
+//        tabconn = 0;
+//                NMDebugCtx(ctxLUMASSMainWin, << "done!");
+//        return 0;
+//    }
 
-    // ... load the spatialite extension for extra functionality
-    spatialite_init_ex(tabconn, splCache, 1);
+//    // ... load the spatialite extension for extra functionality
+//    spatialite_init_ex(tabconn, splCache, 1);
 
     // use the 'hacked' (NM)QSQLiteDriver, so we
     // can create a driver based on an existing sqilte3
     // connection (with spatialite loaded) ...
-    NMQSQLiteDriver* drv = new NMQSQLiteDriver(tabconn, 0);
-    // ... and establish the Qt-Db connection
-    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
-    db.setDatabaseName(dbfilename);
+//    NMQSQLiteDriver* drv = new NMQSQLiteDriver();
+//    if (!drv->open(dbfilename.toStdString().c_str(), QString(), QString(), QString(), 0,
+//                  QString("QSQLITE_OPEN_READONLY;"
+//                          "QSQLITE_ENABLE_SHARED_CACHE;"
+//                          "QSQLITE_INIT_SPATIALITE;"
+//                          "QSQLITE_OPEN_URI")))
+//    {
+//        NMLogError(<< ctxLUMASSMainWin << ": "
+//            << ": Failed opening SqlTableView connection!");
+//        return 0;
+//    }
+
+//    // ... and establish the Qt-Db connection
+//    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+//    db.setDatabaseName(dbfilename);
+
+    conname.clear();
+    conname = this->getDbConnection(dbfilename, false);
+    if (conname.isEmpty())
+    {
+        NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - failed connecting to db!");
+        return 0;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database(conname);
 
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
@@ -2344,12 +2369,7 @@ LUMASSMainWin::importTable(const QString& fileName,
     tabPair.second = tabview;
 
     mTableList.insert(viewName, tabPair);
-
-	QPair<void*, sqlite3*> adminPair;
-	adminPair.first = splCache;
-	adminPair.second = tabconn;
-
-	mTableAdminObjects.insert(viewName, adminPair);
+    mTableDbNames.insert(dbfilename, viewName);
 
     if (tvType == NM_TABVIEW_STANDALONE)
     {
@@ -2382,10 +2402,22 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
     // use the 'hacked' (NM)QSQLiteDriver, so we
     // can create a driver based on an existing sqilte3
     // connection (with spatialite loaded) ...
-    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTab->GetDbConnection(), 0);
+//    NMQSQLiteDriver* drv = new NMQSQLiteDriver(sqlTab->GetDbConnection(), 0);
     // ... and establish the Qt-Db connection
-    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
-    db.setDatabaseName(sqlTab->GetDbFileName().c_str());
+//    QSqlDatabase db = QSqlDatabase::addDatabase(drv, conname);
+//    db.setDatabaseName(sqlTab->GetDbFileName().c_str());
+
+    QString viewName = conname;
+    QString dbfilename;
+    if (sqlTab.IsNotNull())
+    {
+        dbfilename = QString(sqlTab->GetDbFileName().c_str());
+        sqlTab->CloseTable();
+    }
+    conname = getDbConnection(dbfilename, false);
+
+    QSqlDatabase db = QSqlDatabase::database(conname, true);
+
 
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
@@ -2394,7 +2426,7 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
     srcModel->setTable(sqlTab->GetTableName().c_str());
     srcModel->select();
 
-    QString viewName = QString(conname);
+    //QString viewName = QString(conname);
 
 
     QSharedPointer<NMSqlTableView> tabview = QSharedPointer<NMSqlTableView>(
@@ -2411,12 +2443,7 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
     tabPair.second = tabview;
 
     mTableList.insert(viewName, tabPair);
-
-    QPair<void*, sqlite3*> adminPair;
-    adminPair.first = 0;
-    adminPair.second = sqlTab->GetDbConnection();
-
-    mTableAdminObjects.insert(viewName, adminPair);
+    mTableDbNames.insert(dbfilename, viewName);
 
     QPixmap pm;
     pm.load(":table_object.png");
@@ -2481,34 +2508,37 @@ LUMASSMainWin::tableObjectViewClosed()
 void
 LUMASSMainWin::deleteTableObject(const QString& name)
 {
-
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator itList =
                mTableList.find(name);
 
     if (itList != mTableList.end())
     {
         NMSqlTableModel* model = qobject_cast<NMSqlTableModel*>(itList.value().second->getModel());
-        QString cname = itList.value().second->windowTitle();
+        const QString cname = itList.value().second->windowTitle();
+        const QString dbname = model->database().databaseName();
         model->clear();
-        model->database().close();
+        //model->database().close();
         delete model;
 
-        QSqlDatabase::removeDatabase(cname);
         mTableList.erase(itList);
-    }
+        mTableDbNames.remove(dbname, cname);
 
-    QMap<QString, QPair<void*, sqlite3*> >::iterator itAdmin =
-            mTableAdminObjects.find(name);
-    if (itAdmin != mTableAdminObjects.end())
-    {
-        void* cache = itAdmin.value().first;
-        sqlite3* conn = itAdmin.value().second;
-
-        sqlite3_close(conn);
-        spatialite_cleanup_ex(cache);
-        cache = 0;
-        conn = 0;
-        mTableAdminObjects.erase(itAdmin);
+        // if there are no open tables referenced anymore with this db
+        // we can safely remove the db and forget about ...
+        QStringList opentables = mTableDbNames.values(dbname);
+        if (opentables.isEmpty())
+        {
+            QMap<QString, QString>::iterator conIt = mQSqlDbConnectionNameMap.find(dbname);
+            if (conIt != mQSqlDbConnectionNameMap.end())
+            {
+                {
+                    QSqlDatabase db = QSqlDatabase::database(cname, false);
+                    db.close();
+                }
+                QSqlDatabase::removeDatabase(cname);
+            }
+            mQSqlDbConnectionNameMap.erase(conIt);
+        }
     }
 }
 
@@ -2540,22 +2570,38 @@ LUMASSMainWin::removeTableObject(QListWidgetItem* item, QPoint globalPos)
     act->setText(actText);
     menu->addAction(act);
 
+//    QAction* actAll = new QAction(menu.data());
+//    QString actAllText = QStringLiteral("Remove all Tables");
+//    actAllText->setText(actText);
+//    menu->addAction(actAll);
+
     QAction* ret = menu->exec(globalPos);
 
     //    QString msg = QString("Do you want to remove table '%1'?").arg(name);
     //    QMessageBox::StandardButton btn =
     //            QMessageBox::question(this, "Remove Table Object",
     //                                  msg);
-    if (ret == 0)
+    if (ret == nullptr)
     {
         NMDebugCtx(ctxLUMASSMainWin, << "done!");
         return;
     }
+    else
+    {
+        if (act->text().compare(QStringLiteral("Remove all Tables")) == 0)
+        {
+            ;//mTableList
+        }
+        else
+        {
+            this->deleteTableObject(name);
+            mTableListWidget->removeItemWidget(item);
+            delete item;
+        }
+    }
 
-    this->deleteTableObject(name);
 
-    mTableListWidget->removeItemWidget(item);
-    delete item;
+
 
     NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
@@ -2936,6 +2982,38 @@ void LUMASSMainWin::checkRemoveLayerInfo(NMLayer* l)
     if (l == mLastInfoLayer)
     {
         updateLayerInfo(0, -1);
+    }
+
+    // remove image layer from db tracking lists
+    if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+    {
+        NMSqlTableView* tv = l->getSqlTableView();
+        tv->getSortFilter()->removeTempTables();
+        NMSqlTableModel* tm = qobject_cast<NMSqlTableModel*>(tv->getModel());
+        mTableDbNames.remove(tm->getDatabaseName(), tv->windowTitle());
+
+        QStringList remainViews = mTableDbNames.values(tm->getDatabaseName());
+        if (remainViews.isEmpty())
+        {
+            QMap<QString, QString>::iterator conIt = mQSqlDbConnectionNameMap.find(tm->getDatabaseName());
+            if (conIt != mQSqlDbConnectionNameMap.end())
+            {
+                {
+                    QSqlDatabase db = QSqlDatabase::database(tv->windowTitle(), false);
+                    db.close();
+                }
+                QSqlDatabase::removeDatabase(tv->windowTitle());
+            }
+            mQSqlDbConnectionNameMap.erase(conIt);
+        }
+
+
+        QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator viewIt =
+                mTableList.find(tv->windowTitle());
+        if (viewIt != mTableList.end())
+        {
+            mTableList.erase(viewIt);
+        }
     }
 }
 
@@ -3621,23 +3699,9 @@ void LUMASSMainWin::removeAllObjects()
 	}
     mTableList.clear();
 
-	QMap<QString, QPair<void*, sqlite3*> >::iterator it = mTableAdminObjects.begin();
-	while (it != mTableAdminObjects.end())
-	{
-		void* cache = it.value().first;
-		sqlite3* conn = it.value().second;
-
-		sqlite3_close(conn);
-        spatialite_cleanup_ex(cache);
-		cache = 0;
-		conn = 0;
-		++it;
-	}
-    mTableAdminObjects.clear();
-
     mTableListWidget->clear();
 
-        NMDebugCtx(ctxLUMASSMainWin, << "done!");
+    NMDebugCtx(ctxLUMASSMainWin, << "done!");
 }
 
 void LUMASSMainWin::pickObject(vtkObject* obj)
@@ -6489,7 +6553,41 @@ LUMASSMainWin::addLayerToCompList()
 	if (layer == 0)
 		return;
 
-	layer->setVisible(true);
+    layer->setVisible(true);
+
+    if (layer->getLayerType() == NMLayer::NM_IMAGE_LAYER)
+    {
+        NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
+        if (il != nullptr)
+        {
+            NMSqlTableModel* sqlMod = qobject_cast<NMSqlTableModel*>(
+                                         const_cast<QAbstractItemModel*>(il->getTable()));
+            if (sqlMod != nullptr)
+            {
+                otb::SQLiteTable::Pointer sqlTab = static_cast<otb::SQLiteTable*>(il->getRasterAttributeTable(1).GetPointer());
+
+                QSharedPointer<NMSqlTableView> tv(il->getSqlTableView());
+                QString viewTitle = tv->windowTitle();
+                QStringList views = mTableDbNames.values();
+                int lfd = 2;
+                while (views.contains(viewTitle))
+                {
+                    viewTitle = QString("%1 (%2)").arg(tv->windowTitle()).arg(lfd);
+                    ++lfd;
+                }
+                tv->setWindowTitle(viewTitle);
+                mTableDbNames.insert(sqlMod->getDatabaseName(), viewTitle);
+
+
+                QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > tabPair;
+                tabPair.first = sqlTab;
+                tabPair.second = tv;
+                mTableList.insert(viewTitle, tabPair);
+            }
+        }
+    }
+
+
     this->mLayerList->addLayer(layer);
 }
 
@@ -6804,7 +6902,7 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     // ============================================
     // look for configuration table
     // ============================================
-    QString usermodelpath = modelPath;
+    QString modelfilepath = modelPath;
     QString baseName = QString("%1Tool").arg(userModel);
     QString toolTableName = QString("%1/%2.ldb")
             .arg(modelPath)
@@ -6813,12 +6911,12 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     QFileInfo fnInfo(toolTableName);
     if (!fnInfo.exists() || !fnInfo.isReadable())
     {
-        QString deeppath = QString("%1/%2").arg(usermodelpath).arg(userModel);
+        QString deeppath = QString("%1/%2").arg(modelfilepath).arg(userModel);
         QString deeptool = QString("%1/%2Tool.ldb").arg(deeppath).arg(userModel);
         QFileInfo deepFifo(deeptool);
         if (deepFifo.exists() && deepFifo.isReadable())
         {
-            usermodelpath = deeppath;
+            modelfilepath = deeppath;
             toolTableName = deeptool;
         }
         else
@@ -6830,14 +6928,14 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     }
 
     QString modelFile = QString("%1/%2.lmx")
-            .arg(usermodelpath)
+            .arg(modelfilepath)
             .arg(userModel);
 
     QFileInfo mfInfo(modelFile);
     if (!mfInfo.exists() || !mfInfo.isReadable())
     {
         NMLogError(<< "Load User Tool: Couldn't read tool's user model '"
-                   << usermodelpath.toStdString() << "/"
+                   << modelfilepath.toStdString() << "/"
                    << userModel.toStdString() << ".lmx'!")
         return;
     }
@@ -6880,19 +6978,20 @@ LUMASSMainWin::loadUserModelTool(const QString& modelPath,
     NMModelAction* uact = new NMModelAction(toolName, toolbar);
     uact->setObjectName(toolName);
     uact->setModelName(userModel);
-    uact->setModelPath(usermodelpath);
+    uact->setModelPath(modelfilepath);
     uact->setLogger(mLogger);
     mExclusiveActions << uact;
 
     // if modelPath is pointing 'into' the
     // tool directory, go one level up ...
-    QFileInfo mdir(usermodelpath);
+    QString usermodelpath = modelfilepath;
+    QFileInfo mdir(modelfilepath);
     QString mdirbaseName = mdir.baseName();
     QString usermodelname = userModel;
     if (mdirbaseName.compare(usermodelname) == 0)
     {
-        int pos = modelPath.lastIndexOf('/', -1);
-        usermodelpath = modelPath.left(pos);
+        int pos = modelfilepath.lastIndexOf('/', -1);
+        usermodelpath = modelfilepath.left(pos);
     }
 
     // initially, we set the tool up as a simple button
@@ -6963,7 +7062,7 @@ void
 LUMASSMainWin::executeUserModel(void)
 {
     NMModelAction* uact = qobject_cast<NMModelAction*>(sender());
-    if (uact)
+    if (uact != nullptr)
     {
         //        // check for selections
         //        QList<QByteArray> dynNames = uact->dynamicPropertyNames();
@@ -7006,8 +7105,10 @@ LUMASSMainWin::executeUserModel(void)
         //        }
 
         NMModelController* ctrl = uact->getModelController();
-        if (ctrl)
+        if (ctrl != nullptr)
         {
+            this->openTablesReadWrite();
+
             const QString compName = "root";
             QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
         }
@@ -7288,28 +7389,123 @@ LUMASSMainWin::processUserPickAction(long long cellId, bool bSelection)
                 // ========================================================
                 // LOOK FOR TRIGGERS
 
-                QString triggerKey = act->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_ID);
-                if (act != nullptr && !triggerKey.isEmpty())
+                if (act != nullptr)
                 {
-                    NMModelController* ctrl = const_cast<NMModelController*>(
-                                act->getModelController());
-                    if (!ctrl->isModelRunning())
+                    QString triggerKey = act->getTriggerKey(NMAbstractAction::NM_ACTION_TRIGGER_ID);
+                    if (!triggerKey.isEmpty())
                     {
-                        ctrl->updateSettings(triggerKey, QVariant::fromValue(cellId));
-                        const QString compName = "root";
-                        QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
-                    }
-                    else
-                    {
-                        NMLogInfo(<< userTool.toStdString()
-                                  << " is already running - try again once its finished!");
+                        NMModelController* ctrl = const_cast<NMModelController*>(
+                                    act->getModelController());
+                        if (ctrl != nullptr && !ctrl->isModelRunning())
+                        {
+                            this->openTablesReadWrite();
+
+                            ctrl->updateSettings(triggerKey, QVariant::fromValue(cellId));
+                            const QString compName = "root";
+                            QtConcurrent::run(ctrl, &NMModelController::executeModel, compName);
+                        }
+                        else
+                        {
+                            NMLogInfo(<< userTool.toStdString()
+                                      << " is already running - try again once its finished!");
+                        }
                     }
                 }
             }
         }
-
     }
 }
+
+void
+LUMASSMainWin::openTablesReadWrite(void)
+{
+    QStringList dbNames = mQSqlDbConnectionNameMap.keys();
+    foreach(const QString& path, dbNames)
+    {
+        if (this->getDbConnection(path, true).isEmpty())
+        {
+            NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - didn't get read/write connection for '"
+                       << path.toStdString() << "'!");
+        }
+    }
+}
+
+void
+LUMASSMainWin::openTablesReadOnly(void)
+{
+    QStringList dbNames = mQSqlDbConnectionNameMap.keys();
+    foreach(const QString& path, dbNames)
+    {
+        if (this->getDbConnection(path, false).isEmpty())
+        {
+            NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - didn't get read-only connection for '"
+                       << path.toStdString() << "'!");
+        }
+    }
+}
+
+QString
+LUMASSMainWin::getDbConnection(const QString &dbFileName, bool bReadWrite)
+{
+    QString connname;
+
+    QFileInfo fifo(dbFileName);
+    if (!fifo.isFile() || !(bReadWrite ? fifo.isWritable() : fifo.isReadable()) )
+    {
+        return connname;
+    }
+
+    QString connectOptions = QStringLiteral("QSQLITE_ENABLE_SHARED_CACHE;"
+                                            "QSQLITE_INIT_SPATIALITE;"
+                                            "QSQLITE_OPEN_URI");
+    if (!bReadWrite)
+    {
+        connectOptions += QStringLiteral(";QSQLITE_OPEN_READONLY");
+    }
+
+    QMap<QString, QString>::iterator conIt = mQSqlDbConnectionNameMap.find(dbFileName);
+    if (conIt != mQSqlDbConnectionNameMap.end())
+    {
+        QSqlDatabase db = QSqlDatabase::database(conIt.value(), false);
+        if (db.isValid())
+        {
+            if (db.isOpen())
+            {
+                db.close();
+            }
+
+            db.setConnectOptions(connectOptions);
+            if (db.open())
+            {
+                connname = conIt.value();
+            }
+        }
+        else
+        {
+            mQSqlDbConnectionNameMap.erase(conIt);
+        }
+    }
+    else
+    {
+        const QString cName = fifo.baseName();
+        NMQSQLiteDriver* drv = new NMQSQLiteDriver();
+        QSqlDatabase newDb = QSqlDatabase::addDatabase(drv, cName);
+        newDb.setConnectOptions(connectOptions);
+        newDb.setDatabaseName(dbFileName);
+        if (!newDb.open())
+        {
+            NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - open new connection to '"
+                       << dbFileName.toStdString() << "' failed: " << newDb.lastError().text().toStdString());
+            return connname;
+        }
+
+        mQSqlDbConnectionNameMap.insert(dbFileName, cName);
+        connname = cName;
+    }
+
+    return connname;
+}
+
 
 void
 LUMASSMainWin::displayUserModelOutput(void)
@@ -7328,6 +7524,12 @@ LUMASSMainWin::displayUserModelOutput(void)
         return;
     }
     NMAbstractAction* userAction = actionIt.value();
+
+    //TEST======================
+    // make any selected image layers readonly again
+    this->openTablesReadOnly();
+
+    // ===========================
 
     const NMAbstractAction::NMOutputMap& outMap = userAction->getOutputs();
     NMAbstractAction::NMOutputMap::const_iterator outIt = outMap.cbegin();
@@ -7349,24 +7551,32 @@ LUMASSMainWin::displayUserModelOutput(void)
         {
             NMLogError(<< userAction->objectName().toStdString() << ": "
                        << "Invalid output component '" << output.toStdString() << "'!");
+            ++outIt;
             continue;
         }
 
-        // get the process holding the FileName(s) (and TableName) properties
-        NMIterableComponent* icomp = qobject_cast<NMIterableComponent*>(comp);
-        if (icomp == 0)
+        NMIterableComponent* icomp = nullptr;
+        NMProcess* proc = nullptr;
+        if (!comp->objectName().startsWith(QStringLiteral("DataBuffer")))
         {
-            NMLogError(<< userAction->objectName().toStdString() << ": "
-                       << "Invalid output component '" << output.toStdString() << "'!");
-            continue;
-        }
+            // get the process holding the FileName(s) (and TableName) properties
+            icomp = qobject_cast<NMIterableComponent*>(comp);
+            if (icomp == 0)
+            {
+                NMLogError(<< userAction->objectName().toStdString() << ": "
+                           << "Invalid output component '" << output.toStdString() << "'!");
+                ++outIt;
+                continue;
+            }
 
-        NMProcess* proc = icomp->getProcess();
-        if (proc == 0)
-        {
-            NMLogError(<< userAction->objectName().toStdString() << ": "
-                       << "Invalid output component '" << output.toStdString() << "'!");
-            continue;
+            proc = icomp->getProcess();
+            if (proc == 0)
+            {
+                NMLogError(<< userAction->objectName().toStdString() << ": "
+                           << "Invalid output component '" << output.toStdString() << "'!");
+                ++outIt;
+                continue;
+            }
         }
 
         // we can just display an output buffer (default), or

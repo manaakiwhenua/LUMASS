@@ -126,6 +126,16 @@ public:
         getTableList(void) {return mTableList;}
     ModelComponentList* getLayerList(){return this->mLayerList;}
 
+    /* opens a db connection to the given database and
+     * returns the associated connection name; if a connection
+     * has already been established with the requested bReadWrite setting,
+     * the existing connection name returned; if the requested bReadWrite setting
+     * does not align with the request, the db is closed and re-opened with the
+     * requested setting and the associated connection name returned.
+     * Whenever an empty connection name is return, something went wrong!
+     */
+    QString getDbConnection(const QString& dbFileName, bool bReadWrite=true);
+
     void checkRemoveLayerInfo(NMLayer* l);
     void checkInteractiveLayer();
 
@@ -338,6 +348,10 @@ protected:
     void addModelToUserModelList(const QString& modelName);
 
     void processUserPickAction(long long cellId, bool bSelection);
+
+    void openTablesReadOnly(void);
+    void openTablesReadWrite(void);
+
 
 
     //	void displayPolyData(vtkSmartPointer<vtkPolyData> polydata, double* lowPt, double* highPt);
@@ -566,8 +580,11 @@ private:
 	//   (unique) table name        
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > > mTableList;
 
-	// (unique) table name
-	QMap<QString, QPair<void*, sqlite3*> > mTableAdminObjects;
+    // db path name, view name (linking back to mTableList)
+    QMultiMap<QString, QString> mTableDbNames;
+
+    // db path name, connection name
+    QMap<QString, QString> mQSqlDbConnectionNameMap;
 
     QMap<QString, NMAbstractAction*> mUserActions;
 

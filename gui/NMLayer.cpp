@@ -186,33 +186,33 @@ NMLayer::~NMLayer()
         {
             std::string dbname = tmodel->getDatabaseName().toStdString();
             tmodel->clear();
-            tmodel->database().close();
+            //tmodel->database().close();
             delete mTableModel;
             mTableModel = 0;
             {
-                QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
-                if (db.isValid() && db.isOpen())
-                {
-                    db.close();
-                }
+//                QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
+//                if (db.isValid() && db.isOpen())
+//                {
+//                    db.close();
+//                }
             }
-            QSqlDatabase::removeDatabase(mQSqlConnectionName);
+//            QSqlDatabase::removeDatabase(mQSqlConnectionName);
 
-            sqlite3_close(mSqlViewConn);
-            spatialite_cleanup_ex(mSpatialiteCache);
+            //sqlite3_close(mSqlViewConn);
+            //spatialite_cleanup_ex(mSpatialiteCache);
             mSpatialiteCache = 0;
             mSqlViewConn = 0;
 
-            NMDebug(<< "NMImageLayer: Destroyed QSql connection to '"
-                    << dbname << "'" << std::endl);
+//            NMDebug(<< "NMImageLayer: Destroyed QSql connection to '"
+//                    << dbname << "'" << std::endl);
         }
     }
 
-    if (this->mSqlTableView != 0)
-    {
-        this->mSqlTableView->close();
-        delete this->mSqlTableView;
-    }
+//    if (this->mSqlTableView != 0)
+//    {
+//        this->mSqlTableView->close();
+//        delete this->mSqlTableView;
+//    }
 
     if (mSelectionModel != 0)
 		delete mSelectionModel;
@@ -2836,6 +2836,32 @@ void NMLayer::showAttributeTable(void)
 void NMLayer::createTableView(void)
 {
 	// implemented in subclasses
+}
+
+NMSqlTableView*
+NMLayer::getSqlTableView(void)
+{
+    NMSqlTableView* tv = nullptr;
+    if (mLayerType == NM_IMAGE_LAYER)
+    {
+        createTableView();
+        tv = mSqlTableView;
+    }
+
+    return tv;
+}
+
+NMTableView*
+NMLayer::getTableView(void)
+{
+    NMTableView* tv = nullptr;
+    if (mLayerType == NM_VECTOR_LAYER)
+    {
+        createTableView();
+        tv = mTableView;
+    }
+
+    return tv;
 }
 
 int NMLayer::updateAttributeTable(void)

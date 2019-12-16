@@ -323,7 +323,8 @@ public:
 
 	NMLayer::NMColourRamp getColourRampFromStr(const QString rampStr);
 
-
+    NMSqlTableView* getSqlTableView(void);
+    NMTableView* getTableView(void);
 
 
 	// -------------------------------------------------------

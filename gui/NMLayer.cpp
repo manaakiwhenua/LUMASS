@@ -42,6 +42,7 @@
 #include <QPainter>
 #include <QSqlQuery>
 #include <QSqlDriver>
+#include <QSqlError>
 
 #include "vtkPointData.h"
 #include "vtkMapper.h"
@@ -810,7 +811,7 @@ NMLayer::mapSingleSymbol()
 		if (mLayerType == NM_IMAGE_LAYER)
 		{
 			mLegendDescrField = tr("All Pixel");
-			ncells = mTableModel->rowCount(QModelIndex())+1;
+            ncells = this->getNumTableRecords()+1;
 			mNumLegendRows = 3;
 		}
 		else
@@ -956,7 +957,7 @@ NMLayer::loadLegend(const QString& filename)
     }
     else
     {
-        ncells = mTableModel->rowCount();
+        ncells = this->getNumTableRecords();
         if (this->getColumnType(valIdx) == QVariant::String)
         {
             bIsNumeric = false;
@@ -1204,20 +1205,56 @@ NMLayer::mapUniqueValues(void)
     // we work out whether or not to use the index map by simply checking
     //      mUseIdxMap = mLegendIndexField(ncells-1) > ncells-1
     mUseIdxMap = false;
-
+    qlonglong maxidx = -1;
     QModelIndex ami = mTableModel->index(ncells-1, idxidx);
-    qlonglong maxidx = mTableModel->data(ami).toLongLong();
+    if (ami.isValid())
+    {
+        maxidx = mTableModel->data(ami).toLongLong();
+    }
+
     if (maxidx > ncells-1)
     {
         mUseIdxMap = true;
+    }
+
+    QSqlQuery sqlQuery;
+    if (mLayerType == NM_IMAGE_LAYER)
+    {
+        NMSqlTableView* tv = this->getSqlTableView();
+        if (tv != nullptr)
+        {
+            QSqlDatabase db = tv->getModel()->database();
+            QSqlDriver* drv = db.driver();
+            QString qStr;
+            if (mUseIdxMap)
+            {
+                qStr = QString("SELECT %1, %2 from %3")
+                        .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
+                        .arg(drv->escapeIdentifier(mLegendIndexField, QSqlDriver::FieldName))
+                        .arg(drv->escapeIdentifier(tv->getModel()->tableName(), QSqlDriver::TableName));
+            }
+            else
+            {
+                qStr = QString("SELECT %1 from %2")
+                        .arg(drv->escapeIdentifier(mLegendValueField, QSqlDriver::FieldName))
+                        .arg(drv->escapeIdentifier(tv->getModel()->tableName(), QSqlDriver::TableName));
+            }
+
+            sqlQuery = QSqlQuery(db);
+            if (!sqlQuery.exec(qStr))
+            {
+                NMLogError(<< ctxNMLayer << ": Value query failed!");
+                return;
+            }
+        }
     }
 
     // maps scalar values to the 'primary key'
 	this->mMapValueIndices.clear();
 
 	bool bConvOk;
-	qlonglong val;
-    qlonglong idx;
+    qlonglong val = -1;
+    qlonglong idx = -1;
 	QString sVal;
 	QModelIndex vi;
     QModelIndex ii;
@@ -1225,7 +1262,7 @@ NMLayer::mapUniqueValues(void)
 	double rgba[4];
 	for (int t=0; t < ncells; ++t)
 	{
-		if (hole && hole->GetValue(t))
+        if (hole && hole->GetValue(t))
 		{
             lut->SetTableValue(t, rgba[0], rgba[1], rgba[2]);
 			continue;
@@ -1240,19 +1277,20 @@ NMLayer::mapUniqueValues(void)
 			}
 			else
 			{
-				vi = mTableModel->index(t, validx);
-                ii = mTableModel->index(t, idxidx);
-                if (!vi.isValid() && t < ncells)
+                if (sqlQuery.next())
                 {
-                    if (mTableModel->canFetchMore(QModelIndex()))
+                    val = sqlQuery.value(0).toLongLong();
+                    if (mUseIdxMap)
                     {
-                        mTableModel->fetchMore(QModelIndex());
-                        vi = mTableModel->index(t, validx);
-                        ii = mTableModel->index(t, idxidx);
+                        idx = sqlQuery.value(1).toLongLong();
                     }
                 }
-				val = vi.data().toLongLong(&bConvOk);
-                idx = ii.data().toLongLong(&bConvOk);
+                else
+                {
+                    NMLogError(<< ctxNMLayer << ": Error fetching value: "
+                               << sqlQuery.lastError().text().toStdString());
+                    break;
+                }
 			}
 
 			sVal = QString(tr("%1")).arg(val);
@@ -1266,20 +1304,20 @@ NMLayer::mapUniqueValues(void)
 			}
 			else
 			{
-				vi = mTableModel->index(t, validx);
-                ii = mTableModel->index(t, idxidx);
-                if (!vi.isValid() && t < ncells)
+                if (sqlQuery.next())
                 {
-                    if (mTableModel->canFetchMore(QModelIndex()))
+                    sVal = sqlQuery.value(0).toString();
+                    if (mUseIdxMap)
                     {
-                        mTableModel->fetchMore(QModelIndex());
-                        vi = mTableModel->index(t, validx);
-                        ii = mTableModel->index(t, idxidx);
+                        val = sqlQuery.value(1).toLongLong();
                     }
                 }
-				sVal = vi.data().toString();
-                idx = ii.data().toLongLong(&bConvOk);
-                val = idx;
+                else
+                {
+                    NMLogError(<< ctxNMLayer << ": Error fetching value: "
+                               << sqlQuery.lastError().text().toStdString());
+                    break;
+                }
 			}
 		}
 
@@ -1825,7 +1863,7 @@ NMLayer::mapColourTable(void)
 	}
 	else
 	{
-		ncells = mTableModel->rowCount(QModelIndex());
+        ncells = this->getNumTableRecords();
 		mLookupTable->SetNumberOfTableValues(ncells+2);
 	}
 
@@ -2244,7 +2282,7 @@ NMLayer::setLegendColour(const int legendRow, double* rgba)
 				{
                     if (mTableModel)
                     {
-                        for (int i=1; i <= mTableModel->rowCount(); ++i)
+                        for (int i=1; i <= this->getNumTableRecords(); ++i)
                         {
                             mLookupTable->SetTableValue(i, rgba);
                         }

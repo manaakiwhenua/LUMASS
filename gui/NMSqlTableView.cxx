@@ -1012,7 +1012,7 @@ NMSqlTableView::addRow()
     {
         if (mSortFilter->addRow())
 		{
-			mlNumRecs = mSortFilter->rowCount();
+            mlNumRecs = mSortFilter->getNumTableRecords();
 			this->updateSelectionAdmin(mlNumRecs);
 		}
     }
@@ -1034,7 +1034,7 @@ NMSqlTableView::addRows()
     {
         if (mSortFilter->addRows(nrows))
         {
-            mlNumRecs = mSortFilter->rowCount();
+            mlNumRecs = mSortFilter->getNumTableRecords();
             this->updateSelectionAdmin(mlNumRecs);
         }
     }

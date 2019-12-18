@@ -1088,6 +1088,8 @@ void NMSqlTableView::calcColumn()
     NMDebugAI(<< rowsAffected << " records updated!" << std::endl);
     updateProxySelection(QItemSelection(), QItemSelection());
 
+    this->refreshTableView();
+
     NMDebugCtx(ctx, << "done!");
 }
 
@@ -1150,7 +1152,7 @@ void NMSqlTableView::addColumn()
 {
     NMDebugCtx(ctx, << "...");
 
-    NMAddColumnDialog* dlg = new NMAddColumnDialog(NMGlobalHelper::getMainWindow());
+    NMAddColumnDialog* dlg = new NMAddColumnDialog(this);
 	int ret = 0;
 	bool bok = true;
 	QString name;
@@ -1302,7 +1304,7 @@ void NMSqlTableView::joinAttributes()
     // ============================================================
 
     bool bOk = false;
-    QInputDialog ipd(NMGlobalHelper::getMainWindow());
+    QInputDialog ipd(this);
     ipd.setOption(QInputDialog::UseListViewForComboBoxItems);
     ipd.setComboBoxItems(tableNameList);
     ipd.setComboBoxEditable(false);
@@ -1989,7 +1991,7 @@ NMSqlTableView::callUnHideColumn(void)
 		return;
 
 	// show list of columns which can be unhidden
-    QInputDialog dlg(NMGlobalHelper::getMainWindow());
+    QInputDialog dlg(this);
 	dlg.setWindowTitle("Unhide Table Column");
 	dlg.setLabelText(QString(tr("Pick the column to unhide")));
 	dlg.setOptions(QInputDialog::UseListViewForComboBoxItems);

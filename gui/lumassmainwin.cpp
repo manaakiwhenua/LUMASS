@@ -362,6 +362,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 //    sqlite3_temp_directory = const_cast<char*>(
 //                mSettings["Workspace"].toString().toStdString().c_str());
 
+    mSessionDbFileName = QStringLiteral("file:lumass_session_db?mode=memory&cache=shared");
+
     // **********************************************************************
     // *                    INIT SOME ON-DEMAND GUI ELEMENTS
     // **********************************************************************
@@ -2448,6 +2450,50 @@ LUMASSMainWin::importTable(const QString& fileName,
 }
 
 NMSqlTableView*
+LUMASSMainWin::createTableView(const QString &dbFileName, const QString &tableName, const QString &viewName)
+{
+    const QString conname = getDbConnection(dbFileName, false);
+    QSqlDatabase db = QSqlDatabase::database(conname, false);
+
+    if (!db.tables().contains(tableName))
+    {
+        NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - "
+                   << "Table '" << tableName.toStdString() << "' is not part of '"
+                   << dbFileName.toStdString() << "'!");
+        return nullptr;
+    }
+
+    NMSqlTableModel* tabModel = new NMSqlTableModel(nullptr, db);
+    tabModel->setTable(tableName);
+    tabModel->select();
+
+    QSharedPointer<NMSqlTableView> tv = QSharedPointer<NMSqlTableView>(
+                new NMSqlTableView(tabModel,
+                    NMSqlTableView::NMTABVIEW_STANDALONE, 0));
+    tv->setTitle(viewName);
+    connect(tv.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
+
+    otb::SQLiteTable::Pointer otbtab;
+    QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > tabPair;
+    tabPair.first = otbtab;
+    tabPair.second = tv;
+
+    mTableList.insert(viewName, tabPair);
+    mTableDbNames.insert(dbFileName, viewName);
+
+    QPixmap pm;
+    pm.load(":table_object.png");
+
+    QListWidgetItem* wi = new QListWidgetItem(QIcon(pm), viewName, mTableListWidget);
+    mTableListWidget->addItem(wi);
+
+    tv->show();
+    tv->raise();
+
+    return tv.data();
+}
+
+NMSqlTableView*
 LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
 {
     QString tmpname = QString::fromLatin1("mem_%1").arg(sqlTab->GetTableName().c_str());
@@ -2567,11 +2613,18 @@ LUMASSMainWin::deleteTableObject(const QString& name)
         const QString cname = itList.value().second->windowTitle();
         const QString dbname = model->database().databaseName();
         model->clear();
-        //model->database().close();
         delete model;
 
         mTableList.erase(itList);
         mTableDbNames.remove(dbname, cname);
+
+        if (dbname.compare(mSessionDbFileName) == 0)
+        {
+            QSqlDriver* drv = model->database().driver();
+            QString qStr = QString("DROP TABLE IF EXISTS %1").arg(drv->escapeIdentifier(cname, QSqlDriver::TableName));
+            QSqlQuery q(model->database());
+            q.exec(qStr);
+        }
 
         // if there are no open tables referenced anymore with this db
         // we can safely remove the db and forget about ...
@@ -7482,7 +7535,11 @@ LUMASSMainWin::openTablesReadWrite(void)
     QStringList dbNames = mQSqlDbConnectionNameMap.keys();
     foreach(const QString& path, dbNames)
     {
-        if (this->getDbConnection(path, true).isEmpty())
+        if (path.compare(mSessionDbFileName) == 0)
+        {
+            continue;
+        }
+        else if (this->getDbConnection(path, true).isEmpty())
         {
             NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - didn't get read/write connection for '"
                        << path.toStdString() << "'!");
@@ -7496,7 +7553,11 @@ LUMASSMainWin::openTablesReadOnly(void)
     QStringList dbNames = mQSqlDbConnectionNameMap.keys();
     foreach(const QString& path, dbNames)
     {
-        if (this->getDbConnection(path, false).isEmpty())
+        if (path.compare(mSessionDbFileName)== 0)
+        {
+            continue;
+        }
+        else if (this->getDbConnection(path, false).isEmpty())
         {
             NMLogError(<< ctxLUMASSMainWin << "::" << __FUNCTION__ << "() - didn't get read-only connection for '"
                        << path.toStdString() << "'!");
@@ -7510,7 +7571,11 @@ LUMASSMainWin::getDbConnection(const QString &dbFileName, bool bReadWrite)
     QString connname;
 
     QFileInfo fifo(dbFileName);
-    if (!fifo.isFile() || !(bReadWrite ? fifo.isWritable() : fifo.isReadable()) )
+    if (dbFileName.trimmed().compare(mSessionDbFileName) == 0)
+    {
+        bReadWrite = true;
+    }
+    else if (!fifo.isFile() || !(bReadWrite ? fifo.isWritable() : fifo.isReadable()) )
     {
         return connname;
     }
@@ -7529,15 +7594,26 @@ LUMASSMainWin::getDbConnection(const QString &dbFileName, bool bReadWrite)
         QSqlDatabase db = QSqlDatabase::database(conIt.value(), false);
         if (db.isValid())
         {
-            if (db.isOpen())
-            {
-                db.close();
-            }
-
-            db.setConnectOptions(connectOptions);
-            if (db.open())
+            // if database is open and in the mode we want, just return the connection name
+            if (
+                   db.isOpen()
+                && (
+                         bReadWrite  && !db.connectOptions().contains(QStringLiteral("READONLY"))
+                     || !bReadWrite  &&  db.connectOptions().contains(QStringLiteral("READONLY"))
+                   )
+               )
             {
                 connname = conIt.value();
+            }
+            // if the database is not in the mode we want, we close it and re-open in desired mode
+            else
+            {
+                db.close();
+                db.setConnectOptions(connectOptions);
+                if (db.open())
+                {
+                    connname = conIt.value();
+                }
             }
         }
         else
@@ -7547,7 +7623,16 @@ LUMASSMainWin::getDbConnection(const QString &dbFileName, bool bReadWrite)
     }
     else
     {
-        const QString cName = fifo.baseName();
+        QString cName;
+        if (dbFileName.compare(mSessionDbFileName) == 0)
+        {
+            cName = QStringLiteral("LUMASS_CUR_SESSION_MEM");
+        }
+        else
+        {
+            cName = fifo.baseName();
+        }
+
         NMQSQLiteDriver* drv = new NMQSQLiteDriver();
         QSqlDatabase newDb = QSqlDatabase::addDatabase(drv, cName);
         newDb.setConnectOptions(connectOptions);

@@ -134,6 +134,7 @@ public:
     QString selectSqliteTable(const QString& dbFileName);
 
     NMSqlTableView* createTableView(otb::SQLiteTable::Pointer sqlTab);
+    NMSqlTableView* createTableView(const QString& dbFileName, const QString& tableName, const QString& viewName);
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&
         getTableList(void) {return mTableList;}
@@ -148,6 +149,8 @@ public:
      * Whenever an empty connection name is return, something went wrong!
      */
     QString getDbConnection(const QString& dbFileName, bool bReadWrite=true);
+
+    QString getSessionDbFileName(void) {return mSessionDbFileName;}
 
     void checkRemoveLayerInfo(NMLayer* l);
     void checkInteractiveLayer();
@@ -596,6 +599,8 @@ private:
     // the petascope metadata table
     NMTableView* mpPetaView;
     QAbstractItemModel* mPetaMetaModel;
+
+    QString mSessionDbFileName;
 
     // keep track of any imported table data (GIS mode)
 	//   (unique) table name        

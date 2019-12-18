@@ -1524,7 +1524,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
             imgFormats << "kea" << "img" << "tiff" << "jpg" << "jpeg" << "tif"
                        << "png" << "gif" << "adf" << "hdr" << "sdat" << "vrt";
             QString ext = finfo.suffix().toLower();
-            if (tabFormats.contains(ext) || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
+            if (tabFormats.contains(ext))// || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
             {
                 NMGlobalHelper hlp;
                 LUMASSMainWin* mainWin = hlp.getMainWindow();
@@ -1533,7 +1533,7 @@ void ModelComponentList::dropEvent(QDropEvent* event)
                 sqliteformats << "db" << "sqlite" << "ldb";
 
                 QString tableName;
-                if (sqliteformats.contains(ext) || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
+                if (sqliteformats.contains(ext))// || fileName.compare(QString::fromLatin1("file::memory:")) == 0)
                 {
                     tableName = mainWin->selectSqliteTable(fileName);
                     if (!tableName.isEmpty())

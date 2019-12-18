@@ -85,7 +85,7 @@ template< class TInputImage, class TOutputImage >
 void SumZonesFilter< TInputImage, TOutputImage >
 ::SetZoneTableFileName(const std::string &tableFileName)
 {
-    if (tableFileName.empty() || tableFileName.compare("file::memory:"))
+    if (tableFileName.empty())
     {
         m_dropTmpDBs = true;
     }
@@ -639,10 +639,6 @@ void SumZonesFilter< TInputImage, TOutputImage >
     m_NextZoneId = 0;
 
     mZoneTable = SQLiteTable::New();
-    if (m_ZoneTableFileName.compare("file::memory:") == 0)
-    {
-        mZoneTable->SetTableName(mZoneTable->GetRandomString(5));
-    }
 
 	Superclass::ResetPipeline();
 	NMDebugCtx(ctx, << "done!");

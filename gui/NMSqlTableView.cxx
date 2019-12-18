@@ -933,43 +933,43 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
     // create a unique temp table visisble to the source model's
     // database connection
     QString tableName = QString("%1").arg(queryName);
-    QStringList allTables = mModel->database().tables();
+
+
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >& tableList =
+            NMGlobalHelper::getMainWindow()->getTableList();
+    QStringList allTables = tableList.keys();
+
     while (allTables.contains(tableName))
     {
         tableName = QString("%1_%2").arg(queryName).arg(++mQueryCounter);
     }
 
     QSqlDriver* drv = mModel->database().driver();
-    QString queryStr = QString("Create temp table %1 as %2")
+    QString queryStr = QString("Create table %1 as %2")
             .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
             .arg(sql);
 
-    QSqlDatabase db = mModel->database();
-    db.transaction();
-    QSqlQuery userQuery(mModel->database());
-    if (!userQuery.exec(queryStr))
+    const QString connname = NMGlobalHelper::getMainWindow()->getDbConnection(
+                NMGlobalHelper::getMainWindow()->getSessionDbFileName());
+    QSqlDatabase dbTarget = QSqlDatabase::database(connname);
+
+    if (!NMGlobalHelper::attachDatabase(dbTarget, mModel->database().databaseName(), tableName))
     {
-        NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
-        NMDebugCtx(ctx, << "done!");
-        userQuery.finish();
-        userQuery.clear();
-        db.rollback();
-        db.commit();
+        NMBoxErr("User Query", "Failed attaching the table database to the session database!");
         return;
     }
-    userQuery.finish();
-    userQuery.clear();
-    db.commit();
-    ++mQueryCounter;
 
-    NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
-    restab->setTable(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
-    restab->select();
-
-    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
-    resview->setWindowFlags(Qt::Window);
-    resview->setTitle(tableName);
-    resview->show();
+    QSqlQuery userQuery(dbTarget);
+    if (!userQuery.exec(queryStr))
+    {
+        NMGlobalHelper::detachDatabase(dbTarget, tableName);
+        NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
+        NMDebugCtx(ctx, << "done!");
+        return;
+    }
+    NMGlobalHelper::detachDatabase(dbTarget, tableName);
+    NMGlobalHelper::getMainWindow()->createTableView(
+                NMGlobalHelper::getMainWindow()->getSessionDbFileName(), tableName, tableName);
 
     //NMDebugCtx(ctx, << "done!");
 }
@@ -1283,7 +1283,7 @@ void NMSqlTableView::joinAttributes()
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > > tableList =
             h.getMainWindow()->getTableList();
-    ModelComponentList* layerList = h.getMainWindow()->getLayerList();
+    //ModelComponentList* layerList = h.getMainWindow()->getLayerList();
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator it =
             tableList.begin();
@@ -1332,27 +1332,25 @@ void NMSqlTableView::joinAttributes()
         return;
     }
 
-    QString srcDbFileName = "";
-    QString srcTableName = "";
-    QString srcConnName = "";
-    NMSqlTableView* srcView = 0;
+    QString srcDbFileName;
+    QString srcTableName;
+    QString srcConnName;
+    NMSqlTableView* srcView = nullptr;
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >::iterator srcIt =
             tableList.find(tableName);
     if (srcIt != tableList.end())
     {
-        srcDbFileName = srcIt.value().first->GetDbFileName().c_str();
         srcView = srcIt.value().second.data();
-        if (srcView)
+        if (srcView != nullptr)
         {
             QSqlTableModel* m = srcView->getModel();
-            if (m)
+            if (m != nullptr)
             {
                 srcTableName = m->tableName();
+                srcDbFileName = m->database().databaseName();
                 srcConnName = m->database().connectionName();
             }
         }
-
-        //srcTableName = srcIt.value().first->GetTableName().c_str();
     }
 
     // if we didn't get the table name from the view, we just use the one
@@ -1701,7 +1699,18 @@ void NMSqlTableView::colStats()
         return;
     }
 
-    QString name = QString("%1_stats").arg(mLastClickedColumn);
+    QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >& tableList =
+            NMGlobalHelper::getMainWindow()->getTableList();
+    QStringList alltables = tableList.keys();
+
+    QString name = QString("%1_%2_stats").arg(mModel->tableName()).arg(mLastClickedColumn);
+    int lfdnr = 2;
+    while (alltables.contains(name))
+    {
+        name = QString("%1_%2_stats_%3").arg(mModel->tableName()).arg(mLastClickedColumn).arg(lfdnr);
+        ++lfdnr;
+    }
+
 
     QSqlDriver* drv = mModel->database().driver();
     std::string col = drv->escapeIdentifier(mLastClickedColumn, QSqlDriver::FieldName).toStdString();
@@ -1723,93 +1732,73 @@ void NMSqlTableView::colStats()
         sql << " where " << mSortFilter->getFilter().toStdString();
     }
 
-    //this->processUserQuery(name, QString(sql.str().c_str()));
 
-    QString tableName = QString("%1").arg(name);
-    QStringList allTables = mModel->database().tables();
-    while (allTables.contains(tableName))
-    {
-        tableName = QString("%1_%2").arg(name).arg(++mQueryCounter);
-    }
-
-    QString queryStr = QString("Create temp table %1 as %2")
-            .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
+    QString queryStr = QString("Create table %1 as %2")
+            .arg(drv->escapeIdentifier(name, QSqlDriver::TableName))
             .arg(sql.str().c_str());
 
-    QSqlDatabase db = mModel->database();
-    db.transaction();
-    QSqlQuery userQuery(mModel->database());
+    const QString connname = NMGlobalHelper::getMainWindow()->getDbConnection(
+                NMGlobalHelper::getMainWindow()->getSessionDbFileName());
+    QSqlDatabase dbTarget = QSqlDatabase::database(connname);
+
+    if (!NMGlobalHelper::attachDatabase(dbTarget, mModel->database().databaseName(), name))
+    {
+        NMBoxErr("User Query", "Failed attaching the table database to the session database!");
+        return;
+    }
+
+    QSqlQuery userQuery(dbTarget);
     if (!userQuery.exec(queryStr))
     {
         NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
+        NMGlobalHelper::detachDatabase(dbTarget, name);
         NMDebugCtx(ctx, << "done!");
-        userQuery.finish();
-        userQuery.clear();
-        db.rollback();
-        db.commit();
         return;
     }
-    userQuery.finish();
-    userQuery.clear();
-    db.commit();
-    ++mQueryCounter;
+
 
     queryStr = QString("Select stddev from %1")
-            .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
+            .arg(drv->escapeIdentifier(name, QSqlDriver::TableName));
 
-    db.transaction();
-    QSqlQuery qRes(mModel->database());
+    dbTarget.transaction();
+    QSqlQuery qRes(dbTarget);
     if (!qRes.exec(queryStr))
     {
          NMDebugCtx(ctx, << "done!");
-         qRes.finish();
-         qRes.clear();
-         db.commit();
+         NMGlobalHelper::detachDatabase(dbTarget, name);
          return;
     }
     if (!qRes.next())
     {
         NMDebugCtx(ctx, << "done!");
-        qRes.finish();
-        qRes.clear();
-        db.commit();
+        NMGlobalHelper::detachDatabase(dbTarget, name);
         return;
     }
     double var = qRes.value(0).toDouble();
     double sdev = std::sqrt(var);
-    qRes.finish();
-    qRes.clear();
-    db.commit();
+    dbTarget.commit();
 
     queryStr = QString("Update %1 set stddev = %2")
-            .arg(drv->escapeIdentifier(tableName, QSqlDriver::TableName))
+            .arg(drv->escapeIdentifier(name, QSqlDriver::TableName))
             .arg(sdev);
 
-    db.transaction();
-    QSqlQuery qUpd(mModel->database());
+    dbTarget.transaction();
+    QSqlQuery qUpd(dbTarget);
     if (!qUpd.exec(queryStr))
     {
-        NMBoxErr("User Query", userQuery.lastError().text().toStdString() << std::endl);
+        NMBoxErr("User Query", qUpd.lastError().text().toStdString() << std::endl);
         NMDebugCtx(ctx, << "done!");
-        qUpd.finish();
-        qUpd.clear();
-        db.rollback();
-        db.commit();
+        NMGlobalHelper::detachDatabase(dbTarget, name);
+        dbTarget.rollback();
+        dbTarget.commit();
         return;
     }
-    qUpd.finish();
-    qUpd.clear();
-    db.commit();
+    dbTarget.commit();
+    ++mQueryCounter;
 
-    NMSqlTableModel* restab = new NMSqlTableModel(this, mModel->database());
-    restab->setTable(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
-    restab->select();
-
-    NMSqlTableView *resview = new NMSqlTableView(restab, this->parentWidget());
-    resview->setWindowFlags(Qt::Window);
-    resview->setTitle(tableName);
-    resview->show();
-
+    NMGlobalHelper::detachDatabase(dbTarget, name);
+    NMGlobalHelper::getMainWindow()->createTableView(
+                NMGlobalHelper::getMainWindow()->getSessionDbFileName(), name, name);
 
     NMDebugCtx(ctx, << "done!");
 }

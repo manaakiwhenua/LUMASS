@@ -59,12 +59,11 @@ public:
     static QItemSelection selectRows(const QAbstractItemModel *model,
                               QList<int>& ids);
     static qreal getLUMASSVersion(void);
-
     static QString getRandomString(int len);
-
     static void logQsqlConnections(void);
-
     static void appendLogMsg(const QString& msg);
+    static bool attachDatabase(QSqlDatabase dbTarget, const QString dbFileName, const QString schemaName=QStringLiteral("attached"));
+    static bool detachDatabase(QSqlDatabase db, QString schemaName);
 
 private:
     static const std::string ctx;

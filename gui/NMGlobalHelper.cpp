@@ -25,6 +25,10 @@
 #include <QPushButton>
 #include <QListView>
 #include <QStringListModel>
+#include <QSqlDatabase>
+#include <QSqlDriver>
+#include <QSqlQuery>
+#include <QSqlError>
 
 #include "QVTKOpenGLWidget.h"
 
@@ -94,6 +98,65 @@ NMGlobalHelper::logQsqlConnections(void)
         }
     }
 }
+
+bool
+NMGlobalHelper::attachDatabase(QSqlDatabase dbTarget, const QString dbFileName, const QString schemaName)
+{
+    QFileInfo fifo(dbFileName);
+    if (!fifo.exists() || !fifo.isReadable())
+    {
+        return false;
+    }
+
+    QSqlDriver* drv = dbTarget.driver();
+    if (drv == nullptr)
+    {
+        return false;
+    }
+
+    const QString qStr = QString("ATTACH DATABASE '%1' as %2")
+            .arg(dbFileName)
+            .arg(drv->escapeIdentifier(schemaName, QSqlDriver::TableName));
+
+    QSqlQuery q(dbTarget);
+    if (!q.exec(qStr))
+    {
+        QString msg = QString("ATTACH DATABASE ERROR: %1").arg(q.lastError().text());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        return false;
+    }
+
+    return true;
+}
+
+bool NMGlobalHelper::detachDatabase(QSqlDatabase db, QString schemaName)
+{
+    QSqlDriver* drv = db.driver();
+    if (drv == nullptr)
+    {
+        return false;
+    }
+
+    const QString qStr = QString("DETACH DATABASE %1")
+            .arg(drv->escapeIdentifier(schemaName, QSqlDriver::TableName));
+
+    QSqlQuery q(db);
+    if (!q.exec(qStr))
+    {
+        QString msg = QString("DETACH DATABASE ERROR: %1").arg(q.lastError().text());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        return false;
+    }
+
+    return true;
+}
+
 
 QString
 NMGlobalHelper::getUserSetting(const QString& key)

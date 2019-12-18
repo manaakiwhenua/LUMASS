@@ -2812,8 +2812,10 @@ SQLiteTable::GetFilenameInfo(const std::string& fileName)
      */
     std::vector<std::string> vinfo;
 
-    if (fileName.empty()
-        || fileName.compare("file::memory:") == 0)
+    if (    fileName.empty()
+        ||  fileName.find(":memory:") != std::string::npos
+        ||  fileName.find("mode=memory") != std::string::npos
+       )
     {
         return vinfo;
     }
@@ -2931,14 +2933,14 @@ SQLiteTable::openAsInMemDb(const std::string &dbName, const std::string &tablena
 
     // if tablename is not specified, we
     // just grab the first table we find
-    if (tablename.empty())
+    if (tabname.empty())
     {
         std::vector<std::string> tabs = this->GetTableList();
         this->m_tableName = tabs.at(0);
     }
     else
     {
-        this->m_tableName = tablename;
+        this->m_tableName = tabname;
     }
 
     this->m_dbFileName = ":memory:";
@@ -2987,7 +2989,9 @@ SQLiteTable::CreateTable(std::string filename, std::string tag)
     {
         std::string fullname = m_dbFileName;
 
-        if (fullname.compare("file::memory:") != 0)
+        if (    fullname.find(":memory:") == std::string::npos
+             && fullname.find("mode=memory") == std::string::npos
+           )
         {
 
 #ifndef _WIN32

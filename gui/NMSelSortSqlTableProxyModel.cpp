@@ -872,10 +872,25 @@ NMSelSortSqlTableProxyModel::openWriteModel(void)
     }
 
     QSqlDatabase db = mSourceModel->database();
+    //if (db.databaseName().compare(QStringLiteral(":memory:")) == 0)
+    if (db.databaseName().compare(NMGlobalHelper::getMainWindow()->getSessionDbFileName()) == 0)
+    {
+        return true;
+    }
+
+    const QString connectOptions = QStringLiteral("QSQLITE_ENABLE_SHARED_CACHE;"
+                                                  "QSQLITE_INIT_SPATIALITE;"
+                                                  "QSQLITE_OPEN_URI");
+    if (db.isValid() && db.isOpen())
+    {
+        if (!db.connectOptions().contains(QStringLiteral("READONLY")))
+        {
+            return true;
+        }
+    }
+
     db.close();
-    db.setConnectOptions(QStringLiteral("QSQLITE_ENABLE_SHARED_CACHE;"
-                                        "QSQLITE_INIT_SPATIALITE;"
-                                        "QSQLITE_OPEN_URI"));
+    db.setConnectOptions(connectOptions);
     if (!db.open())
     {
         NMLogError(<< this->ctx
@@ -894,11 +909,26 @@ NMSelSortSqlTableProxyModel::openReadModel(void)
     }
 
     QSqlDatabase db = mSourceModel->database();
+    //if (db.databaseName().compare(QStringLiteral(":memory:")) == 0)
+    if (db.databaseName().compare(NMGlobalHelper::getMainWindow()->getSessionDbFileName()) == 0)
+    {
+        return;
+    }
+
+    const QString connectOptions = QStringLiteral("QSQLITE_OPEN_READONLY;"
+                                                  "QSQLITE_ENABLE_SHARED_CACHE;"
+                                                  "QSQLITE_INIT_SPATIALITE;"
+                                                  "QSQLITE_OPEN_URI");
+    if (db.isValid() && db.isOpen())
+    {
+        if (db.connectOptions().contains(QStringLiteral("READONLY")))
+        {
+            return;
+        }
+    }
+
     db.close();
-    db.setConnectOptions(QStringLiteral("QSQLITE_OPEN_READONLY;"
-                                        "QSQLITE_ENABLE_SHARED_CACHE;"
-                                        "QSQLITE_INIT_SPATIALITE;"
-                                        "QSQLITE_OPEN_URI"));
+    db.setConnectOptions(connectOptions);
     if (!db.open())
     {
         NMLogError(<< this->ctx

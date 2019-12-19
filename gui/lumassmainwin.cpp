@@ -2252,7 +2252,7 @@ LUMASSMainWin::importTable(const QString& fileName,
     // initiate unique table identifier to the
     // basename of the given filename (i.e. without
     // path and extension
-    NMSqlTableView* resview = 0;
+    NMSqlTableView* resview = nullptr;
     QString viewName = QString(vinfo.at(1).c_str());
     // if we've got a table name given already (as picked
     // by the user) we use that as table identifier
@@ -2265,8 +2265,7 @@ LUMASSMainWin::importTable(const QString& fileName,
     // same name, in that case we have to check the
     // actual DB filename to see whether the table is actually
     // the same
-    int lfd = 1;
-    if (mTableList.contains(QString(vinfo.at(1).c_str())))
+    if (mTableList.contains(tableName))
     {
         bool dbpresent = false;
 
@@ -2289,14 +2288,21 @@ LUMASSMainWin::importTable(const QString& fileName,
                 mTableList.constBegin();
         while (it != mTableList.constEnd())
         {
-            if (ldbName.compare(it.value().first->GetDbFileName().c_str(), Qt::CaseInsensitive) == 0)
+            resview = it.value().second.data();
+            if (resview != nullptr)
             {
-                if (!tableName.isEmpty())
+                QSqlTableModel* tm = resview->getModel();
+                if (tm != nullptr)
                 {
-                    if (tableName.compare(it.value().first->GetTableName().c_str(), Qt::CaseInsensitive) == 0)
+                    const QString dbname = tm->database().databaseName();
+                    if (ldbName.compare(dbname, Qt::CaseInsensitive) == 0)
                     {
-                        dbpresent = true;
-                        break;
+                        const QString tabname = tm->tableName();
+                        if (tableName.compare(tabname, Qt::CaseInsensitive) == 0)
+                        {
+                            dbpresent = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -2304,7 +2310,6 @@ LUMASSMainWin::importTable(const QString& fileName,
             ++it;
         }
 
-        lfd++;
         // depending on the type of table, we do treat things differently ...
         // ... if we've got a standalone table ...
         if (tvType == NM_TABVIEW_STANDALONE)
@@ -2312,24 +2317,13 @@ LUMASSMainWin::importTable(const QString& fileName,
             // ... and it has already been imported, we just raise it, ...
             if (dbpresent)
             {
+                NMLogInfo(<< "Import Table Data: Table has already been imported!");
 
-                    NMLogInfo(<< "Import Table Data: Table has already been imported!");
-
-                    resview = mTableList.find(viewName).value().second.data();
-                    resview->show();
-                    resview->raise();
-                    return resview;
-            }
-            // ... otherwise we create a unique table name by numbering
-            // subsequent tables sharing the name of an already present db table
-            else
-            {
-                viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
-                while(mTableList.contains(viewName))
-                {
-                    ++lfd;
-                    viewName = QString("%1 <%2>").arg(vinfo[1].c_str()).arg(lfd);
-                }
+                resview = mTableList.find(viewName).value().second.data();
+                resview->show();
+                resview->raise();
+                resview->refreshTableView();
+                return resview;
             }
         }
         // ... if we've got a parameter table, just strictly allow
@@ -2390,18 +2384,17 @@ LUMASSMainWin::importTable(const QString& fileName,
     }
 
     QSqlDatabase db = QSqlDatabase::database(conname);
-    QSqlDriver* drv = db.driver();
 
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
     // note: setting the db name here is just for reference purposes
     srcModel->setDatabaseName(dbfilename);
-    srcModel->setTable(drv->escapeIdentifier(tablename, QSqlDriver::TableName));
+    srcModel->setTable(tablename);
     srcModel->select();
 
     if (viewName.isEmpty())
     {
-        viewName = QString(tablename);
+        viewName = tablename;
     }
 
     QSharedPointer<NMSqlTableView> tabview;
@@ -3091,8 +3084,18 @@ void LUMASSMainWin::checkRemoveLayerInfo(NMLayer* l)
     if (l->getLayerType() == NMLayer::NM_IMAGE_LAYER)
     {
         NMSqlTableView* tv = l->getSqlTableView();
+        if (tv == nullptr)
+        {
+            return;
+        }
+
         tv->getSortFilter()->removeTempTables();
         NMSqlTableModel* tm = qobject_cast<NMSqlTableModel*>(tv->getModel());
+        if (tm == nullptr)
+        {
+            return;
+        }
+
         mTableDbNames.remove(tm->getDatabaseName(), tv->windowTitle());
 
         QStringList remainViews = mTableDbNames.values(tm->getDatabaseName());

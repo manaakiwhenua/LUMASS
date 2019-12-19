@@ -137,6 +137,7 @@ public slots:
     void processParaTableDblClick(QGraphicsSceneMouseEvent*);
     void plotScatter();
     void zoomToCoords();
+    void refreshTableView(void);
 
 signals:
 	//void columnsChanged(int oldCount, int newCount);
@@ -159,7 +160,7 @@ protected slots:
 	void updateSelectionAdmin(const QItemSelection&
 			selected, const QItemSelection& deselected);
 	void updateSelectionAdmin(long numSel);
-    void refreshTableView(void);
+
 protected:
 
 	void initView();

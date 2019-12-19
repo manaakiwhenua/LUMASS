@@ -50,13 +50,13 @@ std::string GetErrorMsg(void)
 
 #define GET_LIB_PTR( libpath ) HMODULE lumassbmi = LoadLibraryA((LPCSTR) libpath );
 #define GET_FUNC_PTR( funname ) GetProcAddress(lumassbmi, funname)
-#define CLOSE_LUMASSBMI(  ) FreeLibrary( lumassbmi );
+#define CLOSE_LUMASSBMI FreeLibrary( (HMODULE)lumassbmi );
 
 #else
     #ifdef __linux
         #define GET_LIB_PTR( libpath ) lumassbmi = dlopen( libpath , RTLD_LAZY );
         #define GET_FUNC_PTR( funname ) dlsym(lumassbmi, funname)
-        #define CLOSE_LUMASSBMI( ) dlclose( lumassbmi );
+        #define CLOSE_LUMASSBMI dlclose( lumassbmi );
     #endif
 #endif
 
@@ -138,8 +138,8 @@ void log(int i, const char* msg)
 	case 1: level = "DEBUG"; break;
 	case 2: level = "INFO"; break;
 	case 3: level = "WARNING"; break;
-    case 4: level = "ERROR"; CLOSE_LUMASSBMI(); break;
-    case 5: level = "FATAL"; CLOSE_LUMASSBMI(); break;
+    case 4: level = "ERROR"; CLOSE_LUMASSBMI; break;
+    case 5: level = "FATAL"; CLOSE_LUMASSBMI; break;
 	default: level = "NONE";
 	}
 
@@ -203,6 +203,6 @@ int main(int argc, char** argv)
 
     msg << "LumassBMITest successfully completed!" << std::endl;
 	log(2, msg.str().c_str());
-    CLOSE_LUMASSBMI();
+    CLOSE_LUMASSBMI;
     return EXIT_SUCCESS;
 }

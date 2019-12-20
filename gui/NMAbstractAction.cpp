@@ -485,6 +485,7 @@ NMAbstractAction::createConfigDialog()
     {
         mDialog = new QDialog();
         mDialog->setModal(false);
+        mDialog->installEventFilter(this);
     }
 
     QVBoxLayout* vlayout = new QVBoxLayout(mDialog);
@@ -493,17 +494,72 @@ NMAbstractAction::createConfigDialog()
     bro->setResizeMode(QtTreePropertyBrowser::Interactive);
     vlayout->addWidget(bro);
 
-    QPushButton* btnClose = new QPushButton("Close", mDialog);
+    QPushButton* btnClose = new QPushButton("Save to Database", mDialog);
+    QPushButton* btnJustClose = new QPushButton("Close", mDialog);
+    btnJustClose->setFocus();
     mDialog->connect(btnClose, SIGNAL(pressed()), mDialog, SLOT(accept()));
-    vlayout->addWidget(btnClose);
+    mDialog->connect(btnJustClose, SIGNAL(pressed()), mDialog, SLOT(reject()));
+    connect(mDialog, SIGNAL(accepted()), this, SLOT(saveSettings()));
 
-    this->installEventFilter(btnClose);
+    QHBoxLayout* hlayout = new QHBoxLayout(mDialog);
+    vlayout->addLayout(hlayout);
+    hlayout->addWidget(btnClose);
+    hlayout->addWidget(btnJustClose);
 
     populateSettingsBrowser();
 }
 
+bool
+NMAbstractAction::saveSettings(void)
+{
+    NMLogDebug(<< "saving settings ...");
+
+    otb::SQLiteTable::Pointer tab = getToolTable(false);
+    if (tab.IsNull())
+    {
+        NMLogError(<< "Failed saving the tool setting!");
+        return false;
+    }
+
+    std::string col = "InputValue";
+    if (tab->ColumnExists(col) < 0)
+    {
+        NMLogError(<< "Invalid tool table field 'InputValue' is missing!");
+        return false;
+    }
+
+    QList<QByteArray> dynPropNames = this->dynamicPropertyNames();
+    foreach (const QByteArray& propName, dynPropNames)
+    {
+        const char* name = propName.data();
+        const QString sval = this->property(name).toString();
+        const QString whereClause = QString("Input = '%1'").arg(name);
+
+        tab->SetValue(col, whereClause.toStdString(), sval.toStdString());
+    }
+
+    NMLogDebug(<< "UserTool '" << this->getModelName().toStdString()
+               << "': Configuration saved!");
+    return true;
+}
+
+bool
+NMAbstractAction::eventFilter(QObject *obj, QEvent *event)
+{
+    // forward keypress events to the browser and don't handle them here
+    if (QString(QStringLiteral("QDialog")).compare(obj->metaObject()->className()) == 0)
+    {
+        if (event->type() == QEvent::KeyPress)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 otb::SQLiteTable::Pointer
-NMAbstractAction::getToolTable(void)
+NMAbstractAction::getToolTable(bool bReadOnly)
 {
     otb::SQLiteTable::Pointer tab;
 
@@ -520,7 +576,7 @@ NMAbstractAction::getToolTable(void)
     otb::SQLiteTable::Pointer toolTable = otb::SQLiteTable::New();
     toolTable->SetUseSharedCache(false);
     toolTable->SetDbFileName(toolTableName.toStdString());
-    toolTable->SetOpenReadOnly(true);
+    toolTable->SetOpenReadOnly(bReadOnly);
 
     if (!toolTable->openConnection())
     {

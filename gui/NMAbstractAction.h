@@ -133,6 +133,7 @@ protected slots:
 
     virtual void requestRemoveTool(void);
     void populateSettingsBrowser(void);
+    bool saveSettings(void);
 
 protected:
     NMAbstractAction(QObject* parent);
@@ -140,9 +141,12 @@ protected:
     NMAbstractAction(const QIcon &icon, const QString &text, QObject* parent);
     ~NMAbstractAction();
 
+    bool eventFilter(QObject* obj, QEvent* event);
+
+
     void initMenu();
     void createConfigDialog();
-    otb::SQLiteTable::Pointer getToolTable(void);
+    otb::SQLiteTable::Pointer getToolTable(bool bReadOnly=true);
 
     /*! action: populates emptyList for '<param>Enum' column in tool table;
      *  return value: index of current enum value, -1 upon failure;

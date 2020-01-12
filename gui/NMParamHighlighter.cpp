@@ -80,6 +80,36 @@ NMParamHighlighter::NMParamHighlighter(QObject* parent)
     mKernelScriptKeywords << "for" << "numPix" << "centrePixIdx" << "addr"
                           << "thid" << "kwinVal" << "tabVal" << "neigDist";
 
+    mJSKeywords << "await" << "break" << "case" << "catch" << "class" << "const" << "continue"
+                << "debugger" << "default" << "delete" << "do" << "else" << "export"
+                << "extends" << "finally" << "for" << "function" << "if" << "import" << "in"
+                << "instanceof" << "new" << "return" << "super" << "switch" << "this"
+                << "throw" << "try" << "var" << "void" << "while" << "with" << "yield"
+                << "let" << "static"
+                << "implements" << "package" << "protected" << "interface" << "private" << "public"
+                << "true" << "false" << "null"
+                << "NaN" << "-Infinity" << "Infinity"
+                << "E" << "LN2" << "LN10" << "LOG2E" << "LOG10E" << "PI" << "SQRT1_2" << "SQRT";
+
+    mJSObjects  << "String" << "Number" << "Boolean" << "Array" << "Date" << "RegExp"
+                << "ArrayBuffer" << "DataView" << "Int8Array" << "Uint8Array"
+                << "Uint8ClampedArray" << "Int16Array" << "Uint16Array" << "Int32Array"
+                << "Uint32Array" << "Float32Array" << "Float64Array" << "Math" << "JSON";
+
+    mJSFunctions << "abs" << "acos" << "asin" << "atan" << "atan2" << "ceil" << "cos"
+                 << "exp" << "floor" << "log" << "max" << "min" << "pow" << "random"
+                 << "round" << "sign" << "sin" << "sqrt" << "tan" << "eval"
+                 << "parseInt" << "parseFloat" << "isFinite" << "decodeURI"
+                 << "decodeURIComponent" << "encodeURI" << "encodeURIComponent"
+                 << "escape" << "unescape";
+
+    mOperators << "..." << "<" << ">" << "<=" << ">=" << "==" << "!=" << "===" << "!=="
+               << "+" << "-" << "*" << "%" << "**" << "--" << "<<" << ">>" << ">>>" << "&"
+               << "|" << "^" << "!" << "~" << "&&" << "||" << "?" << ":" << "=" << "+="
+               << "-=" << "*=" << "%=" << "**=" << "<<=" << ">>=" << ">>>=" << "&="
+               << "|=" << "^=" << "=>" << "/=" << "/";
+
+
 //    mRegEx = QRegularExpression("((?<open>\\$\\[)*"
 //                                "(?(<open>)|\\b)"
 //                                "(?<comp>[a-zA-Z]+(?>[a-zA-Z0-9]|_(?!_))*)"
@@ -99,6 +129,8 @@ NMParamHighlighter::NMParamHighlighter(QObject* parent)
                                 "(?<stridx>[^\\r\\n\\$\\[\\]]*))))");
 
     mRegExNum = QRegularExpression("\\b(\\d+(?<pt>\\.)*(?(pt)\\d)*(?<sn>e)*(?(sn)[+-]\\d+))\\b");
+    mRegExOp = QRegularExpression("(\\.\\.\\.|<|>|<=|>=|==|!=|===|!==|\\+|-|\\*|%|\\*\\*|--|<<|>>|>>>|&|\\||\\^|!|~|&&|\\|\\||\\?|\\:|=|\\+=|-=|\\*=|%=|\\*\\*=|<<=|>>=|>>>=|&=|\\|=|\\^=|=>|\\/=|\\/)");
+
     setDarkColorMode();
 }
 
@@ -147,6 +179,24 @@ NMParamHighlighter::highlightBlock(const QString &text)
     if (edit == 0)
     {
         return;
+    }
+
+    // looking for operators (i.e., actually JS punctuations)
+    // this is not perfect yet since it allows arbitrary combinations
+    // of those - well the JSEngine will complain if there's something
+    // wrong!
+    QRegularExpressionMatchIterator opit = mRegExOp.globalMatch(text);
+    while (opit.hasNext())
+    {
+        QRegularExpressionMatch matchop = opit.next();
+        //        QStringList allmatches = matchop.capturedTexts();
+        //        int start = matchop.capturedStart(0);
+        //        int len = matchop.capturedLength(0);
+        //        QString look = text.mid(start, len);
+        if (matchop.hasMatch())
+        {
+            setFormat(matchop.capturedStart(0), matchop.capturedLength(0), idxFormat);
+        }
     }
 
     // =================================================================
@@ -231,6 +281,10 @@ NMParamHighlighter::highlightBlock(const QString &text)
                         {
                             theFormat = keywordFormat;
                         }
+                        else if (mOperators.contains(comp.toString(), Qt::CaseInsensitive))
+                        {
+                            theFormat = idxFormat;
+                        }
                         else
                         {
                             theFormat = normalFormat;
@@ -259,6 +313,26 @@ NMParamHighlighter::highlightBlock(const QString &text)
                         }
                     }
                     break;
+
+                    case NM_JS_EXP:
+                    {
+                        if (mJSKeywords.contains(comp.toString(), Qt::CaseSensitive))
+                        {
+                            theFormat = keywordFormat;
+                        }
+                        else if (mJSObjects.contains(comp.toString(), Qt::CaseSensitive))
+                        {
+                            theFormat = compFormat;
+                        }
+                        else if (mJSFunctions.contains(comp.toString(), Qt::CaseSensitive))
+                        {
+                            theFormat = propFormat;
+                        }
+                        else
+                        {
+                            theFormat = normalFormat;
+                        }
+                    }
 
                     default:
                         break;

@@ -29,7 +29,8 @@ public:
         NM_PARM_EXP = 0,
         NM_MATH_EXP,
         NM_SCRIPT_EXP,
-        NM_SQLITE_EXP
+        NM_SQLITE_EXP,
+        NM_JS_EXP
     } NMParamExpressionType;
 
     NMParamHighlighter(QObject *parent);
@@ -51,8 +52,13 @@ private:
     QStringList mSQLiteKeywords;
     QStringList mMuParserKeywords;
     QStringList mKernelScriptKeywords;
+    QStringList mJSKeywords;
+    QStringList mJSObjects;
+    QStringList mJSFunctions;
+    QStringList mOperators;
     QRegularExpression mRegEx;
     QRegularExpression mRegExNum;
+    QRegularExpression mRegExOp;
 
     QTextCharFormat normalFormat;
     QTextCharFormat compFormat;
@@ -60,6 +66,7 @@ private:
     QTextCharFormat keywordFormat;
     QTextCharFormat idxFormat;
     QTextCharFormat numberFormat;
+    QTextCharFormat operatorFormat;
 
 };
 

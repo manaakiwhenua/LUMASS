@@ -209,9 +209,11 @@ NMAggregateComponentItem::getModelParent(void)
 void
 NMAggregateComponentItem::relocate(const QPointF &target)
 {
+    prepareGeometryChange();
     if (this->isCollapsed())
     {
         this->setPos(target);
+        this->update();
         return;
     }
 
@@ -240,6 +242,7 @@ NMAggregateComponentItem::relocate(const QPointF &target)
     for(int i=0; i < kids.count(); ++i)
     {
         kids.at(i)->setPos(this->mapFromScene(npos.at(i)));
+        kids.at(i)->update();
     }
 }
 

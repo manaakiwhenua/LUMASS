@@ -43,7 +43,7 @@
 namespace otb {
 
 NMTableReader::NMTableReader()
-    : m_FileName(""), m_TableName("")
+    : m_FileName(""), m_TableName(""), m_CreateTable(false)
 {
     otb::SQLiteTable::Pointer output = otb::SQLiteTable::New();
     itk::ProcessObject::AddOutput(output.GetPointer());

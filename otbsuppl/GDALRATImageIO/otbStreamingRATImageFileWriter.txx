@@ -90,7 +90,7 @@ StreamingRATImageFileWriter<TInputImage>
   m_StreamingMethod = "STRIPPED";
   m_StreamingSize = 512;
 
-
+  m_UseCompression = true;
   m_RATHaveBeenWritten = false;
   m_UseForcedLPR = false;
   m_UseUpdateRegion = false;

@@ -54,6 +54,9 @@ public:
 
     void setLogger(NMLogger* logger) {mLogger = logger;}
 
+signals:
+    void signalCompProcChanged();
+
 public slots:
 
 

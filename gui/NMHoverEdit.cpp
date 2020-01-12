@@ -401,8 +401,16 @@ NMHoverEdit::setProperty(const QString &compName, const QString& propName)
 
     if (propName.compare("KernelScript") == 0 || propName.compare("InitScript") == 0)
     {
-        mHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
-        mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
+        if (comp->objectName().startsWith(QStringLiteral("JSMapKernelScript")))
+        {
+            mHighlighter->setExpressionType(NMParamHighlighter::NM_JS_EXP);
+            mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_JS_EXP);
+        }
+        else
+        {
+            mHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
+            mPreviewHighlighter->setExpressionType(NMParamHighlighter::NM_SCRIPT_EXP);
+        }
     }
     else if (propName.contains("SQL", Qt::CaseInsensitive))
     {
@@ -683,12 +691,28 @@ NMHoverEdit::applyChanges()
     }
 
     // transfer model to the underlying component
+    bool bchanged = false;
     if (mProc)
     {
-        mProc->setProperty(mPropName.toStdString().c_str(), model);
+        QVariant oldProp = mProc->property(mPropName.toStdString().c_str());
+        if (oldProp != model)
+        {
+            mProc->setProperty(mPropName.toStdString().c_str(), model);
+            bchanged = true;
+        }
     }
     else if (mComp)
     {
-        mComp->setProperty(mPropName.toStdString().c_str(), model);
+        QVariant oldProp = mComp->property(mPropName.toStdString().c_str());
+        if (oldProp != model)
+        {
+            mComp->setProperty(mPropName.toStdString().c_str(), model);
+            bchanged = true;
+        }
+    }
+
+    if (bchanged)
+    {
+        emit signalCompProcChanged();
     }
 }

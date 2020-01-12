@@ -88,6 +88,9 @@ NMComponentEditor::NMComponentEditor(QWidget *parent,
     mHoverEdit = new NMHoverEdit(this);
     mHoverEdit->setLogger(mLogger);
 
+    connect(mHoverEdit, SIGNAL(signalCompProcChanged()),
+            this, SIGNAL(signalPropertyChanged()));
+
     QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     //sizePolicy.setHorizontalStretch(0);
     //sizePolicy.setVerticalStretch(0);

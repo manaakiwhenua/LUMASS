@@ -1901,11 +1901,6 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
 {
     NMDebugCtx(ctx, << "...");
 
-    NMDebugAI(<< this->reportRect(this->mModelScene->sceneRect(), "scene rect") << std::endl);
-    NMDebugAI(<< this->reportPoint(source, "move from") << std::endl);
-    NMDebugAI(<< this->reportPoint(target, "move to") << std::endl);
-
-
     NMAggregateComponentItem* ai = 0;
     NMProcessComponentItem* pi = 0;
     QGraphicsTextItem* ti = 0;
@@ -1922,7 +1917,7 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
     {
         ai = qgraphicsitem_cast<NMAggregateComponentItem*>(gi);
         pi = qgraphicsitem_cast<NMProcessComponentItem*>(gi);
-        ti = qgraphicsitem_cast<QGraphicsTextItem*>(ti);
+        ti = qgraphicsitem_cast<QGraphicsTextItem*>(gi);
 
         bool isTopLevel = true;
         foreach(QGraphicsItem* gii, moveList)
@@ -2024,12 +2019,15 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
     }
 
     // re-assemble the moving components at its new position and host
+
+
     int counter = 0;
     foreach(QGraphicsItem* tli, topList)
     {
         NMAggregateComponentItem* ai = qgraphicsitem_cast<NMAggregateComponentItem*>(tli);
 
         QPointF newPos = target + deltas.at(counter);
+//        NMLogDebug(<< this->reportPoint(newPos, "** calc'ed target pt"));
         if (newHostItem != 0)
         {
             if (ai)
@@ -2044,7 +2042,6 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
                     mModelScene->addItem(ai);
                     ai->relocate(newPos);
                 }
-
             }
             else
             {
@@ -2064,9 +2061,9 @@ NMModelViewWidget::moveComponents(const QList<QGraphicsItem*>& moveList, const Q
                 tli->setPos(newPos);
             }
         }
-        tli->ungrabMouse();
         ++counter;
     }
+
     this->mModelScene->invalidate();
     this->mModelScene->clearDragItems();
 
@@ -2356,6 +2353,12 @@ NMModelViewWidget::copyComponents(const QList<QGraphicsItem*>& copyList, const Q
 {
     NMDebugCtx(ctx, << "...");
 
+//    NMLogDebug(<< std::endl);
+//    NMLogDebug(<< this->reportRect(this->mModelScene->sceneRect(), "scene rect"));
+//    NMLogDebug(<< this->reportPoint(source, "copy from"));
+//    NMLogDebug(<< this->reportPoint(target, "copy to"));
+
+
     NMAggregateComponentItem* hostItem = qgraphicsitem_cast<NMAggregateComponentItem*>(
                 this->mModelScene->itemAt(target, this->mModelView->transform()));
 
@@ -2575,7 +2578,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
             {
                 ti = new QGraphicsTextItem();
                 lmv >> *ti;
-                ti->setTextInteractionFlags(Qt::NoTextInteraction | Qt::TextBrowserInteraction);
+                ti->installEventFilter(mModelScene);
+                ti->setTextInteractionFlags(Qt::NoTextInteraction);
                 ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                 ti->setOpenExternalLinks(true);
                 this->mModelScene->updateComponentItemFlags(ti);
@@ -2958,7 +2962,8 @@ NMModelViewWidget::importModel(QDataStream& lmv,
                         {
                             ti = new QGraphicsTextItem(ai);
                             lmv >> *ti;
-                            ti->setTextInteractionFlags(Qt::TextEditorInteraction | Qt::TextBrowserInteraction);
+                            ti->installEventFilter(mModelScene);
+                            ti->setTextInteractionFlags(Qt::TextEditorInteraction);
                             ti->setFlag(QGraphicsItem::ItemIsMovable, true);
                             ti->setOpenExternalLinks(true);
                             mModelScene->addItem(ti);
@@ -3512,7 +3517,7 @@ void NMModelViewWidget::deleteItem(bool bConfirm)
         proxyWidget = qgraphicsitem_cast<QGraphicsProxyWidget*>(this->mLastItem);
 		if (linkItem != 0)
         {
-			this->deleteLinkComponentItem(linkItem);
+            //this->deleteLinkComponentItem(linkItem);
             delLinks << linkItem;
         }
 		else if (procItem != 0)
@@ -3572,6 +3577,12 @@ void NMModelViewWidget::deleteItem(bool bConfirm)
 
 
     // ==================================================================
+
+    // delete any links, if necessary
+    foreach(NMComponentLinkItem* delLink, delLinks)
+    {
+        this->deleteLinkComponentItem(delLink);
+    }
 
     // remove labels first, then deal with the rest
     foreach(QGraphicsTextItem* ti, delLabels)
@@ -4373,32 +4384,25 @@ NMModelViewWidget::eventFilter(QObject* obj, QEvent* e)
 
         return true;
     }
-    else if (e->type() == QEvent::MouseButtonPress)
-    {
-        emit modelViewActivated(this);
-    }
     else if (e->type() == QEvent::Enter)
     {
         if (mModelScene->getInteractionMode() == NMModelScene::NMS_UNDEFINED)
         {
             mModelScene->idleModeOn();
         }
-
-        if (mModelScene->getInteractionMode() == NMModelScene::NMS_IDLE)
+        else
         {
-            QCursor* orc = QApplication::overrideCursor();
-            if (orc == 0)
-            {
-                QApplication::setOverrideCursor(Qt::PointingHandCursor);
-            }
+            this->mModelScene->updateCursor();
         }
+
+        emit modelViewActivated(this);
     }
     else if (e->type() == QEvent::Leave)
     {
         if (mModelScene->getInteractionMode() == NMModelScene::NMS_IDLE)
         {
             QCursor* cur = QApplication::overrideCursor();
-            while (cur != 0)
+            while (cur != nullptr)
             {
                 QApplication::restoreOverrideCursor();
                 cur = QApplication::overrideCursor();

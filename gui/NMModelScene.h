@@ -96,6 +96,8 @@ public:
                            NMAggregateComponentItem* ai,
                            NMModelComponent* host);
 
+    QPointF dropScenePos(void){return mDropScenePos;}
+
      InteractionMode getInteractionMode(void){return mMode;}
 
 public slots:
@@ -110,6 +112,7 @@ public slots:
         {this->mDragItemList.clear();}
 
     void unselectItems(void);
+    void updateCursor();
 
 signals:
 	void linkItemCreated(NMComponentLinkItem*);
@@ -143,13 +146,16 @@ protected:
 	void setProcCompSelectability(bool selectable);
 	void setProcCompMoveability(bool moveable);
 	void setLinkCompSelectability(bool selectable);
-    void updateCursor();
 
 	void wheelEvent(QGraphicsSceneWheelEvent* event);
 	void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event);
 	void mousePressEvent(QGraphicsSceneMouseEvent* event);
 	void mouseMoveEvent(QGraphicsSceneMouseEvent* event);
 	void mouseReleaseEvent(QGraphicsSceneMouseEvent* event);
+    void keyPressEvent(QKeyEvent* keyEvent);
+    void keyReleaseEvent(QKeyEvent *keyEvent);
+
+    bool eventFilter(QObject *watched, QEvent *event);
 
 private:
 
@@ -159,12 +165,25 @@ private:
 	qreal mLinkHitTolerance;
 
     bool mbIdleMove;
+    bool mbIdleOpenHand;
+
+    // just for double checking whether
+    // a text item is being dragged
+    // around or not
+    // 0: idle
+    // 1: idle clicked
+    // 2: clicked and moved
+    // 3: being edited
+    // 4: url clicked
+    // 5: select clicked
+    int mDragTextState;
 
 	QGraphicsLineItem* mLinkLine;
 	InteractionMode mMode;
 
     QGraphicsRectItem* mRubberBand;
     QPointF mRubberBandOrigin;
+    QPointF mDropScenePos;
 
     QList<QGraphicsItem*> mTempSelection;
     QList<QGraphicsItem*> mToggleSelection;

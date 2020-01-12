@@ -146,6 +146,7 @@ else()
         "Qt5Gui"
         "Qt5Concurrent"
         "Qt5Sql"
+        "Qt5Qml"
         #"Qt5Network"
         #"Qt5WebSockets"
     )

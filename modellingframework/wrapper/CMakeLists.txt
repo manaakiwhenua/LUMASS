@@ -47,6 +47,7 @@ set(MFW_WRAPPER_LINK_LIBS
                 #RasImageIO
                 #Qt5Xml
                 Qt5Core
+                #Qt5Qml
                 #Qt5Concurrent
                 #spatialite
                 vtkCommonDataModel
@@ -92,6 +93,8 @@ foreach( wrapper ${MFW_WRAPPER_NAMES} )
             #list(APPEND MFW_WRAPPER_SOURCE_FILES ${gui_SOURCE_DIR}/NMSqlTableModel.cpp)
             #list(APPEND MFW_WRAPPER_HEADER_FILES ${gui_SOURCE_DIR}/NMSqlTableModel.h)
             list(APPEND MFW_WRAPPER_LINK_LIBS Qt5Sql)
+        elseif (${wrapper} STREQUAL "NMJSKernelFilterWrapper")
+            list(APPEND MFW_WRAPPER_LINK_LIBS Qt5Qml)
         endif()
 
         #message(STATUS "source files in lib ${MFW_WRAPPER_SOURCE_FILES}")

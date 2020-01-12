@@ -60,6 +60,7 @@ NMProcCompList::NMProcCompList(QWidget* parent)
     this->addItem(QString::fromLatin1("RAMFlowAcc"));
     this->addItem(QString::fromLatin1("TerrainAttributes"));
     this->addItem(QString::fromLatin1("ExtractImageRegion"));
+    this->addItem(QString::fromLatin1("JSMapKernelScript"));
 /*$<AddComponentToGUICompList>$*/
 
     this->sortItems();

@@ -6,6 +6,7 @@ INCLUDE_DIRECTORIES(
     ${filters_SOURCE_DIR}
     ${filters_BINARY_DIR}
     ${shared_SOURCE_DIR}
+    ${QT5_INCLUDE_DIRS}
     ${OTB_DIR}/Code/Common
     ${muparser_SOURCE_DIR}
     ${muParserX_SOURCE_DIR}
@@ -70,6 +71,7 @@ else()
         #OTBMathParser
         OTBStreaming
         OTBGDALRATImageIO
+        Qt5Core Qt5Qml
         #tokyocabinet
         )
 endif()

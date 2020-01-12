@@ -240,6 +240,7 @@ endif()
 # have taken out ${QT_LIBRARIES} here
 set(LUMASS_LINKLIBS
     Qt5Widgets Qt5Core Qt5Gui Qt5Concurrent Qt5Xml Qt5Sql
+    Qt5Qml
     #Qt5Network Qt5WebSockets
     QtPropertyBrowser
     NMModFrameCore ${MFW_WRAPPER_NAMES}

@@ -366,6 +366,7 @@ SET(MFW_WRAPPER_NAMES
     NMCostDistanceBufferImageWrapper
     NMRATBandMathImageFilterWrapper
     NMScriptableKernelFilter2Wrapper
+    NMJSKernelFilterWrapper
     NMExternalExecWrapper
     NMSQLiteProcessorWrapper
     NMUniqueCombinationFilterWrapper

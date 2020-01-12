@@ -58,6 +58,7 @@
 
 #include "otbMultiParser.h"
 #include "otbAttributeTable.h"
+#include "otbSQLiteTable.h"
 
 #include "otbsupplfilters_export.h"
 
@@ -326,8 +327,8 @@ public:
   void SetNumThreads(unsigned int nthreads);
 
   otb::AttributeTable::Pointer GetAuxOutput()
-    {return static_cast<otb::AttributeTable*>(this->GetIndexedOutputs()[1].GetPointer());}
-
+    //{return static_cast<otb::AttributeTable*>(this->GetIndexedOutputs()[1].GetPointer());}
+    {return static_cast<otb::AttributeTable*>(m_AuxTable);}
 
   /*! The filter needs a larger input requested region than
    * the output requested region.
@@ -449,6 +450,8 @@ private:
   std::string m_KernelShape;
   std::string m_OutputVarName;
   std::string m_WorkspacePath;
+
+  otb::SQLiteTable::Pointer m_AuxTable;
 
   std::vector<otb::AttributeTable::Pointer> m_vRAT;
   std::vector<std::string> m_RATNames;

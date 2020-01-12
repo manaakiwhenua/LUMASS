@@ -1011,7 +1011,7 @@ NMScriptableKernelFilter2<TInputImage, TOutputImage>
     // rather than only rectangular; thereby, we're taking
     // the biggest radius across all dimension to determine
     // the size of the square;
-    if (m_KernelShape == "CRICULAR")
+    if (m_KernelShape == "CIRCULAR")
     {
         int maxRadius = 0;
         for (int d=0; d < m_Radius.GetSizeDimension(); ++d)
@@ -1366,11 +1366,11 @@ NMScriptableKernelFilter2< TInputImage, TOutputImage>
     {
     case 1:
         {
-            otb::SQLiteTable::Pointer sqlTab = otb::SQLiteTable::New();
-            sqlTab->SetUseSharedCache(false);
-            std::string tabName = m_WorkspacePath + "/aux_" + sqlTab->GetRandomString(5) + ".ldb";
-            sqlTab->CreateTable(tabName);
-            return sqlTab.GetPointer();
+            m_AuxTable = otb::SQLiteTable::New();
+            m_AuxTable->SetUseSharedCache(false);
+            std::string tabName = m_WorkspacePath + "/aux_" + m_AuxTable->GetRandomString(5) + ".ldb";
+            m_AuxTable->CreateTable(tabName);
+            return m_AuxTable.GetPointer();
         }
         break;
     default:

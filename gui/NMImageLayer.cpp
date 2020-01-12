@@ -2407,7 +2407,7 @@ NMImageLayer::updateSourceBuffer(void)
             mTableModel = 0;
 
             {
-                QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, false);
+                QSqlDatabase db = QSqlDatabase::database(mQSqlConnectionName, true);
                 if (db.isValid() && db.isOpen())
                 {
                     db.close();
@@ -2675,7 +2675,7 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
         this->mBBox[i] = bbox[i];
         this->mSelBBox[i] = bbox[i];
     }
-    delete bbox;
+    delete[] bbox;
 
     // get origin
     double* origin = new double[3];
@@ -2700,8 +2700,8 @@ NMImageLayer::setImage(QSharedPointer<NMItkDataObjectWrapper> imgWrapper)
         this->mSignedSpacing[i] = sspacing[i];
 
     }
-    delete origin;
-    delete sspacing;
+    delete [] origin;
+    delete [] sspacing;
 
 
     this->initiateLegend();

@@ -50,7 +50,7 @@
      <x>0</x>
      <y>0</y>
      <width>1001</width>
-     <height>36</height>
+     <height>35</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuObject">
@@ -198,7 +198,7 @@
           <x>0</x>
           <y>0</y>
           <width>80</width>
-          <height>579</height>
+          <height>581</height>
          </rect>
         </property>
         <property name="acceptDrops">
@@ -236,7 +236,7 @@
           <x>0</x>
           <y>0</y>
           <width>80</width>
-          <height>579</height>
+          <height>581</height>
          </rect>
         </property>
        </widget>
@@ -471,7 +471,10 @@
      <normaloff>:/image_layer.png</normaloff>:/image_layer.png</iconset>
    </property>
    <property name="text">
-    <string>Save &amp;Visible Extent/Overview As ...</string>
+    <string>Save &amp;Visible Extent As Layer ...</string>
+   </property>
+   <property name="toolTip">
+    <string>Save Visible Extent As Layer ...</string>
    </property>
   </action>
   <action name="actionImage_Polydata">

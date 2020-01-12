@@ -352,6 +352,8 @@ protected slots:
     void updateSettings(QtProperty* prop, const QVariant& val);
     void updateSettings(const QString& setting, const QVariant& val);
 
+    void updateCursor();
+
     // client & server
     void onNewConnection();
     void onWebSocketServerClosed();

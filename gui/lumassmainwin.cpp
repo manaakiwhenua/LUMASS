@@ -148,6 +148,10 @@
 #include <QSqlError>
 #include <QProcess>
 
+#include <QJSEngine>
+#include <QJSValue>
+#include <QJSValueIterator>
+
 //#include "QtWebSockets/QWebSocketServer"
 //#include "QtWebSockets/QWebSocket"
 //#include <QtNetwork/QSslCertificate>
@@ -853,8 +857,8 @@ LUMASSMainWin::LUMASSMainWin(QWidget *parent)
 	m_orientwidget->SetOrientationMarker(axes);
 	m_orientwidget->SetInteractor(static_cast<vtkRenderWindowInteractor*>(this->ui->qvtkWidget->GetInteractor()));
 	m_orientwidget->SetViewport(0.0, 0.0, 0.2, 0.2);
-	m_orientwidget->InteractiveOff();
-	m_orientwidget->SetEnabled(0);
+    m_orientwidget->SetEnabled(0);
+    m_orientwidget->InteractiveOff();
 
     // QVTKWidget Events---------------------------------------------------------
     this->m_vtkConns = vtkSmartPointer<vtkEventQtSlotConnect>::New();
@@ -1183,11 +1187,46 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
         }
         else if (event->type() == QEvent::MouseButtonPress)
         {
+            QAction* move = ui->mainToolBar->findChild<QAction*>("panAction");
+            if (move != nullptr)
+            {
+                if (move->isChecked())
+                {
+                    QApplication::setOverrideCursor(Qt::ClosedHandCursor);
+                    //ui->qvtkWidget->setCursor(Qt::ClosedHandCursor);
+                }
+            }
+        }
+        else if (event->type() == QEvent::MouseButtonRelease)
+        {
+            QAction* move = ui->mainToolBar->findChild<QAction*>("panAction");
+            if (move != nullptr)
+            {
+                if (move->isChecked())
+                {
+                    QApplication::setOverrideCursor(Qt::OpenHandCursor);
+                    //ui->qvtkWidget->setCursor(Qt::OpenHandCursor);
+                }
+            }
+        }
+        else if (event->type() == QEvent::Enter)
+        {
             mActiveWidget = this->ui->qvtkWidget;
             QAction* selAction = ui->mainToolBar->findChild<QAction*>("selAction");
             if (selAction)
             {
                 selAction->setEnabled(false);
+            }
+
+            updateCursor();
+        }
+        else if (event->type() == QEvent::Leave)
+        {
+            QCursor* cur = QApplication::overrideCursor();
+            while (cur != nullptr)
+            {
+                QApplication::restoreOverrideCursor();
+                cur = QApplication::overrideCursor();
             }
         }
     }
@@ -1305,6 +1344,37 @@ LUMASSMainWin::eventFilter(QObject *obj, QEvent *event)
     return false;
 }
 
+void
+LUMASSMainWin::updateCursor()
+{
+    if (mActiveWidget == ui->qvtkWidget)
+    {
+        for (int ea=0; ea < mExclusiveActions.size(); ++ea)
+        {
+            const QAction* ap = mExclusiveActions.at(ea);
+            const QString action = ap->objectName();
+            if (    action.compare(QStringLiteral("zoomInAction")) == 0
+                 || action.compare(QStringLiteral("zoomOutAction")) == 0
+               )
+            {
+                if (ap->isChecked())
+                {
+                    QApplication::setOverrideCursor(Qt::CrossCursor);
+                    //ui->qvtkWidget->setCursor(Qt::CrossCursor);
+                }
+            }
+            else if (action.compare(QStringLiteral("panAction")) == 0)
+            {
+                if (ap->isChecked())
+                {
+                    QApplication::setOverrideCursor(Qt::OpenHandCursor);
+                    //ui->qvtkWidget->setCursor(Qt::OpenHandCursor);
+                }
+            }
+        }
+    }
+}
+
 QString
 LUMASSMainWin::checkMimeDataForModelComponent(const QMimeData *mimedata)
 {
@@ -1340,7 +1410,7 @@ LUMASSMainWin::checkMimeDataForModelComponent(const QMimeData *mimedata)
 void
 LUMASSMainWin::modelViewActivated(QObject* obj)
 {
-    mActiveWidget = obj;
+    mActiveWidget = ui->modelViewWidget;
     QAction* selAction = ui->mainToolBar->findChild<QAction*>("selAction");
     if (selAction)
     {
@@ -3692,7 +3762,30 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
+    QJSEngine engine;
 
+    QJSValueIterator mrIt(engine.globalObject());
+    NMLogDebug(<< "Global Object's properties ... ");
+    while (mrIt.hasNext())
+    {
+        mrIt.next();
+        std::string name = mrIt.name().toStdString();
+        QJSValue val = mrIt.value();
+        if (val.isObject())
+        {
+            NMLogDebug(<< "    " << name << "'s properties ...")
+            QJSValueIterator vit(val);
+            while (vit.hasNext())
+            {
+                vit.next();
+                NMLogDebug(<< "        " << vit.name().toStdString() << ": " << vit.value().toString().toStdString());
+            }
+        }
+        else
+        {
+            NMLogDebug(<< "    " << mrIt.name().toStdString() << ": " << mrIt.value().toString().toStdString());
+        }
+    }
 }
 
 
@@ -6674,7 +6767,7 @@ LUMASSMainWin::addLayerToCompList()
     if (layer->getLayerType() == NMLayer::NM_IMAGE_LAYER)
     {
         NMImageLayer* il = qobject_cast<NMImageLayer*>(layer);
-        if (il != nullptr)
+        if (il != nullptr && !il->getFileName().isEmpty())
         {
             NMSqlTableModel* sqlMod = qobject_cast<NMSqlTableModel*>(
                                          const_cast<QAbstractItemModel*>(il->getTable()));

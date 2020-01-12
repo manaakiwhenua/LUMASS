@@ -159,6 +159,14 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
 		{
 			comp = NMModelComponentFactory::instance().createModelComponent(compType);
 
+            // if we, for whatever reason, can't produce the requested component
+            // we just skip this one
+            if (comp == nullptr)
+            {
+                NMLogError(<< "Failed creating a '" << compType.toStdString() << "' component!");
+                continue;
+            }
+
 
 			// add new component to the model controller and make sure it has a unique name
             // note: we're sorting out the host component later (see below)
@@ -205,14 +213,14 @@ NMModelSerialiser::parseModelDocument(QMap<QString, QString>& nameRegister,
                 //						<< "'" << endl);
 
 				proc = NMProcessFactory::instance().createProcess(procName);
-                if (proc == 0)
+                if (proc == nullptr)
                 {
                     // all right, obviously lumass couldn't produce the requested
                     // process componente - what do we do ...
                     NMWarn(ctx, << "Failed to create process component '"
                            << compName.toStdString()
                            << "(" << procName.toStdString() << ") - skipping it!");
-					NMLogWarn(<< "Failed to create process component '"
+                    NMLogError(<< "Failed to create process component '"
 						<< compName.toStdString()
 						<< "(" << procName.toStdString() << ") - skipping it!");
                     // remove component from register and model controller and carry on ...

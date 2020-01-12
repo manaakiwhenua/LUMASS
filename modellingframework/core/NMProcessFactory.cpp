@@ -209,6 +209,10 @@ NMProcessFactory::procNameFromAlias(const QString &alias)
     {
         return "NMStreamingROIImageFilterWrapper";
     }
+    else if (alias.compare("JSMapKernelScript") == 0)
+    {
+        return QStringLiteral("NMJSKernelFilterWrapper");
+    }
 /*$<WrapperClassNameFromComponentName>$*/
     else return proc;
 }
@@ -268,7 +272,13 @@ NMProcess* NMProcessFactory::createProcess(const QString& procClass)
     }
     else
     {
-        proc = mFactoryRegister[procClass]->createWrapper();
+        QMap<QString, NMWrapperFactory*>::const_iterator facIt =
+                mFactoryRegister.find(procClass);
+
+        if (facIt != mFactoryRegister.constEnd())
+        {
+            proc = (*facIt)->createWrapper();
+        }
 
         if(proc && this->isSink(procClass))
         {

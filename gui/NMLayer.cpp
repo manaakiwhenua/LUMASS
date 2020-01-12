@@ -52,7 +52,7 @@
 #include "vtkStringArray.h"
 #include "vtkShortArray.h"
 #include "vtkDataSetAttributes.h"
-#include "vtkMath.h"
+//#include "vtkMath.h"
 #include "vtkQtEditableTableModelAdapter.h"
 #include "NMQtOtbAttributeTableModel.h"
 #include "vtkDiscretizableColorTransferFunction.h"
@@ -1258,7 +1258,7 @@ NMLayer::mapUniqueValues(void)
 	QString sVal;
 	QModelIndex vi;
     QModelIndex ii;
-	vtkMath::RandomSeed(QTime::currentTime().msec());
+    std::srand(QTime::currentTime().msec());
 	double rgba[4];
 	for (int t=0; t < ncells; ++t)
 	{
@@ -1326,7 +1326,7 @@ NMLayer::mapUniqueValues(void)
 		{
 			// generate a random triple of uchar values
 			for (int i=0; i < 3; i++)
-				rgba[i] = vtkMath::Random();
+                rgba[i] = (double)std::rand() / (double)RAND_MAX;
 			rgba[3] = 1;
 
 			// add the random colour to the mLookupTable

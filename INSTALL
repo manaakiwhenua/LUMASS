@@ -26,6 +26,13 @@ Build environment and packages
 	cmake-curses-gui
 
 
+Ubuntugis-unstable repository
+===================================================
+    
+    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+    sudo apt-get update    
+	
+
 LUMASS' dependencies
 ====================================================
 
@@ -57,11 +64,11 @@ spatialite			packages:
 					libsqlite3-mod-spatialite
                     
                     
-Orfeo Toolbox (OTB) version >= 5; required modules: OTBCommon, OTBIOGDAL, 
+Orfeo Toolbox (OTB) version >= 7; required modules: OTBCommon, OTBIOGDAL, 
 					OTBExtendedFilename, OTBCurlAdapters, OTBImageIO,
 					OTBImageBase, OTBStreaming 
 
-					packages (<version>: e.g. 6.4-1):
+					packages (<version>: e.g. 7.0-1):
 					libotb-dev (-> selects the *-<version> packages below and 
 					            more automatically)
 
@@ -73,7 +80,7 @@ Orfeo Toolbox (OTB) version >= 5; required modules: OTBCommon, OTBIOGDAL,
 					also need the following packages to satisfy all OTB
 					dependencies:
 					
-					otb-bin, otb-bin-qt, libtinyxml-dev
+					otb-bin, otb-bin-qt, otb-bin-qgis, libtinyxml-dev
 				
 				
 YAML				packages: 

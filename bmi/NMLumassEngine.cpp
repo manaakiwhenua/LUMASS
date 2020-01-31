@@ -418,8 +418,7 @@ int NMLumassEngine::configureOptimisation(const YAML::Node & modelConfig)
 	}
     QString settings = mMosra->getLosSettings();
 
-
-    // parse optimisation settings in YAML file and evaluate
+	// parse optimisation settings in YAML file and evaluate
     // *.los file LUMASS expressions
     if (!modelConfig.IsNull() && modelConfig.IsDefined())
     {
@@ -462,6 +461,13 @@ int NMLumassEngine::configureOptimisation(const YAML::Node & modelConfig)
         if (root != nullptr)
         {
             settings = mController->processStringParameter(root, settings);
+			if (settings.startsWith(QStringLiteral("ERROR")))
+			{
+				emsg << "The settings file contains undefined LUMASS settings, e.g. $[LUMASS:DataPath]$!"
+					<< " Please double check your *.yaml configuration file, e.g. for 'DataPath: \"/mypath\"' !";
+				log("ERROR", emsg.str().c_str());
+				return 1;
+			}
         }
     }
     else
@@ -600,7 +606,7 @@ NMLumassEngine::doMOSObatch()
                 MOSORunnable* m = new MOSORunnable();
                 m->setLogger(mLogger);
                 m->setData(dsFileName, mosra->getLosFileName(),
-                        item, levels, runstart, chunksize);
+                        item, levels, runstart, chunksize, mosra->getLosSettings());
                 QThreadPool::globalInstance()->start(m);
                 runstart += chunksize;
             }
@@ -618,7 +624,7 @@ NMLumassEngine::doMOSObatch()
                 MOSORunnable* m = new MOSORunnable();
                 m->setLogger(mLogger);
                 m->setData(dsFileName, mosra->getLosFileName(),
-                        item, itemUncertainties, 1, 1);
+                        item, itemUncertainties, 1, 1, mosra->getLosSettings());
                 QThreadPool::globalInstance()->start(m);
             }
         }
@@ -673,8 +679,9 @@ NMLumassEngine::doMOSOsingle()
     MOSORunnable* m = new MOSORunnable();
     m->setLogger(mLogger);
     m->setData(dsFileName, mosra->getLosFileName(),
-               "", levels, 1, 1);
+               "", levels, 1, 1, mosra->getLosSettings());
     QThreadPool::globalInstance()->start(m);
+	QThreadPool::globalInstance()->waitForDone();
 
     return 0;
 }

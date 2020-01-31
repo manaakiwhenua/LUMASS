@@ -216,7 +216,7 @@ NMMosraDataSet::setDataSet(otb::AttributeTable::Pointer otbtab)
     mSqlMod = nullptr;
     if (otbtab.IsNotNull())
     {
-        mOtbTab = otbtab;
+		mOtbTab = otbtab;
         mType = NM_MOSRA_DS_OTBTAB;
     }
     else
@@ -2116,9 +2116,6 @@ int NMMosra::parseStringSettings(QString strSettings)
 			}
 			else if (sVarName.compare(tr("CRITERION_LAYER"), Qt::CaseInsensitive) == 0)
 			{
-//				if (this->msLayerName.compare(sValueStr, Qt::CaseInsensitive) != 0)
-//                    this->mDataSet->setDataSet(0);
-
 				this->msLayerName = sValueStr;
                 MosraLogInfo( << "LayerName: " << this->msLayerName.toStdString() << endl)
 			}
@@ -2165,12 +2162,8 @@ int NMMosra::parseStringSettings(QString strSettings)
             }
             else if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
             {
-                QFileInfo fi(sValueStr);
-                if (fi.isReadable())
-                {
-                    this->msDataPath = sValueStr;
-                    MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
-                }
+                this->msDataPath = sValueStr;
+                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
             }
             else if (sVarName.compare("OPT_FEATURES", Qt::CaseInsensitive) == 0)
             {
@@ -2473,12 +2466,8 @@ int NMMosra::parseStringSettings(QString strSettings)
 		{
 			if (sVarName.compare("DATAPATH", Qt::CaseInsensitive) == 0)
 			{
-				QFileInfo fi(sValueStr);
-				if (fi.isReadable())
-				{
-					this->msDataPath = sValueStr;
-                    MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
-				}
+				this->msDataPath = sValueStr;
+                MosraLogInfo(<< "batch data path: " << this->msDataPath.toStdString() << endl);
 			}
 			else if (sVarName.compare("PERTURB", Qt::CaseInsensitive) == 0)
 			{
@@ -2590,12 +2579,6 @@ int NMMosra::parseStringSettings(QString strSettings)
 
 	return 1;
 }
-
-//void NMMosra::setLayer(NMLayer* layer)
-//{
-//	this->mLayer = layer;
-//	this->msLayerName = layer->objectName();
-//}
 
 // this function is useful when the optimisation settings
 // were read from a file and hence only the layer name

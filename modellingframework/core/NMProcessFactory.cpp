@@ -226,11 +226,28 @@ NMProcessFactory::initializeProcessLibrary()
     path += "/../lib";
 #endif
 
-    NM_CREATE_FACTORY_FUNC factoryFunc = 0;
-
     QDir libDir(path);
-    QFileInfoList libInfoList = libDir.entryInfoList();
 
+#ifdef _WIN32
+	// could well be that we're run from a windows build directory 
+	// for debugging purposes (and LUMASS_DEBUG is not defined) 
+	// and we can't find the libraries in the folder where 
+	// lumass.exe is, so we try a directory like 
+	// c:/pathtobuilddir/lib/<BuildType> 
+	// - maybe we're lucky there ...
+	QStringList allentries = libDir.entryList();
+	if (!allentries.contains("NMModFrameCore.dll"))
+	{
+		QString dirName = libDir.dirName();
+		QString chgDirStr = QString("../../lib/%1").arg(dirName);
+		libDir.cd(chgDirStr);
+		path = libDir.absolutePath();
+	}
+#endif
+
+	NM_CREATE_FACTORY_FUNC factoryFunc = 0;
+
+    QFileInfoList libInfoList = libDir.entryInfoList();
 	foreach(const QFileInfo& libInfo, libInfoList)
     {
         QString libname = QString("%1/%2").arg(path).arg(libInfo.fileName());

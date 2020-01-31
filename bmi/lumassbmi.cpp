@@ -106,12 +106,12 @@ void main() {}
 			return 1;
 		}
 
-		std::string mode = config["mode"].as<std::string>();
-		std::string modelfile = config["modelfile"].as<std::string>();
-		std::string enginepath = config["enginepath"].as<std::string>();
-		std::string workspace = config["workspace"].as<std::string>();
-		std::string logfile = config["logfile"].as<std::string>();
-		bool bLogProv = config["logprovenance"].as<bool>();
+		std::string mode = config["mode"].IsDefined() ? config["mode"].as<std::string>() : "";
+		std::string modelfile = config["modelfile"].IsDefined() ? config["modelfile"].as<std::string>() : "";
+		std::string enginepath = config["enginepath"].IsDefined() ? config["enginepath"].as<std::string>() : "";
+		std::string workspace = config["workspace"].IsDefined() ? config["workspace"].as<std::string>() : "";
+		std::string logfile = config["logfile"].IsDefined() ? config["logfile"].as<std::string>() : "";
+		bool bLogProv = config["logprovenance"].IsDefined() ? config["logprovenance"].as<bool>() : "";
 
 		//std::cout << "mode=" << mode << std::endl
 			//<< "modelfile=" << modelfile << std::endl
@@ -206,7 +206,12 @@ void main() {}
             // need to call this in any case for parsing the settings file
             // loaded in the previous statement; validity check of
             // 'modelConfig' is performed as part of the configuration
-            nmengine->configureOptimisation(modelConfig);
+			if (nmengine->configureOptimisation(modelConfig) != 0)
+			{
+				nmengine->log("ERROR", "Optimisation configuration failed!");
+				cleanup();
+				return 1;
+			}
 		}
 		else
 		{

@@ -25,7 +25,8 @@ public:
 			QString losSettingsFileName,
 			QString perturbItem,
             const QList<float>& levels,
-			int startIdx, int numruns);
+			int startIdx, int numruns, 
+			QString losSettings = QString());
 	void run();
 	void setLogger(NMLogger* logger) { mLogger = logger; }
 
@@ -36,6 +37,7 @@ private:
 	NMLogger* mLogger;
 	QString mDsFileName;
 	QString mLosFileName;
+	QString mLosSettings;
 	QString mPerturbItem;
     QList<float> mflLevels;
 	int mStartIdx;

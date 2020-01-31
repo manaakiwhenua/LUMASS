@@ -43,10 +43,12 @@ MOSORunnable::setData(QString dsfileName,
             QString losSettingsFileName,
             QString perturbItem,
             const QList<float> &levels,
-            int startIdx, int numruns)
+            int startIdx, int numruns, 
+			QString losSettings)
 {
 	mDsFileName = dsfileName;
 	mLosFileName = losSettingsFileName;
+	mLosSettings = losSettings;
 	mPerturbItem = perturbItem;
     mflLevels = levels;
 	mStartIdx = startIdx;
@@ -104,7 +106,6 @@ void
 MOSORunnable::run()
 {
 	QScopedPointer<NMMosra> mosra(new NMMosra());
-    //NMLogger* mLogger = const_cast<NMLogger*>(NMLoggingProvider::This()->getLogger());
 	if (mLogger != nullptr)
 	{
 		mosra->setLogger(mLogger);
@@ -139,20 +140,24 @@ MOSORunnable::run()
     for (int runs=startIdx; runs <= (numruns+startIdx-1); ++runs)
 	{
 		NMDebugAI(<< endl << "******** PERTURBATION #" << runs << " *************" << endl);
-		// load the file with optimisation settings
-		mosra->loadSettings(losSettingsFileName);
-        if (!loadDataSet(mosra.data()))
+		
+		// check whether we've got string of settings already, 
+		// if not, load settings from file
+		if (!mLosSettings.isEmpty())
+		{
+			mosra->setLosSettings(mLosSettings);
+			mosra->parseStringSettings(mLosSettings);
+		}
+		else
+		{
+			mosra->loadSettings(losSettingsFileName);
+		}
+        
+		if (!loadDataSet(mosra.data()))
         {
             return;
         }
 
-        //		vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
-        //		reader->SetFileName(dsfileName.toStdString().c_str());
-
-        //		reader->Update();
-
-        //		vtkPolyData* pd = reader->GetOutput();
-        //		mosra->setDataSet(pd);
         if (!mPerturbItem.isEmpty())
         {
             // bail out, if perturbation doesn't go to plan!

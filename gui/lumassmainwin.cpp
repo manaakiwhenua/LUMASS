@@ -4774,9 +4774,10 @@ void LUMASSMainWin::doMOSO()
     NMDebugAI( << "write report to '" << sRepName.toStdString() << "'" << endl);
     mosra->writeReport(sRepName);
 
-
+	this->openTablesReadWrite();
 	int solved = mosra->mapLp();
-	//layer->emitDataSetChanged();
+	this->openTablesReadOnly();
+
 	layer->tableDataChanged(QModelIndex(), QModelIndex());
 
 

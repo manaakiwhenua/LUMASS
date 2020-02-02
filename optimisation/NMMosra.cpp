@@ -4128,7 +4128,12 @@ NMMosra::perturbCriterion(const QString& criterion,
             // get the incentives field
             const QString incSpec = metaList.at(m).trimmed();
             const QStringList incDetails = incSpec.split(":", QString::SkipEmptyParts);
-            const QString incField = this->mmslIncentives[incDetails.at(1)].at(0);
+
+			QString incField;
+			if (incDetails.size() >= 2)
+			{
+				incField = this->mmslIncentives[incDetails.at(1)].at(0);
+			}
 
             if (incField.isEmpty() || !this->mDataSet->hasColumn(incField))
             {

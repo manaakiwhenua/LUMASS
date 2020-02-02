@@ -111,7 +111,7 @@ void main() {}
 		std::string enginepath = config["enginepath"].IsDefined() ? config["enginepath"].as<std::string>() : "";
 		std::string workspace = config["workspace"].IsDefined() ? config["workspace"].as<std::string>() : "";
 		std::string logfile = config["logfile"].IsDefined() ? config["logfile"].as<std::string>() : "";
-		bool bLogProv = config["logprovenance"].IsDefined() ? config["logprovenance"].as<bool>() : "";
+                bool bLogProv = config["logprovenance"].IsDefined() ? config["logprovenance"].as<bool>() : false;
 
 		//std::cout << "mode=" << mode << std::endl
 			//<< "modelfile=" << modelfile << std::endl

@@ -2458,8 +2458,9 @@ LUMASSMainWin::importTable(const QString& fileName,
     // now we create our NMSqlTableView and do some book keeping
     NMSqlTableModel* srcModel = new NMSqlTableModel(this, db);
     // note: setting the db name here is just for reference purposes
-    srcModel->setDatabaseName(dbfilename);
-    srcModel->setTable(tablename);
+	const QSqlDriver* drv = db.driver();
+	srcModel->setDatabaseName(dbfilename);
+    srcModel->setTable(drv->escapeIdentifier(tablename, QSqlDriver::TableName));
     srcModel->select();
 
     if (viewName.isEmpty())
@@ -2526,8 +2527,9 @@ LUMASSMainWin::createTableView(const QString &dbFileName, const QString &tableNa
         return nullptr;
     }
 
-    NMSqlTableModel* tabModel = new NMSqlTableModel(nullptr, db);
-    tabModel->setTable(tableName);
+	const QSqlDriver* drv = db.driver();
+	NMSqlTableModel* tabModel = new NMSqlTableModel(nullptr, db);
+    tabModel->setTable(drv->escapeIdentifier(tableName, QSqlDriver::TableName));
     tabModel->select();
 
     QSharedPointer<NMSqlTableView> tv = QSharedPointer<NMSqlTableView>(

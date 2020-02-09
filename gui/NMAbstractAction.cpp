@@ -532,10 +532,16 @@ NMAbstractAction::saveSettings(void)
     foreach (const QByteArray& propName, dynPropNames)
     {
         const char* name = propName.data();
-        const QString sval = this->property(name).toString();
+        const QString sval = QString("'%1'").arg(this->property(name).toString());
         const QString whereClause = QString("Input = '%1'").arg(name);
 
         tab->SetValue(col, whereClause.toStdString(), sval.toStdString());
+        const QString lastError = tab->getLastLogMsg().c_str();
+        if (lastError.startsWith(QStringLiteral("SQLite3 ERROR")))
+        {
+            NMLogError(<< lastError.toStdString());
+            return false;
+        }
     }
 
     NMLogDebug(<< "UserTool '" << this->getModelName().toStdString()

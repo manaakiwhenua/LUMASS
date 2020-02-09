@@ -455,7 +455,8 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
 
         typename WriterType::Pointer ctWriter = WriterType::New();
         std::stringstream ctImgNameStr;
-        ctImgNameStr << temppath << "ctimg" << numIter << "_"  << this->getRandomString(5) << ".kea";
+        //ctImgNameStr << temppath << "ctimg" << numIter << "_"  << this->getRandomString(5) << ".kea";
+        ctImgNameStr << temppath << "ctimg" << numIter << "_"  << this->getRandomString(5) << ".img";
         ctWriter->SetFileName(ctImgNameStr.str());
         ctWriter->SetResamplingType("NONE");
         ctWriter->SetInput(ctFilter->GetOutput());
@@ -697,7 +698,7 @@ UniqueCombinationFilter< TInputImage, TOutputImage >
         else
         {
 
-            normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(5) << ".kea";
+            normImgNameStr << temppath << "norm_" << numIter << this->getRandomString(5) << ".img";//<< ".kea";
         }
 
         typename WriterType::Pointer normWriter = WriterType::New();

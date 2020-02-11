@@ -14,6 +14,7 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
     ${opt_SOURCE_DIR}
+    ${NMVtk_SOURCE_DIR}
     ${gui_SOURCE_DIR}
     ${shared_SOURCE_DIR}
     ${shared_BINARY_DIR}
@@ -66,6 +67,7 @@ file(GLOB BMI_SRC
     #${lumassengine_SOURCE_DIR}/lumassengine.cxx
     ${opt_SOURCE_DIR}/*.cpp
     ${bmi_SOURCE_DIR}/*.cpp
+    ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
 
     ${shared_SOURCE_DIR}/*.cpp
 )

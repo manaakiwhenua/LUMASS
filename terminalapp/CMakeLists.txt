@@ -14,6 +14,7 @@ include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES(
     ${QT5_INCLUDE_DIRS}
 	${opt_SOURCE_DIR}
+        ${NMVtk_SOURCE_DIR}
 	${gui_SOURCE_DIR}
 	${shared_SOURCE_DIR}
 	${lumass_BINARY_DIR}
@@ -63,6 +64,7 @@ QT5_WRAP_CPP(ENGINE_MOC_CPP
 
 file(GLOB ENGINE_SRC 
     ${opt_SOURCE_DIR}/*.cpp 
+    ${NMVtk_SOURCE_DIR}/NMvtkDelimitedTextWriter.cxx
     ${lumassengine_SOURCE_DIR}/*.cxx 
 
     # and ...

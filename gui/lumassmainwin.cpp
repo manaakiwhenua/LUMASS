@@ -308,6 +308,7 @@
 #include "NMVtkInteractorStyleImage.h"
 #include "NMVtkMapScale.h"
 #include "NMVtkLookupTable.h"
+#include "NMvtkDelimitedTextWriter.h"
 
 //#include <sqlite3.h>
 //#include "sqlite3extfunc.h"
@@ -3764,30 +3765,40 @@ LUMASSMainWin::getNextParamExpr(const QString& expr)
 
 void LUMASSMainWin::test()
 {
-    QJSEngine engine;
+    bool bok;
+    int prec = QInputDialog::getInt(this, "precision", "",
+                                    1, 1, 30,
+                                    1, &bok);
 
-    QJSValueIterator mrIt(engine.globalObject());
-    NMLogDebug(<< "Global Object's properties ... ");
-    while (mrIt.hasNext())
+    if (!bok)
     {
-        mrIt.next();
-        std::string name = mrIt.name().toStdString();
-        QJSValue val = mrIt.value();
-        if (val.isObject())
-        {
-            NMLogDebug(<< "    " << name << "'s properties ...")
-            QJSValueIterator vit(val);
-            while (vit.hasNext())
-            {
-                vit.next();
-                NMLogDebug(<< "        " << vit.name().toStdString() << ": " << vit.value().toString().toStdString());
-            }
-        }
-        else
-        {
-            NMLogDebug(<< "    " << mrIt.name().toStdString() << ": " << mrIt.value().toString().toStdString());
-        }
+        return;
     }
+
+    long a = 123456789012345;
+    double aa = 123.45668;
+    double ab = 123.45;
+    double b = 123456789012345;
+    long double c = 123456789012345.12345678;
+
+    std::stringstream sstr;
+    sstr << std::setprecision(prec);
+    sstr << "a= " << a << std::endl
+         << "aa=" << setw(5) << aa << std::endl
+         << "ab=" << setw(5) << ab << std::endl
+         << "b= " << b << std::endl
+         << "c= " << c << std::endl << std::endl;
+    NMLogDebugNoNL( << std::endl << sstr.str());
+
+    std::stringstream bstr;
+    bstr << std::defaultfloat << std::setprecision(std::numeric_limits<long double>::digits10);
+    bstr << "a= " << a << std::endl
+         << "aa=" << aa << std::endl
+         << "ab=" << ab << std::endl
+         << "b= " << b << std::endl
+         << "c= " << c << std::endl << std::endl;
+    NMLogDebug( << std::endl << bstr.str());
+
 }
 
 
@@ -4824,8 +4835,8 @@ void LUMASSMainWin::doMOSO()
         tab->RemoveColumnByName("nm_sel");
 
         // setup the writer
-        vtkSmartPointer<vtkDelimitedTextWriter> writer =
-                vtkSmartPointer<vtkDelimitedTextWriter>::New();
+        vtkSmartPointer<NMvtkDelimitedTextWriter> writer =
+                vtkSmartPointer<NMvtkDelimitedTextWriter>::New();
         writer->SetFieldDelimiter(",");
 
         QString tabName = QString("%1/%2/tab_%3.csv").arg(pathInfo.path())

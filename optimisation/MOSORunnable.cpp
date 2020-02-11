@@ -20,7 +20,7 @@
 #include "vtkPolyData.h"
 #include "vtkDataSet.h"
 #include "vtkTable.h"
-#include "vtkDelimitedTextWriter.h"
+#include "NMvtkDelimitedTextWriter.h"
 
 #include "otbSQLiteTable.h"
 
@@ -270,7 +270,7 @@ MOSORunnable::run()
         vtkSmartPointer<vtkTable> chngmatrix;
         vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);
 
-        vtkDelimitedTextWriter* writer = vtkDelimitedTextWriter::New();
+        NMvtkDelimitedTextWriter* writer = NMvtkDelimitedTextWriter::New();
 		writer->SetFieldDelimiter(",");
 
         // ------------------------------------------------------

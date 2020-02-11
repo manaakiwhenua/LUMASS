@@ -268,6 +268,12 @@ NMSqlTableView::checkCoords(void)
     }
 }
 
+void NMSqlTableView::cellEditorClosed(QWidget *widget, QAbstractItemDelegate::EndEditHint hint)
+{
+    NMLogDebug(<< ".. going to back to read-only mode ... ");
+    mSortFilter->openReadModel();
+}
+
 void NMSqlTableView::initView()
 {
     this->setWindowIcon(QIcon(":table_object.png"));
@@ -279,7 +285,12 @@ void NMSqlTableView::initView()
 	this->mTableView->setAlternatingRowColors(true);
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
 
-	this->setWindowFlags(Qt::Window);
+    // get notified if a cell editor is closed
+    connect(this->mTableView->itemDelegate(),
+            SIGNAL(closeEditor(QWidget*,QAbstractItemDelegate::EndEditHint)),
+            this, SLOT(cellEditorClosed(QWidget*,QAbstractItemDelegate::EndEditHint)));
+
+    this->setWindowFlags(Qt::Window);
 	this->mHiddenColumns.clear();
 
     mPrimaryKey = mSortFilter->getSourcePK();
@@ -2196,6 +2207,7 @@ NMSqlTableView::eventFilter(QObject* object, QEvent* event)
                 if (row >= 0 && col >= 0)
 				{
                     QModelIndex idx = this->mModel->index(row, col, QModelIndex());
+                    mSortFilter->openWriteModel();
 					this->mTableView->edit(idx);
 				}
 			}

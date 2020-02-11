@@ -161,6 +161,8 @@ protected slots:
 			selected, const QItemSelection& deselected);
 	void updateSelectionAdmin(long numSel);
 
+    void cellEditorClosed(QWidget* widget, QAbstractItemDelegate::EndEditHint hint);
+
 protected:
 
 	void initView();

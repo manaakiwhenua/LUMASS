@@ -64,13 +64,6 @@
 #include "gdal_priv.h"
 #include <sqlite3.h>
 
-#include "vtkSmartPointer.h"
-#include "vtkPolyDataReader.h"
-#include "vtkPolyData.h"
-#include "vtkDataSet.h"
-#include "vtkTable.h"
-#include "vtkDelimitedTextWriter.h"
-
 #include "NMMosra.h"
 #include "MOSORunnable.h"
 #include "NMModelController.h"

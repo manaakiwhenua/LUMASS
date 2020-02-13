@@ -166,7 +166,6 @@ MOSORunnable::run()
                 return;
             }
         }
-		vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
 
         // --------------------------------------------------------------------------
         // names for output files
@@ -266,6 +265,8 @@ MOSORunnable::run()
 
 		if (!mosra->mapLp())
 			continue;
+
+        vtkSmartPointer<vtkTable> tab = mosra->getDataSetAsTable();
 
         vtkSmartPointer<vtkTable> chngmatrix;
         vtkSmartPointer<vtkTable> sumres = mosra->sumResults(chngmatrix);

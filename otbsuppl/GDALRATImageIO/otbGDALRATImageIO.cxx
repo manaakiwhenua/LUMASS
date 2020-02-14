@@ -3200,7 +3200,10 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
             delete gdaltab;
             NMLogError(<< "Failed writing table to band!");
         }
-        m_Dataset->FlushCache();
+        else
+        {
+            m_Dataset->FlushCache();
+        }
     }
 
     // if we don't close the data set here, the RAT is not written properly to disk

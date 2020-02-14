@@ -2536,6 +2536,9 @@ LUMASSMainWin::createTableView(const QString &dbFileName, const QString &tableNa
     QSharedPointer<NMSqlTableView> tv = QSharedPointer<NMSqlTableView>(
                 new NMSqlTableView(tabModel,
                     NMSqlTableView::NMTABVIEW_STANDALONE, 0));
+
+    // pass on the LUMASS logger
+    tv->setLogger(mLogger);
     tv->setTitle(viewName);
     connect(tv.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
 
@@ -2596,6 +2599,8 @@ LUMASSMainWin::createTableView(otb::SQLiteTable::Pointer sqlTab)
                         NMSqlTableView::NMTABVIEW_STANDALONE, 0)
                     );
 
+    // pass on the LUMASS logger
+    tabview->setLogger(mLogger);
     tabview->setTitle(viewName);
     connect(tabview.data(), SIGNAL(tableViewClosed()), this, SLOT(tableObjectViewClosed()));
 

@@ -3172,6 +3172,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 				break;
 			default:
                 delete gdaltab;
+				gdaltab = nullptr;
                 NMLogError(<< "Unrecognised field type! Couldn't set value col=" << col
 						<< " row=" << row << " value=" << tab->GetStrValue(col, row).c_str());
 				break;
@@ -3198,6 +3199,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
         {
             if (bCloseDataSet) this->CloseDataset();
             delete gdaltab;
+			gdaltab = nullptr;
             NMLogError(<< "Failed writing table to band!");
         }
         else

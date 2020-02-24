@@ -1703,7 +1703,6 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
         //if (this->m_UseCompression)
         papszOptions = CSLAddNameValue( papszOptions, "COMPRESSED", "TRUE");
         papszOptions = CSLAddNameValue( papszOptions, "IGNOREUTM", "TRUE");
-
      }
     else if (driverShortName.compare("KEA") == 0)
     {
@@ -1760,8 +1759,7 @@ void GDALRATImageIO::InternalWriteImageInformation(const void* buffer)
   {
       for (int t=0; t < this->m_vecRAT.size(); ++t)
       {
-          m_Dataset->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE",
-                                                                       "thematic");
+          m_Dataset->GetRasterBand(t+1)->SetMetadataItem("LAYER_TYPE", "thematic");
           m_Dataset->GetRasterBand(t+1)->SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
                                                                        "direct");
       }
@@ -3106,7 +3104,7 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
     for (int col = 0; col < tab->GetNumCols(); ++col)
 	{
 		GDALRATFieldType type;
-		switch(tab->GetColumnType(col))
+        switch(tab->GetColumnType(col))
 		{
 		case otb::AttributeTable::ATTYPE_INT:
 			type = GFT_Integer;
@@ -3114,9 +3112,14 @@ GDALRATImageIO::InternalWriteSQLiteRAT(AttributeTable::Pointer intab, unsigned i
 		case otb::AttributeTable::ATTYPE_DOUBLE:
 			type = GFT_Real;
 			break;
-		case otb::AttributeTable::ATTYPE_STRING:
+        case otb::AttributeTable::ATTYPE_STRING:
 			type = GFT_String;
 			break;
+        default:
+            {
+                NMLogError(<< "Type of column #" << col
+                    << " '" << tab->GetColumnName(col).c_str() << "' is undefined!");
+            }
 		}
 
 		GDALRATFieldUsage usage = GFU_Generic;

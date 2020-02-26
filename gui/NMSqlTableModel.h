@@ -46,7 +46,7 @@ public:
      * \param dbName
      */
     void setDatabaseName(const QString& dbName){mDatabaseName = dbName;}
-    QString getDatabaseName(){return mDatabaseName;}
+    QString getDatabaseName() const {return mDatabaseName;}
 
     bool select();
 

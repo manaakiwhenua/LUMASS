@@ -108,7 +108,7 @@ endif (testvar_in STREQUAL testvar_target)
 find_package(Git)
 SET(LUMASS_VERSION_MAJOR 0)
 SET(LUMASS_VERSION_MINOR 9)
-SET(LUMASS_VERSION_REVISION 61)
+SET(LUMASS_VERSION_REVISION 62)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 git_date(LUMASS_COMMIT_DATE)
 
@@ -250,7 +250,7 @@ message(STATUS "lp_solve library: ${LPSOLVE_LIBRARY}")
 #====================================================================
 
 # just define the current version included in the source tree
-set(NM_SQLite_VERSION "3.8.11.1")
+set(NM_SQLite_VERSION "3.31.1")
 
 #find_package(Sqlite3)
 #if(NOT SQLITE3_FOUND)

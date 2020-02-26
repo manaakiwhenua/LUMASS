@@ -138,6 +138,7 @@ public:
 
     QMap<QString, QPair<otb::SQLiteTable::Pointer, QSharedPointer<NMSqlTableView> > >&
         getTableList(void) {return mTableList;}
+    QMultiMap<QString, QString> getTableDbNamesList(void) {return mTableDbNames; }
     ModelComponentList* getLayerList(){return this->mLayerList;}
 
     /* opens a db connection to the given database and

@@ -1104,19 +1104,31 @@ NMSelSortSqlTableProxyModel::updateData(int colidx, const QString &column,
         return ret;
     }
 
+    QString whereClause = "";
+    if (!mLastFilter.isEmpty())
+    {
+        if (expr.indexOf(QStringLiteral("where") >= 0))
+        {
+            error = QString("Double where clause! Please clear the current selection "
+                            " before using a where clause in your update statement!");
+            return ret;
+        }
+
+        whereClause = QString("where %1").arg(mLastFilter);
+    }
+
     if (!this->openWriteModel())
     {
         return ret;
     }
 
-
-    QString whereClause = "";
-    if (!mLastFilter.isEmpty())
-    {
-        whereClause = QString("where %1").arg(mLastFilter);
-    }
-
     QSqlDatabase db = mSourceModel->database();
+
+    // parse the calculate expression for external DBs
+    // that need to be attached
+    QStringList externalDbs = NMGlobalHelper::identifyExternalDbs(db, expr);
+    NMGlobalHelper::attachMultipleDbs(db, externalDbs);
+
     QSqlDriver* drv = db.driver();
     QString uStr = QString("update %1 set %2 = %3 %4")
                     .arg(drv->escapeIdentifier(mSourceModel->tableName(), QSqlDriver::TableName))
@@ -1144,6 +1156,8 @@ NMSelSortSqlTableProxyModel::updateData(int colidx, const QString &column,
     qUpdate.clear();
     db.commit();
 
+    // since this closes the database in the process, it
+    // also autmatically detaches any attached databases
     this->openReadModel();
 
     QModelIndex tl = createIndex(0, colidx);

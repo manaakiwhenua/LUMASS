@@ -964,11 +964,8 @@ NMSqlTableView::processUserQuery(const QString &queryName, const QString &sql)
                 NMGlobalHelper::getMainWindow()->getSessionDbFileName());
     QSqlDatabase dbTarget = QSqlDatabase::database(connname);
 
-    if (!NMGlobalHelper::attachDatabase(dbTarget, mModel->database().databaseName(), tableName))
-    {
-        NMBoxErr("User Query", "Failed attaching the table database to the session database!");
-        return;
-    }
+    QStringList externalDbs = NMGlobalHelper::identifyExternalDbs(dbTarget, sql);
+    NMGlobalHelper::attachMultipleDbs(dbTarget, externalDbs);
 
     QSqlQuery userQuery(dbTarget);
     if (!userQuery.exec(queryStr))
@@ -1080,7 +1077,7 @@ void NMSqlTableView::calcColumn()
     QString label = QString(tr("UPDATE %1 SET %2 = ")
                             .arg(drv->escapeIdentifier(this->mModel->tableName(), QSqlDriver::TableName))
                             .arg(drv->escapeIdentifier(this->mLastClickedColumn, QSqlDriver::FieldName)));
-    QString func = NMGlobalHelper::getMultiLineInput(label, "");
+    QString func = NMGlobalHelper::getMultiLineInput(label, "", this);
     if (func.isEmpty())
 	{
         NMDebugCtx(ctx, << "done!");

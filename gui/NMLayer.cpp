@@ -958,7 +958,10 @@ NMLayer::loadLegend(const QString& filename)
     else
     {
         ncells = this->getNumTableRecords();
-        if (this->getColumnType(valIdx) == QVariant::String)
+		if (    this->getColumnType(valIdx) != QVariant::Int
+			 && this->getColumnType(valIdx) != QVariant::LongLong
+			 && this->getColumnType(valIdx) != QVariant::Double
+		   )
         {
             bIsNumeric = false;
         }
@@ -994,6 +997,11 @@ NMLayer::loadLegend(const QString& filename)
             else
             {
                 vi = mTableModel->index(t, valIdx);
+				while (!vi.isValid() && mTableModel->canFetchMore(QModelIndex()))
+				{
+					mTableModel->fetchMore(QModelIndex());
+					vi = mTableModel->index(t, valIdx);
+				}
                 sVal = vi.data().toString();
             }
         }
@@ -1007,7 +1015,12 @@ NMLayer::loadLegend(const QString& filename)
             else
             {
                 vi = mTableModel->index(t, valIdx);
-                val = vi.data().toLongLong();
+				while (!vi.isValid() && mTableModel->canFetchMore(QModelIndex()))
+				{
+					mTableModel->fetchMore(QModelIndex());
+					vi = mTableModel->index(t, valIdx);
+				}
+				val = vi.data().toLongLong();
                 sVal = QString("%1").arg(val);
             }
         }

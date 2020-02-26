@@ -65,6 +65,9 @@ public:
     static bool attachDatabase(QSqlDatabase dbTarget, const QString dbFileName, const QString schemaName=QStringLiteral("attached"));
     static bool detachDatabase(QSqlDatabase db, QString schemaName);
 
+    static bool attachMultipleDbs(QSqlDatabase dbTarget, const QStringList &dbFileNames);
+    static QStringList identifyExternalDbs(QSqlDatabase targetDb, const QString& origexpr);
+
 private:
     static const std::string ctx;
 

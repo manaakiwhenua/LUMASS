@@ -19,7 +19,6 @@
 #include <QObject>
 #include <QApplication>
 #include <QDialog>
-#include <QPlainTextEdit>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -34,6 +33,8 @@
 
 #include "ui_lumassmainwin.h"
 #include "lumassmainwin.h"
+#include "NMParamEdit.h"
+#include "NMParamHighlighter.h"
 #include "NMGlobalHelper.h"
 #include "NMModelController.h"
 #include "NMIterableComponent.h"
@@ -52,7 +53,25 @@ NMGlobalHelper::getMultiLineInput(const QString& title,
     dlg->setWindowModality(Qt::WindowModal);
     dlg->setWindowTitle(title);
 
-    QPlainTextEdit* textEdit = new QPlainTextEdit(suggestion, dlg);
+    //QTextEdit* textEdit = new QTextEdit(suggestion, dlg);
+    NMParamEdit* textEdit = new NMParamEdit(dlg);
+    textEdit->setPlainText(suggestion);
+
+    if (    parent != nullptr
+        &&  QString::fromLatin1("NMSqlTableView").compare(parent->metaObject()->className(), Qt::CaseSensitive) == 0
+       )
+    {
+        NMParamHighlighter* highlighter = new NMParamHighlighter(textEdit);
+        highlighter->setExpressionType(NMParamHighlighter::NM_SQLITE_EXP);
+
+        QColor bkg = textEdit->palette().background().color();
+        bool bdark = false;
+        if (bkg.red() < 80 && bkg.green() < 80 && bkg.blue() < 80)
+        {
+            highlighter->setDarkColorMode(true);
+        }
+    }
+
     QPushButton* btnCancel = new QPushButton("Cancel", dlg);
     dlg->connect(btnCancel, SIGNAL(pressed()), dlg, SLOT(reject()));
     QPushButton* btnOk = new QPushButton("OK", dlg);
@@ -99,13 +118,95 @@ NMGlobalHelper::logQsqlConnections(void)
     }
 }
 
+QStringList
+NMGlobalHelper::identifyExternalDbs(QSqlDatabase targetDb, const QString &origexpr)
+{
+    QStringList ret;
+    if (!targetDb.isOpen() || origexpr.isEmpty())
+    {
+        return ret;
+    }
+    QString expr = origexpr;
+
+    // extracting table names from the expression
+    QMultiMap<QString, QString> tabDbNames = NMGlobalHelper::getMainWindow()->getTableDbNamesList();
+    QStringList tokens = expr.trimmed().split(' ');
+    foreach (const QString& tok, tokens)
+    {
+        QStringList septokens = tok.split('.');
+        foreach(const QString& toktok, septokens)
+        {
+            QString _str = toktok;
+            _str = _str.replace("\"", "").replace("'", "");
+            QString fn = tabDbNames.key(_str);
+            if (    !fn.isEmpty()
+                &&  !ret.contains(fn)
+                &&  fn.compare(targetDb.databaseName(), Qt::CaseSensitive) != 0
+               )
+            {
+                ret << fn;
+            }
+        }
+    }
+    ret.removeDuplicates();
+
+    // fetch a list of databases that have been already attached to this database
+    QString qstr = QString(QStringLiteral("select distinct file from pragma_database_list where file is not null"));
+
+    QSqlQuery prQuery(targetDb);
+    if (!prQuery.exec(qstr))
+    {
+        QString msg = QString("FETCH DATBASE LIST ERROR: %1").arg(prQuery.lastError().text());
+        NMGlobalHelper::getMainWindow()->getLogger()->processLogMsg(
+                            QDateTime::currentDateTime().time().toString(),
+                            NMLogger::NM_LOG_ERROR,
+                            msg);
+        return ret;
+    }
+
+    while (prQuery.next())
+    {
+        QString dbfn = prQuery.value(0).toString();
+        ret.removeOne(dbfn);
+    }
+
+    return ret;
+}
+
+bool
+NMGlobalHelper::attachMultipleDbs(QSqlDatabase dbTarget, const QStringList& dbFileNames)
+{
+    bool ret = false;
+    if (!dbTarget.isOpen())
+    {
+        return ret;
+    }
+
+    int dbcounter = 0;
+    foreach (const QString& fn, dbFileNames)
+    {
+        const QString sname = QString("db_%1").arg(++dbcounter);
+        if (NMGlobalHelper::attachDatabase(dbTarget, fn, sname))
+        {
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+
+
 bool
 NMGlobalHelper::attachDatabase(QSqlDatabase dbTarget, const QString dbFileName, const QString schemaName)
 {
-    QFileInfo fifo(dbFileName);
-    if (!fifo.exists() || !fifo.isReadable())
+    // the session db is in-memory, so can't check it's readbility and existence ...
+    if (dbFileName.compare(NMGlobalHelper::getMainWindow()->getSessionDbFileName()) != 0)
     {
-        return false;
+        QFileInfo fifo(dbFileName);
+        if (!fifo.exists() || !fifo.isReadable())
+        {
+            return false;
+        }
     }
 
     QSqlDriver* drv = dbTarget.driver();

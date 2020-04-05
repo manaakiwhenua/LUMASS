@@ -1713,7 +1713,9 @@ void NMSqlTableView::colStats()
             NMGlobalHelper::getMainWindow()->getTableList();
     QStringList alltables = tableList.keys();
 
-    QString name = QString("%1_%2_stats").arg(mModel->tableName()).arg(mLastClickedColumn);
+    QSqlDriver* drv = mModel->database().driver();
+    QString tabName = mModel->tableName().replace("\"", "");
+    QString name = QString("%1_%2_stats").arg(tabName).arg(mLastClickedColumn);
     int lfdnr = 2;
     while (alltables.contains(name))
     {
@@ -1721,8 +1723,6 @@ void NMSqlTableView::colStats()
         ++lfdnr;
     }
 
-
-    QSqlDriver* drv = mModel->database().driver();
     std::string col = drv->escapeIdentifier(mLastClickedColumn, QSqlDriver::FieldName).toStdString();
     std::stringstream sql;
 
@@ -1751,10 +1751,16 @@ void NMSqlTableView::colStats()
                 NMGlobalHelper::getMainWindow()->getSessionDbFileName());
     QSqlDatabase dbTarget = QSqlDatabase::database(connname);
 
-    if (!NMGlobalHelper::attachDatabase(dbTarget, mModel->database().databaseName(), name))
+    // if the current table is part of the session database, there's no need for attaching anything!
+    bool bIsSessionDb = true;
+    if (dbTarget.connectionName().compare(mModel->database().connectionName()) != 0)
     {
-        NMBoxErr("User Query", "Failed attaching the table database to the session database!");
-        return;
+        if (!NMGlobalHelper::attachDatabase(dbTarget, mModel->database().databaseName(), name))
+        {
+            NMBoxErr("User Query", "Failed attaching the table database to the session database!");
+            return;
+        }
+        bIsSessionDb = false;
     }
 
     QSqlQuery userQuery(dbTarget);

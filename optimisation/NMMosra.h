@@ -283,6 +283,8 @@ public:
 	void writeReport(QString fileName);
 	QString getReport(void);
 
+    void writeBaselineReductions(QString filename);
+
 	/* set a solver timeout -> maximum availalbe time for solving
 	 * the problem
 	 */
@@ -371,9 +373,9 @@ private:
 	// as in the mlsOptions list
 	QMap<QString, QStringList> mmslCriteria;
 
-    // map holding the incentive names (key) (comprised of to
+    // map holding the incentive names (key) (comprised of two
     // valid criterion names from the CRITERIA section
-    // concatenated by and underscore '_') and the associated
+    // concatenated by an underscore '_') and the associated
     // column name (value) storing the actual incentive
     // as per ha score for each feature
     QMap<QString, QStringList> mmslIncentives;

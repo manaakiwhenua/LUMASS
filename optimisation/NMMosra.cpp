@@ -2396,6 +2396,14 @@ int NMMosra::parseStringSettings(QString strSettings)
                         MosraLogError (<< "Malfomred ZONE_CONSTRAINT on line " << numline);
                     }
 
+                    // zonecon
+                    //  0: zone id column
+                    //  1: resource list column | total
+                    //  2: criterion label
+                    //  3: operator
+                    //  4: constraint value (rhs value)
+
+
                     zonecon << zonespec << zoneOp << valueCol;
                     this->mslZoneConstraints.insert(label, zonecon);
 
@@ -2911,19 +2919,19 @@ void NMMosra::createReport(void)
 	}
 
 	// DEBUG - we just dump all constraints values here
-    MosraLogDebug( << endl << "just dumping all constraint values .... " << endl);
-	int nrows = this->mLp->GetNRows();
-	for (int q=1; q < nrows; ++q)
-	{
-		QString name(this->mLp->GetRowName(q).c_str());
-        if (name.contains("Feature") || name.contains("BaselineCons"))
-			continue;
-		int op = this->mLp->GetConstraintType(q-1);
-		double cv = pdCons[q-1];
-		char fv[256];
-		::sprintf(fv, "%g", cv);
-        MosraLogDebug(<< name.toStdString() << " " << op << " " << fv << endl);
-	}
+//    MosraLogDebug( << endl << "just dumping all constraint values .... " << endl);
+//	int nrows = this->mLp->GetNRows();
+//	for (int q=1; q < nrows; ++q)
+//	{
+//		QString name(this->mLp->GetRowName(q).c_str());
+//        if (name.contains("Feature") || name.contains("BaselineCons"))
+//			continue;
+//		int op = this->mLp->GetConstraintType(q-1);
+//		double cv = pdCons[q-1];
+//		char fv[256];
+//		::sprintf(fv, "%g", cv);
+//        MosraLogDebug(<< name.toStdString() << " " << op << " " << fv << endl);
+//	}
     //NMDebug(<< endl);
 
 
@@ -2947,6 +2955,7 @@ void NMMosra::createReport(void)
             const QString consname = this->mLp->GetRowName(r).c_str();
             if (    !consname.startsWith("Feature")
                  && !consname.startsWith("Baseline")
+                 && !consname.startsWith("Reduc")
                )
             {
                 sRes << consname << platz << tr("\t") <<
@@ -2956,55 +2965,78 @@ void NMMosra::createReport(void)
 	}
 
 
-    // DEBUG if we've got incentives, let's get 'em and see 'em!
-//    const int lNumRecs = this->mDataSet->getNumRecs();
-//    const int iNumIncs = this->mmslIncentives.size();
-//    const bool optFeat = this->mDataSet->hasColumn(this->msOptFeatures);
-//    if (iNumIncs > 0)
-//    {
-//        QFile incFile("/home/users/herziga/crunch/testOptimisation/opt_result/incs.txt");
-//        if (incFile.open(QIODevice::WriteOnly | QIODevice::Text))
-//        {
-//            QTextStream incstr(&incFile);
-
-//            incstr << endl << endl;
-//            incstr << "Let's get a feeling for those reduction variables (r_i_r_q) ...." << endl;
-//            incstr << "     with: i: feature index, r: land use index, q: incentive index" << endl << endl;
-
-//            double* pdVars = nullptr;
-//            this->mLp->GetPtrVariables(&pdVars);
-
-//            for (int rec=0; rec < lNumRecs; ++rec)
-//            {
-//                if (optFeat && this->mDataSet->getIntValue(this->msOptFeatures, rec) == 0)
-//                {
-//                    continue;
-//                }
-
-//                for (int inc=0; inc < iNumIncs; ++inc)
-//                {
-//                    for (int lu=0; lu < miNumOptions; ++lu)
-//                    {
-//                        const QString incName = QString("R_%1_%2_%3").arg(rec).arg(lu+1).arg(inc+1);
-//                        const int ivalIdx = this->mLp->GetNameIndex(incName.toStdString(), false)-1;
-//                        if (ivalIdx >=0)
-//                        {
-//                            incstr << incName << "=" << pdVars[ivalIdx] << " ";
-//                        }
-//                    }
-//                }
-//                incstr << endl;
-//            }
-//            incstr << endl << endl;
-//            incFile.close();
-//        }
-//    }
-
-
 	this->msReport.clear();
 	this->msReport = sRes.readAll();
 
 	NMDebugCtx(ctxNMMosra, << "done!");
+
+}
+
+void
+NMMosra::writeBaselineReductions(QString filename)
+{
+    // DEBUG if we've got incentives, let's get 'em and see 'em!
+    const int lNumRecs = this->mDataSet->getNumRecs();
+    const int iNumIncs = this->mmslIncentives.size();
+    const bool optFeat = this->mDataSet->hasColumn(this->msOptFeatures);
+    if (iNumIncs > 0)
+    {
+        QFile incFile(filename);
+        if (incFile.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            QTextStream incstr(&incFile);
+
+            incstr << endl << endl;
+            incstr << "Let's get a feeling for those reduction variables (r_i_r_q) ...." << endl;
+            incstr << "     with: i: feature index, r: land use index, q: incentive index" << endl << endl;
+
+            double* pdVars = nullptr;
+            this->mLp->GetPtrVariables(&pdVars);
+            if (pdVars == nullptr)
+            {
+                NMLogError(<< "NMMosra::writeBaselineReductions() - failed to fetch the decision variables!")
+                return;
+            }
+
+            for (int rec=0; rec < lNumRecs; ++rec)
+            {
+                if (optFeat && this->mDataSet->getIntValue(this->msOptFeatures, rec) == 0)
+                {
+                    continue;
+                }
+
+                for (int inc=0; inc < iNumIncs; ++inc)
+                {
+                    // print parcel reduction - in case of land-use retirement
+                    const QString predName = QString("R_%1_0_%2").arg(rec).arg(inc+1);
+                    const int predIdx = this->mLp->GetNameIndex(predName.toStdString(), false)-1;
+                    if (predIdx >= 0 && predIdx < this->mLp->GetNColumns())
+                    {
+                        incstr << predName << "=" << pdVars[predIdx] << " ";
+                    }
+
+                    // print reduction associated with individual land-uses
+                    for (int lu=0; lu < miNumOptions; ++lu)
+                    {
+                        const QString incName = QString("R_%1_%2_%3").arg(rec).arg(lu+1).arg(inc+1);
+                        const int ivalIdx = this->mLp->GetNameIndex(incName.toStdString(), false)-1;
+                        if (ivalIdx >=0 && ivalIdx < this->mLp->GetNColumns())
+                        {
+                            incstr << incName << "=" << pdVars[ivalIdx] << " ";
+                        }
+                    }
+                }
+                incstr << endl;
+            }
+            incstr << endl << endl;
+            incFile.close();
+        }
+        else
+        {
+            NMLogError(<< "Cannot write baseline reductions values to '"
+                       << filename.toStdString() << "'!");
+        }
+    }
 
 }
 
@@ -3024,10 +3056,18 @@ void NMMosra::writeProblem(QString filename, NMMosoExportType type)
         if (type == NM_MOSO_LP)
         {
             this->mProblemFilename = QString("%1/%2.lp").arg(path).arg(baseName);
+            if (this->mLp->CheckLp())
+            {
+                this->mLp->WriteLp(mProblemFilename.toStdString());
+            }
         }
         else
         {
             this->mProblemFilename = QString("%1/%2.mps").arg(path).arg(baseName);
+            if (this->mLp->CheckLp())
+            {
+                this->mLp->WriteMps(mProblemFilename.toStdString());
+            }
         }
 
         this->mProblemType = type;
@@ -3050,6 +3090,14 @@ void NMMosra::writeReport(QString fileName)
 	QByteArray bar(this->msReport.toStdString().c_str());
 	file.write(bar);
 	file.close();
+
+
+    // DEBUG WRITE BASELINE REDUCTION VALUES
+#ifdef LUMASS_DEBUG
+    QFileInfo fifo(fileName);
+    QString brfn = QString("%1/%2_%3.txt").arg(fifo.path()).arg(fifo.baseName()).arg("BL_reduction");
+    this->writeBaselineReductions(brfn);
+#endif
 }
 
 int NMMosra::checkSettings(void)
@@ -3520,48 +3568,53 @@ int NMMosra::checkSettings(void)
 
 	// --------------------------------------------------------------------------------------------------------
     //MosraLogInfo(<< "calculating size of the optimsation matrix ..." << endl);
-	/*
-	 * structure of the lp matrix
-	 * here displayed for two options (land uses)
-	 *
-	 * i : feature index
-	 * r : land use index
-	 *
-	 * X_i_r: area share of land-use r allocated to feature i
-     * DEPRECATED: b_i  : binary conditional variable we need to model that
-	 *        a feature has to be either completely covered by
-	 *        any combination of the land use options or not at all
-	 *
-	 * note: row-0 contains the objective function and cell 0,0 contains
-	 *       the objective function value; row-1 and beyond contain the
-	 *       constraints of the model
+    /*
+     * structure of the lp matrix  assuming that
+     * we've got two options (land uses)
      *
+     * i : feature index  (0-based)
+     * r : land use index (1-based) note: 0 represents the whole parcel (s. incentives below)
+     *
+     * X_i_r: area share of land-use r allocated to feature i
+     * NOT USED! b_i  : binary conditional variable we need to model that
+     *           a feature has to be either completely covered by
+     *           any combination of the land use options or not at all
+     *
+     * note: row-0 contains the objective function and cell 0,0 contains
+     *       the objective function value; row-1 and beyond contain the
+     *       constraints of the model
      *
      *colindex:     0     1       2       3       4       5
      *row-0           | X_0_1 | X_0_2 | X_1_1 | X_1_2 | X_2_1 ...
      *row-1
      *
+     * .....................................................................
      * if incentives are specified, the matrix structure becomes:
      *
      * q : incentive index
      *
-     * R_i_r_q
+     * R_i_r_q   note: r includes '0' value here, representing the whole parcel!
      *
-     *colindex:     0     1       2        3         4         5         6        7       8        9         10        11        12
-     *row-0           | X_0_1 | X_0_2 | R_0_1_1 | R_0_2_1 | R_0_1_2 | R_0_2_2 | X_1_1 | X_1_2 | R_1_1_1 | R_1_2_1 | R_1_1_2 | R_1_2_2 | ...
-     *row-1
-     *
-     *
-     *
-     * ..........................................................................................
-     *DEPRECATED
-	 *colindex:     0     1       2      3      4       5
-	 *row-0           | X_0_1 | X_0_2 | b_0 | X_1_1 | X_1_2 | b_1 | ...
-	 *row-1
-     *                                   ^
+     *colindex:     0     1       2        3         4         5         6         7         8        9       10       11        12
+     *row-0           | X_0_1 | X_0_2 | R_0_0_1 | R_0_1_1 | R_0_2_1 | R_0_0_2 | R_0_1_2 | R_0_2_2 | X_1_1 | X_1_2 | R_1_0_1 | R_1_1_1 | R_1_2_1 | R_1_1_2 | R_1_2_2 | ...
+     *row-1                                ^                                       ^
+     *                                     |                                       |
+     *                             reduction due to                        reduction through
+     *                             retirement of parcel                  LU 1 w.r.t criterion 2
+     *                             w.r.t criterion 1
+     *                             (not used at the moment)
+     * ......................................................................
+     * DEPRECATED
+     *colindex:     0     1       2      3      4       5
+     *row-0           | X_0_1 | X_0_2 | b_0 | X_1_1 | X_1_2 | b_1 | ...
+     *row-1 (constraint #1: i.e. coefficients for decision variables)
+     *row-2 (constraint #2)
+     *row-3  etc.
+     *etc.                               ^
      *                                   |
-     *                              this is deprecated
-	 */
+     *                               deprecated
+     */
+
 	this->mlNumArealDVar = this->miNumOptions * this->mlNumOptFeat;
 	sstr << "mlNumArealDVar = miNumOptions * mlNumOptFeat = "
 			<< this->mlNumArealDVar << " = " << this->miNumOptions << " * "
@@ -3573,12 +3626,14 @@ int NMMosra::checkSettings(void)
     QString addNumVar = "\n";
     if (incentivesValid)
     {
-        this->mlNumDVar += this->mmslIncentives.size() * this->mlNumOptFeat * this->miNumOptions;
-        addNumVar = QString(" + %1 * %2 * %3\n")
-                .arg(this->mmslIncentives.size())
+        const int incDVars = this->mlNumOptFeat *
+                            (this->miNumOptions * this->mmslIncentives.size() + this->mmslIncentives.size());
+        this->mlNumDVar += incDVars;
+        addNumVar = QString(" + %1 * (%2 * %3+%2)\n")
                 .arg(this->mlNumOptFeat)
+                .arg(this->mmslIncentives.size())
                 .arg(this->miNumOptions);
-        plusRedVar = QString(" + numIncentives * mlNumOptFeat * miNumOptions");
+        plusRedVar = QString(" + mlNumOptFeat * (iNumIncentives * miNumOptions + iNumIncentives)");
     }
 
     sstr << "mlNumDvar = mlNumArealDVar" << plusRedVar
@@ -3927,8 +3982,8 @@ int NMMosra::makeLp(void)
 	 * structure of the lp matrix  assuming that
 	 * we've got two options (land uses)
 	 *
-	 * i : feature index
-	 * r : land use index
+     * i : feature index  (0-based)
+     * r : land use index (1-based) note: 0 represents the whole parcel (s. incentives below)
 	 *
 	 * X_i_r: area share of land-use r allocated to feature i
      * NOT USED! b_i  : binary conditional variable we need to model that
@@ -3948,14 +4003,16 @@ int NMMosra::makeLp(void)
      *
      * q : incentive index
      *
-     * R_i_r_q
+     * R_i_r_q   note: r includes '0' value here, representing the whole parcel!
      *
-     *colindex:     0     1       2        3         4         5         6        7       8        9         10        11        12
-     *row-0           | X_0_1 | X_0_2 | R_0_1_1 | R_0_2_1 | R_0_1_2 | R_0_2_2 | X_1_1 | X_1_2 | R_1_1_1 | R_1_2_1 | R_1_1_2 | R_1_2_2 | ...
-     *row-1
-     *
-     *
-     *
+     *colindex:     0     1       2        3         4         5         6         7         8        9       10       11        12
+     *row-0           | X_0_1 | X_0_2 | R_0_0_1 | R_0_1_1 | R_0_2_1 | R_0_0_2 | R_0_1_2 | R_0_2_2 | X_1_1 | X_1_2 | R_1_0_1 | R_1_1_1 | R_1_2_1 | R_1_1_2 | R_1_2_2 | ...
+     *row-1                                ^                                       ^
+     *                                     |                                       |
+     *                             reduction due to                        reduction through
+     *                             retirement of parcel                  LU 1 w.r.t criterion 2
+     *                             w.r.t criterion 1
+     *                             (not used at the moment)
      * ......................................................................
      * DEPRECATED
 	 *colindex:     0     1       2      3      4       5
@@ -4014,6 +4071,12 @@ int NMMosra::makeLp(void)
         // add vars for incentivsed reduction (depending on x_i_r)
         for (int inc=1; inc <= this->mmslIncentives.size(); ++inc)
         {
+            // the LU index here is '0' to indicate this variable
+            // refers to the whole parcel!
+            colname = QString(tr("R_%1_0_%2")).arg(of).arg(inc);
+            this->mLp->SetColName(colPos, colname.toStdString());
+            ++colPos;
+
             for (int opt=1; opt <= this->miNumOptions; ++opt, ++colPos)
             {
                 colname = QString(tr("R_%1_%2_%3")).arg(of).arg(opt).arg(inc);
@@ -4403,20 +4466,24 @@ int NMMosra::addObjFn(void)
 
 	// init some mem for the row and column objects of the
 	// problem
-    double* pdRow = new double[this->mlNumDVar];
-    int* piColno = new int[this->mlNumDVar];
-	int* plFieldIndices = new int[this->miNumOptions];
+    const long dvars = this->mlNumDVar;
+    double* pdRow = new double[dvars];
+    int* piColno = new int[dvars];
+    int* plFieldIndices = new int[this->miNumOptions];
 
     // each incentive has only one field associated with it
     const int numIncentives = this->mmslIncentives.size();
-    int* piIncFieldIdx = new int[numIncentives];
+    int* piIncFieldIdx = numIncentives > 0 ? new int[numIncentives] : nullptr;
 
-	QString s1Maxmin = this->mmslObjectives.begin().value().at(0).left(3);
-	QString sxMaxmin;
-    //QString sFieldName;
-    long lNumCells = mDataSet->getNumRecs();
-    double dCoeff, dWeight = 1; // dFeatID,
+    const int holeidx = mDataSet->getColumnIndex("nm_hole");
+    const int skipIncentivesOffset = numIncentives * miNumOptions + numIncentives;
+
+    const long lNumCells = mDataSet->getNumRecs();
+    double dCoeff, dWeight = 1;
 	bool convOK;
+
+    QString s1Maxmin = this->mmslObjectives.begin().value().at(0).left(3);
+    QString sxMaxmin;
 
 	// ------------------------------------------------------------------for each objective
 	// set coefficients of areal decision variables
@@ -4426,6 +4493,27 @@ int NMMosra::addObjFn(void)
 	unsigned int objcount = 0;
 	for (; it != this->mmslObjectives.constEnd(); ++it, ++objcount)
 	{
+        // need to check whether we've got to account for incentives or not
+        bool bIncentivise = false;
+        if (numIncentives > 0)
+        {
+            // need to check whether the current objective is incentivsed at all
+            QString objCri = it.key();
+            QMap<QString, QStringList>::const_iterator incIt = mIncNamePair.cbegin();
+            while (incIt != mIncNamePair.cend())
+            {
+                if (!incIt.value().isEmpty())
+                {
+                    if (incIt.value().at(0).compare(objCri, Qt::CaseInsensitive) == 0)
+                    {
+                        bIncentivise = true;
+                        exit;
+                    }
+                }
+                ++incIt;
+            }
+        }
+
 		// get field indices for the performance indicators
         MosraLogDebug( << "objective '" << it.key().toStdString() << "' ..." << endl);
 
@@ -4506,18 +4594,28 @@ int NMMosra::addObjFn(void)
 
         MosraLogDebug( << "processing individual features now" << endl);
 		// --------------------------------------------------for each feature
-        const int holeidx = mDataSet->getColumnIndex("nm_hole");
         long colPos = 1;
 		long arpos = 0;
 		for (int f=0; f < lNumCells; ++f)
 		{
-			// leap over holes
+            // leap over holes
             if (    (hole && mDataSet->getIntValue(holeidx, f) == 1)
                  || (optFeatIdx != -1 && mDataSet->getIntValue(this->msOptFeatures, f) == 0)
                )
             {
 				continue;
             }
+
+            /*
+            if (arpos + miNumOptions + skipIncentivesOffset > dvars)
+            {
+                NMDebugAI(<< "NMMosra::addObjFn() - decision variable buffer out of bounds: "
+                           << "max_idx=" << (dvars-1) << ", but will reach arpos=" << (arpos + miNumOptions + skipIncentivesOffset-1)
+                           << " for optFeatCount=" << optFeatCount << "!");
+                NMDebugCtx(ctxNMMosra, << "done!");
+                return 0;
+            }
+            */
 
 			// ----------------------------------------------for each option
 			for (int option=0; option < this->miNumOptions; option++, arpos++, colPos++)
@@ -4565,23 +4663,42 @@ int NMMosra::addObjFn(void)
 
 			}
 
-            for (int in=0; in < numIncentives; ++in)
+            if (bIncentivise)
             {
-                dCoeff = mDataSet->getDblValue(piIncFieldIdx[in], f);
-                dCoeff = bMalMinusEins ? dCoeff * -1 : dCoeff;
-                if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
+                for (int in=0; in < numIncentives; ++in)
                 {
-                    dCoeff *= dWeight;
-                }
+                    dCoeff = mDataSet->getDblValue(piIncFieldIdx[in], f);
+                    dCoeff = bMalMinusEins ? dCoeff * -1 : dCoeff;
+                    if (this->meScalMeth == NMMosra::NM_MOSO_WSUM)
+                    {
+                        dCoeff *= dWeight;
+                    }
 
-                for (int option=0; option < miNumOptions; ++option, ++arpos, ++colPos)
-                {
+                    // add the coefficient for the parcel-retirement reduction variable
                     if (objcount)
-                        pdRow[arpos] += dCoeff;
+                        pdRow[arpos] += 0.0;//dCoeff;
                     else
-                        pdRow[arpos] = dCoeff;
+                        pdRow[arpos] = 0.0;//dCoeff;
                     piColno[arpos] = colPos;
+
+                    ++arpos;
+                    ++colPos;
+
+
+                    // add the coefficients for the land-use specific reduction variables
+                    for (int option=0; option < miNumOptions; ++option, ++arpos, ++colPos)
+                    {
+                        if (objcount)
+                            pdRow[arpos] += dCoeff;
+                        else
+                            pdRow[arpos] = dCoeff;
+                        piColno[arpos] = colPos;
+                    }
                 }
+            }
+            else
+            {
+                colPos += skipIncentivesOffset;
             }
 
 			// increment the column number counter to the next areal decision variable
@@ -4611,8 +4728,8 @@ int NMMosra::addObjFn(void)
 		this->mLp->SetMaxim();
 
 	// free some memory
-	delete[] pdRow;
-	delete[] piColno;
+    delete[] pdRow;
+    delete[] piColno;
 	delete[] plFieldIndices;
     delete[] piIncFieldIdx;
 
@@ -4630,9 +4747,6 @@ int NMMosra::addObjCons(void)
     bool hole = mDataSet->hasColumn("nm_hole");
     long lNumCells = mDataSet->getNumRecs();
     int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
-
-    // check whether we've got to account for incentives
-    int iNumIncentives = this->mmslIncentives.size();
 
 	// create vectors holding the constraint types
 	// and objective constraint labels
@@ -4658,13 +4772,16 @@ int NMMosra::addObjCons(void)
 	}
 
 	// allocate the required memory
-	double* pdRow = new double[this->mlNumArealDVar];
-	int* piColno = new int[this->mlNumArealDVar];
+    double* pdRow = nullptr; //new double[this->mlNumArealDVar];
+    int* piColno = nullptr; //new int[this->mlNumArealDVar];
 	int* piFieldIndices = new int[this->miNumOptions];
 
+    // check whether we've got to account for incentives
+    const int iNumIncentives = this->mmslIncentives.size();
+    int* piIncFieldIdx = iNumIncentives > 0 ? new int[iNumIncentives] : nullptr;
+
+
 	// some more vars
-    //QString sFieldName;
-    //QString sObjCri;
 	double dConsVal;
 	double dCoeff;
 
@@ -4676,7 +4793,40 @@ int NMMosra::addObjCons(void)
 	// ------------------------------------------------for each objective
 	for (int obj=0; it != this->mmslObjCons.constEnd(); it++, obj++)
 	{
-		// get the constraint value
+        // need to check whether we've got to account for incentives or not
+        bool bIncentivise = false;
+        if (iNumIncentives > 0)
+        {
+            // need to check whether the current objective is incentivsed at all
+            QString objCri = it.value().at(0);
+            QMap<QString, QStringList>::const_iterator incNameIt = mIncNamePair.cbegin();
+            while (incNameIt != mIncNamePair.cend())
+            {
+                if (!incNameIt.value().isEmpty())
+                {
+                    if (incNameIt.value().at(0).compare(objCri, Qt::CaseInsensitive) == 0)
+                    {
+                        bIncentivise = true;
+                        exit;
+                    }
+                }
+                ++incNameIt;
+            }
+        }
+
+        if (bIncentivise)
+        {
+            pdRow = new double[this->mlNumDVar];
+            piColno = new int[this->mlNumDVar];
+        }
+        else
+        {
+            pdRow = new double[this->mlNumArealDVar];
+            piColno = new int[this->mlNumArealDVar];
+        }
+
+
+        // get the constraint value
 		bool bConvOK;
 		double dVal =
 		dVal = it.value().at(2).toDouble(&bConvOK);
@@ -4697,7 +4847,6 @@ int NMMosra::addObjCons(void)
 
             piFieldIndices[option] = mDataSet->getColumnIndex(sField);
 
-//			if (dsAttr->GetArray(sField.toStdString().c_str(), *(piFieldIndices + option)) == NULL)
             if (piFieldIndices[option] == -1)
 			{
                 MosraLogError( << "failed to get performance indicator '"
@@ -4716,10 +4865,38 @@ int NMMosra::addObjCons(void)
 					<< ": " << sField.toStdString() << " " << piFieldIndices[option] << endl);
 		}
 
+        MosraLogDebug( << "incentive: <incentive field> <field index> ..." << std::endl);
+        QMap<QString, QStringList>::ConstIterator incIt = this->mmslIncentives.constBegin();
+        int inccount = 0;
+        while (incIt != this->mmslIncentives.constEnd())
+        {
+            const int ifidx = mDataSet->getColumnIndex(incIt.value().at(0));
+            if (ifidx == -1)
+            {
+                MosraLogError( << "Failed to retreive columnn index for '"
+                               << incIt.value().at(0).toStdString() << "!");
+
+                delete[] pdRow;
+                delete[] piColno;
+                delete[] piFieldIndices;
+                delete[] piIncFieldIdx;
+
+                NMDebugCtx(ctxNMMosra, << "done!");
+                return 0;
+            }
+            else
+            {
+                piIncFieldIdx[inccount] = ifidx;
+            }
+            ++inccount;
+            ++incIt;
+        }
+
+
 		// ------------------------------------------------------------for each spatial alternative
-		long lCounter = 0;
-        long const int skipIncentivesOffset = iNumIncentives * miNumOptions;
-		long colpos = 1;
+        const int skipIncentivesOffset = iNumIncentives * miNumOptions + iNumIncentives;
+        long lCounter = 0;
+        long colpos = 1;
 		for (int f=0; f < lNumCells; f++)
 		{
 			// leap frog holes in polygons
@@ -4735,7 +4912,7 @@ int NMMosra::addObjCons(void)
                 dCoeff = mDataSet->getDblValue(piFieldIndices[option], f);
 
 				// do we have binary decision variables?
-                double area = mDataSet->getDblValue(this->msAreaField, f);
+                //              double area = mDataSet->getDblValue(this->msAreaField, f);
                 //				QString sArea = QString(tr("%1")).arg(area, 0, 'g');
                 //				bool bok;
                 //				switch(this->meDVType)
@@ -4755,34 +4932,66 @@ int NMMosra::addObjCons(void)
 				// increment the counter
 				lCounter++;
 				colpos++;
+
+
 			}
-            colpos += skipIncentivesOffset;
+
+            if (bIncentivise)
+            {
+                for (int in=0; in < iNumIncentives; ++in)
+                {
+                    dCoeff = mDataSet->getDblValue(piIncFieldIdx[in], f);
+
+                    // add the coefficient for the parcel-retirement reduction variable
+                    pdRow[lCounter] = 0.0; //dCoeff;
+                    piColno[lCounter] = colpos;
+
+                    ++lCounter;
+                    ++colpos;
+
+
+                    // add the coefficients for the land-use specific reduction variables
+                    for (int option=0; option < miNumOptions; ++option, ++lCounter, ++colpos)
+                    {
+                        pdRow[lCounter] = dCoeff;
+                        piColno[lCounter] = colpos;
+                    }
+                }
+            }
+            else
+            {
+                colpos += skipIncentivesOffset;
+            }
 
 			// leap frog the binary decision variable for this feature
             //colpos++;
 
 			if (f % 100 == 0)
 				NMDebug(<< ".");
-		}
+
+        } // end cell iteration
 
 		NMDebug(<< " finished!" << endl);
 
 		// add the constraint to the matrix
-		this->mLp->AddConstraintEx(this->mlNumArealDVar, pdRow, piColno, vnConsType.at(obj), dConsVal);
+        this->mLp->AddConstraintEx(iNumIncentives > 0 ? this->mlNumDVar : this->mlNumArealDVar,
+                                   pdRow, piColno, vnConsType.at(obj), dConsVal);
 
 		// increment the row counter
 		lRowCounter++;
 
 		// add the label for this constraint
 		this->mLp->SetRowName(lRowCounter, vsObjConsLabel.at(obj).toStdString());
-	}
+
+        delete[] pdRow;
+        delete[] piColno;
+
+    } // end objective constraint iteration
 
 
 	this->mLp->SetAddRowmode(false);
 
 	// free some memory
-	delete[] pdRow;
-	delete[] piColno;
 	delete[] piFieldIndices;
 
 	NMDebugCtx(ctxNMMosra, << "done!");
@@ -4804,6 +5013,7 @@ int NMMosra::addZoneCons(void)
         QMap<int, double>           mRHS;
         QMap<int, QVector<int> >    mZoneRowIds;
         QMap<int, QStringList>      mvPerformanceFields;
+        QMap<int, QStringList>      mvIncFields;
         QMap<int, QVector<int> >    mvResourceIdx;
         int                         consOp;
 
@@ -4836,12 +5046,12 @@ int NMMosra::addZoneCons(void)
                 allResIds.push_back(r);
             }
         }
-
         QStringList allPerfFields = mmslCriteria[zconsIt.value().at(2)];
 
         //========================================================================================
         // loop over the data set and identify zone and track required information
-
+        const int miNumInc = mmslIncentives.size();
+        const int skipIncColOffset = miNumInc * miNumOptions + miNumInc;
         const bool hole = mDataSet->hasColumn("nm_hole");
         const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
         const long lNumCells = mDataSet->getNumRecs();
@@ -4893,11 +5103,28 @@ int NMMosra::addZoneCons(void)
                     mvResourceIdx[zoneID] = resIdx;
                     mvPerformanceFields[zoneID] = perfFields;
                 }
+
+                // get the incentives fields, if any, for this zone
+                QStringList iFields;
+                if (this->mIncNamePair.size() > 0)
+                {
+                    QMap<QString, QStringList>::ConstIterator incIt = mIncNamePair.cbegin();
+                    while (incIt != mIncNamePair.cend())
+                    {
+                        if (zconsIt.value().at(2).compare(incIt.value().at(0), Qt::CaseInsensitive) == 0)
+                        {
+                            iFields.push_back(incIt.value().at(1));
+                        }
+                        ++incIt;
+                    }
+                }
+                mvIncFields[zoneID] = iFields;
             }
         }
 
         //=================================================================================
         // process identified zones
+
         int zoneCounter = 0;
         QMap<int, QVector<int> >::ConstIterator zoneIt = mZoneRowIds.cbegin();
         while (zoneIt != mZoneRowIds.cend())
@@ -4906,6 +5133,7 @@ int NMMosra::addZoneCons(void)
             double rhs = mRHS[zoneID];
             int numCoeffs = 0;
             int numRes = 0;
+            int numIncs = mvIncFields[zoneID].size();
 
             if (bAllRes)
             {
@@ -4919,15 +5147,15 @@ int NMMosra::addZoneCons(void)
             // ...............................................................
             // allocate row buffers and populate
             const QVector<int>& vRows = zoneIt.value();
-            numCoeffs = numRes * vRows.size();
+            numCoeffs = (numRes + numIncs) * vRows.size();
 
             double* pdRow = new double[numCoeffs];
             int* piColno = new int[numCoeffs];
 
-            int coeffCounter = 0;
+            long coeffCounter = 0;
             for (int r=0; r < vRows.size(); ++r)
             {
-                long colPos = 1 + vRows[r] * this->miNumOptions;
+                long colPos = 1 + vRows[r] * (this->miNumOptions + (miNumOptions * mmslIncentives.size()) + mmslIncentives.size());
                 double coeff = 0.0;
                 if (bAllRes)
                 {
@@ -4965,6 +5193,44 @@ int NMMosra::addZoneCons(void)
                         pdRow[coeffCounter] = coeff;
                         piColno[coeffCounter] = colPos + resix[arpos];
                         ++coeffCounter;
+                    }
+                }
+
+                // add incentives, if applicable
+                if (mvIncFields[zoneID].size() > 0)
+                {
+                    QVector<int> optidx = mvResourceIdx[zoneID];
+                    QStringList incFields = mvIncFields[zoneID];
+                    for (int inc=0; inc < numIncs; ++inc)
+                    {
+                        if (this->meDVType == NMMosoDVType::NM_MOSO_BINARY)
+                        {
+                            coeff = mDataSet->getDblValue(incFields[inc], vRows[r])
+                                     * mDataSet->getDblValue(msAreaField, vRows[r]);
+                        }
+                        else
+                        {
+                            coeff = mDataSet->getDblValue(incFields[inc], vRows[r]);
+                        }
+
+                        if (bAllRes)
+                        {
+                            for (int opt=0; opt < numRes; ++opt)
+                            {
+                                pdRow[coeffCounter] = coeff;
+                                piColno[coeffCounter] = colPos + allResIds[opt] + (inc+1) * miNumOptions + 1 + inc;
+                                ++coeffCounter;
+                            }
+                        }
+                        else
+                        {
+                            for (int opt=0; opt < numRes; ++opt)
+                            {
+                                pdRow[coeffCounter] = coeff;
+                                piColno[coeffCounter] = colPos + optidx[opt] + (inc+1) * miNumOptions + 1 + inc;
+                                ++coeffCounter;
+                            }
+                        }
                     }
                 }
             }
@@ -5062,7 +5328,7 @@ int NMMosra::addFeatureCons(void)
     long lRowCounter = this->mLp->GetNRows();
 
     const int iOffset = this->miNumOptions;
-    const int skipIncentivesFeatOffset = this->mmslIncentives.size() * miNumOptions;
+    const int skipIncentivesFeatOffset = this->mmslIncentives.size() * miNumOptions + mmslIncentives.size();
 
 
     it = this->mmslFeatCons.constBegin();
@@ -5285,7 +5551,7 @@ int NMMosra::addExplicitAreaCons(void)
     int iOffset = this->miNumOptions;
 
     // offset to jump over any incentives decision-variables
-    int iSkipIncentivesOffset = this->mmslIncentives.size() * miNumOptions;
+    int iSkipIncentivesOffset = this->mmslIncentives.size() * miNumOptions + mmslIncentives.size();
 
     // adjust option offset
     iOffset += iSkipIncentivesOffset;
@@ -5298,8 +5564,6 @@ int NMMosra::addExplicitAreaCons(void)
 
 		// array defining zones for this constraints
 		bool bZoneCons = false;
-//		vtkStringArray* zoneAr;
-        int zoneArIdx = -1;
 		QString inLabel = vsConsLabel.at(r);
 
         const long numOptions = vvnOptionIndex.at(r).size();
@@ -5308,8 +5572,6 @@ int NMMosra::addExplicitAreaCons(void)
 
 		if (!vsZoneField.at(r).isEmpty())
 		{
-//			zoneAr = vtkStringArray::SafeDownCast(dsAttr->GetAbstractArray(vsZoneField.at(r).toStdString().c_str()));
-//            zoneArIdx = mDataSet->getColumnIndex(vsZoneField.at(r));
 			bZoneCons = true;
 
             inLabel = QString(tr("%1")).arg(vsConsLabel.at(r));
@@ -5351,8 +5613,6 @@ int NMMosra::addExplicitAreaCons(void)
                     // set coefficients for zone polygons
                     std::string zoneArVal = mDataSet->getStrValue(vsZoneField.at(r), f).toStdString();
 
-//                    if (zoneAr->GetValue(f).find(this->mslOptions.at(vvnOptionIndex.at(r).at(no)).toStdString())
-//                            != std::string::npos)
                     if (zoneArVal.find(this->mslOptions.at(vvnOptionIndex.at(r).at(no)).toStdString())
                               != std::string::npos)
                     {
@@ -5456,7 +5716,7 @@ int NMMosra::addImplicitAreaCons(void)
     //double dVal;
 
     const int iNumIncentives = this->mmslIncentives.size();
-    const int skipIncentivesOffset = iNumIncentives * miNumOptions;
+    const int skipIncentivesOffset = iNumIncentives * miNumOptions + iNumIncentives;
 
 	// set add_row_mode for adding constraints
 	this->mLp->SetAddRowmode(true);
@@ -5711,7 +5971,7 @@ int NMMosra::addCriCons(void)
 	// iterate over constraints and process them one at a time
 	// (or should we process them while looping over all features)?
 
-    const int skipIncentiveFeatOffset = this->mmslIncentives.size() * miNumOptions;
+    const int skipIncentiveFeatOffset = this->mmslIncentives.size() * miNumOptions + mmslIncentives.size();
 
 	this->mLp->SetAddRowmode(true);
 	long lRowCounter = this->mLp->GetNRows();
@@ -5730,10 +5990,10 @@ int NMMosra::addCriCons(void)
         const int iNumIncentives = incFieldNames.size();
 
         // debug
-        int varspace = (numCriOptions + iNumIncentives) * this->mlNumOptFeat;
+        const int varspace = (numCriOptions + numCriOptions * iNumIncentives) * this->mlNumOptFeat;
 
-        double* pdRow = new double[(numCriOptions + iNumIncentives) * this->mlNumOptFeat];
-        int* piColno = new int[(numCriOptions + iNumIncentives) * this->mlNumOptFeat];
+        double* pdRow = new double[varspace];
+        int* piColno = new int[varspace];
 
 		long arpos = 0;
 		long colPos = 1;
@@ -5777,7 +6037,7 @@ int NMMosra::addCriCons(void)
                         coeff = mDataSet->getDblValue(performanceIndicatorIdx, f);
 						break;
 					}
-				}
+                }
 
                 //debug
                 //int criPos = colPos + optIdx;
@@ -5804,16 +6064,18 @@ int NMMosra::addCriCons(void)
                         }
                     }
 
-                    //debug
-                    //const int theIncPos = colPos + optIdx + (inc+1) * miNumOptions;
-
                     // arpos is the current postion based on no incentives; + 1 move it to the next pos; +inc positions
                     // the pointer at the inc+1ths position
                     pdRow[arpos] = coeff;
-                    // piColno: colpos is start of current feature; adding miNumOptions jumps at the beginning of the
-                    // base-line reduction decision var; inc*miNumOptions jumps at the start of the inc-th (-1) lu sequence of
-                    // base-line reductions; + optIdx picks the right decision var for the given landuse at hand
-                    piColno[arpos] = colPos + optIdx + (inc+1) * miNumOptions;
+                    // piColno:
+                    //  - colpos is start of current feature;
+                    //  - optIdx picks the right decision var for the given landuse at hand
+                    //  - adding ((inc+1) * miNumOptions) jumps at the current base-line reduction decision var
+                    //       (out of the number of incentives and therefore reduction vars per land use)
+                    //  - adding (+1) makes sure we're skipping the whole parcel retirement reduction variable (which is always at
+                    //       the start of the list of reduction variables)
+                    //
+                    piColno[arpos] = colPos + optIdx + (inc+1) * miNumOptions + 1 + inc;
                 }
 			}
 
@@ -5829,8 +6091,7 @@ int NMMosra::addCriCons(void)
 
 		// add constraint
         MosraLogDebug(<< "adding constraint to LP ..." << std::endl);
-        this->mLp->AddConstraintEx((numCriOptions + iNumIncentives) * this->mlNumOptFeat,
-				pdRow, piColno, vOperators[labelidx], vRHS[labelidx]);
+        this->mLp->AddConstraintEx(varspace, pdRow, piColno, vOperators[labelidx], vRHS[labelidx]);
 
 		// increment the row counter
 		++lRowCounter;
@@ -5842,6 +6103,8 @@ int NMMosra::addCriCons(void)
 
 		delete[] pdRow;
 		delete[] piColno;
+        pdRow = nullptr;
+        piColno = nullptr;
 
 	}
 
@@ -5859,11 +6122,19 @@ NMMosra::addIncentCons(void)
 
     const bool hole = mDataSet->hasColumn("nm_hole");
     const int optFeatIdx = mDataSet->getColumnIndex(this->msOptFeatures);
+    const int curResourceIdx = mDataSet->getColumnIndex(this->msLandUseField);
     const long lNumCells = mDataSet->getNumRecs();
 
     const int iNumInc = this->mmslIncentives.size();
-    double* pdRow = new double[2 * this->miNumOptions];
-    int* piColNo = new int[2 * this->miNumOptions];
+
+    // set up the baseline constraints arrays
+    const int varspace = this->miNumOptions + 1;//(2 * this->miNumOptions) + 1;
+    double* pdRow = new double[varspace];
+    int* piColNo = new int[varspace];
+
+    // set up the reduction-tie constraints
+    double* pdTieRow = new double[2];
+    int* piTieColNo = new int[2];
 
     std::vector<std::vector<int> > vvIncCriFieldIdx;
     std::vector<int>                vBaselineFieldIdx;
@@ -5904,7 +6175,7 @@ NMMosra::addIncentCons(void)
 
 
     // add baseline criteria!
-    const int featColOffset = miNumOptions + iNumInc * miNumOptions;
+    const int featColOffset = miNumOptions + iNumInc * miNumOptions + iNumInc;
     int featPos = 1;
 
     long lRowCounter = this->mLp->GetNRows();
@@ -5918,34 +6189,65 @@ NMMosra::addIncentCons(void)
             continue;
         }
 
+        const QString curResource = this->mDataSet->getStrValue(this->msLandUseField, cell);
+        const int curLUIdx = mslOptions.indexOf(
+                    QRegExp(curResource, Qt::CaseInsensitive, QRegExp::FixedString));
+
         for (int inc=0; inc < iNumInc; ++inc)
         {
-            const double baselinePerf = mDataSet->getDblValue(vBaselineFieldIdx.at(inc), cell);
+            //const double baselinePerf = mDataSet->getDblValue(vBaselineFieldIdx.at(inc), cell);
+            const double curScore = mDataSet->getDblValue(vvIncCriFieldIdx[inc][curLUIdx], cell);
 
+            // set parcel retirement reduction (r_i_0_q) coefficient
             int arpos = 0;
+            pdRow[arpos] = 0.0;//1.0;
+            piColNo[arpos] = featPos + (inc+1) * miNumOptions + inc;
+            ++arpos;
+
             for (int lu=0; lu < miNumOptions; ++lu, ++arpos)
             {
+                //-----------------------------------------------
+                // set the reduction constraint (for a given landuse and incentive)
+
+                // .............................
                 // set x_i_r coefficient
                 const double criScore = mDataSet->getDblValue(vvIncCriFieldIdx[inc][lu], cell);
-                pdRow[arpos] = criScore;
-                piColNo[arpos] = featPos + lu;
-            }
+                double scoreCoeff = (curScore - criScore);// > 0 ? (curScore - criScore) : 0.0;
+                pdTieRow[0] = scoreCoeff;
+                piTieColNo[0] = featPos + lu;
 
-            for (int incs=0; incs < miNumOptions; ++incs, ++arpos)
-            {
-                // set r_i_r_q coefficient
+                // the option's reduction variable coefficient
+                pdTieRow[1] = -1.0;
+                piTieColNo[1] = featPos + lu + (inc+1) * miNumOptions + 1 + inc;
+
+                // upper
+                this->mLp->AddConstraintEx(2, pdTieRow, piTieColNo, 1, 0.0);
+                ++lRowCounter;
+
+                QString tieName = QString("ReducCons-upper_%1_%2_%3").arg(cell).arg(lu+1).arg(inc+1);
+                this->mLp->SetRowName(lRowCounter, tieName.toStdString().c_str());
+
+                // lower
+                this->mLp->AddConstraintEx(2, pdTieRow, piTieColNo, 2, 0.0);
+                ++lRowCounter;
+
+                tieName = QString("ReducCons-lower_%1_%2_%3").arg(cell).arg(lu+1).arg(inc+1);
+                this->mLp->SetRowName(lRowCounter, tieName.toStdString().c_str());
+
+
+                // ------------------------------------------------
+                // set r_i_r_q coefficient for baseline constraint
                 pdRow[arpos] = 1.0;
-                piColNo[arpos] = featPos + incs + (inc+1) * miNumOptions;
+                piColNo[arpos] = featPos + lu + (inc+1) * miNumOptions + 1 + inc;
             }
 
             // add constraint
-            // for a given parcel: sum of optimised performance w.r.t to incentivised criterion + reduction over baseline <= baseline
-            // for a given parcel: sum_l cl xl + sum_l rfl <= baseline
-            this->mLp->AddConstraintEx(2*miNumOptions, pdRow, piColNo, 1, baselinePerf);
-            ++lRowCounter;
+            // for a given parcel: baseline >= reduction_retirement + reduction_lu1 + reduction_lu2 + reduction_lu3 + ...
+            //this->mLp->AddConstraintEx(varspace, pdRow, piColNo, 1, baselinePerf);
+            //++lRowCounter;
 
-            const QString& consName = QString("BaselineCons_%1_%2").arg(cell).arg(inc+1);
-            this->mLp->SetRowName(lRowCounter, consName.toStdString().c_str());
+            //const QString& consName = QString("BaselineCons_%1_%2").arg(cell).arg(inc+1);
+            //this->mLp->SetRowName(lRowCounter, consName.toStdString().c_str());
         }
 
         featPos += featColOffset;
@@ -6241,11 +6543,13 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
      * ################################################################################## */
 
 	/* create the vtkTable, which will hold the summarised optimisation results
-	 * - the column sequence is area, criteria, constraints and for each of those categories we've
+     * - the column sequence is area and then the individual criteria and for each of those categories we've
 	 *   got in turn four columns: current (CUR), optimised (OPT), difference (DIFF), relative
 	 *   difference (REL) (i.e. percent);
 	 * - the row sequence equals the sequence of land use options (resources) as specified by
 	 *   the user by the OPTIONS specifier in the parameter file (*.los)
+     * - after the land use options, we've got a row of total values, i.e. across all land-use options
+     * - the above pattern may be repeated m times for m different spatial (performance)zones
 	 *
 	 *  Resource   | Area_CUR | Area_OPT | Area_DIFF | Area_REL | CRI1_CUR | CRI1_OPT | ... | CONS1_CUR | CONS1_OPT ...
 	 *  -----------+----------+--------------------------------------------------------------------------------------
@@ -6253,9 +6557,16 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
 	 *  resource_2 |		  |
 	 *  ...        |
 	 *  resource_n |
-//	 *  mixed      |
 	 *  total      |
-	 *
+     *  zone1:res_1|
+     *  zone1:res_2|
+     *  ...
+     *  zone1:res_n|
+     *  zone1:total|
+     *  zone2:res_1|
+     *  ...
+     *  zonem:res_n
+     *
      *
      * ---------------------------
      * column identifiers for columnvalues
@@ -6330,7 +6641,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
     // note: each zone defines an <zone>:IN and <zone>:OUT zone
     // (expecting boolean values {0,1})
 
-    int numZones = 1; // we've got at leat the total area!
+    int numZones = 1; // we've got at least the 'global zone' encompassing all
+                      // spatial options (i.e. parcels)!
     if (this->mslPerfSumZones.size() > 0)
     {
         valOffsets.insert("sumZones", colvalues.size());
@@ -6588,7 +6900,6 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         mDataSet->getRowValues(colvalues, cell);
 
         // don't tumble into holes
-        //if (hole && mDataSet->getIntValue("nm_hole", cell) == 1)
         if (    (hole && colvalues.at(valOffsets["hole"]).toInt() == 1)
              || (optFeat && colvalues.at(valOffsets[this->msOptFeatures]).toInt() == 0)
            )
@@ -6597,13 +6908,12 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         }
 
 		// read the current and optimised resource
-        //QString curResource = mDataSet->getStrValue(luArIdx, cell);
         QString curResource = colvalues.at(valOffsets["curLU"]).toString();
 		// make sure, we're not fooled by any leading or trailing white spaces
 		curResource = curResource.simplified();
-        //QString optResource = mDataSet->getStrValue(optStrArIdx, cell);
         QString optResource = colvalues.at(valOffsets["optLU"]).toString();
 		QStringList optResList = optResource.split(tr(" "), QString::SkipEmptyParts);
+        const double curArea = colvalues.at(valOffsets["cellArea"]).toDouble();
 
         // ===============================================================================
         //                      CHANGE ANALYSIS
@@ -6639,13 +6949,11 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
             double newValue = 0;
             if (toIdx.at(t) < this->miNumOptions)
             {
-                //newValue = mDataSet->getDblValue(optValArsIdx.at(toIdx.at(t)), cell);
                 newValue = colvalues.at(valOffsets["optArea"]+toIdx.at(t)).toDouble();
             }
             else   // get the area value from the AreaHa field for 'other' land uses
             {
-                //newValue = mDataSet->getDblValue(areaArIdx, cell);
-                newValue = colvalues.at(valOffsets["cellArea"]).toDouble();
+                newValue = curArea;
             }
 
             chngVal += newValue;
@@ -6669,16 +6977,8 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
         {
             rec = zone * (this->miNumOptions+1);
 
-            //int zoneArIdx = -1;
-            //            if (zone >= 1)
-            //            {
-            //                zoneArIdx = mDataSet->getColumnIndex(mslPerfSumZones.at(zone-1));
-            //            }
-
-            //if (zoneArIdx >= 0)
             if (zone >= 1)
             {
-                //if (mDataSet->getDblValue(zoneArIdx, cell) == 0)
                 if (colvalues.at(valOffsets["sumZones"]+zone-1).toDouble() == 0)
                 {
                     continue;
@@ -6686,29 +6986,19 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
             }
 
             resRec = rec;
+            double totalCellOptArea = 0;
             for (int option=0; option < this->miNumOptions; ++option)
             {
                 // common vars
-                //int evalArIdx = -1;
-                //QString evalField;
                 double performanceValue;
 
                 // handle current land uses
-                double curArea;
                 double curaccumArea;
                 if (curResource.compare(this->mslOptions.at(option), Qt::CaseInsensitive) == 0)
                 {
-                    //				NMDebugInd(ind, << "evaluating current resource option '" <<
-                    //						this->mslOptions.at(option).toStdString() << "' ..." << endl);
-
                     // process area
-                    //curArea = mDataSet->getDblValue(areaArIdx, cell);
-                    curArea = colvalues.at(valOffsets["cellArea"]).toDouble();
                     curaccumArea = curArea + restab->GetValue(resRec, 1).ToDouble();
                     restab->SetValue(resRec,1, vtkVariant(curaccumArea));
-
-                    //				NMDebugInd(ind2, << "curArea: " << curArea << endl);
-                    //				NMDebugInd(ind2, << "curaccumArea: " << curaccumArea << endl);
 
                     // update criteria stats
                     QMap<QString, QStringList>::const_iterator evalit =
@@ -6716,57 +7006,29 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                     int coloffset = 1;
                     for (; evalit != this->mmslEvalFields.constEnd(); ++evalit, ++coloffset)
                     {
-                        //evalField = evalit.value().at(option);
-
-                        //evalArIdx = mDataSet->getColumnIndex(evalField);
-
-                        //performanceValue = mDataSet->getDblValue(evalArIdx, cell) * curArea +
-
                         const QString& evKey = QString("EV_%1").arg(evalit.key());
                         performanceValue = colvalues.at(valOffsets[evKey]+option).toDouble() * curArea +
                                 restab->GetValue(resRec, coloffset*4 + 1).ToDouble();
 
                         restab->SetValue(resRec, coloffset*4 + 1, vtkVariant(performanceValue));
 
-                        //					NMDebugInd(ind2, << "performance measure: " << performanceValue
-                        //							<< " goes into row,col: " << option << ", " << (coloffset*4+1) << endl);
-
                     }
                 }
-                //			NMDebug(<< endl);
 
                 // handle the optimised land uses
                 double optArea = 0;
                 double accumArea = 0;
                 if (optResList.contains(this->mslOptions.at(option), Qt::CaseInsensitive))
                 {
-                    // calc the target row of the resulting tab depending on whether we've got
-                    // mixed land use or not
-                    //int resTabRow = option;//optResList.size() > 1 ? resNumRows-2 : option;
-
-                    //				NMDebugInd(ind, << "evaluating optimised resource option '" <<
-                    //						this->mslOptions.at(option).toStdString() << "' ..." << endl);
-
                     // get the allocated area for this resource category
-                    //optArea = mDataSet->getDblValue(optValArsIdx.at(option), cell);
                     optArea = colvalues.at(valOffsets["optArea"]+option).toDouble();
 
-                    //				// track mixed land-use separately
-                    //				if (optResList.size() > 1)
-                    //				{
-                    //					restab->SetValue(resNumRows-2, 2,
-                    //							vtkVariant(optArea + restab->GetValue(resNumRows-2, 2).ToDouble()));
-                    //				}
-
                     // define variable for row index in result table
-                    int resTabRow = resRec;//optResList.size() > 1 ? resNumRows-2 : option;
+                    int resTabRow = resRec;
 
                     // update area stats for actual resource category
                     accumArea = optArea + restab->GetValue(resTabRow, 2).ToDouble();
                     restab->SetValue(resTabRow, 2, vtkVariant(accumArea));
-
-                    //				NMDebugInd(ind2, << "optArea: " << optArea << endl);
-                    //				NMDebugInd(ind2, << "optaccumArea: " << accumArea << endl);
 
                     // update criteria stats
                     QMap<QString, QStringList>::const_iterator evalit =
@@ -6774,18 +7036,70 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                     int coloffset = 1;
                     for (; evalit != this->mmslEvalFields.constEnd(); ++evalit, ++coloffset)
                     {
-                        //					NMDebugInd(ind2, << "checking criterion: " << evalit.key().toStdString() << endl);
-
-                        //evalField = evalit.value().at(option);
-                        //evalArIdx = mDataSet->getColumnIndex(evalField);
-
-
-                        //performanceValue = mDataSet->getDblValue(evalArIdx, cell) * optArea +
                         const QString& evKey = QString("EV_%1").arg(evalit.key());
                         performanceValue = colvalues.at(valOffsets[evKey]+option).toDouble() * optArea +
                                 restab->GetValue(resTabRow, coloffset*4 + 2).ToDouble();
 
-                        // account for incentives, if applicable
+                        restab->SetValue(resTabRow, coloffset*4 + 2, vtkVariant(performanceValue));
+                    }
+                }
+                totalCellOptArea += optArea;
+
+                ++resRec;
+            } // end land use options iteration
+
+            /*
+            if ((cell == 801 || cell == 1170 || cell == 3019))
+            {
+                const int a = 3;
+            }
+            */
+
+            // account for the case where a current land use was 'retired', i.e. we have no allocation of any land use option
+            // to that cell in question AND that we use INCENTIVES to support maximising our benefit criterion (e.g. REVENUE)
+            if (    !mIncNamePair.isEmpty()
+                 && curArea > 0
+               )
+            {
+                const int curOpt = this->mslOptions.indexOf(curResource);
+                const int curResRec = resRec - (this->miNumOptions - curOpt);
+
+                std::vector<int> vOpt;
+                std::vector<int> vResRec;
+                std::vector<double> vOptArea;
+                double totalOptArea = 0.0;
+
+                // if there's no land use option allocated to this parcel
+                // we put in the current land use's option id and table row rec num
+                // to process 'retirement';
+                if (optResList.isEmpty())
+                {
+                    vOpt.push_back(curOpt);
+                    vResRec.push_back(curResRec);
+                    vOptArea.push_back(curArea);
+                }
+                else
+                {
+                    for (int opt=0; opt < optResList.size(); ++opt)
+                    {
+                        vOpt.push_back(this->mslOptions.indexOf(optResList.at(opt)));   // option idx
+                        vResRec.push_back((resRec - (this->miNumOptions - vOpt.back())));   // option res rec
+                        vOptArea.push_back(colvalues.at(valOffsets["optArea"]+vOpt.back()).toDouble());
+                        totalOptArea += vOptArea.back();
+                    }
+                }
+
+                QMap<QString, QStringList>::const_iterator evalit =
+                        this->mmslEvalFields.constBegin();
+                int coloffset = 1;
+                for (; evalit != this->mmslEvalFields.constEnd(); ++evalit, ++coloffset)
+                {
+                    for (int oopt=0; oopt < vOpt.size(); ++oopt)
+                    {
+                        double incPerfVal = 0.0;
+                        double performanceValue = restab->GetValue(vResRec[oopt], coloffset*4 + 2).ToDouble();
+
+                        // go through the incentives and work out the extra benefit for the given 'optimal' land use option
                         QMap<QString, QStringList>::const_iterator incnamesIt = this->mIncNamePair.constBegin();
                         for (; incnamesIt != this->mIncNamePair.constEnd(); ++incnamesIt)
                         {
@@ -6796,28 +7110,68 @@ vtkSmartPointer<vtkTable> NMMosra::sumResults(vtkSmartPointer<vtkTable>& changeM
                                 const QString& blkey = QString("BL_%1").arg(incnamesIt.value().at(1));
                                 const QString& pskey = QString("PS_%1").arg(incnamesIt.value().at(1));
 
-                                const double perfscore = colvalues.at(valOffsets[pskey]+option).toDouble();
                                 const double baseline = colvalues.at(valOffsets[blkey]).toDouble();
                                 const double incentive = colvalues.at(valOffsets[incnamesIt.key()]).toDouble();
-                                const double reduction = std::max((baseline - optArea * perfscore), 0.0);
-                                performanceValue +=  reduction * incentive;
+
+                                // if we've got some new land use options allocated to this parcel
+                                if (totalOptArea > 0)
+                                {
+                                    const double curLUScore = colvalues.at(valOffsets[pskey]+curOpt).toDouble();
+                                    const double optLUScore = colvalues.at(valOffsets[pskey]+vOpt[oopt]).toDouble();
+                                    const double optArea = vOptArea[oopt];
+
+                                    const double optLUReduction = (curLUScore - optLUScore) > 0 ? (curLUScore - optLUScore) * optArea : 0.0;
+
+                                    // 'pay' incentives based on the proportional reduction
+                                    // achieved by the given land use
+                                    incPerfVal += optLUReduction * incentive;
+
+                                }
+                                // if this parcel has been retired from productive land use
+                                else
+                                {
+                                    incPerfVal += baseline * incentive;
+                                }
                             }
                         }
 
-                        restab->SetValue(resTabRow, coloffset*4 + 2, vtkVariant(performanceValue));
+                        if (incPerfVal > 0)
+                        {
+                            performanceValue += incPerfVal;
+                            restab->SetValue(vResRec[oopt], coloffset*4 + 2, vtkVariant(performanceValue));
 
-                        //					NMDebugInd(ind2, << "performance measure: " << performanceValue
-                        //							<< "goes into row,col: " << resTabRow << ", " << (coloffset*4+2) << endl);
-                    }
-                }
-                ++resRec;
-            }
+                            /*
+                            if ((cell == 801 || cell == 1255 || cell == 2052 || cell == 3019))
+                            {
+                                if (totalOptArea == 0)
+                                {
+                                    NMDebug(<< "free-#" << cell << ": inc" << evalit.key().toStdString()
+                                               << "(" << curResource.toStdString() << ", " << vResRec[oopt]
+                                                << ") = " << incPerfVal << "\n");
+                                }
+                                else
+                                {
+                                    NMDebug(<< "repl-#" << cell << ": inc" << evalit.key().toStdString()
+                                               << "(" << curResource.toStdString() << ", " << vResRec[oopt]
+                                                << ") = " << incPerfVal << "\n");
+                                }
+                            }
+                            */
+
+                        }
+
+                    } // 'optimal' option iteration
+                } // end eval criteria iteration
+
+            } // end of INCENTIVES HANDLING
+
+        } // end zones iteration
+
+
+        if (cell % 200 == 0)
+        {
+            NMDebug(<< ".");
         }
-
-		if (cell % 200 == 0)
-		{
-			NMDebug(<< ".");
-		}
 	}
     mDataSet->endTransaction();
 

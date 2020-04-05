@@ -2931,12 +2931,51 @@ SQLiteTable::openAsInMemDb(const std::string &dbName, const std::string &tablena
         return false;
     }
 
-    // if tablename is not specified, we
-    // just grab the first table we find
+    // if tablename is not specified, we look for
+    // a table with a name that starts with the
+    // basename of the 'dbName', if we don't find anything
+    // we just grab the first table we get our hands on ...
     if (tabname.empty())
     {
+        size_t sepPos = dbName.find_last_of("/");
+        if (sepPos == std::string::npos)
+        {
+            sepPos = dbName.find_first_of("\\");
+            if (sepPos == std::string::npos)
+            {
+                sepPos = 0;
+            }
+        }
+
+        size_t dotPos = dbName.find_last_of(".");
+        size_t len = 0;
+        if (dotPos != std::string::npos && dotPos > sepPos)
+        {
+            len = dotPos - (sepPos+1);
+        }
+        else
+        {
+            len = dbName.size() - (sepPos+1);
+        }
+
+        // 0123456789012
+        // path/name.suf
+
+        std::string baseName = dbName.substr(sepPos+1, len);
         std::vector<std::string> tabs = this->GetTableList();
-        this->m_tableName = tabs.at(0);
+        for (int v=0; v < tabs.size(); ++v)
+        {
+            if (tabs.at(v).find(baseName) == 0)
+            {
+                this->m_tableName = tabs.at(v);
+                break;
+            }
+        }
+
+        if (this->m_tableName.empty())
+        {
+            this->m_tableName = tabs.at(0);
+        }
     }
     else
     {

@@ -162,6 +162,7 @@ protected slots:
 	void updateSelectionAdmin(long numSel);
 
     void cellEditorClosed(QWidget* widget, QAbstractItemDelegate::EndEditHint hint);
+    void updateEditCells(bool bChecked);
 
 protected:
 
@@ -240,6 +241,7 @@ protected:
 	QLabel* mRecStatusLabel;
 	QPushButton* mBtnClearSelection;
 	QPushButton* mBtnSwitchSelection;
+    QPushButton* mBtnEditCells;
 	QCheckBox* mChkSelectedRecsOnly;
 
 	QMenu* mColHeadMenu;

@@ -120,7 +120,7 @@ NMSqlTableView::NMSqlTableView(QSqlTableModel* model, QWidget* parent)
     mSortFilter = new NMSelSortSqlTableProxyModel(this);
     mSortFilter->setSourceModel(mModel);
 
-    mModel->setEditStrategy(QSqlTableModel::OnFieldChange);
+    mModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
     this->mTableView->setModel(mModel);
 
     //this->mProxySelModel = new NMFastTrackSelectionModel(mSortFilter, this);
@@ -271,7 +271,8 @@ NMSqlTableView::checkCoords(void)
 void NMSqlTableView::cellEditorClosed(QWidget *widget, QAbstractItemDelegate::EndEditHint hint)
 {
     NMLogDebug(<< ".. going to back to read-only mode ... ");
-    mSortFilter->openReadModel();
+    //mModel->submitAll();
+    //mSortFilter->openReadModel();
 }
 
 void NMSqlTableView::initView()
@@ -286,9 +287,9 @@ void NMSqlTableView::initView()
 	this->mTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
 
     // get notified if a cell editor is closed
-    connect(this->mTableView->itemDelegate(),
-            SIGNAL(closeEditor(QWidget*,QAbstractItemDelegate::EndEditHint)),
-            this, SLOT(cellEditorClosed(QWidget*,QAbstractItemDelegate::EndEditHint)));
+//    connect(this->mTableView->itemDelegate(),
+//            SIGNAL(closeEditor(QWidget*,QAbstractItemDelegate::EndEditHint)),
+//            this, SLOT(cellEditorClosed(QWidget*,QAbstractItemDelegate::EndEditHint)));
 
     this->setWindowFlags(Qt::Window);
 	this->mHiddenColumns.clear();
@@ -335,7 +336,15 @@ void NMSqlTableView::initView()
 	this->mChkSelectedRecsOnly->setCheckState(Qt::Unchecked);
     mChkSelectedRecsOnly->setVisible(false);
 
+    this->mBtnEditCells = new QPushButton(this->mStatusBar);
+    this->mBtnEditCells->setCheckable(true);
+    this->mBtnEditCells->setChecked(false);
+    this->mBtnEditCells->setText("Edit Cells");
+    connect(mBtnEditCells, SIGNAL(clicked(bool)), SLOT(updateEditCells(bool)));
+
+
     this->mStatusBar->addWidget(this->mRecStatusLabel);
+    this->mStatusBar->addWidget(this->mBtnEditCells);
     if (mViewMode != NMTABVIEW_PARATABLE)
     {
         this->mStatusBar->addWidget(this->mBtnClearSelection);
@@ -574,6 +583,22 @@ NMSqlTableView::refreshTableView(void)
     if (mSortFilter != nullptr)
     {
         mSortFilter->reloadSourceModel();
+    }
+}
+
+void
+NMSqlTableView::updateEditCells(bool bChecked)
+{
+    if (bChecked)
+    {
+        this->mSortFilter->openWriteModel();
+        this->mBtnEditCells->setText("Stop Editing");
+    }
+    else
+    {
+        this->mModel->submitAll();
+        this->mSortFilter->openReadModel();
+        this->mBtnEditCells->setText("Edit Cells");
     }
 }
 
@@ -2210,8 +2235,17 @@ NMSqlTableView::eventFilter(QObject* object, QEvent* event)
                 if (row >= 0 && col >= 0)
 				{
                     QModelIndex idx = this->mModel->index(row, col, QModelIndex());
-                    mSortFilter->openWriteModel();
-					this->mTableView->edit(idx);
+                    //mSortFilter->openWriteModel();
+                    //mModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+                    if (mBtnEditCells->isChecked())
+                    {
+                        this->mTableView->edit(idx);
+                    }
+                    else
+                    {
+                        NMLogInfo(<< this->getTitle().toStdString()
+                                  << ": Click the 'Edit Cells' button to enable cell editing!");
+                    }
 				}
 			}
 			return true;

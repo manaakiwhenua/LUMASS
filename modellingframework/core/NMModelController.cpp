@@ -1182,6 +1182,32 @@ NMModelController::evalFunc(const QString& funcName, const QStringList& args)
         return QString("%1").arg(ret);
 
     }
+    else if (funcName.compare("strContains") == 0)
+    {
+        if (args.size() < 2 || args.at(1).isEmpty())
+        {
+            return QString("ERROR: Need a string to look for!");
+        }
+
+        Qt::CaseSensitivity csens = Qt::CaseInsensitive;
+
+        // if the user provided a thrid parameter, we
+        // try to make sense of it
+        if (args.size() == 3)
+        {
+            bool bOK;
+            int sens = QVariant(args.at(2)).toInt(&bOK);
+
+
+            if (bOK && sens)
+            {
+                csens = Qt::CaseSensitive;
+            }
+        }
+
+        bool bcontains = args.at(0).contains(args.at(1), csens);
+        return QString("%1").arg(bcontains ? 1 : 0);
+    }
     else
     {
         ret = QString("ERROR: Unknown function '%1'").arg(funcName);

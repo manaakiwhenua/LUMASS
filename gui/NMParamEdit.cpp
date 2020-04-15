@@ -77,7 +77,8 @@ NMParamEdit::NMParamEdit(QWidget *parent)
     mFunctionsAndTips.insert("strListLength", "(\"<string>\", \"<sep>\")");
     mFunctionsAndTips.insert("strReplace", "(\"<string>\", \"<find str>\", \"<replace str>\")");
     mFunctionsAndTips.insert("strSubstring", "(\"<string>\", <start pos>, <num chars>)");
-    mFunctionsAndTips.insert("strCompare", "(\"<string_1>\", \"<string_2>\", <{0,1}: case sensitive?>)");
+    mFunctionsAndTips.insert("strCompare", "(\"<string_1>\", \"<string_2>\", <{0 (default), 1}: case sensitive?>)");
+    mFunctionsAndTips.insert("strContains", "(\"<string_1>\", \"<string_2>\", <{0 (default), 1}: case sensitive?>)");
 
     mMathFuncAndTips.insert("sin(x)", "sine of x");
     mMathFuncAndTips.insert("cos(x)", "cosine of x");

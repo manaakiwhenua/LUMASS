@@ -1,1 +1,99 @@
-theme: jekyll-theme-minimal
+# Welcome to Jekyll!
+#
+# This config file is meant for settings that affect your whole blog, values
+# which you are expected to set up once and rarely edit after that. If you find
+# yourself editing this file very often, consider using Jekyll's data files
+# feature for the data you need to update frequently.
+#
+# For technical reasons, this file is *NOT* reloaded automatically when you use
+# 'bundle exec jekyll serve'. If you change this file, please restart the server process.
+
+# Site settings
+# These are used to personalize your new site. If you look in the HTML files,
+# you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
+# You can create any custom variable you would like, and they will be accessible
+# in the templates via {{ site.myvariable }}.
+title: "LUMASS"
+subtitle: "Spatial Modelling & Optimisation"
+name: "Manaaki Whenua - Landcare Research New Zeland"
+#email: herziga@landcareresearch.co.nz
+description: >- # this means to ignore newlines until "baseurl:"
+    LUMASS - Geospatial Modelling and Optimisation
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "https://manaakiwhenua.github.io/LUMASS"
+#"https://localhost:4000" #"https://manaakiwhenua.github.io/LUMASS" # the base hostname & protocol for your site, e.g. http://example.com
+repository: "manaakiwhenua/LUMASS"
+#twitter_username: jekyllrb
+github_username:  heralex
+
+# Build settings
+markdown: CommonMarkGhPages
+#markdown: GFM
+#theme: just-the-docs
+#theme: minima
+#theme: minimal-mistakes-jekyll
+remote_theme: "mmistakes/minimal-mistakes@4.22.0"
+minimal_mistatkes_skin: "dark" # "default", "air", "aqua", "contrast", "dark", "dirt", "neon", "mint", "plum", "sunrise"
+#teaser: "/assets/imgages/LUMASS_icon_128.png"
+
+defaults:
+  - #about
+    scope: 
+      path: "about"
+      type: "pages"
+    values:
+      layout: "single"
+      author_profile: true
+  - #documentation
+    scope: 
+      path: "docs"
+      type: "pages"
+    values:
+      layout: "single"
+      author_profile: true
+      sidebar: 
+        nav: "docs"
+  
+
+
+author:
+  name    : " "
+  avatar  : assets/images/LUMASS_icon_256.png
+  bio     : ""
+  location: "New Zealand"
+  links:
+    - label: "Manaaki Whenua"
+      icon: "fas fa-fw fa-link"
+      url: "https://www.landcareresearch.co.nz"
+    - label: "Repository"
+      icon: "fab fa-fw fa-github"
+      url: "http://github.com/manaakiwhenua/LUMASS"
+
+plugins:
+  - jekyll-feed
+  - jekyll-include-cache
+  #- jekyll-titles-from-headings
+
+
+#  titles_from_headings:
+#    enabled: true 
+#    strip_title: true 
+#    collections: true 
+
+# Exclude from processing.
+# The following items will not be processed, by default. Create a custom list
+# to override the default setting.
+# exclude:
+#   - Gemfile
+#   - Gemfile.lock
+#   - node_modules
+#   - vendor/bundle/
+#   - vendor/cache/
+#   - vendor/gems/
+#   - vendor/ruby/
+
+footer:
+  links:
+    - label: "github"
+      icon: "fab fa-fw fa-github"
+      url: "http://github.com/manaakiwhenua/LUMASS"

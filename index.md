@@ -1,37 +1,54 @@
-## Welcome to GitHub Pages
+---
+layout: single
+author_profile: true
+---
 
-You can use the [editor on GitHub](https://github.com/manaakiwhenua/LUMASS/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+![LUMASS_icon_128.png](https://bitbucket.org/repo/B4qdnE/images/799937131-LUMASS_icon_128.png)
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+# LUMASS - Land-Use Management Support System
 
-### Markdown
+![lumass.gif](https://bitbucket.org/repo/B4qdnE/images/2943368646-lumass.gif)
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+LUMASS is designed to provide support for two high level aspects of land management: i) land use impact assessment and ii) spatial planning. The former aspect is supported by its [**spatial system dynamics modelling framework**](https://youtu.be/aN2H-izUyCE) and the latter by its [**spatial optimisation framework**]({{ "/assets/material/OptimisationHowTo_1.2.zip" | relative_url }}). 
 
-```markdown
-Syntax highlighted code block
+LUMASS is mainly focused on processing and displaying raster data. However, it also provides selected functionality of displaying (polygon) vector data and 3D point clouds. Spatial optimisation scenarios can also be run on polygon vector layers. Download the [LUMASS User Guide]({{ "/assets/material/LUMASS_UserGuide_v0.3.pdf" | relative_url }}) and find out more yourself!  
 
-# Header 1
-## Header 2
-### Header 3
+## Features and Architecture
 
-- Bulleted
-- List
+For an overview of LUMASS' features and its architecture, watch our [**presentation**](https://vimeo.com/236776954) at FOSS4G 2017 or have a look [here]({{ "/assets/material/LUMASS_AtAGlance.pdf" | relative_url }}). If you're keen to find out a little bit more about how LUMASS looks like under the hood, you may want to read this [paper](http://www.mssanz.org.au/modsim2013/C8/herzig.pdf). 
 
-1. Numbered
-2. List
+<!--
+------------------------------------------
+# [Projects](https://bitbucket.org/landcareresearch/lumass/wiki/Projects)
 
-**Bold** and _Italic_ and `Code` text
+An overview of recent projects where LUMASS played a key role. 
 
-[Link](url) and ![Image](src)
+# [References](https://bitbucket.org/landcareresearch/lumass/wiki/References)
+
+Links and references to LUMASS related papers, reports, and presentations. 
+
+# [Conferences](https://bitbucket.org/landcareresearch/lumass/wiki/Conferences)
+
+Selected conference and workshop material. 
+-->
+## Downloads
+
+[***LUMASS 0.9.59** for Windows (64 bit)](https://github.com/manaakiwhenua/LUMASS/releases/download/0.9.59/lumass-0.9.59.zip)
+
+<!-- ({{ "/assets/material/lumass-0.9.59.zip" | relative_url }}) -->
+
+[LUMASS User Guide v0.3]({{ "/assets/material/LUMASS_UserGuide_v0.3.pdf" | relative_url }})
+
+[***Sample data v0.4**]({{ "/assets/material/SampleData_v0.4.zip" | relative_url }}) for User Guide
+
+[OptimisationHowTo v1.2]({{ "/assets/material/OptimisationHowTo_1.2.zip" | relative_url }}) - *Replicate* the scenarios and results discussed in "Assessing Resource-Use Efficiency of Land Use" [(Herzig et al. 2018)](http://dx.doi.org/10.1016/j.envsoft.2018.05.005)!
+
+## Support
+
+Forum: [https://github.com/manaakiwhenua/LUMASS/discussions](https://github.com/manaakiwhenua/LUMASS/discussions)
+User Group: [https://groups.google.com/forum/#!forum/lumass-users](https://groups.google.com/forum/#!forum/lumass-users)
+
+## [Source Code](https://github.com/manaakiwhenua/LUMASS)
 ```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/manaakiwhenua/LUMASS/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+$ git clone https://github.com/manaakiwhenua/LUMASS.git
+```

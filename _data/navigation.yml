@@ -1,0 +1,30 @@
+---
+main:
+  - title: "Home"
+    url: "/index"
+  - title: "Projects"
+    url: "/about/Projects"
+  - title: "Conferences"
+    url: "/about/Conferences"
+  - title: "References"
+    url: "/about/References"
+  #- title: "Documentation"
+    #url: "/docs/Documentation"
+
+docs:
+  - title: "Installation"
+    children: 
+      - title: "Windows"
+        url: "/docs/install_windows"
+      - title: "Linux"
+        url: "/docs/install_linux"
+  - title: "Modelling & Workflows"
+    children: 
+      - title: "Overview"
+        url: "/docs/mod_overview"
+  - title: "Spatial Optimisation"
+    children:
+      - title: "Optimisation basics"
+        url: "/docs/opt_basics"
+
+---  

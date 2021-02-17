@@ -19,8 +19,8 @@ name: "Manaaki Whenua - Landcare Research New Zeland"
 #email: herziga@landcareresearch.co.nz
 description: >- # this means to ignore newlines until "baseurl:"
     LUMASS - Geospatial Modelling and Optimisation
-baseurl: "" # the subpath of your site, e.g. /blog
-url: "https://manaakiwhenua.github.io/LUMASS"
+baseurl: "/LUMASS" # the subpath of your site, e.g. /blog
+url: "https://manaakiwhenua.github.io"
 #"https://localhost:4000" #"https://manaakiwhenua.github.io/LUMASS" # the base hostname & protocol for your site, e.g. http://example.com
 repository: "manaakiwhenua/LUMASS"
 #twitter_username: jekyllrb

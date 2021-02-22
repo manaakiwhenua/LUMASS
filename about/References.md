@@ -3,11 +3,13 @@ title: "References"
 permalink: "/about/References"
 ---
 
+Herzig A, Manderson A, Jolly B, Barnes M, Baish L 2020. **Opportunitues and constraints on intensive land-use expansion in the Horizons Region – Land-Use Mapping.** Manaaki Whenua – Landcare Research Contract Report LC3838, Palmerston North, New Zealand.
+
 Elliot S, Evans T, Cichota R, Djanibekov U, Herzig A, Jackson B, Lagrava Sandoval D, McDonald S, Monge J, Semadeni-Davies A, Taves M, Thiange C, Vibart R, Wakelin S, Yalden S, Yang J, Yoswara H 2020. **Land-Water Interoperable Models - Project Summary**. Prepared for Our land and Water, NIWA Client Report 2020182HN, Hamilton, New Zealand. [Report](ftp://ftp.landcareresearch.co.nz/HerzigA/Elliot-etal-2020_Land-Water-InteroperableModels_Summary.pdf)
 
 Herzig A, Zoerner J, Dymond J, Smith H, Phillips C 2020. **An Interoperable Low-Code Modelling Framework for Integrated Spatial Modelling**, EGU General Assembly 2020, Online, 4–8 May 2020, EGU2020-20868, [https://doi.org/10.5194/egusphere-egu2020-20868](https://doi.org/10.5194/egusphere-egu2020-20868), 2020
 
-Herzig A, Djanibekov U, Wakelin S, Monge J 2020b. **Interoperable Modelling - spatial economic optimisation**. Prepared for National Institute of Water and Atmospheric Research (NIWA), Manaaki Whenua - Landcare Research Contract Report LC3807, Palmerston North, New Zealand. [Report](ftp://ftp.landcareresearch.co.nz/HerzigA/Herzig-etal-2020_OLW_Interoperable-Modelling-Spatial-Economic-Optimisation.pdf)
+Herzig A, Djanibekov U, Wakelin S, Monge J 2020. **Interoperable Modelling - spatial economic optimisation**. Prepared for National Institute of Water and Atmospheric Research (NIWA), Manaaki Whenua - Landcare Research Contract Report LC3807, Palmerston North, New Zealand. [Report](ftp://ftp.landcareresearch.co.nz/HerzigA/Herzig-etal-2020_OLW_Interoperable-Modelling-Spatial-Economic-Optimisation.pdf)
 
 Herzig A 2019. **Streaming Geospatial Data into Virtual Reality**. GeoComputation, 18th to 21st September 2019, Queenstown, New Zealand. [Abstract](https://auckland.figshare.com/articles/conference_contribution/Streaming_Geospatial_Data_into_Virtual_Reality/9870113)
 

@@ -1,0 +1,64 @@
+PROJECT(NETCDFIO)
+
+INCLUDE_DIRECTORIES(
+    ${NCXX4_INCLUDE_DIR}
+    ${NETCDF_INCLUDE_DIR}
+    ${GDALRATImageIO_SOURCE_DIR}
+    ${GDALRATImageIO_BINARY_DIR}
+    ${ITK_INCLUDE_DIRS}
+    ${OTB_INCLUDE_DIRS}
+    ${otbsuppl_core_SOURCE_DIR}
+    ${OTB_DIR}/Code/Common
+    ${OTB_DIR}/Code/IO
+    ${OTB_DIR}/Utilities/ITK/Code/Common
+    ${shared_SOURCE_DIR}
+    ${NETCDFIO_SOURCE_DIR}
+    ${NETCDFIO_BINARY_DIR}
+    ${shared_BINARY_DIR}
+    ${filters_BINARY_DIR}
+    ${filters_SOURCE_DIR}
+)
+
+LINK_DIRECTORIES(
+    #${NETCDF_LIB_DIR}
+    #${NCXX_LIB_DIR}
+    #${OTB_LIBRARY_DIRS}
+	${OSGEO4W_ROOT}/lib
+)
+
+
+add_definitions(-DNETCDFIO_EXPORTS -DNM_PROC_LOG)
+include(GenerateExportHeader)
+ADD_LIBRARY(NetCDFIO SHARED
+    ${NETCDFIO_SOURCE_DIR}/nmNetCDFIO.cxx
+)
+
+set_property(TARGET NetCDFIO PROPERTY LINKER_LANGUAGE CXX)
+set_property(TARGET NetCDFIO PROPERTY POSITION_INDEPENDENT_CODE 1)
+generate_export_header(NetCDFIO)
+
+TARGET_LINK_LIBRARIES(NetCDFIO
+    #${OTB_LIBRARIES}
+    #OTBCommon OTBImageBase OTBImageIO
+    #OTBExtendedFilename
+    OTBImageIO
+    OTBCurlAdapters
+    #${ITK_LIBRARIES}
+    ${NETCDF_LIBRARY} ${NCXX4_LIBRARY}
+    OTBGDALRATImageIO
+    #OTBCommon OTBImageBase
+    #netcdf netcdf-cxx4
+)
+ADD_DEPENDENCIES(NetCDFIO OTBGDALRATImageIO)
+
+LIST(APPEND NETCDF_HEADER ${NETCDFIO_SOURCE_DIR}/nmNetCDFIO.h )
+install(FILES ${NETCDF_HEADER} DESTINATION include )
+
+if(WIN32)
+    install(TARGETS NetCDFIO
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION lib
+    )
+else()
+    install(TARGETS NetCDFIO LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
+endif()

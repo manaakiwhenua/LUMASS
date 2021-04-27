@@ -32,6 +32,8 @@
  #define LUMASS_GDAL_VERSION "@GDAL_VERSION@"
  #define LUMASS_VTK_VERSION "@VTK_VERSION_STRING@"
  #define LUMASS_SQLITE_VERSION "@NM_SQLite_VERSION@"
+ #define LUMASS_NETCDF_VERSION "@NETCDF_VERSION@"
+ #define LUMASS_NCXX4_VERSION "@NCXX4_VERSION@"
 
  
  const char _lumass_commit_hash[] = LUMASS_COMMIT_HASH;
@@ -48,4 +50,6 @@
  const char _lumass_gdal_version[] = LUMASS_GDAL_VERSION;
  const char _lumass_vtk_version[] = LUMASS_VTK_VERSION;
  const char _lumass_sqlite_version[] = LUMASS_SQLITE_VERSION;
+ const char _lumass_netcdf_version[] = LUMASS_NETCDF_VERSION;
+ const char _lumass_ncxx4_version[] = LUMASS_NCXX4_VERSION;
  

@@ -30,8 +30,9 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 /*
- *   The implementation of this class contains signification portions of
- *   vtkInteractorStyleImage and vtkInteractorStyleRubberBandZoom tailored
+ *   The implementation of this class contains significant portions of
+ *   vtkInteractorStyleImage, vtkInteractorStyleRubberBandZoom, and
+ *   vtkInteractorStyleTrackballCamera, tailored
  *   to the needs of LUMASS
  */
 

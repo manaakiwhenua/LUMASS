@@ -115,6 +115,7 @@ NMTableReader::GenerateData()
     struct stat attr;
     if (stat(m_FileName.c_str(), &attr) != 0)
     {
+        perror(m_FileName.c_str());
         fileErrorMsg << "File '" << m_FileName << "' does not exist!";
         fileExists = false;
     }

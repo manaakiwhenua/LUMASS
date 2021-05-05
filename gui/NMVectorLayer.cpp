@@ -45,6 +45,12 @@
 #include "vtkLookupTable.h"
 #include "vtkTriangleFilter.h"
 
+#ifdef VTK_OPENGL2
+    #include "vtkPolyDataMapper.h"
+#else
+    #include "vtkOGRLayerMapper.h"
+#endif
+
 #include "vtkCellData.h"
 #include "vtkCellArray.h"
 #include "vtkPolygon.h"
@@ -70,80 +76,81 @@
 #include "vtkGeometryFilter.h"
 #include "vtkDataSetMapper.h"
 
+#include "NMVtkOpenGLPolyDataMapper2.h"
 #include "NMPolygonToTriangles.h"
 
 
 NMVectorLayer::NMVectorLayer(vtkRenderWindow* renWin,
-		vtkRenderer* renderer,
-		QObject* parent)
-	: NMLayer(renWin, renderer, parent)
+        vtkRenderer* renderer,
+        QObject* parent)
+    : NMLayer(renWin, renderer, parent)
 {
-	this->mLayerType = NMLayer::NM_VECTOR_LAYER;
-	this->mFeatureType = NMVectorLayer::NM_UNKNOWN_FEATURE;
-	this->mContour = 0;
-	this->mContourMapper = 0;
-	this->mContourActor = 0;
-	this->mContourColour = QColor(0, 0, 0, 255);
+    this->mLayerType = NMLayer::NM_VECTOR_LAYER;
+    this->mFeatureType = NMVectorLayer::NM_UNKNOWN_FEATURE;
+    this->mContour = 0;
+    this->mContourMapper = 0;
+    this->mContourActor = 0;
+    this->mContourColour = QColor(0, 0, 0, 255);
 
-	this->mLayerIcon = QIcon(":vector_layer.png");
+    this->mLayerIcon = QIcon(":vector_layer.png");
     this->mContourOnly = false;
 }
 
 NMVectorLayer::~NMVectorLayer()
 {
-	NMDebugCtx(ctxNMVectorLayer, << "...");
-	NMDebugAI(<< "removing layer: " << this->objectName().toStdString() << std::endl);
+    NMDebugCtx(ctxNMVectorLayer, << "...");
+    NMDebugAI(<< "removing layer: " << this->objectName().toStdString() << std::endl);
 
-	if (this->mRenderer != 0)
-	{
-		this->removeFromMap();
-	}
+    if (this->mRenderer != 0)
+    {
+        this->removeFromMap();
+    }
 
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
+    NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
 
 NMVectorLayer::NMFeatureType NMVectorLayer::getFeatureType(void)
 {
-	return this->mFeatureType;
+    return this->mFeatureType;
 }
 
 void NMVectorLayer::removeFromMap(void)
 {
-	NMDebugCtx(ctxNMVectorLayer, << "...");
+    NMDebugCtx(ctxNMVectorLayer, << "...");
 
-	// the actor is going to be removed by the superclass NMLayer
+    // the actor is going to be removed by the superclass NMLayer
 //	if (this->mActor != 0)
 //		if (this->mRenderer != 0)
 //			this->mRenderer->RemoveActor(this->mActor);
 
-	if (this->mContourActor != 0)
-		if (this->mRenderer != 0)
-			this->mRenderer->RemoveActor(this->mContourActor);
+    if (this->mContourActor != 0)
+        if (this->mRenderer != 0)
+            this->mRenderer->RemoveActor(this->mContourActor);
 
 //	this->setVisible(false);
 
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
+    NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
 
 void NMVectorLayer::setContour(vtkPolyData* contour)
 {
-	if (!contour)
-	{
-		NMDebugCtx(ctxNMLayer, << "contour is NULL!");
-		return;
-	}
+    if (!contour)
+    {
+        NMDebugCtx(ctxNMLayer, << "contour is NULL!");
+        return;
+    }
 
-	this->mContour = contour;
+    this->mContour = contour;
 
-	// create a default black colour for the outline
-	vtkSmartPointer<vtkLongArray> contClr = vtkSmartPointer<vtkLongArray>::New();
-	contClr->Allocate(this->mContour->GetNumberOfCells());
-	contClr->SetNumberOfValues(this->mContour->GetNumberOfCells());
-	for (int i=0; i < this->mContour->GetNumberOfCells(); ++i)
-			contClr->SetValue(i, i);
-	this->mContour->GetCellData()->SetScalars(contClr);
+    // create a default black colour for the outline
+    vtkSmartPointer<vtkLongArray> contClr = vtkSmartPointer<vtkLongArray>::New();
+    contClr->Allocate(this->mContour->GetNumberOfCells());
+    contClr->SetNumberOfValues(this->mContour->GetNumberOfCells());
+    for (int i=0; i < this->mContour->GetNumberOfCells(); ++i)
+            contClr->SetValue(i, i);
+    this->mContour->GetCellData()->SetScalars(contClr);
 
-	// create a contour mapper
+    // create a contour mapper
 #ifdef VTK_OPENGL2
     vtkSmartPointer<vtkPolyDataMapper> m = vtkSmartPointer<vtkPolyDataMapper>::New();
 #else
@@ -157,40 +164,40 @@ void NMVectorLayer::setContour(vtkPolyData* contour)
 //    m->SetInputConnection(tf->GetOutputPort());
     m->SetInputData(this->mContour);
 
-	vtkSmartPointer<vtkLookupTable> olclrtab = vtkSmartPointer<vtkLookupTable>::New();
-	long ncells = this->mContour->GetNumberOfCells();
-	olclrtab->Allocate(ncells);
-	olclrtab->SetNumberOfTableValues(ncells);
+    vtkSmartPointer<vtkLookupTable> olclrtab = vtkSmartPointer<vtkLookupTable>::New();
+    long ncells = this->mContour->GetNumberOfCells();
+    olclrtab->Allocate(ncells);
+    olclrtab->SetNumberOfTableValues(ncells);
 
-	// since we can save selections with the data set, we better check, whether
-	// we've got some
-	vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
-	vtkDataArray* sel = dsAttr->GetArray("nm_sel");
+    // since we can save selections with the data set, we better check, whether
+    // we've got some
+    vtkDataSetAttributes* dsAttr = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+    vtkDataArray* sel = dsAttr->GetArray("nm_sel");
 
-	for (int c=0; c < ncells; ++c)
-	{
-		olclrtab->SetTableValue(c,
-					mContourColour.redF(),
-					mContourColour.greenF(),
-					mContourColour.blueF(),
-					mContourColour.alphaF());
-	}
-	//olclrtab->SetTableValue(0, 0, 0, 0, 0);
-	//olclrtab->SetTableValue(ncells, 0, 0, 0, 0);
-	olclrtab->SetTableRange(0, ncells-1);
+    for (int c=0; c < ncells; ++c)
+    {
+        olclrtab->SetTableValue(c,
+                    mContourColour.redF(),
+                    mContourColour.greenF(),
+                    mContourColour.blueF(),
+                    mContourColour.alphaF());
+    }
+    //olclrtab->SetTableValue(0, 0, 0, 0, 0);
+    //olclrtab->SetTableValue(ncells, 0, 0, 0, 0);
+    olclrtab->SetTableRange(0, ncells-1);
 
-	m->SetLookupTable(olclrtab);
-	m->SetUseLookupTableScalarRange(1);
-	this->mContourMapper = m;
+    m->SetLookupTable(olclrtab);
+    m->SetUseLookupTableScalarRange(1);
+    this->mContourMapper = m;
 
-	// create a contour actor
-	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
-	a->SetMapper(m);
-	//a->GetProperty()->SetOpacity(0.2);
-	this->mContourActor = a;
-	this->mContourActor->SetVisibility(1);
-	this->mContourActor->GetProperty()->SetLineWidth(1);
-	this->mRenderer->AddActor(a);
+    // create a contour actor
+    vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
+    a->SetMapper(m);
+    //a->GetProperty()->SetOpacity(0.2);
+    this->mContourActor = a;
+    this->mContourActor->SetVisibility(1);
+    this->mContourActor->GetProperty()->SetLineWidth(1);
+    this->mRenderer->AddActor(a);
 }
 
 void
@@ -221,30 +228,30 @@ NMVectorLayer::setContourColour(QColor clr)
 
 void NMVectorLayer::setDataSet(vtkDataSet* dataset)
 {
-	// set the polydata
-	if (!dataset)
-	{
-		NMDebugCtx(ctxNMVectorLayer, << "data set is NULL!");
-		return;
-	}
+    // set the polydata
+    if (!dataset)
+    {
+        NMDebugCtx(ctxNMVectorLayer, << "data set is NULL!");
+        return;
+    }
 
-	emit layerProcessingStart();
+    emit layerProcessingStart();
 
-	vtkPolyData* pd = vtkPolyData::SafeDownCast(dataset);
-	this->mDataSet = pd;
+    vtkPolyData* pd = vtkPolyData::SafeDownCast(dataset);
+    this->mDataSet = pd;
 
-	// set the feature type
-	if (pd->GetVerts()->GetNumberOfCells())
-		this->mFeatureType = NMVectorLayer::NM_POINT_FEAT;
-	else if (pd->GetLines()->GetNumberOfCells())
-		this->mFeatureType = NMVectorLayer::NM_POLYLINE_FEAT;
-	else if (pd->GetPolys()->GetNumberOfCells())
-		this->mFeatureType = NMVectorLayer::NM_POLYGON_FEAT;
+    // set the feature type
+    if (pd->GetVerts()->GetNumberOfCells())
+        this->mFeatureType = NMVectorLayer::NM_POINT_FEAT;
+    else if (pd->GetLines()->GetNumberOfCells())
+        this->mFeatureType = NMVectorLayer::NM_POLYLINE_FEAT;
+    else if (pd->GetPolys()->GetNumberOfCells())
+        this->mFeatureType = NMVectorLayer::NM_POLYGON_FEAT;
 
-	// set the bounding box
-	pd->GetBounds(this->mBBox);
+    // set the bounding box
+    pd->GetBounds(this->mBBox);
 
-	// create and set the mapper
+    // create and set the mapper
 #ifdef VTK_OPENGL2
     vtkSmartPointer<NMVtkOpenGLPolyDataMapper2> m = vtkSmartPointer<NMVtkOpenGLPolyDataMapper2>::New();
     m->SetInputData(pd);
@@ -253,16 +260,16 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
     m->SetInputData(pd);
 #endif
 
-	this->mMapper = m;
+    this->mMapper = m;
 
-	// create and set the actor
+    // create and set the actor
     vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
-	a->SetMapper(m);
-	this->mActor = a;
-	this->mActor->SetVisibility(0);
+    a->SetMapper(m);
+    this->mActor = a;
+    this->mActor->SetVisibility(0);
     this->mRenderer->AddActor(a);
 
-	// create contours, if we've got polygons
+    // create contours, if we've got polygons
     if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
     {
         //NMDebugAI( << "NMVectorLayer '" << this->objectName().toStdString() <<
@@ -273,14 +280,14 @@ void NMVectorLayer::setDataSet(vtkDataSet* dataset)
         this->setContour(cont);
     }
 
-	this->initiateLegend();
+    this->initiateLegend();
 
-	emit layerProcessingEnd();
+    emit layerProcessingEnd();
 }
 
 const vtkPolyData* NMVectorLayer::getContour(void)
 {
-	return this->mContour;
+    return this->mContour;
 }
 
 #ifdef VTK_OPENGL2
@@ -289,32 +296,32 @@ const vtkPolyDataMapper *NMVectorLayer::getContourMapper(void)
 const vtkOGRLayerMapper* NMVectorLayer::getContourMapper(void)
 #endif
 {
-	return this->mContourMapper;
+    return this->mContourMapper;
 }
 
 const vtkActor* NMVectorLayer::getContourActor(void)
 {
-	return  this->mContourActor;
+    return  this->mContourActor;
 }
 
 void NMVectorLayer::setVisible(bool visible)
 {
     //NMDebugCtx(ctxNMVectorLayer, << "...");
 
-	if (this->mDataSet == 0)
-		return;
+    if (this->mDataSet == 0)
+        return;
 
-	if (this->mIsVisible != visible)
-	{
-		int vis = visible ? 1 : 0;
+    if (this->mIsVisible != visible)
+    {
+        int vis = visible ? 1 : 0;
 
-		if (this->mActor != 0)
-		{
-			// now handle all additional parts, that have to
-			// change visibility
+        if (this->mActor != 0)
+        {
+            // now handle all additional parts, that have to
+            // change visibility
             if (this->mContourActor != 0)
             {
-				this->mContourActor->SetVisibility(vis);
+                this->mContourActor->SetVisibility(vis);
             }
 
             if (!mContourOnly)
@@ -323,185 +330,185 @@ void NMVectorLayer::setVisible(bool visible)
             }
 
             this->mIsVisible = visible;
-			emit visibilityChanged(this);
-		}
-	}
+            emit visibilityChanged(this);
+        }
+    }
 
     //NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
 
 /*double NMVectorLayer::getArea()
 {
-	NMDebugCtx(ctxNMVectorLayer, << "...");
+    NMDebugCtx(ctxNMVectorLayer, << "...");
 
-	NMDebugAI( << "call base class ..." << endl);
-	this->mTotalArea = NMLayer::getArea();
-	NMDebugAI( << "base class' area is " << this->mTotalArea / 10000
-			<< " ha" << endl);
+    NMDebugAI( << "call base class ..." << endl);
+    this->mTotalArea = NMLayer::getArea();
+    NMDebugAI( << "base class' area is " << this->mTotalArea / 10000
+            << " ha" << endl);
 
-	// check for polyline or polygon
-	vtkPolyData* pd = vtkPolyData::SafeDownCast(this->mDataSet);
-	vtkIdType numPolys = pd->GetNumberOfPolys();
-	if (numPolys < 1)
-	{
-		NMDebugAI( << "oh oh, no polys!" << endl);
-		return this->mTotalArea;
-	}
+    // check for polyline or polygon
+    vtkPolyData* pd = vtkPolyData::SafeDownCast(this->mDataSet);
+    vtkIdType numPolys = pd->GetNumberOfPolys();
+    if (numPolys < 1)
+    {
+        NMDebugAI( << "oh oh, no polys!" << endl);
+        return this->mTotalArea;
+    }
 
-	// calculate area in x-y plane for bounding box ;
-	NMDebugAI( << "calc the plane in x-y" << endl);
-	if (numPolys > 0)
-	{
-		// calculate area for polygons
-		double area = 0;
-		for (long c=0; c < numPolys; c++)
-		{
-			vtkIdType cid = c;
-			vtkCell* cell = this->mDataSet->GetCell(cid);
-			if (cell == 0)
-			{
-				NMDebugInd(2, << "error getting cell " << c << endl);
-				return -1;
-			}
-			vtkPolygon* poly = vtkPolygon::SafeDownCast(cell);
+    // calculate area in x-y plane for bounding box ;
+    NMDebugAI( << "calc the plane in x-y" << endl);
+    if (numPolys > 0)
+    {
+        // calculate area for polygons
+        double area = 0;
+        for (long c=0; c < numPolys; c++)
+        {
+            vtkIdType cid = c;
+            vtkCell* cell = this->mDataSet->GetCell(cid);
+            if (cell == 0)
+            {
+                NMDebugInd(2, << "error getting cell " << c << endl);
+                return -1;
+            }
+            vtkPolygon* poly = vtkPolygon::SafeDownCast(cell);
 
-			area += poly->ComputeArea();
-		}
-		this->mTotalArea = area;
-	}
+            area += poly->ComputeArea();
+        }
+        this->mTotalArea = area;
+    }
 
-	NMDebugAI( << "layer's area: " << this->mTotalArea << endl);
+    NMDebugAI( << "layer's area: " << this->mTotalArea << endl);
 
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
+    NMDebugCtx(ctxNMVectorLayer, << "done!");
 
-	return this->mTotalArea;
+    return this->mTotalArea;
 }*/
 
 long NMVectorLayer::getNumberOfFeatures(void)
 {
-	return this->mDataSet->GetNumberOfCells();
+    return this->mDataSet->GetNumberOfCells();
 }
 
 
 void NMVectorLayer::createTableView(void)
 {
-	if (this->mTableView != 0)
-	{
-		return;
-		//delete this->mTableView;
-		//this->mTableView = 0;
-	}
+    if (this->mTableView != 0)
+    {
+        return;
+        //delete this->mTableView;
+        //this->mTableView = 0;
+    }
 
-	if (!this->updateAttributeTable())
-		return;
+    if (!this->updateAttributeTable())
+        return;
 
-	if (this->mTableModel == 0)
-	{
+    if (this->mTableModel == 0)
+    {
         NMLogError(<< ctxNMVectorLayer << ": table model missing!");
-		return;
-	}
+        return;
+    }
 
-	this->mTableView = new NMTableView(this->mTableModel, 0);
-	this->mTableView->setSelectionModel(this->mSelectionModel);
+    this->mTableView = new NMTableView(this->mTableModel, 0);
+    this->mTableView->setSelectionModel(this->mSelectionModel);
 
-	// hide the 'hole' rows
-	if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
-	{
-		vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
-				this->mAttributeTable->GetColumnByName("nm_hole"));
-		QList<int> hiddenrows;
-		//NMDebugAI(<< __FUNCTION__ << ": hidden rows ..." << std::endl);
-		for (int row=0; row < this->mAttributeTable->GetNumberOfRows(); ++row)
-		{
-			if (holes->GetValue(row))
-			{
-				//NMDebug(<< row << " ");
-				hiddenrows << row;
-			}
-		}
-		//NMDebug(<< " --> sum=" << hiddenrows.size() << std::endl);
-		this->mTableView->hideSource(hiddenrows);
-		this->mTableView->hideAttribute("nm_hole");
-	}
-	this->mTableView->hideAttribute("nm_sel");
-	this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
+    // hide the 'hole' rows
+    if (this->mFeatureType == NMVectorLayer::NM_POLYGON_FEAT)
+    {
+        vtkUnsignedCharArray* holes = vtkUnsignedCharArray::SafeDownCast(
+                this->mAttributeTable->GetColumnByName("nm_hole"));
+        QList<int> hiddenrows;
+        //NMDebugAI(<< __FUNCTION__ << ": hidden rows ..." << std::endl);
+        for (int row=0; row < this->mAttributeTable->GetNumberOfRows(); ++row)
+        {
+            if (holes->GetValue(row))
+            {
+                //NMDebug(<< row << " ");
+                hiddenrows << row;
+            }
+        }
+        //NMDebug(<< " --> sum=" << hiddenrows.size() << std::endl);
+        this->mTableView->hideSource(hiddenrows);
+        this->mTableView->hideAttribute("nm_hole");
+    }
+    this->mTableView->hideAttribute("nm_sel");
+    this->mTableView->setTitle(tr("Attributes of ") + this->objectName());
 
-	connect(this, SIGNAL(selectabilityChanged(bool)), mTableView, SLOT(setSelectable(bool)));
+    connect(this, SIGNAL(selectabilityChanged(bool)), mTableView, SLOT(setSelectable(bool)));
     connect(mTableView, SIGNAL(notifyLastClickedRow(long long)), this, SLOT(forwardLastClickedRowSignal(long long)));
 }
 
 int NMVectorLayer::updateAttributeTable(void)
 {
-	NMDebugCtx(ctxNMVectorLayer, << "...");
+    NMDebugCtx(ctxNMVectorLayer, << "...");
 
-	if (mTableModel != 0)
-	{
-		NMDebugAI(<< "we've got a table already!" << std::endl);
-		NMDebugCtx(ctxNMVectorLayer, << "done!");
-		return 1;
-	}
+    if (mTableModel != 0)
+    {
+        NMDebugAI(<< "we've got a table already!" << std::endl);
+        NMDebugCtx(ctxNMVectorLayer, << "done!");
+        return 1;
+    }
 
-	vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
-	if (dsa == 0 || dsa->GetNumberOfArrays() == 0)
-		return 0;
+    vtkDataSetAttributes* dsa = this->mDataSet->GetAttributes(vtkDataSet::CELL);
+    if (dsa == 0 || dsa->GetNumberOfArrays() == 0)
+        return 0;
 
-	disconnectTableSel();
+    disconnectTableSel();
 
-	vtkSmartPointer<vtkTable> rawtab = vtkSmartPointer<vtkTable>::New();
-	rawtab->SetRowData(dsa);
+    vtkSmartPointer<vtkTable> rawtab = vtkSmartPointer<vtkTable>::New();
+    rawtab->SetRowData(dsa);
 
-	this->mAttributeTable = rawtab;
-	vtkQtEditableTableModelAdapter* tabModel;
-	if (this->mTableModel == 0)
-	{
-		tabModel = new vtkQtEditableTableModelAdapter(mAttributeTable);
-	}
-	else
-	{
-		tabModel = qobject_cast<vtkQtEditableTableModelAdapter*>(this->mTableModel);
-		tabModel->setTable(this->mAttributeTable);
-	}
-	tabModel->SetKeyColumnName("nm_id");
+    this->mAttributeTable = rawtab;
+    vtkQtEditableTableModelAdapter* tabModel;
+    if (this->mTableModel == 0)
+    {
+        tabModel = new vtkQtEditableTableModelAdapter(mAttributeTable);
+    }
+    else
+    {
+        tabModel = qobject_cast<vtkQtEditableTableModelAdapter*>(this->mTableModel);
+        tabModel->setTable(this->mAttributeTable);
+    }
+    tabModel->SetKeyColumnName("nm_id");
 
-	// in any case, we create a new item selection model
-	if (this->mSelectionModel == 0)
-	{
-		this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
-	}
-	this->mTableModel = tabModel;
+    // in any case, we create a new item selection model
+    if (this->mSelectionModel == 0)
+    {
+        this->mSelectionModel = new NMFastTrackSelectionModel(tabModel, this);
+    }
+    this->mTableModel = tabModel;
 
-	connectTableSel();
-	emit legendChanged(this);
+    connectTableSel();
+    emit legendChanged(this);
 
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
-	return 1;
+    NMDebugCtx(ctxNMVectorLayer, << "done!");
+    return 1;
 }
 
 void NMVectorLayer::writeDataSet(void)
 {
-	NMDebugCtx(ctxNMVectorLayer, << "...");
+    NMDebugCtx(ctxNMVectorLayer, << "...");
 
-	QFileInfo finfo(this->mFileName);
-	if (!finfo.isWritable())
-	{
+    QFileInfo finfo(this->mFileName);
+    if (!finfo.isWritable())
+    {
         NMLogError(<< ctxNMVectorLayer << ": can't write to '" << this->mFileName.toStdString() <<
-				"' - check permissions!" << std::endl);
-		return;
-	}
+                "' - check permissions!" << std::endl);
+        return;
+    }
 
-	// save the layer's data set under the current name
-	vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<
-			vtkPolyDataWriter>::New();
-	writer->SetFileName(this->mFileName.toStdString().c_str());
+    // save the layer's data set under the current name
+    vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<
+            vtkPolyDataWriter>::New();
+    writer->SetFileName(this->mFileName.toStdString().c_str());
     writer->SetInputData(this->mDataSet);
     //writer->SetFileTypeToBinary();
     writer->SetFileTypeToASCII();
-	writer->Update();
+    writer->Update();
 
-	this->mHasChanged = false;
-	//emit legendChanged(this);
+    this->mHasChanged = false;
+    //emit legendChanged(this);
 
-	NMDebugCtx(ctxNMVectorLayer, << "done!");
+    NMDebugCtx(ctxNMVectorLayer, << "done!");
 }
 
 void
@@ -539,94 +546,94 @@ NMVectorLayer::setFeaturesVisible(bool vis)
 
 void
 NMVectorLayer::selectionChanged(const QItemSelection& newSel,
-		const QItemSelection& oldSel)
+        const QItemSelection& oldSel)
 {
-	//const int numranges = newSel.size();
-	//const int nrows = this->mAttributeTable->GetNumberOfRows();
+    //const int numranges = newSel.size();
+    //const int nrows = this->mAttributeTable->GetNumberOfRows();
 
-	// create new selections
+    // create new selections
 #ifdef VTK_OPENGL2
     mSelectionMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
 #else
     mSelectionMapper = vtkSmartPointer<vtkOGRLayerMapper>::New();
 #endif
-	vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
-	vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
-	vtkSmartPointer<vtkLongArray> scalars = vtkSmartPointer<vtkLongArray>::New();
+    vtkSmartPointer<vtkLookupTable> clrtab = vtkSmartPointer<vtkLookupTable>::New();
+    vtkSmartPointer<vtkIdList> selCellIds = vtkSmartPointer<vtkIdList>::New();
+    vtkSmartPointer<vtkLongArray> scalars = vtkSmartPointer<vtkLongArray>::New();
 
-	int selcnt = 0;
-	foreach(const QItemSelectionRange& range, newSel)
-	{
-		const int top = range.top();
-		const int bottom = range.bottom();
-		for (int row=top; row<=bottom; ++row)
-		{
-			++selcnt;
-		}
-	}
-	selCellIds->SetNumberOfIds(selcnt);
-	scalars->SetNumberOfTuples(selcnt);
-	clrtab->SetNumberOfTableValues(selcnt);
+    int selcnt = 0;
+    foreach(const QItemSelectionRange& range, newSel)
+    {
+        const int top = range.top();
+        const int bottom = range.bottom();
+        for (int row=top; row<=bottom; ++row)
+        {
+            ++selcnt;
+        }
+    }
+    selCellIds->SetNumberOfIds(selcnt);
+    scalars->SetNumberOfTuples(selcnt);
+    clrtab->SetNumberOfTableValues(selcnt);
 
     //this->printSelRanges(newSel, "incoming update selection");
 
-	int clrcnt = 0;
-	foreach(const QItemSelectionRange& range, newSel)
-	{
-		const int top = range.top();
-		const int bottom = range.bottom();
-		for (int row=top; row<=bottom; ++row)
-		{
-			scalars->SetValue(clrcnt, clrcnt);
-			selCellIds->SetId(clrcnt, row);
+    int clrcnt = 0;
+    foreach(const QItemSelectionRange& range, newSel)
+    {
+        const int top = range.top();
+        const int bottom = range.bottom();
+        for (int row=top; row<=bottom; ++row)
+        {
+            scalars->SetValue(clrcnt, clrcnt);
+            selCellIds->SetId(clrcnt, row);
             //clrtab->SetTableValue(clrcnt, 1, 0, 0);
             clrtab->SetTableValue(clrcnt, mClrSelection.redF(),
                                           mClrSelection.greenF(),
                                           mClrSelection.blueF(),
                                           mClrSelection.alphaF());
-			++clrcnt;
-		}
-	}
+            ++clrcnt;
+        }
+    }
 
-	//NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
+    //NMDebugAI(<< "we should have " << selCellIds->GetNumberOfIds() << " extracted cells" << std::endl);
 
-	if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
-	{
+    if (this->mCellSelection.GetPointer() != 0 && mSelectionActor.GetPointer() != 0)
+    {
         //NMDebugAI(<< "removed old selection" << std::endl);
-		this->mRenderer->RemoveActor(mSelectionActor);
-	}
+        this->mRenderer->RemoveActor(mSelectionActor);
+    }
 
-	vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
+    vtkSmartPointer<vtkExtractCells> extractor = vtkSmartPointer<vtkExtractCells>::New();
     extractor->SetInputData(mDataSet);
-	extractor->SetCellList(selCellIds);
+    extractor->SetCellList(selCellIds);
 
-	vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-	geoFilter->SetInputConnection(extractor->GetOutputPort());
-	geoFilter->Update();
+    vtkSmartPointer<vtkGeometryFilter> geoFilter = vtkSmartPointer<vtkGeometryFilter>::New();
+    geoFilter->SetInputConnection(extractor->GetOutputPort());
+    geoFilter->Update();
 
-	mCellSelection = vtkSmartPointer<vtkPolyData>::New();
+    mCellSelection = vtkSmartPointer<vtkPolyData>::New();
 
-	mCellSelection->SetPoints(geoFilter->GetOutput()->GetPoints());
-	mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
-	mCellSelection->GetCellData()->SetScalars(scalars);
+    mCellSelection->SetPoints(geoFilter->GetOutput()->GetPoints());
+    mCellSelection->SetLines(geoFilter->GetOutput()->GetPolys());
+    mCellSelection->GetCellData()->SetScalars(scalars);
 
     //	NMDebugAI(<< "we've got " << mCellSelection->GetNumberOfCells()
     //			<< " cells in selection" << std::endl);
 
     mSelectionMapper->SetInputData(mCellSelection);
-	mSelectionMapper->SetLookupTable(clrtab);
+    mSelectionMapper->SetLookupTable(clrtab);
 
-	vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
-	a->SetMapper(mSelectionMapper);
+    vtkSmartPointer<vtkActor> a = vtkSmartPointer<vtkActor>::New();
+    a->SetMapper(mSelectionMapper);
 
-	mSelectionActor = a;
-	mRenderer->AddActor(a);
+    mSelectionActor = a;
+    mRenderer->AddActor(a);
 
-	// call the base class implementation to do datatype agnostic stuff
-	NMLayer::selectionChanged(newSel, oldSel);
+    // call the base class implementation to do datatype agnostic stuff
+    NMLayer::selectionChanged(newSel, oldSel);
 
-	emit visibilityChanged(this);
-	emit legendChanged(this);
+    emit visibilityChanged(this);
+    emit legendChanged(this);
 }
 
 void

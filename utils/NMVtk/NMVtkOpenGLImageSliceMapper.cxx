@@ -52,7 +52,7 @@
 #include "vtkOpenGLCamera.h"
 #include "vtkOpenGLRenderer.h"
 #include "vtkOpenGLRenderWindow.h"
-#include "vtkTimerLog.h"
+//#include "vtkTimerLog.h"
 #include "vtkGarbageCollector.h"
 #include "vtkTemplateAliasMacro.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
@@ -218,8 +218,8 @@ NMVtkOpenGLImageSliceMapper::SetDisplayExtent(int extent[6])
     this->DisplayExtent[3] = extent[3];
     this->DisplayExtent[4] = extent[4];
     this->DisplayExtent[5] = extent[5];
-
 }
+
 void
 NMVtkOpenGLImageSliceMapper::SetDataWholeExtent(int extent[6])
 {
@@ -239,8 +239,8 @@ NMVtkOpenGLImageSliceMapper::GetTexture() const
     {
         return texture->GetMappedScalars();
     }
-	
-	return nullptr;
+
+    return nullptr;
 }
 
 

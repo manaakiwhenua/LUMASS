@@ -65,6 +65,7 @@
 #include "vtkScalarsToColors.h"
 #include "vtkLookupTable.h"
 #include "vtkDoubleArray.h"
+#include "vtkIdTypeArray.h"
 
 #include "NMPolygonToTriangles.h"
 #include "vtkLookupTable.h"
@@ -3003,7 +3004,7 @@ vtkPolyData *NMVtkOpenGLPolyDataMapper::HandleAppleBug(
   std::vector<float> &buffData
   )
 {
-  vtkIdType* indices = nullptr;
+  const vtkIdType* indices = nullptr;
   vtkIdType npts = 0;
 
   vtkPolyData *newPD = vtkPolyData::New();
@@ -3407,6 +3408,7 @@ void NMVtkOpenGLPolyDataMapper::BuildIBO(
 }
 
 //-----------------------------------------------------------------------------
+
 bool NMVtkOpenGLPolyDataMapper::GetIsOpaque()
 {
   if (this->ScalarVisibility &&
@@ -3447,6 +3449,7 @@ bool NMVtkOpenGLPolyDataMapper::GetIsOpaque()
   }
   return this->Superclass::GetIsOpaque();
 }
+
 
 //----------------------------------------------------------------------------
 void NMVtkOpenGLPolyDataMapper::ShallowCopy(vtkAbstractMapper *mapper)

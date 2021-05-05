@@ -49,6 +49,7 @@
 #include <cctype>
 #include <algorithm>
 #include <stack>
+#include <regex>
 
 #include "itkConstNeighborhoodIterator.h"
 #include "itkNeighborhoodInnerProduct.h"
@@ -197,7 +198,7 @@ NMJSKernelFilter<TInputImage, TOutputImage>
     // furthermore, if an image with an associated RAT is
     // provided, we've got only one name associated with it
     // (since the UserID of the reader component is forwarded,
-    // and stored in m_DataNames), so we just append '_t' to the
+    // and stored in m_DataNames), so we just append 'Tab' to the
     // image name, to distinguish between the two in the script
 
     if (idx >= m_IMGNames.size())
@@ -336,9 +337,6 @@ NMJSKernelFilter<TInputImage, TOutputImage>
         m_mapStatNameIdx.clear();
 
 
-        // run (and parse and all that) the init script
-        this->RunInitScript();
-
         // ----------------------------------------------------------------------
         // prepare kernelScript for 'parsing'
         QString kernelScript = m_KernelScript.c_str();
@@ -351,23 +349,25 @@ NMJSKernelFilter<TInputImage, TOutputImage>
         // prepare thread specific objects, i.e. js engine instances, scripts, and
         // 'KernelStore' objects as defined in the initialisation script (if applicable)
 
+        // analyse KernelScript for table expressions
+        analyseKernelScript();
+
         const double nv = static_cast<double>(m_Nodata);
         const unsigned int nthreads = this->GetNumberOfThreads();
         for (int th=0; th < nthreads; ++th)
         {
             // create a js engine
             QSharedPointer<QJSEngine> jsengine(new QJSEngine());
-            QJSValue kernelStore = jsengine->newObject();
+            QJSValue kernelStore = this->RunInitScript(jsengine);
 
             bool bHaveKernelStore = false;
-            // create a global 'KernelStore' copy for each QJSEngine and thread
-            if (    !m_InitResultObject.isUndefined()
-                 && !m_InitResultObject.isNull()
-                 && !m_InitResultObject.isError()
+            if (    !kernelStore.isUndefined()
+                 && !kernelStore.isNull()
+                 && !kernelStore.isError()
                )
             {
                 bHaveKernelStore = true;
-                QJSValueIterator init(m_InitResultObject);
+                QJSValueIterator init(kernelStore);
 
                 int n=-1;
                 while (init.hasNext())
@@ -377,11 +377,11 @@ NMJSKernelFilter<TInputImage, TOutputImage>
 #ifdef LUMASS_DEBUG
                     QString thename = init.name();
                     QString thevalue = init.value().toString();
+                    NMProcDebug(<< thename.toStdString() << " = " << thevalue.toStdString());
 #endif
 
                     if (init.value().isNumber())
                     {
-                        kernelStore.setProperty(init.name(), QJSValue(init.value().toNumber()));
                         ++n;
 
                         // the stats are across threads, so just need to establish those once
@@ -395,7 +395,6 @@ NMJSKernelFilter<TInputImage, TOutputImage>
                     }
                 }
             }
-
 
             // define the js neighbourhood kernel buffers
             std::map<std::string, QJSValue> mapNameImgKernel;
@@ -476,10 +475,10 @@ NMJSKernelFilter<TInputImage, TOutputImage>
 
             std::map<std::string, InputShapedIterator> mapnameneigs;
             m_mapNameImgNeigValues.push_back(mapnameneigs);
-        }
 
-        // update input data
-        this->CacheInputData();
+            // update input data
+            this->CacheInputData(jsengine, th);
+        }
 
         // make a new AuxTable output
         this->SetNthOutput(1, this->MakeOutput(1));
@@ -496,19 +495,16 @@ NMJSKernelFilter<TInputImage, TOutputImage>
 }
 
 template <class TInputImage, class TOutputImage>
-void
-NMJSKernelFilter<TInputImage, TOutputImage>
-::RunInitScript()
+QJSValue NMJSKernelFilter<TInputImage, TOutputImage>
+::RunInitScript(QSharedPointer<QJSEngine> jsengine)
 {
-    // even if we haven't got an init script to process, we create the
-    // InitEngine for globalObject's properties creation and reference
-    m_InitEngine = QSharedPointer<QJSEngine>(new QJSEngine());
-
+    // processing of the init script and creation
+    // of 'KernelStore' object if script has been specified
+    QJSValue initObj;
     if (m_InitScript.empty())
     {
         //NMProcDebug(<< "Skip empty init script");
-        m_InitResultObject = QJSValue();
-        return;
+        return initObj;
     }
 
     QString script = m_InitScript.c_str();
@@ -517,7 +513,7 @@ NMJSKernelFilter<TInputImage, TOutputImage>
         script = script.mid(1, script.size()-2);
     }
 
-    QJSValue initScript = m_InitEngine->evaluate(script);
+    QJSValue initScript = jsengine->evaluate(script);
     if (    initScript.isUndefined()
          || initScript.isNull()
          || !initScript.isCallable()
@@ -539,10 +535,10 @@ NMJSKernelFilter<TInputImage, TOutputImage>
         throw kse;
     }
 
-    m_InitResultObject = initScript.call();
-    if (    m_InitResultObject.isUndefined()
-         || m_InitResultObject.isNull()
-         || m_InitResultObject.isError()
+    initObj = initScript.call();
+    if (     initObj.isUndefined()
+         ||  initObj.isNull()
+         ||  initObj.isError()
        )
     {
         std::stringstream errmsg;
@@ -559,7 +555,7 @@ NMJSKernelFilter<TInputImage, TOutputImage>
     }
 
 #ifdef LUMASS_DEBUG
-    QJSValueIterator vit(m_InitResultObject);
+    QJSValueIterator vit(initObj);
     NMProcDebug(<< "Intitialisation Script: 'KernelStore' object properties ... ");
     while (vit.hasNext())
     {
@@ -568,12 +564,61 @@ NMJSKernelFilter<TInputImage, TOutputImage>
     }
 #endif
 
+    return initObj;
+
 }
 
 template <class TInputImage, class TOutputImage>
 void
 NMJSKernelFilter<TInputImage, TOutputImage>
-::CacheInputData()
+::analyseKernelScript()
+{
+    this->m_mapTableColumns.clear();
+
+    std::string input = this->m_KernelScript;
+    NMProcDebug(<< "Analysing Kernel Script ...");
+    try
+    {
+        // example string expression:
+        //       val myVar = img1Tab.columnA[400];
+        // and we want to catch the 'img1' identifier and the column name 'columnA' in speparate
+        // groups
+        std::regex tableExpression("(?:[^a-zA-Z]*)([a-zA-Z_\\-0-9]+Tab).([a-zA-Z_\\-0-9]+)(?:[^a-zA-Z]*)");
+
+        auto teBegin = std::sregex_iterator(input.begin(), input.end(), tableExpression);
+        auto teEnd   = std::sregex_iterator();
+
+        for (std::sregex_iterator i = teBegin; i != teEnd; i++)
+        {
+            std::smatch m = *i;
+            std::string mstr = m.str();
+            if (m.size() == 3)
+            {
+                if (m_mapTableColumns.find(m[1].str()) == m_mapTableColumns.cend())
+                {
+                    std::vector<std::string> cols = {m[2].str()};
+                    m_mapTableColumns.insert(std::pair<std::string, std::vector<std::string> >(m[1].str(), cols));
+                }
+                else
+                {
+                    m_mapTableColumns[m[1].str()].push_back(m[2].str());
+                }
+
+                NMProcDebug(<< m.str() << "-- table: " << m[1].str() << " | column: " << m[2].str());
+            }
+        }
+    }
+    catch(std::regex_error& ree)
+    {
+        itkExceptionMacro(<< "ERROR: " << ree.what());
+    }
+
+}
+
+template <class TInputImage, class TOutputImage>
+void
+NMJSKernelFilter<TInputImage, TOutputImage>
+::CacheInputData(QSharedPointer<QJSEngine> jsengine, int threadId)
 {
     std::string name;
     for (int t=0; t < m_RATNames.size(); ++t)
@@ -581,19 +626,26 @@ NMJSKernelFilter<TInputImage, TOutputImage>
         otb::AttributeTable::Pointer tab = m_vRAT.at(t);
         name = m_RATNames.at(t);
 
-        QJSValue jstab = m_InitEngine->newObject();
-        m_InitEngine->globalObject().setProperty(name.c_str(), jstab);
+        if (m_mapTableColumns.find(name) == m_mapTableColumns.end())
+        {
+            continue;
+        }
 
-        const double nv = m_Nodata;
-        long underflows = 0;
-        long overflows = 0;
         // if we've got a table here, we haven't dealt with, we
-        // just copy the content into a vector of vectors or doubles
+        // just copy the content into a vector of vectors of doubles
         //if (tab.IsNotNull() && m_mapNameTable.find(name) == m_mapNameTable.end())
+
         if (    tab.IsNotNull()
-             && !m_InitEngine->globalObject().hasProperty(name.c_str())
+             && !jsengine->globalObject().hasProperty(name.c_str())
            )
         {
+            QJSValue jstab = jsengine->newObject();
+            jsengine->globalObject().setProperty(name.c_str(), jstab);
+
+            const OutputPixelType nv = m_Nodata;
+            long underflows = 0;
+            long overflows = 0;
+
             // the row, maxrow thing below is weired, I know, but it's because otb::SQLiteTable's row index
             // (i.e. primary key) is not necessarily in the range [0, nrows-1]; however
             // we do assume that it is stored in 1-increments; if not, we get (nodata) values
@@ -604,84 +656,168 @@ NMJSKernelFilter<TInputImage, TOutputImage>
 
             int ncols = tab->GetNumCols();
 
-            // note: access is rows, columns
-            //std::vector<std::vector<double> > tableCache(ncols);
-
-            for (int col = 0; col < ncols; ++col)
+            otb::SQLiteTable::Pointer sqlTab = dynamic_cast<otb::SQLiteTable*>(tab.GetPointer());
+            if (    tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE && sqlTab.IsNotNull()
+                 && threadId == 0
+               )
             {
-                //std::vector<double> colCache(nrows);
+                // note: access is rows, columns
+                std::vector<std::string>& tabcols = m_mapTableColumns[name];
 
-                std::string colname = tab->GetColumnName(col);
-                QJSValue jscolumn = m_InitEngine->newArray(nrows);
-                jstab.setProperty(colname.c_str(), jscolumn);
+                std::vector<std::string> intCols;
+                std::vector<std::string> doubleCols;
+                std::vector<std::string> stringCols;
 
-                for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
+
+
+
+                for (int col = 0; col < ncols; ++col)
+                {
+                    std::string colname = tab->GetColumnName(col);
+                    bool bfound = false;
+                    for (int nn=0; nn < tabcols.size(); ++nn)
+                    {
+                        if (colname.compare(tabcols.at(nn)) == 0)
+                        {
+                            bfound = true;
+                        }
+                    }
+
+                    QJSValue jscolumn = jsengine->newArray(nrows);
+                    jstab.setProperty(colname.c_str(), jscolumn);
+
+                    if (bfound)
+                    {
+                        switch(sqlTab->GetColumnType(col))
+                        {
+                        case AttributeTable::ATTYPE_INT:
+                        {
+                            intCols.push_back(colname);
+                            std::map<long long, long long> llvalstore;
+                            m_intstore.insert(std::pair<int, std::map<long long, long long> >(col, llvalstore));
+                        }
+                        break;
+
+                        case AttributeTable::ATTYPE_DOUBLE:
+                        {
+                            doubleCols.push_back(colname);
+                            std::map<long long, double> dblvalstore;
+                            m_doublestore.insert(std::pair<int, std::map<long long, double> >(col, dblvalstore));
+                        }
+                        break;
+
+                        case AttributeTable::ATTYPE_STRING:
+                        {
+                            stringCols.push_back(colname);
+                            std::map<long long, std::string> stringvalstore;
+                            m_stringstore.insert(std::pair<int, std::map<long long, std::string> >(col, stringvalstore));
+                        }
+                        break;
+                        }
+                    }
+                }
+
+
+                if (m_intstore.size() > 0 && !sqlTab->GreedyNumericFetch(intCols, m_intstore))
+                {
+                    itkExceptionMacro(<< "JSKernelScript: failed caching integer columns");
+                }
+
+                if (m_doublestore.size() > 0 && !sqlTab->GreedyNumericFetch(doubleCols, m_doublestore))
+                {
+                    itkExceptionMacro(<< "JSKernelScript: failed caching double columns");
+                }
+
+                if (m_stringstore.size() > 0 && !sqlTab->GreedyStringFetch(stringCols, m_stringstore))
+                {
+                    itkExceptionMacro(<< "JSKernelScript: failed caching string columns");
+                }
+            }
+
+            // define js objects
+            if (tab->GetTableType() == otb::AttributeTable::ATTABLE_TYPE_SQLITE && sqlTab.IsNotNull())
+            {
+                for (int col = 0; col < ncols; ++col)
                 {
                     switch(tab->GetColumnType(col))
                     {
-                    case AttributeTable::ATTYPE_INT:
-                    {
-                        //const double lv = static_cast<double>(tab->GetIntValue(col, row));
-                        //                        if (lv < (itk::NumericTraits<double>::NonpositiveMin()))
-                        //                        {
-                        //                            ++underflows;
-                        //                        }
-                        //                        else if (lv > (std::numeric_limits<double>::max()))
-                        //                        {
-                        //                            //long long lmax = static_cast<long long>(std::numeric_limits<double>::max());
-                        //                            //if (lv > lmax)
-                        //                                ++overflows;
-                        //                            //else
-                        //                        }
-                        //                        else
+                        case AttributeTable::ATTYPE_INT:
                         {
-                            //colCache[rowidx] = static_cast<double>(lv);
-                            jscolumn.setProperty(rowidx, QJSValue(static_cast<int>(tab->GetIntValue(col, row))));
+                            std::string colname = tab->GetColumnName(col);
+                            QJSValue jscolumn = jsengine->newArray(nrows);
+                            jstab.setProperty(colname.c_str(), jscolumn);
+
+                            if (m_intstore.find(col) != m_intstore.end())
+                            {
+                                for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
+                                {
+                                    jscolumn.setProperty(rowidx, QJSValue(static_cast<int>(m_intstore[col][row])));
+                                }
+                            }
                         }
-                    }
                         break;
-                    case AttributeTable::ATTYPE_DOUBLE:
-                    {
-                        //                        const double dv = tab->GetDblValue(col, row);
-                        //                        if (dv < static_cast<double>(itk::NumericTraits<double>::NonpositiveMin()))
-                        //                        {
-                        //                            ++underflows;
-                        //                        }
-                        //                        else if (dv > static_cast<double>(std::numeric_limits<double>::max()))
-                        //                        {
-                        //                            ++overflows;
-                        //                        }
-                        //                        else
+
+                        case AttributeTable::ATTYPE_DOUBLE:
                         {
-                            //colCache[rowidx] = static_cast<double>(dv);
-                            jscolumn.setProperty(rowidx, QJSValue(tab->GetDblValue(col, row)));
+                            std::string colname = tab->GetColumnName(col);
+                            QJSValue jscolumn = jsengine->newArray(nrows);
+                            jstab.setProperty(colname.c_str(), jscolumn);
+
+                            if (m_doublestore.find(col) != m_doublestore.end())
+                            {
+                                for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
+                                {
+                                    jscolumn.setProperty(rowidx, QJSValue(m_doublestore[col][row]));
+                                }
+                            }
                         }
-                    }
                         break;
-                    case AttributeTable::ATTYPE_STRING:
-                        //colCache[rowidx] = nv;
-                        jscolumn.setProperty(rowidx, QJSValue(tab->GetStrValue(col, row).c_str()));
+
+                        case AttributeTable::ATTYPE_STRING:
+                        {
+                            std::string colname = tab->GetColumnName(col);
+                            QJSValue jscolumn = jsengine->newArray(nrows);
+                            jstab.setProperty(colname.c_str(), jscolumn);
+
+                            if (m_stringstore.find(col) != m_stringstore.end())
+                            {
+                                for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
+                                {
+                                    jscolumn.setProperty(rowidx, QJSValue(m_stringstore[col][row].c_str()));
+                                }
+                            }
+                        }
                         break;
                     }
                 }
-                //tableCache[col] = colCache;
             }
+            else
+            {
+                for (int col = 0; col < ncols; ++col)
+                {
+                    std::string colname = tab->GetColumnName(col);
+                    QJSValue jscolumn = jsengine->newArray(nrows);
+                    jstab.setProperty(colname.c_str(), jscolumn);
 
-            // report conversion errors
-            //            if (overflows > 0 || underflows > 0)
-            //            {
-            //                std::stringstream sstr;
-            //                sstr << "Data conversion errors: " << overflows
-            //                     << " overflows and " << underflows << " underflows; table "
-            //                     << name
-            //                     << "'s data values are outside the parser's value range!";
+                    for (int row = minrow, rowidx=0; row <= maxrow; ++row, ++rowidx)
+                    {
+                        switch(tab->GetColumnType(col))
+                        {
+                        case AttributeTable::ATTYPE_INT:
+                            jscolumn.setProperty(rowidx, QJSValue(static_cast<int>(tab->GetIntValue(col, row))));
+                            break;
 
-            //                KernelScriptParserError oe;
-            //                oe.SetLocation(ITK_LOCATION);
-            //                oe.SetDescription(sstr.str());
-            //                throw oe;
-            //            }
-            //            m_mapNameTable[name] = tableCache;
+                        case AttributeTable::ATTYPE_DOUBLE:
+                            jscolumn.setProperty(rowidx, QJSValue(tab->GetDblValue(col, row)));
+                            break;
+
+                        case AttributeTable::ATTYPE_STRING:
+                            jscolumn.setProperty(rowidx, QJSValue(tab->GetStrValue(col, row).c_str()));
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -696,41 +832,45 @@ NMJSKernelFilter<TInputImage, TOutputImage>
         }
         name = m_IMGNames.at(i);
 
-        if (m_mapNameImg.find(name) == m_mapNameImg.end())
+        // just doing this once for all threads
+        if (threadId == 0)
         {
-            m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
-        }
-        else
-        {
-            std::stringstream sstr;
-            sstr << "Image name conflict error: The name '"
-                 << name << "' has already been defined!";
-            KernelScriptParserError kspe;
-            kspe.SetLocation(ITK_LOCATION);
-            kspe.SetDescription(sstr.str());
-            throw kspe;
-        }
-
-        if (m_mapNameImgNeigValues.at(0).find(name) == m_mapNameImgNeigValues.at(0).end())
-        {
-            for (int th=0; th < this->GetNumberOfThreads(); ++th)
+            if (m_mapNameImg.find(name) == m_mapNameImg.end())
             {
-                m_mapNameImgNeigValues.at(th)[name] = InputShapedIterator();
+                m_mapNameImg.insert(std::pair<std::string, InputImageType*>(name, img));
+            }
+            else
+            {
+                std::stringstream sstr;
+                sstr << "Image name conflict error: The name '"
+                     << name << "' has already been defined!";
+                KernelScriptParserError kspe;
+                kspe.SetLocation(ITK_LOCATION);
+                kspe.SetDescription(sstr.str());
+                throw kspe;
             }
         }
 
-        if (m_mapNameImgValue.at(0).find(name) == m_mapNameImgValue.at(0).end())
+        if (m_mapNameImgNeigValues.at(threadId).find(name) == m_mapNameImgNeigValues.at(threadId).end())
         {
-            for (int th=0; th < this->GetNumberOfThreads(); ++th)
+            //for (int th=0; th < this->GetNumberOfThreads(); ++th)
             {
-                m_mapNameImgValue.at(th)[name] = static_cast<double>(m_Nodata);
+                m_mapNameImgNeigValues.at(threadId)[name] = InputShapedIterator();
+            }
+        }
+
+        if (m_mapNameImgValue.at(threadId).find(name) == m_mapNameImgValue.at(threadId).end())
+        {
+            //for (int th=0; th < this->GetNumberOfThreads(); ++th)
+            {
+                m_mapNameImgValue.at(threadId)[name] = static_cast<OutputPixelType>(m_Nodata);
             }
         }
     }
 }
 
 template <class TInputImage, class TOutputImage>
-void 
+void
 NMJSKernelFilter<TInputImage, TOutputImage>
 ::GenerateInputRequestedRegion() throw ()
 {
@@ -960,7 +1100,7 @@ NMJSKernelFilter< TInputImage, TOutputImage>
                 }
 
                 // now we set the result value for the
-                const double outValue = script.toNumber();
+                const OutputPixelType outValue = static_cast<OutputPixelType>(script.toNumber());
                 if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
                 {
                     ++m_NumUnderflows[threadId];
@@ -1033,12 +1173,12 @@ NMJSKernelFilter< TInputImage, TOutputImage>
             while (inImgIt != m_mapNameImg.end())
             {
                 bool bDataTypeRangeError = false;
-                const InputPixelType pv = vInputIt[cnt].Get();
-                if (pv < itk::NumericTraits<double>::NonpositiveMin())
+                const double pv = vInputIt[cnt].Get();
+                if (pv < itk::NumericTraits<InputPixelType>::NonpositiveMin())
                 {
                     bDataTypeRangeError = true;
                 }
-                else if (pv > itk::NumericTraits<double>::max())
+                else if (pv > itk::NumericTraits<InputPixelType>::max())
                 {
                     bDataTypeRangeError = true;
                 }
@@ -1070,15 +1210,15 @@ NMJSKernelFilter< TInputImage, TOutputImage>
             {
                 args << m_vKernelStore[threadId];
             }
-            QJSValue script = m_vScript[threadId].call(args);
-            if (script.isUndefined() || script.isNull() || script.isError())
+            QJSValue scriptObj = m_vScript[threadId];//.call(args);
+            if (!scriptObj.isCallable() || scriptObj.isError())
             {
                 std::stringstream errmsg;
-                errmsg  << "Reference: Kernel Script execution - no neighbourhood" << std::endl
-                        << "Name: " <<    script.property("name").toString().toStdString() << std::endl
-                        << "Message: " << script.property("message").toString().toStdString() << std::endl
-                        << "Line number: " << script.property("lineNumber").toInt() << std::endl
-                        << "Stack: " << script.property("stack").toString().toStdString();
+                errmsg  << "Reference: Pixel-based Kernel Script execution" << std::endl
+                        << "Name: " <<    scriptObj.property("name").toString().toStdString() << std::endl
+                        << "Message: " << scriptObj.property("message").toString().toStdString() << std::endl
+                        << "Line number: " << scriptObj.property("lineNumber").toInt() << std::endl
+                        << "Stack: " << scriptObj.property("stack").toString().toStdString();
                 NMProcErr( << "NMJSKernelFilter: " << std::endl << errmsg.str());
 
                 KernelScriptParserError kse;
@@ -1087,8 +1227,19 @@ NMJSKernelFilter< TInputImage, TOutputImage>
                 throw kse;
             }
 
+            QJSValue scriptRes = scriptObj.call(args);
+            if (scriptRes.isError())
+            {
+                std::string emsg = scriptRes.property("message").toString().toStdString();
+                NMProcErr(<< "NMJSKernelFilter: " << emsg);
+                KernelScriptParserError akse;
+                akse.SetDescription(emsg.c_str());
+                akse.SetLocation(ITK_LOCATION);
+                throw akse;
+            }
+
             // now we set the result value for the
-            const double outValue = script.toNumber();
+            const OutputPixelType outValue = static_cast<OutputPixelType>(scriptRes.toNumber());
             if (outValue < itk::NumericTraits<OutputPixelType>::NonpositiveMin())
             {
                 ++m_NumUnderflows[threadId];

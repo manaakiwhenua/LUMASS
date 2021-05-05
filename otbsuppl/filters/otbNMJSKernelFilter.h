@@ -75,7 +75,15 @@ namespace otb
  *
  * This filter allows the user to execute a custom script
  * written in JavaScript to calculate the output pixel value.
- * If required, the user may access individual pixel values of
+ *
+ * WARNING:
+ *       JavaScript internally stores all numeric values as doubles, so
+ *       all input image values are converted to double values without
+ *       warning. So you should not use this class if you need to
+ *       process 64 bit integer values, e.g. (u)long, (u)long long, (u)int64_t)!
+ *
+ *
+* If required, the user may access individual pixel values of
  * a user-defined CIRCULAR or RECTANGULAR neighbourhood around
  * the centre pixel to be calculated.
  *
@@ -113,21 +121,16 @@ namespace otb
  *      of image 'img' can be retrieved with
  *
  *      \code
- *      v = kwinVal(img, 4, thid, addr);
+
  *      \endcode
  *
- *	   note: the user only ever has to specify the
- *            first and second parameter of the kwinVal
- *            function, i.e. the image identifier and the pixel index!
- *            The 'thid' and 'addr' parameters always have to be specified
- *            as shown above and are required for technical reasons.
  *
- *	   For the convenience of the user, the index of the centre pixel is provided
+ *     For the convenience of the user, the index of the centre pixel is provided
  *      as a pre-defined constant 'centrePixIdx', and the centre pixel value could
  *      be retrieved by
  *
  *         \code
- *	   v = kwinVal(img, centrePixIdx, thid, addr);
+
  *         \endcode
  *
  *      regardless of the actual size and shape of the neighbourhood;
@@ -140,91 +143,28 @@ namespace otb
  *      'mytab' can be retrieved with
  *
  *         \code
- *	   t = tabVal(mytab, 3, 2, addr);
+ *
  *         \endcode
  *
  *	   note: similar to the kwinVal function, the tabVal function requires one
  *            administrative parmameter ('addr'), which has to be specified every
  *            time the function is being used
  *
- *      In contrast to 'standalone' tables as above, an input image's RAT is referenced
- *      by the input component's UserID (e.g. 'img') extended by the suffix '_t', i.e. 'img_t'
  *
  *
- * 	REFERENCING THE OUTPUT VALUE
- *
- *	   The name of the output value is user-defined an must be specified in the
- *      property section of this filter; in the sample scripts below, it is usually
- *      represented by the variable 'out'.
+ * 	RETURN VALUE OF KERNEL SCRIPT
  *
  *
- *	GENERAL KERNEL SCRIPT SYNTAX
  *
- *      A kernel script is made up of a set of variable assignments, i.e. 'var = a + b;'.
- *      The right hand side (i.e. right of the '=' sign) is represented by a muParser
- *      expression. See the following website for details:
  *
- *	<a href="http://beltoforion.de/article.php?a=muparser&p=features">muParser</a>
- *
- *      If the left hand side (e.g. 'var = ') is missing, as common for the test expression
- *      in a for-loop header, an implict variable is assigned to it.
- *
- *      The typing of variables is implicit; every variable is of type double! Variable assignments
- *      have to specified explicitly using the '=' sign. A side-effect assignment like
- *      with the C-style '++' or '--' operator is not supported; also not support are the
- *      operators '+=', '-=', '/=', '*=' (anything else?).
- *
- *        \code
- *        size=10;
- *        out=0;
- *        b=5.7;
- *        for (i=1; i < size; i = i+1)
- *        {
- *            b = b * i;
- *        }
- *        out=b;
- *        \endcode
- *
- *      A for loop may not be nested in a muParser expression,
- *      as for example
- *
- *        \code
- *        var = a < 0 ? for (int myvar=0; myvar < numPix; myvar = myvar+1){out=out+}
- *                    : 0;
- *        \endcode
- *
- *      However, for loops itself may be nested, e.g.
- *
- *        \code
- *        for (i=0; i < number; i=i+1)
- *        {
- *            for (g=4; g >=0; g = g-1)
- *            {
- *                out = i*g;
- *            }
- *        }
- *        \endcode
- *
- *      and muParser expressions may be used in the loop header
- *      header or body (s. the floral resources script below).
- *
- *   RESERVED names (must not be used for user variables!):
+ *  PREDEFINED properties:
  *
  *      numPix       : number of active pixel in the neighbourhood
  *      centrePixIdx : 1D neighbourhood index of the centre pixel
- *      addr         : object address, used in kwinVal, tabVal, neigDist
- *      thid         : thread id, used in kwinVal and tabVal
- *      kwinVal      : function to access neighbourhood values by 1D-index
- *      tabVal       : function to access table values by column and row index
  *      neigDist     : neighbour distance from centre pixel (in pixel)
  *
- *      otb::Math constants: e, log2e, log10e, ln2, ln10, pi, euler
- *      muParser standard functions: http://beltoforion.de/article.php?a=muparser&p=features
  *
- *      addtional functions:
  *
- *      rand(lower_limit, upper_limit)  : returns random value using std::rand
- *      fmod(numerator, denominator)    : returns remainder of float division using std::fmod
  *
  */
 template <class TInputImage, class TOutputImage>
@@ -355,8 +295,9 @@ protected:
 
   void BeforeThreadedGenerateData();
   void AfterThreadedGenerateData();
-  void CacheInputData();
-  void RunInitScript();
+  void analyseKernelScript();
+  void CacheInputData(QSharedPointer<QJSEngine> jsengine, int threadId);
+  QJSValue RunInitScript(QSharedPointer<QJSEngine> jsengine);
 
 private:
   NMJSKernelFilter(const Self&); //purposely not implemented
@@ -386,8 +327,6 @@ private:
   std::vector<std::string> m_DataNames;
   OutputPixelType m_Nodata;
 
-  QJSValue m_InitResultObject;
-
   SpacingType   m_Spacing;
   OriginType    m_Origin;
 
@@ -406,21 +345,14 @@ private:
 
   // have to define these separately for each thread ...
   // the parsers themselves
-  QSharedPointer<QJSEngine> m_InitEngine;
   std::vector<QSharedPointer<QJSEngine> > m_vJSEngine;
   std::vector<QJSValue> m_vScript;
   std::vector<QJSValue> m_vKernelStore;
   std::vector<QJSValue> m_vKernelInfo;
 
   std::vector<std::map<std::string, QJSValue> > m_mapNameImgKernel;
-
-
-
-  // the x, y, and z coordinate of centre pixel
-//  std::vector<double> m_mapXCoord;
-//  std::vector<double> m_mapYCoord;
-//  std::vector<double> m_mapZCoord;
-
+  std::vector<std::map<std::string, InputShapedIterator > > m_mapNameImgNeigValues;
+  std::vector<std::map<std::string, double> > m_mapNameImgValue;
 
   // ===================================================
   //        thread independant object/value stores
@@ -429,16 +361,18 @@ private:
   // the link between input images and their user defined names
   std::map<std::string, InputImageType*> m_mapNameImg;
 
+  // map of columns to cache per RAT
+  std::map<std::string, std::vector<std::string> > m_mapTableColumns;
+
+  // maps of column values stores
+  std::map<int, std::map<long long, long long> > m_intstore;
+  std::map<int, std::map<long long, double> > m_doublestore;
+  std::map<int, std::map<long long, std::string> > m_stringstore;
+
+
   // the over- and underflows per thread
   std::vector<long long> m_NumOverflows;
   std::vector<long long> m_NumUnderflows;
-
-  // ===================================================
-  //        static value stores
-  // ===================================================
-  // these stores make class instance dependant values
-  // available via the static muParser callback functions
-  // ... bit a of dirty hack ... I guess
 
   // can share these across threads ...
   // read-only neighbour pixel distances to centre pixel
@@ -446,10 +380,6 @@ private:
 
   // read-only input tables
   std::map<std::string, std::vector<std::vector<double> > > m_mapNameTable;
-
-  // the map kernel values are thread dependant
-  std::vector<std::map<std::string, InputShapedIterator > > m_mapNameImgNeigValues;
-  std::vector<std::map<std::string, double> > m_mapNameImgValue;
 
 };
   
